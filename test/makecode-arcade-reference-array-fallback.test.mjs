@@ -55,4 +55,12 @@ test('opaque alternatives and reference bitwise operands stay refused in the art
     assert.ok(!bitwise.unsupported.some(message=>/Bitwise operation requires proven primitive operands/.test(message)),bitwise.unsupported.join('\n'));
     assert.match(bitwise.code,/arcade source value \(values\) op "&"/);
     assert.ok(bitwise.unsupported.some(message=>/sprite artwork is unavailable/.test(message)));
+    // The legacy integer words of this mode diagnose an opaque operand exactly
+    // like the native route; a proved primitive operand still converts.
+    for(const source of ['let a=image.create(1,1);let result=(a as any)|1','let a=image.create(1,1);let result=~(a as any)']){
+        const opaque=arcadeToPseudocode(source+';let actor=sprites.create(assets.image`missing`,SpriteKind.Player)');
+        assert.ok(opaque.unsupported.some(message=>/Bitwise operation requires proven primitive operands/.test(message)),source);
+    }
+    const primitive=arcadeToPseudocode('let b=3;let result=b|1;let actor=sprites.create(assets.image`missing`,SpriteKind.Player)');
+    assert.ok(!primitive.unsupported.some(message=>/Bitwise operation/.test(message)),primitive.unsupported.join('\n'));
 });

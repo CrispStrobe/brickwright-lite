@@ -3164,6 +3164,36 @@ class ArcadeEmitter {
         });
     }
 
+    // Sprite flags writers of an actual project. A direct (mutable) project
+    // graph has no owned frozen origin for its watchers, so its own query
+    // refuses them; the same query then runs once over an owned frozen JSON
+    // snapshot of this project taken now, mapped by target index and block id.
+    spriteFlagWriters (target, node) {
+        const direct=this.arrayReceiverAuthority.spriteFlagWriters(target,node);
+        if(direct||isProjectJsonSnapshot(this.project))return direct;
+        if(this.flagsSnapshot===undefined){
+            try {
+                const snapshot=createProjectJsonSnapshot(JSON.stringify(this.project));
+                this.flagsSnapshot={snapshot,authority:createArrayReferenceExportAuthority(snapshot,this.opts)};
+            } catch(_) {this.flagsSnapshot=null;}
+        }
+        if(!this.flagsSnapshot)return null;
+        const {snapshot,authority}=this.flagsSnapshot,targets=this.project.targets;
+        const index=targets.indexOf(target),id=index<0?null:Object.keys(target.blocks||{}).find(key=>target.blocks[key]===node);
+        const snapTarget=index<0?null:snapshot.targets[index],snapNode=id&&snapTarget?.blocks?.[id];
+        if(!snapNode)return null;
+        let rows;try{rows=authority.spriteFlagWriters(snapTarget,snapNode);}catch(_){return null;}
+        if(!rows)return null;
+        const mapped=[];
+        for(const row of rows){
+            const at=snapshot.targets.indexOf(row.target),key=at<0?null:Object.keys(row.target.blocks||{}).find(k=>row.target.blocks[k]===row.node);
+            const actual=at<0?null:targets[at],actualNode=key&&actual?.blocks?.[key];
+            if(!actualNode)return null;
+            mapped.push(Object.freeze({target:actual,node:actualNode,input:row.input}));
+        }
+        return Object.freeze(mapped);
+    }
+
     localDeclaration (name, key) {
         const classType=this.objectClassExport?.localDeclarationType?.(key,name);
         const type=classType??this.localValueTypes.get(key)?.get(name)??'any';
@@ -3380,7 +3410,7 @@ class ArcadeEmitter {
                 if(value.opcode==='arcade_tilesOfType'){const id=`${key}:tile-array:${Object.keys(blocks).find(id=>blocks[id]===value)}`;arrays.add(id);return id;}
                 if(['arcade_getLife','arcade_getPlayerScore'].includes(value.opcode)){const id=Symbol('player life');numbers.add(id);return id;}
                 if(value.opcode==='arcade_spriteProperty' && value.fields?.PROPERTY?.[0]==='flags'){
-                    const id=Symbol('closed Sprite flags primitive'),writers=this.arrayReceiverAuthority.spriteFlagWriters(target,value);
+                    const id=Symbol('closed Sprite flags primitive'),writers=this.spriteFlagWriters(target,value);
                     if(writers){spriteFlagResults.set(id,{target,node:value,writers});return id;}
                     inspectionOpaqueCells.add(id);return id;
                 }
@@ -3630,7 +3660,7 @@ class ArcadeEmitter {
             // Flags never lend a Number-only fact. Actual closed writers must
             // first qualify below; only a complete primitive domain can use it.
             if(allowSpriteFlags&&admittedSpriteFlags.has(value)&&['number','boolean','string','null','undefined'].every(type=>allowed.includes(type))){
-                const entry=spriteFlagResults.get(value),current=this.arrayReceiverAuthority.spriteFlagWriters(entry.target,entry.node);
+                const entry=spriteFlagResults.get(value),current=this.spriteFlagWriters(entry.target,entry.node);
                 return !!current&&current.length===entry.writers.length&&current.every((row,index)=>row.target===entry.writers[index].target&&row.node===entry.writers[index].node&&row.input===entry.writers[index].input);
             }
             // Only the source-bitwise allowed domain contains BOTH alternatives.
@@ -3676,7 +3706,7 @@ class ArcadeEmitter {
             // A native arithmetic/bitwise store (e.g. a compound flags update)
             // writes a Number whatever it reads, so it cannot form an unproved cycle.
             if(!entry.writers.every(row=>nativeNumberResults.has(spriteFlagWriterInputs.get(row.node))||inspectionTypes(spriteFlagWriterInputs.get(row.node),['number','boolean','string','null','undefined'])))continue;
-            const current=this.arrayReceiverAuthority.spriteFlagWriters(entry.target,entry.node);
+            const current=this.spriteFlagWriters(entry.target,entry.node);
             if(current&&current.length===entry.writers.length&&current.every((row,index)=>row.target===entry.writers[index].target&&row.node===entry.writers[index].node&&row.input===entry.writers[index].input))admittedSpriteFlags.add(value);
         }
         // Source result signatures above never prove their operands. Follow
@@ -4179,9 +4209,16 @@ class ArcadeEmitter {
                     }
                     if(this.objectClassExport.procedures.has(key))continue;
                     // A refused prototype has no actual owned export symbol.
-                    // Retain its diagnostic instead of emitting a null function.
+                    // Retain its diagnostic instead of emitting a null function,
+                    // but still compile the body (output discarded) so its own
+                    // refusals, e.g. inspection proofs, are reported as before.
                     const fn = this.functionName(t,proto.mutation.proccode);
-                    if(!fn)continue;
+                    if(!fn){
+                        const saved=this.currentLocalNames;this.currentLocalNames=new Set();
+                        try{this.body(b.next,[],[],!this.managedValueProcedures.has(key));}catch(error){this.note(error.message);}
+                        finally{this.currentLocalNames=saved;}
+                        continue;
+                    }
                     const types = imageParameterTypes.get(key) || [];
                     const params = names.map((n, i) => `${n}: ${this.procedureConstraints?.annotation(t,proto.mutation.proccode,i) || this.objectClassExport.procedureParameterType?.(key,n) || types[i] || 'any'}`);
                     // It runs in its caller's thread, so it checks the caller's run token.

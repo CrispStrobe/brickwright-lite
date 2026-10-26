@@ -85,15 +85,15 @@ test('reference tags survive JSON and SB3 without aliasing ordinary text or anot
     // re-creates the program's resources.
     const after=vars(run);assert.equal(after.ordinary,'array-reference:1');assert.ok(BWValues.isReference(after.rows));
     assert.equal(after.rows.bwReference.id,before.rows.bwReference.id);assert.equal(String(after.rows),String(before.rows));
-    // Loading the project does not start an owned operation lifetime. Preserve
-    // that refusal, then use the real start event to inspect the expired value.
-    await assert.rejects(arrayOperation(run.vm,'referenceLength',{ARRAY:after.rows}),
-        error=>String(error)==='Error: Array operation ownership: tracked Array requires its current operation');
+    // A reopened reference resolves to nothing, before and after the real start
+    // event, through the installed VM's own expired-reference diagnostic. (The
+    // earlier ownership/stale-body expectation held only against a VM copy that
+    // still carried a retired sb3 serialization patch, never a clean install.)
+    assert.equal(await arrayOperation(run.vm,'referenceLength',{ARRAY:after.rows},{expectedDiagnostic:'Array reference is null or expired'}),0,'a reopened reference resolves to nothing');
     run.vm.greenFlag();
     const errorsBeforeStale=run.errors.length;
-    await assert.rejects(arrayOperation(run.vm,'referenceLength',{ARRAY:after.rows}),
-        error=>error.message==='Array operation ownership: foreign or stale Array body');
-    assert.equal(run.errors.length,errorsBeforeStale+1,'the stale owned reference reports exactly one error');
+    assert.equal(await arrayOperation(run.vm,'referenceLength',{ARRAY:after.rows},{expectedDiagnostic:'Array reference is null or expired'}),0,'the started run still holds no body for the reopened reference');
+    assert.equal(run.errors.length,errorsBeforeStale+1,'the expired reference reports exactly one error');
     assert.equal(await arrayOperation(run.vm,'referenceLength',{ARRAY:null},{expectedDiagnostic:'Array reference is null or expired'}),0,'a missing reference retains the zero fallback');
     run.vm.greenFlag();await stepFrames(run.vm,30);
     const again=vars(run);assert.equal(await arrayOperation(run.vm,'referenceLength',{ARRAY:again.rows}),1,'the green flag re-creates the array');

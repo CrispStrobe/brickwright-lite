@@ -969,11 +969,47 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
     const SPRITE_CREATIONS=new Set(['arcade_createSprite','arcade_createImageSprite']);
     // The one fresh sprite creation a cell holds, following plain aliases.
     const liveCreation=(c,at,path=new Set())=>{
+        if(!c||c.directBad||path.has(c))return null;
+        const direct=liveCreationAt(c,at,new Set(path));if(direct)return direct;
+        // A global read inside a procedure runs at each of its actual calls.
+        // Every caller must resolve the same single creation there.
+        const scope=owners.get(at);
+        if(!c.global||!scope?.proc||scope.invalid||!scope.callers.length||path.has(scope))return null;
+        const next=new Set(path);next.add(scope);
+        const made=scope.callers.map(call=>liveCreation(c,call.node,next));
+        return made[0]&&made.every(value=>value===made[0])?made[0]:null;
+    };
+    const liveCreationAt=(c,at,path)=>{
         if(!c||c.directBad||path.has(c))return null;path.add(c);
         const live=c.writers.filter(w=>!killedReset(c,w,at));if(live.length!==1||invalid.has(live[0].node))return null;
         const value=live[0].value,source=value?.cell||(value?.node&&binding(live[0].target,value.node));
         if(source)return liveCreation(source,live[0].node,path);
+        // A literal call of a closed parameterless procedure whose straight-line
+        // body ends in its only return of one alias of the creation: the call
+        // evaluates its body once and yields that same Sprite.
+        if(value?.node?.opcode==='arcade_callFunction'){
+            const fn=aliasReturningProcedure(value.node);if(!fn||path.has(fn))return null;path.add(fn);
+            const ret=fn.returns[0],returned=ret?.cell||(ret?.node&&binding(fn.target,ret.node));
+            // The body runs at the call: resolve the returned cell there.
+            return returned?liveCreation(returned,value.node,path):null;
+        }
         return SPRITE_CREATIONS.has(value?.node?.opcode)?value.node:null;
+    };
+    // The procedure qualifies only when every actual caller stores its result
+    // into a plain local/global (an alias the writer index already follows),
+    // and its one return is the final top-level statement.
+    const aliasReturningProcedure=callNode=>{
+        const call=calls.find(c=>c.node===callNode),fn=call?.fn;
+        if(!fn||fn.invalid||fn.params.length||fn.returns.length!==1||!fn.callers.length)return null;
+        let last=fn.root,count=0;const seen=new Set();
+        while(last?.next&&count++<4096){if(seen.has(last))return null;seen.add(last);last=block(fn.target,last.next);}
+        if(last?.opcode!=='arcade_returnValue'||!exactKeys(last,['VALUE'])||last.mutation!=null)return null;
+        if(records.some(r=>r.scope===fn&&r.node.opcode==='arcade_returnValue'&&r.node!==last))return null;
+        for(const caller of fn.callers){
+            const parent=caller.node.opcode==='arcade_callFunction'?block(caller.target,caller.node.parent):null;
+            if(!parent||!['arcade_setLocal','data_setvariableto'].includes(parent.opcode)||parent.inputs?.VALUE?.[1]!==Object.keys(caller.target.blocks).find(id=>caller.target.blocks[id]===caller.node))return null;
+        }
+        fn.returnNode=last;return fn;
     };
     const idCell=(target,node)=>{const v=input(node,'ID',target);return v?.cell||(v?.node&&binding(target,v.node))||null;};
     const spriteDataWriter=(target,node)=>{
@@ -1071,6 +1107,8 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
                 if(invalid.has(n)||r.scope.invalid)return null;
                 // Plain aliases stay in the same complete cell/writer index.
                 if(name==='VALUE'&&['data_setvariableto','arcade_setLocal','arcade_setCaptured'].includes(n.opcode))continue;
+                // The return of an alias-returning procedure feeds only alias stores.
+                if(name==='VALUE'&&n.opcode==='arcade_returnValue'&&r.scope.callers.length&&r.scope.callers.every(caller=>aliasReturningProcedure(caller.node)===r.scope)&&r.scope.returnNode===n)continue;
                 if(name==='ID'&&n.opcode==='arcade_spriteProperty'&&exactKeys(n,['ID'],['PROPERTY'])&&properties.has(literal(n,'PROPERTY',r.target))&&n.mutation==null)continue;
                 if(name==='ID'&&n.opcode==='arcade_setSpriteProperty')continue;
                 if(name==='ID'&&flagBooleanWriters.has(n.opcode))continue;

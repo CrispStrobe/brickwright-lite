@@ -106,3 +106,16 @@ test('flags query observes physical mutation and does not revive after restorati
   assert.ok(createArrayReferenceExportAuthority(p).spriteFlagWriters(r.target,r.node));
  }
 });
+
+// A flags receiver produced by a literal call of a closed parameterless
+// procedure whose only, final statement returns the fresh alias. Its body
+// runs at each actual call, after the creation, so the receiver is that Sprite.
+const viaCall=(body,use='  arcade set local held to (arcade call function "pick" arguments ("[]"))\n  set masked to (calculate value (arcade property flags of arcade local held) op "|" with 2)\n')=>
+ header+'  set hero to (arcade create template "Player" kind 1 width 16 height 16)\n  arcade set flags of hero to 3\n'+use+'DEFINE pick:\n'+body;
+test('a function-result receiver qualifies only through a closed alias-returning procedure',()=>{
+ const good=parse(viaCall('  arcade return value (hero)\n'));
+ assert.deepEqual(exportProject(good).unsupported.filter(x=>/Native bitwise/.test(x)),[]);
+ // Its result published elsewhere, a non-final return, or a different value refuse.
+ refusal(parse(viaCall('  arcade return value (hero)\n','  arcade set local held to (arcade call function "pick" arguments ("[]"))\n  arcade log (arcade call function "pick" arguments ("[]"))\n  set masked to (calculate value (arcade property flags of arcade local held) op "|" with 2)\n')));
+ refusal(parse(viaCall('  arcade return value (arcade create template "Player" kind 1 width 16 height 16)\n')));
+});
