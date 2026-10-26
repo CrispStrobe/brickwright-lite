@@ -3249,6 +3249,7 @@ class ArcadeEmitter {
         const graphTextSpriteValues=new Set(),graphBufferValues=new Set(),graphPlayerValues=new Set(),graphAnimationValues=new Set(),graphSevensegDigitValues=new Set(),graphSevensegCounterValues=new Set(),graphDartValues=new Set(),graphCorgiValues=new Set(),graphSceneValues=new Set(),graphPhysicsEngineValues=new Set();
         const dataProperties=[], parameters = new Map(), edges = [], images = new Set(), sprites = new Set(), tiles = new Set(), legacyTiles = new Set(), arrays = new Set(), numbers = new Set(), booleans=new Set(), strings=new Set(), anys=new Set(), specialTypes=[],valueOperations=[], elements=[],arrayCopies=[];
         const definitions = [],captureLinks=[],callbackScopes=new Map(),callbackCaptureNames=new Map();
+        const nativeBitwisePrimitiveResults=new Set();
         const inspectionOperatorProofs=new Map(),inspectionLeaves=new Map(),inspectionProducers=new Map(),inspectionOpaqueCells=new Set(),inspectionOperators=[],spriteFlagResults=new Map(),spriteFlagWriterInputs=new Map(),inspectionGlobalReaders=new Map(),inspectionVisited=new Set();
         const throwInputs=new Map(),procedureInputs=[],inspectionInputs=new Map(),scoreThresholdInputs=new Map(),nativeBitwiseInputs=new Map(),sourceBitwiseInputs=new Map(),sourceBitwiseConstructorResults=new Set(),sourceTypeOfInputs=new Map(),sourceTypeOfClasses=new Map(),opaqueCells=new Set(),arrayLocalReaders=new Map();
         const inputBlock = (blocks, b, name) => {
@@ -3401,6 +3402,14 @@ class ArcadeEmitter {
                     // refuses; this signature lends no domain to its operands.
                     if(operation&&(operation.unary||['&','|','^','<<','>>','>>>'].includes(operation.op))){numbers.add(id);inspectionLeaves.set(id,'number');return id;}
                     const operands=(value.opcode==='arrays_valueUnary'?['VALUE']:['LEFT','RIGHT']).map(name=>ref(inputBlock(blocks,value,name)));
+                    // The canonical native bitwise adapter returns a Number or
+                    // decoded Undefined on conversion failure. This is only a
+                    // primitive result union, never a Number-only fact or a
+                    // licence for its operands (every operation keeps its gate).
+                    const nativeUnary=value.opcode==='arrays_valueUnary',nativeInputs=nativeUnary?['VALUE']:['LEFT','RIGHT'];
+                    if(!source&&value.mutation==null&&value.shadow===false&&value.topLevel===false&&value.next==null&&
+                        Object.keys(value.fields||{}).join(',')==='OP'&&Object.keys(value.inputs||{}).sort().join(',')===nativeInputs.slice().sort().join(',')&&
+                        (nativeUnary?literal(blocks,value,'OP')==='~':['&','|','^','<<','>>','>>>'].includes(literal(blocks,value,'OP'))))nativeBitwisePrimitiveResults.add(id);
                     if(value.opcode==='arcade_sourceValueBinary'&&literal(blocks,value,'OP')==='+')anys.add(id);
                     else if(value.opcode==='arrays_valueBinary' && literal(blocks,value,'OP')==='+')valueOperations.push([id,...operands]);
                     else numbers.add(id);
@@ -3685,6 +3694,9 @@ class ArcadeEmitter {
             // Only the source-bitwise allowed domain contains BOTH alternatives.
             // Primitive-only/native and Array-only consumers gain no fact here.
             if(sourceBitwiseConstructorResults.has(value)&&allowed.includes('array')&&allowed.includes('string'))return true;
+            // Both alternatives must be accepted. A Number-only constraint
+            // must still prove its own actual operand tree independently.
+            if(nativeBitwisePrimitiveResults.has(value)&&allowed.includes('number')&&allowed.includes('undefined'))return true;
             if(inspectionLeaves.has(value)){const type=inspectionLeaves.get(value);if(type==='Player'&&allowed.includes(type))origins?.add(value);return allowed.includes(type);}
             const operation=inspectionOperatorProofs.get(value);if(operation){
                 const output=operation.type?[operation.type]:[...graph.node(value).types];

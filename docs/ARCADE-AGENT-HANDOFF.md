@@ -9,13 +9,25 @@ refusal example. The original score fixture remains separate from its explicit
 completion-observation variant. PR #1416's green checks qualify its reviewed
 head; they do not qualify the subsequent combined source candidate.
 
-The candidate follows pure parameterless Sprite-alias getters through their
-actual immutable bindings. Every writer and every known call must satisfy the
+The candidate follows parameterless Sprite-alias getters through their actual
+immutable bindings. A straight-line scalar prefix needs independent primitive
+writer proof; the single final alias return and complete caller census remain
+required. Every writer and every known call must satisfy the
 creation frontier. Early calls, null alternatives, escaping or exported getters,
 managed-method entries and callable entries cannot borrow that authority.
 The complete body and original receiver/RHS evaluation remain emitted. Fixed
 Sprite flags reads are entry-neutral only inside the existing closed physical
 project census; unknown dispatch still prevents dormant-body discharge.
+
+Flags reads now use the same actual receiver provenance with a separate closed
+primitive domain: Number, String, Boolean, null or Undefined. They supply no
+Number-only, Array or initialization authority. Every flags writer must preserve
+that domain. Native bitwise result cycles have a separate Number-or-Undefined
+anchor, while each operation keeps its operand gate. Source controls cover all
+seven existing writable-flags profiles through direct and JSON export, plus
+compound-addition reimport with both effectful functions retained. The unchanged
+native profiles still require hosted execution to prove trace 12 and final
+flags 2.5/5; source acceptance alone does not prove their runtime order.
 
 Math selectors never establish Number by themselves: min/max and equal-bound
 randomRange can return connected values unchanged. Number consumers retain the
@@ -43,6 +55,17 @@ Continue in this order:
    retain original source, match actual producers and all writers, and test
    Code, Blocks, graphics where applicable, export/reimport and fresh reopen.
    Promote an application only after observable execution matches its original.
+
+**Focused GUI task after runtime qualification:** reuse
+`test/fixtures/arcade-writable-flags-roundtrip.mjs` to author a Sprite and raw
+Number/String/null/Undefined flags in visible Blocks and Code. Connect a flags
+read through arithmetic and bitwise reporters; edit a receiver/RHS function;
+verify the unchanged fixture's trace and final values. Change its artwork in the
+graphics editor, use the controller pane, and save/reopen in a fresh context.
+Compare actual Lite execution with original MakeCode before promoting this
+capability's GUI acceptance. Reuse the existing authoring browser harness and
+record this as an additional bounded journey; do not infer it from numeric-menu
+checks or from a program inserted only through VM APIs.
 
 The latest measured raw corpus remains **147 translated / 36 partial / one parse
 failure**. No new corpus completion follows from this integration alone. Keep

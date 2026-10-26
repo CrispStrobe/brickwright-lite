@@ -1,3 +1,4 @@
+import {inspectNativeArrayAddHelpers} from './native-array-binary-helper-source.js';
 import {createOrdinaryFrameDeltaNumberSource} from './ordinary-frame-delta-number-source.js';
 import {createSourceControlCellEntry} from './source-control-cell-entry.js';
 import {createClosedOrdinarySourceEntry} from './closed-ordinary-source-entry.js';
@@ -254,6 +255,7 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
         else if(['Undefined','Null','String','Number','Boolean'].includes(node.type))add(current,node.type);
         else if(node.type==='Member'&&frameDeltaNumbers?.isNumberRead(node)){frameDeltaNumberUsed=true;add(current,'Number');}
         else if(ordinaryNumbers?.has(node)||cameraPropertyNumbers?.has(node)||mathNumbers?.has(node)||sceneNumbers?.has(node)||buttonEventNumbers?.has(node)||spriteAyNumbers?.has(node)||cameraNumberInput?.has(node))add(current,'Number');
+        else if(spriteAyNumbers?.primitiveHas?.(node)){for(const type of ['Number','String','Boolean','Null','Undefined'])add(current,type);}
         else if(node.type==='Call'&&sdk.has(node.callee)&&path(node.callee)==='game.askForString')add(current,'String');
         else {add(current,'Opaque');if(arrayValues&&node.type==='Call'&&node.callee?.type==='Member')for(const value of [node.callee.object,...node.args])arrayOperations.push({kind:'escape',receiver:cell(value)});}
     };
@@ -628,10 +630,11 @@ export function sourceImageArrayCloneEffects(program,sourceContext=null) {
 // In particular, the translator's annotation-seeded reference sets are not used.
 function ordinarySpriteAyNumberReads(program) {
     if(!spriteAyArrayCurrent())return null;
-    // The selected SDK Sprite accessors return Numbers on normal completion.
-    // Dimensions keep their independent Image/receiver proof; property spelling
+    // Numeric SDK Sprite accessors return Numbers on normal completion; flags
+    // have a separate primitive-domain invariant below. Dimensions keep their
+    // independent Image/receiver proof; property spelling
     // alone never establishes a Sprite allocation or a compatible writer.
-    const properties=['x','y','vx','vy','ax','ay','fx','fy','left','right','top','bottom'];
+    const properties=['x','y','vx','vy','ax','ay','fx','fy','left','right','top','bottom','flags'];
     // Necessary syntax only: a negative result skips this optional analysis,
     // never supplies a type or an eligibility fact. Do not invoke getters.
     const syntaxSeen=new Set();
@@ -761,13 +764,16 @@ function ordinarySpriteAyNumberReads(program) {
     // A parameterless immutable function can return one existing alias without
     // replacing its evaluation. Full function-use and allocation-before-call
     // checks below still apply; annotations and escaping function values grant
-    // nothing. The one-statement shape excludes hidden writes and early paths.
+    // nothing. A scalar-only prefix is independently validated below; the
+    // single final return excludes hidden early paths.
     const aliasReturns=new Map();
     for(const node of nodes)if(node.type==='Call'&&!node.isNew&&!node.constructorCall&&!node.optional&&
         !node.typeArguments?.length&&node.args?.length===0&&node.callee?.type==='Identifier'){
-        const fn=graph.immutableFunctionAt(node.callee),ret=fn?.body?.[0],returned=ret?.value??ret?.argument;
+        const fn=graph.immutableFunctionAt(node.callee),ret=fn?.body?.at(-1),returned=ret?.value??ret?.argument;
         if(fn?.type==='FunctionDeclaration'&&program.body.includes(fn)&&schema(fn)&&fn.params.length===0&&
-            fn.body.length===1&&ret.type==='Return'&&returned?.type==='Identifier')aliasReturns.set(node,{fn,returned});
+            fn.body.length>=1&&ret.type==='Return'&&returned?.type==='Identifier'&&
+            fn.body.slice(0,-1).every(statement=>statement.type==='ExpressionStatement'&&statement.expr?.type==='Assignment'&&
+                statement.expr.op==='='&&statement.expr.left?.type==='Identifier'))aliasReturns.set(node,{fn,returned});
     }
     const aliasReturnValues=new Set([...aliasReturns.values()].map(row=>row.returned));
     const value=node=>{
@@ -888,7 +894,7 @@ function ordinarySpriteAyNumberReads(program) {
                 if(method?.type==='Call'&&method.callee===parent&&!method.isNew&&!method.constructorCall&&!method.optional&&
                     !method.typeArguments?.length&&method.args?.length===2&&all(method.args,number))continue;
             }
-            if(parent?.type==='Member'&&parent.object===node&&['x','y','vx','vy','ax','ay','fx','fy','left','right','top','bottom','width','height','image','overlapsWith'].includes(parent.name))continue;
+            if(parent?.type==='Member'&&parent.object===node&&[...properties,'width','height','image','overlapsWith'].includes(parent.name))continue;
             if(call?.callee?.type==='Member'&&call.callee.name==='overlapsWith'&&call.args.length===1&&call.args[0]===node&&sprites(value(call.callee.object)))continue;
             return null;
         }
@@ -978,11 +984,69 @@ function ordinarySpriteAyNumberReads(program) {
     // Supply this operation's private candidate set to prevent recursive Sprite
     // analysis. Independent Math/score Number producers may validate a writer;
     // an opaque call or annotation still contributes no Number fact.
+    const numericCandidates=new Set([...candidates].filter(node=>node.name!=='flags'));
+    const flagsCandidates=new Set([...candidates].filter(node=>node.name==='flags'));
     const writerGraph=analyseGraph(program,{parenthesized:true,unboundIsOpaque:true,ordinaryPrimitiveSdkNumbers:true},
-        {has:node=>candidates.has(node),current:()=>true});
+        {has:node=>numericCandidates.has(node),primitiveHas:node=>flagsCandidates.has(node),current:()=>true});
+    // Primitive flags form a separate invariant: the fresh Sprite starts with
+    // primitive flags and every actual store must preserve the whole primitive
+    // domain. It never supplies a Number-only result or a receiver/Array fact.
+    const primitiveTypes=new Set(['Number','String','Boolean','Null','Undefined']);
+    let helperSyntax=null,helperUsed=false;
+    const activeScalars=new Set(),scalarDeclarations=new Set(),implicitScalarWriters=new Set();
+    for(const node of nodes){
+        if(node.type==='Declaration')for(const row of node.decls||[])scalarDeclarations.add(binding(node,row.name));
+        if(node.type==='ForOf'&&node.body?.length)implicitScalarWriters.add(binding(node.body[0],node.name));
+    }
+    let primitiveWork=0;
+    const primitiveValue=(node,depth=0)=>{
+        if(!node||depth>128||++primitiveWork>10000)return false;
+        if(primitiveTypes.has(node.type))return true;
+        if(node.type==='Parenthesized')return primitiveValue(node.expression,depth+1);
+        if(flagsCandidates.has(node)||numericCandidates.has(node))return true;
+        if(node.type==='Binary'&&['+','-','*','/','%','**','&','|','^','<<','>>','>>>','==','!=','===','!==','<','>','<=','>='].includes(node.op))
+            return primitiveValue(node.left,depth+1)&&primitiveValue(node.right,depth+1);
+        if(node.type==='Unary'&&['+','-','~','!','typeof'].includes(node.op))return primitiveValue(node.argument,depth+1);
+        if(node.type==='Identifier'){
+            const kinds=graph.bindingKindsAt(node),key=binding(node),rows=writes.get(key);
+            if(kinds.size===1&&kinds.has('variable')){
+                // Explicit assignments do not inventory implicit loop element
+                // stores. A later compatible assignment cannot hide one.
+                if(!scalarDeclarations.has(key)||implicitScalarWriters.has(key))return false;
+                if(!rows?.length)return true; // only lexical Undefined, never Number
+                if(activeScalars.has(key))return true;
+                activeScalars.add(key);const ok=all(rows,row=>primitiveValue(row.value,depth+1));activeScalars.delete(key);return ok;
+            }
+        }
+        if(node.type==='Call'&&!node.isNew&&!node.constructorCall&&!node.optional&&!node.typeArguments?.length&&node.callee?.type==='Identifier'){
+            const fn=graph.immutableFunctionAt(node.callee);
+            if(fn&&schema(fn)&&fn.params.length===2&&node.args?.length===2){
+                const ret=fn.body?.length===1&&fn.body[0],expr=ret?.type==='Return'&&ret.value;
+                const plain=expr?.type==='Binary'&&['+','-','*','/','%','**','&','|','^','<<','>>','>>>'].includes(expr.op)&&
+                    expr.left?.type==='Identifier'&&expr.left.name===fn.params[0]&&expr.right?.type==='Identifier'&&expr.right.name===fn.params[1];
+                if(!plain&&!helperSyntax)helperSyntax=inspectNativeArrayAddHelpers(program);
+                const joined=!plain&&[...helperSyntax.helpers.values()].some(row=>row.declaration===fn);
+                if((plain||joined)&&all(node.args,arg=>primitiveValue(arg,depth+1))){helperUsed=helperUsed||joined;return true;}
+            }
+        }
+        const found=writerGraph.typesAt(node);
+        return found.size>0&&all([...found],type=>primitiveTypes.has(type));
+    };
+    // A getter prefix may update only independently primitive scalar storage.
+    // Receiver aliases, function bindings, calls with unknown results and
+    // control/abrupt paths remain outside this straight-line slice.
+    for(const {fn}of aliasReturns.values())for(const statement of fn.body.slice(0,-1)){
+        const assignment=statement.expr,key=binding(assignment.left),kinds=graph.bindingKindsAt(assignment.left);
+        if(kinds.size!==1||!kinds.has('variable')||values.get(key)?.size||!primitiveValue(assignment.right))return null;
+    }
     for(const node of nodes) {
         const lhs=node.type==='Assignment'?node.left:node.type==='Update'?node.argument:null;
         if(!candidates.has(lhs))continue;
+        if(lhs.name==='flags'){
+            if(node.type==='Update'){if(!['++','--'].includes(node.op))return null;continue;}
+            if(!['=','+=','-=','*=','/=','%=','&=','|=','^=','<<=','>>=','>>>='].includes(node.op)||!primitiveValue(node.right))return null;
+            continue;
+        }
         if(node.type==='Update') {if(!['++','--'].includes(node.op))return null;continue;}
         if(!['=','+=','-=','*=','/=','%='].includes(node.op))return null;
         const types=writerGraph.typesAt(node.right);
@@ -992,7 +1056,7 @@ function ordinarySpriteAyNumberReads(program) {
     const current=()=>{
         if(expired)return false;
         try {
-            if(!spriteAyArrayCurrent())expired=true;
+            if(!spriteAyArrayCurrent()||helperUsed&&!helperSyntax.current())expired=true;
             else {
                 const now=physicalUpdateSourceSnapshot(program);
                 if(!now||now.shape!==initial.shape||now.objects.length!==initial.objects.length||now.opaque.length!==initial.opaque.length)expired=true;
@@ -1002,7 +1066,7 @@ function ordinarySpriteAyNumberReads(program) {
         }catch(error){expired=true;throw error;}
         return !expired;
     };
-    return Object.freeze({has:node=>candidates.has(node)&&current(),current});
+    return Object.freeze({has:node=>numericCandidates.has(node)&&current(),primitiveHas:node=>flagsCandidates.has(node)&&current(),current});
 }
 
 const metadata=new Set(['originalBody','parameterDefaults','paramTypes','typeParameters','returnType','assertedType','bwProcedureConstraintSource','optionalParams','parameterProperties','sourceReferenceDeclarations','sourceCallableDeclarations','sourceScalarDeclarations']);

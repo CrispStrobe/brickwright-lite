@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import Creator from '../overlay/scratch-gui/src/lib/sb3-creator.js';
+import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
+import {writableFlagProfiles} from './fixtures/arcade-writable-flags-roundtrip.mjs';
 import {projectToArcade,projectJsonToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
 import {createProjectJsonSnapshot} from '../overlay/scratch-gui/src/lib/bw-makecode/project-json-snapshot.js';
 import {pixelsToSvg} from '../overlay/scratch-gui/src/lib/bw-makecode/pixel-image.js';
@@ -136,5 +138,53 @@ test('an alias-returning receiver cannot hide callable or managed method entries
   const snapshot=createProjectJsonSnapshot(JSON.stringify(project)),actual=snapshot.targets[project.targets.indexOf(target)];
   const id=Object.keys(blocks).find(id=>blocks[id]===node);
   assert.equal(createArrayReferenceExportAuthority(snapshot).spriteFlagWriters(actual,actual.blocks[id]),null,kind);
+ }
+});
+
+
+test('native bitwise flags cycles use a primitive result union and keep each operand refusal',()=>{
+ const profile=writableFlagProfiles.find(row=>row.name==='compound-bitwise-receiver');
+ const prepare=source=>{
+  const imported=arcadeToPseudocode(source);assert.deepEqual(imported.unsupported,[]);
+  const c=new Creator();c.parse(imported.code);assert.deepEqual(c.warnings,[]);
+  for(const costume of imported.costumes)c.applyCustomSVG(costume.sprite,costume.svg);
+  assetOwners.set(c.project,c.assets);return c.project;
+ };
+ const good=prepare(profile.source);assert.deepEqual(exportProject(good).unsupported,[]);
+ // The returned bitwise value must not conceal an independent Image writer.
+ const connectImage=(target,node,input,id)=>{
+  const parent=Object.keys(target.blocks).find(key=>target.blocks[key]===node),old=node.inputs[input];
+  assert.ok([1,3].includes(old[0]),'keep the actual socket fallback');
+  const fallback=old[old[0]===3?2:1];
+  // A wire edit removes the replaced expression tree, retaining the socket's
+  // shadow. No orphan reporter may make the negative pass accidentally.
+  const remove=key=>{if(typeof key!=='string'||key===fallback)return;const child=target.blocks[key];if(!child)return;
+   for(const slot of Object.values(child.inputs||{}))for(const edge of slot.slice(1))remove(edge);
+   if(child.next)remove(child.next);delete target.blocks[key];};
+  if(old[0]===3)remove(old[1]);
+  node.inputs[input]=[3,id,fallback];
+  target.blocks[id]={opcode:'arcade_createImage',parent,next:null,topLevel:false,shadow:false,fields:{},
+   inputs:{WIDTH:[1,[4,'1']],HEIGHT:[1,[4,'1']]}};
+ };
+ const bad=prepare(profile.source),w=writer(bad);connectImage(w.target,w.node,'VALUE','opaqueFlagWriter');refusal(bad);
+ // Nor can an outer flags writer hide a bad nested bitwise operand.
+ const nested=prepare(profile.source);let changed=false;
+ for(const target of nested.targets)for(const node of Object.values(target.blocks))if(node.opcode==='arrays_valueBinary'&&node.fields.OP?.[0]==='>>>'){
+  connectImage(target,node,'RIGHT','opaqueBitwiseOperand');changed=true;break;
+ }
+ assert.ok(changed);refusal(nested);
+});
+
+
+test('compound flags addition retains both receiver and RHS functions through source export',()=>{
+ const profile=writableFlagProfiles.find(row=>row.name==='compound-receiver-before-rhs');
+ let imported=arcadeToPseudocode(profile.source);assert.deepEqual(imported.unsupported,[]);
+ for(let generation=0;generation<2;generation++){
+  const c=new Creator();c.parse(imported.code);assert.deepEqual(c.warnings,[]);
+  for(const costume of imported.costumes)c.applyCustomSVG(costume.sprite,costume.svg);
+  assetOwners.set(c.project,c.assets);const exported=exportProject(c.project);assert.deepEqual(exported.unsupported,[]);
+  assert.match(exported.ts,/function (?:Game_)*receiver/);assert.match(exported.ts,/function (?:Game_)*rhs/);
+  assert.match(exported.ts,/\.flags/);assert.match(exported.ts,/return actor/);
+  imported=arcadeToPseudocode(exported.files);assert.deepEqual(imported.unsupported,[]);
  }
 });

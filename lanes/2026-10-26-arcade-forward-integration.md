@@ -81,7 +81,7 @@ complete contexts, invalid original inputs and application execution distinct.
 ## Source checkpoint
 
 Reconciles #1416's reviewed `62375e788598` with the existing guarded source
-candidate. The final two distinct source cohorts pass 68 controls without skips or TODOs.
+candidate. The final distinct source cohorts pass 74 controls without skips or TODOs.
 Focused source controls cover pure alias getters, exact entry roots,
 String/Undefined math refusals, all-writer/readiness boundaries and Code/JSON/SB3
 conversion. Three independent guard removals are detected and restored: actual
@@ -89,3 +89,14 @@ caller frontier, exported-entry rejection, and managed/callable alias entries.
 These source controls do not qualify native execution. Existing enabled
 exact-head checks and affected original SDK/VM/editor acceptance remain required
 before landing. No corpus count is promoted by this checkpoint.
+
+
+The writable-flags follow-up separates actual primitive flags from numeric
+Sprite properties. All seven existing fixture profiles pass source import and
+direct/JSON export; compound addition retains both effectful functions through
+reimport. Independent cuts detect removal of the flags primitive domain, writer
+closure, getter-prefix validation and native bitwise union. An implicit-loop
+writer witness was already refused by the wider census; the added scalar
+inventory guard is conservative protection, not a reproduced runtime fix.
+Source writer mutations expire proofs permanently. Original native assertions,
+including saved-left/RHS order, remain unchanged and require hosted qualification.

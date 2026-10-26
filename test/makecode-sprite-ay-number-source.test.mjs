@@ -122,3 +122,50 @@ test('closed alias-returning getters prove numeric Sprite reads only after every
   'let actor=null;function owner(){return actor;}function take(n:number){}take(owner().fx);actor=sprites.create(img`1`);'
  ]){const changed=parse(source);assert.equal(isNumber(graph(changed),read(changed)),false,source);}
 });
+
+
+test('actual Sprite flags carry only a closed primitive union and never lend Number or Array authority',()=>{
+ const base='let actor=sprites.create(img`1`);actor.flags=<any>"64";let observed=actor.flags;';
+ const flags=program=>{const reads=[];walk(program,node=>{if(node.type==='Member'&&node.name==='flags')reads.push(node);});return reads.at(-1);};
+ const program=parse(base),analysis=graph(program),read=flags(program);
+ assert.deepEqual([...analysis.typesAt(read)].sort(),['Boolean','Null','Number','String','Undefined']);
+ assert.equal(isNumber(analysis,read),false);assert.equal([...analysis.typesAt(read.object)].some(type=>type?.kind==='Array'),false);
+ const numbered=parse(base+'function take(n:number){}take(actor.flags);');
+ assert.ok(validateProcedureConstraintSource(numbered,{ordinaryPrimitiveSdkNumbers:true}).some(message=>message.includes('take.n requires Number')));
+ for(const source of [
+  base+'actor.flags=<any>img`1`;',base+'actor.flags=<any>[1];',
+  base+'function changed(){actor.flags=unknown();}changed();',
+  base+'unknown(actor);',base.replace('sprites.create(img`1`)','unknown()')
+ ]){const changed=parse(source);assert.ok(graph(changed).typesAt(flags(changed)).has('Opaque'),source);}
+});
+
+test('a getter prefix preserves primitive scalar effects while excluding receiver rebinding and unknown callbacks',()=>{
+ const base='let trace=0;let actor=sprites.create(img`1`);function owner(){trace=trace*10+1;return actor;}function take(n:number){}take(owner().fx);';
+ const fx=program=>{const found=[];walk(program,node=>{if(node.type==='Member'&&node.name==='fx')found.push(node);});assert.equal(found.length,1);return found[0];};
+ const program=parse(base);assert.equal(isNumber(graph(program),fx(program)),true);
+ for(const source of [
+  base.replace('trace=trace*10+1;','trace=unknown();'),
+  base.replace('trace=trace*10+1;','actor=sprites.create(img`2`);'),
+  base.replace('trace=trace*10+1;','if(trace)trace=1;'),
+  base.replace('trace=trace*10+1;','unknown();'),
+  base.replace('function owner()', 'export function owner()'),
+  base+'let callback=owner;'
+ ]){const changed=parse(source);assert.equal(isNumber(graph(changed),fx(changed)),false,source);}
+});
+
+test('implicit loop element writers cannot disappear behind a later primitive scalar store',()=>{
+ const program=parse('let actor=sprites.create(img`1`);for(let item of [img`1`]){actor.flags=item;item=0;}let observed=actor.flags;');
+ const reads=[];walk(program,node=>{if(node.type==='Member'&&node.name==='flags')reads.push(node);});
+ assert.equal(reads.length,2);assert.ok(graph(program).typesAt(reads[1]).has('Opaque'));
+});
+
+
+test('an observed flags-writer mutation permanently expires its primitive-domain proof',()=>{
+ const program=parse('let actor=sprites.create(img`1`);actor.flags=3;let observed=actor.flags;');
+ let writer,read;walk(program,node=>{if(node.type==='Assignment'&&node.left?.name==='flags')writer=node;if(node.type==='Member'&&node.name==='flags')read=node;});
+ assert.ok(writer&&read);const analysis=graph(program),original=writer.right;
+ assert.equal(analysis.typesAt(read).size,5);
+ writer.right={type:'Array',items:[{type:'Number',value:'1'}]};assert.equal(analysis.typesAt(read).size,0);
+ writer.right=original;assert.equal(analysis.typesAt(read).size,0,'exact restoration cannot revive an observed stale proof');
+ assert.equal(graph(program).typesAt(read).size,5,'a fresh graph rechecks every actual writer');
+});
