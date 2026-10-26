@@ -1444,7 +1444,7 @@ export const MODEL_LESSONS = Object.freeze({
         "license": "BSD-3-Clause"
     },
     "crane.ldr": {
-        "pieces": 70,
+        "pieces": 68,
         "motors": 3,
         "hubs": [
             "spike-prime"

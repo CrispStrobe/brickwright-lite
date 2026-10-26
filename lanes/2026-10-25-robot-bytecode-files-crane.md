@@ -71,12 +71,24 @@ remain unresolved. The counterweighted frame passes the retained attitude and
 imbalance controls, but the combined run still fails held-height drift (0.57 mm)
 and reverse-only lowering. Its finer capture reports persistent boom/winch body
 contact before closure diverges; the contact getter does not identify subshapes
-or impulses. The next candidate moves the complete winch down one post hole,
+or impulses. That candidate moved the complete winch down one post hole,
 leaving the actuator geometry, suspension length, program and motion limits
 unchanged. A pure collider-envelope control rejects the former close placement;
-the reverse-only control also rejects whole-base motion. New hosted qualification
-is required; no launch fix is claimed from geometry alone.
-Five pure geometry/generator/insertion controls pass. The original hosted
+the reverse-only control also rejects whole-base motion. That head passes the
+reverse-only control with 0.63 mm base displacement and 0.052 degrees of rotation,
+but normal lift and alignment fail; the reported held-height drift is also
+0.80 mm. Its late native window cannot diagnose the normal lift.
+
+The next 68-part candidate extends the left post, mounts C above and outboard
+of the boom pivot on 3L pins, and retains a shorter shaft in the existing post.
+Removing the extra inner bearing clears another housing contact candidate.
+A new pure guard checks compiled collider envelopes, including shafts, at six
+boom angles; catalogue-only overlap checks were insufficient. A separate
+first-B-stop native window captures the normal drivetrain without changing its
+tick calls, timestep, commands or acceptance limits. Seven tiny interface
+controls cover wrapper cleanup and bounded trigger modes. New hosted
+qualification is required; no remaining lift or hold fix is claimed from geometry.
+Six pure geometry/generator/insertion controls pass. The original hosted
 crane instruction failure is retained; the repair authors small insertion pages
 and independently checks rigid fasteners plus the physical rope attachment,
 including a missing-rope negative. Instruction views do not yet show rope callouts. Real VM/Jolt hoist, hold, payout,

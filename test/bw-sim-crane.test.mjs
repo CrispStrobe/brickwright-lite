@@ -118,7 +118,9 @@ test('it compiles to the original slew/luff ratios and a retained, geared drum w
     assert.equal(jointBetween(m, 'hookLink', 'boom'), undefined, 'the rope replaces the fixed boom-to-hook hinge');
     assert.equal(bodyOf(m, 'load'), bodyOf(m, 'hookLink'), 'the load is pinned to the link');
     assert.notEqual(bodyOf(m, 'hookLink'), bodyOf(m, 'boom'));
-    assert.equal(bodyOf(m, 'hoistBearing'), bodyOf(m, 'ttTop'), 'the inner shaft bearing is pinned into the upper frame');
+    const shaftBearing = jointBetween(m, 'hoistAxle', 'postL');
+    assert.equal(shaftBearing.type, 'hinge', 'the existing post is the real shaft bearing');
+    assert.equal(bodyOf(m, 'postL'), bodyOf(m, 'ttTop'), 'the bearing post is pinned into the upper frame');
     assert.notEqual(bodyOf(m, 'hoistDrum'), bodyOf(m, 'ttTop'), 'the retained shaft can spin');
     const drive = m.couplings.find(c => c.kind === 'gear' && c.parts.includes('hoistMotorGear'));
     assert.deepEqual([...drive.parts].sort(), ['hoistGear16', 'hoistMotorGear']);
@@ -170,6 +172,43 @@ test('the winch leaves clearance around the boom pivot beyond speculative contac
         // before allowing for the engine's existing 2 mm speculative distance.
         assert.ok(clearance > 0.005, `${part} leaves only ${clearance * 1000} mm around the pivot`);
     }
+});
+
+test('compiled collider envelopes keep the winch clear of boom members and the actuator housing at sampled angles', () => {
+    const dir = mkdtempSync(path.join(tmpdir(), 'bw-crane-clearance-'));
+    const turn = (q, v) => {
+        const xyz = q.slice(0, 3), twice = cross(xyz, v).map(n => 2 * n), more = cross(xyz, twice);
+        return v.map((n, i) => n + q[3] * twice[i] + more[i]);
+    };
+    const envelope = (body, c) => {
+        const centre = turn(body.rotation, c.position || [0, 0, 0]).map((n, i) => n + body.position[i]);
+        assert.ok(c.shape === 'box' || c.shape === 'cylinder', 'the authored mechanism uses box/cylinder colliders');
+        const half = c.shape === 'box' ? c.halfExtents : [c.radius, c.halfHeight, c.radius];
+        const axes = [[1, 0, 0], [0, 1, 0], [0, 0, 1]].map(v => turn(body.rotation, turn(c.rotation || [0, 0, 0, 1], v)));
+        const radius = [0, 1, 2].map(i => axes.reduce((sum, axis, j) => sum + Math.abs(axis[i]) * half[j], 0));
+        return {part: c.part, low: centre.map((n, i) => n - radius[i]), high: centre.map((n, i) => n + radius[i])};
+    };
+    const movingParts = new Set(['boom', 'boomPivot', 'luffLaEye', 'luffLaBody']);
+    try {
+        for (const angle of [4, 10, 30, 45, 60, 70]) {
+            const file = path.join(dir, `crane-${angle}.ldr`);
+            execFileSync(process.execPath, [path.join(REPO, 'scripts/gen-crane-model.mjs'), file, String(angle)], {stdio: 'pipe'});
+            const {mechanism, issues} = prepareModel(readFileSync(file, 'utf8'), CATALOG, {mat: ENTRY.mat});
+            assert.deepEqual(issues, []);
+            const boxes = mechanism.bodies.flatMap(body => body.colliders
+                .filter(c => movingParts.has(c.part) || (c.part || '').startsWith('hoist'))
+                .map(c => envelope(body, c)));
+            const moving = boxes.filter(c => movingParts.has(c.part));
+            const winch = boxes.filter(c => c.part.startsWith('hoist'));
+            assert.ok(moving.length >= 4 && winch.length >= 10, 'the screen includes shafts and split motor colliders');
+            for (const a of moving) for (const b of winch) {
+                // AABB distance is a conservative lower bound on the real shapes'
+                // separation, including shaft regions omitted by solidOverlaps.
+                const gap = Math.hypot(...a.low.map((n, i) => Math.max(0, n - b.high[i], b.low[i] - a.high[i])));
+                assert.ok(gap > 0.002, `${angle}°: ${a.part}/${b.part} envelope gap ${gap * 1000} mm`);
+            }
+        }
+    } finally { rmSync(dir, {recursive: true, force: true}); }
 });
 
 // Independently walk the physical connector edges plus the declared string.
@@ -294,6 +333,7 @@ if (!existsSync(missing)) {
         }));
         return {t: f.t, busy: f.busy,
             motorDeg: Object.fromEntries(m.actuators.map(a => [a.port, f.joints[a.joint].angle * DEG])),
+            jointCoordinates: f.joints,
             drumDeg: f.joints[rope.drumJoint].angle * DEG,
             loadLeanDeg: Math.acos(Math.max(-1, Math.min(1, qrot(pose.rotation, [0, 1, 0])[1]))) * DEG,
             baseYawDeg: (yaw(f.bodies[hub].rotation) - yaw(result.track[0].bodies[hub].rotation)) * DEG,
@@ -403,14 +443,78 @@ if (!existsSync(missing)) {
         return {rise: Q1[1] - Q[1] + fixedChange, turn: lo * DEG};
     };
 
+    const runWithDynamics = async (source, emit = () => {}, {firstBStop = false} = {}) => {
+        const tick = SimSession.prototype.tick;
+        const dynamics = new Map(), detach = new Map(), before = [];
+        let initialBodies = null, fixedInitialBodies = null, mechanism = null;
+        let firstY = null, firstT = null, lastT = null, stepSeconds = null, observedSteps = 0;
+        let triggerTime = null, afterTrigger = 0, window = null, sawB = false;
+        SimSession.prototype.tick = function (...args) {
+            if (!detach.has(this)) {
+                assert.equal(detach.size, 0, 'this diagnostic must bind one actual session');
+                mechanism = this.mechanism;
+                const hubId = bodyOf(mechanism, 'hub');
+                detach.set(this, this.core.observeFixedSteps(stamp => {
+                    observedSteps++; firstT ??= stamp.t; lastT = stamp.t;
+                    stepSeconds ??= stamp.stepSeconds;
+                    assert.equal(stamp.stepSeconds, stepSeconds, 'native observation step is unchanged');
+                    if (window && afterTrigger >= 50) return;
+                    const bodies = Object.fromEntries(mechanism.bodies.map(b => [b.id, this.core.bodyPose(b.id)]));
+                    const movable = mechanism.joints.filter(j => j.type === 'hinge' || j.type === 'slider');
+                    const joints = Object.fromEntries(movable.map(j => [j.id, {...this.core.jointState(j.id)}]));
+                    const efforts = Object.fromEntries(movable.map(j => [j.id, this.core.jointDynamics(j.id)]));
+                    fixedInitialBodies ??= Object.fromEntries(mechanism.bodies.map(b => [b.id, this.core.bodyDynamics(b.id)]));
+                    const frame = {t: stamp.t * 1000, bodies, joints, dynamics: efforts,
+                        ropes: this.core.ropeState(), screws: this.core.screwState(),
+                        contacts: this.core.currentContactPairs(),
+                        busy: Object.fromEntries(mechanism.actuators.map(a => [a.port, this.hubState.motors.busy(a.port)]))};
+                    firstY ??= bodies[hubId].position[1];
+                    if (window) { window.push(frame); afterTrigger++; }
+                    else {
+                        before.push(frame); if (before.length > 101) before.shift();
+                        const stoppedB = firstBStop && sawB && !frame.busy.B;
+                        sawB ||= frame.busy.B;
+                        const movedHub = Math.abs(bodies[hubId].position[1] - firstY) > 0.002 ||
+                            qrot(bodies[hubId].rotation, [0, 1, 0])[1] < Math.cos(3 / DEG);
+                        if (firstBStop ? stoppedB : movedHub) {
+                            triggerTime = frame.t; window = before.slice();
+                        }
+                    }
+                }));
+            }
+            const result = tick.apply(this, args);
+            assert.ok(dynamics.size < 1000, 'bounded actual-session diagnostic capture');
+            const joints = Object.fromEntries(this.mechanism.joints
+                .filter(j => j.type === 'hinge' || j.type === 'slider')
+                .map(j => [j.id, this.core.jointDynamics(j.id)]));
+            if (!initialBodies) initialBodies = Object.fromEntries(this.mechanism.bodies
+                .map(b => [b.id, this.core.bodyDynamics(b.id)]));
+            dynamics.set(this.time, joints);
+            return result;
+        };
+        try { return {...await run(source), dynamics, initialBodies}; }
+        finally {
+            SimSession.prototype.tick = tick;
+            for (const off of detach.values()) off();
+            emit({observedSteps, firstT, lastT, stepSeconds, triggerTime,
+                triggerKind: triggerTime === null ? null : firstBStop ? 'first-b-stop' : 'hub-motion',
+                frames: window || before, initialBodies: fixedInitialBodies,
+                mechanism: mechanism && {bodies: mechanism.bodies, joints: mechanism.joints,
+                    couplings: mechanism.couplings, noCollide: mechanism.noCollide,
+                    noCollideParts: mechanism.noCollideParts, solver: mechanism.solver}});
+        }
+    };
+
     /** The example program's run, shared by the checks. */
-    let craneRun = null;
-    const lifted = () => (craneRun = craneRun || run(PROGRAM));
+    let craneRun = null, normalLiftCapture = null;
+    const lifted = () => (craneRun = craneRun || runWithDynamics(PROGRAM,
+        packet => { normalLiftCapture = packet; }, {firstBStop: true}));
 
     test('the example program lifts the hook as high as the actuator\'s stroke and the boom\'s geometry say', async t => {
         const result = await lifted();
         assert.deepEqual(result.issues, []);
         assert.deepEqual(result.run.unsupported, [], 'every command was understood by the hub');
+        t.diagnostic(`normal-lift fixed-step observations: ${JSON.stringify(normalLiftCapture)}`);
         t.diagnostic(`crane phase observations: ${JSON.stringify(phaseObservations(result))}`);
         const r = judge(result);
         t.diagnostic(report(r));
@@ -467,63 +571,7 @@ if (!existsSync(missing)) {
     // Observe actual completed ticks for the unresolved low-boom transition.
     // The original method runs exactly once with the same receiver/arguments,
     // and its result is returned unchanged; all observations are public getters.
-    const runWithDynamics = async (source, emit = () => {}) => {
-        const tick = SimSession.prototype.tick;
-        const dynamics = new Map(), detach = new Map(), before = [];
-        let initialBodies = null, fixedInitialBodies = null, mechanism = null;
-        let firstY = null, firstT = null, lastT = null, stepSeconds = null, observedSteps = 0;
-        let triggerTime = null, afterTrigger = 0, window = null;
-        SimSession.prototype.tick = function (...args) {
-            if (!detach.has(this)) {
-                assert.equal(detach.size, 0, 'this diagnostic must bind one actual session');
-                mechanism = this.mechanism;
-                const hubId = bodyOf(mechanism, 'hub');
-                detach.set(this, this.core.observeFixedSteps(stamp => {
-                    observedSteps++; firstT ??= stamp.t; lastT = stamp.t;
-                    stepSeconds ??= stamp.stepSeconds;
-                    assert.equal(stamp.stepSeconds, stepSeconds, 'native observation step is unchanged');
-                    if (window && afterTrigger >= 50) return;
-                    const bodies = Object.fromEntries(mechanism.bodies.map(b => [b.id, this.core.bodyPose(b.id)]));
-                    const movable = mechanism.joints.filter(j => j.type === 'hinge' || j.type === 'slider');
-                    const joints = Object.fromEntries(movable.map(j => [j.id, {...this.core.jointState(j.id)}]));
-                    const efforts = Object.fromEntries(movable.map(j => [j.id, this.core.jointDynamics(j.id)]));
-                    fixedInitialBodies ??= Object.fromEntries(mechanism.bodies.map(b => [b.id, this.core.bodyDynamics(b.id)]));
-                    const frame = {t: stamp.t * 1000, bodies, joints, dynamics: efforts,
-                        ropes: this.core.ropeState(), screws: this.core.screwState(),
-                        contacts: this.core.currentContactPairs(),
-                        busy: Object.fromEntries(mechanism.actuators.map(a => [a.port, this.hubState.motors.busy(a.port)]))};
-                    firstY ??= bodies[hubId].position[1];
-                    if (window) { window.push(frame); afterTrigger++; }
-                    else {
-                        before.push(frame); if (before.length > 101) before.shift();
-                        if (Math.abs(bodies[hubId].position[1] - firstY) > 0.002 ||
-                            qrot(bodies[hubId].rotation, [0, 1, 0])[1] < Math.cos(3 / DEG)) {
-                            triggerTime = frame.t; window = before.slice();
-                        }
-                    }
-                }));
-            }
-            const result = tick.apply(this, args);
-            assert.ok(dynamics.size < 1000, 'bounded actual-session diagnostic capture');
-            const joints = Object.fromEntries(this.mechanism.joints
-                .filter(j => j.type === 'hinge' || j.type === 'slider')
-                .map(j => [j.id, this.core.jointDynamics(j.id)]));
-            if (!initialBodies) initialBodies = Object.fromEntries(this.mechanism.bodies
-                .map(b => [b.id, this.core.bodyDynamics(b.id)]));
-            dynamics.set(this.time, joints);
-            return result;
-        };
-        try { return {...await run(source), dynamics, initialBodies}; }
-        finally {
-            SimSession.prototype.tick = tick;
-            for (const off of detach.values()) off();
-            emit({observedSteps, firstT, lastT, stepSeconds, triggerTime,
-                frames: window || before, initialBodies: fixedInitialBodies,
-                mechanism: mechanism && {bodies: mechanism.bodies, joints: mechanism.joints,
-                    couplings: mechanism.couplings, noCollide: mechanism.noCollide,
-                    noCollideParts: mechanism.noCollideParts, solver: mechanism.solver}});
-        }
-    };
+
 
     test('the retained reverse-only lowering control cannot launch the suspended load', async t => {
         // Retain the earlier input which still lowered B after its positive lift

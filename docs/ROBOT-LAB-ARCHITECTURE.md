@@ -159,10 +159,14 @@ A SPIKE hub on four pinned diagonal 15L feet carries the Excavator's 28T turntab
 direct 8:28 slew tips a loaded upper at full power) and posts; a 15L boom is luffed by a small linear
 actuator (motor B, 1:1:1 to the spindle; the screw self-locks, so the boom holds with B stopped: 0.01 mm
 of sag in 1 s in the earlier fixed-hook model). Motor C drives a retained drum through equal
-16T gears. The winch sits two post holes below the boom pivot; its drum and inner
-stop leave more than 5 mm around a conservative envelope of the pivot axle.
-This physical clearance avoids placing those parts at the engine's existing
-speculative-contact distance; it does not change collision filters or solver settings.
+16T gears. An extended left post carries the winch above the boom pivot; two 3L
+pins put C's housing one hole outboard. A 10L axle turns in the existing post,
+with collars and the drum retaining it; the extra inner bearing is removed.
+Six sampled authoring configurations check the compiled collider envelopes of
+the winch against the boom members and actuator housing, with more than 2 mm
+separation. This includes shaft regions omitted by the ordinary solid-overlap
+check. These are static geometry controls, not dynamic or physical-fit proof;
+collision filters and solver settings are unchanged.
 A rope passes over the moving boom-tip guide to a free counterweighted V-frame tied at its mass centre. Its beam angle follows
 the catalogue masses, with the string passing between the beams. The 7 LDU drum radius gives 26.4 mm of take-up in 540°; the program winds,
 holds and pays out after the original slew/luff sequence. These are virtual model controls,

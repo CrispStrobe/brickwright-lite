@@ -4,12 +4,12 @@
 //
 // Writes the Robot Lab's Crane (overlay/scratch-gui/static/sim-lab/models/crane.ldr) from its
 // geometry, so every placement follows from the few numbers that define the build:
-//   node scripts/gen-crane-model.mjs [out.ldr]
+//   node scripts/gen-crane-model.mjs [out.ldr] [boom-angle-degrees]
 // A slewing, luffing crane on a SPIKE Prime hub with four pinned floor outriggers (docs/ROBOT-LAB-ARCHITECTURE.md
 // T1). The base and the slewing upper are the Excavator's (scripts/gen-excavator-model.mjs), proven
 // buildable there: a 28-tooth turntable on the hub's back top holes (two 42003 connectors on axle pins),
-// slewed by an 8-tooth gear on motor A behind the hub (8:28); on the turntable a small frame and two 9L
-// posts. The crane's own part is the boom: a 15L beam on a pivot axle through the posts, luffed by a small
+// slewed by an 8-tooth gear on motor A behind the hub (8:28); on the turntable a small frame and two
+// posts (9L right, 11L left). The crane's own part is the boom: a 15L beam on a pivot axle through the posts, luffed by a small
 // linear actuator whose motor (B, on the right post) turns the actuator's pivot axle through two 16T gears
 // and the axle its spindle through two 12T bevel gears (1:1:1). The actuator's eye sits 3 holes up the boom
 // and its body pivots 5 holes under the boom pivot, so its 120..180 LDU travel swings the boom from about
@@ -25,8 +25,11 @@ import {ropeTie, partTop} from '../overlay/scratch-gui/src/lib/bw-sim/editor/rop
 import {buildSteps} from '../overlay/scratch-gui/src/lib/bw-sim/instructions/steps.js';
 
 const OUT = process.argv[2] || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'overlay/scratch-gui/static/sim-lab/models/crane.ldr');
-/** The boom's elevation at build, degrees: the luffing actuator is then 140 LDU pin to pin (half out). */
-const THETA_DEG = 30;
+/** Default 30° puts the actuator at 140 LDU; an optional angle samples authoring clearances. */
+const THETA_DEG = process.argv[3] === undefined ? 30 : Number(process.argv[3]);
+if (!Number.isFinite(THETA_DEG) || THETA_DEG < 4 || THETA_DEG > 70) {
+    throw new Error('boom angle must be between 4 and 70 degrees');
+}
 /** Boom pivot P to the actuator's pivot B (straight below P) and to its eye C on the boom, LDU. */
 const BP = 100;
 const PC = 60;
@@ -108,7 +111,7 @@ for (const y of [-50, -10]) pinAlong(`slewPin${y < -20 ? 'Hi' : 'Lo'}`, '6558.da
 pinAlong('slewAxle', '4519.dat', 0, [20, -90, 160], [0, 1, 0]);
 gearOn('slewPinion', '3647.dat', 71, [20, -110, 160], [0, 1, 0]);
 
-// ---- upper frame on the turntable, two 9L posts -----------------------------------------------------
+// ---- upper frame: the left post extends two holes above the original right post --------------------
 beam('frameFront', '32524.dat', 72, [0, -130, ZT - 20], [0, 0, 1], X);
 beam('frameBack', '32316.dat', 72, [0, -130, ZT + 20], [0, 0, 1], X);
 for (const s of [1, -1]) pinAlong(`framePin${s > 0 ? 'R' : 'L'}`, '6558.dat', 0, [20 * s, -130, ZT], [0, 0, 1]);
@@ -116,7 +119,8 @@ for (const s of [1, -1]) {
     const k = s > 0 ? 'R' : 'L';
     place(`postMount${k}`, '15100.dat', 71, [60 * s, -130, ZT - 60], [s, 0, 0], [0, 0, 1]);
     pinAlong(`postMountPin${k}`, '6558.dat', 0, [60 * s, -130, ZT - 40], [0, 0, 1]);
-    beam(`post${k}`, '40490.dat', s > 0 ? 72 : 71, [80 * s, -190, ZT - 60], X, Y);
+    beam(`post${k}`, s > 0 ? '40490.dat' : '32525.dat', s > 0 ? 72 : 71,
+        [80 * s, s > 0 ? -190 : -210, ZT - 60], X, Y);
 }
 
 // ---- boom geometry ----------------------------------------------------------------------------------
@@ -150,13 +154,14 @@ const actuator = (k, from, to, x) => {
  * `out` turning about x (pointing away from the beam), pinned into the beam's holes at `out` ± 20
  * along `along` (uv); its body stands out along `body` (uv). A 16T on a 2L axle in its output.
  */
-const sideMotor = (k, port, out, back, along, body, sx) => {
+const sideMotor = (k, port, out, back, along, body, sx, pinPart = '2780.dat', pinCenterXOffset = 0) => {
     const ey = [-sx, 0, 0];
     let ex = D(along);
     let ez = cross(ex, ey);
     if (ez[1] * D(body)[1] + ez[2] * D(body)[2] < 0) { ex = scale(ex, -1); ez = cross(ex, ey); }
     place(`${k}Motor`, '54696p01.dat', 71, W(out, back + sx * 30), ex, ey, ez, port);
-    for (const sgn of [1, -1]) pinAlong(`${k}MotorPin${sgn > 0 ? 'A' : 'B'}`, '2780.dat', 0, W(uvAdd(out, along, 20 * sgn), back), X);
+    for (const sgn of [1, -1]) pinAlong(`${k}MotorPin${sgn > 0 ? 'A' : 'B'}`, pinPart, 0,
+        W(uvAdd(out, along, 20 * sgn), back + pinCenterXOffset), X);
     const face = back + sx * 80;
     place(`${k}MotorAxle`, '32062.dat', 0, W(out, face + sx), X, ex);
     place(`${k}MotorGear`, '94925.dat', 71, W(out, face + sx * 10), ex, cross(X, ex), X);
@@ -172,22 +177,19 @@ pinAlong('luffLaEye', '3705.dat', 0, W(C, 20), X);
 sideMotor('luff', 'B', [60 - ZT, 190], 90, [0, 1], [-1, 0], 1);
 gearOn('luffLaGear16', '94925.dat', 71, W(B, 180), X);
 
-// ---- winch: the spare left post carries C and a 1:1 16T pair on a retained 12L shaft ------------------
-// Leave an extra post hole between the winch and the boom pivot. The old
-// drum/pivot envelopes had only 2 mm clearance, at speculative contact distance.
-const hoistOut = [60 - ZT, 170];
-const hoistAt = [60 - ZT, 210];
-sideMotor('hoist', 'C', hoistOut, -90, [0, 1], [-1, 0], -1);
-pinAlong('hoistAxle', '3708.dat', 0, W(hoistAt, -80), X);
-gearOn('hoistGear16', '94925.dat', 71, W(hoistAt, -180), X);
-// A friction-pin mounted inner bearing supports the shaft opposite the existing left post.
-// Its lower mount at v=170 shares C's output level, clear of the motor's mounting
-// pins at v=150/190 and the boom axle at v=250.
-beam('hoistBearing', '32523.dat', 71, W([60 - ZT, 190], -40), X, Y);
-pinAlong('hoistBearingPin', '6558.dat', 0, W(hoistOut, -60), X);
+// ---- winch: C and a 1:1 16T pair above the boom, clear of the actuator's casing -----------------------
+const hoistOut = [60 - ZT, 250];
+const hoistAt = [60 - ZT, 290];
+// Two 3L pins span the motor, one-hole air gap and post. The outboard motor
+// housing stays clear of the boom pivot, rather than sharing its end plane.
+sideMotor('hoist', 'C', hoistOut, -110, [0, 1], [-1, 0], -1, '6558.dat', 10);
+// The existing post is the shaft bearing. A shorter axle ends before the moving
+// boom; the outer collar and drum straddle the post to retain it axially.
+pinAlong('hoistAxle', '3737.dat', 0, W(hoistAt, -120), X);
+gearOn('hoistGear16', '94925.dat', 71, W(hoistAt, -200), X);
 gearOn('hoistDrum', '3713.dat', 4, W(hoistAt, -60), X);
-gearOn('hoistStopOuter', '4265c.dat', 71, W(hoistAt, -195), X);
-gearOn('hoistStopInner', '4265c.dat', 71, W(hoistAt, -25), X);
+gearOn('hoistStopOuter', '4265c.dat', 71, W(hoistAt, -95), X);
+gearOn('hoistStopInner', '4265c.dat', 71, W(hoistAt, -45), X);
 
 // ---- tip guide and independent suspended load: no fixed boom-to-hook hinge -------------------------
 pinAlong('tipGuideAxle', '3705.dat', 0, W(Q, 50), X);
