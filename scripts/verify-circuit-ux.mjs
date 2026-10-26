@@ -1017,8 +1017,59 @@ try {
             const capture=document.querySelector('[data-testid="bw-scope-time-capture"]');
             return !!capture&&capture.disabled===false&&window.__board?.getScopeChannels().length===0;
           });
-          await scope.getByTestId('bw-scope-time-capture').selectOption('envelope');
+          let selectedModeValues=null, modeObserverSetupError=null;
           try {
+            const controls=await scope.getByTestId('bw-scope-time-capture').elementHandles();
+            const panels=await scope.count();
+            // Passive observer only: no event dispatch, handler wrapping, DOM
+            // value write, state override, selection retry or engine advance.
+            await adcPage.evaluate(({target,scopedControls,scopedPanels})=>{
+              if(window.__bwADCModeSelectionAudit) throw new Error('ADC_MODE_OBSERVER_ALREADY_PRESENT');
+              const selector='[data-testid="bw-scope-time-capture"]';
+              const observed=selector+', [data-testid="bw-scope-adc-enabled"]';
+              const owner=target?.closest('[data-scope-panel]');
+              const tokens=new WeakMap();let nextToken=0,overflow=0,observerError=null;
+              const events=[];
+              const describe=node=>{
+                if(!node) return null;
+                if(!tokens.has(node)) tokens.set(node,++nextToken);
+                return {token:tokens.get(node),isConnected:node.isConnected,
+                  testId:node.getAttribute('data-testid'),value:node.value,
+                  checked:typeof node.checked==='boolean'?node.checked:null,disabled:node.disabled};
+              };
+              const snapshot=()=>({original:describe(target),globalFirst:describe(document.querySelector(selector)),
+                globalFirstIsOriginal:document.querySelector(selector)===target,
+                pageControls:document.querySelectorAll(selector).length,
+                pagePanels:document.querySelectorAll('[data-scope-panel]').length,
+                scopedControls,scopedPanels,ownerConnected:owner?.isConnected,
+                ownerControls:owner?.querySelectorAll(selector).length,
+                clock:String(window.__board?.getTime())});
+              const before=snapshot();
+              const observe=phase=>event=>{
+                try {
+                  if(!event.target?.matches(observed)) return;
+                  if(events.length>=64) {overflow++;return;}
+                  events.push({phase,type:event.type,isTrusted:event.isTrusted,
+                    target:describe(event.target),globalFirst:describe(document.querySelector(selector)),
+                    original:describe(target),globalFirstIsTarget:document.querySelector(selector)===event.target});
+                } catch(error) {observerError=String(error);}
+              };
+              const capture=observe('capture'),bubble=observe('bubble');
+              for(const type of ['input','change']) {
+                document.addEventListener(type,capture,{capture:true,passive:true});
+                document.addEventListener(type,bubble,{capture:false,passive:true});
+              }
+              window.__bwADCModeSelectionAudit={
+                snapshot:()=>({before,after:snapshot(),events,overflow,observerError}),
+                stop:()=>{for(const type of ['input','change']) {
+                  document.removeEventListener(type,capture,true);
+                  document.removeEventListener(type,bubble,false);
+                }},
+              };
+            },{target:controls.length===1?controls[0]:null,scopedControls:controls.length,scopedPanels:panels});
+          } catch(error) {modeObserverSetupError=String(error);}
+          try {
+            selectedModeValues=await scope.getByTestId('bw-scope-time-capture').selectOption('envelope');
             await adcPage.waitForFunction(()=>{
               const capture=document.querySelector('[data-testid="bw-scope-time-capture"]');
               const enabled=document.querySelector('[data-testid="bw-scope-adc-enabled"]');
@@ -1038,6 +1089,19 @@ try {
               }));
             } catch (failure) {diagnosticError=String(failure);}
             throw new Error(`ADC_MODE_CHANGE_PUBLICATION ${JSON.stringify({state,diagnosticError})} ${String(error).split('\n')[0]}`,{cause:error});
+          } finally {
+            try {
+              const trace=await adcPage.evaluate(()=>{
+                const observer=window.__bwADCModeSelectionAudit;
+                if(!observer) return null;
+                try {return observer.snapshot();}
+                finally {observer.stop();delete window.__bwADCModeSelectionAudit;}
+              });
+              console.log('ADC_MODE_SELECTION_TRACE '+JSON.stringify({selectedModeValues,modeObserverSetupError,trace}));
+            } catch(error) {
+              try {console.log('ADC_MODE_SELECTION_TRACE '+JSON.stringify({selectedModeValues,
+                modeObserverSetupError,observerReadError:String(error)}));} catch {/* retain the primary failure */}
+            }
           }
           requireADC(!await scope.getByTestId('bw-scope-adc-enabled').isChecked()
             &&await scope.getByTestId('bw-scope-adc-enabled').isDisabled(),'ADC_MODE_CHANGE_NOT_EXPLICIT');
