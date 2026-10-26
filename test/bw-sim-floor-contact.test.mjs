@@ -57,6 +57,7 @@ test('Floor contact: adaptive plan preserves explicit policies and collision exc
     const mechanism={bodies:[ground,compound,{...compound,id:'simple',colliders:compound.colliders.slice(0,8)}],noCollide:[]};
     const plan=(m=mechanism,e={},p=new Map())=>helpers.floorSweepPlan(m,e,p);
     assert.equal(plan().top,0);assert.deepEqual(Array.from(plan().bodies,b=>b.id),['compound']);
+    assert.ok(Math.abs(plan({...mechanism,bodies:[{...ground,position:[0,-.1692,0]},compound]}).top+.1592)<1e-12,'model-derived floor height retained');
     assert.equal(plan(mechanism,{discrete:true}),null);assert.equal(plan(mechanism,{ccdMaxColliders:9}),null);
     for(const g of [{...ground,id:'platform'},{...ground,parts:['plate']},{...ground,rotation:[0,0,1,0]},
         {...ground,colliders:[{shape:'box',halfExtents:[5,.01,5]}]}])assert.equal(plan({...mechanism,bodies:[g,compound]}),null);
@@ -81,10 +82,11 @@ test('Floor contact: collider support agrees with independent rotated bounds',()
 test('Floor contact: actual step selector copies binding-owned values and sweeps only threatening downward motion',()=>{
     const functionText=source.slice(source.indexOf('    const floorRiskBodies = () => {'),source.indexOf('\n    // Self-collision is local'));
     let y=.25,velocityY=-20,gets=0,destroys=0;
+    const floorPlan={top:0,bodies:[compound]};
     const vector=values=>({GetX:()=>values[0],GetY:()=>values[1],GetZ:()=>values[2],GetW:()=>values[3]});
     const select=runInNewContext(helperBlock+'\n'+functionText+'\nfloorRiskBodies',{
         CCD_MAX_COLLIDERS:8,LEGO_PENETRATION_SLOP_M:.0002,LEGO_SPECULATIVE_CONTACT_M:.002,
-        floorSweep:{top:0,bodies:[compound]},dtFixed:.005,bodyMap:new Map([['compound',{bodyID:'actual-id'}]]),
+        floorSweep:floorPlan,dtFixed:.005,bodyMap:new Map([['compound',{bodyID:'actual-id'}]]),
         J:{destroy:()=>destroys++},bodyInterface:{GetLinearVelocity:()=>vector([0,velocityY,0]),
             GetPosition:()=>{gets++;return vector([0,y,0]);},GetRotation:()=>vector([0,0,0,1])}
     });
@@ -92,7 +94,9 @@ test('Floor contact: actual step selector copies binding-owned values and sweeps
     y=.05;assert.deepEqual(Array.from(select()),['actual-id'],'fast floor crossing is swept');
     velocityY=1;assert.equal(select().length,0,'upward motion unchanged');
     velocityY=-.01;assert.equal(select().length,0,'sub-slop resting jitter unchanged');
-    assert.equal(gets,2);assert.equal(destroys,0,'binding-owned static values must never be destroyed');
+    floorPlan.top=-.1592;velocityY=-.2;y=-.14;assert.equal(select().length,0,'above actual shifted surface');
+    y=-.159;assert.deepEqual(Array.from(select()),['actual-id'],'risk uses model-derived surface');
+    assert.equal(gets,4);assert.equal(destroys,0,'binding-owned static values must never be destroyed');
 });
 test('Floor contact: temporary quality restores on native, selection and cleanup failure',()=>{
     const events=[],stepError=new Error('native step'),restoreError=new Error('restore');
