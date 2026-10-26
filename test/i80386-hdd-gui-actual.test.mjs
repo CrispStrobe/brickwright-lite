@@ -46,7 +46,7 @@ test('armed V8 source preserves nine prior PR jobs with explicit V7 execution re
     const finiteEnd=priorWithFinite.indexOf('  controls:\n',finiteStart);
     assert.ok(finiteStart>0 && finiteEnd>finiteStart,'one distinct finite V7 job before controls');
     const finiteJob=priorWithFinite.slice(finiteStart,finiteEnd);
-    assert.match(finiteJob,/finite-inventory-seven:\n    if: >-\n      \$\{\{ false &&/,'V7 inventory execution remains disabled');
+    assert.match(finiteJob,/finite-inventory-seven:\n    if: >-\n      \$\{\{ true &&/,'V7 inventory source is armed but selection remains external');
     assert.ok(finiteJob.indexOf('finite-inventory-v7-guard')<finiteJob.indexOf('actions\/setup-node@'));
     const prior=priorWithFinite.slice(0,finiteStart)+priorWithFinite.slice(finiteEnd);
     const retiredV7="  actual-v7:\n    if: >-\n      ${{ false && github.event_name == 'pull_request' &&\n"+
@@ -3196,6 +3196,8 @@ class Originals(unittest.TestCase):
         return value,raw,expected
     def test_finite_v7_synthetic_current_pins_reader_and_guard_disabled(self):
         value,raw,expected=self.finite_v7_packet()
+        self.assertIs(c.FINITE_INVENTORY_V7_ENABLED,True)
+        self.assertIs(r.FINITE_INVENTORY_V7_READER_ENABLED,True)
         self.assertEqual(r.verify_inventory_original(E(value),raw,expected)['schema'],
                          'bw.gui-hdd.inventory-reader.v7')
         with patch.object(c,'FINITE_INVENTORY_V7_ENABLED',False),patch.object(c,'regular',side_effect=AssertionError('host read')):
@@ -3203,15 +3205,52 @@ class Originals(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError,'disabled'):c.main(args)
         workflow=(root/'.github/workflows/i80386-hdd-gui-actual.yml').read_text()
         job=workflow.split('  finite-inventory-seven:',1)[1]
-        self.assertIn(chr(36)+'{{ false &&',job)
+        self.assertIn(chr(36)+'{{ true &&',job)
         self.assertLess(job.index('finite-inventory-v7-guard'),job.index('actions/setup-node@'))
         with tempfile.TemporaryDirectory(dir=root.parent) as temporary:
             folder=pathlib.Path(temporary)
             for name,data in (('original',E(value)),('template',raw),('expected',E(expected))):(folder/name).write_bytes(data)
             args=['--inventory-original-v7','--original',str(folder/'original'),'--template',str(folder/'template'),'--expected',str(folder/'expected')]
-            with patch.object(r,'FINITE_INVENTORY_V7_READER_ENABLED',True),contextlib.redirect_stdout(io.StringIO()) as output:
+            with patch.object(r,'FINITE_INVENTORY_V7_READER_ENABLED',False),patch.object(pathlib.Path,'read_bytes',side_effect=AssertionError('original read')):
+                with self.assertRaisesRegex(ValueError,'disabled'):r.main(args)
+            with contextlib.redirect_stdout(io.StringIO()) as output:
                 self.assertEqual(r.main(args),0)
             self.assertFalse(D(output.getvalue().encode())['qualified'])
+    def test_finite_v7_armed_cli_refuses_wrong_admission_before_setup(self):
+        self.assertIs(c.FINITE_INVENTORY_V7_ENABLED,True)
+        value,raw,expected=self.finite_v7_packet()
+        event_raw=base64.b64decode(value['event']['base64'])
+        env=dict(value['platform'],**expected['repositoryVariables'])
+        self.assertEqual(c.bind_finite_v7_event(event_raw,expected['source']['head'],H(raw),env),raw)
+        cuts=('label','source','template-hash','template-canonical','template-pins','head','body',
+              'duplicate-body','attempt-bool','attempt-float','attempt-int','event-number-bool')
+        for cut in cuts:
+            changed=copy.deepcopy(env);event=D(event_raw)
+            if cut=='label':event['label']['name']='x86-hdd-gui-finite-inventory-v6'
+            elif cut=='source':changed['BW_EXPECTED_HEAD']='0'*40
+            elif cut=='template-hash':changed['BW_FINITE_INVENTORY_V7_SHA256']='0'*64
+            elif cut in ('template-canonical','template-pins'):
+                selected=D(raw)
+                if cut=='template-pins':selected['dependencyPins']['bw-board']=c.BOARD
+                encoded=E(selected)
+                if cut=='template-canonical':encoded=encoded.rstrip(b'\n')
+                pin=H(encoded);event['pull_request']['body']=event['pull_request']['body'].replace(H(raw),pin)
+                changed['BW_FINITE_INVENTORY_V7_SHA256']=pin
+                changed['BW_FINITE_INVENTORY_V7_TEMPLATE_B64']=base64.b64encode(encoded).decode()
+            elif cut=='head':event['pull_request']['head']['sha']='0'*40
+            elif cut=='body':event['pull_request']['body']=event['pull_request']['body'].replace(H(raw),'0'*64)
+            elif cut=='duplicate-body':event['pull_request']['body']+='\n'+c.FINITE_V7_BEGIN+'\n'+H(raw)+'\n'+c.FINITE_V7_END
+            elif cut.startswith('attempt-'):changed['GITHUB_RUN_ATTEMPT']={'attempt-bool':True,'attempt-float':1.0,'attempt-int':1}[cut]
+            else:event['number']=True
+            changed_raw=E(event)
+            with self.subTest(cut=cut),tempfile.TemporaryDirectory(dir=root.parent) as temporary:
+                checkout=pathlib.Path(temporary);changed.update(GITHUB_WORKSPACE=str(checkout),GITHUB_EVENT_PATH='/event')
+                with patch.object(c.Path,'cwd',return_value=checkout),patch.object(c.os,'environ',changed),\
+                     patch.object(c,'regular',return_value=changed_raw),\
+                     patch.object(c,'Originals',side_effect=AssertionError('capture/setup edge reached')):
+                    with self.assertRaises(ValueError) as failure:c.main(['finite-inventory-v7-guard'])
+                self.assertNotIn('disabled',str(failure.exception))
+                self.assertFalse((checkout/'gui-finite-inventory-v7').exists())
     def test_finite_v7_synthetic_wrong_source_pin_and_index_refuse(self):
         value,raw,expected=self.finite_v7_packet()
         for cut in ('old-91','missing-index','empty-index','wrong-vendor-source','wrong-run','wrong-workflow','wrong-variable','false-guest'):
@@ -3267,7 +3306,7 @@ class Originals(unittest.TestCase):
             self.assertIs(critical,c.INSTALLED_V6_CRITICAL)
             self.assertIs(identity_witnesses,c.FINITE_V7_CUI_WITNESSES)
             return {name.removeprefix(prefix+'/'):row for name,row in selected.items() if name.startswith(prefix+'/')}
-        with patch.object(c,'FINITE_INVENTORY_V7_ENABLED',True),self.inventory_edges(paths,finite=True,finite_version=7) as (raw,pin,env,events),self.empty_source_edges(),patch.object(c,'installed_inventory_v5',side_effect=installed) as scan:
+        with self.inventory_edges(paths,finite=True,finite_version=7) as (raw,pin,env,events),self.empty_source_edges(),patch.object(c,'installed_inventory_v5',side_effect=installed) as scan:
             value=c.inventory_observation(raw,pin,pathlib.Path('/checkout'),env,'/out/a.json')
         self.assertEqual(value['schema'],'bw.gui-hdd.inventory-original.v7',value.get('firstFailure'))
         self.assertEqual(scan.call_count,4)
@@ -4934,7 +4973,7 @@ test('finite inventory v7: current synthetic supplier pins and independent origi
     const result = spawnSync('/usr/bin/python3',['-B','-',root],{input:selected,cwd:root,encoding:'utf8',timeout:60000,maxBuffer:4*1024*1024});
     assert.equal(result.status,0,`${result.error?.stack || ""}\nsignal=${result.signal}\n${result.stdout}\n${result.stderr}`);
     const summary=readOriginalControlSummary(result.stdout);
-    assert.ok(summary.controls>=2);assert.equal(summary.failures,0);assert.equal(summary.errors,0);
+    assert.ok(summary.controls>=6);assert.equal(summary.failures,0);assert.equal(summary.errors,0);
 });
 
 test('native v2 GUI join: complete packet, source-bound identity and coherent refusals', () => {

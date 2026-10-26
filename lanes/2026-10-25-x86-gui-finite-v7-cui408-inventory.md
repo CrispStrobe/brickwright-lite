@@ -129,3 +129,28 @@ its frozen current source bytes. This is a prospective composition check,
 not a parent merge or source qualification. The earlier package-pin refusal
 remains retained. The changed GUI test requires a new independent body and
 historical-role profile review; no profile is refreshed automatically.
+
+## Current-main source composition and separate local arming — 2026-10-26
+
+The reviewed pending GUI source and historical-role gate are normally composed
+with qualified consumer main, preserving the Robot changes, current Board836/
+CUI1bc identities, historical Board761/CUI91 roles and eighteen supplier witnesses.
+All22 GUI controls and the complete three-supplier gate pass without waiving the
+old uncombined package failure. Initial sparse-checkout census failures remain
+recorded; hydrating the unchanged tracked inputs resolves them.
+
+A separate local source commit arms only the finite-V7 producer, standalone
+reader and workflow job. Actual-V7 execution stays false; V8 and all pins,
+packets, bounds and original predicates stay unchanged. Current-positive
+controls use the armed defaults; explicit false patches retain zero-input
+disabled controls. Coherent wrong label/source/template/head/body/typed-attempt
+cuts must still refuse before package or capture setup.
+
+This is an unqualified source candidate, not a selected event. The historical
+role gate deliberately retains its previous reviewed whole-body hashes until
+the new producer/reader/control bodies receive independent review. Only then
+may a separate fixed-profile-only commit be considered. Final exact-head CI
+and frontend Build, independently admitted request/metadata, one finite event
+and separate V8 selection remain required. Keep the owned PR open and ready
+through the actual acceptance gates; no tag, label, variable or dispatch is
+authorized by these source flags.
