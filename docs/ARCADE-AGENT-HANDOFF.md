@@ -52,13 +52,18 @@ after resource callbacks. Source tests retain the original late-mutation
 regression and enforce permanent expiry. These repairs need final hosted
 qualification; earlier green results cannot qualify a later head.
 
-Two diagnosed native-addition gaps are now scoped in
-[the accessor/Sprite repair](https://github.com/CrispStrobe/brickwright-lite/pull/1457):
-implicit inherited getter/setter edges must be audited before receiver-readiness
-can be granted; a Sprite coordinate read inside a controller callback must
-cross the actual source-entry allocation/registration frontier. Keep the
-original class and owned text-game positives unchanged. Implement after that
-claim merges, then run both source controls and actual original/native checks.
+The [accessor/Sprite repair](../lanes/2026-10-26-arcade-accessor-sprite-addition.md)
+is implemented in the next source candidate. Accessor receiver readiness now
+requires complete implicit getter/setter edges with exact concrete receivers,
+callees, shapes and actual argument cells; inherited halves, compound writes
+and updates use the real dispatch. The existing Sprite invariant follows exact
+controller registration after construction through every actual ordinary
+caller, including emitted numeric events and source-entry callbacks. Lifecycle
+callbacks and unknown entries remain separate refusals. Seven accessor and
+five controller source groups pass; three guard cuts are detected. The original
+inherited-class and whole text-game positives remain unchanged, and their
+source exports are clean. Original SDK/native and connected editor qualification
+remain required before these gaps can be reported closed.
 
 The pin-history candidate now distinguishes three exact frozen executable
 admission fields through a [source-bound inventory](receipts/frozen-control-pin-admissions.json).

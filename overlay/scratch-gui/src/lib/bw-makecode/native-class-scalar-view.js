@@ -326,7 +326,16 @@ export function nativeClassScalarView(program,profile=GENERATED_HELPER_PROFILES.
     };
     const activeMethod=node=>lexical.scopes.get(node)?.functionOwner;
     const superOwner=node=>methodForScope.get(activeMethod(node))?.row?.parent;
+    // Implicit accessor calls are not Call AST nodes. Keep their actual sites
+    // even before receiver propagation, and their per-concrete-row argument
+    // cells separately from the joined formal cells populated by call().
+    const accessorSites=new Map();
+    const accessorSite=node=>{
+        if(!accessorSites.has(node))accessorSites.set(node,{read:false,writes:new Set(),get:new Map(),set:new Map()});
+        return accessorSites.get(node);
+    };
     const memberRead=(node,result)=>{
+        const site=accessorSite(node);site.read=true;
         const receiver=cell(node.object),types=get(receiver);
         if(!types.size)return;
         for(const type of types){
@@ -355,13 +364,17 @@ export function nativeClassScalarView(program,profile=GENERATED_HELPER_PROFILES.
             else if(member.method){
                 const parent=parents.get(node);
                 if(parent?.type!=='Call'||parent.callee!==node){mark(row);add(result,unknown);}else add(result,bound(fnFor(member.method),row));
-            }else if(member.get)call(fnFor(member.get),[],result,row);
+            }else if(member.get){
+                const fn=fnFor(member.get);site.get.set(row,{fn,args:[]});
+                call(fn,[],result,row);
+            }
             else if(member.sdkSlot)add(result,'Number');
             else if(member.declared)copy(row.members.get(node.name).field,result);
             else add(result,'Undefined');
         }
     };
     const writeMember=(node,value)=>{
+        const site=accessorSite(node);site.writes.add(value);
         const types=get(cell(node.object));
         if(!types.size)return;
         for(const type of types){
@@ -374,7 +387,12 @@ export function nativeClassScalarView(program,profile=GENERATED_HELPER_PROFILES.
             if(member.sdkSlot){
                 const inputs=get(value);if(inputs.size&&[...inputs].some(type=>!primitive.has(type))){mark(row);poisonAll();}continue;
             }
-            if(member.set)call(fnFor(member.set),[value],discard(node),row);
+            if(member.set){
+                const fn=fnFor(member.set);
+                if(!site.set.has(row))site.set.set(row,new Map());
+                site.set.get(row).set(value,{fn,args:[value]});
+                call(fn,[value],discard(node),row);
+            }
             else if(member.declared){
                 copy(value,member.field);
                 if(unsafe.has(row))poison(value);
@@ -780,8 +798,7 @@ export function nativeClassScalarView(program,profile=GENERATED_HELPER_PROFILES.
             ['FunctionExpression','Object','Spread','New','Index','Template'].includes(node.type)||
             node.type==='Unary'&&!['+','-','~','!','typeof'].includes(node.op)||
             node.type==='Assignment'&&!['=','+=','-=','*=','/=','%=','**=','&=','|=','^=','<<=','>>=','>>>='].includes(node.op)||
-            node.type==='Update'&&!['++','--'].includes(node.op))&&
-        [...classes.values()].every(row=>(row.node.methods||[]).every(method=>!['get','set'].includes(method.kind)));
+            node.type==='Update'&&!['++','--'].includes(node.op));
     if(scalarClosed)for(const node of nodes){
         const parent=parents.get(node);
         if(node.type==='Identifier'&&node.name!=='super'&&!read(node)){scalarClosed=false;break;}
@@ -808,6 +825,38 @@ export function nativeClassScalarView(program,profile=GENERATED_HELPER_PROFILES.
             if(type.row&&unsafe.has(type.row))return true;
             return !inputsClosed(type.fn||type,node.args);
         })){scalarClosed=false;break;}
+    }
+    // Receiver safety alone cannot close implicit calls. The existing source
+    // census resolves inherited halves on each concrete row and keeps dormant
+    // writers; discharge every such edge using its actual argument cells.
+    const hasAccessors=[...classes.values()].some(row=>(row.node.methods||[]).some(method=>['get','set'].includes(method.kind)));
+    const accessorEdgeClosed=(edge,method,row,kind)=>{
+        const fn=fnFor(method),arity=kind==='get'?0:1;
+        return !!fn&&edge?.fn===fn&&fn.node===method&&method.kind===kind&&
+            fn.row&&row.lineage?.includes(fn.row)&&methodForScope.get(fn.scope)===fn&&
+            closedParameters(fn)&&fn.node.params.length===arity&&edge.args.length===arity&&
+            edge.args.every(value=>{const types=get(value);return types.size&&!types.has(unknown);});
+    };
+    if(scalarClosed&&hasAccessors)for(const [node,site]of accessorSites){
+        if(node.type!=='Member'||node.optional){scalarClosed=false;break;}
+        const receiver=get(cell(node.object));
+        // An empty dormant receiver is still an obligation. Another site's
+        // populated formals must never stand in for this actual source edge.
+        if(!receiver.size){scalarClosed=false;break;}
+        for(const type of receiver){
+            if(type==='Null'||type==='Undefined')continue;
+            const row=type?.kind==='instance'&&type.row,isSuper=node.object?.type==='Identifier'&&node.object.name==='super';
+            const lookup=isSuper?superOwner(node):row,member=lookup?.members.get(node.name);
+            if(!row||unsafe.has(row)||!row.lineage||!member||dangerous.has(node.name)||
+                isSuper&&(member.get||member.set)) {scalarClosed=false;break;}
+            if(site.read&&member.get&&!accessorEdgeClosed(site.get.get(row),member.get,row,'get')){scalarClosed=false;break;}
+            if(site.writes.size&&member.set)for(const value of site.writes){
+                const edge=site.set.get(row)?.get(value);
+                if(!accessorEdgeClosed(edge,member.set,row,'set')||edge.args[0]!==value){scalarClosed=false;break;}
+            }
+            if(!scalarClosed)break;
+        }
+        if(!scalarClosed)break;
     }
     const inertLiteral=node=>!node||primitive.has(node.type)||
         node.type==='Array'&&node.items.every(inertLiteral)||

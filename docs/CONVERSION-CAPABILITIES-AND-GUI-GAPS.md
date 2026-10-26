@@ -17,9 +17,13 @@ The existing numeric-authoring hosted result includes actual Code and Blocks
 edits, graphics pointer strokes and controller-pane journeys. It does not cover
 the full Image/Array/arithmetic journey above. Do not substitute source-created
 projects or an unrelated successful picture edit for that connected test.
-The inherited accessor and controller-captured Sprite operand gaps are scoped
-in [PR #1457](https://github.com/CrispStrobe/brickwright-lite/pull/1457); its
-implementation and qualification must precede any claim of closing them.
+The [merged accessor/Sprite scope](../lanes/2026-10-26-arcade-accessor-sprite-addition.md)
+now has source implementation and focused controls. Actual inherited accessors
+must close every implicit edge before receiver readiness; exact controller
+registrations must cross construction on every actual caller path. Preserve
+the original class and owned text-game runtime controls. Dedicated class/accessor
+authoring, controller interaction and portable reopen remain to be qualified;
+source acceptance alone does not close those user journeys.
 
 
 ## 25 October: SDK numeric properties and next authoring family

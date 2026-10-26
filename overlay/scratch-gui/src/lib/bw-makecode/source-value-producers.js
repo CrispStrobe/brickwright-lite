@@ -19,8 +19,9 @@ import {consoleInspectSourceCalls} from './console-inspect-source.js';
 import {SDK_FONT_FIELDS} from './sdk-font-value-descriptors.js';
 import {ordinaryPlayerScoreNumberCalls,ordinaryCameraPropertyNumberLeaves,ordinaryMathNumberCalls} from './ordinary-primitive-sdk-number-source.js';
 import {ordinarySceneClockNumberCalls} from './ordinary-scene-clock-number-source.js';
-import {controllerButtonEventNumberLeaves} from './controller-button-event-number-source.js';
+import {BUTTON_EVENTS,controllerButtonEventNumberLeaves} from './controller-button-event-number-source.js';
 
+const spriteEventNumber=Number;
 const spriteAyArrayPrototype=Array.prototype,spriteAyDescriptor=Object.getOwnPropertyDescriptor;
 const spriteAyKeys=Reflect.ownKeys,spriteAyPrototype=Object.getPrototypeOf,spriteAySame=Object.is,spriteAyHasOwn=Object.hasOwn;
 const spriteAyArrayKeys=spriteAyKeys(spriteAyArrayPrototype),spriteAyArrayFields=[];
@@ -909,6 +910,25 @@ function ordinarySpriteAyNumberReads(program) {
         if(!fn||parent?.type!=='Call'||parent.callee!==node)return null;
         if(!callers.has(fn))callers.set(fn,[]);callers.get(fn).push(parent);
     }
+    // Reuse one closed registration shape for both top-level allocations and
+    // actual source-entry resets. A normalized event literal denotes only the
+    // same existing SDK event; it grants no receiver or initialization fact.
+    const registrationFor=fn=>{
+        if(fn?.type!=='FunctionExpression'||fn.params.length||
+            ['async','isAsync','generator','isGenerator'].some(key=>fn[key]===true))return null;
+        const call=argumentCall(fn),owner=call&&owners.get(call),statement=owner&&statementAt(call,owner);
+        if(call?.type!=='Call'||call.isNew||call.constructorCall||call.optional||call.typeArguments?.length||
+            call.callee?.type!=='Member'||call.callee.optional||!graph.isSdkNamespace(call.callee)||
+            statement?.type!=='ExpressionStatement'||statement.expr!==call||!Array.isArray(call.args))return null;
+        if(path(call.callee)==='game.onUpdate')return call.args.length===1&&call.args[0]===fn?call:null;
+        if(!/^controller\.(?:A|B|up|down|left|right)\.onEvent$/.test(path(call.callee)||'')||call.args.length!==2||call.args[1]!==fn)return null;
+        const event=call.args[0];
+        if(event?.type==='Member'&&event.object?.type==='Identifier'&&event.object.name==='ControllerButtonEvent'&&
+            (event.name==='Pressed'||event.name==='Released'||event.name==='Repeated')&&graph.isSdkNamespace(event))return call;
+        if(event?.type!=='Number'||!['string','number'].includes(typeof event.value))return null;
+        const code=spriteEventNumber(event.value);
+        return code===BUTTON_EVENTS.Pressed||code===BUTTON_EVENTS.Released||code===BUTTON_EVENTS.Repeated?call:null;
+    };
     const dominates=(owner,position,active=new Set())=>{
         if(owner===program)return true;
         if(active.has(owner))return false;const next=new Set(active);next.add(owner);
@@ -916,23 +936,18 @@ function ordinarySpriteAyNumberReads(program) {
             const sites=callers.get(owner)||[];
             return sites.length>0&&all(sites,call=>owners.get(call)===program?rank(call)>position:dominates(owners.get(call),position,next));
         }
-        const call=argumentCall(owner);
-        if(owner.type!=='FunctionExpression'||owner.params.length||call?.type!=='Call'||call.isNew||call.constructorCall||call.optional||
-            call.typeArguments?.length||call.callee?.type!=='Member'||call.callee.optional||!graph.isSdkNamespace(call.callee)||
-            owners.get(call)!==program||rank(call)<=position||root(call)?.type!=='ExpressionStatement')return false;
-        if(path(call.callee)==='game.onUpdate')return call.args?.length===1&&call.args[0]===owner;
-        if(!/^controller\.(?:A|B|up|down|left|right)\.onEvent$/.test(path(call.callee)||'')||call.args?.length!==2||call.args[1]!==owner)return false;
-        const event=call.args[0];
-        return event?.type==='Member'&&event.object?.type==='Identifier'&&event.object.name==='ControllerButtonEvent'&&
-            ['Pressed','Released','Repeated'].includes(event.name)&&graph.isSdkNamespace(event);
+        const call=registrationFor(owner);if(!call)return false;
+        const caller=owners.get(call);
+        return caller===program?rank(call)>position:dominates(caller,position,next);
     };
     // A captured alias may be read by a closed getter called after its
     // producer in the same startup. Every actual call must cross that precise
     // statement frontier; an earlier, recursive or escaping entry denies it.
     const enteredAfter=(owner,reset,active=new Set())=>{
-        if(!owner||owner===program||active.has(owner)||owner.type!=='FunctionDeclaration')return false;
+        if(!owner||owner===program||active.has(owner))return false;
         const next=new Set(active);next.add(owner);
-        const sites=callers.get(owner)||[];
+        const registration=owner.type==='FunctionExpression'?registrationFor(owner):null;
+        const sites=owner.type==='FunctionDeclaration'?callers.get(owner)||[]:registration?[registration]:[];
         return sites.length>0&&all(sites,call=>{
             const caller=owners.get(call);
             if(caller===reset.owner){
