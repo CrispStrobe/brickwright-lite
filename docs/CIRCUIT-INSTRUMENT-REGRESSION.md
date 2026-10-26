@@ -1,14 +1,80 @@
 # CLI instrument regression
 
-## Active sequence — 2026-10-25
+## Current sequence — 2026-10-25
 
-The new [five-item contract](../lanes/2026-10-25-imported-circuit-instrument-campaign.md)
-is active: current-consumer baseline; a source-admitted distinct imported-circuit
-cohort; demonstrated recurring-cause repairs; one existing part's reference
-accuracy; one demonstrated deterministic instrument effect. All source patches
+The [five-item contract](../lanes/2026-10-25-imported-circuit-instrument-campaign.md)
+has reached its bounded consumer acceptance endpoint: current-consumer baseline;
+a source-admitted distinct imported-circuit cohort; demonstrated recurring-cause
+repairs; one existing part's reference assessment; one deterministic modeled
+instrument effect. The remaining reference and model limits stay explicit. All source patches
 remain in operator-owned CrispStrobe repositories. Stop only after the fifth
 accepted step. The previous sequence and receipts below remain complete and
 retain their own identities.
+
+### Current supplier and consumer boundary
+
+Step3 is adopted by Lite PR1397 at `7f9edea2cc648d7139d1f57099d5121361d48a01`:
+CUI `408c179a9bf5ffc28a4626e9ff5a78fc35cdc671`, unchanged Board761153ff.
+The actual built consumer passed both signed PMOS bulk-wiring journeys. The
+retained 307-input affected recheck left previous native observations identical;
+this does not convert unknown reference eligibility into physical validation.
+
+For step4, the authored LM741 assessment used eleven related requests across
+**two topologies**, not eleven distinct imported designs. Endpoints around
+±0.999989289V and 20us continuous means around ±0.732945462V describe different
+quantities. A 150kΩ external rail load draws 0.0001A, but that does not supply a
+missing LM741 quiescent-current law. The demonstrated false supply-current zero
+is repaired by Board PR704: absent/nonfinite represented branch current refuses
+by name while genuine finite zero/signs remain valid. Its selected qualified
+consumer target is `836867513c3e7fac420ddaa32c17e1c7b6d3e513`.
+
+For step5, CUI PR122 landed `1bc233c9297e03abb9b7eb603e045b4e92b0bb40`.
+[CI40226023234](https://github.com/CrispStrobe/bw-circuit-ui/actions/runs/40226023234)
+passed all three jobs: 3,349 unit passes with 17 declared optional skips,
+168 source-precision controls,17 SPICE checks and83 browser scenarios. The
+ADC uses explicitly requested primary voltage point samples and an ideal
+uniform reconstruction grid. The raw default, original measurements and meter
+means remain authoritative. Modeled trace/trigger/readout, HOLD, clipping,
+paired CSV and externally expected receipt settings are separately observable.
+Supplier arithmetic/served-UI mutations are distinct from consumer acceptance.
+The original failed source heads remain failed; later greens do not relabel them.
+
+The [joint consumer lane](../lanes/2026-10-25-meter-adc-package-adoption.md)
+landed through PR1413 as `b26ae0aedde4e53a254b0bc48c83b156be7cb026`.
+No private cohort replay, physical certificate, signed release or deployment
+is part of this closeout.
+
+### Accepted joint consumer and protected numerical result — 2026-10-26
+
+[Build40264899201](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40264899201)
+qualified source `02ef9419443bbc3154b7a94ace8e35616df31750` with all five
+workflows successful: 36 successful checks and six source-declared skips.
+Independent original-log readback accepted 10 new browser checks, six preserved
+browser checks and three required unit checks. The actual checkout
+`41aa713874cccb5457007a8b6d10f67a347c6634` and reviewed source share tree
+`922580819a699958a0003f4cab050a4dbd36067e`, also verified at the matched merge.
+The accepted journey includes meter unavailable/represented-current recovery,
+ideal ADC reconstruction/trigger/CSV/HOLD, reset/rearm and failed-source refusal.
+Pinned-package verification reports were observed; the independent reader did
+not re-execute npm-pack verification or audit a compiled artifact body.
+
+The separate fixed recheck
+[Run40237367378](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40237367378)
+ran once at `1f967949ffc16a0ff792e493c1343e7fe88a6e2e` with Board83686751
+and CUI1bc233c9. Independent readers accepted 312 cases and 87,488 checks:
+264 ngspice cases and 48 explicitly nominal cases across 12 authored topologies.
+All 240 raw waveform CSVs match baseline40172711900 byte-for-byte. Its numerical
+source closure remains unchanged in the accepted consumer; the experiment was
+not repeated or relabelled as a numerical run on source02ef. The original1f
+whole-head qualification remains rejected because an enabled Rust check was
+cancelled; the accepted numerical result does not waive that failure.
+
+The earlier mode-publication timeout and point-rearm failure remain unresolved
+causal observations. This later successful hosted journey qualifies this run;
+it does not identify either intermittent cause or establish a product fix.
+The [unclaimed follow-ons](../ROADMAP.md#scoped-follow-ons-after-consumer-acceptance)
+cover that attribution, long captures, broader admitted references and physical
+part/instrument modeling. No further lane is started by this closeout.
 
 ### Step 1 accepted: current package baseline
 

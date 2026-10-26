@@ -2,8 +2,8 @@
   "schema": 1,
   "source": {
     "repo": "https://github.com/CrispStrobe/bw-board",
-    "sha": "761153ff92d521c01107ee7b32922ba7adc10ee2",
-    "read": "2026-10-24"
+    "sha": "836867513c3e7fac420ddaa32c17e1c7b6d3e513",
+    "read": "2026-10-25"
   },
   "rows": [
     {
@@ -57,10 +57,10 @@
     {
       "id": "i80386-win16-qemu",
       "kind": "oracle",
-      "present": false,
+      "present": true,
       "ciAvailable": false,
       "ci": "no — ordinary CI does not install the pinned QEMU executable; the test skips there",
-      "via": "tried [local path omitted]",
+      "via": "[local path omitted]",
       "gates": [
         "test/i80386-win16-io-boundary-oracle.test.mjs"
       ],
@@ -69,10 +69,10 @@
     {
       "id": "386-es-cache-qemu",
       "kind": "oracle",
-      "present": false,
+      "present": true,
       "ciAvailable": false,
       "ci": "no — ordinary CI does not install the pinned QEMU executable; the external comparison skips there",
-      "via": "tried [local path omitted]",
+      "via": "[local path omitted]",
       "gates": [
         "test/i80386-es-cache-witness.test.mjs"
       ],
@@ -120,10 +120,10 @@
     {
       "id": "8086-vectors",
       "kind": "oracle",
-      "present": false,
+      "present": true,
       "ciAvailable": true,
       "ci": "yes — the `vectors` job checks out v1_binary and grinds all 646,000 nightly, on master pushes and on PRs labelled ci:full",
-      "via": "tried $I8086_VECTORS, [local path omitted], [local path omitted]",
+      "via": "[local path omitted]",
       "gates": [
         "test/i8086.test.mjs",
         "test/i8086-disasm.test.mjs",
@@ -162,10 +162,10 @@
     {
       "id": "8088-vectors",
       "kind": "oracle",
-      "present": false,
+      "present": true,
       "ciAvailable": true,
       "ci": "yes — the `vectors186` job checks out SingleStepTests/v20 at a pinned ref. This row said \"not yet\" while that job already existed; the claim was about the SCORES still moving, which is a different question from whether CI has the input. The job runs nightly, on master pushes and on PRs labelled ci:full",
-      "via": "tried $I8088_VECTORS, [local path omitted]",
+      "via": "[local path omitted]",
       "gates": [
         "scripts/grind-i8088-cycles.mjs"
       ],
@@ -187,10 +187,10 @@
     {
       "id": "65c02-vectors",
       "kind": "oracle",
-      "present": false,
+      "present": true,
       "ciAvailable": true,
       "ci": "yes — the `vectors-full` job, nightly, on demand and on PRs labelled ci:full rather than per push",
-      "via": "tried $VECTORS_DIR, [local path omitted]",
+      "via": "[local path omitted]",
       "gates": [
         "test/w65c02.test.mjs",
         "test/w65c02-disasm.test.mjs",
@@ -201,10 +201,10 @@
     {
       "id": "lcapy",
       "kind": "oracle",
-      "present": true,
+      "present": false,
       "ciAvailable": false,
       "ci": "no",
-      "via": "[local path omitted]",
+      "via": "tried $LCAPY_PYTHON, [local path omitted]",
       "gates": [
         "test/lcapy-oracle.test.mjs"
       ],
@@ -355,10 +355,10 @@
     {
       "id": "elks-image",
       "kind": "fixture",
-      "present": false,
+      "present": true,
       "ciAvailable": false,
       "ci": "no — GPL-2, run as a workload but never vendored, so the OS acceptance test skips in CI and its claim is recorded rather than standing",
-      "via": "tried $ELKS_IMAGE, [local path omitted]",
+      "via": "[local path omitted]",
       "gates": [
         "test/i8086-elks-boot.test.mjs"
       ],
@@ -379,10 +379,10 @@
     {
       "id": "retro-corpus-8086",
       "kind": "fixture",
-      "present": false,
+      "present": true,
       "ciAvailable": false,
       "ci": "no — 191 MB of third-party game sources, not vendored. nasm itself IS installed in CI (0d9f984), so the liveness probe and the encoder comparisons run there; the corpus comparisons skip and say so.",
-      "via": "tried $RETRO_CORPUS_8086, [local path omitted]",
+      "via": "[local path omitted]",
       "gates": [
         "test/oracle-nasm.test.mjs"
       ],
@@ -418,10 +418,10 @@
     {
       "id": "ucsim-stc12-trace",
       "kind": "oracle",
-      "present": false,
+      "present": true,
       "ciAvailable": false,
       "ci": "no — ci.yml does not check this out; serial-debug-e2e skips its ucsim half there",
-      "via": "tried $UCSIM_STC12_TRACE, [local path omitted], [local path omitted]",
+      "via": "[local path omitted]",
       "gates": [
         "test/serial-debug-e2e.test.js"
       ],

@@ -1,6 +1,7 @@
 # Current-consumer and imported-circuit measurement campaign
 
-CLAIMED — Codex circuit/instrument owner. Initial Lite base
+DONE — bounded five-item consumer acceptance and public result reconciliation.
+The limits and unclaimed follow-ons are recorded below. Codex circuit/instrument owner. Initial Lite base
 `23ec908232f6d4c4604ed6f7dcb23b75af19053d`; isolated branch
 `lane/circuit-measurement-next-claim-20261025`. Merge this claim before
 implementation or the new operational campaign. The previous five-item
@@ -110,11 +111,27 @@ before artifacts; their references remain not-run. No waveform or physical
 accuracy claim is manufactured. The private research cohort is not public
 redistribution clearance or a balanced300-design teaching catalogue.
 
-Overall ownership remains CLAIMED for steps 3–5. The bounded shared-source claim
-is [CUI PR119](https://github.com/CrispStrobe/bw-circuit-ui/pull/119),covering
-exact PMOS bulk wiring,implicit NMOS bulk-current conservation and effective-step
-work preflight. Implementation waits for canonical claim merge and exact-head
-qualification; package adoption follows qualified owned sources only. Long
-passive-watch capacity is a separately scoped capability,not permission to
-weaken old limits. No format twin,retargeted bench or unsupported row silently
-counts as a new comparable design. The previous sequence is not reopened.
+Step3 is accepted: owned CUI PR120 landed408c179a and Lite PR1397 adopted it
+at `7f9edea2cc648d7139d1f57099d5121361d48a01`, with both actual built-GUI
+PMOS journeys and all34 enabled checks successful. Six declared conditional
+skips remain explicit. The one affected307-input native recheck preserved
+previous observable results; it did not qualify unknown reference methods.
+
+Steps4–5 have qualified shared-source implementations. Board PR704 corrects
+unmodelled supply-current false zero without changing a device law; the LM741
+assessment distinguishes endpoint/continuous mean and unsupported rail current.
+CUI PR122 supplies opt-in ideal ADC reconstruction of actual primary voltage
+point samples, preserving the raw/default path. The single
+[final package lane](2026-10-25-meter-adc-package-adoption.md) owns their
+consumer qualification and campaign reconciliation. PR1413 matched-merged as
+`b26ae0aedde4e53a254b0bc48c83b156be7cb026`: 36 successful checks, six
+source-declared skips, and accepted original-log readback of 10 new browser
+checks, six preserved browser checks and three required unit checks. Actual
+checkout/reviewed/landed trees match. The protected312 recheck retains its
+original source/run identity, including its original whole-head rejection.
+Earlier intermittent mode-publication/rearm causes remain open. The current
+success does not prove a causal product fix, compiled-artifact provenance,
+physical part/ADC calibration, release or deployment. See the
+[result handoff](../docs/CIRCUIT-INSTRUMENT-REGRESSION.md) and
+[unclaimed follow-ons](../ROADMAP.md#scoped-follow-ons-after-consumer-acceptance).
+The fifth-item endpoint is reached; ask for the next priority and stop.
