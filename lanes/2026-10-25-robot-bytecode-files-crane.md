@@ -88,6 +88,20 @@ first-B-stop native window captures the normal drivetrain without changing its
 tick calls, timestep, commands or acceptance limits. Seven tiny interface
 controls cover wrapper cleanup and bounded trigger modes. New hosted
 qualification is required; no remaining lift or hold fix is claimed from geometry.
+That head's normal-lift capture confirms the motor and spindle reach nearly
+1800 degrees without clutch slip. The observed hold range is 0.43 mm, but lift
+and alignment still fail: 32.7 versus 35.4 mm, and 28.04 versus 30.53 degrees.
+The long pivot is the common eligible near-contact part beside the actuator
+casing, piston and spindle. Body-pair contact does not establish its impulse.
+
+The current 70-part candidate uses a retained 4L pivot through the right post
+instead of the long cross-shaft. Fit the bare pivot, slide on the boom, then
+fit its two half-bushes on a separate page. An early-retainer mutation must fail.
+The compiled-collider guard now also checks the pivot and retainers against
+the actuator parts. A long-axle mutation fails that actual guard; the short
+pivot passes. The actuator geometry, original program, 30.53-degree expectation
+and all motion tolerances remain unchanged. Fresh hosted qualification is still
+required; static clearance is not a motion or physical-fit claim.
 Six pure geometry/generator/insertion controls pass. The original hosted
 crane instruction failure is retained; the repair authors small insertion pages
 and independently checks rigid fasteners plus the physical rope attachment,

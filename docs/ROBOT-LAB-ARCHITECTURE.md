@@ -162,9 +162,12 @@ of sag in 1 s in the earlier fixed-hook model). Motor C drives a retained drum t
 16T gears. An extended left post carries the winch above the boom pivot; two 3L
 pins put C's housing one hole outboard. A 10L axle turns in the existing post,
 with collars and the drum retaining it; the extra inner bearing is removed.
+The boom turns on a 4L pivot through the right post, retained by two half-bushes;
+the pivot no longer spans the actuator's casing, piston and spindle plane.
 Six sampled authoring configurations check the compiled collider envelopes of
 the winch against the boom members and actuator housing, with more than 2 mm
-separation. This includes shaft regions omitted by the ordinary solid-overlap
+separation, and also check the pivot and its retainers against the actuator parts.
+This includes shaft regions omitted by the ordinary solid-overlap
 check. These are static geometry controls, not dynamic or physical-fit proof;
 collision filters and solver settings are unchanged.
 A rope passes over the moving boom-tip guide to a free counterweighted V-frame tied at its mass centre. Its beam angle follows

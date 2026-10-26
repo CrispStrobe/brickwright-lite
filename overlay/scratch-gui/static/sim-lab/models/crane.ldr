@@ -79,14 +79,15 @@
 0 STEP
 0 !BW ID postMountPinL
 1 0 -60 -130 80 0 0 -1 0 1 0 1 0 0 6558.dat
-0 !BW ID boomPivot
-1 0 0 -250 60 1 0 0 0 1 0 0 0 1 60485.dat
 0 STEP
 0 !BW ID postMountL
 1 71 -60 -130 60 -1 0 0 0 0 1 0 1 0 15100.dat
 0 STEP
 0 !BW ID postL
 1 71 -80 -210 60 0 1 0 0 0 1 1 0 0 32525.dat
+0 STEP
+0 !BW ID boomPivot
+1 0 70 -250 60 1 0 0 0 1 0 0 0 1 3705.dat
 0 STEP
 0 !BW ID boom
 1 72 50 -320 -61.2436 0 1 0 0.866 0 -0.5 -0.5 0 -0.866 32278.dat
@@ -98,6 +99,11 @@
 1 71 15 -390 -182.4871 0 0 1 0 1 0 -1 0 0 4265c.dat
 0 !BW ID tipStopOuter
 1 71 65 -390 -182.4871 0 0 1 0 1 0 -1 0 0 4265c.dat
+0 STEP
+0 !BW ID boomPivotInnerStop
+1 71 35 -250 60 0 0 1 0 1 0 -1 0 0 4265c.dat
+0 !BW ID boomPivotOuterStop
+1 71 95 -250 60 0 0 1 0 1 0 -1 0 0 4265c.dat
 0 STEP
 0 !BW ID luffLaAxle
 1 0 80 -150 60 1 0 0 0 1 0 0 0 1 3708.dat

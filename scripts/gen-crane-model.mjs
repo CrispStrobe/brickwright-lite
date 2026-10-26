@@ -9,7 +9,7 @@
 // T1). The base and the slewing upper are the Excavator's (scripts/gen-excavator-model.mjs), proven
 // buildable there: a 28-tooth turntable on the hub's back top holes (two 42003 connectors on axle pins),
 // slewed by an 8-tooth gear on motor A behind the hub (8:28); on the turntable a small frame and two
-// posts (9L right, 11L left). The crane's own part is the boom: a 15L beam on a pivot axle through the posts, luffed by a small
+// posts (9L right, 11L left). The crane's own part is the boom: a 15L beam on a pivot axle through the right post, luffed by a small
 // linear actuator whose motor (B, on the right post) turns the actuator's pivot axle through two 16T gears
 // and the axle its spindle through two 12T bevel gears (1:1:1). The actuator's eye sits 3 holes up the boom
 // and its body pivots 5 holes under the boom pivot, so its 120..180 LDU travel swings the boom from about
@@ -167,9 +167,13 @@ const sideMotor = (k, port, out, back, along, body, sx, pinPart = '2780.dat', pi
     place(`${k}MotorGear`, '94925.dat', 71, W(out, face + sx * 10), ex, cross(X, ex), X);
 };
 
-// Boom: a 15L beam at x = 50 on the boom pivot axle through the posts.
+// Boom: a 15L beam at x = 50 on a retained pivot through the right post.
 beam('boom', '32278.dat', 72, W(onBoom(140), 50), X, D(a));
-pinAlong('boomPivot', '60485.dat', 0, W(P, 0), X);
+// The right post supports the boom directly. A long axle across both posts
+// would pass close to the actuator's casing, piston and spindle as it lifts.
+pinAlong('boomPivot', '3705.dat', 0, W(P, 70), X);
+gearOn('boomPivotInnerStop', '4265c.dat', 71, W(P, 35), X);
+gearOn('boomPivotOuterStop', '4265c.dat', 71, W(P, 95), X);
 // The luffing actuator: its pivot axle through the posts and its lugs, motor B on the right post.
 const L = actuator('luffLa', B, C, 0);
 pinAlong('luffLaAxle', '3708.dat', 0, W(B, 80), X);
@@ -237,8 +241,12 @@ const plan = buildSteps(parsed.model, catalog);
 // Then fit both beams, followed by their axle pins and upper bushes together.
 const payloadIds = new Set(['hookLink', 'load', 'loadCounterweight', 'loadAxlePin',
     'loadCounterweightAxlePin', 'loadBush', 'loadCounterweightBush']);
+const pivotStops = ['boomPivotInnerStop', 'boomPivotOuterStop'];
+const deferred = new Set([...payloadIds, ...pivotStops]);
 const authoredSteps = [
-    ...plan.steps.map(step => ({...step, parts: step.parts.filter(id => !payloadIds.has(id))})).filter(step => step.parts.length),
+    ...plan.steps.map(step => ({...step, parts: step.parts.filter(id => !deferred.has(id))}))
+        .filter(step => step.parts.length)
+        .flatMap(step => step.parts.includes('boom') ? [step, {parts: pivotStops}] : [step]),
     {parts: ['hookLink']},
     {parts: ['load', 'loadCounterweight']},
     {parts: ['loadAxlePin', 'loadCounterweightAxlePin', 'loadBush', 'loadCounterweightBush']}

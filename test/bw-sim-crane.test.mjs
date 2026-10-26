@@ -188,7 +188,9 @@ test('compiled collider envelopes keep the winch clear of boom members and the a
         const radius = [0, 1, 2].map(i => axes.reduce((sum, axis, j) => sum + Math.abs(axis[i]) * half[j], 0));
         return {part: c.part, low: centre.map((n, i) => n - radius[i]), high: centre.map((n, i) => n + radius[i])};
     };
-    const movingParts = new Set(['boom', 'boomPivot', 'luffLaEye', 'luffLaBody']);
+    const pivotParts = new Set(['boomPivot', 'boomPivotInnerStop', 'boomPivotOuterStop']);
+    const actuatorParts = new Set(['luffLaBody', 'luffLaPiston', 'luffLaSpindle', 'luffLaStubGear', 'luffLaAxleGear']);
+    const movingParts = new Set(['boom', ...pivotParts, 'luffLaEye', ...actuatorParts]);
     try {
         for (const angle of [4, 10, 30, 45, 60, 70]) {
             const file = path.join(dir, `crane-${angle}.ldr`);
@@ -207,6 +209,14 @@ test('compiled collider envelopes keep the winch clear of boom members and the a
                 const gap = Math.hypot(...a.low.map((n, i) => Math.max(0, n - b.high[i], b.low[i] - a.high[i])));
                 assert.ok(gap > 0.002, `${angle}°: ${a.part}/${b.part} envelope gap ${gap * 1000} mm`);
             }
+            const pivot = boxes.filter(c => pivotParts.has(c.part));
+            const actuator = boxes.filter(c => actuatorParts.has(c.part));
+            assert.equal(pivot.length, 3, 'the axle and both physical retainers are included');
+            for (const part of actuatorParts) assert.ok(actuator.some(c => c.part === part), `${part} is included`);
+            for (const a of pivot) for (const b of actuator) {
+                const gap = Math.hypot(...a.low.map((n, i) => Math.max(0, n - b.high[i], b.low[i] - a.high[i])));
+                assert.ok(gap > 0.002, `${angle}°: ${a.part}/${b.part} envelope gap ${gap * 1000} mm`);
+            }
         }
     } finally { rmSync(dir, {recursive: true, force: true}); }
 });
@@ -216,6 +226,12 @@ test('compiled collider envelopes keep the winch clear of boom members and the a
 const assertCranePagesConnected = model => {
     const plan = buildSteps(model, CATALOG);
     assert.equal(plan.source, 'meta');
+    const pageOf = id => plan.steps.findIndex(step => step.parts.includes(id));
+    assert.ok(pageOf('postR') < pageOf('boomPivot') && pageOf('boomPivot') < pageOf('boom'),
+        'fit the bare pivot through the post before sliding on the boom');
+    for (const id of ['boomPivotInnerStop', 'boomPivotOuterStop']) {
+        assert.ok(pageOf('boom') < pageOf(id), 'fit pivot retainers after sliding the boom onto the axle');
+    }
     const {nodes, edges} = buildGraph(model, CATALOG, []);
     const adjacent = new Map(model.parts.map(p => [p.id, new Set()]));
     const join = (a, b) => { adjacent.get(a).add(b); adjacent.get(b).add(a); };
@@ -272,6 +288,11 @@ test('the authored crane pages preserve rigid insertion rules and the documented
     const {model} = prepared();
     assertCranePagesConnected(model);
     assert.throws(() => assertCranePagesConnected({...model, ropes: []}), /every inserted part reaches/, 'removing the rope must expose the detached hook');
+    const stops = ['boomPivotInnerStop', 'boomPivotOuterStop'];
+    const blocked = model.steps.map(parts => parts.filter(id => !stops.includes(id))).filter(parts => parts.length);
+    blocked.find(parts => parts.includes('boomPivot')).push(...stops);
+    assert.throws(() => assertCranePagesConnected({...model, steps: blocked}), /fit pivot retainers after/,
+        'early retainers must expose the blocked boom insertion');
 });
 
 test('the crane generator reproduces the shipped geometry and derives its rope from the same part metadata', () => {
