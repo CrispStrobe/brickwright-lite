@@ -197,7 +197,7 @@ gearOn('tipStopOuter', '4265c.dat', 71, W(Q, 65), X);
 const sim = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'overlay/scratch-gui/src/lib/bw-sim');
 const rawCatalog = JSON.parse(readFileSync(path.join(sim, 'part-meta/parts.json'), 'utf8'));
 const catalog = new Map(rawCatalog.parts.map(p => [p.part, upgradePartMeta(p)]));
-// Longer suspension reduces vertical sway during the existing hold and leaves
+// Lengthen the suspension to reduce vertical sway during the existing hold and leave
 // more paid-out line on the floor, without changing any motor target or timing.
 const H = W(uvAdd(Q, [0, -230]), 30);
 const massOf = part => catalog.get(part).massGrams;

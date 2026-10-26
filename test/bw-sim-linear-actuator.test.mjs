@@ -259,16 +259,25 @@ test('a motor above clutch torque but below full load torque keeps turning both 
                 assert.equal(effort.stepSeconds, DT, 'one actual fixed step per observation');
                 previousForce = Math.abs(effort.motorForceN + effort.limitForceN);
                 assert.ok(Number.isFinite(previousForce) && Number.isFinite(averagedLoad));
+                const packet = core.screwState();
+                assert.equal(packet.length, 1);
+                assert.ok(Math.abs(packet[0].loadN - averagedLoad) < 1e-6,
+                    'the copied screw state agrees with the complete actual force history');
+                const actualLoad = packet[0].loadN; packet[0].loadN = -1;
+                assert.equal(core.screwState()[0].loadN, actualLoad, 'screw state is copied');
                 if (driven && averagedLoad > clutchForceN) recognizedSteps++;
             };
             run(core, 0.5, () => observe(false));
             const before = core.jointState(rig.hinge.id).angle;
+            const slipsBefore = core.screwState()[0].slips;
             core.setMotor(rig.hinge.id, {mode: 'velocity', radPerSec: direction * speed});
             run(core, seconds, () => observe(true));
             const turn = core.jointState(rig.hinge.id).angle - before;
+            const slipsDuring = core.screwState()[0].slips - slipsBefore;
             const position = core.jointState(rig.slider.id).position;
             t.diagnostic(`driven screw slip: ${JSON.stringify({direction, turn, position,
-                motorTorque, clutchTorque, fullLoadTorque, recognizedSteps, averagedLoad})}`);
+                motorTorque, clutchTorque, fullLoadTorque, recognizedSteps, averagedLoad, slipsDuring})}`);
+            assert.ok(slipsDuring > seconds * STEP_HZ / 2, 'the actual coupling must recognize sustained driven slip');
             assert.ok(recognizedSteps > seconds * STEP_HZ / 2,
                 'the actual driven force history must sustain recognized slip');
             assert.ok(direction * turn > 0.5 * speed * seconds,

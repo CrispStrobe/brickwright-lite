@@ -167,7 +167,7 @@ insertion stages. Thread the string from the C drum over the tip guide and tie i
 the exposed centre of the hook pin before adding both upper counterweights symmetrically; the instruction renderer
 does not yet draw or label rope-threading operations. The luffing range is the actuator's travel (120–180 LDU, the slider's limits −8/+16 mm from
 the build: the boom from about 4° to past 70°); past an end the actuator's own slip clutch (the screw
-coupling's 60 N) lets motor B turn on while the boom stays, as on the real model (physics/screw.js). Once sustained-overload slip is recognized, the screw's reflected spindle load uses at most its configured clutch force; smaller actual reactions remain smaller. The existing 50 ms averaging and transient response are retained. This virtual transmitted-load rule is not a physical clutch calibration. The
+coupling's 60 N) lets motor B turn on while the boom stays, as on the real model (physics/screw.js). Once sustained-overload slip is recognized, the screw's reflected spindle load uses at most its configured clutch force; smaller actual reactions remain smaller. The existing 50 ms averaging and transient response are retained. This virtual transmitted-load rule is not a physical clutch calibration. Opt-in completed-step readers expose current native body contacts and copied screw state for bounded diagnostics. They add no physical checkpoint state; default simulation has no subscribers. Their hosted trajectory and lifecycle controls remain qualification gates. The
 end stops of lane/robot-lab-flex4 deliberately leave linear actuators out (they walk gears, chains, bands,
 racks and shift forks only), so they do not stop motor B here.
 `test/bw-sim-crane.test.mjs`.
