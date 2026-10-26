@@ -5,7 +5,7 @@
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
 import {execFileSync} from 'node:child_process';
-import {mkdirSync, readFileSync, writeFileSync} from 'node:fs';
+import {mkdirSync, readFileSync, writeFileSync, realpathSync, accessSync, constants} from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath, pathToFileURL} from 'node:url';
 
@@ -37,7 +37,9 @@ const parseArgs = argv => {
     return {sourceRef, output: path.resolve(root, options['--output'])};
 };
 
-const git = (args, encoding = 'utf8') => execFileSync('git', [
+const gitExecutable = realpathSync('/usr/bin/git');
+accessSync(gitExecutable, constants.X_OK);
+const git = (args, encoding = 'utf8') => execFileSync(gitExecutable, [
     '-c', 'gc.auto=0', '-c', 'maintenance.auto=false', ...args
 ], {cwd: root, encoding, maxBuffer: MAX_MODEL_BYTES + MAX_CATALOG_BYTES});
 
