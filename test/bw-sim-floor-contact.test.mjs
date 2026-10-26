@@ -48,34 +48,66 @@ test('Floor contact: the control removes only the nine passive-chain parts',()=>
     ]);
     for(const [id,line] of single)assert.equal(line,intact.get(id),'remaining geometry unchanged: '+id);
 });
-test('Floor contact: native ground keeps box contacts and backs the thin surface',()=>{
-    const source=readFileSync(new URL('../overlay/scratch-gui/src/lib/bw-sim/physics/jolt-core.js',import.meta.url),'utf8');
-    const block=source.match(/\/\/ FLOOR1436_GROUND_BEGIN\n([\s\S]*?)\/\/ FLOOR1436_GROUND_END/)[1];
-    const factory=runInNewContext(block+'\ncreateBoxColliderShape',{boxConvexRadius:h=>Math.min(.0005,.25*Math.min(...h))});
-    const destroyed=[];let reject=false,cleared=0;
-    class Vec3{constructor(...v){this.v=v;}}
-    class Quat{constructor(...v){this.v=v;}}
-    class BoxShape{constructor(half,convex){this.half=half;this.convex=convex;}}
-    class BoxShapeSettings extends BoxShape{}
-    class StaticCompoundShapeSettings{
-        constructor(){this.children=[];}
-        AddShape(position,rotation,shape,userData){this.children.push({position,rotation,shape,userData});}
-        Create(){return {HasError:()=>reject,GetError:()=>'deliberate create error',Clear:()=>cleared++,Get:()=>this.children};}
+const source=readFileSync(new URL('../overlay/scratch-gui/src/lib/bw-sim/physics/jolt-core.js',import.meta.url),'utf8');
+const helperBlock=source.match(/\/\/ FLOOR1436_GROUND_BEGIN\n([\s\S]*?)\/\/ FLOOR1436_GROUND_END/)[1];
+const helpers=runInNewContext(helperBlock+'\n({floorSweepPlan,floorLowestY,withFloorSweeps})',{CCD_MAX_COLLIDERS:8});
+const ground={id:'ground',motion:'static',parts:[],colliders:[{shape:'box',halfExtents:[10,.01,10]}],position:[0,-.01,0],rotation:[0,0,0,1]};
+const compound={id:'compound',motion:'dynamic',colliders:Array.from({length:9},()=>({shape:'box',halfExtents:[.005,.005,.005]}))};
+test('Floor contact: adaptive plan preserves explicit policies and collision exclusions',()=>{
+    const mechanism={bodies:[ground,compound,{...compound,id:'simple',colliders:compound.colliders.slice(0,8)}],noCollide:[]};
+    const plan=(m=mechanism,e={},p=new Map())=>helpers.floorSweepPlan(m,e,p);
+    assert.equal(plan().top,0);assert.deepEqual(Array.from(plan().bodies,b=>b.id),['compound']);
+    assert.equal(plan(mechanism,{discrete:true}),null);assert.equal(plan(mechanism,{ccdMaxColliders:9}),null);
+    for(const g of [{...ground,id:'platform'},{...ground,parts:['plate']},{...ground,rotation:[0,0,1,0]},
+        {...ground,colliders:[{shape:'box',halfExtents:[5,.01,5]}]}])assert.equal(plan({...mechanism,bodies:[g,compound]}),null);
+    const excluded={...mechanism,noCollide:[['ground','compound']]};
+    assert.equal(plan(excluded).bodies.length,0);
+    assert.equal(plan(excluded,{},new Map([['ground|compound',{}]])).bodies.length,1,'part-local exception keeps native whole pair enabled');
+    assert.equal(plan({...mechanism,noCollide:[['compound','ground']]}).bodies.length,0);
+});
+test('Floor contact: collider support agrees with independent rotated bounds',()=>{
+    const q=[0,0,Math.SQRT1_2,Math.SQRT1_2];
+    for(const col of [{shape:'box',halfExtents:[1,2,3]}, {shape:'sphere',radius:.4},
+        {shape:'cylinder',radius:.3,halfHeight:.8}]) {
+        for(const rotation of [[0,0,0,1],q,[.5,.5,.5,.5]]) {
+            const body={colliders:[{...col,position:[.3,-.2,.1],rotation:q}]},position=[0,4,0];
+            assert.ok(Math.abs(helpers.floorLowestY(body,position,rotation)-bodyBounds(body,{position,rotation}).lo[1])<1e-12);
+        }
     }
-    const J={Vec3,Quat,BoxShape,BoxShapeSettings,StaticCompoundShapeSettings,destroy:v=>destroyed.push(v)};
-    const body={id:'ground',motion:'static',parts:[],colliders:[{}],position:[0,-.01,0],rotation:[0,0,0,1]},col={halfExtents:[10,.01,10]};
-    const made=factory(J,body,col);assert.equal(made.shape.length,1);
-    const child=made.shape[0];assert.ok(child.shape instanceof BoxShapeSettings);
-    assert.deepEqual(child.shape.half.v,[10,10,10]);assert.equal(child.shape.convex,.0005);
-    assert.ok(Math.abs(child.position.v[1]+child.shape.half.v[1]-.01)<1e-12,'top height retained');
-    assert.ok(child.position.v[1]-child.shape.half.v[1]<-19,'native box backs the slab');
-    assert.deepEqual(child.rotation.v,[0,0,0,1]);assert.equal(child.userData,0);
-    assert.equal(cleared,0,'result/settings stay alive until body ownership');
-    made.releaseAfterBody[0]();J.destroy(made.releaseAfterBody[1]);assert.equal(cleared,1);
-    for(const changed of [{...body,id:'platform'},{...body,parts:['plate']},{...body,motion:'dynamic'},{...body,rotation:[0,0,1,0]}])assert.ok(factory(J,changed,col).shape instanceof BoxShape);
-    assert.ok(factory(J,body,{halfExtents:[5,.01,5]}).shape instanceof BoxShape);
-    reject=true;assert.throws(()=>factory(J,body,col),/deliberate create error/);assert.equal(cleared,2);
-    assert.equal(destroyed.filter(x=>x instanceof StaticCompoundShapeSettings).length,2,'both successful and failed settings released once');
+    assert.equal(helpers.floorLowestY(compound,[20,-1,0],[0,0,0,1]),Infinity,'outside finite floor');
+    const separated={colliders:[{shape:'sphere',radius:.1,position:[20,-5,0]},{shape:'sphere',radius:.1,position:[0,1,0]}]};
+    assert.equal(helpers.floorLowestY(separated,[0,0,0],[0,0,0,1]),.9,'off-floor collider does not invent a floor threat');
+});
+test('Floor contact: actual step selector sweeps only threatening downward motion and releases values',()=>{
+    const functionText=source.slice(source.indexOf('    const floorRiskBodies = () => {'),source.indexOf('\n    // Self-collision is local'));
+    let y=.25,velocityY=-20,gets=0,destroys=0;
+    const vector=values=>({GetX:()=>values[0],GetY:()=>values[1],GetZ:()=>values[2],GetW:()=>values[3]});
+    const select=runInNewContext(helperBlock+'\n'+functionText+'\nfloorRiskBodies',{
+        CCD_MAX_COLLIDERS:8,LEGO_PENETRATION_SLOP_M:.0002,LEGO_SPECULATIVE_CONTACT_M:.002,
+        floorSweep:{top:0,bodies:[compound]},dtFixed:.005,bodyMap:new Map([['compound',{bodyID:'actual-id'}]]),
+        J:{destroy:()=>destroys++},bodyInterface:{GetLinearVelocity:()=>vector([0,velocityY,0]),
+            GetPosition:()=>{gets++;return vector([0,y,0]);},GetRotation:()=>vector([0,0,0,1])}
+    });
+    assert.equal(select().length,0,'falling but clear of floor');
+    y=.05;assert.deepEqual(Array.from(select()),['actual-id'],'fast floor crossing is swept');
+    velocityY=1;assert.equal(select().length,0,'upward motion unchanged');
+    velocityY=-.01;assert.equal(select().length,0,'sub-slop resting jitter unchanged');
+    assert.equal(gets,2);assert.equal(destroys,8,'every temporary native value released');
+});
+test('Floor contact: temporary quality restores on native, selection and cleanup failure',()=>{
+    const events=[],stepError=new Error('native step'),restoreError=new Error('restore');
+    const set=(id,q)=>events.push([id,q]);
+    assert.equal(helpers.withFloorSweeps(['a','b'],set,'D','LC',()=>{events.push('step');return 7;}),7);
+    assert.deepEqual(events,[['a','LC'],['b','LC'],'step',['b','D'],['a','D']]);
+    events.length=0;
+    assert.throws(()=>helpers.withFloorSweeps(['a'],set,'D','LC',()=>{throw stepError;}),e=>e===stepError);
+    assert.deepEqual(events,[['a','LC'],['a','D']]);
+    events.length=0;
+    assert.throws(()=>helpers.withFloorSweeps(['a','b'],(id,q)=>{set(id,q);if(id==='b'&&q==='LC')throw stepError;},'D','LC',()=>assert.fail('step after setup failure')),e=>e===stepError);
+    assert.deepEqual(events,[['a','LC'],['b','LC'],['b','D'],['a','D']]);
+    events.length=0;
+    assert.throws(()=>helpers.withFloorSweeps(['a','b'],(id,q)=>{set(id,q);if(id==='b'&&q==='D')throw restoreError;},'D','LC',()=>{throw stepError;}),e=>Array.from(e.errors).includes(stepError)&&Array.from(e.errors).includes(restoreError));
+    assert.deepEqual(events,[['a','LC'],['b','LC'],['b','D'],['a','D']],'cleanup continues after one restoration fails');
 });
 test('Floor contact: a failed baseline can leave the footprint without erasing its series',()=>{
     const bodies=[{id:'a',colliders:[{shape:'box',halfExtents:[.005,.005,.005]}]}];

@@ -11,16 +11,26 @@ export async function runCompoundDrop(manifest) {
     try {
         const groundPose=core.bodyPose(ground.id);
         assert.ok(groundPose.position.every((v,i)=>Math.abs(v-ground.position[i])<manifest.floorEscapeEpsilonM),'logical ground origin retained');
+        core.setBodyVelocity(body.id,[0,-20,0],[0,0,0]);
+        // Cross the threatened surface, roll back native and JavaScript state,
+        // then require exactly the same trajectory before the measured series.
+        core.checkpoint();
+        const replay=()=>Array.from({length:10},()=>{
+            core.step(manifest.dtSeconds);
+            return {t:core.time,pose:core.bodyPose(body.id),velocity:core.bodyLinearVelocity(body.id)};
+        });
+        const first=replay();core.rollback();
+        assert.deepEqual(replay(),first,'floor-risk sweep remains bit-identical after rollback');
+        core.rollback();
         core.observeFixedSteps(({t})=>{
             const bounds=bodyBounds(body,core.bodyPose(body.id));
             const outside=Number(bounds.lo[0]<-10||bounds.hi[0]>10||bounds.lo[2]<-10||bounds.hi[2]>10);
             rows.push([t,bounds.hi[1],0,outside,Number(!outside&&bounds.hi[1]<-.02-manifest.floorEscapeEpsilonM)]);
             if(bounds.hi[1]<-.02-manifest.floorEscapeEpsilonM){escapedSteps++;firstEscape??=t;lastEscapeStep=rows.length;}
         });
-        core.setBodyVelocity(body.id,[0,-20,0],[0,0,0]);
         for(let i=0;i<2000;i++)core.step(manifest.dtSeconds);
         return {floor:{top:0,bottom:-.02,half:10},bodyIds:[body.id],finishedAt:null,programCompleted:false,
             observedUntilMs:rows.at(-1)[0]*1000,escapedSteps,insideEscapedSteps:rows.filter(row=>row[4]>0).length,firstEscape,firstInsideEscape:rows.find(row=>row[4]>0)?.[0]??null,lastEscapeStep,
-            groundPose,initialHeightM:body.position[1],initialVelocity:[0,-20,0],colliderCount:9,rows};
+            groundPose,checkpointReplaySteps:10,initialHeightM:body.position[1],initialVelocity:[0,-20,0],colliderCount:9,rows};
     } finally {core.destroy();}
 }

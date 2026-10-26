@@ -5,19 +5,29 @@ intact model's original program, crosses the thin generated floor and then
 falls freely. The shipped observe-only control avoids driving the collapse;
 it does not correct collision handling.
 
-The candidate keeps the compiler-generated ground's box contact surface,
-20 m square footprint, original top, material and convex radius. Its native
-box extends downward by the floor's width instead of ending after 20 mm.
-A single translated child preserves the logical body's origin. Authored
-platforms, solver settings, sweep cutoff, timesteps, model geometry and drive
-programs remain unchanged. This is a finite backing volume, not an infinite
-or calibrated ground model.
+The candidate keeps the original floor box, body origin, material, convex
+radius and footprint. Complex compounds normally remain Discrete. Before each
+fixed step, a complex body whose downward travel exceeds the existing 0.2 mm
+penetration slop is checked against the floor. If its lowest overlapping collider
+support, projected by that travel, would exceed the existing 2 mm contact margin
+below the surface, that step temporarily uses LinearCast. Motion quality is
+restored before observers or checkpoints, including when a native step throws.
+Explicit Discrete/collider-cutoff experiments retain their original policies;
+whole-body ground collision exclusions remain honored. Small bodies retain their
+existing sweep policy. No returned pose is clamped or teleported.
 
-The first plane-at-top candidate is rejected: the RCX bumper-car test travelled
-63 mm against its unchanged requirement of more than 100 mm. The loaded-rack
-hold and Powered Up hub comparisons also failed their existing assertions.
-Those failures remain evidence; their assertions are not weakened. The box
-candidate must pass them and every other enabled exact-head check before landing.
+Authored geometry, the eight-collider default cutoff, solver settings, fixed
+steps, models and drive programs remain unchanged. The trigger uses linear
+velocity and conservative collider bounds; it does not promise to catch every
+angular or constraint-driven contact failure. Hosted qualification must establish
+the named scenarios and unchanged ordinary models before landing.
+
+Two geometry prototypes are rejected. A plane-at-top candidate failed unchanged
+RCX drive, loaded-rack hold and Powered Up comparisons. A deeper box passed all
+eight targeted cases but failed the existing differential-car return-distance
+and loaded-rack hold assertions. Both tests passed in the retained qualified
+baseline with unchanged test and actuator sources. These are candidate regressions;
+no existing assertion or threshold is weakened to accommodate them.
 
 The fixture manifest binds the served models, original drive, observe-only
 program, licences, SDK version and integrity. It reads the SDK URL from the
@@ -52,7 +62,9 @@ and the intact motion judge prevents a muted-motor false pass.
 The Sarrus test invokes the fixture qualifier using its existing GUI dependency
 declaration, then executes the standalone scalar reader on the original reports.
 It also requires that reader to reject a missing case. Hosted TAP retains the
-full scalar series. After metadata admission, the same reader can audit the
+full scalar series. The compound drop also requires a ten-step trajectory to
+repeat bit-identically after native/core rollback before its measured series.
+After metadata admission, the same reader can audit the
 retained TAP without producer imports or an engine replay:
 
 `node scripts/verify-sim-floor-contact.mjs <retained-tap-file>`
@@ -63,7 +75,7 @@ reconstructed full pose trajectory. Source checks and a finite pose alone do
 not qualify contact. Real engine cases run in hosted CI; local pure tests do
 not establish physics acceptance.
 
-Finite backing-depth and footprint limits remain explicit. No general
+Finite footprint and linear-risk-trigger limits remain explicit. No general
 solver-stability, hardware, calibration, performance or physical-accuracy claim
 is made. Issue #1435's separate resting-frame creep remains outside this lane.
 A red actual case keeps the source unmerged and must be diagnosed without

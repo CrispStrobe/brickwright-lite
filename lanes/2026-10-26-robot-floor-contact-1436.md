@@ -46,22 +46,25 @@ model registry, census files, dependency pins, native/firmware, hardware or
 production-service changes belong to this lane. Issue1435's separate resting
 frame creep is not claimed here.
 
-Implementation: generated, level 20 m ground keeps box contacts and backs
-the original top with a native box extending downward by the floor's width. Authored boxes, sweep cutoff, timesteps,
-solver counts, models and motors remain unchanged. Five pure controls pass;
-standalone scalar-reader synthetic acceptance and eight rejection cuts pass.
-Eight isolated actual-engine cases are required: old/candidate compound drop,
-old/candidate driven single-chain, intact Sarrus, and held cold 0/275/1000 ms.
+Implementation: retain the original floor and body geometry. Complex compounds
+normally stay Discrete; only a downward floor-risk step temporarily uses
+LinearCast, restored before observations/checkpoints even on native failure.
+Existing explicit experiments and collision exclusions remain honored. Pure
+controls cover transformed collider support, selection and exceptional cleanup.
+Eight isolated actual-engine cases remain required: old/candidate compound
+drop, old/candidate driven single-chain, intact Sarrus, and held cold
+0/275/1000 ms. The drop requires bit-identical native/core rollback replay.
 Original intact assertions remain. Retained baseline core bytes are exact;
 candidate identity is measured from the tested tree. See
 [the diagnostic contract](../docs/ROBOT-LAB-FLOOR-CONTACT.md).
-Finite backing depth/footprint, resting creep, calibration and general solver
-stability remain separate scoped work. A red actual case keeps source unmerged.
 
-The plane-at-top prototype failed unchanged RCX drive, loaded-rack hold and
-Powered Up comparisons and is rejected. The fixture's duplicate SDK URL also
-failed the existing fetch census; read the canonical pin source instead, with
-explicit version/integrity and no gate or dependency change. The baseline
-observer must retain later out-of-footprint flight while separately witnessing
-in-footprint escape. The Sarrus entry executes the standalone reader on original
-reports and requires a missing-case rejection; no unwired gate is exempted.
+Both geometry prototypes are rejected: plane-at-top failed unchanged RCX drive,
+loaded-rack hold and Powered Up comparisons; deeper box passed the eight new
+cases but regressed existing differential-car return and loaded-rack hold tests.
+Their retained baseline results passed with unchanged tests and actuator sources.
+No assertion is relaxed. The fixture reads the existing canonical SDK pin source;
+no dependency, workflow, fetch-census or gate change is made. The Sarrus entry
+executes the standalone reader on original reports and requires a missing-case
+rejection. Preserve finite footprint/linear-trigger limits. Resting creep,
+calibration, general stability and performance remain separate work. A red actual
+case keeps source unmerged.
