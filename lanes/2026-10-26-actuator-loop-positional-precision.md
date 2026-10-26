@@ -17,9 +17,10 @@ in `overlay/scratch-gui/src/lib/bw-sim/physics/screw.js`, focused setup controls
 in `test/bw-sim-screw-clutch.test.mjs`, affected existing actuator and crane
 regressions in `test/bw-sim-linear-actuator.test.mjs` and
 `test/bw-sim-crane.test.mjs`, the actuator explanation in
-`docs/ROBOT-LAB-ARCHITECTURE.md`, and this claim. Evaluate a fixed maximum of
-60 position steps for islands containing a screw, above the motor's existing
-40-step maximum. Do not change global solver defaults or motor iteration rules.
+`docs/ROBOT-LAB-ARCHITECTURE.md`, and this claim. Evaluate a fixed 60-step
+screw-constraint position override, above the motor's existing 40-step cap.
+Other constraints may request a higher island maximum. Do not change global
+solver defaults or motor iteration rules.
 
 Preserve timestep, velocity iterations, mass/inertia floors, physical parameters,
 clutch threshold and averaging, targets, coupling ratios, checkpoint schema,
