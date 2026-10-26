@@ -140,6 +140,38 @@ test('it compiles to the original slew/luff ratios and a retained, geared drum w
     assert.ok(Math.abs(rope.lengthM - length) <= 0.05 * LDU_M, 'the generated rope starts taut to the editor rounding bound');
 });
 
+test('the winch leaves clearance around the boom pivot beyond speculative contact range', () => {
+    const {mechanism: m} = prepared();
+    const turn = (q, v) => {
+        const xyz = q.slice(0, 3);
+        const twice = cross(xyz, v).map(n => 2 * n);
+        const more = cross(xyz, twice);
+        return v.map((n, i) => n + q[3] * twice[i] + more[i]);
+    };
+    const collider = part => {
+        const body = m.bodies.find(b => b.parts.includes(part));
+        const shape = body.colliders.find(c => c.part === part);
+        return {shape, centre: turn(body.rotation, shape.position).map((n, i) => n + body.position[i]),
+            axis: local => turn(body.rotation, turn(shape.rotation, local))};
+    };
+    const pivot = collider('boomPivot');
+    assert.equal(pivot.shape.shape, 'box');
+    const longest = pivot.shape.halfExtents.indexOf(Math.max(...pivot.shape.halfExtents));
+    const axis = pivot.axis([0, 1, 2].map(i => Number(i === longest)));
+    const pivotRadius = Math.hypot(...pivot.shape.halfExtents.filter((_, i) => i !== longest));
+    for (const part of ['hoistDrum', 'hoistStopInner']) {
+        const winch = collider(part);
+        assert.equal(winch.shape.shape, 'cylinder');
+        assert.ok(Math.abs(dot(axis, winch.axis([0, 1, 0]))) > 0.9999, 'the two shaft axes are parallel');
+        const delta = sub(winch.centre, pivot.centre);
+        const radial = len(delta.map((n, i) => n - axis[i] * dot(delta, axis)));
+        const clearance = radial - pivotRadius - winch.shape.radius;
+        // A conservative circular envelope of the axle box leaves 5 mm even
+        // before allowing for the engine's existing 2 mm speculative distance.
+        assert.ok(clearance > 0.005, `${part} leaves only ${clearance * 1000} mm around the pivot`);
+    }
+});
+
 // Independently walk the physical connector edges plus the declared string.
 // Authoring pages must not hide a detached part or an oversized insertion page.
 const assertCranePagesConnected = model => {
@@ -277,7 +309,13 @@ if (!existsSync(missing)) {
         assert.equal(ground.colliders.length, 1);
         assert.equal(ground.colliders[0].shape, 'box');
         const floorTopM = ground.position[1] + (ground.colliders[0].position?.[1] || 0) + ground.colliders[0].halfExtents[1];
-        return {first: samples[0], floorTopM, starts, end: samples.at(-1), maxLean: peak(s => s.loadLeanDeg), maxYaw: peak(s => Math.abs(s.baseYawDeg)),
+        const firstSlew = samples.findIndex(s => s.busy.A);
+        const holdEnd = samples[Math.max(0, firstSlew - 1)].t;
+        const heldLift = firstSlew < 0 ? [] : samples.filter(s => s.t >= holdEnd - 900 && s.t <= holdEnd)
+            .map(s => ({t: s.t, loadY: s.loadPosition[1], guideY: s.guide[1], spanM: s.spanM,
+                lateralM: Math.hypot(s.guide[0] - s.hook[0], s.guide[2] - s.hook[2]),
+                freeM: s.ropeFreeM, tensionN: s.tensionN}));
+        return {first: samples[0], floorTopM, starts, heldLift, end: samples.at(-1), maxLean: peak(s => s.loadLeanDeg), maxYaw: peak(s => Math.abs(s.baseYawDeg)),
             maxLoadHeight: peak(s => s.loadPosition[1])};
     };
 
@@ -536,7 +574,15 @@ if (!existsSync(missing)) {
         const heights = result.track.map(f => f.bodies[load].position[1]);
         assert.ok(heights.every(Number.isFinite));
         const rise = Math.max(...heights) - heights[0];
+        const hub = bodyOf(result.mechanism, 'hub');
+        const first = result.track[0].bodies[hub];
+        const displacement = Math.max(...result.track.map(f => len(sub(f.bodies[hub].position, first.position))));
+        const rotationDeg = Math.max(...result.track.map(f => 2 * Math.acos(Math.min(1,
+            Math.abs(dot(f.bodies[hub].rotation.slice(0, 3), first.rotation.slice(0, 3)) +
+                f.bodies[hub].rotation[3] * first.rotation[3]))) * DEG));
+        t.diagnostic(`reverse-only base stability: ${JSON.stringify({displacement, rotationDeg})}`);
         assert.ok(rise < 0.005, `the reverse-only control still rose ${rise} m`);
+        assert.ok(displacement < 0.002 && rotationDeg < 1, 'a floor-supported load cannot hide whole-crane motion');
     });
 
     test('removing a counterweight exposes free load rotation without moving the held crane', async t => {

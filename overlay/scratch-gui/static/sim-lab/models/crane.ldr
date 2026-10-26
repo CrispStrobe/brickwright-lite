@@ -115,49 +115,49 @@
 1 71 120 -190 60 0 -1 0 1 0 0 0 0 1 54696p01.dat
 0 STEP
 0 !BW ID hoistMotorPinA
-1 0 -90 -210 60 1 0 0 0 1 0 0 0 1 2780.dat
+1 0 -90 -190 60 1 0 0 0 1 0 0 0 1 2780.dat
 0 !BW ID hoistMotorPinB
-1 0 -90 -170 60 1 0 0 0 1 0 0 0 1 2780.dat
+1 0 -90 -150 60 1 0 0 0 1 0 0 0 1 2780.dat
 0 STEP
 0 !BW ID luffLaGear16
 1 71 180 -150 60 0 0 1 0 1 0 -1 0 0 94925.dat
 0 !BW ID hoistMotor
 0 !BW PORT C
-1 71 -120 -190 60 0 1 0 -1 0 0 0 0 1 54696p01.dat
+1 71 -120 -170 60 0 1 0 -1 0 0 0 0 1 54696p01.dat
 0 STEP
 0 !BW ID hoistAxle
-1 0 -80 -230 60 1 0 0 0 1 0 0 0 1 3708.dat
+1 0 -80 -210 60 1 0 0 0 1 0 0 0 1 3708.dat
 0 !BW ID hoistDrum
-1 4 -60 -230 60 0 0 1 0 1 0 -1 0 0 3713.dat
+1 4 -60 -210 60 0 0 1 0 1 0 -1 0 0 3713.dat
 0 !BW ID hoistStopInner
-1 71 -25 -230 60 0 0 1 0 1 0 -1 0 0 4265c.dat
+1 71 -25 -210 60 0 0 1 0 1 0 -1 0 0 4265c.dat
 0 !BW ID hoistStopOuter
-1 71 -195 -230 60 0 0 1 0 1 0 -1 0 0 4265c.dat
+1 71 -195 -210 60 0 0 1 0 1 0 -1 0 0 4265c.dat
 0 STEP
 0 !BW ID hoistGear16
-1 71 -180 -230 60 0 0 1 0 1 0 -1 0 0 94925.dat
+1 71 -180 -210 60 0 0 1 0 1 0 -1 0 0 94925.dat
 0 STEP
 0 !BW ID hoistBearingPin
-1 0 -60 -190 60 1 0 0 0 1 0 0 0 1 6558.dat
+1 0 -60 -170 60 1 0 0 0 1 0 0 0 1 6558.dat
 0 !BW ID luffLaEye
 1 0 20 -280 8.0385 1 0 0 0 1 0 0 0 1 3705.dat
 0 STEP
 0 !BW ID hoistBearing
-1 71 -40 -210 60 0 1 0 0 0 1 1 0 0 32523.dat
+1 71 -40 -190 60 0 1 0 0 0 1 1 0 0 32523.dat
 0 !BW ID luffLaPiston
 1 72 0 -280 8.0385 1 0 0 0 -0.3712 -0.9286 0 0.9286 -0.3712 92696.dat
 0 STEP
 0 !BW ID luffMotorAxle
 1 0 171 -190 60 1 0 0 0 1 0 0 0 1 32062.dat
 0 !BW ID hoistMotorAxle
-1 0 -171 -190 60 1 0 0 0 -1 0 0 0 -1 32062.dat
+1 0 -171 -170 60 1 0 0 0 -1 0 0 0 -1 32062.dat
 0 STEP
 0 !BW ID luffLaSpindle
 1 25 0 -177.8571 48.8654 1 0 0 0 -0.3712 -0.9286 0 0.9286 -0.3712 92695.dat
 0 !BW ID luffMotorGear
 1 71 180 -190 60 0 0 1 1 0 0 0 1 0 94925.dat
 0 !BW ID hoistMotorGear
-1 71 -180 -190 60 0 0 1 -1 0 0 0 -1 0 94925.dat
+1 71 -180 -170 60 0 0 1 -1 0 0 0 -1 0 94925.dat
 0 !BW ID luffLaStubGear
 1 0 0 -163.9286 54.4327 0 1 0 0.3712 0 -0.9286 -0.9286 0 -0.3712 6589.dat
 0 STEP
@@ -179,4 +179,4 @@
 0 !BW ID loadCounterweightBush
 1 4 70 -190.875 -157.0561 0 0 1 0 1 0 -1 0 0 3713.dat
 0 STEP
-0 !BW ROPE hoistCord 526.3 hoistDrum tipGuide hookLink
+0 !BW ROPE hoistCord 537.3 hoistDrum tipGuide hookLink

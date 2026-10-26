@@ -67,8 +67,16 @@ gallery controls pass; actual motion is unqualified. The separate merged screw
 claim covers a bounded reflected load after recognized slip. The finer observation
 claim has merged; its opt-in readers preserve the 30 Hz record and add a bounded
 5 ms contact/effort/screw-state window. Launch cause and combined qualification
-remain unresolved.
-Four pure geometry/generator/insertion controls pass. The original hosted
+remain unresolved. The counterweighted frame passes the retained attitude and
+imbalance controls, but the combined run still fails held-height drift (0.57 mm)
+and reverse-only lowering. Its finer capture reports persistent boom/winch body
+contact before closure diverges; the contact getter does not identify subshapes
+or impulses. The next candidate moves the complete winch down one post hole,
+leaving the actuator geometry, suspension length, program and motion limits
+unchanged. A pure collider-envelope control rejects the former close placement;
+the reverse-only control also rejects whole-base motion. New hosted qualification
+is required; no launch fix is claimed from geometry alone.
+Five pure geometry/generator/insertion controls pass. The original hosted
 crane instruction failure is retained; the repair authors small insertion pages
 and independently checks rigid fasteners plus the physical rope attachment,
 including a missing-rope negative. Instruction views do not yet show rope callouts. Real VM/Jolt hoist, hold, payout,

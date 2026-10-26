@@ -173,14 +173,17 @@ sideMotor('luff', 'B', [60 - ZT, 190], 90, [0, 1], [-1, 0], 1);
 gearOn('luffLaGear16', '94925.dat', 71, W(B, 180), X);
 
 // ---- winch: the spare left post carries C and a 1:1 16T pair on a retained 12L shaft ------------------
-const hoistOut = [60 - ZT, 190];
-const hoistAt = [60 - ZT, 230];
+// Leave an extra post hole between the winch and the boom pivot. The old
+// drum/pivot envelopes had only 2 mm clearance, at speculative contact distance.
+const hoistOut = [60 - ZT, 170];
+const hoistAt = [60 - ZT, 210];
 sideMotor('hoist', 'C', hoistOut, -90, [0, 1], [-1, 0], -1);
 pinAlong('hoistAxle', '3708.dat', 0, W(hoistAt, -80), X);
 gearOn('hoistGear16', '94925.dat', 71, W(hoistAt, -180), X);
 // A friction-pin mounted inner bearing supports the shaft opposite the existing left post.
-// Its lower mount at v=190 avoids C's mounting pins at v=170/210 and the boom axle at v=250.
-beam('hoistBearing', '32523.dat', 71, W([60 - ZT, 210], -40), X, Y);
+// Its lower mount at v=170 shares C's output level, clear of the motor's mounting
+// pins at v=150/190 and the boom axle at v=250.
+beam('hoistBearing', '32523.dat', 71, W([60 - ZT, 190], -40), X, Y);
 pinAlong('hoistBearingPin', '6558.dat', 0, W(hoistOut, -60), X);
 gearOn('hoistDrum', '3713.dat', 4, W(hoistAt, -60), X);
 gearOn('hoistStopOuter', '4265c.dat', 71, W(hoistAt, -195), X);
