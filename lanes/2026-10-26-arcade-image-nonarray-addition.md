@@ -2,6 +2,7 @@
 
 Status: CLAIMED; merge before implementation.
 Owner: Arcade integration in #1128, preserving the existing forward-fix history.
+Base: main `a7f688940f96ac89771dfc533ea17dab635703b5`.
 
 ## Measured gap and required behavior
 
