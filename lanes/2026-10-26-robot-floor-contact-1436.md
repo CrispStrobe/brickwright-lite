@@ -1,8 +1,11 @@
 # Robot Lab driven-linkage floor contact — issue1436
 
-Status: CLAIMED — diagnosis and source correction; no physics-accuracy claim.
+Status: DONE — generated-ground source correction and regression contract.
+Landing requires actual hosted acceptance and every enabled exact-head check;
+the associated implementation pull request records that verdict. No physical-accuracy claim.
 Owner: Codex, Robot Lab floor-contact lane.
-Branch: `lane/robot-floor-contact-1436-20261026`.
+Source branch: `lane/robot-floor-contact-1436-source-20261026`.
+Claims landed through #1439 and #1442.
 Base: `a7f688940f96ac89771dfc533ea17dab635703b5`.
 
 Issue1436 reports that the single-chain Sarrus control, driven by the intact
@@ -42,3 +45,15 @@ pane/helpers/readers, shared session/worker protocol, NXT/API/direct-VM helper,
 model registry, census files, dependency pins, native/firmware, hardware or
 production-service changes belong to this lane. Issue1435's separate resting
 frame creep is not claimed here.
+
+Implementation: generated, level 20 m ground uses Jolt's solid negative
+half-space at the original top height. Authored boxes, sweep cutoff, timesteps,
+solver counts, models and motors remain unchanged. Four pure controls pass;
+standalone scalar-reader synthetic acceptance and seven rejection cuts pass.
+Eight isolated actual-engine cases are required: old/candidate compound drop,
+old/candidate driven single-chain, intact Sarrus, and held cold 0/275/1000 ms.
+Original intact assertions remain. Retained baseline core bytes are exact;
+candidate identity is measured from the tested tree. See
+[the diagnostic contract](../docs/ROBOT-LAB-FLOOR-CONTACT.md).
+Finite floor-edge equivalence, resting creep, calibration and general solver
+stability remain separate scoped work. A red actual case keeps source unmerged.

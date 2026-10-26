@@ -12,7 +12,7 @@ half-space. Authored platforms retain their box colliders. Complex bodies keep
 the existing continuous-sweep cutoff; solver settings, timesteps, motors,
 model geometry and programs are unchanged.
 
-This is a candidate pending actual hosted qualification. A source check or a
+Landing requires actual hosted qualification. A source check or a
 finite pose alone does not qualify ground contact. The fixture manifest binds
 the served models, original drive, observe-only program, licences and exact
 engine pin. Separate processes load the byte-exact retained old core and current candidate
@@ -44,7 +44,12 @@ diagnostics retain the fixed-step scalar series. The standalone
 `node scripts/verify-sim-floor-contact.mjs <retained-tap-file>` reader checks
 case identities, sequence completeness and floor-escape counts without
 importing the producer or replaying a guest. It audits the retained scalar
-series, not an independently reconstructed full pose trajectory.
+series, not an independently reconstructed full pose trajectory. Run it from
+the frozen tested checkout so the recorded candidate hash is checked against
+that exact source. The actual motor API is observed and called unchanged;
+driven cases must request the original first target and held cases must not
+issue a drive. The installed dependency lock identity must match the pinned
+Jolt URL and integrity.
 
 Jolt's plane is mathematically infinite, but its broad-phase extent is bounded.
 The cases qualify contact only within the original floor footprint. Plane

@@ -33,3 +33,6 @@ test('Sarrus spatial-loop worm phase survives rollback exactly',async()=>{
   const go=()=>{core.setMotor(joint,{mode:'velocity',radPerSec:-1});for(let i=0;i<100;i++)core.step(.005);const s=core.snapshot();return [Array.from(s.bodies),Array.from(s.joints)];};const first=go();core.rollback();assert.deepEqual(go(),first);
  }finally{core.destroy();}
 });
+
+import {qualifyFloorContact} from './fixtures/bw-sim/floor-contact/qualify.mjs';
+test('Sarrus: generated floor retains driven collapsed linkage with exact old-code control', {timeout:900000}, t=>qualifyFloorContact(t));
