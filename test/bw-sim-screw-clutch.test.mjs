@@ -12,14 +12,15 @@ const near = (actual, expected, message = '') => assert.ok(Math.abs(actual - exp
 const rig = ({velocity = 1, side = 2, ratio = 0.0002, efficiency = 0.4,
     position = 0, rotation = [0, 0, 0, 1]} = {}) => {
     let limitForce = 200; let motorForce = 0;
-    const torques = [], bounds = [], speeds = [], settings = {};
+    const torques = [], bounds = [], speeds = [], settings = {}, solverOverrides = {};
     class Vec3 { constructor (x, y, z) { this.values = [x, y, z]; } Set (x, y, z) { this.values = [x, y, z]; } }
     const J = {Vec3, EMotorState_Velocity: 'velocity', EActivation_Activate: 'activate', destroy () {}};
     const h = {unwrapped: 0, velocity, localAxis1: [1, 0, 0], localAxis2: [1, 0, 0]};
     const slider = {GetMotorSettings: () => settings, SetMotorState () {},
         SetLimits: (lo, hi) => bounds.push([lo, hi]), SetTargetVelocity: v => speeds.push(v),
         GetTotalLambdaPositionLimits: () => limitForce * DT, GetTotalLambdaMotor: () => motorForce * DT};
-    const s = {slider, constraint: {SetNumVelocityStepsOverride () {}, SetNumPositionStepsOverride () {}}, position};
+    const s = {slider, constraint: {SetNumVelocityStepsOverride: n => { solverOverrides.velocity = n; },
+        SetNumPositionStepsOverride: n => { solverOverrides.position = n; }}, position};
     const c = {id: 'clutch', hingeJoint: 'hinge', sliderJoint: 'slider', ratio, efficiency, clutchForceN: 60};
     const driver = createScrewDrives({J, couplings: [c], hingeMap: new Map([['hinge', h]]),
         sliderMap: new Map([['slider', s]]), jointMap: new Map([
@@ -29,7 +30,7 @@ const rig = ({velocity = 1, side = 2, ratio = 0.0002, efficiency = 0.4,
             GetZ: () => rotation[2], GetW: () => rotation[3]}),
             AddTorque: (id, v) => torques.push({id, value: v.values.slice()})},
         bodyIdOf: id => id, bodyOf: () => null, dt: DT});
-    return {h, s, c, driver, bounds, speeds, settings, torques,
+    return {h, s, c, driver, bounds, speeds, settings, torques, solverOverrides,
         force: (limits, motor = 0) => { limitForce = limits; motorForce = motor; },
         step: () => { torques.length = 0; driver.beforeStep(); },
         torque: id => torques.find(t => t.id === id)?.value || [0, 0, 0]};
@@ -122,4 +123,19 @@ test('the bounded reaction follows the actual frame axis and preserves the oppos
     const a = r.torque('spindle'), b = r.torque('frame');
     near(a[0], 0); near(a[1], -cap(r)); near(a[2], 0);
     a.forEach((v, i) => near(v + b[i], 0));
+});
+
+
+test('the screw constraint requests bounded position precision above the motor cap without changing velocity setup', () => {
+    for (const side of [1, 2]) {
+        const r = rig({side});
+        // Connected motors can request up to 40 position steps. A smaller screw
+        // override cannot raise their island maximum; the scoped budget is 60.
+        assert.ok(r.solverOverrides.position > 40 && r.solverOverrides.position <= 60,
+            `screw position override ${r.solverOverrides.position} must exceed motor cap and fit budget`);
+        assert.equal(r.solverOverrides.position, 60);
+        assert.equal(r.solverOverrides.velocity, 60);
+        assert.deepEqual(r.bounds, [[-0.000001, 0.000001]]);
+        assert.deepEqual(r.driver.registrant.save(), [[0, 0, 0, 0]]);
+    }
 });
