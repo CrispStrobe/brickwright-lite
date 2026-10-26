@@ -18,6 +18,12 @@ Scope: `overlay/scratch-gui/src/lib/bw-sim/physics/jolt-core.js`, a new
 infrastructure; any additional workflow, engine/fork change or pin adoption
 requires a separately coordinated scope first.
 
+Qualification entry-point clarification: `test/bw-sim-sarrus-lift.test.mjs`
+may invoke the new floor-contact fixture qualifier, preserving all its existing
+tests and assertions. Reuse its existing GUI dependency declaration and the
+unchanged direct-VM helper; no shared GUI-scope allowlist or workflow edit.
+This added entry-point ownership must land before editing that file.
+
 First bind the reported model/program and current engine inputs and reproduce
 the failing ground-contact case. Correct its runtime collision behavior;
 do not change model geometry or drive instructions to avoid the failure,
