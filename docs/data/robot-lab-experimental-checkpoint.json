@@ -2586,6 +2586,11 @@
         "finalMotorA": -0.1,
         "nan": false,
         "regression": "paired-door-sync PROGRAM-COMPLETE in the same run"
+      },
+      "promoted": {
+        "to": "established library (MODELS)",
+        "date": "2026-10-26",
+        "judge": "toggle-dead-centre-v1"
       }
     },
     {
@@ -3291,6 +3296,11 @@
         "pageErrors": 0,
         "nan": false,
         "simMs": 36767
+      },
+      "promoted": {
+        "to": "established library (MODELS)",
+        "date": "2026-10-26",
+        "judge": "neusis-trisector-v1"
       }
     },
     {

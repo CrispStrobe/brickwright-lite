@@ -767,6 +767,68 @@ export const MODEL_LESSONS = Object.freeze({
             "Rastsperre"
         ]
     },
+    "toggle-lever.ldr": {
+        "pieces": 112,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "linkages",
+        "description": {
+            "en": "A crank and Scotch yoke push a short link against a lever pivoted at its end. As the crank nears 90°, the link folds back over the lever arm and its turning leverage collapses toward a dead centre, where the link pushes straight through the pivot. The passive lever follows the link-closure geometry within 0.02° up to 60°; the program stops at 85°, 5° short of dead centre.",
+            "de": "Eine Kurbel mit Kreuzschleife drückt einen kurzen Lenker gegen einen am Ende gelagerten Hebel. Nähert sich die Kurbel 90°, klappt der Lenker über den Hebelarm zurück, und seine Hebelwirkung bricht bis zu einem Totpunkt zusammen, in dem der Lenker genau durch den Drehpunkt drückt. Der passive Hebel folgt der Geometrie der geschlossenen Gelenkkette bis 60° auf 0,02° genau; das Programm hält bei 85°, 5° vor dem Totpunkt."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Toggle linkage",
+            "de": "Kniehebel"
+        },
+        "keywords": [
+            "Toggle linkage",
+            "Kniehebel",
+            "toggle",
+            "toggle clamp",
+            "dead centre",
+            "dead center",
+            "transmission angle",
+            "Scotch yoke",
+            "Kniehebel",
+            "Totpunkt",
+            "Übertragungswinkel",
+            "Kniehebelpresse"
+        ]
+    },
+    "thirdline.ldr": {
+        "pieces": 179,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "linkages",
+        "description": {
+            "en": "One motor sets an input angle. Equal circle radii and a marked sliding line make the passive line angle one third as large. Move one mark inward and compare the same finite input program.",
+            "de": "Ein Motor stellt den Eingangswinkel ein. Gleiche Kreisradien und eine markierte gleitende Gerade erzeugen passiv ein Winkeldrittel. Versetze eine Markierung nach innen und vergleiche dasselbe endliche Programm."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Neusis angle trisector",
+            "de": "Neusis-Winkeldreiteiler"
+        },
+        "keywords": [
+            "Neusis angle trisector",
+            "Neusis-Winkeldreiteiler",
+            "angle trisection",
+            "trisector",
+            "neusis",
+            "marked ruler",
+            "Archimedes",
+            "Winkeldreiteilung",
+            "Neusis",
+            "markiertes Lineal"
+        ]
+    },
     "watt-line.ldr": {
         "pieces": 148,
         "motors": 1,
