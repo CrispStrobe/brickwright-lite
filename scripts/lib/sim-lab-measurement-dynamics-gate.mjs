@@ -123,6 +123,8 @@ export const measurementDynamicsInteractions = async (page,{shotsDir,restoreProj
     await panel.getByTestId('bw-sim-measurement-precision-toggle').click();
     await page.evaluate(()=>{
         const p=window.__bwSimLab._pane;
+        if (!['ready','paused'].includes(p.state.status)) throw new Error('Precision capture requires the newly loaded, stopped scene');
+        p.__qualifiedSession=p.session;
         p.__qualifiedPackets=[];p.__qualifiedPacketOverflow=false;
         p.__qualifiedDetach=p.session.onAdvance(()=>{
             const packet=p.session.measurementObservations;
@@ -134,14 +136,28 @@ export const measurementDynamicsInteractions = async (page,{shotsDir,restoreProj
             p.__qualifiedPackets.push(packet);
         });
     });
-    await tool(page,'run');assert.equal(await page.evaluate(()=>window.__bwSimLab.api.setMotorSpeed('A',360)),true);
+    // Dropdown selection also loads the authored 15%-speed example. Toolbar
+    // Run would green-flag that second command writer. The public motor API
+    // starts the real world itself, without starting the example program.
+    assert.equal(await page.evaluate(()=>{
+        const p=window.__bwSimLab._pane;
+        if(p.session!==p.__qualifiedSession||!['ready','paused'].includes(p.state.status))throw new Error('Precision scene changed before drive');
+        return window.__bwSimLab.api.setMotorSpeed('A',360);
+    }),true);
     await page.waitForFunction(()=>window.__bwSimLab._pane.session.time>=2500,null,{timeout:15000});
     await tool(page,'pause');await page.evaluate(()=>window.__bwSimLab._pane.session.idle());
-    report.precision=await page.evaluate(()=>{const p=window.__bwSimLab._pane;p.__qualifiedDetach();return{
+    report.precision=await page.evaluate(()=>{const p=window.__bwSimLab._pane;p.__qualifiedDetach();if(p.session!==p.__qualifiedSession)throw new Error('Precision scene changed during drive');return{
         selection:p.session._measurementObservation,packets:p.__qualifiedPackets,result:p.session.measurementPrecision,overflow:p.__qualifiedPacketOverflow};});
-    assert.equal(report.precision.overflow,false);assert.equal(report.precision.result.gap,false);
-    assert.ok(report.precision.result.rows.some(row=>Math.abs(row.workJ)>1e-8));
-    assert.ok(report.precision.result.rows.some(row=>Number.isFinite(row.periodSeconds)&&row.periodSeconds>0));
+    // Preserve the bounded native packets even if a period/work assertion
+    // fails. This partial diagnostic is separate from the nine success originals.
+    const progress=JSON.stringify({...report,schema:'bw.robot.measurements.dynamics.progress.v1',completed:false},null,2)+'\n';
+    assert.ok(Buffer.byteLength(progress)<=1024*1024);
+    await writeFile(resolve(shotsDir,'sim-lab-measurement-dynamics-progress.json'),progress,{flag:'wx'});
+    const precisionWitness=JSON.stringify({selection:report.precision.selection,result:report.precision.result,
+        samples:report.precision.packets.reduce((n,p)=>n+p.samples.length,0),overflow:report.precision.overflow});
+    assert.equal(report.precision.overflow,false,precisionWitness);assert.equal(report.precision.result.gap,false,precisionWitness);
+    assert.ok(report.precision.result.rows.some(row=>Math.abs(row.workJ)>1e-8),precisionWitness);
+    assert.ok(report.precision.result.rows.some(row=>Number.isFinite(row.periodSeconds)&&row.periodSeconds>0),precisionWitness);
     await panel.getByTestId('bw-sim-measurement-precision-toggle').click();
 
     // Two independently loaded experimental model files; apply, edit, record and save.
