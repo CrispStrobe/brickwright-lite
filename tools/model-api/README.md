@@ -60,6 +60,14 @@ The body limit is 1 MiB, model 768 KiB, BW 64 KiB, encrypted/compressed dispatch
 120 s program time, 30 s settling tail, 2,001 recorded samples and 180 s worker
 wall time. Timing settings use multiples of 25 ms; internal physics stays 5 ms.
 Large recordings are downsampled, with the actual sample interval reported.
+In the normal 25 ms VM-frame profile, program rows and post-initial cold rows
+are observed after their frame's physics tick. `elapsedMs` and `timeMs` label
+that actual scene-time
+observation; `phase` belongs to the same observed frame. With `coldMs: 0`, the
+first row is at 25 ms, not an invented time-zero pose. A nonzero cold interval
+includes its initial 0 ms cold snapshot. A final row can fall short of the
+reported sample interval when the run ends between scheduled samples. The
+separate `physicsSamples: true` profile still records every existing 5 ms step.
 An over-limit body, declared or chunked, is refused with a JSON `413 too-large`
 and a body that stalls past 10 s with `408 body-timeout`. The refusal is written
 before the half-read request is ended (`Connection: close`); ending it first
