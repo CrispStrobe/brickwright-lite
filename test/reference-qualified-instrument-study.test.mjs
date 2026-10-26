@@ -146,7 +146,7 @@ function fixture(t) {
     syncInventory(root);return root;
 }
 function reader(root,head=HEAD,run=RUN) {
-    const p=spawnSync('python3',['-I','-B','scripts/read-reference-qualified-instruments.py',root,'--head',head,'--run',run],
+    const p=spawnSync('/usr/bin/python3',['-I','-B','scripts/read-reference-qualified-instruments.py',root,'--head',head,'--run',run],
         {cwd:ROOT,encoding:'utf8',timeout:30000,maxBuffer:1024*1024});
     if(p.error)throw p.error;
     return p;
@@ -272,7 +272,10 @@ test('actual workflow event-admission body refuses duplicate/prior study, change
     const env={REVIEWED_STUDY_HEAD:HEAD,GITHUB_RUN_ID:RUN,GITHUB_RUN_ATTEMPT:'1',GITHUB_SHA:HEAD,ADMITTED_INTENT:sha256(canonical(manifest))};
     const call=(data,environment)=>{
         let writes=0;
-        const read=name=>name==='vendor-pins.json'?JSON.stringify(SOURCES):JSON.stringify(data[name.split('/').at(-1).replace('.json','')]);
+        const files={'vendor-pins.json':SOURCES,'reference-study-event/run.json':data.run,
+            'reference-study-event/selections.json':data.selections,'reference-study-event/ref.json':data.ref};
+        const read=name=>{if(!Object.hasOwn(files,name))throw new Error('Unadmitted metadata path');return JSON.stringify(files[name]);};
+        assert.throws(()=>read('other/run.json'),/Unadmitted metadata path/);
         fn(read,()=>writes++,createManifest,canonical,sha256,SOURCES,{env:environment});return writes;
     };
     assert.equal(call(original,env),1);

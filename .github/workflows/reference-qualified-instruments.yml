@@ -139,7 +139,7 @@ jobs:
         if: always() && steps.collect.outcome != 'skipped'
         run: |
           if [ -d reference-study-originals ]; then
-            python3 -I -B scripts/read-reference-qualified-instruments.py reference-study-originals \
+            /usr/bin/python3 -I -B scripts/read-reference-qualified-instruments.py reference-study-originals \
               --head "$GITHUB_SHA" --run "$GITHUB_RUN_ID"
           else
             echo 'No numerical originals: setup or event admission failed'
