@@ -7,6 +7,7 @@ import {resolve, join, dirname, extname, sep} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {admitSamdProfile} from './verify-samd-native-game.mjs';
 import {runSamdNativeGame} from './samd-native-game-browser.mjs';
+// Admission uses the Ubuntu workflow's system tools explicitly, independent of PATH.
 import {execFileSync} from 'node:child_process';
 const need=(ok,why)=>{if(!ok)throw new Error(why);};
 const sha=raw=>createHash('sha256').update(raw).digest('hex');
@@ -65,20 +66,20 @@ with zipfile.ZipFile(archive) as z:
  else:raise ValueError('unknown artifact type')
 `;
 export function extractSamdArchive (archive,mode,destination) {
-    execFileSync('python3',['-c',extractOfficial,archive,mode,destination],{stdio:'pipe'});
+    execFileSync('/usr/bin/python3',['-c',extractOfficial,archive,mode,destination],{stdio:'pipe'});
 }
-function gitBytes (commit,name) {need(/^[0-9a-f]{40}$/.test(commit),'full source object');return execFileSync('git',['show',`${commit}:${name}`],{cwd:root,maxBuffer:32*1024*1024});}
+function gitBytes (commit,name) {need(/^[0-9a-f]{40}$/.test(commit),'full source object');return execFileSync('/usr/bin/git',['show',`${commit}:${name}`],{cwd:root,maxBuffer:32*1024*1024});}
 function acquireObject (commit) {
     need(/^[0-9a-f]{40}$/.test(commit),'full source object');
-    try {execFileSync('git',['cat-file','-e',commit+'^{commit}'],{cwd:root,stdio:'ignore'});}catch {execFileSync('git',['fetch','--no-tags','https://github.com/CrispStrobe/brickwright-lite.git',commit],{cwd:root,stdio:'inherit'});}
+    try {execFileSync('/usr/bin/git',['cat-file','-e',commit+'^{commit}'],{cwd:root,stdio:'ignore'});}catch {execFileSync('/usr/bin/git',['fetch','--no-tags','https://github.com/CrispStrobe/brickwright-lite.git',commit],{cwd:root,stdio:'inherit'});}
 }
 export function verifyNativeReceipt ({receipt,consumer,checkout,frontendRun,frontendArtifact,inventory,binarySha256,producer}) {
     need(receipt.schema===1&&receipt.consumer===consumer&&receipt.ciCheckout===checkout&&receipt.run===frontendRun&&receipt.artifact.id===frontendArtifact.id&&receipt.artifact.digest===frontendArtifact.digest&&receipt.binarySha256===binarySha256,'complete consumer/frontend/native identity join');
     need(JSON.stringify(Object.entries(receipt.frontend).sort())===JSON.stringify(Object.entries(inventory).sort()),'all embedded frontend source bytes');
     acquireObject(checkout);acquireObject(producer);
-    const differences=execFileSync('git',['diff','--name-only',consumer,checkout],{cwd:root,encoding:'utf8'}).trim().split('\n').filter(Boolean);
+    const differences=execFileSync('/usr/bin/git',['diff','--name-only',consumer,checkout],{cwd:root,encoding:'utf8'}).trim().split('\n').filter(Boolean);
     need(differences.every(p=>/^(docs|lanes)\/.+\.md$/.test(p))&&JSON.stringify(differences)===JSON.stringify(receipt.proseDifferences),'only declared Markdown composition differences');
-    const names=execFileSync('git',['ls-tree','-r','--name-only',consumer,'apps/tauri/src-tauri'],{cwd:root,encoding:'utf8'}).trim().split('\n');
+    const names=execFileSync('/usr/bin/git',['ls-tree','-r','--name-only',consumer,'apps/tauri/src-tauri'],{cwd:root,encoding:'utf8'}).trim().split('\n');
     names.push('overlay/scratch-vm/src/extension-support/native-broker-protocol.js','overlay/scratch-gui/static/native-broker/native-broker-host.js');
     need(JSON.stringify(names.sort())===JSON.stringify(Object.keys(receipt.nativeSources).sort()),'complete actual native source union');
     for(const name of names)need(sha(gitBytes(consumer,name))===receipt.nativeSources[name],'native source identity '+name);
@@ -91,9 +92,9 @@ export function verifyNativeReceipt ({receipt,consumer,checkout,frontendRun,fron
 }
 export async function admitSamdOfficialInputs ({consumer,frontendRun,nativeRun,producerRun,producerHead,out}) {
     need(/^[0-9a-f]{40}$/.test(consumer)&&/^[0-9a-f]{40}$/.test(producerHead),'immutable consumer and supplier producer source');
-    need(execFileSync('git',['rev-parse','HEAD'],{cwd:root,encoding:'utf8'}).trim()===consumer,'exact consumer reader checkout');
+    need(execFileSync('/usr/bin/git',['rev-parse','HEAD'],{cwd:root,encoding:'utf8'}).trim()===consumer,'exact consumer reader checkout');
     mkdirSync(out);
-    const api=(repo,path)=>execFileSync('gh',['api',`repos/${repo}/${path}`],{maxBuffer:8*1024*1024});
+    const api=(repo,path)=>execFileSync('/usr/bin/gh',['api',`repos/${repo}/${path}`],{maxBuffer:8*1024*1024});
     const intake=(label,repo,id,workflow,event,head,job,name)=>{
         const raw={run:api(repo,`actions/runs/${id}`),jobs:api(repo,`actions/runs/${id}/jobs?per_page=100`),artifacts:api(repo,`actions/runs/${id}/artifacts?per_page=100`)};
         const data=Object.fromEntries(Object.entries(raw).map(([k,v])=>[k,JSON.parse(v)]));
@@ -110,7 +111,7 @@ export async function admitSamdOfficialInputs ({consumer,frontendRun,nativeRun,p
     for(const [label,repo,data,mode] of [['frontend','CrispStrobe/brickwright-lite',frontend,'frontend'],['native','CrispStrobe/brickwright-lite',native,'native'],['fixture','CrispStrobe/bw-board',supplier,'fixture']]) {
         const archive=join(out,label+'-original.zip');
         const fd=(await import('node:fs')).openSync(archive,'wx');
-        try {execFileSync('gh',['api',`repos/${repo}/actions/artifacts/${data.artifact.id}/zip`],{stdio:['ignore',fd,'pipe'],maxBuffer:1024*1024});}finally{(await import('node:fs')).closeSync(fd);}
+        try {execFileSync('/usr/bin/gh',['api',`repos/${repo}/actions/artifacts/${data.artifact.id}/zip`],{stdio:['ignore',fd,'pipe'],maxBuffer:1024*1024});}finally{(await import('node:fs')).closeSync(fd);}
         const bytes=readFileSync(archive);need(bytes.length===data.artifact.size_in_bytes&&'sha256:'+sha(bytes)===data.artifact.digest,'original publisher archive integrity');
         extractSamdArchive(archive,mode,join(out,label));
     }

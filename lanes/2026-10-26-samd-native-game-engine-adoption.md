@@ -27,7 +27,10 @@ existing automatic official frontend and native-executable originals before
 one acquisition, preserve their complete identities, and run the actual owned
 game on the shipped browser/installed engine assets. Use the existing pinned
 Tauri/WebKit driver approach; do not alter shared native producers, x86/V8 gates
-or CI-pointer selections. The qualification canvas/driver is an observer, not a
+or existing CI-pointer selections. Maintain this new workflow's dated
+coverage declaration in `CI-POINTERS.md` and its scoped entry in
+`docs/generated/ci-step-census.json`, preserving every earlier observation and
+selection. The qualification canvas/driver is an observer, not a
 new product compile/import/GUI route. Keep private resources and all operational
 receipts out of public source/artifacts. Actual guests run on hosted CI.
 

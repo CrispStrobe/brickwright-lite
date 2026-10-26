@@ -40,7 +40,7 @@ test('standalone archive reader refuses escape, alias and link packets before wr
     try {
         for(const mode of ['valid','parent','absolute','backslash','alias','link']) {
             const archive=join(dir,mode+'.zip'),out=join(dir,mode);
-            execFileSync('python3',['-c',String.raw`
+            execFileSync('/usr/bin/python3',['-c',String.raw`
 import stat,sys,zipfile
 archive,mode=sys.argv[1:];prefix='test/fixtures/labwired/samd-native-game/'
 with zipfile.ZipFile(archive,'w') as z:
