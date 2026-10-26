@@ -47,7 +47,7 @@ test('armed V8 source preserves nine prior PR jobs with explicit V7 execution re
     assert.ok(finiteStart>0 && finiteEnd>finiteStart,'one distinct finite V7 job before controls');
     const finiteJob=priorWithFinite.slice(finiteStart,finiteEnd);
     assert.match(finiteJob,/finite-inventory-seven:\n    if: >-\n      \$\{\{ false &&/,'spent V7 execution is retired');
-    assert.match(finiteJob,/finite-inventory-eight:\n    if: >-\n      \$\{\{ false &&/,'new F8 execution starts disabled');
+    assert.match(finiteJob,/finite-inventory-eight:\n    if: >-\n      \$\{\{ true &&/,'new F8 execution is separately armed');
     assert.ok(finiteJob.indexOf('finite-inventory-v7-guard')<finiteJob.indexOf('actions\/setup-node@'));
     const prior=priorWithFinite.slice(0,finiteStart)+priorWithFinite.slice(finiteEnd);
     const retiredV7="  actual-v7:\n    if: >-\n      ${{ false && github.event_name == 'pull_request' &&\n"+
@@ -3240,10 +3240,10 @@ class Originals(unittest.TestCase):
           repositoryVariables={'BW_FINITE_INVENTORY_V8_SHA256':H(raw),'BW_FINITE_INVENTORY_V8_TEMPLATE_B64':base64.b64encode(raw).decode()})
         return value,raw,expected
 
-    def test_finite_v8_default_disabled_and_historical_identity_independence(self):
-        self.assertIs(c.FINITE_INVENTORY_V7_ENABLED,False);self.assertIs(c.FINITE_INVENTORY_V8_ENABLED,False)
-        self.assertIs(r.FINITE_INVENTORY_V7_READER_ENABLED,True);self.assertIs(r.FINITE_INVENTORY_V8_READER_ENABLED,False)
-        with patch.object(c,'regular',side_effect=AssertionError('read')),patch.object(c,'Hosted',side_effect=AssertionError('tool')):
+    def test_finite_v8_armed_defaults_disabled_seams_and_historical_identity_independence(self):
+        self.assertIs(c.FINITE_INVENTORY_V7_ENABLED,False);self.assertIs(c.FINITE_INVENTORY_V8_ENABLED,True)
+        self.assertIs(r.FINITE_INVENTORY_V7_READER_ENABLED,True);self.assertIs(r.FINITE_INVENTORY_V8_READER_ENABLED,True)
+        with patch.object(c,'FINITE_INVENTORY_V8_ENABLED',False),patch.object(c,'regular',side_effect=AssertionError('read')),patch.object(c,'Hosted',side_effect=AssertionError('tool')):
             for args in (['finite-inventory-v7-guard'],['finite-inventory-v8-guard'],['finite-inventory-v8','--request','x','--expected-sha256','0'*64,'--output','x']):
                 with self.assertRaisesRegex(ValueError,'disabled'):c.main(args)
         old=copy.deepcopy(c.FINITE_V7_PINS)
@@ -3363,8 +3363,15 @@ class Originals(unittest.TestCase):
             chosen['original']=ROW(E(packet))
             with self.subTest(cut=cut),self.assertRaises(ValueError):r.verify_inventory_original(E(packet),raw,chosen)
         args=['--inventory-original-v8','--original','x','--template','y','--expected','z']
-        with patch.object(r,'bounded_input',side_effect=AssertionError('original read')):
+        with patch.object(r,'FINITE_INVENTORY_V8_READER_ENABLED',False),patch.object(r,'bounded_input',side_effect=AssertionError('original read')):
             with self.assertRaisesRegex(ValueError,'disabled'):r.main(args)
+        with tempfile.TemporaryDirectory(dir=root.parent) as temporary:
+            folder=pathlib.Path(temporary)
+            for name,data in (('original',E(value)),('template',raw),('expected',E(expected))):(folder/name).write_bytes(data)
+            args=['--inventory-original-v8','--original',str(folder/'original'),'--template',str(folder/'template'),'--expected',str(folder/'expected')]
+            with contextlib.redirect_stdout(io.StringIO()) as output:self.assertEqual(r.main(args),0)
+            report=D(output.getvalue().encode())
+            self.assertEqual(report['schema'],'bw.gui-hdd.inventory-reader.v8');self.assertFalse(report['qualified'])
 
     @patch.object(c,'FINITE_INVENTORY_V7_ENABLED',True)
     def test_finite_v7_synthetic_current_pins_reader_and_guard_disabled(self):

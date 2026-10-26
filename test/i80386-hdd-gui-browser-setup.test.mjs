@@ -89,7 +89,7 @@ function checkSource(source) {
     const f8 = job(source, 'finite-inventory-eight');
     const v8 = job(source, 'actual-v8');
     assert.match(f7, /if:\s*>-\s*\n\s*\$\{\{\s*false\s*&&/, 'spent F7 execution retired');
-    assert.match(f8, /if:\s*>-\s*\n\s*\$\{\{\s*false\s*&&/, 'new F8 starts disabled');
+    assert.match(f8, /if:\s*>-\s*\n\s*\$\{\{\s*true\s*&&/, 'reviewed F8 job is armed');
     assert.match(v8, /if:\s*>-\s*\n\s*\$\{\{\s*true\s*&&/, 'reviewed V8 gate remains explicit');
 
     assert.match(f8, /timeout-minutes: 15\b/);
@@ -181,11 +181,14 @@ test('source policy detects omitted, displaced and substituted bootstrap/helper 
     mutateNamedStep('actual-v8', v8Bootstrap,
         '--request "$GITHUB_WORKSPACE/gui-inputs/request.json"',
         '--request "$GITHUB_WORKSPACE/gui-inputs/other.json"');
-    for (const id of ['finite-inventory-seven', 'finite-inventory-eight']) {
+    for (const [id, expected, wrong] of [
+        ['finite-inventory-seven', 'false', 'true'],
+        ['finite-inventory-eight', 'true', 'false']]) {
         const block = job(workflow, id);
-        assert.match(block, /if:\s*>-\s*\n\s*\$\{\{\s*false\s*&&/);
-        assert.throws(() => checkSource(workflow.replace(block, block.replace(/(if:\s*>-\s*\n\s*\$\{\{\s*)false\s*&&/, '$1true &&'))),
-            undefined, `unreviewed ${id} arming rejected`);
+        assert.match(block, new RegExp(`if:\\s*>-\\s*\\n\\s*\\$\\{\\{\\s*${expected}\\s*&&`));
+        assert.throws(() => checkSource(workflow.replace(block, block.replace(
+            new RegExp(`(if:\\s*>-\\s*\\n\\s*\\$\\{\\{\\s*)${expected}\\s*&&`), `$1${wrong} &&`))),
+        undefined, `wrong ${id} execution guard rejected`);
     }
     const v8 = job(workflow, 'actual-v8');
     const bootstrap = step(v8, v8Bootstrap);

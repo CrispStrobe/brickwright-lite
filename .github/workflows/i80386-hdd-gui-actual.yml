@@ -150,7 +150,7 @@ jobs:
 
   finite-inventory-eight:
     if: >-
-      ${{ false && github.event_name == 'pull_request' && github.event.action == 'labeled' &&
+      ${{ true && github.event_name == 'pull_request' && github.event.action == 'labeled' &&
           github.event.label.name == 'x86-hdd-gui-finite-inventory-v8' && github.actor == 'CrispStrobe' &&
           github.run_attempt == 1 && github.event.pull_request.head.repo.full_name == github.repository &&
           github.event.pull_request.head.repo.fork == false && github.event.pull_request.base.ref == 'main' }}
