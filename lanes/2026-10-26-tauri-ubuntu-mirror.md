@@ -2,7 +2,7 @@
 
 Status: CLAIMED; merge this scope before implementation.
 Owner: Arcade integration, carried into the next reviewed #1128 source head.
-Base: main `8bf40b2c3d29014219bb591b66cc27b43afca7a5`.
+Base: main `a7f688940f96ac89771dfc533ea17dab635703b5`.
 
 ## Problem and bounded change
 
