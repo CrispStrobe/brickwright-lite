@@ -1,11 +1,12 @@
 # CLI instrument regression
 
-## Active sequence — 2026-10-25
+## Current sequence — 2026-10-25
 
-The new [five-item contract](../lanes/2026-10-25-imported-circuit-instrument-campaign.md)
-is active: current-consumer baseline; a source-admitted distinct imported-circuit
-cohort; demonstrated recurring-cause repairs; one existing part's reference
-accuracy; one demonstrated deterministic instrument effect. All source patches
+The [five-item contract](../lanes/2026-10-25-imported-circuit-instrument-campaign.md)
+has reached its bounded consumer acceptance endpoint: current-consumer baseline;
+a source-admitted distinct imported-circuit cohort; demonstrated recurring-cause
+repairs; one existing part's reference assessment; one deterministic modeled
+instrument effect. The remaining reference and model limits stay explicit. All source patches
 remain in operator-owned CrispStrobe repositories. Stop only after the fifth
 accepted step. The previous sequence and receipts below remain complete and
 retain their own identities.
@@ -39,10 +40,41 @@ Supplier arithmetic/served-UI mutations are distinct from consumer acceptance.
 The original failed source heads remain failed; later greens do not relabel them.
 
 The [joint consumer lane](../lanes/2026-10-25-meter-adc-package-adoption.md)
-is still pending. It must prove exact installed payloads and one engine, actual
-built-Lite GUI operation, unchanged existing scope/aperture controls and one
-current fixed312-case regression before closing the campaign. No new private
-cohort replay, physical certificate, signed release or deployment is implied.
+landed through PR1413 as `b26ae0aedde4e53a254b0bc48c83b156be7cb026`.
+No private cohort replay, physical certificate, signed release or deployment
+is part of this closeout.
+
+### Accepted joint consumer and protected numerical result — 2026-10-26
+
+[Build40264899201](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40264899201)
+qualified source `02ef9419443bbc3154b7a94ace8e35616df31750` with all five
+workflows successful: 36 successful checks and six source-declared skips.
+Independent original-log readback accepted 10 new browser checks, six preserved
+browser checks and three required unit checks. The actual checkout
+`41aa713874cccb5457007a8b6d10f67a347c6634` and reviewed source share tree
+`922580819a699958a0003f4cab050a4dbd36067e`, also verified at the matched merge.
+The accepted journey includes meter unavailable/represented-current recovery,
+ideal ADC reconstruction/trigger/CSV/HOLD, reset/rearm and failed-source refusal.
+Pinned-package verification reports were observed; the independent reader did
+not re-execute npm-pack verification or audit a compiled artifact body.
+
+The separate fixed recheck
+[Run40237367378](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40237367378)
+ran once at `1f967949ffc16a0ff792e493c1343e7fe88a6e2e` with Board83686751
+and CUI1bc233c9. Independent readers accepted 312 cases and 87,488 checks:
+264 ngspice cases and 48 explicitly nominal cases across 12 authored topologies.
+All 240 raw waveform CSVs match baseline40172711900 byte-for-byte. Its numerical
+source closure remains unchanged in the accepted consumer; the experiment was
+not repeated or relabelled as a numerical run on source02ef. The original1f
+whole-head qualification remains rejected because an enabled Rust check was
+cancelled; the accepted numerical result does not waive that failure.
+
+The earlier mode-publication timeout and point-rearm failure remain unresolved
+causal observations. This later successful hosted journey qualifies this run;
+it does not identify either intermittent cause or establish a product fix.
+The [unclaimed follow-ons](../ROADMAP.md#scoped-follow-ons-after-consumer-acceptance)
+cover that attribution, long captures, broader admitted references and physical
+part/instrument modeling. No further lane is started by this closeout.
 
 ### Step 1 accepted: current package baseline
 

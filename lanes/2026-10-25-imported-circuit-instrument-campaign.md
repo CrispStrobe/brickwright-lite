@@ -1,6 +1,7 @@
 # Current-consumer and imported-circuit measurement campaign
 
-CLAIMED — Codex circuit/instrument owner. Initial Lite base
+DONE — bounded five-item consumer acceptance and public result reconciliation.
+The limits and unclaimed follow-ons are recorded below. Codex circuit/instrument owner. Initial Lite base
 `23ec908232f6d4c4604ed6f7dcb23b75af19053d`; isolated branch
 `lane/circuit-measurement-next-claim-20261025`. Merge this claim before
 implementation or the new operational campaign. The previous five-item
@@ -122,6 +123,15 @@ assessment distinguishes endpoint/continuous mean and unsupported rail current.
 CUI PR122 supplies opt-in ideal ADC reconstruction of actual primary voltage
 point samples, preserving the raw/default path. The single
 [final package lane](2026-10-25-meter-adc-package-adoption.md) owns their
-consumer qualification and campaign reconciliation. It remains pending;
-no physical part/ADC calibration, release or deployment is claimed.
-After fifth-item consumer acceptance, ask for the next priority and stop.
+consumer qualification and campaign reconciliation. PR1413 matched-merged as
+`b26ae0aedde4e53a254b0bc48c83b156be7cb026`: 36 successful checks, six
+source-declared skips, and accepted original-log readback of 10 new browser
+checks, six preserved browser checks and three required unit checks. Actual
+checkout/reviewed/landed trees match. The protected312 recheck retains its
+original source/run identity, including its original whole-head rejection.
+Earlier intermittent mode-publication/rearm causes remain open. The current
+success does not prove a causal product fix, compiled-artifact provenance,
+physical part/ADC calibration, release or deployment. See the
+[result handoff](../docs/CIRCUIT-INSTRUMENT-REGRESSION.md) and
+[unclaimed follow-ons](../ROADMAP.md#scoped-follow-ons-after-consumer-acceptance).
+The fifth-item endpoint is reached; ask for the next priority and stop.
