@@ -653,6 +653,7 @@
       "test/bw-sim-balance-engine.test.mjs",
       "test/bw-sim-root-bridge.test.mjs",
       "test/model-api-native.test.mjs",
+      "test/model-api-sampling-origin.test.mjs",
       "test/bw-sim-wavemaker.test.mjs",
       "test/bw-sim-cable-compass.test.mjs",
       "test/bw-sim-six-technic-intakes.test.mjs",
