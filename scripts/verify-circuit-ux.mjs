@@ -1027,14 +1027,17 @@ try {
                 &&window.__board?.getScopeChannels().length===0;
             });
           } catch (error) {
-            const state=await adcPage.evaluate(()=>({
-              capture:document.querySelector('[data-testid="bw-scope-time-capture"]')?.value,
-              captureDisabled:document.querySelector('[data-testid="bw-scope-time-capture"]')?.disabled,
-              checked:document.querySelector('[data-testid="bw-scope-adc-enabled"]')?.checked,
-              disabled:document.querySelector('[data-testid="bw-scope-adc-enabled"]')?.disabled,
-              channels:window.__board?.getScopeChannels(),clock:String(window.__board?.getTime()),
-            }));
-            throw new Error(`ADC_MODE_CHANGE_PUBLICATION ${JSON.stringify(state)} ${String(error).split('\n')[0]}`,{cause:error});
+            let state=null, diagnosticError=null;
+            try {
+              state=await adcPage.evaluate(()=>({
+                capture:document.querySelector('[data-testid="bw-scope-time-capture"]')?.value,
+                captureDisabled:document.querySelector('[data-testid="bw-scope-time-capture"]')?.disabled,
+                checked:document.querySelector('[data-testid="bw-scope-adc-enabled"]')?.checked,
+                disabled:document.querySelector('[data-testid="bw-scope-adc-enabled"]')?.disabled,
+                channels:window.__board?.getScopeChannels(),clock:String(window.__board?.getTime()),
+              }));
+            } catch (failure) {diagnosticError=String(failure);}
+            throw new Error(`ADC_MODE_CHANGE_PUBLICATION ${JSON.stringify({state,diagnosticError})} ${String(error).split('\n')[0]}`,{cause:error});
           }
           requireADC(!await scope.getByTestId('bw-scope-adc-enabled').isChecked()
             &&await scope.getByTestId('bw-scope-adc-enabled').isDisabled(),'ADC_MODE_CHANGE_NOT_EXPLICIT');
