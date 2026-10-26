@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-25T09:54:03.359Z",
+  "generatedAt": "2026-10-26T22:22:48.230Z",
   "repo": "CrispStrobe/brickwright-lite",
   "headSha": "a87a7b447",
   "newestMainRun": 36409366028,
@@ -1982,6 +1982,7 @@
     "robot-lab-own-firmware.yml",
     "robot-model-webkit-comparison.yml",
     "rust-notices.yml",
+    "samd-native-game-qualification.yml",
     "spike-linux-package.yml",
     "target-performance.yml",
     "tauri.yml",
@@ -7761,11 +7762,37 @@
       "steps": {},
       "jobs": {},
       "sourceSha": "working-tree"
+    },
+    "samd-native-game-qualification.yml": {
+      "runs": 0,
+      "stepsInFile": [
+        "Validate explicit immutable request",
+        "Exercise independent metadata, checkout and asset refusal controls",
+        "Admit official metadata, acquire each original once, and join all source bytes",
+        "Install the existing locked browser observer",
+        "Three fresh actual browser game instances on shipped assets",
+        "Install existing native observer dependencies",
+        "Install the existing pinned Tauri driver",
+        "Three fresh actual installed game instances on embedded assets"
+      ],
+      "inFileInNoRun": [
+        "Validate explicit immutable request",
+        "Exercise independent metadata, checkout and asset refusal controls",
+        "Admit official metadata, acquire each original once, and join all source bytes",
+        "Install the existing locked browser observer",
+        "Three fresh actual browser game instances on shipped assets",
+        "Install existing native observer dependencies",
+        "Install the existing pinned Tauri driver",
+        "Three fresh actual installed game instances on embedded assets"
+      ],
+      "steps": {},
+      "jobs": {},
+      "sourceSha": "working-tree"
     }
   },
   "lastRefresh": {
-    "workflow": "testflight-release-audit.yml",
-    "at": "2026-10-25T09:54:03.359Z",
+    "workflow": "samd-native-game-qualification.yml",
+    "at": "2026-10-26T22:22:48.230Z",
     "sourceSha": "working-tree"
   }
 }
