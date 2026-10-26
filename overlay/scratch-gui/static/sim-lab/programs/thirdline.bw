@@ -1,0 +1,110 @@
+# Thirdline — a gearless angle trisector and short-mark physical comparison.
+# Copyright (c) 2026 CrispStrobe. SPDX-License-Identifier: BSD-3-Clause.
+# Load either matching model; Reset to its saved 90-degree input pose.
+# Positive motor A reduces the input angle: theta = 90 - A.
+# Commanded theta50..95 degrees; guarded theta48..97 (A -7..42).
+# Both assemblies use these exact bytes. The two sliders and output are passive.
+# Each relative move uses fresh unwrapped target-minus-current encoder feedback.
+# Speeds are Robot Lab degrees/second. No encoder reset or output command.
+DEVICE SPIKE
+GLOBAL targetA = 0
+GLOBAL dwell = 0
+GLOBAL stage = 0
+GLOBAL held = 0
+GLOBAL completed = 0
+GLOBAL failed = 0
+GLOBAL corrections = 0
+
+WHEN flag clicked:
+  set completed to 0
+  set failed to 0
+  set stage to 0
+  set held to 0
+  IF (lab status) = "no-model" THEN:
+    say "Import Thirdline or its short-mark comparison before starting."
+    stop all
+  set motor stop action A hold
+  lab start
+  lab stop motor A hold
+  reset timer
+  broadcast "Thirdline watchdog"
+  wait 0.5 seconds
+  IF (abs of (lab motor A angle)) > 1 THEN:
+    broadcast "Thirdline fault" and wait
+
+  set stage to 1
+  set targetA to 40
+  set dwell to 0.75
+  say "Input 50 degrees: observe the passive ruler angle."
+  broadcast "Thirdline move and observe" and wait
+  set stage to 2
+  set targetA to 25
+  set dwell to 0.75
+  say "Input 65 degrees: compare the first 15-degree input step."
+  broadcast "Thirdline move and observe" and wait
+  set stage to 3
+  set targetA to 10
+  set dwell to 0.75
+  say "Input 80 degrees: compare another 15-degree input step."
+  broadcast "Thirdline move and observe" and wait
+  set stage to 4
+  set targetA to -5
+  set dwell to 0.75
+  say "Input 95 degrees: compare the third 15-degree step."
+  broadcast "Thirdline move and observe" and wait
+  set stage to 5
+  set targetA to 40
+  set dwell to 0.5
+  say "Continuous reverse sweep to input 50 degrees."
+  broadcast "Thirdline move and observe" and wait
+  set stage to 6
+  set targetA to -5
+  set dwell to 0.5
+  say "Continuous forward sweep to input 95 degrees."
+  broadcast "Thirdline move and observe" and wait
+  set stage to 7
+  set targetA to 0
+  set dwell to 1
+  say "Return to the saved 90-degree input pose."
+  broadcast "Thirdline move and observe" and wait
+  set completed to 1
+  say "Complete. A holds its original datum; the ruler and sliders remain passive."
+
+WHEN I receive "Thirdline move and observe":
+  set held to 0
+  IF (lab motor A angle) < -7 THEN:
+    broadcast "Thirdline fault" and wait
+  IF (lab motor A angle) > 42 THEN:
+    broadcast "Thirdline fault" and wait
+  IF (abs of (targetA - (lab motor A angle))) > 50 THEN:
+    broadcast "Thirdline fault" and wait
+  lab run motor A for (targetA - (lab motor A angle)) degrees at 8 degrees per second
+  lab stop motor A hold
+  set corrections to 0
+  REPEAT 2:
+    IF (abs of (targetA - (lab motor A angle))) > 0.25 THEN:
+      change corrections by 1
+      lab run motor A for (targetA - (lab motor A angle)) degrees at 3 degrees per second
+      lab stop motor A hold
+  IF (abs of (targetA - (lab motor A angle))) > 1 THEN:
+    broadcast "Thirdline fault" and wait
+  IF (lab motor A angle) < -7 THEN:
+    broadcast "Thirdline fault" and wait
+  IF (lab motor A angle) > 42 THEN:
+    broadcast "Thirdline fault" and wait
+  set held to 1
+  wait dwell seconds
+  IF (abs of (targetA - (lab motor A angle))) > 1 THEN:
+    broadcast "Thirdline fault" and wait
+
+WHEN I receive "Thirdline watchdog":
+  REPEAT UNTIL (completed = 1):
+    IF (timer) > 50 THEN:
+      broadcast "Thirdline fault" and wait
+    wait 0.02 seconds
+
+WHEN I receive "Thirdline fault":
+  set failed to 1
+  lab stop motor A hold
+  say "Input guard or 50-second watchdog failed. Reset to the saved pose."
+  stop all

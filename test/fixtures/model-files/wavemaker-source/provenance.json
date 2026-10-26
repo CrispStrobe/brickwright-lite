@@ -1,0 +1,11 @@
+{
+  "author": "CrispStrobe",
+  "license": "BSD-3-Clause",
+  "files": {
+    "wavemaker.ldr": "630832507bda4faf28d875996b5d98d37b723c9bbeeab555499c5b405c392d6e",
+    "wavemaker-control.ldr": "e9c4bd6012e47733b8bd354d6609972ae6bdf2e362440491840c2fd074c17321",
+    "wavemaker.bw": "f460aa2d1b8f625da62b0317778570c3451e76106187e43683b51bdc6ac12c39",
+    "LICENSE.txt": "7e8948b3e909afbcd8006dc2c0f148867e28a579b476938eec403b088e2d3706"
+  },
+  "adaptation": "Only the model license-link path changes for installed assets. Geometry and executable program remain unchanged. Two universal-joint crosses are inferred in addition to 298 explicit placements."
+}

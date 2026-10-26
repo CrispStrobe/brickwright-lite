@@ -1,0 +1,15 @@
+{
+  "author": "CrispStrobe",
+  "license": "BSD-3-Clause",
+  "archiveSha256": "0619aa31dd9e55cc2ac3581092052d9922495c44b69f981f31e247a48bdc9954",
+  "files": {
+    "models/dune-strider.ldr": "f39a1a7a8326844c5bd41f5b282a7658e120c8d7eb94060f0580e59ab6190633",
+    "programs/dune-strider.bw": "9eb7273d208935de166bfd891b9f17a25c89f882a96486ec2f757ca56463b72f",
+    "validation/acceptance-contract.json": "0711d0e9d41ab9766b87f67aa5e9670229b6e3564d293292e6eae95a3fbe0ffe",
+    "LICENSE": "ed24a200606b724010d837027511981f9e3c5ed05f81d01a1f12dffb8b5d5c86",
+    "NOTICES.md": "53f062e70b5fb57a7561ee833396c64f40e65f1fb195c00a084c44e2f573cdaf",
+    "tools/qualify-native.mjs": "1773947adc88c5851e10b32f227501533d5815e98319181581cdb31befcd651e",
+    "tools/judge-native.mjs": "f494174eab774c45f389c50ac90f37425e3d7fbaef32e29d277e09ef0ed59a31"
+  },
+  "reviewScope": "Original inputs and observers retained unchanged; current native and full browser acceptance recorded separately."
+}

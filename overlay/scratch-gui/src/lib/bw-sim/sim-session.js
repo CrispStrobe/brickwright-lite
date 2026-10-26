@@ -113,6 +113,20 @@ export const MODELS = Object.freeze([
     {file: 'butterfly.ldr', title: {en: 'Butterfly — flapping-wing automaton', de: 'Butterfly — Flügelschlagautomat'}, example: 'butterfly.bw', mat: 'plain'},
     {file: 'tempo-loop.ldr', title: {en: 'Tempo Loop — variable-speed double crank', de: 'Tempo Loop — ungleichförmige Doppelkurbel'}, example: 'tempo-loop.bw', mat: 'plain'},
     {file: 'tilt-lab.ldr', title: {en: 'Tilt Lab — two-axis marble maze', de: 'Tilt Lab — zweiachsiges Kugellabyrinth'}, example: 'tilt-lab.bw', mat: 'plain'},
+    {"file": "rod-ratio.ldr", "title": {"en": "Rod Ratio — comparing connecting rods", "de": "Rod Ratio — Pleuellängen im Vergleich"}, "example": "rod-ratio.bw", "mat": "plain", "manualJog": {"A": {"minDeg": 0, "maxDeg": 8640, "stepDeg": 180, "speedDps": 720}}},
+    {"file": "vernier-drive.ldr", "title": {"en": "Vernier Drive — differential reduction", "de": "Vernier Drive — Differenzial-Untersetzung"}, "example": "vernier-drive.bw", "mat": "plain", "manualJog": {"A": {"minDeg": 0, "maxDeg": 9000, "stepDeg": 225, "speedDps": 240}}},
+    {"file": "line-turner.ldr", "title": {"en": "Line Turner — Scott–Russell linkage", "de": "Line Turner — Scott-Russell-Geradführung"}, "example": "line-turner.bw", "mat": "plain", "manualJog": {"A": {"minDeg": 0, "maxDeg": 183, "stepDeg": 15, "speedDps": 60}}},
+    {"file": "dune-strider.ldr", "title": {"en": "Dune Strider — paired Jansen legs", "de": "Dune Strider — gekoppelte Jansen-Beine"}, "example": "dune-strider.bw", "mat": "plain", "manualJog": {"A": {"minDeg": 0, "maxDeg": 720, "stepDeg": 30, "speedDps": 90}}},
+    {"file": "atlas-six.ldr", "title": {"en": "Atlas Six — six-axis Stewart platform", "de": "Atlas Six — Stewart-Plattform mit sechs Achsen"}, "example": "atlas-six.bw", "mat": "plain", "manualJog": {"A": {"minDeg": -90, "maxDeg": 90, "stepDeg": 15, "speedDps": 30}, "B": {"minDeg": -90, "maxDeg": 90, "stepDeg": 15, "speedDps": 30}, "C": {"minDeg": -90, "maxDeg": 90, "stepDeg": 15, "speedDps": 30}, "D": {"minDeg": -90, "maxDeg": 90, "stepDeg": 15, "speedDps": 30}, "E": {"minDeg": -90, "maxDeg": 90, "stepDeg": 15, "speedDps": 30}, "F": {"minDeg": -90, "maxDeg": 90, "stepDeg": 15, "speedDps": 30}}},
+    {"file": "oblique.ldr", "title": {"en": "Oblique — adjustable-angle trammel", "de": "Oblique — Ellipsenzirkel mit verstellbarem Winkel"}, "example": "oblique.bw", "mat": "plain", "manualJog": {"A": {"minDeg": 0, "maxDeg": 360, "stepDeg": 15, "speedDps": 24}, "B": {"minDeg": -90, "maxDeg": 0, "stepDeg": 9, "speedDps": 24}}},
+    {"file": "cable-compass.ldr", "title": {"en": "Cable Compass — two-winch positioner", "de": "Cable Compass — Zweiwinden-Positionierer"}, "example": "cable-compass.bw", "mat": "plain", "manualJog": {"A": {"minDeg": -4600, "maxDeg": 6400, "stepDeg": 90, "speedDps": 180}, "B": {"minDeg": -4600, "maxDeg": 6400, "stepDeg": 90, "speedDps": 180}}},
+    {"file": "cable-compass-control.ldr", "title": {"en": "Cable Compass Control — disconnected left winch", "de": "Cable-Compass-Kontrolle — getrennte linke Winde"}, "example": "cable-compass.bw", "mat": "plain", "manualJog": {"A": {"minDeg": -4600, "maxDeg": 6400, "stepDeg": 90, "speedDps": 180}, "B": {"minDeg": -4600, "maxDeg": 6400, "stepDeg": 90, "speedDps": 180}}},
+    {file: 'rise-ratio.ldr', title: {en: 'Rise Ratio — rack-driven scissor lift', de: 'Rise Ratio — Scherenhubtisch mit Zahnstange'}, example: 'rise-ratio.bw', mat: 'plain', manualJog: {A: {minDeg: -153, maxDeg: 0, stepDeg: 15, speedDps: 40}}},
+    {file: 'rise-ratio-control.ldr', title: {en: 'Rise Ratio Control — disconnected rack drive', de: 'Rise-Ratio-Kontrolle — getrennter Zahnstangenantrieb'}, example: 'rise-ratio.bw', mat: 'plain', manualJog: {A: {minDeg: -153, maxDeg: 0, stepDeg: 15, speedDps: 40}}},
+    {file: 'cascade.ldr', title: {en: 'Cascade — a free double pendulum', de: 'Cascade — ein freies Doppelpendel'}, example: 'cascade.bw', mat: 'plain', manualJog: {A: {minDeg: 0, maxDeg: 90, stepDeg: 15, speedDps: 180}}},
+    {file: 'cascade-control.ldr', title: {en: 'Cascade Control — a real elbow brace', de: 'Cascade-Kontrolle — ein mechanisch versteiftes Gelenk'}, example: 'cascade.bw', mat: 'plain', manualJog: {A: {minDeg: 0, maxDeg: 90, stepDeg: 15, speedDps: 180}}},
+    {file: 'wavemaker.ldr', title: {en: 'WaveMaker — Cardan ripple and differential', de: 'WaveMaker — Kardanschwankung und Differenzial'}, example: 'wavemaker.bw', mat: 'plain', manualJog: {A: {minDeg: 0, maxDeg: 1440, stepDeg: 90, speedDps: 30}}},
+    {file: 'wavemaker-control.ldr', title: {en: 'WaveMaker Control — correctly phased Cardan joints', de: 'WaveMaker-Kontrolle — richtig ausgerichtete Kardangelenke'}, example: 'wavemaker.bw', mat: 'plain', manualJog: {A: {minDeg: 0, maxDeg: 1440, stepDeg: 90, speedDps: 30}}},
     {file: 'sine-shuttle.ldr', title: {en: 'SineShuttle — captured-block Scotch yoke', de: 'SineShuttle — Kurbelschleife mit gefangenem Gleitstein'}, example: 'sine-shuttle.bw', mat: 'plain',
         manualJog: {A: {minDeg: 0, maxDeg: 1080, stepDeg: 15, speedDps: 30}}},
     {file: 'quartermaster.ldr', title: {en: 'Quartermaster — latched contact indexer', de: 'Quartermaster — Kontakt-Schrittgetriebe mit Sperre'}, example: 'quartermaster.bw', mat: 'plain',
@@ -409,6 +423,18 @@ const makeHubs = ({defs, registry, hubState, createHub}) => {
  */
 export const MAX_BATCH_STEPS = 20;
 
+/** The index of the first body whose pose (7 numbers each, as posesOf and snapshot() give) is not finite, or -1. */
+const nonFiniteBody = bodies => {
+    for (let i = 0; i < bodies.length; i++) if (!Number.isFinite(bodies[i])) return Math.floor(i / 7);
+    return -1;
+};
+
+/**
+ * Why a run stops when the solver diverges: a NaN or infinite pose never heals, and stepping
+ * it on only makes the worker slow and every reader of the poses (the view, the API) fail.
+ */
+const divergence = (bodyId, ms) => new Error(`the solver diverged: body ${bodyId} has no finite pose at ${(ms / 1000).toFixed(2)} s`);
+
 export class SimSession {
     /**
      * @param {object} options
@@ -525,8 +551,17 @@ export class SimSession {
             this.runner.tick(ms);
             return;
         }
+        if (this.failed) return;
         if (this.bridge) this.bridge.tick(ms);
         else this.core.step(ms / 1000);
+        const snap = this.core.snapshot();
+        const bad = nonFiniteBody(snap.bodies);
+        if (bad >= 0) {
+            // The poses stay those of the last finite step (snapshot()); time stops there.
+            this._fail(divergence(snap.bodyIds[bad], this.time + ms));
+            return;
+        }
+        this._good = snap;
         this.time += ms;
         this._advanced();
     }
@@ -610,8 +645,15 @@ export class SimSession {
                 this._post(batch, true);
                 return;
             }
-            stats.diverged += this.bridge.replay(reply.frames);
         }
+        // A diverged batch reaches neither the hubs nor the mirror: they keep the last finite step.
+        const bad = nonFiniteBody(reply.bodies);
+        if (bad >= 0) {
+            stats.mainMs += now() - start;
+            this._fail(divergence(this.core.bodyIds[bad], this.time + batch.ms));
+            return;
+        }
+        if (this.bridge) stats.diverged += this.bridge.replay(reply.frames);
         this.core.update(reply);
         stats.batches++;
         stats.steps += batch.steps || 0;
@@ -644,13 +686,14 @@ export class SimSession {
     _fail (error) {
         this.failed = error;
         this._inFlight = null;
-        const waiting = this._idle;
+        const waiting = this._idle || [];
         this._idle = [];
         for (const w of waiting) w.reject(error);
         if (typeof console !== 'undefined') console.error('Sim Lab physics worker:', error);
     }
 
-    snapshot () { return this.core.snapshot(); }
+    /** The poses now; after a divergence on this thread, those of the last finite step. */
+    snapshot () { return this.failed && this._good ? this._good : this.core.snapshot(); }
 
     /** Lockstep scenes: simulated ms per wall ms lately (null before it is measured, or without lockstep). */
     get realTimeFactor () {

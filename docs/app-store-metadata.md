@@ -203,6 +203,47 @@ Bitte Abstürze, falsche Simulationen oder Messwerte, unzugängliche Bedieneleme
 Übersetzungsfehler, verlorenen Fortschritt, Layoutprobleme sowie Hub- und
 macOS-Version melden.
 
+## What to Test — 0.1.28 en-US
+
+Explore the expanded Robot Lab with programs, English/German lessons and build
+instructions loaded from Examples.
+
+- Try Rod Ratio, Vernier Drive, Line Turner, Dune Strider, Atlas Six and Oblique.
+  Search by classical names such as Scott–Russell, Jansen, Stewart platform and
+  trammel. Compare the predictions in each lesson with the passive output.
+- Atlas Six uses six motors for its platform experiment. Its smaller program
+  loads faster, runs the complete target sequence and holds while the platform
+  settles before reporting completion. Use Reset before another run.
+- Dune Strider demonstrates foot paths on a stand. Compare WaveMaker, Cascade,
+  Rise Ratio and Cable Compass with their control variants.
+- Check that selecting an example loads Code and Blocks and sets its title.
+  Try Run, Pause, Reset, speed selection, manual motor control and Stop all.
+  Keep manual overrides off while running the example program.
+- Save and reopen a Robot Lab project. Check its geometry, program, motor ports,
+  connected instructions and parts list. Also try importing its LDR/MPD files.
+
+## What to Test — 0.1.28 de-DE
+
+Erkunde das erweiterte Robot Lab mit Programmen, deutschen und englischen
+Lektionen und Bauanleitungen aus der Beispielauswahl.
+
+- Probiere Rod Ratio, Vernier Drive, Line Turner, Dune Strider, Atlas Six und
+  Oblique. Suche auch nach klassischen Namen wie Scott–Russell, Jansen,
+  Stewart-Plattform und Ellipsenzirkel. Vergleiche die Vorhersagen der Lektionen
+  mit der tatsächlich bewegten Ausgabe.
+- Atlas Six verwendet sechs Motoren für seinen Plattformversuch. Sein kleineres
+  Programm lädt schneller, durchläuft alle Zielstellungen und hält die Motoren,
+  während die Plattform vor der Abschlussmeldung zur Ruhe kommt. Setze das
+  Modell vor einem weiteren Durchlauf zurück.
+- Dune Strider zeigt Fußbahnen auf einem Ständer. Vergleiche WaveMaker, Cascade,
+  Rise Ratio und Cable Compass mit ihren Kontrollvarianten.
+- Prüfe, ob die Beispielauswahl Code, Blöcke und Projekttitel zusammen lädt.
+  Probiere Start, Pause, Zurücksetzen, Tempo, manuelle Motorsteuerung und den
+  gemeinsamen Stopp. Lasse manuelle Übersteuerungen beim Beispielprogramm aus.
+- Speichere ein Robot-Lab-Projekt und öffne es erneut. Prüfe Geometrie, Programm,
+  Motoranschlüsse, zusammenhängende Bauanleitung und Teileliste. Probiere auch
+  den Import seiner LDR/MPD-Dateien.
+
 ## What to Test — 0.1.27 en-US
 
 Robot Lab can now measure: add live measurements to a model, plot them over

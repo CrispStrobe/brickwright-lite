@@ -156,3 +156,5 @@ The separately reviewed workflow files arrive only with their qualified source.
 - i80386-hdd-gui-actual.yml :: Admit finite v6 body, event and exact source before package acquisition :: Armed but unselected V6 source admission step; no official execution. 2026-10-25 Codex x86.
 - i80386-hdd-gui-actual.yml :: Trusted finite v6 package and Chromium setup :: Armed but unselected V6 trusted setup step; no package or browser observation. 2026-10-25 Codex x86.
 - i80386-hdd-gui-actual.yml :: Record finite v6 runtime and installed regular bytes without guest :: Armed but unselected V6 metadata collector step; no installed graph, browser selection or guest result. 2026-10-25 Codex x86.
+
+- testflight-release-audit.yml :: * :: Manual read-only audit of an operator-admitted immutable release tag and exact source; observes both iOS and macOS notes, groups and beta states. No build, upload or writer. Zero runs at declaration (2026-10-24); pure controls and a queued audit do not establish tester availability.

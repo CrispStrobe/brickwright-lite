@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "id": "wavemaker-control",
+  "language": "en",
+  "what": "Cardan velocity ripple and differential subtraction. This 300-piece correctly phased Cardan control uses two equal bends, a symmetric differential and a pointer. The second joint cancels the first joint's periodic speed variation at the outer shaft. The mechanism displays angular motion; it does not transmit an elastic wave. Correct phasing cancels the outer-shaft ripple; compare the same one-motor program with WaveMaker. 298 placements plus two inferred crosses: 300 physical pieces.",
+  "try": [
+    "Choose WaveMaker Control; its Blocks program loads automatically. Reset to the saved starting pose and press Run. The one-motor program runs four cycles at 30°/s, four at 60°/s, reverses through eight cycles, and then holds.",
+    "Reset and load WaveMaker to compare. Only the two downstream fork orientations change. The main pointer rocks while this control stays close to its initial angle.",
+    "Compare the reference shaft and output shaft. Correct phasing preserves the one-to-one outer-shaft relationship even though the intermediate shaft of the first joint has nonuniform speed."
+  ],
+  "why": "For equal Cardan bends, correctly aligned middle forks make the second joint apply the inverse of the first joint's angle mapping. The outer shafts therefore have a constant one-to-one ideal ratio. The symmetric differential and 16:8 pointer takeoff show the remaining small numerical residual in the simulation.",
+  "matters": "A correctly phased double Cardan can cancel the angular-speed variation produced by one bent universal joint. This is why alignment matters even when both arrangements have the same average ratio.",
+  "question": "Why does the intermediate shaft speed up and slow down while the control pointer barely moves?",
+  "answer": "One bent Cardan joint has a varying instantaneous ratio. The equal, correctly phased second joint reverses that variation at the outer output. The output stays at a one-to-one ideal angle ratio even though the intermediate shaft is not uniform.",
+  "further": [
+    "The 48–64–80 shaft-center triangle gives β≈36.87°. For the correctly phased pair, the ideal outer-shaft relation is output angle = input angle; the measured pointer span is about 0.0164° over the complete run.",
+    "The model has 298 explicit placements plus two required inferred universal-joint crosses, for 300 pieces. It has one motor on port A and passive output shafts.",
+    "The automatic Blocks program uses 30 and 60 degrees per second, includes reversal and guarded holds, and should be run from the saved starting pose after Reset.",
+    "This is simulation evidence only. It does not establish physical buildability, torque capacity, friction, backlash, real-world swept clearance, or firmware behavior."
+  ],
+  "formula": "For one Cardan joint, tan φ=tan θ/cos β. For equal bends with aligned middle forks the second joint is the inverse mapping, so outer output angle θout=θin and the ideal output speed ratio is 1.",
+  "related": [
+    "wavemaker.ldr",
+    "phase-bridge.ldr",
+    "ripple-relay.ldr"
+  ]
+}

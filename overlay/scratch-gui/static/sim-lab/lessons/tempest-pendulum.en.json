@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "id": "tempest-pendulum",
+  "language": "en",
+  "what": "Serial double pendulum. Motor A turns a short carrier lever; at its end a free shoulder hinge carries a 64mm upper arm with a wheel as bob, and a second free elbow hinge carries an equal 64mm lower arm with its own wheel. Only the carrier is driven. The program swings the carrier 60° quickly, holds it for 12 seconds, returns it home and holds for 8 seconds, then repeats the pulse in the other direction. During every hold both arms move only under gravity, their hinge constraints and the motion left over from the pulse. Experimental model: its mechanical law has not yet been independently measured against a physical control.",
+  "try": [
+    "Open Examples, choose Tempest with experimental examples included, and load model plus program. Press Reset, then Run. Reset again before every repeat; the carrier must start at its home angle.",
+    "Watch the two arms during the first hold. Do they swing in the same direction at the same moment, or against each other? Compare how far the lower bob moves with how far the upper arm turns.",
+    "Count swings for ten seconds during a hold and estimate the period. Then compare the first hold (after the pulse outward) with the hold after the return: does a different carrier move excite a different pattern?",
+    "Watch the amplitude over the 12-second hold. Hinge friction and contact damping make the swing die away; note whether both arms fade together."
+  ],
+  "why": "Two equal point masses m on equal massless rods L have two normal modes. In the slow mode both arms swing in phase and the lower arm's angle from vertical is √2 times the upper arm's; in the fast mode they swing in opposition with ratio −√2. For small angles ω² = (2 ∓ √2)·g/L. With L = 64mm the slow mode has a period of about 0.66s and the fast mode about 0.27s. A short, smooth carrier pulse mainly excites the slow mode, so the arms mostly swing together. Large swings or a sharp mixed start excite both modes; then energy visibly passes between the arms and the motion becomes sensitive to the starting state, the famous chaotic double pendulum.",
+  "matters": "Coupled oscillators with normal modes appear in buildings during earthquakes, in cranes carrying a swinging hook and load, in vehicle suspensions and in molecules. Separating a motion into modes explains why some excitations die out calmly while others exchange energy.",
+  "question": "After the carrier stops, the upper arm swings about 6° either side of vertical. If the slow normal mode dominates, how far does the lower arm swing, and do the two arms move together or against each other?",
+  "answer": "In the slow mode the lower arm swings in phase with the upper arm, about √2 ≈ 1.4 times as far from vertical, so roughly 8–9°. The real arms and wheel bobs are not point masses, so the ratio is only approximately √2; the opposite-phase fast mode would show the lower arm swinging the other way.",
+  "further": [
+    "Measure both arm angles against the vertical from their actual poses, not from the motor encoder, and estimate period and amplitude ratio during a hold. Compare them with the point-mass prediction and explain any difference with the real mass distribution.",
+    "Design a physical control: lock the elbow with a real part so the two arms form one rigid pendulum. Which period would you then predict, and which observation must stay comparable?",
+    "The carrier lever only moves within its programmed ±60° pulses. Large swing angles, where chaos appears, are outside this experiment; the small-angle formulas no longer hold there."
+  ],
+  "formula": "Small angles, equal point masses m and lengths L: ω² = (2 ∓ √2)·g/L; mode shapes θ₂/θ₁ = ±√2. L = 0.064m, g = 9.81m/s² ⇒ T_slow ≈ 0.66s, T_fast ≈ 0.27s.",
+  "related": [
+    "pendulum-array.ldr"
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "id": "schmidt-shift",
+  "language": "en",
+  "what": "A Schmidt coupling connects parallel shafts whose axes are 48 mm apart. One motor turns the input carrier. Six connecting rods link it to a floating middle carrier and a passive output carrier. Four rectangular frames form the three carriers: the middle carrier uses two joined yellow frames. The mechanism uses only rotating joints, with no gears or sliding guides. Experimental model: the supplier reports a native simulation pass; a physical causal control and a real brick build have not been established.",
+  "try": [
+    "Load the model and matching program, reset to the saved pose, and run the finite forward-and-return experiment. Watch all three carriers, including the output that has no motor.",
+    "Choose a matching corner on each carrier. Compare their directions at quarter turns and during reversal. Do the carriers keep the same orientation between those positions?",
+    "Watch the middle carrier’s center separately from its corners. In the ideal fixed-offset motion, the center stays in one place while the corners rotate around it."
+  ],
+  "why": "Each neighboring pair of carriers has three matching pivot locations connected by equal 40 mm rods. The rods form parallel-link constraints that preserve the carriers’ relative orientation. The second set carries the same orientation to the output. The two 40 mm center distances span a 48 mm shaft offset, placing the middle center 24 mm across and 32 mm above the input axis.",
+  "matters": "Parallel shafts can transmit equal angular motion through pivoted links. Oldham couplings achieve offset transmission with perpendicular sliding guides. Cardan joints connect shafts at an angle and can introduce speed ripple. Comparing these mechanisms shows how different joint arrangements solve different alignment problems.",
+  "question": "If the input turns 90° from the saved pose and then returns, what should the output and middle carrier do? Should the middle center make an orbit?",
+  "answer": "Ideally, both other carriers turn through the same signed 90° and return with the input. Their centers stay at the fixed triangle’s vertices; the middle carrier’s corners rotate, but its center does not orbit. Equal angles at the endpoints alone are insufficient: compare the motion between them too.",
+  "further": [
+    "Compare this model with Offset Orbit. Both connect parallel offset shafts, but the Oldham cross slides and its center follows a different path.",
+    "This assembly has fixed shaft mounts. It does not demonstrate changing the offset while running. Measured motion also does not establish torque capacity, service life or balance.",
+    "Compare it with the experimental Offset Relay, which changes the shaft offset while it runs; Schmidt Shift keeps one fixed offset."
+  ],
+  "formula": "Ideal, with all carrier angles viewed in the same axial direction: Δθinput = Δθmiddle = Δθoutput. Center triangle: 24² + 32² = 40² mm²; input–output offset = 48 mm.",
+  "related": [
+    "offset-orbit.ldr",
+    "crossglide.ldr",
+    "phase-bridge.ldr"
+  ]
+}

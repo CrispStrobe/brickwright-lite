@@ -24,6 +24,7 @@ import {fileURLToPath} from 'node:url';
 import {parseModel, serializeModel} from '../overlay/scratch-gui/src/lib/bw-sim/model/ldraw-model.js';
 import {MODELS, MODELS_BASE, catalogFrom} from '../overlay/scratch-gui/src/lib/bw-sim/sim-session.js';
 import {buildGraph} from '../overlay/scratch-gui/src/lib/bw-sim/mech/graph.js';
+import {compile} from '../overlay/scratch-gui/src/lib/bw-sim/mech/compile.js';
 import {WRAPPED_GEARS, linksJoin, pivotsOnGear} from '../overlay/scratch-gui/src/lib/bw-sim/kinds/chain.js';
 import {placedSpur, placedTooth} from '../overlay/scratch-gui/src/lib/bw-sim/kinds/tooth-parts.js';
 import {createEditor} from '../overlay/scratch-gui/src/lib/bw-sim/editor/editor-state.js';
@@ -48,7 +49,7 @@ const MODELS_UNDER_TEST = [
 ];
 
 /** Which parts touch which: the connector graph's edges, a motor's two nodes as one part. */
-const touching = model => {
+const touching = (model, {includeRopes=false}={}) => {
     const {nodes, edges} = buildGraph(model, CATALOG, []);
     const out = new Map(model.parts.map(p => [p.id, new Set()]));
     for (const e of edges) {
@@ -65,6 +66,13 @@ const touching = model => {
         for (const b of links.slice(i + 1)) if (linksJoin(a.l, b.l)) join(a.id, b.id);
         for (const g of gears) if (pivotsOnGear(a.l, g.g) > 0) join(a.id, g.id);
     });
+    // Independently require actual detected rope couplings. A cord holds its
+    // payload for assembly order without making that connection a rigid joint.
+    if (includeRopes && model.ropes?.length) {
+        const ropes=compile(model,CATALOG,{version:2}).couplings.filter(c=>c.kind==='rope');
+        assert.equal(ropes.length,model.ropes.length,'every claimed cord is an actual native coupling');
+        for (const rope of ropes) for (let i=1;i<rope.parts.length;i++) join(rope.parts[i-1],rope.parts[i]);
+    }
     return out;
 };
 const category = (model, id) => CATALOG.get(model.parts.find(p => p.id === id).part).category;
@@ -75,7 +83,7 @@ const category = (model, id) => CATALOG.get(model.parts.find(p => p.id === id).p
  * assembly has nothing built yet: its new parts must hold together.
  */
 const assertBuildable = (label, model, plan) => {
-    const adj = touching(model);
+    const adj = touching(model,{includeRopes:true});
     plan.steps.forEach((step, n) => {
         const {built, fresh} = stepView(plan, n);
         assert.ok(fresh.length > 0, `${label} step ${n + 1}: places something`);

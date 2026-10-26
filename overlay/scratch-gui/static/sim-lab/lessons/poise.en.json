@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "id": "poise",
+  "language": "en",
+  "what": "Roberval balance. Two equal horizontal blue bars pivot at their centres. Upright end links keep two weighing pans level. A motor on each pan moves an eccentric weight horizontally; neither motor drives the balance beam. An orange ballast frame below the upper pivot gives the otherwise balanced linkage a definite resting position.",
+  "try": [
+    "Load Poise and its matching program, reset, and run. During each pause compare the positions of both weights with the angle of the passive blue balance bar.",
+    "Watch the first pause: the left weight has moved from its outer position to its inner position while the right weight stays outside. Predict whether the balance should tilt after the movement settles.",
+    "After the main run, load the supplied added-mass control model and run the same program. It adds one small beam and two mounting pins to the left pan. Compare the weighing result, and check that both weight drives still complete their movements."
+  ],
+  "why": "The two end uprights form a parallelogram with equal horizontal bars. When one pan rises, the other falls by the same amount, while both remain level. Moving a weight horizontally on a level pan does not change the height through which that weight moves when the balance rocks. Its horizontal offset changes internal forces in the linkage, but does not change its contribution to the weighing result. Added mass does change that contribution.",
+  "matters": "A scale should measure how much load a pan carries without making the user place every object on one exact point. Roberval geometry achieves this through its linkage. The same orientation-preserving idea also appears in level trays, but a weighing instrument must remain free to respond to a mass difference. In a headless run of the Brickwright simulator, each weight assembly’s centre of mass moved about 20 mm along the beam while the passive balance stayed within 0.046° of level (held means within 0.033° of each other); with the 1.5 g added-mass control it settled at −2.91° after 120 s, against a predicted −2.94°. These are simulation observations; no physical LEGO build has been tested.",
+  "question": "Both pans carry the same total mass. One weight moves close to its pan's upright and the other stays farther out. After the motion settles, should the balance lean toward the farther-out weight? What should happen if a small extra mass is attached to the left pan?",
+  "answer": "In the ideal Roberval geometry, changing only horizontal position does not change the settled balance. A small extra mass does: the left pan becomes heavier and the passive beam moves until restoring gravity torque balances the mass difference. Temporary motion during acceleration is different from the settled weighing result.",
+  "further": [
+    "The supplied program moves the two arms to (180°,0°), (180°,90°), (90°,90°), (90°,180°), then (0°,0°). Compare the actual held weight positions across all five arrangements.",
+    "The added-mass comparison checks that the mechanism is responsive. A balance that stays still because it is clamped or jammed would not be a successful demonstration.",
+    "Hardware friction, flexible motor leads, tolerances and load capacity are not part of this simulation and need separate verification."
+  ],
+  "formula": "Half-span a = 56 mm; θ positive when the left pan rises: Δh_left = a·sin θ, Δh_right = −a·sin θ. A weight’s horizontal position on its level pan does not enter these height changes. Added mass Δm on the left pan: settled θ ≈ −Δm·g·a/κ, where κ is the restoring stiffness of the ballast frame (about 0.016 N·m/rad from the simulator’s part masses); Δm = 1.5 g gives θ ≈ −2.9°.",
+  "related": [
+    "parallel-lift.ldr",
+    "balance-engine.ldr",
+    "momentum-twins.ldr"
+  ]
+}

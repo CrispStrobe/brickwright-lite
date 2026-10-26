@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "id": "orion-cardan",
+  "language": "en",
+  "what": "Two Cardan (universal) joints in series with an intermediate shaft: a Z-arranged drive shaft. Motor A turns the input shaft; a 9-long axle forms the intermediate shaft, and the parallel output shaft sits 48 mm to the side. Both joints bend by the same angle, β ≈ 36.9° (the middle shaft covers 48 mm sideways over 64 mm of length), and the two yokes on the middle shaft lie in one plane. Each shaft carries a marker. The program runs the input at 180°/s, 300°/s and 180°/s forward, then −180°/s in reverse, restarts at 180°/s, and finally returns the input to its starting angle. Experimental model: the law described here has so far been measured only in the simulator (one headless run), not on real LEGO parts.",
+  "try": [
+    "Reset, then Run. At rest compare the three shaft markers.",
+    "At 180°/s watch the middle marker against the input: it alternately runs ahead and falls behind, twice per revolution (about once per second at this speed), while the output marker stays in step with the input.",
+    "At 300°/s the pulsing is faster but has the same proportions: the speed ratio depends on shaft angle, not on speed.",
+    "In reverse and after the restart, check that the same lead and lag appear at the same input angles."
+  ],
+  "why": "A single bent Cardan joint does not pass on a constant speed. With bend angle β the driven yoke follows tan θ₂ = tan θ₁ / cos β (θ measured from a yoke reference position), so the speed ratio ω₂/ω₁ = cos β / (1 − sin²β cos²θ₁) swings between cos β and 1/cos β twice per revolution. For β ≈ 36.9° that is 0.80 to 1.25: at 180°/s input the middle shaft varies between about 144 and 225°/s and runs up to about 6.4° ahead of or behind the input. The second joint has the same bend, and its middle-shaft yoke lies in the same plane as the first; it applies exactly the inverse distortion, so ideally the output angle equals the input angle at every instant. In the simulator, the measured middle-shaft lead/lag was 12.76° peak to peak (ideal 12.76°) at every speed and in reverse, while the output stayed within 0.05° of the input.",
+  "matters": "Propeller shafts in rear-wheel-drive vehicles, tractor PTO shafts and steering columns use pairs of Cardan joints for this reason: a single bent joint would make the driven side surge twice per turn and shake the drive line. Cancellation needs both conditions, equal bend angles and correctly phased yokes. The simulator samples speeds at finite steps and does not model joint wear, friction or the vibration that a real ripple would cause.",
+  "question": "Suppose the middle shaft were reassembled with its far yoke turned by 90°, keeping both bends at 36.9°. Would the output still run smoothly?",
+  "answer": "No. Misphased, the second joint adds its fluctuation to that of the first instead of cancelling it. The output speed would swing between about cos²β = 0.64 and 1/cos²β ≈ 1.56 times the input speed, twice per revolution – a larger ripple than the middle shaft shows now. Equal angles alone are not enough; the yoke phase matters.",
+  "further": [
+    "Predict the middle-shaft speed range at 300°/s (about 240 to 375°/s) and compare it with what the marker shows.",
+    "Compare the established models Phase Bridge and Phase Bridge (misphased), which show a correctly phased and a 90°-misphased pair.",
+    "A physical build needs two universal-joint cross pieces besides the four fork ends shown; the simulator infers them. A loose-part warning for the middle shaft comes from a connection check that ignores universal joints."
+  ],
+  "formula": "Single joint: tan θ₂ = tan θ₁ / cos β; ω₂/ω₁ = cos β / (1 − sin²β cos²θ₁), range cos β … 1/cos β. Here tan β = 48/64 → β ≈ 36.9°, cos β = 0.8: middle shaft 0.80 … 1.25 × input, maximum phase offset ≈ 6.4°. Equal bends with in-phase middle yokes: θ_out = θ_in. Middle yokes 90° apart: cos²β … 1/cos²β = 0.64 … 1.56.",
+  "related": [
+    "phase-bridge.ldr",
+    "phase-bridge-misphased.ldr",
+    "wavemaker.ldr"
+  ]
+}

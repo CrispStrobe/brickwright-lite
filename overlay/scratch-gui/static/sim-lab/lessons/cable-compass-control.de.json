@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "id": "cable-compass-control",
+  "language": "de",
+  "what": "Seilroboter — inverse Kinematik. Die linke Schnecke ist entfernt; alle Lager und Halteringe bleiben erhalten. Ihr Motor dreht weiter, doch der linken Trommel fehlt die haltende Übersetzung. Beobachte die Last vor und während desselben Programms. 174 feste Teile plus vier Schnüre. Die linke Schnecke ist mechanisch entfernt; beide Motoren fahren dieselbe Folge. Beobachte den Verlust von Abstützung und Positionierung trotz erreichter Motorwinkel. 174 feste Teile plus vier Schnüre.",
+  "try": [
+    "Wähle Cable Compass unter Beispiele; das Programm wird automatisch als Blöcke geladen. Drücke Start. Die Last fährt zur Ausgangslage, 16 mm nach links, zurück, 16 mm nach oben, 16 mm nach rechts und zurück; jede Stufe hält drei Sekunden.",
+    "Vergleiche A und B. Gleiches Aufwickeln hebt die Last auf der Mittellinie. Eine seitliche Bewegung braucht unterschiedliche Längenänderungen. Beobachte die Last selbst und vergleiche ihre Lage mit den Motorwinkeln.",
+    "Wähle die Cable-Compass-Kontrolle und starte dasselbe Programm. Die linke Schnecke fehlt; Wellenlager und Halteringe bleiben erhalten. Beide Motoren erreichen ihre Ziele, während die nicht mehr gehaltene linke Trommel die Lastbahn verfehlt.",
+    "Setze vor jeder Wiederholung zurück, besonders nach manueller Bewegung. Das Programm verlangt die gespeicherte Drehgeberlage. completed = 1 und failed = 0 bestätigen den Programmablauf; die Lastposition muss unabhängig geprüft werden."
+  ],
+  "why": "Dies ist ein Seilroboter mit paralleler Kinematik. Zwei unabhängige Längen bestimmen durch Kreisschnitt eine Position. Die vorderen und hinteren Seile liegen 24 mm vor beziehungsweise hinter der Mittelebene; dieser Tiefenversatz gehört in beide Abstandsgleichungen. Die Trommel mit 2,8 mm Radius wickelt je Motorwinkel theta im Bogenmaß 2,8 theta / 24 mm Seil auf.",
+  "matters": "Seile ziehen und können schlaff werden; sie können die Last nicht auf die gewünschte Bahn zurückdrücken. In der ruhenden Mittellage teilen beide Seiten die senkrechte Gewichtskraft. Wegen ihrer Neigung sind die Seilkräfte größer als ihre senkrechten Anteile. Simulierte Seillasten sind Beobachtungen dieser Seilnäherung und keine Traglastangaben für echte Schnüre oder Motoren.",
+  "question": "Müssen bei einer Bewegung um 16 mm nach links auf gleicher Höhe links und rechts gleich große Seillängen auf- beziehungsweise abgewickelt werden?",
+  "answer": "Nein. Aus der Ausgangshöhe von 100 mm verkürzt sich das linke Paar ideal um etwa 7,638 mm, während das rechte Paar um etwa 9,164 mm länger wird. Gleiches Auf- und Abwickeln ergäbe eine andere kartesische Bahn. Erreichte Motorwinkel belegen die Eingangslängen, nicht die tatsächliche Lastposition.",
+  "further": [
+    "Berechne beide Längen für x = 0 und h = 84 mm und vergleiche mit der gehobenen Stufe.",
+    "Vergleiche den getrennten Schneckenantrieb mit Sky Courier: Warum verändert die fehlende Halteübersetzung schon die stromlose Abstützung?"
+  ],
+  "formula": "L_A² = (x + 64)² + h² + 24²; L_B² = (x − 64)² + h² + 24²; Längen in mm, h positiv nach unten. ΔL = −2,8 theta/24 mm, theta als Motorwinkel im Bogenmaß. Ausgangslage: x = 0, h = 100 mm.",
+  "related": [
+    "cable-compass.ldr",
+    "sky-courier.ldr"
+  ]
+}

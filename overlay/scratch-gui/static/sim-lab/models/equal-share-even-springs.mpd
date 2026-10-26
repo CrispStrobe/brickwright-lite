@@ -1,0 +1,313 @@
+0 FILE equal-share-even-springs.ldr
+0 Equal Share - whippletree force equalizer - even springs control
+0 Name: equal-share-even-springs.ldr
+0 Author: CrispStrobe
+0 !LICENSE BSD-3-Clause : see ../licenses/equal-share-even-springs.txt
+0 !LDRAW_ORG Unofficial_Model
+0 // Each 2909/2910 pair represents one intact stock shock absorber, including its factory coil.
+0 // Native spring forces follow the selected simulator law; no physical shock calibration is claimed.
+0 motor and centre crank
+0 !BW ID motor_A
+0 !BW PORT A
+1 15 -40 80 0 1 0 0 0 1 0 0 0 1 54696p01.dat
+0 !BW ID crank
+1 4 -40 20 0 0 0 1 0 1 0 -1 0 0 32316.dat
+0 !BW ID crank_motor_pin_left
+1 0 -60 30 0 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID crank_motor_pin_right
+1 0 -20 30 0 0 -1 0 1 0 0 0 0 1 2780.dat
+0 STEP
+0 passive equalizer and keyed tip shafts
+0 !BW ID equalizer
+1 1 0 0 0 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID centre_free_pin
+1 7 0 10 0 0 -1 0 1 0 0 0 0 1 3673.dat
+0 !BW ID left_tip_key
+1 72 -120 20 0 0 0 1 0 1 0 -1 0 0 7229.dat
+0 !BW ID left_tip_key_pin_minus
+1 0 -140 10 0 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID left_tip_key_pin_plus
+1 0 -100 10 0 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID left_tip_axle
+1 0 -120 -30 0 0 -1 0 1 0 0 0 0 1 44294.dat
+0 !BW ID left_tip_key_retainer
+1 71 -120 35 0 1 0 0 0 0 -1 0 1 0 32123b.dat
+0 !BW ID left_tip_rod_retainer_0
+1 71 -120 -35 0 1 0 0 0 0 -1 0 1 0 32123b.dat
+0 !BW ID left_tip_rod_retainer_1
+1 71 -120 -65 0 1 0 0 0 0 -1 0 1 0 32123b.dat
+0 !BW ID right_tip_key
+1 72 120 20 0 0 0 1 0 1 0 -1 0 0 7229.dat
+0 !BW ID right_tip_key_pin_minus
+1 0 100 10 0 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID right_tip_key_pin_plus
+1 0 140 10 0 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID right_tip_axle
+1 0 120 -30 0 0 -1 0 1 0 0 0 0 1 44294.dat
+0 !BW ID right_tip_key_retainer
+1 71 120 35 0 1 0 0 0 0 -1 0 1 0 32123b.dat
+0 !BW ID right_tip_rod_retainer_0
+1 71 120 -35 0 1 0 0 0 0 -1 0 1 0 32123b.dat
+0 !BW ID right_tip_rod_retainer_1
+1 71 120 -65 0 1 0 0 0 0 -1 0 1 0 32123b.dat
+0 STEP
+0 stationary cylinder anchor bearings
+0 !BW ID left_anchor_axle
+1 0 -140 -50 -160 0 -1 0 1 0 0 0 0 1 3737.dat
+0 !BW ID left_anchor_bearing_upper
+1 72 -140 -120 -160 0 0 1 0 1 0 -1 0 0 32316.dat
+0 !BW ID left_anchor_bearing_lower
+1 72 -140 20 -160 0 0 1 0 1 0 -1 0 0 32316.dat
+0 !BW ID left_anchor_bearing_retainer_0
+1 71 -140 -135 -160 1 0 0 0 0 -1 0 1 0 32123b.dat
+0 !BW ID left_anchor_bearing_retainer_1
+1 71 -140 -105 -160 1 0 0 0 0 -1 0 1 0 32123b.dat
+0 !BW ID left_anchor_bearing_retainer_2
+1 71 -140 5 -160 1 0 0 0 0 -1 0 1 0 32123b.dat
+0 !BW ID left_anchor_bearing_retainer_3
+1 71 -140 35 -160 1 0 0 0 0 -1 0 1 0 32123b.dat
+0 !BW ID left_anchor_cylinder_retainer_0
+1 71 -140 -35 -160 1 0 0 0 0 -1 0 1 0 32123b.dat
+0 !BW ID left_anchor_cylinder_retainer_1
+1 71 -140 -65 -160 1 0 0 0 0 -1 0 1 0 32123b.dat
+0 !BW ID right_anchor_axle
+1 0 100 -50 -160 0 -1 0 1 0 0 0 0 1 3737.dat
+0 !BW ID right_anchor_bearing_upper
+1 72 100 -120 -160 0 0 1 0 1 0 -1 0 0 32316.dat
+0 !BW ID right_anchor_bearing_lower
+1 72 100 20 -160 0 0 1 0 1 0 -1 0 0 32316.dat
+0 !BW ID right_anchor_bearing_retainer_0
+1 71 100 -135 -160 1 0 0 0 0 -1 0 1 0 32123b.dat
+0 !BW ID right_anchor_bearing_retainer_1
+1 71 100 -105 -160 1 0 0 0 0 -1 0 1 0 32123b.dat
+0 !BW ID right_anchor_bearing_retainer_2
+1 71 100 5 -160 1 0 0 0 0 -1 0 1 0 32123b.dat
+0 !BW ID right_anchor_bearing_retainer_3
+1 71 100 35 -160 1 0 0 0 0 -1 0 1 0 32123b.dat
+0 !BW ID right_anchor_cylinder_retainer_0
+1 71 100 -35 -160 1 0 0 0 0 -1 0 1 0 32123b.dat
+0 !BW ID right_anchor_cylinder_retainer_1
+1 71 100 -65 -160 1 0 0 0 0 -1 0 1 0 32123b.dat
+0 STEP
+0 intact factory sprung shocks
+0 !BW ID left_cylinder
+1 14 -120 -50 -120 1 0 0 0 0 -1 0 1 0 2909.dat
+0 !BW ID left_rod
+1 71 -120 -50 0 1 0 0 0 0 -1 0 1 0 2910.dat
+0 !BW ID right_single_cylinder
+1 25 120 -50 -120 1 0 0 0 0 -1 0 1 0 2909.dat
+0 !BW ID right_single_rod
+1 71 120 -50 0 1 0 0 0 0 -1 0 1 0 2910.dat
+0 STEP
+0 stationary anchor towers
+0 !BW ID anchor_post_left_left
+1 72 -200 40 -160 0 1 0 0 0 1 1 0 0 32278.dat
+0 !BW ID anchor_elbow_left_left_-120
+1 72 -180 -100 -160 0 1 0 -1 0 0 0 0 1 15100.dat
+0 !BW ID anchor_post_pin_left_left_-120
+1 0 -190 -100 -160 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID anchor_elbow_left_left_20
+1 72 -180 40 -160 0 1 0 -1 0 0 0 0 1 15100.dat
+0 !BW ID anchor_post_pin_left_left_20
+1 0 -190 40 -160 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID foot_anchor_left_left_160
+1 72 -180 160 -160 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID foot_anchor_left_left_180
+1 72 -180 180 -160 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID foot_stack_pin_anchor_left_left
+1 1 -180 180 -160 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID anchor_post_left_right
+1 72 -80 40 -160 0 1 0 0 0 1 1 0 0 32278.dat
+0 !BW ID anchor_elbow_left_right_-120
+1 72 -100 -100 -160 0 1 0 -1 0 0 0 0 1 15100.dat
+0 !BW ID anchor_post_pin_left_right_-120
+1 0 -90 -100 -160 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID anchor_elbow_left_right_20
+1 72 -100 40 -160 0 1 0 -1 0 0 0 0 1 15100.dat
+0 !BW ID anchor_post_pin_left_right_20
+1 0 -90 40 -160 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID foot_anchor_left_right_160
+1 72 -100 160 -160 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID foot_anchor_left_right_180
+1 72 -100 180 -160 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID foot_stack_pin_anchor_left_right
+1 1 -100 180 -160 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID anchor_post_right_left
+1 72 40 40 -160 0 1 0 0 0 1 1 0 0 32278.dat
+0 !BW ID anchor_elbow_right_left_-120
+1 72 60 -100 -160 0 1 0 -1 0 0 0 0 1 15100.dat
+0 !BW ID anchor_post_pin_right_left_-120
+1 0 50 -100 -160 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID anchor_elbow_right_left_20
+1 72 60 40 -160 0 1 0 -1 0 0 0 0 1 15100.dat
+0 !BW ID anchor_post_pin_right_left_20
+1 0 50 40 -160 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID foot_anchor_right_left_160
+1 72 60 160 -160 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID foot_anchor_right_left_180
+1 72 60 180 -160 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID foot_stack_pin_anchor_right_left
+1 1 60 180 -160 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID anchor_post_right_right
+1 72 160 40 -160 0 1 0 0 0 1 1 0 0 32278.dat
+0 !BW ID anchor_elbow_right_right_-120
+1 72 140 -100 -160 0 1 0 -1 0 0 0 0 1 15100.dat
+0 !BW ID anchor_post_pin_right_right_-120
+1 0 150 -100 -160 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID anchor_elbow_right_right_20
+1 72 140 40 -160 0 1 0 -1 0 0 0 0 1 15100.dat
+0 !BW ID anchor_post_pin_right_right_20
+1 0 150 40 -160 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID foot_anchor_right_right_160
+1 72 140 160 -160 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID foot_anchor_right_right_180
+1 72 140 180 -160 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID foot_stack_pin_anchor_right_right
+1 1 140 180 -160 0 -1 0 1 0 0 0 0 1 6558.dat
+0 STEP
+0 motor stator tower
+0 !BW ID motor_post_-80_-20
+1 72 -80 120 -20 0 1 0 0 0 1 1 0 0 32524.dat
+0 !BW ID motor_mount_pin_-80_-20_60
+1 0 -70 60 -20 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID motor_mount_pin_-80_-20_100
+1 0 -70 100 -20 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID foot_motor_-80_-20_160
+1 72 -100 160 -20 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID foot_motor_-80_-20_180
+1 72 -100 180 -20 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID foot_stack_pin_motor_-80_-20
+1 1 -100 180 -20 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID motor_post_-80_20
+1 72 -80 120 20 0 1 0 0 0 1 1 0 0 32524.dat
+0 !BW ID motor_mount_pin_-80_20_60
+1 0 -70 60 20 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID motor_mount_pin_-80_20_100
+1 0 -70 100 20 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID foot_motor_-80_20_160
+1 72 -100 160 20 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID foot_motor_-80_20_180
+1 72 -100 180 20 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID foot_stack_pin_motor_-80_20
+1 1 -100 180 20 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID motor_post_0_-20
+1 72 0 120 -20 0 1 0 0 0 1 1 0 0 32524.dat
+0 !BW ID motor_mount_pin_0_-20_60
+1 0 -10 60 -20 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID motor_mount_pin_0_-20_100
+1 0 -10 100 -20 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID foot_motor_0_-20_160
+1 72 20 160 -20 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID foot_motor_0_-20_180
+1 72 20 180 -20 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID foot_stack_pin_motor_0_-20
+1 1 20 180 -20 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID motor_post_0_20
+1 72 0 120 20 0 1 0 0 0 1 1 0 0 32524.dat
+0 !BW ID motor_mount_pin_0_20_60
+1 0 -10 60 20 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID motor_mount_pin_0_20_100
+1 0 -10 100 20 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID foot_motor_0_20_160
+1 72 20 160 20 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID foot_motor_0_20_180
+1 72 20 180 20 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID foot_stack_pin_motor_0_20
+1 1 20 180 20 0 -1 0 1 0 0 0 0 1 6558.dat
+0 STEP
+0 base longitudinal rails
+0 !BW ID base_rail_-180
+1 72 -180 200 -20 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID base_rail_-100
+1 72 -100 200 -20 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID base_rail_20
+1 72 20 200 -20 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID base_rail_60
+1 72 60 200 -20 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID base_rail_140
+1 72 140 200 -20 1 0 0 0 1 0 0 0 1 32278.dat
+0 STEP
+0 base cross ties and level feet
+0 !BW ID base_cross_left_-140
+1 72 -80 220 -140 0 0 1 0 1 0 -1 0 0 32525.dat
+0 !BW ID base_cross_right_-140
+1 72 80 240 -140 0 0 1 0 1 0 -1 0 0 32525.dat
+0 !BW ID cross_overlap_pin_-140
+1 0 0 230 -140 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID cross_shared_pin_-140
+1 1 20 220 -140 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID base_level_pad_-180_-140
+1 72 -180 240 -140 1 0 0 0 1 0 0 0 1 32523.dat
+0 !BW ID base_pad_stack_pin_-180_-140
+1 1 -180 220 -140 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID base_level_pad_-100_-140
+1 72 -100 240 -140 1 0 0 0 1 0 0 0 1 32523.dat
+0 !BW ID base_pad_stack_pin_-100_-140
+1 1 -100 220 -140 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID base_spacer_60_-140
+1 72 60 220 -140 1 0 0 0 1 0 0 0 1 18654.dat
+0 !BW ID base_spacer_stack_pin_60_-140
+1 1 60 220 -140 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID base_spacer_140_-140
+1 72 140 220 -140 1 0 0 0 1 0 0 0 1 18654.dat
+0 !BW ID base_spacer_stack_pin_140_-140
+1 1 140 220 -140 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID base_cross_left_120
+1 72 -80 220 120 0 0 1 0 1 0 -1 0 0 32525.dat
+0 !BW ID base_cross_right_120
+1 72 80 240 120 0 0 1 0 1 0 -1 0 0 32525.dat
+0 !BW ID cross_overlap_pin_120
+1 0 0 230 120 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID cross_shared_pin_120
+1 1 20 220 120 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID base_level_pad_-180_120
+1 72 -180 240 120 1 0 0 0 1 0 0 0 1 32523.dat
+0 !BW ID base_pad_stack_pin_-180_120
+1 1 -180 220 120 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID base_level_pad_-100_120
+1 72 -100 240 120 1 0 0 0 1 0 0 0 1 32523.dat
+0 !BW ID base_pad_stack_pin_-100_120
+1 1 -100 220 120 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID base_spacer_60_120
+1 72 60 220 120 1 0 0 0 1 0 0 0 1 18654.dat
+0 !BW ID base_spacer_stack_pin_60_120
+1 1 60 220 120 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID base_spacer_140_120
+1 72 140 220 120 1 0 0 0 1 0 0 0 1 18654.dat
+0 !BW ID base_spacer_stack_pin_140_120
+1 1 140 220 120 0 -1 0 1 0 0 0 0 1 6558.dat
+0 STEP
+0 hub cradle
+0 !BW ID hub
+1 15 -20 190 260 1 0 0 0 1 0 0 0 1 45601.dat
+0 !BW ID hub_floor_rail_-80
+1 72 -80 200 260 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID hub_mount_pin_-80_160
+1 0 -80 190 160 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID hub_mount_pin_-80_200
+1 0 -80 190 200 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID hub_front_tie_left
+1 0 -80 210 120 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID hub_level_pad_-80
+1 72 -80 240 360 1 0 0 0 1 0 0 0 1 32523.dat
+0 !BW ID hub_rear_stack_pin_-80
+1 1 -80 220 360 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID hub_floor_rail_40
+1 72 40 200 260 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID hub_mount_pin_40_160
+1 0 40 190 160 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID hub_mount_pin_40_200
+1 0 40 190 200 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID hub_front_tie_right_spacer
+1 72 40 220 120 1 0 0 0 1 0 0 0 1 18654.dat
+0 !BW ID hub_front_tie_right
+1 1 40 220 120 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID hub_level_pad_40
+1 72 40 240 360 1 0 0 0 1 0 0 0 1 32523.dat
+0 !BW ID hub_rear_stack_pin_40
+1 1 40 220 360 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID hub_rear_cross
+1 72 -20 220 360 0 0 1 0 1 0 -1 0 0 32524.dat
+0 STEP
+
+0 NOFILE
