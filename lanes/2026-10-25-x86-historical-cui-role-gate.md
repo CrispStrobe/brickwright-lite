@@ -91,3 +91,28 @@ separately reviewed GUI control body explicitly; the producer and reader
 profiles and every historical role rule are held. Any later source edit still
 revokes its profile. Package composition and final source checks remain
 pending.
+
+## Separately reviewed current-body profile update — 2026-10-26
+
+The reviewed GUI source and gate are normally composed with current consumer
+main, preserving Robot changes and the canonical Board836/CUI1bc tuple. A
+separate local source commit arms only finite-V7 metadata production/readback
+and its workflow; actual-V7 remains retired and V8 is unchanged. No event
+has been selected.
+
+After independent review of the exact new producer, reader and GUI-control
+bodies, this separate commit replaces only their three fixed current-body
+length/digest entries. Historical roles, current identities, reference rules,
+all predicates and coherent alias/current-input/profile controls are held.
+There is no caller-supplied profile, automatic refresh or old-profile fallback.
+The preceding unreviewed bodies were correctly refused by the unchanged gate;
+that refusal remains evidence rather than an exception.
+
+The complete three-supplier history gate and all26 source controls pass locally.
+The reviewed source controls and current package assertions also pass; no
+prior failure is waived. This is still source-only qualification pending the
+final exact-head hosted checks and frontend Build. An independently reviewed
+request and one finite inventory event, followed by separately admitted V8
+acceptance, remain distinct gates. Keep the owned PR open and ready through
+those actual gates; this profile update authorizes no tag, label, variable,
+dispatch, original acquisition or guest result.

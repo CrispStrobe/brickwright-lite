@@ -86,9 +86,9 @@ const HISTORICAL_X86_CURRENT_BOARD = '836867513c3e7fac420ddaa32c17e1c7b6d3e513';
 // pin move needs an explicit profile review; never derive these from its input.
 // Matching a profile admits only the named historical token, not the file.
 const HISTORICAL_X86_SOURCE_PROFILES = Object.freeze({
-    'scripts/run-i80386-hdd-gui-actual.py': Object.freeze({bytes: 231105, sha256: '3c3c6278e74adeca8a89746bc5dcc3b073a972a1ab01dd7fb5d9136127510905'}),
-    'scripts/read-i80386-hdd-gui-originals.py': Object.freeze({bytes: 307207, sha256: 'acb0dd69cf741726f368033e68731ac04566c159d770af775c64f1b125f993d6'}),
-    'test/i80386-hdd-gui-actual.test.mjs': Object.freeze({bytes: 479204, sha256: '0998bae58d4c6d938bf3729894bf6553f0ef23360c12a4a73548492b54797c0e'}),
+    'scripts/run-i80386-hdd-gui-actual.py': Object.freeze({bytes: 231104, sha256: '0a9196223a1836711c3899788842cabd8ef5874f496cf0a6f0e45dad6d200ed4'}),
+    'scripts/read-i80386-hdd-gui-originals.py': Object.freeze({bytes: 307206, sha256: '62086210424210e7395e7b02fcf56bbc7d1358b4ea6dbf08bcb952f89f7d7761'}),
+    'test/i80386-hdd-gui-actual.test.mjs': Object.freeze({bytes: 482258, sha256: '687418bc0acdfec765aaf8f0809e355b57920ae44445826861e667db866adbb5'}),
 });
 
 import {explainGitFailure} from './helpers/git-absence.mjs';
