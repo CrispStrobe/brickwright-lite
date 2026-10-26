@@ -4905,6 +4905,102 @@
         "integral.ldr",
         "rack-shuttle.ldr"
       ]
+    },
+    "carry-ratio": {
+      "en": {
+        "what": "A motor-driven tray carries a free ball by contact alone. Motor A turns a 20 LDU (8 mm) crank; a thin con-rod pushes a slider carriage along a 16L guide axle, and the carriage carries a 4x8 plate as the deck, so the deck moves back and forth through 16 mm. A 19 mm Technic ball rests on the deck with no axle, guide or attachment. The program sweeps the crank at 120, 240, 480 and 720 °/s, then returns. In the simulator the ball's centre follows the deck with a ratio of 0.285 to 0.288 at every speed, against the predicted 2/7 = 0.2857, and the ball turns about 1.19 rad (68°) for every 11.4 mm it lags behind the deck.",
+        "try": [
+          "Load the model, press Reset, then Run. The crank starts at 90°, away from the dead centre where the con-rod lies along the crank.",
+          "Watch the ball, not the motor. During one slow sweep the deck moves 16 mm while the ball's centre moves only about 4.6 mm; the ball spins visibly, about 68 degrees peak to peak.",
+          "Pick one slow stage and compare the ball's spin with the distance it lags behind the deck: rolling without slipping means the tyre's arc equals that lag.",
+          "Compare the four speeds. The ball is carried by the same fraction at every one, because the ratio depends only on the ball's shape, not on speed or mass. Much faster sweeps would make it slip and throw it off the deck, which is why the program stops at 720 °/s."
+        ],
+        "why": "While a free body rolls on a moving support without slipping, two relations hold. The contact point must move with the support, so the rolled arc equals the relative displacement: r*dphi = -(dx_t - dx_p). And because the only horizontal force on the body is friction at the contact, the linear and angular momentum balances give a_p = a_t*I/(I + M r^2). For a uniform solid sphere I = (2/5)M r^2, so the centre inherits exactly 2/7 of the deck's acceleration and displacement, whatever the ball's mass or radius. That is why the measured ratio sits on 0.286 for four different speeds. The friction needed is f = M a_t*2/7; it exceeds the available mu*M*g only when a_t passes 3.5*mu*g, which is why faster sweeps first lag and then slip.",
+        "matters": "Ungrasped transport is how conveyor belts, roller tables, ball transfers and vibratory feeders move parts without grippers. The same balance explains a spool rolling on a pulled plank, a coin on a moving card, and why a ball in a moving train starts to roll backwards relative to the floor. Knowing that the carried fraction is set by inertia rather than by mass tells a designer that light and heavy balls of the same shape behave alike, while a hollow shell would not.",
+        "question": "A solid sphere alone on a level deck is carried by friction. If the deck moves 16 mm, how far does the sphere's centre move, and how far does the sphere turn?",
+        "answer": "The centre moves 2/7 of 16 mm, about 4.6 mm, in the same direction as the deck. The remaining 11.4 mm is the relative stroke, and the ball turns through 11.4 mm / 9.6 mm = 1.19 rad, about 68°. In the simulator the measured ratio is between 0.285 and 0.288 at every speed.",
+        "further": [
+          "Repeat with a hollow ball or a short cylinder of known inertia. Predict its ratio from kappa = I/(M r^2) before running, then compare: a hoop-like body should be carried much further than a solid sphere.",
+          "Load 'Carry Ratio — ball on the base (control)'. The same ball lies on the fixed base instead of the deck, and the deck still moves 16 mm. Predict the ball's motion, then check: its carried ratio drops to about 0.000.",
+          "Estimate the friction coefficient from the speed at which the ball first slips on the deck, a_t = 3.5*mu*g for a solid sphere, and compare it with a deliberate slow tilt test."
+        ]
+      },
+      "de": {
+        "what": "Ein motorisch angetriebener Tisch nimmt eine freie Kugel allein über Kontakt mit. Motor A dreht eine Kurbel mit 20 LDU (8 mm) Radius; eine dünne Pleuelstange schiebt einen Gleitschlitten auf einer 16L-Führungsachse, und der Schlitten trägt eine 4x8-Platte als Tisch, der sich so 16 mm hin und her bewegt. Auf dem Tisch liegt eine 19-mm-Technic-Kugel ohne Achse, Führung oder Befestigung. Das Programm fährt die Kurbel mit 120, 240, 480 und 720 °/s und dann zurück. Im Simulator folgt der Kugelmittelpunkt dem Tisch bei jeder Drehzahl mit einem Verhältnis von 0,285 bis 0,288, vorhergesagt sind 2/7 = 0,2857, und die Kugel dreht sich um etwa 1,19 rad (68°) für je 11,4 mm, die sie hinter dem Tisch zurückbleibt.",
+        "try": [
+          "Lade das Modell, drücke Zurücksetzen und dann Start. Die Kurbel beginnt bei 90°, also entfernt vom Totpunkt, in dem die Pleuelstange längs der Kurbel liegt.",
+          "Beobachte die Kugel, nicht den Motor. Während eines langsamen Durchlaufs bewegt sich der Tisch 16 mm, der Kugelmittelpunkt aber nur etwa 4,6 mm; die Kugel dreht sich sichtbar, etwa 68 Grad von einem Extrem zum anderen.",
+          "Vergleiche in einer langsamen Stufe die Drehung der Kugel mit dem Weg, um den sie hinter dem Tisch zurückbleibt: Rollen ohne Gleiten heißt, dass der abgerollte Bogen genau diesem Rückstand entspricht.",
+          "Vergleiche die vier Drehzahlen. Die Kugel wird bei jeder um denselben Anteil mitgenommen, weil das Verhältnis nur von der Form der Kugel abhängt, nicht von Drehzahl oder Masse. Viel schnellere Fahrten würden sie gleiten lassen und vom Tisch werfen; deshalb endet das Programm bei 720 °/s."
+        ],
+        "why": "Rollen ein freier Körper und seine Unterlage ohne Gleiten aufeinander, gelten zwei Beziehungen. Der Kontaktpunkt muss sich mit der Unterlage bewegen, also ist der abgerollte Bogen gleich dem Relativweg: r*dphi = -(dx_t - dx_p). Und weil die einzige waagerechte Kraft auf den Körper die Haftreibung im Kontakt ist, liefern Impuls- und Drehimpulsbilanz a_p = a_t*I/(I + M r^2). Für eine homogene Vollkugel ist I = (2/5)M r^2, der Mittelpunkt übernimmt also genau 2/7 der Beschleunigung und des Wegs des Tisches, unabhängig von Masse und Radius der Kugel. Deshalb liegt das gemessene Verhältnis bei vier verschiedenen Geschwindigkeiten auf 0,286. Die nötige Reibung ist f = M a_t*2/7; sie überschreitet mu*M*g erst, wenn a_t den Wert 3,5*mu*g übersteigt. Darum eilen schnellere Durchläufe zunächst nach und gleiten dann.",
+        "matters": "Ungriffiges Transportieren bewegt Teile ohne Greifer: Förderbänder, Rollenbahnen, Kugelrollen und Schwingförderer arbeiten so. Dieselbe Bilanz erklärt eine Spule auf einem gezogenen Brett, eine Münze auf einer bewegten Karte und warum eine Kugel im anfahrenden Zug relativ zum Boden rückwärts rollt. Dass der mitgenommene Anteil von der Trägheitsverteilung und nicht von der Masse abhängt, hilft beim Auslegen: leichte und schwere Kugeln gleicher Form verhalten sich gleich, eine Hohlkugel dagegen nicht.",
+        "question": "Eine Vollkugel liegt frei auf einem waagerechten Tisch und wird nur durch Reibung mitgenommen. Wenn der Tisch 16 mm fährt, wie weit bewegt sich der Kugelmittelpunkt, und wie weit dreht sich die Kugel?",
+        "answer": "Der Mittelpunkt bewegt sich 2/7 von 16 mm, also etwa 4,6 mm, in derselben Richtung wie der Tisch. Die restlichen 11,4 mm sind der Relativweg, und die Kugel dreht sich um 11,4 mm / 9,6 mm = 1,19 rad, also etwa 68°. Im Simulator liegt das gemessene Verhältnis bei jeder Drehzahl zwischen 0,285 und 0,288.",
+        "further": [
+          "Wiederhole den Versuch mit einer Hohlkugel oder einem kurzen Zylinder mit bekannter Trägheit. Sage das Verhältnis aus kappa = I/(M r^2) vorher und vergleiche: ein reifenartiger Körper müsste deutlich weiter mitgenommen werden als eine Vollkugel.",
+          "Lade „Carry Ratio — Kugel auf dem Boden (Kontrolle)“. Dieselbe Kugel liegt auf der festen Grundplatte statt auf dem Tisch, und der Tisch fährt weiter 16 mm. Sag die Bewegung der Kugel voraus und prüfe dann: Ihr Mitnahmeverhältnis fällt auf etwa 0,000.",
+          "Schätze den Reibungskoeffizienten aus der Drehzahl, bei der die Kugel zuerst gleitet, a_t = 3,5*mu*g für eine Vollkugel, und vergleiche ihn mit einem langsamen Neigungsversuch."
+        ]
+      },
+      "formula": {
+        "en": "Rolling without slipping on a translating support: r*dphi = -(dx_t - dx_p); dx_p = lambda*dx_t with lambda = I/(I + M r^2); solid sphere lambda = (2/5)/(1 + 2/5) = 2/7 = 0.2857; slip begins when a_t > mu*g*(1+kappa)/kappa = 3.5*mu*g for kappa = 2/5.",
+        "de": "Rollen ohne Gleiten auf einer translatorisch bewegten Unterlage: r*dphi = -(dx_t - dx_p); dx_p = lambda*dx_t mit lambda = I/(I + M r^2); für eine Vollkugel lambda = (2/5)/(1 + 2/5) = 2/7 = 0,2857; Gleiten beginnt bei a_t > mu*g*(1+kappa)/kappa = 3,5*mu*g für kappa = 2/5."
+      },
+      "related": [
+        "switchback-lift.ldr",
+        "clutch-bench.ldr",
+        "rack-shuttle.ldr"
+      ]
+    },
+    "air-budget": {
+      "en": {
+        "what": "Motor A drives an 8-tooth gear that turns a 24-tooth gear, a 3:1 reduction, and the 24-tooth gear turns an 8 mm crank. The crank works a LEGO pneumatic pump, whose piston moves 16 mm per stroke. The pump feeds an air tank that starts precharged to 150 kPa above atmospheric pressure. The program turns the motor nine times forward (three crank turns), pauses, then nine times back to exactly its starting angle. In the simulator the pressure rises from 150.0 to 162.9 kPa, about 2.1 kPa per pump stroke, and stays there although the motor ends where it started.",
+        "try": [
+          "Load the model, press Reset, then Run. Watch the air pressure display and the pump piston.",
+          "Count the pump strokes during the forward part: three crank turns give three strokes, and the pressure goes up by about 2 kPa each time.",
+          "Watch the reverse part. The crank turns backwards, but the piston still goes in and out, and the pressure keeps rising. Turning back does not suck the air out again.",
+          "Use the manual jog on port A in 180° steps. Each 1080° of motor turn is one crank turn and one pump stroke. Watch on which part of the turn the pressure goes up.",
+          "Load 'Air Budget — two tanks' and run the same program. The same six strokes raise the pressure by only about half as much."
+        ],
+        "why": "Each inward stroke pushes the air in the pump cylinder through a one-way valve into the tank. On the way back the valve closes, and fresh air flows into the pump from outside. Whichever way the crank turns, every turn makes one inward stroke, so reversing the motor still pumps. One stroke sweeps a volume of A·S = π·(4 mm)²·16 mm ≈ 0.80 cm³ of outside air. Squeezed into the tank's volume V, that adds Δp = p_atm·A·S / V to its pressure (Boyle's law, at constant temperature). The simulator gives the tank and its hoses V = 38 cm³, so each stroke adds 101.3 kPa · 0.80 cm³ / 38 cm³ ≈ 2.14 kPa. Six strokes add 12.9 kPa, as measured.",
+        "matters": "Every bicycle pump, compressor and tyre inflator works like this: a piston, two one-way valves and a tank. The motor's position says nothing about what is stored: a machine can return to its starting position while energy or material has been moved. In a real pump, some air always stays behind in the cylinder at the end of the stroke. As the tank pressure rises, that leftover air expands again on the return stroke, so each stroke delivers less. The simulator ignores this, so its pressure keeps rising by the same amount every stroke.",
+        "question": "The motor ends at exactly the angle it started from. Why is the tank pressure higher at the end, and by how much would one more stroke raise it?",
+        "answer": "Every crank turn, forwards or backwards, makes one inward stroke, and the one-way valve keeps the air it delivers in the tank. Net motor angle does not matter, only the number of inward strokes. One more stroke adds about 101.3 kPa · 0.80 cm³ / 38 cm³ ≈ 2.1 kPa.",
+        "further": [
+          "How many strokes would it take to raise the tank from 150 kPa to 250 kPa, the point where the simulated pump stops charging?",
+          "With the two-tank model (75 cm³), predict the rise for six strokes before you run it, then compare.",
+          "Suppose a real pump left 0.2 cm³ of air in the cylinder after each stroke. Estimate how much less air it delivers when the tank is at 150 kPa above atmospheric pressure."
+        ]
+      },
+      "de": {
+        "what": "Motor A treibt ein 8er-Zahnrad an, das ein 24er-Zahnrad dreht, eine Untersetzung von 3:1, und das 24er-Zahnrad dreht eine 8-mm-Kurbel. Die Kurbel betätigt eine LEGO-Pneumatikpumpe, deren Kolben pro Hub 16 mm fährt. Die Pumpe füllt einen Lufttank, der mit 150 kPa über dem Luftdruck vorgeladen ist. Das Programm dreht den Motor neunmal vorwärts (drei Kurbelumdrehungen), hält an und dreht ihn dann neunmal zurück, genau auf seinen Startwinkel. Im Simulator steigt der Druck von 150,0 auf 162,9 kPa, etwa 2,1 kPa pro Pumphub, und bleibt dort, obwohl der Motor wieder am Start steht.",
+        "try": [
+          "Lade das Modell, drücke Zurücksetzen und dann Start. Beobachte die Druckanzeige und den Pumpenkolben.",
+          "Zähle die Pumphübe im Vorwärtsteil: Drei Kurbelumdrehungen ergeben drei Hübe, und der Druck steigt jedes Mal um etwa 2 kPa.",
+          "Beobachte den Rückwärtsteil. Die Kurbel dreht rückwärts, aber der Kolben fährt weiter hinein und heraus, und der Druck steigt weiter. Zurückdrehen saugt die Luft nicht wieder heraus.",
+          "Verfahre Port A von Hand in 180°-Schritten. Je 1080° Motordrehung sind eine Kurbelumdrehung und ein Pumphub. Achte darauf, in welchem Teil der Umdrehung der Druck steigt.",
+          "Lade „Air Budget — zwei Tanks“ und starte dasselbe Programm. Dieselben sechs Hübe heben den Druck nur etwa halb so stark."
+        ],
+        "why": "Jeder Einwärtshub drückt die Luft im Pumpenzylinder durch ein Rückschlagventil in den Tank. Auf dem Rückweg schließt das Ventil, und frische Luft strömt von außen in die Pumpe. Egal in welche Richtung die Kurbel dreht, jede Umdrehung macht einen Einwärtshub, deshalb pumpt auch der rückwärts laufende Motor. Ein Hub verdrängt A·S = π·(4 mm)²·16 mm ≈ 0,80 cm³ Außenluft. In das Tankvolumen V gedrückt, erhöht das den Druck um Δp = p_atm·A·S / V (Gesetz von Boyle-Mariotte, bei gleicher Temperatur). Der Simulator gibt Tank und Schläuchen V = 38 cm³, also bringt jeder Hub 101,3 kPa · 0,80 cm³ / 38 cm³ ≈ 2,14 kPa. Sechs Hübe ergeben 12,9 kPa, wie gemessen.",
+        "matters": "Jede Fahrradpumpe, jeder Kompressor und jeder Reifenfüller arbeitet so: ein Kolben, zwei Rückschlagventile und ein Behälter. Die Stellung des Motors sagt nichts darüber, was gespeichert ist: Eine Maschine kann in ihre Ausgangsstellung zurückkehren, während Energie oder Material verschoben wurde. In einer echten Pumpe bleibt am Ende jedes Hubs etwas Luft im Zylinder. Steigt der Tankdruck, dehnt sich diese Restluft beim Rückhub wieder aus, und jeder Hub fördert weniger. Der Simulator lässt das weg, deshalb steigt sein Druck mit jedem Hub um denselben Betrag.",
+        "question": "Der Motor endet genau beim Startwinkel. Warum ist der Tankdruck am Ende höher, und um wie viel würde ein weiterer Hub ihn anheben?",
+        "answer": "Jede Kurbelumdrehung, vorwärts oder rückwärts, macht einen Einwärtshub, und das Rückschlagventil hält die geförderte Luft im Tank. Es zählt nicht der Netto-Motorwinkel, sondern die Zahl der Einwärtshübe. Ein weiterer Hub bringt etwa 101,3 kPa · 0,80 cm³ / 38 cm³ ≈ 2,1 kPa.",
+        "further": [
+          "Wie viele Hübe braucht es, um den Tank von 150 kPa auf 250 kPa zu bringen, den Punkt, an dem die simulierte Pumpe nicht mehr füllt?",
+          "Sag für das Zwei-Tank-Modell (75 cm³) den Anstieg nach sechs Hüben voraus, bevor du es startest, und vergleiche dann.",
+          "Angenommen, eine echte Pumpe ließe nach jedem Hub 0,2 cm³ Luft im Zylinder. Schätze, wie viel weniger Luft sie fördert, wenn der Tank 150 kPa über dem Luftdruck steht."
+        ]
+      },
+      "formula": {
+        "en": "Δp per stroke = p_atm·A·S / V; A = π·(4 mm)² = 50.3 mm², S = 16 mm, V = 38 cm³, p_atm = 101.3 kPa → Δp ≈ 2.14 kPa. Gear reduction 24:8 = 3:1, so 1080° of motor A = one crank turn = one stroke.",
+        "de": "Δp pro Hub = p_atm·A·S / V; A = π·(4 mm)² = 50,3 mm², S = 16 mm, V = 38 cm³, p_atm = 101,3 kPa → Δp ≈ 2,14 kPa. Untersetzung 24:8 = 3:1, also 1080° an Motor A = eine Kurbelumdrehung = ein Hub."
+      },
+      "related": [
+        "pneumatic-press.ldr",
+        "crank-rocker.ldr",
+        "gearbox.ldr"
+      ]
     }
   }
 }

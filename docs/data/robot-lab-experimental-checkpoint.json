@@ -3182,6 +3182,11 @@
         "pageErrors": 0,
         "nan": false,
         "simMs": 34233
+      },
+      "promoted": {
+        "to": "established library (MODELS)",
+        "date": "2026-10-26",
+        "judge": "air-pump-budget-v1"
       }
     },
     {
@@ -3482,6 +3487,11 @@
         "pageErrors": 0,
         "nan": false,
         "simMs": 34900
+      },
+      "promoted": {
+        "to": "established library (MODELS)",
+        "date": "2026-10-26",
+        "judge": "rolling-carry-v1"
       }
     },
     {

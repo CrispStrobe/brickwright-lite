@@ -829,6 +829,84 @@ export const MODEL_LESSONS = Object.freeze({
             "markiertes Lineal"
         ]
     },
+    "carry-ratio.ldr": {
+        "pieces": 70,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "motion",
+        "description": {
+            "en": "A slider-crank tray carries a free solid ball. Because the ball rolls without slipping, it moves only λ = I/(I + M·r²) = 2/7 of each 16 mm stroke; four strokes measure 0.285 to 0.287.",
+            "de": "Ein Kurbeltisch trägt eine freie Vollkugel. Weil die Kugel ohne Gleiten rollt, legt sie nur λ = I/(I + M·r²) = 2/7 jedes 16-mm-Hubs zurück; vier Hübe ergeben 0,285 bis 0,287."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Ball rolling on a moving tray",
+            "de": "Rollende Kugel auf bewegtem Tisch"
+        },
+        "keywords": [
+            "Ball rolling on a moving tray",
+            "Rollende Kugel auf bewegtem Tisch",
+            "rolling without slipping",
+            "no-slip transport",
+            "rolling contact",
+            "inertia-limited transport",
+            "moment of inertia ratio",
+            "friction cone",
+            "contact limit",
+            "Coulomb friction",
+            "ungrasped payload",
+            "spool on a plank",
+            "Rollkontakt",
+            "Rollen ohne Gleiten",
+            "Transportverhältnis",
+            "Trägheitsverhältnis",
+            "Haftreibung",
+            "Kontaktgrenze",
+            "ungriffige Förderung"
+        ]
+    },
+    "air-budget.ldr": {
+        "pieces": 157,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "fluids",
+        "description": {
+            "en": "A crank-driven pump pushes six strokes of outside air into one tank. Each inward millimetre adds p_atm·A/V; the measured rise of 12.87 kPa matches the predicted 12.87 kPa within 0.1 %, and no stored air leaks back.",
+            "de": "Eine kurbelgetriebene Pumpe drückt sechs Hübe Außenluft in einen Tank. Jeder Millimeter Einwärtshub fügt p_atm·A/V hinzu; der gemessene Anstieg von 12,87 kPa trifft die Vorhersage von 12,87 kPa auf 0,1 %, und keine gespeicherte Luft entweicht."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Crank-driven air pump",
+            "de": "Kurbelgetriebene Luftpumpe"
+        },
+        "keywords": [
+            "Crank-driven air pump",
+            "Kurbelgetriebene Luftpumpe",
+            "pneumatics",
+            "air pressure",
+            "pump",
+            "reservoir volume",
+            "one-way pump",
+            "stored air",
+            "swept volume",
+            "compression travel",
+            "check valve",
+            "Pneumatik",
+            "Luftdruck",
+            "Pumpe",
+            "Speichervolumen",
+            "Rückschlagventil",
+            "Luftvorrat",
+            "Hubvolumen",
+            "Verdichtungsweg"
+        ]
+    },
     "cross-ratio.ldr": {
         "pieces": 127,
         "motors": 1,

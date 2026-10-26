@@ -303,6 +303,55 @@
       ],
       "disconnectInputDeg": 55,
       "disconnectMeasure": true
+    },
+    {
+      "id": "carry-ratio",
+      "judge": "rolling-carry-v1",
+      "parts": 70,
+      "ports": [
+        "A"
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 40000,
+      "afterMs": 500,
+      "frameMs": 25,
+      "frozenOutput": "roller_ball",
+      "disconnect": [
+        "tray_deck",
+        "deck_top",
+        "tray_top_plate"
+      ],
+      "disconnectInputDeg": 2800,
+      "expectedIssues": [
+        {
+          "code": "loose-part",
+          "parts": [
+            "roller_ball"
+          ]
+        }
+      ],
+      "disconnectMeasure": true
+    },
+    {
+      "id": "air-budget",
+      "judge": "air-pump-budget-v1",
+      "parts": 157,
+      "ports": [
+        "A"
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 40000,
+      "afterMs": 500,
+      "frameMs": 25,
+      "frozenOutput": "pump_rod",
+      "disconnect": [
+        "crank_pin_axle",
+        "crank_pin_bush_-25",
+        "crank_pin_bush_25"
+      ],
+      "disconnectInputDeg": 3000,
+      "observeAir": true,
+      "disconnectMeasure": true
     }
   ]
 }

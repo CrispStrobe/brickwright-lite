@@ -1100,29 +1100,6 @@ export const EXPERIMENTAL_MODELS = Object.freeze([
         }
     },
     {
-        "file": "air-budget.ldr",
-        "title": {
-            "en": "Air Budget — one pump, finite stored air",
-            "de": "Air Budget — eine Pumpe, begrenzter Luftvorrat"
-        },
-        "example": "air-budget.bw",
-        "mat": "plain",
-        "experimental": true,
-        "blocked": false,
-        "intro": {
-            "en": "A retained motor and crank work a real stock pneumatic pump. Turn the crank three times each way, then compare stored pressure with the same mechanism connected to two tanks.",
-            "de": "Ein befestigter Motor mit Kurbel betätigt eine echte Pneumatikpumpe aus Standardteilen. Drehe die Kurbel dreimal in jede Richtung und vergleiche den gespeicherten Druck mit demselben Mechanismus an zwei Lufttanks."
-        },
-        "manualJog": {
-            "A": {
-                "minDeg": 0,
-                "maxDeg": 3240,
-                "stepDeg": 180,
-                "speedDps": 270
-            }
-        }
-    },
-    {
         "file": "air-budget-two-tanks.ldr",
         "title": {
             "en": "Air Budget — two-tank comparison",
@@ -1257,29 +1234,6 @@ export const EXPERIMENTAL_MODELS = Object.freeze([
                 "maxDeg": 8,
                 "stepDeg": 4,
                 "speedDps": 60
-            }
-        }
-    },
-    {
-        "file": "carry-ratio.ldr",
-        "title": {
-            "en": "Carry Ratio — a free ball carried by a driven tray",
-            "de": "Carry Ratio — eine freie Kugel auf einem angetriebenen Tisch"
-        },
-        "example": "carry-ratio.bw",
-        "mat": "plain",
-        "experimental": true,
-        "blocked": false,
-        "intro": {
-            "en": "A slider-crank tray carries an ungrasped ball. Measure how much of the stroke the ball inherits and how its spin obeys the rolling condition.",
-            "de": "Ein Kurbelschleifen-Tisch nimmt eine freie Kugel ohne Greifer mit. Miss, welchen Anteil des Hubs die Kugel übernimmt und wie ihre Drehung der Rollbedingung folgt."
-        },
-        "manualJog": {
-            "A": {
-                "minDeg": -180,
-                "maxDeg": 2880,
-                "stepDeg": 90,
-                "speedDps": 120
             }
         }
     },
@@ -3031,48 +2985,6 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
         ],
         "experimental": true
     },
-    "air-budget.ldr": {
-        "pieces": 155,
-        "motors": 1,
-        "hubs": [
-            "spike-prime"
-        ],
-        "topic": "fluids",
-        "description": {
-            "en": "A retained motor and crank work a real stock pneumatic pump. Turn the crank three times each way, then compare stored pressure with the same mechanism connected to two tanks.",
-            "de": "Ein befestigter Motor mit Kurbel betätigt eine echte Pneumatikpumpe aus Standardteilen. Drehe die Kurbel dreimal in jede Richtung und vergleiche den gespeicherten Druck mit demselben Mechanismus an zwei Lufttanks."
-        },
-        "author": "CrispStrobe",
-        "license": "BSD-3-Clause",
-        "mechanism": {
-            "en": "crank-driven pneumatic pump with finite reservoir comparison",
-            "de": "kurbelgetriebene Pneumatikpumpe mit Vergleich begrenzter Speichervolumina"
-        },
-        "keywords": [
-            "pneumatics",
-            "air pressure",
-            "pump",
-            "reservoir volume",
-            "one-way pump",
-            "stored air",
-            "swept volume",
-            "compression travel",
-            "check valve",
-            "Pneumatik",
-            "Luftdruck",
-            "Pumpe",
-            "Speichervolumen",
-            "Rückschlagventil",
-            "Luftvorrat",
-            "Hubvolumen",
-            "Verdichtungsweg",
-            "experimental",
-            "prototype",
-            "unverified",
-            "experimentell"
-        ],
-        "experimental": true
-    },
     "air-budget-two-tanks.ldr": {
         "pieces": 168,
         "motors": 1,
@@ -3277,48 +3189,6 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
             "Reversionspendel",
             "physikalisches Pendel",
             "konjugierte Aufhängepunkte",
-            "experimental",
-            "prototype",
-            "unverified",
-            "experimentell"
-        ],
-        "experimental": true
-    },
-    "carry-ratio.ldr": {
-        "pieces": 64,
-        "motors": 1,
-        "hubs": [
-            "spike-prime"
-        ],
-        "topic": "motion",
-        "description": {
-            "en": "A slider-crank tray carries an ungrasped ball. Measure how much of the stroke the ball inherits and how its spin obeys the rolling condition.",
-            "de": "Ein Kurbelschleifen-Tisch nimmt eine freie Kugel ohne Greifer mit. Miss, welchen Anteil des Hubs die Kugel übernimmt und wie ihre Drehung der Rollbedingung folgt."
-        },
-        "author": "CrispStrobe",
-        "license": "BSD-3-Clause",
-        "mechanism": {
-            "en": "Free ball rolling on a slider-crank tray",
-            "de": "Freie Kugel rollt auf einem Kurbeltisch"
-        },
-        "keywords": [
-            "rolling without slipping",
-            "no-slip transport",
-            "rolling contact",
-            "inertia-limited transport",
-            "moment of inertia ratio",
-            "friction cone",
-            "contact limit",
-            "Coulomb friction",
-            "ungrasped payload",
-            "spool on a plank",
-            "Rollkontakt",
-            "Rollen ohne Gleiten",
-            "Transportverhältnis",
-            "Trägheitsverhältnis",
-            "Haftreibung",
-            "Kontaktgrenze",
-            "ungriffige Förderung",
             "experimental",
             "prototype",
             "unverified",

@@ -1,0 +1,83 @@
+# Air Budget — six actual compression strokes, in both crank directions.
+# Copyright (c) 2026 Christian Ströbele (CrispStrobe). SPDX-License-Identifier: BSD-3-Clause.
+# Freshly load either saved Air Budget model before EVERY run.
+# The only commanded part is the real motor on port A.
+# Nine motor turns produce three crank turns through the stock 8T-to-24T gears.
+# The pump and the pressure gauge are never set or read by this program.
+# Existing tank networks begin at 150 kPa gauge; reload gives a fresh comparison.
+DEVICE SPIKE
+GLOBAL stage = 0
+GLOBAL settled = 0
+GLOBAL complete = 0
+GLOBAL fault = 0
+GLOBAL targetA = 0
+GLOBAL trimA = 0
+WHEN flag clicked:
+  set stage to 0
+  set settled to 0
+  set complete to 0
+  set fault to 0
+  set targetA to 0
+  set trimA to 0
+  reset timer
+  lab stop motor A hold
+  lab start
+  IF (lab status) = "no-model" THEN:
+    broadcast "Air Budget fault" and wait
+    say "Load either saved Air Budget model before running."
+    stop all
+  IF (abs of (lab motor A angle)) > 0.5 THEN:
+    broadcast "Air Budget fault" and wait
+    say "Reload the saved model to reset its starting pose and air reservoir."
+    stop all
+  broadcast "Air Budget watchdog"
+  set settled to 1
+  wait 1 seconds
+  set settled to 0
+
+  set stage to 1
+  set targetA to 3240
+  broadcast "Air Budget move A" and wait
+  set settled to 1
+  wait 1.2 seconds
+  set settled to 0
+
+  set stage to 2
+  set targetA to 0
+  broadcast "Air Budget move A" and wait
+  set settled to 1
+  wait 1.2 seconds
+  set settled to 0
+
+  lab stop motor A hold
+  set complete to 1
+  say "Air Budget complete: compare the pressure rise after the same six pump strokes."
+
+WHEN I receive "Air Budget move A":
+  IF (abs of (targetA - (lab motor A angle))) > 0.1 THEN:
+    lab run motor A for (targetA - (lab motor A angle)) degrees at 270 degrees per second
+  lab stop motor A hold
+  set trimA to 0
+  REPEAT 2:
+    IF (abs of (targetA - (lab motor A angle))) > 0.5 THEN:
+      change trimA by 1
+      lab run motor A for (targetA - (lab motor A angle)) degrees at 10 degrees per second
+      lab stop motor A hold
+      wait 0.1 seconds
+  IF (abs of (targetA - (lab motor A angle))) > 0.5 THEN:
+    broadcast "Air Budget fault" and wait
+    say "The motor missed its target. Inspect the pump, gears and supports, then reload."
+    stop all
+
+WHEN I receive "Air Budget fault":
+  set fault to 1
+  set settled to 0
+  lab stop motor A hold
+
+WHEN I receive "Air Budget watchdog":
+  REPEAT UNTIL (complete = 1):
+    IF (timer) > 45 THEN:
+      broadcast "Air Budget fault" and wait
+      say "Air Budget stopped after 45 seconds. Inspect the model and reload its saved start."
+      stop all
+    wait 0.1 seconds
