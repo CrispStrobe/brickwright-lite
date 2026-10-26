@@ -91,11 +91,11 @@ export async function runSamdNativeGame (packet) {
             const take=async colour=>{
                 for(let attempt=0;attempt<120;attempt++) {
                     const bytes=await frame(sim);
+                    draw(bytes);
                     const player=rectangle(bytes,colour,16);const ball=rectangle(bytes,[0,48,170],8);
                     let targets=0;
                     for(let i=0;i<bytes.length;i+=3) if(bytes[i]===255&&bytes[i+1]===138&&bytes[i+2]===48) targets++;
                     if(!player||!ball||targets!==512) continue;
-                    draw(bytes);
                     const picture={sha256:await sha(bytes),player,ball,rgb_base64:encode(bytes)};
                     pictures.push(picture);times.push((performance.now()-began)/1000);
                     return picture;

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // SPDX-License-Identifier: BSD-3-Clause
 import {createHash} from 'node:crypto';
-import {readFileSync, writeFileSync, mkdirSync, lstatSync, readdirSync} from 'node:fs';
+import {readFileSync, writeFileSync, mkdirSync, lstatSync, readdirSync, existsSync} from 'node:fs';
 import {createServer} from 'node:http';
 import {resolve, join, dirname, extname, sep} from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -197,22 +197,28 @@ export function saveSamdResult (out,result,expectedNative) {
     writeFileSync(join(out,'result.json'),JSON.stringify(result,null,2)+'\n',{flag:'wx'});
 }
 export async function verifyBrowser ({frontend,fixture,out}) {
+    need(!existsSync(out),'fresh browser observation output');
     const packet=await prepareSamdPacket({frontend,fixture});
     const types={'.html':'text/html','.js':'text/javascript','.css':'text/css','.json':'application/json','.wasm':'application/wasm','.svg':'image/svg+xml','.png':'image/png'};
     const server=createServer((req,res)=>{
         try {let path=decodeURIComponent(new URL(req.url,'http://observer.invalid').pathname);if(path.endsWith('/'))path+='index.html';const file=resolve(frontend,'.'+path);need(file.startsWith(resolve(frontend)+sep),'served path escape');const data=readFileSync(file);res.writeHead(200,{'content-type':types[extname(file)]||'application/octet-stream'});res.end(data);}catch{res.writeHead(404);res.end('not found');}
     });
     await new Promise(done=>server.listen(0,'127.0.0.1',done));
-    const {chromium}=await import('playwright');let browser;
+    const {chromium}=await import('playwright');let browser,page;
     try {
         browser=await chromium.launch({headless:true});
-        const page=await browser.newPage({viewport:{width:1400,height:900}});
+        page=await browser.newPage({viewport:{width:1400,height:900}});
         await page.addInitScript(()=>{localStorage.clear();sessionStorage.clear();localStorage.setItem('bw-starter-v1-complete','1');});
         await page.goto(`http://127.0.0.1:${server.address().port}/`,{waitUntil:'domcontentloaded',timeout:60000});
         await page.waitForFunction(()=>!!window.__brickwrightStore?.getState()?.scratchGui?.vm?.runtime,{},{timeout:120000});
         const result=await page.evaluate(runSamdNativeGame,packet);saveSamdResult(out,result,false);
         await page.screenshot({path:join(out,'actual-browser.png')});
         console.log(`SAMD_ACTUAL_BROWSER_GAME_PASS source=${result.source} samples=3 physical_capture=false`);
+    } catch(error) {
+        if(!existsSync(out))mkdirSync(out);
+        writeFileSync(join(out,'failure.json'),JSON.stringify({actual_guest_qualified:false,error:String(error),stack:error.stack},null,2)+'\n',{flag:'wx'});
+        await page?.screenshot({path:join(out,'actual-browser-failure.png')}).catch(()=>{});
+        throw error;
     } finally {await browser?.close();await new Promise(done=>server.close(done));}
 }
 if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)) {

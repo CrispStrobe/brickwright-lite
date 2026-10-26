@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // SPDX-License-Identifier: BSD-3-Clause
 // Actual source-bound custom-protocol app; no private SPIKE resource run.
-import {existsSync,writeFileSync,readFileSync} from 'node:fs';
+import {existsSync,writeFileSync,readFileSync,mkdirSync} from 'node:fs';
 import {createHash} from 'node:crypto';
 import {resolve,join} from 'node:path';
 import {spawnOwnedDriver} from './lib/owned-driver.mjs';
@@ -10,6 +10,7 @@ import {runSamdNativeGame} from './samd-native-game-browser.mjs';
 const need=(ok,why)=>{if(!ok)throw new Error(why);};
 need(process.argv.length===7,'installed-binary native-receipt frontend fixture fresh-output required');
 const [binary,receiptPath,frontend,fixture,out]=process.argv.slice(2).map(v=>resolve(v));
+need(!existsSync(out),'fresh installed observation output');
 const receipt=JSON.parse(readFileSync(receiptPath));
 need(receipt.binarySha256===createHash('sha256').update(readFileSync(binary)).digest('hex'),'actual installed executable receipt');
 const packet=await prepareSamdPacket({frontend,fixture});
@@ -63,7 +64,16 @@ try {
     const screenshot=await call('GET',`/session/${session}/screenshot`,undefined,30000);
     writeFileSync(join(out,'actual-installed.png'),Buffer.from(screenshot,'base64'),{flag:'wx'});
     console.log(`SAMD_ACTUAL_INSTALLED_GAME_PASS source=${packet.engineSource} samples=3 binary_sha256=${receipt.binarySha256} physical_capture=false`);
+} catch(error) {
+    if(!existsSync(out))mkdirSync(out);
+    writeFileSync(join(out,'failure.json'),JSON.stringify({actual_guest_qualified:false,error:String(error),stack:error.stack},null,2)+'\n',{flag:'wx'});
+    if(session) {
+        try {const png=await call('GET',`/session/${session}/screenshot`,undefined,30000);writeFileSync(join(out,'actual-installed-failure.png'),Buffer.from(png,'base64'),{flag:'wx'});}catch {}
+    }
+    throw error;
 } finally {
+    if(!existsSync(out))mkdirSync(out);
+    writeFileSync(join(out,'driver.log'),driverLogs.join(''),{flag:'wx'});
     if(session)await call('DELETE',`/session/${session}`,undefined,10000).catch(()=>{});
     stop();
 }
