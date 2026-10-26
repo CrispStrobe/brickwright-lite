@@ -1,0 +1,632 @@
+0 Afterturn - closed internal-shape heading cycle
+0 Name: afterturn.ldr
+0 Author: CrispStrobe
+0 !LICENSE BSD-3-Clause : see ../licenses/afterturn.txt
+0 !LDRAW_ORG Unofficial_Model
+0 // A free-yaw platform changes internal inertia through two real opposed slider-cranks.
+0 // All motors, hub and guides ride on the platform; no prescribed passive output or fixed-body override.
+0 // See ASSEMBLY.md for ordinary stock retention and staged operating bounds.
+0 01 stationary plinth
+0 !BW ID base_cross_-100
+1 72 0 240 -100 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID base_cross_100
+1 72 0 240 100 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID base_rail_-120
+1 72 -120 260 0 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID base_grid_-120_-100
+1 0 -120 250 -100 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID base_grid_-120_100
+1 0 -120 250 100 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID base_rail_120
+1 72 120 260 0 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID base_grid_120_-100
+1 0 120 250 -100 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID base_grid_120_100
+1 0 120 250 100 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID base_side_-1
+1 72 -60 220 0 0 1 0 -1 0 0 0 0 1 32525.dat
+0 !BW ID base_foot_-1_-100
+1 72 -40 220 -100 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID base_foot_pin_-1_-100
+1 0 -40 230 -100 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID base_foot_-1_100
+1 72 -40 220 100 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID base_foot_pin_-1_100
+1 0 -40 230 100 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID base_side_1
+1 72 60 220 0 0 1 0 -1 0 0 0 0 1 32525.dat
+0 !BW ID base_foot_1_-100
+1 72 40 220 -100 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID base_foot_pin_1_-100
+1 0 40 230 -100 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID base_foot_1_100
+1 72 40 220 100 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID base_foot_pin_1_100
+1 0 40 230 100 0 1 0 1 0 0 0 0 -1 2780.dat
+0 STEP
+0 02 seated turntable and carried sides
+0 !BW ID yaw_bottom
+1 72 0 200 0 1 0 0 0 1 0 0 0 1 18939.dat
+0 !BW ID yaw_bottom_pin_-1_-20
+1 0 -50 220 -20 -1 0 0 0 1 0 0 0 -1 2780.dat
+0 !BW ID yaw_bottom_pin_-1_20
+1 0 -50 220 20 -1 0 0 0 1 0 0 0 -1 2780.dat
+0 !BW ID yaw_bottom_pin_1_-20
+1 0 50 220 -20 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID yaw_bottom_pin_1_20
+1 0 50 220 20 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID yaw_top
+1 14 0 200 0 1 0 0 0 1 0 0 0 1 18938.dat
+0 !BW ID platform_side_-1
+1 72 -60 180 0 0 1 0 -1 0 0 0 0 1 32525.dat
+0 !BW ID yaw_top_pin_-1_-20
+1 0 -50 180 -20 -1 0 0 0 1 0 0 0 -1 2780.dat
+0 !BW ID yaw_top_pin_-1_20
+1 0 -50 180 20 -1 0 0 0 1 0 0 0 -1 2780.dat
+0 !BW ID platform_foot_-1_-100
+1 72 -40 180 -100 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID platform_foot_pin_-1_-100
+1 0 -40 170 -100 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID platform_foot_-1_100
+1 72 -40 180 100 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID platform_foot_pin_-1_100
+1 0 -40 170 100 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID platform_side_1
+1 72 60 180 0 0 1 0 -1 0 0 0 0 1 32525.dat
+0 !BW ID yaw_top_pin_1_-20
+1 0 50 180 -20 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID yaw_top_pin_1_20
+1 0 50 180 20 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID platform_foot_1_-100
+1 72 40 180 -100 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID platform_foot_pin_1_-100
+1 0 40 170 -100 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID platform_foot_1_100
+1 72 40 180 100 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID platform_foot_pin_1_100
+1 0 40 170 100 0 1 0 1 0 0 0 0 -1 2780.dat
+0 STEP
+0 03 carried crossmembers
+0 !BW ID platform_centre_-100
+1 25 0 160 -100 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID platform_centre_100
+1 25 0 160 100 0 0 1 0 1 0 -1 0 0 32278.dat
+0 STEP
+0 04 carried hub
+0 !BW ID hub
+1 15 0 130 -160 0 0 1 0 1 0 -1 0 0 45601.dat
+0 !BW ID hub_mount_-60_-100
+1 0 -100 150 -140 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID hub_mount_-60_100
+1 0 -100 150 -120 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID hub_mount_60_-100
+1 0 100 150 -140 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID hub_mount_60_100
+1 0 100 150 -120 0 1 0 1 0 0 0 0 -1 2780.dat
+0 STEP
+0 04a carrier floor and two short wings
+0 !BW ID carrier_rail_-100
+1 71 -100 140 0 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID carrier_rail_pin_-100_-100
+1 1 -100 140 -100 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID carrier_rail_pin_-100_100
+1 0 -100 150 100 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID carrier_rail_100
+1 71 100 140 0 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID carrier_rail_pin_100_-100
+1 1 100 140 -100 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID carrier_rail_pin_100_100
+1 0 100 150 100 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID carrier_wing_-1_-100
+1 71 -180 140 -100 0 0 1 0 1 0 -1 0 0 32524.dat
+0 !BW ID carrier_wing_pin_-1_-100_120
+1 0 -120 150 -100 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID carrier_wing_pin_-1_-100_140
+1 0 -140 150 -100 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID carrier_wing_-1_100
+1 71 -180 140 100 0 0 1 0 1 0 -1 0 0 32524.dat
+0 !BW ID carrier_wing_pin_-1_100_120
+1 0 -120 150 100 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID carrier_wing_pin_-1_100_140
+1 0 -140 150 100 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID outer_post_footrail_-1
+1 71 -240 120 0 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID outer_post_footrail_pin_-1_-100
+1 0 -240 130 -100 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID outer_post_footrail_pin_-1_100
+1 0 -240 130 100 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID carrier_wing_1_-100
+1 71 180 140 -100 0 0 1 0 1 0 -1 0 0 32524.dat
+0 !BW ID carrier_wing_pin_1_-100_120
+1 0 120 150 -100 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID carrier_wing_pin_1_-100_140
+1 0 140 150 -100 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID carrier_wing_1_100
+1 71 180 140 100 0 0 1 0 1 0 -1 0 0 32524.dat
+0 !BW ID carrier_wing_pin_1_100_120
+1 0 120 150 100 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID carrier_wing_pin_1_100_140
+1 0 140 150 100 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID outer_post_footrail_1
+1 71 240 120 0 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID outer_post_footrail_pin_1_-100
+1 0 240 130 -100 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID outer_post_footrail_pin_1_100
+1 0 240 130 100 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID central_post_footrail_-140
+1 71 0 120 -40 0 0 1 0 1 0 -1 0 0 32525.dat
+0 !BW ID central_post_footrail_pin_-100_-140
+1 0 -100 130 -40 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID central_post_footrail_pin_100_-140
+1 0 100 130 -40 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID central_post_footrail_140
+1 71 0 120 140 0 0 1 0 1 0 -1 0 0 32525.dat
+0 !BW ID central_post_footrail_pin_-100_140
+1 1 -100 140 140 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID central_post_footrail_pin_100_140
+1 1 100 140 140 0 1 0 1 0 0 0 0 -1 6558.dat
+0 STEP
+0 04b two level guide supports
+0 !BW ID central_post_-1_-140
+1 71 -20 -40 -40 0 1 0 0 0 1 1 0 0 32278.dat
+0 !BW ID central_post_-1_-140_foot_80
+1 71 -40 80 -40 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID central_post_-1_-140_foot_100
+1 71 -40 100 -40 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID central_post_-1_-140_foot_stack
+1 1 -40 100 -40 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID central_post_1_-140
+1 71 20 -40 -40 0 1 0 0 0 1 1 0 0 32278.dat
+0 !BW ID central_post_1_-140_foot_80
+1 71 40 80 -40 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID central_post_1_-140_foot_100
+1 71 40 100 -40 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID central_post_1_-140_foot_stack
+1 1 40 100 -40 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID central_post_stack_-140_-120
+1 1 0 -120 -40 1 0 0 0 1 0 0 0 1 6558.dat
+0 !BW ID central_post_stack_-140_-80
+1 1 0 -80 -40 1 0 0 0 1 0 0 0 1 6558.dat
+0 !BW ID central_post_-1_140
+1 71 -20 -40 140 0 1 0 0 0 1 1 0 0 32278.dat
+0 !BW ID central_post_-1_140_foot_80
+1 71 -40 80 140 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID central_post_-1_140_foot_100
+1 71 -40 100 140 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID central_post_-1_140_foot_stack
+1 1 -40 100 140 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID central_post_1_140
+1 71 20 -40 140 0 1 0 0 0 1 1 0 0 32278.dat
+0 !BW ID central_post_1_140_foot_80
+1 71 40 80 140 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID central_post_1_140_foot_100
+1 71 40 100 140 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID central_post_1_140_foot_stack
+1 1 40 100 140 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID outer_post_-1
+1 71 -260 20 0 0 1 0 0 0 1 1 0 0 32278.dat
+0 !BW ID outer_post_-1_foot_80
+1 71 -240 80 0 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID outer_post_-1_foot_100
+1 71 -240 100 0 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID outer_post_-1_foot_stack
+1 1 -240 100 0 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID outer_post_-1_guide_pin_-120
+1 0 -250 -120 0 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID outer_post_-1_guide_pin_-80
+1 0 -250 -80 0 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID outer_post_1
+1 71 260 20 0 0 1 0 0 0 1 1 0 0 32278.dat
+0 !BW ID outer_post_1_foot_80
+1 71 240 80 0 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID outer_post_1_foot_100
+1 71 240 100 0 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID outer_post_1_foot_stack
+1 1 240 100 0 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID outer_post_1_guide_pin_-120
+1 0 250 -120 0 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID outer_post_1_guide_pin_-80
+1 0 250 -80 0 1 0 0 0 1 0 0 0 1 2780.dat
+0 STEP
+0 04c vertical reaction motor cradle
+0 !BW ID A_post_-1_-20
+1 71 -40 -160 -20 0 1 0 0 0 1 1 0 0 32525.dat
+0 !BW ID A_stator_pin_-1_-260_-20
+1 0 -30 -260 -20 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID A_stator_pin_-1_-220_-20
+1 0 -30 -220 -20 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID A_post_-1_140
+1 71 -40 -160 140 0 1 0 0 0 1 1 0 0 32525.dat
+0 !BW ID A_stator_pin_-1_-260_140
+1 0 -30 -260 140 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID A_stator_pin_-1_-220_140
+1 0 -30 -220 140 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID A_front_spacer_-1
+1 71 -20 -100 -20 0 1 0 0 0 1 1 0 0 32523.dat
+0 !BW ID A_post_1_-20
+1 71 40 -160 -20 0 1 0 0 0 1 1 0 0 32525.dat
+0 !BW ID A_stator_pin_1_-260_-20
+1 0 30 -260 -20 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID A_stator_pin_1_-220_-20
+1 0 30 -220 -20 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID A_post_1_140
+1 71 40 -160 140 0 1 0 0 0 1 1 0 0 32525.dat
+0 !BW ID A_stator_pin_1_-260_140
+1 0 30 -260 140 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID A_stator_pin_1_-220_140
+1 0 30 -220 140 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID A_front_spacer_1
+1 71 20 -100 -20 0 1 0 0 0 1 1 0 0 32523.dat
+0 !BW ID A_frame_pin_-20_-1
+1 1 -20 -80 -20 -1 0 0 0 1 0 0 0 -1 6558.dat
+0 !BW ID A_frame_pin_-20_1
+1 1 20 -120 -20 1 0 0 0 1 0 0 0 1 6558.dat
+0 !BW ID A_frame_pin_140_-1
+1 1 -20 -80 140 -1 0 0 0 1 0 0 0 -1 6558.dat
+0 !BW ID A_frame_pin_140_1
+1 1 20 -120 140 1 0 0 0 1 0 0 0 1 6558.dat
+0 STEP
+0 04d rear extension and horizontal shape motor cradle
+0 !BW ID B_extension_-100
+1 71 -100 160 180 1 0 0 0 1 0 0 0 1 32524.dat
+0 !BW ID B_extension_pin_-100_120
+1 0 -100 150 120 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID B_extension_100
+1 71 100 160 180 1 0 0 0 1 0 0 0 1 32524.dat
+0 !BW ID B_extension_pin_100_120
+1 0 100 150 120 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID B_footrail_180
+1 71 0 140 180 0 0 1 0 1 0 -1 0 0 32525.dat
+0 !BW ID B_footrail_pin_-100_180
+1 0 -100 150 180 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID B_footrail_pin_100_180
+1 0 100 150 180 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID B_post_-1_180
+1 71 -40 -20 180 0 1 0 0 0 1 1 0 0 32278.dat
+0 !BW ID B_stator_pin_-1_-140_180
+1 0 -30 -140 180 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID B_stator_pin_-1_20_180
+1 0 -30 20 180 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID B_post_-1_180_foot_100
+1 71 -60 100 180 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID B_post_-1_180_foot_120
+1 71 -60 120 180 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID B_post_-1_180_foot_stack
+1 1 -60 120 180 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID B_post_1_180
+1 71 40 -20 180 0 1 0 0 0 1 1 0 0 32278.dat
+0 !BW ID B_stator_pin_1_-140_180
+1 0 30 -140 180 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID B_stator_pin_1_20_180
+1 0 30 20 180 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID B_post_1_180_foot_100
+1 71 60 100 180 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID B_post_1_180_foot_120
+1 71 60 120 180 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID B_post_1_180_foot_stack
+1 1 60 120 180 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID B_footrail_220
+1 71 0 140 220 0 0 1 0 1 0 -1 0 0 32525.dat
+0 !BW ID B_footrail_pin_-100_220
+1 0 -100 150 220 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID B_footrail_pin_100_220
+1 0 100 150 220 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID B_post_-1_220
+1 71 -40 -20 220 0 1 0 0 0 1 1 0 0 32278.dat
+0 !BW ID B_stator_pin_-1_-140_220
+1 0 -30 -140 220 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID B_stator_pin_-1_20_220
+1 0 -30 20 220 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID B_post_-1_220_foot_100
+1 71 -60 100 220 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID B_post_-1_220_foot_120
+1 71 -60 120 220 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID B_post_-1_220_foot_stack
+1 1 -60 120 220 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID B_post_1_220
+1 71 40 -20 220 0 1 0 0 0 1 1 0 0 32278.dat
+0 !BW ID B_stator_pin_1_-140_220
+1 0 30 -140 220 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID B_stator_pin_1_20_220
+1 0 30 20 220 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID B_post_1_220_foot_100
+1 71 60 100 220 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID B_post_1_220_foot_120
+1 71 60 120 220 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID B_post_1_220_foot_stack
+1 1 60 120 220 0 1 0 1 0 0 0 0 -1 6558.dat
+0 STEP
+0 04e balanced low hub shelf
+0 !BW ID hub_shelf_extension_-100
+1 71 -100 160 -180 1 0 0 0 1 0 0 0 1 32524.dat
+0 !BW ID hub_shelf_front_pin_-100
+1 1 -100 140 -220 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID hub_shelf_extension_100
+1 71 100 160 -180 1 0 0 0 1 0 0 0 1 32524.dat
+0 !BW ID hub_shelf_front_pin_100
+1 1 100 140 -220 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID hub_shelf_front_cross
+1 71 0 140 -220 0 0 1 0 1 0 -1 0 0 32525.dat
+0 !BW ID balance_rear_tie
+1 71 0 140 200 0 0 1 0 1 0 -1 0 0 32525.dat
+0 !BW ID balance_rear_tie_pin_-100
+1 0 -100 150 200 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID balance_rear_tie_pin_100
+1 0 100 150 200 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID balance_trim_pin
+1 1 -20 120 180 0 1 0 -1 0 0 0 0 1 6558.dat
+0 STEP
+0 05 coaxial reaction motor and retained rotor
+0 !BW ID motor_A
+0 !BW PORT A
+1 71 0 -240 0 1 0 0 0 1 0 0 0 1 54696p01.dat
+0 !BW ID reaction_beam
+1 1 0 -340 0 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID reaction_key
+1 1 0 -320 0 1 0 0 0 1 0 0 0 1 7229.dat
+0 !BW ID reaction_axle
+1 0 0 -320 0 0 1 0 1 0 0 0 0 -1 32073.dat
+0 !BW ID reaction_top_retainer
+1 71 0 -355 0 1 0 0 0 0 1 0 -1 0 4265c.dat
+0 !BW ID reaction_motor_spacer
+1 71 0 -300 0 1 0 0 0 0 1 0 -1 0 3713.dat
+0 !BW ID reaction_key_pin_-20
+1 0 0 -330 -20 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID reaction_key_pin_20
+1 0 0 -330 20 0 1 0 1 0 0 0 0 -1 2780.dat
+0 STEP
+0 06 balanced abs reaction weights
+0 !BW ID reaction_left_corner_80
+1 1 0 -360 -80 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID reaction_left_corner_pin_80
+1 0 0 -350 -80 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID reaction_left_brick_80
+1 1 -20 -370 -80 0 0 1 0 1 0 -1 0 0 3700.dat
+0 !BW ID reaction_left_corner_120
+1 1 0 -360 -120 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID reaction_left_corner_pin_120
+1 0 0 -350 -120 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID reaction_left_brick_120
+1 1 -20 -370 -120 0 0 1 0 1 0 -1 0 0 3700.dat
+0 !BW ID reaction_left_plate_0
+1 1 -10 -378 -100 0 0 1 0 1 0 -1 0 0 3034.dat
+0 !BW ID reaction_left_plate_1
+1 1 -10 -386 -100 0 0 1 0 1 0 -1 0 0 3034.dat
+0 !BW ID reaction_left_plate_2
+1 1 -10 -394 -100 0 0 1 0 1 0 -1 0 0 3034.dat
+0 !BW ID reaction_left_plate_3
+1 1 -10 -402 -100 0 0 1 0 1 0 -1 0 0 3034.dat
+0 !BW ID reaction_right_corner_80
+1 1 0 -360 80 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID reaction_right_corner_pin_80
+1 0 0 -350 80 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID reaction_right_brick_80
+1 1 20 -370 80 0 0 1 0 1 0 -1 0 0 3700.dat
+0 !BW ID reaction_right_corner_120
+1 1 0 -360 120 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID reaction_right_corner_pin_120
+1 0 0 -350 120 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID reaction_right_brick_120
+1 1 20 -370 120 0 0 1 0 1 0 -1 0 0 3700.dat
+0 !BW ID reaction_right_plate_0
+1 1 10 -378 100 0 0 1 0 1 0 -1 0 0 3034.dat
+0 !BW ID reaction_right_plate_1
+1 1 10 -386 100 0 0 1 0 1 0 -1 0 0 3034.dat
+0 !BW ID reaction_right_plate_2
+1 1 10 -394 100 0 0 1 0 1 0 -1 0 0 3034.dat
+0 !BW ID reaction_right_plate_3
+1 1 10 -402 100 0 0 1 0 1 0 -1 0 0 3034.dat
+0 STEP
+0 07 horizontal shape motor and two layer crank
+0 !BW ID motor_B
+0 !BW PORT B
+1 71 0 0 200 1 0 0 0 0 -1 0 1 0 54696p01.dat
+0 !BW ID crank_B_front
+1 4 0 0 0 0 0 1 1 0 0 0 1 0 32316.dat
+0 !BW ID crank_B_key
+1 4 0 0 20 0 0 1 1 0 0 0 1 0 7229.dat
+0 !BW ID crank_B_rear
+1 4 0 0 40 0 0 1 1 0 0 0 1 0 32316.dat
+0 !BW ID crank_B_tie_-20
+1 1 -20 0 20 0 0 -1 0 1 0 1 0 0 6558.dat
+0 !BW ID crank_B_tie_20
+1 1 20 0 20 0 0 -1 0 1 0 1 0 0 6558.dat
+0 !BW ID crank_B_axle
+1 0 0 0 70 0 0 -1 0 1 0 1 0 0 3737.dat
+0 !BW ID crank_B_front_retainer
+1 71 0 0 -15 1 0 0 0 1 0 0 0 1 4265c.dat
+0 !BW ID crank_B_rear_retainer
+1 71 0 0 55 1 0 0 0 1 0 0 0 1 4265c.dat
+0 !BW ID crank_B_spacer_70
+1 71 0 0 70 1 0 0 0 1 0 0 0 1 3713.dat
+0 !BW ID crank_B_spacer_90
+1 71 0 0 90 1 0 0 0 1 0 0 0 1 3713.dat
+0 !BW ID crank_B_spacer_110
+1 71 0 0 110 1 0 0 0 1 0 0 0 1 3713.dat
+0 !BW ID crank_B_spacer_130
+1 71 0 0 130 1 0 0 0 1 0 0 0 1 3713.dat
+0 !BW ID crank_B_motor_spacer
+1 71 0 0 145 1 0 0 0 1 0 0 0 1 4265c.dat
+0 STEP
+0 08 four retained half rails and fixed crossrails
+0 !BW ID guide_central_cross_-120
+1 71 0 -120 0 0 1 0 -1 0 0 0 0 1 32278.dat
+0 !BW ID guide_outer_cross_-1_-120
+1 71 -240 -120 0 0 1 0 -1 0 0 0 0 1 32524.dat
+0 !BW ID guide_outer_cross_1_-120
+1 71 240 -120 0 0 1 0 -1 0 0 0 0 1 32524.dat
+0 !BW ID guide_central_cross_-80
+1 71 0 -80 0 0 1 0 -1 0 0 0 0 1 32278.dat
+0 !BW ID guide_outer_cross_-1_-80
+1 71 -240 -80 0 0 1 0 -1 0 0 0 0 1 32524.dat
+0 !BW ID guide_outer_cross_1_-80
+1 71 240 -80 0 0 1 0 -1 0 0 0 0 1 32524.dat
+0 !BW ID guide_left_axle_-60
+1 0 -120 -100 -60 1 0 0 0 1 0 0 0 1 3708.dat
+0 !BW ID guide_left_inner_holder_-60
+1 71 -20 -100 -60 0 1 0 0 0 1 1 0 0 7229.dat
+0 !BW ID guide_left_outer_holder_-60
+1 71 -220 -100 -60 0 1 0 0 0 1 1 0 0 7229.dat
+0 !BW ID guide_left_inner_retainer_-60
+1 71 -5 -100 -60 0 0 1 0 1 0 -1 0 0 4265c.dat
+0 !BW ID guide_left_outer_retainer_-60
+1 71 -235 -100 -60 0 0 1 0 1 0 -1 0 0 4265c.dat
+0 !BW ID guide_left_outer_tie_-60_-120
+1 0 -230 -120 -60 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID guide_left_outer_tie_-60_-80
+1 0 -230 -80 -60 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID guide_left_axle_60
+1 0 -120 -100 60 1 0 0 0 1 0 0 0 1 3708.dat
+0 !BW ID guide_left_inner_holder_60
+1 71 -20 -100 60 0 1 0 0 0 1 1 0 0 7229.dat
+0 !BW ID guide_left_outer_holder_60
+1 71 -220 -100 60 0 1 0 0 0 1 1 0 0 7229.dat
+0 !BW ID guide_left_inner_retainer_60
+1 71 -5 -100 60 0 0 1 0 1 0 -1 0 0 4265c.dat
+0 !BW ID guide_left_outer_retainer_60
+1 71 -235 -100 60 0 0 1 0 1 0 -1 0 0 4265c.dat
+0 !BW ID guide_left_outer_tie_60_-120
+1 0 -230 -120 60 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID guide_left_outer_tie_60_-80
+1 0 -230 -80 60 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID park_left_corner
+1 71 -240 0 0 -1 0 0 0 0 1 0 1 0 15100.dat
+0 !BW ID guide_right_axle_-60
+1 0 120 -100 -60 1 0 0 0 1 0 0 0 1 3708.dat
+0 !BW ID guide_right_inner_holder_-60
+1 71 20 -100 -60 0 1 0 0 0 1 1 0 0 7229.dat
+0 !BW ID guide_right_outer_holder_-60
+1 71 220 -100 -60 0 1 0 0 0 1 1 0 0 7229.dat
+0 !BW ID guide_right_inner_retainer_-60
+1 71 5 -100 -60 0 0 1 0 1 0 -1 0 0 4265c.dat
+0 !BW ID guide_right_outer_retainer_-60
+1 71 235 -100 -60 0 0 1 0 1 0 -1 0 0 4265c.dat
+0 !BW ID guide_right_outer_tie_-60_-120
+1 0 230 -120 -60 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID guide_right_outer_tie_-60_-80
+1 0 230 -80 -60 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID guide_right_axle_60
+1 0 120 -100 60 1 0 0 0 1 0 0 0 1 3708.dat
+0 !BW ID guide_right_inner_holder_60
+1 71 20 -100 60 0 1 0 0 0 1 1 0 0 7229.dat
+0 !BW ID guide_right_outer_holder_60
+1 71 220 -100 60 0 1 0 0 0 1 1 0 0 7229.dat
+0 !BW ID guide_right_inner_retainer_60
+1 71 5 -100 60 0 0 1 0 1 0 -1 0 0 4265c.dat
+0 !BW ID guide_right_outer_retainer_60
+1 71 235 -100 60 0 0 1 0 1 0 -1 0 0 4265c.dat
+0 !BW ID guide_right_outer_tie_60_-120
+1 0 230 -120 60 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID guide_right_outer_tie_60_-80
+1 0 230 -80 60 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID park_right_corner
+1 71 240 0 0 1 0 0 0 0 -1 0 1 0 15100.dat
+0 !BW ID guide_central_tie_-60_-120
+1 1 0 -120 -60 1 0 0 0 1 0 0 0 1 6558.dat
+0 !BW ID guide_central_tie_60_-120
+1 1 0 -120 60 1 0 0 0 1 0 0 0 1 6558.dat
+0 !BW ID guide_central_tie_-60_-80
+1 1 0 -80 -60 1 0 0 0 1 0 0 0 1 6558.dat
+0 !BW ID guide_central_tie_60_-80
+1 1 0 -80 60 1 0 0 0 1 0 0 0 1 6558.dat
+0 STEP
+0 09 independent antiroll carts and balanced ballast
+0 !BW ID slider_left_guide_-60
+1 71 -160 -100 -30 0 0 1 1 0 0 0 1 0 48496.dat
+0 !BW ID slider_left_guide_60
+1 71 -160 -100 30 0 0 1 -1 0 0 0 -1 0 48496.dat
+0 !BW ID slider_left_upper_brick_-20
+1 25 -160 -110 -20 1 0 0 0 1 0 0 0 1 3701.dat
+0 !BW ID slider_left_bridge_plate_-20_-86
+1 25 -160 -86 -20 1 0 0 0 1 0 0 0 1 3710.dat
+0 !BW ID slider_left_bridge_plate_-20_-78
+1 25 -160 -78 -20 1 0 0 0 1 0 0 0 1 3710.dat
+0 !BW ID slider_left_lower_brick_-20
+1 25 -160 -70 -20 1 0 0 0 1 0 0 0 1 3701.dat
+0 !BW ID slider_left_upper_brick_20
+1 25 -160 -110 20 1 0 0 0 1 0 0 0 1 3701.dat
+0 !BW ID slider_left_bridge_plate_20_-86
+1 25 -160 -86 20 1 0 0 0 1 0 0 0 1 3710.dat
+0 !BW ID slider_left_bridge_plate_20_-78
+1 25 -160 -78 20 1 0 0 0 1 0 0 0 1 3710.dat
+0 !BW ID slider_left_lower_brick_20
+1 25 -160 -70 20 1 0 0 0 1 0 0 0 1 3701.dat
+0 !BW ID slider_left_clevis
+1 25 -160 -40 0 -1 0 0 0 0 1 0 1 0 32524.dat
+0 !BW ID slider_left_clevis_tie_-100
+1 1 -160 -100 0 0 0 -1 0 1 0 1 0 0 6558.dat
+0 !BW ID slider_left_clevis_tie_-60
+1 1 -160 -60 0 0 0 -1 0 1 0 1 0 0 6558.dat
+0 !BW ID slider_left_plate_0
+1 25 -160 -118 -10 0 0 1 0 1 0 -1 0 0 3034.dat
+0 !BW ID slider_left_plate_1
+1 25 -160 -126 -10 0 0 1 0 1 0 -1 0 0 3034.dat
+0 !BW ID slider_left_plate_2
+1 25 -160 -134 -10 0 0 1 0 1 0 -1 0 0 3034.dat
+0 !BW ID slider_left_plate_3
+1 25 -160 -142 -10 0 0 1 0 1 0 -1 0 0 3034.dat
+0 !BW ID slider_left_plate_4
+1 25 -160 -150 -10 0 0 1 0 1 0 -1 0 0 3034.dat
+0 !BW ID slider_left_plate_5
+1 25 -160 -158 -10 0 0 1 0 1 0 -1 0 0 3034.dat
+0 !BW ID slider_left_plate_6
+1 25 -160 -166 -10 0 0 1 0 1 0 -1 0 0 3034.dat
+0 !BW ID slider_left_plate_7
+1 25 -160 -174 -10 0 0 1 0 1 0 -1 0 0 3034.dat
+0 !BW ID slider_right_guide_-60
+1 71 160 -100 -30 0 0 1 1 0 0 0 1 0 48496.dat
+0 !BW ID slider_right_guide_60
+1 71 160 -100 30 0 0 1 -1 0 0 0 -1 0 48496.dat
+0 !BW ID slider_right_upper_brick_-20
+1 25 160 -110 -20 1 0 0 0 1 0 0 0 1 3701.dat
+0 !BW ID slider_right_bridge_plate_-20_-86
+1 25 160 -86 -20 1 0 0 0 1 0 0 0 1 3710.dat
+0 !BW ID slider_right_bridge_plate_-20_-78
+1 25 160 -78 -20 1 0 0 0 1 0 0 0 1 3710.dat
+0 !BW ID slider_right_lower_brick_-20
+1 25 160 -70 -20 1 0 0 0 1 0 0 0 1 3701.dat
+0 !BW ID slider_right_upper_brick_20
+1 25 160 -110 20 1 0 0 0 1 0 0 0 1 3701.dat
+0 !BW ID slider_right_bridge_plate_20_-86
+1 25 160 -86 20 1 0 0 0 1 0 0 0 1 3710.dat
+0 !BW ID slider_right_bridge_plate_20_-78
+1 25 160 -78 20 1 0 0 0 1 0 0 0 1 3710.dat
+0 !BW ID slider_right_lower_brick_20
+1 25 160 -70 20 1 0 0 0 1 0 0 0 1 3701.dat
+0 !BW ID slider_right_clevis
+1 25 160 -40 0 -1 0 0 0 0 1 0 1 0 32524.dat
+0 !BW ID slider_right_clevis_tie_-100
+1 1 160 -100 0 0 0 -1 0 1 0 1 0 0 6558.dat
+0 !BW ID slider_right_clevis_tie_-60
+1 1 160 -60 0 0 0 -1 0 1 0 1 0 0 6558.dat
+0 !BW ID slider_right_plate_0
+1 25 160 -118 10 0 0 1 0 1 0 -1 0 0 3034.dat
+0 !BW ID slider_right_plate_1
+1 25 160 -126 10 0 0 1 0 1 0 -1 0 0 3034.dat
+0 !BW ID slider_right_plate_2
+1 25 160 -134 10 0 0 1 0 1 0 -1 0 0 3034.dat
+0 !BW ID slider_right_plate_3
+1 25 160 -142 10 0 0 1 0 1 0 -1 0 0 3034.dat
+0 !BW ID slider_right_plate_4
+1 25 160 -150 10 0 0 1 0 1 0 -1 0 0 3034.dat
+0 !BW ID slider_right_plate_5
+1 25 160 -158 10 0 0 1 0 1 0 -1 0 0 3034.dat
+0 !BW ID slider_right_plate_6
+1 25 160 -166 10 0 0 1 0 1 0 -1 0 0 3034.dat
+0 !BW ID slider_right_plate_7
+1 25 160 -174 10 0 0 1 0 1 0 -1 0 0 3034.dat
+0 STEP
+0 10 opposed connecting rods
+0 !BW ID rod_left
+1 4 -100 0 -20 0 0 -1 -1 0 0 0 1 0 32524.dat
+0 !BW ID rod_left_cart_pin
+1 7 -160 0 -10 0 0 -1 0 1 0 1 0 0 3673.dat
+0 !BW ID rod_left_crank_pin
+1 7 -40 0 -10 0 0 -1 0 1 0 1 0 0 3673.dat
+0 !BW ID rod_right
+1 4 100 0 20 0 0 1 1 0 0 0 1 0 32524.dat
+0 !BW ID rod_right_cart_pin
+1 7 160 0 10 0 0 -1 0 1 0 1 0 0 3673.dat
+0 !BW ID rod_right_crank_pin
+1 7 40 0 30 0 0 -1 0 1 0 1 0 0 3673.dat
+0 STEP

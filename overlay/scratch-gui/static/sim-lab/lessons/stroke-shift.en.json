@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "id": "stroke-shift",
+  "language": "en",
+  "what": "Two motors have different jobs. Motor B uses a small linear actuator carried by the crank to set its pin radius to 16, 22 or 28 mm. Motor A then turns that crank. The same connecting rod drives a separately guided piston with no motor of its own. Its projected hinge-axis distance is 176 mm. The ideal full strokes are 32, 44 and 56 mm. Changing radius changes how far the piston travels; changing only cycle speed does not change the geometric stroke.",
+  "try": [
+    "Open Stroke Shift with its program, reset to the saved pose and press Run. The single SPIKE Prime hub uses A for carrier rotation and B for radius adjustment. The program checks that both starting encoder magnitudes are within 1° of zero; it does not reset the scene or redefine encoder zero. Reload the saved model before a new experiment after manual movement or an interrupted run.",
+    "Watch the three trials. A holds while B selects the radius; B holds while A moves 0 → 1080 → 0 motor degrees. The 20T:60T gears make that one carrier turn and a reverse turn. A runs at 180°/s and B at 360°/s; small arrival errors are corrected slowly. Positive B extends the radius; its targets are 0°, 1791.223007° and 3582.446015°.",
+    "Measure the actual crank-pin distance from the main axis and the full piston excursion for each held setting. Predict 32, 44 and 56 mm from the nominal radii. Experimental model: measured only in the simulator (one headless run, from the piston pose rather than the encoders), the strokes were 32.004, 44.007 and 56.003 mm, each turn took the same 6.4 s at every radius, and nothing has been tested on real LEGO parts.",
+    "Compare piston positions at matching carrier angles and compare the two endpoints. At completion, both inputs return and hold: completed = 1, failed = 0, trial = 3, stage = 6. The final radius is 16 mm. The program has a 180-second watchdog and checks arrival within 1.5°. Use only the declared finite route; the actuator and guide limits extend beyond its qualified settings."
+  ],
+  "why": "The piston guide passes through the crank axis in horizontal projection. Let r be the held radius, L = 176 mm the projected distance between rod hinge axes, and θ the crank angle from full extension. The crank pin is at (r cos θ, r sin θ). The rod bridges the remaining horizontal distance, so on the open assembly branch x = r cos θ + √(L² − r² sin²θ). Since L exceeds every selected radius, the inline endpoints are x = L + r and x = L - r. Their separation is exactly 2r in the ideal geometry. The two overlapping rod beams place the selected endpoint markers in planes 8 mm apart; their 3D separation is about 176.182 mm, while 176 mm is the length used in this planar equation. Both hinge axes are parallel and the axial offset is fixed.",
+  "matters": "Adjustable throw separates movement range from cycle rate. One connecting rod and piston can deliver different strokes because the setting motor changes a real geometric parameter. The repeating motor supplies phase. This is useful for understanding variable feed, pumping and reciprocating motion without pretending that motor speed alone sets stroke. The piston remains passive throughout the experiment.",
+  "question": "When the crank radius changes from 16 to 28 mm, by how much should the ideal complete piston stroke increase? Must the cycle time increase by the same proportion?",
+  "answer": "The ideal stroke changes from 2 × 16 = 32 mm to 2 × 28 = 56 mm: an increase of 24 mm, or 75%. The ideal period can remain the same because one carrier turn takes the same time at the same angular speed. Actual arrival time and load effects must still be measured. The stroke result assumes an inline guide, a fixed held radius and the same assembly branch.",
+  "further": [
+    "Use actual observed carrier angle and crank radius in the equation, then compare its prediction with the separately observed piston position. In the ideal geometry the difference is zero; a remaining difference shows joint compliance or solver error. Rigid-body simulation does not establish real stiffness, friction or manufacturing accuracy.",
+    "Compare with Rod Ratio. It keeps r = 24 mm and changes rod length from 40 to 80 mm; both ideal full strokes stay 48 mm. Stroke Shift keeps one rod and changes radius. Explain why these experiments alter different properties of the displacement curve.",
+    "Compare with Quickstroke, whose offset guide changes forward and return timing. Also distinguish the experimental Spiral Scribe: its radius advances while the carrier rotates, whereas Stroke Shift sets a radius while parked and holds it during each periodic cycle.",
+    "Inspect the two separated overlap pins that make the rod rigid, both retained radial guides, the two piston guides and the moving B-motor cable route. The supplier’s construction report covers the part geometry at the saved pose and along a sampled sweep. Physical assembly, cable routing and loaded operation remain untested; a different radius range or rod length needs new closure, clearance and simulation checks."
+  ],
+  "formula": "L = 176 mm in horizontal projection; fixed endpoint-plane offset = 8 mm; r = 16, 22 or 28 mm. x(θ, r) = r cos θ + √(L² − r² sin²θ); x_max = L + r; x_min = L - r; full stroke S = 2r = 32, 44 or 56 mm. The simulator’s actuator lead is 1.20588 mm per spindle turn, so each 6 mm radius step needs (6 / 1.20588) × 360 ≈ 1791.22 motor degrees; this lead is catalogue data, not a hardware measurement.",
+  "related": [
+    "rod-ratio.ldr",
+    "quickstroke.ldr",
+    "sine-shuttle.ldr",
+    "oblique.ldr"
+  ]
+}

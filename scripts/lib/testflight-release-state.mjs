@@ -13,13 +13,13 @@ const id = value => {
 const positive = state => ['READY_FOR_BETA_TESTING', 'IN_BETA_TESTING'].includes(state);
 const pendingReview = state => ['WAITING_FOR_REVIEW', 'IN_REVIEW'].includes(state);
 
-export function admitRelease(identity) {
-    for (const key of Object.keys(RELEASE)) if (identity?.[key] !== RELEASE[key]) refuse('RELEASE_IDENTITY_MISMATCH');
+function admitFor(release, identity) {
+    for (const key of Object.keys(release)) if (identity?.[key] !== release[key]) refuse('RELEASE_IDENTITY_MISMATCH');
 }
 
 /** Independent heading parser; never uses a writer's success message as proof. */
-export function releaseNotes(markdown, version = RELEASE.version) {
-    if (version !== RELEASE.version || typeof markdown !== 'string') refuse('INVALID_NOTES_SOURCE');
+function notesFor(release, markdown, version = release.version) {
+    if (version !== release.version || typeof markdown !== 'string') refuse('INVALID_NOTES_SOURCE');
     const lines = markdown.replace(/\r\n/g, '\n').split('\n');
     return Object.fromEntries(['en-US', 'de-DE'].map(locale => {
         const heading = `## What to Test — ${version} ${locale}`;
@@ -62,33 +62,33 @@ async function resource(api, route) {
 }
 
 /** Resolve the private app ID inside the authenticated process, not a job env. */
-export async function discoverReleaseApp({api, identity}) {
-    admitRelease(identity);
-    const apps = await pages(api, `/v1/apps?filter[bundleId]=${encodeURIComponent(RELEASE.bundleId)}&fields[apps]=bundleId&limit=2`);
-    if (apps.length !== 1 || apps[0].attributes?.bundleId !== RELEASE.bundleId) {
+async function discoverFor(release, {api, identity}) {
+    admitFor(release, identity);
+    const apps = await pages(api, `/v1/apps?filter[bundleId]=${encodeURIComponent(release.bundleId)}&fields[apps]=bundleId&limit=2`);
+    if (apps.length !== 1 || apps[0].attributes?.bundleId !== release.bundleId) {
         refuse('APP_IDENTITY_MISSING_OR_AMBIGUOUS');
     }
     id(apps[0].id);
     return apps[0].id;
 }
 
-export async function inspectRelease({api, appId, identity, notes}) {
-    admitRelease(identity);
+async function inspectFor(release, {api, appId, identity, notes}) {
+    admitFor(release, identity);
     if (typeof api !== 'function' || ['en-US', 'de-DE'].some(k => typeof notes?.[k] !== 'string' || !notes[k])) {
         refuse('INVALID_AUDIT_INPUT');
     }
     const builds = (await pages(api, `/v1/builds?filter[app]=${id(appId)}&limit=200&sort=-uploadedDate`))
-        .filter(build => build.attributes?.version === RELEASE.version);
+        .filter(build => build.attributes?.version === release.version);
     const records = [], platforms = new Set();
     for (const build of builds) {
         id(build.id);
         const pre = await resource(api, `/v1/builds/${id(build.id)}/preReleaseVersion?fields[preReleaseVersions]=platform,version`);
         const platform = pre.attributes.platform;
-        if (!['IOS', 'MAC_OS'].includes(platform) || pre.attributes.version !== RELEASE.version) refuse('BUILD_PLATFORM_VERSION_MISMATCH');
+        if (!['IOS', 'MAC_OS'].includes(platform) || pre.attributes.version !== release.version) refuse('BUILD_PLATFORM_VERSION_MISMATCH');
         if (platforms.has(platform)) refuse('AMBIGUOUS_BUILD');
         platforms.add(platform);
         const app = await resource(api, `/v1/builds/${id(build.id)}/app?fields[apps]=bundleId`);
-        if (app.id !== appId || app.attributes.bundleId !== RELEASE.bundleId) refuse('BUILD_APP_MISMATCH');
+        if (app.id !== appId || app.attributes.bundleId !== release.bundleId) refuse('BUILD_APP_MISMATCH');
         const a = build.attributes;
         if (!['VALID', 'PROCESSING', 'FAILED', 'INVALID'].includes(a.processingState) ||
             typeof a.expired !== 'boolean' || ![true, false, null].includes(a.usesNonExemptEncryption)) refuse('INVALID_BUILD_STATE');
@@ -140,8 +140,8 @@ export async function inspectRelease({api, appId, identity, notes}) {
         !pendingReview(r.review) && r.review !== 'REJECTED';
     const metadataVerified = iosPresent && records.every(metadata);
     const complete = iosPresent && records.every(available);
-    const summary = {schemaVersion: 1, version: RELEASE.version, tag: RELEASE.tag,
-        releaseSource: RELEASE.commit, iosPresent, metadataVerified, complete,
+    const summary = {schemaVersion: 1, version: release.version, tag: release.tag,
+        releaseSource: release.commit, iosPresent, metadataVerified, complete,
         reviewRecorded: iosPresent && records.every(reviewRecorded),
         recoveryEligible: iosPresent && records.every(r => valid(r) && r.localesPresent && r.encryption !== true && r.review !== 'REJECTED'),
         pendingReview: records.some(r => pendingReview(r.review)),
@@ -152,6 +152,41 @@ export async function inspectRelease({api, appId, identity, notes}) {
             internalBuildState: r.internalState, externalBuildState: r.externalState}))};
     return {summary, identity: JSON.stringify({builds: records.map(r => [r.platform, r.id]),
         internal: internal?.id ?? null, external: external?.id ?? null})};
+}
+
+/** Legacy recovery remains bound to the original immutable release. */
+export function admitRelease(identity) { return admitFor(RELEASE, identity); }
+export function releaseNotes(markdown, version = RELEASE.version) { return notesFor(RELEASE, markdown, version); }
+export function discoverReleaseApp(input) { return discoverFor(RELEASE, input); }
+export function inspectRelease(input) { return inspectFor(RELEASE, input); }
+
+/** A separate observation-only reader. It cannot broaden recovery admission. */
+export function createReadOnlyReleaseReader(expected) {
+    if (!expected || typeof expected.version !== 'string' || expected.version.length > 64 ||
+        !/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(expected.version) ||
+        expected.tag !== `v${expected.version}` || !/^[a-f0-9]{40}$/.test(expected.commit || '') ||
+        expected.bundleId !== RELEASE.bundleId) refuse('INVALID_RELEASE_DESCRIPTOR');
+    const release = Object.freeze(Object.fromEntries(Object.keys(RELEASE).map(key => [key, expected[key]])));
+    const readOnly = api => {
+        if (typeof api !== 'function') refuse('INVALID_AUDIT_INPUT');
+        return (route, method = 'GET', body) => {
+            if (method !== 'GET' || body !== undefined) refuse('READ_ONLY_TRANSPORT');
+            return api(route, 'GET');
+        };
+    };
+    return Object.freeze({
+        admit: identity => admitFor(release, identity),
+        notes: markdown => notesFor(release, markdown),
+        discover: input => discoverFor(release, {...input, api: readOnly(input?.api)}),
+        async inspect(input) {
+            const result = await inspectFor(release, {...input, api: readOnly(input?.api)});
+            const macosPresent = result.summary.builds.some(build => build.platform === 'MAC_OS');
+            const platformsVerified = result.summary.iosPresent && macosPresent;
+            return {...result, summary: {...result.summary, macosPresent, platformsVerified,
+                metadataVerified: result.summary.metadataVerified && platformsVerified,
+                complete: result.summary.complete && platformsVerified}};
+        }
+    });
 }
 
 export async function recoverRelease({inspect, runWriter, pause = ms => new Promise(r => setTimeout(r, ms))}) {

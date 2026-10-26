@@ -37,11 +37,18 @@ export async function runRobotLabProgram(source,{modelText,timeLimitMs,catalog=C
    if(session.hubs[0].hub.hubState!==registered.hub||registered.registration.peripheral.hubState!==registered.hub)throw Error('SPIKE transport/session hub identity differs');
   }
   if(observeSetup)observeSetup({session,vm,hub,prepared:p});
+  // The program's clock is the app's (bw-sim/sim-clock.js SimLabClock.now()): an integer epoch plus the
+  // simulated ms the world has applied since Run. FakeClock's Date.now() accumulates `now += frameMs` on a
+  // 1.7e12 base, which rounds each 33.3 ms frame down by ~8e-5 ms, so a wait of a whole number of frames
+  // (0.3 s, 0.5 s, 1 s at 30 fps) took one frame longer here than in the browser, and a run judged here
+  // was not the run the pane makes (test/bw-sim-robot-lab-program-clock.test.mjs).
+  const epoch=Math.round(Date.now());let programMs=0;
+  if(!withSpike)vm.runtime.updateCurrentMSecs=()=>{vm.runtime.currentMSecs=epoch+programMs;};
   if(coldMs){snapshot('cold');for(let ms=0;ms<coldMs;ms+=frameMs){await clock.advance(frameMs);session.tick(frameMs);await session.idle();snapshot('cold');}}
   vm.greenFlag();
   for(let i=0;i<Math.ceil(timeLimitMs/frameMs);i++){
    await clock.advance(frameMs);vm.runtime._step();for(let j=0;j<5;j++)await Promise.resolve();
-   if(!withSpike||simRunning)session.tick(frameMs);await session.idle();
+   if(!withSpike||simRunning)session.tick(frameMs);await session.idle();programMs+=frameMs;
    snapshot('program');
    if(i>5&&!vm.runtime.threads.some(t=>t.status!==4)){finishedAt=session.time;break;}
   }

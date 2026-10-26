@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "id": "samebeat-conjugate",
+  "language": "de",
+  "what": "Dasselbe starre Pendel wie in Samebeat, umgedreht und an seinem Partnerloch aufgehängt, 40,2 mm vom Schwerpunkt statt 23,8 mm. Die anderen 87 Teile und das Programm sind unverändert: Ein kurzer Motorimpuls bringt das Pendel zum Schwingen, dann hält die Aufhängung still. Im Simulator schwingt es mit 0,50759 s Periode, in Samebeat mit 0,50760 s, obwohl der Drehpunkt 69 % weiter vom Schwerpunkt entfernt ist.",
+  "try": [
+    "Lade dieses Modell, drücke Zurücksetzen und dann Start und stoppe zehn volle Schwingungen während der letzten Haltephase. Dann dasselbe in Samebeat.",
+    "Vergleiche die Drehpunkte: Der Körper ist derselbe, hängt hier aber an einem Loch viel weiter vom Schwerpunkt.",
+    "Sag zuerst voraus: Sollte das Pendel mit dem größeren Abstand langsamer schwingen? Vergleiche dann die Perioden.",
+    "Lade danach Samebeat — Kontrolle: Ein drittes Loch nahe am Schwerpunkt ergibt eine deutlich langsamere Schwingung."
+  ],
+  "why": "Die Periode eines starren Pendels hängt von der reduzierten Länge L = d + k²/d ab. Dabei ist d der Abstand vom Drehpunkt zum Schwerpunkt und k² = I_G/M beschreibt die Massenverteilung. Für diesen Körper ist k² ≈ 956 mm². Samebeat hängt ihn bei d = 23,8 mm auf, das ergibt L = 23,8 + 40,2 = 64,0 mm. Hier ergibt d = 40,2 mm wieder L = 40,2 + 23,8 = 64,0 mm, weil das Produkt der beiden Abstände k² ist. Gleiche reduzierte Länge bedeutet gleiche Periode: T₀ = 2π·√(L/g) ≈ 0,508 s.",
+  "matters": "Weil die beiden Drehpunkte konjugiert sind, ist ihr Abstand (64 mm) selbst die reduzierte Pendellänge. Das ist der Kniff von Katers Reversionspendel: Man misst diesen Abstand und die gemeinsame Periode, und g = 4π²L/T² folgt, ohne den Schwerpunkt je zu bestimmen.",
+  "question": "Der Partnerdrehpunkt liegt 69 % weiter vom Schwerpunkt entfernt. Warum ist die Periode fast genau dieselbe wie in Samebeat?",
+  "answer": "Ein weiter außen liegender Drehpunkt vergrößert sowohl das Drehmoment der Schwerkraft als auch das Trägheitsmoment um den Drehpunkt. Die reduzierte Länge d + k²/d ist für zwei Abstände gleich, deren Produkt k² ist: 23,8 mm × 40,2 mm ≈ 956 mm² = k². Beide ergeben L ≈ 64,0 mm und schwingen deshalb in etwa 0,5076 s.",
+  "further": [
+    "Rechne g = 4π²L/T² mit L = 64,0 mm und T = 0,50759 s. Wie nah kommst du an 9,81 m/s²?",
+    "Bestimme den Drehpunktabstand mit der kürzestmöglichen Periode für diesen Körper (d = k ≈ 30,9 mm).",
+    "Warum müssen die beiden konjugierten Drehpunkte auf entgegengesetzten Seiten des Schwerpunkts liegen, damit ihr Abstand gleich L ist?"
+  ],
+  "formula": "L = d + k²/d, k² = I_G/M ≈ 956 mm²; hier d = 40,2 mm, in Samebeat 23,8 mm; d₁·d₂ = k² ⇒ L₁ = L₂ = d₁ + d₂ = 64,0 mm; T₀ = 2π·√(L/g).",
+  "related": [
+    "pendulum-array.ldr",
+    "cascade.ldr",
+    "momentum-twins.ldr"
+  ]
+}

@@ -1,0 +1,150 @@
+# Stroke Shift — change the crank radius, then observe the passive piston stroke.
+# Copyright (c) 2026 CrispStrobe. SPDX-License-Identifier: BSD-3-Clause.
+# Robot Lab simulation program, not hardware firmware.
+# Load the matching LDR at its saved pose before each new experiment.
+# A turns the carrier through a 20T:60T gear pair; 1080 motor degrees is one turn.
+# B turns the small linear-actuator spindle carried by the rotating structure.
+# Three nominal crank radii: 16, 22 and 28 mm. The piston is never commanded.
+# Positive B extends the crank radius; verified with a native full-model sign probe.
+# Lead: 3.0147 LDU/rev; each 15 LDU radius increment needs 5400/3.0147 degrees.
+# Unwrapped targets minus fresh encoder readings; all speeds are degrees/second.
+# A is held while B changes radius; B is held while A makes a turn and returns.
+# Stages: 0 startup, 1 set radius, 2 outward turn, 3 reverse turn, 4 dwell,
+# 5 restore radius, 6 complete, -1 fault. There is no scene/encoder reset.
+DEVICE SPIKE
+GLOBAL stage = 0
+GLOBAL trial = 0
+GLOBAL completed = 0
+GLOBAL failed = 0
+GLOBAL targetA = 0
+GLOBAL targetB = 0
+GLOBAL speedA = 180
+GLOBAL speedB = 360
+GLOBAL trimsA = 0
+GLOBAL trimsB = 0
+GLOBAL radiusSign = 1
+
+WHEN flag clicked:
+  set stage to 0
+  set trial to 0
+  set completed to 0
+  set failed to 0
+  set targetA to 0
+  set targetB to 0
+  set speedA to 180
+  set speedB to 360
+  set trimsA to 0
+  set trimsB to 0
+  reset timer
+  lab start
+  lab stop motor A hold
+  lab stop motor B hold
+  IF (abs of (lab motor A angle)) > 1 THEN:
+    set failed to 1
+    set stage to -1
+    say "Load Stroke Shift at its saved pose before running."
+    stop all
+  IF (abs of (lab motor B angle)) > 1 THEN:
+    set failed to 1
+    set stage to -1
+    say "Load Stroke Shift at its saved pose before running."
+    stop all
+  broadcast "Stroke Shift watchdog"
+  REPEAT 3:
+    change trial by 1
+    set stage to 1
+    set targetA to 0
+    broadcast "Stroke Shift move A" and wait
+    set targetB to (((trial - 1) * radiusSign) * (5400 / 3.0147))
+    broadcast "Stroke Shift move B" and wait
+    wait 0.3 seconds
+    broadcast "Stroke Shift arrival" and wait
+    set stage to 2
+    set targetA to 1080
+    broadcast "Stroke Shift move A" and wait
+    wait 0.3 seconds
+    broadcast "Stroke Shift arrival" and wait
+    set stage to 3
+    set targetA to 0
+    broadcast "Stroke Shift move A" and wait
+    wait 0.3 seconds
+    broadcast "Stroke Shift arrival" and wait
+    set stage to 4
+    wait 0.2 seconds
+  set stage to 5
+  set targetB to 0
+  broadcast "Stroke Shift move B" and wait
+  wait 0.3 seconds
+  broadcast "Stroke Shift arrival" and wait
+  lab stop motor A hold
+  lab stop motor B hold
+  set stage to 6
+  set completed to 1
+  say "Stroke Shift complete: three crank radii compared; both inputs home and held."
+
+WHEN I receive "Stroke Shift move A":
+  lab stop motor B hold
+  IF (abs of (targetA - (lab motor A angle))) > 0.2 THEN:
+    lab run motor A for (targetA - (lab motor A angle)) degrees at speedA degrees per second
+  lab stop motor A hold
+  set trimsA to 0
+  REPEAT 2:
+    IF (abs of (targetA - (lab motor A angle))) > 0.5 THEN:
+      change trimsA by 1
+      lab run motor A for (targetA - (lab motor A angle)) degrees at 12 degrees per second
+      lab stop motor A hold
+      wait 0.1 seconds
+  IF (abs of (targetA - (lab motor A angle))) > 1.5 THEN:
+    set failed to 1
+    set stage to -1
+    lab stop motor A hold
+    lab stop motor B hold
+    say "Carrier A missed its target. Inspect the model and reload its saved pose."
+    stop all
+
+WHEN I receive "Stroke Shift move B":
+  lab stop motor A hold
+  IF (abs of (targetB - (lab motor B angle))) > 0.2 THEN:
+    lab run motor B for (targetB - (lab motor B angle)) degrees at speedB degrees per second
+  lab stop motor B hold
+  set trimsB to 0
+  REPEAT 2:
+    IF (abs of (targetB - (lab motor B angle))) > 0.5 THEN:
+      change trimsB by 1
+      lab run motor B for (targetB - (lab motor B angle)) degrees at 12 degrees per second
+      lab stop motor B hold
+      wait 0.1 seconds
+  IF (abs of (targetB - (lab motor B angle))) > 1.5 THEN:
+    set failed to 1
+    set stage to -1
+    lab stop motor A hold
+    lab stop motor B hold
+    say "Radius adjuster B missed its target. Inspect the model and reload its saved pose."
+    stop all
+
+WHEN I receive "Stroke Shift arrival":
+  IF (abs of (targetA - (lab motor A angle))) > 1.5 THEN:
+    set failed to 1
+    set stage to -1
+    lab stop motor A hold
+    lab stop motor B hold
+    say "Carrier A drifted from its held target. Reload the saved model pose."
+    stop all
+  IF (abs of (targetB - (lab motor B angle))) > 1.5 THEN:
+    set failed to 1
+    set stage to -1
+    lab stop motor A hold
+    lab stop motor B hold
+    say "Radius adjuster B drifted from its held target. Reload the saved model pose."
+    stop all
+
+WHEN I receive "Stroke Shift watchdog":
+  REPEAT UNTIL (completed = 1):
+    IF (timer) > 180 THEN:
+      set failed to 1
+      set stage to -1
+      lab stop motor A hold
+      lab stop motor B hold
+      say "Stroke Shift timed out. Inspect and reload the saved model pose."
+      stop all
+    wait 0.1 seconds

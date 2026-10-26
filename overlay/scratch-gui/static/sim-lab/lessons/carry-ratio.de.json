@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "id": "carry-ratio",
+  "language": "de",
+  "what": "Ein motorisch angetriebener Tisch nimmt eine freie Kugel allein über Kontakt mit. Motor A dreht eine Kurbel mit 20 LDU (8 mm) Radius; eine dünne Pleuelstange schiebt einen Gleitschlitten auf einer 16L-Führungsachse, und der Schlitten trägt eine 6x8-Platte als Tisch, der sich so 16 mm hin und her bewegt. Auf dem Tisch liegt eine 19-mm-Technic-Kugel ohne Achse, Führung oder Befestigung. Das Programm fährt die Kurbel mit 120, 240, 480 und 720 °/s und dann zurück. Im Simulator folgt der Kugelmittelpunkt dem Tisch bei jeder Drehzahl mit einem Verhältnis von 0,285 bis 0,288, vorhergesagt sind 2/7 = 0,2857, und die Kugel dreht sich um etwa 1,19 rad (68°) für je 11,4 mm, die sie hinter dem Tisch zurückbleibt.",
+  "try": [
+    "Lade das Modell, drücke Zurücksetzen und dann Start. Die Kurbel beginnt bei 90°, also entfernt vom Totpunkt, in dem die Pleuelstange längs der Kurbel liegt.",
+    "Beobachte die Kugel, nicht den Motor. Während eines langsamen Durchlaufs bewegt sich der Tisch 16 mm, der Kugelmittelpunkt aber nur etwa 4,6 mm; die Kugel dreht sich sichtbar, etwa 68 Grad von einem Extrem zum anderen.",
+    "Vergleiche in einer langsamen Stufe die Drehung der Kugel mit dem Weg, um den sie hinter dem Tisch zurückbleibt: Rollen ohne Gleiten heißt, dass der abgerollte Bogen genau diesem Rückstand entspricht.",
+    "Vergleiche die vier Drehzahlen. Die Kugel wird bei jeder um denselben Anteil mitgenommen, weil das Verhältnis nur von der Form der Kugel abhängt, nicht von Drehzahl oder Masse. Viel schnellere Fahrten würden sie gleiten lassen und vom Tisch werfen; deshalb endet das Programm bei 720 °/s."
+  ],
+  "why": "Rollen ein freier Körper und seine Unterlage ohne Gleiten aufeinander, gelten zwei Beziehungen. Der Kontaktpunkt muss sich mit der Unterlage bewegen, also ist der abgerollte Bogen gleich dem Relativweg: r*dphi = -(dx_t - dx_p). Und weil die einzige waagerechte Kraft auf den Körper die Haftreibung im Kontakt ist, liefern Impuls- und Drehimpulsbilanz a_p = a_t*I/(I + M r^2). Für eine homogene Vollkugel ist I = (2/5)M r^2, der Mittelpunkt übernimmt also genau 2/7 der Beschleunigung und des Wegs des Tisches, unabhängig von Masse und Radius der Kugel. Deshalb liegt das gemessene Verhältnis bei vier verschiedenen Geschwindigkeiten auf 0,286. Die nötige Reibung ist f = M a_t*2/7; sie überschreitet mu*M*g erst, wenn a_t den Wert 3,5*mu*g übersteigt. Darum eilen schnellere Durchläufe zunächst nach und gleiten dann.",
+  "matters": "Ungriffiges Transportieren bewegt Teile ohne Greifer: Förderbänder, Rollenbahnen, Kugelrollen und Schwingförderer arbeiten so. Dieselbe Bilanz erklärt eine Spule auf einem gezogenen Brett, eine Münze auf einer bewegten Karte und warum eine Kugel im anfahrenden Zug relativ zum Boden rückwärts rollt. Dass der mitgenommene Anteil von der Trägheitsverteilung und nicht von der Masse abhängt, hilft beim Auslegen: leichte und schwere Kugeln gleicher Form verhalten sich gleich, eine Hohlkugel dagegen nicht.",
+  "question": "Eine Vollkugel liegt frei auf einem waagerechten Tisch und wird nur durch Reibung mitgenommen. Wenn der Tisch 16 mm fährt, wie weit bewegt sich der Kugelmittelpunkt, und wie weit dreht sich die Kugel?",
+  "answer": "Der Mittelpunkt bewegt sich 2/7 von 16 mm, also etwa 4,6 mm, in derselben Richtung wie der Tisch. Die restlichen 11,4 mm sind der Relativweg, und die Kugel dreht sich um 11,4 mm / 9,6 mm = 1,19 rad, also etwa 68°. Im Simulator liegt das gemessene Verhältnis bei jeder Drehzahl zwischen 0,285 und 0,288.",
+  "further": [
+    "Wiederhole den Versuch mit einer Hohlkugel oder einem kurzen Zylinder mit bekannter Trägheit. Sage das Verhältnis aus kappa = I/(M r^2) vorher und vergleiche: ein reifenartiger Körper müsste deutlich weiter mitgenommen werden als eine Vollkugel.",
+    "Lade „Carry Ratio — Kugel auf dem Boden (Kontrolle)“. Dieselbe Kugel liegt auf der festen Grundplatte statt auf dem Tisch, und der Tisch fährt weiter 16 mm. Sag die Bewegung der Kugel voraus und prüfe dann: Ihr Mitnahmeverhältnis fällt auf etwa 0,000.",
+    "Schätze den Reibungskoeffizienten aus der Drehzahl, bei der die Kugel zuerst gleitet, a_t = 3,5*mu*g für eine Vollkugel, und vergleiche ihn mit einem langsamen Neigungsversuch."
+  ],
+  "formula": "Rollen ohne Gleiten auf einer translatorisch bewegten Unterlage: r*dphi = -(dx_t - dx_p); dx_p = lambda*dx_t mit lambda = I/(I + M r^2); für eine Vollkugel lambda = (2/5)/(1 + 2/5) = 2/7 = 0,2857; Gleiten beginnt bei a_t > mu*g*(1+kappa)/kappa = 3,5*mu*g für kappa = 2/5.",
+  "related": [
+    "switchback-lift.ldr",
+    "clutch-bench.ldr",
+    "rack-shuttle.ldr"
+  ]
+}

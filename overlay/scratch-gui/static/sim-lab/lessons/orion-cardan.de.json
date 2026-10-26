@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "id": "orion-cardan",
+  "language": "de",
+  "what": "Gelenkwelle mit zwei Kardangelenken und Zwischenwelle in Z-Anordnung. Motor A dreht die Eingangswelle; eine Achse der Länge 9 bildet die Zwischenwelle, und die parallele Abtriebswelle liegt 48 mm seitlich versetzt. Beide Gelenke sind um denselben Beugewinkel β ≈ 36,9° abgewinkelt (die Zwischenwelle überbrückt 48 mm seitlich auf 64 mm Länge), und die beiden Gabeln an der Zwischenwelle liegen in einer Ebene. Jede Welle trägt eine Markierung. Das Programm dreht den Eingang vorwärts mit 180°/s, 300°/s und wieder 180°/s, dann rückwärts mit −180°/s, startet erneut mit 180°/s und bringt den Eingang zum Schluss in seine Ausgangslage zurück. Experimentelles Modell: Das hier beschriebene Gesetz wurde bisher nur im Simulator gemessen (ein Lauf ohne Bildschirm), nicht an echten LEGO-Teilen.",
+  "try": [
+    "Setze zurück und drücke Start. Vergleiche im Stillstand die drei Wellenmarkierungen.",
+    "Beobachte bei 180°/s die mittlere Markierung im Vergleich zum Eingang: Sie eilt abwechselnd vor und bleibt zurück, zweimal je Umdrehung (bei dieser Drehzahl etwa einmal pro Sekunde), während die Abtriebsmarkierung mit dem Eingang gleichauf bleibt.",
+    "Bei 300°/s pulsiert es schneller, aber im selben Verhältnis: Die Übersetzung hängt vom Wellenwinkel ab, nicht von der Drehzahl.",
+    "Prüfe im Rückwärtslauf und nach dem Neustart, ob dasselbe Vor- und Nacheilen bei denselben Eingangswinkeln auftritt."
+  ],
+  "why": "Ein einzelnes abgewinkeltes Kardangelenk überträgt keine gleichförmige Drehzahl. Beim Beugewinkel β folgt die getriebene Gabel tan θ₂ = tan θ₁ / cos β (θ von einer Bezugsstellung der Gabel aus gemessen); das Drehzahlverhältnis ω₂/ω₁ = cos β / (1 − sin²β cos²θ₁) schwankt daher zweimal je Umdrehung zwischen cos β und 1/cos β. Für β ≈ 36,9° sind das 0,80 bis 1,25: Bei 180°/s am Eingang schwankt die Zwischenwelle zwischen etwa 144 und 225°/s und eilt dem Eingang bis zu etwa 6,4° vor oder nach. Das zweite Gelenk hat denselben Beugewinkel, und seine Gabel an der Zwischenwelle liegt in derselben Ebene wie die erste; es kehrt die Verzerrung genau um, sodass der Abtriebswinkel ideal in jedem Augenblick gleich dem Eingangswinkel ist. Im Simulator wurde an der Zwischenwelle ein Vor- und Nacheilen von 12,76° Spitze-Spitze gemessen (ideal 12,76°), bei jeder Drehzahl und im Rückwärtslauf, während der Abtrieb auf 0,05° beim Eingang blieb.",
+  "matters": "Gelenkwellen in Fahrzeugen mit Hinterradantrieb, Zapfwellen an Traktoren und Lenksäulen verwenden aus genau diesem Grund Paare von Kardangelenken: Ein einzelnes abgewinkeltes Gelenk ließe die getriebene Seite zweimal je Umdrehung ruckeln und den Antriebsstrang schwingen. Die Aufhebung verlangt beides – gleiche Beugewinkel und richtig ausgerichtete Gabeln. Der Simulator erfasst Drehzahlen in endlichen Zeitschritten und modelliert weder Gelenkverschleiß noch Reibung oder die Schwingungen, die eine echte Ungleichförmigkeit auslösen würde.",
+  "question": "Angenommen, die Zwischenwelle würde mit um 90° verdrehter hinterer Gabel neu montiert, beide Beugewinkel blieben bei 36,9°. Liefe der Abtrieb dann noch gleichförmig?",
+  "answer": "Nein. Falsch ausgerichtet addiert das zweite Gelenk seine Schwankung zu der des ersten, statt sie aufzuheben. Die Abtriebsdrehzahl schwankte dann zweimal je Umdrehung zwischen etwa cos²β = 0,64 und 1/cos²β ≈ 1,56 der Eingangsdrehzahl – stärker als jetzt an der Zwischenwelle. Gleiche Winkel allein genügen nicht; die Gabelstellung entscheidet mit.",
+  "further": [
+    "Sage den Drehzahlbereich der Zwischenwelle bei 300°/s voraus (etwa 240 bis 375°/s) und vergleiche ihn mit der Markierung.",
+    "Vergleiche die etablierten Modelle Phase Bridge und Phase Bridge (falsch ausgerichtet), die ein richtig und ein um 90° falsch ausgerichtetes Gelenkpaar zeigen.",
+    "Ein echter Nachbau braucht neben den vier gezeigten Gelenkgabeln zwei Kreuzstücke; der Simulator ergänzt sie selbst. Eine Warnung „lose Teile“ zur Zwischenwelle stammt von einer Verbindungsprüfung, die Kardangelenke nicht berücksichtigt."
+  ],
+  "formula": "Einzelgelenk: tan θ₂ = tan θ₁ / cos β; ω₂/ω₁ = cos β / (1 − sin²β cos²θ₁), Bereich cos β … 1/cos β. Hier tan β = 48/64 → β ≈ 36,9°, cos β = 0,8: Zwischenwelle 0,80 … 1,25 × Eingang, größter Phasenversatz ≈ 6,4°. Gleiche Beugewinkel, Gabeln der Zwischenwelle in einer Ebene: θ_ab = θ_an. Gabeln um 90° versetzt: cos²β … 1/cos²β = 0,64 … 1,56.",
+  "related": [
+    "phase-bridge.ldr",
+    "phase-bridge-misphased.ldr",
+    "wavemaker.ldr"
+  ]
+}

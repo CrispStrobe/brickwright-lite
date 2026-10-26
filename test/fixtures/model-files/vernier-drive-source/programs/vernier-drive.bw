@@ -1,0 +1,266 @@
+# Vernier Drive - one input, opposite gear paths, a passive slow pointer.
+# Copyright (c) 2026 CrispStrobe. SPDX-License-Identifier: BSD-3-Clause.
+# Robot Lab: import matching LDR; Mat > Plain (DE: Matte > Einfach).
+# Code > Pseudocode: paste all text, To blocks; Robot Lab Reset, then Run.
+# Reset/reload after manual movement or a fault. No encoder reset here.
+# Simulation program, not hardware firmware. Speeds are motor degrees/second.
+# outputTarget means the separate visible OUTPUT POINTER, not the carrier.
+# Per observed input: left 1, right -1.08, carrier -0.04, pointer 0.04.
+# The pointer/carrier ratio is -1; observe their separate physical bodies.
+# One pointer turn requires 25 motor turns with the measured sign.
+# Predictions are not observations. Measure input, both sides, carrier and pointer independently.
+# One joined move receiver; one independent finite watchdog; final home held.
+DEVICE SPIKE
+GLOBAL directionA = 1
+GLOBAL targetA = 0
+GLOBAL outputTarget = 0
+GLOBAL stage = 0
+GLOBAL leg = 0
+GLOBAL arrived = 0
+GLOBAL correctionsA = 0
+GLOBAL completed = 0
+GLOBAL failed = 0
+
+WHEN flag clicked:
+  set directionA to 1
+  set targetA to 0
+  set outputTarget to 0
+  set stage to 0
+  set leg to 0
+  set arrived to 0
+  set correctionsA to 0
+  set completed to 0
+  set failed to 0
+  reset timer
+  lab stop motor A hold
+  IF (abs of (lab motor A angle)) > 1 THEN:
+    set failed to 1
+    lab stop motor A hold
+    say "Saved encoder datum mismatch. Reset Vernier Drive before retrying."
+    stop all
+  broadcast "Vernier Drive watchdog"
+  # Stage 0: forward, output pointer 0 degrees; carrier prediction 0.
+  set arrived to 0
+  set stage to 0
+  set leg to 0
+  set outputTarget to 0
+  set targetA to (directionA * 0)
+  broadcast "Vernier Drive move" and wait
+  IF arrived < 1 THEN:
+    set failed to 1
+    lab stop motor A hold
+    say "The input motor did not report measured arrival."
+    stop all
+  wait 1 seconds
+  IF (abs of (targetA - (lab motor A angle))) > 2 THEN:
+    set failed to 1
+    lab stop motor A hold
+    say "The input drifted outside its arrival bound during the dwell."
+    stop all
+  # Stage 1: forward, output pointer 90 degrees; carrier prediction -90.
+  set arrived to 0
+  set stage to 1
+  set leg to 0
+  set outputTarget to 90
+  set targetA to (directionA * 2250)
+  broadcast "Vernier Drive move" and wait
+  IF arrived < 1 THEN:
+    set failed to 1
+    lab stop motor A hold
+    say "The input motor did not report measured arrival."
+    stop all
+  wait 1 seconds
+  IF (abs of (targetA - (lab motor A angle))) > 2 THEN:
+    set failed to 1
+    lab stop motor A hold
+    say "The input drifted outside its arrival bound during the dwell."
+    stop all
+  # Stage 2: forward, output pointer 180 degrees; carrier prediction -180.
+  set arrived to 0
+  set stage to 2
+  set leg to 0
+  set outputTarget to 180
+  set targetA to (directionA * 4500)
+  broadcast "Vernier Drive move" and wait
+  IF arrived < 1 THEN:
+    set failed to 1
+    lab stop motor A hold
+    say "The input motor did not report measured arrival."
+    stop all
+  wait 1 seconds
+  IF (abs of (targetA - (lab motor A angle))) > 2 THEN:
+    set failed to 1
+    lab stop motor A hold
+    say "The input drifted outside its arrival bound during the dwell."
+    stop all
+  # Stage 3: forward, output pointer 270 degrees; carrier prediction -270.
+  set arrived to 0
+  set stage to 3
+  set leg to 0
+  set outputTarget to 270
+  set targetA to (directionA * 6750)
+  broadcast "Vernier Drive move" and wait
+  IF arrived < 1 THEN:
+    set failed to 1
+    lab stop motor A hold
+    say "The input motor did not report measured arrival."
+    stop all
+  wait 1 seconds
+  IF (abs of (targetA - (lab motor A angle))) > 2 THEN:
+    set failed to 1
+    lab stop motor A hold
+    say "The input drifted outside its arrival bound during the dwell."
+    stop all
+  # Stage 4: forward, output pointer 360 degrees; carrier prediction -360.
+  set arrived to 0
+  set stage to 4
+  set leg to 0
+  set outputTarget to 360
+  set targetA to (directionA * 9000)
+  broadcast "Vernier Drive move" and wait
+  IF arrived < 1 THEN:
+    set failed to 1
+    lab stop motor A hold
+    say "The input motor did not report measured arrival."
+    stop all
+  wait 1 seconds
+  IF (abs of (targetA - (lab motor A angle))) > 2 THEN:
+    set failed to 1
+    lab stop motor A hold
+    say "The input drifted outside its arrival bound during the dwell."
+    stop all
+  # Stage 5: reverse, output pointer 270 degrees; carrier prediction -270.
+  set arrived to 0
+  set stage to 5
+  set leg to 1
+  set outputTarget to 270
+  set targetA to (directionA * 6750)
+  broadcast "Vernier Drive move" and wait
+  IF arrived < 1 THEN:
+    set failed to 1
+    lab stop motor A hold
+    say "The input motor did not report measured arrival."
+    stop all
+  wait 1 seconds
+  IF (abs of (targetA - (lab motor A angle))) > 2 THEN:
+    set failed to 1
+    lab stop motor A hold
+    say "The input drifted outside its arrival bound during the dwell."
+    stop all
+  # Stage 6: reverse, output pointer 180 degrees; carrier prediction -180.
+  set arrived to 0
+  set stage to 6
+  set leg to 1
+  set outputTarget to 180
+  set targetA to (directionA * 4500)
+  broadcast "Vernier Drive move" and wait
+  IF arrived < 1 THEN:
+    set failed to 1
+    lab stop motor A hold
+    say "The input motor did not report measured arrival."
+    stop all
+  wait 1 seconds
+  IF (abs of (targetA - (lab motor A angle))) > 2 THEN:
+    set failed to 1
+    lab stop motor A hold
+    say "The input drifted outside its arrival bound during the dwell."
+    stop all
+  # Stage 7: reverse, output pointer 90 degrees; carrier prediction -90.
+  set arrived to 0
+  set stage to 7
+  set leg to 1
+  set outputTarget to 90
+  set targetA to (directionA * 2250)
+  broadcast "Vernier Drive move" and wait
+  IF arrived < 1 THEN:
+    set failed to 1
+    lab stop motor A hold
+    say "The input motor did not report measured arrival."
+    stop all
+  wait 1 seconds
+  IF (abs of (targetA - (lab motor A angle))) > 2 THEN:
+    set failed to 1
+    lab stop motor A hold
+    say "The input drifted outside its arrival bound during the dwell."
+    stop all
+  # Stage 8: reverse, output pointer 0 degrees; carrier prediction 0.
+  set arrived to 0
+  set stage to 8
+  set leg to 1
+  set outputTarget to 0
+  set targetA to (directionA * 0)
+  broadcast "Vernier Drive move" and wait
+  IF arrived < 1 THEN:
+    set failed to 1
+    lab stop motor A hold
+    say "The input motor did not report measured arrival."
+    stop all
+  wait 1 seconds
+  IF (abs of (targetA - (lab motor A angle))) > 2 THEN:
+    set failed to 1
+    lab stop motor A hold
+    say "The input drifted outside its arrival bound during the dwell."
+    stop all
+  IF (abs of (lab motor A angle)) > 2 THEN:
+    set failed to 1
+    lab stop motor A hold
+    say "Return encoder check failed. Reset and inspect the gear train."
+    stop all
+  lab stop motor A hold
+  set arrived to 0
+  set stage to 9
+  set completed to 1
+  say "Complete: opposite side turns leave one slow pointer turn. Home held."
+
+WHEN I receive "Vernier Drive move":
+  set arrived to 0
+  set correctionsA to 0
+  IF (targetA * directionA) < -0.01 THEN:
+    set failed to 1
+    lab stop motor A hold
+    say "Input target is outside the declared forward/reverse route."
+    stop all
+  IF (targetA * directionA) > 9000.01 THEN:
+    set failed to 1
+    lab stop motor A hold
+    say "Input target is outside the declared forward/reverse route."
+    stop all
+  IF (abs of (targetA - (lab motor A angle))) > 2350 THEN:
+    set failed to 1
+    lab stop motor A hold
+    say "Unexpected fresh encoder displacement. Reset before retrying."
+    stop all
+  IF (abs of (targetA - (lab motor A angle))) > 0.1 THEN:
+    lab run motor A for (targetA - (lab motor A angle)) degrees at 240 degrees per second
+    lab stop motor A hold
+  REPEAT 2:
+    IF (abs of (targetA - (lab motor A angle))) > 0.5 THEN:
+      set correctionsA to (correctionsA + 1)
+      lab run motor A for (targetA - (lab motor A angle)) degrees at 120 degrees per second
+      lab stop motor A hold
+  wait 0.3 seconds
+  IF (abs of (targetA - (lab motor A angle))) > 2 THEN:
+    set failed to 1
+    lab stop motor A hold
+    say "Measured input arrival failed. Inspect the differential and reset."
+    stop all
+  set arrived to 1
+
+WHEN I receive "Vernier Drive watchdog":
+  REPEAT UNTIL (completed = 1):
+    IF (timer) > 150 THEN:
+      set failed to 1
+      lab stop motor A hold
+      say "Finite watchdog expired. Input held; reset before retrying."
+      stop all
+    IF ((lab motor A angle) * directionA) < -50 THEN:
+      set failed to 1
+      lab stop motor A hold
+      say "Measured input left the declared angle guard. Reset and inspect."
+      stop all
+    IF ((lab motor A angle) * directionA) > 9050 THEN:
+      set failed to 1
+      lab stop motor A hold
+      say "Measured input left the declared angle guard. Reset and inspect."
+      stop all
+    wait 0.02 seconds

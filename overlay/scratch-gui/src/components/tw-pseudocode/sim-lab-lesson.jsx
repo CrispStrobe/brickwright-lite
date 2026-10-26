@@ -47,7 +47,7 @@ const SimLabLesson = ({entry, models, locale, overlay, onLoad, onRelated, onClos
                 {error && <div role="alert"><p>{T.failed} {error}</p><button type="button" style={button} onClick={() => setRetry(n => n + 1)}>{T.retry}</button></div>}
                 {lesson && <>
                     {heading(T.what)}<p>{lesson.what}</p>
-                    <button type="button" style={{...button, background: '#ede9fe'}} disabled={opening} onClick={open}>{entry.example ? T.open : T.only}</button>
+                    <button type="button" style={{...button, background: '#ede9fe'}} disabled={opening || entry.blocked} onClick={open}>{entry.example ? T.open : T.only}</button>
                     {heading(T.try)}<ol data-testid="bw-sim-lesson-steps" style={{paddingLeft: 20}}>{lesson.try.map(s => <li key={s} style={{marginBottom: 8}}>{s}</li>)}</ol>
                     {heading(T.why)}<p>{lesson.why}</p>
                     {lesson.formula && <p style={{fontFamily: 'monospace', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', background: '#f1f5f9', padding: 8}}>{lesson.formula}</p>}

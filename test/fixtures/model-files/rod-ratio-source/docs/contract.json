@@ -1,0 +1,1083 @@
+{
+  "schemaVersion": 1,
+  "state": "FROZEN BEFORE NATIVE QUALIFICATION",
+  "createdAtUtc": "2026-10-23T16:06:27.260Z",
+  "name": "Rod Ratio",
+  "slug": "rod-ratio",
+  "author": "CrispStrobe",
+  "license": "BSD-3-Clause",
+  "baseline": {
+    "repository": "https://github.com/CrispStrobe/brickwright-lite",
+    "commit": "95b5b97034058abffe5b2e8746581ee64e23691c",
+    "catalog": "overlay/scratch-gui/src/lib/bw-sim/model/example-catalog.js",
+    "catalogSha256": "0f2824658159d439ce901455958c99b73b1d36374ff2956349ec301de0953e2c",
+    "entries": 80,
+    "distinctModels": 72,
+    "fallback": "No separate corrected user collection available; compare this pinned collection and Rise Ratio/Cable Compass only."
+  },
+  "scope": "Isolated collection add-on: editable LDR, finite native BW, deterministic builders, BOM, construction notes, EN/DE lessons, actual-mesh preview and exact-byte scoped evidence. No application integration.",
+  "physicalQuestion": "With one common crank radius and phase, do two differently long connecting rods give the same 48 mm slider stroke but different intermediate displacement?",
+  "geometry": {
+    "crankRadiusMm": 24,
+    "shortRodMm": 40,
+    "longRodMm": 80,
+    "wormRatioDenominator": 24,
+    "motorPort": "A",
+    "samePhase": true,
+    "initialPhaseDeg": 0,
+    "initialConfiguration": "Both inline slider-cranks at full extension on the positive assembly branch."
+  },
+  "predictions": {
+    "sliderLaw": "x(theta)=r*cos(theta)+sqrt(L^2-r^2*sin(theta)^2), independently observed actual crank angle; x measured from the actual fixed crank axis in chassis coordinates",
+    "inwardLaw": "u(theta)=L+r-x(theta)",
+    "shortInwardAtQuarterMm": 32,
+    "longInwardAtQuarterMm": 27.68486388664435,
+    "quarterDifferenceMm": 4.31513611335565,
+    "fullStrokeMm": 48,
+    "branch": "L>r prevents branch merger over a full revolution while guides/joints remain captured."
+  },
+  "control": {
+    "outputPhasesDeg": [
+      0,
+      45,
+      90,
+      135,
+      180,
+      225,
+      270,
+      315,
+      360,
+      315,
+      270,
+      225,
+      180,
+      135,
+      90,
+      45,
+      0
+    ],
+    "motorTarget": "measuredSign * 24 * outputPhaseDeg",
+    "motorSpeedDps": 720,
+    "motorTrimSpeedDps": 120,
+    "maximumCorrections": 2,
+    "maximumMotorArrivalErrorDeg": 2,
+    "dwellSeconds": 1,
+    "watchdogSeconds": 120,
+    "reference": "Guard saved encoder datum; no unnecessary encoder reset; target minus fresh unwrapped angle; return and hold."
+  },
+  "acceptance": {
+    "maximumPositionLawErrorMm": 0.5,
+    "maximumSettledWaypointErrorMm": 0.5,
+    "maximumOutputPhaseErrorDeg": 0.5,
+    "fullStrokeMm": [
+      47.5,
+      48.5
+    ],
+    "quarterDifferenceMm": [
+      3.81513611335565,
+      4.81513611335565
+    ],
+    "maximumReturnErrorMm": 0.5,
+    "maximumColdOutputDriftMm": 0.5,
+    "maximumColdCrankDriftDeg": 1,
+    "maximumGuideTransverseErrorMm": 0.5,
+    "maximumCarriageRotationDeg": 2,
+    "maximumPhysicalHingeGapMm": 0.5,
+    "maximumPhysicalAxisMismatchDeg": 2,
+    "maximumBaseTiltDeg": 2,
+    "minimumForwardCrankSpanDeg": 355,
+    "minimumReverseCrankSpanDeg": 355,
+    "minimumPoseFrames": 800,
+    "settledWindowSeconds": 0.5,
+    "minimumSettledSamples": 15,
+    "requiredStages": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16
+    ],
+    "maximumProgramDurationSeconds": 120,
+    "allStatesFinite": true,
+    "allPlacedPartBodiesDynamic": true,
+    "unresolvedImportOrMechanismIssues": 0,
+    "allOriginalInterfacesObserved": true
+  },
+  "recording": {
+    "coldMs": 1000,
+    "afterMs": 1000,
+    "frameMs": 33.333333333333336,
+    "nativeStepMs": 5,
+    "timeLimitMs": 130000,
+    "harness": "test/helpers/robot-lab-direct-vm.mjs runRobotLabProgram; registered compiler, actual VM and native Jolt",
+    "markers": "Body-carried points in observed chassis frame; exact unique part IDs and locals pending geometry. Predicted positions never drive physics or measured output."
+  },
+  "observerControl": "Freeze each passive carriage in separate altered-record controls; each must fail its own travel and law checks. This tests measurement sensitivity only.",
+  "construction": "Real stator/hub mounts, reaction-torque paths, output/input bearings, shaft collars and complete twin guides. Cover all crank phases and branch-preserving released motion; software guards are not physical stops.",
+  "coldBehavior": "Native worm holding on the assembled unpowered model; separately disclose that native ideal holding does not certify real plastic friction or worm self-locking.",
+  "revisionPolicy": "Preserve failures. Do not relax observed criteria to relabel an existing run. Freeze exact IDs, bytes and observation source before complete-machine qualification; revisions require new preregistration.",
+  "untestedLayers": [
+    "Application/gallery installation",
+    "Browser controls/load/reset/stop lifecycle",
+    "Physical LEGO assembly and firmware/transport",
+    "Force, efficiency, strength or payload capacity"
+  ],
+  "revision": "rod-ratio-r2",
+  "designIntentSha256": "6fb69641ecb51f99d5192ecd966c514c7fae2d8ba61b977d47d099da44d00107",
+  "motorDirectionA": 1,
+  "signEvidence": {
+    "file": "evidence/development/coupling-probe-03/result.json",
+    "modelSha256": "492db2941ef06dea3c9eea6ec6e79ff04f473cf7512f0874402e976ef6fd5b40",
+    "scope": "Native worm and both slider-crank coupling probe; unfinished support islands were explicitly clamped. This establishes direction and coupling feasibility, not freestanding final-machine or VM qualification.",
+    "sha256": "c01f6aef4d2f0e3a512d247a5788befdb4b1715cbfe98b92d5aa52d19f834017"
+  },
+  "route": [
+    {
+      "stage": 0,
+      "phaseDeg": 0,
+      "leg": "forward",
+      "targetMotorDeg": 0,
+      "expectedInwardMm": {
+        "short": 0,
+        "long": 0
+      }
+    },
+    {
+      "stage": 1,
+      "phaseDeg": 45,
+      "leg": "forward",
+      "targetMotorDeg": 1080,
+      "expectedInwardMm": {
+        "short": 10.807896698973188,
+        "long": 8.850156108754604
+      }
+    },
+    {
+      "stage": 2,
+      "phaseDeg": 90,
+      "leg": "forward",
+      "targetMotorDeg": 2160,
+      "expectedInwardMm": {
+        "short": 32,
+        "long": 27.68486388664435
+      }
+    },
+    {
+      "stage": 3,
+      "phaseDeg": 135,
+      "leg": "forward",
+      "targetMotorDeg": 3240,
+      "expectedInwardMm": {
+        "short": 44.749022195927466,
+        "long": 42.791281605708875
+      }
+    },
+    {
+      "stage": 4,
+      "phaseDeg": 180,
+      "leg": "forward",
+      "targetMotorDeg": 4320,
+      "expectedInwardMm": {
+        "short": 48,
+        "long": 48
+      }
+    },
+    {
+      "stage": 5,
+      "phaseDeg": 225,
+      "leg": "forward",
+      "targetMotorDeg": 5400,
+      "expectedInwardMm": {
+        "short": 44.749022195927466,
+        "long": 42.791281605708875
+      }
+    },
+    {
+      "stage": 6,
+      "phaseDeg": 270,
+      "leg": "forward",
+      "targetMotorDeg": 6480,
+      "expectedInwardMm": {
+        "short": 32,
+        "long": 27.68486388664435
+      }
+    },
+    {
+      "stage": 7,
+      "phaseDeg": 315,
+      "leg": "forward",
+      "targetMotorDeg": 7560,
+      "expectedInwardMm": {
+        "short": 10.807896698973195,
+        "long": 8.850156108754604
+      }
+    },
+    {
+      "stage": 8,
+      "phaseDeg": 360,
+      "leg": "forward",
+      "targetMotorDeg": 8640,
+      "expectedInwardMm": {
+        "short": 0,
+        "long": 0
+      }
+    },
+    {
+      "stage": 9,
+      "phaseDeg": 315,
+      "leg": "reverse",
+      "targetMotorDeg": 7560,
+      "expectedInwardMm": {
+        "short": 10.807896698973195,
+        "long": 8.850156108754604
+      }
+    },
+    {
+      "stage": 10,
+      "phaseDeg": 270,
+      "leg": "reverse",
+      "targetMotorDeg": 6480,
+      "expectedInwardMm": {
+        "short": 32,
+        "long": 27.68486388664435
+      }
+    },
+    {
+      "stage": 11,
+      "phaseDeg": 225,
+      "leg": "reverse",
+      "targetMotorDeg": 5400,
+      "expectedInwardMm": {
+        "short": 44.749022195927466,
+        "long": 42.791281605708875
+      }
+    },
+    {
+      "stage": 12,
+      "phaseDeg": 180,
+      "leg": "reverse",
+      "targetMotorDeg": 4320,
+      "expectedInwardMm": {
+        "short": 48,
+        "long": 48
+      }
+    },
+    {
+      "stage": 13,
+      "phaseDeg": 135,
+      "leg": "reverse",
+      "targetMotorDeg": 3240,
+      "expectedInwardMm": {
+        "short": 44.749022195927466,
+        "long": 42.791281605708875
+      }
+    },
+    {
+      "stage": 14,
+      "phaseDeg": 90,
+      "leg": "reverse",
+      "targetMotorDeg": 2160,
+      "expectedInwardMm": {
+        "short": 32,
+        "long": 27.68486388664435
+      }
+    },
+    {
+      "stage": 15,
+      "phaseDeg": 45,
+      "leg": "reverse",
+      "targetMotorDeg": 1080,
+      "expectedInwardMm": {
+        "short": 10.807896698973188,
+        "long": 8.850156108754604
+      }
+    },
+    {
+      "stage": 16,
+      "phaseDeg": 0,
+      "leg": "reverse",
+      "targetMotorDeg": 0,
+      "expectedInwardMm": {
+        "short": 0,
+        "long": 0
+      }
+    }
+  ],
+  "parts": 167,
+  "markers": {
+    "file": "markers.json",
+    "sha256": "b3966be17203bccbe582f36eed709539cb38a3df7dbda09cb9a1ec4c9d059952",
+    "originalPhysicalHingeCount": 17,
+    "originalPhysicalGuideCount": 4
+  },
+  "topology": {
+    "bodies": [
+      {
+        "id": "ground",
+        "motion": "static",
+        "parts": [],
+        "massKg": 0
+      },
+      {
+        "id": "b0",
+        "motion": "dynamic",
+        "parts": [
+          "base_depth_lap_120_-20",
+          "base_depth_lap_120_40",
+          "base_depth_lap_220_-20",
+          "base_depth_lap_220_40",
+          "base_front_depth_120",
+          "base_front_depth_220",
+          "base_front_foot_pin_120",
+          "base_front_foot_pin_220",
+          "base_rear_depth_120",
+          "base_rear_depth_220",
+          "base_rear_foot_pin_120",
+          "base_rear_foot_pin_220",
+          "base_rear_spacer_120",
+          "base_rear_spacer_220",
+          "frame_-1",
+          "frame_1",
+          "frame_brace_link_-1",
+          "frame_brace_link_1",
+          "frame_brace_lower_-1",
+          "frame_brace_lower_1",
+          "frame_brace_lower_pin_-1",
+          "frame_brace_lower_pin_1",
+          "frame_brace_upper_-1",
+          "frame_brace_upper_1",
+          "frame_brace_upper_pin_-1",
+          "frame_brace_upper_pin_1",
+          "hub",
+          "hub_foot_elbow_-1",
+          "hub_foot_elbow_1",
+          "hub_foot_pin_-1",
+          "hub_foot_pin_1",
+          "hub_side_pin_-80",
+          "hub_side_pin_80",
+          "hub_side_rail",
+          "long_foot",
+          "long_foot_elbow_100",
+          "long_foot_elbow_300",
+          "long_foot_pin_100",
+          "long_foot_pin_300",
+          "long_guide_cross_100",
+          "long_guide_cross_300",
+          "long_guide_holder_-40_100",
+          "long_guide_holder_-40_300",
+          "long_guide_holder_40_100",
+          "long_guide_holder_40_300",
+          "long_post_100",
+          "long_post_300",
+          "long_post_packing_100",
+          "long_post_packing_300",
+          "long_post_pin_100_60",
+          "long_post_pin_100_80",
+          "long_post_pin_300_60",
+          "long_post_pin_300_80",
+          "motor_A",
+          "motor_base_bridge_20",
+          "motor_base_bridge_60",
+          "motor_bridge_pin_20_-200",
+          "motor_bridge_pin_20_-60",
+          "motor_bridge_pin_20_60",
+          "motor_bridge_pin_60_-200",
+          "motor_bridge_pin_60_-60",
+          "motor_bridge_pin_60_60",
+          "motor_bridge_spacer_20_-200",
+          "motor_bridge_spacer_20_-60",
+          "motor_bridge_spacer_20_60",
+          "motor_bridge_spacer_60_-200",
+          "motor_bridge_spacer_60_-60",
+          "motor_bridge_spacer_60_60",
+          "motor_foot_-1",
+          "motor_foot_1",
+          "motor_foot_elbow_-1",
+          "motor_foot_elbow_1",
+          "motor_foot_pin_-1",
+          "motor_foot_pin_1",
+          "motor_frame_pin_-1",
+          "motor_frame_pin_1",
+          "motor_lower_tie_-1",
+          "motor_lower_tie_1",
+          "motor_mast_-1",
+          "motor_mast_1",
+          "motor_rear_mount_-1_120",
+          "motor_rear_mount_-1_80",
+          "motor_rear_mount_1_120",
+          "motor_rear_mount_1_80",
+          "short_foot",
+          "short_foot_elbow_0",
+          "short_foot_elbow_200",
+          "short_foot_pin_0",
+          "short_foot_pin_200",
+          "short_guide_cross_0",
+          "short_guide_cross_200",
+          "short_guide_holder_-40_0",
+          "short_guide_holder_-40_200",
+          "short_guide_holder_40_0",
+          "short_guide_holder_40_200",
+          "short_post_0",
+          "short_post_200",
+          "short_post_pin_0_60",
+          "short_post_pin_0_80",
+          "short_post_pin_200_60",
+          "short_post_pin_200_80",
+          "worm_bearing",
+          "worm_bearing_mount_-1",
+          "worm_bearing_mount_1",
+          "worm_support_arm_-1",
+          "worm_support_arm_1",
+          "worm_support_elbow_-1",
+          "worm_support_elbow_1",
+          "worm_support_pin_-1",
+          "worm_support_pin_1"
+        ],
+        "massKg": 0.29360000000000025
+      },
+      {
+        "id": "b1",
+        "motion": "dynamic",
+        "parts": [
+          "common_crank_retainer_-90",
+          "common_crank_retainer_90",
+          "common_inner_bush_-20",
+          "common_inner_bush_20",
+          "common_outer_bush_-60",
+          "common_outer_bush_60",
+          "common_shaft",
+          "long_crank",
+          "long_crank_pin",
+          "long_crank_pin_bush_105",
+          "long_crank_pin_bush_140",
+          "long_crank_pin_bush_60",
+          "long_crank_pin_bush_90",
+          "short_crank",
+          "short_crank_pin",
+          "short_crank_pin_bush_-100",
+          "short_crank_pin_bush_-125",
+          "short_crank_pin_bush_-140",
+          "short_crank_pin_bush_-60",
+          "short_crank_pin_bush_-85",
+          "wheel"
+        ],
+        "massKg": 0.00914
+      },
+      {
+        "id": "b2",
+        "motion": "dynamic",
+        "parts": [
+          "long_guide_-40",
+          "long_guide_retainer_-40_100",
+          "long_guide_retainer_-40_300"
+        ],
+        "massKg": 0.0014600000000000001
+      },
+      {
+        "id": "b3",
+        "motion": "dynamic",
+        "parts": [
+          "long_guide_40",
+          "long_guide_retainer_40_100",
+          "long_guide_retainer_40_300"
+        ],
+        "massKg": 0.0014600000000000001
+      },
+      {
+        "id": "b4",
+        "motion": "dynamic",
+        "parts": [
+          "long_rod",
+          "long_slider_pin",
+          "long_slider_pin_bush_105",
+          "long_slider_pin_bush_140",
+          "long_slider_pin_bush_155",
+          "long_slider_pin_bush_190"
+        ],
+        "massKg": 0.005059999999999999
+      },
+      {
+        "id": "b5",
+        "motion": "dynamic",
+        "parts": [
+          "long_runner_-40",
+          "long_runner_40",
+          "long_slider"
+        ],
+        "massKg": 0.0023000000000000004
+      },
+      {
+        "id": "b6",
+        "motion": "dynamic",
+        "parts": [
+          "motor_A",
+          "worm",
+          "worm_axle",
+          "worm_bush_-145",
+          "worm_bush_-175",
+          "worm_bush_-75",
+          "worm_thrust_spacer"
+        ],
+        "massKg": 0.00854
+      },
+      {
+        "id": "b7",
+        "motion": "dynamic",
+        "parts": [
+          "short_guide_-40",
+          "short_guide_retainer_-40_0",
+          "short_guide_retainer_-40_200"
+        ],
+        "massKg": 0.0014600000000000001
+      },
+      {
+        "id": "b8",
+        "motion": "dynamic",
+        "parts": [
+          "short_guide_40",
+          "short_guide_retainer_40_0",
+          "short_guide_retainer_40_200"
+        ],
+        "massKg": 0.0014600000000000001
+      },
+      {
+        "id": "b9",
+        "motion": "dynamic",
+        "parts": [
+          "short_rod",
+          "short_slider_pin",
+          "short_slider_pin_bush_-100",
+          "short_slider_pin_bush_-125",
+          "short_slider_pin_bush_-140",
+          "short_slider_pin_bush_-180"
+        ],
+        "massKg": 0.0025800000000000003
+      },
+      {
+        "id": "b10",
+        "motion": "dynamic",
+        "parts": [
+          "short_runner_-40",
+          "short_runner_40",
+          "short_slider"
+        ],
+        "massKg": 0.0023000000000000004
+      }
+    ],
+    "joints": [
+      {
+        "id": "j0",
+        "type": "hinge",
+        "body1": "b0",
+        "body2": "b1",
+        "point": [
+          0,
+          0,
+          0.016
+        ],
+        "axis": [
+          1,
+          0,
+          0
+        ]
+      },
+      {
+        "id": "j1",
+        "type": "hinge",
+        "body1": "b0",
+        "body2": "b2",
+        "point": [
+          0.076,
+          0.016,
+          0.096
+        ],
+        "axis": [
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "id": "j2",
+        "type": "hinge",
+        "body1": "b0",
+        "body2": "b3",
+        "point": [
+          0.076,
+          -0.016,
+          0.096
+        ],
+        "axis": [
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "id": "j3",
+        "type": "hinge",
+        "body1": "b0",
+        "body2": "b6",
+        "point": [
+          0,
+          0,
+          0
+        ],
+        "axis": [
+          0,
+          -1,
+          0
+        ],
+        "motor": {
+          "port": "A",
+          "maxTorqueNm": 0.10440000000000002,
+          "maxSpeedRadPerSec": 19.37315469713706,
+          "deviceId": 48
+        }
+      },
+      {
+        "id": "j4",
+        "type": "hinge",
+        "body1": "b0",
+        "body2": "b7",
+        "point": [
+          -0.07200000000000001,
+          0.016,
+          0.056
+        ],
+        "axis": [
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "id": "j5",
+        "type": "hinge",
+        "body1": "b0",
+        "body2": "b8",
+        "point": [
+          -0.07200000000000001,
+          -0.016,
+          0.056
+        ],
+        "axis": [
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "id": "j6",
+        "type": "hinge",
+        "body1": "b10",
+        "body2": "b9",
+        "point": [
+          -0.064,
+          0,
+          0.08
+        ],
+        "axis": [
+          1,
+          0,
+          0
+        ]
+      },
+      {
+        "id": "j7",
+        "type": "slider",
+        "body1": "b2",
+        "body2": "b5",
+        "point": [
+          0.076,
+          0.016,
+          0.12000000000000001
+        ],
+        "axis": [
+          0,
+          0,
+          1
+        ],
+        "limits": [
+          -0.056,
+          0.008
+        ]
+      },
+      {
+        "id": "j8",
+        "type": "slider",
+        "body1": "b3",
+        "body2": "b5",
+        "point": [
+          0.076,
+          -0.016,
+          0.12000000000000001
+        ],
+        "axis": [
+          0,
+          0,
+          1
+        ],
+        "limits": [
+          -0.056,
+          0.008
+        ]
+      },
+      {
+        "id": "j9",
+        "type": "hinge",
+        "body1": "b4",
+        "body2": "b1",
+        "point": [
+          0.048,
+          0,
+          0.04
+        ],
+        "axis": [
+          1,
+          0,
+          0
+        ]
+      },
+      {
+        "id": "j10",
+        "type": "hinge",
+        "body1": "b5",
+        "body2": "b4",
+        "point": [
+          0.068,
+          0,
+          0.12000000000000001
+        ],
+        "axis": [
+          1,
+          0,
+          0
+        ]
+      },
+      {
+        "id": "j11",
+        "type": "slider",
+        "body1": "b7",
+        "body2": "b10",
+        "point": [
+          -0.07200000000000001,
+          0.016,
+          0.08
+        ],
+        "axis": [
+          0,
+          0,
+          1
+        ],
+        "limits": [
+          -0.056,
+          0.008
+        ]
+      },
+      {
+        "id": "j12",
+        "type": "slider",
+        "body1": "b8",
+        "body2": "b10",
+        "point": [
+          -0.07200000000000001,
+          -0.016,
+          0.08
+        ],
+        "axis": [
+          0,
+          0,
+          1
+        ],
+        "limits": [
+          -0.056,
+          0.008
+        ]
+      },
+      {
+        "id": "j13",
+        "type": "hinge",
+        "body1": "b9",
+        "body2": "b1",
+        "point": [
+          -0.046,
+          0,
+          0.04
+        ],
+        "axis": [
+          1,
+          0,
+          0
+        ]
+      }
+    ],
+    "couplings": [
+      {
+        "wormJoint": "j3",
+        "wheelJoint": "j0",
+        "ratio": 0.041666666666666664,
+        "holdTorqueNm": 0.1,
+        "parts": [
+          "worm",
+          "wheel"
+        ],
+        "kind": "worm",
+        "id": "c0"
+      }
+    ],
+    "actuators": [
+      {
+        "id": "a0",
+        "joint": "j3",
+        "hub": "hub",
+        "port": "A",
+        "device": "spike-medium-angular",
+        "sign": 1,
+        "maxTorqueNm": 0.10440000000000002,
+        "maxSpeedRadPerSec": 19.37315469713706,
+        "ids": {
+          "lpf2": 48
+        }
+      }
+    ],
+    "hubs": [
+      {
+        "id": "hub",
+        "profile": "spike-prime",
+        "body": "b0"
+      }
+    ],
+    "noCollide": [
+      [
+        "b0",
+        "b1"
+      ],
+      [
+        "b0",
+        "b10"
+      ],
+      [
+        "b0",
+        "b2"
+      ],
+      [
+        "b0",
+        "b3"
+      ],
+      [
+        "b0",
+        "b5"
+      ],
+      [
+        "b0",
+        "b6"
+      ],
+      [
+        "b0",
+        "b7"
+      ],
+      [
+        "b0",
+        "b8"
+      ],
+      [
+        "b1",
+        "b4"
+      ],
+      [
+        "b1",
+        "b6"
+      ],
+      [
+        "b1",
+        "b9"
+      ],
+      [
+        "b10",
+        "b7"
+      ],
+      [
+        "b10",
+        "b8"
+      ],
+      [
+        "b10",
+        "b9"
+      ],
+      [
+        "b2",
+        "b5"
+      ],
+      [
+        "b3",
+        "b5"
+      ],
+      [
+        "b4",
+        "b5"
+      ]
+    ],
+    "noCollideParts": [
+      [
+        "b0",
+        "b1",
+        [
+          [
+            "frame_brace_lower_-1",
+            "common_inner_bush_-20"
+          ],
+          [
+            "frame_brace_lower_1",
+            "common_inner_bush_20"
+          ],
+          [
+            "frame_brace_lower_pin_-1",
+            "common_inner_bush_-20"
+          ],
+          [
+            "frame_brace_lower_pin_1",
+            "common_inner_bush_20"
+          ]
+        ],
+        "collide"
+      ],
+      [
+        "b0",
+        "b10",
+        [
+          [
+            "short_guide_holder_-40_0",
+            "short_runner_-40"
+          ],
+          [
+            "short_guide_holder_-40_200",
+            "short_runner_-40"
+          ],
+          [
+            "short_guide_holder_40_0",
+            "short_runner_40"
+          ],
+          [
+            "short_guide_holder_40_200",
+            "short_runner_40"
+          ]
+        ]
+      ],
+      [
+        "b0",
+        "b5",
+        [
+          [
+            "long_guide_holder_-40_100",
+            "long_runner_-40"
+          ],
+          [
+            "long_guide_holder_-40_300",
+            "long_runner_-40"
+          ],
+          [
+            "long_guide_holder_40_100",
+            "long_runner_40"
+          ],
+          [
+            "long_guide_holder_40_300",
+            "long_runner_40"
+          ]
+        ]
+      ],
+      [
+        "b0",
+        "b6",
+        [
+          [
+            "worm_bearing_mount_-1",
+            "worm_bush_-145"
+          ],
+          [
+            "worm_bearing_mount_-1",
+            "worm_thrust_spacer"
+          ],
+          [
+            "worm_bearing_mount_1",
+            "worm_bush_-145"
+          ],
+          [
+            "worm_bearing_mount_1",
+            "worm_thrust_spacer"
+          ],
+          [
+            "worm_support_arm_-1",
+            "worm_bush_-145"
+          ],
+          [
+            "worm_support_arm_-1",
+            "worm_thrust_spacer"
+          ],
+          [
+            "worm_support_arm_1",
+            "worm_bush_-145"
+          ],
+          [
+            "worm_support_arm_1",
+            "worm_thrust_spacer"
+          ]
+        ],
+        "collide"
+      ]
+    ]
+  },
+  "inputs": {
+    "models/rod-ratio.ldr": "d8416177934cf547a4865d4ffa73d5f9c3c392167e2622b865d3e744df02f9f3",
+    "programs/rod-ratio.bw": "f9bf1cea0f3c198475cb9d16bcc207802080bf89da3d7e3341da2e3760d4d65e",
+    "markers.json": "b3966be17203bccbe582f36eed709539cb38a3df7dbda09cb9a1ec4c9d059952",
+    "build/build-model.mjs": "08dcec0ce85c0eaa94d0cff9e843e9407a732668f510b26b15246f10a17f8698",
+    "build/build-program.mjs": "8ddec7920421a2219fdc4621b74a46ae06342d9c58b3603e2e89736c5bb18bfa",
+    "build/freeze-contract.mjs": "0112b54488829aa2864ea6fce553c27f78d1c80d979a875c032de9cb9cc0e9f6",
+    "build/update-markers.mjs": "ce726e93fdad506401ae65f377fe68d83ec064ca223eadbb2f9fc81bf16d2cb7",
+    "build/geometry.json": "5ba874b951aa13b82c3ca69283acf377fca0086b60625fd42c2ecca129a53775",
+    "build/placements.json": "5289cc0ea5aaedcfb172ab250325535544d888797d6939b7f95612bfd7bd65c0",
+    "build/program-settings.json": "c8073bc2ceb5fba3b62eaf1b96b8c8de89f59e6882e5dd526332c3cf6bba95f7",
+    "evidence/program-parameters.json": "7d8ac979b172391c7b1862dd2bbd09aa9c025c54bb88c461a9508083751f6294",
+    "checks/run-native.mjs": "ae8ee6952958404fa35b52b01e8630a925b27b911235a13e2069e9f2eeb9c9f5",
+    "checks/physical-hinge-observer.mjs": "72f4ba6995f525053b1ebeb9d55d6c4727541d63bf77349531bc165c89c0ef65",
+    "checks/physical-guide-observer.mjs": "c31771031de7b3ed237cf92a6af5ac7ed069abd55d0ee535e7912cef37e36c8f",
+    "checks/inspect-static.mjs": "ba1cd581b3f3866a113a704e5d2af647546eeecf563563b2fbe85da8143a76ef",
+    "evidence/static/static-inspection.json": "afb4bdd4e9a6a192066f4ef41e5ac613ef46e85de79cb79f0ed23518f5b439d4",
+    "evidence/runtime/third-model-runtime-identities.json": "daef5478ec18a3b6b0e7e9be6674a7ad668d31b58cd4d50c52c007fd85949cfd"
+  },
+  "runtimeSources": {
+    "test/helpers/robot-lab-direct-vm.mjs": "4c32258a1bc7cc09b5a835b7ac6db3636789aa581f4719b68963d0b4d81cca04",
+    "scripts/lib/sim-lab-addon-judge.mjs": "4b885341c0bc67279f0b633d31b4ab5f8d4e895596f756719612fdf941c923ac",
+    "overlay/scratch-gui/src/lib/sb3-creator-register-art.js": "722dd3e92c80335dea3011e8ef81bb750dce460d560739083d2c72cf903f8085",
+    "overlay/scratch-gui/src/lib/bw-sim/model/ldraw-model.js": "d4c73b0feb777d7672d87fd6f0a03ab66640d57b07495771c1d0c7bc22f48aa8",
+    "overlay/scratch-gui/src/lib/bw-sim/mech/graph.js": "573beea8be8e9a88b72a495b0c32ff96e45ccbb85cd7fc1128fbfef08c83cb24",
+    "overlay/scratch-gui/src/lib/bw-sim/mech/compile.js": "da0f721b8716d4cd2b1299e8110d7d5e607600804d8e0a059797cddc5e0e2732",
+    "overlay/scratch-gui/src/lib/bw-sim/sim-session.js": "ae3bf4604ae711896501290cf54f1b5d5188c19b60785633f3be3d11b8afa1e8",
+    "overlay/scratch-gui/src/lib/bw-sim/physics/jolt-core.js": "1df4354d3edc41206707a5c1d3238d26836003c7a91c2c77da33d50b580b5d99",
+    "overlay/scratch-gui/src/lib/bw-sim/part-meta/parts.json": "feecf1804ac0733e8eb84d23cda4cd8d62c0deea9305491935c945bb14ade0da"
+  },
+  "additionalPredeclaredGates": {
+    "maximumMeasuredTransmissionErrorDegAtCrank": 0.5,
+    "maximumCrankPhaseDifferenceDeg": 0.5,
+    "minimumActualGuideEngagementMm": 7.5,
+    "minimumActualGuideEndMarginMm": 0,
+    "minimumArrivedCoverageMs": 900,
+    "minimumSettledCoverageMs": 466.5,
+    "finalStage": 17,
+    "finalArrived": 0
+  },
+  "physicalBounds": "Full360degree independently swept positive assembly branch; all real guide retention, pin intervals and frame clearances documented in construction/clearance evidence. Software angle guards do not create physical stops."
+}

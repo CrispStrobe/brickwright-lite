@@ -1,0 +1,560 @@
+0 Thirdline — Archimedes angle trisector
+0 Name: thirdline.ldr
+0 Author: CrispStrobe
+0 !LICENSE BSD-3-Clause : see ../licenses/thirdline.txt
+0 !LDRAW_ORG Unofficial_Model
+0 Saved input theta90deg. A=90-theta. Command theta50..95 only.
+0 Ordinary stock parts; no authored welds, fixed base, extra joints or solver overrides.
+0 Assembly stage 1: base
+0 !BW ID guide_base_rail_-240_100
+0 15L fore-aft rail spans Z−120..160; supports paired guide posts
+1 72 -240 100 20 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID guide_base_rail_-240_120
+0 15L fore-aft rail spans Z−120..160; supports paired guide posts
+1 72 -240 120 20 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID guide_rail_shared_pin_-240_-40
+0 Single3L pin through guide rails Y100/120 and left crossmember Y140
+1 1 -240 120 -40 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID guide_rail_shared_pin_-240_160
+0 Single3L pin through guide rails Y100/120 and left crossmember Y140
+1 1 -240 120 160 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID guide_base_rail_-200_100
+0 15L fore-aft rail spans Z−120..160; supports paired guide posts
+1 72 -200 100 20 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID guide_base_rail_-200_120
+0 15L fore-aft rail spans Z−120..160; supports paired guide posts
+1 72 -200 120 20 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID guide_rail_shared_pin_-200_-40
+0 Single3L pin through guide rails Y100/120 and left crossmember Y140
+1 1 -200 120 -40 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID guide_rail_shared_pin_-200_160
+0 Single3L pin through guide rails Y100/120 and left crossmember Y140
+1 1 -200 120 160 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID guide_base_rail_-80_100
+0 15L fore-aft rail spans Z−120..160; supports paired guide posts
+1 72 -80 100 20 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID guide_base_rail_-80_120
+0 15L fore-aft rail spans Z−120..160; supports paired guide posts
+1 72 -80 120 20 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID guide_rail_shared_pin_-80_-40
+0 Single3L pin through guide rails Y100/120 and left crossmember Y140
+1 1 -80 120 -40 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID guide_rail_shared_pin_-80_160
+0 Single3L pin through guide rails Y100/120 and left crossmember Y140
+1 1 -80 120 160 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID guide_base_rail_-40_120
+0 15L fore-aft rail spans Z−120..160; supports paired guide posts
+1 72 -40 120 20 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID guide_rail_shared_pin_-40_-40
+0 One2L pin through rail Y120 and crossmember Y140
+1 0 -40 130 -40 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID guide_rail_shared_pin_-40_160
+0 One2L pin through rail Y120 and crossmember Y140
+1 0 -40 130 160 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID base_motor_rail_-60
+0 11L motor rail, two separated mounting feet
+1 72 -60 120 60 1 0 0 0 1 0 0 0 1 32525.dat
+0 !BW ID base_motor_rail_60
+0 11L motor rail, two separated mounting feet
+1 72 60 120 60 1 0 0 0 1 0 0 0 1 32525.dat
+0 !BW ID right_motor_underrail
+0 15L lower rail supports the right motor rail over the lower right crossmembers
+1 72 60 140 20 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID left_cross_-40
+0 15L left crossmember spans X−260..20
+1 0 -120 140 -40 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID right_cross_-40
+0 15L right crossmember spans X−20..260, lapped below the left crossmember
+1 0 120 160 -40 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID left_motor_cross_pin_-40
+0 One retained 2L friction pin, shared by the complete indicated stack
+1 0 -60 130 -40 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID right_motor_cross_pin_-40
+0 Single3L pin through motor rail Y120, underrail Y140 and right crossmember Y160
+1 1 60 140 -40 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID left_cross_160
+0 15L left crossmember spans X−260..20
+1 0 -120 140 160 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID right_cross_160
+0 15L right crossmember spans X−20..260, lapped below the left crossmember
+1 0 120 160 160 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID left_motor_cross_pin_160
+0 One retained 2L friction pin, shared by the complete indicated stack
+1 0 -60 130 160 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID right_motor_cross_pin_160
+0 Single3L pin through motor rail Y120, underrail Y140 and right crossmember Y160
+1 1 60 140 160 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID base_lap_rail_-20
+0 11L rail forms two separated three-layer lap connections
+1 72 -20 120 60 1 0 0 0 1 0 0 0 1 32525.dat
+0 !BW ID base_lap_shared_pin_-20_-40
+0 Single3L pin through lap rail Y120 and crossmembers Y140/160
+1 1 -20 140 -40 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID base_lap_shared_pin_-20_160
+0 Single3L pin through lap rail Y120 and crossmembers Y140/160
+1 1 -20 140 160 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID base_lap_rail_20
+0 11L rail forms two separated three-layer lap connections
+1 72 20 120 60 1 0 0 0 1 0 0 0 1 32525.dat
+0 !BW ID base_lap_shared_pin_20_-40
+0 Single3L pin through lap rail Y120 and crossmembers Y140/160
+1 1 20 140 -40 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID base_lap_shared_pin_20_160
+0 Single3L pin through lap rail Y120 and crossmembers Y140/160
+1 1 20 140 160 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID base_skid_-220
+0 13L skid joins the two left crossmembers
+1 72 -220 160 60 1 0 0 0 1 0 0 0 1 41239.dat
+0 !BW ID base_diagonal_shared_pin
+0 Single3L pin through crossmember Y140, skid Y160 and diagonal Y180
+1 1 -220 160 -40 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID left_ground_pad_-220_160
+0 3L ground pad shares bottom Y190 with the diagonal
+1 0 -220 180 160 1 0 0 0 1 0 0 0 1 32523.dat
+0 !BW ID left_ground_shared_pin_-220_160
+0 Single3L pin through crossmember, skid and ground pad
+1 1 -220 160 160 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID left_ground_second_pin_-220_160
+0 One retained 2L friction pin, shared by the complete indicated stack
+1 0 -220 170 140 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID base_skid_-100
+0 13L skid joins the two left crossmembers
+1 72 -100 160 60 1 0 0 0 1 0 0 0 1 41239.dat
+0 !BW ID left_ground_pad_-100_-40
+0 3L ground pad shares bottom Y190 with the diagonal
+1 0 -100 180 -40 1 0 0 0 1 0 0 0 1 32523.dat
+0 !BW ID left_ground_shared_pin_-100_-40
+0 Single3L pin through crossmember, skid and ground pad
+1 1 -100 160 -40 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID left_ground_second_pin_-100_-40
+0 One retained 2L friction pin, shared by the complete indicated stack
+1 0 -100 170 -20 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID left_ground_pad_-100_160
+0 3L ground pad shares bottom Y190 with the diagonal
+1 0 -100 180 160 1 0 0 0 1 0 0 0 1 32523.dat
+0 !BW ID left_ground_shared_pin_-100_160
+0 Single3L pin through crossmember, skid and ground pad
+1 1 -100 160 160 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID left_ground_second_pin_-100_160
+0 One retained 2L friction pin, shared by the complete indicated stack
+1 0 -100 170 140 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID base_diagonal
+0 11L diagonal from (−220,−40) to (−100,120): exact120/160/200-LDU triangle
+1 14 -160 180 40 0.8 0 0.6 0 1 0 -0.6 0 0.8 32525.dat
+0 !BW ID base_diagonal_far_pin
+0 One retained 2L friction pin, shared by the complete indicated stack
+1 0 -100 170 120 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID right_ground_pad_-40
+0 3L right ground pad beneath the hub side, bottom Y190
+1 0 180 180 -40 0 0 1 0 1 0 -1 0 0 32523.dat
+0 !BW ID right_ground_pin_180_-40
+0 One retained 2L friction pin, shared by the complete indicated stack
+1 0 180 170 -40 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID right_ground_pin_200_-40
+0 One retained 2L friction pin, shared by the complete indicated stack
+1 0 200 170 -40 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID right_ground_pad_160
+0 3L right ground pad beneath the hub side, bottom Y190
+1 0 180 180 160 0 0 1 0 1 0 -1 0 0 32523.dat
+0 !BW ID right_ground_pin_180_160
+0 One retained 2L friction pin, shared by the complete indicated stack
+1 0 180 170 160 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID right_ground_pin_200_160
+0 One retained 2L friction pin, shared by the complete indicated stack
+1 0 200 170 160 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID hub_rail_140
+0 13L support directly below the hub lower mounting surface
+1 72 140 140 60 1 0 0 0 1 0 0 0 1 41239.dat
+0 !BW ID hub_rail_260
+0 13L support directly below the hub lower mounting surface
+1 72 260 140 60 1 0 0 0 1 0 0 0 1 41239.dat
+0 STEP
+0 Assembly stage 2: guide_support
+0 !BW ID guide_post_-240_back
+0 11L vertical post: upper crossblock connection Y−120, lower foot Y80
+1 72 -240 -20 -80 1 0 0 0 0 -1 0 1 0 32525.dat
+0 !BW ID guide_top_pin_-240_back
+0 2L friction pin through one crossblock outer hole and its vertical post
+1 0 -240 -120 -70 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID guide_foot_-240_back
+0 Integral perpendicular pin is the sole male in the post foot hole
+1 72 -240 80 -100 0 0 -1 0 1 0 1 0 0 15100.dat
+0 !BW ID guide_foot_pin_-240_back
+0 2L pin joins guide foot Y80 to its base rail Y100
+1 0 -240 90 -100 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID guide_post_-240_front
+0 11L vertical post: upper crossblock connection Y−120, lower foot Y80
+1 72 -240 -20 40 1 0 0 0 0 -1 0 1 0 32525.dat
+0 !BW ID guide_top_pin_-240_front
+0 2L friction pin through one crossblock outer hole and its vertical post
+1 0 -240 -120 50 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID guide_foot_-240_front
+0 Integral perpendicular pin is the sole male in the post foot hole
+1 72 -240 80 60 0 0 1 0 1 0 -1 0 0 15100.dat
+0 !BW ID guide_foot_pin_-240_front
+0 2L pin joins guide foot Y80 to its base rail Y100
+1 0 -240 90 60 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID guide_post_-200_back
+0 11L vertical post: upper crossblock connection Y−120, lower foot Y80
+1 72 -200 -20 -80 1 0 0 0 0 -1 0 1 0 32525.dat
+0 !BW ID guide_top_pin_-200_back
+0 2L friction pin through one crossblock outer hole and its vertical post
+1 0 -200 -120 -70 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID guide_foot_-200_back
+0 Integral perpendicular pin is the sole male in the post foot hole
+1 72 -200 80 -100 0 0 -1 0 1 0 1 0 0 15100.dat
+0 !BW ID guide_foot_pin_-200_back
+0 2L pin joins guide foot Y80 to its base rail Y100
+1 0 -200 90 -100 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID guide_post_-200_front
+0 11L vertical post: upper crossblock connection Y−120, lower foot Y80
+1 72 -200 -20 40 1 0 0 0 0 -1 0 1 0 32525.dat
+0 !BW ID guide_top_pin_-200_front
+0 2L friction pin through one crossblock outer hole and its vertical post
+1 0 -200 -120 50 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID guide_foot_-200_front
+0 Integral perpendicular pin is the sole male in the post foot hole
+1 72 -200 80 60 0 0 1 0 1 0 -1 0 0 15100.dat
+0 !BW ID guide_foot_pin_-200_front
+0 2L pin joins guide foot Y80 to its base rail Y100
+1 0 -200 90 60 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID guide_post_-80_back
+0 11L vertical post: upper crossblock connection Y−120, lower foot Y80
+1 72 -80 -20 -80 1 0 0 0 0 -1 0 1 0 32525.dat
+0 !BW ID guide_top_pin_-80_back
+0 2L friction pin through one crossblock outer hole and its vertical post
+1 0 -80 -120 -70 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID guide_foot_-80_back
+0 Integral perpendicular pin is the sole male in the post foot hole
+1 72 -80 80 -100 0 0 -1 0 1 0 1 0 0 15100.dat
+0 !BW ID guide_foot_pin_-80_back
+0 2L pin joins guide foot Y80 to its base rail Y100
+1 0 -80 90 -100 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID guide_post_-80_front
+0 11L vertical post: upper crossblock connection Y−120, lower foot Y80
+1 72 -80 -20 40 1 0 0 0 0 -1 0 1 0 32525.dat
+0 !BW ID guide_top_pin_-80_front
+0 2L friction pin through one crossblock outer hole and its vertical post
+1 0 -80 -120 50 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID guide_foot_-80_front
+0 Integral perpendicular pin is the sole male in the post foot hole
+1 72 -80 80 60 0 0 1 0 1 0 -1 0 0 15100.dat
+0 !BW ID guide_foot_pin_-80_front
+0 2L pin joins guide foot Y80 to its base rail Y100
+1 0 -80 90 60 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID guide_post_-40_back
+0 13L vertical post: crossblock atY−120, foot atY100; lower rail clears the motor posts
+1 72 -40 -20 -80 1 0 0 0 0 -1 0 1 0 41239.dat
+0 !BW ID guide_top_pin_-40_back
+0 2L friction pin through one crossblock outer hole and its vertical post
+1 0 -40 -120 -70 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID guide_foot_-40_back
+0 Integral perpendicular pin is the sole male in the post foot hole
+1 72 -40 100 -100 0 0 -1 0 1 0 1 0 0 15100.dat
+0 !BW ID guide_foot_pin_-40_back
+0 2L pin joins guide foot Y100 to its base rail Y120
+1 0 -40 110 -100 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID guide_post_-40_front
+0 13L vertical post: crossblock atY−120, foot atY100; lower rail clears the motor posts
+1 72 -40 -20 40 1 0 0 0 0 -1 0 1 0 41239.dat
+0 !BW ID guide_top_pin_-40_front
+0 2L friction pin through one crossblock outer hole and its vertical post
+1 0 -40 -120 50 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID guide_foot_-40_front
+0 Integral perpendicular pin is the sole male in the post foot hole
+1 72 -40 100 60 0 0 1 0 1 0 -1 0 0 15100.dat
+0 !BW ID guide_foot_pin_-40_front
+0 2L pin joins guide foot Y100 to its base rail Y120
+1 0 -40 110 60 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID guide_diagonal_back
+0 11L diagonal from X−200/Y−100 to X−40/Y20, joining two posts
+1 14 -120 -40 -100 -0.6 0 0.8 0.8 0 0.6 0 1 0 32525.dat
+0 !BW ID guide_diagonal_pin_back_upper
+0 One retained 2L friction pin, shared by the complete indicated stack
+1 0 -200 -100 -90 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID guide_diagonal_pin_back_lower
+0 One retained 2L friction pin, shared by the complete indicated stack
+1 0 -40 20 -90 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID guide_diagonal_front
+0 11L diagonal from X−200/Y−100 to X−40/Y20, joining two posts
+1 14 -120 -40 20 -0.6 0 0.8 0.8 0 0.6 0 1 0 32525.dat
+0 !BW ID guide_diagonal_pin_front_upper
+0 One retained 2L friction pin, shared by the complete indicated stack
+1 0 -200 -100 30 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID guide_diagonal_pin_front_lower
+0 One retained 2L friction pin, shared by the complete indicated stack
+1 0 -40 20 30 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID A_post_left_-20
+0 7L motor post spans Y−20..100 and attaches to two blind side bores
+1 72 -40 40 -20 0 1 0 0 0 1 1 0 0 32524.dat
+0 !BW ID A_stator_pin_left_-20_-20
+0 2L pin fully seats in one motor side bore and its post; no opposing pin
+1 0 -30 -20 -20 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID A_stator_pin_left_-20_20
+0 2L pin fully seats in one motor side bore and its post; no opposing pin
+1 0 -30 20 -20 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID A_foot_left_-20
+0 Integral perpendicular pin fixes post to its foot
+1 72 -60 100 -20 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID A_foot_pin_left_-20
+0 One retained 2L friction pin, shared by the complete indicated stack
+1 0 -60 110 -20 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID A_post_left_140
+0 7L motor post spans Y−20..100 and attaches to two blind side bores
+1 72 -40 40 140 0 1 0 0 0 1 1 0 0 32524.dat
+0 !BW ID A_stator_pin_left_140_-20
+0 2L pin fully seats in one motor side bore and its post; no opposing pin
+1 0 -30 -20 140 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID A_stator_pin_left_140_20
+0 2L pin fully seats in one motor side bore and its post; no opposing pin
+1 0 -30 20 140 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID A_foot_left_140
+0 Integral perpendicular pin fixes post to its foot
+1 72 -60 100 140 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID A_foot_pin_left_140
+0 One retained 2L friction pin, shared by the complete indicated stack
+1 0 -60 110 140 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID A_post_right_-20
+0 7L motor post spans Y−20..100 and attaches to two blind side bores
+1 72 40 40 -20 0 1 0 0 0 1 1 0 0 32524.dat
+0 !BW ID A_stator_pin_right_-20_-20
+0 2L pin fully seats in one motor side bore and its post; no opposing pin
+1 0 30 -20 -20 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID A_stator_pin_right_-20_20
+0 2L pin fully seats in one motor side bore and its post; no opposing pin
+1 0 30 20 -20 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID A_foot_right_-20
+0 Integral perpendicular pin fixes post to its foot
+1 72 60 100 -20 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID A_foot_pin_right_-20
+0 One retained 2L friction pin, shared by the complete indicated stack
+1 0 60 110 -20 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID A_post_right_140
+0 7L motor post spans Y−20..100 and attaches to two blind side bores
+1 72 40 40 140 0 1 0 0 0 1 1 0 0 32524.dat
+0 !BW ID A_stator_pin_right_140_-20
+0 2L pin fully seats in one motor side bore and its post; no opposing pin
+1 0 30 -20 140 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID A_stator_pin_right_140_20
+0 2L pin fully seats in one motor side bore and its post; no opposing pin
+1 0 30 20 140 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID A_foot_right_140
+0 Integral perpendicular pin fixes post to its foot
+1 72 60 100 140 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID A_foot_pin_right_140
+0 One retained 2L friction pin, shared by the complete indicated stack
+1 0 60 110 140 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID motor_A
+0 SPIKE medium angular motor on port A
+0 !BW PORT A
+1 15 0 0 0 1 0 0 0 1 0 0 0 1 54696p01.dat
+0 !BW ID ground_rail_-60
+0 10L fixed guide spans X−240..−40
+1 0 -140 -140 -60 1 0 0 0 1 0 0 0 1 3737.dat
+0 !BW ID ground_holder_-220_-60
+0 Crossblock: mount its two outer pinholes atY−120, axesZ
+1 72 -220 -140 -60 1 0 0 0 1 0 0 0 1 63869.dat
+0 !BW ID ground_holder_-60_-60
+0 Crossblock: mount its two outer pinholes atY−120, axesZ
+1 72 -60 -140 -60 1 0 0 0 1 0 0 0 1 63869.dat
+0 !BW ID ground_cap_-235_-60
+0 Retained fixed guide outside end crossblock
+1 72 -235 -140 -60 0 0 1 1 0 0 0 1 0 4265c.dat
+0 !BW ID ground_cap_-45_-60
+0 Retained fixed guide outside end crossblock
+1 72 -45 -140 -60 0 0 1 1 0 0 0 1 0 4265c.dat
+0 !BW ID ground_rail_60
+0 10L fixed guide spans X−240..−40
+1 0 -140 -140 60 1 0 0 0 1 0 0 0 1 3737.dat
+0 !BW ID ground_holder_-220_60
+0 Crossblock: mount its two outer pinholes atY−120, axesZ
+1 72 -220 -140 60 1 0 0 0 1 0 0 0 1 63869.dat
+0 !BW ID ground_holder_-60_60
+0 Crossblock: mount its two outer pinholes atY−120, axesZ
+1 72 -60 -140 60 1 0 0 0 1 0 0 0 1 63869.dat
+0 !BW ID ground_cap_-235_60
+0 Retained fixed guide outside end crossblock
+1 72 -235 -140 60 0 0 1 1 0 0 0 1 0 4265c.dat
+0 !BW ID ground_cap_-45_60
+0 Retained fixed guide outside end crossblock
+1 72 -45 -140 60 0 0 1 1 0 0 0 1 0 4265c.dat
+0 STEP
+0 Assembly stage 3: input
+0 !BW ID input_axle
+0 12L shaft spans Y−270..−30; drives input and supports free concentric circle arm
+1 0 0 -150 0 0 -1 0 1 0 0 0 0 1 3708.dat
+0 !BW ID input_key
+0 3L keyed input beam transfers torque through two friction pins
+1 1 0 -60 0 1 0 0 0 1 0 0 0 1 7229.dat
+0 !BW ID input_arm
+0 7L input arm: O=h1, A=h5, active radius80LDU
+1 1 0 -80 40 1 0 0 0 1 0 0 0 1 32524.dat
+0 !BW ID input_key_pin_rear
+0 Retained 2L friction pin between keyed beam and arm
+1 0 0 -70 -20 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID input_key_pin_front
+0 Retained 2L friction pin between keyed beam and arm
+1 0 0 -70 20 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID input_retainer
+0 Half bush retains input arm
+1 72 0 -95 0 1 0 0 0 0 1 0 -1 0 4265c.dat
+0 !BW ID circle_retainer_upper
+0 Full bush retains passive circle arm axially without keying it
+1 72 0 -260 0 1 0 0 0 0 1 0 -1 0 3713.dat
+0 !BW ID circle_retainer_lower
+0 Full bush retains passive circle arm axially without keying it
+1 72 0 -220 0 1 0 0 0 0 1 0 -1 0 3713.dat
+0 STEP
+0 Assembly stage 4: circle
+0 !BW ID circle_arm
+0 5L free arm: O=h0, B=h4, same80LDU circle radius
+1 4 -34.6410161514 -240 20 0.5 0 -0.866025403784 0 1 0 0.866025403784 0 0.5 32316.dat
+0 STEP
+0 Assembly stage 5: ruler
+0 !BW ID ruler_mark_beam
+0 Central7L ruler: C=h0; B=h4 main orh3 control
+1 14 -86.6025403784 -220 30 0.5 0 0.866025403784 0 1 0 -0.866025403784 0 0.5 32524.dat
+0 !BW ID ruler_spine_-1
+0 11L side spine atnormal0or40 spans ruler coordinates80..280, clear of the central shaft
+1 14 17.3205080757 -180 90 0.5 0 0.866025403784 0 1 0 -0.866025403784 0 0.5 32525.dat
+0 !BW ID ruler_spine_1
+0 11L side spine atnormal0or40 spans ruler coordinates80..280, clear of the central shaft
+1 14 -2.67949192431 -180 124.641016151 0.5 0 0.866025403784 0 1 0 -0.866025403784 0 0.5 32525.dat
+0 !BW ID ruler_cross_80
+0 3L transverse brace joins the offset side spines
+1 14 -79.2820323028 -200 57.3205080757 0.866025403784 0 -0.5 0 1 0 0.5 0 0.866025403784 32523.dat
+0 !BW ID ruler_shared_pin_80_-1
+0 One3L pin owns brace, spine and rail-holder bore
+1 1 -69.2820323028 -180 40 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID ruler_shared_pin_80_1
+0 One3L pin owns brace, spine and rail-holder bore
+1 1 -89.2820323028 -180 74.6410161514 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID ruler_cross_100
+0 3L transverse brace joins the offset side spines
+1 14 -61.9615242271 -200 67.3205080757 0.866025403784 0 -0.5 0 1 0 0.5 0 0.866025403784 32523.dat
+0 !BW ID ruler_cross_pin_100_1
+0 One2L pin joins brace and side spine
+1 0 -71.9615242271 -190 84.6410161514 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID ruler_mark_shared_pin_100
+0 One3L pin owns marked beam, transverse brace and zero-offset side spine
+1 1 -51.9615242271 -200 50 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID ruler_cross_120
+0 3L transverse brace joins the offset side spines
+1 14 -44.6410161514 -200 77.3205080757 0.866025403784 0 -0.5 0 1 0 0.5 0 0.866025403784 32523.dat
+0 !BW ID ruler_cross_pin_120_1
+0 One2L pin joins brace and side spine
+1 0 -54.6410161514 -190 94.6410161514 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID ruler_mark_shared_pin_120
+0 One3L pin owns marked beam, transverse brace and zero-offset side spine
+1 1 -34.6410161514 -200 60 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID ruler_cross_280
+0 3L transverse brace joins the offset side spines
+1 14 93.9230484541 -200 157.320508076 0.866025403784 0 -0.5 0 1 0 0.5 0 0.866025403784 32523.dat
+0 !BW ID ruler_shared_pin_280_-1
+0 One3L pin owns brace, spine and rail-holder bore
+1 1 103.923048454 -180 140 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID ruler_shared_pin_280_1
+0 One3L pin owns brace, spine and rail-holder bore
+1 1 83.9230484541 -180 174.641016151 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID ruler_rail_-1
+0 12L guide axle spans ruler coordinates60..300
+1 0 27.3205080757 -160 72.6794919243 0.866025403784 0 -0.5 0 1 0 0.5 0 0.866025403784 3708.dat
+0 !BW ID ruler_holder_80_-1
+0 Keyed rail holder points toward positive normal to the shared spine pin
+1 72 -59.2820323028 -160 22.6794919243 0.866025403784 -0.5 0 0 0 -1 0.5 0.866025403784 0 6536.dat
+0 !BW ID ruler_holder_280_-1
+0 Keyed rail holder points toward positive normal to the shared spine pin
+1 72 113.923048454 -160 122.679491924 0.866025403784 -0.5 0 0 0 -1 0.5 0.866025403784 0 6536.dat
+0 !BW ID ruler_cap_65_-1
+0 Half bush retains the finite rail outside its end holder
+1 72 -72.2724133595 -160 15.1794919243 0 -0.5 0.866025403784 1 0 0 0 0.866025403784 0.5 4265c.dat
+0 !BW ID ruler_cap_295_-1
+0 Half bush retains the finite rail outside its end holder
+1 72 126.913429511 -160 130.179491924 0 -0.5 0.866025403784 1 0 0 0 0.866025403784 0.5 4265c.dat
+0 !BW ID ruler_rail_1
+0 12L guide axle spans ruler coordinates60..300
+1 0 7.32050807569 -160 107.320508076 0.866025403784 0 -0.5 0 1 0 0.5 0 0.866025403784 3708.dat
+0 !BW ID ruler_holder_80_1
+0 Keyed rail holder points toward positive normal to the shared spine pin
+1 72 -79.2820323028 -160 57.3205080757 0.866025403784 -0.5 0 0 0 -1 0.5 0.866025403784 0 6536.dat
+0 !BW ID ruler_holder_280_1
+0 Keyed rail holder points toward positive normal to the shared spine pin
+1 72 93.9230484541 -160 157.320508076 0.866025403784 -0.5 0 0 0 -1 0.5 0.866025403784 0 6536.dat
+0 !BW ID ruler_cap_65_1
+0 Half bush retains the finite rail outside its end holder
+1 72 -92.2724133595 -160 49.8205080757 0 -0.5 0.866025403784 1 0 0 0 0.866025403784 0.5 4265c.dat
+0 !BW ID ruler_cap_295_1
+0 Half bush retains the finite rail outside its end holder
+1 72 106.913429511 -160 164.820508076 0 -0.5 0.866025403784 1 0 0 0 0.866025403784 0.5 4265c.dat
+0 STEP
+0 Assembly stage 6: a_slider
+0 !BW ID a_toggle_-1
+0 Two smooth eyes slide on one of the paired ruler rails
+1 72 10 -130 62.6794919243 0.5 0 0.866025403784 0 1 0 -0.866025403784 0 0.5 48496.dat
+0 !BW ID a_receiver_-1
+0 3L receiver accepts both integral toggle pins
+1 4 10 -120 62.6794919243 0.5 0 0.866025403784 0 1 0 -0.866025403784 0 0.5 32523.dat
+0 !BW ID a_cross_pin_-1
+0 Retained receiver-to-crossbar connection
+1 0 10 -110 62.6794919243 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID a_toggle_1
+0 Two smooth eyes slide on one of the paired ruler rails
+1 72 -10 -130 97.3205080757 0.5 0 0.866025403784 0 1 0 -0.866025403784 0 0.5 48496.dat
+0 !BW ID a_receiver_1
+0 3L receiver accepts both integral toggle pins
+1 4 -10 -120 97.3205080757 0.5 0 0.866025403784 0 1 0 -0.866025403784 0 0.5 32523.dat
+0 !BW ID a_cross_pin_1
+0 Retained receiver-to-crossbar connection
+1 0 -10 -110 97.3205080757 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID a_cross
+0 3L carriage crossbar; central round hole is A
+1 4 0 -100 80 0.866025403784 0 -0.5 0 1 0 0.5 0 0.866025403784 32523.dat
+0 !BW ID joint_A_pin
+0 One frictionless2L pin joins input arm to ruler carriage
+1 7 0 -90 80 0 -1 0 1 0 0 0 0 1 3673.dat
+0 !BW ID joint_B_pin
+0 One frictionless2L pin at the chosen ruler mark
+1 7 -69.2820323028 -230 40 0 -1 0 1 0 0 0 0 1 3673.dat
+0 STEP
+0 Assembly stage 7: c_slider
+0 !BW ID c_toggle_-60
+0 Flipped smooth toggle on one of the two fixed rails
+1 72 -138.564064606 -170 -60 0 0 1 0 -1 0 1 0 0 48496.dat
+0 !BW ID c_receiver_-60
+0 3L receiver accepts both upward toggle pins
+1 4 -138.564064606 -180 -60 0 0 1 0 1 0 -1 0 0 32523.dat
+0 !BW ID c_cross_pin_-60
+0 Retained2L pin joins receiver to crossbar
+1 0 -138.564064606 -190 -60 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID c_toggle_60
+0 Flipped smooth toggle on one of the two fixed rails
+1 72 -138.564064606 -170 60 0 0 1 0 -1 0 1 0 0 48496.dat
+0 !BW ID c_receiver_60
+0 3L receiver accepts both upward toggle pins
+1 4 -138.564064606 -180 60 0 0 1 0 1 0 -1 0 0 32523.dat
+0 !BW ID c_cross_pin_60
+0 Retained2L pin joins receiver to crossbar
+1 0 -138.564064606 -190 60 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID c_cross
+0 7L carriage crossbar; its central round hole is C on the baseline
+1 4 -138.564064606 -200 0 1 0 0 0 1 0 0 0 1 32524.dat
+0 !BW ID joint_C_pin
+0 One frictionless2L pin joins baseline carriage to the ruler C mark
+1 7 -138.564064606 -210 0 0 -1 0 1 0 0 0 0 1 3673.dat
+0 STEP
+0 Assembly stage 8: hub
+0 !BW ID hub
+0 One SPIKE Prime hub supported by four lower mounting bores
+1 15 200 130 60 1 0 0 0 1 0 0 0 1 45601.dat
+0 !BW ID hub_shared_pin_140_-40
+0 3L pin: short end in hub bore Y110..130, long end through rail and crossmember
+1 1 140 140 -40 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID hub_shared_pin_140_160
+0 3L pin: short end in hub bore Y110..130, long end through rail and crossmember
+1 1 140 140 160 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID hub_shared_pin_260_-40
+0 3L pin: short end in hub bore Y110..130, long end through rail and crossmember
+1 1 260 140 -40 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID hub_shared_pin_260_160
+0 3L pin: short end in hub bore Y110..130, long end through rail and crossmember
+1 1 260 140 160 0 -1 0 1 0 0 0 0 1 6558.dat

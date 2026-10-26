@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "id": "air-budget-two-tanks",
+  "language": "de",
+  "what": "Dies ist das Vergleichsmodell zu Air Budget. Motor, Zahnräder, Kurbel, Pumpe und Programm sind gleich, aber ein zweiter Lufttank hängt im selben Schlauchkreis wie der erste, sodass die Luft etwa das doppelte Volumen füllen muss. Beide Tanks sind mit 150 kPa über dem Luftdruck vorgeladen. Im Simulator heben dieselben sechs Pumphübe den Druck von 150,0 auf nur 156,5 kPa: 6,5 kPa statt 12,9 kPa. Das Verhältnis der beiden Anstiege ist 1,974, das Verhältnis der Volumen 75 cm³ zu 38 cm³.",
+  "try": [
+    "Lade dieses Modell, drücke Zurücksetzen und dann Start und notiere den Enddruck. Starte dann das Ein-Tank-Modell und vergleiche die beiden Anstiege, nicht die Endwerte.",
+    "Beobachte die Pumpe: Der Kolben macht genau dieselben sechs Hübe wie im Ein-Tank-Modell, beide fördern also gleich viel Luft.",
+    "Verfahre Port A in jedem Modell von Hand um eine Kurbelumdrehung (1080°) und vergleiche den Druckschritt: etwa 2,1 kPa mit einem Tank, etwa 1,1 kPa mit zwei.",
+    "Die Anzeige rundet auf ganze kPa, ein einzelner Hub kann also wie 1 oder 2 kPa aussehen. Vergleiche ganze Läufe für ein klares Ergebnis."
+  ],
+  "why": "Jeder Hub drückt dieselben 0,80 cm³ Außenluft in die Tanks. Der Druckanstieg ist diese zusätzliche Luft geteilt durch das Volumen, das sie füllen muss: Δp = p_atm·A·S / V. Doppelte Tanks verdoppeln V fast, also hebt dieselbe Luft den Druck nur etwa halb so stark. Genau die Hälfte ist es nicht, weil der Simulator für Schläuche und Anschlüsse feste 1 cm³ hinzurechnet: V = 37 + 1 = 38 cm³ mit einem Tank und 2·37 + 1 = 75 cm³ mit zwei. Das Verhältnis der Anstiege ist deshalb 75/38 = 1,974. Das gemessene Verhältnis, 1,9736, stimmt auf 0,003 % damit überein.",
+  "matters": "Werkstattkompressoren haben mit Absicht einen großen Kessel: Ein größeres Volumen lässt den Druck langsam steigen und fallen, die Werkzeuge bekommen gleichmäßig Luft, und der Motor springt seltener an. Pneumatische LEGO-Modelle machen dasselbe, wenn sie mehrere Tanks verbinden. Die Kehrseite: Ein großer Speicher braucht länger zum Aufpumpen, derselbe Hub bringt weniger Druck.",
+  "question": "Beide Modelle bekommen genau dieselben sechs Hübe. Warum gewinnt das Zwei-Tank-Modell nur 6,5 kPa statt 12,9 kPa, und warum ist das Verhältnis 1,974 und nicht genau 2?",
+  "answer": "Dieselbe zusätzliche Luft verteilt sich auf ein größeres Volumen, und der Druckanstieg ist umgekehrt proportional zum Volumen: Δp = p_atm·A·S / V. Die Volumen sind 38 cm³ und 75 cm³, weil jedes Luftnetz dieselben zusätzlichen 1 cm³ für Schläuche und Anschlüsse hat, das Verhältnis ist also 75/38 = 1,974 und nicht 2.",
+  "further": [
+    "Sag den Anstieg nach sechs Hüben mit drei verbundenen Tanks voraus (V = 112 cm³).",
+    "Wie viele Hübe braucht das Zwei-Tank-Modell für dieselben 12,9 kPa, die das Ein-Tank-Modell in sechs Hüben gewinnt?",
+    "Würde sich das Ergebnis in einem echten Modell mit doppelt so langen Schläuchen ändern? Warum macht der feste 1-cm³-Zuschlag des Simulators keinen Unterschied?"
+  ],
+  "formula": "Δp = p_atm·A·S / V; V₁ = 37 + 1 = 38 cm³, V₂ = 2·37 + 1 = 75 cm³; Δp₁/Δp₂ = V₂/V₁ = 75/38 ≈ 1,974 bei gleichem Kolbenweg.",
+  "related": [
+    "pneumatic-press.ldr",
+    "crank-rocker.ldr",
+    "gearbox.ldr"
+  ]
+}

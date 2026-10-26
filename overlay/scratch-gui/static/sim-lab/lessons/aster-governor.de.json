@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "id": "aster-governor",
+  "language": "de",
+  "what": "Fliehkraftregler mit belasteter Gleitmuffe. Motor A dreht eine senkrechte Spindel mit Rotorrahmen. Auf jeder Seite bilden zwei 48 mm lange Arme eine gelenkige Raute: Der obere Arm ist oben am Rotor angelenkt, der untere an einer Muffe, die auf Führungsachsen gleitet. Wo sich die Arme treffen, trägt eine Achse das Fliehgewicht – zwei SPIKE-Räder mit 56 mm Durchmesser je Seite. Die Gelenke sitzen 24 mm neben der Drehachse; in Ruhe stehen die Arme etwa 24° schräg, und die Muffe liegt auf ihrem unteren Anschlag. Schwingen die Gewichte nach außen, wird die Raute flacher und die Muffe gleitet nach oben. Das Programm fährt die Spindel stufenweise auf 675, 725 und 800°/s, über 725 und 675°/s zurück in den Stillstand, startet dann erneut mit 725°/s und hält wieder an. Experimentelles Modell: Das hier beschriebene Gesetz wurde bisher nur im Simulator gemessen (ein Lauf ohne Bildschirm), nicht an echten LEGO-Teilen.",
+  "try": [
+    "Setze zurück und drücke Start. In Stufe 1 steht der Rotor still: Merke dir die Muffe auf ihrem Anschlag und den Armwinkel.",
+    "Vergleiche die Muffenhöhe bei 675, 725 und 800°/s (Stufen 3, 5 und 7). Die Drehzahl steigt nur um 7 % und dann um 10 %. Steigt die Muffe in ebenso kleinen Schritten?",
+    "Vergleiche Stufe 9 mit Stufe 5 und Stufe 11 mit Stufe 3: dieselbe Drehzahl, einmal von unten und einmal von oben erreicht. Eine unterschiedliche Muffenhöhe ist Hysterese (Reibung oder Nachlauf) und gehört nicht zum idealen Gesetz.",
+    "In Stufe 15 läuft der Regler erneut mit 725°/s an. Vergleiche die Muffenhöhe mit den Stufen 5 und 9 und prüfe am Ende, ob die Schwerkraft die Muffe auf ihren Anschlag zurückbringt."
+  ],
+  "why": "Im mitrotierenden Bezugssystem wirkt auf jedes Fliehgewicht die nach außen gerichtete Fliehkraft m ω² r; dabei ist r = e + L sin α sein Abstand von der Achse (Gelenkversatz e = 24 mm, Armlänge L = 48 mm, Armwinkel α gegen die Senkrechte). Die Gewichtskraft von Fliehgewichten und Muffe zieht die Raute zur Senkrechten zurück. Das Gleichgewicht beider ergibt mit dem Prinzip der virtuellen Arbeit für Punktmassen ω² = g (m + M) tan α / (m (e + L sin α)), mit der Masse m eines Fliehgewichts und der Muffenmasse M. Unterhalb der Drehzahl, die diese Gleichung beim Ruhewinkel (α ≈ 23,6°) erfüllt, bleiben die Arme auf dem Anschlag; darüber heben sie sich, bis die Gleichung wieder ausgeglichen ist. Weil die Kraft mit ω² wächst, steigert eine um 10 % höhere Drehzahl die Fliehkraft um 21 %. Die echten Arme haben selbst Masse und Ausdehnung; die Formel ist deshalb eine Punktmassen-Näherung. Im Simulator hoben sich die Arme bei 675, 725 und 800°/s um 4,6°, 10,2° und 18,5° (Muffe 3,2, 8,0 und 16,3 mm höher), und ein einziger Wert (m + M)/m ≈ 1,24 passte auf alle sechs Beharrungsstufen auf 0,5 % genau; Auf- und Abwärtsstufen unterschieden sich um höchstens 0,3°.",
+  "matters": "James Watts Fliehkraftregler erfasste so die Drehzahl der Dampfmaschine und verstellte über die Muffe das Drosselventil – ein mechanischer Regelkreis. Aster baut nur die messende Hälfte nach. Es gibt keine Drossel, und der Motor folgt seiner programmierten Drehzahl, gleichgültig, was die Muffe tut: Das ist ein Drehzahlanzeiger, kein Regler. Dasselbe ω²-Gesetz bestimmt die Einkuppeldrehzahl von Fliehkraftkupplungen und Drehzahlschaltern.",
+  "question": "Bei 725°/s steht die Muffe in einer bestimmten Höhe. Dann erhöht das Programm die Drehzahl um etwa 10 % auf 800°/s. Wächst die Fliehkraft auf jedes Gewicht bei gleichem Radius um etwa 10 % oder um etwa 21 %, und was geschieht danach?",
+  "answer": "Um etwa 21 %, denn die Fliehkraft wächst mit dem Quadrat der Winkelgeschwindigkeit: (800/725)² ≈ 1,22. Die Gewichte wandern daher nach außen, und die Muffe steigt, bis größerer Radius und steilerer Armwinkel der Schwerkraft wieder das Gleichgewicht ermöglichen. Ideal wäre die Drehrichtung gleichgültig, weil ω² kein Vorzeichen hat; laut Lieferant lief dieses Modell rückwärts jedoch instabil, deshalb dreht das Programm nur vorwärts.",
+  "further": [
+    "Schätze die Abhebedrehzahl für eine masselose Muffe: ω² = g tan α / (e + L sin α) = 9,81 × 0,436 / 0,0432 ≈ 99 s⁻², also etwa 570°/s. Die erste Programmstufe mit 675°/s liegt über dieser groben Schätzung; das Gewicht der Muffe hebt die Schwelle an.",
+    "Ergänze die fehlende Hälfte auf dem Papier: In welche Richtung muss ein von der Muffe betätigtes Drosselgestänge gehen, um eine schneller werdende Maschine zu bremsen?",
+    "Vergleiche das etablierte Modell Centrifugal Governor mit frei schwingenden Armen ohne Muffe. Der Lieferant hat Aster nur für genau diese Drehzahlfolge freigegeben; andere Rampen und Rückwärtslauf sind neue, ungeprüfte Experimente."
+  ],
+  "formula": "Punktmassen: ω² = g (m + M) tan α / (m (e + L sin α)); e = 24 mm, L = 48 mm, Ruhewinkel α ≈ 23,6°. ω [rad/s] = Drehzahl [°/s] × π/180: 675°/s ≈ 11,8, 725°/s ≈ 12,7, 800°/s ≈ 14,0 rad/s. Fliehkraftverhältnis 800 zu 725°/s: (800/725)² ≈ 1,22.",
+  "related": [
+    "centrifugal-governor.ldr",
+    "flywheel-differential.ldr"
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "id": "helios-transmission",
+  "language": "de",
+  "what": "Umlaufgetriebe (Planetengetriebe) mit zwei Antrieben, Stufenplaneten und ohne Hohlrad. Motor A dreht ein Sonnenrad mit 24 Zähnen als Eingang. Motor B dreht über ein 20er-Zahnrad einen Drehkranz mit 28 Zähnen, der als Planetenträger dient. Jeder der beiden Planeten ist ein Stufenplanet auf einer Achse: ein 8er-Rad kämmt mit dem Eingangssonnenrad, ein 16er-Rad mit einem 16er-Abtriebssonnenrad auf der mittleren Abtriebsachse. A läuft während der ganzen Vorführung konstant mit 30°/s, während B nacheinander je 4 s lang mit 0, −21, −42, −63 und −84°/s dreht und danach stufenlos auf 0 zurückgeführt wird. Das Programm nennt diese Stufen hohe, reduzierte, gleiche, neutrale und umgekehrte Abtriebsdrehzahl. Experimentelles Modell: Das hier beschriebene Gesetz wurde bisher nur im Simulator gemessen (ein Lauf ohne Bildschirm), nicht an echten LEGO-Teilen.",
+  "try": [
+    "Setze zurück und drücke Start. Vergleiche in Stufe 1 (B steht) die Markierung am Abtrieb mit dem Eingangssonnenrad: Der Abtrieb sollte sich dreimal so schnell in dieselbe Richtung drehen.",
+    "Sage vor Stufe 3 (B mit −42°/s) voraus, was die Planeten auf ihren eigenen Achsen tun. Beobachte sie dann.",
+    "In Stufe 4 (−63°/s) sollte der Abtrieb stillstehen, obwohl beide Motoren drehen; in Stufe 5 (−84°/s) sollte er mit Eingangsdrehzahl rückwärts laufen.",
+    "Beim Durchlauf in Stufe 6 ändert sich A nicht. Beobachte, wie der Abtrieb von Rückwärtslauf über Stillstand und 1:1 bis zum schnellen Vorwärtslauf übergeht, und merke dir, wann das jeweils geschieht."
+  ],
+  "why": "Vom Planetenträger aus gesehen bilden die Räder ein gewöhnliches Standgetriebe: Eingangssonne 24 → Planet 8, dann Planet 16 → Abtriebssonne 16. Zwei Außeneingriffe ergeben ein positives Vorzeichen, die Standübersetzung ist also (24/8) × (16/16) = 3. Die Willis-Gleichung für Umlaufgetriebe lautet (ω_ab − ω_s) = 3 (ω_an − ω_s), also ω_ab = 3 ω_an − 2 ω_s mit der Stegdrehzahl ω_s. B treibt den Träger über einen äußeren 20:28-Eingriff, daher ω_s = −(20/28) ω_B. Mit ω_an = 30°/s: B = 0 ergibt ω_s = 0 und 90°/s am Abtrieb; B = −21 → ω_s = 15 → 60°/s; B = −42 → ω_s = 30 → 30°/s; B = −63 → ω_s = 45 → 0; B = −84 → ω_s = 60 → −30°/s. Das sind genau die Stufennamen des Programms (×3, ×2, ×1, neutral, rückwärts) mit den dort verwendeten Drehgebervorzeichen. Im Simulator wurden am Abtrieb 90,0, 60,0, 30,0, 0,0 und −30,0°/s gemessen (Abweichung von der Willis-Gleichung unter 0,02°/s); in Stufe 3 drehten sich die Planeten mit 0,00°/s relativ zum Träger.",
+  "matters": "Ein Planetensatz mit zwei angetriebenen Gliedern ist ein leistungsverzweigtes Getriebe: Hybridautos verbinden so Verbrennungs- und Elektromotor, und die Drehzahl des zweiten Antriebs stellt die Gesamtübersetzung stufenlos ein, ohne zu schalten. Umsonst ist diese Verstellung nicht – sobald der Abtrieb anders läuft, als A allein ihn treiben würde, muss Motor B Leistung liefern oder aufnehmen. Die Simulation zeigt nur den Drehzahlzusammenhang; Momentenaufteilung, Wirkungsgrad, Zahnkräfte und die Leistung, die B unter Last bräuchte, werden nicht modelliert.",
+  "question": "In Stufe 3 dreht sich der Planetenträger genau mit Eingangsdrehzahl, 30°/s. Was tun die Planetenräder auf ihren eigenen Achsen, und wie schnell dreht sich der Abtrieb?",
+  "answer": "Die Planeten hören auf, sich relativ zum Träger zu drehen. Mit ω_s = ω_an liefert die Willis-Gleichung ω_ab − ω_s = 3 × 0 = 0: Eingangssonne, Träger, Planeten und Abtriebssonne drehen sich gemeinsam wie ein starrer Block mit 30°/s. Die Zähne bleiben im Eingriff, doch kein Zahn wälzt mehr auf einem anderen ab – ein direkter Durchtrieb 1:1.",
+  "further": [
+    "Sage voraus, wann der Abtrieb im Durchlauf von Stufe 6 stillsteht. B beginnt bei −84°/s und steigt alle 0,1 s um 1,4°/s; auf dem Papier ist −63°/s (Stillstand) nach 1,5 s erreicht, −42°/s (1:1) nach 3,0 s. Im Simulator dauerte jede 0,1-s-Wartezeit tatsächlich etwa 0,17 s; der Durchlauf brauchte rund 10 s, und der Stillstand kam nach etwa 2,4 s – weiterhin genau bei ω_B = −63°/s.",
+    "Würde A festgehalten und nur B gedreht, ergäbe die Formel ω_ab = −2 ω_s: Der Abtrieb liefe mit doppelter Trägerdrehzahl rückwärts. Prüfe das anhand der Zähnezahlen.",
+    "Vergleiche die Modelle Differential und Vernier Drive. Ein Kegelraddifferenzial ist der Sonderfall eines Umlaufgetriebes mit der Standübersetzung −1; deshalb dreht sich sein Korb mit dem Mittelwert der beiden Seiten."
+  ],
+  "formula": "Willis: (ω_ab − ω_s) / (ω_an − ω_s) = (24/8) × (16/16) = 3 → ω_ab = 3 ω_A − 2 ω_s; ω_s = −(20/28) ω_B. Mit ω_A = 30°/s: ω_B = 0, −21, −42, −63, −84°/s → ω_s = 0, 15, 30, 45, 60°/s → ω_ab = 90, 60, 30, 0, −30°/s (×3, ×2, ×1, 0, −1).",
+  "related": [
+    "differential.ldr",
+    "vernier-drive.ldr",
+    "mean-machine.ldr"
+  ]
+}
