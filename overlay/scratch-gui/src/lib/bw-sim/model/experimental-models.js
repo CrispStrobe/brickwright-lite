@@ -770,29 +770,6 @@ export const EXPERIMENTAL_MODELS = Object.freeze([
         }
     },
     {
-        "file": "toggle-lever.ldr",
-        "title": {
-            "en": "Toggle Lever — a link folding toward dead centre",
-            "de": "Kniehebel — ein Lenker klappt zum Totpunkt"
-        },
-        "example": "toggle-lever.bw",
-        "mat": "plain",
-        "experimental": true,
-        "blocked": false,
-        "intro": {
-            "en": "A crank and Scotch yoke push a short link against a lever pivoted at its end. As the crank nears 90°, the link folds back over the lever arm and its turning leverage collapses toward a dead centre, where the link pushes straight through the pivot. The passive lever follows the link-closure geometry within 0.02° up to 60°; the program stops at 85°, 5° short of dead centre.",
-            "de": "Eine Kurbel mit Kreuzschleife drückt einen kurzen Lenker gegen einen am Ende gelagerten Hebel. Nähert sich die Kurbel 90°, klappt der Lenker über den Hebelarm zurück, und seine Hebelwirkung bricht bis zu einem Totpunkt zusammen, in dem der Lenker genau durch den Drehpunkt drückt. Der passive Hebel folgt der Geometrie der geschlossenen Gelenkkette bis 60° auf 0,02° genau; das Programm hält bei 85°, 5° vor dem Totpunkt."
-        },
-        "manualJog": {
-            "A": {
-                "minDeg": -85,
-                "maxDeg": 85,
-                "stepDeg": 5,
-                "speedDps": 30
-            }
-        }
-    },
-    {
         "file": "impulse-line.ldr",
         "title": {
             "en": "Impulse Line — contact transfer",
@@ -1280,29 +1257,6 @@ export const EXPERIMENTAL_MODELS = Object.freeze([
                 "maxDeg": 70,
                 "stepDeg": 5,
                 "speedDps": 15
-            }
-        }
-    },
-    {
-        "file": "thirdline.ldr",
-        "title": {
-            "en": "Thirdline — angle trisector",
-            "de": "Thirdline — Winkeldreiteiler"
-        },
-        "example": "thirdline.bw",
-        "mat": "plain",
-        "experimental": true,
-        "blocked": false,
-        "intro": {
-            "en": "One motor sets an input angle. Equal circle radii and a marked sliding line make the passive line angle one third as large. Move one mark inward and compare the same finite input program.",
-            "de": "Ein Motor stellt den Eingangswinkel ein. Gleiche Kreisradien und eine markierte gleitende Gerade erzeugen passiv ein Winkeldrittel. Versetze eine Markierung nach innen und vergleiche dasselbe endliche Programm."
-        },
-        "manualJog": {
-            "A": {
-                "minDeg": -5,
-                "maxDeg": 40,
-                "stepDeg": 5,
-                "speedDps": 8
             }
         }
     },
@@ -2589,49 +2543,6 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
         ],
         "experimental": true
     },
-    "toggle-lever.ldr": {
-        "pieces": 112,
-        "motors": 1,
-        "hubs": [
-            "spike-prime"
-        ],
-        "topic": "linkages",
-        "description": {
-            "en": "A crank and Scotch yoke push a short link against a lever pivoted at its end. As the crank nears 90°, the link folds back over the lever arm and its turning leverage collapses toward a dead centre, where the link pushes straight through the pivot. The passive lever follows the link-closure geometry within 0.02° up to 60°; the program stops at 85°, 5° short of dead centre.",
-            "de": "Eine Kurbel mit Kreuzschleife drückt einen kurzen Lenker gegen einen am Ende gelagerten Hebel. Nähert sich die Kurbel 90°, klappt der Lenker über den Hebelarm zurück, und seine Hebelwirkung bricht bis zu einem Totpunkt zusammen, in dem der Lenker genau durch den Drehpunkt drückt. Der passive Hebel folgt der Geometrie der geschlossenen Gelenkkette bis 60° auf 0,02° genau; das Programm hält bei 85°, 5° vor dem Totpunkt."
-        },
-        "author": "CrispStrobe",
-        "license": "BSD-3-Clause",
-        "mechanism": {
-            "en": "crank, Scotch yoke and toggle link",
-            "de": "Kurbel, Kreuzschleife und Kniehebel-Lenker"
-        },
-        "keywords": [
-            "toggle",
-            "toggle linkage",
-            "knuckle joint",
-            "dead centre",
-            "dead center",
-            "transmission angle",
-            "link closure",
-            "four-bar",
-            "Scotch yoke",
-            "crank",
-            "lever",
-            "Kniehebel",
-            "Totpunkt",
-            "Übertragungswinkel",
-            "Koppelgetriebe",
-            "Kreuzschleife",
-            "Kurbel",
-            "Hebel",
-            "experimental",
-            "prototype",
-            "unverified",
-            "experimentell"
-        ],
-        "experimental": true
-    },
     "impulse-line.ldr": {
         "pieces": 140,
         "motors": 1,
@@ -3412,40 +3323,6 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
             "Antiparallelogramm",
             "gekreuztes Viergelenk",
             "Montagezweig",
-            "experimental",
-            "prototype",
-            "unverified",
-            "experimentell"
-        ],
-        "experimental": true
-    },
-    "thirdline.ldr": {
-        "pieces": 179,
-        "motors": 1,
-        "hubs": [
-            "spike-prime"
-        ],
-        "topic": "linkages",
-        "description": {
-            "en": "One motor sets an input angle. Equal circle radii and a marked sliding line make the passive line angle one third as large. Move one mark inward and compare the same finite input program.",
-            "de": "Ein Motor stellt den Eingangswinkel ein. Gleiche Kreisradien und eine markierte gleitende Gerade erzeugen passiv ein Winkeldrittel. Versetze eine Markierung nach innen und vergleiche dasselbe endliche Programm."
-        },
-        "author": "CrispStrobe",
-        "license": "BSD-3-Clause",
-        "mechanism": {
-            "en": "Archimedes / neusis angle trisector",
-            "de": "Archimedische Winkeldreiteilung / Neusis-Konstruktion"
-        },
-        "keywords": [
-            "angle trisector",
-            "angle trisection",
-            "neusis",
-            "marked ruler",
-            "Archimedes",
-            "gearless angle division",
-            "Winkeldreiteilung",
-            "Neusis",
-            "markiertes Lineal",
             "experimental",
             "prototype",
             "unverified",
