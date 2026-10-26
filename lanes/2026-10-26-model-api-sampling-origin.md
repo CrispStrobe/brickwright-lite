@@ -18,8 +18,9 @@ alignment only, not an alternate simulation clock or a change in physical
 sampling cadence.
 
 Scope after claim merge: `tools/model-api/native-runner.mjs`, a new focused
-`test/model-api-sampling-origin.test.mjs`, `tools/model-api/README.md`, and
-this claim. Derive sparse `elapsedMs` from actual observer time and preserve
+`test/model-api-sampling-origin.test.mjs`, `tools/model-api/README.md`,
+`scripts/lib/gui-scope-allowed.json` for that test's existing Jolt dependency
+boundary, and this claim. Derive sparse `elapsedMs` from actual observer time and preserve
 phase from the observed snapshot/frame, rather than advancing it solely from
 the corrected elapsed label. Cover cold frames, program-phase boundaries,
 completion and a final partial interval. Preserve scene timestamps, existing 25 ms VM frames,
@@ -44,4 +45,8 @@ The focused real-VM/Jolt tests cover cold-zero, nonzero cold, program/after
 phase boundaries and the final partial row. The existing dense path, cadence,
 limits and direct-VM helper are unchanged. The retained cold-zero report fails
 the new elapsed-equals-scene-time invariant; it remains an unmodified original.
+The first composed exact-head unit shard ran all three new Jolt tests successfully,
+then its GUI scope check refused their undeclared existing Jolt import. This
+source update adds only that test to the Jolt allowlist; the failed original
+remains retained and a fresh exact-head run is required.
 Actual hosted results and final merge proof must be added only after they exist.
