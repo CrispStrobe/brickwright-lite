@@ -1443,6 +1443,21 @@ export const EXPERIMENTAL_MODELS = Object.freeze([
                 "speedDps": 120
             }
         }
+    },
+    {
+        "file": "sarrus-lift-single-chain.ldr",
+        "title": {
+            "en": "Sarrus Lift — single chain (control)",
+            "de": "Sarrus Lift — nur eine Kette (Kontrolle)"
+        },
+        "example": "sarrus-lift-single-chain.bw",
+        "mat": "plain",
+        "experimental": true,
+        "blocked": false,
+        "intro": {
+            "en": "Control: Sarrus Lift with its perpendicular passive chain removed. With the motor held, the deck can no longer stay level: it sinks, tips and slides.",
+            "de": "Kontrolle: Sarrus Lift ohne die senkrechte passive Kette. Bei gehaltenem Motor bleibt der Tisch nicht mehr waagerecht: Er sinkt, kippt und rutscht."
+        }
     }
 ]);
 export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
@@ -3651,6 +3666,41 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
             "Haftreibung",
             "Kontaktgrenze",
             "ungriffige Förderung",
+            "experimental",
+            "prototype",
+            "unverified",
+            "experimentell"
+        ],
+        "experimental": true
+    },
+    "sarrus-lift-single-chain.ldr": {
+        "pieces": 135,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "linkages",
+        "description": {
+            "en": "Control: Sarrus Lift with its perpendicular passive chain removed. With the motor held, the deck can no longer stay level: it sinks, tips and slides.",
+            "de": "Kontrolle: Sarrus Lift ohne die senkrechte passive Kette. Bei gehaltenem Motor bleibt der Tisch nicht mehr waagerecht: Er sinkt, kippt und rutscht."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Sarrus linkage with one hinge chain removed",
+            "de": "Sarrus-Getriebe mit nur einer Gelenkkette"
+        },
+        "keywords": [
+            "Sarrus linkage",
+            "straight-line linkage",
+            "degrees of freedom",
+            "hinge chain",
+            "control",
+            "Sarrus-Getriebe",
+            "Geradführung",
+            "Freiheitsgrade",
+            "Gelenkkette",
+            "Kontrolle",
             "experimental",
             "prototype",
             "unverified",
