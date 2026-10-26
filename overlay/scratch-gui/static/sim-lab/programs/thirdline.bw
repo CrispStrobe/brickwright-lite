@@ -23,7 +23,6 @@ WHEN flag clicked:
   IF (lab status) = "no-model" THEN:
     say "Import Thirdline or its short-mark comparison before starting."
     stop all
-  set motor stop action A hold
   lab start
   lab stop motor A hold
   reset timer

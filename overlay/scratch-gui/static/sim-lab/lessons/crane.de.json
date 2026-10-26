@@ -2,7 +2,7 @@
   "version": 1,
   "id": "crane",
   "language": "de",
-  "what": "Ein Kran mit zwei Motoren hebt seinen Ausleger mit einem kleinen Spindelaktuator und schwenkt ihn über einen Getriebedrehkranz. Motor A treibt mit einem 8-Zahn-Ritzel den 28-Zahn-Drehkranz an. Motor B dreht die Aktuatorspindel. Der Haken hängt an der Auslegerspitze; eine aktive Winde ist nicht enthalten. Ein Linearaktuator hebt den Ausleger, ein Getriebedrehkranz schwenkt ihn. Vergleiche Spindelweg, Hakenhöhe und Untersetzung.",
+  "what": "Ein Kran mit zwei Motoren hebt seinen Ausleger mit einem kleinen Spindelaktuator und schwenkt ihn über einen Getriebedrehkranz. Motor A treibt mit einem 8-Zahn-Ritzel den 28-Zahn-Drehkranz an. Motor B dreht die Aktuatorspindel. Der Haken hängt an der Auslegerspitze; eine aktive Winde ist nicht enthalten. Vier gesteckte Stützen tragen einen Kran mit Spindelausleger, Zahnkranz-Schwenkung und Seilwinde. Vergleiche Spindelweg, Trommeldrehung und Hakenhöhe.",
   "try": [
     "Wähle Kran unter Beispiele. Das Programm wird automatisch geladen. Starte die gespeicherte Stellung: Der Ausleger hebt sich, schwenkt um eine Vierteldrehung, senkt sich und schwenkt zurück.",
     "Vergleiche die Drehung von Motor A und Drehkranz. 315 Grad am Antrieb ergeben nominal 90 Grad am Drehkranz.",

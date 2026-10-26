@@ -375,6 +375,46 @@
         "Ellipsenzirkel",
         "schiefe Führung"
       ]
+    },
+    {
+      "models": [
+        "toggle-lever"
+      ],
+      "name": {
+        "en": "Toggle linkage",
+        "de": "Kniehebel"
+      },
+      "aliases": [
+        "toggle",
+        "toggle clamp",
+        "dead centre",
+        "dead center",
+        "transmission angle",
+        "Scotch yoke",
+        "Kniehebel",
+        "Totpunkt",
+        "Übertragungswinkel",
+        "Kniehebelpresse"
+      ]
+    },
+    {
+      "models": [
+        "thirdline"
+      ],
+      "name": {
+        "en": "Neusis angle trisector",
+        "de": "Neusis-Winkeldreiteiler"
+      },
+      "aliases": [
+        "angle trisection",
+        "trisector",
+        "neusis",
+        "marked ruler",
+        "Archimedes",
+        "Winkeldreiteilung",
+        "Neusis",
+        "markiertes Lineal"
+      ]
     }
   ]
 }
