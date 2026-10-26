@@ -1412,6 +1412,52 @@ export const EXPERIMENTAL_MODELS = Object.freeze([
             "en": "Control: Sarrus Lift with its perpendicular passive chain removed. With the motor held, the deck can no longer stay level: it sinks, tips and slides.",
             "de": "Kontrolle: Sarrus Lift ohne die senkrechte passive Kette. Bei gehaltenem Motor bleibt der Tisch nicht mehr waagerecht: Er sinkt, kippt und rutscht."
         }
+    },
+    {
+        "file": "phasor-twin.ldr",
+        "title": {
+            "en": "Phasor Twin — the Stirling phase loop",
+            "de": "Phasor Twin — die Stirling-Phasenschleife"
+        },
+        "example": "phasor-twin.bw",
+        "mat": "plain",
+        "experimental": true,
+        "blocked": false,
+        "intro": {
+            "en": "Two vertical crank-slider pistons, coupled by a 40-tooth idler and two 16-tooth gears, run 90 degrees out of phase. Plotting the two passive piston displacements against each other gives a closed loop of area pi r^2; clocking both throws together collapses it to a line.",
+            "de": "Zwei senkrechte Kurbelschleifen-Kolben, über ein 40-Zahn-Zwischenrad und zwei 16-Zahn-Ritzel gekoppelt, laufen um 90 Grad versetzt. Trägt man die beiden passiven Kolbenwege gegeneinander auf, entsteht ein geschlossener Ring der Fläche pi r^2; bei gleichphasigen Kurbeln fällt er zu einer Geraden zusammen."
+        },
+        "manualJog": {
+            "A": {
+                "minDeg": 0,
+                "maxDeg": 720,
+                "stepDeg": 45,
+                "speedDps": 45
+            }
+        }
+    },
+    {
+        "file": "phasor-twin-control.ldr",
+        "title": {
+            "en": "Phasor Twin — in phase (control)",
+            "de": "Phasor Twin — gleichphasig (Kontrolle)"
+        },
+        "example": "phasor-twin.bw",
+        "mat": "plain",
+        "experimental": true,
+        "blocked": false,
+        "intro": {
+            "en": "Control: both crank plates clocked to the same angle. The pistons keep their 32 mm strokes but move together, and the loop collapses to a line.",
+            "de": "Kontrolle: Beide Kurbelscheiben stehen im selben Winkel. Die Kolben behalten ihren Hub von 32 mm, bewegen sich aber gemeinsam, und die Schleife fällt zu einer Geraden zusammen."
+        },
+        "manualJog": {
+            "A": {
+                "minDeg": 0,
+                "maxDeg": 720,
+                "stepDeg": 45,
+                "speedDps": 45
+            }
+        }
     }
 ]);
 export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
@@ -3578,6 +3624,84 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
             "Freiheitsgrade",
             "Gelenkkette",
             "Kontrolle",
+            "experimental",
+            "prototype",
+            "unverified",
+            "experimentell"
+        ],
+        "experimental": true
+    },
+    "phasor-twin.ldr": {
+        "pieces": 63,
+        "motors": 1,
+        "hubs": [],
+        "topic": "linkages",
+        "description": {
+            "en": "Two vertical crank-slider pistons, coupled by a 40-tooth idler and two 16-tooth gears, run 90 degrees out of phase. Plotting the two passive piston displacements against each other gives a closed loop of area pi r^2; clocking both throws together collapses it to a line.",
+            "de": "Zwei senkrechte Kurbelschleifen-Kolben, über ein 40-Zahn-Zwischenrad und zwei 16-Zahn-Ritzel gekoppelt, laufen um 90 Grad versetzt. Trägt man die beiden passiven Kolbenwege gegeneinander auf, entsteht ein geschlossener Ring der Fläche pi r^2; bei gleichphasigen Kurbeln fällt er zu einer Geraden zusammen."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Two crank-sliders clocked 90° apart (Stirling phase loop)",
+            "de": "Zwei Schubkurbeln mit 90° Versatz (Stirling-Phasenschleife)"
+        },
+        "keywords": [
+            "Stirling cycle",
+            "Stirling engine",
+            "alpha Stirling",
+            "Schmidt analysis",
+            "phase angle",
+            "90 degree volume phase",
+            "quadrature piston phasing",
+            "kinematic Stirling analogy",
+            "crank-slider",
+            "Stirling-Zyklus",
+            "Stirling-Motor",
+            "Alpha-Stirling",
+            "Schmidt-Analyse",
+            "Phasenwinkel",
+            "90-Grad-Volumenphase",
+            "Phasenquadratur",
+            "experimental",
+            "prototype",
+            "unverified",
+            "experimentell"
+        ],
+        "experimental": true
+    },
+    "phasor-twin-control.ldr": {
+        "pieces": 63,
+        "motors": 1,
+        "hubs": [],
+        "topic": "linkages",
+        "description": {
+            "en": "Control: both crank plates clocked to the same angle. The pistons keep their 32 mm strokes but move together, and the loop collapses to a line.",
+            "de": "Kontrolle: Beide Kurbelscheiben stehen im selben Winkel. Die Kolben behalten ihren Hub von 32 mm, bewegen sich aber gemeinsam, und die Schleife fällt zu einer Geraden zusammen."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Two crank-sliders clocked 90° apart (Stirling phase loop)",
+            "de": "Zwei Schubkurbeln mit 90° Versatz (Stirling-Phasenschleife)"
+        },
+        "keywords": [
+            "Stirling cycle",
+            "Stirling engine",
+            "alpha Stirling",
+            "Schmidt analysis",
+            "phase angle",
+            "90 degree volume phase",
+            "quadrature piston phasing",
+            "kinematic Stirling analogy",
+            "crank-slider",
+            "Stirling-Zyklus",
+            "Stirling-Motor",
+            "Alpha-Stirling",
+            "Schmidt-Analyse",
+            "Phasenwinkel",
+            "90-Grad-Volumenphase",
+            "Phasenquadratur",
             "experimental",
             "prototype",
             "unverified",
