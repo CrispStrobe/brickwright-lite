@@ -10,7 +10,7 @@
 // system-call table and its wrappers), cited in docs/NXT-RXE-VM.md §Syscalls. The code is ours.
 //
 // Every call the table lists without `run` stops the program with UNIMPLEMENTED_SYSCALL (nxt-vm.js) —
-// files, Bluetooth, RS-485, the IO-map access calls, the colour sensor, datalogging, pictures.
+// Bluetooth, RS-485, the IO-map access calls, the colour sensor, datalogging, pictures.
 
 import {TC, VM_STATUS} from './rxe-file.js';
 
@@ -54,8 +54,60 @@ const drawing = kind => (vm, args) => {
 
 /** id → {name, run?(vm, args, io)}; run returns nothing (NO_ERR) or the interpreter's outcome. */
 export const SYSCALLS = Object.freeze([
-    {name: 'FileOpenRead'}, {name: 'FileOpenWrite'}, {name: 'FileOpenAppend'}, {name: 'FileRead'},
-    {name: 'FileWrite'}, {name: 'FileClose'}, {name: 'FileResolveHandle'}, {name: 'FileRename'}, {name: 'FileDelete'},
+    {name: 'FileOpenRead', run (vm, [result, handle, filename, length], io) {
+        const r = io.fileOpenRead(vm._string(filename));
+        if (r.status === 0) vm._set(length, r.size);
+        vm._set(result, r.status << 8);
+        vm._set(handle, r.handle);
+    }},
+    {name: 'FileOpenWrite', run (vm, [result, handle, filename, length], io) {
+        const r = io.fileOpenWrite(vm._string(filename), num(vm, length));
+        vm._set(result, r.status << 8);
+        vm._set(handle, r.handle);
+    }},
+    {name: 'FileOpenAppend', run (vm, [result, handle, filename, length], io) {
+        const r = io.fileOpenAppend(vm._string(filename));
+        vm._set(length, r.size);
+        vm._set(result, r.status << 8);
+        vm._set(handle, r.handle);
+    }},
+    {name: 'FileRead', run (vm, [result, handle, buffer, length], io) {
+        const h = num(vm, handle);
+        const requested = num(vm, length);
+        const bytes = vm._fileReadBuffer(buffer, requested);
+        const r = io.fileRead(h, requested);
+        const actual = r.status === 0x93 ? requested : r.data.length;
+        for (let k = 0; k < r.data.length; k++) bytes[k] = r.data[k];
+        bytes[actual] = 0;
+        vm._set(length, actual);
+        vm._set(result, r.status << 8);
+        vm._set(handle, r.handle);
+    }},
+    {name: 'FileWrite', run (vm, [result, handle, buffer, length], io) {
+        const h = num(vm, handle);
+        const bytes = vm._fileWriteBytes(buffer, num(vm, length));
+        const r = io.fileWrite(h, bytes);
+        vm._set(length, r.count);
+        vm._set(result, r.status << 8);
+        vm._set(handle, r.handle);
+    }},
+    {name: 'FileClose', run (vm, [result, handle], io) {
+        vm._set(result, io.fileClose(num(vm, handle)).status << 8);
+    }},
+    {name: 'FileResolveHandle', run (vm, [result, handle, write, filename], io) {
+        const r = io.fileResolveHandle(vm._string(filename));
+        if (r.status === 0) vm._set(write, r.write ? 1 : 0);
+        vm._set(result, r.status << 8);
+        vm._set(handle, r.handle);
+    }},
+    {name: 'FileRename', run (vm, [result, oldName, newName], io) {
+        const old = vm._string(oldName);
+        const next = vm._string(newName);
+        vm._set(result, io.fileRename(old, next) << 8);
+    }},
+    {name: 'FileDelete', run (vm, [result, filename], io) {
+        vm._set(result, io.fileDelete(vm._string(filename)) << 8);
+    }},
     {name: 'SoundPlayFile', run (vm, [result, file, loop, volume], io) {
         io.playFile?.(vm._string(file), num(vm, loop) !== 0, Math.min(4, num(vm, volume)));
         vm._event('sound', {file: vm._string(file), loop: num(vm, loop) !== 0});
@@ -152,7 +204,12 @@ export const SYSCALLS = Object.freeze([
     {name: 'IOMapRead'}, {name: 'IOMapWrite'}, {name: 'ColorSensorRead'}, {name: 'CommBTOnOff'}, {name: 'CommBTConnection'},
     {name: 'CommHSWrite'}, {name: 'CommHSRead'}, {name: 'CommHSCheckStatus'}, {name: 'ReadSemData'}, {name: 'WriteSemData'},
     {name: 'ComputeCalibValue'}, {name: 'UpdateCalibCacheInfo'}, {name: 'DatalogWrite'}, {name: 'DatalogGetTimes'},
-    {name: 'SetSleepTimeout'}, {name: 'ListFiles'}
+    {name: 'SetSleepTimeout'},
+    {name: 'ListFiles', run (vm, [result, pattern, list], io) {
+        const names = io.fileList(vm._string(pattern));
+        vm._fileListNames(list, names);
+        vm._set(result, 0);
+    }}
 ]);
 
 /** The low-speed channel's status and bytes ready, as the VM sees them (the firmware's check first, then the channel's). */

@@ -19,8 +19,16 @@ never call the network.
 | `mailbox` | ReceiveRemoteString from inbox 1, SendResponseString to the response queue, runs until stopped |
 | `serialization` | Flatten's numeric promotion, packed cluster fields, nested arrays, template mismatch and embedded zero bytes |
 | `serialization-scalars` | FlattenVar/UnflattenVar roundtrips for declared-width integers, raw float bytes and strings |
+| `file-syscalls` | data-file capacity, binary read/write, append, resolve, rename/delete, ListFiles, word errors and an open writer for stop/normal cleanup |
 
 ## How they were produced
+
+The file-syscalls fixture was compiled once on 2026-10-26 through the hosted
+contract below. Its executable is 2,994 bytes, SHA-256
+`f2e5f00bf5f6ae3103605d87fe05a657d7d6539bd9624e04e4383ee099974a9b`.
+Source and executable digests are asserted together in the focused test. It uses
+standard firmware calls, leaves a partial writer open across a one-second Wait,
+and prints independently specified status/count/data observations before retirement.
 
 The two serialization fixtures were compiled once each on 2026-10-25 through
 the same hosted compiler contract below. Their source is BSD-3-Clause and the
