@@ -137,6 +137,8 @@ all14 existing GUI controls still require final acceptance.
 
 ## Consumer qualification checkpoint — 2026-10-26
 
+This checkpoint describes the [pending adoption branch PR1413](https://github.com/CrispStrobe/brickwright-lite/pull/1413).
+
 **OPEN: consumer qualification has not passed.** At head
 `dba6e95cc455296a41be013e3a5a4be50705d28b`,
 [Build40250390101](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40250390101)
@@ -151,7 +153,7 @@ wait predicate; the endpoint diagnostic is not a continuous component trace.
 The subsequent envelope/point rearm and failed-source controls did not complete
 and must not be reported as passed.
 
-The forward diagnostic records the original selection's return values,
+The forward diagnostic is designed to record the original selection's return values,
 scoped/page control counts, exact element identities and connectivity, and a
 64-entry capture/bubble input/change trace with an overflow count. It preserves
 the original action, assertions, timeouts and engine clock. This is passive
