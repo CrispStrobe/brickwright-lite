@@ -1,6 +1,6 @@
 # Actuator closed-loop positional precision
 
-Status: DONE (implementation) — combined hosted qualification and landing pending.
+Status: DONE (investigation) — 60-step experiment rejected; previous setup restored.
 Owner: Codex, user-authorized Robot Lab gap closure.
 Base: `b26ae0aedde4e53a254b0bc48c83b156be7cb026`.
 
@@ -37,10 +37,15 @@ every enabled exact-head check and normal matched-head landing with exact
 reviewed/predicted/landed tree and parents. Increased precision must fit existing
 budgets; a failure is retained and blocks landing.
 
-Implementation requests 60 position steps on the screw slider and retains the
-60 velocity steps. One actual-source interface control checks the bounded
-request above the 40-step motor cap, velocity setup, initial target and unchanged
-checkpoint state for both spindle sides. The original 10-step source fails that
-control; the previous ten clutch controls stay intact. This setup check does
-not execute Jolt or establish numerical convergence. The unchanged hosted motion
-checks and resource budgets remain mandatory before landing.
+The fixed 60-step experiment in `3e224535` failed hosted qualification. Unit6
+reported two actuator clutch regressions and excavator yaw above its unchanged
+10-degree bound. The crane also retained an alignment failure and failed its
+removed-counterweight stability control. The source and original failures are
+retained in [the official run](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40271880462).
+
+The experiment is withdrawn: the product restores the previous 10-step screw
+position request, velocity setup and ten pre-existing clutch controls byte for
+byte. The added setup control for the withdrawn 60-step feature is removed;
+existing physical motion checks, thresholds and limits are unchanged. This
+investigation establishes neither convergence nor a physical calibration. Fresh
+combined qualification remains mandatory for the crane design continuation.

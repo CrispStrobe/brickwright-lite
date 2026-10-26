@@ -1785,10 +1785,17 @@ motors: A/B wheels, C slew, D boom, E stick, F bucket.
   (hard constraints), its motor runs at ratio·ω; a load averaged over 50 ms above the clutch force
   (60 N, a stated modelling number: no published measurement found) slips the clutch; at an end stop
   x* stops while the spindle turns on; the held force costs the spindle |F|·|ratio|/η of torque
-  (explicit, one step). The screw constraint requests 60 velocity / 60 position iterations
-  (an island uses the largest constraint override), and the actuator's parts and what is
+  (explicit, one step). The screw constraint requests 60 velocity / 10 position iterations
+  (each island uses its largest constraint override), and the actuator's parts and what is
   hinged to them at least 20 g of solver mass with their gravity factor scaled back (a 0.4 g piston
   between a hard limit and a boom let its hinge open 3 mm).
+  The crane's actuator eye is four hole pitches from its pivot (80 LDU),
+  starting at 10 degrees. For the same five-turn luff command, the geometry predicts roughly 16.7 degrees
+  of movement and 26 mm of rope-adjusted lift, rather than roughly 30.5 degrees
+  and 35 mm. Actual motion remains subject to hosted qualification. The geometric lift/alignment oracles and their absolute
+  tolerances are unchanged. This model-only leverage change retains the prior
+  solver setup; the attempted global position-precision increase was rejected
+  after hosted actuator and excavator regressions.
 - **Free pins (`mech/free-pins.js`).** A frictionless pin or axle that only joins two parts on one
   line is welded to one of them: one hinge instead of a 0.25 g body between two (a loop of such
   bodies sagged ±4° at rest).

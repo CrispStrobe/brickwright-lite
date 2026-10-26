@@ -33,10 +33,7 @@
 const OMEGA_SMOOTH = 0.5;
 /** Solver iterations for an island holding an actuator (see createScrewDrives). */
 export const SCREW_VELOCITY_STEPS = 60;
-// Request position precision above the motor's 40-step cap for a loaded closed loop.
-// Keep this bounded separately from velocity precision; hosted motion oracles
-// qualify closure with the same timestep, physical parameters and time budgets.
-export const SCREW_POSITION_STEPS = 60;
+export const SCREW_POSITION_STEPS = 10;
 /** The least mass the solver sees for an actuator's parts (kg; see floorMass). */
 export const SCREW_MIN_MASS_KG = 0.02;
 /** Half the window the piston is held in (m): a hard pair of limits this close. */

@@ -109,3 +109,25 @@ including a missing-rope negative. Instruction views do not yet show rope callou
 slack and finite payload-weight tension controls, plus the browser's actual GUI
 SB3 export/CRC-sidecar/fresh-context definition reopen, remain hosted gates.
 No physical accuracy or independent retained successful-SB3 audit is claimed.
+
+## Model-only leverage continuation after the precision experiment
+
+The global 60-position-step experiment was rejected after hosted actuator,
+excavator and crane regressions. Its source and failures remain retained; the
+previous screw setup and ten clutch controls are restored byte for byte.
+
+The crane instead moves its actuator eye from three to four hole pitches along
+the boom and starts at 10 rather than 30 degrees. The same five-turn command
+now requests about 16.7 degrees of boom movement and 26 mm rope-adjusted lift,
+rather than about 30.5 degrees and 35 mm. This trades example range for lower
+angular sensitivity and greater mechanical leverage. All original motor
+commands/timing, payload masses, motion assertion bodies and absolute tolerances
+remain unchanged. The full existing sampled 4–70-degree clearance range remains
+covered. Eight-decimal coordinate serialization preserves the existing
+one-nanometre catalogue-mass balance assertion after moving the free load; the
+four-decimal output missed it by about five nanometres.
+
+Six pure crane controls, including generator identity, sampled compiled
+clearances and authored insertion order, pass. These checks do not execute
+Jolt or establish motion. Fresh combined hosted qualification, the retained
+normal/reverse windows and browser save/reopen remain required before landing.

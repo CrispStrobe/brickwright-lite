@@ -11,7 +11,7 @@
 // slewed by an 8-tooth gear on motor A behind the hub (8:28); on the turntable a small frame and two
 // posts (9L right, 11L left). The crane's own part is the boom: a 15L beam on a pivot axle through the right post, luffed by a small
 // linear actuator whose motor (B, on the right post) turns the actuator's pivot axle through two 16T gears
-// and the axle its spindle through two 12T bevel gears (1:1:1). The actuator's eye sits 3 holes up the boom
+// and the axle its spindle through two 12T bevel gears (1:1:1). The actuator's eye sits 4 hole pitches up the boom
 // and its body pivots 5 holes under the boom pivot, so its 120..180 LDU travel swings the boom from about
 // 4° to past 70°. A free rope-hung load uses a counterweighted V-frame tied at its mass centre. Motor C drives a retained winch shaft on the left post;
 // the rope runs from its drum over a guide at the boom tip to the independent hanging load.
@@ -25,14 +25,14 @@ import {ropeTie, partTop} from '../overlay/scratch-gui/src/lib/bw-sim/editor/rop
 import {buildSteps} from '../overlay/scratch-gui/src/lib/bw-sim/instructions/steps.js';
 
 const OUT = process.argv[2] || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'overlay/scratch-gui/static/sim-lab/models/crane.ldr');
-/** Default 30° puts the actuator at 140 LDU; an optional angle samples authoring clearances. */
-const THETA_DEG = process.argv[3] === undefined ? 30 : Number(process.argv[3]);
+/** Default 10° puts the actuator at about 138.49 LDU; an optional angle samples authoring clearances. */
+const THETA_DEG = process.argv[3] === undefined ? 10 : Number(process.argv[3]);
 if (!Number.isFinite(THETA_DEG) || THETA_DEG < 4 || THETA_DEG > 70) {
     throw new Error('boom angle must be between 4 and 70 degrees');
 }
 /** Boom pivot P to the actuator's pivot B (straight below P) and to its eye C on the boom, LDU. */
 const BP = 100;
-const PC = 60;
+const PC = 80;
 /** Boom pivot to the tip hole (the 15L beam's last hole), LDU. */
 const PQ = 280;
 
@@ -40,7 +40,8 @@ const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a
 const add = (a, b, s = 1) => a.map((v, i) => v + s * b[i]);
 const scale = (a, s) => a.map(v => v * s);
 const norm = a => scale(a, 1 / Math.hypot(...a));
-const r4 = x => (Math.abs(x) < 1e-9 ? 0 : +x.toFixed(4));
+// Preserve the sub-nanometre catalogue-mass balance when translating the free load.
+const coordinate = x => (Math.abs(x) < 1e-9 ? 0 : +x.toFixed(8));
 /** LDraw point from boom-plane (u, v) and lateral x. */
 const W = (uv, x = 0) => [x, -uv[1], -uv[0]];
 /** LDraw direction of a boom-plane direction. */
@@ -56,10 +57,10 @@ const head = ['0 Crane (Brickwright Robot Lab reference model)', '0 Name: crane.
 /** Place a part: R given as images of local x, y, z (columns). */
 const place = (id, part, color, pos, ex, ey, ez, port = null) => {
     if (!ez) ez = cross(ex, ey);
-    const m = [ex[0], ey[0], ez[0], ex[1], ey[1], ez[1], ex[2], ey[2], ez[2]].map(r4);
+    const m = [ex[0], ey[0], ez[0], ex[1], ey[1], ez[1], ex[2], ey[2], ez[2]].map(coordinate);
     lines.push(`0 !BW ID ${id}`);
     if (port) lines.push(`0 !BW PORT ${port}`);
-    lines.push(`1 ${color} ${pos.map(r4).join(' ')} ${m.join(' ')} ${part}`);
+    lines.push(`1 ${color} ${pos.map(coordinate).join(' ')} ${m.join(' ')} ${part}`);
 };
 /** A pin or axle: local x along `axis`. */
 const pinAlong = (id, part, color, pos, axis) => {
