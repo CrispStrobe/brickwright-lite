@@ -770,29 +770,6 @@ export const EXPERIMENTAL_MODELS = Object.freeze([
         }
     },
     {
-        "file": "toggle-lever.ldr",
-        "title": {
-            "en": "Toggle Lever — a link folding toward dead centre",
-            "de": "Kniehebel — ein Lenker klappt zum Totpunkt"
-        },
-        "example": "toggle-lever.bw",
-        "mat": "plain",
-        "experimental": true,
-        "blocked": false,
-        "intro": {
-            "en": "A crank and Scotch yoke push a short link against a lever pivoted at its end. As the crank nears 90°, the link folds back over the lever arm and its turning leverage collapses toward a dead centre, where the link pushes straight through the pivot. The passive lever follows the link-closure geometry within 0.02° up to 60°; the program stops at 85°, 5° short of dead centre.",
-            "de": "Eine Kurbel mit Kreuzschleife drückt einen kurzen Lenker gegen einen am Ende gelagerten Hebel. Nähert sich die Kurbel 90°, klappt der Lenker über den Hebelarm zurück, und seine Hebelwirkung bricht bis zu einem Totpunkt zusammen, in dem der Lenker genau durch den Drehpunkt drückt. Der passive Hebel folgt der Geometrie der geschlossenen Gelenkkette bis 60° auf 0,02° genau; das Programm hält bei 85°, 5° vor dem Totpunkt."
-        },
-        "manualJog": {
-            "A": {
-                "minDeg": -85,
-                "maxDeg": 85,
-                "stepDeg": 5,
-                "speedDps": 30
-            }
-        }
-    },
-    {
         "file": "impulse-line.ldr",
         "title": {
             "en": "Impulse Line — contact transfer",
@@ -1284,29 +1261,6 @@ export const EXPERIMENTAL_MODELS = Object.freeze([
         }
     },
     {
-        "file": "thirdline.ldr",
-        "title": {
-            "en": "Thirdline — angle trisector",
-            "de": "Thirdline — Winkeldreiteiler"
-        },
-        "example": "thirdline.bw",
-        "mat": "plain",
-        "experimental": true,
-        "blocked": false,
-        "intro": {
-            "en": "One motor sets an input angle. Equal circle radii and a marked sliding line make the passive line angle one third as large. Move one mark inward and compare the same finite input program.",
-            "de": "Ein Motor stellt den Eingangswinkel ein. Gleiche Kreisradien und eine markierte gleitende Gerade erzeugen passiv ein Winkeldrittel. Versetze eine Markierung nach innen und vergleiche dasselbe endliche Programm."
-        },
-        "manualJog": {
-            "A": {
-                "minDeg": -5,
-                "maxDeg": 40,
-                "stepDeg": 5,
-                "speedDps": 8
-            }
-        }
-    },
-    {
         "file": "thirdline-control.ldr",
         "title": {
             "en": "Thirdline — shorter mark (control)",
@@ -1441,6 +1395,67 @@ export const EXPERIMENTAL_MODELS = Object.freeze([
                 "maxDeg": 2880,
                 "stepDeg": 90,
                 "speedDps": 120
+            }
+        }
+    },
+    {
+        "file": "sarrus-lift-single-chain.ldr",
+        "title": {
+            "en": "Sarrus Lift — single chain (control)",
+            "de": "Sarrus Lift — nur eine Kette (Kontrolle)"
+        },
+        "example": "sarrus-lift-single-chain.bw",
+        "mat": "plain",
+        "experimental": true,
+        "blocked": false,
+        "intro": {
+            "en": "Control: Sarrus Lift with its perpendicular passive chain removed. With the motor held, the deck can no longer stay level: it sinks, tips and slides.",
+            "de": "Kontrolle: Sarrus Lift ohne die senkrechte passive Kette. Bei gehaltenem Motor bleibt der Tisch nicht mehr waagerecht: Er sinkt, kippt und rutscht."
+        }
+    },
+    {
+        "file": "phasor-twin.ldr",
+        "title": {
+            "en": "Phasor Twin — the Stirling phase loop",
+            "de": "Phasor Twin — die Stirling-Phasenschleife"
+        },
+        "example": "phasor-twin.bw",
+        "mat": "plain",
+        "experimental": true,
+        "blocked": false,
+        "intro": {
+            "en": "Two vertical crank-slider pistons, coupled by a 40-tooth idler and two 16-tooth gears, run 90 degrees out of phase. Plotting the two passive piston displacements against each other gives a closed loop of area pi r^2; clocking both throws together collapses it to a line.",
+            "de": "Zwei senkrechte Kurbelschleifen-Kolben, über ein 40-Zahn-Zwischenrad und zwei 16-Zahn-Ritzel gekoppelt, laufen um 90 Grad versetzt. Trägt man die beiden passiven Kolbenwege gegeneinander auf, entsteht ein geschlossener Ring der Fläche pi r^2; bei gleichphasigen Kurbeln fällt er zu einer Geraden zusammen."
+        },
+        "manualJog": {
+            "A": {
+                "minDeg": 0,
+                "maxDeg": 720,
+                "stepDeg": 45,
+                "speedDps": 45
+            }
+        }
+    },
+    {
+        "file": "phasor-twin-control.ldr",
+        "title": {
+            "en": "Phasor Twin — in phase (control)",
+            "de": "Phasor Twin — gleichphasig (Kontrolle)"
+        },
+        "example": "phasor-twin.bw",
+        "mat": "plain",
+        "experimental": true,
+        "blocked": false,
+        "intro": {
+            "en": "Control: both crank plates clocked to the same angle. The pistons keep their 32 mm strokes but move together, and the loop collapses to a line.",
+            "de": "Kontrolle: Beide Kurbelscheiben stehen im selben Winkel. Die Kolben behalten ihren Hub von 32 mm, bewegen sich aber gemeinsam, und die Schleife fällt zu einer Geraden zusammen."
+        },
+        "manualJog": {
+            "A": {
+                "minDeg": 0,
+                "maxDeg": 720,
+                "stepDeg": 45,
+                "speedDps": 45
             }
         }
     }
@@ -2574,49 +2589,6 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
         ],
         "experimental": true
     },
-    "toggle-lever.ldr": {
-        "pieces": 112,
-        "motors": 1,
-        "hubs": [
-            "spike-prime"
-        ],
-        "topic": "linkages",
-        "description": {
-            "en": "A crank and Scotch yoke push a short link against a lever pivoted at its end. As the crank nears 90°, the link folds back over the lever arm and its turning leverage collapses toward a dead centre, where the link pushes straight through the pivot. The passive lever follows the link-closure geometry within 0.02° up to 60°; the program stops at 85°, 5° short of dead centre.",
-            "de": "Eine Kurbel mit Kreuzschleife drückt einen kurzen Lenker gegen einen am Ende gelagerten Hebel. Nähert sich die Kurbel 90°, klappt der Lenker über den Hebelarm zurück, und seine Hebelwirkung bricht bis zu einem Totpunkt zusammen, in dem der Lenker genau durch den Drehpunkt drückt. Der passive Hebel folgt der Geometrie der geschlossenen Gelenkkette bis 60° auf 0,02° genau; das Programm hält bei 85°, 5° vor dem Totpunkt."
-        },
-        "author": "CrispStrobe",
-        "license": "BSD-3-Clause",
-        "mechanism": {
-            "en": "crank, Scotch yoke and toggle link",
-            "de": "Kurbel, Kreuzschleife und Kniehebel-Lenker"
-        },
-        "keywords": [
-            "toggle",
-            "toggle linkage",
-            "knuckle joint",
-            "dead centre",
-            "dead center",
-            "transmission angle",
-            "link closure",
-            "four-bar",
-            "Scotch yoke",
-            "crank",
-            "lever",
-            "Kniehebel",
-            "Totpunkt",
-            "Übertragungswinkel",
-            "Koppelgetriebe",
-            "Kreuzschleife",
-            "Kurbel",
-            "Hebel",
-            "experimental",
-            "prototype",
-            "unverified",
-            "experimentell"
-        ],
-        "experimental": true
-    },
     "impulse-line.ldr": {
         "pieces": 140,
         "motors": 1,
@@ -3404,40 +3376,6 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
         ],
         "experimental": true
     },
-    "thirdline.ldr": {
-        "pieces": 179,
-        "motors": 1,
-        "hubs": [
-            "spike-prime"
-        ],
-        "topic": "linkages",
-        "description": {
-            "en": "One motor sets an input angle. Equal circle radii and a marked sliding line make the passive line angle one third as large. Move one mark inward and compare the same finite input program.",
-            "de": "Ein Motor stellt den Eingangswinkel ein. Gleiche Kreisradien und eine markierte gleitende Gerade erzeugen passiv ein Winkeldrittel. Versetze eine Markierung nach innen und vergleiche dasselbe endliche Programm."
-        },
-        "author": "CrispStrobe",
-        "license": "BSD-3-Clause",
-        "mechanism": {
-            "en": "Archimedes / neusis angle trisector",
-            "de": "Archimedische Winkeldreiteilung / Neusis-Konstruktion"
-        },
-        "keywords": [
-            "angle trisector",
-            "angle trisection",
-            "neusis",
-            "marked ruler",
-            "Archimedes",
-            "gearless angle division",
-            "Winkeldreiteilung",
-            "Neusis",
-            "markiertes Lineal",
-            "experimental",
-            "prototype",
-            "unverified",
-            "experimentell"
-        ],
-        "experimental": true
-    },
     "thirdline-control.ldr": {
         "pieces": 179,
         "motors": 1,
@@ -3651,6 +3589,119 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
             "Haftreibung",
             "Kontaktgrenze",
             "ungriffige Förderung",
+            "experimental",
+            "prototype",
+            "unverified",
+            "experimentell"
+        ],
+        "experimental": true
+    },
+    "sarrus-lift-single-chain.ldr": {
+        "pieces": 135,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "linkages",
+        "description": {
+            "en": "Control: Sarrus Lift with its perpendicular passive chain removed. With the motor held, the deck can no longer stay level: it sinks, tips and slides.",
+            "de": "Kontrolle: Sarrus Lift ohne die senkrechte passive Kette. Bei gehaltenem Motor bleibt der Tisch nicht mehr waagerecht: Er sinkt, kippt und rutscht."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Sarrus linkage with one hinge chain removed",
+            "de": "Sarrus-Getriebe mit nur einer Gelenkkette"
+        },
+        "keywords": [
+            "Sarrus linkage",
+            "straight-line linkage",
+            "degrees of freedom",
+            "hinge chain",
+            "control",
+            "Sarrus-Getriebe",
+            "Geradführung",
+            "Freiheitsgrade",
+            "Gelenkkette",
+            "Kontrolle",
+            "experimental",
+            "prototype",
+            "unverified",
+            "experimentell"
+        ],
+        "experimental": true
+    },
+    "phasor-twin.ldr": {
+        "pieces": 63,
+        "motors": 1,
+        "hubs": [],
+        "topic": "linkages",
+        "description": {
+            "en": "Two vertical crank-slider pistons, coupled by a 40-tooth idler and two 16-tooth gears, run 90 degrees out of phase. Plotting the two passive piston displacements against each other gives a closed loop of area pi r^2; clocking both throws together collapses it to a line.",
+            "de": "Zwei senkrechte Kurbelschleifen-Kolben, über ein 40-Zahn-Zwischenrad und zwei 16-Zahn-Ritzel gekoppelt, laufen um 90 Grad versetzt. Trägt man die beiden passiven Kolbenwege gegeneinander auf, entsteht ein geschlossener Ring der Fläche pi r^2; bei gleichphasigen Kurbeln fällt er zu einer Geraden zusammen."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Two crank-sliders clocked 90° apart (Stirling phase loop)",
+            "de": "Zwei Schubkurbeln mit 90° Versatz (Stirling-Phasenschleife)"
+        },
+        "keywords": [
+            "Stirling cycle",
+            "Stirling engine",
+            "alpha Stirling",
+            "Schmidt analysis",
+            "phase angle",
+            "90 degree volume phase",
+            "quadrature piston phasing",
+            "kinematic Stirling analogy",
+            "crank-slider",
+            "Stirling-Zyklus",
+            "Stirling-Motor",
+            "Alpha-Stirling",
+            "Schmidt-Analyse",
+            "Phasenwinkel",
+            "90-Grad-Volumenphase",
+            "Phasenquadratur",
+            "experimental",
+            "prototype",
+            "unverified",
+            "experimentell"
+        ],
+        "experimental": true
+    },
+    "phasor-twin-control.ldr": {
+        "pieces": 63,
+        "motors": 1,
+        "hubs": [],
+        "topic": "linkages",
+        "description": {
+            "en": "Control: both crank plates clocked to the same angle. The pistons keep their 32 mm strokes but move together, and the loop collapses to a line.",
+            "de": "Kontrolle: Beide Kurbelscheiben stehen im selben Winkel. Die Kolben behalten ihren Hub von 32 mm, bewegen sich aber gemeinsam, und die Schleife fällt zu einer Geraden zusammen."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Two crank-sliders clocked 90° apart (Stirling phase loop)",
+            "de": "Zwei Schubkurbeln mit 90° Versatz (Stirling-Phasenschleife)"
+        },
+        "keywords": [
+            "Stirling cycle",
+            "Stirling engine",
+            "alpha Stirling",
+            "Schmidt analysis",
+            "phase angle",
+            "90 degree volume phase",
+            "quadrature piston phasing",
+            "kinematic Stirling analogy",
+            "crank-slider",
+            "Stirling-Zyklus",
+            "Stirling-Motor",
+            "Alpha-Stirling",
+            "Schmidt-Analyse",
+            "Phasenwinkel",
+            "90-Grad-Volumenphase",
+            "Phasenquadratur",
             "experimental",
             "prototype",
             "unverified",
