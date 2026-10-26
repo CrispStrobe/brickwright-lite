@@ -33,7 +33,7 @@ import {REPO, INTEGRATED} from './helpers/bw-integrated.mjs';
 
 const GUI = path.join(REPO, 'overlay', 'scratch-gui');
 const SIM = path.join(GUI, 'src/lib/bw-sim');
-const {MODELS, MODELS_BASE, PROGRAMS_BASE, prepareModel, catalogFrom} = await import(path.join(SIM, 'sim-session.js'));
+const {MODELS, MODELS_BASE, PROGRAMS_BASE, prepareModel, catalogFrom, SimSession} = await import(path.join(SIM, 'sim-session.js'));
 const {LDU_M} = await import(path.join(SIM, 'contracts.js'));
 const {parseLDraw} = await import(path.join(SIM, 'ldraw/ldraw-geometry.js'));
 
@@ -129,8 +129,12 @@ test('it compiles to the original slew/luff ratios and a retained, geared drum w
     assert.ok(Math.abs(rope.radiusM - 0.0028) < 1e-12);
     assert.ok(Math.hypot(rope.hook.local[0], rope.hook.local[2]) < 1e-9,
         'the balanced payload COM lies directly below its rope tie');
-    assert.ok(rope.hook.local[1] > 0.001 && rope.hook.local[1] < 0.005,
-        'the compact spreader keeps a positive 1–5 mm gravity lever, without an orientation constraint');
+    const payload = m.bodies.find(b => b.id === rope.hook.body);
+    const mass = payload.colliders.reduce((sum, c) => sum + c.massKg, 0);
+    const massCentreY = payload.colliders.reduce((sum, c) => sum + c.massKg * c.position[1], 0) / mass;
+    const gravityLever = rope.hook.local[1] - massCentreY;
+    assert.ok(gravityLever > 0.020 && gravityLever < 0.035,
+        'the upright link puts its tie 20–35 mm above the collider-mass COM, without an orientation constraint');
     const point = p => m.bodies.find(b => b.id === p.body).position.map((x, i) => x + p.local[i]);
     const points = [...rope.points, rope.hook].map(point);
     const length = points.slice(1).reduce((sum, p, i) => sum + len(sub(p, points[i])), 0);
@@ -417,16 +421,55 @@ if (!existsSync(missing)) {
         assert.ok(rise < 0.005, `the load still rose ${rise} m`);
     });
 
+    // Observe actual completed ticks for the unresolved low-boom transition.
+    // The original method runs exactly once with the same receiver/arguments,
+    // and its result is returned unchanged; all observations are public getters.
+    const runWithDynamics = async source => {
+        const tick = SimSession.prototype.tick;
+        const dynamics = new Map();
+        let initialBodies = null;
+        SimSession.prototype.tick = function (...args) {
+            const result = tick.apply(this, args);
+            assert.ok(dynamics.size < 1000, 'bounded actual-session diagnostic capture');
+            const joints = Object.fromEntries(this.mechanism.joints
+                .filter(j => j.type === 'hinge' || j.type === 'slider')
+                .map(j => [j.id, this.core.jointDynamics(j.id)]));
+            if (!initialBodies) initialBodies = Object.fromEntries(this.mechanism.bodies
+                .map(b => [b.id, this.core.bodyDynamics(b.id)]));
+            dynamics.set(this.time, joints);
+            return result;
+        };
+        try { return {...await run(source), dynamics, initialBodies}; }
+        finally { SimSession.prototype.tick = tick; }
+    };
+
     test('the retained reverse-only lowering control cannot launch the suspended load', async t => {
         // Retain the earlier input which still lowered B after its positive lift
         // was removed, alongside the separate control that holds both B and C.
         const lower = PROGRAM.replace(/^ {2}run motor B clockwise 1800 degrees\n/m, '')
             .replace(/^ {2}run motor C (?:counterclockwise|clockwise) 540 degrees\n/gm, '');
         assert.notEqual(lower, PROGRAM);
-        const result = await run(lower);
+        const result = await runWithDynamics(lower);
         assert.deepEqual(result.issues, []);
         assert.deepEqual(result.run.unsupported, []);
         t.diagnostic(`reverse-only phase observations: ${JSON.stringify(phaseObservations(result))}`);
+        // Preserve the first unstable transition, not just the eventual peak.
+        // These existing 30 Hz VM frames do not add a physics callback or change
+        // any target, timestep, timeout, acceptance bound or simulated duration.
+        const hubId = bodyOf(result.mechanism, 'hub');
+        const startY = result.track[0].bodies[hubId].position[1];
+        const firstUnstable = result.track.findIndex(f =>
+            Math.abs(f.bodies[hubId].position[1] - startY) > 0.002 ||
+            qrot(f.bodies[hubId].rotation, [0, 1, 0])[1] < Math.cos(3 / DEG));
+        if (firstUnstable >= 0) t.diagnostic(`reverse-only bounded instability window: ${JSON.stringify({
+            firstUnstableTime: result.track[firstUnstable].t, initialBodies: result.initialBodies,
+            mechanism: {bodies: result.mechanism.bodies, joints: result.mechanism.joints,
+                couplings: result.mechanism.couplings},
+            frames: result.track.slice(Math.max(0, firstUnstable - 30), firstUnstable + 11)
+                .map(({t, bodies, joints, busy, ropes}) => ({t, bodies, joints, busy, ropes,
+                    dynamics: result.dynamics.get(t)}))
+        })}`);
+
         const bJoint = result.mechanism.actuators.find(a => a.port === 'B').joint;
         const end = result.track.at(-1);
         const turn = (end.joints[bJoint].angle - result.track[0].joints[bJoint].angle) * DEG;

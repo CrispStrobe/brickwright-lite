@@ -54,10 +54,13 @@ The crane adds a retained C drum, moving guide and balanced rope-hung payload.
 After measured dynamic hold/lean/yaw/slack failures, the next candidate adds four
 physical pinned support feet and phase diagnostics. The feet reduce measured base
 yaw below 0.05 degrees, but the retained unit run still fails hold, hook alignment
-and sustained slack. A compact horizontal spreader and balanced flat load now
-address the measured lowering/floor-contact behavior, retaining every tolerance,
-original motor target and timing limit, including the reverse-only lowering
-control. Qualification of this repair remains pending.
+and sustained slack. The compact flat load passes the next hold and sustained-slack controls, but
+hook alignment still fails and reverse-only lowering launches the assembly.
+The next candidate keeps those flat landing surfaces under an upright suspension
+link for greater restoring leverage, and retains a bounded instability trace
+before the unchanged reverse-only assertions. Every motion tolerance, motor
+target, speed and timing limit remains unchanged. Reverse-only instability is
+unresolved; qualification and landing remain pending.
 Four pure geometry/generator/insertion controls pass. The original hosted
 crane instruction failure is retained; the repair authors small insertion pages
 and independently checks rigid fasteners plus the physical rope attachment,
