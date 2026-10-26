@@ -107,3 +107,43 @@ hardware, full-corpus or signed-release certification. Preserve release,
 Robot Lab, SPIKE, Arcade and x86 ownership. Close the loop only after the fifth
 step is accepted in the consumer and future work is scoped; ask the user then
 and do not start a sixth lane.
+
+
+## Consumer qualification checkpoint — 2026-10-26
+
+This checkpoint describes the [pending adoption branch PR1413](https://github.com/CrispStrobe/brickwright-lite/pull/1413).
+
+**OPEN: consumer qualification has not passed.** At head
+`dba6e95cc455296a41be013e3a5a4be50705d28b`,
+[Build40250390101](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40250390101)
+failed the actual circuit UX journey. The LM741 meter journey and the first
+four ADC groups passed: explicit primary acquisition, modeled rendering with
+unchanged raw data, modeled triggering, and paired CSV/HOLD behavior.
+
+Envelope rearming remains blocked. At the end of the existing 30-second wait,
+the diagnostic showed sample mode, ADC checked and enabled, and zero Board
+scope channels. The required combined envelope state was not observed by the
+wait predicate; the endpoint diagnostic is not a continuous component trace.
+The subsequent envelope/point rearm and failed-source controls did not complete
+and must not be reported as passed.
+
+The forward diagnostic is designed to record the original selection's return values,
+scoped/page control counts, exact element identities and connectivity, and a
+64-entry capture/bubble input/change trace with an overflow count. It preserves
+the original action, assertions, timeouts and engine clock. This is passive
+evidence collection, not a product fix or an established cause; even a passing
+diagnostic run alone does not close the defect. Source identity checks do not
+convert a failed GUI journey into acceptance.
+
+Next work within this lane:
+
+1. Qualify the bounded diagnostic on the exact source head and identify where
+   the native selection and observed component state diverge. Preserve the
+   failed evidence; do not retry the same action or force component state.
+2. Isolate a demonstrated cause and repair it in its owning repository, with
+   a causal negative. Any supplier change needs explicit source admission and
+   an exact qualified package update; do not create a Lite source fork.
+3. Complete the affected actual GUI journey and every enabled exact-head check
+   before normal matched-head integration and final campaign closeout. Keep
+   the completed numerical study attached to its original source identity;
+   do not replay it or claim physical oscilloscope/LM741 accuracy.
