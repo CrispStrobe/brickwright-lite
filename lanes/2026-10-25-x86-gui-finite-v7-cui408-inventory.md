@@ -6,9 +6,11 @@
 
 | Owner | Status | Base | Boundary |
 | --- | --- | --- | --- |
-| Codex x86 GUI lane, coordinated with the CUI 408 consumer owner | Claim only; no v7 implementation or event | `88f97f5b2b715f294e8f38c8bd2a21e9a5d73f18` | Fresh, bounded current installed inventory and independent admission |
+| Codex x86 GUI lane, coordinated with the CUI 408 consumer owner | Local disabled source candidate; no qualified v7 original or event | `88f97f5b2b715f294e8f38c8bd2a21e9a5d73f18` | Fresh, bounded current installed inventory and independent admission |
 
 The qualified Circuit UI supplier target is whole commit `408c179a9bf5ffc28a4626e9ff5a78fc35cdc671`. A source comparison found a changed module that was included in the retained finite v6 installed inventory at `91d8434a79d373cef2837c137ab356356f1a3b44`. The old original therefore cannot authorize a current 408 installed graph. It remains a historical observation; neither the source comparison nor this claim observes a new installation, browser, guest or positive run.
+
+The local disabled v7 candidate also requires exact installed byte lengths and SHA-256 digests for eight reviewed source files changed between those commits. The producer checks them during its bounded installed scan and retains the first failed file observation; the independent reader checks all eight in the completed original. This prevents a complete old map or one stale reviewed row from passing under current dependency pins. Eight matching witnesses do not prove the other installed package contents or qualify a current inventory. The full map and source/Build still require separate official admission before V8 can use them.
 
 ## Owned source paths and order
 
@@ -86,3 +88,44 @@ qualify the final finite source and frontend Build before any separately
 admitted single inventory event. V8 selection still needs its own current
 source/request/expectation and approved finite original. No event, compiler,
 guest, media acquisition, physical timing or release is authorized here.
+
+## Local supplier continuation — qualification pending
+
+The retained later producer, independent reader and GUI controls now select
+the amended current Board/CUI tuple. An explicit `CURRENT_BOARD` supplies
+finite-V7 and actual-V8 requests and V8 probe admission; the shared `BOARD`
+continues to supply historical request and probe branches. The eighteen
+packaged source witnesses match the reviewed Git-derived supplier union.
+These witnesses do not establish provenance for every installed package file.
+
+Local Node 22.23.2 checks passed the finite-V7 and all six actual-V8 control
+methods, including current and historical packets, coherently wrong probe
+identities and a selector-removal counterfactual. The full wrapper passed
+21 of 22 groups. Its canonical package-pin assertion still refuses the
+deliberately uncombined earlier package selection; that failure is retained
+and is not waived. Two initial errors in the new manufactured packet setup
+were retained before correcting its physical Git envelopes and current
+probe critical-file rows.
+
+All workflows, historical methods, schemas, four package roots, six critical
+roles, caps and guard values remain held. Finite-V7 execution remains false;
+the existing V8 source guards remain true without selecting an event.
+Independent source-body and historical-role profile review, normal package
+composition, full package/source qualification and any separately admitted
+fresh inventory remain pending. No original, installation, browser or guest
+result is reinterpreted by this local contribution.
+
+## Rust trigger compatibility continuation — local only
+
+The GUI isolation test now retains the five existing tag-filter contracts
+and separately requires the reviewed current Rust workflow's main-only
+push policy, unchanged PR and manual routes, and exact workflow bytes.
+Route mutations and canned selectors refuse. Producer, reader and all
+workflow bytes remain unchanged in this contribution.
+
+The updated test correctly refuses the older, uncombined Rust workflow.
+A bounded Node 22.23.2 control passes when only that workflow read receives
+its frozen current source bytes. This is a prospective composition check,
+not a parent merge or source qualification. The earlier package-pin refusal
+remains retained. The changed GUI test requires a new independent body and
+historical-role profile review; no profile is refreshed automatically.

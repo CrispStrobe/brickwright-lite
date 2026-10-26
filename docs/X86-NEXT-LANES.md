@@ -4,6 +4,25 @@ Updated 2026-10-15. Shared CPU/device work belongs in bw-board; UI behavior belo
 
 ## Current boundary
 
+The selected actual V6 attempt failed its Python startup check before media or
+guest work. Its retained log establishes the guard-mode mismatch; the later
+preflight and actual mode mismatches are source findings, not observed later
+steps. The distinct [V7 startup-mode lane](../lanes/2026-10-25-x86-gui-actual-v7-startup-mode.md)
+qualified source checks but was never selected for an actual event. Its three
+CLI modes and reader remain available for historical review. A pure V7 control
+used memory originals and produced 157 registered roles, above the real
+producer's 128-role limit; it did not establish a reachable sealed actual
+packet or a guest result. The [V8 dispatch lane](../lanes/2026-10-25-x86-gui-actual-v8-head-pinned-dispatch.md)
+has an armed source candidate awaiting hosted qualification, still
+unselected for any actual event. It packs the 35 Git capture triplets into
+bounded physical envelopes while retaining their raw bytes and independent
+reader checks. Its controls use mocked host and child edges; dormant
+default-branch dispatch registration has landed, and V8 still needs exact-head
+source CI, a qualified Build and request, and a separately selected one-shot
+event before any hosted claim. V7 execution is retired in this candidate while
+its wire and reader remain; V6 execution remains retired while its original
+reader and failed attempt remain available.
+
 The functional experimental 386 AT exposes console/VGA and keyboard/mouse routes through Circuits, Widgets and Code. Machine Manager accepts raw HDD media with supported CHS geometry and partial DOSBox configs; the named FreeDOS VGA route has its own documented floppy/HDD constraints. Widgets supports a large screen and full screen. Media selection remains tab-local and mouse reporting depends on the guest enabling it. These capabilities have different synthetic, headless-adapter and actual-browser evidence boundaries; consult the guide rather than treating them as one broad compatibility claim.
 
 The board's native page-fault recovery result remains a finite diagnostic fixture, and its previous compact native paired result was slower than JS. The new [ABI 5 same-DSO direct-RAM checkpoint](https://github.com/CrispStrobe/bw-board/blob/0f295116f9543cdfc57762e120b2e1567bbce125/docs/I80386-COLD-DIRECT-RAM-RESULTS.md), merged in [board PR420](https://github.com/CrispStrobe/bw-board/pull/420), passes actual direct/companion/callback cold guest parity at tested source `acdb5dcef438c0ac7bc3c7794d43af4371d6e0d1` in [run 37605762900](https://github.com/CrispStrobe/bw-board/actions/runs/37605762900). Independent raw audits reproduce the whole RAM hash by replaying all 91,958 writes, with complete CPU/board/ordered-PIO parity and closed sessions. JavaScript physical-memory entries are zero, but clock/page/PIO/device callbacks remain. The separate [paired result](https://github.com/CrispStrobe/bw-board/blob/b1d982b57e220f3e980f28a0d11ee00d4cd51a24/docs/I80386-COLD-DIRECT-RAM-PAIRED-RESULTS.md) at harness `447fb5bfbc913db0ef00fca333ecb5be28b0e156` passes all 36 semantic children but fails adoption in [run 37609656584](https://github.com/CrispStrobe/bw-board/actions/runs/37609656584): direct uses 5.035176× JS execution CPU and 9.870393× execution wall, with 0/7 favorable pairs, on EPYC 9V45 with four logical CPUs. Ordinary JS remains the default. Configured RTx is JS 2.657023 / direct 0.269191 under the fixed six-clock/6 MHz pacing model; this is not physical 16 MHz 386DX calibration. Older compact timings remain separate historical evidence.
