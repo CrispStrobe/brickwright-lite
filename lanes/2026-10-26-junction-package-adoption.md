@@ -16,7 +16,15 @@ repository and is preserved. Source-derived metadata is not installed-content
 proof. Generator evidence, current package assertions, coordinated x86 roles,
 normal installed-package verification and final combined qualification remain
 pending. Keep canonical main pins stable through the current-supplier x86 GUI
-checkpoint, then compose on its actual landed main before qualification.
+checkpoint, then compose on its actual landed main before qualification. The
+static census has now been regenerated at the exact supplier revision: all 38
+rows and standing CI fields are preserved, with byte-identical module mirrors.
+Nine current package-identity tests and the two protected-profile supplier
+selectors follow the new packages; all behavioral assertions, numerical case
+and method definitions, triggers and completed receipts remain unchanged.
+The protected experiment is not selected or replayed. Final capability-report
+and matrix generation must use the actual composed x86 parent, and ROM/current
+versus historical role decisions remain coordinated with that owner.
 
 ## Owned package and derived boundary
 
@@ -30,7 +38,8 @@ checkpoint, then compose on its actual landed main before qualification.
 - Generated Board census: docs/generated/bw-board-census.json,
   overlay/scratch-gui/src/lib/bw-matrix/census-snapshot.js and its exact
   packages/scratch-gui/src/lib/bw-matrix/census-snapshot.js mirror;
-  docs/generated/I8086-CAPABILITY-REPORT.md and LANGUAGE-DEVICE-MATRIX.md.
+  docs/generated/I8086-CAPABILITY-REPORT.md and
+  docs/generated/LANGUAGE-DEVICE-MATRIX.md.
 - Generated current ROM identity only in overlay/scratch-gui/static/roms/
   i8086-bios.provenance.json and i8086-demos.provenance.json. Preserve actual
   historical source-change and measured qualification identities; stop for an
