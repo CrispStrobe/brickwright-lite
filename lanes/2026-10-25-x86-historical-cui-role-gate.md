@@ -59,3 +59,35 @@ Full three-supplier history, prior controls, coherent alias/current-input
 mutations for both suppliers, wrong Board role/path/symbol, legacy-to-current
 reference leakage, production-profile rejection and the genuine V8 negative cohort
 remain required. Source controls grant no current inventory or execution.
+
+The first local gate component for this amendment keeps all three producer,
+reader and control body profiles unset. Portable Board/CUI role and alias
+controls can run, while the public source gate refuses those historical
+source occurrences until the final supplier composition and all three
+profiles are independently reviewed and fixed. This local component is not
+published or source-qualified.
+
+## Reviewed supplier body profiles — local continuation
+
+The three later producer, reader and control bodies received separate byte,
+role and Git-source review. This continuation fixes their exact byte lengths
+and SHA-256 values in the gate. It changes only the recognized historical
+CUI control line to use the reviewed current Board symbol; no current request,
+vendor pin, package input, workflow or executable source is changed here.
+
+The admitted source positions remain two historical CUI slots and two
+historical Board slots, plus the gate's two visible policy declarations.
+Every other old identity in current inputs remains a finding. A subsequent
+body change requires a new review and profile update. Portable role and
+alias controls pass, and the exact reviewed bodies admit only their four
+historical slots. The deliberately uncombined package pins still prevent a
+full supplier gate pass; final composition and hosted qualification remain
+separate.
+
+The reviewed GUI control body later changed only its Rust workflow test to
+the qualified main-only push policy. The embedded Python packet controls and
+historical CUI position remained byte-identical. This gate pins that
+separately reviewed GUI control body explicitly; the producer and reader
+profiles and every historical role rule are held. Any later source edit still
+revokes its profile. Package composition and final source checks remain
+pending.
