@@ -2,6 +2,7 @@
 // Copyright (c) 2026 Brickwright contributors
 // Dependency-free admission for saved/imported observations, never a physics reader.
 import {measurementDefinitions, MEASUREMENT_KINDS} from './schema.js';
+import {CONTROL_PAIR_SCHEMA, admitControlPair} from './control-pairs.js';
 
 export const EXPERIMENT_SCHEMA = 'bw.sim-lab.experiments.v1';
 export const EXPERIMENT_BYTE_LIMIT = 512 * 1024;
@@ -137,6 +138,7 @@ export const experimentsFromRuns = (runs, context) => {
 
 /** Structural admission also runs during bundle parsing; restore must supply independent context. */
 export const measurementExperiments = value => {
+    if (object(value) && value.schema === CONTROL_PAIR_SCHEMA) return admitControlPair(value);
     if (!object(value) || value.schema !== EXPERIMENT_SCHEMA || !HASH.test(value.modelSha256) ||
         !Array.isArray(value.runs) || value.runs.length > RECORDING_LIMIT) fail('has an invalid saved schema');
     if (size(JSON.stringify(value)) > EXPERIMENT_BYTE_LIMIT) fail('exceeds the saved history byte limit');
