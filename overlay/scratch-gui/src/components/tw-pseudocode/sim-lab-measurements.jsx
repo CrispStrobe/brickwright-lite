@@ -381,9 +381,9 @@ class SimLabMeasurements extends React.Component {
                     definitions={definitions} selected={selected} rows={rows} sampleTime={this.props.sampleTime}
                     replaying={replaying} paused={this.props.paused} />
                 <p style={{fontSize: 10}}>{de ? 'Bis zu 4 Diagramme mit je 128 echten Simulationszeitwerten. Lücken bedeuten: nicht verfügbar.' : 'Up to 4 plots, each with 128 actual simulation-time samples. Gaps mean unavailable.'}</p>
-                {packsFor(this.props.session, locale).length > 0 && <fieldset data-testid="bw-sim-role-packs" disabled={replaying}>
+                {packsFor(this.props.session, locale).length > 0 && <fieldset data-testid="bw-sim-role-packs" disabled={replaying} style={{minWidth: 0}}>
                     <legend>{de ? 'Messpakete für dieses Modell' : 'Measurement packs for this model'}</legend>
-                    <select aria-label={de ? 'Messpaket' : 'Measurement pack'} data-testid="bw-sim-role-pack-choice" value={this.state.rolePackId} onChange={e => this.setState({rolePackId: e.target.value})}>
+                    <select aria-label={de ? 'Messpaket' : 'Measurement pack'} data-testid="bw-sim-role-pack-choice" style={input} value={this.state.rolePackId} onChange={e => this.setState({rolePackId: e.target.value})}>
                         <option value="">{de ? 'Rolle ausdrücklich wählen' : 'Choose a role explicitly'}</option>
                         {packsFor(this.props.session, locale).map(pack => <option key={pack.id} value={pack.id}>{pack.title}</option>)}
                     </select>
