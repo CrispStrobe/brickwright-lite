@@ -6,6 +6,22 @@ These are source capabilities in the integration candidate. They do not change
 the 184-input census or certify a complete game. Read
 [the current handoff](ARCADE-AGENT-HANDOFF.md) before using older sections below.
 
+The [readonly startup Number task](https://github.com/CrispStrobe/brickwright-lite/pull/1461)
+is scoped but not implemented. Its editor acceptance must visibly author the
+actual dependencies: assign `sz = 8`, `w = (160 / sz) | 0` and
+`h = (120 / sz) | 0`, then connect native subtraction results such as `w - 1`
+and `h - 1` to numeric math blocks. Exercise an ordinary helper and a paint
+registration after those assignments. Edit operands in Blocks and Code,
+compare deterministic results with original MakeCode, and check random results
+against their bounds without pretending independent runs share a random stream.
+Preserve variable identities through both export routes and fresh SB3 reopen.
+Move registration before initialization or add a String writer and verify the
+named refusal with the original statements retained. Keep direct arbitrary
+variable-to-Math acceptance, conditional Array initialization and element
+presence as separate open boundaries. A connected graphics/controller journey
+must still retain editable artwork and actual stage behavior; the numeric
+source proof supplies neither a graphics feature nor gameplay qualification.
+
 | Capability | Implemented source behavior | Required connected acceptance |
 | --- | --- | --- |
 | Factory and costume Image value arithmetic | Retains ordinary addition for independently proved non-Array operands. Direct and JSON source roundtrips preserve clone, alias and pixel operations. Actual authored Array-join helpers keep their separate import semantics. | In Blocks and Code, author Image creation, aliases, clone and arithmetic; compare actual values with the unchanged original SDK fixture. Test mixed Array callers as refusals. |
