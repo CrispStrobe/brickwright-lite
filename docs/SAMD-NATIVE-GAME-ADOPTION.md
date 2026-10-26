@@ -24,13 +24,15 @@ RGBSET table. No host-installed default LUT is permitted.
 
 ## Required sequence before adoption can close
 
-1. Pass every enabled final-head Core check and the actual source-built
-   [native/Node-WASM game campaign](https://github.com/CrispStrobe/codal-samd/pull/93).
-   The initial native picture-budget failure remains a failure. Diagnostic
-   frames and source palette/HUD review must establish the cause before any
-   correction. Preserve full colour validity, sprite/count requirements,
-   natural render returns, actual input effects and original budgets.
-2. Independently audit the official original source, compiler inputs, firmware,
+1. Complete the explicit Core assembly's enabled final-head checks and actual
+   CLI guest coverage. The [native/Node WASM game campaign](https://github.com/CrispStrobe/codal-samd/pull/93)
+   passed all six independently audited samples. Its original picture failure
+   was the paused system menu caused by active-high virtual input IDs; the
+   authored game now selects the runtime's existing active-low IDs1050–1057.
+   Original budgets, runtime, physical input model and picture assertions remain.
+   [Measured results and limits](https://github.com/CrispStrobe/codal-samd/blob/35ca8138ae4f7b9b9ecb5dc9a1d04dbf02e5619f/docs/SAMD-NATIVE-GAME-RESULTS.md)
+   establish functional execution, not real-time playability or Lite adoption.
+2. Retain the independently audited official original source, compiler inputs, firmware,
    chip/system/display, calibration, render frames and three fresh samples per
    engine. Record startup, render-return intervals, input latency and process
    memory with observation costs and limits. Node execution alone does not
@@ -58,3 +60,23 @@ configuration, supported-format/refusal, input/display and installed interaction
 contract. An engine asset pin does not add that route. Physical panel/aperture,
 gamma, analogue colour, electrical timing, silicon recaptures and universal
 real-time speed need their own evidence. This lane makes none of those claims.
+
+## Hosted qualifier registration
+
+The dispatch-only `samd-native-game-qualification.yml` accepts full consumer and
+producer commits plus exact automatic frontend, native executable and engine
+producer run identities. Its admission job checks official metadata before one
+acquisition of each original, verifies publisher archive digests, checks safe
+closed archive membership, independently joins the actual CI checkout, complete
+frontend inventory, native source and executable receipt, and admits the exact
+engine/profile/guest inputs. Only declared Markdown composition differences are
+allowed between the reviewed consumer and its actual frontend checkout.
+
+Subsequent jobs run three fresh engine instances in actual Chromium and the
+actual embedded Tauri/WebKit editor, using its shipped assets. The collector
+independently decodes each returned RGB frame and checks targets, movement and
+press/release phases. The observer canvas is a raw controller-memory view; it
+does not implement a product native compile/import route. No private runtime
+resource is supplied or claimed. Registering this infrastructure does not change
+the engine pin or qualify an actual guest; retain status as pending until the
+exact consumer has passed both jobs and the remaining enabled checks.
