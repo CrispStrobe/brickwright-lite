@@ -3525,8 +3525,19 @@
       "poweredMotion": "HEADLESS_COMPLETED at COLD 0, 275 and 1000",
       "mechanicalLaw": "SIMULATOR_AGREES",
       "causalControl": "PASS (phasor-twin-control)",
-      "browserLoad": "NOT_RUN",
-      "savedProjectReplay": "NOT_RUN"
+      "browserLoad": "PASS",
+      "savedProjectReplay": "NOT_RUN",
+      "browserRun": {
+        "build": "6fb9acd (checkpoint-build-248)",
+        "browser": "system Chrome, Run button, timeScale 4",
+        "verdict": "PROGRAM-COMPLETE",
+        "parts": 63,
+        "worker": true,
+        "issues": 0,
+        "pageErrors": 0,
+        "nan": false,
+        "simMs": 41400
+      }
     },
     {
       "id": "phasor-twin-control",
@@ -3546,8 +3557,19 @@
       "poweredMotion": "HEADLESS_COMPLETED at COLD 0",
       "mechanicalLaw": "SIMULATOR_AGREES",
       "causalControl": "IS_CONTROL",
-      "browserLoad": "NOT_RUN",
-      "savedProjectReplay": "NOT_RUN"
+      "browserLoad": "PASS",
+      "savedProjectReplay": "NOT_RUN",
+      "browserRun": {
+        "build": "6fb9acd (checkpoint-build-248)",
+        "browser": "system Chrome, Run button, timeScale 4",
+        "verdict": "PROGRAM-COMPLETE",
+        "parts": 63,
+        "worker": true,
+        "issues": 0,
+        "pageErrors": 0,
+        "nan": false,
+        "simMs": 41200
+      }
     }
   ],
   "appVerification": {
