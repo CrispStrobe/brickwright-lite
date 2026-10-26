@@ -16,6 +16,21 @@ new `scripts/verify-samd-native-game.mjs` and focused test; a new scoped
 twin only if required by demonstrated native guest acceptance. Preserve other
 owners' importer edits and package boundaries. No board/compiler/circuit pins.
 
+Hosted qualification envelope extension (2026-10-26): a new SAMD-only
+`.github/workflows/samd-native-game-qualification.yml`,
+`scripts/samd-native-game-browser.mjs`,
+`scripts/verify-samd-native-game-browser.mjs`, and
+`scripts/verify-samd-native-game-installed.mjs`, with focused admission controls.
+Use explicit workflow-dispatch inputs bound to the reviewed consumer and
+qualified supplier; no tag, schedule or unrelated push triggers. Admit the
+existing automatic official frontend and native-executable originals before
+one acquisition, preserve their complete identities, and run the actual owned
+game on the shipped browser/installed engine assets. Use the existing pinned
+Tauri/WebKit driver approach; do not alter shared native producers, x86/V8 gates
+or CI-pointer selections. The qualification canvas/driver is an observer, not a
+new product compile/import/GUI route. Keep private resources and all operational
+receipts out of public source/artifacts. Actual guests run on hosted CI.
+
 Qualification: source/configuration/firmware/package hashes; a real native game
 with moving frames and button responses rather than idle spin; startup/frame/
 input and memory measurements in native and WASM, with unchanged correctness
