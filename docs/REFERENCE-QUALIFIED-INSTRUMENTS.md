@@ -110,8 +110,10 @@ cohort establishes no foreign-format importer coverage or imported-corpus total.
 The independent reference executable must identify itself as ngspice 42. Its
 [version-42 manual](https://ngspice.sourceforge.io/docs/ngspice-42-manual.pdf)
 documents the shared-scale, named-vector `wrdata` output used here. Raw reference
-rows and uniformly sampled rows are retained separately. Static sweeps use fresh
-strict operating points at every source value. Transient references use explicit
+rows and uniformly sampled rows are retained separately. Static sweeps require
+converged strict native solutions at every source value. The reference retains
+ngspice's ordinary point-to-point DC sweep continuation; its numerical fallbacks
+are disabled. Transient references use explicit
 zero-state initialization, a finite source edge and a bounded maximum step.
 No DC operating-point bias is substituted for the transient initial state.
 
