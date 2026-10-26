@@ -126,3 +126,5 @@ the default branch. Existing run counts and failures are retained unchanged.
 The separately reviewed workflow files arrive only with their qualified source.
 
 - testflight-release-audit.yml :: * :: Manual read-only audit of an operator-admitted immutable release tag and exact source; observes both iOS and macOS notes, groups and beta states. No build, upload or writer. Zero runs at declaration (2026-10-24); pure controls and a queued audit do not establish tester availability.
+
+- reference-qualified-instruments.yml :: * :: Initial source declaration recorded zero workflow runs before exact source/reference/reader admission. This dated baseline is not a numerical observation; actual results belong to their separately admitted exact-head runs. Never start an experiment just to populate the census. 2026-10-26 Codex circuit/instrument owner.
