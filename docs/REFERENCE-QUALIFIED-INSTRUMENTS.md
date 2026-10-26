@@ -143,3 +143,8 @@ reports all 32 case verdicts, requested and passing selector locations, and
 bounded failed-value examples. These selector locations are named virtual
 observations, not claims of physical probe insertion or independent placements. Existing studies retain
 their original identities and outcomes; they are not rerun or relabelled here.
+
+Setup failures retain the full not-run denominator and source/event bindings.
+Independent readback distinguishes this incomplete outcome from malformed
+originals; it does not establish the recorded failure's cause or qualify any
+measurements. A claimed setup failure cannot conceal retained case execution.

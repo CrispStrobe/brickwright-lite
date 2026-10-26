@@ -144,10 +144,12 @@ This does not establish foreign-format importer coverage or an internal solver
 transcript. The supported direct-RC ADP7118 topology is reused with a new load,
 reference and observation intent; no new-domain or novel-topology claim follows.
 
-Forty-four synthetic controls pass under Node 22, with no skipped controls.
+Forty-five synthetic controls pass under Node 22, with no skipped controls.
 These include independent readback, coherent byte-receipt mutations, complete
 loaded-graph joins, current signs, clocks, units, DMM windows, prior reviewed-head
-admission and remaining-time limits. Source/policy and whitespace controls are
+admission and remaining-time limits. A setup refusal retains all 32 not-run
+rows as an incomplete outcome; forged conformance and concealed execution are
+rejected. The recorded error text does not independently prove its cause. Source/policy and whitespace controls are
 separate from the actual numerical study. The exact frozen head, profile, references and independent reader require review
 and the distinct admission authority before selection. No experiment had been
 selected at this source checkpoint. The implementation PR carries the subsequent

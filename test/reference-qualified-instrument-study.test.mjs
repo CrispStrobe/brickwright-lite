@@ -384,3 +384,32 @@ test('capture design counts distinguish requests from actual numerical passes',(
     assert.equal(summary.counts.recordedCliAttempts,32);assert.equal(summary.counts.inputs,32);
     assert.equal(summary.evidenceComplete,true);assert.equal(summary.numericalConformance,false);
 });
+
+
+test('actual collector preserves a preflight failure as independently readable incomplete evidence',
+    {skip:process.versions.node.split('.')[0]!=='22'?'collector runtime admission requires Node22; executed by the source-controls workflow':false},async t=>{
+        const template=fixture(t),parent=mkdtempSync(join(tmpdir(),'reference-preflight-'));
+        t.after(()=>rmSync(parent,{recursive:true,force:true}));
+        const admissionFile=join(parent,'admission.json');copyFileSync(join(template,'event-admission.json'),admissionFile);
+        const values={GITHUB_RUN_ID:RUN,GITHUB_RUN_ATTEMPT:'1',GITHUB_SHA:HEAD,
+            GITHUB_REF:'refs/heads/study/reference-qualified-v1',BW_BOARD:'',NODE_PATH:'',NODE_OPTIONS:''};
+        const previous=Object.fromEntries(Object.keys(values).map(k=>[k,process.env[k]]));
+        Object.assign(process.env,values);let calls=0;
+        const output=join(parent,'output');let summary;
+        try {
+            summary=await runStudy({output,installedRoot:parent,boardSource:parent,cuiSource:parent,
+                admittedIntent:sha256(canonical(manifest)),admissionFile,
+                verifyPackages:()=>{throw new Error('synthetic package admission refusal');},
+                execute:()=>{calls++;throw new Error('no process may run before package admission');}});
+        } finally {for(const [k,v] of Object.entries(previous)){if(v===undefined)delete process.env[k];else process.env[k]=v;}}
+        assert.equal(calls,0);assert.equal(summary.counts.missing,32);
+        assert.equal(summary.evidenceComplete,false);assert.equal(summary.numericalConformance,false);
+        const report=reader(output);assert.equal(report.status,2,report.stderr+report.stdout);
+        const decoded=JSON.parse(report.stdout);assert.equal(decoded.preflightFailureRecorded,true);
+        assert.equal(decoded.failureCauseIndependentlyEstablished,false);
+        const saved=get(output,'summary.json');saved.numericalConformance=true;put(output,'summary.json',saved);syncInventory(output);
+        const forged=reader(output);assert.equal(forged.status,3);assert.match(forged.stderr,/preflight incomplete summary/);
+        saved.numericalConformance=false;put(output,'summary.json',saved);
+        mkdirSync(join(output,manifest.cases[0].id));put(output,manifest.cases[0].id+'/cli.stdout','hidden attempt');syncInventory(output);
+        const hidden=reader(output);assert.equal(hidden.status,3);assert.match(hidden.stderr,/conceal case execution/);
+    });

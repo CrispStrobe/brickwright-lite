@@ -131,6 +131,17 @@ export async function runStudy({output,installedRoot,boardSource,cuiSource,admit
     writeFileSync(join(output,'event-admission.json'),admissionBytes,{flag:'wx'});
     const start=now(),results=manifest.cases.map(c=>({id:c.id,status:'not-run',cliAttemptRecorded:false,checks:[]}));
     const boundedCommand=options=>recordCommand({...options,wallMs:remainingCohortWall(start,now)});
+    save(join(output,'run-context.json'),{runId:process.env.GITHUB_RUN_ID??null,runAttempt:process.env.GITHUB_RUN_ATTEMPT??null,
+        headSha:process.env.GITHUB_SHA??null,ref:process.env.GITHUB_REF??null,intentSha256:sha256(intent),
+        admissionSha256:sha256(admissionBytes),nodeExecutable:process.execPath,outputRoot:output,
+        collectorSha256:sha256(readFileSync(fileURLToPath(import.meta.url))),
+        comparatorsSha256:sha256(readFileSync(join(ROOT,'scripts/lib/reference-qualified-compare.mjs'))),
+        fixturesSha256:sha256(readFileSync(join(ROOT,'scripts/lib/reference-qualified-circuits.mjs'))),
+        readerSha256:sha256(readFileSync(join(ROOT,'scripts/read-reference-qualified-instruments.py'))),
+        packageProvenanceSha256:sha256(readFileSync(join(ROOT,'scripts/package-provenance.mjs'))),
+        workflowSha256:sha256(readFileSync(join(ROOT,'.github/workflows/reference-qualified-instruments.yml'))),
+        lockSha256:sha256(readFileSync(join(ROOT,'package-lock.json'))),
+        pinsSha256:sha256(readFileSync(join(ROOT,'vendor-pins.json')))});
     let preflightError=null;
     try {
         const pins=JSON.parse(readFileSync(join(ROOT,'vendor-pins.json')));
@@ -157,17 +168,6 @@ export async function runStudy({output,installedRoot,boardSource,cuiSource,admit
             prefix:join(output,'oracle-version'),execute});
         if(version.status!==0||version.signal||version.error||!/ngspice-42\b/.test(version.stdout+'\n'+version.stderr))throw new Error('Admitted ngspice42 method/version unavailable');
         checkCohortBudget(start,now);
-        save(join(output,'run-context.json'),{runId:process.env.GITHUB_RUN_ID??null,runAttempt:process.env.GITHUB_RUN_ATTEMPT??null,
-            headSha:process.env.GITHUB_SHA??null,ref:process.env.GITHUB_REF??null,intentSha256:sha256(intent),
-            admissionSha256:sha256(admissionBytes),nodeExecutable:process.execPath,outputRoot:output,
-            collectorSha256:sha256(readFileSync(fileURLToPath(import.meta.url))),
-            comparatorsSha256:sha256(readFileSync(join(ROOT,'scripts/lib/reference-qualified-compare.mjs'))),
-            fixturesSha256:sha256(readFileSync(join(ROOT,'scripts/lib/reference-qualified-circuits.mjs'))),
-            readerSha256:sha256(readFileSync(join(ROOT,'scripts/read-reference-qualified-instruments.py'))),
-            packageProvenanceSha256:sha256(readFileSync(join(ROOT,'scripts/package-provenance.mjs'))),
-            workflowSha256:sha256(readFileSync(join(ROOT,'.github/workflows/reference-qualified-instruments.yml'))),
-            lockSha256:sha256(readFileSync(join(ROOT,'package-lock.json'))),
-            pinsSha256:sha256(readFileSync(join(ROOT,'vendor-pins.json')))});
         const cli=join(realpathSync(installedRoot),'bw-circuit-ui/bin/bwc.mjs');
         for(const [index,c] of manifest.cases.entries()) {
             const dir=join(output,c.id);mkdirSync(dir);

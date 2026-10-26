@@ -510,6 +510,26 @@ def read_originals(root, expected_head, expected_run):
         'pinsSha256': 'vendor-pins.json'
     }.items():
         require(context[key] == digest((source_root / path).read_bytes()), 'reviewed source-file hash')
+    summary_record = original.json('summary.json')
+    recorded_error = summary_record.get('preflightError')
+    require(recorded_error is None or (type(recorded_error) is str and 0 < len(recorded_error) <= 4096), 'bounded recorded setup/cohort error')
+    records = original.json('results.json')
+    if recorded_error is not None and all(r.get('status') == 'not-run' for r in records):
+        expected_rows = [{'id': c['id'], 'status': 'not-run', 'cliAttemptRecorded': False, 'checks': []} for c in intent['cases']]
+        require(equal(records, expected_rows), 'preflight untouched full denominator')
+        validate_original_paths(original, intent)
+        require(not any('/' in name for name in original.seen), 'preflight cannot conceal case execution')
+        counts = {'inputs': 32, 'comparable': 31, 'expectedRefusals': 1, 'recordedCliAttempts': 0,
+                  'passed': 0, 'disagreed': 0, 'refused': 0, 'missing': 32, 'checks': 0, 'checksPassed': 0, 'checksFailed': 0}
+        expected = {'schemaVersion': 1, 'study': intent['study'], 'counts': counts, 'evidenceComplete': False,
+                    'numericalConformance': False, 'physicalCalibration': False, 'requestedScopeDmmDesigns': 15,
+                    'passedScopeDmmDesigns': 0, 'preflightError': recorded_error}
+        require(equal(summary_record, expected), 'preflight incomplete summary join')
+        return {**expected, 'caseReadback': expected_rows, 'retainedOriginalReadback': True,
+                'preflightFailureRecorded': True, 'failureCauseIndependentlyEstablished': False,
+                'producerImported': False, 'modelOrOracleReplayed': False,
+                'headSha': expected_head, 'runId': expected_run,
+                'originalFiles': len(original.seen), 'originalBytes': original.bytes}
     ui_manifest_bytes = original.raw('ui-package.json')
     require(digest(ui_manifest_bytes) == UI_PACKAGE_SHA256, 'pinned UI manifest bytes')
     ui_manifest = decode(ui_manifest_bytes)
@@ -581,10 +601,11 @@ def read_originals(root, expected_head, expected_run):
             counts['checks'] += 1
             counts['checksPassed' if check['pass'] else 'checksFailed'] += 1
     complete = counts['missing'] == 0
+    complete = complete and recorded_error is None
     numerical = complete and counts['disagreed'] == 0 and counts['passed'] == 31 and counts['refused'] == 1
     expected = {'schemaVersion': 1, 'study': intent['study'], 'counts': counts, 'evidenceComplete': complete,
                 'numericalConformance': numerical, 'physicalCalibration': False, 'requestedScopeDmmDesigns': 15,
-                'passedScopeDmmDesigns': sum(1 for c, r in zip(intent['cases'], computed) if c['route'] == 'measure' and r['status'] == 'pass'), 'preflightError': None}
+                'passedScopeDmmDesigns': sum(1 for c, r in zip(intent['cases'], computed) if c['route'] == 'measure' and r['status'] == 'pass'), 'preflightError': recorded_error}
     require(equal(original.json('summary.json'), expected), 'independent summary/verdict join')
     case_readback = [{'id': c['id'], 'route': c['route'], 'status': r['status'],
                       'cliAttemptRecorded': r['cliAttemptRecorded'], 'selectorLocations': selector_locations(c),
