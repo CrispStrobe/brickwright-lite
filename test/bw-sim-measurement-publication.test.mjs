@@ -12,7 +12,7 @@ test('a disposal callback during accepted replay fences pose and analytical publ
         client: {simDispose: async () => {}}, _exportHubs: () => ({}), _hubsKey: () => 'same',
         bridge: {replay: () => { session.dispose(); return 0; }, dispose: () => {}},
         listeners: new Set([() => publications.push('listener')])});
-    session._receive(sent, {frames:[],workMs:0});
+    session._receive(sent, {frames:[],workMs:0,bodies:new Float64Array(7)});
     assert.deepEqual(publications, []);
     assert.equal(session._inFlight, null);
 });

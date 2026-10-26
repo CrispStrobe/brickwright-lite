@@ -73,7 +73,7 @@ export const createPrecisionAnalysis = selection => {
                         Object.assign(state, {previous: null, crossing: null, periodSeconds: null, workComplete: false}); gap = true; continue;
                     }
                     state.type = observed.type;
-                    if (finite(observed.powerW)) state.workJ += observed.powerW * sample.stepSeconds;
+                    if (finite(observed.powerW) && finite(state.workJ + observed.powerW * sample.stepSeconds)) state.workJ += observed.powerW * sample.stepSeconds;
                     else { state.workComplete = false; gap = true; }
                     const previous = state.previous;
                     const threshold = (selection.thresholdDegrees || 0) * Math.PI / 180;

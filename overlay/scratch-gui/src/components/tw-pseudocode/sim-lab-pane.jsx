@@ -1747,8 +1747,8 @@ class SimLabPane extends React.Component {
 
     configureMeasurementObservations () {
         if (!this.session?.setMeasurementObservation) return;
-        const selected = new Set(this.measurementSelection || []), mechanism = this.session.mechanism;
-        const joints = this.measurementPrecisionEnabled ? [...new Set(this.measurements.filter(d => selected.has(d.id) && d.joint &&
+        const byId = new Map(this.measurements.map(d => [d.id, d])), mechanism = this.session.mechanism;
+        const joints = this.measurementPrecisionEnabled ? [...new Set((this.measurementSelection || []).map(id => byId.get(id)).filter(d => d?.joint &&
             mechanism.joints.some(j => j.id === d.joint && ['hinge', 'slider'].includes(j.type) && measurementJointBound(mechanism, j, d.binding))).map(d => d.joint))].slice(0, 4) : [];
         this.session.setMeasurementObservation({...this.measurementPrecisionOptions, joints, contacts: this.measurements.some(d => d.kind === 'contact'),
             screws: this.measurements.some(d => d.kind === 'screwSlips' || d.kind === 'screwLoad')});

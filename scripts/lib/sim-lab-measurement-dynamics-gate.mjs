@@ -64,18 +64,38 @@ export const measurementDynamicsInteractions = async (page,{shotsDir,restoreProj
             await panel.getByTestId('bw-sim-lab-measurement-joint').selectOption(joint);
             await panel.getByTestId('bw-sim-lab-measurement-add').click();
         }
+        if(file==='forklift.ldr') {
+            const targets=await page.evaluate(()=>{
+                const p=window.__bwSimLab._pane,m=p.session.mechanism;
+                const bodies=m.bodies.filter(b=>b.parts?.some(id=>p.measurementReader.partIds.includes(id)));
+                return {hinge:m.joints.find(j=>j.type==='hinge'&&j.motor?.port==='A')?.id,
+                    parts:bodies.slice(0,2).map(b=>b.parts.find(id=>p.measurementReader.partIds.includes(id)))};
+            });
+            assert.ok(targets.hinge&&targets.parts.length===2);
+            await panel.getByTestId('bw-sim-lab-measurement-kind').selectOption('passiveTorque');
+            await panel.getByTestId('bw-sim-lab-measurement-joint').selectOption(targets.hinge);
+            await panel.getByTestId('bw-sim-lab-measurement-add').click();kinds.push('passiveTorque');
+            await panel.getByTestId('bw-sim-lab-measurement-kind').selectOption('contact');
+            for(let i=0;i<2;i++)await panel.getByTestId(`bw-sim-lab-measurement-target-${i}`).selectOption(targets.parts[i]);
+            await panel.getByTestId('bw-sim-lab-measurement-add').click();kinds.push('contact');
+        }
         await tool(page,'run');
         await page.waitForFunction(kinds=>kinds.every(kind=>window.__bwSimLab._pane.measurementRows.some(row=>row.kind===kind&&row.available)),kinds,{timeout:15000});
-        await tool(page,'pause');
+        await tool(page,'pause');await page.evaluate(()=>window.__bwSimLab._pane.session.idle());
+        await page.waitForFunction(()=>{const p=window.__bwSimLab._pane;return p.measurementRowsTime===p.session.time;});
         const observation=await page.evaluate(({joint,kinds})=>{
             const p=window.__bwSimLab._pane;
-            return {model:p.state.modelFile,joint,coreTime:p.session.core.time,sample:p.session.core.jointDynamics(joint),screws:p.session.core.screwState?.(),
+            const friction=p.measurements.find(d=>d.kind==='passiveTorque');
+            const contact=p.measurements.find(d=>d.kind==='contact');
+            return {definitions:p.measurements.filter(d=>kinds.includes(d.kind)),passiveJoint:friction?.joint||null,passiveSample:friction?p.session.core.jointDynamics(friction.joint):null,contacts:contact?p.session.core.currentContactPairs():null,contactBodies:contact?contact.targets.map(id=>p.session.mechanism.bodies.find(b=>b.parts?.includes(id)).id):null,model:p.state.modelFile,joint,coreTime:p.session.core.time,sample:p.session.core.jointDynamics(joint),screws:p.session.core.screwState?.(),
                 rows:p.measurementRows.filter(r=>kinds.includes(r.kind)).map(({kind,value,unit,source,available})=>({kind,value,unit,source,available}))};
         },{joint,kinds});
         assert.ok(observation.rows.every(r=>r.available&&Number.isFinite(r.value)));
         for(const [kind,field] of [['motorForce','motorForceN'],['limitForce','limitForceN'],['sliderPower','motorPowerW']]) {
             const row=observation.rows.find(r=>r.kind===kind);if(row)assert.equal(row.value,observation.sample[field]);
         }
+        const friction=observation.rows.find(r=>r.kind==='passiveTorque');if(friction)assert.equal(friction.value,observation.passiveSample.passiveTorqueNm);
+        const contact=observation.rows.find(r=>r.kind==='contact');if(contact){const [a,b]=observation.contactBodies;assert.equal(contact.value,observation.contacts.some(([x,y])=>x===a&&y===b||x===b&&y===a)?1:0);}
         const screw=observation.screws?.find(s=>s.sliderJoint===joint);
         if(screw){assert.equal(observation.rows.find(r=>r.kind==='screwSlips').value,screw.slips);assert.equal(observation.rows.find(r=>r.kind==='screwLoad').value,screw.loadN);}
         report.force.push(observation);
@@ -104,7 +124,7 @@ export const measurementDynamicsInteractions = async (page,{shotsDir,restoreProj
     });
     await tool(page,'run');assert.equal(await page.evaluate(()=>window.__bwSimLab.api.setMotorSpeed('A',360)),true);
     await page.waitForFunction(()=>window.__bwSimLab._pane.session.time>=2500,null,{timeout:15000});
-    await tool(page,'pause');
+    await tool(page,'pause');await page.evaluate(()=>window.__bwSimLab._pane.session.idle());
     report.precision=await page.evaluate(()=>{const p=window.__bwSimLab._pane;p.__qualifiedDetach();return{
         selection:p.session._measurementObservation,packets:p.__qualifiedPackets,result:p.session.measurementPrecision,overflow:p.__qualifiedPacketOverflow};});
     assert.equal(report.precision.overflow,false);assert.equal(report.precision.result.gap,false);
@@ -133,11 +153,10 @@ export const measurementDynamicsInteractions = async (page,{shotsDir,restoreProj
         await panel.getByTestId('bw-sim-window-arm').click();
         await tool(page,'run');assert.equal(await page.evaluate(()=>window.__bwSimLab.api.setMotorSpeed('A',60)),true);
         await page.waitForFunction(()=>{const p=window.__bwSimLab._pane;return !p.measurementRecording.snapshot().active&&p.measurementRecording.snapshot().runs.length===1;},null,{timeout:15000});
-        await tool(page,'pause');
-        const pilot=await page.evaluate(()=>{const p=window.__bwSimLab._pane;return{context:p.measurementContext,definitions:p.measurements,
-            packet:p.measurementRecording.exportExperiments(p.measurementContext)};});
+        await tool(page,'pause');await page.evaluate(()=>window.__bwSimLab._pane.session.idle());
+        const pilot=await page.evaluate(()=>{const p=window.__bwSimLab._pane,record=window.__bwSimLab.projectRecord;return{context:p.measurementContext,definitions:p.measurements,record,packet:record.experiments};});
         assert.ok(pilot.packet.runs[0].window);assert.ok(pilot.packet.runs[0].samples.length>=2);
-        pilots.push({id,modelSourceSha256:digest(text),...pilot});
+        pilots.push({id,modelSourceSha256:digest(text),sourceLdraw:text,...pilot});
     }
     report.pilots=pilots;
     const pairPanel=panel.getByTestId('bw-sim-control-pair');
@@ -145,7 +164,7 @@ export const measurementDynamicsInteractions = async (page,{shotsDir,restoreProj
         const option=await pairPanel.getByTestId(`bw-sim-control-pair-${role}`).locator('option').evaluateAll((options,hash)=>options.find(o=>o.textContent.includes(hash))?.value,pilot.context.modelSha256);
         assert.ok(option);await pairPanel.getByTestId(`bw-sim-control-pair-${role}`).selectOption(option);
     }
-    await pairPanel.getByTestId('bw-sim-control-pair-add').click();
+    assert.equal(await pairPanel.getByTestId('bw-sim-control-pair-baseline-measurement-0').count(),1,'mapping starts blank and must be selected explicitly');
     for(const [role,pilot] of [['baseline',pilots[0]],['control',pilots[1]]])await pairPanel.getByTestId(`bw-sim-control-pair-${role}-measurement-0`).selectOption(pilot.definitions.find(d=>d.kind==='jointAngle').id);
     await pairPanel.getByTestId('bw-sim-control-pair-apply').click();await pairPanel.getByTestId('bw-sim-control-pair-comparison').waitFor();
     assert.equal(await panel.getByTestId('bw-sim-measurement-record-start').isDisabled(),true,'pair occupies both ordinary slots');
