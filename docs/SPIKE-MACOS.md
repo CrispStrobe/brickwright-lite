@@ -58,6 +58,7 @@ observable state, not a first frame.
 | 40336234971 | sixth (PR) | `osx-x64` `hdiutil` flake again. The workflow now retries only that command. |
 | **40336239431** | sixth | Tauri-shaped variants boot sandboxed on both arches (table below). |
 | **40343918260** | seventh | Parent/child single-file and no-LGPL layouts and negative controls (table below). |
+| **40344053109** | final (`c216e487`, merged as PR #61) | Full chain from scratch on the exact merged head: fresh guest, fresh builds on both runners, same probe outcome as 40343918260 for every variant. All seven checks passed. |
 
 ## Results
 
@@ -66,7 +67,7 @@ observable state, not a first frame.
 | Variant | osx-arm64 | osx-x64 | Sandbox evidence |
 |---|---|---|---|
 | Unsandboxed baseline, unsigned, non-single-file layout | boots (snapshot after 7.7 s) | boots (27.4 s) | — |
-| Sandboxed launcher → Renode child, no hardened runtime | **boots** (7.7 s) | **boots** (20.2 s) | `libsystem_secinit` logs `AppSandbox` for `launcher` and `renode`; container created; no denials |
+| Sandboxed launcher → Renode child, no hardened runtime | **boots** (7.7 s) | **boots** (20.2 s) | `libsystem_secinit` logs `AppSandbox` for `launcher` and `renode` (the bounded log query does not always capture both lines); container created; no denials |
 | Same, hardened runtime on both | **boots** (8.3 s) | **boots** (19.5 s) | as above; `flags=0x10002(adhoc,runtime)` |
 | Renode signed `app-sandbox` and executed directly (not a bundle main launched by LaunchServices) | traps (`EXC_BREAKPOINT`, exit 133) | traps (exit 132) | secinit refuses; not the Tauri shape, not pursued |
 
