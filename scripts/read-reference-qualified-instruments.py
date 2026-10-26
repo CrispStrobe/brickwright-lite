@@ -446,7 +446,7 @@ def capture_checks(original, report, case, raw, grid, packages, actual_args):
 
 def validate_original_paths(original, intent):
     allowed = {'intent.json', 'event-admission.json', 'ui-package.json', 'package-proof.json', 'run-context.json',
-               'results.json', 'summary.json', 'inventory.json', 'oracle-version.stdout',
+               'results.json', 'summary.json', 'inventory.json', 'preflight-error.txt', 'oracle-version.stdout',
                'oracle-version.stderr', 'oracle-version.process.json'}
     for case in intent['cases']:
         names = {'input.json', 'loaded.json', 'result.json', 'load.stdout', 'load.stderr',
@@ -511,9 +511,16 @@ def read_originals(root, expected_head, expected_run):
     }.items():
         require(context[key] == digest((source_root / path).read_bytes()), 'reviewed source-file hash')
     summary_record = original.json('summary.json')
+    require(type(summary_record) is dict, 'summary must be an object')
     recorded_error = summary_record.get('preflightError')
     require(recorded_error is None or (type(recorded_error) is str and 0 < len(recorded_error) <= 4096), 'bounded recorded setup/cohort error')
+    if recorded_error is not None:
+        raw_error = original.text('preflight-error.txt')
+        require(recorded_error == (raw_error or '[empty thrown value]')[:4096], 'bounded error matches retained original')
+    else:
+        require('preflight-error.txt' not in original.seen, 'unjoined original error')
     records = original.json('results.json')
+    require(type(records) is list and all(type(r) is dict for r in records), 'results must be an array of objects')
     if recorded_error is not None and all(r.get('status') == 'not-run' for r in records):
         expected_rows = [{'id': c['id'], 'status': 'not-run', 'cliAttemptRecorded': False, 'checks': []} for c in intent['cases']]
         require(equal(records, expected_rows), 'preflight untouched full denominator')

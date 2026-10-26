@@ -399,15 +399,23 @@ test('actual collector preserves a preflight failure as independently readable i
         try {
             summary=await runStudy({output,installedRoot:parent,boardSource:parent,cuiSource:parent,
                 admittedIntent:sha256(canonical(manifest)),admissionFile,
-                verifyPackages:()=>{throw new Error('synthetic package admission refusal');},
+                verifyPackages:()=>{throw 'synthetic package admission refusal: '+ '🧪'.repeat(5000);},
                 execute:()=>{calls++;throw new Error('no process may run before package admission');}});
         } finally {for(const [k,v] of Object.entries(previous)){if(v===undefined)delete process.env[k];else process.env[k]=v;}}
         assert.equal(calls,0);assert.equal(summary.counts.missing,32);
+        assert.equal(Array.from(summary.preflightError).length,4096);
+        assert.ok(readFileSync(join(output,'preflight-error.txt'),'utf8').length>5000);
         assert.equal(summary.evidenceComplete,false);assert.equal(summary.numericalConformance,false);
         const report=reader(output);assert.equal(report.status,2,report.stderr+report.stdout);
         const decoded=JSON.parse(report.stdout);assert.equal(decoded.preflightFailureRecorded,true);
         assert.equal(decoded.failureCauseIndependentlyEstablished,false);
-        const saved=get(output,'summary.json');saved.numericalConformance=true;put(output,'summary.json',saved);syncInventory(output);
+        const saved=get(output,'summary.json'),rows=get(output,'results.json');
+        for(const [name,invalid,pattern] of [['summary.json',[],/summary must/],['results.json',{},/results must/],['results.json',[1],/results must/]]) {
+            put(output,name,invalid);syncInventory(output);const bad=reader(output);
+            assert.equal(bad.status,3);assert.match(bad.stderr,pattern);
+            put(output,'summary.json',saved);put(output,'results.json',rows);
+        }
+        saved.numericalConformance=true;put(output,'summary.json',saved);syncInventory(output);
         const forged=reader(output);assert.equal(forged.status,3);assert.match(forged.stderr,/preflight incomplete summary/);
         saved.numericalConformance=false;put(output,'summary.json',saved);
         mkdirSync(join(output,manifest.cases[0].id));put(output,manifest.cases[0].id+'/cli.stdout','hidden attempt');syncInventory(output);

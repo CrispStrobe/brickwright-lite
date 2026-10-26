@@ -212,7 +212,11 @@ export async function runStudy({output,installedRoot,boardSource,cuiSource,admit
             inventory(output);
         }
         checkCohortBudget(start,now);
-    } catch(error) {preflightError=error.message;}
+    } catch(error) {
+        const originalError=error instanceof Error?error.message:String(error);
+        save(join(output,'preflight-error.txt'),originalError);
+        preflightError=Array.from(originalError||'[empty thrown value]').slice(0,4096).join('');
+    }
     const summary={...summarize(manifest,results),preflightError};
     if(preflightError){summary.evidenceComplete=false;summary.numericalConformance=false;}
     save(join(output,'results.json'),results);save(join(output,'summary.json'),summary);
