@@ -1,0 +1,10 @@
+{
+ "author": "CrispStrobe",
+ "license": "BSD-3-Clause",
+ "files": {
+  "models/carry-ratio.ldr": "6be4d48f3c2818865a2415085cf1662187b52f303b0aa5e8fe4a449c76a5f135",
+  "programs/carry-ratio.bw": "0a0d2d1a7019cd937a92fe5267865422e5df05c0e4c6e0066dc2b02f97c02c6a",
+  "LICENSE.txt": "5f48a3052c7fc8b1f0a996da47fcfdf75a606dd9cc4796bf931f0502b9726c0c",
+  "SOURCES.md": "0f3f9ce5fd93f9eb45f02f93ed1736c4d071f9fed0e41b64c4a87c04aa04b8dc"
+ }
+}

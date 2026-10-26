@@ -231,6 +231,171 @@
         "joint_B_pin"
       ],
       "disconnectInputDeg": 35
+    },
+    {
+      "id": "cross-ratio",
+      "judge": "crossed-four-bar-v1",
+      "parts": 127,
+      "ports": [
+        "A"
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 60000,
+      "afterMs": 500,
+      "frameMs": 25,
+      "frozenOutput": "output_beam",
+      "disconnect": [
+        "pivot_axle_P"
+      ],
+      "disconnectInputDeg": 85,
+      "disconnectMeasure": true
+    },
+    {
+      "id": "foldback",
+      "judge": "antiparallelogram-v1",
+      "parts": 95,
+      "ports": [
+        "A"
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 40000,
+      "afterMs": 500,
+      "frameMs": 25,
+      "frozenOutput": "output_arm",
+      "disconnect": [
+        "joint_P_pin"
+      ],
+      "disconnectInputDeg": 65,
+      "disconnectMeasure": true
+    },
+    {
+      "id": "ghost-pivot",
+      "judge": "remote-centre-v1",
+      "parts": 86,
+      "ports": [
+        "A"
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 40000,
+      "afterMs": 500,
+      "frameMs": 25,
+      "frozenOutput": "tool_link",
+      "disconnect": [
+        "upper_link"
+      ],
+      "disconnectInputDeg": 30,
+      "disconnectMeasure": true
+    },
+    {
+      "id": "travel-dial",
+      "judge": "rolling-odometer-v1",
+      "parts": 194,
+      "ports": [
+        "A"
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 40000,
+      "afterMs": 500,
+      "frameMs": 25,
+      "frozenOutput": "wheel",
+      "disconnect": [
+        "connecting_rod"
+      ],
+      "disconnectInputDeg": 55,
+      "disconnectMeasure": true
+    },
+    {
+      "id": "carry-ratio",
+      "judge": "rolling-carry-v1",
+      "parts": 64,
+      "ports": [
+        "A"
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 40000,
+      "afterMs": 500,
+      "frameMs": 25,
+      "frozenOutput": "roller_ball",
+      "disconnect": [
+        "tray_deck",
+        "deck_top",
+        "tray_top_plate"
+      ],
+      "disconnectInputDeg": 2800,
+      "expectedIssues": [
+        {
+          "code": "loose-part",
+          "parts": [
+            "roller_ball"
+          ]
+        }
+      ],
+      "disconnectMeasure": true
+    },
+    {
+      "id": "obliquity-orrery",
+      "judge": "obliquity-orrery-v1",
+      "parts": 52,
+      "ports": [
+        "A"
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 45000,
+      "afterMs": 500,
+      "frameMs": 25,
+      "frozenOutput": "earth",
+      "disconnect": [
+        "crank_pin_B"
+      ],
+      "disconnectInputDeg": 85,
+      "expectedIssues": [
+        {
+          "code": "locked-hinges",
+          "parts": [
+            "beam_middle",
+            "post_mid_low_e",
+            "post_mid_low_w"
+          ]
+        },
+        {
+          "code": "locked-hinges",
+          "parts": [
+            "hub",
+            "hub_pin_front",
+            "hub_pin_rear"
+          ]
+        },
+        {
+          "code": "locked-hinges",
+          "parts": [
+            "beam_top",
+            "post_top_e",
+            "post_top_w"
+          ]
+        }
+      ],
+      "disconnectMeasure": true
+    },
+    {
+      "id": "air-budget",
+      "judge": "air-pump-budget-v1",
+      "parts": 155,
+      "ports": [
+        "A"
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 40000,
+      "afterMs": 500,
+      "frameMs": 25,
+      "frozenOutput": "pump_rod",
+      "disconnect": [
+        "crank_pin_axle",
+        "crank_pin_bush_-25",
+        "crank_pin_bush_25"
+      ],
+      "disconnectInputDeg": 3000,
+      "observeAir": true,
+      "disconnectMeasure": true
     }
   ]
 }

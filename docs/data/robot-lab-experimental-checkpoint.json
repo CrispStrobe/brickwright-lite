@@ -88,6 +88,11 @@
           "notes": "Output rotates in the same sense as input; returns to 119.96° at 59.96°."
         },
         "scope": "one headless run on the app branch engine; not a physical build"
+      },
+      "promoted": {
+        "to": "established library (MODELS)",
+        "date": "2026-10-26",
+        "judge": "crossed-four-bar-v1"
       }
     },
     {
@@ -2719,6 +2724,11 @@
         "pageErrors": 0,
         "nan": false,
         "simMs": 33067
+      },
+      "promoted": {
+        "to": "established library (MODELS)",
+        "date": "2026-10-26",
+        "judge": "rolling-odometer-v1"
       }
     },
     {
@@ -2783,6 +2793,11 @@
         "pageErrors": 0,
         "nan": false,
         "simMs": 30400
+      },
+      "promoted": {
+        "to": "established library (MODELS)",
+        "date": "2026-10-26",
+        "judge": "remote-centre-v1"
       }
     },
     {
@@ -3039,6 +3054,11 @@
         "pageErrors": 0,
         "nan": false,
         "simMs": 62700
+      },
+      "promoted": {
+        "to": "established library (MODELS)",
+        "date": "2026-10-26",
+        "judge": "obliquity-orrery-v1"
       }
     },
     {
@@ -3167,6 +3187,11 @@
         "pageErrors": 0,
         "nan": false,
         "simMs": 34233
+      },
+      "promoted": {
+        "to": "established library (MODELS)",
+        "date": "2026-10-26",
+        "judge": "air-pump-budget-v1"
       }
     },
     {
@@ -3232,6 +3257,11 @@
         "pageErrors": 0,
         "nan": false,
         "simMs": 36800
+      },
+      "promoted": {
+        "to": "established library (MODELS)",
+        "date": "2026-10-26",
+        "judge": "antiparallelogram-v1"
       }
     },
     {
@@ -3462,6 +3492,11 @@
         "pageErrors": 0,
         "nan": false,
         "simMs": 34900
+      },
+      "promoted": {
+        "to": "established library (MODELS)",
+        "date": "2026-10-26",
+        "judge": "rolling-carry-v1"
       }
     },
     {

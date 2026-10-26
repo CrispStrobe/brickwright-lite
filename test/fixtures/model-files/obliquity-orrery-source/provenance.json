@@ -1,0 +1,10 @@
+{
+ "author": "CrispStrobe",
+ "license": "BSD-3-Clause",
+ "files": {
+  "models/obliquity-orrery.ldr": "3d5b09ddf62e4912c4b68eb337e4f7e2170d72eb8bc296f8e963adfb57f41e86",
+  "programs/obliquity-orrery.bw": "b49a1380c5b294a39379307c2e6435a8942845b382eee1fa7a18006a0aef3ba5",
+  "LICENSE.txt": "5f48a3052c7fc8b1f0a996da47fcfdf75a606dd9cc4796bf931f0502b9726c0c",
+  "SOURCES.md": "62d1c9e983dd7968f11acde006c68a4f0c9f0765d0f8357b9f372c07515bc628"
+ }
+}

@@ -829,6 +829,243 @@ export const MODEL_LESSONS = Object.freeze({
             "markiertes Lineal"
         ]
     },
+    "cross-ratio.ldr": {
+        "pieces": 127,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "linkages",
+        "description": {
+            "en": "Motor A turns the input beam of a crossed four-bar. The coupler makes the passive output beam follow tan(φ/2) = 3·tan(θ/2): over a 120° input sweep the output turns 92° and stays within 0.02° of the law.",
+            "de": "Motor A dreht den Eingangsbalken eines gekreuzten Viergelenks. Die Koppel zwingt den passiven Ausgangsbalken auf tan(φ/2) = 3·tan(θ/2): Bei 120° Eingangsweg dreht der Ausgang um 92° und bleibt dabei innerhalb von 0,02° am Gesetz."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Crossed four-bar",
+            "de": "Gekreuztes Viergelenk"
+        },
+        "keywords": [
+            "Crossed four-bar",
+            "Gekreuztes Viergelenk",
+            "antiparallelogram",
+            "crossed four-bar",
+            "crossed parallelogram",
+            "half-angle",
+            "variable ratio",
+            "Antiparallelogramm",
+            "gekreuztes Viergelenk",
+            "veränderliche Übersetzung",
+            "half-angle transform"
+        ]
+    },
+    "foldback.ldr": {
+        "pieces": 95,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "linkages",
+        "description": {
+            "en": "An antiparallelogram is a four-bar whose long links cross. Motor A swings the input arm through 90°; the passive output arm turns the other way, following tan(φ/2) = −5·tan(θ/2) within 0.03°.",
+            "de": "Ein Antiparallelogramm ist ein Viergelenk mit gekreuzten langen Gliedern. Motor A schwenkt den Eingangsarm um 90°; der passive Ausgangsarm dreht gegenläufig und folgt tan(φ/2) = −5·tan(θ/2) auf 0,03° genau."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Antiparallelogram linkage",
+            "de": "Antiparallelogramm"
+        },
+        "keywords": [
+            "Antiparallelogram linkage",
+            "Antiparallelogramm",
+            "antiparallelogram",
+            "crossed parallelogram",
+            "crossed four-bar",
+            "assembly branch",
+            "tangent half angle",
+            "gekreuztes Viergelenk",
+            "Montagezweig"
+        ]
+    },
+    "ghost-pivot.ldr": {
+        "pieces": 86,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "motion",
+        "description": {
+            "en": "Two linked parallelograms turn a tool about a point where there is no hinge. While motor A sweeps ±35°, the tool keeps the input's heading to 0.002° and the remote centre moves less than 0.02 mm.",
+            "de": "Zwei gekoppelte Parallelogramme drehen ein Werkzeug um einen Punkt, an dem kein Gelenk sitzt. Während Motor A um ±35° schwenkt, behält das Werkzeug die Richtung des Eingangs auf 0,002° genau, und das ferne Drehzentrum wandert weniger als 0,02 mm."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Double-parallelogram remote centre",
+            "de": "Doppelparallelogramm mit fernem Drehpunkt"
+        },
+        "keywords": [
+            "Double-parallelogram remote centre",
+            "Doppelparallelogramm mit fernem Drehpunkt",
+            "remote centre",
+            "remote center",
+            "RCM",
+            "virtual pivot",
+            "double parallelogram",
+            "passive linkage",
+            "Fernzentrum",
+            "Drehpunkt",
+            "Doppelparallelogramm",
+            "Koppelgetriebe"
+        ]
+    },
+    "travel-dial.ldr": {
+        "pieces": 194,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "motion",
+        "description": {
+            "en": "A crank drives a sled back and forth. A free 56 mm wheel on a gravity-loaded arm rolls on the sled without slipping, so its turn measures the travel: Δs = −R·Δθ with R = 28 mm, within 0.15 mm over a 42 mm stroke.",
+            "de": "Eine Kurbel schiebt einen Schlitten hin und her. Ein freies 56-mm-Rad an einem durch Schwerkraft angedrückten Arm rollt ohne Schlupf darauf ab, seine Drehung misst also den Weg: Δs = −R·Δθ mit R = 28 mm, auf 0,15 mm genau bei 42 mm Hub."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Rolling odometer",
+            "de": "Abrollende Wegmessung"
+        },
+        "keywords": [
+            "Rolling odometer",
+            "Abrollende Wegmessung",
+            "measuring wheel",
+            "odometer",
+            "rolling contact",
+            "linear measurement",
+            "slip",
+            "Messrad",
+            "Wegmessung",
+            "Abrollen",
+            "Schlupf"
+        ]
+    },
+    "carry-ratio.ldr": {
+        "pieces": 64,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "motion",
+        "description": {
+            "en": "A slider-crank tray carries a free solid ball. Because the ball rolls without slipping, it moves only λ = I/(I + M·r²) = 2/7 of each 16 mm stroke; four strokes measure 0.285 to 0.287.",
+            "de": "Ein Kurbeltisch trägt eine freie Vollkugel. Weil die Kugel ohne Gleiten rollt, legt sie nur λ = I/(I + M·r²) = 2/7 jedes 16-mm-Hubs zurück; vier Hübe ergeben 0,285 bis 0,287."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Ball rolling on a moving tray",
+            "de": "Rollende Kugel auf bewegtem Tisch"
+        },
+        "keywords": [
+            "Ball rolling on a moving tray",
+            "Rollende Kugel auf bewegtem Tisch",
+            "rolling without slipping",
+            "no-slip transport",
+            "rolling contact",
+            "inertia-limited transport",
+            "moment of inertia ratio",
+            "friction cone",
+            "contact limit",
+            "Coulomb friction",
+            "ungrasped payload",
+            "spool on a plank",
+            "Rollkontakt",
+            "Rollen ohne Gleiten",
+            "Transportverhältnis",
+            "Trägheitsverhältnis",
+            "Haftreibung",
+            "Kontaktgrenze",
+            "ungriffige Förderung"
+        ]
+    },
+    "obliquity-orrery.ldr": {
+        "pieces": 52,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "linkages",
+        "description": {
+            "en": "Two equal cranks carry a tilted Earth round the Sun marker without turning it, so its axis keeps the same 22.5° tilt in space. Over a quarter orbit the Sun's declination follows sin δ = sin 22.5°·cos(λ − 45°) within 0.01°.",
+            "de": "Zwei gleiche Kurbeln führen eine geneigte Erde um die Sonnenmarke, ohne sie zu drehen; ihre Achse behält also dieselbe Neigung von 22,5° im Raum. Über eine Viertelbahn folgt die Deklination der Sonne sin δ = sin 22,5°·cos(λ − 45°) auf 0,01° genau."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Parallel-crank orrery",
+            "de": "Parallelkurbel-Orrery"
+        },
+        "keywords": [
+            "Parallel-crank orrery",
+            "Parallelkurbel-Orrery",
+            "orrery",
+            "obliquity",
+            "axial tilt",
+            "solar declination",
+            "seasons",
+            "solstice",
+            "equinox",
+            "parallelogram linkage",
+            "Schiefe der Ekliptik",
+            "Achsneigung",
+            "Sonnendeklination",
+            "Jahreszeiten",
+            "Sonnenwende",
+            "Parallelogramm"
+        ]
+    },
+    "air-budget.ldr": {
+        "pieces": 155,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "fluids",
+        "description": {
+            "en": "A crank-driven pump pushes six strokes of outside air into one tank. Each inward millimetre adds p_atm·A/V; the measured rise of 12.87 kPa matches the predicted 12.87 kPa within 0.1 %, and no stored air leaks back.",
+            "de": "Eine kurbelgetriebene Pumpe drückt sechs Hübe Außenluft in einen Tank. Jeder Millimeter Einwärtshub fügt p_atm·A/V hinzu; der gemessene Anstieg von 12,87 kPa trifft die Vorhersage von 12,87 kPa auf 0,1 %, und keine gespeicherte Luft entweicht."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Crank-driven air pump",
+            "de": "Kurbelgetriebene Luftpumpe"
+        },
+        "keywords": [
+            "Crank-driven air pump",
+            "Kurbelgetriebene Luftpumpe",
+            "pneumatics",
+            "air pressure",
+            "pump",
+            "reservoir volume",
+            "one-way pump",
+            "stored air",
+            "swept volume",
+            "compression travel",
+            "check valve",
+            "Pneumatik",
+            "Luftdruck",
+            "Pumpe",
+            "Speichervolumen",
+            "Rückschlagventil",
+            "Luftvorrat",
+            "Hubvolumen",
+            "Verdichtungsweg"
+        ]
+    },
     "watt-line.ldr": {
         "pieces": 148,
         "motors": 1,
