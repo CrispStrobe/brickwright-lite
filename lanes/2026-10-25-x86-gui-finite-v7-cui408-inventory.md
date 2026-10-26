@@ -169,3 +169,11 @@ identities and eighteen witnesses remain. The distinct
 limits and suppliers, source-binds the existing mirror helper separately, and
 starts disabled. Actual V8 remains unselected and requires a newly qualified
 complete current inventory before its separate GUI acceptance.
+
+## Separately reviewed F8 source arming — 2026-10-26
+
+The distinct F8 route started disabled in Phase A. Its separately reviewed
+source flags are now armed, while this spent F7 route remains retired and its
+reader/fixed identities stay intact. No new inventory has been selected or
+observed. Fresh exact-head source/Build, one-shot F8 admission and independently
+read complete originals remain prerequisites for any separate actual-V8 event.

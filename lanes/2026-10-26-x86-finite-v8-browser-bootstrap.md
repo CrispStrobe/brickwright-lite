@@ -113,3 +113,22 @@ source controls, not a new official inventory. The prior whole-body profiles
 remain held and intentionally refuse changed source until separate independent
 review. Fresh exact-head source and Build qualification, separate arming and
 one-shot F8 admission, originals and independent reading remain required.
+
+## Separately reviewed source arming and role profiles — 2026-10-26
+
+The preceding disabled Phase A checkpoint remains historical. After review
+of the producer, independent reader and workflow, a separate source commit
+arms only the three F8 guards. F7 execution remains retired and its reader
+continues to accept its fixed historical wire. A genuine successful synthetic
+F8 collector now passes exclusive original retention and independent reading;
+the first omitted finalizer-version refusal is preserved. These controls do
+not create an official inventory or authorize a replacement F7 event.
+
+After independent review of the final armed bodies, a separate gate update
+fixes their exact lengths/digests and requires literal fixed F7 pins, distinct
+historical/current SB3 declarations and the current F8 pin map. It retains
+whole-body guards, the four named historical source slots and all current-input
+refusals; no caller profile, automatic refresh or broad exemption is added.
+Fresh exact-head source and Build qualification remain pending. A separately
+admitted one-shot F8 event and complete independently read originals must
+precede any distinct actual-V8 GUI acceptance. No such event is selected.

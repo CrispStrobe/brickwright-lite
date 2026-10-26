@@ -125,3 +125,15 @@ older historical roles. Its changed producer, reader and control bodies must
 receive independent review before any new fixed whole-body profile is written.
 The existing profiles remain unchanged and intentionally refuse those new
 bodies. No automatic refresh, caller override or broad exemption is permitted.
+
+## Reviewed armed F8 body and epoch syntax update — 2026-10-26
+
+The earlier disabled-body refusal remains preserved. After separate source and
+arming review, this update fixes only the three reviewed current body profiles
+and their exact epoch declaration checks: literal historical F7 pins, held
+historical SB3, distinct current SB3 and the current F8 pin map. Portable
+coherent-digest map/alias cuts retain the same four historical source positions
+and two visible historical policy constants. Whole-body identity is mandatory;
+no caller override, old-profile fallback or blanket source exemption exists.
+This is source compatibility only, pending final exact-head source/Build
+qualification and separately admitted F8 originals and actual-V8 acceptance.
