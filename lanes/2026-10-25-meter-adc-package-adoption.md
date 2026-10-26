@@ -144,11 +144,12 @@ failed the actual circuit UX journey. The LM741 meter journey and the first
 four ADC groups passed: explicit primary acquisition, modeled rendering with
 unchanged raw data, modeled triggering, and paired CSV/HOLD behavior.
 
-Envelope rearming remains blocked. After the sample channel was removed, the
-selector stayed in sample mode and ADC remained checked and enabled, with zero
-Board scope channels, throughout the existing 30-second observation. A longer
-publication wait did not resolve it. The subsequent envelope/point rearm and
-failed-source controls did not complete and must not be reported as passed.
+Envelope rearming remains blocked. At the end of the existing 30-second wait,
+the diagnostic showed sample mode, ADC checked and enabled, and zero Board
+scope channels. The required combined envelope state was not observed by the
+wait predicate; the endpoint diagnostic is not a continuous component trace.
+The subsequent envelope/point rearm and failed-source controls did not complete
+and must not be reported as passed.
 
 The forward diagnostic records the original selection's return values,
 scoped/page control counts, exact element identities and connectivity, and a
