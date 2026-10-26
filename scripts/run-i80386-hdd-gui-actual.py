@@ -2726,7 +2726,7 @@ def inventory_observation(template_raw,expected,root,env,output_path):
 
 def retain_inventory_observation(value,output_path):
     failed=value.get('schema') in ('bw.gui-hdd.inventory-failure.v2','bw.gui-hdd.inventory-failure.v3','bw.gui-hdd.inventory-failure.v4','bw.gui-hdd.inventory-failure.v5','bw.gui-hdd.inventory-failure.v6','bw.gui-hdd.inventory-failure.v7','bw.gui-hdd.inventory-failure.v8')
-    need(failed or value.get('schema') in ('bw.gui-hdd.inventory-original.v2','bw.gui-hdd.inventory-original.v3','bw.gui-hdd.inventory-original.v4','bw.gui-hdd.inventory-original.v5','bw.gui-hdd.inventory-original.v6','bw.gui-hdd.inventory-original.v7'),'explicit inventory original version')
+    need(failed or value.get('schema') in ('bw.gui-hdd.inventory-original.v2','bw.gui-hdd.inventory-original.v3','bw.gui-hdd.inventory-original.v4','bw.gui-hdd.inventory-original.v5','bw.gui-hdd.inventory-original.v6','bw.gui-hdd.inventory-original.v7','bw.gui-hdd.inventory-original.v8'),'explicit inventory original version')
     if failed:need(value['firstFailure'] is not None and value['candidate'] is False and value['qualified'] is False,'failure-only inventory cannot qualify')
     target=Path(output_path).with_name('inventory-failure.json') if failed else Path(output_path)
     output=None;first=None;secondary=[]

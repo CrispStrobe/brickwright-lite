@@ -3531,7 +3531,18 @@ class Originals(unittest.TestCase):
           'bootstrapSource':copy.deepcopy(c.BOOTSTRAP_SOURCE),'dependencyPins':copy.deepcopy(c.FINITE_V8_PINS),
           'repositoryVariables':{'BW_FINITE_INVENTORY_V8_SHA256':pin,
             'BW_FINITE_INVENTORY_V8_TEMPLATE_B64':base64.b64encode(raw).decode()}}
-        self.assertEqual(r.verify_inventory_original(E(value),raw,expected)['schema'],'bw.gui-hdd.inventory-reader.v8')
+        # Retain the genuine collector result through the same exclusive
+        # finalizer used by CLI, then grade its exact retained bytes.
+        with tempfile.TemporaryDirectory(dir=root.parent) as temporary:
+            target=pathlib.Path(temporary)/'inventory-original.json'
+            self.assertEqual(c.retain_inventory_observation(value,target),0)
+            retained=target.read_bytes()
+            self.assertEqual(retained,E(value))
+            self.assertFalse(target.with_name('inventory-failure.json').exists())
+            expected['original']=ROW(retained)
+            self.assertEqual(r.verify_inventory_original(retained,raw,expected)['schema'],'bw.gui-hdd.inventory-reader.v8')
+            with self.assertRaises(FileExistsError):c.retain_inventory_observation(value,target)
+            self.assertEqual(target.read_bytes(),retained)
         for cut in ('vendor-witness','vendor-source','wrong-408','missing-index','old-job'):
             changed=copy.deepcopy(value);admission=copy.deepcopy(expected)
             if cut=='vendor-witness':
