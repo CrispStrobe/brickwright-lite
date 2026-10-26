@@ -447,6 +447,44 @@ const nonFiniteBody = bodies => {
  */
 const divergence = (bodyId, ms) => new Error(`the solver diverged: body ${bodyId} has no finite pose at ${(ms / 1000).toFixed(2)} s`);
 
+/**
+ * What belowFloorBody needs from a mechanism, or null without a floor (compile's `ground: false`): the
+ * floor's top (m), half side and thickness, and each dynamic body's reach (m: the farthest point of its
+ * colliders from the body's origin, so pose y + reach is above its highest point however it is turned).
+ */
+export const floorWatch = mechanism => {
+    const g = mechanism?.bodies?.find(b => b.id === 'ground' && b.motion === 'static');
+    const he = g?.colliders?.length === 1 && g.colliders[0].shape === 'box' ? g.colliders[0].halfExtents : null;
+    if (!he) return null;
+    const extent = c => c.shape === 'box' ? Math.hypot(...c.halfExtents) : c.shape === 'cylinder' ? Math.hypot(c.radius, c.halfHeight) : (c.radius || 0);
+    const reach = new Map(mechanism.bodies.filter(b => b.motion === 'dynamic')
+        .map(b => [b.id, Math.max(0, ...b.colliders.map(c => Math.hypot(...(c.position || [0, 0, 0])) + extent(c)))]));
+    return {top: g.position[1] + he[1], x: [g.position[0] - he[0], g.position[0] + he[0]], z: [g.position[2] - he[2], g.position[2] + he[2]],
+        thick: 2 * he[1], reach};
+};
+
+/**
+ * The index of the first dynamic body (poses as nonFiniteBody's) that is wholly below the floor by more than
+ * its thickness over the floor's area, with its depth (m), or null. Solved contacts let a part sink a fraction
+ * of a mm; a whole body that far under is through the floor (a jammed drive's impulse tunnelled it,
+ * issue #1436), and every later step only drops the model further, kilometres within a run. Off the floor's
+ * edge a body may fall: that is not checked.
+ */
+const belowFloorBody = (watch, bodyIds, bodies) => {
+    if (!watch) return null;
+    for (let i = 0; i < bodyIds.length; i++) {
+        const reach = watch.reach.get(bodyIds[i]);
+        if (reach === undefined) continue;
+        const x = bodies[7 * i], y = bodies[7 * i + 1], z = bodies[7 * i + 2];
+        const depth = watch.top - (y + reach);
+        if (depth > watch.thick && x + reach >= watch.x[0] && x - reach <= watch.x[1] && z + reach >= watch.z[0] && z - reach <= watch.z[1]) return {index: i, depth};
+    }
+    return null;
+};
+
+/** Why a run stops when a body went through the floor (belowFloorBody). */
+const fellThrough = (bodyId, depth, ms) => new Error(`body ${bodyId} fell through the floor: ${(depth * 1000).toFixed(0)} mm under it at ${(ms / 1000).toFixed(2)} s`);
+
 export class SimSession {
     /**
      * @param {object} options
@@ -471,6 +509,7 @@ export class SimSession {
         this.runModel = runModel;
         this.mat = mat;
         this.mechanism = mechanism;
+        this._floor = floorWatch(mechanism);
         /** The part catalogue the model was compiled with (the Robot Lab API reads part kinds from it). */
         this.catalog = catalog;
         this.hubState = hubState;
@@ -573,6 +612,12 @@ export class SimSession {
             this._fail(divergence(snap.bodyIds[bad], this.time + ms));
             return;
         }
+        const under = belowFloorBody(this._floor, snap.bodyIds, snap.bodies);
+        if (under) {
+            // As a divergence: the poses stay those of the last step above the floor.
+            this._fail(fellThrough(snap.bodyIds[under.index], under.depth, this.time + ms));
+            return;
+        }
         this._good = snap;
         this.time += ms;
         this._advanced();
@@ -663,6 +708,12 @@ export class SimSession {
         if (bad >= 0) {
             stats.mainMs += now() - start;
             this._fail(divergence(this.core.bodyIds[bad], this.time + batch.ms));
+            return;
+        }
+        const under = belowFloorBody(this._floor, this.core.bodyIds, reply.bodies);
+        if (under) {
+            stats.mainMs += now() - start;
+            this._fail(fellThrough(this.core.bodyIds[under.index], under.depth, this.time + batch.ms));
             return;
         }
         if (this.bridge) stats.diverged += this.bridge.replay(reply.frames);

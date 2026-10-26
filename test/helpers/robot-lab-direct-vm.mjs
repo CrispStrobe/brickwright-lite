@@ -53,6 +53,6 @@ export async function runRobotLabProgram(source,{modelText,timeLimitMs,catalog=C
    if(i>5&&!vm.runtime.threads.some(t=>t.status!==4)){finishedAt=session.time;break;}
   }
   if(finishedAt)for(let ms=0;ms<afterMs;ms+=frameMs){await clock.advance(frameMs);session.tick(frameMs);await session.idle();snapshot('after');}
-  return {track,runModel:p.runModel,mechanism:p.mechanism,issues:p.issues,hubId:hubBodyOf(p.model,p.mechanism,catalog),unsupported:[],finishedAt,...(withSpike?{worldPaused:!simRunning,spikeConnected:spike.isConnected(),spikeCalls,vmErrors,unsupportedPython:hub.data.lastUnsupportedPythonTunnel??null}: {})};
+  return {track,runModel:p.runModel,mechanism:p.mechanism,issues:p.issues,hubId:hubBodyOf(p.model,p.mechanism,catalog),unsupported:[],finishedAt,sessionFailed:session.failed?String(session.failed):null,...(withSpike?{worldPaused:!simRunning,spikeConnected:spike.isConnected(),spikeCalls,vmErrors,unsupportedPython:hub.data.lastUnsupportedPythonTunnel??null}: {})};
  }finally{try{api.dispose();vm.stopAll();vm.quit();}finally{try{session.dispose();registered?.registration.unregister();}finally{if(clockInstalled)clock.uninstall();}}}
 }
