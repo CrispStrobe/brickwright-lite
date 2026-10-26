@@ -263,7 +263,7 @@ format and cannot reconstruct window provenance from elapsed time alone.
 ## Structural packs and explicit model pairs
 
 **Measurement packs for this model** offers explicit choices based on uniquely
-identified motor ports, slider joints, spring sliders, ropes and pneumatic
+identified motor ports, passive hinges, slider joints, spring sliders, ropes and pneumatic
 networks. Applying a pack replaces the current measurement definitions; those
 ordinary bound definitions are saved with the model. Ambiguous or missing
 roles are refused. Structural recommendations do not establish a model's

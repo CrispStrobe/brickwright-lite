@@ -67,6 +67,32 @@ test('motor slider gets only its typed drive readings; the pack still has at mos
     assert.deepEqual(pack.definitions.map(definition => definition.kind), ['travel', 'motorForce', 'sliderPower', 'limitForce']);
 });
 
+test('a compiled motor may share its authored part across stator and rotor endpoints', () => {
+    const session = makeSession({parts: ['base', 'motor', 'shaft'],
+        bodies: [{id: 'stator', parts: ['base', 'motor']}, {id: 'rotor', parts: ['motor', 'shaft']}],
+        joints: [{id: 'drive', type: 'hinge', body1: 'stator', body2: 'rotor', motor: {port: 'A'}}]});
+    const pack = byTitle(roleMeasurementPacks(session), 'Motor A');
+    assert.ok(pack, 'joint selection resolves the constraint, not one body for the authored motor part');
+    assert.ok(pack.definitions.every(d => d.joint === 'drive' &&
+        d.binding === expectedJointBinding(session.mechanism, session.mechanism.joints[0])));
+    session.mechanism.joints.push({...session.mechanism.joints[0], id: 'duplicate', motor: {port: 'B'}});
+    assert.deepEqual(roleMeasurementPacks(session), [], 'shared membership cannot excuse duplicate semantic joint bindings');
+});
+
+test('passive hinges expose their own bounded kinematics and effort without inventing a motor', () => {
+    const session = makeSession({parts: ['base', 'link'],
+        bodies: [{id: 'base', parts: ['base']}, {id: 'link', parts: ['link']}],
+        joints: [{id: 'pivot', type: 'hinge', body1: 'base', body2: 'link'}]});
+    const packs = roleMeasurementPacks(session), pack = byTitle(packs, 'Passive hinge');
+    assert.equal(packs.length, 1);
+    assert.deepEqual(pack.definitions.map(d => d.kind), ['jointAngle', 'jointSpeed', 'passiveTorque', 'limitTorque']);
+    assert.ok(pack.definitions.every(d => d.joint === 'pivot' &&
+        d.binding === expectedJointBinding(session.mechanism, session.mechanism.joints[0])));
+    assert.equal(byTitle(roleMeasurementPacks(session, 'de'), 'Passives Drehgelenk').id, pack.id);
+    session.mechanism.bodies.push({id: 'link', parts: ['link']});
+    assert.deepEqual(roleMeasurementPacks(session), [], 'duplicate endpoint records remain ambiguous');
+});
+
 test('duplicate motor ports refuse only that port pack; they never choose the first hinge', () => {
     const session = makeSession();
     session.mechanism.joints.push({id: 'hinge-A-duplicate', type: 'hinge', body1: 'unknown', body2: 'slider', motor: {port: 'A'}});

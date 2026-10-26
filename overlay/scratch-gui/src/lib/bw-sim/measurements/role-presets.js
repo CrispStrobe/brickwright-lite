@@ -13,6 +13,9 @@ const words = locale => locale === 'de' ? {
     motor: port => `Motor ${port}`,
     motorTitle: port => `Motor ${port}: Messreihe`,
     motorHelp: 'Winkel, Geschwindigkeit, Drehmoment und Leistung des eindeutig zugeordneten Motor-Gelenks.',
+    hingeTitle: parts => `Passives Drehgelenk: ${parts}`,
+    hingeHelp: 'Winkel, Geschwindigkeit und verfügbare Reibungs- und Anschlagmomente des eindeutig gebundenen passiven Drehgelenks.',
+    passiveTorque: 'Reibungsmoment', limitTorque: 'Anschlagmoment',
     angle: 'Winkel', speed: 'Winkelgeschwindigkeit', torque: 'Motordrehmoment', power: 'Motorleistung',
     slider: parts => `Schieber · ${parts}`, sliderTitle: parts => `Schieber: ${parts}`,
     sliderHelp: 'Weg und verfügbare Antriebs- und Anschlagwerte des eindeutig gebundenen Schieber-Gelenks.',
@@ -24,6 +27,9 @@ const words = locale => locale === 'de' ? {
     motor: port => `Motor ${port}`,
     motorTitle: port => `Motor ${port} readings`,
     motorHelp: 'Angle, speed, torque and power from the uniquely bound motor hinge.',
+    hingeTitle: parts => `Passive hinge readings: ${parts}`,
+    hingeHelp: 'Angle, speed and available friction/limit torque from the uniquely bound passive hinge.',
+    passiveTorque: 'Friction torque', limitTorque: 'Limit torque',
     angle: 'Angle', speed: 'Angular speed', torque: 'Motor torque', power: 'Motor power',
     slider: parts => `Slider · ${parts}`, sliderTitle: parts => `Slider readings: ${parts}`,
     sliderHelp: 'Travel and available drive/limit readings from the uniquely bound slider joint.',
@@ -34,12 +40,15 @@ const words = locale => locale === 'de' ? {
 };
 
 const sortedUnique = values => [...new Set(values)].sort((a, b) => a.localeCompare(b));
-const membership = (mechanism, modelPartIds, partBodyCounts, joint) => {
+const membership = (mechanism, modelPartIds, joint) => {
     if (!joint || !validId(joint.id) || !validId(joint.body1) || !validId(joint.body2) || joint.body1 === joint.body2) return null;
     const bodies = mechanism.bodies.filter(body => body.id === joint.body1 || body.id === joint.body2);
     if (bodies.length !== 2 || new Set(bodies.map(body => body.id)).size !== 2) return null;
     const members = bodies.map(body => sortedUnique(copy(body.parts).filter(id => modelPartIds.has(id))));
-    if (members.some(parts => !parts.length || parts.some(id => partBodyCounts.get(id)?.size !== 1))) return null;
+    // A compiled motor legitimately splits one authored part into stator and
+    // rotor bodies. Joint selectors bind both endpoint memberships directly;
+    // they do not resolve an individual part to one of those bodies.
+    if (members.some(parts => !parts.length)) return null;
     return {members, parts: sortedUnique(members.flat())};
 };
 const packId = (prefix, identity) => `${prefix}-${sha256Text(identity).slice(0, 24)}`;
@@ -95,7 +104,7 @@ export const roleMeasurementPacks = (session, locale = 'en') => {
     for (const joint of mechanism.joints) {
         if (joint?.type !== 'hinge' && joint?.type !== 'slider') continue;
         if (!validId(joint.id) || jointIdCounts.get(`${joint.type}\u0000${joint.id}`) !== 1) continue;
-        const bound = membership(mechanism, modelPartIds, partBodyCounts, joint);
+        const bound = membership(mechanism, modelPartIds, joint);
         if (!bound) continue;
         const binding = jointBinding(mechanism, joint);
         const group = jointsByBinding.get(binding) || [];
@@ -129,6 +138,16 @@ export const roleMeasurementPacks = (session, locale = 'en') => {
             definition(`${prefix}-speed`, 'jointSpeed', `${T.motor(port)} · ${T.speed}`, joint, binding),
             definition(`${prefix}-torque`, 'motorTorque', `${T.motor(port)} · ${T.torque}`, joint, binding),
             definition(`${prefix}-power`, 'motorPower', `${T.motor(port)} · ${T.power}`, joint, binding)
+        ]));
+    }
+
+    for (const {joint, binding, parts} of uniqueJoints.filter(entry => entry.joint.type === 'hinge' && !entry.joint.motor)) {
+        const prefix = packId('role-passive-hinge', binding);
+        add(makePack(prefix, T.hingeTitle(parts.join(' / ')), T.hingeHelp, [
+            definition(`${prefix}-angle`, 'jointAngle', T.angle, joint, binding),
+            definition(`${prefix}-speed`, 'jointSpeed', T.speed, joint, binding),
+            definition(`${prefix}-friction`, 'passiveTorque', T.passiveTorque, joint, binding),
+            definition(`${prefix}-limit`, 'limitTorque', T.limitTorque, joint, binding)
         ]));
     }
 
