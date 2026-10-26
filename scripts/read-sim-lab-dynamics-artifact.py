@@ -2,10 +2,12 @@
 # SPDX-License-Identifier: BSD-3-Clause
 """Audit retained dynamics/coverage/SB3 bytes using only Python's standard library.
 
-No producer imports, simulation, acquisition or replay. A foreign pair identity is
-retained provenance; only the saved current model has its LDraw bytes joined here.
+No producer imports, simulation, acquisition or replay. Both named pilot roles
+join admitted source bytes and saved-precision placements/metadata. This does not
+qualify all sixty models geometrically or establish physical accuracy.
 """
 import argparse
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 import hashlib
 import io
 import json
@@ -259,6 +261,180 @@ def audit_coverage(value, checkout, tree):
     return total
 
 
+
+
+PILOT_SOURCES = {
+    'foldback': '257d722c48485b12bd5dc4d78c109301e079a53eea0f7cf10801714e9afd8ec4',
+    'foldback-open': '96661f9f5794b33111c0f25034d7b6b0939e9a7b7aee335d143ad601c324d256'
+}
+
+
+def pilot_projection(ldraw):
+    """Bounded two-pilot LDraw projection at the serializer's six-decimal precision.
+
+    IDs bind transforms and typed per-placement metadata. Comments and building
+    steps do not change this projection. MPD/submodel parsing is unsupported.
+    """
+    require(isinstance(ldraw, str) and '\x00' not in ldraw, 'pilot LDraw text')
+    placements, globals_by_type, pending = {}, {}, {}
+
+    def numeric(value):
+        try:
+            number = Decimal(value)
+            require(number.is_finite() and abs(number) <= Decimal('1e9'), 'pilot numeric bound')
+            return number.quantize(Decimal('.000001'), rounding=ROUND_HALF_UP)
+        except InvalidOperation as error:
+            raise ValueError('pilot numeric syntax') from error
+
+    for line in ldraw.splitlines():
+        tokens = line.split()
+        if not tokens:
+            continue
+        require(tokens[0] in ('0', '1'), 'unsupported pilot primitive')
+        if tokens[0] == '0':
+            require(len(tokens) < 2 or tokens[1].upper() not in ('FILE', 'NOFILE'), 'unsupported pilot MPD')
+            if len(tokens) < 2 or tokens[1] != '!BW':
+                continue
+            require(len(tokens) >= 3, 'pilot typed metadata')
+            kind, values = tokens[2], tokens[3:]
+            if kind == 'ID':
+                require(not pending and len(values) == 1 and text(values[0], 128) and values[0] not in placements, 'pilot placement ID')
+                pending = {'id': values[0]}
+            elif kind in ('IN', 'PORT', 'PEN', 'SLIDE', 'LOAD', 'ROTOR'):
+                require(pending and kind not in pending, 'pilot placement metadata identity')
+                if kind in ('PEN', 'LOAD'):
+                    require(not values, 'pilot flag arity')
+                    pending[kind] = True
+                elif kind == 'ROTOR':
+                    require(len(values) == 1, 'pilot rotor arity')
+                    pending[kind] = numeric(values[0])
+                else:
+                    require(values and all(text(value, 128) for value in values) and (kind == 'SLIDE' or len(values) == 1), 'pilot part metadata arity')
+                    pending[kind] = tuple(values)
+            elif kind in ('GROUP', 'BELT', 'ROPE', 'HOSE', 'DRAW'):
+                require(not pending and values, 'pilot global metadata')
+                if kind == 'ROPE':
+                    require(len(values) >= 3, 'pilot rope arity')
+                    value = (values[0], numeric(values[1]), *values[2:])
+                elif kind == 'DRAW':
+                    require(len(values) == 9, 'pilot drawing arity')
+                    value = (*values[:2], *map(numeric, values[2:]))
+                else:
+                    value = tuple(values)
+                globals_by_type.setdefault(kind, []).append(value)
+            else:
+                require(False, 'unsupported pilot typed metadata')
+        else:
+            require(len(tokens) == 15 and pending, 'pilot type-1 placement')
+            color = tokens[1]
+            require(re.fullmatch(r'[0-9]+|0[xX]2[0-9a-fA-F]{6}', color), 'pilot colour')
+            colour = int(color) if color.isdigit() else color.lower()
+            placement = {**pending, 'colour': colour, 'transform': tuple(map(numeric, tokens[2:14])),
+                         'part': tokens[14].replace('\\', '/').lower()}
+            placements[pending['id']] = placement
+            pending = {}
+    require(not pending and placements, 'pilot incomplete placements')
+    return placements, globals_by_type
+
+
+def audit_pilots(entries, coverage, pair):
+    require(isinstance(entries, list) and len(entries) == 2 and all(isinstance(pilot, dict) for pilot in entries), 'pilot count')
+    require({pilot.get('id') for pilot in entries} == set(PILOT_SOURCES), 'pilot identities')
+    coverage_hashes = {model['id']: model['actualCanonicalLdrawSha256'] for model in coverage['models']}
+    roles, counts = {}, {}
+    for pilot in entries:
+        key = pilot['id']
+        source = pilot.get('sourceLdraw')
+        require(isinstance(source, str) and 0 < len(source.encode('utf-8')) <= 8 * 1024 * 1024, 'pilot source bytes')
+        digest = hashlib.sha256(source.encode('utf-8')).hexdigest()
+        require(digest == PILOT_SOURCES[key] == coverage_hashes[key] == pilot.get('modelSourceSha256'), 'pilot exact source hash join')
+        record, context = pilot.get('record'), pilot.get('context')
+        require(isinstance(context, dict), 'pilot context')
+        model_hash = canonical_hash(record)
+        require(context.get('modelSha256') == model_hash and context.get('rawModelSha256') == digest, 'pilot canonical/raw context join')
+        require(record.get('measurements') == pilot.get('definitions'), 'pilot saved definitions join')
+        live = definitions(pilot.get('definitions'), 64)
+        require(record.get('experiments') == pilot.get('packet'), 'pilot saved packet join')
+        matches = [role for role in ('baseline', 'control') if pair[role]['modelSha256'] == model_hash]
+        require(len(matches) == 1 and matches[0] not in roles.values(), 'pilot pair canonical role join')
+        role = matches[0]
+        require(pilot['packet'] == pair[role], 'pilot final selected-run packet join')
+        for captured in pilot['packet']['runs'][0]['definitions']:
+            current = live.get(captured['id'])
+            require(current is not None and captured['kind'] == current['kind'] and
+                    captured.get('targets', []) == current.get('targets', []) and
+                    all(captured.get(field, '') == current.get(field, '') for field in ('joint', 'rope', 'binding')), 'pilot captured/live definition binding join')
+        require(isinstance(pilot['packet']['runs'][0].get('window'), dict) and len(pilot['packet']['runs'][0]['samples']) >= 2, 'pilot bounded recording window evidence')
+        require(pilot_projection(source) == pilot_projection(record['ldraw']), 'pilot authored placement/typed metadata projection mismatch')
+        roles[key] = role
+        counts[key] = len(pilot_projection(source)[0])
+    require(set(roles.values()) == {'baseline', 'control'}, 'pilot roles incomplete')
+    return {'roles': roles, 'placements': counts, 'projection': 'Source IDs, colours, six-decimal transforms and typed BW metadata; these two non-MPD pilots only.'}
+
+
+def audit_force(entries):
+    expected = {
+        'forklift.ldr': {'motorForce', 'limitForce', 'sliderPower', 'passiveTorque', 'contact'},
+        'screw-crane.ldr': {'screwSlips', 'screwLoad'}
+    }
+    require(isinstance(entries, list) and len(entries) == 2 and all(isinstance(entry, dict) for entry in entries), 'native force model count')
+    require({entry.get('model') for entry in entries} == set(expected), 'native force model identities')
+    joined = set()
+    times = {}
+    for entry in entries:
+        model, joint, now = entry['model'], entry.get('joint'), entry.get('coreTime')
+        require(text(joint, 128) and finite(now) and now > 0, 'native force joint/time')
+        times[model] = now
+        sample = entry.get('sample')
+        require(isinstance(sample, dict) and finite(sample.get('t')) and sample['t'] == now and
+                finite(sample.get('stepSeconds')) and sample['stepSeconds'] > 0, 'native slider stale step')
+        rows = entry.get('rows')
+        require(isinstance(rows, list) and len(rows) == len(expected[model]) and all(isinstance(row, dict) for row in rows), 'native force row count')
+        require({row.get('kind') for row in rows} == expected[model], 'native force kinds/duplicates')
+        defs = definitions(entry.get('definitions'), 64)
+        require(len(defs) == len(expected[model]) and {d['kind'] for d in defs.values()} == expected[model], 'native force definition kinds/duplicates')
+        by_kind = {d['kind']: d for d in defs.values()}
+        values = {}
+        for row in rows:
+            kind = row['kind']
+            require(kind not in joined and row.get('available') is True and finite(row.get('value')), 'native force availability/uniqueness')
+            require((row.get('unit'), row.get('source')) == KINDS[kind][:2], 'native force unit/source')
+            joined.add(kind)
+            values[kind] = row['value']
+            if kind not in ('contact', 'passiveTorque'):
+                require(by_kind[kind]['joint'] == joint, 'native slider definition binding')
+        screws = entry.get('screws')
+        require(screws is None or isinstance(screws, list), 'native screw array')
+        if model == 'forklift.ldr':
+            for kind, field in [('motorForce', 'motorForceN'), ('limitForce', 'limitForceN'), ('sliderPower', 'motorPowerW')]:
+                require(finite(sample.get(field)) and values[kind] == sample[field], 'native slider scalar mismatch: ' + kind)
+            passive_joint, passive = entry.get('passiveJoint'), entry.get('passiveSample')
+            require(text(passive_joint, 128) and passive_joint != joint and by_kind['passiveTorque']['joint'] == passive_joint, 'native passive definition binding')
+            require(isinstance(passive, dict) and finite(passive.get('t')) and passive['t'] == now and
+                    finite(passive.get('stepSeconds')) and passive['stepSeconds'] > 0, 'native passive stale step')
+            require(finite(passive.get('passiveTorqueNm')) and values['passiveTorque'] == passive['passiveTorqueNm'], 'native passive scalar mismatch')
+            targets = by_kind['contact']['targets']
+            require(len(set(targets)) == 2, 'contact definition needs distinct targets')
+            bodies, contacts = entry.get('contactBodies'), entry.get('contacts')
+            require(isinstance(bodies, list) and len(bodies) == 2 and all(text(body, 128) for body in bodies) and bodies[0] != bodies[1], 'native contact body identities')
+            require(isinstance(contacts, list), 'native contact pairs missing')
+            for pair in contacts:
+                require(isinstance(pair, list) and len(pair) == 2 and all(text(body, 128) for body in pair) and pair[0] != pair[1], 'native contact pair shape')
+            contact = int(any(set(pair) == set(bodies) for pair in contacts))
+            require(values['contact'] in (0, 1) and values['contact'] == contact, 'native contact presence mismatch')
+        else:
+            require(entry.get('passiveJoint') is None and entry.get('passiveSample') is None and
+                    entry.get('contacts') is None and entry.get('contactBodies') is None, 'unexpected screw-model passive/contact observation')
+            require(isinstance(screws, list) and all(isinstance(screw, dict) for screw in screws), 'native screw observations missing')
+            matches = [screw for screw in screws if screw.get('sliderJoint') == joint]
+            require(len(matches) == 1, 'native screw slider must resolve exactly once')
+            screw = matches[0]
+            require(type(screw.get('slips')) is int and screw['slips'] >= 0 and finite(screw.get('loadN')) and screw['loadN'] >= 0, 'native screw count/load domain')
+            require(values['screwSlips'] == screw['slips'] and values['screwLoad'] == screw['loadN'], 'native screw scalar mismatch')
+    require(joined == set().union(*expected.values()), 'all seven native scalar kinds required')
+    return {'models': sorted(expected), 'kinds': sorted(joined), 'coreTimes': times, 'joinedScalars': len(joined)}
+
+
 def audit_precision(value):
     selection, packets, result = value['selection'], value['packets'], value['result']
     ids = selection.get('joints')
@@ -365,10 +541,12 @@ def audit(directory, checkout, tree):
     model_hash = canonical_hash(saved)
     pair = audit_pair(saved.get('experiments'), model_hash)
     precision = audit_precision(report['precision'])
+    force = audit_force(report['force'])
+    pilots = audit_pilots(report['pilots'], coverage, saved['experiments'])
     return {'result': 'PASS', 'checkout': checkout, 'tree': tree, 'reportSha256': hashlib.sha256(data).hexdigest(),
             'sb3Sha256': hashlib.sha256(sb3).hexdigest(), 'coverageModels': 60, 'coveragePacks': total_packs,
-            'zipEntries': entries, 'currentCanonicalSha256': model_hash, 'pair': pair, 'precision': precision,
-            'scope': 'Original byte, source, role/pair persistence and completed-step arithmetic joins; no replay or physical qualification. Optional force narrative is not audited.'}
+            'zipEntries': entries, 'currentCanonicalSha256': model_hash, 'pair': pair, 'precision': precision, 'force': force, 'pilots': pilots,
+            'scope': 'Original byte, source, role/pair persistence, two-pilot saved-precision placement/metadata projection, native getter/scalar and completed-step arithmetic joins; no replay or physical-accuracy qualification.'}
 
 
 def main():
