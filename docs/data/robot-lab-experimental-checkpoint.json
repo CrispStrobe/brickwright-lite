@@ -2586,6 +2586,11 @@
         "finalMotorA": -0.1,
         "nan": false,
         "regression": "paired-door-sync PROGRAM-COMPLETE in the same run"
+      },
+      "promoted": {
+        "to": "established library (MODELS)",
+        "date": "2026-10-26",
+        "judge": "toggle-dead-centre-v1"
       }
     },
     {
@@ -3291,6 +3296,11 @@
         "pageErrors": 0,
         "nan": false,
         "simMs": 36767
+      },
+      "promoted": {
+        "to": "established library (MODELS)",
+        "date": "2026-10-26",
+        "judge": "neusis-trisector-v1"
       }
     },
     {
@@ -3506,6 +3516,70 @@
       "causalControl": "IS_CONTROL (of established sarrus-lift)",
       "browserLoad": "NOT_RUN",
       "savedProjectReplay": "NOT_RUN"
+    },
+    {
+      "id": "phasor-twin",
+      "title": "Phasor Twin — the Stirling phase loop",
+      "placements": 63,
+      "archive": "model-lab agent branch agent/bw-opencode-flu-r8-20261026/stirling_cycle_kinematic_analogy (task dir model.ldr/program.bw)",
+      "originalLdrawSha256": "2b1db3f9b86b43e86c5f483671d34400c81fab46078ff4a625521f958412a482",
+      "canonicalLdrawSha256": "0a21a1ecfe4f246df957978a78149bdebc039871a614b616ea7cf70281e72db1",
+      "program": "phasor-twin.bw",
+      "programSha256": "749ee91516c0b8aa8e0710c01ec175195dc74982afc0f7a28e1d2f92aa838ec0",
+      "adaptation": "Reviewer fix: two 3L pins under the motor base (motorbasepin_±20) poked 4 mm below the base beams, so the frame rocked 1.5° at cold start and the 0 ms cold start failed; they are now 2L pins, flush. One 1 LDU face contact (40T gear on the motor boss) remains. No hub (like Motor bench). Lessons edited to app-engine numbers.",
+      "supplierClaims": "Built by the OpenCode builder agent bw-opencode-flu-r8-20261026 (deepseek-v4.1-flash, handoff v3.5); submitted review_ready.",
+      "simulatorLaw": {
+        "verdict": "AGREES",
+        "scope": "headless COLD 0/275/1000, body poses: loop area of piston A vs piston B 805.8 mm² per crank turn vs π r² = 804.25 (0.19%); strokes 32.00 mm; frame stable from cold 0 after the pin fix"
+      },
+      "poweredMotion": "HEADLESS_COMPLETED at COLD 0, 275 and 1000",
+      "mechanicalLaw": "SIMULATOR_AGREES",
+      "causalControl": "PASS (phasor-twin-control)",
+      "browserLoad": "PASS",
+      "savedProjectReplay": "NOT_RUN",
+      "browserRun": {
+        "build": "6fb9acd (checkpoint-build-248)",
+        "browser": "system Chrome, Run button, timeScale 4",
+        "verdict": "PROGRAM-COMPLETE",
+        "parts": 63,
+        "worker": true,
+        "issues": 0,
+        "pageErrors": 0,
+        "nan": false,
+        "simMs": 41400
+      }
+    },
+    {
+      "id": "phasor-twin-control",
+      "title": "Phasor Twin — in phase (control)",
+      "placements": 63,
+      "archive": "agent control.ldr",
+      "originalLdrawSha256": "c95925dcc044c9832ff01dbe7aa57c92859cdbbb68394eefafcc24c5c63672f3",
+      "canonicalLdrawSha256": "a4e98842939aca6447b798a8a165225113d28abd35a841054485fc5ed04f06d4",
+      "program": "phasor-twin.bw",
+      "programSha256": "749ee91516c0b8aa8e0710c01ec175195dc74982afc0f7a28e1d2f92aa838ec0",
+      "adaptation": "Same base-pin fix as phasor-twin.",
+      "supplierClaims": "Built by the OpenCode builder agent bw-opencode-flu-r8-20261026 (deepseek-v4.1-flash, handoff v3.5); submitted review_ready.",
+      "simulatorLaw": {
+        "verdict": "AGREES",
+        "scope": "headless COLD 0: loop area ~4 mm² per turn (vs 805.8 with 90° clocking); strokes 32.00 mm"
+      },
+      "poweredMotion": "HEADLESS_COMPLETED at COLD 0",
+      "mechanicalLaw": "SIMULATOR_AGREES",
+      "causalControl": "IS_CONTROL",
+      "browserLoad": "PASS",
+      "savedProjectReplay": "NOT_RUN",
+      "browserRun": {
+        "build": "6fb9acd (checkpoint-build-248)",
+        "browser": "system Chrome, Run button, timeScale 4",
+        "verdict": "PROGRAM-COMPLETE",
+        "parts": 63,
+        "worker": true,
+        "issues": 0,
+        "pageErrors": 0,
+        "nan": false,
+        "simMs": 41200
+      }
     }
   ],
   "appVerification": {
