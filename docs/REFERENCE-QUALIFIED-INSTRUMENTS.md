@@ -5,6 +5,32 @@ original readback method. Manifest counts describe candidates; actual outcomes
 require an admitted run at its exact source and independent original readback.
 This methods page supplies no numerical or physical qualification by itself.
 
+## Retained first-study result and held correction
+
+The original v1 study at source `92a9ab6e7e4c639fb43299451a974c6a700592d3`,
+[run 40335666363](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40335666363),
+failed and remains unchanged. One acquired original artifact and the frozen
+independent reader establish an incomplete report: 23 of 32 designs numerically
+passed, with all 3,726 compared values agreeing. Nine unsuccessful requests stay
+in the full denominator. Nine of 15 requested scope/DMM designs and 59 of 84
+virtual selector locations passed. These are authored native inputs, not
+foreign-format imports or physical calibration. The failed head is not qualified.
+
+Six LM741 requests used 10 MHz against the existing 2 MHz CLI limit. Two nonlinear
+networks were refused by conservative DC reachability. The LT1763 named refusal
+was correct, but the harness incorrectly expected exit 1 instead of 2. The rate
+and exit-code mistakes belong to the harness. No voltage/current disagreement
+was observed among the23 compared designs; the nine others have no such result.
+
+The local v2 correction retains the 20 µs op-amp observation window,
+20 ns maximum solver step and every numerical tolerance. It requests 40 samples
+at 2 MHz instead of 200 at 10 MHz, validates rate/clock consistency before selection,
+and requires the exact named refusal exit 2. It has a distinct, unselected study
+identity; the original v1 ref is never reused. Its supplier pin/domain admission
+is still pending the separately claimed junction-reachability repair. **Do not
+select this provisional v2 plan before that qualified package adoption.**
+No v2 numerical result is claimed, and source/mock controls do not supply one.
+
 ## Frozen candidate scope
 
 The manifest in `scripts/lib/reference-qualified-circuits.mjs` defines 32
@@ -101,7 +127,7 @@ are checked before synthetic controls. No simulator is imported for that check.
 
 The workflow `reference-qualified-instruments.yml` runs source controls for
 changes to this harness. Only the separately admitted frozen
-`study/reference-qualified-v1` push may select the actual experiment. An exact
+`study/reference-qualified-v2` push may select the actual experiment. An exact
 head, intent, source/reference/reader review and one-shot event check are required
 before that push. The reviewed head is recorded in the separate repository
 variable

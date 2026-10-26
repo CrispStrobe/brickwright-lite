@@ -5,7 +5,7 @@ import {readFileSync,writeFileSync,mkdirSync,mkdtempSync,rmSync,existsSync,copyF
 import {tmpdir} from 'node:os';
 import {join,resolve} from 'node:path';
 import {spawnSync} from 'node:child_process';
-import {createManifest,createCases,canonical,sha256,topologySignature,SOURCES,RUNTIME_FINGERPRINTS} from '../scripts/lib/reference-qualified-circuits.mjs';
+import {createManifest,createCases,canonical,sha256,topologySignature,SOURCES,RUNTIME_FINGERPRINTS,validateCaptureClock} from '../scripts/lib/reference-qualified-circuits.mjs';
 import {referenceDeck,referenceVectors,parseReference,parseCsv,compareDc,compareCapture,close,summarize,referenceMean} from '../scripts/lib/reference-qualified-compare.mjs';
 import {cliArgs,recordCommand,inventory,checkCohortBudget,remainingCohortWall,validateStudyAdmission,runStudy} from '../scripts/reference-qualified-instrument-study.mjs';
 
@@ -93,7 +93,7 @@ function fixture(t) {
     const admission={schemaVersion:1,repositoryName:'CrispStrobe/brickwright-lite',reviewAuthority:'repository-variable:REFERENCE_QUALIFIED_STUDY_HEAD',
         reviewedHead:HEAD,headSha:HEAD,runId:Number(RUN),runAttempt:1,intentSha256:sha256(canonical(manifest))};
     put(root,'event-admission.json',admission);
-    put(root,'run-context.json',{runId:RUN,runAttempt:'1',headSha:HEAD,ref:'refs/heads/study/reference-qualified-v1',
+    put(root,'run-context.json',{runId:RUN,runAttempt:'1',headSha:HEAD,ref:'refs/heads/study/reference-qualified-v2',
         intentSha256:sha256(canonical(manifest)),admissionSha256:sha256(readFileSync(join(root,'event-admission.json'))),
         nodeExecutable:'/usr/bin/node',outputRoot:root,collectorSha256:hashFile('scripts/reference-qualified-instrument-study.mjs'),
         comparatorsSha256:hashFile('scripts/lib/reference-qualified-compare.mjs'),fixturesSha256:hashFile('scripts/lib/reference-qualified-circuits.mjs'),
@@ -111,7 +111,7 @@ function fixture(t) {
         processRecord(root,prefix+'load','cli',['--max-old-space-size=384','/synthetic/bw-circuit-ui/bin/bwc.mjs','convert',input,'--to','json','-o',loadedPath]);
         const argv=cliArgs(c,loadedPath,dir);
         if(c.eligibility==='expected-refusal') {
-            processRecord(root,prefix+'cli','cli',['--max-old-space-size=384','/synthetic/bw-circuit-ui/bin/bwc.mjs',...argv],1,'',c.refusal.stderrIncludes+'\n');
+            processRecord(root,prefix+'cli','cli',['--max-old-space-size=384','/synthetic/bw-circuit-ui/bin/bwc.mjs',...argv],c.refusal.exitCode,'',c.refusal.stderrIncludes+'\n');
             const r={id:c.id,status:'expected-refusal',cliAttemptRecorded:true,checks:[]};results.push(r);put(root,prefix+'result.json',r);continue;
         }
         put(root,prefix+'reference.cir',referenceDeck(c));
@@ -199,6 +199,7 @@ test('synthetic full protocol originals independently reconcile, without physica
     assert.equal(report.referenceEligibleSelectorLocations,83);assert.equal(report.numericallyPassingSelectorLocations,83);
 });
 const negatives=[
+    ['wrong CLI refusal exit with the right named message',root=>{const path='lt1763-precision-refusal/cli.process.json',p=get(root,path);p.status=1;put(root,path,p);},/outcome mismatch/],
     ['wrong official head',root=>{const r=get(root,'run-context.json');r.headSha='b'.repeat(40);put(root,'run-context.json',r);},/event\/head/],
     ['wrong source body hash',root=>{const r=get(root,'run-context.json');r.collectorSha256='0'.repeat(64);put(root,'run-context.json',r);},/source-file hash/],
     ['wrong installed engine fingerprint',root=>{const r=get(root,'package-proof.json');r.board.jsJsonTreeSha256='0'.repeat(64);put(root,'package-proof.json',r);},/pinned runtime/],
@@ -250,10 +251,11 @@ test('actual workflow selector cannot turn unrelated labels, dispatches or refs 
     assert.ok(match,'actual study job condition exists');
     const condition=match[1].trim().replace(/\s+/g,' ');
     const selected=new Function('github','return ('+condition+');');
-    const base={repository:'CrispStrobe/brickwright-lite',event_name:'push',ref:'refs/heads/study/reference-qualified-v1'};
+    const base={repository:'CrispStrobe/brickwright-lite',event_name:'push',ref:'refs/heads/study/reference-qualified-v2'};
     assert.equal(selected(base),true);
     for(const event_name of ['pull_request','workflow_dispatch','workflow_run'])assert.equal(selected({...base,event_name}),false);
     assert.equal(selected({...base,ref:'refs/heads/main'}),false);
+    assert.equal(selected({...base,ref:'refs/heads/study/reference-qualified-v1'}),false,'the consumed v1 selection is not reusable');
     assert.equal(selected({...base,repository:'other/repo'}),false);
     assert.doesNotMatch(text,/x86-hdd|x86-native|workflow_dispatch:/,'no unrelated actual selection');
 });
@@ -266,7 +268,7 @@ test('actual workflow event-admission body refuses duplicate/prior study, change
     const body=block[1].replace(/^          /gm,'');
     const imports=body.match(/^import .*?;$/gm);assert.equal(imports?.length,2);
     const fn=new Function('readFileSync','writeFileSync','createManifest','canonical','sha256','SOURCES','process',body.replace(/^import .*?;\n/gm,''));
-    const run={id:Number(RUN),run_attempt:1,head_sha:HEAD,head_branch:'study/reference-qualified-v1',event:'push',
+    const run={id:Number(RUN),run_attempt:1,head_sha:HEAD,head_branch:'study/reference-qualified-v2',event:'push',
         repository:{full_name:'CrispStrobe/brickwright-lite'},path:'.github/workflows/reference-qualified-instruments.yml'};
     const original={run,selections:{total_count:1,workflow_runs:[run]},ref:{object:{sha:HEAD}}};
     const env={REVIEWED_STUDY_HEAD:HEAD,GITHUB_RUN_ID:RUN,GITHUB_RUN_ATTEMPT:'1',GITHUB_SHA:HEAD,ADMITTED_INTENT:sha256(canonical(manifest))};
@@ -326,7 +328,7 @@ test('actual collector with process/source doubles roundtrips through the indepe
         const envNames=['GITHUB_RUN_ID','GITHUB_RUN_ATTEMPT','GITHUB_SHA','GITHUB_REF','BW_BOARD','NODE_PATH','NODE_OPTIONS'];
         const previous=Object.fromEntries(envNames.map(k=>[k,process.env[k]]));
         Object.assign(process.env,{GITHUB_RUN_ID:RUN,GITHUB_RUN_ATTEMPT:'1',GITHUB_SHA:HEAD,
-            GITHUB_REF:'refs/heads/study/reference-qualified-v1',BW_BOARD:'',NODE_PATH:'',NODE_OPTIONS:''});
+            GITHUB_REF:'refs/heads/study/reference-qualified-v2',BW_BOARD:'',NODE_PATH:'',NODE_OPTIONS:''});
         let calls=0;
         const execute=(executable,args,options)=>{
             assert.equal(executable,'/usr/bin/prlimit');calls++;
@@ -343,7 +345,7 @@ test('actual collector with process/source doubles roundtrips through the indepe
                 writeFileSync(argv[7],JSON.stringify(JSON.parse(readFileSync(argv[3],'utf8')),null,1)+'\n');
                 return {status:0,stdout:'synthetic conversion\n',stderr:''};
             }
-            if(c.eligibility==='expected-refusal')return {status:1,stdout:'',stderr:c.refusal.stderrIncludes+'\n'};
+            if(c.eligibility==='expected-refusal')return {status:c.refusal.exitCode,stdout:'',stderr:c.refusal.stderrIncludes+'\n'};
             const stdout=readFileSync(join(template,c.id,'cli.stdout'),'utf8');
             if(c.route==='measure') {
                 copyFileSync(join(template,c.id,'capture.csv'),join(dir,'capture.csv'));
@@ -395,7 +397,7 @@ test('actual collector preserves a preflight failure as independently readable i
         t.after(()=>rmSync(parent,{recursive:true,force:true}));
         const admissionFile=join(parent,'admission.json');copyFileSync(join(template,'event-admission.json'),admissionFile);
         const values={GITHUB_RUN_ID:RUN,GITHUB_RUN_ATTEMPT:'1',GITHUB_SHA:HEAD,
-            GITHUB_REF:'refs/heads/study/reference-qualified-v1',BW_BOARD:'',NODE_PATH:'',NODE_OPTIONS:''};
+            GITHUB_REF:'refs/heads/study/reference-qualified-v2',BW_BOARD:'',NODE_PATH:'',NODE_OPTIONS:''};
         const previous=Object.fromEntries(Object.keys(values).map(k=>[k,process.env[k]]));
         Object.assign(process.env,values);let calls=0;
         const output=join(parent,'output');let summary;
@@ -424,3 +426,13 @@ test('actual collector preserves a preflight failure as independently readable i
         mkdirSync(join(output,manifest.cases[0].id));put(output,manifest.cases[0].id+'/cli.stdout','hidden attempt');syncInventory(output);
         const hidden=reader(output);assert.equal(hidden.status,3);assert.match(hidden.stderr,/conceal case execution/);
     });
+
+
+test('frozen capture requests respect the actual CLI rate before event selection',()=>{
+    for(const c of manifest.cases.filter(c=>c.route==='measure'))assert.equal(validateCaptureClock(c.clock),c.clock);
+    const opamps=manifest.cases.filter(c=>c.family==='lm741');assert.equal(opamps.length,6);
+    for(const c of opamps){assert.equal(c.clock.durationNs,20000);assert.equal(c.clock.rateHz,2e6);assert.equal(c.clock.count,40);assert.equal(c.maxStepNs,20);}
+    assert.throws(()=>validateCaptureClock({durationNs:20000,intervalNs:100,count:200,firstSampleNs:100,rateHz:1e7}),/CLI.*2 MHz/);
+    assert.throws(()=>validateCaptureClock({durationNs:20000,intervalNs:100,count:200,firstSampleNs:100,rateHz:2e6}),/rate\/interval mismatch/);
+    assert.equal(manifest.cases.at(-1).refusal.exitCode,2);
+});

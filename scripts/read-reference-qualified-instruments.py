@@ -9,7 +9,7 @@ from pathlib import Path
 import re
 import sys
 
-ADMITTED_INTENT = 'e4ce664ab57feecbe697132187b234c1b85ea5c634524a8f758429951a78e631'
+ADMITTED_INTENT = '6df91103a101a2fa8d7dcfa58f62d16221765135ecc308b9119f7febcf8fa7e3'
 SOURCES = {'bw-board': '836867513c3e7fac420ddaa32c17e1c7b6d3e513',
            'bw-circuit-ui': '1bc233c9297e03abb9b7eb603e045b4e92b0bb40'}
 RUNTIME_FINGERPRINTS = {
@@ -479,7 +479,7 @@ def read_originals(root, expected_head, expected_run):
     require(raw_intent.endswith(b'\n') and digest(raw_intent[:-1]) == ADMITTED_INTENT, 'frozen independent intent hash')
     intent = decode(raw_intent)
     require(type(intent['schemaVersion']) is int and intent['schemaVersion'] == 1
-            and intent['study'] == 'authored-reference-designs-v1' and intent['sources'] == SOURCES, 'intent schema/source')
+            and intent['study'] == 'authored-reference-designs-v2' and intent['sources'] == SOURCES, 'intent schema/source')
     require([c['id'] for c in intent['cases']] == IDS, 'intent case identities/order')
     require(intent['counts'] == {'inputs': 32, 'referenceEligibleDesigns': 31, 'refusalControls': 1, 'executed': 0, 'qualified': 0}, 'intent candidate denominator')
     admission_bytes = original.raw('event-admission.json')
@@ -492,7 +492,7 @@ def read_originals(root, expected_head, expected_run):
             and admission['intentSha256'] == ADMITTED_INTENT, 'prior reviewed exact-head event admission')
     context = original.json('run-context.json')
     require(context['headSha'] == expected_head and context['runId'] == expected_run
-            and context['runAttempt'] == '1' and context['ref'] == 'refs/heads/study/reference-qualified-v1'
+            and context['runAttempt'] == '1' and context['ref'] == 'refs/heads/study/reference-qualified-v2'
             and context['intentSha256'] == ADMITTED_INTENT and context['admissionSha256'] == digest(admission_bytes), 'official event/head/admission join')
     require(type(context['nodeExecutable']) is str and context['nodeExecutable'].startswith('/')
             and context['nodeExecutable'].endswith('/node'), 'observed Node entry')
@@ -566,7 +566,8 @@ def read_originals(root, expected_head, expected_run):
             validate_loaded_graph(original, case)
             rec, stdout, stderr, argv = cli_command(original, case)
             if case['eligibility'] == 'expected-refusal':
-                require(rec['status'] == 1 and case['refusal']['stderrIncludes'].encode() in stderr
+                require(type(case['refusal']['exitCode']) is int and case['refusal']['exitCode'] == 2
+                        and rec['status'] == case['refusal']['exitCode'] and case['refusal']['stderrIncludes'].encode() in stderr
                         and not stdout.strip() and case['id'] + '/capture.csv' not in original.seen and case['id'] + '/receipt.json' not in original.seen, 'named pre-capture refusal')
                 result = {'id': case['id'], 'status': 'expected-refusal', 'cliAttemptRecorded': True, 'checks': []}
             else:

@@ -114,7 +114,7 @@ export function validateStudyAdmission(a,env,intentHash) {
     if(a.schemaVersion!==1||a.repositoryName!=='CrispStrobe/brickwright-lite'||a.reviewAuthority!=='repository-variable:REFERENCE_QUALIFIED_STUDY_HEAD'||
         !/^[0-9a-f]{40}$/.test(a.reviewedHead??'')||a.reviewedHead!==a.headSha||a.headSha!==env.GITHUB_SHA||
         a.runId!==Number(env.GITHUB_RUN_ID)||a.runAttempt!==1||env.GITHUB_RUN_ATTEMPT!=='1'||
-        env.GITHUB_REF!=='refs/heads/study/reference-qualified-v1'||a.intentSha256!==intentHash)throw new Error('Prior reviewed exact-head admission required');
+        env.GITHUB_REF!=='refs/heads/study/reference-qualified-v2'||a.intentSha256!==intentHash)throw new Error('Prior reviewed exact-head admission required');
     return a;
 }
 export async function runStudy({output,installedRoot,boardSource,cuiSource,admittedIntent,admissionFile,execute=spawnSync,verifyPackages=null,fingerprintRuntime=runtimeFingerprint,now=()=>performance.now()}) {
@@ -198,7 +198,7 @@ export async function runStudy({output,installedRoot,boardSource,cuiSource,admit
                 results[index].cliAttemptRecorded=true;
                 checkCohortBudget(start,now);
                 if(c.eligibility==='expected-refusal') {
-                    if(response.status!==1||response.error||response.signal||!response.stderr.includes(c.refusal.stderrIncludes)||
+                    if(response.status!==c.refusal.exitCode||response.error||response.signal||!response.stderr.includes(c.refusal.stderrIncludes)||
                         response.stdout.trim()!==''||existsSync(join(dir,'capture.csv'))||existsSync(join(dir,'receipt.json')))throw new Error('Expected named pre-capture refusal not established');
                     results[index]={id:c.id,status:'expected-refusal',cliAttemptRecorded:true,checks:[]};
                 } else {

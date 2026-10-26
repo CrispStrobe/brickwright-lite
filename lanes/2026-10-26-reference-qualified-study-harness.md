@@ -1,6 +1,6 @@
 # Reference-qualified teaching-circuit study — phase one implementation
 
-DONE — source implementation by the Codex circuit/instrument owner; integration
+IN PROGRESS — forward repair by the Codex circuit/instrument owner; integration
 requires all enabled exact-head checks and its separately admitted numerical
 study before merge. Exact initial Lite base
 `fd2618f1006b501ce6c251d55edfcddda7ed0ba6`; branch
@@ -154,3 +154,28 @@ separate from the actual numerical study. The exact frozen head, profile, refere
 and the distinct admission authority before selection. No experiment had been
 selected at this source checkpoint. The implementation PR carries the subsequent
 qualification receipts; this record does not invent a future run or self-hash.
+
+## Retained v1 failure and forward v2 admission repair
+
+The consumed v1 ref remains at `92a9ab6e7e4c639fb43299451a974c6a700592d3`.
+Run 40335666363 failed; one acquired artifact and one frozen independent readback
+returned valid-incomplete exit 2: 23 designs and 3,726 values passed,9 requests unsuccessful
+in the full 32-input denominator. Six requests exceeded the CLI rate contract;
+two nonlinear networks were conservatively refused; the named LT1763 refusal
+had exit 2 rather than the harness's incorrect 1. No old outcome is rewritten.
+
+Local corrections on `lane/reference-qualified-instruments-v2-20261026` stay
+within the owned harness paths. The new identity preserves the 20 µs window,
+20 ns solver cap and numerical tolerances, requests 2 MHz and 40 samples for LM741,
+validates capture clocks before selection, and admits only exact refusal exit 2.
+A qualified supplier-domain repair and explicitly claimed package/pin return leg
+remain prerequisites; no v2 event or variable mutation is authorized by a passing
+mock test. The original head cannot land. Future final source qualification and
+actual readback remain required. No product source, pin or lock change is made
+by this harness-only checkpoint.
+
+At the local harness-only v2 checkpoint, all 47 synthetic source controls
+passed under Node 22 without skips, including wrong-refusal-code and invalid
+rate/clock negatives. All 11 gate-audit controls passed with unchanged baselines.
+No v2 numerical experiment, package pin change or supplier implementation is
+claimed by those source-only results.

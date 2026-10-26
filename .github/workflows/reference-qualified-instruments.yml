@@ -11,7 +11,7 @@ on:
       - test/reference-qualified-instrument-study.test.mjs
       - .github/workflows/reference-qualified-instruments.yml
   push:
-    branches: [study/reference-qualified-v1]
+    branches: [study/reference-qualified-v2]
 
 permissions:
   contents: read
@@ -23,7 +23,7 @@ concurrency:
 
 env:
   REVIEWED_STUDY_HEAD: ${{ vars.REFERENCE_QUALIFIED_STUDY_HEAD }}
-  ADMITTED_INTENT: e4ce664ab57feecbe697132187b234c1b85ea5c634524a8f758429951a78e631
+  ADMITTED_INTENT: 6df91103a101a2fa8d7dcfa58f62d16221765135ecc308b9119f7febcf8fa7e3
 
 jobs:
   controls:
@@ -62,7 +62,7 @@ jobs:
     if: >-
       github.repository == 'CrispStrobe/brickwright-lite' &&
       github.event_name == 'push' &&
-      github.ref == 'refs/heads/study/reference-qualified-v1'
+      github.ref == 'refs/heads/study/reference-qualified-v2'
     runs-on: ubuntu-24.04
     timeout-minutes: 75
     steps:
@@ -80,8 +80,8 @@ jobs:
           set -euo pipefail
           mkdir reference-study-event
           gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" > reference-study-event/run.json
-          gh api "repos/$GITHUB_REPOSITORY/actions/runs?branch=study/reference-qualified-v1&event=push&per_page=100" > reference-study-event/selections.json
-          gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/study/reference-qualified-v1" > reference-study-event/ref.json
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs?branch=study/reference-qualified-v2&event=push&per_page=100" > reference-study-event/selections.json
+          gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/study/reference-qualified-v2" > reference-study-event/ref.json
           node --input-type=module - <<'JS'
           import {readFileSync,writeFileSync} from 'node:fs';
           import {createManifest,canonical,sha256,SOURCES} from './scripts/lib/reference-qualified-circuits.mjs';
@@ -89,7 +89,7 @@ jobs:
           const r=read('run'),selections=read('selections'),ref=read('ref');
           if(!/^[0-9a-f]{40}$/.test(process.env.REVIEWED_STUDY_HEAD??'')||process.env.REVIEWED_STUDY_HEAD!==process.env.GITHUB_SHA||
               process.env.GITHUB_RUN_ATTEMPT!=='1'||r.id!==Number(process.env.GITHUB_RUN_ID)||r.run_attempt!==1||
-              r.head_sha!==process.env.GITHUB_SHA||r.head_branch!=='study/reference-qualified-v1'||r.event!=='push'||
+              r.head_sha!==process.env.GITHUB_SHA||r.head_branch!=='study/reference-qualified-v2'||r.event!=='push'||
               r.repository?.full_name!=='CrispStrobe/brickwright-lite'||
               r.path!=='.github/workflows/reference-qualified-instruments.yml'||ref.object?.sha!==process.env.GITHUB_SHA||
               selections.total_count!==selections.workflow_runs?.length||selections.total_count>100||

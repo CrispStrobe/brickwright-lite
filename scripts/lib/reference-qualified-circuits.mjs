@@ -11,7 +11,20 @@ export const RUNTIME_FINGERPRINTS = freeze({
     ui: {packageName:'bw-circuit-ui',version:'0.1.0',files:434,
         jsJsonTreeSha256:'1dc6002acf202eb1b7a2b619e41e90b36414d9a895bf8fc721fe75e09374ab70'}
 });
-export const STUDY = 'authored-reference-designs-v1';
+export const STUDY = 'authored-reference-designs-v2';
+// Pinned CLI's public measure-rate contract; this does not enlarge its domain.
+export function validateCaptureClock(clock) {
+    if (!clock || !Number.isSafeInteger(clock.durationNs) || clock.durationNs<=0 ||
+        !Number.isSafeInteger(clock.intervalNs) || clock.intervalNs<=0 ||
+        !Number.isSafeInteger(clock.count) || clock.count<=0 ||
+        clock.count*clock.intervalNs!==clock.durationNs || clock.firstSampleNs!==clock.intervalNs)
+        throw new Error('Inexact requested capture clock');
+    if (!Number.isFinite(clock.rateHz) || clock.rateHz<1 || clock.rateHz>2e6)
+        throw new Error('Requested capture rate exceeds the admitted CLI 1 Hz to 2 MHz domain');
+    if (clock.rateHz!==1e9/clock.intervalNs)throw new Error('Requested capture rate/interval mismatch');
+    return clock;
+}
+
 export const BOUNDS = Object.freeze({commandSeconds: 90, cohortSeconds: 3600,
     commandBytes: 8 * 1024 * 1024, fileBytes: 16 * 1024 * 1024,
     cohortBytes: 256 * 1024 * 1024, maxCases: 40, maxReferenceRows: 200000});
@@ -151,7 +164,7 @@ function lm(id,purpose,network) {
         'RINPUT P M 2000000','GPOLE 0 POLE P M '+gm,
         'CPOLE POLE 0 30p','RPOLE POLE 0 '+200000/gm,
         'EBUFFER DRIVE 0 POLE 0 1','ROUT DRIVE OUT 600']);
-    return capture(id,'lm741',purpose,parts,{native:true,durationNs:20000,intervalNs:100,maxStepNs:20,
+    return capture(id,'lm741',purpose,parts,{native:true,durationNs:20000,intervalNs:500,maxStepNs:20,
         referenceCards:cards,referenceScope:'nominal-linear-pole-only; no bias/rail-current/physical-calibration'});
 }
 
@@ -261,7 +274,7 @@ export function createCases() {
             profile:'precision-v1',probe:'ideal',initial:'zero-state',acquisition:'batch',
             clock:{durationNs:10000,intervalNs:1000,count:10,firstSampleNs:1000,rateHz:1e6},maxStepNs:100,
             scopes:[{id:'output',tip:'U.out',reference:'VS.neg',unit:'V'}],meters:[],
-            refusal:{stderrIncludes:'precision batch refuses part U (lt1763)',beforeCapture:true},
+            refusal:{stderrIncludes:'precision batch refuses part U (lt1763)',exitCode:2,beforeCapture:true},
             reference:{kind:'none',reason:'Named unsupported precision model; never an independent numerical result'},
             quantity:'domain-refusal-only'}));
     return freeze(out);
@@ -272,7 +285,8 @@ export function createManifest() {
     const numerical=cases.filter(c=>c.eligibility==='comparable');
     if (new Set(numerical.map(c=>c.topologySha256)).size!==numerical.length) throw new Error('Conservative topology collision: do not inflate design count');
     for (const c of cases) {
-        if (!Number.isSafeInteger(c.clock?.count ?? 1) || (c.clock && c.clock.durationNs%c.clock.intervalNs)) throw new Error('Inexact clock');
+        if (c.clock)validateCaptureClock(c.clock);
+        if (c.eligibility==='expected-refusal'&&c.refusal.exitCode!==2)throw new Error('Named CLI domain refusal must use exit 2');
     }
     return freeze({schemaVersion:1,study:STUDY,sources:SOURCES,runtimeFingerprints:RUNTIME_FINGERPRINTS,bounds:BOUNDS,
         counts:{inputs:cases.length,referenceEligibleDesigns:numerical.length,refusalControls:cases.length-numerical.length,
