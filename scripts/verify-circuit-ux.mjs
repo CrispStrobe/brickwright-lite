@@ -1115,9 +1115,34 @@ try {
           await scope.getByTestId('bw-scope-time-capture').selectOption('sample');
           await scope.locator('select').last().selectOption(nets.signal);
           await scope.getByText('+ channel',{exact:false}).click();
-          handle=await adcPage.evaluate(()=>window.__board.getScopeChannels()[0]);
-          requireADC(handle!==envelopeHandle&&await adcPage.evaluate(h=>window.__board.getScopeData(h).capture==='sample'
-            &&window.__board.getScopeData(h).count===0,handle),'ADC_POINT_REARM_REUSED_RECORD');
+          const pointRearm=await adcPage.evaluate(previousHandle=>{
+            const board=window.__board,channels=board.getScopeChannels(),handle=channels[0];
+            let result=false,primaryError=null,state=null,diagnosticError=null;
+            try {
+              result=handle!==previousHandle&&board.getScopeData(handle).capture==='sample'
+                &&board.getScopeData(handle).count===0;
+            } catch(error) {primaryError=error;}
+            // Same evaluation as the original predicate: a later read could
+            // observe a different React publication or acquisition record.
+            try {
+              const data=board.getScopeData(handle);
+              const selector=document.querySelector('[data-testid="bw-scope-time-capture"]');
+              const adc=document.querySelector('[data-testid="bw-scope-adc-enabled"]');
+              if(!data||!selector||!adc) throw new Error('ADC_POINT_REARM_DIAGNOSTIC_MISSING');
+              state={previousHandle,handle,channels,capture:data.capture,count:data.count,
+                clock:String(board.getTime()),selectorValue:selector.value,selectorDisabled:selector.disabled,
+                adcChecked:adc.checked,adcDisabled:adc.disabled};
+            } catch(error) {diagnosticError=String(error);}
+            if(primaryError) {
+              try {primaryError.message+=' ADC_POINT_REARM_STATE '+JSON.stringify({result,state,diagnosticError});}
+              catch {/* retain the original predicate error */}
+              throw primaryError;
+            }
+            return {handle,result,state,diagnosticError};
+          },envelopeHandle);
+          handle=pointRearm.handle;
+          requireADC(pointRearm.result&&pointRearm.state!==null&&pointRearm.diagnosticError===null,
+            'ADC_POINT_REARM_REUSED_RECORD '+JSON.stringify(pointRearm));
           await adcPage.evaluate(()=>window.__board.advanceTo(window.__board.getTime()+1000000n));
           await scope.getByTestId('bw-scope-adc-enabled').check();
           await adcPage.waitForFunction(()=>document.querySelector('[data-testid="bw-scope-acquisition-0"]')?.getAttribute('data-adc-bits')==='1');

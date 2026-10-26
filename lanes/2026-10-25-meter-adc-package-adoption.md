@@ -171,3 +171,19 @@ Next work within this lane:
    before normal matched-head integration and final campaign closeout. Keep
    the completed numerical study attached to its original source identity;
    do not replay it or claim physical oscilloscope/LM741 accuracy.
+
+### Later point-rearm failure
+
+At diagnostic head `65cc5c8d84852878c7d72ef842d5f3452ea006e2`,
+[Build40256837534](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40256837534)
+passed the combined envelope-publication wait and then failed
+`ADC_POINT_REARM_REUSED_RECORD`. The earlier intermittent mode-publication
+failure is not thereby resolved. The three-part point-rearm assertion did not
+identify whether the handle, capture mode or count differed from its expectation.
+
+The local evidence replacement keeps the second selection and exact three-part
+predicate, recording its result and handle/mode/count tuple in the same browser
+evaluation. Missing diagnostics remain a failure; an original predicate error
+is rethrown. No new wait, retry, engine advance, state override or product fix
+is introduced. This diagnostic still requires review and affected GUI evidence;
+the consumer qualification and final failed-source controls remain open.
