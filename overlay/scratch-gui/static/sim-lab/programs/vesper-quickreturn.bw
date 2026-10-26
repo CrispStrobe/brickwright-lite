@@ -1,0 +1,116 @@
+# VESPER — Quick-Return Shaper.
+# Open vesper-quickreturn.ldr in Robot Lab, select Plain, Reset, then Run.
+# Only motor A drives the crank. The slotted rocker, connecting rod and
+# guided output ram are passive mechanical bodies.
+# Three uninterrupted revolutions in each powered stage provide interior
+# steady-speed cycles for independent quick-return timing measurements.
+# Reset the complete model before every run. Use the supplied settings.
+DEVICE SPIKE
+GLOBAL completed
+GLOBAL failed
+GLOBAL stage
+GLOBAL moving
+GLOBAL inputEncoder
+GLOBAL inputCrankDegrees
+GLOBAL targetDegrees
+GLOBAL targetCrankDegrees
+GLOBAL moveDegrees
+
+WHEN flag clicked:
+  set completed to 0
+  set failed to 0
+  set stage to 0
+  set moving to 0
+  set inputEncoder to 0
+  set inputCrankDegrees to 0
+  set targetDegrees to 0
+  set targetCrankDegrees to 0
+  set moveDegrees to 0
+  IF ((lab status) = "no-model") or ((lab status) = "not-open") THEN:
+    set failed to 1
+    say "Open Vesper in Robot Lab, select Plain, then Reset and Run."
+    stop all
+  lab start
+  lab stop motor A hold
+  IF (abs of (lab motor A angle)) > 3 THEN:
+    set failed to 1
+    say "Reset the complete Vesper model before this demonstration."
+    stop all
+  reset timer
+  broadcast "Vesper observe"
+  broadcast "Vesper watchdog"
+  say "At home: the crank drives the passive quick-return ram."
+  wait 3 seconds
+  set stage to 1
+  set targetCrankDegrees to 1080
+  set targetDegrees to 1080
+  set moving to 1
+  say "Slow forward: three continuous shaping cycles."
+  set moveDegrees to (targetDegrees - (lab motor A angle))
+  lab run motor A for moveDegrees degrees at 30 degrees per second
+  lab stop motor A hold
+  set moving to 0
+  wait 3 seconds
+  IF (abs of ((lab motor A angle) - targetDegrees)) > 2 THEN:
+    set failed to 1
+    say "The crank missed its checkpoint. Inspect Vesper and Reset."
+    stop all
+  set stage to 2
+  set targetCrankDegrees to 0
+  set targetDegrees to 0
+  set moving to 1
+  say "Slow reverse: three continuous return cycles."
+  set moveDegrees to (targetDegrees - (lab motor A angle))
+  lab run motor A for moveDegrees degrees at 30 degrees per second
+  lab stop motor A hold
+  set moving to 0
+  wait 3 seconds
+  IF (abs of ((lab motor A angle) - targetDegrees)) > 2 THEN:
+    set failed to 1
+    say "The crank missed its checkpoint. Inspect Vesper and Reset."
+    stop all
+  set stage to 3
+  set targetCrankDegrees to 1080
+  set targetDegrees to 1080
+  set moving to 1
+  say "Faster forward: three continuous quick-return cycles."
+  set moveDegrees to (targetDegrees - (lab motor A angle))
+  lab run motor A for moveDegrees degrees at 60 degrees per second
+  lab stop motor A hold
+  set moving to 0
+  wait 3 seconds
+  IF (abs of ((lab motor A angle) - targetDegrees)) > 2 THEN:
+    set failed to 1
+    say "The crank missed its checkpoint. Inspect Vesper and Reset."
+    stop all
+  set stage to 4
+  set targetCrankDegrees to 0
+  set targetDegrees to 0
+  set moving to 1
+  say "Faster reverse: three cycles, then home."
+  set moveDegrees to (targetDegrees - (lab motor A angle))
+  lab run motor A for moveDegrees degrees at 60 degrees per second
+  lab stop motor A hold
+  set moving to 0
+  wait 3 seconds
+  IF (abs of ((lab motor A angle) - targetDegrees)) > 2 THEN:
+    set failed to 1
+    say "The crank missed its checkpoint. Inspect Vesper and Reset."
+    stop all
+  set completed to 1
+  say "Vesper complete: slow and fast cycles in both directions, then home. Reset to repeat."
+
+WHEN I receive "Vesper observe":
+  repeat until completed = 1:
+    set inputEncoder to (lab motor A angle)
+    set inputCrankDegrees to (inputEncoder * 1)
+    wait 0.05 seconds
+
+WHEN I receive "Vesper watchdog":
+  repeat until completed = 1:
+    IF timer > 220 THEN:
+      set failed to 1
+      lab stop motor A hold
+      say "Vesper stopped after its time limit. Inspect the model and Reset."
+      stop all
+    wait 0.05 seconds

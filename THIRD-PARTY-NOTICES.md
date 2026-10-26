@@ -2684,3 +2684,8 @@ External LDraw parts retain their existing separate attribution and licences.
 ### SineShuttle and Quartermaster
 
 Original model and program designs by CrispStrobe, BSD-3-Clause. SineShuttle supplies the full grant; Quartermaster uses the owner-authorized BSD grant and retains its corrected Crossglide cradle credit. Individual notices: `static/sim-lab/licenses/sine-shuttle.txt` and `quartermaster.txt`. Standard LDraw part meshes retain their individual authors and licences.
+
+
+### Experimental Technic checkpoint sources
+
+Original user-owned models and programs by CrispStrobe, BSD-3-Clause. The twenty-one checkpoint sources are listed with original and canonical hashes in `docs/data/robot-lab-experimental-checkpoint.json`; individual full notices are under `static/sim-lab/licenses/`. These are experimental, not physically qualified library examples. Standard LDraw part drawings retain their existing authors and licences.

@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "id": "bend-ripple",
+  "language": "en",
+  "what": "Single Cardan (universal) joint with an adjustable bend. Motor A turns the input shaft 1:1. Motor B swings the bearing carrier of the output shaft about the joint centre and so sets the bend angle β between 10° and 30°. The output shaft has no motor; it is driven only through the stock Technic universal joint. The program compares one full input turn at β = 10° with one at β = 30°, and in between holds the input still at a 45° phase while only the bend changes.",
+  "try": [
+    "Open Bend Ripple with its program, press Reset, then Run. Encoder A = 0° is input phase 0°, and the bend is β = 10° + encoder B. Each held stage lasts 2 s; the whole run takes about two minutes.",
+    "Stage 1 turns the input 360° at β = 10°, stage 2 a further 45° to the diagonal phase (405°). Compare the output marker with the input during the turn: at 10° the output leads and lags by less than half a degree, which is hard to see.",
+    "Stage 3 holds the input at 405° while motor B raises the bend to 30°. Watch the output shaft relative to its carrier: although the input does not move, the output should turn by about 3.7°. Stage 6 lowers the bend again, and the output should turn back.",
+    "Stage 4 turns the input a full 360° at β = 30° (405° → 765°), stage 5 reverses it, stage 7 returns to the saved datum. Now the lead and lag reach about ±4.1°, twice per revolution, while input and output still agree after each full turn."
+  ],
+  "why": "The cross of the joint keeps the input fork and the output fork perpendicular. With the shafts in line, that forces the output to follow the input exactly. With the output shaft bent by β, the condition becomes tan ψ = tan θ / cos β (input angle θ, output angle ψ, counted from the position where the input fork lies in the bend plane). Both shafts still make one turn per turn, but within the turn the output alternately runs ahead and falls behind, twice per revolution. Its instantaneous speed ratio swings between cos β and 1/cos β: 0.985–1.015 at 10°, 0.866–1.155 at 30°. Because β appears in the same equation, changing the bend while θ is held also moves ψ, except at the phases θ = 0°, 90°, 180° and 270°.",
+  "matters": "Single universal joints sit in steering columns, drive shafts and tool drives. Their speed ripple causes vibration and torque pulsation, which is why vehicle drive shafts use two joints phased so that the second cancels the first (see Phase Bridge), or constant-velocity joints. Bend Ripple adds a second input, the bend itself, as when a suspension moves while the shaft turns. In a headless run of the Brickwright simulator, the measured output, taken relative to its carrier, followed tan ψ = tan θ / cos β to within 0.007°: ripple 0.88° peak to peak at 10° and 8.20° at the reached 29.94° bend, and 3.64° of output rotation in the bend-only stage. That is a simulation observation; no physical LEGO build has been tested.",
+  "question": "Motor A holds the input at exactly 405° while motor B raises the bend from 10° to 30°. Does the output shaft stay still? What would happen if the input were held at 360° instead?",
+  "answer": "At 405° (a 45° phase) the output turns, ideally by about 3.67°: ψ = atan(1/cos β) goes from 45.44° at 10° to 49.11° at 30°, and it turns back when the bend returns to 10°. At 360° (phase 0°) tan θ = 0, so ψ stays at 0° whatever the bend; the same holds at 90°, 180° and 270°. The bend-only effect therefore depends on the input phase.",
+  "further": [
+    "Phase ripple ψ − θ: ideally about 0.88° peak to peak at β = 10° and 8.23° at β = 30°, roughly nine times larger for three times the bend, because at small angles it grows with β². Compare samples inside the turn, not only the end poses.",
+    "The output is fastest (ratio 1/cos β) when the input fork lies in the bend plane (θ = 0°, 180°) and slowest (cos β) a quarter turn later. Find these phases during the 30° turn.",
+    "The commanded speed caps (24°/s for A, 4°/s for B) are not measured speeds; compute ratios from measured angle changes, and measure the output relative to the moving carrier, not the room.",
+    "Limits: play and friction in the stock joint and the real clearance of its cross are not represented. The supplier itself reports its fork clearance checks as inconclusive."
+  ],
+  "formula": "tan ψ = tan θ / cos β; ψ = atan2(sin θ, cos β·cos θ), counted continuously. dψ/dθ = cos β / (1 − sin²β·cos²θ), between cos β (θ = 90°, 270°) and 1/cos β (θ = 0°, 180°). Largest phase error: tan(ψ − θ) = (1 − cos β)/(2√cos β) → ±0.44° at 10°, ±4.12° at 30°. θ = encoder A, β = 10° + encoder B, ψ relative to the moving carrier.",
+  "related": [
+    "ripple-relay.ldr",
+    "phase-bridge.ldr",
+    "phase-bridge-misphased.ldr",
+    "wavemaker.ldr"
+  ]
+}

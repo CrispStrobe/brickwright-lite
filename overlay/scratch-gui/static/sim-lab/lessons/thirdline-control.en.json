@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "id": "thirdline-control",
+  "language": "en",
+  "what": "The comparison for Thirdline: the same 179 parts and the same program, but the joint that marks the ruler is moved one hole inward, so the marked distance is 24 mm instead of 32 mm. The circle radius stays 32 mm. The line still slides and turns freely, but it no longer divides the angle into thirds: in the simulator it follows its own law, θ = 2φ + asin(0.75·sin φ), within 0.036°, and sits up to 3.2° away from one third of the input.",
+  "try": [
+    "Load this model, press Reset, then Run, and read the yellow line at each pause: about 18.2°, 23.7°, 29.3° and 34.8° for inputs of 50°, 65°, 80° and 95°.",
+    "Compare with Thirdline, where the same inputs give 16⅔°, 21⅔°, 26⅔° and 31⅔°: here every value is too large, and the gap grows.",
+    "Compare the output steps for equal 15° input steps: about 5.51°, 5.54° and 5.58° here, against an even 5.00° in Thirdline.",
+    "Look at the ruler: only the position of one joint differs. A single hole decides whether the machine trisects."
+  ],
+  "why": "The closure of Archimedes' construction is sin(θ − 2φ) = (d/r)·sin φ, where r is the circle radius and d the marked distance. Only when d = r does this reduce to θ − 2φ = φ, i.e. θ = 3φ. With d = 0.75·r the extra term asin(0.75·sin φ) is smaller than φ, so the line must turn further than one third to close the figure, and the ratio is no longer constant. The control proves that the trisection comes from the equal mark, not from the motor program or the guides.",
+  "matters": "A good control changes one cause and predicts a different result. Here the prediction is not just 'wrong', it is a specific other law, and the measured line follows that law closely. That is much stronger evidence that the main model works for the stated reason than a single matching number.",
+  "question": "Why does moving one joint by one hole spoil the trisection, although every part still fits and moves freely?",
+  "answer": "Trisection needs the marked distance on the ruler to equal the circle radius (d = r). Moving the joint makes d = 24 mm while r = 32 mm, so the closure becomes θ = 2φ + asin(0.75·sin φ) instead of θ = 3φ. The line then turns between 5.51° and 5.58° per 15° input step instead of exactly 5°.",
+  "further": [
+    "Use θ = 2φ + asin(0.75·sin φ) to check the line angle at θ = 80° (about 29.3°).",
+    "What marked distance d would make the line turn by more than one half of the input at small angles?",
+    "Why could Archimedes' method not be accepted by Greek geometers who allowed only compass and unmarked straightedge?"
+  ],
+  "formula": "sin(θ − 2φ) = (d/r)·sin φ ⇔ θ = 2φ + asin((d/r)·sin φ); here d = 24 mm, r = 32 mm, d/r = 0.75. Thirdline: d = r ⇒ θ = 3φ.",
+  "related": []
+}

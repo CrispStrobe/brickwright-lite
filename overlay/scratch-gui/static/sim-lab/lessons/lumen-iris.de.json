@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "id": "lumen-iris",
+  "language": "de",
+  "what": "Irisblende mit sechs zahnradgetriebenen Lamellen. Motor A dreht ein Ritzel mit 12 Zähnen, das in eines von sechs Lamellenzahnrädern mit 20 Zähnen greift. Dieses Rad kämmt zugleich mit der Außenverzahnung eines hohlen Drehkranzes mit 60 Zähnen, und der Drehkranz treibt die übrigen fünf Lamellenräder. Jedes Lamellenrad trägt eine 6 × 6-Platte als Lamelle; die sechs Platten liegen in gestaffelten Höhen und können sich deshalb überlappen wie die Lamellen einer Kamerablende. Drehen sich die Räder, schwenken die Platten um ihre eigenen Achsen nach außen und geben in der Mitte eine sechszählig symmetrische Öffnung frei. Das Programm öffnet in vier gleichen Eingangsschritten von 13,8° bis −55,2°, schließt über dieselben Haltepunkte und öffnet und schließt danach noch einmal mit doppelter Geschwindigkeit. Experimentelles Modell: Das hier beschriebene Gesetz wurde bisher nur im Simulator gemessen (ein Lauf ohne Bildschirm), nicht an echten LEGO-Teilen.",
+  "try": [
+    "Setze zurück und drücke Start. Schau bei jedem 13,8°-Halt im ersten Durchgang genau auf die Mitte und schätze die Breite der Öffnung. Im Simulator maß der größte einbeschriebene Kreis an den vier Haltepunkten etwa 8,8, 16,3, 22,5 und 27,2 mm (der Lieferant nennt etwa 24 mm, offenbar anders gemessen).",
+    "Vergleiche die vier Öffnungsschritte. Die Eingangsschritte sind gleich groß – wächst auch die Öffnung in gleichen Schritten?",
+    "Verfolge den Drehkranz und ein Lamellenrad. Die Lamelle sollte sich dreimal so weit drehen wie der Kranz, in Gegenrichtung, und alle sechs Lamellen sollten sich gemeinsam bewegen.",
+    "Vergleiche die Öffnung am selben Haltepunkt beim Öffnen und beim Schließen sowie im schnelleren zweiten Durchgang. Ein reines Zahnradgetriebe ergibt beim selben Eingangswinkel dieselbe Öffnung; ein Unterschied deutet auf Nachlauf oder Zahnspiel hin."
+  ],
+  "why": "Die Zahnräder koppeln alle sechs Lamellen an den einen Eingang: Lamellenwinkel = (12/20) × Eingang = 0,6 × Eingang, Kranzwinkel = (12/60) × Eingang = 0,2 × Eingang. Bei vollem Weg (55,2° am Motor) hat sich jede Lamelle um etwa 33,1° gedreht, der Kranz um etwa 11,0°. Alle 20er-Räder greifen von außen in denselben Kranz, drehen sich daher um denselben Winkel in dieselbe Richtung, und die Öffnung bleibt mittig. Proportional zum Lamellenwinkel ist die Öffnung trotzdem nicht: Jede Lamelle schwenkt um ihre eigene Achse, und der Abstand ihrer Innenkante von der Mitte ändert sich ungefähr wie ein Kosinus des Schwenkwinkels. In der idealen Plattengeometrie geben die ersten Grade die Mitte am schnellsten frei, und jeder weitere Viertelschritt bringt weniger Breite als der vorige. Im Simulator wurden für alle sechs Lamellen die Verhältnisse Lamelle/Eingang = −0,600 und Kranz/Eingang = +0,200 gemessen; die vier Öffnungsschritte brachten etwa 8,8, 7,5, 6,2 und 4,7 mm.",
+  "matters": "Irisblenden regeln das Licht in Kameras und Mikroskopen und dienen auch als verstellbare Ventile. Der Kern ist ein einziger Eingang, der viele gleiche Teile über eine symmetrische Kopplung bewegt, sodass die Öffnung zentriert bleibt; synchronisierte Spanner und Zentriergreifer nutzen dieselbe Idee. Eine klassische Kamerablende bewegt ihre Lamellen über einen Stellring mit Stiften und Schlitzen; Lumen treibt stattdessen jede Lamelle direkt über Zahnräder vom Kranz an. Der Simulator modelliert weder Licht noch eine lichtdichte Abdichtung; laut Lieferant bleibt bei geschlossenen Lamellen ein winziger Spalt.",
+  "question": "Das Programm öffnet die Blende in vier gleichen Eingangsschritten von 13,8°. Wird die Öffnung bei jedem Schritt um gleich viel breiter?",
+  "answer": "Nein, jedenfalls nicht in der idealen Geometrie. Die Übersetzung ist linear – jeder Schritt dreht jede Lamelle um dieselben 8,3° –, aber die Öffnung hängt davon ab, wo die Lamellenkanten landen, und das folgt einem kosinusähnlichen Zusammenhang mit dem Lamellenwinkel. Nahe der geschlossenen Stellung geben wenige Grad die Mitte schnell frei; gegen Ende bewegen sich die Kanten zunehmend seitlich statt nach außen, und die späteren Schritte bringen weniger.",
+  "further": [
+    "Prüfe bei vollem Weg die Übersetzung 3:1 zwischen Lamellenrad und Kranz: etwa 33,1° an einer Lamelle gegenüber etwa 11,0° am Kranz.",
+    "Beim echten Nachbau müssen alle sechs Eingriffe in Phase sein. Säße ein Lamellenrad um einen Zahn versetzt, stünde diese Lamelle um 360°/20 = 18° falsch. Was würde das mit der Öffnung machen?",
+    "Zeichne eine Lamelle als quadratische Platte, die um eine Achse 40 mm neben der Mitte schwenkt, und miss, wie sich ihre nächstgelegene Kante bei 0°, 8°, 17°, 25° und 33° verschiebt."
+  ],
+  "formula": "Lamellenwinkel = (12/20) × θ_A = 0,6 θ_A; Kranzwinkel = (12/60) × θ_A = 0,2 θ_A. Voller Weg |θ_A| = 55,2168° → Lamellen ≈ 33,1°, Kranz ≈ 11,0°; Viertelschritt 13,8042° → 8,28° je Lamelle. Ein Zahn am Lamellenrad = 360°/20 = 18° Lamellendrehung. Die Vorzeichen hängen von der Achsenkonvention ab.",
+  "related": [
+    "ratio-workbench.ldr",
+    "vernier-drive.ldr"
+  ]
+}

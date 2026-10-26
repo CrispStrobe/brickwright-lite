@@ -1,0 +1,206 @@
+# High Select — the identical height itinerary with input A and input B exchanged.
+# Copyright (c) 2026 Christian Ströbele (CrispStrobe). SPDX-License-Identifier: BSD-3-Clause.
+# Freshly load the matching saved model before EVERY run.
+# Only rack-input motors A/B are commanded; gravity and ordinary contact move the bridge.
+# Stage 0 settles the saved pose. Stages 1–10 each end in a 0.8 s hold.
+# The passive output is never read, assigned, reset or actuated.
+# Each finite input move uses target minus a fresh encoder reading, with at most two bounded trims.
+DEVICE SPIKE
+GLOBAL stage = 0
+GLOBAL settled = 0
+GLOBAL complete = 0
+GLOBAL fault = 0
+GLOBAL targetA = 0
+GLOBAL targetB = 0
+GLOBAL targetHeightA = 0
+GLOBAL targetHeightB = 0
+GLOBAL trimA = 0
+GLOBAL trimB = 0
+WHEN flag clicked:
+  set stage to 0
+  set settled to 0
+  set complete to 0
+  set fault to 0
+  set targetA to 0
+  set targetB to 0
+  set targetHeightA to 0
+  set targetHeightB to 0
+  set trimA to 0
+  set trimB to 0
+  reset timer
+  lab stop motor A hold
+  lab stop motor B hold
+  lab start
+  IF (lab status) = "no-model" THEN:
+    broadcast "High Select fault" and wait
+    say "Load High Select at its saved starting pose before running."
+    stop all
+  IF ((abs of (lab motor A angle)) > 0.5) OR ((abs of (lab motor B angle)) > 0.5) THEN:
+    broadcast "High Select fault" and wait
+    say "Both input encoders must start at zero. Reload the saved model before running."
+    stop all
+  broadcast "High Select watchdog"
+  set settled to 1
+  wait 1 seconds
+  set settled to 0
+
+  set stage to 1
+  set targetHeightA to 0
+  set targetHeightB to 8
+  set targetA to 0.0000000000
+  set targetB to 76.3943726841
+  broadcast "High Select move A" and wait
+  broadcast "High Select move B" and wait
+  set settled to 1
+  wait 0.8 seconds
+  set settled to 0
+
+  set stage to 2
+  set targetHeightA to 4
+  set targetHeightB to 8
+  set targetA to 38.1971863421
+  set targetB to 76.3943726841
+  broadcast "High Select move A" and wait
+  broadcast "High Select move B" and wait
+  set settled to 1
+  wait 0.8 seconds
+  set settled to 0
+
+  set stage to 3
+  set targetHeightA to 12
+  set targetHeightB to 8
+  set targetA to 114.5915590262
+  set targetB to 76.3943726841
+  broadcast "High Select move A" and wait
+  broadcast "High Select move B" and wait
+  set settled to 1
+  wait 0.8 seconds
+  set settled to 0
+
+  set stage to 4
+  set targetHeightA to 12
+  set targetHeightB to 4
+  set targetA to 114.5915590262
+  set targetB to 38.1971863421
+  broadcast "High Select move A" and wait
+  broadcast "High Select move B" and wait
+  set settled to 1
+  wait 0.8 seconds
+  set settled to 0
+
+  set stage to 5
+  set targetHeightA to 12
+  set targetHeightB to 16
+  set targetA to 114.5915590262
+  set targetB to 152.7887453682
+  broadcast "High Select move A" and wait
+  broadcast "High Select move B" and wait
+  set settled to 1
+  wait 0.8 seconds
+  set settled to 0
+
+  set stage to 6
+  set targetHeightA to 16
+  set targetHeightB to 16
+  set targetA to 152.7887453682
+  set targetB to 152.7887453682
+  broadcast "High Select move A" and wait
+  broadcast "High Select move B" and wait
+  set settled to 1
+  wait 0.8 seconds
+  set settled to 0
+
+  set stage to 7
+  set targetHeightA to 16
+  set targetHeightB to 8
+  set targetA to 152.7887453682
+  set targetB to 76.3943726841
+  broadcast "High Select move A" and wait
+  broadcast "High Select move B" and wait
+  set settled to 1
+  wait 0.8 seconds
+  set settled to 0
+
+  set stage to 8
+  set targetHeightA to 4
+  set targetHeightB to 8
+  set targetA to 38.1971863421
+  set targetB to 76.3943726841
+  broadcast "High Select move A" and wait
+  broadcast "High Select move B" and wait
+  set settled to 1
+  wait 0.8 seconds
+  set settled to 0
+
+  set stage to 9
+  set targetHeightA to 4
+  set targetHeightB to 0
+  set targetA to 38.1971863421
+  set targetB to 0.0000000000
+  broadcast "High Select move A" and wait
+  broadcast "High Select move B" and wait
+  set settled to 1
+  wait 0.8 seconds
+  set settled to 0
+
+  set stage to 10
+  set targetHeightA to 0
+  set targetHeightB to 0
+  set targetA to 0.0000000000
+  set targetB to 0.0000000000
+  broadcast "High Select move A" and wait
+  broadcast "High Select move B" and wait
+  set settled to 1
+  wait 0.8 seconds
+  set settled to 0
+
+  lab stop motor A hold
+  lab stop motor B hold
+  set complete to 1
+  say "High Select complete: compare measured input heights and the passive bridge at each hold."
+
+WHEN I receive "High Select move A":
+  IF (abs of (targetA - (lab motor A angle))) > 0.1 THEN:
+    lab run motor A for (targetA - (lab motor A angle)) degrees at 76.3943726841 degrees per second
+  lab stop motor A hold
+  set trimA to 0
+  REPEAT 2:
+    IF (abs of (targetA - (lab motor A angle))) > 0.5 THEN:
+      change trimA by 1
+      lab run motor A for (targetA - (lab motor A angle)) degrees at 5 degrees per second
+      lab stop motor A hold
+      wait 0.1 seconds
+  IF (abs of (targetA - (lab motor A angle))) > 0.5 THEN:
+    broadcast "High Select fault" and wait
+    say "An input missed its target. Inspect the rack, guides and contacts, then reload the model."
+    stop all
+
+WHEN I receive "High Select move B":
+  IF (abs of (targetB - (lab motor B angle))) > 0.1 THEN:
+    lab run motor B for (targetB - (lab motor B angle)) degrees at 76.3943726841 degrees per second
+  lab stop motor B hold
+  set trimB to 0
+  REPEAT 2:
+    IF (abs of (targetB - (lab motor B angle))) > 0.5 THEN:
+      change trimB by 1
+      lab run motor B for (targetB - (lab motor B angle)) degrees at 5 degrees per second
+      lab stop motor B hold
+      wait 0.1 seconds
+  IF (abs of (targetB - (lab motor B angle))) > 0.5 THEN:
+    broadcast "High Select fault" and wait
+    say "An input missed its target. Inspect the rack, guides and contacts, then reload the model."
+    stop all
+
+WHEN I receive "High Select fault":
+  set fault to 1
+  set settled to 0
+  lab stop motor A hold
+  lab stop motor B hold
+
+WHEN I receive "High Select watchdog":
+  REPEAT UNTIL (complete = 1):
+    IF (timer) > 50 THEN:
+      broadcast "High Select fault" and wait
+      say "High Select stopped after 50 seconds. Inspect the model and reload its saved starting pose."
+      stop all
+    wait 0.1 seconds

@@ -508,12 +508,12 @@ const CENSUS = [
     {
         file: 'scripts/integrate.mjs',
         kind: 'release',
-        text: 'github.com/CrispStrobe/JoltPhysics.js/releases/download/v1.1.0-bw.6/jolt-physics-1.1.0-bw.6.tgz',
+        text: 'github.com/CrispStrobe/JoltPhysics.js/releases/download/v1.1.0-bw.7/jolt-physics-1.1.0-bw.7.tgz',
         class: 'content-hash',
-        why: 'The Sim Lab physics engine: the Brickwright JoltPhysics.js fork build 1.1.0-bw.6 (Jolt master '
-           + 'plus the gear fixes, the CCD bounce fix, MaterialPairs, RackMeshConstraint, PartPairSimShapeFilter and optional single-thread SIMD), taken as an npm tarball dependency. The tag is movable, so it is not what '
+        why: 'The Sim Lab physics engine: the Brickwright JoltPhysics.js fork build 1.1.0-bw.7 (Jolt master '
+           + 'plus the gear fixes, the CCD bounce fix, MaterialPairs, RackMeshConstraint, PartPairSimShapeFilter and optional single-thread SIMD and retained distance-constraint velocity impulses), taken as an npm tarball dependency. The tag is movable, so it is not what '
            + 'is trusted: packages/scratch-gui/package-lock.json holds the tarball\'s sha512 integrity '
-           + '(sha256 dfbdad3610144c1a41f2a1d80a42e04c85dcdf2af9b85a1956f15cedf0da90a9) and npm refuses '
+           + '(sha256 ab468ca0ed4ecb0f3b8387da6796c8485d8c8e46cf06380d9939f3d105346aa0) and npm refuses '
            + 'different bytes. The fork\'s brickwright-release.yml re-derives the bytes from the pinned commits.'
     },
     {

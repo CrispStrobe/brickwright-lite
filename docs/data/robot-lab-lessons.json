@@ -3928,6 +3928,693 @@
         "linger.ldr",
         "bit-keeper.ldr"
       ]
+    },
+    "wavemaker": {
+      "en": {
+        "what": "This 300-piece simulation experiment uses two equal-angle Cardan joints, a symmetric differential and a pointer. The second joint is quarter-turn misphased, so its speed variation adds to the first joint's variation. The pointer shows a periodic angular waveform; no elastic wave travels through the model.",
+        "try": [
+          "Choose WaveMaker — the example loads its Blocks program automatically. Reset the model to its saved starting position, then Run. The program makes four slow pointer cycles at 30°/s, four faster cycles at 60°/s, then reverses through eight cycles before holding at the start target.",
+          "Reset, then choose WaveMaker Control and Run the same program. The second joint's forks are correctly phased, so the output pointer nearly cancels the ripple.",
+          "Compare the reference shaft, the Cardan output shaft, the differential carrier and pointer. The outer shafts average one turn for one turn in both versions, but their instantaneous motion differs."
+        ],
+        "why": "A bent universal joint does not turn its output at a constant instantaneous speed. Equal bends cancel that variation when the middle forks are aligned. A quarter-turn phase shift makes the second variation reinforce the first. The differential converts the two signed side-shaft motions into their average, and a 16-tooth rim driving an 8-tooth pinion doubles the carrier angle while reversing its sign.",
+        "matters": "Universal joints let shafts transmit rotation across an angle. Fork phase matters when two joints are combined: one-to-one average turns do not guarantee constant instantaneous speed. A differential follows the arithmetic mean of its equal side gears' signed angles.",
+        "question": "Both versions turn their outer shafts by nearly the same average amount. Why does the main pointer rock while the control pointer stays almost still?",
+        "answer": "The quarter-turn phase of the main model makes the two Cardan angle variations add. The correctly phased control makes the second joint undo the first joint's variation. The differential and 16:8 takeoff reveal that difference at the pointer.",
+        "further": [
+          "From the 48–64–80 shaft-center triangle, cos β=0.8 and β≈36.87°. The ideal misphased pointer law has 25.3608° peak-to-peak stroke every 180° of reference-shaft rotation; the hosted trace measures about 25.50° over its full program.",
+          "The LDraw file has 298 explicit placements. Add the two required inferred universal-joint crosses for 300 physical pieces. The experiment uses one motor on port A; all shafts and the pointer are passive.",
+          "The Blocks program is finite and includes slow, fast, reverse and guarded hold stages. Reset to the saved starting pose before every run. Tested simulation speeds are 30 and 60 degrees per second.",
+          "These results are from a native mechanism simulation. They do not establish physical buildability, torque capacity, friction, backlash, real-world swept clearance, or hardware firmware behavior."
+        ]
+      },
+      "de": {
+        "what": "Dieses Simulationsexperiment mit 300 Teilen kombiniert zwei gleich abgewinkelte Kardangelenke, ein symmetrisches Differential und einen Zeiger. Das zweite Gelenk ist um eine Vierteldrehung fehlphasig. Dadurch addieren sich die Geschwindigkeitsschwankungen. Der Zeiger zeigt eine periodische Winkelbewegung; durch das Modell läuft keine elastische Welle.",
+        "try": [
+          "Wähle WaveMaker. Das Beispiel lädt sein Blocks-Programm automatisch. Setze das Modell auf die gespeicherte Ausgangsstellung zurück und drücke dann auf Start. Das Programm erzeugt vier langsame Zeigerzyklen mit 30°/s, vier schnellere mit 60°/s und kehrt anschließend in acht Zyklen um, bevor es am Ziel anhält.",
+          "Setze das Modell zurück, wähle WaveMaker Control und starte dasselbe Programm. Die Gabeln des zweiten Gelenks sind richtig ausgerichtet; dadurch wird die Schwankung am Ausgang fast aufgehoben.",
+          "Vergleiche Bezugswelle, Kardanausgang, Differentialgehäuse und Zeiger. Beide Versionen haben außen im Mittel nahezu dieselbe Übersetzung, aber ihre momentane Bewegung ist verschieden."
+        ],
+        "why": "Ein abgewinkeltes Kardangelenk dreht seinen Ausgang nicht mit gleichmäßiger momentaner Geschwindigkeit. Bei gleichen Winkeln heben sich die Schwankungen zweier Gelenke auf, wenn die mittleren Gabeln fluchten. Eine Phasenverschiebung um eine Vierteldrehung lässt sich die Schwankungen verstärken. Das Differential bildet den Mittelwert der vorzeichenbehafteten Bewegungen seiner beiden gleichen Seitenräder. Ein 16-Zahn-Kranz treibt ein 8-Zahn-Ritzel an und verdoppelt dadurch den Zeigerwinkel bei umgekehrter Drehrichtung.",
+        "matters": "Kardangelenke übertragen Drehbewegungen zwischen abgewinkelten Wellen. Bei zwei Gelenken ist die Gabelphase entscheidend: Gleiche mittlere Drehwinkel bedeuten nicht gleiche momentane Geschwindigkeit. Ein Differential folgt dem arithmetischen Mittel der vorzeichenbehafteten Winkel seiner gleich großen Seitenräder.",
+        "question": "Beide Versionen drehen ihre Außenwellen im Mittel fast gleich weit. Warum schwingt der Zeiger des Hauptmodells, während er beim Kontrollmodell fast stillsteht?",
+        "answer": "Durch die Vierteldrehung der Gabeln addieren sich im Hauptmodell die Winkelabweichungen beider Kardangelenke. Im korrekt ausgerichteten Kontrollmodell hebt das zweite Gelenk die Abweichung des ersten auf. Differential und 16:8-Abtrieb machen den Unterschied am Zeiger sichtbar.",
+        "further": [
+          "Aus dem Wellenabstand von 48–64–80 folgt cos β=0,8 und β≈36,87°. Das ideale fehlphasige Doppel-Kardangelenk erzeugt einen Zeigerausschlag von 25,3608° Spitze zu Spitze je 180° Bezugswellendrehung; die gehostete Simulation misst über das gesamte Programm etwa 25,50°.",
+          "Die LDraw-Datei enthält 298 explizite Platzierungen. Dazu kommen zwei erforderliche, vom Simulator erschlossene Kardankreuze: insgesamt 300 physische Teile. Das Experiment verwendet einen Motor an Anschluss A; Wellen und Zeiger sind passiv.",
+          "Das Blocks-Programm ist endlich und enthält langsame, schnelle und umgekehrte Bewegung sowie überwachte Haltephasen. Setze das Modell vor jedem Lauf auf die gespeicherte Ausgangsstellung zurück. Erprobte Simulationsgeschwindigkeiten sind 30 und 60 Grad pro Sekunde.",
+          "Die Ergebnisse stammen aus einer nativen Mechanismensimulation. Sie belegen weder einen physischen Aufbau noch Drehmoment, Reibung, Spiel, reale Freigängigkeit während der Bewegung oder das Verhalten einer Hardware-Firmware."
+        ]
+      },
+      "formula": {
+        "en": "β=acos(0.8). For the 90°-misphased double Cardan, δ(θ)=atan2(sin²β·sinθ·cosθ, cos²β·cos²θ+sin²θ). The symmetric differential gives 2·carrier=reference+ripple; the 16T:8T external takeoff gives pointer=−2·carrier=δ. The correctly phased control ideally has δ=0.",
+        "de": "β=acos(0,8). Für das um 90° fehlphasige Doppel-Kardangelenk gilt δ(θ)=atan2(sin²β·sinθ·cosθ, cos²β·cos²θ+sin²θ). Das symmetrische Differential erfüllt 2·Gehäusewinkel=Bezugswinkel+Riffelwellenwinkel; der externe 16:8-Abtrieb ergibt Zeiger=−2·Gehäusewinkel=δ. Im korrekt ausgerichteten Kontrollmodell ist δ idealerweise 0."
+      },
+      "related": [
+        "wavemaker-control.ldr",
+        "phase-bridge.ldr",
+        "ripple-relay.ldr"
+      ]
+    },
+    "wavemaker-control": {
+      "en": {
+        "what": "This 300-piece correctly phased Cardan control uses two equal bends, a symmetric differential and a pointer. The second joint cancels the first joint's periodic speed variation at the outer shaft. The mechanism displays angular motion; it does not transmit an elastic wave.",
+        "try": [
+          "Choose WaveMaker Control; its Blocks program loads automatically. Reset to the saved starting pose and press Run. The one-motor program runs four cycles at 30°/s, four at 60°/s, reverses through eight cycles, and then holds.",
+          "Reset and load WaveMaker to compare. Only the two downstream fork orientations change. The main pointer rocks while this control stays close to its initial angle.",
+          "Compare the reference shaft and output shaft. Correct phasing preserves the one-to-one outer-shaft relationship even though the intermediate shaft of the first joint has nonuniform speed."
+        ],
+        "why": "For equal Cardan bends, correctly aligned middle forks make the second joint apply the inverse of the first joint's angle mapping. The outer shafts therefore have a constant one-to-one ideal ratio. The symmetric differential and 16:8 pointer takeoff show the remaining small numerical residual in the simulation.",
+        "matters": "A correctly phased double Cardan can cancel the angular-speed variation produced by one bent universal joint. This is why alignment matters even when both arrangements have the same average ratio.",
+        "question": "Why does the intermediate shaft speed up and slow down while the control pointer barely moves?",
+        "answer": "One bent Cardan joint has a varying instantaneous ratio. The equal, correctly phased second joint reverses that variation at the outer output. The output stays at a one-to-one ideal angle ratio even though the intermediate shaft is not uniform.",
+        "further": [
+          "The 48–64–80 shaft-center triangle gives β≈36.87°. For the correctly phased pair, the ideal outer-shaft relation is output angle = input angle; the measured pointer span is about 0.0164° over the complete run.",
+          "The model has 298 explicit placements plus two required inferred universal-joint crosses, for 300 pieces. It has one motor on port A and passive output shafts.",
+          "The automatic Blocks program uses 30 and 60 degrees per second, includes reversal and guarded holds, and should be run from the saved starting pose after Reset.",
+          "This is simulation evidence only. It does not establish physical buildability, torque capacity, friction, backlash, real-world swept clearance, or firmware behavior."
+        ]
+      },
+      "de": {
+        "what": "Dieses Kontrollmodell mit 300 Teilen verwendet zwei gleich abgewinkelte, korrekt ausgerichtete Kardangelenke, ein symmetrisches Differential und einen Zeiger. Das zweite Gelenk hebt die periodische Geschwindigkeitsschwankung des ersten Gelenks an der Außenwelle auf. Der Mechanismus zeigt Winkelbewegung, überträgt aber keine elastische Welle.",
+        "try": [
+          "Wähle WaveMaker Control; das Blocks-Programm wird automatisch geladen. Setze das Modell auf die gespeicherte Ausgangsstellung zurück und drücke Start. Das Programm fährt mit einem Motor vier Zyklen bei 30°/s, vier bei 60°/s, kehrt durch acht Zyklen um und hält anschließend.",
+          "Setze das Modell zurück und lade WaveMaker zum Vergleich. Nur die beiden nachgelagerten Gabelausrichtungen sind verändert. Beim Hauptmodell schwingt der Zeiger; dieses Kontrollmodell bleibt nahe am Ausgangswinkel.",
+          "Vergleiche Bezugswelle und Ausgangswelle. Bei richtiger Phasenlage bleibt das Verhältnis der Außenwellen eins zu eins, obwohl die Zwischenwelle des ersten Gelenks ungleichmäßig läuft."
+        ],
+        "why": "Bei gleichen Kardanknickwinkeln bildet das zweite Gelenk die Winkelabbildung des ersten umgekehrt ab, wenn die mittleren Gabeln korrekt fluchten. Die Außenwellen haben dadurch ideal ein konstantes Verhältnis von eins zu eins. Differential und 16:8-Zeigerabtrieb zeigen die kleine numerische Restbewegung der Simulation.",
+        "matters": "Ein korrekt ausgerichtetes Doppel-Kardangelenk kann die momentane Geschwindigkeitsschwankung eines abgewinkelten Kardangelenks aufheben. Deshalb ist die Ausrichtung wichtig, obwohl beide Anordnungen dasselbe mittlere Verhältnis haben.",
+        "question": "Warum wird die Zwischenwelle schneller und langsamer, während der Kontrollzeiger sich kaum bewegt?",
+        "answer": "Ein abgewinkeltes Kardangelenk hat ein veränderliches momentanes Übersetzungsverhältnis. Das zweite Gelenk mit gleichem Winkel hebt diese Änderung am Ausgang auf, wenn seine Gabeln richtig fluchten. Der ideale Außenabtrieb bleibt eins zu eins, obwohl die Zwischenwelle ungleichmäßig läuft.",
+        "further": [
+          "Das Wellenabstands-Dreieck 48–64–80 ergibt β≈36,87°. Beim korrekt ausgerichteten Gelenkpaar ist der ideale Außenwinkel gleich dem Eingangswinkel; der gemessene Zeigerausschlag beträgt über den vollständigen Lauf etwa 0,0164°.",
+          "Das Modell enthält 298 explizite Platzierungen und zwei erforderliche, erschlossene Kardankreuze: insgesamt 300 Teile. Es besitzt einen Motor an Anschluss A und passive Ausgangswellen.",
+          "Das automatisch geladene Blocks-Programm verwendet 30 und 60 Grad pro Sekunde, enthält eine Richtungsumkehr und überwachte Haltephasen. Starte nach dem Zurücksetzen an der gespeicherten Ausgangsstellung.",
+          "Dies sind Simulationsergebnisse. Sie belegen keinen physischen Aufbau, kein Drehmoment, keine Reibung, kein Spiel, keine reale Freigängigkeit während der Bewegung und kein Firmware-Verhalten."
+        ]
+      },
+      "formula": {
+        "en": "For one Cardan joint, tan φ=tan θ/cos β. For equal bends with aligned middle forks the second joint is the inverse mapping, so outer output angle θout=θin and the ideal output speed ratio is 1.",
+        "de": "Für ein Kardangelenk gilt tan φ=tan θ/cos β. Bei gleichen Winkeln und korrekt fluchtenden mittleren Gabeln ist das zweite Gelenk die Umkehrabbildung des ersten. Daher gilt außen ideal θaus=θein und das Geschwindigkeitsverhältnis ist 1."
+      },
+      "related": [
+        "wavemaker.ldr",
+        "phase-bridge.ldr",
+        "ripple-relay.ldr"
+      ]
+    },
+    "cascade": {
+      "en": {
+        "what": "Motor A moves a 16 mm crank carrying a two-link pendulum. The red upper link spans 80 mm between pivots; the blue lower link extends 48 mm. Both joints are passive.",
+        "try": [
+          "Choose this example: its Blocks program loads automatically. Reset to the saved pose before each run, then press Run.",
+          "The support moves from 0° to 90° slowly at 30°/s, waits 0.3 s, then returns at 180°/s. Watch the quick return excite the free links.",
+          "During the 12-second observation, the support stays held while the links can keep moving. Compare upper, lower and relative elbow angles; the motor encoder measures the support.",
+          "Reset and choose the companion Cascade example. Both use the same program. Compare the free elbow with the six-piece physical brace."
+        ],
+        "why": "Moving the support excites the passive links. Once the support is held, gravity and inertia govern their two coupled angles. Holding the motor does not hold either free joint. The physical brace removes relative elbow freedom while leaving the top pivot free.",
+        "matters": "Independent angles distinguish a two-link mechanism from a single rigid pendulum. A moving tip alone does not prove that every joint is moving.",
+        "question": "Must both links stop when motor A returns to zero?",
+        "answer": "No. The motor fixes the support position, while the passive links can continue exchanging motion through their joint. Measure both link angles and their difference rather than assuming that a stopped input means a stopped output.",
+        "further": [
+          "The real brace also adds mass and inertia, so this comparison is not a mass-matched measurement of natural frequency.",
+          "Completion ends the support route and observation. It does not require the passive links to settle. Reset before repeating the experiment.",
+          "Compare independent link angles, not the freely spinning elbow pin. Stay within the saved 0°–90° motor route."
+        ]
+      },
+      "de": {
+        "what": "Motor A bewegt eine Kurbel mit 16 mm Radius, an der ein Doppelpendel hängt. Das rote Oberglied hat 80 mm Lagerabstand; das blaue Unterglied ist ab dem Gelenk 48 mm lang. Beide Gelenke sind passiv.",
+        "try": [
+          "Wähle dieses Beispiel: Das Blockprogramm wird automatisch geladen. Setze vor jedem Versuch auf die gespeicherte Lage zurück und starte das Programm.",
+          "Die Aufhängung fährt langsam mit 30°/s von 0° nach 90°, wartet 0,3 s und kehrt mit 180°/s zurück. Beobachte, wie die schnelle Rückkehr die freien Glieder anregt.",
+          "Während der zwölf Sekunden Beobachtung bleibt die Aufhängung gehalten. Vergleiche Oberglied, Unterglied und ihren relativen Gelenkwinkel. Der Motorencoder misst nur die Aufhängung.",
+          "Setze zurück und wähle das andere Cascade-Beispiel. Beide nutzen dasselbe Programm. Vergleiche das freie Gelenk mit der Versteifung aus sechs echten Teilen."
+        ],
+        "why": "Die bewegte Aufhängung regt die passiven Glieder an. Danach bestimmen Schwerkraft und Trägheit ihre beiden gekoppelten Winkel. Ein gehaltener Motor sperrt keines der freien Gelenke. Die echte Versteifung sperrt den relativen Gelenkwinkel; das obere Lager bleibt frei.",
+        "matters": "Unabhängige Winkel unterscheiden das Doppelpendel von einem starren Pendel. Eine bewegte Spitze beweist nicht, dass sich jedes Gelenk bewegt.",
+        "question": "Müssen beide Glieder stehen bleiben, wenn Motor A wieder null erreicht?",
+        "answer": "Nein. Der Motor hält die Aufhängung, während die passiven Glieder weiterhin über ihr Gelenk Bewegung austauschen können. Miss beide Gliedwinkel und ihre Differenz, statt aus einem stehenden Antrieb auf einen stehenden Abtrieb zu schließen.",
+        "further": [
+          "Die echte Versteifung verändert auch Masse und Trägheit. Der Vergleich ist daher keine massengleiche Messung der Eigenfrequenz.",
+          "Abgeschlossen sind Motorweg und Beobachtung; die passiven Glieder müssen noch nicht stillstehen. Setze vor der Wiederholung zurück.",
+          "Vergleiche die Winkel der Glieder, nicht den frei mitdrehenden Gelenkstift. Halte den gespeicherten Motorweg von 0° bis 90° ein."
+        ]
+      },
+      "formula": {
+        "en": "Kinematic definitions: q₁ and q₂ are independently observed link angles about the common hinge axis; the relative elbow angle is Δ=q₂−q₁. In an ideal planar projection, tip−support = 80u(q₁)+48u(q₂) mm, where u(q) is the downward unit vector rotated through q in that plane. The two link lengths sum to 128 mm. This is a geometric relationship, not a time-history or energy prediction. In the saved straight brace control, Δ is constant; the one remaining pendulum angle may still vary.",
+        "de": "Kinematische Definitionen: q₁ und q₂ sind unabhängig beobachtete Gliedwinkel um die gemeinsame Gelenkachse; der relative Ellenbogenwinkel ist Δ=q₂−q₁. In idealer ebener Projektion gilt Spitze−Aufhängung = 80u(q₁)+48u(q₂) mm; u(q) ist der in dieser Ebene um q gedrehte, nach unten gerichtete Einheitsvektor. Die beiden Gliedlängen summieren sich zu 128 mm. Dies beschreibt Geometrie, keinen Zeitverlauf oder Energieumsatz. In der gespeicherten geraden Verstrebungskontrolle bleibt Δ konstant; der verbleibende Pendelwinkel kann weiter variieren."
+      },
+      "related": [
+        "cascade-control.ldr",
+        "pendulum-array.ldr",
+        "echo-bridge.ldr",
+        "momentum-twins.ldr"
+      ]
+    },
+    "cascade-control": {
+      "en": {
+        "what": "This 76-piece control adds six real brace and pin pieces to the 70-piece double pendulum. Both links become one rigid assembly while the upper pivot remains free.",
+        "try": [
+          "Choose this example: its Blocks program loads automatically. Reset to the saved pose before each run, then press Run.",
+          "The support moves from 0° to 90° slowly at 30°/s, waits 0.3 s, then returns at 180°/s. Watch the quick return excite the free links.",
+          "During the 12-second observation, the support stays held while the links can keep moving. Compare upper, lower and relative elbow angles; the motor encoder measures the support.",
+          "Reset and choose the companion Cascade example. Both use the same program. Compare the free elbow with the six-piece physical brace."
+        ],
+        "why": "Moving the support excites the passive links. Once the support is held, gravity and inertia govern their two coupled angles. Holding the motor does not hold either free joint. The physical brace removes relative elbow freedom while leaving the top pivot free.",
+        "matters": "Independent angles distinguish a two-link mechanism from a single rigid pendulum. A moving tip alone does not prove that every joint is moving.",
+        "question": "Does a moving lower tip prove that the elbow is free?",
+        "answer": "No. The braced links swing together around the upper pivot while their relative elbow angle stays constant. Compare this with the unbraced model using the same motor route. The added brace changes mass and inertia as well as removing one degree of freedom.",
+        "further": [
+          "The real brace also adds mass and inertia, so this comparison is not a mass-matched measurement of natural frequency.",
+          "Completion ends the support route and observation. It does not require the passive links to settle. Reset before repeating the experiment.",
+          "Compare independent link angles, not the freely spinning elbow pin. Stay within the saved 0°–90° motor route."
+        ]
+      },
+      "de": {
+        "what": "Diese Kontrolle mit 76 Teilen ergänzt das Doppelpendel mit 70 Teilen um sechs echte Versteifungs- und Stiftteile. Beide Glieder bilden einen starren Körper; das obere Lager bleibt frei.",
+        "try": [
+          "Wähle dieses Beispiel: Das Blockprogramm wird automatisch geladen. Setze vor jedem Versuch auf die gespeicherte Lage zurück und starte das Programm.",
+          "Die Aufhängung fährt langsam mit 30°/s von 0° nach 90°, wartet 0,3 s und kehrt mit 180°/s zurück. Beobachte, wie die schnelle Rückkehr die freien Glieder anregt.",
+          "Während der zwölf Sekunden Beobachtung bleibt die Aufhängung gehalten. Vergleiche Oberglied, Unterglied und ihren relativen Gelenkwinkel. Der Motorencoder misst nur die Aufhängung.",
+          "Setze zurück und wähle das andere Cascade-Beispiel. Beide nutzen dasselbe Programm. Vergleiche das freie Gelenk mit der Versteifung aus sechs echten Teilen."
+        ],
+        "why": "Die bewegte Aufhängung regt die passiven Glieder an. Danach bestimmen Schwerkraft und Trägheit ihre beiden gekoppelten Winkel. Ein gehaltener Motor sperrt keines der freien Gelenke. Die echte Versteifung sperrt den relativen Gelenkwinkel; das obere Lager bleibt frei.",
+        "matters": "Unabhängige Winkel unterscheiden das Doppelpendel von einem starren Pendel. Eine bewegte Spitze beweist nicht, dass sich jedes Gelenk bewegt.",
+        "question": "Beweist eine bewegte untere Spitze, dass das Gelenk zwischen den Gliedern frei ist?",
+        "answer": "Nein. Die versteiften Glieder schwingen gemeinsam um das obere Lager; ihr relativer Gelenkwinkel bleibt konstant. Vergleiche beim gleichen Motorweg das freie Doppelpendel. Die Versteifung verändert neben dem Freiheitsgrad auch Masse und Trägheit.",
+        "further": [
+          "Die echte Versteifung verändert auch Masse und Trägheit. Der Vergleich ist daher keine massengleiche Messung der Eigenfrequenz.",
+          "Abgeschlossen sind Motorweg und Beobachtung; die passiven Glieder müssen noch nicht stillstehen. Setze vor der Wiederholung zurück.",
+          "Vergleiche die Winkel der Glieder, nicht den frei mitdrehenden Gelenkstift. Halte den gespeicherten Motorweg von 0° bis 90° ein."
+        ]
+      },
+      "formula": {
+        "en": "Kinematic definitions: q₁ and q₂ are independently observed link angles about the common hinge axis; the relative elbow angle is Δ=q₂−q₁. In an ideal planar projection, tip−support = 80u(q₁)+48u(q₂) mm, where u(q) is the downward unit vector rotated through q in that plane. The two link lengths sum to 128 mm. This is a geometric relationship, not a time-history or energy prediction. In the saved straight brace control, Δ is constant; the one remaining pendulum angle may still vary.",
+        "de": "Kinematische Definitionen: q₁ und q₂ sind unabhängig beobachtete Gliedwinkel um die gemeinsame Gelenkachse; der relative Ellenbogenwinkel ist Δ=q₂−q₁. In idealer ebener Projektion gilt Spitze−Aufhängung = 80u(q₁)+48u(q₂) mm; u(q) ist der in dieser Ebene um q gedrehte, nach unten gerichtete Einheitsvektor. Die beiden Gliedlängen summieren sich zu 128 mm. Dies beschreibt Geometrie, keinen Zeitverlauf oder Energieumsatz. In der gespeicherten geraden Verstrebungskontrolle bleibt Δ konstant; der verbleibende Pendelwinkel kann weiter variieren."
+      },
+      "related": [
+        "cascade.ldr",
+        "pendulum-array.ldr",
+        "echo-bridge.ldr",
+        "momentum-twins.ldr"
+      ]
+    },
+    "rise-ratio": {
+      "en": {
+        "what": "A single motor turns a 12-tooth pinion that pulls a horizontal rack inward. Crossing 80 mm scissor links raise a deck. The experiment commands four equal 4 mm rack steps, pauses at each width, and retraces the route to its saved datum. The intended effect is a diminishing rise per step while the deck remains level. The numerical heights below are ideal predictions; consult the packaged qualification record for the measured scope.",
+        "try": [
+          "Choose Rise Ratio in Examples: its program loads into Blocks automatically and the saved pose is restored. Press Run. Reset before repeating after manual movement.",
+          "Watch stages 0 through 4. The commanded lower-pivot widths are 64, 60, 56, 52 and 48 mm. The ideal heights between the lower and upper pivot lines are 48.000, 52.915, 57.131, 60.795 and 64.000 mm. Measure the actual deck position; the encoder alone cannot establish the lift height.",
+          "At each pause, subtract the preceding measured height. Compare the first 4 mm rack step with the last one. During stages 5 through 8 the deck follows the same targets in reverse, then the motor holds the return datum. Check completed = 1 and failed = 0.",
+          "Keep the supplied targets and qualified motor direction. A timeout or failed arrival stops and holds the motor. Reset and inspect before retrying. The software envelope is not a physical stop; manual travel and retention bounds are declared separately in the construction record.",
+          "Compare Rise Ratio Control. Its 12-tooth pinion is removed, but the same motor program still runs. Observe the independent rack and deck instead of treating encoder arrival as proof of lifting."
+        ],
+        "why": "One scissor diagonal has fixed pivot span L = 80 mm. Its horizontal separation w and vertical separation h satisfy w² + h² = L² on the positive-height branch. Pulling the lower moving pivot inward by s reduces the width to w = 64 − s. Therefore h = sqrt(80² − (64 − s)²). The local gain dh/ds = w/h falls as the lift rises. The pinion gives equal horizontal travel for equal encoder changes, but the scissor changes that travel into unequal vertical increments.",
+        "matters": "This is a mechanical change of motion ratio produced by geometry. In an ideal slow, frictionless lift, a vertical load W needs horizontal rack force F = W w/h. As the deck rises the displacement gain falls and the ideal load-to-input force advantage h/w increases. This relation is a prediction, not a measured payload rating; friction, inertia, compliance, gear losses and motor limits change the required force.",
+        "question": "Four equal inward rack steps of 4 mm move the width from 64 to 48 mm. Should the deck rise farther on the first step or the last? What total ideal rise does the full 16 mm rack motion produce?",
+        "answer": "The first step gives the larger rise. The ideal increments are approximately 4.915, 4.216, 3.663 and 3.205 mm. The ideal total rise is 16.000 mm, from 48 to 64 mm. Equal total horizontal and vertical travel here is an endpoint coincidence of the chosen 48–64–80 geometry, not a constant 1:1 ratio: the local gain decreases from 64/48 = 1.333 to 48/64 = 0.750.",
+        "further": [
+          "At a width of 56 mm, calculate h and w/h, then compare with a measured stage-2 height. Use pivot centers, not the top surface thickness, in the equation.",
+          "Explain why the almost-flat configuration w ≈ 80 mm would demand a very large ideal input force. Do not try that region with the supplied model or program; it lies outside the declared route and qualification envelope.",
+          "Compare the linkage with Sarrus Lift or Parallel Lift: all raise a platform, but different physical constraints set the path and motion ratio. Investigate actual motion before deciding whether a deck stayed vertical and level."
+        ]
+      },
+      "de": {
+        "what": "Ein Motor dreht ein Ritzel mit zwölf Zähnen und zieht eine waagerechte Zahnstange nach innen. Gekreuzte Scherenglieder mit 80 mm Gelenkabstand heben eine Bühne. Das Experiment gibt vier gleich große Zahnstangenschritte von je 4 mm vor, hält an jeder Breite an und fährt dieselbe Strecke zum gespeicherten Ausgangspunkt zurück. Dabei soll der Höhenzuwachs je Schritt abnehmen und die Bühne waagerecht bleiben. Die folgenden Höhen sind ideale Vorhersagen; den tatsächlich geprüften Umfang enthält der beiliegende Prüfbericht.",
+        "try": [
+          "Wähle Rise Ratio unter Beispiele: Das Programm wird automatisch als Blöcke geladen und die gespeicherte Lage wiederhergestellt. Drücke Start. Nach manueller Bewegung vor einer Wiederholung zurücksetzen.",
+          "Beobachte die Stufen 0 bis 4. Die vorgegebenen Abstände zwischen den unteren Gelenken sind 64, 60, 56, 52 und 48 mm. Die idealen Höhen zwischen unterer und oberer Gelenklinie sind 48,000, 52,915, 57,131, 60,795 und 64,000 mm. Miss die tatsächliche Bühnenlage; der Motordrehgeber allein belegt die Hubhöhe nicht.",
+          "Ziehe bei jeder Pause die vorherige gemessene Höhe ab. Vergleiche den ersten Zahnstangenschritt von 4 mm mit dem letzten. In den Stufen 5 bis 8 fährt die Bühne dieselben Ziele rückwärts an; anschließend hält der Motor die Ausgangslage. Prüfe completed = 1 und failed = 0.",
+          "Behalte die mitgelieferten Ziele und die geprüfte Motordrehrichtung bei. Eine Zeitüberschreitung oder ein verfehltes Ziel stoppt den Motor im Haltemodus. Setze vor einem neuen Versuch zurück und prüfe den Aufbau. Die Softwaregrenze ist kein mechanischer Anschlag; manuelle Wege und Halterungen sind im Konstruktionsnachweis gesondert beschrieben.",
+          "Vergleiche Rise-Ratio-Kontrolle. Ihr Ritzel mit zwölf Zähnen ist entfernt, dasselbe Motorprogramm läuft aber weiter. Beobachte Zahnstange und Plattform unabhängig; ein erreichter Motorwinkel beweist noch keinen Hub."
+        ],
+        "why": "Eine Scherendiagonale hat den festen Gelenkabstand L = 80 mm. Für ihren waagerechten Abstand w und ihre Höhe h gilt auf dem Lösungszweig mit positiver Höhe w² + h² = L². Zieht die Zahnstange das untere bewegliche Gelenk um s nach innen, wird w = 64 − s. Damit gilt h = sqrt(80² − (64 − s)²). Die örtliche Wegübersetzung dh/ds = w/h nimmt beim Heben ab. Das Ritzel erzeugt bei gleichen Drehwinkeländerungen gleiche waagerechte Wege; die Schere wandelt diese in ungleiche Höhenzuwächse um.",
+        "matters": "Die Geometrie verändert hier mechanisch die Wegübersetzung. Bei einer idealen langsamen, reibungsfreien Hubbewegung braucht eine senkrechte Last W die waagerechte Zahnstangenkraft F = W w/h. Mit steigender Bühne sinkt die Wegübersetzung, und das ideale Verhältnis Last zu Antriebskraft h/w nimmt zu. Das ist eine Vorhersage und keine gemessene Traglastangabe; Reibung, Trägheit, Nachgiebigkeit, Getriebeverluste und Motorgrenzen verändern die erforderliche Kraft.",
+        "question": "Vier gleiche Zahnstangenschritte von jeweils 4 mm verkleinern die Breite von 64 auf 48 mm. Steigt die Bühne beim ersten oder beim letzten Schritt stärker? Welchen idealen Gesamthub erzeugt der Zahnstangenweg von 16 mm?",
+        "answer": "Der erste Schritt hebt die Bühne stärker. Die idealen Höhenzuwächse betragen ungefähr 4,915, 4,216, 3,663 und 3,205 mm. Der ideale Gesamthub beträgt 16,000 mm: von 48 auf 64 mm. Dass der gesamte waagerechte Weg hier dem gesamten Höhenzuwachs entspricht, folgt nur aus den gewählten Endpunkten des 48–64–80-Dreiecks. Es ist keine konstante 1:1-Übersetzung: Die örtliche Wegübersetzung sinkt von 64/48 = 1,333 auf 48/64 = 0,750.",
+        "further": [
+          "Berechne bei einer Breite von 56 mm die Höhe h und das Verhältnis w/h. Vergleiche mit einer gemessenen Höhe in Stufe 2. Verwende die Gelenkmitten statt der durch die Materialdicke versetzten Bühnenoberfläche.",
+          "Erkläre, warum die fast flache Lage w ≈ 80 mm eine sehr große ideale Antriebskraft erfordern würde. Fahre diesen Bereich mit dem mitgelieferten Modell oder Programm nicht an: Er liegt außerhalb der vorgegebenen Strecke und des Prüfbereichs.",
+          "Vergleiche die Schere mit Sarrus Lift oder Parallel Lift. Alle heben eine Plattform, doch unterschiedliche Gelenkführungen bestimmen Bahn und Übersetzung. Untersuche die tatsächliche Bewegung, bevor du entscheidest, ob die Bühne senkrecht geführt und waagerecht geblieben ist."
+        ]
+      },
+      "formula": {
+        "en": "L = 80 mm; r_p = 6 mm; s = direction × A × π/180 × r_p; w = 64 − s; h = sqrt(L² − w²); dh/ds = w/h; ideal static F_rack/W = w/h. A is the measured unwrapped encoder angle in degrees. Commands: w = 48…64 mm. Qualification envelope: w = 46.4…65.6 mm, separate from physical stop bounds.",
+        "de": "L = 80 mm; r_p = 6 mm; s = direction × A × π/180 × r_p; w = 64 − s; h = sqrt(L² − w²); dh/ds = w/h; ideal statisch F_Zahnstange/W = w/h. A ist der gemessene fortlaufende Drehgeberwinkel in Grad. Sollbereich: w = 48…64 mm. Prüfbereich: w = 46,4…65,6 mm; mechanische Anschläge sind gesondert festgelegt."
+      },
+      "related": [
+        "rise-ratio-control.ldr",
+        "sarrus-lift.ldr",
+        "parallel-lift.ldr",
+        "rack-shuttle.ldr"
+      ]
+    },
+    "rise-ratio-control": {
+      "en": {
+        "what": "This physical causal control removes the 12-tooth pinion from the same scissor lift. The shaft retains its bearings and collars. Motor A still executes the complete finite program, while the lower rack receives no motor transmission.",
+        "try": [
+          "Choose this control in Examples, then press Run. Its program loads automatically.",
+          "Watch motor A reach the same signed targets as in Rise Ratio. Measure the rack and passive deck independently.",
+          "Compare with Rise Ratio after resetting both examples. The main rises about 16 mm; this disconnected deck should stay near its lower support."
+        ],
+        "why": "The scissor geometry still constrains the deck, but the removed pinion breaks the path from motor rotation to rack travel. The lower supports retain the resting pose. Motor targets alone therefore cannot establish output movement.",
+        "matters": "This is a mechanical change of motion ratio produced by geometry. In an ideal slow, frictionless lift, a vertical load W needs horizontal rack force F = W w/h. As the deck rises the displacement gain falls and the ideal load-to-input force advantage h/w increases. This relation is a prediction, not a measured payload rating; friction, inertia, compliance, gear losses and motor limits change the required force.",
+        "question": "Does an encoder reaching every target prove that the deck rose?",
+        "answer": "No. The pinion transmits rotation into rack travel. Removing it lets the motor complete its route while the supported rack and scissor deck stay near their lower rest. Independent measurements distinguish input motion from useful passive output.",
+        "further": [
+          "At a width of 56 mm, calculate h and w/h, then compare with a measured stage-2 height. Use pivot centers, not the top surface thickness, in the equation.",
+          "Explain why the almost-flat configuration w ≈ 80 mm would demand a very large ideal input force. Do not try that region with the supplied model or program; it lies outside the declared route and qualification envelope.",
+          "Compare the linkage with Sarrus Lift or Parallel Lift: all raise a platform, but different physical constraints set the path and motion ratio. Investigate actual motion before deciding whether a deck stayed vertical and level."
+        ]
+      },
+      "de": {
+        "what": "Diese mechanische Kontrolle entfernt das Ritzel mit zwölf Zähnen aus demselben Scherenhubtisch. Lager und Sicherungsringe der Welle bleiben erhalten. Motor A führt das vollständige Programm aus; die untere Zahnstange erhält keine Antriebskraft.",
+        "try": [
+          "Wähle diese Kontrolle unter Beispiele und drücke Start. Das Programm wird automatisch geladen.",
+          "Beobachte dieselben vorzeichenbehafteten Motorziele wie bei Rise Ratio. Miss Zahnstange und passive Plattform unabhängig.",
+          "Vergleiche nach dem Zurücksetzen mit Rise Ratio. Das Hauptmodell hebt sich etwa 16 mm; diese Plattform soll nahe ihrer unteren Auflage bleiben."
+        ],
+        "why": "Die Scherengeometrie führt die Plattform weiterhin, doch ohne Ritzel ist der Weg vom Motor zur Zahnstange unterbrochen. Die unteren Auflagen halten die Ruhelage. Erreichte Motorziele allein belegen deshalb keine Ausgangsbewegung.",
+        "matters": "Die Geometrie verändert hier mechanisch die Wegübersetzung. Bei einer idealen langsamen, reibungsfreien Hubbewegung braucht eine senkrechte Last W die waagerechte Zahnstangenkraft F = W w/h. Mit steigender Bühne sinkt die Wegübersetzung, und das ideale Verhältnis Last zu Antriebskraft h/w nimmt zu. Das ist eine Vorhersage und keine gemessene Traglastangabe; Reibung, Trägheit, Nachgiebigkeit, Getriebeverluste und Motorgrenzen verändern die erforderliche Kraft.",
+        "question": "Beweist ein erreichter Motorwinkel, dass sich die Plattform gehoben hat?",
+        "answer": "Nein. Das Ritzel wandelt die Drehung in Zahnstangenweg um. Ohne Ritzel kann der Motor seine Ziele erreichen, während Zahnstange und Scherenplattform nahe ihrer unteren Auflage bleiben. Unabhängige Messungen trennen Antriebsbewegung und nutzbaren passiven Ausgang.",
+        "further": [
+          "Berechne bei einer Breite von 56 mm die Höhe h und das Verhältnis w/h. Vergleiche mit einer gemessenen Höhe in Stufe 2. Verwende die Gelenkmitten statt der durch die Materialdicke versetzten Bühnenoberfläche.",
+          "Erkläre, warum die fast flache Lage w ≈ 80 mm eine sehr große ideale Antriebskraft erfordern würde. Fahre diesen Bereich mit dem mitgelieferten Modell oder Programm nicht an: Er liegt außerhalb der vorgegebenen Strecke und des Prüfbereichs.",
+          "Vergleiche die Schere mit Sarrus Lift oder Parallel Lift. Alle heben eine Plattform, doch unterschiedliche Gelenkführungen bestimmen Bahn und Übersetzung. Untersuche die tatsächliche Bewegung, bevor du entscheidest, ob die Bühne senkrecht geführt und waagerecht geblieben ist."
+        ]
+      },
+      "formula": {
+        "en": "For the scissor geometry, h² + w² = (80 mm)². The encoder-to-rack equation applies only with an engaged pinion; this disconnected control should remain near w=64 mm and h=48 mm despite the input rotation.",
+        "de": "Für die Scherengeometrie gilt h² + w² = (80 mm)². Die Beziehung zwischen Motorwinkel und Zahnstangenweg gilt nur mit eingreifendem Ritzel; diese Kontrolle soll trotz Eingangsdrehung nahe w=64 mm und h=48 mm bleiben."
+      },
+      "related": [
+        "rise-ratio.ldr",
+        "sarrus-lift.ldr",
+        "parallel-lift.ldr",
+        "rack-shuttle.ldr"
+      ]
+    },
+    "cable-compass": {
+      "en": {
+        "what": "Two motorized 24:1 worm winches set four rope lengths. The hanging payload has no motor. There are 175 rigid pieces and four additional cords; the comparison has 174 rigid pieces and the same cords.",
+        "try": [
+          "Choose Cable Compass in Examples; its program loads into Blocks automatically. Press Run. The payload visits home, 16 mm left, home, 16 mm up, 16 mm right and home, with a three-second pause at each stage.",
+          "Compare A and B. Equal winding raises the payload on the centre line. A lateral move needs unequal length changes. Observe the payload itself, then compare its position with the motor angles.",
+          "Choose Cable Compass Control and run the same program. One left worm is absent, but its shaft bearings and collars remain. Both motors reach their targets while the unsupported left drum cannot maintain the payload route.",
+          "Reset before each repeat, especially after manual movement. The program requires the saved encoder datum; completed = 1 and failed = 0 confirm controller completion, while payload position must be checked separately."
+        ],
+        "why": "This is a cable-driven parallel robot. Two independent lengths determine a position through intersecting distance constraints. The front/rear rope pairs are 24 mm from the centre plane, so that depth offset belongs in both distance equations. A 2.8 mm drum winds 2.8 theta / 24 mm per motor angle theta in radians.",
+        "matters": "Ropes pull and can go slack; they cannot push a payload back onto a desired path. At a settled centre position the two sides share the vertical weight. Their inclined tension magnitudes are larger than their vertical components. Simulated rope loads are observations of this rope approximation, not a physical cord or motor load rating.",
+        "question": "To move 16 mm left at the same height, should the left motor wind in and the right motor pay out by equal amounts?",
+        "answer": "No. From the 100 mm home height, the ideal left pair shortens by about 7.638 mm and the right pair lengthens by about 9.164 mm. Equal take-up and payout would trace a different Cartesian path. Successful motor arrivals establish input lengths, not payload arrival.",
+        "further": [
+          "Predict both lengths at x = 0, h = 84 mm, then compare with the measured lifted stage.",
+          "Compare the disconnected-worm experiment with Sky Courier and consider why a missing holding transmission changes unpowered support."
+        ]
+      },
+      "de": {
+        "what": "Zwei motorisierte Schneckenwinden mit 24:1-Untersetzung bestimmen vier Seillängen. Die hängende Last hat keinen eigenen Motor. Der Aufbau enthält 175 feste Teile und vier zusätzliche Schnüre; die Kontrolle enthält 174 feste Teile und dieselben Schnüre.",
+        "try": [
+          "Wähle Cable Compass unter Beispiele; das Programm wird automatisch als Blöcke geladen. Drücke Start. Die Last fährt zur Ausgangslage, 16 mm nach links, zurück, 16 mm nach oben, 16 mm nach rechts und zurück; jede Stufe hält drei Sekunden.",
+          "Vergleiche A und B. Gleiches Aufwickeln hebt die Last auf der Mittellinie. Eine seitliche Bewegung braucht unterschiedliche Längenänderungen. Beobachte die Last selbst und vergleiche ihre Lage mit den Motorwinkeln.",
+          "Wähle die Cable-Compass-Kontrolle und starte dasselbe Programm. Die linke Schnecke fehlt; Wellenlager und Halteringe bleiben erhalten. Beide Motoren erreichen ihre Ziele, während die nicht mehr gehaltene linke Trommel die Lastbahn verfehlt.",
+          "Setze vor jeder Wiederholung zurück, besonders nach manueller Bewegung. Das Programm verlangt die gespeicherte Drehgeberlage. completed = 1 und failed = 0 bestätigen den Programmablauf; die Lastposition muss unabhängig geprüft werden."
+        ],
+        "why": "Dies ist ein Seilroboter mit paralleler Kinematik. Zwei unabhängige Längen bestimmen durch Kreisschnitt eine Position. Die vorderen und hinteren Seile liegen 24 mm vor beziehungsweise hinter der Mittelebene; dieser Tiefenversatz gehört in beide Abstandsgleichungen. Die Trommel mit 2,8 mm Radius wickelt je Motorwinkel theta im Bogenmaß 2,8 theta / 24 mm Seil auf.",
+        "matters": "Seile ziehen und können schlaff werden; sie können die Last nicht auf die gewünschte Bahn zurückdrücken. In der ruhenden Mittellage teilen beide Seiten die senkrechte Gewichtskraft. Wegen ihrer Neigung sind die Seilkräfte größer als ihre senkrechten Anteile. Simulierte Seillasten sind Beobachtungen dieser Seilnäherung und keine Traglastangaben für echte Schnüre oder Motoren.",
+        "question": "Müssen bei einer Bewegung um 16 mm nach links auf gleicher Höhe links und rechts gleich große Seillängen auf- beziehungsweise abgewickelt werden?",
+        "answer": "Nein. Aus der Ausgangshöhe von 100 mm verkürzt sich das linke Paar ideal um etwa 7,638 mm, während das rechte Paar um etwa 9,164 mm länger wird. Gleiches Auf- und Abwickeln ergäbe eine andere kartesische Bahn. Erreichte Motorwinkel belegen die Eingangslängen, nicht die tatsächliche Lastposition.",
+        "further": [
+          "Berechne beide Längen für x = 0 und h = 84 mm und vergleiche mit der gehobenen Stufe.",
+          "Vergleiche den getrennten Schneckenantrieb mit Sky Courier: Warum verändert die fehlende Halteübersetzung schon die stromlose Abstützung?"
+        ]
+      },
+      "formula": {
+        "en": "L_A² = (x + 64)² + h² + 24²; L_B² = (x − 64)² + h² + 24²; lengths in mm, h positive downward. ΔL = −2.8 theta/24 mm, theta in motor radians. Home: x = 0, h = 100 mm.",
+        "de": "L_A² = (x + 64)² + h² + 24²; L_B² = (x − 64)² + h² + 24²; Längen in mm, h positiv nach unten. ΔL = −2,8 theta/24 mm, theta als Motorwinkel im Bogenmaß. Ausgangslage: x = 0, h = 100 mm."
+      },
+      "related": [
+        "cable-compass-control.ldr",
+        "sky-courier.ldr",
+        "twin-tempo.ldr"
+      ]
+    },
+    "cable-compass-control": {
+      "en": {
+        "what": "The left worm is removed, with all bearings and collars retained. Its motor still turns, but the left drum loses its holding transmission. Observe the hanging payload before and during the unchanged program. 174 rigid pieces plus four cords.",
+        "try": [
+          "Choose Cable Compass in Examples; its program loads into Blocks automatically. Press Run. The payload visits home, 16 mm left, home, 16 mm up, 16 mm right and home, with a three-second pause at each stage.",
+          "Compare A and B. Equal winding raises the payload on the centre line. A lateral move needs unequal length changes. Observe the payload itself, then compare its position with the motor angles.",
+          "Choose Cable Compass Control and run the same program. One left worm is absent, but its shaft bearings and collars remain. Both motors reach their targets while the unsupported left drum cannot maintain the payload route.",
+          "Reset before each repeat, especially after manual movement. The program requires the saved encoder datum; completed = 1 and failed = 0 confirm controller completion, while payload position must be checked separately."
+        ],
+        "why": "This is a cable-driven parallel robot. Two independent lengths determine a position through intersecting distance constraints. The front/rear rope pairs are 24 mm from the centre plane, so that depth offset belongs in both distance equations. A 2.8 mm drum winds 2.8 theta / 24 mm per motor angle theta in radians.",
+        "matters": "Ropes pull and can go slack; they cannot push a payload back onto a desired path. At a settled centre position the two sides share the vertical weight. Their inclined tension magnitudes are larger than their vertical components. Simulated rope loads are observations of this rope approximation, not a physical cord or motor load rating.",
+        "question": "To move 16 mm left at the same height, should the left motor wind in and the right motor pay out by equal amounts?",
+        "answer": "No. From the 100 mm home height, the ideal left pair shortens by about 7.638 mm and the right pair lengthens by about 9.164 mm. Equal take-up and payout would trace a different Cartesian path. Successful motor arrivals establish input lengths, not payload arrival.",
+        "further": [
+          "Predict both lengths at x = 0, h = 84 mm, then compare with the measured lifted stage.",
+          "Compare the disconnected-worm experiment with Sky Courier and consider why a missing holding transmission changes unpowered support."
+        ]
+      },
+      "de": {
+        "what": "Die linke Schnecke ist entfernt; alle Lager und Halteringe bleiben erhalten. Ihr Motor dreht weiter, doch der linken Trommel fehlt die haltende Übersetzung. Beobachte die Last vor und während desselben Programms. 174 feste Teile plus vier Schnüre.",
+        "try": [
+          "Wähle Cable Compass unter Beispiele; das Programm wird automatisch als Blöcke geladen. Drücke Start. Die Last fährt zur Ausgangslage, 16 mm nach links, zurück, 16 mm nach oben, 16 mm nach rechts und zurück; jede Stufe hält drei Sekunden.",
+          "Vergleiche A und B. Gleiches Aufwickeln hebt die Last auf der Mittellinie. Eine seitliche Bewegung braucht unterschiedliche Längenänderungen. Beobachte die Last selbst und vergleiche ihre Lage mit den Motorwinkeln.",
+          "Wähle die Cable-Compass-Kontrolle und starte dasselbe Programm. Die linke Schnecke fehlt; Wellenlager und Halteringe bleiben erhalten. Beide Motoren erreichen ihre Ziele, während die nicht mehr gehaltene linke Trommel die Lastbahn verfehlt.",
+          "Setze vor jeder Wiederholung zurück, besonders nach manueller Bewegung. Das Programm verlangt die gespeicherte Drehgeberlage. completed = 1 und failed = 0 bestätigen den Programmablauf; die Lastposition muss unabhängig geprüft werden."
+        ],
+        "why": "Dies ist ein Seilroboter mit paralleler Kinematik. Zwei unabhängige Längen bestimmen durch Kreisschnitt eine Position. Die vorderen und hinteren Seile liegen 24 mm vor beziehungsweise hinter der Mittelebene; dieser Tiefenversatz gehört in beide Abstandsgleichungen. Die Trommel mit 2,8 mm Radius wickelt je Motorwinkel theta im Bogenmaß 2,8 theta / 24 mm Seil auf.",
+        "matters": "Seile ziehen und können schlaff werden; sie können die Last nicht auf die gewünschte Bahn zurückdrücken. In der ruhenden Mittellage teilen beide Seiten die senkrechte Gewichtskraft. Wegen ihrer Neigung sind die Seilkräfte größer als ihre senkrechten Anteile. Simulierte Seillasten sind Beobachtungen dieser Seilnäherung und keine Traglastangaben für echte Schnüre oder Motoren.",
+        "question": "Müssen bei einer Bewegung um 16 mm nach links auf gleicher Höhe links und rechts gleich große Seillängen auf- beziehungsweise abgewickelt werden?",
+        "answer": "Nein. Aus der Ausgangshöhe von 100 mm verkürzt sich das linke Paar ideal um etwa 7,638 mm, während das rechte Paar um etwa 9,164 mm länger wird. Gleiches Auf- und Abwickeln ergäbe eine andere kartesische Bahn. Erreichte Motorwinkel belegen die Eingangslängen, nicht die tatsächliche Lastposition.",
+        "further": [
+          "Berechne beide Längen für x = 0 und h = 84 mm und vergleiche mit der gehobenen Stufe.",
+          "Vergleiche den getrennten Schneckenantrieb mit Sky Courier: Warum verändert die fehlende Halteübersetzung schon die stromlose Abstützung?"
+        ]
+      },
+      "formula": {
+        "en": "L_A² = (x + 64)² + h² + 24²; L_B² = (x − 64)² + h² + 24²; lengths in mm, h positive downward. ΔL = −2.8 theta/24 mm, theta in motor radians. Home: x = 0, h = 100 mm.",
+        "de": "L_A² = (x + 64)² + h² + 24²; L_B² = (x − 64)² + h² + 24²; Längen in mm, h positiv nach unten. ΔL = −2,8 theta/24 mm, theta als Motorwinkel im Bogenmaß. Ausgangslage: x = 0, h = 100 mm."
+      },
+      "related": [
+        "cable-compass.ldr",
+        "sky-courier.ldr"
+      ]
+    },
+    "rod-ratio": {
+      "en": {
+        "what": "One motor turns two equal-radius cranks on the same shaft through a 24:1 worm drive. A 40 mm rod and an 80 mm rod connect those cranks to two passive guided carriages. Both carriages have the same ideal 48 mm complete stroke, but they occupy different fractions of that stroke at the same crank angle. The finite experiment pauses every 45 degrees, completes one forward revolution, reverses through the same phases and returns home. The numerical values below are geometric predictions; compare them with the moving carriage markers.",
+        "try": [
+          "Open Examples and choose Rod Ratio, then open the model with its program. The model, Code and Blocks load together. Press Reset, then Run. Reset again before repeating or after manual movement; keep manual overrides off during the experiment.",
+          "Watch stages 0–8 visit crank phases 0°, 45°, 90°, 135°, 180°, 225°, 270°, 315° and 360°. Stages 9–16 visit the reverse route back to 0°. Each measured arrival has a one-second dwell. The final status is completed = 1, failed = 0, stage = 17 and arrived = 0.",
+          "At the first 90° crank pause, compare each carriage with its own saved starting point. Predict which has moved farther. Ideally the short-rod carriage has moved inward 32.000 mm and the long-rod carriage 27.685 mm: a difference of 4.315 mm. Neither is halfway through its 48 mm stroke.",
+          "Compare the two 180° endpoints and the matching phases on the reverse route. Both complete strokes should be 48 mm in the ideal geometry. The different rod lengths change the intermediate position, not the crank radius or the number of cycles. Measure the actual carriage markers instead of treating a motor target as an output observation.",
+          "The displayed phaseTarget is output crank degrees. The motor turns 24 times as far: a full crank revolution requires 8640 motor degrees, with the measured sign in the supplied program. The requested 720 motor degrees per second corresponds nominally to 30 crank degrees per second between pauses. Reset before a fresh run after any manual movement or interrupted experiment."
+        ],
+        "why": "For an inline slider-crank, let r be the crank radius, L the rod length and θ the crank angle from full extension. The crank tip has coordinates (r cos θ, r sin θ). The carriage stays on the straight guide line, so the rod supplies the remaining horizontal distance sqrt(L² − r² sin² θ). Its pivot position is x_L = r cos θ + sqrt(L² − r² sin² θ). Inward travel from its own full-extension position is u_L = r + L − x_L. At 0° and 180° the sine term vanishes, making the complete stroke exactly 2r for either rod. Between those angles, the shorter rod has the larger angular swing and the larger departure from the simple cosine projection. Here r = 24 mm, with L = 40 mm and L = 80 mm.",
+        "matters": "A single input can give two passive outputs the same endpoints and different motion within the cycle. That distinction matters when matching a carriage to another mechanism: equal stroke and equal cycle count do not guarantee equal position at each phase. The common shaft provides the same crank phase to both branches, while two real guide rails restrain each carriage. This experiment concerns displacement, phase and geometric closure. It does not establish motor torque, joint friction, efficiency, wear or a physical load rating.",
+        "question": "If both cranks have a 24 mm radius, must their carriages also have the same position halfway through a crank half-turn? Does doubling the connecting-rod length double the complete stroke?",
+        "answer": "No to both. At a 90° crank angle, the 40 mm rod gives 32.000 mm of inward travel and the 80 mm rod gives about 27.685 mm. Doubling the rod length reduces the intermediate distortion but leaves the complete stroke at 2 × 24 = 48 mm. A longer rod approaches the cosine-projection motion; it does not increase the crank radius.",
+        "further": [
+          "Calculate the two ideal travels at 45° and 135°, then compare them with independent marker measurements. Subtract each carriage’s own saved point so the rods’ different absolute starting positions do not become a false difference.",
+          "Compare 90° with 270° and compare matching forward and reverse phases. The ideal displacement equation gives the same position for θ and 360° − θ. A disagreement in measured runs needs investigation; it is not part of the ideal rod-length effect.",
+          "Compare Quickstroke, whose guide line is offset from its crank centre, with this inline arrangement. Quickstroke studies unequal stroke times; Rod Ratio deliberately pauses to compare positions at common phases.",
+          "Identify the 24 mm crank radius and the 40 mm and 80 mm distances between rod pivot centres. Count hole intervals, not the number of holes. Then inspect the guide supports and collars that keep each slider and shaft captive."
+        ]
+      },
+      "de": {
+        "what": "Ein Motor dreht über einen Schneckenantrieb mit 24:1-Untersetzung zwei Kurbeln mit gleichem Radius auf derselben Welle. Ein 40 mm langer und ein 80 mm langer Pleuel verbinden die Kurbeln mit zwei passiven geführten Schlitten. Beide Schlitten haben ideal denselben Gesamthub von 48 mm, erreichen bei gleichem Kurbelwinkel aber unterschiedliche Zwischenpositionen. Das endliche Experiment hält alle 45 Grad an, fährt eine vollständige Umdrehung vorwärts und über dieselben Winkel zurück zur Ausgangslage. Die folgenden Zahlen sind geometrische Vorhersagen; vergleiche sie mit den bewegten Schlittenmarkierungen.",
+        "try": [
+          "Öffne Beispiele, wähle Rod Ratio und lade das Modell mit Programm. Modell, Code und Blöcke werden gemeinsam geladen. Drücke Zurücksetzen und dann Start. Setze vor einer Wiederholung und nach manueller Bewegung zurück; lasse manuelle Übersteuerungen während des Experiments ausgeschaltet.",
+          "Beobachte in Stufe 0–8 die Kurbelwinkel 0°, 45°, 90°, 135°, 180°, 225°, 270°, 315° und 360°. Stufe 9–16 durchlaufen die Winkel rückwärts bis 0°. Nach jeder gemessenen Zielankunft folgt eine Pause von einer Sekunde. Der Endstatus lautet completed = 1, failed = 0, stage = 17 und arrived = 0.",
+          "Vergleiche bei der ersten 90°-Pause jeden Schlitten mit seinem eigenen gespeicherten Startpunkt. Sage voraus, welcher weiter gefahren ist. Ideal ist der Schlitten am kurzen Pleuel um 32,000 mm eingerückt, der am langen Pleuel um 27,685 mm. Der Unterschied beträgt 4,315 mm. Keiner steht dabei in der Mitte seines 48-mm-Hubs.",
+          "Vergleiche beide 180°-Endpunkte und dieselben Winkel auf dem Rückweg. Beide vollständigen Hübe betragen in der idealen Geometrie 48 mm. Die Pleuellänge verändert die Zwischenposition, nicht den Kurbelradius oder die Zahl der Zyklen. Miss die tatsächlichen Schlittenmarker; ein Motor-Sollwert ist noch keine Beobachtung des Ausgangs.",
+          "phaseTarget zeigt den Kurbelwinkel am Ausgang in Grad. Der Motor dreht sich 24-mal so weit: Eine volle Kurbelumdrehung benötigt 8640 Motorgrad mit dem gemessenen Vorzeichen des mitgelieferten Programms. Die angeforderten 720 Motorgrad pro Sekunde entsprechen zwischen den Pausen nominell 30 Kurbelgrad pro Sekunde. Setze nach manueller Bewegung oder einer Unterbrechung vor einem neuen Lauf zurück."
+        ],
+        "why": "Beim geraden Schubkurbeltrieb sei r der Kurbelradius, L die Pleuellänge und θ der Kurbelwinkel ab der vollständig gestreckten Lage. Der Kurbelzapfen liegt bei (r cos θ, r sin θ). Der Schlitten bleibt auf der geraden Führungslinie; der Pleuel liefert daher den restlichen waagerechten Abstand sqrt(L² − r² sin² θ). Die Position des Schlittenlagers lautet x_L = r cos θ + sqrt(L² − r² sin² θ). Der Weg nach innen ab der eigenen gestreckten Ausgangslage ist u_L = r + L − x_L. Bei 0° und 180° verschwindet der Sinusterm. Deshalb beträgt der Gesamthub für beide Pleuel genau 2r. Dazwischen schwenkt der kürzere Pleuel stärker und weicht stärker von der einfachen Kosinusprojektion ab. Hier ist r = 24 mm, mit L = 40 mm und L = 80 mm.",
+        "matters": "Ein einzelner Eingang kann zwei passiven Ausgängen dieselben Endpunkte und trotzdem unterschiedliche Bewegungen innerhalb des Zyklus geben. Das ist bei der Abstimmung mit einer zweiten Mechanik wichtig: Gleicher Hub und gleiche Zykluszahl bedeuten nicht gleiche Position bei jedem Winkel. Die gemeinsame Welle gibt beiden Zweigen denselben Kurbelwinkel vor; zwei reale Führungsschienen halten jeden Schlitten in seiner Richtung. Dieses Experiment untersucht Weg, Winkel und geometrischen Gelenkschluss. Es weist weder Motordrehmoment noch Gelenkreibung, Wirkungsgrad, Verschleiß oder eine reale Tragfähigkeit nach.",
+        "question": "Müssen die Schlitten bei gleichem Kurbelradius von 24 mm auch nach der Hälfte einer Kurbel-Halbdrehung an derselben Stelle stehen? Verdoppelt eine doppelte Pleuellänge den Gesamthub?",
+        "answer": "Beides gilt nicht. Bei 90° Kurbelwinkel ergibt der 40-mm-Pleuel 32,000 mm Weg nach innen, der 80-mm-Pleuel ungefähr 27,685 mm. Die doppelte Pleuellänge verringert die Abweichung innerhalb des Hubs, lässt den Gesamthub aber bei 2 × 24 = 48 mm. Ein längerer Pleuel nähert die Bewegung der Kosinusprojektion an; er vergrößert nicht den Kurbelradius.",
+        "further": [
+          "Berechne die beiden idealen Wege bei 45° und 135° und vergleiche sie mit unabhängigen Markermessungen. Ziehe jeweils den eigenen gespeicherten Startpunkt ab, damit die verschiedenen absoluten Startpositionen keinen falschen Unterschied erzeugen.",
+          "Vergleiche 90° mit 270° und dieselben Winkel bei Vorwärts- und Rückwärtsfahrt. Die ideale Weggleichung ergibt für θ und 360° − θ dieselbe Position. Eine Abweichung zwischen gemessenen Läufen muss untersucht werden; sie gehört nicht zum idealen Pleuellängeneffekt.",
+          "Vergleiche Quickstroke, dessen Führungslinie gegenüber der Kurbelmitte versetzt ist, mit dieser geraden Anordnung. Quickstroke untersucht unterschiedliche Hubzeiten; Rod Ratio hält absichtlich an, um Positionen bei gleichen Winkeln zu vergleichen.",
+          "Bestimme den Kurbelradius von 24 mm und die Abstände von 40 mm und 80 mm zwischen den Pleuellager-Mitten. Zähle Lochabstände statt Löcher. Prüfe anschließend die Führungsstützen und Sicherungsbuchsen, die Schlitten und Wellen festhalten."
+        ]
+      },
+      "formula": {
+        "en": "r = 24 mm; L_short = 40 mm; L_long = 80 mm; N = 24. x_L(θ) = r cos θ + sqrt(L² − r² sin² θ); u_L(θ) = r + L − x_L(θ). Stroke = 2r = 48 mm. u_short(90°) = 32.000 mm; u_long(90°) ≈ 27.684864 mm; difference ≈ 4.315136 mm. Output crank angle in degrees = measured_sign × unwrapped_motor_angle / 24. The curve observer uses the actual crank marker angle independently of that encoder prediction.",
+        "de": "r = 24 mm; L_kurz = 40 mm; L_lang = 80 mm; N = 24. x_L(θ) = r cos θ + sqrt(L² − r² sin² θ); u_L(θ) = r + L − x_L(θ). Gesamthub = 2r = 48 mm. u_kurz(90°) = 32,000 mm; u_lang(90°) ≈ 27,684864 mm; Unterschied ≈ 4,315136 mm. Ausgangs-Kurbelwinkel in Grad = gemessenes_Vorzeichen × fortlaufender_Motorwinkel / 24. Die Kurvenbeobachtung verwendet den tatsächlichen Kurbelmarkerwinkel unabhängig von dieser Drehgebervorhersage."
+      },
+      "related": [
+        "sine-shuttle.ldr",
+        "quickstroke.ldr"
+      ]
+    },
+    "vernier-drive": {
+      "en": {
+        "what": "One motor drives two real gear paths into a differential. One side follows the input at +1; the other turns oppositely at -27/25. The differential carrier follows their signed mean, -1/25. A separate equal gear pair reverses that slow motion, so the visible passive output pointer makes one positive turn for every 25 input turns. The finite experiment pauses at quarter turns, completes one output revolution, reverses and returns home. These ratios are geometric predictions; compare the actual shaft markers and pointer as the model runs.",
+        "try": [
+          "Open Examples and choose Vernier Drive, then open the model with its program. The model, Code and Blocks load together. Press Reset, then Run. Reset again before repeating or after manual movement; keep manual overrides off during the experiment.",
+          "Stages 0–4 visit output pointer angles 0°, 90°, 180°, 270° and 360°. Stages 5–8 return through 270°, 180°, 90° and 0°. Each measured motor arrival has a one-second teaching dwell. A completed run ends with completed = 1, failed = 0, stage = 9 and arrived = 0; the input motor holds the attained home position.",
+          "At the 90° output pause, the ideal input and left side have turned +6.25 revolutions, the right side -6.75, and the differential carrier -0.25. Their signed mean is (-0.5)/2 = -0.25 turn. The external equal gear pair reverses that carrier motion to +0.25 turn at the output pointer.",
+          "At 360°, compare the actual unwrapped rotations: +25 input turns, +25 left-side turns, -27 right-side turns, -1 carrier turn and +1 output turn. A pointer that returns to the same visible direction after one turn still traveled through a complete revolution. Use continuously unwrapped actual body angles rather than just start/end orientations or requested targets.",
+          "The displayed outputTarget refers to the separate visible pointer, not the differential carrier. The motor target is 25 times the output angle, with the measured encoder sign: 9000 motor degrees for one output turn. The nominal command of 240 motor degrees per second corresponds to 9.6 output degrees per second between pauses. Reset before a fresh run after any manual movement or interrupted experiment."
+        ],
+        "why": "An external gear mesh reverses direction and multiplies rotation by the driver tooth count divided by the driven tooth count. The three-mesh branch therefore gives -(12/20) × (12/20) × (36/12) = -27/25 relative to the common input. The other side is driven directly at +1. Equal differential side gears obey C = (L + R)/2, so C = (1 - 27/25)I/2 = -I/25. The separate 16-tooth to 16-tooth output mesh reverses the sign once more: O = -C = I/25. The small output comes from the difference between two larger opposite motions. All signed angles must use a consistent physical axis convention; the positions of opposed shafts on the screen do not determine the signs.",
+        "matters": "A large reduction can emerge by combining nearly opposing motions, even though neither side path is a large reduction by itself. Here the fast branches differ by two turns after 25 input turns, and the differential halves that difference. Mean Machine already demonstrates a differential averaging two independently commanded motors; this experiment uses one input and real tooth ratios to generate the near cancellation mechanically. It establishes rotational kinematics, not torque multiplication, efficiency, self-locking, backlash, wear or a physical load rating.",
+        "question": "After the input makes 25 positive turns, the sides make +25 and -27 turns. Does their difference make the carrier turn twice, once, or not at all? What does the visible output pointer do?",
+        "answer": "The carrier turns once in the negative direction because the differential takes the signed mean: (25 - 27)/2 = -1. The separate equal external gear pair reverses that motion, so the visible output pointer turns once positively. If the side ratios were exactly +1 and -1, their mean would be zero; a large ratio by near cancellation depends on the small remaining difference.",
+        "further": [
+          "Predict the left, right, carrier and output rotations after 12.5 input turns. Then compare those predictions with independently observed body-carried markers at the 180° output pause.",
+          "Test the mean relation C = (L + R)/2 using measured left and right angles, separately from testing O = I/25. A correct-looking output alone does not show that both intended side paths are working.",
+          "Compare matching forward and reverse phases. The ideal ratio is unchanged. Any discrepancy in a measured run needs investigation; this simulation is not a measurement of real LEGO backlash or friction.",
+          "Trace each physical mesh and count its teeth. Explain why the three-mesh branch changes sign three times and why the final 16:16 mesh changes only direction. Inspect the collars and bearing supports that retain the fast shafts throughout their full rotations."
+        ]
+      },
+      "de": {
+        "what": "Ein Motor treibt zwei echte Zahnradwege an, die in ein Differenzial führen. Eine Seite folgt dem Eingang mit +1, die andere dreht gegenläufig mit -27/25. Der Differenzialträger folgt ihrem vorzeichenbehafteten Mittelwert, -1/25. Ein separates gleich großes Zahnradpaar kehrt diese langsame Bewegung um: Der sichtbare passive Ausgangszeiger macht eine positive Umdrehung je 25 Eingangsumdrehungen. Das endliche Experiment hält bei Vierteldrehungen an, durchläuft eine volle Ausgangsumdrehung und kehrt rückwärts zurück. Die Verhältnisse sind geometrische Vorhersagen; vergleiche die tatsächlichen Wellenmarkierungen und den Zeiger während des Laufs.",
+        "try": [
+          "Öffne Beispiele, wähle Vernier Drive und lade das Modell mit Programm. Modell, Code und Blöcke werden gemeinsam geladen. Drücke Zurücksetzen und dann Start. Setze vor einer Wiederholung und nach manueller Bewegung zurück; lasse manuelle Übersteuerungen während des Experiments ausgeschaltet.",
+          "Stufe 0–4 fahren den Ausgangszeiger auf 0°, 90°, 180°, 270° und 360°. Stufe 5–8 führen über 270°, 180°, 90° und 0° zurück. Auf jede gemessene Zielankunft des Motors folgt eine Pause von einer Sekunde. Ein abgeschlossener Lauf endet mit completed = 1, failed = 0, stage = 9 und arrived = 0; der Eingangsmotor hält die erreichte Ausgangslage.",
+          "Bei der 90°-Pause am Ausgang haben sich Eingang und linke Seite ideal um +6,25 Umdrehungen gedreht, die rechte Seite um -6,75 und der Differenzialträger um -0,25. Der vorzeichenbehaftete Mittelwert ist (-0,5)/2 = -0,25 Umdrehung. Das äußere gleich große Zahnradpaar kehrt diese Trägerbewegung zu +0,25 Umdrehung am Ausgangszeiger um.",
+          "Vergleiche bei 360° die tatsächlichen fortlaufend gezählten Drehwinkel: +25 Eingangsumdrehungen, +25 links, -27 rechts, -1 am Träger und +1 am Ausgang. Ein Zeiger, der nach einer vollen Umdrehung wieder in dieselbe Richtung zeigt, hat trotzdem eine ganze Umdrehung durchlaufen. Verwende fortlaufend entfaltete Winkel realer Körper statt nur Anfangs- und Endrichtung oder Sollwerten.",
+          "Die angezeigte Variable outputTarget bezeichnet den separaten sichtbaren Zeiger, nicht den Differenzialträger. Der Motorsollwinkel ist 25-mal so groß wie der Ausgangswinkel und verwendet das gemessene Drehgebervorzeichen: 9000 Motorgrad für eine Ausgangsumdrehung. Der Sollwert von 240 Motorgrad pro Sekunde entspricht zwischen den Pausen nominal 9,6 Ausgangsgrad pro Sekunde. Setze das Modell nach manueller Bewegung oder einem unterbrochenen Experiment vor einem neuen Lauf zurück."
+        ],
+        "why": "Ein äußerer Zahnradeingriff kehrt die Drehrichtung um und multipliziert den Drehwinkel mit dem Verhältnis der Zähnezahlen von treibendem und getriebenem Rad. Der Weg mit drei Eingriffen ergibt deshalb -(12/20) × (12/20) × (36/12) = -27/25 bezogen auf den gemeinsamen Eingang. Die andere Seite wird direkt mit +1 angetrieben. Bei gleichen Seitenrädern im Differenzial gilt C = (L + R)/2. Damit folgt C = (1 - 27/25)I/2 = -I/25. Der separate Eingriff zwischen zwei 16-Zahn-Rädern kehrt das Vorzeichen erneut um: O = -C = I/25. Die kleine Ausgangsbewegung entsteht aus dem Unterschied zweier größerer gegenläufiger Bewegungen. Alle vorzeichenbehafteten Winkel brauchen dieselbe physische Achsenkonvention; die Lage gegenüberliegender Wellen im Bild legt die Vorzeichen nicht fest.",
+        "matters": "Eine starke Untersetzung kann durch das Zusammenführen fast entgegengesetzter Bewegungen entstehen, obwohl keiner der beiden Seitenwege selbst stark untersetzt. Hier bleiben nach 25 Eingangsumdrehungen zwei Umdrehungen Unterschied; das Differenzial halbiert ihn. Mean Machine zeigt bereits, wie ein Differenzial zwei unabhängig angesteuerte Motoren mittelt. Dieses Experiment erzeugt die fast vollständige Aufhebung mechanisch aus einem Eingang und echten Zahnzahlverhältnissen. Es untersucht Drehkinematik, aber keine Drehmomentverstärkung, Wirkungsgrade, Selbsthemmung, Spiel, Verschleiß oder reale Tragfähigkeit.",
+        "question": "Nach 25 positiven Eingangsumdrehungen haben die Seiten +25 und -27 Umdrehungen durchlaufen. Dreht sich der Träger wegen dieses Unterschieds zweimal, einmal oder gar nicht? Was macht der sichtbare Ausgangszeiger?",
+        "answer": "Der Träger dreht sich einmal negativ, denn das Differenzial bildet den vorzeichenbehafteten Mittelwert: (25 - 27)/2 = -1. Das separate gleich große äußere Zahnradpaar kehrt diese Bewegung um; der sichtbare Ausgangszeiger dreht sich einmal positiv. Bei genau +1 und -1 als Seitenverhältnissen wäre der Mittelwert null. Die starke Untersetzung durch fast vollständige Aufhebung hängt vom kleinen verbleibenden Unterschied ab.",
+        "further": [
+          "Sage die Drehungen links, rechts, am Träger und am Ausgang nach 12,5 Eingangsumdrehungen voraus. Vergleiche sie bei der 180°-Pause mit unabhängigen Markermessungen an den tatsächlichen Körpern.",
+          "Prüfe C = (L + R)/2 mit den gemessenen linken und rechten Winkeln getrennt von O = I/25. Ein richtig aussehender Ausgang allein zeigt nicht, dass beide vorgesehenen Seitenwege funktionieren.",
+          "Vergleiche dieselben Winkel auf Hin- und Rückweg. Das ideale Verhältnis bleibt gleich. Eine Abweichung in einem gemessenen Lauf muss untersucht werden; diese Simulation misst kein reales LEGO-Spiel und keine reale Reibung.",
+          "Verfolge jeden tatsächlichen Zahnradeingriff und zähle die Zähne. Erkläre die drei Vorzeichenwechsel im Seitenweg und weshalb das letzte 16:16-Paar nur die Richtung ändert. Untersuche die Hülsen und Lagerstützen, welche die schnellen Wellen während voller Umdrehungen halten."
+        ]
+      },
+      "formula": {
+        "en": "I = actual common input angle; L = I; R = -(12/20)(12/20)(36/12)I = -(27/25)I; C = (L + R)/2 = -I/25; O = -C = I/25. At I = 25 turns: L = +25, R = -27, C = -1, O = +1 turn. outputTarget is O in degrees. Native motor encoder sign is measured separately; actual input, both sides, carrier and output body angles are observed independently of the command.",
+        "de": "I = tatsächlicher gemeinsamer Eingangswinkel; L = I; R = -(12/20)(12/20)(36/12)I = -(27/25)I; C = (L + R)/2 = -I/25; O = -C = I/25. Bei I = 25 Umdrehungen: L = +25, R = -27, C = -1, O = +1 Umdrehung. outputTarget ist O in Grad. Das Vorzeichen des nativen Motordrehgebers wird getrennt gemessen; Eingang, beide Seiten, Träger und Ausgang werden unabhängig vom Befehl an realen Körpern beobachtet."
+      },
+      "related": [
+        "mean-machine.ldr",
+        "wavemaker.ldr"
+      ]
+    },
+    "line-turner": {
+      "en": {
+        "what": "One motor moves a horizontal rack. A long bar is pinned to that slider at A, and a counterbalanced rocker pivots at fixed O. Its 32mm working arm OM reaches the long bar midpoint M and is exactly half the 64mm span AB. The rocker extends past O in the opposite direction to carry two real counterweight beams. In this planar mechanism the free tip B follows a perpendicular straight line, although it has no vertical guide. The same bar therefore carries three different paths: A on a horizontal line, M on a circular arc and B on a vertical line. The finite experiment visits seven positions and returns home. Exact straightness is an ideal geometric prediction; follow the free tip to compare its actual motion.",
+        "try": [
+          "Open Examples and choose Line Turner, then open the model with its program. The model, Code and Blocks load together. Press Reset, then Run. Reset again before repeating or after manual movement; keep manual overrides off during the experiment.",
+          "Follow the three points of the long bar. A is attached to the horizontal rack, M is its midpoint at the end of the rocker working arm, and B is the free end. Find the counterweight on the other side of O. Then find the actual horizontal guides, then check that there is no vertical guide at B. The long bar changes orientation while its tip travels vertically; this is not a platform that stays level.",
+          "Stages 0–3 reduce the horizontal A coordinate from 57.6 to 51.2, 44.8 and 38.4mm, measured from O. Stages 4–6 return through 44.8, 51.2 and 57.6mm. Each move allows one second to settle and then a two-second teaching dwell. Watch the free tip rise and return while the midpoint swings around O.",
+          "The ideal tip heights above O are 27.897, 38.400, 45.705 and 51.200mm. The input moves 19.2mm over the lifting stroke and the tip rises 23.303mm. These are calculated values, not readings from the simulation. Compare actual body-carried points with the values rather than treating the motor target as an output measurement.",
+          "The variable sliderTargetMm is the horizontal coordinate of A from O. The motor uses the measured encoder sign only to position that rack: a 12-tooth pinion of 6mm pitch radius turns by 61.1155° for each 6.4mm step. A completed run ends with completed = 1, failed = 0, stage = 7 and arrived = 0, and the input motor holds home. Reset before another run after a manual move or an interrupted experiment."
+        ],
+        "why": "Let O be the origin, A=(x,0), B=(u,h), and M=(A+B)/2. The bar length is AB=64mm and the rocker working arm is OM=32mm. Therefore |A+B|²=4|OM|²=64² and |B−A|²=|AB|²=64². Subtracting gives 4 A·B=0. Since x is nonzero, u=0. The actual planar pin joints keep B in the linkage plane, so its remaining motion is a vertical line. On the selected upper branch, x²+h²=64² and h=sqrt(64²−x²). M follows the circle |OM|=32mm. The rocker extension and counterweight leave these working lengths unchanged. The motor commands the horizontal input only; these paths are consequences of the passive links and joints.",
+        "matters": "A mechanism can generate a straight output path without placing a straight guide on that output. Here the working lengths OM=AM=MB replace a second perpendicular slider with a rotating link. Straight Eight already shows an exact line through Peaucellier inversion, while Stride Lab gives an approximately straight coupler path; this experiment uses the exact isosceles sliding-block form often associated with Scott–Russell. Its useful question is how the constraint arrangement creates the line. The height law is also shared by a simple scissor lift, so unequal height increments alone are not the novelty. No force, efficiency, load capacity or real LEGO accuracy is established by this geometry.",
+        "question": "A stays on a horizontal guide, but B has no vertical guide. Why can B still follow a vertical line, and what path does the midpoint M follow?",
+        "answer": "Because the working distance OM is half AB and M is the midpoint, the two equal squared-length equations give A·B=0. For a nonzero horizontal A, B must have zero horizontal coordinate. The planar joints leave B on a vertical line, while M stays 32mm from O and follows a circular arc. The bar itself rotates; straight tip motion does not imply a fixed bar orientation.",
+        "further": [
+          "Measure the actual horizontal slider coordinate and actual tip height independently. Test x²+h²=64² using those measurements, then check the tip distance from its declared vertical line. A point frozen on that line would pass straightness alone, so also require the full useful stroke and return.",
+          "Compare Ellipsa or Ellipse Engine: both have two perpendicular sliders. Which physical constraint in Line Turner replaces the second slider, and why does the midpoint trace a circle in both arrangements?",
+          "Predict the vertical increments for the three equal 6.4mm inward moves. Explain why the increments shrink even though all motor steps have equal magnitude. Keep this prediction separate from the exact-line argument.",
+          "Keep the declared route away from x=0 and x=64mm. At x=0 the perpendicular-line argument loses uniqueness; at x=64mm the upper and lower branches meet. The software envelope and the actual mechanical stops are different boundaries; inspect the stops and remain inside the demonstration route.",
+          "Explain why extending the rocker beyond O and adding a counterweight can reduce gravity-driven startup drift without changing the ideal A/M/B paths. The working pivot distances determine the geometry; the added mass changes the dynamics. Observe how it settles before starting the program."
+        ]
+      },
+      "de": {
+        "what": "Ein Motor bewegt eine waagerechte Zahnstange. Am Schieber A ist ein langer Stab gelenkig befestigt; eine ausbalancierte Schwinge dreht sich um den festen Punkt O. Ihr 32mm langer Arbeitsarm OM reicht zum Stabmittelpunkt M und ist genau halb so lang wie die 64mm lange Strecke AB. Die Schwinge reicht auf der gegenüberliegenden Seite über O hinaus und trägt dort zwei echte Gegengewichtsbalken. In diesem ebenen Mechanismus folgt die freie Spitze B einer senkrechten Geraden, obwohl sie keine vertikale Führung besitzt. Ein und derselbe Stab trägt damit drei verschiedene Bahnen: A auf einer waagerechten Geraden, M auf einem Kreisbogen und B auf einer senkrechten Geraden. Das endliche Experiment fährt sieben Positionen an und kehrt zurück. Die exakte Geradführung ist eine ideale geometrische Vorhersage; beobachte zum Vergleich die tatsächliche Bewegung der freien Spitze.",
+        "try": [
+          "Öffne Beispiele, wähle Line Turner und lade das Modell mit Programm. Modell, Code und Blöcke werden gemeinsam geladen. Drücke Zurücksetzen und dann Start. Setze vor einer Wiederholung und nach manueller Bewegung zurück; lasse manuelle Übersteuerungen während des Experiments ausgeschaltet.",
+          "Verfolge die drei Punkte am langen Stab. A sitzt an der waagerechten Zahnstange, M liegt in seiner Mitte am Ende des Arbeitsarms der Schwinge und B ist das freie Ende. Finde das Gegengewicht auf der anderen Seite von O. Suche dann die tatsächlichen waagerechten Führungen und prüfe, dass B keine vertikale Führung hat. Der Stab ändert seine Orientierung, während die Spitze senkrecht fährt; er ist keine stets waagerechte Plattform.",
+          "Stufe 0–3 verringern die waagerechte A-Koordinate von 57,6 auf 51,2, 44,8 und 38,4mm, gemessen von O. Stufe 4–6 führen über 44,8, 51,2 und 57,6mm zurück. Auf jede Bewegung folgen eine Sekunde zum Abklingen und zwei Sekunden Beobachtungspause. Beobachte, wie die freie Spitze steigt und zurückkehrt, während der Mittelpunkt um O schwenkt.",
+          "Die idealen Spitzenhöhen über O betragen 27,897, 38,400, 45,705 und 51,200mm. Über den aufsteigenden Abschnitt bewegt sich der Eingang 19,2mm und die Spitze steigt 23,303mm. Das sind berechnete Werte, keine Simulationsmessungen. Vergleiche tatsächlich an den Körpern sitzende Punkte mit diesen Werten, statt den Motorsollwert als Ausgangsmessung zu behandeln.",
+          "Die Variable sliderTargetMm bezeichnet die waagerechte A-Koordinate von O aus. Der Motor positioniert nur diese Zahnstange mit dem gemessenen Vorzeichen: Ein Ritzel mit zwölf Zähnen und 6mm Teilkreisradius dreht sich für jeden 6,4mm-Schritt um 61,1155°. Ein abgeschlossener Lauf endet mit completed = 1, failed = 0, stage = 7 und arrived = 0; der Eingangsmotor hält die Rückkehrlage. Setze das Modell nach manueller Bewegung oder einem abgebrochenen Experiment vor dem nächsten Lauf zurück."
+        ],
+        "why": "Sei O der Ursprung, A=(x,0), B=(u,h) und M=(A+B)/2. Die Stablänge ist AB=64mm, die Länge des Arbeitsarms der Schwinge OM=32mm. Daher gilt |A+B|²=4|OM|²=64² und |B−A|²=|AB|²=64². Subtrahieren ergibt 4 A·B=0. Weil x ungleich null ist, folgt u=0. Die tatsächlichen ebenen Drehgelenke halten B in der Mechanismenebene; seine verbleibende Bahn ist deshalb eine senkrechte Gerade. Auf dem gewählten oberen Zweig gilt x²+h²=64² und h=sqrt(64²−x²). M folgt dem Kreis |OM|=32mm. Die Verlängerung der Schwinge und das Gegengewicht ändern diese Arbeitslängen nicht. Der Motor steuert nur den waagerechten Eingang. Die übrigen Bahnen entstehen durch die passiven Glieder und Gelenke.",
+        "matters": "Ein Mechanismus kann einen geraden Ausgangsweg erzeugen, ohne diesen Ausgang in einer geraden Schiene zu führen. Hier ersetzen die gleichen Arbeitslängen OM=AM=MB einen zweiten senkrechten Schieber durch die um O drehende Schwinge. Straight Eight zeigt bereits eine exakte Gerade durch Peaucellier-Inversion, Stride Lab eine annähernd gerade Koppelkurve. Dieses Experiment verwendet die exakte gleichschenklige Schieberform, die häufig mit Scott–Russell verbunden wird. Die Lernfrage ist, wie die Anordnung der Zwangsbedingungen die Gerade erzeugt. Das Höhengesetz gilt auch für eine einfache Scherenhebebühne; ungleiche Höhenschritte allein sind daher nicht das Neue. Aus dieser Geometrie folgen keine Messwerte für Kraft, Wirkungsgrad, Tragfähigkeit oder die Genauigkeit echter LEGO-Bauten.",
+        "question": "A bleibt auf einer waagerechten Führung, B hat aber keine vertikale Führung. Weshalb kann B trotzdem einer senkrechten Geraden folgen, und welche Bahn beschreibt der Mittelpunkt M?",
+        "answer": "Weil der Arbeitsabstand OM halb so lang wie AB ist und M in der Mitte liegt, ergeben die beiden Gleichungen der quadratischen Längen A·B=0. Bei einem waagerechten A ungleich null muss B die waagerechte Koordinate null haben. Die ebenen Gelenke lassen B damit auf einer senkrechten Geraden, während M stets 32mm Abstand von O hat und einen Kreisbogen beschreibt. Der Stab selbst dreht sich; die gerade Spitzenbahn bedeutet keine feste Staborientierung.",
+        "further": [
+          "Miss die tatsächliche waagerechte Schieberkoordinate und die tatsächliche Spitzenhöhe unabhängig. Prüfe damit x²+h²=64² und getrennt den Abstand der Spitze von ihrer vorgesehenen senkrechten Geraden. Ein auf der Geraden eingefrorener Punkt würde nur die Geradheitsprüfung bestehen; verlange deshalb auch den nutzbaren Hub und die Rückkehr.",
+          "Vergleiche Ellipsa oder Ellipse Engine mit ihren zwei senkrecht zueinander stehenden Schiebern. Welche physische Zwangsbedingung ersetzt bei Line Turner den zweiten Schieber, und weshalb beschreibt der Mittelpunkt bei beiden Anordnungen einen Kreis?",
+          "Berechne die vertikalen Schritte für die drei gleich großen Einwärtsbewegungen von 6,4mm. Erkläre, weshalb die Höhenschritte kleiner werden, obwohl alle Motorsollschritte gleich groß sind. Halte diese Vorhersage vom Beweis der exakten Geradführung getrennt.",
+          "Halte den festgelegten Weg von x=0 und x=64mm fern. Bei x=0 verliert der Geradenbeweis seine Eindeutigkeit; bei x=64mm treffen oberer und unterer Zweig zusammen. Softwaregrenzen und tatsächliche mechanische Anschläge sind verschiedene Grenzen; lies dazu die getrennten Bau- und Prüfunterlagen.",
+          "Erkläre, weshalb eine über O verlängerte Schwinge mit Gegengewicht das schwerkraftbedingte Wegsacken beim Start verringern kann, ohne die idealen A/M/B-Bahnen zu ändern. Die Arbeitsabstände der Gelenke bestimmen die Geometrie; die zusätzliche Masse verändert die Dynamik. Der Prüfbericht zeigt das tatsächlich gemessene Startverhalten."
+        ]
+      },
+      "formula": {
+        "en": "AB=64mm; working arm OM=32mm (the rocker also extends past O); M=(A+B)/2; A=(x,0), B=(u,h). |A+B|²=4|OM|²=|B−A|² ⇒ 4 A·B=0 ⇒ u=0 for x≠0. On the selected planar upper branch: h=√(64²−x²), M=(x/2,h/2). Input route x=[57.6,51.2,44.8,38.4,44.8,51.2,57.6]mm. Ideal heights=[27.896953,38.4,45.705142,51.2,45.705142,38.4,27.896953]mm. Inward rack travel s=6θ with θ in signed motor radians; actual motor sign is measured separately. Predicted coordinates never replace actual passive-point observations.",
+        "de": "AB=64mm; Arbeitsarm OM=32mm (die Schwinge reicht zusätzlich über O hinaus); M=(A+B)/2; A=(x,0), B=(u,h). |A+B|²=4|OM|²=|B−A|² ⇒ 4 A·B=0 ⇒ u=0 für x≠0. Auf dem gewählten ebenen oberen Zweig: h=√(64²−x²), M=(x/2,h/2). Eingangsweg x=[57.6,51.2,44.8,38.4,44.8,51.2,57.6]mm. Ideale Höhen=[27.896953,38.4,45.705142,51.2,45.705142,38.4,27.896953]mm. Einwärtshub s=6θ mit θ als vorzeichenbehaftetem Motorwinkel im Bogenmaß; das tatsächliche Motorvorzeichen wird getrennt gemessen. Vorhergesagte Koordinaten ersetzen keine Beobachtung der passiven Punkte."
+      },
+      "related": [
+        "straight-eight.ldr",
+        "sine-shuttle.ldr"
+      ]
+    },
+    "dune-strider": {
+      "en": {
+        "what": "One motor drives two Jansen-topology legs with their cranks half a turn apart. Yellow and orange rigid right-angle links combine three closed loops into a sweeping foot path. A real Technic stand supports the machine so that the complete path is visible. This is a gait laboratory; free walking on the floor is not claimed.",
+        "try": [
+          "Open Examples and choose Dune Strider, then open the model with its program. The model, Code and Blocks load together. Press Reset, then Run. Reset again before repeating or after manual movement; keep manual overrides off during the experiment.",
+          "Observe the bounded initial return to datum, two forward crank revolutions, the short pause, and two reverse revolutions back to datum. The final state is hold. A watchdog stops the experiment after 85 seconds if it does not complete.",
+          "Follow the last hole of each coloured toe beam. Compare its nearly level lower passage with its raised return. The nominal analytical full path is about 71.54 mm wide and 10.23 mm high; compare that prediction with the two visible foot paths.",
+          "Notice that both legs have the same path, separated by 180 degrees of crank phase. Half-turn phasing is a rigid shaft property; the program sends commands to only one motor."
+        ],
+        "why": "The crank radius is two studs and the two grounded rocker lengths are four studs. Each crank-to-rocker connecting rod spans five studs. Their common four-stud ground separation makes both primary loops Grashof crank-rockers: shortest plus longest is 2+5=7, while the remaining sum is 4+4=8. The one-stud inequality margin permits a full input turn. A further five-stud connecting rod closes onto the four-stud edge of the lower rigid right-angle link. That third closure is checked separately: Grashof alone is not a proof for the whole eight-link mechanism.",
+        "matters": "A constant-speed rotary input can generate a useful non-circular path without independently controlling the foot. The same principle underlies linkage walking machines. This model adapts the topology to stock Technic hole spacing and rigid right-angle assemblies; it does not reproduce Theo Jansen's optimized original proportions.",
+        "question": "If you increase both two-stud crank radii to three studs while keeping the four-stud ground and rockers and the five-stud rods, can the input still be treated as a safely continuous crank?",
+        "answer": "No. The primary-loop Grashof sums become 3+5=4+4=8, the change-point boundary. Collinear configurations can lose a unique assembly branch and jam under real tolerances. The lower loop and part clearances also need new checks. Do not treat the current model's qualification as evidence for that rebuild.",
+        "further": [
+          "An eight-link planar mechanism with ten equivalent revolute pairs has nominal mobility 3(8-1)-2(10)=1. The two legs share one crank shaft, so the complete display still has one controlled degree of freedom.",
+          "A seven-hole straight beam has a six-stud endpoint span. The five-stud binary rods here use holes h0 and h5, leaving one hole beyond the moving joint. Read the placement and interface ledgers before substituting a beam.",
+          "The near 10L and far 9L anchor shafts are fixed to the stand by cross-hole keys secured with two pins. Frictionless pins carry the moving leg joints; black friction pins fasten the rigid right-angle assemblies. The near anchor also supports the front drive-bearing bridge. Colour is a visual cue, but the actual part number determines the joint type.",
+          "The physical frame is free on the simulation floor. Output positions are measured relative to its observed pose, and the validation checks frame tilt, hinge closure, body ownership and return. No foot path is assigned by the physics observer.",
+          "The analytical curve is not a physical build test. Real pin friction, backlash, axle torsion, cable routing and tolerances remain untested until the machine is assembled in hardware.",
+          "Compare Stride Lab's single Hoeken-type four-bar with these three coupled loops. Inspiration: Theo Jansen's own Chorda-period account, https://www.strandbeest.com/evolution?period=chorda. No source CAD, images or instructions are copied."
+        ]
+      },
+      "de": {
+        "what": "Ein Motor treibt zwei Beine mit Jansen-Topologie an. Ihre Kurbeln sind um eine halbe Umdrehung versetzt. Gelbe und orangefarbene starre Winkelglieder verbinden drei geschlossene Gelenkschleifen zu einer schwingenden Fußbahn. Ein echtes Technic-Gestell trägt die Maschine und lässt die gesamte Bahn sichtbar. Dieses Modell ist ein Ganglabor; freies Gehen auf dem Boden wird nicht behauptet.",
+        "try": [
+          "Öffne Beispiele, wähle Dune Strider und lade das Modell mit Programm. Modell, Code und Blöcke werden gemeinsam geladen. Drücke Zurücksetzen und dann Start. Setze vor einer Wiederholung und nach manueller Bewegung zurück; lasse manuelle Übersteuerungen während des Experiments ausgeschaltet.",
+          "Beobachte die begrenzte anfängliche Rückkehr zur Ausgangsstellung, zwei Kurbelumdrehungen vorwärts, die kurze Pause und zwei Umdrehungen zurück. Am Ende hält der Motor. Eine Zeitüberwachung beendet den Versuch nach 85 Sekunden, falls er nicht abgeschlossen wird.",
+          "Verfolge das letzte Loch jedes farbigen Fußbalkens. Vergleiche den fast waagerechten unteren Abschnitt mit dem angehobenen Rücklauf. Die analytische Gesamtbahn ist ungefähr 71,54 mm breit und 10,23 mm hoch; der beigefügte native Prüfbericht enthält unabhängig gemessene Ergebnisse und ihren Geltungsbereich.",
+          "Beide Beine haben dieselbe Bahn, jedoch mit 180 Grad Phasenversatz. Diesen Versatz erzeugt die starre Welle; das Programm steuert nur einen Motor."
+        ],
+        "why": "Der Kurbelradius beträgt zwei Noppenabstände, die beiden ortsfest gelagerten Schwingen jeweils vier. Jede Verbindung zwischen Kurbel und Schwinge misst fünf Noppenabstände. Zusammen mit dem festen Lagerabstand von vier ergeben sich zwei Grashof-Kurbelschwingen: Kürzestes plus längstes Glied ergibt 2+5=7, die Summe der übrigen 4+4=8. Die Reserve von einem Noppenabstand ermöglicht die volle Eingangsumdrehung. Ein weiteres Fünferglied schließt auf die Viererseite des unteren starren Winkelglieds. Diese dritte Schleife wird separat geprüft: Grashof allein beweist nicht die Beweglichkeit des gesamten achtgliedrigen Mechanismus.",
+        "matters": "Eine gleichmäßige Drehung kann ohne einzeln gesteuerten Fuß eine nützliche, nicht kreisförmige Bahn erzeugen. Dasselbe Prinzip steckt in gehenden Gelenkmaschinen. Dieses Modell passt die Topologie an normale Technic-Lochabstände und starre Winkelbaugruppen an; es bildet Theo Jansens ursprünglich optimierte Proportionen nicht exakt nach.",
+        "question": "Wenn du beide Kurbelradien von zwei auf drei Noppenabstände vergrößerst, aber Lagerabstand, Schwingen und Verbindungsstangen beibehältst, ist die Kurbel dann weiterhin sicher vollständig umlauffähig?",
+        "answer": "Nein. Die Grashof-Summen werden 3+5=4+4=8. Das ist der Grenzfall mit Strecklage. In kollinearen Stellungen kann die eindeutige Bewegungsrichtung verloren gehen; reale Toleranzen können zum Klemmen führen. Auch die untere Schleife und sämtliche Abstände brauchen neue Prüfungen. Die Freigabe dieses Modells gilt nicht für einen solchen Umbau.",
+        "further": [
+          "Ein ebenes achtgliedriges Getriebe mit zehn gleichwertigen Drehgelenkpaaren hat nominell den Freiheitsgrad 3(8-1)-2(10)=1. Beide Beine teilen eine Kurbelwelle; die gesamte Vorführung hat damit weiterhin einen gesteuerten Freiheitsgrad.",
+          "Ein Balken mit sieben Löchern hat zwischen seinen äußersten Lochmitten sechs Noppenabstände. Die Fünferstangen nutzen hier h0 und h5; ein Loch ragt über das Gelenk hinaus. Lies vor einem Teiletausch das Platzierungs- und das Schnittstellenverzeichnis.",
+          "Die vordere 10L- und die hintere 9L-Lagerachse sind über Kreuzlochträger mit je zwei Pins am Gestell fixiert. Reibungsarme Pins bilden die beweglichen Gelenke; schwarze Reibungspins befestigen die starren Winkelbaugruppen. Die vordere Lagerachse trägt zusätzlich die Brücke des Antriebswellenlagers. Entscheidend ist die Teilenummer, nicht allein die Farbe.",
+          "Das echte Gestell steht frei auf dem Simulationsboden. Gemessen wird relativ zu seiner beobachteten Lage. Die Prüfung kontrolliert Neigung, Gelenkschluss, eindeutige Körperzuordnung und Rückkehr. Der Beobachter schreibt der Physik keine Fußbahn vor.",
+          "Die analytische Kurve ist kein praktischer Bautest. Reibung, Spiel, Achsverdrehung, Kabelverlauf und Toleranzen bleiben bis zum Aufbau mit echten Teilen ungeprüft.",
+          "Vergleiche Stride Labs einzelnes Hoeken-Viergelenk mit diesen drei gekoppelten Schleifen. Inspiration: Theo Jansens eigener Bericht zur Chorda-Periode, https://www.strandbeest.com/evolution?period=chorda. Es werden keine fremden CAD-Dateien, Bilder oder Anleitungen kopiert."
+        ]
+      },
+      "formula": {
+        "en": "Units: studs. O=(0,0), A=(-4,0), B=2(cos q,sin q); AC=AD=AE=4; BC=BD=EF=5; DF=4; DG=5. E-A=R90(C-A), G-D=(5/4)R90(F-D). The second crank uses q+pi. Grashof margin=(4+4)-(2+5)=1 stud.",
+        "de": "Einheit: Noppenabstand. O=(0,0), A=(-4,0), B=2(cos q,sin q); AC=AD=AE=4; BC=BD=EF=5; DF=4; DG=5. E-A=R90(C-A), G-D=(5/4)R90(F-D). Die zweite Kurbel verwendet q+pi. Grashof-Reserve=(4+4)-(2+5)=1 Noppenabstand."
+      },
+      "related": [
+        "stride-lab.ldr",
+        "stepworks.ldr"
+      ]
+    },
+    "atlas-six": {
+      "en": {
+        "what": "Six independently powered small linear actuators connect a free-standing Technic base to a raised open platform. Small stock towballs at both ends let each leg change direction. The six leg lengths jointly determine three translations and three rotations of the plate. Six colours identify physical legs A–F; their motor ports are F, B, D, A, E, C respectively.",
+        "try": [
+          "Open Examples and choose Atlas Six, then open the model with its program. The model, Code and Blocks load together. Press Reset, then Run. Reset again before repeating or after manual movement; keep manual overrides off during the experiment.",
+          "Watch the finite 27-stage sequence: separate positive and negative translations, separate rotations, a small combined pose, and return home. Each excursion returns to the saved datum before the next one. The targets are ±2 mm along each LDraw axis, ±1.5° about X and Z, and ±1.2° about vertical Y; +Y points downward.",
+          "Look at two different-coloured legs while the plate moves vertically. Compare their screw turns. Their angles and saved extensions differ, so equal plate motion does not imply equal motor rotation.",
+          "Predict which lengths must change for a rotation about vertical Y. Then observe the yaw stages and compare the planned motor targets with the observed platform pose. All six commands begin concurrently; each motor finishes its own bounded move, and the stage waits for all six.",
+          "Before another run, use Pause → Reset → Run. Keep manual overrides off and do not erase the encoder datum separately. After returning home, all motors hold for one settling second before completion sets completed=1, failed=0 and stage=28. The motors continue holding afterward."
+        ],
+        "why": "For a proposed plate pose, rotate each upper anchor about the declared platform origin, translate it, and measure its distance from the corresponding base anchor. Here the two ball centres are offset sideways by 30 LDU from one another relative to the actuator axis. Therefore the piston extension is the square root of ball distance squared minus 30 squared, less the 120-LDU axial body offset. Subtract the saved extension and divide by the screw lead to obtain motor turns. The native solver must still produce and retain the requested plate pose under its actual weight; the inverse equation supplies motor inputs, not observed motion.",
+        "matters": "Parallel mechanisms share a load among several simultaneous chains. A Stewart-type platform exposes a useful distinction between inverse kinematics, which computes actuator lengths for a chosen pose, and forward motion, which must emerge from the assembled constraints. Geometry, singularity margin, socket articulation and finite screw stroke all limit the useful workspace.",
+        "question": "If every motor turns forward by exactly the same angle, must this asymmetric platform translate vertically without rotating?",
+        "answer": "No. Equal motor turns add equal piston extension, but the six struts have different saved lengths and directions. Their projections onto a vertical displacement differ. Compute all six target extensions from the same desired platform pose, then drive the corresponding hub ports. Equal turns alone do not impose a pure translation.",
+        "further": [
+          "A small actuator has a native physical slider range of 0–60 LDU (24 mm). The demonstration stays inside a smaller measured range. The software route is not a physical stop, and the separate per-axis limits do not authorize their simultaneous combination.",
+          "The selected stock ball/socket geometry is checked against a conservative 25° stem-angle cap. Native ball joints can rotate without a rim limit, so passing physics alone would miss a neck-to-socket collision. Actual body recordings and stock-mesh clearance are checked separately.",
+          "The leg assemblies can roll passively around the line between their end balls. Their motors hang toward the stable gravity orientation; no hidden antiroll weld is added. Their observed roll and cold settling must remain inside the checked socket envelope.",
+          "Each motor stator is physically pinned to its actuator body. A 3L axle and open-bore 6538a joiner turn the spindle. A joiner with an internal axle stop is not an interchangeable substitute at this engagement depth.",
+          "The chassis is free on the floor. Three non-collinear points on actual plate beams measure the six-axis pose relative to the observed hub. Targets do not supply those measured positions.",
+          "The historical Stewart paper describes a six-motor platform concept: D. Stewart, A Platform with Six Degrees of Freedom (1965), https://doi.org/10.1243/PIME_PROC_1965_180_029_02. This stock-part layout, code and lessons are original work. Physical assembly, flexible cable retention and hardware accuracy remain untested."
+        ]
+      },
+      "de": {
+        "what": "Sechs einzeln angetriebene kleine Linearaktuatoren verbinden einen frei stehenden Technic-Unterbau mit einer erhöhten offenen Plattform. Kleine originale Kugelgelenke an beiden Enden erlauben jedem Bein eine Richtungsänderung. Die sechs Beinlängen bestimmen gemeinsam drei Verschiebungen und drei Drehungen der Plattform. Die Farben kennzeichnen die physischen Beine A–F; ihre Motoranschlüsse sind in dieser Reihenfolge F, B, D, A, E, C.",
+        "try": [
+          "Öffne Beispiele, wähle Atlas Six und lade das Modell mit Programm. Modell, Code und Blöcke werden gemeinsam geladen. Drücke Zurücksetzen und dann Start. Setze vor einer Wiederholung und nach manueller Bewegung zurück; lasse manuelle Übersteuerungen während des Experiments ausgeschaltet.",
+          "Beobachte die endliche Folge mit 27 Stufen: einzelne positive und negative Verschiebungen, einzelne Drehungen, eine kleine kombinierte Lage und die Rückkehr zum Ausgangspunkt. Nach jeder Auslenkung folgt die Ausgangslage. Die Sollwerte betragen ±2 mm je LDraw-Achse, ±1,5° um X und Z sowie ±1,2° um die senkrechte Y-Achse; +Y zeigt nach unten.",
+          "Vergleiche zwei verschiedenfarbige Beine bei einer senkrechten Bewegung. Ihre Winkel und gespeicherten Ausfahrwege unterscheiden sich. Gleiche Plattformbewegung bedeutet deshalb nicht gleiche Motordrehung.",
+          "Sage voraus, welche Beinlängen sich bei einer Drehung um die senkrechte Y-Achse ändern müssen. Beobachte dann diese Stufen und vergleiche die berechneten Motorziele mit der beobachteten Lage der Plattform. Alle sechs Befehle starten gleichzeitig; jeder Motor beendet seine eigene begrenzte Bewegung, und die Stufe wartet auf alle sechs.",
+          "Verwende vor einem weiteren Durchlauf Pause → Reset → Run. Lasse manuelle Motorübersteuerungen ausgeschaltet und setze die Geber nicht unabhängig auf null. Nach der Rückkehr halten alle Motoren eine Sekunde zum Beruhigen, bevor completed=1, failed=0 und stage=28 den Abschluss melden. Die Motoren halten danach weiter."
+        ],
+        "why": "Für eine gewünschte Plattformlage wird jeder obere Ankerpunkt um den festgelegten Ursprung gedreht, verschoben und sein Abstand zum zugehörigen unteren Anker berechnet. Hier sind die Kugelmittelpunkte quer zur Aktuatorachse um 30 LDU gegeneinander versetzt. Der Kolbenweg ist daher die Quadratwurzel aus dem quadrierten Kugelabstand minus 30 zum Quadrat, abzüglich des axialen Grundabstands von 120 LDU. Die Differenz zum gespeicherten Weg, geteilt durch die Spindelsteigung, ergibt die Motordrehungen. Die tatsächliche Lage muss der native Solver unter Eigengewicht aus den montierten Verbindungen erzeugen; die inverse Rechnung liefert nur die Motorziele.",
+        "matters": "Bei Parallelmechanismen tragen mehrere gleichzeitige Gelenkketten dieselbe Last. Eine Stewart-Plattform zeigt den Unterschied zwischen inverser Kinematik, die Beinlängen aus einer gewünschten Lage bestimmt, und der Vorwärtsbewegung der montierten Maschine. Geometrie, Abstand zu Singularitäten, Kugelgelenkwinkel und endlicher Spindelhub begrenzen den nutzbaren Arbeitsraum.",
+        "question": "Muss sich diese asymmetrische Plattform ohne Drehung senkrecht verschieben, wenn alle Motoren genau denselben Winkel vorwärts drehen?",
+        "answer": "Nein. Gleiche Motordrehungen erzeugen gleiche zusätzliche Kolbenwege, aber die sechs Beine besitzen verschiedene Ausgangslängen und Richtungen. Ihre Projektionen auf eine senkrechte Verschiebung sind verschieden. Berechne alle sechs Zielwege aus derselben gewünschten Plattformlage und steuere die zugeordneten Anschlüsse an. Gleiche Drehwinkel allein erzwingen keine reine Verschiebung.",
+        "further": [
+          "Der native mechanische Schieberbereich eines kleinen Aktuators beträgt 0–60 LDU, also 24 mm. Der Versuch nutzt einen kleineren gemessenen Bereich. Die Softwarefolge ist kein mechanischer Anschlag; einzelne Achsgrenzen erlauben nicht automatisch deren gleichzeitige Kombination.",
+          "Die originale Kugelgelenkgeometrie wird mit einer konservativen Grenze von 25° für den Schaftwinkel geprüft. Native Kugelgelenke haben keine Pfannenrandbegrenzung. Darum werden aufgezeichnete Körperlagen und Abstände an den originalen Teiloberflächen zusätzlich geprüft.",
+          "Jede Beinbaugruppe kann passiv um die Verbindungslinie ihrer beiden Kugeln rollen. Die Motoren hängen zur stabilen Schwerkraftlage; es gibt keine unsichtbare Verdrehsperre. Auch das beobachtete Rollen und das unbestromte Einschwingen müssen im geprüften Gelenkbereich bleiben.",
+          "Jeder Motorstator ist mit echten Pins am Aktuatorgehäuse befestigt. Eine 3L-Achse und ein durchgehend offener Achsverbinder 6538a treiben die Spindel. Ein Verbinder mit innerem Achsanschlag ist bei dieser Eingriffslänge kein gleichwertiger Ersatz.",
+          "Der Unterbau steht frei auf dem Boden. Drei nicht auf einer Geraden liegende Punkte echter Plattformbalken messen die räumliche Lage relativ zum beobachteten Hub. Die Sollwerte liefern keine Messpositionen. Der Prüfbericht nennt Dateien, Laufzeitumgebung, Abdeckung und Ergebnisse.",
+          "Historischer Bezug: D. Stewart, A Platform with Six Degrees of Freedom (1965), https://doi.org/10.1243/PIME_PROC_1965_180_029_02. Diese Teileanordnung, der Code und die Lektionen sind eigenständige Arbeit. Realer Aufbau, flexible Kabelführung und Hardwaregenauigkeit bleiben ungeprüft."
+        ]
+      },
+      "formula": {
+        "en": "LDraw units: 1 LDU=0.4 mm, +Y downward. Let b_i be base anchor, p_i saved upper anchor, o=[0,-140,0], t the commanded translation and R=Rz Ry Rx. q_i=o+t+R(p_i-o); e_i=sqrt(||q_i-b_i||^2-30^2)-120; theta_i=360(e_i-e_i0)/3.0147 degrees. Physical legs A,B,C,D,E,F map to hub ports F,B,D,A,E,C. These equations are target inputs, not measured outputs.",
+        "de": "LDraw-Einheiten: 1 LDU=0,4 mm; +Y nach unten. b_i: unterer Anker; p_i: gespeicherter oberer Anker; o=[0,-140,0]; t: Verschiebung; R=Rz Ry Rx. q_i=o+t+R(p_i-o); e_i=sqrt(||q_i-b_i||^2-30^2)-120; theta_i=360(e_i-e_i0)/3,0147 Grad. Physische Beine A,B,C,D,E,F → Anschlüsse F,B,D,A,E,C. Diese Gleichungen liefern Sollwerte und keine gemessenen Ausgaben."
+      },
+      "related": [
+        "gimbal-lab.ldr",
+        "atlas-arm.ldr"
+      ]
+    },
+    "oblique": {
+      "en": {
+        "what": "A two-motor adjustable-angle trammel. Motor A travels with the red carriage and turns a blue rigid bar between two guided pivots. Motor B stays on the gantry and drives a 20T pinion against a 60T turntable, rotating the yellow passive guide. The orange marker traces a different ellipse when that guide changes from 90° to 60°. The mechanism adapts CrispStrobe’s BSD-3-Clause-licensed Ellipsa carriage and bar assembly.",
+        "try": [
+          "Open Examples and choose Oblique, then open the model with its program. The model, Code and Blocks load together. Press Reset, then Run. Reset again before repeating or after manual movement; keep manual overrides off during the experiment.",
+          "Watch one forward and one reverse bar turn with the guides at 90°. The orange marker should trace an ellipse whose principal diameters are 96×32 mm. These are geometric predictions; compare them with the visible marker path.",
+          "When the bar is home, watch motor B turn the guide to 60°. The native direction probe establishes that this uses a −90° B encoder target. The guide turns only 30° because of its 3:1 reduction. Motor A holds its physical home angle during this change.",
+          "Predict whether the new ellipse becomes wider, taller, tilted or merely larger. Observe both complete drawing directions at 60°. Its predicted principal diameters are 103.564×29.663 mm, tilted 66.949° from the fixed X direction. Its bounding box is different from those principal axes.",
+          "The finite program returns both inputs home and holds them. On success completed=1 and failed=0. Reload/reset the complete model before another run; independently zeroing an encoder after a manual jog does not restore the physical datum."
+        ],
+        "why": "A lies on the X guide, B lies on a line at angle α, and their separation is 32 mm. If A−B=32(cosθ,−sinθ), B=(32cotα sinθ,32sinθ) and A=(32cosθ+32cotα sinθ,0). The marker is Q=A+1.5(B−A), so Q=(−16cosθ+32cotα sinθ,48sinθ). At 90° the mixed term vanishes. At 60° it shears the ellipse, changing its tilt and principal axes. The native mechanism must actually produce these coordinates; no marker pose is commanded.",
+        "matters": "The same rigid bar gives a family of output shapes when a guide constraint changes. This separates two jobs: motor A advances the mechanism around its path, while motor B changes the geometry of that path. It also shows why useful motor feedback requires independent output measurement: encoder arrival alone cannot prove that a carriage or marker moved correctly.",
+        "question": "When the guide changes from 90° to 60°, does the ideal enclosed ellipse area increase because the long principal axis gets longer?",
+        "answer": "No. For this fixed marker position the mapping matrix is H=[[-16,32cotα],[0,48]] in millimetres. Its determinant stays −768 mm², so the ideal ellipse area is always 768π mm². The major axis grows while the minor axis shrinks. This is an analytic invariant, not a separate physical area measurement.",
+        "further": [
+          "At home θ=0, the passive pivot is at the guide intersection for either setting. That is why the program changes guide angle only after A has returned home, then waits for B to hold before turning A again.",
+          "Both carriages have actual end-seat limits at ±40 mm. Their nominal full stroke grows from 64 mm at 90° to 73.9008 mm at 60°. The latter leaves only 3.0496 mm ideal clearance at each extreme. A full revolution reaches the stops at 53.1301°; the supplied experiment does not authorize arbitrary guide angles.",
+          "The motor-B shaft has a real external bearing and two full retaining bushes. Its 20T pinion is saved at a 9° key phase; the inverted motor uses ROTOR -9. Replacing that phase with zero causes stock-tooth interference in the development fixture.",
+          "The upper passive carriage uses two separate smooth guide rails, and the lower motor carriage also uses two. Their separation supplies physical resistance to roll; the native sliders are not justified by an invisible extra brace.",
+          "The saved hub is raised to shorten the paths for both 250 mm motor leads. Route A with a loose loop outside the front of the moving mechanism and B outside the rear of the yellow carrier. Flexible leads and a physical build are untested.",
+          "The packaged qualification observes actual body-carried markers in the real compiler/VM/controller/Jolt route, fits a free-centre ellipse to those observations, and checks cold settling, closures, guide angles, gearing, retention and return. The deliberately frozen-output negative case must fail. Browser import and physical hardware remain separate evidence scopes."
+        ]
+      },
+      "de": {
+        "what": "Ein Ellipsenzirkel mit zwei Motoren und verstellbarem Führungswinkel. Motor A fährt mit dem roten Schlitten und dreht einen blauen starren Balken zwischen zwei geführten Gelenken. Motor B sitzt am festen Rahmen. Über ein 20-Zähne-Ritzel und den 60-Zähne-Drehkranz schwenkt er die gelbe Führung. Bei einem Wechsel von 90° auf 60° zeichnet der orange Messpunkt eine andere Ellipse. Schlitten und Balken beruhen auf CrispStrobes unter BSD-3-Clause lizenziertem Modell Ellipsa.",
+        "try": [
+          "Öffne Beispiele, wähle Oblique und lade das Modell mit Programm. Modell, Code und Blöcke werden gemeinsam geladen. Drücke Zurücksetzen und dann Start. Setze vor einer Wiederholung und nach manueller Bewegung zurück; lasse manuelle Übersteuerungen während des Experiments ausgeschaltet.",
+          "Bei 90° Führungswinkel eine volle Vorwärts- und Rückwärtsdrehung beobachten. Der orange Punkt sollte eine Ellipse mit 96×32 mm Hauptachs-Durchmessern beschreiben. Das sind geometrische Vorhersagen; vergleiche sie mit der sichtbaren Bahn des Messpunkts.",
+          "Wenn der Balken wieder in Ausgangslage steht, schwenkt Motor B die Führung auf 60°. Der native Richtungsversuch ergibt dafür einen B-Encoder-Sollwert von −90°. Wegen der 3:1-Untersetzung dreht sich die Führung um 30°. Motor A hält währenddessen seine physische Ausgangslage.",
+          "Vorhersagen, ob die neue Ellipse breiter, höher, gedreht oder einfach größer wird. Beide vollständigen Umlaufrichtungen bei 60° beobachten. Die berechneten Hauptachs-Durchmesser sind 103,564×29,663 mm, die lange Achse liegt bei 66,949° zur festen X-Richtung. Ihr achsenparalleles Begrenzungsrechteck hat andere Maße.",
+          "Das endliche Programm bringt beide Eingänge zurück und hält sie. Bei Erfolg gelten completed=1 und failed=0. Vor einem neuen Lauf das gesamte Modell zurücksetzen. Ein alleiniger Encoder-Nullabgleich nach manuellem Drehen stellt die physische Ausgangslage nicht wieder her."
+        ],
+        "why": "A liegt auf der X-Führung, B auf einer Geraden mit Winkel α; ihr Abstand beträgt 32 mm. Für A−B=32(cosθ,−sinθ) gilt B=(32cotα sinθ,32sinθ) und A=(32cosθ+32cotα sinθ,0). Der Messpunkt liegt bei Q=A+1,5(B−A), also Q=(−16cosθ+32cotα sinθ,48sinθ). Bei 90° verschwindet der gemischte Term. Bei 60° schert er die Ellipse und verändert ihre Neigung und Hauptachsen. Diese Koordinaten müssen aus der wirklichen nativen Bewegung entstehen; dem Messpunkt wird keine Sollposition zugewiesen.",
+        "matters": "Derselbe starre Balken erzeugt unterschiedliche Bahnen, wenn sich eine Führungsbedingung ändert. Motor A bewegt den Mechanismus entlang seiner Bahn, Motor B verändert deren Geometrie. Das Beispiel zeigt außerdem, warum die Ausgangsbewegung unabhängig von den Encodern gemessen werden muss: Ein erreichter Motorwinkel beweist noch keine korrekte Schlitten- oder Markerbewegung.",
+        "question": "Wird die ideale Ellipsenfläche beim Wechsel von 90° auf 60° größer, weil die lange Hauptachse wächst?",
+        "answer": "Nein. Für die feste Markerposition lautet die Abbildungsmatrix H=[[-16,32cotα],[0,48]] in Millimetern. Ihre Determinante bleibt −768 mm². Daher beträgt die ideale Ellipsenfläche immer 768π mm². Die große Achse wächst, während die kleine schrumpft. Das ist eine analytische Eigenschaft und keine gesonderte physische Flächenmessung.",
+        "further": [
+          "In der Ausgangslage θ=0 sitzt das passive Gelenk für beide Winkel am Führungsschnittpunkt. Deshalb ändert das Programm den Führungswinkel erst nach der Rückkehr von A und wartet anschließend, bis B seine Lage hält.",
+          "Beide Schlitten haben reale Anschlaggrenzen bei ±40 mm. Ihr nomineller Gesamthub wächst von 64 mm bei 90° auf 73,9008 mm bei 60°. Dann bleiben ideal nur 3,0496 mm Abstand zu jedem Anschlag. Bei 53,1301° erreicht ein voller Umlauf die Anschläge; beliebige Führungswinkel sind durch den Versuch nicht freigegeben.",
+          "Die Welle von Motor B besitzt ein zusätzliches äußeres Lager und zwei volle Sicherungsbuchsen. Das 20-Zähne-Ritzel hat eine gespeicherte Zahnphase von 9°; das Achskreuz ist entsprechend ausgerichtet. Der umgedrehte Motor verwendet ROTOR -9. Bei Nullphase schneiden sich im Entwicklungsversuch die realen Zahngeometrien.",
+          "Der obere passive Schlitten und der untere Motorschlitten besitzen jeweils zwei getrennte glatte Führungen. Ihr Abstand wirkt der Verdrehung entgegen. Die native Schlittenführung wird nicht durch eine unsichtbare Zusatzstrebe begründet.",
+          "Der Hub sitzt erhöht, um die erforderlichen Wege der beiden 250 mm langen Motorleitungen zu verkürzen. Die A-Leitung erhält eine lockere Schleife außerhalb der Vorderseite; die B-Leitung läuft außen hinter dem gelben Träger. Flexible Leitungen und ein physischer Aufbau sind noch nicht erprobt.",
+          "Die mitgelieferte Qualifikation beobachtet echte körperfeste Messpunkte über den nativen Compiler, die VM, die Motorregler und Jolt. Sie passt eine Ellipse mit frei bestimmtem Mittelpunkt an und prüft Setzen, Gelenkschluss, Führungswinkel, Übersetzung, Rückhaltung und Rückkehr. Der negative Test mit eingefrorenem Ausgang muss scheitern. Browser-Import und Hardware bleiben getrennte Prüfebenen."
+        ]
+      },
+      "formula": {
+        "en": "LDraw: 1 LDU=0.4 mm, +Y downward. L=32 mm, u=1.5. Qx=(1−u)L cosθ+L cotα sinθ=−16cosθ+32cotα sinθ; Qz=uL sinθ=48sinθ. Principal semiaxes are singular values of H=[[-16,32cotα],[0,48]]. Each carriage amplitude=L/|sinα|. B encoder targets 0°/−90° select nominal guide angles 90°/60°; these are inputs, not measured outputs.",
+        "de": "LDraw: 1 LDU=0,4 mm, +Y nach unten. L=32 mm, u=1,5. Qx=(1−u)L cosθ+L cotα sinθ=−16cosθ+32cotα sinθ; Qz=uL sinθ=48sinθ. Die Haupt-Halbachsen sind die Singulärwerte von H=[[-16,32cotα],[0,48]]. Jede Schlittenamplitude=L/|sinα|. B-Encoder-Sollwerte 0°/−90° wählen nominell 90°/60° Führungswinkel; das sind Eingaben, keine gemessenen Ausgaben."
+      },
+      "related": [
+        "ellipsa.ldr",
+        "ellipse-engine.ldr"
+      ]
     }
   }
 }

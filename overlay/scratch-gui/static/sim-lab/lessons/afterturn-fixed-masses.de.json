@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "id": "afterturn-fixed-masses",
+  "language": "de",
+  "what": "Afterturn mit den beiden radialen Massen fest in der äußeren Stellung. Freies Drehlager, Reaktionsrad an Motor A, Motor B und dasselbe Programm afterturn.bw bleiben unverändert; Motor B dreht weiterhin, aber die Massen bewegen sich nicht mehr, sodass das Trägheitsmoment der Plattform während des ganzen Zyklus gleich bleibt.",
+  "try": [
+    "Diese Kontrolle in der gespeicherten Stellung laden und in der Robot-Lab-Werkzeugleiste auf Starten drücken; dabei wird der virtuelle SPIKE-Hub verbunden, den das Programm braucht. Vor jedem Lauf neu laden.",
+    "Die Ausrichtung der Plattform beobachten, während Motor A das Rad 900° in eine Richtung dreht. Die Plattform dreht sich in die Gegenrichtung.",
+    "Noch einmal beobachten, während das Rad zurückdreht. Kehrt die Plattform zu ihrer Anfangsrichtung zurück?",
+    "Die nach dem ersten Zyklus verbleibende Drehung mit Afterturn vergleichen, wo sich die Massen zwischen den beiden Raddrehungen bewegen."
+  ],
+  "why": "Ohne äußeres Drehmoment um das Lager bleibt der Gesamtdrehimpuls null. Dreht sich das Rad um den Winkel α, dreht sich die Plattform deshalb um −(I_R/J)·α, wobei J das Gierträgheitsmoment von allem außer der Eigendrehung des Rads ist. Ist J beim Hin- und Rückdrehen des Rads gleich, sind die beiden Plattformdrehungen gleich groß und entgegengesetzt und heben sich auf. Bei Afterturn bewegen sich die Massen zwischen den Drehungen, J ändert sich, und es bleibt eine Drehung von etwa 4,66°. Mit festen Massen bleibt J gleich, und die Simulation lässt nach dem ersten Zyklus nur etwa 0,003° übrig. Die Nettodrehung bei Afterturn kommt also von der Formänderung, nicht vom Rad allein.",
+  "matters": "Raumfahrzeuge drehen sich mit Reaktionsrädern ohne Treibstoff, und eine fallende Katze dreht sich um, indem sie ihre Körperform ändert, während ihr Drehimpuls null bleibt. Beides beruht auf derselben Regel: Eine geschlossene Folge innerer Bewegungen kann nur dann eine Nettodrehung hinterlassen, wenn sich das Trägheitsmoment dabei ändert. Diese Kontrolle zeigt den Fall, in dem es sich nicht ändert.",
+  "question": "Das Rad dreht in beiden Modellen 900° hin und 900° zurück. Warum behält Afterturn eine Drehung von einigen Grad, während diese Kontrolle fast genau zurückkehrt?",
+  "answer": "Weil hier das Trägheitsmoment J der Plattform bei beiden Raddrehungen gleich ist; die beiden Plattformdrehungen −(I_R/J)·α sind gleich groß und entgegengesetzt und heben sich auf. Bei Afterturn ändern die Massen J zwischen den Drehungen, also sind die Drehungen verschieden. In der Simulation blieben bei der Kontrolle etwa 0,003°, bei Afterturn etwa 4,66°.",
+  "further": [
+    "Mit 0,1225° Plattformdrehung je Grad Raddrehung aus dieser Kontrolle die Plattformdrehung für einen Radhub von 900° vorhersagen und mit dem Lauf vergleichen.",
+    "Erklären, warum auch ein Drehen des Rads bei gleichzeitig wandernden Massen eine Nettodrehung hinterlassen würde, selbst ohne eigenen Massenschritt."
+  ],
+  "formula": "Gesamtdrehimpuls null: J·Δψ + I_R·Δα = 0 ⇒ Δψ = −(I_R/J)·Δα. Feste Massen: J konstant, also ergibt +Δα gefolgt von −Δα eine Zyklusdrehung Δψ = 0.",
+  "related": [
+    "counterturn.ldr",
+    "momentum-twins.ldr",
+    "flywheel-differential.ldr"
+  ]
+}

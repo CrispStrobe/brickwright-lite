@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "language": "en",
+  "what": "Two motors independently set the heights of two vertical rack carriages. Their upward-facing stock tile pads can support a separate bridge which slides on real vertical guides under gravity. The bridge has no motor. Its settled height is governed by the higher support, while the lower support can move through a gap beneath it. Both presets use the same saved geometry; the second exchanges the two input sequences.",
+  "try": [
+    "Reload the saved model before each finite program. Port A and port B drive the two supports. Use the main program first, then reload the same model for the exchanged-input comparison.",
+    "Watch a stage in which one support remains higher while the other changes height beneath the bridge. Predict when the bridge should start to follow the moving support. Observe the actual pad and bridge positions rather than only the requested motor targets.",
+    "Compare the settled pauses on both sides of each handover. A tie means equal input heights; the height observation does not establish an equal split of contact forces. Motion and lag during transitions are distinct from the settled maximum law.",
+    "Run the exchanged-input program from a fresh saved state and compare corresponding settled bridge heights. The ideal maximum is unchanged by exchanging the inputs, while the side carrying the bridge is exchanged."
+  ],
+  "why": "A supporting pad can push the bridge upward but cannot pull it downward. Gravity lowers the bridge until a support prevents further motion. With two aligned inputs and ideal vertical guidance, the higher pad is encountered first, so the settled output equals the larger height. A lower input has no effect while its gap remains open. When it overtakes the other input, the active supporting side changes.",
+  "matters": "This is a mechanical implementation of a piecewise selection rule. Rack Decoder forms an average and difference through continuous gearing, while Equal Share distributes force through a balance beam. High Select instead changes which unilateral contact constrains the passive output. The native evidence must measure that output independently; successful motor arrivals alone do not establish selection.",
+  "question": "If one support stays at 12 mm while the other rises from 4 mm to 8 mm, what is the ideal settled bridge height? What changes when the two inputs are exchanged?",
+  "answer": "The ideal height stays at 12 mm because both lower values remain below the higher support. Exchanging the inputs leaves that height unchanged and exchanges the supporting side. Actual transient motion, contact gaps and settling must be measured in the delivered native model.",
+  "further": [
+    "Plot the actual settled bridge height against both actual support heights. In a region where a>b, changing only b has zero ideal output gain; once b>a, the output follows b. The derivative changes at a tie.",
+    "Inspect handover in both directions. The formerly supporting pad should separate when the other one becomes higher. A gap is geometric evidence; it is not a contact-force trace.",
+    "Define upward input and output heights from a common frame and consistent support/bridge surface references. Rack displacement, motor encoder angle and requested target are different measurements. Preserve any measured offset rather than silently recentering each stage.",
+    "The ideal statement concerns settled positions with rigid contact and ideal guidance. The actual simulator uses finite stock collision primitives and a contact solver; guides and contacts can produce lag, gaps or small overlap. The supplied bounded native programs do not qualify arbitrary speeds, payloads, physical friction or hardware performance."
+  ],
+  "formula": "For upward support heights a and b and an aligned output contact height h, the ideal settled relation is h=max(a,b)=max(b,a). The geometric contact gaps are gA=h-a≥0 and gB=h-b≥0. Ideal unilateral normal forces satisfy NA≥0, NB≥0, NA·gA=0 and NB·gB=0. These complementarity equations explain the construction; contact forces are not inferred from position alone. The delivered measurements compare actual native surface references at settled pauses and report transient motion separately.",
+  "id": "high-select",
+  "related": [
+    "root-bridge.ldr",
+    "forklift.ldr"
+  ]
+}
