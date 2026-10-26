@@ -88,3 +88,28 @@ inventory authorizes actual V8. Only a separately admitted complete current
 inventory and native/runtime joins can precede the distinct actual-V8 GUI
 export/reload and forward-debug acceptance. Preserve the consumed V7 event.
 No physical accuracy, whole OS, performance, release or broad licence claim.
+
+## Disabled implementation checkpoint
+
+The claim merged in [PR1451](https://github.com/CrispStrobe/brickwright-lite/pull/1451).
+Phase A introduces distinct finite V8 schemas and CLI routes with execution
+and reader guards false, and retires finite V7 execution while preserving its
+reader, fixed 836/1bc identities and eighteen historical witnesses. Current
+F8/V8 identities and witnesses are separately named, initially unchanged.
+
+The fixed helper sidecar joins reviewed Git mode/blob/extent/digest with actual
+regular workspace bytes. Current V8 installs its immutable request once before
+Node, requires source/bootstrap admission, runs the unchanged helper before
+npm/Chromium, then reuses the same request. Its preflight, guest-entry path and
+independent reader also require the retained matching bootstrap/helper evidence;
+workflow ordering alone cannot authorize them. A missing or cross-source packet
+refuses before media, frontend acquisition or guest. Bootstrap admission itself
+observes source only, not installed runtime or GUI acceptance.
+
+Synthetic controls cover the real collector/finalizer/independent-reader chain,
+retained historical F7 parsing, coherent current-role drift, failed partial
+inventory, typed event/source cuts and helper/one-request ordering. These are
+source controls, not a new official inventory. The prior whole-body profiles
+remain held and intentionally refuse changed source until separate independent
+review. Fresh exact-head source and Build qualification, separate arming and
+one-shot F8 admission, originals and independent reading remain required.

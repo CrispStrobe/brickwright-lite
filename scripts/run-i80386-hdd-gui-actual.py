@@ -29,7 +29,8 @@ INVENTORY_ENABLED = True
 FINITE_INVENTORY_ENABLED = False
 FINITE_INVENTORY_V5_ENABLED = False
 FINITE_INVENTORY_V6_ENABLED = False
-FINITE_INVENTORY_V7_ENABLED = True
+FINITE_INVENTORY_V7_ENABLED = False
+FINITE_INVENTORY_V8_ENABLED = False
 ACTUAL_V6_ENABLED = False
 ACTUAL_V7_ENABLED = False
 ACTUAL_V8_ENABLED = True
@@ -47,7 +48,9 @@ CURRENT_BOARD = '836867513c3e7fac420ddaa32c17e1c7b6d3e513'
 CUI = '1bc233c9297e03abb9b7eb603e045b4e92b0bb40'
 HISTORICAL_CUI = '91d8434a79d373cef2837c137ab356356f1a3b44'
 SB3 = '1cbaeed325f5a890e43b78a4211acae8f801f2d2'
-FINITE_V7_PINS = {'bw-board':CURRENT_BOARD,'bw-circuit-ui':CUI,'sb3-creator':SB3}
+CURRENT_SB3 = '1cbaeed325f5a890e43b78a4211acae8f801f2d2'
+FINITE_V7_PINS = {'bw-board':'836867513c3e7fac420ddaa32c17e1c7b6d3e513','bw-circuit-ui':'1bc233c9297e03abb9b7eb603e045b4e92b0bb40','sb3-creator':'1cbaeed325f5a890e43b78a4211acae8f801f2d2'}
+FINITE_V8_PINS = {'bw-board':CURRENT_BOARD,'bw-circuit-ui':CUI,'sb3-creator':CURRENT_SB3}
 JSON_CAP = 4 << 20
 STREAM_CAP = 1 << 20
 FILE_CAP = 32 << 20
@@ -319,6 +322,8 @@ FINITE_V6_BEGIN = '<!-- BW_GUI_HDD_FINITE_INVENTORY_V6_SHA256_BEGIN -->'
 FINITE_V6_END = '<!-- BW_GUI_HDD_FINITE_INVENTORY_V6_SHA256_END -->'
 FINITE_V7_BEGIN = '<!-- BW_GUI_HDD_FINITE_INVENTORY_V7_SHA256_BEGIN -->'
 FINITE_V7_END = '<!-- BW_GUI_HDD_FINITE_INVENTORY_V7_SHA256_END -->'
+FINITE_V8_BEGIN = '<!-- BW_GUI_HDD_FINITE_INVENTORY_V8_SHA256_BEGIN -->'
+FINITE_V8_END = '<!-- BW_GUI_HDD_FINITE_INVENTORY_V8_SHA256_END -->'
 
 
 def finite_v5_scope():
@@ -473,6 +478,50 @@ def bind_finite_v6_event(raw, head, expected, env):
     return template
 
 
+
+BOOTSTRAP_HELPER = 'scripts/prepare-playwright-apt.mjs'
+BOOTSTRAP_SOURCE = {'schema':'bw.gui-hdd.bootstrap-source.v1','path':BOOTSTRAP_HELPER,
+    'mode':'100644','gitBlob':'56b92f9c138ef028209a00591968e1e4dae0567b','byteLength':1934,
+    'sha256':'96a9eca89dda196a4b2013919eee1b7240cc83810b3ec120326676ac4ad59857'}
+
+
+def bootstrap_source_policy(value):
+    fields(value,'schema path mode gitBlob byteLength sha256')
+    integer(value['byteLength'],1,FILE_CAP)
+    need(encode(value)==encode(BOOTSTRAP_SOURCE),'fixed independently reviewed bootstrap helper source')
+    return value
+
+
+def bootstrap_witness(value,head,selected):
+    bootstrap_source_policy(selected);fields(value,'source gitHead workspace')
+    need(value['source']==selected and value['gitHead']==head,'bootstrap source and external source head join')
+    fields(value['workspace'],'byteLength sha256')
+    need(type(value['workspace']['byteLength']) is int and value['workspace']=={
+        'byteLength':selected['byteLength'],'sha256':selected['sha256']},'bootstrap actual workspace bytes join')
+    return value
+
+
+def bootstrap_helper_output(stdout,stderr):
+    need(type(stdout) is bytes and len(stdout)<=8192 and type(stderr) is bytes and len(stderr)<=8192,
+         'bounded retained bootstrap helper output')
+    need(re.fullmatch(rb'Prepared official Ubuntu archive: [0-3] source file\(s\) changed\n',stdout) is not None and
+         stderr==b'','successful unchanged helper output before package setup')
+    return {'stdout':{'byteLength':len(stdout),'sha256':sha(stdout),'base64':base64.b64encode(stdout).decode()},
+            'stderr':{'byteLength':len(stderr),'sha256':sha(stderr),'base64':base64.b64encode(stderr).decode()}}
+
+
+def verify_bootstrap_helper_output(value):
+    fields(value,'stdout stderr');raws=[]
+    for key in ('stdout','stderr'):
+        row=value[key];fields(row,'byteLength sha256 base64');integer(row['byteLength'],0,8192);digest(row['sha256'])
+        need(type(row['base64']) is str and len(row['base64'])<=4*((8192+2)//3),'bounded helper output encoding')
+        raw=base64.b64decode(row['base64'],validate=True)
+        need(len(raw)==row['byteLength'] and sha(raw)==row['sha256'] and base64.b64encode(raw).decode()==row['base64'],
+             'exact helper output byte extent/digest/encoding');raws.append(raw)
+    need(bootstrap_helper_output(*raws)==value,'canonical retained helper output')
+    return value
+
+
 def finite_v7_template(raw, expected):
     digest(expected)
     need(type(raw) is bytes and 0 < len(raw) <= FINITE_INVENTORY_TEMPLATE_CAP and
@@ -619,6 +668,132 @@ def finite_v7_guard_original(raw,template_raw,event_raw,env):
     return value
 
 
+
+def actual_bootstrap_original(raw,request,expected,platform):
+    need(type(raw) is bytes and 0<len(raw)<=JSON_CAP,'bounded retained V8 bootstrap admission')
+    value=decode(raw);fields(value,'schema pass requestSha256 source bootstrapAdmission platform runtimeObserved guestApproved firstFailure secondary')
+    need(encode(value)==raw and value['schema']=='bw.gui-hdd.actual-bootstrap-admission.v1' and value['pass'] is True and
+         value['requestSha256']==expected and value['source']==request['source'] and
+         value['platform']==platform and value['runtimeObserved'] is False and value['guestApproved'] is False and value['firstFailure'] is None and value['secondary']==[],
+         'retained bootstrap request/source/platform admission before current V8 entry')
+    metadata=actual_inventory_reference_v8(request['inventoryAdmission'])
+    need(metadata['source']==request['source'],'bootstrap current request and F8 source identity')
+    bootstrap_witness(value['bootstrapAdmission'],request['source']['head'],metadata['bootstrapSource'])
+    return value
+
+
+def finite_v8_template(raw, expected):
+    digest(expected)
+    need(type(raw) is bytes and 0 < len(raw) <= FINITE_INVENTORY_TEMPLATE_CAP and
+         sha(raw) == expected, 'selected finite v8 template bytes')
+    template = decode(raw)
+    fields(template, 'schema sourceHead files aliases directoryAliases node python chromium tools emptyPythonSources libraries scope dependencyPins bootstrapSource')
+    need(encode(template) == raw and template['schema'] == 'bw.gui-hdd.inventory-template.v8' and
+         encode(template['scope']) == encode(finite_v5_scope()), 'canonical finite v8 installed-only scope')
+    need(type(template['dependencyPins']) is dict and template['dependencyPins']==FINITE_V8_PINS,
+         'closed current finite v8 dependency pins')
+    digest(template['sourceHead'], 40)
+    for role, cap in (('files',512),('aliases',256),('directoryAliases',256)):
+        roster=template[role]
+        need(type(roster) is list and len(roster)<=cap and roster==sorted(set(roster)),
+             'finite v8 sorted unique selected '+role)
+        for path in roster:finite_inventory_path(path)
+    need(1<=len(template['files']) and len(template['aliases'])+len(template['directoryAliases'])<=256 and
+         len(set(template['files']+template['aliases']+template['directoryAliases'])) ==
+         sum(len(template[k]) for k in ('files','aliases','directoryAliases')),
+         'disjoint finite v8 core runtime roles')
+    fields(template['tools'],'git gh')
+    need(template['tools']=={'git':'/usr/bin/git','gh':'/usr/bin/gh'},'selected v8 bootstrap tools')
+    need(template['python']==PYTHON_EXECUTABLE and all(path in template['files'] for path in
+         (template['node'],template['python'],template['chromium'],'/usr/bin/git','/usr/bin/gh','/usr/bin/curl')),
+         'selected v8 Node/Python/Chromium/Git/gh/curl core files')
+    libraries=template['libraries']
+    need(type(libraries) is list and 1<=len(libraries)<=128 and libraries==sorted(set(libraries)) and
+         set(libraries)<=set(template['files']),'explicit v8 selected library role')
+    empty_python_policy(template['emptyPythonSources'],template['files'],template['aliases'],template['directoryAliases'])
+    bootstrap_source_policy(template['bootstrapSource'])
+    return template
+
+
+def finite_v8_transport(body, expected, env):
+    """One short body digest selects independently supplied canonical template bytes."""
+    digest(expected)
+    need(type(body) is str and len(body.encode('utf-8')) <= 65536 and
+         body.count(FINITE_V8_BEGIN)==body.count(FINITE_V8_END)==1,
+         'one bounded finite v8 SHA-only body wrapper')
+    begin=body.index(FINITE_V8_BEGIN)+len(FINITE_V8_BEGIN);end=body.index(FINITE_V8_END)
+    need(begin<end and body[begin:end]=='\n'+expected+'\n',
+         'canonical finite v8 body digest only')
+    need(env.get('BW_FINITE_INVENTORY_V8_SHA256')==expected,
+         'selected finite v8 repository SHA variable')
+    encoded=env.get('BW_FINITE_INVENTORY_V8_TEMPLATE_B64')
+    need(type(encoded) is str and encoded.isascii() and
+         0<len(encoded)<=4*((FINITE_INVENTORY_TEMPLATE_CAP+2)//3),
+         'bounded finite v8 template variable')
+    template=base64.b64decode(encoded,validate=True)
+    need(base64.b64encode(template).decode()==encoded,
+         'canonical finite v8 template Base64 variable')
+    finite_v8_template(template,expected)
+    return template
+
+
+def bind_finite_v8_event(raw, head, expected, env):
+    need(type(raw) is bytes and 0<len(raw)<=INVENTORY_FAILURE_EVENT_CAP,
+         'finite v8 exact event original cap')
+    digest(head,40);digest(expected);event=decode(raw);pr=event.get('pull_request',{})
+    need(event.get('action')=='labeled' and event.get('label',{}).get('name')=='x86-hdd-gui-finite-inventory-v8' and
+         event.get('sender',{}).get('login')=='CrispStrobe' and event.get('repository',{}).get('full_name')==REPOSITORY,
+         'owned distinct finite v8 event')
+    integer(event.get('number'),1,2**31-1)
+    need(type(pr.get('number')) is int and event['number']==pr['number'] and pr.get('state')=='open' and
+         pr.get('head',{}).get('sha')==head and pr.get('head',{}).get('repo',{}).get('full_name')==REPOSITORY and
+         pr.get('head',{}).get('repo',{}).get('fork') is False and pr.get('base',{}).get('ref')=='main' and
+         pr.get('base',{}).get('repo',{}).get('full_name')==REPOSITORY,'exact own finite v8 source event')
+    template=finite_v8_transport(pr.get('body'),expected,env)
+    need(decode(template)['sourceHead']==head,'finite v8 body/source head join')
+    need(env.get('GITHUB_REPOSITORY')==REPOSITORY and env.get('GITHUB_EVENT_NAME')=='pull_request' and
+         env.get('GITHUB_ACTOR')=='CrispStrobe' and env.get('GITHUB_RUN_ATTEMPT')=='1' and
+         env.get('GITHUB_JOB')=='finite-inventory-eight' and re.fullmatch('[1-9][0-9]{0,19}',env.get('GITHUB_RUN_ID','')) and
+         env.get('BW_EXPECTED_HEAD')==head,'first official finite v8 platform observations')
+    digest(env.get('GITHUB_WORKFLOW_SHA'),40)
+    need(env.get('GITHUB_WORKFLOW_REF')==REPOSITORY+'/.github/workflows/i80386-hdd-gui-actual.yml@refs/pull/'+str(pr['number'])+'/merge',
+         'finite v8 executing workflow/event reference')
+    return template
+
+
+def finite_v8_guard_original(raw,template_raw,event_raw,env):
+    value=decode(raw)
+    fields(value,'schema pass templateSha256 eventSha256 source platform setupTrustBoundary fontSelectionProved browserFontSelectionProved guestApproved firstFailure secondary dependencyPins vendorPinsOriginal bootstrapAdmission')
+    need(encode(value)==raw and value['schema']=='bw.gui-hdd.finite-inventory-guard.v8' and value['pass'] is True and
+         value['templateSha256']==sha(template_raw) and value['eventSha256']==sha(event_raw) and
+         value['firstFailure'] is None and value['secondary']==[] and
+         all(value[key] is False for key in ('fontSelectionProved','browserFontSelectionProved','guestApproved')),
+         'successful finite v8 pre-setup admission only')
+    need(value['platform']=={key:env.get(key) for key in
+         ('GITHUB_RUN_ID','GITHUB_RUN_ATTEMPT','GITHUB_JOB','GITHUB_REPOSITORY','GITHUB_WORKFLOW_SHA','BW_EXPECTED_HEAD')},
+         'same finite v8 pre/post-setup producing platform')
+    need(value['setupTrustBoundary']=={'bootstrapGitTrusted':True,'packageInstallerTrusted':True,
+         'completeRuntimeBeforeSetupProved':False},'explicit v8 bootstrap/setup trust boundary')
+    source=value['source'];fields(source,'head tree files');digest(source['head'],40);digest(source['tree'],40);rows(source['files'])
+    need(source['head']==decode(template_raw)['sourceHead'] and set(source['files'])==SOURCE,
+         'finite v8 guard exact source21')
+    need(value['dependencyPins']==decode(template_raw)['dependencyPins']==FINITE_V8_PINS,
+         'finite v8 pre-setup selected dependency pins')
+    vendor=value['vendorPinsOriginal'];fields(vendor,'byteLength sha256 base64')
+    integer(vendor['byteLength'],1,JSON_CAP);digest(vendor['sha256'])
+    raw_vendor=base64.b64decode(vendor['base64'],validate=True)
+    need(len(raw_vendor)==vendor['byteLength'] and sha(raw_vendor)==vendor['sha256'] and
+         base64.b64encode(raw_vendor).decode()==vendor['base64'] and
+         source['files']['vendor-pins.json']=={'byteLength':len(raw_vendor),'sha256':sha(raw_vendor)},
+         'finite v8 raw vendor pins joins selected Git source')
+    pins=decode(raw_vendor)
+    need(type(pins) is dict and {key:pins.get(key) for key in FINITE_V8_PINS}==FINITE_V8_PINS,
+         'finite v8 raw vendor pin identities before package setup')
+    bootstrap_witness(value['bootstrapAdmission'],source['head'],decode(template_raw)['bootstrapSource'])
+    return value
+
+
+
 def actual_inventory_reference(reference):
     """External prior-observation reference, never an automatic metadata approval."""
     fields(reference,'schema metadataAdmission jobId artifactId artifactSha256 workflow')
@@ -665,6 +840,58 @@ def actual_inventory_reference(reference):
         need(decode(template)['sourceHead']==source['head'],'selected finite v7 template source head')
     need(selected['workflowSha']==reference['workflow']['commit'] and
          reference['workflow']['sha256']==source['files'][reference['workflow']['path']]['sha256'],'prior observation/executing workflow/content join')
+    return selected
+
+
+def actual_inventory_reference_v8(reference):
+    """External prior-observation reference, never an automatic metadata approval."""
+    fields(reference,'schema metadataAdmission jobId artifactId artifactSha256 workflow')
+    need(reference['schema']=='bw.gui-hdd.actual-finite-inventory-reference.v5','current actual V8 requires new finite V8 reference')
+    finite=reference['schema'] in ('bw.gui-hdd.actual-finite-inventory-reference.v1',
+                                   'bw.gui-hdd.actual-finite-inventory-reference.v2',
+                                   'bw.gui-hdd.actual-finite-inventory-reference.v3',
+                                   'bw.gui-hdd.actual-finite-inventory-reference.v5')
+    need(finite or reference['schema']=='bw.gui-hdd.actual-inventory-reference.v1','explicit versioned actual inventory reference')
+    selected_version=8 if reference['schema']=='bw.gui-hdd.actual-finite-inventory-reference.v5' else 6 if reference['schema']=='bw.gui-hdd.actual-finite-inventory-reference.v3' else 5 if reference['schema']=='bw.gui-hdd.actual-finite-inventory-reference.v2' else 4 if finite else 3
+    for name in ('jobId','artifactId'):integer(reference[name],1,2**63-1)
+    digest(reference['artifactSha256']);fields(reference['workflow'],'commit path sha256')
+    digest(reference['workflow']['commit'],40);digest(reference['workflow']['sha256'])
+    need(reference['workflow']['path']=='.github/workflows/i80386-hdd-gui-actual.yml','prior metadata producer workflow')
+    selected=reference['metadataAdmission'];fields(selected,'schema source template original runId workflowSha'+(' repositoryVariables' if selected_version in (6,8) else '')+(' dependencyPins bootstrapSource' if selected_version==8 else ''))
+    need(selected['schema']=='bw.gui-hdd.inventory-admission.v'+str(selected_version),
+         'versioned independently selected metadata descriptor')
+    integer(selected['runId'],1,2**63-1);digest(selected['workflowSha'],40)
+    source=selected['source'];fields(source,'head tree files');digest(source['head'],40);digest(source['tree'],40)
+    rows(source['files']);need(set(source['files'])==SOURCE,'separately reviewed prior metadata source21')
+    for name in ('template','original'):
+        fields(selected[name],'byteLength sha256');integer(selected[name]['byteLength'],1,JSON_CAP);digest(selected[name]['sha256'])
+    if selected_version==6:
+        variables=selected['repositoryVariables'];fields(variables,'BW_FINITE_INVENTORY_V6_SHA256 BW_FINITE_INVENTORY_V6_TEMPLATE_B64')
+        need(variables['BW_FINITE_INVENTORY_V6_SHA256']==selected['template']['sha256'],
+             'selected finite v6 repository SHA matches template')
+        encoded=variables['BW_FINITE_INVENTORY_V6_TEMPLATE_B64']
+        need(type(encoded) is str and encoded.isascii() and 0<len(encoded)<=4*((FINITE_INVENTORY_TEMPLATE_CAP+2)//3),
+             'bounded selected finite v6 template Base64')
+        template=base64.b64decode(encoded,validate=True)
+        need(base64.b64encode(template).decode()==encoded and len(template)==selected['template']['byteLength'] and
+             sha(template)==selected['template']['sha256'],'selected finite v6 template bytes')
+        finite_v6_template(template,selected['template']['sha256'])
+        need(json.loads(template)['sourceHead']==source['head'],
+             'selected finite v6 template source head matches metadata admission')
+    if selected_version==8:
+        need(selected['dependencyPins']==FINITE_V8_PINS,
+             'externally selected finite v7 dependency pins')
+        template=base64.b64decode(selected['repositoryVariables']['BW_FINITE_INVENTORY_V8_TEMPLATE_B64'],validate=True)
+        need(selected['repositoryVariables']['BW_FINITE_INVENTORY_V8_SHA256']==selected['template']['sha256'] and
+             base64.b64encode(template).decode()==selected['repositoryVariables']['BW_FINITE_INVENTORY_V8_TEMPLATE_B64'] and
+             len(template)==selected['template']['byteLength'] and sha(template)==selected['template']['sha256'],
+             'selected finite v7 canonical repository template bytes')
+        finite_v8_template(template,selected['template']['sha256'])
+        need(decode(template)['sourceHead']==source['head'],'selected finite v7 template source head')
+    need(selected['workflowSha']==reference['workflow']['commit'] and
+         reference['workflow']['sha256']==source['files'][reference['workflow']['path']]['sha256'],'prior observation/executing workflow/content join')
+    bootstrap_source_policy(selected['bootstrapSource'])
+    need(decode(template)['bootstrapSource']==selected['bootstrapSource'],'external finite V8 bootstrap sidecar')
     return selected
 
 
@@ -780,7 +1007,7 @@ def parse_request(raw, expected):
     source = request['source']; fields(source, 'head tree files'); digest(source['head'], 40); digest(source['tree'], 40)
     rows(source['files']); need(set(source['files']) == SOURCE, 'exact tracked source closure')
     if version==8:
-        need(request['dependencyPins']=={'bw-board':CURRENT_BOARD,'bw-circuit-ui':CUI,'sb3-creator':SB3} and
+        need(request['dependencyPins']==FINITE_V8_PINS and
              type(request['dependencyPins']) is dict and set(request['dependencyPins'])=={'bw-board','bw-circuit-ui','sb3-creator'},
              'closed current V8 dependency pins')
         selected=request['dispatch'];fields(selected,'tagName tagRef workflow')
@@ -842,8 +1069,9 @@ def parse_request(raw, expected):
     if version>=4:empty_python_policy(runtime['emptyPythonSources'],runtime['files'],runtime['aliases'],runtime['directoryAliases'])
     prior_inventory=request['inventoryAdmission']
     if version>=4:
-        actual_inventory_reference(prior_inventory)
-        need(prior_inventory['schema'] in (('bw.gui-hdd.actual-finite-inventory-reference.v3','bw.gui-hdd.actual-finite-inventory-reference.v4') if version>=6 else ('bw.gui-hdd.actual-finite-inventory-reference.v1',) if version==5 else ('bw.gui-hdd.actual-inventory-reference.v1',)),
+        actual_inventory_reference_v8(prior_inventory) if version==8 else actual_inventory_reference(prior_inventory)
+        if version==8:need(prior_inventory['metadataAdmission']['source']==source,'current V8 requires same F8 checkout head/tree/source21')
+        need(prior_inventory['schema'] in (('bw.gui-hdd.actual-finite-inventory-reference.v5',) if version==8 else ('bw.gui-hdd.actual-finite-inventory-reference.v3','bw.gui-hdd.actual-finite-inventory-reference.v4') if version>=6 else ('bw.gui-hdd.actual-finite-inventory-reference.v1',) if version==5 else ('bw.gui-hdd.actual-inventory-reference.v1',)),
              'distinct finite and historical actual inventory bases')
     else:
         fields(prior_inventory,'schema sourceHead runId jobId artifactId artifactSha256 original templateSha256 workflow')
@@ -995,6 +1223,27 @@ def regular(path, cap):
             if first is None: raise
 
 
+def regular_empty(path, cap):
+    path = Path(path).absolute(); before = path.lstat()
+    need(path.resolve(strict=True) == path and stat.S_ISREG(before.st_mode) and 0 <= before.st_size <= cap,
+         'canonical bounded regular original')
+    fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK); first = None
+    try:
+        need(identity(os.fstat(fd)) == identity(before), 'held original identity')
+        chunks = bytearray()
+        while len(chunks) <= cap:
+            part = os.read(fd, min(65536, cap+1-len(chunks)))
+            if not part: break
+            chunks.extend(part)
+        need(len(chunks) == before.st_size and identity(os.fstat(fd)) == identity(before) == identity(path.lstat()),
+             'stable original bytes/extent/path'); return bytes(chunks)
+    except BaseException as error: first = error; raise
+    finally:
+        try: os.close(fd)
+        except BaseException:
+            if first is None: raise
+
+
 def check_file(path, row):
     raw = regular(path, row['byteLength'])
     need(len(raw) == row['byteLength'] and sha(raw) == row['sha256'], 'admitted file changed: '+str(path))
@@ -1032,6 +1281,27 @@ INSTALLED_V6_CRITICAL = frozenset((INSTALLED_V5_CRITICAL -
 # Eighteen packaged source identities: the reviewed earlier/new supplier union.
 # A witness match is not complete installed-package provenance.
 FINITE_V7_CUI_WITNESSES = {
+ 'node_modules/bw-circuit-ui/LANES.md':(269167,'2830cc0c85e038fef240f8e68a17a8cbfb0ffc4ddb2e436f8f84409c2006e513'),
+ 'node_modules/bw-circuit-ui/bin/bwc.mjs':(69102,'93d1bf5e824ad234b5e88425dbe75ab9958d0ff78f051d50f1ac6791259b8c8a'),
+ 'node_modules/bw-circuit-ui/docs/CLI-INSTRUMENTS.md':(54012,'29152b26009e8151197b7d8b326db6407d74c9648b89cb18bdd266e3697b7f37'),
+ 'node_modules/bw-circuit-ui/package.json':(11352,'9d3765c958dbdb2bbaf5c74546d07122f6e2a36568bae6240583c0dbe310bca3'),
+ 'node_modules/bw-circuit-ui/scripts/verify-interaction.mjs':(156472,'4579b2c5280c38f9754cd8549f1e9081f81ac25b423eb15f051b1d53db07965e'),
+ 'node_modules/bw-circuit-ui/src/components/ScopePanel.jsx':(58539,'e4c0e90604348a0745b0312ea76057183f53d9dcea76466acbffb08e7031cbad'),
+ 'node_modules/bw-circuit-ui/src/i18n/strings.js':(25719,'60fe3dd9febaee4baf2ef82d855de6e054e68b842ee4b209854ffa58b9170230'),
+ 'node_modules/bw-circuit-ui/src/importers/spice.js':(85910,'3d93812a665b443ac3a7c41197772d06a0dbfa7101670d7db0a74bdbc44c3c41'),
+ 'node_modules/bw-circuit-ui/src/model/instrument-report.js':(30702,'4030fdf58c3a8dd69f66c118c04b2ab3d99edfbb4070542019c37cae219cf4ff'),
+ 'node_modules/bw-circuit-ui/src/model/measurement-receipt.js':(10950,'a37085c806a4f8c1293f8d62cc4004ccf800e18c1d11c7fedd53b32e05e9a3b8'),
+ 'node_modules/bw-circuit-ui/src/model/operating-point-kcl.js':(7695,'547351bd0372d6d0090deb7ee9893adad769e4367635aea9611c406861cf69a7'),
+ 'node_modules/bw-circuit-ui/src/model/scope-csv.js':(3530,'6d026e6bb8c2c766ad910e92bd91c40c6ba205b021304e5610c7c1747b0d04f5'),
+ 'node_modules/bw-circuit-ui/src/model/scope-digitizer.js':(7699,'5f7915e5445b71d7b6f8899594b10e75edcd8fa7140437c2c50b330b26cd1444'),
+ 'node_modules/bw-circuit-ui/test/cli-measure.test.js':(194959,'540e81409a2de8c2953e650da993ffcb33e8115b5f234d33a18f7dca314d5688'),
+ 'node_modules/bw-circuit-ui/test/operating-point-kcl.test.js':(11320,'deafeb1df57ae1729f5ea77ca795b8f888f619f8ce336d7115cab717eda5c9b5'),
+ 'node_modules/bw-circuit-ui/test/scope-digitizer.test.js':(9815,'998cf426cc76cfcc12623bb368c5aaa73db6be6d31fc245a8a79c1b53000b629'),
+ 'node_modules/bw-circuit-ui/test/scope-timebase.test.js':(10545,'1dca476e2e94a0e115134d745520beb14686a97f174f902eb43bf7e4de0e910f'),
+ 'node_modules/bw-circuit-ui/test/spice-nmos-operating-point.test.js':(23891,'7ae3b65b0f775dcb2b7ee8a5ea589d004838c71b815bfeb65a37b8b461c8215f'),
+}
+
+FINITE_V8_CUI_WITNESSES = {
  'node_modules/bw-circuit-ui/LANES.md':(269167,'2830cc0c85e038fef240f8e68a17a8cbfb0ffc4ddb2e436f8f84409c2006e513'),
  'node_modules/bw-circuit-ui/bin/bwc.mjs':(69102,'93d1bf5e824ad234b5e88425dbe75ab9958d0ff78f051d50f1ac6791259b8c8a'),
  'node_modules/bw-circuit-ui/docs/CLI-INSTRUMENTS.md':(54012,'29152b26009e8151197b7d8b326db6407d74c9648b89cb18bdd266e3697b7f37'),
@@ -1834,6 +2104,7 @@ def execute(request_raw, expected, root, output_path, env, factory=Hosted, prefl
         result['pass']=False
     output.save('request.original.json', request_raw)
     try:
+        if request['schema']=='bw.gui-hdd.actual-request.v8':require_actual_v8_bootstrap(root,request,expected,env,output)
         startup_mode=startup_mode if startup_mode is not None else ('preflight' if preflight else 'actual')
         startup_args=['--request',str(Path(root)/'gui-inputs/request.json'),'--expected-sha256',expected,'--output',str(output_path)]
         startup_raw,startup_before=observe_python_startup(root,startup_mode,startup_args)
@@ -2294,10 +2565,126 @@ def admit_finite_v7_before_setup(root,env,factory=Hosted):
     return value
 
 
+
+def observe_bootstrap_source(root,head,selected,hosted):
+    bootstrap_source_policy(selected);digest(head,40)
+    entry=hosted.git(['ls-tree',head,'--',BOOTSTRAP_HELPER]).decode()
+    need(entry==selected['mode']+' blob '+selected['gitBlob']+'\t'+BOOTSTRAP_HELPER+'\n',
+         'fixed helper external Git mode/blob/path')
+    raw=regular(Path(root)/BOOTSTRAP_HELPER,selected['byteLength'])
+    need(hosted.git(['cat-file','blob',head+':'+BOOTSTRAP_HELPER])==raw and
+         len(raw)==selected['byteLength'] and sha(raw)==selected['sha256'],'helper Git and actual regular workspace bytes')
+    value={'source':dict(selected),'gitHead':head,'workspace':{'byteLength':len(raw),'sha256':sha(raw)}}
+    return bootstrap_witness(value,head,selected)
+
+
+def admit_actual_v8_bootstrap(request_raw,expected,root,env,output_path,factory=None):
+    need(ACTUAL_V8_ENABLED is True,'V8 disabled before bootstrap input/source edge')
+    request=parse_request(request_raw,expected);need(request['schema']=='bw.gui-hdd.actual-request.v8','explicit V8 bootstrap request')
+    root=Path(root).absolute();need(root.resolve(strict=True)==root and env.get('GITHUB_WORKSPACE')==str(root),'canonical V8 bootstrap checkout')
+    need(Path(output_path)==root/'gui-setup/bootstrap-admission.json','fixed V8 bootstrap packet path')
+    need(regular(root/'gui-inputs/request.json',JSON_CAP)==request_raw,'same immutable installed request before bootstrap')
+    platform=dispatch_platform_v8(env);event=regular(env['GITHUB_EVENT_PATH'],JSON_CAP)
+    bind_event(event,request,expected,platform)
+    capture=Originals(root/'gui-setup/bootstrap-originals');hosted=(factory or Hosted)(root,capture,env)
+    need(hosted.git(['rev-parse','HEAD']).decode().strip()==request['source']['head'] and
+         hosted.git(['rev-parse','HEAD^{tree}']).decode().strip()==request['source']['tree'],'bootstrap external current source head/tree')
+    for path,row in request['source']['files'].items():
+        raw=check_file(root/path,row)
+        need(hosted.git(['cat-file','blob',request['source']['head']+':'+path])==raw,'bootstrap full source21 Git/workspace')
+    metadata=actual_inventory_reference_v8(request['inventoryAdmission'])
+    witness=observe_bootstrap_source(root,request['source']['head'],metadata['bootstrapSource'],hosted)
+    value={'schema':'bw.gui-hdd.actual-bootstrap-admission.v1','pass':True,'requestSha256':expected,
+      'source':request['source'],'bootstrapAdmission':witness,'platform':platform,'runtimeObserved':False,'guestApproved':False,'firstFailure':None,'secondary':[]}
+    actual_bootstrap_original(encode(value),request,expected,platform)
+    exclusive_stage_write(output_path,encode(value))
+    return value
+
+
+def require_actual_v8_bootstrap(root,request,expected,env,output):
+    raw=regular(Path(root)/'gui-setup/bootstrap-admission.json',JSON_CAP)
+    value=actual_bootstrap_original(raw,request,expected,dispatch_platform_v8(env))
+    check_file(Path(root)/BOOTSTRAP_HELPER,{'byteLength':BOOTSTRAP_SOURCE['byteLength'],'sha256':BOOTSTRAP_SOURCE['sha256']})
+    stdout=regular(Path(root)/'gui-setup/bootstrap-helper.stdout',8192)
+    stderr=regular_empty(Path(root)/'gui-setup/bootstrap-helper.stderr',8192)
+    bootstrap_helper_output(stdout,stderr)
+    output.save('bootstrap-admission.json',raw);output.save('bootstrap-helper.stdout',stdout);output.save('bootstrap-helper.stderr',stderr)
+    return value
+
+
+def admit_finite_v8_before_setup(root,env,factory=None):
+    need(FINITE_INVENTORY_V8_ENABLED is True,'finite v8 disabled before source or package observations')
+    expected=env.get('BW_FINITE_INVENTORY_V8_SHA256');digest(expected)
+    root=Path(root).absolute()
+    need(root.resolve(strict=True)==root and env.get('GITHUB_WORKSPACE')==str(root),
+         'finite v8 official canonical checkout')
+    event_raw=regular(env['GITHUB_EVENT_PATH'],INVENTORY_FAILURE_EVENT_CAP)
+    event=decode(event_raw)
+    template_raw=finite_v8_transport(event.get('pull_request',{}).get('body'),expected,env)
+    template=finite_v8_template(template_raw,expected)
+    need(bind_finite_v8_event(event_raw,template['sourceHead'],expected,env)==template_raw,
+         'finite v8 immutable event/template join')
+    directory=root/'gui-finite-inventory-v8'
+    if not directory.exists():directory.mkdir(mode=0o700)
+    info=directory.lstat()
+    need(directory.resolve(strict=True)==directory and info.st_mode==stat.S_IFDIR|0o700 and
+         info.st_uid==os.geteuid(),'owned finite v8 admission root')
+    capture=Originals(directory/'guard-originals');hosted=(factory or Hosted)(root,capture,env);first=None
+    value={'schema':'bw.gui-hdd.finite-inventory-guard.v8','pass':False,'templateSha256':expected,
+      'eventSha256':sha(event_raw),'source':None,
+      'platform':{key:env.get(key) for key in ('GITHUB_RUN_ID','GITHUB_RUN_ATTEMPT','GITHUB_JOB',
+        'GITHUB_REPOSITORY','GITHUB_WORKFLOW_SHA','BW_EXPECTED_HEAD')},
+      'setupTrustBoundary':{'bootstrapGitTrusted':True,'packageInstallerTrusted':True,
+        'completeRuntimeBeforeSetupProved':False},'fontSelectionProved':False,
+      'browserFontSelectionProved':False,'guestApproved':False,'firstFailure':None,'secondary':[],
+      'dependencyPins':dict(template['dependencyPins']),'vendorPinsOriginal':None,'bootstrapAdmission':None}
+    try:
+        capture.save('template.original.json',template_raw);capture.save('event.original.json',event_raw)
+        head=hosted.git(['rev-parse','HEAD']).decode().strip()
+        tree=hosted.git(['rev-parse','HEAD^{tree}']).decode().strip()
+        need(head==template['sourceHead'],'finite v8 selected source HEAD');digest(tree,40)
+        source={};vendor_raw=None
+        for path in sorted(SOURCE):
+            raw=regular(root/path,FILE_CAP)
+            need(hosted.git(['cat-file','blob',head+':'+path])==raw,
+                 'finite v8 tracked Git/live source21')
+            source[path]={'byteLength':len(raw),'sha256':sha(raw)}
+            if path=='vendor-pins.json':vendor_raw=raw
+        need(vendor_raw is not None and len(vendor_raw)<=JSON_CAP,'finite v8 bounded raw vendor source')
+        value['vendorPinsOriginal']={'byteLength':len(vendor_raw),'sha256':sha(vendor_raw),
+          'base64':base64.b64encode(vendor_raw).decode()}
+        value['source']={'head':head,'tree':tree,'files':source}
+        value['bootstrapAdmission']=observe_bootstrap_source(root,head,template['bootstrapSource'],hosted)
+        value['pass']=True
+        finite_v8_guard_original(encode(value),template_raw,event_raw,env)
+        exclusive_stage_write(directory/'runtime-template.json',template_raw)
+        exclusive_stage_write(directory/'event.original.json',event_raw)
+        exclusive_stage_write(directory/'guard-admission.json',encode(value))
+    except BaseException as error:
+        first=error;value['pass']=False
+        value['firstFailure']={'name':type(error).__name__,'message':str(error)[:1024]}
+        for phase,extra in getattr(error,'gui_secondary',[]):
+            value['secondary'].append({'phase':phase,'name':type(extra).__name__,'message':str(extra)[:1024]})
+        raise
+    finally:
+        try:capture.seal(value)
+        except BaseException as error:
+            if first is None:raise
+            first.gui_secondary=getattr(first,'gui_secondary',[])+[('finite-v8-guard-retention',error)]
+            diagnostic={'firstFailure':value['firstFailure'],
+              'secondary':value['secondary']+[{'phase':'finite-v8-guard-retention',
+                'name':type(error).__name__,'message':str(error)[:1024]}]}
+            try:sys.stderr.write(encode(diagnostic).decode())
+            except BaseException as extra:first.gui_secondary.append(('finite-v8-guard-diagnostic',extra))
+    return value
+
+
+
 def inventory_observation(template_raw,expected,root,env,output_path):
     version=2
     try:
-        if decode(template_raw).get('schema')=='bw.gui-hdd.inventory-template.v7':version=7
+        if decode(template_raw).get('schema')=='bw.gui-hdd.inventory-template.v8':version=8
+        elif decode(template_raw).get('schema')=='bw.gui-hdd.inventory-template.v7':version=7
         elif decode(template_raw).get('schema')=='bw.gui-hdd.inventory-template.v6':version=6
         elif decode(template_raw).get('schema')=='bw.gui-hdd.inventory-template.v5':version=5
         elif decode(template_raw).get('schema')=='bw.gui-hdd.inventory-template.v4':version=4
@@ -2307,6 +2694,7 @@ def inventory_observation(template_raw,expected,root,env,output_path):
     if version==5:need(FINITE_INVENTORY_V5_ENABLED is True,'finite v5 disabled before runtime observation')
     if version==6:need(FINITE_INVENTORY_V6_ENABLED is True,'finite v6 disabled before runtime observation')
     if version==7:need(FINITE_INVENTORY_V7_ENABLED is True,'finite v7 disabled before runtime observation')
+    if version==8:need(FINITE_INVENTORY_V8_ENABLED is True,'finite v8 disabled before runtime observation')
     failure={'schema':'bw.gui-hdd.inventory-failure.v'+str(version),'observationOnly':True,'candidate':False,'qualified':False,
       'template':{'byteLength':len(template_raw),'sha256':sha(template_raw),'expectedSha256':None,'sourceHead':None,'bindingVerified':False},
       'event':None,'platform':{key:(env[key] if type(env.get(key)) is str and len(env[key].encode())<=1024 else None) for key in ('GITHUB_RUN_ID','GITHUB_RUN_ATTEMPT','GITHUB_JOB','GITHUB_REPOSITORY',
@@ -2316,7 +2704,7 @@ def inventory_observation(template_raw,expected,root,env,output_path):
       'firstFailure':None,'secondary':[]}
     if version>=3:failure['emptyPythonSources']={}
     if version==4:failure.update(scope=finite_inventory_scope(),fontSelectionProved=False,browserFontSelectionProved=False,guestApproved=False)
-    if version in (5,6,7):failure.update(scope=finite_v5_scope(),fontSelectionProved=False,
+    if version in (5,6,7,8):failure.update(scope=finite_v5_scope(),fontSelectionProved=False,
       browserFontSelectionProved=False,guestApproved=False,
       installedProgress={'package':None,'path':None,'file':None,'completedPrefixes':[],
         'entryStat':None,'completedRows':0,'totalBytes':0})
@@ -2324,12 +2712,12 @@ def inventory_observation(template_raw,expected,root,env,output_path):
         value=collect_inventory_observation(template_raw,expected,root,env,output_path,failure)
         if value is not failure:return value  # Successful v2 bytes and predicates stay held.
     except BaseException as error:
-        inventory_error(failure,error,'inventory-installed' if version in (5,6,7) and
+        inventory_error(failure,error,'inventory-installed' if version in (5,6,7,8) and
                         failure['installedProgress']['package'] is not None else 'inventory',
-                        failure['installedProgress']['path'] if version in (5,6,7) else None)
+                        failure['installedProgress']['path'] if version in (5,6,7,8) else None)
         for secondary in getattr(error,'inventory_secondary',[]):
-            inventory_error(failure,secondary,'inventory-installed-close' if version in (5,6,7) else 'inventory-close',
-                            failure['installedProgress']['path'] if version in (5,6,7) else None)
+            inventory_error(failure,secondary,'inventory-installed-close' if version in (5,6,7,8) else 'inventory-close',
+                            failure['installedProgress']['path'] if version in (5,6,7,8) else None)
     event=failure['event']
     if event is None or event['original']['available'] is not True:
         inventory_error(failure,ValueError('exact raw event original unavailable: '+('not read' if event is None else event['original']['reason'])),'inventory-event-original')
@@ -2337,7 +2725,7 @@ def inventory_observation(template_raw,expected,root,env,output_path):
 
 
 def retain_inventory_observation(value,output_path):
-    failed=value.get('schema') in ('bw.gui-hdd.inventory-failure.v2','bw.gui-hdd.inventory-failure.v3','bw.gui-hdd.inventory-failure.v4','bw.gui-hdd.inventory-failure.v5','bw.gui-hdd.inventory-failure.v6','bw.gui-hdd.inventory-failure.v7')
+    failed=value.get('schema') in ('bw.gui-hdd.inventory-failure.v2','bw.gui-hdd.inventory-failure.v3','bw.gui-hdd.inventory-failure.v4','bw.gui-hdd.inventory-failure.v5','bw.gui-hdd.inventory-failure.v6','bw.gui-hdd.inventory-failure.v7','bw.gui-hdd.inventory-failure.v8')
     need(failed or value.get('schema') in ('bw.gui-hdd.inventory-original.v2','bw.gui-hdd.inventory-original.v3','bw.gui-hdd.inventory-original.v4','bw.gui-hdd.inventory-original.v5','bw.gui-hdd.inventory-original.v6','bw.gui-hdd.inventory-original.v7'),'explicit inventory original version')
     if failed:need(value['firstFailure'] is not None and value['candidate'] is False and value['qualified'] is False,'failure-only inventory cannot qualify')
     target=Path(output_path).with_name('inventory-failure.json') if failed else Path(output_path)
@@ -2371,8 +2759,8 @@ def collect_inventory_observation(template_raw,expected,root,env,output_path,fai
     """Metadata only. No browser/tool probe/guest, and never self-approval."""
     digest(expected);failure['template']['expectedSha256']=expected
     need(sha(template_raw)==expected,'independently selected inventory template')
-    template=decode(template_raw);version=7 if template.get('schema')=='bw.gui-hdd.inventory-template.v7' else 6 if template.get('schema')=='bw.gui-hdd.inventory-template.v6' else 5 if template.get('schema')=='bw.gui-hdd.inventory-template.v5' else 4 if template.get('schema')=='bw.gui-hdd.inventory-template.v4' else 3 if template.get('schema')=='bw.gui-hdd.inventory-template.v3' else 2
-    fields(template,'schema sourceHead files aliases directoryAliases node python chromium tools'+(' emptyPythonSources' if version>=3 else '')+(' libraries scope' if version>=4 else '')+(' dependencyPins' if version==7 else ''))
+    template=decode(template_raw);version=8 if template.get('schema')=='bw.gui-hdd.inventory-template.v8' else 7 if template.get('schema')=='bw.gui-hdd.inventory-template.v7' else 6 if template.get('schema')=='bw.gui-hdd.inventory-template.v6' else 5 if template.get('schema')=='bw.gui-hdd.inventory-template.v5' else 4 if template.get('schema')=='bw.gui-hdd.inventory-template.v4' else 3 if template.get('schema')=='bw.gui-hdd.inventory-template.v3' else 2
+    fields(template,'schema sourceHead files aliases directoryAliases node python chromium tools'+(' emptyPythonSources' if version>=3 else '')+(' libraries scope' if version>=4 else '')+(' dependencyPins' if version in (7,8) else '')+(' bootstrapSource' if version==8 else ''))
     need(encode(template)==template_raw and template['schema']=='bw.gui-hdd.inventory-template.v'+str(version),'canonical bounded inventory template')
     if version==4:
         need(FINITE_INVENTORY_ENABLED is True,'finite v4 inventory disabled before runtime observation');finite_inventory_template(template_raw,expected)
@@ -2382,6 +2770,8 @@ def collect_inventory_observation(template_raw,expected,root,env,output_path,fai
         need(FINITE_INVENTORY_V6_ENABLED is True,'finite v6 disabled before runtime observation');finite_v6_template(template_raw,expected)
     if version==7:
         need(FINITE_INVENTORY_V7_ENABLED is True,'finite v7 disabled before runtime observation');finite_v7_template(template_raw,expected)
+    if version==8:
+        need(FINITE_INVENTORY_V8_ENABLED is True,'finite v8 disabled before runtime observation');finite_v8_template(template_raw,expected)
     digest(template['sourceHead'],40);failure['template'].update(sourceHead=template['sourceHead'],bindingVerified=True)
     event_raw=regular(env['GITHUB_EVENT_PATH'],JSON_CAP)
     available=len(event_raw)<=INVENTORY_FAILURE_EVENT_CAP
@@ -2392,6 +2782,7 @@ def collect_inventory_observation(template_raw,expected,root,env,output_path,fai
     elif version==5:need(bind_finite_v5_event(event_raw,template['sourceHead'],expected,env)==template_raw,'finite v5 retained body/template equality')
     elif version==6:need(bind_finite_v6_event(event_raw,template['sourceHead'],expected,env)==template_raw,'finite v6 retained body/template equality')
     elif version==7:need(bind_finite_v7_event(event_raw,template['sourceHead'],expected,env)==template_raw,'finite v7 retained body/template equality')
+    elif version==8:need(bind_finite_v8_event(event_raw,template['sourceHead'],expected,env)==template_raw,'finite v8 retained body/template equality')
     else:bind_inventory_event(event_raw,template['sourceHead'],expected,env)
     failure['event']['bindingVerified']=True
     if version==4:
@@ -2406,6 +2797,11 @@ def collect_inventory_observation(template_raw,expected,root,env,output_path,fai
     if version==7:
         guard_raw=regular(Path(root)/'gui-finite-inventory-v7/guard-admission.json',JSON_CAP)
         guard=finite_v7_guard_original(guard_raw,template_raw,event_raw,env)
+    if version==8:
+        guard_raw=regular(Path(root)/'gui-finite-inventory-v8/guard-admission.json',JSON_CAP)
+        guard=finite_v8_guard_original(guard_raw,template_raw,event_raw,env)
+    if version==8:
+        bootstrap_result=bootstrap_helper_output(regular(Path(root)/'gui-finite-inventory-v8/bootstrap.stdout',8192),regular_empty(Path(root)/'gui-finite-inventory-v8/bootstrap.stderr',8192))
     need(type(template['files']) is list and 1<=len(template['files'])<=512 and len(set(template['files']))==len(template['files']) and
          type(template['aliases']) is list and len(template['aliases'])<=256 and len(set(template['aliases']))==len(template['aliases']) and type(template['directoryAliases']) is list and
          len(set(template['directoryAliases']))==len(template['directoryAliases']) and len(template['aliases'])+len(template['directoryAliases'])<=256,
@@ -2508,10 +2904,15 @@ def collect_inventory_observation(template_raw,expected,root,env,output_path,fai
     if version==7:
         need(guard['source']=={'head':head,'tree':tree,'files':files},
              'finite v7 source remains bound before installed package census')
+    if version==8:
+        need(guard['source']=={'head':head,'tree':tree,'files':files},
+             'finite v8 source remains bound before installed package census')
     installed={}
-    prefixes=INSTALLED_V5_ROOTS if version in (5,6,7) else ('node_modules/bw-board','node_modules/playwright','node_modules/playwright-core')+(('node_modules/bw-circuit-ui',) if version==4 else ())
+    prefixes=INSTALLED_V5_ROOTS if version in (5,6,7,8) else ('node_modules/bw-board','node_modules/playwright','node_modules/playwright-core')+(('node_modules/bw-circuit-ui',) if version==4 else ())
     for prefix in prefixes:
         items=(installed_inventory_v5(Path(root)/prefix,prefix,failure,root,INSTALLED_V6_CRITICAL,
+               FINITE_V8_CUI_WITNESSES) if version==8 else
+               installed_inventory_v5(Path(root)/prefix,prefix,failure,root,INSTALLED_V6_CRITICAL,
                FINITE_V7_CUI_WITNESSES) if version==7 else
                installed_inventory_v5(Path(root)/prefix,prefix,failure,root,INSTALLED_V6_CRITICAL) if version==6 else
                installed_inventory_v5(Path(root)/prefix,prefix,failure,root) if version==5 else inventory(Path(root)/prefix))
@@ -2526,7 +2927,7 @@ def collect_inventory_observation(template_raw,expected,root,env,output_path,fai
         need(guard['source']==result['source'],'finite source21 unchanged across trusted setup')
         need(all(prefix+'/package.json' in installed for prefix in ('node_modules/bw-board','node_modules/bw-circuit-ui','node_modules/playwright','node_modules/playwright-core')),'finite complete installed supplier/browser/CUI census')
         result.update(scope=finite_inventory_scope(),libraries=template['libraries'],guardAdmission={'byteLength':len(guard_raw),'sha256':sha(guard_raw),'base64':base64.b64encode(guard_raw).decode()},fontSelectionProved=False,browserFontSelectionProved=False,guestApproved=False)
-    if version in (5,6,7):
+    if version in (5,6,7,8):
         need(guard['source']==result['source'],'finite v5 source21 unchanged across trusted setup')
         need(all(prefix+'/package.json' in installed for prefix in INSTALLED_V5_ROOTS),
              'finite v5 complete installed supplier/browser/CUI census')
@@ -2534,7 +2935,12 @@ def collect_inventory_observation(template_raw,expected,root,env,output_path,fai
           guardAdmission={'byteLength':len(guard_raw),'sha256':sha(guard_raw),
                           'base64':base64.b64encode(guard_raw).decode()},
           fontSelectionProved=False,browserFontSelectionProved=False,guestApproved=False)
-        if version==7:result['dependencyPins']=dict(template['dependencyPins'])
+        if version in (7,8):result['dependencyPins']=dict(template['dependencyPins'])
+        if version==8:
+            result['bootstrapSource']=template['bootstrapSource']
+            result['bootstrapAdmission']=guard['bootstrapAdmission']
+            result['bootstrapHelper']=bootstrap_result
+        if version==8:result['dependencyPins']=dict(template['dependencyPins'])
     return result
 
 
@@ -3161,7 +3567,7 @@ def retain_font_bridge(value,path):
 
 def main(argv=None):
     parser=argparse.ArgumentParser(description=__doc__,allow_abbrev=False)
-    parser.add_argument('mode',choices=('guard','inventory-guard','install-input','inventory','preflight','actual','actual-v6-guard','actual-v6-preflight','actual-v6','actual-v7-guard','actual-v7-preflight','actual-v7','actual-v8-guard','actual-v8-preflight','actual-v8','font-discovery-guard','font-discovery','font-chain-guard','font-chain','font-bridge-guard','font-bridge','finite-inventory-guard','finite-inventory','finite-inventory-v5-guard','finite-inventory-v5','finite-inventory-v6-guard','finite-inventory-v6','finite-inventory-v7-guard','finite-inventory-v7'))
+    parser.add_argument('mode',choices=('guard','inventory-guard','install-input','inventory','preflight','actual','actual-v6-guard','actual-v6-preflight','actual-v6','actual-v7-guard','actual-v7-preflight','actual-v7','actual-v8-guard','actual-v8-preflight','actual-v8','font-discovery-guard','font-discovery','font-chain-guard','font-chain','font-bridge-guard','font-bridge','finite-inventory-guard','finite-inventory','finite-inventory-v5-guard','finite-inventory-v5','finite-inventory-v6-guard','finite-inventory-v6','finite-inventory-v7-guard','finite-inventory-v7','finite-inventory-v8-guard','finite-inventory-v8','actual-v8-bootstrap'))
     for option in ('request','expected-sha256','output','blob'):parser.add_argument('--'+option)
     raw=list(sys.argv[1:] if argv is None else argv)
     for option in ('--request','--expected-sha256','--output','--blob'):
@@ -3193,6 +3599,11 @@ def main(argv=None):
              'fixed finite v7 CLI inputs')
         if args.mode=='finite-inventory-v7-guard':
             admit_finite_v7_before_setup(Path.cwd(),dict(os.environ));return 0
+    if args.mode in ('finite-inventory-v8-guard','finite-inventory-v8'):
+        need(FINITE_INVENTORY_V8_ENABLED is True,'finite v8 disabled before any source/package edge')
+        need(raw==['finite-inventory-v8-guard'] if args.mode=='finite-inventory-v8-guard' else
+             len(raw)==7 and all(raw.count(option)==1 for option in ('--request','--expected-sha256','--output')),'fixed finite v8 CLI')
+        if args.mode=='finite-inventory-v8-guard':admit_finite_v8_before_setup(Path.cwd(),dict(os.environ));return 0
     if args.mode in ('font-bridge-guard','font-bridge'):
         need(FONT_BRIDGE_ENABLED is True,'font bridge disabled pending separate prior/source/request/event/delivery review')
         need(raw==['font-bridge-guard'] if args.mode=='font-bridge-guard' else len(raw)==7 and all(raw.count(option)==1 for option in ('--request','--expected-sha256','--output')),'exact passive bridge CLI inputs')
@@ -3207,8 +3618,10 @@ def main(argv=None):
         need(ACTUAL_V6_ENABLED is True,'GUI actual v6 disabled before source or guest edge')
     if args.mode in ('actual-v7-guard','actual-v7-preflight','actual-v7'):
         need(ACTUAL_V7_ENABLED is True,'GUI actual v7 disabled before source or guest edge')
-    if args.mode in ('actual-v8-guard','actual-v8-preflight','actual-v8'):
+    if args.mode in ('actual-v8-guard','actual-v8-preflight','actual-v8','actual-v8-bootstrap'):
         need(ACTUAL_V8_ENABLED is True,'GUI actual v8 disabled before source or guest edge')
+    if args.mode=='actual-v8-bootstrap':
+        need(len(raw)==7 and all(raw.count(option)==1 for option in ('--request','--expected-sha256','--output')),'exact V8 bootstrap CLI inputs')
     if args.mode in ('inventory-guard','inventory'):
         need(INVENTORY_ENABLED is True,'GUI inventory disabled pending exact source/template/event admission')
     if args.mode in ('guard','actual-v6-guard'):observe_python_startup(Path.cwd(),'guard',[])
@@ -3229,9 +3642,12 @@ def main(argv=None):
         return retain_font_chain(collect_font_chain(request_raw,args.expected_sha256,Path.cwd(),env,args.output),args.output)
     if args.mode=='font-discovery':
         return retain_font_discovery(collect_font_discovery(request_raw,args.expected_sha256,Path.cwd(),env,args.output),args.output)
-    if args.mode in ('inventory','finite-inventory','finite-inventory-v5','finite-inventory-v6','finite-inventory-v7'):
+    if args.mode=='actual-v8-bootstrap':
+        observe_python_startup(Path.cwd(),args.mode,raw[1:])
+        print(encode(admit_actual_v8_bootstrap(request_raw,args.expected_sha256,Path.cwd(),env,args.output)).decode(),end='');return 0
+    if args.mode in ('inventory','finite-inventory','finite-inventory-v5','finite-inventory-v6','finite-inventory-v7','finite-inventory-v8'):
         schema=decode(request_raw).get('schema')
-        need(schema==('bw.gui-hdd.inventory-template.v7' if args.mode=='finite-inventory-v7' else 'bw.gui-hdd.inventory-template.v6' if args.mode=='finite-inventory-v6' else 'bw.gui-hdd.inventory-template.v5' if args.mode=='finite-inventory-v5' else 'bw.gui-hdd.inventory-template.v4') if args.mode!='inventory' else schema in ('bw.gui-hdd.inventory-template.v2','bw.gui-hdd.inventory-template.v3'),'distinct finite and historical inventory entry modes')
+        need(schema==('bw.gui-hdd.inventory-template.v8' if args.mode=='finite-inventory-v8' else 'bw.gui-hdd.inventory-template.v7' if args.mode=='finite-inventory-v7' else 'bw.gui-hdd.inventory-template.v6' if args.mode=='finite-inventory-v6' else 'bw.gui-hdd.inventory-template.v5' if args.mode=='finite-inventory-v5' else 'bw.gui-hdd.inventory-template.v4') if args.mode!='inventory' else schema in ('bw.gui-hdd.inventory-template.v2','bw.gui-hdd.inventory-template.v3'),'distinct finite and historical inventory entry modes')
         if args.mode=='finite-inventory':
             need(args.expected_sha256==env.get('BW_FINITE_INVENTORY_V4_SHA256') and request_raw==regular(Path.cwd()/'gui-finite-inventory-v4/runtime-template.json',FINITE_INVENTORY_TEMPLATE_CAP),'same pre-setup admitted finite template and independent SHA')
         if args.mode=='finite-inventory-v5':
@@ -3246,6 +3662,8 @@ def main(argv=None):
             need(args.expected_sha256==env.get('BW_FINITE_INVENTORY_V7_SHA256') and
                  request_raw==regular(Path.cwd()/'gui-finite-inventory-v7/runtime-template.json',FINITE_INVENTORY_TEMPLATE_CAP),
                  'same pre-setup admitted finite v7 template and independent SHA')
+        if args.mode=='finite-inventory-v8':
+            need(args.expected_sha256==env.get('BW_FINITE_INVENTORY_V8_SHA256') and request_raw==regular(Path.cwd()/'gui-finite-inventory-v8/runtime-template.json',FINITE_INVENTORY_TEMPLATE_CAP),'same admitted finite8 template/SHA')
         result=inventory_observation(request_raw,args.expected_sha256,Path.cwd(),env,args.output)
         return retain_inventory_observation(result,args.output)
     current=parse_request(request_raw,args.expected_sha256)

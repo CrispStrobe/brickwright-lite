@@ -59,3 +59,18 @@ Existing [FreeDOS interaction acceptance](I80386-FREEDOS-INTERACTION.md) covers 
 [Media Lab](https://github.com/CrispStrobe/brickwright-media-lab) keeps separately licensed software/assets outside the app. Its Minix 2 README's login/shell narrative is historical project evidence, not newly audited here. Freedoom/FastDoom was not executed in its packaging environment; OpenGEM's full-run proof remains pending. Use free or authored examples and their exact notices, not an assumption that every packaged project runs.
 
 Coordinate a supplier-pin update with its active owner before editing shared package/lock/generated files. After the separate debugger correction, qualify one existing free client through the actual installed package: visible completion/input, pause, breakpoint, step, register/memory change, resume and pane switch without losing the session. Record the exact package/pin/source and observable failure state. This guide changes no pin and claims no new GUI adoption, performance, physical RTx or full OS compatibility.
+
+## Finite inventory bootstrap checkpoint — 2026-10-26
+
+The [once-selected finite V7 inventory](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40352829291)
+failed Chromium dependency setup before inventory observation. Its failure is
+retained and the event is spent. The [distinct F8 lane](../lanes/2026-10-26-x86-finite-v8-browser-bootstrap.md)
+starts disabled and reuses the existing official-Ubuntu mirror preparation
+helper unchanged, with explicit Git/workspace source admission before package
+setup. Historical readers, supplier identities and limits remain separate.
+
+This bootstrap source change adds no GUI feature or successful installed graph.
+Fresh source/Build and F8 original qualification are required before the
+separate actual-V8 HDD/JSON export, fresh reload/readback and forward-debug
+acceptance. Those actual GUI results remain pending; no whole-OS, physical or
+performance result follows from bootstrap or synthetic controls.

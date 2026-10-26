@@ -1112,3 +1112,18 @@ memory inspection, resume and pane retention. Dedicated supplier support does
 not provide mode-aware disassembly, step-over/out, architectural checkpoint or
 reverse execution. ZIP selection in PR992 remains a separate acceptance task;
 ISO/CD/ATAPI and general DOSBox compatibility are outside this claim.
+
+## Finite inventory bootstrap checkpoint — 2026-10-26
+
+The [once-selected finite V7 inventory](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40352829291)
+failed Chromium dependency setup before inventory observation. Its failure is
+retained and the event is spent. The [distinct F8 lane](../lanes/2026-10-26-x86-finite-v8-browser-bootstrap.md)
+starts disabled and reuses the existing official-Ubuntu mirror preparation
+helper unchanged, with explicit Git/workspace source admission before package
+setup. Historical readers, supplier identities and limits remain separate.
+
+This bootstrap source change adds no GUI feature or successful installed graph.
+Fresh source/Build and F8 original qualification are required before the
+separate actual-V8 HDD/JSON export, fresh reload/readback and forward-debug
+acceptance. Those actual GUI results remain pending; no whole-OS, physical or
+performance result follows from bootstrap or synthetic controls.

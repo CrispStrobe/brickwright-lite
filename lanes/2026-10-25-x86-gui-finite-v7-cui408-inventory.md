@@ -154,3 +154,18 @@ and frontend Build, independently admitted request/metadata, one finite event
 and separate V8 selection remain required. Keep the owned PR open and ready
 through the actual acceptance gates; no tag, label, variable or dispatch is
 authorized by these source flags.
+
+## Spent V7 failure and distinct F8 continuation — 2026-10-26
+
+The [once-selected V7 run](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40352829291)
+passed source admission and setup-node, then failed trusted Chromium dependency
+setup at its existing deadline after npm succeeded. Inventory observation was
+skipped; conditional failure upload succeeded. This event remains spent and
+its original failure is retained. It observes no current runtime or font graph.
+
+V7 execution is retired while its reader and explicit historical 836/1bc
+identities and eighteen witnesses remain. The distinct
+[F8 bootstrap lane](2026-10-26-x86-finite-v8-browser-bootstrap.md) preserves the
+limits and suppliers, source-binds the existing mirror helper separately, and
+starts disabled. Actual V8 remains unselected and requires a newly qualified
+complete current inventory before its separate GUI acceptance.

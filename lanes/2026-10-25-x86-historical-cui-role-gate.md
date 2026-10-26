@@ -116,3 +116,12 @@ request and one finite inventory event, followed by separately admitted V8
 acceptance, remain distinct gates. Keep the owned PR open and ready through
 those actual gates; this profile update authorizes no tag, label, variable,
 dispatch, original acquisition or guest result.
+
+## Finite V8 source review boundary — 2026-10-26
+
+The [F8 lane](2026-10-26-x86-finite-v8-browser-bootstrap.md) freezes consumed
+F7 identities and witnesses separately from current F8/V8 selectors, retaining
+older historical roles. Its changed producer, reader and control bodies must
+receive independent review before any new fixed whole-body profile is written.
+The existing profiles remain unchanged and intentionally refuse those new
+bodies. No automatic refresh, caller override or broad exemption is permitted.
