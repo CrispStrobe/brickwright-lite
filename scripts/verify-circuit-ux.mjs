@@ -1017,14 +1017,13 @@ try {
             const capture=document.querySelector('[data-testid="bw-scope-time-capture"]');
             return !!capture&&capture.disabled===false&&window.__board?.getScopeChannels().length===0;
           });
-          let selectedModeValues=null, modeObserverSetupError=null;
+          let selectedModeValues=null, modeObserverSetupError=null, modeObserverHandle=null;
           try {
             const controls=await scope.getByTestId('bw-scope-time-capture').elementHandles();
             const panels=await scope.count();
             // Passive observer only: no event dispatch, handler wrapping, DOM
             // value write, state override, selection retry or engine advance.
-            await adcPage.evaluate(({target,scopedControls,scopedPanels})=>{
-              if(window.__bwADCModeSelectionAudit) throw new Error('ADC_MODE_OBSERVER_ALREADY_PRESENT');
+            modeObserverHandle=await adcPage.evaluateHandle(({target,scopedControls,scopedPanels})=>{
               const selector='[data-testid="bw-scope-time-capture"]';
               const observed=selector+', [data-testid="bw-scope-adc-enabled"]';
               const owner=target?.closest('[data-scope-panel]');
@@ -1059,7 +1058,7 @@ try {
                 document.addEventListener(type,capture,{capture:true,passive:true});
                 document.addEventListener(type,bubble,{capture:false,passive:true});
               }
-              window.__bwADCModeSelectionAudit={
+              return {
                 snapshot:()=>({before,after:snapshot(),events,overflow,observerError}),
                 stop:()=>{for(const type of ['input','change']) {
                   document.removeEventListener(type,capture,true);
@@ -1091,16 +1090,16 @@ try {
             throw new Error(`ADC_MODE_CHANGE_PUBLICATION ${JSON.stringify({state,diagnosticError})} ${String(error).split('\n')[0]}`,{cause:error});
           } finally {
             try {
-              const trace=await adcPage.evaluate(()=>{
-                const observer=window.__bwADCModeSelectionAudit;
-                if(!observer) return null;
+              const trace=modeObserverHandle?await modeObserverHandle.evaluate(observer=>{
                 try {return observer.snapshot();}
-                finally {observer.stop();delete window.__bwADCModeSelectionAudit;}
-              });
+                finally {observer.stop();}
+              }):null;
               console.log('ADC_MODE_SELECTION_TRACE '+JSON.stringify({selectedModeValues,modeObserverSetupError,trace}));
             } catch(error) {
               try {console.log('ADC_MODE_SELECTION_TRACE '+JSON.stringify({selectedModeValues,
                 modeObserverSetupError,observerReadError:String(error)}));} catch {/* retain the primary failure */}
+            } finally {
+              try {await modeObserverHandle?.dispose();} catch {/* release only our handle; retain the primary failure */}
             }
           }
           requireADC(!await scope.getByTestId('bw-scope-adc-enabled').isChecked()
