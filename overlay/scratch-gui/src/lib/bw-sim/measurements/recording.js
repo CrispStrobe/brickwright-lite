@@ -3,7 +3,7 @@
 import {sha256Text} from './binding-digest.js';
 
 import {experimentsFromRuns, experimentsToRuns, measurementRunsFromCsv, recordingModelIdentity,
-    RECORDING_LIMIT, RECORDING_SAMPLE_LIMIT, RECORDING_INTERVAL_MS, RECORDING_DURATION_MS, RECORDING_TRACE_LIMIT} from './experiments.js';
+    recordingWindow, RECORDING_LIMIT, RECORDING_SAMPLE_LIMIT, RECORDING_INTERVAL_MS, RECORDING_DURATION_MS, RECORDING_TRACE_LIMIT} from './experiments.js';
 export {RECORDING_LIMIT, RECORDING_SAMPLE_LIMIT, RECORDING_INTERVAL_MS, RECORDING_DURATION_MS, RECORDING_TRACE_LIMIT};
 
 const text = value => typeof value === 'string' ? value : '';
@@ -24,6 +24,8 @@ const reason = row => sampleValue(row) !== null ? '' : text(row?.reason) || 'una
 
 const publicState = state => ({
     active: Boolean(state.active),
+    armed: Boolean(state.active?.window && state.active.lastObservedTime < state.active.startTime),
+    window: state.active?.window ? clone(state.active.window) : null,
     stoppedReason: state.stoppedReason,
     runs: state.runs.map(run => clone(run)),
     compatible: state.runs.length === RECORDING_LIMIT && state.runs[0].identity === state.runs[1].identity &&
@@ -48,7 +50,7 @@ export const createMeasurementRecorder = () => {
         if (active.samples.length) {
             let nextRun = 1;
             while (state.runs.some(run => run.id === `run-${nextRun}`)) nextRun++;
-            state.runs.push({id: `run-${nextRun}`, origin: 'simulation', modelSha256: active.modelSha256,
+            state.runs.push({id: `run-${nextRun}`, origin: 'simulation', ...(active.window ? {window: active.window} : {}), modelSha256: active.modelSha256,
                 ...(active.canonicalModelSha256 ? {canonicalModelSha256: active.canonicalModelSha256, rawModelSha256: active.rawModelSha256} : {}),
                 identity: active.identity, definitions: active.definitions,
                 samples: active.samples});
@@ -82,8 +84,10 @@ export const createMeasurementRecorder = () => {
             if (selectionKey !== modelKey) { selectionKey = modelKey; selectionHash = sha256Text(modelKey); }
             return state.runs.find(run => recordingModelIdentity(run) === (canonicalModelSha256 || selectionHash))?.definitions.map(d => d.id) || [];
         },
-        start ({session, modelKey, definitions, selected, sampleTime, canonicalModelSha256, rawModelSha256}) {
+        start ({session, modelKey, definitions, selected, sampleTime, canonicalModelSha256, rawModelSha256, window: requestedWindow}) {
             if (state.active || state.runs.length >= RECORDING_LIMIT || typeof modelKey !== 'string' || !modelKey || !Number.isFinite(sampleTime) || sampleTime < 0) return snapshot();
+            const window = recordingWindow(requestedWindow);
+            if (window && window.startTimeMs < sampleTime) throw new Error('Recording window must start at or after current simulated time');
             const defs = selectedDefinitions(definitions, selected);
             if (!defs.length) {state.stoppedReason = 'select-measurements'; return snapshot();}
             const identity = definitionIdentity(defs);
@@ -95,7 +99,7 @@ export const createMeasurementRecorder = () => {
                 state.stoppedReason = 'different-model-or-measurements'; return snapshot();
             }
             state.active = {session, modelKey, modelSha256, canonicalModelSha256, rawModelSha256: originalRawSha, identity,
-                definitions: defs, samples: [], startTime: sampleTime, lastObservedTime: sampleTime, lastRows: undefined};
+                definitions: defs, samples: [], ...(window ? {window} : {}), startTime: window?.startTimeMs ?? sampleTime, lastObservedTime: sampleTime, lastRows: undefined};
             state.stoppedReason = '';
             return snapshot();
         },
@@ -115,9 +119,11 @@ export const createMeasurementRecorder = () => {
             if (replaying) return stop('pose-replay');
             if (!Number.isFinite(sampleTime) || sampleTime < active.lastObservedTime) return stop('time-reset');
             active.lastObservedTime = sampleTime;
+            const elapsed = sampleTime - active.startTime;
+            if (active.window && elapsed < 0) return snapshot();
+            if (active.window && elapsed >= active.window.durationMs) return stop(active.samples.length ? 'window-complete' : 'window-missed');
             if (!Array.isArray(rows) || rows === active.lastRows) return snapshot();
             active.lastRows = rows;
-            const elapsed = sampleTime - active.startTime;
             if (elapsed < 0) return stop('time-reset');
             if (elapsed >= RECORDING_DURATION_MS) return stop('time-limit');
             const last = active.samples[active.samples.length - 1];

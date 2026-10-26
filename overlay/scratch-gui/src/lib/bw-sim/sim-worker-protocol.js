@@ -42,6 +42,7 @@
 // The cost is one round trip of latency between a tick and its result reaching the
 // hubs and the view — the clock the hubs and the VM see does not advance meanwhile.
 
+import {collectFixedObservations, observationSelection} from './measurements/precision.js';
 import {SimHubBridge} from './hub-bridge.js';
 import {hubRegistry} from './hubs/index.js';
 
@@ -53,7 +54,7 @@ const copyObservation = value => value == null ? null : JSON.parse(JSON.stringif
  * precision (the core's own snapshot() is Float32; the mirror on the main thread
  * answers bodyPose/jointState with the doubles the in-thread core would return).
  */
-export const posesOf = (core, mechanism) => {
+export const posesOf = (core, mechanism, observations = null) => {
     const bodies = new Float64Array(mechanism.bodies.length * 7);
     mechanism.bodies.forEach((b, i) => {
         const {position, rotation} = core.bodyPose(b.id);
@@ -86,7 +87,9 @@ export const posesOf = (core, mechanism) => {
     // Each air network's pressure (physics/air.js), for the pane's readout.
     const bodyDynamics = Object.fromEntries(mechanism.bodies.map(b => [b.id, core.bodyDynamics ? core.bodyDynamics(b.id) : null]));
     const jointDynamics = Object.fromEntries(mechanism.joints.map(j => [j.id, core.jointDynamics ? core.jointDynamics(j.id) : null]));
-    return {t: core.time, bodies, joints, linear, angular, rolling, ropes, bodyDynamics, jointDynamics, air: core.airState ? core.airState() : []};
+    const screws = observations?.screws && typeof core.screwState === 'function' ? core.screwState() : null;
+    const contacts = observations?.contacts && mechanism.bodies.length <= 128 && typeof core.currentContactPairs === 'function' ? core.currentContactPairs() : null;
+    return {t: core.time, bodies, joints, linear, angular, rolling, ropes, bodyDynamics, jointDynamics, screws, contacts, air: core.airState ? core.airState() : []};
 };
 
 /**
@@ -115,7 +118,8 @@ export const createSimRunner = ({J, createPhysicsCore, mechanism, hubs = [], ste
          *        a hub: the core steps them as the in-thread session does); redo: from the
          *        last batch's checkpoint again
          */
-        run ({steps = 0, ticks = [], hubs: states = {}, redo = false}) {
+        run ({steps = 0, ticks = [], hubs: states = {}, redo = false, observation = null}) {
+            observation = observationSelection(observation, mechanism);
             if (redo) {
                 core.rollback();
                 if (bridge) bridge.restoreState(saved);
@@ -124,13 +128,16 @@ export const createSimRunner = ({J, createPhysicsCore, mechanism, hubs = [], ste
                 saved = bridge ? bridge.saveState() : null;
             }
             const frames = [];
+            const collector = collectFixedObservations(core, mechanism, observation);
+            try {
             if (bridge) {
                 for (const {hub} of mirrors) hub.importState(states[hub.id]);
                 for (let i = 0; i < steps; i++) frames.push(bridge.step());
             } else {
                 for (const ms of ticks) core.step(ms / 1000);
             }
-            return {frames, ...posesOf(core, mechanism)};
+            return {frames, ...posesOf(core, mechanism, observation), observations: collector.take()};
+            } finally { collector.detach(); }
         },
         destroy: () => core.destroy()
     };
@@ -153,13 +160,14 @@ export class MirrorCore {
         this.update(poses);
     }
 
-    update ({t, bodies, joints, air = [], linear = null, angular = null, rolling = {}, ropes = [], bodyDynamics = {}, jointDynamics = {}}) {
+    update ({t, bodies, joints, air = [], linear = null, angular = null, rolling = {}, ropes = [], bodyDynamics = {}, jointDynamics = {}, screws = null, contacts = null}) {
         this.t = t;
         this.bodies = bodies;
         this.joints = joints;
         this.air = air;
         this.linear = linear; this.angular = angular;
         this.rolling = rolling; this.ropes = ropes;
+        this.screws = copyObservation(screws); this.contacts = copyObservation(contacts);
         this.bodyObservations = copyObservation(bodyDynamics); this.jointObservations = copyObservation(jointDynamics);
     }
 
@@ -188,6 +196,8 @@ export class MirrorCore {
         if (!this.jointIndex.has(jointId)) throw new Error(`unknown joint ${jointId}`);
         return Object.hasOwn(this.jointObservations, jointId) ? copyObservation(this.jointObservations[jointId]) : null;
     }
+    screwState () { return copyObservation(this.screws); }
+    currentContactPairs () { return copyObservation(this.contacts); }
     bodyLinearVelocity (bodyId) { return this._velocity(this.linear, bodyId); }
     bodyAngularVelocity (bodyId) { return this._velocity(this.angular, bodyId); }
     _velocity (values, bodyId) {

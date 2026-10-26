@@ -1,3 +1,4 @@
+import {observationSelection, collectFixedObservations, createPrecisionAnalysis} from './measurements/precision.js';
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2026 Brickwright contributors
 //
@@ -446,6 +447,9 @@ export class SimSession {
         const hubs = this.hubs.map(({hub, body}) => ({hub, body}));
         this.time = 0;
         this.listeners = new Set();
+        this._observationRevision = 0;
+        this._measurementObservation = null;
+        this._precisionAnalysis = createPrecisionAnalysis(null);
         /** Why a worker was offered but the physics runs here (fromText), or null. */
         this.workerError = null;
         this.worker = Boolean(worker);
@@ -544,7 +548,31 @@ export class SimSession {
         return () => this.listeners.delete(fn);
     }
 
+    /** Reset analytical state on an explicit selection change; no physical state is changed. */
+    setMeasurementObservation ({joints = [], contacts = false, screws = false} = {}) {
+        const key = JSON.stringify({joints, contacts, screws});
+        if (key === this._measurementObservationKey) return;
+        const selection = observationSelection({revision: ++this._observationRevision, joints, contacts, screws}, this.mechanism);
+        this._measurementCollector?.detach();
+        this._measurementObservationKey = key;
+        this._measurementObservation = selection;
+        this._precisionAnalysis = createPrecisionAnalysis(selection);
+        this._measurementCollector = this.worker ? null : collectFixedObservations(this.core, this.mechanism, selection);
+    }
+
+    resetMeasurementPrecision () {
+        if (!this._measurementObservation) return;
+        this._measurementCollector?.detach();
+        this._measurementObservation = {...this._measurementObservation, revision: ++this._observationRevision};
+        this._precisionAnalysis = createPrecisionAnalysis(this._measurementObservation);
+        this._measurementCollector = this.worker ? null : collectFixedObservations(this.core, this.mechanism, this._measurementObservation);
+    }
+
+    get measurementPrecision () { return this._precisionAnalysis.snapshot(); }
+
     _advanced () {
+        const observations = this._measurementCollector?.take();
+        if (observations) this._precisionAnalysis.accept(observations);
         for (const fn of [...this.listeners]) fn(this);
     }
 
@@ -578,12 +606,13 @@ export class SimSession {
         }
         this._pendingMs = 0;
         batch.ms = ms;
+        batch.observation = this._measurementObservation;
         this._post(batch, false);
     }
 
     _post (batch, redo) {
         const sent = this._inFlight = {batch, at: now()};
-        this.client.simBatch({scene: this.scene, steps: batch.steps, ticks: batch.ticks, hubs: batch.hubs, redo}).then(
+        this.client.simBatch({scene: this.scene, steps: batch.steps, ticks: batch.ticks, hubs: batch.hubs, redo, observation: batch.observation}).then(
             reply => { if (this._inFlight === sent) this._receive(sent, reply); },
             error => { if (this._inFlight === sent) this._fail(error); });
     }
@@ -613,6 +642,8 @@ export class SimSession {
             stats.diverged += this.bridge.replay(reply.frames);
         }
         this.core.update(reply);
+        // Only the accepted replay may contribute; stale selection replies are refused.
+        this._precisionAnalysis.accept(reply.observations);
         stats.batches++;
         stats.steps += batch.steps || 0;
         this.time += batch.ms;
@@ -659,6 +690,8 @@ export class SimSession {
 
     dispose () {
         this._disposed = true;
+        this._measurementCollector?.detach();
+        this._measurementObservation = null;
         this.runner?.dispose();
         this.bridge?.dispose();
         if (this.worker) {

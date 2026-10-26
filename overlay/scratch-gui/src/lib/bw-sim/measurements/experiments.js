@@ -16,6 +16,9 @@ const SOURCES = Object.freeze({modelMass: 'configured-model-mass', mass: 'config
     speed: 'jolt-com-velocity', acceleration: 'sampled-jolt-com-acceleration', angularSpeed: 'jolt-angular-velocity',
     distance: 'part-origins', angle: 'part-origins', jointAngle: 'jolt-joint', jointSpeed: 'jolt-joint', travel: 'jolt-joint',
     tension: 'rope-constraint', normalLoad: 'rolling-load-estimate', pressure: 'jolt-air-network-gauge-pressure',
+    passiveTorque: 'jolt-passive-friction-impulse', motorForce: 'jolt-slider-motor-impulse',
+    limitForce: 'jolt-slider-limit-impulse', sliderPower: 'jolt-slider-motor-power',
+    screwSlips: 'screw-slip-count', screwLoad: 'screw-filtered-support-load', contact: 'jolt-contact-presence',
     motorTorque: 'jolt-motor-impulse', limitTorque: 'jolt-limit-impulse', motorPower: 'jolt-motor-power'});
 const REASONS = new Set(['unavailable', 'missing-target', 'coincident-points', 'not-a-rolling-wheel']);
 const fail = message => { throw new Error(`simLab.experiments ${message}`); };
@@ -67,11 +70,19 @@ const readingOf = (row, definition) => {
     return {id: definition.id, label: definition.label, kind: definition.kind, unit: row.unit, source: row.source,
         available: row.available, value: row.value, reason: row.reason};
 };
+export const recordingWindow = value => {
+    if (value === undefined) return undefined;
+    if (!object(value) || value.schema !== 'bw.sim-lab.recording-window.v1' || !finiteTime(value.startTimeMs) ||
+        !Number.isFinite(value.durationMs) || value.durationMs <= 0 || value.durationMs > RECORDING_DURATION_MS ||
+        !Number.isFinite(value.startTimeMs + value.durationMs)) fail('has an invalid recording window');
+    return {schema: value.schema, startTimeMs: value.startTimeMs, durationMs: value.durationMs};
+};
 const runOf = (run, context) => {
     admitModel(run, context);
     if (!text(run.id, 128)) fail('has an invalid run id');
     if (run.origin !== undefined && !['simulation', 'csv'].includes(run.origin)) fail('has an invalid run origin');
     if (run.rawModelSha256 !== undefined && !HASH.test(run.rawModelSha256)) fail('has an invalid raw capture SHA256');
+    const window = recordingWindow(run.window);
     const definitions = definitionsOf(run.definitions);
     const identity = recordingDefinitionIdentity(definitions);
     if (context.definitions !== undefined) {
@@ -83,6 +94,8 @@ const runOf = (run, context) => {
     const samples = run.samples.map(sample => {
         if (!object(sample) || !finiteTime(sample.elapsedMs) || sample.elapsedMs >= RECORDING_DURATION_MS || sample.elapsedMs <= previous) fail('has invalid or duplicate elapsed time');
         previous = sample.elapsedMs;
+        if (window && (sample.elapsedMs >= window.durationMs || !finiteTime(sample.timeMs) ||
+            Math.abs(sample.timeMs - window.startTimeMs - sample.elapsedMs) > 1e-7)) fail('has inconsistent window provenance');
         if (sample.timeMs !== undefined && sample.timeMs !== null) {
             if (!finiteTime(sample.timeMs) || sample.timeMs < sample.elapsedMs) fail('has invalid absolute time');
             const origin = sample.timeMs - sample.elapsedMs;
@@ -96,7 +109,7 @@ const runOf = (run, context) => {
         return {elapsedMs: sample.elapsedMs, ...(sample.timeMs === undefined || sample.timeMs === null ? {} : {timeMs: sample.timeMs}),
             readings: definitions.map(d => readingOf(rows.get(d.id), d))};
     });
-    return {id: run.id, ...(run.origin === undefined ? {} : {origin: run.origin}), modelSha256: run.modelSha256, canonicalModelSha256: context.modelSha256,
+    return {id: run.id, ...(window ? {window} : {}), ...(run.origin === undefined ? {} : {origin: run.origin}), modelSha256: run.modelSha256, canonicalModelSha256: context.modelSha256,
         ...(run.rawModelSha256 === undefined ? {} : {rawModelSha256: run.rawModelSha256}), identity, definitions, samples};
 };
 export const admitMeasurementRuns = (runs, context) => {
@@ -114,7 +127,7 @@ export const experimentsFromRuns = (runs, context) => {
     const selection = selectionOf(context.selection, context.definitions);
     const packet = {schema: EXPERIMENT_SCHEMA, modelSha256: context.modelSha256,
         ...(selection === undefined ? {} : {selection}), runs: admitted.map(run => ({
-        id: run.id, ...(run.origin === undefined ? {} : {origin: run.origin}), modelSha256: run.modelSha256, ...(run.rawModelSha256 === undefined ? {} : {rawModelSha256: run.rawModelSha256}), definitions: run.definitions,
+        id: run.id, ...(run.window ? {window: run.window} : {}), ...(run.origin === undefined ? {} : {origin: run.origin}), modelSha256: run.modelSha256, ...(run.rawModelSha256 === undefined ? {} : {rawModelSha256: run.rawModelSha256}), definitions: run.definitions,
         samples: run.samples.map(sample => [sample.elapsedMs, sample.timeMs ?? null,
             sample.readings.map(row => [row.value, row.source, row.reason])])
     }))};

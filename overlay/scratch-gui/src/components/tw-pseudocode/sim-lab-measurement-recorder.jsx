@@ -42,7 +42,7 @@ export default class SimLabMeasurementRecorder extends React.Component {
     constructor (props) {
         super(props);
         this.recorder = props.recorder || createMeasurementRecorder();
-        this.state = {snapshot: this.recorder.snapshot(), importStatus: ''};
+        this.state = {snapshot: this.recorder.snapshot(), importStatus: '', windowStart: '', windowDuration: '10'};
         this.importFile = React.createRef();
         this.importRevision = 0;
     }
@@ -73,6 +73,15 @@ export default class SimLabMeasurementRecorder extends React.Component {
         this.importRevision++;
         this.recorder.start(this.recordingProps());
         this.setState({snapshot: this.recorder.update(this.recordingProps())});
+    }
+    startWindow () {
+        try {
+            const startTimeMs = Number(this.state.windowStart) * 1000, durationMs = Number(this.state.windowDuration) * 1000;
+            if (this.state.windowStart.trim() === '' || this.state.windowDuration.trim() === '') throw new Error('Choose a start time and duration');
+            this.importRevision++;
+            this.recorder.start({...this.recordingProps(), window: {schema: 'bw.sim-lab.recording-window.v1', startTimeMs, durationMs}});
+            this.setState({snapshot: this.recorder.update(this.recordingProps()), importStatus: ''});
+        } catch (error) { this.setState({importStatus: error.message}); }
     }
     stop () {
         this.setState({snapshot: this.recorder.stop('stopped')}, () => this.props.onHistoryChanged?.());
@@ -109,7 +118,7 @@ export default class SimLabMeasurementRecorder extends React.Component {
         const comparison = snapshot.compatible ? compareMeasurementRuns(runs) : [];
         const hasExactSharedTimes = comparison.some(measurement => measurement.pairs.some(pair => pair.available));
         const selectedDefinitions = this.props.definitions.filter(d => this.props.selected.includes(d.id) && d.visible !== false).slice(0, 4);
-        const status = this.props.replaying ? T.replay : snapshot.active ? `${T.active} · ${snapshot.sampleCount}/${snapshot.sampleLimit}` :
+        const status = this.props.replaying ? T.replay : snapshot.armed ? (this.props.locale === 'de' ? 'Wartet auf Simulationszeitfenster' : 'Armed for simulated-time window') : snapshot.active ? `${T.active} · ${snapshot.sampleCount}/${snapshot.sampleLimit}` :
             snapshot.stoppedReason === 'different-model-or-measurements' ? T.mismatch :
                 ['sample-limit', 'time-limit'].includes(snapshot.stoppedReason) ? T.limitReached :
                 snapshot.stoppedReason && snapshot.stoppedReason !== 'stopped' ? T.changed : '';
@@ -129,8 +138,15 @@ export default class SimLabMeasurementRecorder extends React.Component {
                 {runs.length > 0 && <button type="button" data-testid="bw-sim-measurement-record-export" onClick={() => this.exportCsv()}>{T.export}</button>}
                 {runs.length > 0 && <button type="button" data-testid="bw-sim-measurement-record-clear" onClick={() => this.clear()}>{T.clear}</button>}
             </div>
+            <fieldset disabled={snapshot.active || this.props.replaying || this.props.recordingAllowed === false || runs.length >= RECORDING_LIMIT}>
+                <legend>{this.props.locale === 'de' ? 'Zeitfenster für lange Läufe' : 'Window for long runs'}</legend>
+                <label>{this.props.locale === 'de' ? 'Absolute Startzeit (s)' : 'Absolute start time (s)'} <input data-testid="bw-sim-window-start" type="number" min="0" step="0.1" value={this.state.windowStart} onChange={e => this.setState({windowStart: e.target.value})} /></label>
+                <label>{this.props.locale === 'de' ? 'Dauer (s, höchstens 60)' : 'Duration (s, at most 60)'} <input data-testid="bw-sim-window-duration" type="number" min="0.1" max="60" step="0.1" value={this.state.windowDuration} onChange={e => this.setState({windowDuration: e.target.value})} /></label>
+                <button type="button" data-testid="bw-sim-window-arm" disabled={!selectedDefinitions.length} onClick={() => this.startWindow()}>{this.props.locale === 'de' ? 'Zeitfenster vormerken' : 'Arm window'}</button>
+                <p>{this.props.locale === 'de' ? 'Keine Daten vor Start. Verpasste Fenster werden nicht verschoben; Speichern oder Modellwechsel bricht ab.' : 'No pre-start buffer. Missed windows are not shifted; saving or changing models cancels arming.'}</p>
+            </fieldset>
             <ul data-testid="bw-sim-measurement-record-runs" style={{paddingLeft: 18}}>
-                {runs.map((run, index) => <li key={run.id}>{T.run} {index + 1}: {run.samples.length} {T.samples}{run.origin === 'csv' ? ` · ${T.csvOrigin}` : run.origin === 'simulation' ? ` · ${T.simulationOrigin}` : ''}</li>)}
+                {runs.map((run, index) => <li key={run.id}>{T.run} {index + 1}: {run.samples.length} {T.samples}{run.window ? ` · ${run.window.startTimeMs / 1000}s / ${run.window.durationMs / 1000}s` : ''}{run.origin === 'csv' ? ` · ${T.csvOrigin}` : run.origin === 'simulation' ? ` · ${T.simulationOrigin}` : ''}</li>)}
             </ul>
             {snapshot.compatible && <div data-testid="bw-sim-measurement-record-comparison">
                 <h4>{T.shared}</h4>

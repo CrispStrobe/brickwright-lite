@@ -123,6 +123,17 @@ export const createMeasurementReader = session => {
                     value = matches[0].kPa;
                 }
                 row.assembly = b.parts.slice();
+            } else if (m.kind === 'contact') {
+                row.points = m.targets.map(point);
+                const a = bodyOf.get(m.targets[0]), b = bodyOf.get(m.targets[1]);
+                if (a.id === b.id) throw new Error('unavailable');
+                // The native accessor scans pairs; refuse unbounded scene-wide polling.
+                if (mechanism.bodies.length > 128) throw new Error('unavailable');
+                const pairs = core.currentContactPairs?.();
+                if (!Array.isArray(pairs)) throw new Error('unavailable');
+                value = pairs.some(pair => pair.length === 2 &&
+                    ((pair[0] === a.id && pair[1] === b.id) || (pair[0] === b.id && pair[1] === a.id))) ? 1 : 0;
+                row.source = 'jolt-contact-presence';
             } else if (m.kind === 'distance' || m.kind === 'angle') {
                 row.points = m.targets.map(point);
                 if (m.kind === 'distance') value = norm(sub(row.points[1], row.points[0])) * 1000;
@@ -137,10 +148,18 @@ export const createMeasurementReader = session => {
                 const j = mechanism.joints.find(x => x.id === m.joint && x.type === spec.joint);
                 if (!j || !matches(m.binding, jointIdentity(mechanism, j))) throw new Error('missing-target');
                 row.points = [onBody(j.body2)];
-                if (['motorTorque', 'limitTorque', 'motorPower'].includes(m.kind)) {
+                if (m.kind === 'screwSlips' || m.kind === 'screwLoad') {
+                    const states = core.screwState?.();
+                    const candidates = Array.isArray(states) ? states.filter(state => state.sliderJoint === j.id) : [];
+                    if (candidates.length !== 1 || !Number.isFinite(core.time) || core.time <= 0) throw new Error('unavailable');
+                    value = candidates[0][m.kind === 'screwSlips' ? 'slips' : 'loadN'];
+                    row.source = m.kind === 'screwSlips' ? 'screw-slip-count' : 'screw-filtered-support-load';
+                } else if (['motorTorque', 'passiveTorque', 'limitTorque', 'motorPower', 'motorForce', 'limitForce', 'sliderPower'].includes(m.kind)) {
                     const state = core.jointDynamics?.(j.id);
                     if (!state || !(state.stepSeconds > 0) || !Number.isFinite(state.t) || state.t !== core.time) throw new Error('unavailable');
-                    const fields = {motorTorque: ['motorTorqueNm', 'jolt-motor-impulse'],
+                    const fields = {passiveTorque: ['passiveTorqueNm', 'jolt-passive-friction-impulse'],
+                        motorForce: ['motorForceN', 'jolt-slider-motor-impulse'], limitForce: ['limitForceN', 'jolt-slider-limit-impulse'],
+                        sliderPower: ['motorPowerW', 'jolt-slider-motor-power'], motorTorque: ['motorTorqueNm', 'jolt-motor-impulse'],
                         limitTorque: ['limitTorqueNm', 'jolt-limit-impulse'], motorPower: ['motorPowerW', 'jolt-motor-power']};
                     const [field, source] = fields[m.kind];
                     value = state[field]; row.source = source;
