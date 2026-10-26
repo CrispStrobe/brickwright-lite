@@ -2,6 +2,7 @@
 // Copyright (c) 2026 Brickwright contributors
 // Structural measurement packs only. These describe compiled roles, not laws.
 import {sha256Text} from './binding-digest.js';
+import {jointBinding, ropeBinding} from './readings.js';
 
 const MAX_PACKS = 256;
 const MAX_PACK_DEFINITIONS = 4;
@@ -42,14 +43,6 @@ const membership = (mechanism, modelPartIds, partBodyCounts, joint) => {
     return {members, parts: sortedUnique(members.flat())};
 };
 const packId = (prefix, identity) => `${prefix}-${sha256Text(identity).slice(0, 24)}`;
-// Same canonical identities as readings.js, kept local to avoid loading the
-// simulation reader/compiler dependency graph when enumerating preset choices.
-const jointBinding = (mechanism, joint) => {
-    const legacy = JSON.stringify([joint.type, ...[joint.body1, joint.body2].map(id =>
-        mechanism.bodies.find(body => body.id === id)?.parts?.slice().sort() || [id])]);
-    return `sha256:${sha256Text(legacy)}`;
-};
-const ropeBinding = rope => `sha256:${sha256Text(JSON.stringify(rope.parts || []))}`;
 const definition = (id, kind, label, joint, binding) => ({id, kind, label, visible: true, joint: joint.id, binding});
 const makePack = (id, title, help, definitions) => validText(id, 128) && validText(title, 160) && validText(help, 240) &&
     definitions.length > 0 && definitions.length <= MAX_PACK_DEFINITIONS &&

@@ -66,7 +66,9 @@ const readingOf = (row, definition) => {
     const source = SOURCES[definition.kind];
     if (!source || (row.source !== source && !(row.available === false && row.source === ''))) fail('has an invalid source');
     if (row.available) {
-        if (typeof row.value !== 'number' || !Number.isFinite(row.value) || row.reason !== '') fail('has an invalid available value');
+        if (typeof row.value !== 'number' || !Number.isFinite(row.value) || row.reason !== '' ||
+            definition.kind === 'contact' && ![0, 1].includes(row.value) ||
+            definition.kind === 'screwSlips' && (!Number.isSafeInteger(row.value) || row.value < 0)) fail('has an invalid available value');
     } else if (row.value !== null || !REASONS.has(row.reason)) fail('has an invalid unavailable gap');
     return {id: definition.id, label: definition.label, kind: definition.kind, unit: row.unit, source: row.source,
         available: row.available, value: row.value, reason: row.reason};

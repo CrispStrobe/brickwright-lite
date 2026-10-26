@@ -4,12 +4,25 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import SimLabMeasurementPlot from './sim-lab-measurement-plot.jsx';
 import SimLabMeasurementRecorder from './sim-lab-measurement-recorder.jsx';
+import SimLabControlPair from './sim-lab-control-pair.jsx';
 import SimLabMeasurementPrecision from './sim-lab-measurement-precision.jsx';
 import SimLabPhysicsInspector from './sim-lab-physics-inspector.jsx';
 import {createMeasurementHistory, PLOT_LIMIT} from '../../lib/bw-sim/measurements/history.js';
 import {MEASUREMENT_KINDS, MEASUREMENT_LIMIT} from '../../lib/bw-sim/measurements/schema.js';
 import {measurementText, jointBinding, ropeBinding} from '../../lib/bw-sim/measurements/readings.js';
+import {roleMeasurementPacks} from '../../lib/bw-sim/measurements/role-presets.js';
 import {jointTargetContext} from '../../lib/bw-sim/measurements/target-context.js';
+
+const rolePackCache = new WeakMap();
+const packsFor = (session, locale) => {
+    if (!session) return [];
+    let cached = rolePackCache.get(session);
+    if (!cached || cached.locale !== locale) {
+        cached = {locale, packs: roleMeasurementPacks(session, locale)};
+        rolePackCache.set(session, cached);
+    }
+    return cached.packs;
+};
 
 export const measurementWords = locale => locale === 'de' ? {
     title: 'Messungen', close: 'Schließen', add: 'Messung hinzufügen', edit: 'Bearbeiten', save: 'Änderungen speichern', cancel: 'Abbrechen', remove: 'Entfernen', presets: 'Auf empfohlene Messungen zurücksetzen',
@@ -51,7 +64,7 @@ export const measurementWords = locale => locale === 'de' ? {
 class SimLabMeasurements extends React.Component {
     constructor (props) {
         super(props);
-        this.state = {kind: 'distance', label: '', targets: ['', '', ''], joint: '', rope: '', plots: (props.initialPlots || []).slice(0, PLOT_LIMIT), editor: null, editorStatus: '', picking: null};
+        this.state = {rolePackId: '', kind: 'distance', label: '', targets: ['', '', ''], joint: '', rope: '', plots: (props.initialPlots || []).slice(0, PLOT_LIMIT), editor: null, editorStatus: '', picking: null};
         this.history = createMeasurementHistory();
         this.form = React.createRef();
         this.nameInput = React.createRef();
@@ -64,6 +77,7 @@ class SimLabMeasurements extends React.Component {
         this.props.onPreview?.(null);
     }
     componentDidUpdate (previous) {
+        if (previous.session !== this.props.session && this.state.rolePackId) this.setState({rolePackId: ''});
         if (previous.session !== this.props.session || previous.mechanism !== this.props.mechanism) this.previewActive = false;
         if (previous.session !== this.props.session || previous.mechanism !== this.props.mechanism ||
             this.props.replaying || previous.definitions !== this.props.definitions) this.cancelPicking();
@@ -359,11 +373,27 @@ class SimLabMeasurements extends React.Component {
                 {this.props.session && <SimLabPhysicsInspector locale={locale} session={this.props.session} replaying={replaying} onHighlight={this.props.onHighlight} />}
                 <SimLabMeasurementPrecision locale={locale} session={this.props.session} definitions={definitions}
                     enabled={this.props.precisionEnabled} replaying={replaying} onToggle={this.props.onPrecisionToggle} />
-                <SimLabMeasurementRecorder locale={locale} recorder={this.props.recorder} session={this.props.session} modelKey={this.props.modelKey || ''}
+                <SimLabControlPair locale={locale} context={this.props.modelContext && {...this.props.modelContext, definitions}}
+                    histories={this.props.histories || []} pair={this.props.controlPair} disabled={replaying || Boolean(this.props.recorder?.snapshot().active)}
+                    onPair={this.props.onControlPair} onClear={this.props.onClearControlPair} />
+                <SimLabMeasurementRecorder pairActive={Boolean(this.props.controlPair)} locale={locale} recorder={this.props.recorder} session={this.props.session} modelKey={this.props.modelKey || ''}
                     modelContext={this.props.modelContext} recorderRevision={this.props.recorderRevision} recordingAllowed={this.props.recordingAllowed} onHistoryChanged={this.props.onHistoryChanged} onRestoredSelection={ids => this.setState({plots: ids.slice(0, PLOT_LIMIT)}, () => this.props.onPlotSelection?.(ids))}
                     definitions={definitions} selected={selected} rows={rows} sampleTime={this.props.sampleTime}
                     replaying={replaying} paused={this.props.paused} />
                 <p style={{fontSize: 10}}>{de ? 'Bis zu 4 Diagramme mit je 128 echten Simulationszeitwerten. Lücken bedeuten: nicht verfügbar.' : 'Up to 4 plots, each with 128 actual simulation-time samples. Gaps mean unavailable.'}</p>
+                {packsFor(this.props.session, locale).length > 0 && <fieldset data-testid="bw-sim-role-packs" disabled={replaying}>
+                    <legend>{de ? 'Messpakete für dieses Modell' : 'Measurement packs for this model'}</legend>
+                    <select aria-label={de ? 'Messpaket' : 'Measurement pack'} data-testid="bw-sim-role-pack-choice" value={this.state.rolePackId} onChange={e => this.setState({rolePackId: e.target.value})}>
+                        <option value="">{de ? 'Rolle ausdrücklich wählen' : 'Choose a role explicitly'}</option>
+                        {packsFor(this.props.session, locale).map(pack => <option key={pack.id} value={pack.id}>{pack.title}</option>)}
+                    </select>
+                    <button type="button" data-testid="bw-sim-role-pack-apply" disabled={!packsFor(this.props.session, locale).some(pack => pack.id === this.state.rolePackId)} onClick={() => {
+                        const pack = packsFor(this.props.session, locale).find(p => p.id === this.state.rolePackId);
+                        if (pack) this.cancelEdit(() => onChange(pack.definitions));
+                    }}>{de ? 'Aktuelle Messungen durch Paket ersetzen' : 'Replace current measurements with pack'}</button>
+                    <p>{packsFor(this.props.session, locale).find(pack => pack.id === this.state.rolePackId)?.help}</p>
+                    <p>{de ? 'Strukturelle Rollen mit Modellbindungen; keine Bestätigung eines mechanischen Gesetzes. Die angewendeten Messungen werden mit dem Projekt gespeichert.' : 'Structural roles bound to this model; no mechanical-law qualification. Applied definitions are saved with the project.'}</p>
+                </fieldset>}
                 {this.props.teachingPreset && <button type="button" data-testid="bw-sim-measurement-teaching-preset"
                             onClick={() => this.cancelEdit(() => onChange(this.props.teachingPreset.definitions))} style={{marginTop: 6}}>
                     {de ? 'Lektionsmessungen anwenden' : 'Apply lesson measurements'}: {this.props.teachingPreset.title}</button>}
@@ -377,6 +407,7 @@ class SimLabMeasurements extends React.Component {
     }
 }
 SimLabMeasurements.propTypes = {
+    controlPair: PropTypes.object, histories: PropTypes.array, onControlPair: PropTypes.func, onClearControlPair: PropTypes.func,
     precisionEnabled: PropTypes.bool, onPrecisionToggle: PropTypes.func,
     locale: PropTypes.string.isRequired, definitions: PropTypes.array.isRequired, rows: PropTypes.array.isRequired,
     parts: PropTypes.array.isRequired, mechanism: PropTypes.object.isRequired, shown: PropTypes.bool.isRequired, replaying: PropTypes.bool.isRequired,

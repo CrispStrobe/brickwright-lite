@@ -37,6 +37,7 @@ const jointIdentity = (mechanism, joint) => {
 const ropeIdentity = rope => identity(ropeIdentities, rope, JSON.stringify(rope.parts || []));
 const matches = (stored, actual) => stored === actual.compact || stored === actual.legacy;
 export const jointBinding = (mechanism, joint) => jointIdentity(mechanism, joint).compact;
+export const measurementJointBound = (mechanism, joint, binding) => matches(binding, jointIdentity(mechanism, joint));
 export const ropeBinding = rope => ropeIdentity(rope).compact;
 
 export const createMeasurementReader = session => {

@@ -130,13 +130,13 @@ export const createSimRunner = ({J, createPhysicsCore, mechanism, hubs = [], ste
             const frames = [];
             const collector = collectFixedObservations(core, mechanism, observation);
             try {
-            if (bridge) {
-                for (const {hub} of mirrors) hub.importState(states[hub.id]);
-                for (let i = 0; i < steps; i++) frames.push(bridge.step());
-            } else {
-                for (const ms of ticks) core.step(ms / 1000);
-            }
-            return {frames, ...posesOf(core, mechanism, observation), observations: collector.take()};
+                if (bridge) {
+                    for (const {hub} of mirrors) hub.importState(states[hub.id]);
+                    for (let i = 0; i < steps; i++) frames.push(bridge.step());
+                } else {
+                    for (const ms of ticks) core.step(ms / 1000);
+                }
+                return {frames, ...posesOf(core, mechanism, observation), observations: collector.take()};
             } finally { collector.detach(); }
         },
         destroy: () => core.destroy()
