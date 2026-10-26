@@ -2,7 +2,7 @@
   "version": 1,
   "id": "thirdline",
   "language": "de",
-  "what": "Ein Motor stellt einen Eingangswinkel ein. Zwei gleich lange Kreisarme, eine gerade Grundführung und eine verschiebbare markierte Gerade bestimmen den passiven Ausgang. Der Abstand zwischen den beiden Markierungsgelenken entspricht dem Kreisradius. Deshalb beträgt der Winkel der Geraden im vorgesehenen Montagezweig ein Drittel des Eingangswinkels. Vergleiche die Bauvariante mit einem um ein Loch versetzten Markierungsgelenk: Dasselbe Programm soll dann ein anderes Winkelgesetz ergeben.",
+  "what": "Neusis-Winkeldreiteiler. Ein Motor stellt einen Eingangswinkel ein. Zwei gleich lange Kreisarme, eine gerade Grundführung und eine verschiebbare markierte Gerade bestimmen den passiven Ausgang. Der Abstand zwischen den beiden Markierungsgelenken entspricht dem Kreisradius. Deshalb beträgt der Winkel der Geraden im vorgesehenen Montagezweig ein Drittel des Eingangswinkels. Vergleiche die Bauvariante mit einem um ein Loch versetzten Markierungsgelenk: Dasselbe Programm soll dann ein anderes Winkelgesetz ergeben. Ein Motor stellt den Eingangswinkel ein. Gleiche Kreisradien und eine markierte gleitende Gerade erzeugen passiv ein Winkeldrittel. Versetze eine Markierung nach innen und vergleiche dasselbe endliche Programm.",
   "try": [
     "Lade das Modell, drücke Zurücksetzen und dann Start. Suche den angetriebenen Kreisarm und die passive gelbe Gerade; nur der Kreiseingang hat einen Motor.",
     "Sage vor den Pausen die Winkel der Geraden bei 50°, 65°, 80° und 95° Eingangswinkel voraus: 16⅔°, 21⅔°, 26⅔° und 31⅔°. Beobachte die Gerade selbst und nicht nur den Motordrehgeber.",

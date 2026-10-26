@@ -944,12 +944,20 @@ is unrecorded. Gtk# and mcs are not shipped. No hosted workflow runs the Linux b
   installer: signature verification of the exact artifact digest, notarization receipts
   where they apply, update-manifest signature checks, and installed tests of the signed
   artifact. Signing must not change the recorded resource bytes.
-- *SPIKE runtime on macOS (separate contract, not implemented):* Renode and .NET under the
-  App Sandbox need JIT (`com.apple.security.cs.allow-jit`) and child-process/inheritance
-  entitlements. Every nested executable and native library must be signed. A macOS Renode
-  distribution needs its own notice closure, a crate inventory for the macOS target, and
-  an installed test on macOS. The release workflow is owned by the model-delivery lane;
-  this lane does not dispatch it.
+- *SPIKE runtime on macOS (separate contract, feasibility shown, not implemented):*
+  [SPIKE-MACOS.md](SPIKE-MACOS.md) (2026-10-26). Hosted runs in the owner's
+  `renode-spike-prime` fork built the pinned Runtime (`41338096`/`1253d925`, tlib
+  `d50c868f`) for `osx-arm64` and `osx-x64`, and a sandboxed launcher spawning Renode as
+  an `app-sandbox` + `inherit` child booted the own source-built NuttX guest to a live
+  state snapshot on both (runs 40336239431, 40343918260). Needed: the non-single-file
+  Renode layout under `Contents/Resources` (the upstream single-file host aborts in the
+  sandbox), `network.server`, the container `tmp`. tlib uses a double mapping, not
+  `MAP_JIT`; that worked in every tested configuration. Hardened-runtime entitlements
+  and tlib's run-time extraction need a Team-ID-signed measurement. macOS crate
+  inventories are generated (304/305 linked, all macOS-only crates permissive). Open:
+  .NET runtime notices in the macOS bundle, the app integration and signed packaging
+  (release workflow owned by the model-delivery lane, which this lane does not
+  dispatch), an installed test on macOS.
 - *Firmware L11 / Runtime inputs Lite depends on:* the NuttX/guest staged profile
   manifest and file list in `scripts/lib/spike-resource-profile.mjs` (including the
   licence files it requires), `state-config.json` `identity.firmware` and
