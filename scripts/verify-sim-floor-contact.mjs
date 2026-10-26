@@ -5,6 +5,10 @@ import {readFileSync} from 'node:fs';
 import {createHash} from 'node:crypto';
 const candidateSha256=createHash('sha256').update(readFileSync(new URL('../overlay/scratch-gui/src/lib/bw-sim/physics/jolt-core.js',import.meta.url))).digest('hex');
 const manifest=JSON.parse(readFileSync(new URL('../test/fixtures/bw-sim/floor-contact/manifest.json',import.meta.url)));
+const pinSource=readFileSync(new URL('../'+manifest.engine.pinSource,import.meta.url),'utf8');
+const pinnedURL=pinSource.match(/const JOLT_PHYSICS_URL = '([^']+)'/)[1];
+const pinnedIntegrity=pinSource.match(/const JOLT_PHYSICS_INTEGRITY = '([^']+)'/)[1];
+assert.equal(pinnedIntegrity,manifest.engine.integrity);
 const text=readFileSync(process.argv[2],'utf8');
 const records=[...text.matchAll(/^\s*# FLOOR1436_RESULT (\{.*\})\s*$/gm)].map(m=>JSON.parse(m[1]));
 assert.equal(records.length,8,'eight original isolated case reports required');
@@ -12,7 +16,7 @@ const expected=[['baseline','drop',0],['candidate','drop',0],['baseline','driven
 for(let i=0;i<records.length;i++) {
     const r=records[i], [variant,mode,cold]=expected[i];
     assert.deepEqual(r.inputs,manifest.inputs.map(({file,bytes,sha256})=>({file,bytes,sha256})));
-    assert.deepEqual(r.engine,{version:'1.1.0-bw.7',resolved:manifest.engine.JOLT_PHYSICS_URL,integrity:manifest.engine.JOLT_PHYSICS_INTEGRITY});
+    assert.deepEqual(r.engine,{version:manifest.engine.version,resolved:pinnedURL,integrity:manifest.engine.integrity});
     assert.equal(r.schemaVersion,1);assert.equal(r.kernel.variant,variant);assert.equal(r.mode,mode);assert.equal(r.coldMs,cold);
     assert.equal(r.kernel.candidateSha256,candidateSha256);
     assert.equal(r.kernel.effectiveSha256,variant==='baseline'?manifest.kernel.baselineSha256:candidateSha256);

@@ -6,8 +6,9 @@
     "baselineSha256": "4778481465e9de644a8b821ce952671ae588c9f21d8aa068599ce02eef9cb7e6"
   },
   "engine": {
-    "JOLT_PHYSICS_URL": "https://github.com/CrispStrobe/JoltPhysics.js/releases/download/v1.1.0-bw.7/jolt-physics-1.1.0-bw.7.tgz",
-    "JOLT_PHYSICS_INTEGRITY": "sha512-shojIKWdaQJrb4IcKwonFCl3585GCn2KqS3HKbpe4bEWfN2DqNNOXf0UElM+sQ+as7HOL4SyocQbs8HrB+5o9A=="
+    "pinSource": "scripts/integrate.mjs",
+    "version": "1.1.0-bw.7",
+    "integrity": "sha512-shojIKWdaQJrb4IcKwonFCl3585GCn2KqS3HKbpe4bEWfN2DqNNOXf0UElM+sQ+as7HOL4SyocQbs8HrB+5o9A=="
   },
   "inputs": [
     {

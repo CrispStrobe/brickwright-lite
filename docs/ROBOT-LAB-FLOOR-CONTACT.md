@@ -59,3 +59,8 @@ This change makes no calibration, hardware, general solver-stability or
 physical-accuracy claim. Issue #1435's separate resting-frame creep remains
 outside this lane. If the driven linkage still loses contact, retain that
 failure and investigate solver/contact behavior before proposing another fix.
+
+The fixture reads the canonical SDK URL from `scripts/integrate.mjs` instead
+of declaring a second download site. Its version and integrity remain explicit
+in the manifest; the fixture performs no SDK fetch. The fetch-pinning census
+and its mutation proof remain unchanged.

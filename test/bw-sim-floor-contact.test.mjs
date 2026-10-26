@@ -11,7 +11,11 @@ test('Floor contact: exact public served inputs and kernel identities',()=>{
     for(const f of manifest.inputs){const b=readFileSync(new URL(f.file,root));assert.equal(b.length,f.bytes);assert.equal(sha256(b),f.sha256);}
     const source=readFileSync(new URL('../overlay/scratch-gui/src/lib/bw-sim/physics/jolt-core.js',import.meta.url),'utf8');
     const producer=readFileSync(new URL('../scripts/integrate.mjs',import.meta.url),'utf8');
-    for(const [key,value] of Object.entries(manifest.engine))assert.ok(producer.includes("const "+key+" = '"+value+"';"),'engine pin: '+key);
+    assert.equal(manifest.engine.pinSource,'scripts/integrate.mjs');
+    const pinURL=new URL(producer.match(/const JOLT_PHYSICS_URL = '([^']+)'/)[1]);
+    assert.equal(pinURL.hostname,'github.com');
+    assert.equal(pinURL.pathname,'/CrispStrobe/JoltPhysics.js/releases/download/v'+manifest.engine.version+'/jolt-physics-'+manifest.engine.version+'.tgz');
+    assert.equal(producer.match(/const JOLT_PHYSICS_INTEGRITY = '([^']+)'/)[1],manifest.engine.integrity);
     assert.equal(kernelSource(source,'candidate',manifest),source);
     const baseline=readFileSync(new URL('baseline-jolt-core.js',root),'utf8');
     assert.equal(sha256(kernelSource(source,'baseline',manifest,baseline)),manifest.kernel.baselineSha256);
