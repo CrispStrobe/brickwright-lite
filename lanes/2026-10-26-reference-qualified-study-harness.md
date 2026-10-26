@@ -106,3 +106,26 @@ CLI behavior before normal matched-head integration and verify actual merge
 parents/tree. No deployment, signed release, physical calibration or full-
 corpus claim follows from this study. Step2 begins only after the bounded
 phase1 result and its limitations are recorded.
+
+## Workflow-inventory scope amendment
+
+The eight-path claim landed through PR1429. Before implementation, the existing
+CI-step inventory showed that adding a workflow also requires its own generated
+census entry and dated held-job pointers. Extend ownership only to:
+
+- `docs/generated/ci-step-census.json`: the
+  `reference-qualified-instruments.yml` workflow entry and its scoped generator
+  metadata; preserve every other workflow's observations and source identities;
+- `CI-POINTERS.md`: only this workflow's dated job/step entries. A held actual
+  experiment remains unexecuted, never a successful numerical qualification.
+
+The original eight paths and all exclusions remain unchanged. Use the existing
+scoped generator; no generator, detector, threshold or global workflow-policy
+change. Preserve the x86 and all other owners' rows, including later concurrent
+rows during normal integration. This amendment must merge before either newly
+listed path is edited; already merged eight-path work may proceed independently.
+
+Source controls may run for ordinary changes to this harness. The actual study
+requires its distinct frozen selection and pre-execution admission; unrelated
+x86 labels, dispatches and other lanes' pointers must not select or duplicate it.
+No experiment is dispatched merely to populate the census.
