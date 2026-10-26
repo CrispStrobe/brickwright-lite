@@ -204,8 +204,9 @@ export async function verifyBrowser ({frontend,fixture,out}) {
         try {let path=decodeURIComponent(new URL(req.url,'http://observer.invalid').pathname);if(path.endsWith('/'))path+='index.html';const file=resolve(frontend,'.'+path);need(file.startsWith(resolve(frontend)+sep),'served path escape');const data=readFileSync(file);res.writeHead(200,{'content-type':types[extname(file)]||'application/octet-stream'});res.end(data);}catch{res.writeHead(404);res.end('not found');}
     });
     await new Promise(done=>server.listen(0,'127.0.0.1',done));
-    const {chromium}=await import('playwright');let browser,page;
+    let browser,page;
     try {
+        const {chromium}=await import('playwright');
         browser=await chromium.launch({headless:true});
         page=await browser.newPage({viewport:{width:1400,height:900}});
         await page.addInitScript(()=>{localStorage.clear();sessionStorage.clear();localStorage.setItem('bw-starter-v1-complete','1');});
