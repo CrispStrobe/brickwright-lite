@@ -7826,6 +7826,24 @@
    "p95": null,
    "max": null,
    "readings": []
+  },
+  "Browser gate \u2014 Robot Lab worm, chain and parity intakes": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate \u2014 Robot Lab rack, toggle and walking intakes": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate \u2014 Robot Lab Cardan, differential and five-bar intakes": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
   }
  }
 }

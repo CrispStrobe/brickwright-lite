@@ -37,7 +37,7 @@ test('the published addon gates remain unique with their exact commands and acce
     assert.equal(assigned.size,11,'No omitted or duplicated published gate');
 });
 test('additional addon shards use the existing Robot Lab scope predicate',()=>{
-    for(const shard of ['robotaddon5','robotaddon6','robotaddon7','robotaddon8','robotaddon9']){
+    for(const shard of ['robotaddon5','robotaddon6','robotaddon7','robotaddon8','robotaddon9','robotaddon10']){
         assert.equal(job.shards.filter(s=>s===shard).length,1,'Unique matrix registration');
         const exclusion="          - shard: ${{ needs.scope.outputs.robotlab != 'true' && '"+shard+"' || 'none' }}";
         assert.equal(lines.filter(line=>line===exclusion).length,1,'Same existing path-scope predicate');

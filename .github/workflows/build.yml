@@ -1592,7 +1592,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [heavy, light, robotlab, robotdraw, robotlink, robotmotion, robotbench, robotlink2, robotbench2, robotdraw2, robotdraw3, robotmotion2, robotaddon1, robotaddon2, robotaddon3, robotaddon4, robotaddon5, robotaddon6, robotaddon7, robotaddon8, robotaddon9]
+        shard: [heavy, light, robotlab, robotdraw, robotlink, robotmotion, robotbench, robotlink2, robotbench2, robotdraw2, robotdraw3, robotmotion2, robotaddon1, robotaddon2, robotaddon3, robotaddon4, robotaddon5, robotaddon6, robotaddon7, robotaddon8, robotaddon9, robotaddon10]
         # Path-aware PR runs (scripts/ci-browser-scope.mjs): a shard the changed
         # files do not reach is left out. Non-PR events set every shard true.
         exclude:
@@ -1617,6 +1617,7 @@ jobs:
           - shard: ${{ needs.scope.outputs.robotlab != 'true' && 'robotaddon7' || 'none' }}
           - shard: ${{ needs.scope.outputs.robotlab != 'true' && 'robotaddon8' || 'none' }}
           - shard: ${{ needs.scope.outputs.robotlab != 'true' && 'robotaddon9' || 'none' }}
+          - shard: ${{ needs.scope.outputs.robotlab != 'true' && 'robotaddon10' || 'none' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     # Job-level permissions REPLACE the workflow's for this job, so the two it
@@ -2141,6 +2142,24 @@ jobs:
         timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotaddon9' }}
         run: npm run verify:sim-lab -- --part=intake-replay --intake=atlas-six
+
+      - name: Browser gate — Robot Lab worm, chain and parity intakes
+        id: bw_browser_audit_0254
+        timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotaddon10' }}
+        run: npm run verify:sim-lab -- --part=examples --examples=helixgate,looprelay,paritydial
+
+      - name: Browser gate — Robot Lab rack, toggle and walking intakes
+        id: bw_browser_audit_0255
+        timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotaddon10' }}
+        run: npm run verify:sim-lab -- --part=examples --examples=counterslide,toggle-press,footfall
+
+      - name: Browser gate — Robot Lab Cardan, differential and five-bar intakes
+        id: bw_browser_audit_0256
+        timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotaddon10' }}
+        run: npm run verify:sim-lab -- --part=examples --examples=phasekeeper,vectorsum,pointweaver
 
       - name: Browser gate — Robot Lab pantograph-doubler complete example
         id: bw_browser_audit_0064
@@ -3774,6 +3793,9 @@ jobs:
             bw_browser_audit_0251	${{ steps['bw_browser_audit_0251'].outcome }}	${{ steps['bw_browser_audit_0251'].conclusion }}
             bw_browser_audit_0252	${{ steps['bw_browser_audit_0252'].outcome }}	${{ steps['bw_browser_audit_0252'].conclusion }}
             bw_browser_audit_0253	${{ steps['bw_browser_audit_0253'].outcome }}	${{ steps['bw_browser_audit_0253'].conclusion }}
+            bw_browser_audit_0254	${{ steps['bw_browser_audit_0254'].outcome }}	${{ steps['bw_browser_audit_0254'].conclusion }}
+            bw_browser_audit_0255	${{ steps['bw_browser_audit_0255'].outcome }}	${{ steps['bw_browser_audit_0255'].conclusion }}
+            bw_browser_audit_0256	${{ steps['bw_browser_audit_0256'].outcome }}	${{ steps['bw_browser_audit_0256'].conclusion }}
             bw_browser_audit_0064	${{ steps['bw_browser_audit_0064'].outcome }}	${{ steps['bw_browser_audit_0064'].conclusion }}
             bw_browser_audit_0065	${{ steps['bw_browser_audit_0065'].outcome }}	${{ steps['bw_browser_audit_0065'].conclusion }}
             bw_browser_audit_0066	${{ steps['bw_browser_audit_0066'].outcome }}	${{ steps['bw_browser_audit_0066'].conclusion }}
@@ -3797,10 +3819,10 @@ jobs:
             bw_browser_audit_0083	${{ steps['bw_browser_audit_0083'].outcome }}	${{ steps['bw_browser_audit_0083'].conclusion }}
             bw_browser_audit_0084	${{ steps['bw_browser_audit_0084'].outcome }}	${{ steps['bw_browser_audit_0084'].conclusion }}
             bw_browser_audit_0085	${{ steps['bw_browser_audit_0085'].outcome }}	${{ steps['bw_browser_audit_0085'].conclusion }}
+          BW_BROWSER_RUNNER_TERMINALS_V1_2: |
             bw_browser_audit_0086	${{ steps['bw_browser_audit_0086'].outcome }}	${{ steps['bw_browser_audit_0086'].conclusion }}
             bw_browser_audit_0087	${{ steps['bw_browser_audit_0087'].outcome }}	${{ steps['bw_browser_audit_0087'].conclusion }}
             bw_browser_audit_0088	${{ steps['bw_browser_audit_0088'].outcome }}	${{ steps['bw_browser_audit_0088'].conclusion }}
-          BW_BROWSER_RUNNER_TERMINALS_V1_2: |
             bw_browser_audit_0089	${{ steps['bw_browser_audit_0089'].outcome }}	${{ steps['bw_browser_audit_0089'].conclusion }}
             bw_browser_audit_0090	${{ steps['bw_browser_audit_0090'].outcome }}	${{ steps['bw_browser_audit_0090'].conclusion }}
             arcade_rotation_browser	${{ steps['arcade_rotation_browser'].outcome }}	${{ steps['arcade_rotation_browser'].conclusion }}
@@ -3898,10 +3920,10 @@ jobs:
             bw_browser_audit_0183	${{ steps['bw_browser_audit_0183'].outcome }}	${{ steps['bw_browser_audit_0183'].conclusion }}
             bw_browser_audit_0184	${{ steps['bw_browser_audit_0184'].outcome }}	${{ steps['bw_browser_audit_0184'].conclusion }}
             bw_browser_audit_0185	${{ steps['bw_browser_audit_0185'].outcome }}	${{ steps['bw_browser_audit_0185'].conclusion }}
+          BW_BROWSER_RUNNER_TERMINALS_V1_3: |
             bw_browser_audit_0186	${{ steps['bw_browser_audit_0186'].outcome }}	${{ steps['bw_browser_audit_0186'].conclusion }}
             bw_browser_audit_0187	${{ steps['bw_browser_audit_0187'].outcome }}	${{ steps['bw_browser_audit_0187'].conclusion }}
             bw_browser_audit_0188	${{ steps['bw_browser_audit_0188'].outcome }}	${{ steps['bw_browser_audit_0188'].conclusion }}
-          BW_BROWSER_RUNNER_TERMINALS_V1_3: |
             bw_browser_audit_0189	${{ steps['bw_browser_audit_0189'].outcome }}	${{ steps['bw_browser_audit_0189'].conclusion }}
             bw_browser_audit_0190	${{ steps['bw_browser_audit_0190'].outcome }}	${{ steps['bw_browser_audit_0190'].conclusion }}
             bw_browser_audit_0191	${{ steps['bw_browser_audit_0191'].outcome }}	${{ steps['bw_browser_audit_0191'].conclusion }}

@@ -1,0 +1,199 @@
+0 VectorSum — two-input differential mixer and geared output dial
+0 Name: vectorsum.ldr
+0 Author: CrispStrobe
+0 !LDRAW_ORG Unofficial_Model
+0 !LICENSE Mixed attribution; see ../docs/SOURCE_AND_LICENSES.md.
+0 // Original frame, gauge, control experiment and lessons: CrispStrobe, BSD-3-Clause.
+0 // Differential core relative placements: official LDraw 65414c01.dat, Philo, CC BY 4.0.
+0 // External standard LDraw meshes are referenced, not embedded.
+0 // One SPIKE Prime hub; angular motors on explicit ports A and B.
+0 // Saved encoder datum A=0 degrees, B=0 degrees. Reset/reload before Run.
+0 // Analytical convention: sideA=-encoderA, sideB=encoderB, carrier=(sideA+sideB)/2.
+0 // The yellow 12T gauge meshes with the red 28T carrier cover at a perpendicular bevel apex.
+0 // Expected gauge relation about its +X axis: pointer=-(28/12)*carrier.
+0 // Measure chassis at base_cross_0 local origin and output at output_pointer local point (0,20,0).
+0 // Manual encoder bounds -190..190 degrees are software guidance, not physical stops.
+0 // Native parser, topology, controller, physics, collisions and hardware remain UNTESTED.
+0 Assembly stage 1: Five-rail chassis and hub cradle
+0 !BW ID base_rail_-120
+1 72 -120 220 0 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID base_rail_-60
+1 72 -60 220 0 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID base_rail_0
+1 72 0 220 0 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID base_rail_60
+1 72 60 220 0 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID base_rail_120
+1 72 120 220 0 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID base_cross_-120
+1 72 0 240 -120 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID base_pin_-120_-120
+1 0 -120 230 -120 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID base_pin_-60_-120
+1 0 -60 230 -120 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID base_pin_0_-120
+1 0 0 230 -120 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID base_pin_60_-120
+1 0 60 230 -120 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID base_pin_120_-120
+1 0 120 230 -120 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID base_cross_0
+1 72 0 240 0 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID base_pin_-120_0
+1 0 -120 230 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID base_pin_-60_0
+1 0 -60 230 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID base_pin_0_0
+1 0 0 230 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID base_pin_60_0
+1 0 60 230 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID base_pin_120_0
+1 0 120 230 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID base_cross_120
+1 72 0 240 120 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID base_pin_-120_120
+1 0 -120 230 120 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID base_pin_-60_120
+1 0 -60 230 120 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID base_pin_0_120
+1 0 0 230 120 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID base_pin_60_120
+1 0 60 230 120 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID base_pin_120_120
+1 0 120 230 120 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID hub_cradle_-150
+1 72 -150 205 0 1 0 0 0 1 0 0 0 1 32316.dat
+0 !BW ID hub_cradle_pin_-150_-40
+1 1 -150 215 -40 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID hub_cradle_pin_-150_40
+1 1 -150 215 40 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID hub_cradle_-90
+1 72 -90 205 0 1 0 0 0 1 0 0 0 1 32316.dat
+0 !BW ID hub_cradle_pin_-90_-40
+1 1 -90 215 -40 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID hub_cradle_pin_-90_40
+1 1 -90 215 40 0 1 0 1 0 0 0 0 -1 2780.dat
+0 STEP
+0 Assembly stage 2: Opposed braced motor towers
+0 !BW ID motor_A_cross_brace
+1 72 0 180 -130 0 0 1 0 1 0 -1 0 0 32525.dat
+0 !BW ID motor_A_post_-60
+1 72 -60 40 -130 0 1 0 0 0 1 1 0 0 32278.dat
+0 !BW ID motor_A_mount_pin_-60_-100
+1 0 -50 -100 -130 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID motor_A_mount_pin_-60_-60
+1 0 -50 -60 -130 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID motor_A_foot_-60
+1 72 -60 180 -130 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID motor_A_foot_pin_-60
+1 1 -60 200 -130 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID motor_A_brace_pin_-60
+1 0 -60 190 -130 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID motor_A_post_60
+1 72 60 40 -130 0 1 0 0 0 1 1 0 0 32278.dat
+0 !BW ID motor_A_mount_pin_60_-100
+1 0 50 -100 -130 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID motor_A_mount_pin_60_-60
+1 0 50 -60 -130 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID motor_A_foot_60
+1 72 60 180 -130 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID motor_A_foot_pin_60
+1 1 60 200 -130 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID motor_A_brace_pin_60
+1 0 60 190 -130 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID motor_B_cross_brace
+1 72 0 180 130 0 0 1 0 1 0 -1 0 0 32525.dat
+0 !BW ID motor_B_post_-60
+1 72 -60 40 130 0 1 0 0 0 1 1 0 0 32278.dat
+0 !BW ID motor_B_mount_pin_-60_-100
+1 0 -50 -100 130 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID motor_B_mount_pin_-60_-60
+1 0 -50 -60 130 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID motor_B_foot_-60
+1 72 -60 180 130 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID motor_B_foot_pin_-60
+1 1 -60 200 130 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID motor_B_brace_pin_-60
+1 0 -60 190 130 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID motor_B_post_60
+1 72 60 40 130 0 1 0 0 0 1 1 0 0 32278.dat
+0 !BW ID motor_B_mount_pin_60_-100
+1 0 50 -100 130 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID motor_B_mount_pin_60_-60
+1 0 50 -60 130 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID motor_B_foot_60
+1 72 60 180 130 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID motor_B_foot_pin_60
+1 1 60 200 130 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID motor_B_brace_pin_60
+1 0 60 190 130 0 1 0 1 0 0 0 0 -1 2780.dat
+0 STEP
+0 Assembly stage 3: Modern five-gear differential core and side axles
+0 !BW ID diff_casing_carrier
+1 72 0 -100 -20 1 0 0 0 1 0 0 0 1 65414.dat
+0 !BW ID diff_cover_28t
+1 4 0 -100 20 1 0 0 0 1 0 0 0 1 65413.dat
+0 !BW ID side_gear_B
+1 19 0 -100 17 -1 0 0 0 1 0 0 0 -1 6589.dat
+0 !BW ID side_gear_A
+1 19 0 -100 -17 1 0 0 0 1 0 0 0 1 6589.dat
+0 !BW ID satellite_1
+1 19 0 -117 0 -0.96593 -0.25882 0 0 0 1 -0.25882 0.96593 0 6589.dat
+0 !BW ID satellite_2
+1 19 14.7224 -91.5 0 0.48296 0.12941 -0.86603 -0.83652 -0.22414 -0.5 -0.25882 0.96593 0 6589.dat
+0 !BW ID satellite_3
+1 19 -14.7224 -91.5 0 0.48296 0.12941 0.86603 0.83652 0.22414 -0.5 -0.25882 0.96593 0 6589.dat
+0 !BW ID input_axle_A
+1 4 0 -100 -50 0 0 -1 0 1 0 1 0 0 3705.dat
+0 !BW ID input_axle_B
+1 1 0 -100 50 0 0 -1 0 1 0 1 0 0 3705.dat
+0 !BW ID input_retainer_A
+1 71 0 -100 -78 1 0 0 0 1 0 0 0 1 4265c.dat
+0 !BW ID input_retainer_B
+1 71 0 -100 78 1 0 0 0 1 0 0 0 1 4265c.dat
+0 STEP
+0 Assembly stage 4: Perpendicular 28:12 bevel gauge and pointer
+0 !BW ID output_bevel_12t
+1 14 35 -100 5 0 0 1 0 1 0 -1 0 0 6589.dat
+0 !BW ID output_axle
+1 4 85 -100 5 1 0 0 0 1 0 0 0 1 3706.dat
+0 !BW ID output_pointer
+1 25 105 -100 5 1 0 0 0 1 0 0 0 1 6536.dat
+0 !BW ID output_pointer_tip
+1 4 105 -80 5 0 0 -1 0 1 0 1 0 0 6558.dat
+0 !BW ID output_bearing_post_65
+1 72 65 40 5 0 1 0 0 0 1 1 0 0 32278.dat
+0 !BW ID output_bearing_foot_65
+1 72 65 180 5 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID output_bearing_foot_pin_65
+1 1 65 200 5 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID output_bearing_post_125
+1 72 125 40 5 0 1 0 0 0 1 1 0 0 32278.dat
+0 !BW ID output_bearing_foot_125
+1 72 125 180 5 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID output_bearing_foot_pin_125
+1 1 125 200 5 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID output_retainer_inner
+1 71 52 -100 5 0 0 1 0 1 0 -1 0 0 4265c.dat
+0 !BW ID output_retainer_outer
+1 71 134 -100 5 0 0 1 0 1 0 -1 0 0 4265c.dat
+0 !BW ID output_tower_cross_brace
+1 72 95 180 5 0 0 1 0 1 0 -1 0 0 32316.dat
+0 STEP
+0 Assembly stage 5: Motors, hub and cable guides; connect A and B
+0 !BW ID motor_A
+0 !BW PORT A
+1 15 0 -100 -130 1 0 0 0 0 1 0 -1 0 54696p01.dat
+0 !BW ID motor_B
+0 !BW PORT B
+1 15 0 -100 130 -1 0 0 0 0 1 0 1 0 54696p01.dat
+0 !BW ID hub
+1 15 -120 190 0 1 0 0 0 1 0 0 0 1 45601.dat
+0 !BW ID cable_guide_A
+1 25 -80 150 -80 1 0 0 0 1 0 0 0 1 6536.dat
+0 !BW ID cable_guide_B
+1 25 -80 150 80 1 0 0 0 1 0 0 0 1 6536.dat
+0 !BW ID hub_mount_pin_left
+1 1 -150 190 0 1 0 0 0 1 0 0 0 1 6558.dat
+0 !BW ID hub_mount_pin_right
+1 1 -90 190 0 1 0 0 0 1 0 0 0 1 6558.dat

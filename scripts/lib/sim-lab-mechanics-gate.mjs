@@ -128,7 +128,7 @@ export const mechanicsInteractions = async (page, {openSimLab, shotsDir, timeout
     return results;
 };
 
-export const manualMechanicsInteractions = async (page, {openSimLab, shotsDir, models = DEFAULT_MACHINES, jogSign = () => 1, jogMs = 250, keyFor = id => `${id}.ldr`, captureModel = null}) => {
+export const manualMechanicsInteractions = async (page, {openSimLab, shotsDir, models = DEFAULT_MACHINES, jogSign = () => 1, jogMs = 250, keyFor = id => `${id}.ldr`, captureModel = null, minimumJogRadians = .03}) => {
     mkdirSync(shotsDir, {recursive: true});
     await openSimLab(page, {program: null});
     const results = {};
@@ -182,7 +182,7 @@ export const manualMechanicsInteractions = async (page, {openSimLab, shotsDir, m
             const target=Number(await choice.getAttribute('data-target'));assert.ok(Number.isFinite(target));
             await choice.click();
             await page.waitForFunction(()=>window.__bwSimLab._pane.manualJogs.size===0,null,{timeout:15000});
-            const after=await angle(port);assert.ok(Math.abs(after-before)>.03,`${id}: bounded ${port} actually moves`);
+            const after=await angle(port);assert.ok(Math.abs(after-before)>minimumJogRadians,`${id}: bounded ${port} actually moves`);
             assert.ok(Math.abs(after*180/Math.PI-target)<=2,`${id}: bounded ${port} reaches its requested target`);
             results[id][port]=(after-before)*180/Math.PI;
         }
