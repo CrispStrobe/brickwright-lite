@@ -4665,7 +4665,7 @@
     {
      "shape": "cylinder",
      "radius": 6,
-     "halfHeight": 29.5,
+     "halfHeight": 30,
      "rotation": [
       0,
       0,

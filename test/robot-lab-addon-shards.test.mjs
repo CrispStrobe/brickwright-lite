@@ -37,7 +37,7 @@ test('the published addon gates remain unique with their exact commands and acce
     assert.equal(assigned.size,11,'No omitted or duplicated published gate');
 });
 test('additional addon shards use the existing Robot Lab scope predicate',()=>{
-    for(const shard of ['robotaddon5','robotaddon6','robotaddon7','robotaddon8','robotaddon9','robotaddon10']){
+    for(const shard of ['robotaddon5','robotaddon6','robotaddon7','robotaddon8','robotaddon9','robotaddon10','robotaddon11','robotaddon12']){
         assert.equal(job.shards.filter(s=>s===shard).length,1,'Unique matrix registration');
         const exclusion="          - shard: ${{ needs.scope.outputs.robotlab != 'true' && '"+shard+"' || 'none' }}";
         assert.equal(lines.filter(line=>line===exclusion).length,1,'Same existing path-scope predicate');
@@ -46,7 +46,8 @@ test('additional addon shards use the existing Robot Lab scope predicate',()=>{
 
 test('all newly delivered primary experiments have one complete journey with unchanged budgets',()=>{
     const deliveries={robotaddon7:['wavemaker','cascade','rise-ratio','cable-compass'],
-        robotaddon8:['rod-ratio','vernier-drive','line-turner','dune-strider','oblique'],robotaddon9:['atlas-six']};
+        robotaddon8:['rod-ratio','vernier-drive','line-turner','dune-strider','oblique'],robotaddon9:['atlas-six'],robotaddon10:['helixgate','looprelay','paritydial'],
+        robotaddon11:['counterslide','toggle-press','footfall'],robotaddon12:['phasekeeper','vectorsum','pointweaver']};
     const selectors=[...workflow.matchAll(/--part=examples --examples=([^\s]+)/g)].flatMap(m=>m[1].split(','));
     for(const [shard,models]of Object.entries(deliveries))for(const id of models){
         assert.equal(selectors.filter(value=>value===id).length,1,'No omitted or duplicated selector: '+id);

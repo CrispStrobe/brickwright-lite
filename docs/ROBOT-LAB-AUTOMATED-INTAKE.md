@@ -200,7 +200,9 @@ label. The per-model checked/unchecked record remains in
 [data/robot-lab-nine-intakes-20261026.json](data/robot-lab-nine-intakes-20261026.json).
 
 The stock 3L shaft now uses the official mesh's measured 6-LDU swept radius and
-29.5-LDU half-length. Its old square envelope reached 8.485 LDU during rotation
+retains the original nominal 30-LDU half-length. The drawn end caps reach
+29.5 LDU; retaining the established end allowance avoids a separate change to
+end clearance and body inertia. Its old square envelope reached 8.485 LDU during rotation
 and displaced CounterSlide. Mesh coverage, actual floor/obstacle contacts and a
 control restoring only the old square collider guard this correction. Connector
 keying and length, mass, solver settings and collision filtering are unchanged.
@@ -210,3 +212,16 @@ control removes its driving sprocket: removing one chain link alone still leaves
 a coupling inferred by the current compiler. There is no hardware build verdict.
 Existing experimental examples have a separate source-bound
 [audit and outstanding gaps](ROBOT-LAB-MAIN-AUDIT-20261026.md).
+
+
+A broader native run exposed a Pivot Rover steering regression when the radial
+correction also shortened the shaft. Paired actual-VM diagnostics isolated the
+axial change; restoring the original nominal length preserves its existing
+opposite-curve checks without changing the program or judge. The short-envelope
+failure remains diagnostic evidence, rather than a portable assertion that
+such a small physical difference must prevent steering on every platform.
+
+Three complete browser journeys plus six lesson contexts exceeded the initial
+eight-minute grouped step in the measured Linux run. The intake gates are now
+one model per step across three shards. Every individual eight-minute limit and
+the existing thirty-minute job limit remain unchanged; no checks were removed.

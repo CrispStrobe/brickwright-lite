@@ -22,7 +22,10 @@ test('3L shaft collider encloses the complete official mesh without square-corne
     assert.equal(axle.colliders.length, 1);
     const c = axle.colliders[0];
     assert.equal(c.shape, 'cylinder'); assert.equal(c.radius, radius);
-    assert.equal(c.halfHeight, (hi - lo) / 2);
+    // Correct only the radial sweep. Preserve the established nominal 3L
+    // length rather than also changing end clearance and body inertia.
+    assert.equal(c.halfHeight, 30);
+    assert.equal(c.halfHeight - (hi - lo) / 2, .5, 'The original nominal end allowance is retained');
     assert.ok(colliderFit(axle.colliders, vertices).enclosed >= .999);
     assert.deepEqual(axle.connectors, [{id: 'a', type: 'axle', position: [0, 0, 0], axis: [1, 0, 0], length: 60}]);
     assert.equal(axle.massGrams, .5);
