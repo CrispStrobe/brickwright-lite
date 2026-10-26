@@ -1,5 +1,54 @@
 # Arcade compatibility: fresh-agent handoff and methodology
 
+## 26 October: forward-fix integration candidate
+
+The integration under [the merged scope](../lanes/2026-10-26-arcade-forward-integration.md)
+preserves the operator-approved Array source-bitwise conversions, exports
+uncalled ordinary helper bodies, and retains the numeric GUI's music-tempo
+refusal example. The original score fixture remains separate from its explicit
+completion-observation variant. PR #1416's green checks qualify its reviewed
+head; they do not qualify the subsequent combined source candidate.
+
+The candidate follows pure parameterless Sprite-alias getters through their
+actual immutable bindings. Every writer and every known call must satisfy the
+creation frontier. Early calls, null alternatives, escaping or exported getters,
+managed-method entries and callable entries cannot borrow that authority.
+The complete body and original receiver/RHS evaluation remain emitted. Fixed
+Sprite flags reads are entry-neutral only inside the existing closed physical
+project census; unknown dispatch still prevents dormant-body discharge.
+
+Math selectors never establish Number by themselves: min/max and equal-bound
+randomRange can return connected values unchanged. Number consumers retain the
+independent operand/current-result checks. Native subtraction and multiplication
+also receive no blanket Number badge, since native coercion can retain BigInt.
+Unknown addition results retain their diagnostic instead of gaining permission
+from an unrelated Array. Project reopen preserves reference kind/id without
+reviving a per-run Array body; held-live-body ownership remains separately
+covered by the Arrays native controls.
+
+Continue in this order:
+
+1. Qualify the combined exact source head in hosted six-shard unit, actual VM,
+   original SDK and affected editor/controller/save-reopen checks. Reuse retained
+   originals once. Check flags compound assignment's single receiver/RHS order,
+   duplicate-procedure diagnostics, source Array bitwise, score callbacks and
+   frame/math results. Keep fresh capture availability separate from semantic
+   refusals. Do not infer runtime success from the source-only checks.
+2. Reobserve the valid ordinary-call corpus case against that qualified head.
+   Diagnose its actual callee identity, arguments, defaults and entry order;
+   preserve the body, caller effects and actual constraints. This needs a new
+   merged claim if its files extend the integration scope.
+3. Address the snake game's remaining startup scalar and conditional Array
+   producer refusals, then Array.map/Throw and stopwatch/SDK contexts. For each,
+   retain original source, match actual producers and all writers, and test
+   Code, Blocks, graphics where applicable, export/reimport and fresh reopen.
+   Promote an application only after observable execution matches its original.
+
+The latest measured raw corpus remains **147 translated / 36 partial / one parse
+failure**. No new corpus completion follows from this integration alone. Keep
+invalid original snippets and recovered dependency contexts distinct from this
+unchanged raw-input measurement.
+
 ## 25 October: latest complete source census and next boundary
 
 The latest complete unchanged 184-input import/Creator census measures

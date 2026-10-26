@@ -360,7 +360,7 @@ class ArcadeTranslator extends BaseTranslator {
         // This separate all-writer proof is consumed only by bitwise words.
         // A real no-initializer scalar starts Undefined; inferImageReferences'
         // conservative annotation graph intentionally remains unchanged.
-        this.sourceBitwiseOperands=new WeakSet();this.primitiveBitwiseOperands=new WeakSet();this.possibleBitwiseArrays=new WeakSet();
+        this.sourceBitwiseOperands=new WeakSet();this.primitiveBitwiseOperands=new WeakSet();this.objectBitwiseOperands=new WeakSet();this.possibleBitwiseArrays=new WeakSet();
         // Compound emitters construct a Binary expression later, but its two
         // operands are these original Assignment nodes. Index their actual
         // identities now; a synthetic expression is never a proof producer.
@@ -378,6 +378,7 @@ class ArcadeTranslator extends BaseTranslator {
                     if([...types].some(array)||references.arrays.has(operand))this.possibleBitwiseArrays.add(operand);
                     if(types.size&&[...types].every(type=>primitive.has(type)||array(type)))this.sourceBitwiseOperands.add(operand);
                     if(references.primitives.has(operand)||types.size&&[...types].every(type=>primitive.has(type)))this.primitiveBitwiseOperands.add(operand);
+                    if([...types].some(type=>typeof type==='string'&&!primitive.has(type)&&type!=='Opaque'))this.objectBitwiseOperands.add(operand);
                 }
                 return false;
             });
@@ -1319,6 +1320,16 @@ class ArcadeTranslator extends BaseTranslator {
         if(this.nativeValues && node?.type==='Binary' && ['==','!=','===','!==','<','>','<=','>='].includes(node.op)) {
             this.usesArrays=true;
             return `compare value (${this.arrayElementValue(node.left)}) op "${node.op}" with (${this.arrayElementValue(node.right)})`;
+        }
+        // Without native values the legacy integer words convert silently.
+        // An operand with a known object producer (an Image, an object
+        // literal...) is diagnosed as in the native route; ordinary SDK
+        // results keep the legacy conversion.
+        if(!this.nativeValues && (node?.type==='Binary' && ['&','|','^','<<','>>','>>>'].includes(node.op) || node?.type==='Unary' && node.op==='~')) {
+            const operands=node.type==='Binary'?[node.left,node.right]:[node.argument];
+            if(operands.some(value=>this.objectBitwiseOperands?.has(value)&&!this.primitiveBitwiseOperands?.has(value)&&!this.possibleBitwiseArrays?.has(value))){
+                this.unsupported.push('Bitwise operation requires proven primitive operands; opaque reference, object or unknown conversion is not implemented');return '0';
+            }
         }
         if(this.nativeValues && (node?.type==='Binary' && ['&','|','^','<<','>>','>>>'].includes(node.op) || node?.type==='Unary' && node.op==='~')) {
             const operands=node.type==='Binary'?[node.left,node.right]:[node.argument];

@@ -23,7 +23,7 @@ import {classCallableDefaultProjectGate} from './class-callable-default-project-
 import {sdkFontInputAuthority} from './sdk-font-input-authority.js';
 import {parseMakeCodeTs} from './ts-import.js';
 import {callableSourceGate} from './callable-source-gate.js';
-import {inspectCallableExportGraph,createCallableLexicalEmitter,renderCallableSignature,validateCallableCurrentBodyTypes,callableReflectionOperand,callableReflectionVariable} from './callable-export-graph.js';
+import {inspectCallableExportGraph,createCallableLexicalEmitter,renderCallableSignature,validateCallableCurrentBodyTypes,callableReflectionOperand,callableReflectionVariable,callableCurrentInputType} from './callable-export-graph.js';
 import {namedArrayItemExportAuthority} from './named-array-item-export-authority.js';
 import {NAMED_ARRAY_GET_SOURCE} from './named-array-item-helpers.js';
 import {sourceReferenceProject} from './source-reference-project.js';
@@ -1480,7 +1480,7 @@ class ArcadeEmitter {
             if(source&&!sourceValueOperation(b)){this.note(`unsupported Arcade source value operation ${op}`);return this.na();}
             if(!names[op] || unary && !['+','-','~'].includes(op)){this.note(`unsupported value operation ${op}`);return this.na();}
             if(source&&(unary||['&','|','^','<<','>>','>>>'].includes(op))&&!this.sourceBitwiseExportOperands?.has(b)){this.note('Arcade source bitwise operation requires actual Array or primitive operand producers');return this.na();}
-            if(!source&&!compare&&(unary?op==='~':['&','|','^','<<','>>','>>>'].includes(op))&&!this.nativeBitwiseExportOperands?.has(b)){this.note('Native bitwise operation requires actual primitive operand producers');return this.na();}
+            if(!source&&!compare&&(unary?op==='~':['&','|','^','<<','>>','>>>'].includes(op))&&!this.nativeBitwiseExportOperands?.has(b)&&!this.closedOrdinaryEntry.isUnreachable(this.target,b)&&!this.callablePrimitiveOperands(b,unary?['VALUE']:['LEFT','RIGHT'])){this.note('Native bitwise operation requires actual primitive operand producers');return this.na();}
             // A qualified class-callable graph can retain primitive Number
             // addition directly. Generic Any helpers lose the Arrow's actual
             // result signature on source reparse; declarations alone cannot
@@ -3161,6 +3161,50 @@ class ArcadeEmitter {
         }
     }
 
+    // A qualified lexical callable graph proves the current type of each
+    // input of its own current-body blocks (captured cells included). Only a
+    // complete primitive proof of every operand is accepted; Arrays, class
+    // values, callables and unproved inputs keep the existing refusal.
+    callablePrimitiveOperands (block, names) {
+        const graph=this.callableExports?.get(this.target)?.graph;
+        if(!graph)return false;
+        return names.every(name=>{
+            let type=callableCurrentInputType(graph,block,name);
+            if(!type&&graph.plan?.version===2){try{type=this.objectClassExport.classCallableProvider(this.target).currentInputType(block,name);}catch(_){type=null;}}
+            return type?.kind==='named'&&['number','boolean','string'].includes(type.name);
+        });
+    }
+
+    // Sprite flags writers of an actual project. A direct (mutable) project
+    // graph has no owned frozen origin for its watchers, so its own query
+    // refuses them; the same query then runs once over an owned frozen JSON
+    // snapshot of this project taken now, mapped by target index and block id.
+    spriteFlagWriters (target, node) {
+        const direct=this.arrayReceiverAuthority.spriteFlagWriters(target,node);
+        if(direct||isProjectJsonSnapshot(this.project))return direct;
+        if(this.flagsSnapshot===undefined){
+            try {
+                const snapshot=createProjectJsonSnapshot(JSON.stringify(this.project));
+                this.flagsSnapshot={snapshot,authority:createArrayReferenceExportAuthority(snapshot,this.opts)};
+            } catch(_) {this.flagsSnapshot=null;}
+        }
+        if(!this.flagsSnapshot)return null;
+        const {snapshot,authority}=this.flagsSnapshot,targets=this.project.targets;
+        const index=targets.indexOf(target),id=index<0?null:Object.keys(target.blocks||{}).find(key=>target.blocks[key]===node);
+        const snapTarget=index<0?null:snapshot.targets[index],snapNode=id&&snapTarget?.blocks?.[id];
+        if(!snapNode)return null;
+        let rows;try{rows=authority.spriteFlagWriters(snapTarget,snapNode);}catch(_){return null;}
+        if(!rows)return null;
+        const mapped=[];
+        for(const row of rows){
+            const at=snapshot.targets.indexOf(row.target),key=at<0?null:Object.keys(row.target.blocks||{}).find(k=>row.target.blocks[k]===row.node);
+            const actual=at<0?null:targets[at],actualNode=key&&actual?.blocks?.[key];
+            if(!actualNode)return null;
+            mapped.push(Object.freeze({target:actual,node:actualNode,input:row.input}));
+        }
+        return Object.freeze(mapped);
+    }
+
     localDeclaration (name, key) {
         const classType=this.objectClassExport?.localDeclarationType?.(key,name);
         const type=classType??this.localValueTypes.get(key)?.get(name)??'any';
@@ -3384,7 +3428,7 @@ class ArcadeEmitter {
                 if(value.opcode==='arcade_tilesOfType'){const id=`${key}:tile-array:${Object.keys(blocks).find(id=>blocks[id]===value)}`;arrays.add(id);return id;}
                 if(['arcade_getLife','arcade_getPlayerScore'].includes(value.opcode)){const id=Symbol('player life');numbers.add(id);return id;}
                 if(value.opcode==='arcade_spriteProperty' && value.fields?.PROPERTY?.[0]==='flags'){
-                    const id=Symbol('closed Sprite flags primitive'),writers=this.arrayReceiverAuthority.spriteFlagWriters(target,value);
+                    const id=Symbol('closed Sprite flags primitive'),writers=this.spriteFlagWriters(target,value);
                     if(writers){spriteFlagResults.set(id,{target,node:value,writers});return id;}
                     inspectionOpaqueCells.add(id);return id;
                 }
@@ -3635,7 +3679,7 @@ class ArcadeEmitter {
             // Flags never lend a Number-only fact. Actual closed writers must
             // first qualify below; only a complete primitive domain can use it.
             if(allowSpriteFlags&&admittedSpriteFlags.has(value)&&['number','boolean','string','null','undefined'].every(type=>allowed.includes(type))){
-                const entry=spriteFlagResults.get(value),current=this.arrayReceiverAuthority.spriteFlagWriters(entry.target,entry.node);
+                const entry=spriteFlagResults.get(value),current=this.spriteFlagWriters(entry.target,entry.node);
                 return !!current&&current.length===entry.writers.length&&current.every((row,index)=>row.target===entry.writers[index].target&&row.node===entry.writers[index].node&&row.input===entry.writers[index].input);
             }
             // Only the source-bitwise allowed domain contains BOTH alternatives.
@@ -3679,7 +3723,7 @@ class ArcadeEmitter {
         // flags cycles remain refused in this narrow slice, not assumed closed.
         for(const [value,entry]of spriteFlagResults){
             if(!entry.writers.every(row=>inspectionTypes(spriteFlagWriterInputs.get(row.node),['number','boolean','string','null','undefined'])))continue;
-            const current=this.arrayReceiverAuthority.spriteFlagWriters(entry.target,entry.node);
+            const current=this.spriteFlagWriters(entry.target,entry.node);
             if(current&&current.length===entry.writers.length&&current.every((row,index)=>row.target===entry.writers[index].target&&row.node===entry.writers[index].node&&row.input===entry.writers[index].input))admittedSpriteFlags.add(value);
         }
         // Source result signatures above never prove their operands. Follow
@@ -3689,7 +3733,14 @@ class ArcadeEmitter {
         this.scoreThresholdExportOperands=new Set();
         for(const [block,value]of scoreThresholdInputs)if(inspectionTypes(value,['number']))this.scoreThresholdExportOperands.add(block);
         this.nativeBitwiseExportOperands=new Set();
-        for(const [block,operands]of nativeBitwiseInputs)if(operands.every(value=>inspectionTypes(value,['number','boolean','string','null','undefined'],new Set(),null,true)))this.nativeBitwiseExportOperands.add(block);
+        // Nonreachability comes only from the closed physical execution-root
+        // census. Managed/callable entries deny that proof; their JSON catalogs
+        // cannot be treated as ordinary unmentioned procedure names.
+        for(const [block,operands]of nativeBitwiseInputs){
+            const target=this.project.targets.find(t=>Object.values(t.blocks||{}).includes(block));
+            if(operands.every(value=>inspectionTypes(value,['number','boolean','string','null','undefined'],new Set(),null,true))||
+                target&&this.closedOrdinaryEntry.isUnreachable(target,block))this.nativeBitwiseExportOperands.add(block);
+        }
         for(const expected of this.procedureConstraints?.allObligations||[]){
             const actual=procedureInputs.find(item=>item.block===expected.block&&item.obligation===expected.obligation);
             if(!actual||actual.obligation.type!=='Any'&&!inspectionTypes(actual.value,[actual.obligation.type.toLowerCase()]))this.note('Procedure parameter constraint: actual current caller or writer requires '+expected.obligation.type);
@@ -4156,9 +4207,16 @@ class ArcadeEmitter {
                     }
                     if(this.objectClassExport.procedures.has(key))continue;
                     // A refused prototype has no actual owned export symbol.
-                    // Retain its diagnostic instead of emitting a null function.
+                    // Retain its diagnostic instead of emitting a null function,
+                    // but still compile the body (output discarded) so its own
+                    // refusals, e.g. inspection proofs, are reported as before.
                     const fn = this.functionName(t,proto.mutation.proccode);
-                    if(!fn)continue;
+                    if(!fn){
+                        const saved=this.currentLocalNames;this.currentLocalNames=new Set();
+                        try{this.body(b.next,[],[],!this.managedValueProcedures.has(key));}catch(error){this.note(error.message);}
+                        finally{this.currentLocalNames=saved;}
+                        continue;
+                    }
                     const types = imageParameterTypes.get(key) || [];
                     const params = names.map((n, i) => `${n}: ${this.procedureConstraints?.annotation(t,proto.mutation.proccode,i) || this.objectClassExport.procedureParameterType?.(key,n) || types[i] || 'any'}`);
                     // It runs in its caller's thread, so it checks the caller's run token.

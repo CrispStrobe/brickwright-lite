@@ -58,3 +58,17 @@ test('editing the actual math reporter to a connected String cannot borrow a for
  const exported=projectJsonToArcade(JSON.stringify(project));
  assert.ok(exported.unsupported.some(message=>/requires Number|actual.*producer/.test(message)),JSON.stringify(exported.unsupported));
 });
+
+
+test('a connected Undefined math operand cannot acquire a Number from its selector',()=>{
+ for(const operation of ['min','max','randomRange']){
+  const creator=create(`let result=0;function take(n:number){result=n;}take(Math.${operation}(2,4));`);
+  const project=JSON.parse(JSON.stringify(creator.project));
+  for(const target of project.targets)for(const [id,node]of Object.entries(target.blocks))if(node.opcode==='arcade_mathBinary'){
+   const old=node.inputs.A[1];if(typeof old==='string')delete target.blocks[old];
+   node.inputs.A=[2,'undefinedOperand'];target.blocks.undefinedOperand={opcode:'arrays_specialValue',parent:id,topLevel:false,shadow:false,next:null,fields:{KIND:['undefined',null]},inputs:{}};
+  }
+  const exported=projectJsonToArcade(JSON.stringify(project));
+  assert.ok(exported.unsupported.some(message=>/requires Number|actual.*producer/.test(message)),operation+JSON.stringify(exported.unsupported));
+ }
+});

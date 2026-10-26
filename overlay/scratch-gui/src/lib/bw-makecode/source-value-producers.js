@@ -668,7 +668,7 @@ function ordinarySpriteAyNumberReads(program) {
     const rank=node=>program.body.indexOf(root(node));
     const all=(items,predicate)=>{for(let i=0;i<items.length;i++)if(!predicate(items[i],i))return false;return true;};
     const any=(items,predicate)=>{for(let i=0;i<items.length;i++)if(predicate(items[i],i))return true;return false;};
-    const schema=fn=>Array.isArray(fn.params)&&all(fn.params,name=>typeof name==='string')&&new Set(fn.params).size===fn.params.length&&
+    const schema=fn=>fn.exported!==true&&Array.isArray(fn.params)&&all(fn.params,name=>typeof name==='string')&&new Set(fn.params).size===fn.params.length&&
         !fn.restParam&&!fn.typeParameters?.length&&all(['optionalParams','parameterDefaults','parameterProperties'],name=>
             (!fn[name]||Array.isArray(fn[name])&&!fn[name].length)&&(!fn.params[name]||Array.isArray(fn.params[name])&&!fn.params[name].length));
     for(const node of nodes) {
@@ -758,8 +758,21 @@ function ordinarySpriteAyNumberReads(program) {
         if(!closed)continue;
         denseElements.set(read,loop);denseLengths.add(test.right);
     }
+    // A parameterless immutable function can return one existing alias without
+    // replacing its evaluation. Full function-use and allocation-before-call
+    // checks below still apply; annotations and escaping function values grant
+    // nothing. The one-statement shape excludes hidden writes and early paths.
+    const aliasReturns=new Map();
+    for(const node of nodes)if(node.type==='Call'&&!node.isNew&&!node.constructorCall&&!node.optional&&
+        !node.typeArguments?.length&&node.args?.length===0&&node.callee?.type==='Identifier'){
+        const fn=graph.immutableFunctionAt(node.callee),ret=fn?.body?.[0],returned=ret?.value??ret?.argument;
+        if(fn?.type==='FunctionDeclaration'&&program.body.includes(fn)&&schema(fn)&&fn.params.length===0&&
+            fn.body.length===1&&ret.type==='Return'&&returned?.type==='Identifier')aliasReturns.set(node,{fn,returned});
+    }
+    const aliasReturnValues=new Set([...aliasReturns.values()].map(row=>row.returned));
     const value=node=>{
         if(node?.type==='Parenthesized')return value(node.expression);
+        if(aliasReturns.has(node))return values.get(binding(aliasReturns.get(node).returned));
         if(factories.has(node)||arrays.has(node))return new Set([node]);
         if(node?.type==='Identifier')return values.get(binding(node));
         if(denseElements.has(node)){
@@ -833,7 +846,7 @@ function ordinarySpriteAyNumberReads(program) {
         const missing=rows.filter(row=>!value(row.value)?.size||any([...value(row.value)],token=>!tokens.has(token)));
         if(missing.length){
             if(!sprites(tokens)||missing.some(row=>row.value?.type!=='Null'))return null;
-            const construction=rows.find(row=>factories.has(row.value)),owner=construction&&owners.get(construction.site);
+            const construction=rows.find(row=>sprites(value(row.value))),owner=construction&&owners.get(construction.site);
             const statement=construction&&writeStatement(construction,owner),body=owner===program?program.body:owner?.body;
             const position=statement&&body.indexOf(statement);
             if(!statement||position<0||missing.some(row=>{
@@ -864,7 +877,8 @@ function ordinarySpriteAyNumberReads(program) {
             return null;
         }
         if(sprites(tokens)) {
-            if((factories.has(node)||denseElements.has(node))&&parent?.init===node)continue;
+            if(parent?.type==='Return'&&aliasReturnValues.has(node))continue;
+            if((factories.has(node)||denseElements.has(node)||aliasReturns.has(node))&&parent?.init===node)continue;
             if(aliasUse(node,parent)||parent?.type==='Assignment'&&parent.left===node&&parent.op==='=')continue;
             const call=argumentCall(node);
             if(call?.callee?.type==='Member'&&call.callee.name==='push'&&call.args.length===1&&call.args[0]===node&&collections(value(call.callee.object)))continue;
@@ -906,6 +920,22 @@ function ordinarySpriteAyNumberReads(program) {
         return event?.type==='Member'&&event.object?.type==='Identifier'&&event.object.name==='ControllerButtonEvent'&&
             ['Pressed','Released','Repeated'].includes(event.name)&&graph.isSdkNamespace(event);
     };
+    // A captured alias may be read by a closed getter called after its
+    // producer in the same startup. Every actual call must cross that precise
+    // statement frontier; an earlier, recursive or escaping entry denies it.
+    const enteredAfter=(owner,reset,active=new Set())=>{
+        if(!owner||owner===program||active.has(owner)||owner.type!=='FunctionDeclaration')return false;
+        const next=new Set(active);next.add(owner);
+        const sites=callers.get(owner)||[];
+        return sites.length>0&&all(sites,call=>{
+            const caller=owners.get(call);
+            if(caller===reset.owner){
+                const statement=statementAt(call,caller),index=statement?reset.body.indexOf(statement):-1;
+                return index>reset.position;
+            }
+            return enteredAfter(caller,reset,next);
+        });
+    };
     const globalInitializers=new Map();
     for(const statement of program.body)if(statement.type==='Declaration')for(const row of statement.decls||[]) {
         const key=binding(statement,row.name);
@@ -920,7 +950,7 @@ function ordinarySpriteAyNumberReads(program) {
         if(owner===reset.owner){
             const statement=statementAt(node,owner),index=statement?reset.body.indexOf(statement):-1;
             if(index<=reset.position)return null;
-        }else if(reset.owner!==program||!dominates(owner,reset.position))return null;
+        }else if(reset.owner===program?!dominates(owner,reset.position):!enteredAfter(owner,reset))return null;
         resetReads.add(node);
     }
     for(const node of nodes)if(node.type==='Identifier'&&value(node)?.size) {

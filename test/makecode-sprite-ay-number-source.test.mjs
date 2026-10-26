@@ -102,3 +102,23 @@ test('mutated Array traversal intrinsics cannot revive a retained physical Numbe
  try{Object.setPrototypeOf(receiver,{});Object.defineProperty(Array.prototype,'includes',{...includes,value:()=>true});assert.equal(isNumber(analysis,read),false);}finally{Object.defineProperty(Array.prototype,'includes',includes);Object.setPrototypeOf(receiver,prototype);}
  assert.equal(isNumber(analysis,read),false);assert.equal(isNumber(graph(program),read),true);
 });
+
+
+test('closed alias-returning getters prove numeric Sprite reads only after every actual creation frontier',()=>{
+ const base='let actor=sprites.create(img`1`);function owner(){return actor;}function take(n:number){}take(owner().fx);';
+ const read=program=>{const result=[];walk(program,node=>{if(node.type==='Member'&&node.name==='fx')result.push(node);});assert.equal(result.length,1);return result[0];};
+ const program=parse(base),analysis=graph(program),member=read(program);
+ assert.equal(isNumber(analysis,member),true);
+ assert.deepEqual(validateProcedureConstraintSource(program,{ordinaryPrimitiveSdkNumbers:true}),[]);
+ for(const source of [
+  base.replace('let actor=sprites.create(img`1`);','let actor:Sprite;'),
+  base+'actor=null;',
+  base.replace('return actor;','return null;'),
+  base.replace('return actor;','if(true)return actor;return null;'),
+  base+'let escaped=owner;',
+  base.replace('function owner()', 'export function owner()'),
+  'let actor:Sprite;function owner(){return actor;}function take(n:number){}function startup(){actor=null;take(owner().fx);actor=sprites.create(img`1`);}startup();',
+  'function owner(){return actor;}function take(n:number){}take(owner().fx);let actor=sprites.create(img`1`);',
+  'let actor=null;function owner(){return actor;}function take(n:number){}take(owner().fx);actor=sprites.create(img`1`);'
+ ]){const changed=parse(source);assert.equal(isNumber(graph(changed),read(changed)),false,source);}
+});

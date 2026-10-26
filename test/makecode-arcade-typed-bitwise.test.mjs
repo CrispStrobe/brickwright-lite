@@ -18,7 +18,21 @@ test('typed bitwise primitives preserve integer conversion and reject opaque val
  assert.equal(errors.length,8);assert.ok(errors.every(e=>/primitive/.test(e)));assert.deepEqual(ext.getInfo().menus.valueOperations.items,['+','-','*','/','%','**',...ops]);assert.deepEqual(ext.getInfo().menus.valueUnaryOperations.items,['+','-','~']);
 });
 test('source bitwise conversions diagnose unknown and reference operands',()=>{
- for(const source of ['let a=[1];let result=(a as any)>>>0','let a=image.create(1,1);let result=~(a as any)','let a:any={n:1};let result=a|0','function unknown(){return screen};let result=unknown()>>>0'])assert.match(arcadeToPseudocode(source).unsupported.join('\n'),/Bitwise operation requires proven primitive/,source);
+ for(const source of ['let a=image.create(1,1);let result=~(a as any)','let a:any={n:1};let result=a|0','function unknown(){return screen};let result=unknown()>>>0'])assert.match(arcadeToPseudocode(source).unsupported.join('\n'),/Bitwise operation requires proven primitive/,source);
+});
+// Source bitwise on an actual Array operand is admitted (#1128 source
+// operations). Admission is only accepted together with the original PXT
+// result: native execution must equal the executed original program.
+test('source bitwise on an actual Array operand matches original PXT results',async()=>{
+ const source='let a=[1];let result=(a as any)>>>0;let b=[5,6];let joined=(b as any)|0;result+=0;joined+=0;let done=true;done=!!done';
+ const imported=arcadeToPseudocode(source);assert.deepEqual(imported.unsupported,[]);
+ const expected=await runPxtArcade(source,{waitForGlobals:{done:true}});
+ const run=await runProgram(imported.code,{frames:30,storage:true});
+ try{
+  const values=Object.fromEntries(run.vm.runtime.targets.flatMap(t=>Object.values(t.variables)).map(v=>[v.name.replace(/^Game_/,''),v.value]));
+  assert.deepEqual(run.errors,[]);
+  for(const name of ['result','joined'])assert.equal(BW.decode(values[name]),expected[name],name);
+ }finally{run.vm.quit();clearStrayTimers();}
 });
 test('uncalled typed SDK helpers retain sprite flag and enum primitive inference',()=>{
  const source=`function unused(actor:Sprite){return actor.flags & SpriteFlag.StayInScreen}

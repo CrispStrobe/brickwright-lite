@@ -51,7 +51,11 @@ test('actual opaque writer, dynamic selector, unknown receiver and publication c
  refusal(parse(source+'  set hero to "foreign"\n'));
  refusal(parse(source+'  arcade log hero\n'));
  refusal(parse(source+'  arcade set flag Invisible of "Player" to (compare value (0) op "<" with (1))\n'));
- const unused=parse('DEVICE ARCADE\nSPRITE Player:\nSTAGE:\nDEFINE peek (sprite):\n  set masked to (calculate value (arcade property flags of sprite) op "|" with 1)\n');refusal(unused);
+ // An untyped formal that an actual caller feeds an unproved value stays refused.
+ const unproven=parse('DEVICE ARCADE\nSPRITE Player:\nSTAGE:\nWHEN flag clicked:\n  peek (arcade new image width 1 height 1)\nDEFINE peek (sprite):\n  set masked to (calculate value (arcade property flags of sprite) op "|" with 1)\n');refusal(unproven);
+ // A procedure nothing can invoke never executes; its bitwise body exports.
+ const unused=parse('DEVICE ARCADE\nSPRITE Player:\nSTAGE:\nDEFINE peek (sprite):\n  set masked to (calculate value (arcade property flags of sprite) op "|" with 1)\n');
+ assert.ok(!exportProject(unused).unsupported.some(x=>/Native bitwise operation requires actual primitive operand producers/.test(x)),'uncalled body is never executed');
 });
 const mutable=code=>{
  const project=parse(code),r=read(project);
@@ -100,5 +104,37 @@ test('flags query observes physical mutation and does not revive after restorati
   armed=false;w.inputs.VALUE=held;p.extensions=extensions;
   assert.equal(a.spriteFlagWriters(r.target,r.node),null,'metadata false/throw remains sticky after exact restoration');
   assert.ok(createArrayReferenceExportAuthority(p).spriteFlagWriters(r.target,r.node));
+ }
+});
+
+// A flags receiver produced by a literal call of a closed parameterless
+// procedure whose only, final statement returns the fresh alias. Its body
+// runs at each actual call, after the creation, so the receiver is that Sprite.
+const viaCall=(body,use='  arcade set local held to (arcade call function "pick" arguments ("[]"))\n  set masked to (calculate value (arcade property flags of arcade local held) op "|" with 2)\n')=>
+ header+'  set hero to (arcade create template "Player" kind 1 width 16 height 16)\n  arcade set flags of hero to 3\n'+use+'DEFINE pick:\n'+body;
+test('a function-result receiver qualifies only through a closed alias-returning procedure',()=>{
+ const good=parse(viaCall('  arcade return value (hero)\n'));
+ assert.deepEqual(exportProject(good).unsupported.filter(x=>/Native bitwise/.test(x)),[]);
+ // Its result published elsewhere, a non-final return, or a different value refuse.
+ refusal(parse(viaCall('  arcade return value (hero)\n','  arcade set local held to (arcade call function "pick" arguments ("[]"))\n  arcade log (arcade call function "pick" arguments ("[]"))\n  set masked to (calculate value (arcade property flags of arcade local held) op "|" with 2)\n')));
+ refusal(parse(viaCall('  arcade return value (arcade create template "Player" kind 1 width 16 height 16)\n')));
+});
+
+
+test('an alias-returning receiver cannot hide callable or managed method entries',()=>{
+ for(const kind of ['callable','method']){
+  const project=parse(viaCall('  arcade return value (hero)\n'));
+  const {target,node}=read(project),blocks=target.blocks;
+  const base={parent:null,next:null,topLevel:true,shadow:false,fields:{},inputs:{}};
+  if(kind==='callable'){
+   blocks.extra={...base,opcode:'arcade_createCallable',inputs:{NAME:[1,[10,'pick']]}};
+  }else{
+   blocks.extra={...base,opcode:'arcade_declareClass',inputs:{
+    NAME:[1,[10,'Holder']],INITIALIZER:[1,[10,'']],CONSTRUCTOR:[1,[10,'']],
+    FIELDS:[1,[10,'[]']],METHODS:[1,[10,JSON.stringify([{name:'read',procedure:'pick'}])]]}};
+  }
+  const snapshot=createProjectJsonSnapshot(JSON.stringify(project)),actual=snapshot.targets[project.targets.indexOf(target)];
+  const id=Object.keys(blocks).find(id=>blocks[id]===node);
+  assert.equal(createArrayReferenceExportAuthority(snapshot).spriteFlagWriters(actual,actual.blocks[id]),null,kind);
  }
 });

@@ -1,6 +1,7 @@
 # Arcade forward-fix reconciliation and remaining qualification failures
 
-Status: CLAIMED; merge before new implementation.
+Status: implementation candidate; claim merged in #1426. Hosted qualification
+and landing of the combined source remain pending.
 Owner: Arcade integration. Work in an isolated integration tree; preserve the
 active #1416 branch and its retained official-original intake. No duplicate
 acquisition, replay or publication over another worker's live head.
@@ -76,3 +77,14 @@ Do not trigger repeated full CI or add a full-browser tag without a required
 acceptance boundary. Merge only after every enabled exact-head check passes
 and reviewed/landed tree and parents match. Keep the 184-input raw corpus,
 complete contexts, invalid original inputs and application execution distinct.
+
+## Source checkpoint
+
+Reconciles #1416's reviewed `62375e788598` with the existing guarded source
+candidate. Focused source controls cover pure alias getters, exact entry roots,
+String/Undefined math refusals, all-writer/readiness boundaries and Code/JSON/SB3
+conversion. Three independent guard removals are detected and restored: actual
+caller frontier, exported-entry rejection, and managed/callable alias entries.
+These source controls do not qualify native execution. Existing enabled
+exact-head checks and affected original SDK/VM/editor acceptance remain required
+before landing. No corpus count is promoted by this checkpoint.

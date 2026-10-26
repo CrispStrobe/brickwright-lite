@@ -42,7 +42,7 @@ const opcodes=new Set(('procedures_definition procedures_prototype procedures_ca
     'arcade_declareSourceScalar arcade_declareSourceReference '+
     'arcade_getLocal arcade_setLocal arcade_returnValue arcade_log arcade_splash '+
     'arcade_screenImage arcade_mutateImage arcade_drawImage arcade_setImagePixel arcade_sourceWhile arcade_mathBinary '+
-    'arcade_sourceValueBinary arcade_sourceValueUnary '+
+    'arcade_sourceValueBinary arcade_sourceValueUnary arcade_spriteProperty '+
     'arrays_specialValue arrays_valueBinary arrays_valueUnary arrays_valueCompare arrays_valueTruthy '+
     'arrays_createReference arrays_referenceValues arrays_referenceItem arrays_referenceLength '+
     'arrays_referenceTruthy arrays_mutateReference arrays_referenceTake arrays_referenceRemove '+
@@ -122,6 +122,13 @@ export function createClosedOrdinaryProjectEntry(project){
     }
     for(const {target,node,scope}of records){
         if(!opcodes.has(node.opcode))invalid=true;
+        // A fixed built-in flags read cannot register or dispatch a procedure.
+        // Keep dynamic/foreign property shapes outside this closed entry slice.
+        if(node.opcode==='arcade_spriteProperty'&&(
+            node.mutation!=null||Object.keys(node.inputs||{}).join(',')!=='ID'||
+            Object.keys(node.fields||{}).join(',')!=='PROPERTY'||
+            !isArray(node.fields.PROPERTY)||node.fields.PROPERTY[0]!=='flags'||
+            !(node.fields.PROPERTY.length===1||node.fields.PROPERTY.length===2&&node.fields.PROPERTY[1]===null)))invalid=true;
         // The first slice deliberately has no callable/class/capture bridge.
         // Those entries retain the previous checks, including in unused bodies.
         if(/^(arcade_(?:.*Callable|.*Captured|.*Object|.*Class|startParallel|pushScene|popScene)|procedures_callreturn)/.test(node.opcode))invalid=true;

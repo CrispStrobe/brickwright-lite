@@ -78,7 +78,7 @@ test('live, cloned, forged and foreign owner objects cannot borrow an owned entr
 });
 
 test('unknown callable, foreign extension and malformed physical entries retain the old checks',()=>{
-    for(const opcode of ['arcade_createCallable','foreign_invokeByName']){
+    for(const opcode of ['arcade_createCallable','arcade_declareClass','arcade_declareSubclass','arcade_callObjectMethod','foreign_invokeByName']){
         const creator=make(source),row=definition(creator.project,'unused');
         row.target.blocks[row.node.next].opcode=opcode;
         const project=snapshot(creator),actual=definition(project,'unused');
