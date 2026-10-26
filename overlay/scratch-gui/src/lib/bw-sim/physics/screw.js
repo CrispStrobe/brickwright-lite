@@ -119,10 +119,15 @@ export const createScrewDrives = ({J, couplings, hingeMap, sliderMap, jointMap, 
             // A clutch slips under a load it carries, not under one step's impulse (Jolt's first steps
             // under gravity carry spikes of several times the weight): the force averaged over CLUTCH_TAU_S.
             d.load += (force - d.load) * Math.min(1, dt / CLUTCH_TAU_S);
+            let transmittedForce = force;
             if (d.load > c.clutchForceN) {
                 d.x0 += s.position - target;
                 target = s.position;
                 d.slips += 1;
+                // Once the clutch slips, a structural slider-limit reaction is
+                // not all transmitted through the disengaging thread to its input.
+                // Preserve the existing overload filter and any smaller actual load.
+                transmittedForce = Math.min(force, c.clutchForceN);
             }
             if (target > d.limits[1] || target < d.limits[0]) {
                 const end = Math.min(d.limits[1], Math.max(d.limits[0], target));
@@ -134,7 +139,7 @@ export const createScrewDrives = ({J, couplings, hingeMap, sliderMap, jointMap, 
             s.slider.SetTargetVelocity(c.ratio * h.velocity);
             // The thread's load on the spindle, from that force.
             const fade = Math.max(-1, Math.min(1, h.velocity / OMEGA_SMOOTH));
-            const tau = -fade * force * Math.abs(c.ratio) / c.efficiency;
+            const tau = -fade * transmittedForce * Math.abs(c.ratio) / c.efficiency;
             if (tau === 0) continue;
             // The hinge axis in the world now (as the core measures it), signed for the spindle's side.
             const rot = bodyInterface.GetRotation(d.frame || d.spindle);

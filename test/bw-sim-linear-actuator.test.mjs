@@ -233,6 +233,61 @@ test('self-locking: a load hanging on the piston does not turn the spindle; abov
     }
 });
 
+test('a motor above clutch torque but below full load torque keeps turning both ways during sustained slip', t => {
+    const loadKg = 0.5, clutchForceN = 2, speed = 6, seconds = 2;
+    for (const direction of [-1, 1]) {
+        const rig = hangingRig({loadKg, clutchForceN});
+        const conversion = Math.abs(rig.screw.ratio) / rig.screw.efficiency;
+        const clutchTorque = clutchForceN * conversion;
+        const fullLoadTorque = loadKg * 9.81 * conversion;
+        const motorTorque = (clutchTorque + fullLoadTorque) / 2;
+        assert.ok(clutchTorque < motorTorque && motorTorque < fullLoadTorque);
+        rig.hinge.motor.maxTorqueNm = motorTorque;
+        rig.m.actuators.find(a => a.joint === rig.hinge.id).maxTorqueNm = motorTorque;
+        assert.deepEqual(validateCompiledMechanism(rig.m, {kinds: BUILTIN_KINDS}), []);
+        const core = createPhysicsCore(J, rig.m, {stepHz: STEP_HZ});
+        try {
+            // The existing force average has ten time constants to recognize
+            // this overloaded fixture before the spindle is commanded.
+            let previousForce = 0, averagedLoad = 0, recognizedSteps = 0;
+            const observe = driven => {
+                // beforeStep uses the prior native step's signed motor+limit
+                // reaction. Reconstruct its unchanged filter from every actual
+                // 5 ms observation, rather than assuming loadKg implies slip.
+                averagedLoad += (previousForce - averagedLoad) * Math.min(1, DT / 0.05);
+                const effort = core.jointDynamics(rig.slider.id);
+                assert.equal(effort.stepSeconds, DT, 'one actual fixed step per observation');
+                previousForce = Math.abs(effort.motorForceN + effort.limitForceN);
+                assert.ok(Number.isFinite(previousForce) && Number.isFinite(averagedLoad));
+                const packet = core.screwState();
+                assert.equal(packet.length, 1);
+                assert.ok(Math.abs(packet[0].loadN - averagedLoad) < 1e-6,
+                    'the copied screw state agrees with the complete actual force history');
+                const actualLoad = packet[0].loadN; packet[0].loadN = -1;
+                assert.equal(core.screwState()[0].loadN, actualLoad, 'screw state is copied');
+                if (driven && averagedLoad > clutchForceN) recognizedSteps++;
+            };
+            run(core, 0.5, () => observe(false));
+            const before = core.jointState(rig.hinge.id).angle;
+            const slipsBefore = core.screwState()[0].slips;
+            core.setMotor(rig.hinge.id, {mode: 'velocity', radPerSec: direction * speed});
+            run(core, seconds, () => observe(true));
+            const turn = core.jointState(rig.hinge.id).angle - before;
+            const slipsDuring = core.screwState()[0].slips - slipsBefore;
+            const position = core.jointState(rig.slider.id).position;
+            t.diagnostic(`driven screw slip: ${JSON.stringify({direction, turn, position,
+                motorTorque, clutchTorque, fullLoadTorque, recognizedSteps, averagedLoad, slipsDuring})}`);
+            assert.ok(slipsDuring > seconds * STEP_HZ / 2, 'the actual coupling must recognize sustained driven slip');
+            assert.ok(recognizedSteps > seconds * STEP_HZ / 2,
+                'the actual driven force history must sustain recognized slip');
+            assert.ok(direction * turn > 0.5 * speed * seconds,
+                `the slipping input must keep turning in direction ${direction}: ${turn} rad`);
+            assert.ok(position >= rig.slider.limits[0] - 0.0003 && position <= rig.slider.limits[1] + 0.0003,
+                'the overloaded piston remains within the existing stroke tolerance');
+        } finally { core.destroy(); }
+    }
+});
+
 test('end stops: driven past its stroke the piston stops at the end, the spindle turns on (the clutch), and reversing retracts at once', () => {
     const rig = hangingRig({loadKg: 0.05});
     const core = createPhysicsCore(J, rig.m, {stepHz: STEP_HZ});

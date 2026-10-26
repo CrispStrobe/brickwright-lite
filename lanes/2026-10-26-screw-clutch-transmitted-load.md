@@ -1,6 +1,6 @@
 # Screw clutch: bound transmitted load after recognized slip
 
-Status: CLAIMED — continuation of the bytecode/files/crane work in #1415.
+Status: DONE (implementation) — combined hosted qualification and landing pending.
 Owner: Codex, user-authorized Robot Lab gap closure.
 Base: `59728c3aa125c97bd466663adb2d17672c4a32fc`.
 
@@ -30,3 +30,13 @@ replay, every enabled exact-head check and normal matched-head landing with
 reviewed/predicted/landed parents and tree. Preserve the original crane failures
 and every existing motion/accuracy assertion. Broader launch-cause or physical
 calibration claims require their own observed evidence.
+
+Implementation retains the existing strict averaged-load slip decision and caps
+only the force reflected to spindle torque after that decision. No new checkpoint
+state is added. Ten actual-source pure controls pass; the original source failed
+seven, with the original results retained. Ten actual-source mutations are rejected. Positive/transient/signed, threshold,
+force-cancellation, fade, end-stop and restoration boundaries are covered. A new
+hosted actuator fixture places motor torque between the clutch equivalent and
+full load equivalent in both directions. Its actual result, unchanged actuator
+regressions, crane/VM/Jolt/browser controls and every enabled final-head check
+remain pending. The crane launch cause is not yet established.

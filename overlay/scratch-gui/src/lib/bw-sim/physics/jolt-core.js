@@ -381,6 +381,8 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
     let timeSteps = 0;
     let acc = 0;
     let dynamics = Object.create(null);
+    const fixedStepObservers = new Set();
+    let deliveringStepObservation = false;
     const copyDynamics = value => value == null ? null : JSON.parse(JSON.stringify(value));
     /** checkpoint()/rollback(): Jolt's recorded state and this core's own. */
     let recorder = null;
@@ -1698,6 +1700,7 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
         get time() { ensureAlive(); return timeSteps * dtFixed; },
         step(dtSeconds) {
             ensureAlive();
+            if (deliveringStepObservation) throw new Error('cannot step from a fixed-step observer');
             if (typeof dtSeconds !== 'number' || !Number.isFinite(dtSeconds) || dtSeconds < 0) throw new Error('dtSeconds must be a non-negative finite number');
             acc += dtSeconds;
             const eps = 1e-12;
@@ -1746,6 +1749,16 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
                 };
                 for (const [id, e] of hingeMap) capture(id, e, e.hinge, true);
                 for (const [id, e] of sliderMap) capture(id, e, e.slider, false);
+                if (fixedStepObservers.size) {
+                    deliveringStepObservation = true;
+                    try {
+                        for (const {listener} of [...fixedStepObservers]) {
+                            if (destroyed) break;
+                            listener({t: timeSteps * dtFixed, stepSeconds: dtFixed});
+                        }
+                    } finally { deliveringStepObservation = false; }
+                    if (destroyed) return;
+                }
             }
             if (acc < 0) acc = 0;
             if (acc > dtFixed) acc = 0;
@@ -1856,6 +1869,35 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
             return w ? { load: w.load, radius: w.radius, crr: w.crr } : null;
         },
         /** A hinge: {angle, velocity} (rad, rad/s); a slider: {position, velocity} (m, m/s), body2 relative to body1 along the axis, zero at t = 0. */
+        /** Completed-step observations are opt-in and are not physical checkpoint state.
+         * Consumers should read only; errors propagate. Returns an idempotent detach function.
+         */
+        observeFixedSteps(listener) {
+            ensureAlive();
+            if (typeof listener !== 'function') throw new TypeError('fixed-step observer must be a function');
+            const subscription = {listener};
+            fixedStepObservers.add(subscription);
+            return () => fixedStepObservers.delete(subscription);
+        },
+        /** Native current-step body contacts, without installing a contact listener. */
+        currentContactPairs() {
+            ensureAlive();
+            const entries = [...bodyMap], pairs = [];
+            for (let i = 0; i < entries.length; i++) for (let k = i + 1; k < entries.length; k++) {
+                const [a, ea] = entries[i], [b, eb] = entries[k];
+                if (physicsSystem.WereBodiesInContact(ea.bodyID, eb.bodyID)) pairs.push(a < b ? [a, b] : [b, a]);
+            }
+            return pairs.sort((a, b) => a[0].localeCompare(b[0]) || a[1].localeCompare(b[1]));
+        },
+        /** Copied existing screw state plus the actual current native target window. */
+        screwState() {
+            ensureAlive();
+            return (screws?.drives || []).map(d => ({id: d.c.id, hingeJoint: d.c.hingeJoint,
+                sliderJoint: d.c.sliderJoint, x0: d.x0, theta0: d.theta0, loadN: d.load, slips: d.slips,
+                inputAngle: d.h.unwrapped, inputVelocity: d.h.velocity, position: d.s.position,
+                targetMin: d.s.slider.GetLimitsMin(), targetMax: d.s.slider.GetLimitsMax(),
+                targetVelocity: d.s.slider.GetTargetVelocity()}));
+        },
         jointState(jointId) {
             ensureAlive();
             const slider = sliderMap.get(jointId);
@@ -2141,6 +2183,7 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
         destroy() {
             if (destroyed) return;
             destroyed = true;
+            fixedStepObservers.clear();
             if (recorder) { J.destroy(recorder); recorder = null; }
             for (const c of allConstraints) physicsSystem.RemoveConstraint(c);
             for (const bid of allBodyIDs) { bodyInterface.RemoveBody(bid); bodyInterface.DestroyBody(bid); }

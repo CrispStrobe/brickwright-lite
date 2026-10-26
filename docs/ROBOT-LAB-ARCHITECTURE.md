@@ -154,15 +154,31 @@ Loads: a 50 g weight with a hook loop (world `load`, §5.5); collision hook–lo
 dynamic–dynamic contact (M14 prerequisite).
 Hard: rope over a moving boom tip (M10 approx), sway (the hook body on a rope swings: real,
 and it is the fun part), worm self-locking holding the load when the motor stops.
-*As built (2026-10-20, `crane.ldr`, `scripts/gen-crane-model.mjs`):* slewing and luffing, no hoist yet.
-A SPIKE hub on the floor carries the Excavator's 28T turntable (8T on motor A, run at 10 % speed: a
+*As authored (2026-10-25, `crane.ldr`, `scripts/gen-crane-model.mjs`):* slewing, luffing and a rope hoist; affected hosted qualification is required before landing.
+A SPIKE hub on four pinned diagonal 15L feet carries the Excavator's 28T turntable (8T on motor A, run at 10 % speed: a
 direct 8:28 slew tips a loaded upper at full power) and posts; a 15L boom is luffed by a small linear
 actuator (motor B, 1:1:1 to the spindle; the screw self-locks, so the boom holds with B stopped: 0.01 mm
-of sag in 1 s); a hook (5L link + Technic brick 1 x 4) hangs on a frictionless pin at the tip. The
-winch waits for ropes (M10, PR #1123): a drum on the upper and a rope over the tip then replace the
-fixed link. The luffing range is the actuator's travel (120–180 LDU, the slider's limits −8/+16 mm from
+of sag in 1 s in the earlier fixed-hook model). Motor C drives a retained drum through equal
+16T gears. An extended left post carries the winch above the boom pivot; two 3L
+pins put C's housing one hole outboard. A 10L axle turns in the existing post,
+with collars and the drum retaining it; the extra inner bearing is removed.
+The boom turns on a 4L pivot through the right post, retained by two half-bushes;
+the pivot no longer spans the actuator's casing, piston and spindle plane.
+Six sampled authoring configurations check the compiled collider envelopes of
+the winch against the boom members and actuator housing, with more than 2 mm
+separation, and also check the pivot and its retainers against the actuator parts.
+This includes shaft regions omitted by the ordinary solid-overlap
+check. These are static geometry controls, not dynamic or physical-fit proof;
+collision filters and solver settings are unchanged.
+A rope passes over the moving boom-tip guide to a free counterweighted V-frame tied at its mass centre. Its beam angle follows
+the catalogue masses, with the string passing between the beams. The 7 LDU drum radius gives 26.4 mm of take-up in 540°; the program winds,
+holds and pays out after the original slew/luff sequence. These are virtual model controls,
+not physical-load calibration. The authored rigid-part pages keep the existing small
+insertion stages. Thread the string from the C drum over the tip guide and tie it to
+the exposed centre of the hook pin before adding both upper counterweights symmetrically; the instruction renderer
+does not yet draw or label rope-threading operations. The luffing range is the actuator's travel (120–180 LDU, the slider's limits −8/+16 mm from
 the build: the boom from about 4° to past 70°); past an end the actuator's own slip clutch (the screw
-coupling's 60 N) lets motor B turn on while the boom stays, as on the real model (physics/screw.js). The
+coupling's 60 N) lets motor B turn on while the boom stays, as on the real model (physics/screw.js). Once sustained-overload slip is recognized, the screw's reflected spindle load uses at most its configured clutch force; smaller actual reactions remain smaller. The existing 50 ms averaging and transient response are retained. This virtual transmitted-load rule is not a physical clutch calibration. Opt-in completed-step readers expose current native body contacts and copied screw state for bounded diagnostics. They add no physical checkpoint state; default simulation has no subscribers. Their hosted trajectory and lifecycle controls remain qualification gates. The
 end stops of lane/robot-lab-flex4 deliberately leave linear actuators out (they walk gears, chains, bands,
 racks and shift forks only), so they do not stop motor B here.
 `test/bw-sim-crane.test.mjs`.
@@ -1769,9 +1785,17 @@ motors: A/B wheels, C slew, D boom, E stick, F bucket.
   (hard constraints), its motor runs at ratio·ω; a load averaged over 50 ms above the clutch force
   (60 N, a stated modelling number: no published measurement found) slips the clutch; at an end stop
   x* stops while the spindle turns on; the held force costs the spindle |F|·|ratio|/η of torque
-  (explicit, one step). The island gets 60/10 solver iterations, and the actuator's parts and what is
+  (explicit, one step). The screw constraint requests 60 velocity / 10 position iterations
+  (each island uses its largest constraint override), and the actuator's parts and what is
   hinged to them at least 20 g of solver mass with their gravity factor scaled back (a 0.4 g piston
   between a hard limit and a boom let its hinge open 3 mm).
+  The crane's actuator eye is four hole pitches from its pivot (80 LDU),
+  starting at 10 degrees. For the same five-turn luff command, the geometry predicts roughly 16.7 degrees
+  of movement and 26 mm of rope-adjusted lift, rather than roughly 30.5 degrees
+  and 35 mm. Actual motion remains subject to hosted qualification. The geometric lift/alignment oracles and their absolute
+  tolerances are unchanged. This model-only leverage change retains the prior
+  solver setup; the attempted global position-precision increase was rejected
+  after hosted actuator and excavator regressions.
 - **Free pins (`mech/free-pins.js`).** A frictionless pin or axle that only joins two parts on one
   line is welded to one of them: one hinge instead of a 0.25 g body between two (a loop of such
   bodies sagged ±4° at rest).

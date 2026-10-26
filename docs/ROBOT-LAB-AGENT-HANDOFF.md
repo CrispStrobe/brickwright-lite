@@ -149,8 +149,10 @@ rules above.
 - The differential car's rack moves both tie rods together, so it turns 4.9 % wider than
   the bicycle model (the check now accepts the band between the front wheels' own turn
   centres). Deeper steering arms recover Ackermann but rub motor A — a geometry rework.
-- The crane (T1) has no winch yet: ropes and winches are on main now (#1123), so a drum
-  and rope over the boom tip can replace the fixed hook link.
+- The crane winch continuation replaces the fixed hook link with a retained drum on C,
+  a moving boom-tip guide and balanced rope-hung payload. Require its affected hosted
+  hoist/hold/payout/slack and real project save/reopen qualification before landing;
+  virtual tension checks do not establish physical accuracy.
 - The Jolt fork's next step is the multithreaded build (the native part-pair filter in bw.5
   removed the JS callback that blocked it).
 

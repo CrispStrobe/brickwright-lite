@@ -1,6 +1,6 @@
 # Fixed-step physics observations for the crane investigation
 
-Status: CLAIMED — diagnostic continuation of #1415, beside the merged screw-clutch claim #1420.
+Status: DONE (implementation) — combined hosted qualification and landing pending.
 Owner: Codex, user-authorized Robot Lab gap closure.
 Base: `1f9316df8a53d8c049b116faa74ca31b31d4d069`.
 
@@ -28,3 +28,11 @@ check. Independently audit retained originals without producer imports or
 successful-case replay. Merge normally with an exact head guard and verified
 predicted/landed parents and tree. These observations do not themselves fix or
 qualify the launch, and do not establish physical calibration.
+
+Implementation provides completed-step subscriptions, current native body-contact
+pairs and copied screw state/target readings. The crane keeps its existing 30 Hz
+record and adds a bounded 5 ms window with native contacts, effort and direct
+clutch state. Native observed/unobserved trajectory equality, contact readback,
+reentry/disposal controls and driven slip-state controls are hosted gates; they
+have not been run locally. Existing solver parameters and motion limits remain
+unchanged, and the launch cause remains unqualified.
