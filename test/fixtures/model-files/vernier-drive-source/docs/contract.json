@@ -1,0 +1,1107 @@
+{
+  "schema": 1,
+  "slug": "vernier-drive",
+  "author": "CrispStrobe",
+  "license": "BSD-3-Clause",
+  "status": "Predeclared geometry and experiment intent; not qualification evidence",
+  "baselineCommit": "95b5b97034058abffe5b2e8746581ee64e23691c",
+  "collection": {
+    "entries": 80,
+    "distinctAssemblies": 72
+  },
+  "question": "Can a single mechanically split input produce a slow passive output by subtracting nearly equal, opposite rotations in a real differential?",
+  "novelty": {
+    "mean-machine": "Mean Machine independently commands two side inputs and demonstrates their mean. This model has one input and fixed physical compound ratios, so its slow reduction emerges from subtraction, without separately commanded cancelling motors.",
+    "ratio-workbench": "Ratio Workbench compares serial gear-ratio products. Here the useful reduction is the small residual of opposing side rotations; neither branch alone has a large reduction.",
+    "priorAddons": "No scissor lift, cable suspension, or connecting-rod trajectory comparison is reused."
+  },
+  "parts": 176,
+  "sourceAxes": "X horizontal, Y down, Z common positive shaft direction; all units in LDU unless marked mm",
+  "centresLdu": {
+    "differential": [
+      0,
+      0
+    ],
+    "compoundJ": [
+      5,
+      -39.68626966596886
+    ],
+    "compoundK": [
+      45,
+      -39.68626966596886
+    ],
+    "output": [
+      -40,
+      0
+    ]
+  },
+  "meshPlanesLdu": {
+    "first": -70,
+    "second": -100,
+    "third": 70,
+    "takeoff": -30
+  },
+  "expectedRatios": {
+    "left": 1,
+    "right": -1.08,
+    "carrier": -0.04,
+    "output": 0.04,
+    "compound_j": -0.6,
+    "compound_k": 0.36,
+    "spider": -1.04
+  },
+  "exactRatios": {
+    "left": "1",
+    "right": "-27/25",
+    "carrier": "-1/25",
+    "output": "1/25",
+    "compound_j": "-3/5",
+    "compound_k": "9/25",
+    "spider": "-26/25 relative carrier"
+  },
+  "inputTurnsPerOutputTurn": 25,
+  "outputPerCarrier": -1,
+  "motorToInputAbsRatio": 1,
+  "motorDirection": "Must be measured from a native prototype before final program generation",
+  "markers": {
+    "file": "markers.json",
+    "sha256": "28ee52f6c1a94ad1df6ccfcab2b49092300532d6c9eeea4f9162b68006943b6c",
+    "physicalHingeInterfaceCount": 15
+  },
+  "routeOutputDeg": [
+    0,
+    90,
+    180,
+    270,
+    360,
+    270,
+    180,
+    90,
+    0
+  ],
+  "predeclaredTolerances": {
+    "branchRatioLawDeg": 1,
+    "carrierSignedMeanDeg": 1,
+    "overallReductionDeg": 1,
+    "settledOutputTargetDeg": 1,
+    "outputReturnDeg": 1,
+    "motorArrivalDeg": 2,
+    "minimumForwardAndReverseSpanDeg": 355,
+    "physicalHingeGapMm": 0.5,
+    "physicalAxisMismatchDeg": 2,
+    "baseTiltDeg": 2,
+    "coldCarrierDriftDeg": 1
+  },
+  "evidenceRequired": [
+    "Development sparse coupling probe with explicitly declared support clamps and no qualification claim",
+    "Final free-standing native run of exact exported LDR and finite BW bytes, with observed part-body rotations unwrapped independently of encoders",
+    "All original physical hinge axes and closures, including any compiler-demoted loop joints",
+    "Entire25-input-turn configuration repeat, all source body pairs and non-engaged shaft regions, including accessories on meshing bodies",
+    "Actual axial stops, shaft engagement, two-point stator restraint, hub mounting, ground footprint and estimated COM"
+  ],
+  "claimLimits": [
+    "Geometric ratios are predictions until the exact exported machine and program are qualified.",
+    "Near cancellation demonstrates kinematics. It establishes no torque multiplication, efficiency, self-locking, backlash, wear or physical load rating.",
+    "The separate takeoff pointer reverses the carrier sign; user-facing output targets refer to the pointer, not to the carrier.",
+    "Input motion includes intentional teaching pauses. No constant speed through a pause is claimed.",
+    "Native simulation, browser integration and physical LEGO hardware are separate evidence layers."
+  ],
+  "revision": "vernier-drive-r1",
+  "state": "FROZEN BEFORE NATIVE QUALIFICATION",
+  "createdAtUtc": "2026-10-23T17:57:16.794Z",
+  "designIntentSha256": "03dd00178a07fb6213f02f4857998f9e02fd375a4e56e96cf861ccf7dc67d5ec",
+  "originalDesignIntentSha256": "5a8174065ea63e950fc29fc711c7d9829813dd0daf6fffb7523eb2b4e7dc9e37",
+  "baseline": {
+    "repository": "https://github.com/CrispStrobe/brickwright-lite",
+    "commit": "95b5b97034058abffe5b2e8746581ee64e23691c"
+  },
+  "physicalQuestion": "Can one input produce a large rotational reduction by mechanically averaging two nearly equal and opposite gear paths?",
+  "geometry": {
+    "stage": "freestanding source assembly; qualification recorded separately",
+    "expectedRatios": {
+      "left": 1,
+      "compound_j": -0.6,
+      "compound_k": 0.36,
+      "right": -1.08,
+      "carrier": -0.04,
+      "output": 0.04,
+      "spider": -1.04
+    },
+    "exactRatios": {
+      "left": "1",
+      "compound_j": "-3/5",
+      "compound_k": "9/25",
+      "right": "-27/25",
+      "carrier": "-1/25",
+      "output": "1/25",
+      "spider": "-26/25 relative carrier"
+    },
+    "inputTurnsPerOutputTurn": 25,
+    "outputPerCarrier": -1,
+    "motorToInputAbsRatio": 1,
+    "motorIds": {
+      "A": "motor_A"
+    },
+    "motorDirectionForPositiveInput": {
+      "A": 1
+    },
+    "signEvidence": "evidence/development/coupling-probe-02/result.json",
+    "parts": 176,
+    "hubProfile": "spike-prime",
+    "sourceAxes": "X horizontal, Y down, Z common positive shaft direction",
+    "sourceLocalUnits": "LDU = 0.4 mm",
+    "savedInputAngleDeg": 0,
+    "phaseOffsetsDeg": {
+      "input": 0,
+      "J": 2.4892092503332606,
+      "K": 7.506474449800043,
+      "right": 6.842088213516338,
+      "carrier": 3.421044106758169,
+      "output": 7.828955893241831
+    },
+    "configurationRepeatInputDeg": 9000,
+    "shaftCentresLdu": {
+      "D": [
+        0,
+        0
+      ],
+      "J": [
+        5,
+        -39.68626966596886
+      ],
+      "K": [
+        45,
+        -39.68626966596886
+      ],
+      "output": [
+        -40,
+        0
+      ]
+    },
+    "meshPlanesLdu": {
+      "first": -70,
+      "second": -100,
+      "third": 70,
+      "takeoff": -30
+    },
+    "groundSourceY": 310
+  },
+  "transmission": {
+    "inputRatio": 1,
+    "leftRatio": 1,
+    "rightRatio": -1.08,
+    "carrierRatio": -0.04,
+    "outputRatio": 0.04,
+    "outputPerCarrier": -1,
+    "inputTurnsPerOutputTurn": 25,
+    "motorTurnsPerOutputTurn": 25
+  },
+  "datum": {
+    "directionA": 1,
+    "motorDirectionForPositiveInput": 1,
+    "signStatus": "Measured +1 on the exact final 176-part model in final-sign-probe-01, with three-second direct-native velocity phases and the chassis explicitly clamped. Sign finding only; full finite-program and freestanding qualification are separate.",
+    "signEvidence": {
+      "file": "evidence/development/final-sign-probe-01/result.json",
+      "modelSha256": "b8341074d0e55281befa60d3bd3664930a37cd51e23fa7719f855533609cdddc",
+      "scope": "Exact final source; actual input and output signs +1. Direct native three-second forward/reverse sign probe with a clamped chassis; not a VM, full-cycle, freestanding, browser or hardware qualification.",
+      "sha256": "95d5d29e5c869321cfee92f63f4052ccdd494870256cf3208a47dd3ec6f6cac1"
+    }
+  },
+  "route": [
+    {
+      "stage": 0,
+      "outputDeg": 0,
+      "leg": "forward",
+      "targetMotorDeg": 0,
+      "predictedLeftDeg": 0,
+      "predictedRightDeg": 0,
+      "predictedCarrierDeg": 0
+    },
+    {
+      "stage": 1,
+      "outputDeg": 90,
+      "leg": "forward",
+      "targetMotorDeg": 2250,
+      "predictedLeftDeg": 2250,
+      "predictedRightDeg": -2430,
+      "predictedCarrierDeg": -90
+    },
+    {
+      "stage": 2,
+      "outputDeg": 180,
+      "leg": "forward",
+      "targetMotorDeg": 4500,
+      "predictedLeftDeg": 4500,
+      "predictedRightDeg": -4860,
+      "predictedCarrierDeg": -180
+    },
+    {
+      "stage": 3,
+      "outputDeg": 270,
+      "leg": "forward",
+      "targetMotorDeg": 6750,
+      "predictedLeftDeg": 6750,
+      "predictedRightDeg": -7290.000000000001,
+      "predictedCarrierDeg": -270
+    },
+    {
+      "stage": 4,
+      "outputDeg": 360,
+      "leg": "forward",
+      "targetMotorDeg": 9000,
+      "predictedLeftDeg": 9000,
+      "predictedRightDeg": -9720,
+      "predictedCarrierDeg": -360
+    },
+    {
+      "stage": 5,
+      "outputDeg": 270,
+      "leg": "reverse",
+      "targetMotorDeg": 6750,
+      "predictedLeftDeg": 6750,
+      "predictedRightDeg": -7290.000000000001,
+      "predictedCarrierDeg": -270
+    },
+    {
+      "stage": 6,
+      "outputDeg": 180,
+      "leg": "reverse",
+      "targetMotorDeg": 4500,
+      "predictedLeftDeg": 4500,
+      "predictedRightDeg": -4860,
+      "predictedCarrierDeg": -180
+    },
+    {
+      "stage": 7,
+      "outputDeg": 90,
+      "leg": "reverse",
+      "targetMotorDeg": 2250,
+      "predictedLeftDeg": 2250,
+      "predictedRightDeg": -2430,
+      "predictedCarrierDeg": -90
+    },
+    {
+      "stage": 8,
+      "outputDeg": 0,
+      "leg": "reverse",
+      "targetMotorDeg": 0,
+      "predictedLeftDeg": 0,
+      "predictedRightDeg": 0,
+      "predictedCarrierDeg": 0
+    }
+  ],
+  "control": {
+    "schemaVersion": 1,
+    "motorDirectionForPositiveInput": 1,
+    "signStatus": "Measured +1 on the exact final 176-part model in final-sign-probe-01, with three-second direct-native velocity phases and the chassis explicitly clamped. Sign finding only; full finite-program and freestanding qualification are separate.",
+    "signEvidence": {
+      "file": "evidence/development/final-sign-probe-01/result.json",
+      "modelSha256": "b8341074d0e55281befa60d3bd3664930a37cd51e23fa7719f855533609cdddc",
+      "scope": "Exact final source; actual input and output signs +1. Direct native three-second forward/reverse sign probe with a clamped chassis; not a VM, full-cycle, freestanding, browser or hardware qualification."
+    },
+    "mainSpeedDps": 240,
+    "trimSpeedDps": 120,
+    "maximumTrims": 2,
+    "trimThresholdDeg": 0.5,
+    "arrivalToleranceDeg": 2,
+    "datumToleranceDeg": 1,
+    "postMoveSettleSeconds": 0.3,
+    "dwellSeconds": 1,
+    "watchdogSeconds": 150,
+    "nativeLimitSeconds": 160,
+    "outputGuardMarginDeg": 2,
+    "outputRouteDeg": [
+      0,
+      90,
+      180,
+      270,
+      360,
+      270,
+      180,
+      90,
+      0
+    ]
+  },
+  "recording": {
+    "mat": "plain",
+    "autoPorts": false,
+    "rescueLoose": false,
+    "breakLoops": true,
+    "frameMs": 33.333333333333336,
+    "coreStepMs": 5,
+    "coldMs": 1000,
+    "afterMs": 1000,
+    "timeLimitMs": 160000
+  },
+  "acceptance": {
+    "completed": 1,
+    "failed": 0,
+    "finalStage": 9,
+    "finalArrived": 0,
+    "allStagesRequired": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8
+    ],
+    "maximumBranchRatioResidualDeg": 1,
+    "maximumCarrierSignedMeanResidualDeg": 1,
+    "maximumTakeoffResidualDeg": 1,
+    "maximumOverallReductionResidualDeg": 1,
+    "maximumOutputSettledTargetErrorDeg": 1,
+    "maximumCarrierSettledTargetErrorDeg": 1,
+    "maximumMotorArrivalErrorDeg": 2,
+    "maximumMotorDatumErrorDeg": 1,
+    "maximumMotorReturnErrorDeg": 2,
+    "maximumCarrierReturnErrorDeg": 1,
+    "maximumOutputReturnErrorDeg": 1,
+    "minimumCarrierSpanEachDirectionDeg": 355,
+    "minimumOutputSpanEachDirectionDeg": 355,
+    "maximumPhysicalHingeGapMm": 0.5,
+    "maximumPhysicalHingeAxisErrorDeg": 2,
+    "maximumBaseTiltDeg": 2,
+    "maximumColdCarrierDriftDeg": 1,
+    "maximumColdOutputDriftDeg": 1,
+    "minimumArrivedCoverageMsPerStage": 900,
+    "settledWindowMs": 500,
+    "minimumSettledCoverageMsPerStage": 466.5,
+    "minimumSettledSamplesPerStage": 15,
+    "maximumProgramDurationSeconds": 150,
+    "finite": "All raw body and joint states and all derived angles/residuals finite. Every stage and both direction sweeps contain measured samples. All placed model bodies are dynamic; no artificial clamp, pose assignment, force rescue or hidden support.",
+    "observerControls": "Freeze actual carrier observations and actual output observations independently in separate altered recordings, requiring the affected travel and transmission checks to fail. Preserve the originals. These are observer sensitivity controls, not additional physical runs.",
+    "minimumPoseFrames": 800,
+    "maximumInputEncoderResidualDeg": 1,
+    "maximumMarkerStepDeg": 120,
+    "maximumNativeHingeStepDeg": 60,
+    "maximumAxisCenterDriftMm": 0.5,
+    "maximumMarkerAxisErrorDeg": 2,
+    "maximumSettledBranchTargetErrorDeg": 4,
+    "maximumBaseRotationDeg": 2,
+    "maximumBaseTranslationMm": 2
+  },
+  "topology": {
+    "bodies": [
+      {
+        "id": "ground",
+        "motion": "static",
+        "parts": [],
+        "massKg": 0
+      },
+      {
+        "id": "b0",
+        "motion": "dynamic",
+        "parts": [
+          "base_foot_-120_-300",
+          "base_foot_-120_-400",
+          "base_foot_-120_220",
+          "base_foot_120_-300",
+          "base_foot_120_-400",
+          "base_foot_120_220",
+          "base_front_-120",
+          "base_front_120",
+          "base_lap_-120_-120",
+          "base_lap_-120_-160",
+          "base_lap_-120_100",
+          "base_lap_-120_60",
+          "base_lap_120_-120",
+          "base_lap_120_-160",
+          "base_lap_120_100",
+          "base_lap_120_60",
+          "base_middle_-120",
+          "base_middle_120",
+          "base_middle_foot_-120_-140",
+          "base_middle_foot_-120_-60",
+          "base_middle_foot_120_-140",
+          "base_middle_foot_120_-60",
+          "base_middle_spacer_-120_-60",
+          "base_middle_spacer_120_-60",
+          "base_rear_-120",
+          "base_rear_120",
+          "dial_depth_0",
+          "dial_depth_120",
+          "dial_diagonal",
+          "dial_diagonal_pin_0",
+          "dial_diagonal_pin_120",
+          "dial_diagonal_spacer_0",
+          "dial_diagonal_spacer_120",
+          "dial_elbow_0",
+          "dial_elbow_120",
+          "dial_foot_elbow_-40",
+          "dial_foot_elbow_40",
+          "dial_foot_pin_-40",
+          "dial_foot_pin_40",
+          "dial_front_pin_0",
+          "dial_front_pin_120",
+          "dial_motor_pin_0",
+          "dial_motor_pin_120",
+          "dial_post_left",
+          "dial_post_pin_-40_120",
+          "dial_post_pin_-40_80",
+          "dial_post_pin_40_40",
+          "dial_post_pin_40_80",
+          "dial_post_right",
+          "foot_-140",
+          "foot_-300",
+          "foot_-400",
+          "foot_-60",
+          "foot_220",
+          "frame_front_depth_40",
+          "frame_front_depth_60",
+          "frame_front_elbow_40",
+          "frame_front_elbow_60",
+          "frame_front_pin_40",
+          "frame_front_pin_60",
+          "frame_lap_40_-20",
+          "frame_lap_40_20",
+          "frame_lap_60_-20",
+          "frame_lap_60_20",
+          "frame_rear_depth_40",
+          "frame_rear_depth_60",
+          "frame_rear_elbow_40",
+          "frame_rear_elbow_60",
+          "frame_rear_pin_40",
+          "frame_rear_pin_60",
+          "frame_rear_spacer_40",
+          "frame_rear_spacer_60",
+          "front_corner_U",
+          "front_corner_W",
+          "front_corner_W_spacer",
+          "front_D",
+          "front_J",
+          "front_K",
+          "front_mount_L",
+          "front_mount_pin_-20",
+          "front_mount_pin_20",
+          "front_mount_spacer",
+          "hub",
+          "hub_foot_elbow_-140",
+          "hub_foot_elbow_-60",
+          "hub_foot_pin_-140",
+          "hub_foot_pin_-60",
+          "hub_side_pin_-180",
+          "hub_side_pin_-20",
+          "hub_side_rail",
+          "motor_A",
+          "motor_foot_elbow",
+          "motor_foot_pin",
+          "motor_mount_pin_-20",
+          "motor_mount_pin_140",
+          "motor_mount_pin_20",
+          "motor_mount_right",
+          "motor_post",
+          "motor_post_pin_100",
+          "motor_post_pin_160",
+          "motor_post_spacer_100",
+          "motor_post_spacer_160",
+          "output_forward_frame",
+          "rear_corner_U",
+          "rear_corner_V",
+          "rear_corner_W",
+          "rear_corner_W_spacer",
+          "rear_D",
+          "rear_foot_elbow",
+          "rear_foot_pin",
+          "rear_J",
+          "rear_K",
+          "rear_mount_L",
+          "rear_mount_pin_-20",
+          "rear_mount_pin_20",
+          "rear_mount_spacer",
+          "rear_post",
+          "rear_post_pin_20",
+          "rear_post_pin_80",
+          "stator_depth_20",
+          "stator_depth_80",
+          "stator_diagonal",
+          "stator_diagonal_front",
+          "stator_diagonal_rear",
+          "stator_front_elbow_20",
+          "stator_front_elbow_80",
+          "stator_front_pin_20",
+          "stator_front_pin_80",
+          "stator_front_spacer_20",
+          "stator_front_spacer_80",
+          "stator_rear_pin_80"
+        ],
+        "massKg": 0.31155000000000027
+      },
+      {
+        "id": "b1",
+        "motion": "dynamic",
+        "parts": [
+          "differential_housing"
+        ],
+        "massKg": 0.0035
+      },
+      {
+        "id": "b2",
+        "motion": "dynamic",
+        "parts": [
+          "input_gear",
+          "left_bush_-140",
+          "left_bush_-220",
+          "left_bush_-50",
+          "left_bush_-90",
+          "left_shaft",
+          "motor_A",
+          "side_left"
+        ],
+        "massKg": 0.0096
+      },
+      {
+        "id": "b3",
+        "motion": "dynamic",
+        "parts": [
+          "J_bush_-120",
+          "J_bush_-160",
+          "J_bush_-50",
+          "J_drive12",
+          "J_driven20",
+          "J_half_-85",
+          "shaft_J"
+        ],
+        "massKg": 0.0035800000000000003
+      },
+      {
+        "id": "b4",
+        "motion": "dynamic",
+        "parts": [
+          "K_bush_-140",
+          "K_bush_-80",
+          "K_bush_120",
+          "K_bush_50",
+          "K_drive36",
+          "K_driven20",
+          "K_half_85",
+          "shaft_K"
+        ],
+        "massKg": 0.0058200000000000005
+      },
+      {
+        "id": "b5",
+        "motion": "dynamic",
+        "parts": [
+          "output_bush_-120",
+          "output_bush_-180",
+          "output_bush_-220",
+          "output_bush_-280",
+          "output_bush_-340",
+          "output_bush_-380",
+          "output_bush_-50",
+          "output_gear16",
+          "output_half_-15",
+          "output_half_-405",
+          "output_joiner",
+          "output_pointer",
+          "output_pointer_shaft",
+          "output_shaft"
+        ],
+        "massKg": 0.00642
+      },
+      {
+        "id": "b6",
+        "motion": "dynamic",
+        "parts": [
+          "right_bush_120",
+          "right_bush_200",
+          "right_bush_50",
+          "right_bush_90",
+          "right_gear12",
+          "right_shaft",
+          "side_right"
+        ],
+        "massKg": 0.0035999999999999995
+      },
+      {
+        "id": "b7",
+        "motion": "dynamic",
+        "parts": [
+          "spider"
+        ],
+        "massKg": 0.0005
+      }
+    ],
+    "joints": [
+      {
+        "id": "j0",
+        "type": "hinge",
+        "body1": "b0",
+        "body2": "b2",
+        "point": [
+          1.214306433183765e-17,
+          0,
+          0
+        ],
+        "axis": [
+          1,
+          0,
+          0
+        ],
+        "motor": {
+          "port": "A",
+          "maxTorqueNm": 0.10440000000000002,
+          "maxSpeedRadPerSec": 19.37315469713706,
+          "deviceId": 48
+        }
+      },
+      {
+        "id": "j1",
+        "type": "hinge",
+        "body1": "b0",
+        "body2": "b3",
+        "point": [
+          0.022000000000000013,
+          0.0158745078663876,
+          0.002
+        ],
+        "axis": [
+          1,
+          0,
+          0
+        ]
+      },
+      {
+        "id": "j2",
+        "type": "hinge",
+        "body1": "b0",
+        "body2": "b4",
+        "point": [
+          0.07400000000000001,
+          0.0158745078663876,
+          0.018000000000000002
+        ],
+        "axis": [
+          1,
+          0,
+          0
+        ]
+      },
+      {
+        "id": "j3",
+        "type": "hinge",
+        "body1": "b0",
+        "body2": "b5",
+        "point": [
+          -0.009999999999999988,
+          1.200343528277396e-15,
+          -0.016
+        ],
+        "axis": [
+          1,
+          0,
+          0
+        ]
+      },
+      {
+        "id": "j4",
+        "type": "hinge",
+        "body1": "b0",
+        "body2": "b6",
+        "point": [
+          0.14200000000000002,
+          0,
+          0
+        ],
+        "axis": [
+          1,
+          0,
+          0
+        ]
+      },
+      {
+        "id": "j5",
+        "type": "hinge",
+        "body1": "b1",
+        "body2": "b2",
+        "point": [
+          0.06600000000000002,
+          0,
+          0
+        ],
+        "axis": [
+          1,
+          0,
+          0
+        ]
+      },
+      {
+        "id": "j6",
+        "type": "hinge",
+        "body1": "b1",
+        "body2": "b6",
+        "point": [
+          0.09000000000000001,
+          0,
+          0
+        ],
+        "axis": [
+          1,
+          0,
+          0
+        ]
+      },
+      {
+        "id": "j7",
+        "type": "hinge",
+        "body1": "b7",
+        "body2": "b1",
+        "point": [
+          0.07800000000000001,
+          -0.006787882250513201,
+          -0.000405776481782
+        ],
+        "axis": [
+          0,
+          -0.9982179780166394,
+          -0.05967301202697844
+        ]
+      }
+    ],
+    "couplings": [
+      {
+        "id": "g0",
+        "kind": "gear",
+        "joint1": "j1",
+        "joint2": "j0",
+        "ratio": -1.666666666666667,
+        "parts": [
+          "J_driven20",
+          "input_gear"
+        ]
+      },
+      {
+        "id": "g1",
+        "kind": "gear",
+        "joint1": "j2",
+        "joint2": "j1",
+        "ratio": -1.6666666666666667,
+        "parts": [
+          "K_driven20",
+          "J_drive12"
+        ]
+      },
+      {
+        "id": "g2",
+        "kind": "gear",
+        "joint1": "j2",
+        "joint2": "j4",
+        "ratio": -2.999999999999999,
+        "parts": [
+          "K_drive36",
+          "right_gear12"
+        ]
+      },
+      {
+        "id": "r0",
+        "kind": "relativeGear",
+        "gear1": "b1",
+        "gear2": "b5",
+        "frame": "b0",
+        "axis1": [
+          1,
+          0,
+          0
+        ],
+        "axis2": [
+          1,
+          0,
+          0
+        ],
+        "ratio": -1,
+        "anchor1": [
+          0.06600000000000002,
+          0,
+          -0.008
+        ],
+        "anchor2": [
+          0.06600000000000002,
+          0,
+          -0.008
+        ],
+        "tangent": [
+          0,
+          1,
+          0
+        ],
+        "carrier": false,
+        "joint1": "j5",
+        "joint2": "j3",
+        "parts": [
+          "differential_housing",
+          "output_gear16"
+        ]
+      },
+      {
+        "id": "r1",
+        "kind": "relativeGear",
+        "gear1": "b2",
+        "gear2": "b7",
+        "frame": "b1",
+        "axis1": [
+          1,
+          0,
+          0
+        ],
+        "axis2": [
+          0,
+          0.9982179780166394,
+          0.05967301202697844
+        ],
+        "ratio": -1,
+        "anchor1": [
+          0.07200000000000001,
+          -0.005989307868099881,
+          -0.0003580380721611451
+        ],
+        "anchor2": [
+          0.07200000000000001,
+          -0.005989307868099881,
+          -0.0003580380721611451
+        ],
+        "tangent": [
+          -1.0690873571063482e-13,
+          -0.05967301202687173,
+          0.9982179780166459
+        ],
+        "carrier": true,
+        "joint1": "j5",
+        "joint2": "j7",
+        "parts": [
+          "side_left",
+          "spider"
+        ]
+      },
+      {
+        "id": "r2",
+        "kind": "relativeGear",
+        "gear1": "b7",
+        "gear2": "b6",
+        "frame": "b1",
+        "axis1": [
+          0,
+          0.9982179780166394,
+          0.05967301202697844
+        ],
+        "axis2": [
+          -1,
+          0,
+          0
+        ],
+        "ratio": -1,
+        "anchor1": [
+          0.08400000000000002,
+          -0.005989307868099881,
+          -0.0003580380721611451
+        ],
+        "anchor2": [
+          0.08400000000000002,
+          -0.005989307868099881,
+          -0.0003580380721611451
+        ],
+        "tangent": [
+          1.0690873571063482e-13,
+          -0.05967301202687173,
+          0.9982179780166459
+        ],
+        "carrier": true,
+        "joint1": "j7",
+        "joint2": "j6",
+        "parts": [
+          "spider",
+          "side_right"
+        ]
+      }
+    ],
+    "actuators": [
+      {
+        "id": "a0",
+        "joint": "j0",
+        "hub": "hub",
+        "port": "A",
+        "device": "spike-medium-angular",
+        "sign": 1,
+        "maxTorqueNm": 0.10440000000000002,
+        "maxSpeedRadPerSec": 19.37315469713706,
+        "ids": {
+          "lpf2": 48
+        }
+      }
+    ],
+    "hubs": [
+      {
+        "id": "hub",
+        "profile": "spike-prime",
+        "body": "b0"
+      }
+    ],
+    "noCollide": [
+      [
+        "b0",
+        "b1"
+      ],
+      [
+        "b0",
+        "b2"
+      ],
+      [
+        "b0",
+        "b3"
+      ],
+      [
+        "b0",
+        "b4"
+      ],
+      [
+        "b0",
+        "b5"
+      ],
+      [
+        "b0",
+        "b6"
+      ],
+      [
+        "b1",
+        "b2"
+      ],
+      [
+        "b1",
+        "b5"
+      ],
+      [
+        "b1",
+        "b6"
+      ],
+      [
+        "b1",
+        "b7"
+      ],
+      [
+        "b2",
+        "b3"
+      ],
+      [
+        "b2",
+        "b7"
+      ],
+      [
+        "b3",
+        "b4"
+      ],
+      [
+        "b4",
+        "b6"
+      ],
+      [
+        "b6",
+        "b7"
+      ]
+    ],
+    "noCollideParts": [
+      [
+        "b0",
+        "b1",
+        [
+          [
+            "frame_lap_40_-20",
+            "differential_housing"
+          ]
+        ],
+        "collide"
+      ],
+      [
+        "b0",
+        "b2",
+        [
+          [
+            "front_corner_W_spacer",
+            "left_bush_-140"
+          ],
+          [
+            "stator_front_spacer_20",
+            "motor_A"
+          ]
+        ],
+        "collide"
+      ],
+      [
+        "b0",
+        "b5",
+        [
+          [
+            "front_mount_pin_-20",
+            "output_bush_-180"
+          ],
+          [
+            "front_mount_spacer",
+            "output_bush_-180"
+          ],
+          [
+            "motor_A",
+            "output_bush_-280"
+          ],
+          [
+            "motor_A",
+            "output_joiner"
+          ]
+        ],
+        "collide"
+      ],
+      [
+        "b0",
+        "b6",
+        [
+          [
+            "rear_corner_W_spacer",
+            "right_bush_120"
+          ],
+          [
+            "rear_post",
+            "right_bush_200"
+          ]
+        ],
+        "collide"
+      ]
+    ]
+  },
+  "inputs": {
+    "models/vernier-drive.ldr": "b8341074d0e55281befa60d3bd3664930a37cd51e23fa7719f855533609cdddc",
+    "programs/vernier-drive.bw": "9f1e7f5f7b23a1684727fff3e86b1b53274b4cbb56fd53f6e8de4ac0868440e2",
+    "markers.json": "28ee52f6c1a94ad1df6ccfcab2b49092300532d6c9eeea4f9162b68006943b6c",
+    "build/build-model.mjs": "58a6d9cbf37214b89adceb811a226714ba636aa271a427edfdb9379bbe319f95",
+    "build/build-program.mjs": "72610fd8e3bcaffe80a092e8a01d7a91167718f171263da7134c903b9c5c9c71",
+    "build/freeze-contract.mjs": "941ddfada90c50e6577f8cc0679727b659f49f08fa3006a3a99336b28f2c2d35",
+    "build/update-markers.mjs": "48adde57796df6d1a3d7fc93e3ff4f8f71857466fe93a224d1f582a859291459",
+    "build/contract-template.json": "369d29ec9fa76fd1fbb82a137b94c4281c45fb0d66abd5f0c844d3640a169775",
+    "build/design-intent.json": "03dd00178a07fb6213f02f4857998f9e02fd375a4e56e96cf861ccf7dc67d5ec",
+    "build/geometry.json": "d1435fc0471f8d004a91fb1038bea77bee3b67eb638b72fba0103e73f61142bf",
+    "build/markers.json": "2ee9ab281a7bf299ef4f24f597288a0ba7e47689a715094c87eb58529f111edc",
+    "build/placements.json": "90eb9b72a0a7c5a6bd5bf26f235dacdc8b44265854c5d0d9252ec9b923ec8e7b",
+    "build/program-settings.json": "2c71795a127d95b50a2bb0ce1b288bfc38a9cba27e5a4ece9bc88a0f0a4f8ba3",
+    "evidence/contracts/design-intent-r0.json": "5a8174065ea63e950fc29fc711c7d9829813dd0daf6fffb7523eb2b4e7dc9e37",
+    "evidence/program-parameters.json": "8207a850e4af11453521fd8e6a1aaff000bb50a344daf54480d8bd65b96e0835",
+    "checks/run-native.mjs": "f75ac704f4fca2e10f17a1b4e4ae8bad16ff895c34a871c1e70ed2e2011d6252",
+    "checks/rotational-observer.mjs": "0c7ad580c94f16b65a2e3a4f945829d5a15a2534fc02e8eef065cf0e6e7148b9",
+    "checks/physical-hinge-observer.mjs": "72f4ba6995f525053b1ebeb9d55d6c4727541d63bf77349531bc165c89c0ef65",
+    "checks/inspect-static.mjs": "8fb826e6ce468b2268d08eda52fe6e4249fe4079a49f4c4e25508ff7b0d7e2e3",
+    "evidence/static/static-inspection.json": "724a5054b8bad6bf5345367ba8318b96701a13caf07a880eadee080a96911f10",
+    "evidence/runtime/fourth-model-runtime-identities.json": "8126f1440244961f8be9c0bcec1576e66f7651060eaae47ccc1faf9e848d588f"
+  },
+  "runtimeSources": {
+    "test/helpers/robot-lab-direct-vm.mjs": "4c32258a1bc7cc09b5a835b7ac6db3636789aa581f4719b68963d0b4d81cca04",
+    "scripts/lib/sim-lab-addon-judge.mjs": "4b885341c0bc67279f0b633d31b4ab5f8d4e895596f756719612fdf941c923ac",
+    "overlay/scratch-gui/src/lib/sb3-creator-register-art.js": "722dd3e92c80335dea3011e8ef81bb750dce460d560739083d2c72cf903f8085",
+    "overlay/scratch-gui/src/lib/bw-sim/model/ldraw-model.js": "d4c73b0feb777d7672d87fd6f0a03ab66640d57b07495771c1d0c7bc22f48aa8",
+    "overlay/scratch-gui/src/lib/bw-sim/mech/graph.js": "573beea8be8e9a88b72a495b0c32ff96e45ccbb85cd7fc1128fbfef08c83cb24",
+    "overlay/scratch-gui/src/lib/bw-sim/mech/compile.js": "da0f721b8716d4cd2b1299e8110d7d5e607600804d8e0a059797cddc5e0e2732",
+    "overlay/scratch-gui/src/lib/bw-sim/mech/gears.js": "eb467eac578d28100d040ede018c204986ccc885cb1218ba8996f418b800676b",
+    "overlay/scratch-gui/src/lib/bw-sim/sim-session.js": "ae3bf4604ae711896501290cf54f1b5d5188c19b60785633f3be3d11b8afa1e8",
+    "overlay/scratch-gui/src/lib/bw-sim/physics/jolt-core.js": "1df4354d3edc41206707a5c1d3238d26836003c7a91c2c77da33d50b580b5d99",
+    "overlay/scratch-gui/src/lib/bw-sim/part-meta/parts.json": "feecf1804ac0733e8eb84d23cda4cd8d62c0deea9305491935c945bb14ade0da"
+  },
+  "physicalBounds": "All shafts rotate continuously. Clearance must cover the complete25-input-turn configuration repeat and actual recorded frames, with real axial retention. Encoder guards are software only."
+}

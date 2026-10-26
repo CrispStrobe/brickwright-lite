@@ -60,7 +60,7 @@ export const createRopes = ({J, couplings, hingeMap, jointMap, bodyInterface, bo
         // The drum's body and its frame's: the hinge's two sides (drumSign + : the drum is body2).
         const drumBody = jh ? (c.drumSign > 0 ? jh.body2 : jh.body1) : null;
         const frameBody = jh ? (c.drumSign > 0 ? jh.body1 : jh.body2) : null;
-        return {c, constraint, hinge, drumBody, frameBody, theta0: hinge ? hinge.unwrapped : 0, free: ds.mMaxDistance};
+        return {c, constraint, hinge, drumBody, frameBody, theta0: hinge ? hinge.unwrapped : 0, free: constraint.GetMaxDistance()};
     });
     const torqueVec = new J.Vec3(0, 0, 0);
     const scratch = [[0, 0, 0], [0, 0, 0]];
@@ -91,7 +91,9 @@ export const createRopes = ({J, couplings, hingeMap, jointMap, bodyInterface, bo
         ropes,
         beforeStep,
         /** Each rope's free length (m) and tension (N) now: for tests and readings. */
-        state: () => ropes.map(r => ({free: r.free, tension: Math.abs(r.constraint.GetTotalLambdaPosition()) / dt})),
+        // Observe the velocity impulse retained across native position correction.
+        // The existing drum-feedback path above is unchanged by this telemetry fix.
+        state: () => ropes.map(r => ({free: r.free, tension: Math.abs(r.constraint.GetLastVelocityImpulse()) / dt})),
         registrant: {
             save: () => ropes.map(r => [r.theta0, r.free]),
             restore: saved => ropes.forEach((r, i) => { [r.theta0, r.free] = saved[i]; r.constraint.SetDistance(0, r.free); })

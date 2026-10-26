@@ -1,0 +1,536 @@
+0 FILE rack-decoder.ldr
+0 Rack Decoder
+0 Name: rack-decoder.ldr
+0 Author: CrispStrobe
+0 !LICENSE BSD-3-Clause : see ../licenses/rack-decoder.txt
+0 // Original placement and builder code: BSD-3-Clause; inherited LEGO part files retain their own licenses.
+0 // Freestanding source assembly; qualification and inherited mating-tooth geometry limitations are recorded separately.
+0 // Assembly group 1
+0 !BW ID rack_A
+1 72 -80 -40 -40 1 0 0 0 0 1 0 -1 0 18942.dat
+0 !BW ID rack_A_spine
+1 4 10 -20 -40 0 0 1 0 -1 0 1 0 0 32278.dat
+0 !BW ID rack_A_spine_pin_-110
+1 0 -110 -30 -40 0 0 -1 -1 0 0 0 1 0 2780.dat
+0 !BW ID rack_A_spine_pin_-50
+1 0 -50 -30 -40 0 0 -1 -1 0 0 0 1 0 2780.dat
+0 !BW ID rack_A_spine_pin_30
+1 0 30 -30 -40 0 0 -1 -1 0 0 0 1 0 2780.dat
+0 !BW ID rack_A_end_cross_-130
+1 4 -130 20 -100 -1 0 0 0 -1 0 0 0 1 40490.dat
+0 !BW ID rack_A_rail_key_-130_40
+1 4 -130 0 -40 1 0 0 0 0 -1 0 1 0 42003.dat
+0 !BW ID rack_A_end_pin_-130_40
+1 1 -130 0 -40 0 0 -1 -1 0 0 0 1 0 6558.dat
+0 !BW ID rack_A_end_pin_-130_20
+1 0 -130 10 -20 0 0 -1 -1 0 0 0 1 0 2780.dat
+0 !BW ID rack_A_rail_key_-130_100
+1 4 -130 0 -100 1 0 0 0 0 -1 0 1 0 42003.dat
+0 !BW ID rack_A_end_pin_-130_100
+1 0 -130 10 -100 0 0 -1 -1 0 0 0 1 0 2780.dat
+0 !BW ID rack_A_end_pin_-130_80
+1 0 -130 10 -80 0 0 -1 -1 0 0 0 1 0 2780.dat
+0 !BW ID rack_A_rail_key_-130_160
+1 4 -130 0 -160 1 0 0 0 0 -1 0 1 0 42003.dat
+0 !BW ID rack_A_end_pin_-130_160
+1 0 -130 10 -160 0 0 -1 -1 0 0 0 1 0 2780.dat
+0 !BW ID rack_A_end_pin_-130_140
+1 0 -130 10 -140 0 0 -1 -1 0 0 0 1 0 2780.dat
+0 !BW ID rack_A_end_cross_150
+1 4 150 20 -100 -1 0 0 0 -1 0 0 0 1 40490.dat
+0 !BW ID rack_A_rail_key_150_40
+1 4 150 0 -40 1 0 0 0 0 -1 0 1 0 42003.dat
+0 !BW ID rack_A_end_pin_150_40
+1 1 150 0 -40 0 0 -1 -1 0 0 0 1 0 6558.dat
+0 !BW ID rack_A_end_pin_150_20
+1 0 150 10 -20 0 0 -1 -1 0 0 0 1 0 2780.dat
+0 !BW ID rack_A_rail_key_150_100
+1 4 150 0 -100 1 0 0 0 0 -1 0 1 0 42003.dat
+0 !BW ID rack_A_end_pin_150_100
+1 0 150 10 -100 0 0 -1 -1 0 0 0 1 0 2780.dat
+0 !BW ID rack_A_end_pin_150_80
+1 0 150 10 -80 0 0 -1 -1 0 0 0 1 0 2780.dat
+0 !BW ID rack_A_rail_key_150_160
+1 4 150 0 -160 1 0 0 0 0 -1 0 1 0 42003.dat
+0 !BW ID rack_A_end_pin_150_160
+1 0 150 10 -160 0 0 -1 -1 0 0 0 1 0 2780.dat
+0 !BW ID rack_A_end_pin_150_140
+1 0 150 10 -140 0 0 -1 -1 0 0 0 1 0 2780.dat
+0 !BW ID rack_A_guide_60
+1 0 10 0 -60 1 0 0 0 0 -1 0 1 0 50451.dat
+0 !BW ID rack_A_guide_capture_60_-145
+1 71 -145 0 -60 0 0 1 0 -1 0 1 0 0 32123a.dat
+0 !BW ID rack_A_guide_capture_60_165
+1 71 165 0 -60 0 0 1 0 -1 0 1 0 0 32123a.dat
+0 !BW ID rack_A_guide_120
+1 0 10 0 -120 1 0 0 0 0 -1 0 1 0 50451.dat
+0 !BW ID rack_A_guide_capture_120_-145
+1 71 -145 0 -120 0 0 1 0 -1 0 1 0 0 32123a.dat
+0 !BW ID rack_A_guide_capture_120_165
+1 71 165 0 -120 0 0 1 0 -1 0 1 0 0 32123a.dat
+0 !BW ID rack_A_guide_180
+1 0 10 0 -180 1 0 0 0 0 -1 0 1 0 50451.dat
+0 !BW ID rack_A_guide_capture_180_-145
+1 71 -145 0 -180 0 0 1 0 -1 0 1 0 0 32123a.dat
+0 !BW ID rack_A_guide_capture_180_165
+1 71 165 0 -180 0 0 1 0 -1 0 1 0 0 32123a.dat
+0 !BW ID rack_A_stop_stack_-10
+1 71 -10 0 -180 0 0 1 0 -1 0 1 0 0 3713.dat
+0 !BW ID rack_A_stop_stack_10
+1 71 10 0 -180 0 0 1 0 -1 0 1 0 0 3713.dat
+0 !BW ID rack_A_stop_stack_30
+1 71 30 0 -180 0 0 1 0 -1 0 1 0 0 3713.dat
+0 !BW ID rack_A_stop_stack_50
+1 71 50 0 -180 0 0 1 0 -1 0 1 0 0 3713.dat
+0 !BW ID rack_A_stop_stack_70
+1 71 70 0 -180 0 0 1 0 -1 0 1 0 0 3713.dat
+0 !BW ID rack_A_stop_stack_90
+1 71 90 0 -180 0 0 1 0 -1 0 1 0 0 3713.dat
+0 !BW ID rack_A_stop_stack_110
+1 71 110 0 -180 0 0 1 0 -1 0 1 0 0 3713.dat
+0 !BW ID rack_A_stop_stack_130
+1 71 130 0 -180 0 0 1 0 -1 0 1 0 0 3713.dat
+0 STEP
+0 // Assembly group 2
+0 !BW ID rack_B
+1 72 80 -40 40 1 0 0 0 0 -1 0 1 0 18942.dat
+0 !BW ID rack_B_spine
+1 1 10 -20 40 0 0 1 0 -1 0 1 0 0 32278.dat
+0 !BW ID rack_B_spine_pin_-30
+1 0 -30 -30 40 0 0 -1 -1 0 0 0 1 0 2780.dat
+0 !BW ID rack_B_spine_pin_50
+1 0 50 -30 40 0 0 -1 -1 0 0 0 1 0 2780.dat
+0 !BW ID rack_B_spine_pin_110
+1 0 110 -30 40 0 0 -1 -1 0 0 0 1 0 2780.dat
+0 !BW ID rack_B_end_cross_-130
+1 1 -130 20 100 -1 0 0 0 -1 0 0 0 1 40490.dat
+0 !BW ID rack_B_rail_key_-130_40
+1 1 -130 0 40 1 0 0 0 0 1 0 -1 0 42003.dat
+0 !BW ID rack_B_end_pin_-130_40
+1 1 -130 0 40 0 0 -1 -1 0 0 0 1 0 6558.dat
+0 !BW ID rack_B_end_pin_-130_20
+1 0 -130 10 20 0 0 -1 -1 0 0 0 1 0 2780.dat
+0 !BW ID rack_B_rail_key_-130_100
+1 1 -130 0 100 1 0 0 0 0 1 0 -1 0 42003.dat
+0 !BW ID rack_B_end_pin_-130_100
+1 0 -130 10 100 0 0 -1 -1 0 0 0 1 0 2780.dat
+0 !BW ID rack_B_end_pin_-130_80
+1 0 -130 10 80 0 0 -1 -1 0 0 0 1 0 2780.dat
+0 !BW ID rack_B_rail_key_-130_160
+1 1 -130 0 160 1 0 0 0 0 1 0 -1 0 42003.dat
+0 !BW ID rack_B_end_pin_-130_160
+1 0 -130 10 160 0 0 -1 -1 0 0 0 1 0 2780.dat
+0 !BW ID rack_B_end_pin_-130_140
+1 0 -130 10 140 0 0 -1 -1 0 0 0 1 0 2780.dat
+0 !BW ID rack_B_end_cross_150
+1 1 150 20 100 -1 0 0 0 -1 0 0 0 1 40490.dat
+0 !BW ID rack_B_rail_key_150_40
+1 1 150 0 40 1 0 0 0 0 1 0 -1 0 42003.dat
+0 !BW ID rack_B_end_pin_150_40
+1 1 150 0 40 0 0 -1 -1 0 0 0 1 0 6558.dat
+0 !BW ID rack_B_end_pin_150_20
+1 0 150 10 20 0 0 -1 -1 0 0 0 1 0 2780.dat
+0 !BW ID rack_B_rail_key_150_100
+1 1 150 0 100 1 0 0 0 0 1 0 -1 0 42003.dat
+0 !BW ID rack_B_end_pin_150_100
+1 0 150 10 100 0 0 -1 -1 0 0 0 1 0 2780.dat
+0 !BW ID rack_B_end_pin_150_80
+1 0 150 10 80 0 0 -1 -1 0 0 0 1 0 2780.dat
+0 !BW ID rack_B_rail_key_150_160
+1 1 150 0 160 1 0 0 0 0 1 0 -1 0 42003.dat
+0 !BW ID rack_B_end_pin_150_160
+1 0 150 10 160 0 0 -1 -1 0 0 0 1 0 2780.dat
+0 !BW ID rack_B_end_pin_150_140
+1 0 150 10 140 0 0 -1 -1 0 0 0 1 0 2780.dat
+0 !BW ID rack_B_guide_60
+1 0 10 0 60 1 0 0 0 0 -1 0 1 0 50451.dat
+0 !BW ID rack_B_guide_capture_60_-145
+1 71 -145 0 60 0 0 1 0 -1 0 1 0 0 32123a.dat
+0 !BW ID rack_B_guide_capture_60_165
+1 71 165 0 60 0 0 1 0 -1 0 1 0 0 32123a.dat
+0 !BW ID rack_B_guide_120
+1 0 10 0 120 1 0 0 0 0 -1 0 1 0 50451.dat
+0 !BW ID rack_B_guide_capture_120_-145
+1 71 -145 0 120 0 0 1 0 -1 0 1 0 0 32123a.dat
+0 !BW ID rack_B_guide_capture_120_165
+1 71 165 0 120 0 0 1 0 -1 0 1 0 0 32123a.dat
+0 !BW ID rack_B_guide_180
+1 0 10 0 180 1 0 0 0 0 -1 0 1 0 50451.dat
+0 !BW ID rack_B_guide_capture_180_-145
+1 71 -145 0 180 0 0 1 0 -1 0 1 0 0 32123a.dat
+0 !BW ID rack_B_guide_capture_180_165
+1 71 165 0 180 0 0 1 0 -1 0 1 0 0 32123a.dat
+0 !BW ID rack_B_stop_stack_-110
+1 71 -110 0 180 0 0 1 0 -1 0 1 0 0 3713.dat
+0 !BW ID rack_B_stop_stack_-90
+1 71 -90 0 180 0 0 1 0 -1 0 1 0 0 3713.dat
+0 !BW ID rack_B_stop_stack_-70
+1 71 -70 0 180 0 0 1 0 -1 0 1 0 0 3713.dat
+0 !BW ID rack_B_stop_stack_-50
+1 71 -50 0 180 0 0 1 0 -1 0 1 0 0 3713.dat
+0 !BW ID rack_B_stop_stack_-30
+1 71 -30 0 180 0 0 1 0 -1 0 1 0 0 3713.dat
+0 !BW ID rack_B_stop_stack_-10
+1 71 -10 0 180 0 0 1 0 -1 0 1 0 0 3713.dat
+0 !BW ID rack_B_stop_stack_10
+1 71 10 0 180 0 0 1 0 -1 0 1 0 0 3713.dat
+0 !BW ID rack_B_stop_stack_30
+1 71 30 0 180 0 0 1 0 -1 0 1 0 0 3713.dat
+0 STEP
+0 // Assembly group 3
+0 !BW ID carrier_bearing
+1 14 12 20 0 -1 0 0 0 -1 0 0 0 1 32278.dat
+0 !BW ID carrier_runner_-120
+0 !BW SLIDE h0
+1 14 12 0 -120 0 1 0 1 0 0 0 0 -1 15100.dat
+0 !BW ID carrier_runner_-60
+0 !BW SLIDE h0
+1 14 12 0 -60 0 1 0 1 0 0 0 0 -1 15100.dat
+0 !BW ID carrier_runner_60
+0 !BW SLIDE h0
+1 14 12 0 60 0 1 0 1 0 0 0 0 -1 15100.dat
+0 !BW ID carrier_runner_120
+0 !BW SLIDE h0
+1 14 12 0 120 0 1 0 1 0 0 0 0 -1 15100.dat
+0 !BW ID carrier_upper_bearing
+1 14 12 -80 0 -1 0 0 0 -1 0 0 0 1 40490.dat
+0 !BW ID carrier_lower_corner_-1
+1 14 12 0 -80 0 1 0 1 0 0 0 0 -1 15100.dat
+0 !BW ID carrier_upper_corner_-1
+1 14 12 -60 -80 0 1 0 -1 0 0 0 0 1 15100.dat
+0 !BW ID carrier_upright_-1
+1 14 -8 -40 -80 0 1 0 0 0 -1 -1 0 0 32316.dat
+0 !BW ID carrier_upright_pin_-1_0
+1 0 2 0 -80 1 0 0 0 0 -1 0 1 0 2780.dat
+0 !BW ID carrier_upright_pin_-1_60
+1 0 2 -60 -80 1 0 0 0 0 -1 0 1 0 2780.dat
+0 !BW ID carrier_lower_corner_1
+1 14 12 0 80 0 1 0 1 0 0 0 0 -1 15100.dat
+0 !BW ID carrier_upper_corner_1
+1 14 12 -60 80 0 1 0 -1 0 0 0 0 1 15100.dat
+0 !BW ID carrier_upright_1
+1 14 32 -40 80 0 1 0 0 0 -1 -1 0 0 32316.dat
+0 !BW ID carrier_upright_pin_1_0
+1 0 22 0 80 1 0 0 0 0 -1 0 1 0 2780.dat
+0 !BW ID carrier_upright_pin_1_60
+1 0 22 -60 80 1 0 0 0 0 -1 0 1 0 2780.dat
+0 !BW ID passive_axle
+1 0 12 -40 0 0 0 -1 -1 0 0 0 1 0 3707.dat
+0 !BW ID passive_bearing_capture
+1 71 12 35 0 1 0 0 0 0 -1 0 1 0 32123a.dat
+0 !BW ID passive_shaft_spacer_0
+1 71 12 0 0 1 0 0 0 0 -1 0 1 0 3713.dat
+0 !BW ID passive_shaft_spacer_20
+1 71 12 -20 0 1 0 0 0 0 -1 0 1 0 3713.dat
+0 !BW ID passive_pinion
+1 14 12 -40 0 1 0 0 0 0 -1 0 1 0 32270.dat
+0 !BW ID passive_upper_bearing_spacer
+1 71 12 -60 0 1 0 0 0 0 -1 0 1 0 3713.dat
+0 !BW ID passive_pointer
+1 14 12 -100 0 0 0 1 0 -1 0 1 0 0 7229.dat
+0 !BW ID passive_pointer_capture
+1 71 12 -115 0 1 0 0 0 0 -1 0 1 0 32123a.dat
+0 STEP
+0 // Assembly group 4
+0 !BW ID frame_guide_A
+1 72 -70 20 -100 -1 0 0 0 -1 0 0 0 1 40490.dat
+0 !BW ID frame_runner_A_60
+0 !BW SLIDE h0
+1 72 -70 0 -60 0 1 0 1 0 0 0 0 -1 15100.dat
+0 !BW ID frame_runner_A_120
+0 !BW SLIDE h0
+1 72 -70 0 -120 0 1 0 1 0 0 0 0 -1 15100.dat
+0 !BW ID frame_runner_A_180
+0 !BW SLIDE h0
+1 72 -70 0 -180 0 1 0 1 0 0 0 0 -1 15100.dat
+0 !BW ID frame_guide_pin_A_40
+1 0 -70 30 -40 0 0 -1 -1 0 0 0 1 0 2780.dat
+0 !BW ID frame_guide_pin_A_100
+1 0 -70 30 -100 0 0 -1 -1 0 0 0 1 0 2780.dat
+0 !BW ID frame_guide_B
+1 72 90 20 100 -1 0 0 0 -1 0 0 0 1 40490.dat
+0 !BW ID frame_runner_B_60
+0 !BW SLIDE h0
+1 72 90 0 60 0 1 0 1 0 0 0 0 -1 15100.dat
+0 !BW ID frame_runner_B_120
+0 !BW SLIDE h0
+1 72 90 0 120 0 1 0 1 0 0 0 0 -1 15100.dat
+0 !BW ID frame_runner_B_180
+0 !BW SLIDE h0
+1 72 90 0 180 0 1 0 1 0 0 0 0 -1 15100.dat
+0 !BW ID frame_guide_pin_B_40
+1 1 90 40 40 0 0 -1 -1 0 0 0 1 0 6558.dat
+0 !BW ID frame_guide_pin_B_100
+1 1 90 40 100 0 0 -1 -1 0 0 0 1 0 6558.dat
+0 !BW ID frame_long_-100
+1 72 10 40 -100 0 0 1 0 -1 0 1 0 0 32525.dat
+0 !BW ID frame_long_-40
+1 72 10 40 -40 0 0 1 0 -1 0 1 0 0 32525.dat
+0 !BW ID frame_long_40
+1 72 10 40 40 0 0 1 0 -1 0 1 0 0 32525.dat
+0 !BW ID frame_long_100
+1 72 10 40 100 0 0 1 0 -1 0 1 0 0 32525.dat
+0 !BW ID frame_cross_left
+1 72 -50 60 0 -1 0 0 0 -1 0 0 0 1 32278.dat
+0 !BW ID frame_grid_pin_-50_-100
+1 0 -50 50 -100 0 0 -1 -1 0 0 0 1 0 2780.dat
+0 !BW ID frame_grid_pin_-50_-40
+1 0 -50 50 -40 0 0 -1 -1 0 0 0 1 0 2780.dat
+0 !BW ID frame_grid_pin_-50_40
+1 0 -50 50 40 0 0 -1 -1 0 0 0 1 0 2780.dat
+0 !BW ID frame_grid_pin_-50_100
+1 0 -50 50 100 0 0 -1 -1 0 0 0 1 0 2780.dat
+0 !BW ID frame_cross_right
+1 72 70 60 0 -1 0 0 0 -1 0 0 0 1 32278.dat
+0 !BW ID frame_grid_pin_70_-100
+1 0 70 50 -100 0 0 -1 -1 0 0 0 1 0 2780.dat
+0 !BW ID frame_grid_pin_70_-40
+1 0 70 50 -40 0 0 -1 -1 0 0 0 1 0 2780.dat
+0 !BW ID frame_grid_pin_70_40
+1 0 70 50 40 0 0 -1 -1 0 0 0 1 0 2780.dat
+0 !BW ID frame_grid_pin_70_100
+1 0 70 50 100 0 0 -1 -1 0 0 0 1 0 2780.dat
+0 STEP
+0 // Assembly group 5
+0 !BW ID motor_A
+0 !BW PORT A
+0 !BW ROTOR -7.5
+1 15 -150 80 0 -1 0 0 0 1 0 0 0 -1 54696p01.dat
+0 !BW ID motor_A_rail_-1_-100
+1 72 -190 100 -60 0 1 0 -1 0 0 0 0 1 32525.dat
+0 !BW ID motor_A_mount_-1_-100_-20
+1 0 -180 100 -20 1 0 0 0 0 -1 0 1 0 2780.dat
+0 !BW ID motor_A_mount_-1_-100_20
+1 0 -180 100 20 1 0 0 0 0 -1 0 1 0 2780.dat
+0 !BW ID motor_A_mount_-1_-100_-140
+1 0 -180 100 -140 1 0 0 0 0 -1 0 1 0 2780.dat
+0 !BW ID motor_A_rail_-1_-60
+1 72 -190 60 -60 0 1 0 -1 0 0 0 0 1 32525.dat
+0 !BW ID motor_A_mount_-1_-60_-20
+1 0 -180 60 -20 1 0 0 0 0 -1 0 1 0 2780.dat
+0 !BW ID motor_A_mount_-1_-60_20
+1 0 -180 60 20 1 0 0 0 0 -1 0 1 0 2780.dat
+0 !BW ID motor_A_mount_-1_-60_-140
+1 0 -180 60 -140 1 0 0 0 0 -1 0 1 0 2780.dat
+0 !BW ID motor_A_rail_1_-100
+1 72 -110 100 -60 0 1 0 -1 0 0 0 0 1 32525.dat
+0 !BW ID motor_A_mount_1_-100_-20
+1 0 -120 100 -20 1 0 0 0 0 -1 0 1 0 2780.dat
+0 !BW ID motor_A_mount_1_-100_20
+1 0 -120 100 20 1 0 0 0 0 -1 0 1 0 2780.dat
+0 !BW ID motor_A_mount_1_-100_-140
+1 0 -120 100 -140 1 0 0 0 0 -1 0 1 0 2780.dat
+0 !BW ID motor_A_rail_1_-60
+1 72 -110 60 -60 0 1 0 -1 0 0 0 0 1 32525.dat
+0 !BW ID motor_A_mount_1_-60_-20
+1 0 -120 60 -20 1 0 0 0 0 -1 0 1 0 2780.dat
+0 !BW ID motor_A_mount_1_-60_20
+1 0 -120 60 20 1 0 0 0 0 -1 0 1 0 2780.dat
+0 !BW ID motor_A_mount_1_-60_-140
+1 0 -120 60 -140 1 0 0 0 0 -1 0 1 0 2780.dat
+0 !BW ID input_A_bearing
+1 72 -150 -20 0 0 0 1 0 -1 0 1 0 0 32316.dat
+0 !BW ID input_A_bearing_corner_-1
+1 72 -190 0 0 0 1 0 -1 0 0 0 0 1 15100.dat
+0 !BW ID input_A_depth_-1
+1 72 -210 40 0 0 1 0 0 0 -1 -1 0 0 32524.dat
+0 !BW ID input_A_depth_pin_-1_-100
+1 0 -200 100 0 1 0 0 0 0 -1 0 1 0 2780.dat
+0 !BW ID input_A_depth_pin_-1_-60
+1 0 -200 60 0 1 0 0 0 0 -1 0 1 0 2780.dat
+0 !BW ID input_A_depth_pin_-1_0
+1 0 -200 0 0 1 0 0 0 0 -1 0 1 0 2780.dat
+0 !BW ID input_A_bearing_corner_1
+1 72 -110 0 0 0 1 0 -1 0 0 0 0 1 15100.dat
+0 !BW ID input_A_depth_1
+1 72 -90 40 0 0 1 0 0 0 -1 -1 0 0 32524.dat
+0 !BW ID input_A_depth_pin_1_-100
+1 0 -100 100 0 1 0 0 0 0 -1 0 1 0 2780.dat
+0 !BW ID input_A_depth_pin_1_-60
+1 0 -100 60 0 1 0 0 0 0 -1 0 1 0 2780.dat
+0 !BW ID input_A_depth_pin_1_0
+1 0 -100 0 0 1 0 0 0 0 -1 0 1 0 2780.dat
+0 !BW ID motor_A_frame_corner_-40
+1 72 -90 60 -40 -1 0 0 0 -1 0 0 0 1 15100.dat
+0 !BW ID motor_A_frame_pin_-40
+1 0 -90 50 -40 0 0 -1 -1 0 0 0 1 0 2780.dat
+0 !BW ID motor_A_frame_corner_-100
+1 72 -90 60 -100 -1 0 0 0 -1 0 0 0 1 15100.dat
+0 !BW ID motor_A_frame_pin_-100
+1 0 -90 50 -100 0 0 -1 -1 0 0 0 1 0 2780.dat
+0 !BW ID input_A_axle
+1 0 -150 -10 0 0 -0.13052619222 -0.991444861374 -1 0 0 0 0.991444861374 -0.13052619222 3706.dat
+0 !BW ID input_A_bearing_capture
+1 71 -150 0 0 0.991444861374 -0.13052619222 0 0 0 -1 0.13052619222 0.991444861374 0 3713.dat
+0 !BW ID input_A_pinion
+1 71 -150 -40 0 0.991444861374 -0.13052619222 0 0 0 -1 0.13052619222 0.991444861374 0 32270.dat
+0 !BW ID input_A_pinion_capture
+1 71 -150 -60 0 0.991444861374 -0.13052619222 0 0 0 -1 0.13052619222 0.991444861374 0 3713.dat
+0 STEP
+0 // Assembly group 6
+0 !BW ID motor_B
+0 !BW PORT B
+0 !BW ROTOR -7.5
+1 15 150 80 0 1 0 0 0 1 0 0 0 1 54696p01.dat
+0 !BW ID motor_B_rail_-1_-100
+1 72 110 100 60 0 1 0 -1 0 0 0 0 1 32525.dat
+0 !BW ID motor_B_mount_-1_-100_-20
+1 0 120 100 -20 1 0 0 0 0 -1 0 1 0 2780.dat
+0 !BW ID motor_B_mount_-1_-100_20
+1 0 120 100 20 1 0 0 0 0 -1 0 1 0 2780.dat
+0 !BW ID motor_B_mount_-1_-100_140
+1 0 120 100 140 1 0 0 0 0 -1 0 1 0 2780.dat
+0 !BW ID motor_B_rail_-1_-60
+1 72 110 60 60 0 1 0 -1 0 0 0 0 1 32525.dat
+0 !BW ID motor_B_mount_-1_-60_-20
+1 0 120 60 -20 1 0 0 0 0 -1 0 1 0 2780.dat
+0 !BW ID motor_B_mount_-1_-60_20
+1 0 120 60 20 1 0 0 0 0 -1 0 1 0 2780.dat
+0 !BW ID motor_B_mount_-1_-60_140
+1 0 120 60 140 1 0 0 0 0 -1 0 1 0 2780.dat
+0 !BW ID motor_B_rail_1_-100
+1 72 190 100 60 0 1 0 -1 0 0 0 0 1 32525.dat
+0 !BW ID motor_B_mount_1_-100_-20
+1 0 180 100 -20 1 0 0 0 0 -1 0 1 0 2780.dat
+0 !BW ID motor_B_mount_1_-100_20
+1 0 180 100 20 1 0 0 0 0 -1 0 1 0 2780.dat
+0 !BW ID motor_B_mount_1_-100_140
+1 0 180 100 140 1 0 0 0 0 -1 0 1 0 2780.dat
+0 !BW ID motor_B_rail_1_-60
+1 72 190 60 60 0 1 0 -1 0 0 0 0 1 32525.dat
+0 !BW ID motor_B_mount_1_-60_-20
+1 0 180 60 -20 1 0 0 0 0 -1 0 1 0 2780.dat
+0 !BW ID motor_B_mount_1_-60_20
+1 0 180 60 20 1 0 0 0 0 -1 0 1 0 2780.dat
+0 !BW ID motor_B_mount_1_-60_140
+1 0 180 60 140 1 0 0 0 0 -1 0 1 0 2780.dat
+0 !BW ID input_B_bearing
+1 72 150 -20 0 0 0 1 0 -1 0 1 0 0 32316.dat
+0 !BW ID input_B_bearing_corner_-1
+1 72 110 0 0 0 1 0 -1 0 0 0 0 1 15100.dat
+0 !BW ID input_B_depth_-1
+1 72 90 40 0 0 1 0 0 0 -1 -1 0 0 32524.dat
+0 !BW ID input_B_depth_pin_-1_-100
+1 0 100 100 0 1 0 0 0 0 -1 0 1 0 2780.dat
+0 !BW ID input_B_depth_pin_-1_-60
+1 0 100 60 0 1 0 0 0 0 -1 0 1 0 2780.dat
+0 !BW ID input_B_depth_pin_-1_0
+1 0 100 0 0 1 0 0 0 0 -1 0 1 0 2780.dat
+0 !BW ID input_B_bearing_corner_1
+1 72 190 0 0 0 1 0 -1 0 0 0 0 1 15100.dat
+0 !BW ID input_B_depth_1
+1 72 210 40 0 0 1 0 0 0 -1 -1 0 0 32524.dat
+0 !BW ID input_B_depth_pin_1_-100
+1 0 200 100 0 1 0 0 0 0 -1 0 1 0 2780.dat
+0 !BW ID input_B_depth_pin_1_-60
+1 0 200 60 0 1 0 0 0 0 -1 0 1 0 2780.dat
+0 !BW ID input_B_depth_pin_1_0
+1 0 200 0 0 1 0 0 0 0 -1 0 1 0 2780.dat
+0 !BW ID motor_B_frame_corner_40
+1 72 90 60 40 1 0 0 0 -1 0 0 0 -1 15100.dat
+0 !BW ID motor_B_frame_corner_100
+1 72 90 60 100 1 0 0 0 -1 0 0 0 -1 15100.dat
+0 !BW ID input_B_axle
+1 0 150 -10 0 0 -0.13052619222 -0.991444861374 -1 0 0 0 0.991444861374 -0.13052619222 3706.dat
+0 !BW ID input_B_bearing_capture
+1 71 150 0 0 0.991444861374 -0.13052619222 0 0 0 -1 0.13052619222 0.991444861374 0 3713.dat
+0 !BW ID input_B_pinion
+1 71 150 -40 0 0.991444861374 -0.13052619222 0 0 0 -1 0.13052619222 0.991444861374 0 32270.dat
+0 !BW ID input_B_pinion_capture
+1 71 150 -60 0 0.991444861374 -0.13052619222 0 0 0 -1 0.13052619222 0.991444861374 0 3713.dat
+0 STEP
+0 // Assembly group 20
+0 !BW ID base_angle_front_-1
+1 72 -70 80 -60 0 1 0 1 0 0 0 0 -1 32526.dat
+0 !BW ID base_upper_corner_front_-1_80
+1 72 -50 80 -80 0 1 0 -1 0 0 0 0 1 15100.dat
+0 !BW ID base_upper_pin_front_-1_80
+1 0 -60 80 -80 1 0 0 0 0 -1 0 1 0 2780.dat
+0 !BW ID base_upper_corner_front_-1_140
+1 72 -50 80 -140 0 1 0 -1 0 0 0 0 1 15100.dat
+0 !BW ID base_upper_pin_front_-1_140
+1 0 -60 80 -140 1 0 0 0 0 -1 0 1 0 2780.dat
+0 !BW ID base_lower_corner_front_-1
+1 72 -50 120 -140 0 1 0 1 0 0 0 0 -1 15100.dat
+0 !BW ID base_lower_pin_front_-1
+1 0 -60 120 -140 1 0 0 0 0 -1 0 1 0 2780.dat
+0 !BW ID base_angle_rear_-1
+1 72 -70 80 60 0 -1 0 1 0 0 0 0 1 32526.dat
+0 !BW ID base_upper_corner_rear_-1_80
+1 72 -50 80 80 0 1 0 -1 0 0 0 0 1 15100.dat
+0 !BW ID base_upper_pin_rear_-1_80
+1 0 -60 80 80 1 0 0 0 0 -1 0 1 0 2780.dat
+0 !BW ID base_upper_corner_rear_-1_140
+1 72 -50 80 140 0 1 0 -1 0 0 0 0 1 15100.dat
+0 !BW ID base_upper_pin_rear_-1_140
+1 0 -60 80 140 1 0 0 0 0 -1 0 1 0 2780.dat
+0 !BW ID base_lower_corner_rear_-1
+1 72 -50 120 140 0 1 0 1 0 0 0 0 -1 15100.dat
+0 !BW ID base_lower_pin_rear_-1
+1 0 -60 120 140 1 0 0 0 0 -1 0 1 0 2780.dat
+0 !BW ID front_foot_-1
+1 72 -50 140 -120 -1 0 0 0 -1 0 0 0 1 32316.dat
+0 !BW ID front_foot_cross_pin_-1
+1 0 -50 150 -120 0 0 -1 -1 0 0 0 1 0 2780.dat
+0 STEP
+0 // Assembly group 21
+0 !BW ID hub_rail_-1
+1 72 -50 140 280 -1 0 0 0 -1 0 0 0 1 32278.dat
+0 !BW ID hub_pin_front_-1
+1 0 -50 130 180 0 0 -1 -1 0 0 0 1 0 2780.dat
+0 !BW ID hub_pin_rear_-1
+1 1 -50 140 380 0 0 -1 -1 0 0 0 1 0 6558.dat
+0 STEP
+0 // Assembly group 20
+0 !BW ID base_angle_front_1
+1 72 90 80 -60 0 1 0 1 0 0 0 0 -1 32526.dat
+0 !BW ID base_upper_corner_front_1_80
+1 72 70 80 -80 0 1 0 -1 0 0 0 0 1 15100.dat
+0 !BW ID base_upper_pin_front_1_80
+1 0 80 80 -80 1 0 0 0 0 -1 0 1 0 2780.dat
+0 !BW ID base_upper_corner_front_1_140
+1 72 70 80 -140 0 1 0 -1 0 0 0 0 1 15100.dat
+0 !BW ID base_upper_pin_front_1_140
+1 0 80 80 -140 1 0 0 0 0 -1 0 1 0 2780.dat
+0 !BW ID base_lower_corner_front_1
+1 72 70 120 -140 0 1 0 1 0 0 0 0 -1 15100.dat
+0 !BW ID base_lower_pin_front_1
+1 0 80 120 -140 1 0 0 0 0 -1 0 1 0 2780.dat
+0 !BW ID base_angle_rear_1
+1 72 90 80 60 0 -1 0 1 0 0 0 0 1 32526.dat
+0 !BW ID base_upper_corner_rear_1_80
+1 72 70 80 80 0 1 0 -1 0 0 0 0 1 15100.dat
+0 !BW ID base_upper_pin_rear_1_80
+1 0 80 80 80 1 0 0 0 0 -1 0 1 0 2780.dat
+0 !BW ID base_upper_corner_rear_1_140
+1 72 70 80 140 0 1 0 -1 0 0 0 0 1 15100.dat
+0 !BW ID base_upper_pin_rear_1_140
+1 0 80 80 140 1 0 0 0 0 -1 0 1 0 2780.dat
+0 !BW ID base_lower_corner_rear_1
+1 72 70 120 140 0 1 0 1 0 0 0 0 -1 15100.dat
+0 !BW ID base_lower_pin_rear_1
+1 0 80 120 140 1 0 0 0 0 -1 0 1 0 2780.dat
+0 !BW ID front_foot_1
+1 72 70 140 -120 -1 0 0 0 -1 0 0 0 1 32316.dat
+0 !BW ID front_foot_cross_pin_1
+1 0 70 150 -120 0 0 -1 -1 0 0 0 1 0 2780.dat
+0 STEP
+0 // Assembly group 21
+0 !BW ID hub_rail_1
+1 72 70 140 280 -1 0 0 0 -1 0 0 0 1 32278.dat
+0 !BW ID hub_pin_front_1
+1 0 70 130 180 0 0 -1 -1 0 0 0 1 0 2780.dat
+0 !BW ID hub_pin_rear_1
+1 1 70 140 380 0 0 -1 -1 0 0 0 1 0 6558.dat
+0 STEP
+0 // Assembly group 20
+0 !BW ID foundation_front
+1 72 10 160 -120 0 0 1 0 -1 0 1 0 0 32278.dat
+0 STEP
+0 // Assembly group 21
+0 !BW ID foundation_rear
+1 72 10 160 380 0 0 1 0 -1 0 1 0 0 32278.dat
+0 !BW ID hub
+1 15 10 130 280 -1 0 0 0 1 0 0 0 -1 45601.dat
+
+0 NOFILE

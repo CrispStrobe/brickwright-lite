@@ -7,6 +7,7 @@ import {serializeLabLegacyConnection, labProviderRetirementFailure} from '../ove
 const source=readFileSync(new URL('../overlay/scratch-gui/src/components/tw-pseudocode/sim-lab-pane.jsx',import.meta.url),'utf8');
 const method=(start,end,name)=>new Function('window','HUB_EXTENSIONS',`return ({${source.slice(source.indexOf(start),source.indexOf(end,source.indexOf(start)))}}).${name}`)({},{});
 const legacy=method('    connectLegacy (','    connectConnection (','connectLegacy');
+const apiStart=method('    async apiStart (','    /** stop from a block:','apiStart');
 const methods={bt:method('    async runBt (','    /** A blocks example','runBt'),radio:method('    async runRadioHub (','    componentWillUnmount','runRadioHub'),spike:method('    async run ({','    /** Puts the current model','run')};
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
 const deferred=()=>{let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b});return {promise,resolve,reject};};
@@ -26,6 +27,30 @@ const fixture=(kind,connect=async()=>{})=>{
   text:{},t:(_key,{error}={})=>error};
  return {p,events,run:options=>kind==='radio'?methods[kind].call(p,{},options):methods[kind].call(p,options)};
 };
+test('public start resumes a connected paused virtual SPIKE without reconnecting or clearing holds',async()=>{
+ const {p,events,run}=fixture('spike');p.state.status='paused';
+ const motors=[{mode:'hold',target:12},{mode:'hold',target:-4}];
+ p.hub.data={simulationEnabled:true,connected:true};p.hub.motors=motors;
+ p.props.vm.getPeripheralIsConnected=id=>id==='spikeprime';p.run=run;
+ await apiStart.call(p);await tick();
+ assert.deepEqual(events,['startClock']);assert.equal(p.state.status,'running');
+ assert.deepEqual(motors,[{mode:'hold',target:12},{mode:'hold',target:-4}]);
+});
+test('public start retains ordinary admission for fresh, disconnected and non-SPIKE routes',async()=>{
+ for(const change of [p=>p.state.status='ready',p=>p.state.manualOverride=true,p=>p.session.lockstep=true,
+  p=>p.hub.data.simulationEnabled=false,p=>p.hub.data.connected=false,p=>p.spikeLoaded=()=>false,
+  p=>p.rcxHub=()=>({}),p=>p.radioHub=()=>({}),p=>p.btProfile=()=> 'ev3',
+  p=>p.props.vm.getPeripheralIsConnected=()=>false]){
+  const {p,events}=fixture('spike');p.state.status='paused';p.hub.data={simulationEnabled:true,connected:true};
+  p.props.vm.getPeripheralIsConnected=()=>true;const admissions=[];p.run=async options=>admissions.push(options);
+  change(p);await apiStart.call(p);assert.deepEqual(events,[]);assert.deepEqual(admissions,[{greenFlag:false}]);
+ }
+});
+test('toolbar Run still reconnects and starts a new program from a paused virtual scene',async()=>{
+ const {p,events,run}=fixture('spike');p.state.status='paused';
+ p.hub.data={simulationEnabled:true,connected:true};p.props.vm.getPeripheralIsConnected=()=>true;
+ await run();await tick();assert.deepEqual(events,['stopClock','connect','startClock','greenFlag']);
+});
 for(const kind of ['bt','radio','spike']){
  test(`${kind}: a fast connection starts clock and program after the actual React commit`,async()=>{
   const {p,events,run}=fixture(kind);await run();await tick();

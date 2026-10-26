@@ -1,0 +1,138 @@
+# Rise Ratio - equal rack steps, unequal scissor-lift rises.
+# Copyright (c) 2026 CrispStrobe. SPDX-License-Identifier: BSD-3-Clause.
+# Robot Lab: File > Open a model...; import the matching LDR on the plain mat.
+# Code > Pseudocode: paste this file, select To blocks; Robot Lab Reset, then Run.
+# Reset/reload the saved pose before rerunning after manual movement.
+# This is Robot Lab simulation code, not hardware firmware.
+# Port A: 12-tooth rack pinion, nominal pitch radius 6 mm.
+# direction = -1 is specific to this geometry; see exact-byte qualification.
+# Positive speed magnitudes; all targets use a fresh, unwrapped encoder angle.
+# A stop/hold captures the attained angle, so bounded trims and arrival checks follow.
+# Software guards are not physical stops. See docs/contract.json for physical bounds.
+DEVICE SPIKE
+GLOBAL direction = -1
+GLOBAL target = 0
+GLOBAL stage = 0
+GLOBAL arrived = 0
+GLOBAL completed = 0
+GLOBAL failed = 0
+GLOBAL corrections = 0
+
+WHEN flag clicked:
+  set target to 0
+  set stage to 0
+  set arrived to 0
+  set completed to 0
+  set failed to 0
+  set corrections to 0
+  reset timer
+  lab stop motor A hold
+  IF (abs of (lab motor A angle)) > 1 THEN:
+    set failed to 1
+    say "Saved datum mismatch. Reset Rise Ratio and check motor A."
+    stop all
+  IF (abs of direction) < 1 THEN:
+    set failed to 1
+    say "Use only the qualified encoder direction, plus or minus one."
+    stop all
+  IF (abs of direction) > 1 THEN:
+    set failed to 1
+    say "Use only the qualified encoder direction, plus or minus one."
+    stop all
+  broadcast "Rise Ratio watchdog"
+  broadcast "Rise Ratio move" and wait
+  wait 1 seconds
+  set stage to 1
+  set target to (direction * 38.197186342055)
+  broadcast "Rise Ratio move" and wait
+  wait 1 seconds
+  set stage to 2
+  set target to (direction * 76.394372684110)
+  broadcast "Rise Ratio move" and wait
+  wait 1 seconds
+  set stage to 3
+  set target to (direction * 114.591559026165)
+  broadcast "Rise Ratio move" and wait
+  wait 1 seconds
+  set stage to 4
+  set target to (direction * 152.788745368220)
+  broadcast "Rise Ratio move" and wait
+  wait 1 seconds
+  set stage to 5
+  set target to (direction * 114.591559026165)
+  broadcast "Rise Ratio move" and wait
+  wait 1 seconds
+  set stage to 6
+  set target to (direction * 76.394372684110)
+  broadcast "Rise Ratio move" and wait
+  wait 1 seconds
+  set stage to 7
+  set target to (direction * 38.197186342055)
+  broadcast "Rise Ratio move" and wait
+  wait 1 seconds
+  set stage to 8
+  set target to (direction * 0.000000000000)
+  broadcast "Rise Ratio move" and wait
+  wait 1 seconds
+  IF (abs of (lab motor A angle)) > 1.5 THEN:
+    set failed to 1
+    lab stop motor A hold
+    say "Return to datum failed. Reset and inspect the rack and lift."
+    stop all
+  lab stop motor A hold
+  set stage to 9
+  set completed to 1
+  say "Complete: compare the four rises for equal rack steps. Datum held."
+
+WHEN I receive "Rise Ratio move":
+  set arrived to 0
+  set corrections to 0
+  IF (target * direction) < -0.001 THEN:
+    set failed to 1
+    lab stop motor A hold
+    say "Target outside the declared operating route."
+    stop all
+  IF (target * direction) > 152.789 THEN:
+    set failed to 1
+    lab stop motor A hold
+    say "Target outside the declared operating route."
+    stop all
+  IF (abs of (target - (lab motor A angle))) > 170 THEN:
+    set failed to 1
+    lab stop motor A hold
+    say "Unexpected encoder displacement. Reset before retrying."
+    stop all
+  IF (abs of (target - (lab motor A angle))) > 0.1 THEN:
+    lab run motor A for (target - (lab motor A angle)) degrees at 30 degrees per second
+    lab stop motor A hold
+  REPEAT 2:
+    IF (abs of (target - (lab motor A angle))) > 0.5 THEN:
+      set corrections to (corrections + 1)
+      lab run motor A for (target - (lab motor A angle)) degrees at 10 degrees per second
+      lab stop motor A hold
+  wait 0.3 seconds
+  IF (abs of (target - (lab motor A angle))) > 1.5 THEN:
+    set failed to 1
+    lab stop motor A hold
+    say "Measured arrival failed. Inspect the rack and linkage, then reset."
+    stop all
+  set arrived to 1
+
+WHEN I receive "Rise Ratio watchdog":
+  REPEAT UNTIL (completed = 1):
+    IF (timer) > 85 THEN:
+      set failed to 1
+      lab stop motor A hold
+      say "85 second watchdog: stopped and holding. Reset before retrying."
+      stop all
+    IF ((lab motor A angle) * direction) < -15.278875 THEN:
+      set failed to 1
+      lab stop motor A hold
+      say "Measured input left the declared qualification envelope."
+      stop all
+    IF ((lab motor A angle) * direction) > 168.067620 THEN:
+      set failed to 1
+      lab stop motor A hold
+      say "Measured input left the declared qualification envelope."
+      stop all
+    wait 0.02 seconds

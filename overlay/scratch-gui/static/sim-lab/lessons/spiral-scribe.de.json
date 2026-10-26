@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "id": "spiral-scribe",
+  "language": "de",
+  "what": "Selbstvorschiebender Polarschreiber: Ein Motor erzeugt zwei aufeinander abgestimmte Bewegungen. Motor A dreht ein 20er-Zahnrad, das einen Drehkranz mit 60 Zähnen antreibt (3:1) – den Träger. Auf der Achse sitzt ein festes Sonnenrad mit 24 Zähnen; ein gleich großes Planetenrad auf dem Träger rollt darauf ab, und ein 12er-Ritzel auf der Planetenachse schiebt einen geführten Zahnstangenschlitten nach außen. Die rote Querstrebe auf dem Schlitten startet 56,5 mm von der Achse entfernt und wandert nach außen, während sie herumgetragen wird: Sie beschreibt eine archimedische Spirale. Angetrieben wird nur der Träger; der radiale Vorschub ist passiv. Die Querstrebe ist eine Markierung, kein Stift – es wird nichts gezeichnet. Das Programm dreht den Träger in vier Vierteldrehungen nach außen (je −270° am Motor, 60°/s), fährt zurück und wiederholt die Umdrehung nach außen mit 120°/s.",
+  "try": [
+    "Setze auf die gespeicherte Ausgangslage zurück und drücke Start. Das Programm startet nicht, wenn Motor A mehr als 1° von seinem gespeicherten Winkel abweicht.",
+    "Schätze bei jedem Halt nach einer Vierteldrehung den Abstand der Querstrebe von der Drehkranzachse. Ideal sind 56,5, 65,9, 75,4, 84,8 und 94,2 mm: gleiche Schritte von etwa 9,4 mm für gleiche Trägerwinkel.",
+    "Beobachte das Planetenrad von oben. Gegenüber dem Gestell dreht es sich zweimal je Trägerumdrehung, gegenüber dem Träger nur einmal. Welche der beiden Drehungen treibt die Zahnstange?",
+    "Vergleiche die zweite Umdrehung nach außen mit doppelter Geschwindigkeit mit der ersten. Erreicht die Querstrebe beim selben Trägerwinkel denselben Radius?"
+  ],
+  "why": "Vom Träger aus gesehen dreht sich die feste Sonne je Trägerumdrehung einmal rückwärts. Weil Sonne und Planet beide 24 Zähne haben, dreht sich der Planet deshalb je Trägerumdrehung einmal vorwärts gegenüber dem Träger (zweimal gegenüber dem Gestell). Das 12er-Ritzel auf derselben Achse hat einen Teilkreisradius von 6 mm und schiebt die Zahnstange je Radiant Trägerdrehung um 6 mm vor: 2π × 6 ≈ 37,7 mm je Umdrehung. Ein Radius, der proportional zum Winkel wächst, r = r₀ + bθ, ist genau die Definition einer archimedischen Spirale. Da die Zahnräder das Verhältnis festlegen, ändert die Motordrehzahl nur, wie schnell die Bahn durchlaufen wird, nicht ihre Form. Experimentelles Modell: Nur im Simulator gemessen (ein Lauf ohne Bildschirm, an der Lage von Schlitten und Träger statt am Drehgeber) rückte die Querstrebe bei beiden Geschwindigkeiten um 9,43 mm je Vierteldrehung und 37,71 mm je Umdrehung vor, auf 0,001 mm genau nach r = 56,5 mm + 6 mm × θ, und der Träger drehte sich um genau ein Drittel des Motorwinkels; an echten LEGO-Teilen wurde nichts geprüft.",
+  "matters": "Ein Getriebe kann Drehung und Verschiebung so koppeln, dass das Programm nur eine Achse steuern muss: Schallplatten-Schneidemaschinen schieben den Schneidstichel gleichmäßig über die drehende Platte und schneiden so eine Spiralrille, und Spiralkurven und Spiralverdichter nutzen dieselbe Polar-Idee. Das Modell zeigt außerdem den Unterschied zwischen einer Simulation mit Zwangsbedingungen und einer baubaren Maschine: Die gezeichneten Zahnstangenzähne wiederholen sich alle 3,2 mm (38,4 mm für zwölf Zähne), der Simulator erzwingt aber ideale 37,7 mm je Ritzelumdrehung. Ein echter Zahneingriff würde über eine volle Umdrehung nicht passen; der Lieferant führt das als ungelöst.",
+  "question": "Im zweiten Durchgang verdoppelt sich die Motordrehzahl beim Vorschub von 60°/s auf 120°/s. Verdoppelt oder halbiert sich der radiale Vorschub je Trägerumdrehung, oder bleibt er gleich?",
+  "answer": "Er bleibt gleich: 2π × 6 mm ≈ 37,7 mm je Trägerumdrehung. Die Übersetzungen legen die Bahn fest; die Drehzahl bestimmt nur, wie schnell sie durchlaufen wird. Halbiert wird lediglich die Zeit je Umdrehung.",
+  "further": [
+    "Verfolge den Planeten in zwei Bezugssystemen. Bei fester Sonne und gleich großen Rädern dreht er sich je Trägerumdrehung zweimal gegenüber dem Gestell, aber nur einmal gegenüber dem Träger. Das Zahnstangenritzel wirkt im Trägersystem; mit der Drehung gegenüber dem Gestell würde man den doppelten Vorschub vorhersagen.",
+    "Was geschähe, wenn sich das Sonnenrad mit dem Träger mitdrehte statt festzustehen? Dann stünde der Planet gegenüber dem Träger still, und es gäbe keinen Vorschub. Erkläre, warum.",
+    "Vergleiche Cusp Lab, in dem ein Zahnrad an einer festen geraden Zahnstange abrollt, Orbit Mixer mit einem passiven Paddelwinkel als Abtrieb und Orbital Loom mit zwei angetriebenen Drehachsen und rotierendem Papier. Hier ist der besondere Abtrieb ein mechanisch vorgeschobener Radius auf einem drehenden Träger."
+  ],
+  "formula": "r = 56,5 mm + 6 mm × θ (θ = Trägerwinkel nach außen im Bogenmaß). Trägerwinkel = Motorwinkel / 3 (20:60). Feste Sonne, gleich große Räder: Planet gegenüber Träger = Trägerwinkel; Planet gegenüber Gestell = 2 × Trägerwinkel. Δr je Umdrehung = 2π × 6 mm ≈ 37,70 mm; je Vierteldrehung ≈ 9,42 mm; Außenradius ≈ 94,2 mm.",
+  "related": [
+    "cusp-lab.ldr",
+    "orbit-mixer.ldr",
+    "orbital-loom.ldr",
+    "rack-shuttle.ldr"
+  ]
+}

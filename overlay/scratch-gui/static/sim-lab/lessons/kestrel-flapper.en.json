@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "id": "kestrel-flapper",
+  "language": "en",
+  "what": "Crank-rocker flapping linkage (a Grashof four-bar). Motor A turns a 16 mm crank. A 48 mm coupler (7-hole beam) links the crank pin to a 32 mm rocker on the wing shaft, whose bearings sit 48 mm from the motor axis. The wing spine and feathers are fixed to that rocker shaft, so the wing can only rock: every full crank turn gives one stroke each way. The program turns the crank two turns forward at 45°/s, holds for 0.75 s, then turns it two turns back to its starting angle. Experimental model: the law described here has so far been measured only in the simulator (one headless run), not on real LEGO parts.",
+  "try": [
+    "Reset, then Run. During the first forward crank turn, count the wing strokes: one complete crank revolution should give exactly one stroke each way, not two.",
+    "Watch the two moments when the wing stops and reverses. At each one the crank and coupler lie on one straight line (a dead centre). Compare the crank rotation between the two reversals: ideal geometry predicts about 192° for one stroke and 168° for the other.",
+    "In stage 3 the crank runs backwards. Check that the wing retraces the same arc, and notice which stroke direction is now the slower one.",
+    "When the program reports completion, compare inputTurns (back to 0) and the wing tilt with the starting pose."
+  ],
+  "why": "A four-bar linkage with shortest link s, longest link l and the other two p and q lets the shortest link turn fully when s + l ≤ p + q (Grashof condition). Here 16 + 48 ≤ 32 + 48 mm, and the shortest link is the driven crank, so the crank turns all the way round while the rocker can only swing. The rocker reaches its limits at the two dead centres, where crank and coupler are collinear and the crank axis is 48 − 16 = 32 mm or 48 + 16 = 64 mm from the rocker pin. The law of cosines at the rocker pivot then gives 41.4° and 104.5° from the frame line: an ideal swing of about 63°. The two dead-centre crank positions are not 180° apart but about 192.5° and 167.5°, so at constant motor speed one stroke lasts about 1.15 times as long as the other (a mild quick return). In the simulator, the measured wing swing was 63.07°, the reversals fell at crank angles 139° and 331° (sectors 192° and 168°), and the strokes took 4.26 s and 3.74 s.",
+  "matters": "Crank-rockers turn steady motor rotation into back-and-forth motion without reversing the motor: windscreen-wiper drives, sewing machines, toy ornithopters and pumps all use them. Four lengths are enough to predict whether the crank can turn fully, how far the output swings and how unequal the two strokes are. The program commands only the crank angle; the wing motion comes from the linkage. The simulator has no air, so there is no lift or drag on the wing, and real pin friction and wing loads are untested.",
+  "question": "The crank turns at a constant 45°/s. Do the two wing strokes take the same time? And when the program reverses the crank, which stroke direction becomes the slow one?",
+  "answer": "Not quite equal. The dead centres split the crank turn into about 192.5° and 167.5°, so at 45°/s one stroke takes about 4.3 s and the other about 3.7 s. Reversing the crank plays the motion backwards: the longer crank sector still contains the slower stroke, but the wing now moves through it in the opposite direction, so the stroke that was slow becomes the fast one and vice versa.",
+  "further": [
+    "Use the dead-centre construction for a 24 mm crank (3 holes). Grashof still holds (24 + 48 ≤ 32 + 48), and the swing grows to about 101°, but the smallest transmission angle between coupler and rocker drops from about 41° to about 26°, so the coupler pushes the rocker far less effectively.",
+    "Near a dead centre a large crank rotation produces almost no wing motion. Explain why a linkage can hold a large load there, and why that is also where it is slowest.",
+    "Compare Butterfly and the motorised Crank-Rocker, which use the same family of linkages with different proportions."
+  ],
+  "formula": "Grashof: s + l ≤ p + q → 16 + 48 ≤ 32 + 48 mm (crank a = 16, coupler b = 48, rocker c = 32, frame d = 48). Dead centres: cos ψ = (c² + d² − (b ∓ a)²) / (2cd) → ψ = 41.4° and 104.5°, swing ≈ 63.1°. Crank sectors between reversals ≈ 192.5° and 167.5°: Q = (180° + α) / (180° − α) ≈ 1.15 with α ≈ 12.5°.",
+  "related": [
+    "crank-rocker.ldr",
+    "butterfly.ldr"
+  ]
+}

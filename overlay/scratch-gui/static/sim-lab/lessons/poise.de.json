@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "id": "poise",
+  "language": "de",
+  "what": "Roberval-Waage. Zwei gleich lange, waagerechte blaue Balken drehen sich um ihre Mittelpunkte. Senkrechte Endglieder halten zwei Waagschalen waagerecht. Auf jeder Schale bewegt ein Motor ein außermittiges Gewicht in einer horizontalen Ebene; keiner der Motoren treibt den Waagebalken an. Ein orangefarbener Ballastrahmen unter dem oberen Drehpunkt gibt dem sonst ausgeglichenen Mechanismus eine eindeutige Ruhelage.",
+  "try": [
+    "Lade Poise und das zugehörige Programm, setze das Modell zurück und starte. Vergleiche in jeder Pause die Positionen beider Gewichte mit dem Winkel des passiven blauen Waagebalkens.",
+    "Beobachte die erste Pause: Das linke Gewicht ist von außen nach innen gewandert, während das rechte außen bleibt. Sage voraus, ob sich die Waage nach dem Abklingen der Bewegung neigen sollte.",
+    "Lade nach dem Hauptversuch das mitgelieferte Kontrollmodell mit Zusatzmasse und starte dasselbe Programm. Es ergänzt links einen kleinen Balken und zwei Befestigungspins. Vergleiche das Wägeergebnis und prüfe, ob beide Gewichtsantriebe ihre Bewegungen weiterhin abschließen."
+  ],
+  "why": "Die beiden Endglieder bilden mit den gleich langen horizontalen Balken ein Parallelogramm. Steigt eine Schale, sinkt die andere um denselben Betrag, während beide waagerecht bleiben. Eine horizontale Verschiebung auf einer waagerechten Schale verändert nicht den Höhenweg des Gewichts beim Kippen der Waage. Ihr Abstand ändert innere Kräfte im Gestänge, aber nicht ihren Beitrag zum Wägeergebnis. Eine zusätzliche Masse verändert diesen Beitrag dagegen.",
+  "matters": "Eine Waage soll die Last einer Schale bestimmen, ohne dass jeder Gegenstand genau auf einen einzigen Punkt gesetzt werden muss. Die Roberval-Geometrie erreicht dies durch ihr Gestänge. Dasselbe Prinzip der erhaltenen Ausrichtung findet sich bei waagerechten Plattformen; eine Waage muss dabei frei auf einen Massenunterschied reagieren können. In einem Lauf des Brickwright-Simulators ohne Oberfläche wanderte der Schwerpunkt jeder Gewichtsbaugruppe um etwa 20 mm entlang des Balkens, während die passive Waage auf 0,046° waagerecht blieb (die gehaltenen Mittelwerte lagen höchstens 0,033° auseinander); mit 1,5 g Zusatzmasse kam sie nach 120 s bei −2,91° zur Ruhe, vorhergesagt waren −2,94°. Das sind Simulationsbeobachtungen; ein realer LEGO-Aufbau wurde nicht geprüft.",
+  "question": "Beide Schalen tragen dieselbe Gesamtmasse. Ein Gewicht rückt nahe an das senkrechte Endglied, das andere bleibt weiter außen. Sollte sich die Waage nach dem Abklingen der Bewegung zur weiter außen liegenden Last neigen? Was geschieht bei einer kleinen Zusatzmasse auf der linken Schale?",
+  "answer": "In der idealen Roberval-Geometrie verändert allein die horizontale Position die Ruhelage nicht. Eine kleine Zusatzmasse verändert sie: Die linke Schale wird schwerer, und der passive Balken bewegt sich, bis das rückstellende Schwerkraftmoment den Massenunterschied ausgleicht. Eine vorübergehende Bewegung beim Beschleunigen ist vom ruhenden Wägeergebnis zu unterscheiden.",
+  "further": [
+    "Das Programm fährt die beiden Arme auf (180°,0°), (180°,90°), (90°,90°), (90°,180°) und anschließend (0°,0°). Vergleiche die tatsächlich gehaltenen Gewichtspositionen in allen fünf Anordnungen.",
+    "Der Versuch mit Zusatzmasse prüft, ob der Mechanismus reagiert. Eine festgeklemmte oder blockierte Waage wäre keine erfolgreiche Vorführung.",
+    "Reibung realer Bauteile, flexible Motorkabel, Toleranzen und Tragfähigkeit sind nicht Teil dieser Simulation und müssen gesondert geprüft werden."
+  ],
+  "formula": "Halbe Balkenlänge a = 56 mm; θ positiv, wenn die linke Schale steigt: Δh_links = a·sin θ, Δh_rechts = −a·sin θ. Die horizontale Lage eines Gewichts auf seiner waagerechten Schale kommt in diesen Höhenänderungen nicht vor. Zusatzmasse Δm auf der linken Schale: Ruhelage θ ≈ −Δm·g·a/κ, wobei κ die Rückstellsteifigkeit des Ballastrahmens ist (etwa 0,016 N·m/rad aus den Teilemassen des Simulators); Δm = 1,5 g ergibt θ ≈ −2,9°.",
+  "related": [
+    "parallel-lift.ldr",
+    "balance-engine.ldr",
+    "momentum-twins.ldr"
+  ]
+}

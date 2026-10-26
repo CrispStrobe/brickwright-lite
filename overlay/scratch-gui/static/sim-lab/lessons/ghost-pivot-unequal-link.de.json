@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "id": "ghost-pivot-unequal-link",
+  "language": "de",
+  "what": "Ghost Pivot, bei dem ein Glied der Schleife durch einen längeren Standardbalken ersetzt ist. Motor A, Eingangsglied, Werkzeugbalken und dasselbe Programm ghost-pivot.bw bleiben unverändert, und der Motor fährt dieselben −35° bis +35°. Nur die Länge eines Glieds im Doppelparallelogramm unterscheidet sich; die beiden Schleifen sind also keine echten Parallelogramme mehr.",
+  "try": [
+    "Diese Kontrolle in der gespeicherten Stellung laden und in der Robot-Lab-Werkzeugleiste auf Starten drücken. Vor jedem Lauf neu laden.",
+    "Vor dem Schwenk das leere Endloch des Werkzeugbalkens suchen, also den Punkt, der bei Ghost Pivot an seinem Platz blieb.",
+    "Dieses Loch während des Schwenks beobachten. Bleibt es jetzt an einem Ort, oder wandert es?",
+    "Die Richtung des Werkzeugs mit der Richtung des Eingangs vergleichen. Bei Ghost Pivot stimmten sie überein; hier laufen sie um einige Grad auseinander."
+  ],
+  "why": "Der feste Punkt bei Ghost Pivot entsteht allein aus der Geometrie: Gleich lange gegenüberliegende Seiten machen jede Schleife zu einem Parallelogramm, das die Richtung des Eingangs auf das Werkzeug überträgt, und die gewählten Abstände lassen Verschiebung und Drehung des Werkzeugs an einem Punkt sich aufheben. Ein längeres Glied verletzt die Parallelogrammbedingung. Die Schleife überträgt die Richtung dann nicht mehr genau, und die Aufhebung geht verloren. In der Simulation wanderte das leere Loch bis zu etwa 21,5 mm statt 0,02 mm, und die Werkzeugrichtung blieb bei gleichem Motorschwenk um bis zu etwa 5,8° hinter dem Eingang zurück. Der fernliegende Drehpunkt hängt also von den genauen Gliedlängen ab, nicht von den Motorzielen.",
+  "matters": "Mechanismen mit fernliegendem Drehpunkt in Operationsrobotern und Kamerahalterungen brauchen genaue Gliedlängen: Schon ein kleiner Fertigungsfehler verschiebt den virtuellen Drehpunkt, und in der Chirurgie würde das Instrument dann auf die Eintrittsstelle drücken. Der Vergleich eines absichtlich falschen Glieds mit dem richtigen zeigt, wie empfindlich ein solcher Mechanismus ist.",
+  "question": "Der Motor erreicht genau dieselben Winkel wie bei Ghost Pivot. Warum wandert das leere Loch jetzt um mehr als 20 mm?",
+  "answer": "Weil der feste Punkt eine Eigenschaft der Parallelogrammgeometrie ist, nicht des Motors. Mit einem längeren Glied ist die Schleife kein Parallelogramm mehr, das Werkzeug behält die Richtung des Eingangs nicht bei, und seine Drehung und Verschiebung heben sich am Loch nicht mehr auf. In der Simulation wanderte das Loch etwa 21,5 mm, und die Richtung blieb um bis zu etwa 5,8° zurück.",
+  "further": [
+    "Die Schleife mit dem längeren Glied skizzieren und herausfinden, wo ihre Gelenke liegen müssten, damit gegenüberliegende Seiten wieder parallel sind. Welches Teil würdest du ändern?",
+    "Abschätzen, wie weit ein Fehler von 1 mm in einem Glied den fernliegenden Drehpunkt verschieben würde, mit dem Ergebnis von 21,5 mm als Anhaltspunkt."
+  ],
+  "formula": "Parallelogrammbedingung: gegenüberliegende Seiten gleich lang, also behält die Koppel die Eingangsrichtung u. Ideal: R = A − (2/3)(B − A) = −48e, unabhängig von u. Mit einem längeren Glied ist B nicht mehr 80u − 48e, und R hängt vom Eingangswinkel ab.",
+  "related": [
+    "pantograph-doubler.ldr",
+    "scale-echo.ldr",
+    "gimbal-lab.ldr"
+  ]
+}

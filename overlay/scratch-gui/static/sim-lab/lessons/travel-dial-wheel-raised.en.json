@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "id": "travel-dial-wheel-raised",
+  "language": "en",
+  "what": "Travel Dial with the measuring wheel lifted clear of the sled. Motor A, the slider-crank, the guided sled and the same travel-dial.bw program are unchanged; the wheel arm is raised and braced so that the 28 mm wheel no longer touches the moving surface. The sled still travels about −19 to +23 mm.",
+  "try": [
+    "Load this control at its saved pose and press Run in the Robot Lab toolbar. Reload before every run.",
+    "Watch the sled: it makes the same strokes as in Travel Dial, at 15 °/s and then 45 °/s on the crank.",
+    "Watch a spoke of the raised wheel. Does it turn while the sled passes underneath?",
+    "Run Travel Dial again and compare the wheel there with the raised wheel here."
+  ],
+  "why": "A measuring wheel only turns because friction at the contact patch drags its rim along with the moving surface. Lifting the wheel removes that contact while keeping the motor, crank, sled and their motion the same. If the wheel still turned, its motion would come from something else, such as vibration of the frame. In the simulator the raised wheel moved at most about 0.14°, a small settling creep at the start, against about 46° when it rolls on the sled. Its reading therefore comes from rolling contact.",
+  "matters": "Odometer wheels, measuring wheels on cutting machines and encoder wheels on conveyors all rely on contact. Engineers check them by lifting the wheel or stopping the surface, because slip or missing contact gives wrong distances without any visible fault.",
+  "question": "The sled makes exactly the same strokes in both models. Why does the raised wheel stay nearly still?",
+  "answer": "Because the wheel is driven only by friction at its contact with the sled. Without contact there is no tangential force on the rim, so the moving sled cannot turn it. The remaining 0.1° is a small settling creep at the start, not a response to sled travel.",
+  "further": [
+    "Compute the wheel angle Travel Dial should show for 20 mm of sled travel with R = 28 mm, and compare it with the raised wheel's reading.",
+    "Suggest how you would detect a wheel that slips partly instead of losing contact completely."
+  ],
+  "formula": "With contact: Δθ = Δs_relative / R, R = 28 mm (radians). Without contact: no friction torque on the wheel, so Δθ ≈ 0 regardless of Δs.",
+  "related": [
+    "integral.ldr",
+    "rack-shuttle.ldr",
+    "cusp-lab.ldr"
+  ]
+}

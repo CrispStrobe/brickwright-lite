@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "id": "remote-pivot",
+  "language": "en",
+  "what": "A double-parallelogram linkage with a remote centre of motion. Motor A turns a 32 mm input link about a fixed bearing. A follower link on a second fixed bearing, 32 mm away, completes the first parallelogram, so its L-shaped coupler only translates and never turns. A second parallelogram, built on the input link and that coupler, carries the output link. The output link always stays parallel to the input link, and its line always passes through one fixed point C, 16 mm beyond the follower’s bearing, where there is no bearing, axle or part at all. The program swings the input from its 90° start to 60°, 75°, 90°, 105°, 120°, then straight back to 60°, and finally to 90°, holding 2.5 s at each position.",
+  "try": [
+    "Reset, then Run. At each 2.5-second hold, extend the output link’s line in your mind: it should cross the same empty spot C every time.",
+    "Compare 60° and 120°. The output’s outer pivot, 64 mm from C, should swing through a 60° arc; its inner pivot, 32 mm from C, half as far.",
+    "Watch the follower link and the L-shaped coupler: the follower stays parallel to the input link, and the coupler moves without turning.",
+    "Stage 6 swings directly from 120° to 60°. Does C stay fixed during the motion as well, not only at the holds?"
+  ],
+  "why": "In a parallelogram opposite sides stay parallel and equal. The first parallelogram (ground link, input, follower, coupler) makes the coupler translate without turning, so every point on it copies the input crank’s circle, shifted by a fixed vector. The output’s inner pivot Q is such a point, so Q moves on a 32 mm circle around a fixed point C, the input bearing shifted by that same vector. The second parallelogram keeps the output link parallel to the input link, which is the radius direction of Q’s circle. A line through Q along that radius always passes through the circle’s centre. So the output line always passes through C and turns about it by exactly the input angle. C is a virtual pivot: geometry holds it in place, not a bearing.",
+  "matters": "Surgical robots use this arrangement so that an instrument pivots about the small incision in the body wall, where no bearing can be placed. Camera and telescope mounts use it to turn about an optical centre. Parallel Lift uses the same parallelogram rule to keep a tray level.",
+  "question": "Nothing is mounted at C. When the input turns from 60° to 120°, how far does the output’s outer pivot (64 mm from C) move, and does C move?",
+  "answer": "C does not move; the geometry fixes it. The outer pivot travels on a 64 mm circle about C through 60°: an arc of 64·π/3 ≈ 67.0 mm, or a straight-line distance of 2·64·sin 30° = 64 mm. The inner pivot moves half as far. The output link turns by exactly the same 60° as the input.",
+  "further": [
+    "Parallelograms have change points where all links line up with the ground link (input at 0° or 180°); there the follower could flip into the crossed branch. The route of ±30° around 90° stays far from them, and the software envelope stops the motor beyond ±31°.",
+    "Real remote-centre devices must be stiff. Play at any of the moving pivots shifts the virtual centre, because nothing physical holds it. For the same reason C may wander slightly in the simulation.",
+    "In a headless Robot Lab simulation of the shipped program, a least-squares fit of the output link’s fixed point put C 16.00 mm from the follower’s bearing; C wandered by at most 0.1 mm, and the output turned within 0.04° of the input. That is a simulation observation, not a physical test."
+  ],
+  "formula": "Input angle θ = 90° + motor A angle (1:1). Output angle = θ. Q = C + 32 mm·(cos θ, sin θ); E = C + 64 mm·(cos θ, sin θ). Ground bearings 32 mm apart; C lies 16 mm beyond the follower bearing on the side away from the links. Arc of the outer pivot for a swing Δθ: s = 64 mm·Δθ (radians); chord = 2·64 mm·sin(Δθ/2). Software envelope: motor A within ±31°.",
+  "related": [
+    "parallel-lift.ldr",
+    "crank-rocker.ldr",
+    "pantograph-doubler.ldr"
+  ]
+}
