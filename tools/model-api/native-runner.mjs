@@ -26,7 +26,7 @@ export async function measureSubmission(raw,{runtimeRevision='local',measurement
  if((project.extensions||[]).some(id=>id!=='robotlab'))throw new ApiError(422,'unsupported-extension','Only the fixed Robot Lab runtime is allowed');
  const opcodes=[...new Set(project.targets.flatMap(t=>Object.values(t.blocks||{}).map(b=>b.opcode)))];
  if(opcodes.some(op=>!allowedOpcode(op)&&!['math_number','text','colour_picker'].includes(op)))throw new ApiError(422,'unsupported-opcode','Program uses a command outside the data-only worker profile');
- let observer,frame=0,columns=[],lastRows=[],lastPoseFrame;const errors=[],samples=[],poseFrames=[],poseTargets=[],poseBodyIds=[];
+ let observer,frame=0,columns=[],lastRows=[],lastPoseFrame;const errors=[],samples=[],poseFrames=[],poseTargets=[],poseBodyIds=[],sparseSampleFrames=[];
  const dense=input.settings.physicsSamples;
  const stride=Math.max(1,Math.ceil(input.settings.sampleMs/25),Math.ceil((input.settings.programMs+input.settings.coldMs+input.settings.afterMs)/25/LIMITS.recordedSamples));
  const record=(session,elapsedMs,timeMs,rows)=>{
@@ -51,10 +51,10 @@ export async function measureSubmission(raw,{runtimeRevision='local',measurement
    }
   },
   observeFrame:({session})=>{
-   if(!dense){lastRows=observer.read();if(poseBodyIds.length){const poses=poseBodyIds.map(id=>session.core.bodyPose(id));lastPoseFrame={positions:poses.map(p=>p.position.slice()),rotations:poses.map(p=>p.rotation.slice())};}if(frame%stride===0)record(session,frame*25,session.time,lastRows);}frame++;return{};
+   if(!dense){lastRows=observer.read();if(poseBodyIds.length){const poses=poseBodyIds.map(id=>session.core.bodyPose(id));lastPoseFrame={positions:poses.map(p=>p.position.slice()),rotations:poses.map(p=>p.rotation.slice())};}if(frame%stride===0){record(session,session.time,session.time,lastRows);sparseSampleFrames.push(frame);}}frame++;return{};
   }});
- if(!dense&&lastRows.length&&(samples.at(-1)?.elapsedMs!==(frame-1)*25)){const stamp={elapsedMs:(frame-1)*25,timeMs:result.track.at(-1).t};samples.push({...stamp,values:lastRows.map(r=>r.available?Math.round(r.value*1e9)/1e9:null)});if(lastPoseFrame)poseFrames.push({...stamp,...lastPoseFrame});}
- let phaseIndex=0;for(const sample of samples){if(dense){while(phaseIndex<result.track.length-1&&result.track[phaseIndex].t<sample.timeMs)phaseIndex++;sample.phase=result.track[phaseIndex]?.phase??'unknown';}else sample.phase=result.track[Math.round(sample.elapsedMs/25)]?.phase??'unknown';}
+ if(!dense&&lastRows.length&&sparseSampleFrames.at(-1)!==frame-1){const timeMs=result.track.at(-1).t,stamp={elapsedMs:timeMs,timeMs};samples.push({...stamp,values:lastRows.map(r=>r.available?Math.round(r.value*1e9)/1e9:null)});if(lastPoseFrame)poseFrames.push({...stamp,...lastPoseFrame});sparseSampleFrames.push(frame-1);}
+ let phaseIndex=0;for(let i=0;i<samples.length;i++){const sample=samples[i];if(dense){while(phaseIndex<result.track.length-1&&result.track[phaseIndex].t<sample.timeMs)phaseIndex++;sample.phase=result.track[phaseIndex]?.phase??'unknown';}else sample.phase=result.track[sparseSampleFrames[i]]?.phase??'unknown';}
  for(const f of result.track)for(const p of Object.values(f.bodies))if(![...p.position,...p.rotation].every(Number.isFinite))throw new ApiError(422,'nonfinite-physics','Physics produced a nonfinite body pose');
  const report={version:1,status:errors.length?'failed':'completed',qualification:{status:'not-evaluated',reason:'Measurements do not grant mechanism or library admission'},
   runtime:{revision:runtimeRevision,measurementRevision,measurementReaderSha256:readerHash,node:process.version,engine:'Jolt',engineAsset,physicsStepMs:5,vmFrameMs:25,actualSampleMs:dense?5:stride*25,wallMs:Number(process.hrtime.bigint()-started)/1e6},
