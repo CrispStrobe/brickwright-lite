@@ -39,7 +39,9 @@ Within `overlay/scratch-gui/src/lib/bw-makecode/`:
 Within `overlay/scratch-vm/src/`:
 `extensions/crispstrobe/arcade/index.js`,
 `extensions/crispstrobe/arcade/console-inspect-values.js`, and the existing
-Array-operation/primitive-owner/procedure-constraint utilities only for the
+utilities `util/bw-array-operations.js`, `util/bw-primitive-owner.js`,
+`util/bw-procedure-constraint-model.js` and
+`extensions/crispstrobe/arcade/procedure-parameter-constraints.js` only for the
 measured current-operation, duplicate-procedure and coercion failures. Preserve
 all actual cached caller, registration, runtime, graph and result gates. A new
 shared helper or supplier change requires a separately scoped claim.
