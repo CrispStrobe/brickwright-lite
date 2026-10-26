@@ -17,10 +17,19 @@ never call the network.
 | `subroutines` | functions, `sub`, `inline`, `safecall` |
 | `sound-timing` | PlayTone / PlayToneEx, Wait, CurrentTick / FirstTick, Random |
 | `mailbox` | ReceiveRemoteString from inbox 1, SendResponseString to the response queue, runs until stopped |
+| `serialization` | Flatten's numeric promotion, packed cluster fields, nested arrays, template mismatch and embedded zero bytes |
+| `serialization-scalars` | FlattenVar/UnflattenVar roundtrips for declared-width integers, raw float bytes and strings |
 
 ## How they were produced
 
-Compiled on 2026-10-20 with the owner's hosted NBC/NXC compiler,
+The two serialization fixtures were compiled once each on 2026-10-25 through
+the same hosted compiler contract below. Their source is BSD-3-Clause and the
+retained compiler responses bind each source and executable digest. Tests only
+read the committed bytes. `Flatten` promotes its numeric argument to a long;
+`FlattenVar` preserves the declared type, so a flattened short can roundtrip to
+a short while a four-byte promoted value correctly fails that template size.
+
+The original ten fixtures were compiled on 2026-10-20 with the owner's hosted NBC/NXC compiler,
 `POST https://lego-compiler.vercel.app/compile` with `{"compiler": "nxc", "code": <the .nxc text>}`, which
 returns the `.rxe` base64-encoded. The service (CrispStrobe/legacy-lego-compiler, an MIT wrapper) runs
 John Hansen's NBC/NXC compiler (MPL-1.1; its version is not reported) as `nbc -I=<its includes> -O=<out> <src>`; its log says

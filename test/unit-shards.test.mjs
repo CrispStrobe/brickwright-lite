@@ -4,7 +4,8 @@ import {readFileSync,mkdtempSync,writeFileSync,rmSync} from 'node:fs';
 import {spawnSync} from 'node:child_process';
 import path from 'node:path';
 import os from 'node:os';
-import {listTests} from '../scripts/list-tests.mjs';
+import {listTests,assignShards,TIMINGS,FILE_OVERHEAD_SECONDS} from '../scripts/list-tests.mjs';
+import {createHash} from 'node:crypto';
 const root=path.resolve(import.meta.dirname,'..');
 const workflow=readFileSync(path.join(root,'.github/workflows/build.yml'),'utf8');
 const pkg=JSON.parse(readFileSync(path.join(root,'package.json'),'utf8'));
@@ -16,13 +17,12 @@ test('required shards partition the complete fast set once, keeping corpus and l
     const combined=shards.flat();
     assert.equal(new Set(combined).size,combined.length);
     assert.deepEqual(combined.sort(),full);
-    for(const count of [2,3]) {
-        for(let oldIndex=1;oldIndex<=count;oldIndex++) {
-            const parts=shards.filter((_,i)=>i%count===oldIndex-1).flat().sort();
-            assert.deepEqual(parts,listTests('fast',`${oldIndex}/${count}`),
-                `modulo six must refine the corresponding modulo-${count} leg`);
-        }
-    }
+    // Balanced by measured time: no leg's predicted load exceeds another's by more
+    // than the single heaviest file (the greedy longest-first bound).
+    const load=files=>files.reduce((sum,file)=>sum+(Object.hasOwn(TIMINGS,file)?TIMINGS[file]+FILE_OVERHEAD_SECONDS:0),0);
+    const loads=shards.map(load),heaviest=Math.max(...full.map(file=>TIMINGS[file]??0))+FILE_OVERHEAD_SECONDS;
+    assert.ok(Math.max(...loads)-Math.min(...loads)<=heaviest,`shard loads ${loads.map(Math.round)} must balance within ${heaviest}s`);
+    assert.deepEqual(shards,[1,2,3,4,5,6].map(index=>listTests('fast',`${index}/6`)),'assignment must be deterministic');
     assert.deepEqual([...full,...listTests('corpus')].sort(),listTests('all'));
     for(const index of [1,2,3,4,5,6]) {
         const cli=spawnSync(process.execPath,['scripts/list-tests.mjs','fast','--shard',`${index}/6`],{cwd:root,encoding:'utf8'});
@@ -32,6 +32,18 @@ test('required shards partition the complete fast set once, keeping corpus and l
     const runner=pkg.scripts['test:fast:shard'];
     assert.match(runner,/files=\$\(node scripts\/list-tests.mjs fast --shard "\$BW_TEST_SHARD"\) && /);
     assert.equal(runner.slice(runner.indexOf('BW_GUI_SCOPE_LOG=')),pkg.scripts['test:fast'].slice(pkg.scripts['test:fast'].indexOf('BW_GUI_SCOPE_LOG=')).replace('$(node scripts/list-tests.mjs fast)','$files'));
+});
+
+test('greedy timing assignment is longest-first to the lightest leg; untimed files fall back to name hashing',()=>{
+    const timings={'test/a.test.mjs':10,'test/b.test.mjs':6,'test/c.test.mjs':5,'test/d.test.mjs':1};
+    const files=[...Object.keys(timings),'test/new-one.test.mjs','test/new-two.test.mjs'];
+    const got=assignShards(files,2,timings);
+    assert.equal(got.get('test/a.test.mjs'),0);assert.equal(got.get('test/b.test.mjs'),1);
+    assert.equal(got.get('test/c.test.mjs'),1);assert.equal(got.get('test/d.test.mjs'),0);
+    for(const file of ['test/new-one.test.mjs','test/new-two.test.mjs'])
+        assert.equal(got.get(file),createHash('sha256').update(path.basename(file)).digest().readUInt32BE(0)%2);
+    assert.deepEqual([...assignShards([...files].reverse(),2,timings)].sort(),[...got].sort(),'input order must not matter');
+    assert.equal(got.size,files.length);
 });
 
 test('invalid or unsupported shard requests refuse instead of falling back to an unselected suite',()=>{
@@ -106,4 +118,13 @@ test('live shard census audit rejects missing, misplaced, uncounted-failure and 
         const skipped={...files,[selected[0]]:{...files[selected[0]],skipped:[{name:'synthetic guard control',reason:'not an approved execution pointer'}]}};
         assert.notEqual(audit(skipped,summary.replace('# skipped 0','# skipped 1')).status,0);
     }finally{rmSync(dir,{recursive:true,force:true});}
+});
+
+test('timing reader slices the TAP by census counts and refuses a count mismatch',async()=>{
+    const {shardTimings}=await import('../scripts/gen-unit-test-timings.mjs');
+    const tap=['    ok 1 - inner','      ---','      duration_ms: 400','      ...','ok 1 - first','  ---','  duration_ms: 1500','  ...',
+        'ok 2 - second','  ---','  duration_ms: 250','  ...','not ok 3 - third','  ---','  duration_ms: 2000','  ...'].join('\n');
+    const census={files:{'/x/test/one.test.mjs':{tests:3},'/x/test/two.test.mjs':{tests:1}}};
+    assert.deepEqual(shardTimings(tap,census),{'test/one.test.mjs':1.8,'test/two.test.mjs':2});
+    assert.throws(()=>shardTimings(tap,{files:{'/x/test/one.test.mjs':{tests:3}}}),/census counts 3 events, TAP has 4/);
 });

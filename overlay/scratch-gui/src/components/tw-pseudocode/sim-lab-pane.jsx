@@ -35,6 +35,8 @@ import SimLabBrickButtons from './sim-lab-brick-buttons.jsx';
 import SimLabMeasurements, {measurementWords} from './sim-lab-measurements.jsx';
 import {measurementDefinitions} from '../../lib/bw-sim/measurements/schema.js';
 import {createMeasurementRecorder} from '../../lib/bw-sim/measurements/recording.js';
+import {measurementModelContext} from '../../lib/bw-sim/measurements/model-context.js';
+import {refuseSimLabSave, clearSimLabSaveFailure, simLabSaveFailure} from '../../lib/bw-sim/model/sim-lab-save-state.js';
 import {teachingMeasurementPreset} from '../../lib/bw-sim/measurements/teaching-presets.js';
 import SimLabStats from './sim-lab-stats.jsx';
 import SimLabChallenges from './sim-lab-challenges.jsx';
@@ -398,6 +400,11 @@ class SimLabPane extends React.Component {
         this.measurements = [];
         this.measurementModels = new Map();
         this.measurementRecording = createMeasurementRecorder();
+        this.measurementContext = null;
+        this.measurementExperiments = new Map();
+        this.measurementSelection = null;
+        this.measurementRevision = 0;
+        this.measurementSaveError = null;
         this.measurementReader = null;
         this.measurementRows = [];
         this.measurementRowsTime = null;
@@ -1041,12 +1048,24 @@ class SimLabPane extends React.Component {
         return placed ? this.partName(placed.part) : fillText(this.itext.part, {id});
     }
 
-    /**
-     * The model the pane shows, as the project stores it, or null when there is
-     * no model (an empty Build scene). `undefined` means "unknown": the pane is
-     * still loading or failed to load, and must not erase what is stored.
-     * @returns {object|null|undefined} a sim-lab-persist record
-     */
+    /** Freeze committed samples before a synchronous save; retain at most four pane models. */
+    rememberMeasurementHistory () {
+        if (!this.measurementContext) return;
+        const wasActive = this.measurementRecording.snapshot().active;
+        this.measurementRecording.stop('model-or-project-save');
+        this.measurementRevision++;
+        if (wasActive) this.setState(s => ({measurementTick: s.measurementTick + 1}));
+        const packet = this.measurementRecording.exportExperiments({...this.measurementContext, selection: this.measurementSelection ||
+            this.measurementRecording.selectionFor(this.opened?.text || '', this.measurementContext.modelSha256)});
+        const key = this.measurementContext.modelSha256;
+        if (!packet.runs.length) { this.measurementExperiments.delete(key); return; }
+        if (!this.measurementExperiments.has(key) && this.measurementExperiments.size >= 4) {
+            throw new Error('Four model histories are retained. Export or clear a recording before adding another.');
+        }
+        this.measurementExperiments.set(key, packet);
+    }
+
+    /** Current project model, or undefined while a model is not yet admitted. */
     currentRecord () {
         if (!this.lib) return undefined;
         const model = this.editor ? this.editor.model : this.session?.model;
@@ -1054,17 +1073,29 @@ class SimLabPane extends React.Component {
         // The name is written into the text's `0 Name:` line; one the record could not
         // keep would make the reopened text differ, so such a name is not used at all.
         const name = !this.editor && isStorableName(this.state.modelFile) ? this.state.modelFile : 'my-model.ldr';
+        this.rememberMeasurementHistory();
+        const context = measurementModelContext(model, this.opened?.text || '', this.lib.serializeModel);
         return simLabRecordFromText(this.lib.serializeModel(model, {name, title: MODEL_TITLE}),
-            {name, mat: this.state.mat, measurements: this.measurements});
+            {name, mat: this.state.mat, measurements: this.measurements, experiments: this.measurementExperiments.get(context.modelSha256)});
     }
 
     /** Before a save reads the bundle's keys: write the model the pane shows. */
-    onBundleCollect () {
+    onBundleCollect (event) {
         try {
             const record = this.currentRecord();
             if (record) localStorage.setItem(SIM_LAB_STORAGE_KEY, JSON.stringify(record));
             else if (record === null) localStorage.removeItem(SIM_LAB_STORAGE_KEY);
-        } catch { /* the Scratch half of the save must survive this */ }
+            if (record !== undefined && !clearSimLabSaveFailure()) throw new Error('Recording storage could not confirm the save');
+            if (this.measurementSaveError && this.state.message === this.measurementSaveError) this.setState({message: ''});
+            this.measurementSaveError = null;
+        } catch (error) {
+            const message = this.locale === 'de' ? `Robot-Lab-Modell und Messreihen konnten nicht gespeichert werden. CSV exportieren oder Messreihen löschen und erneut versuchen. ${error.message}` :
+                `Robot Lab model and recordings could not be saved. Export CSV or clear recordings, then try again. ${error.message}`;
+            refuseSimLabSave(message);
+            this.measurementSaveError = message;
+            this.setState({message});
+            event?.detail?.refuseSimLabSave?.(message);
+        }
     }
 
     /** A project was opened: its model (or none) is in storage now. */
@@ -1079,12 +1110,17 @@ class SimLabPane extends React.Component {
             this.setState({mode: 'simulate', placing: null, selection: []});
         }
         this.measurementModels.clear();
+        this.measurementExperiments.clear();
+        this.measurementRecording = createMeasurementRecorder();
+        this.measurementContext = null;
+        this.measurementSelection = null;
         this.measurementReader = null; this.measurements = [];
         await this.openStored();
     }
 
     /** Open the project's model, or the default model when the project has none. */
     async openStored () {
+        const pendingSave = simLabSaveFailure();
         let stored;
         try {
             stored = readSimLabStorage(localStorage.getItem(SIM_LAB_STORAGE_KEY));
@@ -1095,10 +1131,17 @@ class SimLabPane extends React.Component {
         this.setState({mat: record && record.mat ? record.mat : null});
         if (record) {
             this.lastText = record.ldraw;
-            await this.openText(record.ldraw, record.name || 'my-model.ldr', null, {measurements: record.measurements});
+            const opening = this.openText(record.ldraw, record.name || 'my-model.ldr', null, {measurements: record.measurements, experiments: record.experiments});
+            const token = this.loadToken;
+            await opening;
+            if (token !== this.loadToken || this.disposed) return;
         } else {
-            await this.openShipped(modelKey(this.lib.MODELS[0]));
+            const opening = this.openShipped(modelKey(this.lib.MODELS[0]));
+            const request = this.shippedRequest;
+            await opening;
+            if (request !== this.shippedRequest || this.disposed) return;
         }
+        if (pendingSave && !this.disposed) { this.measurementSaveError = pendingSave; this.setState({message: pendingSave}); }
         if (refusals.length && !this.disposed) this.setState(s => ({issues: [...refusals, ...s.issues]}));
     }
 
@@ -1324,13 +1367,18 @@ class SimLabPane extends React.Component {
         }
     }
 
-    async openText (text, name, shipped = null, {programLoading = false, measurements, preserveProgram = false, shippedRequest = null} = {}) {
+    async openText (text, name, shipped = null, {programLoading = false, measurements, experiments, preserveProgram = false, shippedRequest = null} = {}) {
         if (shippedRequest !== null && this.shippedRequest !== shippedRequest) return;
         // Inline/UI opens supersede pending shipped fetches. The owning shipped
         // loader retains its identity for its later program/title publication.
         this.shippedRequest = shippedRequest;
+        try { this.rememberMeasurementHistory(); } catch (error) {
+            this.setState({message: error.message});
+            return;
+        }
         if (this.opened && this.measurementReader) this.measurementModels.set(this.opened.text, this.measurements);
         const savedMeasurements = measurements === undefined ? this.measurementModels.get(text) : measurements;
+        this.measurementContext = null;
         this.measurementPreview = null; this.measurementPreviewReader = null; this.measurementReader = null; this.measurementRows = []; this.measurementSampleTime = null; this.measurementRowsTime = null;
         const token = this.loadToken = {};
         this.clearReplay();
@@ -1399,6 +1447,18 @@ class SimLabPane extends React.Component {
         this.measurements = savedMeasurements === undefined ? this.lib.measurementPresets(session) : measurementDefinitions(savedMeasurements);
         this.measurementRows = this.measurementReader.read(this.measurements);
         this.measurementRowsTime = this.session.time;
+        this.measurementContext = measurementModelContext(model, text, this.lib.serializeModel);
+        const savedExperiments = experiments === undefined ? this.measurementExperiments.get(this.measurementContext.modelSha256) : experiments;
+        this.measurementRecording = createMeasurementRecorder();
+        let experimentIssue = null;
+        try {
+            // Historical unavailable values and their original bindings remain data.
+            // Live readers still refuse targets that the current compiler cannot resolve.
+            this.measurementRecording.restore(savedExperiments, this.measurementContext);
+        } catch (error) {
+            experimentIssue = {severity: 'warning', code: 'project-experiments-unreadable', message: `Saved recordings were refused: ${error.message}`};
+        }
+        this.measurementSelection = experimentIssue ? [] : savedExperiments?.selection || this.measurementRecording.selectionFor(text, this.measurementContext.modelSha256);
         // A real RCX keeps its program through a reset; the Lab's does too (a new scene, the same image).
         if (this.rcxHub() && this.rcxImage) this.rcxHub().loadProgram(this.rcxImage);
         if (this.api) this.api.sessionChanged();
@@ -1438,7 +1498,7 @@ class SimLabPane extends React.Component {
             view3d = 'fallback';
             this.setState({message: this.t('noWebgl', {error: error.message})});
         }
-        this.setState({status: 'ready', issues, blockers: insight.blockers, view3d});
+        this.setState({status: 'ready', issues: experimentIssue ? [...issues, experimentIssue] : issues, blockers: insight.blockers, view3d});
     }
 
     /**
@@ -3275,8 +3335,11 @@ class SimLabPane extends React.Component {
                         )}
                         {simulate && this.state.measurementsOpen && this.session && this.measurementReader && (
                             <SimLabMeasurements locale={this.locale} definitions={this.measurements} rows={this.measurementRows}
-                                modelKey={this.opened?.text || ''} recorder={this.measurementRecording}
-                                initialPlots={this.measurementRecording.selectionFor(this.opened?.text || '')}
+                                modelKey={this.opened?.text || ''} recorder={this.measurementRecording} modelContext={this.measurementContext} recorderRevision={this.measurementRevision}
+                                recordingAllowed={!this.measurementContext || this.measurementExperiments.has(this.measurementContext.modelSha256) || this.measurementExperiments.size < 4}
+                                onHistoryChanged={() => this.onBundleCollect()}
+                                initialPlots={this.measurementSelection || this.measurementRecording.selectionFor(this.opened?.text || '', this.measurementContext?.modelSha256)}
+                                onPlotSelection={ids => { this.measurementSelection = ids.slice(0, 4); if (this.measurementRecording.snapshot().runs.length) this.onBundleCollect(); }}
                                 onPickTarget={this.view?.setMeasurementPick}
                                 onHighlight={ids => this.view?.highlight(ids)}
                                 onPreview={definition => { this.measurementPreview = definition; }}

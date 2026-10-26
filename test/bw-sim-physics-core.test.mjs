@@ -573,3 +573,55 @@ test('collisions: dynamic-dynamic disabled, dynamic-static enabled', async () =>
     assert.ok(posB[1] < 0.3 && posB[1] > -0.1, `b y ${posB[1]}`);
     core.destroy();
 });
+
+
+test('fixed-step observation preserves native trajectories and reads actual contacts without listeners', () => {
+    const make = () => {
+        const m = makeFreeFallMech(); m.bodies[0].position = [0, 0.3, 0];
+        m.bodies.push({id: 'floor', motion: 'static', position: [0, -0.1, 0], rotation: [0, 0, 0, 1],
+            massKg: 0, colliders: [{shape: 'box', halfExtents: [1, 0.1, 1]}], parts: []});
+        return createPhysicsCore(J, m, {stepHz: 200});
+    };
+    const observed = make(), control = make(), stamps = [];
+    let contacts = 0;
+    const keys = observed.stateKeys();
+    const detach = observed.observeFixedSteps(stamp => {
+        stamps.push(stamp);
+        const pairs = observed.currentContactPairs();
+        if (pairs.some(([a, b]) => a === 'box' && b === 'floor')) contacts++;
+        pairs.push(['invented', 'pair']);
+        assert.ok(!observed.currentContactPairs().some(pair => pair.includes('invented')), 'contact results are copied');
+        assert.deepEqual(observed.screwState(), []);
+    });
+    try {
+        assert.deepEqual(observed.stateKeys(), keys, 'observers add no checkpoint state');
+        for (let i = 0; i < 120; i++) {
+            observed.step(0.005); control.step(0.005);
+            assert.deepEqual(observed.bodyPose('box'), control.bodyPose('box'), `actual native pose ${i}`);
+            assert.equal(stamps.length, i + 1); assert.equal(stamps[i].stepSeconds, 0.005);
+            assert.equal(stamps[i].t, (i + 1) * 0.005);
+        }
+        assert.ok(contacts > 0, 'the native contact getter must observe real floor contacts');
+        assert.equal(detach(), true); assert.equal(detach(), false);
+        for (let i = 0; i < 10; i++) { observed.step(0.005); control.step(0.005); }
+        assert.equal(stamps.length, 120, 'detached observer stays silent');
+        assert.deepEqual(observed.bodyPose('box'), control.bodyPose('box'));
+        assert.deepEqual(observed.stateKeys(), keys);
+    } finally { detach(); observed.destroy(); control.destroy(); }
+});
+
+test('fixed-step subscriptions reject reentry and stop before callbacks after disposal', () => {
+    const core = createPhysicsCore(J, makeFreeFallMech(), {stepHz: 200});
+    assert.throws(() => core.observeFixedSteps(null), /function/);
+    let calls = 0, laterCalls = 0;
+    const off1 = core.observeFixedSteps(() => assert.throws(() => core.step(0), /fixed-step observer/));
+    const off2 = core.observeFixedSteps(() => { calls++; if (calls === 2) core.destroy(); });
+    const off3 = core.observeFixedSteps(() => { laterCalls++; });
+    try {
+        core.step(0.02);
+        assert.equal(calls, 2); assert.equal(laterCalls, 1, 'no later callback after world disposal');
+        assert.throws(() => core.currentContactPairs(), /destroyed/);
+        assert.throws(() => core.screwState(), /destroyed/);
+        assert.throws(() => core.observeFixedSteps(() => {}), /destroyed/);
+    } finally { off1(); off2(); off3(); core.destroy(); }
+});

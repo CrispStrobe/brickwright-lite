@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2026 Brickwright contributors
 /**
- * The Crane (static/sim-lab/models/crane.ldr, scripts/gen-crane-model.mjs): a SPIKE Prime hub standing on
- * the floor with a 28-tooth turntable slewed by an 8T on motor A, and a 15L boom luffed by a small linear
- * actuator that motor B turns 1:1 through 16T gears and 12T bevel gears. A hook (a 5L link and a Technic
- * brick 1 x 4) hangs from the boom tip on a frictionless pin, free to swing. Its example program
+ * The Crane (static/sim-lab/models/crane.ldr, scripts/gen-crane-model.mjs): a SPIKE Prime hub supported on
+ * four pinned diagonal feet with a 28-tooth turntable slewed by an 8T on motor A, and a 15L boom luffed by a small linear
+ * actuator that motor B turns 1:1 through 16T gears and 12T bevel gears. A counterweighted V-frame hangs from a rope over the boom tip, with the
+ * rope tie balanced at its catalogue-mass centre and no orientation constraint. Its example program
  * (static/sim-lab/programs/crane.bw) lifts the boom, swings a quarter turn, lets the hook down and swings back.
  *
  * Expectations are derived, never read back from what the code set:
@@ -14,21 +14,26 @@
  *   - how high the hook rises from the actuator's length change (the luff motor's own encoder × the lead):
  *     the boom turns about its pivot P by the angle that makes |C − B| that length (the law of cosines on
  *     the hinge points the compiler found: the actuator's pivot B, its eye on the boom C), and the hook's
- *     pin Q turns with it; the load hangs straight below Q, so it rises as Q does;
+ *     guide Q turns with it; the hook rise also includes the changing drum-to-guide rope path;
  *   - the slew from the slew motor's encoder × 8/28.
  * That it is a real build (no two solid parts overlap, no pin past its hole, every part connected) is
  * test/bw-sim-models-solid.test.mjs and test/bw-sim-models.test.mjs, which check every MODELS entry.
- * No winch yet: ropes are not on main (docs/ROBOT-LAB-ARCHITECTURE.md T1, M10).
+ * The independent rope-hung load also follows its measured drum radius and moving guide path.
  */
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import path from 'node:path';
-import {existsSync, readFileSync} from 'node:fs';
+import {existsSync, readFileSync, mkdtempSync, rmSync} from 'node:fs';
+import {execFileSync} from 'node:child_process';
+import {tmpdir} from 'node:os';
+import {judgeMechanicsRun} from '../scripts/lib/sim-lab-mechanics-judge.mjs';
+import {buildGraph} from '../overlay/scratch-gui/src/lib/bw-sim/mech/graph.js';
+import {buildSteps, STEP_MAX} from '../overlay/scratch-gui/src/lib/bw-sim/instructions/steps.js';
 import {REPO, INTEGRATED} from './helpers/bw-integrated.mjs';
 
 const GUI = path.join(REPO, 'overlay', 'scratch-gui');
 const SIM = path.join(GUI, 'src/lib/bw-sim');
-const {MODELS, MODELS_BASE, PROGRAMS_BASE, prepareModel, catalogFrom} = await import(path.join(SIM, 'sim-session.js'));
+const {MODELS, MODELS_BASE, PROGRAMS_BASE, prepareModel, catalogFrom, SimSession} = await import(path.join(SIM, 'sim-session.js'));
 const {LDU_M} = await import(path.join(SIM, 'contracts.js'));
 const {parseLDraw} = await import(path.join(SIM, 'ldraw/ldraw-geometry.js'));
 
@@ -70,13 +75,33 @@ test('the Crane is a shipped example with its program, titled in English and Ger
     assert.ok(ENTRY, 'MODELS lists crane.ldr');
     assert.deepEqual(ENTRY.title, {en: 'Crane — linear-actuator boom and geared slew', de: 'Kran — Spindelausleger und Zahnkranz-Schwenkung'});
     assert.match(PROGRAM, /^DEVICE SPIKE\s*$/m);
-    for (const port of 'AB') assert.match(PROGRAM, new RegExp(`run motor ${port} `), `the program drives ${port}`);
+    for (const port of 'ABC') assert.match(PROGRAM, new RegExp(`run motor ${port} `), `the program drives ${port}`);
+    for (const port of 'ABC') assert.match(PROGRAM, new RegExp(`set motor stop action ${port} hold\\s+stop motor ${port}`), 'all motors hold their initial pose before the first move');
 });
 
-test('it compiles to a slew mesh of the tooth ratio, a luffing screw of the lead and a hook that swings free', () => {
+test('it compiles to the original slew/luff ratios and a retained, geared drum with an independent rope-hung load', () => {
     const {mechanism: m, model, issues} = prepared();
     assert.deepEqual(issues, []);
-    assert.deepEqual(m.actuators.map(a => a.port).sort(), ['A', 'B']);
+    assert.deepEqual(m.actuators.map(a => a.port).sort(), ['A', 'B', 'C']);
+    const feet = model.parts.filter(p => /^outrigger[LR][FB]$/.test(p.id));
+    assert.equal(feet.length, 4);
+    const base = m.bodies.find(b => b.id === bodyOf(m, 'hub'));
+    assert.deepEqual(base.rotation, [0, 0, 0, 1]);
+    const ground = m.bodies.find(b => b.id === 'ground');
+    const floorTop = ground.position[1] + ground.colliders[0].halfExtents[1];
+    for (const foot of feet) {
+        assert.equal(bodyOf(m, foot.id), bodyOf(m, 'hub'), 'each real foot is pinned to the dynamic base');
+        assert.equal(m.bodies.find(b => b.id === bodyOf(m, foot.id)).motion, 'dynamic');
+        assert.ok(Math.abs(foot.position[0]) > 150 && Math.abs(foot.position[2]) > 190);
+        const colliders = base.colliders.filter(c => c.part === foot.id);
+        assert.ok(colliders.length);
+        const bottom = Math.min(...colliders.map(c => {
+            const [x, y, z, w] = c.rotation || [0, 0, 0, 1];
+            const vertical = [2 * (x * y + z * w), 1 - 2 * (x * x + z * z), 2 * (y * z - x * w)];
+            return base.position[1] + c.position[1] - vertical.reduce((sum, n, i) => sum + Math.abs(n) * c.halfExtents[i], 0);
+        }));
+        assert.ok(Math.abs(bottom - floorTop) < 1e-8, 'each physical foot starts on the floor, without a fixed-world clamp');
+    }
     const tt = m.couplings.find(c => c.parts && c.parts.includes('ttTop'));
     assert.deepEqual([...tt.parts].sort(), ['slewPinion', 'ttTop']);
     assert.ok(Math.abs(Math.abs(tt.ratio) - teeth(model, 'ttTop') / teeth(model, 'slewPinion')) < 1e-9, `turntable ratio ${tt.ratio}`);
@@ -87,12 +112,196 @@ test('it compiles to a slew mesh of the tooth ratio, a luffing screw of the lead
     const pairs = m.couplings.filter(c => (c.kind === 'gear' || c.kind === 'relativeGear') && c.parts.some(p => p.startsWith('luff')));
     assert.equal(pairs.length, 2);
     for (const c of pairs) assert.ok(Math.abs(Math.abs(c.ratio) - 1) < 1e-9, `${c.parts} ${c.ratio}`);
-    // The hook: its own body (link and load), on a hinge to the boom with no motor and no friction.
-    const hook = jointBetween(m, 'hookLink', 'boom');
-    assert.equal(hook.type, 'hinge');
-    assert.ok(!hook.motor && !hook.frictionNm && !hook.limits, JSON.stringify(hook));
+    const rope = m.couplings.find(c => c.kind === 'rope');
+    assert.deepEqual(rope.parts, ['hoistDrum', 'tipGuide', 'hookLink']);
+    assert.equal(m.couplings.filter(c => c.kind === 'rope').length, 1);
+    assert.equal(jointBetween(m, 'hookLink', 'boom'), undefined, 'the rope replaces the fixed boom-to-hook hinge');
     assert.equal(bodyOf(m, 'load'), bodyOf(m, 'hookLink'), 'the load is pinned to the link');
     assert.notEqual(bodyOf(m, 'hookLink'), bodyOf(m, 'boom'));
+    const shaftBearing = jointBetween(m, 'hoistAxle', 'postL');
+    assert.equal(shaftBearing.type, 'hinge', 'the existing post is the real shaft bearing');
+    assert.equal(bodyOf(m, 'postL'), bodyOf(m, 'ttTop'), 'the bearing post is pinned into the upper frame');
+    assert.notEqual(bodyOf(m, 'hoistDrum'), bodyOf(m, 'ttTop'), 'the retained shaft can spin');
+    const drive = m.couplings.find(c => c.kind === 'gear' && c.parts.includes('hoistMotorGear'));
+    assert.deepEqual([...drive.parts].sort(), ['hoistGear16', 'hoistMotorGear']);
+    assert.equal(Math.abs(drive.ratio), 1);
+    const motor = m.actuators.find(a => a.port === 'C');
+    const drumPerMotor = drive.joint1 === motor.joint ? drive.ratio : 1 / drive.ratio;
+    assert.ok(rope.drumSign * drumPerMotor * motor.sign < 0, 'counterclockwise C winds the drum');
+    assert.ok(Math.abs(rope.radiusM - 0.0028) < 1e-12);
+    assert.ok(Math.hypot(rope.hook.local[0], rope.hook.local[2]) < 1e-9,
+        'the balanced payload COM lies directly below its rope tie');
+    const payload = m.bodies.find(b => b.id === rope.hook.body);
+    const mass = payload.colliders.reduce((sum, c) => sum + c.massKg, 0);
+    const massCentre = [0, 1, 2].map(i => payload.colliders.reduce((sum, c) => sum + c.massKg * c.position[i], 0) / mass);
+    assert.ok(Math.hypot(...rope.hook.local.map((v, i) => v - massCentre[i])) < 1e-8,
+        'the catalogue-mass counterweights balance the free load about its rope tie, without an orientation constraint');
+    const point = p => m.bodies.find(b => b.id === p.body).position.map((x, i) => x + p.local[i]);
+    const points = [...rope.points, rope.hook].map(point);
+    const length = points.slice(1).reduce((sum, p, i) => sum + len(sub(p, points[i])), 0);
+    assert.ok(Math.abs(rope.lengthM - length) <= 0.05 * LDU_M, 'the generated rope starts taut to the editor rounding bound');
+});
+
+test('the winch leaves clearance around the boom pivot beyond speculative contact range', () => {
+    const {mechanism: m} = prepared();
+    const turn = (q, v) => {
+        const xyz = q.slice(0, 3);
+        const twice = cross(xyz, v).map(n => 2 * n);
+        const more = cross(xyz, twice);
+        return v.map((n, i) => n + q[3] * twice[i] + more[i]);
+    };
+    const collider = part => {
+        const body = m.bodies.find(b => b.parts.includes(part));
+        const shape = body.colliders.find(c => c.part === part);
+        return {shape, centre: turn(body.rotation, shape.position).map((n, i) => n + body.position[i]),
+            axis: local => turn(body.rotation, turn(shape.rotation, local))};
+    };
+    const pivot = collider('boomPivot');
+    assert.equal(pivot.shape.shape, 'box');
+    const longest = pivot.shape.halfExtents.indexOf(Math.max(...pivot.shape.halfExtents));
+    const axis = pivot.axis([0, 1, 2].map(i => Number(i === longest)));
+    const pivotRadius = Math.hypot(...pivot.shape.halfExtents.filter((_, i) => i !== longest));
+    for (const part of ['hoistDrum', 'hoistStopInner']) {
+        const winch = collider(part);
+        assert.equal(winch.shape.shape, 'cylinder');
+        assert.ok(Math.abs(dot(axis, winch.axis([0, 1, 0]))) > 0.9999, 'the two shaft axes are parallel');
+        const delta = sub(winch.centre, pivot.centre);
+        const radial = len(delta.map((n, i) => n - axis[i] * dot(delta, axis)));
+        const clearance = radial - pivotRadius - winch.shape.radius;
+        // A conservative circular envelope of the axle box leaves 5 mm even
+        // before allowing for the engine's existing 2 mm speculative distance.
+        assert.ok(clearance > 0.005, `${part} leaves only ${clearance * 1000} mm around the pivot`);
+    }
+});
+
+test('compiled collider envelopes keep the winch clear of boom members and the actuator housing at sampled angles', () => {
+    const dir = mkdtempSync(path.join(tmpdir(), 'bw-crane-clearance-'));
+    const turn = (q, v) => {
+        const xyz = q.slice(0, 3), twice = cross(xyz, v).map(n => 2 * n), more = cross(xyz, twice);
+        return v.map((n, i) => n + q[3] * twice[i] + more[i]);
+    };
+    const envelope = (body, c) => {
+        const centre = turn(body.rotation, c.position || [0, 0, 0]).map((n, i) => n + body.position[i]);
+        assert.ok(c.shape === 'box' || c.shape === 'cylinder', 'the authored mechanism uses box/cylinder colliders');
+        const half = c.shape === 'box' ? c.halfExtents : [c.radius, c.halfHeight, c.radius];
+        const axes = [[1, 0, 0], [0, 1, 0], [0, 0, 1]].map(v => turn(body.rotation, turn(c.rotation || [0, 0, 0, 1], v)));
+        const radius = [0, 1, 2].map(i => axes.reduce((sum, axis, j) => sum + Math.abs(axis[i]) * half[j], 0));
+        return {part: c.part, low: centre.map((n, i) => n - radius[i]), high: centre.map((n, i) => n + radius[i])};
+    };
+    const pivotParts = new Set(['boomPivot', 'boomPivotInnerStop', 'boomPivotOuterStop']);
+    const actuatorParts = new Set(['luffLaBody', 'luffLaPiston', 'luffLaSpindle', 'luffLaStubGear', 'luffLaAxleGear']);
+    const movingParts = new Set(['boom', ...pivotParts, 'luffLaEye', ...actuatorParts]);
+    try {
+        for (const angle of [4, 10, 30, 45, 60, 70]) {
+            const file = path.join(dir, `crane-${angle}.ldr`);
+            execFileSync(process.execPath, [path.join(REPO, 'scripts/gen-crane-model.mjs'), file, String(angle)], {stdio: 'pipe'});
+            const {mechanism, issues} = prepareModel(readFileSync(file, 'utf8'), CATALOG, {mat: ENTRY.mat});
+            assert.deepEqual(issues, []);
+            const boxes = mechanism.bodies.flatMap(body => body.colliders
+                .filter(c => movingParts.has(c.part) || (c.part || '').startsWith('hoist'))
+                .map(c => envelope(body, c)));
+            const moving = boxes.filter(c => movingParts.has(c.part));
+            const winch = boxes.filter(c => c.part.startsWith('hoist'));
+            assert.ok(moving.length >= 4 && winch.length >= 10, 'the screen includes shafts and split motor colliders');
+            for (const a of moving) for (const b of winch) {
+                // AABB distance is a conservative lower bound on the real shapes'
+                // separation, including shaft regions omitted by solidOverlaps.
+                const gap = Math.hypot(...a.low.map((n, i) => Math.max(0, n - b.high[i], b.low[i] - a.high[i])));
+                assert.ok(gap > 0.002, `${angle}°: ${a.part}/${b.part} envelope gap ${gap * 1000} mm`);
+            }
+            const pivot = boxes.filter(c => pivotParts.has(c.part));
+            const actuator = boxes.filter(c => actuatorParts.has(c.part));
+            assert.equal(pivot.length, 3, 'the axle and both physical retainers are included');
+            for (const part of actuatorParts) assert.ok(actuator.some(c => c.part === part), `${part} is included`);
+            for (const a of pivot) for (const b of actuator) {
+                const gap = Math.hypot(...a.low.map((n, i) => Math.max(0, n - b.high[i], b.low[i] - a.high[i])));
+                assert.ok(gap > 0.002, `${angle}°: ${a.part}/${b.part} envelope gap ${gap * 1000} mm`);
+            }
+        }
+    } finally { rmSync(dir, {recursive: true, force: true}); }
+});
+
+// Independently walk the physical connector edges plus the declared string.
+// Authoring pages must not hide a detached part or an oversized insertion page.
+const assertCranePagesConnected = model => {
+    const plan = buildSteps(model, CATALOG);
+    assert.equal(plan.source, 'meta');
+    const pageOf = id => plan.steps.findIndex(step => step.parts.includes(id));
+    assert.ok(pageOf('postR') < pageOf('boomPivot') && pageOf('boomPivot') < pageOf('boom'),
+        'fit the bare pivot through the post before sliding on the boom');
+    for (const id of ['boomPivotInnerStop', 'boomPivotOuterStop']) {
+        assert.ok(pageOf('boom') < pageOf(id), 'fit pivot retainers after sliding the boom onto the axle');
+    }
+    const {nodes, edges} = buildGraph(model, CATALOG, []);
+    const adjacent = new Map(model.parts.map(p => [p.id, new Set()]));
+    const join = (a, b) => { adjacent.get(a).add(b); adjacent.get(b).add(a); };
+    for (const edge of edges) join(nodes.get(edge.a.part).partId, nodes.get(edge.b.part).partId);
+    const rigid = new Map([...adjacent].map(([id, edges]) => [id, new Set(edges)]));
+    for (const rope of model.ropes || []) {
+        assert.deepEqual(rope.around, ['hoistDrum', 'tipGuide', 'hookLink']);
+        for (let i = 1; i < rope.around.length; i++) join(rope.around[i - 1], rope.around[i]);
+    }
+    assert.ok(plan.steps[0].parts.includes('hub'), 'the hub starts the assembly');
+    assert.ok(model.parts.length / plan.steps.length >= 1.5, 'pages retain the existing minimum grouping');
+    const built = new Set();
+    for (const step of plan.steps) {
+        assert.ok(step.parts.length > 0 && step.parts.length <= STEP_MAX);
+        if (step.parts.includes('hookLink')) {
+            assert.ok(built.has('hoistDrum') && built.has('tipGuide'), 'mount drum and guide before tying the hook');
+        }
+        const fresh = new Set(step.parts);
+        for (const id of fresh) assert.ok(!built.has(id), `part ${id} appears once`);
+        const queue = built.size ? step.parts.filter(id => [...adjacent.get(id)].some(p => built.has(p))) : [step.parts[0]];
+        const reached = new Set(queue);
+        for (let i = 0; i < queue.length; i++) for (const id of adjacent.get(queue[i])) {
+            if (fresh.has(id) && !reached.has(id)) { reached.add(id); queue.push(id); }
+        }
+        assert.deepEqual(step.parts.filter(id => !reached.has(id)), [], 'every inserted part reaches the assembly through connectors or its physical rope');
+        for (const id of step.parts) built.add(id);
+    }
+    assert.deepEqual([...built].sort(), model.parts.map(p => p.id).sort());
+    const at = new Map(plan.steps.flatMap((s, i) => s.parts.map(id => [id, i])));
+    const meta = id => CATALOG.get(model.parts.find(p => p.id === id).part);
+    const fastener = id => ['pin', 'axle'].includes(meta(id).category);
+    let checked = 0;
+    for (const part of model.parts.filter(p => fastener(p.id))) {
+        const joins = [...rigid.get(part.id)];
+        assert.ok(joins.length, `${part.id} has a physical support`);
+        if (joins.length > 2) continue;
+        const page = at.get(part.id);
+        if (/bush/i.test(meta(part.id).name) && joins.every(id => meta(id).category === 'axle')) {
+            const support = Math.min(...joins.map(id => at.get(id)));
+            assert.ok(support <= page && page - support <= 3, `${part.id} follows its shaft within three pages`);
+        } else if (/perpendicular pin hole/.test(meta(part.id).name) &&
+            Math.min(...joins.map(id => at.get(id))) <= page && page <= Math.max(...joins.map(id => at.get(id)))) {
+            // The existing two-stage perpendicular-connector insertion rule.
+        } else {
+            const later = Math.max(...joins.map(id => at.get(id)));
+            if (page !== later) assert.ok(page < later && later - page <= 3 &&
+                plan.steps[page].parts.every(fastener), `${part.id} precedes the part covering it on a fastener-only page`);
+        }
+        checked++;
+    }
+    assert.ok(checked >= 4, 'several actual fastener insertion orders are checked');
+};
+test('the authored crane pages preserve rigid insertion rules and the documented rope attachment', () => {
+    const {model} = prepared();
+    assertCranePagesConnected(model);
+    assert.throws(() => assertCranePagesConnected({...model, ropes: []}), /every inserted part reaches/, 'removing the rope must expose the detached hook');
+    const stops = ['boomPivotInnerStop', 'boomPivotOuterStop'];
+    const blocked = model.steps.map(parts => parts.filter(id => !stops.includes(id))).filter(parts => parts.length);
+    blocked.find(parts => parts.includes('boomPivot')).push(...stops);
+    assert.throws(() => assertCranePagesConnected({...model, steps: blocked}), /fit pivot retainers after/,
+        'early retainers must expose the blocked boom insertion');
+});
+
+test('the crane generator reproduces the shipped geometry and derives its rope from the same part metadata', () => {
+    const scratch = mkdtempSync(path.join(tmpdir(), 'bw-crane-'));
+    try {
+        const out = path.join(scratch, 'crane.ldr');
+        execFileSync(process.execPath, ['--max-old-space-size=256', path.join(REPO, 'scripts/gen-crane-model.mjs'), out], {stdio: 'pipe'});
+        assert.equal(readFileSync(out, 'utf8'), MODEL_TEXT);
+    } finally { rmSync(scratch, {recursive: true, force: true}); }
 });
 
 const missing = path.join(INTEGRATED, 'node_modules', 'scratch-vm', 'src', 'index.js');
@@ -102,7 +311,7 @@ if (!existsSync(missing)) {
     });
 } else {
     const {runOnSimLab} = await import('./helpers/sim-lab-vm.mjs');
-    const run = source => runOnSimLab(source, {modelText: MODEL_TEXT, mat: ENTRY.mat, timeLimitMs: 20000});
+    const run = (source, modelText = MODEL_TEXT) => runOnSimLab(source, {modelText, mat: ENTRY.mat, timeLimitMs: 20000});
 
     /** Rotate v by the unit quaternion q = [x, y, z, w]. */
     const qrot = ([x, y, z, w], v) => {
@@ -112,7 +321,64 @@ if (!existsSync(missing)) {
         const iw = -x * v[0] - y * v[1] - z * v[2];
         return [ix * w - iw * x - iy * z + iz * y, iy * w - iw * y - iz * x + ix * z, iz * w - iw * z - ix * y + iy * x];
     };
+    const qmul = ([x, y, z, w], [a, b, c, d]) => [w * a + x * d + y * c - z * b,
+        w * b - x * c + y * d + z * a, w * c + x * b - y * a + z * d, w * d - x * a - y * b - z * c];
     const yaw = q => 2 * Math.atan2(q[1], q[3]);
+
+    // Phase observations are emitted before assertions, so a failed hosted run
+    // retains measured motion rather than just an aggregate tolerance failure.
+    const motionSample = (result, f) => {
+        const m = result.mechanism;
+        const load = m.bodies.find(b => b.parts.includes('load'));
+        const hub = bodyOf(m, 'hub');
+        const rope = m.couplings.find(c => c.kind === 'rope');
+        const pose = f.bodies[load.id];
+        const world = p => qrot(f.bodies[p.body].rotation, p.local).map((x, i) => x + f.bodies[p.body].position[i]);
+        const guide = world(rope.points.at(-1));
+        const hook = world(rope.hook);
+        const bottom = Math.min(...load.colliders.flatMap(c => {
+            if (c.shape === 'cylinder') {
+                const axis = qrot(pose.rotation, qrot(c.rotation || [0, 0, 0, 1], [0, 1, 0]));
+                const centre = qrot(pose.rotation, c.position || [0, 0, 0]);
+                return [pose.position[1] + centre[1] - Math.abs(axis[1]) * c.halfHeight -
+                    Math.sqrt(Math.max(0, 1 - axis[1] * axis[1])) * c.radius];
+            }
+            assert.equal(c.shape, 'box', 'the authored payload uses box or cylinder colliders');
+            const vertices = [];
+            for (const x of [-1, 1]) for (const y of [-1, 1]) for (const z of [-1, 1]) {
+                const local = qrot(c.rotation || [0, 0, 0, 1], c.halfExtents.map((v, i) => v * [x, y, z][i]))
+                    .map((v, i) => v + (c.position?.[i] || 0));
+                vertices.push(pose.position[1] + qrot(pose.rotation, local)[1]);
+            }
+            return vertices;
+        }));
+        return {t: f.t, busy: f.busy,
+            motorDeg: Object.fromEntries(m.actuators.map(a => [a.port, f.joints[a.joint].angle * DEG])),
+            jointCoordinates: f.joints,
+            drumDeg: f.joints[rope.drumJoint].angle * DEG,
+            loadLeanDeg: Math.acos(Math.max(-1, Math.min(1, qrot(pose.rotation, [0, 1, 0])[1]))) * DEG,
+            baseYawDeg: (yaw(f.bodies[hub].rotation) - yaw(result.track[0].bodies[hub].rotation)) * DEG,
+            basePosition: f.bodies[hub].position, baseUp: qrot(f.bodies[hub].rotation, [0, 1, 0]),
+            loadPosition: pose.position, loadBottomM: bottom, guide, hook,
+            ropeFreeM: f.ropes[0].free, spanM: len(sub(guide, hook)), tensionN: f.ropes[0].tension};
+    };
+    const phaseObservations = result => {
+        const samples = result.track.map(f => motionSample(result, f));
+        const starts = samples.filter((f, i) => ['A', 'B', 'C'].some(p => f.busy[p] && (i === 0 || !samples[i - 1].busy[p])));
+        const peak = score => samples.reduce((a, b) => score(a) >= score(b) ? a : b);
+        const ground = result.mechanism.bodies.find(b => b.id === 'ground');
+        assert.equal(ground.colliders.length, 1);
+        assert.equal(ground.colliders[0].shape, 'box');
+        const floorTopM = ground.position[1] + (ground.colliders[0].position?.[1] || 0) + ground.colliders[0].halfExtents[1];
+        const firstSlew = samples.findIndex(s => s.busy.A);
+        const holdEnd = samples[Math.max(0, firstSlew - 1)].t;
+        const heldLift = firstSlew < 0 ? [] : samples.filter(s => s.t >= holdEnd - 900 && s.t <= holdEnd)
+            .map(s => ({t: s.t, loadY: s.loadPosition[1], guideY: s.guide[1], spanM: s.spanM,
+                lateralM: Math.hypot(s.guide[0] - s.hook[0], s.guide[2] - s.hook[2]),
+                freeM: s.ropeFreeM, tensionN: s.tensionN}));
+        return {first: samples[0], floorTopM, starts, heldLift, end: samples.at(-1), maxLean: peak(s => s.loadLeanDeg), maxYaw: peak(s => Math.abs(s.baseYawDeg)),
+            maxLoadHeight: peak(s => s.loadPosition[1])};
+    };
 
     /**
      * The run, measured. Phases from the motors' busy flags: before the lift, the lift (B), the slew (A),
@@ -127,11 +393,17 @@ if (!existsSync(missing)) {
         const link = bodyOf(m, 'hookLink');
         const hub = bodyOf(m, 'hub');
         const ttJoint = jointBetween(m, 'ttTop', 'ttBottom').id;
-        const hookJoint = jointBetween(m, 'hookLink', 'boom').id;
+        const boom = bodyOf(m, 'boom');
+        const axis = jointBetween(m, 'boom', 'ttTop').axis;
+        const relativeHookTurn = f => {
+            const q = f.bodies[boom].rotation;
+            const relative = qmul([-q[0], -q[1], -q[2], q[3]], f.bodies[link].rotation);
+            return 2 * Math.atan2(dot(relative.slice(0, 3), axis), relative[3]) * DEG;
+        };
         // Phase boundaries: the frames where a port goes busy.
         const starts = [];
-        for (let i = 1; i < track.length; i++) {
-            for (const port of ['A', 'B']) if (track[i].busy[port] && !track[i - 1].busy[port]) starts.push({i, port});
+        for (let i = 0; i < track.length; i++) {
+            for (const port of ['A', 'B']) if (track[i].busy[port] && (i === 0 || !track[i - 1].busy[port])) starts.push({i, port});
         }
         const before = i => track[Math.max(0, i - 1)];
         const end = track.at(-1);
@@ -143,6 +415,8 @@ if (!existsSync(missing)) {
         const up0 = qrot(track[0].bodies[link].rotation, [0, 1, 0]);
         assert.ok(up0[1] > Math.cos(0.5 / DEG), 'the hook starts hanging straight');
         const lean = p => Math.acos(Math.min(1, qrot(p.bodies[link].rotation, [0, 1, 0])[1])) * DEG;
+        const heldHeights = track.filter(p => p.t >= at.lifted.t - 900 && p.t <= at.lifted.t).map(height);
+        assert.ok(heldHeights.length >= 3, 'the boom hold has captured frames');
         return {
             starts: starts.map(s => s.port).join(''),
             luffTurn: (at.lifted.joints[luff].angle - at.start.joints[luff].angle) * DEG,
@@ -151,8 +425,8 @@ if (!existsSync(missing)) {
             ttEnd: (end.joints[ttJoint].angle - at.start.joints[ttJoint].angle) * DEG,
             rise: height(at.lifted) - height(at.start),
             // While B holds (the program's wait after the lift), the actuator's screw holds the boom.
-            sink: height(at.lifted) - Math.min(...track.filter(p => p.t >= at.lifted.t - 900 && p.t <= at.lifted.t).map(height)),
-            hookTurn: (at.lifted.joints[hookJoint].angle - at.start.joints[hookJoint].angle) * DEG,
+            sink: Math.max(...heldHeights) - Math.min(...heldHeights),
+            hookTurn: relativeHookTurn(at.lifted) - relativeHookTurn(at.start),
             maxLean: Math.max(...track.map(lean)),
             lowered: height(at.lowered) - height(at.start),
             baseYaw: Math.max(...track.map(p => Math.abs(yaw(p.bodies[hub].rotation) - yaw(track[0].bodies[hub].rotation)))) * DEG
@@ -160,7 +434,7 @@ if (!existsSync(missing)) {
     };
     const report = r => `phases ${r.starts}; luff motor ${r.luffTurn.toFixed(1)}°: load rose ${(r.rise * 1000).toFixed(1)} mm (sank ${(r.sink * 1000).toFixed(2)} mm while held); ` +
         `slew motor ${r.slewTurn.toFixed(1)}°: turntable ${r.ttSlewed.toFixed(1)}°, back to ${r.ttEnd.toFixed(1)}°; ` +
-        `the hook's pin turned ${r.hookTurn.toFixed(1)}° in the lift, the hook leaning at most ${r.maxLean.toFixed(1)}°; ` +
+        `relative hook rotation ${r.hookTurn.toFixed(1)}° in the lift, hook leaning at most ${r.maxLean.toFixed(1)}°; ` +
         `lowered to ${(r.lowered * 1000).toFixed(1)} mm from the start; base yawed ${r.baseYaw.toFixed(2)}°`;
 
     /** How high the hook's pin rises when the actuator grows by dL (m): the law of cosines on the compiled points. */
@@ -170,7 +444,10 @@ if (!existsSync(missing)) {
         const P = Pj.point;
         const k = Pj.axis.map(v => v / len(Pj.axis));
         const C = jointBetween(m, 'boom', 'luffLaPiston').point;
-        const Q = jointBetween(m, 'boom', 'hookLink').point;
+        const rope = m.couplings.find(c => c.kind === 'rope');
+        const point = p => m.bodies.find(b => b.id === p.body).position.map((x, i) => x + p.local[i]);
+        const Q = point(rope.points.at(-1));
+        const drum = point(rope.points[0]);
         const L1 = len(sub(C, B)) + dL;
         // The boom's turn about P (the sense that lengthens the actuator), by bisection on the geometry alone.
         const sense = Math.sign(len(sub(rotate(sub(C, P), k, 1e-3).map((v, i) => v + P[i]), B)) - len(sub(C, B)));
@@ -182,17 +459,84 @@ if (!existsSync(missing)) {
             if (f(mid) < 0) lo = mid; else hi = mid;
         }
         const Q1 = rotate(sub(Q, P), k, sense * lo).map((v, i) => v + P[i]);
-        return {rise: Q1[1] - Q[1], turn: lo * DEG};
+        // At a fixed drum angle the guide-to-load length also loses the changing drum/guide segment.
+        const fixedChange = len(sub(Q1, drum)) - len(sub(Q, drum));
+        return {rise: Q1[1] - Q[1] + fixedChange, turn: lo * DEG};
+    };
+
+    const runWithDynamics = async (source, emit = () => {}, {firstBStop = false} = {}) => {
+        const tick = SimSession.prototype.tick;
+        const dynamics = new Map(), detach = new Map(), before = [];
+        let initialBodies = null, fixedInitialBodies = null, mechanism = null;
+        let firstY = null, firstT = null, lastT = null, stepSeconds = null, observedSteps = 0;
+        let triggerTime = null, afterTrigger = 0, window = null, sawB = false;
+        SimSession.prototype.tick = function (...args) {
+            if (!detach.has(this)) {
+                assert.equal(detach.size, 0, 'this diagnostic must bind one actual session');
+                mechanism = this.mechanism;
+                const hubId = bodyOf(mechanism, 'hub');
+                detach.set(this, this.core.observeFixedSteps(stamp => {
+                    observedSteps++; firstT ??= stamp.t; lastT = stamp.t;
+                    stepSeconds ??= stamp.stepSeconds;
+                    assert.equal(stamp.stepSeconds, stepSeconds, 'native observation step is unchanged');
+                    if (window && afterTrigger >= 50) return;
+                    const bodies = Object.fromEntries(mechanism.bodies.map(b => [b.id, this.core.bodyPose(b.id)]));
+                    const movable = mechanism.joints.filter(j => j.type === 'hinge' || j.type === 'slider');
+                    const joints = Object.fromEntries(movable.map(j => [j.id, {...this.core.jointState(j.id)}]));
+                    const efforts = Object.fromEntries(movable.map(j => [j.id, this.core.jointDynamics(j.id)]));
+                    fixedInitialBodies ??= Object.fromEntries(mechanism.bodies.map(b => [b.id, this.core.bodyDynamics(b.id)]));
+                    const frame = {t: stamp.t * 1000, bodies, joints, dynamics: efforts,
+                        ropes: this.core.ropeState(), screws: this.core.screwState(),
+                        contacts: this.core.currentContactPairs(),
+                        busy: Object.fromEntries(mechanism.actuators.map(a => [a.port, this.hubState.motors.busy(a.port)]))};
+                    firstY ??= bodies[hubId].position[1];
+                    if (window) { window.push(frame); afterTrigger++; }
+                    else {
+                        before.push(frame); if (before.length > 101) before.shift();
+                        const stoppedB = firstBStop && sawB && !frame.busy.B;
+                        sawB ||= frame.busy.B;
+                        const movedHub = Math.abs(bodies[hubId].position[1] - firstY) > 0.002 ||
+                            qrot(bodies[hubId].rotation, [0, 1, 0])[1] < Math.cos(3 / DEG);
+                        if (firstBStop ? stoppedB : movedHub) {
+                            triggerTime = frame.t; window = before.slice();
+                        }
+                    }
+                }));
+            }
+            const result = tick.apply(this, args);
+            assert.ok(dynamics.size < 1000, 'bounded actual-session diagnostic capture');
+            const joints = Object.fromEntries(this.mechanism.joints
+                .filter(j => j.type === 'hinge' || j.type === 'slider')
+                .map(j => [j.id, this.core.jointDynamics(j.id)]));
+            if (!initialBodies) initialBodies = Object.fromEntries(this.mechanism.bodies
+                .map(b => [b.id, this.core.bodyDynamics(b.id)]));
+            dynamics.set(this.time, joints);
+            return result;
+        };
+        try { return {...await run(source), dynamics, initialBodies}; }
+        finally {
+            SimSession.prototype.tick = tick;
+            for (const off of detach.values()) off();
+            emit({observedSteps, firstT, lastT, stepSeconds, triggerTime,
+                triggerKind: triggerTime === null ? null : firstBStop ? 'first-b-stop' : 'hub-motion',
+                frames: window || before, initialBodies: fixedInitialBodies,
+                mechanism: mechanism && {bodies: mechanism.bodies, joints: mechanism.joints,
+                    couplings: mechanism.couplings, noCollide: mechanism.noCollide,
+                    noCollideParts: mechanism.noCollideParts, solver: mechanism.solver}});
+        }
     };
 
     /** The example program's run, shared by the checks. */
-    let craneRun = null;
-    const lifted = () => (craneRun = craneRun || run(PROGRAM));
+    let craneRun = null, normalLiftCapture = null;
+    const lifted = () => (craneRun = craneRun || runWithDynamics(PROGRAM,
+        packet => { normalLiftCapture = packet; }, {firstBStop: true}));
 
     test('the example program lifts the hook as high as the actuator\'s stroke and the boom\'s geometry say', async t => {
         const result = await lifted();
         assert.deepEqual(result.issues, []);
         assert.deepEqual(result.run.unsupported, [], 'every command was understood by the hub');
+        t.diagnostic(`normal-lift fixed-step observations: ${JSON.stringify(normalLiftCapture)}`);
+        t.diagnostic(`crane phase observations: ${JSON.stringify(phaseObservations(result))}`);
         const r = judge(result);
         t.diagnostic(report(r));
         assert.equal(r.starts, 'BABA', 'lift, slew, lower, slew back');
@@ -215,23 +559,170 @@ if (!existsSync(missing)) {
         assert.ok(Math.abs(Math.abs(r.slewTurn) - 315) < 5, `slew motor ${r.slewTurn}°`);
         assert.ok(Math.abs(Math.abs(r.ttSlewed) - Math.abs(r.slewTurn) * 8 / 28) < 2, `turntable ${r.ttSlewed}° for ${r.slewTurn}° of the motor`);
         assert.ok(Math.abs(r.ttEnd) < 2, `back to ${r.ttEnd}°`);
-        // The hook hangs on a free pin: as the boom turns up, the pin turns by the boom's turn (the law of cosines'
-        // angle) and the hook keeps hanging straight down, through the lift and the slews alike.
+        // The load is free on the rope: its relative orientation follows the boom turn while it remains upright.
         const want = expectedRise(result.mechanism, Math.abs(r.luffTurn) / 360 * LEAD_M);
-        assert.ok(Math.abs(Math.abs(r.hookTurn) - want.turn) < 1.5, `the hook's pin turned ${r.hookTurn}°, the boom ${want.turn}°`);
+        assert.ok(Math.abs(Math.abs(r.hookTurn) - want.turn) < 1.5, `relative hook turn ${r.hookTurn}°, boom ${want.turn}°`);
         assert.ok(r.maxLean < 3, `the hook leaned ${r.maxLean}° from hanging straight`);
         // At a tenth of the motor's speed the slew does not drag the hub round on the floor.
         assert.ok(r.baseYaw < 1, `the base turned ${r.baseYaw}°`);
     });
 
-    test('the judge can fail: without the lift the hook does not rise', async t => {
-        const still = PROGRAM.replace(/^ {2}run motor B clockwise 1800 degrees\n/m, '');
+    test('the judge can fail: without the boom lift and with the winch held fixed the hook does not rise', async t => {
+        const still = PROGRAM.replace(/^ {2}run motor [BC] (?:counterclockwise|clockwise) \d+ degrees\n/gm, '');
         assert.notEqual(still, PROGRAM);
         const result = await run(still);
+        assert.deepEqual(result.issues, []);
+        assert.deepEqual(result.run.unsupported, []);
+        assert.ok(result.track.every(f => !f.busy.B && !f.busy.C), 'the no-lift control really holds B and C throughout');
+        const aJoint = result.mechanism.actuators.find(a => a.port === 'A').joint;
+        const aTurns = result.track.map(f => (f.joints[aJoint].angle - result.track[0].joints[aJoint].angle) * DEG);
+        assert.ok(Math.abs(Math.max(...aTurns.map(Math.abs)) - 315) < 5 && Math.abs(aTurns.at(-1)) < 5,
+            'the no-lift control retains the actual 315-degree horizontal slew and return');
+        t.diagnostic(`no-lift phase observations: ${JSON.stringify(phaseObservations(result))}`);
+        const hub = bodyOf(result.mechanism, 'hub');
+        assert.ok(result.track.every(f => Object.values(f.bodies).every(p => p.position.every(Number.isFinite) &&
+            len(sub(p.position, f.bodies[hub].position)) < 0.5)), 'the no-lift assembly stays finite and bounded');
         const load = bodyOf(result.mechanism, 'load');
         const h = result.track.map(p => p.bodies[load].position[1]);
         const rise = Math.max(...h) - h[0];
         t.diagnostic(`no lift: the load rose at most ${(rise * 1000).toFixed(1)} mm`);
         assert.ok(rise < 0.005, `the load still rose ${rise} m`);
+    });
+
+    // Observe actual completed ticks for the unresolved low-boom transition.
+    // The original method runs exactly once with the same receiver/arguments,
+    // and its result is returned unchanged; all observations are public getters.
+
+
+    test('the retained reverse-only lowering control cannot launch the suspended load', async t => {
+        // Retain the earlier input which still lowered B after its positive lift
+        // was removed, alongside the separate control that holds both B and C.
+        const lower = PROGRAM.replace(/^ {2}run motor B clockwise 1800 degrees\n/m, '')
+            .replace(/^ {2}run motor C (?:counterclockwise|clockwise) 540 degrees\n/gm, '');
+        assert.notEqual(lower, PROGRAM);
+        let nativeCapture = null;
+        const result = await runWithDynamics(lower, packet => {
+            nativeCapture = packet;
+            t.diagnostic(`reverse-only fixed-step observations: ${JSON.stringify(packet)}`);
+        });
+        assert.ok(nativeCapture.observedSteps > 0 && nativeCapture.stepSeconds === 0.005,
+            'the diagnostic observes actual unchanged 5 ms native steps');
+        assert.ok(Math.abs(nativeCapture.lastT - nativeCapture.firstT -
+            (nativeCapture.observedSteps - 1) * nativeCapture.stepSeconds) < 1e-8,
+            'every completed native step is accounted for');
+        assert.ok(Math.abs(nativeCapture.lastT * 1000 - result.track.at(-1).t) <= 5.000001,
+            'native observations cover the actual VM run');
+        assert.ok(nativeCapture.frames.length > 0 && nativeCapture.frames.length <= 151);
+        assert.ok(nativeCapture.frames.every(f => Array.isArray(f.contacts) && f.screws.length === 1),
+            'the bounded native window includes actual contact and screw state');
+        assert.deepEqual(result.issues, []);
+        assert.deepEqual(result.run.unsupported, []);
+        t.diagnostic(`reverse-only phase observations: ${JSON.stringify(phaseObservations(result))}`);
+        // Preserve the first unstable transition, not just the eventual peak.
+        // These existing 30 Hz VM frames do not add a physics callback or change
+        // any target, timestep, timeout, acceptance bound or simulated duration.
+        const hubId = bodyOf(result.mechanism, 'hub');
+        const startY = result.track[0].bodies[hubId].position[1];
+        const firstUnstable = result.track.findIndex(f =>
+            Math.abs(f.bodies[hubId].position[1] - startY) > 0.002 ||
+            qrot(f.bodies[hubId].rotation, [0, 1, 0])[1] < Math.cos(3 / DEG));
+        if (firstUnstable >= 0) t.diagnostic(`reverse-only bounded instability window: ${JSON.stringify({
+            firstUnstableTime: result.track[firstUnstable].t, initialBodies: result.initialBodies,
+            mechanism: {bodies: result.mechanism.bodies, joints: result.mechanism.joints,
+                couplings: result.mechanism.couplings},
+            frames: result.track.slice(Math.max(0, firstUnstable - 30), firstUnstable + 11)
+                .map(({t, bodies, joints, busy, ropes}) => ({t, bodies, joints, busy, ropes,
+                    dynamics: result.dynamics.get(t)}))
+        })}`);
+
+        const bJoint = result.mechanism.actuators.find(a => a.port === 'B').joint;
+        const end = result.track.at(-1);
+        const turn = (end.joints[bJoint].angle - result.track[0].joints[bJoint].angle) * DEG;
+        assert.ok(Math.abs(turn + 1800) < 5, 'B really completes the reverse lowering command');
+        const load = bodyOf(result.mechanism, 'load');
+        const heights = result.track.map(f => f.bodies[load].position[1]);
+        assert.ok(heights.every(Number.isFinite));
+        const rise = Math.max(...heights) - heights[0];
+        const hub = bodyOf(result.mechanism, 'hub');
+        const first = result.track[0].bodies[hub];
+        const displacement = Math.max(...result.track.map(f => len(sub(f.bodies[hub].position, first.position))));
+        const rotationDeg = Math.max(...result.track.map(f => 2 * Math.acos(Math.min(1,
+            Math.abs(dot(f.bodies[hub].rotation.slice(0, 3), first.rotation.slice(0, 3)) +
+                f.bodies[hub].rotation[3] * first.rotation[3]))) * DEG));
+        t.diagnostic(`reverse-only base stability: ${JSON.stringify({displacement, rotationDeg})}`);
+        assert.ok(rise < 0.005, `the reverse-only control still rose ${rise} m`);
+        assert.ok(displacement < 0.002 && rotationDeg < 1, 'a floor-supported load cannot hide whole-crane motion');
+    });
+
+    test('removing a counterweight exposes free load rotation without moving the held crane', async t => {
+        const oneWeight = MODEL_TEXT.replace(/^0 !BW ID loadBush\n1[^\n]*\n/m, '');
+        assert.notEqual(oneWeight, MODEL_TEXT, 'one actual upper bush is removed');
+        const stationary = PROGRAM.replace(/^ {2}run motor [ABC] (?:counterclockwise|clockwise) \d+ degrees\n/gm, '');
+        const result = await run(stationary, oneWeight);
+        assert.deepEqual(result.issues, []); assert.deepEqual(result.run.unsupported, []);
+        assert.ok(result.track.every(f => Object.values(f.busy).every(v => !v)), 'all motor ports stay held');
+        const load = bodyOf(result.mechanism, 'load'), hub = bodyOf(result.mechanism, 'hub');
+        const lean = Math.max(...result.track.map(f => Math.acos(Math.min(1,
+            qrot(f.bodies[load].rotation, [0, 1, 0])[1])) * DEG));
+        const first = result.track[0].bodies[hub];
+        const hubMaxDisplacement = Math.max(...result.track.map(f => Math.hypot(...f.bodies[hub].position.map((v, i) => v - first.position[i]))));
+        const hubMaxRotationDeg = Math.max(...result.track.map(f => 2 * Math.acos(Math.min(1,
+            Math.abs(f.bodies[hub].rotation.reduce((sum, v, i) => sum + v * first.rotation[i], 0)))) * DEG));
+        t.diagnostic(`counterweight control: ${JSON.stringify({lean, hubMaxDisplacement, hubMaxRotationDeg})}`);
+        assert.ok(Number.isFinite(lean) && lean > 3, 'an unbalanced free load must reveal the same attitude oracle');
+        assert.ok(hubMaxDisplacement < 0.002 && hubMaxRotationDeg < 1, 'load rotation is not whole-crane motion');
+    });
+
+    test('the actual crane program hoists, holds and pays out according to its rope geometry', async t => {
+        const result = await lifted();
+        const observation = judgeMechanicsRun('crane', {...result, unsupported: result.run.unsupported});
+        t.diagnostic(JSON.stringify(observation));
+    });
+
+    test('the settled hanging rope supports the compiled payload weight within the finite averaging bound', async t => {
+        const result = await lifted();
+        const track = result.track;
+        const starts = [];
+        for (let i = 0; i < track.length; i++) if (track[i].busy.C && (i === 0 || !track[i - 1].busy.C)) starts.push(i);
+        assert.equal(starts.length, 2);
+        const stop = track.findIndex((f, i) => i > starts[0] && !f.busy.C);
+        assert.ok(stop > starts[0] && stop < starts[1]);
+        const last = track[starts[1] - 1].t;
+        const held = track.slice(stop, starts[1]).filter(f => f.t >= last - 200);
+        assert.ok(held.length >= 3 && held.at(-1).t - held[0].t >= 100);
+        const load = result.mechanism.bodies.find(b => b.parts.includes('load'));
+        const weight = load.massKg * Math.hypot(...result.mechanism.gravity);
+        const mean = held.reduce((sum, f) => sum + f.ropes[0].tension, 0) / held.length;
+        t.diagnostic(`configured payload ${load.massKg} kg; weight ${weight} N; mean rope tension ${mean} N`);
+        // The free payload has no gear/screw solver mass floor. This is a numerical
+        // static-force control, not calibration of a physical brick or motor.
+        assert.ok(Math.abs(mean - weight) < Math.max(0.001, weight * 0.1), 'the sustained rope load balances gravity within 10% or 1 mN');
+    });
+
+    test('without the C winding command the observed hoist judge rejects the run', async () => {
+        const still = PROGRAM.replace(/^ {2}run motor C counterclockwise 540 degrees\n/m, '');
+        assert.notEqual(still, PROGRAM);
+        const result = await run(still);
+        assert.throws(() => judgeMechanicsRun('crane', {...result, unsupported: result.run.unsupported}), /lift, slew|hoist|wind/i);
+    });
+
+    test('payout to a floor-supported load creates sustained real slack instead of compressive rope force', async t => {
+        const slack = 'DEVICE SPIKE\nWHEN flag clicked:\n  set motor stop action A hold\n  stop motor A\n' +
+            '  set motor stop action B hold\n  stop motor B\n  set motor stop action C hold\n  stop motor C\n' +
+            '  set motor speed C 100\n  run motor C clockwise 1800 degrees\n  wait 1 seconds\n';
+        const result = await run(slack);
+        assert.deepEqual(result.issues, []);
+        assert.deepEqual(result.run.unsupported, []);
+        const rope = result.mechanism.couplings.find(c => c.kind === 'rope');
+        const point = (f, p) => qrot(f.bodies[p.body].rotation, p.local).map((x, i) => x + f.bodies[p.body].position[i]);
+        const end = result.track.at(-1).t;
+        const settled = result.track.filter(f => f.t >= end - 500);
+        assert.ok(settled.length >= 10, 'a sustained settled interval is retained');
+        const gaps = settled.map(f => f.ropes[0].free - len(sub(point(f, rope.points.at(-1)), point(f, rope.hook))));
+        const tension = settled.map(f => f.ropes[0].tension);
+        t.diagnostic(`slack phase observations: ${JSON.stringify(phaseObservations(result))}`);
+        t.diagnostic(`slack gap min ${Math.min(...gaps) * 1000} mm; tension max ${Math.max(...tension)} N`);
+        assert.ok(Math.min(...gaps) > 0.005, 'the actual rope is at least 5 mm longer than its guide-to-hook span');
+        assert.ok(Math.max(...tension) < 0.001, 'a slack rope supplies no compressive force');
     });
 }

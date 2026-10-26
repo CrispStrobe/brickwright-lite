@@ -264,7 +264,7 @@ test('(e) checkpoint/rollback with sliders, a rack, a load in contact and the co
     assert.ok(reference.contactPairs().pairs['box|rack'] > 0, 'the load rides on the rack: a robot–load contact');
 
     const core = createPhysicsCore(J, rollbackMech(), {stepHz: STEP_HZ, recordContacts: true});
-    assert.deepEqual(core.stateKeys(), ['clock', 'hinges', 'sliders', 'contacts']);
+    assert.deepEqual(core.stateKeys(), ['joint-dynamics', 'clock', 'hinges', 'sliders', 'contacts']);
     run(core);
     core.checkpoint();
     // Other commands after the checkpoint: a weaker slider motor (its force limit is in

@@ -29,6 +29,7 @@ const EV3 = path.join(SIM, 'hubs/ev3');
 const {Ev3VirtualHub} = await import(path.join(EV3, 'ev3-virtual-hub.js'));
 const {createEv3Session} = await import(path.join(EV3, 'ev3-peripheral.js'));
 const {hubRegistry} = await import(path.join(SIM, 'hubs/index.js'));
+const {resolvePath} = await import(path.join(EV3, 'ev3-files.js'));
 
 const fixture = name => Array.from(readFileSync(path.join(ROOT, 'test/fixtures/ev3-rbf', `${name}.rbf`)));
 const hex = text => Array.from(text.replace(/\s+/g, '').match(/../g), h => parseInt(h, 16));
@@ -249,6 +250,46 @@ test('the wall stopper on the bench: B and C until the ultrasonic reads under 15
     assert.equal(hub.s.lastProgram.how, 'ok');
     const cm = hub.readInput(0, 3, 0, 0, 'READY_SI').values[0];
     assert.ok(cm <= 15 && cm > 3, `stopped at ${cm} cm`);
+});
+
+test('compiled data files run through download/LOAD_IMAGE/PROGRAM_START in the image folder', () => {
+    const hub = brick();
+    const link = connect(hub);
+    download(link, '../prjs/files/data.rbf', fixture('data-files'));
+    assert.equal(startProgram(link, '../prjs/files/data.rbf')[4], 0x02);
+    bench(hub, 1000);
+    assert.equal(hub.s.lastProgram.how, 'ok');
+    assert.equal(hub.s.lastProgram.error, null);
+    assert.deepEqual(hub.events.filter(e => e.kind === 'write').map(e => e.value ?? e.text),
+        [5, 72, 0, 73, 74, 75, 0, 99, 1, 0, 7]);
+    assert.deepEqual(hub.readFile('../prjs/files/trace.bin'), [73]);
+    assert.equal(hub.readFile('trace.bin'), null, 'program data must not leak into the communication working folder');
+    assert.equal(status(link), 0x40);
+    assert.equal(hub.vm.s.handles.filter(h => h?.kind === 'file').length, 0);
+});
+
+test('compiled data-file state resumes identically in a fresh virtual-brick worker mirror', () => {
+    const a = brick();
+    const link = connect(a);
+    download(link, '../prjs/files/data.rbf', fixture('data-files'));
+    startProgram(link, '../prjs/files/data.rbf');
+    a.vm.options.instrPerMs = 1;
+    let admitted = false;
+    for (let i = 0; i < 30 && a.currentProgram(); i++) {
+        bench(a, 5);
+        if (a.vm.s.handles.some(h => h?.kind === 'file' && h.position > 0)) { admitted = true; break; }
+    }
+    assert.equal(admitted, true, 'snapshot must contain a live descriptor after an actual compiled read/write');
+    const b = hubRegistry.create('ev3', {id: 'ev3'});
+    b.importState(JSON.parse(JSON.stringify(a.exportState())));
+    assert.equal(a.stateKey(a.exportState()), b.stateKey(b.exportState()));
+    assert.equal(b.vm.name, resolvePath('../prjs/files/data.rbf'));
+    for (const hub of [a, b]) bench(hub, 1000);
+    assert.equal(a.s.lastProgram.how, 'ok');
+    assert.equal(b.s.lastProgram.how, 'ok');
+    assert.deepEqual(b.vm.s, a.vm.s);
+    assert.deepEqual(b.s.fs, a.s.fs);
+    assert.deepEqual(b.readFile('../prjs/files/trace.bin'), [73]);
 });
 
 test('a refused image: PROGRAM_START accepts the command, the program never runs, the refusal is named', () => {
