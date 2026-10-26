@@ -286,6 +286,9 @@ baseline at exactly shared elapsed times; unavailable observations stay gaps.
 
 The saved `bw.sim-lab.experiments.v2` envelope retains both models' canonical
 identities, original capture identities, origins and each definition's binding.
+Project saves retain twelve-decimal model placements; the established authored-model
+identity uses the separate six-decimal canonical serialization. Independent readers
+normalize typed root numeric fields for that identity without changing saved bytes.
 Its current-model anchor is checked again on reopen; a foreign history remains
 historical data. Both roles and their bindings are displayed. Existing byte,
 run, sample and duration caps apply to the complete pair. Clear the pair before

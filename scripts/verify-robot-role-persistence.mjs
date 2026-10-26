@@ -158,7 +158,7 @@ const main = async () => {
             assert.ok(Array.isArray(rawPacks) && rawPacks.length <= 256, `${item.id} role pack output is not bounded`);
             entry.packCount = rawPacks.length;
             const roleKinds = new Set();
-            const serializedModel = serializeModel(prepared.model, {name: `${item.id}.ldr`, title: item.title || item.id});
+            const serializedModel = serializeModel(prepared.model, {name: `${item.id}.ldr`, title: item.title || item.id, precision: 12});
             const reopenedPrepared = prepareModel(serializedModel, catalog, {mat: 'plain', autoPorts: false});
             assert.ok(reopenedPrepared?.model && reopenedPrepared?.mechanism, `${item.id} serialized model did not recompile`);
             assert.equal((reopenedPrepared.issues || []).filter(issue => issue.severity === 'error').length, 0,

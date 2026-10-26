@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BSD-3-Clause
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {roleMeasurementPacks} from '../overlay/scratch-gui/src/lib/bw-sim/measurements/role-presets.js';
@@ -141,4 +142,15 @@ test('German labels are localized without changing selectors or bindings', () =>
     assert.ok(deMotor.title.includes('Messreihe'));
     assert.deepEqual(deMotor.definitions.map(definition => definition.id), enMotor.definitions.map(definition => definition.id));
     assert.deepEqual(deMotor.definitions.map(definition => definition.binding), enMotor.definitions.map(definition => definition.binding));
+});
+
+
+test('long authored membership labels keep valid slider packs and full binding identities', () => {
+    const a='frame-'+ 'a'.repeat(100),b='rod-'+ 'b'.repeat(100);
+    const session=makeSession({parts:[a,b],bodies:[{id:'frame',parts:[a]},{id:'rod',parts:[b]}],joints:[{id:'slide',type:'slider',body1:'frame',body2:'rod'}]});
+    const packs=roleMeasurementPacks(session),slider=packs.find(p=>p.id.startsWith('role-slider-'));
+    assert.ok(slider,'display length must not hide an unambiguous structural role');
+    assert.ok(slider.title.length<=160&&slider.definitions.every(d=>d.label.length<=80));
+    assert.ok(slider.definitions.every(d=>d.binding===expectedJointBinding(session.mechanism,session.mechanism.joints[0])));
+    assert.ok(slider.definitions.every(d=>d.joint==='slide'));
 });

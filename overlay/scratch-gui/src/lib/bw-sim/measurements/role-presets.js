@@ -44,10 +44,24 @@ const membership = (mechanism, modelPartIds, partBodyCounts, joint) => {
 };
 const packId = (prefix, identity) => `${prefix}-${sha256Text(identity).slice(0, 24)}`;
 const definition = (id, kind, label, joint, binding) => ({id, kind, label, visible: true, joint: joint.id, binding});
-const makePack = (id, title, help, definitions) => validText(id, 128) && validText(title, 160) && validText(help, 240) &&
-    definitions.length > 0 && definitions.length <= MAX_PACK_DEFINITIONS &&
-    definitions.every(d => validText(d.id, 128) && validText(d.label, 80)) ?
-    {id, title, help, definitions} : null;
+const displayText = (value, limit) => {
+    if (!validText(value, Number.MAX_SAFE_INTEGER)) return '';
+    if (value.length <= limit) return value;
+    let shortened = '';
+    for (const character of value) {
+        if (shortened.length + character.length > limit - 1) break;
+        shortened += character;
+    }
+    return `${shortened}…`;
+};
+const makePack = (id, title, help, definitions) => {
+    const bounded = definitions.map(d => ({...d, label: displayText(d.label, 80)}));
+    title = displayText(title, 160);
+    return validText(id, 128) && validText(title, 160) && validText(help, 240) &&
+        bounded.length > 0 && bounded.length <= MAX_PACK_DEFINITIONS &&
+        bounded.every(d => validText(d.id, 128) && validText(d.label, 80)) ?
+        {id, title, help, definitions: bounded} : null;
+};
 
 /**
  * Build explicit-choice packs from unambiguous compiled structure. No model

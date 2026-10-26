@@ -159,3 +159,18 @@ test('actual save hook preserves an explicit pair and independent foreign identi
     p.measurements=[{...definition,targets:['replacement']}];
     assert.throws(()=>p.currentRecord(),/binding mismatch/,'live binding replacement cannot silently rewrite pair provenance');
 });
+
+
+test('actual save hook retains twelve-digit placement while canonical measurement identity stays six-digit', () => {
+    const p=pane(),part=p.session.model.parts[0],c=.384615384615,s=.923076923077;
+    p.session.model={...p.session.model,parts:[{...part,position:[83.0769230769,0,0],rotation:[c,0,s,0,1,0,-s,0,c]}]};
+    p.opened.text=serializeModel(p.session.model,{name:'precise.ldr',title:'Precise',precision:12});p.state.modelFile='precise.ldr';
+    p.measurementContext=measurementModelContext(p.session.model,p.opened.text,serializeModel);
+    const record=p.currentRecord();
+    assert.ok(record.ldraw.includes('83.0769230769'));
+    assert.ok(record.ldraw.includes('0.384615384615'));
+    const parsed=parseModel(record.ldraw);assert.deepEqual(parsed.refusals,[]);
+    const reopened=measurementModelContext(parsed.model,record.ldraw,serializeModel);
+    assert.equal(reopened.modelSha256,p.measurementContext.modelSha256);
+    assert.notEqual(reopened.rawModelSha256,reopened.modelSha256,'the precise saved bytes are not relabelled as the canonical six-digit serialization');
+});
