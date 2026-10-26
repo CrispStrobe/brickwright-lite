@@ -72,6 +72,23 @@ failure**. No new corpus completion follows from this integration alone. Keep
 invalid original snippets and recovered dependency contexts distinct from this
 unchanged raw-input measurement.
 
+## Image addition and CI bootstrap follow-up
+
+The unchanged owned Image-values whole-program fixture still exposes an export
+refusal on an initialized Image operand. The scope in
+[the Image-origin claim](../lanes/2026-10-26-arcade-image-nonarray-addition.md)
+requires a separate all-observations origin proof and complete non-Array helper
+caller checks. An Image on one visit does not prove every later visit; an
+unrelated Array has no authority. Mixed Image/Array addition through one helper
+must remain explicit until safely specialized. Preserve the existing original
+SDK/native fixture and its identity, mutation and round-trip assertions.
+
+The Tauri test bootstrap now reuses the existing official Ubuntu mirror helper
+from the repository root before its unchanged package installation. Five source
+policy controls pass, including a wrong-working-directory negative. This aligns
+workflow policy; it neither diagnoses a previous slow install nor establishes a
+speed improvement. The final integration's enabled hosted checks remain required.
+
 ## 25 October: latest complete source census and next boundary
 
 The latest complete unchanged 184-input import/Creator census measures

@@ -146,6 +146,10 @@ jobs:
           node scripts/package-native-broker-proof-pins.mjs --check
           node scripts/package-native-broker-assets.mjs --check
 
+      - name: Prepare official Ubuntu package mirror
+        working-directory: .
+        run: sudo env PATH="$PATH" node scripts/prepare-playwright-apt.mjs
+
       - name: Install Tauri system dependencies
         run: |
           sudo apt-get update
