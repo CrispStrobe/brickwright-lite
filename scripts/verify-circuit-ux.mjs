@@ -1119,9 +1119,14 @@ try {
           const pointRearm=await adcPage.evaluate(({handle,previousHandle})=>{
             const board=window.__board;
             let result=false,primaryError=null,state=null,diagnosticError=null;
+            const used={handleDifferent:handle!==previousHandle,captureAttempted:false,captureRead:false,
+              capture:null,countAttempted:false,countRead:false,count:null};
             try {
-              result=handle!==previousHandle&&board.getScopeData(handle).capture==='sample'
-                &&board.getScopeData(handle).count===0;
+              result=used.handleDifferent
+                &&(used.captureAttempted=true,used.capture=board.getScopeData(handle).capture,
+                  used.captureRead=true,used.capture==='sample')
+                &&(used.countAttempted=true,used.count=board.getScopeData(handle).count,
+                  used.countRead=true,used.count===0);
             } catch(error) {primaryError=error;}
             // Keep the handle captured by the original, separate evaluation.
             // These synchronous diagnostic reads follow the predicate; they
@@ -1137,11 +1142,11 @@ try {
                 adcChecked:adc.checked,adcDisabled:adc.disabled};
             } catch(error) {diagnosticError=String(error);}
             if(primaryError) {
-              try {primaryError.message+=' ADC_POINT_REARM_STATE '+JSON.stringify({result,state,diagnosticError});}
+              try {primaryError.message+=' ADC_POINT_REARM_STATE '+JSON.stringify({result,used,state,diagnosticError});}
               catch {/* retain the original predicate error */}
               throw primaryError;
             }
-            return {handle,result,state,diagnosticError};
+            return {handle,result,used,state,diagnosticError};
           },{handle,previousHandle:envelopeHandle});
           requireADC(pointRearm.result&&pointRearm.state!==null&&pointRearm.diagnosticError===null,
             'ADC_POINT_REARM_REUSED_RECORD '+JSON.stringify(pointRearm));

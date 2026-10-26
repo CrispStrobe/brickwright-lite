@@ -188,7 +188,9 @@ predicate, preserving the original separate handle read and evaluating that
 captured handle. Synchronous diagnostic reads follow the predicate in the same
 callback; they are not an atomic snapshot of every getter. The tuple includes
 the subsequently observed first handle so a change between evaluations stays
-visible. Missing diagnostics remain a failure; an original predicate error
+visible. Primitive values actually read by the short-circuit predicate and
+attempted/read flags remain separate from the subsequent diagnostic snapshot.
+Missing diagnostics remain a failure; an original predicate error
 is rethrown. No new wait, retry, engine advance, state override or product fix
 is introduced. This diagnostic still requires review and affected GUI evidence;
 the consumer qualification and final failed-source controls remain open.
