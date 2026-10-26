@@ -10,6 +10,40 @@ remain in operator-owned CrispStrobe repositories. Stop only after the fifth
 accepted step. The previous sequence and receipts below remain complete and
 retain their own identities.
 
+### Current supplier and consumer boundary
+
+Step3 is adopted by Lite PR1397 at `7f9edea2cc648d7139d1f57099d5121361d48a01`:
+CUI `408c179a9bf5ffc28a4626e9ff5a78fc35cdc671`, unchanged Board761153ff.
+The actual built consumer passed both signed PMOS bulk-wiring journeys. The
+retained 307-input affected recheck left previous native observations identical;
+this does not convert unknown reference eligibility into physical validation.
+
+For step4, the authored LM741 assessment used eleven related requests across
+**two topologies**, not eleven distinct imported designs. Endpoints around
+±0.999989289V and 20us continuous means around ±0.732945462V describe different
+quantities. A 150kΩ external rail load draws 0.0001A, but that does not supply a
+missing LM741 quiescent-current law. The demonstrated false supply-current zero
+is repaired by Board PR704: absent/nonfinite represented branch current refuses
+by name while genuine finite zero/signs remain valid. Its selected qualified
+consumer target is `836867513c3e7fac420ddaa32c17e1c7b6d3e513`.
+
+For step5, CUI PR122 landed `1bc233c9297e03abb9b7eb603e045b4e92b0bb40`.
+[CI40226023234](https://github.com/CrispStrobe/bw-circuit-ui/actions/runs/40226023234)
+passed all three jobs: 3,349 unit passes with 17 declared optional skips,
+168 source-precision controls,17 SPICE checks and83 browser scenarios. The
+ADC uses explicitly requested primary voltage point samples and an ideal
+uniform reconstruction grid. The raw default, original measurements and meter
+means remain authoritative. Modeled trace/trigger/readout, HOLD, clipping,
+paired CSV and externally expected receipt settings are separately observable.
+Supplier arithmetic/served-UI mutations are distinct from consumer acceptance.
+The original failed source heads remain failed; later greens do not relabel them.
+
+The [joint consumer lane](../lanes/2026-10-25-meter-adc-package-adoption.md)
+is still pending. It must prove exact installed payloads and one engine, actual
+built-Lite GUI operation, unchanged existing scope/aperture controls and one
+current fixed312-case regression before closing the campaign. No new private
+cohort replay, physical certificate, signed release or deployment is implied.
+
 ### Step 1 accepted: current package baseline
 
 [Run40172711900](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40172711900)

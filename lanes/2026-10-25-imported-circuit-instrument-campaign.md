@@ -110,11 +110,18 @@ before artifacts; their references remain not-run. No waveform or physical
 accuracy claim is manufactured. The private research cohort is not public
 redistribution clearance or a balanced300-design teaching catalogue.
 
-Overall ownership remains CLAIMED for steps 3–5. The bounded shared-source claim
-is [CUI PR119](https://github.com/CrispStrobe/bw-circuit-ui/pull/119),covering
-exact PMOS bulk wiring,implicit NMOS bulk-current conservation and effective-step
-work preflight. Implementation waits for canonical claim merge and exact-head
-qualification; package adoption follows qualified owned sources only. Long
-passive-watch capacity is a separately scoped capability,not permission to
-weaken old limits. No format twin,retargeted bench or unsupported row silently
-counts as a new comparable design. The previous sequence is not reopened.
+Step3 is accepted: owned CUI PR120 landed408c179a and Lite PR1397 adopted it
+at `7f9edea2cc648d7139d1f57099d5121361d48a01`, with both actual built-GUI
+PMOS journeys and all34 enabled checks successful. Six declared conditional
+skips remain explicit. The one affected307-input native recheck preserved
+previous observable results; it did not qualify unknown reference methods.
+
+Steps4–5 have qualified shared-source implementations. Board PR704 corrects
+unmodelled supply-current false zero without changing a device law; the LM741
+assessment distinguishes endpoint/continuous mean and unsupported rail current.
+CUI PR122 supplies opt-in ideal ADC reconstruction of actual primary voltage
+point samples, preserving the raw/default path. The single
+[final package lane](2026-10-25-meter-adc-package-adoption.md) owns their
+consumer qualification and campaign reconciliation. It remains pending;
+no physical part/ADC calibration, release or deployment is claimed.
+After fifth-item consumer acceptance, ask for the next priority and stop.

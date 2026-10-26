@@ -41,3 +41,25 @@ redispatch or relabel it as a new-head run. A separate applicability bridge
 needs explicit proof that its complete producer, model and CLI boundary is
 unchanged, with both source identities visible. This workflow/test repair
 itself grants no experiment, F7/V8, guest, release or landing authority.
+
+## Local source component
+
+Prepared locally for review: push now selects only `main`, while the two
+original eight-input path lists and manual registration are retained. The
+permissions, concurrency and complete job/step block are byte-identical.
+The focused test uses a finite, dependency-free reader of this workflow's
+three-event header, not a general YAML parser or production helper.
+
+All thirteen focused controls pass locally, including the nine unchanged
+bounded-writer controls. The source-driven matrix covers every input, nested
+Cargo manifests, main pushes, PR updates, unrelated paths, tags and manual
+dispatch. It reproduces the old two-route feature-branch case and the new
+single PR route, and rejects the trigger, held-pin/bound and canned-verdict
+mutations. Actionlint also passes. These are source controls, not an actual
+Rust job or instrument result.
+
+The original enabled cancellation remains an unqualified failure. Final owner
+composition and every enabled exact-head source check remain required; no
+already selected independent experiment is rerun, relabelled or adopted by
+this workflow repair. No notices, generator, Cargo input, package pin,
+runtime, browser or guest source changed.

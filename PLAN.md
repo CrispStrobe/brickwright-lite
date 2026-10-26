@@ -44,24 +44,34 @@ qualified Lite package adoption. No third-party original is patched.
    Two separate5,000-sample RC watch requests refuse before capture creation;
    their conditional references are not run. They are not acquired waveforms.
    Private payloads remain outside public repositories,workflows and artifacts.
-3. **Recurring-cause repairs: active in owned source.**
-   [CUI claim PR119](https://github.com/CrispStrobe/bw-circuit-ui/pull/119)
-   bounds three demonstrated causes: retain exact PMOS bulk-source/ground
-   wiring,account for genuine implicit NMOS bulk current in conservation,and
-   honor authored step limits in work preflight without raising the 20k cap.
-   Require nonzero-current/wrong-wiring/budget negatives,actual CLI/SPICE and
-   affected browser qualification before one purposeful package adoption.
-   Four weakly anchored numerical disagreements do not justify fitting normal
-   model physics to a convenient oracle root. Long passive-watch capability
-   needs a separate additive bounded design; do not shorten the refused
-   requests or relax old observer/work/history limits to call them passes.
-4. **One existing part's accuracy: pending.** Start with LM741 unless a bounded
-   evidence/ownership review establishes a better existing part. Admit a lawful
-   independent reference and test rails, loading, saturation and dynamics before
-   changing the model. Nominal agreement is not device-specific calibration.
-5. **One demonstrated instrument-physics gap: pending.** Audit existing probe
-   loading/coupling and bandwidth/range behavior first, then implement and
-   qualify one missing deterministic effect while preserving the ideal/raw path.
+3. **Recurring-cause repairs: accepted and adopted.** Owned CUI PR120
+   landed `408c179a9bf5ffc28a4626e9ff5a78fc35cdc671`; Lite PR1397 adopted it
+   at `7f9edea2cc648d7139d1f57099d5121361d48a01`. Exact PMOS bulk wiring,
+   genuine implicit NMOS bulk-current conservation and authored work preflight
+   are covered by causal negatives and actual CLI/browser checks. The one
+   affected 307-input native recheck preserved all previous observable results.
+   This repairs demonstrated causes without fitting four weakly anchored
+   disagreements to an arbitrary reference root.
+4. **LM741 assessment and measurement-honesty repair: supplier accepted.**
+   Eleven related requests across two authored topologies distinguish endpoint
+   voltage from a continuous meter mean. Four valid observations and seven
+   named refusals expose no basis for a new physical calibration claim. The
+   signal model has no quiescent/bias-current law: a connected supply terminal
+   must not be reported as measured zero. Board PR704 repairs that false zero
+   while preserving represented finite zero, signs and power-off behavior;
+   qualified descendant `836867513c3e7fac420ddaa32c17e1c7b6d3e513` is selected
+   for the final consumer wave. No electrical stamp or device law changed.
+5. **Ideal ADC view: supplier accepted; consumer qualification pending.**
+   CUI PR122 landed `1bc233c9297e03abb9b7eb603e045b4e92b0bb40` after all
+   three checks, including 83 actual browser scenarios. Explicit point-sample
+   acquisition can opt into a bounded ideal uniform ADC view with reconstructed
+   trace/trigger/readout, paired raw/code CSV, clipping and externally expected
+   receipt settings. Raw samples, electrical loading and meter means remain
+   unchanged. This is an ideal reconstruction model, not a real oscilloscope's
+   bandwidth, noise, calibration or complete analogue front end. The
+   [joint adoption](lanes/2026-10-25-meter-adc-package-adoption.md) must pass
+   installed-package, actual built-GUI and fixed-regression acceptance before
+   the fifth item is closed.
 
 Aperture/audio is already adopted through PR1338; retain and regress its actual
 capture, Chromium/WebKit, WAV and lifecycle evidence rather than reimplement it.

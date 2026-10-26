@@ -108,6 +108,32 @@ Robot Lab, SPIKE, Arcade and x86 ownership. Close the loop only after the fifth
 step is accepted in the consumer and future work is scoped; ask the user then
 and do not start a sixth lane.
 
+## Supplier admission checkpoint
+
+The canonical claim landed as `7c1da2f9c5efca5c40938daa1649d3e4060745a9`.
+CUI PR122 is now qualified and merged as
+`1bc233c9297e03abb9b7eb603e045b4e92b0bb40`, tree
+`569336867886e38dc19e020511e39ad292b0d65c`, identical to the reviewed and
+qualified merge tree. All three exact-head jobs succeeded:3349 unit passes
+with17 declared optional skips,168 precision controls,17 SPICE checks and83
+browser scenarios. Board target remains836867513c3e7fac420ddaa32c17e1c7b6d3e513.
+The complete13 changed packaged CUI files have source witnesses; this is source
+admission, not an installed-consumer certificate. The x86 owner is reviewing
+its newer whole producer/control profile and bounded current selectors before
+joint composition. No current pin or F7/V8 event is selected by that review.
+
+## Minimal current-identity composition
+
+The x86 owner supplies reviewed component
+`558ce246cdf273fc167954db83f4b797266046f5` for normal composition. Its four
+code files update ten current identity literals and the accompanying assertion
+label: the GUI producer/reader, direct Circuit workflow and its source test.
+Schemas, guards, resource caps, artifact-v2 protocol and GUI test body remain
+unchanged. The larger pending B9 change set and historical profile table are
+explicitly excluded. Ordinary package adoption does not require that separate
+work or authorize an actual guest event. The composed package identities and
+all14 existing GUI controls still require final acceptance.
+
 
 ## Consumer qualification checkpoint — 2026-10-26
 
@@ -147,3 +173,24 @@ Next work within this lane:
    before normal matched-head integration and final campaign closeout. Keep
    the completed numerical study attached to its original source identity;
    do not replay it or claim physical oscilloscope/LM741 accuracy.
+
+### Later point-rearm failure
+
+At diagnostic head `65cc5c8d84852878c7d72ef842d5f3452ea006e2`,
+[Build40256837534](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40256837534)
+passed the combined envelope-publication wait and then failed
+`ADC_POINT_REARM_REUSED_RECORD`. The earlier intermittent mode-publication
+failure is not thereby resolved. The three-part point-rearm assertion did not
+identify whether the handle, capture mode or count differed from its expectation.
+
+The local evidence replacement keeps the second selection and exact three-part
+predicate, preserving the original separate handle read and evaluating that
+captured handle. Synchronous diagnostic reads follow the predicate in the same
+callback; they are not an atomic snapshot of every getter. The tuple includes
+the subsequently observed first handle so a change between evaluations stays
+visible. Primitive values actually read by the short-circuit predicate and
+attempted/read flags remain separate from the subsequent diagnostic snapshot.
+Missing diagnostics remain a failure; an original predicate error
+is rethrown. No new wait, retry, engine advance, state override or product fix
+is introduced. This diagnostic still requires review and affected GUI evidence;
+the consumer qualification and final failed-source controls remain open.
