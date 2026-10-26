@@ -4615,6 +4615,100 @@
         "ellipsa.ldr",
         "ellipse-engine.ldr"
       ]
+    },
+    "toggle-lever": {
+      "en": {
+        "what": "Motor A turns a crank whose pin drives a Scotch yoke along one axis: the yoke pin sits at 40·cos θ LDU (16·cos θ mm). A 1x3 link joins the yoke pin to the input hole of a 3L lever that pivots on a fixed vertical axle, 20 LDU (8 mm) from the pivot; the lever's far hole, 16 mm from the pivot, is its tip. The program turns the crank 0 → 85 → 0 degrees at 30 °/s. The yoke, link and lever are passive. In the simulator the lever follows the closed-loop link geometry within 0.02° up to θ = 60°, and reaches about 50° at θ = 85° against a predicted 49.0°.",
+        "try": [
+          "Load the model, press Reset, then Run. The program refuses to start if motor A is more than 2° away from its saved zero.",
+          "Watch the lever while the crank turns at a steady 30 °/s. The yoke moves slowly at first and faster later, while the lever keeps turning at 3 to 4° per millimetre of yoke travel. Look at the link: it swings from square-on to the lever arm (90°) toward lying back along it.",
+          "Use the manual jog on port A in 5° steps from 60° to 85°. At each step, estimate the angle between the link and the lever's input arm. It falls from about 41° to about 7°.",
+          "Do not jog to 90°. There the link lies exactly over the pivot, and the geometry no longer decides which way the lever turns next. That is why the program and the jog both stop at 85°."
+        ],
+        "why": "The yoke pin Y, the lever pivot P and the lever pin L form a triangle with |PL| = 20 LDU, |YL| = 40 LDU and a third side d = |PY| that changes as the yoke moves. For each d there are two mirror-image ways to close the triangle; the build starts on one of them, and the lever angle follows it continuously. When θ approaches 90°, the yoke pin comes level with the pivot and d shrinks toward 40 − 20 = 20 LDU, so the link folds back over the lever arm. The link can only push along its own line, so only the part of its force at right angles to the arm turns the lever: torque = F·r·sin μ, where μ is the angle between link and arm. μ falls from 90° at the start to 7° at 85°, so only sin 7° ≈ 12% of the link force still turns the lever, and at 90° none does: the link pushes straight through the pivot. This is a dead centre. Near it, a small amount of play or elasticity in a joint becomes a large lever error. That is why the simulated lever reads about 1° high at 85° but matches within 0.02° at 60°.",
+        "matters": "Every crank and connecting-rod engine passes two dead centres per turn. Steam engines and single-cylinder engines carry them through on flywheel momentum, and locomotives set two cylinders 90° apart. Toggle clamps, stone crushers and toggle presses use the same alignment the other way round: driven from the lever side, the nearly straight link turns a small torque into a very large push, and it can lock just past the straight position. Designers watch the transmission angle μ and usually keep it above 40° or so, unless the dead centre is exactly the effect they want.",
+        "question": "At a crank angle of 85°, the link makes an angle of about 7° with the lever arm. What fraction of the force along the link still turns the lever, and what happens at 90°?",
+        "answer": "Only sin 7° ≈ 0.12, about 12% of the link force, still acts at right angles to the 8 mm arm and turns the lever. At 90° the link points straight through the pivot, so it produces no turning torque at all (a dead centre), and the geometry no longer decides which way the lever goes next.",
+        "further": [
+          "Use the formula to predict the lever angle at θ = 30°, 60° and 75° (8.6°, 28.8° and 40.8°), then jog to those angles and compare.",
+          "Plot the lever angle against the yoke position instead of the crank angle. Why does the slope stay between about 3 and 4° per millimetre, even though the transmission angle collapses?",
+          "Sketch what would happen beyond 90° on each closing branch. Which real machines add a flywheel, a second phase-shifted crank or a mechanical stop to get through, or to stay at, this point?"
+        ]
+      },
+      "de": {
+        "what": "Motor A dreht eine Kurbel, deren Zapfen eine Kreuzschleife entlang einer Achse antreibt: Der Schleifenzapfen steht bei 40·cos θ LDU (16·cos θ mm). Ein 1x3-Lenker verbindet diesen Zapfen mit dem Eingangsloch eines 3L-Hebels, der sich um eine feste senkrechte Achse dreht, 20 LDU (8 mm) vom Drehpunkt entfernt. Das äußere Loch, 16 mm vom Drehpunkt, ist die Hebelspitze. Das Programm dreht die Kurbel mit 30 °/s von 0 auf 85 und zurück auf 0 Grad. Schleife, Lenker und Hebel sind passiv. In der Simulation folgt der Hebel der geschlossenen Gelenkgeometrie bis θ = 60° auf 0,02° genau und erreicht bei θ = 85° etwa 50°, vorhergesagt sind 49,0°.",
+        "try": [
+          "Modell laden, Zurücksetzen drücken, dann Starten. Das Programm startet nicht, wenn Motor A mehr als 2° von seiner gespeicherten Nullstellung entfernt ist.",
+          "Den Hebel beobachten, während die Kurbel gleichmäßig mit 30 °/s dreht. Die Schleife bewegt sich erst langsam, dann schneller, der Hebel dreht sich dabei um 3 bis 4° pro Millimeter Schleifenweg. Auf den Lenker achten: Er steht anfangs rechtwinklig zum Hebelarm (90°) und legt sich dann immer weiter zurück auf ihn.",
+          "Mit dem manuellen Tippbetrieb an Port A in 5°-Schritten von 60° bis 85° fahren und bei jedem Schritt den Winkel zwischen Lenker und Hebelarm schätzen. Er fällt von etwa 41° auf etwa 7°.",
+          "Nicht bis 90° tippen. Dort liegt der Lenker genau über dem Drehpunkt, und die Geometrie entscheidet nicht mehr, in welche Richtung der Hebel weiterdreht. Deshalb hören Programm und Tippbetrieb bei 85° auf."
+        ],
+        "why": "Schleifenzapfen Y, Drehpunkt P und Hebelzapfen L bilden ein Dreieck mit |PL| = 20 LDU, |YL| = 40 LDU und einer dritten Seite d = |PY|, die sich mit der Schleife ändert. Für jedes d gibt es zwei spiegelbildliche Arten, das Dreieck zu schließen; das Modell beginnt auf einer davon, und der Hebelwinkel folgt ihr stetig. Nähert sich θ den 90°, kommt der Schleifenzapfen auf die Höhe des Drehpunkts, d schrumpft auf 40 − 20 = 20 LDU, und der Lenker klappt über den Hebelarm zurück. Ein Lenker kann nur entlang seiner eigenen Linie drücken, deshalb dreht nur der Kraftanteil rechtwinklig zum Arm den Hebel: Moment = F·r·sin μ, wobei μ der Winkel zwischen Lenker und Arm ist. μ fällt von 90° zu Beginn auf 7° bei 85°. Dann dreht nur noch sin 7° ≈ 12 % der Lenkerkraft den Hebel, bei 90° gar nichts mehr: Der Lenker drückt genau durch den Drehpunkt. Das ist ein Totpunkt. In seiner Nähe wird schon ein kleines Spiel oder eine kleine Nachgiebigkeit in einem Gelenk zu einem großen Hebelfehler. Darum zeigt der simulierte Hebel bei 85° etwa 1° zu viel, stimmt aber bei 60° auf 0,02° genau.",
+        "matters": "Jeder Kurbeltrieb mit Pleuel durchläuft pro Umdrehung zwei Totpunkte. Dampfmaschinen und Einzylindermotoren überwinden sie mit dem Schwung eines Schwungrads, Lokomotiven versetzen zwei Zylinder um 90°. Kniehebelspanner, Backenbrecher und Kniehebelpressen nutzen dieselbe Ausrichtung umgekehrt: Vom Hebel aus angetrieben, macht der fast gestreckte Lenker aus einem kleinen Moment eine sehr große Druckkraft und kann knapp hinter der Strecklage verriegeln. Konstrukteure achten deshalb auf den Übertragungswinkel μ und halten ihn meist über etwa 40°, außer der Totpunkt ist genau der gewünschte Effekt.",
+        "question": "Bei 85° Kurbelwinkel bildet der Lenker etwa 7° mit dem Hebelarm. Welcher Anteil der Kraft entlang des Lenkers dreht den Hebel noch, und was passiert bei 90°?",
+        "answer": "Nur sin 7° ≈ 0,12, also etwa 12 % der Lenkerkraft, wirken noch rechtwinklig auf den 8-mm-Arm und drehen den Hebel. Bei 90° zeigt der Lenker genau durch den Drehpunkt und erzeugt gar kein Drehmoment mehr (ein Totpunkt). Die Geometrie legt dann nicht mehr fest, in welche Richtung der Hebel weitergeht.",
+        "further": [
+          "Mit der Formel den Hebelwinkel bei θ = 30°, 60° und 75° vorhersagen (8,6°, 28,8° und 40,8°), dann zu diesen Winkeln tippen und vergleichen.",
+          "Den Hebelwinkel über der Schleifenposition statt über dem Kurbelwinkel auftragen. Warum bleibt die Steigung zwischen etwa 3 und 4° pro Millimeter, obwohl der Übertragungswinkel zusammenbricht?",
+          "Skizzieren, was jenseits von 90° auf jedem der beiden Schließzweige passieren würde. Welche echten Maschinen verwenden ein Schwungrad, eine zweite, versetzte Kurbel oder einen Anschlag, um diesen Punkt zu überwinden oder in ihm zu bleiben?"
+        ]
+      },
+      "formula": {
+        "en": "Y = (40·cos θ, 100) LDU, P = (0, 120) LDU; d = |PY|. Lever pin angle φ = atan2(Y−P) ± arccos((20² + d² − 40²)/(2·20·d)), on the branch continuous from φ(0) = 36.87°. Lever rotation = φ − 36.87°; transmission angle μ = the angle between the link YL and the arm PL; lever torque = F_link · 8 mm · sin μ.",
+        "de": "Y = (40·cos θ, 100) LDU, P = (0, 120) LDU; d = |PY|. Hebelzapfenwinkel φ = atan2(Y−P) ± arccos((20² + d² − 40²)/(2·20·d)), auf dem Zweig stetig ab φ(0) = 36,87°. Hebeldrehung = φ − 36,87°; Übertragungswinkel μ = Winkel zwischen Lenker YL und Arm PL; Hebelmoment = F_Lenker · 8 mm · sin μ."
+      },
+      "related": [
+        "sine-shuttle.ldr",
+        "quickstroke.ldr",
+        "watt-line.ldr"
+      ]
+    },
+    "thirdline": {
+      "en": {
+        "what": "One motor sets an input angle. Two equal-radius arms, a straight baseline guide and a sliding marked line constrain the passive output. The marked distance equals the circle radius, so the line heading is one third of the input angle on the supplied branch. Compare the physical model with the marked joint one hole inward: the same program should then produce a different angular law.",
+        "try": [
+          "Load the model, press Reset, then Run. Find the driven circle arm and the passive yellow line; only the circle input has a motor.",
+          "Predict the line headings at input angles 50°, 65°, 80° and 95° before watching the pauses: 16⅔°, 21⅔°, 26⅔° and 31⅔°. Read the line itself, not just the motor encoder.",
+          "Watch the long return and repeated forward sweep. The line should retrace the same geometric relation while both sliders stay engaged.",
+          "Load thirdline-control.ldr and run the identical program from Reset. Its marked segment is 24 mm instead of 32 mm, while the circle radius remains 32 mm. Predict whether its line angle should remain exactly one third.",
+          "Reset before every fresh run after manual movement or interruption. Keep the finite supplied sector; branch changes and full turns are outside the demonstration."
+        ],
+        "why": "The two arms keep A and B on one circle. The line passes through A and B, and its other mark C stays on the baseline. The fixed marked distance BC closes the remaining geometric condition. With radius r and mark spacing d, this branch obeys sin(θ−2φ)=(d/r)sinφ. When d=r, the relevant angles give θ=3φ. Shortening d leaves the line free to move but changes the law. The third is produced by physical constraints; the output receives no calculated target.",
+        "matters": "Trisecting an arbitrary angle with compass and unmarked straightedge alone is impossible; Pierre Wantzel proved this in 1837. Archimedes avoided the restriction by marking two points on his ruler and sliding it into place (a neusis construction). This model builds that sliding, marked ruler from beams and guides, so the geometry computes the third with no gear ratio and no output motor. It is an example of a mechanical computer: constraints, not code, produce the answer.",
+        "question": "The input advances from 65° to 80°, a 15° step. How much should the main line turn? Does the one-hole-shorter marked segment have to give the same result?",
+        "answer": "The equal-mark main should advance from 21⅔° to 26⅔°, exactly 5°. With the shorter mark, d = r no longer holds and exact trisection fails: ideally the line moves from about 23.720° to 29.251°, a 5.531° step. In the simulator the main line turned 5.005° for a measured 15.02° input step, and the shorter-mark version 5.539°.",
+        "further": [
+          "Derive β=180°−θ+2φ from the chord joining the two circle points. Then use the baseline condition r sinβ=d sinφ to recover the closure law.",
+          "Compare equal 15° input target steps. The main ideal line steps are all 5°; the shorter-mark comparison steps vary slightly.",
+          "Compare Apex, whose one-third rotor motion comes from planetary gears, and Cross Ratio, whose factor of three applies to a half-angle tangent rather than the angle.",
+          "The nominal construction does not rate a physical model’s accuracy. Pin play, axle bending, guide friction and cable forces require separate hardware checks."
+        ]
+      },
+      "de": {
+        "what": "Ein Motor stellt einen Eingangswinkel ein. Zwei gleich lange Kreisarme, eine gerade Grundführung und eine verschiebbare markierte Gerade bestimmen den passiven Ausgang. Der Abstand zwischen den beiden Markierungsgelenken entspricht dem Kreisradius. Deshalb beträgt der Winkel der Geraden im vorgesehenen Montagezweig ein Drittel des Eingangswinkels. Vergleiche die Bauvariante mit einem um ein Loch versetzten Markierungsgelenk: Dasselbe Programm soll dann ein anderes Winkelgesetz ergeben.",
+        "try": [
+          "Lade das Modell, drücke Zurücksetzen und dann Start. Suche den angetriebenen Kreisarm und die passive gelbe Gerade; nur der Kreiseingang hat einen Motor.",
+          "Sage vor den Pausen die Winkel der Geraden bei 50°, 65°, 80° und 95° Eingangswinkel voraus: 16⅔°, 21⅔°, 26⅔° und 31⅔°. Beobachte die Gerade selbst und nicht nur den Motordrehgeber.",
+          "Beobachte den langen Rücklauf und den erneuten Vorlauf. Die Gerade sollte denselben geometrischen Zusammenhang durchlaufen, während beide Schieber in ihren Führungen bleiben.",
+          "Lade thirdline-control.ldr und starte nach Reset dasselbe Programm. Der markierte Abstand beträgt dort 24 mm statt 32 mm; der Kreisradius bleibt 32 mm. Muss die Gerade noch genau ein Drittel anzeigen?",
+          "Starte nach einer manuellen Bewegung oder Unterbrechung immer mit Reset. Bleibe im vorgegebenen endlichen Winkelbereich; Montagezweigwechsel und volle Umdrehungen gehören nicht zu diesem Versuch."
+        ],
+        "why": "Die beiden Arme halten A und B auf demselben Kreis. Die Gerade verläuft durch A und B; ihre zweite Markierung C bleibt auf der Grundlinie. Der feste Abstand BC schließt die geometrische Bedingung. Mit Radius r und Markierungsabstand d gilt im gewählten Zweig sin(θ−2φ)=(d/r)sinφ. Für d=r folgt hier θ=3φ. Wird d verkürzt, bewegt sich die Gerade weiterhin, aber nach einem anderen Gesetz. Die mechanischen Zwangsbedingungen erzeugen das Drittel; der Ausgang erhält keinen berechneten Sollwinkel.",
+        "matters": "Einen beliebigen Winkel nur mit Zirkel und unmarkiertem Lineal zu dritteln, ist unmöglich; Pierre Wantzel bewies das 1837. Archimedes umging die Einschränkung, indem er zwei Punkte auf seinem Lineal markierte und es in die richtige Lage schob (eine Neusis-Konstruktion). Dieses Modell baut das verschiebbare, markierte Lineal aus Balken und Führungen nach, sodass die Geometrie das Drittel ohne Zahnräder und ohne Abtriebsmotor berechnet. Es ist ein Beispiel für einen mechanischen Rechner: Zwangsbedingungen, nicht Programmcode, liefern das Ergebnis.",
+        "question": "Der Eingang geht von 65° auf 80°, also um 15° weiter. Um wie viel sollte sich die Gerade im Hauptmodell drehen? Muss der um ein Loch verkürzte Markierungsabstand dasselbe Ergebnis liefern?",
+        "answer": "Bei gleichen Längen geht die Gerade von 21⅔° auf 26⅔°, also genau um 5° weiter. Beim kürzeren Markierungsabstand gilt d = r nicht mehr, und die genaue Dreiteilung entfällt: Ideal dreht die Gerade von etwa 23,720° auf 29,251°, also um 5,531°. Im Simulator drehte sich die Gerade des Hauptmodells bei einem gemessenen Eingangsschritt von 15,02° um 5,005°, die mit kürzerer Markierung um 5,539°.",
+        "further": [
+          "Leite aus der Kreissehne zwischen A und B die Beziehung β=180°−θ+2φ her. Setze dann die Grundlinienbedingung r sinβ=d sinφ ein.",
+          "Vergleiche gleiche 15°-Schritte des Eingangssollwinkels. Im Hauptmodell ergeben sich ideal immer 5°; beim kürzeren Markierungsabstand ändern sich die Ausgangsschritte leicht.",
+          "Vergleiche Apex mit seiner planetengetriebenen Dritteldrehzahl und Cross Ratio, bei dem der Faktor drei den Tangens des halben Winkels betrifft.",
+          "Die ideale Konstruktion legt keine Genauigkeit eines gebauten Modells fest. Gelenkspiel, Achsbiegung, Führungsreibung und Kabelkräfte benötigen eigene Hardwareprüfungen."
+        ]
+      },
+      "formula": {
+        "en": "Main: OA=OB=BC=r=32 mm; θ=3φ on the selected bounded branch. General marked length d: sin(θ−2φ)=(d/r)sinφ, equivalently θ=2φ+asin[(d/r)sinφ] on this branch. Comparison: d=24 mm, r=32 mm, d/r=0.75. θ is the measured input-arm heading and φ the measured passive line heading, using the same positive projected angular direction.",
+        "de": "Hauptmodell: OA=OB=BC=r=32 mm; θ=3φ im gewählten begrenzten Montagezweig. Allgemein: sin(θ−2φ)=(d/r)sinφ beziehungsweise θ=2φ+asin[(d/r)sinφ] in diesem Zweig. Vergleich: d=24 mm, r=32 mm, d/r=0,75. θ bezeichnet den gemessenen Winkel des Eingangsarms, φ den gemessenen Winkel der passiven Geraden; beide nutzen dieselbe positive Drehrichtung in der Projektion."
+      },
+      "related": []
     }
   }
 }
