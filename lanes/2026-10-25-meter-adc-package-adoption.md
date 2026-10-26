@@ -127,7 +127,7 @@ wait predicate; the endpoint diagnostic is not a continuous component trace.
 The subsequent envelope/point rearm and failed-source controls did not complete
 and must not be reported as passed.
 
-The forward diagnostic records the original selection's return values,
+The forward diagnostic is designed to record the original selection's return values,
 scoped/page control counts, exact element identities and connectivity, and a
 64-entry capture/bubble input/change trace with an overflow count. It preserves
 the original action, assertions, timeouts and engine clock. This is passive
