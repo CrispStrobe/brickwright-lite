@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "id": "rise-ratio-control",
+  "language": "de",
+  "what": "Scherenhubtisch — veränderliches Wegverhältnis. Diese mechanische Kontrolle entfernt das Ritzel mit zwölf Zähnen aus demselben Scherenhubtisch. Lager und Sicherungsringe der Welle bleiben erhalten. Motor A führt das vollständige Programm aus; die untere Zahnstange erhält keine Antriebskraft. Das Ritzel ist mechanisch entfernt. Motor A führt dieselbe Folge aus, während die abgestützte Scherenplattform nahe ihrer unteren Ruhelage bleibt.",
+  "try": [
+    "Wähle diese Kontrolle unter Beispiele und drücke Start. Das Programm wird automatisch geladen.",
+    "Beobachte dieselben vorzeichenbehafteten Motorziele wie bei Rise Ratio. Miss Zahnstange und passive Plattform unabhängig.",
+    "Vergleiche nach dem Zurücksetzen mit Rise Ratio. Das Hauptmodell hebt sich etwa 16 mm; diese Plattform soll nahe ihrer unteren Auflage bleiben."
+  ],
+  "why": "Die Scherengeometrie führt die Plattform weiterhin, doch ohne Ritzel ist der Weg vom Motor zur Zahnstange unterbrochen. Die unteren Auflagen halten die Ruhelage. Erreichte Motorziele allein belegen deshalb keine Ausgangsbewegung.",
+  "matters": "Die Geometrie verändert hier mechanisch die Wegübersetzung. Bei einer idealen langsamen, reibungsfreien Hubbewegung braucht eine senkrechte Last W die waagerechte Zahnstangenkraft F = W w/h. Mit steigender Bühne sinkt die Wegübersetzung, und das ideale Verhältnis Last zu Antriebskraft h/w nimmt zu. Das ist eine Vorhersage und keine gemessene Traglastangabe; Reibung, Trägheit, Nachgiebigkeit, Getriebeverluste und Motorgrenzen verändern die erforderliche Kraft.",
+  "question": "Beweist ein erreichter Motorwinkel, dass sich die Plattform gehoben hat?",
+  "answer": "Nein. Das Ritzel wandelt die Drehung in Zahnstangenweg um. Ohne Ritzel kann der Motor seine Ziele erreichen, während Zahnstange und Scherenplattform nahe ihrer unteren Auflage bleiben. Unabhängige Messungen trennen Antriebsbewegung und nutzbaren passiven Ausgang.",
+  "further": [
+    "Berechne bei einer Breite von 56 mm die Höhe h und das Verhältnis w/h. Vergleiche mit einer gemessenen Höhe in Stufe 2. Verwende die Gelenkmitten statt der durch die Materialdicke versetzten Bühnenoberfläche.",
+    "Erkläre, warum die fast flache Lage w ≈ 80 mm eine sehr große ideale Antriebskraft erfordern würde. Fahre diesen Bereich mit dem mitgelieferten Modell oder Programm nicht an: Er liegt außerhalb der vorgegebenen Strecke und des Prüfbereichs.",
+    "Vergleiche die Schere mit Sarrus Lift oder Parallel Lift. Alle heben eine Plattform, doch unterschiedliche Gelenkführungen bestimmen Bahn und Übersetzung. Untersuche die tatsächliche Bewegung, bevor du entscheidest, ob die Bühne senkrecht geführt und waagerecht geblieben ist."
+  ],
+  "formula": "Für die Scherengeometrie gilt h² + w² = (80 mm)². Die Beziehung zwischen Motorwinkel und Zahnstangenweg gilt nur mit eingreifendem Ritzel; diese Kontrolle soll trotz Eingangsdrehung nahe w=64 mm und h=48 mm bleiben.",
+  "related": [
+    "rise-ratio.ldr",
+    "sarrus-lift.ldr",
+    "parallel-lift.ldr",
+    "rack-shuttle.ldr"
+  ]
+}

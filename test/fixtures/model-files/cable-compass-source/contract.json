@@ -1,0 +1,1040 @@
+{
+  "schemaVersion": 1,
+  "revision": "cable-compass-r2-preregistered-full-rate-support-observer",
+  "state": "FROZEN BEFORE FIRST COMPLETE 5 ms FORCE RECORDING. The r1 native run remains FAIL for its instantaneous side-pair tension gates. This revision changes the support claim and observer only; exact geometry/program and all position, time, geometry and construction thresholds remain unchanged.",
+  "author": "CrispStrobe",
+  "license": "BSD-3-Clause",
+  "physicalQuestion": "Can two independently controlled worm winches locate one passive payload through four direct tension-only ropes, and distinguish equal from unequal winding?",
+  "parameterEvidence": "evidence/program-parameters.json",
+  "modelSha256": "5120c9ff97cdd25a92df3142dda13699521f39c2a8d1b430c87b39b6defb1c88",
+  "programSha256": "9211d9c1e3a2b43577f8565512fafe292a44574e463504f3ca04d0be985c7a4d",
+  "staticInspection": {
+    "file": "evidence/static/static-inspection.json",
+    "sha256": "eeed13316aaf5789015dc7991f613cf5d53cbc9d7f5b19f30da1ffd782da5c43",
+    "modelSha256": "5120c9ff97cdd25a92df3142dda13699521f39c2a8d1b430c87b39b6defb1c88",
+    "interfacesFile": "evidence/static/interfaces.json",
+    "interfacesSha256": "f2036183d532a9df55e5bfef7b7e9464cda39bd107ad7055e01691d82e8ba693"
+  },
+  "approvedIssues": [],
+  "baselineCommit": "95b5b97034058abffe5b2e8746581ee64e23691c",
+  "motors": {
+    "A": "Left paired drum shaft through a worm; both front/rear ropes share its winding.",
+    "B": "Right paired drum shaft through a worm; both front/rear ropes share its winding."
+  },
+  "dimensions": {
+    "anchorHalfSpacingMm": 64,
+    "anchorHalfDepthMm": 24,
+    "homeDownMm": 100,
+    "windingRadiusMm": 2.8,
+    "wormRatioDenominator": 24
+  },
+  "datum": {
+    "motorWindSigns": {
+      "A": 1,
+      "B": 1
+    },
+    "signStatus": "Both +1 signs established in sparse development and observed in the preserved full-machine r1 run; r2 geometry/program bytes are identical.",
+    "provisional": false
+  },
+  "expectedTopology": {
+    "dynamicModelBodies": 6,
+    "joints": 4
+  },
+  "physicalHingeInterfaces": [
+    "left_frame_-1:h5|left_output_axle:a",
+    "left_frame_1:h5|left_output_axle:a",
+    "left_worm_bearing:h5|left_worm_axle:a",
+    "right_frame_-1:h5|right_output_axle:a",
+    "right_frame_1:h5|right_output_axle:a",
+    "right_worm_bearing:h5|right_worm_axle:a"
+  ],
+  "coordinateConvention": "Program geometry is millimetres in a fixed right/up/lateral frame. Source LDraw inputs are converted with x*0.4, -y*0.4, z*0.4. Native observation must derive an independent frame from an actual chassis part after mat placement.",
+  "markers": {
+    "basePart": "hub",
+    "coordinateFrame": {
+      "part": "left_frame_-1",
+      "horizontalLocal": [
+        0,
+        0,
+        1
+      ],
+      "downLocal": [
+        -1,
+        0,
+        0
+      ],
+      "depthLocal": [
+        0,
+        -1,
+        0
+      ]
+    },
+    "tiePoint": {
+      "part": "payload_tie",
+      "local": [
+        0,
+        0,
+        -29
+      ]
+    },
+    "anchors": [
+      {
+        "id": "rope_left_front",
+        "side": "left",
+        "depth": "front",
+        "part": "left_drum_front",
+        "local": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "id": "rope_left_rear",
+        "side": "left",
+        "depth": "rear",
+        "part": "left_drum_rear",
+        "local": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "id": "rope_right_front",
+        "side": "right",
+        "depth": "front",
+        "part": "right_drum_front",
+        "local": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "id": "rope_right_rear",
+        "side": "right",
+        "depth": "rear",
+        "part": "right_drum_rear",
+        "local": [
+          0,
+          0,
+          0
+        ]
+      }
+    ],
+    "physicalHingeInterfaces": [
+      "left_frame_-1:h5|left_output_axle:a",
+      "left_frame_1:h5|left_output_axle:a",
+      "left_worm_bearing:h5|left_worm_axle:a",
+      "right_frame_-1:h5|right_output_axle:a",
+      "right_frame_1:h5|right_output_axle:a",
+      "right_worm_bearing:h5|right_worm_axle:a"
+    ],
+    "approvedIssues": []
+  },
+  "geometry": {
+    "anchorsMm": {
+      "A": [
+        [
+          -64,
+          0,
+          -24
+        ],
+        [
+          -64,
+          0,
+          24
+        ]
+      ],
+      "B": [
+        [
+          64,
+          0,
+          -24
+        ],
+        [
+          64,
+          0,
+          24
+        ]
+      ]
+    },
+    "homeTieMm": [
+      0,
+      -100,
+      0
+    ],
+    "drumRadiusMm": 2.8,
+    "wormReduction": 24,
+    "datumRopeLengthMm": {
+      "A": 121.12803143781376,
+      "B": 121.12803143781376
+    }
+  },
+  "route": [
+    {
+      "name": "home",
+      "xMm": 0,
+      "upMm": 0,
+      "stage": 0,
+      "downMm": 100,
+      "pointMm": [
+        0,
+        -100,
+        0
+      ],
+      "ropeLengthMm": {
+        "A": 121.12803143781376,
+        "B": 121.12803143781376
+      },
+      "woundMm": {
+        "A": 0,
+        "B": 0
+      },
+      "targetDeg": {
+        "A": 0,
+        "B": 0
+      }
+    },
+    {
+      "name": "left",
+      "xMm": -16,
+      "upMm": 0,
+      "stage": 1,
+      "downMm": 100,
+      "pointMm": [
+        -16,
+        -100,
+        0
+      ],
+      "ropeLengthMm": {
+        "A": 113.49008767288886,
+        "B": 130.29197979921864
+      },
+      "woundMm": {
+        "A": 7.6379437649248985,
+        "B": -9.163948361404877
+      },
+      "targetDeg": {
+        "A": 3751.0452161867906,
+        "B": -4500.476269579936
+      }
+    },
+    {
+      "name": "home",
+      "xMm": 0,
+      "upMm": 0,
+      "stage": 2,
+      "downMm": 100,
+      "pointMm": [
+        0,
+        -100,
+        0
+      ],
+      "ropeLengthMm": {
+        "A": 121.12803143781376,
+        "B": 121.12803143781376
+      },
+      "woundMm": {
+        "A": 0,
+        "B": 0
+      },
+      "targetDeg": {
+        "A": 0,
+        "B": 0
+      }
+    },
+    {
+      "name": "up",
+      "xMm": 0,
+      "upMm": 16,
+      "stage": 3,
+      "downMm": 84,
+      "pointMm": [
+        0,
+        -84,
+        0
+      ],
+      "ropeLengthMm": {
+        "A": 108.29589096544707,
+        "B": 108.29589096544707
+      },
+      "woundMm": {
+        "A": 12.832140472366689,
+        "B": 12.832140472366689
+      },
+      "targetDeg": {
+        "A": 6301.949924448188,
+        "B": 6301.949924448188
+      }
+    },
+    {
+      "name": "right",
+      "xMm": 16,
+      "upMm": 0,
+      "stage": 4,
+      "downMm": 100,
+      "pointMm": [
+        16,
+        -100,
+        0
+      ],
+      "ropeLengthMm": {
+        "A": 130.29197979921864,
+        "B": 113.49008767288886
+      },
+      "woundMm": {
+        "A": -9.163948361404877,
+        "B": 7.6379437649248985
+      },
+      "targetDeg": {
+        "A": -4500.476269579936,
+        "B": 3751.0452161867906
+      }
+    },
+    {
+      "name": "home",
+      "xMm": 0,
+      "upMm": 0,
+      "stage": 5,
+      "downMm": 100,
+      "pointMm": [
+        0,
+        -100,
+        0
+      ],
+      "ropeLengthMm": {
+        "A": 121.12803143781376,
+        "B": 121.12803143781376
+      },
+      "woundMm": {
+        "A": 0,
+        "B": 0
+      },
+      "targetDeg": {
+        "A": 0,
+        "B": 0
+      }
+    }
+  ],
+  "bounds": {
+    "A": {
+      "commandWoundMm": [
+        -9.163948361404877,
+        12.832140472366689
+      ],
+      "commandSignedInwardDeg": [
+        -4500.476269579936,
+        6301.949924448188
+      ],
+      "guardWoundMm": [
+        -11.163948361404877,
+        14.832140472366689
+      ],
+      "guardSignedInwardDeg": [
+        -5482.689632661348,
+        7284.163287529599
+      ],
+      "maxFreshDeltaDeg": 12766.852920190948
+    },
+    "B": {
+      "commandWoundMm": [
+        -9.163948361404877,
+        12.832140472366689
+      ],
+      "commandSignedInwardDeg": [
+        -4500.476269579936,
+        6301.949924448188
+      ],
+      "guardWoundMm": [
+        -11.163948361404877,
+        14.832140472366689
+      ],
+      "guardSignedInwardDeg": [
+        -5482.689632661348,
+        7284.163287529599
+      ],
+      "maxFreshDeltaDeg": 8266.37665061101
+    }
+  },
+  "control": {
+    "windingSignInitialization": "Green flag reinitializes both direction variables from the measured settings signs, preventing stale UI variable values from reversing the route.",
+    "hats": {
+      "flag": 1,
+      "motionReceivers": 2,
+      "watchdogReceivers": 1
+    },
+    "concurrency": "Two same-message receivers run under one broadcast-and-wait join; watchdog starts by a separate nonblocking broadcast.",
+    "synchronization": "Fresh absolute encoder errors choose common nominal duration=max(abs(deltaA),abs(deltaB))/720. Positive axis speeds are proportional to errors with a 30 DPS floor; acceleration profiles are independent, so exact simultaneous arrival is not claimed.",
+    "mainSpeedDps": 720,
+    "trimSpeedDps": 120,
+    "maximumTrims": 2,
+    "arrivalToleranceDeg": 2,
+    "datumToleranceDeg": 1,
+    "settleSeconds": 3,
+    "watchdogSeconds": 150,
+    "signStatus": "Measured on actual sparse exported model in clamped native development fixture; completed free-frame geometry remains pending qualification.",
+    "noEncoderReset": true,
+    "noSceneLifecycleCommands": true
+  },
+  "execution": {
+    "mat": "plain",
+    "autoPorts": false,
+    "rescueLoose": false,
+    "breakLoops": true,
+    "frameMs": 33.333333333333336,
+    "coreStepMs": 5,
+    "coldMs": 1000,
+    "afterMs": 1000,
+    "timeLimitMs": 160000
+  },
+  "physicalBounds": {
+    "programmedPairFreeLengthsMm": [
+      108.29589096544707,
+      130.29197979921864
+    ],
+    "softwareGuardPairFreeLengthsMm": [
+      106.29589096544707,
+      132.29197979921864
+    ],
+    "analyticalClearanceDomain": "Every pair in the independent left/right software-guard length rectangle is considered, using the lower positive-height string intersection; depth=0. A separate bounded analytical clearance check is not a native run of every pair.",
+    "nativeQualifiedRouteEnvelopeMm": {
+      "x": [
+        -18,
+        18
+      ],
+      "down": [
+        82,
+        102
+      ],
+      "depth": [
+        -2,
+        2
+      ]
+    },
+    "shaftRetention": "Both output shafts have two round-hole bearings and collars on both sides. Both worm input shafts now have actual near-worm round-hole bearings, collars on both bearing faces and thrust spacers; actual shaft/hole intervals are recorded separately.",
+    "endStops": "The worm/drum shafts can rotate continuously; no angular end stop is claimed. Axial collars retain shafts but do not limit string winding. Software guards are not physical stops.",
+    "physicalCordPreparation": "Four separate thin cords are required. A physical prototype needs positive retained wraps, tied ends and calibrated effective winding radius. The two-turn starting-wrap suggestion is construction guidance, not a tested hardware limit.",
+    "releasedMotion": "Pendant orientation about the common tiepoint remains free; only junction position is controlled. Excess pay-out can cause slack or contact; arbitrary manual winding, twisting and operation beyond the guard domain are unqualified."
+  },
+  "ropeApproximation": "Each direct rope is a unilateral distance constraint from its drum centre on the frame to the common partTop attachment. Native tension reacts on the drum. Rope thickness, layering, elastic stretch, rubbing, knots and detailed winding contacts are not simulated.",
+  "claimLimits": [
+    "All numeric route positions and inverse-length targets are ideal predictions until final-byte native qualification.",
+    "No movable-pulley mechanical-advantage claim; only direct ropes are used.",
+    "Browser/gallery integration, hardware firmware, physical LEGO build, flexible cable calibration and payload capacity remain separate untested layers.",
+    "Native worm holding is the baseline's idealized self-locking approximation; cold stability here does not establish real plastic friction, strength, cable calibration or payload rating.",
+    "R2 support is a 500 ms integrated-impulse result; individual ropes or side pairs can briefly unload. The earlier instantaneous r1 criterion remains FAIL."
+  ],
+  "revisionPolicy": "Preserve all prior runs and criteria. A changed observation claim requires an explicit new preregistration before collecting its new data. Do not relabel r1 or choose r2 thresholds from its unobserved full-rate force data.",
+  "frozenAtUtc": "2026-10-23T15:14:46.283760+00:00",
+  "acceptance": {
+    "completed": 1,
+    "failed": 0,
+    "allStagesRequired": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "maximumSettledWaypointErrorMm": 2,
+    "minimumLeftExcursionMm": 14,
+    "minimumRightExcursionMm": 14,
+    "minimumUpExcursionMm": 14,
+    "maximumOutOfPlaneMm": 2,
+    "maximumReturnPointErrorMm": 2,
+    "maximumMotorArrivalErrorDeg": 2,
+    "maximumColdDriftMm": 1,
+    "minimumSettledWindowSeconds": 0.5,
+    "minimumSettledSamples": 15,
+    "maximumRopeGeometricSlackMm": 2,
+    "maximumSavedDatumErrorMm": 0.5,
+    "maximumAnchorRectangleErrorMm": 0.5,
+    "maximumRopeExtensionMm": 1,
+    "recordedFreeRopeLengthMm": [
+      100,
+      135
+    ],
+    "minimumEachMotorTravelDeg": 1000,
+    "maximumPaidOutGeometryErrorMm": 2,
+    "maximumWindingErrorMm": 0.1,
+    "maximumBaseTiltDeg": 2,
+    "routeEnvelopeMm": {
+      "x": [
+        -18,
+        18
+      ],
+      "down": [
+        82,
+        102
+      ],
+      "depth": [
+        -2,
+        2
+      ]
+    },
+    "maximumProgramDurationSeconds": 150,
+    "ropeTension": "Every rope tension remains finite and nonnegative. Integrated support must satisfy forceObservation over every complete final 500 ms dwell. The original r1 instantaneous-pair claim remains failed and is not asserted by r2.",
+    "datumSupport": "Payload hangs from four direct ropes without a landing cradle. Native worm holding supports the unchanged unpowered cold interval; both side pairs must supply substantial upward impulse during every settled stage, including home.",
+    "geometricClosure": "Compare actual drum/frame anchor-to-tie distances against actual native rope free lengths for all four ropes, and compare native winding with r*actual drum angle and worm/motor ratio. Independently observe the passive payload; no predicted poses may drive measurements.",
+    "path": "Synchronized linear rope winding generally gives a curved Cartesian path. Gate the declared position/rope envelope, waypoint error and geometric closure; do not require uncommanded straight-line payload travel.",
+    "finite": "All body/joint/rope states and derived scalars finite; each stage has real observations; all placed-part bodies dynamic; no loose-part rescue or frozen base.",
+    "physicalJoints": "All original physical hinge interfaces require explicit closure and axis coverage, including any solver substitutions; proposed closure <0.5mm and axis error<2deg.",
+    "negativeObserver": "Altered recording freezes only payload body. Must independently fail Cartesian waypoints, left/right excursion, lift and paid-out-length geometry; incidental failures alone are insufficient.",
+    "minimumArrivedDwellCoverageMs": 2900,
+    "minimumFinalWindowCoverageMs": 466.5,
+    "recordedFreeLengthRangeMm": [
+      100,
+      135
+    ],
+    "minimumPoseFrames": 500,
+    "minimumMotorExcursionUnwrappedDeg": 1000,
+    "maximumPhysicalHingeGapMm": 0.5,
+    "maximumPhysicalAxisErrorDeg": 2,
+    "negativeForceObserver": "All-zero tension copy must fail momentum balance, near-weight vertical support, and both-side material participation. Altered recording validates observer only."
+  },
+  "rigidAssemblies": [
+    {
+      "id": "ground",
+      "motion": "static",
+      "parts": [],
+      "massKg": 0,
+      "role": "Environment only; contains no placed part"
+    },
+    {
+      "id": "b0",
+      "motion": "dynamic",
+      "parts": [
+        "base_column_pin_-1_-1",
+        "base_column_pin_-1_1",
+        "base_column_pin_1_-1",
+        "base_column_pin_1_1",
+        "base_header_-1_-1",
+        "base_header_-1_1",
+        "base_header_1_-1",
+        "base_header_1_1",
+        "base_splice_-1",
+        "base_splice_1",
+        "base_splice_pin_-1_-20",
+        "base_splice_pin_-1_-60",
+        "base_splice_pin_-1_20",
+        "base_splice_pin_-1_60",
+        "base_splice_pin_1_-20",
+        "base_splice_pin_1_-60",
+        "base_splice_pin_1_20",
+        "base_splice_pin_1_60",
+        "column_lap_-1_-1_160",
+        "column_lap_-1_-1_200",
+        "column_lap_-1_1_160",
+        "column_lap_-1_1_200",
+        "column_lap_1_-1_160",
+        "column_lap_1_-1_200",
+        "column_lap_1_1_160",
+        "column_lap_1_1_200",
+        "column_lower_-1_-1",
+        "column_lower_-1_1",
+        "column_lower_1_-1",
+        "column_lower_1_1",
+        "column_upper_-1_-1",
+        "column_upper_-1_1",
+        "column_upper_1_-1",
+        "column_upper_1_1",
+        "depth_tie_-1",
+        "depth_tie_1",
+        "depth_tie_elbow_-1_-1",
+        "depth_tie_elbow_-1_1",
+        "depth_tie_elbow_1_-1",
+        "depth_tie_elbow_1_1",
+        "depth_tie_pin_-1_-1",
+        "depth_tie_pin_-1_1",
+        "depth_tie_pin_1_-1",
+        "depth_tie_pin_1_1",
+        "foot_-1",
+        "foot_1",
+        "foot_elbow_-1_-1",
+        "foot_elbow_-1_1",
+        "foot_elbow_1_-1",
+        "foot_elbow_1_1",
+        "foot_pin_-1_-1",
+        "foot_pin_-1_1",
+        "foot_pin_1_-1",
+        "foot_pin_1_1",
+        "hub",
+        "hub_base_pin_-40",
+        "hub_base_pin_40",
+        "hub_front_rail",
+        "hub_mount_pin_-40",
+        "hub_mount_pin_40",
+        "hub_upright_-40",
+        "hub_upright_40",
+        "left_frame_-1",
+        "left_frame_1",
+        "left_motor",
+        "left_motor_frame_pin_-1",
+        "left_motor_frame_pin_1",
+        "left_worm_bearing",
+        "left_worm_bearing_cross_-20",
+        "left_worm_bearing_cross_-60",
+        "left_worm_bearing_cross_pin_-20_-1",
+        "left_worm_bearing_cross_pin_-20_1",
+        "left_worm_bearing_cross_pin_-60_-1",
+        "left_worm_bearing_cross_pin_-60_1",
+        "left_worm_bearing_elbow_-20_-1",
+        "left_worm_bearing_elbow_-20_1",
+        "left_worm_bearing_elbow_-60_-1",
+        "left_worm_bearing_elbow_-60_1",
+        "left_worm_bearing_pin_-20",
+        "left_worm_bearing_pin_-60",
+        "module_column_pin_-1_-1",
+        "module_column_pin_-1_1",
+        "module_column_pin_1_-1",
+        "module_column_pin_1_1",
+        "module_lower_pin_-1_-1",
+        "module_lower_pin_-1_1",
+        "module_lower_pin_1_-1",
+        "module_lower_pin_1_1",
+        "module_lower_tie_-1_-1",
+        "module_lower_tie_-1_1",
+        "module_lower_tie_1_-1",
+        "module_lower_tie_1_1",
+        "module_upper_column_pin_-1_-1",
+        "module_upper_column_pin_-1_1",
+        "module_upper_column_pin_1_-1",
+        "module_upper_column_pin_1_1",
+        "module_upper_frame_pin_-1_-1",
+        "module_upper_frame_pin_-1_1",
+        "module_upper_frame_pin_1_-1",
+        "module_upper_frame_pin_1_1",
+        "module_upper_tie_-1_-1",
+        "module_upper_tie_-1_1",
+        "module_upper_tie_1_-1",
+        "module_upper_tie_1_1",
+        "right_frame_-1",
+        "right_frame_1",
+        "right_motor",
+        "right_motor_frame_pin_-1",
+        "right_motor_frame_pin_1",
+        "right_worm_bearing",
+        "right_worm_bearing_cross_-20",
+        "right_worm_bearing_cross_-60",
+        "right_worm_bearing_cross_pin_-20_-1",
+        "right_worm_bearing_cross_pin_-20_1",
+        "right_worm_bearing_cross_pin_-60_-1",
+        "right_worm_bearing_cross_pin_-60_1",
+        "right_worm_bearing_elbow_-20_-1",
+        "right_worm_bearing_elbow_-20_1",
+        "right_worm_bearing_elbow_-60_-1",
+        "right_worm_bearing_elbow_-60_1",
+        "right_worm_bearing_pin_-20",
+        "right_worm_bearing_pin_-60",
+        "top_column_pin_-1_-1",
+        "top_column_pin_-1_1",
+        "top_column_pin_1_-1",
+        "top_column_pin_1_1",
+        "top_header_-1_-1",
+        "top_header_-1_1",
+        "top_header_1_-1",
+        "top_header_1_1",
+        "top_splice_-1",
+        "top_splice_1",
+        "top_splice_pin_-1_-20",
+        "top_splice_pin_-1_-60",
+        "top_splice_pin_-1_20",
+        "top_splice_pin_-1_60",
+        "top_splice_pin_1_-20",
+        "top_splice_pin_1_-60",
+        "top_splice_pin_1_20",
+        "top_splice_pin_1_60"
+      ],
+      "massKg": 0.3548000000000003,
+      "role": "Physical model assembly; all dynamic"
+    },
+    {
+      "id": "b1",
+      "motion": "dynamic",
+      "parts": [
+        "left_drum_front",
+        "left_drum_rear",
+        "left_output_axle",
+        "left_output_inner_bush_-1",
+        "left_output_inner_bush_1",
+        "left_output_outer_bush_-1",
+        "left_output_outer_bush_1",
+        "left_wheel"
+      ],
+      "massKg": 0.0038599999999999997,
+      "role": "Physical model assembly; all dynamic"
+    },
+    {
+      "id": "b2",
+      "motion": "dynamic",
+      "parts": [
+        "left_motor",
+        "left_worm",
+        "left_worm_axle",
+        "left_worm_bush_-145",
+        "left_worm_bush_-175",
+        "left_worm_bush_-75",
+        "left_worm_thrust_spacer"
+      ],
+      "massKg": 0.00854,
+      "role": "Physical model assembly; all dynamic"
+    },
+    {
+      "id": "b3",
+      "motion": "dynamic",
+      "parts": [
+        "payload_pin_29",
+        "payload_pin_49",
+        "payload_tie",
+        "payload_weight_29_-20",
+        "payload_weight_29_20",
+        "payload_weight_49_-20",
+        "payload_weight_49_20"
+      ],
+      "massKg": 0.010899999999999998,
+      "role": "Physical model assembly; all dynamic"
+    },
+    {
+      "id": "b4",
+      "motion": "dynamic",
+      "parts": [
+        "right_drum_front",
+        "right_drum_rear",
+        "right_output_axle",
+        "right_output_inner_bush_-1",
+        "right_output_inner_bush_1",
+        "right_output_outer_bush_-1",
+        "right_output_outer_bush_1",
+        "right_wheel"
+      ],
+      "massKg": 0.0038599999999999997,
+      "role": "Physical model assembly; all dynamic"
+    },
+    {
+      "id": "b5",
+      "motion": "dynamic",
+      "parts": [
+        "right_motor",
+        "right_worm",
+        "right_worm_axle",
+        "right_worm_bush_-145",
+        "right_worm_bush_-175",
+        "right_worm_bush_-75",
+        "right_worm_thrust_spacer"
+      ],
+      "massKg": 0.00854,
+      "role": "Physical model assembly; all dynamic"
+    }
+  ],
+  "compiledTopology": {
+    "joints": [
+      {
+        "id": "j0",
+        "type": "hinge",
+        "body1": "b0",
+        "body2": "b1",
+        "point": [
+          0,
+          0,
+          -0.064
+        ],
+        "axis": [
+          -1,
+          0,
+          0
+        ]
+      },
+      {
+        "id": "j1",
+        "type": "hinge",
+        "body1": "b0",
+        "body2": "b2",
+        "point": [
+          0,
+          -0.016,
+          -0.064
+        ],
+        "axis": [
+          0,
+          0,
+          -1
+        ],
+        "motor": {
+          "port": "A",
+          "maxTorqueNm": 0.10440000000000002,
+          "maxSpeedRadPerSec": 19.37315469713706,
+          "deviceId": 48
+        }
+      },
+      {
+        "id": "j2",
+        "type": "hinge",
+        "body1": "b0",
+        "body2": "b4",
+        "point": [
+          0,
+          0,
+          0.064
+        ],
+        "axis": [
+          1,
+          0,
+          0
+        ]
+      },
+      {
+        "id": "j3",
+        "type": "hinge",
+        "body1": "b0",
+        "body2": "b5",
+        "point": [
+          0,
+          -0.016,
+          0.064
+        ],
+        "axis": [
+          0,
+          0,
+          1
+        ],
+        "motor": {
+          "port": "B",
+          "maxTorqueNm": 0.10440000000000002,
+          "maxSpeedRadPerSec": 19.37315469713706,
+          "deviceId": 48
+        }
+      }
+    ],
+    "couplings": [
+      {
+        "wormJoint": "j1",
+        "wheelJoint": "j0",
+        "ratio": 0.041666666666666664,
+        "holdTorqueNm": 0.1,
+        "parts": [
+          "left_worm",
+          "left_wheel"
+        ],
+        "kind": "worm",
+        "id": "c0"
+      },
+      {
+        "wormJoint": "j3",
+        "wheelJoint": "j2",
+        "ratio": 0.041666666666666664,
+        "holdTorqueNm": 0.1,
+        "parts": [
+          "right_worm",
+          "right_wheel"
+        ],
+        "kind": "worm",
+        "id": "c1"
+      },
+      {
+        "drumJoint": "j0",
+        "drumSign": 1,
+        "radiusM": 0.0028,
+        "points": [
+          {
+            "body": "b0",
+            "local": [
+              -0.057056369785794786,
+              0.09286583990980812,
+              -0.064
+            ]
+          }
+        ],
+        "hook": {
+          "body": "b3",
+          "local": [
+            0,
+            0.015233027522935774,
+            0
+          ]
+        },
+        "lengthM": 0.1211280314378136,
+        "parts": [
+          "left_drum_front",
+          "payload_tie"
+        ],
+        "kind": "rope",
+        "id": "c2"
+      },
+      {
+        "drumJoint": "j0",
+        "drumSign": 1,
+        "radiusM": 0.0028,
+        "points": [
+          {
+            "body": "b0",
+            "local": [
+              -0.009056369785794785,
+              0.09286583990980812,
+              -0.064
+            ]
+          }
+        ],
+        "hook": {
+          "body": "b3",
+          "local": [
+            0,
+            0.015233027522935774,
+            0
+          ]
+        },
+        "lengthM": 0.1211280314378136,
+        "parts": [
+          "left_drum_rear",
+          "payload_tie"
+        ],
+        "kind": "rope",
+        "id": "c3"
+      },
+      {
+        "drumJoint": "j2",
+        "drumSign": 1,
+        "radiusM": 0.0028,
+        "points": [
+          {
+            "body": "b0",
+            "local": [
+              -0.057056369785794786,
+              0.09286583990980812,
+              0.064
+            ]
+          }
+        ],
+        "hook": {
+          "body": "b3",
+          "local": [
+            0,
+            0.015233027522935774,
+            0
+          ]
+        },
+        "lengthM": 0.1211280314378136,
+        "parts": [
+          "right_drum_front",
+          "payload_tie"
+        ],
+        "kind": "rope",
+        "id": "c4"
+      },
+      {
+        "drumJoint": "j2",
+        "drumSign": 1,
+        "radiusM": 0.0028,
+        "points": [
+          {
+            "body": "b0",
+            "local": [
+              -0.009056369785794785,
+              0.09286583990980812,
+              0.064
+            ]
+          }
+        ],
+        "hook": {
+          "body": "b3",
+          "local": [
+            0,
+            0.015233027522935774,
+            0
+          ]
+        },
+        "lengthM": 0.1211280314378136,
+        "parts": [
+          "right_drum_rear",
+          "payload_tie"
+        ],
+        "kind": "rope",
+        "id": "c5"
+      }
+    ],
+    "hubs": [
+      {
+        "id": "hub",
+        "profile": "spike-prime",
+        "body": "b0"
+      }
+    ],
+    "actuators": [
+      {
+        "id": "a0",
+        "joint": "j1",
+        "hub": "hub",
+        "port": "A",
+        "device": "spike-medium-angular",
+        "sign": 1,
+        "maxTorqueNm": 0.10440000000000002,
+        "maxSpeedRadPerSec": 19.37315469713706,
+        "ids": {
+          "lpf2": 48
+        }
+      },
+      {
+        "id": "a1",
+        "joint": "j3",
+        "hub": "hub",
+        "port": "B",
+        "device": "spike-medium-angular",
+        "sign": 1,
+        "maxTorqueNm": 0.10440000000000002,
+        "maxSpeedRadPerSec": 19.37315469713706,
+        "ids": {
+          "lpf2": 48
+        }
+      }
+    ]
+  },
+  "originalPhysicalInterfaces": [
+    "left_frame_-1:h5|left_output_axle:a",
+    "left_frame_1:h5|left_output_axle:a",
+    "left_worm_bearing:h5|left_worm_axle:a",
+    "right_frame_-1:h5|right_output_axle:a",
+    "right_frame_1:h5|right_output_axle:a",
+    "right_worm_bearing:h5|right_worm_axle:a"
+  ],
+  "modelBuilderSha256": "98e550a61e868adf06e62ced705fb324d82c3ebb3c26ad439c29f5d5f87a53d1",
+  "markerSha256": "a80a3a38cc4d875248331be60347518267246769099ecd8dd50eed7c1c46dc6f",
+  "revisionHistory": [
+    {
+      "revision": "cable-compass-r1-preregistered-retained-winch-shafts",
+      "contractSha256": "25e2b913bb0ac1ff6a592091b8ceb8145bc19ea63f688c7c7fad42e872ffe7ba",
+      "status": "FAIL",
+      "receipt": "evidence/development/native-r1/result.json",
+      "failedClaim": "Both side-pair tension sums exceed 0.00001 N at every 30 Hz settled snapshot. Five stages failed.",
+      "preservedInputs": "evidence/development/native-r1/inputs",
+      "revisionReason": "A 30 Hz snapshot reports only the last 5 ms native impulse/dt. It omits most intervals. R2 separately tests integrated support with every interval and actual COM momentum. R1 is not relabelled.",
+      "originalFrozenAtUtc": "2026-10-23T15:02:23.756319+00:00"
+    }
+  ],
+  "forceObservation": {
+    "windowMs": 500,
+    "physicsStepMs": 5,
+    "intervalsPerWindow": 100,
+    "relativeResidualLimit": 0.05,
+    "verticalSupportRange": [
+      0.9,
+      1.1
+    ],
+    "minimumSideWeightFraction": 0.25,
+    "linearDampingPerSecond": 0.05000000074505806,
+    "noninterferenceTolerance": 1e-09,
+    "referenceRecordingSha256": "51649529f63fbbf5118a1870b2078135e56853eba9e230f387600e7f80f476ac",
+    "method": "Read-only synchronous wrapper forwards each original core.step(0.005) exactly once with unchanged arguments and receiver. Record actual pre-step native coupling endpoints, actual COM velocity before/after, and post-step native impulse/dt for all four ropes. No physics/control mutation or extra step.",
+    "momentumEquation": "norm(sum(T_i_after * dt * unit(anchor_i_pre - hook_pre)) + m*g*T + Jdrag - m*(v_end-v_start)) / (m*|g|*T) <= 0.05",
+    "dragEquation": "Jdrag = sum(-m*c*dt*(v_pre+g*dt)); native damping is unchanged",
+    "scope": "Time-integrated load support during complete final settled 500 ms windows; no continuous individual-rope or side-pair tension claim. Longest unloaded interval is diagnostic only.",
+    "thresholdBasis": "Each side supplies at least 0.25 of weight impulse, below the minimum ideal static share 0.359375 over x=+-18 mm. Near-static total vertical support must be within 10 percent of weight impulse; full-vector momentum residual within 5 percent. Bounds set before new data.",
+    "review": "docs/force-observation-review-r2.md",
+    "reviewSha256": "4bb9808a9ccef64d3a472d46c04884eeaf626a99055b0c940dbb6dcbc9e3558e",
+    "sourceScope": "Damping coefficient queried from installed Jolt 1.1.0-bw.6; gravity-before-drag update ordering verified in official upstream source, not a claim of auditing the fork C++ binary source.",
+    "dampingSource": "https://jrouwe.github.io/JoltPhysics/_motion_properties_8inl_source.html",
+    "negativeControl": "All-zero tension copy must fail momentum balance, near-weight vertical support, and both-side material participation. Altered recording validates observer only.",
+    "noninterference": "Compare physical frame count, timestamps, phases, every actual body position/quaternion and joint numeric state against preserved r1 within 1e-9 (m, quaternion components, radians/rad/s or ms as appropriate)."
+  }
+}

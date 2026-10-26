@@ -1,0 +1,324 @@
+0 Aster - Centrifugal governor
+0 Name: aster-governor.ldr
+0 Author: CrispStrobe
+0 !LICENSE BSD-3-Clause : see ../licenses/aster-governor.txt
+0 !LDRAW_ORG Unofficial_Model
+0 // Original Aster design assembled with OpenAI assistance.
+0 // New native PlacedModel exported by the unchanged Brickwright serializeModel function.
+0 // Application Author is the native serializer default; design provenance is stated above.
+0 // Two passive opposed flyweights lift a guided collar as spindle speed rises.
+0 // Motor A drives only the spindle; gravity and inertia determine arm and collar motion.
+0 // No custom constraints, collision edits or scripted output poses.
+0 // Companion: aster-governor.bw. Robot Lab Plain; open model, then Code > To blocks.
+0 // Reset the complete model before running and before repeating the demonstration.
+0 // Kinematic demonstrator; physical assembly, output loading and efficiency are untested.
+0 !BW ID upper_spindle_bearing
+1 0 0 360 0 0 0 1 0 1 0 -1 0 0 32525.dat
+0 !BW ID upper_spindle_crosshead_-1
+1 0 -100 380 0 1 0 0 0 1 0 0 0 1 40490.dat
+0 !BW ID upper_spindle_crosshead_pin_-1
+1 0 -100 370 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID upper_spindle_elbow_-1_-80
+1 72 -100 400 -80 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID upper_spindle_elbow_pin_-1_-80
+1 0 -100 390 -80 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID upper_spindle_elbow_-1_80
+1 72 -100 400 80 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID upper_spindle_elbow_pin_-1_80
+1 0 -100 390 80 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID upper_spindle_crosshead_1
+1 0 100 380 0 1 0 0 0 1 0 0 0 1 40490.dat
+0 !BW ID upper_spindle_crosshead_pin_1
+1 0 100 370 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID upper_spindle_elbow_1_-80
+1 72 100 400 -80 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID upper_spindle_elbow_pin_1_-80
+1 0 100 390 -80 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID upper_spindle_elbow_1_80
+1 72 100 400 80 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID upper_spindle_elbow_pin_1_80
+1 0 100 390 80 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID middle_spindle_bearing
+1 0 0 460 0 0 0 1 0 1 0 -1 0 0 32525.dat
+0 !BW ID middle_spindle_crosshead_-1
+1 0 -100 480 0 1 0 0 0 1 0 0 0 1 40490.dat
+0 !BW ID middle_spindle_crosshead_pin_-1
+1 0 -100 470 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID middle_spindle_elbow_-1_-80
+1 72 -100 500 -80 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID middle_spindle_elbow_pin_-1_-80
+1 0 -100 490 -80 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID middle_spindle_elbow_-1_80
+1 72 -100 500 80 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID middle_spindle_elbow_pin_-1_80
+1 0 -100 490 80 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID middle_spindle_crosshead_1
+1 0 100 480 0 1 0 0 0 1 0 0 0 1 40490.dat
+0 !BW ID middle_spindle_crosshead_pin_1
+1 0 100 470 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID middle_spindle_elbow_1_-80
+1 72 100 500 -80 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID middle_spindle_elbow_pin_1_-80
+1 0 100 490 -80 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID middle_spindle_elbow_1_80
+1 72 100 500 80 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID middle_spindle_elbow_pin_1_80
+1 0 100 490 80 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID lower_spindle_bearing
+1 0 0 540 0 0 0 1 0 1 0 -1 0 0 32525.dat
+0 !BW ID lower_spindle_crosshead_-1
+1 0 -100 560 0 1 0 0 0 1 0 0 0 1 40490.dat
+0 !BW ID lower_spindle_crosshead_pin_-1
+1 0 -100 550 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID lower_spindle_elbow_-1_-80
+1 72 -100 580 -80 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID lower_spindle_elbow_pin_-1_-80
+1 0 -100 570 -80 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID lower_spindle_elbow_-1_80
+1 72 -100 580 80 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID lower_spindle_elbow_pin_-1_80
+1 0 -100 570 80 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID lower_spindle_crosshead_1
+1 0 100 560 0 1 0 0 0 1 0 0 0 1 40490.dat
+0 !BW ID lower_spindle_crosshead_pin_1
+1 0 100 550 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID lower_spindle_elbow_1_-80
+1 72 100 580 -80 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID lower_spindle_elbow_pin_1_-80
+1 0 100 570 -80 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID lower_spindle_elbow_1_80
+1 72 100 580 80 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID lower_spindle_elbow_pin_1_80
+1 0 100 570 80 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID column_-1_-80
+1 72 -120 540 -80 0 1 0 0 0 1 1 0 0 32278.dat
+0 !BW ID foot_elbow_-1_-80
+1 72 -100 680 -80 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID foot_pin_-1_-80
+1 0 -100 690 -80 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID column_-1_80
+1 72 -120 540 80 0 1 0 0 0 1 1 0 0 32278.dat
+0 !BW ID foot_elbow_-1_80
+1 72 -100 680 80 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID foot_pin_-1_80
+1 0 -100 690 80 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID floor_front_-1
+1 0 -100 700 60 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID floor_rear_-1
+1 0 -100 700 340 1 0 0 0 1 0 0 0 1 32525.dat
+0 !BW ID floor_splice_-1
+1 72 -100 680 220 1 0 0 0 1 0 0 0 1 32316.dat
+0 !BW ID floor_splice_pin_-1_180
+1 0 -100 690 180 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID floor_splice_pin_-1_200
+1 0 -100 690 200 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID floor_splice_pin_-1_260
+1 0 -100 690 260 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID column_1_-80
+1 72 120 540 -80 0 1 0 0 0 1 1 0 0 32278.dat
+0 !BW ID foot_elbow_1_-80
+1 72 100 680 -80 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID foot_pin_1_-80
+1 0 100 690 -80 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID column_1_80
+1 72 120 540 80 0 1 0 0 0 1 1 0 0 32278.dat
+0 !BW ID foot_elbow_1_80
+1 72 100 680 80 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID foot_pin_1_80
+1 0 100 690 80 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID floor_front_1
+1 0 100 700 60 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID floor_rear_1
+1 0 100 700 340 1 0 0 0 1 0 0 0 1 32525.dat
+0 !BW ID floor_splice_1
+1 72 100 680 220 1 0 0 0 1 0 0 0 1 32316.dat
+0 !BW ID floor_splice_pin_1_180
+1 0 100 690 180 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID floor_splice_pin_1_200
+1 0 100 690 200 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID floor_splice_pin_1_260
+1 0 100 690 260 0 1 0 1 0 0 0 0 -1 2780.dat
+0 STEP
+0 !BW ID spindle_fixed_bush_340
+1 72 0 340 0 1 0 0 0 0 1 0 -1 0 3713.dat
+0 !BW ID spindle_fixed_bush_380
+1 72 0 380 0 1 0 0 0 0 1 0 -1 0 3713.dat
+0 !BW ID spindle_fixed_bush_440
+1 72 0 440 0 1 0 0 0 0 1 0 -1 0 3713.dat
+0 !BW ID spindle_fixed_bush_480
+1 72 0 480 0 1 0 0 0 0 1 0 -1 0 3713.dat
+0 !BW ID spindle_fixed_bush_520
+1 72 0 520 0 1 0 0 0 0 1 0 -1 0 3713.dat
+0 !BW ID spindle_fixed_bush_560
+1 72 0 560 0 1 0 0 0 0 1 0 -1 0 3713.dat
+0 STEP
+0 !BW ID motor_A
+0 !BW PORT A
+0 !BW ROTOR 0
+1 15 0 620 0 1 0 0 0 1 0 0 0 1 54696p01.dat
+0 !BW ID motor_deck_0
+1 0 0 660 0 0 0 1 0 1 0 -1 0 0 32525.dat
+0 !BW ID motor_deck_spacer_-100_0
+1 72 -100 680 0 1 0 0 0 1 0 0 0 1 18654.dat
+0 !BW ID motor_deck_floor_pin_-100_0
+1 1 -100 680 0 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID motor_deck_spacer_100_0
+1 72 100 680 0 1 0 0 0 1 0 0 0 1 18654.dat
+0 !BW ID motor_deck_floor_pin_100_0
+1 1 100 680 0 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID motor_deck_140
+1 0 0 660 140 0 0 1 0 1 0 -1 0 0 32525.dat
+0 !BW ID motor_deck_spacer_-100_140
+1 72 -100 680 140 1 0 0 0 1 0 0 0 1 18654.dat
+0 !BW ID motor_deck_floor_pin_-100_140
+1 1 -100 680 140 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID motor_deck_spacer_100_140
+1 72 100 680 140 1 0 0 0 1 0 0 0 1 18654.dat
+0 !BW ID motor_deck_floor_pin_100_140
+1 1 100 680 140 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID motor_front_pin_-20
+1 0 -20 650 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID motor_front_pin_20
+1 0 20 650 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID motor_rear_pin
+1 0 0 650 140 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID hub
+1 15 0 650 340 1 0 0 0 1 0 0 0 1 45601.dat
+0 !BW ID hub_cross_240
+1 0 0 660 240 0 0 1 0 1 0 -1 0 0 32525.dat
+0 !BW ID hub_mount_-60_240
+1 0 -60 650 240 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID hub_mount_60_240
+1 0 60 650 240 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID hub_floor_pin_-100_240
+1 1 -100 680 240 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID hub_floor_pin_100_240
+1 1 100 680 240 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID hub_cross_440
+1 0 0 660 440 0 0 1 0 1 0 -1 0 0 32525.dat
+0 !BW ID hub_mount_-60_440
+1 0 -60 650 440 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID hub_mount_60_440
+1 0 60 650 440 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID hub_floor_spacer_-100_440
+1 72 -100 680 440 1 0 0 0 1 0 0 0 1 18654.dat
+0 !BW ID hub_floor_pin_-100_440
+1 1 -100 680 440 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID hub_floor_spacer_100_440
+1 72 100 680 440 1 0 0 0 1 0 0 0 1 18654.dat
+0 !BW ID hub_floor_pin_100_440
+1 1 100 680 440 0 1 0 1 0 0 0 0 -1 6558.dat
+0 STEP
+0 !BW ID rotor_top_bar
+1 1 0 0 0 0 0 1 0 1 0 -1 0 0 32524.dat
+0 !BW ID rotor_top_key
+1 1 0 -20 0 0 0 1 0 1 0 -1 0 0 7229.dat
+0 !BW ID guide_top_key_-1
+1 1 -40 20 0 0 0 1 0 1 0 -1 0 0 60483.dat
+0 !BW ID rotor_top_stack_pin_-1
+1 0 -20 0 0 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID guide_top_key_1
+1 1 40 20 0 0 0 -1 0 1 0 1 0 0 60483.dat
+0 !BW ID rotor_top_stack_pin_1
+1 0 20 0 0 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID rotor_bottom_bar
+1 1 0 300 0 0 0 1 0 1 0 -1 0 0 32524.dat
+0 !BW ID rotor_bottom_key
+1 1 0 320 0 0 0 1 0 1 0 -1 0 0 7229.dat
+0 !BW ID guide_bottom_key_-1
+1 1 -40 280 0 0 0 1 0 1 0 -1 0 0 60483.dat
+0 !BW ID rotor_bottom_stack_pin_-1
+1 0 -20 300 0 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID guide_bottom_key_1
+1 1 40 280 0 0 0 -1 0 1 0 1 0 0 60483.dat
+0 !BW ID rotor_bottom_stack_pin_1
+1 0 20 300 0 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID guide_axle_-1
+1 0 -40 150 0 0 0 1 1 0 0 0 1 0 50451.dat
+0 !BW ID collar_lower_stop_-1
+1 72 -40 240 0 1 0 0 0 0 1 0 -1 0 3713.dat
+0 !BW ID guide_axle_1
+1 0 40 150 0 0 0 1 1 0 0 0 1 0 50451.dat
+0 !BW ID collar_lower_stop_1
+1 72 40 240 0 1 0 0 0 0 1 0 -1 0 3713.dat
+0 STEP
+0 !BW ID collar
+0 !BW SLIDE h1 h5
+1 25 0 220 0 0 0 1 0 1 0 -1 0 0 32524.dat
+0 STEP
+0 !BW ID spindle
+1 0 0 430 0 0 0 1 1 0 0 0 1 0 50451.dat
+0 !BW ID top_elbow_pos
+1 72 60 -20 0 0 0 1 1 0 0 0 1 0 15100.dat
+0 STEP
+0 !BW ID collar_elbow_pos
+1 25 60 200 0 0 0 1 1 0 0 0 1 0 15100.dat
+0 STEP
+0 !BW ID upper_arm_pos
+1 14 83.979158 35 20 -0.916667 0 0.399653 0.399653 0 0.916667 0 1 0 32524.dat
+0 STEP
+0 !BW ID lower_arm_pos
+1 4 83.979158 145 -20 0.916667 0 0.399653 0.399653 0 -0.916667 0 1 0 32524.dat
+0 STEP
+0 !BW ID top_hinge_pin_pos
+1 71 60 -20 10 0 1 0 0 0 1 1 0 0 3673.dat
+0 STEP
+0 !BW ID collar_hinge_pin_pos
+1 71 60 200 -10 0 1 0 0 0 1 1 0 0 3673.dat
+0 STEP
+0 !BW ID weight_key_pos
+1 14 107.958315 90 40 0.916667 0 -0.399653 -0.399653 0 -0.916667 0 1 0 60483.dat
+0 !BW ID weight_key_pin_pos
+1 0 99.965263 71.666667 30 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID weight_axle_pos
+1 0 107.958315 90 0 0 0.399653 -0.916667 0 0.916667 0.399653 1 0 0 3707.dat
+0 !BW ID flyweight_pos
+1 15 107.958315 90 60 -0.916667 -0.399653 0 0.399653 -0.916667 0 0 0 1 39367p01.dat
+0 !BW ID flyweight_counter_pos
+1 15 107.958315 90 -60 -0.916667 -0.399653 0 0.399653 -0.916667 0 0 0 1 39367p01.dat
+0 !BW ID weight_inner_bush_pos
+1 72 107.958315 90 0 -0.916667 -0.399653 0 0.399653 -0.916667 0 0 0 1 3713.dat
+0 !BW ID weight_opposite_bush_pos
+1 72 107.958315 90 -40 -0.916667 -0.399653 0 0.399653 -0.916667 0 0 0 1 3713.dat
+0 !BW ID weight_half_pos_back
+1 72 107.958315 90 -75 -0.916667 -0.399653 0 0.399653 -0.916667 0 0 0 1 32123b.dat
+0 !BW ID weight_half_pos_front
+1 72 107.958315 90 75 -0.916667 -0.399653 0 0.399653 -0.916667 0 0 0 1 32123b.dat
+0 STEP
+0 !BW ID top_elbow_neg
+1 72 -60 -20 0 0 0 -1 1 0 0 0 -1 0 15100.dat
+0 STEP
+0 !BW ID collar_elbow_neg
+1 25 -60 200 0 0 0 -1 1 0 0 0 -1 0 15100.dat
+0 STEP
+0 !BW ID upper_arm_neg
+1 14 -83.979158 35 -20 0.916667 0 -0.399653 0.399653 0 0.916667 0 -1 0 32524.dat
+0 STEP
+0 !BW ID lower_arm_neg
+1 4 -83.979158 145 20 -0.916667 0 -0.399653 0.399653 0 -0.916667 0 -1 0 32524.dat
+0 STEP
+0 !BW ID top_hinge_pin_neg
+1 71 -60 -20 -10 0 1 0 0 0 -1 -1 0 0 3673.dat
+0 STEP
+0 !BW ID collar_hinge_pin_neg
+1 71 -60 200 10 0 1 0 0 0 -1 -1 0 0 3673.dat
+0 STEP
+0 !BW ID weight_key_neg
+1 14 -107.958315 90 -40 -0.916667 0 0.399653 -0.399653 0 -0.916667 0 -1 0 60483.dat
+0 !BW ID weight_key_pin_neg
+1 0 -99.965263 71.666667 -30 0 1 0 0 0 -1 -1 0 0 2780.dat
+0 !BW ID weight_axle_neg
+1 0 -107.958315 90 0 0 -0.399653 0.916667 0 0.916667 0.399653 -1 0 0 3707.dat
+0 !BW ID flyweight_neg
+1 15 -107.958315 90 -60 0.916667 0.399653 0 0.399653 -0.916667 0 0 0 -1 39367p01.dat
+0 !BW ID flyweight_counter_neg
+1 15 -107.958315 90 60 0.916667 0.399653 0 0.399653 -0.916667 0 0 0 -1 39367p01.dat
+0 !BW ID weight_inner_bush_neg
+1 72 -107.958315 90 0 0.916667 0.399653 0 0.399653 -0.916667 0 0 0 -1 3713.dat
+0 !BW ID weight_opposite_bush_neg
+1 72 -107.958315 90 40 0.916667 0.399653 0 0.399653 -0.916667 0 0 0 -1 3713.dat
+0 !BW ID weight_half_neg_back
+1 72 -107.958315 90 75 0.916667 0.399653 0 0.399653 -0.916667 0 0 0 -1 32123b.dat
+0 !BW ID weight_half_neg_front
+1 72 -107.958315 90 -75 0.916667 0.399653 0 0.399653 -0.916667 0 0 0 -1 32123b.dat
+0 STEP

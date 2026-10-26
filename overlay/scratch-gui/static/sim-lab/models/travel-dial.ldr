@@ -1,0 +1,415 @@
+0 Travel Dial - passive measuring-wheel bench
+0 Name: travel-dial.ldr
+0 Author: CrispStrobe
+0 !LICENSE BSD-3-Clause : see ../licenses/travel-dial.txt
+0 !LDRAW_ORG Unofficial_Model
+0 // A motor moves a measuring sled beneath a freely rotating rubber wheel.
+0 // Real contact supplies the wheel rotation; no rolling-ratio coupling is authored.
+0 // See ASSEMBLY.md for retained bearings, bounds and the physical comparison.
+0 01 retained parallel guide rails
+0 !BW ID guide_-60_axle
+1 72 0 120 -60 1 0 0 0 1 0 0 0 1 50451.dat
+0 !BW ID guide_-60_holder_-140
+1 72 -140 120 -60 0 1 0 -1 0 0 0 0 1 7229.dat
+0 !BW ID guide_-60_outer_retainer_-140
+1 71 -155 120 -60 0 0 1 0 1 0 -1 0 0 32123b.dat
+0 !BW ID guide_-60_inner_stop_-140
+1 71 -120 120 -60 0 0 1 0 1 0 -1 0 0 3713.dat
+0 !BW ID guide_-60_holder_140
+1 72 140 120 -60 0 1 0 -1 0 0 0 0 1 7229.dat
+0 !BW ID guide_-60_outer_retainer_140
+1 71 155 120 -60 0 0 1 0 1 0 -1 0 0 32123b.dat
+0 !BW ID guide_-60_inner_stop_140
+1 71 120 120 -60 0 0 1 0 1 0 -1 0 0 3713.dat
+0 !BW ID guide_60_axle
+1 72 0 120 60 1 0 0 0 1 0 0 0 1 50451.dat
+0 !BW ID guide_60_holder_-140
+1 72 -140 120 60 0 1 0 -1 0 0 0 0 1 7229.dat
+0 !BW ID guide_60_outer_retainer_-140
+1 71 -155 120 60 0 0 1 0 1 0 -1 0 0 32123b.dat
+0 !BW ID guide_60_inner_stop_-140
+1 71 -120 120 60 0 0 1 0 1 0 -1 0 0 3713.dat
+0 !BW ID guide_60_holder_140
+1 72 140 120 60 0 1 0 -1 0 0 0 0 1 7229.dat
+0 !BW ID guide_60_outer_retainer_140
+1 71 155 120 60 0 0 1 0 1 0 -1 0 0 32123b.dat
+0 !BW ID guide_60_inner_stop_140
+1 71 120 120 60 0 0 1 0 1 0 -1 0 0 3713.dat
+0 STEP
+0 02 tiled measuring sled
+0 !BW ID sled_guide_-60
+1 71 0 120 -30 0 0 1 1 0 0 0 1 0 48496.dat
+0 !BW ID sled_guide_mount_-20_-60
+1 14 -20 110 -20 1 0 0 0 1 0 0 0 1 3700.dat
+0 !BW ID sled_guide_mount_-20_-60_riser
+1 14 -20 86 -20 1 0 0 0 1 0 0 0 1 3004.dat
+0 !BW ID sled_guide_mount_20_-60
+1 14 20 110 -20 1 0 0 0 1 0 0 0 1 3700.dat
+0 !BW ID sled_guide_mount_20_-60_riser
+1 14 20 86 -20 1 0 0 0 1 0 0 0 1 3004.dat
+0 !BW ID sled_guide_60
+1 71 0 120 30 0 0 1 -1 0 0 0 -1 0 48496.dat
+0 !BW ID sled_guide_mount_-20_60
+1 14 -20 110 20 1 0 0 0 1 0 0 0 1 3700.dat
+0 !BW ID sled_guide_mount_-20_60_riser
+1 14 -20 86 20 1 0 0 0 1 0 0 0 1 3004.dat
+0 !BW ID sled_guide_mount_20_60
+1 14 20 110 20 1 0 0 0 1 0 0 0 1 3700.dat
+0 !BW ID sled_guide_mount_20_60_riser
+1 14 20 86 20 1 0 0 0 1 0 0 0 1 3004.dat
+0 !BW ID sled_deck
+1 14 0 78 10 1 0 0 0 1 0 0 0 1 41539.dat
+0 !BW ID sled_tile_-60_-10
+1 15 -60 70 -10 1 0 0 0 1 0 0 0 1 3068b.dat
+0 !BW ID sled_tile_-60_30
+1 15 -60 70 30 1 0 0 0 1 0 0 0 1 3068b.dat
+0 !BW ID sled_tile_-20_-10
+1 15 -20 70 -10 1 0 0 0 1 0 0 0 1 3068b.dat
+0 !BW ID sled_tile_-20_30
+1 15 -20 70 30 1 0 0 0 1 0 0 0 1 3068b.dat
+0 !BW ID sled_tile_20_-10
+1 15 20 70 -10 1 0 0 0 1 0 0 0 1 3068b.dat
+0 !BW ID sled_tile_20_30
+1 15 20 70 30 1 0 0 0 1 0 0 0 1 3068b.dat
+0 !BW ID sled_tile_60_-10
+1 15 60 70 -10 1 0 0 0 1 0 0 0 1 3068b.dat
+0 !BW ID sled_tile_60_30
+1 15 60 70 30 1 0 0 0 1 0 0 0 1 3068b.dat
+0 !BW ID sled_clevis_plate
+1 14 0 86 -70 1 0 0 0 1 0 0 0 1 3034.dat
+0 !BW ID sled_clevis_brick_-20
+1 14 -20 94 -80 1 0 0 0 1 0 0 0 1 3700.dat
+0 !BW ID sled_clevis_corner_-20
+1 72 -20 104 -100 0 0 -1 0 1 0 1 0 0 15100.dat
+0 !BW ID sled_clevis_mount_pin_-20
+1 0 -20 94 -100 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID sled_clevis_brick_20
+1 14 20 94 -80 1 0 0 0 1 0 0 0 1 3700.dat
+0 !BW ID sled_clevis_corner_20
+1 72 20 104 -100 0 0 -1 0 1 0 1 0 0 15100.dat
+0 !BW ID sled_clevis_mount_pin_20
+1 0 20 94 -100 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID sled_clevis
+1 14 0 84 -100 0 0 1 0 1 0 -1 0 0 32523.dat
+0 STEP
+0 03 stationary motor and real slider crank
+0 !BW ID motor_A
+0 !BW PORT A
+1 71 100 180 -160 -1 0 0 0 1 0 0 0 -1 54696p01.dat
+0 !BW ID drive_axle
+1 72 100 80 -160 0 -1 0 1 0 0 0 0 1 44294.dat
+0 !BW ID drive_key
+1 25 100 64 -160 1 0 0 0 1 0 0 0 1 7229.dat
+0 !BW ID drive_crank
+1 25 100 44 -140 1 0 0 0 1 0 0 0 1 32316.dat
+0 !BW ID drive_key_pin_-180
+1 0 100 54 -180 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID drive_key_pin_-140
+1 0 100 54 -140 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID drive_retainer_29
+1 71 100 29 -160 1 0 0 0 0 1 0 -1 0 32123b.dat
+0 !BW ID drive_retainer_79
+1 71 100 79 -160 1 0 0 0 0 1 0 -1 0 32123b.dat
+0 !BW ID connecting_rod
+1 25 40 64 -100 0 0 -1 0 1 0 1 0 0 32524.dat
+0 !BW ID crank_rod_pin
+1 71 100 54 -100 0 -1 0 1 0 0 0 0 1 3673.dat
+0 !BW ID sled_rod_pin
+1 71 0 74 -100 0 -1 0 1 0 0 0 0 1 3673.dat
+0 STEP
+0 04 passive follower and measuring wheel
+0 !BW ID follower_pivot_pin
+1 71 -100 0 -50 0 0 -1 0 1 0 1 0 0 3673.dat
+0 !BW ID follower_arm
+1 4 -40 0 -40 0 0 1 1 0 0 0 1 0 32524.dat
+0 !BW ID wheel_axle
+1 72 0 0 -20 0 0 -1 0 1 0 1 0 0 3706.dat
+0 !BW ID wheel
+1 71 0 0 0 1 0 0 0 1 0 0 0 1 39367p01.dat
+0 !BW ID wheel_retainer_-75
+1 71 0 0 -75 1 0 0 0 1 0 0 0 1 32123b.dat
+0 !BW ID wheel_retainer_-25
+1 71 0 0 -25 1 0 0 0 1 0 0 0 1 32123b.dat
+0 !BW ID wheel_retainer_-15
+1 71 0 0 -15 1 0 0 0 1 0 0 0 1 32123b.dat
+0 !BW ID wheel_retainer_15
+1 71 0 0 15 1 0 0 0 1 0 0 0 1 32123b.dat
+0 !BW ID wheel_rear_spacer
+1 71 0 0 -60 1 0 0 0 1 0 0 0 1 3713.dat
+0 STEP
+0 05 eight post guide frame
+0 !BW ID guide_post_-160_-80
+1 72 -160 240 -80 0 1 0 0 0 1 1 0 0 41239.dat
+0 !BW ID guide_post_-160_-80_mount
+1 0 -150 120 -80 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID guide_post_-160_-80_foot_340
+1 72 -140 340 -80 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID guide_post_-160_-80_foot_360
+1 72 -140 360 -80 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID guide_post_-160_-80_foot_stack
+1 1 -140 360 -80 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID guide_post_-160_-40
+1 72 -160 240 -40 0 1 0 0 0 1 1 0 0 41239.dat
+0 !BW ID guide_post_-160_-40_mount
+1 0 -150 120 -40 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID guide_post_-160_-40_foot_340
+1 72 -140 340 -40 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID guide_post_-160_-40_foot_360
+1 72 -140 360 -40 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID guide_post_-160_-40_foot_stack
+1 1 -140 360 -40 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID guide_post_-160_40
+1 72 -160 240 40 0 1 0 0 0 1 1 0 0 41239.dat
+0 !BW ID guide_post_-160_40_mount
+1 0 -150 120 40 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID guide_post_-160_40_foot_340
+1 72 -140 340 40 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID guide_post_-160_40_foot_360
+1 72 -140 360 40 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID guide_post_-160_40_foot_stack
+1 1 -140 360 40 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID guide_post_-160_80
+1 72 -160 240 80 0 1 0 0 0 1 1 0 0 41239.dat
+0 !BW ID guide_post_-160_80_mount
+1 0 -150 120 80 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID guide_post_-160_80_foot_340
+1 72 -140 340 80 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID guide_post_-160_80_foot_360
+1 72 -140 360 80 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID guide_post_-160_80_foot_stack
+1 1 -140 360 80 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID guide_post_160_-80
+1 72 160 240 -80 0 1 0 0 0 1 1 0 0 41239.dat
+0 !BW ID guide_post_160_-80_mount
+1 0 150 120 -80 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID guide_post_160_-80_foot_340
+1 72 140 340 -80 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID guide_post_160_-80_foot_360
+1 72 140 360 -80 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID guide_post_160_-80_foot_stack
+1 1 140 360 -80 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID guide_post_160_-40
+1 72 160 240 -40 0 1 0 0 0 1 1 0 0 41239.dat
+0 !BW ID guide_post_160_-40_mount
+1 0 150 120 -40 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID guide_post_160_-40_foot_340
+1 72 140 340 -40 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID guide_post_160_-40_foot_360
+1 72 140 360 -40 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID guide_post_160_-40_foot_stack
+1 1 140 360 -40 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID guide_post_160_40
+1 72 160 240 40 0 1 0 0 0 1 1 0 0 41239.dat
+0 !BW ID guide_post_160_40_mount
+1 0 150 120 40 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID guide_post_160_40_foot_340
+1 72 140 340 40 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID guide_post_160_40_foot_360
+1 72 140 360 40 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID guide_post_160_40_foot_stack
+1 1 140 360 40 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID guide_post_160_80
+1 72 160 240 80 0 1 0 0 0 1 1 0 0 41239.dat
+0 !BW ID guide_post_160_80_mount
+1 0 150 120 80 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID guide_post_160_80_foot_340
+1 72 140 340 80 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID guide_post_160_80_foot_360
+1 72 140 360 80 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID guide_post_160_80_foot_stack
+1 1 140 360 80 0 -1 0 1 0 0 0 0 1 6558.dat
+0 STEP
+0 06 wheel arm and control brace tower
+0 !BW ID arm_tower_upper
+1 72 -100 0 -180 -1 0 0 0 0 1 0 1 0 32278.dat
+0 !BW ID arm_pivot_support
+1 72 -100 20 -60 -1 0 0 0 0 1 0 1 0 32316.dat
+0 !BW ID arm_brace_support
+1 72 -100 -100 -80 -1 0 0 0 0 1 0 1 0 32316.dat
+0 !BW ID arm_tower_depth_tie_20
+1 72 -120 20 -120 0 1 0 -1 0 0 0 0 1 40490.dat
+0 !BW ID arm_tower_depth_tie_20_corner_-200
+1 72 -100 20 -200 0 1 0 0 0 1 1 0 0 15100.dat
+0 !BW ID arm_tower_depth_tie_20_pin_-200
+1 0 -110 20 -200 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID arm_tower_depth_tie_20_corner_-40
+1 72 -100 20 -40 0 1 0 0 0 -1 -1 0 0 15100.dat
+0 !BW ID arm_tower_depth_tie_20_pin_-40
+1 0 -110 20 -40 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID arm_tower_depth_tie_60
+1 72 -120 60 -120 0 1 0 -1 0 0 0 0 1 40490.dat
+0 !BW ID arm_tower_depth_tie_60_corner_-200
+1 72 -100 60 -200 0 1 0 0 0 1 1 0 0 15100.dat
+0 !BW ID arm_tower_depth_tie_60_pin_-200
+1 0 -110 60 -200 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID arm_tower_depth_tie_60_corner_-40
+1 72 -100 60 -40 0 1 0 0 0 -1 -1 0 0 15100.dat
+0 !BW ID arm_tower_depth_tie_60_pin_-40
+1 0 -110 60 -40 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID arm_tower_depth_tie_-140
+1 72 -120 -140 -120 0 1 0 -1 0 0 0 0 1 40490.dat
+0 !BW ID arm_tower_depth_tie_-140_corner_-200
+1 72 -100 -140 -200 0 1 0 0 0 1 1 0 0 15100.dat
+0 !BW ID arm_tower_depth_tie_-140_pin_-200
+1 0 -110 -140 -200 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID arm_tower_depth_tie_-140_corner_-60
+1 72 -100 -140 -60 0 1 0 0 0 -1 -1 0 0 15100.dat
+0 !BW ID arm_tower_depth_tie_-140_pin_-60
+1 0 -110 -140 -60 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID arm_tower_depth_tie_-60
+1 72 -120 -60 -120 0 1 0 -1 0 0 0 0 1 40490.dat
+0 !BW ID arm_tower_depth_tie_-60_corner_-200
+1 72 -100 -60 -200 0 1 0 0 0 1 1 0 0 15100.dat
+0 !BW ID arm_tower_depth_tie_-60_pin_-200
+1 0 -110 -60 -200 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID arm_tower_depth_tie_-60_corner_-60
+1 72 -100 -60 -60 0 1 0 0 0 -1 -1 0 0 15100.dat
+0 !BW ID arm_tower_depth_tie_-60_pin_-60
+1 0 -110 -60 -60 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID arm_tower_lower
+1 72 -100 240 -200 -1 0 0 0 0 1 0 1 0 32278.dat
+0 !BW ID arm_tower_splice_100
+1 0 -100 100 -190 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID arm_tower_splice_140
+1 0 -100 140 -190 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID arm_tower_foot_340
+1 72 -100 340 -180 0 0 1 0 1 0 -1 0 0 15100.dat
+0 !BW ID arm_tower_foot_360
+1 72 -100 360 -180 0 0 1 0 1 0 -1 0 0 15100.dat
+0 !BW ID arm_tower_foot_stack
+1 1 -100 360 -180 0 -1 0 1 0 0 0 0 1 6558.dat
+0 STEP
+0 07 four post motor mount
+0 !BW ID motor_post_60_-180
+1 72 60 240 -180 0 1 0 0 0 1 1 0 0 41239.dat
+0 !BW ID motor_post_60_-180_mount_160
+1 0 70 160 -180 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID motor_post_60_-180_mount_200
+1 0 70 200 -180 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID motor_post_60_-180_foot_340
+1 72 80 340 -180 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID motor_post_60_-180_foot_360
+1 72 80 360 -180 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID motor_post_60_-180_foot_stack
+1 1 80 360 -180 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID motor_post_60_-300
+1 72 60 240 -300 0 1 0 0 0 1 1 0 0 41239.dat
+0 !BW ID motor_post_60_-300_mount_160
+1 0 70 160 -300 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID motor_post_60_-300_mount_200
+1 0 70 200 -300 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID motor_post_60_-300_foot_340
+1 72 80 340 -300 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID motor_post_60_-300_foot_360
+1 72 80 360 -300 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID motor_post_60_-300_foot_stack
+1 1 80 360 -300 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID motor_post_140_-180
+1 72 140 240 -180 0 1 0 0 0 1 1 0 0 41239.dat
+0 !BW ID motor_post_140_-180_mount_160
+1 0 130 160 -180 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID motor_post_140_-180_mount_200
+1 0 130 200 -180 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID motor_post_140_-180_foot_340
+1 72 120 340 -180 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID motor_post_140_-180_foot_360
+1 72 120 360 -180 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID motor_post_140_-180_foot_stack
+1 1 120 360 -180 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID motor_post_140_-300
+1 72 140 240 -300 0 1 0 0 0 1 1 0 0 41239.dat
+0 !BW ID motor_post_140_-300_mount_160
+1 0 130 160 -300 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID motor_post_140_-300_mount_200
+1 0 130 200 -300 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID motor_post_140_-300_foot_340
+1 72 120 340 -300 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID motor_post_140_-300_foot_360
+1 72 120 360 -300 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID motor_post_140_-300_foot_stack
+1 1 120 360 -300 0 -1 0 1 0 0 0 0 1 6558.dat
+0 STEP
+0 08 two level floor grid
+0 !BW ID floor_cross_-300
+1 72 0 380 -300 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID floor_cross_-180
+1 72 0 380 -180 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID floor_cross_-80
+1 72 0 380 -80 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID floor_cross_-40
+1 72 0 380 -40 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID floor_cross_40
+1 72 0 380 40 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID floor_cross_80
+1 72 0 380 80 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID floor_cross_120
+1 72 0 380 120 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID floor_rail_-120_0
+1 72 -120 400 0 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID floor_rail_-120_0_cross_-80
+1 0 -120 390 -80 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_rail_-120_0_cross_-40
+1 0 -120 390 -40 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_rail_-120_0_cross_40
+1 0 -120 390 40 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_rail_-120_0_cross_80
+1 0 -120 390 80 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_rail_-120_0_cross_120
+1 0 -120 390 120 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_rail_120_0
+1 72 120 400 0 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID floor_rail_120_0_cross_-80
+1 0 120 390 -80 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_rail_120_0_cross_-40
+1 0 120 390 -40 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_rail_120_0_cross_40
+1 0 120 390 40 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_rail_120_0_cross_80
+1 0 120 390 80 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_rail_120_0_cross_120
+1 0 120 390 120 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_rail_-80_-160
+1 72 -80 400 -160 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID floor_rail_-80_-160_cross_-300
+1 0 -80 390 -300 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_rail_-80_-160_cross_-180
+1 0 -80 390 -180 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_rail_-80_-160_cross_-80
+1 0 -80 390 -80 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_rail_-80_-160_cross_-40
+1 0 -80 390 -40 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_rail_100_-160
+1 72 100 400 -160 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID floor_rail_100_-160_cross_-300
+1 0 100 390 -300 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_rail_100_-160_cross_-180
+1 0 100 390 -180 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_rail_100_-160_cross_-80
+1 0 100 390 -80 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_rail_100_-160_cross_-40
+1 0 100 390 -40 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_rail_-60_220
+1 72 -60 400 220 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID floor_rail_-60_220_cross_80
+1 0 -60 390 80 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_rail_-60_220_cross_120
+1 0 -60 390 120 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_rail_60_220
+1 72 60 400 220 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID floor_rail_60_220_cross_80
+1 0 60 390 80 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_rail_60_220_cross_120
+1 0 60 390 120 0 -1 0 1 0 0 0 0 1 2780.dat
+0 STEP
+0 09 low hub cradle
+0 !BW ID hub
+1 15 0 390 260 1 0 0 0 1 0 0 0 1 45601.dat
+0 !BW ID hub_mount_-60_160
+1 0 -60 390 160 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID hub_mount_-60_200
+1 0 -60 390 200 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID hub_mount_60_160
+1 0 60 390 160 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID hub_mount_60_200
+1 0 60 390 200 0 -1 0 1 0 0 0 0 1 2780.dat
+0 STEP

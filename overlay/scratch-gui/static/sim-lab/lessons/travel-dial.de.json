@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "id": "travel-dial",
+  "language": "de",
+  "what": "Motor A bewegt einen geführten Schlitten unter einem getrennten Gummimessrad. Das Rad dreht sich frei: Der Kontakt mit der vorbeilaufenden Oberfläche treibt es an. Beobachte Schlitten und eine sichtbare Radspeiche und vergleiche anschließend mit dem mitgelieferten Modell, das das Rad von der Oberfläche abhebt.",
+  "try": [
+    "Lade travel-dial.ldr und das zugehörige Programm travel-dial.bw. Stelle mit Reset die gespeicherte Lage her und drücke Run in der Robot-Lab-Werkzeugleiste. Beobachte Hin- und Rückweg des Schlittens.",
+    "Vergleiche die sechs programmierten Zielpositionen: +60°, −60°, 0° bei 15°/s, danach dieselbe Folge bei 45°/s. Durch die Schubkurbel ändert sich die Schlittengeschwindigkeit innerhalb jedes Hubs. Braucht das Messrad für denselben tatsächlichen Oberflächenweg denselben Winkel oder dieselbe Zeit?",
+    "Sage das Ergebnis mit angehobenem Rad voraus, bevor du das physische Vergleichsmodell lädst. Verwende dasselbe Programm und vergleiche sowohl den tatsächlichen Schlittenweg als auch die Radbewegung.",
+    "Verwende nach einer Unterbrechung oder Handbewegung vor der Wiederholung Reset. Halte die mitgelieferten Hubgrenzen ein und beobachte das freie Rad; der Encoder des Antriebsmotors ist nicht dessen Messwert."
+  ],
+  "why": "Beim Abrollen ohne Schlupf ist der relative Oberflächenweg gleich Rollradius mal Radwinkel im Bogenmaß. Reibung ermöglicht diese Beziehung, garantiert aber keine fehlerfreie Mitnahme. Eine schwenkbare Aufhängung kann den Radmittelpunkt etwas verschieben. Entscheidend ist deshalb die Bewegung der Oberfläche relativ zu diesem Mittelpunkt. Das Anheben des Rades unterbricht den vorgesehenen Kontaktweg.",
+  "matters": "Messräder verwandeln linearen Weg in eine Drehung, die sich mit einem Zeiger oder Encoder erfassen lässt. Kontakt, Ausrichtung, wirksamer Radius und Schlupf bestimmen die Qualität dieser Messung. Ein erreichter Zielwinkel des Antriebsmotors beweist nicht, welchen Weg das getrennte Messrad erfasst hat.",
+  "question": "Wenn der Schlitten denselben Weg in halber Zeit zurücklegt, müsste sich ein ideales Rad dann um den doppelten Winkel drehen? Was sollte bei angehobenem Rad passieren?",
+  "answer": "Der ideale Winkel hängt vom relativen Weg ab, nicht von der Dauer. Das Rad dreht sich in kürzerer Zeit um denselben Winkel; seine Winkelgeschwindigkeit steigt. Ohne Kontakt treibt die Oberfläche das Rad nicht mehr an. Reale Kontakte können rutschen oder kriechen. Vergleiche deshalb die tatsächlichen Kurven, statt perfektes Abrollen oder genau null Restbewegung vorauszusetzen. Im mitgelieferten nativen Versuch betrug die größte Rollabweichung des Hauptmodells 0,116 mm. Das angehobene Rad drehte sich höchstens um 0,116°, während die einander entsprechenden Schlittenendpunkte höchstens 0,0039 mm voneinander abwichen. Diese Beobachtungen gelten für diesen endlichen nativen Versuch; eine Kalibrierung am realen Reifen bleibt eine eigene Aufgabe.",
+  "further": [
+    "Vergleiche den gemessenen Radwinkel während jedes Hubs mit dem unabhängig beobachteten Oberflächenweg, auch beim Anfahren, Umkehren und Zurückkehren. Passe den Radius nicht nachträglich nur an, damit die Kurven übereinstimmen.",
+    "Ein Rad kann ungefähr zu seinem Anfangswinkel zurückkehren und unterwegs trotzdem Messfehler haben. Prüfe Verlauf und Rückkehr.",
+    "Vergleiche Cusp Labs durch Zahneingriff festgelegtes Abrollen und Integrals Rad auf einer Drehscheibe. Hier misst ein getrenntes passives Rad eine lineare Oberfläche.",
+    "Das native Kontaktmodell kalibriert kein reales LEGO-Messgerät. Reifenverformung, Verschleiß, Ausrichtung und Achsreibung benötigen eigene Hardwaremessungen."
+  ],
+  "formula": "Ideales Abrollen ohne Schlupf: Δs_relativ = R Δθ, mit θ im Bogenmaß und positivem Radwinkel in positiver Oberflächenrichtung. Δs_relativ = Δx_Schlitten − Δx_Radmittelpunkt. Hier ist R = 28 mm; Abweichung = beobachteter relativer Weg − R × beobachteter absoluter Radwinkel relativ zum Rahmen. Der Kurbelwinkel ist nicht der Winkel des Messrads.",
+  "related": [
+    "cusp-lab.ldr",
+    "integral.ldr",
+    "rack-shuttle.ldr"
+  ]
+}

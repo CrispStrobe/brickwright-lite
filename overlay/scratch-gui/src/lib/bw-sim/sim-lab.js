@@ -34,7 +34,13 @@ import {openLDrawCatalog} from './ldraw/ldraw-catalog.js';
 import {fetchLDrawClosure, setLDrawFallback, vendoredFiles} from './ldraw/ldraw-fetch.js';
 import {createCatalogPartStore, creditOf} from './part-meta/catalog-store.js';
 
-export {SimSession, prepareModel, MODELS, MODELS_BASE, PROGRAMS_BASE} from './sim-session.js';
+import {MODELS as QUALIFIED_MODELS} from './sim-session.js';
+import {EXPERIMENTAL_MODELS} from './model/experimental-models.js';
+export {SimSession, prepareModel, MODELS_BASE, PROGRAMS_BASE} from './sim-session.js';
+export {QUALIFIED_MODELS};
+// Interactive discovery includes checkpoint candidates; native qualification
+// and the standard library exporter retain sim-session's qualified registry.
+export const MODELS = Object.freeze([...QUALIFIED_MODELS, ...EXPERIMENTAL_MODELS]);
 export {SimLabClock} from './sim-clock.js';
 export {createRobotLabApi} from './api/robot-lab-api.js';
 export {createLabConnectionCoordinator, labConnectionRoutes} from './transports/lab-connection-coordinator.js';

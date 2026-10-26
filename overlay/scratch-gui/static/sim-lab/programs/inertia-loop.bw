@@ -1,0 +1,532 @@
+DEVICE SPIKE
+# INERTIA LOOP — a closed internal cycle can change the free platform heading.
+# Copyright (c) 2026 CrispStrobe. SPDX-License-Identifier: BSD-3-Clause.
+# Reconstructed export; fresh source receipts govern qualification, not lost historical files.
+# Import the matching inertia-loop.ldr, choose Mat > Plain, Reset, then Run.
+# A spins the flywheel; B changes opposed mass half-spread. Platform yaw stays passive.
+# Exact-source sweep 6480 flywheel degrees (18 turns).
+# Positive speed magnitudes; every move uses a fresh unwrapped encoder difference.
+# No scene lifecycle command or encoder reset is used by the fixed-session experiment.
+WHEN flag clicked:
+  set directionA to 1
+  set directionB to -1
+  set targetA to 0
+  set targetB to 0
+  set flywheelTargetDeg to 0
+  set expansionTargetMm to 0
+  set stage to 0
+  set caseId to 0
+  set movingMotor to 0
+  set arrived to 0
+  set arrivedA to 0
+  set arrivedB to 0
+  set correctionsA to 0
+  set correctionsB to 0
+  set completed to 0
+  set failed to 0
+  lab stop motor A hold
+  lab stop motor B hold
+  if (lab status) = "no-model" or (lab status) = "not-open" then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "Open the matching Inertia Loop model and Reset before Run."
+    stop all
+  if (abs of (lab motor A angle)) > 1 or (abs of (lab motor B angle)) > 1 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "Fresh datum guard: Reset the matching model before retrying."
+    stop all
+  reset timer
+  broadcast "Inertia Loop watchdog"
+  # Stage 0: datum.
+  set arrived to 0
+  set stage to 0
+  set caseId to 0
+  set movingMotor to 0
+  set targetA to 0
+  set targetB to 0
+  set flywheelTargetDeg to 0
+  set expansionTargetMm to 0
+  set arrivedA to 0
+  set arrivedB to 0
+  broadcast "Inertia Loop move" and wait
+  if failed = 1 or arrivedA = 0 or arrivedB = 0 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "A joined move did not establish both measured arrivals. Reset."
+    stop all
+  if (abs of ((lab motor A angle) - targetA)) > 0.5 or (abs of (lab motor A speed)) > 0.5 or (abs of ((lab motor B angle) - targetB)) > 0.5 or (abs of (lab motor B speed)) > 0.5 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "The actual motor angle or speed is outside the arrival guard. Reset."
+    stop all
+  set movingMotor to 0
+  set arrived to 1
+  wait 1.2 seconds
+  if (abs of ((lab motor A angle) - targetA)) > 0.5 or (abs of (lab motor A speed)) > 0.5 or (abs of ((lab motor B angle) - targetB)) > 0.5 or (abs of (lab motor B speed)) > 0.5 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "A motor moved outside its measured comparison window. Reset."
+    stop all
+  set arrived to 0
+  # Stage 1: fixed-spacing.
+  set arrived to 0
+  set stage to 1
+  set caseId to 1
+  set movingMotor to 1
+  set targetA to 10800
+  set targetB to 0
+  set flywheelTargetDeg to 6480
+  set expansionTargetMm to 0
+  set arrivedA to 0
+  set arrivedB to 0
+  broadcast "Inertia Loop move" and wait
+  if failed = 1 or arrivedA = 0 or arrivedB = 0 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "A joined move did not establish both measured arrivals. Reset."
+    stop all
+  if (abs of ((lab motor A angle) - targetA)) > 0.5 or (abs of (lab motor A speed)) > 0.5 or (abs of ((lab motor B angle) - targetB)) > 0.5 or (abs of (lab motor B speed)) > 0.5 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "The actual motor angle or speed is outside the arrival guard. Reset."
+    stop all
+  set movingMotor to 0
+  set arrived to 1
+  wait 1.2 seconds
+  if (abs of ((lab motor A angle) - targetA)) > 0.5 or (abs of (lab motor A speed)) > 0.5 or (abs of ((lab motor B angle) - targetB)) > 0.5 or (abs of (lab motor B speed)) > 0.5 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "A motor moved outside its measured comparison window. Reset."
+    stop all
+  set arrived to 0
+  # Stage 2: fixed-spacing.
+  set arrived to 0
+  set stage to 2
+  set caseId to 1
+  set movingMotor to 1
+  set targetA to 0
+  set targetB to 0
+  set flywheelTargetDeg to 0
+  set expansionTargetMm to 0
+  set arrivedA to 0
+  set arrivedB to 0
+  broadcast "Inertia Loop move" and wait
+  if failed = 1 or arrivedA = 0 or arrivedB = 0 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "A joined move did not establish both measured arrivals. Reset."
+    stop all
+  if (abs of ((lab motor A angle) - targetA)) > 0.5 or (abs of (lab motor A speed)) > 0.5 or (abs of ((lab motor B angle) - targetB)) > 0.5 or (abs of (lab motor B speed)) > 0.5 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "The actual motor angle or speed is outside the arrival guard. Reset."
+    stop all
+  set movingMotor to 0
+  set arrived to 1
+  wait 1.2 seconds
+  if (abs of ((lab motor A angle) - targetA)) > 0.5 or (abs of (lab motor A speed)) > 0.5 or (abs of ((lab motor B angle) - targetB)) > 0.5 or (abs of (lab motor B speed)) > 0.5 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "A motor moved outside its measured comparison window. Reset."
+    stop all
+  set arrived to 0
+  # Stage 3: forward-loop.
+  set arrived to 0
+  set stage to 3
+  set caseId to 2
+  set movingMotor to 1
+  set targetA to 10800
+  set targetB to 0
+  set flywheelTargetDeg to 6480
+  set expansionTargetMm to 0
+  set arrivedA to 0
+  set arrivedB to 0
+  broadcast "Inertia Loop move" and wait
+  if failed = 1 or arrivedA = 0 or arrivedB = 0 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "A joined move did not establish both measured arrivals. Reset."
+    stop all
+  if (abs of ((lab motor A angle) - targetA)) > 0.5 or (abs of (lab motor A speed)) > 0.5 or (abs of ((lab motor B angle) - targetB)) > 0.5 or (abs of (lab motor B speed)) > 0.5 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "The actual motor angle or speed is outside the arrival guard. Reset."
+    stop all
+  set movingMotor to 0
+  set arrived to 1
+  wait 1.2 seconds
+  if (abs of ((lab motor A angle) - targetA)) > 0.5 or (abs of (lab motor A speed)) > 0.5 or (abs of ((lab motor B angle) - targetB)) > 0.5 or (abs of (lab motor B speed)) > 0.5 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "A motor moved outside its measured comparison window. Reset."
+    stop all
+  set arrived to 0
+  # Stage 4: forward-loop.
+  set arrived to 0
+  set stage to 4
+  set caseId to 2
+  set movingMotor to 2
+  set targetA to 10800
+  set targetB to -305.5774907364391
+  set flywheelTargetDeg to 6480
+  set expansionTargetMm to 32
+  set arrivedA to 0
+  set arrivedB to 0
+  broadcast "Inertia Loop move" and wait
+  if failed = 1 or arrivedA = 0 or arrivedB = 0 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "A joined move did not establish both measured arrivals. Reset."
+    stop all
+  if (abs of ((lab motor A angle) - targetA)) > 0.5 or (abs of (lab motor A speed)) > 0.5 or (abs of ((lab motor B angle) - targetB)) > 0.5 or (abs of (lab motor B speed)) > 0.5 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "The actual motor angle or speed is outside the arrival guard. Reset."
+    stop all
+  set movingMotor to 0
+  set arrived to 1
+  wait 1.2 seconds
+  if (abs of ((lab motor A angle) - targetA)) > 0.5 or (abs of (lab motor A speed)) > 0.5 or (abs of ((lab motor B angle) - targetB)) > 0.5 or (abs of (lab motor B speed)) > 0.5 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "A motor moved outside its measured comparison window. Reset."
+    stop all
+  set arrived to 0
+  # Stage 5: forward-loop.
+  set arrived to 0
+  set stage to 5
+  set caseId to 2
+  set movingMotor to 1
+  set targetA to 0
+  set targetB to -305.5774907364391
+  set flywheelTargetDeg to 0
+  set expansionTargetMm to 32
+  set arrivedA to 0
+  set arrivedB to 0
+  broadcast "Inertia Loop move" and wait
+  if failed = 1 or arrivedA = 0 or arrivedB = 0 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "A joined move did not establish both measured arrivals. Reset."
+    stop all
+  if (abs of ((lab motor A angle) - targetA)) > 0.5 or (abs of (lab motor A speed)) > 0.5 or (abs of ((lab motor B angle) - targetB)) > 0.5 or (abs of (lab motor B speed)) > 0.5 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "The actual motor angle or speed is outside the arrival guard. Reset."
+    stop all
+  set movingMotor to 0
+  set arrived to 1
+  wait 1.2 seconds
+  if (abs of ((lab motor A angle) - targetA)) > 0.5 or (abs of (lab motor A speed)) > 0.5 or (abs of ((lab motor B angle) - targetB)) > 0.5 or (abs of (lab motor B speed)) > 0.5 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "A motor moved outside its measured comparison window. Reset."
+    stop all
+  set arrived to 0
+  # Stage 6: forward-loop.
+  set arrived to 0
+  set stage to 6
+  set caseId to 2
+  set movingMotor to 2
+  set targetA to 0
+  set targetB to 0
+  set flywheelTargetDeg to 0
+  set expansionTargetMm to 0
+  set arrivedA to 0
+  set arrivedB to 0
+  broadcast "Inertia Loop move" and wait
+  if failed = 1 or arrivedA = 0 or arrivedB = 0 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "A joined move did not establish both measured arrivals. Reset."
+    stop all
+  if (abs of ((lab motor A angle) - targetA)) > 0.5 or (abs of (lab motor A speed)) > 0.5 or (abs of ((lab motor B angle) - targetB)) > 0.5 or (abs of (lab motor B speed)) > 0.5 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "The actual motor angle or speed is outside the arrival guard. Reset."
+    stop all
+  set movingMotor to 0
+  set arrived to 1
+  wait 1.2 seconds
+  if (abs of ((lab motor A angle) - targetA)) > 0.5 or (abs of (lab motor A speed)) > 0.5 or (abs of ((lab motor B angle) - targetB)) > 0.5 or (abs of (lab motor B speed)) > 0.5 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "A motor moved outside its measured comparison window. Reset."
+    stop all
+  set arrived to 0
+  # Stage 7: inverse-loop.
+  set arrived to 0
+  set stage to 7
+  set caseId to 3
+  set movingMotor to 2
+  set targetA to 0
+  set targetB to -305.5774907364391
+  set flywheelTargetDeg to 0
+  set expansionTargetMm to 32
+  set arrivedA to 0
+  set arrivedB to 0
+  broadcast "Inertia Loop move" and wait
+  if failed = 1 or arrivedA = 0 or arrivedB = 0 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "A joined move did not establish both measured arrivals. Reset."
+    stop all
+  if (abs of ((lab motor A angle) - targetA)) > 0.5 or (abs of (lab motor A speed)) > 0.5 or (abs of ((lab motor B angle) - targetB)) > 0.5 or (abs of (lab motor B speed)) > 0.5 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "The actual motor angle or speed is outside the arrival guard. Reset."
+    stop all
+  set movingMotor to 0
+  set arrived to 1
+  wait 1.2 seconds
+  if (abs of ((lab motor A angle) - targetA)) > 0.5 or (abs of (lab motor A speed)) > 0.5 or (abs of ((lab motor B angle) - targetB)) > 0.5 or (abs of (lab motor B speed)) > 0.5 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "A motor moved outside its measured comparison window. Reset."
+    stop all
+  set arrived to 0
+  # Stage 8: inverse-loop.
+  set arrived to 0
+  set stage to 8
+  set caseId to 3
+  set movingMotor to 1
+  set targetA to 10800
+  set targetB to -305.5774907364391
+  set flywheelTargetDeg to 6480
+  set expansionTargetMm to 32
+  set arrivedA to 0
+  set arrivedB to 0
+  broadcast "Inertia Loop move" and wait
+  if failed = 1 or arrivedA = 0 or arrivedB = 0 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "A joined move did not establish both measured arrivals. Reset."
+    stop all
+  if (abs of ((lab motor A angle) - targetA)) > 0.5 or (abs of (lab motor A speed)) > 0.5 or (abs of ((lab motor B angle) - targetB)) > 0.5 or (abs of (lab motor B speed)) > 0.5 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "The actual motor angle or speed is outside the arrival guard. Reset."
+    stop all
+  set movingMotor to 0
+  set arrived to 1
+  wait 1.2 seconds
+  if (abs of ((lab motor A angle) - targetA)) > 0.5 or (abs of (lab motor A speed)) > 0.5 or (abs of ((lab motor B angle) - targetB)) > 0.5 or (abs of (lab motor B speed)) > 0.5 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "A motor moved outside its measured comparison window. Reset."
+    stop all
+  set arrived to 0
+  # Stage 9: inverse-loop.
+  set arrived to 0
+  set stage to 9
+  set caseId to 3
+  set movingMotor to 2
+  set targetA to 10800
+  set targetB to 0
+  set flywheelTargetDeg to 6480
+  set expansionTargetMm to 0
+  set arrivedA to 0
+  set arrivedB to 0
+  broadcast "Inertia Loop move" and wait
+  if failed = 1 or arrivedA = 0 or arrivedB = 0 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "A joined move did not establish both measured arrivals. Reset."
+    stop all
+  if (abs of ((lab motor A angle) - targetA)) > 0.5 or (abs of (lab motor A speed)) > 0.5 or (abs of ((lab motor B angle) - targetB)) > 0.5 or (abs of (lab motor B speed)) > 0.5 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "The actual motor angle or speed is outside the arrival guard. Reset."
+    stop all
+  set movingMotor to 0
+  set arrived to 1
+  wait 1.2 seconds
+  if (abs of ((lab motor A angle) - targetA)) > 0.5 or (abs of (lab motor A speed)) > 0.5 or (abs of ((lab motor B angle) - targetB)) > 0.5 or (abs of (lab motor B speed)) > 0.5 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "A motor moved outside its measured comparison window. Reset."
+    stop all
+  set arrived to 0
+  # Stage 10: inverse-loop.
+  set arrived to 0
+  set stage to 10
+  set caseId to 3
+  set movingMotor to 1
+  set targetA to 0
+  set targetB to 0
+  set flywheelTargetDeg to 0
+  set expansionTargetMm to 0
+  set arrivedA to 0
+  set arrivedB to 0
+  broadcast "Inertia Loop move" and wait
+  if failed = 1 or arrivedA = 0 or arrivedB = 0 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "A joined move did not establish both measured arrivals. Reset."
+    stop all
+  if (abs of ((lab motor A angle) - targetA)) > 0.5 or (abs of (lab motor A speed)) > 0.5 or (abs of ((lab motor B angle) - targetB)) > 0.5 or (abs of (lab motor B speed)) > 0.5 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "The actual motor angle or speed is outside the arrival guard. Reset."
+    stop all
+  set movingMotor to 0
+  set arrived to 1
+  wait 1.2 seconds
+  if (abs of ((lab motor A angle) - targetA)) > 0.5 or (abs of (lab motor A speed)) > 0.5 or (abs of ((lab motor B angle) - targetB)) > 0.5 or (abs of (lab motor B speed)) > 0.5 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "A motor moved outside its measured comparison window. Reset."
+    stop all
+  set arrived to 0
+  set stage to 11
+  set movingMotor to 0
+  set completed to 1
+  say "Complete: compare each case with its own starting heading. Both inputs hold; platform yaw remains free."
+
+WHEN I receive "Inertia Loop move":
+  set arrivedA to 0
+  set correctionsA to 0
+  if (abs of (targetA - (lab motor A angle))) > 0.15 then:
+    lab run motor A for (targetA - (lab motor A angle)) degrees at 420 degrees per second
+    lab stop motor A hold
+  wait 1 seconds
+  repeat 3:
+    if (abs of (targetA - (lab motor A angle))) > 0.2 then:
+      change correctionsA by 1
+      lab run motor A for (targetA - (lab motor A angle)) degrees at 15 degrees per second
+      lab stop motor A hold
+      wait 1 seconds
+  if (abs of ((lab motor A angle) - targetA)) > 0.5 or (abs of (lab motor A speed)) > 0.5 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "Motor A failed the bounded measured arrival guard. Reset."
+    stop all
+  set arrivedA to 1
+
+WHEN I receive "Inertia Loop move":
+  set arrivedB to 0
+  set correctionsB to 0
+  if (abs of (targetB - (lab motor B angle))) > 0.15 then:
+    lab run motor B for (targetB - (lab motor B angle)) degrees at 90 degrees per second
+    lab stop motor B hold
+  wait 1 seconds
+  repeat 3:
+    if (abs of (targetB - (lab motor B angle))) > 0.2 then:
+      change correctionsB by 1
+      lab run motor B for (targetB - (lab motor B angle)) degrees at 15 degrees per second
+      lab stop motor B hold
+      wait 1 seconds
+  if (abs of ((lab motor B angle) - targetB)) > 0.5 or (abs of (lab motor B speed)) > 0.5 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "Motor B failed the bounded measured arrival guard. Reset."
+    stop all
+  set arrivedB to 1
+
+WHEN I receive "Inertia Loop watchdog":
+  repeat until completed = 1 or failed = 1:
+    if timer > 240 then:
+      set failed to 1
+      set arrived to 0
+      lab stop motor A hold
+      lab stop motor B hold
+      say "240 second watchdog: both inputs held. Reset before retrying."
+      stop all
+    if ((lab motor A angle) * directionA * 0.6) < -3 or ((lab motor A angle) * directionA * 0.6) > 6483 then:
+      set failed to 1
+      set arrived to 0
+      lab stop motor A hold
+      lab stop motor B hold
+      say "Flywheel input exceeded the declared software envelope. Reset."
+      stop all
+    if ((lab motor B angle) * directionB * 0.10471975511965978) < -1 or ((lab motor B angle) * directionB * 0.10471975511965978) > 33 then:
+      set failed to 1
+      set arrived to 0
+      lab stop motor A hold
+      lab stop motor B hold
+      say "Carriage input exceeded the declared software envelope. Reset."
+      stop all
+    if arrived = 1 then:
+      if (abs of ((lab motor A angle) - targetA)) > 0.5 or (abs of (lab motor A speed)) > 0.5 or (abs of ((lab motor B angle) - targetB)) > 0.5 or (abs of (lab motor B speed)) > 0.5 then:
+        set failed to 1
+        set arrived to 0
+        lab stop motor A hold
+        lab stop motor B hold
+        say "A comparison-window input guard failed. Both inputs held. Reset."
+        stop all
+    wait 0.05 seconds

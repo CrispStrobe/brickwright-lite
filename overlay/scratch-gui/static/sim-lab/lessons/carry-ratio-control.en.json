@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "id": "carry-ratio-control",
+  "language": "en",
+  "what": "The control for Carry Ratio. Model, motor and program are the same, and the deck still moves back and forth through 16 mm, but the same free ball lies on the fixed base plate beside the mechanism instead of on the deck. Nothing connects the ball to the moving deck. In the simulator the ball's carried ratio is about 0.000 at every speed, against 0.286 on the deck: the transport in Carry Ratio comes from the contact with the deck, not from vibration or anything else in the machine.",
+  "try": [
+    "Load this control, press Reset, then Run. Watch the deck move exactly as in Carry Ratio.",
+    "Watch the ball on the base: it stays where it is while the deck moves, apart from a very slow drift.",
+    "Compare the ball's motion with Carry Ratio, where it follows the deck by 2/7 of every stroke.",
+    "Notice the slow drift of the ball on the base. A ball on a flat surface keeps any tiny rolling speed because rolling loses almost no energy; the drift does not follow the deck's rhythm."
+  ],
+  "why": "A body can only be pushed by something that touches it. On the deck, friction at the contact point accelerates the ball, and the balance between pushing its centre and spinning it gives the 2/7 ratio. On the fixed base there is no moving contact, so the deck's motion cannot reach the ball and its carried ratio is zero. Changing only where the ball lies, and keeping everything else identical, shows that the measured 2/7 really comes from the rolling contact.",
+  "matters": "A good control changes exactly one cause and predicts a different result. Here the prediction is a clear zero, and the deck stroke stays identical within 0.1%, so the comparison is fair. Conveyor and feeder designers make the same check when a part moves unexpectedly: is it carried by the belt, or is something else shaking it?",
+  "question": "The deck moves 16 mm in both models. Why does the ball move about 4.6 mm per stroke in Carry Ratio but almost not at all here?",
+  "answer": "In Carry Ratio the ball touches the moving deck, and friction at that contact carries it 2/7 of the deck's stroke. Here it lies on the fixed base, so nothing moving touches it and it is not carried; its ratio is about 0.000.",
+  "further": [
+    "Where would you have to put the ball for it to be carried at a ratio between 0 and 2/7?",
+    "Why does a ball on a flat, fixed plate drift slowly, while a block would stay still?",
+    "Design another control: what would change if the ball were glued to the deck?"
+  ],
+  "formula": "Ball on the deck: λ = I/(I + M r²) = 2/7 ≈ 0.286. Ball on the fixed base: no moving contact, λ = 0.",
+  "related": [
+    "switchback-lift.ldr",
+    "clutch-bench.ldr",
+    "rack-shuttle.ldr"
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "id": "foldback",
+  "language": "en",
+  "what": "Foldback is an antiparallelogram: one motor drives a crossed four-bar linkage with two equal 32 mm cranks and a 48 mm coupler between fixed pivots 48 mm apart. The passive output turns in the opposite direction with a changing angular ratio. The separately assembled open comparison uses the same parts and program and ideally follows the input one-for-one.",
+  "try": [
+    "Load the model, press Reset, then Run. Motor A turns only the blue input arm; the red output arm is passive. The saved input angle is 90°.",
+    "Compare the first four held positions, then watch the full return sweep and the next forward sweep. Predict whether reversing the motor retraces the same branch.",
+    "Load foldback-open.ldr, keep the same foldback.bw program, Reset and Run again. Compare the physical output direction and the three equal-step output increments.",
+    "Keep the input in the delivered 20°–110° command sector. The 18°–112° guard sector is a geometry-check boundary, not a mechanical stop. Use a separate saved assembly for the open comparison; do not try to change branches by driving through alignment."
+  ],
+  "why": "Let the fixed pivots be O=(0,0) and D=(a,0), with a=48 mm. Equal crank spans b=32 mm place B=b(cos θ,sin θ) and C=(a,0)+b(cos φ,sin φ). Requiring the coupler length |C−B| to equal a has two assembly solutions. The open parallelogram gives φ=θ. The crossed antiparallelogram gives tan(φ/2)=−5 tan(θ/2), on the continuous negative-output branch. Link lengths alone therefore do not select a unique motion: the initial assembly matters.",
+  "matters": "A mechanical transmission can reverse direction and change its angular gain without gears. Equal input steps need not produce equal output steps, and the same inventory can have different motion on another assembly branch. This model makes assembly state, passive output measurement and changing velocity ratio visible. The crossed linkage has a further surprise: its input and output arms turn exactly like two equal elliptical gears meshing while each pivots about one focus. That is why elliptical gears can replace it in machines that need a speed that changes during every turn.",
+  "question": "Does the −5 in tan(φ/2)=−5 tan(θ/2) mean the output always moves five degrees backward for each input degree? What changes in the open comparison?",
+  "answer": "No. The factor multiplies the tangents of half-angles, not the angles. The crossed local ratio is −5/[cos²(θ/2)+25 sin²(θ/2)], so it changes with position. In the open assembly φ=θ and the ideal local ratio is +1. The same motor targets therefore produce a different measured output.",
+  "further": [
+    "The two ideal branches meet at aligned positions at 0° and 180°. Those positions are outside the delivered operating sector. The finite-thickness parts, shaft retention and real motion envelope require separate construction checks.",
+    "Compare Tempo Loop. Its ground/input/coupler/output lengths are 16/32/40/40 mm, and both cranks make full turns in the same direction. Foldback instead compares the open and crossed assemblies of equal opposite lengths.",
+    "In the simulator the crossed output follows tan(φ/2) = −5·tan(θ/2) within 0.022° over the whole run, and the open comparison stays 1:1 within 0.008°. Real pins have play: estimate how much 0.1 mm of play at each joint would change the output angle near θ = 20°, where the output moves fastest."
+  ],
+  "formula": "a=48 mm, b=32 mm; crossed: tan(φ/2)=−5 tan(θ/2), dφ/dθ=−5/[cos²(θ/2)+25 sin²(θ/2)]; open: φ=θ. θ=90°−A, where A is the saved-pose motor encoder. Commanded θ=20°…110°.",
+  "related": [
+    "tempo-loop.ldr",
+    "scale-echo.ldr",
+    "crank-rocker.ldr"
+  ]
+}

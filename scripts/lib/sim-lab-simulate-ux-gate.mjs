@@ -21,6 +21,7 @@ import {readFile, stat, writeFile} from 'node:fs/promises';
 import JSZip from 'jszip';
 import {tool} from './sim-lab-toolbar-gate.mjs';
 import {measurementPlotInteractions} from './sim-lab-measurement-plots-gate.mjs';
+import {exportedProject} from './sim-lab-integral-gate.mjs';
 import {measurementExperimentInteractions} from './sim-lab-measurement-experiments-gate.mjs';
 import {effortHistoryInteractions} from './sim-lab-effort-history-gate.mjs';
 
@@ -286,20 +287,18 @@ export const measurementInteractions = async (page, {shotsDir}) => {
     const beforeProject = await lab(page, () => window.__bwSimLab.projectRecord);
     assert.ok(beforeProject?.measurements?.some(d => d.id === 'custom-1'));
     await page.getByText('File', {exact: true}).first().click();
-    const download = page.waitForEvent('download', {timeout: 30000});
-    await page.getByText('Save to your computer', {exact: true}).click();
     const savedPath = resolve(shotsDir, 'sim-lab-measurement-edit.sb3');
-    await (await download).saveAs(savedPath);
+    await exportedProject(page, savedPath);
     const savedInfo = await stat(savedPath);
     assert.ok(savedInfo.size > 0 && savedInfo.size <= 8 * 1024 * 1024, 'bounded generated project fixture');
     const savedBytes = await readFile(savedPath);
     const savedZip = await JSZip.loadAsync(savedBytes, {checkCRC32: true});
     const sidecar = savedZip.file('brickwright/state.json');
-    assert.ok(sidecar, 'the downloaded project includes its actual Brickwright sidecar');
+    assert.ok(sidecar, 'the exported project includes its actual Brickwright sidecar');
     const sidecarText = await sidecar.async('text');
     assert.ok(Buffer.byteLength(sidecarText) <= 2 * 1024 * 1024, 'bounded saved project metadata');
     const savedBundle = JSON.parse(sidecarText);
-    assert.deepEqual(savedBundle.state.simLab, beforeProject, 'the downloaded bytes, not just localStorage, carry the edited definitions');
+    assert.deepEqual(savedBundle.state.simLab, beforeProject, 'the exported bytes, not just localStorage, carry the edited definitions');
     const oldSession = await page.evaluateHandle(() => window.__bwSimLab._pane.session);
     try {
         await page.getByText('File', {exact: true}).first().click();

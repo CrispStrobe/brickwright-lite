@@ -41,12 +41,12 @@ const NUMBER = /^[+-]?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?$/i;
 /** Normalize LDraw filename: lower case, forward slashes. */
 const normalizeFile = s => s.trim().replace(/\\/g, '/').toLowerCase();
 
-/** Format a number for LDraw: integers without decimal, others up to 6 decimals, never -0. */
-const formatNumber = n => {
+/** Format a number for LDraw: integers without decimal, others at the selected precision, never -0. */
+const formatNumber = (n, precision = 6) => {
     if (Object.is(n, -0)) n = 0;
     const rounded = Math.round(n);
-    if (Math.abs(n - rounded) < 1e-9) return String(rounded);
-    let s = n.toFixed(6);
+    if (Number.isInteger(n) || (precision === 6 && Math.abs(n - rounded) < 1e-9)) return String(rounded);
+    let s = n.toFixed(precision);
     s = s.replace(/\.?0+$/, '');
     if (s === '-0') s = '0';
     return s;
@@ -793,10 +793,12 @@ export const parseModel = (text, {catalog} = {}) => {
 /**
  * Serialize a PlacedModel to LDraw text.
  * @param {{version:number, parts:Array}} model
- * @param {{name?:string, title?:string}} opts
+ * @param {{name?:string, title?:string, precision?:6|12}} opts
  * @returns {string} LDraw text with CRLF
  */
-export const serializeModel = (model, {name = 'model.ldr', title = 'Brickwright model', author = model.attribution?.author || 'Brickwright'} = {}) => {
+export const serializeModel = (model, {name = 'model.ldr', title = 'Brickwright model', author = model.attribution?.author || 'Brickwright', precision = 6} = {}) => {
+    if (![6, 12].includes(precision)) throw new RangeError('LDraw precision must be 6 or 12');
+    const number = n => formatNumber(n, precision);
     const lines = [];
     // A model that ships parts of its own (model.files) is an MPD: the model, then each part's FILE section.
     const files = Object.entries(model.files || {});
@@ -806,7 +808,7 @@ export const serializeModel = (model, {name = 'model.ldr', title = 'Brickwright 
     lines.push(`0 Author: ${author}`);
     if (model.attribution?.license) lines.push(`0 !LICENSE ${model.attribution.license}`);
     for (const d of model.drawings || []) {
-        lines.push(`0 !BW DRAW ${d.surface} ${d.pen} ${[...d.tip, ...d.center, d.radiusLdu].map(formatNumber).join(' ')}`);
+        lines.push(`0 !BW DRAW ${d.surface} ${d.pen} ${[...d.tip, ...d.center, d.radiusLdu].map(number).join(' ')}`);
     }
     lines.push(`0 !LDRAW_ORG Unofficial_Model`);
     // Groups: output 0 !BW GROUP lines first
@@ -818,7 +820,7 @@ export const serializeModel = (model, {name = 'model.ldr', title = 'Brickwright 
     }
     // Rubber bands (no LDraw part draws a stretched one): one line each, round parts written below.
     for (const b of model.belts || []) lines.push(`0 !BW BELT ${b.id} ${b.band} ${b.around.join(' ')}`);
-    for (const r of model.ropes || []) lines.push(`0 !BW ROPE ${r.id} ${formatNumber(r.lengthLdu)} ${r.around.join(' ')}`);
+    for (const r of model.ropes || []) lines.push(`0 !BW ROPE ${r.id} ${number(r.lengthLdu)} ${r.around.join(' ')}`);
     for (const h of model.hoses || []) lines.push(`0 !BW HOSE ${h.id} ${h.a.part} ${h.a.port} ${h.b.part} ${h.b.port}`);
     // Build a map from part id to group id for quick lookup
     const partGroupMap = new Map();
@@ -847,26 +849,26 @@ export const serializeModel = (model, {name = 'model.ldr', title = 'Brickwright 
         if (p.pen) lines.push('0 !BW PEN');
         if (p.slides?.length) lines.push(`0 !BW SLIDE ${p.slides.join(' ')}`);
         if (p.load) lines.push('0 !BW LOAD');
-        if (p.rotorAngle !== undefined) lines.push(`0 !BW ROTOR ${formatNumber(p.rotorAngle)}`);
-        const x = formatNumber(p.position[0]);
-        const y = formatNumber(p.position[1]);
-        const z = formatNumber(p.position[2]);
-        const a = formatNumber(p.rotation[0]);
-        const b = formatNumber(p.rotation[1]);
-        const c = formatNumber(p.rotation[2]);
-        const d = formatNumber(p.rotation[3]);
-        const e = formatNumber(p.rotation[4]);
-        const f = formatNumber(p.rotation[5]);
-        const g = formatNumber(p.rotation[6]);
-        const h = formatNumber(p.rotation[7]);
-        const i = formatNumber(p.rotation[8]);
+        if (p.rotorAngle !== undefined) lines.push(`0 !BW ROTOR ${number(p.rotorAngle)}`);
+        const x = number(p.position[0]);
+        const y = number(p.position[1]);
+        const z = number(p.position[2]);
+        const a = number(p.rotation[0]);
+        const b = number(p.rotation[1]);
+        const c = number(p.rotation[2]);
+        const d = number(p.rotation[3]);
+        const e = number(p.rotation[4]);
+        const f = number(p.rotation[5]);
+        const g = number(p.rotation[6]);
+        const h = number(p.rotation[7]);
+        const i = number(p.rotation[8]);
         const color = formatColour(p.color ?? MAIN_COLOUR);
         lines.push(`1 ${color} ${x} ${y} ${z} ${a} ${b} ${c} ${d} ${e} ${f} ${g} ${h} ${i} ${p.part}`);
     }
     if (stepOf.size && previousStep !== undefined) lines.push('0 STEP');
     // Decoration (a cable's segments, a mirrored part) as it was read: read back, it is decoration again.
     for (const d of model.decor || []) {
-        lines.push(`1 ${formatColour(d.color ?? MAIN_COLOUR)} ${[...d.position, ...d.matrix].map(formatNumber).join(' ')} ${d.part}`);
+        lines.push(`1 ${formatColour(d.color ?? MAIN_COLOUR)} ${[...d.position, ...d.matrix].map(number).join(' ')} ${d.part}`);
     }
     if (files.length) {
         lines.push('0 NOFILE');

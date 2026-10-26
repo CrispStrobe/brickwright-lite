@@ -10,6 +10,7 @@ import assert from 'node:assert/strict';
 import {mkdirSync, writeFileSync} from 'node:fs';
 import {resolve} from 'node:path';
 import {mechanicsInteractions,manualMechanicsInteractions} from './sim-lab-mechanics-gate.mjs';
+import {captureRenderedModel,captureUiScreenshot} from './sim-lab-rendered-model-gate.mjs';
 import {intakeRoundtrip} from './sim-lab-intake-roundtrip.mjs';
 
 import {judgeBalance} from './sim-lab-balance-judge.mjs';
@@ -20,11 +21,31 @@ import {judgeProduct,judgeGimbal} from './sim-lab-product-gimbal-judge.mjs';
 
 import {judgeWatt} from './sim-lab-watt-judge.mjs';
 import {judgeTwinTempo} from './sim-lab-twin-tempo-judge.mjs';
+import {SIX_INTAKES} from './sim-lab-six-intake-contracts.mjs';
+import {judgeSixBrowser} from './sim-lab-six-browser-judge.mjs';
+import {judgeCableCompass} from './sim-lab-cable-compass-judge.mjs';
+import {judgeRiseRatio} from './sim-lab-rise-ratio-judge.mjs';
+import {judgeCascade} from './sim-lab-cascade-judge.mjs';
+import {judgeWaveMaker} from './sim-lab-wavemaker-judge.mjs';
 import {judgeSineShuttle,judgeQuartermaster} from './sim-lab-sine-quarter-judge.mjs';
 
 const DEG = 180 / Math.PI;
 
 const SPEC = Object.freeze({
+    'rod-ratio': {simulatedMs:160000},
+    'vernier-drive': {simulatedMs:160000},
+    'line-turner': {simulatedMs:70000},
+    'dune-strider': {simulatedMs:90000},
+    'atlas-six': {simulatedMs:490000},
+    'oblique': {simulatedMs:98000},
+    'cable-compass': {simulatedMs: 70000},
+    'cable-compass-control': {simulatedMs: 70000},
+    'rise-ratio': {simulatedMs: 27000},
+    'rise-ratio-control': {simulatedMs: 27000},
+    'cascade': {simulatedMs: 22000},
+    'cascade-control': {simulatedMs: 22000},
+    'wavemaker': {simulatedMs: 80000},
+    'wavemaker-control': {simulatedMs: 80000},
     'sine-shuttle': {simulatedMs: 45000},
     'quartermaster': {simulatedMs: 100000},
     'watt-line': {simulatedMs: 22000},
@@ -61,7 +82,12 @@ const quaternionAngle = (a, b) => {
 
 const bodyWithPart = (mechanism, part) => mechanism.bodies.find(body => (body.parts || []).includes(part));
 
-export const judgeNewModel = (id, record) => {
+export const judgeNewModel = async (id, record) => {
+    if(SIX_INTAKES.includes(id))return judgeSixBrowser(id,record);
+    if(id==='cable-compass'||id==='cable-compass-control')return judgeCableCompass(record,{control:id.endsWith('-control')});
+    if(id==='rise-ratio'||id==='rise-ratio-control')return judgeRiseRatio(record,{control:id.endsWith('control')});
+    if(id==='cascade'||id==='cascade-control')return judgeCascade(record,{control:id.endsWith('control')});
+    if(id==='wavemaker'||id==='wavemaker-control')return judgeWaveMaker(record,{control:id.endsWith('control')});
     if(id==='sine-shuttle')return judgeSineShuttle(record);
     if(id==='quartermaster')return judgeQuartermaster(record);
     if(id==='watt-line')return judgeWatt(record).metrics;
@@ -131,15 +157,16 @@ export async function newModelsInteractions(page, opts) {
     assert.ok(models.length, 'at least one new model is selected');
     const results = {};
     for (const id of models) {
+        const modelOpts = {...opts, timeout: opts.timeoutFor ? opts.timeoutFor(id) : opts.timeout};
         Object.assign(results, await mechanicsInteractions(page, {
-            ...opts, models: [id], judge: judgeNewModel,
+            ...modelOpts, models: [id], judge: judgeNewModel, captureModel:captureRenderedModel, extendedObservations:SIX_INTAKES.includes(id), completionHoldMsFor:key=>SIX_INTAKES.includes(key)?1000:null,
             simulatedMsFor: key => SPEC[key].simulatedMs, completeWhenPausedFor:key=>key==='root-bridge', speed: 4, observeProgram: true
         }));
-        await manualMechanicsInteractions(page,{...opts,models:[id]});
+        await manualMechanicsInteractions(page,{...modelOpts,models:[id],captureModel:captureRenderedModel});
         await page.getByTestId('bw-sim-lab-instructions').click();
         await page.waitForFunction(()=>window.__bwSimLabInstructions?.status==='ready',null,{timeout:120000});
         const plan=await page.evaluate(()=>window.__bwSimLabInstructions.plan);
-        const count={'sine-shuttle':105,'quartermaster':209,'watt-line':148,'twin-tempo':81,'root-bridge':447,'balance-engine':292,'cusp-lab':128,'product-plotter':301,'gimbal-lab':245,'sky-courier':251}[id];
+        const count={'rod-ratio':167,'vernier-drive':176,'line-turner':145,'dune-strider':202,'atlas-six':676,'oblique':291,'cable-compass':175,'cable-compass-control':174,'rise-ratio':182,'rise-ratio-control':181,'cascade':70,'cascade-control':76,'wavemaker':298,'wavemaker-control':298,'sine-shuttle':105,'quartermaster':209,'watt-line':148,'twin-tempo':81,'root-bridge':447,'balance-engine':292,'cusp-lab':128,'product-plotter':301,'gimbal-lab':245,'sky-courier':251}[id];
         const bands=id==='balance-engine'?2:0;
         const placed=plan.steps.flatMap(s=>s.parts);
         assert.equal(plan.steps.flatMap(s=>s.belts||[]).length,bands);
@@ -148,10 +175,10 @@ export async function newModelsInteractions(page, opts) {
         await page.keyboard.press('End');
         await page.waitForFunction(()=>window.__bwSimLabInstructions.page===window.__bwSimLabInstructions.steps);
         assert.equal(await page.getByTestId('bw-sim-instructions-bom').getByTestId('bw-sim-instructions-part').evaluateAll(es=>es.reduce((n,e)=>n+Number(e.dataset.count),0)),count+bands);
-        await page.getByTestId('bw-sim-instructions').screenshot({path:resolve(opts.shotsDir,id+'-bom.png')});
+        await captureUiScreenshot(page,{path:resolve(opts.shotsDir,id+'-bom.png')},page.getByTestId('bw-sim-instructions'));
         await page.keyboard.press('Escape');
         console.log(`PASS ${id}: manual controls, ${plan.steps.length} connected instruction pages and ${count+bands}-piece BOM`);
-        if(['sine-shuttle','quartermaster','watt-line','twin-tempo','root-bridge','balance-engine'].includes(id))await intakeRoundtrip(page,opts,id,judgeNewModel);
+        if([...SIX_INTAKES,'cable-compass','cable-compass-control','rise-ratio','rise-ratio-control','cascade','cascade-control','wavemaker','wavemaker-control','sine-shuttle','quartermaster','watt-line','twin-tempo','root-bridge','balance-engine'].includes(id))await intakeRoundtrip(page,modelOpts,id,judgeNewModel);
     }
     writeFileSync(resolve(opts.shotsDir, 'new-model-measurements.json'), `${JSON.stringify(results, null, 2)}\n`);
     return results;
@@ -181,7 +208,14 @@ export async function newModelLesson(page, {openSimLab, shotsDir}, id, language 
     assert.ok(answer.length > 100, `${id}: substantive ${language} explanation`);
     assert.ok(steps >= 3, `${id}: ${language} lesson has ${steps} steps`);
     mkdirSync(shotsDir, {recursive: true});
-    await lesson.screenshot({path: resolve(shotsDir, `${id}-lesson-${language}.png`)});
+    const frames = [];
+    for (const frame of page.frames()) frames.push(await frame.evaluate(() => ({
+        url: location.href, fonts: document.fonts.status,
+        faces: [...document.fonts].map(font => ({family: font.family, status: font.status})),
+        simulation: window.__bwSimLab?.status, view3d: window.__bwSimLab?.view3d
+    })));
+    writeFileSync(resolve(shotsDir, `${id}-lesson-${language}-capture-state.json`), JSON.stringify({frames}, null, 2));
+    await captureUiScreenshot(page,{path: resolve(shotsDir, `${id}-lesson-${language}.png`)},lesson);
     await lesson.getByRole('button', {name: language === 'de' ? 'Lektion schließen' : 'Close lesson', exact: true}).click();
     console.log(`PASS ${id}: ${language.toUpperCase()} lesson (${steps} steps, ${answer.length} characters)`);
     return {id, language, steps, characters: answer.length};

@@ -1,0 +1,298 @@
+0 FILE samebeat-conjugate.ldr
+0 Samebeat — far conjugate pivot, upright pendulum
+0 Name: samebeat-conjugate.ldr
+0 Author: CrispStrobe
+0 !LICENSE BSD-3-Clause : see ../licenses/samebeat-conjugate.txt
+0 !LDRAW_ORG Unofficial_Model
+0 One unchanged compound pendulum; choose a different stock suspension hole.
+0 Only the motorized support moves by command. The pendulum is always passive.
+0 Ordinary stock parts. No authored welds, fixed base, extra joints or solver overrides.
+0 Assembly stage 1: base
+0 !BW ID base_floor_rail_-60
+0 15L fore-aft foundation rail spansZ−160..120
+1 72 -60 340 -20 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID base_floor_rail_60
+0 15L fore-aft foundation rail spansZ−160..120
+1 72 60 340 -20 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID base_lap_rail
+0 11L rail ties the two layers of crossmembers at two separated stations
+1 72 20 340 -20 1 0 0 0 1 0 0 0 1 32525.dat
+0 !BW ID left_cross_-120
+0 13L crossmember spansX−140..100, clear of the hub rail atX140
+1 0 -20 360 -120 0 0 1 0 1 0 -1 0 0 41239.dat
+0 !BW ID right_cross_-120
+0 15L lapped right crossmember spansX20..300
+1 0 160 380 -120 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID left_rail_cross_pin_-120
+0 One retained2L friction pin through the indicated adjacent layers
+1 0 -60 350 -120 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID base_lap_pin_20_-120
+0 Single3L pin spans the railY340 and both crossmembersY360/380
+1 1 20 360 -120 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID base_lap_pin_60_-120
+0 Single3L pin spans the railY340 and both crossmembersY360/380
+1 1 60 360 -120 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID left_cross_80
+0 13L crossmember spansX−140..100, clear of the hub rail atX140
+1 0 -20 360 80 0 0 1 0 1 0 -1 0 0 41239.dat
+0 !BW ID right_cross_80
+0 15L lapped right crossmember spansX20..300
+1 0 160 380 80 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID left_rail_cross_pin_80
+0 One retained2L friction pin through the indicated adjacent layers
+1 0 -60 350 80 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID base_lap_pin_20_80
+0 Single3L pin spans the railY340 and both crossmembersY360/380
+1 1 20 360 80 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID base_lap_pin_60_80
+0 Single3L pin spans the railY340 and both crossmembersY360/380
+1 1 60 360 80 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID base_skid_-140
+0 13L lower skid spansZ−140..100 and supports both left crossmembers
+1 72 -140 380 -20 1 0 0 0 1 0 0 0 1 41239.dat
+0 !BW ID base_diagonal_shared_pin
+0 Single3L pin spans crossmember, skid and ground diagonal
+1 1 -140 380 -120 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID left_ground_pad_-140_80
+0 3L ground pad with lower faceY410
+1 0 -140 400 80 1 0 0 0 1 0 0 0 1 32523.dat
+0 !BW ID left_ground_shared_pin_-140_80
+0 One retained3L friction pin through the indicated adjacent layers
+1 1 -140 380 80 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID left_ground_second_pin_-140_80
+0 One retained2L friction pin through the indicated adjacent layers
+1 0 -140 390 60 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID base_skid_-20
+0 13L lower skid spansZ−140..100 and supports both left crossmembers
+1 72 -20 380 -20 1 0 0 0 1 0 0 0 1 41239.dat
+0 !BW ID left_ground_pad_-20_-120
+0 3L ground pad with lower faceY410
+1 0 -20 400 -120 1 0 0 0 1 0 0 0 1 32523.dat
+0 !BW ID left_ground_shared_pin_-20_-120
+0 One retained3L friction pin through the indicated adjacent layers
+1 1 -20 380 -120 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID left_ground_second_pin_-20_-120
+0 One retained2L friction pin through the indicated adjacent layers
+1 0 -20 390 -100 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID left_ground_pad_-20_80
+0 3L ground pad with lower faceY410
+1 0 -20 400 80 1 0 0 0 1 0 0 0 1 32523.dat
+0 !BW ID left_ground_shared_pin_-20_80
+0 One retained3L friction pin through the indicated adjacent layers
+1 1 -20 380 80 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID left_ground_second_pin_-20_80
+0 One retained2L friction pin through the indicated adjacent layers
+1 0 -20 390 60 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID base_diagonal
+0 11L ground diagonal fromX−140/Z−120 toX−20/Z40: exact3-4-5 triangle
+1 14 -80 400 -40 0.8 0 0.6 0 1 0 -0.6 0 0.8 32525.dat
+0 !BW ID base_diagonal_far_pin
+0 One retained2L friction pin through the indicated adjacent layers
+1 0 -20 390 40 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID right_ground_pad_-120
+0 3L right ground pad shares bottomY410 with the left pads and diagonal
+1 0 240 400 -120 0 0 1 0 1 0 -1 0 0 32523.dat
+0 !BW ID right_ground_pin_220_-120
+0 One retained2L friction pin through the indicated adjacent layers
+1 0 220 390 -120 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID right_ground_pin_240_-120
+0 One retained2L friction pin through the indicated adjacent layers
+1 0 240 390 -120 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID right_ground_pad_80
+0 3L right ground pad shares bottomY410 with the left pads and diagonal
+1 0 240 400 80 0 0 1 0 1 0 -1 0 0 32523.dat
+0 !BW ID right_ground_pin_220_80
+0 One retained2L friction pin through the indicated adjacent layers
+1 0 220 390 80 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID right_ground_pin_240_80
+0 One retained2L friction pin through the indicated adjacent layers
+1 0 240 390 80 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID hub_rail_140
+0 13L support beneath the hub lower mounting face
+1 72 140 360 -20 1 0 0 0 1 0 0 0 1 41239.dat
+0 !BW ID hub_rail_260
+0 13L support beneath the hub lower mounting face
+1 72 260 360 -20 1 0 0 0 1 0 0 0 1 41239.dat
+0 STEP
+0 Assembly stage 2: base
+0 !BW ID motor_post_left_-20
+0 7L motor post accepts both separated blind side mounting bores
+1 72 -40 20 40 0 1 0 -1 0 0 0 0 1 32524.dat
+0 !BW ID motor_mount_pin_left_-20_-20
+0 2L pin fully seated in one blind stator bore and its mounting post; no opposing pin
+1 0 -30 20 -20 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID motor_mount_pin_left_-20_20
+0 2L pin fully seated in one blind stator bore and its mounting post; no opposing pin
+1 0 -30 20 20 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID motor_foot_left_-20
+0 Integral perpendicular pin fixes the motor post to the rear upright
+1 72 -60 20 100 1 0 0 0 0 -1 0 1 0 15100.dat
+0 !BW ID motor_foot_pin_left_-20
+0 One retained2L friction pin through the indicated adjacent layers
+1 0 -60 20 110 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID motor_post_left_140
+0 7L motor post accepts both separated blind side mounting bores
+1 72 -40 -140 40 0 1 0 -1 0 0 0 0 1 32524.dat
+0 !BW ID motor_mount_pin_left_140_-20
+0 2L pin fully seated in one blind stator bore and its mounting post; no opposing pin
+1 0 -30 -140 -20 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID motor_mount_pin_left_140_20
+0 2L pin fully seated in one blind stator bore and its mounting post; no opposing pin
+1 0 -30 -140 20 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID motor_foot_left_140
+0 Integral perpendicular pin fixes the motor post to the rear upright
+1 72 -60 -140 100 1 0 0 0 0 -1 0 1 0 15100.dat
+0 !BW ID motor_foot_pin_left_140
+0 One retained2L friction pin through the indicated adjacent layers
+1 0 -60 -140 110 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID motor_post_right_-20
+0 7L motor post accepts both separated blind side mounting bores
+1 72 40 20 40 0 1 0 -1 0 0 0 0 1 32524.dat
+0 !BW ID motor_mount_pin_right_-20_-20
+0 2L pin fully seated in one blind stator bore and its mounting post; no opposing pin
+1 0 30 20 -20 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID motor_mount_pin_right_-20_20
+0 2L pin fully seated in one blind stator bore and its mounting post; no opposing pin
+1 0 30 20 20 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID motor_foot_right_-20
+0 Integral perpendicular pin fixes the motor post to the rear upright
+1 72 60 20 100 -1 0 0 0 0 1 0 1 0 15100.dat
+0 !BW ID motor_foot_pin_right_-20
+0 One retained2L friction pin through the indicated adjacent layers
+1 0 60 20 110 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID motor_post_right_140
+0 7L motor post accepts both separated blind side mounting bores
+1 72 40 -140 40 0 1 0 -1 0 0 0 0 1 32524.dat
+0 !BW ID motor_mount_pin_right_140_-20
+0 2L pin fully seated in one blind stator bore and its mounting post; no opposing pin
+1 0 30 -140 -20 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID motor_mount_pin_right_140_20
+0 2L pin fully seated in one blind stator bore and its mounting post; no opposing pin
+1 0 30 -140 20 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID motor_foot_right_140
+0 Integral perpendicular pin fixes the motor post to the rear upright
+1 72 60 -140 100 -1 0 0 0 0 1 0 1 0 15100.dat
+0 !BW ID motor_foot_pin_right_140
+0 One retained2L friction pin through the indicated adjacent layers
+1 0 60 -140 110 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID upper_post_-60
+0 15L rear upright spansY−140..140 with holes alongZ
+1 72 -60 0 120 1 0 0 0 0 -1 0 1 0 32278.dat
+0 !BW ID lower_post_-60
+0 15L lower upright spansY60..340; two separated pins form a rigid lap
+1 72 -60 200 140 1 0 0 0 0 -1 0 1 0 32278.dat
+0 !BW ID post_lap_pin_-60_80
+0 One retained2L friction pin through the indicated adjacent layers
+1 0 -60 80 130 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID post_lap_pin_-60_120
+0 One retained2L friction pin through the indicated adjacent layers
+1 0 -60 120 130 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID post_foot_-60
+0 Integral perpendicular pin fixes the lower upright to its horizontal base rail
+1 72 -60 320 120 0 0 -1 0 1 0 1 0 0 15100.dat
+0 !BW ID post_foot_pin_-60
+0 One retained2L friction pin through the indicated adjacent layers
+1 0 -60 330 120 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID upper_post_60
+0 15L rear upright spansY−140..140 with holes alongZ
+1 72 60 0 120 1 0 0 0 0 -1 0 1 0 32278.dat
+0 !BW ID lower_post_60
+0 15L lower upright spansY60..340; two separated pins form a rigid lap
+1 72 60 200 140 1 0 0 0 0 -1 0 1 0 32278.dat
+0 !BW ID post_lap_pin_60_80
+0 One retained2L friction pin through the indicated adjacent layers
+1 0 60 80 130 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID post_lap_pin_60_120
+0 One retained2L friction pin through the indicated adjacent layers
+1 0 60 120 130 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID post_foot_60
+0 Integral perpendicular pin fixes the lower upright to its horizontal base rail
+1 72 60 320 120 0 0 -1 0 1 0 1 0 0 15100.dat
+0 !BW ID post_foot_pin_60
+0 One retained2L friction pin through the indicated adjacent layers
+1 0 60 330 120 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID frame_diagonal
+0 11L diagonal gives a true120/160/200LDU triangle across the upright frame
+1 14 0 180 160 -0.8 0 0.6 0.6 0 0.8 0 1 0 32525.dat
+0 !BW ID frame_diagonal_upper_pin
+0 One3L pin through upper post, lower post and diagonal
+1 1 -60 100 140 0 0 -1 0 1 0 1 0 0 6558.dat
+0 !BW ID frame_diagonal_lower_pin
+0 One retained2L friction pin through the indicated adjacent layers
+1 0 60 260 150 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID motor_A
+0 SPIKE medium angular motor on port A; output axisZ
+0 !BW PORT A
+1 15 0 0 0 1 0 0 0 0 -1 0 1 0 54696p01.dat
+0 STEP
+0 Assembly stage 3: carrier
+0 !BW ID input_axle
+0 4L input axle spansZ−110..−30 and seats through output socket and keyed crank beam
+1 0 0 0 -70 0 1 0 0 0 1 1 0 0 3705.dat
+0 !BW ID input_key
+0 3L keyed beam transfers motor torque to support crank
+1 1 0 0 -60 -1 0 0 0 0 1 0 1 0 7229.dat
+0 !BW ID support_crank
+0 7L support crank: O=h2 atY0 and P=h4 atY40;16mm support radius
+1 1 0 20 -80 -1 0 0 0 0 1 0 1 0 32524.dat
+0 !BW ID input_key_pin_-20
+0 2L friction pin joins input key and crank
+1 0 0 -20 -70 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID key_shared_pin_20
+0 One3L pin owns the input key, crank and output key at their sharedY20 hole
+1 1 0 20 -80 0 1 0 0 0 1 1 0 0 6558.dat
+0 !BW ID input_retainer
+0 Half bush retains input axle at front of crank
+1 72 0 0 -95 1 0 0 0 1 0 0 0 1 4265c.dat
+0 !BW ID pivot_key
+0 Keyed3L beam holds support axle rigidly on the crank
+1 1 0 40 -100 -1 0 0 0 0 1 0 1 0 7229.dat
+0 !BW ID pivot_key_pin_60
+0 2L friction pin joins support axle key and crank
+1 0 0 60 -90 0 1 0 0 0 1 1 0 0 2780.dat
+0 STEP
+0 Assembly stage 4: carrier
+0 !BW ID pendulum_support_axle
+0 7L support axle spansZ−210..−70 through key, retainers and both free round bearings
+1 0 0 40 -140 0 1 0 0 0 1 1 0 0 44294.dat
+0 !BW ID pendulum_retainer_-120
+0 Full bush belongs to the carrier and retains the outer pendulum plates without keying their round holes
+1 72 0 40 -120 1 0 0 0 1 0 0 0 1 3713.dat
+0 !BW ID pendulum_retainer_-200
+0 Full bush belongs to the carrier and retains the outer pendulum plates without keying their round holes
+1 72 0 40 -200 1 0 0 0 1 0 0 0 1 3713.dat
+0 STEP
+0 Assembly stage 5: pendulum
+0 !BW ID pendulum_spine_-140
+0 15L outer pendulum spine; current suspension h2
+1 14 0 140 -140 -1 0 0 0 0 1 0 1 0 32278.dat
+0 !BW ID pendulum_spine_-180
+0 15L outer pendulum spine; current suspension h2
+1 14 0 140 -180 -1 0 0 0 0 1 0 1 0 32278.dat
+0 !BW ID pendulum_ballast
+0 Central7L ballast beam, centered on the same rod datum in every variant
+1 4 0 140 -160 -1 0 0 0 0 1 0 1 0 32524.dat
+0 !BW ID pendulum_join_pin_0
+0 One fully seated3L friction pin joins both15L plates and7L ballast
+1 1 0 140 -160 0 1 0 0 0 1 1 0 0 6558.dat
+0 !BW ID pendulum_join_pin_20
+0 One fully seated3L friction pin joins both15L plates and7L ballast
+1 1 0 160 -160 0 1 0 0 0 1 1 0 0 6558.dat
+0 STEP
+0 Assembly stage 6: base
+0 !BW ID hub
+0 One SPIKE Prime hub on four retained lower mounting points
+1 15 200 350 -20 1 0 0 0 1 0 0 0 1 45601.dat
+0 !BW ID hub_mount_pin_140_-120
+0 Single3L pin seats in the hub and spans its support rail and right crossmember
+1 1 140 360 -120 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID hub_mount_pin_140_80
+0 Single3L pin seats in the hub and spans its support rail and right crossmember
+1 1 140 360 80 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID hub_mount_pin_260_-120
+0 Single3L pin seats in the hub and spans its support rail and right crossmember
+1 1 260 360 -120 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID hub_mount_pin_260_80
+0 Single3L pin seats in the hub and spans its support rail and right crossmember
+1 1 260 360 80 0 -1 0 1 0 0 0 0 1 6558.dat
+0 NOFILE

@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "id": "spiral-scribe",
+  "language": "en",
+  "what": "Self-feeding polar tracer: one motor produces two coordinated motions. Motor A turns a 20-tooth gear that drives a 60-tooth turntable (3:1), the carrier. A 24-tooth sun gear is fixed on the axis; an equal 24-tooth planet on the carrier rolls around it, and a 12-tooth pinion on the planet’s axle pushes a guided rack carriage outward. The red crossbar on the carriage starts 56.5 mm from the axis and moves outward while it is carried round, tracing an Archimedean spiral. Only the carrier is driven; the radial feed is passive. The crossbar is a marker, not a pen: no ink is drawn. The program makes four outward quarter turns of the carrier (−270° each at the motor, 60°/s), returns, then repeats the outward turn at 120°/s.",
+  "try": [
+    "Reset to the saved pose, then press Run. The program refuses to start if motor A is more than 1° away from its saved angle.",
+    "At each quarter-turn pause, estimate the crossbar’s distance from the turntable axis. The ideal values are 56.5, 65.9, 75.4, 84.8 and 94.2 mm: equal steps of about 9.4 mm for equal carrier angles.",
+    "Watch the planet gear from above. Relative to the table it turns twice per carrier turn, but relative to the carrier only once. Which of the two rotations drives the rack?",
+    "Compare the second outward turn at double speed with the first. Does the crossbar reach the same radius at the same carrier angle?"
+  ],
+  "why": "Seen from the carrier, the fixed sun turns backwards once per carrier revolution. Because sun and planet both have 24 teeth, the planet therefore turns once forwards relative to the carrier for each carrier turn (twice relative to the table). The 12-tooth pinion on the same axle has a 6 mm pitch radius, so it feeds the rack 6 mm for every radian the carrier turns: 2π × 6 ≈ 37.7 mm per turn. A radius that grows in proportion to the angle, r = r₀ + bθ, is the definition of an Archimedean spiral. Because the gears fix the ratio, motor speed changes only how fast the path is traced, not its shape. Experimental model: measured only in the simulator (one headless run, from the carriage and carrier poses rather than the encoder), the crossbar moved 9.43 mm per quarter turn and 37.71 mm per turn at both speeds, within 0.001 mm of r = 56.5 mm + 6 mm × θ, and the carrier turned exactly one third of the motor angle; nothing has been tested on real LEGO parts.",
+  "matters": "A transmission can coordinate rotation and translation so that the program commands only one axis: record-cutting lathes feed the cutter steadily across a turning disc to cut a spiral groove, and spiral cams and scroll mechanisms use the same polar idea. The model also shows the difference between a constraint simulation and a buildable machine. The drawn rack teeth repeat every 3.2 mm (38.4 mm for twelve teeth), while the simulator enforces the ideal 37.7 mm per pinion turn, so a real tooth mesh would not match over a full turn; the supplier reports this as unresolved.",
+  "question": "The second cycle doubles the outward motor speed from 60°/s to 120°/s. Should the radial advance per carrier revolution double, halve or stay the same?",
+  "answer": "It stays the same: 2π × 6 mm ≈ 37.7 mm per carrier turn. The gear ratios fix the path; the speed only changes how quickly it is traced. Only the time per turn halves.",
+  "further": [
+    "Track the planet in two frames. With a fixed sun and equal gears it turns twice per carrier turn relative to the table but once relative to the carrier. The rack pinion works in the carrier frame, so using the planet’s table rotation would predict twice the real feed.",
+    "What would happen if the sun gear turned with the carrier instead of standing still? The planet would then stand still relative to the carrier and there would be no feed at all. Explain why.",
+    "Compare Cusp Lab, where a gear rolls along a fixed straight rack; Orbit Mixer, whose passive output is a paddle heading; and Orbital Loom, whose two powered axes draw on rotating paper. Here the distinctive output is a mechanically fed radius on a rotating carrier."
+  ],
+  "formula": "r = 56.5 mm + 6 mm × θ (θ = outward carrier angle in radians). Carrier angle = motor angle / 3 (20:60). Fixed sun, equal gears: planet relative to carrier = carrier angle; planet relative to table = 2 × carrier angle. Δr per turn = 2π × 6 mm ≈ 37.70 mm; per quarter turn ≈ 9.42 mm; outer radius ≈ 94.2 mm.",
+  "related": [
+    "cusp-lab.ldr",
+    "orbit-mixer.ldr",
+    "orbital-loom.ldr",
+    "rack-shuttle.ldr"
+  ]
+}

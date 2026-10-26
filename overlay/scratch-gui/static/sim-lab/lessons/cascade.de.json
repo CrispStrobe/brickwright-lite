@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "id": "cascade",
+  "language": "de",
+  "what": "Serielles Doppelpendel und mechanische Versteifung. Motor A bewegt eine Kurbel mit 16 mm Radius, an der ein Doppelpendel hängt. Das rote Oberglied hat 80 mm Lagerabstand; das blaue Unterglied ist ab dem Gelenk 48 mm lang. Beide Gelenke sind passiv. Ein Motor versetzt die Aufhängung einmal hin und zurück. Zwei passive Pendelglieder schwingen weiter, während die Aufhängung gehalten wird. Vergleiche den relativen Gelenkwinkel mit einer echten Versteifung.",
+  "try": [
+    "Wähle dieses Beispiel: Das Blockprogramm wird automatisch geladen. Setze vor jedem Versuch auf die gespeicherte Lage zurück und starte das Programm.",
+    "Die Aufhängung fährt langsam mit 30°/s von 0° nach 90°, wartet 0,3 s und kehrt mit 180°/s zurück. Beobachte, wie die schnelle Rückkehr die freien Glieder anregt.",
+    "Während der zwölf Sekunden Beobachtung bleibt die Aufhängung gehalten. Vergleiche Oberglied, Unterglied und ihren relativen Gelenkwinkel. Der Motorencoder misst nur die Aufhängung.",
+    "Setze zurück und wähle das andere Cascade-Beispiel. Beide nutzen dasselbe Programm. Vergleiche das freie Gelenk mit der Versteifung aus sechs echten Teilen."
+  ],
+  "why": "Die bewegte Aufhängung regt die passiven Glieder an. Danach bestimmen Schwerkraft und Trägheit ihre beiden gekoppelten Winkel. Ein gehaltener Motor sperrt keines der freien Gelenke. Die echte Versteifung sperrt den relativen Gelenkwinkel; das obere Lager bleibt frei.",
+  "matters": "Unabhängige Winkel unterscheiden das Doppelpendel von einem starren Pendel. Eine bewegte Spitze beweist nicht, dass sich jedes Gelenk bewegt.",
+  "question": "Müssen beide Glieder stehen bleiben, wenn Motor A wieder null erreicht?",
+  "answer": "Nein. Der Motor hält die Aufhängung, während die passiven Glieder weiterhin über ihr Gelenk Bewegung austauschen können. Miss beide Gliedwinkel und ihre Differenz, statt aus einem stehenden Antrieb auf einen stehenden Abtrieb zu schließen.",
+  "further": [
+    "Die echte Versteifung verändert auch Masse und Trägheit. Der Vergleich ist daher keine massengleiche Messung der Eigenfrequenz.",
+    "Abgeschlossen sind Motorweg und Beobachtung; die passiven Glieder müssen noch nicht stillstehen. Setze vor der Wiederholung zurück.",
+    "Vergleiche die Winkel der Glieder, nicht den frei mitdrehenden Gelenkstift. Halte den gespeicherten Motorweg von 0° bis 90° ein."
+  ],
+  "formula": "Kinematische Definitionen: q₁ und q₂ sind unabhängig beobachtete Gliedwinkel um die gemeinsame Gelenkachse; der relative Ellenbogenwinkel ist Δ=q₂−q₁. In idealer ebener Projektion gilt Spitze−Aufhängung = 80u(q₁)+48u(q₂) mm; u(q) ist der in dieser Ebene um q gedrehte, nach unten gerichtete Einheitsvektor. Die beiden Gliedlängen summieren sich zu 128 mm. Dies beschreibt Geometrie, keinen Zeitverlauf oder Energieumsatz. In der gespeicherten geraden Verstrebungskontrolle bleibt Δ konstant; der verbleibende Pendelwinkel kann weiter variieren.",
+  "related": [
+    "cascade-control.ldr",
+    "pendulum-array.ldr",
+    "echo-bridge.ldr",
+    "momentum-twins.ldr"
+  ]
+}
