@@ -1,0 +1,39 @@
+# Tauri test bootstrap: align the existing official Ubuntu mirror policy
+
+Status: CLAIMED; merge this scope before implementation.
+Owner: Arcade integration, carried into the next reviewed #1128 source head.
+Base: main `8bf40b2c3d29014219bb591b66cc27b43afca7a5`.
+
+## Problem and bounded change
+
+Tauri's test job runs Ubuntu package update/install directly. The main Build
+workflow first uses the existing `scripts/prepare-playwright-apt.mjs` helper.
+Align the Tauri test job with that reviewed mirror preparation before its
+existing dependency installation. The helper only normalizes the known Ubuntu
+mirror URI; it does not install packages or retry failed operations.
+
+This is an observed workflow-policy difference. A long-running package install
+alone does not establish its cause, and this change makes no claim to diagnose
+or eliminate every package-manager or runner failure.
+
+## Owned paths and exclusions
+
+- `.github/workflows/tauri.yml`: only the test job's mirror-preparation step.
+  Set its working directory explicitly to the repository root because this
+  job normally runs commands from `apps/tauri`.
+- `test/ci-playwright-setup.test.mjs`: a focused source-policy control for the
+  helper call, root working directory and ordering before the unchanged install.
+- This claim and the relevant Arcade integration handoff.
+
+Reuse the helper unchanged. Preserve the exact package list, pinned Actions,
+permissions and existing test/clippy commands. No timeout change, automatic
+retry, SDK acquisition, product/source/model change or unscoped WebDriver,
+SPIKE or EV3 job edit. Preserve original failed or cancelled observations.
+
+## Qualification
+
+Run the affected bounded source-policy controls, then qualify the final exact
+integration head with the actually enabled hosted Tauri checks. Existing checks
+on another head do not qualify it. Use the integration's normal push; no extra
+full-browser label or dispatch is needed for this bootstrap edit. Merge only
+after all enabled exact-head checks pass and tree/parents match the review.
