@@ -3485,6 +3485,27 @@
         "nan": false,
         "simMs": 38567
       }
+    },
+    {
+      "id": "sarrus-lift-single-chain",
+      "title": "Sarrus Lift — single chain (control)",
+      "placements": 135,
+      "archive": "derived from the shipped sarrus-lift.ldr (idea from the supplied railfree-rise-addon.zip, sha256 05382be0458df7ea11e74f8866f08da9d1ea7ef2027c07324d356f9c911671bb)",
+      "originalLdrawSha256": "0ca7790fe1f71fb2bd39948d609b5927d1e69068258482f91c1056750f18c141",
+      "canonicalLdrawSha256": "602698633267bcd2823bb8f6063042caae415a47b0fac33ae82c70eff4f75f97",
+      "program": "sarrus-lift-single-chain.bw",
+      "programSha256": "4a9c6ee290cd6905c782a4dce5bc3264237cb69c7ddf99887e03326005d0d8b6",
+      "adaptation": "Sarrus Lift with chain B (b_lower_fork x2, b_fork_spacer x2, b_fork_crosspin x2, b_upper_link, b_elbow_pin, b_deck_pin) removed. Own observe-only program: motor A held, 8 s watch. Driving the lift in this state made the whole model fall through the floor at ~5.5 s, so no drive program and no manual jog.",
+      "supplierClaims": "Control idea from Railfree Rise (railfree-rise-addon.zip, not otherwise used: untested, unconnected parts, invalid program, duplicate of Sarrus Lift).",
+      "simulatorLaw": {
+        "verdict": "AGREES",
+        "scope": "headless COLD 0/275/1000, deck vs baseplate: deck sinks 41.8-45.5 mm, tilts 47.7-52.6 deg, slides 19.5-22.3 mm with motor held; full Sarrus Lift deck tilt 0.000 deg, lateral 0.01 mm, height law within 0.35 mm"
+      },
+      "poweredMotion": "HEADLESS_COMPLETED (observe-only program) at COLD 0, 275 and 1000",
+      "mechanicalLaw": "SIMULATOR_AGREES",
+      "causalControl": "IS_CONTROL (of established sarrus-lift)",
+      "browserLoad": "NOT_RUN",
+      "savedProjectReplay": "NOT_RUN"
     }
   ],
   "appVerification": {
