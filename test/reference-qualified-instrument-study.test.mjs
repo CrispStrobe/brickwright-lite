@@ -166,6 +166,27 @@ test('authored intent distinguishes candidates, precision capture designs and a 
     assert.throws(()=>{manifest.cases[0].tolerances.V.absolute=100;},TypeError);
     assert.ok(manifest.cases.every(c=>c.rights.includes('Independently authored')&&!c.qualifiesPhysicalCalibration));
 });
+test('DC references explicitly match the three-terminal NPN and junction conductance law',()=>{
+    const dc=manifest.cases.filter(c=>c.route==='dc-sweep');
+    assert.equal(dc.length,16);
+    for(const c of dc)assert.equal(c.reference.cards.filter(card=>card===
+        '.options gmin=1e-12 gshunt=0 gminsteps=0 srcsteps=0').length,1,'one explicit regularization method');
+    const npn=dc.filter(c=>c.graph.some(p=>p.kind==='npn'));assert.equal(npn.length,5);
+    const check=c=>{
+        for(const part of c.graph.filter(p=>p.kind==='npn')) {
+            const params=c.modelParameters.find(p=>p.id===part.id).params;
+            assert.equal(params.rb,0);assert.equal(params.rc,0,'collector is collector-prime only in this zero-RC domain');
+            const card=c.reference.cards.find(x=>x.startsWith(part.id+' '));
+            assert.equal(card,[part.id,...part.nodes,part.nodes[0],'QCORE'].join(' '),
+                'explicit collector substrate required; omitted fourth pin silently grounds it');
+        }
+    };
+    npn.forEach(check);
+    const old=structuredClone(npn[0]),q=old.graph.find(p=>p.kind==='npn');
+    old.reference.cards=old.reference.cards.map(x=>x.startsWith(q.id+' ')
+        ?[q.id,...q.nodes,'QCORE'].join(' '):x);
+    assert.throws(()=>check(old),/explicit collector substrate required/);
+});
 test('reference cards actually match the declared thermal voltage in admitted ngspice42',()=>{
     const thermalCases=manifest.cases.filter(c=>c.reference?.thermalVolts!==undefined);
     assert.equal(thermalCases.length,16,'all DC reference cases have an explicit thermal law');

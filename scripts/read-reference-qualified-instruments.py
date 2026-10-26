@@ -9,7 +9,7 @@ from pathlib import Path
 import re
 import sys
 
-ADMITTED_INTENT = '10720414da9cc9dea529ee66b1c4a6444158752b6e8561feb0acb35f21a9b9e5'
+ADMITTED_INTENT = '8923579ed221f448da1b391b7d6f89e6a039e04e00375fba85497653e9ec7d77'
 SOURCES = {'bw-board': '836867513c3e7fac420ddaa32c17e1c7b6d3e513',
            'bw-circuit-ui': '1bc233c9297e03abb9b7eb603e045b4e92b0bb40'}
 RUNTIME_FINGERPRINTS = {

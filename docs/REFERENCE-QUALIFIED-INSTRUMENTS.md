@@ -39,6 +39,19 @@ This corrects reference conditions before selection, without changing numerical
 bounds or reinterpreting v1 results. It does not explain the supplier's separate
 tail-pair failure: that test already uses the version42-matched temperature.
 
+The NPN reference now explicitly ties each fourth substrate terminal to its
+collector. These authored models have zero base/collector series resistance and
+no substrate law; an omitted fourth pin in ngspice 42 instead implies ground.
+Supplier diagnostics identified the resulting extra GMIN current, independently
+explained by the [version42 parser](https://github.com/imr/ngspice/blob/ngspice-42/src/spicelib/parser/inp2q.c)
+and [BJT current reporting](https://github.com/imr/ngspice/blob/ngspice-42/src/spicelib/devices/bjt/bjtask.c).
+All DC references explicitly retain the model's 1 pS junction conductance and
+disable numerical shunt, GMIN-stepping and source-stepping fallbacks. The declared
+DC sweep still uses its ordinary point-to-point continuation. Failure to solve
+remains an unsuccessful comparison, never permission to add a grounding resistor
+or normalize output. Source controls reject the old implicit substrate topology;
+all native circuit graphs, numerical bounds and previous originals are unchanged.
+
 No v2 numerical result is claimed, and source/mock controls do not supply one.
 
 ## Frozen candidate scope

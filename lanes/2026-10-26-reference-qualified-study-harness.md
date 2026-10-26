@@ -186,3 +186,10 @@ below the declared25.85mV thermal law. A new source control checks all16DC decks
 and rejects that old conversion. This is an independent preselection conditions
 correction, not a solver-observation fit; the already-matched supplier test's
 separate numerical failure remains unresolved. No v2 run/pin/variable selected.
+
+The next reference admission names NPN substrate=collector explicitly for the
+zero-RB/RC authored three-terminal law. All DC decks retain1pS physical junction
+conductance and disable numerical shunt/GMIN/source fallbacks; sweep continuation
+remains declared. A source negative restores the omitted fourth pin and must
+fail admission. This follows source-proved ngspice substrate semantics, not
+voltage fitting; no native graph, model parameter or tolerance changed.

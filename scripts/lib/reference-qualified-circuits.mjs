@@ -60,7 +60,9 @@ const V = (id,a,b,v) => component(id,'vsource',[a,b],{volts:v},id+' '+a+' '+b+' 
 // Native positive amps inject into pos; SPICE positive current leaves its first node.
 const I = (id,a,b,i) => component(id,'isource',[a,b],{amps:-i},id+' '+a+' '+b+' '+i);
 const D = (id,a,b) => component(id,'diode',[a,b],{model:'shockley',is:1e-12,n:1,rs:0},id+' '+a+' '+b+' DCORE');
-const Q = (id,c,b,e) => component(id,'npn',[c,b,e],{model:'shockley',is:1e-15,beta:100,br:1,n:1,rb:0,rc:0},id+' '+c+' '+b+' '+e+' QCORE');
+// These zero-RB/RC three-terminal models have no grounded substrate branch.
+// ngspice42 otherwise grounds an omitted fourth terminal; declare S=C explicitly.
+const Q = (id,c,b,e) => component(id,'npn',[c,b,e],{model:'shockley',is:1e-15,beta:100,br:1,n:1,rb:0,rc:0},id+' '+c+' '+b+' '+e+' '+c+' QCORE');
 const E = (id,p,n,ip,im,gain) => component(id,'vcvs',[p,n,ip,im],{gain},id+' '+p+' '+n+' '+ip+' '+im+' '+gain);
 // Admitted ngspice42 uses these constants, rather than the revised SI values:
 // https://github.com/imr/ngspice/blob/ngspice-42/src/include/ngspice/const.h
@@ -68,6 +70,8 @@ const E = (id,p,n,ip,im,gain) => component(id,'vcvs',[p,n,ip,im],{gain},id+' '+p
 const ngspice42KOverQ = 1.38064852e-23 / 1.6021766208e-19;
 const referenceTempC = .02585 / ngspice42KOverQ - 273.15;
 const thermal = `.options TEMP=${referenceTempC} TNOM=${referenceTempC}`;
+// Match declared physical junction conductance, with no fallback node padding.
+const dcRegularization = '.options gmin=1e-12 gshunt=0 gminsteps=0 srcsteps=0';
 const modelCards = ['.model DCORE D(IS=1e-12 N=1 RS=0)',
     '.model QCORE NPN(IS=1e-15 BF=100 BR=1 NF=1 NR=1 RB=0 RC=0)'];
 const deck = cards => '* Independently authored teaching circuit; BSD-3-Clause\n'+cards.join('\n')+'\n.end\n';
@@ -134,7 +138,7 @@ function dc(id,family,purpose,parts,{source='VS',from=-1,to=3,points=9,outputs=[
         vector:'i('+source.toLowerCase()+')',coefficient:1});
     return define(id,family,purpose,parts,{route:'dc-sweep',eligibility:'comparable',
         reference:{kind:'ngspice',analysis:'static-dc-sweep',thermalVolts:.02585,
-            cards:referenceCards ?? [...parts.map(p=>p.card),...modelCards,thermal]},
+            cards:[...(referenceCards ?? [...parts.map(p=>p.card),...modelCards,thermal]),dcRegularization]},
         sweep:{source,from,to,points},currentConvention:'into-terminal',observations,
         tolerances:{V:TOLERANCES.dcV,A:TOLERANCES.dcA},quantity:'static-transfer-not-instrument-capture'});
 }
