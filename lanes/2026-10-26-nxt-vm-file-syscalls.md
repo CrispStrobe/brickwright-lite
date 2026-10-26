@@ -1,11 +1,11 @@
 # NXT VM file system calls
 
-Status: CLAIMED — user-authorized follow-on after #1415.
+Status: DONE implementation; exact-head hosted qualification gates landing.
 Owner: Codex Robot Lab continuation.
 Base: `5cd027707eceed3451bd62eaa21125a051650e59`.
 
-NXT telegram file commands already use bounded virtual flash, but compiled
-programs still stop on FileOpenRead, FileOpenWrite, FileOpenAppend, FileRead,
+Before this candidate, NXT telegram file commands used bounded virtual flash,
+but compiled programs stopped on FileOpenRead, FileOpenWrite, FileOpenAppend, FileRead,
 FileWrite, FileClose, FileResolveHandle, FileRename, FileDelete and ListFiles.
 Implement the standard firmware file-call subset from independently described,
 cited ABI/status/loader facts. Keep other unsupported calls refused by name.
@@ -33,3 +33,18 @@ Require fresh clean affected hosted virtual-brick qualification, independent
 retained-original readers, every enabled exact-head check and normal matched-head
 merge with reviewed/predicted/landed tree and parents equal. No physical firmware,
 hardware timing or broad NXC compatibility claim follows from these cases.
+
+The claim landed in #1427 before implementation. This candidate implements the
+ten calls with bounded data-file capacity, binary buffers, append, rename/list
+ordering, program-only resolve/retirement and JSON snapshot state. Fixed telegram
+uploads preserve their complete-without-overflow close rule. Unsupported calls
+continue to stop with their names. The virtual active image does not consume a
+loader handle, and physical flash pages/timing are outside this model.
+
+Validation before publication: 19 pure backend/interface/allocation/ownership
+controls pass; seven targeted mutations are detected without editing the product
+files or executing a guest. The one hosted compiler response binds the owned NXC
+source and 2,994-byte RXE. Four hosted-only fixture controls cover source identity,
+normal completion, Stop/restart and deterministic snapshot completion. Their
+actual guest execution and every enabled exact-head check remain mandatory before
+merge; local controls and static review provide no guest qualification credit.
