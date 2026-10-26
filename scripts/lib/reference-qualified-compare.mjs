@@ -108,7 +108,7 @@ export function validateCapture(report,c) {
     return report;
 }
 export function referenceMean(rows,spec,end) {
-    if(!rows.length||rows[0].scale<0||rows.at(-1).scale!==end)throw new Error('Reference integral endpoint');
+    if(!rows.length||rows[0].scale<0||Math.abs(rows.at(-1).scale-end)>1e-14)throw new Error('Reference integral endpoint');
     // Explicit method: extend the first retained value over its admitted tiny
     // startup gap. It is not an invented measured t=0 sample or an OP bias.
     let previous=rows[0],area=previous.scale*previous.values[spec.vector];
@@ -144,6 +144,7 @@ export function summarize(manifest,results) {
         results.some((r,i)=>r.id!==manifest.cases[i].id))throw new Error('Result denominator/identity');
     const counts={inputs:results.length,comparable:manifest.cases.filter(c=>c.eligibility==='comparable').length,
         expectedRefusals:manifest.cases.filter(c=>c.eligibility==='expected-refusal').length,
+        recordedCliAttempts:results.filter(r=>r.cliAttemptRecorded===true).length,
         passed:0,disagreed:0,refused:0,missing:0,checks:0,checksPassed:0,checksFailed:0};
     for(const r of results) {
         if(r.status==='pass')counts.passed++;
@@ -155,5 +156,7 @@ export function summarize(manifest,results) {
     const evidenceComplete=counts.missing===0;
     const numericalConformance=evidenceComplete&&counts.disagreed===0&&counts.passed===counts.comparable&&counts.refused===counts.expectedRefusals;
     return {schemaVersion:1,study:manifest.study,counts,evidenceComplete,numericalConformance,
-        physicalCalibration:false,scopeDmmDesigns:manifest.cases.filter(c=>c.route==='measure'&&c.eligibility==='comparable').length};
+        physicalCalibration:false,
+        requestedScopeDmmDesigns:manifest.cases.filter(c=>c.route==='measure'&&c.eligibility==='comparable').length,
+        passedScopeDmmDesigns:results.filter((r,i)=>r.status==='pass'&&manifest.cases[i].route==='measure'&&manifest.cases[i].eligibility==='comparable').length};
 }

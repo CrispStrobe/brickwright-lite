@@ -1,9 +1,9 @@
 # Reference-qualified teaching-circuit instruments
 
-This study tests useful teaching circuits through the installed `bwc` CLI and
-retains the raw outputs used for comparison. The source is implemented; the
-new numerical study has **not run yet**. No candidate below is presently
-counted as a passing or qualified circuit.
+This document defines the authored teaching-circuit study and its retained-
+original readback method. Manifest counts describe candidates; actual outcomes
+require an admitted run at its exact source and independent original readback.
+This methods page supplies no numerical or physical qualification by itself.
 
 ## Frozen candidate scope
 
@@ -32,7 +32,10 @@ All inputs, node/probe locations, source conditions, clocks, observation types,
 reference decks, model parameters and tolerances are fixed before execution.
 The collector preserves failed, disagreeing, refused and missing cases in the
 same denominator. Acquisition completeness and numerical conformance are
-separate verdicts. A complete failing report does not qualify its circuits.
+separate verdicts. Requested capture-design counts, numerically passing capture
+designs and recorded CLI attempts are also separate. A recorded attempt can
+refuse before simulation; it does not count as a successful circuit test. A
+complete failing report does not qualify its circuits.
 
 ## Source and method admission
 
@@ -62,6 +65,9 @@ rows and uniformly sampled rows are retained separately. Static sweeps use fresh
 strict operating points at every source value. Transient references use explicit
 zero-state initialization, a finite source edge and a bounded maximum step.
 No DC operating-point bias is substituted for the transient initial state.
+
+Native current-source parameters are mapped explicitly to the opposite SPICE
+card direction: the differential pair's tail draws current from its emitter net.
 
 DC terminal current is positive **into** the named terminal; instrument current
 is positive **out of** the part. Scope values are instantaneous samples. DMM
@@ -131,6 +137,9 @@ including coherent byte-receipt mutations, wrong current signs, time grids,
 DMM units/windows, source identities and changed expectations. They do not count
 as simulated circuits or numerical qualification.
 
-Actual executed counts, official run identity, independent readback and observed
-limits will be recorded after the one admitted study. Existing studies retain
+Observed counts, official run identity, independent readback and limits belong
+to the [instrument campaign status](CIRCUIT-INSTRUMENT-REGRESSION.md). The reader
+reports all 32 case verdicts, requested and passing selector locations, and
+bounded failed-value examples. These selector locations are named virtual
+observations, not claims of physical probe insertion or independent placements. Existing studies retain
 their original identities and outcomes; they are not rerun or relabelled here.

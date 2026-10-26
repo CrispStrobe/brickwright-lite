@@ -117,7 +117,7 @@ export function validateStudyAdmission(a,env,intentHash) {
         env.GITHUB_REF!=='refs/heads/study/reference-qualified-v1'||a.intentSha256!==intentHash)throw new Error('Prior reviewed exact-head admission required');
     return a;
 }
-export async function runStudy({output,installedRoot,boardSource,cuiSource,admittedIntent,admissionFile,execute=spawnSync,verifyPackages=null,now=()=>performance.now()}) {
+export async function runStudy({output,installedRoot,boardSource,cuiSource,admittedIntent,admissionFile,execute=spawnSync,verifyPackages=null,fingerprintRuntime=runtimeFingerprint,now=()=>performance.now()}) {
     const manifest=createManifest(),intent=canonical(manifest);
     if(admittedIntent!==sha256(intent))throw new Error('Externally admitted intent hash required before execution');
     if(process.versions.node.split('.')[0]!=='22')throw new Error('Study requires Node22');
@@ -129,7 +129,7 @@ export async function runStudy({output,installedRoot,boardSource,cuiSource,admit
     mkdirSync(output,{recursive:true});
     save(join(output,'intent.json'),intent+'\n');
     writeFileSync(join(output,'event-admission.json'),admissionBytes,{flag:'wx'});
-    const start=now(),results=manifest.cases.map(c=>({id:c.id,status:'not-run',executed:false,checks:[]}));
+    const start=now(),results=manifest.cases.map(c=>({id:c.id,status:'not-run',cliAttemptRecorded:false,checks:[]}));
     const boundedCommand=options=>recordCommand({...options,wallMs:remainingCohortWall(start,now)});
     let preflightError=null;
     try {
@@ -146,8 +146,8 @@ export async function runStudy({output,installedRoot,boardSource,cuiSource,admit
         const proof=verifyPackages();
         writeFileSync(join(output,'ui-package.json'),readFileSync(join(installedRoot,'bw-circuit-ui/package.json')),{flag:'wx'});
         checkCohortBudget(start,now);
-        const board=runtimeFingerprint(join(installedRoot,'bw-board')),
-            ui=runtimeFingerprint(join(installedRoot,'bw-circuit-ui'),['bin/bwc.mjs']);
+        const board=fingerprintRuntime(join(installedRoot,'bw-board')),
+            ui=fingerprintRuntime(join(installedRoot,'bw-circuit-ui'),['bin/bwc.mjs']);
         for(const [key,actual] of Object.entries({board,ui})) for(const [field,value] of Object.entries(RUNTIME_FINGERPRINTS[key])) {
             if(actual[field]!==value)throw new Error('Pinned runtime fingerprint mismatch before study');
         }
@@ -193,18 +193,18 @@ export async function runStudy({output,installedRoot,boardSource,cuiSource,admit
                     parseReference(readFileSync(join(dir,'reference-raw.txt'),'utf8'),c);
                     if(c.route==='measure')parseReference(readFileSync(join(dir,'reference-grid.txt'),'utf8'),c,{sampled:true});
                 }
-                results[index].executed=true;
                 const response=boundedCommand({role:'cli',executable:process.execPath,args:['--max-old-space-size=384',cli,...cliArgs(c,loadedPath,dir)],
                     cwd:dir,prefix:join(dir,'cli'),execute});
+                results[index].cliAttemptRecorded=true;
                 checkCohortBudget(start,now);
                 if(c.eligibility==='expected-refusal') {
                     if(response.status!==1||response.error||response.signal||!response.stderr.includes(c.refusal.stderrIncludes)||
                         response.stdout.trim()!==''||existsSync(join(dir,'capture.csv'))||existsSync(join(dir,'receipt.json')))throw new Error('Expected named pre-capture refusal not established');
-                    results[index]={id:c.id,status:'expected-refusal',executed:true,checks:[]};
+                    results[index]={id:c.id,status:'expected-refusal',cliAttemptRecorded:true,checks:[]};
                 } else {
                     const checks=compareOriginals(c,dir,response);
                     if(!checks.length)throw new Error('Empty comparison cannot pass');
-                    results[index]={id:c.id,status:checks.every(x=>x.pass)?'pass':'disagree',executed:true,checks};
+                    results[index]={id:c.id,status:checks.every(x=>x.pass)?'pass':'disagree',cliAttemptRecorded:true,checks};
                 }
                 checkCohortBudget(start,now);
             } catch(error) {results[index]={...results[index],status:'error',error:error.message};}

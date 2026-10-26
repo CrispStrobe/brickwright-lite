@@ -1,13 +1,13 @@
 /** Synthetic protocol controls only. No engine, CLI, SPICE or protected study is run. */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {readFileSync,writeFileSync,mkdirSync,mkdtempSync,rmSync,existsSync} from 'node:fs';
+import {readFileSync,writeFileSync,mkdirSync,mkdtempSync,rmSync,existsSync,copyFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join,resolve} from 'node:path';
 import {spawnSync} from 'node:child_process';
 import {createManifest,createCases,canonical,sha256,topologySignature,SOURCES,RUNTIME_FINGERPRINTS} from '../scripts/lib/reference-qualified-circuits.mjs';
-import {referenceDeck,referenceVectors,parseReference,parseCsv,compareDc,compareCapture,close,summarize} from '../scripts/lib/reference-qualified-compare.mjs';
-import {cliArgs,recordCommand,inventory,checkCohortBudget,remainingCohortWall,validateStudyAdmission} from '../scripts/reference-qualified-instrument-study.mjs';
+import {referenceDeck,referenceVectors,parseReference,parseCsv,compareDc,compareCapture,close,summarize,referenceMean} from '../scripts/lib/reference-qualified-compare.mjs';
+import {cliArgs,recordCommand,inventory,checkCohortBudget,remainingCohortWall,validateStudyAdmission,runStudy} from '../scripts/reference-qualified-instrument-study.mjs';
 
 const ROOT=resolve(import.meta.dirname,'..');
 const HEAD='a'.repeat(40),RUN='123456789';
@@ -112,7 +112,7 @@ function fixture(t) {
         const argv=cliArgs(c,loadedPath,dir);
         if(c.eligibility==='expected-refusal') {
             processRecord(root,prefix+'cli','cli',['--max-old-space-size=384','/synthetic/bw-circuit-ui/bin/bwc.mjs',...argv],1,'',c.refusal.stderrIncludes+'\n');
-            const r={id:c.id,status:'expected-refusal',executed:true,checks:[]};results.push(r);put(root,prefix+'result.json',r);continue;
+            const r={id:c.id,status:'expected-refusal',cliAttemptRecorded:true,checks:[]};results.push(r);put(root,prefix+'result.json',r);continue;
         }
         put(root,prefix+'reference.cir',referenceDeck(c));
         put(root,prefix+'reference-raw.txt',oracleText(c));
@@ -140,7 +140,7 @@ function fixture(t) {
                 invocation:{BW_BOARD:null,argv,executable:'/usr/bin/node',cwd:dir,nodeVersion:packages.node},references:{waveform:null,meters:null}});
         }
         processRecord(root,prefix+'cli','cli',['--max-old-space-size=384','/synthetic/bw-circuit-ui/bin/bwc.mjs',...argv],0,json(report));
-        const r={id:c.id,status:'pass',executed:true,checks};results.push(r);put(root,prefix+'result.json',r);
+        const r={id:c.id,status:'pass',cliAttemptRecorded:true,checks};results.push(r);put(root,prefix+'result.json',r);
     }
     put(root,'results.json',results);put(root,'summary.json',{...summarize(manifest,results),preflightError:null});
     syncInventory(root);return root;
@@ -195,6 +195,8 @@ test('synthetic full protocol originals independently reconcile, without physica
     const report=JSON.parse(p.stdout);assert.equal(report.counts.inputs,32);assert.equal(report.counts.passed,31);
     assert.equal(report.counts.refused,1);assert.equal(report.evidenceComplete,true);assert.equal(report.numericalConformance,true);
     assert.equal(report.physicalCalibration,false);assert.equal(report.modelOrOracleReplayed,false);
+    assert.equal(report.caseReadback.length,32);assert.equal(report.requestedSelectorLocations,84);
+    assert.equal(report.referenceEligibleSelectorLocations,83);assert.equal(report.numericallyPassingSelectorLocations,83);
 });
 const negatives=[
     ['wrong official head',root=>{const r=get(root,'run-context.json');r.headSha='b'.repeat(40);put(root,'run-context.json',r);},/event\/head/],
@@ -233,7 +235,7 @@ test('numerical disagreement remains a complete failing report, rather than bein
     const root=fixture(t),c=manifest.cases[0],prefix=c.id+'/cli';
     const report=JSON.parse(readFileSync(join(root,prefix+'.stdout')));report.samples[0].values[0]+=.1;changeOutput(root,prefix,json(report));
     const checks=compareDc(report,c,parseReference(readFileSync(join(root,c.id+'/reference-raw.txt'),'utf8'),c));
-    const result={id:c.id,status:'disagree',executed:true,checks};put(root,c.id+'/result.json',result);
+    const result={id:c.id,status:'disagree',cliAttemptRecorded:true,checks};put(root,c.id+'/result.json',result);
     const results=get(root,'results.json');results[0]=result;put(root,'results.json',results);
     put(root,'summary.json',{...summarize(manifest,results),preflightError:null});syncInventory(root);
     const p=reader(root);assert.equal(p.status,2,p.stderr+p.stdout);
@@ -300,4 +302,85 @@ test('remaining wall time shortens the final command before the cohort deadline'
     assert.equal(remainingCohortWall(0,()=>3599999),1);
     assert.throws(()=>remainingCohortWall(0,()=>3600000),/budget/);
     assert.throws(()=>remainingCohortWall(10,()=>9),/budget/);
+});
+
+
+test('reference quadrature accepts declared clock rounding and rejects a missing endpoint',()=>{
+    const end=.0001,spec={vector:'v(out)',coefficient:1};
+    const rows=[{scale:0,values:{'v(out)':1}},{scale:end+2e-20,values:{'v(out)':1}}];
+    assert.ok(Math.abs(referenceMean(rows,spec,end)-1)<1e-12);
+    assert.throws(()=>referenceMean([{scale:0,values:{'v(out)':1}},{scale:end-1e-9,values:{'v(out)':1}}],spec,end),/endpoint/);
+});
+
+test('actual collector with process/source doubles roundtrips through the independent reader',
+    {skip:process.versions.node.split('.')[0]!=='22'?'collector runtime admission requires Node22; executed by the source-controls workflow':false},async t=>{
+        const template=fixture(t),parent=mkdtempSync(join(tmpdir(),'reference-collector-'));
+        t.after(()=>rmSync(parent,{recursive:true,force:true}));
+        const installedRoot=join(parent,'installed'),uiRoot=join(installedRoot,'bw-circuit-ui');
+        mkdirSync(join(uiRoot,'bin'),{recursive:true});writeFileSync(join(uiRoot,'package.json'),uiManifestBytes);
+        writeFileSync(join(uiRoot,'bin/bwc.mjs'),'throw new Error("process doubles never execute this marker");\n');
+        const admissionFile=join(parent,'admission.json');copyFileSync(join(template,'event-admission.json'),admissionFile);
+        const envNames=['GITHUB_RUN_ID','GITHUB_RUN_ATTEMPT','GITHUB_SHA','GITHUB_REF','BW_BOARD','NODE_PATH','NODE_OPTIONS'];
+        const previous=Object.fromEntries(envNames.map(k=>[k,process.env[k]]));
+        Object.assign(process.env,{GITHUB_RUN_ID:RUN,GITHUB_RUN_ATTEMPT:'1',GITHUB_SHA:HEAD,
+            GITHUB_REF:'refs/heads/study/reference-qualified-v1',BW_BOARD:'',NODE_PATH:'',NODE_OPTIONS:''});
+        let calls=0;
+        const execute=(executable,args,options)=>{
+            assert.equal(executable,'/usr/bin/prlimit');calls++;
+            const split=args.indexOf('--'),program=args[split+1],argv=args.slice(split+2),dir=options.cwd;
+            if(program==='/usr/bin/ngspice'&&argv[0]==='--version')return {status:0,stdout:'ngspice-42\n',stderr:''};
+            const c=manifest.cases.find(c=>dir.endsWith('/'+c.id));assert.ok(c,'command names an admitted case');
+            if(program==='/usr/bin/ngspice') {
+                for(const file of ['reference-raw.txt',...(c.route==='measure'?['reference-grid.txt']:[])])copyFileSync(join(template,c.id,file),join(dir,file));
+                return {status:0,stdout:'',stderr:''};
+            }
+            assert.equal(program,process.execPath);
+            if(argv[2]==='convert') {
+                assert.equal(argv[4],'--to');assert.equal(argv[5],'json');assert.equal(argv[6],'-o');
+                writeFileSync(argv[7],JSON.stringify(JSON.parse(readFileSync(argv[3],'utf8')),null,1)+'\n');
+                return {status:0,stdout:'synthetic conversion\n',stderr:''};
+            }
+            if(c.eligibility==='expected-refusal')return {status:1,stdout:'',stderr:c.refusal.stderrIncludes+'\n'};
+            const stdout=readFileSync(join(template,c.id,'cli.stdout'),'utf8');
+            if(c.route==='measure') {
+                copyFileSync(join(template,c.id,'capture.csv'),join(dir,'capture.csv'));
+                const receipt=get(template,c.id+'/receipt.json');
+                receipt.engine.observed.root=join(installedRoot,'bw-board');receipt.cli.root=uiRoot;
+                receipt.invocation={executable:process.execPath,nodeVersion:process.version,cwd:dir,argv:argv.slice(2),BW_BOARD:null};
+                put(dir,'receipt.json',receipt);
+            }
+            return {status:0,stdout,stderr:''};
+        };
+        let summary;
+        const packages=get(template,'package-proof.json');
+        try {
+            summary=await runStudy({output:join(parent,'output'),installedRoot,boardSource:parent,cuiSource:parent,
+                admittedIntent:sha256(canonical(manifest)),admissionFile,execute,verifyPackages:()=>packages.proof,
+                fingerprintRuntime:root=>root.endsWith('bw-board')?packages.board:packages.ui});
+        } finally {
+            for(const [key,value]of Object.entries(previous)) {if(value===undefined)delete process.env[key];else process.env[key]=value;}
+        }
+        assert.equal(calls,96,'32 loads +32 requested measurements +31 references +1 version; all process doubles');
+        assert.equal(summary.evidenceComplete,true);assert.equal(summary.numericalConformance,true);
+        assert.equal(summary.counts.passed,31);assert.equal(summary.counts.refused,1);
+        const independent=reader(join(parent,'output'));assert.equal(independent.status,0,independent.stderr+independent.stdout);
+        assert.equal(JSON.parse(independent.stdout).physicalCalibration,false);
+    });
+
+
+test('native current-source injection is explicitly reversed from the SPICE tail-sink card',()=>{
+    const pair=manifest.cases.find(c=>c.id==='long-tailed-differential-pair');
+    const native=pair.modelParameters.find(p=>p.id==='IT');
+    const card=pair.reference.cards.find(line=>line.startsWith('IT ')).split(/\s+/);
+    assert.equal(card[1],'TAIL');assert.equal(card[2],'0');
+    const spice=Number(card[3]);assert.ok(spice>0,'reference takes current out of tail');
+    assert.equal(native.params.amps,-spice,'native injection must take current out of the shared emitter');
+});
+test('capture design counts distinguish requests from actual numerical passes',()=>{
+    const results=manifest.cases.map(c=>({id:c.id,status:c.eligibility==='expected-refusal'?'expected-refusal':'pass',cliAttemptRecorded:true,checks:[]}));
+    const index=manifest.cases.findIndex(c=>c.id==='loaded-rc-lowpass');results[index].status='disagree';
+    const summary=summarize(manifest,results);
+    assert.equal(summary.requestedScopeDmmDesigns,15);assert.equal(summary.passedScopeDmmDesigns,14);
+    assert.equal(summary.counts.recordedCliAttempts,32);assert.equal(summary.counts.inputs,32);
+    assert.equal(summary.evidenceComplete,true);assert.equal(summary.numericalConformance,false);
 });

@@ -9,7 +9,7 @@ from pathlib import Path
 import re
 import sys
 
-ADMITTED_INTENT = '6e003813ef7f24509e807a9ec6f33e37b6c9cb83f2060f4a6572654637827096'
+ADMITTED_INTENT = 'e4ce664ab57feecbe697132187b234c1b85ea5c634524a8f758429951a78e631'
 SOURCES = {'bw-board': '836867513c3e7fac420ddaa32c17e1c7b6d3e513',
            'bw-circuit-ui': '1bc233c9297e03abb9b7eb603e045b4e92b0bb40'}
 RUNTIME_FINGERPRINTS = {
@@ -459,6 +459,18 @@ def validate_original_paths(original, intent):
     require(set(original.seen) <= allowed, 'unrecognized original file path')
 
 
+def selector_locations(case):
+    locations = set()
+    for item in case.get('observations', []):
+        locations.add((item['kind'], item['selector'], item['reference']))
+    for item in case.get('scopes', []):
+        locations.add(('voltage', item['tip'], item['reference']))
+    for item in case.get('meters', []):
+        probes = item['probes']
+        locations.add((item['mode'], probes[0], probes[1] if item['mode'] == 'voltage' else ''))
+    return len(locations)
+
+
 def read_originals(root, expected_head, expected_run):
     require(re.fullmatch('[0-9a-f]{40}', expected_head) is not None, 'external exact head required')
     require(re.fullmatch('[1-9][0-9]*', expected_run) is not None, 'external run ID required')
@@ -529,7 +541,7 @@ def read_originals(root, expected_head, expected_run):
             if case['eligibility'] == 'expected-refusal':
                 require(rec['status'] == 1 and case['refusal']['stderrIncludes'].encode() in stderr
                         and not stdout.strip() and case['id'] + '/capture.csv' not in original.seen and case['id'] + '/receipt.json' not in original.seen, 'named pre-capture refusal')
-                result = {'id': case['id'], 'status': 'expected-refusal', 'executed': True, 'checks': []}
+                result = {'id': case['id'], 'status': 'expected-refusal', 'cliAttemptRecorded': True, 'checks': []}
             else:
                 require(rec['status'] == 0, 'measured CLI nonzero exit')
                 oracle, _, _ = command(original, case['id'] + '/oracle', 'reference')
@@ -543,10 +555,12 @@ def read_originals(root, expected_head, expected_run):
                 else:
                     checks = capture_checks(original, report, case, rows, reference(original, case, True), packages, argv)
                 require(len(checks) > 0, 'empty check set')
-                result = {'id': case['id'], 'status': 'pass' if all(c['pass'] for c in checks) else 'disagree', 'executed': True, 'checks': checks}
+                result = {'id': case['id'], 'status': 'pass' if all(c['pass'] for c in checks) else 'disagree', 'cliAttemptRecorded': True, 'checks': checks}
         except (ValueError, KeyError, TypeError, IndexError, OverflowError, UnicodeError) as error:
             result = {'id': case['id'], 'status': 'error', 'readerError': str(error)}
+        result['cliAttemptRecorded'] = case['id'] + '/cli.process.json' in original.seen
         recorded = original.json(case['id'] + '/result.json')
+        require(type(recorded['cliAttemptRecorded']) is bool and recorded['cliAttemptRecorded'] is result['cliAttemptRecorded'], 'recorded CLI-attempt identity')
         require(recorded['id'] == case['id'] and recorded['status'] == result['status'], 'producer/independent outcome mismatch: ' + case['id'] + ' ' + str(result.get('readerError', '')))
         if result['status'] != 'error':
             require(equal(recorded, result), 'producer/independent exact checks: ' + case['id'])
@@ -557,7 +571,7 @@ def read_originals(root, expected_head, expected_run):
         require(got['status'] == wanted['status'], 'summary case status')
         if wanted['status'] != 'error':
             require(equal(got, wanted), 'summary case/check binding')
-    counts = {'inputs': 32, 'comparable': 31, 'expectedRefusals': 1, 'passed': 0, 'disagreed': 0,
+    counts = {'inputs': 32, 'comparable': 31, 'expectedRefusals': 1, 'recordedCliAttempts': sum(1 for r in computed if r['cliAttemptRecorded']), 'passed': 0, 'disagreed': 0,
               'refused': 0, 'missing': 0, 'checks': 0, 'checksPassed': 0, 'checksFailed': 0}
     for result in computed:
         key = {'pass': 'passed', 'disagree': 'disagreed', 'expected-refusal': 'refused'}.get(result['status'], 'missing')
@@ -569,9 +583,21 @@ def read_originals(root, expected_head, expected_run):
     complete = counts['missing'] == 0
     numerical = complete and counts['disagreed'] == 0 and counts['passed'] == 31 and counts['refused'] == 1
     expected = {'schemaVersion': 1, 'study': intent['study'], 'counts': counts, 'evidenceComplete': complete,
-                'numericalConformance': numerical, 'physicalCalibration': False, 'scopeDmmDesigns': 15, 'preflightError': None}
+                'numericalConformance': numerical, 'physicalCalibration': False, 'requestedScopeDmmDesigns': 15,
+                'passedScopeDmmDesigns': sum(1 for c, r in zip(intent['cases'], computed) if c['route'] == 'measure' and r['status'] == 'pass'), 'preflightError': None}
     require(equal(original.json('summary.json'), expected), 'independent summary/verdict join')
-    return {**expected, 'retainedOriginalReadback': True, 'producerImported': False,
+    case_readback = [{'id': c['id'], 'route': c['route'], 'status': r['status'],
+                      'cliAttemptRecorded': r['cliAttemptRecorded'], 'selectorLocations': selector_locations(c),
+                      'comparedValues': len(r.get('checks', [])),
+                      'failedValues': sum(1 for x in r.get('checks', []) if not x['pass']),
+                      'failedExamples': [x for x in r.get('checks', []) if not x['pass']][:8],
+                      **({'readerError': r['readerError']} if 'readerError' in r else {})}
+                     for c, r in zip(intent['cases'], computed)]
+    return {**expected, 'caseReadback': case_readback,
+            'requestedSelectorLocations': sum(selector_locations(c) for c in intent['cases']),
+            'referenceEligibleSelectorLocations': sum(selector_locations(c) for c in intent['cases'] if c['eligibility'] == 'comparable'),
+            'numericallyPassingSelectorLocations': sum(selector_locations(c) for c, r in zip(intent['cases'], computed) if r['status'] == 'pass'),
+            'retainedOriginalReadback': True, 'producerImported': False,
             'modelOrOracleReplayed': False, 'headSha': expected_head, 'runId': expected_run,
             'originalFiles': len(original.seen), 'originalBytes': original.bytes}
 

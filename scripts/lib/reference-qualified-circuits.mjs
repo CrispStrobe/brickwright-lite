@@ -44,7 +44,8 @@ const R = (id,a,b,r) => component(id,'resistor',[a,b],{ohms:r},id+' '+a+' '+b+' 
 const C = (id,a,b,c) => component(id,'capacitor',[a,b],{farads:c},id+' '+a+' '+b+' '+c);
 const L = (id,a,b,l) => component(id,'inductor',[a,b],{henrys:l},id+' '+a+' '+b+' '+l);
 const V = (id,a,b,v) => component(id,'vsource',[a,b],{volts:v},id+' '+a+' '+b+' '+v);
-const I = (id,a,b,i) => component(id,'isource',[a,b],{amps:i},id+' '+a+' '+b+' '+i);
+// Native positive amps inject into pos; SPICE positive current leaves its first node.
+const I = (id,a,b,i) => component(id,'isource',[a,b],{amps:-i},id+' '+a+' '+b+' '+i);
 const D = (id,a,b) => component(id,'diode',[a,b],{model:'shockley',is:1e-12,n:1,rs:0},id+' '+a+' '+b+' DCORE');
 const Q = (id,c,b,e) => component(id,'npn',[c,b,e],{model:'shockley',is:1e-15,beta:100,br:1,n:1,rb:0,rc:0},id+' '+c+' '+b+' '+e+' QCORE');
 const E = (id,p,n,ip,im,gain) => component(id,'vcvs',[p,n,ip,im],{gain},id+' '+p+' '+n+' '+ip+' '+im+' '+gain);

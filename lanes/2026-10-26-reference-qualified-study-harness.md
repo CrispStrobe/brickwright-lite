@@ -1,6 +1,8 @@
 # Reference-qualified teaching-circuit study — phase one implementation
 
-CLAIMED — Codex circuit/instrument owner. Exact initial Lite base
+DONE — source implementation by the Codex circuit/instrument owner; integration
+requires all enabled exact-head checks and its separately admitted numerical
+study before merge. Exact initial Lite base
 `fd2618f1006b501ce6c251d55edfcddda7ed0ba6`; branch
 `claim/reference-study-harness-20261026`. This implements only step1 of the
 [ordered six-item campaign](2026-10-26-reference-qualified-instrument-campaign.md),
@@ -134,18 +136,19 @@ No experiment is dispatched merely to populate the census.
 
 Source work continues on `lane/reference-qualified-instruments-20261026`.
 The candidate has 32 authored native JSON inputs: 31 distinct candidate graphs
-and one LT1763 precision-refusal control. Numerical execution and qualification
-counts remain zero. The CLI must preserve the complete loaded graph/models;
+and one LT1763 precision-refusal control. At this pre-execution source checkpoint the numerical execution and qualification
+counts were zero; they are not inferred from source controls. The CLI must preserve the complete loaded graph/models;
 15 capture designs additionally bind actual imported-graph receipts, while
 16 static designs bind the retained native input and identity-loader route.
 This does not establish foreign-format importer coverage or an internal solver
 transcript. The supported direct-RC ADP7118 topology is reused with a new load,
 reference and observation intent; no new-domain or novel-topology claim follows.
 
-Forty synthetic controls pass under Node 22 and the local source runtime.
+Forty-four synthetic controls pass under Node 22, with no skipped controls.
 These include independent readback, coherent byte-receipt mutations, complete
 loaded-graph joins, current signs, clocks, units, DMM windows, prior reviewed-head
 admission and remaining-time limits. Source/policy and whitespace controls are
-separate from the actual numerical study. The study remains held until its
-exact frozen head, profile, references and independent reader are reviewed and
-recorded in the distinct admission authority. No experiment has been selected.
+separate from the actual numerical study. The exact frozen head, profile, references and independent reader require review
+and the distinct admission authority before selection. No experiment had been
+selected at this source checkpoint. The implementation PR carries the subsequent
+qualification receipts; this record does not invent a future run or self-hash.
