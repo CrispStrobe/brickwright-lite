@@ -88,6 +88,77 @@ def decode(data):
     return json.loads(data, object_pairs_hook=pairs, parse_constant=nonfinite, parse_float=parsed_float)
 
 
+def canonical_number6(token):
+    """Independent bounded Number/toFixed(6) formatting, including binary ties.
+
+    This reconstructs canonical six-digit fields from saved bytes. It does not
+    re-orthonormalize matrices or guess an unavailable pre-save binary value;
+    an identity that cannot be reconstructed must still fail its hash join.
+    """
+    require(isinstance(token, str) and re.fullmatch(r'[+-]?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[eE][+-]?[0-9]+)?', token), 'canonical numeric syntax')
+    value = float(token)
+    require(math.isfinite(value) and abs(value) <= 1e9, 'canonical numeric bound')
+    lower = math.floor(value)
+    rounded = lower + int(value - lower >= .5)  # Math.round ties toward positive infinity.
+    if value.is_integer() or abs(value - rounded) < 1e-9:
+        return str(rounded)
+    try:
+        result = format(Decimal.from_float(value).quantize(Decimal('.000001'), rounding=ROUND_HALF_UP), 'f')
+    except InvalidOperation as error:
+        raise ValueError('unsupported canonical numeric precision') from error
+    result = result.rstrip('0').rstrip('.')
+    return '0' if result == '-0' else result
+
+
+def canonical_ldraw_text(ldraw, name):
+    """Normalize machine headers and root typed numeric fields only.
+
+    Embedded FILE contents are emitted unchanged by the model serializer. Stop
+    numeric rewriting at the root NOFILE or the next FILE, never enter a parser
+    or normalize child model data/comments/IDs/colours/filenames.
+    """
+    require(isinstance(ldraw, str) and isinstance(name, str) and 0 < len(name) <= 128 and not re.search(r'[\x00-\x1f\x7f]', name), 'saved canonical name/text')
+    lines = ldraw.splitlines()
+    offset = int(bool(lines and lines[0].startswith('0 FILE ')))
+    require(len(lines) > offset + 3 and lines[offset].startswith('0 ') and lines[offset + 1] == '0 Name: ' + name and lines[offset + 2].startswith('0 Author: '), 'saved canonical header shape')
+    if offset:
+        require(lines[0] == '0 FILE ' + name, 'saved canonical MPD root name')
+        lines[0] = '0 FILE measurement-model.ldr'
+    lines[offset:offset + 3] = ['0 measurement-model', '0 Name: measurement-model.ldr', '0 Author: Brickwright']
+    active = True
+    for index in range(offset + 3, len(lines)):
+        spans = list(re.finditer(r'\S+', lines[index]))
+        tokens = [match.group(0) for match in spans]
+        if not tokens:
+            continue
+        if tokens[0] == '0' and len(tokens) > 1 and tokens[1].upper() in ('FILE', 'NOFILE'):
+            active = False
+        if not active:
+            continue
+        positions = ()
+        if tokens[0] == '1':
+            require(len(tokens) >= 15, 'unsupported canonical type-1 arity')
+            positions = range(2, 14)
+        elif tokens[:3] == ['0', '!BW', 'ROTOR']:
+            require(len(tokens) == 4, 'unsupported canonical rotor arity')
+            positions = (3,)
+        elif tokens[:3] == ['0', '!BW', 'ROPE']:
+            require(len(tokens) >= 6, 'unsupported canonical rope arity')
+            positions = (4,)
+        elif tokens[:3] == ['0', '!BW', 'DRAW']:
+            require(len(tokens) == 12, 'unsupported canonical drawing arity')
+            positions = range(5, 12)
+        if positions:
+            pieces, cursor = [], 0
+            for position in positions:
+                span = spans[position]
+                pieces.extend([lines[index][cursor:span.start()], canonical_number6(tokens[position])])
+                cursor = span.end()
+            pieces.append(lines[index][cursor:])
+            lines[index] = ''.join(pieces)
+    return '\r\n'.join(lines) + '\r\n'
+
+
 def read_bounded(directory, name, limit):
     path = directory / name
     require(not path.is_symlink() and path.is_file(), 'missing or linked original: ' + name)
@@ -193,14 +264,8 @@ def canonical_hash(record):
     require(isinstance(record, dict) and isinstance(record.get('ldraw'), str) and '\x00' not in record['ldraw'] and re.search(r'^[ \t]*1[ \t]', record['ldraw'], re.M), 'saved model text')
     require(text(record.get('name'), 128), 'saved model name')
     require(len(encode(record)) <= 1024 * 1024, 'Sim Lab section byte cap')
-    lines = record['ldraw'].splitlines()
-    offset = int(bool(lines and lines[0].startswith('0 FILE ')))
-    require(len(lines) > offset + 3 and lines[offset].startswith('0 ') and lines[offset + 1] == '0 Name: ' + record['name'] and lines[offset + 2].startswith('0 Author: '), 'saved canonical root headers')
-    if offset:
-        require(lines[0] == '0 FILE ' + record['name'], 'MPD root filename')
-        lines[0] = '0 FILE measurement-model.ldr'
-    lines[offset:offset + 3] = ['0 measurement-model', '0 Name: measurement-model.ldr', '0 Author: Brickwright']
-    return hashlib.sha256(('\r\n'.join(lines) + '\r\n').encode('utf-8')).hexdigest()
+    canonical = canonical_ldraw_text(record['ldraw'], record['name'])
+    return hashlib.sha256(canonical.encode('utf-8')).hexdigest()
 
 
 def project_record(data):
@@ -270,7 +335,7 @@ PILOT_SOURCES = {
 
 
 def pilot_projection(ldraw):
-    """Bounded two-pilot LDraw projection at the serializer's six-decimal precision.
+    """Bounded two-pilot LDraw projection at the saved serializer's twelve-decimal precision.
 
     IDs bind transforms and typed per-placement metadata. Comments and building
     steps do not change this projection. MPD/submodel parsing is unsupported.
@@ -282,7 +347,7 @@ def pilot_projection(ldraw):
         try:
             number = Decimal(value)
             require(number.is_finite() and abs(number) <= Decimal('1e9'), 'pilot numeric bound')
-            return number.quantize(Decimal('.000001'), rounding=ROUND_HALF_UP)
+            return number.quantize(Decimal('.000000000001'), rounding=ROUND_HALF_UP)
         except InvalidOperation as error:
             raise ValueError('pilot numeric syntax') from error
 
@@ -369,7 +434,7 @@ def audit_pilots(entries, coverage, pair):
         roles[key] = role
         counts[key] = len(pilot_projection(source)[0])
     require(set(roles.values()) == {'baseline', 'control'}, 'pilot roles incomplete')
-    return {'roles': roles, 'placements': counts, 'projection': 'Source IDs, colours, six-decimal transforms and typed BW metadata; these two non-MPD pilots only.'}
+    return {'roles': roles, 'placements': counts, 'projection': 'Source IDs, colours, twelve-decimal transforms and typed BW metadata; these two non-MPD pilots only.'}
 
 
 def audit_force(entries):
