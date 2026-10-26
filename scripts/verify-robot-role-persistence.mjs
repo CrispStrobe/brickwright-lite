@@ -159,6 +159,15 @@ const main = async () => {
             entry.packCount = rawPacks.length;
             const roleKinds = new Set();
             const serializedModel = serializeModel(prepared.model, {name: `${item.id}.ldr`, title: item.title || item.id});
+            const reopenedPrepared = prepareModel(serializedModel, catalog, {mat: 'plain', autoPorts: false});
+            assert.ok(reopenedPrepared?.model && reopenedPrepared?.mechanism, `${item.id} serialized model did not recompile`);
+            assert.equal((reopenedPrepared.issues || []).filter(issue => issue.severity === 'error').length, 0,
+                `${item.id} serialized model has compiler errors`);
+            const reopenedPartIds = new Set(reopenedPrepared.model.parts.map(part => part.id));
+            const reopenedOwners = new Map();
+            for (const body of reopenedPrepared.mechanism.bodies) for (const part of new Set(body.parts || [])) {
+                const owners = reopenedOwners.get(part) || new Set(); owners.add(body.id); reopenedOwners.set(part, owners);
+            }
             for (const pack of rawPacks) {
                 entry.persistence.checkedPackCount += 1;
                 try {
@@ -185,6 +194,7 @@ const main = async () => {
                     assert.deepEqual(reopened.refusals, [], `${pack.id} JSON reopen refused the record`);
                     assert.ok(reopened.record, `${pack.id} JSON reopen lost the record`);
                     assert.deepEqual(reopened.record.measurements, definitions, `${pack.id} definitions changed after JSON reopen`);
+                    assertUniqueBindings(reopened.record.measurements, reopenedPrepared.mechanism, reopenedPartIds, reopenedOwners, jointBinding, ropeBinding, MEASUREMENT_KINDS);
                     entry.persistence.passedPackCount += 1;
                     entry.verifiedPackCount += 1;
                     for (const d of definitions) roleKinds.add(d.kind);

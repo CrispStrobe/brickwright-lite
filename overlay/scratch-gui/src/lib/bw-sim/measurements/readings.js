@@ -15,7 +15,7 @@ const rotate = ([x, y, z, w], v) => {
 };
 const finiteVector = v => Array.isArray(v) && v.length === 3 && v.every(Number.isFinite);
 const DEG = 180 / Math.PI;
-export const measurementText = row => row.available ? `${row.value.toFixed(row.unit === 'N·m' || row.unit === 'W' ? 6 : row.unit === 'g' || row.unit === 'mm' || row.unit === '°' ? 1 : 3)} ${row.unit}` : '—';
+export const measurementText = row => row.available ? `${row.value.toFixed(row.unit === 'count' || row.unit === '0/1' ? 0 : row.unit === 'N·m' || row.unit === 'W' || ['motorForce', 'limitForce', 'screwLoad'].includes(row.kind) ? 6 : row.unit === 'g' || row.unit === 'mm' || row.unit === '°' ? 1 : 3)} ${row.unit}` : '—';
 
 /** Bind generated joint ids to authored part memberships; a recompile must not silently retarget a reading. */
 const jointIdentities = new WeakMap();

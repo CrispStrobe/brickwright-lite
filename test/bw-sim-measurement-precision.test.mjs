@@ -59,3 +59,11 @@ test('full-turn periods work for positive and negative unwrapped rotation; oscil
     thresholded.accept({revision:1,samples,overflow:false});
     assert.ok(Math.abs(thresholded.snapshot().rows[0].periodSeconds-1)<1e-10);
 });
+
+
+test('finite-input work arithmetic overflow is an unavailable gap', () => {
+    const analysis=createPrecisionAnalysis({...selection,joints:['a']});
+    const samples=packet(1,501).samples.map(s=>({...s,joints:[{...s.joints[0],powerW:1e308}]}));
+    analysis.accept({revision:1,samples,overflow:false});
+    assert.equal(analysis.snapshot().gap,true);assert.equal(analysis.snapshot().rows[0].workJ,null);
+});

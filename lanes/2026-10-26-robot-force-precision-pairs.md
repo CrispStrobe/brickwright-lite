@@ -1,6 +1,6 @@
 # Robot Lab force, precision, presets and paired controls
 
-Status: DONE (implementation) — exact-head hosted qualification and normal landing pending.
+Status: DONE (implementation) — normal landing requires the candidate's exact-head hosted qualification.
 Owner: Codex, user-approved four-item Robot Lab continuation.
 Isolated branch: `lane/robot-force-precision-pairs-20261026`.
 Base: `5cd027707eceed3451bd62eaa21125a051650e59`.
@@ -66,8 +66,9 @@ duplicate dispatch, relaxed acceptance or physical-accuracy/release claim.
 All four implementations are composed with main after PR1336 landed. Existing
 force channels, accepted fixed-step rotation/oscillation analysis, versioned
 scheduled windows, explicit structural packs and the separate paired codec/UI
-are present. Pure codec, lifecycle, binding and persistence controls are available;
-actual hosted Jolt/worker and browser qualification is still pending. The new
+are present. Pure codec, lifecycle, binding and persistence controls pass. Actual hosted
+Jolt/worker and browser journeys, plus independent new-original review, are
+mandatory landing gates. The new
 browser journey retains original paired project bytes, accepted native packets
 and the exact 60-source structural persistence report for an independent reader.
 No prior native or successful original is replayed. The final merge remains

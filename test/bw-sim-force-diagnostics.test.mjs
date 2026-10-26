@@ -30,6 +30,11 @@ test('missing, ambiguous, same-body and oversized contact/screw readers refuse r
     assert.equal(reader.read([definitions[4]])[0].available, false);
     session.core.currentContactPairs = () => null; assert.equal(reader.read([definitions[6]])[0].available, false);
     session.core.currentContactPairs = () => []; assert.equal(reader.read([definitions[6]])[0].value, 0);
+    session.core.time = 0; assert.equal(reader.read([definitions[6]])[0].available, false, 'no completed native step yet'); session.core.time = .005;
+    assert.equal(reader.read([{...definitions[6], targets:['a','a']}])[0].available, false, 'same-body contact is not an independent pair');
+    session.mechanism.bodies.push({id:'duplicate-owner',parts:['a']});
+    assert.equal(reader.read([definitions[6]])[0].available, false, 'ambiguous authored ownership is refused');
+    session.mechanism.bodies.pop();
     session.mechanism.bodies.push(...Array.from({length:127},(_,i)=>({id:`extra${i}`,parts:[]})));
     session.core.currentContactPairs = () => {throw new Error('oversized scan must not run');};
     assert.equal(reader.read([definitions[6]])[0].available, false);

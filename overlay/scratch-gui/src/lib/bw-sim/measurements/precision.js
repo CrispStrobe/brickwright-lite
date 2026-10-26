@@ -86,7 +86,7 @@ export const createPrecisionAnalysis = selection => {
                             state.direction = direction;
                             crossingAngle = threshold + 2 * Math.PI * (direction > 0 ? Math.floor((previous.value - threshold) / (2 * Math.PI)) + 1 : Math.ceil((previous.value - threshold) / (2 * Math.PI)) - 1);
                             crossed = Math.abs(delta) <= 2 * Math.PI && (direction > 0 ? observed.coordinate >= crossingAngle : observed.coordinate <= crossingAngle);
-                            if (Math.abs(delta) > 2 * Math.PI) { state.crossing = null; state.periodSeconds = null; gap = true; }
+                            if (Math.abs(delta) > 2 * Math.PI) { state.crossing = null; state.periodSeconds = null; state.workComplete = false; gap = true; }
                         } else if (selection.mode !== 'rotation') crossed = previous.value < threshold && observed.coordinate >= threshold;
                     }
                     if (observed.type === 'hinge' && previous && crossed) {
