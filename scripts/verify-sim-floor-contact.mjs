@@ -31,7 +31,7 @@ for(let i=0;i<records.length;i++) {
     assert.equal(r.escapedSteps,escaped);assert.equal(r.firstEscape,first);
     assert.equal(r.observedUntilMs,previous*1000);
     if(variant==='baseline')assert.ok(escaped>0,'old-kernel failure retained');
-    else if(mode==='drop'){assert.equal(r.lastEscapeStep,lastEscapeStep);assert.ok(lastEscapeStep<=manifest.compoundRecoveryStepsAllowed);assert.equal(r.colliderCount,9);assert.deepEqual(r.initialVelocity,[0,-20,0]);}else assert.equal(escaped,0,'candidate floor escape is forbidden');
+    else if(mode==='drop'){assert.equal(r.lastEscapeStep,lastEscapeStep);assert.ok(lastEscapeStep<=manifest.compoundRecoveryStepsAllowed);assert.equal(r.colliderCount,9);assert.deepEqual(r.initialVelocity,[0,-20,0]);assert.equal(r.initialHeightM,.25);}else assert.equal(escaped,0,'candidate floor escape is forbidden');
     if(mode==='driven'||mode==='intact'){const [port,degrees,speed]=r.motorCommands[0]||[];assert.equal(port,'A');assert.ok(Math.abs(degrees+600)<2);assert.equal(speed,96);}
     if(mode==='held')assert.deepEqual(r.motorCommands,[]);
     if(mode==='driven'){assert.ok(r.observedUntilMs>=30000);assert.ok(r.maxMotorAngle>.01);}
