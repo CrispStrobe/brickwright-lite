@@ -288,6 +288,14 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
             Object.keys(n.fields||{}).length===fields.length&&fields.every(key=>Object.hasOwn(n.fields||{},key));
         const special=n=>shape(n,[],['KIND'])&&Array.isArray(n.fields.KIND)&&n.fields.KIND.length===2&&
             n.fields.KIND[1]===null&&['null','undefined'].includes(n.fields.KIND[0]);
+        const localWriteKey=key=>{
+            if(typeof key!=='string'||key==='__proto__'||prefixGetPrototype(Object.prototype)!==null)return false;
+            const inherited=watcherOwnDescriptor(Object.prototype,key);
+            // A fresh ordinary params object's assignment shadows writable
+            // inherited DATA. Accessors and nonwritable data establish no own
+            // cell. The full prefix still rejects any frame-prototype write.
+            return !inherited||prefixHasOwn(inherited,'value')&&inherited.writable===true;
+        };
         // Native procedure-definition/parameter caches are plain objects and
         // consult inherited entries before scanning declarations. Those names
         // cannot establish this graph's actual invocation/frame identity.
@@ -313,7 +321,7 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         const name=literal(node,'NAME',target),origin=captures.local(captures.scopeOf(node),name);
         // Native params are plain objects, not Maps: this inherited setter
         // changes the prototype instead of establishing an own lexical cell.
-        if(typeof name!=='string'||prefixHasOwn(Object.prototype,name))return false;
+        if(!localWriteKey(name))return false;
         if(!origin||!captures.proof(origin)||localCell(scope,name)!==destination)return false;
         // Each ordinary call initializes its own fresh params object. Prove
         // every actual caller through an acyclic chain of direct zero-argument
@@ -394,7 +402,11 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
             const n=value.node;if(!n||path.has(n)||invalid.has(n)||owners.get(n)!==scope)return unproved;
             const next=new Set([...path,n]),operand=k=>scalar(input(n,k,target),next);
             if(n.opcode==='arcade_getLocal'&&shape(n,['NAME'])){
-                const key=literal(n,'NAME',target),c=localCell(scope,key);return prefixHasOwn(Object.prototype,key)||c===destination?unproved:locals.get(c)||unproved;
+                const key=literal(n,'NAME',target),c=localCell(scope,key);
+                // Only an earlier actual own write enters locals. Never read
+                // the inherited value merely because its descriptor is safe
+                // to shadow on a later assignment.
+                return !localWriteKey(key)||c===destination?unproved:locals.get(c)||unproved;
             }
             if(n.opcode==='data_variable'&&shape(n,[],['VARIABLE'])){
                 const c=binding(target,n);return c===destination?unproved:globals.get(c)||{kind:'stored'};
@@ -459,7 +471,7 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
             seen.add(at);const current=block(target,at);
             if(!current||invalid.has(current)||owners.get(current)!==scope)return false;
             if(current.opcode==='arcade_setLocal'&&shape(current,['NAME','VALUE'])){
-                const key=literal(current,'NAME',target),c=localCell(scope,key);if(prefixHasOwn(Object.prototype,key)||!c||c.formal)return false;
+                const key=literal(current,'NAME',target),c=localCell(scope,key);if(!localWriteKey(key)||!c||c.formal)return false;
                 if(current===node){seenReset=true;locals.set(c,{kind:'scalar'});}
                 else {const v=scalar(input(current,'VALUE',target));if(v===unproved)return false;
                     if(c===destination){
@@ -1541,11 +1553,16 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         if(!operationShape(node))return {ok:false,reason:'requires the exact supported current operation input schema'};
         // Compute the original result once. A genuine producer observer below
         // can change ambient ownership after the earlier metadata fence.
+        // Recheck every retained reset dependency, including the private
+        // identity-call prefix used by another receiver on this authority.
+        // Its used flag keeps unrelated publications free of a new proof;
+        // checking it last also covers observers in the other current checks.
         const publish=result=>result.ok&&!ordinaryEntry.current()?
             {ok:false,reason:'requires the current closed ordinary execution roots'}:result.ok&&!sourceStartReset.current()?
             {ok:false,reason:'requires the current closed source-start effect proof for a discounted Array reset'}:result.ok&&!nativeFrameReset.current()?
             {ok:false,reason:'requires the current native frame and activation frontier for a discounted Array reset'}:result.ok&&!prefixResetCurrent()?
-            {ok:false,reason:'requires the current owned parameter declaration prefix for a discounted Array reset'}:result;
+            {ok:false,reason:'requires the current owned parameter declaration prefix for a discounted Array reset'}:result.ok&&!privatePrefixCurrent()?
+            {ok:false,reason:'requires the current private identity-call prefix for a discounted Array reset'}:result;
         if(deadOccurrence(target,node))return publish({ok:true});
         if(ordinaryEntry.isUnreachable(target,node))return publish({ok:true});
         if(occurrence?.candidate(target,node,name))return publish(occurrence.validateInput(target,node,name)?{ok:true}:{ok:false,reason:'requires the current closed occurrence Array producer and complete writer proof'});

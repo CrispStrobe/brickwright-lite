@@ -102,6 +102,11 @@ test('native plain-object prototype setters are not actual own local cells',()=>
     // These inherited writable data properties become ordinary own cells on
     // assignment; they are not the inherited __proto__ setter.
     for(const name of ['constructor','toString','hasOwnProperty'])assert.deepEqual(results(renamed(name)),[true],name);
+    for(const name of ['constructor','toString','hasOwnProperty']){
+        const beforeOwnWrite=renamed(name);
+        beforeOwnWrite.insert(beforeOwnWrite.resets[0],beforeOwnWrite.set('beforeOwnWrite',beforeOwnWrite.local(name)));
+        refuses(beforeOwnWrite);
+    }
 });
 
 test('inherited native procedure-cache entries cannot establish a fresh invocation frame',()=>{

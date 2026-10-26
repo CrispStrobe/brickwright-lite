@@ -65,8 +65,8 @@ test('Image addition exports and reopens without any unrelated Array',async()=>{
 original.fill(4)
 let first:any=original
 function echo(value:Image){return value}
-let alias:any=echo(original)
-let copy:any=original.clone()
+let alias:Image=echo(original)
+let copy=original.clone()
 let joined=first+2
 let text=first+""
 let pair=first+copy

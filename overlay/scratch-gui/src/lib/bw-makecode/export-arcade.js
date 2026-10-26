@@ -4591,8 +4591,9 @@ class ArcadeEmitter {
             // definition owned by this emitter after complete source proof.
             const candidate=nativeArrayAddHelperSource(addition.name,true,true);
             const draft=assemble(definitions.map(helper=>helper===addition?candidate:helper.source));
+            const additionProfile=this.callableExports.size?GENERATED_HELPER_PROFILES.metadata:GENERATED_HELPER_PROFILES.ordinary;
             const proof=inspectNativeAdditionExportDomains(nativeAdditionAnimationView(
-                parseMakeCodeTs(draft,GENERATED_HELPER_PROFILES.ordinary),this.authoredAnimationArrays.values()));
+                parseMakeCodeTs(draft,additionProfile),this.authoredAnimationArrays.values()),additionProfile);
             if(proof.reason){
                 this.note(proof.reason);
                 try {

@@ -5,6 +5,7 @@ import {sourceValueOperation} from './source-value-operator-helpers.js';
 // initialization analysis. Existing Array writers still qualify independently.
 const get=Object.getOwnPropertyDescriptor,keys=Reflect.ownKeys,proto=Object.getPrototypeOf;
 const own=Object.hasOwn,isArray=Array.isArray,frozen=Object.isFrozen,sameValue=Object.is;
+const bankNumber=Number,bankFinite=Number.isFinite,bankInteger=Number.isSafeInteger,bankRound=Math.round;
 const denied=Object.freeze({discount:()=>false,current:()=>true});
 const objectNames=new Set(['constructor','__defineGetter__','__defineSetter__','hasOwnProperty','__lookupGetter__','__lookupSetter__','isPrototypeOf','propertyIsEnumerable','toString','valueOf','__proto__','toLocaleString']);
 const reserved=new Set(['constructor','__proto__','prototype','toJSON','_blocks']);
@@ -139,8 +140,8 @@ export function createArraySourceStartResetEffects(context){
         const coercible=v=>scalar(v)||v===imageResult;
         const binaryResult=(op,values)=>op==='+'?
             values.some(v=>v===text||v===imageResult)?text:values.includes(primitive)?primitive:number:number;
-        const state=new Map(),visited=new Set(),called=new Set(),active=new Set(),allocations=new Set();
-        let resetSeen=false,killed=false,steps=0;
+        const state=new Map(),visited=new Set(),called=new Set(),active=new Set(),allocations=new Set(),entryBanks=new Map();
+        let resetSeen=false,killed=false,steps=0,startupEntered=false;
         const fail=()=>{throw refusal;},refusal=Object.freeze({});
         const read=c=>{
             if(!c||c===candidate&&resetSeen&&!killed)fail();
@@ -173,6 +174,68 @@ export function createArraySourceStartResetEffects(context){
             const result=value(input(argument,'VALUE',s.target),s,depth+1);
             called.add(c);visited.add(c.fn);return result;
         };
+        // Concrete indices are a separate literal-only domain. A Number effect
+        // marker, variable, call or annotation cannot provide an expected index.
+        // These pure operands are read in their original left-to-right order.
+        const exactIndexNumber=(v,s,depth=0,path=new Set())=>{
+            if(++steps>20000||depth>64||!v||v.cell)fail();
+            const finite=value=>{if(!bankFinite(value))fail();return value;};
+            const numeric=raw=>{
+                if(!isArray(raw)||raw.length!==2||![4,5,6,7,8].includes(raw[0])||
+                    !['string','number'].includes(typeof raw[1])||typeof raw[1]==='string'&&!raw[1].length)fail();
+                return finite(bankNumber(raw[1]));
+            };
+            if(v.raw)return numeric(v.raw);
+            const n=v.node;if(!n||path.has(n)||owners.get(n)!==s||invalid.has(n)||n.next)fail();
+            const next=new Set([...path,n]),at=name=>exactIndexNumber(input(n,name,s.target),s,depth+1,next);
+            if(['math_number','math_whole_number','math_integer','math_positive_number'].includes(n.opcode)){
+                if(n.shadow!==true||!shape(n,s,[],['NUM']))fail();return numeric([4,n.fields.NUM[0]]);
+            }
+            if(n.opcode==='operator_round'){
+                if(!shape(n,s,['NUM']))fail();return finite(bankRound(at('NUM')));
+            }
+            if(n.opcode==='arrays_valueUnary'){
+                if(!shape(n,s,['VALUE'],['OP'])||!['+','-'].includes(literal(n,'OP',s.target)))fail();
+                const value=at('VALUE');return literal(n,'OP',s.target)==='-'?-value:value;
+            }
+            let op,names;
+            const stock={operator_add:'+',operator_subtract:'-',operator_multiply:'*',operator_divide:'/',operator_mod:'%'}[n.opcode];
+            if(stock){if(!shape(n,s,['NUM1','NUM2']))fail();op=stock;names=['NUM1','NUM2'];}
+            else if(n.opcode==='arrays_valueBinary'&&shape(n,s,['LEFT','RIGHT'],['OP'])){op=literal(n,'OP',s.target);names=['LEFT','RIGHT'];}
+            else{
+                const source=sourceValueOperation(n);
+                if(!source||source.unary||!shape(n,s,source.inputs,['OP']))fail();op=source.op;names=source.inputs;
+            }
+            if(!['+','-','*','/','%'].includes(op))fail();
+            const a=at(names[0]),b=at(names[1]);
+            // Scratch's stock modulo adjusts the sign; source-value remainder
+            // uses native %. The emitted wrapped index is valid in either path.
+            let result=op==='+'?a+b:op==='-'?a-b:op==='*'?a*b:op==='/'?a/b:a%b;
+            if(n.opcode==='operator_mod'&&result/b<0)result+=b;
+            return finite(result);
+        };
+        const entryElements=(v,s,depth)=>{
+            const elements=[],seen=new Set();let cursor=v;
+            while(true){
+                if(++steps>20000||elements.length>=100000||depth>64)fail();
+                if(cursor?.raw){if(!isArray(cursor.raw)||cursor.raw.length!==2||cursor.raw[0]!==10||cursor.raw[1]!=='[]')fail();return elements;}
+                const n=cursor?.node;if(!n||seen.has(n)||owners.get(n)!==s||invalid.has(n)||n.next)fail();seen.add(n);
+                if(n.opcode==='text'&&n.shadow===true&&shape(n,s,[],['TEXT'])&&n.fields.TEXT[0]==='[]')return elements;
+                if(n.opcode!=='arrays_referenceValues'||!shape(n,s,['VALUE','REST']))fail();
+                const element=value(input(n,'VALUE',s.target),s,depth+1);
+                if(element!==imageResult)fail();elements.push(element);cursor=input(n,'REST',s.target);
+            }
+        };
+        const soleEntryHolder=token=>{
+            // Population belongs to one real entry-local cell, not a generated
+            // spelling. Global publication permanently seals the same body.
+            let holder=null,count=0;
+            for(const [cell,value]of state)if(value===token){holder=cell;count++;}
+            if(count!==1||holder.global||holder.formal)fail();
+            const locals=localCell.maps.get(entry);let actual=false;
+            if(locals)for(const name of locals.keys())if(localCell(entry,name)===holder)actual=true;
+            if(!actual)fail();return holder;
+        };
         const value=(v,s,depth=0)=>{
             if(++steps>20000||depth>64||!v)fail();
             if(v.cell){if(s!==entry&&s!==startup&&v.cell===candidate)fail();return read(v.cell);}
@@ -182,7 +245,18 @@ export function createArraySourceStartResetEffects(context){
             if(op==='data_variable'){if(!shape(n,s,[],['VARIABLE']))fail();const c=binding(s.target,n);if(!ordinaryGlobal(c)||s!==entry&&s!==startup&&c===candidate)fail();return read(c);}
             if(op==='arcade_getLocal'){if(!shape(n,s,['NAME'])||!safe(literal(n,'NAME',s.target)))fail();return read(localCell(s,literal(n,'NAME',s.target)));}
             if(op==='arrays_specialValue'){if(!shape(n,s,[],['KIND']))fail();const kind=literal(n,'KIND',s.target);if(kind==='null')return nil;if(kind==='undefined')return undef;fail();}
-            if(op==='arrays_createReference'){if(s!==startup||!shape(n,s,['VALUES'])||literal(n,'VALUES',s.target)!=='[]')fail();const token={node:n};allocations.add(token);return token;}
+            if(op==='arrays_createReference'){
+                if(!shape(n,s,['VALUES']))fail();
+                const token={node:n};
+                if(s===entry){
+                    if(startupEntered)fail();
+                    // Creator normalizes a literal bank into empty allocation,
+                    // ordered private pushes, then one actual global assignment.
+                    entryBanks.set(token,{elements:entryElements(input(n,'VALUES',s.target),s,depth),sealed:false,holder:null});
+                }
+                else if(s!==startup||literal(n,'VALUES',s.target)!=='[]')fail();
+                allocations.add(token);return token;
+            }
             if(op==='arcade_callFunction'){
                 const c=calls.find(c=>c.node===n);
                 if(identities.has(c?.fn))return identityAt(n,s,depth);
@@ -242,7 +316,14 @@ export function createArraySourceStartResetEffects(context){
                 if(!shape(n,s,['A','B'],['OP'])||!['min','max','randomRange','atan2'].includes(literal(n,'OP',s.target))||at('A')!==number||at('B')!==number)fail();return number;
             }
             if(op==='arrays_referenceItem'){
-                if(s!==startup||!shape(n,s,['ARRAY','INDEX'])||!allocations.has(at('ARRAY'))||at('INDEX')!==number)fail();return primitive;
+                if(s!==startup||!shape(n,s,['ARRAY','INDEX']))fail();const receiver=at('ARRAY');
+                if(!allocations.has(receiver))fail();
+                if(entryBanks.has(receiver)){
+                    const index=exactIndexNumber(input(n,'INDEX',s.target),s),bank=entryBanks.get(receiver),elements=bank.elements;
+                    if(!bank.sealed)fail();
+                    if(!bankInteger(index)||index<0||index>=elements.length)fail();return elements[index];
+                }
+                if(at('INDEX')!==number)fail();return primitive;
             }
             if(op==='arrays_referenceIndexOf'){
                 if(s!==startup||!shape(n,s,['ARRAY','VALUE','INDEX'])||!allocations.has(at('ARRAY'))||
@@ -273,7 +354,11 @@ export function createArraySourceStartResetEffects(context){
                     if(!isArray(r)||r.length!==3||r[0]!==12||!ordinaryGlobal(globalCell(s.target,r[2])))fail();
                     const declaration=targets.find(t=>own(t.variables||{},r[2]))?.variables[r[2]];
                     if(declaration?.[0]!==r[1])fail();
-                }else if(op==='procedures_call'){if(returning||s!==entry)fail();const c=callAt(n);run(c.fn,false,depth+1);}
+                }else if(op==='procedures_call'){
+                    if(returning||s!==entry)fail();
+                    for(const bank of entryBanks.values())if(!bank.sealed||!bank.elements.length)fail();
+                    const c=callAt(n);startupEntered=true;run(c.fn,false,depth+1);
+                }
                 else if(op==='arcade_returnValue'){
                     if(!returning||n.next||!shape(n,s,['VALUE']))fail();result=value(input(n,'VALUE',s.target),s);if(!coercible(result))fail();returned=true;break;
                 }else if(op==='data_setvariableto'||op==='arcade_setLocal'){
@@ -282,14 +367,43 @@ export function createArraySourceStartResetEffects(context){
                     if(!c||returning&&c===candidate)fail();
                     const v=value(input(n,'VALUE',s.target),s);
                     if(returning&&!coercible(v))fail();
+                    if(entryBanks.has(v)&&s===entry){
+                        const bank=entryBanks.get(v);
+                        if(bank.sealed||startupEntered)fail();
+                        if(op==='arcade_setLocal'){
+                            if(c.global||c.formal||bank.holder&&bank.holder!==c)fail();
+                            // A second local, even if later overwritten, cannot
+                            // recover private-population credit for this body.
+                            if(bank.holder&&soleEntryHolder(v)!==c)fail();bank.holder=c;
+                        }else{
+                            if(!bank.elements.length)fail();
+                            if(bank.holder){if(soleEntryHolder(v)!==bank.holder)fail();}
+                            else if(input(n,'VALUE',s.target).node?.opcode!=='arrays_createReference')fail();
+                            bank.sealed=true;
+                        }
+                    }
                     if(n===writer.node){if(resetSeen||c!==candidate||v!==nil&&v!==undef)fail();resetSeen=true;}
                     else if(c===candidate&&resetSeen&&!killed){
-                        if(!allocations.has(v)||!candidate.global&&input(n,'VALUE',s.target).node?.opcode!=='arrays_createReference')fail();killed=true;
+                        // The evaluated value must retain this interpreter's actual
+                        // allocation identity. An ordered alias of that same
+                        // body overwrites the reset as surely as its constructor;
+                        // this supplies no public producer or readiness fact.
+                        if(!allocations.has(v))fail();killed=true;
                     }else if(c===candidate&&resetSeen&&killed&&(v===nil||v===undef))fail();
                     state.set(c,v);
                 }else if(op==='arrays_mutateReference'){
-                    if(returning||s!==startup||!shape(n,s,['ARRAY','OP','INDEX','VALUE'])||literal(n,'OP',s.target)!=='push')fail();
-                    if(!allocations.has(value(input(n,'ARRAY',s.target),s))||value(input(n,'INDEX',s.target),s)!==number||!coercible(value(input(n,'VALUE',s.target),s)))fail();
+                    if(returning||!shape(n,s,['ARRAY','OP','INDEX','VALUE'])||literal(n,'OP',s.target)!=='push')fail();
+                    const receiver=value(input(n,'ARRAY',s.target),s);
+                    if(!allocations.has(receiver))fail();
+                    if(s===entry){
+                        const bank=entryBanks.get(receiver);
+                        if(!bank||bank.sealed||startupEntered||!bank.holder||soleEntryHolder(receiver)!==bank.holder)fail();
+                        if(value(input(n,'INDEX',s.target),s)!==number||exactIndexNumber(input(n,'INDEX',s.target),s)!==0)fail();
+                        const element=value(input(n,'VALUE',s.target),s);
+                        if(element!==imageResult||bank.elements.length>=100000)fail();bank.elements.push(element);
+                    }else{
+                        if(s!==startup||entryBanks.has(receiver)||value(input(n,'INDEX',s.target),s)!==number||!coercible(value(input(n,'VALUE',s.target),s)))fail();
+                    }
                 }else if(op==='arcade_mutateImage'){
                     if(!shape(n,s,['IMAGE','COLOR','TO'],['OP'])||literal(n,'OP',s.target)!=='fill'||
                         value(input(n,'IMAGE',s.target),s)!==imageResult||value(input(n,'COLOR',s.target),s)!==number||

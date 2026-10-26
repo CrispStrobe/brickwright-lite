@@ -188,9 +188,17 @@ test('global Array recursion retains initialized external callers and real alloc
     checked('let items=[1,2];function visit(n:number){let count=items.length;if(n>0){visit(n-1)}};visit(2)');
     checked('let items=[1,2];function first(n:number){let count=items.length;if(n>0){second(n-1)}}function second(n:number){let count=items.length;if(n>0){first(n-1)}}first(2);game.onUpdate(function(){first(1)})');
 });
+test('a closed dormant recursive body is retained without inventing an execution entry',()=>{
+    const creator=current('function visit(){let count=items.length;visit()}let items=[1]');
+    const exported=projectToArcade(creator.project);
+    assert.deepEqual(exported.unsupported,[]);
+    const retained=/function ([A-Za-z_$][\w$]*visit)\s*\(\) \{([\s\S]*?)\n\}/.exec(exported.ts);assert.ok(retained);
+    assert.match(exported.ts,/items\.length/,'dormant reads are preserved');
+    assert.ok(retained[2].includes(retained[1]+'()'),'recursive body is preserved');
+    assert.equal(exported.ts.replace(retained[0],'').includes(retained[1]+'()'),false,'no dormant execution entry is invented');
+});
 test('global Array recursion cannot bootstrap a rootless or incompatible entry and writer',()=>{
     for(const source of [
-        'function visit(){let count=items.length;visit()}let items=[1]',
         'function visit(){let count=items.length;visit()}visit();let items=[1];visit()',
         'let items=[1];function visit(){let count=items.length;visit()}visit();items=0 as any',
         'function visit(items:number[]){let count=items.length;visit(items)}let items=[1];visit(items)'

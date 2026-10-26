@@ -69,3 +69,33 @@ test('observed original-source mutation permanently expires an Image admission',
     declaration.decls[0].init=original;
     assert.equal(proof.current(),false,'restore cannot revive a revoked observation');
 });
+
+
+test('exporter independently proves actual primitive index arithmetic shared with Image calls',()=>{
+    const source='function remainder(left:any,right:any):number{return left%right;}let picture=img`1`;let index=__bwBinaryAdd(remainder(Math.round(0),1),1);let coerced=remainder(picture,2);let text=__bwBinaryAdd(picture,2);';
+    const {program}=good(source);
+    assert.notEqual(inspectNativeArrayBinaryDomains(program,profile).reason,null,'strict import keeps the original authored Image.join refusal');
+    bad(source.replace('remainder(picture,2)','remainder([picture],2)'));
+    bad(source.replace('Math.round(0)','foreign()'));
+});
+
+test('callable pixel consumers use actual visited primitive additions and preserve source lifetime',()=>{
+    const source='class Factory{read:()=>number;constructor(){this.read=()=>{return __bwBinaryAdd(1,2)}}}let factory=new Factory();let total=__bwBinaryAdd(factory.read(),1);';
+    const program=parseMakeCodeTs(helper+';'+source,GENERATED_HELPER_PROFILES.metadata);
+    const proof=inspectNativeAdditionExportDomains(program,GENERATED_HELPER_PROFILES.metadata);
+    assert.equal(proof.helpers.size,1);assert.equal(proof.arrayHelpers.size,0);assert.equal(proof.current(),true);
+    const original=program.body.at(-1).decls[0].init.args[1].value;
+    program.body.at(-1).decls[0].init.args[1].value='4';assert.equal(proof.current(),false);
+    program.body.at(-1).decls[0].init.args[1].value=original;assert.equal(proof.current(),false,'restoration never revives a consumed proof');
+});
+
+test('callable additions cannot borrow unvisited, incompatible or escaping caller observations',()=>{
+    for(const source of [
+        'class Factory{read:(x:Image)=>number;constructor(){this.read=(x:Image)=>{return __bwBinaryAdd(x.getPixel(0,0),2)}}}let factory=new Factory();',
+        'class Factory{read:(x:any)=>any;constructor(){this.read=(x:any)=>{return __bwBinaryAdd(x,2)}}}let factory=new Factory();factory.read(img`1`);factory.read([1]);',
+        'class Factory{read:(x:Image)=>number;constructor(){this.read=(x:Image)=>{return __bwBinaryAdd(x.getPixel(0,0),2)}}}let factory=new Factory();foreign(factory);factory.read(img`1`);'
+    ]){
+        const program=parseMakeCodeTs(helper+';'+source,GENERATED_HELPER_PROFILES.metadata);
+        assert.equal(inspectNativeAdditionExportDomains(program,GENERATED_HELPER_PROFILES.metadata).helpers.size,0,source);
+    }
+});

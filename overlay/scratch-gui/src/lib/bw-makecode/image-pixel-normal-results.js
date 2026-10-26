@@ -9,7 +9,7 @@ const imageRound=Math.round;
 // image.cpp returns getCore or zero, common-sim returns pix or zero. Only an
 // actual issued Image and primitive integer arguments select that contract.
 export function imagePixelNormalResults(program,profile) {
-    const refused=()=>Object.freeze({current:()=>false,has:()=>false,isImageValue:()=>false});
+    const refused=()=>Object.freeze({current:()=>false,has:()=>false,isImageValue:()=>false,isPrimitiveValue:()=>false});
     const seen=new WeakSet(),activeData=new WeakSet(),absences=[];
     const slots=['type','kind','name','body','params','decls','init','expr','value','tag','items','op','callee','args','left','right','object','index','argument','expression','test','consequent','alternate','isNew','constructorCall','typeArguments','parameterDefaults','optionalParams','ordinaryParameterDefaultNames','parameterProperties','typeParameters','genericParams','parameterDefaultPrologue','restParam','async','generator','isAsync','isGenerator','exported','optional','computed'];
     const data=value=>{
@@ -39,7 +39,7 @@ export function imagePixelNormalResults(program,profile) {
     try{if(!data(program))return refused();syntax=inspectGeneratedHelperBindings(program,profile);if(!syntax.isCurrent())return refused();lexical=analyseCallableBindings(program);}
     catch{return refused();}
     let live=true,eligible=false,numberEligible=true,failed=false,steps=0,images=0;
-    const imageObservations=new WeakMap();
+    const imageObservations=new WeakMap(),primitiveObservations=new WeakMap();
     const results=new WeakSet(),writes=new Set(),done=new Set(),functions=new Map(),running=new Set(),state=new Map(),constants=new Set();
     const current=()=>{
         if(live)try{
@@ -48,7 +48,8 @@ export function imagePixelNormalResults(program,profile) {
         return live;
     };
     const answer=()=>Object.freeze({current,has:node=>eligible&&numberEligible&&current()&&results.has(node),
-        isImageValue:node=>eligible&&current()&&imageObservations.get(node)===true});
+        isImageValue:node=>eligible&&current()&&imageObservations.get(node)===true,
+        isPrimitiveValue:node=>eligible&&current()&&primitiveObservations.get(node)===true});
     const fail=()=>{failed=true;return null;};
     const own=(node,key)=>Object.getOwnPropertyDescriptor(node,key)?.value;
     const list=value=>Array.isArray(value)&&Number.isSafeInteger(value.length)&&value.length<=100000;
@@ -127,7 +128,12 @@ export function imagePixelNormalResults(program,profile) {
     // later Image can never revive an occurrence once it returned anything else.
     const expr=node=>{
         const value=evaluate(node);
-        if(node&&typeof node==='object')imageObservations.set(node,imageObservations.get(node)!==false&&value?.kind==='Image');
+        if(node&&typeof node==='object'){
+            imageObservations.set(node,imageObservations.get(node)!==false&&value?.kind==='Image');
+            // A separate union, never a Number or initialization certificate.
+            // In particular Image and Array observations cannot supply it.
+            primitiveObservations.set(node,primitiveObservations.get(node)!==false&&!!scalar(value));
+        }
         return value;
     };
     const evaluate=node=>{

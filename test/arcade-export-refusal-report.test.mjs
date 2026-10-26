@@ -18,13 +18,34 @@ const context=()=>{const c={props:{vm:{}},state:{conversionReport:null},setState
         c[name]=new Function(args,method(`${name} (${args})`).slice(1,-1));return c;};
 const exported=text=>{const imported=arcadeToPseudocode(text);assert.deepEqual(imported.unsupported,[]);const creator=new Creator();creator.parse(imported.code);
     assert.deepEqual(creator.errors,[]);const before=JSON.stringify(creator.project),out=projectJsonToArcade(before);assert.equal(JSON.stringify(creator.project),before);observations.push({source:text,importedCode:imported.code,project:JSON.parse(before),output:out});return {creator,out};};
-const refused=()=>{
-    const creator=new Creator();creator.parse('DEVICE ARCADE\nGLOBAL result\nSPRITE Game:\nWHEN flag clicked:\n  set result to (calculate value (arcade new image width 1 height 1) op "+" with (1))');
+// Tempo is a valid authored reporter, but has no independently qualified
+// primitive producer in the native-addition source proof. Image.create + 1 is
+// now supported and must no longer manufacture this diagnostic fixture.
+const refusedPseudocode='DEVICE ARCADE\nGLOBAL result\nSPRITE Game:\nWHEN flag clicked:\n  set result to (calculate value (arcade music tempo) op "+" with (1))';
+const refusalCreator=()=>{
+    const creator=new Creator();creator.parse(refusedPseudocode);
     assert.deepEqual(creator.errors,[]);assert.deepEqual(creator.unparsed,[]);
+    assert.equal(creator.project.targets.flatMap(target=>Object.values(target.blocks)).filter(node=>node.opcode==='arcade_musicTempo').length,1);
+    return {creator,code:refusedPseudocode};
+};
+const refused=()=>{
+    const {creator,code}=refusalCreator();
     const projectJson=JSON.stringify(creator.project),out=projectJsonToArcade(projectJson);
-    observations.push({pseudocode:'DEVICE ARCADE\nGLOBAL result\nSPRITE Game:\nWHEN flag clicked:\n  set result to (calculate value (arcade new image width 1 height 1) op "+" with (1))',project:JSON.parse(projectJson),output:out});
+    observations.push({pseudocode:code,project:JSON.parse(projectJson),output:out});
     return {creator,out};
 };
+
+test('the former Image addition refusal is now a clean direct and owned-JSON export',()=>{
+    const creator=new Creator();creator.parse('DEVICE ARCADE\nGLOBAL result\nSPRITE Game:\nWHEN flag clicked:\n  set result to (calculate value (arcade new image width 1 height 1) op "+" with (1))');
+    assert.deepEqual(creator.errors,[]);assert.deepEqual(creator.unparsed,[]);
+    const before=JSON.stringify(creator.project);
+    for(const out of [projectToArcade(creator.project),projectJsonToArcade(before)]){
+        assert.deepEqual(out.unsupported,[]);assert.deepEqual(Object.keys(out).sort(),['files','ts','unsupported','warnings']);
+        assert.match(out.ts,/function __bwBinaryAdd\(left: any, right: any\): any \{ return left \+ right \}/);
+        assert.doesNotMatch(out.ts,/\.join\(/);
+    }
+    assert.equal(JSON.stringify(creator.project),before);
+});
 
 test('actual exporter retains its candidate draft and observed facts without inventing a selected block',async()=>{
     const {creator,out}=refused();assert.ok(out.unsupported.includes('native addition requires initialized primitive or proved flat Array operands'));
@@ -39,7 +60,7 @@ test('actual exporter retains its candidate draft and observed facts without inv
     assert.equal(source.split(needle).length,2,'one diagnostic collector call');
     const faulted=source.replace(needle,"throw new Error('collector observation failed');\n                    "+needle)
         .replace(/\b(from\s+|import\s*\(\s*|import\s+)(['"])(\.{1,2}\/[^'"\n]+)\2/g,(_,prefix,quote,specifier)=>`${prefix}${quote}${new URL(specifier,url).href}${quote}`);
-    assert.equal([...source.matchAll(/\b(from\s+|import\s*\(\s*|import\s+)(['"])(\.{1,2}\/[^'"\n]+)\2/g)].length,44,'all current literal dependencies are rebased, including parent paths');
+    assert.equal([...source.matchAll(/\b(from\s+|import\s*\(\s*|import\s+)(['"])(\.{1,2}\/[^'"\n]+)\2/g)].length,48,'all current literal dependencies are rebased, including parent paths');
     assert.equal(/\b(from\s+|import\s*\(\s*|import\s+)(['"])(\.{1,2}\/[^'"\n]+)\2/.test(faulted),false,'data URL retains no relative literal import');
     const copy=await import('data:text/javascript;base64,'+Buffer.from(faulted).toString('base64'));
     const observed=copy.projectJsonToArcade(JSON.stringify(creator.project));
@@ -119,9 +140,7 @@ test('original export error remains visible and assets are not modified by repor
 
 
 const ownedRefusalInput=label=>{
-    const creator=new Creator();
-    creator.parse('DEVICE ARCADE\nGLOBAL result\nSPRITE Game:\nWHEN flag clicked:\n  set result to (calculate value (arcade new image width 1 height 1) op "+" with (1))');
-    assert.deepEqual(creator.errors,[]);assert.deepEqual(creator.unparsed,[]);
+    const {creator}=refusalCreator();
     creator.project.meta={...creator.project.meta,observationLabel:label};
     return {creator,input:JSON.stringify(creator.project,null,2)+'\n'};
 };

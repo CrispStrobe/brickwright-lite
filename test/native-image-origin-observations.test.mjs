@@ -95,3 +95,31 @@ test('Image-origin observations expire permanently on original source changes an
     Object.setPrototypeOf(image,prototype);assert.equal(again.current(),false);
     Object.setPrototypeOf(image,Object.prototype);assert.equal(again.isImageValue(image),false);
 });
+
+
+test('primitive observations are separate, all-normal unions with no unseen or Image/Array loan',()=>{
+    const all=inspect('let image=img`1`;function echo(value:any){return value;}let first=echo(1);let last=echo("text");');
+    const returned=all.nodes.find(node=>node.type==='Return').value;
+    assert.equal(all.proof.isPrimitiveValue(returned),true);
+    assert.equal(all.proof.isImageValue(returned),false);
+    assert.equal(all.proof.has(returned),false,'a primitive union is not the old Number-result API');
+    assert.equal(all.proof.isPrimitiveValue({}),false);
+    assert.equal(all.proof.isPrimitiveValue(initializer(all.nodes,'image')),false);
+    const dormant=inspect('function dormant(){return 1;}let image=img`1`;');
+    assert.equal(dormant.proof.isPrimitiveValue(dormant.nodes.find(node=>node.type==='Return').value),false);
+    for(const other of ['img`2`','[img`2`]']){
+        const mixed=inspect('let image=img`1`;function echo(value:any){return value;}echo(1);echo('+other+');let last=echo(2);');
+        assert.equal(mixed.proof.isPrimitiveValue(mixed.nodes.find(node=>node.type==='Return').value),false,other);
+        assert.equal(mixed.proof.isPrimitiveValue(initializer(mixed.nodes,'last')),true,'a separate call retains its actual primitive observation');
+    }
+});
+
+test('actual remainder calls can be primitive across Image calls while old Number authority stays closed',()=>{
+    const {program,nodes,proof}=inspect('function remainder(a:any,b:any){return a%b;}let image=img`1`;let values=[];values.push(image);let numeric=remainder(Math.round(0),1);let coerced=remainder(image,2);let pixel=image.getPixel(0,0);');
+    for(const name of ['numeric','coerced','pixel'])assert.equal(proof.isPrimitiveValue(initializer(nodes,name)),true,name);
+    assert.equal(proof.has(initializer(nodes,'pixel')),false,'mutable Image-list construction still cannot widen Number.has');
+    assert.equal(proof.isPrimitiveValue(initializer(nodes,'values')),false);
+    const number=program.body.find(node=>node.type==='FunctionDeclaration').body[0].value;
+    const op=number.op;number.op='+';assert.equal(proof.current(),false);number.op=op;
+    assert.equal(proof.isPrimitiveValue(initializer(nodes,'numeric')),false,'restoring observed source bytes cannot renew primitive authority');
+});

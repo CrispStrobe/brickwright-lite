@@ -60,6 +60,21 @@ test('costume-backed Image addition proves the actual wrapped frame selection on
     assert.match(out.ts,/__bwFrames_shared\d+/);
 });
 
+test('costume-backed Image banks preserve direct and JSON second export',()=>{
+    for(const mode of ['direct','json']){
+        const first=creatorFor(sources[0].replace('image.create(2,1)','img`5 5`'));
+        const emit=creator=>mode==='direct'?exportProject(creator,creator.project):
+            projectJsonToArcade(JSON.stringify(creator.project),{costumeSvg:(target,costume)=>creator.assets.get(costume.assetId)?.data});
+        const original=emit(first);assert.deepEqual(original.unsupported,[]);
+        const reopened=creatorFor(original.ts),again=emit(reopened);
+        assert.deepEqual(again.unsupported,[],mode+' second export retains actual Image-bank availability');
+        assert.match(again.ts,/function __bwBinaryAdd\(left: any, right: any\): any \{ return left \+ right \}/);
+        assert.match(again.ts,/img`\s*5\s+5\s*`/,'retain the actual two artwork pixels');
+        assert.doesNotMatch(again.ts,/\.join\(/);
+        creatorFor(again.ts);
+    }
+});
+
 test('direct owned Array evidence preserves the original mutable callback receiver and argument',()=>{
     const creator=reopenedImageProject(),stage=creator.project.targets.find(target=>target.isStage);
     let calls=0;

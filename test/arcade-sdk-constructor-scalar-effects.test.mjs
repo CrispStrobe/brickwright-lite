@@ -134,14 +134,13 @@ test('unclosed Scene registry observations cannot bypass the old scalar projecti
  const proof=inspectNativeArrayBinaryDomains(parseMakeCodeTs(text,GENERATED_HELPER_PROFILES.ordinary),GENERATED_HELPER_PROFILES.ordinary);assert.equal(typeof proof.reason,'string');assert.equal(proof.helpers.size,0);
 });
 
-test('three owned JSON export generations retain the whole fixture while live input lacks reset admission',()=>{
+test('three direct and owned JSON export generations retain the same complete fixture',()=>{
  let input=source;
  for(let generation=1;generation<=3;generation++){
   const creator=build(input),before=JSON.stringify(creator.project),options={costumeSvg:(_target,costume)=>creator.assets.get(costume.assetId)?.data};
   const live=projectToArcade(creator.project,options),owned=projectJsonToArcade(before,options);clean(owned);
   assert.equal(JSON.stringify(creator.project),before);
-  if(generation<3)clean(live);
-  else assert.ok(live.unsupported.some(message=>message.includes('requires an actual initialized Array producer and compatible all writers')));
+  clean(live);assert.deepEqual(live.files,owned.files,'direct own-data and owned JSON retain identical complete files in generation '+generation);
   input=owned.files;
  }
  build(input);

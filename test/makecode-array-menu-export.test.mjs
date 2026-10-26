@@ -54,11 +54,11 @@ const exportedOwned = (creator,diagnostic,rawResetMode) => {
         assert.ok(all.some(row=>row.node.opcode==='arcade_setLocal'&&nullWrite(row)),'actual class local null reset remains');
         assert.ok(!all.some(row=>row.node.opcode==='data_setvariableto'&&nullWrite(row)),'uninitialized source-reference globals add no global null writer');
         clean(raw); // The unchanged legacy deadReset proves this pure local prefix.
-    }else assert.ok(raw.unsupported.length,'direct mutable reimport graph retains its reset refusal');
+    }else clean(raw); // Descriptor-only own data receives the same complete proof as JSON ingress.
     diagnostic.ownedJsonInput=json;diagnostic.directAstExport=raw;
     const out=projectJsonToArcade(json);diagnostic.exportOutput=out;
     if(['unsupported','warnings','errors','unparsed'].some(name=>Object.hasOwn(out,name)&&Array.isArray(out[name])&&out[name].length))retainFailure(diagnostic);
-    clean(out);assert.equal(JSON.stringify(creator.project),json,'owned JSON export retains original physical graph');return out;
+    clean(out);assert.deepEqual(raw.files,out.files,'direct own-data and owned JSON export preserve the same complete program');assert.equal(JSON.stringify(creator.project),json,'owned JSON export retains original physical graph');return out;
 };
 let failureSerial=0;
 const captureFailure = diagnostic => {
@@ -244,8 +244,8 @@ test('object class and primitive-field readers census canonical Array element wr
     const text='class Box{constructor(public n:number){}read():number{return this.n}}let boxes=[new Box(1)];let alias=boxes;alias.push(new Box(2));let observed=boxes[0].read();';
     const c=source(text);canonical(c);repeat(c,{rawResetMode:'legacy-local-class'});
     const requiresOwned=source('let ordinary:number[]=null;let alias:number[]=null;let result=0;function build(){ordinary=[];alias=ordinary;alias.push(1);result=alias.length;}build();');
-    assert.ok(projectToArcade(requiresOwned.project).unsupported.length,'actual global reset across an ordinary callee still refuses raw mutable input');
-    clean(projectJsonToArcade(JSON.stringify(requiresOwned.project)));
+    const directReset=projectToArcade(requiresOwned.project),jsonReset=projectJsonToArcade(JSON.stringify(requiresOwned.project));
+    clean(directReset);clean(jsonReset);assert.deepEqual(directReset.files,jsonReset.files,'ordinary callee reset has identical direct/JSON complete source proof');
     const mixedSource=text.replace('alias.push(new Box(2))','alias.push(0 as any)');
     const mixedImport=arcadeToPseudocode(mixedSource);clean(mixedImport);
     const mixed=parse(mixedImport.code),importedProject=structuredClone(mixed.project);canonical(mixed);

@@ -38,7 +38,7 @@ const roundtrip=(text,mixed=false)=>{
         d.stage='Code-feedback';d.feedbackCode=c.decompile();const feedback=parse(d.feedbackCode);d.projects.feedback=feedback.project;exportCurrent(feedback,true);
         d.stage='exact-files-import';d.imported=arcadeToPseudocode(first.files);clean(d.imported);d.reimportCode=d.imported.code;
         const second=parse(d.imported.code);d.projects.second=second.project;d.currentCreator=second;
-        if(mixed)assert.ok(projectToArcade(second.project).unsupported.length,'the global null/callee path still requires owned ingress');
+        if(mixed){const direct=projectToArcade(second.project);clean(direct);assert.deepEqual(direct.files,projectJsonToArcade(JSON.stringify(second.project)).files,'plain own-data reimport receives the same complete reset proof');}
         d.stage='exact-files-second-export';exportCurrent(second,true);return first;
     }catch(error){
         const root=process.env.BW_ARRAY_MENU_FAILURE_ROOT;
@@ -58,7 +58,7 @@ const roundtrip=(text,mixed=false)=>{
     }
 };
 
-test('a genuine local constructor and own primitive method permit only the owned JSON global overwrite path',()=>{
+test('a genuine local constructor and own primitive method preserve the proved global overwrite path',()=>{
     roundtrip(base);
 });
 

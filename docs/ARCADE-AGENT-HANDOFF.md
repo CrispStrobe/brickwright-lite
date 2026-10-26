@@ -38,12 +38,33 @@ from an unrelated Array. Project reopen preserves reference kind/id without
 reviving a per-run Array body; held-live-body ownership remains separately
 covered by the Arrays native controls.
 
-The final source-only regression groups pass 138 tests without skips: 39
+The published predecessor passed 138 source-only tests without skips: 39
 Image/domain/reset controls, eight direct/JSON Image export controls, 17
 source-start/frame controls, 38 flags/boundary controls and 36 existing
 roundtrip controls. These results do not replace the pending hosted SDK, VM
 and browser qualification or promote a corpus application. The last measured
 184-input census remains 147 translated, 36 partial and one parse failure.
+
+The next candidate also repairs the shared extension test loader's missing
+frame-delta module while retaining the installed-module identity checks. Its
+successful export publication rechecks the actually consumed private prefix
+after resource callbacks. Source tests retain the original late-mutation
+regression and enforce permanent expiry. These repairs need final hosted
+qualification; earlier green results cannot qualify a later head.
+
+Two diagnosed native-addition gaps are now scoped in
+[the accessor/Sprite repair](https://github.com/CrispStrobe/brickwright-lite/pull/1457):
+implicit inherited getter/setter edges must be audited before receiver-readiness
+can be granted; a Sprite coordinate read inside a controller callback must
+cross the actual source-entry allocation/registration frontier. Keep the
+original class and owned text-game positives unchanged. Implement after that
+claim merges, then run both source controls and actual original/native checks.
+
+The pin-history gate also exposes recorded old supplier identities in frozen
+qualification/reader scripts. Coordinate with their source owner. Never replace
+measured identities with today's pins or weaken stale-active-dependency checks;
+a repair must distinguish independently bound historical citations from active
+inputs and retain never-shipped-pin refusals.
 
 Continue in this order:
 
@@ -79,26 +100,32 @@ Continue in this order:
    Code, Blocks, graphics where applicable, export/reimport and fresh reopen.
    Promote an application only after observable execution matches its original.
 
-**Next conversion task: costume-backed Image banks on the second export.**
-Start with the exact first source fixture in
+**Costume-backed Image banks: source implementation complete; runtime pending.**
+The scope is [source-entry bank effects](../lanes/2026-10-26-arcade-source-entry-image-banks.md).
+Use the exact first source fixture in
 `test/makecode-arcade-image-values.test.mjs`, replacing only
-`image.create(2,1)` with an `img` literal containing two colour-5 pixels. Import
-and apply its returned SVG costumes with `SB3Creator`, then export, reimport,
-apply the new costumes and export again. First export is now clean: its
-`__bwFrames_shared` bank and wrapped `Math.round(0)` selection have a genuine
-Image-origin proof even when the general graph is Opaque. The second export
-still refuses Array readiness and addition. Keep that failure visible.
+`image.create(2,1)` with an `img` literal containing two colour-5 pixels. The
+actual Creator import, SVG upload, export, reimport, new SVG upload and second
+export now pass through both direct and JSON routes. The private effect proof
+tracks real allocation, ordered Image pushes, global publication and sealing
+before the unique startup. A literal, finite in-bounds index transports only
+its selected element's effect; every alias and writer remains relevant.
 
-Inspect the actual source-entry Image-bank allocation and its element/clone
-effects before the unique startup call. The current source-start theorem only
-creates fresh Array tokens inside that startup procedure, and an indexed item
-has a conservative stored-value effect. Extend the independently owned producer,
-entry and effect proofs where the measured graph requires it. Never substitute
-an Image[] annotation, asset spelling, graph kind or unrelated successful
-observation for an actual allocation or initialized receiver. Scope shared
-helper changes before implementation; preserve invalid indices, unknown calls,
-read-before-reset, all writers and callback mutation refusals. Finish with
-direct/JSON second-export controls, original/native SDK execution and SB3 reopen.
+Frame-index arithmetic has an independent all-normal primitive observation
+proof over original operations. It does not expand the Number API or grant
+Array initialization. Callable pixel results use the existing complete
+class/closure producer and observed original Binary additions; Arrow metadata
+is retained through the established metadata parser profile. Uninvoked,
+incompatible and escaping calls cannot borrow that fact. Observed source
+changes permanently expire a consumed proof, including after restoration.
+
+`test/makecode-arcade-image-bank-roundtrip.test.mjs` retains all 20 original
+observable values and alias/clone identity checks. It requires three native
+generations through both export routes, SDK compilation of each export and
+fresh SB3 reload. This test requires hosted execution; source acceptance is
+not that qualification. The separate Array-free fixture retains Any arithmetic
+operands but uses typed Image receivers for native pixel methods. Its earlier
+Any-method original-SDK failure must not be reported as an exporter failure.
 
 **Image GUI acceptance remains open.** In visible Blocks and Code, build an
 Image, clone and alias it, place it in an Array and connect native value-add
@@ -107,7 +134,7 @@ its pixels in the graphics editor, and use a controller button to mutate a
 pixel. Compare alias/clone pixels and addition values with original MakeCode;
 export/reimport and reopen the SB3 in a fresh context. Reuse the existing
 authoring browser harness. Source creation through VM APIs alone does not prove
-this editor journey, and the second-export Image-bank task must close first.
+this editor journey, and the bank runtime qualification must close first.
 
 **Focused GUI task after runtime qualification:** reuse
 `test/fixtures/arcade-writable-flags-roundtrip.mjs` to author a Sprite and raw

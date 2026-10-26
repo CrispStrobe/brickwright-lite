@@ -1,3 +1,4 @@
+import {proveClassCallableSource,assertCurrentClassSourceProof,classSdkImageValueCandidate} from './class-callable-source-flow.js';
 import {numericRecursiveNormalResults} from './numeric-recursive-normal-results.js';
 import {imagePixelNormalResults} from './image-pixel-normal-results.js';
 import {numericClosureNormalResults} from './numeric-closure-normal-results.js';
@@ -150,11 +151,16 @@ function inspectDomains(program,profile,ordinaryExportSelection) {
     const bindings=inspectGeneratedHelperBindings(classView.program,profile);
     let closureResults=null,closureLive=true,imageResults=null,imageLive=true;
     let imageOrigins=null,imageOriginView=null,imageOriginUsed=false,imageOriginLive=true;
+    let callableAdditionProof=null,callableAdditionUsed=false,callableAdditionLive=true;
     let operationUsed=false,operationLive=true,classResultUsed=false,classResultLive=true;const operationAbsences=[];
     const closureNormalTokens=new Set(),imageNormalTokens=new Set();
     const current=()=>{
         if(operationUsed&&!operationLive||classResultUsed&&!classResultLive)return false;
         try{
+            if(callableAdditionUsed){
+                if(!callableAdditionLive||!imageOriginView.current()){callableAdditionLive=false;return false;}
+                try{assertCurrentClassSourceProof(callableAdditionProof,imageOriginView.program);}catch{callableAdditionLive=false;return false;}
+            }
             const now=syntax.current()&&unaryProof.isCurrent()&&classView.current()&&bindings.isCurrent()&&graph.lexicalDeclarationReadinessCurrent();
             if(closureNormalTokens.size&&(!now||!closureResults.current()))closureLive=false;
             if(imageNormalTokens.size&&(!now||!imageResults.current()))imageLive=false;
@@ -163,8 +169,9 @@ function inspectDomains(program,profile,ordinaryExportSelection) {
             const valid=now&&(!closureNormalTokens.size||closureLive)&&(!imageNormalTokens.size||imageLive)&&(!recursiveNormalTokens.size||recursiveLive);
             if(operationUsed&&(!valid||!operationAbsences.every(({object,key})=>!Object.hasOwn(object,key)&&!(key in object))))operationLive=false;
             if(classResultUsed&&!valid)classResultLive=false;
+            if(callableAdditionUsed&&!valid)callableAdditionLive=false;
             return valid&&(!operationUsed||operationLive)&&(!classResultUsed||classResultLive)&&(!imageOriginUsed||imageOriginLive);
-        }catch(error){if(operationUsed)operationLive=false;if(classResultUsed)classResultLive=false;if(imageOriginUsed)imageOriginLive=false;throw error;}
+        }catch(error){if(operationUsed)operationLive=false;if(classResultUsed)classResultLive=false;if(imageOriginUsed)imageOriginLive=false;if(callableAdditionUsed)callableAdditionLive=false;throw error;}
     };
     const domainHelpers=[...helpers.values()].map(helper=>({...helper,calls:[]}));
     const observed=new Set(),provedHelperResults=new WeakSet();
@@ -558,16 +565,36 @@ function inspectDomains(program,profile,ordinaryExportSelection) {
     // Query an independent execution of ORIGINAL operations. The ordinary
     // producer view contains type-only zero projections and cannot establish
     // which branch or Image allocation the source actually observes.
-    const imageAt=(call,position)=>{
+    const originalOriginAt=(call,position,query)=>{
         try{
             if(!imageOrigins){
-                imageOriginView=imageOriginOperationView(program,syntax);
+                imageOriginView ||= imageOriginOperationView(program,syntax);
                 imageOrigins=imagePixelNormalResults(imageOriginView.program,profile);
             }
             const original=call.original.originalCall.args[position];
             const node=imageOriginView.modelOf(original);
-            return !!node&&typeof imageOrigins.isImageValue==='function'&&
-                imageOrigins.isImageValue(node)&&imageOriginView.current()&&imageOrigins.current();
+            return !!node&&typeof imageOrigins[query]==='function'&&
+                imageOrigins[query](node)&&imageOriginView.current()&&imageOrigins.current();
+        }catch{return false;}
+    };
+    const imageAt=(call,position)=>originalOriginAt(call,position,'isImageValue');
+    const primitiveAt=(call,position)=>originalOriginAt(call,position,'isPrimitiveValue');
+    // The existing complete class/closure producer checks every actual
+    // invocation. Its Binary '+' rule accepts only produced Number/String
+    // operands. Query the observed ORIGINAL Binary occurrence, never a class
+    // annotation or a result-only scalar projection. Unobserved bodies and
+    // incompatible invocations cannot borrow this ordinary-addition fact.
+    const callablePrimitiveAddition=call=>{
+        if(!ordinaryExportSelection)return false;
+        try{
+            imageOriginView ||= imageOriginOperationView(program,syntax);
+            callableAdditionProof ||= proveClassCallableSource(imageOriginView.program,{sdkImagePrototype:true});
+            if(!callableAdditionProof.eligible)return false;
+            assertCurrentClassSourceProof(callableAdditionProof,imageOriginView.program);
+            const node=imageOriginView.modelOf(call.original.originalCall);
+            const valid=node?.type==='Binary'&&node.op==='+'&&classSdkImageValueCandidate(callableAdditionProof,node)&&imageOriginView.current();
+            if(valid)callableAdditionUsed=true;
+            return valid;
         }catch{return false;}
     };
     const imageFamilies=new Map();
@@ -577,7 +604,7 @@ function inspectDomains(program,profile,ordinaryExportSelection) {
         // ordinary body for one Image call must never change an Array call.
         const safe=helper.calls.every(call=>call.args.every((arg,position)=>{
             if(provedHelperResults.has(arg)||primitiveValue(arg)||capturedScalarIdentifier(arg))return true;
-            return imageAt(call,position);
+            return primitiveAt(call,position)||imageAt(call,position)||callablePrimitiveAddition(call);
         }));
         imageFamilies.set(helper,safe);return safe;
     };
@@ -596,12 +623,16 @@ function inspectDomains(program,profile,ordinaryExportSelection) {
         // This pointwise executed origin is independent of nominal graph tags.
         // A wrapped frame index can remain Opaque in the general graph while
         // every actual observation here is an initialized owned Image.
-        const ownedImage=ordinaryExportSelection&&!primitiveValue(arg)&&!capturedScalarIdentifier(arg)&&
-            imageOnlyFamily(helper)&&imageAt(call,position);
+        // Reimported frame indices share arithmetic helpers with Image
+        // arithmetic. Original all-normal primitive observations can select
+        // their actual scalar result without weakening helper-family closure,
+        // the independent Number API, or any producer/initialization gate.
+        const ownedOrigin=ordinaryExportSelection&&!primitiveValue(arg)&&!capturedScalarIdentifier(arg)&&
+            imageOnlyFamily(helper)&&(primitiveAt(call,position)||imageAt(call,position)||callablePrimitiveAddition(call));
         // Preserve the original short circuit exactly. These locals record
         // ONLY predicates that this invocation actually evaluated.
         let initialization='NOT_EVALUATED',capture='NOT_EVALUATED',domain='NOT_EVALUATED';
-        const refused=!ownedImage&&(!found.size||!(initialization=initialized(arg))&&!(capture=capturedScalarIdentifier(arg))||
+        const refused=!ownedOrigin&&(!found.size||!(initialization=initialized(arg))&&!(capture=capturedScalarIdentifier(arg))||
             (domain=[...found].some(type=>!primitive.has(type)&&type?.kind!=='Array')));
         // Existing successful paths remain independent of the new profile.
         if(refused&&normalPrimitiveOperation(arg)){operationUsed=true;continue;}
@@ -625,7 +656,7 @@ function inspectDomains(program,profile,ordinaryExportSelection) {
             }catch { /* Retain the original refusal with no invented details. */ }
             return result;
         }
-        if(ownedImage){imageOriginUsed=true;continue;}
+        if(ownedOrigin){if(!callablePrimitiveAddition(call))imageOriginUsed=true;continue;}
         for(const allocation of allocations(arg)){
             if(!(position===0?helper.leftArray:helper.rightArray))return {helpers:new Map(),current,reason:'native helper does not join this actual Array operand position'};
             allTokens.add(allocation);arrayHelpers.add(helper.declaration.name);

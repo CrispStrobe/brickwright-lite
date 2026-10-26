@@ -19,7 +19,7 @@ test('actual SplashDialog socket proof retains old/new image aliases and emits I
     const c=fixture(),before=JSON.stringify(c.project),exported=out(c.project);
     assert.equal(rows(c.project).length,55);assert.equal(casts(exported.ts),6);
     assert.match(exported.ts,/initial = dialog.image/);assert.match(exported.ts,/resized = dialog.image/);
-    assert.match(exported.ts,/let initial: any = 0/);assert.match(exported.ts,/let resized: any = 0/);
+    assert.match(exported.ts,/let initial: Image = null/);assert.match(exported.ts,/let resized: Image = null/);
     assert.equal(JSON.stringify(c.project),before);clean(build(exported.files));
     const json=projectJsonToArcade(before);clean(json);assert.equal(casts(json.ts),6);
 });
