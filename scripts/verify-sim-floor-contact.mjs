@@ -17,25 +17,28 @@ for(let i=0;i<records.length;i++) {
     const r=records[i], [variant,mode,cold]=expected[i];
     assert.deepEqual(r.inputs,manifest.inputs.map(({file,bytes,sha256})=>({file,bytes,sha256})));
     assert.deepEqual(r.engine,{version:manifest.engine.version,resolved:pinnedURL,integrity:manifest.engine.integrity});
-    assert.equal(r.schemaVersion,1);assert.equal(r.kernel.variant,variant);assert.equal(r.mode,mode);assert.equal(r.coldMs,cold);
+    assert.equal(r.schemaVersion,manifest.schemaVersion);assert.equal(r.kernel.variant,variant);assert.equal(r.mode,mode);assert.equal(r.coldMs,cold);
     assert.equal(r.kernel.candidateSha256,candidateSha256);
     assert.equal(r.kernel.effectiveSha256,variant==='baseline'?manifest.kernel.baselineSha256:candidateSha256);
     assert.ok(r.rows.length>1000);assert.ok(r.bodyIds.length>=1);
     assert.ok(Number.isFinite(r.floor.bottom)&&Number.isFinite(r.floor.top)&&r.floor.top>r.floor.bottom);
-    let escaped=0,first=null,previous=0,lastEscapeStep=0;
+    let escaped=0,insideSteps=0,first=null,firstInside=null,previous=0,lastEscapeStep=0;
     for(const row of r.rows) {
-        assert.equal(row.length,4);assert.ok(row.every(Number.isFinite));
-        const [t,top,index,outside]=row;
+        assert.equal(row.length,5);assert.ok(row.every(Number.isFinite));
+        const [t,top,index,outside,insideEscaped]=row;
         assert.ok(Math.abs(t-previous-manifest.dtSeconds)<1e-8,'every fixed step retained');previous=t;
         assert.ok(Number.isInteger(index)&&index>=0&&index<r.bodyIds.length);
-        assert.ok(Number.isInteger(outside)&&outside>=0&&outside<r.bodyIds.length);
+        assert.ok(Number.isInteger(outside)&&outside>=0&&outside<=r.bodyIds.length);
+        assert.ok(Number.isInteger(insideEscaped)&&insideEscaped>=0&&insideEscaped<=r.bodyIds.length-outside);
+        if(insideEscaped){insideSteps++;firstInside??=t;}
         if(top<r.floor.bottom-manifest.floorEscapeEpsilonM){escaped++;first??=t;lastEscapeStep=Math.round(t/manifest.dtSeconds);}
         if(variant==='candidate')assert.equal(outside,0);
     }
-    assert.equal(r.escapedSteps,escaped);assert.equal(r.firstEscape,first);
+    assert.equal(r.escapedSteps,escaped);assert.equal(r.firstEscape,first);assert.equal(r.insideEscapedSteps,insideSteps);assert.equal(r.firstInsideEscape,firstInside);
     assert.equal(r.observedUntilMs,previous*1000);
-    if(variant==='baseline')assert.ok(escaped>0,'old-kernel failure retained');
+    if(variant==='baseline'){assert.ok(escaped>0,'old-kernel failure retained');assert.ok(insideSteps>0,'floor loss must occur inside the original footprint');}
     else if(mode==='drop'){assert.equal(r.lastEscapeStep,lastEscapeStep);assert.ok(lastEscapeStep<=manifest.compoundRecoveryStepsAllowed);assert.equal(r.colliderCount,9);assert.deepEqual(r.initialVelocity,[0,-20,0]);assert.equal(r.initialHeightM,.25);}else assert.equal(escaped,0,'candidate floor escape is forbidden');
+    if(mode==='drop'){assert.ok(r.groundPose.position.every((v,i)=>Number.isFinite(v)&&Math.abs(v-[0,-.01,0][i])<manifest.floorEscapeEpsilonM));assert.deepEqual(r.groundPose.rotation,[0,0,0,1]);}
     if(mode==='driven'||mode==='intact'){const [port,degrees,speed]=r.motorCommands[0]||[];assert.equal(port,'A');assert.ok(Math.abs(degrees+600)<2);assert.equal(speed,96);}
     if(mode==='held')assert.deepEqual(r.motorCommands,[]);
     if(mode==='driven'){assert.ok(r.observedUntilMs>=30000);assert.ok(r.maxMotorAngle>.01);}

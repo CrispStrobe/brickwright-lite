@@ -8,7 +8,7 @@ import {sha256} from './kernel-source.mjs';
 const candidateSha256=sha256(readFileSync(new URL('../../../../overlay/scratch-gui/src/lib/bw-sim/physics/jolt-core.js',import.meta.url)));
 const manifest=JSON.parse(readFileSync(new URL('./manifest.json',import.meta.url)));
 export function qualifyFloorContact(t) {
-    const started=performance.now();
+    const started=performance.now(), originals=[];
     for(const [variant,mode,cold] of [['baseline','drop',0],['candidate','drop',0],['baseline','driven',0],['candidate','driven',0],['candidate','intact',0],...manifest.coldStartsMs.map(ms=>['candidate','held',ms])]) {
         const remaining=manifest.wallLimitTotalMs-(performance.now()-started);
         assert.ok(remaining>0,'total qualification wall bound');
@@ -23,8 +23,9 @@ export function qualifyFloorContact(t) {
         assert.equal(child.status,0,child.stdout+'\n'+child.stderr);
         const records=child.stdout.split('\n').filter(line=>line.startsWith('FLOOR1436_RESULT '));
         assert.equal(records.length,1,'one original report per isolated process');
-        t.diagnostic(records[0]);
+        t.diagnostic(records[0]);originals.push(records[0]);
         const r=JSON.parse(records[0].slice('FLOOR1436_RESULT '.length));
+        assert.equal(r.schemaVersion,manifest.schemaVersion);
         assert.equal(r.kernel.candidateSha256,candidateSha256);
         assert.equal(r.kernel.effectiveSha256,variant==='baseline'?manifest.kernel.baselineSha256:candidateSha256);
         assert.ok(r.rows.length>1000,'nonvacuous fixed-step observation');
@@ -36,7 +37,8 @@ export function qualifyFloorContact(t) {
         }
         if(mode==='held')assert.deepEqual(r.motorCommands,[]);
         if(mode==='driven') {assert.ok(r.observedUntilMs>=30000);assert.ok(r.maxMotorAngle>.01,'actual motor motion');}
-        if(variant==='baseline') assert.ok(r.escapedSteps>0,'the exact old kernel must reproduce floor loss');
+        if(variant==='baseline') {assert.ok(r.escapedSteps>0,'the exact old kernel must reproduce floor loss');assert.ok(r.insideEscapedSteps>0,'the old kernel must lose ground while over its footprint');}
         else {if(mode==='drop'){assert.ok(r.lastEscapeStep<=manifest.compoundRecoveryStepsAllowed,'compound recovers within the predeclared 20-step bound');assert.equal(r.colliderCount,9);}else assert.equal(r.escapedSteps,manifest.sarrusEscapedStepsAllowed,'no dynamic body fully escapes the floor');assert.ok(r.rows.every(row=>row[3]===0),'candidate stays within the qualified floor footprint');}
     }
+    return originals;
 }

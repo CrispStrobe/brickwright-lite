@@ -53,8 +53,8 @@ export const LEGO_SPECULATIVE_CONTACT_M = 0.002;
  * sweeps a body that moves more than mLinearCastThreshold of its inner radius in a step, and a compound's
  * inner radius is its thinnest sub-shape (a plate: 1.6 mm), so a 500-part frame was swept against
  * everything near it nearly every step: 350–600 ms a step on real Technic sets (2026-10-20, 42099/42052,
- * docs/ROBOT-LAB-REAL-MODELS.md), 10–30 ms without. A body of many parts is thick as a whole and does not
- * tunnel at the speeds a model reaches; the brick that fell through a beam is one part.
+ * docs/ROBOT-LAB-REAL-MODELS.md), 10–30 ms without. Discrete compounds can cross thin obstacles; the
+ * generated world floor has native backing volume, while authored obstacles keep their geometry.
  */
 export const CCD_MAX_COLLIDERS = 8;
 export const LEGO_PENETRATION_SLOP_M = 0.0002;
@@ -122,10 +122,10 @@ const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 const boxConvexRadius = halfExtents => Math.min(0.0005, 0.25 * Math.min(...halfExtents));
 
 // FLOOR1436_GROUND_BEGIN
-/** The compiler's world floor is a surface, not an authored finite platform.
- * Keep its top, material and broad-phase extent, but make the negative half-space
- * solid so a large Discrete body cannot permanently escape through a thin slab.
- * Ordinary boxes and the bounded complex-body sweep policy remain unchanged.
+/** Keep the compiler floor's box contact surface and convex radius. Its native
+ * box extends down by the floor's width so a Discrete compound entering the
+ * old 20 mm slab still has an upward-facing contact instead of losing it.
+ * Authored boxes, the visible top and the bounded sweep policy stay unchanged.
  */
 const createBoxColliderShape = (J, body, col) => {
     const h = col.halfExtents;
@@ -134,14 +134,32 @@ const createBoxColliderShape = (J, body, col) => {
         body.position[0] === 0 && body.position[2] === 0 &&
         body.rotation.every((v, i) => v === (i === 3 ? 1 : 0)) &&
         h[1] === 0.01 && h[0] === 10 && h[2] === 10;
-    if (!generatedGround) return new J.BoxShape(new J.Vec3(...h), boxConvexRadius(h));
-    const normal = new J.Vec3(0, 1, 0);
-    const plane = new J.Plane(normal, -h[1]);
+    if (!generatedGround) return {
+        shape: new J.BoxShape(new J.Vec3(...h), boxConvexRadius(h)), releaseAfterBody: []
+    };
+    const half = new J.Vec3(h[0], h[0], h[2]);
+    const position = new J.Vec3(0, h[1] - h[0], 0);
+    const rotation = new J.Quat(0, 0, 0, 1);
+    const settings = new J.StaticCompoundShapeSettings();
     try {
-        return new J.PlaneShape(plane, null, h[0]);
+        settings.AddShape(position, rotation, new J.BoxShapeSettings(half, boxConvexRadius(h)), 0);
+        // One translated child becomes a RotatedTranslatedShape. Keep the
+        // settings/result alive until the body has taken its own reference,
+        // exactly as for the general compound branch below.
+        const result = settings.Create();
+        if (result.HasError()) {
+            const error = result.GetError();
+            result.Clear();
+            throw new Error(`ground shape creation failed: ${error}`);
+        }
+        return {shape: result.Get(), releaseAfterBody: [() => result.Clear(), settings]};
+    } catch (error) {
+        J.destroy(settings);
+        throw error;
     } finally {
-        J.destroy(plane);
-        J.destroy(normal);
+        J.destroy(half);
+        J.destroy(position);
+        J.destroy(rotation);
     }
 };
 // FLOOR1436_GROUND_END
@@ -513,7 +531,9 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
         if (b.colliders.length === 1 && !b.colliders[0].position && !b.colliders[0].rotation) {
             const col = b.colliders[0];
             if (col.shape === 'box') {
-                shape = createBoxColliderShape(J, b, col);
+                const created = createBoxColliderShape(J, b, col);
+                shape = created.shape;
+                releaseAfterBody = created.releaseAfterBody;
             } else if (col.shape === 'cylinder') {
                 const convexRadius = Math.min(0.0005, 0.25 * Math.min(col.halfHeight, col.radius));
                 shape = new J.CylinderShape(col.halfHeight, col.radius, convexRadius);

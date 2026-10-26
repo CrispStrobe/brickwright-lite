@@ -5,62 +5,66 @@ intact model's original program, crosses the thin generated floor and then
 falls freely. The shipped observe-only control avoids driving the collapse;
 it does not correct collision handling.
 
-The candidate changes only the compiler-generated, level, 20 m square ground
-collider. Its top remains at the original height, with the same friction and
-restitution, but Jolt represents the ground as a plane with a solid negative
-half-space. Authored platforms retain their box colliders. Complex bodies keep
-the existing continuous-sweep cutoff; solver settings, timesteps, motors,
-model geometry and programs are unchanged.
+The candidate keeps the compiler-generated ground's box contact surface,
+20 m square footprint, original top, material and convex radius. Its native
+box extends downward by the floor's width instead of ending after 20 mm.
+A single translated child preserves the logical body's origin. Authored
+platforms, solver settings, sweep cutoff, timesteps, model geometry and drive
+programs remain unchanged. This is a finite backing volume, not an infinite
+or calibrated ground model.
 
-Landing requires actual hosted qualification. A source check or a
-finite pose alone does not qualify ground contact. The fixture manifest binds
-the served models, original drive, observe-only program, licences and exact
-engine pin. Separate processes load the byte-exact retained old core and current candidate
-at the original module URL (preserving relative imports), without
-overwriting source files. The old kernel must reproduce floor escape; the
-candidate must prevent any dynamic body from passing entirely below the old
-slab during every observed fixed step. Bounds are conservative transformed
-collider AABBs, not corrected or clamped engine poses. The intact Sarrus keeps
-its existing travel, axis, phase and completion assertions. The held control
-also runs at requested cold starts of 0, 275 and 1000 ms through the unchanged
-direct-VM helper. Its existing frame clock quantizes cold-start timing.
+The first plane-at-top candidate is rejected: the RCX bumper-car test travelled
+63 mm against its unchanged requirement of more than 100 mm. The loaded-rack
+hold and Powered Up hub comparisons also failed their existing assertions.
+Those failures remain evidence; their assertions are not weakened. The box
+candidate must pass them and every other enabled exact-head check before landing.
 
-A separate nine-collider downward drop isolates the discrete complex-body floor
-interaction from the linkage. The old slab must lose it; the candidate must
-recover within the predeclared 20 fixed steps and remain inside the footprint.
-This deliberately fast diagnostic has a different recovery bound from the
-Sarrus, for which every fully escaped step is forbidden.
+The fixture manifest binds the served models, original drive, observe-only
+program, licences, SDK version and integrity. It reads the SDK URL from the
+existing canonical declaration in `scripts/integrate.mjs`; it performs no SDK
+fetch or dependency-pin change. The fetch-pinning census and mutation proof
+remain unchanged. A duplicated fixture URL made the first candidate's census
+red and is removed in favor of that single authoritative pin source.
 
-The full original drive is also applied to the single-chain model. A blocked
-drive can time out or stop early; its completion state is reported separately
-from the floor-safety observation. No timeout is relabelled program success.
-The driven safety horizon is at least 30 simulated seconds. Original failures
-must remain visible and no acceptance thresholds may be weakened after a run.
+Separate processes load the byte-exact retained old core and current candidate
+at the original module URL, preserving relative imports without overwriting
+source files. Eight actual hosted cases are required: old/candidate nine-collider
+fast drop, old/candidate driven single-chain, original intact Sarrus, and held
+controls at requested cold starts of 0, 275 and 1000 ms. The unchanged helper's
+frame clock quantizes cold-start timing. All original intact Sarrus assertions
+remain required, including motion, phase, axes, clearance and rollback.
 
-The Sarrus test entry invokes the fixture qualifier using its existing GUI
-dependency declaration. `test/bw-sim-floor-contact.test.mjs` checks source
-identities and geometry calculations without loading the engine. Hosted TAP
-diagnostics retain the fixed-step scalar series. The standalone
-`node scripts/verify-sim-floor-contact.mjs <retained-tap-file>` reader checks
-case identities, sequence completeness and floor-escape counts without
-importing the producer or replaying a guest. It audits the retained scalar
-series, not an independently reconstructed full pose trajectory. Run it from
-the frozen tested checkout so the recorded candidate hash is checked against
-that exact source. The actual motor API is observed and called unchanged;
-driven cases must request the original first target and held cases must not
-issue a drive. The installed dependency lock identity must match the pinned
-Jolt URL and integrity.
+Every fixed step records conservative transformed collider AABB bounds, without
+clamping engine poses. Candidate Sarrus bodies must stay within the footprint
+and none may pass wholly below the original slab. The deliberately fast compound
+drop has a separately predeclared 20-step recovery bound. The old kernel must
+show an escape while over the footprint. Its series remains finite and retained
+even if the failing model subsequently leaves the footprint; that later flight
+cannot manufacture the required in-footprint failure.
 
-Jolt's plane is mathematically infinite, but its broad-phase extent is bounded.
-The cases qualify contact only within the original floor footprint. Plane
-edges and a deliberate drive off the finite mat are not qualified as equivalent
-to the former box. See the [Jolt PlaneShape documentation](https://jrouwe.github.io/JoltPhysics/class_plane_shape.html).
-This change makes no calibration, hardware, general solver-stability or
-physical-accuracy claim. Issue #1435's separate resting-frame creep remains
-outside this lane. If the driven linkage still loses contact, retain that
-failure and investigate solver/contact behavior before proposing another fix.
+The original drive remains unchanged on the single-chain model. A blocked drive
+can time out or stop early; its completion state is separate from floor safety.
+No timeout is called program success. The driven observation lasts at least
+30 simulated seconds. The real motor API is observed and called unchanged;
+driven cases must request the original first target, held cases must not drive,
+and the intact motion judge prevents a muted-motor false pass.
 
-The fixture reads the canonical SDK URL from `scripts/integrate.mjs` instead
-of declaring a second download site. Its version and integrity remain explicit
-in the manifest; the fixture performs no SDK fetch. The fetch-pinning census
-and its mutation proof remain unchanged.
+The Sarrus test invokes the fixture qualifier using its existing GUI dependency
+declaration, then executes the standalone scalar reader on the original reports.
+It also requires that reader to reject a missing case. Hosted TAP retains the
+full scalar series. After metadata admission, the same reader can audit the
+retained TAP without producer imports or an engine replay:
+
+`node scripts/verify-sim-floor-contact.mjs <retained-tap-file>`
+
+Run it from the frozen tested checkout to bind the reported candidate hash to
+that exact source. This audits the retained scalar series, not an independently
+reconstructed full pose trajectory. Source checks and a finite pose alone do
+not qualify contact. Real engine cases run in hosted CI; local pure tests do
+not establish physics acceptance.
+
+Finite backing-depth and footprint limits remain explicit. No general
+solver-stability, hardware, calibration, performance or physical-accuracy claim
+is made. Issue #1435's separate resting-frame creep remains outside this lane.
+A red actual case keeps the source unmerged and must be diagnosed without
+changing its acceptance thresholds.

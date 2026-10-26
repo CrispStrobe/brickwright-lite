@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {runInNewContext} from 'node:vm';
 import {kernelSource,sha256} from './fixtures/bw-sim/floor-contact/kernel-source.mjs';
-import {bodyBounds,rotate} from './fixtures/bw-sim/floor-contact/bounds.mjs';
+import {bodyBounds,rotate,floorObservation} from './fixtures/bw-sim/floor-contact/bounds.mjs';
 const root=new URL('./fixtures/bw-sim/floor-contact/',import.meta.url);
 const manifest=JSON.parse(readFileSync(new URL('manifest.json',root)));
 test('Floor contact: exact public served inputs and kernel identities',()=>{
@@ -48,20 +48,40 @@ test('Floor contact: the control removes only the nine passive-chain parts',()=>
     ]);
     for(const [id,line] of single)assert.equal(line,intact.get(id),'remaining geometry unchanged: '+id);
 });
-test('Floor contact: actual shape factory preserves authored boxes and plane height',()=>{
+test('Floor contact: native ground keeps box contacts and backs the thin surface',()=>{
     const source=readFileSync(new URL('../overlay/scratch-gui/src/lib/bw-sim/physics/jolt-core.js',import.meta.url),'utf8');
     const block=source.match(/\/\/ FLOOR1436_GROUND_BEGIN\n([\s\S]*?)\/\/ FLOOR1436_GROUND_END/)[1];
     const factory=runInNewContext(block+'\ncreateBoxColliderShape',{boxConvexRadius:h=>Math.min(.0005,.25*Math.min(...h))});
-    const destroyed=[];
+    const destroyed=[];let reject=false,cleared=0;
     class Vec3{constructor(...v){this.v=v;}}
-    class Plane{constructor(normal,constant){this.normal=normal;this.constant=constant;}}
-    class PlaneShape{constructor(plane,material,extent){this.plane=plane;this.material=material;this.extent=extent;}}
+    class Quat{constructor(...v){this.v=v;}}
     class BoxShape{constructor(half,convex){this.half=half;this.convex=convex;}}
-    const J={Vec3,Plane,PlaneShape,BoxShape,destroy:v=>destroyed.push(v)};
+    class BoxShapeSettings extends BoxShape{}
+    class StaticCompoundShapeSettings{
+        constructor(){this.children=[];}
+        AddShape(position,rotation,shape,userData){this.children.push({position,rotation,shape,userData});}
+        Create(){return {HasError:()=>reject,GetError:()=>'deliberate create error',Clear:()=>cleared++,Get:()=>this.children};}
+    }
+    const J={Vec3,Quat,BoxShape,BoxShapeSettings,StaticCompoundShapeSettings,destroy:v=>destroyed.push(v)};
     const body={id:'ground',motion:'static',parts:[],colliders:[{}],position:[0,-.01,0],rotation:[0,0,0,1]},col={halfExtents:[10,.01,10]};
-    const shape=factory(J,body,col);assert.ok(shape instanceof PlaneShape);
-    assert.deepEqual(shape.plane.normal.v,[0,1,0]);assert.equal(shape.plane.constant,-.01);
-    assert.equal(shape.extent,10);assert.deepEqual(destroyed,[shape.plane,shape.plane.normal]);
-    for(const changed of [{...body,id:'platform'},{...body,parts:['plate']},{...body,motion:'dynamic'},{...body,rotation:[0,0,1,0]}])assert.ok(factory(J,changed,col) instanceof BoxShape);
-    assert.ok(factory(J,body,{halfExtents:[5,.01,5]}) instanceof BoxShape);
+    const made=factory(J,body,col);assert.equal(made.shape.length,1);
+    const child=made.shape[0];assert.ok(child.shape instanceof BoxShapeSettings);
+    assert.deepEqual(child.shape.half.v,[10,10,10]);assert.equal(child.shape.convex,.0005);
+    assert.ok(Math.abs(child.position.v[1]+child.shape.half.v[1]-.01)<1e-12,'top height retained');
+    assert.ok(child.position.v[1]-child.shape.half.v[1]<-19,'native box backs the slab');
+    assert.deepEqual(child.rotation.v,[0,0,0,1]);assert.equal(child.userData,0);
+    assert.equal(cleared,0,'result/settings stay alive until body ownership');
+    made.releaseAfterBody[0]();J.destroy(made.releaseAfterBody[1]);assert.equal(cleared,1);
+    for(const changed of [{...body,id:'platform'},{...body,parts:['plate']},{...body,motion:'dynamic'},{...body,rotation:[0,0,1,0]}])assert.ok(factory(J,changed,col).shape instanceof BoxShape);
+    assert.ok(factory(J,body,{halfExtents:[5,.01,5]}).shape instanceof BoxShape);
+    reject=true;assert.throws(()=>factory(J,body,col),/deliberate create error/);assert.equal(cleared,2);
+    assert.equal(destroyed.filter(x=>x instanceof StaticCompoundShapeSettings).length,2,'both successful and failed settings released once');
+});
+test('Floor contact: a failed baseline can leave the footprint without erasing its series',()=>{
+    const bodies=[{id:'a',colliders:[{shape:'box',halfExtents:[.005,.005,.005]}]}];
+    const floor={half:10,bottom:-.02},pose={position:[20,-1,0],rotation:[0,0,0,1]};
+    const outside=floorObservation(bodies,()=>pose,floor,1e-6);
+    assert.ok(Number.isFinite(outside[0]));assert.deepEqual(outside.slice(1),[0,1,0]);
+    const inside=floorObservation(bodies,()=>({...pose,position:[0,-1,0]}),floor,1e-6);
+    assert.deepEqual(inside.slice(1),[0,0,1],'in-footprint escape is separately witnessed');
 });

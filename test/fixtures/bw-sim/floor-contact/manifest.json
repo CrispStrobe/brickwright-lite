@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "issue": 1436,
   "sourceBaselineCommit": "a7f688940f96ac89771dfc533ea17dab635703b5",
   "kernel": {

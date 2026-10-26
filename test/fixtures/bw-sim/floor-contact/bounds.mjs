@@ -23,3 +23,19 @@ export function bodyBounds(body, pose) {
     }
     return {lo,hi};
 }
+
+/** Keep finite whole-scene evidence even after a failing baseline leaves the
+ * footprint. Separately count escapes that happened while still over the floor.
+ */
+export function floorObservation(bodies, poseOf, floor, epsilon) {
+    let minTop=Infinity,worst=-1,outside=0,insideEscaped=0;
+    for(let i=0;i<bodies.length;i++) {
+        const bounds=bodyBounds(bodies[i],poseOf(bodies[i].id));
+        const off=bounds.lo[0]<-floor.half||bounds.hi[0]>floor.half||bounds.lo[2]<-floor.half||bounds.hi[2]>floor.half;
+        if(off)outside++;
+        else if(bounds.hi[1]<floor.bottom-epsilon)insideEscaped++;
+        if(bounds.hi[1]<minTop){minTop=bounds.hi[1];worst=i;}
+    }
+    if(!Number.isFinite(minTop))throw Error('No finite dynamic collider bounds');
+    return [minTop,worst,outside,insideEscaped];
+}
