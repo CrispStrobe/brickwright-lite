@@ -35,7 +35,9 @@ field orders, statuses, sizes and behaviours. No code, table, comment or text of
 the VM is written in its own structure (plain-data state, JS arrays for queues and for each array's storage,
 one place type for "where a value lives"). The sources were cloned to a scratch directory and deleted after.
 No LEGO PDF and no third-party file is committed. NBC was not read; it was run (hosted), and its output files
-are the fixtures. nxt-python, NXOS and other GPL sources were not consulted for the VM.
+are the fixtures. For the file calls, the NXC public argument declarations were also read at
+`CrispStrobe/legacy-lego-compiler` revision `f2a7723`; none of their implementation is copied here.
+nxt-python, NXOS and other GPL sources were not consulted for the VM.
 
 All FW references are `AT91SAM7S256/Source/<file>:<line>` at `495cc1d`.
 
@@ -126,6 +128,7 @@ The table is 48 calls (`c_cmd.h:30`; order `c_cmd.c:159–211`). Implemented, wi
 
 | Id | Call | Here |
 |---|---|---|
+| 0–8 | FileOpenRead / Write / Append, Read / Write / Close, ResolveHandle, Rename, Delete | virtual flash shared with telegram uploads; loader status words and explicit byte counts |
 | 9 | SoundPlayFile | the brick's sound event |
 | 10 | SoundPlayTone | the brick's tone (frequency, ms) |
 | 11, 12 | SoundGetState / SetState | tone running or idle; STOP stops it |
@@ -137,8 +140,9 @@ The table is 48 calls (`c_cmd.h:30`; order `c_cmd.c:159–211`). Implemented, wi
 | 25 | GetStartTick | the program's start tick |
 | 26, 27 | MessageWrite / MessageRead | the brick's 20 × 5 queues (the same the direct commands reach); > 59 bytes ERR_INVALID_SIZE (`:2965–3104`) |
 | 31 | KeepAlive | the sleep limit, ms |
+| 47 | ListFiles | an array of matching NUL-terminated names; empty matches succeed |
 
-Not implemented (the program stops with **UNIMPLEMENTED_SYSCALL** naming the call): files (0–8, 47), DrawPicture
+Not implemented (the program stops with **UNIMPLEMENTED_SYSCALL** naming the call): DrawPicture
 (18), Bluetooth (28–30, 35, 36), IOMapRead/Write (32, 33), ColorSensorRead (34), RS-485 (37–39), Read/WriteSemData
 (40, 41), calibration (42, 43), datalog (44, 45), SetSleepTimeout (46). An id ≥ 48 is the firmware's ERR_INSTR.
 
@@ -182,7 +186,7 @@ templates and actual Virtual NXT download/start/completion. `FlattenVar` preserv
 the declared type; the compiler's numeric `Flatten` wrapper promotes its argument
 to a long, so its four-byte result does not fit a short template.
 
-## §Files (system commands; nxt-files.js)
+## §Files (system commands and program calls; nxt-files.js)
 
 Layouts (FW `c_comm.c:489–783`; PF §System): OPEN WRITE 0x81 (name 20, size ULONG) → status, handle; WRITE 0x83
 (handle, data) → status, handle, count UWORD; CLOSE 0x84 → status, handle; DELETE 0x85 (name) → status, name 20;
@@ -197,6 +201,44 @@ running program and open files cannot be deleted (`:691–705`, `:1128–1143`).
 Ours: user flash 64 KB (GET DEVICE INFO reports what is free); READ answers at most 58 bytes (what fits a 64-byte
 telegram — the firmware's Bluetooth path goes into an extended mode instead); a telegram too short for its system
 command is UNDEFINED ERROR (0x8A); FIND matches name and extension each exactly or `*`.
+
+Program calls follow the argument clusters in FW `c_cmd.c:6442–6698` and `:7867–7930`.
+Calls 0–8 return the loader status in the high byte of a UWORD: EOF is `0x8500`,
+for example. ListFiles returns a signed-byte VM status instead. Read-open failure
+leaves Length unchanged; append-open failure returns zero remaining capacity.
+FileRead allocates the requested count plus one before reading, returns the actual
+count, and writes a NUL after those bytes while retaining the requested allocation.
+An invalid read handle leaves the requested count unchanged. FileWrite uses the
+explicit count, including embedded zero bytes, and returns zero bytes for an invalid
+handle. Requests beyond a buffer or the existing 32 KB VM pool are refused before
+I/O; this does not reproduce unsafe firmware pointer or 16-bit allocation wraparound.
+
+FileOpenWrite creates a data file with a reserved capacity and a committed length
+(FW `d_loader.c:326–448`, `:557–690`, `:1175–1230`). Closing a partial data write
+keeps its bytes and reservation; append uses the remaining capacity. Fixed telegram
+uploads retain their complete-without-overflow requirement. Open readers capture
+their length, so a later append does not extend an existing reader. The shared
+virtual store has 16 handles, four write buffers, 127 directory entries and 64 KB
+of logical capacity; it does not reproduce physical flash pages or wear.
+
+ResolveHandle sees program-opened handles only. Explicit close removes its entry;
+normal completion, STOPPROGRAM, replacement or VM error crops and closes the
+program's remaining entries (FW `c_cmd.c:1916–1936`, `d_loader.c:1448–1475`).
+Unrelated telegram handles survive. JSON snapshots carry these entries, pending
+writes and capacities. ListFiles preserves newest-directory-entry order; rename
+retains its slot. Existing telegram FIND retains its deterministic sorted order.
+Snapshots predating the directory-order field derive an order from their stored
+keys; the original firmware directory history is unavailable. The virtual loader
+does not reserve an extra handle for the active RXE image, so its numeric handle
+availability is not an exact physical-loader trace. Running images remain protected
+against rename/delete.
+
+The owned `file-syscalls.nxc` fixture was compiled once through the hosted compiler;
+tests read the committed executable without compiling or networking. Focused controls
+cover binary reads above the telegram limit, append, word errors, resolve, rename,
+listing, stop/normal cleanup and snapshot completion. Hosted affected qualification
+is required before landing; these controls do not establish physical firmware or
+general NXC compatibility.
 
 STARTPROGRAM (FW `c_cmd.c:398–417`; PF): a missing file is 0xC0; an existing one is accepted (status 0) and
 activated — a file the VM refuses never runs (`hub.s.lastProgram`, a `program-refused` event). A running program is

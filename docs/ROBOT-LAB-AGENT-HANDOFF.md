@@ -125,8 +125,11 @@ rules above.
   no echo (we use 255), echoes 1–7, the interval default, whether off mode keeps the last
   reading; firmware timing after SETINPUTMODE and for I²C transactions (we complete at
   once); reply to an unknown system command (we answer 0xBE).
-- NXT `.rxe` VM (NXT-RXE-VM.md): FLATTEN/UNFLATTEN unimplemented; syscalls for files,
-  Bluetooth, IOMapRead/Write, colour sensor, datalog, pictures are refused by name. Open
+- NXT `.rxe` VM (NXT-RXE-VM.md): FLATTEN/UNFLATTEN and standard virtual-file calls
+  (0–8, 47) are implemented; Bluetooth, IOMapRead/Write, colour sensor, datalog and
+  pictures remain refused by name. File calls share bounded virtual flash, with
+  explicit binary extents and program-owned cleanup; physical flash layout and an
+  active-image loader handle are not modeled. Open
   questions to settle on real hardware or from the firmware: NXC `Float` leaves BRAKE set
   (does the brick coast?); 2-D array element assignment is a no-op in our reading of 1.29.
 - EV3 `.rbf` VM (EV3-RBF-VM.md): COM_*, MAILBOX_*, other FILE subcommands, PROBE, DO,

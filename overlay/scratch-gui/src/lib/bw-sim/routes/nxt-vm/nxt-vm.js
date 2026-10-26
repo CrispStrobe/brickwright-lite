@@ -245,6 +245,16 @@ const freshIn = () => ({type: 0, mode: 0, invalid: 1, oldType: 0, passes: 0});
  * @property {Function} [messageWrite] (queue, bytes) => status byte
  * @property {Function} [messageRead] (queue, remove) => {status, message}
  * @property {Function} [keepAlive] () => ms
+ * @property {Function} [fileOpenRead] (name) => {status, handle, size}
+ * @property {Function} [fileOpenWrite] (name, capacity) => {status, handle}
+ * @property {Function} [fileOpenAppend] (name) => {status, handle, size}
+ * @property {Function} [fileRead] (handle, count) => {status, handle, data}
+ * @property {Function} [fileWrite] (handle, bytes) => {status, handle, count}
+ * @property {Function} [fileClose] (handle) => {status, handle}
+ * @property {Function} [fileResolveHandle] (name) => {status, handle, write?}
+ * @property {Function} [fileRename] (oldName, newName) => status byte
+ * @property {Function} [fileDelete] (name) => status byte
+ * @property {Function} [fileList] (pattern) => matching names
  */
 
 export class NxtVm {
@@ -646,6 +656,43 @@ export class NxtVm {
         for (let k = 0; k < text.length; k++) bytes.push(text.charCodeAt(k) & 0xff);
         bytes.push(0);
         this._setBytes(id, bytes);
+    }
+
+    /** FileRead reserves the requested extent before touching a loader cursor. */
+    _fileReadBuffer (id, count) {
+        this._byteArray(id);
+        if (!Number.isSafeInteger(count) || count < 0 || count >= POOL_BYTES) fail('ERR_MEM', 'file read exceeds the memory pool');
+        return this.s.arrays[this._resize(id, count + 1)].data;
+    }
+
+    _fileWriteBytes (id, count) {
+        this._byteArray(id);
+        const bytes = this._bytes(id);
+        if (!Number.isSafeInteger(count) || count < 0 || count > bytes.length) fail('ERR_ARG', 'file write exceeds its buffer');
+        return bytes.slice(0, count);
+    }
+
+    /** ListFiles fills an array of strings; a failed nested allocation leaves the destination intact. */
+    _fileListNames (id, names) {
+        if (this._type(id) !== TC.ARRAY || this._type(id + 1) !== TC.ARRAY || this._type(id + 2) !== TC.UBYTE) {
+            fail('ERR_ARG', 'ListFiles requires an array of strings');
+        }
+        const savedMem = this.s.mem.slice();
+        const savedArrays = this.s.arrays.map(a => a ? {...a, data: a.data.slice()} : null);
+        try {
+            const root = this._resize(id, names.length);
+            const a = this.s.arrays[root];
+            for (let k = 0; k < names.length; k++) {
+                const child = this._resize(id + 1, names[k].length + 1, root, k * a.elemSize);
+                const bytes = this.s.arrays[child].data;
+                for (let n = 0; n < names[k].length; n++) bytes[n] = names[k].charCodeAt(n) & 0xff;
+                bytes[names[k].length] = 0;
+            }
+        } catch (error) {
+            this.s.mem = savedMem;
+            this.s.arrays = savedArrays;
+            throw error;
+        }
     }
 
     /** Ordered raw storage ranges: array elements and cluster members, without padding or shape tags. */
