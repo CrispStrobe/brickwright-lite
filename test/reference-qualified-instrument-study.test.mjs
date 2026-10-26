@@ -166,6 +166,25 @@ test('authored intent distinguishes candidates, precision capture designs and a 
     assert.throws(()=>{manifest.cases[0].tolerances.V.absolute=100;},TypeError);
     assert.ok(manifest.cases.every(c=>c.rights.includes('Independently authored')&&!c.qualifiesPhysicalCalibration));
 });
+test('reference cards actually match the declared thermal voltage in admitted ngspice42',()=>{
+    const thermalCases=manifest.cases.filter(c=>c.reference?.thermalVolts!==undefined);
+    assert.equal(thermalCases.length,16,'all DC reference cases have an explicit thermal law');
+    const check=c=>{
+        const card=c.reference.cards.find(x=>/^\.options TEMP=/.test(x));
+        assert.ok(card,'reference temperature card is present');
+        const m=/^\.options TEMP=([-+0-9.e]+) TNOM=([-+0-9.e]+)$/.exec(card);
+        assert.ok(m,'both temperatures are explicit');
+        const temp=Number(m[1]);assert.equal(temp,Number(m[2]),'no IS temperature rescaling');
+        // Independent version42 constants; do not import the producer's conversion.
+        const actualVt=(temp+273.15)*1.38064852e-23/1.6021766208e-19;
+        assert.ok(Math.abs(actualVt-c.reference.thermalVolts)<=1e-17,'admitted ngspice42 thermal voltage differs');
+    };
+    thermalCases.forEach(check);
+    const old=structuredClone(thermalCases[0]);
+    old.reference.cards=old.reference.cards.map(x=>/^\.options TEMP=/.test(x)
+        ?'.options TEMP=26.826793442075882 TNOM=26.826793442075882':x);
+    assert.throws(()=>check(old),/thermal voltage differs/,'modern-SI conversion must not pass the version42 contract');
+});
 test('topology invariant ignores names, values, placement and passive lead reversal',()=>{
     const c=createCases()[0];const parts=c.graph;
     const rename=parts.map((p,i)=>({...p,id:'OTHER'+i,nodes:p.nodes.map(n=>n==='0'?'0':'renamed-'+n),params:{ignored:i}}));

@@ -179,3 +179,10 @@ passed under Node 22 without skips, including wrong-refusal-code and invalid
 rate/clock negatives. All 11 gate-audit controls passed with unchanged baselines.
 No v2 numerical experiment, package pin change or supplier implementation is
 claimed by those source-only results.
+
+Held-v2 reference admission: derive equal TEMP/TNOM from the actual ngspice42
+source constants, not revised SI constants. The old conversion was about8.77nV
+below the declared25.85mV thermal law. A new source control checks all16DC decks
+and rejects that old conversion. This is an independent preselection conditions
+correction, not a solver-observation fit; the already-matched supplier test's
+separate numerical failure remains unresolved. No v2 run/pin/variable selected.

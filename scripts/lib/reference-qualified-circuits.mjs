@@ -62,7 +62,12 @@ const I = (id,a,b,i) => component(id,'isource',[a,b],{amps:-i},id+' '+a+' '+b+' 
 const D = (id,a,b) => component(id,'diode',[a,b],{model:'shockley',is:1e-12,n:1,rs:0},id+' '+a+' '+b+' DCORE');
 const Q = (id,c,b,e) => component(id,'npn',[c,b,e],{model:'shockley',is:1e-15,beta:100,br:1,n:1,rb:0,rc:0},id+' '+c+' '+b+' '+e+' QCORE');
 const E = (id,p,n,ip,im,gain) => component(id,'vcvs',[p,n,ip,im],{gain},id+' '+p+' '+n+' '+ip+' '+im+' '+gain);
-const thermal = '.options TEMP=26.826793442075882 TNOM=26.826793442075882';
+// Admitted ngspice42 uses these constants, rather than the revised SI values:
+// https://github.com/imr/ngspice/blob/ngspice-42/src/include/ngspice/const.h
+// Derive TEMP and TNOM before observations; equal values preserve authored IS.
+const ngspice42KOverQ = 1.38064852e-23 / 1.6021766208e-19;
+const referenceTempC = .02585 / ngspice42KOverQ - 273.15;
+const thermal = `.options TEMP=${referenceTempC} TNOM=${referenceTempC}`;
 const modelCards = ['.model DCORE D(IS=1e-12 N=1 RS=0)',
     '.model QCORE NPN(IS=1e-15 BF=100 BR=1 NF=1 NR=1 RB=0 RC=0)'];
 const deck = cards => '* Independently authored teaching circuit; BSD-3-Clause\n'+cards.join('\n')+'\n.end\n';

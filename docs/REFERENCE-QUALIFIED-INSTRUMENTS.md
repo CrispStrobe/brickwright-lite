@@ -29,6 +29,16 @@ and requires the exact named refusal exit 2. It has a distinct, unselected study
 identity; the original v1 ref is never reused. Its supplier pin/domain admission
 is still pending the separately claimed junction-reachability repair. **Do not
 select this provisional v2 plan before that qualified package adoption.**
+The forward reference admission also derives TEMP and TNOM from the admitted
+[ngspice 42 constants](https://github.com/imr/ngspice/blob/ngspice-42/src/include/ngspice/const.h).
+The earlier modern-SI conversion produced a reference thermal voltage about
+8.77 nV below the declared 25.85 mV. Version42 requires 26.826895261366076 °C
+for that declared law; equal TEMP/TNOM preserves the authored saturation currents.
+A source control checks every DC reference card and rejects the old conversion.
+This corrects reference conditions before selection, without changing numerical
+bounds or reinterpreting v1 results. It does not explain the supplier's separate
+tail-pair failure: that test already uses the version42-matched temperature.
+
 No v2 numerical result is claimed, and source/mock controls do not supply one.
 
 ## Frozen candidate scope
