@@ -12,6 +12,59 @@ import {ordinarySceneClockNumberCalls} from './ordinary-scene-clock-number-sourc
 const primitive=new Set(['Number','String','Boolean','Null','Undefined']);
 const metadata=new Set(['originalBody','parameterDefaults','paramTypes','typeParameters','returnType','assertedType','bwProcedureConstraintSource','sourceReferenceDeclarations','sourceCallableDeclarations','sourceScalarDeclarations']);
 
+// Use ORIGINAL operations for origin observations, before result-only Number
+// projections. Only syntax-owned closed addition calls become native +. Their
+// inert declarations are omitted in this PRIVATE view after every reference
+// was accounted for; actual emitted source and operand evaluations stay intact.
+function imageOriginOperationView(program,syntax) {
+    if(!syntax.current())throw new Error('Image origin requires current source');
+    const declarations=new Set(),calls=new Set(),mapped=new WeakMap(),active=new WeakSet();
+    for(const helper of syntax.helpers.values()){
+        declarations.add(helper.declaration);for(const call of helper.calls)calls.add(call);
+    }
+    const clone=value=>{
+        if(typeof value==='function')throw new Error('Image origin requires source data');
+        if(!value||typeof value!=='object')return value;
+        if(active.has(value))throw new Error('Image origin requires acyclic source');
+        if(mapped.has(value))return mapped.get(value);
+        const proto=Object.getPrototypeOf(value);
+        if(proto!==Object.prototype&&proto!==Array.prototype&&proto!==null)throw new Error('Image origin requires plain source');
+        active.add(value);let copy;
+        if(calls.has(value)){
+            copy={type:'Binary',op:'+',left:clone(value.args[0]),right:clone(value.args[1])};
+            if(value.parenthesized===true)copy.parenthesized=true;
+        }else if(Array.isArray(value)){
+            const length=Object.getOwnPropertyDescriptor(value,'length');
+            if(!length||!Object.hasOwn(length,'value')||!Number.isSafeInteger(length.value)||length.value>100000)throw new Error('Image origin requires bounded arrays');
+            copy=[];let index=0;
+            for(let i=0;i<length.value;i++){
+                const row=Object.getOwnPropertyDescriptor(value,String(i));
+                if(!row||!Object.hasOwn(row,'value'))throw new Error('Image origin requires dense data arrays');
+                if(value===program.body&&declarations.has(row.value))continue;
+                Object.defineProperty(copy,String(index++),{...row,value:clone(row.value)});
+            }
+            Object.defineProperty(copy,'length',{...length,value:index});
+            for(const key of Reflect.ownKeys(value)){
+                if(key==='length'||typeof key==='string'&&/^(?:0|[1-9][0-9]*)$/.test(key))continue;
+                const row=Object.getOwnPropertyDescriptor(value,key);
+                if(typeof key!=='string'||!row||!Object.hasOwn(row,'value'))throw new Error('Image origin requires data metadata');
+                Object.defineProperty(copy,key,{...row,value:clone(row.value)});
+            }
+        }else{
+            copy=Object.create(proto);
+            for(const key of Reflect.ownKeys(value)){
+                const row=Object.getOwnPropertyDescriptor(value,key);
+                if(typeof key!=='string'||!row||!Object.hasOwn(row,'value'))throw new Error('Image origin requires data properties');
+                Object.defineProperty(copy,key,{...row,value:clone(row.value)});
+            }
+        }
+        active.delete(value);mapped.set(value,copy);return copy;
+    };
+    const model=clone(program);
+    if(!syntax.current())throw new Error('Image origin source changed during projection');
+    return {program:model,modelOf:node=>mapped.get(node),current:syntax.current};
+}
+
 // This is a separate flat-native-coercion view. In particular it never changes
 // named-reference element/presence authority or the occurrence export profile.
 // The helper's original argument nodes remain the queried expressions. Only
@@ -20,6 +73,19 @@ const metadata=new Set(['originalBody','parameterDefaults','paramTypes','typePar
 // avoids treating their own known join as a foreign escape without inventing an Array-dependent primitive result. Primitive-only additions
 // retain their actual value flow, including nested numeric/text operations.
 export function inspectNativeArrayBinaryDomains(program,profile=GENERATED_HELPER_PROFILES.ordinary) {
+    return inspectDomains(program,profile,false);
+}
+
+// Export alone constructs a candidate join body to decide whether it is
+// needed. An Image may select the ordinary emitted + body there. Importing an
+// actual authored join body must instead preserve its Image.join exception.
+// Keep the selection mode lexical: source metadata/options cannot enable it
+// in lowerNativeArrayBinaryHelpers.
+export function inspectNativeAdditionExportDomains(program,profile=GENERATED_HELPER_PROFILES.ordinary) {
+    return inspectDomains(program,profile,true);
+}
+
+function inspectDomains(program,profile,ordinaryExportSelection) {
     // Capture original own/default metadata before new proof traversal or any
     // prepared view can drop hidden parameter-array properties. Its refusal is
     // only absence of this new fact; existing producer paths remain independent.
@@ -83,6 +149,7 @@ export function inspectNativeArrayBinaryDomains(program,profile=GENERATED_HELPER
     const classView=nativeClassScalarView(named.program,profile);
     const bindings=inspectGeneratedHelperBindings(classView.program,profile);
     let closureResults=null,closureLive=true,imageResults=null,imageLive=true;
+    let imageOrigins=null,imageOriginView=null,imageOriginUsed=false,imageOriginLive=true;
     let operationUsed=false,operationLive=true,classResultUsed=false,classResultLive=true;const operationAbsences=[];
     const closureNormalTokens=new Set(),imageNormalTokens=new Set();
     const current=()=>{
@@ -92,11 +159,12 @@ export function inspectNativeArrayBinaryDomains(program,profile=GENERATED_HELPER
             if(closureNormalTokens.size&&(!now||!closureResults.current()))closureLive=false;
             if(imageNormalTokens.size&&(!now||!imageResults.current()))imageLive=false;
             if(recursiveNormalTokens.size&&(!now||!recursiveResults.current()))recursiveLive=false;
+            if(imageOriginUsed&&(!now||!imageOriginView.current()||!imageOrigins.current()))imageOriginLive=false;
             const valid=now&&(!closureNormalTokens.size||closureLive)&&(!imageNormalTokens.size||imageLive)&&(!recursiveNormalTokens.size||recursiveLive);
             if(operationUsed&&(!valid||!operationAbsences.every(({object,key})=>!Object.hasOwn(object,key)&&!(key in object))))operationLive=false;
             if(classResultUsed&&!valid)classResultLive=false;
-            return valid&&(!operationUsed||operationLive)&&(!classResultUsed||classResultLive);
-        }catch(error){if(operationUsed)operationLive=false;if(classResultUsed)classResultLive=false;throw error;}
+            return valid&&(!operationUsed||operationLive)&&(!classResultUsed||classResultLive)&&(!imageOriginUsed||imageOriginLive);
+        }catch(error){if(operationUsed)operationLive=false;if(classResultUsed)classResultLive=false;if(imageOriginUsed)imageOriginLive=false;throw error;}
     };
     const domainHelpers=[...helpers.values()].map(helper=>({...helper,calls:[]}));
     const observed=new Set(),provedHelperResults=new WeakSet();
@@ -487,6 +555,32 @@ export function inspectNativeArrayBinaryDomains(program,profile=GENERATED_HELPER
             (classReceiverReady(test.callee.object)||classView.hasOwnedReceiverResult?.(node)===true)&&test.args.every(classArgumentReady);
         return ready&&classView.hasNormalPrimitiveResult(node);
     };
+    // Query an independent execution of ORIGINAL operations. The ordinary
+    // producer view contains type-only zero projections and cannot establish
+    // which branch or Image allocation the source actually observes.
+    const imageAt=(call,position)=>{
+        try{
+            if(!imageOrigins){
+                imageOriginView=imageOriginOperationView(program,syntax);
+                imageOrigins=imagePixelNormalResults(imageOriginView.program,profile);
+            }
+            const original=call.original.originalCall.args[position];
+            const node=imageOriginView.modelOf(original);
+            return !!node&&typeof imageOrigins.isImageValue==='function'&&
+                imageOrigins.isImageValue(node)&&imageOriginView.current()&&imageOrigins.current();
+        }catch{return false;}
+    };
+    const imageFamilies=new Map();
+    const imageOnlyFamily=helper=>{
+        if(imageFamilies.has(helper))return imageFamilies.get(helper);
+        // The emitted helper is shared by every actual caller. Selecting its
+        // ordinary body for one Image call must never change an Array call.
+        const safe=helper.calls.every(call=>call.args.every((arg,position)=>{
+            if(provedHelperResults.has(arg)||primitiveValue(arg)||capturedScalarIdentifier(arg))return true;
+            return imageAt(call,position);
+        }));
+        imageFamilies.set(helper,safe);return safe;
+    };
     const allTokens=new Set(),arrayHelpers=new Set();
     for(const helper of domainHelpers)for(const call of helper.calls)for(let position=0;position<call.args.length;position++){
         const arg=call.args[position];
@@ -499,11 +593,16 @@ export function inspectNativeArrayBinaryDomains(program,profile=GENERATED_HELPER
         // captured Array initialization is inferred through this edge.
         if(provedHelperResults.has(arg))continue;
         const found=types(arg);
+        // This pointwise executed origin is independent of nominal graph tags.
+        // A wrapped frame index can remain Opaque in the general graph while
+        // every actual observation here is an initialized owned Image.
+        const ownedImage=ordinaryExportSelection&&!primitiveValue(arg)&&!capturedScalarIdentifier(arg)&&
+            imageOnlyFamily(helper)&&imageAt(call,position);
         // Preserve the original short circuit exactly. These locals record
         // ONLY predicates that this invocation actually evaluated.
         let initialization='NOT_EVALUATED',capture='NOT_EVALUATED',domain='NOT_EVALUATED';
-        const refused=!found.size||!(initialization=initialized(arg))&&!(capture=capturedScalarIdentifier(arg))||
-            (domain=[...found].some(type=>!primitive.has(type)&&type?.kind!=='Array'));
+        const refused=!ownedImage&&(!found.size||!(initialization=initialized(arg))&&!(capture=capturedScalarIdentifier(arg))||
+            (domain=[...found].some(type=>!primitive.has(type)&&type?.kind!=='Array')));
         // Existing successful paths remain independent of the new profile.
         if(refused&&normalPrimitiveOperation(arg)){operationUsed=true;continue;}
         if(refused&&normalPrimitiveClass(arg)){classResultUsed=true;continue;}
@@ -526,6 +625,7 @@ export function inspectNativeArrayBinaryDomains(program,profile=GENERATED_HELPER
             }catch { /* Retain the original refusal with no invented details. */ }
             return result;
         }
+        if(ownedImage){imageOriginUsed=true;continue;}
         for(const allocation of allocations(arg)){
             if(!(position===0?helper.leftArray:helper.rightArray))return {helpers:new Map(),current,reason:'native helper does not join this actual Array operand position'};
             allTokens.add(allocation);arrayHelpers.add(helper.declaration.name);

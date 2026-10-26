@@ -5,6 +5,23 @@ import {createArraySourceStartResetEffects} from './array-source-start-reset-eff
 import {isProjectJsonSnapshot} from './project-json-snapshot.js';
 import {createClosedOrdinaryProjectEntry} from './closed-ordinary-project-entry.js';
 const watcherOwnDescriptor=Object.getOwnPropertyDescriptor,watcherOwnKeys=Reflect.ownKeys,watcherIsArray=Array.isArray,watcherFinite=Number.isFinite,watcherCreate=Object.create;
+const prefixGetPrototype=Object.getPrototypeOf,prefixHasOwn=Object.hasOwn,prefixSameValue=Object.is;
+const prefixAmbient=[Object.prototype,Array.prototype].map(object=>({object,parent:prefixGetPrototype(object),
+    entries:watcherOwnKeys(object).map(key=>[key,watcherOwnDescriptor(object,key)])}));
+const privatePrefixAmbientCurrent=()=>{
+    for(let i=0;i<prefixAmbient.length;i++){
+        const row=prefixAmbient[i],keys=watcherOwnKeys(row.object);
+        if(prefixGetPrototype(row.object)!==row.parent||keys.length!==row.entries.length)return false;
+        for(let j=0;j<keys.length;j++){
+            const entry=row.entries[j],key=entry[0],before=entry[1],now=watcherOwnDescriptor(row.object,keys[j]);
+            if(keys[j]!==key||!now||now.enumerable!==before.enumerable||now.configurable!==before.configurable||
+                prefixHasOwn(now,'value')!==prefixHasOwn(before,'value')||
+                (prefixHasOwn(before,'value')?!prefixSameValue(now.value,before.value)||now.writable!==before.writable:
+                    now.get!==before.get||now.set!==before.set))return false;
+        }
+    }
+    return true;
+};
 import {sourceValueOperation} from './source-value-operator-helpers.js';
 import {createArrayOccurrenceExportAuthority} from './array-occurrence-export-authority.js';
 import {analyseConsoleCaptures} from './console-capture-provenance.js';
@@ -189,7 +206,12 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
     // Arrays resolves through the builtin route to the adopted implementation;
     // a saved gallery URL is checked only for consistency, never as authority.
     const effectMetadata=()=>JSON.stringify(['extensions','extensionURLs','monitors'].map(key=>[Object.hasOwn(project,key),project[key]]));
-    const originalEffects=effectMetadata();let extendedResetUsed=false;
+    const originalEffects=effectMetadata();let extendedResetUsed=false,privatePrefixUsed=false,privatePrefixExpired=false;
+    const privatePrefixCurrent=()=>{
+        if(!privatePrefixUsed)return true;
+        if(!privatePrefixExpired&&!privatePrefixAmbientCurrent())privatePrefixExpired=true;
+        return !privatePrefixExpired;
+    };
     const closedEffects=()=>{
         if(!Array.isArray(project.extensions)||new Set(project.extensions).size!==project.extensions.length||
             !project.extensions.includes('arcade')||!project.extensions.includes('arrays')||
@@ -258,6 +280,7 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
     };
     let frameResetUsed=false,frameResetExpired=false;
     const overwrittenPrivateReset=(destination,writer)=>{
+        if(!privatePrefixAmbientCurrent())return false;
         let traversedFrameEffect=false;
         const {target,node,scope}=writer,reset=writer.value?.node;
         const shape=(n,inputs,fields=[])=>!!n&&!invalid.has(n)&&owners.get(n)===scope&&n.mutation==null&&
@@ -290,7 +313,7 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         const name=literal(node,'NAME',target),origin=captures.local(captures.scopeOf(node),name);
         // Native params are plain objects, not Maps: this inherited setter
         // changes the prototype instead of establishing an own lexical cell.
-        if(name==='__proto__')return false;
+        if(typeof name!=='string'||prefixHasOwn(Object.prototype,name))return false;
         if(!origin||!captures.proof(origin)||localCell(scope,name)!==destination)return false;
         // Each ordinary call initializes its own fresh params object. Prove
         // every actual caller through an acyclic chain of direct zero-argument
@@ -323,7 +346,41 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
             entryProof.set(entry,proved);return proved;
         };
         if(!entryFromSource(scope))return false;
-        const locals=new Map(),published=new Set(),unproved=Symbol('unknown');
+        // A literal ordinary identity callee gets its own frame and can only
+        // return the supplied value. No statement, capture, registration,
+        // alternate entry or prototype-selected definition can publish this
+        // caller's private params. This is an effect rule, not a value proof.
+        const identityArgument=call=>{
+            const entry=calls.find(record=>record.node===call),fn=entry?.fn;
+            if(!entry||entry.scope!==scope||entry.target!==target||!entry.args||entry.args.length!==1||
+                !fn||fn.invalid||fn.unknownEntry||fn.target!==target||fn.params.length!==1||fn.ids.length!==1||
+                prefixHasOwn(Object.prototype,fn.params[0])||Object.hasOwn(Object.prototype,fn.proc))return null;
+            const root=fn.root,prototype=child(root,'custom_block',target);
+            let returned=block(target,root.next);
+            if(returned?.opcode==='arcade_declareParameterConstraint'){
+                const expected={PROCEDURE:fn.proc,PARAMETER:fn.params[0],TYPE:'Any'};
+                if(returned.mutation!=null||invalid.has(returned)||owners.get(returned)!==fn||
+                    !exactKeys(returned,[],Object.keys(expected))||Object.keys(returned.fields||{}).length!==3||
+                    !Object.entries(expected).every(([key,value])=>Array.isArray(returned.fields[key])&&
+                        returned.fields[key].length===2&&returned.fields[key][0]===value&&returned.fields[key][1]===null))return null;
+                // The actual fixed Any declaration only validates this callee's
+                // existing formal; it neither converts the value nor captures
+                // the caller frame. Other constraints/bodies remain unproved.
+                returned=block(target,returned.next);
+            }
+            if(root.opcode!=='procedures_definition'||invalid.has(root)||owners.get(root)!==fn||root.mutation!=null||
+                !exactKeys(root,['custom_block'])||!prototype||
+                all.filter(n=>n.opcode==='procedures_definition'&&child(n,'custom_block',target)?.mutation?.proccode===fn.proc).length!==1||
+                all.filter(n=>n.opcode==='procedures_prototype'&&n.mutation?.proccode===fn.proc).length!==1||
+                !returned||returned.opcode!=='arcade_returnValue'||returned.next||returned.mutation!=null||
+                invalid.has(returned)||owners.get(returned)!==fn||!exactKeys(returned,['VALUE']))return null;
+            const value=child(returned,'VALUE',target);
+            if(!value||value.opcode!=='arcade_getLocal'||value.next||value.mutation!=null||
+                invalid.has(value)||owners.get(value)!==fn||!exactKeys(value,['NAME'])||
+                literal(value,'NAME',target)!==fn.params[0]||binding(target,value)!==localCell(fn,fn.params[0]))return null;
+            return entry.args[0];
+        };
+        const locals=new Map(),globals=new Map(),published=new Set(),unproved=Symbol('unknown');
         // Identity tokens denote this invocation's actual independent fresh
         // empty heap bodies. Global publication permanently removes mutation
         // credit even if the current name later points somewhere else.
@@ -333,19 +390,23 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
                 if(r[0]===10&&typeof r[1]==='string')return {kind:'scalar',value:r[1]};
                 if([4,5,6,7,8].includes(r[0])&&typeof r[1]==='string'&&Number.isFinite(Number(r[1])))return {kind:'number',value:Number(r[1])};
                 return unproved;}
-            if(value.cell)return value.cell===destination?unproved:{kind:'stored'};
+            if(value.cell)return value.cell===destination?unproved:globals.get(value.cell)||{kind:'stored'};
             const n=value.node;if(!n||path.has(n)||invalid.has(n)||owners.get(n)!==scope)return unproved;
             const next=new Set([...path,n]),operand=k=>scalar(input(n,k,target),next);
             if(n.opcode==='arcade_getLocal'&&shape(n,['NAME'])){
-                const key=literal(n,'NAME',target),c=localCell(scope,key);return key==='__proto__'||c===destination?unproved:locals.get(c)||unproved;
+                const key=literal(n,'NAME',target),c=localCell(scope,key);return prefixHasOwn(Object.prototype,key)||c===destination?unproved:locals.get(c)||unproved;
             }
-            if(n.opcode==='data_variable'&&shape(n,[],['VARIABLE']))return binding(target,n)===destination?unproved:{kind:'stored'};
+            if(n.opcode==='data_variable'&&shape(n,[],['VARIABLE'])){
+                const c=binding(target,n);return c===destination?unproved:globals.get(c)||{kind:'stored'};
+            }
             if(special(n))return {kind:'scalar'};
             if(n.opcode==='arrays_createReference'&&shape(n,['VALUES'])&&literal(n,'VALUES',target)==='[]')return {kind:'array',site:n};
             if(n.opcode==='operator_add'&&shape(n,['NUM1','NUM2'])||n.opcode==='arrays_valueBinary'&&shape(n,['LEFT','RIGHT'],['OP'])&&['+','%'].includes(literal(n,'OP',target))){
                 const a=operand(n.opcode==='operator_add'?'NUM1':'LEFT'),b=operand(n.opcode==='operator_add'?'NUM2':'RIGHT');
-                if(a===unproved||b===unproved||a.kind!=='number'||b.kind!=='number')return unproved;
-                const v=literal(n,'OP',target)==='%'?a.value%b.value:a.value+b.value;return Number.isFinite(v)?{kind:'number',value:v}:unproved;
+                if(a!==unproved&&b!==unproved&&a.kind==='number'&&b.kind==='number'){
+                    const v=literal(n,'OP',target)==='%'?a.value%b.value:a.value+b.value;return Number.isFinite(v)?{kind:'number',value:v}:unproved;
+                }
+                if(n.opcode==='operator_add')return unproved;
             }
             if(n.opcode==='operator_round'&&shape(n,['NUM'])){const v=operand('NUM');return v!==unproved&&v.kind==='number'?{kind:'number',value:Math.round(v.value)}:unproved;}
             // No String/Number coercion of an arbitrary receiver or index. The
@@ -356,7 +417,41 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
                 const a=operand('ARRAY'),i=operand('INDEX');return a!==unproved&&i!==unproved&&i.kind==='number'?{kind:'stored'}:unproved;
             }
             if(closedFrameImageEffect(target,n,scope)){traversedFrameEffect=true;return {kind:'stored'};}
-            if(n.opcode==='arcade_cloneImage'&&shape(n,['IMAGE']))return operand('IMAGE')!==unproved?{kind:'stored'}:unproved;
+            if(n.opcode==='arcade_cloneImage'&&shape(n,['IMAGE'])){
+                const image=operand('IMAGE');return image===unproved?unproved:{kind:image.kind==='image'?'image':'stored'};
+            }
+            if(n.opcode==='arcade_createImage'&&shape(n,['WIDTH','HEIGHT'])){
+                const dimensions=['WIDTH','HEIGHT'].map(operand);
+                return dimensions.every(v=>v!==unproved&&v.kind==='number'&&Number.isInteger(v.value)&&v.value>=0&&v.value<=2000)?{kind:'image'}:unproved;
+            }
+            if(n.opcode==='arcade_callFunction'&&shape(n,['NAME','ARGS'])){
+                const argument=identityArgument(n);return argument?scalar(argument,next):unproved;
+            }
+            // Only actual closed primitive/Image inputs may cross these
+            // builtin coercions. Opaque stored values and Arrays receive no
+            // coercion exemption. The result is deliberately NOT Number.
+            const coercible=v=>v!==unproved&&['number','scalar','image'].includes(v.kind);
+            const operation=sourceValueOperation(n);
+            if(operation){
+                if(!shape(n,operation.inputs,['OP']))return unproved;
+                const values=operation.inputs.map(operand);
+                return values.every(coercible)?{kind:'stored'}:unproved;
+            }
+            if(n.opcode==='arrays_valueBinary'&&shape(n,['LEFT','RIGHT'],['OP'])&&
+                ['+','-','*','/','%','**','&','|','^','<<','>>','>>>'].includes(literal(n,'OP',target)))
+                return ['LEFT','RIGHT'].map(operand).every(coercible)?{kind:'stored'}:unproved;
+            if(n.opcode==='arrays_valueUnary'&&shape(n,['VALUE'],['OP'])&&['+','-','~','!'].includes(literal(n,'OP',target)))
+                return coercible(operand('VALUE'))?{kind:'stored'}:unproved;
+            if(n.opcode==='arrays_valueCompare'&&shape(n,['LEFT','RIGHT'],['OP'])){
+                const op=literal(n,'OP',target),values=['LEFT','RIGHT'].map(operand);
+                if(['===','!=='].includes(op)&&values.every(v=>coercible(v)||v!==unproved&&v.kind==='array'))return {kind:'stored'};
+                return ['==','!=','<','<=','>','>='].includes(op)&&values.every(coercible)?{kind:'stored'}:unproved;
+            }
+            if(n.opcode==='arrays_referenceIndexOf'&&shape(n,['ARRAY','VALUE','INDEX'])){
+                const array=operand('ARRAY'),value=operand('VALUE'),index=operand('INDEX');
+                return array!==unproved&&array.kind==='array'&&coercible(value)&&index!==unproved&&index.kind==='number'&&
+                    Number.isSafeInteger(index.value)?{kind:'stored'}:unproved;
+            }
             return unproved;
         };
         let at=scope.root.next,seenReset=false;const seen=new Set();
@@ -364,7 +459,7 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
             seen.add(at);const current=block(target,at);
             if(!current||invalid.has(current)||owners.get(current)!==scope)return false;
             if(current.opcode==='arcade_setLocal'&&shape(current,['NAME','VALUE'])){
-                const key=literal(current,'NAME',target),c=localCell(scope,key);if(key==='__proto__'||!c||c.formal)return false;
+                const key=literal(current,'NAME',target),c=localCell(scope,key);if(prefixHasOwn(Object.prototype,key)||!c||c.formal)return false;
                 if(current===node){seenReset=true;locals.set(c,{kind:'scalar'});}
                 else {const v=scalar(input(current,'VALUE',target));if(v===unproved)return false;
                     if(c===destination){
@@ -373,7 +468,7 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
                         // including earlier resets before this writer; only a
                         // real later Array overwrite completes this proof.
                         if(!special(input(current,'VALUE',target)?.node)){
-                            if(seenReset&&v.kind==='array'){extendedResetUsed=true;if(traversedFrameEffect)frameResetUsed=true;return true;}
+                            if(seenReset&&v.kind==='array'){extendedResetUsed=true;privatePrefixUsed=true;if(traversedFrameEffect)frameResetUsed=true;return true;}
                             return false;
                         }
                     }
@@ -381,10 +476,18 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
             }else if(current.opcode==='arcade_setPalette'&&shape(current,['DATA'])&&/^[0-9a-fA-F]{96}$/.test(literal(current,'DATA',target)||'')){
                 // Qualified render/state event effects preserved; prefix has
                 // not retained params in ANY callback owner (not just this key).
+            }else if(current.opcode==='arcade_mutateImage'&&literal(current,'OP',target)==='fill'&&
+                (shape(current,['IMAGE','OP','COLOR','TO'])||shape(current,['IMAGE','COLOR','TO'],['OP'])&&
+                    Array.isArray(current.fields.OP)&&current.fields.OP.length===2&&current.fields.OP[1]===null)){
+                const receiver=scalar(input(current,'IMAGE',target)),values=['COLOR','TO'].map(key=>scalar(input(current,key,target)));
+                if(receiver===unproved||!values.every(v=>v!==unproved&&v.kind==='number'&&Number.isInteger(v.value)&&v.value>=-2147483648&&v.value<=2147483647))return false;
+                // The builtin fill only changes pixels and requests redraw;
+                // it cannot retain this still-private procedure params object.
             }else if(current.opcode==='data_setvariableto'&&shape(current,['VALUE'],['VARIABLE'])){
                 const field=current.fields.VARIABLE,owner=targets.find(t=>Object.hasOwn(t.variables||{},field?.[1])),row=owner?.variables?.[field?.[1]];
                 if(!Array.isArray(row)||row.length!==2||row[0]!==field?.[0]||!globalCell(target,field?.[1]))return false;
                 const v=scalar(input(current,'VALUE',target));if(v===unproved)return false;if(v.kind==='array')published.add(v);
+                globals.set(globalCell(target,field[1]),v);
             }else if(current.opcode==='arrays_mutateReference'&&shape(current,['ARRAY','OP','INDEX','VALUE'])&&literal(current,'OP',target)==='push'){
                 const receiver=scalar(input(current,'ARRAY',target)),index=scalar(input(current,'INDEX',target)),value=scalar(input(current,'VALUE',target));
                 if(receiver===unproved||receiver.kind!=='array'||published.has(receiver)||index===unproved||index.kind!=='number'||index.value!==0||value===unproved)return false;
@@ -399,7 +502,7 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
     const nativeFrameReset=createArrayNativeFrameReset({project,targets,scopes,records,calls,owners,invalid,block,child,input,
         literal,binding,globalCell,localCell,captures,closedEffects});
     const sourceStartReset=createArraySourceStartResetEffects({project,targets,scopes,records,calls,owners,invalid,block,child,input,
-        literal,binding,globalCell,localCell,closedEffects});
+        literal,binding,globalCell,localCell,closedEffects,closedFrameImageEffect});
     for(const destination of cells.values())destination.writers=destination.writers.filter(writer=>
         !deadReset(destination,writer)&&!overwrittenPrivateReset(destination,writer)&&!nativeFrameReset.discount(destination,writer)&&!sourceStartReset.discount(destination,writer));
     // Orphan writes and dynamic local names cannot disappear from all-writer proof.
@@ -1393,7 +1496,12 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
     const occurrence=mixedArrayCell?createArrayOccurrenceExportAuthority(project,(target,node,name)=>{
         const value=input(node,name,target);return singleArray(readInput(value))&&initialized(value);
     }):null;
-    const live=()=>ordinaryEntry.current()&&sourceStartReset.current()&&prefixResetCurrent()&&project.targets===targets&&snapshot()===original&&animationProducers.isCurrent()&&(!extendedResetUsed||effectMetadata()===originalEffects)&&snapshots.every(s=>s.target.blocks?.[s.id]===s.node&&s.node.inputs===s.inputs&&s.node.fields===s.fields&&s.node.mutation===s.mutation&&s.inputRows.every(([name,row,a,b])=>s.node.inputs?.[name]===row&&row?.[1]===a&&row?.[2]===b));
+    const live=()=>{
+        if(!privatePrefixCurrent())return false;
+        const valid=ordinaryEntry.current()&&sourceStartReset.current()&&prefixResetCurrent()&&project.targets===targets&&snapshot()===original&&animationProducers.isCurrent()&&(!extendedResetUsed||effectMetadata()===originalEffects)&&snapshots.every(s=>s.target.blocks?.[s.id]===s.node&&s.node.inputs===s.inputs&&s.node.fields===s.fields&&s.node.mutation===s.mutation&&s.inputRows.every(([name,row,a,b])=>s.node.inputs?.[name]===row&&row?.[1]===a&&row?.[2]===b));
+        if(privatePrefixUsed&&!valid)privatePrefixExpired=true;
+        return privatePrefixCurrent()&&valid;
+    };
     // Observe a newly used dependency before publishing the cached authority.
     // A later validation still observes it before any diagnostic early exit.
     sourceStartReset.current();prefixResetCurrent();
@@ -1420,7 +1528,7 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         if(occurrence?.candidate(target,node,name)&&!occurrenceCurrent)return {ok:false,reason:'requires the current closed occurrence Array producer and complete writer proof'};
         // An unrelated-input query may also observe a source failure. Revoke
         // only after that real false/throw; do not add another observation.
-        let current;try{current=live();if(summaryIssued&&effectMetadata()!==originalEffects){summaryExpired=true;if(protectedInputs.length)occurrence.expireSource();}}catch(error){summaryExpired=true;if(frameResetUsed)frameResetExpired=true;if(protectedInputs.length)occurrence.expireSource();throw error;}
+        let current;try{current=live();if(summaryIssued&&effectMetadata()!==originalEffects){summaryExpired=true;if(protectedInputs.length)occurrence.expireSource();}}catch(error){summaryExpired=true;if(privatePrefixUsed)privatePrefixExpired=true;if(frameResetUsed)frameResetExpired=true;if(protectedInputs.length)occurrence.expireSource();throw error;}
         if(!current){summaryExpired=true;if(frameResetUsed)frameResetExpired=true;if(protectedInputs.length)occurrence.expireSource();}
         // Only a successfully discounted reset may retain this dependency.
         // False or thrown currentness expires it before any diagnostic exit.

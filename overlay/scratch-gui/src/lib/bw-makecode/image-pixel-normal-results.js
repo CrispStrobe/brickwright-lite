@@ -1,6 +1,7 @@
 import {inspectGeneratedHelperBindings} from './generated-helper-recognition.js';
 import {analyseCallableBindings} from './callable-bindings.js';
 import {parseExactImgLiteral} from './arcade-assets.js';
+const imageRound=Math.round;
 
 // A separate, deliberately closed entry interpreter. Its private Image/Array
 // origins never enter the general value graph or the clone exposure API.
@@ -8,9 +9,9 @@ import {parseExactImgLiteral} from './arcade-assets.js';
 // image.cpp returns getCore or zero, common-sim returns pix or zero. Only an
 // actual issued Image and primitive integer arguments select that contract.
 export function imagePixelNormalResults(program,profile) {
-    const refused=()=>Object.freeze({current:()=>false,has:()=>false});
+    const refused=()=>Object.freeze({current:()=>false,has:()=>false,isImageValue:()=>false});
     const seen=new WeakSet(),activeData=new WeakSet(),absences=[];
-    const slots=['type','kind','name','body','params','decls','init','expr','value','tag','items','op','callee','args','left','right','object','index','argument','expression','test','consequent','alternate','isNew','constructorCall','typeArguments','parameterDefaults','optionalParams','ordinaryParameterDefaultNames','parameterProperties','typeParameters','genericParams','parameterDefaultPrologue','restParam','async','generator','isAsync','isGenerator'];
+    const slots=['type','kind','name','body','params','decls','init','expr','value','tag','items','op','callee','args','left','right','object','index','argument','expression','test','consequent','alternate','isNew','constructorCall','typeArguments','parameterDefaults','optionalParams','ordinaryParameterDefaultNames','parameterProperties','typeParameters','genericParams','parameterDefaultPrologue','restParam','async','generator','isAsync','isGenerator','exported','optional','computed'];
     const data=value=>{
         if(typeof value==='function')return false;
         if(!value||typeof value!=='object')return true;
@@ -37,7 +38,8 @@ export function imagePixelNormalResults(program,profile) {
     let syntax,lexical;
     try{if(!data(program))return refused();syntax=inspectGeneratedHelperBindings(program,profile);if(!syntax.isCurrent())return refused();lexical=analyseCallableBindings(program);}
     catch{return refused();}
-    let live=true,eligible=false,failed=false,steps=0,images=0;
+    let live=true,eligible=false,numberEligible=true,failed=false,steps=0,images=0;
+    const imageObservations=new WeakMap();
     const results=new WeakSet(),writes=new Set(),done=new Set(),functions=new Map(),running=new Set(),state=new Map(),constants=new Set();
     const current=()=>{
         if(live)try{
@@ -45,14 +47,15 @@ export function imagePixelNormalResults(program,profile) {
         }catch{live=false;}
         return live;
     };
-    const answer=()=>Object.freeze({current,has:node=>eligible&&current()&&results.has(node)});
+    const answer=()=>Object.freeze({current,has:node=>eligible&&numberEligible&&current()&&results.has(node),
+        isImageValue:node=>eligible&&current()&&imageObservations.get(node)===true});
     const fail=()=>{failed=true;return null;};
     const own=(node,key)=>Object.getOwnPropertyDescriptor(node,key)?.value;
     const list=value=>Array.isArray(value)&&Number.isSafeInteger(value.length)&&value.length<=100000;
     const unwrap=node=>node?.type==='Parenthesized'?unwrap(node.expression):node;
     const binding=node=>lexical.references.get(node);
     const declaration=(node,name)=>lexical.scopes.get(node)?.names.get(name);
-    const undefinedValue=Object.freeze({kind:'Undefined'}),nullValue=Object.freeze({kind:'Null'});
+    const undefinedValue=Object.freeze({kind:'Undefined',value:undefined}),nullValue=Object.freeze({kind:'Null',value:null});
     const numeric=value=>value?.kind==='Number';
     const scalar=value=>value&&['Number','String','Boolean','Null','Undefined'].includes(value.kind);
     const constant=value=>scalar(value)&&Object.hasOwn(value,'value');
@@ -70,7 +73,14 @@ export function imagePixelNormalResults(program,profile) {
     const noDefaults=fn=>[fn,fn.params].every(value=>['parameterDefaults','optionalParams','ordinaryParameterDefaultNames','parameterProperties','typeParameters','genericParams'].every(key=>
         !Object.hasOwn(value,key)||list(own(value,key))&&own(value,key).length===0))&&
         ['async','generator','isAsync','isGenerator'].every(key=>!Object.hasOwn(fn,key)||own(fn,key)===false)&&!Object.hasOwn(fn,'restParam');
-    const plainCall=node=>!node.isNew&&!node.constructorCall&&!Object.hasOwn(node,'typeArguments')&&list(node.args);
+    const plainCall=node=>!node.isNew&&!node.constructorCall&&!node.optional&&!Object.hasOwn(node,'typeArguments')&&list(node.args)&&!node.args.some(arg=>arg?.type==='Spread');
+    const int32=value=>numeric(value)&&constant(value)&&Number.isInteger(value.value)&&value.value>=-2147483648&&value.value<=2147483647;
+    const imageFactory=node=>node?.type==='Call'&&plainCall(node)&&node.args.length===2&&node.callee?.type==='Member'&&
+        !node.callee.optional&&!node.callee.computed&&node.callee.name==='create'&&node.callee.object?.type==='Identifier'&&
+        node.callee.object.name==='image'&&!binding(node.callee.object);
+    const roundedIndex=node=>node?.type==='Call'&&plainCall(node)&&node.args.length===1&&node.callee?.type==='Member'&&
+        !node.callee.optional&&!node.callee.computed&&node.callee.name==='round'&&node.callee.object?.type==='Identifier'&&
+        node.callee.object.name==='Math'&&!binding(node.callee.object);
     const allowedTypes=new Set(['Program','FunctionDeclaration','Declaration','ExpressionStatement','Return','If','Number','String','Boolean','Null','Undefined','Identifier','Array','Template','Binary','Unary','Parenthesized','Assignment','Call','Member','Index']);
     if(program?.type!=='Program'||!list(program.body)||program.body.some(node=>node.type==='Return'))return answer();
     // Every possible entry is an immutable direct source call. Definitions may
@@ -84,7 +94,7 @@ export function imagePixelNormalResults(program,profile) {
         }
         if(node.type==='FunctionDeclaration'){
             const scope=lexical.functions.find(scope=>scope.node===node),key=lexical.global.names.get(node.name);
-            if(!scope||scope.parent!==lexical.global||scope.unsupported?.length||!syntax.root(node)||!list(node.params)||!list(node.body)||!noDefaults(node)||
+            if(node.exported||!scope||scope.parent!==lexical.global||scope.unsupported?.length||!syntax.root(node)||!list(node.params)||!list(node.body)||!noDefaults(node)||
                 new Set(node.params).size!==node.params.length||node.params.some(name=>typeof name!=='string'))return answer();
             // A formal and its owning FunctionDeclaration share .node in the
             // lexical index. Compare actual binding identity, not owner-node
@@ -108,10 +118,19 @@ export function imagePixelNormalResults(program,profile) {
         if(node.type==='Template'&&(node.tag!=='img'||typeof node.value!=='string'))return answer();
         if(node.type==='Identifier'&&!binding(node)){
             const parent=syntax.parentOf(node),call=parent&&syntax.parentOf(parent);
-            if(node.name!=='console'||parent?.type!=='Member'||parent.object!==node||parent.name!=='log'||call?.type!=='Call'||call.callee!==parent)return answer();
+            const consoleUse=node.name==='console'&&parent?.type==='Member'&&parent.object===node&&parent.name==='log'&&call?.type==='Call'&&call.callee===parent;
+            const roundUse=node.name==='Math'&&roundedIndex(call)&&call.callee===parent&&parent.object===node;
+            if(!consoleUse&&!roundUse&&!(node.name==='image'&&imageFactory(call)&&call.callee===parent&&parent.object===node))return answer();
         }
     }
+    // Record every normal observation of the SAME expression occurrence. A
+    // later Image can never revive an occurrence once it returned anything else.
     const expr=node=>{
+        const value=evaluate(node);
+        if(node&&typeof node==='object')imageObservations.set(node,imageObservations.get(node)!==false&&value?.kind==='Image');
+        return value;
+    };
+    const evaluate=node=>{
         if(++steps>100000)return fail();
         if(!node)return undefinedValue;
         if(node.type==='Number')return numberValue(node)||fail();
@@ -128,7 +147,11 @@ export function imagePixelNormalResults(program,profile) {
         }
         if(node.type==='Array'){
             if(!list(node.items))return fail();const items=node.items.map(expr);
-            return items.every(value=>value?.kind==='Image')?{kind:'Array',site:node,items}:fail();
+            if(!items.every(value=>value?.kind==='Image'||scalar(value)))return fail();
+            // Unrelated flat primitive lists do not change an Image's origin.
+            // They remain outside the original Image-list Number theorem.
+            if(items.some(value=>value.kind!=='Image'))numberEligible=false;
+            return {kind:'Array',site:node,items};
         }
         if(node.type==='Index'){
             const receiver=expr(node.object),index=expr(node.index);
@@ -142,24 +165,39 @@ export function imagePixelNormalResults(program,profile) {
         if(node.type==='Unary'){
             const value=expr(node.argument);
             if(node.op==='!'&&constant(value)&&value.kind==='Boolean')return primitive('Boolean',!value.value);
-            if(!['+','-'].includes(node.op)||!numeric(value))return fail();
+            if(!['+','-'].includes(node.op)||!numeric(value)&&value?.kind!=='Image')return fail();
+            if(value.kind==='Image')return primitive('Number',NaN);
             return constant(value)?primitive('Number',node.op==='-'?-value.value:+value.value):{kind:'Number'};
         }
         if(node.type==='Binary'){
             const a=expr(node.left),b=expr(node.right);
-            if(!scalar(a)||!scalar(b))return fail();
-            if(['===','!==','==','!='].includes(node.op)&&constant(a)&&constant(b)){
-                const equal=a.kind===b.kind&&a.value===b.value;
-                // No cross-kind coercion is modeled by a dispatch certificate.
-                if(a.kind!==b.kind)return fail();
-                return primitive('Boolean',node.op==='==='||node.op==='=='?equal:!equal);
+            if(failed||!a||!b)return fail();
+            const object=value=>value.kind==='Image'||value.kind==='Array';
+            if(['===','!==','==','!='].includes(node.op)){
+                const strict=node.op==='==='||node.op==='!==';let equal;
+                if(object(a)&&object(b))equal=a===b;
+                else if(strict&&(object(a)||object(b)))equal=false;
+                else {
+                    if(a.kind==='Array'||b.kind==='Array')return fail();
+                    const x=a.kind==='Image'?'[object Object]':constant(a)?a.value:null;
+                    const y=b.kind==='Image'?'[object Object]':constant(b)?b.value:null;
+                    if(a.kind!=='Image'&&!constant(a)||b.kind!=='Image'&&!constant(b))return fail();
+                    equal=strict?x===y:x==y;
+                }
+                return primitive('Boolean',node.op==='!=='||node.op==='!='?!equal:equal);
             }
-            if(node.op==='+'&&constant(a)&&constant(b)&&(a.kind==='String'||b.kind==='String'))return primitive('String',a.value+b.value);
-            if(!numeric(a)||!numeric(b)||!['+','-','*','/','%','&','|','^','<<','>>','>>>'].includes(node.op))return fail();
-            if(!constant(a)||!constant(b))return {kind:'Number'};
-            const x=a.value,y=b.value;
+            // Arrays are identity transport only, never native coercion inputs.
+            if(a.kind==='Array'||b.kind==='Array')return fail();
+            if(!scalar(a)&&a.kind!=='Image'||!scalar(b)&&b.kind!=='Image')return fail();
+            const x=a.kind==='Image'?'[object Object]':a.value,y=b.kind==='Image'?'[object Object]':b.value;
+            if(!constant(a)&&a.kind!=='Image'||!constant(b)&&b.kind!=='Image'){
+                if(!numeric(a)||!numeric(b)||!['+','-','*','/','%','&','|','^','<<','>>','>>>'].includes(node.op))return fail();
+                return {kind:'Number'};
+            }
+            if(['<','>','<=','>='].includes(node.op))return primitive('Boolean',node.op==='<'?x<y:node.op==='>'?x>y:node.op==='<='?x<=y:x>=y);
+            if(!['+','-','*','/','%','&','|','^','<<','>>','>>>'].includes(node.op))return fail();
             const value=node.op==='+'?x+y:node.op==='-'?x-y:node.op==='*'?x*y:node.op==='/'?x/y:node.op==='%'?x%y:node.op==='&'?x&y:node.op==='|'?x|y:node.op==='^'?x^y:node.op==='<<'?x<<y:node.op==='>>'?x>>y:x>>>y;
-            return primitive('Number',value);
+            return primitive(typeof value==='string'?'String':'Number',value);
         }
         if(node.type==='Assignment'){
             const key=binding(node.left),value=expr(node.right);
@@ -168,6 +206,14 @@ export function imagePixelNormalResults(program,profile) {
         }
         if(node.type==='Call'){
             if(!plainCall(node))return fail();const callee=unwrap(node.callee);
+            if(roundedIndex(node)){
+                const index=expr(node.args[0]);if(!numeric(index))return fail();
+                return constant(index)?primitive('Number',imageRound(index.value)):{kind:'Number'};
+            }
+            if(imageFactory(node)){
+                const args=node.args.map(expr);if(failed||!args.every(int32)||args.some(value=>value.value<0))return fail();
+                images++;return {kind:'Image',site:node,width:args[0].value,height:args[1].value};
+            }
             if(callee?.type==='Identifier'){
                 const record=functions.get(binding(callee));if(!record||running.has(record.node))return fail();
                 const args=node.args.map(expr);if(failed||args.some(value=>!value)||args.length!==record.node.params.length)return fail();
@@ -178,11 +224,42 @@ export function imagePixelNormalResults(program,profile) {
                 for(const [key,had,value]of saved)if(had)state.set(key,value);else state.delete(key);
                 return returned?.returned?returned.value:undefinedValue;
             }
-            if(callee?.type!=='Member')return fail();
+            if(callee?.type!=='Member'||callee.optional||callee.computed)return fail();
             // No console or listener exemption. A reached fallback refuses,
             // even if every argument is text and its result is unused.
             const receiver=expr(callee.object),args=node.args.map(expr);
-            if(failed||receiver?.kind!=='Image')return fail();
+            if(failed)return fail();
+            if(receiver?.kind==='Array'){
+                if(callee.name==='push'&&args.length===1&&(args[0]?.kind==='Image'||scalar(args[0]))){
+                    // The exporter constructs owned Image lists by push. Model
+                    // their actual identity transport only for Image origins;
+                    // this cannot widen the original immutable-list Number API.
+                    numberEligible=false;
+                    if(receiver.items.length>=100000)return fail();
+                    receiver.items.push(args[0]);return primitive('Number',receiver.items.length);
+                }
+                if(callee.name!=='indexOf'||![1,2].includes(args.length)||!scalar(args[0])&&args[0]?.kind!=='Image'||
+                    args.length===2&&!int32(args[1]))return fail();
+                const needle=args[0],from=args.length===1?0:args[1].value;
+                const relative=receiver.items.length+from;
+                const start=from<0?(relative<0?0:relative):from;
+                let index=-1;
+                for(let position=start;position<receiver.items.length;position++){
+                    if(++steps>100000)return fail();
+                    const item=receiver.items[position];
+                    if(item.kind!==needle.kind)continue;
+                    if(item.kind==='Image'){
+                        if(item!==needle)continue;
+                    }else{
+                        if(!constant(item)||!constant(needle))return {kind:'Number'};
+                        if(item.value!==needle.value)continue;
+                    }
+                    index=position;break;
+                }
+                results.add(node);return primitive('Number',index);
+            }
+            if(receiver?.kind!=='Image')return fail();
+            if(callee.name==='fill'&&args.length===1&&args.every(int32)||callee.name==='setPixel'&&args.length===3&&args.every(int32))return undefinedValue;
             if(callee.name==='clone'&&args.length===0){images++;return {kind:'Image',site:node,width:receiver.width,height:receiver.height};}
             if(callee.name!=='getPixel'||args.length!==2||!args.every(arg=>numeric(arg)&&Number.isSafeInteger(arg.value)))return fail();
             // Pixel coordinates outside the image return numeric zero in the

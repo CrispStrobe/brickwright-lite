@@ -1,6 +1,7 @@
 # Image effects in closed source-start reset nonreachability
 
-Status: CLAIMED; merge before shared proof implementation.
+Status: DONE — source implementation in the integration candidate. Hosted
+qualification and landing remain pending.
 Owner: Arcade integration, continuing #1128 and the merged Image-origin scope.
 Base: main `ad8628eb05ba0b44f0c723a378f245d31ae5f514`.
 
@@ -56,3 +57,13 @@ cuts and permanent mutation/restore expiry. Qualify actual original/native VM,
 editor and save/reopen on the final combined hosted candidate. Source success
 alone does not complete an application or change the corpus count. Use one
 coordinated automatic qualification; no duplicate full dispatch.
+
+The implemented factory/clone/fill/pixel and exact identity-callee effects close
+the original fixture's global null/Array refusal. Source-reference and Any
+scalar declarations bind actual variable names and IDs without supplying a type
+or initialized value. Direct mutable export uses a checked owned JSON context
+and retains original callback receivers; final publication revalidates every
+used Array query and observed source/ambient lifetime. Non-JSON or shared
+physical data cannot manufacture a context. Existing primitive comparison and
+unknown-callee refusals remain intact. The later source-entry costume Image-bank
+case and full editor journey remain scoped continuations in the handoff.

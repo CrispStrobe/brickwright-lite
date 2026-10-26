@@ -4,7 +4,7 @@ import {arrayMenuLiteral,isArrayMenuSelector,isKnownArrayMenuOperation} from './
 import {createProjectJsonSnapshot,isProjectJsonSnapshot} from './project-json-snapshot.js';
 import {sourceValueOperation} from './source-value-operator-helpers.js';
 import {nativeArrayAddHelperSource} from './native-array-binary-helper-source.js';
-import {inspectNativeArrayBinaryDomains} from './native-array-binary-domain.js';
+import {inspectNativeAdditionExportDomains} from './native-array-binary-domain.js';
 import {GENERATED_HELPER_PROFILES,mapGeneratedSourceArray} from './generated-helper-recognition.js';
 import {animationAssetArray} from './animation-asset-array.js';
 import {ownedAnimationLiteral,unusedAnimationLookups} from './static-animation-resource-emission.js';
@@ -216,6 +216,83 @@ const RESERVED = new Set(['score', 'life', 'info', 'game', 'scene', 'sprites', '
     'if', 'else', 'while', 'for', 'return', 'true', 'false', 'null', 'new', 'this', 'pause', 'forever',
     '__bwSdkCharCode','__bwSdkConcat','__bwScratchTimerStart','__bwScratchTimer','__bwResetScratchTimer', 'SpriteKind', 'SpriteFlag', 'ControllerButtonEvent', 'DialogLayout', 'Image', 'Buffer', 'NumberFormat', 'console', 'control', 'assets', 'images', 'image', 'hex', 'img', 'undefined', 'bwStringArraySettings']);
 
+const arraySourceDescriptor=Object.getOwnPropertyDescriptor,arraySourceKeys=Reflect.ownKeys,
+    arraySourcePrototype=Object.getPrototypeOf,arraySourceOwn=Object.hasOwn,arraySourceIsArray=Array.isArray,
+    arraySourceQuote=JSON.stringify,arraySourceFinite=Number.isFinite,arraySourceSame=Object.is,
+    arraySourceCreate=Object.create,arraySourceApply=Reflect.apply,
+    arraySourceWeakGet=WeakMap.prototype.get,arraySourceWeakSet=WeakMap.prototype.set;
+
+// Optional owned-JSON evidence for a direct AST caller. Read data descriptors
+// only: getters, toJSON, functions, shared objects, sparse/extended Arrays and non-JSON values
+// cannot manufacture a different project for the reset proof. Keep the actual
+// physical input identities so artwork callbacks cannot renew this evidence.
+function arrayExportSource(project) {
+    try{
+        const records=[],recorded=new WeakSet(),parts=[];
+        const realm=[Object.prototype,Array.prototype].map(value=>({value,prototype:arraySourcePrototype(value),
+            entries:arraySourceKeys(value).map(key=>[key,arraySourceDescriptor(value,key)])}));
+        let size=0,nodes=0,live=true;
+        const append=text=>{size+=text.length;if(size>8*1024*1024)throw Error('bounded source');parts.push(text);};
+        const encode=(value,depth=0)=>{
+            if(value===null){append('null');return;}
+            if(typeof value==='string'||typeof value==='boolean'){
+                if(typeof value==='string'&&value.length>8*1024*1024)throw Error('bounded source');
+                append(arraySourceQuote(value));return;
+            }
+            if(typeof value==='number'){
+                if(!arraySourceFinite(value)||arraySourceSame(value,-0))throw Error('non-JSON source');
+                append(arraySourceQuote(value));return;
+            }
+            if(!value||typeof value!=='object'||depth>128||recorded.has(value))throw Error('non-JSON source');
+            const array=arraySourceIsArray(value),prototype=arraySourcePrototype(value);
+            if(prototype!==null&&prototype!==(array?Array.prototype:Object.prototype))throw Error('non-JSON source');
+            const keys=arraySourceKeys(value),entries=keys.map(key=>[key,arraySourceDescriptor(value,key)]);
+            if(++nodes>100000)throw Error('bounded source');
+            recorded.add(value);records.push({value,prototype,entries});
+            if(entries.some(([key,row])=>typeof key!=='string'||key==='toJSON'||!row||!arraySourceOwn(row,'value')))throw Error('non-JSON source');
+            if(array){
+                const length=arraySourceDescriptor(value,'length')?.value;
+                if(!Number.isSafeInteger(length)||length<0||keys.length!==length+1)throw Error('non-JSON source');
+                append('[');
+                for(let i=0;i<length;i++){
+                    const row=arraySourceDescriptor(value,String(i));
+                    if(!row||!arraySourceOwn(row,'value')||!row.enumerable)throw Error('non-JSON source');
+                    if(i)append(',');encode(row.value,depth+1);
+                }
+                append(']');
+            }else{
+                append('{');
+                for(let i=0;i<entries.length;i++){
+                    const [key,row]=entries[i];if(!row.enumerable)throw Error('non-JSON source');
+                    if(i)append(',');append(arraySourceQuote(key));append(':');encode(row.value,depth+1);
+                }
+                append('}');
+            }
+        };
+        const current=()=>{
+            if(live)try{
+                for(let batch=0;batch<2&&live;batch++){
+                    const rows=batch===0?realm:records;
+                    for(let at=0;at<rows.length&&live;at++){
+                        const record=rows[at],keys=arraySourceKeys(record.value);
+                        if(arraySourcePrototype(record.value)!==record.prototype||keys.length!==record.entries.length){live=false;break;}
+                        for(let i=0;i<keys.length;i++){
+                            const entry=record.entries[i],key=entry[0],before=entry[1],now=arraySourceDescriptor(record.value,keys[i]);
+                            if(key!==keys[i]||!now||now.enumerable!==before.enumerable||now.configurable!==before.configurable||
+                                arraySourceOwn(now,'value')!==arraySourceOwn(before,'value')||
+                                (arraySourceOwn(before,'value')?now.writable!==before.writable||!arraySourceSame(now.value,before.value):
+                                    now.get!==before.get||now.set!==before.set)){live=false;break;}
+                        }
+                    }
+                }
+            }catch{live=false;}
+            return live;
+        };
+        encode(project);
+        return current()?{json:parts.join(''),current}:null;
+    }catch{return null;}
+}
+
 class ArcadeEmitter {
     sdkFontOperand(block,input='FONT') {
         const types=this.sdkFontInputs.inputTypes(this.target,block,input);
@@ -244,6 +321,9 @@ class ArcadeEmitter {
         // proof consume the same privately branded normalized resource objects.
         this.animationFrameProducers = createAnimationFrameArrayProducers(opts);
         this.arrayReceiverAuthority = createArrayReferenceExportAuthority(project, opts, this.animationFrameProducers);
+        this.arrayOwnedSource=isProjectJsonSnapshot(project)?null:arrayExportSource(project);
+        this.arrayOwnedSnapshot=null;this.arrayOwnedSourceUsed=false;
+        this.arrayProofChecks=arraySourceCreate(null);this.arrayProofCheckCount=0;this.arrayProofInputs=new WeakMap();
         this.unsupported = [];
         // Diagnose each physical current clock reporter without rendering its
         // consumer. A malformed ordinary caller can be rejected before its
@@ -1025,7 +1105,30 @@ class ArcadeEmitter {
 
     referenceArrayValue (b, name='ARRAY') {
         // The constructor owns this snapshot; callbacks cannot renew its authority.
-        const authority=this.arrayReceiverAuthority.validateInput(this.target,b,name);
+        let authority=this.arrayReceiverAuthority.validateInput(this.target,b,name);
+        let selectedProof=this.arrayReceiverAuthority,selectedTarget=this.target,selectedNode=b;
+        if(!authority.ok&&authority.reason==='requires an actual initialized Array producer and compatible all writers'&&this.arrayOwnedSource?.current()){
+            try{
+                if(!this.arrayOwnedSnapshot){
+                    const snapshot=createProjectJsonSnapshot(this.arrayOwnedSource.json);
+                    this.arrayOwnedSnapshot={snapshot,authority:createArrayReferenceExportAuthority(snapshot,this.opts,this.animationFrameProducers)};
+                }
+                const index=this.project.targets.indexOf(this.target),id=Object.keys(this.target.blocks).find(key=>this.target.blocks[key]===b);
+                const {snapshot,authority:owned}=this.arrayOwnedSnapshot,target=snapshot.targets[index],node=target?.blocks?.[id];
+                const result=node&&owned.validateInput(target,node,name);
+                if(result?.ok&&this.arrayOwnedSource.current()){
+                    authority=result;this.arrayOwnedSourceUsed=true;selectedProof=owned;selectedTarget=target;selectedNode=node;
+                }
+            }catch{ /* Preserve the actual primary refusal if optional evidence is unavailable. */ }
+        }
+        if(authority.ok){
+            let names=arraySourceApply(arraySourceWeakGet,this.arrayProofInputs,[selectedNode]);
+            if(!names){names=arraySourceCreate(null);arraySourceApply(arraySourceWeakSet,this.arrayProofInputs,[selectedNode,names]);}
+            if(!arraySourceOwn(names,name)){
+                names[name]=true;
+                this.arrayProofChecks[this.arrayProofCheckCount++]={authority:selectedProof,target:selectedTarget,node:selectedNode,name};
+            }
+        }
         if(!authority.ok)this.note(`Array reference ${b.opcode} ${name}: ${authority.reason}`);
         const value=this.value(b,name);
         const needsArrayAccess = (block, input, seen = new Set()) => {
@@ -4488,7 +4591,7 @@ class ArcadeEmitter {
             // definition owned by this emitter after complete source proof.
             const candidate=nativeArrayAddHelperSource(addition.name,true,true);
             const draft=assemble(definitions.map(helper=>helper===addition?candidate:helper.source));
-            const proof=inspectNativeArrayBinaryDomains(nativeAdditionAnimationView(
+            const proof=inspectNativeAdditionExportDomains(nativeAdditionAnimationView(
                 parseMakeCodeTs(draft,GENERATED_HELPER_PROFILES.ordinary),this.authoredAnimationArrays.values()));
             if(proof.reason){
                 this.note(proof.reason);
@@ -4502,7 +4605,8 @@ class ArcadeEmitter {
                 }catch { /* Diagnostic failure must preserve the original reason. */ }
             }
             else if(!proof.helpers.has(addition.name))this.note('native addition requires its complete current helper body and actual caller proof');
-            else if(proof.current()&&proof.arrayHelpers?.has(addition.name))
+            else if(!proof.current())this.note('native helper source changed before export selection');
+            else if(proof.arrayHelpers?.has(addition.name))
                 return assemble(definitions.map(helper=>helper===addition?candidate:helper.source));
         }
         return assemble(definitions.map(helper=>helper.source));
@@ -4606,6 +4710,17 @@ function emitProjectToArcade (project, opts, snapshotCallbacks) {
     // Host artwork callbacks can edit current project objects during rendering.
     // Stale owner/global/local inventories must never become a clean export.
     if(!e.functionSymbols?.current())e.note('Arcade ordinary symbol: current project or owner inventory changed during export');
+    if(e.arrayProofCheckCount){
+        let current=!e.arrayOwnedSourceUsed||e.arrayOwnedSource.current();
+        if(current)try{
+            for(let i=0;i<e.arrayProofCheckCount;i++){
+                const row=e.arrayProofChecks[i];
+                if(!row.authority.validateInput(row.target,row.node,row.name).ok){current=false;break;}
+            }
+        }catch{current=false;}
+        if(e.arrayOwnedSourceUsed&&!e.arrayOwnedSource.current())current=false;
+        if(!current)e.note('Array export source or owned proof environment changed after the snapshot was captured');
+    }
     // Host artwork callbacks can run after the last Array operand. Never
     // publish a clean export against a later document revision.
     if (!e.animationFrameProducers.isCurrent()) e.note('Animation resource documents changed during current export');

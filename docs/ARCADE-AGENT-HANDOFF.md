@@ -38,23 +38,76 @@ from an unrelated Array. Project reopen preserves reference kind/id without
 reviving a per-run Array body; held-live-body ownership remains separately
 covered by the Arrays native controls.
 
+The final source-only regression groups pass 138 tests without skips: 39
+Image/domain/reset controls, eight direct/JSON Image export controls, 17
+source-start/frame controls, 38 flags/boundary controls and 36 existing
+roundtrip controls. These results do not replace the pending hosted SDK, VM
+and browser qualification or promote a corpus application. The last measured
+184-input census remains 147 translated, 36 partial and one parse failure.
+
 Continue in this order:
 
-1. Qualify the combined exact source head in hosted six-shard unit, actual VM,
+1. Qualify the implemented [Image-origin addition](../lanes/2026-10-26-arcade-image-nonarray-addition.md)
+   and [source-start Image effects](../lanes/2026-10-26-arcade-image-startup-effects.md)
+   in the final hosted candidate. The complete factory-based Image fixture and
+   its Array-free sibling pass two direct/JSON source generations. Every normal
+   observation, actual caller and source revision is checked independently of
+   annotations or the general graph's nominal tags. Original operations choose
+   original branches; Number-only zero projections are never executed as values.
+   Unrelated flat primitive/Image lists do not affect the Image certificate.
+   Mixed Image/Array addition remains refused. Actual authored Image.join
+   helpers retain their import refusal; ordinary-body selection is export-only.
+   The reset proof retains genuine Array producers and every reaching writer.
+   Source declarations only bind metadata, including Any; they supply no value
+   or readiness. Direct mutable export uses a descriptor-checked private JSON
+   context without changing callback receivers. All used Array proofs are
+   rechecked after callbacks; getters, toJSON hooks and shared physical objects
+   cannot manufacture that context. Source controls do not qualify runtime.
+2. Qualify the combined exact source head in hosted six-shard unit, actual VM,
    original SDK and affected editor/controller/save-reopen checks. Reuse retained
    originals once. Check flags compound assignment's single receiver/RHS order,
    duplicate-procedure diagnostics, source Array bitwise, score callbacks and
    frame/math results. Keep fresh capture availability separate from semantic
    refusals. Do not infer runtime success from the source-only checks.
-2. Reobserve the valid ordinary-call corpus case against that qualified head.
+3. Reobserve the valid ordinary-call corpus case against that qualified head.
    Diagnose its actual callee identity, arguments, defaults and entry order;
    preserve the body, caller effects and actual constraints. This needs a new
    merged claim if its files extend the integration scope.
-3. Address the snake game's remaining startup scalar and conditional Array
+4. Address the snake game's remaining startup scalar and conditional Array
    producer refusals, then Array.map/Throw and stopwatch/SDK contexts. For each,
    retain original source, match actual producers and all writers, and test
    Code, Blocks, graphics where applicable, export/reimport and fresh reopen.
    Promote an application only after observable execution matches its original.
+
+**Next conversion task: costume-backed Image banks on the second export.**
+Start with the exact first source fixture in
+`test/makecode-arcade-image-values.test.mjs`, replacing only
+`image.create(2,1)` with an `img` literal containing two colour-5 pixels. Import
+and apply its returned SVG costumes with `SB3Creator`, then export, reimport,
+apply the new costumes and export again. First export is now clean: its
+`__bwFrames_shared` bank and wrapped `Math.round(0)` selection have a genuine
+Image-origin proof even when the general graph is Opaque. The second export
+still refuses Array readiness and addition. Keep that failure visible.
+
+Inspect the actual source-entry Image-bank allocation and its element/clone
+effects before the unique startup call. The current source-start theorem only
+creates fresh Array tokens inside that startup procedure, and an indexed item
+has a conservative stored-value effect. Extend the independently owned producer,
+entry and effect proofs where the measured graph requires it. Never substitute
+an Image[] annotation, asset spelling, graph kind or unrelated successful
+observation for an actual allocation or initialized receiver. Scope shared
+helper changes before implementation; preserve invalid indices, unknown calls,
+read-before-reset, all writers and callback mutation refusals. Finish with
+direct/JSON second-export controls, original/native SDK execution and SB3 reopen.
+
+**Image GUI acceptance remains open.** In visible Blocks and Code, build an
+Image, clone and alias it, place it in an Array and connect native value-add
+reporters. Exercise the same operations with a real costume-backed image, edit
+its pixels in the graphics editor, and use a controller button to mutate a
+pixel. Compare alias/clone pixels and addition values with original MakeCode;
+export/reimport and reopen the SB3 in a fresh context. Reuse the existing
+authoring browser harness. Source creation through VM APIs alone does not prove
+this editor journey, and the second-export Image-bank task must close first.
 
 **Focused GUI task after runtime qualification:** reuse
 `test/fixtures/arcade-writable-flags-roundtrip.mjs` to author a Sprite and raw

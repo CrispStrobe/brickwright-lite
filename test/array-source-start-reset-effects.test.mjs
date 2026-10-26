@@ -125,3 +125,25 @@ test('primitive comparisons retain fixed operators and actual operand domains',(
     refused(p=>{const compare=rows(p).find(r=>r.node.opcode==='arrays_valueCompare');assert.ok(compare);compare.node.fields.OP[0]='unknown';},fullScalarPrefix);
     refused(p=>{const compare=rows(p).find(r=>r.node.opcode==='arrays_valueCompare');assert.ok(compare);for(let i=1;i<compare.node.inputs.LEFT.length;i++)removeTree(compare.target,compare.node.inputs.LEFT[i]);compare.node.inputs.LEFT=[2,'opaque-comparison-array'];compare.target.blocks['opaque-comparison-array']={opcode:'arrays_createReference',inputs:{VALUES:[1,[10,'[]']]},fields:{},parent:compare.id,next:null,shadow:false,topLevel:false};},fullScalarPrefix);
 });
+
+test('source reference preludes bind the actual name and ID without issuing an Array producer',()=>{
+    refused(project=>{
+        const declaration=rows(project).find(row=>row.node.opcode==='arcade_declareSourceReference');
+        assert.ok(declaration);declaration.node.fields.TYPE[0]='unproved[]';
+    },source);
+    refused(project=>{
+        const declaration=rows(project).find(row=>row.node.opcode==='arcade_declareSourceReference');
+        declaration.node.inputs.VARIABLE[1][1]='wrong variable name';
+    },source);
+    refused(project=>{
+        const allocation=rows(project).find(row=>row.node.opcode==='arrays_createReference');assert.ok(allocation);
+        allocation.node.opcode='text';allocation.node.inputs={};allocation.node.fields={TEXT:['not an Array',null]};
+    },source);
+});
+
+test('Any scalar metadata remains an inert binding effect with an exact current variable socket',()=>{
+    const draft=fixture(ordered),declaration=rows(draft).find(row=>row.node.opcode==='arcade_declareSourceScalar'&&row.node.fields.TYPE[0]==='Any');
+    assert.ok(declaration,'the real reimported fixture contains the Any prelude');accepted(draft);
+    declaration.node.inputs.VARIABLE[1][1]='mismatched variable name';
+    assert.ok(query(draft).decisions.some(row=>!row.ok));
+});
