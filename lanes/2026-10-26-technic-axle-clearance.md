@@ -1,6 +1,6 @@
 # Stock Technic axle envelope at rack housings
 
-Status: CLAIMED — merge before implementation.
+Status: IMPLEMENTED — mesh, obstruction, floor and original-square controls pass; delivery qualification pending.
 Owner: Codex, nine-Technic-intake follow-up.
 Branch: `docs/technic-stock-axle-clearance-20261026`.
 Base: `b6f39a12348b984dc9c5f59b826e7680539b6148`.

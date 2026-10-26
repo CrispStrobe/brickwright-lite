@@ -57,13 +57,16 @@ const craneProjectRoundtrip = async (page, {openSimLab, shotsDir}) => {
 export const mechanicsInteractions = async (page, {openSimLab, shotsDir, timeout,
     models = PROGRAM_MACHINES, judge = judgeMechanicsRun, simulatedMs = 18000,
     simulatedMsFor = () => simulatedMs, completeWhenPausedFor = () => false, completionHoldMsFor = () => null,
-    fileFor = id => `${id}.ldr`, keyFor = id => fileFor(id), programMarker = null, speed = 1, observeProgram = false, captureModel = null, extendedObservations = false}) => {
+    fileFor = id => `${id}.ldr`, keyFor = id => fileFor(id), programMarker = null, speed = 1, observeProgram = false, captureModel = null, extendedObservations = false, includeExperimental = false}) => {
     mkdirSync(shotsDir, {recursive: true});
     await openSimLab(page, {program: null});
     const results = {};
     for (const id of models) {
         await page.getByTestId('bw-sim-lab-examples').click();
         const gallery = page.getByTestId('bw-sim-examples');
+        // Intake candidates remain explicitly experimental until qualification.
+        // Exercise the real gallery control rather than altering the registry.
+        if (includeExperimental) await gallery.getByRole('checkbox', {name: /Include experimental/}).check();
         await gallery.getByRole('searchbox').fill(id);
         const card = gallery.locator(`[data-model="${keyFor(id)}"]`);
         assert.equal(await card.count(), 1);

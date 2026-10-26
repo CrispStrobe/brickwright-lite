@@ -14,6 +14,10 @@ export const EXAMPLE_TOPICS = Object.freeze({
 // Fold accents and punctuation so classical names survive spelling and dash variants.
 export const normalizeExampleSearch = value => String(value).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
 
+// Curated simulation checks do not change the experimental builder contract.
+export const visibleExampleModels = (models, includeExperimental = false) =>
+    models.filter(entry => !entry.experimental || entry.simulationChecked === true || includeExperimental);
+
 /** Pure filtering for the model gallery. Metadata stays separate from the model registry. */
 export const filterModelExamples = (models, details, {query = '', topic = '', size = '', locale = 'en'} = {}) => {
     const terms = normalizeExampleSearch(query).split(/\s+/).filter(Boolean);

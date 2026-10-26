@@ -4663,11 +4663,14 @@
    ],
    "colliders": [
     {
-     "shape": "box",
-     "halfExtents": [
-      30,
-      6,
-      6
+     "shape": "cylinder",
+     "radius": 6,
+     "halfHeight": 29.5,
+     "rotation": [
+      0,
+      0,
+      -0.7071067811865476,
+      0.7071067811865476
      ]
     }
    ],

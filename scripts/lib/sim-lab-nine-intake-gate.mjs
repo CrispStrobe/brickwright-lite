@@ -26,7 +26,8 @@ export async function nineIntakeInteractions(page, opts, id) {
     assert.ok(NINE_INTAKES[id], 'Reviewed intake');
     await mechanicsInteractions(page, {
         ...opts, models: [id], judge: judgeNineBrowser, captureModel: captureRenderedModel,
-        extendedObservations: true, completionHoldMsFor: () => 2000, speed: 4, observeProgram: true
+        extendedObservations: true, completionHoldMsFor: () => 2000, speed: 4, observeProgram: true,
+        includeExperimental: false
     });
     await manualMechanicsInteractions(page, {
         ...opts, models: [id], captureModel: captureRenderedModel,

@@ -45,12 +45,15 @@ Run structural preflight on an arbitrary LDR/MPD without granting it admission:
 node --import ./scripts/lib/register-gui-scope.mjs \
   scripts/check-robot-lab-intake.mjs \
   overlay/scratch-gui/static/sim-lab/models/looprelay.ldr \
-  --drive=A:chain_input16
+  --drive=A:chain_input16 --fixed=A
 ```
 
 The JSON report names offending physical parts. It checks real retaining
 connections, motor-housing support, keyed input ownership, retainer engagement,
 rigid transforms, overlapping solids and axle tips penetrating other gears.
+`--fixed` explicitly declares housings fixed to the chassis; omit that assertion
+for a motor intentionally mounted on a moving arm. Its retaining connections
+and keyed drive are still checked.
 It retains compiler advisories for review. Optional `--record=recording.json`
 and `--success=done` inspect actual recorded completion, faults, finite poses
 and a full two-second continuation; they do not establish a passive-motion law.
@@ -184,3 +187,26 @@ clearance. Collider fidelity, manufacturing tolerances, real friction, flex,
 axial retention under load, cable snagging, motor heating, assembly accessibility
 and durability need further modelling or a physical build. A visually plausible
 or green simulated machine remains explicitly simulation-qualified.
+
+
+### Curated gallery status and limits
+
+The nine reviewed intakes have a candidate `simulationChecked` flag so they can
+appear in the normal gallery without changing the experimental builder's
+minimum-size contract. That flag is only publishable after their complete native
+and Chromium/WebKit app journeys pass. It does not mean a physical LEGO build has
+been tested. Other experimental entries retain their opt-in filter and unchecked
+label. The per-model checked/unchecked record remains in
+[data/robot-lab-nine-intakes-20261026.json](data/robot-lab-nine-intakes-20261026.json).
+
+The stock 3L shaft now uses the official mesh's measured 6-LDU swept radius and
+29.5-LDU half-length. Its old square envelope reached 8.485 LDU during rotation
+and displaced CounterSlide. Mesh coverage, actual floor/obstacle contacts and a
+control restoring only the old square collider guard this correction. Connector
+keying and length, mass, solver settings and collision filtering are unchanged.
+
+These checks do not catch every possible construction defect. LoopRelay's causal
+control removes its driving sprocket: removing one chain link alone still leaves
+a coupling inferred by the current compiler. There is no hardware build verdict.
+Existing experimental examples have a separate source-bound
+[audit and outstanding gaps](ROBOT-LAB-MAIN-AUDIT-20261026.md).

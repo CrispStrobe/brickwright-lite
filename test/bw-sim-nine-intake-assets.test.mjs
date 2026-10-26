@@ -8,11 +8,26 @@ import Creator from '../overlay/scratch-gui/src/lib/sb3-creator-register-art.js'
 import {catalogFrom, prepareModel} from '../overlay/scratch-gui/src/lib/bw-sim/sim-session.js';
 import {buildSteps, partAdjacency, partsList} from '../overlay/scratch-gui/src/lib/bw-sim/instructions/steps.js';
 import {EXPERIMENTAL_MODELS, EXPERIMENTAL_MODEL_DETAILS} from '../overlay/scratch-gui/src/lib/bw-sim/model/experimental-models.js';
+import {visibleExampleModels, filterModelExamples} from '../overlay/scratch-gui/src/lib/bw-sim/model/example-browser.js';
 const read = p => readFileSync(new URL('../' + p, import.meta.url), 'utf8');
 const hash = s => createHash('sha256').update(s).digest('hex');
 const catalog = catalogFrom(JSON.parse(read('overlay/scratch-gui/src/lib/bw-sim/part-meta/parts.json')));
 const counts = {helixgate: 20, looprelay: 54, paritydial: 31, counterslide: 44,
     'toggle-press': 142, footfall: 120, phasekeeper: 81, vectorsum: 122, pointweaver: 128};
+
+test('curated simulation examples are searchable by default while unchecked candidates require opt-in', () => {
+    const visible = visibleExampleModels(EXPERIMENTAL_MODELS);
+    assert.deepEqual(visible.map(m => m.file).sort(), Object.keys(counts).map(id => id + '.ldr').sort());
+    for (const id of Object.keys(counts)) {
+        const matches = filterModelExamples(visible, EXPERIMENTAL_MODEL_DETAILS, {query: id});
+        assert.equal(matches.length, 1); assert.equal(matches[0].file, id + '.ldr');
+    }
+    assert.equal(visibleExampleModels(EXPERIMENTAL_MODELS, true).length, EXPERIMENTAL_MODELS.length);
+    // The normal registry and blocked state must survive both filter choices.
+    const normal = {file: 'established.ldr'}, blocked = {experimental: true, blocked: true};
+    assert.deepEqual(visibleExampleModels([normal, blocked]), [normal]);
+    assert.equal(visibleExampleModels([normal, blocked], true)[1].blocked, true);
+});
 
 test('the exact supplied nine originals remain independent failure evidence', () => {
     const prefix = 'test/fixtures/model-files/nine-technic-source/';
