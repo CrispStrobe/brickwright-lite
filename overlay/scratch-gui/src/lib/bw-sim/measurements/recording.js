@@ -2,11 +2,9 @@
 // Copyright (c) 2026 Brickwright contributors
 import {sha256Text} from './binding-digest.js';
 
-export const RECORDING_LIMIT = 2;
-export const RECORDING_SAMPLE_LIMIT = 600;
-export const RECORDING_INTERVAL_MS = 100;
-export const RECORDING_DURATION_MS = RECORDING_SAMPLE_LIMIT * RECORDING_INTERVAL_MS;
-export const RECORDING_TRACE_LIMIT = 4;
+import {experimentsFromRuns, experimentsToRuns, measurementRunsFromCsv, recordingModelIdentity,
+    RECORDING_LIMIT, RECORDING_SAMPLE_LIMIT, RECORDING_INTERVAL_MS, RECORDING_DURATION_MS, RECORDING_TRACE_LIMIT} from './experiments.js';
+export {RECORDING_LIMIT, RECORDING_SAMPLE_LIMIT, RECORDING_INTERVAL_MS, RECORDING_DURATION_MS, RECORDING_TRACE_LIMIT};
 
 const text = value => typeof value === 'string' ? value : '';
 const canonicalDefinition = d => ({
@@ -29,7 +27,7 @@ const publicState = state => ({
     stoppedReason: state.stoppedReason,
     runs: state.runs.map(run => clone(run)),
     compatible: state.runs.length === RECORDING_LIMIT && state.runs[0].identity === state.runs[1].identity &&
-        state.runs[0].modelSha256 === state.runs[1].modelSha256,
+        recordingModelIdentity(state.runs[0]) === recordingModelIdentity(state.runs[1]),
     sampleLimit: RECORDING_SAMPLE_LIMIT,
     sampleCount: state.active ? state.active.samples.length : 0
 });
@@ -48,7 +46,10 @@ export const createMeasurementRecorder = () => {
         state.active = null;
         state.stoppedReason = why || 'stopped';
         if (active.samples.length) {
-            state.runs.push({id: `run-${state.runs.length + 1}`, modelSha256: active.modelSha256,
+            let nextRun = 1;
+            while (state.runs.some(run => run.id === `run-${nextRun}`)) nextRun++;
+            state.runs.push({id: `run-${nextRun}`, origin: 'simulation', modelSha256: active.modelSha256,
+                ...(active.canonicalModelSha256 ? {canonicalModelSha256: active.canonicalModelSha256, rawModelSha256: active.rawModelSha256} : {}),
                 identity: active.identity, definitions: active.definitions,
                 samples: active.samples});
         }
@@ -56,21 +57,44 @@ export const createMeasurementRecorder = () => {
     };
     return {
         snapshot,
-        selectionFor (modelKey) {
+        exportExperiments (context) {
+            if (state.active) throw new Error('Stop recording before saving its history');
+            return experimentsFromRuns(state.runs, context);
+        },
+        restore (packet, context) {
+            if (state.active) throw new Error('Stop recording before restoring history');
+            const runs = packet === undefined ? [] : experimentsToRuns(packet, context);
+            state.runs = runs; state.stoppedReason = '';
+            return snapshot();
+        },
+        importCsv (input, context) {
+            if (state.active) throw new Error('Stop recording before importing history');
+            const runs = measurementRunsFromCsv(input, context);
+            if (state.runs.length + runs.length > RECORDING_LIMIT) throw new Error('Clear recordings before importing more than two runs');
+            const combined = [...state.runs, ...runs];
+            // Validate the complete replacement before changing any retained sample.
+            const packet = experimentsFromRuns(combined, context);
+            state.runs = experimentsToRuns(packet, context); state.stoppedReason = '';
+            return snapshot();
+        },
+        selectionFor (modelKey, canonicalModelSha256) {
             if (!state.runs.length || typeof modelKey !== 'string') return [];
             if (selectionKey !== modelKey) { selectionKey = modelKey; selectionHash = sha256Text(modelKey); }
-            return state.runs.find(run => run.modelSha256 === selectionHash)?.definitions.map(d => d.id) || [];
+            return state.runs.find(run => recordingModelIdentity(run) === (canonicalModelSha256 || selectionHash))?.definitions.map(d => d.id) || [];
         },
-        start ({session, modelKey, definitions, selected, sampleTime}) {
+        start ({session, modelKey, definitions, selected, sampleTime, canonicalModelSha256, rawModelSha256}) {
             if (state.active || state.runs.length >= RECORDING_LIMIT || typeof modelKey !== 'string' || !modelKey || !Number.isFinite(sampleTime) || sampleTime < 0) return snapshot();
             const defs = selectedDefinitions(definitions, selected);
             if (!defs.length) {state.stoppedReason = 'select-measurements'; return snapshot();}
             const identity = definitionIdentity(defs);
-            const modelSha256 = sha256Text(modelKey);
-            if (state.runs.length && state.runs.some(run => run.identity !== identity || run.modelSha256 !== modelSha256)) {
+            if (canonicalModelSha256 !== undefined && !/^[a-f0-9]{64}$/.test(canonicalModelSha256)) throw new Error('Invalid canonical model SHA256');
+            if (rawModelSha256 !== undefined && rawModelSha256 !== sha256Text(modelKey)) throw new Error('Raw model SHA256 does not match current model text');
+            const originalRawSha = rawModelSha256 || sha256Text(modelKey);
+            const modelSha256 = canonicalModelSha256 || originalRawSha;
+            if (state.runs.length && state.runs.some(run => run.identity !== identity || recordingModelIdentity(run) !== (canonicalModelSha256 || modelSha256))) {
                 state.stoppedReason = 'different-model-or-measurements'; return snapshot();
             }
-            state.active = {session, modelKey, modelSha256, identity,
+            state.active = {session, modelKey, modelSha256, canonicalModelSha256, rawModelSha256: originalRawSha, identity,
                 definitions: defs, samples: [], startTime: sampleTime, lastObservedTime: sampleTime, lastRows: undefined};
             state.stoppedReason = '';
             return snapshot();
@@ -123,7 +147,7 @@ const readingsFor = (defs, rows) => defs.map(definition => {
 
 /** Exact timestamp intersection only. No interpolation or unavailable-as-zero. */
 export const compareMeasurementRuns = runs => {
-    if (!Array.isArray(runs) || runs.length !== 2 || runs[0].identity !== runs[1].identity || runs[0].modelSha256 !== runs[1].modelSha256) return [];
+    if (!Array.isArray(runs) || runs.length !== 2 || runs[0].identity !== runs[1].identity || recordingModelIdentity(runs[0]) !== recordingModelIdentity(runs[1])) return [];
     const byTime = runs.map(run => new Map(run.samples.map(sample => [sample.elapsedMs, sample])));
     const commonTimes = [...byTime[0].keys()].filter(time => byTime[1].has(time)).sort((a, b) => a - b);
     const definitions = runs[0].definitions;
@@ -158,6 +182,8 @@ const csvCell = value => {
 /** Stable long-form CSV. Text cells are quoted and formula-like cells neutralized. */
 export const measurementRunsToCsv = runs => {
     const header = ['run_id', 'model_sha256', 'measurement_id', 'label', 'kind', 'definition_json', 'unit', 'source', 'elapsed_ms', 'available', 'value', 'reason'];
+    const extended = (runs || []).some(run => run.canonicalModelSha256 && run.canonicalModelSha256 !== run.modelSha256);
+    if (extended) header.push('canonical_model_sha256');
     const lines = [header.map(csvCell).join(',')];
     for (const run of runs || []) {
         const definitions = new Map((run.definitions || []).map(definition => [definition.id, JSON.stringify(definition)]));
@@ -166,8 +192,10 @@ export const measurementRunsToCsv = runs => {
             // Each run/measurement declares its definition once; later rows join by ID.
             const definition = written.has(row.id) ? '' : definitions.get(row.id) || '';
             written.add(row.id);
-            lines.push([run.id, run.modelSha256, row.id, row.label, row.kind, definition, row.unit, row.source,
-            sample.elapsedMs, row.available, row.available ? row.value : '', row.available ? '' : row.reason].map(csvCell).join(','));
+            const cells = [run.id, run.modelSha256, row.id, row.label, row.kind, definition, row.unit, row.source,
+                sample.elapsedMs, row.available, row.available ? row.value : '', row.available ? '' : row.reason];
+            if (extended) cells.push(recordingModelIdentity(run));
+            lines.push(cells.map(csvCell).join(','));
         }
     }
     return `${lines.join('\r\n')}\r\n`;
@@ -176,7 +204,7 @@ export const measurementRunsToCsv = runs => {
 /** Bounded summary sidecar for a successful CSV export; raw observations stay in CSV. */
 export const measurementRunsToReport = runs => {
     const compatible = Array.isArray(runs) && runs.length === RECORDING_LIMIT &&
-        runs[0].modelSha256 === runs[1].modelSha256 && runs[0].identity === runs[1].identity;
+        recordingModelIdentity(runs[0]) === recordingModelIdentity(runs[1]) && runs[0].identity === runs[1].identity;
     const report = {
         schema: 'bw.sim-lab.measurement-runs.v1',
         modelSha256: runs?.[0]?.modelSha256 || null,

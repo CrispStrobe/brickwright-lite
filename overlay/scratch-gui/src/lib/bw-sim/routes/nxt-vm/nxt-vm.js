@@ -648,6 +648,116 @@ export class NxtVm {
         this._setBytes(id, bytes);
     }
 
+    /** Ordered raw storage ranges: array elements and cluster members, without padding or shape tags. */
+    _flatLayout (id) {
+        const pending = [{id, dv: 0, base: 0}];
+        const ranges = [];
+        const workLimit = POOL_BYTES * 8;
+        let work = 0;
+        let bytes = 0;
+        const range = (dv, at, size) => {
+            const data = this._store(dv);
+            if (!Number.isSafeInteger(size) || size < 0 || !Number.isSafeInteger(at) || at < 0 ||
+                (size && at + size > data.length)) fail('ERR_BAD_PTR', 'serialization outside dataspace storage');
+            if (bytes + size > POOL_BYTES) fail('ERR_MEM', 'serialized data exceeds the 32 KB memory pool');
+            if (size) ranges.push({dv, at, size});
+            bytes += size;
+        };
+        while (pending.length) {
+            if (++work > workLimit) fail('ERR_MEM', 'serialization traversal exceeds its bounded work space');
+            const item = pending.pop();
+            const e = this._entry(item.id);
+            if (e.type === TC.ARRAY) {
+                const dv = this._dvOf(item.id, item.dv, item.base);
+                const a = this.s.arrays[dv];
+                if (!Number.isSafeInteger(a.count) || a.count < 0 || a.count > 0xffff ||
+                    !Number.isSafeInteger(a.elemSize) || a.elemSize < 0 || a.count * a.elemSize !== a.data.length) {
+                    fail('ERR_BAD_PTR', 'invalid array shape during serialization');
+                }
+                if (!isAggregate(this._type(item.id + 1))) range(dv, 0, a.data.length);
+                else {
+                    if (pending.length + a.count > workLimit) fail('ERR_MEM', 'serialization work list is full');
+                    for (let k = a.count - 1; k >= 0; k--) pending.push({id: item.id + 1, dv, base: k * a.elemSize});
+                }
+            } else if (e.type === TC.CLUSTER) {
+                const members = [];
+                let member = item.id + 1;
+                if (pending.length + e.offset > workLimit) fail('ERR_MEM', 'serialization work list is full');
+                for (let k = 0; k < e.offset; k++) { members.push(member); member = this._next(member); }
+                for (let k = members.length - 1; k >= 0; k--) pending.push({id: members[k], dv: item.dv, base: item.base});
+            } else range(item.dv, item.base + e.offset, TC_SIZE[e.type]);
+        }
+        return {ranges, bytes};
+    }
+
+    _byteArray (id) {
+        if (this._type(id) !== TC.ARRAY || this._type(id + 1) !== TC.UBYTE) {
+            fail('ERR_ARG', `serialization entry ${id} must be a byte array`);
+        }
+        const a = this.s.arrays[this._dvOf(id)];
+        if (a.elemSize !== 1 || !Number.isSafeInteger(a.count) || a.count < 0 || a.count > 0xffff || a.data.length !== a.count) {
+            fail('ERR_BAD_PTR', 'invalid serialization byte-array storage');
+        }
+    }
+
+    _flatBytes (id) {
+        const layout = this._flatLayout(id);
+        const bytes = [];
+        for (const r of layout.ranges) {
+            const data = this._store(r.dv);
+            for (let k = 0; k < r.size; k++) bytes.push(data[r.at + k]);
+        }
+        return bytes;
+    }
+
+    _putFlatBytes (id, bytes) {
+        const layout = this._flatLayout(id);
+        if (layout.bytes !== bytes.length) fail('ERR_ARG', 'serialized destination and template have different byte sizes');
+        let offset = 0;
+        for (const r of layout.ranges) {
+            const data = this._store(r.dv);
+            for (let k = 0; k < r.size; k++) data[r.at + k] = bytes[offset++];
+        }
+    }
+
+    _copyTemplate (dst, template) {
+        // Shape allocation still uses MOV. Preserve matching-type raw float bits,
+        // including signaling NaNs that JS numeric loads/stores would quiet.
+        const defaults = this._sameType(dst, template) ? this._flatBytes(template) : null;
+        this._move(dst, template);
+        if (defaults) this._putFlatBytes(dst, defaults);
+    }
+
+    _flatten (dst, src) {
+        this._byteArray(dst);
+        const bytes = this._flatBytes(src);
+        if (bytes.length + 1 > POOL_BYTES) fail('ERR_MEM', 'serialized data and terminator exceed the memory pool');
+        // Capture before resizing: the output may also be the input array.
+        bytes.push(0);
+        this._setBytes(dst, bytes);
+    }
+
+    _unflatten (dst, error, src, template) {
+        this._byteArray(src);
+        const errorType = this._type(error);
+        if (!((errorType >= TC.UBYTE && errorType <= TC.SLONG) || errorType === TC.FLOAT)) {
+            fail('ERR_ARG', 'UNFLATTEN needs a numeric error output');
+        }
+        // Firmware order matters for aliases and for failure: default destination first.
+        this._copyTemplate(dst, template);
+        const input = this._bytes(src);
+        const size = this._flatLayout(template).bytes;
+        if (input.length - 1 !== size) { this._setF(error, 1); return; }
+        const output = this._flatLayout(dst);
+        if (output.bytes !== size) fail('ERR_ARG', 'UNFLATTEN destination and template have different byte sizes');
+        let offset = 0;
+        for (const r of output.ranges) {
+            const data = this._store(r.dv);
+            for (let k = 0; k < r.size; k++) data[r.at + k] = input[offset++];
+        }
+        this._setF(error, 0);
+    }
+
     /** Structural equality of two entries' types (ARRBUILD: is a source the whole array or one element?). */
     _sameType (a, b) {
         const ta = this._type(a);
@@ -985,6 +1095,7 @@ export class NxtVm {
         case OP.SUBCALL: return done(this._subcall(a1, a2));
         case OP.ARRSIZE: this._set(a1, this._count(a2)); return done();
         case OP.SYSCALL: return done(this._syscall(a1, a2, io));
+        case OP.FLATTEN: this._flatten(a1, a2); return done();
         case OP.NUMTOSTRING: this._setString(a1, this._numberText(a2)); return done();
         case OP.STRTOBYTEARR: {
             const src = this.s.arrays[this._dvOf(a2)];
@@ -1085,6 +1196,7 @@ export class NxtVm {
         };
         const done = () => ({status: RUN.NO_ERR, delta: words});
         switch (op) {
+        case OP.UNFLATTEN: this._unflatten(at(1), at(2), at(3), at(4)); return done();
         case OP.REPLACE: {
             const [a1, a2, a3, a4] = [at(1), at(2), at(3), at(4)];
             if (a1 !== a2) this._move(a1, a2);

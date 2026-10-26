@@ -31,7 +31,8 @@ export function installBrowserMechanicsRecorder({recordKey,captureKey,extended=f
  const capture=()=>{
   if(observeProgram&&!r.finishedAt&&s.time-r.start>1000&&!vm.runtime.threads.some(t=>t.status!==4))r.finishedAt=s.time;
   const extra=observeProgram?{ropes:s.core.ropeState(),variables:variables()}:null;
-  const frame={t:s.time,bodies:Object.fromEntries(m.bodies.filter(b=>b.motion==='dynamic').map(b=>[b.id,s.core.bodyPose(b.id)])),
+  // Every frame carries the native rope states (the crane judge reads f.ropes).
+  const frame={t:s.time,ropes:s.core.ropeState(),bodies:Object.fromEntries(m.bodies.filter(b=>b.motion==='dynamic').map(b=>[b.id,s.core.bodyPose(b.id)])),
    joints:Object.fromEntries(m.joints.filter(j=>['hinge','slider'].includes(j.type)).map(j=>[j.id,s.core.jointState(j.id)])),
    busy:Object.fromEntries(m.actuators.map(a=>[a.port,pane.hub.motors.busy(a.port)])),...(extra?{extra}:{})};
   if(extended){

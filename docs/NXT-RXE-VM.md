@@ -145,14 +145,42 @@ Not implemented (the program stops with **UNIMPLEMENTED_SYSCALL** naming the cal
 ## Opcodes
 
 Implemented: ADD SUB NEG MUL DIV MOD AND OR XOR NOT, CMP TST, INDEX REPLACE ARRSIZE ARRBUILD ARRSUBSET ARRINIT,
-MOV SET, NUMTOSTRING STRINGTONUM STRCAT STRSUBSET STRTOBYTEARR BYTEARRTOSTR, JMP BRCMP BRTST SYSCALL STOP, FINCLUMP
+MOV SET, FLATTEN UNFLATTEN, NUMTOSTRING STRINGTONUM STRCAT STRSUBSET STRTOBYTEARR BYTEARRTOSTR, JMP BRCMP BRTST SYSCALL STOP, FINCLUMP
 FINCLUMPIMMED ACQUIRE RELEASE SUBCALL SUBRET, SETIN SETOUT GETIN GETOUT, WAIT GETTICK SQRT ABS, the four short ops;
 floats in the arithmetic, comparisons, moves and NUMTOSTRING.
 
-Not implemented: FLATTEN, UNFLATTEN (**UNIMPLEMENTED_OPCODE**). CMNT, LSL, LSR, ASL, ASR, ROTL, ROTR, CMPSET,
+CMNT, LSL, LSR, ASL, ASR, ROTL, ROTR, CMPSET,
 TSTSET are listed by the firmware but executed by none of its interpreters — ERR_INSTR, as on the brick (NBC emits
 shifts as MUL/DIV for standard firmware). Errors stop the program with `{code, status, message, clump, pc, opcode}`
 in `vm.error` and an `error` event; the brick then resets its devices.
+
+### Binary serialization
+
+`FLATTEN` writes the source's stored scalar bytes in array-element and cluster-member
+order, followed by one extra zero byte. Cluster padding and array shape information
+are omitted. Floats retain their stored bits; embedded zero bytes remain data.
+A source string already contains its own terminator, which is included before the
+outer terminator. The destination must be an unsigned-byte array. These facts come
+from FW `c_cmd.c:3632–3792` and `:4565–4589`, independently expressed here.
+
+`UNFLATTEN` takes destination, numeric error output, source byte array and a
+preallocated template. It first copies the template into the destination. If the
+types match, that copy preserves raw float bits even on a size mismatch.
+If the
+source's array count minus one equals the template's flattened byte size, it
+decodes into that shape and writes error 0; otherwise it keeps the copied default
+and writes error 1 (FW `c_cmd.c:6145–6202`). It excludes the final byte by count;
+the firmware does not validate that byte's value. Template copying precedes source
+inspection even when operands alias. A destination with an incompatible flattened
+size is refused rather than writing outside its storage.
+
+The VM retains its 32 KiB pool limit, checks byte-array storage and bounds every
+range. Its iterative traversal also has a virtual work cap of 262,144 entries;
+that safety bound is not a measured firmware timing limit. The compiled
+`serialization` and `serialization-scalars` fixtures cover raw bytes, nested arrays,
+templates and actual Virtual NXT download/start/completion. `FlattenVar` preserves
+the declared type; the compiler's numeric `Flatten` wrapper promotes its argument
+to a long, so its four-byte result does not fit a short template.
 
 ## §Files (system commands; nxt-files.js)
 
@@ -200,6 +228,6 @@ upload, start.
 - Direct commands that change an output while a program runs bypass the program's IO map (the firmware writes
   both into one map).
 - Floats converted to integers: truncated toward zero (the firmware's conversion of negative floats into unsigned
-  registers is not defined by its source). FLATTEN / UNFLATTEN, file and Bluetooth system calls, the display as
+  registers is not defined by its source). File and Bluetooth system calls, the display as
   pixels, buttons, NXT-G's semaphore calls.
 - The instruction rate (above); the firmware's RAMPUP / RAMPDOWN and synchronised regulation (the brick's model).

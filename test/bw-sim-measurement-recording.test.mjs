@@ -5,6 +5,7 @@ import {createRequire} from 'node:module';
 import {readFileSync} from 'node:fs';
 import {compareMeasurementRuns, createMeasurementRecorder, measurementRunsToCsv, measurementRunsToReport, RECORDING_INTERVAL_MS,
     RECORDING_DURATION_MS, RECORDING_LIMIT, RECORDING_SAMPLE_LIMIT} from '../overlay/scratch-gui/src/lib/bw-sim/measurements/recording.js';
+import {CSV_BYTE_LIMIT} from '../overlay/scratch-gui/src/lib/bw-sim/measurements/experiments.js';
 import {sha256Text} from '../overlay/scratch-gui/src/lib/bw-sim/measurements/binding-digest.js';
 
 const definition = overrides => ({id: 'hinge', kind: 'jointAngle', label: 'Input hinge', joint: 'j1', binding: 'sha256:binding-1', visible: true, ...overrides});
@@ -162,7 +163,7 @@ const loadRecorder = () => {
         presets: [requireGui.resolve('@babel/preset-react')], plugins: [requireGui.resolve('@babel/plugin-transform-modules-commonjs')]}).code;
     const module = {exports: {}};
     new Function('require', 'module', 'exports', code)(name => name.endsWith('/measurements/recording.js') ?
-        {compareMeasurementRuns, createMeasurementRecorder, measurementRunsToCsv, measurementRunsToReport, RECORDING_LIMIT} : requireGui(name), module, module.exports);
+        {compareMeasurementRuns, createMeasurementRecorder, measurementRunsToCsv, measurementRunsToReport, RECORDING_LIMIT} : name.endsWith('/measurements/experiments.js') ? {CSV_BYTE_LIMIT} : requireGui(name), module, module.exports);
     return module.exports.default;
 };
 const Recorder = loadRecorder();

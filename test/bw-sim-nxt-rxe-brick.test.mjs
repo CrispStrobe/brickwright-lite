@@ -156,6 +156,17 @@ test('download, STARTPROGRAM, GETCURRENTPROGRAMNAME, the mailboxes while it runs
     assert.deepEqual(hub.s.lastProgram, {name: 'echo.rxe', how: 'abort', error: null});
 });
 
+test('compiled serialization runs after actual download and STARTPROGRAM on the Virtual NXT', () => {
+    const hub = brick();
+    download(hub, 'flat.rxe', fixture('serialization-scalars'));
+    assert.deepEqual(exec(hub, [0x00, 0x00, ...name20('flat.rxe')]), [0x02, 0x00, 0x00]);
+    bench(hub, 1000);
+    assert.deepEqual(hub.s.lastProgram, {name: 'flat.rxe', how: 'ok', error: null});
+    assert.deepEqual(hub.events.filter(e => e.kind === 'display' && e.what === 'text').map(e => e.text),
+        ['2', '1', '4660', '1', '-16909060', '4', '0', '0', '0', '191', '1', '-5', '4', '1', 'NXT']);
+    assert.equal(exec(hub, [0x00, 0x11])[2], 0xec, 'the completed program released its running state');
+});
+
 test('a file the VM refuses: STARTPROGRAM succeeds, the program never runs, the refusal is named', () => {
     const hub = brick();
     const bad = fixture('motor-timed');

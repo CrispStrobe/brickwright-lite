@@ -3,6 +3,7 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import {compareMeasurementRuns, createMeasurementRecorder, measurementRunsToCsv, RECORDING_LIMIT} from '../../lib/bw-sim/measurements/recording.js';
+import {CSV_BYTE_LIMIT} from '../../lib/bw-sim/measurements/experiments.js';
 
 const words = locale => locale === 'de' ? {
     title: 'Messreihen', start: 'Aufzeichnung starten', stop: 'Aufzeichnung beenden', clear: 'Alle Messreihen löschen',
@@ -14,7 +15,7 @@ const words = locale => locale === 'de' ? {
     mismatch: 'Die zweite Messreihe braucht dasselbe Modell und dieselben Messungen mit denselben Bindungen.',
     shared: 'Gemeinsame Simulationszeiten', none: 'Keine exakt gemeinsamen Simulationszeiten; es wird nichts interpoliert.',
     time: 'Zeit (ms)', first: 'Messreihe 1', second: 'Messreihe 2', delta: 'Änderung (2 − 1)',
-    min: 'Minimum', max: 'Maximum', unavailable: 'Nicht verfügbar', export: 'CSV herunterladen'
+    min: 'Minimum', max: 'Maximum', unavailable: 'Nicht verfügbar', export: 'CSV herunterladen', import: 'CSV importieren', importHelp: 'Import fügt passende Messreihen hinzu. Vor dem Ersetzen vorhandene Messreihen löschen.', importFailed: 'CSV-Import abgelehnt', imported: 'CSV-Messreihen importiert', csvOrigin: 'Importierte CSV-Daten', simulationOrigin: 'Hier aufgezeichnet'
 } : {
     title: 'Run recordings', start: 'Start recording', stop: 'Stop recording', clear: 'Clear recordings',
     run: 'Run', active: 'Recording', stopped: 'Recording stopped', replay: 'Unavailable during pose replay',
@@ -25,7 +26,7 @@ const words = locale => locale === 'de' ? {
     mismatch: 'The second run must use the same model and measurements with the same bindings.',
     shared: 'Shared simulation times', none: 'No exact shared simulation times; no interpolation is used.',
     time: 'Time (ms)', first: 'Run 1', second: 'Run 2', delta: 'Change (2 − 1)',
-    min: 'Minimum', max: 'Maximum', unavailable: 'Unavailable', export: 'Download CSV'
+    min: 'Minimum', max: 'Maximum', unavailable: 'Unavailable', export: 'Download CSV', import: 'Import CSV', importHelp: 'Import adds compatible runs. Clear existing recordings before replacing them.', importFailed: 'CSV import refused', imported: 'CSV runs imported', csvOrigin: 'Imported CSV data', simulationOrigin: 'Recorded here'
 };
 
 const number = value => Number.isFinite(value) ? Number(value.toPrecision(6)).toString() : '—';
@@ -41,35 +42,67 @@ export default class SimLabMeasurementRecorder extends React.Component {
     constructor (props) {
         super(props);
         this.recorder = props.recorder || createMeasurementRecorder();
-        this.state = {snapshot: this.recorder.snapshot()};
+        this.state = {snapshot: this.recorder.snapshot(), importStatus: ''};
+        this.importFile = React.createRef();
+        this.importRevision = 0;
     }
     componentDidUpdate (previous) {
         if (previous.recorder !== this.props.recorder && this.props.recorder) {
+            this.importRevision++;
             this.recorder.stop('panel-closed');
             this.recorder = this.props.recorder;
             this.setState({snapshot: this.recorder.snapshot()});
             return;
         }
-        const keys = ['session', 'modelKey', 'definitions', 'selected', 'rows', 'sampleTime', 'replaying', 'paused'];
+        const keys = ['recorderRevision', 'modelContext', 'session', 'modelKey', 'definitions', 'selected', 'rows', 'sampleTime', 'replaying', 'paused'];
         if (keys.every(key => previous[key] === this.props[key])) return;
-        const snapshot = this.recorder.update(this.props);
-        if (JSON.stringify(snapshot) !== JSON.stringify(this.state.snapshot)) this.setState({snapshot});
+        const snapshot = this.recorder.update(this.recordingProps());
+        if (JSON.stringify(snapshot) !== JSON.stringify(this.state.snapshot)) {
+            const ended = this.state.snapshot.active && !snapshot.active;
+            this.setState({snapshot}, () => { if (ended) this.props.onHistoryChanged?.(); });
+        }
     }
     componentWillUnmount () {
+        this.importRevision++;
         this.recorder.stop('panel-closed');
     }
+    recordingProps () {
+        return {...this.props, canonicalModelSha256: this.props.modelContext?.modelSha256, rawModelSha256: this.props.modelContext?.rawModelSha256};
+    }
     start () {
-        this.recorder.start(this.props);
-        this.setState({snapshot: this.recorder.update(this.props)});
+        this.importRevision++;
+        this.recorder.start(this.recordingProps());
+        this.setState({snapshot: this.recorder.update(this.recordingProps())});
     }
     stop () {
-        this.setState({snapshot: this.recorder.stop('stopped')});
+        this.setState({snapshot: this.recorder.stop('stopped')}, () => this.props.onHistoryChanged?.());
     }
     clear () {
-        this.setState({snapshot: this.recorder.clear()});
+        this.importRevision++;
+        this.setState({snapshot: this.recorder.clear(), importStatus: ''}, () => this.props.onHistoryChanged?.());
     }
     exportCsv () {
         download(measurementRunsToCsv(this.state.snapshot.runs));
+    }
+    async importCsv (event) {
+        const file = event.target.files?.[0];
+        event.target.value = '';
+        if (!file) return;
+        const revision = ++this.importRevision, session = this.props.session, modelKey = this.props.modelKey;
+        const context = this.props.modelContext, definitions = JSON.stringify(this.props.definitions);
+        const current = () => revision === this.importRevision && session === this.props.session && modelKey === this.props.modelKey &&
+            context === this.props.modelContext && definitions === JSON.stringify(this.props.definitions) && !this.props.replaying;
+        try {
+            if (this.props.recordingAllowed === false) throw new Error('Four model histories are retained; export or clear a recording first');
+            if (!context || !Number.isFinite(file.size) || file.size > CSV_BYTE_LIMIT) throw new Error('CSV file is too large or no model is ready');
+            const text = await file.text();
+            if (!current()) return;
+            const snapshot = this.recorder.importCsv(text, {...context, definitions: this.props.definitions});
+            this.props.onRestoredSelection?.(snapshot.runs[0]?.definitions.map(d => d.id) || []);
+            this.setState({snapshot, importStatus: words(this.props.locale).imported}, () => this.props.onHistoryChanged?.());
+        } catch (error) {
+            if (current()) this.setState({importStatus: `${words(this.props.locale).importFailed}: ${error.message}`});
+        }
     }
     render () {
         const T = words(this.props.locale), snapshot = this.state.snapshot, runs = snapshot.runs;
@@ -83,16 +116,21 @@ export default class SimLabMeasurementRecorder extends React.Component {
         return <section aria-label={T.title} data-testid="bw-sim-measurement-recorder" style={{borderTop: '1px solid #cbd5e1', marginTop: 8, paddingTop: 6}}>
             <strong>{T.title}</strong>
             <p>{T.bound}</p>
+            <p>{T.importHelp}</p>
+            {this.props.recordingAllowed === false && <p role="status">{this.props.locale === 'de' ? 'Vier Modell-Messreihen sind vorgemerkt. Eine exportieren oder löschen, bevor weitere aufgezeichnet werden.' : 'Four model histories are retained. Export or clear a recording before capturing another model.'}</p>}
+            <input ref={this.importFile} type="file" accept=".csv,text/csv" style={{display: 'none'}} data-testid="bw-sim-measurement-record-import-file" onChange={event => this.importCsv(event)} />
+            {this.state.importStatus && <p role="status" data-testid="bw-sim-measurement-record-import-status">{this.state.importStatus}</p>}
             {status && <p role="status" data-testid="bw-sim-measurement-recorder-status">{status}</p>}
             <div style={{display: 'flex', flexWrap: 'wrap', gap: 5}}>
                 {snapshot.active ? <button type="button" data-testid="bw-sim-measurement-record-stop" onClick={() => this.stop()}>{T.stop}</button> :
-                    <button type="button" data-testid="bw-sim-measurement-record-start" disabled={this.props.replaying || !this.props.modelKey || !selectedDefinitions.length || runs.length >= RECORDING_LIMIT}
+                    <button type="button" data-testid="bw-sim-measurement-record-start" disabled={this.props.recordingAllowed === false || this.props.replaying || !this.props.modelKey || !selectedDefinitions.length || runs.length >= RECORDING_LIMIT}
                         onClick={() => this.start()}>{T.start}</button>}
+                <button type="button" data-testid="bw-sim-measurement-record-import" disabled={this.props.recordingAllowed === false || snapshot.active || this.props.replaying || !this.props.modelContext || runs.length >= RECORDING_LIMIT} onClick={() => this.importFile.current?.click()}>{T.import}</button>
                 {runs.length > 0 && <button type="button" data-testid="bw-sim-measurement-record-export" onClick={() => this.exportCsv()}>{T.export}</button>}
                 {runs.length > 0 && <button type="button" data-testid="bw-sim-measurement-record-clear" onClick={() => this.clear()}>{T.clear}</button>}
             </div>
             <ul data-testid="bw-sim-measurement-record-runs" style={{paddingLeft: 18}}>
-                {runs.map((run, index) => <li key={run.id}>{T.run} {index + 1}: {run.samples.length} {T.samples}</li>)}
+                {runs.map((run, index) => <li key={run.id}>{T.run} {index + 1}: {run.samples.length} {T.samples}{run.origin === 'csv' ? ` · ${T.csvOrigin}` : run.origin === 'simulation' ? ` · ${T.simulationOrigin}` : ''}</li>)}
             </ul>
             {snapshot.compatible && <div data-testid="bw-sim-measurement-record-comparison">
                 <h4>{T.shared}</h4>
@@ -116,5 +154,5 @@ export default class SimLabMeasurementRecorder extends React.Component {
 SimLabMeasurementRecorder.propTypes = {
     locale: PropTypes.string.isRequired, session: PropTypes.object, modelKey: PropTypes.string.isRequired,
     definitions: PropTypes.array.isRequired, selected: PropTypes.array.isRequired, rows: PropTypes.array.isRequired,
-    sampleTime: PropTypes.number, replaying: PropTypes.bool, paused: PropTypes.bool, recorder: PropTypes.object
+    modelContext: PropTypes.object, recorderRevision: PropTypes.number, recordingAllowed: PropTypes.bool, onHistoryChanged: PropTypes.func, onRestoredSelection: PropTypes.func, sampleTime: PropTypes.number, replaying: PropTypes.bool, paused: PropTypes.bool, recorder: PropTypes.object
 };

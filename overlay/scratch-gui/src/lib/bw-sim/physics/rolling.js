@@ -23,7 +23,7 @@
 //
 // N, the load on the tyre, is the rest of the wheel's vertical balance over the last step: the floor
 // pushes up whatever its weight and its vertical acceleration need that its axle does not give,
-// N = m·(g + a·up) − F·up, with F the force its joints put on it (the previous step's constraint
+// N = m_solver·(gravityFactor·g + a·up) − F·up, with F the force its joints put on it (the previous step's constraint
 // impulses, HingeConstraint.GetTotalLambdaPosition: the impulse on body 2, −that on body 1) and a its
 // velocity change over that step. A wheel in the air hangs on its axle or falls with it (N = 0); a
 // loaded one carries its share of the chassis, load transfer and bumps included.
@@ -75,7 +75,11 @@ export const createRollingResistance = ({J, mechanism, bodyMap, hingeMap, bodyIn
         const vUp = v.GetX() * up[0] + v.GetY() * up[1] + v.GetZ() * up[2];
         const aUp = w.vUp === null ? 0 : (vUp - w.vUp) / dt;
         w.vUp = vUp;
-        return Math.max(0, w.mass * (gLen + aUp) - up2 / dt);
+        // A solver mass floor preserves weight through gravityFactor, but acceleration
+        // still acts on the effective inertial mass. Configured mass cannot serve both.
+        const mp = w.e.body.GetMotionProperties();
+        const mass = 1 / mp.GetInverseMass();
+        return Math.max(0, mass * (mp.GetGravityFactor() * gLen + aUp) - up2 / dt);
     };
     /** The external torque on a driven wheel (see the header). */
     const drivenTorque = (w, tauMax) => {

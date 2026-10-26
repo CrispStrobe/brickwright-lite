@@ -6,7 +6,9 @@ Follow the [ordered plan](PLAN.md#current-imported-circuit-and-model-accuracy-se
 and [current claim](lanes/2026-10-25-imported-circuit-instrument-campaign.md):
 current-pinned baseline → source-admitted distinct imported inputs → demonstrated
 recurring-cause repairs in owned repositories → one existing part's reference
-accuracy → one demonstrated deterministic instrument effect. Stop after item 5.
+accuracy → one demonstrated deterministic instrument effect. This five-item
+sequence reached its bounded consumer endpoint with PR1413 at
+`b26ae0aedde4e53a254b0bc48c83b156be7cb026`; it claims no follow-on lane.
 
 The first item is accepted: run40172711900 passed 312/312 and 87,488 independent
 checks at Board761153ff/CUI91d8434, with unchanged case definitions and all 240
@@ -17,17 +19,62 @@ no-egress research,not307 passing or redistributable designs:67 pass,8 partial,
 4 disagree,228 not-run. ActualCLI 32-input cross-checks provide19 consistent
 cases/169 conservation checks/81 descriptive oracle agreements; uncertain
 reference eligibility remains explicit. Both long passive-RC watch requests
-refuse before capture creation. The source repair claim is
-[CUI PR119](https://github.com/CrispStrobe/bw-circuit-ui/pull/119): exact PMOS
-bulk wiring,NMOS implicit body-current conservation,and effective-step work
-preflight,with defaults and numerical bounds preserved. Implementation and
-qualified package adoption remain pending; no new model accuracy claim.
+refuse before capture creation. The three demonstrated importer/conservation/work causes landed in CUI PR120
+and were adopted by Lite PR1397. The LM741 assessment distinguishes real
+signal observations from missing supply-current physics; Board PR704 replaces
+false zero measurements with named refusal. CUI PR122 supplies opt-in ideal
+ADC reconstruction over actual voltage point captures, with 83 browser checks.
+Both suppliers are adopted by the [joint Lite lane](lanes/2026-10-25-meter-adc-package-adoption.md).
+[Build40264899201](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40264899201)
+and all enabled exact-head checks passed with six source-declared skips.
+Original-log readback accepted 10 new browser checks, six preserved checks and
+three unit checks. The actual checkout and reviewed source trees match.
+Compiled-artifact body provenance, physical ADC/LM741 accuracy and deployment
+are outside this acceptance. Earlier intermittent mode/rearm causes remain open.
 A separate future long-passive stream design must distinguish acquisition from
 report cadence, retain all 5000 requested samples and whole-capture work,handle
 meter history/quadrature truthfully,and keep existing defaults/refusals intact.
 Generated twins and alternate formats never increase distinct-design coverage.
 Aperture/audio already landed and is regression coverage, not an unimplemented
 follow-up. The older sequence below remains completed historical evidence.
+
+### Scoped follow-ons after consumer acceptance
+
+These are unclaimed proposals, not automatic extensions of this campaign:
+
+- **Attribute intermittent capture-mode/rearm failures:** preserve the earlier
+  mode-publication timeout and point-rearm failure. Start with the ordered
+  handle/getter/event evidence in the
+  [consumer closeout](lanes/2026-10-25-meter-adc-package-adoption.md).
+  Identify the failed transition before choosing a fix in the owning
+  repository; require a failing-before/passing-after control and affected
+  hosted GUI qualification. Keep the original errors, raw path and thresholds;
+  no selection retry, forced state, extra engine advance or pin change is a fix.
+- **Long passive precision watches:** preserve the refused 5ms/1MHz/5,000-point
+  requests and their full raw CSV. Design a separate whole-capture work/history
+  budget and coalesced reporting; test meter quadrature and every old refusal.
+- **Balanced imported families and reference admission:** select lawful inputs
+  across teaching families; retain graph-distinct counts and source/transform/
+  oracle identity. Establish reference-method eligibility before grading the
+  currently unknown comparisons. Resolve weakly anchored DC roots before any
+  model fitting; expanded AC grids need a separately bounded profile.
+- **Physical LM741 supply/bias behavior:** choose datasheet conditions and add
+  actual current laws, rail-power accounting and KCL/energy tests before
+  reporting quiescent or bias current. Loading, offset, slew, temperature and
+  noise need their own references; typical values are not guaranteed limits.
+- **Complete static-asset provenance refresh:** the canonical package-forward
+  transaction must either re-admit all current-package provenance records or
+  refuse by name before writing. Add tests for omitted records and changed
+  source/asset bytes; retain original hashes and licence text. Require explicit
+  reviewed asset/build-input identity, without implicit rebuild or fetching.
+- **Public census hygiene:** extend location redaction to assignment-prefixed
+  discovery strings (for example `TOOL_DIR=/example/tool`) and add a causal
+  negative proving those values cannot enter public generated snapshots. Keep
+  stable source/availability facts intact and do not publish host locations.
+- **Further instrument realism:** investigate demonstrated raw-voltage
+  authority gaps first. Any bandwidth/coupling/noise model needs explicit
+  parameters, independent time-domain expectations and preservation of the
+  ideal/raw path; do not add cosmetic randomness as evidence.
 
 ## Current circuit/instrument sequence — 2026-10-15
 

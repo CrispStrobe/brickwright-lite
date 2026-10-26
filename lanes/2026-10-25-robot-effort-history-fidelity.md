@@ -1,8 +1,9 @@
 # Robot Lab effort, saved experiments and physical inspection
 
-Status: CLAIMED — merge this claim before implementation.
+Status: DONE in this implementation candidate — landing requires the full exact-head qualification and independent original audit below.
 Owner: Codex, user-approved four-item continuation; isolated branch
-`lane/robot-effort-history-fidelity-claim-20261025`.
+`lane/robot-effort-history-fidelity-20261025`. Ownership claim PR1400 merged
+before implementation.
 Exact base: `d11627829b514398368a5e782e148f3386161983`.
 
 Carry all four items through implementation, affected hosted qualification,
@@ -37,7 +38,7 @@ observation or demonstrated corrections; focused tests, existing measurement
 browser gate and its independent original reader; measurement/physical-limit
 and validation documentation; this claim. New controlled fixtures may test
 tracked coasting and steering without editing another owner's model batch.
-Canonical overlays follow the established mirror process.
+The narrow project-bundle collection/refusal boundary and existing measurement-success upload paths carry the new histories and originals. Canonical overlays follow the established mirror process.
 
 The delivery owner retains PR1336, experimental model geometry/programs,
 model intake/importer behavior and pane API pause/resume semantics. No changes
@@ -56,3 +57,26 @@ entries, and verify predicted/reviewed/landed parents and tree. Mark the claim
 complete in the final source candidate; do not add a ledger-only successor
 merely to repeat product qualification. Keep old failures and sealed native
 results unchanged. No old successful guest or original is replayed.
+
+
+## Implemented boundary
+
+The final candidate publishes completed-step hinge torque, local angular-stop
+reaction and mechanical power, with off-state passive friction separated.
+Worker publication and rollback preserve the observation's mode and interval.
+The inspector shows solver/configured mass, world COM, local COM inertia and
+separate numerical adjustment flags.
+
+Compact versioned histories, bounded plot hints and CSV import preserve gaps and
+historical provenance. Authored-model identity survives saved header changes;
+it does not identify the entire environment or engine. Project load clears the
+previous history; real save/reopen and pane remount form the hosted acceptance.
+Explicit save refusals persist beyond pane closure and transaction rollback;
+oversized aggregate project state is refused before an unreadable export.
+
+The demonstrated pure transient-load bias is corrected using solver inertial
+mass and gravity factor. Hosted Jolt tests must confirm it alongside the existing
+coasting/gear/steering controls. Intentional coasting floors and imported steering
+approximations remain documented. Successful qualification retains six bounded
+official originals; the standalone reader's `--require-history` mode must accept
+the saved packets and every original CSV join before this candidate can land.

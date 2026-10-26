@@ -1,6 +1,6 @@
 # Imported measurement repair package adoption
 
-DONE — candidate implementation; exact-head qualification and matched landing remain required. Codex circuit/instrument owner. Exact initial Lite base `406ea47fac3fef7704228fcd0f66cdf7cf8fc504`.
+DONE — qualified and matched-merged by PR1397; accepted closeout is recorded below. Codex circuit/instrument owner. Exact initial Lite base `406ea47fac3fef7704228fcd0f66cdf7cf8fc504`.
 Branch `lane/imported-measurement-adoption-claim-20261025`.
 This is the consumer portion of ordered campaign step3. Merge this claim before
 implementation. Supplier source repairs are independently owned in
@@ -146,3 +146,21 @@ records and repairs the actual lock failure. With `ci:full` already present,
 one normal synchronize event supplies the final exact-head qualification.
 Neither a prior green check nor the unqualified old artifact substitutes for
 that final head's enabled checks and affected built-browser evidence.
+
+## Accepted step3 closeout
+
+PR1397 matched-head merged as `7f9edea2cc648d7139d1f57099d5121361d48a01`.
+The replacement `0e74` source head passed all34 enabled checks, with six declared
+conditional skips. The qualified synthetic tree and predicted/landed merge
+tree matched; both actual built-GUI signed PMOS journeys passed. Main Build
+40213017016 also succeeded. These observations close this step3 adoption;
+they do not rescue the original failed/cancelled candidates above.
+
+LM741 measurement authority and ideal ADC reconstruction now have qualified
+owned supplier changes. Their [separate joint adoption](2026-10-25-meter-adc-package-adoption.md)
+landed as Lite PR1413 at `b26ae0aedde4e53a254b0bc48c83b156be7cb026`,
+with accepted actual hosted GUI and installed-package observations. Its
+protected numerical recheck stays attached to original run40237367378 and
+source1f; the later accepted consumer does not relabel that numerical result
+or rescue original failed/cancelled heads. No private cohort or completed
+LM741 assessment was replayed. This completed step3 lane claims no new work.

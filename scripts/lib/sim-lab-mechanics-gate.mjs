@@ -2,14 +2,60 @@ import {openManualControls} from './sim-lab-manual-controls.mjs';
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2026 Brickwright contributors
 import assert from 'node:assert/strict';
-import {mkdirSync, writeFileSync} from 'node:fs';
+import {mkdirSync, readFileSync, writeFileSync} from 'node:fs';
 import {resolve} from 'node:path';
 import {installBrowserMechanicsRecorder} from './sim-lab-browser-recorder.mjs';
 import {judgeMechanicsRun} from './sim-lab-mechanics-judge.mjs';
+import JSZip from 'jszip';
+import {exportedProject} from './sim-lab-integral-gate.mjs';
 
 const DEFAULT_MACHINES = ['crank-rocker', 'parallel-lift', 'screw-crane', 'pivot-rover'];
+const PROGRAM_MACHINES = [...DEFAULT_MACHINES, 'crane'];
+// Export through the real GUI and reopen in a fresh context. This checks the
+// saved crane definition, separately from the completed motion qualification.
+const craneProjectRoundtrip = async (page, {openSimLab, shotsDir}) => {
+    await page.getByTestId('bw-sim-lab-reset').click();
+    await page.waitForFunction(() => window.__bwSimLab.status === 'ready');
+    const before = await page.evaluate(() => window.__bwSimLab.projectRecord);
+    assert.match(before.ldraw, /!BW ROPE hoistCord/);
+    const project = resolve(shotsDir, 'crane-roundtrip.sb3');
+    await page.getByText('File', {exact: true}).first().click();
+    await exportedProject(page, project);
+    const bytes = readFileSync(project);
+    assert.ok(bytes.length > 0 && bytes.length <= 8 * 1024 * 1024, 'bounded saved crane project');
+    const zip = await JSZip.loadAsync(bytes, {checkCRC32: true});
+    const sidecar = zip.file('brickwright/state.json');
+    assert.ok(sidecar, 'saved crane has its actual sidecar');
+    const text = await sidecar.async('text');
+    assert.ok(Buffer.byteLength(text) <= 2 * 1024 * 1024);
+    assert.deepEqual(JSON.parse(text).state.simLab, before, 'exported bytes preserve the rope model');
+    const reopened = await page.context().browser().newPage({viewport: {width: 1600, height: 1050}, serviceWorkers: 'block'});
+    const errors = [];
+    reopened.on('pageerror', e => errors.push(e.message));
+    reopened.on('dialog', d => d.accept());
+    try {
+        await openSimLab(reopened, {program: null});
+        await reopened.getByText('File', {exact: true}).first().click();
+        await reopened.getByText('Load from your computer', {exact: true}).click();
+        await reopened.locator('body > input[type="file"][accept*=".sb3"]').setInputFiles(project);
+        await reopened.getByRole('tab', {name: /^(Robots|Robot Lab)$/}).click();
+        await reopened.waitForFunction(() => window.__bwSimLab?.status === 'ready' &&
+            window.__bwSimLab._pane.session?.mechanism.couplings.some(c => c.kind === 'rope'));
+        assert.deepEqual(await reopened.evaluate(() => window.__bwSimLab.projectRecord), before);
+        const restored = await reopened.evaluate(() => {
+            const m = window.__bwSimLab._pane.session.mechanism;
+            return {ports: m.actuators.map(a => a.port).sort(), ropes: m.couplings.filter(c => c.kind === 'rope')};
+        });
+        assert.deepEqual(restored.ports, ['A', 'B', 'C']);
+        assert.equal(restored.ropes.length, 1);
+        assert.deepEqual(restored.ropes[0].parts, ['hoistDrum', 'tipGuide', 'hookLink']);
+        assert.equal(restored.ropes[0].radiusM, 0.0028);
+        assert.deepEqual(errors, []);
+        console.log('PASS crane actual GUI save/CRC-sidecar/fresh-context reopen: rope and three motors preserved');
+    } finally { await reopened.close(); }
+};
 export const mechanicsInteractions = async (page, {openSimLab, shotsDir, timeout,
-    models = DEFAULT_MACHINES, judge = judgeMechanicsRun, simulatedMs = 18000,
+    models = PROGRAM_MACHINES, judge = judgeMechanicsRun, simulatedMs = 18000,
     simulatedMsFor = () => simulatedMs, completeWhenPausedFor = () => false, completionHoldMsFor = () => null,
     fileFor = id => `${id}.ldr`, keyFor = id => fileFor(id), programMarker = null, speed = 1, observeProgram = false, captureModel = null, extendedObservations = false}) => {
     mkdirSync(shotsDir, {recursive: true});
@@ -59,7 +105,7 @@ export const mechanicsInteractions = async (page, {openSimLab, shotsDir, timeout
         }, {ms:simulatedForThis,paused:completeWhenPausedFor(id),holdMs:completionHoldMsFor(id)}, {timeout});
         if(completeWhenPausedFor(id))await page.evaluate(()=>window.__bwCaptureMechanics());
         const r = await page.evaluate(() => window.__bwMechanics);
-        if (observeProgram) writeFileSync(resolve(shotsDir, id+'-actual-track.json'), JSON.stringify(r));
+        if (observeProgram || id === 'crane') writeFileSync(resolve(shotsDir, id+'-actual-track.json'), JSON.stringify(r));
         results[id] = await judge(id, r);
         // Capture the measured final pose without racing a continuously redrawn
         // software WebGL surface. The next model selection starts a fresh run.
@@ -75,6 +121,7 @@ export const mechanicsInteractions = async (page, {openSimLab, shotsDir, timeout
         for (const slider of await page.getByTestId('bw-sim-lab-mixer-slider').all()) assert.ok(await slider.isDisabled(), 'program control keeps manual sliders off');
         await (captureModel ? captureModel(page,resolve(shotsDir, `${id}-finished.png`)) : page.screenshot({path: resolve(shotsDir, `${id}-finished.png`)}));
         await mixer.click();
+        if (id === 'crane') await craneProjectRoundtrip(page, {openSimLab, shotsDir});
         console.log(`PASS motorised mechanics ${id}: ${JSON.stringify(results[id])}`);
     }
     writeFileSync(resolve(shotsDir, 'measurements.json'), `${JSON.stringify(results, null, 2)}\n`);

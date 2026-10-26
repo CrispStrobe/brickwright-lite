@@ -62,6 +62,17 @@ export const resolvePath = path => {
 };
 
 const isDir = (fs, path) => fs.dirs.includes(path) || Object.keys(fs.files).some(f => f.startsWith(`${path === '/' ? '' : path}/`));
+
+/** A bare program-data name is relative to the loaded image's folder, not the communication working folder. */
+export const resolveProgramPath = (path, image) => {
+    const text = String(path || '');
+    if (!text || text.includes('\0')) return null;
+    if (!text.includes('/')) {
+        const program = resolvePath(image);
+        return program ? resolvePath(`${parentOf(program)}/${text}`) : null;
+    }
+    return resolvePath(text);
+};
 const usedBytes = fs => Object.values(fs.files).reduce((n, f) => n + f.length, 0);
 export const freeBytes = fs => Math.max(0, USER_SPACE_BYTES - usedBytes(fs));
 
@@ -100,6 +111,13 @@ export const putFile = (fs, path, bytes) => {
     ensureDirs(fs, p);
     fs.files[p] = Array.from(bytes, b => b & 0xff);
     return STATUS.SUCCESS;
+};
+
+/** A program can create a file in an existing virtual folder; only host downloads create folders. */
+export const putProgramFile = (fs, path, bytes) => {
+    const p = resolvePath(path);
+    if (!p || !isDir(fs, parentOf(p))) return STATUS.NO_PERMISSION;
+    return putFile(fs, p, bytes);
 };
 
 // ---- download (host → brick) --------------------------------------------------------------------

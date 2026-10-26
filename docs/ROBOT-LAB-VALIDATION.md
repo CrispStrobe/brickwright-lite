@@ -280,3 +280,30 @@ rows 7c and 23–25 above, the tracked frame in `test/bw-sim-chain.test.mjs`.
   3° accelerates at 0.2508 m/s² for 0.2509; a coasting tracked frame 0.1133 m/s² for 0.1133 (with the solver's floored
   sprocket mass and inertia, which make it coast 4.4× longer than its parts would: GEAR_MIN_*). Not modelled:
   hard-plastic wheels without a tyre.
+
+
+## Effort, effective properties and transient rolling load (2026-10-25)
+
+`test/bw-sim-effort-inspection-jolt.test.mjs` checks signed motor impulse per
+fixed step against `I·Δω/Δt`, matching-step mechanical power, braking, motor-off
+passive friction, COM/inertia observations and checkpoint/rollback. Its freely
+falling floored gear assembly must report no supporting floor load; prescribed
+up/down velocity increments isolate the effective-mass acceleration term.
+These are simulator controls, with actual execution supplied by hosted CI.
+
+The pure force-balance control uses configured mass 0.01 kg, solver mass 0.02 kg,
+gravity factor 0.5, gravity 10 m/s² and upward acceleration 1 m/s², without joint
+load. The expected estimate is `0.02·(0.5·10+1) = 0.12 N`; the old expression gave
+`0.01·(10+1) = 0.11 N`. The correction uses solver inertial mass for acceleration
+and gravity-scaled solver mass for weight, preserving existing steady-load,
+free-fall, ordinary-wheel and rollback controls. It changes no floor, friction
+coefficient, solver iteration or mechanical acceptance threshold.
+
+The imported-steering controls bind the existing catalogue's locked differential
+and Cardan-style hub representation to finite geometry expectations. A 0.16 m
+track turning at radius 0.5 m needs an outer/inner wheel-rate ratio
+`0.58/0.42 = 1.38095…`; a locked axle cannot provide it without slip. A single
+Cardan proxy at 20° has a varying speed ratio `cos(20°)` through `1/cos(20°)`,
+rather than a true CV joint's constant rate. Existing actual differential-car and
+universal-joint suites remain required. No new imported-model steering repair or
+hardware calibration is inferred from these controlled boundaries.

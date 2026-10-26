@@ -15,7 +15,7 @@ const rotate = ([x, y, z, w], v) => {
 };
 const finiteVector = v => Array.isArray(v) && v.length === 3 && v.every(Number.isFinite);
 const DEG = 180 / Math.PI;
-export const measurementText = row => row.available ? `${row.value.toFixed(row.unit === 'g' || row.unit === 'mm' || row.unit === '°' ? 1 : 3)} ${row.unit}` : '—';
+export const measurementText = row => row.available ? `${row.value.toFixed(row.unit === 'N·m' || row.unit === 'W' ? 6 : row.unit === 'g' || row.unit === 'mm' || row.unit === '°' ? 1 : 3)} ${row.unit}` : '—';
 
 /** Bind generated joint ids to authored part memberships; a recompile must not silently retarget a reading. */
 const jointIdentities = new WeakMap();
@@ -136,9 +136,19 @@ export const createMeasurementReader = session => {
             } else if (spec.joint) {
                 const j = mechanism.joints.find(x => x.id === m.joint && x.type === spec.joint);
                 if (!j || !matches(m.binding, jointIdentity(mechanism, j))) throw new Error('missing-target');
-                const state = core.jointState(j.id);
-                value = m.kind === 'travel' ? state.position * 1000 : (m.kind === 'jointSpeed' ? state.velocity : state.angle) * DEG;
-                row.points = [onBody(j.body2)]; row.source = 'jolt-joint';
+                row.points = [onBody(j.body2)];
+                if (['motorTorque', 'limitTorque', 'motorPower'].includes(m.kind)) {
+                    const state = core.jointDynamics?.(j.id);
+                    if (!state || !(state.stepSeconds > 0) || !Number.isFinite(state.t) || state.t !== core.time) throw new Error('unavailable');
+                    const fields = {motorTorque: ['motorTorqueNm', 'jolt-motor-impulse'],
+                        limitTorque: ['limitTorqueNm', 'jolt-limit-impulse'], motorPower: ['motorPowerW', 'jolt-motor-power']};
+                    const [field, source] = fields[m.kind];
+                    value = state[field]; row.source = source;
+                } else {
+                    const state = core.jointState(j.id);
+                    value = m.kind === 'travel' ? state.position * 1000 : (m.kind === 'jointSpeed' ? state.velocity : state.angle) * DEG;
+                    row.source = 'jolt-joint';
+                }
             } else if (spec.rope) {
                 const index = ropes.findIndex(r => r.id === m.rope && matches(m.binding, ropeIdentity(r)));
                 if (index < 0) throw new Error('missing-target');
