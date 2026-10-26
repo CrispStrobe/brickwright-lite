@@ -78,7 +78,7 @@ test('Floor contact: collider support agrees with independent rotated bounds',()
     const separated={colliders:[{shape:'sphere',radius:.1,position:[20,-5,0]},{shape:'sphere',radius:.1,position:[0,1,0]}]};
     assert.equal(helpers.floorLowestY(separated,[0,0,0],[0,0,0,1]),.9,'off-floor collider does not invent a floor threat');
 });
-test('Floor contact: actual step selector sweeps only threatening downward motion and releases values',()=>{
+test('Floor contact: actual step selector copies binding-owned values and sweeps only threatening downward motion',()=>{
     const functionText=source.slice(source.indexOf('    const floorRiskBodies = () => {'),source.indexOf('\n    // Self-collision is local'));
     let y=.25,velocityY=-20,gets=0,destroys=0;
     const vector=values=>({GetX:()=>values[0],GetY:()=>values[1],GetZ:()=>values[2],GetW:()=>values[3]});
@@ -92,7 +92,7 @@ test('Floor contact: actual step selector sweeps only threatening downward motio
     y=.05;assert.deepEqual(Array.from(select()),['actual-id'],'fast floor crossing is swept');
     velocityY=1;assert.equal(select().length,0,'upward motion unchanged');
     velocityY=-.01;assert.equal(select().length,0,'sub-slop resting jitter unchanged');
-    assert.equal(gets,2);assert.equal(destroys,8,'every temporary native value released');
+    assert.equal(gets,2);assert.equal(destroys,0,'binding-owned static values must never be destroyed');
 });
 test('Floor contact: temporary quality restores on native, selection and cleanup failure',()=>{
     const events=[],stepError=new Error('native step'),restoreError=new Error('restore');

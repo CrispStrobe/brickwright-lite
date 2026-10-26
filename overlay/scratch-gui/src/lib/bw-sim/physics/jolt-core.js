@@ -675,17 +675,16 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
         const ids = [];
         for (const b of floorSweep?.bodies || []) {
             const id = bodyMap.get(b.id).bodyID;
+            // WebIDL [Value] results are binding-owned static temporaries,
+            // not allocations: copy immediately and never destroy them.
             const velocity = bodyInterface.GetLinearVelocity(id);
-            let travel;
-            try { travel = velocity.GetY() * dtFixed; } finally { J.destroy(velocity); }
+            const travel = velocity.GetY() * dtFixed;
             if (travel >= -LEGO_PENETRATION_SLOP_M) continue;
             const position = bodyInterface.GetPosition(id);
+            const xyz = [position.GetX(), position.GetY(), position.GetZ()];
             const rotation = bodyInterface.GetRotation(id);
-            let lowest;
-            try {
-                lowest = floorLowestY(b, [position.GetX(), position.GetY(), position.GetZ()],
-                    [rotation.GetX(), rotation.GetY(), rotation.GetZ(), rotation.GetW()]);
-            } finally { J.destroy(position); J.destroy(rotation); }
+            const lowest = floorLowestY(b, xyz,
+                [rotation.GetX(), rotation.GetY(), rotation.GetZ(), rotation.GetW()]);
             if (lowest + travel < floorSweep.top - LEGO_SPECULATIVE_CONTACT_M) ids.push(id);
         }
         return ids;
