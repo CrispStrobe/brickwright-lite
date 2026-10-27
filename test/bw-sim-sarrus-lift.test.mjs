@@ -33,3 +33,20 @@ test('Sarrus spatial-loop worm phase survives rollback exactly',async()=>{
   const go=()=>{core.setMotor(joint,{mode:'velocity',radPerSec:-1});for(let i=0;i<100;i++)core.step(.005);const s=core.snapshot();return [Array.from(s.bodies),Array.from(s.joints)];};const first=go();core.rollback();assert.deepEqual(go(),first);
  }finally{core.destroy();}
 });
+
+import {qualifyFloorContact} from './fixtures/bw-sim/floor-contact/qualify.mjs';
+import {mkdirSync,mkdtempSync,writeFileSync,rmSync} from 'node:fs';
+import {spawnSync} from 'node:child_process';
+test('Sarrus: generated floor retains driven collapsed linkage with exact old-code control', {timeout:900000}, t=>{
+ const originals=qualifyFloorContact(t);
+ mkdirSync('test-results',{recursive:true});const out=mkdtempSync('test-results/floor-contact-reader-'),tap=out+'/cases.tap';
+ try{
+  const write=records=>writeFileSync(tap,records.map(line=>'# '+line).join('\n')+'\n');
+  write(originals);
+  const good=spawnSync(process.execPath,['scripts/verify-sim-floor-contact.mjs',tap],{encoding:'utf8',timeout:30000,maxBuffer:1048576});
+  assert.equal(good.error,undefined);assert.equal(good.status,0,good.stdout+'\n'+good.stderr);t.diagnostic(good.stdout.trim());
+  write(originals.slice(1));
+  const missing=spawnSync(process.execPath,['scripts/verify-sim-floor-contact.mjs',tap],{encoding:'utf8',timeout:30000,maxBuffer:1048576});
+  assert.equal(missing.error,undefined);assert.notEqual(missing.status,0);assert.match(missing.stderr,/eight original isolated case reports required/);
+ }finally{rmSync(out,{recursive:true,force:true});}
+});

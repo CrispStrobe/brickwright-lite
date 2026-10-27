@@ -88,3 +88,22 @@ inventory authorizes actual V8. Only a separately admitted complete current
 inventory and native/runtime joins can precede the distinct actual-V8 GUI
 export/reload and forward-debug acceptance. Preserve the consumed V7 event.
 No physical accuracy, whole OS, performance, release or broad licence claim.
+
+## Finite V8 failed-attempt checkpoint — 2026-10-27
+
+Source candidate [`2079bf18`](https://github.com/CrispStrobe/brickwright-lite/commit/2079bf1884199a294e7321612ce4cb9ef86807f2)
+was under [PR1318](https://github.com/CrispStrobe/brickwright-lite/pull/1318)
+and unmerged at this checkpoint. The once-selected
+[finite V8 run](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40422314383)
+passed source admission, setup-node and trusted package/Chromium setup. Its
+inventory step failed; conditional artifact upload succeeded. The independent
+failure reader accepted the negative record and joined the selected event,
+while `qualified` remained false. Its first refusal was `/etc/resolv.conf`: the
+V8 template selected an alias, but the recorded file kind was ordinary regular.
+This supplies no positive runtime, native-font or actual GUI qualification.
+
+Preserve the original V7 setup failure and this V8 type-role refusal. The V8
+event is spent and must never be retried or reinterpreted. The distinct
+[finite V9 resolver-role continuation](2026-10-27-x86-finite-v9-resolver-role.md)
+requires its merged claim, separately reviewed source and fresh qualification.
+Actual-V8 FreeDOS export/reload and forward-debug acceptance remain pending.
