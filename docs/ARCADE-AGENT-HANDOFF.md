@@ -2,6 +2,10 @@
 
 ## 27 October: current checkpoint and next actions
 
+Start with [the frozen checkpoint and ordered continuation tasks](ARCADE-CHECKPOINT-2026-10-27.md).
+It identifies the pushed source branch, publication/qualification boundary and
+complete next steps; older sections below retain detailed history.
+
 Readonly startup Number operands are implemented in the source candidate.
 The focused cohort passes 31 tests without skips, with eight neighboring domain
 controls passing separately. Three independent guard cuts detect missing
