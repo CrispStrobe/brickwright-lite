@@ -3204,7 +3204,7 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
         "experimental": true
     },
     "high-select.ldr": {
-        "pieces": 284,
+        "pieces": 288,
         "motors": 2,
         "hubs": [
             "spike-prime"
@@ -3243,7 +3243,7 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
         "experimental": true
     },
     "high-select-mirror.ldr": {
-        "pieces": 284,
+        "pieces": 288,
         "motors": 2,
         "hubs": [
             "spike-prime"
