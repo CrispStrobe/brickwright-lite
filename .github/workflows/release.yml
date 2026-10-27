@@ -8,7 +8,78 @@ on:
 permissions:
   contents: write
 
+# SPIKE runtime for the macOS app (docs/SPIKE-MACOS.md): exact sources of the
+# own NuttX guest and of the Renode Runtime that the macOS leg bundles.
+env:
+  SPIKE_FIRMWARE_SHA: 91cf0c07784441ac114b85a1705737327db2d9f8
+  SPIKE_RUNTIME_SHA: 961a01f5c0fa9dd7f004df03dfbb37e1a5c55a67
+
 jobs:
+  # Own source-built NuttX guest (TI-free simulation profile only), staged by the
+  # existing package producer. No reference or original LEGO firmware.
+  spike-guest:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - name: Check out own firmware
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          repository: CrispStrobe/brickwright-spike-prime-fw
+          ref: ${{ env.SPIKE_FIRMWARE_SHA }}
+          path: .spike/firmware
+          persist-credentials: false
+      - name: Check out the bundled SPIKE Runtime (platforms, state service)
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          repository: CrispStrobe/renode-spike-prime
+          ref: ${{ env.SPIKE_RUNTIME_SHA }}
+          path: .spike/runtime
+          persist-credentials: false
+      - name: Build own NuttX simulation firmware
+        working-directory: .spike/firmware
+        run: |
+          set -o pipefail
+          git -C ../runtime submodule update --init --depth 1 src/Infrastructure
+          git submodule update --init nuttx nuttx-apps
+          python3 tools/apply_nuttx_backports.py
+          docker build --pull -t nuttx-builder -f docker/Dockerfile.nuttx docker
+          make nuttx BOARD_CONFIG=simulation V=1 2>&1 | tee "$RUNNER_TEMP/build.log" | tail -n 20
+          python3 tools/check_ti_free_image.py \
+            nuttx/nuttx.bin nuttx/nuttx_user.bin nuttx/nuttx nuttx/nuttx_user.elf \
+            --build-log "$RUNNER_TEMP/build.log" \
+            --build-root nuttx --build-root nuttx-apps --build-root apps \
+            --config nuttx/.config --elf nuttx/nuttx_user.elf
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+      - name: Stage the own NuttX package (compiled models)
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install --no-install-recommends -y -q binutils-arm-none-eabi
+          printf 'placeholder\n' > "$RUNNER_TEMP/runtime-placeholder"
+          node scripts/prepare-spike-nuttx-package.mjs .spike/firmware .spike/runtime .spike/runtime/src/Infrastructure \
+            "$RUNNER_TEMP/runtime-placeholder" "$RUNNER_TEMP/spike-nuttx" --compiled-models
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: spike-nuttx-package
+          path: ${{ runner.temp }}/spike-nuttx
+          if-no-files-found: error
+          retention-days: 7
+
+  # Multi-file SPIKE Renode for macOS (separate signable files, shipped tlib,
+  # .NET notices, no Packet.Net/pip), built from the exact Runtime commit.
+  spike-renode-macos:
+    uses: CrispStrobe/renode-spike-prime/.github/workflows/macos-spike-renode.yml@961a01f5c0fa9dd7f004df03dfbb37e1a5c55a67
+    permissions:
+      contents: read
+    with:
+      runtime_ref: 961a01f5c0fa9dd7f004df03dfbb37e1a5c55a67
+
   # Build the web bundle once (it is identical across OSes) and share it, so the
   # per-platform Tauri jobs don't each rebuild scratch-gui (and hit its OOM 3×).
   build-web:
@@ -28,7 +99,7 @@ jobs:
           retention-days: 3
 
   tauri:
-    needs: build-web
+    needs: [build-web, spike-guest, spike-renode-macos]
     strategy:
       fail-fast: false
       matrix:
@@ -69,6 +140,30 @@ jobs:
       - name: Install app dependencies (tauri CLI)
         working-directory: apps/tauri
         run: npm ci
+
+      - name: Stage the SPIKE runtime as app resources (macOS)
+        if: matrix.os == 'macos-latest'
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: renode-spike-macos-osx-arm64
+          path: ${{ runner.temp }}/spike-renode
+      - if: matrix.os == 'macos-latest'
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: spike-nuttx-package
+          path: ${{ runner.temp }}/spike-nuttx
+      - name: Freeze SPIKE resources and compile-time pins (macOS)
+        if: matrix.os == 'macos-latest'
+        run: |
+          set -eu
+          tar -xzf "$RUNNER_TEMP/spike-renode/renode-spike-macos-osx-arm64.tar.gz" -C "$RUNNER_TEMP/spike-renode"
+          cat "$RUNNER_TEMP/spike-renode/provenance.json"
+          node scripts/stage-spike-macos-resources.mjs "$RUNNER_TEMP/spike-renode/renode" "$RUNNER_TEMP/spike-nuttx" "$GITHUB_WORKSPACE/.spike-macos"
+          node -e 'const p=require(process.argv[1]);for(const[k,v]of Object.entries(p))console.log(`${k}=${v}`)' "$GITHUB_WORKSPACE/.spike-macos/compile-pins.json" >> "$GITHUB_ENV"
+          echo "SPIKE_TAURI_CONFIG=$GITHUB_WORKSPACE/.spike-macos/tauri-config.json" >> "$GITHUB_ENV"
+      - name: Native SPIKE child-environment test (macOS)
+        if: matrix.os == 'macos-latest'
+        run: cargo test --manifest-path apps/tauri/src-tauri/Cargo.toml --lib renode_child_env
 
       # Mac App Store provisioning profile: not part of tauri-action's own
       # keychain setup, so install it to the standard Xcode lookup path
@@ -125,6 +220,8 @@ jobs:
           releaseName: ${{ startsWith(github.ref, 'refs/tags/') && format('Brickwright {0}', github.ref_name) || '' }}
           releaseDraft: true
           prerelease: false
+          # macOS: bundle the staged SPIKE runtime (empty elsewhere).
+          args: ${{ matrix.os == 'macos-latest' && format('--config {0}', env.SPIKE_TAURI_CONFIG) || '' }}
 
       # TestFlight (and App Store submission generally) requires the
       # provisioning profile physically embedded in the .app bundle as
@@ -153,7 +250,27 @@ jobs:
             --entitlements /tmp/merged-entitlements.plist \
             --sign "${{ secrets.MACOS_SIGNING_IDENTITY }}" \
             "$APP_PATH"
+
+          # SPIKE runtime under Contents/Resources/renode: --deep does not cover
+          # Resources, so sign every nested Mach-O there individually, then the
+          # Renode host as an app-sandbox + inherit child, then re-seal the app
+          # (without --deep, so the child keeps its own entitlements).
+          RENODE_DIR="$APP_PATH/Contents/Resources/renode"
+          test -x "$RENODE_DIR/renode"
+          find "$RENODE_DIR" -type f ! -path "$RENODE_DIR/renode" -print0 | while IFS= read -r -d '' f; do
+            if file -b "$f" | grep -q '^Mach-O'; then
+              codesign --force --timestamp --options runtime --sign "${{ secrets.MACOS_SIGNING_IDENTITY }}" "$f"
+            fi
+          done
+          codesign --force --timestamp --options runtime \
+            --entitlements apps/tauri/src-tauri/entitlements-renode-child.plist \
+            --sign "${{ secrets.MACOS_SIGNING_IDENTITY }}" "$RENODE_DIR/renode"
+          codesign --force --strict --timestamp --options runtime \
+            --entitlements /tmp/merged-entitlements.plist \
+            --sign "${{ secrets.MACOS_SIGNING_IDENTITY }}" \
+            "$APP_PATH"
           codesign --verify --deep --strict --verbose=2 "$APP_PATH"
+          codesign -d --entitlements - "$RENODE_DIR/renode"
 
       # Mac App Store submission needs a .pkg installer wrapper signed with
       # the *separate* "3rd Party Mac Developer Installer" identity -- the
@@ -165,6 +282,24 @@ jobs:
           productbuild --component "$APP_PATH" /Applications \
             --sign "3rd Party Mac Developer Installer: Christian Ströbele (${{ secrets.MACOS_TEAM_ID }})" \
             apps/tauri/src-tauri/target/release/bundle/macos/Brickwright.pkg
+
+      # Installed-app test: install the signed .pkg on this hosted runner and boot
+      # the own NuttX guest with the app's own signed SPIKE Renode child, plus the
+      # hardened-runtime entitlement measurement with the real Team ID.
+      - name: SPIKE installed-app test (macOS)
+        if: matrix.os == 'macos-latest'
+        run: |
+          sudo installer -pkg apps/tauri/src-tauri/target/release/bundle/macos/Brickwright.pkg -target /
+          APP=$(find /Applications -maxdepth 1 -name 'Brickwright*.app' | head -1)
+          test -n "$APP"
+          bash scripts/macos/spike-installed-test.sh "$APP" "${{ secrets.MACOS_SIGNING_IDENTITY }}" "$RUNNER_TEMP/spike-installed"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always() && matrix.os == 'macos-latest'
+        with:
+          name: spike-installed-test
+          path: ${{ runner.temp }}/spike-installed
+          if-no-files-found: warn
+          retention-days: 14
 
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: matrix.os == 'macos-latest'
