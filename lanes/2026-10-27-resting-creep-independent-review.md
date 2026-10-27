@@ -1,6 +1,7 @@
 # Resting-frame baseline: independent review checkpoint
 
-Status: ACTIVE — source review completed; hosted baseline admission pending.
+Status: CHECKPOINT — source review completed; hosted baseline admission pending
+with the PR #1472 successor (see Takeover below).
 Owner: Codex, independent resting-frame review.
 Branch: `lane/robot-resting-creep-independent-review-20261027`.
 Review checkpoint base: `dea504b32a9a4bd43a2a9d25b587590a0ac9763f`.
@@ -65,3 +66,11 @@ the engine test ran.
 Current checkpoint verdict: pure source controls passed; no actual baseline
 admission or solver-fix conclusion. Issue #1435 remains open. This review does
 not confer acceptance on subsequent Main changes or other owners' source PRs.
+
+### Takeover — 2026-10-27
+
+The Codex review session that opened this record is frozen. Claude takes over
+only to land this record as a checkpoint. No source or evidence changed, and no
+review was repeated. The admission steps above go to the diagnostic successor
+in PR #1472, which already owns the implementation. Its owner decides how and
+when to do them. This record claims no artifact intake or source path.
