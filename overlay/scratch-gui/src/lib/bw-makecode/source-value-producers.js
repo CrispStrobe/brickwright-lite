@@ -931,6 +931,16 @@ function ordinarySpriteAyNumberReads(program) {
                     !method.typeArguments?.length&&method.args?.length===2&&all(method.args,number))continue;
             }
             if(parent?.type==='Member'&&parent.object===node&&[...properties,'width','height','image','overlapsWith'].includes(parent.name))continue;
+            // Known controller retention: the canonical SDK controller.moveSprite
+            // call keeps the Sprite and writes only numeric velocities each
+            // frame. Admit only the actual namespace call with this Sprite as
+            // its first argument and 1-3 arguments whose speeds are omitted or
+            // independently proved Numbers. Other controller members/arities refuse.
+            if(call&&call.args[0]===node&&!call.isNew&&!call.constructorCall&&!call.optional&&!call.typeArguments?.length&&
+                call.callee?.type==='Member'&&!call.callee.optional&&call.callee.name==='moveSprite'&&
+                call.callee.object?.type==='Identifier'&&call.callee.object.name==='controller'&&graph.isSdkNamespace(call.callee)&&
+                call.args.length>=1&&call.args.length<=3&&all(call.args.slice(1),number))continue;
+
             if(call?.callee?.type==='Member'&&call.callee.name==='overlapsWith'&&call.args.length===1&&call.args[0]===node&&sprites(value(call.callee.object)))continue;
             return null;
         }
