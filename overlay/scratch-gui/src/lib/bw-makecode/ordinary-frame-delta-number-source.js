@@ -72,6 +72,7 @@ const callback=n=>n?.type==='FunctionExpression'&&Array.isArray(n.params)&&n.par
     !n.async&&!n.isAsync&&!n.generator&&!n.isGenerator;
 const gameCalls=new Map([['runtime',[0]],['gameOver',[1]],['splash',[1,2]],['onPaint',[1]],['onUpdate',[1]],['eventContext',[0]]]);
 const sdkRoots=new Set(['game','Math','screen','controller','music','Sounds']);
+const arrayMethods=new Map([['push',[1]],['unshift',[1]],['pop',[0]],['indexOf',[1,2]]]);
 const constants=new Set(['undefined','NaN','Infinity']);
 const nodeTypes=new Set(['Program','Declaration','FunctionDeclaration','FunctionExpression','Class','Enum','Namespace','ExpressionStatement','Block','If','For','ForOf','ForIn','While','Switch','Break','Continue','Return','ThrowStatement','Identifier','Number','Boolean','String','Null','Undefined','Parenthesized','Binary','Logical','Unary','Assignment','Update','Call','Member','Index','Array','Object','Conditional','Template','Empty','EmptyStatement']);
 const otherCalls=new Map([['pause',[1]],['randint',[2]],['Math.sign',[1]],['Math.randomRange',[2]],
@@ -81,8 +82,8 @@ const otherCalls=new Map([['pause',[1]],['randint',[2]],['Math.sign',[1]],['Math
 const path=n=>n?.type==='Identifier'?n.name:n?.type==='Member'&&!n.optional?path(n.object)+'.'+n.name:null;
 const root=n=>['Member','Index'].includes(n?.type)?root(n.object):n;
 
-export function createOrdinaryFrameDeltaNumberSource(program,safeIndex=()=>false){
-    if(!ambientCurrent()||typeof safeIndex!=='function'||!hasCandidate(program))return denied;
+export function createOrdinaryFrameDeltaNumberSource(program,safeIndex=()=>false,safeArrayCall=()=>false){
+    if(!ambientCurrent()||typeof safeIndex!=='function'||typeof safeArrayCall!=='function'||!hasCandidate(program))return denied;
     const syntax=inspectGeneratedHelperBindings(program,GENERATED_HELPER_PROFILES.ordinary);
     if(!syntax.isCurrent())return denied;
     const lexical=analyseCallableBindings(program),binding=n=>lexical.references.get(n),candidates=new WeakSet();
@@ -141,6 +142,10 @@ export function createOrdinaryFrameDeltaNumberSource(program,safeIndex=()=>false
         if(own&&['game','control'].includes(r.name))continue;
         if(!own&&r?.name==='game')continue;
         if(n.callee?.type==='Identifier'&&functions.has(own)&&plainCall(n,[functions.get(own).params.length]))continue;
+        // A caller-proved Array/nullish receiver's own builtin method runs no
+        // source code; the caller also rules out argument coercion hooks.
+        if(own&&n.callee?.type==='Member'&&!n.callee.optional&&arrayMethods.has(n.callee.name)&&plainCall(n,arrayMethods.get(n.callee.name))&&
+            safeArrayCall(n)===true&&ambientCurrent()&&syntax.isCurrent())continue;
         const allowed=!own&&otherCalls.get(path(n.callee));
         if(!allowed||!plainCall(n,allowed))unsafe=true;
     }

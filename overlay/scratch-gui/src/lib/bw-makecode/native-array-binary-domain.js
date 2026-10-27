@@ -152,7 +152,7 @@ function inspectDomains(program,profile,ordinaryExportSelection) {
     let closureResults=null,closureLive=true,imageResults=null,imageLive=true;
     let imageOrigins=null,imageOriginView=null,imageOriginUsed=false,imageOriginLive=true;
     let callableAdditionProof=null,callableAdditionUsed=false,callableAdditionLive=true;
-    let operationUsed=false,operationLive=true,classResultUsed=false,classResultLive=true;const operationAbsences=[];
+    let operationUsed=false,operationLive=true,classResultUsed=false,classResultLive=true,frameDeltaUsed=false;const operationAbsences=[];
     const closureNormalTokens=new Set(),imageNormalTokens=new Set();
     const current=()=>{
         if(operationUsed&&!operationLive||classResultUsed&&!classResultLive)return false;
@@ -161,7 +161,8 @@ function inspectDomains(program,profile,ordinaryExportSelection) {
                 if(!callableAdditionLive||!imageOriginView.current()){callableAdditionLive=false;return false;}
                 try{assertCurrentClassSourceProof(callableAdditionProof,imageOriginView.program);}catch{callableAdditionLive=false;return false;}
             }
-            const now=syntax.current()&&unaryProof.isCurrent()&&classView.current()&&bindings.isCurrent()&&graph.lexicalDeclarationReadinessCurrent();
+            const now=syntax.current()&&unaryProof.isCurrent()&&classView.current()&&bindings.isCurrent()&&graph.lexicalDeclarationReadinessCurrent()&&
+                (!frameDeltaUsed||graph.frameDeltaNumbersCurrent());
             if(closureNormalTokens.size&&(!now||!closureResults.current()))closureLive=false;
             if(imageNormalTokens.size&&(!now||!imageResults.current()))imageLive=false;
             if(recursiveNormalTokens.size&&(!now||!recursiveResults.current()))recursiveLive=false;
@@ -323,6 +324,7 @@ function inspectDomains(program,profile,ordinaryExportSelection) {
         const projected=actual(node);
         if(projected!==node&&projected.type==='Conditional'&&recursiveNormalTokens.has(projected.nativeRecursiveDomainNormalCall)&&recursiveResults.current())return true;
         if(numberResultSets.some(producers=>producers.has(actual(node))))return true;
+        if(node.type==='Member'&&graph.frameDeltaNumberAt?.(actual(node))){frameDeltaUsed=true;return true;}
         if(node.type==='Identifier'&&!graph.isInitializedAt(actual(node))&&!graph.immutableFunctionAt(actual(node)))return false;
         return Object.entries(node).every(([key,value])=>metadata.has(key)||initialized(value));
     };

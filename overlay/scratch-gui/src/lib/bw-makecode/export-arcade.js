@@ -324,6 +324,38 @@ class ArcadeEmitter {
             return false;
         }
     }
+    // The same owned-copy bridge for the saved frame delta reporter, so the
+    // direct API and JSON export select the same declaration types.
+    frameDeltaNumberResult(target,node) {
+        if(isProjectJsonSnapshot(this.project))return this.frameDeltaNumber.isNumberResult(target,node);
+        if(!this.arrayOwnedSource?.current())return false;
+        try{
+            if(this.frameDeltaOwnedSnapshot===undefined){
+                const snapshot=createProjectJsonSnapshot(this.arrayOwnedSource.json);
+                this.frameDeltaOwnedSnapshot={snapshot,authority:createProjectFrameDeltaNumber(snapshot)};
+            }
+            const targets=arraySourceDescriptor(this.project,'targets')?.value;
+            const count=arraySourceDescriptor(targets,'length')?.value;
+            let index=-1,id=null;
+            for(let i=0;i<count;i++)if(arraySourceDescriptor(targets,i)?.value===target){if(index!==-1)return false;index=i;}
+            if(index<0)return false;
+            const blocks=arraySourceDescriptor(target,'blocks')?.value;
+            const names=arraySourceKeys(blocks),size=arraySourceDescriptor(names,'length').value;
+            for(let i=0;i<size;i++){
+                const key=arraySourceDescriptor(names,i).value;
+                if(typeof key==='string'&&arraySourceDescriptor(blocks,key)?.value===node){if(id!==null)return false;id=key;}
+            }
+            const actual=this.frameDeltaOwnedSnapshot.snapshot.targets[index],value=id!==null&&actual?.blocks?.[id];
+            if(!value||!this.frameDeltaOwnedSnapshot.authority.isNumberResult(actual,value)||!this.arrayOwnedSource.current())return false;
+            this.frameDeltaOwnedSourceUsed=true;return true;
+        }catch{
+            return false;
+        }
+    }
+    frameDeltaNumbersCurrent() {
+        return this.frameDeltaNumber.current()&&(!this.frameDeltaOwnedSourceUsed||
+            this.arrayOwnedSource.current()&&this.frameDeltaOwnedSnapshot.authority.current());
+    }
     mathNumbersCurrent() {
         return this.mathNormalResults.current()&&(!this.mathOwnedSourceUsed||
             this.arrayOwnedSource.current()&&this.mathOwnedSnapshot.authority.current());
@@ -3519,7 +3551,7 @@ class ArcadeEmitter {
                 if(currentSceneClockNumber(blocks,value)) {const id=Symbol('current scene clock Number');numbers.add(id);inspectionLeaves.set(id,'number');return id;}
                 if(value.opcode==='arcade_frameDeltaTime'){
                     const id=Symbol('current saved frame delta Number');
-                    if(this.frameDeltaNumber.isNumberResult(target,value)){numbers.add(id);inspectionLeaves.set(id,'number');}
+                    if(this.frameDeltaNumberResult(target,value)){numbers.add(id);inspectionLeaves.set(id,'number');}
                     else {anys.add(id);inspectionOpaqueCells.add(id);}
                     return id;
                 }
@@ -4745,7 +4777,7 @@ function emitProjectToArcade (project, opts, snapshotCallbacks) {
         const selected=new Set(e.procedureConstraints.procedures().map(({target,code})=>e.functionName(target,code)));
         try{for(const diagnostic of validateProcedureConstraintSource(parseMakeCodeTs(projectTs,{parameterDefaults:true,retainParentheses:true}),{onlyFunctions:selected,ordinaryPrimitiveSdkNumbers:true,sceneClockNumbers:true,closedOrdinaryEntries:true}))e.note(diagnostic);}catch(error){e.note(error.message);}
     }
-    if(!e.frameDeltaNumber.current())e.note('Frame delta Number: current saved reporter proof environment changed during export');
+    if(!e.frameDeltaNumbersCurrent())e.note('Frame delta Number: current saved reporter proof environment changed during export');
     if(!e.closedOrdinaryEntry.current())e.note('Arcade ordinary entry: current execution roots changed during export');
     // Host artwork callbacks can edit current project objects during rendering.
     // Stale owner/global/local inventories must never become a clean export.

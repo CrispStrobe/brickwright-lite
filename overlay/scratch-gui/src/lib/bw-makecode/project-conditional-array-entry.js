@@ -494,3 +494,270 @@ export function createProjectConditionalArrayEntry(context){
         }catch(_){expired=true;return null;}
     }});
 }
+
+// Inductive publication frontier. When every actual writer of a global receiver
+// publishes a frame-local Array allocated earlier in its own straight chain, the
+// receiver binds an initialized Array from the first such write until the run
+// ends (Stop, or game over's stopAll/greenFlag, which pops every scene and its
+// paint renderables). Before that first write only the startup thread runs: no
+// other hats exist and this closed prefix registers nothing, so its suspending
+// splash/wait/sound effects cannot run user code or change a global. Any later
+// occurrence of the receiver, in any scope or callback, executes after it.
+// The receiver's element presence, length and values remain unproved.
+const prefixEffects={arcade_playSound:['SOUND','UNTIL_DONE'],arcade_splash:['TITLE','SUBTITLE'],control_wait:['DURATION']};
+const pureValues=new Set([...numericShadows,...Object.keys(arithmetic),'text','data_variable','arcade_getLocal','arrays_valueBinary',
+    'arrays_valueCompare','arrays_valueUnary','arrays_valueTruthy','arrays_specialValue','operator_equals','operator_lt','operator_gt',
+    'operator_not','arcade_soundMelody']);
+const pureFields={arrays_valueBinary:['OP'],arrays_valueCompare:['OP'],arrays_valueUnary:['OP'],arrays_specialValue:['KIND'],
+    data_variable:['VARIABLE'],text:['TEXT'],arcade_soundMelody:['SOUND']};
+export function createProjectArrayPublicationFrontier(context){
+    const {project,targets,scopes,records,calls,owners,invalid,globalCell,implicitEntries,closedEffects}=context;
+    if(!ambientCurrent()||!isProjectJsonSnapshot(project)||typeof closedEffects!=='function')return denied;
+    const refusal=Object.freeze({}),fail=()=>{throw refusal;},need=value=>{if(!value)fail();};
+    const snapshots=[],checks=[],physical=new WeakMap(),results=new Map(),procedures=new Map();
+    let symbols,source=null,expired=false,ready=false;
+    const retain=(object,names,all=false)=>{
+        const parent=proto(object);need(parent===(array(object)?Array.prototype:Object.prototype));
+        const rows=names.map(name=>get(object,name));need(rows.every(row=>row&&own(row,'value')));
+        snapshots.push({object,parent,names,rows,all});
+    };
+    const retainArray=value=>{need(array(value));retain(value,keys(value),true);};
+    const literal=(target,node,name)=>{
+        const slot=node.inputs?.[name];if(slot?.[0]!==1)return null;
+        const v=slot[1];if(array(v))return v.length===2&&v[0]===10&&typeof v[1]==='string'?v[1]:null;
+        const child=target.blocks[v];return child?.opcode==='text'?field(child,'TEXT'):null;
+    };
+    const variableRow=(target,id)=>{const owner=targets.filter(t=>own(t.variables||{},id));return owner.length===1&&(owner[0]===target||owner[0].isStage)?owner[0].variables[id]:null;};
+    const cellOf=(target,row)=>{
+        if(!array(row)||row.length!==2||typeof row[1]!=='string')return null;
+        const declared=variableRow(target,row[1]);return declared&&declared[0]===row[0]?globalCell(target,row[1]):null;
+    };
+    const owned=(scope,node)=>{const p=physical.get(node);need(p&&p.target===scope.target&&owners.get(node)===scope&&!invalid.has(node));checks.push(()=>owners.get(node)===scope&&!invalid.has(node));return p;};
+    try{
+        need(closedEffects()&&targets===project.targets&&array(targets)&&array(scopes)&&array(records)&&array(calls));
+        retainArray(scopes);retainArray(records);retainArray(calls);
+        for(const target of targets){
+            need(target.blocks&&!array(target.blocks));
+            for(const [id,node]of Object.entries(target.blocks)){need(!own(Object.prototype,id)&&node&&typeof node==='object'&&!physical.has(node));physical.set(node,{target,id});}
+        }
+        symbols=createOrdinaryExportSymbols(project);need(symbols.current());
+        const roots=new Set();
+        for(const scope of scopes){
+            need(scope&&targets.includes(scope.target)&&scope.target.blocks[scope.id]===scope.root&&!scope.invalid&&!scope.unknownEntry&&
+                !implicitEntries?.has(scope)&&array(scope.params)&&array(scope.ids)&&scope.params.length===scope.ids.length);
+            retain(scope,['target','root','id','proc','params','ids','callers']);retainArray(scope.params);retainArray(scope.ids);retainArray(scope.callers);
+            checks.push(()=>!scope.invalid&&!scope.unknownEntry&&!implicitEntries?.has(scope));
+            const op=scope.root.opcode;roots.add(scope.root);
+            if(op==='arcade_whenSourceStarts'){need(!source);source=scope;}
+            else if(op==='procedures_definition'){
+                need(typeof scope.proc==='string'&&symbols.name(scope.target,scope.proc));
+                let map=procedures.get(scope.target);if(!map)procedures.set(scope.target,map=new Map());need(!map.has(scope.proc));map.set(scope.proc,scope);
+            }else need(op==='arcade_whenRegisteredPaint');
+        }
+        // A top-level block that is not an inventoried root could be another entry.
+        for(const target of targets)for(const node of Object.values(target.blocks))if(node.topLevel)need(roots.has(node));
+        need(source);ready=true;
+    }catch(_){return denied;}
+
+    const current=()=>{
+        if(expired)return false;
+        try{
+            if(!ambientCurrent()||!symbols.current())expired=true;
+            for(let i=0;!expired&&i<snapshots.length;i++){
+                const r=snapshots[i];
+                if(proto(r.object)!==r.parent||r.all&&keys(r.object).length!==r.names.length){expired=true;break;}
+                for(let j=0;j<r.names.length;j++)if(!sameDescriptor(get(r.object,r.names[j]),r.rows[j])){expired=true;break;}
+            }
+            for(let i=0;!expired&&i<checks.length;i++)if(!checks[i]())expired=true;
+        }catch(_){expired=true;}
+        return !expired;
+    };
+    // Every physical reference to the receiver is a read, a declaration or an
+    // inventoried writer, and each writer is a fresh frame-local publication.
+    const freshWriters=c=>{
+        need(c&&c.global&&!c.formal&&!c.directBad&&array(c.writers)&&c.writers.length>0);
+        retain(c,['global','formal','writers']);retainArray(c.writers);checks.push(()=>!c.directBad);
+        const writes=new Set();
+        for(const target of targets)for(const node of Object.values(target.blocks)){
+            const row=node.fields?.VARIABLE;
+            if(array(row)&&row.length===2&&typeof row[1]==='string'&&variableRow(target,row[1])&&globalCell(target,row[1])===c){
+                need(cellOf(target,row)===c&&['data_variable','data_setvariableto'].includes(node.opcode));
+                if(node.opcode==='data_setvariableto')writes.add(node);
+            }
+        }
+        need(writes.size===c.writers.length);
+        for(const w of c.writers){
+            need(w&&writes.has(w.node)&&w.target===physical.get(w.node).target&&w.value);retain(w,keys(w),true);retain(w.value,keys(w.value),true);
+            const node=w.node,target=w.target,scope=w.scope;owned(scope,node);
+            const slot=node.inputs.VALUE;need(exact(node.inputs,['VALUE'])&&array(slot)&&slot[0]===3&&typeof slot[1]==='string');
+            const rhs=target.blocks[slot[1]];need(rhs?.opcode==='arcade_getLocal'&&rhs.shadow===false&&w.value.node===rhs);owned(scope,rhs);
+            const name=literal(target,rhs,'NAME');need(typeof name==='string'&&identifier(name));
+            const writesLocal=(start,path=new Set())=>{
+                if(!start||path.has(start))return true;path.add(start);
+                // A non-literal local name could be this one.
+                if(start.opcode==='arcade_setLocal'&&(typeof literal(target,start,'NAME')!=='string'||literal(target,start,'NAME')===name))return true;
+                for(const slot of Object.values(start.inputs||{}))for(const v of slot.slice(1))if(typeof v==='string'&&writesLocal(target.blocks[v],path))return true;
+                return typeof start.next==='string'&&writesLocal(target.blocks[start.next],path);
+            };
+            let id=physical.get(node).id,found=false;
+            for(let steps=0;!found;steps++){
+                need(steps<10000);
+                const at=target.blocks[id],prev=target.blocks[at.parent];
+                need(prev&&prev.next===id&&!prev.topLevel);owned(scope,prev);
+                if(prev.opcode==='arcade_setLocal'&&literal(target,prev,'NAME')===name){
+                    const v=prev.inputs.VALUE,create=typeof v?.[1]==='string'&&target.blocks[v[1]];
+                    need(exact(prev.inputs,['NAME','VALUE'])&&create?.opcode==='arrays_createReference'&&literal(target,create,'VALUES')==='[]');
+                    owned(scope,create);found=true;
+                }else{
+                    // One statement's own subtree, not its successors.
+                    need(!writesLocal({...prev,next:null}));
+                }
+                id=physical.get(prev).id;
+            }
+        }
+    };
+    const prefix=c=>{
+        const globals=new Map(),tokens=new WeakSet(),active=new Set();let steps=0,published=null;
+        const tick=()=>need(++steps<=100000);
+        const scalar=v=>v===null||v===undefined||['number','string','boolean'].includes(typeof v);
+        const numberValue=v=>{need(typeof v==='number'&&finite(v));return v;};
+        const read=cell=>{need(cell&&cell!==c&&globals.has(cell));return globals.get(cell);};
+        const pure=(scope,node,depth=0)=>{
+            need(depth<200&&node&&pureValues.has(node.opcode)&&node.next===null);owned(scope,node);
+            need(exact(node.fields,pureFields[node.opcode]||(numericShadows.has(node.opcode)?['NUM']:[])));
+            if(node.opcode==='data_variable')need(cellOf(scope.target,node.fields.VARIABLE)&&cellOf(scope.target,node.fields.VARIABLE)!==c);
+            for(const slot of Object.values(node.inputs||{})){
+                need(array(slot)&&[1,2,3].includes(slot[0]));
+                for(const v of slot.slice(1)){
+                    if(array(v)){need(v[0]!==12||cellOf(scope.target,[v[1],v[2]])&&cellOf(scope.target,[v[1],v[2]])!==c);}
+                    else pure(scope,scope.target.blocks[v],depth+1);
+                }
+            }
+        };
+        const binaryValue=(op,a,b)=>{
+            numberValue(a);numberValue(b);let v;
+            switch(op){case '+':v=a+b;break;case '-':v=a-b;break;case '*':v=a*b;break;case '/':v=a/b;break;
+            case '%':v=a%b;break;case '**':v=a**b;break;case '&':v=a&b;break;case '|':v=a|b;break;case '^':v=a^b;break;
+            case '<<':v=a<<b;break;case '>>':v=a>>b;break;case '>>>':v=a>>>b;break;default:fail();}
+            return numberValue(v);
+        };
+        const compareValue=(op,a,b)=>{
+            numberValue(a);numberValue(b);
+            switch(op){case '==':case '===':return a===b;case '!=':case '!==':return a!==b;
+            case '<':return a<b;case '<=':return a<=b;case '>':return a>b;case '>=':return a>=b;default:fail();}
+        };
+        const inputValue=(node,name,frame)=>{
+            const slot=node.inputs[name];need(array(slot)&&[1,2,3].includes(slot[0]));const v=slot[1];
+            if(array(v)){
+                if(v[0]===12)return read(cellOf(frame.scope.target,[v[1],v[2]]));
+                need(v.length===2);if(v[0]===10)return v[1];return numberValue(num(v[1]));
+            }
+            return value(frame.scope.target.blocks[v],frame);
+        };
+        const value=(node,frame)=>{
+            tick();need(node&&node.next===null);owned(frame.scope,node);const op=node.opcode,target=frame.scope.target;
+            if(numericShadows.has(op)){need(exact(node.fields,['NUM']));return numberValue(num(field(node,'NUM')));}
+            if(op==='text')return field(node,'TEXT');
+            if(op==='arrays_specialValue')return field(node,'KIND')==='null'?null:field(node,'KIND')==='undefined'?undefined:fail();
+            if(op==='data_variable')return read(cellOf(target,node.fields.VARIABLE));
+            if(op==='arcade_getLocal'){const name=literal(target,node,'NAME');need(frame.locals.has(name));return frame.locals.get(name);}
+            if(op==='argument_reporter_string_number'||op==='argument_reporter_boolean'){
+                const name=field(node,'VALUE');need(frame.scope.params.includes(name)&&frame.locals.has(name));return frame.locals.get(name);
+            }
+            if(op==='arrays_createReference'){need(literal(target,node,'VALUES')==='[]');const token={elements:[]};tokens.add(token);return token;}
+            if(op==='arrays_valueBinary'){need(binary.has(field(node,'OP')));return binaryValue(field(node,'OP'),inputValue(node,'LEFT',frame),inputValue(node,'RIGHT',frame));}
+            if(own(arithmetic,op)){
+                const a=inputValue(node,'NUM1',frame),b=inputValue(node,'NUM2',frame);
+                if(op==='operator_mod')need(typeof a==='number'&&a>=0&&typeof b==='number'&&b>0);
+                return binaryValue({operator_add:'+',operator_subtract:'-',operator_multiply:'*',operator_divide:'/',operator_mod:'%'}[op],a,b);
+            }
+            if(op==='arrays_valueCompare'){need(comparisons.has(field(node,'OP')));return compareValue(field(node,'OP'),inputValue(node,'LEFT',frame),inputValue(node,'RIGHT',frame));}
+            if(['operator_equals','operator_lt','operator_gt'].includes(op))
+                return compareValue({operator_equals:'===',operator_lt:'<',operator_gt:'>'}[op],inputValue(node,'OPERAND1',frame),inputValue(node,'OPERAND2',frame));
+            if(op==='operator_not'){const a=inputValue(node,'OPERAND',frame);need(typeof a==='boolean');return !a;}
+            if(op==='arrays_valueTruthy'){const a=inputValue(node,'VALUE',frame);need(scalar(a));return !!a;}
+            if(op==='arrays_valueUnary'){
+                const a=inputValue(node,'VALUE',frame),selector=field(node,'OP');
+                if(selector==='!'){need(scalar(a));return !a;}
+                need(['+','-','~'].includes(selector));numberValue(a);return numberValue(selector==='+'?a:selector==='-'?-a:~a);
+            }
+            if(op==='arcade_callFunction'){
+                const fn=procedures.get(target)?.get(literal(target,node,'NAME'));
+                const row=calls.filter(r=>r.node===node);need(fn&&row.length===1&&row[0].fn===fn&&row[0].scope===frame.scope&&symbols.call(target,node));
+                retain(row[0],keys(row[0]),true);
+                const args=[];let slot=node.inputs.ARGS;
+                for(;;){
+                    need(array(slot)&&args.length<=fn.params.length);
+                    if(slot[0]===1&&array(slot[1])){need(slot.length===2&&slot[1].length===2&&slot[1][0]===10&&slot[1][1]==='[]');break;}
+                    const arg=target.blocks[slot[1]];need(typeof slot[1]==='string'&&arg?.opcode==='arcade_functionArgument'&&exact(arg.inputs,['VALUE','REST']));
+                    owned(frame.scope,arg);const v=inputValue(arg,'VALUE',frame);need(scalar(v));args.push(v);slot=arg.inputs.REST;
+                }
+                need(args.length===fn.params.length&&array(row[0].args)&&row[0].args.length===args.length);
+                const result=run(fn,frame.depth+1,args);
+                need(!published&&result.returned&&scalar(result.value));return result.value;
+            }
+            fail();
+        };
+        const run=(scope,depth,args=[])=>{
+            need(depth<64&&!active.has(scope)&&args.length===scope.params.length);active.add(scope);
+            const frame={scope,depth,locals:new Map(),returned:false,value:undefined};
+            scope.params.forEach((name,i)=>frame.locals.set(name,args[i]));
+            const chain=start=>{
+                for(let node=scope.target.blocks[start];node&&!published;node=scope.target.blocks[node.next]){
+                    tick();owned(scope,node);need(node.shadow===false);const op=node.opcode,target=scope.target;
+                    if(op==='data_setvariableto'){
+                        const cell=cellOf(target,node.fields.VARIABLE),v=inputValue(node,'VALUE',frame);need(cell&&exact(node.inputs,['VALUE']));
+                        if(cell===c){
+                            const w=c.writers.find(w=>w.node===node);need(w&&tokens.has(v));published=w;return true;
+                        }
+                        need(scalar(v));globals.set(cell,v);
+                    }else if(op==='arcade_setLocal'){
+                        const name=literal(target,node,'NAME');need(identifier(name)&&exact(node.inputs,['NAME','VALUE']));
+                        const v=inputValue(node,'VALUE',frame);need(scalar(v)||tokens.has(v));frame.locals.set(name,v);
+                    }else if(op==='arrays_mutateReference'){
+                        need(literal(target,node,'OP')==='push');
+                        const receiver=inputValue(node,'ARRAY',frame),index=inputValue(node,'INDEX',frame),v=inputValue(node,'VALUE',frame);
+                        need(tokens.has(receiver)&&index===0&&scalar(v)&&receiver.elements.length<10000);receiver.elements.push(v);
+                    }else if(op==='procedures_call'){
+                        const fn=procedures.get(target)?.get(node.mutation?.proccode),row=calls.filter(r=>r.node===node);
+                        need(fn&&!fn.params.length&&node.mutation.argumentids==='[]'&&row.length===1&&row[0].fn===fn&&row[0].scope===scope&&symbols.call(target,node));
+                        retain(row[0],keys(row[0]),true);run(fn,depth+1);
+                    }else if(op==='control_if'||op==='control_if_else'){
+                        const condition=inputValue(node,'CONDITION',frame);need(typeof condition==='boolean');
+                        const slot=condition?'SUBSTACK':op==='control_if_else'?'SUBSTACK2':null;
+                        if(slot&&node.inputs[slot]){need(node.inputs[slot][0]===2);if(chain(node.inputs[slot][1]))return true;}
+                    }else if(op==='arcade_returnValue'){
+                        const v=inputValue(node,'VALUE',frame);need(scope!==source&&scalar(v));frame.returned=true;frame.value=v;return true;
+                    }else if(op==='arcade_declareParameterConstraint'){
+                        const name=field(node,'PARAMETER');
+                        need(field(node,'PROCEDURE')===scope.proc&&frame.locals.has(name)&&own(constraintTypes,field(node,'TYPE'))&&constraintTypes[field(node,'TYPE')](frame.locals.get(name)));
+                    }else if(own(prefixEffects,op)){
+                        // The value is irrelevant here; only its effects are.
+                        need(exact(node.inputs,prefixEffects[op])&&exact(node.fields,[]));
+                        for(const slot of Object.values(node.inputs)){
+                            need(array(slot)&&[1,2,3].includes(slot[0]));
+                            for(const v of slot.slice(1))if(array(v))need(v[0]!==12||cellOf(target,[v[1],v[2]])&&cellOf(target,[v[1],v[2]])!==c);else pure(scope,target.blocks[v]);
+                        }
+                    }else if(op==='arcade_declareSourceScalar'||op==='arcade_declareSourceReference'||op==='looks_hide'){
+                        // Native prelude resets precede threads; nothing executes here.
+                    }else fail();
+                }
+                return false;
+            };
+            chain(scope.root.next);active.delete(scope);return frame;
+        };
+        run(source,0);need(published);return published;
+    };
+    const resultFor=c=>{
+        if(!results.has(c)){let writer=null;try{freshWriters(c);writer=prefix(c);}catch(_){writer=null;}results.set(c,writer);}
+        return results.get(c);
+    };
+    return Object.freeze({current,writerBefore(cell,scope,node){
+        if(!ready||!current())return null;
+        try{
+            const p=physical.get(node);if(!p||owners.get(node)!==scope||invalid.has(node)||!scopes.includes(scope))return null;
+            const writer=resultFor(cell);
+            return writer&&current()?writer:null;
+        }catch(_){expired=true;return null;}
+    }});
+}

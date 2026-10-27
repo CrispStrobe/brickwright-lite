@@ -145,7 +145,38 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
     // may supply these actual AST allocation sites. Ordinary analysis is unchanged.
     const sdk=staticSdkNamespaceReceivers(program,{builtinIdentifiers:['screen']}),fields=new Map(SDK_FONT_FIELDS.map(field=>[field.name,field.type]));
     const buttonEventNumbers=ordinaryPrimitiveSdkNumbers?controllerButtonEventNumberLeaves(program):null;
-    let clockIndexFacts;
+    let clockIndexFacts,clockReadFacts,clockWriteTargets;
+    // A numeric read of a value that can only be an Array, undefined or null
+    // runs no user code: own index data, or a TypeError on a nullish receiver.
+    // It cannot fold to a string key such as 'constructor'. Write targets keep
+    // the stronger allocation/all-writer proof below.
+    const safeClockRead=node=>{
+        if(!clockWriteTargets){
+            clockWriteTargets=new WeakSet();
+            const scan=value=>{if(!value||typeof value!=='object')return;if(Array.isArray(value)){value.forEach(scan);return;}
+                const target=value.type==='Assignment'?value.left:value.type==='Update'||value.type==='Unary'&&value.op==='delete'?value.argument:null;
+                if(target)clockWriteTargets.add(target);Object.values(value).forEach(scan);};
+            scan(program);
+        }
+        if(clockWriteTargets.has(node))return false;
+        const graph=clockReadFacts ||= analyseGraph(program,{arrayValues:true,parenthesized:true,unboundIsOpaque:true,
+            uninitializedLocalsAreOpaque:true,declaredLocalUndefined:true,initializationEntries:true});
+        const receiver=graph.typesAt(node.object),index=graph.typesAt(node.index);
+        if(!receiver.size||![...receiver].every(type=>type==='Undefined'||type==='Null'||type?.kind==='Array'||type==='Array'))return false;
+        if(index.size!==1||!index.has('Number'))return false;
+        const initialized=value=>!value||typeof value!=='object'||(Array.isArray(value)?value.every(initialized):
+            !(value.type==='Identifier'&&!graph.isInitializedAt(value))&&Object.values(value).every(initialized));
+        return initialized(node.index);
+    };
+    const safeClockArrayCall=call=>{
+        const graph=clockReadFacts ||= analyseGraph(program,{arrayValues:true,parenthesized:true,unboundIsOpaque:true,
+            uninitializedLocalsAreOpaque:true,declaredLocalUndefined:true,initializationEntries:true});
+        const receiver=graph.typesAt(call.callee.object);
+        if(!receiver.size||![...receiver].every(type=>type==='Undefined'||type==='Null'||type?.kind==='Array'||type==='Array'))return false;
+        // indexOf coerces its fromIndex; only primitive arguments are admitted.
+        return call.callee.name!=='indexOf'||call.args.every(arg=>{const found=graph.typesAt(arg);
+            return found.size>0&&[...found].every(type=>['Number','String','Boolean','Undefined','Null'].includes(type));});
+    };
     const safeClockIndex=node=>{
         const graph=clockIndexFacts ||= analyseGraph(program,{arrayValues:true,parenthesized:true,unboundIsOpaque:true,
             opaqueDeclarationValues:true,uninitializedLocalsAreOpaque:true,declaredLocalUndefined:true,initializationEntries:true});
@@ -161,7 +192,7 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
     const mathNumbers=ordinaryPrimitiveSdkNumbers?ordinaryMathNumberCalls(program):null;
     const spriteAyNumbers=privateSpriteAyProof||(ordinaryPrimitiveSdkNumbers?ordinarySpriteAyNumberReads(program):null);
     const sceneNumbers=sceneClockNumbers?ordinarySceneClockNumberCalls(program,safeClockIndex):null;
-    const frameDeltaNumbers=sceneClockNumbers?createOrdinaryFrameDeltaNumberSource(program,safeClockIndex):null;
+    const frameDeltaNumbers=sceneClockNumbers?createOrdinaryFrameDeltaNumberSource(program,node=>safeClockIndex(node)||safeClockRead(node),safeClockArrayCall):null;
     let frameDeltaNumberUsed=false;
     let screenWritten=false;
     const scanScreenWrites=node=>{if(!node||typeof node!=='object')return;if(Array.isArray(node)){node.forEach(scanScreenWrites);return;}const target=node.type==='Assignment'?node.left:node.type==='Update'?node.argument:null;if(target?.type==='Identifier'&&target.name==='screen'&&sdk.has(target))screenWritten=true;Object.values(node).forEach(scanScreenWrites);};scanScreenWrites(program);
@@ -439,6 +470,10 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
         fontPrints:Object.freeze(prints.map(item=>Object.freeze({...item}))),
         arrayConstraintErrorsAt:node=>{const tokens=new Set(arrayTypes(cell(node))||[]),domains={number:'Number',string:'String',boolean:'Boolean'};return arrayConstraints.filter(record=>record.type!=='any'&&(arrayTypes(record.cell)||[]).some(token=>tokens.has(token)&&(!domains[record.type]||[...(types.get(token.element)||[])].some(type=>type!==domains[record.type]&&!['Null','Undefined'].includes(type))))).map(record=>`actual Array elements contradict declared ${record.type}[] constraint`);},
         arrayMapReceiverSafeAt:node=>!!arrayTypes(cell(node))&&arrayTypes(cell(node)).every(token=>!unsafeArrayMethods.has(token)),
+        // The exact game.eventContext().deltaTime read admitted by the closed
+        // frame census: a Number on normal return, never an initialization fact.
+        frameDeltaNumberAt:node=>!!frameDeltaNumbers?.isNumberRead(node),
+        frameDeltaNumbersCurrent:()=>!frameDeltaNumbers||frameDeltaNumbers.current(),
         arrayAllocationsAt:node=>Object.freeze([...(arrayTypes(cell(node))||[])].map(token=>token.site)),
         arrayElementTypesAt:node=>new Set((arrayTypes(cell(node))||[]).flatMap(token=>[...(types.get(token.element)||[])])),
         arrayMapCalls:Object.freeze(arrayMaps.map(operation=>operation.node)),

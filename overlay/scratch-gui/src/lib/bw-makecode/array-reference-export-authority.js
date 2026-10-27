@@ -2,7 +2,7 @@ import {arrayMenuLiteral,isArrayMenuSelector,isKnownArrayMenuOperation} from './
 import {createArrayDefiniteOverwrite} from './array-definite-overwrite.js';
 import {createArrayNativeFrameReset} from './array-native-frame-reset.js';
 import {createArraySourceStartResetEffects} from './array-source-start-reset-effects.js';
-import {createProjectConditionalArrayEntry} from './project-conditional-array-entry.js';
+import {createProjectConditionalArrayEntry,createProjectArrayPublicationFrontier} from './project-conditional-array-entry.js';
 import {isProjectJsonSnapshot} from './project-json-snapshot.js';
 import {createClosedOrdinaryProjectEntry} from './closed-ordinary-project-entry.js';
 const watcherOwnDescriptor=Object.getOwnPropertyDescriptor,watcherOwnKeys=Reflect.ownKeys,watcherIsArray=Array.isArray,watcherFinite=Number.isFinite,watcherCreate=Object.create,watcherNumber=Number;
@@ -251,9 +251,37 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
             const name=frameName(node),inherited=typeof name==='string'&&watcherOwnDescriptor(Object.prototype,name);
             return typeof name==='string'&&name!=='__proto__'&&(!inherited||prefixHasOwn(inherited,'value')&&inherited.writable===true);
         };
+        // A hoisted reset may also precede closed suspending SDK statements.
+        // A frame local is private (closedEffects excludes captures), so such a
+        // statement reads it only through its own argument subtree; an abort
+        // or error leaves the reset unread. This grants no value or effect fact.
+        const resetName=frameName(writer.node),effectInputs={control_wait:['DURATION'],arcade_splash:['TITLE','SUBTITLE'],arcade_playSound:['SOUND','UNTIL_DONE']};
+        const closedOperands=new Set(['math_number','math_whole_number','math_positive_number','math_integer','math_angle','text','data_variable',
+            'arcade_getLocal','arrays_valueBinary','arrays_valueCompare','arrays_valueUnary','arrays_valueTruthy','arrays_specialValue',
+            'operator_add','operator_subtract','operator_multiply','operator_divide','operator_mod','operator_equals','operator_lt','operator_gt',
+            'operator_not','arcade_soundMelody']);
+        const closedOperand=(node,budget={n:256})=>{
+            if(--budget.n<0||!node||invalid.has(node)||owners.get(node)!==writer.scope||!closedOperands.has(node.opcode)||node.next||node.mutation!=null)return false;
+            if(node.opcode==='arcade_getLocal'&&(typeof frameName(node)!=='string'||frameName(node)===resetName))return false;
+            return Object.values(node.inputs||{}).every(slot=>watcherIsArray(slot)&&[1,2,3].includes(slot[0])&&slot.slice(1).every(v=>
+                watcherIsArray(v)?v[0]!==12||v.length===3:typeof v==='string'&&closedOperand(block(writer.target,v),budget)));
+        };
+        const closedEffect=node=>!!node&&prefixHasOwn(effectInputs,node.opcode)&&!invalid.has(node)&&owners.get(node)===writer.scope&&
+            node.shadow===false&&node.mutation==null&&exactKeys(node,effectInputs[node.opcode])&&!watcherOwnKeys(node.fields||{}).length&&
+            Object.values(node.inputs).every(slot=>watcherIsArray(slot)&&[1,2,3].includes(slot[0])&&slot.slice(1).every(v=>
+                watcherIsArray(v)?v[0]!==12||v.length===3:typeof v==='string'&&closedOperand(block(writer.target,v))));
         let id=writer.node.next,usesLiteral=false;const seen=new Set(),prefix=[writer.node];
         while(id&&!seen.has(id)){
-            seen.add(id);const node=block(writer.target,id);if(!node||node.opcode!=='arcade_setLocal')return false;
+            seen.add(id);const node=block(writer.target,id);
+            // An ordinary zero-argument callee runs in its own fresh frame.
+            const frameCall=!!node&&node.opcode==='procedures_call'&&!invalid.has(node)&&owners.get(node)===writer.scope&&node.shadow===false&&
+                exactKeys(node,[])&&!watcherOwnKeys(node.fields||{}).length&&calls.some(c=>c.node===node&&c.fn&&!c.fn.invalid&&!c.fn.params.length);
+            // A global write with a closed operand cannot reach a frame local.
+            const globalWrite=!!node&&node.opcode==='data_setvariableto'&&!invalid.has(node)&&owners.get(node)===writer.scope&&node.shadow===false&&
+                node.mutation==null&&exactKeys(node,['VALUE'],['VARIABLE'])&&watcherIsArray(node.inputs.VALUE)&&[1,2,3].includes(node.inputs.VALUE[0])&&
+                node.inputs.VALUE.slice(1).every(v=>watcherIsArray(v)?v[0]!==12||v.length===3:typeof v==='string'&&closedOperand(block(writer.target,v)));
+            if(typeof resetName==='string'&&(frameCall||globalWrite||closedEffect(node))){id=node.next;continue;}
+            if(!node||node.opcode!=='arcade_setLocal')return false;
             if(!safe(child(node,'VALUE',writer.target))){if(!literalAddition(node))return false;usesLiteral=true;}
             prefix.push(node);
             if(localCell(writer.scope,literal(node,'NAME',writer.target))===destination){
@@ -1484,16 +1512,21 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
     // This separate issuer supplies only a current occurrence frontier. The
     // existing producer fixed point and initialized/all-writer checks remain
     // authoritative for the actual receiver and each published RHS.
-    let conditionalEntry=null,conditionalEntryUsed=false;
-    const conditionalCurrent=()=>!conditionalEntryUsed||conditionalEntry.current();
+    let conditionalEntry=null,conditionalEntryUsed=false,publicationFrontier=null,publicationFrontierUsed=false;
+    const conditionalCurrent=()=>(!conditionalEntryUsed||conditionalEntry.current())&&(!publicationFrontierUsed||publicationFrontier.current());
     const available=(c,scope,node)=>{
         if(availability(c,scope,node)===2)return true;
         if(!c?.global||c.directBad||!singleArray(c.types)||!isProjectJsonSnapshot(project))return false;
         if(!conditionalEntry)conditionalEntry=createProjectConditionalArrayEntry({project,targets,scopes,records,calls,owners,invalid,block,child,input,
             literal,binding,globalCell,localCell,closedEffects,closedFrameImageEffect,implicitEntries});
-        const writer=conditionalEntry.writerBefore(c,scope,node);
-        if(!writer||!c.writers.includes(writer)||invalid.has(writer.node)||owners.get(writer.node)!==writer.scope)return false;
-        conditionalEntryUsed=true;return true;
+        const admitted=writer=>!!writer&&c.writers.includes(writer)&&!invalid.has(writer.node)&&owners.get(writer.node)===writer.scope;
+        if(admitted(conditionalEntry.writerBefore(c,scope,node))){conditionalEntryUsed=true;return true;}
+        // Separate inductive route: every writer publishes a fresh Array and the
+        // first one precedes every possible occurrence in the current run.
+        if(!publicationFrontier)publicationFrontier=createProjectArrayPublicationFrontier({project,targets,scopes,records,calls,owners,invalid,
+            globalCell,closedEffects,implicitEntries});
+        if(!admitted(publicationFrontier.writerBefore(c,scope,node)))return false;
+        publicationFrontierUsed=true;return true;
     };
     const numericKindInitialized=(value,path=new Set())=>{
         if(!numericKind(value))return false;

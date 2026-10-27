@@ -127,7 +127,15 @@ test('a registered callback cannot race a later startup branch calculation',()=>
 });
 
 test('an alternate paint-reachable Array publisher cannot borrow the startup writer certificate',()=>{
-    const text=source().replace('newFood();game.onPaint', 'function replace(){let other:number[]=[];other.push(3);snake=other;}newFood();game.onPaint')
+    // Originally refused under the startup-only certificate. A fresh alternate
+    // publisher is now admitted only by the separate inductive publication
+    // frontier (every writer publishes a fresh frame-local Array); a
+    // non-fresh alternate publisher still borrows nothing.
+    const fresh=source().replace('newFood();game.onPaint', 'function replace(){let other:number[]=[];other.push(3);snake=other;}newFood();game.onPaint')
         .replace('function(){result=snake.indexOf(2);','function(){if(counter>=5){replace();}result=snake.indexOf(2);');
-    negative(query(create(text).project));
+    positive(query(create(fresh).project));
+    const aliased=source().replace('let snake:number[];','let snake:number[];let spare:number[];')
+        .replace('newFood();game.onPaint', 'function replace(){snake=spare;}newFood();game.onPaint')
+        .replace('function(){result=snake.indexOf(2);','function(){if(counter>=5){replace();}result=snake.indexOf(2);');
+    negative(query(create(aliased).project));
 });
