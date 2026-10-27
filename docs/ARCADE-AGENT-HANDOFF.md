@@ -245,20 +245,44 @@ passing controls; a separate six-control math cohort includes a real connected
 String refusal. Counts overlap. Six source and four project guard cuts are
 detected. This qualifies source boundaries, not SDK/native or visible editors.
 
-**Next measured export task:** the retained snake-game source imports and
-reconstructs Code cleanly, but JSON export still reports six Number, initialized
-Array/all-writer, bitwise and addition refusals. Inspect actual current producers
-and call/entry order before claiming the next implementation. Preserve all six
-procedure bodies and every original writer; do not add an annotation fallback
-or suppress the refusals. Its source-census promotion is not a completed game.
-A fresh 26 October source observation retains exactly those six diagnostics,
-all six procedure bodies and the unchanged original input. The first next
-boundary is scoped in [readonly startup Number operands](https://github.com/CrispStrobe/brickwright-lite/pull/1461):
-prove actual numeric operands, complete writers and occurrence entry order for
-arithmetic results. Implement only after that claim merges. Conditional Array
-allocation and element presence remain separate proofs; a repaired Number
-result must not grant either. Retain the actual program's complete direct/JSON
-and SDK/native/visible-editor acceptance before promoting it.
+**Readonly startup Number candidate:** the [merged scope](../lanes/2026-10-26-arcade-startup-number-operands.md)
+now has a source implementation. `project-readonly-number-operands.js` proves
+only actual arithmetic occurrences from readonly startup cells: physical cell
+identity, complete writers, dependency order, every ordinary caller and paint
+registration must agree. Earlier null/Undefined resets require a definite
+numeric overwrite before use. No annotation, parameter label or arithmetic
+output signature establishes a Number operand. Direct live export uses its
+existing descriptor-checked private data copy, retaining original artwork
+callback objects and rejecting changed source before publication.
+
+The unchanged snake project now has four export refusal families in a bounded
+source probe, down from six: Array item, indexOf, mutation and native addition
+still refuse. All six procedure bodies and original writers remain. This is
+neither a completed game nor a change to the 147/36/1 raw census. Unknown roots,
+conditional or later writes, early registration, cycles, direct arbitrary
+variable-to-Math inputs and ambiguous emitted bindings remain refused.
+
+Run `project-readonly-number-operands.test.mjs` with the existing math-consumer
+source controls. The hosted-only `makecode-startup-number-roundtrip.test.mjs`
+requires the complete pinned original Arcade runtime and Lite VM: both export
+routes, three generations, actual values and same/fresh VM SB3 reload. Do not
+count a written test as a pass. Original SDK/native and visible-editor
+qualification remain pending for this combined candidate.
+
+**Separate remaining name-binding task:** ordinary locals/formals can collide
+with an escaped global (`image` emits `image_`), a sprite-local cell (`w` on
+Game emits `Game_w`), an SDK anchor (`Math`, `randint`, `screen`, `music`) or a
+generated arithmetic helper (`__bwBinarySubtract`, including allocator suffixes).
+Fixed SDK anchors must also be protected from emitted global-cell names; stock
+random blocks call bare `randint`, whereas generated arithmetic helpers have
+their own collision allocator. Compare the actual escaped emitted name.
+The new Number issuer refuses these ambiguous bindings. Proper general support
+requires hygienic allocation in `export-arcade.js`: bind declarations and every
+reference to actual local/formal/cell identity, reserve SDK/generated symbols,
+and rename consistently across nested scopes and procedure calls. Claim that
+separately before editing the shared formatter. Retain complete bodies; do not
+resolve a collision by dropping a declaration. Add source positives and shadow
+negatives, then original SDK/native, Code/Blocks edits and fresh SB3 roundtrips.
 
 The retained complete-context ordinary-call case also still refuses unchanged
 callee proof. Its original reference compilation succeeded; the raw snippet's

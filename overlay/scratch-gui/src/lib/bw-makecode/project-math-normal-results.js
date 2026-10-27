@@ -1,4 +1,5 @@
 import {isProjectJsonSnapshot} from './project-json-snapshot.js';
+import {createProjectReadonlyNumberOperands} from './project-readonly-number-operands.js';
 
 // A normal-result fact for closed actual Number operands, not the declared
 // output type or numeric socket. Variable/parameter/captured reads do not enroll.
@@ -38,6 +39,7 @@ export function createProjectMathNormalResults(project){
     const previous=apply(weakGet,cache,[project]);if(previous)return previous;
     if(!ambientCurrent()||!isProjectJsonSnapshot(project))return denied;
     const owners=new WeakMap(),incoming=new Map();let expired=false;
+    let readonlyNumbers=null,readonlyUsed=false;
     for(const target of project.targets||[]){
         const edges=new Map();incoming.set(target,edges);
         for(const [id,node]of Object.entries(target.blocks||{}))owners.set(node,{target,id});
@@ -54,7 +56,7 @@ export function createProjectMathNormalResults(project){
     }
     const current=()=>{
         if(expired)return false;
-        try{if(!ambientCurrent())expired=true;}catch(error){expired=true;throw error;}
+        try{if(!ambientCurrent()||readonlyUsed&&!readonlyNumbers.current())expired=true;}catch(error){expired=true;throw error;}
         return !expired;
     };
     const physical=(target,node)=>{
@@ -102,6 +104,14 @@ export function createProjectMathNormalResults(project){
         const next=new Set(active);next.add(node);
         if(numericShadows.has(node.opcode))return node.shadow===true&&exact(node.inputs,[])&&exact(node.fields,['NUM'])&&numericLiteral(field(node,'NUM'));
         if(node.shadow!==false)return false;
+        if(node.opcode==='arrays_valueBinary'){
+            // Only this original arithmetic result crosses the boundary. The
+            // private issuer checks actual operand writers and entry order;
+            // variable leaves remain outside the ordinary Math input grammar.
+            if(!readonlyNumbers)readonlyNumbers=createProjectReadonlyNumberOperands(project);
+            if(!readonlyNumbers.isNumberArithmeticResult(target,node))return false;
+            readonlyUsed=true;return true;
+        }
         if(node.opcode==='arrays_specialValue')return exact(node.inputs,[])&&exact(node.fields,['KIND'])&&['NaN','Infinity','-Infinity'].includes(field(node,'KIND'));
         if(node.opcode==='arcade_mathBinary')return exact(node.fields,['OP'])&&selectors.has(field(node,'OP'))&&exact(node.inputs,['A','B'])&&
             ['A','B'].every(name=>inputNumber(target,node,name,next));
@@ -109,7 +119,7 @@ export function createProjectMathNormalResults(project){
         return !!inputs&&exact(node.fields,[])&&exact(node.inputs,inputs)&&inputs.every(name=>inputNumber(target,node,name,next));
     };
     const facade=Object.freeze({current,isNumberResult(target,node){
-        return current()&&node?.opcode==='arcade_mathBinary'&&numberNode(target,node);
+        return current()&&['arcade_mathBinary','arrays_valueBinary'].includes(node?.opcode)&&numberNode(target,node);
     }});
     apply(weakSet,cache,[project,facade]);return facade;
 }

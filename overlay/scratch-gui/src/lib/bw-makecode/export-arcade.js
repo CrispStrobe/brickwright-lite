@@ -294,6 +294,40 @@ function arrayExportSource(project) {
 }
 
 class ArcadeEmitter {
+    mathNumberResult(target,node) {
+        if(isProjectJsonSnapshot(this.project))return this.mathNormalResults.isNumberResult(target,node);
+        // The direct API keeps the original live objects for artwork callbacks.
+        // Its numeric proof uses only the constructor's descriptor-checked data
+        // copy; caller objects cannot enroll in the private JSON issuer.
+        if(!this.arrayOwnedSource?.current())return false;
+        try{
+            if(this.mathOwnedSnapshot===undefined){
+                const snapshot=createProjectJsonSnapshot(this.arrayOwnedSource.json);
+                this.mathOwnedSnapshot={snapshot,authority:createProjectMathNormalResults(snapshot)};
+            }
+            const targets=arraySourceDescriptor(this.project,'targets')?.value;
+            const count=arraySourceDescriptor(targets,'length')?.value;
+            let index=-1,id=null;
+            for(let i=0;i<count;i++)if(arraySourceDescriptor(targets,i)?.value===target){if(index!==-1)return false;index=i;}
+            if(index<0)return false;
+            const blocks=arraySourceDescriptor(target,'blocks')?.value;
+            const names=arraySourceKeys(blocks),size=arraySourceDescriptor(names,'length').value;
+            for(let i=0;i<size;i++){
+                const key=arraySourceDescriptor(names,i).value;
+                if(typeof key==='string'&&arraySourceDescriptor(blocks,key)?.value===node){if(id!==null)return false;id=key;}
+            }
+            const actual=this.mathOwnedSnapshot.snapshot.targets[index],value=id!==null&&actual?.blocks?.[id];
+            if(!value||!this.mathOwnedSnapshot.authority.isNumberResult(actual,value)||!this.arrayOwnedSource.current())return false;
+            this.mathOwnedSourceUsed=true;return true;
+        }catch{
+            // Keep the ordinary refusal when optional owned evidence is absent.
+            return false;
+        }
+    }
+    mathNumbersCurrent() {
+        return this.mathNormalResults.current()&&(!this.mathOwnedSourceUsed||
+            this.arrayOwnedSource.current()&&this.mathOwnedSnapshot.authority.current());
+    }
     sdkFontOperand(block,input='FONT') {
         const types=this.sdkFontInputs.inputTypes(this.target,block,input);
         if(!this.sdkFontInputs.accepts(this.target,block,input,'Font')){this.note('SDK Font operand requires an actual typed Font factory or binding: '+block.opcode+' '+[...(types||[])].join('|'));return false;}
@@ -3491,7 +3525,7 @@ class ArcadeEmitter {
                 }
                 if(value.opcode==='arcade_mathBinary'){
                     const id=Symbol('closed math normal result');
-                    if(this.mathNormalResults.isNumberResult(target,value)){numbers.add(id);inspectionLeaves.set(id,'number');}
+                    if(this.mathNumberResult(target,value)){numbers.add(id);inspectionLeaves.set(id,'number');}
                     else {anys.add(id);inspectionOpaqueCells.add(id);}
                     return id;
                 }
@@ -3505,6 +3539,12 @@ class ArcadeEmitter {
                     // refuses; this signature lends no domain to its operands.
                     if(operation&&(operation.unary||['&','|','^','<<','>>','>>>'].includes(operation.op))){numbers.add(id);inspectionLeaves.set(id,'number');return id;}
                     const operands=(value.opcode==='arrays_valueUnary'?['VALUE']:['LEFT','RIGHT']).map(name=>ref(inputBlock(blocks,value,name)));
+                    // Preserve the original operand/caller inventory before
+                    // consuming an independent occurrence result. No variable,
+                    // Array or generic arithmetic signature supplies this fact.
+                    if(value.opcode==='arrays_valueBinary'&&this.mathNumberResult(target,value)){
+                        numbers.add(id);inspectionLeaves.set(id,'number');return id;
+                    }
                     // The canonical native bitwise adapter returns a Number or
                     // decoded Undefined on conversion failure. This is only a
                     // primitive result union, never a Number-only fact or a
@@ -4706,7 +4746,6 @@ function emitProjectToArcade (project, opts, snapshotCallbacks) {
         try{for(const diagnostic of validateProcedureConstraintSource(parseMakeCodeTs(projectTs,{parameterDefaults:true,retainParentheses:true}),{onlyFunctions:selected,ordinaryPrimitiveSdkNumbers:true,sceneClockNumbers:true,closedOrdinaryEntries:true}))e.note(diagnostic);}catch(error){e.note(error.message);}
     }
     if(!e.frameDeltaNumber.current())e.note('Frame delta Number: current saved reporter proof environment changed during export');
-    if(!e.mathNormalResults.current())e.note('Arcade math normal result: current proof environment changed during export');
     if(!e.closedOrdinaryEntry.current())e.note('Arcade ordinary entry: current execution roots changed during export');
     // Host artwork callbacks can edit current project objects during rendering.
     // Stale owner/global/local inventories must never become a clean export.
@@ -4725,6 +4764,7 @@ function emitProjectToArcade (project, opts, snapshotCallbacks) {
     // Host artwork callbacks can run after the last Array operand. Never
     // publish a clean export against a later document revision.
     if (!e.animationFrameProducers.isCurrent()) e.note('Animation resource documents changed during current export');
+    if(!e.mathNumbersCurrent())e.note('Arcade math normal result: current proof environment changed during export');
     const result={ts, files, unsupported: e.unsupported, warnings: e.warnings};
     if(e.unsupportedDetails.length){result.unsupportedDetails=e.unsupportedDetails;result.refusalEvidence=e.refusalEvidence;}
     return result;

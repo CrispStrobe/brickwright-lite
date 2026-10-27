@@ -7,7 +7,11 @@ the 184-input census or certify a complete game. Read
 [the current handoff](ARCADE-AGENT-HANDOFF.md) before using older sections below.
 
 The [readonly startup Number task](https://github.com/CrispStrobe/brickwright-lite/pull/1461)
-is scoped but not implemented. Its editor acceptance must visibly author the
+has a source implementation; hosted and visible-editor acceptance remain open.
+Its private proof covers readonly startup arithmetic occurrences, all writers
+and entry order, while rejecting ambiguous emitted bindings. This grants no
+Array initialization or direct arbitrary variable-to-Math support.
+Its editor acceptance must visibly author the
 actual dependencies: assign `sz = 8`, `w = (160 / sz) | 0` and
 `h = (120 / sz) | 0`, then connect native subtraction results such as `w - 1`
 and `h - 1` to numeric math blocks. Exercise an ordinary helper and a paint
