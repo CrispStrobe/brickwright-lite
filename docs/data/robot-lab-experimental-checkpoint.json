@@ -3416,7 +3416,13 @@
         "to": "established library (MODELS)",
         "date": "2026-10-27",
         "judge": "compound-pendulum-v1",
-        "verified": "PENDING: hosted native qualification of this branch (first run found and fixed a millisecond/second unit error in the judge)"
+        "verified": "Hosted native qualification of the exact head 07ff8d7c7c1 (Build 40538484853, unit shards): ordinary and strict real-VM runs pass compound-pendulum-v1 (period 0.507628 s against 0.507567 s predicted, 0.012%); frozen-output, 1 cm world-shift and pendulum_support_axle disconnection are rejected. The ci:full run 40566353980 passed the generic browser shards, none of which loads Samebeat. The browserRun record above is the earlier experimental checkpoint, not evidence for this promotion.",
+        "notRun": [
+          "per-model browser run (qualify-robot-lab-models --mode=full, chromium and webkit)",
+          "saved-project replay",
+          "export",
+          "manual controls"
+        ]
       }
     },
     {

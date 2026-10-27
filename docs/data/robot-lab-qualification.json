@@ -370,7 +370,13 @@
         "pendulum_support_axle"
       ],
       "disconnectInputDeg": 7,
-      "disconnectLaw": true
+      "disconnectLaw": true,
+      "notRun": [
+        "per-model browser run (qualify-robot-lab-models --mode=full, chromium and webkit)",
+        "saved-project replay",
+        "export",
+        "manual controls"
+      ]
     }
   ]
 }
