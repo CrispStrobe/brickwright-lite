@@ -65,3 +65,30 @@ let actor = new Actor()
 pause(40)
 let seen = updates > 0`, ['seen']);
 });
+
+// Follow-up decision: a variable whose every write is an admitted numeric
+// Sprite field read (or a primitive) is admitted in an Array program.
+test('Array program: a variable written only from Sprite field reads matches original PXT', async () => {
+    await same(`let values = [1, 2]
+let hero = sprites.create(img\`1\`, SpriteKind.Player)
+hero.z = 3
+hero.lifespan = 5000
+let px = 0
+px = hero.width
+let total = px + 5
+px = hero.z
+let second = px + 1
+values.push(total)
+let count = values.length`, ['total', 'second', 'count']);
+});
+
+test('Array program: the same variable keeps the refusal once any write is an unknown call result', () => {
+    const out = exported(`let values = [1, 2]
+let hero = sprites.create(img\`1\`, SpriteKind.Player)
+let px = 0
+px = hero.width
+px = music.tempo()
+let total = px + 5
+values.push(total)`);
+    assert.ok(out.unsupported.includes('native addition requires initialized primitive or proved flat Array operands'), JSON.stringify(out.unsupported));
+});

@@ -406,6 +406,37 @@ function inspectDomains(program,profile,ordinaryExportSelection) {
             if(receiver.size===1)return true;
             return nullishFreeBinding(root);
         })();
+    // Operator decision 2026-10-27 (follow-up): a variable whose EVERY write
+    // is an admitted numeric SDK field read (receiver rules above), a
+    // primitive-typed value, or the exporter's canonical dead null reset can
+    // only hold a Number or primitive. Any other write (call result, index
+    // read, Opaque value, Image, object, update/compound operator) refuses.
+    const fieldCell=node=>{
+        if(node?.type!=='Identifier'||['this','globalThis','undefined'].includes(node.name))return false;
+        const found=types(node);
+        if(!found.size||!found.has('Opaque')||![...found].every(type=>type==='Opaque'||primitive.has(type)))return false;
+        const value=actual(node),binding=graph.bindingOf(value);
+        if(!binding||allocations(node).length)return false;
+        const same=entry=>entry?.type==='Identifier'&&entry.name===node.name&&graph.bindingOf(entry)===binding;
+        const primitiveWrite=right=>{const written=types(right);return written.size>0&&[...written].every(type=>primitive.has(type))&&!allocations(right).length;};
+        const admitted=right=>numericSdkFieldRead(right)||primitiveWrite(right);
+        let fieldWrites=0;
+        for(const entry of nodes){
+            if(entry.type==='Assignment'&&same(entry.left)){
+                if(entry.op!=='=')return false;
+                if(nullishLiteral(entry.right)){if(!deadReset(entry,same))return false;continue;}
+                if(!admitted(entry.right))return false;
+                if(numericSdkFieldRead(entry.right))fieldWrites++;
+            }
+            if(entry.type==='Update'&&same(entry.argument))return false;
+            if(entry.type==='Declaration')for(const decl of entry.decls||[])
+                if(decl.name===node.name&&graph.bindingOf(entry,decl.name)===binding&&decl.init&&!nullishLiteral(decl.init)){
+                    if(!admitted(decl.init))return false;
+                    if(numericSdkFieldRead(decl.init))fieldWrites++;
+                }
+        }
+        return fieldWrites>0;
+    };
     const primitiveValue=node=>{const found=types(node);return found.size>0&&[...found].every(type=>primitive.has(type))&&initialized(node);};
     // A captured scalar cell may be read before its first assignment. Its
     // actual Undefined value is still a primitive operand; this does not
@@ -722,6 +753,7 @@ function inspectDomains(program,profile,ordinaryExportSelection) {
             (domain=[...found].some(type=>!primitive.has(type)&&type?.kind!=='Array')));
         // Existing successful paths remain independent of the new profile.
         if(refused&&numericSdkFieldRead(arg))continue;
+        if(refused&&fieldCell(arg))continue;
         if(refused&&normalPrimitiveOperation(arg)){operationUsed=true;continue;}
         if(refused&&normalPrimitiveClass(arg)){classResultUsed=true;continue;}
         if(refused){
