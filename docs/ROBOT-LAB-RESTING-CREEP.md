@@ -108,7 +108,7 @@ not demonstrated causes or authorized product-setting changes.
 ## Successor progress (2026-10-27)
 
 Steps 2–4 are implemented: frozen inputs and the one-coordinate coplanar
-variant under `test/fixtures/bw-sim/resting-creep/`, explicit isolated-frame
+variant under `test/fixtures/resting-creep-1435/`, explicit isolated-frame
 extraction, passive 200 Hz × 350-step recording in
 `test/bw-sim-resting-creep.test.mjs`, and the standalone reader
 `scripts/verify-sim-resting-creep.mjs` with synthetic negative controls.
@@ -119,7 +119,7 @@ the official log is acquired once and audited with the reader.
 ## Owned paths and adjacent work
 
 Only the new `test/bw-sim-resting-creep.test.mjs`, fixtures under
-`test/fixtures/bw-sim/resting-creep/`,
+`test/fixtures/resting-creep-1435/`,
 `scripts/verify-sim-resting-creep.mjs`, this document and the diagnostic claim
 are owned. The only GUI dependency declaration allowed is appending that exact
 new test to the existing `jolt-physics/wasm-compat` consumer list in

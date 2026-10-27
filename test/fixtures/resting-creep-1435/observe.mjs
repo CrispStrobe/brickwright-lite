@@ -3,9 +3,9 @@
 // edit, material/geometry change or runtime-default change is made.
 import {readFileSync} from 'node:fs';
 import {createHash} from 'node:crypto';
-import {catalogFrom,prepareModel} from '../../../../overlay/scratch-gui/src/lib/bw-sim/sim-session.js';
-import {createPhysicsCore} from '../../../../overlay/scratch-gui/src/lib/bw-sim/physics/jolt-core.js';
-const root=new URL('./',import.meta.url),repo=new URL('../../../../',import.meta.url);
+import {catalogFrom,prepareModel} from '../../../overlay/scratch-gui/src/lib/bw-sim/sim-session.js';
+import {createPhysicsCore} from '../../../overlay/scratch-gui/src/lib/bw-sim/physics/jolt-core.js';
+const root=new URL('./',import.meta.url),repo=new URL('../../../',import.meta.url);
 export const manifest=JSON.parse(readFileSync(new URL('manifest.json',root)));
 export const sha256=b=>createHash('sha256').update(b).digest('hex');
 const LIST_KEYS=['joints','gears','hubs','actuators','couplings','devices','diagnostics'];

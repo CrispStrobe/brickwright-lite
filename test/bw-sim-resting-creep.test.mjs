@@ -6,9 +6,9 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {loadJolt} from '../overlay/scratch-gui/src/lib/bw-sim/physics/jolt-core.js';
-import {manifest,sha256,sourceIdentities,prepareInputs,buildCase,isolateFrame,runCase} from './fixtures/bw-sim/resting-creep/observe.mjs';
+import {manifest,sha256,sourceIdentities,prepareInputs,buildCase,isolateFrame,runCase} from './fixtures/resting-creep-1435/observe.mjs';
 import {auditRecord,auditAll,recompute,extractRecords,expectedIdentities,PREFIX} from '../scripts/verify-sim-resting-creep.mjs';
-const root=new URL('./fixtures/bw-sim/resting-creep/',import.meta.url);
+const root=new URL('./fixtures/resting-creep-1435/',import.meta.url);
 
 test('Resting creep: frozen inputs, single-coordinate variant and source identities',()=>{
     for(const f of manifest.inputs){const b=readFileSync(new URL(f.file,root));assert.equal(b.length,f.bytes,f.id);assert.equal(sha256(b),f.sha256,f.id);}

@@ -9,7 +9,7 @@ import {createHash} from 'node:crypto';
 import {fileURLToPath} from 'node:url';
 
 const repo=new URL('../',import.meta.url);
-export const manifest=JSON.parse(readFileSync(new URL('test/fixtures/bw-sim/resting-creep/manifest.json',repo)));
+export const manifest=JSON.parse(readFileSync(new URL('test/fixtures/resting-creep-1435/manifest.json',repo)));
 export const PREFIX='CREEP1435_RESULT ';
 
 export function extractRecords(text) {

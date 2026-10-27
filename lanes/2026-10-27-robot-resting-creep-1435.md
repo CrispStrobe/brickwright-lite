@@ -9,7 +9,7 @@ Previous owner: Codex, Robot Lab resting-frame lane.
 Branch: `lane/robot-resting-creep-1435-successor-20261027`.
 Base: `7b4f2f84ac55e238bbb75663acbdc1e26f3d0358` (qualified floor #1445).
 
-Own new fixtures under `test/fixtures/bw-sim/resting-creep/`,
+Own new fixtures under `test/fixtures/resting-creep-1435/`,
 `test/bw-sim-resting-creep.test.mjs`,
 `scripts/verify-sim-resting-creep.mjs`,
 `docs/ROBOT-LAB-RESTING-CREEP.md`, and this claim.
