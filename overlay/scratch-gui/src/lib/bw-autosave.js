@@ -20,6 +20,12 @@ import {writeArtworkToZip} from './bw-artwork-bundle.js';
 import {subscribeUndoState} from './global-undo.js';
 
 const SETTINGS_KEY = 'bw-autosave-settings';
+// Set while the project has unsaved changes, cleared when it is saved or
+// replaced: still set at the next start means the last session ended unsaved
+// (a crash, a killed app, a closed tab), and its autosave is offered back.
+const UNCLEAN_KEY = 'bw-autosave-unclean';
+const RECOVERY_WINDOW_MS = 24 * 60 * 60 * 1000;
+let previousUnclean = null;
 const DB_NAME = 'bw-autosave';
 const DEFAULTS = Object.freeze({enabled: true, intervalSec: 60, keep: 30});
 const MIN_INTERVAL = 15;
@@ -280,7 +286,7 @@ export const saveNow = async (reason = 'manual') => {
 export const restoreVersion = async id => {
     const record = await tx('versions', 'readonly', store => store.get(id));
     if (!record || !record.blob) throw new Error('That autosave is no longer stored');
-    await saveNow('before-restore');
+    if (dirty || (storeRef && storeRef.getState().scratchGui.projectChanged)) await saveNow('before-restore');
     // The shared loader (every way a project arrives uses it), fetched when needed.
     const {default: loadProjectFile} = await import('./bw-project-load.js');
     await loadProjectFile(vmRef, await record.blob.arrayBuffer(), `${safeName(record.title)}.sb3`);
@@ -321,10 +327,20 @@ export const startAutosave = (vm, store) => {
     if (vmRef) return;
     vmRef = vm;
     storeRef = store;
+    try {
+        previousUnclean = Number(localStorage.getItem(UNCLEAN_KEY)) || null;
+        localStorage.removeItem(UNCLEAN_KEY);
+    } catch (e) { /* no storage: no recovery offer */ }
     let lastProjectChanged = false;
     store.subscribe(() => {
         const changed = store.getState().scratchGui.projectChanged;
         if (changed && !lastProjectChanged) dirty = true;
+        if (changed !== lastProjectChanged) {
+            try {
+                if (changed) localStorage.setItem(UNCLEAN_KEY, String(Date.now()));
+                else localStorage.removeItem(UNCLEAN_KEY);
+            } catch (e) { /* private mode */ }
+        }
         lastProjectChanged = changed;
     });
     // Editors that never set the project's changed flag (Code, Circuit, Widgets)
@@ -342,4 +358,15 @@ export const startAutosave = (vm, store) => {
     }
     refreshFolder();
     schedule();
+};
+
+/**
+ * The autosave to offer when the previous session ended with unsaved changes.
+ * @returns {Promise<?{id: number, at: number, title: string}>} null when there is nothing to recover
+ */
+export const recoveryCandidate = async () => {
+    if (!previousUnclean) return null;
+    const [latest] = await listVersions().catch(() => []);
+    if (!latest || latest.reason === 'before-restore' || Math.abs(latest.at - previousUnclean) > RECOVERY_WINDOW_MS) return null;
+    return {id: latest.id, at: latest.at, title: latest.title};
 };

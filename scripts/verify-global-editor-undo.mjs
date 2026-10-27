@@ -136,10 +136,24 @@ try {
     await page.getByTestId('bw-autosave-save-now').click();
     await page.getByTestId('bw-autosave-versions').waitFor({state: 'visible', timeout: 60000});
     await page.getByTestId('bw-history-close').click();
+
+    // Crash recovery: a session that ends with unsaved changes offers its last
+    // autosave at the next start, and Reopen restores it.
+    await page.evaluate(() => {
+        const vm = window.__brickwrightStore.getState().scratchGui.vm;
+        vm.renameSprite(vm.editingTarget.id, 'Recovered');
+    });
+    await page.evaluate(() => window.dispatchEvent(new CustomEvent('bw-open-history-panel', {detail: {view: 'autosave'}})));
+    await page.getByTestId('bw-autosave-save-now').click();
+    await page.waitForFunction(() => document.querySelectorAll('[data-testid="bw-autosave-versions"] > div').length >= 2);
+    await page.reload({waitUntil: 'domcontentloaded'});
+    await page.getByTestId('bw-autosave-recovery-open').click({timeout: 90000});
+    await page.waitForFunction(() => window.__brickwrightStore.getState().scratchGui.vm.runtime.targets
+        .some(target => !target.isStage && target.getName() === 'Recovered'), null, {timeout: 60000});
     if (errors.length) throw new Error(`page errors: ${errors.join(' | ')}`);
 } finally {
     await browser.close();
     if (server) server.close();
 }
 
-console.log('ok iPad-width Widget icons fit; global undo/redo restores Widget, Code and costume edits; History and autosave work');
+console.log('ok iPad-width Widget icons fit; global undo/redo restores Widget, Code and costume edits; History, autosave and crash recovery work');

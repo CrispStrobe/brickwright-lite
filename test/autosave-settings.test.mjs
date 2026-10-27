@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
 
 const store = new Map();
 globalThis.localStorage = {
@@ -22,4 +23,13 @@ test('autosave is on by default and its settings stay in safe bounds', () => {
 
 test('a folder can be chosen only where the platform offers a picker', () => {
     assert.equal(folderPickerAvailable(), false, 'plain Node has neither the app bridge nor showDirectoryPicker');
+});
+
+test('an unsaved session is marked, and the next start offers its autosave', () => {
+    const source = readFileSync(new URL('../overlay/scratch-gui/src/lib/bw-autosave.js', import.meta.url), 'utf8');
+    assert.match(source, /if \(changed\) localStorage\.setItem\(UNCLEAN_KEY/);
+    assert.match(source, /else localStorage\.removeItem\(UNCLEAN_KEY\)/);
+    assert.match(source, /export const recoveryCandidate = /);
+    const safety = readFileSync(new URL('../overlay/scratch-gui/src/lib/bw-project-safety.js', import.meta.url), 'utf8');
+    assert.match(safety, /offerRecovery\(store\)/);
 });
