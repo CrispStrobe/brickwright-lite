@@ -14,7 +14,7 @@ import downloadBlob from '../../lib/download-blob';
 
 const t = makeT({en: {
     history: 'History', autosave: 'Autosave', autosaveLink: 'Autosave…', close: 'Close',
-    now: 'Now', noSteps: 'No changes yet.', undone: 'Undone: click to redo up to here', more: '… {n} more',
+    now: 'Now', noSteps: 'No changes yet.', older: 'Steps from before the last reload are kept as autosave versions:', showVersions: 'Show versions', undone: 'Undone: click to redo up to here', more: '… {n} more',
     enabled: 'Save versions automatically', every: 'Every', keep: 'Keep', versions: '{n} versions',
     where: 'Where', browser: 'In this browser (always)', folder: 'Also in folder: {name}',
     noFolder: 'No folder chosen', choose: 'Choose folder…', fixed: 'Also save into the app\'s Autosave folder (Files app)', change: 'Change folder…', forget: 'Stop using folder',
@@ -26,7 +26,7 @@ const t = makeT({en: {
     sec: '{n} s', min: '{n} min'
 }, de: {
     history: 'Verlauf', autosave: 'Autospeichern', autosaveLink: 'Autospeichern…', close: 'Schließen',
-    now: 'Jetzt', noSteps: 'Noch keine Änderungen.', undone: 'Rückgängig gemacht: klicken, um bis hier wiederherzustellen',
+    now: 'Jetzt', noSteps: 'Noch keine Änderungen.', older: 'Schritte von vor dem letzten Neuladen sind als Autospeicherungen erhalten:', showVersions: 'Versionen zeigen', undone: 'Rückgängig gemacht: klicken, um bis hier wiederherzustellen',
     more: '… {n} weitere',
     enabled: 'Versionen automatisch speichern', every: 'Alle', keep: 'Behalten', versions: '{n} Versionen',
     where: 'Speicherort', browser: 'In diesem Browser (immer)', folder: 'Zusätzlich im Ordner: {name}',
@@ -138,7 +138,13 @@ class HistoryPanel extends React.Component {
         const {timeline, busy} = this.state;
         if (!timeline) return null;
         const {past, future} = timeline;
-        if (!past.length && !future.length) return <p style={{fontSize: 12, margin: '4px 8px'}}>{t(L, 'noSteps')}</p>;
+        // Undo steps live in memory; after a reload the autosave versions are the way back.
+        if (!past.length && !future.length) {
+            return <p style={{fontSize: 12, margin: '4px 8px'}}>{t(L, 'noSteps')}
+                {this.state.versions.length ? <> {t(L, 'older')} <button type="button" style={linkButton}
+                    data-testid="bw-history-show-versions" onClick={() => this.setState({view: 'autosave', message: ''})}>
+                    {t(L, 'showVersions')}</button></> : null}</p>;
+        }
         const shownFuture = future.slice(0, SHOW_STEPS);
         const jump = steps => this.run(() => moveHistory(steps, 'all').then(() => ''));
         return <div role="listbox" aria-label={t(L, 'history')} data-testid="bw-history-list" ref={this.list}
