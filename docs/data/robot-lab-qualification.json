@@ -231,6 +231,44 @@
         "joint_B_pin"
       ],
       "disconnectInputDeg": 35
+    },
+    {
+      "id": "samebeat",
+      "judge": "compound-pendulum-v1",
+      "parts": 92,
+      "ports": [
+        "A"
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 45000,
+      "afterMs": 500,
+      "frameMs": 10,
+      "withSpike": true,
+      "frozenOutput": "pendulum_ballast",
+      "disconnect": [
+        "pendulum_support_axle"
+      ],
+      "disconnectInputDeg": 7,
+      "disconnectLaw": true
+    },
+    {
+      "id": "phasor-twin",
+      "judge": "stirling-quadrature-v1",
+      "parts": 63,
+      "ports": [
+        "A"
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 60000,
+      "afterMs": 500,
+      "frameMs": 20,
+      "frozenOutput": "pistonrod_B",
+      "disconnect": [
+        "conrod_B",
+        "wristpin_B"
+      ],
+      "disconnectInputDeg": 700,
+      "disconnectLaw": true
     }
   ]
 }

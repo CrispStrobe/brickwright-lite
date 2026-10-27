@@ -4709,6 +4709,101 @@
         "de": "Hauptmodell: OA=OB=BC=r=32 mm; θ=3φ im gewählten begrenzten Montagezweig. Allgemein: sin(θ−2φ)=(d/r)sinφ beziehungsweise θ=2φ+asin[(d/r)sinφ] in diesem Zweig. Vergleich: d=24 mm, r=32 mm, d/r=0,75. θ bezeichnet den gemessenen Winkel des Eingangsarms, φ den gemessenen Winkel der passiven Geraden; beide nutzen dieselbe positive Drehrichtung in der Projektion."
       },
       "related": []
+    },
+    "samebeat": {
+      "en": {
+        "what": "A reversible compound pendulum. One motor briefly moves the support of a separate rigid body and then holds. Rehang the same body from a different stock hole and compare the free-swing period. The paired suspension distances are unequal; a third pivot provides a physical comparison.",
+        "try": [
+          "Load the model, press Reset, then Run. After a 1 s hold, the support moves to +8°, waits 0.12 s, returns to 0° and holds for 22 s. Watch the passive pendulum during that final hold.",
+          "Count complete swings from one crossing of the downward position to the next crossing in the same direction. Do not use a half-swing or the motor encoder as the period.",
+          "Predict what turning the same body over and hanging it from the paired hole will do. Load samebeat-conjugate.ldr, reset and repeat with the same program.",
+          "Repeat with samebeat-control.ldr. Compare its period, its swing amplitude and the held support position with the paired cases."
+        ],
+        "why": "A rigid body has distributed mass. Its small-angle period depends on the ratio of rotational inertia about the pivot to the gravitational restoring torque. Two unequal pivot-to-centre distances can give the same ratio when their product equals the central moment of inertia divided by the total mass. This is conjugate suspension. A third pivot changes that balance even though the body and input program stay the same.",
+        "matters": "Henry Kater used this principle in 1817 to measure gravity: he adjusted two knife edges on one bar until the periods matched, then the distance between them was the effective length, and g = 4π²L/T² followed without knowing the centre of mass. In the simulator this body, hung from holes 23.8 mm and 40.2 mm from its centre of mass, swings with periods of 0.50760 s and 0.50759 s. The predictions use the simulator's own masses and shapes; a real gravity measurement would need calibration.",
+        "question": "Can hanging the same body from a hole closer to its centre of mass make it swing more slowly? Why might two unequal suspension distances have nearly the same period?",
+        "answer": "Yes. Near the centre of mass the restoring torque becomes weak, while the body retains rotational inertia. The period depends on d + k²/d, where k² = I_G/M. Two unequal positive distances d1 and d2 give the same ideal small-angle period when d1*d2 = k². Equal periods alone do not establish conjugacy if the two distances are simply equal.",
+        "further": [
+          "Compare the exact prepared-body predictions with periods measured from actual passive motion. Keep the source prediction separate from the measurement.",
+          "Inspect the swing amplitudes. Finite swings are slightly slower than the infinitesimal-amplitude limit, so different amplitudes can create a small period difference.",
+          "Compare Pendulum Array, which changes the lengths and mass distributions of three different arms. Here the rigid body is the same and its suspension changes.",
+          "A physical Technic bearing has friction and play. The supplied numerical experiment does not establish a precision gravity instrument."
+        ]
+      },
+      "related": [
+        "pendulum-array.ldr",
+        "cascade.ldr"
+      ],
+      "de": {
+        "what": "Ein umkehrbares physikalisches Pendel. Ein Motor bewegt kurz die Aufhängung eines getrennten starren Körpers und hält danach an. Hänge denselben Körper an einem anderen Technic-Loch auf und vergleiche seine freie Schwingungsdauer. Die beiden vorgesehenen Abstände zum Schwerpunkt sind ungleich; ein dritter Aufhängepunkt dient als Vergleich.",
+        "try": [
+          "Lade das Modell, drücke Zurücksetzen und dann Start. Nach 1 s fährt die Aufhängung auf +8°, wartet 0,12 s, kehrt auf 0° zurück und hält 22 s. Beobachte das passive Pendel während dieser letzten Haltephase.",
+          "Miss vollständige Schwingungen: von einem Durchgang durch die untere Ruhelage bis zum nächsten Durchgang in derselben Richtung. Eine halbe Schwingung und der Motorwinkel sind keine Periodenmessung.",
+          "Sage voraus, wie sich die Schwingungsdauer beim Umdrehen und Aufhängen am zweiten Loch ändert. Lade samebeat-conjugate.ldr, setze zurück und wiederhole dasselbe Programm.",
+          "Wiederhole den Versuch mit samebeat-control.ldr. Vergleiche Schwingungsdauer, Amplitude und die gehaltene Position der Aufhängung."
+        ],
+        "why": "Die Masse eines starren Körpers ist räumlich verteilt. Seine Schwingungsdauer bei kleinen Auslenkungen hängt vom Verhältnis zwischen dem Trägheitsmoment um die Aufhängung und dem rücktreibenden Gewichtsdrehmoment ab. Zwei ungleiche Abstände zum Schwerpunkt können dasselbe Verhältnis ergeben, wenn ihr Produkt gleich dem zentralen Trägheitsmoment geteilt durch die Gesamtmasse ist. Das sind konjugierte Aufhängepunkte. Ein dritter Punkt verändert dieses Verhältnis, obwohl Körper und Eingangsprogramm gleich bleiben.",
+        "matters": "Henry Kater nutzte dieses Prinzip 1817, um die Erdbeschleunigung zu messen: Er verstellte zwei Schneiden an einem Stab, bis die Perioden gleich waren; dann war ihr Abstand die reduzierte Pendellänge, und g = 4π²L/T² folgte, ohne den Schwerpunkt zu kennen. Im Simulator schwingt dieser Körper an Löchern 23,8 mm und 40,2 mm vom Schwerpunkt mit 0,50760 s und 0,50759 s. Die Vorhersagen verwenden die Massen und Formen des Simulators; eine echte Schweremessung bräuchte eine Kalibrierung.",
+        "question": "Kann derselbe Körper langsamer schwingen, wenn sein Aufhängepunkt näher am Schwerpunkt liegt? Warum können zwei ungleiche Aufhängeabstände fast dieselbe Periode ergeben?",
+        "answer": "Ja. Nahe am Schwerpunkt wird das rücktreibende Gewichtsdrehmoment klein, während das zentrale Trägheitsmoment bestehen bleibt. Die Periode hängt von d + k²/d ab, wobei k²=I_G/M ist. Zwei ungleiche positive Abstände d1 und d2 liefern dieselbe ideale Periode bei kleinen Auslenkungen, wenn d1*d2=k² gilt. Gleiche Perioden beweisen keine konjugierten ungleichen Aufhängepunkte, wenn beide Abstände bloß gleich sind.",
+        "further": [
+          "Vergleiche die genaue Vorhersage aus den aufbereiteten Körperdaten mit Perioden aus der tatsächlich gemessenen passiven Bewegung. Halte Vorhersage und Messung getrennt.",
+          "Prüfe die Schwingungsamplituden. Größere Auslenkungen verlängern die Periode etwas; unterschiedliche Amplituden können daher einen kleinen Periodenunterschied erzeugen.",
+          "Vergleiche Pendulum Array: Dort ändern sich Länge und Massenverteilung dreier verschiedener Arme. Hier bleibt der starre Körper gleich und nur seine Aufhängung ändert sich.",
+          "Reale Technic-Lager haben Reibung und Spiel. Der numerische Versuch qualifiziert kein Präzisionsinstrument zur Messung von g."
+        ]
+      },
+      "formula": {
+        "en": "T0 = 2π sqrt[(I_G + M d²)/(M g d)] = 2π sqrt[(d + k_G²/d)/g], k_G²=I_G/M. For unequal conjugate distances d1*d2=k_G². For collinear opposite-side pivots, D=d1+d2 and T0=2π sqrt(D/g). Finite amplitude A in radians: T/T0≈1+A²/16.",
+        "de": "T0 = 2π sqrt[(I_G + M d²)/(M g d)] = 2π sqrt[(d + k_G²/d)/g], k_G²=I_G/M. Für ungleiche konjugierte Abstände gilt d1*d2=k_G². Liegen Schwerpunkt und beide gegenüberliegenden Aufhängepunkte auf einer Geraden, ist D=d1+d2 und T0=2π sqrt(D/g). Bei Amplitude A im Bogenmaß gilt T/T0≈1+A²/16."
+      }
+    },
+    "phasor-twin": {
+      "en": {
+        "what": "Phasor Twin is a two-cylinder, externally driven kinematic model of the Stirling cycle's phase relation. One SPIKE medium motor drives a 40-tooth idler gear on its output shaft; the idler drives a 16-tooth gear on each of two vertical crank shafts, so both shafts turn 1:1 in the same direction at 2.5 times the motor speed. Each 40 LDU crank throw (16 mm) moves a 7L connecting rod whose small end is pinned to the vertical pin of an unfitted pneumatic cylinder rod. Those cylinders have no hoses, valve, pump or air: they are only linear guides, so each piston follows the pure crank-slider law. The two crank plates are clocked 90 degrees apart. The program turns the motor two full turns forward at 45 degrees per second, holds, returns to the saved pose, and holds again; both pistons, both rods and both crank plates are passive.",
+        "try": [
+          "Load the model, press Reset, then Run. Watch the two horizontal piston rods at the same time.",
+          "Find the moments when one piston is at the end of its stroke. Where is the other piston then? With a 90-degree throw phase it should be near the middle of its stroke and moving fastest.",
+          "Plot the two piston displacements against each other while the crank turns. At a 90-degree phase the pair should trace a closed loop; the loop is the kinematic area that the Stirling cycle needs.",
+          "Load 'Phasor Twin — in phase (control)' instead: its second crank plate is clocked to the same angle. Both rods now move together, the loop collapses to a straight line, and the strokes stay the same."
+        ],
+        "why": "In the isothermal Schmidt picture of an alpha Stirling engine the hot-space and cold-space volumes vary sinusoidally and must be about 90 degrees out of phase, otherwise the pressure-volume diagram encloses no area and the engine produces no net work. For two crank-slider pistons on one crank angle theta, the displacement is x(theta) = r sin(theta) + sqrt(L^2 - r^2 cos^2(theta)), and the rod-length term is an even function of theta, so all of its harmonics are even. When the two throws differ by phi, every even harmonic of one piston integrates to zero against the other piston's fundamental, leaving the cross loop of exactly pi r^2 sin(phi). That is why the two cases differ so sharply: at 90 degrees the pair encloses a circle-like loop, and at 0 degrees it encloses nothing. In the simulator the measured loop area is 805.8 mm² per crank turn, against 804.25 mm² predicted, and about 4 mm² in the in-phase control, with 32.00 mm strokes on both pistons.",
+        "matters": "Stirling engines, free-piston machines and many pumps and compressors depend on a deliberate phase between two moving volumes; a wrong phase gives motion but no cycle area. The same quadrature idea appears in encoder signals, in vibration absorbers and in the two outputs of a differential, where a 90-degree relation separates a magnitude from a direction.",
+        "question": "When the two crank throws are exactly 90 degrees apart, what closed shape do the two piston displacements trace against each other, and what is its area for a 16 mm throw?",
+        "answer": "They trace a closed loop whose area is pi times r squared, about 804.25 mm^2 for r = 16 mm. With the throws in phase the same two pistons trace a straight line and the area is zero, while both strokes stay 32 mm. The engine cannot run on the in-phase case because its cycle area disappears.",
+        "further": [
+          "Clock the second crank plate to 45 or 135 degrees and predict the loop area with pi r^2 sin(phi) before you measure it. Which clocking is easiest to set with the gear teeth?",
+          "Replace the 16-tooth crank gears with 24-tooth gears and a 24-tooth idler; the crank-to-motor ratio becomes 1:1. Does the phase law change? It should not, because the law depends on crank angle, not on motor angle.",
+          "The two pneumatic cylinders are only guides here. Fit hoses to a real valve and pump and the model becomes a pneumatic actuator, but then the piston motion is no longer the pure crank-slider law and the loop test no longer applies."
+        ]
+      },
+      "related": [
+        "balance-engine.ldr",
+        "rod-ratio.ldr",
+        "crank-rocker.ldr"
+      ],
+      "de": {
+        "what": "Phasor Twin ist ein fremdangetriebenes kinematisches Modell der Phasenbeziehung im Stirling-Zyklus, mit zwei Zylindern. Ein SPIKE-Medium-Winkelmotor treibt auf seiner Abtriebswelle ein 40-Zahn-Zwischenrad; dieses treibt je ein 16-Zahn-Ritzel auf zwei senkrechten Kurbelwellen, sodass beide Wellen mit 2,5-facher Motordrehzahl im gleichen Drehsinn umlaufen. Jede Kurbel hat 40 LDU (16 mm) Hub und bewegt eine 7L-Pleuelstange, deren Kolbenbolzen am senkrechten Bolzen einer unbestückten Pneumatikzylinderstange sitzt. Diese Zylinder haben keine Schläuche, kein Ventil, keine Pumpe und keine Luft: Sie sind reine Linearführungen, daher folgt jeder Kolben exakt dem Kurbelschleifengesetz. Die beiden Kurbelscheiben sind um 90 Grad versetzt montiert. Das Programm dreht den Motor zwei volle Umdrehungen vorwärts mit 45 Grad pro Sekunde, hält an, fährt in die gespeicherte Lage zurück und hält erneut; beide Kolben, beide Pleuel und beide Kurbelscheiben sind passiv.",
+        "try": [
+          "Lade das Modell, drücke Zurücksetzen und dann Start. Beobachte beide waagerechten Kolbenstangen gleichzeitig.",
+          "Suche die Momente, in denen ein Kolben am Ende seines Hubes steht. Wo ist der andere Kolben dann? Bei 90 Grad Phasenversatz sollte er etwa in der Hubmitte sein und sich am schnellsten bewegen.",
+          "Trage die beiden Kolbenwege während einer Kurbelumdrehung gegeneinander auf. Bei 90 Grad Phasenversatz sollte ein geschlossener Ring entstehen; diese Fläche ist die kinematische Fläche, die der Stirling-Zyklus braucht.",
+          "Lade stattdessen das Kontrollmodell: Dort ist die zweite Kurbelscheibe im gleichen Winkel montiert. Beide Stangen laufen jetzt gemeinsam, der Ring fällt zu einer Geraden zusammen, und die Hübe bleiben gleich."
+        ],
+        "why": "Im isothermen Modell nach Schmidt schwanken das Heißraum- und das Kaltraumvolumen sinusförmig und müssen etwa 90 Grad phasenversetzt sein; sonst umschließt das p-V-Diagramm keine Fläche und die Maschine gibt keine Nutzarbeit ab. Für zwei Kurbelschleifen-Kolben auf demselben Kurbelwinkel theta gilt x(theta) = r sin(theta) + sqrt(L^2 - r^2 cos^2(theta)); der Wurzelterm ist eine gerade Funktion von theta, enthält also nur gerade Harmonische. Sind die beiden Kurbeln um phi versetzt, mittelt sich jede gerade Harmonische des einen Kolbens gegen die Grundwelle des anderen zu null, und es bleibt exakt die Querfläche pi r^2 sin(phi). Deshalb unterscheiden sich die beiden Fälle so deutlich: Bei 90 Grad entsteht ein ringförmiger Umlauf, bei 0 Grad gar keine Fläche. Im Simulator beträgt die gemessene Umlauffläche 805,8 mm² pro Kurbelumdrehung, vorhergesagt sind 804,25 mm², und im gleichphasigen Kontrollmodell etwa 4 mm², bei 32,00 mm Hub an beiden Kolben.",
+        "matters": "Stirling-Motoren, Freikolbenmaschinen und viele Pumpen und Verdichter hängen von einer gezielten Phasenlage zweier bewegter Volumina ab; die falsche Phase erzeugt Bewegung, aber keine Kreisfläche. Dieselbe Quadraturidee steckt in Drehgebersignalen, in Schwingungstilgern und in den beiden Abtrieben eines Differenzials, wo eine 90-Grad-Beziehung Betrag und Richtung trennt.",
+        "question": "Wenn die beiden Kurbeln genau 90 Grad versetzt sind, welche geschlossene Form beschreiben die beiden Kolbenwege gegeneinander, und wie groß ist ihre Fläche bei 16 mm Kurbelradius?",
+        "answer": "Sie beschreiben einen geschlossenen Ring mit der Fläche pi mal r zum Quadrat, bei r = 16 mm also etwa 804,25 mm^2. Sind die Kurbeln gleichphasig, laufen dieselben Kolben auf einer Geraden und die Fläche ist null, während beide Hübe 32 mm bleiben. Mit der gleichphasigen Einstellung kann der Motor nicht laufen, weil seine Kreisfläche verschwindet.",
+        "further": [
+          "Stelle die zweite Kurbelscheibe auf 45 oder 135 Grad und sage die Ringfläche mit pi r^2 sin(phi) voraus, bevor du sie misst. Welche Stellung lässt sich mit den Zahnradzähnen am genauesten einstellen?",
+          "Ersetze die 16-Zahn-Kurbelritzel durch 24-Zahn-Ritzel und ein 24-Zahn-Zwischenrad; dann ist das Verhältnis Kurbel zu Motor 1:1. Ändert sich das Phasengesetz? Nein, denn es hängt vom Kurbelwinkel ab, nicht vom Motorwinkel.",
+          "Die beiden Pneumatikzylinder sind hier nur Führungen. Mit Schläuchen an einem echten Ventil und einer Pumpe wird daraus ein Pneumatikantrieb; dann ist die Kolbenbewegung aber nicht mehr das reine Kurbelschleifengesetz, und der Ringtest gilt nicht mehr."
+        ]
+      },
+      "formula": {
+        "en": "x_i(θ) = x0 + r sin(θ + φ_i) + √(L² − r² cos²(θ + φ_i)); r = 16 mm, L = 48 mm. Loop area A = ∮ x_A dx_B = π r² sin φ: 804.25 mm² at φ = 90°, 0 at φ = 0°. Simulator: 805.8 mm² per crank turn at 90°, about 4 mm² in phase.",
+        "de": "x_i(θ) = x0 + r sin(θ + φ_i) + √(L² − r² cos²(θ + φ_i)); r = 16 mm, L = 48 mm. Umlauffläche A = ∮ x_A dx_B = π r² sin φ: 804,25 mm² bei φ = 90°, 0 bei φ = 0°. Simulator: 805,8 mm² pro Kurbelumdrehung bei 90°, gleichphasig etwa 4 mm²."
+      }
     }
   }
 }

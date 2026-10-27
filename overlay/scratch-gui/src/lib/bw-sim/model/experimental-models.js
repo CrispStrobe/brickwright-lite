@@ -1284,29 +1284,6 @@ export const EXPERIMENTAL_MODELS = Object.freeze([
         }
     },
     {
-        "file": "samebeat.ldr",
-        "title": {
-            "en": "Samebeat — reversible pendulum",
-            "de": "Samebeat — Reversionspendel"
-        },
-        "example": "samebeat.bw",
-        "mat": "plain",
-        "experimental": true,
-        "blocked": false,
-        "intro": {
-            "en": "A brief motor pulse moves a support and releases a passive rigid pendulum. Rehang the same body at its unequal paired pivot and compare periods; then test a third suspension with the same parts and program.",
-            "de": "Ein kurzer Motorimpuls bewegt die Aufhängung eines passiven starren Pendels. Hänge denselben Körper am ungleichen zweiten Punkt auf und vergleiche die Perioden; prüfe danach einen dritten Punkt mit denselben Teilen und demselben Programm."
-        },
-        "manualJog": {
-            "A": {
-                "minDeg": -8,
-                "maxDeg": 8,
-                "stepDeg": 4,
-                "speedDps": 60
-            }
-        }
-    },
-    {
         "file": "samebeat-conjugate.ldr",
         "title": {
             "en": "Samebeat — paired pivot",
@@ -1411,29 +1388,6 @@ export const EXPERIMENTAL_MODELS = Object.freeze([
         "intro": {
             "en": "Control: Sarrus Lift with its perpendicular passive chain removed. With the motor held, the deck can no longer stay level: it sinks, tips and slides.",
             "de": "Kontrolle: Sarrus Lift ohne die senkrechte passive Kette. Bei gehaltenem Motor bleibt der Tisch nicht mehr waagerecht: Er sinkt, kippt und rutscht."
-        }
-    },
-    {
-        "file": "phasor-twin.ldr",
-        "title": {
-            "en": "Phasor Twin — the Stirling phase loop",
-            "de": "Phasor Twin — die Stirling-Phasenschleife"
-        },
-        "example": "phasor-twin.bw",
-        "mat": "plain",
-        "experimental": true,
-        "blocked": false,
-        "intro": {
-            "en": "Two vertical crank-slider pistons, coupled by a 40-tooth idler and two 16-tooth gears, run 90 degrees out of phase. Plotting the two passive piston displacements against each other gives a closed loop of area pi r^2; clocking both throws together collapses it to a line.",
-            "de": "Zwei senkrechte Kurbelschleifen-Kolben, über ein 40-Zahn-Zwischenrad und zwei 16-Zahn-Ritzel gekoppelt, laufen um 90 Grad versetzt. Trägt man die beiden passiven Kolbenwege gegeneinander auf, entsteht ein geschlossener Ring der Fläche pi r^2; bei gleichphasigen Kurbeln fällt er zu einer Geraden zusammen."
-        },
-        "manualJog": {
-            "A": {
-                "minDeg": 0,
-                "maxDeg": 720,
-                "stepDeg": 45,
-                "speedDps": 45
-            }
         }
     },
     {
@@ -3629,40 +3583,6 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
         ],
         "experimental": true
     },
-    "samebeat.ldr": {
-        "pieces": 92,
-        "motors": 1,
-        "hubs": [
-            "spike-prime"
-        ],
-        "topic": "forces",
-        "description": {
-            "en": "A brief motor pulse moves a support and releases a passive rigid pendulum. Rehang the same body at its unequal paired pivot and compare periods; then test a third suspension with the same parts and program.",
-            "de": "Ein kurzer Motorimpuls bewegt die Aufhängung eines passiven starren Pendels. Hänge denselben Körper am ungleichen zweiten Punkt auf und vergleiche die Perioden; prüfe danach einen dritten Punkt mit denselben Teilen und demselben Programm."
-        },
-        "author": "CrispStrobe",
-        "license": "BSD-3-Clause",
-        "mechanism": {
-            "en": "Reversible compound pendulum — Kater principle",
-            "de": "Reversionspendel — Kater-Prinzip"
-        },
-        "keywords": [
-            "reversible pendulum",
-            "compound pendulum",
-            "physical pendulum",
-            "Kater pendulum",
-            "conjugate pivots",
-            "centre of oscillation",
-            "Reversionspendel",
-            "physikalisches Pendel",
-            "konjugierte Aufhängepunkte",
-            "experimental",
-            "prototype",
-            "unverified",
-            "experimentell"
-        ],
-        "experimental": true
-    },
     "samebeat-conjugate.ldr": {
         "pieces": 92,
         "motors": 1,
@@ -3843,45 +3763,6 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
             "Freiheitsgrade",
             "Gelenkkette",
             "Kontrolle",
-            "experimental",
-            "prototype",
-            "unverified",
-            "experimentell"
-        ],
-        "experimental": true
-    },
-    "phasor-twin.ldr": {
-        "pieces": 63,
-        "motors": 1,
-        "hubs": [],
-        "topic": "linkages",
-        "description": {
-            "en": "Two vertical crank-slider pistons, coupled by a 40-tooth idler and two 16-tooth gears, run 90 degrees out of phase. Plotting the two passive piston displacements against each other gives a closed loop of area pi r^2; clocking both throws together collapses it to a line.",
-            "de": "Zwei senkrechte Kurbelschleifen-Kolben, über ein 40-Zahn-Zwischenrad und zwei 16-Zahn-Ritzel gekoppelt, laufen um 90 Grad versetzt. Trägt man die beiden passiven Kolbenwege gegeneinander auf, entsteht ein geschlossener Ring der Fläche pi r^2; bei gleichphasigen Kurbeln fällt er zu einer Geraden zusammen."
-        },
-        "author": "CrispStrobe",
-        "license": "BSD-3-Clause",
-        "mechanism": {
-            "en": "Two crank-sliders clocked 90° apart (Stirling phase loop)",
-            "de": "Zwei Schubkurbeln mit 90° Versatz (Stirling-Phasenschleife)"
-        },
-        "keywords": [
-            "Stirling cycle",
-            "Stirling engine",
-            "alpha Stirling",
-            "Schmidt analysis",
-            "phase angle",
-            "90 degree volume phase",
-            "quadrature piston phasing",
-            "kinematic Stirling analogy",
-            "crank-slider",
-            "Stirling-Zyklus",
-            "Stirling-Motor",
-            "Alpha-Stirling",
-            "Schmidt-Analyse",
-            "Phasenwinkel",
-            "90-Grad-Volumenphase",
-            "Phasenquadratur",
             "experimental",
             "prototype",
             "unverified",
