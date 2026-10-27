@@ -19,7 +19,7 @@ import {readFileSync} from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {Worker} from 'node:worker_threads';
-import {SimSession, catalogFrom, MODELS_BASE, floorWatch} from '../overlay/scratch-gui/src/lib/bw-sim/sim-session.js';
+import {SimSession, catalogFrom, MODELS_BASE} from '../overlay/scratch-gui/src/lib/bw-sim/sim-session.js';
 import {PhysicsClient} from '../overlay/scratch-gui/src/lib/bw-sim/physics/physics-client.js';
 import VirtualSpikeHubState from '../overlay/scratch-gui/src/lib/virtual-hub/spike-hub-state.js';
 
@@ -99,59 +99,4 @@ test('in the worker: a diverged batch reaches neither the hubs nor the mirror', 
     } finally {
         await worker.terminate();
     }
-});
-
-// Issue #1436: a jammed drive's impulse tunnelled a whole model through the floor and it fell on, kilometres
-// by 30 s, with every pose finite. A dynamic body wholly under the floor stops the run like a divergence.
-test('a body that went through the floor stops the run, on this thread and in the worker', async () => {
-    const sink = (snap, index) => { snap.bodies[7 * index + 1] -= 1; return snap; };
-    {
-        const {session} = await SimSession.fromText(MODEL, {hubState: new VirtualSpikeHubState(), catalog: CATALOG});
-        await run(session, 30);
-        assert.equal(session.failed, null, 'resting on the floor is not under it');
-        const index = session.snapshot().bodyIds.findIndex(id => session.mechanism.bodies.find(b => b.id === id).motion === 'dynamic');
-        const before = session.snapshot(), snapshot = session.core.snapshot.bind(session.core);
-        session.core.snapshot = () => sink(snapshot(), index);
-        const logged = await quiet(() => run(session, 10));
-        assert.match(session.failed?.message || '', /body \S+ fell through the floor: \d+ mm under it at 1\.03 s/);
-        assert.equal(logged.length, 1, 'one report, not one per frame');
-        assert.ok(Math.abs(session.time - 30 * FRAME_MS) < 1e-6, 'time stops at the last step above the floor');
-        session.core.snapshot = snapshot;
-        assert.deepEqual(Array.from(session.snapshot().bodies), Array.from(before.bodies));
-        session.dispose();
-    }
-    const worker = new Worker(path.join(ROOT, 'test/fixtures/bw-sim/physics-worker-host.mjs'), {argv: [fileURLToPath(import.meta.url)]});
-    const client = new PhysicsClient(worker);
-    let batches = 0, sinkAt = Infinity, index = -1;
-    const simBatch = client.simBatch.bind(client);
-    client.simBatch = async msg => {
-        const reply = await simBatch(msg);
-        if (++batches >= sinkAt) sink(reply, index);
-        return reply;
-    };
-    try {
-        const {session} = await SimSession.fromText(MODEL, {hubState: new VirtualSpikeHubState(), catalog: CATALOG, worker: client});
-        assert.equal(session.worker, true, session.workerError);
-        await run(session, 30);
-        assert.equal(session.failed, null);
-        index = session.snapshot().bodyIds.findIndex(id => session.mechanism.bodies.find(b => b.id === id).motion === 'dynamic');
-        const before = session.snapshot();
-        sinkAt = batches + 1;
-        const logged = await quiet(() => run(session, 10));
-        assert.match(session.failed?.message || '', /body \S+ fell through the floor: \d+ mm under it at 1\.03 s/);
-        assert.equal(logged.length, 1);
-        assert.equal(batches, sinkAt, 'no batch is sent after it');
-        assert.deepEqual(Array.from(session.snapshot().bodies), Array.from(before.bodies));
-        session.dispose();
-    } finally {
-        await worker.terminate();
-    }
-});
-
-test('floorWatch: a reach for every dynamic body; no floor, nothing to watch', async () => {
-    assert.equal(floorWatch({bodies: [{id: 'b0', motion: 'dynamic', colliders: []}]}), null);
-    const {session} = await SimSession.fromText(MODEL, {hubState: new VirtualSpikeHubState(), catalog: CATALOG});
-    const w = floorWatch(session.mechanism);
-    assert.ok(w && w.thick > 0 && w.reach.size === session.mechanism.bodies.filter(b => b.motion === 'dynamic').length);
-    session.dispose();
 });

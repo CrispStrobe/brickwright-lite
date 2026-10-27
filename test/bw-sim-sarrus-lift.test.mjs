@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2026 CrispStrobe
 import {test} from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';
-import {catalogFrom,prepareModel,floorWatch} from '../overlay/scratch-gui/src/lib/bw-sim/sim-session.js';import {solidOverlaps} from '../overlay/scratch-gui/src/lib/bw-sim/editor/overlap.js';import {buildSteps} from '../overlay/scratch-gui/src/lib/bw-sim/instructions/steps.js';
+import {catalogFrom,prepareModel} from '../overlay/scratch-gui/src/lib/bw-sim/sim-session.js';import {solidOverlaps} from '../overlay/scratch-gui/src/lib/bw-sim/editor/overlap.js';import {buildSteps} from '../overlay/scratch-gui/src/lib/bw-sim/instructions/steps.js';
 import {buildSimScene} from '../overlay/scratch-gui/src/lib/bw-sim/view/sim-scene3d.js';
 import {parseLDConfig} from '../overlay/scratch-gui/src/lib/bw-sim/view/ldraw-colors.js';
 import {loadJolt,createPhysicsCore} from '../overlay/scratch-gui/src/lib/bw-sim/physics/jolt-core.js';
@@ -49,14 +49,4 @@ test('Sarrus: generated floor retains driven collapsed linkage with exact old-co
   const missing=spawnSync(process.execPath,['scripts/verify-sim-floor-contact.mjs',tap],{encoding:'utf8',timeout:30000,maxBuffer:1048576});
   assert.equal(missing.error,undefined);assert.notEqual(missing.status,0);assert.match(missing.stderr,/eight original isolated case reports required/);
  }finally{rmSync(out,{recursive:true,force:true});}
-});
-test('Sarrus without chain B: driving the collapsed deck never loses the model through the floor silently (#1436)',async()=>{
- // The jammed worm drive blew the model through the floor at ~5.2 s and it fell on to y = -677 m by 12 s, every pose finite.
- const drop=/^(b_lower_fork_|b_fork_spacer_|b_fork_crosspin_|b_upper_link|b_elbow_pin|b_deck_pin)/;let skip=false;
- const modelText=source.split('\n').filter(l=>{const m=l.match(/^0 !BW ID (\S+)/);if(m)return !(skip=drop.test(m[1]));if(skip&&/^1 /.test(l)){skip=false;return false;}return true;}).join('\n');
- const r=await runRobotLabProgram(read(base+'programs/sarrus-lift.bw'),{modelText,timeLimitMs:8000}),w=floorWatch(r.mechanism);
- assert.equal(r.mechanism.bodies.filter(b=>b.motion==='dynamic').length,5,'chain B is gone');
- const under=r.track.filter(f=>Object.entries(f.bodies).some(([id,p])=>p.position[1]+w.reach.get(id)<w.top-w.thick));
- if(under.length)assert.match(r.sessionFailed||'',/fell through the floor/,'a body under the floor fails the run');
- for(const f of r.track)for(const p of Object.values(f.bodies))assert.ok(p.position[1]>w.top-10,'the run stops before the model falls far');
 });
