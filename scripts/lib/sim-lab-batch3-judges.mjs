@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2026 CrispStrobe
 // Predictions judge observed, passive bodies; they never drive their poses.
-// Samebeat (compound pendulum) and Phasor Twin (Stirling phase quadrature), promoted from the
-// experimental entries after independent review (2026-10-27).
+// Samebeat (compound pendulum), promoted from the experimental entries after independent
+// review (2026-10-27).
 // Each law is derived from the model's documented mechanism and the compiled mass/geometry,
 // never fitted to the recorded motion. Failing assertions carry their measured values.
 import assert from 'node:assert/strict';
@@ -75,9 +75,9 @@ function samebeatSwing(r){
  const o=observeAddon(r,SAMEBEAT_BASE),{periodS,dMm,pend,a}=samebeatPredictedPeriodS(r),q0=pend.rotation,b0=r.mechanism.bodies.find(b=>b.id===o.base.id).rotation;
  const th=unwrap(r.track.map(f=>twist(f.bodies[pend.id].rotation,q0,a)-twist(f.bodies[o.base.id].rotation,b0,a)));
  const free=r.track.map((f,i)=>[f,i]).filter(([f])=>num(f,'held')===1&&num(f,'targetA')===0);
- assert.ok(free.length>10,'free swing recorded');const t0=free[0][0].t+.3,win=free.filter(([f])=>f.t>=t0);
+ assert.ok(free.length>10,'free swing recorded');const t0=free[0][0].t+300,win=free.filter(([f])=>f.t>=t0);
  const mean=win.reduce((s,[,i])=>s+th[i],0)/win.length,ups=[];
- for(let k=1;k<win.length;k++){const [fa,ia]=win[k-1],[fb,ib]=win[k],ya=th[ia]-mean,yb=th[ib]-mean;if(ya<0&&yb>=0)ups.push(fa.t+(fb.t-fa.t)*(-ya)/(yb-ya));}
+ for(let k=1;k<win.length;k++){const [fa,ia]=win[k-1],[fb,ib]=win[k],ya=th[ia]-mean,yb=th[ib]-mean;if(ya<0&&yb>=0)ups.push((fa.t+(fb.t-fa.t)*(-ya)/(yb-ya))/1000);}// track time is in ms
  const periods=ups.slice(1).map((t,i)=>t-ups[i]),measured=ups.length>1?(ups.at(-1)-ups[0])/(ups.length-1):NaN;
  const amplitudeDeg=deg(span(win.map(([,i])=>th[i])))/2;
  return{o,predictedS:periodS,dMm,measuredS:measured,crossings:ups.length,periodSpreadS:periods.length?span(periods):NaN,amplitudeDeg,th};
@@ -104,64 +104,8 @@ export function judgeSamebeat(r,{native=false}={}){
  return{...diag,periodErrorFraction:err,ballastExcursionMm:dropMm,foundation:foundation(r,o)};
 }
 
-// ---------------------------------------------------------------------------------------------
-// Phasor Twin: one gear train turns two equal cranks 1:1 with their pins clocked 90° apart. Each piston
-// follows the slider-crank closure x = r·cos φ + √(L² − (r·sin φ − e)²) along its line (r, L, e from the
-// compiled joint points), and the two piston positions trace a loop of area π·r² per crank turn
-// (first harmonics in quadrature; the rods' higher harmonics enclose no area).
-const PHASOR_BASE='base_cross_60';
-function phasorCrank(r,o,side){
- const J=r.mechanism.joints,crank=o.body('crankplate_'+side),rod=o.body('conrod_'+side),piston=o.body('pistonrod_'+side);
- const main=J.find(j=>j.type==='hinge'&&!j.motor&&[j.body1,j.body2].includes(crank.id)&&[j.body1,j.body2].includes(o.base.id)),pin=J.find(j=>j.type==='hinge'&&[j.body1,j.body2].includes(crank.id)&&[j.body1,j.body2].includes(rod.id));
- const wrist=J.find(j=>j.type==='hinge'&&[j.body1,j.body2].includes(piston.id)&&[j.body1,j.body2].includes(rod.id)),slide=J.find(j=>j.type==='slider'&&[j.body1,j.body2].includes(piston.id));
- assert.ok(main&&pin&&wrist&&slide,'crank '+side+': main bearing, crank pin, wrist pin and slider');
- const a=unit(main.axis),u=unit(sub(slide.axis,scale(a,dot(slide.axis,a)))),w=[a[1]*u[2]-a[2]*u[1],a[2]*u[0]-a[0]*u[2],a[0]*u[1]-a[1]*u[0]];
- const C=main.point,pin0=sub(pin.point,C),W0=sub(wrist.point,C),rad=norm(sub(pin0,scale(a,dot(pin0,a)))),L=Math.hypot(dot(sub(W0,pin0),u),dot(sub(W0,pin0),w)),e=dot(W0,w);
- const carry=(f,b,P)=>{const s=r.mechanism.bodies.find(x=>x.id===b.id);return add(f.bodies[b.id].position,rot(f.bodies[b.id].rotation,rot(conj(s.rotation),sub(P,s.position))));};
- const toBase=(f,p)=>{const s=o.base;return add(s.position,rot(s.rotation,rot(conj(f.bodies[s.id].rotation),sub(p,f.bodies[s.id].position))));};
- const phi=unwrap(r.track.map(f=>{const v=sub(toBase(f,carry(f,crank,pin.point)),C);return Math.atan2(dot(v,w),dot(v,u));}));
- const x=r.track.map(f=>dot(sub(toBase(f,carry(f,piston,wrist.point)),C),u));
- const pred=phi.map(p=>rad*Math.cos(p)+Math.sqrt(L*L-(rad*Math.sin(p)-e)**2));
- return{phi,x,pred,rad,L,e};
-}
-export function phasorLoss(r){
- const o=observeAddon(r,PHASOR_BASE),A=phasorCrank(r,o,'A'),B=phasorCrankLoose(r,o);
- return{...B,lost:B.strokeMm<30||B.lawErrMm>2,strokeA:span(A.x)*1000};
-}
-// A disconnected rod leaves no wrist joint; then only the free piston's own travel is observable.
-function phasorCrankLoose(r,o){
- const piston=o.body('pistonrod_B'),slide=r.mechanism.joints.find(j=>j.type==='slider'&&[j.body1,j.body2].includes(piston.id));
- if(r.mechanism.joints.some(j=>j.type==='hinge'&&[j.body1,j.body2].includes(piston.id))){const B=phasorCrank(r,o,'B');return{strokeMm:span(B.x)*1000,lawErrMm:max(B.x.map((x,i)=>[x,i]),([x,i])=>Math.abs(x-B.pred[i]))*1000};}
- const u=unit(slide?slide.axis:[1,0,0]),x=r.track.map(f=>dot(o.point(f,'pistonrod_B'),u));return{strokeMm:span(x)*1000,lawErrMm:Infinity};
-}
-export function judgePhasorTwin(r,{native=false}={}){
- healthy(r,native,{gears:true});assert.equal(r.mechanism.actuators.length,1);
- assert.equal(r.mechanism.joints.filter(j=>j.type==='slider').length,2);
- const o=observeAddon(r,PHASOR_BASE),A=phasorCrank(r,o,'A'),B=phasorCrank(r,o,'B');
- assert.equal(new Set(['crankplate_A','crankplate_B','pistonrod_A','pistonrod_B','conrod_A','conrod_B'].map(id=>o.body(id).id)).size,6,'two independent passive crank chains');
- const v=vars(r.track.at(-1));assert.equal(Number(v.completed),1);
- const geom={rA:A.rad*1000,rB:B.rad*1000,LA:A.L*1000,LB:B.L*1000};
- check(Math.abs(A.rad-B.rad)<1e-4&&Math.abs(A.L-B.L)<1e-4,'equal cranks and rods',geom);
- const lawA=max(A.x.map((x,i)=>i),i=>Math.abs(A.x[i]-A.pred[i]))*1000,lawB=max(B.x.map((x,i)=>i),i=>Math.abs(B.x[i]-B.pred[i]))*1000;
- const strokeA=span(A.x)*1000,strokeB=span(B.x)*1000,diag={...geom,lawA,lawB,strokeA,strokeB};
- check(lawA<=.5&&lawB<=.5,'each piston follows its slider-crank closure within 0.5 mm',diag);
- check(Math.abs(strokeA-2*A.rad*1000)<=.5&&Math.abs(strokeB-2*B.rad*1000)<=.5,'full strokes of twice the crank radius',diag);
- const phase=A.phi.map((p,i)=>deg(B.phi[i]-p)),phaseSpan=span(phase),phaseMean=phase.reduce((s,x)=>s+x,0)/phase.length;
- check(phaseSpan<=2&&Math.abs(Math.abs(((phaseMean%360)+540)%360-180)-90)<=1.5,'the gear train holds the cranks 90° apart',{phaseSpan,phaseMean});
- const fwd=r.track.map((f,i)=>[f,i]).filter(([f])=>num(f,'targetA')===720).map(([,i])=>i);assert.ok(fwd.length>100,'forward sweep recorded');
- const turns=Math.abs(A.phi[fwd.at(-1)]-A.phi[fwd[0]])/(2*Math.PI);let area=0;
- for(let k=1;k<fwd.length;k++){const i=fwd[k-1],j=fwd[k];area+=(A.x[i]*B.x[j]-A.x[j]*B.x[i])/2;}
- const i=fwd.at(-1),j=fwd[0];area+=(A.x[i]*B.x[j]-A.x[j]*B.x[i])/2;
- const areaPerTurn=Math.abs(area)/turns*1e6,ideal=Math.PI*(A.rad*1000)**2,loop={turns,areaPerTurn,ideal};
- check(turns>=1.9,'the passive cranks make two turns forward',loop);
- check(Math.abs(areaPerTurn-ideal)<=.01*ideal,'piston loop encloses π·r² per crank turn within 1%',loop);
- const back=Math.abs(deg(A.phi.at(-1)-A.phi[0]));check(back<=2,'cranks return to the saved pose',{back});
- return{...diag,phaseSpanDeg:phaseSpan,phaseMeanDeg:phaseMean,...loop,foundation:foundation(r,o)};
-}
-
 /** Measured law loss after a contract's physical disconnection (test/bw-sim-qualification.test.mjs). */
 export function batch3DisconnectionLoss(id,r){
  if(id==='samebeat'){const l=samebeatLoss(r);return{metric:'ballastDropMm',value:l.dropMm,lost:l.lost,detail:l};}
- if(id==='phasor-twin'){const l=phasorLoss(r);return{metric:'pistonBStrokeMm',value:l.strokeMm,lost:l.lost,detail:l};}
  assert.fail('no batch-3 disconnection measure for '+id);
 }

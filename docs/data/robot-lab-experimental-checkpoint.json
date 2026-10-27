@@ -3391,7 +3391,7 @@
         "to": "established library (MODELS)",
         "date": "2026-10-27",
         "judge": "compound-pendulum-v1",
-        "verified": "PENDING: hosted native qualification of this branch"
+        "verified": "PENDING: hosted native qualification of this branch (first run found and fixed a millisecond/second unit error in the judge)"
       }
     },
     {
@@ -3574,11 +3574,10 @@
         "nan": false,
         "simMs": 41400
       },
-      "promoted": {
-        "to": "established library (MODELS)",
+      "promotionReview": {
         "date": "2026-10-27",
-        "judge": "stirling-quadrature-v1",
-        "verified": "PENDING: hosted native qualification of this branch"
+        "decision": "STAYS_EXPERIMENTAL",
+        "reason": "A reviewed stirling-quadrature-v1 judge passed its law on hosted native CI (pistons within 0.0012 mm of the slider-crank closure, strokes 32.001 mm, cranks 90.00004 deg apart with 0.0006 deg span, 803.9 mm2 per turn vs pi r2 = 804.25). The model is hubless, while the shared qualification harness reads the hold state through hub motor controllers (final mode reported 'idle' after the program's lab stop motor A hold) and its disconnection control observes from a 'hub' part. A reviewed hubless harness path is needed first."
       }
     },
     {

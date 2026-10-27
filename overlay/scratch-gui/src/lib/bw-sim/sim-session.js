@@ -138,8 +138,6 @@ export const MODELS = Object.freeze([
         manualJog: {A: {minDeg: -5, maxDeg: 40, stepDeg: 5, speedDps: 8}}},
     {file: 'samebeat.ldr', title: {en: 'Samebeat — reversible pendulum', de: 'Samebeat — Reversionspendel'}, example: 'samebeat.bw', mat: 'plain',
         manualJog: {A: {minDeg: -8, maxDeg: 8, stepDeg: 4, speedDps: 60}}},
-    {file: 'phasor-twin.ldr', title: {en: 'Phasor Twin — the Stirling phase loop', de: 'Phasor Twin — die Stirling-Phasenschleife'}, example: 'phasor-twin.bw', mat: 'plain',
-        manualJog: {A: {minDeg: 0, maxDeg: 720, stepDeg: 45, speedDps: 45}}},
     {file: 'watt-line.ldr', title: {en: "Watt’s Line — approximate straight-line linkage", de: 'Watt’s Line — angenäherte Geradführung'}, example: 'watt-line.bw', mat: 'plain',
         manualJog: {A: {minDeg: -20, maxDeg: 20, stepDeg: 2, speedDps: 6}}},
     {file: 'twin-tempo.ldr', title: {en: 'TwinTempo — three-to-one hoist', de: 'TwinTempo — Seilzüge im Verhältnis drei zu eins'}, example: 'twin-tempo.bw', mat: 'plain',

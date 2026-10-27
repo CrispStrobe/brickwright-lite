@@ -10,12 +10,12 @@ import {judgeCascade} from './sim-lab-cascade-judge.mjs';
 import {judgeWaveMaker} from './sim-lab-wavemaker-judge.mjs';
 import {judgeSineShuttle,judgeQuartermaster} from './sim-lab-sine-quarter-judge.mjs';
 import {judgeToggleLever,judgeThirdline} from './sim-lab-toggle-thirdline-judge.mjs';
-import {judgeSamebeat,judgePhasorTwin} from './sim-lab-batch3-judges.mjs';
+import {judgeSamebeat} from './sim-lab-batch3-judges.mjs';
 // This registry and the judges are reviewer-owned. A model-building agent owns
 // its candidate pack, never this acceptance boundary or the physical test gates.
 const SIX_FAMILIES=Object.freeze({"rod-ratio": "rod-ratio-v1", "vernier-drive": "vernier-drive-v1", "line-turner": "scott-russell-v1", "dune-strider": "paired-jansen-v1", "atlas-six": "stewart-platform-v1", "oblique": "oblique-trammel-v1"});
 const INTERNAL_COMPARISONS=Object.freeze({"rod-ratio": "two-connecting-rod-lengths", "vernier-drive": "opposing-differential-branches", "line-turner": "perpendicular-input-output-lines", "dune-strider": "opposed-jansen-legs", "atlas-six": "six-independent-platform-axes", "oblique": "two-real-guide-settings"});
-export const QUALIFICATION_JUDGES=Object.freeze({...Object.fromEntries(SIX_INTAKES.map(id=>[SIX_FAMILIES[id],r=>judgeReviewedIntake(id,r,{native:true})])),'cable-winch-v1':judgeCableCompass,'scissor-rack-v1':judgeRiseRatio,'scotch-yoke-v1':judgeSineShuttle,'toggle-dead-centre-v1':judgeToggleLever,'neusis-trisector-v1':judgeThirdline,'compound-pendulum-v1':judgeSamebeat,'stirling-quadrature-v1':judgePhasorTwin,'latched-indexer-v1':judgeQuartermaster,'cardan-differential-v1':judgeWaveMaker,'serial-pendulum-v1':judgeCascade});
+export const QUALIFICATION_JUDGES=Object.freeze({...Object.fromEntries(SIX_INTAKES.map(id=>[SIX_FAMILIES[id],r=>judgeReviewedIntake(id,r,{native:true})])),'cable-winch-v1':judgeCableCompass,'scissor-rack-v1':judgeRiseRatio,'scotch-yoke-v1':judgeSineShuttle,'toggle-dead-centre-v1':judgeToggleLever,'neusis-trisector-v1':judgeThirdline,'compound-pendulum-v1':judgeSamebeat,'latched-indexer-v1':judgeQuartermaster,'cardan-differential-v1':judgeWaveMaker,'serial-pendulum-v1':judgeCascade});
 export const QUALIFICATION_NATIVE_TESTS=Object.freeze({...Object.fromEntries(SIX_INTAKES.map(id=>[id,'test/bw-sim-six-technic-intakes.test.mjs'])),'cable-compass':'test/bw-sim-cable-compass.test.mjs','rise-ratio':'test/bw-sim-rise-ratio.test.mjs',wavemaker:'test/bw-sim-wavemaker.test.mjs',cascade:'test/bw-sim-cascade.test.mjs'});
 export function qualificationContracts(requested){
  const data=JSON.parse(readFileSync(new URL('../../docs/data/robot-lab-qualification.json',import.meta.url)));
