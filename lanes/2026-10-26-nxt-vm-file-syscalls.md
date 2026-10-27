@@ -1,6 +1,6 @@
 # NXT VM file system calls
 
-Status: DONE implementation; exact-head hosted qualification gates landing.
+Status: DONE — qualified source landed through #1430.
 Owner: Codex Robot Lab continuation.
 Base: `5cd027707eceed3451bd62eaa21125a051650e59`.
 
@@ -45,6 +45,16 @@ Validation before publication: 19 pure backend/interface/allocation/ownership
 controls pass; seven targeted mutations are detected without editing the product
 files or executing a guest. The one hosted compiler response binds the owned NXC
 source and 2,994-byte RXE. Four hosted-only fixture controls cover source identity,
-normal completion, Stop/restart and deterministic snapshot completion. Their
-actual guest execution and every enabled exact-head check remain mandatory before
-merge; local controls and static review provide no guest qualification credit.
+normal completion, Stop/restart and deterministic snapshot completion. Actual
+guest execution and every enabled exact-head check were mandatory before merge
+and were subsequently satisfied as recorded below; local controls and static
+review alone provided no guest qualification credit.
+
+The source subsequently qualified on the immutable final head: all 83 affected
+hosted tests across ten files passed, with the six official unit artifacts
+accepted by independent retained-original readers. All 40 exact-head checks
+finished with 33 successes and seven declared conditional skips, with no legacy
+status contexts. The normal matched-head merge landed as `2f3ba1fa`; actual
+parents and tree equalled the prediction, preserving the current main additions.
+This qualifies the named virtual-file and runtime cases, not physical flash,
+hardware timing or broad NXC compatibility.
