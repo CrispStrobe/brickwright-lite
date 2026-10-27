@@ -100,9 +100,10 @@ test('a nonsense voltage reads zero rather than NaN', () => {
 test('pull mode reaches the board as a pull mode', () => {
     const board = recordingBoard();
     const ext = withBoard(board);
-    ext.setpull({PIN: '0', MODE: 'up'});
-    ext.setpull({PIN: '0', MODE: 'down'});
-    ext.setpull({PIN: '0', MODE: 'none'});
+    // The block declares its menu argument as PULL (set pin [PIN] pull [PULL]).
+    ext.setpull({PIN: '0', PULL: 'up'});
+    ext.setpull({PIN: '0', PULL: 'down'});
+    ext.setpull({PIN: '0', PULL: 'none'});
     assert.deepEqual(board.calls.map(c => c.mode),
         ['input-pullup', 'input-pulldown', 'input']);
     assert.equal(board.calls[0].driveHigh, true, 'a pull-up holds the pin high');
@@ -127,7 +128,7 @@ test('with no circuit open, the blocks are quiet and do not throw', () => {
     assert.doesNotThrow(() => {
         ext.digitalwrite({PIN: '0', LEVEL: '1'});
         ext.analogwrite({PIN: '0', PCT: 100});
-        ext.setpull({PIN: '0', MODE: 'up'});
+        ext.setpull({PIN: '0', PULL: 'up'});
     });
     assert.equal(ext.digitalread({PIN: '0'}), 0);
     assert.equal(ext.analogread({PIN: '0'}), 0);
