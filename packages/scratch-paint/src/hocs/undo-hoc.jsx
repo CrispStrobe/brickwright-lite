@@ -13,6 +13,11 @@ import {undo, redo} from '../reducers/undo';
 
 import Formats, {isBitmap} from '../lib/format';
 
+// Brickwright: the GUI's menu-bar Undo / Redo / History (scratch-gui
+// lib/global-undo.js) publishes itself on globalThis because scratch-paint is
+// a separate package. Without the GUI the editor works as before.
+const globalUndo = () => (typeof globalThis !== 'undefined' && globalThis.__bwGlobalUndo) || null;
+
 const UndoHOC = function (WrappedComponent) {
     class UndoWrapper extends React.Component {
         constructor (props) {
@@ -24,6 +29,36 @@ const UndoHOC = function (WrappedComponent) {
                 'shouldShowUndo',
                 'shouldShowRedo'
             ]);
+        }
+        componentDidMount () {
+            const bridge = globalUndo();
+            if (!bridge) return;
+            const depth = () => {
+                const {stack, pointer} = this.props.undoState;
+                return {undo: Math.max(0, pointer), redo: Math.max(0, stack.length - 1 - pointer)};
+            };
+            this._unregisterUndo = bridge.registerUndoSurface('costumes', {
+                label: 'Costumes',
+                canUndo: () => depth().undo > 0,
+                canRedo: () => depth().redo > 0,
+                depth,
+                undo: () => {
+                    this.handleUndo();
+                    return true;
+                },
+                redo: () => {
+                    this.handleRedo();
+                    return true;
+                }
+            });
+            bridge.activateUndoSurface('costumes');
+        }
+        componentDidUpdate (prevProps) {
+            const bridge = globalUndo();
+            if (bridge && prevProps.undoState !== this.props.undoState) bridge.notifyUndoState();
+        }
+        componentWillUnmount () {
+            if (this._unregisterUndo) this._unregisterUndo();
         }
         handleUndo () {
             performUndo(this.props.undoState, this.props.onUndo, this.handleSetSelectedItems, this.props.onUpdateImage);

@@ -1410,6 +1410,9 @@ class ControllerPanelView extends React.Component {
         this._onPanelEvent = this._onPanelEvent.bind(this);
         this._binding = null;
         this._undoStack = [];
+        this._redoStack = [];
+        this._undoLabels = [];
+        this._redoLabels = [];
         this._layoutSnapshot = null;
     }
 
@@ -1430,8 +1433,13 @@ class ControllerPanelView extends React.Component {
             this._bindToBoard(panel);
         }
         this._unregisterUndo = registerUndoSurface('widgets', {
+            label: 'Widgets',
             canUndo: () => this._undoStack.length > 0,
-            undo: () => this._undo()
+            canRedo: () => this._redoStack.length > 0,
+            depth: () => ({undo: this._undoStack.length, redo: this._redoStack.length}),
+            steps: () => ({past: this._undoLabels.slice(), future: this._redoLabels.slice().reverse()}),
+            undo: () => this._undo(),
+            redo: () => this._redo()
         });
     }
 
@@ -1491,9 +1499,15 @@ class ControllerPanelView extends React.Component {
         return JSON.parse(JSON.stringify(serializeControllerPanel(this._getPanel())));
     }
 
-    _recordUndo(snapshot) {
+    _recordUndo(snapshot, label = 'Change') {
         this._undoStack.push(snapshot || this._snapshot());
-        if (this._undoStack.length > 100) this._undoStack.shift();
+        this._undoLabels.push(label);
+        if (this._undoStack.length > 100) {
+            this._undoStack.shift();
+            this._undoLabels.shift();
+        }
+        this._redoStack = [];
+        this._redoLabels = [];
         notifyUndoState();
     }
 
@@ -1513,7 +1527,18 @@ class ControllerPanelView extends React.Component {
 
     _undo() {
         if (!this._undoStack.length) return false;
+        this._redoStack.push(this._snapshot());
+        this._redoLabels.push(this._undoLabels.pop());
         this._restoreSnapshot(this._undoStack.pop());
+        notifyUndoState();
+        return true;
+    }
+
+    _redo() {
+        if (!this._redoStack.length) return false;
+        this._undoStack.push(this._snapshot());
+        this._undoLabels.push(this._redoLabels.pop());
+        this._restoreSnapshot(this._redoStack.pop());
         notifyUndoState();
         return true;
     }
@@ -1556,7 +1581,7 @@ class ControllerPanelView extends React.Component {
         this.setState({ addMenuOpen: false });
         // Persist immediately
         this._persist();
-        this._recordUndo(before);
+        this._recordUndo(before, 'Add widget');
     }
 
     _removeWidget(name) {
@@ -1565,7 +1590,7 @@ class ControllerPanelView extends React.Component {
         releaseMomentaryButtons(this._getPanel(), name);
         this._getPanel().removeWidget(name);
         this._persist();
-        this._recordUndo(before);
+        this._recordUndo(before, 'Remove widget');
     }
 
     _persist() {
@@ -1589,7 +1614,7 @@ class ControllerPanelView extends React.Component {
         this._getPanel().setWidgetLayout(name, patch);
         if (persist) {
             this._persist();
-            this._recordUndo(this._layoutSnapshot);
+            this._recordUndo(this._layoutSnapshot, 'Move or resize widget');
             this._layoutSnapshot = null;
         }
     }
@@ -1598,7 +1623,7 @@ class ControllerPanelView extends React.Component {
         const before = this._snapshot();
         this._getPanel().setWidgetConfig(name, patch);
         this._persist();
-        this._recordUndo(before);
+        this._recordUndo(before, 'Change widget');
     }
 
     /**
@@ -1633,7 +1658,7 @@ class ControllerPanelView extends React.Component {
         // move. The board binding is rebuilt for the same reason.
         if (panel.mode === 'play' && this.props.board) this._bindToBoard(panel);
         this._persist();
-        this._recordUndo(before);
+        this._recordUndo(before, 'Bind widget');
     }
 
     /** Stage variable names, for the binding field's suggestions. */
@@ -1668,7 +1693,7 @@ class ControllerPanelView extends React.Component {
             if (this._snapFor === oldName) this._snapFor = newName;
             this.setState({ selected: newName });
             this._persist();
-            this._recordUndo(before);
+            this._recordUndo(before, 'Rename widget');
             return true;
         } catch (e) {
             return false;   // collision/empty: the inspector keeps the old name
@@ -1694,7 +1719,7 @@ class ControllerPanelView extends React.Component {
                 w.binding = snap.binding ? JSON.parse(JSON.stringify(snap.binding)) : null;
             }
             this._persist();
-            this._recordUndo(before);
+            this._recordUndo(before, 'Restore widget');
         } catch (e) { /* a failed revert must still close the inspector */ }
         this._snapFor = null;
         this.setState(s => ({ selected: null, revision: s.revision + 1 }));
@@ -1857,7 +1882,7 @@ class ControllerPanelView extends React.Component {
                                     const before = this._snapshot();
                                     panel.setHideBindings(e.target.checked);
                                     this._persist();
-                                    this._recordUndo(before);
+                                    this._recordUndo(before, 'Show or hide bindings');
                                     this.forceUpdate();
                                 }} />
                             {t('hideBindings')}

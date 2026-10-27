@@ -25,6 +25,8 @@ import sharedMessages from '../lib/shared-messages';
 import downloadBlob from '../lib/download-blob';
 import {copyCostumeDocument, syncAnimationResources} from '../lib/bw-artwork-bundle';
 import {makeT} from '../lib/bw-i18n';
+import {activateUndoSurface} from '../lib/global-undo.js';
+import EditorErrorBoundary from '../components/editor-error-boundary/editor-error-boundary.jsx';
 import styles from './costume-tab.css';
 
 const editorT = makeT({
@@ -124,6 +126,12 @@ class CostumeTab extends React.Component {
         // lazy chunk (lib/lazy-render-fonts.js). This tab is mounted only while
         // it is shown, so this is the first moment they are worth having.
         getFonts.loadFonts().catch(() => { /* fallback faces; the tool still works */ });
+    }
+    componentDidUpdate (prevProps, prevState) {
+        // Menu-bar Undo / Redo / History follow the editor that is showing.
+        if (prevState.pixelMode !== this.state.pixelMode || prevState.tilemapMode !== this.state.tilemapMode) {
+            activateUndoSurface(this.state.tilemapMode ? 'tilemap' : this.state.pixelMode ? 'pixel' : 'costumes');
+        }
     }
     componentWillReceiveProps (nextProps) {
         const {
@@ -517,29 +525,29 @@ class CostumeTab extends React.Component {
                                 pending paper.js callback reading a destroyed project
                                 ("reading 'layers'"), which crashes the whole tab. */}
                             <div style={{display: this.state.pixelMode || this.state.tilemapMode ? 'none' : 'contents'}}>
-                                <PaintEditorWrapper
+                                <EditorErrorBoundary name="Paint editor"><PaintEditorWrapper
                                     selectedCostumeIndex={this.state.selectedCostumeIndex}
                                     editorTools={editorTools(false)}
-                                />
+                                /></EditorErrorBoundary>
                             </div>
                             {this.state.tilemapMode ? (
-                                <React.Suspense fallback={null}>
+                                <EditorErrorBoundary name="Tilemap editor"><React.Suspense fallback={null}>
                                     <TilemapEditor
                                         ref={this.tilemapEditor}
                                         vm={vm}
                                         locale={intl.locale}
                                         editorTools={editorTools(false, 'tilemap')}
                                     />
-                                </React.Suspense>
+                                </React.Suspense></EditorErrorBoundary>
                             ) : this.state.pixelMode ? (
-                                <React.Suspense fallback={null}>
+                                <EditorErrorBoundary name="Pixel editor"><React.Suspense fallback={null}>
                                     <PixelArtEditor
                                         ref={this.pixelEditor}
                                         costumeIndex={this.state.selectedCostumeIndex}
                                         vm={vm}
                                         editorTools={editorTools(true)}
                                     />
-                                </React.Suspense>
+                                </React.Suspense></EditorErrorBoundary>
                             ) : null}
                         </div>
                     </div>

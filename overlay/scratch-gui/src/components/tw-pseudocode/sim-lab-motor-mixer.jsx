@@ -12,6 +12,11 @@
 //
 // A motor whose hub runs its own program (an emulated firmware, a bytecode VM: no directCommand)
 // is listed, greyed, with the reason.
+//
+// When the program has no brick-button handlers, the hub's own buttons are offered here on demand
+// ("Brick controls", a folded section); with handlers they show by default above the scene.
+// The program connection (Bluetooth, USB serial, bridges) is always a folded section here, so it
+// takes no room above the scene.
 
 import React from 'react';
 import PropTypes from 'prop-types';
@@ -31,7 +36,10 @@ const MIXER_TEXT = {
         jogOutside: 'Angle outside the manual range. Press Reset before jogging.',
         jogUnavailable: 'Angle unavailable. Press Reset before jogging.',
         jogInvalid: 'Manual jog settings unavailable. Choose the example again.',
-        policyUnavailable: 'Manual controls could not be prepared. Reopen the model to try again. Stop all remains available.'
+        policyUnavailable: 'Manual controls could not be prepared. Reopen the model to try again. Stop all remains available.',
+        brickOpen: 'Brick controls ▸', brickClose: 'Brick controls ▾', brickHelp: 'Press the hub\'s own buttons by hand',
+        connectionOpen: 'Connection ▸', connectionClose: 'Connection ▾',
+        connectionHelp: 'Run the program on a real brick: choose its connection'
     },
     de: {
         title: 'Motoren', open: 'Motoren ▸', close: 'Motoren ▾', help: 'Jeden Motor des Modells von Hand drehen: Regler für die Leistung ziehen, das Quadrat hält ihn an',
@@ -46,7 +54,10 @@ const MIXER_TEXT = {
         jogOutside: 'Winkel außerhalb des manuellen Bereichs. Vor der Bewegung Zurücksetzen drücken.',
         jogUnavailable: 'Winkel nicht verfügbar. Vor der Bewegung Zurücksetzen drücken.',
         jogInvalid: 'Manuelle Winkelschritte nicht verfügbar. Das Beispiel erneut wählen.',
-        policyUnavailable: 'Die manuelle Steuerung konnte nicht vorbereitet werden. Öffne das Modell erneut. Alle stoppen bleibt verfügbar.'
+        policyUnavailable: 'Die manuelle Steuerung konnte nicht vorbereitet werden. Öffne das Modell erneut. Alle stoppen bleibt verfügbar.',
+        brickOpen: 'Hub-Tasten ▸', brickClose: 'Hub-Tasten ▾', brickHelp: 'Die Tasten am Hub von Hand drücken',
+        connectionOpen: 'Verbindung ▸', connectionClose: 'Verbindung ▾',
+        connectionHelp: 'Das Programm auf einem echten Hub ausführen: Verbindung wählen'
     }
 };
 const fill = (text, values) => text.replace(/\{(\w+)\}/g, (m, k) => (values[k] === undefined ? m : String(values[k])));
@@ -63,7 +74,8 @@ export const MIXER_OPEN_KEY = 'bw-sim-lab-mixer-open';
  * @param {() => void} props.onStopAll
  */
 const SimLabMotorMixer = ({motors, power, open, locale, onToggle, onPower, onJog, onStop, onStopAll, button,
-    override, onOverride, drive, onClose, available = true}) => {
+    override, onOverride, drive, onClose, available = true, brick = null, brickOpen = false, onBrickToggle,
+    connection = null, connectionOpen = false, onConnectionToggle}) => {
     const T = MIXER_TEXT[locale === 'de' ? 'de' : 'en'];
     const several = new Set(motors.map(m => m.hub)).size > 1;
     const hasJog = motors.some(m => m.manualJog !== undefined);
@@ -82,9 +94,16 @@ const SimLabMotorMixer = ({motors, power, open, locale, onToggle, onPower, onJog
                 {open && motors.some(m => m.direct) && (
                     <button type="button" style={button} data-testid="bw-sim-lab-mixer-stop-all" onClick={onStopAll}>{T.stopAll}</button>
                 )}
+                {brick && <button type="button" style={button} data-testid="bw-sim-lab-brick-controls-toggle" aria-expanded={brickOpen}
+                    title={T.brickHelp} onClick={onBrickToggle}>{brickOpen ? T.brickClose : T.brickOpen}</button>}
+                {connection && <button type="button" style={button} data-testid="bw-sim-lab-connection-toggle"
+                    aria-expanded={connectionOpen} title={T.connectionHelp} onClick={onConnectionToggle}>
+                    {connectionOpen ? T.connectionClose : T.connectionOpen}</button>}
                 <button type="button" style={{...button, marginLeft: 'auto', flexShrink: 0}} aria-label={T.closeControls}
                     data-testid="bw-sim-lab-controls-close" onClick={onClose}>×</button>
             </div>
+            {brick && brickOpen && <div data-testid="bw-sim-lab-brick-controls">{brick}</div>}
+            {connection && connectionOpen && connection}
             {open && !available && <span data-testid="bw-sim-lab-mixer-policy-unavailable" style={{color: '#9a3412'}}>{T.policyUnavailable}</span>}
             {open && (motors.length ? (
                 <div role="group" aria-label={T.title} style={{display: 'grid', gridTemplateColumns: 'auto 1fr auto auto', gap: '4px 8px', alignItems: 'center'}}>
@@ -155,7 +174,13 @@ SimLabMotorMixer.propTypes = {
     onJog: PropTypes.func.isRequired,
     onStop: PropTypes.func.isRequired,
     onStopAll: PropTypes.func.isRequired,
-    button: PropTypes.object
+    button: PropTypes.object,
+    brick: PropTypes.node,
+    brickOpen: PropTypes.bool,
+    onBrickToggle: PropTypes.func,
+    connection: PropTypes.node,
+    connectionOpen: PropTypes.bool,
+    onConnectionToggle: PropTypes.func
 };
 
 export default SimLabMotorMixer;

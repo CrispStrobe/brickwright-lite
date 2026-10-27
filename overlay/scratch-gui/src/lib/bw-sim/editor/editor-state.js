@@ -259,6 +259,8 @@ export const createEditor = ({model, catalog}) => {
         get model() { return current; },
         get canUndo() { return undoStack.length > 0; },
         get canRedo() { return redoStack.length > 0; },
+        get undoDepth() { return undoStack.length; },
+        get redoDepth() { return redoStack.length; },
         subscribe(fn) {
             subs.add(fn);
             return () => subs.delete(fn);

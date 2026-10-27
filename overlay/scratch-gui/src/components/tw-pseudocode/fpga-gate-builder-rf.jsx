@@ -1,4 +1,5 @@
 import React from 'react';
+import {activateUndoSurface, notifyUndoState, registerUndoSurface} from '../../lib/global-undo.js';
 import {connect} from 'react-redux';
 import {ReactFlow, ReactFlowProvider, Background, Controls, MiniMap, addEdge,
     useNodesState, useEdgesState, useReactFlow, Handle, Position} from '@xyflow/react';
@@ -303,8 +304,18 @@ const STARTER = () => modelToReactFlow({
     ]
 }, {a: {x: 0, y: 20}, b: {x: 0, y: 110}, g: {x: 160, y: 60}, y: {x: 300, y: 60}});
 
+const GATES_AUTOSAVE_KEY = 'bw-fpga-gates-autosave';
+
 const InnerBuilder = ({onUseVerilog, seed, locale}) => {
-    const start = React.useMemo(() => (seed ? modelToReactFlow(seed) : STARTER()), [seed]);
+    // Autosave: the canvas comes back after a reload unless an example seeds it.
+    const start = React.useMemo(() => {
+        if (seed) return modelToReactFlow(seed);
+        try {
+            const saved = JSON.parse(localStorage.getItem(GATES_AUTOSAVE_KEY) || 'null');
+            if (saved) return modelToReactFlow(saved);
+        } catch (e) { /* an unreadable draft falls back to the starter */ }
+        return STARTER();
+    }, [seed]);
     const [nodes, setNodes, onNodesChange] = useNodesState(start.nodes);
     const [edges, setEdges, onEdgesChange] = useEdgesState(start.edges);
 
@@ -322,22 +333,49 @@ const InnerBuilder = ({onUseVerilog, seed, locale}) => {
     const [, bumpHist] = React.useReducer(x => x + 1, 0);
     const takeSnapshot = React.useCallback(() => {
         pastRef.current.push({nodes: nodesRef.current, edges: edgesRef.current});
-        if (pastRef.current.length > 100) pastRef.current.shift();
+        if (pastRef.current.length > 200) pastRef.current.shift();
         futureRef.current = [];
         bumpHist();
+        notifyUndoState();
     }, []);
+    // The refs move with each step, so several steps before a re-render (menu-bar
+    // History: "10 back") still record the right states.
     const undo = React.useCallback(() => {
         const prev = pastRef.current.pop();
-        if (!prev) return;
+        if (!prev) return false;
         futureRef.current.push({nodes: nodesRef.current, edges: edgesRef.current});
-        setNodes(prev.nodes); setEdges(prev.edges); bumpHist();
+        nodesRef.current = prev.nodes; edgesRef.current = prev.edges;
+        setNodes(prev.nodes); setEdges(prev.edges); bumpHist(); notifyUndoState();
+        return true;
     }, [setNodes, setEdges]);
     const redo = React.useCallback(() => {
         const next = futureRef.current.pop();
-        if (!next) return;
+        if (!next) return false;
         pastRef.current.push({nodes: nodesRef.current, edges: edgesRef.current});
-        setNodes(next.nodes); setEdges(next.edges); bumpHist();
+        nodesRef.current = next.nodes; edgesRef.current = next.edges;
+        setNodes(next.nodes); setEdges(next.edges); bumpHist(); notifyUndoState();
+        return true;
     }, [setNodes, setEdges]);
+    // Menu-bar Undo / Redo / History (lib/global-undo.js), active while the FPGA tab shows.
+    React.useEffect(() => {
+        const unregister = registerUndoSurface('fpga', {
+            label: 'FPGA gate builder',
+            canUndo: () => pastRef.current.length > 0,
+            canRedo: () => futureRef.current.length > 0,
+            depth: () => ({undo: pastRef.current.length, redo: futureRef.current.length}),
+            undo, redo
+        });
+        activateUndoSurface('fpga');
+        return unregister;
+    }, [undo, redo]);
+    React.useEffect(() => {
+        const timer = setTimeout(() => {
+            try {
+                localStorage.setItem(GATES_AUTOSAVE_KEY, JSON.stringify(reactFlowToModel(nodes, edges)));
+            } catch (e) { /* storage full, private mode or a half-built canvas: try again on the next edit */ }
+        }, 1000);
+        return () => clearTimeout(timer);
+    }, [nodes, edges]);
 
     React.useEffect(() => {
         if (seed) {

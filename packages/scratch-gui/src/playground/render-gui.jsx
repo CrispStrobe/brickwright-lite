@@ -96,6 +96,16 @@ export default appTarget => {
     // Wire native file-open (Tauri) → web VM. No-op in a browser.
     initTauriBridge();
 
+    // Project history for sprites/costumes/sounds, whole-project autosave and
+    // visible error notes (lib/bw-project-safety.js). A lazy chunk: nothing of it
+    // loads before the editor has painted.
+    import(/* webpackChunkName: "bw-project-safety" */ '../lib/bw-project-safety.js')
+        .then(module => module.default())
+        .catch(error => {
+            // eslint-disable-next-line no-console
+            console.error('[brickwright] autosave and project history unavailable', error);
+        });
+
     // Peer sessions (task E11): only in a build made with BW_ENABLE_PEERS=1. The literal is
     // substituted by webpack's DefinePlugin, so a default build drops this branch and emits no
     // peer chunk at all (test/peers-gate.test.mjs, scripts/verify-no-peer-surface.mjs).
