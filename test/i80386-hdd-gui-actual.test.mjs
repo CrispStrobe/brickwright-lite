@@ -888,7 +888,7 @@ class Originals(unittest.TestCase):
             if path.endswith(('/gui-finite-inventory-v8/bootstrap.stdout','/gui-finite-inventory-v9/bootstrap.stdout')):return b'Prepared official Ubuntu archive: 0 source file(s) changed\n'
             if path.endswith(('/gui-finite-inventory-v8/bootstrap.stderr','/gui-finite-inventory-v9/bootstrap.stderr')):return b''
             if path=='/node':return node
-            if path=='/checkout/vendor-pins.json' and finite and finite_version in (7,8,9):return E(c.FINITE_V7_PINS)
+            if path=='/checkout/vendor-pins.json' and finite and finite_version in (7,8,9):return E(c.FINITE_V9_PINS if finite_version==9 else c.FINITE_V7_PINS)
             if path.startswith('/checkout/'):return ('source:'+path.removeprefix('/checkout/')).encode()
             return path.encode()
         def lstat(path):
@@ -909,7 +909,7 @@ class Originals(unittest.TestCase):
                 if args[0]=='rev-parse':body=(request['source']['head' if args[1]=='HEAD' else 'tree']+'\n').encode()
                 else:
                     name=args[2].split(':',1)[1]
-                    body=E(c.FINITE_V7_PINS) if finite and finite_version in (7,8,9) and name=='vendor-pins.json' else ('source:'+name).encode()
+                    body=E(c.FINITE_V9_PINS if finite_version==9 else c.FINITE_V7_PINS) if finite and finite_version in (7,8,9) and name=='vendor-pins.json' else ('source:'+name).encode()
                 process={'argv':['/usr/bin/git','--no-replace-objects','-c','gc.auto=0','-c','maintenance.auto=false','-c','core.fsmonitor=false','-c','core.hooksPath=/dev/null']+args,'exitCode':0};saved[str(self.capture.root/(role+'.process.json'))]=E(process)
                 self.capture.files[role+'.stdout']=ROW(body);self.capture.files[role+'.stderr']=ROW(b'');return body
         def inventory(path):
@@ -3482,6 +3482,11 @@ class Originals(unittest.TestCase):
 
     def finite_v9_packet(self):
         value,old,expected=self.finite_v7_packet();template=D(old)
+        # F9 selects the current CUI; it no longer coincides with the F7 literal pins.
+        vendor_row=ROW(E(c.FINITE_V9_PINS));source=copy.deepcopy(value['source']);source['files']['vendor-pins.json']=vendor_row
+        value['source']=source;expected['source']=source;value['dependencyPins']=copy.deepcopy(c.FINITE_V9_PINS)
+        value['commands'][2+sorted(c.SOURCE).index('vendor-pins.json')]['stdout']=vendor_row
+        for name,(size,sha256) in c.FINITE_V9_CUI_WITNESSES.items():value['installedFiles'][name]={'byteLength':size,'sha256':sha256}
         template.update(schema='bw.gui-hdd.inventory-template.v9',dependencyPins=copy.deepcopy(c.FINITE_V9_PINS),bootstrapSource=copy.deepcopy(c.BOOTSTRAP_SOURCE))
         template['files']=sorted(set(template['files'])|{'/etc/resolv.conf'});value['runtime']['files']['/etc/resolv.conf']=ROW(b'resolver');raw=E(template)
         event=D(base64.b64decode(value['event']['base64']));event['label']['name']='x86-hdd-gui-finite-inventory-v9'

@@ -94,12 +94,13 @@ const CURRENT_X86_FINITE_V9_READER = "FINITE_V9_PINS = {'bw-board':CURRENT_BOARD
 // Independently reviewed armed F9 producer, reader and control bodies. A later
 // source edit revokes these occurrence roles until a new explicit review.
 // 2026-10-27: producer/reader re-profiled after review of the CUI move to
-// CURRENT_X86_CUI (current CUI declaration and F9 CUI witnesses only); the
-// earlier ae25d526/03f3b502 profiles are superseded, not edited.
+// CURRENT_X86_CUI (current CUI declaration and F9 CUI witnesses only), and
+// the control body after its F9 fixtures stopped borrowing the F7 pins; the
+// earlier ae25d526/03f3b502/943b551d profiles are superseded, not edited.
 const HISTORICAL_X86_SOURCE_PROFILES = Object.freeze({
     'scripts/run-i80386-hdd-gui-actual.py': Object.freeze({bytes: 284036, sha256: 'fe360e13cd44cc57bd2e443e0c93a5d16207a73f72707c9a71b11e36bc1fc14e'}),
     'scripts/read-i80386-hdd-gui-originals.py': Object.freeze({bytes: 347854, sha256: '6d5484b5208b9ed09e207e7d2d593efcc57feb2187ca48b0e1280643424af75f'}),
-    'test/i80386-hdd-gui-actual.test.mjs': Object.freeze({bytes: 544819, sha256: '943b551de56f2b18e3cc9eda650a0087088740c9c0b9dc7fe4ccc29660ed50e1'}),
+    'test/i80386-hdd-gui-actual.test.mjs': Object.freeze({bytes: 545461, sha256: 'a8e5b35b79c0ae20c8cc9b81ea975fbc86ec926fd292700b7fcb7b90ac1b72a4'}),
 });
 
 import {explainGitFailure} from './helpers/git-absence.mjs';
@@ -822,7 +823,7 @@ test('the previous F7/F8 CUI pin is admitted only in the exact literal F7/F8 map
         const judge = historicalJudgeWith(() => [], () => [], recognize);
         const noRoles = historicalJudgeWith(() => [], () => [], () => []);
         assert.equal(recognize(file, text, k).length, 2, file);
-        assert.deepEqual(judge(file, text, k), [], file);
+        assert.equal(judge(file, text, k).length, 0, file);
         assert.equal(noRoles(file, text, k).length, 2, 'both literals are red without the role');
         const unshipped = {current: k.current, previous: new Map(), history: new Map([[HISTORICAL_X86_V8_CUI, 'bw-circuit-ui']])};
         assert.equal(recognize(file, text, unshipped).length, 0, 'never-shipped is not admitted');
