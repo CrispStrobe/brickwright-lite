@@ -91,7 +91,7 @@ function checkSource(source) {
         'c7ba1313fd31482ee1feeaa9456b2ff90416fe45b0fff03670714f3931541057', 'historical F8 body held except retired guard');
     const v8 = job(source, 'actual-v8');
     assert.match(f7, /if:\s*>-\s*\n\s*\$\{\{\s*false\s*&&/, 'spent F7 execution retired');
-    assert.match(f9, /if:\s*>-\s*\n\s*\$\{\{\s*false\s*&&/, 'F9 remains disabled pending separate arming');
+    assert.match(f9, /if:\s*>-\s*\n\s*\$\{\{\s*true\s*&&/, 'separately reviewed F9 source is armed');
     assert.match(job(source, 'finite-inventory-eight'), /if:\s*>-\s*\n\s*\$\{\{\s*false\s*&&/, 'spent F8 remains retired');
     assert.match(v8, /if:\s*>-\s*\n\s*\$\{\{\s*true\s*&&/, 'reviewed V8 gate remains explicit');
 
@@ -187,7 +187,7 @@ test('source policy detects omitted, displaced and substituted bootstrap/helper 
     for (const [id, expected, wrong] of [
         ['finite-inventory-seven', 'false', 'true'],
         ['finite-inventory-eight', 'false', 'true'],
-        ['finite-inventory-nine', 'false', 'true']]) {
+        ['finite-inventory-nine', 'true', 'false']]) {
         const block = job(workflow, id);
         assert.match(block, new RegExp(`if:\\s*>-\\s*\\n\\s*\\$\\{\\{\\s*${expected}\\s*&&`));
         assert.throws(() => checkSource(workflow.replace(block, block.replace(

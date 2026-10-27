@@ -48,7 +48,7 @@ test('armed V8 source preserves nine prior PR jobs with explicit V7 execution re
     const finiteJob=priorWithFinite.slice(finiteStart,finiteEnd);
     assert.match(finiteJob,/finite-inventory-seven:\n    if: >-\n      \$\{\{ false &&/,'spent V7 execution is retired');
     assert.match(finiteJob,/finite-inventory-eight:\n    if: >-\n      \$\{\{ false &&/,'spent F8 execution is retired');
-    assert.match(finiteJob,/finite-inventory-nine:\n    if: >-\n      \$\{\{ false &&/,'new F9 execution remains disabled');
+    assert.match(finiteJob,/finite-inventory-nine:\n    if: >-\n      \$\{\{ true &&/,'separately reviewed F9 source is armed');
     assert.ok(finiteJob.indexOf('finite-inventory-v7-guard')<finiteJob.indexOf('actions\/setup-node@'));
     const prior=priorWithFinite.slice(0,finiteStart)+priorWithFinite.slice(finiteEnd);
     const retiredV7="  actual-v7:\n    if: >-\n      ${{ false && github.event_name == 'pull_request' &&\n"+
@@ -3407,9 +3407,9 @@ class Originals(unittest.TestCase):
             self.assertEqual(report['schema'],'bw.gui-hdd.inventory-reader.v8');self.assertFalse(report['qualified'])
 
     def test_finite_v9_disabled_cli_and_resolver_role_policy(self):
-        self.assertIs(c.FINITE_INVENTORY_V8_ENABLED,False);self.assertIs(c.FINITE_INVENTORY_V9_ENABLED,False)
-        self.assertIs(r.FINITE_INVENTORY_V8_READER_ENABLED,True);self.assertIs(r.FINITE_INVENTORY_V9_READER_ENABLED,False)
-        with patch.object(c,'regular',side_effect=AssertionError('read')),patch.object(c,'Hosted',side_effect=AssertionError('tool')):
+        self.assertIs(c.FINITE_INVENTORY_V8_ENABLED,False);self.assertIs(c.FINITE_INVENTORY_V9_ENABLED,True)
+        self.assertIs(r.FINITE_INVENTORY_V8_READER_ENABLED,True);self.assertIs(r.FINITE_INVENTORY_V9_READER_ENABLED,True)
+        with patch.object(c,'FINITE_INVENTORY_V9_ENABLED',False),patch.object(c,'regular',side_effect=AssertionError('read')),patch.object(c,'Hosted',side_effect=AssertionError('tool')):
             for version in (8,9):
                 for args in (['finite-inventory-v'+str(version)+'-guard'],['finite-inventory-v'+str(version),'--request','x','--expected-sha256','0'*64,'--output','x']):
                     with self.assertRaisesRegex(ValueError,'disabled'):c.main(args)

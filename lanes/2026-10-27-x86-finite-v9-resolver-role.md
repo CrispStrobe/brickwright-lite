@@ -1,6 +1,6 @@
 # X86 finite V9 inventory: exact resolver-file role — 2026-10-27
 
-Status: ownership claim merged; disabled Phase A source candidate, not actual qualification.
+Status: separately reviewed V9 source armed but unselected; final source/Build and actual qualification pending.
 Owner: existing x86 GUI source owner, coordinated with the historical-role gate owner.
 Base: main `a08622efed67b779adcbe4bfadd56c9003bf74db`.
 
@@ -104,3 +104,16 @@ update. Separate reviewed arming, final source CI and Build checkout/source
 admission, one new V9 selection and complete independently read originals remain
 required. Native runtime joins and actual GUI export/reload/forward-debug
 acceptance remain pending. Neither consumed V7 nor V8 event may be retried.
+
+## Separate V9 source arming checkpoint — 2026-10-27
+
+The preceding disabled Phase A checkpoint remains historical. After independent
+source and connected-control review, a separate local source commit arms only
+the V9 producer, V9 reader and V9 workflow guard. V8 execution remains retired
+and its historical reader remains enabled. Disabled-entry controls explicitly
+patch the V9 gates off; genuine enabled positive and negative controls remain.
+
+Exact final body profiles still require a separate reviewed update. This local
+arming is source preparation: no V9 event, inventory, native/runtime join or
+actual-V8 GUI result is claimed. Fresh exact-head source CI and Build admission,
+then separately admitted once-only selection and originals, remain mandatory.
