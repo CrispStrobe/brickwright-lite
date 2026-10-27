@@ -88,9 +88,9 @@ const CURRENT_X86_FINITE_V9_READER = "FINITE_V9_PINS = {'bw-board':CURRENT_BOARD
 // Independently reviewed armed F9 producer, reader and control bodies. A later
 // source edit revokes these occurrence roles until a new explicit review.
 const HISTORICAL_X86_SOURCE_PROFILES = Object.freeze({
-    'scripts/run-i80386-hdd-gui-actual.py': {bytes: 284036, sha256: 'ae25d526a5c0bb77d5368d474b32b6bfdecf18ccf917713b0454585aff4ef66c'},
-    'scripts/read-i80386-hdd-gui-originals.py': {bytes: 347854, sha256: '03f3b50233aca24a1252d0cbd17b2943e0d1952c65671d61e2ecd5c098914ab0'},
-    'test/i80386-hdd-gui-actual.test.mjs': {bytes: 544819, sha256: '943b551de56f2b18e3cc9eda650a0087088740c9c0b9dc7fe4ccc29660ed50e1'},
+    'scripts/run-i80386-hdd-gui-actual.py': Object.freeze({bytes: 284036, sha256: 'ae25d526a5c0bb77d5368d474b32b6bfdecf18ccf917713b0454585aff4ef66c'}),
+    'scripts/read-i80386-hdd-gui-originals.py': Object.freeze({bytes: 347854, sha256: '03f3b50233aca24a1252d0cbd17b2943e0d1952c65671d61e2ecd5c098914ab0'}),
+    'test/i80386-hdd-gui-actual.test.mjs': Object.freeze({bytes: 544819, sha256: '943b551de56f2b18e3cc9eda650a0087088740c9c0b9dc7fe4ccc29660ed50e1'}),
 });
 
 import {explainGitFailure} from './helpers/git-absence.mjs';
