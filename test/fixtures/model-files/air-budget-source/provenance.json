@@ -1,0 +1,10 @@
+{
+ "author": "CrispStrobe",
+ "license": "BSD-3-Clause",
+ "files": {
+  "models/air-budget.ldr": "5f8924b1e71e20da5d5d344d7c2846a29b7d8aa09cb739de586c5dbb80b22ca2",
+  "programs/air-budget.bw": "305c8ae0a946087377f56e5e5e4d57f8b3e09c60650f1f6a151585aaaa59b91c",
+  "LICENSE.txt": "5f48a3052c7fc8b1f0a996da47fcfdf75a606dd9cc4796bf931f0502b9726c0c",
+  "SOURCES.md": "95d8f8d23f7ac057dfbb44f5bacbc8e468845200f3b953a6a78804e6b22e5c3c"
+ }
+}

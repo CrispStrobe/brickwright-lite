@@ -2,7 +2,7 @@
   "version": 1,
   "id": "travel-dial",
   "language": "de",
-  "what": "Motor A bewegt einen geführten Schlitten unter einem getrennten Gummimessrad. Das Rad dreht sich frei: Der Kontakt mit der vorbeilaufenden Oberfläche treibt es an. Beobachte Schlitten und eine sichtbare Radspeiche und vergleiche anschließend mit dem mitgelieferten Modell, das das Rad von der Oberfläche abhebt.",
+  "what": "Abrollende Wegmessung. Motor A bewegt einen geführten Schlitten unter einem getrennten Gummimessrad. Das Rad dreht sich frei: Der Kontakt mit der vorbeilaufenden Oberfläche treibt es an. Beobachte Schlitten und eine sichtbare Radspeiche und vergleiche anschließend mit dem mitgelieferten Modell, das das Rad von der Oberfläche abhebt. Eine Kurbel schiebt einen Schlitten hin und her. Ein freies 56-mm-Rad an einem durch Schwerkraft angedrückten Arm rollt ohne Schlupf darauf ab, seine Drehung misst also den Weg: Δs = −R·Δθ mit R = 28 mm, auf 0,15 mm genau bei 42 mm Hub.",
   "try": [
     "Lade travel-dial.ldr und das zugehörige Programm travel-dial.bw. Stelle mit Reset die gespeicherte Lage her und drücke Run in der Robot-Lab-Werkzeugleiste. Beobachte Hin- und Rückweg des Schlittens.",
     "Vergleiche die sechs programmierten Zielpositionen: +60°, −60°, 0° bei 15°/s, danach dieselbe Folge bei 45°/s. Durch die Schubkurbel ändert sich die Schlittengeschwindigkeit innerhalb jedes Hubs. Braucht das Messrad für denselben tatsächlichen Oberflächenweg denselben Winkel oder dieselbe Zeit?",

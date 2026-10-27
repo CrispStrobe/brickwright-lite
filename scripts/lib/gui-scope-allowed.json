@@ -597,7 +597,8 @@
       "test/bw-sim-watt-twin.test.mjs",
       "test/bw-sim-cascade.test.mjs",
       "test/bw-sim-rise-ratio.test.mjs",
-      "test/bw-sim-nine-intake-motion.test.mjs"
+      "test/bw-sim-nine-intake-motion.test.mjs",
+      "test/bw-sim-stock-axle-envelope.test.mjs"
     ],
     "why": "SIMD-capable physical controls use the qualified optional single-thread Jolt variant through the same GUI dependency boundary; the explicitly listed baseline callers also exercise its supported variant"
   }
