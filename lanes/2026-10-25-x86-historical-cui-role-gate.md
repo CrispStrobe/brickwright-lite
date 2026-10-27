@@ -137,3 +137,9 @@ and two visible historical policy constants. Whole-body identity is mandatory;
 no caller override, old-profile fallback or blanket source exemption exists.
 This is source compatibility only, pending final exact-head source/Build
 qualification and separately admitted F8 originals and actual-V8 acceptance.
+
+## Finite V9 resolver-role source gate — local unqualified component
+
+The merged [finite V9 resolver-role claim](2026-10-27-x86-finite-v9-resolver-role.md) keeps the finite V8 supplier map as three exact historical literals: Board `836867513c3e7fac420ddaa32c17e1c7b6d3e513`, Circuit UI `1bc233c9297e03abb9b7eb603e045b4e92b0bb40` and SB3 `1cbaeed325f5a890e43b78a4211acae8f801f2d2`. A separate finite V9 map selects the existing current Board/Circuit UI/SB3 symbols. The F7 literal map, earlier historical roles and eighteen source witnesses remain distinct. The gate rejects a moved F8 literal, a historical value routed through the V9 map, and dynamic namespace aliasing. It does not grant a file-wide exemption.
+
+All three producer, independent reader and GUI-control whole-body profiles are **unset** in this local component. The public source gate therefore refuses their historical tokens until those final F9 bodies receive independent byte and role review and a separate fixed-profile update. This local syntax and mutation control is not source qualification, an inventory observation, a guest run or a pin move. The consumed V8 failure and its reader remain historical; the V9 event has not been selected.
