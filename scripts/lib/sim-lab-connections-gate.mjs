@@ -39,6 +39,19 @@ const brickPanel = async page => {
     return panel;
 };
 
+// The program connection is a folded Connection section of Manual controls.
+const connectionPanel = async page => {
+    const panel = page.getByTestId('bw-sim-lab-connections');
+    if (await panel.count()) return panel;
+    const controls = page.getByTestId('bw-sim-lab-controls-toggle');
+    if (await controls.getAttribute('aria-expanded') !== 'true') await controls.click();
+    const toggle = page.getByTestId('bw-sim-lab-connection-toggle');
+    await toggle.waitFor();
+    if (await toggle.getAttribute('aria-expanded') !== 'true') await toggle.click();
+    await panel.waitFor();
+    return panel;
+};
+
 export const connectionInteractions = async ({browser, errors, openSimLab, shotsDir}) => {
     const page = await browser.newPage({viewport: {width: 1600, height: 1050}, serviceWorkers: 'block'});
     page.on('pageerror', error => errors.push(error.stack || error.message));
@@ -52,7 +65,7 @@ export const connectionInteractions = async ({browser, errors, openSimLab, shots
                 serial: Object.getOwnPropertyDescriptor(navigator, 'serial')};
         });
         assert.equal(await page.evaluate(() => window.__bwSimLab.worker), true, 'actual physics worker');
-        const controls = page.getByTestId('bw-sim-lab-connections');
+        const controls = await connectionPanel(page);
         await controls.getByTestId('bw-sim-lab-connection-route').selectOption('bridge');
         await page.evaluate(() => {
             const vm = window.__bwSimLab._pane.props.vm;

@@ -386,7 +386,7 @@ class SimLabPane extends React.Component {
             mode: 'simulate', placing: null, selection: [], editorTick: 0, mat: null,
             buildStatus: {kind: 'idle'}, gizmoMode: 'move', grid: 10, recent: [], thumbTick: 0,
             showPorts: true, showMotion: false, blockers: [], portPicker: null, instructions: null, coarse: false,
-            controlsOpen: false, brickControlsOpen: false, manualOverride: false, programLoading: false,
+            controlsOpen: false, brickControlsOpen: false, connectionControlsOpen: false, manualOverride: false, programLoading: false,
             connection: {bricks: [], routes: [], hubId: null, route: 'bluetooth', status: 'idle', message: ''},
             mixerOpen: (() => { try { return localStorage.getItem(MIXER_OPEN_KEY) === '1'; } catch { return false; } })(), mixer: {session: null, power: {}},
             // Simulate: sensor rays, the Readings panel, slow motion, and the replay position (null: live)
@@ -2331,6 +2331,18 @@ class SimLabPane extends React.Component {
             onError={error => this.setState({message: error.message})} />;
     }
 
+    /** The program connection: a folded section of Manual controls (no room above the scene). */
+    renderConnections () {
+        const connection = this.state.connection;
+        if (!connection?.routes?.length) return null;
+        return <SimLabConnections locale={this.locale} {...connection}
+            disabled={this.state.programLoading}
+            onHub={hubId => this.selectConnection({hubId, route: 'bluetooth'})}
+            onRoute={route => this.selectConnection({route})}
+            onConnect={() => this.connectConnection()}
+            onDisconnect={() => this.disconnectConnection()} />;
+    }
+
     renderMixer (button, brick) {
         if (!this.api) return null;
         const s = this.session;
@@ -2391,6 +2403,9 @@ class SimLabPane extends React.Component {
                 brick={brick || null}
                 brickOpen={this.state.brickControlsOpen}
                 onBrickToggle={() => this.setState(st => ({brickControlsOpen: !st.brickControlsOpen}))}
+                connection={this.renderConnections()}
+                connectionOpen={this.state.connectionControlsOpen}
+                onConnectionToggle={() => this.setState(st => ({connectionControlsOpen: !st.connectionControlsOpen}))}
                 override={this.state.manualOverride} onOverride={enabled => this.setManualOverride(enabled)}
                 drive={available && this.session.bridge && this.spikeScene() && manualDriveAllowed(manualJog, this.hub.movementPair) ? this.renderDrive(button) : null}
                 onClose={() => { if (this.state.manualOverride) this.setManualOverride(false); if (this.driving) this.drive('stop'); this.setState({controlsOpen: false}); }}
@@ -3155,7 +3170,7 @@ class SimLabPane extends React.Component {
                 {this.state.mode === 'simulate' && <button type="button" data-testid="bw-sim-lab-controls-toggle"
                     disabled={this.state.status === 'loading' || this.state.programLoading}
                     aria-expanded={this.state.controlsOpen} aria-label={this.locale === 'de' ? 'Manuelle Steuerung' : 'Manual controls'}
-                    title={this.locale === 'de' ? 'Manuelle Steuerung: Fahren und Motoren' : 'Manual controls: drive and motors'} style={s.button}
+                    title={this.locale === 'de' ? 'Manuelle Steuerung: Fahren, Motoren, Hub-Tasten und Verbindung' : 'Manual controls: drive, motors, brick buttons and connection'} style={s.button}
                     onClick={() => {
                         if (this.state.controlsOpen && this.state.manualOverride) this.setManualOverride(false);
                         if (this.driving) this.drive('stop');
@@ -3399,15 +3414,8 @@ class SimLabPane extends React.Component {
                 {message && <div role="alert" data-testid="bw-sim-lab-message" style={{fontSize: 12, color: '#b91c1c'}}>{message}</div>}
                 {this.renderInfo()}
                 {this.renderBlockers()}
-                {simulate && this.session && !this.session.lockstep && <React.Fragment>
-                    <SimLabConnections locale={this.locale} {...this.state.connection}
-                        disabled={this.state.programLoading}
-                        onHub={hubId => this.selectConnection({hubId, route: 'bluetooth'})}
-                        onRoute={route => this.selectConnection({route})}
-                        onConnect={() => this.connectConnection()}
-                        onDisconnect={() => this.disconnectConnection()} />
-                    {programUsesBrickButtons(this.props.vm) && this.renderBrickButtons()}
-                </React.Fragment>}
+                {simulate && this.session && !this.session.lockstep && programUsesBrickButtons(this.props.vm) &&
+                    this.renderBrickButtons()}
                 <div data-testid="bw-sim-lab-main" style={{display: 'flex', flex: '1 1 auto', minHeight: compact ? 220 : 240, minWidth: 0, position: 'relative'}}>
                     {this.renderPalettePanel()}
                     <div ref={this.viewWrap} style={{flex: '1 1 auto', minHeight: compact ? 220 : 240, minWidth: 0, position: 'relative', display: 'flex',

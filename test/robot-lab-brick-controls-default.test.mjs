@@ -36,7 +36,7 @@ test('program scan follows the project, including edits that add a handler', () 
 
 test('the pane renders the standalone panel only for handlers and offers it in Manual controls otherwise', () => {
     const pane = readFileSync(new URL('../overlay/scratch-gui/src/components/tw-pseudocode/sim-lab-pane.jsx', import.meta.url), 'utf8');
-    assert.match(pane, /\{programUsesBrickButtons\(this\.props\.vm\) && this\.renderBrickButtons\(\)\}/);
+    assert.match(pane, /programUsesBrickButtons\(this\.props\.vm\) &&\s+this\.renderBrickButtons\(\)\}/);
     assert.match(pane, /this\.renderMixer\(button,\s+programUsesBrickButtons\(this\.props\.vm\) \|\| !this\.api\?\.brickButtons\(\)\?\.length \? null : this\.renderBrickButtons\(\)\)/);
     assert.match(pane, /brick=\{brick \|\| null\}/);
     assert.equal((pane.match(/<SimLabBrickButtons /g) || []).length, 1);
@@ -70,4 +70,28 @@ test('Manual controls shows an optional folded Brick controls section', () => {
     assert.match(opened, /aria-expanded="true"[^>]*>Brick controls ▾/);
     assert.match(opened, /data-testid="bw-sim-lab-brick-controls"><fieldset data-testid="bw-sim-lab-brick-buttons"/);
     assert.match(renderToStaticMarkup(React.createElement(Mixer, {...base, brick, locale: 'de'})), /Hub-Tasten ▸/);
+});
+
+test('the program connection is only a folded section of Manual controls, never above the scene', () => {
+    const pane = readFileSync(new URL('../overlay/scratch-gui/src/components/tw-pseudocode/sim-lab-pane.jsx', import.meta.url), 'utf8');
+    assert.equal((pane.match(/<SimLabConnections /g) || []).length, 1);
+    const at = pane.indexOf('<SimLabConnections ');
+    assert.ok(pane.lastIndexOf('renderConnections () {', at) > pane.lastIndexOf('\n    render', at - 30) - 1 &&
+        pane.lastIndexOf('    renderConnections () {', at) !== -1, 'rendered only by renderConnections()');
+    assert.match(pane, /connection=\{this\.renderConnections\(\)\}/);
+    const React = requireGui('react');
+    const {renderToStaticMarkup} = requireGui('react-dom/server');
+    const Mixer = loadMixer();
+    const noop = () => {};
+    const base = {motors: [], power: {}, open: false, locale: 'en', onToggle: noop, onPower: noop, onJog: noop, onStop: noop,
+        onStopAll: noop, override: false, onOverride: noop, onClose: noop, onConnectionToggle: noop};
+    const connection = React.createElement('fieldset', {'data-testid': 'bw-sim-lab-connections'});
+    assert.doesNotMatch(renderToStaticMarkup(React.createElement(Mixer, base)), /bw-sim-lab-connection-toggle/);
+    const folded = renderToStaticMarkup(React.createElement(Mixer, {...base, connection}));
+    assert.match(folded, /data-testid="bw-sim-lab-connection-toggle" aria-expanded="false"[^>]*>Connection ▸/);
+    assert.doesNotMatch(folded, /bw-sim-lab-connections/);
+    const opened = renderToStaticMarkup(React.createElement(Mixer, {...base, connection, connectionOpen: true}));
+    assert.match(opened, /aria-expanded="true"[^>]*>Connection ▾/);
+    assert.match(opened, /<fieldset data-testid="bw-sim-lab-connections"/);
+    assert.match(renderToStaticMarkup(React.createElement(Mixer, {...base, connection, locale: 'de'})), /Verbindung ▸/);
 });
