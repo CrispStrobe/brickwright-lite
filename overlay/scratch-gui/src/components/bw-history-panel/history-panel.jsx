@@ -8,7 +8,7 @@ import {subscribeUndoState} from '../../lib/global-undo.js';
 import {moveHistory, timeline} from '../../lib/bw-undo-coordinator.js';
 import {
     subscribeAutosave, writeSettings, listVersions, saveNow, restoreVersion, readVersion, deleteVersion,
-    chooseFolder, clearFolder, regrantFolder, folderPickerAvailable
+    chooseFolder, clearFolder, regrantFolder, folderPickerAvailable, fixedFolder
 } from '../../lib/bw-autosave.js';
 import downloadBlob from '../../lib/download-blob';
 
@@ -17,7 +17,7 @@ const t = makeT({en: {
     now: 'Now', noSteps: 'No changes yet.', undone: 'Undone: click to redo up to here', more: '… {n} more',
     enabled: 'Save versions automatically', every: 'Every', keep: 'Keep', versions: '{n} versions',
     where: 'Where', browser: 'In this browser (always)', folder: 'Also in folder: {name}',
-    noFolder: 'No folder chosen', choose: 'Choose folder…', change: 'Change folder…', forget: 'Stop using folder',
+    noFolder: 'No folder chosen', choose: 'Choose folder…', fixed: 'Also save into the app\'s Autosave folder (Files app)', change: 'Change folder…', forget: 'Stop using folder',
     regrant: 'Allow folder access again', folderUnsupported: 'This browser can only keep autosaves inside the browser. Use the desktop app or Chrome/Edge to also save into a folder.',
     saveNow: 'Save version now', saving: 'Saving…', last: 'Last saved {time}', never: 'Not saved yet',
     list: 'Saved versions', empty: 'No versions yet.', restore: 'Restore', confirm: 'Replace current project?',
@@ -30,7 +30,7 @@ const t = makeT({en: {
     more: '… {n} weitere',
     enabled: 'Versionen automatisch speichern', every: 'Alle', keep: 'Behalten', versions: '{n} Versionen',
     where: 'Speicherort', browser: 'In diesem Browser (immer)', folder: 'Zusätzlich im Ordner: {name}',
-    noFolder: 'Kein Ordner gewählt', choose: 'Ordner wählen…', change: 'Ordner ändern…', forget: 'Ordner nicht mehr verwenden',
+    noFolder: 'Kein Ordner gewählt', choose: 'Ordner wählen…', fixed: 'Zusätzlich im Autosave-Ordner der App speichern (Dateien-App)', change: 'Ordner ändern…', forget: 'Ordner nicht mehr verwenden',
     regrant: 'Ordnerzugriff erneut erlauben', folderUnsupported: 'Dieser Browser kann Autospeicherungen nur im Browser ablegen. Mit der Desktop-App oder Chrome/Edge auch in einem Ordner.',
     saveNow: 'Version jetzt speichern', saving: 'Speichert…', last: 'Zuletzt gespeichert {time}', never: 'Noch nicht gespeichert',
     list: 'Gespeicherte Versionen', empty: 'Noch keine Versionen.', restore: 'Wiederherstellen', confirm: 'Aktuelles Projekt ersetzen?',
@@ -182,8 +182,9 @@ class HistoryPanel extends React.Component {
                 {folderPickerAvailable() ? <>
                     <span data-testid="bw-autosave-folder">{folder ? `✓ ${t(L, 'folder', {name: folder.name})}` : t(L, 'noFolder')}</span>
                     <div style={row}>
-                        <button type="button" style={button} disabled={busy} data-testid="bw-autosave-choose-folder"
-                            onClick={() => this.run(() => chooseFolder().then(() => ''))}>{t(L, folder ? 'change' : 'choose')}</button>
+                        {folder && fixedFolder() ? null : <button type="button" style={button} disabled={busy}
+                            data-testid="bw-autosave-choose-folder" onClick={() => this.run(() => chooseFolder().then(() => ''))}>
+                            {t(L, fixedFolder() ? 'fixed' : folder ? 'change' : 'choose')}</button>}
                         {folder ? <button type="button" style={button} disabled={busy}
                             onClick={() => this.run(() => clearFolder().then(() => ''))}>{t(L, 'forget')}</button> : null}
                         {folder && folder.kind === 'browser' && autosave.folderError ? <button type="button" style={button}

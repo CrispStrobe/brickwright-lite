@@ -147,6 +147,14 @@ export const folderPickerAvailable = () => !!nativeInvoke() ||
     (typeof window !== 'undefined' && typeof window.showDirectoryPicker === 'function');
 
 /**
+ * The app on a phone or tablet has no folder picker: "choosing" turns on its own
+ * Autosave folder (on iPad/iPhone visible in the Files app), so there is nothing to change.
+ * @returns {boolean} true in the native app on a touch device
+ */
+export const fixedFolder = () => !!nativeInvoke() && typeof navigator !== 'undefined' &&
+    navigator.maxTouchPoints > 1 && /iPad|iPhone|Macintosh|Android/.test(navigator.userAgent);
+
+/**
  * Choose the autosave folder (native dialog in the app, directory picker in Chromium).
  * @returns {Promise<?string>} the folder's name, or null when cancelled
  */
