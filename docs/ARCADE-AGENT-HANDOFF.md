@@ -1,5 +1,32 @@
 # Arcade compatibility: fresh-agent handoff and methodology
 
+## 27 October: current checkpoint and next actions
+
+Readonly startup Number operands are implemented in the source candidate.
+The focused cohort passes 31 tests without skips, with eight neighboring domain
+controls passing separately. Three independent guard cuts detect missing
+writer, entry-order and operand-domain checks. The unchanged snake project now
+has four export refusal families instead of six: Array item, indexOf, mutation
+and native addition. The raw census remains 147 translated / 36 partial / one
+parse failure; no application completion is inferred from these source results.
+
+Next, follow the [conditional Array readiness claim](../lanes/2026-10-27-arcade-conditional-array-entry.md)
+([PR #1464](https://github.com/CrispStrobe/brickwright-lite/pull/1464)); confirm it
+is merged before implementation. The new boundary must establish the actual
+startup allocation/publication frontier across ordinary callers and a selected
+branch. Existing mandatory-call summaries, protocol resets and captured local
+aliases need separate checks. An unconditional representative with an extra
+explicit null writer also refuses; that alone does not isolate branch selection
+or faithfully reproduce the original program's declaration reset.
+
+Keep receiver readiness separate from element presence after repeated
+unshift/pop, and from primitive domains used by native addition. The hosted-only
+`test/makecode-startup-number-roundtrip.test.mjs` is written and syntax checked;
+actual SDK/native and visible Blocks/Code/graphics/controller acceptance remain
+pending on the final combined head. Its paint-only marker must execute, and its
+same/fresh VM SB3 reloads must preserve actual values. Historical sections below
+retain prior observations and limits; they are not fresh qualification.
+
 ## 26 October: forward-fix integration candidate
 
 The integration under [the merged scope](../lanes/2026-10-26-arcade-forward-integration.md)
