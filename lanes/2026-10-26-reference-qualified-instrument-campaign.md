@@ -1,6 +1,6 @@
 # Reference-qualified circuit coverage and instrument follow-through
 
-CLAIMED — Codex circuit/instrument owner. Initial Lite base
+HANDOFF PREPARED — circuit/instrument campaign remains incomplete. Initial Lite base
 `5cd027707eceed3451bd62eaa21125a051650e59`; branch
 `claim/reference-instrument-campaign-20261026`.
 This is a new six-item sequence. The prior five-item campaign and its six-file
@@ -103,3 +103,26 @@ Proceed in the six-item order. Record bounded accomplishments and unresolved
 limits after each step. Close this loop only after the last item and final
 public documentation reconciliation; then ask for the next priority and stop.
 Do not start a seventh lane under this claim.
+
+
+## Session closeout and resumption — 2026-10-27
+
+The operator requested a documented wrapup. Current accepted results, remaining
+limits and exact next actions are consolidated in the
+[campaign handoff](../docs/CIRCUIT-INSTRUMENT-REGRESSION.md#current-handoff--2026-10-27),
+with summary entries at the start of PLAN and ROADMAP. This is documentation
+completion, not completion of the six scientific tasks.
+
+Supplier Board PR710 and CUI PR124 are landed. Lite package return and v2
+numerical acceptance remain pending; unpublished preparation is preserved
+separately. PR1437's released native-keyboard diagnostic stays with its combined
+browser owner and remains pending actual acceptance. Do not edit that released
+leaf, duplicate its qualification, move pins, select the study or claim a
+product/historical causal fix from this handoff.
+
+A fresh agent must refresh live heads/checks, honor the existing x86-before-pin
+sequence and phase ownership, then resume the ordered tasks from the handoff's
+first unfinished dependency. Preserve original failed studies and the existing
+actual-study-before-harness-merge requirement. New implementation outside a
+merged phase envelope needs a new bounded claim. Private recovery locations and
+raw receipts belong only in ignored local notes. No seventh task is opened.
