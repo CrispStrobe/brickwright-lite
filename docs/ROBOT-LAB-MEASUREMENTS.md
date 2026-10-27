@@ -1,5 +1,9 @@
 # Live measurements in the Robot Lab
 
+The four-item force/precision/role-pack/control-pair continuation is tracked in
+[the done/pending and agent restart handoff](ROBOT-LAB-MEASUREMENT-CONTINUATION.md).
+That handoff distinguishes shipped main behavior from the source candidate.
+
 In **Simulate → Show → Measurements**, add measurements, choose their targets,
 and enable **Show in model** to draw live labels, connecting lines and vectors.
 Joint choices identify the connected assembly parts (and the hub when present).
