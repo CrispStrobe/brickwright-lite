@@ -16,6 +16,9 @@
 import PropTypes from 'prop-types';
 import React from 'react';
 import ProjectPaletteEditor from './project-palette-editor.jsx';
+import EditorErrorBoundary from '../editor-error-boundary/editor-error-boundary.jsx';
+import {activateUndoSurface, notifyUndoState, registerUndoSurface} from '../../lib/global-undo.js';
+import {clearDraft, readDraft, writeDraft} from '../../lib/bw-editor-drafts.js';
 import styles from './pixel-art-editor.css';
 import downloadBlob from '../../lib/download-blob.js';
 import {makeT, browserLocale} from '../../lib/bw-i18n.js';
@@ -31,12 +34,18 @@ import {
 import {parseExactImgLiteral} from '../../lib/bw-makecode/arcade-assets.js';
 import {PALETTE_PRESETS} from '../../lib/bw-makecode/palette-presets.js';
 
+// History list names for a canvas stroke, by tool.
+const TOOL_STEPS = {pencil: 'Draw', erase: 'Erase', fill: 'Fill', rect: 'Rectangle', circle: 'Ellipse',
+    move: 'Move pixels', select: 'Select', lasso: 'Select', wand: 'Select'};
+
 const L10N = {
     en: {
         'px.pencil': 'Pencil', 'px.fill': 'Fill', 'px.erase': 'Eraser', 'px.pick': 'Pick colour',
         'px.arcadeBackground': 'Arcade background 160×120',
         'px.size': 'Size', 'px.save': 'Save', 'px.revert': 'Revert', 'px.saved': 'Saved to the costume.',
         'px.converted': 'This costume was not pixel art: it was converted to {w}×{h} palette pixels. Saving replaces it.',
+        'px.draft': 'Unsaved pixel work from {time} was kept.', 'px.draftRestore': 'Restore it',
+        'px.draftDiscard': 'Discard',
         'px.reconvert': 'Convert at this size', 'px.none': 'Select a costume to edit.',
         'px.transparent': 'Transparent', 'px.hand': 'Pan', 'px.undo': 'Undo', 'px.redo': 'Redo',
         'px.zoom': 'Zoom', 'px.line': 'Line', 'px.rect': 'Rectangle', 'px.mirror': 'Mirror',
@@ -97,6 +106,8 @@ const L10N = {
         'px.pencil': 'Stift', 'px.fill': 'Füllen', 'px.erase': 'Radierer', 'px.pick': 'Farbe aufnehmen',
         'px.size': 'Größe', 'px.save': 'Speichern', 'px.revert': 'Verwerfen', 'px.saved': 'Im Kostüm gespeichert.',
         'px.converted': 'Dieses Kostüm war keine Pixelgrafik: Es wurde in {w}×{h} Palettenpixel umgewandelt. Speichern ersetzt es.',
+        'px.draft': 'Ungespeicherte Pixelarbeit vom {time} wurde aufbewahrt.', 'px.draftRestore': 'Wiederherstellen',
+        'px.draftDiscard': 'Verwerfen',
         'px.reconvert': 'In dieser Größe umwandeln', 'px.none': 'Ein Kostüm zum Bearbeiten auswählen.',
         'px.transparent': 'Transparent', 'px.hand': 'Verschieben', 'px.undo': 'Rückgängig',
         'px.redo': 'Wiederholen', 'px.zoom': 'Zoom', 'px.line': 'Linie', 'px.rect': 'Rechteck',
@@ -305,9 +316,27 @@ class PixelArtEditor extends React.Component {
         this.transform = this.transform.bind(this);
     }
 
-    componentDidMount () { this.load(); }
+    componentDidMount () {
+        this.load();
+        this.unregisterUndo = registerUndoSurface('pixel', {
+            label: 'Pixel editor',
+            canUndo: () => this.undoStack.length > 0,
+            canRedo: () => this.redoStack.length > 0,
+            depth: () => ({undo: this.undoStack.length, redo: this.redoStack.length}),
+            steps: () => ({past: this.undoStack.map(step => step.label || 'Change'),
+                future: this.redoStack.map(step => step.label || 'Change').reverse()}),
+            undo: () => this.undo() !== false,
+            redo: () => this.redo() !== false
+        });
+        activateUndoSurface('pixel');
+    }
 
-    componentWillUnmount () { this.loadToken = null; clearTimeout(this.playTimer); }
+    componentWillUnmount () {
+        this.loadToken = null;
+        clearTimeout(this.playTimer);
+        clearTimeout(this.draftTimer);
+        if (this.unregisterUndo) this.unregisterUndo();
+    }
 
     componentDidUpdate (prev, prevState) {
         if (this.state.panel !== 'palette' && this.state.previewPalette) this.setState({previewPalette: null});
@@ -318,6 +347,77 @@ class PixelArtEditor extends React.Component {
         else if (prevState.image !== this.state.image || prevState.selection !== this.state.selection ||
             prevState.palette !== this.state.palette || prevState.previewPalette !== this.state.previewPalette || prevState.onionSkin !== this.state.onionSkin) this.paint();
         if (prevState.palette !== this.state.palette && this.sheetRgba && this.state.sheetMode) this.previewSheet();
+        if (prevState.layers !== this.state.layers || prevState.frames !== this.state.frames ||
+            prevState.palette !== this.state.palette || prevState.original !== this.state.original ||
+            prevState.w !== this.state.w || prevState.h !== this.state.h) this.scheduleDraft();
+        // Menu-bar Undo / Redo / History: only when this editor's stacks changed.
+        const depth = `${this.undoStack.length}/${this.redoStack.length}`;
+        if (depth !== this.notifiedDepth) {
+            this.notifiedDepth = depth;
+            notifyUndoState();
+        }
+        if (this.draftCheckDue && this.state.original) {
+            this.draftCheckDue = false;
+            this.offerDraft();
+        }
+    }
+
+    // Autosave: unsaved pixel work is kept as a draft (lib/bw-editor-drafts.js)
+    // and offered back when this costume is opened again after a reload or crash.
+    draftKey () {
+        const costume = this.loadedCostume;
+        const target = this.props.vm && this.props.vm.editingTarget;
+        return costume && target ? `pixel:${target.getName()}:${costume.name}` : null;
+    }
+
+    scheduleDraft () {
+        clearTimeout(this.draftTimer);
+        const key = this.draftKey();
+        if (!key || !this.state.original || this.state.draft) return;
+        if (!this.hasUnsavedChanges()) {
+            // Saved or reverted since this session wrote a draft. (A costume
+            // that just loaded is unchanged too; its stored draft is still to
+            // be offered, so only a draft written here is cleared.)
+            if (this.draftWritten) clearDraft(key);
+            this.draftWritten = false;
+            return;
+        }
+        this.draftTimer = setTimeout(() => {
+            this.draftWritten = true;
+            const {layers, activeLayerId, frames, activeFrameId, palette, scale, animationResource, animationName,
+                w, h} = this.state;
+            writeDraft(key, {baseAssetId: this.loadedCostume && this.loadedCostume.assetId, snapshot: {
+                layers, activeLayerId, frames, activeFrameId, selection: null, palette, scale,
+                animationResource, animationName, w, h}});
+        }, 1500);
+    }
+
+    offerDraft () {
+        const key = this.draftKey();
+        const assetId = this.loadedCostume && this.loadedCostume.assetId;
+        if (!key) return;
+        readDraft(key).then(draft => {
+            if (!draft || !draft.value || this.draftKey() !== key) return;
+            if (draft.value.baseAssetId !== assetId) {
+                clearDraft(key);
+                return;
+            }
+            this.setState({draft: {key, at: draft.at, snapshot: draft.value.snapshot}});
+        });
+    }
+
+    restoreDraft () {
+        const {draft} = this.state;
+        if (!draft) return;
+        this.remember('Restore draft');
+        this.setState({draft: null});
+        this.restore(draft.snapshot);
+    }
+
+    discardDraft () {
+        const {draft} = this.state;
+        if (draft) clearDraft(draft.key);
+        this.setState({draft: null});
     }
 
     costume () {
@@ -381,6 +481,8 @@ class PixelArtEditor extends React.Component {
         this.undoStack = [];
         this.redoStack = [];
         this.pixelClipboard = null;
+        this.draftWritten = false;
+        this.draftCheckDue = true;
         this.setState({image, layers, activeLayerId, frames, activeFrameId, animationResource, animationName,
             animationError: '', animationWarnings: [], playing: false,
             panel: null, framesOpen: false, previewPalette: null,
@@ -390,7 +492,7 @@ class PixelArtEditor extends React.Component {
             original: {layers, activeLayerId, frames, activeFrameId,
                 selection: null, palette, scale, animationResource, animationName, w: image.width, h: image.height},
             palette,
-            scale, zoom: 1, converted, status: '',
+            scale, zoom: 1, converted, status: '', draft: null,
             w: image.width, h: image.height});
     }
 
@@ -482,21 +584,21 @@ class PixelArtEditor extends React.Component {
         return x >= 0 && y >= 0 && x < image.width && y < image.height ? [x, y] : null;
     }
 
-    remember () {
+    remember (label = 'Change') {
         if (!this.state.image) return;
         if (this.state.playing) this.stopPlayback();
-        this.undoStack.push({layers: this.state.layers, activeLayerId: this.state.activeLayerId,
+        this.undoStack.push({label, layers: this.state.layers, activeLayerId: this.state.activeLayerId,
             frames: this.state.frames, activeFrameId: this.state.activeFrameId,
             selection: this.state.selection, palette: this.state.palette, scale: this.state.scale,
             animationResource: this.state.animationResource, animationName: this.state.animationName,
             w: this.state.w, h: this.state.h});
-        if (this.undoStack.length > 80) this.undoStack.shift();
+        if (this.undoStack.length > 200) this.undoStack.shift();
         this.redoStack = [];
     }
 
     undo () {
-        if (!this.undoStack.length) return;
-        this.redoStack.push({layers: this.state.layers, activeLayerId: this.state.activeLayerId,
+        if (!this.undoStack.length) return false;
+        this.redoStack.push({label: this.undoStack[this.undoStack.length - 1].label, layers: this.state.layers, activeLayerId: this.state.activeLayerId,
             frames: this.state.frames, activeFrameId: this.state.activeFrameId,
             selection: this.state.selection, palette: this.state.palette, scale: this.state.scale,
             animationResource: this.state.animationResource, animationName: this.state.animationName,
@@ -505,8 +607,8 @@ class PixelArtEditor extends React.Component {
     }
 
     redo () {
-        if (!this.redoStack.length) return;
-        this.undoStack.push({layers: this.state.layers, activeLayerId: this.state.activeLayerId,
+        if (!this.redoStack.length) return false;
+        this.undoStack.push({label: this.redoStack[this.redoStack.length - 1].label, layers: this.state.layers, activeLayerId: this.state.activeLayerId,
             frames: this.state.frames, activeFrameId: this.state.activeFrameId,
             selection: this.state.selection, palette: this.state.palette, scale: this.state.scale,
             animationResource: this.state.animationResource, animationName: this.state.animationName,
@@ -516,7 +618,8 @@ class PixelArtEditor extends React.Component {
 
     restore (snapshot) {
         this.stopPlayback();
-        this.setState({...snapshot, image: composeLayers(snapshot.layers, snapshot.w, snapshot.h), status: ''});
+        const {label, ...state} = snapshot; // eslint-disable-line no-unused-vars
+        this.setState({...state, image: composeLayers(state.layers, state.w, state.h), status: ''});
     }
 
     materializeFrames (state = this.state) {
@@ -543,7 +646,7 @@ class PixelArtEditor extends React.Component {
             this.setState({status: t(this.props.locale || browserLocale(), 'px.pixelBudget')}); return;
         }
         this.stopPlayback();
-        this.remember();
+        this.remember('Add frame');
         const id = `frame-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
         this.setState(state => {
             const frames = this.materializeFrames(state);
@@ -561,7 +664,7 @@ class PixelArtEditor extends React.Component {
     deleteFrame () {
         if (this.state.frames.length < 2) return;
         this.stopPlayback();
-        this.remember();
+        this.remember('Delete frame');
         this.setState(state => {
             const frames = this.materializeFrames(state);
             const index = frames.findIndex(frame => frame.id === state.activeFrameId);
@@ -577,7 +680,7 @@ class PixelArtEditor extends React.Component {
         const index = this.state.frames.findIndex(frame => frame.id === this.state.activeFrameId);
         const nextIndex = index + direction;
         if (nextIndex < 0 || nextIndex >= this.state.frames.length) return;
-        this.remember();
+        this.remember('Move frame');
         this.setState(state => {
             const frames = this.materializeFrames(state);
             [frames[index], frames[nextIndex]] = [frames[nextIndex], frames[index]];
@@ -590,14 +693,14 @@ class PixelArtEditor extends React.Component {
         if (!Number.isInteger(durationMs) || durationMs < 1 || durationMs > 65535) return;
         const frame = this.state.frames.find(item => item.id === this.state.activeFrameId);
         if (!frame || frame.durationMs === durationMs) return;
-        this.remember();
+        this.remember('Frame duration');
         this.setState(state => ({frames: this.materializeFrames(state).map(item =>
             item.id === state.activeFrameId ? {...item, durationMs} : item), status: ''}));
     }
 
     renameFrame (value) {
         if (!this.frameNameGesture) {
-            this.remember();
+            this.remember('Rename frame');
             this.frameNameGesture = true;
         }
         this.setState(state => ({frames: this.materializeFrames(state).map(frame =>
@@ -648,7 +751,7 @@ class PixelArtEditor extends React.Component {
         const {selection, w} = this.state;
         const active = this.activeLayer();
         if (!selection || !active || !active.visible || active.locked) return;
-        this.remember();
+        this.remember('Clear selection');
         this.updateActive(clearSelectedPixels(active.pixels, w, selection));
     }
 
@@ -675,7 +778,7 @@ class PixelArtEditor extends React.Component {
         const {w, h} = this.state;
         const pasted = pasteSelectedPixels(clipboard, w, h, clipboard.x, clipboard.y);
         if (!pasted) return;
-        this.remember();
+        this.remember('Paste');
         const id = `pixels-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
         const layer = {...blankLayer(id, t(this.props.locale || browserLocale(), 'px.pastedLayer'), w, h),
             pixels: pasted.pixels};
@@ -694,7 +797,7 @@ class PixelArtEditor extends React.Component {
         if (!selection || !active || !active.visible || active.locked) return;
         const moved = moveSelectedPixels(active.pixels, w, h, selection, dx, dy);
         if (moved.selection.x === selection.x && moved.selection.y === selection.y) return;
-        this.remember();
+        this.remember('Nudge');
         this.setState(state => {
             const layers = state.layers.map(layer => layer.id === state.activeLayerId ?
                 {...layer, pixels: moved.pixels} : layer);
@@ -922,7 +1025,7 @@ class PixelArtEditor extends React.Component {
         }
         if (this.state.tool !== 'pick' && (!active || active.locked || !active.visible)) return;
         this.strokeRecorded = this.state.tool !== 'pick';
-        if (this.strokeRecorded) this.remember();
+        if (this.strokeRecorded) this.remember(TOOL_STEPS[this.state.tool] || 'Draw');
         this.drawing = true;
         this.lastCell = null;
         if (this.state.tool === 'move') {
@@ -1071,7 +1174,7 @@ class PixelArtEditor extends React.Component {
             this.setState({status: t(this.props.locale || browserLocale(), 'px.pixelBudget')}); return;
         }
         if (W === this.state.w && H === this.state.h && scale === this.state.scale) return;
-        this.remember();
+        this.remember('Resize');
         this.setState(state => {
             const frames = this.materializeFrames(state).map(frame => ({...frame,
                 layers: resizeLayers(frame.layers, state.w, state.h, W, H)}));
@@ -1085,7 +1188,7 @@ class PixelArtEditor extends React.Component {
         const {layers, selection, w, h} = this.state;
         const first = cropLayers(layers, w, h, selection);
         if (!first) return;
-        this.remember();
+        this.remember('Crop');
         this.setState(state => {
             const frames = this.materializeFrames(state).map(frame => ({...frame,
                 layers: cropLayers(frame.layers, state.w, state.h, state.selection).layers}));
@@ -1105,7 +1208,7 @@ class PixelArtEditor extends React.Component {
             frame.layers.some(layer => layer.locked))) return;
         const transformed = transformPixels(active.pixels, w, h, selection, operation);
         if (!transformed) return;
-        this.remember();
+        this.remember('Transform');
         const next = layers.map(layer => {
             if (selection && layer.id !== activeLayerId) return layer;
             if (!selection && !turn && layer.id !== activeLayerId) return layer;
@@ -1125,7 +1228,7 @@ class PixelArtEditor extends React.Component {
         const {replaceFrom, colour, selection, w, h} = this.state;
         const active = this.activeLayer();
         if (!active || active.locked || !active.visible || replaceFrom === colour) return;
-        this.remember();
+        this.remember('Replace colour');
         this.updateActive(replaceColourPixels(active.pixels, w, h, selection, replaceFrom, colour));
     }
 
@@ -1133,7 +1236,7 @@ class PixelArtEditor extends React.Component {
         const {selection, w, h} = this.state;
         const active = this.activeLayer();
         if (!active || active.locked || !active.visible || !colour) return;
-        this.remember();
+        this.remember('Outline');
         this.updateActive(outlinePixels(active.pixels, w, h, selection, colour));
     }
 
@@ -1160,7 +1263,7 @@ class PixelArtEditor extends React.Component {
             this.setState({literalError: t(locale, 'px.largeLiteral')});
             return;
         }
-        this.remember();
+        this.remember('Import image');
         const id = `pixels-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
         this.setState(state => {
             const w = Math.max(state.w, parsed.width);
@@ -1191,7 +1294,7 @@ class PixelArtEditor extends React.Component {
     setPaletteColour (index, colour) {
         if (index < 1 || index > 15 || !/^#[0-9a-f]{6}$/i.test(colour)) return;
         if (!this.paletteGesture) {
-            this.remember();
+            this.remember('Palette colour');
             this.paletteGesture = true;
         }
         this.setState(state => {
@@ -1205,7 +1308,7 @@ class PixelArtEditor extends React.Component {
         const preset = PALETTE_PRESETS.find(item => item.id === id);
         if (!preset || (this.state.palette.length === preset.colors.length && this.state.palette.every((value, index) =>
             (value?.toLowerCase() ?? null) === preset.colors[index]))) return;
-        this.remember();
+        this.remember('Palette preset');
         this.paletteGesture = false;
         this.setState({palette: [...preset.colors], status: '', paletteError: ''});
     }
@@ -1224,7 +1327,7 @@ class PixelArtEditor extends React.Component {
             this.setState({paletteError: t(this.props.locale || browserLocale(), 'px.invalidPalette')});
             return;
         }
-        this.remember();
+        this.remember('Import palette');
         this.paletteGesture = false;
         this.setState({palette, status: '', paletteError: ''});
     }
@@ -1235,7 +1338,7 @@ class PixelArtEditor extends React.Component {
         if (!editablePixelLayerBudget(w, h, counts)) {
             this.setState({status: t(this.props.locale || browserLocale(), 'px.pixelBudget')}); return;
         }
-        this.remember();
+        this.remember('Add layer');
         const id = `pixels-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
         const layer = blankLayer(id, `${t(this.props.locale || browserLocale(), 'px.layers')} ${layers.length + 1}`, w, h);
         this.setState(state => {
@@ -1248,7 +1351,7 @@ class PixelArtEditor extends React.Component {
     }
 
     changeLayer (id, change) {
-        this.remember();
+        this.remember('Change layer');
         this.setState(state => {
             const layers = state.layers.map(layer => layer.id === id ? {...layer, ...change} : layer);
             return {layers, image: composeLayers(layers, state.w, state.h), status: ''};
@@ -1257,7 +1360,7 @@ class PixelArtEditor extends React.Component {
 
     beginOpacityGesture () {
         if (this.opacityGesture) return;
-        this.remember();
+        this.remember('Layer opacity');
         this.opacityGesture = true;
     }
 
@@ -1287,7 +1390,7 @@ class PixelArtEditor extends React.Component {
         const index = this.state.layers.findIndex(layer => layer.id === id);
         const target = index + offset;
         if (index < 0 || target < 0 || target >= this.state.layers.length) return;
-        this.remember();
+        this.remember('Move layer');
         this.setState(state => {
             const layers = state.layers.slice();
             [layers[index], layers[target]] = [layers[target], layers[index]];
@@ -1297,7 +1400,7 @@ class PixelArtEditor extends React.Component {
 
     deleteLayer (id) {
         if (this.state.layers.length <= 1) return;
-        this.remember();
+        this.remember('Delete layer');
         this.setState(state => {
             const layers = state.layers.filter(layer => layer.id !== id);
             const activeLayerId = state.activeLayerId === id ? layers[layers.length - 1].id : state.activeLayerId;
@@ -1348,7 +1451,7 @@ class PixelArtEditor extends React.Component {
             const resources = syncAnimationResources(vm, {costume: this.costume(), document, validateOnly: true});
             const warnings = resource ? resources.get(resource.id)?.warnings || [] : [];
             const svg = layersToSvg(layers, image.width, image.height, scale, palette);
-            if (resourceOverride !== undefined) this.remember();
+            if (resourceOverride !== undefined) this.remember('Publish animation');
             vm.updateSvg(this.props.costumeIndex, svg, (image.width * scale) / 2, (image.height * scale) / 2);
             setCostumeDocument(this.costume(), document);
             syncAnimationResources(vm);
@@ -1512,7 +1615,7 @@ class PixelArtEditor extends React.Component {
         const {sheetPreview} = this.state;
         if (sheetPreview.length < 2) return;
         this.stopPlayback();
-        this.remember();
+        this.remember('Import sprite sheet');
         const {width, height} = sheetPreview[0].image;
         const previousFrames = this.materializeFrames();
         const preserveTimingAndNames = previousFrames.length === sheetPreview.length;
@@ -1803,9 +1906,11 @@ class PixelArtEditor extends React.Component {
                     <input ref={this.paletteFile} type="file" accept=".hex,.txt,.gpl" style={{display: 'none'}}
                         data-testid="bw-pixel-palette-file" onChange={event => this.importPalette(event)} />
                     {paletteError ? <span role="alert" style={{color: '#b91c1c', fontSize: 12}}>{paletteError}</span> : null}
-                    <ProjectPaletteEditor vm={this.props.vm} locale={locale} image={image} artworkPalette={palette}
-                        previewing={Boolean(this.state.previewPalette)}
-                        onPreview={previewPalette => this.setState({previewPalette})} />
+                    <EditorErrorBoundary name="Project palette">
+                        <ProjectPaletteEditor vm={this.props.vm} locale={locale} image={image} artworkPalette={palette}
+                            previewing={Boolean(this.state.previewPalette)}
+                            onPreview={previewPalette => this.setState({previewPalette})} />
+                    </EditorErrorBoundary>
                 </div> : null}
                 {panel === 'layers' ? <div data-testid="bw-pixel-layers" style={{...popover,
                     width: 'min(420px, calc(100% - 24px))', display: 'flex', flexDirection: 'column',
@@ -1876,7 +1981,7 @@ class PixelArtEditor extends React.Component {
                         data-testid="bw-pixel-sheet-file" onChange={event => this.loadSheet(event)} />
                     <label style={{fontSize: 12}}>{t(locale, 'px.animationName')}
                         <input type="text" maxLength="80" value={animationName} data-testid="bw-pixel-animation-name"
-                            onChange={event => { this.remember(); this.setState({animationName: event.target.value}); }} /></label>
+                            onChange={event => { this.remember('Rename animation'); this.setState({animationName: event.target.value}); }} /></label>
                     <button type="button" style={btn(false)} data-testid="bw-pixel-publish-animation"
                         onClick={() => this.publishAnimation()}>{t(locale, animationResource ? 'px.updateAnimation' : 'px.publishAnimation')}</button>
                     {animationResource ? <button type="button" style={btn(false)} data-testid="bw-pixel-remove-animation"
@@ -1977,6 +2082,16 @@ class PixelArtEditor extends React.Component {
                         onPointerDown={this.onPointerDown} onPointerMove={this.onPointerMove}
                         onContextMenu={event => event.preventDefault()}
                         onPointerUp={this.onPointerUp} onPointerCancel={this.onPointerUp} />
+                    {this.state.draft ? <div role="status" data-testid="bw-pixel-draft" style={{position: 'absolute',
+                        left: 8, top: 8, right: 8, display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8,
+                        padding: '6px 8px', borderRadius: 6, fontSize: 12, color: '#1e3a8a',
+                        background: 'rgba(239,246,255,0.97)', border: '1px solid #93c5fd'}}>
+                        <span>{t(locale, 'px.draft', {time: new Date(this.state.draft.at).toLocaleString()})}</span>
+                        <button type="button" style={btn(false)} data-testid="bw-pixel-draft-restore"
+                            onClick={() => this.restoreDraft()}>{t(locale, 'px.draftRestore')}</button>
+                        <button type="button" style={btn(false)} onClick={() => this.discardDraft()}>
+                            {t(locale, 'px.draftDiscard')}</button>
+                    </div> : null}
                     {converted ? <div style={{position: 'absolute', left: 8, bottom: 8, maxWidth: 320,
                         padding: '6px 8px', borderRadius: 6, fontSize: 11, lineHeight: 1.3,
                         color: '#78350f', background: 'rgba(255,251,235,0.96)', pointerEvents: 'none'}}>

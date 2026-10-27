@@ -1,7 +1,7 @@
 # Robot Lab package, API acceptance and handoff closeout
 
 DONE — completed implementation and retained acceptance are reconciled; the
-remaining operator cutover and independent follow-ups are explicitly scoped in
+remaining independent follow-ups are explicitly scoped in
 [the current handoff](../docs/INTEGRATION-NEXT-STEPS.md#start-here-current-closeout).
 Codex integration, 2026-10-25 claim; documentation closeout 2026-10-27.
 Base `23ec908232f6d4c4604ed6f7dcb23b75af19053d`. Preserve the completed prior
@@ -73,14 +73,22 @@ merged normally at `2f3ba1faea85` with predicted parents and tree preserved. The
 separately claimed API sparse-timestamp correction in PR1444 qualified three
 actual hosted Jolt regressions and all 44 exact-head checks (37 successes, seven
 declared skips), then merged normally at `696f00761b92`, again matching its
-predicted parents and tree. Immutable-worker adoption has been requested from
-the existing deployment owner; new candidate and promotion readback remain.
+predicted parents and tree. The deployment owner subsequently promoted the
+immutable worker at 2026-10-27 05:51:54 UTC and updated the delivery kit.
+Independent retained candidate/production readback accepted 1,421 aligned dense
+Sine samples per report, input/provider/source/reader/engine-lock joins, the
+31-file deployment source manifest, judge/report hash joins, two recomputed
+scalar metrics and reservation release to zero. Twelve report corruptions were
+refused. This closes finite operator cutover acceptance; it does not exercise
+deployed sparse recording or grant the excluded key/MAC, full-judge, loaded
+binary, physical or library-wide claims. The inconclusive transport original
+and earlier failures remain retained.
 
 The user authorized documentation closeout with unfinished work explicitly
 handed off on 2026-10-27. This supersedes the earlier sequencing hold that kept
 all documentation private until deployment completion. The six-path update
 records completed source and finite operational acceptance, separately scopes
-the unaccepted cutover and other follow-ups, and publishes no raw evidence or
-machine locations. DONE describes this documentation/integration handoff, not
-production adoption of the new worker. Its own exact-head source-policy/docs
+the separate follow-ups, and publishes no raw evidence or
+machine locations. The subsequent operator checkpoint records the now-accepted finite worker
+adoption without broadening its evidence boundary. Its own exact-head source-policy/docs
 checks and predicted/landed tree verification remain the publication gates.

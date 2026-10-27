@@ -94,16 +94,52 @@ try {
     await page.keyboard.type('undo_probe');
     await page.waitForFunction(() => {
         const button = document.querySelector('[data-testid="bw-global-undo"]');
-        return button && !button.disabled && /\(code\)$/.test(button.title);
+        return button && !button.disabled && /\(Code\)$/.test(button.title);
     });
     await undo.click();
     await page.waitForFunction(expected =>
         document.querySelector('[data-testid="bw-codemirror"] .cm-content')?.textContent === expected,
     originalCode);
+
+    // Structural project edits: deleting a costume is one step on the shared
+    // project history, undone and redone from the menu bar like any edit.
+    await page.evaluate(() => window.dispatchEvent(new CustomEvent('bw-activate-tab', {detail: {index: 1}})));
+    await page.waitForFunction(() => window.__bwGlobalUndo && document.querySelector('[data-testid="bw-global-redo"]'));
+    const costumeNames = () => page.evaluate(() =>
+        window.__brickwrightStore.getState().scratchGui.vm.editingTarget.sprite.costumes.map(costume => costume.name));
+    // The project history is installed after the first paint (lazy chunk).
+    await page.waitForFunction(() => window.__brickwrightStore.getState().scratchGui.vm.bwProjectHistory === true,
+        null, {timeout: 30000});
+    const costumes = await costumeNames();
+    if (costumes.length < 2) throw new Error(`the default sprite needs two costumes, has ${costumes.length}`);
+    await page.evaluate(() => window.__brickwrightStore.getState().scratchGui.vm.deleteCostume(0));
+    await page.waitForFunction(count => window.__brickwrightStore.getState().scratchGui.vm.editingTarget
+        .sprite.costumes.length === count, costumes.length - 1);
+    await undo.click();
+    await page.waitForFunction(expected => JSON.stringify(window.__brickwrightStore.getState().scratchGui.vm
+        .editingTarget.sprite.costumes.map(costume => costume.name)) === expected, JSON.stringify(costumes));
+    const redo = page.getByTestId('bw-global-redo');
+    await redo.click();
+    await page.waitForFunction(count => window.__brickwrightStore.getState().scratchGui.vm.editingTarget
+        .sprite.costumes.length === count, costumes.length - 1);
+
+    // History panel: the project step is listed and one click goes back to it.
+    await page.getByTestId('bw-global-history').click();
+    const panel = page.getByTestId('bw-history-panel');
+    await panel.waitFor({state: 'visible', timeout: 30000});
+    await page.getByTestId('bw-history-step--1').click();
+    await page.waitForFunction(expected => JSON.stringify(window.__brickwrightStore.getState().scratchGui.vm
+        .editingTarget.sprite.costumes.map(costume => costume.name)) === expected, JSON.stringify(costumes));
+
+    // Autosave: a version of the whole project is stored and listed.
+    await page.getByTestId('bw-history-tab-autosave').click();
+    await page.getByTestId('bw-autosave-save-now').click();
+    await page.getByTestId('bw-autosave-versions').waitFor({state: 'visible', timeout: 60000});
+    await page.getByTestId('bw-history-close').click();
     if (errors.length) throw new Error(`page errors: ${errors.join(' | ')}`);
 } finally {
     await browser.close();
     if (server) server.close();
 }
 
-console.log('ok iPad-width Widget icons fit and global undo restores Widget and Code edits');
+console.log('ok iPad-width Widget icons fit; global undo/redo restores Widget, Code and costume edits; History and autosave work');

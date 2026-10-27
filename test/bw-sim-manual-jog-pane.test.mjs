@@ -18,7 +18,8 @@ const read = path => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8'
 const source = read('overlay/scratch-gui/src/components/tw-pseudocode/sim-lab-pane.jsx');
 const ast = babel.parseSync(source, {babelrc: false, configFile: false, parserOpts: {plugins: ['jsx']}});
 const paneClass = ast.program.body.find(node => node.type === 'ClassDeclaration' && node.id.name === 'SimLabPane');
-const names = ['apiEnsureRunning', 'drive', 'renderMixer', 'manualControlPolicy', 'resolveManualControlPolicy', 'setManualOverride'];
+const names = ['apiEnsureRunning', 'drive', 'renderMixer', 'renderConnections', 'manualControlPolicy', 'resolveManualControlPolicy',
+    'setManualOverride'];
 const methods = names.map(name => {
     const method = paneClass.body.body.find(node => node.key?.name === name);
     assert.ok(method, `production ${name} method`);
