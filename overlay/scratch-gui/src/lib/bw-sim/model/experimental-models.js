@@ -793,6 +793,29 @@ export const EXPERIMENTAL_MODELS = Object.freeze([
         }
     },
     {
+        "file": "final-squeeze.ldr",
+        "title": {
+            "en": "Final Squeeze — a knee press",
+            "de": "Final Squeeze — eine Kniehebelpresse"
+        },
+        "example": "final-squeeze.bw",
+        "mat": "plain",
+        "experimental": true,
+        "blocked": false,
+        "intro": {
+            "en": "One motor straightens two equal links against a stock shock load. The passive platen advances less per degree near alignment while the ideal output force per input torque rises. The finite program stops short of dead centre and returns.",
+            "de": "Ein Motor streckt zwei gleich lange Glieder gegen eine Federlast. Die passive Druckplatte bewegt sich nahe der Strecklage je Grad weniger, während die ideale Ausgangskraft je Eingangsdrehmoment steigt. Das endliche Programm bleibt vor dem Totpunkt und kehrt zurück."
+        },
+        "manualJog": {
+            "A": {
+                "minDeg": 0,
+                "maxDeg": 25,
+                "stepDeg": 5,
+                "speedDps": 8
+            }
+        }
+    },
+    {
         "file": "travel-dial-wheel-raised.ldr",
         "title": {
             "en": "Travel Dial Control — wheel raised",
@@ -2680,6 +2703,45 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
             "prototype",
             "unverified",
             "experimentell"
+        ],
+        "experimental": true
+    },
+    "final-squeeze.ldr": {
+        "pieces": 167,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "forces",
+        "description": {
+            "en": "One motor straightens two equal links against a stock shock load. The passive platen advances less per degree near alignment while the ideal output force per input torque rises. The finite program stops short of dead centre and returns.",
+            "de": "Ein Motor streckt zwei gleich lange Glieder gegen eine Federlast. Die passive Druckplatte bewegt sich nahe der Strecklage je Grad weniger, während die ideale Ausgangskraft je Eingangsdrehmoment steigt. Das endliche Programm bleibt vor dem Totpunkt und kehrt zurück."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "equal-link knee press with passive spring-loaded platen",
+            "de": "Kniehebelpresse mit gleichen Gliedern und passiver federbelasteter Druckplatte"
+        },
+        "keywords": [
+            "knee press",
+            "toggle press",
+            "equal-link slider-crank",
+            "mechanical advantage",
+            "virtual work",
+            "shock absorber",
+            "platen",
+            "Kniehebelpresse",
+            "Kniehebel",
+            "Totpunkt",
+            "virtuelle Arbeit",
+            "Kraftübersetzung",
+            "Feder",
+            "Druckplatte",
+            "experimental",
+            "experimentell",
+            "prototype",
+            "unverified"
         ],
         "experimental": true
     },

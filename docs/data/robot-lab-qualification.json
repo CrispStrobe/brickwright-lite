@@ -352,24 +352,6 @@
       "disconnectInputDeg": 3000,
       "observeAir": true,
       "disconnectMeasure": true
-    },
-    {
-      "id": "final-squeeze",
-      "judge": "knee-press-v1",
-      "parts": 168,
-      "ports": [
-        "A"
-      ],
-      "coldMs": 500,
-      "timeLimitMs": 60000,
-      "afterMs": 500,
-      "frameMs": 25,
-      "frozenOutput": "platen_crossbar",
-      "disconnect": [
-        "passive_link"
-      ],
-      "disconnectInputDeg": 20,
-      "disconnectLoss": "batch-c"
     }
   ]
 }

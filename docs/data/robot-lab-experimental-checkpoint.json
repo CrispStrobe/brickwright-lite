@@ -2693,12 +2693,11 @@
         "nan": false,
         "simMs": 47800
       },
-      "promoted": {
-        "to": "established library (MODELS)",
+      "promotionReview": {
         "date": "2026-10-27",
-        "judge": "knee-press-v1",
-        "causalControl": "passive_link removed (qualification disconnection)",
-        "verified": "PENDING: hosted native qualification of this branch"
+        "decision": "STAYS_EXPERIMENTAL",
+        "reason": "A knee-closure judge (s = L1 cos a + sqrt(L2^2 - (L1 sin a - e)^2), L1 = L2 = 32.000 mm, e = 0 from the compiled joints) passed natively: advance 12.763 mm vs 12.767 predicted, settled 5-degree steps within 0.002 mm, moving lag <= 0.18 mm; removing passive_link left the platen at 1.03 mm while the input still turned 24.9 degrees. But the library construction gate (test/bw-sim-models-solid.test.mjs, solidOverlaps) refuses the saved geometry: anchor_spacer and anchor_retainer_45 overlap shock_cylinder, and platen_spacer_40 and platen_retainer_75 overlap shock_rod. A fix needs a geometry change, and model bytes must stay unchanged.",
+        "hostedEvidence": "PR #1497 unit shard 1/6 at f2d1cb54"
       }
     },
     {

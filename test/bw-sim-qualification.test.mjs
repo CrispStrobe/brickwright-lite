@@ -4,7 +4,6 @@ import {test} from 'node:test';import assert from 'node:assert/strict';import {r
 import {qualificationContracts,QUALIFICATION_JUDGES,disconnectedSource,issueKeys} from '../scripts/lib/robot-lab-qualification.mjs';
 import {toggleLeverLawErrorDeg} from '../scripts/lib/sim-lab-toggle-thirdline-judge.mjs';
 import {batch2DisconnectionLoss} from '../scripts/lib/sim-lab-batch2-judges.mjs';
-import {batchCDisconnectionLoss} from '../scripts/lib/sim-lab-batchC-judges.mjs';
 import {catalogFrom,prepareModel,MODELS} from '../overlay/scratch-gui/src/lib/bw-sim/sim-session.js';
 import {runRobotLabProgram} from './helpers/robot-lab-direct-vm.mjs';import {observeAddon} from '../scripts/lib/sim-lab-addon-judge.mjs';
 import Creator from '../overlay/scratch-gui/src/lib/sb3-creator-register-art.js';
@@ -54,8 +53,6 @@ for(const c of qualificationContracts(selected).filter(c=>!c.nativeSuite)){
   // loss of the declared closure law (within 2.5° when connected), not an invented frozen pose.
   else if(c.id==='toggle-lever'){motion=toggleLeverLawErrorDeg(r);assert.ok(motion>5,'without the crank pin the lever leaves the toggle closure law');}
   else if(c.id==='thirdline'){const un=a=>{let p=a[0],s=p;return a.map(v=>{s+=Math.atan2(Math.sin(v-p),Math.cos(v-p));p=v;return s;});},din=un(r.track.map(f=>o.angle(f,'input_arm',[0,1,0],[1,0,0]))),dru=un(r.track.map(f=>o.angle(f,c.frozenOutput,[0,1,0],[1,0,0])));motion=Math.max(...r.track.map((f,i)=>Math.abs((dru[i]-dru[0])-(din[i]-din[0])/3)))*180/Math.PI;assert.ok(motion>.5,'without the marked joint the ruler leaves the one-third law');}
-  // Batch C: the judge module measures each law's own loss (sim-lab-batchC-judges.mjs).
-  else if(c.disconnectLoss==='batch-c'){const loss=batchCDisconnectionLoss(c.id,r);motion=loss.value;assert.ok(loss.lost,'disconnection loses the law: '+JSON.stringify(loss));}
   // Second batch: each law has its own measured loss (see sim-lab-batch2-judges.mjs for the thresholds).
   else if(c.disconnectMeasure){const loss=batch2DisconnectionLoss(c.id,r);motion=loss.value;assert.ok(loss.lost,'disconnection loses the law: '+loss.metric+' '+loss.value);}
   else{const j=r.mechanism.joints.find(j=>!j.motor&&j.body2===o.body(c.frozenOutput).id);const angles=r.track.map(f=>o.angle(f,c.frozenOutput,j.axis,[0,0,1]));motion=(Math.max(...angles)-Math.min(...angles))*180/Math.PI;assert.ok(motion<1,'wheel loses indexing without the roller');}

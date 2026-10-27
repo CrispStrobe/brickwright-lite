@@ -550,31 +550,6 @@
         "Hubvolumen",
         "Verdichtungsweg"
       ]
-    },
-    {
-      "models": [
-        "final-squeeze"
-      ],
-      "name": {
-        "en": "Equal-link knee press with passive spring-loaded platen",
-        "de": "Kniehebelpresse mit gleichen Gliedern und passiver federbelasteter Druckplatte"
-      },
-      "aliases": [
-        "knee press",
-        "toggle press",
-        "equal-link slider-crank",
-        "mechanical advantage",
-        "virtual work",
-        "shock absorber",
-        "platen",
-        "Kniehebelpresse",
-        "Kniehebel",
-        "Totpunkt",
-        "virtuelle Arbeit",
-        "Kraftübersetzung",
-        "Feder",
-        "Druckplatte"
-      ]
     }
   ]
 }
