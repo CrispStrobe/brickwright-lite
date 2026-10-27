@@ -181,8 +181,10 @@
 1 0 70 20 -160 1 0 0 0 1 0 0 0 1 2780.dat
 0 !BW ID motor_mount_80_140
 1 0 70 140 -160 1 0 0 0 1 0 0 0 1 2780.dat
+0 // The 9L cross beams stop short of the motor's raised output face; at x=100 a 1L beam
+0 // spacer carries the 3L pin from the elbow to the post.
 0 !BW ID motor_cross_40
-1 72 -40 40 -140 0 0 1 1 0 0 0 1 0 32278.dat
+1 72 -100 40 -140 0 0 1 1 0 0 0 1 0 40490.dat
 0 !BW ID motor_cross_left_40
 1 0 -180 40 -130 0 0 -1 0 1 0 1 0 0 2780.dat
 0 !BW ID motor_elbow_0_40
@@ -191,10 +193,12 @@
 1 0 -20 40 -150 0 0 -1 0 1 0 1 0 0 2780.dat
 0 !BW ID motor_elbow_80_40
 1 72 100 40 -160 -1 0 0 0 0 1 0 1 0 15100.dat
+0 !BW ID motor_cross_spacer_80_40
+1 72 100 40 -140 1 0 0 0 0 1 0 -1 0 18654.dat
 0 !BW ID motor_cross_elbow_80_40
 1 1 100 40 -140 0 0 -1 0 1 0 1 0 0 6558.dat
 0 !BW ID motor_cross_120
-1 72 -40 120 -140 0 0 1 1 0 0 0 1 0 32278.dat
+1 72 -100 120 -140 0 0 1 1 0 0 0 1 0 40490.dat
 0 !BW ID motor_cross_left_120
 1 0 -180 120 -130 0 0 -1 0 1 0 1 0 0 2780.dat
 0 !BW ID motor_elbow_0_120
@@ -203,6 +207,8 @@
 1 0 -20 120 -150 0 0 -1 0 1 0 1 0 0 2780.dat
 0 !BW ID motor_elbow_80_120
 1 72 100 120 -160 -1 0 0 0 0 1 0 1 0 15100.dat
+0 !BW ID motor_cross_spacer_80_120
+1 72 100 120 -140 1 0 0 0 0 1 0 -1 0 18654.dat
 0 !BW ID motor_cross_elbow_80_120
 1 1 100 120 -140 0 0 -1 0 1 0 1 0 0 6558.dat
 0 STEP

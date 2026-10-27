@@ -57,13 +57,16 @@ const craneProjectRoundtrip = async (page, {openSimLab, shotsDir}) => {
 export const mechanicsInteractions = async (page, {openSimLab, shotsDir, timeout,
     models = PROGRAM_MACHINES, judge = judgeMechanicsRun, simulatedMs = 18000,
     simulatedMsFor = () => simulatedMs, completeWhenPausedFor = () => false, completionHoldMsFor = () => null,
-    fileFor = id => `${id}.ldr`, keyFor = id => fileFor(id), programMarker = null, speed = 1, observeProgram = false, captureModel = null, extendedObservations = false}) => {
+    fileFor = id => `${id}.ldr`, keyFor = id => fileFor(id), programMarker = null, speed = 1, observeProgram = false, captureModel = null, extendedObservations = false, includeExperimental = false}) => {
     mkdirSync(shotsDir, {recursive: true});
     await openSimLab(page, {program: null});
     const results = {};
     for (const id of models) {
         await page.getByTestId('bw-sim-lab-examples').click();
         const gallery = page.getByTestId('bw-sim-examples');
+        // Intake candidates remain explicitly experimental until qualification.
+        // Exercise the real gallery control rather than altering the registry.
+        if (includeExperimental) await gallery.getByRole('checkbox', {name: /Include experimental/}).check();
         await gallery.getByRole('searchbox').fill(id);
         const card = gallery.locator(`[data-model="${keyFor(id)}"]`);
         assert.equal(await card.count(), 1);
@@ -128,7 +131,7 @@ export const mechanicsInteractions = async (page, {openSimLab, shotsDir, timeout
     return results;
 };
 
-export const manualMechanicsInteractions = async (page, {openSimLab, shotsDir, models = DEFAULT_MACHINES, jogSign = () => 1, jogMs = 250, keyFor = id => `${id}.ldr`, captureModel = null}) => {
+export const manualMechanicsInteractions = async (page, {openSimLab, shotsDir, models = DEFAULT_MACHINES, jogSign = () => 1, jogMs = 250, keyFor = id => `${id}.ldr`, captureModel = null, minimumJogRadians = .03}) => {
     mkdirSync(shotsDir, {recursive: true});
     await openSimLab(page, {program: null});
     const results = {};
@@ -182,7 +185,7 @@ export const manualMechanicsInteractions = async (page, {openSimLab, shotsDir, m
             const target=Number(await choice.getAttribute('data-target'));assert.ok(Number.isFinite(target));
             await choice.click();
             await page.waitForFunction(()=>window.__bwSimLab._pane.manualJogs.size===0,null,{timeout:15000});
-            const after=await angle(port);assert.ok(Math.abs(after-before)>.03,`${id}: bounded ${port} actually moves`);
+            const after=await angle(port);assert.ok(Math.abs(after-before)>minimumJogRadians,`${id}: bounded ${port} actually moves`);
             assert.ok(Math.abs(after*180/Math.PI-target)<=2,`${id}: bounded ${port} reaches its requested target`);
             results[id][port]=(after-before)*180/Math.PI;
         }

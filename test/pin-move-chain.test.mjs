@@ -79,17 +79,26 @@ const ENV_DIR = {'bw-board': 'BW_BOARD_DIR', 'sb3-creator': 'SB3_CREATOR_DIR', '
 const PROVENANCE = 'overlay/scratch-gui/static/roms/i8086-bios.provenance.json';
 const HEX40 = /\b[0-9a-f]{40}\b/g;
 const HISTORICAL_X86_CUI_V5_V7 = '91d8434a79d373cef2837c137ab356356f1a3b44';
-const HISTORICAL_X86_CURRENT_CUI = '1bc233c9297e03abb9b7eb603e045b4e92b0bb40';
+// The CUI pin the F7/F8 x86 epochs were reviewed and executed at. It was the
+// current pin until the capture-select fix moved CUI to CURRENT_X86_CUI; from
+// then on it is a previous pin that only the exact reviewed F7/F8 literal maps
+// (historicalV8CuiSpans) and this declaration may carry.
+const HISTORICAL_X86_V8_CUI = '1bc233c9297e03abb9b7eb603e045b4e92b0bb40';
+const CURRENT_X86_CUI = 'a5860b9cf6cb0e7f652130ce987d51dc42651b8b';
 const HISTORICAL_X86_BOARD = '761153ff92d521c01107ee7b32922ba7adc10ee2';
 const HISTORICAL_X86_CURRENT_BOARD = '836867513c3e7fac420ddaa32c17e1c7b6d3e513';
-const HISTORICAL_X86_FINITE_V8_PINS = "FINITE_V8_PINS = {'bw-board':'836867513c3e7fac420ddaa32c17e1c7b6d3e513','bw-circuit-ui':'1bc233c9297e03abb9b7eb603e045b4e92b0bb40','sb3-creator':'1cbaeed325f5a890e43b78a4211acae8f801f2d2'}";
+const HISTORICAL_X86_FINITE_V7_PINS = "FINITE_V7_PINS = {'bw-board':'836867513c3e7fac420ddaa32c17e1c7b6d3e513','bw-circuit-ui':'" + HISTORICAL_X86_V8_CUI + "','sb3-creator':'1cbaeed325f5a890e43b78a4211acae8f801f2d2'}";
+const HISTORICAL_X86_FINITE_V8_PINS = "FINITE_V8_PINS = {'bw-board':'836867513c3e7fac420ddaa32c17e1c7b6d3e513','bw-circuit-ui':'" + HISTORICAL_X86_V8_CUI + "','sb3-creator':'1cbaeed325f5a890e43b78a4211acae8f801f2d2'}";
 const CURRENT_X86_FINITE_V9_PRODUCER = "FINITE_V9_PINS = {'bw-board':CURRENT_BOARD,'bw-circuit-ui':CUI,'sb3-creator':CURRENT_SB3}";
 const CURRENT_X86_FINITE_V9_READER = "FINITE_V9_PINS = {'bw-board':CURRENT_BOARD,'bw-circuit-ui':CUI_V8,'sb3-creator':CURRENT_SB3}";
 // Independently reviewed armed F9 producer, reader and control bodies. A later
 // source edit revokes these occurrence roles until a new explicit review.
+// 2026-10-27: producer/reader re-profiled after review of the CUI move to
+// CURRENT_X86_CUI (current CUI declaration and F9 CUI witnesses only); the
+// earlier ae25d526/03f3b502 profiles are superseded, not edited.
 const HISTORICAL_X86_SOURCE_PROFILES = Object.freeze({
-    'scripts/run-i80386-hdd-gui-actual.py': Object.freeze({bytes: 284036, sha256: 'ae25d526a5c0bb77d5368d474b32b6bfdecf18ccf917713b0454585aff4ef66c'}),
-    'scripts/read-i80386-hdd-gui-originals.py': Object.freeze({bytes: 347854, sha256: '03f3b50233aca24a1252d0cbd17b2943e0d1952c65671d61e2ecd5c098914ab0'}),
+    'scripts/run-i80386-hdd-gui-actual.py': Object.freeze({bytes: 284036, sha256: 'fe360e13cd44cc57bd2e443e0c93a5d16207a73f72707c9a71b11e36bc1fc14e'}),
+    'scripts/read-i80386-hdd-gui-originals.py': Object.freeze({bytes: 347854, sha256: '6d5484b5208b9ed09e207e7d2d593efcc57feb2187ca48b0e1280643424af75f'}),
     'test/i80386-hdd-gui-actual.test.mjs': Object.freeze({bytes: 544819, sha256: '943b551de56f2b18e3cc9eda650a0087088740c9c0b9dc7fe4ccc29660ed50e1'}),
 });
 
@@ -251,7 +260,7 @@ const historicalFunction = (tokens, name, indent, text) => {
 // The public wrapper below always selects the source-fixed reviewed profiles.
 const historicalCuiSpansForProfile = (file, text, known, profiles) => {
     const pin = HISTORICAL_X86_CUI_V5_V7;
-    if (!known.current.has(HISTORICAL_X86_CURRENT_CUI) || known.current.has(pin) ||
+    if (!known.current.has(CURRENT_X86_CUI) || known.current.has(pin) ||
         known.previous.get(pin)?.repo !== 'bw-circuit-ui') return [];
     const quoted = `'${pin}'`;
     if (file === 'test/pin-move-chain.test.mjs') {
@@ -269,11 +278,11 @@ const historicalCuiSpansForProfile = (file, text, known, profiles) => {
         const tokens = historicalTokens(text, true);
         if (!tokens || tokens.some(t => t.kind === 'name' && t.text === 'globals')) return [];
         const currentDeclarations = [
-            ['CUI', `CUI = '${HISTORICAL_X86_CURRENT_CUI}'`],
+            ['CUI', `CUI = '${CURRENT_X86_CUI}'`],
             ['CURRENT_BOARD', `CURRENT_BOARD = '${HISTORICAL_X86_CURRENT_BOARD}'`],
             ['SB3', "SB3 = '1cbaeed325f5a890e43b78a4211acae8f801f2d2'"],
             ['CURRENT_SB3', "CURRENT_SB3 = '1cbaeed325f5a890e43b78a4211acae8f801f2d2'"],
-            ['FINITE_V7_PINS', "FINITE_V7_PINS = {'bw-board':'836867513c3e7fac420ddaa32c17e1c7b6d3e513','bw-circuit-ui':'1bc233c9297e03abb9b7eb603e045b4e92b0bb40','sb3-creator':'1cbaeed325f5a890e43b78a4211acae8f801f2d2'}"],
+            ['FINITE_V7_PINS', "FINITE_V7_PINS = {'bw-board':'836867513c3e7fac420ddaa32c17e1c7b6d3e513','bw-circuit-ui':'" + HISTORICAL_X86_V8_CUI + "','sb3-creator':'1cbaeed325f5a890e43b78a4211acae8f801f2d2'}"],
             ['FINITE_V8_PINS', HISTORICAL_X86_FINITE_V8_PINS],
             ['FINITE_V9_PINS', CURRENT_X86_FINITE_V9_PRODUCER],
         ];
@@ -359,7 +368,7 @@ const historicalBoardSpansForProfile = (file, text, known, profiles) => {
     const declarations = [
         ['SB3', "SB3 = '1cbaeed325f5a890e43b78a4211acae8f801f2d2'"],
         ['CURRENT_SB3', "CURRENT_SB3 = '1cbaeed325f5a890e43b78a4211acae8f801f2d2'"],
-        ['FINITE_V7_PINS', "FINITE_V7_PINS = {'bw-board':'836867513c3e7fac420ddaa32c17e1c7b6d3e513','bw-circuit-ui':'1bc233c9297e03abb9b7eb603e045b4e92b0bb40','sb3-creator':'1cbaeed325f5a890e43b78a4211acae8f801f2d2'}"],
+        ['FINITE_V7_PINS', "FINITE_V7_PINS = {'bw-board':'836867513c3e7fac420ddaa32c17e1c7b6d3e513','bw-circuit-ui':'" + HISTORICAL_X86_V8_CUI + "','sb3-creator':'1cbaeed325f5a890e43b78a4211acae8f801f2d2'}"],
         ['FINITE_V8_PINS', HISTORICAL_X86_FINITE_V8_PINS],
         ['FINITE_V9_PINS', selectedMap],
     ];
@@ -372,6 +381,50 @@ const historicalBoardSpansForProfile = (file, text, known, profiles) => {
 
 export const historicalBoardSpans = (file, text, known) =>
     historicalBoardSpansForProfile(file, text, known, HISTORICAL_X86_SOURCE_PROFILES);
+
+// Admit the previous F7/F8 CUI pin only inside the two exact literal F7/F8 maps
+// of each reviewed Python body, and only while the body routes the current CUI
+// through the exact CURRENT_X86_CUI declaration and F9 through current symbols.
+// Any other occurrence, a never-shipped pin, or a changed body is not admitted.
+const historicalV8CuiSpansForProfile = (file, text, known, profiles) => {
+    const pin = HISTORICAL_X86_V8_CUI;
+    if (!known.current.has(CURRENT_X86_CUI) || known.current.has(pin) ||
+        known.previous.get(pin)?.repo !== 'bw-circuit-ui') return [];
+    const quoted = `'${pin}'`;
+    if (file === 'test/pin-move-chain.test.mjs') {
+        const line = `const HISTORICAL_X86_V8_CUI = ${quoted};`;
+        const rows = [...text.matchAll(/^const HISTORICAL_X86_V8_CUI = .*$/gm)];
+        if (rows.length !== 1 || rows[0][0] !== line) return [];
+        const end = rows[0].index + line.length, tokens = historicalTokens(text.slice(0, end));
+        const declaration = tokens?.find(t => t.start === rows[0].index && t.text === 'const' && t.depth === 0 && t.column === 0);
+        return declaration ? [rows[0].index + line.indexOf(pin)] : [];
+    }
+    const producer = file === 'scripts/run-i80386-hdd-gui-actual.py';
+    if (!producer && file !== 'scripts/read-i80386-hdd-gui-originals.py') return [];
+    const profile = profiles[file];
+    if (!profile || Buffer.byteLength(text) !== profile.bytes ||
+        createHash('sha256').update(text).digest('hex') !== profile.sha256) return []; // REVIEWED_V8_CUI_BODY_GUARD
+    const tokens = historicalTokens(text, true);
+    if (!tokens || tokens.some(t => t.kind === 'name' && t.text === 'globals')) return [];
+    const declarations = [
+        producer ? ['CUI', `CUI = '${CURRENT_X86_CUI}'`] : ['CUI_V8', `CUI_V8 = '${CURRENT_X86_CUI}'`],
+        ['FINITE_V7_PINS', HISTORICAL_X86_FINITE_V7_PINS],
+        ['FINITE_V8_PINS', HISTORICAL_X86_FINITE_V8_PINS],
+        ['FINITE_V9_PINS', producer ? CURRENT_X86_FINITE_V9_PRODUCER : CURRENT_X86_FINITE_V9_READER],
+    ];
+    const found = [];
+    for (const [name, line] of declarations) {
+        const declared = tokens.filter(t => t.kind === 'name' && t.text === name && t.column === 0 && t.depth === 0);
+        if (declared.length !== 1 || historicalLine(text, declared[0]) !== line) return [];
+        found.push(declared[0]);
+    }
+    if (text.split(quoted).length - 1 !== 2) return [];
+    const inner = `'bw-circuit-ui':${quoted}`;
+    return found.slice(1, 3).map(t => t.start + historicalLine(text, t).indexOf(inner) + "'bw-circuit-ui':'".length);
+};
+
+export const historicalV8CuiSpans = (file, text, known) =>
+    historicalV8CuiSpansForProfile(file, text, known, HISTORICAL_X86_SOURCE_PROFILES);
 
 /**
  * Judge one file's text. Pure; the mutation tests plant shas through it.
@@ -389,7 +442,7 @@ export const judgeFile = (file, text, known) => {
         try { const m = JSON.parse(text); if (m.source && m.source.lastTouchedBy && m.source.lastTouchedBy.sha) body = text.split(m.source.lastTouchedBy.sha).join('<lastTouchedBy>'); } catch { /* judged as text */ }
     }
     const historical = new Set([...historicalCuiSpans(file, text, known),
-        ...historicalBoardSpans(file, text, known)]);
+        ...historicalBoardSpans(file, text, known), ...historicalV8CuiSpans(file, text, known)]);
     const out = []; let lineAt = 0;
     body.split('\n').forEach((line, i) => {
         const offset = lineAt; lineAt += line.length + 1;
@@ -450,11 +503,11 @@ const known = {current, previous, history};
 const historicalRoleFixtures = () => {
     const pin = HISTORICAL_X86_CUI_V5_V7;
     const producer = `HISTORICAL_CUI = '${pin}'\n` +
-        `CUI = '${HISTORICAL_X86_CURRENT_CUI}'\n` +
+        `CUI = '${CURRENT_X86_CUI}'\n` +
         `CURRENT_BOARD = '${HISTORICAL_X86_CURRENT_BOARD}'\n` +
         "SB3 = '1cbaeed325f5a890e43b78a4211acae8f801f2d2'\n" +
         "CURRENT_SB3 = '1cbaeed325f5a890e43b78a4211acae8f801f2d2'\n" +
-        "FINITE_V7_PINS = {'bw-board':'836867513c3e7fac420ddaa32c17e1c7b6d3e513','bw-circuit-ui':'1bc233c9297e03abb9b7eb603e045b4e92b0bb40','sb3-creator':'1cbaeed325f5a890e43b78a4211acae8f801f2d2'}\n" +
+        "FINITE_V7_PINS = {'bw-board':'836867513c3e7fac420ddaa32c17e1c7b6d3e513','bw-circuit-ui':'" + HISTORICAL_X86_V8_CUI + "','sb3-creator':'1cbaeed325f5a890e43b78a4211acae8f801f2d2'}\n" +
         HISTORICAL_X86_FINITE_V8_PINS + "\n" +
         CURRENT_X86_FINITE_V9_PRODUCER + "\n" +
         "def execute(request):\n    pins = (request['dependencyPins'] if request['schema']=='bw.gui-hdd.actual-request.v8' else\n" +
@@ -471,14 +524,14 @@ const historicalRoleFixtures = () => {
     return {pin, producer, control, method, producerPath, controlPath, policyPath: 'test/pin-move-chain.test.mjs',
         profiles: {[producerPath]: profile(producer), [controlPath]: profile(control)}};
 };
-const historicalTestKnown = () => ({current: new Set([HISTORICAL_X86_CURRENT_CUI]),
+const historicalTestKnown = () => ({current: new Set([CURRENT_X86_CUI]),
     previous: new Map([[HISTORICAL_X86_CUI_V5_V7, {repo: 'bw-circuit-ui', replacedIn: 'fixture', on: 'fixture'}]]),
     history: new Map()});
 const historicalFixtureSpans = f => (file, text, known) =>
     historicalCuiSpansForProfile(file, text, known, f.profiles);
-const historicalJudgeWith = (recognize, recognizeBoard = () => []) => vm.runInNewContext(`(${judgeFile.toString()})`,
+const historicalJudgeWith = (recognize, recognizeBoard = () => [], recognizeV8 = () => []) => vm.runInNewContext(`(${judgeFile.toString()})`,
     {roleOf, PROVENANCE, COMMENT, CODE_EXT, HEX40, historicalCuiSpans: recognize,
-        historicalBoardSpans: recognizeBoard});
+        historicalBoardSpans: recognizeBoard, historicalV8CuiSpans: recognizeV8});
 
 test('three exact historical CUI occurrences are previous-pin roles, not code-file exemptions', () => {
     const f = historicalRoleFixtures(), k = historicalTestKnown();
@@ -573,7 +626,7 @@ test('current input tokens remain red beside historical roles and expose broad-e
     }
     const dynamic = "globals()['HISTORICAL' + '_CUI']";
     const aliases = [
-        f.producer.replace(`CUI = '${HISTORICAL_X86_CURRENT_CUI}'`, 'CUI = ' + dynamic),
+        f.producer.replace(`CUI = '${CURRENT_X86_CUI}'`, 'CUI = ' + dynamic),
         f.producer + '\nCUI = ' + dynamic + '\n',
         f.producer + "\nglobals()['CUI'] = " + dynamic + '\n',
         f.producer + "\nglobals().update({'CUI': " + dynamic + '})\n',
@@ -590,7 +643,7 @@ test('current input tokens remain red beside historical roles and expose broad-e
     const original = historicalCuiSpansForProfile.toString(), without = original.replace(bodyGuard, '');
     assert.notEqual(without, original, 'remove exactly the reviewed-body guard');
     const noBodyGuard = vm.runInNewContext(`(${without})`, {HISTORICAL_X86_CUI_V5_V7,
-        HISTORICAL_X86_CURRENT_CUI, HISTORICAL_X86_CURRENT_BOARD,
+        CURRENT_X86_CUI, HISTORICAL_X86_V8_CUI, HISTORICAL_X86_CURRENT_BOARD,
         HISTORICAL_X86_FINITE_V8_PINS, CURRENT_X86_FINITE_V9_PRODUCER,
         historicalTokens, historicalLine, historicalFunction});
     assert.equal(noBodyGuard(f.producerPath, aliases[2], k, f.profiles).length, 0,
@@ -606,7 +659,7 @@ const historicalBoardFixtures = () => {
     const producer = `BOARD = '${pin}'\nCURRENT_BOARD = '${HISTORICAL_X86_CURRENT_BOARD}'\n` +
         "SB3 = '1cbaeed325f5a890e43b78a4211acae8f801f2d2'\n" +
         "CURRENT_SB3 = '1cbaeed325f5a890e43b78a4211acae8f801f2d2'\n" +
-        "FINITE_V7_PINS = {'bw-board':'836867513c3e7fac420ddaa32c17e1c7b6d3e513','bw-circuit-ui':'1bc233c9297e03abb9b7eb603e045b4e92b0bb40','sb3-creator':'1cbaeed325f5a890e43b78a4211acae8f801f2d2'}\n" +
+        "FINITE_V7_PINS = {'bw-board':'836867513c3e7fac420ddaa32c17e1c7b6d3e513','bw-circuit-ui':'" + HISTORICAL_X86_V8_CUI + "','sb3-creator':'1cbaeed325f5a890e43b78a4211acae8f801f2d2'}\n" +
         HISTORICAL_X86_FINITE_V8_PINS + "\n" +
         CURRENT_X86_FINITE_V9_PRODUCER + "\n" +
         "def parse_request(request):\n    if request['schema']=='bw.gui-hdd.actual-request.v8':\n" +
@@ -616,7 +669,7 @@ const historicalBoardFixtures = () => {
     const reader = `BOARD = '${pin}'\nCURRENT_BOARD = '${HISTORICAL_X86_CURRENT_BOARD}'\n` +
         "SB3 = '1cbaeed325f5a890e43b78a4211acae8f801f2d2'\n" +
         "CURRENT_SB3 = '1cbaeed325f5a890e43b78a4211acae8f801f2d2'\n" +
-        "FINITE_V7_PINS = {'bw-board':'836867513c3e7fac420ddaa32c17e1c7b6d3e513','bw-circuit-ui':'1bc233c9297e03abb9b7eb603e045b4e92b0bb40','sb3-creator':'1cbaeed325f5a890e43b78a4211acae8f801f2d2'}\n" +
+        "FINITE_V7_PINS = {'bw-board':'836867513c3e7fac420ddaa32c17e1c7b6d3e513','bw-circuit-ui':'" + HISTORICAL_X86_V8_CUI + "','sb3-creator':'1cbaeed325f5a890e43b78a4211acae8f801f2d2'}\n" +
         HISTORICAL_X86_FINITE_V8_PINS + "\n" +
         CURRENT_X86_FINITE_V9_READER + "\n" +
         "def audit(request):\n    selected_board = CURRENT_BOARD if request['schema']=='bw.gui-hdd.actual-request.v8' else BOARD\n" +
@@ -682,7 +735,7 @@ test('old Board source roles never admit current routing, aliases, moved slots o
         "        createHash('sha256').update(text).digest('hex') !== profile.sha256) return []; // REVIEWED_BOARD_BODY_GUARD\n";
     const original = historicalBoardSpansForProfile.toString(), without = original.replace(bodyGuard, '');
     assert.notEqual(without, original);
-    const noBodyGuard = vm.runInNewContext(`(${without})`, {HISTORICAL_X86_BOARD,
+    const noBodyGuard = vm.runInNewContext(`(${without})`, {HISTORICAL_X86_BOARD, HISTORICAL_X86_V8_CUI,
         HISTORICAL_X86_CURRENT_BOARD, HISTORICAL_X86_FINITE_V8_PINS,
         CURRENT_X86_FINITE_V9_PRODUCER, CURRENT_X86_FINITE_V9_READER,
         historicalTokens, historicalLine});
@@ -716,10 +769,10 @@ test('historical F7 and F8 maps stay literal while current F9 uses exact symbols
             CURRENT_X86_FINITE_V9_PRODUCER, 'F9 alone routes through current symbols');
         const changes = [
             [fixed7, fixed7.replace("'bw-board':'" + HISTORICAL_X86_CURRENT_BOARD + "'", "'bw-board':CURRENT_BOARD")],
-            [fixed7, fixed7.replace("'bw-circuit-ui':'" + HISTORICAL_X86_CURRENT_CUI + "'", "'bw-circuit-ui':CUI")],
+            [fixed7, fixed7.replace("'bw-circuit-ui':'" + HISTORICAL_X86_V8_CUI + "'", "'bw-circuit-ui':CUI")],
             [fixed7, fixed7.replace("'sb3-creator':'1cbaeed325f5a890e43b78a4211acae8f801f2d2'", "'sb3-creator':CURRENT_SB3")],
             [fixed8, fixed8.replace("'bw-board':'" + HISTORICAL_X86_CURRENT_BOARD + "'", "'bw-board':CURRENT_BOARD")],
-            [fixed8, fixed8.replace("'bw-circuit-ui':'" + HISTORICAL_X86_CURRENT_CUI + "'", "'bw-circuit-ui':CUI")],
+            [fixed8, fixed8.replace("'bw-circuit-ui':'" + HISTORICAL_X86_V8_CUI + "'", "'bw-circuit-ui':CUI")],
             [fixed8, fixed8.replace("'sb3-creator':'1cbaeed325f5a890e43b78a4211acae8f801f2d2'", "'sb3-creator':CURRENT_SB3")],
             [fixed8, current9.replace('FINITE_V9_PINS', 'FINITE_V8_PINS')],
             [current9, current9.replace("'bw-board':CURRENT_BOARD", "'bw-board':BOARD")],
@@ -745,15 +798,70 @@ test('historical F7 and F8 maps stay literal while current F9 uses exact symbols
     }
 });
 
+const historicalV8Fixtures = () => {
+    const body = current => `${current}\n` +
+        "SB3 = '1cbaeed325f5a890e43b78a4211acae8f801f2d2'\n" +
+        HISTORICAL_X86_FINITE_V7_PINS + '\n' + HISTORICAL_X86_FINITE_V8_PINS + '\n';
+    const producer = body(`CUI = '${CURRENT_X86_CUI}'`) + CURRENT_X86_FINITE_V9_PRODUCER + '\n';
+    const reader = body(`CUI_V8 = '${CURRENT_X86_CUI}'`) + CURRENT_X86_FINITE_V9_READER + '\n';
+    const producerPath = 'scripts/run-i80386-hdd-gui-actual.py', readerPath = 'scripts/read-i80386-hdd-gui-originals.py';
+    return {producer, reader, producerPath, readerPath};
+};
+const coherent = (file, body) => ({[file]: {bytes: Buffer.byteLength(body),
+    sha256: createHash('sha256').update(body).digest('hex')}});
+const historicalV8Known = () => ({current: new Set([CURRENT_X86_CUI]),
+    previous: new Map([[HISTORICAL_X86_V8_CUI, {repo: 'bw-circuit-ui', replacedIn: 'fixture', on: 'fixture'}]]),
+    history: new Map()});
+
+test('the previous F7/F8 CUI pin is admitted only in the exact literal F7/F8 maps', () => {
+    const f = historicalV8Fixtures(), k = historicalV8Known();
+    assert.equal(previous.get(HISTORICAL_X86_V8_CUI)?.repo, 'bw-circuit-ui', 'the F7/F8 CUI was actually shipped');
+    assert.ok(current.has(CURRENT_X86_CUI) && !current.has(HISTORICAL_X86_V8_CUI), 'CUI moved past the F7/F8 pin');
+    for (const [file, text] of [[f.producerPath, f.producer], [f.readerPath, f.reader]]) {
+        const recognize = (fl, t, kn) => historicalV8CuiSpansForProfile(fl, t, kn, coherent(file, text));
+        const judge = historicalJudgeWith(() => [], () => [], recognize);
+        const noRoles = historicalJudgeWith(() => [], () => [], () => []);
+        assert.equal(recognize(file, text, k).length, 2, file);
+        assert.deepEqual(judge(file, text, k), [], file);
+        assert.equal(noRoles(file, text, k).length, 2, 'both literals are red without the role');
+        const unshipped = {current: k.current, previous: new Map(), history: new Map([[HISTORICAL_X86_V8_CUI, 'bw-circuit-ui']])};
+        assert.equal(recognize(file, text, unshipped).length, 0, 'never-shipped is not admitted');
+        const stillCurrent = {current: new Set([HISTORICAL_X86_V8_CUI]), previous: new Map(), history: new Map()};
+        assert.equal(recognize(file, text, stillCurrent).length, 0, 'no role while it is the current pin');
+        assert.deepEqual(historicalV8CuiSpans(file, text, k), [], 'public wrapper ignores manufactured bodies');
+        assert.equal(judgeFile(file, text, k).length, 2, 'production gate refuses unreviewed bodies');
+        const decl = file === f.producerPath ? 'CUI' : 'CUI_V8';
+        const v9 = file === f.producerPath ? CURRENT_X86_FINITE_V9_PRODUCER : CURRENT_X86_FINITE_V9_READER;
+        for (const changed of [
+            text + `EXTRA = '${HISTORICAL_X86_V8_CUI}'\n`,
+            text.replace(`${decl} = '${CURRENT_X86_CUI}'`, `${decl} = '${HISTORICAL_X86_V8_CUI}'`),
+            text.replace(v9, v9.replace(`'bw-circuit-ui':${decl}`, `'bw-circuit-ui':'${HISTORICAL_X86_V8_CUI}'`)),
+            text.replace(HISTORICAL_X86_FINITE_V8_PINS, HISTORICAL_X86_FINITE_V8_PINS.replace('FINITE_V8_PINS', 'FINITE_V9_PINS')),
+            text + "globals()['CUI'] = FINITE_V8_PINS['bw-circuit-ui']\n",
+            text.replace(HISTORICAL_X86_FINITE_V7_PINS, '    ' + HISTORICAL_X86_FINITE_V7_PINS),
+        ]) {
+            assert.notEqual(changed, text);
+            assert.equal(historicalV8CuiSpansForProfile(file, changed, k, coherent(file, changed)).length, 0,
+                'changed syntax refuses even with a coherent manufactured profile');
+        }
+    }
+    for (const file of ['vendor-pins.json', 'package.json', 'package-lock.json',
+        '.github/workflows/i80386-hdd-gui-actual.yml', 'test/current.test.mjs']) {
+        assert.equal(judgeFile(file, `CUI = '${HISTORICAL_X86_V8_CUI}'\n`, k).length, 1, `${file} stays red`);
+    }
+});
+
 test('three reviewed F9 bodies admit exactly four historical source positions', () => {
     const files = [
         'scripts/run-i80386-hdd-gui-actual.py',
         'scripts/read-i80386-hdd-gui-originals.py',
         'test/i80386-hdd-gui-actual.test.mjs',
     ];
-    const knownRoles = {current: new Set([HISTORICAL_X86_CURRENT_CUI, HISTORICAL_X86_CURRENT_BOARD]),
+    const knownRoles = {current: new Set([CURRENT_X86_CUI, HISTORICAL_X86_CURRENT_BOARD]),
         previous: new Map([[HISTORICAL_X86_CUI_V5_V7, {repo: 'bw-circuit-ui'}],
+            [HISTORICAL_X86_V8_CUI, {repo: 'bw-circuit-ui'}],
             [HISTORICAL_X86_BOARD, {repo: 'bw-board'}]]), history: new Map()};
+    let admittedV8 = 0;
     let admitted = 0;
     for (const file of files) {
         const body = readFileSync(path.join(ROOT, file), 'utf8');
@@ -767,6 +875,10 @@ test('three reviewed F9 bodies admit exactly four historical source positions', 
             `${file} exact historical CUI position`);
         assert.equal(board.length, file === 'test/i80386-hdd-gui-actual.test.mjs' ? 0 : 1,
             `${file} exact historical Board position`);
+        const v8 = historicalV8CuiSpans(file, body, knownRoles);
+        assert.equal(v8.length, file.endsWith('.py') ? 2 : 0, `${file} exact F7/F8 historical CUI positions`);
+        for (const at of v8) assert.equal(body.slice(at, at + 40), HISTORICAL_X86_V8_CUI);
+        admittedV8 += v8.length;
         admitted += cui.length + board.length;
         assert.deepEqual(judgeFile(file, body, knownRoles), [],
             'only exact reviewed historical positions are admitted');
@@ -775,6 +887,7 @@ test('three reviewed F9 bodies admit exactly four historical source positions', 
         assert.ok(judgeFile(file, alias, knownRoles).length > 0, 'dynamic alias cannot gain a role');
     }
     assert.equal(admitted, 4, 'exactly four reviewed historical source positions');
+    assert.equal(admittedV8, 4, 'exactly four reviewed F7/F8 literal CUI positions');
     for (const file of ['vendor-pins.json', 'package-lock.json', '.github/workflows/i80386-hdd-gui-actual.yml']) {
         assert.equal(judgeFile(file, `CURRENT_BOARD = '${HISTORICAL_X86_BOARD}'`, knownRoles).length, 1,
             `${file} current input cannot borrow historical Board role`);

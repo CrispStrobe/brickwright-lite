@@ -142,11 +142,50 @@ class Blocks extends React.Component {
         this.workspace = this.ScratchBlocks.inject(this.blocks, workspaceConfig);
         this._undoStateListener = () => notifyUndoState();
         this.workspace.addChangeListener(this._undoStateListener);
+        // Blockly's stacks hold events; one step is one event group. The History
+        // list names a step by what its events did ("Add whenflagclicked").
+        const blockGroups = stack => {
+            const events = !this.props.artworkOnly && this.workspace && this.workspace[stack] || [];
+            const groups = [];
+            events.forEach((event, index) => {
+                if (!index || !event.group || event.group !== events[index - 1].group) groups.push([]);
+                groups[groups.length - 1].push(event);
+            });
+            return groups;
+        };
+        const blockType = event => {
+            const xml = event.xml || event.oldXml;
+            const type = (xml && xml.getAttribute && xml.getAttribute('type')) ||
+                (this.workspace.getBlockById(event.blockId) || {}).type || '';
+            return type.replace(/^[a-z0-9]+_/, '');
+        };
+        const VERBS = [['create', 'Add'], ['delete', 'Remove'], ['var_create', 'Add variable'],
+            ['var_delete', 'Remove variable'], ['var_rename', 'Rename variable'], ['change', 'Change'],
+            ['move', 'Move'], ['comment_create', 'Add comment'], ['comment_delete', 'Remove comment'],
+            ['comment_change', 'Edit comment'], ['comment_move', 'Move comment']];
+        const stepName = group => {
+            const found = VERBS.find(([type]) => group.some(event => event.type === type));
+            if (!found) return 'Edit';
+            const event = group.find(item => item.type === found[0]);
+            const name = event.blockId ? blockType(event) : event.varName || '';
+            return name ? `${found[1]} ${name}` : found[1];
+        };
+        const blockSteps = stack => blockGroups(stack).length;
         this._unregisterUndo = registerUndoSurface('blocks', {
-            canUndo: () => !this.props.artworkOnly && !!(this.workspace && this.workspace.undoStack_ && this.workspace.undoStack_.length),
+            label: 'Blocks',
+            canUndo: () => blockSteps('undoStack_') > 0,
+            canRedo: () => blockSteps('redoStack_') > 0,
+            depth: () => ({undo: blockSteps('undoStack_'), redo: blockSteps('redoStack_')}),
+            steps: () => ({past: blockGroups('undoStack_').map(stepName),
+                future: blockGroups('redoStack_').map(stepName).reverse()}),
             undo: () => {
                 if (!this.workspace) return false;
                 this.workspace.undo(false);
+                return true;
+            },
+            redo: () => {
+                if (!this.workspace) return false;
+                this.workspace.undo(true);
                 return true;
             }
         });

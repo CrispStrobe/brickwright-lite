@@ -40,9 +40,9 @@ const fixture = async (edit = () => {}) => {
         ...[3, null].map((v, i) => [`run-${i + 1}`, packet.modelSha256, 'm', 'Mass', 'mass', JSON.stringify(definition), 'g', 'configured-mass', 0, v !== null, v ?? '', v === null ? 'unavailable' : ''].map(quote).join(','))].join('\r\n') + '\r\n';
     const csvReceipt = {file: 'sim-lab-measurement-runs.csv', bytes: Buffer.byteLength(csv), sha256: hash(csv), rows: 2};
     const oldRecord = {ldraw, name: 'fixture.ldr', measurements: [mass]}, oldBytes = await pack(oldRecord), historyBytes = await pack(record);
-    const project = (name, bytes, defs) => ({before: defs, after: defs, saved: defs, modelBeforeSha256: hash(ldraw), modelAfterSha256: hash(ldraw), sb3: {file: name, bytes: bytes.length, sha256: hash(bytes)}});
+    const project = (name, bytes, defs, modelText = ldraw) => ({before: defs, after: defs, saved: defs, modelBeforeSha256: hash(modelText), modelAfterSha256: hash(modelText), sb3: {file: name, bytes: bytes.length, sha256: hash(bytes)}});
     const oldReport = {source, project: project('sim-lab-measurement-edit.sb3', oldBytes, oldRecord.measurements)};
-    const report = {source, project: project('sim-lab-experiment-history.sb3', historyBytes, record.measurements),
+    const report = {source, project: project('sim-lab-experiment-history.sb3', historyBytes, record.measurements, record.ldraw),
         history: {before: packet, after: packet, saved: packet, remounted: packet, csv: csvReceipt}, effort, inspector,
         isolation: {differentModelEmpty: true, paneRemountRestored: true}};
     const recording = {source, recording: {compatible: true, runCount: 2, modelSha256: packet.modelSha256, definitions: [definition], sampleSets: [1, 1], csv: csvReceipt}};
@@ -81,4 +81,78 @@ test('mixed-step effort, false power and unbound plot hints are refused', async 
 test('new qualification cannot quietly fall back to an old four-file artifact', async () => {
     const files = await fixture(); delete files['sim-lab-experiment-history.json'];
     await run(files, result => { assert.notEqual(result.status, 0); });
+});
+
+
+// Twelve saved digits preserve authored geometry; canonical identity remains six digits.
+const savedTwelve = ldraw.replace('1 16 0 0 0 ', '1 16 0.384615384615 0.999999999999 -0.000000000001 ');
+const expectedSix = canonical.replace('1 16 0 0 0 ', '1 16 0.384615 1 0 ');
+test('a twelve-digit saved original joins its independently expected six-digit canonical identity', async () => {
+    await run(await fixture(({packet, record}) => {
+        record.ldraw = savedTwelve;
+        packet.modelSha256 = hash(expectedSix);
+        packet.runs.forEach(r => { r.modelSha256 = packet.modelSha256; });
+    }), result => {
+        assert.equal(result.status, 0, result.stderr);
+        assert.equal(JSON.parse(result.stdout).history.canonicalModelSha256, hash(expectedSix));
+    });
+});
+test('coherent twelve-digit hash labels cannot replace the six-digit identity contract', async () => {
+    const wrongTwelve = savedTwelve.replace('0 Saved title', '0 measurement-model')
+        .replace('0 Name: fixture.ldr', '0 Name: measurement-model.ldr').replace('0 Author: Someone', '0 Author: Brickwright');
+    assert.notEqual(hash(wrongTwelve), hash(expectedSix));
+    await run(await fixture(({packet, record}) => {
+        record.ldraw = savedTwelve;
+        packet.modelSha256 = hash(wrongTwelve);
+        packet.runs.forEach(r => { r.modelSha256 = packet.modelSha256; });
+    }), result => {
+        assert.notEqual(result.status, 0);
+        assert.match(result.stderr, /canonical authored-model join/);
+    });
+});
+
+const canonicalReaders = [script, fileURLToPath(new URL('../scripts/read-sim-lab-dynamics-artifact.py', import.meta.url))];
+const canonicalProbe = payload => {
+    const code = `import importlib.util,json,sys
+p=json.load(sys.stdin);out=[]
+for index,path in enumerate(p['paths']):
+ spec=importlib.util.spec_from_file_location('independent_reader_'+str(index),path);m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
+ values=[m.canonical_number6(token) for token in p.get('numbers',[])]
+ models=[m.canonical_ldraw_text(body,'fixture.ldr') for body in p.get('models',[])]
+ refused=[]
+ for token in p.get('invalid',[]):
+  try:m.canonical_number6(token)
+  except ValueError:refused.append(True)
+  else:refused.append(False)
+ out.append({'numbers':values,'models':models,'refused':refused})
+print(json.dumps(out))`;
+    const result = spawnSync(PYTHON, ['-B', '-c', code], {input: JSON.stringify({paths: canonicalReaders, ...payload}), encoding: 'utf8', timeout: 10000});
+    assert.equal(result.status, 0, result.stderr);
+    return JSON.parse(result.stdout);
+};
+test('both standalone readers independently preserve binary rounding, negative-zero and near-integer rules', () => {
+    const numbers = ['-0', '-0.000000000001', '0.999999999999', '1.0000000005', '0.384615384615', '0.0000005', '-0.0000005', '-0.5'];
+    const expected = ['0', '0', '1', '1', '0.384615', '0', '0', '-0.5'];
+    for (const output of canonicalProbe({numbers, invalid: ['NaN', 'Infinity', '1e21', '1_0']})) {
+        assert.deepEqual(output.numbers, expected);
+        assert.deepEqual(output.refused, [true, true, true, true]);
+    }
+});
+test('only root placement/ROTOR/ROPE/DRAW numbers change; IDs, comments and embedded MPD data remain exact', () => {
+    const root = ['0 FILE fixture.ldr', '0 Saved title', '0 Name: fixture.ldr', '0 Author: Someone',
+        '0 comment 0.384615384615', '0 !BW ID part0.384615384615',
+        '0 !BW ROTOR 0.384615384615', '0 !BW ROPE rope0.384615384615 0.384615384615 a b',
+        '0 !BW DRAW surface0.384615384615 pen0.384615384615 0.384615384615 0.999999999999 -0.000000000001 1 2 3 0.0000005',
+        '1 16 0.384615384615 0.999999999999 -0.000000000001 1 0 0 0 1 0 0 0 1 part0.384615384615.dat'];
+    const normalizedRoot = ['0 FILE measurement-model.ldr', '0 measurement-model', '0 Name: measurement-model.ldr', '0 Author: Brickwright',
+        root[4], root[5], '0 !BW ROTOR 0.384615', '0 !BW ROPE rope0.384615384615 0.384615 a b',
+        '0 !BW DRAW surface0.384615384615 pen0.384615384615 0.384615 1 0 1 2 3 0',
+        '1 16 0.384615 1 0 1 0 0 0 1 0 0 0 1 part0.384615384615.dat'];
+    const child = ['0 FILE child.dat', '0 !BW ROTOR 0.384615384615',
+        '1 16 0.384615384615 1e21 0 1 0 0 0 1 0 0 0 1 embedded.dat', '0 NOFILE'];
+    for (const delimiter of [[], ['0 NOFILE']]) {
+        const original = [...root, ...delimiter, ...child].join('\r\n') + '\r\n';
+        const expected = [...normalizedRoot, ...delimiter, ...child].join('\r\n') + '\r\n';
+        for (const output of canonicalProbe({models: [original]})) assert.deepEqual(output.models, [expected]);
+    }
 });

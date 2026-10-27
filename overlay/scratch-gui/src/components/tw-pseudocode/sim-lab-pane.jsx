@@ -26,17 +26,21 @@ import React from 'react';
 import {connect} from 'react-redux';
 import {setProjectTitle} from '../../reducers/project-title';
 import {pickLocale, browserLocale} from '../../lib/bw-i18n.js';
+import {activateUndoSurface, notifyUndoState, registerUndoSurface} from '../../lib/global-undo.js';
 import {SIM_LAB_STORAGE_KEY, simLabRecordFromText, readSimLabStorage, isStorableName} from '../../lib/bw-sim/model/sim-lab-persist.js';
 import SimLabPalette from './sim-lab-palette.jsx';
 import SimLabInfo from './sim-lab-info.jsx';
 import SimLabReadings from './sim-lab-readings.jsx';
 import SimLabConnections from './sim-lab-connections.jsx';
 import SimLabBrickButtons from './sim-lab-brick-buttons.jsx';
+import {programUsesBrickButtons} from './sim-lab-brick-handlers.js';
 import SimLabMeasurements, {measurementWords} from './sim-lab-measurements.jsx';
 import {measurementDefinitions} from '../../lib/bw-sim/measurements/schema.js';
+import {CONTROL_PAIR_SCHEMA, restoreControlPair} from '../../lib/bw-sim/measurements/control-pairs.js';
 import {createMeasurementRecorder} from '../../lib/bw-sim/measurements/recording.js';
 import {measurementModelContext} from '../../lib/bw-sim/measurements/model-context.js';
 import {refuseSimLabSave, clearSimLabSaveFailure, simLabSaveFailure} from '../../lib/bw-sim/model/sim-lab-save-state.js';
+import {measurementJointBound} from '../../lib/bw-sim/measurements/readings.js';
 import {teachingMeasurementPreset} from '../../lib/bw-sim/measurements/teaching-presets.js';
 import SimLabStats from './sim-lab-stats.jsx';
 import SimLabChallenges from './sim-lab-challenges.jsx';
@@ -382,7 +386,7 @@ class SimLabPane extends React.Component {
             mode: 'simulate', placing: null, selection: [], editorTick: 0, mat: null,
             buildStatus: {kind: 'idle'}, gizmoMode: 'move', grid: 10, recent: [], thumbTick: 0,
             showPorts: true, showMotion: false, blockers: [], portPicker: null, instructions: null, coarse: false,
-            controlsOpen: false, manualOverride: false, programLoading: false,
+            controlsOpen: false, brickControlsOpen: false, connectionControlsOpen: false, manualOverride: false, programLoading: false,
             connection: {bricks: [], routes: [], hubId: null, route: 'bluetooth', status: 'idle', message: ''},
             mixerOpen: (() => { try { return localStorage.getItem(MIXER_OPEN_KEY) === '1'; } catch { return false; } })(), mixer: {session: null, power: {}},
             // Simulate: sensor rays, the Readings panel, slow motion, and the replay position (null: live)
@@ -853,6 +857,8 @@ class SimLabPane extends React.Component {
 
     teardownEditor () {
         clearTimeout(this.insightTimer);
+        if (this.unregisterUndo) this.unregisterUndo();
+        this.unregisterUndo = null;
         if (this.unsubscribeInsight) this.unsubscribeInsight();
         this.unsubscribeInsight = null;
         if (this.editView) { try { this.editView.dispose(); } catch { /* a lost context may already be gone */ } }
@@ -927,7 +933,29 @@ class SimLabPane extends React.Component {
             // Palette pictures: null without WebGL (the palette then shows names only).
             this.thumbs = createPartThumbnails({read, colors, color: DEFAULT_COLOR});
             this.editView.setOverlay({ports: this.state.showPorts, motion: this.state.showMotion});
-            this.unsubscribeInsight = this.editor.subscribe(() => this.scheduleInsight());
+            this.unsubscribeInsight = this.editor.subscribe(() => {
+                this.scheduleInsight();
+                notifyUndoState();
+            });
+            // Menu-bar Undo / Redo / History (lib/global-undo.js) while this editor is built.
+            if (this.unregisterUndo) this.unregisterUndo();
+            this.unregisterUndo = registerUndoSurface('robots', {
+                label: 'Robot Lab',
+                canUndo: () => !!this.editor?.canUndo,
+                canRedo: () => !!this.editor?.canRedo,
+                depth: () => ({undo: this.editor?.undoDepth || 0, redo: this.editor?.redoDepth || 0}),
+                undo: () => {
+                    if (!this.editor?.canUndo || !this.editView) return false;
+                    this.editView.undo();
+                    return true;
+                },
+                redo: () => {
+                    if (!this.editor?.canRedo || !this.editView) return false;
+                    this.editView.redo();
+                    return true;
+                }
+            });
+            if (this.props.isVisible !== false) activateUndoSurface('robots');
             this.runInsight();
         } catch (error) {
             this.setState({status: 'failed', message: this.t('noWebgl', {error: error.message})});
@@ -1063,6 +1091,11 @@ class SimLabPane extends React.Component {
     /** Freeze committed samples before a synchronous save; retain at most four pane models. */
     rememberMeasurementHistory () {
         if (!this.measurementContext) return;
+        if (this.measurementControlPair) {
+            const packet = restoreControlPair(this.measurementControlPair, {...this.measurementContext, definitions: this.measurements}).packet;
+            this.measurementExperiments.set(this.measurementContext.modelSha256, packet);
+            return;
+        }
         const wasActive = this.measurementRecording.snapshot().active;
         this.measurementRecording.stop('model-or-project-save');
         this.measurementRevision++;
@@ -1123,6 +1156,7 @@ class SimLabPane extends React.Component {
         }
         this.measurementModels.clear();
         this.measurementExperiments.clear();
+        this.measurementControlPair = null;
         this.measurementRecording = createMeasurementRecorder();
         this.measurementContext = null;
         this.measurementSelection = null;
@@ -1464,14 +1498,19 @@ class SimLabPane extends React.Component {
         this.measurementContext = measurementModelContext(model, text, this.lib.serializeModel);
         const savedExperiments = experiments === undefined ? this.measurementExperiments.get(this.measurementContext.modelSha256) : experiments;
         this.measurementRecording = createMeasurementRecorder();
+        this.measurementControlPair = null;
         let experimentIssue = null;
         try {
             // Historical unavailable values and their original bindings remain data.
             // Live readers still refuse targets that the current compiler cannot resolve.
-            this.measurementRecording.restore(savedExperiments, this.measurementContext);
+            if (savedExperiments?.schema === CONTROL_PAIR_SCHEMA) {
+                this.measurementControlPair = restoreControlPair(savedExperiments, {...this.measurementContext, definitions: this.measurements}).packet;
+            } else this.measurementRecording.restore(savedExperiments, this.measurementContext);
         } catch (error) {
             experimentIssue = {severity: 'warning', code: 'project-experiments-unreadable', message: `Saved recordings were refused: ${error.message}`};
         }
+        this.measurementPrecisionEnabled = false;
+        this.measurementPrecisionOptions = {mode: 'oscillation', thresholdDegrees: 0};
         this.measurementSelection = experimentIssue ? [] : savedExperiments?.selection || this.measurementRecording.selectionFor(text, this.measurementContext.modelSha256);
         // A real RCX keeps its program through a reset; the Lab's does too (a new scene, the same image).
         if (this.rcxHub() && this.rcxImage) this.rcxHub().loadProgram(this.rcxImage);
@@ -1512,6 +1551,7 @@ class SimLabPane extends React.Component {
             view3d = 'fallback';
             this.setState({message: this.t('noWebgl', {error: error.message})});
         }
+        this.configureMeasurementObservations();
         this.setState({status: 'ready', issues: experimentIssue ? [...issues, experimentIssue] : issues, blockers: insight.blockers, view3d});
     }
 
@@ -1711,8 +1751,38 @@ class SimLabPane extends React.Component {
         this.setState(s => ({readingsTick: s.readingsTick + 1}));
     }
 
+    applyMeasurementControlPair (packet) {
+        if (this.state.replayAt !== null || this.measurementRecording.snapshot().active || !this.measurementContext) return;
+        const admitted = restoreControlPair(packet, {...this.measurementContext, definitions: this.measurements}).packet;
+        if (!this.measurementExperiments.has(this.measurementContext.modelSha256) && this.measurementExperiments.size >= 4) throw new Error('Four model histories are retained');
+        this.measurementRecording.clear();
+        this.measurementControlPair = admitted;
+        this.measurementRevision++;
+        this.onBundleCollect();
+        this.refreshMeasurements();
+    }
+
+    clearMeasurementControlPair () {
+        this.measurementControlPair = null;
+        this.measurementRecording.clear();
+        if (this.measurementContext) this.measurementExperiments.delete(this.measurementContext.modelSha256);
+        this.measurementRevision++;
+        this.onBundleCollect();
+        this.refreshMeasurements();
+    }
+
+    configureMeasurementObservations () {
+        if (!this.session?.setMeasurementObservation) return;
+        const byId = new Map(this.measurements.map(d => [d.id, d])), mechanism = this.session.mechanism;
+        const joints = this.measurementPrecisionEnabled ? [...new Set((this.measurementSelection || []).map(id => byId.get(id)).filter(d => d?.joint &&
+            mechanism.joints.some(j => j.id === d.joint && ['hinge', 'slider'].includes(j.type) && measurementJointBound(mechanism, j, d.binding))).map(d => d.joint))].slice(0, 4) : [];
+        this.session.setMeasurementObservation({...this.measurementPrecisionOptions, joints, contacts: this.measurements.some(d => d.kind === 'contact'),
+            screws: this.measurements.some(d => d.kind === 'screwSlips' || d.kind === 'screwLoad')});
+    }
+
     changeMeasurements (definitions) {
         this.measurements = measurementDefinitions(definitions);
+        this.configureMeasurementObservations();
         this.refreshMeasurements();
         this.onBundleCollect();
     }
@@ -2255,7 +2325,25 @@ class SimLabPane extends React.Component {
     }
 
     /** Manual commands are explicitly enabled; their sliders never pretend to be program telemetry. */
-    renderMixer (button) {
+    renderBrickButtons () {
+        return <SimLabBrickButtons locale={this.locale} api={this.api} scene={this.session}
+            disabled={this.state.programLoading}
+            onError={error => this.setState({message: error.message})} />;
+    }
+
+    /** The program connection: a folded section of Manual controls (no room above the scene). */
+    renderConnections () {
+        const connection = this.state.connection;
+        if (!connection?.routes?.length) return null;
+        return <SimLabConnections locale={this.locale} {...connection}
+            disabled={this.state.programLoading}
+            onHub={hubId => this.selectConnection({hubId, route: 'bluetooth'})}
+            onRoute={route => this.selectConnection({route})}
+            onConnect={() => this.connectConnection()}
+            onDisconnect={() => this.disconnectConnection()} />;
+    }
+
+    renderMixer (button, brick) {
         if (!this.api) return null;
         const s = this.session;
         const power = this.state.mixer.session === s ? this.state.mixer.power : {};
@@ -2312,6 +2400,12 @@ class SimLabPane extends React.Component {
         return (
             <SimLabMotorMixer motors={motors} power={power} open={this.state.mixerOpen} locale={this.locale} button={button}
                 available={available}
+                brick={brick || null}
+                brickOpen={this.state.brickControlsOpen}
+                onBrickToggle={() => this.setState(st => ({brickControlsOpen: !st.brickControlsOpen}))}
+                connection={this.renderConnections()}
+                connectionOpen={this.state.connectionControlsOpen}
+                onConnectionToggle={() => this.setState(st => ({connectionControlsOpen: !st.connectionControlsOpen}))}
                 override={this.state.manualOverride} onOverride={enabled => this.setManualOverride(enabled)}
                 drive={available && this.session.bridge && this.spikeScene() && manualDriveAllowed(manualJog, this.hub.movementPair) ? this.renderDrive(button) : null}
                 onClose={() => { if (this.state.manualOverride) this.setManualOverride(false); if (this.driving) this.drive('stop'); this.setState({controlsOpen: false}); }}
@@ -3076,7 +3170,7 @@ class SimLabPane extends React.Component {
                 {this.state.mode === 'simulate' && <button type="button" data-testid="bw-sim-lab-controls-toggle"
                     disabled={this.state.status === 'loading' || this.state.programLoading}
                     aria-expanded={this.state.controlsOpen} aria-label={this.locale === 'de' ? 'Manuelle Steuerung' : 'Manual controls'}
-                    title={this.locale === 'de' ? 'Manuelle Steuerung: Fahren und Motoren' : 'Manual controls: drive and motors'} style={s.button}
+                    title={this.locale === 'de' ? 'Manuelle Steuerung: Fahren, Motoren, Hub-Tasten und Verbindung' : 'Manual controls: drive, motors, brick buttons and connection'} style={s.button}
                     onClick={() => {
                         if (this.state.controlsOpen && this.state.manualOverride) this.setManualOverride(false);
                         if (this.driving) this.drive('stop');
@@ -3320,17 +3414,8 @@ class SimLabPane extends React.Component {
                 {message && <div role="alert" data-testid="bw-sim-lab-message" style={{fontSize: 12, color: '#b91c1c'}}>{message}</div>}
                 {this.renderInfo()}
                 {this.renderBlockers()}
-                {simulate && this.session && !this.session.lockstep && <React.Fragment>
-                    <SimLabConnections locale={this.locale} {...this.state.connection}
-                        disabled={this.state.programLoading}
-                        onHub={hubId => this.selectConnection({hubId, route: 'bluetooth'})}
-                        onRoute={route => this.selectConnection({route})}
-                        onConnect={() => this.connectConnection()}
-                        onDisconnect={() => this.disconnectConnection()} />
-                    <SimLabBrickButtons locale={this.locale} api={this.api} scene={this.session}
-                        disabled={this.state.programLoading}
-                        onError={error => this.setState({message: error.message})} />
-                </React.Fragment>}
+                {simulate && this.session && !this.session.lockstep && programUsesBrickButtons(this.props.vm) &&
+                    this.renderBrickButtons()}
                 <div data-testid="bw-sim-lab-main" style={{display: 'flex', flex: '1 1 auto', minHeight: compact ? 220 : 240, minWidth: 0, position: 'relative'}}>
                     {this.renderPalettePanel()}
                     <div ref={this.viewWrap} style={{flex: '1 1 auto', minHeight: compact ? 220 : 240, minWidth: 0, position: 'relative', display: 'flex',
@@ -3351,9 +3436,12 @@ class SimLabPane extends React.Component {
                             <SimLabMeasurements locale={this.locale} definitions={this.measurements} rows={this.measurementRows}
                                 modelKey={this.opened?.text || ''} recorder={this.measurementRecording} modelContext={this.measurementContext} recorderRevision={this.measurementRevision}
                                 recordingAllowed={!this.measurementContext || this.measurementExperiments.has(this.measurementContext.modelSha256) || this.measurementExperiments.size < 4}
+                                controlPair={this.measurementControlPair}
+                                histories={[...this.measurementExperiments].filter(([, packet]) => packet.schema !== CONTROL_PAIR_SCHEMA).map(([modelSha256, packet]) => ({modelSha256, packet}))}
+                                onControlPair={packet => this.applyMeasurementControlPair(packet)} onClearControlPair={() => this.clearMeasurementControlPair()}
                                 onHistoryChanged={() => this.onBundleCollect()}
                                 initialPlots={this.measurementSelection || this.measurementRecording.selectionFor(this.opened?.text || '', this.measurementContext?.modelSha256)}
-                                onPlotSelection={ids => { this.measurementSelection = ids.slice(0, 4); if (this.measurementRecording.snapshot().runs.length) this.onBundleCollect(); }}
+                                onPlotSelection={ids => { this.measurementSelection = ids.slice(0, 4); this.configureMeasurementObservations(); if (this.measurementRecording.snapshot().runs.length) this.onBundleCollect(); }}
                                 onPickTarget={this.view?.setMeasurementPick}
                                 onHighlight={ids => this.view?.highlight(ids)}
                                 onPreview={definition => { this.measurementPreview = definition; }}
@@ -3361,12 +3449,16 @@ class SimLabPane extends React.Component {
                                 parts={this.measurementReader.partIds.map(id => ({id, label: this.partNameById(id)}))}
                                 mechanism={this.session.mechanism} shown={this.state.showMeasurements} replaying={this.state.replayAt !== null}
                                 session={this.session} sampleTime={this.measurementRowsTime} paused={this.state.status !== 'running' && this.state.status !== 'stopping'}
+                                precisionEnabled={Boolean(this.measurementPrecisionEnabled)}
+                                precisionOptions={this.measurementPrecisionOptions}
+                                onPrecisionOptions={options => { this.measurementPrecisionOptions = options; this.configureMeasurementObservations(); this.refreshMeasurements(); }}
+                                onPrecisionToggle={() => { this.measurementPrecisionEnabled = !this.measurementPrecisionEnabled; this.configureMeasurementObservations(); this.refreshMeasurements(); }}
                                 teachingPreset={teachingMeasurementPreset(this.session, this.shippedModel()?.file, this.locale)}
                                 onSample={() => this.refreshMeasurements()}
                                 onChange={definitions => this.changeMeasurements(definitions)}
                                 onShown={shown => this.setState({showMeasurements: shown}, () => this.refreshMeasurements())}
                                 onPresets={() => this.changeMeasurements(this.lib.measurementPresets(this.session))}
-                                onClose={() => this.setState({measurementsOpen: false})} />
+                                onClose={() => { this.measurementPrecisionEnabled = false; this.configureMeasurementObservations(); this.setState({measurementsOpen: false}); }} />
                         )}
                         {simulate && this.state.challengesOpen && this.lib && this.renderChallenges()}
                         {simulate && this.renderReplay()}
@@ -3392,7 +3484,8 @@ class SimLabPane extends React.Component {
                     })()}
 
                 </div>
-                {simulate && this.state.controlsOpen && !this.state.programLoading && this.session && !this.session.lockstep && this.renderMixer(button)}
+                {simulate && this.state.controlsOpen && !this.state.programLoading && this.session && !this.session.lockstep && this.renderMixer(button,
+                    programUsesBrickButtons(this.props.vm) || !this.api?.brickButtons()?.length ? null : this.renderBrickButtons())}
                 {build && this.state.shortcuts && (
                     <SimLabShortcuts T={this.etext} wheelMode={this.state.wheelMode} onWheelMode={mode => this.setWheelMode(mode)}
                         mousePreset={this.state.mousePreset} onMousePreset={preset => this.setMousePreset(preset)}

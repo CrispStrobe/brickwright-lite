@@ -7,6 +7,7 @@ mod downloads;
 // Passive unless explicitly requested in a release iOS simulator process.
 #[allow(dead_code)]
 mod embedded_asset_audit;
+mod autosave;
 mod fileio;
 #[cfg(desktop)]
 mod native_broker;
@@ -139,6 +140,10 @@ pub fn run_with_context(context: tauri::Context<tauri::Wry>) {
             fileio::write_temp_project,
             fileio::is_mobile,
             fileio::share_file_native,
+            autosave::autosave_folder,
+            autosave::choose_autosave_folder,
+            autosave::clear_autosave_folder,
+            autosave::write_autosave,
             share_server::start_share_server,
             share_server::stop_share_server,
             share_server::share_server_status,

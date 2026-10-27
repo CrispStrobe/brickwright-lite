@@ -95,6 +95,7 @@ import { getMachineStore } from '../../lib/bw-machines/machine-store-instance.js
 const MachineManager = React.lazy(() =>
     import(/* webpackChunkName: "bw-machine-manager" */ '../tw-pseudocode/machine-manager.jsx'));
 import { bindPanelToVariables } from 'bw-board/controller-binding.js';
+import EditorErrorBoundary from '../editor-error-boundary/editor-error-boundary.jsx';
 import styles from './gui.css';
 import addExtensionIcon from './icon--extensions.svg';
 import codeIcon from './icon--code.svg';
@@ -1090,26 +1091,26 @@ const GUIComponent = props => {
                                 </TabPanel>
                                 <TabPanel className={tabClassNames.tabPanel}>
                                     {middleContent !== 'code' ? (
-                                        <LazyPseudocodeImporter
+                                        <EditorErrorBoundary name="Code"><LazyPseudocodeImporter
                                             isVisible={activeTabIndex === CODE_TAB_INDEX}
                                             vm={vm}
-                                        />
+                                        /></EditorErrorBoundary>
                                     ) : null}
                                 </TabPanel>
                                 <TabPanel className={tabClassNames.tabPanel}>
-                                    <CircuitTab />
+                                    <EditorErrorBoundary name="Circuit"><CircuitTab /></EditorErrorBoundary>
                                 </TabPanel>
                                 {showFpga ? (
                                     <TabPanel className={tabClassNames.tabPanel}>
-                                        <React.Suspense fallback={
+                                        <EditorErrorBoundary name="FPGA"><React.Suspense fallback={
                                             <div style={{padding: 24, color: '#64748b'}}>{'Loading FPGA lab…'}</div>
                                         }>
                                             <FpgaTab />
-                                        </React.Suspense>
+                                        </React.Suspense></EditorErrorBoundary>
                                     </TabPanel>
                                 ) : null}
                                 <TabPanel className={tabClassNames.tabPanel}>
-                                    {robotLabWanted ? (
+                                    {robotLabWanted ? (<EditorErrorBoundary name="Robots">
                                         <React.Suspense fallback={<div data-testid="bw-robot-lab-tab" data-state="loading" />}>
                                             <RobotLabTab
                                                 isVisible={activeTabIndex === robotLabIndex}
@@ -1117,7 +1118,7 @@ const GUIComponent = props => {
                                                 tabIndex={robotLabIndex}
                                                 vm={vm}
                                             />
-                                        </React.Suspense>
+                                        </React.Suspense></EditorErrorBoundary>
                                     ) : <div data-testid="bw-robot-lab-tab" data-state="idle" />}
                                 </TabPanel>
                             </Tabs>
@@ -1178,13 +1179,13 @@ const GUIComponent = props => {
                                 In controller mode the stage canvas is hidden
                                 so the panel owns the full column. */}
                             <div style={dockMode === 'controller' || dockMode === 'arcade' || dockMode === 'cpx' || dockMode === 'arduboy' || dockMode === 'makecode' || dockMode === 'spikearena' ? {maxHeight: 44, overflow: 'hidden', flexShrink: 0, borderBottom: '3px solid #475569', background: '#cbd5e1', boxShadow: '0 3px 6px rgba(0,0,0,0.22)', position: 'relative', zIndex: 5, boxSizing: 'border-box'} : undefined}>
-                                <StageWrapper
+                                <EditorErrorBoundary name="Stage"><StageWrapper
                                     isFullScreen={isFullScreen}
                                     isRendererSupported={isRendererSupported}
                                     isRtl={isRtl}
                                     stageSize={stageSize}
                                     vm={vm}
-                                />
+                                /></EditorErrorBoundary>
                             </div>
                             {gameControlKey && dockMode !== 'microbit' && dockMode !== 'arcade' && dockMode !== 'controller' ? (
                                 <React.Suspense fallback={null}>
@@ -1250,9 +1251,9 @@ const GUIComponent = props => {
                                 </React.Suspense>
                             ) : (
                                 <Box className={styles.targetWrapper}>
-                                    <React.Suspense fallback={<div role="status">Loading sprites and artwork…</div>}>
+                                    <EditorErrorBoundary name="Sprites"><React.Suspense fallback={<div role="status">Loading sprites and artwork…</div>}>
                                         <TargetPane stageSize={stageSize} vm={vm} />
-                                    </React.Suspense>
+                                    </React.Suspense></EditorErrorBoundary>
                                 </Box>
                             )}
                         </Box>

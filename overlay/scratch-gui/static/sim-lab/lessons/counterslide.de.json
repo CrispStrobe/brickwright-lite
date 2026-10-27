@@ -1,0 +1,26 @@
+{
+  "what": "Ein SPIKE-Motor treibt ein Zahnrad mit acht Zähnen. Dessen obere und untere Zähne verschieben zwei getrennt geführte Technic-Zahnstangen. Daran befestigte orangefarbene Winkelbacken fahren symmetrisch aufeinander zu und wieder auseinander.",
+  "try": [
+    "Importiere CounterSlide und sein Programm, setze das Modell auf die gespeicherte offene Stellung zurück und drücke Start. Motor A schließt bis -100 Grad, hält eine Sekunde und fährt wieder auf null.",
+    "Wähle entsprechende Messpunkte an beiden orangefarbenen Backen. Bewegen sie sich gleich weit in entgegengesetzte X-Richtungen? Beobachte die Mitte zwischen ihnen, nicht nur den Motorwert.",
+    "Benutze die manuelle Steuerung nur zwischen -100 und 0 Grad. Vergleiche einen Schritt von -25 und einen von -50 Grad bei gleichem Ritzel."
+  ],
+  "why": "Das Ritzel mit acht Zähnen hat einen Teilkreisradius von 10 LDraw-Einheiten = 4 mm. Pro Radiant Ritzeldrehung legt jede Zahnstange 4 mm zurück; die obere bewegt sich nach links, während die untere nach rechts fährt. Bei dieser Motorlage schließen negative Encoderwinkel A die Backen: s = -4πA/180 mm Weg nach innen je Backe. Der Backenabstand nimmt um 2s ab, solange nichts rutscht, sich verbiegt oder anstößt.",
+  "matters": "Beide Schlitten sind getrennte bewegliche Körper, werden aber vom selben Zahnrad angetrieben. Der Gleichlauf kommt aus der Mechanik, nicht aus zwei synchronisierten Motoren. Das Prinzip eignet sich für einen Zentriergreifer oder eine symmetrische Blende. Das Modell ist ein unbelasteter Kinematikversuch ohne geprüfte Greifkraft.",
+  "question": "Wie weit wandert bei -100 Grad jede Backe, um wie viel verkleinert sich die Öffnung und was passiert mit dem Mittelpunkt?",
+  "answer": "Idealerweise wandert jede Backe 6,981 mm. Der anfängliche Mittelpunktabstand der Backen von 24,000 mm sinkt insgesamt um 13,963 mm auf 10,037 mm. Ihre X-Positionen bleiben entgegengesetzt, der Mittelpunkt liegt weiterhin bei x = 0. Vergleiche dies mit den tatsächlichen Körperpositionen und nicht nur mit dem Encoder.",
+  "further": [
+    "Berechne -50 Grad im Voraus: ideal sind 3,491 mm Weg je Backe. Prüfe das in der Bewegung.",
+    "Denke die Führung einer Zahnstange weg: Weshalb verhindern die Zähne allein kein Verdrehen des freien Körpers?",
+    "Vergleiche mit dem einseitigen Rack Shuttle: dort bewegt ein Ritzel nur eine geführte Zahnstange."
+  ],
+  "version": 1,
+  "id": "counterslide",
+  "language": "de",
+  "formula": "|Δx| = 4 mm × |θ| (θ in radians); midpoint remains fixed",
+  "related": [
+    "gearbox.ldr",
+    "crank-rocker.ldr",
+    "rack-shuttle.ldr"
+  ]
+}

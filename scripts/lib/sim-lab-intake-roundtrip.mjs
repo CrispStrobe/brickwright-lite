@@ -68,7 +68,7 @@ export async function replayIntakeProject(browser,opts,id,judge,receiptPath){
   await reopened.getByRole('tab',{name:/^(Robots|Robot Lab)$/}).click();
   await reopened.waitForFunction(count=>window.__bwSimLab?.status==='ready'&&window.__bwSimLab._pane.session.model.parts.length===count,expected.length);
   assert.deepEqual(await reopened.evaluate(()=>window.__bwSimLab.projectRecord),record);
-  await reopened.evaluate(installBrowserMechanicsRecorder,{recordKey:'__bwIntakeReopened',captureKey:'__bwCaptureIntakeReopened',extended:SIX_INTAKES.includes(id),observeProgram:true});
+  await reopened.evaluate(installBrowserMechanicsRecorder,{recordKey:'__bwIntakeReopened',captureKey:'__bwCaptureIntakeReopened',extended:SIX_INTAKES.includes(id)||opts.extendedObservations===true,observeProgram:true});
   await reopened.getByTestId('bw-sim-lab-speed').selectOption('4');await reopened.getByTestId('bw-sim-lab-run').click();
   await reopened.waitForFunction(()=>{
    const p=window.__bwSimLab._pane;return p.session.time>1000&&!p.props.vm.runtime.threads.some(t=>t.status!==4);
@@ -77,10 +77,10 @@ export async function replayIntakeProject(browser,opts,id,judge,receiptPath){
   writeFileSync(resolve(opts.shotsDir,id+'-continuation.json'),JSON.stringify(continuation,null,2)+'\n');
   // Completion alone does not observe passive support after the motors stop.
   // Keep the ordinary simulation advancing for the declared hold interval.
-  await reopened.waitForFunction(()=>{
+  await reopened.waitForFunction(afterMs=>{
    const r=window.__bwIntakeReopened;
-   return Number.isFinite(r.finishedAt)&&r.track.at(-1)?.t-r.finishedAt>=1000;
-  },null,{timeout:opts.timeout});
+   return Number.isFinite(r.finishedAt)&&r.track.at(-1)?.t-r.finishedAt>=afterMs;
+  },opts.afterMs??1000,{timeout:opts.timeout});
   await reopened.evaluate(()=>window.__bwCaptureIntakeReopened());
   const r=await reopened.evaluate(()=>window.__bwIntakeReopened);
   writeFileSync(resolve(opts.shotsDir,id+'-reopened-track.json'),JSON.stringify(r));await judge(id,r);

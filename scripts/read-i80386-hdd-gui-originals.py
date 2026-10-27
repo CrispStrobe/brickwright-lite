@@ -23,7 +23,7 @@ REPOSITORY = 'CrispStrobe/brickwright-lite'
 LABEL = 'x86-hdd-gui-actual'
 BOARD = '761153ff92d521c01107ee7b32922ba7adc10ee2'
 CURRENT_BOARD = '836867513c3e7fac420ddaa32c17e1c7b6d3e513'
-CUI_V8 = '1bc233c9297e03abb9b7eb603e045b4e92b0bb40'
+CUI_V8 = 'a5860b9cf6cb0e7f652130ce987d51dc42651b8b'
 SB3 = '1cbaeed325f5a890e43b78a4211acae8f801f2d2'
 CURRENT_SB3 = '1cbaeed325f5a890e43b78a4211acae8f801f2d2'
 FINITE_V7_PINS = {'bw-board':'836867513c3e7fac420ddaa32c17e1c7b6d3e513','bw-circuit-ui':'1bc233c9297e03abb9b7eb603e045b4e92b0bb40','sb3-creator':'1cbaeed325f5a890e43b78a4211acae8f801f2d2'}
@@ -174,12 +174,12 @@ FINITE_V8_CUI_WITNESSES = {
 
 
 FINITE_V9_CUI_WITNESSES = {
- 'node_modules/bw-circuit-ui/LANES.md':(269167,'2830cc0c85e038fef240f8e68a17a8cbfb0ffc4ddb2e436f8f84409c2006e513'),
+ 'node_modules/bw-circuit-ui/LANES.md':(273927,'fe8d745415ef89bd3e32caefda4594c71f6b95d83291518db7d3103fa0f9c633'),
  'node_modules/bw-circuit-ui/bin/bwc.mjs':(69102,'93d1bf5e824ad234b5e88425dbe75ab9958d0ff78f051d50f1ac6791259b8c8a'),
  'node_modules/bw-circuit-ui/docs/CLI-INSTRUMENTS.md':(54012,'29152b26009e8151197b7d8b326db6407d74c9648b89cb18bdd266e3697b7f37'),
- 'node_modules/bw-circuit-ui/package.json':(11352,'9d3765c958dbdb2bbaf5c74546d07122f6e2a36568bae6240583c0dbe310bca3'),
- 'node_modules/bw-circuit-ui/scripts/verify-interaction.mjs':(156472,'4579b2c5280c38f9754cd8549f1e9081f81ac25b423eb15f051b1d53db07965e'),
- 'node_modules/bw-circuit-ui/src/components/ScopePanel.jsx':(58539,'e4c0e90604348a0745b0312ea76057183f53d9dcea76466acbffb08e7031cbad'),
+ 'node_modules/bw-circuit-ui/package.json':(11386,'ad036f231fbade7718ccfd74a430b01919dc4cfcb24b3326d2dee045c7a54264'),
+ 'node_modules/bw-circuit-ui/scripts/verify-interaction.mjs':(158565,'650989a1238632e55634f097288ef2d81aae25311e087db39d36f87084483c3c'),
+ 'node_modules/bw-circuit-ui/src/components/ScopePanel.jsx':(59219,'0fe079a01dee0879dcf7f55f46bbcaab39b4173a74da4a5a6c264744d333dd9b'),
  'node_modules/bw-circuit-ui/src/i18n/strings.js':(25719,'60fe3dd9febaee4baf2ef82d855de6e054e68b842ee4b209854ffa58b9170230'),
  'node_modules/bw-circuit-ui/src/importers/spice.js':(85910,'3d93812a665b443ac3a7c41197772d06a0dbfa7101670d7db0a74bdbc44c3c41'),
  'node_modules/bw-circuit-ui/src/model/instrument-report.js':(30702,'4030fdf58c3a8dd69f66c118c04b2ab3d99edfbb4070542019c37cae219cf4ff'),

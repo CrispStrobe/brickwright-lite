@@ -2,7 +2,7 @@
   "version": 1,
   "id": "ghost-pivot",
   "language": "de",
-  "what": "Motor A bewegt zwei gekoppelte Parallelogramme. Ihr passiver Ausgang ist ein langer Werkzeugträger. Beobachte dessen freies Endloch: Der Träger schwenkt um diesen Punkt, obwohl dort weder Achse noch Lager sitzt. Im Vergleichsmodell wird ein Koppelglied durch einen längeren Standardbalken ersetzt; das Motorprogramm bleibt gleich.",
+  "what": "Doppelparallelogramm mit fernem Drehpunkt. Motor A bewegt zwei gekoppelte Parallelogramme. Ihr passiver Ausgang ist ein langer Werkzeugträger. Beobachte dessen freies Endloch: Der Träger schwenkt um diesen Punkt, obwohl dort weder Achse noch Lager sitzt. Im Vergleichsmodell wird ein Koppelglied durch einen längeren Standardbalken ersetzt; das Motorprogramm bleibt gleich. Zwei gekoppelte Parallelogramme drehen ein Werkzeug um einen Punkt, an dem kein Gelenk sitzt. Während Motor A um ±35° schwenkt, behält das Werkzeug die Richtung des Eingangs auf 0,002° genau, und das ferne Drehzentrum wandert weniger als 0,02 mm.",
   "try": [
     "Lade ghost-pivot.ldr und das zugehörige Programm ghost-pivot.bw. Stelle mit Reset die gespeicherte Lage her und drücke Run in der Robot-Lab-Werkzeugleiste. Suche vor dem Schwenken das freie Endloch des Werkzeugträgers.",
     "Beobachte zwei Größen getrennt: den Drehwinkel des Trägers und den Weg genau dieses Lochs relativ zum Rahmen. Ein ruhender Punkt ist hier nur aussagekräftig, wenn sich die Ausrichtung des Trägers tatsächlich ändert.",

@@ -1,6 +1,6 @@
 # Stock Technic axle envelope at rack housings
 
-Status: CLAIMED — merge before implementation.
+Status: DONE — checkpoint implementation delivered; full model admission remains pending.
 Owner: Codex, nine-Technic-intake follow-up.
 Branch: `docs/technic-stock-axle-clearance-20261026`.
 Base: `b6f39a12348b984dc9c5f59b826e7680539b6148`.
@@ -28,3 +28,9 @@ and force/precision owners. No model-specific collision exclusion or hidden
 anchor. Compose the qualified fix into the existing nine-model delivery and
 run affected native, catalogue, construction and both-browser checks before
 normal matched-head landing with all enabled exact-head checks successful.
+
+Checkpoint continuation: [nine-model handoff](../docs/ROBOT-LAB-NINE-MODELS-HANDOFF.md).
+Source fixtures, repairs and focused native controls are included. Browser
+qualification and broad regression completion are explicitly pending; no model
+admission, exact-head hosted-green result or release is claimed. This checkpoint
+releases this implementation scope. Claim follow-up work before continuing.

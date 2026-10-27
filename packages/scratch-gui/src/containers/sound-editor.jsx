@@ -16,6 +16,7 @@ import AudioEffects from '../lib/audio/audio-effects.js';
 import SoundEditorComponent from '../components/sound-editor/sound-editor.jsx';
 import AudioBufferPlayer from '../lib/audio/audio-buffer-player.js';
 import log from '../lib/log.js';
+import {activateUndoSurface, notifyUndoState, registerUndoSurface} from '../lib/global-undo.js';
 
 const UNDO_STACK_SIZE = 99;
 
@@ -57,6 +58,10 @@ class SoundEditor extends React.Component {
 
         this.redoStack = [];
         this.undoStack = [];
+        // Brickwright: History list names, parallel to the stacks.
+        this.undoLabels = [];
+        this.redoLabels = [];
+        this.stepLabel = null;
 
         this.ref = null;
     }
@@ -64,11 +69,31 @@ class SoundEditor extends React.Component {
         this.audioBufferPlayer = new AudioBufferPlayer(this.props.samples, this.props.sampleRate);
 
         document.addEventListener('keydown', this.handleKeyPress);
+        // Brickwright: menu-bar Undo / Redo / History. Steps run one after another
+        // (each re-encodes the sound), so a multi-step jump cannot interleave.
+        let queue = Promise.resolve();
+        const serial = work => {
+            queue = queue.then(work, work);
+            return queue;
+        };
+        this.unregisterUndo = registerUndoSurface('sounds', {
+            label: 'Sounds',
+            canUndo: () => this.undoStack.length > 0,
+            canRedo: () => this.redoStack.length > 0,
+            depth: () => ({undo: this.undoStack.length, redo: this.redoStack.length}),
+            steps: () => ({past: this.undoLabels.slice(), future: this.redoLabels.slice().reverse()}),
+            undo: () => serial(() => (this.undoStack.length ? this.handleUndo() : false)),
+            redo: () => serial(() => (this.redoStack.length ? this.handleRedo() : false))
+        });
+        activateUndoSurface('sounds');
     }
     componentWillReceiveProps (newProps) {
         if (newProps.soundId !== this.props.soundId) { // A different sound has been selected
             this.redoStack = [];
             this.undoStack = [];
+            this.undoLabels = [];
+            this.redoLabels = [];
+            notifyUndoState();
             this.resetState(newProps.samples, newProps.sampleRate);
             this.setState({
                 trimStart: null,
@@ -78,6 +103,7 @@ class SoundEditor extends React.Component {
     }
     componentWillUnmount () {
         this.audioBufferPlayer.stop();
+        if (this.unregisterUndo) this.unregisterUndo();
 
         document.removeEventListener('keydown', this.handleKeyPress);
     }
@@ -150,12 +176,17 @@ class SoundEditor extends React.Component {
                 }).then(wavBuffer => {
                     if (!skipUndo) {
                         this.redoStack = [];
+                        this.redoLabels = [];
                         if (this.undoStack.length >= UNDO_STACK_SIZE) {
                             this.undoStack.shift(); // Drop the first element off the array
+                            this.undoLabels.shift();
                         }
                         this.undoStack.push(this.getUndoItem());
+                        this.undoLabels.push(this.stepLabel || 'Change');
                     }
+                    this.stepLabel = null;
                     this.resetState(newSamples, newSampleRate);
+                    notifyUndoState();
                     this.props.vm.updateSoundBuffer(
                         this.props.soundIndex,
                         this.audioBufferPlayer.buffer,
@@ -191,6 +222,7 @@ class SoundEditor extends React.Component {
         this.props.vm.renameSound(this.props.soundIndex, name);
     }
     handleDelete () {
+        this.stepLabel = 'Delete selection';
         const {samples, sampleRate} = this.copyCurrentBuffer();
         const sampleCount = samples.length;
         const startIndex = Math.floor(this.state.trimStart * sampleCount);
@@ -214,6 +246,7 @@ class SoundEditor extends React.Component {
         });
     }
     handleDeleteInverse () {
+        this.stepLabel = 'Crop';
         // Delete everything outside of the trimmers
         const {samples, sampleRate} = this.copyCurrentBuffer();
         const sampleCount = samples.length;
@@ -247,6 +280,7 @@ class SoundEditor extends React.Component {
         };
     }
     handleEffect (name) {
+        this.stepLabel = `Effect ${name}`;
         const trimStart = this.state.trimStart === null ? 0.0 : this.state.trimStart;
         const trimEnd = this.state.trimEnd === null ? 1.0 : this.state.trimEnd;
 
@@ -288,6 +322,7 @@ class SoundEditor extends React.Component {
     }
     handleUndo () {
         this.redoStack.push(this.getUndoItem());
+        this.redoLabels.push(this.undoLabels.pop());
         const {samples, sampleRate, trimStart, trimEnd} = this.undoStack.pop();
         if (samples) {
             return this.submitNewSamples(samples, sampleRate, true).then(success => {
@@ -299,6 +334,7 @@ class SoundEditor extends React.Component {
     }
     handleRedo () {
         const {samples, sampleRate, trimStart, trimEnd} = this.redoStack.pop();
+        this.undoLabels.push(this.redoLabels.pop());
         if (samples) {
             this.undoStack.push(this.getUndoItem());
             return this.submitNewSamples(samples, sampleRate, true).then(success => {
@@ -367,6 +403,7 @@ class SoundEditor extends React.Component {
         });
     }
     paste () {
+        this.stepLabel = 'Paste';
         // If there's no selection, paste at the end of the sound
         const {samples} = this.copyCurrentBuffer();
         if (this.state.trimStart === null) {

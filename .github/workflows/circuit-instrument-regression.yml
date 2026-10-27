@@ -62,7 +62,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           repository: CrispStrobe/bw-circuit-ui
-          ref: 1bc233c9297e03abb9b7eb603e045b4e92b0bb40
+          ref: a5860b9cf6cb0e7f652130ce987d51dc42651b8b
           path: admitted-sources/bw-circuit-ui
           persist-credentials: false
       - name: Install locked consumer and independent oracle

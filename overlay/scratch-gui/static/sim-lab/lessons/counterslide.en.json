@@ -1,0 +1,26 @@
+{
+  "what": "One SPIKE motor turns a small 8-tooth pinion. Its top and bottom teeth drive two independent sliding Technic racks. Orange L-shaped jaws attached to the racks approach one another symmetrically, then retract.",
+  "try": [
+    "Import CounterSlide and its program, reset to the saved open pose, and press Run. Watch motor A close the jaws to -100 degrees, hold for one second and return to zero.",
+    "Pick matching reference points on the two orange jaw tips. Do they move equal distances in opposite X directions? Watch their midpoint, rather than just the motor encoder.",
+    "Use the manual control only between -100 and 0 degrees. Compare a -25-degree step and a -50-degree step without changing the pinion."
+  ],
+  "why": "For an 8-tooth pinion, the pitch radius is 10 LDraw units = 4 mm. Each rack translates 4 mm for every radian of pinion rotation; the upper rack moves left when the lower rack moves right. In this motor orientation, negative encoder A closes the jaws: each moves inward s = -4πA/180 mm and the tip-to-tip gap shrinks by 2s, as long as neither rack slips, bends or reaches contact.",
+  "matters": "The two guided racks are separate moving bodies driven by one gear, so matching jaw motion comes from the mechanism rather than two synchronized motors. This is useful for a self-centering gripper or symmetrical shutter. It is a small no-payload kinematics experiment, not a certified gripping-force machine.",
+  "question": "At the programmed -100-degree target, how far has each jaw moved, how much has the opening shrunk, and what should happen to the midpoint?",
+  "answer": "The ideal single-jaw travel is 6.981 mm. The two jaws jointly reduce the 24.000 mm starting center-to-center gap by 13.963 mm, leaving 10.037 mm. Their x positions remain opposite and their midpoint remains at x = 0. Verify these numbers against body positions, not encoder readings alone.",
+  "further": [
+    "Predict the movement for -50 degrees, then compare the observed halves; ideal travel is 3.491 mm per jaw.",
+    "Temporarily loosen or remove a rack guide only in an analytical model: explain why meshing teeth alone cannot stop the free rack body from twisting.",
+    "Compare this two-output mechanism with the single-output Rack Shuttle, where one rack follows the same pinion."
+  ],
+  "version": 1,
+  "id": "counterslide",
+  "language": "en",
+  "formula": "|Δx| = 4 mm × |θ| (θ in radians); midpoint remains fixed",
+  "related": [
+    "gearbox.ldr",
+    "crank-rocker.ldr",
+    "rack-shuttle.ldr"
+  ]
+}

@@ -19,7 +19,7 @@ import PropTypes from 'prop-types';
 import {EditorView, keymap, lineNumbers, highlightActiveLine, highlightSpecialChars,
     drawSelection, rectangularSelection} from '@codemirror/view';
 import {EditorState, Compartment} from '@codemirror/state';
-import {defaultKeymap, indentWithTab, history, historyKeymap, undo, redo, selectAll, undoDepth} from '@codemirror/commands';
+import {defaultKeymap, indentWithTab, history, historyKeymap, undo, redo, selectAll, undoDepth, redoDepth} from '@codemirror/commands';
 import {searchKeymap, openSearchPanel} from '@codemirror/search';
 import {bracketMatching} from '@codemirror/language';
 import {closeBrackets, closeBracketsKeymap} from '@codemirror/autocomplete';
@@ -192,8 +192,13 @@ class CodeMirrorEditor extends React.Component {
             parent: this._ref.current
         });
         this._unregisterUndo = registerUndoSurface('code', {
+            label: 'Code',
             canUndo: () => !!this._view && undoDepth(this._view.state) > 0,
-            undo: () => !!this._view && undo(this._view)
+            canRedo: () => !!this._view && redoDepth(this._view.state) > 0,
+            depth: () => (this._view ? {undo: undoDepth(this._view.state), redo: redoDepth(this._view.state)} :
+                {undo: 0, redo: 0}),
+            undo: () => !!this._view && undo(this._view),
+            redo: () => !!this._view && redo(this._view)
         });
         if (this.props.isVisible) activateUndoSurface('code');
 

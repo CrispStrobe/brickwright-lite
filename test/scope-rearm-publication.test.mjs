@@ -21,7 +21,7 @@ function publishedSample() {
     const adc = {isConnected: true, checked: false, disabled: false};
     return {
         expectedMode: 'sample', expectedBoard: board, board,
-        expectedSelector: selector, selector, expectedOwner: owner, owner, adcOwner: owner, adc,
+        expectedSelector: selector, selector, activeElement: selector, expectedOwner: owner, owner, adcOwner: owner, adc,
         selectorCount: 1, ownerSelectorCount: 1, adcCount: 1, ownerAdcCount: 1,
         channels: [],
     };
@@ -68,6 +68,7 @@ test('actual source predicate accepts only committed removal and sample publicat
         ['disabled selector', retainedSelector({disabled: true})],
         ['wrong mode', retainedSelector({value: 'envelope'})],
         ['unsupported expected mode', changed(sample, {expectedMode: 'average'})],
+        ['lost focused selector', changed(sample, {activeElement: {}})],
         ['checked ADC', changed(sample, {adc: {...sample.adc, checked: true}})],
         ['real channel remains', changed(sample, {channels: [17]})],
         ['unreadable channels', changed(sample, {channels: null})],
@@ -80,8 +81,9 @@ test('named source-backed mutants prove Board, DOM, ADC and channel fences are l
     const mutations = [
         ['omit Board identity', 'return boardIdentity && ', 'return ', {board: {}}],
         ['omit DOM identity', 'domIdentity && ', '', {selector: {...sample.selector}}],
-        ['omit ADC publication', '            && adcPublication && channelPublication;',
-            '            && channelPublication;', {adc: {...sample.adc, checked: true}}],
+        ['omit ADC publication', '            && adcPublication && focusPublication && channelPublication;',
+            '            && focusPublication && channelPublication;', {adc: {...sample.adc, checked: true}}],
+        ['omit focused selector', ' && focusPublication && ', ' && ', {activeElement: {}}],
         ['omit real-channel publication', ' && channelPublication;', ';', {channels: [23]}],
     ];
     for (const [name, anchor, replacement, patch] of mutations) {
@@ -105,4 +107,54 @@ test('observer source stays passive, capture-phase and finally-owned', () => {
         'Playwright provenance is recorded, never mislabelled as hardware trust');
     assert.doesNotMatch(observer, /dispatchEvent|setTimeCapture|setADCEnabled|addScopeChannel|removeScopeChannel|advanceTo/);
     assert.match(source, /try\{return observer\.snapshot\(\);\} finally\{observer\.stop\(\);\}/);
+});
+
+
+const actionStart = '// BEGIN SCOPE_POINT_KEYBOARD_ACTION\n';
+const actionEnd = '// END SCOPE_POINT_KEYBOARD_ACTION';
+assert.equal(source.split(actionStart).length - 1, 1);
+assert.equal(source.split(actionEnd).length - 1, 1);
+const actionSource = source.slice(source.indexOf(actionStart) + actionStart.length,
+    source.indexOf(actionEnd)).trim();
+const keyboardAction = load(actionSource);
+
+test('actual action uses one focus and one native key, refuses lost publication without retry', async () => {
+    const run = async ({mode = 'envelope', ready = true, connected = true} = {}) => {
+        const calls = [];
+        const document = {activeElement: null};
+        const target = {value: mode, isConnected: connected, ownerDocument: document};
+        const selector = {
+            evaluate: async callback => {calls.push('read'); return callback(target);},
+            focus: async () => {calls.push('focus'); document.activeElement = target;},
+            press: () => {throw new Error('Locator press would focus a second time');},
+            selectOption: () => {throw new Error('No synthetic selection or fallback');},
+        };
+        const keyboard = {press: async key => {calls.push(key); target.value = 'sample';}};
+        const observer = {evaluate: async callback => {calls.push('publication');
+            return callback({readyForKeyboard: () => ready
+                && document.activeElement === target && target.isConnected && target.value === 'envelope'});}};
+        try {return {calls, target, result: await keyboardAction(selector, observer, keyboard)};}
+        catch (error) {return {calls, target, error};}
+    };
+    const success = await run();
+    assert.deepEqual(success.calls, ['read', 'focus', 'publication', 'ArrowDown', 'read']);
+    assert.equal(success.result.kind, 'native-keyboard');
+    assert.equal(success.result.key, 'ArrowDown');
+    assert.equal(success.result.before.mode, 'envelope');
+    assert.equal(success.result.after.mode, 'sample');
+    assert.equal(success.result.before.connected, true);
+    assert.equal(success.result.after.connected, true);
+    assert.equal(success.result.after.focused, true);
+    const lost = await run({ready: false});
+    assert.ok(lost.error, 'lost focus/publication must refuse before the native key');
+    assert.match(lost.error.message, /FOCUS_PUBLICATION/);
+    assert.deepEqual(lost.calls, ['read', 'focus', 'publication']);
+    const disconnected = await run({connected: false});
+    assert.ok(disconnected.error, 'disconnected selector must refuse before focus');
+    assert.deepEqual(disconnected.calls, ['read'], 'disconnected selector must refuse before focus');
+    assert.match(disconnected.error.message, /PRESTATE/);
+    const wrong = await run({mode: 'sample'});
+    assert.match(wrong.error.message, /PRESTATE/);
+    assert.deepEqual(wrong.calls, ['read']);
+    assert.doesNotMatch(actionSource, /selectOption|dispatchEvent|setTimeout|waitForTimeout|\.value\s*=|\bwhile\b|\bfor\s*\(/);
 });

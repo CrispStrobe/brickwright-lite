@@ -4709,6 +4709,298 @@
         "de": "Hauptmodell: OA=OB=BC=r=32 mm; θ=3φ im gewählten begrenzten Montagezweig. Allgemein: sin(θ−2φ)=(d/r)sinφ beziehungsweise θ=2φ+asin[(d/r)sinφ] in diesem Zweig. Vergleich: d=24 mm, r=32 mm, d/r=0,75. θ bezeichnet den gemessenen Winkel des Eingangsarms, φ den gemessenen Winkel der passiven Geraden; beide nutzen dieselbe positive Drehrichtung in der Projektion."
       },
       "related": []
+    },
+    "cross-ratio": {
+      "en": {
+        "what": "Crossed four-bar linkage (antiparallelogram). Motor A turns the 64 mm input arm directly, 1:1. A 32 mm coupler drives an equally long 64 mm output arm whose pivot sits 32 mm from the input pivot; output arm and coupler are passive. Opposite links are equal, but the loop is assembled on its crossed branch: the two long arms cross over each other on separate layers instead of forming a parallelogram. The program steps the input through 60°, 30°, 45°, 60°, 90°, 120°, 150°, 120°, 90° and back to 60°, holding each pose for 1.5 s so you can read the output angle.",
+        "try": [
+          "Open Cross Ratio with its program, press Reset, then Run. The input starts at its saved 60° pose, where encoder A reads 0°; the passive output arm then points at 120° and the coupler lies parallel to the ground link.",
+          "Stages 1–6 move the input to 30°, 45°, 60°, 90°, 120° and 150°. Before each step, predict the output angle with the formula, then compare during the hold. The first 15° step (30° → 45°) should turn the output about 24.8°; the 30° step from 120° to 150° only about 11.6°.",
+          "Watch the coupler too. In the ideal crossed linkage its heading equals input plus output angle (θ + φ): 180° at the start, about 233° at θ = 90°.",
+          "Stages 7–9 retrace 120° and 90° back to 60°. Compare each return pose with the outbound one: ideally the output depends only on the input angle, not on direction or history. Only motor A is controlled; the program never sets the output."
+        ],
+        "why": "In an antiparallelogram the two long links (length L) and the two short links, ground and coupler (length g), are pairwise equal, but folded so that the long links cross. Loop closure on this branch gives L·sin((φ − θ)/2) = g·sin((φ + θ)/2), which rearranges to tan(φ/2) = (L + g)/(L − g) · tan(θ/2). With L = 64 mm and g = 32 mm the factor is 3. So the angle is not tripled; the tangent of the half-angle is. The instantaneous ratio dφ/dθ = 3/(5 − 4 cos θ) therefore falls from about 1.95 at 30° to 0.60 at 90° and 0.35 at 150°. Over the whole 30°–150° input sweep the output covers only about 92°.",
+        "matters": "A gear pair has one fixed ratio; a linkage gives a ratio that changes along its travel. The crossed four-bar shows that the same four lengths give either 1:1 motion (parallelogram) or this strongly varying ratio, depending only on how the loop is assembled. Mechanisms like this are used where a stroke should be fast at one end and slow but forceful at the other. In a headless run of the Brickwright simulator, the measured output arm followed tan(φ/2) = 3·tan(θ/2) to within 0.007° over the whole run (for example 143.15° at θ = 90.02°). That is a simulation observation; no physical LEGO build has been tested.",
+        "question": "The half-angle factor is 3. From the saved pose (input 60°, output 120°) the input moves to 90°. Will the output reach 270°, 150° or something else? And will the next 30° step (90° → 120°) turn the output more or less than this one?",
+        "answer": "Neither 270° nor 150°. At θ = 90°, tan(θ/2) = 1, so tan(φ/2) = 3 and φ = 2·atan 3 ≈ 143.1°: 30° of input gives about 23.1° of output. The next step to 120° gives tan(φ/2) = 3·tan 60° ≈ 5.196, φ ≈ 158.2°, only about 15.1° more. The ratio keeps falling because dφ/dθ = 3/(5 − 4 cos θ) decreases as θ grows.",
+        "further": [
+          "Predict the output at 45° and 150° (≈ 102.3° and ≈ 169.8°) and compare with the arm in the hold windows. Also check that outbound and return poses agree at equal input angles.",
+          "The crossing point of the two long arms is the instantaneous centre of the coupler. Its distances to the two ground pivots always add up to 64 mm, so it travels on an ellipse whose foci are the ground pivots.",
+          "Assembled uncrossed (as a parallelogram), the same four lengths give φ = θ at every angle. The lengths alone do not fix the motion; the assembly branch does. The loop could only switch branch at the collinear positions θ = 0° or 180°; the stops (about 21.5° and 158.5°) and the program envelope (encoder −30° to +90°) keep it away from them.",
+          "Limits: the simulation assumes rigid links and ideal pins. This experiment says nothing about torque, backlash, the layer offsets of the arms or a physical build."
+        ]
+      },
+      "de": {
+        "what": "Gekreuztes Viergelenk (Antiparallelogramm). Motor A dreht den 64 mm langen Antriebsarm direkt im Verhältnis 1:1. Eine 32 mm lange Koppel bewegt einen ebenso langen 64-mm-Abtriebsarm, dessen Drehpunkt 32 mm neben dem des Antriebsarms liegt; Abtriebsarm und Koppel sind passiv. Gegenüberliegende Glieder sind gleich lang, doch die Kette ist im gekreuzten Zweig montiert: Die beiden langen Arme überkreuzen sich auf verschiedenen Ebenen, statt ein Parallelogramm zu bilden. Das Programm fährt den Antrieb über 60°, 30°, 45°, 60°, 90°, 120°, 150°, 120° und 90° zurück auf 60° und hält jede Stellung 1,5 s, damit du den Abtriebswinkel ablesen kannst.",
+        "try": [
+          "Öffne Cross Ratio mit Programm, drücke Zurücksetzen und dann Start. Der Antrieb beginnt in der gespeicherten 60°-Stellung, in der Encoder A 0° anzeigt; der passive Abtriebsarm steht dann bei 120°, und die Koppel liegt parallel zum Gestell.",
+          "Die Stufen 1–6 fahren den Antrieb auf 30°, 45°, 60°, 90°, 120° und 150°. Sage vor jedem Schritt den Abtriebswinkel mit der Formel voraus und vergleiche in der Haltezeit. Der erste 15°-Schritt (30° → 45°) sollte den Abtrieb um etwa 24,8° drehen, der 30°-Schritt von 120° auf 150° nur um etwa 11,6°.",
+          "Beobachte auch die Koppel. Im idealen gekreuzten Viergelenk ist ihre Richtung die Summe aus Antriebs- und Abtriebswinkel (θ + φ): 180° in der Startstellung, etwa 233° bei θ = 90°.",
+          "Die Stufen 7–9 fahren über 120° und 90° zurück auf 60°. Vergleiche jede Stellung des Rückwegs mit der des Hinwegs: Im Ideal hängt der Abtrieb nur vom Antriebswinkel ab, nicht von Richtung oder Vorgeschichte. Nur Motor A wird geregelt; das Programm setzt den Abtrieb nie."
+        ],
+        "why": "Im Antiparallelogramm sind die beiden langen Glieder (Länge L) und die beiden kurzen Glieder, Gestell und Koppel (Länge g), paarweise gleich lang, aber so gefaltet, dass sich die langen Glieder kreuzen. Die Schließbedingung dieses Zweigs lautet L·sin((φ − θ)/2) = g·sin((φ + θ)/2); umgeformt ergibt sich tan(φ/2) = (L + g)/(L − g) · tan(θ/2). Mit L = 64 mm und g = 32 mm ist der Faktor 3. Verdreifacht wird also nicht der Winkel, sondern der Tangens des halben Winkels. Die momentane Übersetzung dφ/dθ = 3/(5 − 4·cos θ) fällt deshalb von etwa 1,95 bei 30° über 0,60 bei 90° auf 0,35 bei 150°. Über den ganzen Bereich von 30° bis 150° überstreicht der Abtrieb nur etwa 92°.",
+        "matters": "Ein Zahnradpaar hat ein festes Übersetzungsverhältnis, ein Koppelgetriebe dagegen eines, das sich mit der Stellung ändert. Das gekreuzte Viergelenk zeigt, dass dieselben vier Längen je nach Montage entweder eine 1:1-Bewegung (Parallelogramm) oder diese stark veränderliche Übersetzung ergeben. Solche Getriebe setzt man ein, wenn ein Hub an einem Ende schnell und am anderen langsam, aber kraftvoll ablaufen soll. In einem Lauf des Brickwright-Simulators ohne Oberfläche folgte der gemessene Abtriebsarm tan(φ/2) = 3·tan(θ/2) über den ganzen Lauf auf 0,007° genau (zum Beispiel 143,15° bei θ = 90,02°). Das ist eine Simulationsbeobachtung; ein realer LEGO-Aufbau wurde nicht geprüft.",
+        "question": "Der Halbwinkelfaktor ist 3. Aus der Startstellung (Antrieb 60°, Abtrieb 120°) fährt der Antrieb auf 90°. Erreicht der Abtrieb 270°, 150° oder etwas anderes? Und dreht der nächste 30°-Schritt (90° → 120°) den Abtrieb weiter oder weniger weit als dieser?",
+        "answer": "Weder 270° noch 150°. Bei θ = 90° ist tan(θ/2) = 1, also tan(φ/2) = 3 und φ = 2·arctan 3 ≈ 143,1°: 30° Antrieb ergeben etwa 23,1° Abtrieb. Der nächste Schritt auf 120° liefert tan(φ/2) = 3·tan 60° ≈ 5,196, also φ ≈ 158,2° – nur noch etwa 15,1° mehr. Die Übersetzung sinkt weiter, weil dφ/dθ = 3/(5 − 4·cos θ) mit wachsendem θ kleiner wird.",
+        "further": [
+          "Berechne den Abtrieb bei 45° und 150° (≈ 102,3° und ≈ 169,8°) und vergleiche ihn in den Haltezeiten mit dem Arm. Prüfe auch, ob Hin- und Rückweg bei gleichem Antriebswinkel übereinstimmen.",
+          "Der Kreuzungspunkt der beiden langen Arme ist der Momentanpol der Koppel. Seine Abstände zu den beiden Gestelldrehpunkten ergeben zusammen immer 64 mm; er wandert also auf einer Ellipse mit den Gestelldrehpunkten als Brennpunkten.",
+          "Ungekreuzt montiert (als Parallelogramm) ergeben dieselben vier Längen bei jedem Winkel φ = θ. Die Längen allein legen die Bewegung nicht fest, der Montagezweig schon. Wechseln könnte die Kette nur in den Strecklagen bei θ = 0° oder 180°; die Anschläge (etwa 21,5° und 158,5°) und der Softwarebereich des Programms (Encoder −30° bis +90°) halten sie davon fern.",
+          "Grenzen: Die Simulation nimmt starre Glieder und ideale Gelenke an. Über Drehmoment, Spiel, die Höhenversätze der Arme oder einen realen Aufbau sagt dieser Versuch nichts aus."
+        ]
+      },
+      "formula": {
+        "en": "L = 64 mm (160 LDU), g = 32 mm (80 LDU), crossed branch: L·sin((φ − θ)/2) = g·sin((φ + θ)/2) ⇒ tan(φ/2) = (L + g)/(L − g)·tan(θ/2) = 3·tan(θ/2); φ = 2·atan2(3 sin(θ/2), cos(θ/2)); dφ/dθ = 3/(5 − 4 cos θ); coupler heading = θ + φ. θ = 60° + encoder A. Examples: θ = 30° → φ ≈ 77.6°; 60° → 120°; 90° → 143.1°; 150° → 169.8°.",
+        "de": "L = 64 mm (160 LDU), g = 32 mm (80 LDU), gekreuzter Zweig: L·sin((φ − θ)/2) = g·sin((φ + θ)/2) ⇒ tan(φ/2) = (L + g)/(L − g)·tan(θ/2) = 3·tan(θ/2); φ = 2·atan2(3·sin(θ/2), cos(θ/2)); dφ/dθ = 3/(5 − 4·cos θ); Koppelrichtung = θ + φ. θ = 60° + Encoder A. Beispiele: θ = 30° → φ ≈ 77,6°; 60° → 120°; 90° → 143,1°; 150° → 169,8°."
+      },
+      "related": [
+        "tempo-loop.ldr",
+        "crank-rocker.ldr"
+      ]
+    },
+    "foldback": {
+      "en": {
+        "what": "Foldback is an antiparallelogram: one motor drives a crossed four-bar linkage with two equal 32 mm cranks and a 48 mm coupler between fixed pivots 48 mm apart. The passive output turns in the opposite direction with a changing angular ratio. The separately assembled open comparison uses the same parts and program and ideally follows the input one-for-one.",
+        "try": [
+          "Load the model, press Reset, then Run. Motor A turns only the blue input arm; the red output arm is passive. The saved input angle is 90°.",
+          "Compare the first four held positions, then watch the full return sweep and the next forward sweep. Predict whether reversing the motor retraces the same branch.",
+          "Load foldback-open.ldr, keep the same foldback.bw program, Reset and Run again. Compare the physical output direction and the three equal-step output increments.",
+          "Keep the input in the delivered 20°–110° command sector. The 18°–112° guard sector is a geometry-check boundary, not a mechanical stop. Use a separate saved assembly for the open comparison; do not try to change branches by driving through alignment."
+        ],
+        "why": "Let the fixed pivots be O=(0,0) and D=(a,0), with a=48 mm. Equal crank spans b=32 mm place B=b(cos θ,sin θ) and C=(a,0)+b(cos φ,sin φ). Requiring the coupler length |C−B| to equal a has two assembly solutions. The open parallelogram gives φ=θ. The crossed antiparallelogram gives tan(φ/2)=−5 tan(θ/2), on the continuous negative-output branch. Link lengths alone therefore do not select a unique motion: the initial assembly matters.",
+        "matters": "A mechanical transmission can reverse direction and change its angular gain without gears. Equal input steps need not produce equal output steps, and the same inventory can have different motion on another assembly branch. This model makes assembly state, passive output measurement and changing velocity ratio visible. The crossed linkage has a further surprise: its input and output arms turn exactly like two equal elliptical gears meshing while each pivots about one focus. That is why elliptical gears can replace it in machines that need a speed that changes during every turn.",
+        "question": "Does the −5 in tan(φ/2)=−5 tan(θ/2) mean the output always moves five degrees backward for each input degree? What changes in the open comparison?",
+        "answer": "No. The factor multiplies the tangents of half-angles, not the angles. The crossed local ratio is −5/[cos²(θ/2)+25 sin²(θ/2)], so it changes with position. In the open assembly φ=θ and the ideal local ratio is +1. The same motor targets therefore produce a different measured output.",
+        "further": [
+          "The two ideal branches meet at aligned positions at 0° and 180°. Those positions are outside the delivered operating sector. The finite-thickness parts, shaft retention and real motion envelope require separate construction checks.",
+          "Compare Tempo Loop. Its ground/input/coupler/output lengths are 16/32/40/40 mm, and both cranks make full turns in the same direction. Foldback instead compares the open and crossed assemblies of equal opposite lengths.",
+          "In the simulator the crossed output follows tan(φ/2) = −5·tan(θ/2) within 0.022° over the whole run, and the open comparison stays 1:1 within 0.008°. Real pins have play: estimate how much 0.1 mm of play at each joint would change the output angle near θ = 20°, where the output moves fastest."
+        ]
+      },
+      "de": {
+        "what": "Foldback ist ein Antiparallelogramm: Ein Motor treibt ein gekreuztes Viergelenk mit zwei gleich langen 32-mm-Kurbeln und einer 48-mm-Koppel zwischen festen Lagern im Abstand von 48 mm an. Der passive Abtrieb dreht sich entgegengesetzt mit einem veränderlichen Winkelverhältnis. Die separat aufgebaute offene Vergleichsanordnung verwendet dieselben Teile und dasselbe Programm; sie folgt dem Antrieb ideal im Verhältnis eins zu eins.",
+        "try": [
+          "Lade das Modell, drücke Zurücksetzen und dann Start. Motor A dreht nur den blauen Eingangsarm; der rote Abtriebsarm ist passiv. Der gespeicherte Eingangswinkel beträgt 90°.",
+          "Vergleiche die ersten vier Haltepositionen. Beobachte danach den ganzen Rücklauf und den folgenden Vorlauf. Sage voraus, ob das Umkehren des Motors dieselbe Bewegungsbahn zurückverfolgt.",
+          "Lade foldback-open.ldr, behalte dasselbe Programm foldback.bw, setze zurück und starte erneut. Vergleiche die tatsächliche Abtriebsrichtung und die Abtriebsänderungen der drei gleichen Eingangsschritte.",
+          "Bleibe im gelieferten Eingangsbereich von 20° bis 110°. Der Prüfbereich von 18° bis 112° ist eine Grenze der Geometrieprüfung und kein mechanischer Anschlag. Verwende für den offenen Vergleich die separat gespeicherte Anordnung; versuche den Montagezweig nicht durch Überfahren einer gestreckten Stellung zu wechseln."
+        ],
+        "why": "Die festen Lager seien O=(0,0) und D=(a,0) mit a=48 mm. Die gleich langen Kurbeln mit b=32 mm setzen B=b(cos θ,sin θ) und C=(a,0)+b(cos φ,sin φ). Die Bedingung |C−B|=a für die Koppellänge besitzt zwei Montagelösungen. Das offene Parallelogramm ergibt φ=θ. Das gekreuzte Antiparallelogramm ergibt tan(φ/2)=−5 tan(θ/2) auf dem stetigen Zweig mit negativem Abtriebswinkel. Die Längen allein bestimmen also noch nicht die Bewegung: Auch die Ausgangsmontage ist entscheidend.",
+        "matters": "Ein mechanisches Getriebe kann ohne Zahnräder die Drehrichtung umkehren und seine Winkelübersetzung verändern. Gleiche Eingangsschritte müssen keine gleichen Ausgangsschritte ergeben. Derselbe Teilesatz kann in einem anderen Montagezweig anders laufen. Hier werden die Montageanordnung, die Messung des passiven Abtriebs und die veränderliche Übersetzung sichtbar. Das gekreuzte Getriebe hat noch eine Überraschung: Eingangs- und Abtriebsarm drehen sich genau wie zwei gleiche elliptische Zahnräder, die ineinandergreifen und sich jeweils um einen Brennpunkt drehen. Deshalb können elliptische Zahnräder es in Maschinen ersetzen, die während jeder Umdrehung eine wechselnde Geschwindigkeit brauchen.",
+        "question": "Bedeutet die −5 in tan(φ/2)=−5 tan(θ/2), dass sich der Abtrieb für jedes Eingangsgrad immer um fünf Grad rückwärts bewegt? Was ändert sich im offenen Vergleich?",
+        "answer": "Nein. Der Faktor multipliziert die Tangenswerte der halben Winkel, nicht die Winkel selbst. Das lokale Winkelverhältnis ist im gekreuzten Aufbau −5/[cos²(θ/2)+25 sin²(θ/2)] und hängt von der Stellung ab. In der offenen Anordnung gilt φ=θ mit dem idealen Verhältnis +1. Dieselben Motorziele führen deshalb zu einem anderen gemessenen Abtrieb.",
+        "further": [
+          "Die idealen Montagezweige treffen sich in gestreckten Stellungen bei 0° und 180°. Diese liegen außerhalb des gelieferten Betriebsbereichs. Die endliche Bauteildicke, die Achssicherung und der tatsächliche Bewegungsraum müssen zusätzlich geprüft werden.",
+          "Vergleiche Tempo Loop. Dort betragen Grundabstand, Eingangskurbel, Koppel und Ausgangskurbel 16/32/40/40 mm; beide Kurbeln drehen vollständig in derselben Richtung. Foldback vergleicht dagegen den offenen und den gekreuzten Aufbau bei paarweise gleichen gegenüberliegenden Längen.",
+          "Im Simulator folgt der gekreuzte Abtrieb tan(φ/2) = −5·tan(θ/2) über den ganzen Lauf auf 0,022° genau, der offene Vergleich bleibt auf 0,008° bei 1:1. Echte Pins haben Spiel: Schätze, wie stark 0,1 mm Spiel an jedem Gelenk den Abtriebswinkel nahe θ = 20° verändern würde, wo sich der Abtrieb am schnellsten bewegt."
+        ]
+      },
+      "formula": {
+        "en": "a=48 mm, b=32 mm; crossed: tan(φ/2)=−5 tan(θ/2), dφ/dθ=−5/[cos²(θ/2)+25 sin²(θ/2)]; open: φ=θ. θ=90°−A, where A is the saved-pose motor encoder. Commanded θ=20°…110°.",
+        "de": "a=48 mm, b=32 mm; gekreuzt: tan(φ/2)=−5 tan(θ/2), dφ/dθ=−5/[cos²(θ/2)+25 sin²(θ/2)]; offen: φ=θ. θ=90°−A, wobei A der Motorencoder relativ zur gespeicherten Stellung ist. Vorgegebener Bereich: θ=20°…110°."
+      },
+      "related": [
+        "tempo-loop.ldr",
+        "scale-echo.ldr",
+        "crank-rocker.ldr"
+      ]
+    },
+    "ghost-pivot": {
+      "en": {
+        "what": "Motor A moves a pair of linked parallelograms. Their passive output is a long tool beam. Watch its empty end hole: the beam changes heading around that point even though no axle or bearing passes through it. The comparison model replaces one loop link with a longer stock beam while leaving the same motor program in place.",
+        "try": [
+          "Load ghost-pivot.ldr and the matching ghost-pivot.bw program. Reset to the saved pose, then press Run in Robot Lab’s toolbar. Identify the tool beam’s empty end hole before watching the sweep.",
+          "Observe two things separately: how far the tool turns and how far that particular hole moves relative to the frame. A point that stays still is only interesting here if the tool actually changes heading.",
+          "Predict what the longer-link comparison will do before loading ghost-pivot-unequal-link.ldr. Run the same program and follow the same tool hole. Does reaching the same motor angles preserve the remote centre?",
+          "Reset before repeating after manual movement or an interruption. Keep the supplied finite sweep; the model demonstrates a bounded assembly branch, not unrestricted rotation."
+        ],
+        "why": "A parallelogram carries a direction across a moving linkage. Two linked parallelograms combine that direction relationship with matching distances so that the tool’s translation and rotation cancel at one chosen point. The surrounding links carry the constraint; there is no hidden bearing at the end hole. Lengthening one link changes the loop closure and removes the exact geometric cancellation.",
+        "matters": "A remote centre lets a mechanism change a tool’s heading while keeping a chosen location accessible. The useful distinction is between moving an entire tool around an actual pivot and creating the same motion through bearings placed elsewhere. This model studies that kinematic principle, not a load capacity or a medical device.",
+        "question": "If the end hole remains still, is the whole tool stationary? Should the longer-link model retain the same fixed hole just because its motor reaches the same targets?",
+        "answer": "No. A rigid tool can rotate while one of its points remains fixed. The remote-centre linkage makes that point the empty end hole. The longer link changes the geometry, so the same input angles need not keep the hole at one location. Compare the actual hole position and tool heading; the motor encoder alone cannot establish either output property.",
+        "further": [
+          "Follow the same physical end hole through the entire sweep, including reversals. Do not choose a new centre from each pair of tool positions after the experiment.",
+          "Compare Pantograph Doubler and Scale Echo. They scale a moving point’s path; Ghost Pivot constrains a point of a rotating rigid tool to remain fixed.",
+          "A good return does not prove that the centre stayed fixed during the sweep. Check the largest observed displacement as well as the final pose.",
+          "Real pin clearance, beam flexibility and friction can move the apparent centre. Native results describe the supplied finite simulation; hardware stiffness and precision require separate measurements.",
+          "In the recorded native experiment, the main tool swept 70.264° while its end hole moved at most 0.143540 mm in 3D. The longer-link control reached 21.519175 mm from its own saved point. These are observations of the supplied finite simulation, not a hardware precision rating."
+        ]
+      },
+      "de": {
+        "what": "Motor A bewegt zwei gekoppelte Parallelogramme. Ihr passiver Ausgang ist ein langer Werkzeugträger. Beobachte dessen freies Endloch: Der Träger schwenkt um diesen Punkt, obwohl dort weder Achse noch Lager sitzt. Im Vergleichsmodell wird ein Koppelglied durch einen längeren Standardbalken ersetzt; das Motorprogramm bleibt gleich.",
+        "try": [
+          "Lade ghost-pivot.ldr und das zugehörige Programm ghost-pivot.bw. Stelle mit Reset die gespeicherte Lage her und drücke Run in der Robot-Lab-Werkzeugleiste. Suche vor dem Schwenken das freie Endloch des Werkzeugträgers.",
+          "Beobachte zwei Größen getrennt: den Drehwinkel des Trägers und den Weg genau dieses Lochs relativ zum Rahmen. Ein ruhender Punkt ist hier nur aussagekräftig, wenn sich die Ausrichtung des Trägers tatsächlich ändert.",
+          "Sage das Ergebnis mit längerem Koppelglied voraus, bevor du ghost-pivot-unequal-link.ldr lädst. Verwende dasselbe Programm und verfolge dasselbe Loch. Erhalten gleiche Motorwinkel auch den fernliegenden Drehpunkt?",
+          "Verwende nach Handbewegungen oder einer Unterbrechung vor der Wiederholung Reset. Halte den mitgelieferten endlichen Schwenkbereich ein; das Modell zeigt einen begrenzten Montagezweig und keine beliebige Rundumdrehung."
+        ],
+        "why": "Ein Parallelogramm überträgt eine Richtung durch ein bewegliches Gestänge. Zwei gekoppelte Parallelogramme verbinden diese Richtungsbeziehung mit passenden Abständen. Dadurch heben sich Verschiebung und Drehung des Werkzeugträgers an einem bestimmten Punkt auf. Die umliegenden Glieder erzwingen die Bewegung; im Endloch steckt kein verborgenes Lager. Ein längeres Koppelglied verändert den Schleifenschluss und hebt die genaue geometrische Aufhebung auf.",
+        "matters": "Ein fernliegender Drehpunkt erlaubt es, die Ausrichtung eines Werkzeugs zu ändern und einen ausgewählten Ort dabei zugänglich zu halten. Die Lager können an anderer Stelle sitzen und dennoch die Bewegung um diesen Ort erzwingen. Das Modell untersucht dieses kinematische Prinzip, keine Tragfähigkeit und kein medizinisches Gerät.",
+        "question": "Ist der ganze Werkzeugträger unbeweglich, wenn sein Endloch stillsteht? Müsste das Modell mit längerem Koppelglied denselben festen Punkt behalten, nur weil sein Motor dieselben Ziele erreicht?",
+        "answer": "Nein. Ein starrer Träger kann sich drehen, während einer seiner Punkte fest bleibt. Das Gestänge macht das freie Endloch zu diesem Punkt. Das längere Koppelglied verändert die Geometrie; gleiche Eingangswinkel halten das Loch deshalb nicht zwangsläufig an einem Ort. Vergleiche tatsächliche Lochposition und Ausrichtung. Der Motorencoder allein misst keine dieser Ausgangseigenschaften.",
+        "further": [
+          "Verfolge während des gesamten Schwenkens und Umkehrens dasselbe physische Endloch. Bestimme nicht nachträglich für jedes Paar von Werkzeuglagen einen neuen Mittelpunkt.",
+          "Vergleiche Pantograph Doubler und Scale Echo. Sie vergrößern die Bahn eines bewegten Punkts. Ghost Pivot hält einen Punkt eines sich drehenden starren Trägers an einem Ort.",
+          "Eine gute Rückkehr beweist nicht, dass der Drehpunkt unterwegs fest blieb. Prüfe die größte beobachtete Verschiebung ebenso wie die Endlage.",
+          "Reales Bolzenspiel, Balkenverformung und Reibung können den scheinbaren Mittelpunkt verschieben. Native Ergebnisse gelten für die mitgelieferte endliche Simulation; Steifigkeit und Genauigkeit eines physischen Aufbaus benötigen eigene Messungen.",
+          "Im aufgezeichneten nativen Versuch überstrich der Hauptträger 70,264°, während sein Endloch höchstens 0,143540 mm im Raum abwich. Das Vergleichsmodell mit längerem Koppelglied erreichte 21,519175 mm relativ zu seinem eigenen gespeicherten Ausgangspunkt. Diese Werte beschreiben die mitgelieferte endliche Simulation, keine zugesicherte Genauigkeit eines physischen Aufbaus."
+        ]
+      },
+      "formula": {
+        "en": "Ideal main geometry, in mm: let u be the rotating input’s unit direction and e the fixed direction from O1 to O2. The parallelograms give A = 32u − 48e and B = 80u − 48e. The tool’s actual end hole is R = A − (2/3)(B − A) = −48e, independent of u. Measured centre error is |R_observed(q) − R_observed(0)| relative to the observed frame; the equation does not supply the observation.",
+        "de": "Ideale Hauptgeometrie in mm: u ist der drehende Einheitsvektor des Eingangs, e die feste Richtung von O1 nach O2. Die Parallelogramme ergeben A = 32u − 48e und B = 80u − 48e. Das tatsächliche Endloch des Trägers liegt bei R = A − (2/3)(B − A) = −48e, unabhängig von u. Der gemessene Mittelpunktfehler ist |R_beobachtet(q) − R_beobachtet(0)| relativ zum beobachteten Rahmen; die Gleichung liefert nicht die Beobachtung."
+      },
+      "related": [
+        "pantograph-doubler.ldr",
+        "scale-echo.ldr",
+        "positioning-arm.ldr",
+        "gimbal-lab.ldr"
+      ]
+    },
+    "travel-dial": {
+      "en": {
+        "what": "Motor A moves a guided sled beneath a separate rubber measuring wheel. The wheel turns freely: contact with the passing surface supplies its rotation. Follow both the sled and one of the wheel’s visible spokes, then compare with the supplied model that holds the wheel clear of the surface.",
+        "try": [
+          "Load travel-dial.ldr and its matching travel-dial.bw program. Reset the saved model, then press Run in Robot Lab’s toolbar. Follow the sled’s outward stroke and return.",
+          "Compare the six programmed arrivals: +60°, −60°, 0° at 15°/s, then the same route at 45°/s. The slider-crank makes sled speed vary along each stroke. For the same actual surface travel, should the measuring wheel need the same angle or the same time?",
+          "Predict the lifted-wheel result before loading the physical comparison model. Use the same program and compare actual sled travel as well as wheel motion.",
+          "Reset before repeating after an interruption or manual movement. Keep the supplied stroke limits; watch the independent wheel instead of treating the drive motor’s encoder as its reading."
+        ],
+        "why": "Without slip, relative surface travel equals the rolling radius multiplied by the wheel’s angle in radians. Friction makes that relationship possible, but does not guarantee perfect tracking. A freely pivoting support can shift the wheel centre slightly, so the relevant travel is the surface’s motion relative to that centre. Lifting the wheel interrupts the intended contact path.",
+        "matters": "Measuring wheels convert linear travel into a rotation that can be read by a pointer or encoder. Contact, alignment, effective radius and slip determine the usefulness of that measurement. A drive motor reaching its target does not establish what the separate measuring wheel recorded.",
+        "question": "If the sled covers the same distance twice as quickly, should an ideal wheel rotate through twice the angle? What should happen when the wheel is held clear?",
+        "answer": "The ideal angle depends on relative distance, not duration: the wheel rotates through the same angle in less time. Its angular speed increases. With the wheel clear, that surface motion no longer drives the wheel. Real contact can slip or creep, so compare the actual traces rather than assuming either perfect rolling or exactly zero residual motion. In the supplied native run, the main’s largest rolling residual was 0.116 mm. The raised wheel rotated at most 0.116°, while matched sled endpoints differed by at most 0.0039 mm. These are observations of this finite native experiment; physical tyre calibration remains separate.",
+        "further": [
+          "Compare measured wheel angle with independently observed surface travel throughout each stroke, including acceleration, reversal and return. Do not choose a fitted radius merely to make the curves agree.",
+          "A wheel that returns near its starting angle can still have had errors along the way. Check both the travel trace and the return.",
+          "Compare Cusp Lab’s rack-constrained rolling and Integral’s wheel on a rotating disk. Here a separate passive wheel measures a linear surface.",
+          "The native contact model does not calibrate a physical LEGO measuring instrument. Tyre deformation, wear, alignment and axle friction need separate hardware measurements."
+        ]
+      },
+      "de": {
+        "what": "Motor A bewegt einen geführten Schlitten unter einem getrennten Gummimessrad. Das Rad dreht sich frei: Der Kontakt mit der vorbeilaufenden Oberfläche treibt es an. Beobachte Schlitten und eine sichtbare Radspeiche und vergleiche anschließend mit dem mitgelieferten Modell, das das Rad von der Oberfläche abhebt.",
+        "try": [
+          "Lade travel-dial.ldr und das zugehörige Programm travel-dial.bw. Stelle mit Reset die gespeicherte Lage her und drücke Run in der Robot-Lab-Werkzeugleiste. Beobachte Hin- und Rückweg des Schlittens.",
+          "Vergleiche die sechs programmierten Zielpositionen: +60°, −60°, 0° bei 15°/s, danach dieselbe Folge bei 45°/s. Durch die Schubkurbel ändert sich die Schlittengeschwindigkeit innerhalb jedes Hubs. Braucht das Messrad für denselben tatsächlichen Oberflächenweg denselben Winkel oder dieselbe Zeit?",
+          "Sage das Ergebnis mit angehobenem Rad voraus, bevor du das physische Vergleichsmodell lädst. Verwende dasselbe Programm und vergleiche sowohl den tatsächlichen Schlittenweg als auch die Radbewegung.",
+          "Verwende nach einer Unterbrechung oder Handbewegung vor der Wiederholung Reset. Halte die mitgelieferten Hubgrenzen ein und beobachte das freie Rad; der Encoder des Antriebsmotors ist nicht dessen Messwert."
+        ],
+        "why": "Beim Abrollen ohne Schlupf ist der relative Oberflächenweg gleich Rollradius mal Radwinkel im Bogenmaß. Reibung ermöglicht diese Beziehung, garantiert aber keine fehlerfreie Mitnahme. Eine schwenkbare Aufhängung kann den Radmittelpunkt etwas verschieben. Entscheidend ist deshalb die Bewegung der Oberfläche relativ zu diesem Mittelpunkt. Das Anheben des Rades unterbricht den vorgesehenen Kontaktweg.",
+        "matters": "Messräder verwandeln linearen Weg in eine Drehung, die sich mit einem Zeiger oder Encoder erfassen lässt. Kontakt, Ausrichtung, wirksamer Radius und Schlupf bestimmen die Qualität dieser Messung. Ein erreichter Zielwinkel des Antriebsmotors beweist nicht, welchen Weg das getrennte Messrad erfasst hat.",
+        "question": "Wenn der Schlitten denselben Weg in halber Zeit zurücklegt, müsste sich ein ideales Rad dann um den doppelten Winkel drehen? Was sollte bei angehobenem Rad passieren?",
+        "answer": "Der ideale Winkel hängt vom relativen Weg ab, nicht von der Dauer. Das Rad dreht sich in kürzerer Zeit um denselben Winkel; seine Winkelgeschwindigkeit steigt. Ohne Kontakt treibt die Oberfläche das Rad nicht mehr an. Reale Kontakte können rutschen oder kriechen. Vergleiche deshalb die tatsächlichen Kurven, statt perfektes Abrollen oder genau null Restbewegung vorauszusetzen. Im mitgelieferten nativen Versuch betrug die größte Rollabweichung des Hauptmodells 0,116 mm. Das angehobene Rad drehte sich höchstens um 0,116°, während die einander entsprechenden Schlittenendpunkte höchstens 0,0039 mm voneinander abwichen. Diese Beobachtungen gelten für diesen endlichen nativen Versuch; eine Kalibrierung am realen Reifen bleibt eine eigene Aufgabe.",
+        "further": [
+          "Vergleiche den gemessenen Radwinkel während jedes Hubs mit dem unabhängig beobachteten Oberflächenweg, auch beim Anfahren, Umkehren und Zurückkehren. Passe den Radius nicht nachträglich nur an, damit die Kurven übereinstimmen.",
+          "Ein Rad kann ungefähr zu seinem Anfangswinkel zurückkehren und unterwegs trotzdem Messfehler haben. Prüfe Verlauf und Rückkehr.",
+          "Vergleiche Cusp Labs durch Zahneingriff festgelegtes Abrollen und Integrals Rad auf einer Drehscheibe. Hier misst ein getrenntes passives Rad eine lineare Oberfläche.",
+          "Das native Kontaktmodell kalibriert kein reales LEGO-Messgerät. Reifenverformung, Verschleiß, Ausrichtung und Achsreibung benötigen eigene Hardwaremessungen."
+        ]
+      },
+      "formula": {
+        "en": "Ideal no-slip relation: Δs_relative = R Δθ, with θ in radians and positive wheel angle chosen in the positive surface-travel direction. Δs_relative = Δx_sled − Δx_wheel centre. Here R = 28 mm; residual = observed relative travel − R × observed absolute wheel angle relative to the chassis. The crank angle is not the measuring wheel’s angle.",
+        "de": "Ideales Abrollen ohne Schlupf: Δs_relativ = R Δθ, mit θ im Bogenmaß und positivem Radwinkel in positiver Oberflächenrichtung. Δs_relativ = Δx_Schlitten − Δx_Radmittelpunkt. Hier ist R = 28 mm; Abweichung = beobachteter relativer Weg − R × beobachteter absoluter Radwinkel relativ zum Rahmen. Der Kurbelwinkel ist nicht der Winkel des Messrads."
+      },
+      "related": [
+        "cusp-lab.ldr",
+        "integral.ldr",
+        "rack-shuttle.ldr"
+      ]
+    },
+    "carry-ratio": {
+      "en": {
+        "what": "A motor-driven tray carries a free ball by contact alone. Motor A turns a 20 LDU (8 mm) crank; a thin con-rod pushes a slider carriage along a 16L guide axle, and the carriage carries a 4x8 plate as the deck, so the deck moves back and forth through 16 mm. A 19 mm Technic ball rests on the deck with no axle, guide or attachment. The program sweeps the crank at 120, 240, 480 and 720 °/s, then returns. In the simulator the ball's centre follows the deck with a ratio of 0.285 to 0.288 at every speed, against the predicted 2/7 = 0.2857, and the ball turns about 1.19 rad (68°) for every 11.4 mm it lags behind the deck.",
+        "try": [
+          "Load the model, press Reset, then Run. The crank starts at 90°, away from the dead centre where the con-rod lies along the crank.",
+          "Watch the ball, not the motor. During one slow sweep the deck moves 16 mm while the ball's centre moves only about 4.6 mm; the ball spins visibly, about 68 degrees peak to peak.",
+          "Pick one slow stage and compare the ball's spin with the distance it lags behind the deck: rolling without slipping means the tyre's arc equals that lag.",
+          "Compare the four speeds. The ball is carried by the same fraction at every one, because the ratio depends only on the ball's shape, not on speed or mass. Much faster sweeps would make it slip and throw it off the deck, which is why the program stops at 720 °/s."
+        ],
+        "why": "While a free body rolls on a moving support without slipping, two relations hold. The contact point must move with the support, so the rolled arc equals the relative displacement: r*dphi = -(dx_t - dx_p). And because the only horizontal force on the body is friction at the contact, the linear and angular momentum balances give a_p = a_t*I/(I + M r^2). For a uniform solid sphere I = (2/5)M r^2, so the centre inherits exactly 2/7 of the deck's acceleration and displacement, whatever the ball's mass or radius. That is why the measured ratio sits on 0.286 for four different speeds. The friction needed is f = M a_t*2/7; it exceeds the available mu*M*g only when a_t passes 3.5*mu*g, which is why faster sweeps first lag and then slip.",
+        "matters": "Ungrasped transport is how conveyor belts, roller tables, ball transfers and vibratory feeders move parts without grippers. The same balance explains a spool rolling on a pulled plank, a coin on a moving card, and why a ball in a moving train starts to roll backwards relative to the floor. Knowing that the carried fraction is set by inertia rather than by mass tells a designer that light and heavy balls of the same shape behave alike, while a hollow shell would not.",
+        "question": "A solid sphere alone on a level deck is carried by friction. If the deck moves 16 mm, how far does the sphere's centre move, and how far does the sphere turn?",
+        "answer": "The centre moves 2/7 of 16 mm, about 4.6 mm, in the same direction as the deck. The remaining 11.4 mm is the relative stroke, and the ball turns through 11.4 mm / 9.6 mm = 1.19 rad, about 68°. In the simulator the measured ratio is between 0.285 and 0.288 at every speed.",
+        "further": [
+          "Repeat with a hollow ball or a short cylinder of known inertia. Predict its ratio from kappa = I/(M r^2) before running, then compare: a hoop-like body should be carried much further than a solid sphere.",
+          "Load 'Carry Ratio — ball on the base (control)'. The same ball lies on the fixed base instead of the deck, and the deck still moves 16 mm. Predict the ball's motion, then check: its carried ratio drops to about 0.000.",
+          "Estimate the friction coefficient from the speed at which the ball first slips on the deck, a_t = 3.5*mu*g for a solid sphere, and compare it with a deliberate slow tilt test."
+        ]
+      },
+      "de": {
+        "what": "Ein motorisch angetriebener Tisch nimmt eine freie Kugel allein über Kontakt mit. Motor A dreht eine Kurbel mit 20 LDU (8 mm) Radius; eine dünne Pleuelstange schiebt einen Gleitschlitten auf einer 16L-Führungsachse, und der Schlitten trägt eine 4x8-Platte als Tisch, der sich so 16 mm hin und her bewegt. Auf dem Tisch liegt eine 19-mm-Technic-Kugel ohne Achse, Führung oder Befestigung. Das Programm fährt die Kurbel mit 120, 240, 480 und 720 °/s und dann zurück. Im Simulator folgt der Kugelmittelpunkt dem Tisch bei jeder Drehzahl mit einem Verhältnis von 0,285 bis 0,288, vorhergesagt sind 2/7 = 0,2857, und die Kugel dreht sich um etwa 1,19 rad (68°) für je 11,4 mm, die sie hinter dem Tisch zurückbleibt.",
+        "try": [
+          "Lade das Modell, drücke Zurücksetzen und dann Start. Die Kurbel beginnt bei 90°, also entfernt vom Totpunkt, in dem die Pleuelstange längs der Kurbel liegt.",
+          "Beobachte die Kugel, nicht den Motor. Während eines langsamen Durchlaufs bewegt sich der Tisch 16 mm, der Kugelmittelpunkt aber nur etwa 4,6 mm; die Kugel dreht sich sichtbar, etwa 68 Grad von einem Extrem zum anderen.",
+          "Vergleiche in einer langsamen Stufe die Drehung der Kugel mit dem Weg, um den sie hinter dem Tisch zurückbleibt: Rollen ohne Gleiten heißt, dass der abgerollte Bogen genau diesem Rückstand entspricht.",
+          "Vergleiche die vier Drehzahlen. Die Kugel wird bei jeder um denselben Anteil mitgenommen, weil das Verhältnis nur von der Form der Kugel abhängt, nicht von Drehzahl oder Masse. Viel schnellere Fahrten würden sie gleiten lassen und vom Tisch werfen; deshalb endet das Programm bei 720 °/s."
+        ],
+        "why": "Rollen ein freier Körper und seine Unterlage ohne Gleiten aufeinander, gelten zwei Beziehungen. Der Kontaktpunkt muss sich mit der Unterlage bewegen, also ist der abgerollte Bogen gleich dem Relativweg: r*dphi = -(dx_t - dx_p). Und weil die einzige waagerechte Kraft auf den Körper die Haftreibung im Kontakt ist, liefern Impuls- und Drehimpulsbilanz a_p = a_t*I/(I + M r^2). Für eine homogene Vollkugel ist I = (2/5)M r^2, der Mittelpunkt übernimmt also genau 2/7 der Beschleunigung und des Wegs des Tisches, unabhängig von Masse und Radius der Kugel. Deshalb liegt das gemessene Verhältnis bei vier verschiedenen Geschwindigkeiten auf 0,286. Die nötige Reibung ist f = M a_t*2/7; sie überschreitet mu*M*g erst, wenn a_t den Wert 3,5*mu*g übersteigt. Darum eilen schnellere Durchläufe zunächst nach und gleiten dann.",
+        "matters": "Ungriffiges Transportieren bewegt Teile ohne Greifer: Förderbänder, Rollenbahnen, Kugelrollen und Schwingförderer arbeiten so. Dieselbe Bilanz erklärt eine Spule auf einem gezogenen Brett, eine Münze auf einer bewegten Karte und warum eine Kugel im anfahrenden Zug relativ zum Boden rückwärts rollt. Dass der mitgenommene Anteil von der Trägheitsverteilung und nicht von der Masse abhängt, hilft beim Auslegen: leichte und schwere Kugeln gleicher Form verhalten sich gleich, eine Hohlkugel dagegen nicht.",
+        "question": "Eine Vollkugel liegt frei auf einem waagerechten Tisch und wird nur durch Reibung mitgenommen. Wenn der Tisch 16 mm fährt, wie weit bewegt sich der Kugelmittelpunkt, und wie weit dreht sich die Kugel?",
+        "answer": "Der Mittelpunkt bewegt sich 2/7 von 16 mm, also etwa 4,6 mm, in derselben Richtung wie der Tisch. Die restlichen 11,4 mm sind der Relativweg, und die Kugel dreht sich um 11,4 mm / 9,6 mm = 1,19 rad, also etwa 68°. Im Simulator liegt das gemessene Verhältnis bei jeder Drehzahl zwischen 0,285 und 0,288.",
+        "further": [
+          "Wiederhole den Versuch mit einer Hohlkugel oder einem kurzen Zylinder mit bekannter Trägheit. Sage das Verhältnis aus kappa = I/(M r^2) vorher und vergleiche: ein reifenartiger Körper müsste deutlich weiter mitgenommen werden als eine Vollkugel.",
+          "Lade „Carry Ratio — Kugel auf dem Boden (Kontrolle)“. Dieselbe Kugel liegt auf der festen Grundplatte statt auf dem Tisch, und der Tisch fährt weiter 16 mm. Sag die Bewegung der Kugel voraus und prüfe dann: Ihr Mitnahmeverhältnis fällt auf etwa 0,000.",
+          "Schätze den Reibungskoeffizienten aus der Drehzahl, bei der die Kugel zuerst gleitet, a_t = 3,5*mu*g für eine Vollkugel, und vergleiche ihn mit einem langsamen Neigungsversuch."
+        ]
+      },
+      "formula": {
+        "en": "Rolling without slipping on a translating support: r*dphi = -(dx_t - dx_p); dx_p = lambda*dx_t with lambda = I/(I + M r^2); solid sphere lambda = (2/5)/(1 + 2/5) = 2/7 = 0.2857; slip begins when a_t > mu*g*(1+kappa)/kappa = 3.5*mu*g for kappa = 2/5.",
+        "de": "Rollen ohne Gleiten auf einer translatorisch bewegten Unterlage: r*dphi = -(dx_t - dx_p); dx_p = lambda*dx_t mit lambda = I/(I + M r^2); für eine Vollkugel lambda = (2/5)/(1 + 2/5) = 2/7 = 0,2857; Gleiten beginnt bei a_t > mu*g*(1+kappa)/kappa = 3,5*mu*g für kappa = 2/5."
+      },
+      "related": [
+        "switchback-lift.ldr",
+        "clutch-bench.ldr",
+        "rack-shuttle.ldr"
+      ]
+    },
+    "air-budget": {
+      "en": {
+        "what": "Motor A drives an 8-tooth gear that turns a 24-tooth gear, a 3:1 reduction, and the 24-tooth gear turns an 8 mm crank. The crank works a LEGO pneumatic pump, whose piston moves 16 mm per stroke. The pump feeds an air tank that starts precharged to 150 kPa above atmospheric pressure. The program turns the motor nine times forward (three crank turns), pauses, then nine times back to exactly its starting angle. In the simulator the pressure rises from 150.0 to 162.9 kPa, about 2.1 kPa per pump stroke, and stays there although the motor ends where it started.",
+        "try": [
+          "Load the model, press Reset, then Run. Watch the air pressure display and the pump piston.",
+          "Count the pump strokes during the forward part: three crank turns give three strokes, and the pressure goes up by about 2 kPa each time.",
+          "Watch the reverse part. The crank turns backwards, but the piston still goes in and out, and the pressure keeps rising. Turning back does not suck the air out again.",
+          "Use the manual jog on port A in 180° steps. Each 1080° of motor turn is one crank turn and one pump stroke. Watch on which part of the turn the pressure goes up.",
+          "Load 'Air Budget — two tanks' and run the same program. The same six strokes raise the pressure by only about half as much."
+        ],
+        "why": "Each inward stroke pushes the air in the pump cylinder through a one-way valve into the tank. On the way back the valve closes, and fresh air flows into the pump from outside. Whichever way the crank turns, every turn makes one inward stroke, so reversing the motor still pumps. One stroke sweeps a volume of A·S = π·(4 mm)²·16 mm ≈ 0.80 cm³ of outside air. Squeezed into the tank's volume V, that adds Δp = p_atm·A·S / V to its pressure (Boyle's law, at constant temperature). The simulator gives the tank and its hoses V = 38 cm³, so each stroke adds 101.3 kPa · 0.80 cm³ / 38 cm³ ≈ 2.14 kPa. Six strokes add 12.9 kPa, as measured.",
+        "matters": "Every bicycle pump, compressor and tyre inflator works like this: a piston, two one-way valves and a tank. The motor's position says nothing about what is stored: a machine can return to its starting position while energy or material has been moved. In a real pump, some air always stays behind in the cylinder at the end of the stroke. As the tank pressure rises, that leftover air expands again on the return stroke, so each stroke delivers less. The simulator ignores this, so its pressure keeps rising by the same amount every stroke.",
+        "question": "The motor ends at exactly the angle it started from. Why is the tank pressure higher at the end, and by how much would one more stroke raise it?",
+        "answer": "Every crank turn, forwards or backwards, makes one inward stroke, and the one-way valve keeps the air it delivers in the tank. Net motor angle does not matter, only the number of inward strokes. One more stroke adds about 101.3 kPa · 0.80 cm³ / 38 cm³ ≈ 2.1 kPa.",
+        "further": [
+          "How many strokes would it take to raise the tank from 150 kPa to 250 kPa, the point where the simulated pump stops charging?",
+          "With the two-tank model (75 cm³), predict the rise for six strokes before you run it, then compare.",
+          "Suppose a real pump left 0.2 cm³ of air in the cylinder after each stroke. Estimate how much less air it delivers when the tank is at 150 kPa above atmospheric pressure."
+        ]
+      },
+      "de": {
+        "what": "Motor A treibt ein 8er-Zahnrad an, das ein 24er-Zahnrad dreht, eine Untersetzung von 3:1, und das 24er-Zahnrad dreht eine 8-mm-Kurbel. Die Kurbel betätigt eine LEGO-Pneumatikpumpe, deren Kolben pro Hub 16 mm fährt. Die Pumpe füllt einen Lufttank, der mit 150 kPa über dem Luftdruck vorgeladen ist. Das Programm dreht den Motor neunmal vorwärts (drei Kurbelumdrehungen), hält an und dreht ihn dann neunmal zurück, genau auf seinen Startwinkel. Im Simulator steigt der Druck von 150,0 auf 162,9 kPa, etwa 2,1 kPa pro Pumphub, und bleibt dort, obwohl der Motor wieder am Start steht.",
+        "try": [
+          "Lade das Modell, drücke Zurücksetzen und dann Start. Beobachte die Druckanzeige und den Pumpenkolben.",
+          "Zähle die Pumphübe im Vorwärtsteil: Drei Kurbelumdrehungen ergeben drei Hübe, und der Druck steigt jedes Mal um etwa 2 kPa.",
+          "Beobachte den Rückwärtsteil. Die Kurbel dreht rückwärts, aber der Kolben fährt weiter hinein und heraus, und der Druck steigt weiter. Zurückdrehen saugt die Luft nicht wieder heraus.",
+          "Verfahre Port A von Hand in 180°-Schritten. Je 1080° Motordrehung sind eine Kurbelumdrehung und ein Pumphub. Achte darauf, in welchem Teil der Umdrehung der Druck steigt.",
+          "Lade „Air Budget — zwei Tanks“ und starte dasselbe Programm. Dieselben sechs Hübe heben den Druck nur etwa halb so stark."
+        ],
+        "why": "Jeder Einwärtshub drückt die Luft im Pumpenzylinder durch ein Rückschlagventil in den Tank. Auf dem Rückweg schließt das Ventil, und frische Luft strömt von außen in die Pumpe. Egal in welche Richtung die Kurbel dreht, jede Umdrehung macht einen Einwärtshub, deshalb pumpt auch der rückwärts laufende Motor. Ein Hub verdrängt A·S = π·(4 mm)²·16 mm ≈ 0,80 cm³ Außenluft. In das Tankvolumen V gedrückt, erhöht das den Druck um Δp = p_atm·A·S / V (Gesetz von Boyle-Mariotte, bei gleicher Temperatur). Der Simulator gibt Tank und Schläuchen V = 38 cm³, also bringt jeder Hub 101,3 kPa · 0,80 cm³ / 38 cm³ ≈ 2,14 kPa. Sechs Hübe ergeben 12,9 kPa, wie gemessen.",
+        "matters": "Jede Fahrradpumpe, jeder Kompressor und jeder Reifenfüller arbeitet so: ein Kolben, zwei Rückschlagventile und ein Behälter. Die Stellung des Motors sagt nichts darüber, was gespeichert ist: Eine Maschine kann in ihre Ausgangsstellung zurückkehren, während Energie oder Material verschoben wurde. In einer echten Pumpe bleibt am Ende jedes Hubs etwas Luft im Zylinder. Steigt der Tankdruck, dehnt sich diese Restluft beim Rückhub wieder aus, und jeder Hub fördert weniger. Der Simulator lässt das weg, deshalb steigt sein Druck mit jedem Hub um denselben Betrag.",
+        "question": "Der Motor endet genau beim Startwinkel. Warum ist der Tankdruck am Ende höher, und um wie viel würde ein weiterer Hub ihn anheben?",
+        "answer": "Jede Kurbelumdrehung, vorwärts oder rückwärts, macht einen Einwärtshub, und das Rückschlagventil hält die geförderte Luft im Tank. Es zählt nicht der Netto-Motorwinkel, sondern die Zahl der Einwärtshübe. Ein weiterer Hub bringt etwa 101,3 kPa · 0,80 cm³ / 38 cm³ ≈ 2,1 kPa.",
+        "further": [
+          "Wie viele Hübe braucht es, um den Tank von 150 kPa auf 250 kPa zu bringen, den Punkt, an dem die simulierte Pumpe nicht mehr füllt?",
+          "Sag für das Zwei-Tank-Modell (75 cm³) den Anstieg nach sechs Hüben voraus, bevor du es startest, und vergleiche dann.",
+          "Angenommen, eine echte Pumpe ließe nach jedem Hub 0,2 cm³ Luft im Zylinder. Schätze, wie viel weniger Luft sie fördert, wenn der Tank 150 kPa über dem Luftdruck steht."
+        ]
+      },
+      "formula": {
+        "en": "Δp per stroke = p_atm·A·S / V; A = π·(4 mm)² = 50.3 mm², S = 16 mm, V = 38 cm³, p_atm = 101.3 kPa → Δp ≈ 2.14 kPa. Gear reduction 24:8 = 3:1, so 1080° of motor A = one crank turn = one stroke.",
+        "de": "Δp pro Hub = p_atm·A·S / V; A = π·(4 mm)² = 50,3 mm², S = 16 mm, V = 38 cm³, p_atm = 101,3 kPa → Δp ≈ 2,14 kPa. Untersetzung 24:8 = 3:1, also 1080° an Motor A = eine Kurbelumdrehung = ein Hub."
+      },
+      "related": [
+        "pneumatic-press.ldr",
+        "crank-rocker.ldr",
+        "gearbox.ldr"
+      ]
     }
   }
 }

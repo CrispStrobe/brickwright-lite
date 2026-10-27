@@ -142,3 +142,19 @@ successful frontend Build metadata supplies no qualification for this head; its
 log and artifact bodies remain unacquired. Preserve the consumed V7/V8 failures
 and all existing one-shot boundaries. No new guest or performance result follows
 from this source composition.
+
+## CUI capture-select pin composition (2026-10-27)
+
+Main moved the CUI pin to `a5860b9cf6cb0e7f652130ce987d51dc42651b8b` (bw-circuit-ui
+PR125, adopted by Lite PR1486), which fixes the mode-publication failure above.
+This normal composition makes that the current CUI in the producer (`CUI`), the
+reader (`CUI_V8`, used only by the F9 map) and the F9 installed CUI witnesses
+(LANES.md, package.json, scripts/verify-interaction.mjs, ScopePanel.jsx
+re-measured from the exact supplier blobs; the method reproduces every F8
+witness at the previous pin). The F7/F8 maps keep the literal
+`1bc233c9297e03abb9b7eb603e045b4e92b0bb40` they ran at. `test/pin-move-chain.test.mjs`
+now treats that pin as a previous pin admitted only at its declaration and the
+four exact F7/F8 literal positions of the reviewed producer/reader bodies, with
+new nonvacuous mutants; the producer/reader source profiles are re-taken after
+review and the earlier profiles are superseded, not edited. No assertion,
+limit, one-shot boundary or historical original changes beyond this pin role.
