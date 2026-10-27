@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "id": "rimrun-swapped",
+  "language": "de",
+  "what": "Der Vergleich zu RimRun: dieselbe schiefe Ebene, Schranke, dasselbe Programm und dieselben zwei Rollkörper aus je 39 Teilen, aber die Ballastanordnungen sind zwischen den Spuren vertauscht. Der grüne Rollkörper trägt seinen Ballast jetzt 32 mm von der Achse entfernt, der orange 16 mm. Masse (je 73,28 g), Räder und äußerer Rollradius (43,904 mm) bleiben gleich. Führt der Rollkörper mit innerem Ballast weiterhin, liegt das an der Massenverteilung und nicht an einer schnelleren Spur.",
+  "try": [
+    "Wähle im Roboter-Labor Datei → Ein Modell öffnen… und lade rimrun-swapped.ldr neu. Füge programs/rimrun.bw im Code-Tab ein, wähle ⇦ Zu Blöcken und starte mit dem Run-Knopf des Roboter-Labors.",
+    "Sage vor dem Start voraus, welche Farbe jetzt führt. Vorher trug Grün den inneren Ballast, jetzt Orange.",
+    "Vergleiche die Mittelpunkte der Rollkörper, solange beide noch frei rollen und keinen Federfänger berühren. Achte auch auf die Speichen: Der schnellere Rollkörper dreht sich auch schneller.",
+    "Lade vor jeder Wiederholung die ganze Szene neu. Das Zurückfahren der Schranke stellt die Rollkörper nicht zurück."
+  ],
+  "why": "Ein rollender Körper teilt seine Energie zwischen Vorwärtsbewegung und Drehung auf. Bei gleicher Masse und gleichem Radius hat der Körper mit weiter außen liegender Masse das größere Trägheitsmoment; mehr Energie geht in die Drehung, weniger in die Geschwindigkeit. Das Vertauschen prüft die Erklärung: Der Vorsprung muss dem Ballast folgen, nicht der Spur.",
+  "matters": "Das Vertauschen einer Anordnung zwischen zwei Positionen ist der einfachste Schutz gegen versteckte Unterschiede im Aufbau, etwa eine etwas steilere oder glattere Spur. Labor und Industrie nutzen denselben Trick.",
+  "question": "In den mitgelieferten nativen Aufzeichnungen führte in beiden Szenen der Rollkörper mit innerem Ballast. Was hätte es bedeutet, wenn stattdessen in beiden Szenen Grün geführt hätte?",
+  "answer": "Dann entschiede die Spur und nicht der Ballast das Rennen, und die Erklärung über das Trägheitsmoment wäre fraglich. In den Aufzeichnungen führt in beiden Szenen der innere Ballast: angepasste Beschleunigungen von 0,884 gegenüber 0,815 m/s² in der Hauptszene und 0,883 gegenüber 0,818 m/s² vertauscht, ein Verhältnis von etwa 1,08 bei einer Vorhersage von 1,078.",
+  "further": [
+    "Schätze beide Beschleunigungen mit a₀ = g·sin α / (1 + I/(M·R²)), I = 4,34·10⁻⁵ und 5,78·10⁻⁵ kg·m², M = 73,28 g und R = 43,904 mm.",
+    "Warum hängt das Verhältnis der Beschleunigungen nicht vom Neigungswinkel ab?",
+    "Würde eine volle Scheibe oder ein Ring gleicher Masse und gleichen Radius gewinnen? Warum?"
+  ],
+  "formula": "a₀ = g·sin α / (1 + I/(M·R²)); a_innen / a_außen = (1 + I_außen/(M·R²)) / (1 + I_innen/(M·R²)) ≈ 1,078 für die zugelassenen Trägheitsmomente.",
+  "related": [
+    "carry-ratio.ldr",
+    "switchback-lift.ldr",
+    "travel-dial.ldr"
+  ]
+}

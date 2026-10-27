@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "id": "twistspan-inner",
+  "language": "en",
+  "what": "The comparison for TwistSpan: the same two 104 mm cords now hang from the green inner collars instead of the red outer ones, so the tie spacing halves from 64 mm to 32 mm. All 107 rigid parts, their placements, the 15 g payload and the program stay the same. Both sets of collars remain on the machine.",
+  "try": [
+    "Open twistspan-inner.ldr afresh in Robot Lab, put programs/twistspan.bw in the Code tab, choose ⇦ To blocks and press Run.",
+    "During the 18 s hold, count complete oscillations of the orange beam in the same direction and time them.",
+    "Compare with twistspan.ldr: predict first whether halving the spacing doubles, halves or keeps the period."
+  ],
+  "why": "Twisting the beam lifts it slightly, because fixed-length cords lose vertical reach when their ends move sideways. With the ties closer together, the same twist moves the cord ends less, lifts the beam less and produces a weaker restoring torque. The period of a bifilar pendulum is inversely proportional to the tie spacing, so halving the spacing doubles the period.",
+  "matters": "Engineers hang parts from two wires and time their twist to measure moments of inertia, from model aircraft to satellite components.",
+  "question": "The cords, payload and program are unchanged. Why does the beam now swing about twice as slowly?",
+  "answer": "The restoring torque comes from lifting the payload, and the lift for a given twist grows with the square of the tie spacing. Halving the spacing quarters the stiffness and doubles the period. In the supplied native recordings the period goes from 0.770 s to 1.522 s, a ratio of 1.976 against the predicted 2.",
+  "further": [
+    "Use T = 2π·√(I·L/(m·g·a²)) to work out the payload's moment of inertia from the measured period.",
+    "What tie spacing would give a period of exactly 1 s?",
+    "Why does the formula not depend on how far you twist, as long as the twist is small?"
+  ],
+  "formula": "T = 2π·√(I_z·L / (m·g·a²)), a = half the tie spacing. Outer: a = 32 mm; inner: a = 16 mm ⇒ T_inner / T_outer = 2.",
+  "related": [
+    "twin-tempo.ldr",
+    "sky-courier.ldr",
+    "pendulum-array.ldr",
+    "resonance-lab.ldr"
+  ]
+}
