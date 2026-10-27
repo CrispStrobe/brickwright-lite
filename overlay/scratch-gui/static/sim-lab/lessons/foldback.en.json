@@ -2,7 +2,7 @@
   "version": 1,
   "id": "foldback",
   "language": "en",
-  "what": "Foldback is an antiparallelogram: one motor drives a crossed four-bar linkage with two equal 32 mm cranks and a 48 mm coupler between fixed pivots 48 mm apart. The passive output turns in the opposite direction with a changing angular ratio. The separately assembled open comparison uses the same parts and program and ideally follows the input one-for-one.",
+  "what": "Antiparallelogram linkage. Foldback is an antiparallelogram: one motor drives a crossed four-bar linkage with two equal 32 mm cranks and a 48 mm coupler between fixed pivots 48 mm apart. The passive output turns in the opposite direction with a changing angular ratio. The separately assembled open comparison uses the same parts and program and ideally follows the input one-for-one. An antiparallelogram is a four-bar whose long links cross. Motor A swings the input arm through 90°; the passive output arm turns the other way, following tan(φ/2) = −5·tan(θ/2) within 0.03°.",
   "try": [
     "Load the model, press Reset, then Run. Motor A turns only the blue input arm; the red output arm is passive. The saved input angle is 90°.",
     "Compare the first four held positions, then watch the full return sweep and the next forward sweep. Predict whether reversing the motor retraces the same branch.",

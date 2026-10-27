@@ -3,29 +3,6 @@
 // Checkpoint candidates are deliberately separate from the qualified registry.
 export const EXPERIMENTAL_MODELS = Object.freeze([
     {
-        "file": "cross-ratio.ldr",
-        "title": {
-            "en": "Cross Ratio — crossed four-bar",
-            "de": "Cross Ratio — gekreuztes Viergelenk"
-        },
-        "example": "cross-ratio.bw",
-        "mat": "plain",
-        "experimental": true,
-        "blocked": false,
-        "intro": {
-            "en": "A crossed four-bar (antiparallelogram): motor A steps the input arm, and the passive output follows tan(φ/2) = 3·tan(θ/2), so equal input steps give shrinking output steps.",
-            "de": "Ein gekreuztes Viergelenk (Antiparallelogramm): Motor A fährt den Antriebsarm schrittweise, der passive Abtrieb folgt tan(φ/2) = 3·tan(θ/2) – gleiche Antriebsschritte ergeben immer kleinere Abtriebsschritte."
-        },
-        "manualJog": {
-            "A": {
-                "minDeg": -30,
-                "maxDeg": 90,
-                "stepDeg": 15,
-                "speedDps": 12
-            }
-        }
-    },
-    {
         "file": "bend-ripple.ldr",
         "title": {
             "en": "Bend Ripple — variable-bend Cardan joint",
@@ -839,29 +816,6 @@ export const EXPERIMENTAL_MODELS = Object.freeze([
         }
     },
     {
-        "file": "travel-dial.ldr",
-        "title": {
-            "en": "Travel Dial — passive measuring wheel",
-            "de": "Travel Dial — passives Messrad"
-        },
-        "example": "travel-dial.bw",
-        "mat": "plain",
-        "experimental": true,
-        "blocked": false,
-        "intro": {
-            "en": "A slider-crank moves a guided sled beneath a freely turning rubber wheel. Compare the wheel’s measured angle with actual surface travel at two drive speeds, then repeat with the wheel physically lifted clear.",
-            "de": "Eine Schubkurbel bewegt einen geführten Schlitten unter einem frei drehenden Gummirad. Vergleiche dessen gemessenen Winkel bei zwei Antriebsgeschwindigkeiten mit dem tatsächlichen Weg und wiederhole den Versuch mit physisch angehobenem Rad."
-        },
-        "manualJog": {
-            "A": {
-                "minDeg": -60,
-                "maxDeg": 60,
-                "stepDeg": 15,
-                "speedDps": 15
-            }
-        }
-    },
-    {
         "file": "travel-dial-wheel-raised.ldr",
         "title": {
             "en": "Travel Dial Control — wheel raised",
@@ -881,29 +835,6 @@ export const EXPERIMENTAL_MODELS = Object.freeze([
                 "maxDeg": 60,
                 "stepDeg": 15,
                 "speedDps": 15
-            }
-        }
-    },
-    {
-        "file": "ghost-pivot.ldr",
-        "title": {
-            "en": "Ghost Pivot — remote centre of motion",
-            "de": "Ghost Pivot — fernliegender Drehpunkt"
-        },
-        "example": "ghost-pivot.bw",
-        "mat": "plain",
-        "experimental": true,
-        "blocked": false,
-        "intro": {
-            "en": "Two linked parallelograms turn a passive tool around an empty end hole with no bearing there. Measure the hole’s motion while the tool changes heading, then compare a physically lengthened loop link.",
-            "de": "Zwei gekoppelte Parallelogramme drehen einen passiven Werkzeugträger um ein freies Endloch ohne Lager. Beobachte die Bewegung dieses Lochs beim Schwenken und vergleiche mit einem physisch verlängerten Koppelglied."
-        },
-        "manualJog": {
-            "A": {
-                "minDeg": -35,
-                "maxDeg": 35,
-                "stepDeg": 5,
-                "speedDps": 10
             }
         }
     },
@@ -1169,29 +1100,6 @@ export const EXPERIMENTAL_MODELS = Object.freeze([
         }
     },
     {
-        "file": "air-budget.ldr",
-        "title": {
-            "en": "Air Budget — one pump, finite stored air",
-            "de": "Air Budget — eine Pumpe, begrenzter Luftvorrat"
-        },
-        "example": "air-budget.bw",
-        "mat": "plain",
-        "experimental": true,
-        "blocked": false,
-        "intro": {
-            "en": "A retained motor and crank work a real stock pneumatic pump. Turn the crank three times each way, then compare stored pressure with the same mechanism connected to two tanks.",
-            "de": "Ein befestigter Motor mit Kurbel betätigt eine echte Pneumatikpumpe aus Standardteilen. Drehe die Kurbel dreimal in jede Richtung und vergleiche den gespeicherten Druck mit demselben Mechanismus an zwei Lufttanks."
-        },
-        "manualJog": {
-            "A": {
-                "minDeg": 0,
-                "maxDeg": 3240,
-                "stepDeg": 180,
-                "speedDps": 270
-            }
-        }
-    },
-    {
         "file": "air-budget-two-tanks.ldr",
         "title": {
             "en": "Air Budget — two-tank comparison",
@@ -1211,29 +1119,6 @@ export const EXPERIMENTAL_MODELS = Object.freeze([
                 "maxDeg": 3240,
                 "stepDeg": 180,
                 "speedDps": 270
-            }
-        }
-    },
-    {
-        "file": "foldback.ldr",
-        "title": {
-            "en": "Foldback — crossed four-bar",
-            "de": "Foldback — gekreuztes Viergelenk"
-        },
-        "example": "foldback.bw",
-        "mat": "plain",
-        "experimental": true,
-        "blocked": false,
-        "intro": {
-            "en": "One motor drives a crossed antiparallelogram. The passive output reverses direction with a changing angular ratio. Reassemble the same parts as an open parallelogram and compare the same finite input program.",
-            "de": "Ein Motor treibt ein gekreuztes Antiparallelogramm. Der passive Abtrieb dreht sich entgegengesetzt mit veränderlichem Winkelverhältnis. Vergleiche dasselbe endliche Programm mit denselben Teilen im offenen Parallelogramm."
-        },
-        "manualJog": {
-            "A": {
-                "minDeg": -20,
-                "maxDeg": 70,
-                "stepDeg": 5,
-                "speedDps": 15
             }
         }
     },
@@ -1326,29 +1211,6 @@ export const EXPERIMENTAL_MODELS = Object.freeze([
                 "maxDeg": 8,
                 "stepDeg": 4,
                 "speedDps": 60
-            }
-        }
-    },
-    {
-        "file": "carry-ratio.ldr",
-        "title": {
-            "en": "Carry Ratio — a free ball carried by a driven tray",
-            "de": "Carry Ratio — eine freie Kugel auf einem angetriebenen Tisch"
-        },
-        "example": "carry-ratio.bw",
-        "mat": "plain",
-        "experimental": true,
-        "blocked": false,
-        "intro": {
-            "en": "A slider-crank tray carries an ungrasped ball. Measure how much of the stroke the ball inherits and how its spin obeys the rolling condition.",
-            "de": "Ein Kurbelschleifen-Tisch nimmt eine freie Kugel ohne Greifer mit. Miss, welchen Anteil des Hubs die Kugel übernimmt und wie ihre Drehung der Rollbedingung folgt."
-        },
-        "manualJog": {
-            "A": {
-                "minDeg": -180,
-                "maxDeg": 2880,
-                "stepDeg": 90,
-                "speedDps": 120
             }
         }
     },
@@ -1657,40 +1519,6 @@ export const EXPERIMENTAL_MODELS = Object.freeze([
     }
 ]);
 export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
-    "cross-ratio.ldr": {
-        "pieces": 127,
-        "motors": 1,
-        "hubs": [
-            "spike-prime"
-        ],
-        "topic": "linkages",
-        "description": {
-            "en": "A crossed four-bar (antiparallelogram): motor A steps the input arm, and the passive output follows tan(φ/2) = 3·tan(θ/2), so equal input steps give shrinking output steps.",
-            "de": "Ein gekreuztes Viergelenk (Antiparallelogramm): Motor A fährt den Antriebsarm schrittweise, der passive Abtrieb folgt tan(φ/2) = 3·tan(θ/2) – gleiche Antriebsschritte ergeben immer kleinere Abtriebsschritte."
-        },
-        "author": "CrispStrobe",
-        "license": "BSD-3-Clause",
-        "mechanism": {
-            "en": "crossed four-bar",
-            "de": "gekreuztes Viergelenk"
-        },
-        "keywords": [
-            "antiparallelogram",
-            "crossed four-bar",
-            "crossed parallelogram",
-            "half-angle",
-            "variable ratio",
-            "Antiparallelogramm",
-            "gekreuztes Viergelenk",
-            "veränderliche Übersetzung",
-            "half-angle transform",
-            "experimental",
-            "prototype",
-            "unverified",
-            "experimentell"
-        ],
-        "experimental": true
-    },
     "bend-ripple.ldr": {
         "pieces": 156,
         "motors": 2,
@@ -2894,40 +2722,6 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
         ],
         "experimental": true
     },
-    "travel-dial.ldr": {
-        "pieces": 194,
-        "motors": 1,
-        "hubs": [
-            "spike-prime"
-        ],
-        "topic": "motion",
-        "description": {
-            "en": "A slider-crank moves a guided sled beneath a freely turning rubber wheel. Compare the wheel’s measured angle with actual surface travel at two drive speeds, then repeat with the wheel physically lifted clear.",
-            "de": "Eine Schubkurbel bewegt einen geführten Schlitten unter einem frei drehenden Gummirad. Vergleiche dessen gemessenen Winkel bei zwei Antriebsgeschwindigkeiten mit dem tatsächlichen Weg und wiederhole den Versuch mit physisch angehobenem Rad."
-        },
-        "author": "CrispStrobe",
-        "license": "BSD-3-Clause",
-        "mechanism": {
-            "en": "Passive rolling odometer",
-            "de": "Passive Wegmessung durch ein abrollendes Rad"
-        },
-        "keywords": [
-            "measuring wheel",
-            "odometer",
-            "rolling contact",
-            "linear measurement",
-            "slip",
-            "Messrad",
-            "Wegmessung",
-            "Abrollen",
-            "Schlupf",
-            "experimental",
-            "prototype",
-            "unverified",
-            "experimentell"
-        ],
-        "experimental": true
-    },
     "travel-dial-wheel-raised.ldr": {
         "pieces": 197,
         "motors": 1,
@@ -2955,41 +2749,6 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
             "Wegmessung",
             "Abrollen",
             "Schlupf",
-            "experimental",
-            "prototype",
-            "unverified",
-            "experimentell"
-        ],
-        "experimental": true
-    },
-    "ghost-pivot.ldr": {
-        "pieces": 86,
-        "motors": 1,
-        "hubs": [
-            "spike-prime"
-        ],
-        "topic": "motion",
-        "description": {
-            "en": "Two linked parallelograms turn a passive tool around an empty end hole with no bearing there. Measure the hole’s motion while the tool changes heading, then compare a physically lengthened loop link.",
-            "de": "Zwei gekoppelte Parallelogramme drehen einen passiven Werkzeugträger um ein freies Endloch ohne Lager. Beobachte die Bewegung dieses Lochs beim Schwenken und vergleiche mit einem physisch verlängerten Koppelglied."
-        },
-        "author": "CrispStrobe",
-        "license": "BSD-3-Clause",
-        "mechanism": {
-            "en": "Double-parallelogram remote centre of motion",
-            "de": "Doppelparallelogramm mit fernliegendem Drehpunkt"
-        },
-        "keywords": [
-            "remote centre",
-            "remote center",
-            "RCM",
-            "virtual pivot",
-            "double parallelogram",
-            "passive linkage",
-            "Fernzentrum",
-            "Drehpunkt",
-            "Doppelparallelogramm",
-            "Koppelgetriebe",
             "experimental",
             "prototype",
             "unverified",
@@ -3181,7 +2940,7 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
         "experimental": true
     },
     "high-select.ldr": {
-        "pieces": 284,
+        "pieces": 288,
         "motors": 2,
         "hubs": [
             "spike-prime"
@@ -3220,7 +2979,7 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
         "experimental": true
     },
     "high-select-mirror.ldr": {
-        "pieces": 284,
+        "pieces": 288,
         "motors": 2,
         "hubs": [
             "spike-prime"
@@ -3422,48 +3181,6 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
         ],
         "experimental": true
     },
-    "air-budget.ldr": {
-        "pieces": 155,
-        "motors": 1,
-        "hubs": [
-            "spike-prime"
-        ],
-        "topic": "fluids",
-        "description": {
-            "en": "A retained motor and crank work a real stock pneumatic pump. Turn the crank three times each way, then compare stored pressure with the same mechanism connected to two tanks.",
-            "de": "Ein befestigter Motor mit Kurbel betätigt eine echte Pneumatikpumpe aus Standardteilen. Drehe die Kurbel dreimal in jede Richtung und vergleiche den gespeicherten Druck mit demselben Mechanismus an zwei Lufttanks."
-        },
-        "author": "CrispStrobe",
-        "license": "BSD-3-Clause",
-        "mechanism": {
-            "en": "crank-driven pneumatic pump with finite reservoir comparison",
-            "de": "kurbelgetriebene Pneumatikpumpe mit Vergleich begrenzter Speichervolumina"
-        },
-        "keywords": [
-            "pneumatics",
-            "air pressure",
-            "pump",
-            "reservoir volume",
-            "one-way pump",
-            "stored air",
-            "swept volume",
-            "compression travel",
-            "check valve",
-            "Pneumatik",
-            "Luftdruck",
-            "Pumpe",
-            "Speichervolumen",
-            "Rückschlagventil",
-            "Luftvorrat",
-            "Hubvolumen",
-            "Verdichtungsweg",
-            "experimental",
-            "prototype",
-            "unverified",
-            "experimentell"
-        ],
-        "experimental": true
-    },
     "air-budget-two-tanks.ldr": {
         "pieces": 168,
         "motors": 1,
@@ -3499,39 +3216,6 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
             "Luftvorrat",
             "Hubvolumen",
             "Verdichtungsweg",
-            "experimental",
-            "prototype",
-            "unverified",
-            "experimentell"
-        ],
-        "experimental": true
-    },
-    "foldback.ldr": {
-        "pieces": 95,
-        "motors": 1,
-        "hubs": [
-            "spike-prime"
-        ],
-        "topic": "linkages",
-        "description": {
-            "en": "One motor drives a crossed antiparallelogram. The passive output reverses direction with a changing angular ratio. Reassemble the same parts as an open parallelogram and compare the same finite input program.",
-            "de": "Ein Motor treibt ein gekreuztes Antiparallelogramm. Der passive Abtrieb dreht sich entgegengesetzt mit veränderlichem Winkelverhältnis. Vergleiche dasselbe endliche Programm mit denselben Teilen im offenen Parallelogramm."
-        },
-        "author": "CrispStrobe",
-        "license": "BSD-3-Clause",
-        "mechanism": {
-            "en": "Antiparallelogram / crossed four-bar linkage",
-            "de": "Antiparallelogramm / gekreuztes Viergelenk"
-        },
-        "keywords": [
-            "antiparallelogram",
-            "crossed parallelogram",
-            "crossed four-bar",
-            "assembly branch",
-            "tangent half angle",
-            "Antiparallelogramm",
-            "gekreuztes Viergelenk",
-            "Montagezweig",
             "experimental",
             "prototype",
             "unverified",
@@ -3667,48 +3351,6 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
             "Reversionspendel",
             "physikalisches Pendel",
             "konjugierte Aufhängepunkte",
-            "experimental",
-            "prototype",
-            "unverified",
-            "experimentell"
-        ],
-        "experimental": true
-    },
-    "carry-ratio.ldr": {
-        "pieces": 64,
-        "motors": 1,
-        "hubs": [
-            "spike-prime"
-        ],
-        "topic": "motion",
-        "description": {
-            "en": "A slider-crank tray carries an ungrasped ball. Measure how much of the stroke the ball inherits and how its spin obeys the rolling condition.",
-            "de": "Ein Kurbelschleifen-Tisch nimmt eine freie Kugel ohne Greifer mit. Miss, welchen Anteil des Hubs die Kugel übernimmt und wie ihre Drehung der Rollbedingung folgt."
-        },
-        "author": "CrispStrobe",
-        "license": "BSD-3-Clause",
-        "mechanism": {
-            "en": "Free ball rolling on a slider-crank tray",
-            "de": "Freie Kugel rollt auf einem Kurbeltisch"
-        },
-        "keywords": [
-            "rolling without slipping",
-            "no-slip transport",
-            "rolling contact",
-            "inertia-limited transport",
-            "moment of inertia ratio",
-            "friction cone",
-            "contact limit",
-            "Coulomb friction",
-            "ungrasped payload",
-            "spool on a plank",
-            "Rollkontakt",
-            "Rollen ohne Gleiten",
-            "Transportverhältnis",
-            "Trägheitsverhältnis",
-            "Haftreibung",
-            "Kontaktgrenze",
-            "ungriffige Förderung",
             "experimental",
             "prototype",
             "unverified",

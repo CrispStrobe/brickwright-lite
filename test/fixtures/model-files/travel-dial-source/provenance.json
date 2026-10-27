@@ -1,0 +1,10 @@
+{
+ "author": "CrispStrobe",
+ "license": "BSD-3-Clause",
+ "files": {
+  "models/travel-dial.ldr": "38481e12e7b60651db8b999534ba27c93dee2f0edf7c8d2b52f281119845609b",
+  "programs/travel-dial.bw": "a98bd80798535e23ef7ca90d1683ff4e5062e184223835b0843e6957a2158ad6",
+  "LICENSE.txt": "5f48a3052c7fc8b1f0a996da47fcfdf75a606dd9cc4796bf931f0502b9726c0c",
+  "SOURCES.md": "da6d53858e4596e47c2b7acaae4ef89f4ae2bf8ea81cb76db6c792e446840fd6"
+ }
+}
