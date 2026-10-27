@@ -1,0 +1,10 @@
+{
+ "author": "CrispStrobe",
+ "license": "BSD-3-Clause",
+ "files": {
+  "models/final-squeeze.ldr": "5bdb0dfb4e876bd2b5765410779b48e8988eaff4c39bde41d17877ede6425244",
+  "programs/final-squeeze.bw": "252f4517af930e1e9f8a640b4b1dfc0e158f58215fa3712b4d94d9146fedb377",
+  "LICENSE.txt": "51f5178262c42a55f44d55c2f5b43d2902f5bc34385c80afd9d0421ec4793ab8",
+  "SOURCES.md": "944bed5dc2f4cd1ec6a8cf410f266d1b22247b08dda304a05b75e9d32987f5e9"
+ }
+}

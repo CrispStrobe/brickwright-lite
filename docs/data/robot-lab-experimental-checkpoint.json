@@ -2692,6 +2692,13 @@
         "pageErrors": 0,
         "nan": false,
         "simMs": 47800
+      },
+      "promoted": {
+        "to": "established library (MODELS)",
+        "date": "2026-10-27",
+        "judge": "knee-press-v1",
+        "causalControl": "passive_link removed (qualification disconnection)",
+        "verified": "PENDING: hosted native qualification of this branch"
       }
     },
     {
@@ -2990,6 +2997,11 @@
         "pageErrors": 0,
         "nan": false,
         "simMs": 33533
+      },
+      "promotionReview": {
+        "date": "2026-10-27",
+        "decision": "STAYS_EXPERIMENTAL",
+        "reason": "Its saved pose back-drives both rack motors by about 9.6 deg during the contract's mandatory 500 ms cold settle, so its own zero guard refuses to start. A fix needs a pose or program change, and model and program bytes must stay unchanged."
       }
     },
     {
@@ -3054,6 +3066,11 @@
         "pageErrors": 0,
         "nan": false,
         "simMs": 62700
+      },
+      "promotionReview": {
+        "date": "2026-10-27",
+        "decision": "BLOCKED",
+        "reason": "Open issue #1460: the compiler ignores motor orientation, so a real build of the repaired orrery would turn the other way, into the half of the orbit that collides. Its judge passes in the simulator (#1455), but promotion waits for #1460."
       }
     },
     {
