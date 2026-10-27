@@ -3548,7 +3548,25 @@ class Originals(unittest.TestCase):
         _value,_raw,selected=self.finite_v9_packet()
         expected={'schema':'bw.gui-hdd.inventory-failure-expectation.v9','source':selected['source'],'template':ROW(raw),'failure':ROW(E(failed)),'runId':90,'workflowSha':'d'*40,'dependencyPins':copy.deepcopy(c.FINITE_V9_PINS),'bootstrapSource':copy.deepcopy(c.BOOTSTRAP_SOURCE),
           'repositoryVariables':{'BW_FINITE_INVENTORY_V9_SHA256':pin,'BW_FINITE_INVENTORY_V9_TEMPLATE_B64':base64.b64encode(raw).decode()}}
-        verdict=r.verify_inventory_failure_v9(E(failed),raw,expected)
+        with tempfile.TemporaryDirectory(dir=root.parent) as temporary:
+            folder=pathlib.Path(temporary);requested=folder/'inventory-original.json';target=folder/'inventory-failure.json'
+            self.assertEqual(c.retain_inventory_observation(failed,requested),1)
+            retained=target.read_bytes();self.assertEqual(retained,E(failed));self.assertFalse(requested.exists())
+            expected['failure']=ROW(retained)
+            replay=copy.deepcopy(failed);first=copy.deepcopy(replay['firstFailure'])
+            with contextlib.redirect_stderr(io.StringIO()) as diagnostic:
+                self.assertEqual(c.retain_inventory_observation(replay,requested),1)
+            self.assertEqual(target.read_bytes(),retained);self.assertFalse(requested.exists())
+            refusal=D(diagnostic.getvalue().encode())
+            self.assertEqual(refusal['firstFailure'],first)
+            self.assertEqual(refusal['secondary'][-1]['name'],'FileExistsError')
+            self.assertEqual(refusal['secondary'][-1]['phase'],'inventory-failure-retention')
+            (folder/'template.json').write_bytes(raw);(folder/'expected.json').write_bytes(E(expected))
+            args=['--inventory-failure-v9','--original',str(target),'--template',str(folder/'template.json'),'--expected',str(folder/'expected.json')]
+            with patch.object(r,'FINITE_INVENTORY_V9_READER_ENABLED',True),patch.object(r,'verify_inventory_failure_v9',wraps=r.verify_inventory_failure_v9) as verify,contextlib.redirect_stdout(io.StringIO()) as output:
+                self.assertEqual(r.main(args),0)
+            verify.assert_called_once_with(retained,raw,expected)
+            verdict=D(output.getvalue().encode())
         self.assertTrue(verdict['failureObserved']);self.assertFalse(verdict['qualified']);self.assertFalse(verdict['candidate']);self.assertFalse(verdict['gitSourceReached'])
         for cut in ('old-schema','old-job','event-bool','wrong-helper'):
             value=copy.deepcopy(failed);chosen=copy.deepcopy(expected)
