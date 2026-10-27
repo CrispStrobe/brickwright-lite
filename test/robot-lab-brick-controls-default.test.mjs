@@ -37,7 +37,8 @@ test('program scan follows the project, including edits that add a handler', () 
 test('the pane renders the standalone panel only for handlers and offers it in Manual controls otherwise', () => {
     const pane = readFileSync(new URL('../overlay/scratch-gui/src/components/tw-pseudocode/sim-lab-pane.jsx', import.meta.url), 'utf8');
     assert.match(pane, /\{programUsesBrickButtons\(this\.props\.vm\) && this\.renderBrickButtons\(\)\}/);
-    assert.match(pane, /brick=\{programUsesBrickButtons\(this\.props\.vm\) \|\| !this\.api\?\.brickButtons\(\)\?\.length \? null : this\.renderBrickButtons\(\)\}/);
+    assert.match(pane, /this\.renderMixer\(button,\s+programUsesBrickButtons\(this\.props\.vm\) \|\| !this\.api\?\.brickButtons\(\)\?\.length \? null : this\.renderBrickButtons\(\)\)/);
+    assert.match(pane, /brick=\{brick \|\| null\}/);
     assert.equal((pane.match(/<SimLabBrickButtons /g) || []).length, 1);
 });
 

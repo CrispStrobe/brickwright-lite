@@ -2262,7 +2262,7 @@ class SimLabPane extends React.Component {
             onError={error => this.setState({message: error.message})} />;
     }
 
-    renderMixer (button) {
+    renderMixer (button, brick) {
         if (!this.api) return null;
         const s = this.session;
         const power = this.state.mixer.session === s ? this.state.mixer.power : {};
@@ -2319,7 +2319,7 @@ class SimLabPane extends React.Component {
         return (
             <SimLabMotorMixer motors={motors} power={power} open={this.state.mixerOpen} locale={this.locale} button={button}
                 available={available}
-                brick={programUsesBrickButtons(this.props.vm) || !this.api?.brickButtons()?.length ? null : this.renderBrickButtons()}
+                brick={brick || null}
                 brickOpen={this.state.brickControlsOpen}
                 onBrickToggle={() => this.setState(st => ({brickControlsOpen: !st.brickControlsOpen}))}
                 override={this.state.manualOverride} onOverride={enabled => this.setManualOverride(enabled)}
@@ -3400,7 +3400,8 @@ class SimLabPane extends React.Component {
                     })()}
 
                 </div>
-                {simulate && this.state.controlsOpen && !this.state.programLoading && this.session && !this.session.lockstep && this.renderMixer(button)}
+                {simulate && this.state.controlsOpen && !this.state.programLoading && this.session && !this.session.lockstep && this.renderMixer(button,
+                    programUsesBrickButtons(this.props.vm) || !this.api?.brickButtons()?.length ? null : this.renderBrickButtons())}
                 {build && this.state.shortcuts && (
                     <SimLabShortcuts T={this.etext} wheelMode={this.state.wheelMode} onWheelMode={mode => this.setWheelMode(mode)}
                         mousePreset={this.state.mousePreset} onMousePreset={preset => this.setMousePreset(preset)}
