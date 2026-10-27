@@ -30,14 +30,14 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: CrispStrobe/brickwright-spike-prime-fw
-          ref: ${{ env.SPIKE_FIRMWARE_SHA }}
+          ref: 91cf0c07784441ac114b85a1705737327db2d9f8
           path: .spike/firmware
           persist-credentials: false
       - name: Check out the bundled SPIKE Runtime (platforms, state service)
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: CrispStrobe/renode-spike-prime
-          ref: ${{ env.SPIKE_RUNTIME_SHA }}
+          ref: 961a01f5c0fa9dd7f004df03dfbb37e1a5c55a67
           path: .spike/runtime
           persist-credentials: false
       - name: Build own NuttX simulation firmware
