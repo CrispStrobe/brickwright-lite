@@ -25,6 +25,20 @@ const loadExample = async page => {
     }, null, {timeout: 60000});
 };
 
+// The Brick buttons panel shows by default only when the Code tab program has brick-button
+// handlers; otherwise it is the optional Brick controls section of Manual controls.
+const brickPanel = async page => {
+    const panel = page.getByTestId('bw-sim-lab-brick-buttons');
+    if (await panel.count()) return panel;
+    const controls = page.getByTestId('bw-sim-lab-controls-toggle');
+    if (await controls.getAttribute('aria-expanded') !== 'true') await controls.click();
+    const brick = page.getByTestId('bw-sim-lab-brick-controls-toggle');
+    await brick.waitFor();
+    if (await brick.getAttribute('aria-expanded') !== 'true') await brick.click();
+    await panel.waitFor();
+    return panel;
+};
+
 export const connectionInteractions = async ({browser, errors, openSimLab, shotsDir}) => {
     const page = await browser.newPage({viewport: {width: 1600, height: 1050}, serviceWorkers: 'block'});
     page.on('pageerror', error => errors.push(error.stack || error.message));
@@ -76,7 +90,7 @@ export const connectionInteractions = async ({browser, errors, openSimLab, shots
         });
         assert.deepEqual(await page.evaluate(() => window.__bwButtonWireGuest.replies), []);
         assert.equal(await page.evaluate(() => window.__bwButtonWireGuest.hub.s.outputs.slice(1, 3).every(port => !port.job)), true);
-        const enter = page.getByTestId('bw-sim-lab-brick-buttons').locator('button[data-button="enter"]').first();
+        const enter = (await brickPanel(page)).locator('button[data-button="enter"]').first();
         const box = await enter.boundingBox();
         assert.ok(box);
         await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
@@ -305,7 +319,7 @@ export const connectionInteractions = async ({browser, errors, openSimLab, shots
         const release = page.getByTestId('bw-spike-simulator-use-arena');
         await release.waitFor({state: 'visible'});
         assert.equal(await release.isEnabled(), true);
-        const held = page.getByTestId('bw-sim-lab-brick-buttons').locator('button[data-button="enter"]').first();
+        const held = (await brickPanel(page)).locator('button[data-button="enter"]').first();
         await held.focus();
         await page.keyboard.down('Enter');
         await page.waitForFunction(() => window.__bwSimLab._pane.session.hubs.find(record => record.profile === 'ev3').hub.button(2));

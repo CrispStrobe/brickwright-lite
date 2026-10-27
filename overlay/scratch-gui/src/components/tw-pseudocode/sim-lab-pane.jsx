@@ -32,6 +32,7 @@ import SimLabInfo from './sim-lab-info.jsx';
 import SimLabReadings from './sim-lab-readings.jsx';
 import SimLabConnections from './sim-lab-connections.jsx';
 import SimLabBrickButtons from './sim-lab-brick-buttons.jsx';
+import {programUsesBrickButtons} from './sim-lab-brick-handlers.js';
 import SimLabMeasurements, {measurementWords} from './sim-lab-measurements.jsx';
 import {measurementDefinitions} from '../../lib/bw-sim/measurements/schema.js';
 import {createMeasurementRecorder} from '../../lib/bw-sim/measurements/recording.js';
@@ -382,7 +383,7 @@ class SimLabPane extends React.Component {
             mode: 'simulate', placing: null, selection: [], editorTick: 0, mat: null,
             buildStatus: {kind: 'idle'}, gizmoMode: 'move', grid: 10, recent: [], thumbTick: 0,
             showPorts: true, showMotion: false, blockers: [], portPicker: null, instructions: null, coarse: false,
-            controlsOpen: false, manualOverride: false, programLoading: false,
+            controlsOpen: false, brickControlsOpen: false, manualOverride: false, programLoading: false,
             connection: {bricks: [], routes: [], hubId: null, route: 'bluetooth', status: 'idle', message: ''},
             mixerOpen: (() => { try { return localStorage.getItem(MIXER_OPEN_KEY) === '1'; } catch { return false; } })(), mixer: {session: null, power: {}},
             // Simulate: sensor rays, the Readings panel, slow motion, and the replay position (null: live)
@@ -2255,6 +2256,12 @@ class SimLabPane extends React.Component {
     }
 
     /** Manual commands are explicitly enabled; their sliders never pretend to be program telemetry. */
+    renderBrickButtons () {
+        return <SimLabBrickButtons locale={this.locale} api={this.api} scene={this.session}
+            disabled={this.state.programLoading}
+            onError={error => this.setState({message: error.message})} />;
+    }
+
     renderMixer (button) {
         if (!this.api) return null;
         const s = this.session;
@@ -2312,6 +2319,9 @@ class SimLabPane extends React.Component {
         return (
             <SimLabMotorMixer motors={motors} power={power} open={this.state.mixerOpen} locale={this.locale} button={button}
                 available={available}
+                brick={programUsesBrickButtons(this.props.vm) || !this.api?.brickButtons()?.length ? null : this.renderBrickButtons()}
+                brickOpen={this.state.brickControlsOpen}
+                onBrickToggle={() => this.setState(st => ({brickControlsOpen: !st.brickControlsOpen}))}
                 override={this.state.manualOverride} onOverride={enabled => this.setManualOverride(enabled)}
                 drive={available && this.session.bridge && this.spikeScene() && manualDriveAllowed(manualJog, this.hub.movementPair) ? this.renderDrive(button) : null}
                 onClose={() => { if (this.state.manualOverride) this.setManualOverride(false); if (this.driving) this.drive('stop'); this.setState({controlsOpen: false}); }}
@@ -3327,9 +3337,7 @@ class SimLabPane extends React.Component {
                         onRoute={route => this.selectConnection({route})}
                         onConnect={() => this.connectConnection()}
                         onDisconnect={() => this.disconnectConnection()} />
-                    <SimLabBrickButtons locale={this.locale} api={this.api} scene={this.session}
-                        disabled={this.state.programLoading}
-                        onError={error => this.setState({message: error.message})} />
+                    {programUsesBrickButtons(this.props.vm) && this.renderBrickButtons()}
                 </React.Fragment>}
                 <div data-testid="bw-sim-lab-main" style={{display: 'flex', flex: '1 1 auto', minHeight: compact ? 220 : 240, minWidth: 0, position: 'relative'}}>
                     {this.renderPalettePanel()}
