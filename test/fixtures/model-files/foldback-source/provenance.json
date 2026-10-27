@@ -1,0 +1,10 @@
+{
+ "author": "CrispStrobe",
+ "license": "BSD-3-Clause",
+ "files": {
+  "models/foldback.ldr": "257d722c48485b12bd5dc4d78c109301e079a53eea0f7cf10801714e9afd8ec4",
+  "programs/foldback.bw": "5e18bc5dfa3f2c881f5a3d5574133e2af33a8b6a30008b188f6f18bce8a6be2d",
+  "LICENSE.txt": "5f48a3052c7fc8b1f0a996da47fcfdf75a606dd9cc4796bf931f0502b9726c0c",
+  "SOURCES.md": "af7ecdd80963b1bb2ddd0cb247e798223bfa96e8911bae5bb235abd78eff1142"
+ }
+}

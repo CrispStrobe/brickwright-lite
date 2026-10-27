@@ -29,7 +29,6 @@ WHEN flag clicked:
     stop all
   reset timer
   lab start
-  set motor stop action A hold
   lab stop motor A hold
   IF (abs of (lab motor A angle)) > 2 THEN:
     set failed to 1
