@@ -380,6 +380,12 @@
       "parts": 159,
       "ports": [],
       "motorless": true,
+      "expectedIssues": [
+        {
+          "code": "no-motor",
+          "parts": []
+        }
+      ],
       "coldMs": 500,
       "timeLimitMs": 30000,
       "afterMs": 500,

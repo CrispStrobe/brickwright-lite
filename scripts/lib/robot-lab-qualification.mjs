@@ -32,7 +32,10 @@ export function qualificationContracts(requested){
   // Reviewed exceptions only: a designed free payload ('loose-part') or a closed loop the compiler locks
   // ('locked-hinges'), each listed with its exact parts. Any other or undeclared compiler issue still refuses.
   if(c.expectedIssues!==undefined){assert.ok(Array.isArray(c.expectedIssues)&&c.expectedIssues.length>0,'declared issues are a non-empty list');
-   for(const i of c.expectedIssues){assert.ok(['loose-part','locked-hinges'].includes(i.code),'only loose-part and locked-hinges can be declared');
+   for(const i of c.expectedIssues){
+    // A motorless model declares the compiler's partless 'no-motor' warning, and only that model can.
+    if(i.code==='no-motor'){assert.equal(c.motorless,true,'only a motorless model declares no-motor');assert.deepEqual(i.parts,[],'no-motor names no parts');continue;}
+    assert.ok(['loose-part','locked-hinges'].includes(i.code),'only loose-part and locked-hinges can be declared');
     assert.ok(Array.isArray(i.parts)&&i.parts.length>0&&i.parts.every(x=>typeof x==='string'&&x)&&new Set(i.parts).size===i.parts.length,'declared issue parts');}}
   if(c.observeAir!==undefined)assert.equal(c.observeAir,true,'observeAir records the air networks');if(c.disconnectMeasure!==undefined)assert.equal(c.disconnectMeasure,true,'disconnectMeasure names a measured law loss');
   for(const k of ['coldMs','timeLimitMs','afterMs','frameMs'])assert.ok(Number.isFinite(c[k])&&c[k]>0,k);

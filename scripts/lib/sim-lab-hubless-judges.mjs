@@ -17,8 +17,10 @@ const check=(ok,msg,values)=>assert.ok(ok,msg+' '+fmt(values));
 /** Twist (rad) of a body's rotation since its initial pose about the world axis a. */
 const twist=(q,q0,a)=>{const d=mul(q,conj(q0));return 2*Math.atan2(dot(d.slice(0,3),a),d[3]);};
 
-function healthy(r,native,{gears=false}={}){
- assert.deepEqual(r.issues,[]);assert.deepEqual(r.unsupported,[]);assert.ok(r.finishedAt>0,'the actual VM finishes');
+const NO_MOTOR=[{severity:'warning',code:'no-motor'}];
+function healthy(r,native,{gears=false,motorless=false}={}){
+ // A motorless model compiles with exactly the compiler's 'no motor' warning; anything else refuses.
+ assert.deepEqual(r.issues.map(({severity,code})=>({severity,code})),motorless?NO_MOTOR:[]);if(motorless)assert.deepEqual(r.issues[0].parts,[]);assert.deepEqual(r.unsupported,[]);assert.ok(r.finishedAt>0,'the actual VM finishes');
  assert.ok(r.track.length>=(native?500:100),'dense actual motion recording');
  for(const f of r.track)for(const b of Object.values(f.bodies))assert.ok([...b.position,...b.rotation].every(Number.isFinite));
  assert.ok(r.mechanism.bodies.filter(b=>b.motion==='static').every(b=>b.id==='ground'),'only the floor is fixed');
@@ -136,17 +138,18 @@ function pivotArm(r,o,arm){
  for(let k=1;k<obs.length;k++){const ya=y[k-1],yb=y[k];if(ya<0&&yb>=0){const [fa]=obs[k-1],[fb]=obs[k];ups.push(fa.t+(fb.t-fa.t)*(-ya)/(yb-ya));}}
  const amplitudeDeg=deg(span(y))/2,periods=ups.slice(1).map((t,i)=>(t-ups[i])/1000);
  const measuredS=ups.length>1?(ups.at(-1)-ups[0])/(ups.length-1)/1000:NaN,theta=Math.abs(release);
- const P0=o.initial('arm_'+arm+'_beam'),dropMm=max(r.track,f=>norm(sub(o.point(f,'arm_'+arm+'_beam'),P0))*1000);
+ // Retained on its pivot: the beam's distance from the hinge line stays what it was (it swings on an arc).
+ const P0=o.initial('arm_'+arm+'_beam'),R0=norm(sub(sub(P0,j.point),scale(a,dot(sub(P0,j.point),a)))),dropMm=max(r.track,f=>{const v=sub(o.point(f,'arm_'+arm+'_beam'),j.point);return Math.abs(norm(sub(v,scale(a,dot(v,a))))-R0)*1000;});
  return{arm,hinged:true,predictedS:T0*(1+theta*theta/16),smallAngleS:T0,releaseDeg:deg(theta),dMm:d*1000,measuredS,crossings:ups.length,spreadS:periods.length?span(periods):NaN,amplitudeDeg,dropMm};
 }
 export function pivotLoss(r,arm='near'){
  const o=observeAddon(r,PIVOT_BASE),s=pivotArm(r,o,arm);
  // Without its axle the arm has no hinge at all, or it no longer keeps the compound-pendulum period.
  if(!s.hinged)return{...s,lost:true};
- const err=Math.abs(s.measuredS-s.predictedS)/s.predictedS;return{...s,lawErr:err,lost:s.dropMm>10||s.crossings<10||!(err<=.05)};
+ const err=Math.abs(s.measuredS-s.predictedS)/s.predictedS;return{...s,lawErr:err,lost:s.dropMm>1||s.crossings<10||!(err<=.05)};
 }
 export function judgePivotExchange(r,{native=false}={}){
- healthy(r,native);assert.equal(r.mechanism.actuators.length,0,'no motor: gravity provides the motion');
+ healthy(r,native,{motorless:true});assert.equal(r.mechanism.actuators.length,0,'no motor: gravity provides the motion');
  assert.ok(r.mechanism.joints.every(j=>!j.motor));
  const o=observeAddon(r,PIVOT_BASE),v=vars(r.track.at(-1));assert.equal(Number(v.complete),1);assert.equal(Number(v.fault),0);
  assert.equal(new Set(PIVOT_ARMS.map(a=>o.body('arm_'+a+'_beam').id).concat(o.base.id)).size,4,'three independent arms on the frame');
@@ -156,7 +159,7 @@ export function judgePivotExchange(r,{native=false}={}){
   check(x.crossings>=(a==='control'?12:25),'arm '+a+' completes the observed cycles',x);
   check(Math.abs(x.measuredS-x.predictedS)<=.005*x.predictedS,'arm '+a+' period matches the compiled compound-pendulum prediction within 0.5%',x);
   check(x.spreadS<=.02*x.predictedS,'arm '+a+' keeps that period every cycle',x);
-  check(x.dropMm<=10,'arm '+a+' stays on its pivot',x);}
+  check(x.dropMm<=1,'arm '+a+' stays on its pivot (radius from the hinge line within 1 mm)',x);}
  const pairPred=Math.abs(s.near.predictedS-s.far.predictedS)/s.near.predictedS,pairMeas=Math.abs(s.near.measuredS-s.far.measuredS)/s.near.measuredS;
  check(pairPred<=.005&&pairMeas<=.005,'the near and far holes are conjugate: equal periods within 0.5%',{pairPred,pairMeas});
  const ratioPred=s.control.predictedS/s.near.predictedS,ratioMeas=s.control.measuredS/s.near.measuredS;
@@ -167,5 +170,5 @@ export function judgePivotExchange(r,{native=false}={}){
 /** Measured law loss after a contract's physical disconnection (test/bw-sim-qualification.test.mjs). */
 export const HUBLESS_DISCONNECTION_LOSSES=Object.freeze({
  'phasor-twin':r=>{const l=phasorLoss(r);return{metric:'pistonBStrokeMm',value:l.strokeMm,lost:l.lost,detail:l};},
- 'pivot-exchange':r=>{const l=pivotLoss(r,'near');return{metric:'nearArmPeriodLoss',value:l.hinged?l.lawErr??Infinity:Infinity,lost:l.lost,detail:l};}
+ 'pivot-exchange':r=>{const l=pivotLoss(r,'near');return{metric:'nearArmPeriodLoss',value:l.hinged?l.lawErr:'no-hinge',lost:l.lost,detail:l};}
 });
