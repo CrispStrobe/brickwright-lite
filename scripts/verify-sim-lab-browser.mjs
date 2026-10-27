@@ -846,7 +846,7 @@ try {
             }
         }
         for (const id of Object.keys(NINE_INTAKES).filter(id => runExample(id + '.ldr'))) {
-            const opts = {openSimLab, buildDir: build, shotsDir: resolve(artifacts, 'nine-intakes'), timeout: wallBudget(90000)};
+            const opts = {openSimLab, buildDir: build, shotsDir: resolve(artifacts, 'nine-intakes'), timeout: wallBudget(90000), includeExperimental: true};
             const page = await browser.newPage({viewport: {width: 1600, height: 1050}, serviceWorkers: 'block'});
             page.on('pageerror', error => errors.push(error.stack || error.message));
             page.on('dialog', dialog => dialog.accept());

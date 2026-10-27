@@ -15,15 +15,17 @@ const catalog = catalogFrom(JSON.parse(read('overlay/scratch-gui/src/lib/bw-sim/
 const counts = {helixgate: 20, looprelay: 54, paritydial: 31, counterslide: 44,
     'toggle-press': 142, footfall: 120, phasekeeper: 81, vectorsum: 122, pointweaver: 128};
 
-test('curated simulation examples are searchable by default while unchecked candidates require opt-in', () => {
+test('checkpoint candidates remain opt-in and carry no unearned simulation status', () => {
     const visible = visibleExampleModels(EXPERIMENTAL_MODELS);
-    assert.deepEqual(visible.map(m => m.file).sort(), Object.keys(counts).map(id => id + '.ldr').sort());
     for (const id of Object.keys(counts)) {
-        const matches = filterModelExamples(visible, EXPERIMENTAL_MODEL_DETAILS, {query: id});
-        assert.equal(matches.length, 1); assert.equal(matches[0].file, id + '.ldr');
+        const entry = EXPERIMENTAL_MODELS.find(m => m.file === id + '.ldr');
+        assert.equal(entry.experimental, true);
+        assert.notEqual(entry.simulationChecked, true);
+        assert.ok(!visible.includes(entry));
+        const matches = filterModelExamples(visibleExampleModels(EXPERIMENTAL_MODELS, true),
+            EXPERIMENTAL_MODEL_DETAILS, {query: id});
+        assert.equal(matches.filter(m => m.file === id + '.ldr').length, 1);
     }
-    assert.equal(visibleExampleModels(EXPERIMENTAL_MODELS, true).length, EXPERIMENTAL_MODELS.length);
-    // The normal registry and blocked state must survive both filter choices.
     const normal = {file: 'established.ldr'}, blocked = {experimental: true, blocked: true};
     assert.deepEqual(visibleExampleModels([normal, blocked]), [normal]);
     assert.equal(visibleExampleModels([normal, blocked], true)[1].blocked, true);

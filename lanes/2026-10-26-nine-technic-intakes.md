@@ -1,6 +1,6 @@
 # Nine Technic add-ons and current-library regression audit
 
-Status: CLAIMED — implementation waits for this claim to merge.
+Status: DONE — checkpoint implementation delivered; full model admission remains pending.
 Owner: Codex, user-requested Technic model intake.
 Branch: `lane/technic-nine-intake-20261026`.
 Base: `7f509e8de`.
@@ -36,3 +36,9 @@ engine defect requires a separate coordinated claim; preserve the active floor
 contact and precision owners. Admission requires actual affected native and app
 checks, proper source identity and every enabled exact-head hosted check before
 normal matched-head landing. Keep failures and incomplete work explicit.
+
+Checkpoint continuation: [nine-model handoff](../docs/ROBOT-LAB-NINE-MODELS-HANDOFF.md).
+Source fixtures, repairs and focused native controls are included. Browser
+qualification and broad regression completion are explicitly pending; no model
+admission, exact-head hosted-green result or release is claimed. This checkpoint
+releases this implementation scope. Claim follow-up work before continuing.

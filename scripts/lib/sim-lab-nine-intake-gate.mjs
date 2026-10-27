@@ -27,7 +27,7 @@ export async function nineIntakeInteractions(page, opts, id) {
     await mechanicsInteractions(page, {
         ...opts, models: [id], judge: judgeNineBrowser, captureModel: captureRenderedModel,
         extendedObservations: true, completionHoldMsFor: () => 2000, speed: 4, observeProgram: true,
-        includeExperimental: false
+        includeExperimental: true
     });
     await manualMechanicsInteractions(page, {
         ...opts, models: [id], captureModel: captureRenderedModel,

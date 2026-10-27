@@ -191,13 +191,14 @@ or green simulated machine remains explicitly simulation-qualified.
 
 ### Curated gallery status and limits
 
-The nine reviewed intakes have a candidate `simulationChecked` flag so they can
-appear in the normal gallery without changing the experimental builder's
-minimum-size contract. That flag is only publishable after their complete native
-and Chromium/WebKit app journeys pass. It does not mean a physical LEGO build has
-been tested. Other experimental entries retain their opt-in filter and unchecked
-label. The per-model checked/unchecked record remains in
-[data/robot-lab-nine-intakes-20261026.json](data/robot-lab-nine-intakes-20261026.json).
+The gallery supports a curated `simulationChecked` flag without changing the
+experimental builder's minimum-size contract. The current checkpoint sets that
+flag for **none** of the nine intakes: their browser qualification is incomplete.
+They remain available through Include experimental. Only publish the flag after
+the complete native and Chromium/WebKit journeys pass. This status never means
+a physical LEGO build has been tested. See the
+[current continuation handoff](ROBOT-LAB-NINE-MODELS-HANDOFF.md) and
+[per-model record](data/robot-lab-nine-intakes-20261026.json).
 
 The stock 3L shaft now uses the official mesh's measured 6-LDU swept radius and
 retains the original nominal 30-LDU half-length. The drawn end caps reach

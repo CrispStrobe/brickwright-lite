@@ -1461,7 +1461,6 @@ export const EXPERIMENTAL_MODELS = Object.freeze([
     },
     {
         "file": "helixgate.ldr",
-        "simulationChecked": true,
         "title": {
             "en": "HelixGate — a 24:1 worm gearbox",
             "de": "HelixGate — ein Schneckengetriebe mit 24:1"
@@ -1485,7 +1484,6 @@ export const EXPERIMENTAL_MODELS = Object.freeze([
     },
     {
         "file": "looprelay.ldr",
-        "simulationChecked": true,
         "title": {
             "en": "LoopRelay — chain drive, gear reversal",
             "de": "LoopRelay — Kettenantrieb mit Zahnradumkehr"
@@ -1509,7 +1507,6 @@ export const EXPERIMENTAL_MODELS = Object.freeze([
     },
     {
         "file": "paritydial.ldr",
-        "simulationChecked": true,
         "title": {
             "en": "ParityDial — two outputs, one idler",
             "de": "ParityDial — zwei Abtriebe, ein Zwischenrad"
@@ -1533,7 +1530,6 @@ export const EXPERIMENTAL_MODELS = Object.freeze([
     },
     {
         "file": "counterslide.ldr",
-        "simulationChecked": true,
         "title": {
             "en": "CounterSlide — twin-rack self-centering jaws",
             "de": "CounterSlide — selbstzentrierende Doppelzahnstangen"
@@ -1557,7 +1553,6 @@ export const EXPERIMENTAL_MODELS = Object.freeze([
     },
     {
         "file": "toggle-press.ldr",
-        "simulationChecked": true,
         "title": {
             "en": "Toggle Press — near-dead-centre ram",
             "de": "Kniehebelpresse — Schlitten nahe dem Totpunkt"
@@ -1581,7 +1576,6 @@ export const EXPERIMENTAL_MODELS = Object.freeze([
     },
     {
         "file": "footfall.ldr",
-        "simulationChecked": true,
         "title": {
             "en": "Footfall — twelve-link leg-path tracer",
             "de": "Schrittspur — zwölfgliedrige Beinmechanik"
@@ -1605,7 +1599,6 @@ export const EXPERIMENTAL_MODELS = Object.freeze([
     },
     {
         "file": "phasekeeper.ldr",
-        "simulationChecked": true,
         "title": {
             "en": "Phasekeeper — equal-angle double-Cardan transmission",
             "de": "Phasenhalter — gleichwinklige Doppel-Kardankupplung"
@@ -1629,7 +1622,6 @@ export const EXPERIMENTAL_MODELS = Object.freeze([
     },
     {
         "file": "vectorsum.ldr",
-        "simulationChecked": true,
         "title": {
             "en": "VectorSum — two-input differential mixer",
             "de": "Vektorsumme — Differentialmischer mit zwei Eingängen"
@@ -1659,7 +1651,6 @@ export const EXPERIMENTAL_MODELS = Object.freeze([
     },
     {
         "file": "pointweaver.ldr",
-        "simulationChecked": true,
         "title": {
             "en": "PointWeaver — two-motor five-bar path tracer",
             "de": "Punktweber — Fünfgelenk-Bahnzeichner mit zwei Motoren"

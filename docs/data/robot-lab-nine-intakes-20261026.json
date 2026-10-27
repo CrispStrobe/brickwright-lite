@@ -8,7 +8,7 @@
       "originalModelSha256": "86786a3fc08c3f7cca1b8733c040a55ceac3cc30903a18a3bd2fbe302632f8f3",
       "originalProgramSha256": "0fe7b0ef26bc214dd3f48ec0a11ab06bf345f1ff8b052ce47ccea42b0192871a",
       "placements": 20,
-      "status": "native passive law, physical removal, support and hold pass at two cadences; final browser acceptance pending",
+      "status": "experimental checkpoint; native passive law, removal control and hold pass; full browser qualification pending",
       "sourceChecks": {
         "rigidMatrices": true,
         "uniqueIds": true,
@@ -21,8 +21,8 @@
       "inferredCrosses": 0,
       "modelSha256": "6208f9ee96f1da2d1947f0f2b92ea69706624bdfa0fa09a1aa812210b942a796",
       "programSha256": "0fe7b0ef26bc214dd3f48ec0a11ab06bf345f1ff8b052ce47ccea42b0192871a",
-      "qualificationState": "unpublished candidate with curated gallery status; release requires both-browser acceptance",
-      "nativeEvidenceScope": "Current catalogue: 27 model checks plus mesh/obstruction/old-square controls passed; broader native suite 124/124 and affected catalogue/Cardan suite 23/23"
+      "qualificationState": "experimental; no simulationChecked admission",
+      "nativeEvidenceScope": "Two-cadence and physical controls pass with nominal 3L cylinder; focused mechanical rerun also passes after composition of main floor-contact changes. Broad simulator suite incomplete."
     },
     {
       "id": "looprelay",
@@ -31,7 +31,7 @@
       "originalModelSha256": "fe246a9aad79f3c00f2de31e00927f792b65e4719f1f9146f646d8ee34c299d3",
       "originalProgramSha256": "a9c9c22cf021850821d59ccbd4e21f0edd3a9c37c1a8b7630a1ba0d5d81a9a62",
       "placements": 54,
-      "status": "native passive law, physical removal, support and hold pass at two cadences; final browser acceptance pending",
+      "status": "experimental checkpoint; native passive law, removal control and hold pass; full browser qualification pending",
       "sourceChecks": {
         "rigidMatrices": true,
         "uniqueIds": true,
@@ -44,8 +44,8 @@
       "inferredCrosses": 0,
       "modelSha256": "894cd2dd40dd5674c1478f683995cdf762c3010b35e675898bf1f60ae408f557",
       "programSha256": "a9c9c22cf021850821d59ccbd4e21f0edd3a9c37c1a8b7630a1ba0d5d81a9a62",
-      "qualificationState": "unpublished candidate with curated gallery status; release requires both-browser acceptance",
-      "nativeEvidenceScope": "Current catalogue: 27 model checks plus mesh/obstruction/old-square controls passed; broader native suite 124/124 and affected catalogue/Cardan suite 23/23"
+      "qualificationState": "experimental; no simulationChecked admission",
+      "nativeEvidenceScope": "Two-cadence and physical controls pass with nominal 3L cylinder; focused mechanical rerun also passes after composition of main floor-contact changes. Broad simulator suite incomplete."
     },
     {
       "id": "paritydial",
@@ -54,7 +54,7 @@
       "originalModelSha256": "d325a918bf46e367bdd886fb52b3a18b31b86a290b334cdde3f726e040ad25ca",
       "originalProgramSha256": "a3e7b9830967ad98b466f111553475ad34f651969ac42f01665163f4559968a7",
       "placements": 31,
-      "status": "native passive law, physical removal, support and hold pass at two cadences; final browser acceptance pending",
+      "status": "experimental checkpoint; native passive law, removal control and hold pass; full browser qualification pending",
       "sourceChecks": {
         "rigidMatrices": true,
         "uniqueIds": true,
@@ -67,8 +67,8 @@
       "inferredCrosses": 0,
       "modelSha256": "9febeeb10564bf0f340794a8347902a0a513477e50a6b646f254c9cd20904fc7",
       "programSha256": "a3e7b9830967ad98b466f111553475ad34f651969ac42f01665163f4559968a7",
-      "qualificationState": "unpublished candidate with curated gallery status; release requires both-browser acceptance",
-      "nativeEvidenceScope": "Current catalogue: 27 model checks plus mesh/obstruction/old-square controls passed; broader native suite 124/124 and affected catalogue/Cardan suite 23/23"
+      "qualificationState": "experimental; no simulationChecked admission",
+      "nativeEvidenceScope": "Two-cadence and physical controls pass with nominal 3L cylinder; focused mechanical rerun also passes after composition of main floor-contact changes. Broad simulator suite incomplete."
     },
     {
       "id": "counterslide",
@@ -77,7 +77,7 @@
       "originalModelSha256": "04876c4a6f150fca63d961a8d990fa9490d9115354d5fa825473e4b1f38db2b5",
       "originalProgramSha256": "6c5ff11909d9e02ad2f805ccd983422ceee3485072011c59e6906c43a86f6d71",
       "placements": 44,
-      "status": "native passive law, physical removal, support and hold pass at two cadences; final browser acceptance pending",
+      "status": "experimental checkpoint; native passive law, removal control and hold pass; full browser qualification pending",
       "sourceChecks": {
         "rigidMatrices": true,
         "uniqueIds": true,
@@ -90,8 +90,8 @@
       "inferredCrosses": 0,
       "modelSha256": "ef70cc15943a3d9adde4b52b28e817c36d7b3428652cc5c49b58252ffa2e2764",
       "programSha256": "6c5ff11909d9e02ad2f805ccd983422ceee3485072011c59e6906c43a86f6d71",
-      "qualificationState": "unpublished candidate with curated gallery status; release requires both-browser acceptance",
-      "nativeEvidenceScope": "Current catalogue: 27 model checks plus mesh/obstruction/old-square controls passed; broader native suite 124/124 and affected catalogue/Cardan suite 23/23"
+      "qualificationState": "experimental; no simulationChecked admission",
+      "nativeEvidenceScope": "Two-cadence and physical controls pass with nominal 3L cylinder; focused mechanical rerun also passes after composition of main floor-contact changes. Broad simulator suite incomplete."
     },
     {
       "id": "toggle-press",
@@ -100,7 +100,7 @@
       "originalModelSha256": "231ce851676277f7073dfa7ee8ce3a97d68537b20d793a58cdd2710e397c497a",
       "originalProgramSha256": "92548b0b73121faa085b867e4bcbe7af31425f915762595a53d68af9d6e56282",
       "placements": 142,
-      "status": "native passive law, physical removal, support and hold pass at two cadences; final browser acceptance pending",
+      "status": "experimental checkpoint; native passive law, removal control and hold pass; full browser qualification pending",
       "sourceChecks": {
         "rigidMatrices": true,
         "uniqueIds": true,
@@ -113,8 +113,8 @@
       "inferredCrosses": 0,
       "modelSha256": "dbd9cb3dfc3586de5a216534a9d90246126a1cdb7a7cc9b7415e247365ea25f8",
       "programSha256": "92548b0b73121faa085b867e4bcbe7af31425f915762595a53d68af9d6e56282",
-      "qualificationState": "unpublished candidate with curated gallery status; release requires both-browser acceptance",
-      "nativeEvidenceScope": "Current catalogue: 27 model checks plus mesh/obstruction/old-square controls passed; broader native suite 124/124 and affected catalogue/Cardan suite 23/23"
+      "qualificationState": "experimental; no simulationChecked admission",
+      "nativeEvidenceScope": "Two-cadence and physical controls pass with nominal 3L cylinder; focused mechanical rerun also passes after composition of main floor-contact changes. Broad simulator suite incomplete."
     },
     {
       "id": "footfall",
@@ -123,7 +123,7 @@
       "originalModelSha256": "c97d612612e11957455de8d93215ae61e2d844d68fd15aabb51bb5d5b8ef0332",
       "originalProgramSha256": "6bcd7c554a8e184987aeab059381c99e41e5f6887d918c556d060e18335fd24a",
       "placements": 120,
-      "status": "native passive law, physical removal, support and hold pass at two cadences; final browser acceptance pending",
+      "status": "experimental checkpoint; native passive law, removal control and hold pass; full browser qualification pending",
       "sourceChecks": {
         "rigidMatrices": true,
         "uniqueIds": true,
@@ -136,8 +136,8 @@
       "inferredCrosses": 0,
       "modelSha256": "415bb0c7d31425f9e52c8602048e210eae197a6bd9d98f9e9af0182526119907",
       "programSha256": "6bcd7c554a8e184987aeab059381c99e41e5f6887d918c556d060e18335fd24a",
-      "qualificationState": "unpublished candidate with curated gallery status; release requires both-browser acceptance",
-      "nativeEvidenceScope": "Current catalogue: 27 model checks plus mesh/obstruction/old-square controls passed; broader native suite 124/124 and affected catalogue/Cardan suite 23/23"
+      "qualificationState": "experimental; no simulationChecked admission",
+      "nativeEvidenceScope": "Two-cadence and physical controls pass with nominal 3L cylinder; focused mechanical rerun also passes after composition of main floor-contact changes. Broad simulator suite incomplete."
     },
     {
       "id": "phasekeeper",
@@ -146,7 +146,7 @@
       "originalModelSha256": "39a60a5f3e5841611a7320b9afb2e6507730f2dec2008420fb08f3460a0fe036",
       "originalProgramSha256": "30febab7bfa69f81bbd5fd9166fbc0b32a97ed04732a9caea521ae487c35b2b1",
       "placements": 81,
-      "status": "native passive law, physical removal, support and hold pass at two cadences; final browser acceptance pending",
+      "status": "experimental checkpoint; native passive law, removal control and hold pass; full browser qualification pending",
       "sourceChecks": {
         "rigidMatrices": true,
         "uniqueIds": true,
@@ -159,8 +159,8 @@
       "inferredCrosses": 2,
       "modelSha256": "832f81fafc564889660070240b1e92f068a39ea76d7b1c45cd358b61e792e618",
       "programSha256": "30febab7bfa69f81bbd5fd9166fbc0b32a97ed04732a9caea521ae487c35b2b1",
-      "qualificationState": "unpublished candidate with curated gallery status; release requires both-browser acceptance",
-      "nativeEvidenceScope": "Current catalogue: 27 model checks plus mesh/obstruction/old-square controls passed; broader native suite 124/124 and affected catalogue/Cardan suite 23/23"
+      "qualificationState": "experimental; no simulationChecked admission",
+      "nativeEvidenceScope": "Two-cadence and physical controls pass with nominal 3L cylinder; focused mechanical rerun also passes after composition of main floor-contact changes. Broad simulator suite incomplete."
     },
     {
       "id": "vectorsum",
@@ -169,7 +169,7 @@
       "originalModelSha256": "a44184daf3bf5f3423fa906b0e7fe464e00664e3cbf3061345fec29669d59855",
       "originalProgramSha256": "a08a1462f1f85dcf554a23d3326455b33f920c293aa2698a41d05508613101dc",
       "placements": 122,
-      "status": "native passive law, physical removal, support and hold pass at two cadences; final browser acceptance pending",
+      "status": "experimental checkpoint; native passive law, removal control and hold pass; full browser qualification pending",
       "sourceChecks": {
         "rigidMatrices": true,
         "uniqueIds": true,
@@ -182,8 +182,8 @@
       "inferredCrosses": 0,
       "modelSha256": "d24808a2347593f3a4ecd725b9736872f75acb5858cce72a854977ce1855f556",
       "programSha256": "a08a1462f1f85dcf554a23d3326455b33f920c293aa2698a41d05508613101dc",
-      "qualificationState": "unpublished candidate with curated gallery status; release requires both-browser acceptance",
-      "nativeEvidenceScope": "Current catalogue: 27 model checks plus mesh/obstruction/old-square controls passed; broader native suite 124/124 and affected catalogue/Cardan suite 23/23"
+      "qualificationState": "experimental; no simulationChecked admission",
+      "nativeEvidenceScope": "Two-cadence and physical controls pass with nominal 3L cylinder; focused mechanical rerun also passes after composition of main floor-contact changes. Broad simulator suite incomplete."
     },
     {
       "id": "pointweaver",
@@ -192,7 +192,7 @@
       "originalModelSha256": "979600e2eec3e5e273af11b2dd1457027602e5276eb6d299feecd5359aa7a9ce",
       "originalProgramSha256": "fc0601f866fc9b1716d217c7206c520d9c9a62ac1202231d55316c890ca2e253",
       "placements": 128,
-      "status": "native passive law, physical removal, support and hold pass at two cadences; final browser acceptance pending",
+      "status": "experimental checkpoint; native passive law, removal control and hold pass; full browser qualification pending",
       "sourceChecks": {
         "rigidMatrices": true,
         "uniqueIds": true,
@@ -205,10 +205,11 @@
       "inferredCrosses": 0,
       "modelSha256": "37d8a394d9f9714b4229bbe26419e62df52226a6608189f2668806fa97a4e9ee",
       "programSha256": "0a0f5638a16950c3221c13e1b71ee1db36dfc346563f7b94f16b26921a0a93bc",
-      "qualificationState": "unpublished candidate with curated gallery status; release requires both-browser acceptance",
-      "nativeEvidenceScope": "Current catalogue: 27 model checks plus mesh/obstruction/old-square controls passed; broader native suite 124/124 and affected catalogue/Cardan suite 23/23"
+      "qualificationState": "experimental; no simulationChecked admission",
+      "nativeEvidenceScope": "Two-cadence and physical controls pass with nominal 3L cylinder; focused mechanical rerun also passes after composition of main floor-contact changes. Broad simulator suite incomplete."
     }
   ],
   "qualification": "Unpublished implementation candidate. Eight earlier exact-input native suites pass; refreshed source, CounterSlide catalogue correction and all actual browser journeys remain pending.",
-  "browserEvidence": "Preliminary PointWeaver full mechanics/manual/instructions/BOM/raw imports/SB3 replay pass; EN/DE and final all-model source-bound browser qualification still pending."
+  "browserEvidence": "Source-specific partial Chromium evidence: PointWeaver complete including lessons on an earlier build; HelixGate and LoopRelay complete including lessons; ParityDial complete through saved-program replay before grouped deadline. Final eighteen journeys incomplete.",
+  "continuation": "docs/ROBOT-LAB-NINE-MODELS-HANDOFF.md"
 }
