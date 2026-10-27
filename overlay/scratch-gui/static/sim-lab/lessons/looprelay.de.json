@@ -1,0 +1,26 @@
+{
+  "what": "Ein SPIKE-Mittelmotor dreht das erste Kettenrad mit 16 Zähnen. Eine geschlossene Kette aus 25 Gliedern überträgt die Drehung auf ein 24er-Kettenrad einer zweiten gelagerten Welle. Ein 8er-Ritzel auf derselben Welle treibt das 24er-Abtriebsrad mit rotem Zeiger an.",
+  "try": [
+    "Öffne das LDraw-Modell und Programm von LoopRelay, setze den gespeicherten Encoder-Nullpunkt zurück und starte Motor A. Er fährt mit 12 Grad pro Sekunde auf +180 Grad und wieder zurück.",
+    "Beobachte das mittlere 24er-Kettenrad und den roten Abtriebszeiger: Drehen sie gleichsinnig? Welche Winkel erreichen sie bei der Pause?",
+    "Steuere Motor A von 0 bis +180 Grad schrittweise um je +45 Grad. Beobachte zunächst die Kettenstufe und sage erst dann den letzten Zeigerwinkel voraus."
+  ],
+  "why": "Eine Kette erhält die Drehrichtung: Der Winkel der Zwischenwelle beträgt A × 16/24 = +2A/3. Das äußere Zahnradpaar 8:24 kehrt die Richtung um und untersetzt nochmals auf ein Drittel: Abtriebswinkel = -2A/9. Bei A=+180 Grad dreht die Zwischenwelle +120 Grad und der rote Zeiger -40 Grad gegenüber ihrer gespeicherten Ausgangslage.",
+  "matters": "Eine Kette überträgt Drehbewegung zwischen weiter entfernten parallelen Wellen. Eine zusätzliche Zahnradstufe verringert den Winkel und kehrt die Drehrichtung um. Dies ist ein virtueller Kinematik-Versuch, kein geprüfter Lastantrieb mit verifizierter Kettenspannung.",
+  "question": "Motor A dreht +90 Grad: Wie weit dreht sich das mittlere Kettenrad? Welchen Winkel erreicht der rote Zeiger? Warum unterscheiden sich die Vorzeichen?",
+  "answer": "Zwischenwelle: +60 Grad (= 90 × 16/24). Roter Zeiger: -20 Grad (= 60 × -8/24). Die Kette erhält die Richtung; das äußere Zahnradpaar kehrt sie um. Bei +180 Grad Eingang sind es +120 und -40 Grad.",
+  "further": [
+    "Berechne den Abtriebswinkel bei +45 Grad Eingang: -10 Grad.",
+    "Was ändert sich mit einem letzten Zahnrad mit 16 statt 24 Zähnen? Die Rechnung ergibt -A/3; der Achsabstand muss dann neu konstruiert werden.",
+    "Vergleiche LoopRelay mit ParityDial (Zwischenrad) und CounterSlide (Zahnstangen). Wie übertragen sie Bewegung und ändern die Richtung?"
+  ],
+  "version": 1,
+  "id": "looprelay",
+  "language": "de",
+  "formula": "φ = (16/24) × (−8/24) θ = −2θ/9",
+  "related": [
+    "gearbox.ldr",
+    "crank-rocker.ldr",
+    "rack-shuttle.ldr"
+  ]
+}

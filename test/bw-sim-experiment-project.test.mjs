@@ -5,6 +5,8 @@ import {readFileSync} from 'node:fs';
 import JSZip from 'jszip';
 import {balancedAfter} from './helpers/js-scope.mjs';
 import {parseModel, serializeModel} from '../overlay/scratch-gui/src/lib/bw-sim/model/ldraw-model.js';
+import {createControlPair, restoreControlPair} from '../overlay/scratch-gui/src/lib/bw-sim/measurements/control-pairs.js';
+import {experimentsFromRuns} from '../overlay/scratch-gui/src/lib/bw-sim/measurements/experiments.js';
 import {createMeasurementRecorder} from '../overlay/scratch-gui/src/lib/bw-sim/measurements/recording.js';
 import {refuseSimLabSave, clearSimLabSaveFailure, simLabSaveFailure} from '../overlay/scratch-gui/src/lib/bw-sim/model/sim-lab-save-state.js';
 import {measurementModelContext} from '../overlay/scratch-gui/src/lib/bw-sim/measurements/model-context.js';
@@ -14,8 +16,8 @@ const source = readFileSync(new URL('../overlay/scratch-gui/src/components/tw-ps
 const signatures = ['rememberMeasurementHistory ()', 'currentRecord ()', 'onBundleCollect (event)', 'async onBundleLoaded (event)', 'async openStored ()'];
 const methods = signatures.map(signature => `${signature} ${balancedAfter(source, `    ${signature} {`, '{', '}')}`).join(',\n');
 const api = Function('createMeasurementRecorder', 'measurementModelContext', 'simLabRecordFromText', 'readSimLabStorage', 'isStorableName',
-    'SIM_LAB_STORAGE_KEY', 'MODEL_TITLE', 'modelKey', 'refuseSimLabSave', 'clearSimLabSaveFailure', 'simLabSaveFailure', `return {${methods}}`)(createMeasurementRecorder, measurementModelContext,
-    simLabRecordFromText, readSimLabStorage, isStorableName, SIM_LAB_STORAGE_KEY, 'Sim Lab model', m => m.file, refuseSimLabSave, clearSimLabSaveFailure, simLabSaveFailure);
+    'SIM_LAB_STORAGE_KEY', 'MODEL_TITLE', 'modelKey', 'refuseSimLabSave', 'clearSimLabSaveFailure', 'simLabSaveFailure', 'restoreControlPair', `return {${methods}}`)(createMeasurementRecorder, measurementModelContext,
+    simLabRecordFromText, readSimLabStorage, isStorableName, SIM_LAB_STORAGE_KEY, 'Sim Lab model', m => m.file, refuseSimLabSave, clearSimLabSaveFailure, simLabSaveFailure, restoreControlPair);
 const raw = '0 Original title\n0 Name: original.ldr\n0 !BW ID brick\n1 16 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat\n';
 const definition = {id: 'mass', kind: 'mass', label: 'Assembly mass', targets: ['brick'], visible: true};
 const pane = () => {
@@ -136,3 +138,39 @@ test('a superseded stored-model load cannot publish an old save failure into the
     p.loadToken = {}; p.state.message = 'New model'; release(); await pending;
     assert.equal(p.state.message, 'New model'); assert.equal(p.measurementSaveError, null);
 }));
+
+
+test('actual save hook preserves an explicit pair and independent foreign identity in project bytes', async () => {
+    const p = pane(), context = {...p.measurementContext, definitions: p.measurements};
+    const make = (modelSha256, d, value) => experimentsFromRuns([{id:'run-1',origin:'simulation',modelSha256,definitions:[d],samples:[{elapsedMs:0,timeMs:5,readings:[{...d,unit:'g',source:'configured-mass',available:true,value,reason:''}]}]}],{modelSha256});
+    const foreign = {...definition,id:'control-mass',label:'Control mass',targets:['different-brick']};
+    const baseline=make(context.modelSha256,definition,3),control=make('e'.repeat(64),foreign,6);
+    p.measurementControlPair=createControlPair({modelSha256:context.modelSha256,baseline:{packet:baseline,context},control:{packet:control,context:{modelSha256:'e'.repeat(64)}},mappings:[{baselineId:'mass',controlId:'control-mass'}]});
+    const record=p.currentRecord();
+    const zip=new JSZip();zip.file('brickwright/state.json',JSON.stringify({state:{simLab:record}}));
+    const bytes=await zip.generateAsync({type:'nodebuffer'}),opened=await JSZip.loadAsync(bytes,{checkCRC32:true});
+    const saved=JSON.parse(await opened.file('brickwright/state.json').async('text')).state.simLab;
+    const reopenedContext=measurementModelContext(parseModel(saved.ldraw).model,saved.ldraw,serializeModel);
+    const restored=restoreControlPair(saved.experiments,{...reopenedContext,definitions:saved.measurements});
+    assert.equal(restored.baseline.canonicalModelSha256,context.modelSha256);
+    assert.equal(restored.control.canonicalModelSha256,'e'.repeat(64));
+    assert.equal(restored.baseline.id,restored.control.id,'role-qualified run-1 identities are preserved');
+    assert.equal(p.measurementRecording.snapshot().runs.length,0,'pair data never becomes an ordinary recorder run');
+    p.measurements=[{...definition,targets:['replacement']}];
+    assert.throws(()=>p.currentRecord(),/binding mismatch/,'live binding replacement cannot silently rewrite pair provenance');
+});
+
+
+test('actual save hook retains twelve-digit placement while canonical measurement identity stays six-digit', () => {
+    const p=pane(),part=p.session.model.parts[0],c=.384615384615,s=.923076923077;
+    p.session.model={...p.session.model,parts:[{...part,position:[83.0769230769,0,0],rotation:[c,0,s,0,1,0,-s,0,c]}]};
+    p.opened.text=serializeModel(p.session.model,{name:'precise.ldr',title:'Precise',precision:12});p.state.modelFile='precise.ldr';
+    p.measurementContext=measurementModelContext(p.session.model,p.opened.text,serializeModel);
+    const record=p.currentRecord();
+    assert.ok(record.ldraw.includes('83.0769230769'));
+    assert.ok(record.ldraw.includes('0.384615384615'));
+    const parsed=parseModel(record.ldraw);assert.deepEqual(parsed.refusals,[]);
+    const reopened=measurementModelContext(parsed.model,record.ldraw,serializeModel);
+    assert.equal(reopened.modelSha256,p.measurementContext.modelSha256);
+    assert.notEqual(reopened.rawModelSha256,reopened.modelSha256,'the precise saved bytes are not relabelled as the canonical six-digit serialization');
+});

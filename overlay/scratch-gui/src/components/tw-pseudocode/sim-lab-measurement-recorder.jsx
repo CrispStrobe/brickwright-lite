@@ -42,7 +42,7 @@ export default class SimLabMeasurementRecorder extends React.Component {
     constructor (props) {
         super(props);
         this.recorder = props.recorder || createMeasurementRecorder();
-        this.state = {snapshot: this.recorder.snapshot(), importStatus: ''};
+        this.state = {snapshot: this.recorder.snapshot(), importStatus: '', windowStart: '', windowDuration: '10'};
         this.importFile = React.createRef();
         this.importRevision = 0;
     }
@@ -70,9 +70,20 @@ export default class SimLabMeasurementRecorder extends React.Component {
         return {...this.props, canonicalModelSha256: this.props.modelContext?.modelSha256, rawModelSha256: this.props.modelContext?.rawModelSha256};
     }
     start () {
+        if (this.props.pairActive) return;
         this.importRevision++;
         this.recorder.start(this.recordingProps());
         this.setState({snapshot: this.recorder.update(this.recordingProps())});
+    }
+    startWindow () {
+        if (this.props.pairActive) return;
+        try {
+            const startTimeMs = Number(this.state.windowStart) * 1000, durationMs = Number(this.state.windowDuration) * 1000;
+            if (this.state.windowStart.trim() === '' || this.state.windowDuration.trim() === '') throw new Error('Choose a start time and duration');
+            this.importRevision++;
+            this.recorder.start({...this.recordingProps(), window: {schema: 'bw.sim-lab.recording-window.v1', startTimeMs, durationMs}});
+            this.setState({snapshot: this.recorder.update(this.recordingProps()), importStatus: ''});
+        } catch (error) { this.setState({importStatus: error.message}); }
     }
     stop () {
         this.setState({snapshot: this.recorder.stop('stopped')}, () => this.props.onHistoryChanged?.());
@@ -93,6 +104,7 @@ export default class SimLabMeasurementRecorder extends React.Component {
         const current = () => revision === this.importRevision && session === this.props.session && modelKey === this.props.modelKey &&
             context === this.props.modelContext && definitions === JSON.stringify(this.props.definitions) && !this.props.replaying;
         try {
+            if (this.props.pairActive) throw new Error('Clear the explicit control pair before importing ordinary runs');
             if (this.props.recordingAllowed === false) throw new Error('Four model histories are retained; export or clear a recording first');
             if (!context || !Number.isFinite(file.size) || file.size > CSV_BYTE_LIMIT) throw new Error('CSV file is too large or no model is ready');
             const text = await file.text();
@@ -109,13 +121,14 @@ export default class SimLabMeasurementRecorder extends React.Component {
         const comparison = snapshot.compatible ? compareMeasurementRuns(runs) : [];
         const hasExactSharedTimes = comparison.some(measurement => measurement.pairs.some(pair => pair.available));
         const selectedDefinitions = this.props.definitions.filter(d => this.props.selected.includes(d.id) && d.visible !== false).slice(0, 4);
-        const status = this.props.replaying ? T.replay : snapshot.active ? `${T.active} · ${snapshot.sampleCount}/${snapshot.sampleLimit}` :
+        const status = this.props.replaying ? T.replay : snapshot.armed ? (this.props.locale === 'de' ? 'Wartet auf Simulationszeitfenster' : 'Armed for simulated-time window') : snapshot.active ? `${T.active} · ${snapshot.sampleCount}/${snapshot.sampleLimit}` :
             snapshot.stoppedReason === 'different-model-or-measurements' ? T.mismatch :
                 ['sample-limit', 'time-limit'].includes(snapshot.stoppedReason) ? T.limitReached :
                 snapshot.stoppedReason && snapshot.stoppedReason !== 'stopped' ? T.changed : '';
         return <section aria-label={T.title} data-testid="bw-sim-measurement-recorder" style={{borderTop: '1px solid #cbd5e1', marginTop: 8, paddingTop: 6}}>
             <strong>{T.title}</strong>
             <p>{T.bound}</p>
+            {this.props.pairActive && <p role="status">{this.props.locale === 'de' ? 'Der ausdrückliche Modellvergleich belegt beide Messreihenplätze. Zum Aufzeichnen zuerst den Vergleich löschen.' : 'The explicit control pair occupies both run slots. Clear it before recording ordinary runs.'}</p>}
             <p>{T.importHelp}</p>
             {this.props.recordingAllowed === false && <p role="status">{this.props.locale === 'de' ? 'Vier Modell-Messreihen sind vorgemerkt. Eine exportieren oder löschen, bevor weitere aufgezeichnet werden.' : 'Four model histories are retained. Export or clear a recording before capturing another model.'}</p>}
             <input ref={this.importFile} type="file" accept=".csv,text/csv" style={{display: 'none'}} data-testid="bw-sim-measurement-record-import-file" onChange={event => this.importCsv(event)} />
@@ -123,14 +136,21 @@ export default class SimLabMeasurementRecorder extends React.Component {
             {status && <p role="status" data-testid="bw-sim-measurement-recorder-status">{status}</p>}
             <div style={{display: 'flex', flexWrap: 'wrap', gap: 5}}>
                 {snapshot.active ? <button type="button" data-testid="bw-sim-measurement-record-stop" onClick={() => this.stop()}>{T.stop}</button> :
-                    <button type="button" data-testid="bw-sim-measurement-record-start" disabled={this.props.recordingAllowed === false || this.props.replaying || !this.props.modelKey || !selectedDefinitions.length || runs.length >= RECORDING_LIMIT}
+                    <button type="button" data-testid="bw-sim-measurement-record-start" disabled={this.props.pairActive || this.props.recordingAllowed === false || this.props.replaying || !this.props.modelKey || !selectedDefinitions.length || runs.length >= RECORDING_LIMIT}
                         onClick={() => this.start()}>{T.start}</button>}
-                <button type="button" data-testid="bw-sim-measurement-record-import" disabled={this.props.recordingAllowed === false || snapshot.active || this.props.replaying || !this.props.modelContext || runs.length >= RECORDING_LIMIT} onClick={() => this.importFile.current?.click()}>{T.import}</button>
+                <button type="button" data-testid="bw-sim-measurement-record-import" disabled={this.props.pairActive || this.props.recordingAllowed === false || snapshot.active || this.props.replaying || !this.props.modelContext || runs.length >= RECORDING_LIMIT} onClick={() => this.importFile.current?.click()}>{T.import}</button>
                 {runs.length > 0 && <button type="button" data-testid="bw-sim-measurement-record-export" onClick={() => this.exportCsv()}>{T.export}</button>}
                 {runs.length > 0 && <button type="button" data-testid="bw-sim-measurement-record-clear" onClick={() => this.clear()}>{T.clear}</button>}
             </div>
+            <fieldset disabled={this.props.pairActive || snapshot.active || this.props.replaying || this.props.recordingAllowed === false || runs.length >= RECORDING_LIMIT}>
+                <legend>{this.props.locale === 'de' ? 'Zeitfenster für lange Läufe' : 'Window for long runs'}</legend>
+                <label>{this.props.locale === 'de' ? 'Absolute Startzeit (s)' : 'Absolute start time (s)'} <input data-testid="bw-sim-window-start" type="number" min="0" step="0.1" value={this.state.windowStart} onChange={e => this.setState({windowStart: e.target.value})} /></label>
+                <label>{this.props.locale === 'de' ? 'Dauer (s, höchstens 60)' : 'Duration (s, at most 60)'} <input data-testid="bw-sim-window-duration" type="number" min="0.1" max="60" step="0.1" value={this.state.windowDuration} onChange={e => this.setState({windowDuration: e.target.value})} /></label>
+                <button type="button" data-testid="bw-sim-window-arm" disabled={!selectedDefinitions.length} onClick={() => this.startWindow()}>{this.props.locale === 'de' ? 'Zeitfenster vormerken' : 'Arm window'}</button>
+                <p>{this.props.locale === 'de' ? 'Keine Daten vor Start. Verpasste Fenster werden nicht verschoben; Speichern oder Modellwechsel bricht ab.' : 'No pre-start buffer. Missed windows are not shifted; saving or changing models cancels arming.'}</p>
+            </fieldset>
             <ul data-testid="bw-sim-measurement-record-runs" style={{paddingLeft: 18}}>
-                {runs.map((run, index) => <li key={run.id}>{T.run} {index + 1}: {run.samples.length} {T.samples}{run.origin === 'csv' ? ` · ${T.csvOrigin}` : run.origin === 'simulation' ? ` · ${T.simulationOrigin}` : ''}</li>)}
+                {runs.map((run, index) => <li key={run.id}>{T.run} {index + 1}: {run.samples.length} {T.samples}{run.window ? ` · ${run.window.startTimeMs / 1000}s / ${run.window.durationMs / 1000}s` : ''}{run.origin === 'csv' ? ` · ${T.csvOrigin}` : run.origin === 'simulation' ? ` · ${T.simulationOrigin}` : ''}</li>)}
             </ul>
             {snapshot.compatible && <div data-testid="bw-sim-measurement-record-comparison">
                 <h4>{T.shared}</h4>
@@ -152,6 +172,7 @@ export default class SimLabMeasurementRecorder extends React.Component {
 }
 
 SimLabMeasurementRecorder.propTypes = {
+    pairActive: PropTypes.bool,
     locale: PropTypes.string.isRequired, session: PropTypes.object, modelKey: PropTypes.string.isRequired,
     definitions: PropTypes.array.isRequired, selected: PropTypes.array.isRequired, rows: PropTypes.array.isRequired,
     modelContext: PropTypes.object, recorderRevision: PropTypes.number, recordingAllowed: PropTypes.bool, onHistoryChanged: PropTypes.func, onRestoredSelection: PropTypes.func, sampleTime: PropTypes.number, replaying: PropTypes.bool, paused: PropTypes.bool, recorder: PropTypes.object

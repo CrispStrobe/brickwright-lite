@@ -1,0 +1,75 @@
+0 ParityDial — two opposite-output clock hands from one motor
+0 Name: paritydial.ldr
+0 Author: CrispStrobe
+0 !LICENSE BSD-3-Clause : see ../licenses/paritydial.txt
+0 !LDRAW_ORG Unofficial_Model
+0 !BW REQUIRES SPIKE
+0 Three genuine spur meshes, one direct route and one route with an idler
+0 !BW ID base_cross
+1 72 40 40 0 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID frame_elbow_-80_rear
+1 72 -80 20 0 0 0 1 1 0 0 0 1 0 15100.dat
+0 !BW ID frame_elbow_160_rear
+1 72 160 20 0 0 0 1 1 0 0 0 1 0 15100.dat
+0 !BW ID hub_base_pin_-60
+1 0 -60 50 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID motor_stator_pin_-20
+1 0 -20 30 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID motor_stator_pin_20
+1 0 20 30 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 STEP
+0 !BW ID hub_base_pin_60
+1 0 60 50 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID frame_brace_pin_-80_rear
+1 0 -80 20 10 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID frame_brace_pin_160_rear
+1 0 160 20 10 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID spike_hub
+1 71 0 130 100 1 0 0 0 1 0 0 0 1 45601.dat
+0 !BW ID motor_A
+0 !BW PORT A
+1 71 0 0 0 1 0 0 0 1 0 0 0 1 54696p01.dat
+0 !BW ID side_stay_-80
+1 72 -80 -20 20 1 0 0 0 0 1 0 -1 0 32278.dat
+0 STEP
+0 !BW ID side_stay_160
+1 72 160 -20 20 1 0 0 0 0 1 0 -1 0 32278.dat
+0 !BW ID axle_drive
+1 4 0 -90 0 0 1 0 1 0 0 0 0 -1 3707.dat
+0 !BW ID frame_brace_pin_-80_front
+1 0 -80 -80 10 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID frame_brace_pin_160_front
+1 0 160 -80 10 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID bearing_cross_-100
+1 72 40 -100 0 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID bearing_cross_-140
+1 72 40 -140 0 0 0 1 0 1 0 -1 0 0 32278.dat
+0 STEP
+0 !BW ID gear_drive
+1 71 0 -60 0 1 0 0 0 0 1 0 -1 0 3647.dat
+0 !BW ID frame_elbow_-80_front
+1 72 -80 -80 0 0 0 -1 -1 0 0 0 1 0 15100.dat
+0 !BW ID frame_elbow_160_front
+1 72 160 -80 0 0 0 -1 -1 0 0 0 1 0 15100.dat
+0 !BW ID bearing_splice_-100
+1 0 -100 -120 0 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID axle_right
+1 4 100 -90 0 0 1 0 1 0 0 0 0 -1 3707.dat
+0 !BW ID bearing_splice_180
+1 0 180 -120 0 0 1 0 1 0 0 0 0 -1 6558.dat
+0 STEP
+0 !BW ID axle_left
+1 4 -40 -90 0 0 1 0 1 0 0 0 0 -1 3707.dat
+0 !BW ID axle_idler
+1 4 40 -90 0 0 1 0 1 0 0 0 0 -1 3707.dat
+0 !BW ID dial_right
+1 4 100 -160 0 -1 0 0 0 1 0 0 0 -1 6632.dat
+0 !BW ID gear_right
+1 14 100 -60 0 1 0 0 0 0 1 0 -1 0 3648.dat
+0 !BW ID dial_left
+1 25 -40 -160 0 1 0 0 0 1 0 0 0 1 6632.dat
+0 !BW ID gear_left
+1 14 -40 -60 0 1 0 0 0 0 1 0 -1 0 3648.dat
+0 STEP
+0 !BW ID gear_idler
+1 72 40 -60 0 1 0 0 0 0 1 0 -1 0 3648.dat

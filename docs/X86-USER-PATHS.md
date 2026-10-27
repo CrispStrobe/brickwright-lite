@@ -1,6 +1,6 @@
 # x86 user paths in Lite
 
-Source checkpoint: [Lite 2796d2f5](https://github.com/CrispStrobe/brickwright-lite/tree/2796d2f5ac344986a9fb870d0b2f06344b3d259b). This is a source-backed user guide, not a fresh installed-browser or guest acceptance. The supplier package at this checkpoint is board `3b03d226`; later board CPU qualification does not silently update this consumer.
+Current documentation checkpoint: 2026-10-27; see [the handoff and acceptance tasks](X86-NEXT-LANES.md#current-handoff-2026-10-27). Main selects board `836867513c3e7fac420ddaa32c17e1c7b6d3e513` in [vendor-pins.json](../vendor-pins.json). This is a source-backed guide, not a fresh installed-browser or guest acceptance. PR1318 remains pending, and newer board qualification does not silently update this consumer. The original guide checkpoint was [Lite 2796d2f5](https://github.com/CrispStrobe/brickwright-lite/tree/2796d2f5ac344986a9fb870d0b2f06344b3d259b) with board `3b03d226`.
 
 ## Pick the right machine
 

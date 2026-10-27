@@ -37,6 +37,82 @@ qualification runner, not automatic support for every existing or future model.
 
 ## What the harness checks
 
+### Candidate preflight and the nine-Technic regression suite
+
+Run structural preflight on an arbitrary LDR/MPD without granting it admission:
+
+```sh
+node --import ./scripts/lib/register-gui-scope.mjs \
+  scripts/check-robot-lab-intake.mjs \
+  overlay/scratch-gui/static/sim-lab/models/looprelay.ldr \
+  --drive=A:chain_input16 --fixed=A
+```
+
+The JSON report names offending physical parts. It checks real retaining
+connections, motor-housing support, keyed input ownership, retainer engagement,
+rigid transforms, overlapping solids and axle tips penetrating other gears.
+`--fixed` explicitly declares housings fixed to the chassis; omit that assertion
+for a motor intentionally mounted on a moving arm. Its retaining connections
+and keyed drive are still checked.
+It retains compiler advisories for review. Optional `--record=recording.json`
+and `--success=done` inspect actual recorded completion, faults, finite poses
+and a full two-second continuation; they do not establish a passive-motion law.
+
+The reviewed HelixGate, LoopRelay, ParityDial, CounterSlide, Toggle Press,
+Footfall, Phasekeeper, VectorSum and PointWeaver contracts have their own suite:
+
+```sh
+BW_MODEL_QUALIFY_EVIDENCE_DIR=artifacts/nine-intake-native-001 \
+node --test --import ./scripts/lib/register-gui-scope.mjs \
+  test/bw-sim-nine-intake-checks.test.mjs \
+  test/bw-sim-nine-intake-assets.test.mjs \
+  test/bw-sim-nine-intake-motion.test.mjs
+```
+
+Use a fresh recording directory. Each model runs at 25 ms and browser cadence,
+then with an essential real transmission part removed. These checks observe
+passive body poses, complete input routes, native floor contact, hinge closure,
+world-space support and held continuation. Frozen passive outputs and a
+translated foundation must fail. Source/program hashes accompany the original
+recordings, which are saved before a verdict. This separate regression suite
+does not relax the general builder contract's minimum piece count or silently
+promote a small experimental demonstrator.
+
+The normal browser entry accepts `--part=examples --examples=helixgate,...`.
+The nine-model journeys check the actual worker, bounded manual buttons,
+connected instruction pages, placement BOM, both lesson languages, raw imports
+and a real saved-project export followed by a fresh full program replay.
+Worker snapshots do not expose native contact presence: browser checks retain
+world-space pose/closure checks, while native tests independently prove floor
+contact. A height check is not relabeled as contact evidence.
+
+For a selected export, including enabled experimental examples, use
+`scripts/export-robot-lab-library.mjs OUTPUT-DIRECTORY OUTPUT.zip --models=ID,ID`.
+The default export remains the qualified catalogue. Selected exports preserve
+experimental status and verify complete LDR/MPD semantics and motor-pose assets.
+
+### Rules exposed by concrete failures
+
+- Structural reachability is weaker than a fixed support. A "fixed" pivot can
+  connect back to the chassis through the moving linkage while its bearing
+  misses the frame. Declare fixed bearing parts and require rigid ownership.
+- Motor arrival does not prove transmission. A round hole can slip around a
+  powered axle while every command completes. Require the intended input arm
+  to belong to the actual rotor assembly, then measure the passive output.
+- Audit the full occupied shaft interval. Solid-overlap checks omit legitimate
+  shaft regions; a free tip can still penetrate a planet gear outside its bore.
+- Check physical guide travel against the requested trajectory. Software jog
+  ranges cannot extend a short rail or move a real carriage end stop.
+- Compare suspicious collision envelopes with the canonical mesh and retain
+  a real obstruction control. Claim a shared correction separately; do not
+  suppress collisions to make one candidate pass.
+- Universal-joint crosses retain their forks without welding them. Structural
+  diagnostics must include those real connections while leaving angle-only
+  gear and chain ratios nonstructural.
+- Authored `STEP` labels are not a construction proof. Audit each new placement
+  against previously placed real connections and report inferred crosses
+  separately from explicit LDraw placements.
+
 | Layer | Checks | Typical caught failure |
 | --- | --- | --- |
 | Identity and packaging | Frozen original model/program hashes, author and full licence, explicit ports, all three registrations, generated catalogue and bilingual lessons, lazy catalogue classification | Model appears in one menu but not another; stale counts; missing parts or licence |
@@ -111,3 +187,42 @@ clearance. Collider fidelity, manufacturing tolerances, real friction, flex,
 axial retention under load, cable snagging, motor heating, assembly accessibility
 and durability need further modelling or a physical build. A visually plausible
 or green simulated machine remains explicitly simulation-qualified.
+
+
+### Curated gallery status and limits
+
+The gallery supports a curated `simulationChecked` flag without changing the
+experimental builder's minimum-size contract. The current checkpoint sets that
+flag for **none** of the nine intakes: their browser qualification is incomplete.
+They remain available through Include experimental. Only publish the flag after
+the complete native and Chromium/WebKit journeys pass. This status never means
+a physical LEGO build has been tested. See the
+[current continuation handoff](ROBOT-LAB-NINE-MODELS-HANDOFF.md) and
+[per-model record](data/robot-lab-nine-intakes-20261026.json).
+
+The stock 3L shaft now uses the official mesh's measured 6-LDU swept radius and
+retains the original nominal 30-LDU half-length. The drawn end caps reach
+29.5 LDU; retaining the established end allowance avoids a separate change to
+end clearance and body inertia. Its old square envelope reached 8.485 LDU during rotation
+and displaced CounterSlide. Mesh coverage, actual floor/obstacle contacts and a
+control restoring only the old square collider guard this correction. Connector
+keying and length, mass, solver settings and collision filtering are unchanged.
+
+These checks do not catch every possible construction defect. LoopRelay's causal
+control removes its driving sprocket: removing one chain link alone still leaves
+a coupling inferred by the current compiler. There is no hardware build verdict.
+Existing experimental examples have a separate source-bound
+[audit and outstanding gaps](ROBOT-LAB-MAIN-AUDIT-20261026.md).
+
+
+A broader native run exposed a Pivot Rover steering regression when the radial
+correction also shortened the shaft. Paired actual-VM diagnostics isolated the
+axial change; restoring the original nominal length preserves its existing
+opposite-curve checks without changing the program or judge. The short-envelope
+failure remains diagnostic evidence, rather than a portable assertion that
+such a small physical difference must prevent steering on every platform.
+
+Three complete browser journeys plus six lesson contexts exceeded the initial
+eight-minute grouped step in the measured Linux run. The intake gates are now
+one model per step across three shards. Every individual eight-minute limit and
+the existing thirty-minute job limit remain unchanged; no checks were removed.

@@ -1947,3 +1947,21 @@ T6 on main's mechanics, no new physics: `static/sim-lab/models/differential-car.
 - **Floor:** main's floor is 2 m square; the program's circle (R ≈ 0.30 m) keeps every part within 0.66 m
   of its middle.
 
+
+### Accepted measurement observations
+
+Measurement selection opts a SimSession into a bounded completed-step collector.
+The worker attaches the existing core observer for one runner invocation and
+always detaches it in `finally`. Each retry collects a fresh packet. The session
+admits analytical samples only after the hub-state retry decision, finite-pose
+admission and successful replay, then rechecks disposal and in-flight identity.
+A selection revision fences late packets, including an explicit analysis reset.
+Main-thread and lockstep sessions drain the same packet format on advancement.
+
+At most four joints and 600 completed-step samples travel in one observation
+packet. Overflow is explicit and invalidates complete-interval analysis; it does
+not extend the physical step budget. Contact presence and copied screw state
+are opt-in final-state diagnostics. Physical checkpoint state and solver inputs
+remain separate from period, phase and work accumulators. A copied last accepted
+packet supports bounded observational consumers without allowing their mutation
+to change physics. See [measurement behavior and limits](ROBOT-LAB-MEASUREMENTS.md).

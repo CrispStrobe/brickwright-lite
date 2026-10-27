@@ -1,0 +1,25 @@
+{
+  "what": "Reload the saved A = 0°, B = 0° pose. Motor A drives the red left-side axle and Motor B drives the blue right-side axle. The red 28-tooth cover is the differential carrier. It meshes with the yellow 12-tooth bevel gear on the orange output pointer.",
+  "try": [
+    "Run the finite program once. It visits (A,B) = (180°,0°), (180°,−180°), (180°,180°), (0°,180°), then returns to (0°,0°). The program moves one motor at a time so each checkpoint is easy to compare. Use manual jog only from −190° to 190° on each input.",
+    "Predict the carrier for A = B and for B = −A before looking at the record. Because the motors face each other, equal encoder readings produce opposite physical side rotations and cancel at the carrier. Opposite encoder readings produce the same physical side rotation and carry the housing with them.",
+    "Compare the actual output with your prediction before revealing the explanation."
+  ],
+  "why": "The motors face each other, so their positive encoder axes point in opposite world directions. In the saved-axis convention, side A = −A and side B = +B. An ideal open differential gives carrier = (side A + side B)/2 = (B − A)/2. The external 28:12 bevel pair then gives pointer = −(28/12) × carrier.",
+  "question": "Predict the carrier for A = B and for B = −A before looking at the record. Because the motors face each other, equal encoder readings produce opposite physical side rotations and cancel at the carrier. Opposite encoder readings produce the same physical side rotation and carry the housing with them.",
+  "answer": "The ideal carrier angles at the programmed comparison poses are −90°, −180°, 0°, +90°, and 0° on return. The corresponding ideal pointer angles are +210°, +420°, 0°, −210°, and 0°. These values come from equations and exported placement axes; they are not native Brickwright physics or physical-build measurements.",
+  "matters": "Two opposed angular motors drive the side gears of an open Technic differential. The red carrier represents the average of the two side-shaft angles in a shared axis convention, and a yellow 12-tooth bevel gear drives an orange output pointer from the carrier's red 28-tooth cover.",
+  "further": [
+    "Vary the input speed and repeat from the saved datum. Does the geometric law change?",
+    "Find the passive output and its real bearings. Which physical connection transmits the drive?"
+  ],
+  "version": 1,
+  "id": "vectorsum",
+  "language": "en",
+  "formula": "C = (B − A)/2; pointer = −(28/12) C",
+  "related": [
+    "gearbox.ldr",
+    "crank-rocker.ldr",
+    "rack-shuttle.ldr"
+  ]
+}

@@ -185,12 +185,15 @@ export async function newModelsInteractions(page, opts) {
 }
 
 /** Reads one shipped lesson in the active page language. */
-export async function newModelLesson(page, {openSimLab, shotsDir}, id, language = 'en') {
+export async function newModelLesson(page, {openSimLab, shotsDir, includeExperimental = false}, id, language = 'en') {
     const current = await page.evaluate(() => window.__bwSimLab?._pane?.state?.modelFile);
     if (language === 'de' || current !== `${id}.ldr`) {
         await openSimLab(page, {program: null});
         await page.getByTestId('bw-sim-lab-examples').click();
         const gallery = page.getByTestId('bw-sim-examples');
+        if (includeExperimental) await gallery.getByRole('checkbox', {
+            name: language === 'de' ? /Experimentelle Modelle anzeigen/ : /Include experimental/
+        }).check();
         await gallery.getByRole('searchbox').fill(id);
         const card = gallery.locator(`[data-model="${id}.ldr"]`);
         assert.equal(await card.count(), 1, `${id}: gallery card`);

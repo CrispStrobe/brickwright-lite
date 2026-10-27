@@ -29,9 +29,11 @@ function scopeRearmPublicationObserverFactory({target}) {
             && state.selector?.value === state.expectedMode;
         const adcPublication = state.adc?.checked === false
             && state.adc.disabled === (state.expectedMode !== 'sample');
+        const focusPublication = state.expectedMode !== 'sample'
+            || state.activeElement === state.expectedSelector;
         const channelPublication = Array.isArray(state.channels) && state.channels.length === 0;
         return boardIdentity && domIdentity && exactControls && modePublication
-            && adcPublication && channelPublication;
+            && adcPublication && focusPublication && channelPublication;
     }
     // END SCOPE_REARM_PUBLICATION_PREDICATE
     const selectorQuery = '[data-testid="bw-scope-time-capture"]';
@@ -50,7 +52,7 @@ function scopeRearmPublicationObserverFactory({target}) {
         catch (error) { observerError = String(error); }
         return {
             expectedMode, expectedBoard, expectedSelector, expectedOwner,
-            board: window.__board, selector, adc,
+            board: window.__board, selector, adc, activeElement: document.activeElement,
             owner: selector?.closest(panelQuery), adcOwner: adc?.closest(panelQuery),
             selectorCount: document.querySelectorAll(selectorQuery).length,
             ownerSelectorCount: expectedOwner?.querySelectorAll(selectorQuery).length ?? 0,
@@ -63,6 +65,7 @@ function scopeRearmPublicationObserverFactory({target}) {
         expectedMode: current.expectedMode,
         sameBoard: current.board === current.expectedBoard,
         sameSelector: current.selector === current.expectedSelector,
+        expectedSelectorFocused: current.activeElement === current.expectedSelector,
         sameOwner: current.owner === current.expectedOwner,
         adcOwnerSame: current.adcOwner === current.expectedOwner,
         selectorCount: current.selectorCount, ownerSelectorCount: current.ownerSelectorCount,
@@ -86,18 +89,36 @@ function scopeRearmPublicationObserverFactory({target}) {
                 state: describe(current)});
         } catch (error) { observerError = String(error); }
     };
-    for (const type of ['input', 'change']) {
+    for (const type of ['focus', 'input', 'change']) {
         document.addEventListener(type, observe, {capture: true, passive: true});
     }
     return {
         published: expectedMode => scopeRearmPublicationPredicate(state(expectedMode)),
+        readyForKeyboard: () => scopeRearmPublicationPredicate(state('envelope'))
+            && document.activeElement === expectedSelector,
         snapshot: () => ({before, after: describe(state('sample')),
             events: [...events], overflow, observerError}),
         stop: () => {
-            for (const type of ['input', 'change']) document.removeEventListener(type, observe, true);
+            for (const type of ['focus', 'input', 'change']) document.removeEventListener(type, observe, true);
         },
     };
 }
+
+
+// BEGIN SCOPE_POINT_KEYBOARD_ACTION
+async function selectScopePointWithKeyboard(selector, publicationObserver, keyboard) {
+    const before = await selector.evaluate(target => ({mode: target.value, connected: target.isConnected}));
+    if (before.mode !== 'envelope' || before.connected !== true)
+        throw new Error('ADC_POINT_KEYBOARD_PRESTATE');
+    await selector.focus();
+    if (!await publicationObserver.evaluate(observer => observer.readyForKeyboard()))
+        throw new Error('ADC_POINT_KEYBOARD_FOCUS_PUBLICATION');
+    await keyboard.press('ArrowDown');
+    const after = await selector.evaluate(target => ({mode: target.value, connected: target.isConnected,
+        focused: target.ownerDocument.activeElement === target}));
+    return {kind: 'native-keyboard', key: 'ArrowDown', before, after};
+}
+// END SCOPE_POINT_KEYBOARD_ACTION
 
 if (!existsSync(join(build, 'index.html'))) throw new Error('Build first: packages/scratch-gui/build/index.html is missing');
 
@@ -1199,15 +1220,15 @@ try {
             &&window.__board.getScopeData(h).count===0,handle),'ADC_ENVELOPE_REARM_REUSED_RECORD');
           await adcPage.evaluate(()=>window.__board.advanceTo(window.__board.getTime()+1000000n));
           const envelopeHandle=handle;
-          let pointModeObserverHandle=null,pointModeSelection=null,pointModeTrace=null,pointModeError=null;
+          let pointModeObserverHandle=null,pointModeAction=null,pointModeTrace=null,pointModeError=null;
           try {
             const controls=await scope.getByTestId('bw-scope-time-capture').elementHandles();
             pointModeObserverHandle=await adcPage.evaluateHandle(scopeRearmPublicationObserverFactory,
               {target:controls.length===1?controls[0]:null});
             await scope.getByText('✕',{exact:true}).click();
             await adcPage.waitForFunction(observer=>observer.published('envelope'),pointModeObserverHandle);
-            pointModeSelection=await scope.getByTestId('bw-scope-time-capture').selectOption('sample');
-            requireADC(JSON.stringify(pointModeSelection)==='["sample"]','ADC_POINT_MODE_SELECTION_RETURN');
+            pointModeAction=await selectScopePointWithKeyboard(
+              scope.getByTestId('bw-scope-time-capture'),pointModeObserverHandle,adcPage.keyboard);
             await adcPage.waitForFunction(observer=>observer.published('sample'),pointModeObserverHandle);
             pointModeTrace=await pointModeObserverHandle.evaluate(observer=>observer.snapshot());
             const preReact=pointModeTrace.events.find(event=>event.type==='input'
@@ -1224,17 +1245,17 @@ try {
                 try{return observer.snapshot();} finally{observer.stop();}
               });
               console.log('ADC_POINT_MODE_PUBLICATION_TRACE '+JSON.stringify({
-                selectedModeValues:pointModeSelection,trace:pointModeTrace}));
+                action:pointModeAction,trace:pointModeTrace}));
             } catch(error) {
               try {console.log('ADC_POINT_MODE_PUBLICATION_TRACE '+JSON.stringify({
-                selectedModeValues:pointModeSelection,trace:pointModeTrace,
+                action:pointModeAction,trace:pointModeTrace,
                 observerReadError:String(error)}));} catch {/* retain the primary failure */}
             } finally {
               try {await pointModeObserverHandle?.dispose();} catch {/* release only our handle */}
             }
           }
           if(pointModeError) throw new Error(`ADC_POINT_MODE_PUBLICATION ${JSON.stringify({
-            selectedModeValues:pointModeSelection,trace:pointModeTrace})} ${String(pointModeError).split('\n')[0]}`,
+            action:pointModeAction,trace:pointModeTrace})} ${String(pointModeError).split('\n')[0]}`,
           {cause:pointModeError});
           await scope.locator('select').last().selectOption(nets.signal);
           await scope.getByText('+ channel',{exact:false}).click();
