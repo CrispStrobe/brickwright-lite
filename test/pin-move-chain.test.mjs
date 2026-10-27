@@ -85,12 +85,12 @@ const HISTORICAL_X86_CURRENT_BOARD = '836867513c3e7fac420ddaa32c17e1c7b6d3e513';
 const HISTORICAL_X86_FINITE_V8_PINS = "FINITE_V8_PINS = {'bw-board':'836867513c3e7fac420ddaa32c17e1c7b6d3e513','bw-circuit-ui':'1bc233c9297e03abb9b7eb603e045b4e92b0bb40','sb3-creator':'1cbaeed325f5a890e43b78a4211acae8f801f2d2'}";
 const CURRENT_X86_FINITE_V9_PRODUCER = "FINITE_V9_PINS = {'bw-board':CURRENT_BOARD,'bw-circuit-ui':CUI,'sb3-creator':CURRENT_SB3}";
 const CURRENT_X86_FINITE_V9_READER = "FINITE_V9_PINS = {'bw-board':CURRENT_BOARD,'bw-circuit-ui':CUI_V8,'sb3-creator':CURRENT_SB3}";
-// F9 producer, reader and control bodies need independent byte review before
-// these exact profiles can be set. An unset profile rejects old historical roles.
+// Independently reviewed armed F9 producer, reader and control bodies. A later
+// source edit revokes these occurrence roles until a new explicit review.
 const HISTORICAL_X86_SOURCE_PROFILES = Object.freeze({
-    'scripts/run-i80386-hdd-gui-actual.py': null,
-    'scripts/read-i80386-hdd-gui-originals.py': null,
-    'test/i80386-hdd-gui-actual.test.mjs': null,
+    'scripts/run-i80386-hdd-gui-actual.py': {bytes: 284036, sha256: 'ae25d526a5c0bb77d5368d474b32b6bfdecf18ccf917713b0454585aff4ef66c'},
+    'scripts/read-i80386-hdd-gui-originals.py': {bytes: 347854, sha256: '03f3b50233aca24a1252d0cbd17b2943e0d1952c65671d61e2ecd5c098914ab0'},
+    'test/i80386-hdd-gui-actual.test.mjs': {bytes: 544819, sha256: '943b551de56f2b18e3cc9eda650a0087088740c9c0b9dc7fe4ccc29660ed50e1'},
 });
 
 import {explainGitFailure} from './helpers/git-absence.mjs';
@@ -745,7 +745,7 @@ test('historical F7 and F8 maps stay literal while current F9 uses exact symbols
     }
 });
 
-test('all three F9 source-body profiles remain unset pending independent review', () => {
+test('three reviewed F9 bodies admit exactly four historical source positions', () => {
     const files = [
         'scripts/run-i80386-hdd-gui-actual.py',
         'scripts/read-i80386-hdd-gui-originals.py',
@@ -754,17 +754,27 @@ test('all three F9 source-body profiles remain unset pending independent review'
     const knownRoles = {current: new Set([HISTORICAL_X86_CURRENT_CUI, HISTORICAL_X86_CURRENT_BOARD]),
         previous: new Map([[HISTORICAL_X86_CUI_V5_V7, {repo: 'bw-circuit-ui'}],
             [HISTORICAL_X86_BOARD, {repo: 'bw-board'}]]), history: new Map()};
+    let admitted = 0;
     for (const file of files) {
         const body = readFileSync(path.join(ROOT, file), 'utf8');
-        assert.equal(HISTORICAL_X86_SOURCE_PROFILES[file], null, `${file} profile needs review`);
-        assert.deepEqual(historicalCuiSpans(file, body, knownRoles), [], 'no unreviewed CUI role');
-        assert.deepEqual(historicalBoardSpans(file, body, knownRoles), [], 'no unreviewed Board role');
-        assert.ok(judgeFile(file, body, knownRoles).length > 0,
-            'historical token in unreviewed current body must remain a finding');
+        const profile = HISTORICAL_X86_SOURCE_PROFILES[file];
+        assert.equal(Buffer.byteLength(body), profile.bytes, `${file} reviewed byte extent`);
+        assert.equal(createHash('sha256').update(body).digest('hex'), profile.sha256,
+            `${file} reviewed body hash`);
+        const cui = historicalCuiSpans(file, body, knownRoles);
+        const board = historicalBoardSpans(file, body, knownRoles);
+        assert.equal(cui.length, file === 'scripts/read-i80386-hdd-gui-originals.py' ? 0 : 1,
+            `${file} exact historical CUI position`);
+        assert.equal(board.length, file === 'test/i80386-hdd-gui-actual.test.mjs' ? 0 : 1,
+            `${file} exact historical Board position`);
+        admitted += cui.length + board.length;
+        assert.deepEqual(judgeFile(file, body, knownRoles), [],
+            'only exact reviewed historical positions are admitted');
         const alias = file.endsWith('.py') ? body + "\nglobals()['CURRENT_BOARD'] = BOARD\n" :
             body + '\nconst CURRENT_CUI = HISTORICAL_X86_CUI_V5_V7;\n';
         assert.ok(judgeFile(file, alias, knownRoles).length > 0, 'dynamic alias cannot gain a role');
     }
+    assert.equal(admitted, 4, 'exactly four reviewed historical source positions');
     for (const file of ['vendor-pins.json', 'package-lock.json', '.github/workflows/i80386-hdd-gui-actual.yml']) {
         assert.equal(judgeFile(file, `CURRENT_BOARD = '${HISTORICAL_X86_BOARD}'`, knownRoles).length, 1,
             `${file} current input cannot borrow historical Board role`);
