@@ -53,8 +53,8 @@ export const LEGO_SPECULATIVE_CONTACT_M = 0.002;
  * sweeps a body that moves more than mLinearCastThreshold of its inner radius in a step, and a compound's
  * inner radius is its thinnest sub-shape (a plate: 1.6 mm), so a 500-part frame was swept against
  * everything near it nearly every step: 350–600 ms a step on real Technic sets (2026-10-20, 42099/42052,
- * docs/ROBOT-LAB-REAL-MODELS.md), 10–30 ms without. A body of many parts is thick as a whole and does not
- * tunnel at the speeds a model reaches; the brick that fell through a beam is one part.
+ * docs/ROBOT-LAB-REAL-MODELS.md), 10–30 ms without. Discrete compounds can cross thin obstacles; a
+ * downward floor-risk step temporarily sweeps a complex compound (see floorSweepPlan below).
  */
 export const CCD_MAX_COLLIDERS = 8;
 export const LEGO_PENETRATION_SLOP_M = 0.0002;
@@ -120,6 +120,91 @@ const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
  * an obstacle passed 45° through it before anything pushed back).
  */
 const boxConvexRadius = halfExtents => Math.min(0.0005, 0.25 * Math.min(...halfExtents));
+
+// FLOOR1436_GROUND_BEGIN
+/** Ordinary complex compounds stay Discrete. Only a downward step that risks
+ * crossing the generated floor requests a sweep; no geometry or pose changes.
+ * Explicit motion-quality experiments retain their original policy.
+ */
+const floorSweepPlan = (mechanism, experiments, localPairs) => {
+    if (experiments.discrete || experiments.ccdMaxColliders !== undefined) return null;
+    const ground = mechanism.bodies.find(b => b.id === 'ground' && b.motion === 'static' &&
+        b.parts.length === 0 && b.colliders.length === 1 &&
+        b.position[0] === 0 && b.position[2] === 0 &&
+        b.rotation.every((v, i) => v === (i === 3 ? 1 : 0)) &&
+        b.colliders[0].shape === 'box' && !b.colliders[0].position && !b.colliders[0].rotation &&
+        b.colliders[0].halfExtents.every((v, i) => v === [10, 0.01, 10][i]));
+    if (!ground) return null;
+    const excluded = new Set();
+    for (const [a, b] of mechanism.noCollide) {
+        if (localPairs.has(`${a}|${b}`)) continue;
+        if (a === ground.id) excluded.add(b);
+        if (b === ground.id) excluded.add(a);
+    }
+    return {top: ground.position[1] + ground.colliders[0].halfExtents[1],
+        bodies: mechanism.bodies.filter(b => b.motion === 'dynamic' &&
+            b.colliders.length > CCD_MAX_COLLIDERS && !excluded.has(b.id))};
+};
+/** Lowest collider support over the original finite floor. Matrix columns are
+ * transformed local axes; each collider is bounded separately, avoiding the
+ * empty lower corners of a whole-compound AABB. Rounded boxes are bounded by
+ * their original outer box (conservative by their unchanged convex radius).
+ */
+const floorLowestY = (body, position, rotation) => {
+    const [x, y, z, w] = rotation;
+    const axes = [
+        [1 - 2 * (y*y + z*z), 2 * (x*y + z*w), 2 * (x*z - y*w)],
+        [2 * (x*y - z*w), 1 - 2 * (x*x + z*z), 2 * (y*z + x*w)],
+        [2 * (x*z + y*w), 2 * (y*z - x*w), 1 - 2 * (x*x + y*y)]
+    ];
+    const transform = v => [0, 1, 2].map(k => axes[0][k]*v[0] + axes[1][k]*v[1] + axes[2][k]*v[2]);
+    let lowest = Infinity;
+    for (const col of body.colliders) {
+        const offset = transform(col.position || [0, 0, 0]);
+        const center = position.map((v, k) => v + offset[k]);
+        const [a, b, c, d] = col.rotation || [0, 0, 0, 1];
+        const localAxes = [
+            [1 - 2 * (b*b + c*c), 2 * (a*b + c*d), 2 * (a*c - b*d)],
+            [2 * (a*b - c*d), 1 - 2 * (a*a + c*c), 2 * (b*c + a*d)],
+            [2 * (a*c + b*d), 2 * (b*c - a*d), 1 - 2 * (a*a + b*b)]
+        ].map(transform);
+        const extent = [0, 1, 2].map(k => {
+            if (col.shape === 'box') return col.halfExtents.reduce((sum, h, i) => sum + h*Math.abs(localAxes[i][k]), 0);
+            if (col.shape === 'sphere') return col.radius;
+            if (col.shape === 'cylinder') {
+                const axial = Math.min(1, Math.abs(localAxes[1][k]));
+                return col.halfHeight*axial + col.radius*Math.sqrt(1 - axial*axial);
+            }
+            throw new Error(`unsupported floor sweep collider: ${col.shape}`);
+        });
+        if (center[0] + extent[0] < -10 || center[0] - extent[0] > 10 ||
+            center[2] + extent[2] < -10 || center[2] - extent[2] > 10) continue;
+        lowest = Math.min(lowest, center[1] - extent[1]);
+    }
+    return lowest;
+};
+/** Restore every temporary quality before observations or checkpoint capture,
+ * including an exceptional native step. Preserve the primary failure if any
+ * restoration also fails, and still attempt the remaining restorations.
+ */
+const withFloorSweeps = (ids, setQuality, discrete, linearCast, step) => {
+    const changed = [], errors = [];
+    let result;
+    try {
+        for (const id of ids) {
+            changed.push(id);
+            setQuality(id, linearCast);
+        }
+        result = step();
+    } catch (error) { errors.push(error); }
+    for (let i = changed.length - 1; i >= 0; i--) {
+        try { setQuality(changed[i], discrete); } catch (error) { errors.push(error); }
+    }
+    if (errors.length === 1) throw errors[0];
+    if (errors.length) throw new AggregateError(errors, 'floor sweep step/restoration failed');
+    return result;
+};
+// FLOOR1436_GROUND_END
 
 /**
  * Solver velocity iterations for an island holding a gear (Jolt's default is
@@ -582,6 +667,28 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
             if (typeof o === 'function') o(); else J.destroy(o);
         }
     }
+
+    // This plan stores no evolving state. Qualities are restored within each
+    // fixed step, before the existing observer/checkpoint boundaries.
+    const floorSweep = floorSweepPlan(mechanism, experiments, localPairs);
+    const floorRiskBodies = () => {
+        const ids = [];
+        for (const b of floorSweep?.bodies || []) {
+            const id = bodyMap.get(b.id).bodyID;
+            // WebIDL [Value] results are binding-owned static temporaries,
+            // not allocations: copy immediately and never destroy them.
+            const velocity = bodyInterface.GetLinearVelocity(id);
+            const travel = velocity.GetY() * dtFixed;
+            if (travel >= -LEGO_PENETRATION_SLOP_M) continue;
+            const position = bodyInterface.GetPosition(id);
+            const xyz = [position.GetX(), position.GetY(), position.GetZ()];
+            const rotation = bodyInterface.GetRotation(id);
+            const lowest = floorLowestY(b, xyz,
+                [rotation.GetX(), rotation.GetY(), rotation.GetZ(), rotation.GetW()]);
+            if (lowest + travel < floorSweep.top - LEGO_SPECULATIVE_CONTACT_M) ids.push(id);
+        }
+        return ids;
+    };
 
     // Self-collision is local (D2, mech/collision-filter.js localNoCollide): for a body pair in
     // noCollideParts, Jolt asks this filter about every pair of their sub-shapes whose bounds meet, and
@@ -1729,7 +1836,12 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
                 if (rolling) rolling.apply();
                 // Re-base every mesh's phase on its hinges' angles now (see the gears' header comment).
                 for (const m of meshes) m.constraint.SetConstraints(m.hinge1, m.hinge2);
-                joltInterface.Step(dtFixed, experiments.collisionSteps || 1);
+                const sweepIDs = floorRiskBodies();
+                if (sweepIDs.length) {
+                    withFloorSweeps(sweepIDs, (id, quality) => bodyInterface.SetMotionQuality(id, quality),
+                        J.EMotionQuality_Discrete, J.EMotionQuality_LinearCast,
+                        () => joltInterface.Step(dtFixed, experiments.collisionSteps || 1));
+                } else joltInterface.Step(dtFixed, experiments.collisionSteps || 1);
                 timeSteps += 1;
                 acc -= dtFixed;
                 if (acc < 0 && acc > -1e-12) acc = 0;
