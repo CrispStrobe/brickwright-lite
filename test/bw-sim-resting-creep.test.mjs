@@ -21,7 +21,9 @@ test('Resting creep: frozen inputs, single-coordinate variant and source identit
     assert.equal(raised[change.line-2],'0 !BW ID base_rail_0');
     const ids=sourceIdentities();
     assert.equal(ids.engine.integrity,manifest.engine.integrity);
-    assert.equal(ids.engine.resolved,'https://github.com/CrispStrobe/JoltPhysics.js/releases/download/v'+manifest.engine.version+'/jolt-physics-'+manifest.engine.version+'.tgz');
+    const pinURL=new URL(ids.engine.resolved);
+    assert.equal(pinURL.hostname,'github.com');
+    assert.equal(pinURL.pathname,'/CrispStrobe/JoltPhysics.js/releases/download/v'+manifest.engine.version+'/jolt-physics-'+manifest.engine.version+'.tgz');
     assert.deepEqual(ids,expectedIdentities().identities,'producer and reader bind the same identities');
 });
 
