@@ -6,13 +6,16 @@ import {existsSync, readFileSync} from 'node:fs';
 import {createRequire} from 'node:module';
 
 const requireGui = createRequire(new URL('../packages/scratch-gui/package.json', import.meta.url));
+const data = await import('../overlay/scratch-gui/src/components/menu-bar/app-showcase-data.js');
+const {mergeApps, slugOf} = await import('../scripts/refresh-app-showcase.mjs');
 const load = () => {
     const babel = requireGui('@babel/core');
     const source = readFileSync(new URL('../overlay/scratch-gui/src/components/menu-bar/app-showcase.jsx', import.meta.url), 'utf8');
     const code = babel.transformSync(source, {filename: 'app-showcase.jsx', babelrc: false, configFile: false,
         presets: [requireGui.resolve('@babel/preset-react')], plugins: [requireGui.resolve('@babel/plugin-transform-modules-commonjs')]}).code;
     const module = {exports: {}};
-    new Function('require', 'module', 'exports', code)(requireGui, module, module.exports);
+    new Function('require', 'module', 'exports', code)(name => (name === './app-showcase-data.js' ? data : requireGui(name)),
+        module, module.exports);
     return module.exports;
 };
 
@@ -47,4 +50,22 @@ test('the About dialog loads the showcase lazily and isolates its failure', () =
     assert.match(about, /React\.lazy\(\(\) => import\(\/\* webpackChunkName: "about-apps" \*\/ '\.\/app-showcase\.jsx'\)\)/);
     assert.doesNotMatch(about, /^import .*app-showcase/m);
     assert.match(about, /<EditorErrorBoundary name=\{t\('apps'\)\}>/);
+});
+
+test('the refresh keeps hand-written texts and local icons, and flags what a human must write', () => {
+    const current = [{slug: 'old', id: '1', name: 'Old', beta: 'AAAAAAAA', icon: 'local', en: 'Hand text', de: 'Handtext'},
+        {slug: 'gone', id: '2', name: 'Gone', en: 'x', de: 'y'}];
+    const apple = [
+        {id: '1', name: 'Old', bundleId: 'b.old', subtitle: {en: 'Apple text'}, betaCode: 'BBBBBBBB', store: {mac: true}},
+        {id: '3', name: 'Naga - The Snake Game', bundleId: 'com.crispstrobe.brickwright', subtitle: {}, betaCode: null, store: null}
+    ];
+    const {apps, notes} = mergeApps(current, apple);
+    assert.deepEqual(apps[1], {slug: 'old', id: '1', name: 'Old', store: '1', mac: true, beta: 'BBBBBBBB', icon: 'local',
+        en: 'Apple text', de: 'Handtext'}, 'Apple subtitles win; a missing one keeps the hand-written text');
+    assert.equal(apps[0].slug, 'naga');
+    assert.equal(apps[0].self, true);
+    assert.equal(apps[0].en, '');
+    assert.ok(notes.some(note => /Naga.*no en description/.test(note)));
+    assert.ok(notes.some(note => /Gone: no longer/.test(note)));
+    assert.equal(slugOf('Word Universe'), 'word-universe');
 });

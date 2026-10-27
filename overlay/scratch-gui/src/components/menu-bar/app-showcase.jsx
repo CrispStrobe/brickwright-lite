@@ -2,59 +2,18 @@
 // App Store and/or TestFlight link. A lazy chunk (bw-about.jsx loads it when the
 // dialog opens), so none of it is in the first load.
 //
-// Source, 2026-10-27: App Store Connect (`GET /v1/apps`, app-info subtitles,
-// public TestFlight group links) and the public iTunes lookup for which apps are
-// live on the App Store. Icons (static/app-showcase/, 128 px) are the App Store
-// artwork, the latest TestFlight build's icon, or the app's own Tauri icon.
-// Refresh by re-reading those sources; links never point anywhere else.
+// The list (app-showcase-data.js) and the icons (static/app-showcase/, 128 px)
+// come from App Store Connect and the public App Store lookup:
+//   node scripts/refresh-app-showcase.mjs [--dry-run]
+// Links never point anywhere but apps.apple.com and testflight.apple.com.
 import React from 'react';
 import PropTypes from 'prop-types';
+import {APPS} from './app-showcase-data.js';
 
 const STORE = id => `https://apps.apple.com/app/id${id}`;
 const BETA = code => `https://testflight.apple.com/join/${code}`;
 
-// store: App Store id when the app is live there (mac: only the Mac App Store);
-// beta: public TestFlight code; neither: a private beta, listed as coming soon.
-export const APPS = [
-    {slug: 'brickwright', name: 'Brickwright', beta: 'UngCMwHZ', self: true,
-        en: 'Code, circuits & machines', de: 'Code, Schaltungen, Maschinen'},
-    {slug: 'cometbeat', name: 'CometBeat', store: '6791962816', beta: 'cKUMvyqU',
-        en: 'Learn music theory by playing', de: 'Musik lernen mit Spielen'},
-    {slug: 'crispaudio', name: 'CrispAudio', store: '6791876962', beta: 'YpRwC6wF',
-        en: 'SFX, voice FX & audio editor', de: 'Effekte, Stimm-FX & Audio-Editor'},
-    {slug: 'crispbingo', name: 'CrispBingo', beta: '3CG3SfZ9',
-        en: 'Bingo & Tombola for groups', de: 'Bingo & Tombola für Gruppen'},
-    {slug: 'crispchess', name: 'CrispChess', beta: 'UCk7DK56',
-        en: 'Chess through human eyes', de: 'Schach mit menschlichem Blick'},
-    {slug: 'crispcloud', name: 'CrispCloud', beta: 'eFXzu56b',
-        en: 'Multi-cloud file manager', de: 'Dateimanager für viele Clouds'},
-    {slug: 'crispdeck', name: 'CrispDeck', beta: 'hYwFh4Ut',
-        en: 'Mastodon · Bluesky · Threads', de: 'Mastodon · Bluesky · Threads'},
-    {slug: 'crispmath', name: 'CrispMath', beta: 'E6HdVhTx',
-        en: 'CAS calculator & graphing', de: 'CAS-Rechner & Funktionsgraphen'},
-    {slug: 'crispmesh', name: 'CrispMesh', beta: 'Pk6ds8vY',
-        en: '3D models from turntable photos', de: '3D-Modelle aus Drehteller-Fotos'},
-    {slug: 'crisperplayer', name: 'CrisperPlayer',
-        en: 'Your audiobooks, your place', de: 'Deine Hörbücher, dein Ort'},
-    {slug: 'crisperweaver', name: 'CrisperWeaver', store: '6789600762', beta: 'svwfvHvh',
-        en: 'Offline transcription & speech', de: 'Offline-Transkription & Sprachausgabe'},
-    {slug: 'crispsorter', name: 'CrispSorter', beta: 'eqpChBGM',
-        en: 'Organise & search documents with local AI', de: 'Dokumente mit lokaler KI ordnen & durchsuchen'},
-    {slug: 'crispsudoku', name: 'CrispSudoku', store: '6788990894', beta: 'gjFeKMcH',
-        en: 'Classic, Killer, Thermo & more', de: 'Klassisch, Killer, Thermo'},
-    {slug: 'crisptuner', name: 'CrispTuner', beta: 'nfCbAzy4',
-        en: 'Chromatic tuner & temperaments', de: 'Stimmgerät mit Temperaturen'},
-    {slug: 'hectopolis', name: 'Hectopolis', store: '6809142647', mac: true, beta: 'paBCcWnH',
-        en: 'Build, observe, understand', de: 'Bauen, beobachten, verstehen'},
-    {slug: 'kerotakis', name: 'Kerotakis', store: '6805214816', beta: 'P3WxEdqp',
-        en: 'Chemistry that computes', de: 'Chemie, die wirklich rechnet'},
-    {slug: 'naga', name: 'Naga – The Snake Game', beta: 'SuVAjkwH',
-        en: '27 original twists on Snake', de: '27 neue Wendungen für Snake'},
-    {slug: 'numbernebula', name: 'NumberNebula', store: '6789984849', mac: true, beta: 'GDzrzSF5',
-        en: 'Cosmic math games for kids', de: 'Kosmische Mathe-Spiele'},
-    {slug: 'word-universe', name: 'Word Universe', store: '6790143931', beta: '6CQMmAnt',
-        en: 'German & English word games', de: 'Wortschatz spielerisch üben'}
-];
+export {APPS};
 
 const TEXT = {
     en: {heading: 'Our apps', intro: 'More apps by the same developer. Apps in TestFlight are free betas: the link installs Apple\'s TestFlight first.',
