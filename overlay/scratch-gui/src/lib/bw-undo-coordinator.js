@@ -10,6 +10,7 @@
 // the costume comes back; press it again and the paint stroke goes.
 
 import {installUndoCoordinator} from './global-undo.js';
+import {circuitSteps} from './bw-circuit-step-names.js';
 
 export const PROJECT_SURFACE = 'project';
 const PROJECT_LIMIT = 200;
@@ -187,6 +188,9 @@ export const timeline = () => {
     let labels = null;
     try {
         labels = surface && typeof surface.steps === 'function' ? surface.steps() : null;
+        // A surface that keeps whole snapshots (the Circuit tab) hands them over to be compared.
+        const snapshots = !labels && surface && typeof surface.snapshots === 'function' ? surface.snapshots() : null;
+        if (snapshots) labels = circuitSteps(snapshots.stack, snapshots.cursor);
     } catch (e) { /* unnamed steps below */ }
     const area = surface ? surface.label || name : '';
     const named = (list, count, newestLast) => {
