@@ -73,6 +73,25 @@ will close every row.
    repeated import/export and actual hosted SDK/Lite controller input. Unknown
    escapes, opaque speeds and unsafe lifecycle paths must remain refused.
 
+### Newly retained integration failures
+
+Unit shard 2 additionally exposes five browser-shard inventory/mapping failures
+and producer refusals. The browser matrix and `test/ci-browser-scope.test.mjs`
+belong to the Robot Lab shard lane; coordinate that owner before changing them.
+Main has not independently repaired them at this checkpoint.
+
+Unit shard 3 includes an actual failure in
+`test/makecode-startup-number-roundtrip.test.mjs`: the original SDK phase passes,
+but the native generation check observes `result = 0` instead of `14`. The
+original failure remains open. The continuation reports runtime/Creator errors
+before value assertions and labels initial/generation/same-VM/fresh-VM routes;
+it retains every expected value and existing execution bound. Qualify this
+with the existing hosted gate, identify whether the cause is current connected
+producer admission, execution or callback entry, and repair that actual boundary.
+Do not replace the expected value, add a delay, waive the test or promote the
+representative on source-only evidence. Its sibling conditional-Array test must
+also retain its independent original/native and reopen checks.
+
 No builds or suites run on the shared server for this continuation. Use hosted
 CI or an approved build machine. Do not add full-CI labels, duplicate dispatches,
 Ready cycles or unchanged retries. The ordered qualification below remains

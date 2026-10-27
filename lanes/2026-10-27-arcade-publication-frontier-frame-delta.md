@@ -103,3 +103,10 @@ invalidates the held proof; restoring its text cannot revive that proof.
 No implementation guard, original failure or unsupported case is removed.
 The updated source control awaits hosted qualification; no suite ran on the
 shared server.
+
+The same hosted integration exposes a startup-Number native result mismatch:
+original SDK passes, Lite reports 0 where 14 is required. Its unchanged value
+and reopen assertions remain; diagnostics now report runtime/Creator errors
+first and identify the failing generation. This is an open runtime/connected
+producer task, not a qualified representative or a source-export regression
+that may be waived.
