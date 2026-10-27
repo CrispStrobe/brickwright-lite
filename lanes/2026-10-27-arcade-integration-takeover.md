@@ -1,6 +1,7 @@
 # Arcade integration takeover and native-addition regression repair
 
-Status: CLAIMED — implementation waits for this claim to merge.
+Status: CLAIMED — carried with its change (the claim-only PR #1482 gate
+stayed queued for over two hours; operator instruction).
 Owner: Arcade integration, now driven by a Claude Code agent taking over from
 the previous Arcade integration worker (paused by the operator; its last push
 was more than 30 minutes before this claim). Base: current main.
@@ -26,6 +27,13 @@ Arcade handoff documentation. Locate the introducing commit by bisection,
 then fix the producer/proof forward. No assertion, threshold, expected value,
 fixture, pin, budget, workflow or runtime change to get green; refusals that
 are correct stay refusals.
+
+Operator decision 2026-10-27 re-admits two bounded cases (Array-free
+programs with primitive/Opaque operands; numeric SDK Sprite fields on
+non-nullish SDK receivers). The one existing expectation that encoded the
+opposite rule (a Sprite-only parameter receiver) changes with that
+decision; each re-admitted case gets a test that the export reproduces the
+original PXT values and fails when the admission is reverted.
 
 ## Qualification
 
