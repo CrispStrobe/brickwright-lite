@@ -69,7 +69,12 @@ test('an Array program adding a declared-number SDK Sprite field exports with th
     assert.match(out.ts, /__bwBinaryAdd\(shot\.x, \(0 \+ 1\)\)/);
 });
 
-test('a Sprite field read through a parameter is not an exact factory value and keeps the refusal', () => {
+// Operator decision 2026-10-27: a numeric SDK Sprite field read through a
+// parameter whose every actual argument is a Sprite is admitted (it can only
+// be a Number). Original-PXT equality is asserted in
+// test/arcade-native-addition-readmitted-roundtrip.test.mjs; the null-argument
+// case below keeps its refusal.
+test('a Sprite field read through a parameter that only receives Sprites exports with the ordinary helper', () => {
     const out = exported(`let values = [1, 2]
 let total = 0
 function move(target: Sprite) {
@@ -77,7 +82,8 @@ function move(target: Sprite) {
 }
 move(sprites.create(img\`1\`))
 values.push(total)`);
-    assert.ok(out.unsupported.includes(reason), JSON.stringify(out.unsupported));
+    assert.deepEqual(out.unsupported, []);
+    assert.match(out.ts, /function __bwBinaryAdd\(left: any, right: any\): any \{ return left \+ right \}/);
 });
 
 test('a Sprite field read through a parameter that may receive null keeps the refusal', () => {

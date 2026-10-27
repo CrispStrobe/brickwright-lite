@@ -328,6 +328,84 @@ function inspectDomains(program,profile,ordinaryExportSelection) {
         if(node.type==='Identifier'&&!graph.isInitializedAt(actual(node))&&!graph.immutableFunctionAt(actual(node)))return false;
         return Object.entries(node).every(([key,value])=>metadata.has(key)||initialized(value));
     };
+    // Operator decision 2026-10-27: a numeric SDK Sprite/Image field read
+    // (declared number in the Arcade typings) is a Number or, on a non-object
+    // receiver, Undefined; it can never yield an Array. That holds unless a
+    // program class or object literal can supply an own member of the same
+    // name, so any such declaration anywhere refuses this admission. The
+    // receiver must be a plain binding or a literal/identifier index of one,
+    // evaluated exactly as in the original; no value is substituted.
+    const numericSdkFields=new Set(['x','y','z','vx','vy','ax','ay','fx','fy','left','right','top','bottom','width','height','lifespan']);
+    const ownMemberNames=(()=>{const names=new Set();let objectLiteral=false;
+        for(const node of nodes){
+            if(node.type==='Object')objectLiteral=true;
+            if(node.type==='Class'){
+                for(const field of node.fields||[])if(typeof field?.name==='string')names.add(field.name);else objectLiteral=true;
+                for(const method of node.methods||[])if(typeof method?.name==='string')names.add(method.name);else objectLiteral=true;
+            }
+        }
+        return objectLiteral?null:names;})();
+    const plainReceiver=node=>node?.type==='Identifier'&&!['this','globalThis','undefined'].includes(node.name)||
+        node?.type==='Index'&&node.object?.type==='Identifier'&&!['this','globalThis'].includes(node.object.name)&&
+        (node.index?.type==='Number'||node.index?.type==='Identifier');
+    const nullishLiteral=value=>value?.type==='Null'||value?.type==='Undefined'||value?.type==='Identifier'&&value.name==='undefined';
+    // The exporter's canonical reset `x = null` directly followed, in the
+    // same statement list, by a non-nullish `x = value` is never observable.
+    const deadReset=(assignment,same)=>{
+        const statement=parents.get(assignment);if(statement?.type!=='ExpressionStatement'||statement.expr!==assignment)return false;
+        const container=parents.get(statement);if(!container)return false;
+        for(const list of Object.values(container)){
+            if(!Array.isArray(list))continue;const at=list.indexOf(statement);if(at<0)continue;
+            const next=list[at+1];
+            return next?.type==='ExpressionStatement'&&next.expr?.type==='Assignment'&&next.expr.op==='='&&same(next.expr.left)&&
+                !nullishLiteral(next.expr.right)&&!nodes.some(node=>same(node)&&node!==next.expr.left&&(()=>{for(let p=parents.get(node);p;p=parents.get(p))if(p===next.expr.right)return true;return false;})());
+        }
+        return false;
+    };
+    const nullishFreeBinding=identifier=>{
+        const value=actual(identifier),binding=graph.bindingOf(value);
+        if(!binding)return false;
+        const same=node=>node?.type==='Identifier'&&node.name===identifier.name&&graph.bindingOf(node)===binding;
+        let parameterOf=null,assigned=false;
+        for(const node of nodes){
+            if(node.type==='Assignment'&&same(node.left)){if(node.op!=='='||nullishLiteral(node.right)&&!deadReset(node,same))return false;assigned=true;}
+            if(node.type==='Update'&&same(node.argument))return false;
+            if((node.type==='FunctionDeclaration'||node.type==='FunctionExpression')&&Array.isArray(node.params)&&node.params.includes(identifier.name)&&functionOwner(value)===node)parameterOf=node;
+        }
+        if(!parameterOf)return assigned;
+        // Parameter: the function must only be called directly by name, and
+        // every actual argument at this position must be non-nullish.
+        const name=parameterOf.name,position=parameterOf.params.indexOf(identifier.name);
+        if(typeof name!=='string')return false;
+        let calls=0;
+        for(const node of nodes){
+            if(node.type==='Identifier'&&node.name===name){
+                const parent=parents.get(node);
+                if(!(parent?.type==='Call'&&parent.callee===node))return false;
+                const arg=parent.args?.[position];
+                if(!arg||nullishLiteral(arg))return false;
+                const found=types(arg);
+                if(![...found].every(type=>['Opaque','Null','Undefined'].includes(type))||!found.has('Opaque'))return false;
+                if(arg.type==='Identifier'&&found.size>1&&!nullishFreeBinding(arg))return false;
+                calls++;
+            }
+        }
+        return calls>0;
+    };
+    const numericSdkFieldRead=node=>node?.type==='Member'&&typeof node.name==='string'&&numericSdkFields.has(node.name)&&
+        ownMemberNames!==null&&!ownMemberNames.has(node.name)&&plainReceiver(node.object)&&!allocations(node).length&&
+        (()=>{
+            // Opaque SDK objects only; Images, Arrays, primitives and program
+            // objects refuse. Null/Undefined are admitted only as artifacts of
+            // a hoisted declaration: no explicit null/undefined value may reach
+            // the receiver binding through any assignment or call argument.
+            const receiver=types(node.object);
+            if(!receiver.size||!receiver.has('Opaque')||![...receiver].every(type=>['Opaque','Null','Undefined'].includes(type)))return false;
+            const root=node.object.type==='Index'?node.object.object:node.object;
+            if(root.type!=='Identifier')return false;
+            if(receiver.size===1)return true;
+            return nullishFreeBinding(root);
+        })();
     const primitiveValue=node=>{const found=types(node);return found.size>0&&[...found].every(type=>primitive.has(type))&&initialized(node);};
     // A captured scalar cell may be read before its first assignment. Its
     // actual Undefined value is still a primitive operand; this does not
@@ -643,6 +721,7 @@ function inspectDomains(program,profile,ordinaryExportSelection) {
         const refused=!ownedOrigin&&(!found.size||!(initialization=initialized(arg))&&!(capture=capturedScalarIdentifier(arg))||
             (domain=[...found].some(type=>!primitive.has(type)&&type?.kind!=='Array')));
         // Existing successful paths remain independent of the new profile.
+        if(refused&&numericSdkFieldRead(arg))continue;
         if(refused&&normalPrimitiveOperation(arg)){operationUsed=true;continue;}
         if(refused&&normalPrimitiveClass(arg)){classResultUsed=true;continue;}
         if(refused){
@@ -662,6 +741,41 @@ function inspectDomains(program,profile,ordinaryExportSelection) {
                     initialization,capturedScalar:capture,invalidDomain:domain,
                     sourceRange:'UNAVAILABLE',owningProcedure:call.original.owningProcedure,block:'UNAVAILABLE',classSlot:'UNAVAILABLE'};
             }catch { /* Retain the original refusal with no invented details. */ }
+            // Operator decision 2026-10-27 (supersedes d86881e for Array-free
+            // programs): when no authored Array can exist, the native join is
+            // irrelevant and the ordinary helper the exporter emits on refusal
+            // is main's pre-join export. Additive fact only: every helper
+            // operand must have primitive or Opaque producer types and no
+            // Array allocation; Image/object/Array operands keep the refusal.
+            // The exporter's own frame banks (Image[] declared as
+            // __bwFrames_*) and their index reads are Image-typed, so they
+            // are not authored Arrays; any operand they reach is an Image and
+            // is refused by the operand rule above.
+            try {
+                const arrayShaped=new Set(['Array','Index','NativeNamedArrayCreate','NativeNamedArrayDelete','NativeArrayAccess','LegacyParsedValue','LegacyJsonValue']);
+                const frameBank=name=>typeof name==='string'&&/^__bwFrames_[A-Za-z0-9_]+$/.test(name);
+                const generatedBank=new WeakSet();
+                for(const node of bindings.nodes){
+                    if(node?.type==='Declaration')for(const decl of node.decls||[])
+                        if(frameBank(decl.name)&&decl.init?.type==='Array'&&decl.init.items.every(item=>item?.type==='Template'&&item.tag==='img'))generatedBank.add(decl.init);
+                    if(node?.type==='Index'&&node.object?.type==='Identifier'&&frameBank(node.object.name))generatedBank.add(node);
+                }
+                const operandsOrdinary=domainHelpers.every(each=>each.calls.every(site=>site.args.every(operand=>{
+                    if(provedHelperResults.has(operand))return true;
+                    const operandTypes=types(operand);
+                    const allPrimitive=operandTypes.size>0&&[...operandTypes].every(type=>typeof type==='string'&&primitive.has(type));
+                    // A directly added unknown call/construction/template result
+                    // may itself be an SDK Array or Image: refused unless primitive.
+                    if(!allPrimitive&&['Call','New','Template'].includes(operand?.type))return false;
+                    return operandTypes.size>0&&[...operandTypes].every(type=>typeof type==='string'&&(primitive.has(type)||type==='Opaque'))&&!allocations(operand).length;
+                })));
+                // SDK calls that return Arrays make the program Array-holding.
+                const sdkArrayCalls=new Set(['allOfKind','getTilesByType','getTilesByTile','getTileLocations','allSprites','split','slice','concat','filter','map','splice','keys']);
+                const sdkArrayFree=bindings.nodes.every(node=>!(node?.type==='Call'&&node.callee?.type==='Member'&&sdkArrayCalls.has(node.callee.name)));
+                const arrayFree=bindings.nodes.every(node=>!node||typeof node!=='object'||generatedBank.has(node)||
+                    !arrayShaped.has(node.type)&&!Object.hasOwn(node,'bwNativeNamedArray'));
+                if(operandsOrdinary&&arrayFree&&sdkArrayFree)result.ordinaryFallback=true;
+            }catch { /* Without this fact the refusal stands unchanged. */ }
             return result;
         }
         if(ownedOrigin){if(!callablePrimitiveAddition(call))imageOriginUsed=true;continue;}

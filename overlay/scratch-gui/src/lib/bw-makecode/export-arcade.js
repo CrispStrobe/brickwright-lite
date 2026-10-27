@@ -4666,7 +4666,11 @@ class ArcadeEmitter {
             const additionProfile=this.callableExports.size?GENERATED_HELPER_PROFILES.metadata:GENERATED_HELPER_PROFILES.ordinary;
             const proof=inspectNativeAdditionExportDomains(nativeAdditionAnimationView(
                 parseMakeCodeTs(draft,additionProfile),this.authoredAnimationArrays.values()),additionProfile);
-            if(proof.reason){
+            // Array-free program with primitive/Opaque operands only: the
+            // ordinary helper below is main's pre-join export (operator
+            // decision 2026-10-27). Every other refusal is retained unchanged.
+            if(proof.reason&&proof.ordinaryFallback===true&&proof.current()){ /* ordinary helper */ }
+            else if(proof.reason){
                 this.note(proof.reason);
                 try {
                     this.unsupportedDetails.push({reason:proof.reason,
