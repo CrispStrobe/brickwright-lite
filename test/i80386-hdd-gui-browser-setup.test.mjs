@@ -54,7 +54,7 @@ const heldJobs = Object.freeze({
     'font-discovery': 'ad3c83a431c722cbe0cfc7d84924bb43a4b790a8503820549c47e53ee218d048',
 });
 const reviewedJobs = Object.freeze([...Object.keys(heldJobs),
-    'finite-inventory-seven', 'finite-inventory-eight', 'actual-v8']);
+    'finite-inventory-seven', 'finite-inventory-eight', 'finite-inventory-nine', 'actual-v8']);
 
 function jobNames(source) {
     const marker = '\njobs:\n';
@@ -86,15 +86,18 @@ function checkSource(source) {
             `unrelated ${id} job remains byte-exact`);
     }
     const f7 = job(source, 'finite-inventory-seven');
-    const f8 = job(source, 'finite-inventory-eight');
+    const f9 = job(source, 'finite-inventory-nine');
+    assert.equal(createHash('sha256').update(job(source, 'finite-inventory-eight')).digest('hex'),
+        'c7ba1313fd31482ee1feeaa9456b2ff90416fe45b0fff03670714f3931541057', 'historical F8 body held except retired guard');
     const v8 = job(source, 'actual-v8');
     assert.match(f7, /if:\s*>-\s*\n\s*\$\{\{\s*false\s*&&/, 'spent F7 execution retired');
-    assert.match(f8, /if:\s*>-\s*\n\s*\$\{\{\s*true\s*&&/, 'reviewed F8 job is armed');
+    assert.match(f9, /if:\s*>-\s*\n\s*\$\{\{\s*false\s*&&/, 'F9 remains disabled pending separate arming');
+    assert.match(job(source, 'finite-inventory-eight'), /if:\s*>-\s*\n\s*\$\{\{\s*false\s*&&/, 'spent F8 remains retired');
     assert.match(v8, /if:\s*>-\s*\n\s*\$\{\{\s*true\s*&&/, 'reviewed V8 gate remains explicit');
 
-    assert.match(f8, /timeout-minutes: 15\b/);
+    assert.match(f9, /timeout-minutes: 15\b/);
     assert.match(v8, /timeout-minutes: 35\b/);
-    for (const [block, refs] of [[f8, [checkout, setupNode, upload]],
+    for (const [block, refs] of [[f9, [checkout, setupNode, upload]],
         [v8, [checkout, setupNode, upload, upload]]]) {
         assert.match(block, new RegExp(`uses: ${checkout}`));
         assert.match(block, new RegExp(`uses: ${setupNode}`));
@@ -108,19 +111,19 @@ function checkSource(source) {
             'one reviewed Ubuntu helper invocation per new route');
     }
 
-    const f8Admit = 'Admit finite v8 body, event and exact source before package acquisition';
-    const f8Setup = 'Trusted finite v8 package and Chromium setup';
-    const f8Record = 'Record finite v8 runtime and installed regular bytes without guest';
-    requireOrder(f8, [f8Admit, setupNode, f8Setup, f8Record]);
-    assert.match(step(f8, f8Admit), /finite-inventory-v8-guard/);
-    const f8Install = step(f8, f8Setup);
-    assert.match(f8Install, /timeout-minutes: 10\b/);
-    assert.ok(f8Install.includes('run: |\n          set -euo pipefail\n' +
-        helperGroup('gui-finite-inventory-v8/bootstrap')),
+    const f9Admit = 'Admit finite v9 body, event and exact source before package acquisition';
+    const f9Setup = 'Trusted finite v9 package and Chromium setup';
+    const f9Record = 'Record finite v9 runtime and installed regular bytes without guest';
+    requireOrder(f9, [f9Admit, setupNode, f9Setup, f9Record]);
+    assert.match(step(f9, f9Admit), /finite-inventory-v9-guard/);
+    const f9Install = step(f9, f9Setup);
+    assert.match(f9Install, /timeout-minutes: 10\b/);
+    assert.ok(f9Install.includes('run: |\n          set -euo pipefail\n' +
+        helperGroup('gui-finite-inventory-v9/bootstrap')),
     'one balanced helper group is the first executable setup command');
-    requireOrder(f8Install, [helper, 'npm ci --ignore-scripts --no-audit --no-fund',
+    requireOrder(f9Install, [helper, 'npm ci --ignore-scripts --no-audit --no-fund',
         'node node_modules/playwright/cli.js install --with-deps chromium']);
-    assert.match(step(f8, f8Record), /timeout-minutes: 4\b/);
+    assert.match(step(f9, f9Record), /timeout-minutes: 4\b/);
 
     const bootstrap = 'Install externally admitted v8 request and bootstrap source before package setup';
     const setup = 'Repeat v8 inventory installation exactly, without frontend build';
@@ -155,7 +158,7 @@ function checkSource(source) {
     assert.doesNotMatch(afterNode, /\binstall-input\b|\bmkdir gui-inputs\b/);
 }
 
-test('F8 and V8 admit source before setup and run the reviewed helper before dependencies', () => {
+test('F9 and V8 admit source before setup and run the reviewed helper before dependencies', () => {
     checkSource(workflow);
 });
 
@@ -170,9 +173,9 @@ test('source policy detects omitted, displaced and substituted bootstrap/helper 
             `mutation does not touch held ${id} job`);
         assert.throws(() => checkSource(candidate), undefined, `reject ${jobName}/${name}: ${before}`);
     };
-    const f8Admit = 'Admit finite v8 body, event and exact source before package acquisition';
+    const f9Admit = 'Admit finite v9 body, event and exact source before package acquisition';
     const v8Bootstrap = 'Install externally admitted v8 request and bootstrap source before package setup';
-    mutateNamedStep('finite-inventory-eight', f8Admit, 'finite-inventory-v8-guard', 'finite-inventory-v7-guard');
+    mutateNamedStep('finite-inventory-nine', f9Admit, 'finite-inventory-v9-guard', 'finite-inventory-v7-guard');
     mutateNamedStep('actual-v8', v8Bootstrap, 'actual-v8-bootstrap', 'actual-v8-preflight');
     mutateNamedStep('actual-v8', v8Bootstrap, '--blob "$BW_REQUEST_BLOB"', '--blob "$OTHER_BLOB"');
     mutateNamedStep('actual-v8', v8Bootstrap,
@@ -183,7 +186,8 @@ test('source policy detects omitted, displaced and substituted bootstrap/helper 
         '--request "$GITHUB_WORKSPACE/gui-inputs/other.json"');
     for (const [id, expected, wrong] of [
         ['finite-inventory-seven', 'false', 'true'],
-        ['finite-inventory-eight', 'true', 'false']]) {
+        ['finite-inventory-eight', 'false', 'true'],
+        ['finite-inventory-nine', 'false', 'true']]) {
         const block = job(workflow, id);
         assert.match(block, new RegExp(`if:\\s*>-\\s*\\n\\s*\\$\\{\\{\\s*${expected}\\s*&&`));
         assert.throws(() => checkSource(workflow.replace(block, block.replace(
@@ -204,12 +208,12 @@ test('source policy detects omitted, displaced and substituted bootstrap/helper 
     const duplicate = workflow.replace(bootstrap, bootstrap.slice(0, installEnd) + command + bootstrap.slice(installEnd));
     assert.equal((step(job(duplicate, 'actual-v8'), v8Bootstrap).match(/\binstall-input\b/g) ?? []).length, 2);
     assert.throws(() => checkSource(duplicate), undefined, 'second request installation rejected');
-    for (const name of ['finite-inventory-eight', 'actual-v8']) {
+    for (const name of ['finite-inventory-nine', 'actual-v8']) {
         const setup = name === 'actual-v8' ? 'Repeat v8 inventory installation exactly, without frontend build' :
-            'Trusted finite v8 package and Chromium setup';
+            'Trusted finite v9 package and Chromium setup';
         const block = step(job(workflow, name), setup);
         const group = helperGroup(name === 'actual-v8' ? 'gui-setup/bootstrap-helper' :
-            'gui-finite-inventory-v8/bootstrap');
+            'gui-finite-inventory-v9/bootstrap');
         assert.equal(block.split(group).length, 2, `${name} has exactly one complete helper group`);
         const withoutHelper = block.replace(group, '');
         assert.equal((withoutHelper.match(/scripts\/prepare-playwright-apt\.mjs/g) ?? []).length, 0);
@@ -234,9 +238,9 @@ test('source policy detects omitted, displaced and substituted bootstrap/helper 
 test('source policy rejects extra jobs, extra actions and changed Node versions', () => {
     const extraJob = workflow + '  unreviewed-job:\n    runs-on: ubuntu-24.04\n    steps:\n      - run: echo unreviewed\n';
     assert.equal(jobNames(extraJob).length, reviewedJobs.length + 1);
-    assert.throws(() => checkSource(extraJob), undefined, 'a thirteenth unconditional job is rejected');
+    assert.throws(() => checkSource(extraJob), undefined, 'a fourteenth unconditional job is rejected');
 
-    for (const id of ['finite-inventory-eight', 'actual-v8']) {
+    for (const id of ['finite-inventory-nine', 'actual-v8']) {
         const original = job(workflow, id);
         const nodeStep = setupNodeStep(original);
         const extraActionStep = `      - uses: ${checkout}\n`;

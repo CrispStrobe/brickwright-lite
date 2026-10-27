@@ -1,6 +1,6 @@
 # X86 finite V9 inventory: exact resolver-file role — 2026-10-27
 
-Status: CLAIMED; merge this documentation scope before implementation.
+Status: ownership claim merged; disabled Phase A source candidate, not actual qualification.
 Owner: existing x86 GUI source owner, coordinated with the historical-role gate owner.
 Base: main `a08622efed67b779adcbe4bfadd56c9003bf74db`.
 
@@ -80,3 +80,27 @@ before/after runtime joins remain mandatory. A complete independently read V9
 inventory plus separate native/runtime joins precedes actual-V8 FreeDOS export/
 reload and forward-debug acceptance. No physical, whole-OS, performance, release
 or blanket licence claim follows this metadata-role repair.
+
+## Disabled Phase A source checkpoint — 2026-10-27
+
+The V9 producer, standalone reader and workflow start disabled. V8 execution is
+retired; its historical reader and strict alias validation remain available.
+The new V9 policy selects `/etc/resolv.conf` as a regular file and refuses its
+alias or directory-alias role. Generic limits remain unchanged. The separately
+selected canonical template must keep the combined roster and move exactly
+this one path, yielding 245/47/3 roles; source code does not infer its contents
+or stability from the previous failed run.
+
+Consumed V8 supplier pins and eighteen witnesses are literal historical values.
+New current V9 maps and witnesses are separate, initially at the same pins.
+The unselected actual-V8 request now requires reference v6 and V9 admission,
+with its existing helper/source/bootstrap joins before setup or guest entry.
+Manufactured controls exercise collector, exclusive retention and independent
+reading, negative role/schema/source/type cuts, historical/current drift and
+helper-first setup. They are software controls, not a hosted inventory.
+
+The three source bodies need independent review before any exact fixed-profile
+update. Separate reviewed arming, final source CI and Build checkout/source
+admission, one new V9 selection and complete independently read originals remain
+required. Native runtime joins and actual GUI export/reload/forward-debug
+acceptance remain pending. Neither consumed V7 nor V8 event may be retried.

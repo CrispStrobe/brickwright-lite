@@ -151,3 +151,12 @@ event is spent and must never be retried or reinterpreted. The distinct
 [finite V9 resolver-role continuation](2026-10-27-x86-finite-v9-resolver-role.md)
 requires its merged claim, separately reviewed source and fresh qualification.
 Actual-V8 FreeDOS export/reload and forward-debug acceptance remain pending.
+
+## V8 execution retired; V9 source continuation — 2026-10-27
+
+The failed V8 event above remains spent and unqualified. Its source execution
+flag is retired while its historical reader, supplier pins, eighteen witnesses
+and alias checks remain fixed. The separately claimed V9 source starts disabled
+and selects `/etc/resolv.conf` only as a regular file. It does not repair or
+reinterpret the original V8 record. New source/Build qualification and a new
+independently admitted V9 observation are required before actual-V8 GUI work.

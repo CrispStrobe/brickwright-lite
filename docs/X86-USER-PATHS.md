@@ -84,3 +84,19 @@ reader are retained. Fixed supplier epochs, the unchanged mirror helper and
 all limits are held. Source controls pass, but final exact-head source/Build
 qualification and separate one-shot F8 admission remain pending. Actual V8
 GUI export/reload and forward-debug acceptance remain unselected and unproved.
+
+## Finite V9 resolver-role source checkpoint — 2026-10-27
+
+The [once-selected V8 inventory](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40422314383)
+passed source and trusted setup, then refused `/etc/resolv.conf` because its
+selected alias role did not match the observed regular file. Its independent
+negative reader joined the event with qualification false. Preserve that
+failure and the earlier V7 setup failure; both events are spent.
+
+The [distinct V9 continuation](../lanes/2026-10-27-x86-finite-v9-resolver-role.md)
+has a disabled source candidate selecting only that path as a regular file.
+Historical V8 wire meanings and strict alias checks remain held. Source controls
+and pin-role separation do not qualify a new hosted inventory. Separate reviewed
+arming, exact-head source/Build admission, one V9 event and independent original
+reading precede native/runtime joins and the still-pending actual-V8 FreeDOS
+export/reload and forward-debug GUI acceptance.
