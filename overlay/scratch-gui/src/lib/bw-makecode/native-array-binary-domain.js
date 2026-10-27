@@ -152,7 +152,7 @@ function inspectDomains(program,profile,ordinaryExportSelection) {
     let closureResults=null,closureLive=true,imageResults=null,imageLive=true;
     let imageOrigins=null,imageOriginView=null,imageOriginUsed=false,imageOriginLive=true;
     let callableAdditionProof=null,callableAdditionUsed=false,callableAdditionLive=true;
-    let operationUsed=false,operationLive=true,classResultUsed=false,classResultLive=true,frameDeltaUsed=false;const operationAbsences=[];
+    let operationUsed=false,operationLive=true,classResultUsed=false,classResultLive=true,frameDeltaUsed=false,frameDeltaLive=true;const operationAbsences=[];
     const closureNormalTokens=new Set(),imageNormalTokens=new Set();
     const current=()=>{
         if(operationUsed&&!operationLive||classResultUsed&&!classResultLive)return false;
@@ -163,6 +163,9 @@ function inspectDomains(program,profile,ordinaryExportSelection) {
             }
             const now=syntax.current()&&unaryProof.isCurrent()&&classView.current()&&bindings.isCurrent()&&graph.lexicalDeclarationReadinessCurrent()&&
                 (!frameDeltaUsed||graph.frameDeltaNumbersCurrent());
+            // Like the other consumed facts, any observed staleness permanently
+            // expires a used frame-delta proof; restoring the text cannot revive it.
+            if(frameDeltaUsed&&!now)frameDeltaLive=false;
             if(closureNormalTokens.size&&(!now||!closureResults.current()))closureLive=false;
             if(imageNormalTokens.size&&(!now||!imageResults.current()))imageLive=false;
             if(recursiveNormalTokens.size&&(!now||!recursiveResults.current()))recursiveLive=false;
@@ -171,8 +174,8 @@ function inspectDomains(program,profile,ordinaryExportSelection) {
             if(operationUsed&&(!valid||!operationAbsences.every(({object,key})=>!Object.hasOwn(object,key)&&!(key in object))))operationLive=false;
             if(classResultUsed&&!valid)classResultLive=false;
             if(callableAdditionUsed&&!valid)callableAdditionLive=false;
-            return valid&&(!operationUsed||operationLive)&&(!classResultUsed||classResultLive)&&(!imageOriginUsed||imageOriginLive);
-        }catch(error){if(operationUsed)operationLive=false;if(classResultUsed)classResultLive=false;if(imageOriginUsed)imageOriginLive=false;if(callableAdditionUsed)callableAdditionLive=false;throw error;}
+            return valid&&(!frameDeltaUsed||frameDeltaLive)&&(!operationUsed||operationLive)&&(!classResultUsed||classResultLive)&&(!imageOriginUsed||imageOriginLive);
+        }catch(error){if(operationUsed)operationLive=false;if(classResultUsed)classResultLive=false;if(imageOriginUsed)imageOriginLive=false;if(callableAdditionUsed)callableAdditionLive=false;if(frameDeltaUsed)frameDeltaLive=false;throw error;}
     };
     const domainHelpers=[...helpers.values()].map(helper=>({...helper,calls:[]}));
     const observed=new Set(),provedHelperResults=new WeakSet();
