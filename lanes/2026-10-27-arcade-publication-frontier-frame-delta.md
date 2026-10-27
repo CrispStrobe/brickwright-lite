@@ -91,3 +91,15 @@ representative programs through both routes and reimport, and two rebinding
 negatives. The candidate cut is detected; the game-safety cut is backed by the
 importer, which already refuses both rebinding forms. No input, timing or
 keyboard behaviour is claimed.
+
+## Current hosted control reconciliation
+
+The first integration run's unit shard 4 retains an old negative expectation
+for canonical `game.eventContext().deltaTime` native addition. That expectation
+predates the Number contract above. The continuation adds it to the positive
+producer table and adds native-addition negatives for a shadowed/replaced SDK,
+a written delta and escaped game/context values. Editing the actual member
+invalidates the held proof; restoring its text cannot revive that proof.
+No implementation guard, original failure or unsupported case is removed.
+The updated source control awaits hosted qualification; no suite ran on the
+shared server.

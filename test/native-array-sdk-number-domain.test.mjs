@@ -25,7 +25,7 @@ const bad=source=>{
 
 test('actual closed SDK and scene-clock Number producers compose with native scalar addition without an annotation grant',()=>{
     for(const expression of ['info.score()','info.player2.score()','Math.floor(1.5)','Math.max(1,2)',
-        'randint(1,3)','game.runtime()','Infinity','NaN'])
+        'randint(1,3)','game.runtime()','game.eventContext().deltaTime','Infinity','NaN'])
         good(`let result=__bwBinaryAdd(${expression},1)`);
     good('let result=__bwBinaryAdd(Math.floor(foreign()),1)');
     const {program,proof}=good('let result=__bwBinaryAdd(info.score(),1)');
@@ -36,8 +36,29 @@ test('actual closed SDK and scene-clock Number producers compose with native sca
     assert.equal(inspectNativeArrayBinaryDomains(program,profile).helpers.size,0);
     // These profiles deliberately do not infer a Number from a declared
     // return annotation, an arbitrary API spelling or a parser callback.
-    for(const expression of ['foreign()','parseInt("7")','game.eventContext().deltaTime'])
+    for(const expression of ['foreign()','parseInt("7")'])
         bad(`let result=__bwBinaryAdd(${expression},1)`);
+});
+
+test('native addition consumes the actual frame-delta proof and refuses replaced or escaped contexts',()=>{
+    const source='let result=__bwBinaryAdd(game.eventContext().deltaTime,1)';
+    for(const effect of [
+        'let game:any={eventContext:function(){return {deltaTime:"text"}}};',
+        'game.eventContext=foreign;',
+        'game.eventContext().deltaTime="text";',
+        'let saved=game;',
+        'let context=game.eventContext();'
+    ])bad(effect+source);
+    const {program,proof}=good(source);
+    const declaration=program.body.find(node=>node.type==='Declaration');
+    const read=declaration.decls[0].init.args[0];
+    const original=read.name;
+    read.name='unprovedDelta';
+    assert.equal(proof.current(),false);
+    assert.equal(inspectNativeArrayBinaryDomains(program,profile).helpers.size,0);
+    read.name=original;
+    assert.equal(proof.current(),false,'an observed edit cannot revive the held proof');
+    good(source);
 });
 
 test('SDK root writes aliases shadowing actual writers and opaque coercion retain native Array refusal',()=>{
