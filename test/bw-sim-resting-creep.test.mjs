@@ -37,6 +37,8 @@ test('Resting creep: isolated-frame extraction keeps the compiled frame exactly 
         assert.equal(iso.removed.bodies.length,mechanism.bodies.length-2);
         assert.equal(iso.removed.joints.length,mechanism.joints.length);assert.equal(iso.removed.actuators.length,mechanism.actuators.length);
         for(const k of ['joints','gears','hubs','actuators','couplings','devices','diagnostics','noCollide','noCollideParts'])assert.deepEqual(iso.mechanism[k],[],k);
+        assert.deepEqual(iso.removed.parts,mechanism.bodies.filter(b=>b.id!=='ground'&&b.id!==iso.frame.id).flatMap(b=>b.parts.map(p=>p.id??p)).sort());
+        assert.ok(!iso.removed.parts.some(p=>p.startsWith('base_rail_')));
         assert.equal(mechanism.joints.length,4,'complete input untouched');
     }
     const a=prepared.get('orrery-raised').mechanism,b=prepared.get('orrery-coplanar').mechanism;
@@ -53,7 +55,7 @@ const fakeRecord=spec=>{
     const ids=expectedIdentities(),input=manifest.inputs.find(i=>i.id===spec.input),rows=synthetic();
     const iso=spec.mechanism==='isolated-frame';
     return {schemaVersion:1,case:spec.id,input:{id:input.id,file:input.file,bytes:input.bytes,sha256:input.sha256},mechanism:spec.mechanism,
-        subject:{id:'b2'},bodies:iso?['ground','b2']:['ground','b0','b2'],joints:iso?[]:['j0'],removed:iso?{bodies:['b0']}:null,motorCommands:[],
+        subject:{id:'b2'},bodies:iso?['ground','b2']:['ground','b0','b2'],joints:iso?[]:['j0'],removed:iso?{bodies:['b0'],parts:['crank']}:null,mechanismSha256:'a'.repeat(64),motorCommands:[],
         identities:ids.identities,clock:manifest.clock,rowFields:manifest.rowFields,
         initialDynamics:{solverMassKg:.2,centerOfMassWorld:[0,0,0],inertiaKgM2:[[1,0,0],[0,1,0],[0,0,1]]},rows,summary:recompute(rows)};
 };
@@ -66,6 +68,11 @@ test('Resting creep: reader recomputes metrics and rejects corrupted originals',
     const flipped=structuredClone(good);for(const r of flipped.rows)for(let k=5;k<9;k++)r[k]=-r[k];
     assert.deepEqual(recompute(flipped.rows),s,'quaternion sign invariance');
     const reject=(name,mutate)=>{const r=structuredClone(good);mutate(r);assert.throws(()=>auditRecord(r,spec,ids),undefined,name);};
+    // Yaw past ±180° unwraps continuously; a pure tilt about X is not yaw.
+    const spin=structuredClone(good);spin.rows.forEach((r,i)=>{const a=i*.02;r[5]=0;r[6]=Math.sin(a/2);r[7]=0;r[8]=Math.cos(a/2);});
+    assert.ok(Math.abs(recompute(spin.rows).finalYawDeg-350*.02*180/Math.PI)<1e-6,'unwrapped beyond 360 degrees');
+    const tilt=structuredClone(good);tilt.rows.forEach((r,i)=>{const a=i*1e-4;r[5]=Math.sin(a/2);r[6]=0;r[7]=0;r[8]=Math.cos(a/2);});
+    const ts=recompute(tilt.rows);assert.ok(Math.abs(ts.maxTiltDeg-350e-4*180/Math.PI)<1e-9);assert.ok(Math.abs(ts.maxAbsYawDeg)<1e-9);
     reject('missing row',r=>r.rows.splice(100,1));
     reject('duplicate row',r=>r.rows.splice(100,0,r.rows[100]));
     reject('out of order',r=>{[r.rows[10],r.rows[11]]=[r.rows[11],r.rows[10]];});
@@ -77,6 +84,7 @@ test('Resting creep: reader recomputes metrics and rejects corrupted originals',
     reject('motor command',r=>{r.motorCommands=[['A',90,50]];});
     reject('wrong input',r=>{r.input.sha256='0'.repeat(64);});
     reject('changed engine identity',r=>{r.identities.engine.integrity='sha512-x';});
+    reject('missing mechanism hash',r=>{delete r.mechanismSha256;});
     reject('wrong case',r=>{r.case='orrery-raised-complete';});
     const all=manifest.cases.map(fakeRecord);
     assert.equal(auditAll(all,ids).length,6);

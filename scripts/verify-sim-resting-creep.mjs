@@ -51,7 +51,8 @@ export function auditRecord(r,spec,expected) {
     assert.deepEqual(r.identities,expected.identities);
     assert.deepEqual(r.clock,manifest.clock);assert.deepEqual(r.rowFields,manifest.rowFields);
     assert.deepEqual(r.motorCommands,[],'passive observation only');
-    if(spec.mechanism==='isolated-frame'){assert.deepEqual(r.bodies,['ground',r.subject.id]);assert.deepEqual(r.joints,[]);assert.ok(r.removed.bodies.length>0);}
+    assert.match(r.mechanismSha256,/^[0-9a-f]{64}$/);
+    if(spec.mechanism==='isolated-frame'){assert.deepEqual(r.bodies,['ground',r.subject.id]);assert.deepEqual(r.joints,[]);assert.ok(r.removed.bodies.length>0&&r.removed.parts.length>0);}
     else assert.equal(r.removed,null);
     const {steps,dtSeconds}=manifest.clock;
     assert.equal(r.rows.length,steps+1,'initial pose plus every completed step');

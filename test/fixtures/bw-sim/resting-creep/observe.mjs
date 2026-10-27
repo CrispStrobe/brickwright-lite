@@ -48,7 +48,8 @@ export function isolateFrame(mechanism) {
     const frame=frameBody(mechanism),grounds=mechanism.bodies.filter(b=>b.motion==='static');
     if(grounds.length!==1||grounds[0].id!=='ground')throw new Error('exactly one static ground body expected');
     const keep=new Set(['ground',frame.id]);
-    const removed={bodies:mechanism.bodies.filter(b=>!keep.has(b.id)).map(b=>b.id)};
+    const dropped=mechanism.bodies.filter(b=>!keep.has(b.id));
+    const removed={bodies:dropped.map(b=>b.id),parts:dropped.flatMap(partIds).sort()};
     const isolated={...mechanism,bodies:mechanism.bodies.filter(b=>keep.has(b.id))};
     for(const key of LIST_KEYS){removed[key]=(mechanism[key]||[]).map(e=>e.id??e.code??JSON.stringify(e));isolated[key]=[];}
     const inside=pair=>keep.has(pair[0])&&keep.has(pair[1]);
@@ -89,7 +90,7 @@ export function runCase(J,built,identities) {
         const record={schemaVersion:manifest.schemaVersion,case:built.spec.id,input:built.input,mechanism:built.spec.mechanism,
             subject:{id:built.subject.id,configuredMassKg:built.subject.massKg,parts:partIds(built.subject).length,colliders:built.subject.colliders.length},
             bodies:built.mechanism.bodies.map(b=>b.id),joints:built.mechanism.joints.map(j=>j.id),removed:built.removed,
-            issues:built.issues.map(i=>i.code),motorCommands:[],identities,clock,
+            issues:built.issues.map(i=>i.code),mechanismSha256:sha256(JSON.stringify(built.mechanism)),motorCommands:[],identities,clock,
             initialDynamics:{solverMassKg:dynamics.solverMassKg,centerOfMassWorld:dynamics.centerOfMassWorld,inertiaKgM2:dynamics.inertiaKgM2},
             rowFields:manifest.rowFields,rows};
         record.summary=summarize(rows);
