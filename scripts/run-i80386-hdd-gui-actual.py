@@ -2719,7 +2719,7 @@ def finite_v9_template(raw, expected):
     digest(template['sourceHead'], 40)
     for role, cap in (('files',512),('aliases',256),('directoryAliases',256)):
         roster=template[role]
-        need(type(roster) is list and len(roster)<=cap and roster==sorted(set(roster)),
+        need(type(roster) is list and len(roster)<=cap and all(type(path) is str for path in roster) and roster==sorted(set(roster)),
              'finite v9 sorted unique selected '+role)
         for path in roster:finite_inventory_path(path)
     need(1<=len(template['files']) and len(template['aliases'])+len(template['directoryAliases'])<=256 and
@@ -2734,7 +2734,7 @@ def finite_v9_template(raw, expected):
          (template['node'],template['python'],template['chromium'],'/usr/bin/git','/usr/bin/gh','/usr/bin/curl')),
          'selected v9 Node/Python/Chromium/Git/gh/curl core files')
     libraries=template['libraries']
-    need(type(libraries) is list and 1<=len(libraries)<=128 and libraries==sorted(set(libraries)) and
+    need(type(libraries) is list and 1<=len(libraries)<=128 and all(type(path) is str for path in libraries) and libraries==sorted(set(libraries)) and
          set(libraries)<=set(template['files']),'explicit v9 selected library role')
     empty_python_policy(template['emptyPythonSources'],template['files'],template['aliases'],template['directoryAliases'])
     bootstrap_source_policy(template['bootstrapSource'])
