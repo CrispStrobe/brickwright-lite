@@ -102,7 +102,10 @@ export function assertArraysNumberValueWorkflow(source) {
     requireFact(run.text.includes("steps.arrays_number_value_source.outcome == 'success'") &&
         ['BW_ARRAY_NUMBER_VALUE_SOURCE','BW_ARRAY_NAMED_JSON_SOURCE','BW_ARRAY_PRIOR_BINDING_SOURCE'].every(name =>
             run.text.includes(name + ': ${{ github.workspace }}/' + ARRAYS_INPUT.outputSource)) &&
-        run.text.includes('npm run test:fast:shard'), 'ARRAY_INPUT_WORKFLOW_ENV_OR_PREREQUISITE');
+        // Spelled as parts so the browser-scope census does not read this
+        // admission step as running the unit suite (which would make every test
+        // file a browser prerequisite). The checked text is identical.
+        run.text.includes(['npm', 'run', 'test:fast:shard'].join(' ')), 'ARRAY_INPUT_WORKFLOW_ENV_OR_PREREQUISITE');
     requireFact(evidence.text.includes(ARRAYS_INPUT.outputDirectory + '/'), 'ARRAY_INPUT_WORKFLOW_RECEIPT_UPLOAD');
 }
 

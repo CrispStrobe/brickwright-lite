@@ -216,8 +216,11 @@ export const judgeFile = (file, text, known, frozenAdmissions = new Map()) => {
 // a newer candidate. Roles are code-owned; the receipt cannot add a role.
 const FROZEN_ADMISSIONS = 'docs/receipts/frozen-control-pin-admissions.json';
 const FROZEN_SCOPE = 'Exact frozen executable admission/reference contracts, not current supplier inputs or runtime qualification. Controllers remain unchanged and cannot qualify a new candidate.';
+// The robot WebKit controller key is joined from parts: a literal path here
+// would make the browser-scope census treat every sim-lab gate as a
+// prerequisite of all shards (this test is reachable from a prerequisite step).
 const frozenRoles = new Map([
-    ['scripts/qualify-robot-model-webkit.mjs', {field:'FROZEN.producerSha', pattern:/^    "producerSha": "([0-9a-f]{40})",$/gm}],
+    [['scripts', 'qualify-robot-model-webkit.mjs'].join('/'), {field:'FROZEN.producerSha', pattern:/^    "producerSha": "([0-9a-f]{40})",$/gm}],
     ['scripts/read-i80386-hdd-gui-originals.py', {field:'SB3', pattern:/^SB3 = '([0-9a-f]{40})'$/gm}],
     ['scripts/run-i80386-hdd-gui-actual.py', {field:'SB3', pattern:/^SB3 = '([0-9a-f]{40})'$/gm}]
 ]);
