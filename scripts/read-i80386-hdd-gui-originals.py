@@ -925,18 +925,19 @@ def finite_v9_template(raw,expected):
     need(type(template['dependencyPins']) is dict and template['dependencyPins']==FINITE_V9_PINS,
          'closed current finite v9 dependency pins')
     digest(template['sourceHead'],40)
-    need('/etc/resolv.conf' in template['files'] and
-         '/etc/resolv.conf' not in template['aliases'] and '/etc/resolv.conf' not in template['directoryAliases'],
-         'finite v9 closed regular resolver role')
     for role,cap in (('files',512),('aliases',256),('directoryAliases',256)):
         roster=template[role]
-        need(type(roster) is list and len(roster)<=cap and roster==sorted(set(roster)),
+        need(type(roster) is list and len(roster)<=cap and
+             all(type(path) is str for path in roster) and roster==sorted(set(roster)),
              'finite v9 sorted unique '+role)
         for path in roster:finite_inventory_path(path)
     need(1<=len(template['files']) and len(template['aliases'])+len(template['directoryAliases'])<=256 and
          len(set(template['files']+template['aliases']+template['directoryAliases']))==
          sum(len(template[k]) for k in ('files','aliases','directoryAliases')),
          'disjoint finite v9 core runtime roles')
+    need('/etc/resolv.conf' in template['files'] and
+         '/etc/resolv.conf' not in template['aliases'] and '/etc/resolv.conf' not in template['directoryAliases'],
+         'finite v9 closed regular resolver role')
     fields(template['tools'],'git gh')
     need(template['tools']=={'git':'/usr/bin/git','gh':'/usr/bin/gh'} and
          template['python']==PYTHON_EXECUTABLE and
@@ -944,7 +945,8 @@ def finite_v9_template(raw,expected):
          (template['node'],template['python'],template['chromium'],'/usr/bin/git','/usr/bin/gh','/usr/bin/curl')),
          'selected v5 bootstrap and executable files')
     libraries=template['libraries']
-    need(type(libraries) is list and 1<=len(libraries)<=128 and libraries==sorted(set(libraries)) and
+    need(type(libraries) is list and 1<=len(libraries)<=128 and
+         all(type(path) is str for path in libraries) and libraries==sorted(set(libraries)) and
          set(libraries)<=set(template['files']),'selected v5 library subset')
     empty_python_policy(template['emptyPythonSources'],template['files'],template['aliases'],template['directoryAliases'])
     bootstrap_source_policy(template['bootstrapSource'])
