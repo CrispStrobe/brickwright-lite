@@ -427,6 +427,7 @@ const modelLoaderFixture = () => {
     const model = parseModel('0 Source control model\n').model;
     const pane = {measurementModels: new Map(), measurementExperiments: new Map(), measurementContext: null, measurementRevision: 0, state: {},
         rememberMeasurementHistory: method('rememberMeasurementHistory', '    /** Current project model', {}, {}),
+        configureMeasurementObservations: method('configureMeasurementObservations', '    changeMeasurements (', {}, {}),
         resolveManualControlPolicy: async () => manualPolicy,
         lib: {CATALOG: {}, serializeModel, catalogFor: async () => {}, SimSession: {fromText: async () =>
             ({session, issues: [], model, runModel: model})}, insightOf: () => ({blockers: []}),

@@ -4,7 +4,7 @@ import PropTypes from 'prop-types';
 import React, {useEffect, useRef, useState} from 'react';
 import {MODEL_LESSONS} from '../../lib/bw-sim/model/example-catalog.js';
 import {EXPERIMENTAL_MODEL_DETAILS} from '../../lib/bw-sim/model/experimental-models.js';
-import {EXAMPLE_TOPICS, filterModelExamples} from '../../lib/bw-sim/model/example-browser.js';
+import {EXAMPLE_TOPICS, filterModelExamples, visibleExampleModels} from '../../lib/bw-sim/model/example-browser.js';
 const EXAMPLE_DETAILS = Object.freeze({...MODEL_LESSONS, ...EXPERIMENTAL_MODEL_DETAILS});
 
 export const EXAMPLES_TEXT = {
@@ -52,7 +52,7 @@ const SimLabExamples = ({models, locale, selected, onChoose, onLesson, onClose})
         if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last?.focus(); }
         else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first?.focus(); }
     };
-    const filtered = filterModelExamples(models.filter(m => includeExperimental || !m.experimental), EXAMPLE_DETAILS, {query, topic, size, locale: lang});
+    const filtered = filterModelExamples(visibleExampleModels(models, includeExperimental), EXAMPLE_DETAILS, {query, topic, size, locale: lang});
     return (
         <div style={{position: 'absolute', inset: 0, zIndex: 30, background: 'rgba(15,23,42,.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 8}}>
             <section ref={dialog} role="dialog" aria-modal="true" aria-label={T.title} data-testid="bw-sim-examples" onKeyDown={keyboard}
@@ -92,7 +92,10 @@ const SimLabExamples = ({models, locale, selected, onChoose, onLesson, onClose})
                                     style={{background: '#fff', border: `2px solid ${selected === key ? '#7c3aed' : '#e2e8f0'}`, borderRadius: 8, padding: 12,
                                         display: 'flex', flexDirection: 'column', minWidth: 0}}>
                                     <h3 style={{fontSize: 15, margin: '0 0 6px'}}>{title}</h3>
-                                    {entry.experimental && <strong data-testid="bw-sim-example-experimental" style={{fontSize: 12, color: '#92400e', marginBottom: 6}}>
+                                    {entry.simulationChecked && <strong data-testid="bw-sim-example-checked" style={{fontSize: 12, color: '#166534', marginBottom: 6}}>
+                                        {lang === 'de' ? 'Simulation geprüft' : 'Simulation checked'}
+                                    </strong>}
+                                    {entry.experimental && !entry.simulationChecked && <strong data-testid="bw-sim-example-experimental" style={{fontSize: 12, color: '#92400e', marginBottom: 6}}>
                                         {lang === 'de' ? 'Experimentell · Bewegung ungeprüft' : 'Experimental · motion unchecked'}
                                     </strong>}
                                     <span style={{fontSize: 12, color: '#6d28d9'}}>{EXAMPLE_TOPICS[d.topic][lang]}</span>

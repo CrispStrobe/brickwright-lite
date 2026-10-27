@@ -1,0 +1,26 @@
+{
+  "what": "One SPIKE medium angular motor turns a 16-tooth input chain wheel. A 25-link closed loop carries rotation to a 24-tooth wheel on a second supported axle. An 8-tooth pinion keyed to that same axle drives a third shaft's 24-tooth gear and red indicator hand.",
+  "try": [
+    "Open the LoopRelay LDraw assembly and program, reset to the saved zero-encoder pose, then run port A. The motor advances to +180 degrees and returns to zero at 12 degrees per second.",
+    "Watch the blue 24-tooth chain wheel on the intermediate axle and the red reporter hand. Do they rotate in the same direction? How far does each travel at the pause?",
+    "With Manual override, advance motor A by +45 degrees at a time within 0 to +180. Observe the two reductions separately before predicting the final angle."
+  ],
+  "why": "The chain has no external gear-to-gear mesh and preserves rotation direction: intermediate angle = input × 16/24 = +2A/3. The 8-to-24 external gear mesh reverses direction and scales again by 8/24 = 1/3: reporter angle = -2A/9. At A = +180 degrees, the intermediate axle turns +120 degrees and the reporter -40 degrees, relative to each part's saved orientation.",
+  "matters": "A loop can transmit rotary motion between more distant parallel shafts, and a second gear stage can trade angular travel for torque while reversing direction. This is a virtual kinematics lesson, not a validated loaded drive, tensioner or physical transmission.",
+  "question": "At +90 degrees of input rotation, what angle has the intermediate chain wheel turned? What is the final red reporter angle? Why do their signs differ?",
+  "answer": "Intermediate: +60 degrees (= 90 × 16/24). Reporter: -20 degrees (= 60 × -8/24). The chain preserves direction; the one external spur-gear mesh reverses it. At +180 input, the corresponding values are +120 and -40 degrees.",
+  "further": [
+    "Predict the reporter after a +45 degree input command: -10 degrees.",
+    "What if the last output gear had 16 teeth instead of 24, keeping the intermediate pinion at 8 teeth? Predict -A/3, then redesign the gear-center spacing before attempting the swap.",
+    "Contrast the physical chain loop with ParityDial's idler and CounterSlide's racks. How does each move power or change direction?"
+  ],
+  "version": 1,
+  "id": "looprelay",
+  "language": "en",
+  "formula": "φ = (16/24) × (−8/24) θ = −2θ/9",
+  "related": [
+    "gearbox.ldr",
+    "crank-rocker.ldr",
+    "rack-shuttle.ldr"
+  ]
+}

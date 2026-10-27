@@ -1,5 +1,21 @@
 # Driven linkage floor contact
 
+Status: complete. [PR #1445](https://github.com/CrispStrobe/brickwright-lite/pull/1445)
+merged normally as `7b4f2f84ac55e238bbb75663acbdc1e26f3d0358` and closed
+[issue #1436](https://github.com/CrispStrobe/brickwright-lite/issues/1436).
+The reviewed source was `65cb2cded84aca8b74f6e43eb80901608fd2dfce`;
+34 enabled checks succeeded, seven conditional checks were declared skipped.
+All six unit shards passed: 13,069 passes, zero failures. The eight actual floor
+cases, original Sarrus assertions, API sampling controls and four selected
+browser jobs were independently audited from retained originals. These are
+finite source/engine observations, not deployment or physical-accuracy evidence.
+
+No floor source task remains from this change. Keep the regression cases and
+rejected-candidate failures. The separate resting-frame task is scoped in
+[the successor handoff](ROBOT-LAB-RESTING-CREEP.md). The contract below explains
+what the merged implementation and its acceptance tests establish; references
+to the candidate describe that qualified implementation.
+
 Issue #1436 reports that the collapsed single-chain Sarrus, driven with the
 intact model's original program, crosses the thin generated floor and then
 falls freely. The shipped observe-only control avoids driving the collapse;

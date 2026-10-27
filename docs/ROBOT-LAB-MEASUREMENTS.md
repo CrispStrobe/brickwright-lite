@@ -1,5 +1,9 @@
 # Live measurements in the Robot Lab
 
+The four-item force/precision/role-pack/control-pair continuation is tracked in
+[the done/pending and agent restart handoff](ROBOT-LAB-MEASUREMENT-CONTINUATION.md).
+That handoff distinguishes shipped main behavior from the source candidate.
+
 In **Simulate → Show → Measurements**, add measurements, choose their targets,
 and enable **Show in model** to draw live labels, connecting lines and vectors.
 Joint choices identify the connected assembly parts (and the hub when present).
@@ -208,3 +212,100 @@ This independent consumer verifies all six originals, including saved/history/
 remount equality, canonical saved-model headers, every captured CSV value or gap,
 plot selection, completed-step effort/power joins and finite inspector properties.
 The old four-file mode remains available for its explicitly older evidence.
+
+## Additional diagnostic channels
+
+The editor offers passive hinge friction torque (N·m), slider motor and limit
+force (N), slider motor power (W), cumulative screw slip events, filtered screw
+supporting load (N), and contact presence (0/1). Joint readings retain their
+member-part binding when saved. Motor, limit and passive friction channels are
+separate. Force and torque use the last completed native constraint impulse
+and its step interval; mechanical power uses the matching relative velocity.
+Missing, stale or unsupported readings remain unavailable.
+
+Screw supporting load is the existing filtered, previous-step absolute load;
+it is not signed instantaneous contact force. Contact presence joins two
+selected authored parts to their distinct rigid bodies and reads current native
+body contact after a completed step. It supplies no magnitude, direction or
+contact point. Contact polling is unavailable for scenes above 128 rigid bodies.
+No new force model, timestep, solver setting or calibration is introduced.
+
+## Fixed-step period, phase and work
+
+Select up to four joint measurement plots, choose a period mode and angular
+threshold, then explicitly start **Period, phase and work**. Oscillation mode
+uses rising threshold crossings; full-rotation mode uses successive complete
+turn crossings in the current direction. Crossings are linearly localized
+between adjacent completed steps. Reversing rotation resets its period estimate.
+Phase is the signed lag relative to the first selected hinge, wrapped to
+−180…180 degrees; opposite rotation directions are not compared. A period needs
+two observed crossings. A stationary signal or unobserved crossing has no value.
+
+Motor work is the signed discrete sum of completed-step power times step
+interval since analysis started. Braking contributions remain negative. These
+analyses consume only accepted worker batches, after retry decisions and hub
+replay. Changing selection, mode or threshold starts a new analytical interval;
+reopening a project does not automatically arm analysis. Packet overflow,
+missing values or a discontinuity makes complete-interval work unavailable.
+No raw unbounded trace is retained. This improves temporal observation without
+establishing physical calibration or accuracy below the fixed timestep.
+
+## Recording a bounded window in a long run
+
+**Window for long runs** takes an absolute simulated start time and a duration
+of at most 60 seconds. While armed it retains configuration only. Once the
+window starts, the existing four-trace, 600-sample-set and two-run bounds apply;
+there is no pre-start buffer. Late observations keep their actual timestamps
+and elapsed offset from the requested start. A missed window is reported and
+never shifted. Session, model, binding or replay changes cancel capture;
+saving stops capture or cancels arming. Project reopen never re-arms a window.
+
+Saved runs carry `bw.sim-lab.recording-window.v1` metadata, independently checked
+against absolute timestamps on admission. Ordinary CSV retains its existing
+format and cannot reconstruct window provenance from elapsed time alone.
+
+## Structural packs and explicit model pairs
+
+**Measurement packs for this model** offers explicit choices based on uniquely
+identified motor ports, passive hinges, slider joints, spring sliders, ropes and pneumatic
+networks. Applying a pack replaces the current measurement definitions; those
+ordinary bound definitions are saved with the model. Ambiguous or missing
+roles are refused. Structural recommendations do not establish a model's
+mechanical law, construction accuracy or suitability as a causal control.
+
+The qualification helper reads the exact 60-entry PR1336 source checkpoint
+`8ecbb4c116e4123fb9de18cdb71570c0dad2ceb9`. It separates model hash and role
+resolution checks, JSON definition persistence, and the smaller actual browser
+project pilot. Coverage of a source entry does not imply powered or mechanical
+qualification of that entry. The source model and delivery ownership remain
+with PR1336.
+
+Ordinary recording and CSV import still require the same authored model and
+measurement bindings. **Explicit control pair** instead requires two retained
+model histories and deliberate baseline/control run and channel choices. It
+occupies the current model's two run slots. Up to four one-to-one mappings must
+have the same quantity, units and source semantics. There is no inferred label
+match, conversion, sign correction or interpolation. Deltas mean control minus
+baseline at exactly shared elapsed times; unavailable observations stay gaps.
+
+The saved `bw.sim-lab.experiments.v2` envelope retains both models' canonical
+identities, original capture identities, origins and each definition's binding.
+Project saves retain twelve-decimal model placements; the established authored-model
+identity uses the separate six-decimal canonical serialization. Independent readers
+normalize typed root numeric fields for that identity without changing saved bytes.
+Its current-model anchor is checked again on reopen; a foreign history remains
+historical data. Both roles and their bindings are displayed. Existing byte,
+run, sample and duration caps apply to the complete pair. Clear the pair before
+ordinary capture; changing live bindings cannot silently rewrite its provenance.
+
+New successful qualifications retain a separate paired SB3, dynamics report and
+60-entry structural-persistence report. Audit them without importing the app:
+
+```sh
+python3 scripts/read-sim-lab-dynamics-artifact.py DIRECTORY --checkout COMMIT --tree TREE
+```
+
+The independent reader checks the new original bytes, canonical model joins,
+paired identities and mappings, source/units/gaps, coverage joins and signed
+work from the retained accepted fixed-step packets. It supplements the existing
+six-original reader; earlier successful originals are not replayed.

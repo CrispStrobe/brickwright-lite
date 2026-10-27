@@ -10,6 +10,8 @@ import * as history from '../overlay/scratch-gui/src/lib/bw-sim/measurements/his
 import * as experiments from '../overlay/scratch-gui/src/lib/bw-sim/measurements/experiments.js';
 import * as inspection from '../overlay/scratch-gui/src/lib/bw-sim/measurements/inspection.js';
 import * as recording from '../overlay/scratch-gui/src/lib/bw-sim/measurements/recording.js';
+import * as controlPairs from '../overlay/scratch-gui/src/lib/bw-sim/measurements/control-pairs.js';
+import * as rolePresets from '../overlay/scratch-gui/src/lib/bw-sim/measurements/role-presets.js';
 
 const requireGui = createRequire(new URL('../packages/scratch-gui/package.json', import.meta.url));
 const React = requireGui('react'), {renderToStaticMarkup} = requireGui('react-dom/server'), babel = requireGui('@babel/core');
@@ -22,7 +24,9 @@ const loadJSX = name => {
         name.endsWith('/measurements/readings.js') ? readings : name.endsWith('/measurements/target-context.js') ? targetContext :
             name.endsWith('/measurements/history.js') ? history : name.endsWith('/measurements/recording.js') ? recording :
                 name.endsWith('/measurements/experiments.js') ? experiments : name.endsWith('/measurements/inspection.js') ? inspection :
-                ['./sim-lab-measurement-plot.jsx', './sim-lab-measurement-recorder.jsx', './sim-lab-physics-inspector.jsx'].includes(name) ? loadJSX(name.slice(2)) : requireGui(name), module, module.exports);
+                name.endsWith('/measurements/control-pairs.js') ? controlPairs : name.endsWith('/measurements/role-presets.js') ? rolePresets :
+                ['./sim-lab-measurement-plot.jsx', './sim-lab-measurement-recorder.jsx', './sim-lab-physics-inspector.jsx',
+                    './sim-lab-control-pair.jsx', './sim-lab-measurement-precision.jsx'].includes(name) ? loadJSX(name.slice(2)) : requireGui(name), module, module.exports);
     return module.exports;
 };
 const Panel = loadJSX('sim-lab-measurements.jsx').default;

@@ -1,0 +1,25 @@
+{
+  "what": "Lade die gespeicherte Stellung A = 0°, B = 0° neu. Motor A treibt die rote linke Seitenachse, Motor B die blaue rechte Seitenachse. Der rote 28-Zahn-Deckel ist der Differentialträger. Er kämmt mit dem gelben 12-Zahn-Kegelrad am orangefarbenen Ausgangszeiger.",
+  "try": [
+    "Starte das endliche Programm einmal. Es fährt (A,B) = (180°,0°), (180°,−180°), (180°,180°), (0°,180°) an und kehrt dann zu (0°,0°) zurück. Das Programm bewegt jeweils nur einen Motor, damit jede Stellung leicht vergleichbar ist. Nutze die manuelle Bewegung je Eingang nur von −190° bis 190°.",
+    "Sage den Trägerwinkel für A = B und für B = −A voraus, bevor du in die Tabelle schaust. Weil die Motoren einander gegenüberstehen, erzeugen gleiche Encoderwerte entgegengesetzte physische Seitendrehungen und löschen sich am Träger aus. Entgegengesetzte Encoderwerte erzeugen dieselbe physische Seitendrehung und nehmen das Gehäuse mit.",
+    "Vergleiche die beobachtete Bewegung mit deiner Vorhersage, bevor du die Erklärung öffnest."
+  ],
+  "why": "Die Motoren stehen einander gegenüber; deshalb zeigen ihre positiven Encoderachsen in entgegengesetzte Weltrichtungen. Im gespeicherten Achsbezug gilt Seite A = −A und Seite B = +B. Für ein ideales offenes Differential gilt Träger = (Seite A + Seite B)/2 = (B − A)/2. Das äußere Kegelradpaar 28:12 ergibt danach Zeiger = −(28/12) × Träger.",
+  "question": "Sage den Trägerwinkel für A = B und für B = −A voraus, bevor du in die Tabelle schaust. Weil die Motoren einander gegenüberstehen, erzeugen gleiche Encoderwerte entgegengesetzte physische Seitendrehungen und löschen sich am Träger aus. Entgegengesetzte Encoderwerte erzeugen dieselbe physische Seitendrehung und nehmen das Gehäuse mit.",
+  "answer": "Die idealen Trägerwinkel in den programmierten Vergleichsstellungen sind −90°, −180°, 0°, +90° und bei der Rückkehr 0°. Die zugehörigen idealen Zeigerwinkel sind +210°, +420°, 0°, −210° und 0°. Diese Werte stammen aus Gleichungen und exportierten Platzierungsachsen; sie sind keine Messungen der Brickwright-Physik oder eines realen Modells.",
+  "matters": "Zwei gegenüberliegende Winkelmotoren treiben die Seitenräder eines offenen Technic-Differentials an. Der rote Träger entspricht im gemeinsamen Achsbezug dem Mittelwert der beiden Seitenwellenwinkel; ein gelbes 12-Zahn-Kegelrad treibt den orangefarbenen Ausgangszeiger über den roten 28-Zahn-Deckel des Trägers an.",
+  "further": [
+    "Ändere die Eingangsgeschwindigkeit und starte erneut vom gespeicherten Nullpunkt. Ändert sich das geometrische Gesetz?",
+    "Finde den passiven Abtrieb und seine Lager. Welche mechanische Verbindung überträgt den Antrieb?"
+  ],
+  "version": 1,
+  "id": "vectorsum",
+  "language": "de",
+  "formula": "C = (B − A)/2; Zeiger = −(28/12) C",
+  "related": [
+    "gearbox.ldr",
+    "crank-rocker.ldr",
+    "rack-shuttle.ldr"
+  ]
+}
