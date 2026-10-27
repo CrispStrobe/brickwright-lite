@@ -1,0 +1,106 @@
+# Travel Dial - passive rolling distance measurement on a driven sled.
+# Copyright (c) 2026 CrispStrobe. SPDX-License-Identifier: BSD-3-Clause.
+# Motor A drives only the slider-crank. The measuring wheel has no motor command.
+# Fresh encoder deltas preserve the saved datum without resetting an encoder.
+# Run with Robot Lab's toolbar Run, which connects the same virtual SPIKE hub.
+# Native experiment only; this file is not physical-hub firmware.
+DEVICE SPIKE
+GLOBAL targetA = 0
+GLOBAL speedA = 0
+GLOBAL stage = 0
+GLOBAL moving = 0
+GLOBAL dwelling = 0
+GLOBAL arrivals = 0
+GLOBAL completed = 0
+GLOBAL failed = 0
+
+WHEN flag clicked:
+  set targetA to 0
+  set speedA to 0
+  set stage to 0
+  set moving to 0
+  set dwelling to 0
+  set arrivals to 0
+  set completed to 0
+  set failed to 0
+  IF (lab status) = "no-model" THEN:
+    set failed to 1
+    say "Import Travel Dial in Robot Lab before running."
+    stop all
+  reset timer
+  lab start
+  lab stop motor A hold
+  IF (abs of (lab motor A angle)) > 2 THEN:
+    set failed to 1
+    say "Reload the saved Travel Dial pose before running."
+    stop all
+  broadcast "Travel Dial watchdog"
+  set stage to 1
+  set targetA to 60
+  set speedA to 15
+  broadcast "Travel Dial move" and wait
+  set stage to 2
+  set targetA to -60
+  broadcast "Travel Dial move" and wait
+  set stage to 3
+  set targetA to 0
+  broadcast "Travel Dial move" and wait
+  set stage to 4
+  set targetA to 60
+  set speedA to 45
+  broadcast "Travel Dial move" and wait
+  set stage to 5
+  set targetA to -60
+  broadcast "Travel Dial move" and wait
+  set stage to 6
+  set targetA to 0
+  broadcast "Travel Dial move" and wait
+  lab stop motor A hold
+  IF (abs of (lab motor A angle)) > 1 THEN:
+    set failed to 1
+    say "The sled did not remain home. Inspect and reload."
+    stop all
+  set stage to 7
+  set completed to 1
+  say "Complete: the crank is held home. Compare passive wheel motion with sled travel."
+
+WHEN I receive "Travel Dial move":
+  IF (abs of (targetA - (lab motor A angle))) > 130 THEN:
+    set failed to 1
+    lab stop motor A hold
+    stop all
+  set moving to 1
+  IF (abs of (targetA - (lab motor A angle))) > 0.001 THEN:
+    lab run motor A for (targetA - (lab motor A angle)) degrees at (speedA) degrees per second
+  wait 0.1 seconds
+  REPEAT 2:
+    IF (abs of (targetA - (lab motor A angle))) > 0.25 THEN:
+      lab run motor A for (targetA - (lab motor A angle)) degrees at 2 degrees per second
+      wait 0.1 seconds
+  lab stop motor A hold
+  IF (abs of (targetA - (lab motor A angle))) > 1 THEN:
+    set failed to 1
+    say "The crank did not reach its target. Inspect and reload."
+    stop all
+  set moving to 0
+  change arrivals by 1
+  set dwelling to 1
+  wait 0.75 seconds
+  set dwelling to 0
+
+WHEN I receive "Travel Dial watchdog":
+  REPEAT UNTIL (completed = 1):
+    IF (timer) > 55 THEN:
+      set failed to 1
+      lab stop motor A hold
+      say "55 second watchdog: crank stopped and holding. Reload before retrying."
+      stop all
+    IF (lab motor A angle) > 64 THEN:
+      set failed to 1
+      lab stop motor A hold
+      stop all
+    IF (lab motor A angle) < -64 THEN:
+      set failed to 1
+      lab stop motor A hold
+      stop all
+    wait 0.05 seconds
