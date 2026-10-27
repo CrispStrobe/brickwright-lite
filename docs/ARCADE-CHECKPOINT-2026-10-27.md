@@ -10,6 +10,11 @@ ignored local Markdown; none are required to understand the public tasks below.
 
 The complete source checkpoint is on
 [`lane/arcade-source-entry-image-banks-20261026`](https://github.com/CrispStrobe/brickwright-lite/tree/lane/arcade-source-entry-image-banks-20261026).
+The current test/diagnostic continuation is
+[`lane/arcade-source-continuation-20261027`](https://github.com/CrispStrobe/brickwright-lite/tree/lane/arcade-source-continuation-20261027),
+based on that complete source branch. Its checkpoints `0aa5d9add99` and
+`f6ad4b17a33` are pushed, but have not replaced #1128 or passed hosted tests.
+
 Later source checkpoints add ordinary value calls, repeated publication
 frontiers, frame-delta operands and `game.askForNumber` operands. Use the complete
 branch history; isolated cherry-picks lose earlier Array, Image, callable,
@@ -74,6 +79,20 @@ will close every row.
    escapes, opaque speeds and unsafe lifecycle paths must remain refused.
 
 ### Newly retained integration failures
+
+The admitted failed jobs all belong to #1128 head `7ef0dacc` and run
+`40469189304`. Their logs are retained once by the integration owner. Reuse the
+retained originals; the public links identify the jobs without requiring
+private operational details.
+
+| Shard | Original job | Blocking tests | Declared TODO failures |
+| --- | --- | ---: | ---: |
+| 2 | [122078179870](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40469189304/job/122078179870) | 20 | 2 |
+| 3 | [122078179967](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40469189304/job/122078179967) | 13 | 10 |
+| 4 | [122078179880](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40469189304/job/122078179880) | 11 | 3 |
+
+Counts include nested tests and are failure diagnostics, not corpus rows or new
+app regressions. Other jobs are still pending and must be classified separately.
 
 Unit shard 2 additionally exposes five browser-shard inventory/mapping failures
 and producer refusals. The browser matrix and `test/ci-browser-scope.test.mjs`
