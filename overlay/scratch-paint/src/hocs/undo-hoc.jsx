@@ -37,11 +37,19 @@ const UndoHOC = function (WrappedComponent) {
                 const {stack, pointer} = this.props.undoState;
                 return {undo: Math.max(0, pointer), redo: Math.max(0, stack.length - 1 - pointer)};
             };
+            // History list names, parallel to the snapshot stack. A snapshot does
+            // not say what changed, so a step names the tool active when it was taken.
+            this._names = [];
             this._unregisterUndo = bridge.registerUndoSurface('costumes', {
                 label: 'Costumes',
                 canUndo: () => depth().undo > 0,
                 canRedo: () => depth().redo > 0,
                 depth,
+                steps: () => {
+                    const {pointer} = this.props.undoState;
+                    return {past: this._names.slice(0, Math.max(0, pointer)),
+                        future: this._names.slice(Math.max(0, pointer)).filter(Boolean)};
+                },
                 undo: () => {
                     this.handleUndo();
                     return true;
@@ -55,7 +63,24 @@ const UndoHOC = function (WrappedComponent) {
         }
         componentDidUpdate (prevProps) {
             const bridge = globalUndo();
-            if (bridge && prevProps.undoState !== this.props.undoState) bridge.notifyUndoState();
+            const before = prevProps.undoState, after = this.props.undoState;
+            if (before === after) return;
+            // _names[i] names the step that leads from snapshot i to snapshot i + 1.
+            if (this._names) {
+                const isNew = after.pointer === before.pointer + 1 && after.stack.length === after.pointer + 1 &&
+                    after.stack[after.pointer] !== before.stack[after.pointer];
+                if (after.pointer <= 0 && after.stack.length <= 1) {
+                    this._names = [];
+                } else if (isNew) {
+                    const tool = String(this.props.mode || '').replace(/^BIT_/, '')
+                        .toLowerCase()
+                        .replace(/_/g, ' ');
+                    this._names = this._names.slice(0, after.pointer - 1);
+                    this._names.push(tool ? `Edit (${tool.charAt(0).toUpperCase()}${tool.slice(1)})` : 'Edit');
+                }
+                if (after.stack.length - 1 < this._names.length) this._names.length = Math.max(0, after.stack.length - 1);
+            }
+            if (bridge) bridge.notifyUndoState();
         }
         componentWillUnmount () {
             if (this._unregisterUndo) this._unregisterUndo();
@@ -78,6 +103,7 @@ const UndoHOC = function (WrappedComponent) {
         render () {
             const componentProps = omit(this.props, [
                 'format',
+                'mode',
                 'onUndo',
                 'onRedo',
                 'setSelectedItems',
@@ -107,6 +133,7 @@ const UndoHOC = function (WrappedComponent) {
     };
 
     const mapStateToProps = state => ({
+        mode: state.scratchPaint.mode,
         format: state.scratchPaint.format,
         undoState: state.scratchPaint.undo
     });

@@ -44,6 +44,11 @@
   <key>LSSupportsOpeningDocumentsInPlace</key>
   <true/>
 
+  <!-- Shows the app's Documents folder in the Files app (On My iPad › Brickwright),
+       where Settings > Autosave & history writes autosaves (src/autosave.rs). -->
+  <key>UIFileSharingEnabled</key>
+  <true/>
+
   <!-- Export compliance. Brickwright uses only standard HTTPS/TLS, so it is
        exempt. Declaring it here means every upload skips the manual export
        compliance question in App Store Connect instead of stalling the build

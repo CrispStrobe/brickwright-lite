@@ -130,16 +130,42 @@ try {
     await page.getByTestId('bw-history-step--1').click();
     await page.waitForFunction(expected => JSON.stringify(window.__brickwrightStore.getState().scratchGui.vm
         .editingTarget.sprite.costumes.map(costume => costume.name)) === expected, JSON.stringify(costumes));
+    // The keyboard walks the list too: End/Home, then Enter redoes the step.
+    const focused = () => page.evaluate(() => document.activeElement.getAttribute('data-testid'));
+    await page.getByTestId('bw-history-step-1').focus();
+    await page.keyboard.press('End');
+    const last = await page.evaluate(() => Array.from(document.querySelectorAll('[data-testid="bw-history-list"] button'))
+        .pop().getAttribute('data-testid'));
+    if (await focused() !== last) throw new Error(`End focused ${await focused()}, not ${last}`);
+    await page.keyboard.press('Home');
+    if (await focused() !== 'bw-history-step-1') throw new Error(`Home focused ${await focused()}`);
+    await page.keyboard.press('Enter');
+    await page.waitForFunction(count => window.__brickwrightStore.getState().scratchGui.vm.editingTarget
+        .sprite.costumes.length === count, costumes.length - 1);
 
     // Autosave: a version of the whole project is stored and listed.
     await page.getByTestId('bw-history-tab-autosave').click();
     await page.getByTestId('bw-autosave-save-now').click();
     await page.getByTestId('bw-autosave-versions').waitFor({state: 'visible', timeout: 60000});
     await page.getByTestId('bw-history-close').click();
+
+    // Crash recovery: a session that ends with unsaved changes offers its last
+    // autosave at the next start, and Reopen restores it.
+    await page.evaluate(() => {
+        const vm = window.__brickwrightStore.getState().scratchGui.vm;
+        vm.renameSprite(vm.editingTarget.id, 'Recovered');
+    });
+    await page.evaluate(() => window.dispatchEvent(new CustomEvent('bw-open-history-panel', {detail: {view: 'autosave'}})));
+    await page.getByTestId('bw-autosave-save-now').click();
+    await page.waitForFunction(() => document.querySelectorAll('[data-testid="bw-autosave-versions"] > div').length >= 2);
+    await page.reload({waitUntil: 'domcontentloaded'});
+    await page.getByTestId('bw-autosave-recovery-open').click({timeout: 90000});
+    await page.waitForFunction(() => window.__brickwrightStore.getState().scratchGui.vm.runtime.targets
+        .some(target => !target.isStage && target.getName() === 'Recovered'), null, {timeout: 60000});
     if (errors.length) throw new Error(`page errors: ${errors.join(' | ')}`);
 } finally {
     await browser.close();
     if (server) server.close();
 }
 
-console.log('ok iPad-width Widget icons fit; global undo/redo restores Widget, Code and costume edits; History and autosave work');
+console.log('ok iPad-width Widget icons fit; global undo/redo restores Widget, Code and costume edits; History, autosave and crash recovery work');
