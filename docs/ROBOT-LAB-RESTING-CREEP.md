@@ -116,6 +116,37 @@ Step 5's observations are the actual-engine test's retained `CREEP1435_RESULT`
 diagnostics in the hosted unit shard; their results are recorded here only after
 the official log is acquired once and audited with the reader.
 
+### Step 5 audited observations
+
+Source: the hosted unit (3/6) job of the Build run on head `23855bf1`, acquired
+once. The standalone reader reports `PASS (data integrity only)` for all six
+cases. The table covers the 1.75 s passive run (350 steps at 200 Hz). Values are
+the subject body's final horizontal displacement, final unwrapped yaw, maximum
+tilt and vertical range. Contact means rows with subject–ground contact, out of
+351.
+
+| Case | Horizontal | Yaw | Max tilt | Vertical range | Contact |
+|---|---|---|---|---|---|
+| orrery-raised-complete | 0.023 mm | 0.025° | 0.192° | 0.319 mm | 350 |
+| orrery-raised-isolated | 0.023 mm | 0.027° | 0.199° | 0.324 mm | 350 |
+| orrery-coplanar-complete | 8.407 mm | 4.005° | 0.811° | 0.520 mm | 350 |
+| orrery-coplanar-isolated | 6.993 mm | 3.206° | 0.615° | 0.338 mm | 350 |
+| driving-base-complete | 0.009 mm | 0.000° | 0.049° | 0.027 mm | 0 |
+| gearbox-complete | 0.009 mm | 0.000° | 0.026° | 0.008 mm | 350 |
+
+What these observations show, and no more:
+
+- The reported creep (about 10 mm and 3° in 1.75 s) reproduces at the same
+  order only in the coplanar variant. That variant changes one rail coordinate
+  from 199.0 to 200 LDU. The raised input stays below 0.03 mm and 0.03°.
+- The coplanar creep persists with every joint, gear, actuator and other body
+  removed (the isolated frame), so it does not need the mechanism. Removing them
+  reduces it somewhat: 8.4 mm/4.0° complete against 7.0 mm/3.2° isolated.
+- The driving-base subject is its heaviest body, which does not touch the
+  ground (0 contact rows). That case is therefore no floor-contact control.
+- None of this identifies a solver cause or qualifies a fix. Comparing with the
+  reported figures is informational, not a tolerance.
+
 ## Owned paths and adjacent work
 
 Only the new `test/bw-sim-resting-creep.test.mjs`, fixtures under
