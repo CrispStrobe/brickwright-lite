@@ -2,7 +2,7 @@
   "version": 1,
   "id": "foldback",
   "language": "de",
-  "what": "Foldback ist ein Antiparallelogramm: Ein Motor treibt ein gekreuztes Viergelenk mit zwei gleich langen 32-mm-Kurbeln und einer 48-mm-Koppel zwischen festen Lagern im Abstand von 48 mm an. Der passive Abtrieb dreht sich entgegengesetzt mit einem veränderlichen Winkelverhältnis. Die separat aufgebaute offene Vergleichsanordnung verwendet dieselben Teile und dasselbe Programm; sie folgt dem Antrieb ideal im Verhältnis eins zu eins.",
+  "what": "Antiparallelogramm. Foldback ist ein Antiparallelogramm: Ein Motor treibt ein gekreuztes Viergelenk mit zwei gleich langen 32-mm-Kurbeln und einer 48-mm-Koppel zwischen festen Lagern im Abstand von 48 mm an. Der passive Abtrieb dreht sich entgegengesetzt mit einem veränderlichen Winkelverhältnis. Die separat aufgebaute offene Vergleichsanordnung verwendet dieselben Teile und dasselbe Programm; sie folgt dem Antrieb ideal im Verhältnis eins zu eins. Ein Antiparallelogramm ist ein Viergelenk mit gekreuzten langen Gliedern. Motor A schwenkt den Eingangsarm um 90°; der passive Ausgangsarm dreht gegenläufig und folgt tan(φ/2) = −5·tan(θ/2) auf 0,03° genau.",
   "try": [
     "Lade das Modell, drücke Zurücksetzen und dann Start. Motor A dreht nur den blauen Eingangsarm; der rote Abtriebsarm ist passiv. Der gespeicherte Eingangswinkel beträgt 90°.",
     "Vergleiche die ersten vier Haltepositionen. Beobachte danach den ganzen Rücklauf und den folgenden Vorlauf. Sage voraus, ob das Umkehren des Motors dieselbe Bewegungsbahn zurückverfolgt.",

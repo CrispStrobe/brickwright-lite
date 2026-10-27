@@ -260,6 +260,8 @@
 1 71 -120 -155 -70 1 0 0 0 0 -1 0 1 0 4265c.dat
 0 !BW ID input_A_guide_-40_retainer_155
 1 71 -120 155 -70 1 0 0 0 0 -1 0 1 0 4265c.dat
+0 !BW ID input_A_guide_-40_rest_stop
+1 71 -120 39.628167284212 -70 1 0 0 0 0 -1 0 1 0 3713.dat
 0 !BW ID input_A_guide_40
 1 0 -40 0 -70 0 1 0 1 0 0 0 0 -1 50451.dat
 0 !BW ID input_A_guide_40_seat_-140
@@ -280,6 +282,8 @@
 1 71 -40 -155 -70 1 0 0 0 0 -1 0 1 0 4265c.dat
 0 !BW ID input_A_guide_40_retainer_155
 1 71 -40 155 -70 1 0 0 0 0 -1 0 1 0 4265c.dat
+0 !BW ID input_A_guide_40_rest_stop
+1 71 -40 39.628167284212 -70 1 0 0 0 0 -1 0 1 0 3713.dat
 0 !BW ID input_B_guide_-40
 1 0 40 0 -70 0 1 0 1 0 0 0 0 -1 50451.dat
 0 !BW ID input_B_guide_-40_seat_-140
@@ -300,6 +304,8 @@
 1 71 40 -155 -70 1 0 0 0 0 -1 0 1 0 4265c.dat
 0 !BW ID input_B_guide_-40_retainer_155
 1 71 40 155 -70 1 0 0 0 0 -1 0 1 0 4265c.dat
+0 !BW ID input_B_guide_-40_rest_stop
+1 71 40 39.628167284212 -70 1 0 0 0 0 -1 0 1 0 3713.dat
 0 !BW ID input_B_guide_40
 1 0 120 0 -70 0 1 0 1 0 0 0 0 -1 50451.dat
 0 !BW ID input_B_guide_40_seat_-140
@@ -320,6 +326,8 @@
 1 71 120 -155 -70 1 0 0 0 0 -1 0 1 0 4265c.dat
 0 !BW ID input_B_guide_40_retainer_155
 1 71 120 155 -70 1 0 0 0 0 -1 0 1 0 4265c.dat
+0 !BW ID input_B_guide_40_rest_stop
+1 71 120 39.628167284212 -70 1 0 0 0 0 -1 0 1 0 3713.dat
 0 !BW ID bridge_guide_-180
 1 0 -180 -100 70 0 1 0 1 0 0 0 0 -1 50451.dat
 0 !BW ID bridge_guide_-180_seat_-240

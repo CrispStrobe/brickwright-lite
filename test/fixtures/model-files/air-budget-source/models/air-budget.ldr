@@ -1,0 +1,347 @@
+0 Air Budget - 1 stock air tank
+0 Name: air-budget.ldr
+0 Author: CrispStrobe
+0 // Copyright (c) 2026 Christian Ströbele (CrispStrobe).
+0 !LICENSE BSD-3-Clause : see ../licenses/air-budget.txt
+0 !LDRAW_ORG Unofficial_Model
+0 // Real retained 8 mm crank; 48 mm base-to-crank centres; 3:1 spur reduction.
+0 // Complete pump body+rod counted as one purchased assembly.
+0 // All T/tank barbs used; tee.a goes to a fixed tank by source connector order.
+0 !BW HOSE tank_supply tank1 l tee a
+0 !BW HOSE pump_feed tee b pump_body o
+0 !BW HOSE tank_return tank1 r tee c
+0 // Assembly stage 1
+0 !BW ID floor_back_-140
+1 72 -140 280 -160 0 0 1 1 0 0 0 1 0 32525.dat
+0 !BW ID floor_back_80
+1 72 80 280 -160 0 0 1 1 0 0 0 1 0 32525.dat
+0 !BW ID floor_back_splice
+1 72 -40 280 -180 0 0 1 1 0 0 0 1 0 32316.dat
+0 !BW ID floor_back_splice_pin_-60
+1 0 -60 280 -170 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID floor_back_splice_pin_-40
+1 0 -40 280 -170 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID floor_back_splice_pin_-20
+1 0 -20 280 -170 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID floor_back_splice_pin_0
+1 0 0 280 -170 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID floor_front_-140
+1 72 -140 280 120 0 0 1 1 0 0 0 1 0 32525.dat
+0 !BW ID floor_front_80
+1 72 80 280 120 0 0 1 1 0 0 0 1 0 32525.dat
+0 !BW ID floor_front_splice
+1 72 -40 280 140 0 0 1 1 0 0 0 1 0 32316.dat
+0 !BW ID floor_front_splice_pin_-60
+1 0 -60 280 130 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID floor_front_splice_pin_-40
+1 0 -40 280 130 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID floor_front_splice_pin_-20
+1 0 -20 280 130 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID floor_front_splice_pin_0
+1 0 0 280 130 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID cross_foot_-220
+1 72 -220 300 -20 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID floor_elbow_-220_back
+1 72 -220 280 -140 0 0 1 0 1 0 -1 0 0 15100.dat
+0 !BW ID floor_cross_pin_-220_back
+1 0 -220 290 -140 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID floor_elbow_-220_front
+1 72 -220 280 100 0 0 -1 0 1 0 1 0 0 15100.dat
+0 !BW ID floor_cross_pin_-220_front
+1 0 -220 290 100 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID cross_foot_160
+1 72 160 300 -20 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID floor_elbow_160_back
+1 72 160 280 -140 0 0 1 0 1 0 -1 0 0 15100.dat
+0 !BW ID floor_cross_pin_160_back
+1 0 160 290 -140 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID floor_elbow_160_front
+1 72 160 280 100 0 0 -1 0 1 0 1 0 0 15100.dat
+0 !BW ID floor_cross_pin_160_front
+1 0 160 290 100 0 1 0 1 0 0 0 0 -1 2780.dat
+0 STEP
+0 // Assembly stage 2
+0 !BW ID post_-180_back
+1 72 -180 140 -120 1 0 0 0 0 1 0 -1 0 32278.dat
+0 !BW ID post_-180_back_foot
+1 72 -180 200 -140 1 0 0 0 0 1 0 -1 0 32526.dat
+0 !BW ID post_-180_back_foot_vertical_240
+1 0 -180 240 -130 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID post_-180_back_foot_vertical_260
+1 0 -180 260 -130 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID post_-180_back_foot_horizontal_20
+1 0 -160 280 -150 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID post_-180_back_foot_horizontal_40
+1 0 -140 280 -150 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID post_-180_front
+1 72 -180 140 80 1 0 0 0 0 1 0 -1 0 32278.dat
+0 !BW ID post_-180_front_foot
+1 72 -180 200 100 1 0 0 0 0 1 0 -1 0 32526.dat
+0 !BW ID post_-180_front_foot_vertical_240
+1 0 -180 240 90 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID post_-180_front_foot_vertical_260
+1 0 -180 260 90 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID post_-180_front_foot_horizontal_20
+1 0 -160 280 110 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID post_-180_front_foot_horizontal_40
+1 0 -140 280 110 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID post_100_back
+1 72 100 140 -120 1 0 0 0 0 1 0 -1 0 32278.dat
+0 !BW ID post_100_back_foot
+1 72 100 200 -140 -1 0 0 0 0 1 0 1 0 32526.dat
+0 !BW ID post_100_back_foot_vertical_240
+1 0 100 240 -130 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID post_100_back_foot_vertical_260
+1 0 100 260 -130 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID post_100_back_foot_horizontal_20
+1 0 80 280 -150 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID post_100_back_foot_horizontal_40
+1 0 60 280 -150 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID post_100_front
+1 72 100 140 80 1 0 0 0 0 1 0 -1 0 32278.dat
+0 !BW ID post_100_front_foot
+1 72 100 200 100 -1 0 0 0 0 1 0 1 0 32526.dat
+0 !BW ID post_100_front_foot_vertical_240
+1 0 100 240 90 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID post_100_front_foot_vertical_260
+1 0 100 260 90 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID post_100_front_foot_horizontal_20
+1 0 80 280 110 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID post_100_front_foot_horizontal_40
+1 0 60 280 110 0 0 -1 0 1 0 1 0 0 2780.dat
+0 STEP
+0 // Assembly stage 3
+0 !BW ID header_back
+1 72 -40 0 -100 0 0 1 1 0 0 0 1 0 32278.dat
+0 !BW ID header_front
+1 72 -40 0 60 0 0 1 1 0 0 0 1 0 32278.dat
+0 !BW ID top_corner_-180_back_brace
+1 72 -180 80 -80 1 0 0 0 0 -1 0 1 0 32526.dat
+0 !BW ID top_corner_-180_back_spacer
+1 72 -180 40 -100 1 0 0 0 0 1 0 -1 0 32523.dat
+0 !BW ID top_corner_-180_back_vertical_20
+1 1 -180 20 -100 0 0 -1 0 1 0 1 0 0 6558.dat
+0 !BW ID top_corner_-180_back_vertical_60
+1 1 -180 60 -100 0 0 -1 0 1 0 1 0 0 6558.dat
+0 !BW ID top_corner_-180_back_horizontal_20
+1 0 -160 0 -90 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID top_corner_-180_back_horizontal_40
+1 1 -140 0 -100 0 0 -1 0 1 0 1 0 0 6558.dat
+0 !BW ID top_corner_-180_front_brace
+1 72 -180 80 40 1 0 0 0 0 -1 0 1 0 32526.dat
+0 !BW ID top_corner_-180_front_spacer
+1 72 -180 40 60 1 0 0 0 0 1 0 -1 0 32523.dat
+0 !BW ID top_corner_-180_front_vertical_20
+1 1 -180 20 60 0 0 -1 0 1 0 1 0 0 6558.dat
+0 !BW ID top_corner_-180_front_vertical_60
+1 1 -180 60 60 0 0 -1 0 1 0 1 0 0 6558.dat
+0 !BW ID top_corner_-180_front_horizontal_20
+1 0 -160 0 50 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID top_corner_-180_front_horizontal_40
+1 1 -140 0 60 0 0 -1 0 1 0 1 0 0 6558.dat
+0 !BW ID top_corner_100_back_brace
+1 72 100 80 -80 -1 0 0 0 0 -1 0 -1 0 32526.dat
+0 !BW ID top_corner_100_back_spacer
+1 72 100 40 -100 1 0 0 0 0 1 0 -1 0 32523.dat
+0 !BW ID top_corner_100_back_vertical_20
+1 1 100 20 -100 0 0 -1 0 1 0 1 0 0 6558.dat
+0 !BW ID top_corner_100_back_vertical_60
+1 1 100 60 -100 0 0 -1 0 1 0 1 0 0 6558.dat
+0 !BW ID top_corner_100_back_horizontal_20
+1 0 80 0 -90 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID top_corner_100_back_horizontal_40
+1 0 60 0 -90 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID top_corner_100_front_brace
+1 72 100 80 40 -1 0 0 0 0 -1 0 -1 0 32526.dat
+0 !BW ID top_corner_100_front_spacer
+1 72 100 40 60 1 0 0 0 0 1 0 -1 0 32523.dat
+0 !BW ID top_corner_100_front_vertical_20
+1 1 100 20 60 0 0 -1 0 1 0 1 0 0 6558.dat
+0 !BW ID top_corner_100_front_vertical_60
+1 1 100 60 60 0 0 -1 0 1 0 1 0 0 6558.dat
+0 !BW ID top_corner_100_front_horizontal_20
+1 0 80 0 50 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID top_corner_100_front_horizontal_40
+1 0 60 0 50 0 0 -1 0 1 0 1 0 0 2780.dat
+0 STEP
+0 // Assembly stage 4
+0 !BW ID motor_A
+0 !BW PORT A
+0 !BW ROTOR -22.5
+1 15 40 0 -180 1 0 0 0 0 1 0 -1 0 54696p01.dat
+0 !BW ID motor_cheek_0
+1 72 0 80 -160 0 1 0 0 0 1 1 0 0 32524.dat
+0 !BW ID motor_mount_0_20
+1 0 10 20 -160 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID motor_mount_0_140
+1 0 10 140 -160 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID motor_cheek_80
+1 72 80 80 -160 0 1 0 0 0 1 1 0 0 32524.dat
+0 !BW ID motor_mount_80_20
+1 0 70 20 -160 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID motor_mount_80_140
+1 0 70 140 -160 1 0 0 0 1 0 0 0 1 2780.dat
+0 // The 9L cross beams stop short of the motor's raised output face; at x=100 a 1L beam
+0 // spacer carries the 3L pin from the elbow to the post.
+0 !BW ID motor_cross_40
+1 72 -100 40 -140 0 0 1 1 0 0 0 1 0 40490.dat
+0 !BW ID motor_cross_left_40
+1 0 -180 40 -130 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID motor_elbow_0_40
+1 72 -20 40 -160 1 0 0 0 0 -1 0 1 0 15100.dat
+0 !BW ID motor_cross_elbow_0_40
+1 0 -20 40 -150 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID motor_elbow_80_40
+1 72 100 40 -160 -1 0 0 0 0 1 0 1 0 15100.dat
+0 !BW ID motor_cross_spacer_80_40
+1 72 100 40 -140 1 0 0 0 0 1 0 -1 0 18654.dat
+0 !BW ID motor_cross_elbow_80_40
+1 1 100 40 -140 0 0 -1 0 1 0 1 0 0 6558.dat
+0 !BW ID motor_cross_120
+1 72 -100 120 -140 0 0 1 1 0 0 0 1 0 40490.dat
+0 !BW ID motor_cross_left_120
+1 0 -180 120 -130 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID motor_elbow_0_120
+1 72 -20 120 -160 1 0 0 0 0 -1 0 1 0 15100.dat
+0 !BW ID motor_cross_elbow_0_120
+1 0 -20 120 -150 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID motor_elbow_80_120
+1 72 100 120 -160 -1 0 0 0 0 1 0 1 0 15100.dat
+0 !BW ID motor_cross_spacer_80_120
+1 72 100 120 -140 1 0 0 0 0 1 0 -1 0 18654.dat
+0 !BW ID motor_cross_elbow_80_120
+1 1 100 120 -140 0 0 -1 0 1 0 1 0 0 6558.dat
+0 STEP
+0 // Assembly stage 5
+0 !BW ID drive_axle
+1 0 40 0 -70 0 -0.382683432365 -0.923879532511 0 0.923879532511 -0.382683432365 1 0 0 3707.dat
+0 !BW ID drive_gear_8
+1 71 40 0 -60 0.923879532511 -0.382683432365 0 0.382683432365 0.923879532511 0 0 0 1 3647.dat
+0 !BW ID drive_bush_-120
+1 71 40 0 -120 0.923879532511 -0.382683432365 0 0.382683432365 0.923879532511 0 0 0 1 3713.dat
+0 !BW ID drive_bush_-80
+1 71 40 0 -80 0.923879532511 -0.382683432365 0 0.382683432365 0.923879532511 0 0 0 1 3713.dat
+0 !BW ID drive_bush_-20
+1 71 40 0 -20 0.923879532511 -0.382683432365 0 0.382683432365 0.923879532511 0 0 0 1 3713.dat
+0 !BW ID shaft_near_bearing
+1 72 -40 0 -40 0 0 1 1 0 0 0 1 0 32278.dat
+0 !BW ID shaft_bearing_spacer_-180
+1 72 -180 0 -60 1 0 0 0 0 1 0 -1 0 18654.dat
+0 !BW ID shaft_bearing_pin_-180
+1 1 -180 0 -60 0 0 -1 0 1 0 1 0 0 6558.dat
+0 !BW ID shaft_bearing_spacer_100
+1 72 100 0 -60 1 0 0 0 0 1 0 -1 0 18654.dat
+0 !BW ID shaft_bearing_pin_100
+1 1 100 0 -60 0 0 -1 0 1 0 1 0 0 6558.dat
+0 !BW ID crank_axle
+1 0 0 0 -70 0 0 -1 0 1 0 1 0 0 3706.dat
+0 !BW ID crank_gear_24
+1 4 0 0 -60 1 0 0 0 1 0 0 0 1 3648.dat
+0 !BW ID crank_bush_-120
+1 71 0 0 -120 1 0 0 0 1 0 0 0 1 3713.dat
+0 !BW ID crank_bush_-80
+1 71 0 0 -80 1 0 0 0 1 0 0 0 1 3713.dat
+0 !BW ID crank_half_bush_-25
+1 71 0 0 -25 1 0 0 0 1 0 0 0 1 4265c.dat
+0 !BW ID crank_cheek_-15
+1 4 0 0 -15 0 0 1 1 0 0 0 1 0 41677.dat
+0 !BW ID crank_cheek_15
+1 4 0 0 15 0 0 1 1 0 0 0 1 0 41677.dat
+0 !BW ID crank_pin_axle
+1 0 20 0 0 0 0 -1 0 1 0 1 0 0 4519.dat
+0 !BW ID crank_pin_bush_-25
+1 71 20 0 -25 1 0 0 0 1 0 0 0 1 4265c.dat
+0 !BW ID crank_pin_bush_25
+1 71 20 0 25 1 0 0 0 1 0 0 0 1 4265c.dat
+0 STEP
+0 // Assembly stage 6
+0 !BW ID pump_body
+1 4 -120 0 0 0 -1 0 0 0 1 -1 0 0 2943bc01.dat
+0 !BW ID pump_rod
+1 71 20 0 0 0 -1 0 0 0 1 -1 0 0 2944c02.dat
+0 !BW ID pump_base_axle
+1 0 -120 0 -20 0 0 -1 0 1 0 1 0 0 3708.dat
+0 !BW ID pump_base_key_back
+1 72 -120 0 -120 0 0 1 1 0 0 0 1 0 7229.dat
+0 !BW ID pump_base_key_pin_back
+1 0 -100 0 -110 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID pump_base_key_front
+1 72 -120 0 80 0 0 1 1 0 0 0 1 0 7229.dat
+0 !BW ID pump_base_key_pin_front
+1 0 -100 0 70 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID pump_base_inner_bush_-20
+1 71 -120 0 -20 1 0 0 0 1 0 0 0 1 3713.dat
+0 !BW ID pump_base_inner_bush_20
+1 71 -120 0 20 1 0 0 0 1 0 0 0 1 3713.dat
+0 !BW ID pump_base_outer_half_bush_-135
+1 71 -120 0 -135 1 0 0 0 1 0 0 0 1 4265c.dat
+0 !BW ID pump_base_outer_half_bush_95
+1 71 -120 0 95 1 0 0 0 1 0 0 0 1 4265c.dat
+0 STEP
+0 // Assembly stage 7
+0 !BW ID tank_support_back
+1 72 -40 180 -100 0 0 1 1 0 0 0 1 0 32278.dat
+0 !BW ID tank_support_pin_back_-180
+1 0 -180 180 -110 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID tank_support_pin_back_100
+1 0 100 180 -110 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID tank_support_front
+1 72 -40 180 60 0 0 1 1 0 0 0 1 0 32278.dat
+0 !BW ID tank_support_pin_front_-180
+1 0 -180 180 70 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID tank_support_pin_front_100
+1 0 100 180 70 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID tank1
+1 15 -140 112 160 1 0 0 0 1 0 0 0 1 75974.dat
+0 !BW ID tank1_runner_-160
+1 72 -160 160 20 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID tank1_axle_pin_-160
+1 1 -160 150 160 0 1 0 -1 0 0 0 0 1 43093.dat
+0 !BW ID tank1_runner_elbow_-160_back
+1 72 -160 180 -120 0 0 -1 0 1 0 1 0 0 15100.dat
+0 !BW ID tank1_runner_pin_-160_back
+1 0 -160 170 -120 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID tank1_runner_elbow_-160_front
+1 72 -160 180 80 0 0 1 0 1 0 -1 0 0 15100.dat
+0 !BW ID tank1_runner_pin_-160_front
+1 0 -160 170 80 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID tank1_runner_-120
+1 72 -120 160 20 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID tank1_axle_pin_-120
+1 1 -120 150 160 0 1 0 -1 0 0 0 0 1 43093.dat
+0 !BW ID tank1_runner_elbow_-120_back
+1 72 -120 180 -120 0 0 -1 0 1 0 1 0 0 15100.dat
+0 !BW ID tank1_runner_pin_-120_back
+1 0 -120 170 -120 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID tank1_runner_elbow_-120_front
+1 72 -120 180 80 0 0 1 0 1 0 -1 0 0 15100.dat
+0 !BW ID tank1_runner_pin_-120_front
+1 0 -120 170 80 0 1 0 1 0 0 0 0 -1 2780.dat
+0 STEP
+0 // Assembly stage 8
+0 !BW ID tee
+1 0 20 200 200 0 0 1 1 0 0 0 1 0 4697b.dat
+0 STEP
+0 // Assembly stage 9
+0 !BW ID hub
+1 15 -40 290 -300 1 0 0 0 1 0 0 0 1 45601.dat
+0 !BW ID hub_runner_-100
+1 72 -100 300 -280 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID hub_pin_-100_-400
+1 0 -100 290 -400 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID hub_pin_-100_-200
+1 0 -100 290 -200 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID hub_frame_elbow_-100
+1 72 -100 280 -140 0 0 1 0 1 0 -1 0 0 15100.dat
+0 !BW ID hub_frame_pin_-100
+1 0 -100 290 -140 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID hub_runner_20
+1 72 20 300 -280 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID hub_pin_20_-400
+1 0 20 290 -400 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID hub_pin_20_-200
+1 0 20 290 -200 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID hub_frame_elbow_20
+1 72 20 280 -140 0 0 1 0 1 0 -1 0 0 15100.dat
+0 !BW ID hub_frame_pin_20
+1 0 20 290 -140 0 1 0 1 0 0 0 0 -1 2780.dat
