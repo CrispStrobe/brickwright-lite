@@ -34,9 +34,11 @@ import SimLabConnections from './sim-lab-connections.jsx';
 import SimLabBrickButtons from './sim-lab-brick-buttons.jsx';
 import SimLabMeasurements, {measurementWords} from './sim-lab-measurements.jsx';
 import {measurementDefinitions} from '../../lib/bw-sim/measurements/schema.js';
+import {CONTROL_PAIR_SCHEMA, restoreControlPair} from '../../lib/bw-sim/measurements/control-pairs.js';
 import {createMeasurementRecorder} from '../../lib/bw-sim/measurements/recording.js';
 import {measurementModelContext} from '../../lib/bw-sim/measurements/model-context.js';
 import {refuseSimLabSave, clearSimLabSaveFailure, simLabSaveFailure} from '../../lib/bw-sim/model/sim-lab-save-state.js';
+import {measurementJointBound} from '../../lib/bw-sim/measurements/readings.js';
 import {teachingMeasurementPreset} from '../../lib/bw-sim/measurements/teaching-presets.js';
 import SimLabStats from './sim-lab-stats.jsx';
 import SimLabChallenges from './sim-lab-challenges.jsx';
@@ -1063,6 +1065,11 @@ class SimLabPane extends React.Component {
     /** Freeze committed samples before a synchronous save; retain at most four pane models. */
     rememberMeasurementHistory () {
         if (!this.measurementContext) return;
+        if (this.measurementControlPair) {
+            const packet = restoreControlPair(this.measurementControlPair, {...this.measurementContext, definitions: this.measurements}).packet;
+            this.measurementExperiments.set(this.measurementContext.modelSha256, packet);
+            return;
+        }
         const wasActive = this.measurementRecording.snapshot().active;
         this.measurementRecording.stop('model-or-project-save');
         this.measurementRevision++;
@@ -1123,6 +1130,7 @@ class SimLabPane extends React.Component {
         }
         this.measurementModels.clear();
         this.measurementExperiments.clear();
+        this.measurementControlPair = null;
         this.measurementRecording = createMeasurementRecorder();
         this.measurementContext = null;
         this.measurementSelection = null;
@@ -1464,14 +1472,19 @@ class SimLabPane extends React.Component {
         this.measurementContext = measurementModelContext(model, text, this.lib.serializeModel);
         const savedExperiments = experiments === undefined ? this.measurementExperiments.get(this.measurementContext.modelSha256) : experiments;
         this.measurementRecording = createMeasurementRecorder();
+        this.measurementControlPair = null;
         let experimentIssue = null;
         try {
             // Historical unavailable values and their original bindings remain data.
             // Live readers still refuse targets that the current compiler cannot resolve.
-            this.measurementRecording.restore(savedExperiments, this.measurementContext);
+            if (savedExperiments?.schema === CONTROL_PAIR_SCHEMA) {
+                this.measurementControlPair = restoreControlPair(savedExperiments, {...this.measurementContext, definitions: this.measurements}).packet;
+            } else this.measurementRecording.restore(savedExperiments, this.measurementContext);
         } catch (error) {
             experimentIssue = {severity: 'warning', code: 'project-experiments-unreadable', message: `Saved recordings were refused: ${error.message}`};
         }
+        this.measurementPrecisionEnabled = false;
+        this.measurementPrecisionOptions = {mode: 'oscillation', thresholdDegrees: 0};
         this.measurementSelection = experimentIssue ? [] : savedExperiments?.selection || this.measurementRecording.selectionFor(text, this.measurementContext.modelSha256);
         // A real RCX keeps its program through a reset; the Lab's does too (a new scene, the same image).
         if (this.rcxHub() && this.rcxImage) this.rcxHub().loadProgram(this.rcxImage);
@@ -1512,6 +1525,7 @@ class SimLabPane extends React.Component {
             view3d = 'fallback';
             this.setState({message: this.t('noWebgl', {error: error.message})});
         }
+        this.configureMeasurementObservations();
         this.setState({status: 'ready', issues: experimentIssue ? [...issues, experimentIssue] : issues, blockers: insight.blockers, view3d});
     }
 
@@ -1711,8 +1725,38 @@ class SimLabPane extends React.Component {
         this.setState(s => ({readingsTick: s.readingsTick + 1}));
     }
 
+    applyMeasurementControlPair (packet) {
+        if (this.state.replayAt !== null || this.measurementRecording.snapshot().active || !this.measurementContext) return;
+        const admitted = restoreControlPair(packet, {...this.measurementContext, definitions: this.measurements}).packet;
+        if (!this.measurementExperiments.has(this.measurementContext.modelSha256) && this.measurementExperiments.size >= 4) throw new Error('Four model histories are retained');
+        this.measurementRecording.clear();
+        this.measurementControlPair = admitted;
+        this.measurementRevision++;
+        this.onBundleCollect();
+        this.refreshMeasurements();
+    }
+
+    clearMeasurementControlPair () {
+        this.measurementControlPair = null;
+        this.measurementRecording.clear();
+        if (this.measurementContext) this.measurementExperiments.delete(this.measurementContext.modelSha256);
+        this.measurementRevision++;
+        this.onBundleCollect();
+        this.refreshMeasurements();
+    }
+
+    configureMeasurementObservations () {
+        if (!this.session?.setMeasurementObservation) return;
+        const byId = new Map(this.measurements.map(d => [d.id, d])), mechanism = this.session.mechanism;
+        const joints = this.measurementPrecisionEnabled ? [...new Set((this.measurementSelection || []).map(id => byId.get(id)).filter(d => d?.joint &&
+            mechanism.joints.some(j => j.id === d.joint && ['hinge', 'slider'].includes(j.type) && measurementJointBound(mechanism, j, d.binding))).map(d => d.joint))].slice(0, 4) : [];
+        this.session.setMeasurementObservation({...this.measurementPrecisionOptions, joints, contacts: this.measurements.some(d => d.kind === 'contact'),
+            screws: this.measurements.some(d => d.kind === 'screwSlips' || d.kind === 'screwLoad')});
+    }
+
     changeMeasurements (definitions) {
         this.measurements = measurementDefinitions(definitions);
+        this.configureMeasurementObservations();
         this.refreshMeasurements();
         this.onBundleCollect();
     }
@@ -3351,9 +3395,12 @@ class SimLabPane extends React.Component {
                             <SimLabMeasurements locale={this.locale} definitions={this.measurements} rows={this.measurementRows}
                                 modelKey={this.opened?.text || ''} recorder={this.measurementRecording} modelContext={this.measurementContext} recorderRevision={this.measurementRevision}
                                 recordingAllowed={!this.measurementContext || this.measurementExperiments.has(this.measurementContext.modelSha256) || this.measurementExperiments.size < 4}
+                                controlPair={this.measurementControlPair}
+                                histories={[...this.measurementExperiments].filter(([, packet]) => packet.schema !== CONTROL_PAIR_SCHEMA).map(([modelSha256, packet]) => ({modelSha256, packet}))}
+                                onControlPair={packet => this.applyMeasurementControlPair(packet)} onClearControlPair={() => this.clearMeasurementControlPair()}
                                 onHistoryChanged={() => this.onBundleCollect()}
                                 initialPlots={this.measurementSelection || this.measurementRecording.selectionFor(this.opened?.text || '', this.measurementContext?.modelSha256)}
-                                onPlotSelection={ids => { this.measurementSelection = ids.slice(0, 4); if (this.measurementRecording.snapshot().runs.length) this.onBundleCollect(); }}
+                                onPlotSelection={ids => { this.measurementSelection = ids.slice(0, 4); this.configureMeasurementObservations(); if (this.measurementRecording.snapshot().runs.length) this.onBundleCollect(); }}
                                 onPickTarget={this.view?.setMeasurementPick}
                                 onHighlight={ids => this.view?.highlight(ids)}
                                 onPreview={definition => { this.measurementPreview = definition; }}
@@ -3361,12 +3408,16 @@ class SimLabPane extends React.Component {
                                 parts={this.measurementReader.partIds.map(id => ({id, label: this.partNameById(id)}))}
                                 mechanism={this.session.mechanism} shown={this.state.showMeasurements} replaying={this.state.replayAt !== null}
                                 session={this.session} sampleTime={this.measurementRowsTime} paused={this.state.status !== 'running' && this.state.status !== 'stopping'}
+                                precisionEnabled={Boolean(this.measurementPrecisionEnabled)}
+                                precisionOptions={this.measurementPrecisionOptions}
+                                onPrecisionOptions={options => { this.measurementPrecisionOptions = options; this.configureMeasurementObservations(); this.refreshMeasurements(); }}
+                                onPrecisionToggle={() => { this.measurementPrecisionEnabled = !this.measurementPrecisionEnabled; this.configureMeasurementObservations(); this.refreshMeasurements(); }}
                                 teachingPreset={teachingMeasurementPreset(this.session, this.shippedModel()?.file, this.locale)}
                                 onSample={() => this.refreshMeasurements()}
                                 onChange={definitions => this.changeMeasurements(definitions)}
                                 onShown={shown => this.setState({showMeasurements: shown}, () => this.refreshMeasurements())}
                                 onPresets={() => this.changeMeasurements(this.lib.measurementPresets(this.session))}
-                                onClose={() => this.setState({measurementsOpen: false})} />
+                                onClose={() => { this.measurementPrecisionEnabled = false; this.configureMeasurementObservations(); this.setState({measurementsOpen: false}); }} />
                         )}
                         {simulate && this.state.challengesOpen && this.lib && this.renderChallenges()}
                         {simulate && this.renderReplay()}

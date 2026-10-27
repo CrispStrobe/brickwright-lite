@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2026 CrispStrobe
 import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';
+import {NINE_INTAKES} from '../scripts/lib/sim-lab-nine-intake-judge.mjs';
 const read=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8');
 const script=read('scripts/verify-sim-lab-browser.mjs');
 function checkExampleCoverage(workflow){
@@ -10,7 +11,8 @@ function checkExampleCoverage(workflow){
  assert.ok(loops.length);const extras=loops.flatMap(loop=>[...loop[1].matchAll(/'([^']+)'/g)].map(m=>m[1]));
  // The new-model gate filters its own id list rather than a runExample loop.
  const newModels=[...script.matchAll(/const newModelIds = \[([^\]]+)\]/g)].flatMap(m=>[...m[1].matchAll(/'([^']+)'/g)].map(n=>n[1]));
- const expected=[...new Set([...named,...robots,...extras,...newModels])].sort();
+ assert.match(script,/Object\.keys\(NINE_INTAKES\)\.filter\(id => runExample\(id \+ '\.ldr'\)\)/,'Every reviewed intake is an actual selectable browser journey');
+ const expected=[...new Set([...named,...robots,...extras,...newModels,...Object.keys(NINE_INTAKES)])].sort();
  // Match the actual filter's primary -> automatically included control pairs.
  const automatic=[...script.matchAll(/\(id==='([^']+)' && runExample\('([^']+)\.ldr'\)\)/g)].map(m=>({control:m[1],primary:m[2]}));
  assert.deepEqual(automatic.map(p=>p.primary).sort(),['cable-compass','cascade','rise-ratio','wavemaker']);
