@@ -1,0 +1,102 @@
+# Carry Ratio - free roller on a motor-driven tray
+# Copyright (c) 2026 CrispStrobe. SPDX-License-Identifier: BSD-3-Clause.
+# Original finite experiment. Load model.ldr, reset it to its saved pose, then Run.
+# One SPIKE hub, one medium angular motor on A. The roller, con-rod and tray are passive.
+# Robot Lab simulation code; this is not uploaded SPIKE hardware firmware.
+# Unwrapped encoder targets: 0 -> 720 -> 1440 -> 2160 -> 2880 -> 0.
+# Speeds rise from 120 to 720 degrees/s so the tray acceleration rises without
+# changing the mechanism. (The builder's 960 and 1080 deg/s stages were removed:
+# there the ball was thrown off the tray.) Every move uses a fresh
+# encoder reading; holds capture the attained angle; at most two slow trims.
+# A parallel 100 s watchdog stops and holds a stalled experiment.
+DEVICE SPIKE
+GLOBAL stage = 0
+GLOBAL completed = 0
+GLOBAL failed = 0
+GLOBAL settled = 0
+GLOBAL targetA = 0
+GLOBAL speedA = 60
+GLOBAL correctionAttempts = 0
+
+WHEN flag clicked:
+  set stage to 0
+  set completed to 0
+  set failed to 0
+  set settled to 0
+  set targetA to 0
+  set speedA to 60
+  set correctionAttempts to 0
+  IF (lab status) = "no-model" THEN:
+    set failed to 1
+    say "Load Carry Ratio and reset its saved pose before running."
+    stop all
+  reset timer
+  lab start
+  lab stop motor A hold
+  IF (abs of (lab motor A angle)) > 2 THEN:
+    set failed to 1
+    say "Reset Carry Ratio to its saved pose before running."
+    stop all
+  broadcast "Carry Ratio watchdog"
+  set stage to 1
+  set settled to 1
+  wait 0.8 seconds
+  set settled to 0
+  set stage to 2
+  set targetA to 720
+  set speedA to 120
+  broadcast "Carry Ratio move" and wait
+  set stage to 3
+  set targetA to 1440
+  set speedA to 240
+  broadcast "Carry Ratio move" and wait
+  set stage to 4
+  set targetA to 2160
+  set speedA to 480
+  broadcast "Carry Ratio move" and wait
+  set stage to 5
+  set targetA to 2880
+  set speedA to 720
+  broadcast "Carry Ratio move" and wait
+  set stage to 6
+  set targetA to 0
+  set speedA to 240
+  broadcast "Carry Ratio move" and wait
+  lab stop motor A hold
+  set stage to 7
+  set settled to 1
+  set completed to 1
+  wait 1 seconds
+  say "Carry Ratio complete: compare the deck, the free roller and the tray acceleration."
+
+WHEN I receive "Carry Ratio move":
+  IF (abs of (targetA - (lab motor A angle))) > 0.1 THEN:
+    lab run motor A for (targetA - (lab motor A angle)) degrees at (speedA) degrees per second
+  lab stop motor A hold
+  set correctionAttempts to 0
+  REPEAT 2:
+    IF (abs of (targetA - (lab motor A angle))) > 0.5 THEN:
+      change correctionAttempts by 1
+      lab run motor A for (targetA - (lab motor A angle)) degrees at 12 degrees per second
+      lab stop motor A hold
+      wait 0.1 seconds
+  broadcast "Carry Ratio arrival guard" and wait
+  set settled to 1
+  wait 0.4 seconds
+  set settled to 0
+
+WHEN I receive "Carry Ratio arrival guard":
+  IF (abs of (targetA - (lab motor A angle))) > 1.5 THEN:
+    lab stop motor A hold
+    set failed to 1
+    say "Carry Ratio missed its encoder target. Inspect and reset."
+    stop all
+
+WHEN I receive "Carry Ratio watchdog":
+  REPEAT UNTIL (completed = 1):
+    IF (timer) > 100 THEN:
+      lab stop motor A hold
+      set failed to 1
+      say "Carry Ratio: 100 second watchdog stopped the experiment. Reset before retrying."
+      stop all
+    wait 0.1 seconds

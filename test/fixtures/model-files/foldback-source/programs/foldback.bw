@@ -1,0 +1,109 @@
+# Foldback — crossed four-bar and same-parts open-branch comparison.
+# Copyright (c) 2026 CrispStrobe. SPDX-License-Identifier: BSD-3-Clause.
+# Load either matching model, then start from its saved 90-degree input pose.
+# One physical input only. Positive motor A reduces theta: theta = 90 - A.
+# Commanded theta is 20..110 deg (A -20..70); guard theta 18..112 (A -22..72).
+# Every move uses fresh, unwrapped target-minus-current encoder feedback.
+# Speeds are native Robot Lab degrees/second. No encoder is reset.
+# Both assemblies use these exact bytes. The passive output is never commanded.
+DEVICE SPIKE
+GLOBAL targetA = 0
+GLOBAL dwell = 0
+GLOBAL stage = 0
+GLOBAL held = 0
+GLOBAL completed = 0
+GLOBAL failed = 0
+GLOBAL corrections = 0
+
+WHEN flag clicked:
+  set completed to 0
+  set failed to 0
+  set stage to 0
+  set held to 0
+  IF (lab status) = "no-model" THEN:
+    say "Import Foldback or its open-branch comparison before starting."
+    stop all
+  lab start
+  lab stop motor A hold
+  reset timer
+  broadcast "Foldback watchdog"
+  wait 0.5 seconds
+  IF (abs of (lab motor A angle)) > 1 THEN:
+    broadcast "Foldback fault" and wait
+
+  set stage to 1
+  set targetA to 70
+  set dwell to 0.75
+  say "Input 20 degrees: observe the passive output."
+  broadcast "Foldback move and observe" and wait
+  set stage to 2
+  set targetA to 40
+  set dwell to 0.75
+  say "Input 50 degrees: the first equal 30-degree increment."
+  broadcast "Foldback move and observe" and wait
+  set stage to 3
+  set targetA to 10
+  set dwell to 0.75
+  say "Input 80 degrees: compare the output increment."
+  broadcast "Foldback move and observe" and wait
+  set stage to 4
+  set targetA to -20
+  set dwell to 0.75
+  say "Input 110 degrees: compare the third equal increment."
+  broadcast "Foldback move and observe" and wait
+  set stage to 5
+  set targetA to 70
+  set dwell to 0.5
+  say "Continuous reverse sweep to input 20 degrees."
+  broadcast "Foldback move and observe" and wait
+  set stage to 6
+  set targetA to -20
+  set dwell to 0.5
+  say "Continuous forward sweep to input 110 degrees."
+  broadcast "Foldback move and observe" and wait
+  set stage to 7
+  set targetA to 0
+  set dwell to 1
+  say "Return to the saved 90-degree input pose."
+  broadcast "Foldback move and observe" and wait
+  set completed to 1
+  say "Complete. A holds at its original datum; the output remains passive."
+
+WHEN I receive "Foldback move and observe":
+  set held to 0
+  IF (lab motor A angle) < -22 THEN:
+    broadcast "Foldback fault" and wait
+  IF (lab motor A angle) > 72 THEN:
+    broadcast "Foldback fault" and wait
+  IF (abs of (targetA - (lab motor A angle))) > 95 THEN:
+    broadcast "Foldback fault" and wait
+  lab run motor A for (targetA - (lab motor A angle)) degrees at 15 degrees per second
+  lab stop motor A hold
+  set corrections to 0
+  REPEAT 2:
+    IF (abs of (targetA - (lab motor A angle))) > 0.25 THEN:
+      change corrections by 1
+      lab run motor A for (targetA - (lab motor A angle)) degrees at 5 degrees per second
+      lab stop motor A hold
+  IF (abs of (targetA - (lab motor A angle))) > 1 THEN:
+    broadcast "Foldback fault" and wait
+  IF (lab motor A angle) < -22 THEN:
+    broadcast "Foldback fault" and wait
+  IF (lab motor A angle) > 72 THEN:
+    broadcast "Foldback fault" and wait
+  set held to 1
+  wait dwell seconds
+  IF (abs of (targetA - (lab motor A angle))) > 1 THEN:
+    broadcast "Foldback fault" and wait
+
+WHEN I receive "Foldback watchdog":
+  REPEAT UNTIL (completed = 1):
+    IF (timer) > 50 THEN:
+      broadcast "Foldback fault" and wait
+    wait 0.02 seconds
+
+WHEN I receive "Foldback fault":
+  set failed to 1
+  lab stop motor A hold
+  say "Input guard or 50-second watchdog failed. Reset to the saved pose."
+  stop all
