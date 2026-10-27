@@ -355,8 +355,14 @@ function inspectDomains(program,profile,ordinaryExportSelection) {
         node.type==='Array'&&Array.isArray(node.items)&&node.items.every(inertLiteral)||
         node.type==='Unary'&&['+','-','!','~','typeof','void'].includes(node.op)&&inertLiteral(node.argument)||
         node.type==='Binary'&&inertLiteral(node.left)&&inertLiteral(node.right);
+    // A class declaration evaluates its heritage reference but runs none of
+    // its own or its base's constructors, methods or field initializers.
+    // Only an absent heritage or a parsed static dotted name reference
+    // (e.g. sprites.ExtendableSprite) is inert; any other shape refuses.
+    const inertHeritage=base=>base===undefined||base===null||
+        typeof base==='string'&&/^[A-Za-z_$][\w$]*(\.[A-Za-z_$][\w$]*)*$/.test(base);
     const inertStatement=node=>node?.type==='FunctionDeclaration'||node?.type==='Declaration'&&
-        node.decls.every(decl=>inertLiteral(decl.init))||node?.type==='Class'&&!node.base&&
+        node.decls.every(decl=>inertLiteral(decl.init))||node?.type==='Class'&&inertHeritage(node.base)&&
         !node.fields?.some(field=>field.isStatic)&&!node.methods?.some(method=>method.isStatic);
     const capturedDeclarationReady=node=>{
         const value=actual(node),readOwner=functionOwner(value);
