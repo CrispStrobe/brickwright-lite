@@ -9,6 +9,9 @@ Own new fixtures under `test/fixtures/bw-sim/resting-creep/`,
 `test/bw-sim-resting-creep.test.mjs`,
 `scripts/verify-sim-resting-creep.mjs`,
 `docs/ROBOT-LAB-RESTING-CREEP.md`, and this claim.
+In `scripts/lib/gui-scope-allowed.json`, append only the new test above to
+the existing `jolt-physics/wasm-compat` consumer list, preserving all other
+consumers, providers and explanations. No workflow or shared test entry changes.
 This first lane is diagnostic: no physics implementation is authorized by it.
 A justified solver correction requires a separately coordinated scope extension.
 
