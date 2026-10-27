@@ -2,7 +2,7 @@
   "version": 1,
   "id": "ghost-pivot",
   "language": "en",
-  "what": "Motor A moves a pair of linked parallelograms. Their passive output is a long tool beam. Watch its empty end hole: the beam changes heading around that point even though no axle or bearing passes through it. The comparison model replaces one loop link with a longer stock beam while leaving the same motor program in place.",
+  "what": "Double-parallelogram remote centre. Motor A moves a pair of linked parallelograms. Their passive output is a long tool beam. Watch its empty end hole: the beam changes heading around that point even though no axle or bearing passes through it. The comparison model replaces one loop link with a longer stock beam while leaving the same motor program in place. Two linked parallelograms turn a tool about a point where there is no hinge. While motor A sweeps ±35°, the tool keeps the input's heading to 0.002° and the remote centre moves less than 0.02 mm.",
   "try": [
     "Load ghost-pivot.ldr and the matching ghost-pivot.bw program. Reset to the saved pose, then press Run in Robot Lab’s toolbar. Identify the tool beam’s empty end hole before watching the sweep.",
     "Observe two things separately: how far the tool turns and how far that particular hole moves relative to the frame. A point that stays still is only interesting here if the tool actually changes heading.",

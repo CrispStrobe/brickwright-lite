@@ -19,44 +19,59 @@ deployment work has succeeded.
 | Linux package and release exercise | PR1368 and the v0.1.27 hosted package exercise | Hosted packaging and upload evidence; placeholder exercise inputs do not qualify a production runtime, signed delivery or TestFlight availability. |
 | Experimental registry | PR1336 and subsequent model/control updates | 61 active experimental entries, 63 checkpoint records and 14 qualification contracts at the inspected snapshot. Registry inclusion does not establish model-wide mechanical acceptance. |
 | NXT data-file calls | PR1430, `2f3ba1fa` | 83 affected cases across ten files; 40 checks, 33 successful and seven declared skips. Details: [NXT RXE VM](NXT-RXE-VM.md). |
-| API sparse timestamp correction | PR1444, `696f0076` | Three hosted Jolt regressions; 44 checks, 37 successful and seven declared skips. Source is merged; operational adoption is a separate pending item below. |
+| API sparse timestamp correction | PR1444, `696f0076` | Three hosted Jolt regressions; 44 checks, 37 successful and seven declared skips. Source and finite operator adoption are accepted; the cutover used dense recording and did not exercise deployed sparse sampling. |
 | Driven linkage floor contact | PR1445, `7b4f2f84` | Eight floor cases and the unchanged broader gates; 41 checks, 34 successful and seven declared skips. [Contact contract](ROBOT-LAB-FLOOR-CONTACT.md); issue #1436 is closed. |
 
 Earlier API transport, ownership, positive/negative job and terminal-release
 checks passed for their recorded worker. They do not establish acceptance of a
 new deployment merely because its source or worker tag exists.
 
+### Operator cutover accepted — 2026-10-27
+
+The deployment owner promoted the unaliased candidate at 05:51:54 UTC using
+lightweight tag `model-api-worker-696f007`, source
+`696f00761b92cc2a4121a568d94b496241ef8afe`, and `tools/model-api` tree
+`b3015561950a9174249163c94162b451d72c2e1d`. Recorded environment updates are
+limited to `MODEL_API_REF` and `MODEL_API_WORKER_REVISION`. The private delivery
+kit now identifies this revision; the previous production remains the rollback.
+
+Independent retained-original readback accepted candidate and production Sine
+Shuttle reports: 1,421 aligned dense samples each, completed program, unchanged
+input identities, actual provider/source and measurement-reader joins, engine
+identity matching the pinned lockfile, and a 31-file deployment manifest matching
+Git. Operator judge outputs bind to the reports; two scalar metrics were also
+recomputed independently. Twelve deliberately corrupted report copies were
+refused. Reservation snapshots show candidate release before promotion and
+production release afterward, ending at zero active reservations. The existing
+terminal reservation was reconciled through the service before the candidate
+job was reserved; no reset or duplicate job was used for this readback.
+
+This is finite acceptance of the recorded cutover. It does not claim a new
+independent full-judge implementation, signing-key/MAC audit, loaded engine
+binary inspection, physical calibration or model-library acceptance. The dense
+jobs did not exercise the sparse branch; its separate three source regressions
+remain the evidence for that correction. The original stalled-prefix probe
+remains inconclusive with its admission flag false. Reuse the existing originals;
+no new cutover job, promotion, request comment or receipt acquisition is needed.
+
 ### Pending work: exact pickup and stopping conditions
 
-1. **Finish the existing operator cutover for PR1444.** Use the existing
-   [operator request](https://github.com/CrispStrobe/brickwright-lite/pull/1444#issuecomment-6427127084)
-   and follow-through on that PR; do not post a duplicate request. The source
-   target is `696f00761b92cc2a4121a568d94b496241ef8afe`, with
-   `tools/model-api` tree `b3015561950a9174249163c94162b451d72c2e1d` and
-   lightweight tag `model-api-worker-696f007`. At the 2026-10-27 05:42 UTC inspection, a
-   measurement workflow from that revision was queued; candidate acceptance,
-   promotion and the delivery kit's runtime-source update were not admitted.
-   Inspect the existing run and reuse its signed receipt, reports and retained
-   originals. The deployment owner completes candidate transport/probes,
-   positive Sine Shuttle job and judge, input/worker/report identity joins,
-   trusted reservation release, promotion and runtime-source update. Preserve
-   the last admitted deployment as rollback. Never reset the admission ledger,
-   manufacture receipts or submit a duplicate job to clear capacity. Close this
-   item only after independent readback of those actual outcomes. A dense Sine
-   result does not additionally prove deployed zero-cold sparse execution.
-2. **Keep resting-frame creep separate.** [Issue #1435](https://github.com/CrispStrobe/brickwright-lite/issues/1435)
-   remains open. Refresh its owner's claim and coordinate before implementing.
+1. **Keep resting-frame creep separate.** [Issue #1435](https://github.com/CrispStrobe/brickwright-lite/issues/1435)
+   remains open. [PR1472](https://github.com/CrispStrobe/brickwright-lite/pull/1472)
+   owns the diagnostic implementation at this checkpoint; preserve its source,
+   runs and original acquisition. Start with the [resting-creep handoff](ROBOT-LAB-RESTING-CREEP.md),
+   refresh that PR and coordinate before implementing.
    Preserve the unpowered intact/control geometry and existing drift limits;
    diagnose against the actual engine without borrowing #1436's contact result
    as acceptance. Any fix needs affected clean hosted qualification and a normal
    exact-head merge. No physical-calibration claim follows from either lane.
-3. **Qualify experimental models individually when requested.** Start from the
+2. **Qualify experimental models individually when requested.** Start from the
    registry/checkpoint and the model's existing contract, original program,
    licence and control. Refresh counts rather than hardcoding this snapshot.
    A checkpoint marked `NOT_RUN` is not a completed replay. Admit only the named
    model/law/control/browser result; do not rerun already accepted established
    models or claim that every experimental entry is qualified.
-4. **Verify delivery availability only when that is the requested outcome.**
+3. **Verify delivery availability only when that is the requested outcome.**
    For TestFlight, inspect Apple's actual processing and intended tester-group
    availability for v0.1.27 before marking it available; do not retag, rebuild or
    upload again just to check. Signed/non-Linux packaging, redistribution review,
@@ -416,9 +431,9 @@ The worker used for the earlier retained operational observations is reachable
 from main after PR1336, while remaining an older snapshot. Its API tools and
 worker workflow match the inspected commit `8bf40b2c` byte-for-byte. Those earlier
 checks changed no worker pin, server configuration or credential registry. The
-immutable-worker adoption of `696f00761b92` has been requested from the existing
-deployment owner. Its promotion and retained candidate results remain to be
-read back before this closeout is complete.
+immutable-worker adoption of `696f00761b92` subsequently completed. Candidate and
+production retained readback, promotion and delivery-kit source update are
+accepted under the finite boundary in the current closeout section above.
 
 ## Independent follow-up and ownership
 

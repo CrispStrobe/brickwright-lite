@@ -1,8 +1,8 @@
 # Robot Lab measurement continuation — done and pending
 
-Snapshot: 2026-10-27, updated during wrap-up. This is the restart contract for the four-item measurement
-continuation. Refresh GitHub before acting: this document records a checkpoint,
-not a claim that an open pull request has landed.
+Snapshot: 2026-10-27, after PR1437 was merged. Refresh GitHub before acting.
+Implementation is on main; **combined-main qualification remains pending**.
+The earlier pre-merge instructions below are superseded by this checkpoint.
 
 ## Read this distinction first
 
@@ -12,11 +12,13 @@ The floor/contact core and its associated API work landed in
 [PR1445](https://github.com/CrispStrobe/brickwright-lite/pull/1445), merge
 `7b4f2f84ac55e238bbb75663acbdc1e26f3d0358`.
 
-The next four measurement capabilities are implemented in
-[PR1437](https://github.com/CrispStrobe/brickwright-lite/pull/1437) but are **not
-landed at this snapshot**. Publishing this handoff does not qualify or merge
-that source. Keep the four-item implementation loop open until its final
-qualified normal merge.
+The four measurement capabilities landed through
+[PR1437](https://github.com/CrispStrobe/brickwright-lite/pull/1437) at
+`cd0f7a9ae5b72e4918468e87eea487c56f9374af` on 2026-10-27. Another actor merged
+the unchanged candidate after the handoff, before the required fresh combined
+qualification. This records the observed landing; it does not retroactively
+qualify that combination. Keep the acceptance loop open until the actual
+combined-main evidence is admitted and independently audited.
 
 | Item | Implemented in PR1437 | Acceptance needed on the new main combination |
 | --- | --- | --- |
@@ -31,31 +33,45 @@ Contact presence is a scalar presence observation, not a contact-force vector.
 Filtered screw supporting load is not signed instantaneous force. Discrete
 motor work is not electrical energy or physical calibration.
 
-## Required integration before the source can land
+## Actual landing and remaining combined-main qualification
 
-Wrap-up preflight found main at
-`7d2c3ce1d453f5d28bf38c8f93dcc1a1109ba613`, with additional compiler,
-parts-metadata, model, registry and workflow changes after the candidate's
-incorporated core main. Candidate `8a84217` does not contain those changes.
-**Even if its current run finishes green, do not merge that candidate unchanged
-as a qualified combination with the newer main.**
+The actual merge has ordered parents
+`9cdbe24286b02dc7cf7cdb3d722b0eeb00c7e859` (then-main) and
+`8a8421706541f706628d9872ca86e8b7b1fe34fd` (unchanged candidate), and tree
+`3ebcfc034d645406dea23a571298af2566362c49`. An independent Git-object audit
+confirmed the clean merge-tree result. Of the 41 changed paths against its
+first parent, 39 equal the candidate; `.github/workflows/build.yml` and
+`docs/ROBOT-LAB-MEASUREMENTS.md` contain the automatic combination.
 
-The next source owner must refresh main, normally integrate the qualified main
-into an owned source worktree, preserve the measurement delta and both sides of
-the workflow changes, then qualify the affected combined source on its new
-exact head. Keep dependency pins and other owners' model geometry/programs
-intact. Coordinate any compiler or model repair with its owner. Existing
-`8a84217` originals remain valid only for that tested source; do not rename them
-as evidence for the future combination or redownload them merely to read them.
-This is a concrete pending task, not a documentation-only main refresh.
+Then-main included newer compiler, parts-metadata, model, registry and workflow
+changes. Old candidate qualification does not establish their combined behavior.
+The already-created main-push [Build run40468979773](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40468979773)
+is the first evidence source for the actual merge; it was queued at this
+checkpoint. Its [vendor workflow40468979711](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40468979711)
+passed. Do not dispatch a duplicate run, merge PR1437 again, revert the landing
+without operator authorization, or re-download old candidate originals.
 
-## Exact source and current qualification
+Main subsequently advanced to `dea504b32a9a4bd43a2a9d25b587590a0ac9763f`
+through PR1456. Its ten-path delta adds SAMD qualification scripts/tests,
+workflow and documentation, preserving all measurement source and the combined
+Build workflow. Existing [main Build40470766517](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40470766517)
+is the successor evidence source. The main supersession guard may skip the
+older merge run's browser/build jobs: those skips do not establish measurement
+acceptance. In that case audit the already-created successor's actual checkout,
+all enabled checks and genuinely new originals instead; do not dispatch a replay.
+Refresh main and review any further executable impact before claiming acceptance
+of a later tree. Audit the actual CI checkout and exact
+head. If the combined run fails, preserve its first original once and address
+the demonstrated failure in an isolated, normally pushed successor within the
+existing claim; coordinate any repair outside measurement scope with its owner.
+
+## Old candidate identity and sealed qualification
 
 - Branch: `lane/robot-force-precision-pairs-20261026`.
 - Published candidate: `8a8421706541f706628d9872ca86e8b7b1fe34fd`.
 - Candidate tree: `29193f6c71bb0cd40895ac7178135222c92f06ef`.
 - Incorporated core main: `7b4f2f84ac55e238bbb75663acbdc1e26f3d0358`.
-- Current [Build run](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40446909033): all six unit shards, editor build, FPGA surface and full-CI guard passed. Remaining enabled jobs are pending or running at this snapshot.
+- Old candidate [Build run](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40446909033): all six unit shards, editor build, FPGA surface and full-CI guard passed. The full old-candidate set completed: 42 checks, 36 SUCCESS and 6 declared skips, legacy statuses zero. These are not combined-main results.
 - Current vendor and auxiliary source-controls workflows passed; their conditional skips remain declared skips.
 - Seven actual Arcade lifecycle cases executed without target skips or TODOs; their standalone TAP and checkout audit passed on the complete candidate tree.
 - Forty focused source controls passed without skips. These are source controls, not substitutes for actual browser/Jolt acceptance.
@@ -97,16 +113,14 @@ do not patch the component, its dependency pin or thresholds to get green.
 
 ## Resume in this order
 
-1. Read this file and the operator's ignored local handoff. Use an isolated
-   worktree and the already merged measurement claim
-   `lanes/2026-10-26-robot-force-precision-pairs.md`; read the repository lane
-   protocol. Preserve all other workers' scopes. Do not reset or rewrite a
-   shared tree.
-2. Refresh PR1437's state, exact head, current main, all workflows, check-runs
-   and legacy statuses. If it already merged, verify its actual parents/tree
-   and update the handoff rather than implementing it again. If the head
-   differs, audit the successor instead of borrowing this checkpoint's passes.
-   Poll metadata no more than once per minute and coordinate one controller.
+1. Read this file, the operator's ignored local handoff and the lane protocol.
+   Use an isolated worktree and existing merged measurement claim
+   `lanes/2026-10-26-robot-force-precision-pairs.md`. Preserve other scopes and
+   record one qualification controller; never reset or rewrite a shared tree.
+2. Refresh PR1437 (already merged), actual main, the existing merge-head Build
+   and vendor workflows, all paginated check-runs and legacy statuses. Preserve
+   the actual landing proof above. Poll metadata no more than once per minute;
+   do not start duplicate hosted runs or repeat the completed source merge.
 3. Preserve successful intake already performed: the current scope and
    seven-case unit logs, light log, Robot Lab archive and producer log have all
    been acquired once and audited. Prior candidates'
@@ -143,21 +157,21 @@ do not patch the component, its dependency pin or thresholds to get green.
    skips. A cancellation or timeout is not success. On failure, retain the
    original once, classify it and coordinate a demonstrated correction; do not
    rerun an unchanged failure, mute assertions or weaken baselines.
-8. Refresh main and ownership holds before landing. Prove full-tree
-   preservation, exact pins/core/source inventory and the prospective ordered
-   parents `[actual main, candidate]` and merge tree. Any affected executable
-   combination needs fresh qualification; a proven disjoint Markdown move can
-   commute under the lane protocol. Do not import an unqualified sibling lane.
-9. Only then normally merge PR1437 with `--merge --match-head-commit` using its
-   exact admitted head. No force push, admin override, auto-merge or branch
-   deletion. Verify the actual landed parents/tree and PR state. Update public
-   done/pending status and the ignored local handoff last; only then close the
-   four-item loop.
+8. Bind the actual merge-head results and any subsequent executable changes
+   honestly. Review the full combined workflow/compiler/catalog/model impact.
+   If a demonstrated repair is necessary, retain failures and normally push a
+   substantive successor; qualify that exact successor before a guarded normal
+   PR merge, verifying predicted and landed parents/tree. No force push, admin
+   override, auto-merge, silent dependency-pin change or weakened assertion.
+9. Once combined acceptance and independent original-byte audits pass, reconcile
+   this document, the claim status and ignored local handoff. Only then close
+   the four-item acceptance loop. Source is already landed; acceptance remains
+   pending until the evidence supports it.
 
-The PR was opened Ready without `ci:full`; actual opened-event scope was
-admitted before adding that label **once**. It remains on the PR. Do not repeat
-the label, dispatch another run, or cycle Ready. Ordinary substantive source
-successors trigger their own synchronize qualification.
+PR1437 was opened Ready and received `ci:full` once after actual opened-scope
+admission. It is now merged. Do not repeat its label, dispatch or Ready cycle.
+The existing main-push run executes its own qualification under the merged
+workflow; future substantive repair PRs follow the normal lane protocol.
 
 ## Boundaries and other owners
 
