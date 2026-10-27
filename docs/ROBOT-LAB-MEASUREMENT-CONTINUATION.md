@@ -1,6 +1,6 @@
 # Robot Lab measurement continuation — done and pending
 
-Snapshot: 2026-10-27. This is the restart contract for the four-item measurement
+Snapshot: 2026-10-27, updated during wrap-up. This is the restart contract for the four-item measurement
 continuation. Refresh GitHub before acting: this document records a checkpoint,
 not a claim that an open pull request has landed.
 
@@ -18,18 +18,36 @@ landed at this snapshot**. Publishing this handoff does not qualify or merge
 that source. Keep the four-item implementation loop open until its final
 qualified normal merge.
 
-| Item | Implemented in PR1437 | Acceptance still needed before landing |
+| Item | Implemented in PR1437 | Acceptance needed on the new main combination |
 | --- | --- | --- |
-| Existing forces and dynamics | Slider motor/limit force and power, passive hinge friction, screw slip/supporting-load diagnostics, contact presence; units, unavailable states and provenance retained | Current combined-core native getter/scalar joins and browser acceptance |
-| Accepted-step analysis and recording windows | Opt-in fixed-step period, phase and signed discrete motor work; bounded absolute simulated-time recording windows; existing caps and gap/overflow refusal retained | Current completed-step arithmetic, lifecycle and saved-project audits |
-| Structural role packs and persistence | Typed role packs; pinned PR1336 source coverage; two actual save/reopen pilots | Current 60-source/493-pack report and both pilot source/placement/metadata joins |
-| Explicit control pairs | Opt-in two-model comparison with distinct authored identities, typed mappings, units, origins and bounded persistence; ordinary comparison remains strict same-model | Current paired project before/save/reopen joins and independent original-byte audit |
+| Existing forces and dynamics | Slider motor/limit force and power, passive hinge friction, screw slip/supporting-load diagnostics, contact presence; units, unavailable states and provenance retained | New-head combined native getter/scalar joins and browser acceptance |
+| Accepted-step analysis and recording windows | Opt-in fixed-step period, phase and signed discrete motor work; bounded absolute simulated-time recording windows; existing caps and gap/overflow refusal retained | New-head completed-step arithmetic, lifecycle and saved-project audits |
+| Structural role packs and persistence | Typed role packs; pinned PR1336 source coverage; two actual save/reopen pilots | New-head pinned-source report and both pilot source/placement/metadata joins |
+| Explicit control pairs | Opt-in two-model comparison with distinct authored identities, typed mappings, units, origins and bounded persistence; ordinary comparison remains strict same-model | New-head paired project before/save/reopen joins and independent original-byte audit |
 
 No solver or dependency pin change is introduced by these measurement features.
 The candidate incorporates the separately qualified floor core from main.
 Contact presence is a scalar presence observation, not a contact-force vector.
 Filtered screw supporting load is not signed instantaneous force. Discrete
 motor work is not electrical energy or physical calibration.
+
+## Required integration before the source can land
+
+Wrap-up preflight found main at
+`7d2c3ce1d453f5d28bf38c8f93dcc1a1109ba613`, with additional compiler,
+parts-metadata, model, registry and workflow changes after the candidate's
+incorporated core main. Candidate `8a84217` does not contain those changes.
+**Even if its current run finishes green, do not merge that candidate unchanged
+as a qualified combination with the newer main.**
+
+The next source owner must refresh main, normally integrate the qualified main
+into an owned source worktree, preserve the measurement delta and both sides of
+the workflow changes, then qualify the affected combined source on its new
+exact head. Keep dependency pins and other owners' model geometry/programs
+intact. Coordinate any compiler or model repair with its owner. Existing
+`8a84217` originals remain valid only for that tested source; do not rename them
+as evidence for the future combination or redownload them merely to read them.
+This is a concrete pending task, not a documentation-only main refresh.
 
 ## Exact source and current qualification
 
@@ -41,7 +59,7 @@ motor work is not electrical energy or physical calibration.
 - Current vendor and auxiliary source-controls workflows passed; their conditional skips remain declared skips.
 - Seven actual Arcade lifecycle cases executed without target skips or TODOs; their standalone TAP and checkout audit passed on the complete candidate tree.
 - Forty focused source controls passed without skips. These are source controls, not substitutes for actual browser/Jolt acceptance.
-- Current critical jobs: `browser (light)` job `122009150417` and `browser (robotlab)` job `122009150437`. Both were running at the checkpoint; their successful original intake and audits were still pending.
+- Both current critical jobs passed: `browser (light)` job `122009150417` and `browser (robotlab)` job `122009150437`. Their original logs/archive were acquired once and independently audited. The light audit accepted the native-keyboard user path and all 81 assigned gates. Both Robot Lab readers accepted the native scalar, completed-step, role/pilot and paired-project joins. These passes qualify this candidate, not the newer-main combination above.
 
 The current unit producer used synthetic checkout
 `df96fd0ed0a6054dbe6a8a551eb7d150b11cc8eb`, with ordered parents core-main and
@@ -72,8 +90,8 @@ before/after modes, plus passive focus/input/change provenance. The old
 Require the retained focused selector, same Board and owner, unique connected
 controls, zero channels, an actual precommit-negative input observation, then
 committed sample mode with unchecked/enabled ADC. The original sole add,
-handle/capture/count/time assertions remain unchanged. Actual acceptance of
-this new user path is pending; even a pass would not establish the old failure's
+handle/capture/count/time assertions remain unchanged. The current actual browser and independent trace audit accepted
+this finite user path. That acceptance does not establish the old failure's
 cause or a general product repair. Coordinate any further edit with that owner;
 do not patch the component, its dependency pin or thresholds to get green.
 
@@ -89,17 +107,20 @@ do not patch the component, its dependency pin or thresholds to get green.
    and update the handoff rather than implementing it again. If the head
    differs, audit the successor instead of borrowing this checkpoint's passes.
    Poll metadata no more than once per minute and coordinate one controller.
-3. Preserve successful intake already performed: the current scope log and
-   seven-case unit log have been acquired once and audited. Prior candidates'
+3. Preserve successful intake already performed: the current scope and
+   seven-case unit logs, light log, Robot Lab archive and producer log have all
+   been acquired once and audited. Prior candidates'
    successful measurement archives and failed logs are also retained. Consult
    the private receipt inventory before any acquisition; if it is unavailable,
    obtain the handoff rather than redownloading or replaying an original.
-4. Finish current **light** qualification. Admit terminal SUCCESS and the
+4. For the **new combined head**, finish **light** qualification. The old
+   current-head intake above is already complete; do not repeat it. Admit terminal SUCCESS and the
    `Browser gate — circuit UX` step, acquire its original log once, bind its
    actual checkout and source, and independently audit the native-keyboard
    action/focus/input/change trace and strict final publication. Confirm all
    assigned browser gates and the unchanged native ADC summary passed.
-5. Finish current **Robot Lab** qualification. Admit terminal producer SUCCESS,
+5. For the **new combined head**, finish **Robot Lab** qualification. The old
+   current-head intake above is already complete; do not repeat it. Admit terminal producer SUCCESS,
    its own editor build, measurement journey and successful upload, and the
    unique `sim-lab-measurement-success` artifact metadata. Acquire that archive
    and the producer log once. Verify digest/size, CRC, safe flat file types,
