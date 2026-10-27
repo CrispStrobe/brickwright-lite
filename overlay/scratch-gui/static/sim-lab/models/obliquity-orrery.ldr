@@ -7,16 +7,29 @@
 0 // so its 22.5 deg axis stays inertially fixed while the Sun direction turns.
 0 // One SPIKE medium motor on port A drives the A crank axle directly.
 0 // Saved pose = crank angle 45 deg (program datum, motor angle 0).
-0 // base_rail_0 sits 1 LDU above the other rails: three rails carry the frame. With all four
-0 // flat rails exactly coplanar the floor contact was redundant and the frame crept ~5 mm/s.
+0 // The frame stands on three round feet (1L beams pinned under the rails), not on the rails:
+0 // with four flat rails exactly coplanar on the floor the contact was redundant and the
+0 // frame crept ~5 mm/s (issue #1435).
 0 !BW ID base_rail_0
-1 72 40 199.0 60 0 0 1 0 1 0 -1 0 0 32278.dat
+1 72 40 200 60 0 0 1 0 1 0 -1 0 0 32278.dat
 0 !BW ID base_rail_1
 1 72 40 200 0 0 0 1 0 1 0 -1 0 0 32278.dat
 0 !BW ID base_rail_2
 1 72 40 200 -60 0 0 1 0 1 0 -1 0 0 32278.dat
 0 !BW ID base_rail_3
 1 72 40 200 -140 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID base_foot_front
+1 72 160 220 60 1 0 0 0 1 0 0 0 1 18654.dat
+0 !BW ID base_foot_front_pin
+1 0 160 210 60 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID base_foot_rear
+1 72 160 220 -140 1 0 0 0 1 0 0 0 1 18654.dat
+0 !BW ID base_foot_rear_pin
+1 0 160 210 -140 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID base_foot_west
+1 72 -80 220 0 1 0 0 0 1 0 0 0 1 18654.dat
+0 !BW ID base_foot_west_pin
+1 0 -80 210 0 0 -1 0 1 0 0 0 0 1 2780.dat
 0 !BW ID base_cross_0
 1 72 -100 180 -40 1 0 0 0 1 0 0 0 1 32525.dat
 0 !BW ID base_cross_1
@@ -50,62 +63,68 @@
 0 !BW ID post_mid_low_w
 1 0 -60 146 0 0 -1 0 1 0 0 0 0 1 3706.dat
 0 !BW ID post_mid_low_e
-1 0 140 146 0 0 -1 0 1 0 0 0 0 1 3706.dat
+1 0 120 146 0 0 -1 0 1 0 0 0 0 1 3706.dat
 0 !BW ID post_top_w
-1 0 -80 45 0 0 -1 0 1 0 0 0 0 1 3708.dat
+1 0 -80 0 0 0 -1 0 1 0 0 0 0 1 50451.dat
 0 !BW ID post_top_e
-1 0 160 45 0 0 -1 0 1 0 0 0 0 1 3708.dat
+1 0 160 0 0 0 -1 0 1 0 0 0 0 1 50451.dat
 0 !BW ID beam_middle
 1 72 40 152 0 0 0 1 0 1 0 -1 0 0 41239.dat
 0 !BW ID beam_top
 1 72 40 -50 0 0 0 1 0 1 0 -1 0 0 32278.dat
 0 !BW ID bearing_upper
-1 71 20 -68 0 1 0 0 0 1 0 0 0 1 3738.dat
+1 71 120 -68 0 1 0 0 0 1 0 0 0 1 3738.dat
 0 !BW ID bearing_upper_pin_w
-1 0 -20 -60 0 0 -1 0 1 0 0 0 0 1 6558.dat
+1 0 140 -60 0 0 -1 0 1 0 0 0 0 1 6558.dat
 0 !BW ID bearing_upper_pin_e
 1 0 60 -60 0 0 -1 0 1 0 0 0 0 1 6558.dat
 0 !BW ID bearing_lower_b
 1 71 70 134 0 1 0 0 0 1 0 0 0 1 4263.dat
 0 !BW ID bearing_lower_pin_b
-1 0 100 146 0 0 -1 0 1 0 0 0 0 1 6558.dat
+1 0 100 152 0 0 1 0 -1 0 0 0 0 1 6558.dat
+0 // The motor stands output-down on beam_top and drives the A axle directly from its socket
+0 // (no axle passes through the motor body). A beam across the motor's back, pinned into its
+0 // rear holes, ties it to the two 16L posts.
 0 !BW ID motor_A
 0 !BW PORT A
-1 15 0 -100 0 1 0 0 0 1 0 0 0 1 54696p01.dat
+0 !BW ROTOR 45
+1 15 0 -110 0 -1 0 0 0 -1 0 0 0 1 54696p01.dat
+0 !BW ID motor_top_beam
+1 72 40 -150 0 0 0 1 0 1 0 -1 0 0 32278.dat
 0 !BW ID motor_pin_w
-1 0 -20 -70 0 0 -1 0 1 0 0 0 0 1 6558.dat
+1 0 -20 -140 0 0 -1 0 1 0 0 0 0 1 2780.dat
 0 !BW ID motor_pin_e
-1 0 20 -70 0 0 -1 0 1 0 0 0 0 1 6558.dat
+1 0 20 -140 0 0 -1 0 1 0 0 0 0 1 2780.dat
 0 !BW ID axle_A
-1 0 0 -80 0 0 -1 0 1 0 0 0 0 1 3707.dat
+1 0 0 -40 0 0 -0.707107 0.707107 1 0 0 0 0.707107 0.707107 3705.dat
 0 !BW ID axle_B
-1 0 80 37 0 0 -1 0 1 0 0 0 0 1 23948.dat
+1 0 80 37 0 0 -0.707107 0.707107 1 0 0 0 0.707107 0.707107 23948.dat
 0 !BW ID crank_A
 1 4 0 -20 0 0.707107 0 0.707107 0 1 0 -0.707107 0 0.707107 6632.dat
 0 !BW ID crank_B
 1 4 80 -20 0 0.707107 0 0.707107 0 1 0 -0.707107 0 0.707107 6632.dat
 0 !BW ID crank_pin_A
-1 0 28.284271 2.5 28.284271 0 -1 0 1 0 0 0 0 1 3705.dat
+1 0 28.284271 2.5 28.284271 0 -0.707107 0.707107 1 0 0 0 0.707107 0.707107 3705.dat
 0 !BW ID crank_pin_B
-1 0 108.284271 2.5 28.284271 0 -1 0 1 0 0 0 0 1 3705.dat
+1 0 108.284271 2.5 28.284271 0 -0.707107 0.707107 1 0 0 0 0.707107 0.707107 3705.dat
 0 !BW ID coupler
 1 71 68.284271 20 28.284271 0 0 1 0 1 0 -1 0 0 32316.dat
 0 !BW ID coupler_stage
-1 71 68.284271 40 28.284271 0 0 1 0 1 0 -1 0 0 7229.dat
+1 71 68.284271 40 28.284271 0 0 1 0 1 0 -1 0 0 32523.dat
 0 !BW ID coupler_pin_w
 1 0 48.284271 40 28.284271 0 -1 0 1 0 0 0 0 1 6558.dat
 0 !BW ID coupler_pin_e
 1 0 88.284271 40 28.284271 0 -1 0 1 0 0 0 0 1 6558.dat
 0 !BW ID earth_spindle
-1 0 68.284271 83 28.284271 0 -1 0 1 0 0 0 0 1 32073.dat
+1 0 68.284271 50 28.284271 0 -0.707107 0.707107 1 0 0 0 0.707107 0.707107 43093.dat
 0 !BW ID earth_angle
-1 71 68.284271 81.5 28.284271 0.707107 0.707107 0 0 0 -1 -0.707107 0.707107 0 32016.dat
+1 71 68.284271 81.5 28.284271 0.707107 -0.707107 0 0 0 1 -0.707107 -0.707107 0 32016.dat
 0 !BW ID earth_axle
-1 0 76.104771 108.199792 36.104771 0.270598 -0.707107 0.653281 0.92388 0 -0.382683 0.270598 0.707107 0.653281 3706.dat
+1 0 81.678872 127.23206 41.678872 0.270598 -0.707107 0.653281 0.92388 0 -0.382683 0.270598 0.707107 0.653281 3705.dat
 0 !BW ID earth
 1 1 87.740474 147.926632 47.740474 0.707107 0.270598 0.653281 0 0.92388 -0.382683 -0.707107 0.270598 0.653281 4032a.dat
 0 !BW ID sun_spindle
-1 0 59.997399 174.974392 19.997399 0 -1 0 1 0 0 0 0 1 6558.dat
+1 0 59.997399 169.774392 19.997399 0 -1 0 1 0 0 0 0 1 6558.dat
 0 !BW ID sun_marker
 1 71 59.997399 149.774392 19.997399 1 0 0 0 1 0 0 0 1 18654.dat
 0 !BW ID hub
