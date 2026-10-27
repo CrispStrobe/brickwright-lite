@@ -30,7 +30,8 @@ if(mode==='drop'){
     const drop=await runCompoundDrop(manifest);
     await new Promise(resolve=>setImmediate(resolve));
     assert.equal(globalThis.floorKernelReceipts.length,1);
-    console.log('FLOOR1436_RESULT '+JSON.stringify({schemaVersion:manifest.schemaVersion,mode,coldMs,inputs,engine,kernel:globalThis.floorKernelReceipts[0],...drop}));
+    // Pipe writes are asynchronous on macOS: wait for the flush, or exit truncates the report at 64 KB.
+    await new Promise(resolve=>process.stdout.write('FLOOR1436_RESULT '+JSON.stringify({schemaVersion:manifest.schemaVersion,mode,coldMs,inputs,engine,kernel:globalThis.floorKernelReceipts[0],...drop})+'\n',resolve));
     process.exit(0);
 }
 const motorCommands=[];
