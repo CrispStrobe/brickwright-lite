@@ -13,6 +13,7 @@ import PropTypes from 'prop-types';
 import LegacyTileDefinitionEditor from './legacy-tile-definition-editor.jsx';
 import React from 'react';
 import {makeT, browserLocale} from '../../lib/bw-i18n.js';
+import {activateUndoSurface, notifyUndoState, registerUndoSurface} from '../../lib/global-undo.js';
 import {ARCADE_PALETTE} from '../../lib/bw-makecode/pixel-image.js';
 import {
     TILE_SIZES, findTilemapBlocks, writeTilemapBlock, tilemapText, paintCell, eraseCell, fillCells, setWall, resizeTilemap,
@@ -108,8 +109,39 @@ class TilemapEditor extends React.Component {
         this.handleKeyDown = this.handleKeyDown.bind(this);
     }
 
-    componentDidMount () { this.draw(); }
-    componentDidUpdate () { this.draw(); }
+    componentDidMount () {
+        this.draw();
+        // `pendingHistory` lets several steps in a row (History list: "10 back")
+        // see each other before React has re-rendered.
+        const history = () => this.pendingHistory || this.state.history || {past: [], future: []};
+        const step = move => {
+            const current = history();
+            const next = move(current);
+            if (next === current) return false;
+            this.pendingHistory = next;
+            this.setState({history: next});
+            return true;
+        };
+        this.unregisterUndo = registerUndoSurface('tilemap', {
+            label: 'Tilemap editor',
+            canUndo: () => history().past.length > 0,
+            canRedo: () => history().future.length > 0,
+            depth: () => ({undo: history().past.length, redo: history().future.length}),
+            undo: () => step(undo),
+            redo: () => step(redo)
+        });
+        activateUndoSurface('tilemap');
+    }
+    componentDidUpdate (prevProps, prevState) {
+        this.draw();
+        if (prevState.history !== this.state.history) {
+            this.pendingHistory = null;
+            notifyUndoState();
+        }
+    }
+    componentWillUnmount () {
+        if (this.unregisterUndo) this.unregisterUndo();
+    }
 
     get data () { return this.stroke ? this.stroke.data : this.state.history?.present; }
 

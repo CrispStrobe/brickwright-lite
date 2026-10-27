@@ -57,6 +57,12 @@ const LAZY = [
     // load-time repair of extension projects; the first load carries only the import() call.
     {what: 'extension menu shape table', marker: '+MULTIPLE_PORT', chunk: 'bw-extension-menus',
         why: 'the import() in lib/arcade-project-migration.js (lib/extension-menu-args.js)'},
+    // Autosave, project-structure history and error notes load after the first
+    // paint; the History & autosave panel only when it is opened.
+    {what: 'autosave and project history', marker: 'data-bw-error-notes', chunk: 'bw-project-safety',
+        why: 'the import() in overlay/scratch-gui/src/playground/render-gui.jsx (webpackChunkName "bw-project-safety")'},
+    {what: 'the History & autosave panel', marker: 'bw-autosave-confirm-restore', chunk: 'bw-history-panel',
+        why: 'the import() in overlay/scratch-gui/src/lib/bw-project-safety.js (webpackChunkName "bw-history-panel")'},
     {what: 'Robot Lab tab', marker: 'Open the Robot Lab here', chunk: 'bw-robotlab-tab',
         why: 'the React.lazy RobotLabTab in components/gui/gui.jsx'},
     {what: 'LEGO SPIKE Prime driver', marker: 'ID: spikeprime\\n', altMarkers: ['ID: spikeprime\n'], chunk: 'ext-spikeprime',

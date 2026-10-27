@@ -26,6 +26,7 @@ import React from 'react';
 import {connect} from 'react-redux';
 import {setProjectTitle} from '../../reducers/project-title';
 import {pickLocale, browserLocale} from '../../lib/bw-i18n.js';
+import {activateUndoSurface, notifyUndoState, registerUndoSurface} from '../../lib/global-undo.js';
 import {SIM_LAB_STORAGE_KEY, simLabRecordFromText, readSimLabStorage, isStorableName} from '../../lib/bw-sim/model/sim-lab-persist.js';
 import SimLabPalette from './sim-lab-palette.jsx';
 import SimLabInfo from './sim-lab-info.jsx';
@@ -855,6 +856,8 @@ class SimLabPane extends React.Component {
 
     teardownEditor () {
         clearTimeout(this.insightTimer);
+        if (this.unregisterUndo) this.unregisterUndo();
+        this.unregisterUndo = null;
         if (this.unsubscribeInsight) this.unsubscribeInsight();
         this.unsubscribeInsight = null;
         if (this.editView) { try { this.editView.dispose(); } catch { /* a lost context may already be gone */ } }
@@ -929,7 +932,29 @@ class SimLabPane extends React.Component {
             // Palette pictures: null without WebGL (the palette then shows names only).
             this.thumbs = createPartThumbnails({read, colors, color: DEFAULT_COLOR});
             this.editView.setOverlay({ports: this.state.showPorts, motion: this.state.showMotion});
-            this.unsubscribeInsight = this.editor.subscribe(() => this.scheduleInsight());
+            this.unsubscribeInsight = this.editor.subscribe(() => {
+                this.scheduleInsight();
+                notifyUndoState();
+            });
+            // Menu-bar Undo / Redo / History (lib/global-undo.js) while this editor is built.
+            if (this.unregisterUndo) this.unregisterUndo();
+            this.unregisterUndo = registerUndoSurface('robots', {
+                label: 'Robot Lab',
+                canUndo: () => !!this.editor?.canUndo,
+                canRedo: () => !!this.editor?.canRedo,
+                depth: () => ({undo: this.editor?.undoDepth || 0, redo: this.editor?.redoDepth || 0}),
+                undo: () => {
+                    if (!this.editor?.canUndo || !this.editView) return false;
+                    this.editView.undo();
+                    return true;
+                },
+                redo: () => {
+                    if (!this.editor?.canRedo || !this.editView) return false;
+                    this.editView.redo();
+                    return true;
+                }
+            });
+            if (this.props.isVisible !== false) activateUndoSurface('robots');
             this.runInsight();
         } catch (error) {
             this.setState({status: 'failed', message: this.t('noWebgl', {error: error.message})});

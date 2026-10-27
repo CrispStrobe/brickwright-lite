@@ -29,14 +29,16 @@ test('global undo routes only to the active editor and reports its availability'
     const unsubscribe = subscribeUndoState(state => states.push(state));
 
     activateUndoSurface('test-code');
-    assert.deepEqual(getUndoState(), {surface: 'test-code', canUndo: false});
+    assert.equal(getUndoState().surface, 'test-code');
+    assert.equal(getUndoState().canUndo, false);
     assert.equal(undoActiveSurface(), false);
     assert.deepEqual(calls, []);
 
     activateUndoSurface('test-blocks');
     assert.equal(undoActiveSurface(), true);
     assert.deepEqual(calls, ['blocks']);
-    assert.deepEqual(getUndoState(), {surface: 'test-blocks', canUndo: false});
+    assert.equal(getUndoState().surface, 'test-blocks');
+    assert.equal(getUndoState().canUndo, false);
     assert.ok(states.some(state => state.surface === 'test-code' && !state.canUndo));
 
     unsubscribe();

@@ -1,5 +1,15 @@
 import React from 'react';
-import ErrorBoundary from '../containers/error-boundary.jsx';
+import EditorErrorBoundary from '../components/editor-error-boundary/editor-error-boundary.jsx';
+
+// Brickwright: an editor tab (Blocks, Costumes, Sounds) that throws shows a
+// recoverable notice in its own place instead of the full-screen crash page,
+// which replaced the whole app and lost unsaved work. The app-level
+// ErrorBoundary (containers/error-boundary.jsx) still guards the shell.
+const EDITOR_NAMES = {
+    'Blocks': 'Blocks',
+    'Costume Tab': 'Costumes',
+    'Sound Tab': 'Sounds'
+};
 
 /*
  * Higher Order Component to provide error boundary for wrapped component.
@@ -15,9 +25,9 @@ const ErrorBoundaryHOC = function (action){
      */
     return function (WrappedComponent) {
         const ErrorBoundaryWrapper = props => (
-            <ErrorBoundary action={action}>
+            <EditorErrorBoundary name={EDITOR_NAMES[action] || action}>
                 <WrappedComponent {...props} />
-            </ErrorBoundary>
+            </EditorErrorBoundary>
         );
         return ErrorBoundaryWrapper;
     };
