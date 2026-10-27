@@ -25,6 +25,22 @@ physics step, browser run, build or full suite occurred. These checks establish
 source/control behavior, not actual baseline observations or solver acceptance.
 The reader is independent of the producer; the test harness exercises both.
 
+## Refreshed Main source census
+
+Source-only compilation of the same frozen inputs against Main
+`dea504b32a9a4bd43a2a9d25b587590a0ac9763f` retains a four-body/four-joint
+Orrery and the 0.20642 kg frame with 38 parts and 51 colliders in both rail
+variants. Both named ordinary inputs still prepare without issues. The actual
+catalogue SHA-256 is now
+`7e6d25950dd815729e25aafa031370c415e5382676e7dcb9bf9f235fd2cd0320`,
+which differs from the historical handoff catalogue. These are source facts;
+they do not establish unchanged native trajectories.
+
+The new test has no recorded timing entry and maps to unit shard **3/6** under
+the workflow's SHA-256 filename fallback. Confirm the official shard census and
+actual checkout before original admission; this prediction is not evidence that
+the engine test ran.
+
 ## Next admission steps
 
 1. Refresh the PR's exact head, claim ownership, workflow selection and current
