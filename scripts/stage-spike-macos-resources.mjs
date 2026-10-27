@@ -11,7 +11,8 @@
 // single-file, lack the shipped tlib or the .NET notices, or still carry
 // Packet.Net / ensurepip. Never fetches anything. Inventory, not clearance.
 import {createHash} from 'node:crypto';
-import {cp, lstat, mkdir, readFile, readdir, realpath, writeFile} from 'node:fs/promises';
+import {cp, lstat, mkdir, mkdtemp, readFile, readdir, realpath, writeFile} from 'node:fs/promises';
+import {tmpdir} from 'node:os';
 import {join, resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {freezeResourceProfile} from './lib/spike-resource-profile.mjs';
@@ -39,6 +40,29 @@ export async function checkRenodeLayout (layout) {
     return problems;
 }
 
+/**
+ * The package producer writes absolute monitor paths of the machine that staged it
+ * (a Linux runner). Relocate a copy to this machine: replace exactly that producer
+ * root in nuttx.resc and update only that file's manifest digest. Returns the copy
+ * and both digests; the frozen profile then rewrites the scenario to its portable form.
+ */
+export async function relocateNuttxPackage (source) {
+    const scenario = (await readFile(join(source, 'nuttx.resc'), 'utf8'));
+    const match = /^machine LoadPlatformDescription @(\/[^\n]*)\/platforms\/boards\/spike-prime\.repl$/m.exec(scenario);
+    if (!match) throw new Error('Package scenario has no absolute producer root');
+    const copy = join(await mkdtemp(join(tmpdir(), 'bw-spike-nuttx-')), 'package');
+    await cp(source, copy, {recursive: true});
+    const local = await realpath(copy);
+    const relocated = scenario.split(match[1] + '/').join(local + '/');
+    await writeFile(join(copy, 'nuttx.resc'), relocated);
+    const manifest = JSON.parse(await readFile(join(copy, 'manifest.json'), 'utf8'));
+    const before = manifest['nuttx.resc'];
+    if (before !== sha(Buffer.from(scenario))) throw new Error('Package scenario digest mismatch before relocation');
+    manifest['nuttx.resc'] = sha(Buffer.from(relocated));
+    await writeFile(join(copy, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n');
+    return {copy: local, producerRoot: match[1], scenarioSha256: {producer: before, relocated: manifest['nuttx.resc']}};
+}
+
 export async function stage (layoutArg, nuttxArg, outputArg) {
     const layout = await realpath(layoutArg), nuttx = await realpath(nuttxArg), output = resolve(outputArg);
     const problems = await checkRenodeLayout(layout);
@@ -47,7 +71,8 @@ export async function stage (layoutArg, nuttxArg, outputArg) {
     const resources = join(output, 'resources');
     await mkdir(resources, {recursive: true});
     await cp(layout, join(resources, 'renode'), {recursive: true, preserveTimestamps: true, verbatimSymlinks: true});
-    const frozen = await freezeResourceProfile('nuttx', nuttx, join(resources, 'nuttx'), resources);
+    const relocated = await relocateNuttxPackage(nuttx);
+    const frozen = await freezeResourceProfile('nuttx', relocated.copy, join(resources, 'nuttx'), resources);
     const host = await readFile(join(resources, 'renode', 'renode'));
     const pins = {BW_RENODE_RESOURCE_EXECUTABLE: 'renode/renode', BW_RENODE_SHA256: sha(host), ...frozen.pins};
     const config = {bundle: {resources: {[`${join(resources, 'renode')}/`]: 'renode/', ...frozen.resources}}};
@@ -56,7 +81,7 @@ export async function stage (layoutArg, nuttxArg, outputArg) {
     await writeFile(join(output, 'compile-pins.json'), JSON.stringify(pins, null, 2) + '\n');
     await writeFile(join(output, 'stage-receipt.json'), JSON.stringify({schemaVersion: 1, scope: 'macos-spike-staging',
         redistributionValidated: false, renodeHostSha256: pins.BW_RENODE_SHA256, renodeEntries: files,
-        nuttxSourceManifestSha256: frozen.sourceManifestSha256}, null, 2) + '\n');
+        nuttxSourceManifestSha256: frozen.sourceManifestSha256, nuttxRelocation: relocated}, null, 2) + '\n');
     return {pins, config};
 }
 
