@@ -3118,6 +3118,13 @@
         "pageErrors": 0,
         "nan": false,
         "simMs": 30167
+      },
+      "promoted": {
+        "to": "established library (MODELS)",
+        "date": "2026-10-27",
+        "judge": "compound-pendulum-exchange-v1",
+        "harness": "motorless: no driven port; disconnection removes the near arm's axle and bushes",
+        "verified": "PENDING: hosted native qualification of this branch"
       }
     },
     {
@@ -3577,6 +3584,13 @@
         "pageErrors": 0,
         "nan": false,
         "simMs": 41400
+      },
+      "promoted": {
+        "to": "established library (MODELS)",
+        "date": "2026-10-27",
+        "judge": "stirling-quadrature-v1",
+        "harness": "hubless: final hold read from the lab-direct controller; observations from base_cross_60",
+        "verified": "PENDING: hosted native qualification of this branch"
       }
     },
     {

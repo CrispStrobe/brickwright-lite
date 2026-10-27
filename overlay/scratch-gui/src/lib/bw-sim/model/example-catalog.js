@@ -1030,6 +1030,76 @@ export const MODEL_LESSONS = Object.freeze({
             "Schlupf"
         ]
     },
+    "phasor-twin.ldr": {
+        "pieces": 63,
+        "motors": 1,
+        "hubs": [],
+        "topic": "linkages",
+        "description": {
+            "en": "Two vertical crank-slider pistons, coupled by a 40-tooth idler and two 16-tooth gears, run 90 degrees out of phase. Plotting the two passive piston displacements against each other gives a closed loop of area pi r^2; clocking both throws together collapses it to a line.",
+            "de": "Zwei senkrechte Kurbelschleifen-Kolben, über ein 40-Zahn-Zwischenrad und zwei 16-Zahn-Ritzel gekoppelt, laufen um 90 Grad versetzt. Trägt man die beiden passiven Kolbenwege gegeneinander auf, entsteht ein geschlossener Ring der Fläche pi r^2; bei gleichphasigen Kurbeln fällt er zu einer Geraden zusammen."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Two crank-sliders clocked 90° apart (Stirling phase loop)",
+            "de": "Zwei Schubkurbeln mit 90° Versatz (Stirling-Phasenschleife)"
+        },
+        "keywords": [
+            "Two crank-sliders clocked 90° apart (Stirling phase loop)",
+            "Zwei Schubkurbeln mit 90° Versatz (Stirling-Phasenschleife)",
+            "Stirling cycle",
+            "Stirling engine",
+            "alpha Stirling",
+            "Schmidt analysis",
+            "phase angle",
+            "90 degree volume phase",
+            "quadrature piston phasing",
+            "kinematic Stirling analogy",
+            "crank-slider",
+            "Stirling-Zyklus",
+            "Stirling-Motor",
+            "Alpha-Stirling",
+            "Schmidt-Analyse",
+            "Phasenwinkel",
+            "90-Grad-Volumenphase",
+            "Phasenquadratur"
+        ]
+    },
+    "pivot-exchange.ldr": {
+        "pieces": 159,
+        "motors": 0,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "forces",
+        "description": {
+            "en": "Three identical weighted arms swing freely from different holes, released from a saved 8° deflection with no motor. Two nearly conjugate pivots keep the same period (Kater's reversible pendulum); the central-hole control swings about twice as slowly.",
+            "de": "Drei gleiche beschwerte Arme schwingen frei an verschiedenen Bohrungen, losgelassen aus einer gespeicherten 8°-Auslenkung, ohne Motor. Zwei nahezu konjugierte Aufhängungen halten dieselbe Periode (Katers Reversionspendel); die Kontrolle an der mittleren Bohrung schwingt etwa halb so schnell."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Reversible compound pendulum (conjugate pivots)",
+            "de": "Reversionspendel (konjugierte Aufhängungen)"
+        },
+        "keywords": [
+            "Reversible compound pendulum (conjugate pivots)",
+            "Reversionspendel (konjugierte Aufhängungen)",
+            "Kater's pendulum",
+            "reversible pendulum",
+            "physical pendulum",
+            "compound pendulum",
+            "radius of gyration",
+            "centre of oscillation",
+            "conjugate pivots",
+            "Kater-Pendel",
+            "Reversionspendel",
+            "physikalisches Pendel",
+            "Trägheitsradius",
+            "Schwingungsmittelpunkt"
+        ]
+    },
     "watt-line.ldr": {
         "pieces": 148,
         "motors": 1,
