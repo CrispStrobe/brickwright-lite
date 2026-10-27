@@ -15,6 +15,33 @@ This document turns the product review into an ordered implementation plan.
 completed and rejected work. This file defines outcomes, sequencing and release
 gates.
 
+## Current circuit/instrument handoff — 2026-10-27
+
+The earlier five-item sequence below is complete. The subsequent
+[six-item campaign](lanes/2026-10-26-reference-qualified-instrument-campaign.md)
+is **partly implemented and not closed**. The authoritative
+[result and recovery handoff](docs/CIRCUIT-INSTRUMENT-REGRESSION.md#current-handoff--2026-10-27)
+separates supplier acceptance, prepared consumer adoption, numerical results and
+remaining source, package and study acceptance.
+
+Completed: owned Board PR710 and CUI PR124 repair/adopt nonlinear DC-path
+admission at supplier heads `dfa4be8e`/`66e37240`. The first teaching study remains
+failed/incomplete: 23 conforming designs out of 31 candidates plus one refusal
+control; all 32 inputs stay in its denominator. Its original source, failures
+and independent readback remain fixed. Prepared v2 source controls are not a
+new experiment. Lite still pins `83686751`/`1bc233c9` at this handoff.
+
+Resume package return after the current-supplier x86 qualification/PR1318
+sequence; compose against actual landed main, preserving current and historical
+source roles. Qualify actual installed packages and built GUI before admitting
+one fresh v2 study. The scope native-keyboard diagnostic is already owned by
+PR1437; its actual browser path is now accepted, while source merge remains
+pending at the recorded receipt. Do not duplicate it or call it a causal fix. Then proceed through historical disagreement attribution, scope
+causality, long captures, LM741 current/power modeling, and provenance plus a
+bounded instrument effect, in that order. Each pending task's scope and stop
+condition are in the handoff. This documentation closes the session's handoff,
+not the scientific campaign; no deployment or seventh task is implied.
+
 ## Current imported-circuit and model-accuracy sequence — 2026-10-25
 
 The separately authorized five-item sequence has reached its bounded consumer
