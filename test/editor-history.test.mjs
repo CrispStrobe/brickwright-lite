@@ -225,3 +225,19 @@ test('the safety net loads after first paint, never at startup', () => {
             `${file} must not import the lazy safety modules`);
     }
 });
+
+test('Robot Lab steps are named by command, and the names follow Undo and Redo', async () => {
+    const {createEditor} = await import('../overlay/scratch-gui/src/lib/bw-sim/editor/editor-state.js');
+    const catalog = new Map(JSON.parse(readFileSync(path.join(root,
+        'overlay/scratch-gui/src/lib/bw-sim/part-meta/parts.json'), 'utf8')).parts.map(p => [p.part, p]));
+    const I = [1, 0, 0, 0, 1, 0, 0, 0, 1];
+    const editor = createEditor({model: {version: 1, parts: []}, catalog});
+    editor.apply({type: 'place', part: '32524.dat', position: [0, 0, 0], rotation: I});
+    const id = editor.model.parts[0].id;
+    editor.apply({type: 'move', id, position: [0, 0, 80], rotation: I});
+    assert.deepEqual(editor.historyLabels, {past: ['Add Technic beam 7', 'Move'], future: []});
+    editor.undo();
+    assert.deepEqual(editor.historyLabels, {past: ['Add Technic beam 7'], future: ['Move']});
+    editor.redo();
+    assert.deepEqual(editor.historyLabels.past, ['Add Technic beam 7', 'Move']);
+});
