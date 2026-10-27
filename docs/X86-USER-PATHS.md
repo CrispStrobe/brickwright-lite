@@ -100,3 +100,6 @@ and pin-role separation do not qualify a new hosted inventory. Separate reviewed
 arming, exact-head source/Build admission, one V9 event and independent original
 reading precede native/runtime joins and the still-pending actual-V8 FreeDOS
 export/reload and forward-debug GUI acceptance.
+
+Current source status: [separately reviewed V9 arming](../lanes/2026-10-27-x86-finite-v9-resolver-role.md#separate-v9-source-arming-checkpoint--2026-10-27)
+is armed but unselected; final source CI, Build admission and actual events remain pending.
