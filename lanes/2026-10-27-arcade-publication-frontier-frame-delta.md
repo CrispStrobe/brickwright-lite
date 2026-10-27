@@ -91,3 +91,13 @@ representative programs through both routes and reimport, and two rebinding
 negatives. The candidate cut is detected; the game-safety cut is backed by the
 importer, which already refuses both rebinding forms. No input, timing or
 keyboard behaviour is claimed.
+
+## Addendum: game.runtime operands
+
+`game.runtime()` with no arguments is recognized as a Number under the same
+`game` namespace guard. Without it an accumulator such as
+`n=n+game.runtime()` in an update handler kept an Opaque writer and was
+refused for native addition, where main exports it. This is the refusal in
+`makecode-arcade-controller-repeat`. The SDK Number test adds an accumulator
+and string-join program and a rebinding negative; the candidate cut is
+detected. No clock or timing behaviour is claimed.

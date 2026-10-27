@@ -174,6 +174,9 @@ export function ordinaryMathNumberCalls(program) {
             // NaN) on normal return. No argument, timing or input fact follows.
             if(callee?.type==='Member'&&!callee.optional&&callee.name==='askForNumber'&&callee.object?.type==='Identifier'&&callee.object.name==='game'&&
                 sdk.has(callee.object)&&node.args.length>=1&&node.args.length<=3)candidates.push({node,kind:'game'});
+            // PXT game.runtime() returns the elapsed milliseconds as a Number.
+            if(callee?.type==='Member'&&!callee.optional&&callee.name==='runtime'&&callee.object?.type==='Identifier'&&callee.object.name==='game'&&
+                sdk.has(callee.object)&&node.args.length===0)candidates.push({node,kind:'game'});
             if(callee?.type==='Member'&&!callee.optional&&callee.object?.type==='Identifier'&&callee.object.name==='Math'&&sdk.has(callee.object)&&MATH_NUMBER_MEMBERS.includes(callee.name))candidates.push({node,kind:'math'});
         }
         if(node.type==='Member'&&!node.optional&&node.object?.type==='Identifier'&&node.object.name==='Math'&&sdk.has(node.object)&&/^[A-Z0-9_]+$/.test(node.name)&&MATH_NUMBER_MEMBERS.includes(node.name)&&!(parent?.type==='Call'&&parent.callee===node))candidates.push({node,kind:'math'});
