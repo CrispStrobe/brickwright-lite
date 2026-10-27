@@ -281,16 +281,21 @@ export const buildJoints = (nodes, edges, islands, diagnostics = []) => {
 
                 // Motor handling: if any member is motor internal, its joint should be separate, but motor internal groups are size 1 always (only one edge between housing and output), so they are not in >1 group. So ignore.
 
+                // A motor's own edge joins a group when a plain hinge is collinear with it between the
+                // same two bodies (the driven axle also turns in a bearing on the housing's body). The
+                // motor edge then names the joint's axis and body order: its axis is the motor's
+                // rotation · shaft axis, so a motor turned upside down drives the other way in the
+                // world (#1460). A plain hinge's axis follows its axle's direction, not the motor's.
+                const motorMember = group.find(g => g.motor);
+                const lead = motorMember || ref;
                 const joint = {
                     id: '',
                     type: 'hinge',
-                    body1: ref.body1,
-                    body2: ref.body2,
+                    body1: lead.body1,
+                    body2: lead.body2,
                     point: midWorld,
-                    axis: ref.axisWorld,
+                    axis: lead.axisWorld,
                 };
-                // If any member has motor, include it (should not happen for hinge group >1)
-                const motorMember = group.find(g => g.motor);
                 if (motorMember) joint.motor = motorOf(motorMember.motor);
                 const slip = slipTorqueOf(group, nodes);
                 if (slip !== null) joint.frictionNm = slip;
