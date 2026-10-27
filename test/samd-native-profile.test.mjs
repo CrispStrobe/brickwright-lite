@@ -7,7 +7,7 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {admitSamdProfile} from '../scripts/verify-samd-native-game.mjs';
-import {admitOfficialMetadata,checkoutFromOfficialLog,auditSamdPictures,extractSamdArchive} from '../scripts/verify-samd-native-game-browser.mjs';
+import {admitOfficialMetadata,checkoutFromOfficialLog,auditSamdPictures,extractSamdArchive,samdProcessRss} from '../scripts/verify-samd-native-game-browser.mjs';
 const source = '0123456789abcdef0123456789abcdef01234567';
 const sha = raw => createHash('sha256').update(raw).digest('hex');
 function official () {
@@ -114,4 +114,11 @@ test('consumer refuses a silently zeroed calibration byte and partial input unio
     await assert.rejects(admitSamdProfile(request(changed)),/input SHA-256/);
     const missing = fixture(); delete missing.inputs.LABWIRED_SAMD51_SIM_SERIAL;
     await assert.rejects(admitSamdProfile(request(missing)),/closed authored input/);
+});
+
+test('process RSS includes only the live owned tree and refuses malformed observations',()=>{
+    const rows='10 1 12\n11 10 20\n12 11 30\n90 1 99999\n';
+    assert.deepEqual(samdProcessRss(rows,10),{summed_rss_bytes:62*1024,process_count:3});
+    assert.throws(()=>samdProcessRss(rows,99),/root still live/);
+    for(const bad of [rows+'11 10 1\n',rows+'13 10 -2\n',rows+'invalid\n'])assert.throws(()=>samdProcessRss(bad,10),/numeric/);
 });

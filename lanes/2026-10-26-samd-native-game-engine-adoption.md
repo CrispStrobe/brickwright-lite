@@ -44,3 +44,9 @@ electrical timing, full hardware fidelity or universal real-time speed.
 
 If a prerequisite cannot be qualified, retain its exact actionable scope and
 failure evidence and keep this claim active. Do not report adoption complete.
+
+Registration candidate: metadata/archive/RGB/profile controls and scoped gate
+checks pass (28 focused tests). The collectors distinguish optional JavaScript
+heap statistics from required observed process-tree RSS, recording scope and
+shared-page/sampling limits. Actual browser/installed guest qualification and
+engine adoption remain pending; keep this claim active through those steps.

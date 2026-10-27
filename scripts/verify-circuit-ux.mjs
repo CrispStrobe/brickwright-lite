@@ -11,6 +11,94 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const build = join(root, 'packages', 'scratch-gui', 'build');
 const port = 8098;
 const types = {'.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.png': 'image/png', '.json': 'application/json', '.wasm': 'application/wasm'};
+
+// Serializable as one Playwright page function. It owns only passive event
+// records/listeners and the actual identities captured before the second
+// remove; it never writes DOM, React state, Board state, events or time.
+function scopeRearmPublicationObserverFactory({target}) {
+    // BEGIN SCOPE_REARM_PUBLICATION_PREDICATE
+    function scopeRearmPublicationPredicate(state) {
+        const boardIdentity = state.board === state.expectedBoard;
+        const domIdentity = state.selector === state.expectedSelector
+            && state.owner === state.expectedOwner && state.adcOwner === state.expectedOwner;
+        const exactControls = state.selectorCount === 1 && state.ownerSelectorCount === 1
+            && state.adcCount === 1 && state.ownerAdcCount === 1
+            && state.selector?.isConnected === true && state.owner?.isConnected === true
+            && state.adc?.isConnected === true && state.selector.disabled === false;
+        const modePublication = (state.expectedMode === 'sample' || state.expectedMode === 'envelope')
+            && state.selector?.value === state.expectedMode;
+        const adcPublication = state.adc?.checked === false
+            && state.adc.disabled === (state.expectedMode !== 'sample');
+        const channelPublication = Array.isArray(state.channels) && state.channels.length === 0;
+        return boardIdentity && domIdentity && exactControls && modePublication
+            && adcPublication && channelPublication;
+    }
+    // END SCOPE_REARM_PUBLICATION_PREDICATE
+    const selectorQuery = '[data-testid="bw-scope-time-capture"]';
+    const adcQuery = '[data-testid="bw-scope-adc-enabled"]';
+    const panelQuery = '[data-scope-panel]';
+    const expectedBoard = window.__board;
+    const expectedSelector = target;
+    const expectedOwner = target?.closest(panelQuery);
+    const events = [];
+    let overflow = 0, observerError = null;
+    const state = expectedMode => {
+        const selector = document.querySelector(selectorQuery);
+        const adc = document.querySelector(adcQuery);
+        let channels = null;
+        try { channels = expectedBoard?.getScopeChannels(); }
+        catch (error) { observerError = String(error); }
+        return {
+            expectedMode, expectedBoard, expectedSelector, expectedOwner,
+            board: window.__board, selector, adc,
+            owner: selector?.closest(panelQuery), adcOwner: adc?.closest(panelQuery),
+            selectorCount: document.querySelectorAll(selectorQuery).length,
+            ownerSelectorCount: expectedOwner?.querySelectorAll(selectorQuery).length ?? 0,
+            adcCount: document.querySelectorAll(adcQuery).length,
+            ownerAdcCount: expectedOwner?.querySelectorAll(adcQuery).length ?? 0,
+            channels,
+        };
+    };
+    const describe = current => ({
+        expectedMode: current.expectedMode,
+        sameBoard: current.board === current.expectedBoard,
+        sameSelector: current.selector === current.expectedSelector,
+        sameOwner: current.owner === current.expectedOwner,
+        adcOwnerSame: current.adcOwner === current.expectedOwner,
+        selectorCount: current.selectorCount, ownerSelectorCount: current.ownerSelectorCount,
+        adcCount: current.adcCount, ownerAdcCount: current.ownerAdcCount,
+        selector: current.selector ? {isConnected: current.selector.isConnected,
+            value: current.selector.value, disabled: current.selector.disabled} : null,
+        ownerConnected: current.owner?.isConnected ?? false,
+        adc: current.adc ? {isConnected: current.adc.isConnected,
+            checked: current.adc.checked, disabled: current.adc.disabled} : null,
+        channels: Array.isArray(current.channels) ? [...current.channels] : null,
+        publicationReady: scopeRearmPublicationPredicate(current),
+    });
+    const before = describe(state('envelope'));
+    const observe = event => {
+        try {
+            if (!event.target?.matches(selectorQuery)) return;
+            if (events.length >= 16) { overflow++; return; }
+            const current = state('sample');
+            events.push({type: event.type, isTrusted: event.isTrusted,
+                targetIsExpected: event.target === expectedSelector, targetValue: event.target.value,
+                state: describe(current)});
+        } catch (error) { observerError = String(error); }
+    };
+    for (const type of ['input', 'change']) {
+        document.addEventListener(type, observe, {capture: true, passive: true});
+    }
+    return {
+        published: expectedMode => scopeRearmPublicationPredicate(state(expectedMode)),
+        snapshot: () => ({before, after: describe(state('sample')),
+            events: [...events], overflow, observerError}),
+        stop: () => {
+            for (const type of ['input', 'change']) document.removeEventListener(type, observe, true);
+        },
+    };
+}
+
 if (!existsSync(join(build, 'index.html'))) throw new Error('Build first: packages/scratch-gui/build/index.html is missing');
 
 const server = createServer(async (req, res) => {
@@ -1111,8 +1199,43 @@ try {
             &&window.__board.getScopeData(h).count===0,handle),'ADC_ENVELOPE_REARM_REUSED_RECORD');
           await adcPage.evaluate(()=>window.__board.advanceTo(window.__board.getTime()+1000000n));
           const envelopeHandle=handle;
-          await scope.getByText('✕',{exact:true}).click();
-          await scope.getByTestId('bw-scope-time-capture').selectOption('sample');
+          let pointModeObserverHandle=null,pointModeSelection=null,pointModeTrace=null,pointModeError=null;
+          try {
+            const controls=await scope.getByTestId('bw-scope-time-capture').elementHandles();
+            pointModeObserverHandle=await adcPage.evaluateHandle(scopeRearmPublicationObserverFactory,
+              {target:controls.length===1?controls[0]:null});
+            await scope.getByText('✕',{exact:true}).click();
+            await adcPage.waitForFunction(observer=>observer.published('envelope'),pointModeObserverHandle);
+            pointModeSelection=await scope.getByTestId('bw-scope-time-capture').selectOption('sample');
+            requireADC(JSON.stringify(pointModeSelection)==='["sample"]','ADC_POINT_MODE_SELECTION_RETURN');
+            await adcPage.waitForFunction(observer=>observer.published('sample'),pointModeObserverHandle);
+            pointModeTrace=await pointModeObserverHandle.evaluate(observer=>observer.snapshot());
+            const preReact=pointModeTrace.events.find(event=>event.type==='input'
+              &&event.targetIsExpected===true&&event.targetValue==='sample'
+              &&event.state.selector?.value==='sample'&&event.state.adc?.disabled===true
+              &&event.state.publicationReady===false);
+            requireADC(!!preReact&&pointModeTrace.after.publicationReady===true
+              &&pointModeTrace.observerError===null&&pointModeTrace.overflow===0,
+              'ADC_POINT_MODE_PRE_REACT_CONTROL '+JSON.stringify(pointModeTrace));
+          } catch(error) {pointModeError=error;}
+          finally {
+            try {
+              if(pointModeObserverHandle) pointModeTrace=await pointModeObserverHandle.evaluate(observer=>{
+                try{return observer.snapshot();} finally{observer.stop();}
+              });
+              console.log('ADC_POINT_MODE_PUBLICATION_TRACE '+JSON.stringify({
+                selectedModeValues:pointModeSelection,trace:pointModeTrace}));
+            } catch(error) {
+              try {console.log('ADC_POINT_MODE_PUBLICATION_TRACE '+JSON.stringify({
+                selectedModeValues:pointModeSelection,trace:pointModeTrace,
+                observerReadError:String(error)}));} catch {/* retain the primary failure */}
+            } finally {
+              try {await pointModeObserverHandle?.dispose();} catch {/* release only our handle */}
+            }
+          }
+          if(pointModeError) throw new Error(`ADC_POINT_MODE_PUBLICATION ${JSON.stringify({
+            selectedModeValues:pointModeSelection,trace:pointModeTrace})} ${String(pointModeError).split('\n')[0]}`,
+          {cause:pointModeError});
           await scope.locator('select').last().selectOption(nets.signal);
           await scope.getByText('+ channel',{exact:false}).click();
           handle=await adcPage.evaluate(()=>window.__board.getScopeChannels()[0]);

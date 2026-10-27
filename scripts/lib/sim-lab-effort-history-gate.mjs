@@ -60,16 +60,25 @@ export const effortHistoryInteractions = async (page, {shotsDir, restoreProject,
     }, inputJoint, {timeout: 15000});
     await tool(page, 'pause');
     await page.waitForFunction(() => { const p = window.__bwSimLab._pane; return p.measurementRowsTime === p.session.time; });
-    const effort = await page.evaluate(joint => {
-        const p = window.__bwSimLab._pane;
-        return {sample: p.session.core.jointDynamics(joint), coreTime: p.session.core.time,
+    const {rowTimeMs, sessionTimeMs, definitions, ...effort} = await page.evaluate(async joint => {
+        const p = window.__bwSimLab._pane, session = p.session;
+        // Pause stops future ticks, but a previously submitted worker batch may
+        // still arrive. Refresh and read both sides in one settled capture.
+        await session.idle();
+        if (p.session !== session) throw new Error('Effort scene changed during capture');
+        p.refreshMeasurements();
+        return {rowTimeMs: p.measurementRowsTime, sessionTimeMs: session.time,
+            definitions: p.measurements.filter(r => ['motorTorque', 'limitTorque', 'motorPower'].includes(r.kind)).map(r => ({kind: r.kind, joint: r.joint, binding: r.binding})),
+            sample: session.core.jointDynamics(joint), coreTime: session.core.time,
             rows: p.measurementRows.filter(r => ['motorTorque', 'limitTorque', 'motorPower'].includes(r.kind)).map(r => ({kind: r.kind, value: r.value, available: r.available, unit: r.unit, source: r.source}))};
     }, inputJoint);
+    const effortWitness = JSON.stringify({joint: inputJoint, rowTimeMs, sessionTimeMs, definitions, ...effort});
+    assert.equal(rowTimeMs, sessionTimeMs, effortWitness);
     assert.ok(effort.rows.every(r => r.available && Number.isFinite(r.value)));
     assert.equal(effort.sample.t, effort.coreTime);
     assert.ok(Math.abs(effort.sample.motorPowerW - effort.sample.motorTorqueNm * effort.sample.angularVelocityRadS) <= 1e-10);
     for (const [kind, field] of [['motorTorque', 'motorTorqueNm'], ['limitTorque', 'limitTorqueNm'], ['motorPower', 'motorPowerW']]) {
-        assert.ok(Math.abs(effort.rows.find(r => r.kind === kind).value - effort.sample[field]) <= 1e-10);
+        assert.ok(Math.abs(effort.rows.find(r => r.kind === kind).value - effort.sample[field]) <= 1e-10, effortWitness);
     }
 
     const beforeProject = await page.evaluate(() => window.__bwSimLab.projectRecord);

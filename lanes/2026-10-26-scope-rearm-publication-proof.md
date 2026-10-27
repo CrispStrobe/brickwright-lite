@@ -1,10 +1,12 @@
 # Scope rearm mode-publication proof
 
-CLAIMED — Codex circuit/instrument owner. Initial Lite base
-`b6f39a12348b984dc9c5f59b826e7680539b6148`; branch
-`claim/scope-rearm-publication-20261026`. Merge this claim before implementation.
-This narrow verifier prerequisite unblocks shared circuit/Robot browser
-qualification. It does not close the broader scope-rearm investigation.
+IMPLEMENTED / DONE source handoff — Codex circuit/instrument owner. The claim
+landed before implementation; the isolated source branch is
+`lane/scope-rearm-publication-20261026` from
+`a08622efed67b779adcbe4bfadd56c9003bf74db`. This narrow verifier prerequisite
+is ready for shared circuit/Robot browser qualification. Hosted qualification
+is explicitly pending in the Robot owner's next mandatory Browser light run.
+It does not close the broader scope-rearm investigation.
 
 ## Exact boundary
 
@@ -39,5 +41,6 @@ dispatch or extra approval round is required.
 
 No CUI/Board source, product ADC behavior, numerical model, threshold, timeout,
 solver budget, electrical graph, dependency/pin/lock, workflow, Robot or Arcade
-implementation edit. Preserve the original failure and uncertainty. A verifier
-repair alone is not proof of its historical cause or a product fix.
+implementation edit. Preserve the original failure and uncertainty. Historical
+causality and a persistent ScopePanel product fault remain unproven; this
+verifier repair alone is not proof of either or a product fix.

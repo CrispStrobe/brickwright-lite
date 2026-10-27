@@ -80,3 +80,11 @@ does not implement a product native compile/import route. No private runtime
 resource is supplied or claimed. Registering this infrastructure does not change
 the engine pin or qualify an actual guest; retain status as pending until the
 exact consumer has passed both jobs and the remaining enabled checks.
+
+Memory observations distinguish JavaScript heap statistics from process RSS.
+The hosted collectors sample summed RSS once per second over the Node observer
+and descendants (including Chromium and sampler overhead), or the owned Tauri
+driver and installed-app/WebKit descendants. Results state the scope, sample times and largest observed sum.
+Shared pages count in each process; this is neither proportional memory nor a
+continuous peak. WebKit may omit JavaScript heap statistics; RSS observations
+remain required. No actual memory result is claimed before those runs pass.

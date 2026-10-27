@@ -184,6 +184,41 @@ export function auditSamdPictures (pictures) {
     need(JSON.stringify(observed.at(-1).player)===JSON.stringify(observed.at(-2).player),'independently observed released movement stopped');
     return true;
 }
+// RSS includes shared pages in each process; this is an observed sum, not PSS
+// or a continuously measured peak. Keep the observer scope in the result.
+export function samdProcessRss (text,rootPid) {
+    need(Number.isSafeInteger(rootPid)&&rootPid>0,'owned process root required');
+    const rows=new Map();
+    for(const line of text.trim().split(/\n/)) {
+        const fields=line.trim().split(/\s+/).map(Number);
+        need(fields.length===3&&fields.every(Number.isSafeInteger)&&fields[0]>0&&fields[1]>=0&&fields[2]>=0&&!rows.has(fields[0]),'complete numeric process observation');
+        rows.set(fields[0],{parent:fields[1],rss:fields[2]*1024});
+    }
+    need(rows.has(rootPid),'owned process root still live');
+    const owned=new Set([rootPid]);
+    let changed=true;
+    while(changed) {
+        changed=false;
+        for(const [pid,row] of rows)if(!owned.has(pid)&&owned.has(row.parent)){owned.add(pid);changed=true;}
+    }
+    const bytes=[...owned].reduce((sum,pid)=>sum+rows.get(pid).rss,0);
+    need(Number.isSafeInteger(bytes)&&bytes>0,'finite positive process RSS');
+    return {summed_rss_bytes:bytes,process_count:owned.size};
+}
+export function startSamdProcessMemory (rootPid,scope) {
+    const observations=[];const began=performance.now();let failure;
+    const sample=()=>{
+        try {
+            const rows=execFileSync('/usr/bin/ps',['-e','-o','pid=,ppid=,rss='],{encoding:'utf8',timeout:5000,maxBuffer:1024*1024});
+            observations.push({elapsed_seconds:(performance.now()-began)/1000,...samdProcessRss(rows,rootPid)});
+        } catch {failure='owned process RSS observation failed';}
+    };
+    sample();const timer=setInterval(sample,1000);timer.unref();
+    return ()=>{
+        clearInterval(timer);sample();need(!failure,failure);need(observations.length>=2,'process memory observations required');
+        return {scope,method:'one-second process-tree RSS sum',shared_pages_counted_per_process:true,continuous_peak:false,observations,max_observed_summed_rss_bytes:Math.max(...observations.map(o=>o.summed_rss_bytes))};
+    };
+}
 export function saveSamdResult (out,result,expectedNative) {
     need(result.status==='SAMD_ACTUAL_REALM_GAME_PASS'&&result.samples?.length===3&&result.native===expectedNative&&result.physical_capture===false,'actual required realm/three samples');
     mkdirSync(out);
@@ -205,7 +240,7 @@ export async function verifyBrowser ({frontend,fixture,out}) {
         try {let path=decodeURIComponent(new URL(req.url,'http://observer.invalid').pathname);if(path.endsWith('/'))path+='index.html';const file=resolve(frontend,'.'+path);need(file.startsWith(resolve(frontend)+sep),'served path escape');const data=readFileSync(file);res.writeHead(200,{'content-type':types[extname(file)]||'application/octet-stream'});res.end(data);}catch{res.writeHead(404);res.end('not found');}
     });
     await new Promise(done=>server.listen(0,'127.0.0.1',done));
-    let browser,page;
+    let browser,page,finishMemory;
     try {
         const {chromium}=await import('playwright');
         browser=await chromium.launch({headless:true});
@@ -213,7 +248,8 @@ export async function verifyBrowser ({frontend,fixture,out}) {
         await page.addInitScript(()=>{localStorage.clear();sessionStorage.clear();localStorage.setItem('bw-starter-v1-complete','1');});
         await page.goto(`http://127.0.0.1:${server.address().port}/`,{waitUntil:'domcontentloaded',timeout:60000});
         await page.waitForFunction(()=>!!window.__brickwrightStore?.getState()?.scratchGui?.vm?.runtime,{},{timeout:120000});
-        const result=await page.evaluate(runSamdNativeGame,packet);saveSamdResult(out,result,false);
+        finishMemory=startSamdProcessMemory(process.pid,'Node observer and descendants, including Chromium and sampler overhead');
+        const result=await page.evaluate(runSamdNativeGame,packet);result.process_memory=finishMemory();finishMemory=undefined;saveSamdResult(out,result,false);
         await page.screenshot({path:join(out,'actual-browser.png')});
         console.log(`SAMD_ACTUAL_BROWSER_GAME_PASS source=${result.source} samples=3 physical_capture=false`);
     } catch(error) {
@@ -221,7 +257,7 @@ export async function verifyBrowser ({frontend,fixture,out}) {
         writeFileSync(join(out,'failure.json'),JSON.stringify({actual_guest_qualified:false,error:String(error),stack:error.stack},null,2)+'\n',{flag:'wx'});
         await page?.screenshot({path:join(out,'actual-browser-failure.png')}).catch(()=>{});
         throw error;
-    } finally {await browser?.close();await new Promise(done=>server.close(done));}
+    } finally {if(finishMemory)try{finishMemory();}catch {}await browser?.close();await new Promise(done=>server.close(done));}
 }
 if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)) {
     if(process.argv[2]==='--admit-inputs') {

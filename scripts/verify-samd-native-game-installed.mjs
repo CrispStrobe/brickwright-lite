@@ -5,7 +5,7 @@ import {existsSync,writeFileSync,readFileSync,mkdirSync} from 'node:fs';
 import {createHash} from 'node:crypto';
 import {resolve,join} from 'node:path';
 import {spawnOwnedDriver} from './lib/owned-driver.mjs';
-import {prepareSamdPacket,saveSamdResult} from './verify-samd-native-game-browser.mjs';
+import {prepareSamdPacket,saveSamdResult,startSamdProcessMemory} from './verify-samd-native-game-browser.mjs';
 import {runSamdNativeGame} from './samd-native-game-browser.mjs';
 const need=(ok,why)=>{if(!ok)throw new Error(why);};
 need(process.argv.length===7,'installed-binary native-receipt frontend fixture fresh-output required');
@@ -29,7 +29,7 @@ const call=async(method,route,body,timeout=10000)=>{
     const value=await response.json();need(response.ok&&!value.value?.error,'actual WebDriver operation failed: '+route);
     return value.value;
 };
-let session;
+let session,finishMemory;
 try {
     let ready=false;let expired=false;
     const watchdog=setTimeout(()=>{expired=true;stop();},30000);
@@ -55,11 +55,13 @@ try {
     }
     need(editor,'actual installed editor VM startup deadline');
     await call('POST',`/session/${session}/window`,{handle:editor});
+    finishMemory=startSamdProcessMemory(driver.pid,'owned Tauri driver and its installed-app/WebKit descendants');
     const result=await call('POST',`/session/${session}/execute/async`,{
         script:`const done=arguments[arguments.length-1];(${runSamdNativeGame.toString()})(arguments[0]).then(value=>done({ok:true,value})).catch(error=>done({ok:false,error:String(error)}));`,args:[packet]
     },4900000);
     need(result?.ok,result?.error||'actual installed guest failed');
     result.value.binary_sha256=receipt.binarySha256;result.value.consumer=receipt.consumer;result.value.ci_checkout=receipt.ciCheckout;
+    result.value.process_memory=finishMemory();finishMemory=undefined;
     saveSamdResult(out,result.value,true);
     const screenshot=await call('GET',`/session/${session}/screenshot`,undefined,30000);
     writeFileSync(join(out,'actual-installed.png'),Buffer.from(screenshot,'base64'),{flag:'wx'});
@@ -72,6 +74,7 @@ try {
     }
     throw error;
 } finally {
+    if(finishMemory)try{finishMemory();}catch {}
     if(!existsSync(out))mkdirSync(out);
     writeFileSync(join(out,'driver.log'),driverLogs.join(''),{flag:'wx'});
     if(session)await call('DELETE',`/session/${session}`,undefined,10000).catch(()=>{});

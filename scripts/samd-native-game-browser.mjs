@@ -115,7 +115,7 @@ export async function runSamdNativeGame (packet) {
             for(let i=0;i<4;i++) await take([255,32,32]);
             const releaseSeconds=(performance.now()-releasedAt)/1000;
             need(JSON.stringify(pictures.at(-1).player)===JSON.stringify(pictures.at(-2).player),'released movement stopped');
-            samples.push({sample,engine:packet.engineSource,firmware_sha256:packet.firmwareSha256,startup_seconds:times[0],first_six_render_seconds:times[5]-times[0],render_intervals:5,press_seconds:pressSeconds,release_seconds:releaseSeconds,pictures,wall_seconds:(performance.now()-began)/1000,process_memory_bytes:performance.memory?{used_js_heap_size:performance.memory.usedJSHeapSize,total_js_heap_size:performance.memory.totalJSHeapSize}:null});
+            samples.push({sample,engine:packet.engineSource,firmware_sha256:packet.firmwareSha256,startup_seconds:times[0],first_six_render_seconds:times[5]-times[0],render_intervals:5,press_seconds:pressSeconds,release_seconds:releaseSeconds,pictures,wall_seconds:(performance.now()-began)/1000,javascript_heap_bytes:performance.memory?{used_js_heap_size:performance.memory.usedJSHeapSize,total_js_heap_size:performance.memory.totalJSHeapSize}:null});
         } finally { sim.free(); }
     }
     return {status:'SAMD_ACTUAL_REALM_GAME_PASS',source:packet.engineSource,profile_sha256:packet.profileSha256,glue_sha256:packet.glueSha256,wasm_sha256:packet.wasmSha256,firmware_sha256:packet.firmwareSha256,samples,href:String(location.href),user_agent:navigator.userAgent,native:typeof window.__TAURI_INTERNALS__?.invoke==='function',physical_capture:false,scope:'actual shipped engine/config assets and owned source-built guest; observer canvas, no native SAMD GUI route claim'};
