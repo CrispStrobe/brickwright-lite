@@ -51,8 +51,16 @@ checkpoint. Its [vendor workflow40468979711](https://github.com/CrispStrobe/bric
 passed. Do not dispatch a duplicate run, merge PR1437 again, revert the landing
 without operator authorization, or re-download old candidate originals.
 
-Main subsequently advanced; refresh it and review any executable impact before
-claiming acceptance of a later tree. Audit the actual CI checkout and exact
+Main subsequently advanced to `dea504b32a9a4bd43a2a9d25b587590a0ac9763f`
+through PR1456. Its ten-path delta adds SAMD qualification scripts/tests,
+workflow and documentation, preserving all measurement source and the combined
+Build workflow. Existing [main Build40470766517](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40470766517)
+is the successor evidence source. The main supersession guard may skip the
+older merge run's browser/build jobs: those skips do not establish measurement
+acceptance. In that case audit the already-created successor's actual checkout,
+all enabled checks and genuinely new originals instead; do not dispatch a replay.
+Refresh main and review any further executable impact before claiming acceptance
+of a later tree. Audit the actual CI checkout and exact
 head. If the combined run fails, preserve its first original once and address
 the demonstrated failure in an isolated, normally pushed successor within the
 existing claim; coordinate any repair outside measurement scope with its owner.
