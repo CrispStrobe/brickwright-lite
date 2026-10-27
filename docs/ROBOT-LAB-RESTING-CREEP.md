@@ -105,6 +105,17 @@ not demonstrated causes or authorized product-setting changes.
    ordinary regressions and native/core rollback. Finish all enabled exact-head
    checks before normal matched-head merge and verify parents and landed tree.
 
+## Successor progress (2026-10-27)
+
+Steps 2–4 are implemented: frozen inputs and the one-coordinate coplanar
+variant under `test/fixtures/bw-sim/resting-creep/`, explicit isolated-frame
+extraction, passive 200 Hz × 350-step recording in
+`test/bw-sim-resting-creep.test.mjs`, and the standalone reader
+`scripts/verify-sim-resting-creep.mjs` with synthetic negative controls.
+Step 5's observations are the actual-engine test's retained `CREEP1435_RESULT`
+diagnostics in the hosted unit shard; their results are recorded here only after
+the official log is acquired once and audited with the reader.
+
 ## Owned paths and adjacent work
 
 Only the new `test/bw-sim-resting-creep.test.mjs`, fixtures under
