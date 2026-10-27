@@ -80,9 +80,14 @@ function plainWait(run){
  return context;
 }
 test('owned scene20ms ticks do not repeat a consumed source loop or step ordinary Scratch waits',async()=>{
- let run;try{run=await setup(source,{deterministicWorkClock:true});await stepFrames(run.vm,1,0);const wait=plainWait(run);assert.equal(wait.timer.timeElapsed(),0);await run.clock.advanceTo(0);assert.equal(values(run).ticks,1);assert.equal(values(run).scratchDone,0);
- await run.clock.advanceTo(50);assert.equal(values(run).ticks,3,'source ticks0/20/40');assert.equal(values(run).scratchDone,0,'timer source turns do not execute the ordinary Scratch wait');assert.equal(wait.timer.timeElapsed(),50,'the real ordinary wait is due but source turns cannot execute it');
- await stepFrames(run.vm,1,50);assert.equal(values(run).scratchDone,1);assert.equal(values(run).ticks,3,'ordinary Scratch frame cannot grant another source tick');assert.deepEqual(run.errors,[]);
+ let run;try{run=await setup(source,{deterministicWorkClock:true});await stepFrames(run.vm,1,0);const wait=plainWait(run),waitTimer=wait.timer;assert.equal(waitTimer.timeElapsed(),0);await run.clock.advanceTo(0);assert.equal(values(run).ticks,1);assert.equal(values(run).scratchDone,0);
+ await run.clock.advanceTo(50);assert.equal(values(run).ticks,3,'source ticks0/20/40');assert.equal(values(run).scratchDone,0,'timer source turns do not execute the ordinary Scratch wait');
+ // The timer platform reaches50 without a callback there. The VM sampled its
+ // program clock at the actual source turn40; the physical frame samples50.
+ assert.equal(run.clock.now(),50);assert.equal(run.vm.runtime.currentMSecs,40);
+ assert.equal(plainWait(run),wait,'source turns retain the actual ordinary wait context');assert.equal(wait.timer,waitTimer,'source turns retain the original ordinary Timer');
+ const elapsed=waitTimer.timeElapsed();assert.equal(elapsed,40,'ordinary wait observes the last actual VM clock sample');assert.ok(elapsed>=wait.duration,'the real ordinary wait is already due but source turns cannot execute it');
+ await stepFrames(run.vm,1,50);assert.equal(run.vm.runtime.currentMSecs,50);assert.equal(waitTimer.timeElapsed(),50,'the physical frame samples50 through the retained original Timer');assert.equal(values(run).scratchDone,1);assert.equal(values(run).ticks,3,'ordinary Scratch frame cannot grant another source tick');assert.deepEqual(run.errors,[]);
  }finally{close(run);}
 });
 test('physical frames cannot complete the actual ordinary wait while its clock is frozen',async()=>{
