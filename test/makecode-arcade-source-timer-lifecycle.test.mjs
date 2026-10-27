@@ -16,12 +16,89 @@ WHEN flag clicked:
   wait (0.03) secs
   set scratchDone to 1`;
 const values=run=>Object.fromEntries(run.vm.runtime.targets.filter(t=>t.isOriginal).flatMap(t=>Object.values(t.variables)).map(v=>[v.name,Number(v.value)]));
-async function setup(code=source){assert.equal(readFileSync(guiDependencyFile('scratch-vm/src/extensions/crispstrobe/arcade/frame-phase.js'),'utf8'),readFileSync(path.join(REPO,'overlay/scratch-vm/src/extensions/crispstrobe/arcade/frame-phase.js'),'utf8'),'actual installed phase driver must match the owned source');const run=await runProgram(code,{frames:0,frameAuthority:'timed'});const clock=createArcadeDiscreteTimers();run.vm.stopAll();run.vm.runtime.bwArcadeProgramClock=clock;run.vm.runtime.updateCurrentMSecs=()=>{run.vm.runtime.currentMSecs=clock.now();};run.vm.greenFlag();assert.ok(readFileSync(path.join(REPO,'overlay/scratch-vm/src/extensions/crispstrobe/arcade/frame-phase.js'),'utf8').includes(run.vm.runtime._arcadeFramePhase.constructor.toString()),'actual loaded phase class must match source, including module cache');return {...run,clock};}
-const close=run=>{run?.vm.stopAll();run?.vm.quit();clearStrayTimers();};
+// This fixture observes program-time ownership, not host CPU throughput. Give
+// both actual cooperative work-budget clocks one advancing external source;
+// real stack-wait timers keep their separate runtime.currentMSecs provider.
+// No primitive, sequencer method, budget or authored operation is replaced.
+function controlledWorkClock(vm) {
+ // A frozen CPU clock can make the real sequencer's budget loop unbounded.
+ // Advance on EVERY read, independently of the program clock or host load.
+ // This read-count quantum controls scheduling inputs, not CPU throughput.
+ let reads=0;const now=()=>++reads/64;
+ const before=now();assert.ok(Number.isFinite(before)&&now()>before,'controlled CPU clocks must advance before installing them');
+ const bindings=[[vm.runtime._arcadeFramePhase,'workNow',now],
+  [vm.runtime.sequencer.timer,'nowObj',Object.freeze({now})]];
+ const saved=bindings.map(([object,key])=>[object,key,Object.getOwnPropertyDescriptor(object,key)]);
+ for(const [,key,descriptor]of saved)assert.ok(descriptor&&Object.hasOwn(descriptor,'value'),key+' is an actual configurable clock input');
+ const restore=()=>{for(const [object,key,descriptor]of saved)Object.defineProperty(object,key,descriptor);};
+ try{for(let i=0;i<bindings.length;i++){const [object,key,value]=bindings[i];Object.defineProperty(object,key,{...saved[i][2],value});}}
+ catch(error){restore();throw error;}
+ return restore;
+}
+test('controlled work clock advances both real budget inputs and restores their descriptors',()=>{
+ const phase={workNow:()=>17},timer={nowObj:{now:()=>29}};
+ const vm={runtime:{_arcadeFramePhase:phase,sequencer:{timer}}};
+ const oldPhase=Object.getOwnPropertyDescriptor(phase,'workNow'),oldTimer=Object.getOwnPropertyDescriptor(timer,'nowObj');
+ const restore=controlledWorkClock(vm);
+ try{
+  assert.equal(phase.workNow,timer.nowObj.now,'one CPU-work source');
+  const start=phase.workNow(),next=timer.nowObj.now();assert.ok(next>start,'both clocks share advancing observations');
+  const deadline=start+1;let previous=next,iterations=0;
+  // Exercise the same elapsed/deadline relationship without invoking a VM or
+  // replacing either production scheduler. Constant clocks fail this bound.
+  while(phase.workNow()<deadline){const value=timer.nowObj.now();assert.ok(value>previous);previous=value;assert.ok(++iterations<128,'a finite work budget must be reachable');}
+  assert.ok(iterations>0);assert.ok(phase.workNow()>=deadline);
+ }finally{restore();}
+ assert.deepEqual(Object.getOwnPropertyDescriptor(phase,'workNow'),oldPhase);
+ assert.deepEqual(Object.getOwnPropertyDescriptor(timer,'nowObj'),oldTimer);
+});
+async function setup(code=source,{deterministicWorkClock=false}={}){
+ assert.equal(readFileSync(guiDependencyFile('scratch-vm/src/extensions/crispstrobe/arcade/frame-phase.js'),'utf8'),readFileSync(path.join(REPO,'overlay/scratch-vm/src/extensions/crispstrobe/arcade/frame-phase.js'),'utf8'),'actual installed phase driver must match the owned source');
+ const run=await runProgram(code,{frames:0,frameAuthority:'timed'}),clock=createArcadeDiscreteTimers();
+ let restoreWorkClock=()=>{};
+ try{
+  run.vm.stopAll();run.vm.runtime.bwArcadeProgramClock=clock;run.vm.runtime.updateCurrentMSecs=()=>{run.vm.runtime.currentMSecs=clock.now();};
+  if(deterministicWorkClock){
+   const sequencerSource=readFileSync(guiDependencyFile('scratch-vm/src/engine/sequencer.js'),'utf8');
+   assert.ok(sequencerSource.includes(run.vm.runtime.sequencer.stepThreads.toString()),'actual loaded cooperative budget method must match its installed source');
+   restoreWorkClock=controlledWorkClock(run.vm);
+  }
+  run.vm.greenFlag();
+  assert.ok(readFileSync(path.join(REPO,'overlay/scratch-vm/src/extensions/crispstrobe/arcade/frame-phase.js'),'utf8').includes(run.vm.runtime._arcadeFramePhase.constructor.toString()),'actual loaded phase class must match source, including module cache');
+  return {...run,clock,restoreWorkClock};
+ }catch(error){run.vm.stopAll();restoreWorkClock();run.vm.quit();clearStrayTimers();throw error;}
+}
+const close=run=>{run?.vm.stopAll();run?.restoreWorkClock();run?.vm.quit();clearStrayTimers();};
+function plainWait(run){
+ const threads=run.vm.runtime.threads.filter(thread=>thread.target.getName()==='Plain'&&thread.peekStackFrame()?.executionContext?.timer);
+ assert.equal(threads.length,1,'the actual ordinary wait must have started before source timer observations');
+ const thread=threads[0],context=thread.peekStackFrame().executionContext;
+ assert.equal((thread.blockContainer||thread.target.blocks).getBlock(thread.peekStack()).opcode,'control_wait');
+ assert.equal(context.duration,30);assert.equal(context.timer.startTime,0);
+ assert.notEqual(context.timer.nowObj,run.vm.runtime.sequencer.timer.nowObj,'program wait and CPU-work clocks remain separate');
+ assert.equal(run.vm.runtime._arcadeFramePhase.waitTimers.has(thread),false,'source timers never own the ordinary wait');
+ return context;
+}
 test('owned scene20ms ticks do not repeat a consumed source loop or step ordinary Scratch waits',async()=>{
- let run;try{run=await setup();await stepFrames(run.vm,1,0);await run.clock.advanceTo(0);assert.equal(values(run).ticks,1);assert.equal(values(run).scratchDone,0);
+ let run;try{run=await setup(source,{deterministicWorkClock:true});await stepFrames(run.vm,1,0);const wait=plainWait(run),waitTimer=wait.timer;assert.equal(waitTimer.timeElapsed(),0);await run.clock.advanceTo(0);assert.equal(values(run).ticks,1);assert.equal(values(run).scratchDone,0);
  await run.clock.advanceTo(50);assert.equal(values(run).ticks,3,'source ticks0/20/40');assert.equal(values(run).scratchDone,0,'timer source turns do not execute the ordinary Scratch wait');
- await stepFrames(run.vm,1,50);assert.equal(values(run).scratchDone,1);assert.equal(values(run).ticks,3,'ordinary Scratch frame cannot grant another source tick');assert.deepEqual(run.errors,[]);
+ // The timer platform reaches50 without a callback there. The VM sampled its
+ // program clock at the actual source turn40; the physical frame samples50.
+ assert.equal(run.clock.now(),50);assert.equal(run.vm.runtime.currentMSecs,40);
+ assert.equal(plainWait(run),wait,'source turns retain the actual ordinary wait context');assert.equal(wait.timer,waitTimer,'source turns retain the original ordinary Timer');
+ const elapsed=waitTimer.timeElapsed();assert.equal(elapsed,40,'ordinary wait observes the last actual VM clock sample');assert.ok(elapsed>=wait.duration,'the real ordinary wait is already due but source turns cannot execute it');
+ await stepFrames(run.vm,1,50);assert.equal(run.vm.runtime.currentMSecs,50);assert.equal(waitTimer.timeElapsed(),50,'the physical frame samples50 through the retained original Timer');assert.equal(values(run).scratchDone,1);assert.equal(values(run).ticks,3,'ordinary Scratch frame cannot grant another source tick');assert.deepEqual(run.errors,[]);
+ }finally{close(run);}
+});
+test('physical frames cannot complete the actual ordinary wait while its clock is frozen',async()=>{
+ let run;try{
+  run=await setup(source,{deterministicWorkClock:true});await stepFrames(run.vm,1,0);const wait=plainWait(run);assert.equal(wait.timer.timeElapsed(),0);
+  // Remove only ordinary elapsed-clock progress. The real source timers,
+  // instructions and both originally requested physical frames still run.
+  run.vm.runtime.updateCurrentMSecs=()=>{run.vm.runtime.currentMSecs=0;};
+  await run.clock.advanceTo(0);await run.clock.advanceTo(50);await stepFrames(run.vm,1,50);
+  assert.equal(values(run).ticks,3);assert.equal(values(run).scratchDone,0);
+  assert.equal(plainWait(run),wait);assert.equal(wait.timer.timeElapsed(),0);assert.deepEqual(run.errors,[]);
  }finally{close(run);}
 });
 test('a continuation-only source turn honors actual sequencer guard and does not release tick yields',async()=>{
