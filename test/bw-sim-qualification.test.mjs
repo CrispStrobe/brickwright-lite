@@ -90,6 +90,18 @@ test('actuatorState reads the session lab-direct controller, not an assumed hub'
 test('contract validation refuses undeclared hubless or motorless shapes',()=>{
  const data=JSON.parse(read('docs/data/robot-lab-qualification.json'));
  for(const c of data.models.filter(c=>!c.hubless&&!c.motorless)){assert.equal(c.observeBase,undefined);assert.ok(c.ports.length>=1,'existing models keep a driven port');}
- const ph=data.models.find(c=>c.id==='phasor-twin'),pv=data.models.find(c=>c.id==='pivot-exchange');
- assert.ok(ph?.hubless&&ph.observeBase==='base_cross_60'&&!ph.motorless);assert.ok(pv?.motorless&&pv.ports.length===0&&!pv.hubless);
+ const pv=data.models.find(c=>c.id==='pivot-exchange');assert.ok(pv?.motorless&&pv.ports.length===0&&!pv.hubless);
+ assert.deepEqual(pv.expectedIssues,[{code:'no-motor',parts:[]}]);for(const c of data.models.filter(c=>!c.motorless))assert.ok(!(c.expectedIssues||[]).some(i=>i.code==='no-motor'));
+});
+// The hubless path end to end on the real experimental Phasor Twin (not promoted: its bytes fail the
+// established construction gate). The hub reading that misjudged it stays wrong; the lab-direct reading holds.
+const PHASOR={id:'phasor-twin',judge:'stirling-quadrature-v1',ports:['A'],hubless:true,observeBase:'base_cross_60',coldMs:500,timeLimitMs:60000,afterMs:500,frameMs:20,frozenOutput:'pistonrod_B',disconnect:['conrod_B','wristpin_B']};
+if(!selected)test('hubless path: experimental Phasor Twin passes its law and hold, and its disconnection is refused',async t=>{
+ const source=read(lab+'models/phasor-twin.ldr'),r=await run(PHASOR,source,false,'hubless-experimental'),last=r.track.at(-1);
+ assert.equal(r.hubId,null);const result=QUALIFICATION_JUDGES[PHASOR.judge](r,{native:true});assertFinalHold(PHASOR,last);
+ assert.notEqual(last.extra.modes[0],'hold','the hub controller reading never sees the lab-direct hold');
+ assert.throws(()=>assertFinalHold({...PHASOR,hubless:undefined},last),/not driven by lab-direct/);
+ const d=await run(PHASOR,disconnectedSource(source,PHASOR.disconnect),false,'hubless-experimental-disconnected'),loss=HUBLESS_DISCONNECTION_LOSSES[PHASOR.id](d);
+ assert.ok(loss.lost,JSON.stringify(loss));assert.throws(()=>QUALIFICATION_JUDGES[PHASOR.judge](d,{native:true}));
+ t.diagnostic(JSON.stringify({result,disconnected:loss}));
 });

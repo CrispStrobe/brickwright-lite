@@ -13,10 +13,12 @@ Base: main `62489568202`.
   negative controls for the new path).
 - New `scripts/lib/sim-lab-hubless-judges.mjs` (Phasor Twin and Pivot Exchange
   judges).
-- Promotion of `phasor-twin` and `pivot-exchange` through the contract, MODELS,
-  catalogue, mechanisms, lessons, dialect lists, source fixtures and checkpoint.
-  Model and program bytes stay unchanged. `phasor-twin-control` and
-  `pivot-exchange-wide` stay experimental.
+- Promotion of `pivot-exchange` through the contract, MODELS, catalogue,
+  mechanisms, lessons, dialect lists, source fixture and checkpoint. Model and
+  program bytes stay unchanged; `pivot-exchange-wide` stays experimental.
+- `phasor-twin` stays experimental: its law and the hubless hold pass, but the
+  unchanged bytes fail the construction gate (idler gear inside the motor).
+  The checkpoint records why; a test runs it through the hubless path anyway.
 
 ## Rules
 

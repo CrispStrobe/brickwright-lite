@@ -553,33 +553,6 @@
     },
     {
       "models": [
-        "phasor-twin"
-      ],
-      "name": {
-        "en": "Two crank-sliders clocked 90° apart (Stirling phase loop)",
-        "de": "Zwei Schubkurbeln mit 90° Versatz (Stirling-Phasenschleife)"
-      },
-      "aliases": [
-        "Stirling cycle",
-        "Stirling engine",
-        "alpha Stirling",
-        "Schmidt analysis",
-        "phase angle",
-        "90 degree volume phase",
-        "quadrature piston phasing",
-        "kinematic Stirling analogy",
-        "crank-slider",
-        "Stirling-Zyklus",
-        "Stirling-Motor",
-        "Alpha-Stirling",
-        "Schmidt-Analyse",
-        "Phasenwinkel",
-        "90-Grad-Volumenphase",
-        "Phasenquadratur"
-      ]
-    },
-    {
-      "models": [
         "pivot-exchange"
       ],
       "name": {

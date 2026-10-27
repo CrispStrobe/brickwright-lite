@@ -3585,12 +3585,10 @@
         "nan": false,
         "simMs": 41400
       },
-      "promoted": {
-        "to": "established library (MODELS)",
+      "promotionReview": {
         "date": "2026-10-27",
-        "judge": "stirling-quadrature-v1",
-        "harness": "hubless: final hold read from the lab-direct controller; observations from base_cross_60",
-        "verified": "PENDING: hosted native qualification of this branch"
+        "decision": "STAYS_EXPERIMENTAL",
+        "reason": "The hubless harness path now qualifies it: stirling-quadrature-v1 passes in the real VM (pistons within 0.0012 mm of the slider-crank closure, strokes 32.001 mm, cranks 90.00004 deg apart, 803.9 mm2 per turn vs pi r2 = 804.25), the final hold is read as 'hold' from the lab-direct controller, and removing conrod_B and wristpin_B leaves piston B 0.02 mm of stroke. The established-library construction gate refuses the unchanged model bytes, however: gear_idler (3649) interpenetrates motor_A (54696p01), 2525 mesh points up to 7.5 LDU deep, and idlershaft, crank pins, tie pins and other pins reach 0.5 to 2.2 LDU into solid parts. A geometry fix is needed before promotion."
       }
     },
     {
