@@ -17,7 +17,7 @@ owns this sequence. Read `LANES.md` and the affected lane records before edits.
 | New teaching-study acquisition | [Run40335666363](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40335666363), retained and independently read once | Failed/incomplete: 23 conforming designs, not a completed 31-design qualification |
 | Board junction DC reachability | [Board PR710](https://github.com/CrispStrobe/bw-board/pull/710), merged `dfa4be8eff4cef22462ac508a67da5f706f7d72d` | Conservative DC-path admission repaired; no new transistor law or solver calibration |
 | Matching CUI package return | [CUI PR124](https://github.com/CrispStrobe/bw-circuit-ui/pull/124), merged `66e3724020e795c3442f8da9a7af149dd5f74bd9`; actual Circuit/CLI checks, 17 SPICE checks and 83 browser scenarios | Supplier acceptance; not Lite adoption or v2 study execution |
-| Scope proof source | Merged publication observer and strict gates; forward native-keyboard diagnostic composed in [Lite PR1437](https://github.com/CrispStrobe/brickwright-lite/pull/1437) | The forward diagnostic is not yet accepted in the actual browser or merged; historical cause and product repair remain unproved |
+| Scope proof source | Merged publication observer and strict gates; forward native-keyboard diagnostic composed in [Lite PR1437](https://github.com/CrispStrobe/brickwright-lite/pull/1437) | Forward native-keyboard path accepted in the actual browser; source PR remains unmerged at the recorded handoff; historical cause and product repair remain unproved |
 
 Board's new checks exercise Shockley bridge and NPN-tail connectivity rather
 than disguising a floating circuit with a ground resistor. A reference mismatch
@@ -72,10 +72,15 @@ not prove React committed it. No observer write path or exact restoration
 trigger has been established. PR1437's forward diagnostic uses one focus and one
 page-level native ArrowDown, preserving actual identity, channel-removal,
 precommit-negative, committed-mode, ADC, sole-add and rearm assertions. Four pure
-controls and eight isolated syntax-valid mutants passed source review. Actual
-browser acceptance is pending in
-[Build40446909033](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40446909033).
-Even a later pass would qualify that user path, not identify the original cause.
+controls and eight isolated syntax-valid mutants passed source review. The
+owner's subsequent original-log audit accepted Browser light job122009150417 in
+[Build40446909033](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40446909033):
+all81 assigned gates passed without skips or failures. The actual trace records
+one focus/input/change, the observed envelope-to-sample ArrowDown action,
+precommit rejection and strict final focused sample/ADC/zero-channel publication.
+This accepts the finite changed user path; it does not identify the original
+restoration cause or establish a product repair. At this recorded receipt the
+source PR was still open, pending its remaining checks and guarded merge.
 The exact source diagnostic is
 `4ea3c00858d5e56a45e0abdbc6baecf809f95567`, composed at owner head
 `8a8421706541f706628d9872ca86e8b7b1fe34fd` in PR1437. Its three released
@@ -125,7 +130,7 @@ do not start a duplicate run or alter its released scope leaf.
 | Task | Bounded next work | Acceptance and stop condition |
 | --- | --- | --- |
 | 2. Four historical disagreements | Recover each original method, model, temperature, signs, initial state and DC-root eligibility. Two unloaded MOS drains are root/leakage-sensitive; the other pair has the same DC network despite capacitor placement. Use only admitted minimal witnesses and distinguishing cuts. | Classify every row as comparable, noncomparable or unresolved. Repair only a demonstrated cause in the owned model/importer fork, with causal negatives and actual affected CLI qualification. An unknown reference must remain unknown; no completed-batch replay or model fitting. |
-| 3. Scope rearm causality | Obtain the existing owner's actual diagnostic result first. Separate the native-keyboard path from the original synthetic input/change restoration and stale-envelope observation. | Retain ordered original getters, handles, event/element identities and failures. A causal fix needs failing-before/passing-after evidence for its actual mechanism and affected hosted GUI acceptance. A passing different path alone does not close causality. |
+| 3. Scope rearm causality | Reuse the existing owner's accepted diagnostic receipt without reacquisition or replay. Separate the native-keyboard path from the original synthetic input/change restoration and stale-envelope observation. | Retain ordered original getters, handles, event/element identities and failures. A causal fix needs failing-before/passing-after evidence for its actual mechanism and affected hosted GUI acceptance. A passing different path alone does not close causality. |
 | 4. Longer captures | Start with a bounded passive-RC 5 ms/1 MHz batch. Account for whole-capture steps, solves, advances, history, output bytes and meter quadrature; distinguish capture from report cadence. | Compare all requested raw points, trigger times and meter windows to admitted references. Preserve the refused request and existing defaults/refusals. There is no universal 5,000-point cap: first establish which actual route/budget refused it. No per-chunk budget renewal or truncated-success claim. |
 | 5. LM741 bias, supply and power | First define an opt-in nominal 25 C domain from published conditions: input bias/offset currents, quiescent current, rail return paths and output-load rail accounting. Keep unsupported domains unavailable. | Independent nominal equations plus terminal KCL and rail-power/energy checks, both bias polarities, zero/nonzero loads and refusal negatives; then actual packaged CLI/GUI acceptance. Typical datasheet values are not guaranteed limits. The 2.8 mA warning budget is not an existing measured-current law. |
 | 6. Provenance and instrument realism | Complete the static-asset provenance transaction and assignment-prefixed census-location redaction, with failing omission/stale/changed-byte/leak controls. Then select one demonstrated bandwidth/coupling gap. | Canonical identity/mirror/notice checks, no confidential locations in generated output, independently expected time-domain behavior, unchanged ideal/raw defaults. Noise needs a separately justified model; randomness is not accuracy. |

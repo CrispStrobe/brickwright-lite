@@ -22,7 +22,7 @@ The earlier five-item sequence below is complete. The subsequent
 is **partly implemented and not closed**. The authoritative
 [result and recovery handoff](docs/CIRCUIT-INSTRUMENT-REGRESSION.md#current-handoff--2026-10-27)
 separates supplier acceptance, prepared consumer adoption, numerical results and
-pending actual-browser evidence.
+remaining source, package and study acceptance.
 
 Completed: owned Board PR710 and CUI PR124 repair/adopt nonlinear DC-path
 admission at supplier heads `dfa4be8e`/`66e37240`. The first teaching study remains
@@ -35,8 +35,8 @@ Resume package return after the current-supplier x86 qualification/PR1318
 sequence; compose against actual landed main, preserving current and historical
 source roles. Qualify actual installed packages and built GUI before admitting
 one fresh v2 study. The scope native-keyboard diagnostic is already owned by
-PR1437 and awaits its actual browser verdict; do not duplicate it or call it a
-causal fix. Then proceed through historical disagreement attribution, scope
+PR1437; its actual browser path is now accepted, while source merge remains
+pending at the recorded receipt. Do not duplicate it or call it a causal fix. Then proceed through historical disagreement attribution, scope
 causality, long captures, LM741 current/power modeling, and provenance plus a
 bounded instrument effect, in that order. Each pending task's scope and stop
 condition are in the handoff. This documentation closes the session's handoff,

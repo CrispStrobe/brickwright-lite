@@ -116,7 +116,8 @@ completion, not completion of the six scientific tasks.
 Supplier Board PR710 and CUI PR124 are landed. Lite package return and v2
 numerical acceptance remain pending; unpublished preparation is preserved
 separately. PR1437's released native-keyboard diagnostic stays with its combined
-browser owner and remains pending actual acceptance. Do not edit that released
+browser owner. Its actual native-keyboard browser path is accepted; source
+merge remains pending at the recorded receipt and no causal fix is claimed. Do not edit that released
 leaf, duplicate its qualification, move pins, select the study or claim a
 product/historical causal fix from this handoff.
 
