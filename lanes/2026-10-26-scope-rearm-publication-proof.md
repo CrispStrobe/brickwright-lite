@@ -44,3 +44,31 @@ solver budget, electrical graph, dependency/pin/lock, workflow, Robot or Arcade
 implementation edit. Preserve the original failure and uncertainty. Historical
 causality and a persistent ScopePanel product fault remain unproven; this
 verifier repair alone is not proof of either or a product fix.
+
+
+## Forward native-keyboard diagnostic
+
+The actual browser rejected the first proof candidate: the same selector read
+sample during input capture but envelope before change capture, and remained
+envelope. The strict publication gate correctly rejected that state. The
+selection helper returned its pre-event selection; that return did not prove
+committed mode. No observer write path or exact restoration cause is established.
+Original failures and causal uncertainty remain preserved.
+
+The next already-required combined browser qualification uses exactly one
+focus and one native ArrowDown from the admitted envelope state, with no
+synthetic selection, fallback, retry, value patch or timeout increase. Before
+the key, require the focused retained selector, Board/owner/unique controls
+and zero channels. Record actual before/after mode and action kind/key, plus
+passive focus/input/change provenance. Preserve the actual precommit-negative,
+strict final focused sample/ADC publication and every existing sole-add,
+handle/capture/count/time assertion. This is a different user-path diagnostic,
+not a proven historical fix or product repair. Actual qualification is pending.
+
+Source qualification for this diagnostic passes4 focused controls with no
+skips and8 isolated syntax-valid whole-source mutants, including connected
+reads, focus, readiness refusal and all retained publication fences. Independent
+source review accepted the exact action boundary and unchanged downstream
+assertions. The keyboard action uses page-level input after one locator focus;
+locator-level press would focus again and is explicitly rejected by controls.
+Hosted actual browser acceptance and the restoration cause remain pending.

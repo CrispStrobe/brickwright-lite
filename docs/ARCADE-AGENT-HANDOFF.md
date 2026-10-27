@@ -1,5 +1,11 @@
 # Arcade compatibility: fresh-agent handoff and methodology
 
+## Current continuation checkpoint — 27 October 2026
+
+Read [the source checkpoint and ordered handoff](ARCADE-CHECKPOINT-2026-10-27.md)
+before acting on the older observations below. It identifies the pushed complete
+source branch, pending qualification, exact implemented boundaries and next tasks.
+
 Updated 2026-10-16. The current-state refresh below supersedes the older
 2026-10-10 checkpoints retained later in this guide. This is the public
 entry point for continuing MakeCode compatibility work without chat history.
