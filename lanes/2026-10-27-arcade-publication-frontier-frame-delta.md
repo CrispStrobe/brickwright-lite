@@ -78,3 +78,16 @@ The retained authentic snake now has no source export refusal; its two math
 queries still pass. This is a source export result only, not SDK, native,
 browser, editor or game completion. Hosted SDK/native/browser qualification,
 connected editor acceptance and corpus completion remain open.
+
+## Addendum: askForNumber operands
+
+`ordinary-primitive-sdk-number-source.js` also recognizes `game.askForNumber`
+with one to three arguments as a Number on normal return (PXT parses the
+entered text; NaN is still a Number), only while `game` is the SDK namespace
+and is never written or used as a value. The raw-corpus export census moves
+three calculator inputs that were refused only for native addition to clean
+source exports. New test `test/arcade-ask-number-addition.test.mjs`: two
+representative programs through both routes and reimport, and two rebinding
+negatives. The candidate cut is detected; the game-safety cut is backed by the
+importer, which already refuses both rebinding forms. No input, timing or
+keyboard behaviour is claimed.
