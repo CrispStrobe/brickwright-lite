@@ -117,3 +117,28 @@ Exact final body profiles still require a separate reviewed update. This local
 arming is source preparation: no V9 event, inventory, native/runtime join or
 actual-V8 GUI result is claimed. Fresh exact-head source CI and Build admission,
 then separately admitted once-only selection and originals, remain mandatory.
+
+## Failed source-CI checkpoint and current-main composition — 2026-10-27
+
+The [H408 source browser job](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40439219786/job/121975783533)
+failed `Browser gate — circuit UX` with the aggregate
+`ADC_POINT_REARM_REUSED_RECORD` refusal. Its diagnostic recorded a new scope
+handle (`3`, previously `2`), while both the captured mode and selector mode
+were `envelope`. The handle-difference condition held; this does not establish
+handle reuse. The capture-mode condition failed in that evaluation, and the
+cause of the missing mode publication remains open.
+
+This normal composition adopts qualified main's explicit publication waits and
+passive event diagnostics in `scripts/verify-circuit-ux.mjs`, together with the
+other owners' current-main changes. It is a new source candidate; adoption does
+not prove that the publication waits fix the recorded failure. The separate
+mode-publication follow-up remains open. Supplier pins, strict inventory roles,
+source profiles and existing acceptance limits are preserved.
+
+V9 remains unselected and actual-V8 GUI acceptance remains pending. The new head
+requires fresh exact-head source CI and a fresh Build checkout/source admission
+before any separately admitted inventory or GUI event. The failed head's
+successful frontend Build metadata supplies no qualification for this head; its
+log and artifact bodies remain unacquired. Preserve the consumed V7/V8 failures
+and all existing one-shot boundaries. No new guest or performance result follows
+from this source composition.
