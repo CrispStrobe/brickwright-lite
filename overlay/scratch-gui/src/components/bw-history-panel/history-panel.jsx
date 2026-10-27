@@ -81,8 +81,20 @@ class HistoryPanel extends React.Component {
             if (this.root.current && !this.root.current.contains(target) &&
                 !(target.closest && target.closest('[data-testid="bw-global-history"]'))) this.props.onClose();
         };
+        this.list = React.createRef();
         this.handleKey = event => {
             if (event.key === 'Escape') this.props.onClose();
+        };
+        // Arrow keys walk the steps, Home/End jump to the newest/oldest; Enter
+        // and Space press the focused step like any button.
+        this.handleListKey = event => {
+            const steps = Array.from(this.list.current.querySelectorAll('button:not([disabled])'));
+            const at = steps.indexOf(document.activeElement);
+            const next = {ArrowDown: at + 1, ArrowUp: at < 0 ? steps.length - 1 : at - 1,
+                Home: 0, End: steps.length - 1}[event.key];
+            if (next === undefined || !steps.length) return;
+            event.preventDefault();
+            steps[Math.max(0, Math.min(steps.length - 1, next))].focus();
         };
     }
     componentDidMount () {
@@ -96,7 +108,13 @@ class HistoryPanel extends React.Component {
         document.addEventListener('keydown', this.handleKey);
         this.refreshVersions();
     }
-    componentDidUpdate (prevProps) {
+    componentDidUpdate (prevProps, prevState) {
+        // Keep "Now" in view when the list first appears (long redo tails push it down).
+        const shown = Boolean(prevState.timeline) !== Boolean(this.state.timeline) || prevState.view !== this.state.view;
+        if (shown && this.list.current) {
+            const now = this.list.current.querySelector('[aria-selected="true"]');
+            if (now && now.scrollIntoView) now.scrollIntoView({block: 'nearest'});
+        }
         if (prevProps.view !== this.props.view || prevProps.opened !== this.props.opened) {
             this.setState({view: this.props.view}); // eslint-disable-line react/no-did-update-set-state
         }
@@ -123,7 +141,8 @@ class HistoryPanel extends React.Component {
         if (!past.length && !future.length) return <p style={{fontSize: 12, margin: '4px 8px'}}>{t(L, 'noSteps')}</p>;
         const shownFuture = future.slice(0, SHOW_STEPS);
         const jump = steps => this.run(() => moveHistory(steps, 'all').then(() => ''));
-        return <div role="listbox" aria-label={t(L, 'history')} data-testid="bw-history-list"
+        return <div role="listbox" aria-label={t(L, 'history')} data-testid="bw-history-list" ref={this.list}
+            onKeyDown={this.handleListKey}
             style={{maxHeight: 340, overflow: 'auto', display: 'flex', flexDirection: 'column'}}>
             {future.length > SHOW_STEPS ? <span style={stepRow(false, true)}>{t(L, 'more', {n: future.length - SHOW_STEPS})}</span> : null}
             {shownFuture.map((label, i) => ({label, distance: i + 1})).reverse().map(({label, distance}) =>

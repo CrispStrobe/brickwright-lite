@@ -130,6 +130,18 @@ try {
     await page.getByTestId('bw-history-step--1').click();
     await page.waitForFunction(expected => JSON.stringify(window.__brickwrightStore.getState().scratchGui.vm
         .editingTarget.sprite.costumes.map(costume => costume.name)) === expected, JSON.stringify(costumes));
+    // The keyboard walks the list too: End/Home, then Enter redoes the step.
+    const focused = () => page.evaluate(() => document.activeElement.getAttribute('data-testid'));
+    await page.getByTestId('bw-history-step-1').focus();
+    await page.keyboard.press('End');
+    const last = await page.evaluate(() => Array.from(document.querySelectorAll('[data-testid="bw-history-list"] button'))
+        .pop().getAttribute('data-testid'));
+    if (await focused() !== last) throw new Error(`End focused ${await focused()}, not ${last}`);
+    await page.keyboard.press('Home');
+    if (await focused() !== 'bw-history-step-1') throw new Error(`Home focused ${await focused()}`);
+    await page.keyboard.press('Enter');
+    await page.waitForFunction(count => window.__brickwrightStore.getState().scratchGui.vm.editingTarget
+        .sprite.costumes.length === count, costumes.length - 1);
 
     // Autosave: a version of the whole project is stored and listed.
     await page.getByTestId('bw-history-tab-autosave').click();
