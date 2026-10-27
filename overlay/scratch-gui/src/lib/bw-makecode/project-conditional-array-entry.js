@@ -68,8 +68,14 @@ const grammar={
     arrays_valueBinary:[['LEFT','RIGHT'],['OP'],'value'],arrays_valueCompare:[['LEFT','RIGHT'],['OP'],'value'],
     arrays_valueUnary:[['VALUE'],['OP'],'value'],arrays_valueTruthy:[['VALUE'],[],'value'],arrays_specialValue:[[],['KIND'],'value'],
     operator_equals:[['OPERAND1','OPERAND2'],[],'value'],operator_lt:[['OPERAND1','OPERAND2'],[],'value'],
-    operator_gt:[['OPERAND1','OPERAND2'],[],'value'],operator_not:[['OPERAND'],[],'value'],text:[[],['TEXT'],'shadow']
+    operator_gt:[['OPERAND1','OPERAND2'],[],'value'],operator_not:[['OPERAND'],[],'value'],text:[[],['TEXT'],'shadow'],
+    // Finite ordinary value calls: the managed call/argument chain, prototype
+    // formal declarations and their actual constraint rows.
+    arcade_callFunction:[['NAME','ARGS'],[],'value'],arcade_functionArgument:[['VALUE','REST'],[],'value'],
+    arcade_declareParameterConstraint:[[],['PROCEDURE','PARAMETER','TYPE'],'command'],
+    argument_reporter_string_number:[[],['VALUE'],'formal'],argument_reporter_boolean:[[],['VALUE'],'formal']
 };
+const constraintTypes={Number:v=>typeof v==='number'&&finite(v),String:v=>typeof v==='string',Boolean:v=>typeof v==='boolean'};
 for(const name of Object.keys(arithmetic))grammar[name]=[arithmetic[name],[],'value'];
 for(const name of numericShadows)grammar[name]=[[],['NUM'],'shadow'];
 const denied=Object.freeze({current:()=>true,writerBefore:()=>null});
@@ -78,7 +84,7 @@ export function createProjectConditionalArrayEntry(context){
     const {project,targets,scopes,records,calls,owners,invalid,globalCell,implicitEntries}=context;
     if(!ambientCurrent()||!isProjectJsonSnapshot(project))return denied;
     const fail=()=>{throw refusal;},refusal=Object.freeze({}),need=value=>{if(!value)fail();};
-    const physical=new WeakMap(),byCell=new Map(),byId=new Map(),globalWrites=new Map(),byScope=new Map(),callRows=new Map();
+    const physical=new WeakMap(),byCell=new Map(),byId=new Map(),globalWrites=new Map(),byScope=new Map(),callRows=new Map(),argumentChains=new Map();
     const snapshots=[],checks=[],observations=new WeakMap(),tokens=new WeakSet(),globals=new Map(),executed=new Set(),active=new Set();
     let source=null,paint=null,registration=null,symbols,expired=false,steps=0;
     // Derived bridge records are not source authority. Retain their actual data
@@ -137,7 +143,11 @@ export function createProjectConditionalArrayEntry(context){
         const localName=name=>identifier(name)&&!emittedCells.has(name)&&!lexical.has(name)&&!reserved.has(name)&&!fnNames.has(name)&&!helperName(name);
         for(const scope of scopes){
             need(scope&&scope.target&&targets.includes(scope.target)&&scope.target.blocks[scope.id]===scope.root&&
-                !scope.invalid&&!scope.unknownEntry&&!implicitEntries?.has(scope)&&array(scope.params)&&array(scope.ids)&&!scope.params.length&&!scope.ids.length);
+                !scope.invalid&&!scope.unknownEntry&&!implicitEntries?.has(scope)&&array(scope.params)&&array(scope.ids)&&scope.params.length===scope.ids.length);
+            // Formals bind only through an actual ordinary definition's
+            // validated prototype; hats and paint callbacks take none.
+            need(!scope.params.length||scope.root.opcode==='procedures_definition'&&new Set(scope.params).size===scope.params.length&&
+                scope.params.every(name=>typeof name==='string'&&localName(name))&&scope.ids.every(id=>typeof id==='string'&&!own(Object.prototype,id)));
             need(!byScope.has(scope));byScope.set(scope,{calls:[],paintReachable:false});
             retain(scope,['target','root','id','proc','params','ids','callers']);retainArray(scope.params);retainArray(scope.ids);retainArray(scope.callers);
             checks.push(()=>!scope.invalid&&!scope.unknownEntry&&!implicitEntries?.has(scope));
@@ -163,15 +173,22 @@ export function createProjectConditionalArrayEntry(context){
             p.scope=scope;
             need(node.next===null||typeof node.next==='string');
             const schema=own(grammar,node.opcode)&&grammar[node.opcode];need(schema);
-            const [inputs,fields,role]=schema;need(exact(node.inputs,inputs)&&exact(node.fields,fields));
+            const [declared,fields,role]=schema,inputs=node.opcode==='procedures_prototype'?scope.ids:declared;
+            need(exact(node.inputs,inputs)&&exact(node.fields,fields));
+            if(role==='formal'){
+                // A prototype reporter declares a formal; a body reporter reads one.
+                const name=field(node,'VALUE');need(scope.params.includes(name));
+                if(kind==='formal')need(shadow&&scope.root.inputs.custom_block?.[1]===node.parent);
+                else need(kind==='input'&&!shadow);
+            }else if(kind==='formal')fail();
             if(kind==='root')need(role==='root');
             else if(kind==='statement')need(role==='command');
             else if(kind==='prototype')need(role==='prototype'&&scope.root.inputs.custom_block?.[1]===p.id);
-            else need(role==='value'||role==='shadow');
-            need(shadow===(role==='shadow'||role==='prototype'));
+            else need(role==='value'||role==='shadow'||role==='formal');
+            if(role!=='formal')need(shadow===(role==='shadow'||role==='prototype'));
             if(kind!=='root'&&kind!=='statement')need(node.next===null);
             if(inactive)need(role==='shadow');
-            if(kind!=='prototype'&&!inactive){
+            if(kind!=='prototype'&&kind!=='formal'&&!inactive){
                 need(owners.get(node)===scope&&!invalid.has(node));expectedRecords.add(node);
                 checks.push(()=>owners.get(node)===scope&&!invalid.has(node));
             }
@@ -179,14 +196,45 @@ export function createProjectConditionalArrayEntry(context){
                 typeof field(node,name)==='string'||name==='NUM'&&typeof field(node,name)==='number'&&finite(field(node,name)));
             if(node.opcode==='procedures_prototype'||node.opcode==='procedures_call'){
                 const m=node.mutation;need(m&&m.tagName==='mutation'&&array(m.children)&&!m.children.length&&m.warp==='false'&&
-                    keys(m).every(k=>['tagName','children','proccode','argumentids','argumentnames','argumentdefaults','warp'].includes(k))&&m.argumentids==='[]');
-                if(node.opcode==='procedures_prototype')need(m.proccode===scope.proc&&m.argumentnames==='[]'&&m.argumentdefaults==='[]');
-                else{
-                    const fn=procedureScopes.get(scope.target)?.get(m.proccode);need(fn&&symbols.call(scope.target,node));
+                    keys(m).every(k=>['tagName','children','proccode','argumentids','argumentnames','argumentdefaults','warp'].includes(k)));
+                const list=text=>{try{const v=JSON.parse(text);return array(v)&&v.every(x=>typeof x==='string')?v:null;}catch(_){return null;}};
+                if(node.opcode==='procedures_prototype'){
+                    const ids=list(m.argumentids),names=list(m.argumentnames),defaults=list(m.argumentdefaults);
+                    need(m.proccode===scope.proc&&ids&&names&&defaults&&ids.length===scope.ids.length&&ids.every((id,i)=>id===scope.ids[i])&&
+                        names.length===scope.params.length&&names.every((name,i)=>name===scope.params[i])&&defaults.length===ids.length);
+                    for(let i=0;i<ids.length;i++){
+                        const slot=node.inputs[ids[i]],child=scope.target.blocks[slot?.[1]];
+                        need(array(slot)&&slot.length===2&&slot[0]===1&&typeof slot[1]==='string'&&child&&field(child,'VALUE')===names[i]&&
+                            child.opcode===(/%b/.test((m.proccode.match(/%[sbn]/g)||[])[i]||'')?'argument_reporter_boolean':'argument_reporter_string_number'));
+                    }
+                }else{
+                    need(m.argumentids==='[]');
+                    const fn=procedureScopes.get(scope.target)?.get(m.proccode);need(fn&&!fn.params.length&&symbols.call(scope.target,node));
                     const row=calls.filter(c=>c.node===node);need(row.length===1&&row[0].scope===scope&&row[0].target===scope.target&&row[0].fn===fn&&array(row[0].args)&&!row[0].args.length);
                     callRows.set(node,row[0]);byScope.get(fn).calls.push(row[0]);retain(row[0],keys(row[0]),true);retainArray(row[0].args);
                 }
             }else need(node.mutation==null);
+            if(node.opcode==='arcade_callFunction'){
+                // Identity comes from the actual symbol table and call row; the
+                // ordered managed chain must bind exactly one VALUE per formal.
+                const fn=procedureScopes.get(scope.target)?.get(literal(scope.target,node,'NAME'));
+                need(fn&&fn.root.opcode==='procedures_definition'&&symbols.call(scope.target,node));
+                const chain=[];let slot=node.inputs.ARGS;
+                for(;;){
+                    need(array(slot)&&chain.length<=fn.params.length);
+                    if(slot[0]===1&&array(slot[1])){need(slot.length===2&&slot[1].length===2&&slot[1][0]===10&&slot[1][1]==='[]');break;}
+                    const arg=scope.target.blocks[slot[1]];need(typeof slot[1]==='string'&&arg?.opcode==='arcade_functionArgument'&&!chain.includes(arg));
+                    chain.push(arg);slot=arg.inputs.REST;
+                }
+                need(chain.length===fn.params.length);
+                const row=calls.filter(c=>c.node===node);
+                need(row.length===1&&row[0].scope===scope&&row[0].target===scope.target&&row[0].fn===fn&&array(row[0].args)&&row[0].args.length===chain.length);
+                chain.forEach((arg,i)=>{const v=arg.inputs.VALUE?.[1];need(row[0].args[i]&&(typeof v!=='string'||row[0].args[i].node===scope.target.blocks[v]));});
+                callRows.set(node,row[0]);argumentChains.set(node,chain);byScope.get(fn).calls.push(row[0]);retain(row[0],keys(row[0]),true);retainArray(row[0].args);
+                for(const a of row[0].args)retain(a,keys(a),true);
+            }
+            if(node.opcode==='arcade_declareParameterConstraint')
+                need(scope.proc&&field(node,'PROCEDURE')===scope.proc&&scope.params.includes(field(node,'PARAMETER'))&&own(constraintTypes,field(node,'TYPE')));
             if(node.opcode==='data_setvariableto'){
                 const r=directBinding(scope.target,node);globalWrites.get(r.cell).push(node);
             }
@@ -204,7 +252,7 @@ export function createProjectConditionalArrayEntry(context){
             if(node.opcode==='arrays_mutateReference')need(literal(scope.target,node,'OP')==='push');
             if(node.opcode==='arcade_returnValue'){
                 const v=scope.target.blocks[node.inputs.VALUE?.[1]];
-                need(scope!==source&&node.next===null&&v?.opcode==='arrays_specialValue'&&field(v,'KIND')==='undefined');
+                need(scope!==source&&scope!==paint&&node.next===null&&(v?.opcode!=='arrays_specialValue'||field(v,'KIND')==='undefined'));
             }
             if(node.opcode==='arcade_registerPaintHandler'){need(!registration&&scope===source);registration=node;}
             for(const [name,slot]of Object.entries(node.inputs)){
@@ -216,7 +264,7 @@ export function createProjectConditionalArrayEntry(context){
                     else{
                         need(typeof v==='string'&&own(scope.target.blocks,v));
                         visit(scope,scope.target.blocks[v],p.id,i===2||slot[0]===1,
-                            sub?'statement':name==='custom_block'?'prototype':'input',inactive||i===2);
+                            sub?'statement':name==='custom_block'?'prototype':node.opcode==='procedures_prototype'?'formal':'input',inactive||i===2);
                     }
                 }
             }
@@ -292,6 +340,18 @@ export function createProjectConditionalArrayEntry(context){
             if(op==='arrays_specialValue')return field(node,'KIND')==='null'?null:undefined;
             if(op==='data_variable')return read(directBinding(frame.scope.target,node));
             if(op==='arcade_getLocal'){const name=literal(frame.scope.target,node,'NAME');need(frame.locals.has(name));return frame.locals.get(name);}
+            if(op==='argument_reporter_string_number'||op==='argument_reporter_boolean'){
+                const name=field(node,'VALUE');need(frame.scope.params.includes(name)&&frame.locals.has(name));return frame.locals.get(name);
+            }
+            if(op==='arcade_callFunction'){
+                // Evaluate actual argument occurrences in source order, then
+                // run the callee in a fresh frame; only an explicit returned
+                // primitive completes the call.
+                const args=[];
+                for(const arg of argumentChains.get(node)){observe(arg);const v=inputValue(arg,'VALUE',frame);need(scalar(v));args.push(v);}
+                const result=run(callRows.get(node).fn,frame.depth+1,args);
+                need(result.returned&&scalar(result.value));return result.value;
+            }
             if(op==='arrays_createReference'){const token={elements:[],published:false};tokens.add(token);return token;}
             if(op==='arrays_valueBinary'){
                 const a=inputValue(node,'LEFT',frame),b=inputValue(node,'RIGHT',frame);return binaryValue(field(node,'OP'),a,b);
@@ -327,9 +387,10 @@ export function createProjectConditionalArrayEntry(context){
             }
             fail();
         };
-        const run=(scope,depth=0)=>{
-            need(depth<64&&!active.has(scope));active.add(scope);
-            const frame={scope,locals:new Map()};
+        const run=(scope,depth=0,args=[])=>{
+            need(depth<64&&!active.has(scope)&&args.length===scope.params.length);active.add(scope);
+            const frame={scope,depth,locals:new Map(),returned:false,value:undefined};
+            scope.params.forEach((name,i)=>frame.locals.set(name,args[i]));
             const chain=start=>{
                 for(let node=scope.target.blocks[start];node;node=scope.target.blocks[node.next]){
                     observe(node);executed.add(node);const op=node.opcode;
@@ -340,7 +401,7 @@ export function createProjectConditionalArrayEntry(context){
                     }else if(op==='arcade_setLocal'){
                         const v=inputValue(node,'VALUE',frame);need(scalar(v)||tokens.has(v));frame.locals.set(literal(scope.target,node,'NAME'),v);
                     }else if(op==='procedures_call'){
-                        const c=callRows.get(node);need(c);run(c.fn,depth+1);
+                        const c=callRows.get(node);need(c&&!c.fn.params.length);run(c.fn,depth+1);
                     }else if(op==='control_if'||op==='control_if_else'){
                         const condition=inputValue(node,'CONDITION',frame);need(typeof condition==='boolean');
                         const slot=condition?'SUBSTACK':op==='control_if_else'?'SUBSTACK2':null;
@@ -355,7 +416,11 @@ export function createProjectConditionalArrayEntry(context){
                     }else if(op==='arcade_registerPaintHandler'){
                         need(node===registration);inputValue(node,'TOKEN',frame);inputValue(node,'CAPTURES',frame);
                     }else if(op==='arcade_returnValue'){
-                        need(inputValue(node,'VALUE',frame)===undefined);return true;
+                        const v=inputValue(node,'VALUE',frame);need(scalar(v));frame.returned=true;frame.value=v;return true;
+                    }else if(op==='arcade_declareParameterConstraint'){
+                        // A constraint checks the actual bound value; it never
+                        // converts it or supplies a missing one.
+                        const name=field(node,'PARAMETER');need(frame.locals.has(name)&&constraintTypes[field(node,'TYPE')](frame.locals.get(name)));
                     }else if(op==='arcade_declareSourceScalar'||op==='arcade_declareSourceReference'){
                         // Native prelude resets precede threads. A declaration
                         // validates its real binding; it does not reset a write.
@@ -364,6 +429,7 @@ export function createProjectConditionalArrayEntry(context){
                 return false;
             };
             chain(scope.root.next);active.delete(scope);
+            return frame;
         };
         run(source);
         need(!registration||observations.has(registration));

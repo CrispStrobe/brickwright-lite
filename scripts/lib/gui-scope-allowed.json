@@ -516,6 +516,7 @@
       "test/project-readonly-number-operands.test.mjs",
       "test/makecode-startup-number-roundtrip.test.mjs",
       "test/project-conditional-array-entry.test.mjs",
+      "test/project-conditional-array-value-calls.test.mjs",
       "test/makecode-conditional-array-roundtrip.test.mjs"
     ],
     "why": "the owned MakeCode procedure-constraint exporter imports the canonical VM procedure-constraint model through the integrated GUI package (scratch-vm 4.8.115 export ./src/util/bw-procedure-constraint-model.js), so every root test that exports or imports Arcade projects resolves it from packages/scratch-gui"
