@@ -2,9 +2,10 @@ import {arrayMenuLiteral,isArrayMenuSelector,isKnownArrayMenuOperation} from './
 import {createArrayDefiniteOverwrite} from './array-definite-overwrite.js';
 import {createArrayNativeFrameReset} from './array-native-frame-reset.js';
 import {createArraySourceStartResetEffects} from './array-source-start-reset-effects.js';
+import {createProjectConditionalArrayEntry} from './project-conditional-array-entry.js';
 import {isProjectJsonSnapshot} from './project-json-snapshot.js';
 import {createClosedOrdinaryProjectEntry} from './closed-ordinary-project-entry.js';
-const watcherOwnDescriptor=Object.getOwnPropertyDescriptor,watcherOwnKeys=Reflect.ownKeys,watcherIsArray=Array.isArray,watcherFinite=Number.isFinite,watcherCreate=Object.create;
+const watcherOwnDescriptor=Object.getOwnPropertyDescriptor,watcherOwnKeys=Reflect.ownKeys,watcherIsArray=Array.isArray,watcherFinite=Number.isFinite,watcherCreate=Object.create,watcherNumber=Number;
 const prefixGetPrototype=Object.getPrototypeOf,prefixHasOwn=Object.hasOwn,prefixSameValue=Object.is;
 const prefixAmbient=[Object.prototype,Array.prototype].map(object=>({object,parent:prefixGetPrototype(object),
     entries:watcherOwnKeys(object).map(key=>[key,watcherOwnDescriptor(object,key)])}));
@@ -178,6 +179,14 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
             else for(const owner of owners){const fn=functions.get(owner?.procedure);if(fn)fn.unknownEntry=true;}
         }
     }
+    let literalPrefixUsed=false,literalPrefixExpired=false;
+    const literalPrefixCurrent=()=>{
+        if(!literalPrefixUsed)return true;
+        if(literalPrefixExpired)return false;
+        try{if(!privatePrefixAmbientCurrent())literalPrefixExpired=true;}
+        catch(error){literalPrefixExpired=true;throw error;}
+        return !literalPrefixExpired;
+    };
     // A local's explicit null reset may be dead before its first read. This is
     // proved from the current linear body, never a declaration/type exemption.
     const deadReset=(destination,writer)=>{
@@ -190,9 +199,74 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
             (r.scope===writer.scope&&r.node.opcode==='arcade_setLocal'||r.target===writer.target&&r.node.opcode==='arcade_setCaptured')))return false;
         const pure=new Set(['arcade_getLocal','data_variable','math_number','text','arrays_specialValue','arrays_referenceValues','arrays_createReference']);
         const safe=(node,path=new Set())=>{if(!node)return true;if(path.has(node)||!pure.has(node.opcode)||binding(writer.target,node)===destination)return false;const next=new Set([...path,node]);return Object.values(node.inputs||{}).every(slot=>typeof slot[1]!=='string'||safe(block(writer.target,slot[1]),next));};
-        let id=writer.node.next;const seen=new Set();
-        while(id&&!seen.has(id)){seen.add(id);const node=block(writer.target,id);if(!node||node.opcode!=='arcade_setLocal'||!safe(child(node,'VALUE',writer.target)))return false;
-            if(localCell(writer.scope,literal(node,'NAME',writer.target))===destination)return true;id=node.next;}
+        // Separate from the legacy read-only palette: adding arithmetic there
+        // would also admit stored/local operands and their coercion effects.
+        // Only this exact literal addition tree can cross an intervening write.
+        const literalAddition=statement=>{
+            if(!isProjectJsonSnapshot(project)||!literalPrefixCurrent()||!privatePrefixAmbientCurrent())return false;
+            let budget=128;const active=new Set();
+            const exact=(object,names)=>!!object&&watcherOwnKeys(object).length===names.length&&names.every(k=>prefixHasOwn(object,k));
+            const primitive=value=>(typeof value==='string'||typeof value==='number')&&watcherFinite(watcherNumber(value));
+            const numericRaw=value=>watcherIsArray(value)&&value.length===2&&[4,5,6,7,8].includes(value[0])&&primitive(value[1]);
+            const numeric=(node,parent,shadow)=>{
+                if(--budget<0||!node||active.has(node)||invalid.has(node)||owners.get(node)!==writer.scope||
+                    node.parent!==parent||node.shadow!==shadow||node.topLevel!==false||node.next!==null||node.mutation!=null)return false;
+                const id=watcherOwnKeys(writer.target.blocks).find(key=>writer.target.blocks[key]===node);
+                if(!id)return false;active.add(node);
+                let ok=false;
+                if(['math_number','math_whole_number','math_positive_number','math_integer','math_angle'].includes(node.opcode)){
+                    const row=node.fields?.NUM;
+                    ok=shadow&&exact(node.inputs,[])&&exact(node.fields,['NUM'])&&watcherIsArray(row)&&
+                        (row.length===1||row.length===2&&row[1]===null)&&primitive(row[0]);
+                }else if(node.opcode==='operator_add')ok=!shadow&&exact(node.inputs,['NUM1','NUM2'])&&exact(node.fields,[])&&
+                    ['NUM1','NUM2'].every(name=>socket(node.inputs[name],id));
+                active.delete(node);return ok;
+            };
+            const socket=(slot,parent)=>{
+                if(--budget<0||!watcherIsArray(slot)||![1,2,3].includes(slot[0])||slot.length!==(slot[0]===3?3:2))return false;
+                const value=slot[1];
+                if(slot[0]===3&&!numericRaw(slot[2]))return false;
+                return watcherIsArray(value)?slot[0]===1&&numericRaw(value):typeof value==='string'&&
+                    prefixHasOwn(writer.target.blocks,value)&&numeric(writer.target.blocks[value],parent,slot[0]===1);
+            };
+            const root=child(statement,'VALUE',writer.target),id=watcherOwnKeys(writer.target.blocks).find(key=>writer.target.blocks[key]===statement);
+            return !!id&&root?.opcode==='operator_add'&&socket(statement.inputs?.VALUE,id);
+        };
+        const frameName=node=>{
+            const slot=node.inputs?.NAME;if(!watcherIsArray(slot)||slot.length!==2||slot[0]!==1)return null;
+            const v=slot[1];
+            if(watcherIsArray(v))return v.length===2&&v[0]===10&&typeof v[1]==='string'?v[1]:null;
+            const text=typeof v==='string'&&block(writer.target,v),row=text?.fields?.TEXT;
+            return text&&owners.get(text)===writer.scope&&!invalid.has(text)&&text.opcode==='text'&&text.shadow===true&&
+                text.topLevel===false&&!text.next&&text.mutation==null&&
+                text.parent===watcherOwnKeys(writer.target.blocks).find(key=>writer.target.blocks[key]===node)&&
+                !watcherOwnKeys(text.inputs||{}).length&&watcherOwnKeys(text.fields||{}).length===1&&
+                watcherIsArray(row)&&(row.length===1||row.length===2&&row[1]===null)&&typeof row[0]==='string'?row[0]:null;
+        };
+        const ownFrameWrite=node=>{
+            if(!node||invalid.has(node)||owners.get(node)!==writer.scope||writer.scope.invalid||writer.scope.unknownEntry||
+                node.opcode!=='arcade_setLocal'||node.shadow!==false||node.topLevel!==false||node.mutation!=null||
+                watcherOwnKeys(node.fields||{}).length||watcherOwnKeys(node.inputs||{}).length!==2||
+                !prefixHasOwn(node.inputs,'NAME')||!prefixHasOwn(node.inputs,'VALUE')||prefixGetPrototype(Object.prototype)!==null)return false;
+            const name=frameName(node),inherited=typeof name==='string'&&watcherOwnDescriptor(Object.prototype,name);
+            return typeof name==='string'&&name!=='__proto__'&&(!inherited||prefixHasOwn(inherited,'value')&&inherited.writable===true);
+        };
+        let id=writer.node.next,usesLiteral=false;const seen=new Set(),prefix=[writer.node];
+        while(id&&!seen.has(id)){
+            seen.add(id);const node=block(writer.target,id);if(!node||node.opcode!=='arcade_setLocal')return false;
+            if(!safe(child(node,'VALUE',writer.target))){if(!literalAddition(node))return false;usesLiteral=true;}
+            prefix.push(node);
+            if(localCell(writer.scope,literal(node,'NAME',writer.target))===destination){
+                if(usesLiteral){
+                    if(!isProjectJsonSnapshot(project)||!prefix.every(ownFrameWrite)||
+                        localCell(writer.scope,frameName(writer.node))!==destination||localCell(writer.scope,frameName(node))!==destination||
+                        !literalPrefixCurrent()||!privatePrefixAmbientCurrent())return false;
+                    literalPrefixUsed=true;
+                }
+                return true;
+            }
+            id=node.next;
+        }
         return false;
     };
     // This is a closed-project effect proof, not another value/type producer.
@@ -1407,7 +1481,20 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
     };
     // 1 is a provisional global recursion edge; only an independently
     // initialized external entry or dominating write can finalize it as 2.
-    const available=(c,scope,node)=>availability(c,scope,node)===2;
+    // This separate issuer supplies only a current occurrence frontier. The
+    // existing producer fixed point and initialized/all-writer checks remain
+    // authoritative for the actual receiver and each published RHS.
+    let conditionalEntry=null,conditionalEntryUsed=false;
+    const conditionalCurrent=()=>!conditionalEntryUsed||conditionalEntry.current();
+    const available=(c,scope,node)=>{
+        if(availability(c,scope,node)===2)return true;
+        if(!c?.global||c.directBad||!singleArray(c.types)||!isProjectJsonSnapshot(project))return false;
+        if(!conditionalEntry)conditionalEntry=createProjectConditionalArrayEntry({project,targets,scopes,records,calls,owners,invalid,block,child,input,
+            literal,binding,globalCell,localCell,closedEffects,closedFrameImageEffect,implicitEntries});
+        const writer=conditionalEntry.writerBefore(c,scope,node);
+        if(!writer||!c.writers.includes(writer)||invalid.has(writer.node)||owners.get(writer.node)!==writer.scope)return false;
+        conditionalEntryUsed=true;return true;
+    };
     const numericKindInitialized=(value,path=new Set())=>{
         if(!numericKind(value))return false;
         const node=value?.node,c=value?.cell||(node&&binding(value.target,node));
@@ -1509,15 +1596,20 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         const value=input(node,name,target);return singleArray(readInput(value))&&initialized(value);
     }):null;
     const live=()=>{
+        if(!literalPrefixCurrent())return false;
         if(!privatePrefixCurrent())return false;
         const valid=ordinaryEntry.current()&&sourceStartReset.current()&&prefixResetCurrent()&&project.targets===targets&&snapshot()===original&&animationProducers.isCurrent()&&(!extendedResetUsed||effectMetadata()===originalEffects)&&snapshots.every(s=>s.target.blocks?.[s.id]===s.node&&s.node.inputs===s.inputs&&s.node.fields===s.fields&&s.node.mutation===s.mutation&&s.inputRows.every(([name,row,a,b])=>s.node.inputs?.[name]===row&&row?.[1]===a&&row?.[2]===b));
         if(privatePrefixUsed&&!valid)privatePrefixExpired=true;
-        return privatePrefixCurrent()&&valid;
+        if(literalPrefixUsed&&!valid)literalPrefixExpired=true;
+        return privatePrefixCurrent()&&valid&&conditionalCurrent()&&literalPrefixCurrent();
     };
     // Observe a newly used dependency before publishing the cached authority.
     // A later validation still observes it before any diagnostic early exit.
-    sourceStartReset.current();prefixResetCurrent();
+    sourceStartReset.current();prefixResetCurrent();literalPrefixCurrent();
     return Object.freeze({spriteFlagWriters,validateInput(target,node,name='ARRAY'){
+        try{
+        if(!literalPrefixCurrent())return {ok:false,reason:'requires the current numeric-literal local prefix for a discounted Array reset'};
+        if(!conditionalCurrent())return {ok:false,reason:'requires the current conditional source-entry Array frontier'};
         // Observe the used frame theorem before every diagnostic exit. A
         // prototype/reflection failure permanently expires this dependency.
         if(!sourceStartReset.current())return {ok:false,reason:'requires the current closed source-start effect proof for a discounted Array reset'};
@@ -1540,14 +1632,15 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         if(occurrence?.candidate(target,node,name)&&!occurrenceCurrent)return {ok:false,reason:'requires the current closed occurrence Array producer and complete writer proof'};
         // An unrelated-input query may also observe a source failure. Revoke
         // only after that real false/throw; do not add another observation.
-        let current;try{current=live();if(summaryIssued&&effectMetadata()!==originalEffects){summaryExpired=true;if(protectedInputs.length)occurrence.expireSource();}}catch(error){summaryExpired=true;if(privatePrefixUsed)privatePrefixExpired=true;if(frameResetUsed)frameResetExpired=true;if(protectedInputs.length)occurrence.expireSource();throw error;}
-        if(!current){summaryExpired=true;if(frameResetUsed)frameResetExpired=true;if(protectedInputs.length)occurrence.expireSource();}
+        let current;try{current=live();if(summaryIssued&&effectMetadata()!==originalEffects){summaryExpired=true;if(protectedInputs.length)occurrence.expireSource();}}catch(error){summaryExpired=true;if(privatePrefixUsed)privatePrefixExpired=true;if(literalPrefixUsed)literalPrefixExpired=true;if(frameResetUsed)frameResetExpired=true;if(protectedInputs.length)occurrence.expireSource();throw error;}
+        if(!current){summaryExpired=true;if(literalPrefixUsed)literalPrefixExpired=true;if(frameResetUsed)frameResetExpired=true;if(protectedInputs.length)occurrence.expireSource();}
         // Only a successfully discounted reset may retain this dependency.
         // False or thrown currentness expires it before any diagnostic exit.
         if(frameResetUsed&&frameResetExpired)current=false;
         // Existing metadata observers can run while live() is checked. Bind
         // the prefix again after them before consuming any cached reset fact.
         if(!prefixResetCurrent())return {ok:false,reason:'requires the current owned parameter declaration prefix for a discounted Array reset'};
+        if(!literalPrefixCurrent())return {ok:false,reason:'requires the current numeric-literal local prefix for a discounted Array reset'};
         if(invalidGlobalBinding)return {ok:false,reason:'current variable name, ID, owner or writer schema does not agree'};
         if(!current||!nodes.get(target)||!owners.has(node)||invalid.has(node)||nodes.get(target).get(Object.keys(target.blocks||{}).find(id=>target.blocks[id]===node))!==node)return {ok:false,reason:'current target, input or connected graph changed'};
         if(!operationShape(node))return {ok:false,reason:'requires the exact supported current operation input schema'};
@@ -1562,10 +1655,14 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
             {ok:false,reason:'requires the current closed source-start effect proof for a discounted Array reset'}:result.ok&&!nativeFrameReset.current()?
             {ok:false,reason:'requires the current native frame and activation frontier for a discounted Array reset'}:result.ok&&!prefixResetCurrent()?
             {ok:false,reason:'requires the current owned parameter declaration prefix for a discounted Array reset'}:result.ok&&!privatePrefixCurrent()?
-            {ok:false,reason:'requires the current private identity-call prefix for a discounted Array reset'}:result;
+            {ok:false,reason:'requires the current private identity-call prefix for a discounted Array reset'}:result.ok&&!conditionalCurrent()?
+            {ok:false,reason:'requires the current conditional source-entry Array frontier'}:result.ok&&!literalPrefixCurrent()?
+            {ok:false,reason:'requires the current numeric-literal local prefix for a discounted Array reset'}:result;
         if(deadOccurrence(target,node))return publish({ok:true});
         if(ordinaryEntry.isUnreachable(target,node))return publish({ok:true});
         if(occurrence?.candidate(target,node,name))return publish(occurrence.validateInput(target,node,name)?{ok:true}:{ok:false,reason:'requires the current closed occurrence Array producer and complete writer proof'});
         const value=input(node,name,target),types=readInput(value);return publish(singleArray(types)&&initialized(value)?{ok:true}:{ok:false,reason:'requires an actual initialized Array producer and compatible all writers'});
+        }catch(error){if(literalPrefixUsed)literalPrefixExpired=true;throw error;}
+        finally{literalPrefixCurrent();}
     }});
 }

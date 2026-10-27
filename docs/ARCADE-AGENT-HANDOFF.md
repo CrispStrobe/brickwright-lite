@@ -10,22 +10,50 @@ has four export refusal families instead of six: Array item, indexOf, mutation
 and native addition. The raw census remains 147 translated / 36 partial / one
 parse failure; no application completion is inferred from these source results.
 
-Next, follow the [conditional Array readiness claim](../lanes/2026-10-27-arcade-conditional-array-entry.md)
-([PR #1464](https://github.com/CrispStrobe/brickwright-lite/pull/1464)); confirm it
-is merged before implementation. The new boundary must establish the actual
-startup allocation/publication frontier across ordinary callers and a selected
-branch. Existing mandatory-call summaries, protocol resets and captured local
-aliases need separate checks. An unconditional representative with an extra
-explicit null writer also refuses; that alone does not isolate branch selection
-or faithfully reproduce the original program's declaration reset.
+The [conditional Array readiness scope](../lanes/2026-10-27-arcade-conditional-array-entry.md)
+([merged claim #1464](https://github.com/CrispStrobe/brickwright-lite/pull/1464))
+also has a first source implementation. Its 13 groups pass, including two export
+reimports, both public routes, Code reconstruction, writer/caller/branch
+refusals and permanent expiry. The combined Number/Array/math cohort has 44
+passing tests without skips; 41 existing local-reset/private-prefix tests pass
+separately. Five independent cuts detect lost branch selection, complete-writer
+census, registration order, literal-prefix admission and literal-operand guards.
 
-Keep receiver readiness separate from element presence after repeated
-unshift/pop, and from primitive domains used by native addition. The hosted-only
-`test/makecode-startup-number-roundtrip.test.mjs` is written and syntax checked;
-actual SDK/native and visible Blocks/Code/graphics/controller acceptance remain
-pending on the final combined head. Its paint-only marker must execute, and its
-same/fresh VM SB3 reloads must preserve actual values. Historical sections below
-retain prior observations and limits; they are not fresh qualification.
+`project-conditional-array-entry.js` privately follows finite literal startup
+assignments, zero-argument ordinary calls and selected branches from unknown
+initial cells. It returns an actual inventoried publication writer, while the
+old producer, compatible-writer and initialization checks remain mandatory.
+Paint registration must be the terminal statement of the direct source chain;
+source decisions after registration cannot assume callbacks remain dormant.
+The first profile refuses loops, unknown SDK effects, parameterized/value
+callees, competing unexecuted writers and paint-reachable publication writers.
+It grants no element-presence, generic Number or actual-run result.
+
+Repeated export also revealed a separate local capture issue: a real null reset,
+then a literal `0 + 0` assignment to another local, then the Array overwrite.
+The authority now crosses only exact numeric-literal addition trees with safe
+own-frame writes. It retains all actual statements and checks the used prefix
+before diagnostics and after observers; variables, String operands, calls,
+malformed ownership and observed prototype changes cannot borrow that proof.
+This changes neither the source-start reset service nor runtime behavior.
+
+**Next implementation work:** the unchanged snake still has the same four
+refusals after this first Array profile. Extend the initial proof with separately
+proved effects for its real SDK operations, ordinary value/parameter helpers,
+and loop normal continuations. Do not simply add opcode names to a whitelist:
+retain argument evaluation, actual callees, exceptions, control-state writers,
+registration and unknown-effect boundaries. A compatible later Array publisher
+needs its own complete occurrence coverage. Then prove receiver lifetime and
+element presence across repeated unshift/pop; Array readiness alone does not
+establish head values or permit downstream native addition.
+
+The hosted-only `test/makecode-startup-number-roundtrip.test.mjs` and
+`test/makecode-conditional-array-roundtrip.test.mjs` are written and syntax
+checked; actual SDK/native and visible Blocks/Code/graphics/controller acceptance
+remain pending on the final combined head. Their callback-only witnesses must
+execute, and same/fresh VM SB3 reloads must preserve actual values. Historical
+sections below retain prior observations and limits; they are not fresh
+qualification. No new application completion or raw-census change is claimed.
 
 ## 26 October: forward-fix integration candidate
 

@@ -1,5 +1,31 @@
 # Conversion capabilities and GUI closure ledger
 
+## 27 October: finite conditional Array startup and local capture prefixes
+
+The source candidate proves a bounded startup Array publication across actual
+literal counter updates, ordinary zero-argument helpers and selected branches.
+It retains all initialization, writer and alias checks. Existing Blocks/Code
+constructs can express this profile; source tests cover two exports/reimports
+and direct/JSON parity, without claiming visible editor or runtime completion.
+
+Author a counter initialized to 9, increment it in a helper, use `>= 5` to call
+an initializer which allocates a local Array, pushes 1 and 2, then publishes it.
+Register paint last; its `indexOf(2)` and length results should become 1 and 2,
+starting from distinct sentinels. Edit the counter and branch in Blocks and
+Code, compare original/exported MakeCode and Lite, and preserve both results
+through same/fresh project reopen. Move registration early, add a competing
+publisher, or change initialization and verify current named diagnostics.
+Run `makecode-conditional-array-roundtrip.test.mjs` for hosted SDK/native
+acceptance; it is written, not yet qualified on the final combined head.
+
+The first proof refuses the full game's loops, SDK effects, parameter/value
+helpers and repeated publication. Those need actual effect and entry models,
+followed by independent element-presence/lifetime analysis for unshift/pop.
+Do not present a ready Array as proof that `items[0]` exists. Graphics/controller
+journeys and public diagnostic navigation remain open. The independent numeric-
+literal local-reset prefix also needs connected save/reopen/editor checks;
+its source controls reject variable/String/coercion and malformed prefixes.
+
 ## 26 October: Image banks and export proof boundaries
 
 These are source capabilities in the integration candidate. They do not change

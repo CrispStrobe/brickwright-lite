@@ -1,6 +1,8 @@
 # Conditional startup Array receiver readiness
 
-Status: CLAIMED — implementation waits for this claim to merge.
+Status: DONE in the first source candidate — claim merged as PR #1464.
+Final combined-head SDK/native/editor qualification and broader effects remain
+pending; no corpus application completion is reported.
 Owner: Arcade integration, continuing its existing Array source lane in an
 isolated worktree. Base: main `7b4f2f84ac55e238bbb75663acbdc1e26f3d0358`.
 This does not take another runtime, supplier or editor lane.
@@ -70,3 +72,34 @@ callbacks. The game unshifts and conditionally pops; a separate mutation/lifetim
 invariant must establish that each actual head/index read is present. Its
 primitive element domain and downstream native addition remain independent
 obligations. Source acceptance grants no corpus application or GUI completion.
+
+## Implemented first boundary and remaining work
+
+`project-conditional-array-entry.js` issues an actual inventoried writer only
+for its closed finite startup/caller/registration profile. The existing
+producer fixed point, compatible writers and initialized-value checks still
+run. All queried writers must execute in startup, with none paint-reachable;
+paint registration is the final direct source statement. Unknown cells begin
+unknown, rather than borrowing displayed values or declaration types.
+
+The necessary repeated-export repair keeps real null assignments and intervening
+numeric-literal initialization statements. Its independent effect proof can
+cross only canonical literal `operator_add` trees and safe own-frame writes
+before the actual overwrite. It neither infers an Array nor discounts resets
+through arbitrary coercion. Used proofs expire permanently after observation
+of a changed prefix environment, including diagnostic exits and restoration.
+The source-start reset module remains unchanged.
+
+Thirteen source groups pass; the combined Number/Array/math cohort passes 44
+without skips, with 41 existing local-reset/private-prefix controls passing
+separately. Five guard cuts each trigger a meaningful assertion and the source
+is restored. Initial schema, reexport and post-registration ordering failures
+were fixed while their original observations were retained.
+
+The complete snake still has four export refusal families. Its SDK operations,
+ordinary value/parameter helpers and loops exceed this first interpreter;
+repeated publications and element presence remain independent open tasks.
+`test/makecode-conditional-array-roundtrip.test.mjs` requires original SDK,
+three native generations and same/fresh VM reopen with callback-only witnesses.
+It is written/syntax checked, not a hosted pass. Follow the current handoff for
+connected Blocks/Code/graphics/controller acceptance before promoting any app.
