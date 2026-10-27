@@ -150,7 +150,7 @@ jobs:
 
   finite-inventory-eight:
     if: >-
-      ${{ true && github.event_name == 'pull_request' && github.event.action == 'labeled' &&
+      ${{ false && github.event_name == 'pull_request' && github.event.action == 'labeled' &&
           github.event.label.name == 'x86-hdd-gui-finite-inventory-v8' && github.actor == 'CrispStrobe' &&
           github.run_attempt == 1 && github.event.pull_request.head.repo.full_name == github.repository &&
           github.event.pull_request.head.repo.fork == false && github.event.pull_request.base.ref == 'main' }}
@@ -204,6 +204,66 @@ jobs:
         with:
           name: i80386-hdd-gui-finite-inventory-v8-${{ github.run_id }}-${{ github.run_attempt }}
           path: gui-finite-inventory-v8
+          if-no-files-found: error
+          retention-days: 14
+
+
+  finite-inventory-nine:
+    if: >-
+      ${{ false && github.event_name == 'pull_request' && github.event.action == 'labeled' &&
+          github.event.label.name == 'x86-hdd-gui-finite-inventory-v9' && github.actor == 'CrispStrobe' &&
+          github.run_attempt == 1 && github.event.pull_request.head.repo.full_name == github.repository &&
+          github.event.pull_request.head.repo.fork == false && github.event.pull_request.base.ref == 'main' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      NODE_OPTIONS: ''
+      NODE_PATH: ''
+      LD_PRELOAD: ''
+      LD_AUDIT: ''
+      NODE_V8_COVERAGE: ''
+      BW_EXPECTED_HEAD: ${{ github.event.pull_request.head.sha }}
+      BW_FINITE_INVENTORY_V9_SHA256: ${{ vars.BW_FINITE_INVENTORY_V9_SHA256 }}
+      BW_FINITE_INVENTORY_V9_TEMPLATE_B64: ${{ vars.BW_FINITE_INVENTORY_V9_TEMPLATE_B64 }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Admit finite v9 body, event and exact source before package acquisition
+        run: |
+          set -euo pipefail
+          mkdir -m 0700 gui-finite-inventory-v9
+          /usr/bin/python3.12 -I -S -B scripts/run-i80386-hdd-gui-actual.py finite-inventory-v9-guard \
+            > gui-finite-inventory-v9/guard.stdout 2> gui-finite-inventory-v9/guard.stderr
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 22.23.3
+      - name: Trusted finite v9 package and Chromium setup
+        timeout-minutes: 10
+        run: |
+          set -euo pipefail
+          {
+            sudo env "PATH=$PATH" node scripts/prepare-playwright-apt.mjs
+          } > gui-finite-inventory-v9/bootstrap.stdout 2> gui-finite-inventory-v9/bootstrap.stderr
+          npm ci --ignore-scripts --no-audit --no-fund \
+            > gui-finite-inventory-v9/npm.stdout 2> gui-finite-inventory-v9/npm.stderr
+          node node_modules/playwright/cli.js install --with-deps chromium \
+            > gui-finite-inventory-v9/chromium.stdout 2> gui-finite-inventory-v9/chromium.stderr
+      - name: Record finite v9 runtime and installed regular bytes without guest
+        timeout-minutes: 4
+        run: |
+          set -euo pipefail
+          /usr/bin/python3.12 -I -S -B scripts/run-i80386-hdd-gui-actual.py finite-inventory-v9 \
+            --request "$GITHUB_WORKSPACE/gui-finite-inventory-v9/runtime-template.json" \
+            --expected-sha256 "$BW_FINITE_INVENTORY_V9_SHA256" \
+            --output "$GITHUB_WORKSPACE/gui-finite-inventory-v9/inventory-original.json" \
+            > gui-finite-inventory-v9/controller.stdout 2> gui-finite-inventory-v9/controller.stderr
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: i80386-hdd-gui-finite-inventory-v9-${{ github.run_id }}-${{ github.run_attempt }}
+          path: gui-finite-inventory-v9
           if-no-files-found: error
           retention-days: 14
 
