@@ -52,6 +52,7 @@ assert.equal(hash(original),C.modelSha256);assert.equal(hash(program),C.programS
 const catalogue=read('overlay/scratch-gui/src/lib/bw-sim/part-meta/parts.json'),catalog=catalogFrom(JSON.parse(catalogue));
 const prepared=[original,removed].map(text=>prepareModel(text,catalog,{mat:'plain',autoPorts:false}));
 assert.equal(prepared[0].mechanism.joints.length-prepared[1].mechanism.joints.length,1,'only one physical hinge removed');
+assert.equal(prepared[0].model.parts.length,127);assert.equal(prepared[1].model.parts.length,126);
 assert.equal(prepared[0].mechanism.bodies.length,5);assert.equal(prepared[1].mechanism.bodies.length,5);
 for(const p of prepared){assert.equal(p.mechanism.actuators.length,1);assert.equal(p.mechanism.actuators[0].port,'A');}
 const identity={commit:execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim(),tree:execFileSync('git',['rev-parse','HEAD^{tree}'],{encoding:'utf8'}).trim(),files:Object.fromEntries([
@@ -65,7 +66,11 @@ for(const coldMs of C.timing.coldMs)for(const control of [false,true])test(`Cros
  const vmErrors=[];let setup;
  const r=await runRobotLabProgram(program,{modelText:control?removed:original,catalog,autoPorts:false,frameMs:25,coldMs,afterMs:C.timing.afterMs,timeLimitMs:C.timing.timeLimitMs,
   observeSetup:({session,vm,prepared})=>{
-   vm.runtime.on('ERROR',e=>vmErrors.push(String(e)));vm.runtime.on('BLOCKS_ERROR',e=>vmErrors.push(String(e)));vm.on('BLOCKS_ERROR',e=>vmErrors.push(String(e)));
+   vm.runtime.on('ERROR',e=>vmErrors.push(String(e)));vm.runtime.on('BLOCKS_ERROR',e=>vmErrors.push(String(e)));vm.on('BLOCKS_ERROR',e=>vmErrors.push(String(e)));vm.on('ERROR',e=>vmErrors.push(String(e)));
+   for(const block of vm.runtime.targets.flatMap(t=>Object.values(t.blocks._blocks))){
+    const literal=Object.keys(block.fields||{}).length===1&&Object.keys(block.inputs||{}).length===0;
+    assert.ok(block.opcode in vm.runtime._primitives||block.opcode in vm.runtime._hats||literal,'actual registered opcode: '+block.opcode);
+   }
    setup={t:0,phase:'cold',bodies:Object.fromEntries(prepared.mechanism.bodies.filter(b=>b.motion==='dynamic').map(b=>[b.id,session.core.bodyPose(b.id)])),busy:{A:false},extra:{variables:{},modes:{A:'idle'}}};
   },
   observeFrame:({vm,hub,session})=>({variables:Object.fromEntries(vm.runtime.targets.flatMap(t=>Object.values(t.variables||{}).map(v=>[v.name,v.value]))),modes:{A:hub.motors._controllers[0].mode},sessionFailed:session.failed?String(session.failed):null})});
