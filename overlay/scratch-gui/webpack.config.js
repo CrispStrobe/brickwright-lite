@@ -32,10 +32,11 @@ for (const [name, value] of Object.entries(distributionPolicy)) {
 
 const ScratchWebpackConfigBuilder = require('scratch-webpack-configuration');
 
-// These source bytes are identified by a reviewed digest, not minifiable code.
+// Digest-bound proof sources and runtime glue retain their verified bytes.
 // CopyWebpackPlugin forwards this flag; Terser skips only the marked assets.
 const preserveProofAssetInfo = ({filename}) =>
-    /^static\/native-broker\/proof-pins\/sources\/[0-9a-f]{64}\.js$/.test(filename.replace(/\\/g, '/'))
+    (/^static\/native-broker\/proof-pins\/sources\/[0-9a-f]{64}\.js$/.test(filename.replace(/\\/g, '/')) ||
+        filename.replace(/\\/g, '/') === 'static/labwired/labwired_wasm.js')
         ? {minimized: true} : {};
 
 /**
