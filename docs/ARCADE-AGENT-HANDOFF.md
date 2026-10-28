@@ -14,14 +14,16 @@ Later null/incompatible writers still poison the receiver. No annotation,
 initialization, bounds, presence or Number-only element fact is manufactured:
 the missing element retains `Undefined` and ordinary addition produces `NaN`.
 
-Globals, var/const/multiple declarations, nonempty or computed allocations,
+Globals, var/const/multiple declarations, unknown syntax, reflective evaluation,
+nonempty or computed allocations,
 intervening statements, conditional overwrites, duplicate bindings, defaults and
 nested function/class captures cannot acquire the discount. The source and
 analysis-intrinsic snapshots expire permanently after observed changes. Every
 dependent Array value/safety/readiness query uses the shared fact-currentness
 guard; music-derived Array element facts expire with their music producer too.
 
-The combined source cohort passes 14 controls. Four reset cuts independently
+The combined source cohort passes 15 controls. Four reset cuts at the initial
+reset checkpoint independently
 detect a missing graph discount, empty-allocation restriction, class capture
 guard and permanent expiry; exact source bytes were restored. The unchanged
 missing-index fixture now exports without refusals in a bounded conversion

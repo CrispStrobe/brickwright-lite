@@ -3,6 +3,10 @@ import {physicalUpdateSourceSnapshot} from './physical-update-source-snapshot.js
 
 const metadata=new Set(['originalBody','parameterDefaults','paramTypes','typeParameters','returnType','assertedType']);
 const denied=Object.freeze({discount:()=>false,current:()=>true});
+const syntax=new Set(['Program','Declaration','FunctionDeclaration','FunctionExpression','Class','Block',
+    'ExpressionStatement','Return','ThrowStatement','If','While','For','ForOf','Break','Continue','Switch',
+    'Number','String','Boolean','Null','Undefined','Identifier','Array','Object','Binary','Unary',
+    'Assignment','Update','Conditional','Call','Member','Index','Template']);
 const ownKeys=Reflect.ownKeys,descriptor=Object.getOwnPropertyDescriptor,prototype=Object.getPrototypeOf,same=Object.is;
 const realm=globalThis,weakHas=WeakSet.prototype.has,apply=Reflect.apply;
 const aliases=['Object','Array','Map','Set','WeakMap','WeakSet','Reflect','JSON','String','Number','Function'];
@@ -39,7 +43,8 @@ export function localArrayDeclarationResetSource(program) {
             if(value.parameterDefaults?.length||value.params?.parameterDefaults?.length)unsafe=true;
             if(Array.isArray(value)){lists.push(value);for(const child of value)visit(child,value);return;}
             nodes.push(value);
-            if(value.type==='Unknown'||value.type==='Namespace'||value.kind==='var')unsafe=true;
+            if(value.type&&!syntax.has(value.type)||value.kind==='var')unsafe=true;
+            if(value.type==='Identifier'&&['eval','Function','globalThis','global','window','self','arguments','Reflect'].includes(value.name))unsafe=true;
             for(const [key,child]of Object.entries(value))if(!metadata.has(key))visit(child,value);
         };visit(program);
         if(unsafe)return denied;

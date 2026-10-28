@@ -40,6 +40,7 @@ test('declaration reset recognition refuses captures, hidden defaults, timing an
         'function f(){let values:number[]=null;values=[];function later(){return values}}',
         'function f(){let values:number[]=null;values=[];game.onUpdate(()=>{values=null})}',
         'function f(){let values:number[]=null;values=[];function later(x:any=values){}}',
+        'function f(){eval("saved=()=>values");let values:number[]=null;values=[]}',
         'function f(){class Later{field=values}let values:number[]=null;values=[]}',
         'function f(){let values:number[]=null;values=[];class Later{static field=values}}',
         'function f(){let values:number[]=null;{let values:number[];values=[]}}',
@@ -90,4 +91,10 @@ test('intrinsic replacement revokes reset-dependent facts permanently',()=>{
         assert.equal(proof.current(),false);assert.deepEqual([...graph.typesAt(read)],[]);
     }finally{Object.defineProperty(JSON,'stringify',original);}
     assert.equal(proof.current(),false);assert.deepEqual([...graph.typesAt(read)],[]);
+});
+
+test('unknown executable forms cannot hide a later capture from reset admission',()=>{
+    const {program,decl}=observe(source);
+    program.body[0].body.unshift({type:'DeferredOpaqueEffect',raw:'return values'});
+    assert.equal(localArrayDeclarationResetSource(program).discount(decl),false);
 });
