@@ -1,6 +1,6 @@
 {
-  "version": 1,
-  "$comment": "Box colliders derived from each part's own LDraw mesh (overlay/scratch-gui/static/ldraw). Each box spans the given range along its axis; its other two extents are the bounds of the mesh vertices inside that range (strictly inside when the box is marked open, so a neighbouring feature's boundary ring is not counted twice). A box with a span reads its vertices from ranges but spans the span along the first range's axis, for a stretch whose only vertices lie on its end rings. Ranges are feature boundaries read off the mesh, listed per part with what they bound. test/bw-sim-collider-derivations.test.mjs recomputes every box and requires parts.json to hold exactly these colliders. An entry with replaces swaps only that one box of the part's colliders for the derived boxes (in place) ; without replaces the derived boxes are the part's whole collider list. replaced records what was there before.",
+  "version": 2,
+  "$comment": "Feature ranges in local LDraw units. Bounds use polygon clipping, including crossing-face limits. Open regions exclude only coplanar boundary faces, owned by adjacent features; the complete collider union must cover declared mesh regions. First-axis span overrides the clipping interval. Conservative 0.0001 LDU quantization preserves represented bounds; existing 0.01 LDU overhang guards remain. previousColliders freezes the complete published v1 list for guarded migration; replaced freezes the original proxy. No mesh or model geometry is changed.",
   "parts": {
     "2910.dat": {
       "why": "One 25 LDU box covered the whole piston rod, but only the 2.5 LDU collar at y -30..-27.5 is 25 LDU wide; the eye and body are 20 LDU, so retaining half bushes seated against the real eye overlapped the box by 2.5 LDU.",
@@ -47,14 +47,78 @@
           }
         },
         {
-          "what": "body and eye above the collar",
+          "what": "tapered shoulder above collar",
           "ranges": {
             "y": [
               -27.5,
+              -25
+            ]
+          },
+          "open": true
+        },
+        {
+          "what": "upper body and eye",
+          "ranges": {
+            "y": [
+              -25,
               10
             ]
           },
           "open": true
+        }
+      ],
+      "previousColliders": [
+        {
+          "shape": "box",
+          "halfExtents": [
+            7,
+            35,
+            10
+          ],
+          "position": [
+            0,
+            -72,
+            0
+          ]
+        },
+        {
+          "shape": "box",
+          "halfExtents": [
+            10,
+            3.5,
+            10
+          ],
+          "position": [
+            0,
+            -33.5,
+            0
+          ]
+        },
+        {
+          "shape": "box",
+          "halfExtents": [
+            12.5,
+            1.25,
+            12.5
+          ],
+          "position": [
+            0,
+            -28.75,
+            0
+          ]
+        },
+        {
+          "shape": "box",
+          "halfExtents": [
+            10,
+            18.75,
+            10
+          ],
+          "position": [
+            0,
+            -8.75,
+            0
+          ]
         }
       ]
     },
@@ -115,6 +179,60 @@
           },
           "open": true
         }
+      ],
+      "previousColliders": [
+        {
+          "shape": "box",
+          "halfExtents": [
+            20,
+            12,
+            10
+          ],
+          "position": [
+            -10,
+            -38,
+            0
+          ]
+        },
+        {
+          "shape": "box",
+          "halfExtents": [
+            10,
+            5.5,
+            9.6
+          ],
+          "position": [
+            0,
+            -20.5,
+            0
+          ]
+        },
+        {
+          "shape": "box",
+          "halfExtents": [
+            12.5,
+            2.5,
+            12.1
+          ],
+          "position": [
+            0,
+            -12.5,
+            0
+          ]
+        },
+        {
+          "shape": "box",
+          "halfExtents": [
+            10,
+            25,
+            10
+          ],
+          "position": [
+            0,
+            15,
+            0
+          ]
+        }
       ]
     },
     "92693c01.dat": {
@@ -169,7 +287,101 @@
             ]
           }
         }
-      ]
+      ],
+      "previousColliders": [
+        {
+          "shape": "box",
+          "halfExtents": [
+            5,
+            9,
+            16.62
+          ],
+          "position": [
+            25,
+            0,
+            7.62
+          ]
+        },
+        {
+          "shape": "box",
+          "halfExtents": [
+            5,
+            9,
+            16.62
+          ],
+          "position": [
+            -25,
+            0,
+            7.62
+          ]
+        },
+        {
+          "shape": "box",
+          "halfExtents": [
+            5,
+            9,
+            2.23
+          ],
+          "position": [
+            25,
+            0,
+            27.77
+          ]
+        },
+        {
+          "shape": "box",
+          "halfExtents": [
+            5,
+            9,
+            2.23
+          ],
+          "position": [
+            -25,
+            0,
+            27.77
+          ]
+        },
+        {
+          "shape": "box",
+          "halfExtents": [
+            30,
+            10,
+            2
+          ],
+          "position": [
+            0,
+            0,
+            32
+          ]
+        },
+        {
+          "shape": "box",
+          "halfExtents": [
+            20,
+            9,
+            4.47
+          ],
+          "position": [
+            0,
+            0,
+            39.47
+          ]
+        },
+        {
+          "shape": "box",
+          "halfExtents": [
+            10,
+            10,
+            37.5
+          ],
+          "position": [
+            0,
+            0,
+            72.5
+          ]
+        }
+      ],
+      "previousDerivedCount": 3
     }
   }
 }

@@ -9,6 +9,7 @@ import assert from 'node:assert/strict';
 import {readFileSync, existsSync} from 'node:fs';
 import {deriveBoxes} from '../scripts/lib/derive-mesh-colliders.mjs';
 import {flattenPart} from '../overlay/scratch-gui/src/lib/bw-sim/ldraw/ldraw-geometry.js';
+import {surfaceArea, section, uncovered} from './helpers/mesh-collider-coverage.mjs';
 
 const root = new URL('../', import.meta.url);
 const lib = new URL('overlay/scratch-gui/static/ldraw/', root);
@@ -53,5 +54,26 @@ test('each derived box hugs the mesh, and each box it replaced reached past it',
         const span = 'xyz'.indexOf(Object.keys(entry.boxes[0].ranges)[0]);
         const past = Math.max(...deriveBoxes(part, entry, read).map(b => Math.max(...[0, 1, 2].filter(i => i !== span).map(i => Math.max(lo(b)[i] - lo(old)[i], hi(old)[i] - hi(b)[i])))));
         assert.ok(past >= 2, `${part}: the replaced box reached ${past.toFixed(2)} LDU past the mesh`);
+    }
+});
+
+test('the complete collider union covers positive-area mesh sections independently of the derivation', () => {
+    for (const [part, entry] of Object.entries(parts)) {
+        const faces = flattenPart(part, read);
+        assert.deepEqual(faces.missing, []);
+        const colliders = meta.parts.find(p => p.part === part).colliders;
+        for (const region of entry.boxes) {
+            let tested = 0;
+            for (const face of faces.polys) {
+                const polygon = section(face, region);
+                if (surfaceArea(polygon) <= 1e-12) continue;
+                // Coplanar boundary features need not widen this region, but another box
+                // must cover them. Check the WHOLE union, including unchanged proxies.
+                const miss = uncovered(polygon, colliders).reduce((sum, p) => sum + surfaceArea(p), 0);
+                assert.ok(miss < 1e-8, `${part}/${region.what}: uncovered face area ${miss} LDU²`);
+                tested++;
+            }
+            assert.ok(tested > 0, `${part}/${region.what}: nonvacuous section`);
+        }
     }
 });
