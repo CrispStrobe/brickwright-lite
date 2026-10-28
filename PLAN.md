@@ -27,11 +27,13 @@ repair was inferred from them. Historical supplier identities never advance.
 Scope PR128 and its unmerged negative PR129 establish the injected re-render
 mechanism. Combined [Lite PR1538](https://github.com/CrispStrobe/brickwright-lite/pull/1538)
 contains longer captures, the repaired LM741 acceptance, provenance/redaction,
-and CUI AC-coupling adoption. Its frozen head is `e85dc904`; Board remains
+and CUI AC-coupling adoption. Its forward checkpoint is `93aba754`; Board remains
 `8785e468`, and CUI advances to `373d562b`. Source landing is still pending.
-An exact-package minimal consumer passes 11 CLI tests, including numerical
-AC-coupling mutation controls, long captures and selected LM741 behavior;
-this does not replace affected hosted application qualification.
+Hosted evidence at the earlier `e85dc904` candidate accepts 60 AC values and
+three actual supplier mutants, the LM741 settled-window assertion and the
+long-capture assertions. Its unit-6 documentation-trigger failure is preserved;
+`93aba754` repairs only the TODO documentation pointer and its dedicated record.
+Thirty-five focused successor checks pass; fresh exact-head CI remains pending.
 
 Next: complete applicable exact-head fast checks, preserve both the historical
 study seals and the separately owned pin-history reader fix, verify the matched

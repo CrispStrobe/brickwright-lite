@@ -141,7 +141,7 @@ item.
 
 ## Combined continuation — 2026-10-28
 
-The source continuation is frozen in Lite PR1538 at `e85dc904`, containing
+The source continuation is published in Lite PR1538, containing
 the original PR1516/1515/1517 heads and exact CUI `373d562b` adoption with
 Board `8785e468` unchanged. Scope causality controls are accepted for the
 injected re-render mechanism. Eleven minimal-consumer actual CLI tests pass;
@@ -149,3 +149,9 @@ whole-application exact-head qualification and source landing remain pending.
 Historical studies keep their measured supplier identities and unchanged
 source bytes. The active handoff supersedes older pending instructions; no
 new experiment, duplicate qualification or seventh implementation is implied.
+
+Forward checkpoint `93aba754` preserves the earlier `e85dc904` hosted measurement
+observations at their original identity. It repairs the unit-6 documentation-
+trigger omission by moving the LM741 TODO record to a dedicated receipt; all
+numerical assertions, pins and workflow policy remain unchanged. Fresh exact-head
+qualification and final application acceptance are still pending.
