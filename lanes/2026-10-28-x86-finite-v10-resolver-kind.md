@@ -1,12 +1,12 @@
 # x86 finite V10 resolver-kind inventory and current GUI acceptance
 
-Owner: x86 coordinator. Status: CLAIM ONLY; implementation and execution disabled.
+Owner: x86 coordinator. Status: UNARMED DRAFT [PR1540](https://github.com/CrispStrobe/brickwright-lite/pull/1540); execution disabled.
 Initial base: Lite main `8acc3b962803e360a0c561c696d097839046c1ab`.
 Current composition also preserves later Main changes.
 
 ## Problem and boundary
 
-The pending PR1318 finite V8 and V9 attempts observed different filesystem roles
+The superseded PR1318 finite V8 and V9 attempts observed different filesystem roles
 for the resolver on different hosted runners. V8 required an alias; V9 required
 a regular file. Both attempts remain failed and consumed. Neither is retried,
 renamed or reinterpreted as a positive observation.
@@ -70,6 +70,9 @@ Extend the existing PR1318 scope only in:
 - `test/i80386-hdd-gui-actual.test.mjs`,
   `test/i80386-hdd-gui-browser-setup.test.mjs`,
   `test/pin-move-chain.test.mjs`;
+- the owner-released frozen-study qualification repair in
+  `test/reference-qualified-instrument-study.test.mjs` and the exact public
+  package manifest `docs/receipts/reference-qualified-v2-ui-package.json`;
 - `CI-POINTERS.md`, `docs/generated/ci-step-census.json`;
 - this claim, `lanes/2026-10-27-x86-finite-v9-resolver-role.md`,
   `lanes/2026-10-25-x86-historical-cui-role-gate.md`;
@@ -107,3 +110,36 @@ original failures. Include stale/duplicate/wrong-job ACKs, incomplete upload, ex
 request substitution/replay, post-ACK drift, inadequate remaining time and
 unconditional cleanup controls. No whole-OS, physical timing, Windows or release claim follows
 from a resolver metadata repair.
+
+## Shared pin-policy integration
+
+The circuit-study owner released the sealed historical-role and synthetic
+collector-control repair from PR1538 for integration by this lane's pin-policy
+owner. Import only that repair and the exact frozen public UI package manifest;
+retain the x86 merge-history reader and versioned historical roles. Do not import
+the unrelated package adoption or change any frozen study identity source.
+
+Admit the three consumed-study source files and its package manifest only at
+their exact reviewed complete-file hashes. Retain ordinary previous-pin and
+never-pinned checks, and reject changed sealed bytes or the same stale value in
+current code. Synthetic historical controls use an isolated consumer bound to
+the original manifest; no original study is replayed or relabelled. The source
+merge still requires every enabled final-head check and affected x86 acceptance.
+
+## Published checkpoint and next action
+
+Draft PR1540 at `4257afa4052c4b14667ac4c54f482b2cc0cb1c40` contains the
+unarmed implementation and current-main composition. PR1318 is closed as
+superseded; its branch, body and original failures are preserved. All new
+execution/reader guards remain false. No actual guest result or merge is claimed.
+
+The owner-released sealed study repair and isolated historical collector controls
+pass 83 affected Node 22 tests with all three supplier histories. Connected
+producer/reader controls, workflow isolation checks and merge-history regression
+also pass. These are local source controls; hosted checks are pending.
+
+Next: refresh PR1540 and all enabled checks on its exact head; preserve failures.
+Complete and independently review the external phase-admission, request/ACK and
+final-reader tooling before separately reviewing arming. Then admit the current
+Build and native reference, perform the single new same-job acceptance and audit
+its terminal result. Keep every qualification and merge condition above.

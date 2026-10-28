@@ -1,189 +1,120 @@
-# Robot Lab measurement continuation — done and pending
+# Robot Lab measurements — accepted checkpoint and next work
 
-Snapshot: 2026-10-27, after PR1437 was merged. Refresh GitHub before acting.
-Implementation is on main; **combined-main qualification remains pending**.
-The earlier pre-merge instructions below are superseded by this checkpoint.
+Updated 2026-10-28. The four measurement capabilities from
+[PR1437](https://github.com/CrispStrobe/brickwright-lite/pull/1437) are on main.
+Their combined-main acceptance was independently audited on the exact checkpoint
+below. Later physics and model changes need their own qualification. The broader
+physics follow-up loop remains open; this document closes only the measurement
+acceptance item.
 
-## Read this distinction first
+## Accepted behavior
 
-The existing live measurements, saved-definition editor and prior integration
-are already on main; see [the measurement guide](ROBOT-LAB-MEASUREMENTS.md).
-The floor/contact core and its associated API work landed in
-[PR1445](https://github.com/CrispStrobe/brickwright-lite/pull/1445), merge
-`7b4f2f84ac55e238bbb75663acbdc1e26f3d0358`.
+| Capability | Accepted boundary |
+| --- | --- |
+| Existing forces and dynamics | Slider motor/limit force and power, passive hinge friction, screw slip/supporting load and contact presence; units, unavailable states and provenance retained; native scalar joins accepted |
+| Accepted-step analysis and recording windows | Fixed-step period, phase and signed discrete motor work; bounded simulated-time windows; lifecycle, completed-step arithmetic and saved histories accepted |
+| Structural role packs and persistence | Pinned 60-source structural coverage with 493 packs; two real 95-placement, 12-decimal save/reopen pilots accepted |
+| Explicit control pairs | Two authored model identities, typed mappings, units, origins, strict default same-model comparison and bounded paired-project persistence accepted |
 
-The four measurement capabilities landed through
-[PR1437](https://github.com/CrispStrobe/brickwright-lite/pull/1437) at
-`cd0f7a9ae5b72e4918468e87eea487c56f9374af` on 2026-10-27. Another actor merged
-the unchanged candidate after the handoff, before the required fresh combined
-qualification. This records the observed landing; it does not retroactively
-qualify that combination. Keep the acceptance loop open until the actual
-combined-main evidence is admitted and independently audited.
+Contact presence does not establish a contact-force vector. Filtered screw
+supporting load is not signed instantaneous force. Discrete motor work is not
+electrical energy. Structural coverage and two pilots do not establish all-model
+mechanical or program replay. See [the measurement guide](ROBOT-LAB-MEASUREMENTS.md).
 
-| Item | Implemented in PR1437 | Acceptance needed on the new main combination |
-| --- | --- | --- |
-| Existing forces and dynamics | Slider motor/limit force and power, passive hinge friction, screw slip/supporting-load diagnostics, contact presence; units, unavailable states and provenance retained | New-head combined native getter/scalar joins and browser acceptance |
-| Accepted-step analysis and recording windows | Opt-in fixed-step period, phase and signed discrete motor work; bounded absolute simulated-time recording windows; existing caps and gap/overflow refusal retained | New-head completed-step arithmetic, lifecycle and saved-project audits |
-| Structural role packs and persistence | Typed role packs; pinned PR1336 source coverage; two actual save/reopen pilots | New-head pinned-source report and both pilot source/placement/metadata joins |
-| Explicit control pairs | Opt-in two-model comparison with distinct authored identities, typed mappings, units, origins and bounded persistence; ordinary comparison remains strict same-model | New-head paired project before/save/reopen joins and independent original-byte audit |
+## Exact combined-main evidence
 
-No solver or dependency pin change is introduced by these measurement features.
-The candidate incorporates the separately qualified floor core from main.
-Contact presence is a scalar presence observation, not a contact-force vector.
-Filtered screw supporting load is not signed instantaneous force. Discrete
-motor work is not electrical energy or physical calibration.
+The accepted main checkout is
+`566c905d2f6ce0db35f6037b589b91491678b94c`, tree
+`d2d49b92a46419d6bcb9f9d050ed74422204e0c4`.
+[Build40514051175](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40514051175)
+completed successfully. All 46 exact-head check-runs were admitted: 43 SUCCESS
+and three declared conditional skips (two deployment jobs and the PR-only
+full-CI-label guard), with zero legacy statuses. This is acceptance of that
+checkout, not a claim that every subsequent main tree has been tested.
 
-## Actual landing and remaining combined-main qualification
+The actual successful producers were:
 
-The actual merge has ordered parents
-`9cdbe24286b02dc7cf7cdb3d722b0eeb00c7e859` (then-main) and
-`8a8421706541f706628d9872ca86e8b7b1fe34fd` (unchanged candidate), and tree
-`3ebcfc034d645406dea23a571298af2566362c49`. An independent Git-object audit
-confirmed the clean merge-tree result. Of the 41 changed paths against its
-first parent, 39 equal the candidate; `.github/workflows/build.yml` and
-`docs/ROBOT-LAB-MEASUREMENTS.md` contain the automatic combination.
+- [Unit5 job122246021259](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40514051175/job/122246021259): seven actual source-timer lifecycle cases executed without target skips or TODOs; independent TAP and checkout joins passed.
+- [Light job122246022260](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40514051175/job/122246022260): the independent native-keyboard trace audit and all 81 assigned browser-gate joins passed. Unassigned gates remained skipped.
+- [Robot Lab job122246022225](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40514051175/job/122246022225): editor build, measurement journey and unique successful artifact12751668829 passed.
 
-Then-main included newer compiler, parts-metadata, model, registry and workflow
-changes. Old candidate qualification does not establish their combined behavior.
-The already-created main-push [Build run40468979773](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40468979773)
-is the first evidence source for the actual merge; it was queued at this
-checkpoint. Its [vendor workflow40468979711](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40468979711)
-passed. Do not dispatch a duplicate run, merge PR1437 again, revert the landing
-without operator authorization, or re-download old candidate originals.
+Each new official original was acquired once after exact metadata admission.
+All three original logs bind the actual push checkout above. The measurement
+archive passed size/digest, safe flat ZIP paths/types, CRC and exact-nine-member
+checks. Standalone readers, without producer imports or guest replay, accepted
+measurement/history, dynamics, lifecycle and native-keyboard publication.
+The nine members are measurement edit SB3/JSON, runs CSV, experiments JSON,
+experiment history SB3/JSON, role-persistence JSON, dynamics JSON and paired SB3.
 
-Main subsequently advanced to `dea504b32a9a4bd43a2a9d25b587590a0ac9763f`
-through PR1456. Its ten-path delta adds SAMD qualification scripts/tests,
-workflow and documentation, preserving all measurement source and the combined
-Build workflow. Existing [main Build40470766517](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40470766517)
-is the successor evidence source. The main supersession guard may skip the
-older merge run's browser/build jobs: those skips do not establish measurement
-acceptance. In that case audit the already-created successor's actual checkout,
-all enabled checks and genuinely new originals instead; do not dispatch a replay.
-Refresh main and review any further executable impact before claiming acceptance
-of a later tree. Audit the actual CI checkout and exact
-head. If the combined run fails, preserve its first original once and address
-the demonstrated failure in an isolated, normally pushed successor within the
-existing claim; coordinate any repair outside measurement scope with its owner.
+The source coverage pin is
+`8ecbb4c116e4123fb9de18cdb71570c0dad2ceb9`. The independent reports retain model
+identity, typed semantic bindings, native observations, recording gaps/caps and
+explicit control-pair provenance. The public byte readers are:
 
-## Old candidate identity and sealed qualification
+```sh
+python3 scripts/read-sim-lab-measurement-artifact.py ORIGINALS --checkout ACTUAL_CHECKOUT --tree ACTUAL_TREE --require-history
+python3 scripts/read-sim-lab-dynamics-artifact.py ORIGINALS --checkout ACTUAL_CHECKOUT --tree ACTUAL_TREE
+```
 
-- Branch: `lane/robot-force-precision-pairs-20261026`.
-- Published candidate: `8a8421706541f706628d9872ca86e8b7b1fe34fd`.
-- Candidate tree: `29193f6c71bb0cd40895ac7178135222c92f06ef`.
-- Incorporated core main: `7b4f2f84ac55e238bbb75663acbdc1e26f3d0358`.
-- Old candidate [Build run](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40446909033): all six unit shards, editor build, FPGA surface and full-CI guard passed. The full old-candidate set completed: 42 checks, 36 SUCCESS and 6 declared skips, legacy statuses zero. These are not combined-main results.
-- Current vendor and auxiliary source-controls workflows passed; their conditional skips remain declared skips.
-- Seven actual Arcade lifecycle cases executed without target skips or TODOs; their standalone TAP and checkout audit passed on the complete candidate tree.
-- Forty focused source controls passed without skips. These are source controls, not substitutes for actual browser/Jolt acceptance.
-- Both current critical jobs passed: `browser (light)` job `122009150417` and `browser (robotlab)` job `122009150437`. Their original logs/archive were acquired once and independently audited. The light audit accepted the native-keyboard user path and all 81 assigned gates. Both Robot Lab readers accepted the native scalar, completed-step, role/pilot and paired-project joins. These passes qualify this candidate, not the newer-main combination above.
+Do not download these successful originals again merely to inspect them. Use the
+retained receipt inventory and saved bytes. A new executable tree may need new
+qualification and genuinely new originals; it cannot inherit these identities.
 
-The current unit producer used synthetic checkout
-`df96fd0ed0a6054dbe6a8a551eb7d150b11cc8eb`, with ordered parents core-main and
-candidate above, and the same full 15,928-entry tree. Never rename an actual CI
-checkout to the branch head. Read the original log and bind each current
-producer honestly; later metadata can change.
+## Landing history and preserved failures
 
-## Circuit prerequisite: known failure and changed diagnostic path
+PR1437 landed at `cd0f7a9ae5b72e4918468e87eea487c56f9374af` before the required
+combined-main qualification. Its ordered parents were
+`9cdbe24286b02dc7cf7cdb3d722b0eeb00c7e859` and
+`8a8421706541f706628d9872ca86e8b7b1fe34fd`, tree
+`3ebcfc034d645406dea23a571298af2566362c49`. The actual tree equals Git's clean
+merge result: 39 of its 41 changed paths match the old candidate; the workflow
+and measurement guide were combined automatically. Later successful evidence
+above does not retroactively turn this into a qualified pre-merge landing.
 
-An earlier candidate's actual light browser failed: the same scope selector
-showed sample at input capture, envelope at change capture, and never published
-sample/ADC state. The strict predicate correctly rejected it. That original is
-retained. The precise restoration trigger, historical cause and a persistent
-product fault remain unproved.
+The old candidate had its own successful qualification and sealed originals;
+those were not renamed as evidence for the new main combination. Earlier
+[Build40468979773](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40468979773)
+ended canceled and
+[Build40470766517](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40470766517)
+failed. Those outcomes remain preserved; they were not rerun to obtain this
+later successful checkpoint.
 
-The Circuit owner released commit
-`4ea3c00858d5e56a45e0abdbc6baecf809f95567`, now included in PR1437. Its three
-paths are `scripts/verify-circuit-ux.mjs`,
-`test/scope-rearm-publication.test.mjs`, and
-`lanes/2026-10-26-scope-rearm-publication-proof.md`.
+An earlier Circuit trace failed strict sample publication after a synthetic
+selection. The accepted diagnostic now uses one real focus and one page-level
+native ArrowDown, with passive focus/input/change observations, an actual
+precommit-negative state and strict final focused sample/ADC/zero-channel
+publication. The original downstream add/handle/capture/count/time assertions
+remain unchanged. This finite user-path acceptance does not establish the old
+failure's historical cause or a general product repair. Do not add retries,
+fallback selection, value patches or relaxed predicates.
 
-The forward diagnostic uses one real focus and one page-level native ArrowDown
-from envelope to sample. It has no synthetic selection, retry, fallback, value
-patch or timeout increase. The report now contains `action` and actual observed
-before/after modes, plus passive focus/input/change provenance. The old
-`selectedModeValues` parser does not describe this new report.
+## Continue the broader work in order
 
-Require the retained focused selector, same Board and owner, unique connected
-controls, zero channels, an actual precommit-negative input observation, then
-committed sample mode with unchecked/enabled ADC. The original sole add,
-handle/capture/count/time assertions remain unchanged. The current actual browser and independent trace audit accepted
-this finite user path. That acceptance does not establish the old failure's
-cause or a general product repair. Coordinate any further edit with that owner;
-do not patch the component, its dependency pin or thresholds to get green.
+1. Refresh actual main and ownership. The measurement acceptance above is done;
+   do not reimplement or merge PR1437 again, start a duplicate old observer or
+   replay sealed guests. Read the operator's current ignored handoff and
+   [the lane protocol](../lanes/PROTOCOL.md).
+2. Coordinate the existing rotor-inertia, collider and model-geometry repairs
+   (PR1505, PR1510, PR1512 and PR1514). Preserve their owners' source and original
+   failures. Resolve real model-clearance and reaction/coupling failures before
+   qualification; do not weaken model verdicts or numerical assertions.
+3. Review the qualification handoff in PR1521 and carry the repairs through
+   affected clean hosted qualification, exact original-byte audits and guarded
+   normal merges. Existing in-progress contact work must be coordinated, not
+   duplicated merely because a public snapshot says it is unclaimed.
+4. Continue tracked-model coasting, a stock-part-buildable steering redesign
+   and the resting-creep correction under separately merged, coordinated scopes.
+   [The Robot Lab handoff](ROBOT-LAB-AGENT-HANDOFF.md) describes the analytic
+   baselines and acceptance requirements. These physics items remain open.
 
-## Resume in this order
+Use an owned isolated worktree, normal checkpoint pushes and source-preserving
+integration. Every enabled final-head check must succeed, with only declared
+skips, before a guarded merge using `--match-head-commit`. Verify predicted and
+actual parents/tree. No force push, auto-merge, unchanged failed rerun, repeated
+one-shot label/dispatch, silent pin change or weakened threshold. Run heavy
+qualification off a resource-constrained host; use the operator-approved runner.
 
-1. Read this file, the operator's ignored local handoff and the lane protocol.
-   Use an isolated worktree and existing merged measurement claim
-   `lanes/2026-10-26-robot-force-precision-pairs.md`. Preserve other scopes and
-   record one qualification controller; never reset or rewrite a shared tree.
-2. Refresh PR1437 (already merged), actual main, the existing merge-head Build
-   and vendor workflows, all paginated check-runs and legacy statuses. Preserve
-   the actual landing proof above. Poll metadata no more than once per minute;
-   do not start duplicate hosted runs or repeat the completed source merge.
-3. Preserve successful intake already performed: the current scope and
-   seven-case unit logs, light log, Robot Lab archive and producer log have all
-   been acquired once and audited. Prior candidates'
-   successful measurement archives and failed logs are also retained. Consult
-   the private receipt inventory before any acquisition; if it is unavailable,
-   obtain the handoff rather than redownloading or replaying an original.
-4. For the **new combined head**, finish **light** qualification. The old
-   current-head intake above is already complete; do not repeat it. Admit terminal SUCCESS and the
-   `Browser gate — circuit UX` step, acquire its original log once, bind its
-   actual checkout and source, and independently audit the native-keyboard
-   action/focus/input/change trace and strict final publication. Confirm all
-   assigned browser gates and the unchanged native ADC summary passed.
-5. For the **new combined head**, finish **Robot Lab** qualification. The old
-   current-head intake above is already complete; do not repeat it. Admit terminal producer SUCCESS,
-   its own editor build, measurement journey and successful upload, and the
-   unique `sim-lab-measurement-success` artifact metadata. Acquire that archive
-   and the producer log once. Verify digest/size, CRC, safe flat file types,
-   exact nine members, actual checkout/tree and source preservation. The files
-   are the measurement edit SB3/JSON, runs CSV, experiments JSON, experiment
-   history SB3/JSON, role-persistence JSON, dynamics JSON and paired SB3.
-6. Audit saved bytes with the standalone readers below. They must not import
-   producer helpers or replay a guest. Preserve every refusal and original
-   failure. The model source pin for this campaign is
-   `8ecbb4c116e4123fb9de18cdb71570c0dad2ceb9`; 60-source metadata/persistence
-   coverage and two real pilots do not establish all-model mechanical or
-   program replay.
-
-   ```sh
-   python3 scripts/read-sim-lab-measurement-artifact.py ORIGINALS --checkout ACTUAL_CHECKOUT --tree ACTUAL_TREE --require-history
-   python3 scripts/read-sim-lab-dynamics-artifact.py ORIGINALS --checkout ACTUAL_CHECKOUT --tree ACTUAL_TREE
-   ```
-
-7. Require SUCCESS for **every enabled current-head check**, with only declared
-   skips. A cancellation or timeout is not success. On failure, retain the
-   original once, classify it and coordinate a demonstrated correction; do not
-   rerun an unchanged failure, mute assertions or weaken baselines.
-8. Bind the actual merge-head results and any subsequent executable changes
-   honestly. Review the full combined workflow/compiler/catalog/model impact.
-   If a demonstrated repair is necessary, retain failures and normally push a
-   substantive successor; qualify that exact successor before a guarded normal
-   PR merge, verifying predicted and landed parents/tree. No force push, admin
-   override, auto-merge, silent dependency-pin change or weakened assertion.
-9. Once combined acceptance and independent original-byte audits pass, reconcile
-   this document, the claim status and ignored local handoff. Only then close
-   the four-item acceptance loop. Source is already landed; acceptance remains
-   pending until the evidence supports it.
-
-PR1437 was opened Ready and received `ci:full` once after actual opened-scope
-admission. It is now merged. Do not repeat its label, dispatch or Ready cycle.
-The existing main-push run executes its own qualification under the merged
-workflow; future substantive repair PRs follow the normal lane protocol.
-
-## Boundaries and other owners
-
-This handoff adds no physical-accuracy, hardware, native OS, deployment, release,
-performance or blanket licence-clearance claim. The previously sealed native
-qualification stays sealed; do not replay it for this documentation task.
-Resting-frame creep issue1435 and its diagnostic claim belong to the core owner;
-that is separate from these four measurement items. Model changes such as
-PR1455 remain with their model owner. Preserve their claims, source and original
-failures; this continuation does not authorize taking their implementation.
-
-Raw logs, archives, private paths, machine/session identifiers and acquisition
-receipts stay in ignored local notes. Public Markdown contains only public
-repository paths and public GitHub identities. A documentation-only handoff
-publication is not source acceptance or a release.
+Only after the last physics item works and final qualification/documentation is
+reconciled should the broader user loop close. No physical-accuracy, hardware,
+release, deployment, performance or blanket licence-clearance claim is implied.
+Raw originals, private paths and operational receipts stay in ignored local notes.
