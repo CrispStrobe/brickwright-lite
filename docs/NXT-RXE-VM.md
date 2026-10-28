@@ -134,17 +134,50 @@ The table is 48 calls (`c_cmd.h:30`; order `c_cmd.c:159–211`). Implemented, wi
 | 11, 12 | SoundGetState / SetState | tone running or idle; STOP stops it |
 | 13–17 | DrawText / Point / Line / Circle / Rect | recorded as `display` events (no LCD model) |
 | 19 | SetScreenMode | recorded |
-| 20 | ReadButton | never pressed (the Lab has no buttons); index ≥ 4 is ERR_INVALID_PORT |
+| 20 | ReadButton | shared virtual brick button state and release count; index ≥ 4 is ERR_INVALID_PORT |
 | 21–23 | CommLSWrite / Read / CheckStatus | the brick's I²C channel (ultrasonic sensor); not LOWSPEED or invalid → ERR_COMM_CHAN_NOT_READY, port ≥ 4 → ERR_COMM_CHAN_INVALID, > 16 bytes → ERR_INVALID_SIZE (`c_cmd.c:6312–6440`) |
 | 24 | RandomNumber | a deterministic 16-bit generator (ours; the brick uses its C library's `rand`) |
 | 25 | GetStartTick | the program's start tick |
 | 26, 27 | MessageWrite / MessageRead | the brick's 20 × 5 queues (the same the direct commands reach); > 59 bytes ERR_INVALID_SIZE (`:2965–3104`) |
 | 31 | KeepAlive | the sleep limit, ms |
+| 32, 33 | IOMapRead / IOMapWrite | bounded name-based Button-module projection; exact supported slices below |
 | 47 | ListFiles | an array of matching NUL-terminated names; empty matches succeed |
 
 Not implemented (the program stops with **UNIMPLEMENTED_SYSCALL** naming the call): DrawPicture
-(18), Bluetooth (28–30, 35, 36), IOMapRead/Write (32, 33), ColorSensorRead (34), RS-485 (37–39), Read/WriteSemData
+(18), Bluetooth (28–30, 35, 36), ColorSensorRead (34), RS-485 (37–39), Read/WriteSemData
 (40, 41), calibration (42, 43), datalog (44, 45), SetSleepTimeout (46). An id ≥ 48 is the firmware's ERR_INSTR.
+
+### Bounded program IO-map access
+
+This is an implementation candidate; fresh hosted qualification remains pending.
+The [stock syscall wrappers](https://github.com/schodet/nxt-firmware/blob/lego-1.29/AT91SAM7S256/Source/c_cmd.c#L7171-L7301)
+define read arguments as signed-byte Result, ModuleName string, U16 Offset,
+U16 Count and output byte array. Write has Result, ModuleName, Offset and input
+byte array; its count is the array length, not an extra argument. Both permit at
+most 64 bytes. A larger read clears the destination and returns -19; a larger
+write returns -19 without changing module state. Other failed reads preserve
+the destination. Successful reads return exactly Count bytes, without a NUL.
+
+Only the exact name `Button.mod` is supported. For each button i=0..3, readable
+offsets `8*i+2`, `8*i+3`, `8*i+4` expose short, long and total release counts.
+Offsets 32..35 expose the held bit 0x80. These use the same state as ReadButton
+and the virtual brick's button inputs. The [stock Button layout](https://github.com/schodet/nxt-firmware/blob/lego-1.29/AT91SAM7S256/Source/c_button.iom#L27-L53)
+also has other counters and sampled event flags; those lifetimes are not modeled.
+The held-byte projection makes no claim about those transient event bits.
+
+The only nonempty supported write is three zero bytes at `8*i+2`: clear that
+button's short, long and total release counters, preserving held state and the
+other buttons. Stock IOMapWrite is a raw memory copy; this narrow operation is
+equivalent to the counter-clearing part of [ReadButton ResetCount](https://github.com/schodet/nxt-firmware/blob/lego-1.29/AT91SAM7S256/Source/c_cmd.c#L6702-L6745),
+not general firmware memory support. Partial, nonzero and other-field writes
+refuse atomically. Empty reads/writes at offsets 0..36 succeed without state
+changes. Other names, including wildcard lookups, return signed -112 (0x90);
+unmodeled slices and bad extents return -111 (0x91). These conservative subset
+refusals are stricter than the stock loader's in-bounds memory access.
+
+No host memory, other module, enhanced ID-based syscall, arbitrary counter
+write or physical button-sampling timing is exposed. The existing direct-command
+IO-map projection and its wire behavior are unchanged.
 
 ## Opcodes
 

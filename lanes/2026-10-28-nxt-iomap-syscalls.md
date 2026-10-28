@@ -1,6 +1,6 @@
 # NXT compiled-program bounded IO-map calls
 
-Status: CLAIMED, implementation follows qualification line-ending repair.
+Status: IMPLEMENTED CANDIDATE, hosted qualification pending.
 Owner: Codex Robot Lab continuation, user-authorized ordered follow-up.
 Branch: `lane/nxt-iomap-syscalls-20261028`.
 
@@ -27,9 +27,17 @@ sources are cited facts only; do not copy their implementation.
 Merge this claim before implementation. Freeze the supported byte ranges and
 read/write policy from cited facts before executing fixtures. Require exact
 ABI/status/bounds/alias/lifecycle controls and meaningful negative controls.
-Compile owned NXC inputs once with the existing pinned hosted compiler; tests
+Compile owned NXC inputs once with the existing hosted compiler; tests
 use the retained bytes, not the network. Fresh clean affected hosted virtual
 brick qualification and all enabled exact-head checks must pass, with declared
 skips only, before a normal matched-head merge and exact tree/parent proof.
 Retain first failures and acquire each official original once. Unsupported
 modules remain documented; this is finite virtual IO-map compatibility.
+
+The candidate supports only `Button.mod` release-counter and held projections,
+plus exact three-zero-byte counter clearing. Unknown names and unmodeled or
+arbitrary writes refuse; the stock firmware's wider raw access is not claimed.
+Nine engine-free ABI/state controls pass. The owned 2,482-byte fixture compiled
+once; source and executable hashes are frozen in its hosted-only brick test.
+Compiler version is not reported by the service. Actual upload/run, signed
+errors, Stop/restart and snapshot cases remain required hosted evidence.
