@@ -1,6 +1,6 @@
 # Robot Lab native reflected-rotor adoption
 
-Status: CLAIMED — scope only; merge before integration implementation.
+Status: IMPLEMENTATION CANDIDATE — native API migration prepared; qualification pending.
 Owner: Codex, user-authorized ordered measurement and physics continuation.
 Base: `a5705955b274ae75c3aa890fb4ce1424e9ee6afb`.
 
@@ -45,3 +45,12 @@ then apply the one full label when required. Every enabled exact-head check
 must succeed, only declared skips, before a normal matched-head merge and
 predicted/actual parent/tree preservation proof. Keep the broader user loop
 open through coasting, buildable steering, coordinated contact and final docs.
+
+The source candidate uses native hinge configuration and native completed-step
+rotor impulses, scalar speed and energy. Rollback restores JavaScript metadata
+without reconfiguring the already-restored native rotor. The original issue1494
+fixture is retained verbatim; new controls cover atomic configuration, bare body
+properties, optional effort copies, stale samples and exact native checkpoints.
+No package pin has moved. These controls have not executed against a new engine;
+the old pinned package cannot qualify the new API. Owning-fork native/packed
+qualification and the exact reviewed consumer pin remain prerequisites.

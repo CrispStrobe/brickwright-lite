@@ -246,6 +246,8 @@ const BELT_VELOCITY_STEPS = 4;
 
 
 /**
+ * Historical body-inertia benchmark behind the retained motor iteration policy. Native rotor
+ * adoption preserves this policy; fresh affected qualification is still required.
  * Solver iterations for an island holding a motorised hinge (Jolt's defaults 10 / 2). The DC motor
  * (applyHingeTorque) drives the hinge's output body, which carries the motor's rotor reflected through
  * its gearbox (setRotorInertia: ~3e-4 kg·m² about the axis) on a few grams of parts. A contact on that
@@ -839,7 +841,7 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
             if (typeof j.frictionNm === 'number') hs.mMaxFrictionTorque = j.frictionNm;
             if (actuator) {
                 // A motorised hinge's island solves with more iterations than Jolt's default (MOTOR_VELOCITY_STEPS;
-                // setMotorSteps raises the position steps once the rotor's inertia is on the body).
+                // setMotorSteps applies the existing bare-body conditioning policy on configuration).
                 hs.mNumVelocityStepsOverride = MOTOR_VELOCITY_STEPS;
                 hs.mNumPositionStepsOverride = MOTOR_POSITION_STEPS;
             } else if (lightLink(j)) {
@@ -1564,14 +1566,16 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
             e.hinge.GetMaxFrictionTorque(), e.rotorInertia, e.coastFrictionNm]),
         restore: saved => {
             let i = 0;
-            for (const [id, e] of hingeMap) {
+            for (const [, e] of hingeMap) {
                 let friction, rotorInertia;
                 [e.rawPrev, e.unwrapped, e.velocity, e.mode, e.target, e.targetSpeed, e.driveTorque, e.damping, friction, rotorInertia, e.coastFrictionNm] = saved[i++];
                 // Motor settings are not part of Jolt's saved state: put back the checkpoint's.
                 if (e.isMotor) {
                     setMotorSettings(e, e.mode === 'torque' ? {limit: 1e6, damping: e.damping} : {limit: e.maxTorque});
                     e.hinge.SetMaxFrictionTorque(friction);
-                    if (rotorInertia !== e.rotorInertia) core.setRotorInertia(id, rotorInertia);
+                    // Native RestoreState already restored Jr, scalar speed and warm-start impulse.
+                    // Restore metadata only: a setter here would clear the restored impulse.
+                    e.rotorInertia = rotorInertia;
                 }
             }
         }
@@ -1859,7 +1863,16 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
                             angularVelocityRadS: entry.velocity} : {motorForceN: motor, passiveForceN: passive,
                             limitForceN: limit, linearVelocityMS: entry.velocity})};
                 };
-                for (const [id, e] of hingeMap) capture(id, e, e.hinge, true);
+                for (const [id, e] of hingeMap) {
+                    capture(id, e, e.hinge, true);
+                    if (e.rotorInertia > 0) {
+                        const Jr = e.hinge.GetReflectedRotorInertia();
+                        const wr = e.hinge.GetRotorAngularVelocity();
+                        const rotorImpulseNmS = e.hinge.GetTotalLambdaRotor();
+                        Object.assign(dynamics[id], {rotorImpulseNmS, rotorTorqueNm: rotorImpulseNmS / dtFixed,
+                            rotorInertiaKgM2: Jr, rotorAngularVelocityRadS: wr, rotorEnergyJ: 0.5 * Jr * wr * wr});
+                    }
+                }
                 for (const [id, e] of sliderMap) capture(id, e, e.slider, false);
                 if (fixedStepObservers.size) {
                     deliveringStepObservation = true;
@@ -1937,39 +1950,32 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
                 default: throw new Error(`unknown motor mode ${cmd.mode}`);
             }
         },
-        /**
-         * A motor's rotor inertia reflected through its gearbox (kg·m² at the output), J. The
-         * rotor turns with the hinge's RELATIVE angle (kinetic energy ½·J·(ω2 − ω1)²), which no
-         * body inertia can express; it is added about the hinge axis to BOTH bodies that move
-         * (½·J·ω1² + ½·J·ω2²). That is exact whenever one side does not turn about the axis —
-         * a clamped motor (the housing static: only the output gets it), a driving base's wheel
-         * on a level chassis, or a planted wheel under a pitching chassis, where the rotor
-         * really does resist the chassis — and wrong only when both turn together about the
-         * axis (the rotor then adds nothing, here 2·J). As body inertia, unlike a term in the
-         * motor constraint, the rotor's momentum is in the bodies the gear and contact
-         * constraints see (measured: as a motor term the rotor drove a light 24T and arm
-         * through a static block, the gear constraint slipping). Setting, not adding: a second
-         * call with the same value changes nothing.
+        /** Configure the native relative rotor (kg·m²), preserving bare body mass, COM and inertia.
+         * Native state owns scalar rotor speed and warm-start impulse. Callers changing
+         * externally stopped/sleeping bodies may explicitly disable then enable to resync.
          */
         setRotorInertia(jointId, inertiaKgM2) {
             ensureAlive();
             const entry = hingeMap.get(jointId);
             if (!entry || !entry.isMotor) throw new Error(`joint ${jointId} is not a motorised hinge`);
-            const I = Number(inertiaKgM2);
-            if (!(I >= 0) || !Number.isFinite(I)) throw new Error('setRotorInertia needs a finite inertia >= 0');
-            const delta = I - entry.rotorInertia;
-            if (delta === 0) return;
-            const j = jointMap.get(jointId);
-            for (const [id, body, local] of [[j.body1, entry.bodyA, entry.localAxis1], [j.body2, entry.bodyB, entry.localAxis2]]) {
-                const e = bodyMap.get(id);
-                if (!e || e.motionType === J.EMotionType_Static) continue;
-                const n = Math.hypot(...local);
-                const a = local.map(v => v / n);
-                const mp = body.GetMotionProperties();
-                setInertia(mp, inertiaOf(mp).map((row, r) => row.map((v, k) => v + delta * a[r] * a[k])));
+            const requested = Number(inertiaKgM2);
+            const I = Math.fround(requested);
+            if (!(requested >= 0) || !Number.isFinite(requested) || !Number.isFinite(I)) {
+                throw new Error('setRotorInertia needs a finite native-float inertia >= 0');
             }
-            entry.rotorInertia = I;
+            for (const method of ['SetReflectedRotorInertia', 'GetReflectedRotorInertia',
+                'GetRotorAngularVelocity', 'GetTotalLambdaRotor']) {
+                if (typeof entry.hinge[method] !== 'function') throw new Error(`native hinge lacks ${method}`);
+            }
+            if (I === entry.rotorInertia) return;
+            if (!entry.hinge.SetReflectedRotorInertia(I)) throw new Error('native hinge rejected rotor inertia');
+            entry.rotorInertia = entry.hinge.GetReflectedRotorInertia();
+            const j = jointMap.get(jointId);
             setMotorSteps(entry, j);
+            for (const id of [j.body1, j.body2]) {
+                const body = bodyMap.get(id);
+                if (body && body.motionType === J.EMotionType_Dynamic) bodyInterface.ActivateBody(body.bodyID);
+            }
         },
         /**
          * A tyred wheel's rolling resistance (physics/rolling.js) as of the last step: {load (N, the
