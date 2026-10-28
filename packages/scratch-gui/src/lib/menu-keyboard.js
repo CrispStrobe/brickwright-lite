@@ -1,6 +1,6 @@
 // Keyboard behavior shared by the existing menu components. Form controls inside
 // menus keep their native cursor keys; editor commands never receive those keys.
-export const menuItems = menu => Array.from(menu?.querySelectorAll('[role="menuitem"]') || [])
+export const menuItems = menu => Array.from(menu?.querySelectorAll('[role^="menuitem"]') || [])
     .filter(item => item.closest('[role="menu"]') === menu && item.getAttribute('aria-disabled') !== 'true');
 
 export const focusMenuEdge = (menu, last = false) => {
@@ -37,7 +37,7 @@ export const handleMenuKeyDown = (event, close) => {
     if (event.target.matches?.('input, textarea, select, [contenteditable="true"]') &&
         !['Escape', 'Tab'].includes(event.key)) return;
     const menu = event.currentTarget;
-    const parentItem = menu.parentElement?.closest('[role="menuitem"]');
+    const parentItem = menu.parentElement?.closest('[role^="menuitem"]');
     if (!parentItem && ['ArrowLeft', 'ArrowRight'].includes(event.key)) {
         event.preventDefault();
         event.stopPropagation();
@@ -57,7 +57,7 @@ export const handleMenuKeyDown = (event, close) => {
     event.preventDefault();
     event.stopPropagation();
     const items = menuItems(menu);
-    const active = event.target.closest('[role="menuitem"]');
+    const active = event.target.closest('[role^="menuitem"]');
     const index = items.indexOf(active);
     const next = event.key === 'Home' ? 0 : event.key === 'End' ? items.length - 1 :
         event.key === 'ArrowDown' ? (index + 1) % items.length : (index - 1 + items.length) % items.length;

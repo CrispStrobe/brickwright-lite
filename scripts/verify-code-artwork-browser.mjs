@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import {openCodeActions as openCodeMenu, closeCodeActions as closeCodeMenu} from './lib-code-actions.mjs';
+import {pixelControl} from './lib-pixel-controls.mjs';
 /** Actual Pixel → Code → Blocks → SB3 journey. VM access observes only. */
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
@@ -34,7 +36,7 @@ const pixels = async () => {
     await page.getByTestId('bw-pixel-canvas').waitFor({state: 'visible'});
 };
 const paint = async (colour, x, y) => {
-    await page.getByTestId(`bw-pixel-colour-${colour}`).click();
+    await (await pixelControl(page, `bw-pixel-colour-${colour}`)).click();
     await page.getByTestId('bw-pixel-tool-pencil').click();
     const canvas = page.getByTestId('bw-pixel-canvas');
     const before = await canvas.evaluate(element => element.toDataURL());
@@ -148,11 +150,11 @@ try {
     report.journey.push('actual SB3 save/reopen retains editable animation and exact artwork');
     await openCode();
     const actions = page.getByTestId('bw-code-actions');
-    if (!(await actions.getAttribute('open'))) await actions.locator('summary').click();
+    await openCodeMenu(page);
     await page.getByTestId('bw-open-file').locator('input[type=file]').setInputFiles({name: 'unrelated.bw',
         mimeType: 'text/plain', buffer: Buffer.from('SPRITE Sprite1:\n  WHEN flag clicked:\n    say "new project"\n')});
     await page.getByTestId('bw-code-status').getByText(/Loaded unrelated/).waitFor({state: 'visible'});
-    if (await actions.getAttribute('open')) await actions.locator('summary').click();
+    await closeCodeMenu(page);
     await apply();
     const unrelated = await archive('unrelated');
     assert.ok(!unrelated.artwork.costumes.some(record => record.document.animation),

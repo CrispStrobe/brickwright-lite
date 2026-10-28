@@ -111,7 +111,8 @@ test('asset dispatch requires the current editor and current enabled descriptor'
     let enabled=true;
     const run=new Function('getEditorMenuItems','runEditorMenuAction',`return function(name,location) ${scopeAfter(source,'    handleAssetMenuAction (name, location)')}`)(
         ()=>[{name:'save',enabled}],(...args)=>{calls.push(args);return true;});
-    const host={_activeEditorSurface:'pixel',props:{activeTabIndex:1,onRequestCloseFile:()=>{},onRequestCloseEdit:()=>{}}};
+    const resolve = new Function(`return function() ${scopeAfter(source, '    resolveAssetMenuSurface ()')}`)();
+    const host={resolveAssetMenuSurface: resolve, _activeEditorSurface:'pixel',props:{activeTabIndex:1,onRequestCloseFile:()=>{},onRequestCloseEdit:()=>{}}};
     assert.equal(run.call(host,'save','file'),true);
     enabled=false;assert.equal(run.call(host,'save','file'),false);
     enabled=true;host.props.activeTabIndex=3;assert.equal(run.call(host,'save','file'),false);

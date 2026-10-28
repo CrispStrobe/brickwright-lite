@@ -64,7 +64,7 @@ Submenu.propTypes = {
     place: PropTypes.oneOf(['left', 'right'])
 };
 
-const MenuItem = ({children, className, ariaLabel, expanded = false, disabled = false, onClick}) => {
+const MenuItem = ({children, className, ariaLabel, expanded = false, disabled = false, checked, radio = false, onClick}) => {
     const ref = React.useRef(null);
     const [keyboardOpen, setKeyboardOpen] = React.useState(false);
     const [keyboardClosed, setKeyboardClosed] = React.useState(false);
@@ -83,7 +83,8 @@ const MenuItem = ({children, className, ariaLabel, expanded = false, disabled = 
     return (
         <li
             ref={ref}
-            role="menuitem"
+            role={typeof checked === 'boolean' ? (radio ? 'menuitemradio' : 'menuitemcheckbox') : 'menuitem'}
+            aria-checked={typeof checked === 'boolean' ? checked : undefined}
             aria-label={ariaLabel}
             tabIndex={-1}
             className={classNames(styles.menuItem, styles.hoverable, className,
@@ -114,7 +115,7 @@ const MenuItem = ({children, className, ariaLabel, expanded = false, disabled = 
                 }
             }}
             onClick={disabled ? undefined : event => {
-                if (event.target.closest('[role="menuitem"]') !== event.currentTarget) return;
+                if (event.target.closest('[role^="menuitem"]') !== event.currentTarget) return;
                 if (hasSubmenu) {
                     setKeyboardOpen(!open);
                     setKeyboardClosed(open);
@@ -122,12 +123,15 @@ const MenuItem = ({children, className, ariaLabel, expanded = false, disabled = 
                 if (onClick) onClick(event);
             }}
         >
+            {typeof checked === 'boolean' ? <span aria-hidden="true" style={{display: 'inline-block', width: 16}}>{checked ? '✓' : ''}</span> : null}
             {contents}
         </li>
     );
 };
 
 MenuItem.propTypes = {
+    checked: PropTypes.bool,
+    radio: PropTypes.bool,
     ariaLabel: PropTypes.string,
     children: PropTypes.node,
     className: PropTypes.string,

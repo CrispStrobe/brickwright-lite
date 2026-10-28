@@ -39,10 +39,26 @@ try {
         const editor = page.getByTestId('bw-paint-workspace');
         await editor.waitFor();
         const bounds = await editor.boundingBox();
+        const commandRow = page.getByTestId('bw-paint-command-row');
+        const strip = page.getByTestId('bw-paint-command-strip');
+        const outline = page.getByRole('spinbutton', {name: 'Outline width (pixels)', exact: true});
+        await outline.waitFor({state: 'visible'});
+        assert.equal(await outline.getAttribute('title'), 'Outline width (pixels)', 'outline width has hover help');
+        const outlineBox = await outline.boundingBox();
+        const stripBox = await strip.boundingBox();
+        assert.ok(outlineBox.x < stripBox.x, 'Fill/Outline stay at the front, outside the scrolling command strip');
+        const rowBox = await commandRow.boundingBox();
+        assert.ok(rowBox.height < 96, 'actions occupy one toolbar band, not two button rows');
+        const rail = editor.locator('[class*="paint-editor_mode-selector"]');
+        assert.equal(await rail.evaluate(node => getComputedStyle(node).flexWrap), 'nowrap');
+        assert.equal(await rail.evaluate(node => getComputedStyle(node).flexDirection), 'column');
+        assert.equal(await rail.evaluate(node => getComputedStyle(node).overflowY), 'auto');
+
         assert.ok(bounds.x >= 0 && bounds.x + bounds.width <= viewport.width + 1,
             'the vector workspace must fit the tablet viewport');
         for (const name of ['bw-costume-import', 'bw-costume-export', 'bw-pixel-toggle']) {
             const button = page.getByTestId(name);
+            await button.scrollIntoViewIfNeeded();
             const box = await button.boundingBox();
             assert.ok(box && box.width >= 44 && box.height >= 44 && box.x + box.width <= viewport.width,
                 `${name} must remain a visible touch target`);

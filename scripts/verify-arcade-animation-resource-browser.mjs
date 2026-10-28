@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import {openCodeActions as openCodeMenu, closeCodeActions as closeCodeMenu} from './lib-code-actions.mjs';
+import {pixelControl} from './lib-pixel-controls.mjs';
 /** Visible Pixel publication → persistent resource picker → editable Blocks → playback/export.
  * VM/Blockly access observes only. MakeCode interchange proves behaviour, not rich timeline/UUID retention.
  */
@@ -57,7 +59,7 @@ const resource=()=>page.evaluate(()=>{
 // Target IDs belong to a VM load; resource UUIDs and authored ownership labels persist.
 const persistentResource = row => ({...row, source: {...row.source, targetId: null}});
 const paintFrame=async colour=>{
-    await page.getByTestId(`bw-pixel-colour-${colour}`).click();
+    await (await pixelControl(page, `bw-pixel-colour-${colour}`)).click();
     await page.getByTestId('bw-pixel-tool-filledRect').click();
     const canvas=page.getByTestId('bw-pixel-canvas');await canvas.scrollIntoViewIfNeeded();
     const box=await canvas.boundingBox();assert.ok(box&&box.width>0&&box.height>0);
@@ -354,7 +356,7 @@ try{
         assert.deepEqual(nativeScreen,expectedNative,'all19200actual Brickwright pixels match authored footprint');
         report.nativeScreen={colour:nativeColour,pixelsCompared:nativeScreen.length};
         const renamedSource=await snapshot('renamed-reordered');report.journey.push('Pixel rename/reorder preserves UUID and updates bound playback without rewriting code');
-        await openCode();const actions=page.getByTestId('bw-code-actions');if(await actions.getAttribute('open')===null)await actions.locator('summary').click();
+        await openCode();const actions=page.getByTestId('bw-code-actions');await openCodeMenu(page);
         const exported=page.waitForEvent('download');await page.getByTestId('bw-makecode-arcade-export').click();
         const download=await exported;assert.match(download.suggestedFilename(),/\.mkcd$/);
         const hex=path.join(path.dirname(out),'animation-export.mkcd');await download.saveAs(hex);const bytes=await fs.readFile(hex);
@@ -390,7 +392,7 @@ try{
         assert.ok(matchingScreen,'original simulation reaches the same authored frame');
         assert.deepEqual(matchingScreen,nativeScreen,'all19200actual Brickwright and original PXT pixels agree at the same frame');
         report.originalPxt={compiled:true,sequence:originalSequence,pixelsCompared:screen.length,actualNativePixelsCompared:matchingScreen.length,compilerNetworkAttempts:compiled.netAttempts};
-        if(await actions.getAttribute('open')===null)await actions.locator('summary').click();
+        await openCodeMenu(page);
         const priorIds=await page.evaluate(()=>window.__brickwrightStore.getState().scratchGui.vm.runtime.targets.map(target=>target.id));
         const priorCode=await editor().innerText(),priorResources=await resource();
         const malformed=Buffer.from(makeCodeSourceHex({...embedded.files,[ANIMATION_COMPANION_PATH]:'{broken'},
@@ -403,7 +405,7 @@ try{
         report.journey.push('malformed companion file import names the error and preserves the loaded VM, Code and published resources');
         await page.getByTestId('bw-open-file').locator('input[type=file]').setInputFiles({name:'animation-export.mkcd',mimeType:'application/octet-stream',buffer:bytes});
         await page.getByText(/Imported the Arcade game.*animation-export\.mkcd/).first().waitFor({state:'visible'});
-        if(await actions.getAttribute('open')!==null)await actions.locator('summary').click();
+        await closeCodeMenu(page);
         assert.ok((await editor().innerText()).includes(`arcade animation fresh frames resource "${published.id}"`));
         await apply();
         const automaticLibrary=await page.evaluate(()=>{
@@ -529,7 +531,7 @@ try{
         report.journey.push('explicit hidden library fixture opens in Pixel, edits and SB3 reopen retain role, UUID and rich source');
         report.journey.push('Code excludes library declarations and preserves hidden carriers; fresh/shared runtime lookups play edited source');
 
-        await openCode();if(await actions.getAttribute('open')===null)await actions.locator('summary').click();
+        await openCode();await openCodeMenu(page);
         const libraryDownload=page.waitForEvent('download');await page.getByTestId('bw-makecode-arcade-export').click();
         const libraryHex=path.join(path.dirname(out),'animation-library-export.mkcd');await(await libraryDownload).saveAs(libraryHex);
         const cliHex=path.join(path.dirname(out),'animation-library-cli.mkcd');
@@ -640,7 +642,7 @@ try{
         report.journey.push('library navigation/rename/disabled gameplay controls and Blocks/Sounds notices protect artwork');
         report.journey.push('actual duplicate/delete/Restore Sprite/save/reopen retains both hidden roles, renews copy UUID and restores bound playback');
 
-        await openCode();if(await actions.getAttribute('open')===null)await actions.locator('summary').click();
+        await openCode();await openCodeMenu(page);
         const [duplicateDownload]=await Promise.all([page.waitForEvent('download'),page.getByTestId('bw-makecode-arcade-export').click()]);
         const duplicateHex=path.join(path.dirname(out),'animation-duplicate-libraries.mkcd');await duplicateDownload.saveAs(duplicateHex);
         const duplicateCliHex=path.join(path.dirname(out),'animation-duplicate-libraries-cli.mkcd');
@@ -661,7 +663,7 @@ try{
         }
         await page.getByTestId('bw-open-file').locator('input[type=file]').setInputFiles(duplicateHex);
         await page.getByText(/Imported the Arcade game.*animation-duplicate-libraries\.mkcd/).first().waitFor({state:'visible'});
-        if(await actions.getAttribute('open')!==null)await actions.locator('summary').click();
+        await closeCodeMenu(page);
         await apply();
         assert.deepEqual((await resource()).map(row=>row.id).sort(),[published.id,copyId].sort());
         await flag().click();await phase(1);await observePlayback('duplicate-native-reimported',[4,5,9]);await stop().click();
@@ -672,7 +674,7 @@ try{
         const wideFiles={'main.ts':'let frames = assets.animation`Wide`\nlet hero = sprites.create(frames[0], SpriteKind.Player)\nhero.setPosition(80,60)\nanimation.runImageAnimation(hero, frames, 100, true)',
             'pxt.json':JSON.stringify({name:'Wide animation',dependencies:{device:'*'},files:['main.ts','images.g.jres']}),
             'images.g.jres':JSON.stringify({Wide:encodeAnimationJres({id:'Wide',name:'Wide',width:161,height:121,intervalMs:100,frames:wideFrames})})};
-        await openCode();if(await actions.getAttribute('open')===null)await actions.locator('summary').click();
+        await openCode();await openCodeMenu(page);
         await page.getByTestId('bw-open-file').locator('input[type=file]').setInputFiles({name:'wide-animation.hex',mimeType:'application/octet-stream',
             buffer:Buffer.from(makeCodeSourceHex(wideFiles,{target:'arcade',name:'Wide animation'}))});
         await page.getByText(/Imported the Arcade game.*wide-animation\.hex/).first().waitFor({state:'visible'});
@@ -681,7 +683,7 @@ try{
         assert.deepEqual(wideBefore.frames.map(frame=>frame.pixels),wideFrames.map(frame=>frame.pixels));
         await pixels('Arcade artwork');await panel('frames');await page.getByTestId('bw-pixel-frame-0').click();
         await page.getByTestId('bw-pixel-frames-toggle').click();
-        await page.getByTestId('bw-pixel-colour-9').click();
+        await (await pixelControl(page, 'bw-pixel-colour-9')).click();
         await page.getByTestId('bw-pixel-tool-pencil').click();
         const wideCanvas=page.getByTestId('bw-pixel-canvas');const wideBox=await wideCanvas.boundingBox();assert.ok(wideBox);
         await wideCanvas.click({position:{x:wideBox.width*160.5/161,y:wideBox.height*120.5/121}});
@@ -704,7 +706,7 @@ try{
         await page.getByText('Load from your computer',{exact:true}).click();await(await wideLoad).setFiles(wideSaved);
         await page.waitForFunction(id=>window.__brickwrightStore.getState().scratchGui.vm.runtime.getTargetForStage()?.id!==id,wideStage);
         const wideReopened=(await resource())[0];assert.equal(wideReopened.id,wideEdited.id);assert.deepEqual(wideReopened.frames.map(frame=>frame.pixels),expectedWide);
-        await openCode();if(await actions.getAttribute('open')===null)await actions.locator('summary').click();
+        await openCode();await openCodeMenu(page);
         const wideExport=page.waitForEvent('download');await page.getByTestId('bw-makecode-arcade-export').click();
         const wideExportFile=path.join(path.dirname(out),'wide-animation-edited.mkcd');await(await wideExport).saveAs(wideExportFile);
         const wideReturned=await unpackMakeCodeSource(await fs.readFile(wideExportFile));

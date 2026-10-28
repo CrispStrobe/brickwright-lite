@@ -1,6 +1,7 @@
 import bindAll from 'lodash.bindall';
 import PropTypes from 'prop-types';
 import React from 'react';
+import {injectIntl, intlShape} from 'react-intl';
 import WavEncoder from 'wav-encoder';
 import VM from 'scratch-vm';
 
@@ -16,7 +17,9 @@ import AudioEffects from '../lib/audio/audio-effects.js';
 import SoundEditorComponent from '../components/sound-editor/sound-editor.jsx';
 import AudioBufferPlayer from '../lib/audio/audio-buffer-player.js';
 import log from '../lib/log.js';
-import {activateUndoSurface, notifyUndoState, registerUndoSurface} from '../lib/global-undo.js';
+import {activateUndoSurface, getUndoState, notifyUndoState, registerUndoSurface} from '../lib/global-undo.js';
+
+import {notifyEditorMenuActions, registerEditorMenuActions} from '../lib/editor-menu-actions.js';
 
 const UNDO_STACK_SIZE = 99;
 
@@ -86,6 +89,8 @@ class SoundEditor extends React.Component {
             redo: () => serial(() => (this.redoStack.length ? this.handleRedo() : false))
         });
         activateUndoSurface('sounds');
+        this._menuMounted = true;
+        this.unregisterMenu = registerEditorMenuActions('sounds', () => this.editorMenuActions());
     }
     componentWillReceiveProps (newProps) {
         if (newProps.soundId !== this.props.soundId) { // A different sound has been selected
@@ -102,10 +107,56 @@ class SoundEditor extends React.Component {
         }
     }
     componentWillUnmount () {
+        this._menuMounted = false;
+        if (this.unregisterMenu) this.unregisterMenu();
         this.audioBufferPlayer.stop();
         if (this.unregisterUndo) this.unregisterUndo();
 
         document.removeEventListener('keydown', this.handleKeyPress);
+    }
+    componentDidUpdate (prevProps, prevState) {
+        // Playing changes the available command once; playhead frames do not
+        // cause the shared menus to render at the audio callback frequency.
+        if (prevProps.soundId !== this.props.soundId || prevProps.samples !== this.props.samples ||
+            prevProps.sampleRate !== this.props.sampleRate || prevProps.isFullScreen !== this.props.isFullScreen ||
+            prevProps.intl !== this.props.intl || prevState.copyBuffer !== this.state.copyBuffer ||
+            prevState.trimStart !== this.state.trimStart || prevState.trimEnd !== this.state.trimEnd ||
+            prevState.chunkLevels !== this.state.chunkLevels ||
+            (prevState.playhead !== null) !== (this.state.playhead !== null)) notifyEditorMenuActions();
+    }
+    editorMenuActions () {
+        const sound = this.props.vm.editingTarget?.sprite?.sounds?.[this.props.soundIndex];
+        if (!this._menuMounted || getUndoState().surface !== 'sounds' || this.props.isFullScreen ||
+            !sound || sound.soundId !== this.props.soundId) return null;
+        const buffer = this.audioBufferPlayer?.buffer;
+        const ready = !!(buffer && buffer.length > 0 && this.props.sampleRate > 0);
+        const selected = this.state.trimStart !== null;
+        const playing = this.state.playhead !== null;
+        const label = (key, defaultMessage) => this.props.intl.formatMessage({id: `gui.soundEditor.${key}`, defaultMessage});
+        const action = (key, fallback, enabled, run, submenu = '') => ({label: label(key, fallback),
+            location: 'edit', submenu, enabled: !!enabled && typeof run === 'function', run});
+        const actions = {
+            copy: action('copy', 'Copy', ready, this.handleCopy),
+            paste: action('paste', 'Paste', ready && this.state.copyBuffer?.samples?.length > 0 &&
+                this.state.copyBuffer.sampleRate > 0, this.handlePaste),
+            'copy-to-new': action('copyToNew', 'Copy to New', ready, this.handleCopyToNew),
+            delete: action('delete', 'Delete', ready && selected, this.handleDelete),
+            play: action('play', 'Play', ready && !playing, this.handlePlay),
+            stop: action('stop', 'Stop', ready && playing, this.handleStopPlaying)
+        };
+        const effects = AudioEffects.effectTypes;
+        const group = this.props.intl.locale.startsWith('de') ? 'Effekte' : 'Effects';
+        for (const [key, fallback, type] of [
+            ['faster', 'Faster', effects.FASTER], ['slower', 'Slower', effects.SLOWER],
+            ['louder', 'Louder', effects.LOUDER], ['softer', 'Softer', effects.SOFTER],
+            ['mute', 'Mute', effects.MUTE], ['fadeIn', 'Fade in', effects.FADEIN],
+            ['fadeOut', 'Fade out', effects.FADEOUT], ['reverse', 'Reverse', effects.REVERSE],
+            ['robot', 'Robot', effects.ROBOT], ['echo', 'Echo', effects.ECHO]
+        ]) {
+            actions[`effect-${key}`] = action(key, fallback, ready && buffer.length >= 2 &&
+                (key !== 'louder' || !this.tooLoud()), this.effectFactory(type), group);
+        }
+        return actions;
     }
     handleKeyPress (event) {
         if (event.target instanceof HTMLInputElement) {
@@ -506,6 +557,7 @@ class SoundEditor extends React.Component {
 }
 
 SoundEditor.propTypes = {
+    intl: intlShape.isRequired,
     isFullScreen: PropTypes.bool,
     name: PropTypes.string.isRequired,
     sampleRate: PropTypes.number,
@@ -531,6 +583,6 @@ const mapStateToProps = (state, {soundIndex}) => {
     };
 };
 
-export default connect(
+export default injectIntl(connect(
     mapStateToProps
-)(SoundEditor);
+)(SoundEditor));

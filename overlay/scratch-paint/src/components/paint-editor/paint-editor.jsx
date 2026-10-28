@@ -121,75 +121,32 @@ const PaintEditorComponent = props => {
     >
         {props.canvas !== null ? ( // eslint-disable-line no-negated-condition
             <div className={styles.editorContainerTop}>
-                {/* First row */}
-                <div className={styles.commandRow}>
-                    <div className={styles.commandStrip}>
+                <div className={styles.commandRow} data-testid="bw-paint-command-row">
+                        <InputGroup className={classNames(styles.row, styles.modDashedBorder, styles.modLabeledIconHeight)}>
+                            <FillColorIndicatorComponent className={styles.modMarginAfter} onUpdateImage={props.onUpdateImage} />
+                            {isVector(props.format) ? <React.Fragment>
+                                <StrokeColorIndicatorComponent onUpdateImage={props.onUpdateImage} />
+                                <StrokeWidthIndicatorComponent onUpdateImage={props.onUpdateImage} />
+                            </React.Fragment> : null}
+                        </InputGroup>
+                    <div className={styles.commandStrip} role="toolbar" data-testid="bw-paint-command-strip">
+
                         <FixedToolsContainer
-                            canRedo={props.canRedo}
-                            canUndo={props.canUndo}
-                            name={props.name}
-                            onRedo={props.onRedo}
-                            onUndo={props.onUndo}
-                            onUpdateImage={props.onUpdateImage}
-                            onUpdateName={props.onUpdateName}
+                            canRedo={props.canRedo} canUndo={props.canUndo} name={props.name}
+                            onRedo={props.onRedo} onUndo={props.onUndo}
+                            onUpdateImage={props.onUpdateImage} onUpdateName={props.onUpdateName}
                         />
-                    </div>
-                    <div className={styles.fileActions}>{props.editorTools}</div>
-                </div>
-                {/* Second Row */}
-                {isVector(props.format) ?
-                    <div className={classNames(styles.row, styles.settingsRow)}>
-                        <InputGroup
-                            className={classNames(
-                                styles.row,
-                                styles.modDashedBorder,
-                                styles.modLabeledIconHeight
-                            )}
-                        >
-                            {/* fill */}
-                            <FillColorIndicatorComponent
-                                className={styles.modMarginAfter}
-                                onUpdateImage={props.onUpdateImage}
-                            />
-                            {/* stroke */}
-                            <StrokeColorIndicatorComponent
-                                onUpdateImage={props.onUpdateImage}
-                            />
-                            {/* stroke width */}
-                            <StrokeWidthIndicatorComponent
-                                onUpdateImage={props.onUpdateImage}
-                            />
-                        </InputGroup>
                         <InputGroup className={styles.modModeTools}>
-                            <ModeToolsContainer
-                                onUpdateImage={props.onUpdateImage}
-                            />
+                            <ModeToolsContainer onUpdateImage={props.onUpdateImage}
+                                onEditorMenuActions={props.onEditorMenuActions} editorMenuOwner={props.editorMenuOwner} />
                         </InputGroup>
-                    </div> :
-                    isBitmap(props.format) ?
-                        <div className={classNames(styles.row, styles.settingsRow)}>
-                            <InputGroup
-                                className={classNames(
-                                    styles.row,
-                                    styles.modDashedBorder,
-                                    styles.modLabeledIconHeight
-                                )}
-                            >
-                                {/* fill */}
-                                <FillColorIndicatorComponent
-                                    className={styles.modMarginAfter}
-                                    onUpdateImage={props.onUpdateImage}
-                                />
-                            </InputGroup>
-                            <InputGroup className={styles.modModeTools}>
-                                <ModeToolsContainer
-                                    onUpdateImage={props.onUpdateImage}
-                                />
-                            </InputGroup>
+                        {isBitmap(props.format) ? <React.Fragment>
                             <BitmapSelectionControls />
                             <BitmapLayersControls onUpdateImage={props.onUpdateImage} />
-                        </div> : null
-                }
+                        </React.Fragment> : null}
+                        <div className={styles.fileActions}>{props.editorTools}</div>
+                    </div>
+                </div>
             </div>
         ) : null}
 
@@ -409,6 +366,8 @@ const PaintEditorComponent = props => {
 };
 
 PaintEditorComponent.propTypes = {
+    onEditorMenuActions: PropTypes.func,
+    editorMenuOwner: PropTypes.string,
     editorTools: PropTypes.node,
     artworkDocument: PropTypes.object,
     canRedo: PropTypes.func.isRequired,

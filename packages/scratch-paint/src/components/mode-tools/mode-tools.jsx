@@ -181,6 +181,8 @@ const ModeToolsComponent = props => {
                     max={MAX_STROKE_WIDTH}
                     min="1"
                     type="number"
+                    aria-label={props.intl.formatMessage(currentMessage)}
+                    title={props.intl.formatMessage(currentMessage)}
                     value={currentBrushValue}
                     onSubmit={changeFunction}
                 />
@@ -236,6 +238,8 @@ const ModeToolsComponent = props => {
                     max={MAX_STROKE_WIDTH}
                     min="1"
                     type="number"
+                    aria-label={props.intl.formatMessage(messages.eraserSize)}
+                    title={props.intl.formatMessage(messages.eraserSize)}
                     value={currentEraserValue}
                     onSubmit={changeFunction}
                 />

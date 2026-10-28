@@ -69,7 +69,7 @@ test('Edit uses existing active-editor history and disables unavailable commands
 });
 
 test('editor-specific actions are contextual and every Code item has a receiver', () => {
-    const circuit = menu.slice(menu.indexOf('{this.props.activeTabIndex === 4 && ('), menu.indexOf('id="gui.menuBar.edit"'));
+    const circuit = menu.slice(menu.indexOf('{this.props.activeTabIndex === 4 &&'), menu.indexOf('id="gui.menuBar.edit"'));
     assert.equal([...circuit.matchAll(/'bw-circuit-file'/g)].length, 4);
     const code = menu.slice(menu.indexOf('{this.props.activeTabIndex === 3 && ('), menu.indexOf('<DeletionRestorer>'));
     for (const name of ['find', 'go-to-line', 'select-all']) {

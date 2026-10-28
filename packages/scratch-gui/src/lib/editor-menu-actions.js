@@ -51,6 +51,7 @@ export const getEditorMenuItems = (surface, location) => {
     return Object.entries(actions).filter(([, action]) => action && action.location === location &&
         typeof action.label === 'string').map(([name, action]) => ({
         name, label: action.label, submenu: action.submenu || '',
+        ...(typeof action.checked === 'boolean' ? {checked: action.checked, ...(action.radio === true ? {radio: true} : {})} : {}),
         enabled: action.enabled === true && typeof action.run === 'function'
     }));
 };
@@ -64,6 +65,5 @@ export const runEditorMenuAction = (surface, name) => {
     // Re-read current availability at the click, rather than trusting menu state.
     const action = resolveAction(surface, name);
     if (!action || action.enabled !== true || typeof action.run !== 'function') return false;
-    action.run();
-    return true;
+    return action.run() !== false;
 };

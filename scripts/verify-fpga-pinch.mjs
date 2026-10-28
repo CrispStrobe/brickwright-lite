@@ -53,7 +53,7 @@ try {
   // Visible AND selected: the panel is forceRenderTabPanel, so its controls sit
   // in the DOM while another tab is on screen. Presence proves nothing.
   const fpgaIsUp = () => page.evaluate(() => {
-    const el = document.querySelector('[data-testid="bw-fpga-ic-gate"]');
+    const el = document.querySelector('[data-testid="bw-fpga-workspace"]');
     if (!el || el.getBoundingClientRect().width === 0) return false;
     const t = [...document.querySelectorAll('[role="tab"]')];
     return t[5] && t[5].getAttribute('aria-selected') === 'true';
@@ -66,7 +66,7 @@ try {
         new CustomEvent('bw-activate-tab', { detail: { index: 5 } })));
     }
     const ready = await page.waitForFunction(() => {
-      const el = document.querySelector('[data-testid="bw-fpga-ic-gate"]');
+      const el = document.querySelector('[data-testid="bw-fpga-workspace"]');
       const tabs = [...document.querySelectorAll('[role="tab"]')];
       return Boolean(el && el.getBoundingClientRect().width > 0 &&
         tabs[5] && tabs[5].getAttribute('aria-selected') === 'true');
@@ -74,6 +74,8 @@ try {
     if (ready) break;
   }
 
+  await page.getByTestId('bw-fpga-workspace-design').click();
+  await page.getByTestId('bw-fpga-editor').selectOption('canvas');
   const canvas = page.getByTestId('bw-fpga-rf-canvas');
   await canvas.waitFor({ state: 'visible', timeout: 30000 });
   const box = await canvas.boundingBox();

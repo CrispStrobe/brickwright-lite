@@ -35,6 +35,7 @@ const german = {
         "fpgaHint": "⬢-FPGA-Tab anzeigen: Verilog für den Tang Nano 20K synthetisieren und die virtuelle Platine steuern",
         "legacyHint": "Vier archivierte SPIKE-Prime-Treiber zur Hardware-Fehlersuche in der Erweiterungsgalerie anzeigen"
     },
+    "paintEditor": {"outlineWidth": "Konturstärke (Pixel)"},
     "menuBar": {
         "gettingStarted": "Erste Schritte…",
         "lessons": "Lektionen…",

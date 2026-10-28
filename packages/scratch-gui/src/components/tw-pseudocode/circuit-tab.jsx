@@ -13,7 +13,8 @@ import {setProjectTitle} from '../../reducers/project-title';
 import {activateTab} from '../../reducers/editor-tab';
 import {noCircuitMessage} from '../../lib/example-device-only.js';
 import {getIsAnyCreatingNewState} from '../../reducers/project-state';
-import {activateUndoSurface, notifyUndoState, registerUndoSurface} from '../../lib/global-undo.js';
+import {activateUndoSurface, getUndoState, notifyUndoState, registerUndoSurface} from '../../lib/global-undo.js';
+import {notifyEditorMenuActions, registerEditorMenuActions} from '../../lib/editor-menu-actions.js';
 import {confirmAsync} from '../../lib/native-dialog.js';
 import {applyBenchTemperature, clampBenchTemperature, loadBenchTemperature, saveBenchTemperature} from
     '../../lib/bench-temperature.js';
@@ -179,6 +180,7 @@ class CircuitTab extends React.Component {
         this.handleRunnerChange = this.handleRunnerChange.bind(this);
         this.handleBenchTemperature = this.handleBenchTemperature.bind(this);
         this.handleCircuitReady = this.handleCircuitReady.bind(this);
+        this.handleDesignerMenuActions = this.handleDesignerMenuActions.bind(this);
         this.loadExample = this.loadExample.bind(this);
         this._boxRef = React.createRef();
         this._measureBox = this._measureBox.bind(this);
@@ -238,6 +240,9 @@ class CircuitTab extends React.Component {
     }
 
     componentDidMount () {
+        this._menuMounted = true;
+        this._designerMenuActions = [];
+        this.unregisterMenu = registerEditorMenuActions('circuit', () => this.editorMenuActions());
         this.subscribeCpxRuntime(this.props.vm?.runtime);
         // The Designer's own ↶ / ↷ buttons run its undo and redo (they also
         // refresh its view); the model's history (bw-circuit-ui model/history.js)
@@ -580,6 +585,8 @@ class CircuitTab extends React.Component {
     _findUndoButton = () => this._findHistoryButton('↶')
 
     componentDidUpdate (prevProps, prevState) {
+        if (prevProps.isVisible !== this.props.isVisible || prevProps.locale !== this.props.locale ||
+            prevState.panel !== this.state.panel) notifyEditorMenuActions();
         if (prevProps.vm?.runtime !== this.props.vm?.runtime) this.subscribeCpxRuntime(this.props.vm?.runtime);
         if (this.props.isVisible && !prevProps.isVisible) activateUndoSurface('circuit');
         // The event that opens this lazily rendered bench can precede the
@@ -679,6 +686,9 @@ class CircuitTab extends React.Component {
     }
 
     componentWillUnmount () {
+        this._menuMounted = false;
+        this._designerMenuActions = [];
+        if (this.unregisterMenu) this.unregisterMenu();
         this._cpxRuntime?.removeListener('CPX_STATE', this.handleCpxState);
         this._cpxInputs?.release();
         this._cpxInputs = null;
@@ -2128,6 +2138,7 @@ class CircuitTab extends React.Component {
                     onLoadExample={this.loadExample}
                     board={this.state.board || undefined}
                     debugState={this.state.debugState || undefined}
+                    onEditorMenuActions={this.handleDesignerMenuActions}
                     onCircuitReady={c => { window.__circuit = c; if (this.props.vm && this.props.vm.runtime) this.props.vm.runtime.circuitModel = c; this.handleCircuitReady(c); }}
                     circuitData={this.state.circuitData || undefined}
                     onBoardReady={(board) => {
@@ -2263,6 +2274,33 @@ class CircuitTab extends React.Component {
      * the designer's (which the Scratch VM's reporters read through
      * runtime.circuitBoard) and a debug runner's while its run lives.
      */
+    handleDesignerMenuActions (actions) {
+        if (!this._menuMounted) return;
+        this._designerMenuActions = Array.isArray(actions) ? actions : [];
+        notifyEditorMenuActions();
+    }
+
+    editorMenuActions () {
+        if (!this._menuMounted || this.props.isVisible !== true || getUndoState().surface !== 'circuit') return null;
+        const entries = Object.create(null);
+        // Older qualified CUI pins simply omit this optional publication. The
+        // original host File bridge remains available until supplier adoption.
+        for (const action of this._designerMenuActions || []) {
+            if (!action || ['undo', 'redo'].includes(action.name) || typeof action.name !== 'string' ||
+                typeof action.label !== 'string' || typeof action.run !== 'function' ||
+                !['file', 'edit'].includes(action.location)) continue;
+            entries[action.name] = {...action, enabled: action.enabled === true};
+        }
+        const de = String(this.props.locale || '').startsWith('de');
+        const panels = de ? [['designer', 'Designer'], ['warnings', 'Warnungen'], ['bom', 'Stückliste'], ['examples', 'Beispiele']] :
+            [['designer', 'Designer'], ['warnings', 'Warnings'], ['bom', 'Parts list'], ['examples', 'Examples']];
+        for (const [panel, label] of panels) {
+            entries[`host-panel-${panel}`] = {label, location: 'edit', submenu: de ? 'Ansichten' : 'Panels',
+                enabled: true, checked: this.state.panel === panel, radio: true, run: () => this.setState({panel})};
+        }
+        return entries;
+    }
+
     handleBenchTemperature (value) {
         const c = clampBenchTemperature(value);
         if (c === null) return;

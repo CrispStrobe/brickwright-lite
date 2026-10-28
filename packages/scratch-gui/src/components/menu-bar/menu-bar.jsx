@@ -276,8 +276,19 @@ class MenuBar extends React.Component {
     handleGlobalRedo () {
         redoActiveSurface();
     }
+    resolveAssetMenuSurface () {
+        const surface = this._activeEditorSurface;
+        const tab = this.props.activeTabIndex;
+        if (['pixel', 'tilemap', 'costumes'].includes(surface) && tab === 1) return surface;
+        if (surface === 'sounds' && tab === 2) return surface;
+        if (surface === 'circuit' && tab === 4) return surface;
+        // The Robot provider additionally requires the full tab's explicit
+        // visibility, so an unshown arena dock cannot supply commands here.
+        if (surface === 'robots') return surface;
+        return null;
+    }
     refreshAssetMenuItems () {
-        const surface = this.props.activeTabIndex === 1 ? this._activeEditorSurface : null;
+        const surface = this.resolveAssetMenuSurface();
         const assetFileItems = getEditorMenuItems(surface, 'file');
         const assetEditItems = getEditorMenuItems(surface, 'edit');
         if (JSON.stringify(assetFileItems) !== JSON.stringify(this.state.assetFileItems) ||
@@ -288,8 +299,8 @@ class MenuBar extends React.Component {
     handleAssetMenuAction (name, location) {
         if (location === 'file') this.props.onRequestCloseFile();
         else this.props.onRequestCloseEdit();
-        const surface = this._activeEditorSurface;
-        if (this.props.activeTabIndex !== 1 || !['pixel', 'tilemap'].includes(surface)) return false;
+        const surface = this.resolveAssetMenuSurface();
+        if (!surface) return false;
         if (!getEditorMenuItems(surface, location).some(item => item.name === name && item.enabled)) return false;
         return runEditorMenuAction(surface, name);
     }
@@ -302,7 +313,7 @@ class MenuBar extends React.Component {
             groups.get(item.submenu).push(item);
         }
         const renderItems = entries => entries.map(item => (
-            <MenuItem key={item.name} disabled={!item.enabled}
+            <MenuItem key={item.name} disabled={!item.enabled} checked={item.checked} radio={item.radio}
                 onClick={() => this.handleAssetMenuAction(item.name, location)}>{item.label}</MenuItem>
         ));
         return <MenuSection>{Array.from(groups, ([label, entries]) => label ? (
@@ -778,7 +789,7 @@ class MenuBar extends React.Component {
                                             </MenuItem>
                                         </MenuSection>
                                     )}
-                                    {this.props.activeTabIndex === 4 && (
+                                    {this.props.activeTabIndex === 4 && !this.state.assetFileItems.length && (
                                         <MenuSection>
                                             <MenuItem onClick={() => {
                                                 if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('bw-circuit-file', {detail: {action: 'load'}}));

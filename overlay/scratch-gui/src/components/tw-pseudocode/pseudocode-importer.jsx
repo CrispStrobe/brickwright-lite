@@ -1,4 +1,5 @@
 import React from 'react';
+import {Popup, toolStyles} from './sim-lab-toolbar.jsx';
 import {notifyEditorMenuActions, registerEditorMenuActions} from '../../lib/editor-menu-actions.js';
 import {clearControllerPanel} from '../../lib/controller-inputs.js';
 import PropTypes from 'prop-types';
@@ -89,6 +90,7 @@ const FPGA_TAB_INDEX = 5;
 
 const L10N = {
     en: {
+        actionFiles: 'Files', actionPrograms: 'Program and export', actionExamples: 'Examples',
         fileMenuTitle: 'Open, save, import, examples and reference',
         makeCircuit: '⚙ Make this a circuit',
         makeCircuitTitle: e => `Build "${e}" as logic gates in the FPGA tab — it is a boolean expression over 1-bit pins, so it needs no program to run`,
@@ -426,6 +428,7 @@ const L10N = {
         }
     },
     de: {
+        actionFiles: 'Dateien', actionPrograms: 'Programm und Export', actionExamples: 'Beispiele',
         fileMenuTitle: 'Öffnen, speichern, importieren, Beispiele und Referenz',
         makeCircuit: '⚙ Daraus eine Schaltung bauen',
         makeCircuitTitle: e => `„${e}" im FPGA-Tab als Logikgatter bauen — ein boolescher Ausdruck über 1-Bit-Pins, der kein Programm zum Laufen braucht`,
@@ -5598,25 +5601,27 @@ class PseudocodeImporter extends React.Component {
     }
 
     renderActionMenu (csel) {
-        const item = {...csel, display: 'block', width: '100%', boxSizing: 'border-box',
-            textAlign: 'left', cursor: 'pointer', border: 'none', background: 'transparent'};
+        const item = {...csel, ...toolStyles(false).button, display: 'flex', alignItems: 'center', justifyContent: 'flex-start',
+            width: '100%', boxSizing: 'border-box', textAlign: 'left', cursor: 'pointer', height: 'auto',
+            minHeight: 32, padding: '6px 8px', whiteSpace: 'normal', fontSize: 12};
         return (
-            <details style={{position: 'relative', alignSelf: 'center'}} data-testid="bw-code-actions"
-                onToggle={event => {
-                    // The menu and its catalog open leftwards from the ⋯; with too
-                    // little room on the left (a narrow row), open them rightwards.
-                    const right = event.currentTarget.getBoundingClientRect().right;
-                    this.setState({actionsOpen: event.currentTarget.open, actionsAlignLeft: right < 360});
-                }}>
-                <summary style={{...csel, cursor: 'pointer', listStyle: 'none', border: '1px solid #cbd5e1',
-                    background: '#f1f5f9', whiteSpace: 'nowrap'}} title={L10N[pickLocale(this.props.locale)].fileMenuTitle}>
-                    ⋯
-                </summary>
-                <div style={{position: 'absolute', top: '100%', ...(this.state.actionsAlignLeft ? {left: 0} : {right: 0}), zIndex: 70, marginTop: 4,
-                    width: 220, padding: 6, background: '#fff', border: '1px solid #cbd5e1', borderRadius: 8,
-                    boxShadow: '0 8px 24px rgba(15,23,42,.2)', display: 'flex', flexDirection: 'column', gap: 2}}>
+            <Popup id="code-actions" anchorTestId="bw-code-actions" testId="bw-code-actions-menu"
+                open={this.props.isVisible !== false && this.state.actionsOpen} align="right" width={260} closeOnPick={false} keepMounted
+                label={L10N[pickLocale(this.props.locale)].fileMenuTitle}
+                onToggle={() => this.setState(state => ({actionsOpen: !state.actionsOpen}))}
+                onClose={() => this.setState({actionsOpen: false})}
+                button={<button type="button" data-testid="bw-code-actions-trigger" style={toolStyles(false).button}
+                    title={L10N[pickLocale(this.props.locale)].fileMenuTitle}
+                    aria-label={L10N[pickLocale(this.props.locale)].fileMenuTitle}>⋯</button>}>
+                <div style={{display: 'flex', flexDirection: 'column', gap: 2}}>
+                    <strong style={{padding: '4px 8px', fontSize: 11, color: '#64748b'}}>{this.L.actionFiles}</strong>
                     <label style={item} title={this.L.openFileTitle(`${CODE_ACCEPT},${IMPORT_ACCEPT}`)}
-                        data-testid="bw-open-file" aria-disabled={this.state.busy}>
+                        data-testid="bw-open-file" role="button" tabIndex={this.state.busy ? -1 : 0} aria-disabled={this.state.busy}
+                        onKeyDown={event => {
+                            if (event.key !== 'Enter' && event.key !== ' ') return;
+                            event.preventDefault();
+                            if (!this.state.busy) this._codeFileInput.current?.click();
+                        }}>
                         {this.L.openFile}
                         <input ref={this._codeFileInput} type="file" accept={`${CODE_ACCEPT},${IMPORT_ACCEPT}`} style={{display: 'none'}}
                             disabled={this.state.busy} onChange={this.openCodeFile} />
@@ -5625,6 +5630,7 @@ class PseudocodeImporter extends React.Component {
                         title={this.L.saveFileTitle(this.saveFileName())} data-testid="bw-save-file">
                         {this.L.saveFile}
                     </button>
+                    <strong style={{padding: '8px 8px 4px', marginTop: 4, borderTop: '1px solid #e2e8f0', fontSize: 11, color: '#64748b'}}>{this.L.actionPrograms}</strong>
                     {this.state.lang === 'micropython' ? (
                         <button type="button" onClick={() => this.downloadMicrobitHex()} style={item}
                             disabled={this.state.busy || !this.state.buffers.micropython.trim() || /^# ===/.test(this.state.buffers.micropython)}
@@ -5690,6 +5696,7 @@ class PseudocodeImporter extends React.Component {
                         title={this.L.arcExportTitle} disabled={this.state.busy}
                         data-testid="bw-makecode-arcade-export">{this.L.arcExport}</button>
                     <div style={{borderTop: '1px solid #e2e8f0', margin: '3px 0'}} />
+                    <strong style={{padding: '8px 8px 4px', marginTop: 4, borderTop: '1px solid #e2e8f0', fontSize: 11, color: '#64748b'}}>{this.L.actionExamples}</strong>
                     {this.currentDevice() ? this.renderCatalogControl(item) :
                         this.state.bundledExamplesStatus === 'error' ? (
                             <button type="button" onClick={this._loadBundledExamples} style={item}
@@ -5719,7 +5726,7 @@ class PseudocodeImporter extends React.Component {
                         🖼️ {this.L.customArt}{this.state.uploads.length ? ` (${this.state.uploads.length})` : ''}
                     </button>
                 </div>
-            </details>
+            </Popup>
         );
     }
 

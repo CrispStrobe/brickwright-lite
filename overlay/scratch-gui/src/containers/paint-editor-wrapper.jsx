@@ -4,6 +4,8 @@ import {FormattedMessage} from 'react-intl';
 import bindAll from 'lodash.bindall';
 import VM from 'scratch-vm';
 import {inlineSvgFonts} from 'scratch-svg-renderer';
+import {getUndoState} from '../lib/global-undo.js';
+import {notifyEditorMenuActions, registerEditorMenuActions} from '../lib/editor-menu-actions.js';
 import {getCostumeDocument, resetCostumeDocument, setCostumeDocument, syncAnimationResources} from '../lib/bw-artwork-bundle';
 
 import {connect} from 'react-redux';
@@ -47,21 +49,69 @@ class PaintEditorWrapper extends React.Component {
     constructor (props) {
         super(props);
         bindAll(this, [
+            'handleEditorMenuActions',
+            'editorMenuActions',
             'handleUpdateImage',
             'handleUpdateName',
             'loadEditor'
         ]);
         this.state = {PaintEditor: null, loadError: null};
         this.mounted = false;
+        this.menuChannels = new Map();
         this.loadGeneration = 0;
     }
     componentDidMount () {
         this.mounted = true;
+        this.unregisterMenu = registerEditorMenuActions('costumes', this.editorMenuActions);
         this.loadEditor();
     }
     componentWillUnmount () {
         this.mounted = false;
+        this.menuChannels.clear();
+        if (this.unregisterMenu) this.unregisterMenu();
         this.loadGeneration++;
+    }
+    componentDidUpdate (prevProps, prevState) {
+        if (prevProps.imageId !== this.props.imageId || prevProps.isSelectedEditor !== this.props.isSelectedEditor ||
+            prevProps.selectedCostumeIndex !== this.props.selectedCostumeIndex ||
+            prevProps.getFileMenuActions !== this.props.getFileMenuActions ||
+            prevState.PaintEditor !== this.state.PaintEditor || prevState.loadError !== this.state.loadError) notifyEditorMenuActions();
+    }
+    handleEditorMenuActions (channel, getter, owner) {
+        if (!this.mounted || !['paint', 'selection'].includes(channel) || typeof getter !== 'function' ||
+            owner !== this.props.imageId) return () => {};
+        const entry = {getter, owner};
+        this.menuChannels.set(channel, entry);
+        notifyEditorMenuActions();
+        return () => {
+            if (this.menuChannels.get(channel) !== entry) return;
+            this.menuChannels.delete(channel);
+            notifyEditorMenuActions();
+        };
+    }
+    editorMenuActions () {
+        const target = this.props.vm.editingTarget;
+        const costume = target?.sprite?.costumes?.[this.props.selectedCostumeIndex];
+        if (!this.mounted || !this.state.PaintEditor || this.state.loadError || this.props.isSelectedEditor !== true ||
+            getUndoState().surface !== 'costumes' || !costume || target.currentCostume !== this.props.selectedCostumeIndex ||
+            this.props.imageId !== `${target.id}${costume.skinId}`) return null;
+        const actions = Object.create(null);
+        const append = candidate => {
+            if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) return;
+            for (const [name, action] of Object.entries(candidate)) {
+                if (['__proto__', 'constructor', 'prototype'].includes(name) || !action || typeof action.label !== 'string' || typeof action.run !== 'function' ||
+                    !['file', 'edit'].includes(action.location) || typeof action.enabled !== 'boolean' ||
+                    Object.prototype.hasOwnProperty.call(actions, name)) continue;
+                actions[name] = action;
+            }
+        };
+        try {
+            if (typeof this.props.getFileMenuActions === 'function') append(this.props.getFileMenuActions());
+            for (const {getter, owner} of this.menuChannels.values()) {
+                if (owner === this.props.imageId) append(getter());
+            }
+        } catch (error) { return null; }
+        return actions;
     }
     loadEditor () {
         const generation = ++this.loadGeneration;
@@ -89,7 +139,10 @@ class PaintEditorWrapper extends React.Component {
         });
     }
     shouldComponentUpdate (nextProps, nextState) {
-        return this.props.imageId !== nextProps.imageId ||
+        return this.props.isSelectedEditor !== nextProps.isSelectedEditor ||
+            this.props.getFileMenuActions !== nextProps.getFileMenuActions ||
+            this.props.selectedCostumeIndex !== nextProps.selectedCostumeIndex ||
+            this.props.imageId !== nextProps.imageId ||
             this.props.rtl !== nextProps.rtl ||
             this.props.name !== nextProps.name ||
             this.state.PaintEditor !== nextState.PaintEditor ||
@@ -138,6 +191,8 @@ class PaintEditorWrapper extends React.Component {
         if (!PaintEditor) return null;
         const {
             selectedCostumeIndex,
+            getFileMenuActions, // eslint-disable-line no-unused-vars
+            isSelectedEditor, // eslint-disable-line no-unused-vars
             installReducer, // eslint-disable-line no-unused-vars
             vm,
             ...componentProps
@@ -146,6 +201,8 @@ class PaintEditorWrapper extends React.Component {
         return (
             <PaintEditor
                 {...componentProps}
+                onEditorMenuActions={this.handleEditorMenuActions}
+                editorMenuOwner={this.props.imageId}
                 artworkDocument={getCostumeDocument(vm.editingTarget.sprite.costumes[selectedCostumeIndex])}
                 image={vm.getCostume(selectedCostumeIndex)}
                 onUpdateImage={this.handleUpdateImage}
@@ -160,6 +217,8 @@ PaintEditorWrapper.propTypes = {
     imageFormat: PropTypes.string.isRequired,
     imageId: PropTypes.string.isRequired,
     editorTools: PropTypes.node,
+    getFileMenuActions: PropTypes.func,
+    isSelectedEditor: PropTypes.bool,
     installReducer: PropTypes.func,
     name: PropTypes.string,
     rotationCenterX: PropTypes.number,

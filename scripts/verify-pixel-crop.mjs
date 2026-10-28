@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import {pixelControl} from './lib-pixel-controls.mjs';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {mkdtempSync} from 'node:fs';
@@ -62,7 +63,7 @@ try {
     assert.equal(await layerRows.count(), beforeMenuLayer, 'Edit > Undo restores layer count');
 
     await page.getByTestId('bw-pixel-layers-toggle').click();
-    await page.getByTestId('bw-pixel-colour-10').click();
+    await (await pixelControl(page, 'bw-pixel-colour-10')).click();
     await drawPixel(page, 3, 3);
     await page.getByTestId('bw-pixel-frames-toggle').click();
     await page.getByTestId('bw-pixel-add-frame').click();
@@ -74,7 +75,7 @@ try {
     assert.equal(await frameButtons.count(), beforeMenuFrame, 'Edit > Undo restores frame count');
 
     await page.getByTestId('bw-pixel-frames-toggle').click();
-    await page.getByTestId('bw-pixel-colour-11').click();
+    await (await pixelControl(page, 'bw-pixel-colour-11')).click();
     await drawPixel(page, 4, 4);
 
     await page.getByTestId('bw-pixel-tool-select').click();
