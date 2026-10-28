@@ -470,6 +470,8 @@
   },
   "jolt-physics/wasm-simd-compat": {
     "tests": [
+      "test/bw-sim-native-rotor-state-effort.test.mjs",
+      "test/bw-sim-rotor-inertia.test.mjs",
       "test/bw-sim-brick-buttons-guest.test.mjs",
       "test/bw-sim-teaching-presets.test.mjs",
       "test/bw-sim-arm-lift.test.mjs",
