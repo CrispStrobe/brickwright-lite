@@ -109,7 +109,10 @@ rules above.
 - NXT (ROBOT-LAB-EV3-NXT.md, NXT-PROTOCOL-FACTS.md "still unverified"): ultrasonic value with
   no echo (we use 255), echoes 1–7, the interval default, whether off mode keeps the last
   reading; firmware timing after SETINPUTMODE and for I²C transactions (we complete at
-  once); reply to an unknown system command (we answer 0xBE).
+  once). These remain documented as unverified there, with the reason.
+- Settled: the reply to an unknown system command. Firmware 1.29 returns status 0x02 with
+  the opcode and stale bytes (NXT-PROTOCOL-FACTS.md §Disagreements, #1489); the Virtual NXT
+  deliberately keeps 0xBE.
 - NXT `.rxe` VM (NXT-RXE-VM.md): FLATTEN/UNFLATTEN and standard virtual-file calls
   (0–8, 47) are implemented; Bluetooth, IOMapRead/Write, colour sensor, datalog and
   pictures remain refused by name. File calls share bounded virtual flash, with
