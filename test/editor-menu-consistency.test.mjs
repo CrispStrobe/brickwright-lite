@@ -80,7 +80,8 @@ test('editor-specific actions are contextual and every Code item has a receiver'
 
 test('all changed GUI overlays match their runtime package mirrors', () => {
     for (const file of ['components/menu-bar/menu-bar.jsx', 'components/menu/menu.jsx', 'components/menu/menu.css',
-        'lib/codemirror-editor.jsx']) {
+        'lib/codemirror-editor.jsx', 'lib/editor-menu-actions.js',
+        'components/tw-pseudocode/pseudocode-importer.jsx']) {
         assert.equal(read(`overlay/scratch-gui/src/${file}`), read(`packages/scratch-gui/src/${file}`), file);
     }
 });
@@ -89,7 +90,8 @@ test('all changed GUI overlays match their runtime package mirrors', () => {
 test('new menu commands have German labels through the shared chrome catalog', async () => {
     const {chromeMessages} = await import('../overlay/scratch-gui/src/lib/bw-chrome-messages.js');
     for (const [key, label] of Object.entries({findReplace: 'Suchen und ersetzen…',
-        goToLine: 'Zu Zeile springen…', selectAll: 'Alles auswählen'})) {
+        goToLine: 'Zu Zeile springen…', selectAll: 'Alles auswählen',
+        openCodeFile: 'Code-Datei öffnen…', saveCodeFile: 'Code speichern unter…'})) {
         assert.equal(chromeMessages.de[`gui.menuBar.${key}`], label);
     }
 });

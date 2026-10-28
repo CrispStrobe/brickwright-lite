@@ -54,6 +54,8 @@ const german = {
         "saveProject": "Projekt speichern",
         "saveProjectAs": "Projekt speichern unter…",
         "openProjectError": "Das Projekt konnte nicht geöffnet werden: {error}",
+        "openCodeFile": "Code-Datei öffnen…",
+        "saveCodeFile": "Code speichern unter…",
         "openCircuit": "Schaltung öffnen…",
         "saveCircuit": "Schaltung speichern",
         "importCircuit": "Schaltung importieren…",

@@ -86,6 +86,7 @@ import collectMetadata from '../../lib/collect-metadata';
 
 import styles from './menu-bar.css';
 import {activateUndoSurface, redoActiveSurface, subscribeUndoState, undoActiveSurface} from '../../lib/global-undo.js';
+import {editorMenuActionEnabled, runEditorMenuAction, subscribeEditorMenuActions} from '../../lib/editor-menu-actions.js';
 
 import mystuffIcon from './icon--mystuff.png';
 import profileIcon from './icon--profile.png';
@@ -210,6 +211,8 @@ class MenuBar extends React.Component {
             globalCanUndo: false,
             globalCanRedo: false,
             undoSurface: 'blocks',
+            codeOpenAvailable: false,
+            codeSaveAvailable: false,
             // Desktop app: File > Load/Save use native project documents (lib/tauri-bridge.js).
             nativeDocuments: false,
             recentProjects: []
@@ -230,11 +233,19 @@ class MenuBar extends React.Component {
             this.setState({globalCanUndo: canUndo, globalCanRedo: canRedo, undoSurface: label});
         });
         this.activateTabUndoSurface();
+        this._unsubscribeFileActions = subscribeEditorMenuActions(() => {
+            const codeOpenAvailable = editorMenuActionEnabled('code', 'open');
+            const codeSaveAvailable = editorMenuActionEnabled('code', 'save');
+            if (codeOpenAvailable !== this.state.codeOpenAvailable || codeSaveAvailable !== this.state.codeSaveAvailable) {
+                this.setState({codeOpenAvailable, codeSaveAvailable});
+            }
+        });
     }
     componentWillUnmount () {
         this._mounted = false;
         document.removeEventListener('keydown', this.handleKeyPress);
         if (this._unsubscribeUndo) this._unsubscribeUndo();
+        if (this._unsubscribeFileActions) this._unsubscribeFileActions();
     }
     componentDidUpdate (prevProps) {
         if (prevProps.activeTabIndex !== this.props.activeTabIndex) this.activateTabUndoSurface();
@@ -252,6 +263,11 @@ class MenuBar extends React.Component {
     }
     handleGlobalRedo () {
         redoActiveSurface();
+    }
+    handleCodeFileAction (action) {
+        this.props.onRequestCloseFile();
+        if (this.props.activeTabIndex !== 3) return false;
+        return runEditorMenuAction('code', action);
     }
     handleCodeEditorCommand (command) {
         this.props.onRequestCloseEdit();
@@ -686,6 +702,22 @@ class MenuBar extends React.Component {
                                         )}
                                     </MenuSection>
                                     {/* Editor files belong to their editor; project files stay global. */}
+                                    {this.props.activeTabIndex === 3 && (
+                                        <MenuSection>
+                                            <MenuItem
+                                                disabled={!this.state.codeOpenAvailable}
+                                                onClick={() => this.handleCodeFileAction('open')}
+                                            >
+                                                <FormattedMessage id="gui.menuBar.openCodeFile" defaultMessage="Open code file…" />
+                                            </MenuItem>
+                                            <MenuItem
+                                                disabled={!this.state.codeSaveAvailable}
+                                                onClick={() => this.handleCodeFileAction('save')}
+                                            >
+                                                <FormattedMessage id="gui.menuBar.saveCodeFile" defaultMessage="Save code as…" />
+                                            </MenuItem>
+                                        </MenuSection>
+                                    )}
                                     {this.props.activeTabIndex === 4 && (
                                         <MenuSection>
                                             <MenuItem onClick={() => {

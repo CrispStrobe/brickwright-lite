@@ -1,4 +1,5 @@
 import React from 'react';
+import {notifyEditorMenuActions, registerEditorMenuActions} from '../../lib/editor-menu-actions.js';
 import {clearControllerPanel} from '../../lib/controller-inputs.js';
 import PropTypes from 'prop-types';
 import {connect} from 'react-redux';
@@ -1285,6 +1286,7 @@ class PseudocodeImporter extends React.Component {
             catalog: null, catalogError: null, showCatalog: false, exampleFilter: '', actionsOpen: false,
             bundledExamplesStatus: 'idle'};
         this._cmEditor = null;
+        this._codeFileInput = React.createRef();
         // Cache compiled ASM by source hash so tab switching doesn't recompile.
         this._asmCache = {hash: null, asm: '', lineMap: null};
         this.handleFiles = this.handleFiles.bind(this);
@@ -1317,6 +1319,7 @@ class PseudocodeImporter extends React.Component {
 
     componentDidMount () {
         this._unmounted = false;
+        this._unregisterFileMenu = registerEditorMenuActions('code', () => this.codeFileMenuActions());
         window.addEventListener('bw-microbit-run-request', this._onMicrobitRunRequest);
         // CodeMirror arrives when the tab is first shown (_reveal), not now:
         // every TabPanel is force-rendered, so "mounted" is every first paint.
@@ -1558,6 +1561,8 @@ class PseudocodeImporter extends React.Component {
     }
 
     componentDidUpdate (prevProps, prevState) {
+        if (prevProps.isVisible !== this.props.isVisible || prevState.busy !== this.state.busy ||
+            prevState.revealed !== this.state.revealed) notifyEditorMenuActions();
         if (this.props.isVisible && !this.state.revealed) this._reveal();
         // Tools may have opened while a hardware device was selected. If the
         // user then chooses "none" without closing it, onToggle does not fire
@@ -2099,6 +2104,18 @@ class PseudocodeImporter extends React.Component {
     // Save the code ITSELF, comments and all. The .sb3 round-trip preserves a
     // program but not a single comment — blocks carry no file-level text — so
     // a documented source can only survive as its own file.
+    codeFileMenuActions () {
+        if (this._unmounted || !this.props.isVisible || !this.state.revealed) return null;
+        return {
+            open: {
+                enabled: !this.state.busy && !!this._codeFileInput.current,
+                run: () => this._codeFileInput.current.click()
+            },
+            // Match the toolbar: saving a snapshot is allowed while compiling.
+            save: {enabled: true, run: this.saveCodeFile}
+        };
+    }
+
     saveCodeFile () {
         const code = this.activeCode() || '';
         if (!code.trim()) { this.setState({status: this.L.saveEmpty}); return; }
@@ -2596,6 +2613,7 @@ class PseudocodeImporter extends React.Component {
 
     componentWillUnmount () {
         this._unmounted = true;
+        if (this._unregisterFileMenu) this._unregisterFileMenu();
         this._makeCodeRequest = null;
         const vm = this.props.vm;
         if (vm && vm.runtime && this._onProjectChanged) {
@@ -5592,7 +5610,7 @@ class PseudocodeImporter extends React.Component {
                     <label style={item} title={this.L.openFileTitle(`${CODE_ACCEPT},${IMPORT_ACCEPT}`)}
                         data-testid="bw-open-file" aria-disabled={this.state.busy}>
                         {this.L.openFile}
-                        <input type="file" accept={`${CODE_ACCEPT},${IMPORT_ACCEPT}`} style={{display: 'none'}}
+                        <input ref={this._codeFileInput} type="file" accept={`${CODE_ACCEPT},${IMPORT_ACCEPT}`} style={{display: 'none'}}
                             disabled={this.state.busy} onChange={this.openCodeFile} />
                     </label>
                     <button type="button" onClick={this.saveCodeFile} style={item}

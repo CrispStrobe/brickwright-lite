@@ -162,9 +162,30 @@ try {
 
     await openMenu('File');
     check(await menuItem('Open circuit…').count() === 0, 'Code File menu excludes Circuit actions');
+    check(await menuItem('Open code file…').getAttribute('aria-disabled') !== 'true', 'Code File > Open is ready');
+    check(await menuItem('Save to your computer').isVisible(), 'project download remains available beside Code files');
+    const chooseFile = page.waitForEvent('filechooser');
+    await menuItem('Open code file…').click();
+    const chooser = await chooseFile;
+    const importedSource = '# menu file roundtrip — Grüße\nSPRITE Cat:\n  WHEN flag clicked:\n    say "menu_file_probe"\n';
+    await chooser.setFiles({name: 'menu-file.bw', mimeType: 'text/plain', buffer: Buffer.from(importedSource)});
+    await page.waitForFunction(() => document.querySelector('.cm-content')?.textContent.includes('menu_file_probe'));
+    await openMenu('File');
+    const downloaded = page.waitForEvent('download');
+    await menuItem('Save code as…').click();
+    const download = await downloaded;
+    const stream = await download.createReadStream();
+    if (!stream) throw new Error('Code menu download has no readable bytes');
+    const chunks = [];
+    for await (const chunk of stream) chunks.push(Buffer.from(chunk));
+    check(download.suggestedFilename() === 'program.bw', 'Code File > Save uses the actual filename policy');
+    check(Buffer.concat(chunks).equals(Buffer.from(importedSource)),
+        'Code File open/save preserves the exact source bytes, comments and Unicode');
+    await openMenu('File');
     await page.keyboard.press('Escape');
     await page.getByRole('tab', {name: 'Circuit', exact: true}).click();
     await openMenu('File');
+    check(await menuItem('Open code file…').count() === 0, 'Circuit File menu excludes Code actions');
     for (const label of ['Open circuit…', 'Save circuit', 'Import circuit…', 'Export circuit…']) {
         check(await menuItem(label).isVisible(), `Circuit File menu exposes ${label}`);
     }
