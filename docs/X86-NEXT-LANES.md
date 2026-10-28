@@ -2,41 +2,43 @@
 
 Updated 2026-10-27. Shared CPU/device work belongs in bw-board; UI behavior belongs here. Start with the [board checkpoint and seven implementation lanes](https://github.com/CrispStrobe/bw-board/blob/master/docs/X86-NEXT-LANES.md), [GUI guide](I80386-GUI.md), [loading scope](X86-LOADING-SCOPE.md), and [generated language/device matrix](generated/LANGUAGE-DEVICE-MATRIX.md). Refresh both default branches and inspect completed receipts before repeating a task.
 
-## Current handoff (2026-10-27)
+## Current handoff (2026-10-28)
 
 This section is the current handoff. Older dated sections below remain historical
-records. This wrap-up changes documentation only; it adopts no CPU, package,
-workflow or unqualified guest result.
+records. Lanes 2 and 3 of the 2026-10-27 handoff are finished; lane 1 is the
+only open x86 lane, and three optional follow-ups are scoped after it.
 
-### Done, and still pending
+### Done since 2026-10-27
 
-- The current x86 candidate is [PR1318](https://github.com/CrispStrobe/brickwright-lite/pull/1318),
-  head `5981b6348d543658ac9099e2c6404b998e040376`, tree
-  `459d7030b0e219a9e820f56622ecd5165279bd25`. It normally merges the previous
-  candidate with main `52b48a639f806ae866253a52105d4ee05dacdb3c`. Its existing
-  source changes, reviewed profiles and supplier pins were preserved. Seven
-  affected pin/history controls and three publication controls passed.
-- **That source candidate is not merged or qualified.** Fresh
-  [Build CI](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40452107879)
-  is pending. The GUI, vendor and native-font control workflows passed; frontend
-  job `122017801217` was still queued at the last wrap-up observation. A successful
-  control job is not actual browser, runtime, guest or whole-head acceptance.
-- The predecessor's [Circuit UX job](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40439219786/job/121975783533)
-  failed with `ADC_POINT_REARM_REUSED_RECORD`. Its diagnostic recorded a new
-  handle, but capture and selector were still in envelope mode where sample was
-  expected. Handle reuse and the runtime cause are not established. The newer
-  qualified publication waits were composed into PR1318; their adoption does not
-  prove resolution. Preserve the failure and qualify the new candidate.
-- The separately versioned finite V9 inventory source is prepared in PR1318.
-  It keeps the resolver in the strict regular-file role and preserves the
-  historical V8 failure reader. **V9 is armed in the candidate but unselected; actual-V8 GUI acceptance is
-  also pending.** No label, request, runtime or success may be inferred from
-  prepared source or manufactured controls. The consumed V7/V8 attempts stay spent.
-- Main selects board `836867513c3e7fac420ddaa32c17e1c7b6d3e513` in
-  [vendor-pins.json](../vendor-pins.json). This handoff moves no pin. Board master
-  and an unmerged app candidate do not identify the installed consumer.
+- **Board read16 fast path measured and adopted.** The bw-board
+  [paired-v2 plan](https://github.com/CrispStrobe/bw-board/blob/master/docs/I80386-READ16-PAIRED-V2-PLAN.md)
+  was claimed (board PR712) and implemented (PR714, path fix PR716). One admitted
+  hosted capture, [run 40531608266](https://github.com/CrispStrobe/bw-board/actions/runs/40531608266),
+  ran 18 children of ten million retirements on one Intel Xeon Platinum 8370C
+  runner. The standalone reader admitted it: all architecture/device goldens
+  passed; CPU A/B median **1.0685**, minimum **1.0509** (every pair > 1), wall
+  B/A median **0.9365**. Gate PASS. The one capfit attempt before it,
+  run 40490918699, failed before measuring (harness path bug) and is retained.
+  The five-line contiguous-page `size === 2` arm of `_readLinear` was then
+  adopted in board PR718 (merged `8785e4688cc308b34fea434c1734523caa621f74`)
+  after every enabled exact-head check, including the full tier and the
+  x86-xv6 protected guest job. This is an authored-loop result only: no
+  physical 386 timing, whole-OS or general-workload speed claim.
+- **Lite consumes it.** [PR1503](https://github.com/CrispStrobe/brickwright-lite/pull/1503)
+  moved the board pin from `c7bcbe4b` to `8785e468` on all current-role surfaces
+  (merged `e6fa377008c677b6dcd24f177453d4118955666d`, all 38 enabled checks
+  including the full browser tier). `vendor-pins.json` now selects board
+  `8785e4688cc308b34fea434c1734523caa621f74`.
+- **Protected-mode VM86 common-context fixture reached.** Board PR713
+  (merged `4c793d1d6fe68c1d36e8f43694c16026928a2ad7`) compares the ordinary JS
+  CPU with Bochs CPU3 on one frozen VM86 context. Its finite-fixture boundary
+  is unchanged: no full-OS or enhanced-mode claim.
+- **Process deviation, recorded.** Board PR715 (the paired-v2 request file)
+  merged while its "full CI requested" tier gate was red, because `ci:full` had
+  been removed under a later-reversed instruction. All its other checks
+  passed, and PR718's full tier on a later base was entirely green.
 
-### Lane 1: close current GUI qualification first
+### Lane 1: close current GUI qualification first (open, owned by the PR1318 lane)
 
 **Scope:** the existing PR1318 lane and its claimed paths. Start with
 [`lanes/2026-10-27-x86-finite-v9-resolver-role.md`](../lanes/2026-10-27-x86-finite-v9-resolver-role.md),
@@ -45,11 +47,18 @@ workflow or unqualified guest result.
 `.github/workflows/i80386-hdd-gui-actual.yml` at the actual candidate head.
 Main's older producer is not the prepared V9 implementation.
 
+**Base moved.** Main changed the board pin to `8785e468` (PR1503), and that
+commit also changed the `BOARD` constants in both GUI scripts above, which
+PR1318 edits too. Expect a conflict there. Resolve it by normally merging
+current main, keeping PR1318's reviewed changes plus main's new pin, and
+requalify the merged head: a gate frozen against the older base cannot grade
+the new one, and none of PR1318's earlier check results carry over.
+
 1. Refresh main, PR1318's exact head, every enabled check, full run/job pagination
    and raw numbered steps. Retain any terminal failure before changing source.
    Do not rerun an unchanged failure or borrow a previous head's success.
-   If integration is needed, normally merge current main, preserve other owners'
-   changes and all reviewed source/profile/pin bytes, and requalify the final head.
+   Normally merge current main, preserve other owners' changes and all reviewed
+   source/profile bytes, and requalify the final head.
 2. Admit the successful frontend Build's actual checkout, tree, dependency and
    source closure from its selected original. A proposed PR merge SHA or a later
    live PR base is not proof of what that Build checked out. Rebind preparations
@@ -65,82 +74,55 @@ Main's older producer is not the prepared V9 implementation.
    debugging in the actual browser. Require guest-rendered responses, terminal
    observations, independent original audit and finite cleanup.
 5. Merge PR1318 only after affected actual acceptance and every enabled final-head
-   check succeeds, with declared skips proved from source and the matched merge
-   head/tree/parents checked. Update the user guide and result boundary from the
-   observed result. Keep supplier adoption separate and coordinate its owner.
+   check succeeds (Lite code PRs need the `ci:full` label), with declared skips
+   proved from source and the matched merge head/tree/parents checked. Update the
+   user guide and result boundary from the observed result.
 
 **Done when:** the exact tested app/build/dependency identities and bounded
 FreeDOS export/reload/debug result are published, failures remain preserved, and
 that qualified source is on main. Source-only tests do not finish this lane.
 The public request body is already close to its cap; preserve its consumed
-markers and do not append routine status prose to it.
+markers and do not append routine status prose to it. The predecessor's
+Circuit UX `ADC_POINT_REARM_REUSED_RECORD` failure stays preserved; its cause
+is not established.
 
-### Lane 2: measure the longer word-read candidate
+### Follow-up A: observe the faster read path in the browser (optional, unclaimed)
 
-**Repository and ownership:** bw-board. Refresh master and its lane registry;
-[`docs/I80386-READ16-PAIRED-V2-PLAN.md`](https://github.com/CrispStrobe/bw-board/blob/master/docs/I80386-READ16-PAIRED-V2-PLAN.md)
-is still proposed and unclaimed. Merge a narrow documentation claim before code.
-Own only the new `scripts/i80386-read16-paired-v2/` fixture/controller/reader/
-controls/source rows/README, `test/i80386-read16-paired-v2.test.mjs`, its new
-workflow, and matching owned task/registry prose. Preserve existing CPU source,
-old evidence, producers, readers, pins and spent event identities.
+**Why:** the read16 speed-up is proven only for the authored board loop.
+Nothing has yet timed it inside the Lite app. **Scope:** claim a new
+`lanes/<date>-x86-read16-browser-observation.md`; add no product source.
+Use an existing free-media 386 scenario (xv6 or FreeDOS from the GUI guide)
+on current main and record guest-rendered output plus wall time for the same
+scenario at board `c7bcbe4b` and `8785e468`, on one host, in alternating order.
+**Done when:** both identities, host facts and the raw observations are
+published, whatever the result. Do not call this physical 386 timing.
 
-**Work:** implement ten million actual retirements of the authored five-operation
-ordinary-AT loop. Derive architecture and device goldens independently; reconcile
-clock configuration, scheduler debt/deadline, PIT, PIC, RTC and CGA before setting
-expectations. Do not scale the old one-million observations. AX stabilizes after
-15 loops and the complete AX/BX/memory tuple after 16, so the final tuple alone
-cannot prove the requested retirement count. Prove resource and output cap fit
-before selecting a new event and capture the actual parent host/runtime witness.
+### Follow-up B: next CPU hot path with the paired-v2 harness (optional, unclaimed)
 
-Keep 18 fresh children: four unscored `ABAB`, then seven measured pairs
-`AB BA AB BA BA AB BA`; separate 25,000-instruction throwaway warmup; one CPU,
-1 GiB without swap, 64 tasks and the 60-second child bound. Require median
-whole-child CPU A/B at least 1.03, **every** CPU ratio greater than one, and median
-wall B/A at most 1.02. Preserve failed pairs; no outlier removal, adaptive
-iterations or same-event replay.
+**Repository:** bw-board. The merged `scripts/i80386-read16-paired-v2/`
+harness (fixture, `run.py`, standalone `reader.py`, `controls.py`, default-off
+workflow `.github/workflows/i80386-read16-paired-v2.yml`) can grade a new CPU
+candidate. **Steps:** profile current master's authored loop first (the old
+profiles predate `8785e468`); claim one narrow CPU change plus a *new* harness
+namespace (copy, do not edit, the v2 files, so its frozen rows and request stay
+valid); freeze arm A = current master and arm B = the candidate in new source
+rows; keep the same gate (CPU median >= 1.03, every pair > 1, wall <= 1.02,
+18 children, 10M retirements); one capfit dispatch, then one paired dispatch,
+originals acquired once and audited with the standalone reader. Adoption then
+needs its own PR with every enabled check incl. `ci:full` and x86-xv6.
 
-**Done when:** independent controls, exact-head qualification, one admitted
-measurement, original audit and cleanup establish the declared result, including
-a retained negative result if the gate fails. The previous minimum ratio
-0.999455 failed; that candidate remains unadopted. Any later CPU adoption also
-requires fresh affected clean protected-guest qualification.
+### Follow-up C: tighten the paired-v2 device goldens (optional, unclaimed)
 
-The [ordinary-JS cost report](https://github.com/CrispStrobe/bw-board/blob/master/docs/I80386-CURRENT-AT-COST.md)
-records 4.521 MIPS core and 3.483 MIPS AT on an AMD EPYC 9V74 for its authored
-loop and pinned runtime. These are historical workload-specific measurements,
-not current VPS/Kaggle results or physical 16 MHz 386DX RTx calibration.
-
-### Lane 3: a bounded protected-mode oracle fixture
-
-**Repository and ownership:** bw-board. Refresh
-[its current task contract](https://github.com/CrispStrobe/bw-board/blob/master/docs/X86-NEXT-LANES.md)
-and claim a separate VM86 common-context/native-profile scope before source.
-Start with `test/i80386-task-vm86.test.mjs`, `test/i80386-vm86.test.mjs`,
-`test/fixtures/i80386-vm-task.S`, the three
-`scripts/compare-{pcjs,qemu,bochs}-i80386-task-vm86.mjs` adapters, and
-`scripts/bochs-cpu3-native-paged-pagefault/`. Reuse the current
-`scripts/i80386-ring3-int-iret/` input/reader patterns; do not duplicate landed
-cleanup V3. Propose a new `scripts/i80386-vm86-common-context/` fixture,
-contract/controller/reader/controls/README, corresponding test and workflow.
-Name any required existing native builder/provider/ABI edits explicitly in the
-claim; do not silently extend another profile's authority. Start guards disabled.
-
-**Work:** freeze one authored strict-386 reset/setup/trampoline with explicit
-GDT, IDT, TSS, stack and selected RAM input. Define the current native/reference
-profile and ABI, pin the exact executable/DSO/tool/source provenance, and derive
-expected pretransition, handler and return CPU/TSS/RAM words independently.
-Exercise positive and nonvacuous negative controls before a separately admitted
-clean hosted actual run, finite resource/terminal/cleanup joins and an independent
-original audit. A retained package or historical binary is not current execution
-authority. Keep later-feature profiles separate from strict 386DX.
-
-**Done when:** the same frozen guest/context is compared across the current
-ordinary JS and admitted oracle, with exact state/RAM and cleanup results or the
-first preserved discrepancy. Prior ring3 V2 was refused; QEMU's CS accessed-bit
-omission does not justify weakening CPU semantics. No full-OS, enhanced-mode,
-broad application, fresh external-corpus or performance claim follows from a
-finite fixture.
+The v2 reader asserts machine cycles, deadline/debt bounds, CGA frame count and
+retrace phase, the PIT fraction's range and no-I/O PIT/PIC/RTC/8042
+invariants. The exact PIT fractional carry, RTC phases and 8042 queue
+progression are recorded, not asserted, because no independent derivation
+exists. **Work:** derive them from `src/i8254.js`, the RTC and 8042 sources and
+the wake-horizon scheduler in `src/i8086-machine.js`, never from a child's
+output; check them against the two retained admitted originals of runs
+40521350218 and 40531608266 with a new reader version (keep the v2 reader
+unchanged). **Done when:** the new assertions pass on both originals and a
+deliberately perturbed copy is refused.
 
 ### User entry points and reporting
 
