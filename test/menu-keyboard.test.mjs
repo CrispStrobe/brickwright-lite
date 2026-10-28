@@ -50,3 +50,19 @@ test('keyboard trigger opens and focuses the first or last enabled item after re
         assert.equal(opened,4);
     }finally{globalThis.requestAnimationFrame=old;}
 });
+
+
+test('root horizontal arrows open the next menu through its actual button',()=>{
+    const s=setup();let focused=-1,clicked=-1,closed=0;
+    const triggers=[0,1,2].map(index=>({disabled:false,getClientRects:()=>[{}],focus:()=>{focused=index;},
+        click:()=>{clicked=index;},closest:()=>({querySelector:()=>s.menu})}));
+    s.menu.closest=()=>({querySelector:()=>triggers[1]});
+    s.menu.ownerDocument={querySelectorAll:()=>triggers};
+    const old=globalThis.requestAnimationFrame;globalThis.requestAnimationFrame=fn=>fn();
+    try{
+        handleMenuKeyDown(s.event('ArrowRight'),()=>closed++);
+        assert.equal(focused,2);assert.equal(clicked,2);assert.equal(closed,1);
+        handleMenuKeyDown(s.event('ArrowLeft'),()=>closed++);
+        assert.equal(focused,0);assert.equal(clicked,0);assert.equal(closed,2);
+    }finally{globalThis.requestAnimationFrame=old;}
+});

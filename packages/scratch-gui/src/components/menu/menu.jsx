@@ -64,7 +64,7 @@ Submenu.propTypes = {
     place: PropTypes.oneOf(['left', 'right'])
 };
 
-const MenuItem = ({children, className, expanded = false, disabled = false, onClick}) => {
+const MenuItem = ({children, className, ariaLabel, expanded = false, disabled = false, onClick}) => {
     const ref = React.useRef(null);
     const [keyboardOpen, setKeyboardOpen] = React.useState(false);
     const [keyboardClosed, setKeyboardClosed] = React.useState(false);
@@ -84,6 +84,7 @@ const MenuItem = ({children, className, expanded = false, disabled = false, onCl
         <li
             ref={ref}
             role="menuitem"
+            aria-label={ariaLabel}
             tabIndex={-1}
             className={classNames(styles.menuItem, styles.hoverable, className,
                 {[styles.expanded]: open, [styles.disabled]: disabled})}
@@ -127,6 +128,7 @@ const MenuItem = ({children, className, expanded = false, disabled = false, onCl
 };
 
 MenuItem.propTypes = {
+    ariaLabel: PropTypes.string,
     children: PropTypes.node,
     className: PropTypes.string,
     expanded: PropTypes.bool,

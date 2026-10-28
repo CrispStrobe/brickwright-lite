@@ -19,12 +19,32 @@ export const openMenuFromKeyboard = (event, open) => {
     requestAnimationFrame(() => focusMenuEdge(root?.querySelector('[role="menu"]'), last));
 };
 
+const cycleRootMenu = (menu, step, close) => {
+    const opener = menu.closest('[data-bw-menu-root]')?.querySelector('[data-bw-menu-trigger]');
+    if (!opener) return;
+    const triggers = Array.from(menu.ownerDocument.querySelectorAll('[data-bw-menu-trigger]'))
+        .filter(button => !button.disabled && button.getClientRects().length);
+    const index = triggers.indexOf(opener);
+    if (index < 0 || triggers.length < 2) return;
+    const next = triggers[(index + step + triggers.length) % triggers.length];
+    close?.();
+    next.focus();
+    next.click();
+    requestAnimationFrame(() => focusMenuEdge(next.closest('[data-bw-menu-root]')?.querySelector('[role="menu"]')));
+};
+
 export const handleMenuKeyDown = (event, close) => {
     if (event.target.matches?.('input, textarea, select, [contenteditable="true"]') &&
         !['Escape', 'Tab'].includes(event.key)) return;
     const menu = event.currentTarget;
+    const parentItem = menu.parentElement?.closest('[role="menuitem"]');
+    if (!parentItem && ['ArrowLeft', 'ArrowRight'].includes(event.key)) {
+        event.preventDefault();
+        event.stopPropagation();
+        cycleRootMenu(menu, event.key === 'ArrowRight' ? 1 : -1, close);
+        return;
+    }
     if (event.key === 'Escape' || event.key === 'Tab' || event.key === 'ArrowLeft') {
-        const parentItem = menu.parentElement?.closest('[role="menuitem"]');
         if (event.key === 'ArrowLeft' && !parentItem) return;
         if (event.key !== 'Tab') event.preventDefault();
         event.stopPropagation();
@@ -45,4 +65,4 @@ export const handleMenuKeyDown = (event, close) => {
 };
 
 export const menuTriggerStyle = {display: 'inline-flex', alignItems: 'center', height: '100%',
-    padding: 0, margin: 0, border: 0, background: 'none', color: 'inherit', font: 'inherit', cursor: 'pointer'};
+    padding: '0 0.25rem', margin: 0, border: 0, background: 'none', color: 'inherit', font: 'inherit', cursor: 'pointer'};

@@ -67,7 +67,7 @@ const SettingsMenu = ({intl, canChangeLanguage, canChangeTheme, isRtl, onRequest
     );
     return (
         <div
-            data-bw-menu-root=""
+            data-bw-menu-root="" style={{padding: 0}}
             className={classNames(menuBarStyles.menuBarItem, menuBarStyles.hoverable, menuBarStyles.themeMenu, {
                 [menuBarStyles.active]: settingsMenuOpen
             })}
@@ -89,7 +89,7 @@ const SettingsMenu = ({intl, canChangeLanguage, canChangeTheme, isRtl, onRequest
                 onRequestClose={onRequestClose}
             >
                 <MenuSection>
-                    <MenuItem expanded={workspaceOpen}>
+                    <MenuItem expanded={workspaceOpen} ariaLabel={intl.formatMessage({id: 'gui.workspace.heading', defaultMessage: 'Workspace'})}>
                         <div className={styles.groupRow} onClick={() => setWorkspaceOpen(value => !value)}>
                             <span>{t('gui.workspace.heading', 'Workspace')}</span>
                             <img className={styles.groupCaret} src={dropdownCaret} />
@@ -151,7 +151,7 @@ const SettingsMenu = ({intl, canChangeLanguage, canChangeTheme, isRtl, onRequest
                             id="gui.menuBar.reloadBrickwright"
                         />
                     </MenuItem>
-                    {(canChangeLanguage || canChangeTheme) && <MenuItem expanded={preferencesOpen}>
+                    {(canChangeLanguage || canChangeTheme) && <MenuItem expanded={preferencesOpen} ariaLabel={intl.formatMessage({id: 'gui.menuBar.preferences', defaultMessage: 'Preferences'})}>
                         <div className={styles.groupRow} onClick={() => setPreferencesOpen(value => !value)}>
                             <span>{t('gui.menuBar.preferences', 'Preferences')}</span>
                             <img className={styles.groupCaret} src={dropdownCaret} />

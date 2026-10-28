@@ -21,3 +21,28 @@ Enter/Space activation, Escape dismissal/focus return, disabled-item refusal.
 Check routing/currentness and actual editor effects; run build/browser suites in
 hosted CI or on an available Mac, not this shared VPS. Normal direct-main docs
 registration only; all enabled final-head product checks still required to merge.
+
+
+Implemented in the existing menu PR: 26 Pixel actions and 10 Tilemap actions,
+with transforms/layers/frames/tile tools grouped in submenus. File save labels
+identify artwork or tile-map destinations; project save stays separate. Import
+inputs stay mounted so menu actions work without first opening a hidden panel.
+Callbacks, confirmations, artwork algorithms and map serialization stay intact.
+
+File/Edit/Settings have real buttons. Shared menu roles, disabled semantics,
+Arrow/Home/End movement, root-menu cycling, submenu entry/exit, Enter/Space,
+Escape focus return and Tab exit are implemented. Native form fields retain
+cursor keys. Existing menu section classes are preserved.
+
+44 focused controls pass, and a bounded actual React DOM control exercises
+activation, disabled items, submenus and focus. It is not product qualification.
+Hosted chrome, Pixel crop and Tilemap painter journeys now exercise the actual
+menu routes while retaining their existing toolbar/save/reopen assertions.
+A separate animation-resource test needs the normal installed GUI/VM dependency
+tree and remains deferred to CI in a sparse source-only checkout.
+
+Next: refresh exact final-head PR #1536 and qualify every enabled build/browser
+check. Preserve any original failures; fix source causes without relaxed gates.
+Then matched-head merge and verify parents/tree. Further coverage (FPGA, widget,
+vector and sound editor commands) needs an actual-handler inventory and separate
+owner-boundary agreement; this checkpoint does not claim those menus complete.

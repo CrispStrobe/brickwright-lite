@@ -115,3 +115,18 @@ test('asset dispatch requires the current editor and current enabled descriptor'
     enabled=true;host.props.activeTabIndex=3;assert.equal(run.call(host,'save','file'),false);
     assert.deepEqual(calls,[['pixel','save']]);
 });
+
+
+test('menu snapshots cannot authorize a stale action after the editor changes', () => {
+    let enabled = true, calls = 0;
+    const unregister = registerEditorMenuActions('test-snapshot', () => ({save: {
+        label: 'Save', location: 'file', enabled, run: () => calls++
+    }}));
+    try {
+        const snapshot = getEditorMenuItems('test-snapshot', 'file');
+        assert.equal(snapshot[0].enabled, true);
+        enabled = false;
+        assert.equal(runEditorMenuAction('test-snapshot', snapshot[0].name), false);
+        assert.equal(calls, 0);
+    } finally {unregister();}
+});

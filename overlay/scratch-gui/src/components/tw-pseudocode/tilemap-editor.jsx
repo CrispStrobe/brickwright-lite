@@ -30,7 +30,7 @@ const L10N = {
         'tm.noneEditable': 'These layouts need a different editing path:', 'tm.notEditable': 'not editable', 'tm.paint': 'Paint', 'tm.erase': 'Erase', 'tm.fill': 'Fill',
         'tm.wall': 'Walls', 'tm.showWalls': 'Show walls', 'tm.undo': 'Undo', 'tm.redo': 'Redo',
         'tm.columns': 'Columns', 'tm.rows': 'Rows', 'tm.tileSize': 'Tile size', 'tm.resize': 'Resize',
-        'tm.tools': 'Tile tools', 'tm.tiles': 'Tiles', 'tm.tile': 'Tile {n}', 'tm.emptyTile': 'Tile 0 (empty)', 'tm.addTile': 'Add tile',
+        'tm.saveMenu': 'Save tile map to blocks', 'tm.revertMenu': 'Revert tile map', 'tm.tools': 'Tile tools', 'tm.tiles': 'Tiles', 'tm.tile': 'Tile {n}', 'tm.emptyTile': 'Tile 0 (empty)', 'tm.addTile': 'Add tile',
         'tm.removeTile': 'Remove tile', 'tm.colour': 'Colour {n}', 'tm.save': 'Save', 'tm.revert': 'Revert',
         'tm.saved': 'Saved into the block of {target}.', 'tm.saveFailed': 'Could not save: the block is gone or the level is invalid.',
         'tm.unsaved': 'Unsaved changes', 'tm.wallHint': 'Click cells to add walls; click a wall to remove it.',
@@ -52,7 +52,7 @@ const L10N = {
         'tm.noneEditable': 'Diese Grundrisse benötigen einen anderen Bearbeitungsweg:', 'tm.notEditable': 'nicht bearbeitbar', 'tm.paint': 'Malen', 'tm.erase': 'Radieren', 'tm.fill': 'Füllen',
         'tm.wall': 'Wände', 'tm.showWalls': 'Wände zeigen', 'tm.undo': 'Rückgängig', 'tm.redo': 'Wiederholen',
         'tm.columns': 'Spalten', 'tm.rows': 'Zeilen', 'tm.tileSize': 'Kachelgröße', 'tm.resize': 'Größe ändern',
-        'tm.tools': 'Kachelwerkzeuge', 'tm.tiles': 'Kacheln', 'tm.tile': 'Kachel {n}', 'tm.emptyTile': 'Kachel 0 (leer)', 'tm.addTile': 'Kachel hinzufügen',
+        'tm.saveMenu': 'Kachelkarte in Blöcken speichern', 'tm.revertMenu': 'Kachelkarte zurücksetzen', 'tm.tools': 'Kachelwerkzeuge', 'tm.tiles': 'Kacheln', 'tm.tile': 'Kachel {n}', 'tm.emptyTile': 'Kachel 0 (leer)', 'tm.addTile': 'Kachel hinzufügen',
         'tm.removeTile': 'Kachel entfernen', 'tm.colour': 'Farbe {n}', 'tm.save': 'Speichern', 'tm.revert': 'Verwerfen',
         'tm.saved': 'In den Block von {target} gespeichert.', 'tm.saveFailed': 'Speichern nicht möglich: Der Block fehlt oder das Level ist ungültig.',
         'tm.unsaved': 'Ungespeicherte Änderungen', 'tm.wallHint': 'Klicke Zellen an, um Wände zu setzen; ein Klick auf eine Wand entfernt sie.',
@@ -163,8 +163,8 @@ class TilemapEditor extends React.Component {
             ({label: t(locale, label), location, enabled: !!enabled, run, submenu});
         const actions = {
             new: action('tm.new', 'file', true, () => this.newMap()),
-            save: action('tm.save', 'file', ready, () => this.save()),
-            revert: action('tm.revert', 'edit', ready && this.hasUnsavedChanges(), () => this.revertMap()),
+            save: action('tm.saveMenu', 'file', ready, () => this.save()),
+            revert: action('tm.revertMenu', 'edit', ready && this.hasUnsavedChanges(), () => this.revertMap()),
             'add-tile': action('tm.addTile', 'edit', ready && !legacy, () => this.addEditorTile(), t(locale, 'tm.tiles')),
             'remove-tile': action('tm.removeTile', 'edit', ready && !legacy && tile >= 1,
                 () => this.apply(removeTile(history.present, tile)), t(locale, 'tm.tiles'))

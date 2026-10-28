@@ -81,7 +81,8 @@ test('editor-specific actions are contextual and every Code item has a receiver'
 test('all changed GUI overlays match their runtime package mirrors', () => {
     for (const file of ['components/menu-bar/menu-bar.jsx', 'components/menu/menu.jsx', 'components/menu/menu.css',
         'lib/codemirror-editor.jsx', 'lib/editor-menu-actions.js',
-        'components/tw-pseudocode/pseudocode-importer.jsx']) {
+        'components/tw-pseudocode/pseudocode-importer.jsx', 'components/tw-pseudocode/pixel-art-editor.jsx',
+        'components/menu-bar/settings-menu.jsx', 'lib/menu-keyboard.js']) {
         assert.equal(read(`overlay/scratch-gui/src/${file}`), read(`packages/scratch-gui/src/${file}`), file);
     }
 });

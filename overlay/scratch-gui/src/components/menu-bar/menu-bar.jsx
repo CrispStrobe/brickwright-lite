@@ -306,7 +306,7 @@ class MenuBar extends React.Component {
                 onClick={() => this.handleAssetMenuAction(item.name, location)}>{item.label}</MenuItem>
         ));
         return <MenuSection>{Array.from(groups, ([label, entries]) => label ? (
-            <MenuItem key={label}>
+            <MenuItem key={label} ariaLabel={label}>
                 {label}<span aria-hidden="true" style={{float: this.props.isRtl ? 'left' : 'right'}}>›</span>
                 <Submenu place={this.props.isRtl ? 'left' : 'right'}>{renderItems(entries)}</Submenu>
             </MenuItem>
@@ -625,7 +625,7 @@ class MenuBar extends React.Component {
                                 className={classNames(styles.menuBarItem, styles.hoverable, {
                                     [styles.active]: this.props.fileMenuOpen
                                 })}
-                                data-bw-menu-root=""
+                                data-bw-menu-root="" style={{padding: 0}}
                             >
                                 <button type="button" data-bw-menu-trigger="" data-testid="bw-file-menu-trigger"
                                     style={menuTriggerStyle} aria-haspopup="menu" aria-expanded={this.props.fileMenuOpen}
@@ -813,7 +813,7 @@ class MenuBar extends React.Component {
                             className={classNames(styles.menuBarItem, styles.hoverable, {
                                 [styles.active]: this.props.editMenuOpen
                             })}
-                            data-bw-menu-root=""
+                            data-bw-menu-root="" style={{padding: 0}}
                         >
                                 <button type="button" data-bw-menu-trigger="" data-testid="bw-edit-menu-trigger"
                                     style={menuTriggerStyle} aria-haspopup="menu" aria-expanded={this.props.editMenuOpen}

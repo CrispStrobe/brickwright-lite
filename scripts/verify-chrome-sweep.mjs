@@ -39,6 +39,31 @@ try {
     check(await codeTab.innerText() === 'Code', 'main tab is exactly "Code"');
     await codeTab.click();
 
+    // Actual keyboard entry and dismissal, including focus return to real buttons.
+    for (const [id, key] of [['bw-file-menu-trigger', 'ArrowDown'],
+        ['bw-edit-menu-trigger', ' '], ['bw-settings-menu-trigger', 'ArrowUp']]) {
+        const trigger = page.getByTestId(id);
+        await trigger.focus();
+        await trigger.press(key);
+        await page.waitForFunction(() => document.activeElement?.getAttribute('role') === 'menuitem');
+        check(await page.evaluate(() => document.activeElement.getAttribute('aria-disabled') !== 'true'),
+            `${id} focuses an enabled menu item`);
+        await page.keyboard.press('Home');
+        await page.keyboard.press('End');
+        await page.keyboard.press('Escape');
+        check(await trigger.evaluate(button => button === document.activeElement), `${id} regains focus after Escape`);
+    }
+
+    await page.getByTestId('bw-file-menu-trigger').focus();
+    await page.getByTestId('bw-file-menu-trigger').press('ArrowDown');
+    await page.keyboard.press('ArrowRight');
+    await page.waitForFunction(() => document.activeElement?.getAttribute('role') === 'menuitem' &&
+        document.activeElement.closest('[data-bw-menu-root]')?.querySelector('[data-bw-menu-trigger]')
+            ?.dataset.testid === 'bw-edit-menu-trigger');
+    await page.keyboard.press('Escape');
+    check(await page.getByTestId('bw-edit-menu-trigger').evaluate(button => button === document.activeElement),
+        'horizontal arrows switch to the next real menu');
+
     const langRow = page.getByTestId('bw-lang-row');
     await langRow.waitFor({timeout: 15000});
     const languageButtons = langRow.getByRole('button', {pressed: false});

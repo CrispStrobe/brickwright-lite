@@ -15,6 +15,17 @@ const openEditor = async page => {
     await page.getByTestId('bw-pixel-toggle').click();
     await page.getByTestId('bw-pixel-canvas').waitFor();
 };
+const editMenuAction = async (page, group, command) => {
+    const trigger = page.getByTestId('bw-edit-menu-trigger');
+    await trigger.focus();
+    await trigger.press('ArrowDown');
+    if (group) {
+        const submenu = page.getByRole('menuitem', {name: group, exact: true});
+        await submenu.focus();
+        await submenu.press('ArrowRight');
+    }
+    await page.getByRole('menuitem', {name: command, exact: true}).press('Enter');
+};
 const canvasDimensions = page => page.getByTestId('bw-pixel-canvas')
     .evaluate(canvas => [canvas.width, canvas.height]);
 const point = async (page, x, y, width, height) => {
@@ -43,11 +54,25 @@ try {
 
     await page.getByTestId('bw-pixel-layers-toggle').click();
     await page.getByTestId('bw-pixel-add-layer').click();
+    const layerRows = page.locator('button[data-testid^="bw-pixel-layer-"]');
+    const beforeMenuLayer = await layerRows.count();
+    await editMenuAction(page, 'Layers', 'Add layer');
+    assert.equal(await layerRows.count(), beforeMenuLayer + 1, 'Edit > Layers creates a real layer');
+    await editMenuAction(page, null, 'Undo');
+    assert.equal(await layerRows.count(), beforeMenuLayer, 'Edit > Undo restores layer count');
+
     await page.getByTestId('bw-pixel-layers-toggle').click();
     await page.getByTestId('bw-pixel-colour-10').click();
     await drawPixel(page, 3, 3);
     await page.getByTestId('bw-pixel-frames-toggle').click();
     await page.getByTestId('bw-pixel-add-frame').click();
+    const frameButtons = page.locator('button[data-testid^="bw-pixel-frame-"]');
+    const beforeMenuFrame = await frameButtons.count();
+    await editMenuAction(page, 'Frames', 'Duplicate frame');
+    assert.equal(await frameButtons.count(), beforeMenuFrame + 1, 'Edit > Frames duplicates a real frame');
+    await editMenuAction(page, null, 'Undo');
+    assert.equal(await frameButtons.count(), beforeMenuFrame, 'Edit > Undo restores frame count');
+
     await page.getByTestId('bw-pixel-frames-toggle').click();
     await page.getByTestId('bw-pixel-colour-11').click();
     await drawPixel(page, 4, 4);
@@ -71,6 +96,9 @@ try {
     assert.deepEqual(await canvasDimensions(page), [96, 96]);
 
     await page.getByTestId('bw-pixel-save').click();
+    await page.getByTestId('bw-file-menu-trigger').click();
+    await page.getByRole('menuitem', {name: 'Save pixel artwork', exact: true}).click();
+
     await page.setViewportSize({width: 1400, height: 900});
     await page.getByText('File', {exact: true}).click();
     const download = page.waitForEvent('download');
