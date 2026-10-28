@@ -79,15 +79,22 @@ export async function freezeResourceProfile (kind, sourceArg, outputArg, resourc
     const scenario=kind==='guest'?'arena-demo.resc':'nuttx.resc';
     const expected=kind==='guest'?`mach create\nmachine LoadPlatformDescription @${join(source,'arena-demo.repl')}\n`:
         `include @${join(source,'models.cs')}\nmach create\nmachine LoadPlatformDescription @${join(source,'platforms/boards/spike-prime.repl')}\nemulation CreatePrimeElectricalPorts "machine-0"\n${files['initial-flash.bin']?initialFlashScenario(source):''}`;
+    // The platform path is anchored to the scenario's own directory ($ORIGIN). A bare
+    // relative @platforms/... is resolved against Renode's own bundled platform tree
+    // first, which loads the unstaged board (network SVD, per-pixel display clock):
+    // the first emulated second then took 534-1229 s instead of 7-14 s on hosted macOS.
     const portable=kind==='guest'?'mach create\nmachine LoadPlatformDescription @arena-demo.repl\n':
-        `include @models.cs\nmach create\nmachine LoadPlatformDescription @platforms/boards/spike-prime.repl\nemulation CreatePrimeElectricalPorts "machine-0"\n${files['initial-flash.bin']?initialFlashResourceScenario():''}`;
+        `include @models.cs\nmach create\nmachine LoadPlatformDescription $ORIGIN/platforms/boards/spike-prime.repl\nemulation CreatePrimeElectricalPorts "machine-0"\n${files['initial-flash.bin']?initialFlashResourceScenario():''}`;
+    // Earlier frozen profiles used the bare relative path; re-freezing converts them.
+    const legacyPortable=portable.replace('$ORIGIN/platforms/','@platforms/');
     // Compiled Runtime profiles retain models.cs for provenance but must not
     // load those types again. Preserve the producer's exact loading mode.
-    const templates = [[expected,portable],[portable,portable]];
+    const templates = [[expected,portable],[portable,portable],[legacyPortable,portable]];
     if (kind==='nuttx') {
         const compiledExpected=expected.slice(`include @${join(source,'models.cs')}\n`.length);
         const compiledPortable=portable.slice('include @models.cs\n'.length);
-        templates.push([compiledExpected,compiledPortable],[compiledPortable,compiledPortable]);
+        const compiledLegacy=legacyPortable.slice('include @models.cs\n'.length);
+        templates.push([compiledExpected,compiledPortable],[compiledPortable,compiledPortable],[compiledLegacy,compiledPortable]);
     }
     // Accept only the exact authored templates, never arbitrary monitor rewriting.
     const template=templates.find(([input])=>input===files[scenario].toString());
