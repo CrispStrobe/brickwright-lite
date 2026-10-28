@@ -1,6 +1,6 @@
 # Editor handoff T3 — remaining project undo operations
 
-Status: CLAIMED; implementation after claim landing.
+Status: DONE in this source candidate; hosted checks and merge pending.
 Owner: Codex delivery coordinator, continuing the editor handoff.
 Branch: `lane/editor-followups-20261028`, isolated coordinator checkout.
 Base: `b9fa2e844`.
@@ -13,3 +13,6 @@ GUI/VM call sites and tracked mirrors, and
 not undoable only with a concrete state/VM limitation and user-visible meaning.
 Verify actual browser menu undo/redo and targeted tests. Update the T3 handoff
 with observed results. Do not implement history persistence or change suppliers.
+
+Results and validation: `docs/EDITOR-HISTORY-FOLLOWUPS.md`. The claim landed
+in #1529 before implementation. No device release or persistent history.

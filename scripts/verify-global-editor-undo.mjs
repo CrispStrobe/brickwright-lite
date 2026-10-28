@@ -143,6 +143,73 @@ try {
     await page.waitForFunction(count => window.__brickwrightStore.getState().scratchGui.vm.editingTarget
         .sprite.costumes.length === count, costumes.length - 1);
 
+    // Several real project steps: arrows move one entry and Enter on the
+    // second entry undoes exactly two, rather than the old single-row probe.
+    await page.getByTestId('bw-history-close').click();
+    await page.evaluate(() => {
+        const vm = window.__brickwrightStore.getState().scratchGui.vm;
+        for (let i = 1; i <= 3; i++) vm.renameSprite(vm.editingTarget.id, `Keyboard-${i}`);
+    });
+    await page.getByTestId('bw-global-history').click();
+    await page.getByTestId('bw-history-step--1').focus();
+    await page.keyboard.press('ArrowDown');
+    if (await focused() !== 'bw-history-step--2') throw new Error('ArrowDown did not move one History step');
+    await page.keyboard.press('ArrowUp');
+    if (await focused() !== 'bw-history-step--1') throw new Error('ArrowUp did not move one History step');
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('Enter');
+    await page.waitForFunction(() => window.__brickwrightStore.getState().scratchGui.vm.editingTarget.getName() === 'Keyboard-1');
+    await page.getByTestId('bw-history-close').click();
+    await page.evaluate(() => {
+        const vm = window.__brickwrightStore.getState().scratchGui.vm;
+        for (let i = 1; i <= 35; i++) vm.renameSprite(vm.editingTarget.id, `Scroll-${i}`);
+    });
+    await page.getByTestId('bw-global-history').click();
+    await page.getByTestId('bw-history-step--32').click();
+    await page.waitForFunction(() => window.__brickwrightStore.getState().scratchGui.vm.editingTarget.getName() === 'Scroll-3');
+    await page.getByTestId('bw-history-close').click();
+    await page.getByTestId('bw-global-history').click();
+    await page.waitForFunction(() => {
+        const list = document.querySelector('[data-testid="bw-history-list"]');
+        const now = list?.querySelector('[aria-selected="true"]');
+        if (!now) return false;
+        const a = list.getBoundingClientRect(), b = now.getBoundingClientRect();
+        return b.top >= a.top - 1 && b.bottom <= a.bottom + 1;
+    });
+
+    // User title edits and scripts shared to another sprite use the same
+    // public menu controls; Undo must not delete the earlier duplicate instead.
+    await page.getByTestId('bw-history-close').click();
+    const originalTitle = await page.evaluate(() => window.__brickwrightStore.getState().scratchGui.projectTitle);
+    const title = page.locator('input[class*="project-title-input"]');
+    await title.fill('History title probe');
+    await title.press('Enter');
+    await page.waitForFunction(() => window.__brickwrightStore.getState().scratchGui.projectTitle === 'History title probe');
+    await undo.click();
+    await page.waitForFunction(expected => window.__brickwrightStore.getState().scratchGui.projectTitle === expected, originalTitle);
+    await redo.click();
+    await page.waitForFunction(() => window.__brickwrightStore.getState().scratchGui.projectTitle === 'History title probe');
+    const shared = await page.evaluate(async () => {
+        const vm = window.__brickwrightStore.getState().scratchGui.vm;
+        const source = vm.editingTarget, before = new Set(vm.runtime.targets);
+        await vm.duplicateSprite(source.id);
+        const target = vm.runtime.targets.find(t => t.isOriginal && !before.has(t));
+        const count = Object.keys(target.blocks._blocks).length;
+        await vm.shareBlocksToTarget([{id: 'history-share-probe', opcode: 'event_whenflagclicked',
+            next: null, parent: null, inputs: {}, fields: {}, topLevel: true, shadow: false, x: 0, y: 0}],
+        target.id, source.id);
+        return {id: target.id, before: count};
+    });
+    await undo.click();
+    await page.waitForFunction(({id, before}) => {
+        const target = window.__brickwrightStore.getState().scratchGui.vm.runtime.getTargetById(id);
+        return target && Object.keys(target.blocks._blocks).length === before;
+    }, shared);
+    await redo.click();
+    await page.waitForFunction(({id, before}) => Object.keys(window.__brickwrightStore.getState().scratchGui.vm.runtime
+        .getTargetById(id).blocks._blocks).length === before + 1, shared);
+    await page.getByTestId('bw-global-history').click();
+
     // Autosave: a version of the whole project is stored and listed.
     await page.getByTestId('bw-history-tab-autosave').click();
     await page.getByTestId('bw-autosave-save-now').click();

@@ -33,6 +33,21 @@ const live = (vm, target) => {
 const nameOf = target => (target && target.sprite ? target.sprite.name : '');
 const quote = text => `“${String(text).slice(0, 40)}”`;
 
+/** Record only a user title edit; loading a project also sets its title. */
+export const changeProjectTitle = (before, after, apply) => {
+    const result = apply(after);
+    if (!suppress && before !== after) recordProjectEdit({
+        label: `Project: Rename ${quote(before)} → ${quote(after)}`,
+        undo: () => withoutHistory(() => apply(before)),
+        redo: () => withoutHistory(() => apply(after))
+    });
+    return result;
+};
+
+if (typeof globalThis !== 'undefined' && globalThis.__bwGlobalUndo) {
+    globalThis.__bwGlobalUndo.changeProjectTitle = changeProjectTitle;
+}
+
 /**
  * Run `fn` without recording (bulk operations that record one step themselves).
  * @param {Function} fn work
@@ -136,6 +151,59 @@ export const instrumentProjectHistory = vm => {
     const load = vm.loadProject.bind(vm);
     vm.loadProject = (...args) => load(...args).then(result => {
         clearProjectHistory();
+        return result;
+    });
+
+    // Serialize copies so two simultaneous drags into the same sprite are two
+    // independent steps, rather than both snapshots claiming the same blocks.
+    let sharing = Promise.resolve();
+    wrap('shareBlocksToTarget', (blocks, targetId, fromTargetId) => {
+        const copied = JSON.parse(JSON.stringify(blocks));
+        const copy = () => {
+            const target = vm.runtime.getTargetById(targetId);
+            if (!target) return raw.shareBlocksToTarget(copied, targetId, fromTargetId);
+            const before = new Set(Object.keys(target.blocks._blocks));
+            const variableKeys = new Map(vm.runtime.targets.map(t => [t, new Set(Object.keys(t.variables))]));
+            const result = raw.shareBlocksToTarget(copied, targetId, fromTargetId);
+            // The VM resolves variable conflicts synchronously before loading
+            // extensions; capture exactly those creations before another edit.
+            const variables = vm.runtime.targets.flatMap(owner => Object.values(owner.variables)
+                .filter(v => !variableKeys.get(owner)?.has(v.id)).map(v => ({owner, id: v.id,
+                    name: v.name, type: v.type, isCloud: v.isCloud, value: JSON.parse(JSON.stringify(v.value))})));
+            return Promise.resolve(result).then(value => {
+                const added = Object.values(target.blocks._blocks).filter(b => !before.has(b.id));
+                // A foreign asynchronous import may overlap unrelated edits.
+                // Never delete those edits as though this copy had made them.
+                if (!added.length || added.length !== copied.length) return value;
+                const saved = JSON.parse(JSON.stringify(added));
+                const refresh = current => {
+                    current.blocks.updateTargetSpecificBlocks(current.isStage);
+                    if (vm.editingTarget === current) vm.emitWorkspaceUpdate();
+                };
+                record(vm, {
+                    label: `Blocks: Copy to ${quote(nameOf(target))}`,
+                    undo: () => {
+                        const current = live(vm, target);
+                        for (const block of saved) current.blocks.deleteBlock(block.id);
+                        for (const v of variables) live(vm, v.owner).deleteVariable(v.id);
+                        refresh(current);
+                    },
+                    redo: () => {
+                        const current = live(vm, target);
+                        for (const v of variables) {
+                            const owner = live(vm, v.owner);
+                            owner.createVariable(v.id, v.name, v.type, v.isCloud);
+                            owner.variables[v.id].value = JSON.parse(JSON.stringify(v.value));
+                        }
+                        for (const block of saved) current.blocks.createBlock(JSON.parse(JSON.stringify(block)));
+                        refresh(current);
+                    }
+                });
+                return value;
+            });
+        };
+        const result = sharing.then(copy);
+        sharing = result.catch(() => {});
         return result;
     });
 
