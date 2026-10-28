@@ -5096,6 +5096,53 @@
         "en": "T0 = 2π sqrt[(I_G + M d²)/(M g d)] = 2π sqrt[(d + k_G²/d)/g], k_G²=I_G/M. For unequal conjugate distances d1*d2=k_G². For collinear opposite-side pivots, D=d1+d2 and T0=2π sqrt(D/g). Finite amplitude A in radians: T/T0≈1+A²/16.",
         "de": "T0 = 2π sqrt[(I_G + M d²)/(M g d)] = 2π sqrt[(d + k_G²/d)/g], k_G²=I_G/M. Für ungleiche konjugierte Abstände gilt d1*d2=k_G². Liegen Schwerpunkt und beide gegenüberliegenden Aufhängepunkte auf einer Geraden, ist D=d1+d2 und T0=2π sqrt(D/g). Bei Amplitude A im Bogenmaß gilt T/T0≈1+A²/16."
       }
+    },
+    "phasor-twin": {
+      "en": {
+        "what": "Phasor Twin is a two-cylinder, externally driven kinematic model of the Stirling cycle's phase relation. One SPIKE medium motor drives a 40-tooth idler gear on its output shaft; the idler drives a 16-tooth gear on each of two vertical crank shafts, so both shafts turn 1:1 in the same direction at 2.5 times the motor speed. Each 40 LDU crank throw (16 mm) moves a 7L connecting rod whose small end is pinned to the vertical pin of an unfitted pneumatic cylinder rod. Those cylinders have no hoses, valve, pump or air: they are only linear guides, so each piston follows the pure crank-slider law. The two crank plates are clocked 90 degrees apart. The program turns the motor two full turns forward at 45 degrees per second, holds, returns to the saved pose, and holds again; both pistons, both rods and both crank plates are passive.",
+        "try": [
+          "Load the model, press Reset, then Run. Watch the two horizontal piston rods at the same time.",
+          "Find the moments when one piston is at the end of its stroke. Where is the other piston then? With a 90-degree throw phase it should be near the middle of its stroke and moving fastest.",
+          "Plot the two piston displacements against each other while the crank turns. At a 90-degree phase the pair should trace a closed loop; the loop is the kinematic area that the Stirling cycle needs.",
+          "Load 'Phasor Twin — in phase (control)' instead: its second crank plate is clocked to the same angle. Both rods now move together, the loop collapses to a straight line, and the strokes stay the same."
+        ],
+        "why": "In the isothermal Schmidt picture of an alpha Stirling engine the hot-space and cold-space volumes vary sinusoidally and must be about 90 degrees out of phase, otherwise the pressure-volume diagram encloses no area and the engine produces no net work. For two crank-slider pistons on one crank angle theta, the displacement is x(theta) = r sin(theta) + sqrt(L^2 - r^2 cos^2(theta)), and the rod-length term is an even function of theta, so all of its harmonics are even. When the two throws differ by phi, every even harmonic of one piston integrates to zero against the other piston's fundamental, leaving the cross loop of exactly pi r^2 sin(phi). That is why the two cases differ so sharply: at 90 degrees the pair encloses a circle-like loop, and at 0 degrees it encloses nothing. In the simulator the measured loop area is 803.9 mm² per crank turn, against 804.25 mm² predicted, and about 4 mm² in the in-phase control, with 32.00 mm strokes on both pistons.",
+        "matters": "Stirling engines, free-piston machines and many pumps and compressors depend on a deliberate phase between two moving volumes; a wrong phase gives motion but no cycle area. The same quadrature idea appears in encoder signals, in vibration absorbers and in the two outputs of a differential, where a 90-degree relation separates a magnitude from a direction.",
+        "question": "When the two crank throws are exactly 90 degrees apart, what closed shape do the two piston displacements trace against each other, and what is its area for a 16 mm throw?",
+        "answer": "They trace a closed loop whose area is pi times r squared, about 804.25 mm^2 for r = 16 mm. With the throws in phase the same two pistons trace a straight line and the area is zero, while both strokes stay 32 mm. The engine cannot run on the in-phase case because its cycle area disappears.",
+        "further": [
+          "Clock the second crank plate to 45 or 135 degrees and predict the loop area with pi r^2 sin(phi) before you measure it. Which clocking is easiest to set with the gear teeth?",
+          "Replace the 16-tooth crank gears with 24-tooth gears and a 24-tooth idler; the crank-to-motor ratio becomes 1:1. Does the phase law change? It should not, because the law depends on crank angle, not on motor angle.",
+          "The two pneumatic cylinders are only guides here. Fit hoses to a real valve and pump and the model becomes a pneumatic actuator, but then the piston motion is no longer the pure crank-slider law and the loop test no longer applies."
+        ]
+      },
+      "de": {
+        "what": "Phasor Twin ist ein fremdangetriebenes kinematisches Modell der Phasenbeziehung im Stirling-Zyklus, mit zwei Zylindern. Ein SPIKE-Medium-Winkelmotor treibt auf seiner Abtriebswelle ein 40-Zahn-Zwischenrad; dieses treibt je ein 16-Zahn-Ritzel auf zwei senkrechten Kurbelwellen, sodass beide Wellen mit 2,5-facher Motordrehzahl im gleichen Drehsinn umlaufen. Jede Kurbel hat 40 LDU (16 mm) Hub und bewegt eine 7L-Pleuelstange, deren Kolbenbolzen am senkrechten Bolzen einer unbestückten Pneumatikzylinderstange sitzt. Diese Zylinder haben keine Schläuche, kein Ventil, keine Pumpe und keine Luft: Sie sind reine Linearführungen, daher folgt jeder Kolben exakt dem Kurbelschleifengesetz. Die beiden Kurbelscheiben sind um 90 Grad versetzt montiert. Das Programm dreht den Motor zwei volle Umdrehungen vorwärts mit 45 Grad pro Sekunde, hält an, fährt in die gespeicherte Lage zurück und hält erneut; beide Kolben, beide Pleuel und beide Kurbelscheiben sind passiv.",
+        "try": [
+          "Lade das Modell, drücke Zurücksetzen und dann Start. Beobachte beide waagerechten Kolbenstangen gleichzeitig.",
+          "Suche die Momente, in denen ein Kolben am Ende seines Hubes steht. Wo ist der andere Kolben dann? Bei 90 Grad Phasenversatz sollte er etwa in der Hubmitte sein und sich am schnellsten bewegen.",
+          "Trage die beiden Kolbenwege während einer Kurbelumdrehung gegeneinander auf. Bei 90 Grad Phasenversatz sollte ein geschlossener Ring entstehen; diese Fläche ist die kinematische Fläche, die der Stirling-Zyklus braucht.",
+          "Lade stattdessen das Kontrollmodell: Dort ist die zweite Kurbelscheibe im gleichen Winkel montiert. Beide Stangen laufen jetzt gemeinsam, der Ring fällt zu einer Geraden zusammen, und die Hübe bleiben gleich."
+        ],
+        "why": "Im isothermen Modell nach Schmidt schwanken das Heißraum- und das Kaltraumvolumen sinusförmig und müssen etwa 90 Grad phasenversetzt sein; sonst umschließt das p-V-Diagramm keine Fläche und die Maschine gibt keine Nutzarbeit ab. Für zwei Kurbelschleifen-Kolben auf demselben Kurbelwinkel theta gilt x(theta) = r sin(theta) + sqrt(L^2 - r^2 cos^2(theta)); der Wurzelterm ist eine gerade Funktion von theta, enthält also nur gerade Harmonische. Sind die beiden Kurbeln um phi versetzt, mittelt sich jede gerade Harmonische des einen Kolbens gegen die Grundwelle des anderen zu null, und es bleibt exakt die Querfläche pi r^2 sin(phi). Deshalb unterscheiden sich die beiden Fälle so deutlich: Bei 90 Grad entsteht ein ringförmiger Umlauf, bei 0 Grad gar keine Fläche. Im Simulator beträgt die gemessene Umlauffläche 803,9 mm² pro Kurbelumdrehung, vorhergesagt sind 804,25 mm², und im gleichphasigen Kontrollmodell etwa 4 mm², bei 32,00 mm Hub an beiden Kolben.",
+        "matters": "Stirling-Motoren, Freikolbenmaschinen und viele Pumpen und Verdichter hängen von einer gezielten Phasenlage zweier bewegter Volumina ab; die falsche Phase erzeugt Bewegung, aber keine Kreisfläche. Dieselbe Quadraturidee steckt in Drehgebersignalen, in Schwingungstilgern und in den beiden Abtrieben eines Differenzials, wo eine 90-Grad-Beziehung Betrag und Richtung trennt.",
+        "question": "Wenn die beiden Kurbeln genau 90 Grad versetzt sind, welche geschlossene Form beschreiben die beiden Kolbenwege gegeneinander, und wie groß ist ihre Fläche bei 16 mm Kurbelradius?",
+        "answer": "Sie beschreiben einen geschlossenen Ring mit der Fläche pi mal r zum Quadrat, bei r = 16 mm also etwa 804,25 mm^2. Sind die Kurbeln gleichphasig, laufen dieselben Kolben auf einer Geraden und die Fläche ist null, während beide Hübe 32 mm bleiben. Mit der gleichphasigen Einstellung kann der Motor nicht laufen, weil seine Kreisfläche verschwindet.",
+        "further": [
+          "Stelle die zweite Kurbelscheibe auf 45 oder 135 Grad und sage die Ringfläche mit pi r^2 sin(phi) voraus, bevor du sie misst. Welche Stellung lässt sich mit den Zahnradzähnen am genauesten einstellen?",
+          "Ersetze die 16-Zahn-Kurbelritzel durch 24-Zahn-Ritzel und ein 24-Zahn-Zwischenrad; dann ist das Verhältnis Kurbel zu Motor 1:1. Ändert sich das Phasengesetz? Nein, denn es hängt vom Kurbelwinkel ab, nicht vom Motorwinkel.",
+          "Die beiden Pneumatikzylinder sind hier nur Führungen. Mit Schläuchen an einem echten Ventil und einer Pumpe wird daraus ein Pneumatikantrieb; dann ist die Kolbenbewegung aber nicht mehr das reine Kurbelschleifengesetz, und der Ringtest gilt nicht mehr."
+        ]
+      },
+      "formula": {
+        "en": "x_i(θ) = x0 + r sin(θ + φ_i) + √(L² − r² cos²(θ + φ_i)); r = 16 mm, L = 48 mm. Loop area A = ∮ x_A dx_B = π r² sin φ: 804.25 mm² at φ = 90°, 0 at φ = 0°. Simulator: 803.9 mm² per crank turn at 90°, about 4 mm² in phase.",
+        "de": "x_i(θ) = x0 + r sin(θ + φ_i) + √(L² − r² cos²(θ + φ_i)); r = 16 mm, L = 48 mm. Umlauffläche A = ∮ x_A dx_B = π r² sin φ: 804,25 mm² bei φ = 90°, 0 bei φ = 0°. Simulator: 803,9 mm² pro Kurbelumdrehung bei 90°, gleichphasig etwa 4 mm²."
+      },
+      "related": [
+        "balance-engine.ldr",
+        "rod-ratio.ldr",
+        "crank-rocker.ldr"
+      ]
     }
   }
 }

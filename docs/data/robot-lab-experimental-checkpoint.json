@@ -3005,6 +3005,11 @@
         "pageErrors": 0,
         "nan": false,
         "simMs": 33533
+      },
+      "promotionReview": {
+        "date": "2026-10-28",
+        "decision": "STAYS_EXPERIMENTAL",
+        "reason": "The cold-settle back-drive is already repaired on main by the rest-stop bushes of 1b251e04231 (3713 under each carriage's lower toggle eye): re-measured in the direct VM with the real program, both rack motors read 0.195 deg after 500 ms and after 1000 ms cold settle with velocity ~0, below the program's 0.5 deg zero guard, and the program proceeds past stage 1; the construction gate (colliders, meshes, pin seating, shared holes) is clean. The program's guard is correct and unchanged; model bytes unchanged. Not promoted: no independently reviewed judge for the max(a,b) law is registered in QUALIFICATION_JUDGES yet."
       }
     },
     {
@@ -3037,6 +3042,11 @@
         "pageErrors": 0,
         "nan": false,
         "simMs": 54200
+      },
+      "promotionReview": {
+        "date": "2026-10-28",
+        "decision": "STAYS_EXPERIMENTAL",
+        "reason": "The cold-settle back-drive is already repaired on main by the rest-stop bushes of 1b251e04231 (3713 under each carriage's lower toggle eye): re-measured in the direct VM with the real program, both rack motors read 0.195 deg after 500 ms and after 1000 ms cold settle with velocity ~0, below the program's 0.5 deg zero guard, and the program proceeds past stage 1; the construction gate (colliders, meshes, pin seating, shared holes) is clean. The program's guard is correct and unchanged; model bytes unchanged. Not promoted: no independently reviewed judge for the max(a,b) law is registered in QUALIFICATION_JUDGES yet."
       }
     },
     {
@@ -3587,14 +3597,14 @@
       "placements": 63,
       "archive": "model-lab agent branch agent/bw-opencode-flu-r8-20261026/stirling_cycle_kinematic_analogy (task dir model.ldr/program.bw)",
       "originalLdrawSha256": "2b1db3f9b86b43e86c5f483671d34400c81fab46078ff4a625521f958412a482",
-      "canonicalLdrawSha256": "0a21a1ecfe4f246df957978a78149bdebc039871a614b616ea7cf70281e72db1",
+      "canonicalLdrawSha256": "ecb34df83cf8b62560136b0e2b8c1553413a281e1ad89f802613e49408d3b4b4",
       "program": "phasor-twin.bw",
       "programSha256": "749ee91516c0b8aa8e0710c01ec175195dc74982afc0f7a28e1d2f92aa838ec0",
-      "adaptation": "Reviewer fix: two 3L pins under the motor base (motorbasepin_±20) poked 4 mm below the base beams, so the frame rocked 1.5° at cold start and the 0 ms cold start failed; they are now 2L pins, flush. One 1 LDU face contact (40T gear on the motor boss) remains. No hub (like Motor bench). Lessons edited to app-engine numbers.",
+      "adaptation": "Reviewer fix: two 3L pins under the motor base (motorbasepin_±20) poked 4 mm below the base beams, so the frame rocked 1.5° at cold start and the 0 ms cold start failed; they are now 2L pins, flush. One 1 LDU face contact (40T gear on the motor boss) remains. No hub (like Motor bench). Lessons edited to app-engine numbers. Geometry repair 2026-10-28 (construction gate): gear_idler (3649) y 77->60 so it sits on the motor's output face instead of 7.5 LDU inside the output disc; gear_A/gear_B (94925) y 80->60 into the idler's plane; idlershaft (3704) y 74->70, now exactly the gear plus the motor socket; deckblock_A/B (32065) y 60->80 below the gears, deckadapt_A/B (15100) y 40->60 and decklink_A/B (6558) to y 60, z -+95->-+90 so the 3L pin passes fully through post and adapter; crankpin_A/B (4519) and pinbush_A/B (4265c) turned 45 deg about the vertical to the 45-deg crank plates' axle holes (were 2.2 LDU into the plates); base_cross_60/420 (32278) y 189->180, base_tie_a y 159->160, base_tie_b y 139->140 onto the 20 LDU grid; base_tie_pin_300/320 3L->2L (2780) at y 150 and base_tie_joint_60 3L->2L at y 170, both through two stacked beams; base_tie_joint_420 y 169->160 (1L side in tie_b, collar on its face); motorbasepin_+-20 y 179->170; post_60_+-120 15L->7L (32524) at y 100, z -+120->-+110 (clear of the connecting rods' sweep), post_420_+-120 z -+120->-+110; postfoot_* (15100) turned pin-down into the floor cross hole at z -+80, postfootpin_* now 3L pins (6558) along z at y 160, z -+90 through post and foot; cyllink_A/B z -+95->-+90. Before: 1 gear overlap and 20 pin over-insertions (0.5-2.2 LDU); after: none, compiler issues none. Mechanism, crank throws, clocking, rods, pistons and program unchanged.",
       "supplierClaims": "Built by the OpenCode builder agent bw-opencode-flu-r8-20261026 (deepseek-v4.1-flash, handoff v3.5); submitted review_ready.",
       "simulatorLaw": {
         "verdict": "AGREES",
-        "scope": "headless COLD 0/275/1000, body poses: loop area of piston A vs piston B 805.8 mm² per crank turn vs π r² = 804.25 (0.19%); strokes 32.00 mm; frame stable from cold 0 after the pin fix"
+        "scope": "headless COLD 0/275/1000, body poses: loop area of piston A vs piston B 805.8 mm² per crank turn vs π r² = 804.25 (0.19%); strokes 32.00 mm; frame stable from cold 0 after the pin fix; after the 2026-10-28 geometry repair the real-VM hubless run gives 803.9 mm2 per turn vs pi r2 = 804.25, strokes 32.001 mm, cranks 90.0003 deg apart"
       },
       "poweredMotion": "HEADLESS_COMPLETED at COLD 0, 275 and 1000",
       "mechanicalLaw": "SIMULATOR_AGREES",
@@ -3612,10 +3622,12 @@
         "nan": false,
         "simMs": 41400
       },
-      "promotionReview": {
-        "date": "2026-10-27",
-        "decision": "STAYS_EXPERIMENTAL",
-        "reason": "The hubless harness path now qualifies it: stirling-quadrature-v1 passes in the real VM (pistons within 0.0012 mm of the slider-crank closure, strokes 32.001 mm, cranks 90.00004 deg apart, 803.9 mm2 per turn vs pi r2 = 804.25), the final hold is read as 'hold' from the lab-direct controller, and removing conrod_B and wristpin_B leaves piston B 0.02 mm of stroke. The established-library construction gate refuses the unchanged model bytes, however: gear_idler (3649) interpenetrates motor_A (54696p01), 2525 mesh points up to 7.5 LDU deep, and idlershaft, crank pins, tie pins and other pins reach 0.5 to 2.2 LDU into solid parts. A geometry fix is needed before promotion."
+      "promoted": {
+        "to": "established library (MODELS)",
+        "date": "2026-10-28",
+        "judge": "stirling-quadrature-v1",
+        "harness": "hubless: lab-direct hold, observation base base_cross_60; disconnection removes conrod_B and wristpin_B",
+        "verified": "PENDING: hosted native qualification of this branch"
       }
     },
     {
@@ -3624,10 +3636,10 @@
       "placements": 63,
       "archive": "agent control.ldr",
       "originalLdrawSha256": "c95925dcc044c9832ff01dbe7aa57c92859cdbbb68394eefafcc24c5c63672f3",
-      "canonicalLdrawSha256": "a4e98842939aca6447b798a8a165225113d28abd35a841054485fc5ed04f06d4",
+      "canonicalLdrawSha256": "955d2548612775ee5424ce343e9aa523c4c34776d7c550df5bed1196d743c44a",
       "program": "phasor-twin.bw",
       "programSha256": "749ee91516c0b8aa8e0710c01ec175195dc74982afc0f7a28e1d2f92aa838ec0",
-      "adaptation": "Same base-pin fix as phasor-twin.",
+      "adaptation": "Same base-pin fix as phasor-twin. Same 2026-10-28 geometry repair as phasor-twin (crank plate B keeps its in-phase clocking); stays an experimental comparison.",
       "supplierClaims": "Built by the OpenCode builder agent bw-opencode-flu-r8-20261026 (deepseek-v4.1-flash, handoff v3.5); submitted review_ready.",
       "simulatorLaw": {
         "verdict": "AGREES",

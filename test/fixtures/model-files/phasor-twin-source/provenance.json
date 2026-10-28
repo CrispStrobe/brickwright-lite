@@ -1,0 +1,10 @@
+{
+ "author": "CrispStrobe",
+ "license": "BSD-3-Clause",
+ "files": {
+  "models/phasor-twin.ldr": "ecb34df83cf8b62560136b0e2b8c1553413a281e1ad89f802613e49408d3b4b4",
+  "programs/phasor-twin.bw": "749ee91516c0b8aa8e0710c01ec175195dc74982afc0f7a28e1d2f92aa838ec0",
+  "LICENSE.txt": "5f48a3052c7fc8b1f0a996da47fcfdf75a606dd9cc4796bf931f0502b9726c0c",
+  "SOURCES.md": "c7eaba8973b3091c1e3a84d961b8c5dc2d4d5661897024e43e1780266426d5d9"
+ }
+}

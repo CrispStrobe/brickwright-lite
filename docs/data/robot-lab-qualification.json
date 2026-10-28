@@ -403,6 +403,27 @@
         "arm_near_outer_bush_front"
       ],
       "disconnectLaw": true
+    },
+    {
+      "id": "phasor-twin",
+      "judge": "stirling-quadrature-v1",
+      "parts": 63,
+      "ports": [
+        "A"
+      ],
+      "hubless": true,
+      "observeBase": "base_cross_60",
+      "coldMs": 500,
+      "timeLimitMs": 60000,
+      "afterMs": 500,
+      "frameMs": 20,
+      "frozenOutput": "pistonrod_B",
+      "disconnect": [
+        "conrod_B",
+        "wristpin_B"
+      ],
+      "disconnectInputDeg": 700,
+      "disconnectLaw": true
     }
   ]
 }

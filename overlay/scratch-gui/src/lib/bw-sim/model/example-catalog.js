@@ -1092,6 +1092,42 @@ export const MODEL_LESSONS = Object.freeze({
             "konjugierte Aufhängepunkte"
         ]
     },
+    "phasor-twin.ldr": {
+        "pieces": 63,
+        "motors": 1,
+        "hubs": [],
+        "topic": "linkages",
+        "description": {
+            "en": "Two crank-slider pistons driven through a 40-tooth idler run with their crank throws 90° apart. Plotted against each other, the two passive piston displacements trace a closed loop of area π r² per crank turn: 803.9 mm² against 804.25 mm² for r = 16 mm.",
+            "de": "Zwei Schubkurbel-Kolben, über ein 40-Zahn-Zwischenrad angetrieben, laufen mit um 90° versetzten Kurbeln. Gegeneinander aufgetragen umschließen die beiden passiven Kolbenwege je Kurbelumdrehung eine Schleife der Fläche π r²: 803,9 mm² gegenüber 804,25 mm² für r = 16 mm."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Two crank-sliders clocked 90° apart (Stirling phase loop)",
+            "de": "Zwei Schubkurbeln mit 90° Versatz (Stirling-Phasenschleife)"
+        },
+        "keywords": [
+            "Two crank-sliders clocked 90° apart (Stirling phase loop)",
+            "Zwei Schubkurbeln mit 90° Versatz (Stirling-Phasenschleife)",
+            "Stirling cycle",
+            "Stirling engine",
+            "alpha Stirling",
+            "Schmidt analysis",
+            "phase angle",
+            "90 degree volume phase",
+            "quadrature piston phasing",
+            "kinematic Stirling analogy",
+            "crank-slider",
+            "Stirling-Zyklus",
+            "Stirling-Motor",
+            "Alpha-Stirling",
+            "Schmidt-Analyse",
+            "Phasenwinkel",
+            "90-Grad-Volumenphase",
+            "Phasenquadratur"
+        ]
+    },
     "watt-line.ldr": {
         "pieces": 148,
         "motors": 1,
