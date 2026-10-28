@@ -78,6 +78,18 @@ const ENV_DIR = {'bw-board': 'BW_BOARD_DIR', 'sb3-creator': 'SB3_CREATOR_DIR', '
 const PROVENANCE = 'overlay/scratch-gui/static/roms/i8086-bios.provenance.json';
 const HEX40 = /\b[0-9a-f]{40}\b/g;
 
+// These consumed-study inputs describe a measured historical runtime. They
+// cannot follow today's installed packages without falsifying that evidence.
+// The role is admitted only for these exact complete-file bytes; changing even
+// a comment refuses. Ordinary source and never-pinned receipt checks stay live.
+export const SEALED_STUDY_FILES = Object.freeze({
+    '.github/workflows/reference-qualified-instruments.yml': '657110ef93474d26f03dc1ae2fa8b8ce49063f8288ef65550fb0c558f0a9cd29',
+    'scripts/lib/reference-qualified-circuits.mjs': '6efaeccdcb7aa855715020420dc9714f56c6f023a277f34a373aaf8f640bc341',
+    'scripts/read-reference-qualified-instruments.py': 'b4fda49432bfc5cea9ad6ee81fea413c2acaa0dd551aeb48f959e0f35b2c491c',
+    'docs/receipts/reference-qualified-v2-ui-package.json': 'aa2e7cdd01c31f9622339ebccf16fcd5c3728d497903b4230fbd1842fd1ddc16'
+});
+
+
 import {explainGitFailure} from './helpers/git-absence.mjs';
 
 // `git` from PATH: the same AMBIENT-BINDING shape i8086-bios-provenance keeps
@@ -135,6 +147,7 @@ export const parsePreviousPins = (logText, currentShas = new Set(), allowedKeys 
 
 /** Role of a tracked file for this test: 'ledger' | 'receipt' | 'docs-prose' | 'skip' | 'code'. */
 export const roleOf = file => {
+    if (Object.hasOwn(SEALED_STUDY_FILES, file)) return 'receipt';
     if (/^(LANES|HISTORY|ROADMAP|PLAN|BLOCKED|HANDOFF|CI-POINTERS)\.md$/.test(file) || /^lanes\/[^/]+\.(md|tsv)$/.test(file)) return 'ledger';
     if (/^docs\/generated\//.test(file)) return 'code';
     // A dated run receipt records the pin it was MEASURED at; moving that sha
@@ -171,6 +184,10 @@ const CODE_EXT = /\.(m?js|cjs|jsx|ts|yml|yaml|sh)$/;
 export const judgeFile = (file, text, known) => {
     const role = roleOf(file);
     if (role !== 'code' && role !== 'receipt') return [];
+    if (Object.hasOwn(SEALED_STUDY_FILES, file)) {
+        assert.equal(createHash('sha256').update(text).digest('hex'), SEALED_STUDY_FILES[file],
+            `${file}: sealed completed-study source changed; preserve the consumed experiment`);
+    }
     let body = text;
     if (file === PROVENANCE) {
         // the one history FIELD, exempt by role (see header); everything else in the manifest must be the pin
@@ -558,3 +575,17 @@ test('captured Resonance source receipts preserve actual old pins but refuse inv
  assert.equal(roleOf('test/helpers/resonance/active.json'),'code');
  assert.equal(roleOf('test/fixtures/model-files/resonance-lab-source/active.json'),'code');
 });
+
+
+for (const file of Object.keys(SEALED_STUDY_FILES)) {
+    test(`completed-study historical role requires exact sealed bytes: ${file}`, () => {
+        const text = readFileSync(path.join(ROOT, file), 'utf8');
+        assert.equal(roleOf(file), 'receipt');
+        assert.deepEqual(judgeFile(file, text, known), []);
+        assert.throws(() => judgeFile(file, text + '\n', known), /sealed completed-study source changed/);
+        const former = previous.keys().next().value;
+        assert.ok(former, 'history authority is populated');
+        assert.equal(judgeFile('scripts/current-package-authority.mjs',
+            `const PIN = '${former}';`, known).length, 1, 'ordinary current code still rejects a former pin');
+    });
+}

@@ -121,3 +121,12 @@ never-pinned guards remain strict outside that exact sealed role. No CUI
 adoption, package-pin move, product/model change or new study execution is part
 of this dependency. Include the released controls with the emitted-glue repair
 before the next exact-head qualification; the original failed run stays retained.
+
+Corrected candidate: the released sealed-study controls and exact emitted-glue
+preservation pass88 focused Node22 controls with zero skips. The retained
+[first consumer run](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40734487998)
+remains failed and its changed emitted glue remains refused. The retained
+[five-target benchmark](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40730146231)
+passed its unchanged floor; these authored core-loop ceilings do not qualify
+active-game or hardware performance. Fresh source, emitted-byte and actual
+browser/installed acceptance still must succeed before adoption lands.
