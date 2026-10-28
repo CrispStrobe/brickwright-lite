@@ -59,6 +59,16 @@ Preserve original failures and never tune a frozen bound after observing results
 - New `docs/ROBOT-LAB-CROSS-RATIO.md`,
   `docs/data/cross-ratio-qualification.json`, and this claim.
 
+## Scope extension: provisional browser budget registration (2026-10-28)
+
+Also own only the new Cross Ratio entry in
+`docs/generated/browser-gate-readings.json`, generated with the existing
+`node scripts/gen-gate-budgets.mjs --register` command. It must start with zero
+readings and a clearly provisional budget; preserve every existing reading,
+budget and gate. No measured timing or successful browser result is invented.
+This extension changes neither the old gates nor the acceptance bounds. Merge
+this extension before editing that generated file.
+
 No shipped model/program, production pane/session/kernel, settings, motor,
 worker/API, dependency pin/lock, firmware, signing or other model-contract edits.
 An actual product defect or additional shared path requires a scoped extension
