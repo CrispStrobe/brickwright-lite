@@ -70,6 +70,9 @@ Extend the existing PR1318 scope only in:
 - `test/i80386-hdd-gui-actual.test.mjs`,
   `test/i80386-hdd-gui-browser-setup.test.mjs`,
   `test/pin-move-chain.test.mjs`;
+- the owner-released frozen-study qualification repair in
+  `test/reference-qualified-instrument-study.test.mjs` and the exact public
+  package manifest `docs/receipts/reference-qualified-v2-ui-package.json`;
 - `CI-POINTERS.md`, `docs/generated/ci-step-census.json`;
 - this claim, `lanes/2026-10-27-x86-finite-v9-resolver-role.md`,
   `lanes/2026-10-25-x86-historical-cui-role-gate.md`;
@@ -107,3 +110,18 @@ original failures. Include stale/duplicate/wrong-job ACKs, incomplete upload, ex
 request substitution/replay, post-ACK drift, inadequate remaining time and
 unconditional cleanup controls. No whole-OS, physical timing, Windows or release claim follows
 from a resolver metadata repair.
+
+## Shared pin-policy integration
+
+The circuit-study owner released the sealed historical-role and synthetic
+collector-control repair from PR1538 for integration by this lane's pin-policy
+owner. Import only that repair and the exact frozen public UI package manifest;
+retain the x86 merge-history reader and versioned historical roles. Do not import
+the unrelated package adoption or change any frozen study identity source.
+
+Admit the three consumed-study source files and its package manifest only at
+their exact reviewed complete-file hashes. Retain ordinary previous-pin and
+never-pinned checks, and reject changed sealed bytes or the same stale value in
+current code. Synthetic historical controls use an isolated consumer bound to
+the original manifest; no original study is replayed or relabelled. The source
+merge still requires every enabled final-head check and affected x86 acceptance.
