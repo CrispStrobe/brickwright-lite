@@ -12,7 +12,8 @@ Scope: model-source directive parsing and its documented syntax, the compiler's
 option plumbing, `mech/joints.js` grouped motor hinge axis/body selection, focused
 compiler and native motion regressions, scope registration for a new test,
 serialization/reload preservation of the explicit model setting, and the issue's
-public handoff. No changes to existing model files, programs or expected physical
+public handoff. This includes the parser refusal's English/German explanation
+in `sim-lab-insight-text.js`. No changes to existing model files, programs or expected physical
 bounds. Unknown setting values must be rejected rather than silently changing
 drive direction. Default/unflagged compilation must preserve legacy behavior.
 
