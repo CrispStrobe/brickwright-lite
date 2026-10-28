@@ -73,8 +73,14 @@ function runCli(dir, circuit, meters, extra = [], duration = '20us') {
 
 test('the installed packages are the pinned Board/CUI pair carrying the domain', () => {
     const pins = JSON.parse(readFileSync(path.join(root, 'vendor-pins.json'), 'utf8'));
-    assert.equal(pins['bw-board'], 'c7bcbe4bcd583d2215372dd4ee1e65002e249a04');
-    assert.equal(pins['bw-circuit-ui'], 'da28bb8ce9b38aa18d2e424f692c6570fc1d6d1d');
+    const manifest = JSON.parse(readFileSync(path.join(root, 'package.json'), 'utf8'));
+    const lock = JSON.parse(readFileSync(path.join(root, 'package-lock.json'), 'utf8'));
+    for (const name of ['bw-board', 'bw-circuit-ui']) {
+        assert.match(pins[name], /^[0-9a-f]{40}$/, `${name}: exact current pin`);
+        assert.equal(manifest.devDependencies[name], `github:CrispStrobe/${name}#${pins[name]}`);
+        assert.equal(lock.packages[`node_modules/${name}`].resolved,
+            `git+ssh://git@github.com/CrispStrobe/${name}.git#${pins[name]}`);
+    }
     const report = readFileSync(path.join(cuiRoot, 'src/model/instrument-report.js'), 'utf8');
     assert.match(report, /nominal-typical-25c-bias-supply/);
 });
@@ -89,7 +95,7 @@ const LOADS = [null, {ohms: 10000, volts: -1}, {ohms: 10000, volts: 1}];
 // zero-state load-step transient. Retained unedited as an expected failure (todo);
 // the v2 predicate below replaces it as the acceptance gate.
 test('v1-instant-settling: installed CLI terminal KCL, rail power/energy, both polarities, zero and nonzero load', {
-    todo: 'expected failure preserved: v1 ignores start-up transient; see v2-post-settling-window',
+    todo: 'expected failure preserved: v1 ignores start-up transient; tracked in docs/CIRCUIT-INSTRUMENT-REGRESSION.md (item 5); see v2-post-settling-window',
 }, () => {
     const dir = mkdtempSync(path.join(tmpdir(), 'lite-lm741-bias-'));
     try {
