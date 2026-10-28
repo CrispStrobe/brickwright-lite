@@ -3,7 +3,7 @@
 **Consumer adoption is unfinished.** Continue existing
 [PR1533](https://github.com/CrispStrobe/brickwright-lite/pull/1533), branch
 `lane/samd-release-adoption-20261028`, head
-`3bd931c43fe7e005edc2fed4f29f51918b9a2b01`. Read
+`bb8a63216637ae827ded1e7836a199e65b1ef6b2`. Read
 `lanes/2026-10-26-samd-native-game-engine-adoption.md` and `lanes/PROTOCOL.md`.
 Do not start a duplicate lane. Refresh remote heads/checks before acting.
 
@@ -61,8 +61,9 @@ core-loop ceilings do not qualify active-game or hardware speed.
 ## Remaining work, in order
 
 1. Refresh exact-head checks and existing
-   [Build40764046759](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40764046759).
-   `ci:full` is already applied. Wait for every enabled check; do not duplicate
+   [Build40765450222](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40765450222).
+   `ci:full` was restored before this final source checkpoint after an earlier
+   removal; keep it present. Implementation bytes match the88-test candidate. Wait for every enabled check; do not duplicate
    live jobs or rerun a known unchanged failure. After successful overall Build,
    admit its single `build` job and `github-pages` artifact before one acquisition.
    Independently bind the actual checkout, complete frontend inventory and these
