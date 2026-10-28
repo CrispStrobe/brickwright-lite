@@ -92,3 +92,50 @@ let total = px + 5
 values.push(total)`);
     assert.ok(out.unsupported.includes('native addition requires initialized primitive or proved flat Array operands'), JSON.stringify(out.unsupported));
 });
+
+// Operator decisions 2026-10-28: nested sums over proven Numbers (including
+// self-updating cells), game.runtime()/update(dt) and number-typed SDK calls.
+test('Array program: a self-updating sum of Sprite fields over a loop matches original PXT', async () => {
+    await same(`let values = [1, 2]
+let hero = sprites.create(img\`1 1\`, SpriteKind.Player)
+let sumX = 0
+for (let i = 0; i < 3; i++) {
+    sumX = sumX + hero.width
+}
+let total = sumX + 1
+values.push(total)
+let count = values.length`, ['sumX', 'total', 'count']);
+});
+
+test('Array program: getPixel results accumulate like original PXT', async () => {
+    await same(`let values = [1, 2]
+let picture = image.create(2, 2)
+picture.setPixel(1, 0, 7)
+let hero = sprites.create(picture, SpriteKind.Player)
+let px = 0
+px = px + hero.image.getPixel(1, 0)
+values.push(px)
+let count = values.length`, ['px', 'count']);
+});
+
+test('Array program: an ExtendableSprite update(dt) accumulator matches original PXT', async () => {
+    await same(`let values = [1, 2]
+let elapsed = 0
+class Actor extends sprites.ExtendableSprite {
+    constructor() { super(img\`1\`, SpriteKind.Player) }
+    update(dt: number) { elapsed = elapsed + dt }
+}
+let actor = new Actor()
+pause(40)
+let moved = elapsed > 0
+values.push(1)
+let count = values.length`, ['moved', 'count']);
+});
+
+test('Array program: a sum that includes an unknown SDK result keeps the refusal', () => {
+    const out = exported(`let values = [1, 2]
+let v = 0
+v = v + music.tempo()
+values.push(v)`);
+    assert.ok(out.unsupported.includes('native addition requires initialized primitive or proved flat Array operands'), JSON.stringify(out.unsupported));
+});
