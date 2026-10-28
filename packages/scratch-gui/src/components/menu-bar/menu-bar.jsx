@@ -253,6 +253,11 @@ class MenuBar extends React.Component {
     handleGlobalRedo () {
         redoActiveSurface();
     }
+    handleCodeEditorCommand (command) {
+        this.props.onRequestCloseEdit();
+        if (this.props.activeTabIndex !== 3 || typeof window === 'undefined') return;
+        window.dispatchEvent(new CustomEvent('bw-code-editor-command', {detail: {command}}));
+    }
     async handleClickNew () {
         // if the project is dirty, and user owns the project, we will autosave.
         // but if they are not logged in and can't save, user should consider
@@ -680,39 +685,35 @@ class MenuBar extends React.Component {
                                             </MenuItem>
                                         )}
                                     </MenuSection>
-                                    {/* Circuit file operations in the main File menu — the owner's
-                                        "maybe use File/ for load/save/import/export" note. Exactly
-                                        four top-level actions and nothing more; format variants are
-                                        picked in the Circuit tab's own dialogs, so no second-level
-                                        menu is needed here. Each emits a bw-circuit-file event that
-                                        the Circuit tab handles with the same handlers as the
-                                        designer's "..." menu (the receiver lives in bw-circuit-ui). */}
-                                    <MenuSection>
-                                        <MenuItem onClick={() => {
-                                            if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('bw-circuit-file', {detail: {action: 'load'}}));
-                                            this.props.onRequestCloseFile();
-                                        }}>
-                                            <FormattedMessage id="gui.menuBar.openCircuit" defaultMessage="Open circuit…" />
-                                        </MenuItem>
-                                        <MenuItem onClick={() => {
-                                            if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('bw-circuit-file', {detail: {action: 'save'}}));
-                                            this.props.onRequestCloseFile();
-                                        }}>
-                                            <FormattedMessage id="gui.menuBar.saveCircuit" defaultMessage="Save circuit" />
-                                        </MenuItem>
-                                        <MenuItem onClick={() => {
-                                            if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('bw-circuit-file', {detail: {action: 'import'}}));
-                                            this.props.onRequestCloseFile();
-                                        }}>
-                                            <FormattedMessage id="gui.menuBar.importCircuit" defaultMessage="Import circuit…" />
-                                        </MenuItem>
-                                        <MenuItem onClick={() => {
-                                            if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('bw-circuit-file', {detail: {action: 'export'}}));
-                                            this.props.onRequestCloseFile();
-                                        }}>
-                                            <FormattedMessage id="gui.menuBar.exportCircuit" defaultMessage="Export circuit…" />
-                                        </MenuItem>
-                                    </MenuSection>
+                                    {/* Editor files belong to their editor; project files stay global. */}
+                                    {this.props.activeTabIndex === 4 && (
+                                        <MenuSection>
+                                            <MenuItem onClick={() => {
+                                                if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('bw-circuit-file', {detail: {action: 'load'}}));
+                                                this.props.onRequestCloseFile();
+                                            }}>
+                                                <FormattedMessage id="gui.menuBar.openCircuit" defaultMessage="Open circuit…" />
+                                            </MenuItem>
+                                            <MenuItem onClick={() => {
+                                                if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('bw-circuit-file', {detail: {action: 'save'}}));
+                                                this.props.onRequestCloseFile();
+                                            }}>
+                                                <FormattedMessage id="gui.menuBar.saveCircuit" defaultMessage="Save circuit" />
+                                            </MenuItem>
+                                            <MenuItem onClick={() => {
+                                                if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('bw-circuit-file', {detail: {action: 'import'}}));
+                                                this.props.onRequestCloseFile();
+                                            }}>
+                                                <FormattedMessage id="gui.menuBar.importCircuit" defaultMessage="Import circuit…" />
+                                            </MenuItem>
+                                            <MenuItem onClick={() => {
+                                                if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('bw-circuit-file', {detail: {action: 'export'}}));
+                                                this.props.onRequestCloseFile();
+                                            }}>
+                                                <FormattedMessage id="gui.menuBar.exportCircuit" defaultMessage="Export circuit…" />
+                                            </MenuItem>
+                                        </MenuSection>
+                                    )}
                                 </MenuBarMenu>
                             </div>
                         )}
@@ -737,6 +738,39 @@ class MenuBar extends React.Component {
                                 place={this.props.isRtl ? 'left' : 'right'}
                                 onRequestClose={this.props.onRequestCloseEdit}
                             >
+                                <MenuSection>
+                                    <MenuItem
+                                        disabled={!this.state.globalCanUndo}
+                                        onClick={() => {
+                                            this.handleGlobalUndo();
+                                            this.props.onRequestCloseEdit();
+                                        }}
+                                    >
+                                        <FormattedMessage id="gui.menuBar.undo" defaultMessage="Undo" />
+                                    </MenuItem>
+                                    <MenuItem
+                                        disabled={!this.state.globalCanRedo}
+                                        onClick={() => {
+                                            this.handleGlobalRedo();
+                                            this.props.onRequestCloseEdit();
+                                        }}
+                                    >
+                                        <FormattedMessage id="gui.menuBar.redo" defaultMessage="Redo" />
+                                    </MenuItem>
+                                </MenuSection>
+                                {this.props.activeTabIndex === 3 && (
+                                    <MenuSection>
+                                        <MenuItem onClick={() => this.handleCodeEditorCommand('find')}>
+                                            <FormattedMessage id="gui.menuBar.findReplace" defaultMessage="Find and replace…" />
+                                        </MenuItem>
+                                        <MenuItem onClick={() => this.handleCodeEditorCommand('go-to-line')}>
+                                            <FormattedMessage id="gui.menuBar.goToLine" defaultMessage="Go to line…" />
+                                        </MenuItem>
+                                        <MenuItem onClick={() => this.handleCodeEditorCommand('select-all')}>
+                                            <FormattedMessage id="gui.menuBar.selectAll" defaultMessage="Select all" />
+                                        </MenuItem>
+                                    </MenuSection>
+                                )}
                                 <DeletionRestorer>{(handleRestore, {restorable, deletedItem}) => (
                                     <MenuItem
                                         className={classNames({[styles.disabled]: !restorable})}

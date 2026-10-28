@@ -63,6 +63,7 @@ const MenuItem = ({
     children,
     className,
     expanded = false,
+    disabled = false,
     onClick
 }) => (
     <li
@@ -70,9 +71,10 @@ const MenuItem = ({
             styles.menuItem,
             styles.hoverable,
             className,
-            {[styles.expanded]: expanded}
+            {[styles.expanded]: expanded, [styles.disabled]: disabled}
         )}
-        onClick={onClick}
+        aria-disabled={disabled || undefined}
+        onClick={disabled ? undefined : onClick}
     >
         {children}
     </li>
@@ -82,6 +84,7 @@ MenuItem.propTypes = {
     children: PropTypes.node,
     className: PropTypes.string,
     expanded: PropTypes.bool,
+    disabled: PropTypes.bool,
     onClick: PropTypes.func
 };
 

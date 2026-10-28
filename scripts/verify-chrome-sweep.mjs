@@ -125,6 +125,54 @@ try {
     await page.getByTitle('Restore panels').click();
     await page.getByTitle('Maximize editor').waitFor({state: 'visible', timeout: 10000});
     check(await page.getByTestId('bw-device-select').isVisible(), 'restoring returns the normal editor chrome');
+    // Main menus must reach the same live editor as its toolbar/shortcuts.
+    const openMenu = async name => page.getByText(name, {exact: true}).first().click();
+    const menuItem = name => page.locator('li:visible').filter({has: page.getByText(name, {exact: true})});
+    const beforeMenuEdit = await editor.textContent();
+    await editor.click();
+    await page.keyboard.press('Control+Home');
+    await page.keyboard.insertText('menu_probe\n');
+    const afterMenuEdit = await editor.textContent();
+    check(afterMenuEdit !== beforeMenuEdit, 'menu undo control has a real edit');
+    await openMenu('Edit');
+    check(await menuItem('Undo').getAttribute('aria-disabled') !== 'true', 'Edit > Undo is enabled');
+    await menuItem('Undo').click();
+    await page.waitForFunction(expected => document.querySelector('.cm-content')?.textContent === expected,
+        beforeMenuEdit);
+    await openMenu('Edit');
+    await menuItem('Redo').click();
+    await page.waitForFunction(expected => document.querySelector('.cm-content')?.textContent === expected,
+        afterMenuEdit);
+    check(true, 'Edit Undo and Redo restore the actual Code buffer');
+    await openMenu('Edit');
+    await menuItem('Find and replace…').click();
+    const search = page.locator('.cm-search input[name="search"]');
+    await search.waitFor({state: 'visible'});
+    check(await search.evaluate(input => input === document.activeElement), 'Find keeps search-field focus');
+    await page.keyboard.press('Escape');
+    await openMenu('Edit');
+    await menuItem('Go to line…').click();
+    await page.locator('.cm-gotoLine input').waitFor({state: 'visible'});
+    await page.keyboard.press('Escape');
+    await openMenu('Edit');
+    await menuItem('Select all').click();
+    await page.keyboard.insertText('menu_selection_probe');
+    await page.waitForFunction(() => document.querySelector('.cm-content')?.textContent === 'menu_selection_probe');
+    check(true, 'Edit > Select all selects the actual buffer');
+
+    await openMenu('File');
+    check(await menuItem('Open circuit…').count() === 0, 'Code File menu excludes Circuit actions');
+    await page.keyboard.press('Escape');
+    await page.getByRole('tab', {name: 'Circuit', exact: true}).click();
+    await openMenu('File');
+    for (const label of ['Open circuit…', 'Save circuit', 'Import circuit…', 'Export circuit…']) {
+        check(await menuItem(label).isVisible(), `Circuit File menu exposes ${label}`);
+    }
+    await page.keyboard.press('Escape');
+    await page.getByRole('tab', {name: 'Blocks', exact: true}).click();
+    await openMenu('Edit');
+    check(await menuItem('Find and replace…').count() === 0 && await menuItem('Select all').count() === 0,
+        'Blocks Edit menu excludes Code commands');
 } catch (error) {
     check(false, 'chrome sweep journey completes', error.message);
 } finally {
