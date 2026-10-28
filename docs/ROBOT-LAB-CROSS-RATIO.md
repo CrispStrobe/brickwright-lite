@@ -86,13 +86,13 @@ hold. These are explicit checks because the shared completion-hold mode bypasses
 its fixed-duration setting. These are source assertions, not executed browser evidence.
 A dedicated eight-minute gate on existing `robotaddon1` and its exact inventory
 controls are implemented. The existing 30-minute job cap and every old gate
-remain unchanged. Zero-reading budget registration still awaits its scope
-extension; no new runtime or historical timing is claimed.
+remain unchanged. The canonical budget registry includes the new gate with zero
+readings; no measured runtime or historical timing is claimed.
 
 Seven lightweight analytic preflights (49 data corruptions plus receiver failures, including the
 four-case retained-TAP transport and same-opcode program edits) and 15 browser shard/inventory checks pass;
 these checks import no engine and do not qualify motion.
 
-Pending: complete budget registration; hosted native cases and independent
+Pending: hosted native cases and independent
 original readback; actual Chromium load/run and saved-project replay; all exact-head gates and normal matched-head merge. No native, browser,
 WebKit, saved-file, physical buildability or hardware acceptance is claimed yet.
