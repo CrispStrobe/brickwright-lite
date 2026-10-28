@@ -66,3 +66,34 @@ three-path proposal after source and actual guest acceptance; broader package,
 native or helper edits require fresh coordination. The `ci:full` label selects
 the required affected thorough checks. Qualification and normal landing remain
 pending; the owner retains the lane through both.
+
+## Emitted runtime byte preservation — scope extension, 2026-10-28
+
+Owner: existing Codex SAMD continuation, branch
+`lane/samd-release-adoption-20261028`. Source implementation starts after this
+claim extension lands and native-package boundary coordination is complete.
+
+Original [frontend run40734487998](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40734487998)
+verified the three release inputs before compilation. Its emitted WASM and
+profile retain their exact hashes, but Webpack minified the153114-byte web glue
+to51263 bytes. Strict consumer admission correctly rejects that changed hash;
+the overall workflow also has a separately owned reference-study unit failure.
+The original frontend/log are retained; no native or actual-game dispatch used it.
+
+Extend only `overlay/scratch-gui/webpack.config.js` and its tracked
+`packages/scratch-gui/webpack.config.js` twin: the existing CopyWebpackPlugin
+asset-info hook additionally preserves the exact normalized output pathname
+`static/labwired/labwired_wasm.js`. Preserve the current content-addressed broker
+proof rule and every existing positive/negative assertion. Default minification
+continues for other runtime, application and broker assets. Add focused
+`test/samd-emitted-assets.test.mjs` controls for this exact pathname, near misses,
+Windows separators, mirror equality and omission of the new preservation rule.
+No Build workflow, native producer/helper, compile-default or dependency-pin
+change is part of this extension.
+
+Acceptance: demonstrate the old helper refuses raw-glue preservation; the narrow
+change passes focused controls and all existing broker-proof checks. A fresh
+official frontend must emit the release's exact web glue, WASM and profile
+hashes. Keep the strict asset joins. Then source gates and three actual Chromium
+plus three installed Tauri/WebKit instances remain required before the normal
+matched-head adoption merge. No new hardware or real-time performance claim.
