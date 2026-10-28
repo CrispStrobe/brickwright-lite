@@ -3,9 +3,13 @@
 **Consumer adoption is unfinished.** Continue existing
 [PR1533](https://github.com/CrispStrobe/brickwright-lite/pull/1533), branch
 `lane/samd-release-adoption-20261028`, head
-`bb8a63216637ae827ded1e7836a199e65b1ef6b2`. Read
+`ac0c45e0744c7a16cc97f406541826d70121fb23`. Read
 `lanes/2026-10-26-samd-native-game-engine-adoption.md` and `lanes/PROTOCOL.md`.
 Do not start a duplicate lane. Refresh remote heads/checks before acting.
+
+**Current Build: [40777652451](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40777652451).**
+Build40765450222, retained in the historical sequence below, is superseded and
+cannot qualify this candidate. Use the current Build for all admission/dispatch inputs.
 
 ## Completed prerequisites
 
@@ -26,6 +30,11 @@ Infrastructure [PR1456](https://github.com/CrispStrobe/brickwright-lite/pull/145
 merged as `dea504b32a9a4bd43a2a9d25b587590a0ac9763f`. The native-package owner
 released the former PR1318-first hold for this exact adoption and its two claimed
 repairs. No general package boundary is open.
+
+For the current successor, require every enabled exact-head source check,
+including the full Rust suite, before any native or actual-game dispatch. The
+previous guarded continuation is stopped with zero dispatches. Fresh source
+and actual acceptance remain pending; the original native failure is not waived.
 
 ## Current candidate and preserved failures
 
@@ -58,9 +67,51 @@ passed its unchanged floor at source `317c069003803f9e8bfbe570ca7c371da6e52c10`;
 its benchmark inputs are unchanged in the corrected candidate. These authored
 core-loop ceilings do not qualify active-game or hardware speed.
 
+## New native source gate failure
+
+[Tauri40765450230](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40765450230)
+failed `renode_supervisor::tests::linux_owner_crash_terminates_simulator` at
+`apps/tauri/src-tauri/src/renode_supervisor.rs:1838`: the test observed the
+synthetic direct child surviving abrupt owner death after its existing
+three-second observation bound. The suite reports269 passed,1 failed,11 ignored.
+Its original log is retained once. On that failed head, the fixture and test were byte-identical to
+original commit `3d77472b518ae4e9a57fd8cfb154e31ecba1b432`; SAMD changes no Rust.
+The evidence does not establish a flake or distinguish termination failure from
+an observation problem: the test retains neither terminal process state nor
+process-start identity. No recorded repair has been found.
+
+The guarded continuation was stopped before any native or actual-game dispatch.
+**Do not dispatch from this candidate while this source gate is unresolved.**
+Coordinate the existing SPIKE native-supervision claims before changing the
+supervisor. First diagnose the owner-death signal and fixture observations with
+bounded identity/state evidence. Keep the current timeout, failure, assertions,
+normal ownership and teardown controls. A justified repair needs its claimed
+scope, affected controls and clean guest qualification as applicable; do not
+rerun the unchanged failure or widen the SAMD implementation silently.
+
+The final-head historical-study source controls passed49 tests with zero skips
+and the actual study job was correctly skipped. GUI infrastructure controls and
+vendor checks also passed. The main Build remains queued at this checkpoint.
+
+Test-only successor: the
+[Linux observation claim](../lanes/2026-10-28-linux-owner-death-observation.md)
+owns only the supervisor's test module; production bytes remain unchanged.
+The candidate binds parent/group identity and a held process descriptor, requires
+complete PID publication, retains bounded failure snapshots and signals only the
+admitted child. The original three-second assertion stays intact. A negative
+fixture observes the actual supervisor's kill signal before deliberately
+clearing it and requiring survival through the same window, then exact cleanup.
+Private extracted-method controls and three adversarial cuts passed; their
+explicit synthetic supervisor boundary is not full Rust or guest qualification.
+Full affected Rust CI and fresh actual SAMD acceptance still must pass on the
+successor head. The original failure is not reclassified as a proven flake.
+The separate current SPIKE delivery claim owns only MicroPython manifest hunks;
+preserve those and the old dirty worktrees.
+
 ## Remaining work, in order
 
-1. Refresh exact-head checks and existing
+1. Qualify the test-only successor against the native source gate above, then
+   refresh exact-head checks and existing
    [Build40765450222](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40765450222).
    `ci:full` was restored before this final source checkpoint after an earlier
    removal; keep it present. Implementation bytes match the88-test candidate. Wait for every enabled check; do not duplicate
