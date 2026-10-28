@@ -157,9 +157,11 @@ What #1505 does:
   independent momentum, servo and rollback controls; algebra alone is not
   qualification. A required native solver extension needs separately reviewed
   ownership, build/release and explicit pin adoption.
-- **Regression test.** `test/bw-sim-rotor-inertia.test.mjs` is a free-floating
-  analytic case: physical ratio 0.02525, main 0.12381, #1505 0.02525. It fails on
-  main and passes on #1505.
+- **Regression fixture.** `test/bw-sim-rotor-inertia.test.mjs` compares a
+  free-floating housing against the ideal ratio 0.02525; the previous diagonal
+  model predicts 0.12381. Require the fixture on the actual corrected head,
+  together with all original model and transport guards. Previously reported
+  local results do not establish current-head qualification.
 
 **Blockers.** Retained first failure logs from run40688505800 bind actual
 synthetic checkout `9c14fbd252b21cae00b009bbabc2ae839284e1ad`, whose rotor and
@@ -212,21 +214,25 @@ these results:
 | Flat plate with a cube hovering 1.2 / 1.6 / 1.9 / 2.1 mm above the floor | 0 / 1.73 / 2.75 / 0 mm |
 | Flat plate, cube at 1.6 mm, manifold reduction off | 0 |
 
-**Finding.** The creep occurs when a collider hovers within Jolt's speculative
-contact distance above the floor while contact-manifold reduction is on. That
-distance is `LEGO_SPECULATIVE_CONTACT_M = 0.002`. The body then sinks below the
-floor and drifts. Removing the hovering collider, moving it out of the 2 mm band,
-or turning manifold reduction off each removes the creep.
+**Bounded finding.** In the retained cases that creep, an in-band hovering
+collider and contact-manifold reduction are part of the demonstrated trigger.
+The speculative distance is `LEGO_SPECULATIVE_CONTACT_M = 0.002`. Removing the
+hovering collider, moving these cases out of the band or disabling reduction
+removes their observed creep. The 1.2 mm plate control did not creep: this is
+not a claim that every collider anywhere inside the band necessarily drifts.
 
 **Next action.** Refresh live ownership of the correction before creating a
 new fix: the merged diagnostics do not imply that the implementation is still
 unclaimed. Preserve and coordinate any active successor; the diagnostic lanes
 did not authorize solver changes. Candidate approaches include:
-- (a) disable manifold reduction for ground contacts only, for example through a
-  contact listener or the body's `mUseManifoldReduction` / `SetUseManifoldReduction`;
+- (a) disable reduction through a verified supported policy. A body's
+  `mUseManifoldReduction` / `SetUseManifoldReduction` applies to that body's
+  contacts generally; it is not a ground-pair-only switch. A narrower policy
+  needs its own verified native/API path, not an assumed contact-listener hook;
 - (b) reduce the speculative distance.
 
-Prefer (a), because (b) moves the band rather than closing it. Requirements:
+Investigate (a) first; (b) moves the band rather than resolving the demonstrated
+mechanism. Keep the broader effect of a body-level flag explicit. Requirements:
 - a regression test from the #1498 cases that fails before the fix and passes
   after: coplanar all-colliders and plate-hover 1.6/1.9 mm drift go to about 0;
 - no change to currently qualified models' verdicts under affected full qualification;
