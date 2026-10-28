@@ -50,3 +50,58 @@ checks pass (28 focused tests). The collectors distinguish optional JavaScript
 heap statistics from required observed process-tree RSS, recording scope and
 shared-page/sampling limits. Actual browser/installed guest qualification and
 engine adoption remain pending; keep this claim active through those steps.
+
+## Emitted runtime byte preservation — scope extension, 2026-10-28
+
+Owner: existing Codex SAMD continuation, branch
+`lane/samd-release-adoption-20261028`. Source implementation starts after this
+claim extension lands and native-package boundary coordination is complete.
+
+Original [frontend run40734487998](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40734487998)
+verified the three release inputs before compilation. Its emitted WASM and
+profile retain their exact hashes, but Webpack minified the153114-byte web glue
+to51263 bytes. Strict consumer admission correctly rejects that changed hash;
+the overall workflow also has a separately owned reference-study unit failure.
+The original frontend/log are retained; no native or actual-game dispatch used it.
+
+Extend only `overlay/scratch-gui/webpack.config.js` and its tracked
+`packages/scratch-gui/webpack.config.js` twin: the existing CopyWebpackPlugin
+asset-info hook additionally preserves the exact normalized output pathname
+`static/labwired/labwired_wasm.js`. Preserve the current content-addressed broker
+proof rule and every existing positive/negative assertion. Default minification
+continues for other runtime, application and broker assets. Add focused
+`test/samd-emitted-assets.test.mjs` controls for this exact pathname, near misses,
+Windows separators, mirror equality and omission of the new preservation rule.
+No Build workflow, native producer/helper, compile-default or dependency-pin
+change is part of this extension.
+
+Acceptance: demonstrate the old helper refuses raw-glue preservation; the narrow
+change passes focused controls and all existing broker-proof checks. A fresh
+official frontend must emit the release's exact web glue, WASM and profile
+hashes. Keep the strict asset joins. Then source gates and three actual Chromium
+plus three installed Tauri/WebKit instances remain required before the normal
+matched-head adoption merge. No new hardware or real-time performance claim.
+
+## Released historical-study gate repair — dependency scope, 2026-10-28
+
+The source owner released a narrow repair from
+[`e85dc904ac5c56d327e993c47dc730c5d1c7abeb`](https://github.com/CrispStrobe/brickwright-lite/commit/e85dc904ac5c56d327e993c47dc730c5d1c7abeb)
+for this continuation. Claim these three paths before carrying it into the next
+SAMD qualification head:
+
+- `test/pin-move-chain.test.mjs`: only the four-file `SEALED_STUDY_FILES` table,
+  its complete-file hash enforcement in role classification/judgement, and the
+  four associated controls. Preserve unrelated history and x86 roles.
+- `test/reference-qualified-instrument-study.test.mjs`: the exact released
+  synthetic fixture isolation and sealed-manifest controls.
+- `docs/receipts/reference-qualified-v2-ui-package.json`: the exact released
+  manifest, SHA256 `aa2e7cdd01c31f9622339ebccf16fcd5c3728d497903b4230fbd1842fd1ddc16`.
+
+Keep the experiment's three identity sources, original pins, numerical
+thresholds, captures, intent and authority unchanged. The repair distinguishes
+a sealed historical experiment from current runtime configuration and tests its
+unchanged collector/reader in an isolated synthetic consumer. Current-pin and
+never-pinned guards remain strict outside that exact sealed role. No CUI
+adoption, package-pin move, product/model change or new study execution is part
+of this dependency. Include the released controls with the emitted-glue repair
+before the next exact-head qualification; the original failed run stays retained.
