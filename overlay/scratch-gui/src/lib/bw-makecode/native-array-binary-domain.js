@@ -440,6 +440,88 @@ function inspectDomains(program,profile,ordinaryExportSelection) {
         }
         return fieldWrites>0;
     };
+    // Operator decisions 2026-10-28 for #1128: (1) a sum is a Number when both
+    // operands are proven Numbers, including self-updating cells (fixed point
+    // over every write); (2) the engine-called ExtendableSprite update(dt)
+    // parameter is a Number per the SDK typings (game.runtime() is handled
+    // separately);
+    // (3) SDK calls/methods whose typings declare a number result are Numbers.
+    // Opaque, Image, object and unknown values still refuse.
+    const helperNames=new Set([...helpers.keys()]);
+    const unboundRoot=(node,name)=>node?.type==='Identifier'&&node.name===name&&!graph.bindingKindsAt(actual(node)).size;
+    const sdkNumberCalls=new Map([['info',new Set(['score','life','highScore','countdown'])]]);
+    const sdkNumberMethods=new Set(['getPixel']);
+    // The SDK namespace root must not be aliased, passed, rebound or have any
+    // member written anywhere; otherwise its typed result is not established.
+    const sdkRootClosed=name=>nodes.every(entry=>{
+        if(entry.type==='Assignment'||entry.type==='Update'){
+            const target=entry.type==='Assignment'?entry.left:entry.argument;
+            for(let t=target;t&&(t.type==='Member'||t.type==='Index');t=t.object)if(t.object?.type==='Identifier'&&t.object.name===name)return false;
+            if(target?.type==='Identifier'&&target.name===name)return false;
+        }
+        if(entry.type!=='Identifier'||entry.name!==name)return true;
+        const parent=parents.get(entry);
+        return parent?.type==='Member'&&parent.object===entry;
+    });
+    const sdkNumberCall=node=>{
+        if(node?.type!=='Call'||node.isNew||node.optional||node.callee?.type!=='Member'||node.callee.optional)return false;
+        const callee=node.callee,root=callee.object;
+        if(root?.type==='Identifier'&&sdkNumberCalls.has(root.name)&&sdkNumberCalls.get(root.name).has(callee.name)&&unboundRoot(root,root.name)&&sdkRootClosed(root.name))
+            return node.args.every(arg=>numberValue(arg,new Set()));
+        return sdkNumberMethods.has(callee.name)&&ownMemberNames!==null&&!ownMemberNames.has(callee.name)&&!ownMemberNames.has('image')&&
+            (plainReceiver(root)||root?.type==='Member'&&root.name==='image'&&plainReceiver(root.object))&&
+            (()=>{const receiver=types(root);return receiver.size>0&&[...receiver].every(type=>type==='Opaque');})()&&
+            node.args.every(arg=>numberValue(arg,new Set()));
+    };
+    const updateDelta=node=>{
+        if(node?.type!=='Identifier')return false;
+        const owner=functionOwner(actual(node));
+        if(!owner||owner.name!=='update'||!Array.isArray(owner.params)||owner.params[0]!==node.name||owner.params.length!==1)return false;
+        const klass=nodes.find(entry=>entry.type==='Class'&&(entry.methods||[]).includes(owner));
+        if(!klass||klass.base!=='sprites.ExtendableSprite'||(klass.methods||[]).some(m=>m.isStatic&&m.name==='update'))return false;
+        const binding=graph.bindingOf(actual(node));
+        return !!binding&&!nodes.some(entry=>(entry.type==='Assignment'&&entry.left?.type==='Identifier'||entry.type==='Update'&&entry.argument?.type==='Identifier')&&
+            graph.bindingOf(entry.type==='Assignment'?entry.left:entry.argument)===binding);
+    };
+    const sumParts=node=>{
+        if(node?.type==='Binary'&&['+','-','*','/','%'].includes(node.op))return [node.left,node.right];
+        if(node?.type==='Call'&&node.callee?.type==='Identifier'&&helperNames.has(node.callee.name)&&node.args?.length===2)return node.args;
+        return null;
+    };
+    function numberValue(node,seen){
+        if(!node||typeof node!=='object')return false;
+        // A string literal or proven String joins numbers into a primitive
+        // String, never an Array; the result is primitive, not a Number badge.
+        if(node.type==='Number'||node.type==='String')return true;
+        if(node.type==='Paren'||node.type==='Parenthesized')return numberValue(node.expression||node.inner,seen);
+        const found=types(node);
+        if(found.size&&[...found].every(type=>type==='Number'||type==='String')&&initialized(node))return true;
+        const parts=sumParts(node);if(parts)return parts.every(part=>numberValue(part,seen));
+        if(node.type==='Unary'&&['-','+'].includes(node.op))return numberValue(node.argument,seen);
+        if(numericSdkFieldRead(node)||sdkNumberCall(node)||updateDelta(node))return true;
+        if(node.type!=='Identifier'||['this','globalThis','undefined'].includes(node.name))return false;
+        const binding=graph.bindingOf(actual(node));
+        if(!binding||allocations(node).length)return false;
+        if(seen.has(binding))return true;
+        const next=new Set(seen);next.add(binding);
+        const same=entry=>entry?.type==='Identifier'&&entry.name===node.name&&graph.bindingOf(entry)===binding;
+        let writes=0;
+        for(const entry of nodes){
+            if(entry.type==='Assignment'&&same(entry.left)){
+                if(nullishLiteral(entry.right)){if(!deadReset(entry,same))return false;continue;}
+                if(entry.op==='='){if(!numberValue(entry.right,next))return false;}
+                else if(['+=','-=','*=','/=','%='].includes(entry.op)){if(!numberValue(entry.right,next))return false;}
+                else return false;
+                writes++;
+            }
+            if(entry.type==='Update'&&same(entry.argument))writes++;
+            if(entry.type==='Declaration')for(const decl of entry.decls||[])
+                if(decl.name===node.name&&graph.bindingOf(entry,decl.name)===binding&&decl.init&&!nullishLiteral(decl.init)){
+                    if(!numberValue(decl.init,next))return false;writes++;
+                }
+        }
+        return writes>0;
+    }
     const primitiveValue=node=>{const found=types(node);return found.size>0&&[...found].every(type=>primitive.has(type))&&initialized(node);};
     // A captured scalar cell may be read before its first assignment. Its
     // actual Undefined value is still a primitive operand; this does not
@@ -757,6 +839,9 @@ function inspectDomains(program,profile,ordinaryExportSelection) {
         // Existing successful paths remain independent of the new profile.
         if(refused&&numericSdkFieldRead(arg))continue;
         if(refused&&fieldCell(arg))continue;
+        // Value-domain admission never discharges lexical readiness: a read
+        // before its declaration executes keeps the original refusal.
+        if(refused&&(arg?.type!=='Identifier'||initialized(arg)||capturedDeclarationReady(arg))&&numberValue(arg,new Set()))continue;
         if(refused&&normalPrimitiveOperation(arg)){operationUsed=true;continue;}
         if(refused&&normalPrimitiveClass(arg)){classResultUsed=true;continue;}
         if(refused){
