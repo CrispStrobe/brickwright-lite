@@ -178,3 +178,18 @@ and all 34 pin-policy controls pass after independent review. Historical readers
 method counts, execution flags and resource limits are unchanged. New reader
 bytes invalidate earlier controller bindings until separately reviewed; do not
 silently refresh a frozen controller or transfer a previous head's admission.
+
+## Bounded final-reader parts transport
+
+The candidate adds the distinct `--actual-v9-parts` reader entry and
+`bw.gui-hdd.actual-v9-parts-manifest.v1`. Use the closed eleven raw input roles
+with a canonical manifest of at most 64 KiB; manifest plus raw parts remains
+at most 4 MiB. This avoids Base64 expansion in the external transport without
+raising the request, archive or original-data limits. The assembled expectation
+still passes the unchanged final policy and original audit. Historical parts
+routes are unchanged, and the V9 reader guard stays false before input reads.
+
+The combined standalone suite now covers 185 methods, including four added
+parts controls; all earlier methods remain. Its wrapper and all 34 pin-policy
+controls pass. Manufactured large transport and small complete-reader parity
+are separate from actual guest qualification, which remains pending.

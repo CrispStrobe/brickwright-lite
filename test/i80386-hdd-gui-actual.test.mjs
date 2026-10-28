@@ -5701,6 +5701,88 @@ class Originals(unittest.TestCase):
                 with self.subTest(target=target,field=field,value=value),self.assertRaises(ValueError):r.audit_v9(f,e)
 
 
+    def reader_v9_parts_write(self,base,selected):
+        parts=base/'parts';parts.mkdir(exist_ok=True);roles={}
+        small={key:copy.deepcopy(value)for key,value in selected.items()if key not in ('inventoryOriginal','inventoryTemplate','nativeFontOriginals')}
+        for role,name in r.ACTUAL_V6_PART_FILES.items():
+            item=selected['nativeFontOriginals'][role.split('.',1)[1]]if role.startswith('nativeFontOriginals.')else selected[role]
+            raw=base64.b64decode(item['base64'],validate=True);(parts/name).write_bytes(raw);roles[role]=ROW(raw)
+        manifest={'schema':'bw.gui-hdd.actual-v9-parts-manifest.v1','expected':small,'parts':roles}
+        path=base/'manifest.json';path.write_bytes(E(manifest));return path,parts,manifest
+
+    def test_actual_v9_parts_large_raw_transport_fits_without_expanded_json_cap_raise(self):
+        _,selected=self.reader_final_v9_packet()
+        # A manufactured transport payload, not an admitted inventory/guest result.
+        raw=E({'manufacturedTransportPadding':'x'*3200000});selected['inventoryOriginal']=dict(ROW(raw),base64=base64.b64encode(raw).decode())
+        with tempfile.TemporaryDirectory(dir=root.parent)as temporary:
+            path,parts,manifest=self.reader_v9_parts_write(pathlib.Path(temporary),selected)
+            self.assertGreater(len(E(selected)),r.JSON_CAP)
+            self.assertLessEqual(len(E(manifest))+sum(row['byteLength']for row in manifest['parts'].values()),r.JSON_CAP)
+            self.assertEqual(r.actual_v9_parts_expected(path,parts),selected)
+            for cut in ('aggregate','role-cap','manifest-cap','v8-schema','extra-key','missing-ack','duplicate-key'):
+                changed=copy.deepcopy(manifest)
+                if cut=='aggregate':changed['parts']['inventoryOriginal']['byteLength']=r.JSON_CAP
+                elif cut=='role-cap':changed['parts']['inventoryOriginal']['byteLength']=r.JSON_CAP+1
+                elif cut=='manifest-cap':changed['expected']['extra']='x'*65536
+                elif cut=='v8-schema':changed['schema']='bw.gui-hdd.actual-v8-parts-manifest.v1'
+                elif cut=='extra-key':changed['extra']=True
+                elif cut=='missing-ack':changed['expected'].pop('ackCommit')
+                encoded=E(changed)
+                if cut=='duplicate-key':encoded=encoded.replace(b'{',b'{"schema":"duplicate",',1)
+                path.write_bytes(encoded)
+                with self.subTest(cut=cut),self.assertRaises(ValueError):r.actual_v9_parts_expected(path,parts)
+
+    def test_actual_v9_parts_complete_final_reader_and_cli_parity(self):
+        files,expected=self.reader_final_v9_packet();archived=copy.deepcopy(files)
+        archived['inventory.json']=E({'schema':'bw.gui-hdd.originals.v1','files':{name:ROW(raw)for name,raw in archived.items()}})
+        artifact=zip_({'originals/'+name:raw for name,raw in archived.items()})
+        selected=copy.deepcopy(expected);selected.update(artifactBytes=len(artifact),artifactSha256=H(artifact));selected['artifact'].update(size_in_bytes=len(artifact),digest='sha256:'+H(artifact))
+        direct=r.audit_v9(r.archive_originals_v9(artifact),selected)
+        with tempfile.TemporaryDirectory(dir=root.parent)as temporary:
+            base=pathlib.Path(temporary);path,parts,_=self.reader_v9_parts_write(base,selected);artifact_path=base/'artifact.zip';artifact_path.write_bytes(artifact)
+            self.assertEqual(r.actual_v9_parts_expected(path,parts),selected)
+            with patch.object(r,'ACTUAL_V9_READER_ENABLED',True),patch.object(r.sys,'stdout',io.StringIO())as output:
+                self.assertEqual(r.main(['--actual-v9-parts','--manifest',str(path),'--parts',str(parts),'--artifact',str(artifact_path)]),0)
+                self.assertEqual(D(output.getvalue().encode()),direct)
+            with patch.object(r,'ACTUAL_V9_READER_ENABLED',True),self.assertRaisesRegex(ValueError,'exact seven-token'):
+                r.main(['--actual-v9-parts','--parts',str(parts),'--manifest',str(path),'--artifact',str(artifact_path)])
+
+    def test_actual_v9_parts_closed_files_aliases_swaps_and_read_close_failures(self):
+        _,selected=self.reader_final_v9_packet()
+        for cut in ('extra','missing','symlink-file','hardlink','symlink-directory','swap','hash','manifest-alias','read-close'):
+            with self.subTest(cut=cut),tempfile.TemporaryDirectory(dir=root.parent)as temporary:
+                base=pathlib.Path(temporary);path,parts,manifest=self.reader_v9_parts_write(base,selected)
+                name=parts/'native-event.json'
+                if cut=='extra':(parts/'extra.json').write_bytes(b'{}')
+                elif cut=='missing':name.unlink()
+                elif cut=='symlink-file':saved=base/'saved';name.rename(saved);name.symlink_to(saved)
+                elif cut=='hardlink':r.os.link(name,base/'second-link')
+                elif cut=='symlink-directory':alias=base/'alias';alias.symlink_to(parts,target_is_directory=True);parts=alias
+                elif cut=='swap':other=parts/'native-request.json';a=name.read_bytes();b=other.read_bytes();name.write_bytes(b);other.write_bytes(a)
+                elif cut=='hash':raw=name.read_bytes();name.write_bytes(b'X'+raw[1:])
+                elif cut=='manifest-alias':alias=base/'alias.json';alias.symlink_to(path);path=alias
+                if cut=='read-close':
+                    close=r.os.close
+                    def close_fail(fd):close(fd);raise OSError('manufactured close secondary')
+                    with patch.object(r.os,'read',side_effect=OSError('manufactured primary read')),patch.object(r.os,'close',side_effect=close_fail),self.assertRaises(r.ActualV6PartsFailure)as caught:r.actual_v9_parts_expected(path,parts)
+                    self.assertIn('primary read',caught.exception.firstFailure['message']);self.assertEqual(caught.exception.secondary[0]['phase'],'manifest-close')
+                else:
+                    with self.assertRaises(r.ActualV6PartsFailure):r.actual_v9_parts_expected(path,parts)
+
+    def test_actual_v9_parts_disabled_before_any_input_and_closed_selected_roles(self):
+        with patch.object(r,'ACTUAL_V9_READER_ENABLED',False),patch.object(r,'actual_v9_parts_expected',side_effect=AssertionError('parts read')),patch.object(r,'bounded_input',side_effect=AssertionError('artifact read')),self.assertRaises(ValueError):
+            r.main(['--actual-v9-parts','--manifest','unread','--parts','unread','--artifact','unread'])
+        _,selected=self.reader_final_v9_packet()
+        for cut in ('extra-role','missing-role','wrong-expectation','missing-ack-blob','missing-ack-sha'):
+            with tempfile.TemporaryDirectory(dir=root.parent)as temporary:
+                path,parts,manifest=self.reader_v9_parts_write(pathlib.Path(temporary),selected)
+                if cut=='extra-role':manifest['parts']['unknown']=ROW(b'{}')
+                elif cut=='missing-role':manifest['parts'].pop('nativeFontOriginals.event')
+                elif cut=='wrong-expectation':manifest['expected']['schema']='bw.gui-hdd.actual-expectation.v8'
+                else:manifest['expected'].pop('ackBlob'if cut=='missing-ack-blob'else'ackSha256')
+                path.write_bytes(E(manifest))
+                with self.subTest(cut=cut),self.assertRaises(ValueError):r.actual_v9_parts_expected(path,parts)
+
     def test_reader_v9_clock_checkout_cost_and_roundtrip_bound(self):
         phase,e=self.reader_phase_v9_packet();deadline=D(phase['gui-actual-v9/deadline.json']);self.assertEqual(r.actual_v9_deadline(E(deadline),{'runId':90,'jobId':91},deadline['sourceHead']),deadline)
         for cut in ('ignore-checkout','clock-rollback','date-parse','date-seconds','elapsed','boolean','reserve'):
@@ -6103,8 +6185,9 @@ test('standalone original reader: complete manufactured packet and coherent nega
     }
     const historicalMethodCount=167;
     const sameJobMethodCount=14; // Seven new reader and seven connected producer methods.
-    assert.equal(total,historicalMethodCount+sameJobMethodCount,
-        'all 167 historical plus 14 same-job standalone methods remain covered exactly once');
+    const sameJobPartsMethodCount=4;
+    assert.equal(total,historicalMethodCount+sameJobMethodCount+sameJobPartsMethodCount,
+        'all 167 historical plus 14 same-job plus 4 V9 parts methods remain covered exactly once');
 });
 
 test('actual v6 parts: exact bounded transport and independent reader parity', () => {
@@ -6692,4 +6775,13 @@ test('same-job actual9 producer: connected inventory, ACK, request and exact sta
     assert.equal(result.status,0,`${result.error?.stack || ''}\n${result.stdout}\n${result.stderr}`);
     const summary=readOriginalControlSummary(result.stdout);
     assert.ok(summary.controls>=6);assert.equal(summary.failures,0);assert.equal(summary.errors,0);
+});
+
+
+test('actual v9 parts: bounded raw transport, same-job final parity and coherent refusals', () => {
+    const selected=controls.replace("if not name.startswith(('test_finite_v4','test_finite_v6','test_finite_v7','test_finite_v8','test_finite_v9','test_actual_v6_parts_','test_actual_v8_'))", "if name.startswith('test_actual_v9_parts_')");
+    assert.notEqual(selected,controls);
+    const result=spawnSync('/usr/bin/python3',['-B','-',root],{input:selected,cwd:root,encoding:'utf8',timeout:60000,maxBuffer:4*1024*1024});
+    assert.equal(result.status,0,`${result.error?.stack || ""}\nsignal=${result.signal}\n${result.stdout}\n${result.stderr}`);
+    assert.deepEqual(readOriginalControlSummary(result.stdout),{controls:4,failures:0,errors:0});
 });

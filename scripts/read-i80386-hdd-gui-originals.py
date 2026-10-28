@@ -4321,6 +4321,64 @@ def actual_v8_parts_expected(manifest_path,parts_path):
     return expected
 
 
+def actual_v9_parts_expected(manifest_path,parts_path):
+    """New bounded transport; all old expectation and actual graders stay unchanged."""
+    manifest_raw=actual_v6_part_read(manifest_path,65536,'manifest')
+    manifest=decode(manifest_raw)
+    fields(manifest,'schema expected parts')
+    need(encode(manifest)==manifest_raw and manifest['schema']=='bw.gui-hdd.actual-v9-parts-manifest.v1',
+         'canonical closed actual v9 parts manifest')
+    selected=manifest['expected'];fields(selected,ACTUAL_V6_PART_EXPECTED+' dispatchProof dependencyPins vendorPinsSha256 ackCommit ackBlob ackSha256')
+    need(selected['schema']=='bw.gui-hdd.actual-expectation.v9','distinct v9 expectation parts')
+    parts=manifest['parts'];need(type(parts) is dict and set(parts)==set(ACTUAL_V6_PART_FILES),
+                                 'exact eleven external original roles')
+    total=len(manifest_raw)
+    for role in ACTUAL_V6_PART_FILES:
+        row=parts[role];fields(row,'byteLength sha256');integer(row['byteLength'],1,JSON_CAP);digest(row['sha256'])
+        total+=row['byteLength'];need(total<=JSON_CAP,'bounded manifest and raw parts aggregate')
+    directory=Path(parts_path).absolute();descriptor=None;first=None;secondary=[];expected=None
+    try:
+        before=directory.lstat()
+        need(directory.resolve(strict=True)==directory and stat.S_ISDIR(before.st_mode),
+             'canonical parts directory without alias')
+        descriptor=os.open(directory,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW|os.O_CLOEXEC)
+        need(actual_v6_part_identity(os.fstat(descriptor))==actual_v6_part_identity(before),
+             'held parts directory identity')
+        names=[]
+        with os.scandir(descriptor) as children:
+            for child in children:
+                need(len(names)<len(ACTUAL_V6_PART_FILES) and len(os.fsencode(child.name))<=128,
+                     'bounded closed parts directory census')
+                names.append(child.name)
+        need(len(names)==len(ACTUAL_V6_PART_FILES) and set(names)==set(ACTUAL_V6_PART_FILES.values()),
+             'closed eleven-file parts directory census')
+        expected=dict(selected);expected['nativeFontOriginals']={};observed_total=len(manifest_raw)
+        for role,name in ACTUAL_V6_PART_FILES.items():
+            raw=actual_v6_part_read(name,parts[role]['byteLength'],role,descriptor)
+            need(len(raw)==parts[role]['byteLength'] and sha(raw)==parts[role]['sha256'],
+                 'selected parts extent and digest')
+            observed_total+=len(raw);need(observed_total<=JSON_CAP,'observed raw parts aggregate')
+            embedded={'byteLength':len(raw),'sha256':sha(raw),'base64':base64.b64encode(raw).decode()}
+            if role.startswith('nativeFontOriginals.'):
+                expected['nativeFontOriginals'][role.split('.',1)[1]]=embedded
+            else:expected[role]=embedded
+        after=directory.lstat()
+        need(actual_v6_part_identity(os.fstat(descriptor))==actual_v6_part_identity(before)==
+             actual_v6_part_identity(after),'stable parts directory readback')
+    except ActualV6PartsFailure as error:
+        first=error.firstFailure;secondary.extend(error.secondary)
+    except BaseException as error:first=actual_v6_part_error('parts-directory',error)
+    finally:
+        if descriptor is not None:
+            try:os.close(descriptor)
+            except BaseException as error:
+                record=actual_v6_part_error('parts-directory-close',error)
+                if first is None:first=record
+                else:secondary.append(record)
+    if first is not None:raise ActualV6PartsFailure(first,secondary)
+    return expected
+
+
 def parse_request_v9(raw, expected):
     digest(expected); need(type(raw) is bytes and 0 < len(raw) <= JSON_CAP and sha(raw) == expected,
                            'independently selected request digest')
@@ -5117,6 +5175,25 @@ def request_event_v9(request,expected):
 
 def main(argv=None):
     raw_args=list(sys.argv[1:] if argv is None else argv)
+    if raw_args[:1]==['--actual-v9-parts']:
+        need(ACTUAL_V9_READER_ENABLED is True,'actual v9 original reader disabled pending source review')
+        parser=argparse.ArgumentParser(description='Independent bounded actual v9 parts audit',allow_abbrev=False)
+        parser.add_argument('--actual-v9-parts',action='store_true')
+        for name in ('manifest','parts','artifact'):parser.add_argument('--'+name,required=True)
+        need(len(raw_args)==7 and raw_args[0]=='--actual-v9-parts' and
+             raw_args[1]=='--manifest' and raw_args[3]=='--parts' and raw_args[5]=='--artifact',
+             'exact seven-token actual v9 parts entry')
+        args=parser.parse_args(raw_args)
+        try:expected=actual_v9_parts_expected(args.manifest,args.parts)
+        except ActualV6PartsFailure as error:
+            print(encode({'pass':False,'firstFailure':error.firstFailure,'secondary':error.secondary}).decode(),
+                  end='',file=sys.stderr)
+            return 1
+        expected_policy_v9(expected)
+        raw=bounded_input(args.artifact,expected['artifactBytes'])
+        need(len(raw)==expected['artifactBytes'] and sha(raw)==expected['artifactSha256'],
+             'external actual artifact digest')
+        print(encode(audit_v9(archive_originals_v9(raw),expected)).decode(),end='');return 0
     if raw_args[:1]==['--actual-v9-phase']:
         need(ACTUAL_V9_READER_ENABLED is True,'V9 phase reader disabled before original read')
         parser=argparse.ArgumentParser(allow_abbrev=False);parser.add_argument('--actual-v9-phase',action='store_true')
