@@ -3667,9 +3667,20 @@
       "poweredMotion": "HEADLESS_COMPLETED (SPIKE)",
       "mechanicalLaw": "SIMULATOR_AGREES",
       "causalControl": "PASS (rimrun-swapped)",
-      "browserLoad": "NOT_RUN",
+      "browserLoad": "PASS",
       "savedProjectReplay": "NOT_RUN",
-      "noveltyNote": "Importer warns loose-part for the frame because the hub stands free beside the ramp (declared in ASSEMBLY.md); blocks promotion until mounted."
+      "noveltyNote": "Importer warns loose-part for the frame because the hub stands free beside the ramp (declared in ASSEMBLY.md); blocks promotion until mounted.",
+      "browserRun": {
+        "build": "1687b3383 (GitHub Pages, live)",
+        "browser": "system Chrome, Run button, timeScale 4",
+        "verdict": "PROGRAM-COMPLETE",
+        "parts": 506,
+        "worker": true,
+        "issues": 1,
+        "pageErrors": 0,
+        "nan": false,
+        "simMs": 16833
+      }
     },
     {
       "id": "rimrun-swapped",
@@ -3688,8 +3699,19 @@
       "poweredMotion": "HEADLESS_COMPLETED (SPIKE)",
       "mechanicalLaw": "SIMULATOR_AGREES",
       "causalControl": "IS_CONTROL",
-      "browserLoad": "NOT_RUN",
-      "savedProjectReplay": "NOT_RUN"
+      "browserLoad": "PASS",
+      "savedProjectReplay": "NOT_RUN",
+      "browserRun": {
+        "build": "1687b3383 (GitHub Pages, live)",
+        "browser": "system Chrome, Run button, timeScale 4",
+        "verdict": "PROGRAM-COMPLETE",
+        "parts": 506,
+        "worker": true,
+        "issues": 1,
+        "pageErrors": 0,
+        "nan": false,
+        "simMs": 25833
+      }
     },
     {
       "id": "swayshift",
@@ -3708,8 +3730,19 @@
       "poweredMotion": "HEADLESS_COMPLETED (SPIKE)",
       "mechanicalLaw": "SIMULATOR_AGREES",
       "causalControl": "PASS (swayshift-in-phase: same model, start_gap 0.760 s)",
-      "browserLoad": "NOT_RUN",
-      "savedProjectReplay": "NOT_RUN"
+      "browserLoad": "PASS",
+      "savedProjectReplay": "NOT_RUN",
+      "browserRun": {
+        "build": "1687b3383 (GitHub Pages, live)",
+        "browser": "system Chrome, Run button, timeScale 4",
+        "verdict": "PROGRAM-COMPLETE",
+        "parts": 204,
+        "worker": true,
+        "issues": 0,
+        "pageErrors": 0,
+        "nan": false,
+        "simMs": 36633
+      }
     },
     {
       "id": "swayshift-in-phase",
@@ -3728,8 +3761,19 @@
       "poweredMotion": "HEADLESS_COMPLETED (SPIKE)",
       "mechanicalLaw": "SIMULATOR_AGREES",
       "causalControl": "IS_CONTROL",
-      "browserLoad": "NOT_RUN",
-      "savedProjectReplay": "NOT_RUN"
+      "browserLoad": "PASS",
+      "savedProjectReplay": "NOT_RUN",
+      "browserRun": {
+        "build": "1687b3383 (GitHub Pages, live)",
+        "browser": "system Chrome, Run button, timeScale 4",
+        "verdict": "PROGRAM-COMPLETE",
+        "parts": 204,
+        "worker": true,
+        "issues": 0,
+        "pageErrors": 0,
+        "nan": false,
+        "simMs": 17933
+      }
     },
     {
       "id": "tipline",
@@ -3748,8 +3792,19 @@
       "poweredMotion": "HEADLESS_COMPLETED",
       "mechanicalLaw": "SIMULATOR_AGREES",
       "causalControl": "PASS (tipline-swapped)",
-      "browserLoad": "NOT_RUN",
-      "savedProjectReplay": "NOT_RUN"
+      "browserLoad": "PASS",
+      "savedProjectReplay": "NOT_RUN",
+      "browserRun": {
+        "build": "1687b3383 (GitHub Pages, live)",
+        "browser": "system Chrome, Run button, timeScale 4",
+        "verdict": "PROGRAM-COMPLETE",
+        "parts": 174,
+        "worker": true,
+        "issues": 0,
+        "pageErrors": 0,
+        "nan": false,
+        "simMs": 47233
+      }
     },
     {
       "id": "tipline-swapped",
@@ -3768,8 +3823,19 @@
       "poweredMotion": "HEADLESS_COMPLETED",
       "mechanicalLaw": "SIMULATOR_AGREES",
       "causalControl": "IS_CONTROL",
-      "browserLoad": "NOT_RUN",
-      "savedProjectReplay": "NOT_RUN"
+      "browserLoad": "PASS",
+      "savedProjectReplay": "NOT_RUN",
+      "browserRun": {
+        "build": "1687b3383 (GitHub Pages, live)",
+        "browser": "system Chrome, Run button, timeScale 4",
+        "verdict": "PROGRAM-COMPLETE",
+        "parts": 174,
+        "worker": true,
+        "issues": 0,
+        "pageErrors": 0,
+        "nan": false,
+        "simMs": 55433
+      }
     },
     {
       "id": "twistspan",
@@ -3788,8 +3854,19 @@
       "poweredMotion": "HEADLESS_COMPLETED",
       "mechanicalLaw": "SIMULATOR_AGREES",
       "causalControl": "PASS (twistspan-inner)",
-      "browserLoad": "NOT_RUN",
-      "savedProjectReplay": "NOT_RUN"
+      "browserLoad": "PASS",
+      "savedProjectReplay": "NOT_RUN",
+      "browserRun": {
+        "build": "1687b3383 (GitHub Pages, live)",
+        "browser": "system Chrome, Run button, timeScale 4",
+        "verdict": "PROGRAM-COMPLETE",
+        "parts": 107,
+        "worker": true,
+        "issues": 0,
+        "pageErrors": 0,
+        "nan": false,
+        "simMs": 63000
+      }
     },
     {
       "id": "twistspan-inner",
@@ -3808,8 +3885,19 @@
       "poweredMotion": "HEADLESS_COMPLETED",
       "mechanicalLaw": "SIMULATOR_AGREES",
       "causalControl": "IS_CONTROL",
-      "browserLoad": "NOT_RUN",
-      "savedProjectReplay": "NOT_RUN"
+      "browserLoad": "PASS",
+      "savedProjectReplay": "NOT_RUN",
+      "browserRun": {
+        "build": "1687b3383 (GitHub Pages, live)",
+        "browser": "system Chrome, Run button, timeScale 4",
+        "verdict": "PROGRAM-COMPLETE",
+        "parts": 107,
+        "worker": true,
+        "issues": 0,
+        "pageErrors": 0,
+        "nan": false,
+        "simMs": 55767
+      }
     },
     {
       "id": "evenhand",
@@ -3828,9 +3916,20 @@
       "poweredMotion": "HEADLESS_COMPLETED (SPIKE), completed=1, 11 arrivals",
       "mechanicalLaw": "SIMULATOR_AGREES",
       "causalControl": "PASS (evenhand-control)",
-      "browserLoad": "NOT_RUN",
+      "browserLoad": "PASS",
       "savedProjectReplay": "NOT_RUN",
-      "noveltyNote": "Positions alone cannot show the balance: the engine's motors hold any load (self-locking), so the evidence is holding torque, not sag."
+      "noveltyNote": "Positions alone cannot show the balance: the engine's motors hold any load (self-locking), so the evidence is holding torque, not sag.",
+      "browserRun": {
+        "build": "1687b3383 (GitHub Pages, live)",
+        "browser": "system Chrome, Run button, timeScale 4",
+        "verdict": "PROGRAM-COMPLETE",
+        "parts": 97,
+        "worker": true,
+        "issues": 0,
+        "pageErrors": 0,
+        "nan": false,
+        "simMs": 36033
+      }
     },
     {
       "id": "evenhand-control",
@@ -3849,8 +3948,19 @@
       "poweredMotion": "HEADLESS_COMPLETED (SPIKE), completed=1, 11 arrivals",
       "mechanicalLaw": "SIMULATOR_AGREES",
       "causalControl": "IS_CONTROL",
-      "browserLoad": "NOT_RUN",
-      "savedProjectReplay": "NOT_RUN"
+      "browserLoad": "PASS",
+      "savedProjectReplay": "NOT_RUN",
+      "browserRun": {
+        "build": "1687b3383 (GitHub Pages, live)",
+        "browser": "system Chrome, Run button, timeScale 4",
+        "verdict": "PROGRAM-COMPLETE",
+        "parts": 97,
+        "worker": true,
+        "issues": 0,
+        "pageErrors": 0,
+        "nan": false,
+        "simMs": 33867
+      }
     }
   ],
   "appVerification": {
