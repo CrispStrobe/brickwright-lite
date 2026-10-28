@@ -1154,29 +1154,6 @@ export const EXPERIMENTAL_MODELS = Object.freeze([
         }
     },
     {
-        "file": "samebeat.ldr",
-        "title": {
-            "en": "Samebeat — reversible pendulum",
-            "de": "Samebeat — Reversionspendel"
-        },
-        "example": "samebeat.bw",
-        "mat": "plain",
-        "experimental": true,
-        "blocked": false,
-        "intro": {
-            "en": "A brief motor pulse moves a support and releases a passive rigid pendulum. Rehang the same body at its unequal paired pivot and compare periods; then test a third suspension with the same parts and program.",
-            "de": "Ein kurzer Motorimpuls bewegt die Aufhängung eines passiven starren Pendels. Hänge denselben Körper am ungleichen zweiten Punkt auf und vergleiche die Perioden; prüfe danach einen dritten Punkt mit denselben Teilen und demselben Programm."
-        },
-        "manualJog": {
-            "A": {
-                "minDeg": -8,
-                "maxDeg": 8,
-                "stepDeg": 4,
-                "speedDps": 60
-            }
-        }
-    },
-    {
         "file": "samebeat-conjugate.ldr",
         "title": {
             "en": "Samebeat — paired pivot",
@@ -3486,40 +3463,6 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
             "Winkeldreiteilung",
             "Neusis",
             "markiertes Lineal",
-            "experimental",
-            "prototype",
-            "unverified",
-            "experimentell"
-        ],
-        "experimental": true
-    },
-    "samebeat.ldr": {
-        "pieces": 92,
-        "motors": 1,
-        "hubs": [
-            "spike-prime"
-        ],
-        "topic": "forces",
-        "description": {
-            "en": "A brief motor pulse moves a support and releases a passive rigid pendulum. Rehang the same body at its unequal paired pivot and compare periods; then test a third suspension with the same parts and program.",
-            "de": "Ein kurzer Motorimpuls bewegt die Aufhängung eines passiven starren Pendels. Hänge denselben Körper am ungleichen zweiten Punkt auf und vergleiche die Perioden; prüfe danach einen dritten Punkt mit denselben Teilen und demselben Programm."
-        },
-        "author": "CrispStrobe",
-        "license": "BSD-3-Clause",
-        "mechanism": {
-            "en": "Reversible compound pendulum — Kater principle",
-            "de": "Reversionspendel — Kater-Prinzip"
-        },
-        "keywords": [
-            "reversible pendulum",
-            "compound pendulum",
-            "physical pendulum",
-            "Kater pendulum",
-            "conjugate pivots",
-            "centre of oscillation",
-            "Reversionspendel",
-            "physikalisches Pendel",
-            "konjugierte Aufhängepunkte",
             "experimental",
             "prototype",
             "unverified",

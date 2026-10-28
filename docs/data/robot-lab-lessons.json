@@ -5048,6 +5048,54 @@
         "crank-rocker.ldr",
         "gearbox.ldr"
       ]
+    },
+    "samebeat": {
+      "en": {
+        "what": "A reversible compound pendulum. One motor briefly moves the support of a separate rigid body and then holds. Rehang the same body from a different stock hole and compare the free-swing period. The paired suspension distances are unequal; a third pivot provides a physical comparison.",
+        "try": [
+          "Load the model, press Reset, then Run. After a 1 s hold, the support moves to +8°, waits 0.12 s, returns to 0° and holds for 22 s. Watch the passive pendulum during that final hold.",
+          "Count complete swings from one crossing of the downward position to the next crossing in the same direction. Do not use a half-swing or the motor encoder as the period.",
+          "Predict what turning the same body over and hanging it from the paired hole will do. Load samebeat-conjugate.ldr, reset and repeat with the same program.",
+          "Repeat with samebeat-control.ldr. Compare its period, its swing amplitude and the held support position with the paired cases."
+        ],
+        "why": "A rigid body has distributed mass. Its small-angle period depends on the ratio of rotational inertia about the pivot to the gravitational restoring torque. Two unequal pivot-to-centre distances can give the same ratio when their product equals the central moment of inertia divided by the total mass. This is conjugate suspension. A third pivot changes that balance even though the body and input program stay the same.",
+        "matters": "Henry Kater used this principle in 1817 to measure gravity: he adjusted two knife edges on one bar until the periods matched, then the distance between them was the effective length, and g = 4π²L/T² followed without knowing the centre of mass. In the simulator this body, hung from holes 23.8 mm and 40.2 mm from its centre of mass, swings with periods of 0.50760 s and 0.50759 s. The predictions use the simulator's own masses and shapes; a real gravity measurement would need calibration.",
+        "question": "Can hanging the same body from a hole closer to its centre of mass make it swing more slowly? Why might two unequal suspension distances have nearly the same period?",
+        "answer": "Yes. Near the centre of mass the restoring torque becomes weak, while the body retains rotational inertia. The period depends on d + k²/d, where k² = I_G/M. Two unequal positive distances d1 and d2 give the same ideal small-angle period when d1*d2 = k². Equal periods alone do not establish conjugacy if the two distances are simply equal.",
+        "further": [
+          "Compare the exact prepared-body predictions with periods measured from actual passive motion. Keep the source prediction separate from the measurement.",
+          "Inspect the swing amplitudes. Finite swings are slightly slower than the infinitesimal-amplitude limit, so different amplitudes can create a small period difference.",
+          "Compare Pendulum Array, which changes the lengths and mass distributions of three different arms. Here the rigid body is the same and its suspension changes.",
+          "A physical Technic bearing has friction and play. The supplied numerical experiment does not establish a precision gravity instrument."
+        ]
+      },
+      "related": [
+        "pendulum-array.ldr",
+        "cascade.ldr"
+      ],
+      "de": {
+        "what": "Ein umkehrbares physikalisches Pendel. Ein Motor bewegt kurz die Aufhängung eines getrennten starren Körpers und hält danach an. Hänge denselben Körper an einem anderen Technic-Loch auf und vergleiche seine freie Schwingungsdauer. Die beiden vorgesehenen Abstände zum Schwerpunkt sind ungleich; ein dritter Aufhängepunkt dient als Vergleich.",
+        "try": [
+          "Lade das Modell, drücke Zurücksetzen und dann Start. Nach 1 s fährt die Aufhängung auf +8°, wartet 0,12 s, kehrt auf 0° zurück und hält 22 s. Beobachte das passive Pendel während dieser letzten Haltephase.",
+          "Miss vollständige Schwingungen: von einem Durchgang durch die untere Ruhelage bis zum nächsten Durchgang in derselben Richtung. Eine halbe Schwingung und der Motorwinkel sind keine Periodenmessung.",
+          "Sage voraus, wie sich die Schwingungsdauer beim Umdrehen und Aufhängen am zweiten Loch ändert. Lade samebeat-conjugate.ldr, setze zurück und wiederhole dasselbe Programm.",
+          "Wiederhole den Versuch mit samebeat-control.ldr. Vergleiche Schwingungsdauer, Amplitude und die gehaltene Position der Aufhängung."
+        ],
+        "why": "Die Masse eines starren Körpers ist räumlich verteilt. Seine Schwingungsdauer bei kleinen Auslenkungen hängt vom Verhältnis zwischen dem Trägheitsmoment um die Aufhängung und dem rücktreibenden Gewichtsdrehmoment ab. Zwei ungleiche Abstände zum Schwerpunkt können dasselbe Verhältnis ergeben, wenn ihr Produkt gleich dem zentralen Trägheitsmoment geteilt durch die Gesamtmasse ist. Das sind konjugierte Aufhängepunkte. Ein dritter Punkt verändert dieses Verhältnis, obwohl Körper und Eingangsprogramm gleich bleiben.",
+        "matters": "Henry Kater nutzte dieses Prinzip 1817, um die Erdbeschleunigung zu messen: Er verstellte zwei Schneiden an einem Stab, bis die Perioden gleich waren; dann war ihr Abstand die reduzierte Pendellänge, und g = 4π²L/T² folgte, ohne den Schwerpunkt zu kennen. Im Simulator schwingt dieser Körper an Löchern 23,8 mm und 40,2 mm vom Schwerpunkt mit 0,50760 s und 0,50759 s. Die Vorhersagen verwenden die Massen und Formen des Simulators; eine echte Schweremessung bräuchte eine Kalibrierung.",
+        "question": "Kann derselbe Körper langsamer schwingen, wenn sein Aufhängepunkt näher am Schwerpunkt liegt? Warum können zwei ungleiche Aufhängeabstände fast dieselbe Periode ergeben?",
+        "answer": "Ja. Nahe am Schwerpunkt wird das rücktreibende Gewichtsdrehmoment klein, während das zentrale Trägheitsmoment bestehen bleibt. Die Periode hängt von d + k²/d ab, wobei k²=I_G/M ist. Zwei ungleiche positive Abstände d1 und d2 liefern dieselbe ideale Periode bei kleinen Auslenkungen, wenn d1*d2=k² gilt. Gleiche Perioden beweisen keine konjugierten ungleichen Aufhängepunkte, wenn beide Abstände bloß gleich sind.",
+        "further": [
+          "Vergleiche die genaue Vorhersage aus den aufbereiteten Körperdaten mit Perioden aus der tatsächlich gemessenen passiven Bewegung. Halte Vorhersage und Messung getrennt.",
+          "Prüfe die Schwingungsamplituden. Größere Auslenkungen verlängern die Periode etwas; unterschiedliche Amplituden können daher einen kleinen Periodenunterschied erzeugen.",
+          "Vergleiche Pendulum Array: Dort ändern sich Länge und Massenverteilung dreier verschiedener Arme. Hier bleibt der starre Körper gleich und nur seine Aufhängung ändert sich.",
+          "Reale Technic-Lager haben Reibung und Spiel. Der numerische Versuch qualifiziert kein Präzisionsinstrument zur Messung von g."
+        ]
+      },
+      "formula": {
+        "en": "T0 = 2π sqrt[(I_G + M d²)/(M g d)] = 2π sqrt[(d + k_G²/d)/g], k_G²=I_G/M. For unequal conjugate distances d1*d2=k_G². For collinear opposite-side pivots, D=d1+d2 and T0=2π sqrt(D/g). Finite amplitude A in radians: T/T0≈1+A²/16.",
+        "de": "T0 = 2π sqrt[(I_G + M d²)/(M g d)] = 2π sqrt[(d + k_G²/d)/g], k_G²=I_G/M. Für ungleiche konjugierte Abstände gilt d1*d2=k_G². Liegen Schwerpunkt und beide gegenüberliegenden Aufhängepunkte auf einer Geraden, ist D=d1+d2 und T0=2π sqrt(D/g). Bei Amplitude A im Bogenmaß gilt T/T0≈1+A²/16."
+      }
     }
   }
 }

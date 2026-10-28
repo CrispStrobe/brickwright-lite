@@ -553,25 +553,23 @@
     },
     {
       "models": [
+        "samebeat",
         "pivot-exchange"
       ],
       "name": {
-        "en": "Reversible compound pendulum (conjugate pivots)",
-        "de": "Reversionspendel (konjugierte Aufhängungen)"
+        "en": "Reversible compound pendulum — Kater principle",
+        "de": "Reversionspendel — Kater-Prinzip"
       },
       "aliases": [
-        "Kater's pendulum",
         "reversible pendulum",
-        "physical pendulum",
         "compound pendulum",
-        "radius of gyration",
-        "centre of oscillation",
+        "physical pendulum",
+        "Kater pendulum",
         "conjugate pivots",
-        "Kater-Pendel",
+        "centre of oscillation",
         "Reversionspendel",
         "physikalisches Pendel",
-        "Trägheitsradius",
-        "Schwingungsmittelpunkt"
+        "konjugierte Aufhängepunkte"
       ]
     }
   ]
