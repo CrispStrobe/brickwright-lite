@@ -102,6 +102,10 @@ try {
     const runTo = panel.locator('[data-run-to-address]');
     await runTo.waitFor({state: 'visible', timeout: 10000});
     check('run-to control appeared', await runTo.count() === 1);
+    // The capability check can enable the control a moment after it appears;
+    // wait (bounded) for the enabled state before judging it.
+    await panel.locator('[data-run-to-address]:not([disabled])')
+        .waitFor({state: 'visible', timeout: 10000}).catch(() => {});
     check('run-to is capability-gated and enabled on the attached target', !(await runTo.isDisabled()));
 
     let promptSeen = '';
@@ -111,12 +115,18 @@ try {
         const next = current === 2 ? 5 : current === 5 ? 6 : 2;
         await dialog.accept(`0x${next.toString(16)}`);
     });
-    // Arm the observation before the click: this short ROM reaches the next
-    // address quickly, and polling only after click can miss the honest
-    // running render between installation and the following animation frame.
-    const observedRunning = page.waitForFunction(() => document.querySelector('[data-debug-panel]')
-        ?.getAttribute('data-debug-phase') === 'running', null, {timeout: 10000});
-    await Promise.all([observedRunning, runTo.click()]);
+    // Latch the running phase before the click. This short ROM can go
+    // paused -> running -> paused between two animation-frame polls, so a
+    // polled wait could miss an honest running render. A MutationObserver sees
+    // every attribute change; the gate still requires that running happened.
+    await page.evaluate(() => {
+        window.__bwSawRunning = false;
+        const node = document.querySelector('[data-debug-panel]');
+        const seen = () => { if (node?.getAttribute('data-debug-phase') === 'running') window.__bwSawRunning = true; };
+        new MutationObserver(seen).observe(node, {attributes: true, attributeFilter: ['data-debug-phase']});
+    });
+    await runTo.click();
+    await page.waitForFunction(() => window.__bwSawRunning === true, null, {timeout: 10000});
     await page.waitForFunction(() => document.querySelector('[data-debug-panel]')
         ?.getAttribute('data-debug-phase') === 'paused', null, {timeout: 10000});
     check('run-to used the address prompt and returned to a paused before-boundary',
@@ -134,6 +144,14 @@ try {
     const inspection = panel.locator('[data-debug-selected-inspection]');
     await inspection.waitFor({state: 'visible', timeout: 10000});
     check('selected inspection appeared', await inspection.count() === 1);
+    // Read the panes once the selection has rendered its recorded evidence,
+    // not on the first frame the container is visible.
+    await page.waitForFunction(() => {
+        const root = document.querySelector('[data-debug-selected-inspection]');
+        return root?.getAttribute('data-inspection-provenance') === 'recorded-event'
+            && ['registers', 'disassembly', 'memory'].every(k =>
+                (root.querySelector(`[data-debug-selected-${k}]`)?.innerText || '').trim().length > 0);
+    }, null, {timeout: 10000}).catch(() => {});
     const evidence = await panel.evaluate(node => {
         const timeline = node.querySelector('[data-debug-timeline-controls]')?.innerText || '';
         const root = node.querySelector('[data-debug-selected-inspection]');
