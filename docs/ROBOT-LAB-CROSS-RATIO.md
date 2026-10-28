@@ -35,7 +35,15 @@ one static ground and four distinct dynamic roles are mandatory.
 The causal control removes only `pivot_axle_P` from a test copy of the source.
 It must retain all four moving roles and motor A, remove precisely the
 input–coupler hinge, complete the same moving-input route, and lose the same
-0.5° law criterion. A muted input or deleted assembly cannot count as a control.
+0.5° law criterion. The compiler preflight first refused an incorrect assumption
+that this edit would retain five bodies. It actually frees seven capture
+collars: twelve bodies, three hinges and seven specific loose-part warnings.
+The contract now freezes both complete body-part groupings and those exact
+warnings; every dynamic body must have finite recorded poses. All other warnings
+refuse. The single-part source edit is unchanged. Its physical effects include
+contacts by the freed collars, so it does not isolate the missing hinge as the
+sole possible cause. The first refusal is preserved; no motion case ran before
+this structural correction. A muted input or deleted assembly cannot count as a control.
 Original records are emitted before assertions, including failed cases.
 
 `test/bw-sim-cross-ratio.test.mjs` first validates the independent reader against
@@ -63,7 +71,7 @@ controls are implemented. The existing 30-minute job cap and every old gate
 remain unchanged. Zero-reading budget registration still awaits its scope
 extension; no new runtime or historical timing is claimed.
 
-Three lightweight analytic preflights (35 rejected corruptions, including the
+Four lightweight analytic preflights (39 rejected corruptions, including the
 four-case retained-TAP transport and same-opcode program edits) and 15 browser shard/inventory checks pass;
 these checks import no engine and do not qualify motion.
 

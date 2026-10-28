@@ -12,7 +12,9 @@ export function analyticRecord(control=false,coldMs=0){
  const a=.032,b=.064,root=Math.sqrt(3),A=[0,0,0],B=[a,0,0],P0=[b/2,0,-b*root/2];
  const q=d=>[0,Math.sin(d*Math.PI/360),0,Math.cos(d*Math.PI/360)];
  const body=(id,parts,position)=>({id,parts,position,rotation:q(0),motion:'dynamic'});
- const bodies=[body('base',[C.roles.base],A),body('input',[C.roles.input],A),body('output',[C.roles.output],B),body('coupler',[C.roles.coupler],P0),{...body('ground',[],A),motion:'static'}];
+ const topology=C.topology[control?'remove-pivot-P':'original'];
+ const parts=role=>topology.bodyPartGroups.find(g=>g.includes(C.roles[role]));
+ const bodies=[body('base',parts('base'),A),body('input',parts('input'),A),body('output',parts('output'),B),body('coupler',parts('coupler'),P0),{...body('ground',[],A),motion:'static'},...(control?C.control.detachedCaptureParts.map((p,i)=>body('capture'+i,[p],[.2+i*.01,0,0])):[])];
  const hinge=(id,body1,body2,point)=>({id,type:'hinge',body1,body2,point,axis:[0,1,0]});
  const joints=[hinge('A','base','input',A),hinge('B','base','output',B),...(!control?[hinge('P','input','coupler',P0)]:[]),hinge('Q','coupler','output',[0,0,-b*root/2])];
  const input={originalModel:read('overlay/scratch-gui/static/sim-lab/models/cross-ratio.ldr'),program:read('overlay/scratch-gui/static/sim-lab/programs/cross-ratio.bw')};
@@ -36,5 +38,5 @@ export function analyticRecord(control=false,coldMs=0){
   for(const f of frames)f.t+=coldMs;
   frames.unshift(...cold);
  }
- return {schema:1,kind:'cross-ratio-native',identity:ANALYTIC_IDENTITY,contractSha256:digest(contractBytes),variant:control?'remove-pivot-P':'original',input,timing:{...C.timing,coldMs},mechanism:{bodies,joints,actuators:[{port:'A'}]},track:frames,finishedAt:15025+coldMs,issues:[],unsupported:[],vmErrors:[]};
+ return {schema:1,kind:'cross-ratio-native',identity:ANALYTIC_IDENTITY,contractSha256:digest(contractBytes),variant:control?'remove-pivot-P':'original',input,timing:{...C.timing,coldMs},mechanism:{bodies,joints,actuators:[{port:'A'}]},track:frames,finishedAt:15025+coldMs,issues:topology.issueKeys.map(key=>{const [severity,code,part]=key.split(':');return{severity,code,parts:[part]};}),unsupported:[],vmErrors:[]};
 }

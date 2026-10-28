@@ -14,7 +14,7 @@ const check=r=>readCrossRatio(r,{expectedIdentity:ANALYTIC_IDENTITY});
 // Synchronous independent consumer preflight precedes even importing the
 // native harness. A failed negative control cannot continue into engine cases.
 const good=analyticRecord(),cut=analyticRecord(true);
-check(good);check(cut);judgeCrossRatio(good);judgeCrossRatio(cut,{control:true});
+check(good);check(cut);judgeCrossRatio(good);judgeCrossRatio(cut,{control:true,expectedIssueKeys:C.topology['remove-pivot-P'].issueKeys});
 const corruptions={
  'missing row':r=>r.track.splice(40,1),
  'duplicate row':r=>r.track.splice(40,0,structuredClone(r.track[40])),
@@ -87,6 +87,14 @@ const graphCuts=[
 const expectedGraph=crossRatioProgramGraph(graphFixture);
 for(const edit of graphCuts){const changed=structuredClone(graphFixture);edit(changed);assert.notDeepEqual(crossRatioProgramGraph(changed),expectedGraph);}
 test('Cross Ratio: full saved-program graph rejects seven same-opcode content edits',()=>assert.equal(graphCuts.length,7));
+const detachedCuts=[
+ r=>r.issues.push({severity:'warning',code:'loose-part',parts:['invented']}),
+ r=>r.issues.pop(),
+ r=>{delete r.track[5].bodies.capture0;},
+ r=>r.mechanism.bodies.find(b=>b.id==='capture0').motion='static'
+];
+for(const edit of detachedCuts){const bad=structuredClone(cut);edit(bad);assert.throws(()=>check(bad));}
+test('Cross Ratio: exact detached-capture diagnostics and all-body pose census',()=>assert.equal(detachedCuts.length,4));
 const {runRobotLabProgram}=await import('./helpers/robot-lab-direct-vm.mjs');
 const {catalogFrom,prepareModel}=await import('../overlay/scratch-gui/src/lib/bw-sim/sim-session.js');
 const original=read('overlay/scratch-gui/static/sim-lab/models/cross-ratio.ldr'),program=read('overlay/scratch-gui/static/sim-lab/programs/cross-ratio.bw');
@@ -96,7 +104,12 @@ const catalogue=read('overlay/scratch-gui/src/lib/bw-sim/part-meta/parts.json'),
 const prepared=[original,removed].map(text=>prepareModel(text,catalog,{mat:'plain',autoPorts:false}));
 assert.equal(prepared[0].mechanism.joints.length-prepared[1].mechanism.joints.length,1,'only one physical hinge removed');
 assert.equal(prepared[0].model.parts.length,127);assert.equal(prepared[1].model.parts.length,126);
-assert.equal(prepared[0].mechanism.bodies.length,5);assert.equal(prepared[1].mechanism.bodies.length,5);
+for(const [i,p]of prepared.entries()){
+ const expected=C.topology[i?'remove-pivot-P':'original'];
+ assert.equal(p.mechanism.bodies.length,expected.bodyCount);
+ assert.deepEqual(p.mechanism.bodies.map(b=>[...b.parts].sort()).sort((a,b)=>a.join('\0')<b.join('\0')?-1:a.join('\0')>b.join('\0')?1:0),expected.bodyPartGroups);
+ assert.deepEqual(p.issues.map(i=>i.severity+':'+i.code+':'+[...(i.parts||[])].sort().join(',')).sort(),expected.issueKeys);
+}
 for(const p of prepared){assert.equal(p.mechanism.actuators.length,1);assert.equal(p.mechanism.actuators[0].port,'A');}
 const identity={commit:execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim(),tree:execFileSync('git',['rev-parse','HEAD^{tree}'],{encoding:'utf8'}).trim(),files:Object.fromEntries(C.identityPaths.map(p=>[p,hash(readFileSync(new URL('../'+p,import.meta.url)))]))};
 for(const coldMs of C.timing.coldMs)for(const control of [false,true])test(`Cross Ratio actual VM/Jolt: ${control?'remove P':'original'}, cold ${coldMs}ms`,{timeout:240000},async()=>{
@@ -119,7 +132,7 @@ for(const coldMs of C.timing.coldMs)for(const control of [false,true])test(`Cros
  for(const frame of track)console.log('CROSS_RATIO '+JSON.stringify({type:'frame',frame}));
  console.log('CROSS_RATIO '+JSON.stringify({type:'end',record:{finishedAt:r.finishedAt}}));
  assert.ok(r.track.every(f=>!f.extra.sessionFailed));
- judgeCrossRatio(r,{control});
+ judgeCrossRatio(r,{control,expectedIssueKeys:C.topology[control?'remove-pivot-P':'original'].issueKeys});
  const independent=readCrossRatio(record,{expectedIdentity:identity});
  console.log('Cross Ratio independently checked '+JSON.stringify({control,coldMs,...independent}));
 });

@@ -49,10 +49,13 @@ export function readCrossRatio(record,{expectedIdentity}={}){
  check(record.input.model===model,'only the declared physical axle is removed');
  check(record.input.modelSha256===sha(model),'actual model digest');
  check(record.vmErrors?.length===0,'actual VM error stream is empty');
- check(record.issues?.filter(i=>i.severity==='error').length===0,'no compiler errors');
+ const topology=C.topology[record.variant];
+ assert.deepEqual(record.issues.map(i=>i.severity+':'+i.code+':'+[...(i.parts||[])].sort().join(',')).sort(),topology.issueKeys,'only exact source-derived diagnostics');
  check(record.unsupported?.length===0,'no unsupported operation');
- const m=record.mechanism;check(m.bodies.length===5,'four free bodies and floor');
- check(new Set(m.bodies.map(b=>b.id)).size===5,'unique physical body IDs');
+ const m=record.mechanism;check(m.bodies.length===topology.bodyCount,'exact declared body count');
+ const groups=m.bodies.map(b=>[...b.parts].sort()).sort((a,b)=>a.join('\0')<b.join('\0')?-1:a.join('\0')>b.join('\0')?1:0);
+ assert.deepEqual(groups,topology.bodyPartGroups,'exact compiler body-part census');
+ check(new Set(m.bodies.map(b=>b.id)).size===topology.bodyCount,'unique physical body IDs');
  const floor=m.bodies.filter(b=>b.id==='ground');check(floor.length===1&&floor[0].motion==='static','one static ground body');
  check(m.bodies.filter(b=>b.motion==='static').length===1,'only floor may be fixed');
  const roles=Object.fromEntries(Object.entries(C.roles).map(([role,part])=>{
@@ -60,7 +63,7 @@ export function readCrossRatio(record,{expectedIdentity}={}){
  }));
  check(new Set(Object.values(roles).map(b=>b.id)).size===4&&Object.values(roles).every(b=>b.motion==='dynamic'),'four distinct dynamic physical roles');
  check(m.actuators.length===1&&m.actuators[0].port==='A','actual input A only');
- const joints=m.joints;check(joints.length===(record.variant==='original'?4:3),'declared hinge census');
+ const joints=m.joints;check(joints.length===topology.jointCount,'declared hinge census');
  check(joints.every(j=>j.type==='hinge'),'hinges only');
  const allowed=new Set(['base:input','base:output','coupler:input','coupler:output']);
  const roleOf=id=>Object.keys(roles).find(k=>roles[k].id===id);
@@ -77,7 +80,9 @@ export function readCrossRatio(record,{expectedIdentity}={}){
  for(const f of frames){
   check(Number.isFinite(f.t)&&f.t===previous+C.timing.frameMs,'exact recording cadence; no missing/duplicate/reordered rows');previous=f.t;
   check(f.phase===(f.t<=record.timing.coldMs?'cold':f.t<=record.finishedAt?'program':'after'),'actual phase clock');
-  for(const b of Object.values(roles))pose(f.bodies[b.id]);
+  const dynamic=m.bodies.filter(b=>b.motion==='dynamic');
+  assert.deepEqual(Object.keys(f.bodies).sort(),dynamic.map(b=>b.id).sort(),'all dynamic body poses, including freed captures');
+  for(const b of dynamic)pose(f.bodies[b.id]);
   const v={};
   for(const [role,reference]of Object.entries({input:[.5,0,-Math.sqrt(3)/2],output:[-.5,0,-Math.sqrt(3)/2],coupler:[-1,0,0]})){
    v[role]=relativeVector(roles[role],f.bodies[roles[role].id],roles.base,f.bodies[roles.base.id],reference);

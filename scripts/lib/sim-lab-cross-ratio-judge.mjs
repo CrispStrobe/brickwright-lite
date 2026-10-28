@@ -26,9 +26,9 @@ export function crossRatioMetrics(r){
  assert.ok(rows.length>1);
  return {inputSpanDeg:Math.max(...rows.map(x=>x.input))-Math.min(...rows.map(x=>x.input)),outputSpanDeg:Math.max(...rows.map(x=>x.output))-Math.min(...rows.map(x=>x.output)),lawErrorDeg:Math.max(...rows.map(x=>x.lawErrorDeg)),couplerErrorDeg:Math.max(...rows.map(x=>x.couplerErrorDeg)),planeDeg:Math.max(...rows.map(x=>x.planeDeg))};
 }
-export function judgeCrossRatio(r,{control=false}={}){
+export function judgeCrossRatio(r,{control=false,expectedIssueKeys=[]}={}){
  assert.ok(Number.isFinite(r.finishedAt)&&r.finishedAt>0,'actual VM completion');
- assert.deepEqual(r.issues,[]);assert.deepEqual(r.unsupported,[]);
+ assert.deepEqual(r.issues.map(i=>i.severity+':'+i.code+':'+[...(i.parts||[])].sort().join(',')).sort(),expectedIssueKeys);assert.deepEqual(r.unsupported,[]);
  const v=r.track.at(-1).extra.variables;assert.equal(Number(v.completed),1);assert.equal(Number(v.failed),0);assert.equal(Number(v.stage),10);
  assert.ok(Object.values(r.track.at(-1).busy).every(x=>x===false));
  const m=crossRatioMetrics(r);assert.ok(m.inputSpanDeg>=119,'actual input sweeps original sector');
