@@ -48,3 +48,14 @@ export function crossRatioProgramGraph(project){
  assert.equal(new Set(graph.map(t=>t.name)).size,graph.length,'unique program target names');
  return graph;
 }
+
+export function assertCrossRatioBrowserProgram(record,{timeLimitMs,holdMs,afterMs,routeLength}){
+ assert.ok(Number.isFinite(record.start)&&Number.isFinite(record.finishedAt));
+ const elapsed=record.finishedAt-record.start;
+ assert.ok(elapsed>=routeLength*holdMs&&elapsed<=timeLimitMs,'actual browser interval is long enough for the authored holds and stays inside the declared cap');
+ assert.ok(record.track.at(-1).t-record.finishedAt>=afterMs,'full actual final hold');
+ assert.deepEqual(record.refusals,[],'no actual API command refused');
+ assert.ok(Array.isArray(record.apiEvents)&&record.apiEvents.some(e=>
+  ['setMotorPower','setMotorSpeed'].includes(e.name)&&e.args?.[0]==='A'&&Number.isFinite(Number(e.args[1]))&&Math.abs(Number(e.args[1]))>0),
+ 'actual nonzero motor A command, not loaded variables or passive drift');
+}

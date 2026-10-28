@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import {readFileSync,writeFileSync} from 'node:fs';
 import {resolve} from 'node:path';
 import JSZip from 'jszip';
-import {judgeCrossRatio,crossRatioProgramGraph} from './sim-lab-cross-ratio-judge.mjs';
+import {judgeCrossRatio,crossRatioProgramGraph,assertCrossRatioBrowserProgram} from './sim-lab-cross-ratio-judge.mjs';
 import {observeAddon} from './sim-lab-addon-judge.mjs';
 import {bindSixBrowserSource} from './sim-lab-six-browser-judge.mjs';
 import {captureIntakeProject,projectProgramReady} from './sim-lab-intake-roundtrip.mjs';
@@ -12,7 +12,9 @@ import {installBrowserMechanicsRecorder} from './sim-lab-browser-recorder.mjs';
 import {continueCompletedIntake} from './sim-lab-intake-continuation.mjs';
 import {captureRenderedModel} from './sim-lab-rendered-model-gate.mjs';
 import {readIntakeReceipt,intakeIdentity} from './sim-lab-intake-receipt.mjs';
+const crossRatioContract=JSON.parse(readFileSync(new URL('../../test/fixtures/bw-sim/cross-ratio/contract.json',import.meta.url),'utf8'));
 export function judgeCrossRatioBrowser(record){
+ assertCrossRatioBrowserProgram(record,{...crossRatioContract.timing,routeLength:crossRatioContract.route.length});
  const binding=bindSixBrowserSource('cross-ratio',record);
  assert.ok(record.track.length>=100,'actual browser observations');
  let previous=-Infinity;

@@ -10,7 +10,7 @@ import {once} from 'node:events';
 import {finished} from 'node:stream/promises';
 import {writeCrossRatioRecord} from './fixtures/bw-sim/cross-ratio/emit.mjs';
 import {readCrossRatio,readCrossRatioLines} from '../scripts/verify-sim-cross-ratio.mjs';
-import {judgeCrossRatio,crossRatioProgramGraph} from '../scripts/lib/sim-lab-cross-ratio-judge.mjs';
+import {judgeCrossRatio,crossRatioProgramGraph,assertCrossRatioBrowserProgram} from '../scripts/lib/sim-lab-cross-ratio-judge.mjs';
 import {analyticRecord,ANALYTIC_IDENTITY} from './fixtures/bw-sim/cross-ratio/analytic.mjs';
 const read=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8'),hash=x=>createHash('sha256').update(x).digest('hex');
 const C=JSON.parse(read('test/fixtures/bw-sim/cross-ratio/contract.json'));
@@ -128,6 +128,18 @@ await assert.rejects(writeCrossRatioRecord(good,lateError),/late receiver failur
 const earlyClose=new Writable({highWaterMark:1,write(){this.destroy();}});
 await assert.rejects(writeCrossRatioRecord(good,earlyClose),/closed/);
 test('Cross Ratio: direct record stream acknowledges writes and refuses receiver failures',()=>assert.ok(transport.writableFinished));
+const browserClock={start:0,finishedAt:16000,track:[{t:16500}],refusals:[],apiEvents:[{name:'setMotorSpeed',args:['A',12]}]};
+const browserLimits={...C.timing,routeLength:C.route.length};assertCrossRatioBrowserProgram(browserClock,browserLimits);
+const browserClockCuts=[
+ r=>{r.finishedAt=14999;},
+ r=>{r.finishedAt=181001;r.track[0].t=181501;},
+ r=>r.track[0].t=16499,
+ r=>r.apiEvents=[],
+ r=>r.apiEvents[0].args[0]='B',
+ r=>r.refusals=[{name:'setMotorSpeed',result:{ok:false}}]
+];
+for(const edit of browserClockCuts){const bad=structuredClone(browserClock);edit(bad);assert.throws(()=>assertCrossRatioBrowserProgram(bad,browserLimits));}
+test('Cross Ratio: browser clock, hold and actual motor API admission',()=>assert.equal(browserClockCuts.length,6));
 const {runRobotLabProgram}=await import('./helpers/robot-lab-direct-vm.mjs');
 const {catalogFrom,prepareModel}=await import('../overlay/scratch-gui/src/lib/bw-sim/sim-session.js');
 const original=read('overlay/scratch-gui/static/sim-lab/models/cross-ratio.ldr'),program=read('overlay/scratch-gui/static/sim-lab/programs/cross-ratio.bw');
