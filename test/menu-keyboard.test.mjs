@@ -1,0 +1,52 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {menuItems, focusMenuEdge, handleMenuKeyDown, openMenuFromKeyboard} from '../overlay/scratch-gui/src/lib/menu-keyboard.js';
+const setup=()=>{
+    let focus=null;
+    const opener={focus:()=>{focus='opener';}};
+    const menu={querySelectorAll:()=>items,parentElement:{closest:()=>null},closest:()=>({querySelector:()=>opener})};
+    const items=[0,1,2].map(i=>({getAttribute:()=>i===1?'true':null,closest:()=>menu,
+        focus:()=>{focus=i;},scrollIntoView:()=>{}}));
+    const event=(key,target=items[0])=>({key,target:{...target,matches:()=>false,closest:()=>target},currentTarget:menu,
+        preventDefault(){this.prevented=true;},stopPropagation(){this.stopped=true;}});
+    return{menu,items,event,focus:()=>focus};
+};
+test('menu navigation skips disabled items, wraps and supports Home/End',()=>{
+    const s=setup();assert.equal(menuItems(s.menu).length,2);
+    focusMenuEdge(s.menu);assert.equal(s.focus(),0);
+    handleMenuKeyDown(s.event('ArrowDown'),()=>{});assert.equal(s.focus(),2);
+    handleMenuKeyDown(s.event('ArrowDown',s.items[2]),()=>{});assert.equal(s.focus(),0);
+    handleMenuKeyDown(s.event('ArrowUp'),()=>{});assert.equal(s.focus(),2);
+    handleMenuKeyDown(s.event('Home'),()=>{});assert.equal(s.focus(),0);
+    handleMenuKeyDown(s.event('End'),()=>{});assert.equal(s.focus(),2);
+});
+test('Escape closes and returns to opener; Tab closes without trapping focus',()=>{
+    const s=setup();let closed=0;
+    const escape=s.event('Escape');handleMenuKeyDown(escape,()=>closed++);
+    assert.equal(closed,1);assert.equal(s.focus(),'opener');assert.equal(escape.prevented,true);
+    const tab=s.event('Tab');handleMenuKeyDown(tab,()=>closed++);
+    assert.equal(closed,2);assert.equal(tab.prevented,undefined);
+});
+test('nested ArrowLeft closes only the submenu and focuses its parent',()=>{
+    const s=setup();let focus=false,closed=0;
+    s.menu.parentElement.closest=()=>({focus:()=>{focus=true;}});
+    handleMenuKeyDown(s.event('ArrowLeft'),()=>closed++);
+    assert.equal(closed,1);assert.equal(focus,true);
+});
+test('native form controls keep arrow keys and an empty menu is safe',()=>{
+    const s=setup();const input=s.event('ArrowDown');input.target.matches=()=>true;
+    handleMenuKeyDown(input,()=>assert.fail('unexpected close'));assert.equal(input.prevented,undefined);
+    s.menu.querySelectorAll=()=>[];handleMenuKeyDown(s.event('ArrowDown'),()=>{});
+    assert.equal(s.focus(),null);
+});
+test('keyboard trigger opens and focuses the first or last enabled item after rendering',()=>{
+    const s=setup();let opened=0;
+    const old=globalThis.requestAnimationFrame;globalThis.requestAnimationFrame=fn=>fn();
+    try{
+        for(const [key,expected]of[['Enter',0],[' ',0],['ArrowDown',0],['ArrowUp',2]]){
+            const e=s.event(key);e.currentTarget={closest:()=>({querySelector:()=>s.menu})};
+            openMenuFromKeyboard(e,()=>opened++);assert.equal(s.focus(),expected);assert.equal(e.prevented,true);
+        }
+        assert.equal(opened,4);
+    }finally{globalThis.requestAnimationFrame=old;}
+});

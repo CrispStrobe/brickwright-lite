@@ -6,6 +6,7 @@ import {connect} from 'react-redux';
 import locales from 'scratch-l10n';
 
 import MenuBarMenu from './menu-bar-menu.jsx';
+import {menuTriggerStyle, openMenuFromKeyboard} from '../../lib/menu-keyboard.js';
 import BwAbout from './bw-about.jsx';
 import I8086Lab from './i8086-lab.jsx';
 import {MenuItem, MenuSection, Submenu} from '../menu/menu.jsx';
@@ -66,15 +67,21 @@ const SettingsMenu = ({intl, canChangeLanguage, canChangeTheme, isRtl, onRequest
     );
     return (
         <div
-            data-testid="bw-settings-menu-trigger"
+            data-bw-menu-root=""
             className={classNames(menuBarStyles.menuBarItem, menuBarStyles.hoverable, menuBarStyles.themeMenu, {
                 [menuBarStyles.active]: settingsMenuOpen
             })}
-            onMouseUp={onRequestOpen}
+
         >
+            <button type="button" data-bw-menu-trigger="" data-testid="bw-settings-menu-trigger"
+                style={menuTriggerStyle} aria-haspopup="menu" aria-expanded={settingsMenuOpen}
+                aria-label={intl.formatMessage({id: 'gui.menuBar.settings', defaultMessage: 'Settings'})}
+                onClick={onRequestOpen} onKeyDown={event => openMenuFromKeyboard(event, onRequestOpen)}>
+
             <img src={settingsIcon} />
             <span className={styles.dropdownLabel}><FormattedMessage defaultMessage="Settings" id="gui.menuBar.settings" /></span>
             <img src={dropdownCaret} />
+            </button>
             <MenuBarMenu
                 className={menuBarStyles.menuBarMenu}
                 open={settingsMenuOpen}

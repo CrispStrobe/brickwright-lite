@@ -18,7 +18,7 @@ import Divider from '../divider/divider.jsx';
 import SaveStatus from './save-status.jsx';
 import ProjectWatcher from '../../containers/project-watcher.jsx';
 import MenuBarMenu from './menu-bar-menu.jsx';
-import {MenuItem, MenuSection} from '../menu/menu.jsx';
+import {MenuItem, MenuSection, Submenu} from '../menu/menu.jsx';
 import OfflineLibraryModal from '../offline-library/offline-library-modal.jsx';
 import {isNativeApp} from '../../lib/offline-assets.js';
 import {
@@ -86,7 +86,7 @@ import collectMetadata from '../../lib/collect-metadata';
 
 import styles from './menu-bar.css';
 import {activateUndoSurface, redoActiveSurface, subscribeUndoState, undoActiveSurface} from '../../lib/global-undo.js';
-import {editorMenuActionEnabled, runEditorMenuAction, subscribeEditorMenuActions} from '../../lib/editor-menu-actions.js';
+import {editorMenuActionEnabled, getEditorMenuItems, runEditorMenuAction, subscribeEditorMenuActions} from '../../lib/editor-menu-actions.js';
 
 import mystuffIcon from './icon--mystuff.png';
 import profileIcon from './icon--profile.png';
@@ -103,6 +103,7 @@ import prehistoricLogo from './prehistoric-logo.svg';
 import oldtimeyLogo from './oldtimey-logo.svg';
 
 import sharedMessages from '../../lib/shared-messages';
+import {menuTriggerStyle, openMenuFromKeyboard} from '../../lib/menu-keyboard.js';
 
 const ariaMessages = defineMessages({
     tutorials: {
@@ -211,6 +212,8 @@ class MenuBar extends React.Component {
             globalCanUndo: false,
             globalCanRedo: false,
             undoSurface: 'blocks',
+            assetFileItems: [],
+            assetEditItems: [],
             codeOpenAvailable: false,
             codeSaveAvailable: false,
             codeToBlocksAvailable: false,
@@ -232,10 +235,13 @@ class MenuBar extends React.Component {
         this._unsubscribeUndo = subscribeUndoState(({canUndo, canRedo, label, surface}) => {
             if (surface !== this._lastSurface) this._tabSurfaces[this.props.activeTabIndex] = surface;
             this._lastSurface = surface;
+            this._activeEditorSurface = surface;
+            this.refreshAssetMenuItems();
             this.setState({globalCanUndo: canUndo, globalCanRedo: canRedo, undoSurface: label});
         });
         this.activateTabUndoSurface();
         this._unsubscribeCodeActions = subscribeEditorMenuActions(() => {
+            this.refreshAssetMenuItems();
             const codeOpenAvailable = editorMenuActionEnabled('code', 'open');
             const codeSaveAvailable = editorMenuActionEnabled('code', 'save');
             const codeToBlocksAvailable = editorMenuActionEnabled('code', 'to-blocks');
@@ -269,6 +275,42 @@ class MenuBar extends React.Component {
     }
     handleGlobalRedo () {
         redoActiveSurface();
+    }
+    refreshAssetMenuItems () {
+        const surface = this.props.activeTabIndex === 1 ? this._activeEditorSurface : null;
+        const assetFileItems = getEditorMenuItems(surface, 'file');
+        const assetEditItems = getEditorMenuItems(surface, 'edit');
+        if (JSON.stringify(assetFileItems) !== JSON.stringify(this.state.assetFileItems) ||
+            JSON.stringify(assetEditItems) !== JSON.stringify(this.state.assetEditItems)) {
+            this.setState({assetFileItems, assetEditItems});
+        }
+    }
+    handleAssetMenuAction (name, location) {
+        if (location === 'file') this.props.onRequestCloseFile();
+        else this.props.onRequestCloseEdit();
+        const surface = this._activeEditorSurface;
+        if (this.props.activeTabIndex !== 1 || !['pixel', 'tilemap'].includes(surface)) return false;
+        if (!getEditorMenuItems(surface, location).some(item => item.name === name && item.enabled)) return false;
+        return runEditorMenuAction(surface, name);
+    }
+    renderAssetMenuItems (location) {
+        const items = location === 'file' ? this.state.assetFileItems : this.state.assetEditItems;
+        if (!items.length) return null;
+        const groups = new Map();
+        for (const item of items) {
+            if (!groups.has(item.submenu)) groups.set(item.submenu, []);
+            groups.get(item.submenu).push(item);
+        }
+        const renderItems = entries => entries.map(item => (
+            <MenuItem key={item.name} disabled={!item.enabled}
+                onClick={() => this.handleAssetMenuAction(item.name, location)}>{item.label}</MenuItem>
+        ));
+        return <MenuSection>{Array.from(groups, ([label, entries]) => label ? (
+            <MenuItem key={label}>
+                {label}<span aria-hidden="true" style={{float: this.props.isRtl ? 'left' : 'right'}}>›</span>
+                <Submenu place={this.props.isRtl ? 'left' : 'right'}>{renderItems(entries)}</Submenu>
+            </MenuItem>
+        ) : renderItems(entries))}</MenuSection>;
     }
     handleCodeFileAction (action) {
         this.props.onRequestCloseFile();
@@ -583,8 +625,13 @@ class MenuBar extends React.Component {
                                 className={classNames(styles.menuBarItem, styles.hoverable, {
                                     [styles.active]: this.props.fileMenuOpen
                                 })}
-                                onMouseUp={this.handleOpenFileMenu}
+                                data-bw-menu-root=""
                             >
+                                <button type="button" data-bw-menu-trigger="" data-testid="bw-file-menu-trigger"
+                                    style={menuTriggerStyle} aria-haspopup="menu" aria-expanded={this.props.fileMenuOpen}
+                                    aria-label={this.props.intl.formatMessage({id: 'gui.menuBar.file', defaultMessage: 'File'})}
+                                    onClick={this.handleOpenFileMenu} onKeyDown={event => openMenuFromKeyboard(event, this.handleOpenFileMenu)}>
+
                                 <img src={fileIcon} />
                                 <span className={styles.collapsibleLabel}>
                                     <FormattedMessage
@@ -594,6 +641,7 @@ class MenuBar extends React.Component {
                                     />
                                 </span>
                                 <img src={dropdownCaret} />
+                                </button>
                                 <MenuBarMenu
                                     className={classNames(styles.menuBarMenu)}
                                     open={this.props.fileMenuOpen}
@@ -713,6 +761,7 @@ class MenuBar extends React.Component {
                                         )}
                                     </MenuSection>
                                     {/* Editor files belong to their editor; project files stay global. */}
+                                    {this.renderAssetMenuItems('file')}
                                     {this.props.activeTabIndex === 3 && (
                                         <MenuSection>
                                             <MenuItem
@@ -764,8 +813,13 @@ class MenuBar extends React.Component {
                             className={classNames(styles.menuBarItem, styles.hoverable, {
                                 [styles.active]: this.props.editMenuOpen
                             })}
-                            onMouseUp={this.props.onClickEdit}
+                            data-bw-menu-root=""
                         >
+                                <button type="button" data-bw-menu-trigger="" data-testid="bw-edit-menu-trigger"
+                                    style={menuTriggerStyle} aria-haspopup="menu" aria-expanded={this.props.editMenuOpen}
+                                    aria-label={this.props.intl.formatMessage({id: 'gui.menuBar.edit', defaultMessage: 'Edit'})}
+                                    onClick={this.props.onClickEdit} onKeyDown={event => openMenuFromKeyboard(event, this.props.onClickEdit)}>
+
                             <img src={editIcon} />
                             <span className={styles.collapsibleLabel}>
                                 <FormattedMessage
@@ -775,6 +829,7 @@ class MenuBar extends React.Component {
                                 />
                             </span>
                             <img src={dropdownCaret} />
+                            </button>
                             <MenuBarMenu
                                 className={classNames(styles.menuBarMenu)}
                                 open={this.props.editMenuOpen}
@@ -801,6 +856,7 @@ class MenuBar extends React.Component {
                                         <FormattedMessage id="gui.menuBar.redo" defaultMessage="Redo" />
                                     </MenuItem>
                                 </MenuSection>
+                                {this.renderAssetMenuItems('edit')}
                                 {this.props.activeTabIndex === 3 && (
                                     <MenuSection>
                                         <MenuItem onClick={() => this.handleCodeEditorCommand('find')}>
@@ -832,7 +888,7 @@ class MenuBar extends React.Component {
                                 )}
                                 <DeletionRestorer>{(handleRestore, {restorable, deletedItem}) => (
                                     <MenuItem
-                                        className={classNames({[styles.disabled]: !restorable})}
+                                        disabled={!restorable}
                                         onClick={this.handleRestoreOption(handleRestore)}
                                     >
                                         {this.restoreOptionMessage(deletedItem)}

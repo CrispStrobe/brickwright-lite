@@ -26,7 +26,7 @@ export const registerEditorMenuActions = (surface, getActions) => {
     };
 };
 
-const resolveAction = (surface, name) => {
+const resolveActions = surface => {
     let actions = null;
     for (const entry of providers.get(surface) || []) {
         let candidate;
@@ -36,7 +36,23 @@ const resolveAction = (surface, name) => {
         if (actions) return null;
         actions = candidate;
     }
+    return actions;
+};
+
+const resolveAction = (surface, name) => {
+    const actions = resolveActions(surface);
     return actions && Object.prototype.hasOwnProperty.call(actions, name) ? actions[name] : null;
+};
+
+// A render-only snapshot: callbacks remain private to their mounted editor.
+export const getEditorMenuItems = (surface, location) => {
+    const actions = resolveActions(surface);
+    if (!actions) return [];
+    return Object.entries(actions).filter(([, action]) => action && action.location === location &&
+        typeof action.label === 'string').map(([name, action]) => ({
+        name, label: action.label, submenu: action.submenu || '',
+        enabled: action.enabled === true && typeof action.run === 'function'
+    }));
 };
 
 export const editorMenuActionEnabled = (surface, name) => {

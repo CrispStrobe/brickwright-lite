@@ -1,0 +1,48 @@
+// Keyboard behavior shared by the existing menu components. Form controls inside
+// menus keep their native cursor keys; editor commands never receive those keys.
+export const menuItems = menu => Array.from(menu?.querySelectorAll('[role="menuitem"]') || [])
+    .filter(item => item.closest('[role="menu"]') === menu && item.getAttribute('aria-disabled') !== 'true');
+
+export const focusMenuEdge = (menu, last = false) => {
+    const items = menuItems(menu);
+    const item = items[last ? items.length - 1 : 0];
+    if (item) { item.focus(); item.scrollIntoView?.({block: 'nearest'}); }
+};
+
+export const openMenuFromKeyboard = (event, open) => {
+    if (!['Enter', ' ', 'ArrowDown', 'ArrowUp'].includes(event.key)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const root = event.currentTarget.closest('[data-bw-menu-root]');
+    const last = event.key === 'ArrowUp';
+    open();
+    requestAnimationFrame(() => focusMenuEdge(root?.querySelector('[role="menu"]'), last));
+};
+
+export const handleMenuKeyDown = (event, close) => {
+    if (event.target.matches?.('input, textarea, select, [contenteditable="true"]') &&
+        !['Escape', 'Tab'].includes(event.key)) return;
+    const menu = event.currentTarget;
+    if (event.key === 'Escape' || event.key === 'Tab' || event.key === 'ArrowLeft') {
+        const parentItem = menu.parentElement?.closest('[role="menuitem"]');
+        if (event.key === 'ArrowLeft' && !parentItem) return;
+        if (event.key !== 'Tab') event.preventDefault();
+        event.stopPropagation();
+        const opener = parentItem || menu.closest('[data-bw-menu-root]')?.querySelector('[data-bw-menu-trigger]');
+        close?.();
+        if (event.key !== 'Tab') opener?.focus();
+        return;
+    }
+    if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const items = menuItems(menu);
+    const active = event.target.closest('[role="menuitem"]');
+    const index = items.indexOf(active);
+    const next = event.key === 'Home' ? 0 : event.key === 'End' ? items.length - 1 :
+        event.key === 'ArrowDown' ? (index + 1) % items.length : (index - 1 + items.length) % items.length;
+    if (items[next]) { items[next].focus(); items[next].scrollIntoView?.({block: 'nearest'}); }
+};
+
+export const menuTriggerStyle = {display: 'inline-flex', alignItems: 'center', height: '100%',
+    padding: 0, margin: 0, border: 0, background: 'none', color: 'inherit', font: 'inherit', cursor: 'pointer'};

@@ -64,7 +64,7 @@ test('Edit uses existing active-editor history and disables unavailable commands
     }
     const item = read('overlay/scratch-gui/src/components/menu/menu.jsx');
     assert.match(item, /aria-disabled=\{disabled \|\| undefined\}/);
-    assert.match(item, /onClick=\{disabled \? undefined : onClick\}/);
+    assert.match(item, /onClick=\{disabled \? undefined : event =>/);
     assert.match(item, /disabled: PropTypes\.bool/);
 });
 
