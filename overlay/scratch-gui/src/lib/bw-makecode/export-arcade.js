@@ -22,6 +22,7 @@ import {classCallableSourceGate} from './class-callable-source-gate.js';
 import {classCallableDefaultProjectGate} from './class-callable-default-project-gate.js';
 import {sdkFontInputAuthority} from './sdk-font-input-authority.js';
 import {parseMakeCodeTs} from './ts-import.js';
+import {analyseSourceValueProducers} from './source-value-producers.js';
 import {callableSourceGate} from './callable-source-gate.js';
 import {inspectCallableExportGraph,createCallableLexicalEmitter,renderCallableSignature,validateCallableCurrentBodyTypes,callableReflectionOperand,callableReflectionVariable,callableCurrentInputType} from './callable-export-graph.js';
 import {namedArrayItemExportAuthority} from './named-array-item-export-authority.js';
@@ -4001,6 +4002,153 @@ class ArcadeEmitter {
         return new Map([...parameters].map(([key,keys]) => [key,keys.map(value => arrayType(value))]));
     }
 
+    // Dormant declarations still have to type-check in MakeCode. The live
+    // producer graph deliberately skips these bodies; do not seed that graph
+    // from a declaration requirement. This separate result is used only for
+    // an otherwise-any formal at the final signature rendering site.
+    inferUnreachableSpriteParameterTypes(target,definition,proto,names,emittedFunction) {
+        const denied=()=>new Map();
+        if(!this.isUnreachable(target,definition))return denied();
+        let original,argumentIds;
+        try{
+            original=JSON.parse(proto.mutation.argumentnames);
+            argumentIds=JSON.parse(proto.mutation.argumentids);
+        }catch{return denied();}
+        if(!Array.isArray(original)||!Array.isArray(argumentIds)||original.length!==names.length||
+            argumentIds.length!==names.length||original.some(name=>typeof name!=='string'||!name)||
+            argumentIds.some(id=>typeof id!=='string'||!id)||new Set(original).size!==original.length||
+            new Set(argumentIds).size!==argumentIds.length||new Set(names).size!==names.length||
+            original.some((name,i)=>ident(name)!==names[i]))return denied();
+        const blocks=target.blocks||{},entries=Object.entries(blocks);
+        const protoIds=entries.filter(([,node])=>node===proto).map(([id])=>id);
+        if(protoIds.length!==1)return denied();
+        const declarationReaders=new Set(),eligible=names.map(()=>false),uses=names.map(()=>0);
+        for(let i=0;i<argumentIds.length;i++){
+            const readerId=proto.inputs?.[argumentIds[i]]?.[1],reader=blocks[readerId];
+            if(!reader||reader.parent!==protoIds[0]||reader.shadow!==true||
+                !['argument_reporter_string_number','argument_reporter_boolean'].includes(reader.opcode)||
+                reader.fields?.VALUE?.[0]!==original[i])return denied();
+            declarationReaders.add(reader);
+            eligible[i]=reader.opcode==='argument_reporter_string_number';
+        }
+        const owned=node=>{
+            const seen=new Set();
+            for(let current=node;current&&!seen.has(current);current=blocks[current.parent]){
+                if(current===definition)return true;
+                seen.add(current);
+            }
+            return false;
+        };
+        // Use the emitter's actual NAME ingress. Editor fields or a retained
+        // shadow cannot override the inline input that is really emitted.
+        const fixedName=node=>this.literalInput(node,'NAME');
+        const flagsReceiver=(id,node)=>{
+            const parent=blocks[node.parent],property=parent?.fields?.PROPERTY;
+            return parent?.opcode==='arcade_spriteProperty'&&parent.mutation==null&&
+                parent.shadow===false&&parent.topLevel===false&&parent.next==null&&
+                Object.keys(parent.fields||{}).join(',')==='PROPERTY'&&
+                Array.isArray(property)&&property[0]==='flags'&&
+                (property.length===1||property.length===2&&property[1]===null)&&
+                Object.keys(parent.inputs||{}).join(',')==='ID'&&
+                Array.isArray(parent.inputs.ID)&&[1,2,3].includes(parent.inputs.ID[0])&&parent.inputs.ID[1]===id;
+        };
+        const invalidateName=name=>{
+            for(let i=0;i<names.length;i++)if(name===original[i]||ident(name)===names[i])eligible[i]=false;
+        };
+        const globalUse=name=>{
+            if(typeof name!=='string')return false;
+            if(this.infoVariable(name))return true; // emitted SDK use is checked below
+            const local=Object.values(target.variables||{}).some(value=>value[0]===name);
+            const owner=local?target:this.project.targets.find(value=>value.isStage)||target;
+            if(local&&this.isClonable(target)&&!this.isGlobalVar(name)){
+                invalidateName('self');return true;
+            }
+            // The body has already been emitted. Read its actual allocated
+            // spelling without invoking lookupVar/varName and mutating state.
+            const emitted=this.globals.get(`${owner.isStage?'':owner.name}:${name}`);
+            if(typeof emitted!=='string')return false;
+            for(let i=0;i<names.length;i++)if(emitted===names[i])eligible[i]=false;
+            return true;
+        };
+        for(const [id,node]of entries){
+            if(node===definition||node===proto||declarationReaders.has(node)||!owned(node))continue;
+            if(node.fields?.VARIABLE&&!globalUse(node.fields.VARIABLE[0]))return denied();
+            for(const slot of Object.values(node.inputs||{})){
+                const value=slot?.[1];
+                if(Array.isArray(value)&&[12,13].includes(value[0])&&!globalUse(value[1]))return denied();
+            }
+            if(node.opcode.startsWith('arrays_')&&node.inputs?.NAME){
+                const named=this.namedArrays.get(this.literalInput(node,'NAME'));
+                for(let i=0;i<names.length;i++)if(named===names[i])eligible[i]=false;
+            }
+            if(['arcade_setLocal','arcade_declareLocal'].includes(node.opcode)){
+                const name=fixedName(node);
+                if(!name||!/^[A-Za-z_]\w*$/.test(name))return denied();
+                invalidateName(name);
+            }
+            let index=-1;
+            if(/^argument_reporter_/.test(node.opcode)){
+                const value=node.fields?.VALUE;
+                if(!Array.isArray(value)||typeof value[0]!=='string')return denied();
+                index=original.indexOf(value[0]);
+                if(index<0)return denied();
+                if(node.opcode!=='argument_reporter_string_number')eligible[index]=false;
+            }else if(node.opcode==='arcade_getLocal'){
+                const name=fixedName(node);
+                if(!name||!/^[A-Za-z_]\w*$/.test(name))return denied();
+                index=original.indexOf(name);
+                // A different source spelling that collides after emission is
+                // not the formal's actual lexical cell.
+                if(index<0){invalidateName(name);continue;}
+            }
+            if(index<0)continue;
+            if(!this.isUnreachable(target,node)||!flagsReceiver(id,node))eligible[index]=false;
+            else uses[index]++;
+        }
+        if(!eligible.some((value,i)=>value&&uses[i]>0))return denied();
+        // Count actual emitted lexical reads as well. A generated loop local,
+        // helper name or injected parameter must not capture a physical formal
+        // read. Binding identity, not a spelling or annotation, selects the cell.
+        let program,fn,graph;
+        try{
+            program=parseMakeCodeTs(emittedFunction);
+            if(program.body.length!==1||program.body[0].type!=='FunctionDeclaration')return denied();
+            fn=program.body[0];
+            if(!fn.body.length||new Set(fn.params).size!==fn.params.length)return denied();
+            graph=analyseSourceValueProducers(program,{unboundIsOpaque:true});
+        }catch{return denied();}
+        const bindings=new Map(),counts=names.map(()=>0),parents=new WeakMap();
+        for(let i=0;i<names.length;i++)if(eligible[i]){
+            const kinds=graph.bindingKindsAt(fn.body[0],names[i]);
+            if(kinds.size!==1||!kinds.has('parameter')||graph.declarationCountAt(fn.body[0],names[i])!==1){eligible[i]=false;continue;}
+            const binding=graph.bindingOf(fn.body[0],names[i]);
+            if(!binding){eligible[i]=false;continue;}
+            bindings.set(binding,i);
+        }
+        const metadata=new Set(['originalBody','paramTypes','parameterDefaults','typeParameters','returnType','source']);
+        const visit=(node,parent=null)=>{
+            if(!node||typeof node!=='object')return;
+            parents.set(node,parent);
+            if(node.type==='Identifier'){
+                const index=bindings.get(graph.bindingOf(node));
+                if(index!==undefined){
+                    const outer=parents.get(parent);
+                    if(parent?.type!=='Member'||parent.object!==node||parent.name!=='flags'||parent.optional||
+                        outer?.type==='Assignment'&&outer.left===parent||outer?.type==='Update'&&outer.argument===parent||
+                        outer?.type==='Unary'&&outer.op==='delete')eligible[index]=false;
+                    else counts[index]++;
+                }
+            }
+            for(const [key,value]of Object.entries(node))if(!metadata.has(key)){
+                if(Array.isArray(value))for(const child of value)visit(child,node);
+                else if(value&&typeof value==='object')visit(value,node);
+            }
+        };
+        visit(fn);
+        if(!this.isUnreachable(target,definition)||!this.closedOrdinaryEntryCurrent())return denied();
+        return new Map(names.flatMap((name,i)=>eligible[i]&&uses[i]>0&&counts[i]===uses[i]?[[i,'Sprite']]:[]));
+    }
+
     // ── images ───────────────────────────────────────────────────────────
     /** A costume as palette pixels: exact for pixel art, palette-matched otherwise. */
     image (target, costume = target.costumes[target.currentCostume || 0], index = target.currentCostume || 0) {
@@ -4437,7 +4585,8 @@ class ArcadeEmitter {
                         continue;
                     }
                     const types = imageParameterTypes.get(key) || [];
-                    const params = names.map((n, i) => `${n}: ${this.procedureConstraints?.annotation(t,proto.mutation.proccode,i) || this.objectClassExport.procedureParameterType?.(key,n) || types[i] || 'any'}`);
+                    const declaredTypes=names.map((n,i)=>this.procedureConstraints?.annotation(t,proto.mutation.proccode,i) || this.objectClassExport.procedureParameterType?.(key,n));
+                    const params=names.map((n,i)=>`${n}: ${declaredTypes[i] || types[i] || 'any'}`);
                     // It runs in its caller's thread, so it checks the caller's run token.
                     if (this.tokened()) params.unshift('_t: number');
                     if (clonable) {
@@ -4464,6 +4613,10 @@ class ArcadeEmitter {
                     // returns a value PXT rejects that ("Not all code paths return a value").
                     const body = returns ? script.map(line => line.replace(/\breturn\s*$/, 'return undefined')) : script;
                     const lines = [...locals.map(name => this.localDeclaration(name, key)), ...body, ...tail];
+                    const dormantTypes=this.inferUnreachableSpriteParameterTypes(t,b,proto,names,
+                        `function ${fn} (${params.join(', ')})${returnType} {\n${lines.join('\n')}\n}`);
+                    const injected=params.length-names.length;
+                    for(const [i,type]of dormantTypes)if(!declaredTypes[i]&&(!types[i]||types[i]==='any'))params[injected+i]=`${names[i]}: ${type}`;
                     functions.push(`function ${fn} (${params.join(', ')})${returnType} {\n${lines.join('\n')}\n}`);
                 } else if (/^(procedures_prototype|argument_|.*_menu$)/.test(b.opcode)) {
                     continue;

@@ -1,5 +1,25 @@
 # Arcade compatibility: fresh-agent handoff and methodology
 
+## 28 October: typed-bitwise reimport source candidate
+
+The [typed-bitwise claim and scoped continuation](../lanes/2026-10-28-arcade-typed-bitwise-reimport.md)
+records an isolated exporter repair and its pending qualification. An uncalled
+Sprite-flags helper now retains a `Sprite` signature through both export routes,
+Code rebuild, archive reopen and repeated reimports when current whole-program
+reachability and exact physical/lexical use agree. This is declaration rendering;
+it supplies no live value or operand facts. Fourteen focused source tests pass;
+removing the signature override breaks the two positive roundtrip controls.
+
+Next, run the unchanged original-PXT/native typed-bitwise acceptance test on an
+external builder, then qualify the composed integration head. Keep the separate
+Sprite-return refusal and other failures visible. General preservation/editing
+of arbitrary reference annotations in Blocks and Code remains a separate GUI
+work item: define a serialized declaration contract, expose its editor controls,
+and test editing, save/reopen and MakeCode roundtrip without treating annotations
+as initialized-value evidence. This narrow repair does not implement that work.
+The last raw census remains 147 translated / 36 partial / one parse failure out
+of 184; source tests alone change no completion count.
+
 ## 27 October: current checkpoint and next actions
 
 Start with [the frozen checkpoint and ordered continuation tasks](ARCADE-CHECKPOINT-2026-10-27.md).
