@@ -71,4 +71,3 @@ export function deriveBoxes(part, entry, read) {
         return {shape: 'box', halfExtents: intervals.map(x => x[1]), position: intervals.map(x => x[0])};
     });
 }
-
