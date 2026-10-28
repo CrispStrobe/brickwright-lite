@@ -38,7 +38,7 @@ only open x86 lane, and three optional follow-ups are scoped after it.
   been removed under a later-reversed instruction. All its other checks
   passed, and PR718's full tier on a later base was entirely green.
 
-### Lane 1: close current GUI qualification first (open, owned by the PR1318 lane)
+### Lane 1: close current GUI qualification first (open, PR1318 successor)
 
 **Scope:** the existing PR1318 lane and its claimed paths. Start with
 [`lanes/2026-10-27-x86-finite-v9-resolver-role.md`](../lanes/2026-10-27-x86-finite-v9-resolver-role.md),
@@ -47,23 +47,45 @@ only open x86 lane, and three optional follow-ups are scoped after it.
 `.github/workflows/i80386-hdd-gui-actual.yml` at the actual candidate head.
 Main's older producer is not the prepared V9 implementation.
 
+**Do not select V9 again.** Its one selected hosted attempt failed because the
+resolver was a symlink; the earlier V8 attempt had required a symlink and found
+a regular file. Both attempts are consumed and their failures remain retained.
+[PR1524](https://github.com/CrispStrobe/brickwright-lite/pull/1524) claims a new
+V10 typed resolver observation. Merge that claim before implementing the new
+profile. Keep the resolver in the complete observed runtime graph, bind the
+explicit selected branch and endpoint, and reject unknown targets or drift.
+A different actual runner must still satisfy the frozen request; supporting two
+inventory forms does not establish cross-job byte or role stability.
+
+**Body capacity.** PR1318's consumed transport body is near its size limit.
+Preserve that body and its historical events. Use a fresh successor source PR
+with a compact body for the new V10 selection and current actual request; bind
+its own PR number, exact source head and dispatch inputs. Historical references
+retain their original event identities. No previous admission transfers.
+
 **Base moved.** Main changed the board pin to `8785e468` (PR1503), and that
 commit also changed the `BOARD` constants in both GUI scripts above, which
 PR1318 edits too. Expect a conflict there. Resolve it by normally merging
-current main, keeping PR1318's reviewed changes plus main's new pin, and
+current main, keeping PR1318's reviewed changes plus main's current pins, and
 requalify the merged head: a gate frozen against the older base cannot grade
-the new one, and none of PR1318's earlier check results carry over.
+the new one, and none of PR1318's earlier check results carry over. Read
+`vendor-pins.json` for the current board, circuit UI and other dependencies;
+freeze consumed profiles as historical roles rather than rewriting their pins.
 
 1. Refresh main, PR1318's exact head, every enabled check, full run/job pagination
    and raw numbered steps. Retain any terminal failure before changing source.
    Do not rerun an unchanged failure or borrow a previous head's success.
    Normally merge current main, preserve other owners' changes and all reviewed
-   source/profile bytes, and requalify the final head.
+   source/profile bytes. After the V10 claim merges, implement and review its
+   template, guard, collector, independent reader, workflow and connected
+   controls. New guards start false. Preserve the strict historical V8/V9
+   readers, retire V9 execution, and requalify the final head.
 2. Admit the successful frontend Build's actual checkout, tree, dependency and
    source closure from its selected original. A proposed PR merge SHA or a later
    live PR base is not proof of what that Build checked out. Rebind preparations
    explicitly when the source or event changes; never edit a receipt to fit.
-3. Only after source and Build admission, separately admit one V9 inventory event.
+3. Only after final source and Build admission, separately select one new V10
+   inventory event.
    Join official event/run/job/step/artifact metadata; acquire each selected log
    and artifact once; run the independent reader once. Preserve strict file,
    alias and directory roles and all existing limits. Missing custody or a spent
@@ -73,8 +95,8 @@ the new one, and none of PR1318's earlier check results carry over.
    sole selected Build ZIP. Exercise FreeDOS HDD export/reload and forward
    debugging in the actual browser. Require guest-rendered responses, terminal
    observations, independent original audit and finite cleanup.
-5. Merge PR1318 only after affected actual acceptance and every enabled final-head
-   check succeeds (Lite code PRs need the `ci:full` label), with declared skips
+5. Merge the successor source only after affected actual acceptance and every
+   enabled final-head check succeeds (Lite code PRs need the `ci:full` label), with declared skips
    proved from source and the matched merge head/tree/parents checked. Update the
    user guide and result boundary from the observed result.
 
@@ -96,6 +118,33 @@ on current main and record guest-rendered output plus wall time for the same
 scenario at board `c7bcbe4b` and `8785e468`, on one host, in alternating order.
 **Done when:** both identities, host facts and the raw observations are
 published, whatever the result. Do not call this physical 386 timing.
+
+### Diagnostic profiling checkpoint (2026-10-28)
+
+Read-only diagnostics against board master
+`260126831d76c297ac1ca8481eb89f953b5da203` executed the authored loop in
+Node 22 and Chromium 153, for CPU-only and AT paths. Each used 25,000 separate
+warmup instructions followed by one million measured retirements. Architectural
+state checks passed. The Node children were bounded to one CPU, 512 MiB and
+10 seconds each; the browser service to one CPU, 1 GiB and 20 seconds, with
+terminal cleanup verified. No build, install or CPU source change occurred.
+
+Node recorded 317 CPU and 503 AT samples; Chromium recorded 284 and 435.
+Instruction dispatch dominated both. Node AT attributed 43 samples to
+`_read386`; Chromium AT attributed 15 there and 28 to `_snapshotInstruction`.
+These are short diagnostic samples, not a speed comparison or physical RTx.
+The browser result is engine execution, **not actual Lite app profiling**.
+The app still needs an admitted build and a sustained guest workload after
+lane 1; the existing halted marker scenario cannot measure sustained speed.
+
+A narrow candidate for a future claim is handling the 16-bit absolute `disp16`
+address case before constructing the unused address table in `_decodeEA`.
+Preserve displacement fetch order, DS/segment overrides and result shape;
+exercise fetch faults and paging/trace controls. Array construction is visible
+in source, but allocation elimination by the JS engine is not measured.
+Do not reuse one shared rollback snapshot: ordinary CPU bus callbacks can
+reenter execution. Any optimization still needs independent paired timing and
+affected fresh guest qualification before adoption.
 
 ### Follow-up B: next CPU hot path with the paired-v2 harness (optional, unclaimed)
 
