@@ -13,7 +13,8 @@
   "scope": "Finite software-law candidate only; no physical, hardware or library-wide claim.",
   "lightweightChecks": {
     "engineExecuted": false,
-    "readerPreflightTests": 7,
+    "readerPreflightTests": 8,
+    "initialSnapshotObservedInputs": true,
     "rejectedCorruptions": 49,
     "quaternionSignInvariant": true,
     "globalTranslationInvariant": true,

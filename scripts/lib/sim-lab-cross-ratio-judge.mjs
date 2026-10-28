@@ -7,6 +7,16 @@ const mul=([x,y,z,w],[a,b,c,d])=>[w*a+x*d+y*c-z*b,w*b-x*c+y*d+z*a,w*c+x*b-y*a+z*
 const inv=([x,y,z,w])=>[-x,-y,-z,w];
 const rot=(q,v)=>mul(mul(q,[...v,0]),inv(q)).slice(0,3);
 const wrap=x=>deg(Math.atan2(Math.sin(rad(x)),Math.cos(rad(x))));
+// Read the real pre-program boundary; constructor defaults are not observations.
+export function captureCrossRatioInitial({session,vm,hub,prepared}){
+ const actuators=prepared.mechanism.actuators;
+ return {t:session.time,phase:'cold',
+  bodies:Object.fromEntries(prepared.mechanism.bodies.filter(b=>b.motion==='dynamic').map(b=>[b.id,session.core.bodyPose(b.id)])),
+  busy:Object.fromEntries(actuators.map(a=>[a.port,hub.motors.busy(a.port)])),
+  extra:{variables:Object.fromEntries(vm.runtime.targets.flatMap(t=>Object.values(t.variables||{}).map(v=>[v.name,v.value]))),
+   modes:Object.fromEntries(actuators.map(a=>[a.port,hub.motors._controllers[a.port.charCodeAt(0)-65].mode])),
+   sessionFailed:session.failed?String(session.failed):null}};
+}
 export function crossRatioMetrics(r){
  const roles={base:'motor_rail_-40_-140',input:'input_beam',output:'output_beam',coupler:'coupler_beam'};
  const bodies=Object.fromEntries(Object.entries(roles).map(([role,part])=>{

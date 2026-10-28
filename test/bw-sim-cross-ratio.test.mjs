@@ -10,10 +10,13 @@ import {once} from 'node:events';
 import {finished} from 'node:stream/promises';
 import {writeCrossRatioRecord,diagnoseCrossRatioRecord} from './fixtures/bw-sim/cross-ratio/emit.mjs';
 import {readCrossRatio,readCrossRatioLines} from '../scripts/verify-sim-cross-ratio.mjs';
-import {judgeCrossRatio,crossRatioProgramGraph,assertCrossRatioBrowserProgram} from '../scripts/lib/sim-lab-cross-ratio-judge.mjs';
+import {judgeCrossRatio,crossRatioProgramGraph,assertCrossRatioBrowserProgram,captureCrossRatioInitial} from '../scripts/lib/sim-lab-cross-ratio-judge.mjs';
 import {analyticRecord,ANALYTIC_IDENTITY} from './fixtures/bw-sim/cross-ratio/analytic.mjs';
 const read=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8'),hash=x=>createHash('sha256').update(x).digest('hex');
 const C=JSON.parse(read('test/fixtures/bw-sim/cross-ratio/contract.json'));
+// A new Node test runner owns its own IPC context. Inheriting the parent's
+// child role makes --test refuse to run the fixture as a recursive invocation.
+const childProcessEnv=Object.fromEntries(Object.entries(process.env).filter(([key])=>key!=='NODE_TEST_CONTEXT'));
 const check=r=>readCrossRatio(r,{expectedIdentity:ANALYTIC_IDENTITY});
 // Synchronous independent consumer preflight precedes even importing the
 // native harness. A failed negative control cannot continue into engine cases.
@@ -148,9 +151,24 @@ const browserClockCuts=[
 ];
 for(const edit of browserClockCuts){const bad=structuredClone(browserClock);edit(bad);assert.throws(()=>assertCrossRatioBrowserProgram(bad,browserLimits));}
 test('Cross Ratio: browser clock, hold and actual motor API admission',()=>assert.equal(browserClockCuts.length,6));
-const actualTap=execFileSync(process.execPath,['--max-old-space-size=128','--test','--test-reporter=tap','test/fixtures/bw-sim/cross-ratio/transport-probe.mjs'],{cwd:new URL('../',import.meta.url),maxBuffer:8*1024*1024});
+const actualTap=execFileSync(process.execPath,['--max-old-space-size=128','--test','--test-reporter=tap','test/fixtures/bw-sim/cross-ratio/transport-probe.mjs'],{cwd:new URL('../',import.meta.url),maxBuffer:8*1024*1024,env:childProcessEnv});
 assert.equal(readCrossRatioLines(actualTap.toString(),wireOptions).length,4,'actual TAP reporter preserves complete large diagnostic records');
 test('Cross Ratio: actual TAP diagnostic encoding and four damaged-wire refusals',()=>assert.equal(damagedWire.length,4));
+const initialPoseReads=[],initialBusyReads=[];
+const initialPose={position:[.01,.02,.03],rotation:[0,0,0,1]};
+const initialInput={session:{time:125,failed:new Error('observed setup failure'),core:{bodyPose:id=>{initialPoseReads.push(id);assert.equal(id,'observed-body');return initialPose;}}},
+ vm:{runtime:{targets:[{variables:{stage:{name:'stage',value:7},ready:{name:'inputReady',value:1}}}]}},
+ hub:{motors:{busy:port=>{initialBusyReads.push(port);return true;},_controllers:[{mode:'velocity'}]}},
+ prepared:{mechanism:{bodies:[{id:'floor',motion:'static'},{id:'observed-body',motion:'dynamic'}],actuators:[{port:'A'}]}}};
+const initialObserved=captureCrossRatioInitial(initialInput);
+assert.deepEqual(initialObserved,{t:125,phase:'cold',bodies:{'observed-body':initialPose},busy:{A:true},extra:{variables:{stage:7,inputReady:1},modes:{A:'velocity'},sessionFailed:'Error: observed setup failure'}});
+assert.deepEqual(initialPoseReads,['observed-body']);assert.deepEqual(initialBusyReads,['A']);
+initialInput.session.time=375;initialInput.session.failed=null;initialInput.vm.runtime.targets[0].variables.stage.value=9;
+initialInput.hub.motors.busy=()=>false;initialInput.hub.motors._controllers[0].mode='hold';initialPose.position[0]=.04;
+const initialChanged=captureCrossRatioInitial(initialInput);
+assert.equal(initialChanged.t,375);assert.equal(initialChanged.extra.variables.stage,9);assert.equal(initialChanged.busy.A,false);
+assert.equal(initialChanged.extra.modes.A,'hold');assert.equal(initialChanged.extra.sessionFailed,null);assert.equal(initialChanged.bodies['observed-body'].position[0],.04);
+test('Cross Ratio: initial snapshot reads actual clock, poses, variables and motor state',()=>assert.notDeepEqual(initialChanged,initialObserved));
 const {runRobotLabProgram}=await import('./helpers/robot-lab-direct-vm.mjs');
 const {catalogFrom,prepareModel}=await import('../overlay/scratch-gui/src/lib/bw-sim/sim-session.js');
 const original=read('overlay/scratch-gui/static/sim-lab/models/cross-ratio.ldr'),program=read('overlay/scratch-gui/static/sim-lab/programs/cross-ratio.bw');
@@ -171,13 +189,13 @@ const identity={commit:execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}
 for(const coldMs of C.timing.coldMs)for(const control of [false,true])test(`Cross Ratio actual VM/Jolt: ${control?'remove P':'original'}, cold ${coldMs}ms`,{timeout:240000},async context=>{
  const vmErrors=[];let setup;
  const r=await runRobotLabProgram(program,{modelText:control?removed:original,catalog,autoPorts:false,frameMs:25,coldMs,afterMs:C.timing.afterMs,timeLimitMs:C.timing.timeLimitMs,
-  observeSetup:({session,vm,prepared})=>{
+  observeSetup:({session,vm,hub,prepared})=>{
    vm.runtime.on('ERROR',e=>vmErrors.push(String(e)));vm.runtime.on('BLOCKS_ERROR',e=>vmErrors.push(String(e)));vm.on('BLOCKS_ERROR',e=>vmErrors.push(String(e)));vm.on('ERROR',e=>vmErrors.push(String(e)));
    for(const block of vm.runtime.targets.flatMap(t=>Object.values(t.blocks._blocks))){
     const literal=Object.keys(block.fields||{}).length===1&&Object.keys(block.inputs||{}).length===0;
     assert.ok(block.opcode in vm.runtime._primitives||block.opcode in vm.runtime._hats||literal,'actual registered opcode: '+block.opcode);
    }
-   setup={t:0,phase:'cold',bodies:Object.fromEntries(prepared.mechanism.bodies.filter(b=>b.motion==='dynamic').map(b=>[b.id,session.core.bodyPose(b.id)])),busy:{A:false},extra:{variables:{},modes:{A:'idle'}}};
+   setup=captureCrossRatioInitial({session,vm,hub,prepared});
   },
   observeFrame:({vm,hub,session})=>({variables:Object.fromEntries(vm.runtime.targets.flatMap(t=>Object.values(t.variables||{}).map(v=>[v.name,v.value]))),modes:{A:hub.motors._controllers[0].mode},sessionFailed:session.failed?String(session.failed):null})});
  if(r.track[0].t!==0)r.track.unshift(setup);

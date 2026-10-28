@@ -17,6 +17,9 @@ The native candidate runs the original ten-stage BW program through the actual
 Scratch VM, Robot Lab motor API and Jolt. It records fresh initial body poses,
 then every 25 ms; the physics step remains 5 ms. Separate cases use no cold
 interval and 1000 ms without powered input, followed by a 500 ms final hold.
+The zero-cold initial row reads the actual session clock, VM variables, motor
+busy state and controller mode as well as body poses; it assumes no constructor
+defaults. A nondefault-state control checks those observation bindings.
 The observation cap is 181000 simulated ms, allowing the original 180-second
 watchdog to fire. Neither the program watchdog nor its arrival guards changes.
 
@@ -55,8 +58,10 @@ Node test diagnostics using `CROSS_RATIO_WIRE_V1`: exact byte length, SHA-256 an
 canonical Base64 for each header/frame/end item. Items are bounded to 2 MiB and
 the original to 64 MiB. The independent reader decodes the exact JSON bytes and
 requires all four complete cases. Framework enqueue is not artifact durability.
-A real nested-TAP probe recovers four analytic cases with 256 KiB padded headers;
-raw JSON stdout is unsuitable because TAP escapes comments and splits writes.
+A real nested-TAP probe recovers four analytic cases with 256 KiB padded headers.
+The child runner clears the parent `NODE_TEST_CONTEXT` so the fixture actually
+executes when the native file itself runs under Node's test runner.
+Raw JSON stdout is unsuitable because TAP escapes comments and splits writes.
 The standalone Writable utility separately awaits every callback and rejects
 pending-write errors/closure without ending shared stdout.
 
@@ -89,7 +94,7 @@ controls are implemented. The existing 30-minute job cap and every old gate
 remain unchanged. The canonical budget registry includes the new gate with zero
 readings; no measured runtime or historical timing is claimed.
 
-Seven lightweight analytic preflights (49 data corruptions plus receiver failures, including the
+Eight lightweight analytic/observation preflights (49 data corruptions plus receiver failures, including the
 four-case retained-TAP transport and same-opcode program edits) and 15 browser shard/inventory checks pass;
 these checks import no engine and do not qualify motion.
 
