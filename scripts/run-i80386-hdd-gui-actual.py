@@ -8,6 +8,8 @@ activation review. Inventory records metadata only; it cannot approve an actual.
 import argparse
 import base64
 import hashlib
+import datetime
+import email.utils
 import io
 import json
 import os
@@ -31,10 +33,12 @@ FINITE_INVENTORY_V5_ENABLED = False
 FINITE_INVENTORY_V6_ENABLED = False
 FINITE_INVENTORY_V7_ENABLED = False
 FINITE_INVENTORY_V8_ENABLED = False
-FINITE_INVENTORY_V9_ENABLED = True
+FINITE_INVENTORY_V9_ENABLED = False
+FINITE_INVENTORY_V10_ENABLED = False
+ACTUAL_V9_ENABLED = False
 ACTUAL_V6_ENABLED = False
 ACTUAL_V7_ENABLED = False
-ACTUAL_V8_ENABLED = True
+ACTUAL_V8_ENABLED = False
 REPOSITORY = 'CrispStrobe/brickwright-lite'
 LABEL = 'x86-hdd-gui-actual'
 ACTUAL_V6_LABEL = 'x86-hdd-gui-actual-v6'
@@ -53,6 +57,7 @@ CURRENT_SB3 = '1cbaeed325f5a890e43b78a4211acae8f801f2d2'
 FINITE_V7_PINS = {'bw-board':'836867513c3e7fac420ddaa32c17e1c7b6d3e513','bw-circuit-ui':'1bc233c9297e03abb9b7eb603e045b4e92b0bb40','sb3-creator':'1cbaeed325f5a890e43b78a4211acae8f801f2d2'}
 FINITE_V8_PINS = {'bw-board':'836867513c3e7fac420ddaa32c17e1c7b6d3e513','bw-circuit-ui':'1bc233c9297e03abb9b7eb603e045b4e92b0bb40','sb3-creator':'1cbaeed325f5a890e43b78a4211acae8f801f2d2'}
 FINITE_V9_PINS = {'bw-board':CURRENT_BOARD,'bw-circuit-ui':CUI,'sb3-creator':CURRENT_SB3}
+FINITE_V10_PINS = {'bw-board':'8785e4688cc308b34fea434c1734523caa621f74','bw-circuit-ui':'da28bb8ce9b38aa18d2e424f692c6570fc1d6d1d','sb3-creator':'1cbaeed325f5a890e43b78a4211acae8f801f2d2'}
 JSON_CAP = 4 << 20
 STREAM_CAP = 1 << 20
 FILE_CAP = 32 << 20
@@ -1002,26 +1007,28 @@ def parse_request(raw, expected):
     digest(expected); need(type(raw) is bytes and 0 < len(raw) <= JSON_CAP and sha(raw) == expected,
                            'independently selected request digest')
     request = decode(raw)
-    version=8 if request.get('schema')=='bw.gui-hdd.actual-request.v8' else 7 if request.get('schema')=='bw.gui-hdd.actual-request.v7' else 6 if request.get('schema')=='bw.gui-hdd.actual-request.v6' else 5 if request.get('schema')=='bw.gui-hdd.actual-request.v5' else 4 if request.get('schema')=='bw.gui-hdd.actual-request.v4' else 3
-    fields(request, 'schema repository pullRequest source build criticalFiles installedFiles runtime inventoryAdmission inputs pythonStartup'+(' nativeFontAdmission' if version>=5 else '')+(' nativeSourceGit' if version>=6 else '')+(' dispatch dependencyPins' if version==8 else ''))
+    version=9 if request.get('schema')=='bw.gui-hdd.actual-request.v9' else 8 if request.get('schema')=='bw.gui-hdd.actual-request.v8' else 7 if request.get('schema')=='bw.gui-hdd.actual-request.v7' else 6 if request.get('schema')=='bw.gui-hdd.actual-request.v6' else 5 if request.get('schema')=='bw.gui-hdd.actual-request.v5' else 4 if request.get('schema')=='bw.gui-hdd.actual-request.v4' else 3
+    fields(request, 'schema repository pullRequest source build criticalFiles installedFiles runtime inventoryAdmission inputs pythonStartup'+(' nativeFontAdmission' if version>=5 else '')+(' nativeSourceGit' if version>=6 else '')+(' dispatch dependencyPins' if version in (8,9) else '')+(' sameJob' if version==9 else ''))
     need(encode(request) == raw and request['schema'] == 'bw.gui-hdd.actual-request.v'+str(version) and
          request['repository'] == REPOSITORY, 'canonical owned approval request')
     need(encode(request['pythonStartup'])==encode(startup_policy()) and request['runtime']['python']==PYTHON_EXECUTABLE,'explicit v3 startup policy and selected CPython')
     integer(request['pullRequest'], 1, 2**31-1)
     source = request['source']; fields(source, 'head tree files'); digest(source['head'], 40); digest(source['tree'], 40)
     rows(source['files']); need(set(source['files']) == SOURCE, 'exact tracked source closure')
-    if version==8:
-        need(request['dependencyPins']==FINITE_V9_PINS and
+    if version in (8,9):
+        need(request['dependencyPins']==(FINITE_V10_PINS if version==9 else FINITE_V9_PINS) and
              type(request['dependencyPins']) is dict and set(request['dependencyPins'])=={'bw-board','bw-circuit-ui','sb3-creator'},
              'closed current V8 dependency pins')
-        selected=request['dispatch'];fields(selected,'tagName tagRef workflow')
-        tag=ACTUAL_V8_TAG_PREFIX+source['head']
-        need(selected['tagName']==tag and selected['tagRef']=='refs/tags/'+tag,
-             'one exact source-derived V8 tag and full ref')
-        fields(selected['workflow'],'path sha256')
-        need(selected['workflow']['path']==ACTUAL_V8_WORKFLOW and
-             selected['workflow']['sha256']==source['files'][ACTUAL_V8_WORKFLOW]['sha256'],
-             'source-bound V8 workflow bytes')
+        if version==9:actual_v9_request_policy(request)
+        else:
+            selected=request['dispatch'];fields(selected,'tagName tagRef workflow')
+            tag=ACTUAL_V8_TAG_PREFIX+source['head']
+            need(selected['tagName']==tag and selected['tagRef']=='refs/tags/'+tag,
+                 'one exact source-derived V8 tag and full ref')
+            fields(selected['workflow'],'path sha256')
+            need(selected['workflow']['path']==ACTUAL_V8_WORKFLOW and
+                 selected['workflow']['sha256']==source['files'][ACTUAL_V8_WORKFLOW]['sha256'],
+                 'source-bound V8 workflow bytes')
     rows(request['criticalFiles']); need(set(request['criticalFiles']) == set(CRITICAL), 'exact existing probe critical roster')
     for name in SOURCE & set(CRITICAL):
         need(encode(source['files'][name]) == encode(request['criticalFiles'][name]), 'critical/source identity join')
@@ -1073,9 +1080,9 @@ def parse_request(raw, expected):
     if version>=4:empty_python_policy(runtime['emptyPythonSources'],runtime['files'],runtime['aliases'],runtime['directoryAliases'])
     prior_inventory=request['inventoryAdmission']
     if version>=4:
-        actual_inventory_reference_v9(prior_inventory) if version==8 else actual_inventory_reference(prior_inventory)
-        if version==8:need(prior_inventory['metadataAdmission']['source']==source,'current V8 requires same F9 checkout head/tree/source21')
-        need(prior_inventory['schema'] in (('bw.gui-hdd.actual-finite-inventory-reference.v6',) if version==8 else ('bw.gui-hdd.actual-finite-inventory-reference.v3','bw.gui-hdd.actual-finite-inventory-reference.v4') if version>=6 else ('bw.gui-hdd.actual-finite-inventory-reference.v1',) if version==5 else ('bw.gui-hdd.actual-inventory-reference.v1',)),
+        actual_inventory_reference_v10(prior_inventory) if version==9 else actual_inventory_reference_v9(prior_inventory) if version==8 else actual_inventory_reference(prior_inventory)
+        if version in (8,9):need(prior_inventory['metadataAdmission']['source']==source,'current V8 requires same F9 checkout head/tree/source21')
+        need(prior_inventory['schema'] in (('bw.gui-hdd.actual-finite-inventory-reference.v7',) if version==9 else ('bw.gui-hdd.actual-finite-inventory-reference.v6',) if version==8 else ('bw.gui-hdd.actual-finite-inventory-reference.v3','bw.gui-hdd.actual-finite-inventory-reference.v4') if version>=6 else ('bw.gui-hdd.actual-finite-inventory-reference.v1',) if version==5 else ('bw.gui-hdd.actual-inventory-reference.v1',)),
              'distinct finite and historical actual inventory bases')
     else:
         fields(prior_inventory,'schema sourceHead runId jobId artifactId artifactSha256 original templateSha256 workflow')
@@ -1117,6 +1124,9 @@ def bind_inventory_event(raw, head, expected, env):
 
 
 def bind_event(raw, request, expected, env):
+    if request['schema']=='bw.gui-hdd.actual-request.v9':
+        prelude=actual_v9_prelude_from_env(env)
+        return bind_actual_v9_event(raw,prelude,request['sameJob']['preludeSha256'],env)
     if request['schema']=='bw.gui-hdd.actual-request.v8':
         return bind_dispatch_event_v8(raw,request,expected,env)
     event = decode(raw); pr = event.get('pull_request', {}); repo = event.get('repository', {})
@@ -1346,6 +1356,27 @@ FINITE_V9_CUI_WITNESSES = {
  'node_modules/bw-circuit-ui/test/scope-digitizer.test.js':(9815,'998cf426cc76cfcc12623bb368c5aaa73db6be6d31fc245a8a79c1b53000b629'),
  'node_modules/bw-circuit-ui/test/scope-timebase.test.js':(10545,'1dca476e2e94a0e115134d745520beb14686a97f174f902eb43bf7e4de0e910f'),
  'node_modules/bw-circuit-ui/test/spice-nmos-operating-point.test.js':(23891,'7ae3b65b0f775dcb2b7ee8a5ea589d004838c71b815bfeb65a37b8b461c8215f'),
+}
+
+FINITE_V10_CUI_WITNESSES = {
+ 'node_modules/bw-circuit-ui/LANES.md':(273927, 'fe8d745415ef89bd3e32caefda4594c71f6b95d83291518db7d3103fa0f9c633'),
+ 'node_modules/bw-circuit-ui/bin/bwc.mjs':(69755, '998b2389dc7bc910482c1115888be3d90c4e2c5193172e749944d25e5fe31533'),
+ 'node_modules/bw-circuit-ui/docs/CLI-INSTRUMENTS.md':(55013, '7fb08214f9dc693c8339c418f0d8be8f6987beaee93f0d03c6de132ad9582eaa'),
+ 'node_modules/bw-circuit-ui/package.json':(11458, 'aa2e7cdd01c31f9622339ebccf16fcd5c3728d497903b4230fbd1842fd1ddc16'),
+ 'node_modules/bw-circuit-ui/scripts/verify-interaction.mjs':(158565, '650989a1238632e55634f097288ef2d81aae25311e087db39d36f87084483c3c'),
+ 'node_modules/bw-circuit-ui/src/components/ScopePanel.jsx':(59219, '0fe079a01dee0879dcf7f55f46bbcaab39b4173a74da4a5a6c264744d333dd9b'),
+ 'node_modules/bw-circuit-ui/src/i18n/strings.js':(25719, '60fe3dd9febaee4baf2ef82d855de6e054e68b842ee4b209854ffa58b9170230'),
+ 'node_modules/bw-circuit-ui/src/importers/spice.js':(85910, '3d93812a665b443ac3a7c41197772d06a0dbfa7101670d7db0a74bdbc44c3c41'),
+ 'node_modules/bw-circuit-ui/src/model/instrument-report.js':(34538, 'b209720f09a5c2626b39c2271a0c3453a851019d9504a5cedfe9a7dd3c500084'),
+ 'node_modules/bw-circuit-ui/src/model/measurement-receipt.js':(10950, 'a37085c806a4f8c1293f8d62cc4004ccf800e18c1d11c7fedd53b32e05e9a3b8'),
+ 'node_modules/bw-circuit-ui/src/model/operating-point-kcl.js':(7695, '547351bd0372d6d0090deb7ee9893adad769e4367635aea9611c406861cf69a7'),
+ 'node_modules/bw-circuit-ui/src/model/scope-csv.js':(3530, '6d026e6bb8c2c766ad910e92bd91c40c6ba205b021304e5610c7c1747b0d04f5'),
+ 'node_modules/bw-circuit-ui/src/model/scope-digitizer.js':(7699, '5f7915e5445b71d7b6f8899594b10e75edcd8fa7140437c2c50b330b26cd1444'),
+ 'node_modules/bw-circuit-ui/test/cli-measure.test.js':(194959, '540e81409a2de8c2953e650da993ffcb33e8115b5f234d33a18f7dca314d5688'),
+ 'node_modules/bw-circuit-ui/test/operating-point-kcl.test.js':(11320, 'deafeb1df57ae1729f5ea77ca795b8f888f619f8ce336d7115cab717eda5c9b5'),
+ 'node_modules/bw-circuit-ui/test/scope-digitizer.test.js':(9815, '998cf426cc76cfcc12623bb368c5aaa73db6be6d31fc245a8a79c1b53000b629'),
+ 'node_modules/bw-circuit-ui/test/scope-timebase.test.js':(10545, '1dca476e2e94a0e115134d745520beb14686a97f174f902eb43bf7e4de0e910f'),
+ 'node_modules/bw-circuit-ui/test/spice-nmos-operating-point.test.js':(23891, '7ae3b65b0f775dcb2b7ee8a5ea589d004838c71b815bfeb65a37b8b461c8215f'),
 }
 
 def installed_rows_v5(value, critical=INSTALLED_V5_CRITICAL):
@@ -1659,19 +1690,25 @@ class Hosted:
     """Real edges are called only after the literal source guard and external pin."""
     def __init__(self, root, output, env):
         self.root = Path(root).absolute(); self.output = output; self.env = dict(env)
+        self.metadata_clocks = {}
         self.deadline = time.monotonic()+TOTAL_SECONDS; self.children = []; self.attempts = set()
     def api(self, route):
-        need(re.fullmatch('/(?:actions/(?:runs/[0-9]+/attempts/1|jobs/[0-9]+|artifacts/[0-9]+)|git/blobs/[0-9a-f]{40}|pulls/[1-9][0-9]{0,9}|git/ref/tags/bw-gui-hdd-actual-v8-[0-9a-f]{40})', route), 'fixed owned metadata route')
+        need(re.fullmatch('/(?:actions/(?:runs/[0-9]+/attempts/1|jobs/[0-9]+|artifacts/[0-9]+)|git/(?:blobs|commits|trees)/[0-9a-f]{40}|git/ref/heads/lane/[A-Za-z0-9][A-Za-z0-9_./-]{0,180}|git/ref/heads/bw-gui-hdd-actual-v9-ack-[1-9][0-9]{0,19}-[1-9][0-9]{0,19}-[0-9a-f]{40}|actions/runs/[1-9][0-9]{0,19}/attempts/1/jobs|pulls/[1-9][0-9]{0,9}|git/ref/tags/bw-gui-hdd-actual-v8-[0-9a-f]{40})', route), 'fixed owned metadata route')
         url = 'https://api.github.com/repos/'+REPOSITORY+route
         class NoRedirect(urllib.request.HTTPRedirectHandler):
             def redirect_request(self, *args, **kwargs): raise ValueError('metadata redirect refused')
         opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect())
         headers = {'Accept': 'application/vnd.github+json', 'User-Agent': 'bw-gui-hdd-v1', 'X-GitHub-Api-Version': '2022-11-28'}
         if self.env.get('GH_TOKEN'): headers['Authorization'] = 'Bearer '+self.env['GH_TOKEN']
-        with opener.open(urllib.request.Request(url, headers=headers), timeout=15) as response:
+        request_mono=time.monotonic_ns();request_wall=time.time_ns()
+        remaining=self.deadline-time.monotonic();need(remaining>0,'metadata global deadline before edge')
+        with opener.open(urllib.request.Request(url, headers=headers), timeout=min(15,remaining)) as response:
             need(response.status == 200 and response.geturl() == url, 'fixed successful metadata endpoint')
             raw = response.read(JSON_CAP+1)
-        need(len(raw) <= JSON_CAP, 'metadata extent'); return raw
+            clock={'httpDate':response.headers.get('Date'),'requestMonotonicNs':request_mono,
+              'responseMonotonicNs':time.monotonic_ns(),'requestWallTimeNs':request_wall,'responseWallTimeNs':time.time_ns()}
+        self.metadata_clocks[route]=clock
+        need(len(raw) <= JSON_CAP and time.monotonic()<self.deadline, 'metadata extent/deadline'); return raw
     def run(self, role, argv, env, seconds, stdout_cap=STREAM_CAP):
         need(role not in self.attempts, 'one-shot child role'); self.attempts.add(role)
         need(time.monotonic() < self.deadline and type(argv) is list and all(type(x) is str for x in argv), 'finite child descriptor')
@@ -1919,8 +1956,8 @@ def observe_runtime(request):
     facts['availableCpus'] = sorted(os.sched_getaffinity(0))
     facts['rlimits'] = {str(key):list(resource.getrlimit(key)) for key in (resource.RLIMIT_CORE,resource.RLIMIT_FSIZE,resource.RLIMIT_NOFILE)}
     facts['aggregateContainmentQualified'] = False
-    if request.get('schema') in ('bw.gui-hdd.actual-request.v4','bw.gui-hdd.actual-request.v5','bw.gui-hdd.actual-request.v6','bw.gui-hdd.actual-request.v7','bw.gui-hdd.actual-request.v8'):observe_actual_empty_sources(request,facts)
-    if request.get('schema') in ('bw.gui-hdd.actual-request.v5','bw.gui-hdd.actual-request.v6','bw.gui-hdd.actual-request.v7','bw.gui-hdd.actual-request.v8'):
+    if request.get('schema') in ('bw.gui-hdd.actual-request.v4','bw.gui-hdd.actual-request.v5','bw.gui-hdd.actual-request.v6','bw.gui-hdd.actual-request.v7','bw.gui-hdd.actual-request.v8','bw.gui-hdd.actual-request.v9'):observe_actual_empty_sources(request,facts)
+    if request.get('schema') in ('bw.gui-hdd.actual-request.v5','bw.gui-hdd.actual-request.v6','bw.gui-hdd.actual-request.v7','bw.gui-hdd.actual-request.v8','bw.gui-hdd.actual-request.v9'):
         stage,_=native_font_layout(request['nativeFontAdmission']);facts.update(schema='bw.gui-hdd.runtime-observation.v5',nativeFontDirectories=native_font_directories(stage))
     return facts
 
@@ -2116,11 +2153,11 @@ def observe_native_source_git_v6(request,root,hosted,output):
 
 
 def execute(request_raw, expected, root, output_path, env, factory=Hosted, preflight=False, startup_mode=None):
-    request = parse_request(request_raw, expected); output = (V8Originals if request['schema']=='bw.gui-hdd.actual-request.v8' else Originals)(output_path); first = None; secondary = [];font_stage=None
-    result = {'schema': 'bw.gui-hdd.result.v8' if request['schema']=='bw.gui-hdd.actual-request.v8' else 'bw.gui-hdd.result.v7' if request['schema']=='bw.gui-hdd.actual-request.v7' else 'bw.gui-hdd.result.v1', 'pass': False, 'requestSha256': expected,
+    request = parse_request(request_raw, expected); output = (V8Originals if request['schema'] in ('bw.gui-hdd.actual-request.v8','bw.gui-hdd.actual-request.v9') else Originals)(output_path); first = None; secondary = [];font_stage=None
+    result = {'schema': 'bw.gui-hdd.result.v9' if request['schema']=='bw.gui-hdd.actual-request.v9' else 'bw.gui-hdd.result.v8' if request['schema']=='bw.gui-hdd.actual-request.v8' else 'bw.gui-hdd.result.v7' if request['schema']=='bw.gui-hdd.actual-request.v7' else 'bw.gui-hdd.result.v1', 'pass': False, 'requestSha256': expected,
               'scenarios': [], 'firstFailure': None, 'secondary': secondary}
-    if request['schema']=='bw.gui-hdd.actual-request.v8':
-        result['dispatchPlatform']=dispatch_platform_v8(env)
+    if request['schema'] in ('bw.gui-hdd.actual-request.v8','bw.gui-hdd.actual-request.v9'):
+        result['dispatchPlatform']=dict(schema='bw.gui-hdd.actual-v9-platform.v1',**{key:env.get(key) for key in ACTUAL_V8_PLATFORM_KEYS}) if request['schema']=='bw.gui-hdd.actual-request.v9' else dispatch_platform_v8(env)
         result['dependencyPins']=dict(request['dependencyPins'])
     def retain(error,phase):
         nonlocal first
@@ -2130,23 +2167,28 @@ def execute(request_raw, expected, root, output_path, env, factory=Hosted, prefl
         result['pass']=False
     output.save('request.original.json', request_raw)
     try:
+        job_deadline=None
+        if request['schema']=='bw.gui-hdd.actual-request.v9':job_deadline=require_actual_v9_state(root,request,expected,env,output,require_full=not preflight)
         if request['schema']=='bw.gui-hdd.actual-request.v8':require_actual_v8_bootstrap(root,request,expected,env,output)
         startup_mode=startup_mode if startup_mode is not None else ('preflight' if preflight else 'actual')
         startup_args=['--request',str(Path(root)/'gui-inputs/request.json'),'--expected-sha256',expected,'--output',str(output_path)]
         startup_raw,startup_before=observe_python_startup(root,startup_mode,startup_args)
         output.save('python-startup.original.txt',startup_raw);output.save('python-startup.before.json',encode(startup_before))
         hosted = factory(root, output, env)
-        if request['schema']=='bw.gui-hdd.actual-request.v8':
+        if job_deadline is not None:hosted.deadline=min(hosted.deadline,job_deadline['deadlineMonotonicNs']/1e9-60)
+        if request['schema'] in ('bw.gui-hdd.actual-request.v8','bw.gui-hdd.actual-request.v9'):
             event_env={key:result['dispatchPlatform'][key] for key in ACTUAL_V8_PLATFORM_KEYS}
+            if request['schema']=='bw.gui-hdd.actual-request.v9':
+                event_env=dict(env,**event_env)  # Keep the four captured prelude/template transports.
         else:event_env=env
         event_raw = regular(env['GITHUB_EVENT_PATH'], JSON_CAP)
-        if request['schema']=='bw.gui-hdd.actual-request.v8':
+        if request['schema'] in ('bw.gui-hdd.actual-request.v8','bw.gui-hdd.actual-request.v9'):
             output.save('event.original.json',event_raw)
             bind_event(event_raw,request,expected,event_env)
         else:
             bind_event(event_raw,request,expected,event_env)
             output.save('event.original.json',event_raw)
-        current_font=request['schema'] in ('bw.gui-hdd.actual-request.v5','bw.gui-hdd.actual-request.v6','bw.gui-hdd.actual-request.v7','bw.gui-hdd.actual-request.v8')
+        current_font=request['schema'] in ('bw.gui-hdd.actual-request.v5','bw.gui-hdd.actual-request.v6','bw.gui-hdd.actual-request.v7','bw.gui-hdd.actual-request.v8','bw.gui-hdd.actual-request.v9')
         if current_font and preflight:
             # Tool/runtime bytes and the exact source/event are admitted before GETs.
             initial=decode(encode(request));initial['schema']='bw.gui-hdd.actual-request.v4';stage,config=native_font_layout(request['nativeFontAdmission'])
@@ -2161,6 +2203,15 @@ def execute(request_raw, expected, root, output_path, env, factory=Hosted, prefl
             need(hosted.git(['cat-file', 'blob', request['source']['head']+':'+path]) == raw, 'live tracked source/Git blob')
             observed_source[path]={'byteLength':len(raw),'sha256':sha(raw)}
         output.save('source.before.json', encode({'head':request['source']['head'],'tree':request['source']['tree'],'files':observed_source}))
+        if request['schema']=='bw.gui-hdd.actual-request.v9':
+            pr_raw=hosted.api('/pulls/'+str(request['pullRequest']))
+            output.save('dispatch-pr.original.json',pr_raw)
+            admit_actual_v9_pr(pr_raw,request,'<!-- BW_GUI_HDD_ACTUAL_V9_REQUEST_SHA256='+expected+' -->','BW_GUI_HDD_ACTUAL_V9_REQUEST_SHA256')
+            branch_raw=hosted.api('/git/ref/'+request['dispatch']['ref'][len('refs/'):])
+            output.save('dispatch-branch.original.json',branch_raw)
+            branch=decode(branch_raw)
+            need(branch.get('ref')==request['dispatch']['ref'] and branch.get('object',{}).get('type')=='commit' and
+                 branch['object'].get('sha')==request['source']['head'],'unchanged exact source branch ref')
         if request['schema']=='bw.gui-hdd.actual-request.v8':
             pr_raw=hosted.api('/pulls/'+str(request['pullRequest']))
             output.save('dispatch-pr.original.json',pr_raw)
@@ -2168,27 +2219,32 @@ def execute(request_raw, expected, root, output_path, env, factory=Hosted, prefl
             tag_raw=hosted.api('/git/ref/tags/'+request['dispatch']['tagName'])
             output.save('dispatch-tag.original.json',tag_raw)
             admit_dispatch_tag_v8(tag_raw,request)
-        if request['schema'] in ('bw.gui-hdd.actual-request.v6','bw.gui-hdd.actual-request.v7','bw.gui-hdd.actual-request.v8'):
+        if request['schema'] in ('bw.gui-hdd.actual-request.v6','bw.gui-hdd.actual-request.v7','bw.gui-hdd.actual-request.v8','bw.gui-hdd.actual-request.v9'):
             observe_native_source_git_v6(request,root,hosted,output)
         for path, row in request['criticalFiles'].items(): check_file(Path(root)/path, row)
         # Complete selected package census; expected rows originate outside this attempt.
         installed = {}
         prefixes=('node_modules/bw-board','node_modules/playwright','node_modules/playwright-core')+ (('node_modules/bw-circuit-ui',) if current_font else ())
         for prefix in prefixes:
-            selected=installed_inventory_v5(Path(root)/prefix,prefix,{'installedProgress':{'package':None,'path':None,'entryStat':None,'file':None,'completedPrefixes':[],'completedRows':0,'totalBytes':0}},root,INSTALLED_V6_CRITICAL) if request['schema'] in ('bw.gui-hdd.actual-request.v6','bw.gui-hdd.actual-request.v7','bw.gui-hdd.actual-request.v8') else inventory(Path(root)/prefix)
+            selected=installed_inventory_v5(Path(root)/prefix,prefix,{'installedProgress':{'package':None,'path':None,'entryStat':None,'file':None,'completedPrefixes':[],'completedRows':0,'totalBytes':0}},root,INSTALLED_V6_CRITICAL) if request['schema'] in ('bw.gui-hdd.actual-request.v6','bw.gui-hdd.actual-request.v7','bw.gui-hdd.actual-request.v8','bw.gui-hdd.actual-request.v9') else inventory(Path(root)/prefix)
             for path, row in selected.items(): installed[prefix+'/'+path] = row
         need(encode(installed) == encode(request['installedFiles']), 'closed selected installed supplier/browser graph')
         pins = decode(regular(Path(root)/'vendor-pins.json', JSON_CAP))
         need({key: pins[key] for key in ('bw-board', 'bw-circuit-ui', 'sb3-creator')} ==
-             (request['dependencyPins'] if request['schema']=='bw.gui-hdd.actual-request.v8' else
+             (request['dependencyPins'] if request['schema'] in ('bw.gui-hdd.actual-request.v8','bw.gui-hdd.actual-request.v9') else
               {'bw-board': BOARD, 'bw-circuit-ui': HISTORICAL_CUI, 'sb3-creator': SB3}),
              'held adopted dependency identities')
         output.save('installed.before.json', encode(installed))
         if current_font:
             font_stage=prepare_native_font(request,expected,root,hosted,output,preflight)
             if preflight:runtime_before=capture_actual_runtime(output,'before',request)
+            if preflight and request['schema']=='bw.gui-hdd.actual-request.v9':
+                core=decode(regular(Path(root)/'gui-actual-v9/core-runtime-after-ack.json',JSON_CAP))
+                actual_v9_verify_core(core,runtime_before,request)
+                exclusive_stage_write(Path(root)/'gui-actual-v9/runtime-after-ack.json',encode(runtime_before))
+                output.save('same-job/runtime-after-ack.json',encode(runtime_before))
         if preflight:
-            result['schema']='bw.gui-hdd.preflight.v8' if request['schema']=='bw.gui-hdd.actual-request.v8' else 'bw.gui-hdd.preflight.v1';result['pass']=True
+            result['schema']='bw.gui-hdd.preflight.v9' if request['schema']=='bw.gui-hdd.actual-request.v9' else 'bw.gui-hdd.preflight.v8' if request['schema']=='bw.gui-hdd.actual-request.v8' else 'bw.gui-hdd.preflight.v1';result['pass']=True
         else:
             metadata = []
             for role, route in (('build-run', '/actions/runs/'+str(request['build']['runId'])+'/attempts/1'),
@@ -2210,11 +2266,15 @@ def execute(request_raw, expected, root, output_path, env, factory=Hosted, prefl
             need(build_manifest.get('commit') == request['build']['checkoutHead'][:7], 'admitted actual frontend checkout identity')
             for role, row in request['inputs'].items(): check_file(Path(root)/row['path'], row)
             manifest = {'schema': 'bw.gui-hdd-persistence-admission.v1',
-                'boardPin': (CURRENT_BOARD if request['schema']=='bw.gui-hdd.actual-request.v8' else BOARD),
+                'boardPin': (request['dependencyPins']['bw-board'] if request['schema'] in ('bw.gui-hdd.actual-request.v8','bw.gui-hdd.actual-request.v9') else BOARD),
                 'sourceHead': request['source']['head'], 'criticalFiles': request['criticalFiles'],
                 'buildRoot': str(build_root), 'buildFiles': build_files,
                 'inputPaths': {name: str(Path(root)/row['path']) for name, row in request['inputs'].items()}}
             output.save('probe-admission.json', encode(manifest))
+            if job_deadline is not None:
+                # Admission immediately before guest launch, after setup/GETs.
+                capture_actual_runtime(output,'entry',request)
+                actual_v9_entry_budget(job_deadline,output)
             for scenario, seconds in zip(SCENARIOS, (1250, 180)):
                 child_env = dict(clean_env(), PROOF_SCENARIO=scenario, PROOF_ADMISSION=str(output.root/'probe-admission.json'),
                     PROOF_OUTPUT=str(output.root/scenario), PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=request['runtime']['chromium'],
@@ -2231,11 +2291,11 @@ def execute(request_raw, expected, root, output_path, env, factory=Hosted, prefl
             output.save('source.after.json',encode({'head':request['source']['head'],'tree':request['source']['tree'],'files':observed_after}))
             installed_after={}
             for prefix in prefixes:
-                selected=installed_inventory_v5(Path(root)/prefix,prefix,{'installedProgress':{'package':None,'path':None,'entryStat':None,'file':None,'completedPrefixes':[],'completedRows':0,'totalBytes':0}},root,INSTALLED_V6_CRITICAL) if request['schema'] in ('bw.gui-hdd.actual-request.v6','bw.gui-hdd.actual-request.v7','bw.gui-hdd.actual-request.v8') else inventory(Path(root)/prefix)
+                selected=installed_inventory_v5(Path(root)/prefix,prefix,{'installedProgress':{'package':None,'path':None,'entryStat':None,'file':None,'completedPrefixes':[],'completedRows':0,'totalBytes':0}},root,INSTALLED_V6_CRITICAL) if request['schema'] in ('bw.gui-hdd.actual-request.v6','bw.gui-hdd.actual-request.v7','bw.gui-hdd.actual-request.v8','bw.gui-hdd.actual-request.v9') else inventory(Path(root)/prefix)
                 for name,row in selected.items():installed_after[prefix+'/'+name]=row
             need(installed_after==request['installedFiles'],'complete installed graph after both scenarios')
             output.save('installed.after.json', encode(installed_after)); runtime_after=capture_actual_runtime(output,'after',request)
-            if request['schema'] in ('bw.gui-hdd.actual-request.v4','bw.gui-hdd.actual-request.v5','bw.gui-hdd.actual-request.v6','bw.gui-hdd.actual-request.v7','bw.gui-hdd.actual-request.v8'):
+            if request['schema'] in ('bw.gui-hdd.actual-request.v4','bw.gui-hdd.actual-request.v5','bw.gui-hdd.actual-request.v6','bw.gui-hdd.actual-request.v7','bw.gui-hdd.actual-request.v8','bw.gui-hdd.actual-request.v9'):
                 need(encode(runtime_before['emptyPythonSources'])==encode(runtime_after['emptyPythonSources']),'actual typed source before/after identity unchanged')
             if current_font:output.save('native-font.cache.after.json',encode(native_font_cache(font_stage/'cache')))
             need(inventory(build_root) == build_files, 'served build changed after scenarios')
@@ -2280,7 +2340,7 @@ def execute(request_raw, expected, root, output_path, env, factory=Hosted, prefl
     return 0 if result['pass'] and not secondary else 1
 
 
-def install_input(blob,expected,target,env):
+def install_input(blob,expected,target,env,deadline=None):
     """Immutable own-repository input transport, never an approval decision."""
     digest(blob,40);digest(expected);target=Path(target).absolute()
     need(target.name in ('request.json','runtime-template.json') and target.parent.resolve(strict=True)==target.parent and
@@ -2288,7 +2348,8 @@ def install_input(blob,expected,target,env):
     # The fixed metadata adapter does not launch a process or acquire an artifact.
     class Edge:
         API = Hosted.api
-    edge=Edge();edge.env=dict(env)
+    edge=Edge();edge.env=dict(env);edge.metadata_clocks={}
+    edge.deadline=min(time.monotonic()+30,deadline) if deadline is not None else time.monotonic()+30
     raw=Hosted.api(edge,'/git/blobs/'+blob);response=decode(raw)
     need(response.get('sha')==blob and response.get('encoding')=='base64' and type(response.get('size')) is int and
          0<response['size']<=JSON_CAP and type(response.get('content')) is str,'bounded immutable input Git blob')
@@ -2819,6 +2880,149 @@ def finite_v9_guard_original(raw,template_raw,event_raw,env):
     return value
 
 
+def resolver_role_policy(template):
+    role=template['resolverRole'];fields(role,'path allowedKinds symlinkAlternatives')
+    need(role['path']=='/etc/resolv.conf' and role['allowedKinds']==['regular','symlink'],
+         'closed finite10 resolver kinds')
+    need(all(role['path'] not in template[k] for k in ('files','aliases','directoryAliases')),
+         'typed resolver excluded from fixed rosters')
+    alternatives=role['symlinkAlternatives']
+    need(type(alternatives) is list and 1<=len(alternatives)<=4,'bounded selected resolver alternatives')
+    need(alternatives==sorted(alternatives,key=lambda item:encode(item)) and
+         len({encode(item) for item in alternatives})==len(alternatives),'unique canonical resolver alternatives')
+    # A source-fixed form is a policy selection, not a claim that old failure
+    # metadata observed this literal text.
+    need(alternatives==[{'linkText':'../run/systemd/resolve/stub-resolv.conf',
+                         'target':'/run/systemd/resolve/stub-resolv.conf'}],
+         'reviewed resolver literal and endpoint only')
+    for item in alternatives:
+        fields(item,'linkText target');finite_inventory_path(item['target'])
+        need(item['target'] in template['files'] and
+             declared_alias_resolution(role['path'],{role['path']:item})==item['target'],
+             'resolver alias reaches already selected canonical endpoint')
+    empty_python_policy(template['emptyPythonSources'],template['files']+[role['path']],template['aliases'],template['directoryAliases'])
+    need(len(template['files'])+1<=512 and len(template['aliases'])+len(template['directoryAliases'])+1<=256,
+         'expanded resolver roles retain existing caps')
+    return role
+
+
+def observe_resolver_role(template,runtime,failure,keep,deadline):
+    role=resolver_role_policy(template);path=role['path'];row={'attempted':False}
+    failure['resolverObservation']={path:row}
+    try:
+        need(time.monotonic()<deadline,'resolver observation deadline');row['attempted']=True
+        before=os.lstat(path);row['metadataBefore']=identity(before)
+        if stat.S_ISREG(before.st_mode):
+            raw=regular(path,256<<20);value={'kind':'regular','path':path}
+            item={'byteLength':len(raw),'sha256':sha(raw)};row['file']=item
+            need(path not in runtime['files'] and path not in runtime['aliases'],'resolver role disjointness')
+            runtime['files'][path]=item
+        else:
+            need(stat.S_ISLNK(before.st_mode),'resolver must be selected regular or symlink')
+            text=os.readlink(path);row['linkText']=text
+            selected=[item for item in role['symlinkAlternatives'] if item['linkText']==text]
+            need(len(selected)==1,'selected resolver literal link text');item=selected[0];row['target']=item['target']
+            need(item['target'] in runtime['files'],'resolver endpoint successfully observed')
+            raw=check_file(item['target'],runtime['files'][item['target']])
+            need(path not in runtime['files'] and path not in runtime['aliases'],'resolver role disjointness')
+            runtime['aliases'][path]=dict(item)
+            value={'kind':'symlink','path':path,**item}
+            need(os.readlink(path)==text,'resolver literal unchanged after endpoint read')
+        row['metadataAfter']=identity(os.lstat(path))
+        need(row['metadataBefore']==row['metadataAfter'],'resolver metadata unchanged after bounded read')
+        need(time.monotonic()<deadline,'resolver observation deadline after read');row['status']='observed'
+        # The ordinary keep budget covers this independently typed row too.
+        keep('resolverObservation',path,row)
+        return value
+    except BaseException as error:
+        row['status']='failed' if row['attempted'] else 'unvisited-deadline'
+        row['error']=inventory_error(failure,error,'inventory-resolver',path)
+        keep('resolverObservation',path,row)
+        return None
+
+
+def finite_v10_template(raw, expected):
+    digest(expected)
+    need(type(raw) is bytes and 0 < len(raw) <= FINITE_INVENTORY_TEMPLATE_CAP and
+         sha(raw) == expected, 'selected finite v10 template bytes')
+    template = decode(raw)
+    fields(template, 'schema sourceHead files aliases directoryAliases node python chromium tools emptyPythonSources libraries scope dependencyPins bootstrapSource resolverRole')
+    need(encode(template) == raw and template['schema'] == 'bw.gui-hdd.inventory-template.v10' and
+         encode(template['scope']) == encode(finite_v5_scope()), 'canonical finite v10 installed-only scope')
+    need(type(template['dependencyPins']) is dict and template['dependencyPins']==FINITE_V10_PINS,
+         'closed current finite v10 dependency pins')
+    digest(template['sourceHead'], 40)
+    for role, cap in (('files',512),('aliases',256),('directoryAliases',256)):
+        roster=template[role]
+        need(type(roster) is list and len(roster)<=cap and all(type(path) is str for path in roster) and roster==sorted(set(roster)),
+             'finite v10 sorted unique selected '+role)
+        for path in roster:finite_inventory_path(path)
+    need(1<=len(template['files']) and len(template['aliases'])+len(template['directoryAliases'])<=256 and
+         len(set(template['files']+template['aliases']+template['directoryAliases'])) ==
+         sum(len(template[k]) for k in ('files','aliases','directoryAliases')),
+         'disjoint finite v10 core runtime roles')
+    resolver_role_policy(template)
+    fields(template['tools'],'git gh')
+    need(template['tools']=={'git':'/usr/bin/git','gh':'/usr/bin/gh'},'selected v9 bootstrap tools')
+    need(template['python']==PYTHON_EXECUTABLE and all(path in template['files'] for path in
+         (template['node'],template['python'],template['chromium'],'/usr/bin/git','/usr/bin/gh','/usr/bin/curl')),
+         'selected v9 Node/Python/Chromium/Git/gh/curl core files')
+    libraries=template['libraries']
+    need(type(libraries) is list and 1<=len(libraries)<=128 and all(type(path) is str for path in libraries) and libraries==sorted(set(libraries)) and
+         set(libraries)<=set(template['files']),'explicit v9 selected library role')
+    empty_python_policy(template['emptyPythonSources'],template['files'],template['aliases'],template['directoryAliases'])
+    bootstrap_source_policy(template['bootstrapSource'])
+    return template
+
+
+def finite_v10_transport(body, expected, env):
+    prelude=actual_v9_prelude_from_env(env)
+    raw=actual_v9_template_from_env(env)
+    need(prelude['template']['sha256']==expected,'finite10 selected prelude template digest')
+    finite_v10_template(raw,expected)
+    return raw
+
+
+def bind_finite_v10_event(raw,head,expected,env):
+    prelude=actual_v9_prelude_from_env(env)
+    need(prelude['source']['head']==head,'finite10 prelude exact source')
+    bind_actual_v9_event(raw,prelude,env['BW_GUI_HDD_ACTUAL_V9_PRELUDE_SHA256'],env)
+    return finite_v10_transport(None,expected,env)
+
+
+def finite_v10_guard_original(raw,template_raw,event_raw,env):
+    value=decode(raw)
+    fields(value,'schema pass templateSha256 eventSha256 source platform setupTrustBoundary fontSelectionProved browserFontSelectionProved guestApproved firstFailure secondary dependencyPins vendorPinsOriginal bootstrapAdmission')
+    need(encode(value)==raw and value['schema']=='bw.gui-hdd.finite-inventory-guard.v10' and value['pass'] is True and
+         value['templateSha256']==sha(template_raw) and value['eventSha256']==sha(event_raw) and
+         value['firstFailure'] is None and value['secondary']==[] and
+         all(value[key] is False for key in ('fontSelectionProved','browserFontSelectionProved','guestApproved')),
+         'successful finite v10 pre-setup admission only')
+    need(value['platform']=={key:env.get(key) for key in
+         ('GITHUB_RUN_ID','GITHUB_RUN_ATTEMPT','GITHUB_JOB','GITHUB_REPOSITORY','GITHUB_WORKFLOW_SHA','BW_EXPECTED_HEAD')},
+         'same finite v10 pre/post-setup producing platform')
+    need(value['setupTrustBoundary']=={'bootstrapGitTrusted':True,'packageInstallerTrusted':True,
+         'completeRuntimeBeforeSetupProved':False},'explicit v9 bootstrap/setup trust boundary')
+    source=value['source'];fields(source,'head tree files');digest(source['head'],40);digest(source['tree'],40);rows(source['files'])
+    need(source['head']==decode(template_raw)['sourceHead'] and set(source['files'])==SOURCE,
+         'finite v10 guard exact source21')
+    need(value['dependencyPins']==decode(template_raw)['dependencyPins']==FINITE_V10_PINS,
+         'finite v10 pre-setup selected dependency pins')
+    vendor=value['vendorPinsOriginal'];fields(vendor,'byteLength sha256 base64')
+    integer(vendor['byteLength'],1,JSON_CAP);digest(vendor['sha256'])
+    raw_vendor=base64.b64decode(vendor['base64'],validate=True)
+    need(len(raw_vendor)==vendor['byteLength'] and sha(raw_vendor)==vendor['sha256'] and
+         base64.b64encode(raw_vendor).decode()==vendor['base64'] and
+         source['files']['vendor-pins.json']=={'byteLength':len(raw_vendor),'sha256':sha(raw_vendor)},
+         'finite v10 raw vendor pins joins selected Git source')
+    pins=decode(raw_vendor)
+    need(type(pins) is dict and {key:pins.get(key) for key in FINITE_V10_PINS}==FINITE_V10_PINS,
+         'finite v10 raw vendor pin identities before package setup')
+    bootstrap_witness(value['bootstrapAdmission'],source['head'],decode(template_raw)['bootstrapSource'])
+    return value
+
+
+
 def actual_inventory_reference_v9(reference):
     """External prior-observation reference, never an automatic metadata approval."""
     fields(reference,'schema metadataAdmission jobId artifactId artifactSha256 workflow')
@@ -2939,10 +3143,80 @@ def admit_finite_v9_before_setup(root,env,factory=None):
 
 
 
+def admit_finite_v10_before_setup(root,env,factory=None):
+    need(FINITE_INVENTORY_V10_ENABLED is True,'finite v10 disabled before source or package observations')
+    expected=env.get('BW_FINITE_INVENTORY_V10_SHA256');digest(expected)
+    root=Path(root).absolute()
+    need(root.resolve(strict=True)==root and env.get('GITHUB_WORKSPACE')==str(root),
+         'finite v10 official canonical checkout')
+    event_raw=regular(env['GITHUB_EVENT_PATH'],INVENTORY_FAILURE_EVENT_CAP)
+    event=decode(event_raw)
+    template_raw=finite_v10_transport(event.get('pull_request',{}).get('body'),expected,env)
+    template=finite_v10_template(template_raw,expected)
+    need(bind_finite_v10_event(event_raw,template['sourceHead'],expected,env)==template_raw,
+         'finite v10 immutable event/template join')
+    directory=root/'gui-finite-inventory-v10'
+    if not directory.exists():directory.mkdir(mode=0o700)
+    info=directory.lstat()
+    need(directory.resolve(strict=True)==directory and info.st_mode==stat.S_IFDIR|0o700 and
+         info.st_uid==os.geteuid(),'owned finite v10 admission root')
+    capture=Originals(directory/'guard-originals');hosted=(factory or Hosted)(root,capture,env);first=None
+    _,deadline=actual_v9_read_state(root,env);hosted.deadline=min(hosted.deadline,deadline['deadlineMonotonicNs']/1e9-60)
+    value={'schema':'bw.gui-hdd.finite-inventory-guard.v10','pass':False,'templateSha256':expected,
+      'eventSha256':sha(event_raw),'source':None,
+      'platform':{key:env.get(key) for key in ('GITHUB_RUN_ID','GITHUB_RUN_ATTEMPT','GITHUB_JOB',
+        'GITHUB_REPOSITORY','GITHUB_WORKFLOW_SHA','BW_EXPECTED_HEAD')},
+      'setupTrustBoundary':{'bootstrapGitTrusted':True,'packageInstallerTrusted':True,
+        'completeRuntimeBeforeSetupProved':False},'fontSelectionProved':False,
+      'browserFontSelectionProved':False,'guestApproved':False,'firstFailure':None,'secondary':[],
+      'dependencyPins':dict(template['dependencyPins']),'vendorPinsOriginal':None,'bootstrapAdmission':None}
+    try:
+        capture.save('template.original.json',template_raw);capture.save('event.original.json',event_raw)
+        head=hosted.git(['rev-parse','HEAD']).decode().strip()
+        tree=hosted.git(['rev-parse','HEAD^{tree}']).decode().strip()
+        need(head==template['sourceHead'],'finite v10 selected source HEAD');digest(tree,40)
+        source={};vendor_raw=None
+        for path in sorted(SOURCE):
+            raw=regular(root/path,FILE_CAP)
+            need(hosted.git(['cat-file','blob',head+':'+path])==raw,
+                 'finite v10 tracked Git/live source21')
+            source[path]={'byteLength':len(raw),'sha256':sha(raw)}
+            if path=='vendor-pins.json':vendor_raw=raw
+        need(vendor_raw is not None and len(vendor_raw)<=JSON_CAP,'finite v10 bounded raw vendor source')
+        value['vendorPinsOriginal']={'byteLength':len(vendor_raw),'sha256':sha(vendor_raw),
+          'base64':base64.b64encode(vendor_raw).decode()}
+        value['source']={'head':head,'tree':tree,'files':source}
+        value['bootstrapAdmission']=observe_bootstrap_source(root,head,template['bootstrapSource'],hosted)
+        value['pass']=True
+        finite_v10_guard_original(encode(value),template_raw,event_raw,env)
+        exclusive_stage_write(directory/'runtime-template.json',template_raw)
+        exclusive_stage_write(directory/'event.original.json',event_raw)
+        exclusive_stage_write(directory/'guard-admission.json',encode(value))
+    except BaseException as error:
+        first=error;value['pass']=False
+        value['firstFailure']={'name':type(error).__name__,'message':str(error)[:1024]}
+        for phase,extra in getattr(error,'gui_secondary',[]):
+            value['secondary'].append({'phase':phase,'name':type(extra).__name__,'message':str(extra)[:1024]})
+        raise
+    finally:
+        try:capture.seal(value)
+        except BaseException as error:
+            if first is None:raise
+            first.gui_secondary=getattr(first,'gui_secondary',[])+[('finite-v10-guard-retention',error)]
+            diagnostic={'firstFailure':value['firstFailure'],
+              'secondary':value['secondary']+[{'phase':'finite-v10-guard-retention',
+                'name':type(error).__name__,'message':str(error)[:1024]}]}
+            try:sys.stderr.write(encode(diagnostic).decode())
+            except BaseException as extra:first.gui_secondary.append(('finite-v10-guard-diagnostic',extra))
+    return value
+
+
+
 def inventory_observation(template_raw,expected,root,env,output_path):
     version=2
     try:
-        if decode(template_raw).get('schema')=='bw.gui-hdd.inventory-template.v9':version=9
+        if decode(template_raw).get('schema')=='bw.gui-hdd.inventory-template.v10':version=10
+        elif decode(template_raw).get('schema')=='bw.gui-hdd.inventory-template.v9':version=9
         elif decode(template_raw).get('schema')=='bw.gui-hdd.inventory-template.v8':version=8
         elif decode(template_raw).get('schema')=='bw.gui-hdd.inventory-template.v7':version=7
         elif decode(template_raw).get('schema')=='bw.gui-hdd.inventory-template.v6':version=6
@@ -2955,6 +3229,7 @@ def inventory_observation(template_raw,expected,root,env,output_path):
     if version==6:need(FINITE_INVENTORY_V6_ENABLED is True,'finite v6 disabled before runtime observation')
     if version==7:need(FINITE_INVENTORY_V7_ENABLED is True,'finite v7 disabled before runtime observation')
     if version==8:need(FINITE_INVENTORY_V8_ENABLED is True,'finite v8 disabled before runtime observation')
+    if version==10:need(FINITE_INVENTORY_V10_ENABLED is True,'finite10 disabled before observation')
     if version==9:need(FINITE_INVENTORY_V9_ENABLED is True,'finite v9 disabled before runtime observation')
     failure={'schema':'bw.gui-hdd.inventory-failure.v'+str(version),'observationOnly':True,'candidate':False,'qualified':False,
       'template':{'byteLength':len(template_raw),'sha256':sha(template_raw),'expectedSha256':None,'sourceHead':None,'bindingVerified':False},
@@ -2964,8 +3239,9 @@ def inventory_observation(template_raw,expected,root,env,output_path):
       'files':{},'aliases':{},'directoryAliases':{},'gitSource':{'reached':False,'head':None,'tree':None,'files':{}},
       'firstFailure':None,'secondary':[]}
     if version>=3:failure['emptyPythonSources']={}
+    if version==10:failure['resolverObservation']={}
     if version==4:failure.update(scope=finite_inventory_scope(),fontSelectionProved=False,browserFontSelectionProved=False,guestApproved=False)
-    if version in (5,6,7,8,9):failure.update(scope=finite_v5_scope(),fontSelectionProved=False,
+    if version in (5,6,7,8,9,10):failure.update(scope=finite_v5_scope(),fontSelectionProved=False,
       browserFontSelectionProved=False,guestApproved=False,
       installedProgress={'package':None,'path':None,'file':None,'completedPrefixes':[],
         'entryStat':None,'completedRows':0,'totalBytes':0})
@@ -2973,12 +3249,12 @@ def inventory_observation(template_raw,expected,root,env,output_path):
         value=collect_inventory_observation(template_raw,expected,root,env,output_path,failure)
         if value is not failure:return value  # Successful v2 bytes and predicates stay held.
     except BaseException as error:
-        inventory_error(failure,error,'inventory-installed' if version in (5,6,7,8,9) and
+        inventory_error(failure,error,'inventory-installed' if version in (5,6,7,8,9,10) and
                         failure['installedProgress']['package'] is not None else 'inventory',
-                        failure['installedProgress']['path'] if version in (5,6,7,8,9) else None)
+                        failure['installedProgress']['path'] if version in (5,6,7,8,9,10) else None)
         for secondary in getattr(error,'inventory_secondary',[]):
-            inventory_error(failure,secondary,'inventory-installed-close' if version in (5,6,7,8,9) else 'inventory-close',
-                            failure['installedProgress']['path'] if version in (5,6,7,8,9) else None)
+            inventory_error(failure,secondary,'inventory-installed-close' if version in (5,6,7,8,9,10) else 'inventory-close',
+                            failure['installedProgress']['path'] if version in (5,6,7,8,9,10) else None)
     event=failure['event']
     if event is None or event['original']['available'] is not True:
         inventory_error(failure,ValueError('exact raw event original unavailable: '+('not read' if event is None else event['original']['reason'])),'inventory-event-original')
@@ -2986,8 +3262,8 @@ def inventory_observation(template_raw,expected,root,env,output_path):
 
 
 def retain_inventory_observation(value,output_path):
-    failed=value.get('schema') in ('bw.gui-hdd.inventory-failure.v2','bw.gui-hdd.inventory-failure.v3','bw.gui-hdd.inventory-failure.v4','bw.gui-hdd.inventory-failure.v5','bw.gui-hdd.inventory-failure.v6','bw.gui-hdd.inventory-failure.v7','bw.gui-hdd.inventory-failure.v8','bw.gui-hdd.inventory-failure.v9')
-    need(failed or value.get('schema') in ('bw.gui-hdd.inventory-original.v2','bw.gui-hdd.inventory-original.v3','bw.gui-hdd.inventory-original.v4','bw.gui-hdd.inventory-original.v5','bw.gui-hdd.inventory-original.v6','bw.gui-hdd.inventory-original.v7','bw.gui-hdd.inventory-original.v8','bw.gui-hdd.inventory-original.v9'),'explicit inventory original version')
+    failed=value.get('schema') in ('bw.gui-hdd.inventory-failure.v2','bw.gui-hdd.inventory-failure.v3','bw.gui-hdd.inventory-failure.v4','bw.gui-hdd.inventory-failure.v5','bw.gui-hdd.inventory-failure.v6','bw.gui-hdd.inventory-failure.v7','bw.gui-hdd.inventory-failure.v8','bw.gui-hdd.inventory-failure.v9','bw.gui-hdd.inventory-failure.v10')
+    need(failed or value.get('schema') in ('bw.gui-hdd.inventory-original.v2','bw.gui-hdd.inventory-original.v3','bw.gui-hdd.inventory-original.v4','bw.gui-hdd.inventory-original.v5','bw.gui-hdd.inventory-original.v6','bw.gui-hdd.inventory-original.v7','bw.gui-hdd.inventory-original.v8','bw.gui-hdd.inventory-original.v9','bw.gui-hdd.inventory-original.v10'),'explicit inventory original version')
     if failed:need(value['firstFailure'] is not None and value['candidate'] is False and value['qualified'] is False,'failure-only inventory cannot qualify')
     target=Path(output_path).with_name('inventory-failure.json') if failed else Path(output_path)
     output=None;first=None;secondary=[]
@@ -3020,8 +3296,8 @@ def collect_inventory_observation(template_raw,expected,root,env,output_path,fai
     """Metadata only. No browser/tool probe/guest, and never self-approval."""
     digest(expected);failure['template']['expectedSha256']=expected
     need(sha(template_raw)==expected,'independently selected inventory template')
-    template=decode(template_raw);version=9 if template.get('schema')=='bw.gui-hdd.inventory-template.v9' else 8 if template.get('schema')=='bw.gui-hdd.inventory-template.v8' else 7 if template.get('schema')=='bw.gui-hdd.inventory-template.v7' else 6 if template.get('schema')=='bw.gui-hdd.inventory-template.v6' else 5 if template.get('schema')=='bw.gui-hdd.inventory-template.v5' else 4 if template.get('schema')=='bw.gui-hdd.inventory-template.v4' else 3 if template.get('schema')=='bw.gui-hdd.inventory-template.v3' else 2
-    fields(template,'schema sourceHead files aliases directoryAliases node python chromium tools'+(' emptyPythonSources' if version>=3 else '')+(' libraries scope' if version>=4 else '')+(' dependencyPins' if version in (7,8,9) else '')+(' bootstrapSource' if version in (8,9) else ''))
+    template=decode(template_raw);version=10 if template.get('schema')=='bw.gui-hdd.inventory-template.v10' else 9 if template.get('schema')=='bw.gui-hdd.inventory-template.v9' else 8 if template.get('schema')=='bw.gui-hdd.inventory-template.v8' else 7 if template.get('schema')=='bw.gui-hdd.inventory-template.v7' else 6 if template.get('schema')=='bw.gui-hdd.inventory-template.v6' else 5 if template.get('schema')=='bw.gui-hdd.inventory-template.v5' else 4 if template.get('schema')=='bw.gui-hdd.inventory-template.v4' else 3 if template.get('schema')=='bw.gui-hdd.inventory-template.v3' else 2
+    fields(template,'schema sourceHead files aliases directoryAliases node python chromium tools'+(' emptyPythonSources' if version>=3 else '')+(' libraries scope' if version>=4 else '')+(' dependencyPins' if version in (7,8,9,10) else '')+(' bootstrapSource' if version in (8,9,10) else '')+(' resolverRole' if version==10 else ''))
     need(encode(template)==template_raw and template['schema']=='bw.gui-hdd.inventory-template.v'+str(version),'canonical bounded inventory template')
     if version==4:
         need(FINITE_INVENTORY_ENABLED is True,'finite v4 inventory disabled before runtime observation');finite_inventory_template(template_raw,expected)
@@ -3035,6 +3311,8 @@ def collect_inventory_observation(template_raw,expected,root,env,output_path,fai
         need(FINITE_INVENTORY_V8_ENABLED is True,'finite v8 disabled before runtime observation');finite_v8_template(template_raw,expected)
     if version==9:
         need(FINITE_INVENTORY_V9_ENABLED is True,'finite v9 disabled before runtime observation');finite_v9_template(template_raw,expected)
+    if version==10:
+        need(FINITE_INVENTORY_V10_ENABLED is True,'finite10 disabled');finite_v10_template(template_raw,expected)
     digest(template['sourceHead'],40);failure['template'].update(sourceHead=template['sourceHead'],bindingVerified=True)
     event_raw=regular(env['GITHUB_EVENT_PATH'],JSON_CAP)
     available=len(event_raw)<=INVENTORY_FAILURE_EVENT_CAP
@@ -3047,6 +3325,7 @@ def collect_inventory_observation(template_raw,expected,root,env,output_path,fai
     elif version==7:need(bind_finite_v7_event(event_raw,template['sourceHead'],expected,env)==template_raw,'finite v7 retained body/template equality')
     elif version==8:need(bind_finite_v8_event(event_raw,template['sourceHead'],expected,env)==template_raw,'finite v8 retained body/template equality')
     elif version==9:need(bind_finite_v9_event(event_raw,template['sourceHead'],expected,env)==template_raw,'finite v9 retained body/template equality')
+    elif version==10:need(bind_finite_v10_event(event_raw,template['sourceHead'],expected,env)==template_raw,'finite10 prelude event/template equality')
     else:bind_inventory_event(event_raw,template['sourceHead'],expected,env)
     failure['event']['bindingVerified']=True
     if version==4:
@@ -3067,7 +3346,10 @@ def collect_inventory_observation(template_raw,expected,root,env,output_path,fai
     if version==9:
         guard_raw=regular(Path(root)/'gui-finite-inventory-v9/guard-admission.json',JSON_CAP)
         guard=finite_v9_guard_original(guard_raw,template_raw,event_raw,env)
-    if version in (8,9):
+    if version==10:
+        guard_raw=regular(Path(root)/'gui-finite-inventory-v10/guard-admission.json',JSON_CAP)
+        guard=finite_v10_guard_original(guard_raw,template_raw,event_raw,env)
+    if version in (8,9,10):
         directory=Path(root)/('gui-finite-inventory-v'+str(version))
         bootstrap_result=bootstrap_helper_output(regular(directory/'bootstrap.stdout',8192),regular_empty(directory/'bootstrap.stderr',8192))
     need(type(template['files']) is list and 1<=len(template['files'])<=512 and len(set(template['files']))==len(template['files']) and
@@ -3097,6 +3379,9 @@ def collect_inventory_observation(template_raw,expected,root,env,output_path,fai
             raise ValueError('path diagnostic cap; remaining selected paths not observed')
         failure['diagnostic']['pathBytes']+=cost
     deadline=time.monotonic()+180
+    if version==10:
+        _,same_job_deadline=actual_v9_read_state(root,env)
+        deadline=min(deadline,same_job_deadline['deadlineMonotonicNs']/1e9-60)
     def metadata(info):return {key:getattr(info,'st_'+key) for key in ('dev','ino','mode','uid','gid','nlink','size','mtime_ns')}
     for path in template['files']:
         row={'attempted':False};failure['files'][path]=row
@@ -3122,7 +3407,10 @@ def collect_inventory_observation(template_raw,expected,root,env,output_path,fai
                 row['status']='failed' if row['attempted'] else 'unvisited-deadline';row['error']=inventory_error(failure,error,'inventory-empty-python-source',path)
                 for secondary in getattr(error,'inventory_secondary',[]):inventory_error(failure,secondary,'inventory-empty-python-close',path)
             keep('emptyPythonSources',path,row)
-    all_aliases={}
+    resolver_observation=None
+    if version==10:
+        resolver_observation=observe_resolver_role(template,runtime,failure,keep,deadline)
+    all_aliases=dict(runtime['aliases'])
     for role in ('aliases','directoryAliases'):
         for path in template[role]:
             observed={'attempted':False};failure[role][path]=observed
@@ -3155,6 +3443,7 @@ def collect_inventory_observation(template_raw,expected,root,env,output_path,fai
     failure['gitSource']['reached']=True
     capture=Originals(Path(output_path).parent/(Path(output_path).stem+'-git-originals'))
     edge=Hosted(root,capture,env);edge.deadline=min(edge.deadline,time.monotonic()+300)
+    if version==10:edge.deadline=min(edge.deadline,same_job_deadline['deadlineMonotonicNs']/1e9-60)
     commands=[]
     def command(arguments):
         role='git-'+str(len(edge.attempts));raw=edge.git(arguments)
@@ -3172,16 +3461,18 @@ def collect_inventory_observation(template_raw,expected,root,env,output_path,fai
     if version==7:
         need(guard['source']=={'head':head,'tree':tree,'files':files},
              'finite v7 source remains bound before installed package census')
-    if version==9:
+    if version in (9,10):
         need(guard['source']=={'head':head,'tree':tree,'files':files},
              'finite v9 source remains bound before installed package census')
     if version==8:
         need(guard['source']=={'head':head,'tree':tree,'files':files},
              'finite v8 source remains bound before installed package census')
     installed={}
-    prefixes=INSTALLED_V5_ROOTS if version in (5,6,7,8,9) else ('node_modules/bw-board','node_modules/playwright','node_modules/playwright-core')+(('node_modules/bw-circuit-ui',) if version==4 else ())
+    prefixes=INSTALLED_V5_ROOTS if version in (5,6,7,8,9,10) else ('node_modules/bw-board','node_modules/playwright','node_modules/playwright-core')+(('node_modules/bw-circuit-ui',) if version==4 else ())
     for prefix in prefixes:
         items=(installed_inventory_v5(Path(root)/prefix,prefix,failure,root,INSTALLED_V6_CRITICAL,
+               FINITE_V10_CUI_WITNESSES) if version==10 else
+               installed_inventory_v5(Path(root)/prefix,prefix,failure,root,INSTALLED_V6_CRITICAL,
                FINITE_V9_CUI_WITNESSES) if version==9 else
                installed_inventory_v5(Path(root)/prefix,prefix,failure,root,INSTALLED_V6_CRITICAL,
                FINITE_V8_CUI_WITNESSES) if version==8 else
@@ -3200,7 +3491,7 @@ def collect_inventory_observation(template_raw,expected,root,env,output_path,fai
         need(guard['source']==result['source'],'finite source21 unchanged across trusted setup')
         need(all(prefix+'/package.json' in installed for prefix in ('node_modules/bw-board','node_modules/bw-circuit-ui','node_modules/playwright','node_modules/playwright-core')),'finite complete installed supplier/browser/CUI census')
         result.update(scope=finite_inventory_scope(),libraries=template['libraries'],guardAdmission={'byteLength':len(guard_raw),'sha256':sha(guard_raw),'base64':base64.b64encode(guard_raw).decode()},fontSelectionProved=False,browserFontSelectionProved=False,guestApproved=False)
-    if version in (5,6,7,8,9):
+    if version in (5,6,7,8,9,10):
         need(guard['source']==result['source'],'finite v5 source21 unchanged across trusted setup')
         need(all(prefix+'/package.json' in installed for prefix in INSTALLED_V5_ROOTS),
              'finite v5 complete installed supplier/browser/CUI census')
@@ -3208,12 +3499,13 @@ def collect_inventory_observation(template_raw,expected,root,env,output_path,fai
           guardAdmission={'byteLength':len(guard_raw),'sha256':sha(guard_raw),
                           'base64':base64.b64encode(guard_raw).decode()},
           fontSelectionProved=False,browserFontSelectionProved=False,guestApproved=False)
-        if version in (7,8,9):result['dependencyPins']=dict(template['dependencyPins'])
-        if version in (8,9):
+        if version in (7,8,9,10):result['dependencyPins']=dict(template['dependencyPins'])
+        if version in (8,9,10):
             result['bootstrapSource']=template['bootstrapSource']
             result['bootstrapAdmission']=guard['bootstrapAdmission']
             result['bootstrapHelper']=bootstrap_result
-        if version in (8,9):result['dependencyPins']=dict(template['dependencyPins'])
+        if version in (8,9,10):result['dependencyPins']=dict(template['dependencyPins'])
+    if version==10:result['resolverObservation']=resolver_observation
     return result
 
 
@@ -3838,9 +4130,478 @@ def retain_font_bridge(value,path):
 
 
 
+# Same-job V9 is a separate, disabled protocol. A phase observation never
+# authorizes the request that is subsequently installed by the external ACK.
+ACTUAL_V9_RESOURCES = {'jobSeconds':2100,'ackWaitSeconds':180,'cleanupReserveSeconds':60,
+ 'scenarioSeconds':{'freedos-hdd-persistence':1250,'forward-debug':180}}
+
+
+def actual_v9_template_from_env(env):
+    text=env.get('BW_FINITE_INVENTORY_V10_TEMPLATE_B64');expected=env.get('BW_FINITE_INVENTORY_V10_SHA256')
+    digest(expected)
+    need(type(text) is str and text.isascii() and 0<len(text)<=48<<10,'bounded captured finite10 variable')
+    raw=base64.b64decode(text,validate=True)
+    need(base64.b64encode(raw).decode()==text and sha(raw)==expected,'canonical captured finite10 template')
+    finite_v10_template(raw,expected)
+    return raw
+
+
+def actual_v9_prelude(raw,expected):
+    digest(expected)
+    need(type(raw) is bytes and 0<len(raw)<=FINITE_INVENTORY_TEMPLATE_CAP and sha(raw)==expected,
+         'bounded independently selected prelude')
+    value=decode(raw)
+    fields(value,'schema repository pullRequest source template build nativeFontAdmission nativeSourceGit dispatch resources')
+    need(encode(value)==raw and value['schema']=='bw.gui-hdd.actual-v9-prelude.v1' and
+         value['repository']==REPOSITORY,'canonical closed actual9 prelude')
+    integer(value['pullRequest'],1,2**31-1)
+    source=value['source'];fields(source,'head tree files');digest(source['head'],40);digest(source['tree'],40)
+    rows(source['files']);need(set(source['files'])==SOURCE,'prelude source21')
+    fields(value['template'],'byteLength sha256');integer(value['template']['byteLength'],1,FINITE_INVENTORY_TEMPLATE_CAP);digest(value['template']['sha256'])
+    need(value['resources']==ACTUAL_V9_RESOURCES and encode(value['resources'])==encode(ACTUAL_V9_RESOURCES),
+         'unchanged actual9 outer, wait, scenario and cleanup bounds')
+    actual_v9_dispatch_policy(value['dispatch'],source)
+    build = value['build']
+    fields(build, 'runId attempt head jobId jobName artifactId name metadataBytes zipBytes sha256 checkoutHead sourceFiles sourceAdmission')
+    for key in ('runId', 'jobId', 'artifactId'): integer(build[key], 1, 2**63-1)
+    need(build['attempt'] == 1 and type(build['attempt']) is int, 'single build attempt')
+    digest(build['head'], 40); digest(build['checkoutHead'], 40); digest(build['sha256'])
+    need(type(build['jobName']) is str and build['jobName'] == 'build' and build['name'] == 'github-pages', 'official frontend build descriptor')
+    integer(build['metadataBytes'], 1, ARCHIVE_CAP); integer(build['zipBytes'], 1, ARCHIVE_CAP)
+    rows(build['sourceFiles']); need(encode(build['sourceFiles']) == encode(source['files']), 'independently admitted build checkout matches source closure')
+    prior = build['sourceAdmission']; fields(prior,'schema checkoutHead checkoutTree sourceFiles checkoutLog workflow')
+    need(prior['schema']=='bw.gui-hdd.frontend-source-admission.v1' and prior['checkoutHead']==build['checkoutHead'] and
+         encode(prior['sourceFiles'])==encode(source['files']), 'prior independently reviewed frontend source admission')
+    digest(prior['checkoutTree'],40);fields(prior['checkoutLog'],'byteLength sha256')
+    integer(prior['checkoutLog']['byteLength'],1,32<<20);digest(prior['checkoutLog']['sha256'])
+    fields(prior['workflow'],'commit path sha256');digest(prior['workflow']['commit'],40);digest(prior['workflow']['sha256'])
+    need(prior['workflow']['path']=='.github/workflows/build.yml','exact previously reviewed producer workflow')
+    need(build['head']==source['head'] and prior['checkoutTree']==source['tree'],'current Build head and complete checkout tree match selected GUI source')
+    # Complete request semantics are checked after external admission. Prelude
+    # freezes these exact external references; it cannot synthesize their bytes.
+    need(type(value['build']) is dict and type(value['nativeFontAdmission']) is dict and
+         type(value['nativeSourceGit']) is dict,'explicit frozen prelude external references')
+    return value
+
+
+def actual_v9_prelude_from_env(env):
+    text=env.get('BW_GUI_HDD_ACTUAL_V9_PRELUDE_B64');expected=env.get('BW_GUI_HDD_ACTUAL_V9_PRELUDE_SHA256')
+    need(type(text) is str and text.isascii() and 0<len(text)<=48<<10,'bounded captured prelude variable')
+    raw=base64.b64decode(text,validate=True)
+    need(base64.b64encode(raw).decode()==text,'canonical prelude Base64')
+    value=actual_v9_prelude(raw,expected)
+    template=actual_v9_template_from_env(env)
+    need(value['template']=={'byteLength':len(template),'sha256':sha(template)} and
+         decode(template)['sourceHead']==value['source']['head'],'prelude/template source and bytes')
+    return value
+
+
+def actual_v9_dispatch_policy(selected,source):
+    fields(selected,'ref workflow')
+    need(type(selected['ref']) is str and re.fullmatch(r'refs/heads/lane/[A-Za-z0-9][A-Za-z0-9_./-]{0,180}',selected['ref']) and
+         '..' not in selected['ref'] and not selected['ref'].endswith(('/', '.lock', '.')),'selected owned source branch ref')
+    fields(selected['workflow'],'path sha256')
+    need(selected['workflow']['path']==ACTUAL_V8_WORKFLOW and
+         selected['workflow']['sha256']==source['files'][ACTUAL_V8_WORKFLOW]['sha256'],
+         'actual9 source-bound workflow bytes')
+
+
+def bind_actual_v9_event(raw,prelude,expected,env):
+    need(type(raw) is bytes and 0<len(raw)<=INVENTORY_FAILURE_EVENT_CAP,'bounded actual9 dispatch event')
+    event=decode(raw);inputs=event.get('inputs')
+    need(inputs=={'protocol':'actual-v9','pull_request':str(prelude['pullRequest']),
+         'source_head':prelude['source']['head'],'source_ref':prelude['dispatch']['ref'],
+         'prelude_sha256':expected,'request_sha256':'','tag_name':''},'closed exact actual9 dispatch inputs')
+    need(event.get('ref')==prelude['dispatch']['ref'] and
+         event.get('repository',{}).get('full_name')==REPOSITORY and
+         event.get('sender',{}).get('login')=='CrispStrobe','owned actual9 dispatch event')
+    need(env.get('GITHUB_REPOSITORY')==REPOSITORY and env.get('GITHUB_EVENT_NAME')=='workflow_dispatch' and
+         env.get('GITHUB_ACTOR')=='CrispStrobe' and env.get('GITHUB_RUN_ATTEMPT')=='1' and
+         re.fullmatch('[1-9][0-9]{0,19}',env.get('GITHUB_RUN_ID','')) and env.get('GITHUB_JOB')=='actual-v9' and
+         env.get('GITHUB_REF')==prelude['dispatch']['ref'] and env.get('GITHUB_REF_TYPE')=='branch' and
+         env.get('GITHUB_REF_NAME')==prelude['dispatch']['ref'][len('refs/heads/'):] and
+         env.get('GITHUB_SHA')==env.get('GITHUB_WORKFLOW_SHA')==env.get('BW_EXPECTED_HEAD')==prelude['source']['head'] and
+         env.get('GITHUB_WORKFLOW_REF')==REPOSITORY+'/'+ACTUAL_V8_WORKFLOW+'@'+prelude['dispatch']['ref'],
+         'first actual9 exact source branch workflow platform')
+    return event
+
+
+def actual_v9_ack_ref(run,job,head):
+    integer(run,1,2**63-1);integer(job,1,2**63-1);digest(head,40)
+    return 'refs/heads/bw-gui-hdd-actual-v9-ack-'+str(run)+'-'+str(job)+'-'+head
+
+
+def actual_v9_request_policy(request):
+    actual_v9_dispatch_policy(request['dispatch'],request['source'])
+    value=request['sameJob']
+    fields(value,'schema runId runAttempt jobId preludeSha256 templateSha256 inventorySha256 artifactId artifactSha256 ackRef')
+    need(value['schema']=='bw.gui-hdd.same-job.v1' and type(value['runAttempt']) is int and value['runAttempt']==1,
+         'closed same-job request binding')
+    for key in ('runId','jobId','artifactId'):integer(value[key],1,2**63-1)
+    for key in ('preludeSha256','templateSha256','inventorySha256','artifactSha256'):digest(value[key])
+    need(value['ackRef']==actual_v9_ack_ref(value['runId'],value['jobId'],request['source']['head']),
+         'unique source/job ACK branch namespace')
+
+
+def actual_inventory_reference_v10(reference):
+    fields(reference,'schema metadataAdmission jobId artifactId artifactSha256 workflow')
+    need(reference['schema']=='bw.gui-hdd.actual-finite-inventory-reference.v7','current actual9 requires finite10 reference')
+    for key in ('jobId','artifactId'):integer(reference[key],1,2**63-1)
+    digest(reference['artifactSha256']);fields(reference['workflow'],'commit path sha256')
+    digest(reference['workflow']['commit'],40);digest(reference['workflow']['sha256'])
+    need(reference['workflow']['path']==ACTUAL_V8_WORKFLOW,'finite10 producer workflow')
+    selected=reference['metadataAdmission']
+    fields(selected,'schema source template original runId workflowSha repositoryVariables dependencyPins bootstrapSource')
+    need(selected['schema']=='bw.gui-hdd.inventory-admission.v10' and selected['dependencyPins']==FINITE_V10_PINS,
+         'new finite10 current supplier identities')
+    source=selected['source'];fields(source,'head tree files');digest(source['head'],40);digest(source['tree'],40);rows(source['files'])
+    need(set(source['files'])==SOURCE,'finite10 selected source21')
+    integer(selected['runId'],1,2**63-1);digest(selected['workflowSha'],40)
+    for key in ('template','original'):
+        fields(selected[key],'byteLength sha256');integer(selected[key]['byteLength'],1,JSON_CAP);digest(selected[key]['sha256'])
+    variables=selected['repositoryVariables']
+    fields(variables,'BW_GUI_HDD_ACTUAL_V9_PRELUDE_B64 BW_GUI_HDD_ACTUAL_V9_PRELUDE_SHA256 BW_FINITE_INVENTORY_V10_TEMPLATE_B64 BW_FINITE_INVENTORY_V10_SHA256')
+    prelude=actual_v9_prelude_from_env(variables);template=actual_v9_template_from_env(variables)
+    need(selected['template']=={'byteLength':len(template),'sha256':sha(template)} and
+         prelude['source']==source and source['head']==selected['workflowSha']==reference['workflow']['commit'] and
+         reference['workflow']['sha256']==source['files'][ACTUAL_V8_WORKFLOW]['sha256'] and
+         decode(template)['bootstrapSource']==selected['bootstrapSource'],'finite10 exact source/template/workflow/bootstrap joins')
+    return selected
+
+
+def actual_v9_clock(value,construct=False):
+    base='schema jobStartedAt httpDate requestMonotonicNs responseMonotonicNs requestWallTimeNs responseWallTimeNs'
+    fields(value,base if construct else base+' serverDateSeconds jobStartedSeconds elapsedUpperNs')
+    need(value['schema']=='bw.gui-hdd.actual-v9-clock.v1' and type(value['httpDate']) is str and
+         type(value['jobStartedAt']) is str and re.fullmatch('20[0-9]{2}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z',value['jobStartedAt']),
+         'official job start and bounded server Date')
+    need(len(value['httpDate'])<=64,'bounded HTTP server clock')
+    server=email.utils.parsedate_to_datetime(value['httpDate'])
+    need(server is not None and server.utcoffset()==datetime.timedelta(0) and
+         email.utils.format_datetime(server,usegmt=True)==value['httpDate'],'canonical UTC metadata server Date')
+    job=datetime.datetime.strptime(value['jobStartedAt'],'%Y-%m-%dT%H:%M:%SZ').replace(tzinfo=datetime.timezone.utc)
+    server_seconds=int(server.timestamp());job_seconds=int(job.timestamp())
+    for key in ('requestMonotonicNs','responseMonotonicNs','requestWallTimeNs','responseWallTimeNs'):integer(value[key],1,2**63-1)
+    roundtrip=value['responseMonotonicNs']-value['requestMonotonicNs']
+    need(0<=roundtrip<=30*10**9 and 0<=server_seconds-job_seconds<=2100,'bounded official job age and metadata interval')
+    elapsed=(server_seconds+1-job_seconds)*10**9+roundtrip
+    derived={'serverDateSeconds':server_seconds,'jobStartedSeconds':job_seconds,'elapsedUpperNs':elapsed}
+    if construct:return dict(value,**derived)
+    need(all(value[key]==number and type(value[key]) is int for key,number in derived.items()),'conservative server-Date job elapsed arithmetic')
+    return value
+
+
+def actual_v9_deadline(value,prelude,env,job=None):
+    fields(value,'schema runId runAttempt jobId sourceHead startedMonotonicNs deadlineMonotonicNs cleanupReserveSeconds clock')
+    need(value['schema']=='bw.gui-hdd.actual-v9-deadline.v1' and value['runId']==int(env['GITHUB_RUN_ID']) and
+         type(value['runAttempt']) is int and value['runAttempt']==1 and value['sourceHead']==prelude['source']['head'] and
+         value['cleanupReserveSeconds']==60,'same-job deadline identity')
+    integer(value['cleanupReserveSeconds'],60,60)
+    for key in ('runId','jobId','startedMonotonicNs','deadlineMonotonicNs'):integer(value[key],1,2**63-1)
+    need(value['deadlineMonotonicNs']-value['startedMonotonicNs']==2100*10**9 and
+         value['startedMonotonicNs']<=time.monotonic_ns()<value['deadlineMonotonicNs'],
+         'live unchanged 35minute job deadline')
+    clock=actual_v9_clock(value['clock'])
+    need(time.monotonic_ns()>=clock['responseMonotonicNs'],'deadline cannot precede captured metadata response')
+    need(value['startedMonotonicNs']==clock['responseMonotonicNs']-clock['elapsedUpperNs'],'official job-start monotonic projection')
+    if job is not None:need(value['jobId']==job,'same retained job deadline')
+    return value
+
+
+def actual_v9_read_state(root,env):
+    root=Path(root);prelude=actual_v9_prelude_from_env(env)
+    need(regular(root/'gui-actual-v9/prelude.original.json',JSON_CAP)==base64.b64decode(env['BW_GUI_HDD_ACTUAL_V9_PRELUDE_B64'],validate=True),
+         'same captured immutable prelude')
+    deadline=actual_v9_deadline(decode(regular(root/'gui-actual-v9/deadline.json',JSON_CAP)),prelude,env)
+    need(regular(root/'gui-actual-v9/dispatch-clock.original.json',JSON_CAP)==encode(deadline['clock']),'retained server-clock projection')
+    job=decode(regular(root/'gui-actual-v9/dispatch-job.original.json',JSON_CAP))
+    need(job.get('id')==deadline['jobId'] and job.get('run_id')==deadline['runId'] and
+         job.get('run_attempt')==1 and job.get('started_at')==deadline['clock']['jobStartedAt'] and job.get('name')=='actual-v9' and job.get('status')=='in_progress',
+         'same actual9 officially assigned running job')
+    return prelude,deadline
+
+
+def actual_v9_guard(root,env,factory=None):
+    need(ACTUAL_V9_ENABLED is True and FINITE_INVENTORY_V10_ENABLED is True,'actual9 disabled before any edge')
+    started=time.monotonic_ns();root=Path(root).absolute()
+    need(root.resolve(strict=True)==root and env.get('GITHUB_WORKSPACE')==str(root),'canonical actual9 workspace')
+    prelude=actual_v9_prelude_from_env(env);event_raw=regular(env['GITHUB_EVENT_PATH'],INVENTORY_FAILURE_EVENT_CAP)
+    bind_actual_v9_event(event_raw,prelude,env['BW_GUI_HDD_ACTUAL_V9_PRELUDE_SHA256'],env)
+    directory=root/'gui-actual-v9'
+    if not directory.exists():directory.mkdir(mode=0o700)
+    need(directory.resolve(strict=True)==directory and stat.S_ISDIR(directory.lstat().st_mode),'owned actual9 state directory')
+    capture=Originals(directory/'guard-originals');hosted=(factory or Hosted)(root,capture,env)
+    first=None;result={'schema':'bw.gui-hdd.actual-v9-source-guard.v1','pass':False,'guestApproved':False,'firstFailure':None}
+    try:
+        hosted.deadline=min(hosted.deadline,started/1e9+2100-60)
+        job_route='/actions/runs/'+env['GITHUB_RUN_ID']+'/attempts/1/jobs'
+        jobs_raw=hosted.api(job_route);capture.save('jobs.original.json',jobs_raw);job_rows=decode(jobs_raw)
+        need(type(job_rows.get('total_count')) is int and 1<=job_rows['total_count']<=100 and
+             type(job_rows.get('jobs')) is list and len(job_rows['jobs'])==job_rows['total_count'],'complete bounded first-attempt jobs')
+        selected=[job for job in job_rows['jobs'] if job.get('name')=='actual-v9']
+        need(len(selected)==1,'one actual9 official job');job=selected[0]
+        need(job.get('status')=='in_progress' and job.get('run_id')==int(env['GITHUB_RUN_ID']) and
+             job.get('run_attempt')==1 and job.get('head_sha')==prelude['source']['head'],'exact running actual9 source job')
+        integer(job.get('id'),1,2**63-1)
+        clock=dict(hosted.metadata_clocks[job_route]);clock.update(schema='bw.gui-hdd.actual-v9-clock.v1',jobStartedAt=job.get('started_at'))
+        clock=actual_v9_clock(clock,construct=True)
+        started=clock['responseMonotonicNs']-clock['elapsedUpperNs']
+        deadline={'schema':'bw.gui-hdd.actual-v9-deadline.v1','runId':int(env['GITHUB_RUN_ID']),
+          'runAttempt':1,'jobId':job['id'],'sourceHead':prelude['source']['head'],
+          'startedMonotonicNs':started,'deadlineMonotonicNs':started+2100*10**9,'cleanupReserveSeconds':60,'clock':clock}
+        # The monotonic clock starts before all hosted metadata and trusted setup.
+        actual_v9_deadline(deadline,prelude,env,job['id'])
+        hosted.deadline=min(hosted.deadline,deadline['deadlineMonotonicNs']/1e9-60)
+        for name,raw in (('prelude.original.json',base64.b64decode(env['BW_GUI_HDD_ACTUAL_V9_PRELUDE_B64'],validate=True)),
+                         ('event.original.json',event_raw),('dispatch-job.original.json',encode(job)),('dispatch-clock.original.json',encode(clock)),('deadline.json',encode(deadline))):
+            exclusive_stage_write(directory/name,raw)
+        guard=admit_finite_v10_before_setup(root,env,factory)
+        need(guard['source']==prelude['source'],'prelude exact independently selected source before setup')
+        marker='<!-- BW_GUI_HDD_ACTUAL_V9_PRELUDE_SHA256='+env['BW_GUI_HDD_ACTUAL_V9_PRELUDE_SHA256']+' -->'
+        pr_raw=hosted.api('/pulls/'+str(prelude['pullRequest']));admit_actual_v9_pr(pr_raw,prelude,marker,'BW_GUI_HDD_ACTUAL_V9_PRELUDE_SHA256')
+        capture.save('pr.original.json',pr_raw)
+        result['pass']=True
+        return deadline
+    except BaseException as error:
+        first=error;result['firstFailure']={'name':type(error).__name__,'message':str(error)[:1024]};raise
+    finally:
+        try:capture.seal(result)
+        except BaseException as error:
+            if first is None:raise
+            first.gui_secondary=getattr(first,'gui_secondary',[])+[('actual9-source-guard-retention',error)]
+
+
+def actual_v9_recheck_prelude(root,env):
+    need(ACTUAL_V9_ENABLED is True and FINITE_INVENTORY_V10_ENABLED is True,'actual9 prelude disabled')
+    prelude,deadline=actual_v9_read_state(root,env);root=Path(root)
+    template=actual_v9_template_from_env(env);event=regular(root/'gui-actual-v9/event.original.json',INVENTORY_FAILURE_EVENT_CAP)
+    bind_actual_v9_event(event,prelude,env['BW_GUI_HDD_ACTUAL_V9_PRELUDE_SHA256'],env)
+    need(regular(env['GITHUB_EVENT_PATH'],INVENTORY_FAILURE_EVENT_CAP)==event and
+         regular(root/'gui-finite-inventory-v10/runtime-template.json',FINITE_INVENTORY_TEMPLATE_CAP)==template,
+         'prelude unchanged retained event/template')
+    guard=finite_v10_guard_original(regular(root/'gui-finite-inventory-v10/guard-admission.json',JSON_CAP),template,event,env)
+    need(guard['source']==prelude['source'],'prelude exact sealed source before setup')
+    for path,row in prelude['source']['files'].items():check_file(root/path,row)
+    actual_v9_check_remaining(deadline,60)
+    return {'schema':'bw.gui-hdd.actual-v9-prelude-recheck.v1','pass':True,'guestApproved':False,
+            'preludeSha256':env['BW_GUI_HDD_ACTUAL_V9_PRELUDE_SHA256']}
+
+
+def admit_actual_v9_pr(raw,value,marker,key):
+    pr=decode(raw)
+    need(pr.get('number')==value['pullRequest'] and type(pr.get('number')) is int and pr.get('state')=='open' and
+         pr.get('draft') is False and pr.get('head',{}).get('sha')==value['source']['head'] and
+         pr.get('head',{}).get('repo',{}).get('full_name')==REPOSITORY and pr.get('head',{}).get('repo',{}).get('fork') is False and
+         pr.get('base',{}).get('ref')=='main' and pr.get('base',{}).get('repo',{}).get('full_name')==REPOSITORY and
+         type(pr.get('body')) is str and len(pr['body'].encode())<=65536 and
+         pr['body'].count('<!-- '+key+'=')==1 and pr['body'].count(marker)==1,'exact owned ready actual9 PR marker/head')
+    return pr
+
+
+def actual_v9_git_blob(raw,expected):
+    value=decode(raw);digest(expected,40)
+    need(value.get('sha')==expected and value.get('encoding')=='base64' and type(value.get('size')) is int and
+         0<value['size']<=JSON_CAP and type(value.get('content')) is str,'bounded selected ACK Git blob')
+    text=value['content'].replace('\n','');payload=base64.b64decode(text,validate=True)
+    need(base64.b64encode(payload).decode()==text and len(payload)==value['size'] and
+         hashlib.sha1(b'blob '+str(len(payload)).encode()+b'\0'+payload).hexdigest()==expected,'ACK Git blob object/extent identity')
+    return payload
+
+
+def actual_v9_ack_objects(ref_raw,commit_raw,tree_raw,blob_raw,prelude,deadline,inventory_raw,template_raw):
+    ref=decode(ref_raw);commit=decode(commit_raw);tree=decode(tree_raw)
+    need(deadline['sourceHead']==prelude['source']['head'],'ACK deadline exact source')
+    expected_ref=actual_v9_ack_ref(deadline['runId'],deadline['jobId'],prelude['source']['head'])
+    need(ref.get('ref')==expected_ref and ref.get('object',{}).get('type')=='commit','selected ACK branch direct commit')
+    digest(ref['object'].get('sha'),40)
+    need(commit.get('sha')==ref['object']['sha'] and commit.get('parents')==[],'one parentless immutable ACK commit')
+    digest(commit.get('tree',{}).get('sha'),40)
+    need(tree.get('sha')==commit['tree']['sha'] and tree.get('truncated') is False and
+         type(tree.get('tree')) is list and len(tree['tree'])==2,'closed complete two-file ACK tree')
+    entries={row.get('path'):row for row in tree['tree']}
+    need(set(entries)=={'ack.json','request.json'},'ACK/request files only')
+    for row in entries.values():
+        need(row.get('mode')=='100644' and row.get('type')=='blob','regular ACK tree blobs');digest(row.get('sha'),40)
+        integer(row.get('size'),1,JSON_CAP)
+    ack_raw=actual_v9_git_blob(blob_raw,entries['ack.json']['sha']);ack=decode(ack_raw)
+    fields(ack,'schema repository runId runAttempt jobId sourceHead preludeSha256 templateSha256 inventorySha256 artifactId artifactSha256 request')
+    need(encode(ack)==ack_raw and ack['schema']=='bw.gui-hdd.actual-v9-ack.v1' and ack['repository']==REPOSITORY and
+         ack['runId']==deadline['runId'] and ack['runAttempt']==deadline['runAttempt'] and ack['jobId']==deadline['jobId'] and
+         ack['sourceHead']==prelude['source']['head'] and ack['preludeSha256']==sha(encode(prelude)) and
+         ack['templateSha256']==sha(template_raw) and ack['inventorySha256']==sha(inventory_raw),'exact closed same-job ACK decision')
+    for key in ('runId','runAttempt','jobId','artifactId'):integer(ack[key],1,2**63-1)
+    digest(ack['artifactSha256']);fields(ack['request'],'gitBlob byteLength sha256')
+    digest(ack['request']['gitBlob'],40);digest(ack['request']['sha256']);integer(ack['request']['byteLength'],1,JSON_CAP)
+    need(entries['request.json']['sha']==ack['request']['gitBlob'] and entries['request.json']['size']==ack['request']['byteLength'] and
+         entries['ack.json']['size']==len(ack_raw),'ACK tree makes exact request reachable')
+    return ack,ack_raw
+
+
+def actual_v9_join_request(request,ack,prelude,deadline,inventory_raw,template_raw):
+    need(request['schema']=='bw.gui-hdd.actual-request.v9','ACK only installs actual9 request')
+    actual_v9_request_policy(request);same=request['sameJob'];inventory=decode(inventory_raw)
+    need(inventory.get('schema')=='bw.gui-hdd.inventory-original.v10' and inventory.get('observationOnly') is True and
+         inventory.get('source')==prelude['source'] and inventory.get('templateSha256')==sha(template_raw),
+         'positive same-job finite10 inventory only')
+    for key in ('source','pullRequest','build','nativeFontAdmission','nativeSourceGit','dispatch'):
+        need(encode(request[key])==encode(prelude[key]),'admitted request preserves frozen prelude '+key)
+    need(same=={'schema':'bw.gui-hdd.same-job.v1','runId':deadline['runId'],'runAttempt':1,'jobId':deadline['jobId'],
+       'preludeSha256':sha(encode(prelude)),'templateSha256':sha(template_raw),'inventorySha256':sha(inventory_raw),
+       'artifactId':ack['artifactId'],'artifactSha256':ack['artifactSha256'],
+       'ackRef':actual_v9_ack_ref(deadline['runId'],deadline['jobId'],prelude['source']['head'])},'request exact same-job admission')
+    reference=request['inventoryAdmission'];metadata=actual_inventory_reference_v10(reference)
+    need(reference['jobId']==same['jobId'] and reference['artifactId']==same['artifactId'] and
+         reference['artifactSha256']==same['artifactSha256'] and metadata['runId']==same['runId'] and
+         metadata['original']=={'byteLength':len(inventory_raw),'sha256':sha(inventory_raw)},'request binds exact externally read phase artifact')
+    need(request['installedFiles']==inventory['installedFiles'],'same-job installed graph unchanged')
+    staged=actual_v9_staged_paths(request)
+    need(not staged.intersection(set(inventory['runtime']['files'])|set(inventory['runtime']['aliases'])|set(inventory['runtime']['directoryAliases'])|set(decode(template_raw)['emptyPythonSources'])),
+         'three Native2 stage extensions never omit phase host configuration')
+    # Native extension is fixed by the independent Native2 reference. Everything
+    # else in the phase runtime stays byte-identical, including host config.
+    for role in ('files','aliases','directoryAliases'):
+        prior=dict(inventory['runtime'][role]);current=request['runtime'][role]
+        for path,row in prior.items():need(current.get(path)==row,'same-job prior runtime identity '+role)
+        if role!='files':need(current==prior,'same-job exact alias maps')
+        else:
+            stage,_=native_font_layout(request['nativeFontAdmission'])
+            additions=dict(request['nativeFontAdmission']['files'])
+            additions[str(stage/'fontconfig.xml')]=current.get(str(stage/'fontconfig.xml'))
+            for path,row in additions.items():
+                if path in prior:need(prior[path]==row,'native extension preserves phase row')
+                else:prior[path]=row
+            need(prior==current,'same-job closed native runtime extension')
+    for key in ('node','python','chromium','tools','resources'):
+        need(request['runtime'][key]==inventory['runtime'][key],'same-job exact runtime '+key)
+
+
+def actual_v9_wait_ack(root,env,factory=None,sleep=None):
+    need(ACTUAL_V9_ENABLED is True and FINITE_INVENTORY_V10_ENABLED is True,'actual9 disabled before ACK or request edges')
+    root=Path(root);prelude,deadline=actual_v9_read_state(root,env);directory=root/'gui-actual-v9'
+    need(not (root/'gui-inputs/request.json').exists() and not (directory/'input-install.json').exists(),'one exclusive ACK/request admission')
+    inventory_raw=regular(root/'gui-finite-inventory-v10/inventory.json',JSON_CAP)
+    template_raw=actual_v9_template_from_env(env)
+    need(decode(inventory_raw).get('schema')=='bw.gui-hdd.inventory-original.v10','no ACK after partial inventory failure')
+    capture=Originals(directory/'ack-originals');hosted=(factory or Hosted)(root,capture,env)
+    sleep=sleep or time.sleep
+    first=None;result={'schema':'bw.gui-hdd.actual-v9-ack-admission.v1','pass':False,'guestApproved':False,'firstFailure':None}
+    try:
+        hosted.deadline=min(hosted.deadline,deadline['deadlineMonotonicNs']/1e9)
+        end=min(time.monotonic()+180,hosted.deadline-60);hosted.deadline=end
+        ref_name=actual_v9_ack_ref(deadline['runId'],deadline['jobId'],prelude['source']['head'])
+        ref_raw=None;polls=0
+        while time.monotonic()<end:
+            polls+=1;need(polls<=37,'bounded ACK metadata polling')
+            try:ref_raw=hosted.api('/git/ref/'+ref_name[len('refs/'):]);break
+            except urllib.error.HTTPError as error:
+                need(error.code==404,'only absent ACK ref may wait')
+            sleep(min(5,max(0,end-time.monotonic())))
+        need(ref_raw is not None and time.monotonic()<end,'external same-job admission deadline expired')
+        capture.save('ack-ref.original.json',ref_raw)
+        ref=decode(ref_raw);need(ref.get('object',{}).get('type')=='commit','ACK ref direct commit')
+        digest(ref['object'].get('sha'),40)
+        commit_raw=hosted.api('/git/commits/'+ref['object']['sha']);capture.save('ack-commit.original.json',commit_raw);commit=decode(commit_raw);digest(commit.get('tree',{}).get('sha'),40)
+        tree_raw=hosted.api('/git/trees/'+commit['tree']['sha']);capture.save('ack-tree.original.json',tree_raw);tree=decode(tree_raw)
+        entries=tree.get('tree');need(type(entries) is list,'ACK tree rows')
+        matches=[item for item in entries if item.get('path')=='ack.json'];need(len(matches)==1,'one ACK blob')
+        digest(matches[0].get('sha'),40);blob_raw=hosted.api('/git/blobs/'+matches[0]['sha'])
+        capture.save('ack-blob.original.json',blob_raw)
+        ack,ack_raw=actual_v9_ack_objects(ref_raw,commit_raw,tree_raw,blob_raw,prelude,deadline,inventory_raw,template_raw)
+        # Verify ref immutability once after every object was read; the first decision
+        # is selected exactly once and a replacement cannot become a second decision.
+        ref_after=hosted.api('/git/ref/'+ref_name[len('refs/'):])
+        capture.save('ack-ref-after.original.json',ref_after)
+        need(decode(ref_after)==decode(ref_raw),'ACK ref unchanged during admission')
+        installed=install_input(ack['request']['gitBlob'],ack['request']['sha256'],root/'gui-inputs/request.json',env,deadline=hosted.deadline)
+        need(installed==ack['request'],'exact reachable ACK request installation')
+        request_raw=regular(root/'gui-inputs/request.json',JSON_CAP);request=parse_request(request_raw,ack['request']['sha256'])
+        actual_v9_join_request(request,ack,prelude,deadline,inventory_raw,template_raw)
+        marker='<!-- BW_GUI_HDD_ACTUAL_V9_REQUEST_SHA256='+ack['request']['sha256']+' -->'
+        pr_raw=hosted.api('/pulls/'+str(request['pullRequest']));admit_actual_v9_pr(pr_raw,request,marker,'BW_GUI_HDD_ACTUAL_V9_REQUEST_SHA256')
+        for name,raw in (('ack-ref.original.json',ref_raw),('ack-ref-after.original.json',ref_after),('ack-commit.original.json',commit_raw),
+          ('ack-tree.original.json',tree_raw),('ack-blob.original.json',blob_raw),('ack.original.json',ack_raw),
+          ('input-install.json',encode(installed)),('inventory.original.json',inventory_raw),('template.original.json',template_raw),('dispatch-pr.original.json',pr_raw)):
+            exclusive_stage_write(directory/name,raw)
+        # Native staged files do not exist before the exact preflight. Observe every
+        # already present phase row immediately; no cross-run replacement is allowed.
+        initial=decode(encode(request));initial['schema']='bw.gui-hdd.actual-request.v4'
+        for path in actual_v9_staged_paths(request):
+            initial['runtime']['files'].pop(path)
+        snapshot=observe_runtime(initial);exclusive_stage_write(directory/'core-runtime-after-ack.json',encode(snapshot))
+        result.update(pass_=True,polls=polls);result['pass']=result.pop('pass_')
+        return installed
+    except BaseException as error:
+        first=error;result['firstFailure']={'name':type(error).__name__,'message':str(error)[:1024]};raise
+    finally:
+        try:capture.seal(result)
+        except BaseException as error:
+            if first is None:raise
+            first.gui_secondary=getattr(first,'gui_secondary',[])+[('actual9-ack-retention',error)]
+
+
+def actual_v9_staged_paths(request):
+    stage,_=native_font_layout(request['nativeFontAdmission']);font=request['nativeFontAdmission']['font']
+    paths={font['path'],font['licensePath'],str(stage/'fontconfig.xml')}
+    need(len(paths)==3 and paths<=set(request['runtime']['files']),'three distinct admitted Native2 staged extensions')
+    return paths
+
+
+def actual_v9_verify_core(core,full,request):
+    fields(core,'schema files aliases directoryAliases directoryIdentities identities resources availableCpus rlimits aggregateContainmentQualified emptyPythonSources')
+    need(core['schema']=='bw.gui-hdd.runtime-observation.v4' and core['aggregateContainmentQualified'] is False,
+         'immediate post-ACK core snapshot has no staged native directory authority')
+    staged=actual_v9_staged_paths(request)
+    need(full.get('schema')=='bw.gui-hdd.runtime-observation.v5' and full.get('aggregateContainmentQualified') is False and
+         full.get('files')==request['runtime']['files'] and set(full.get('identities',{}))==set(request['runtime']['files']),
+         'full Native2 staging snapshot contains every exact admitted file')
+    for role in ('aliases','directoryAliases','resources'):
+        need(full[role]==request['runtime'][role],'full staging snapshot exact admitted '+role)
+    for role in ('files','identities'):
+        need(core[role]=={path:row for path,row in full[role].items() if path not in staged},
+             'core/full exact identity except three admitted Native2 staged paths')
+    for role in ('aliases','directoryAliases','directoryIdentities','resources','availableCpus','rlimits','emptyPythonSources'):
+        need(core[role]==full[role],'immediate post-ACK core/full unchanged '+role)
+
+
+def actual_v9_check_remaining(deadline,required):
+    now=time.monotonic_ns();remaining=deadline['deadlineMonotonicNs']-now
+    need(deadline['startedMonotonicNs']<=now and remaining>required*10**9,
+         'adequate same-job scenario caps and cleanup reserve before entry')
+    return now,remaining
+
+
+def actual_v9_entry_budget(deadline,output):
+    now,remaining=actual_v9_check_remaining(deadline,1490)
+    output.save('same-job/entry-budget.json',encode({'schema':'bw.gui-hdd.actual-v9-entry-budget.v1',
+       'observedMonotonicNs':now,'deadlineMonotonicNs':deadline['deadlineMonotonicNs'],
+       'remainingNs':remaining,'requiredNs':1490*10**9}))
+
+
+def require_actual_v9_state(root,request,expected,env,output,guest=False,require_full=True):
+    prelude,deadline=actual_v9_read_state(root,env);directory=Path(root)/'gui-actual-v9'
+    names=('prelude.original.json','event.original.json','dispatch-job.original.json','dispatch-clock.original.json','deadline.json',
+      'ack-ref.original.json','ack-ref-after.original.json','ack-commit.original.json','ack-tree.original.json','ack-blob.original.json',
+      'ack.original.json','input-install.json','inventory.original.json','template.original.json','dispatch-pr.original.json','core-runtime-after-ack.json')
+    if require_full:names+=('runtime-after-ack.json',)
+    originals={name:regular(directory/name,JSON_CAP) for name in names}
+    ack,ack_raw=actual_v9_ack_objects(*(originals[name] for name in ('ack-ref.original.json','ack-commit.original.json','ack-tree.original.json','ack-blob.original.json')),
+        prelude,deadline,originals['inventory.original.json'],originals['template.original.json'])
+    need(ack_raw==originals['ack.original.json'] and ack['request']['sha256']==expected and
+         decode(originals['input-install.json'])==ack['request'] and
+         decode(originals['ack-ref-after.original.json'])==decode(originals['ack-ref.original.json']),
+         'retained once-only ACK installation authority')
+    actual_v9_join_request(request,ack,prelude,deadline,originals['inventory.original.json'],originals['template.original.json'])
+    if require_full:actual_v9_verify_core(decode(originals['core-runtime-after-ack.json']),decode(originals['runtime-after-ack.json']),request)
+    need(regular(Path(root)/'gui-inputs/request.json',JSON_CAP)==encode(request),'exclusive request unchanged')
+    remaining=(deadline['deadlineMonotonicNs']-time.monotonic_ns())/1e9
+    need(remaining>60+(1430 if guest else 0),'adequate same-job scenario caps and cleanup reserve before entry')
+    for name,raw in originals.items():output.save('same-job/'+name,raw)
+    return deadline
+
+
 def main(argv=None):
     parser=argparse.ArgumentParser(description=__doc__,allow_abbrev=False)
-    parser.add_argument('mode',choices=('guard','inventory-guard','install-input','inventory','preflight','actual','actual-v6-guard','actual-v6-preflight','actual-v6','actual-v7-guard','actual-v7-preflight','actual-v7','actual-v8-guard','actual-v8-preflight','actual-v8','font-discovery-guard','font-discovery','font-chain-guard','font-chain','font-bridge-guard','font-bridge','finite-inventory-guard','finite-inventory','finite-inventory-v5-guard','finite-inventory-v5','finite-inventory-v6-guard','finite-inventory-v6','finite-inventory-v7-guard','finite-inventory-v7','finite-inventory-v8-guard','finite-inventory-v8','finite-inventory-v9-guard','finite-inventory-v9','actual-v8-bootstrap'))
+    parser.add_argument('mode',choices=('guard','inventory-guard','install-input','inventory','preflight','actual','actual-v6-guard','actual-v6-preflight','actual-v6','actual-v7-guard','actual-v7-preflight','actual-v7','actual-v8-guard','actual-v8-preflight','actual-v8','font-discovery-guard','font-discovery','font-chain-guard','font-chain','font-bridge-guard','font-bridge','finite-inventory-guard','finite-inventory','finite-inventory-v5-guard','finite-inventory-v5','finite-inventory-v6-guard','finite-inventory-v6','finite-inventory-v7-guard','finite-inventory-v7','finite-inventory-v8-guard','finite-inventory-v8','finite-inventory-v9-guard','finite-inventory-v9','actual-v8-bootstrap','actual-v9-guard','actual-v9-prelude','actual-v9-ack','actual-v9-preflight','actual-v9','finite-inventory-v10'))
     for option in ('request','expected-sha256','output','blob'):parser.add_argument('--'+option)
     raw=list(sys.argv[1:] if argv is None else argv)
     for option in ('--request','--expected-sha256','--output','--blob'):
@@ -3877,6 +4638,28 @@ def main(argv=None):
         need(raw==['finite-inventory-v8-guard'] if args.mode=='finite-inventory-v8-guard' else
              len(raw)==7 and all(raw.count(option)==1 for option in ('--request','--expected-sha256','--output')),'fixed finite v8 CLI')
         if args.mode=='finite-inventory-v8-guard':admit_finite_v8_before_setup(Path.cwd(),dict(os.environ));return 0
+    if args.mode in ('actual-v9-guard','actual-v9-prelude','actual-v9-ack','actual-v9-preflight','actual-v9','finite-inventory-v10'):
+        need(ACTUAL_V9_ENABLED is True and FINITE_INVENTORY_V10_ENABLED is True,
+             'new same-job actual9 and finite10 disabled before any edge')
+        if args.mode in ('actual-v9-guard','actual-v9-prelude','actual-v9-ack'):
+            need(raw==[args.mode],'closed no-argument same-job control CLI')
+            observe_python_startup(Path.cwd(),args.mode,[])
+            value=(actual_v9_guard if args.mode=='actual-v9-guard' else actual_v9_recheck_prelude if args.mode=='actual-v9-prelude' else actual_v9_wait_ack)(Path.cwd(),dict(os.environ))
+            print(encode(value).decode(),end='');return 0
+        need(len(raw)==7 and all(raw.count(option)==1 for option in ('--request','--expected-sha256','--output')),
+             'closed same-job request CLI')
+        if args.mode=='finite-inventory-v10':
+            env=dict(os.environ);prelude,deadline=actual_v9_read_state(Path.cwd(),env)
+            request_raw=regular(args.request,FINITE_INVENTORY_TEMPLATE_CAP)
+            need(args.expected_sha256==env.get('BW_FINITE_INVENTORY_V10_SHA256') and
+                 request_raw==actual_v9_template_from_env(env)==regular(Path.cwd()/'gui-finite-inventory-v10/runtime-template.json',FINITE_INVENTORY_TEMPLATE_CAP),
+                 'same admitted finite10 template and captured variables')
+            return retain_inventory_observation(inventory_observation(request_raw,args.expected_sha256,Path.cwd(),env,args.output),args.output)
+        need(args.expected_sha256 and args.request and args.output,'same-job exact request args')
+        request_raw=regular(args.request,JSON_CAP)
+        need(decode(request_raw).get('schema')=='bw.gui-hdd.actual-request.v9','distinct current actual9 entry')
+        return execute(request_raw,args.expected_sha256,Path.cwd(),args.output,dict(os.environ),
+          preflight=args.mode=='actual-v9-preflight',startup_mode=args.mode)
     if args.mode in ('finite-inventory-v9-guard','finite-inventory-v9'):
         need(FINITE_INVENTORY_V9_ENABLED is True,'finite v9 disabled before any source/package edge')
         need(raw==['finite-inventory-v9-guard'] if args.mode=='finite-inventory-v9-guard' else

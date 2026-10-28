@@ -1,6 +1,6 @@
 # x86 finite V10 resolver-kind inventory and current GUI acceptance
 
-Owner: x86 coordinator. Status: CLAIM ONLY; implementation and execution disabled.
+Owner: x86 coordinator. Status: UNARMED SOURCE CANDIDATE; execution disabled.
 Initial base: Lite main `8acc3b962803e360a0c561c696d097839046c1ab`.
 Current composition also preserves later Main changes.
 
@@ -107,3 +107,24 @@ original failures. Include stale/duplicate/wrong-job ACKs, incomplete upload, ex
 request substitution/replay, post-ACK drift, inadequate remaining time and
 unconditional cleanup controls. No whole-OS, physical timing, Windows or release claim follows
 from a resolver metadata repair.
+
+## Source checkpoint
+
+The candidate implements the typed V10 inventory, separate same-job Actual-V9
+prelude, independent phase reader, immutable ACK admission and final original
+reader. New execution and reader switches remain false. The consumed V9 inventory
+and Actual-V8 execution routes are retired; their readers and original failures
+remain historical evidence. No new actual run or guest acceptance is claimed.
+
+Connected controls cover both resolver roles, source and runtime drift, ACK
+identity and replay, deadline accounting and cleanup. Workflow controls preserve
+isolated Python startup, upload ordering and action pins. The pin-history reader
+also includes first-parent merge diffs, with a real conflicting-merge regression;
+this recovers previously adopted pins without exempting current or unrecorded
+values. Unrelated reference-qualified frozen pins remain with their owner.
+
+Next: compose current main, resolve all source-policy findings with their owners
+and pass enabled candidate checks. Then review arming separately, admit the exact
+Build checkout and native reference, and perform the one new same-job phase/ACK
+and actual FreeDOS/forward-debug acceptance described above. Source merge and
+application-level profiling remain pending that acceptance.

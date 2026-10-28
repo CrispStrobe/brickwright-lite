@@ -54,7 +54,7 @@ const heldJobs = Object.freeze({
     'font-discovery': 'ad3c83a431c722cbe0cfc7d84924bb43a4b790a8503820549c47e53ee218d048',
 });
 const reviewedJobs = Object.freeze([...Object.keys(heldJobs),
-    'finite-inventory-seven', 'finite-inventory-eight', 'finite-inventory-nine', 'actual-v8']);
+    'finite-inventory-seven', 'finite-inventory-eight', 'finite-inventory-nine', 'actual-v8', 'actual-v9']);
 
 function jobNames(source) {
     const marker = '\njobs:\n';
@@ -91,9 +91,9 @@ function checkSource(source) {
         'c7ba1313fd31482ee1feeaa9456b2ff90416fe45b0fff03670714f3931541057', 'historical F8 body held except retired guard');
     const v8 = job(source, 'actual-v8');
     assert.match(f7, /if:\s*>-\s*\n\s*\$\{\{\s*false\s*&&/, 'spent F7 execution retired');
-    assert.match(f9, /if:\s*>-\s*\n\s*\$\{\{\s*true\s*&&/, 'separately reviewed F9 source is armed');
+    assert.match(f9, /if:\s*>-\s*\n\s*\$\{\{\s*false\s*&&/, 'consumed F9 remains retired');
     assert.match(job(source, 'finite-inventory-eight'), /if:\s*>-\s*\n\s*\$\{\{\s*false\s*&&/, 'spent F8 remains retired');
-    assert.match(v8, /if:\s*>-\s*\n\s*\$\{\{\s*true\s*&&/, 'reviewed V8 gate remains explicit');
+    assert.match(v8, /if:\s*>-\s*\n\s*\$\{\{\s*false\s*&&/, 'predecessor V8 remains retired');
 
     assert.match(f9, /timeout-minutes: 15\b/);
     assert.match(v8, /timeout-minutes: 35\b/);
@@ -158,7 +158,86 @@ function checkSource(source) {
     assert.doesNotMatch(afterNode, /\binstall-input\b|\bmkdir gui-inputs\b/);
 }
 
-test('F9 and V8 admit source before setup and run the reviewed helper before dependencies', () => {
+const actualV9Controller = readFileSync(new URL('../scripts/run-i80386-hdd-gui-actual.py', import.meta.url), 'utf8');
+function checkActualV9Source(source, controller = actualV9Controller) {
+    const enabled = controller.match(/^ACTUAL_V9_ENABLED = (True|False)$/m)?.[1];
+    assert.ok(enabled);
+    assert.match(controller, new RegExp('^FINITE_INVENTORY_V10_ENABLED = ' + enabled + '$', 'm'),
+        'source prelude and actual execution activation are coupled');
+    const block = job(source, 'actual-v9');
+    const gate = "      ${{ " + enabled.toLowerCase() + " && github.event_name == 'workflow_dispatch' && github.actor == 'CrispStrobe' &&\n" +
+        "          github.repository == 'CrispStrobe/brickwright-lite' && github.run_attempt == 1 &&\n" +
+        "          github.event.inputs.protocol == 'actual-v9' && github.ref_type == 'branch' &&\n" +
+        "          github.event.inputs.pull_request != '' && github.event.inputs.prelude_sha256 != '' &&\n" +
+        "          github.event.inputs.request_sha256 == '' && github.event.inputs.tag_name == '' &&\n" +
+        "          github.event.inputs.source_head == github.sha &&\n" +
+        "          github.event.inputs.source_ref == github.ref && startsWith(github.ref, 'refs/heads/lane/') }}";
+    assert.ok(block.includes(gate), 'one exact source/actor/ref-bound new execution gate');
+    assert.match(block, /timeout-minutes: 35\b/);
+    const names = [checkout,
+        'Install empty Python cache prefix and refuse unreviewed v9 source',
+        'Admit source-bound actual-v9 prelude before setup', setupNode,
+        'Install reviewed v9 dependencies without building the frontend',
+        'Collect same-job V10 runtime inventory',
+        'Retain immutable V10 same-job phase originals',
+        'Await uniquely admitted same-job ACK and install request once',
+        'Refuse v9 runtime/source drift using retained admitted request',
+        'Prepare unchanged authenticated free media once for v9',
+        'One official frontend acquisition and two serial genuine v9 UI scenarios', upload, upload];
+    const actual = [...block.matchAll(/^      - (?:name|uses): ([^\n]+)$/gm)].map(m => m[1]);
+    assert.deepEqual(actual, names, 'exact action/phase roster, no late or shadow stage');
+    const refs = [...block.matchAll(/^      - uses: ([^\n]+)$|^        uses: ([^\n]+)$/gm)].map(m => m[1] || m[2]);
+    assert.deepEqual(refs, [checkout, setupNode, upload, upload, upload]);
+    assert.match(block, /ref: \$\{\{ github.sha \}\}/);
+    assert.match(setupNodeStep(block), /node-version: 22\.23\.3\b/);
+    for (const name of ['BW_GUI_HDD_ACTUAL_V9_PRELUDE_B64','BW_GUI_HDD_ACTUAL_V9_PRELUDE_SHA256',
+        'BW_FINITE_INVENTORY_V10_TEMPLATE_B64','BW_FINITE_INVENTORY_V10_SHA256']) {
+        assert.ok(block.includes('      ' + name + ': ${{ vars.' + name + ' }}'));
+    }
+    const isolatedWrapper = "          python_actual() {\n            local prefix=/home/runner/work/_temp/bw-gui-hdd-python-cache\n            test \"$(realpath -e \"$prefix\")\" = \"$prefix\" && test ! -L \"$prefix\"\n            test \"$(LC_ALL=C stat -c '%d %i %f %u %g %h %s %Y' \"$prefix\")\" = \"$(tail -n 1 gui-setup/python-startup.original.txt)\"\n            local entry_marker\n            entry_marker=\"$(find \"$prefix\" -mindepth 1 -maxdepth 1 -printf x -quit)\"\n            test -z \"$entry_marker\"\n            /usr/bin/python3.12 -I -S -B -X pycache_prefix=/home/runner/work/_temp/bw-gui-hdd-python-cache \"$@\"\n          }\n";
+    for (const index of [2,5,7,8,10]) {
+        const body=step(block,names[index]);
+        assert.equal(body.split(isolatedWrapper).length,2,`one complete isolated Python wrapper: ${names[index]}`);
+        assert.equal((body.match(/python_actual\(\) \{/g) || []).length,1,
+            'no shadow Python function');
+    }
+    const initial = step(block, names[1]), admit = step(block, names[2]);
+    assert.match(initial, /-I -S -B -X pycache_prefix=.*actual-v9-guard/);
+    assert.match(initial, /mkdir -m 0555 "\$prefix"/);
+    assert.match(admit, /\.py actual-v9-prelude/);
+    assert.equal((block.match(/\.py actual-v9-guard\b/g) || []).length, 1);
+    assert.equal((block.match(/\.py actual-v9-ack\b/g) || []).length, 1);
+    assert.doesNotMatch(block, /\.py install-input\b/, 'only bound ACK controller installs the request');
+    const setup = step(block, names[4]);
+    assert.match(setup, /timeout-minutes: 8\b/);
+    assert.ok(setup.includes(helperGroup('gui-finite-inventory-v10/bootstrap')));
+    requireOrder(setup, [helper, 'npm ci --ignore-scripts --no-audit --no-fund',
+        'node node_modules/playwright/cli.js install --with-deps chromium']);
+    const collect = step(block, names[5]);
+    assert.match(collect, /timeout-minutes: 4\b/);
+    assert.match(collect, /--output "\$GITHUB_WORKSPACE\/gui-finite-inventory-v10\/inventory.json"/);
+    const early = step(block, names[6]);
+    assert.doesNotMatch(early, /if: always\(\)/, 'failed collection cannot publish a positive phase');
+    assert.ok(early.includes('name: i80386-hdd-gui-actual-v9-phase-${{ github.run_id }}-${{ github.run_attempt }}'));
+    assert.ok(early.includes('            gui-finite-inventory-v10\n            gui-actual-v9\n'));
+    assert.ok(early.includes('!gui-finite-inventory-v10/controller.stdout'));
+    assert.ok(early.includes('!gui-finite-inventory-v10/controller.stderr'));
+    assert.ok(!early.includes('            gui-setup\n'), 'early packet excludes unrelated setup diagnostics');
+    assert.match(step(block, names[7]), /\.py actual-v9-ack/);
+    assert.match(step(block, names[8]), /\.py actual-v9-preflight/);
+    const execute = step(block, names[10]);
+    assert.equal((execute.match(/\.py actual-v9 /g) || []).length, 1, 'one exact current execution command');
+    assert.match(execute, /timeout-minutes: 31\b/);
+    for (const name of [names[8], names[10]]) {
+        const text = step(block, name);
+        assert.ok(text.includes('request_sha="$(python_actual -c '), 'selected cache mechanics also protect digest reading');
+        assert.ok(text.includes('--expected-sha256 "$request_sha"'));
+    }
+    assert.equal((block.match(/if: always\(\)/g) || []).length, 2,
+        'both terminal diagnostic deliveries survive failures');
+}
+
+test('retired F9 and V8 preserve their reviewed helper and source order', () => {
     checkSource(workflow);
 });
 
@@ -187,7 +266,7 @@ test('source policy detects omitted, displaced and substituted bootstrap/helper 
     for (const [id, expected, wrong] of [
         ['finite-inventory-seven', 'false', 'true'],
         ['finite-inventory-eight', 'false', 'true'],
-        ['finite-inventory-nine', 'true', 'false']]) {
+        ['finite-inventory-nine', 'false', 'true']]) {
         const block = job(workflow, id);
         assert.match(block, new RegExp(`if:\\s*>-\\s*\\n\\s*\\$\\{\\{\\s*${expected}\\s*&&`));
         assert.throws(() => checkSource(workflow.replace(block, block.replace(
@@ -257,5 +336,58 @@ test('source policy rejects extra jobs, extra actions and changed Node versions'
         const versionCandidate = workflow.replace(original, withVersion);
         for (const held of Object.keys(heldJobs)) assert.equal(job(versionCandidate, held), job(workflow, held));
         assert.throws(() => checkSource(versionCandidate), undefined, `${id} changed Node version rejected`);
+    }
+});
+
+
+test('same-job V9 keeps admission, setup, phase, ACK, entry and terminal delivery ordered', () => {
+    checkActualV9Source(workflow);
+});
+
+test('same-job V9 source policy detects lost boundaries and nonexclusive setup', () => {
+    const block=job(workflow,'actual-v9');
+    const cases=[
+        ['github.run_attempt == 1','github.run_attempt == 2'],
+        ["startsWith(github.ref, 'refs/heads/lane/')","startsWith(github.ref, 'refs/')"],
+        ['timeout-minutes: 35','timeout-minutes: 36'],
+        ['.py actual-v9-prelude','.py actual-v8-bootstrap'],
+        ['.py actual-v9-ack','.py install-input'],
+        ['--ignore-scripts','--foreground-scripts'],
+        ['node-version: 22.23.3','node-version: 22'],
+        ['!gui-finite-inventory-v10/controller.stdout','gui-setup'],
+    ];
+    for(const [before,after] of cases){
+        assert.ok(block.includes(before));
+        assert.throws(()=>checkActualV9Source(workflow.replace(block,block.replace(before,after))),undefined,before);
+    }
+    const ack=step(block,'Await uniquely admitted same-job ACK and install request once');
+    const early=step(block,'Retain immutable V10 same-job phase originals');
+    const moved=block.replace(ack,'').replace(early,ack+early);
+    assert.throws(()=>checkActualV9Source(workflow.replace(block,moved)));
+    assert.throws(()=>checkActualV9Source(workflow,actualV9Controller.replace(/^ACTUAL_V9_ENABLED = False$/m,'ACTUAL_V9_ENABLED = True')));
+});
+
+
+test('every same-job Python entry keeps isolation and empty-cache readbacks', () => {
+    const block=job(workflow,'actual-v9');
+    for(const name of [
+        'Admit source-bound actual-v9 prelude before setup',
+        'Collect same-job V10 runtime inventory',
+        'Await uniquely admitted same-job ACK and install request once',
+        'Refuse v9 runtime/source drift using retained admitted request',
+        'One official frontend acquisition and two serial genuine v9 UI scenarios']){
+        const original=step(block,name);
+        for(const [before,after] of [
+            [' -I -S -B -X ',' -S -B -X '],
+            [' -I -S -B -X ',' -I -B -X '],
+            [' -I -S -B -X ',' -I -S -X '],
+            [' -X pycache_prefix=/home/runner/work/_temp/bw-gui-hdd-python-cache',''],
+            ['test ! -L "$prefix"','true'],
+            ['test -z "$entry_marker"','true'],
+            ["stat -c '%d %i %f %u %g %h %s %Y'","stat -c '%d'"]]){
+            assert.ok(original.includes(before),before);
+            const changed=original.replace(before,after);
+            assert.throws(()=>checkActualV9Source(workflow.replace(original,changed)),undefined,`${name}: ${before}`);
+        }
     }
 });

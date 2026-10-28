@@ -14,12 +14,30 @@ on:
         required: true
         type: string
       request_sha256:
-        description: Reviewed canonical request SHA-256
-        required: true
+        description: Historical Actual-V8 request SHA-256 (empty for V9)
+        required: false
+        default: ''
         type: string
       tag_name:
-        description: One reviewed source tag name
+        description: Historical Actual-V8 source tag (empty for V9)
+        required: false
+        default: ''
+        type: string
+      protocol:
+        description: Separately reviewed execution protocol
         required: true
+        default: actual-v8
+        type: choice
+        options: [actual-v8, actual-v9]
+      source_ref:
+        description: Exact owned source branch ref for V9
+        required: false
+        default: ''
+        type: string
+      prelude_sha256:
+        description: Reviewed canonical same-job prelude SHA-256 for V9
+        required: false
+        default: ''
         type: string
 
 permissions:
@@ -210,7 +228,7 @@ jobs:
 
   finite-inventory-nine:
     if: >-
-      ${{ true && github.event_name == 'pull_request' && github.event.action == 'labeled' &&
+      ${{ false && github.event_name == 'pull_request' && github.event.action == 'labeled' &&
           github.event.label.name == 'x86-hdd-gui-finite-inventory-v9' && github.actor == 'CrispStrobe' &&
           github.run_attempt == 1 && github.event.pull_request.head.repo.full_name == github.repository &&
           github.event.pull_request.head.repo.fork == false && github.event.pull_request.base.ref == 'main' }}
@@ -722,7 +740,7 @@ jobs:
 
   actual-v8:
     if: >-
-      ${{ true && github.event_name == 'workflow_dispatch' && github.actor == 'CrispStrobe' &&
+      ${{ false && github.event_name == 'workflow_dispatch' && github.actor == 'CrispStrobe' &&
           github.repository == 'CrispStrobe/brickwright-lite' && github.run_attempt == 1 &&
           github.ref_type == 'tag' && github.event.inputs.pull_request != '' &&
           github.event.inputs.request_sha256 != '' &&
@@ -875,6 +893,211 @@ jobs:
           path: gui-setup
           if-no-files-found: error
           retention-days: 14
+
+  # Distinct same-job prelude, external admission and actual execution.
+  # Both source guards and this workflow gate remain unarmed until qualified.
+  actual-v9:
+    if: >-
+      ${{ false && github.event_name == 'workflow_dispatch' && github.actor == 'CrispStrobe' &&
+          github.repository == 'CrispStrobe/brickwright-lite' && github.run_attempt == 1 &&
+          github.event.inputs.protocol == 'actual-v9' && github.ref_type == 'branch' &&
+          github.event.inputs.pull_request != '' && github.event.inputs.prelude_sha256 != '' &&
+          github.event.inputs.request_sha256 == '' && github.event.inputs.tag_name == '' &&
+          github.event.inputs.source_head == github.sha &&
+          github.event.inputs.source_ref == github.ref && startsWith(github.ref, 'refs/heads/lane/') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    env:
+      BW_EXPECTED_HEAD: ${{ github.sha }}
+      BW_GUI_HDD_ACTUAL_V9_PRELUDE_B64: ${{ vars.BW_GUI_HDD_ACTUAL_V9_PRELUDE_B64 }}
+      BW_GUI_HDD_ACTUAL_V9_PRELUDE_SHA256: ${{ vars.BW_GUI_HDD_ACTUAL_V9_PRELUDE_SHA256 }}
+      BW_FINITE_INVENTORY_V10_TEMPLATE_B64: ${{ vars.BW_FINITE_INVENTORY_V10_TEMPLATE_B64 }}
+      BW_FINITE_INVENTORY_V10_SHA256: ${{ vars.BW_FINITE_INVENTORY_V10_SHA256 }}
+      NODE_OPTIONS: ''
+      NODE_PATH: ''
+      LD_PRELOAD: ''
+      LD_AUDIT: ''
+      NODE_V8_COVERAGE: ''
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Install empty Python cache prefix and refuse unreviewed v9 source
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          export LC_ALL=C
+          umask 022
+          prefix=/home/runner/work/_temp/bw-gui-hdd-python-cache
+          for parent in / /home /home/runner /home/runner/work /home/runner/work/_temp; do
+            test -d "$parent" && test ! -L "$parent"
+            test "$(realpath -e "$parent")" = "$parent"
+          done
+          mkdir -m 0700 gui-setup gui-actual-v9 gui-finite-inventory-v10
+          mkdir -m 0555 "$prefix"
+          entry_marker="$(find "$prefix" -mindepth 1 -maxdepth 1 -printf x -quit)"
+          test -z "$entry_marker"
+          set -o noclobber
+          {
+            echo bw.gui-hdd.python-startup-install.v1
+            echo "$prefix"
+            echo created-exclusive
+            echo empty-before-entry
+            stat -c '%d %i %f %u %g %h %s %Y' "$prefix"
+          } > gui-setup/python-startup.original.txt
+          chmod 0444 gui-setup/python-startup.original.txt
+          /usr/bin/python3.12 -I -S -B -X pycache_prefix=/home/runner/work/_temp/bw-gui-hdd-python-cache scripts/run-i80386-hdd-gui-actual.py actual-v9-guard \
+            > gui-setup/guard.stdout 2> gui-setup/guard.stderr
+      - name: Admit source-bound actual-v9 prelude before setup
+        timeout-minutes: 3
+        run: |
+          set -euo pipefail
+          python_actual() {
+            local prefix=/home/runner/work/_temp/bw-gui-hdd-python-cache
+            test "$(realpath -e "$prefix")" = "$prefix" && test ! -L "$prefix"
+            test "$(LC_ALL=C stat -c '%d %i %f %u %g %h %s %Y' "$prefix")" = "$(tail -n 1 gui-setup/python-startup.original.txt)"
+            local entry_marker
+            entry_marker="$(find "$prefix" -mindepth 1 -maxdepth 1 -printf x -quit)"
+            test -z "$entry_marker"
+            /usr/bin/python3.12 -I -S -B -X pycache_prefix=/home/runner/work/_temp/bw-gui-hdd-python-cache "$@"
+          }
+          python_actual scripts/run-i80386-hdd-gui-actual.py actual-v9-prelude \
+            > gui-setup/prelude.stdout 2> gui-setup/prelude.stderr
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 22.23.3
+      - name: Install reviewed v9 dependencies without building the frontend
+        timeout-minutes: 8
+        run: |
+          set -euo pipefail
+          {
+            sudo env "PATH=$PATH" node scripts/prepare-playwright-apt.mjs
+          } > gui-finite-inventory-v10/bootstrap.stdout 2> gui-finite-inventory-v10/bootstrap.stderr
+          npm ci --ignore-scripts --no-audit --no-fund
+          node node_modules/playwright/cli.js install --with-deps chromium
+      - name: Collect same-job V10 runtime inventory
+        timeout-minutes: 4
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          python_actual() {
+            local prefix=/home/runner/work/_temp/bw-gui-hdd-python-cache
+            test "$(realpath -e "$prefix")" = "$prefix" && test ! -L "$prefix"
+            test "$(LC_ALL=C stat -c '%d %i %f %u %g %h %s %Y' "$prefix")" = "$(tail -n 1 gui-setup/python-startup.original.txt)"
+            local entry_marker
+            entry_marker="$(find "$prefix" -mindepth 1 -maxdepth 1 -printf x -quit)"
+            test -z "$entry_marker"
+            /usr/bin/python3.12 -I -S -B -X pycache_prefix=/home/runner/work/_temp/bw-gui-hdd-python-cache "$@"
+          }
+          python_actual scripts/run-i80386-hdd-gui-actual.py finite-inventory-v10 \
+            --request "$GITHUB_WORKSPACE/gui-finite-inventory-v10/runtime-template.json" \
+            --expected-sha256 "$BW_FINITE_INVENTORY_V10_SHA256" \
+            --output "$GITHUB_WORKSPACE/gui-finite-inventory-v10/inventory.json" \
+            > gui-finite-inventory-v10/controller.stdout 2> gui-finite-inventory-v10/controller.stderr
+      - name: Retain immutable V10 same-job phase originals
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: i80386-hdd-gui-actual-v9-phase-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            gui-finite-inventory-v10
+            gui-actual-v9
+            !gui-finite-inventory-v10/controller.stdout
+            !gui-finite-inventory-v10/controller.stderr
+          if-no-files-found: error
+          retention-days: 14
+      - name: Await uniquely admitted same-job ACK and install request once
+        timeout-minutes: 4
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          python_actual() {
+            local prefix=/home/runner/work/_temp/bw-gui-hdd-python-cache
+            test "$(realpath -e "$prefix")" = "$prefix" && test ! -L "$prefix"
+            test "$(LC_ALL=C stat -c '%d %i %f %u %g %h %s %Y' "$prefix")" = "$(tail -n 1 gui-setup/python-startup.original.txt)"
+            local entry_marker
+            entry_marker="$(find "$prefix" -mindepth 1 -maxdepth 1 -printf x -quit)"
+            test -z "$entry_marker"
+            /usr/bin/python3.12 -I -S -B -X pycache_prefix=/home/runner/work/_temp/bw-gui-hdd-python-cache "$@"
+          }
+          mkdir -m 0700 gui-inputs
+          python_actual scripts/run-i80386-hdd-gui-actual.py actual-v9-ack \
+            > gui-setup/ack.stdout 2> gui-setup/ack.stderr
+      - name: Refuse v9 runtime/source drift using retained admitted request
+        timeout-minutes: 3
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          python_actual() {
+            local prefix=/home/runner/work/_temp/bw-gui-hdd-python-cache
+            test "$(realpath -e "$prefix")" = "$prefix" && test ! -L "$prefix"
+            test "$(LC_ALL=C stat -c '%d %i %f %u %g %h %s %Y' "$prefix")" = "$(tail -n 1 gui-setup/python-startup.original.txt)"
+            local entry_marker
+            entry_marker="$(find "$prefix" -mindepth 1 -maxdepth 1 -printf x -quit)"
+            test -z "$entry_marker"
+            /usr/bin/python3.12 -I -S -B -X pycache_prefix=/home/runner/work/_temp/bw-gui-hdd-python-cache "$@"
+          }
+          request_sha="$(python_actual -c 'import json,re; v=json.load(open("gui-actual-v9/input-install.json")); s=v["sha256"]; assert isinstance(s,str) and re.fullmatch("[0-9a-f]{64}",s); print(s)')"
+          python_actual scripts/run-i80386-hdd-gui-actual.py actual-v9-preflight \
+            --request "$GITHUB_WORKSPACE/gui-inputs/request.json" --expected-sha256 "$request_sha" \
+            --output "$GITHUB_WORKSPACE/gui-setup/preflight" \
+            > gui-setup/preflight.stdout 2> gui-setup/preflight.stderr
+      - name: Prepare unchanged authenticated free media once for v9
+        timeout-minutes: 4
+        run: |
+          set -euo pipefail
+          timeout 120s curl --fail --location --silent --show-error --max-filesize 33554432 \
+            https://download.freedos.org/1.4/FD14-FloppyEdition.zip \
+            -o gui-inputs/FD14-FloppyEdition.zip 2> gui-setup/media-download.stderr
+          echo '45b1fa7c52dd996c3bfa5e352ffcd410781b952a6ad629f15a4c9ec4bbaefc5a  gui-inputs/FD14-FloppyEdition.zip' | sha256sum --check
+          unzip -p gui-inputs/FD14-FloppyEdition.zip 120m/x86BOOT.img > gui-inputs/floppy.img
+          timeout 30s node scripts/prepare-i80386-freedos-interaction.mjs \
+            node_modules/bw-board gui-inputs/hdd.img > gui-setup/owned-hdd.stdout 2> gui-setup/owned-hdd.stderr
+          cp overlay/scratch-gui/static/roms/free-386-bochs-bios.rom gui-inputs/bios.bin
+          cp overlay/scratch-gui/static/roms/free-386-vgabios-lgpl.bin gui-inputs/vga.bin
+      - name: One official frontend acquisition and two serial genuine v9 UI scenarios
+        timeout-minutes: 31
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          python_actual() {
+            local prefix=/home/runner/work/_temp/bw-gui-hdd-python-cache
+            test "$(realpath -e "$prefix")" = "$prefix" && test ! -L "$prefix"
+            test "$(LC_ALL=C stat -c '%d %i %f %u %g %h %s %Y' "$prefix")" = "$(tail -n 1 gui-setup/python-startup.original.txt)"
+            local entry_marker
+            entry_marker="$(find "$prefix" -mindepth 1 -maxdepth 1 -printf x -quit)"
+            test -z "$entry_marker"
+            /usr/bin/python3.12 -I -S -B -X pycache_prefix=/home/runner/work/_temp/bw-gui-hdd-python-cache "$@"
+          }
+          mkdir -m 0700 gui-originals
+          request_sha="$(python_actual -c 'import json,re; v=json.load(open("gui-actual-v9/input-install.json")); s=v["sha256"]; assert isinstance(s,str) and re.fullmatch("[0-9a-f]{64}",s); print(s)')"
+          python_actual scripts/run-i80386-hdd-gui-actual.py actual-v9 \
+            --request "$GITHUB_WORKSPACE/gui-inputs/request.json" --expected-sha256 "$request_sha" \
+            --output "$GITHUB_WORKSPACE/gui-originals/originals" \
+            > gui-originals/controller.stdout 2> gui-originals/controller.stderr
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: i80386-hdd-gui-actual-v9-${{ github.run_id }}-${{ github.run_attempt }}
+          path: gui-originals
+          if-no-files-found: error
+          retention-days: 14
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: i80386-hdd-gui-actual-v9-setup-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            gui-setup
+            gui-actual-v9
+            gui-finite-inventory-v10
+          if-no-files-found: error
+          retention-days: 14
+
 
   # Observation delivery only. Source and job guards need separate activation.
   # Variables transport a separately reviewed immutable request, never approval.

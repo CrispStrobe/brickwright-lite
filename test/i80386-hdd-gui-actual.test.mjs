@@ -32,11 +32,11 @@ const runControlChildren = async (specs,deadlineMs) => {
     finally{clearTimeout(timer);}
 };
 
-test('armed V8 source preserves nine prior PR jobs with explicit V7 execution retirement', () => {
+test('V9 manual selection preserves nine prior jobs and consumed execution retirement', () => {
     const workflow = fs.readFileSync(new URL('../.github/workflows/i80386-hdd-gui-actual.yml',import.meta.url),'utf8');
-    const registration = `  workflow_dispatch:\n    inputs:\n      pull_request:\n        description: Owned ready pull request number\n        required: true\n        type: string\n      source_head:\n        description: Reviewed 40-hex source head\n        required: true\n        type: string\n      request_sha256:\n        description: Reviewed canonical request SHA-256\n        required: true\n        type: string\n      tag_name:\n        description: One reviewed source tag name\n        required: true\n        type: string\n`;
+    const registration = "  workflow_dispatch:\n    inputs:\n      pull_request:\n        description: Owned ready pull request number\n        required: true\n        type: string\n      source_head:\n        description: Reviewed 40-hex source head\n        required: true\n        type: string\n      request_sha256:\n        description: Historical Actual-V8 request SHA-256 (empty for V9)\n        required: false\n        default: ''\n        type: string\n      tag_name:\n        description: Historical Actual-V8 source tag (empty for V9)\n        required: false\n        default: ''\n        type: string\n      protocol:\n        description: Separately reviewed execution protocol\n        required: true\n        default: actual-v8\n        type: choice\n        options: [actual-v8, actual-v9]\n      source_ref:\n        description: Exact owned source branch ref for V9\n        required: false\n        default: ''\n        type: string\n      prelude_sha256:\n        description: Reviewed canonical same-job prelude SHA-256 for V9\n        required: false\n        default: ''\n        type: string\n";
     const anchor = 'on:\n  pull_request:\n    types: [opened, synchronize, reopened, labeled]\n';
-    assert.equal(workflow.split(registration).length,2,'one exact closed four-string manual trigger');
+    assert.equal(workflow.split(registration).length,2,'one exact closed seven-input manual trigger');
     assert.ok(workflow.includes(anchor+registration),'manual trigger follows the unchanged PR trigger');
     const begin=workflow.indexOf('  actual-v8:\n');
     const end=workflow.indexOf('  # Observation delivery only.',begin);
@@ -48,7 +48,7 @@ test('armed V8 source preserves nine prior PR jobs with explicit V7 execution re
     const finiteJob=priorWithFinite.slice(finiteStart,finiteEnd);
     assert.match(finiteJob,/finite-inventory-seven:\n    if: >-\n      \$\{\{ false &&/,'spent V7 execution is retired');
     assert.match(finiteJob,/finite-inventory-eight:\n    if: >-\n      \$\{\{ false &&/,'spent F8 execution is retired');
-    assert.match(finiteJob,/finite-inventory-nine:\n    if: >-\n      \$\{\{ true &&/,'separately reviewed F9 source is armed');
+    assert.match(finiteJob,/finite-inventory-nine:\n    if: >-\n      \$\{\{ false &&/,'consumed F9 source remains retired');
     assert.ok(finiteJob.indexOf('finite-inventory-v7-guard')<finiteJob.indexOf('actions\/setup-node@'));
     const prior=priorWithFinite.slice(0,finiteStart)+priorWithFinite.slice(finiteEnd);
     const retiredV7="  actual-v7:\n    if: >-\n      ${{ false && github.event_name == 'pull_request' &&\n"+
@@ -382,6 +382,12 @@ def finite_guard_fixture(source,template_raw,event_raw,platform,version=4):
     if version==9:
         vendor=E(c.FINITE_V9_PINS)
         result.update(dependencyPins=copy.deepcopy(c.FINITE_V9_PINS),
+          vendorPinsOriginal=dict(ROW(vendor),base64=base64.b64encode(vendor).decode()),
+          bootstrapAdmission={'source':copy.deepcopy(c.BOOTSTRAP_SOURCE),'gitHead':source['head'],
+            'workspace':{'byteLength':c.BOOTSTRAP_SOURCE['byteLength'],'sha256':c.BOOTSTRAP_SOURCE['sha256']}})
+    if version==10:
+        vendor=E(c.FINITE_V10_PINS)
+        result.update(dependencyPins=copy.deepcopy(c.FINITE_V10_PINS),
           vendorPinsOriginal=dict(ROW(vendor),base64=base64.b64encode(vendor).decode()),
           bootstrapAdmission={'source':copy.deepcopy(c.BOOTSTRAP_SOURCE),'gitHead':source['head'],
             'workspace':{'byteLength':c.BOOTSTRAP_SOURCE['byteLength'],'sha256':c.BOOTSTRAP_SOURCE['sha256']}})
@@ -829,9 +835,9 @@ class Originals(unittest.TestCase):
     def test_actual_shell_startup_is_before_first_python_and_inventory_is_held(self):
         workflow=(root/'.github/workflows/i80386-hdd-gui-actual.yml').read_text()
         v7=workflow.split('  actual-v7:',1)[1].split('  actual-v8:',1)[0]
-        v8=workflow.split('  actual-v8:',1)[1].split('  font-bridge:',1)[0]
+        v8=workflow.split('  actual-v8:',1)[1].split('  actual-v9:',1)[0].split('  font-bridge:',1)[0]
         self.assertIn('if: >-\n      '+chr(36)+'{{ false &&',v7)
-        self.assertIn('if: >-\n      '+chr(36)+'{{ true &&',v8)
+        self.assertIn('if: >-\n      '+chr(36)+'{{ false &&',v8)
         for version,actual in (('v7',v7),('v8',v8)):
             self.assertLess(actual.index('mkdir -m 0555 "$prefix"'),actual.index('/usr/bin/python3.12 -I -S -B -X'))
             self.assertNotIn('/usr/bin/python3 -B',actual)
@@ -851,14 +857,19 @@ class Originals(unittest.TestCase):
         if finite:
             template.update(schema='bw.gui-hdd.inventory-template.v'+str(finite_version),emptyPythonSources=self.empty_selection(),files=sorted(template['files']),libraries=['/usr/lib/libselected.so'],scope=finite_scope_fixture(finite_version))
             request['installedFiles']['node_modules/bw-circuit-ui/package.json']=ROW(b'cui')
-        if finite and finite_version in (7,8,9):
+        if finite and finite_version in (7,8,9,10):
             template['dependencyPins']=copy.deepcopy(c.FINITE_V7_PINS)
             request['source']['files']['vendor-pins.json']=ROW(E(c.FINITE_V7_PINS))
-        if finite and finite_version in (8,9):template['bootstrapSource']=copy.deepcopy(c.BOOTSTRAP_SOURCE)
+        if finite and finite_version in (8,9,10):template['bootstrapSource']=copy.deepcopy(c.BOOTSTRAP_SOURCE)
         if finite and finite_version==9:
             template['files']=sorted(set(template['files'])|{'/etc/resolv.conf'})
             template['dependencyPins']=copy.deepcopy(c.FINITE_V9_PINS)
             request['source']['files']['vendor-pins.json']=ROW(E(c.FINITE_V9_PINS))
+        if finite and finite_version==10:
+            template['files']=sorted(set(template['files'])|{'/run/systemd/resolve/stub-resolv.conf'})
+            template.update(dependencyPins=copy.deepcopy(c.FINITE_V10_PINS),resolverRole={'path':'/etc/resolv.conf',
+              'allowedKinds':['regular','symlink'],'symlinkAlternatives':[{'linkText':'../run/systemd/resolve/stub-resolv.conf','target':'/run/systemd/resolve/stub-resolv.conf'}]})
+            request['source']['files']['vendor-pins.json']=ROW(E(c.FINITE_V10_PINS))
         raw=E(template);pin=H(raw);event=D(base64.b64decode(self.expected['inventoryOriginal']['base64']))['event']
         event=D(base64.b64decode(event['base64']));event['pull_request']['body']='<!-- BW_GUI_HDD_INVENTORY_SHA256='+pin+' -->'
         if finite:event['label']['name']='x86-hdd-gui-finite-inventory-v'+str(finite_version);event['pull_request']['body']=finite_body_fixture(raw,finite_version)
@@ -869,7 +880,7 @@ class Originals(unittest.TestCase):
         if finite and finite_version==6:
             env['BW_FINITE_INVENTORY_V6_SHA256']=pin
             env['BW_FINITE_INVENTORY_V6_TEMPLATE_B64']=base64.b64encode(raw).decode()
-        if finite and finite_version in (7,8,9):
+        if finite and finite_version in (7,8,9,10):
             env['BW_FINITE_INVENTORY_V7_SHA256']=pin
             env['BW_FINITE_INVENTORY_V7_TEMPLATE_B64']=base64.b64encode(raw).decode()
         if finite and finite_version==8:
@@ -878,6 +889,23 @@ class Originals(unittest.TestCase):
         if finite and finite_version==9:
             env['BW_FINITE_INVENTORY_V9_SHA256']=pin
             env['BW_FINITE_INVENTORY_V9_TEMPLATE_B64']=base64.b64encode(raw).decode()
+        if finite and finite_version==10:
+            prelude={'schema':'bw.gui-hdd.actual-v9-prelude.v1','repository':c.REPOSITORY,'pullRequest':123,
+              'source':request['source'],'template':ROW(raw),'build':{},'nativeFontAdmission':{},'nativeSourceGit':{},
+              'dispatch':{'ref':'refs/heads/lane/manufactured-finite10','workflow':{'path':c.ACTUAL_V8_WORKFLOW,'sha256':request['source']['files'][c.ACTUAL_V8_WORKFLOW]['sha256']}},'resources':copy.deepcopy(c.ACTUAL_V9_RESOURCES)}
+            v8files,_v8expected,_v8env=self.actual_v8_packet();v8request=D(v8files['request.original.json'])
+            for key in ('build','nativeFontAdmission','nativeSourceGit'):prelude[key]=copy.deepcopy(v8request[key])
+            prelude['build'].update(head=request['source']['head'],sourceFiles=request['source']['files'])
+            prelude['build']['sourceAdmission'].update(checkoutTree=request['source']['tree'],sourceFiles=request['source']['files'])
+            prelude_raw=E(prelude);ref=prelude['dispatch']['ref']
+            env.update(GITHUB_JOB='actual-v9',GITHUB_EVENT_NAME='workflow_dispatch',GITHUB_WORKFLOW_SHA='a'*40,
+              GITHUB_REF=ref,GITHUB_REF_TYPE='branch',GITHUB_REF_NAME=ref[len('refs/heads/'):],GITHUB_SHA='a'*40,
+              GITHUB_WORKFLOW_REF=c.REPOSITORY+'/'+c.ACTUAL_V8_WORKFLOW+'@'+ref,
+              BW_GUI_HDD_ACTUAL_V9_PRELUDE_B64=base64.b64encode(prelude_raw).decode(),BW_GUI_HDD_ACTUAL_V9_PRELUDE_SHA256=H(prelude_raw),
+              BW_FINITE_INVENTORY_V10_TEMPLATE_B64=base64.b64encode(raw).decode(),BW_FINITE_INVENTORY_V10_SHA256=pin)
+            event_raw=E({'ref':ref,'repository':{'full_name':c.REPOSITORY},'sender':{'login':'CrispStrobe'},
+              'inputs':{'protocol':'actual-v9','pull_request':'123','source_head':'a'*40,'source_ref':ref,
+                        'prelude_sha256':H(prelude_raw),'request_sha256':'','tag_name':''}})
         saved={}
         if finite:saved['/checkout/gui-finite-inventory-v'+str(finite_version)+'/guard-admission.json']=E(finite_guard_fixture(request['source'],raw,event_raw,env,finite_version))
         def regular(path,cap):
@@ -885,10 +913,10 @@ class Originals(unittest.TestCase):
             if ('read',path) in faults:raise faults['read',path]
             if path=='/event':return event_raw
             if path in saved:return saved[path]
-            if path.endswith(('/gui-finite-inventory-v8/bootstrap.stdout','/gui-finite-inventory-v9/bootstrap.stdout')):return b'Prepared official Ubuntu archive: 0 source file(s) changed\n'
-            if path.endswith(('/gui-finite-inventory-v8/bootstrap.stderr','/gui-finite-inventory-v9/bootstrap.stderr')):return b''
+            if path.endswith(('/gui-finite-inventory-v8/bootstrap.stdout','/gui-finite-inventory-v9/bootstrap.stdout','/gui-finite-inventory-v10/bootstrap.stdout')):return b'Prepared official Ubuntu archive: 0 source file(s) changed\n'
+            if path.endswith(('/gui-finite-inventory-v8/bootstrap.stderr','/gui-finite-inventory-v9/bootstrap.stderr','/gui-finite-inventory-v10/bootstrap.stderr')):return b''
             if path=='/node':return node
-            if path=='/checkout/vendor-pins.json' and finite and finite_version in (7,8,9):return E(c.FINITE_V9_PINS if finite_version==9 else c.FINITE_V7_PINS)
+            if path=='/checkout/vendor-pins.json' and finite and finite_version in (7,8,9,10):return E(c.FINITE_V10_PINS if finite_version==10 else c.FINITE_V9_PINS if finite_version==9 else c.FINITE_V7_PINS)
             if path.startswith('/checkout/'):return ('source:'+path.removeprefix('/checkout/')).encode()
             return path.encode()
         def lstat(path):
@@ -909,7 +937,7 @@ class Originals(unittest.TestCase):
                 if args[0]=='rev-parse':body=(request['source']['head' if args[1]=='HEAD' else 'tree']+'\n').encode()
                 else:
                     name=args[2].split(':',1)[1]
-                    body=E(c.FINITE_V9_PINS if finite_version==9 else c.FINITE_V7_PINS) if finite and finite_version in (7,8,9) and name=='vendor-pins.json' else ('source:'+name).encode()
+                    body=E(c.FINITE_V10_PINS if finite_version==10 else c.FINITE_V9_PINS if finite_version==9 else c.FINITE_V7_PINS) if finite and finite_version in (7,8,9,10) and name=='vendor-pins.json' else ('source:'+name).encode()
                 process={'argv':['/usr/bin/git','--no-replace-objects','-c','gc.auto=0','-c','maintenance.auto=false','-c','core.fsmonitor=false','-c','core.hooksPath=/dev/null']+args,'exitCode':0};saved[str(self.capture.root/(role+'.process.json'))]=E(process)
                 self.capture.files[role+'.stdout']=ROW(body);self.capture.files[role+'.stderr']=ROW(b'');return body
         def inventory(path):
@@ -3407,7 +3435,7 @@ class Originals(unittest.TestCase):
             self.assertEqual(report['schema'],'bw.gui-hdd.inventory-reader.v8');self.assertFalse(report['qualified'])
 
     def test_finite_v9_disabled_cli_and_resolver_role_policy(self):
-        self.assertIs(c.FINITE_INVENTORY_V8_ENABLED,False);self.assertIs(c.FINITE_INVENTORY_V9_ENABLED,True)
+        self.assertIs(c.FINITE_INVENTORY_V8_ENABLED,False);self.assertIs(c.FINITE_INVENTORY_V9_ENABLED,False)
         self.assertIs(r.FINITE_INVENTORY_V8_READER_ENABLED,True);self.assertIs(r.FINITE_INVENTORY_V9_READER_ENABLED,True)
         with patch.object(c,'FINITE_INVENTORY_V9_ENABLED',False),patch.object(c,'regular',side_effect=AssertionError('read')),patch.object(c,'Hosted',side_effect=AssertionError('tool')):
             for version in (8,9):
@@ -3465,6 +3493,7 @@ class Originals(unittest.TestCase):
             for name,(size,digest_) in witnesses.items():value['installedFiles'][name]={'byteLength':size,'sha256':digest_}
             changed['original']=ROW(E(value));self.assertEqual(r.verify_inventory_original_v9(E(value),newraw,changed)['schema'],'bw.gui-hdd.inventory-reader.v9')
 
+    @patch.object(c,'ACTUAL_V8_ENABLED',True)
     def test_finite_v9_current_actual8_rejects_coherent_historical_reference(self):
         files,expected,env=self.actual_v8_packet();request=D(files['request.original.json'])
         old,oldraw,oldmetadata=self.finite_v8_packet()
@@ -4382,6 +4411,7 @@ class Originals(unittest.TestCase):
         files['bootstrap-helper.stdout']=b'Prepared official Ubuntu archive: 0 source file(s) changed\n';files['bootstrap-helper.stderr']=b''
         return files,expected,env
 
+    @patch.object(c,'ACTUAL_V8_ENABLED',True)
     def test_actual_v8_current_board_split_holds_legacy_and_refuses_coherent_probe_drift(self):
         self.assertEqual(c.BOARD,r.BOARD)
         self.assertEqual(c.CURRENT_BOARD,r.CURRENT_BOARD)
@@ -4446,6 +4476,7 @@ class Originals(unittest.TestCase):
                     exec(compile(mutant,'board-selector-counterfactual','exec'),namespace)
                     self.assertTrue(namespace['audit'](*sealed(copy.deepcopy(changed),copy.deepcopy(expected)))['pass'])
 
+    @patch.object(c,'ACTUAL_V8_ENABLED',True)
     def test_actual_v8_bootstrap_cli_and_missing_packet_before_guest_edges(self):
         files,expected,env=self.actual_v8_packet();request=D(files['request.original.json'])
         historical,old_expected=self.actual_v7_packet()
@@ -4512,6 +4543,7 @@ class Originals(unittest.TestCase):
                 checkout=original_checkout
 
 
+    @patch.object(c,'ACTUAL_V8_ENABLED',True)
     def test_actual_v8_foreign_f9_source_refuses_before_any_bootstrap_edge(self):
         files,expected,env=self.actual_v8_packet();request=D(files['request.original.json'])
         for cut in ('head','tree','source-row'):
@@ -4526,6 +4558,7 @@ class Originals(unittest.TestCase):
                 with self.subTest(cut=cut,module=module.__name__),self.assertRaisesRegex(ValueError,'same F9 checkout'):
                     module.parse_request(raw,H(raw))
 
+    @patch.object(c,'ACTUAL_V8_ENABLED',True)
     def test_actual_v8_request_event_and_separate_pr_tag_admission(self):
         files,expected,env=self.actual_v8_packet();raw=files['request.original.json']
         request=c.parse_request(raw,H(raw))
@@ -4555,6 +4588,7 @@ class Originals(unittest.TestCase):
                 if cut in ('wrong-event-source','wrong-ref'):c.bind_event(E(event),request,H(raw),changed_env)
                 else:c.admit_dispatch_sources_v8(E(pr),E(ref),request,H(raw))
 
+    @patch.object(c,'ACTUAL_V8_ENABLED',True)
     def test_actual_v8_execute_retains_event_and_pr_primary_before_next_api(self):
         files,expected,env=self.actual_v8_packet();request=D(files['request.original.json'])
         def startup(where,mode,args):
@@ -4615,6 +4649,7 @@ class Originals(unittest.TestCase):
                 self.assertIn('PR' if cut=='pr-head' else 'tag API failed',failure['message'])
             self.assertEqual(D(retained['result.json'])['secondary'],[],cut)
 
+    @patch.object(c,'ACTUAL_V8_ENABLED',True)
     def test_actual_v8_real_originals_seal_and_bounded_git_envelopes(self):
         global FIXTURE_CHECKOUT,_FIXTURE_V5
         temporary_root=tempfile.TemporaryDirectory(dir=root.parent)
@@ -4799,6 +4834,7 @@ class Originals(unittest.TestCase):
                     r.audit(changed_originals,bind_artifact(changed_zip,selected))
         temporary_root.cleanup()
 
+    @patch.object(c,'ACTUAL_V8_ENABLED',True)
     def test_actual_v8_partial_git_capture_retains_first_error_and_caps(self):
         def result(first=None):return {'schema':'bw.gui-hdd.result.v8','pass':first is None,
             'firstFailure':first,'secondary':[]}
@@ -4869,6 +4905,7 @@ class Originals(unittest.TestCase):
             self.assertTrue((close.root/'git-0.original.json').is_file())
             self.assertNotIn('git-0.original.json',D((close.root/'inventory.json').read_bytes())['files'])
 
+    @patch.object(c,'ACTUAL_V8_ENABLED',True)
     def test_actual_v8_three_true_main_startup_modes_and_wrong_logical_modes(self):
         files,expected,env=self.actual_v8_packet()
         self.assertTrue(c.ACTUAL_V8_ENABLED)
@@ -5354,6 +5391,479 @@ class Originals(unittest.TestCase):
     def test_current_board_requires_current_admission_and_scenario_pins_v3_v4(self):
         self.assert_noncurrent_board_refuses_actual_formats('0'*40)
 
+    @patch.object(c,'FINITE_INVENTORY_V10_ENABLED',True)
+    def test_producer_finite_v10_connected_collector_retention_and_independent_reader(self):
+        paths=['/node','/usr/bin/python3.12','/chrome','/usr/bin/git','/usr/bin/gh','/usr/bin/curl','/usr/lib/libselected.so']
+        selected={name:ROW(('synthetic:'+name).encode()) for name in c.INSTALLED_V6_CRITICAL}
+        selected.update({name:{'byteLength':size,'sha256':pin} for name,(size,pin) in c.FINITE_V10_CUI_WITNESSES.items()})
+        def installed(where,prefix,failure,checkout,critical,identity_witnesses=None):
+            self.assertIs(identity_witnesses,c.FINITE_V10_CUI_WITNESSES)
+            return {name.removeprefix(prefix+'/'):row for name,row in selected.items() if name.startswith(prefix+'/')}
+        with self.inventory_edges(paths,finite=True,finite_version=10) as (raw,pin,env,events),self.empty_source_edges(),patch.object(c,'installed_inventory_v5',side_effect=installed),patch.object(c,'actual_v9_read_state',return_value=({}, {'deadlineMonotonicNs':1000000000000})):
+            value=c.inventory_observation(raw,pin,pathlib.Path('/checkout'),env,'/out/a.json')
+        self.assertEqual(value['schema'],'bw.gui-hdd.inventory-original.v10',value.get('firstFailure'))
+        self.assertEqual(value['resolverObservation'],{'kind':'regular','path':'/etc/resolv.conf'})
+        variables={key:env[key] for key in ('BW_GUI_HDD_ACTUAL_V9_PRELUDE_B64','BW_GUI_HDD_ACTUAL_V9_PRELUDE_SHA256','BW_FINITE_INVENTORY_V10_TEMPLATE_B64','BW_FINITE_INVENTORY_V10_SHA256')}
+        expected={'schema':'bw.gui-hdd.inventory-admission.v10','source':value['source'],'template':ROW(raw),'original':ROW(E(value)),
+          'runId':90,'workflowSha':'a'*40,'dependencyPins':copy.deepcopy(c.FINITE_V10_PINS),'bootstrapSource':copy.deepcopy(c.BOOTSTRAP_SOURCE),'repositoryVariables':variables}
+        with tempfile.TemporaryDirectory(dir=root.parent) as temporary:
+            target=pathlib.Path(temporary)/'inventory-original.json';self.assertEqual(c.retain_inventory_observation(value,target),0)
+            self.assertEqual(r.verify_inventory_original_v10(target.read_bytes(),raw,expected)['schema'],'bw.gui-hdd.inventory-reader.v10')
+            with self.assertRaises(FileExistsError):c.retain_inventory_observation(value,target)
+
+
+    @patch.object(c,'FINITE_INVENTORY_V10_ENABLED',True)
+    def test_producer_finite_v10_symlink_connected_collector_and_failed_resolver_reader(self):
+        paths=['/node','/usr/bin/python3.12','/chrome','/usr/bin/git','/usr/bin/gh','/usr/bin/curl','/usr/lib/libselected.so']
+        selected={name:ROW(('synthetic:'+name).encode()) for name in c.INSTALLED_V6_CRITICAL}
+        selected.update({name:{'byteLength':size,'sha256':pin} for name,(size,pin) in c.FINITE_V10_CUI_WITNESSES.items()})
+        installed=lambda where,prefix,*args,**kwargs:{name.removeprefix(prefix+'/'):row for name,row in selected.items() if name.startswith(prefix+'/')}
+        for failed in (False,True):
+            with self.subTest(failed=failed),self.inventory_edges(paths,finite=True,finite_version=10) as (raw,pin,env,events),self.empty_source_edges(),patch.object(c,'installed_inventory_v5',side_effect=installed) as scan,patch.object(c,'actual_v9_read_state',return_value=({}, {'deadlineMonotonicNs':1000000000000})):
+                base=c.os.lstat
+                def resolver(path):
+                    info=base(path)
+                    if str(path)=='/etc/resolv.conf':info.st_mode=(stat.S_IFIFO|0o600) if failed else (stat.S_IFLNK|0o777);info.st_size=39
+                    return info
+                with patch.object(c.os,'lstat',side_effect=resolver),patch.object(c.os,'readlink',return_value='../run/systemd/resolve/stub-resolv.conf'):
+                    value=c.inventory_observation(raw,pin,pathlib.Path('/checkout'),env,'/out/a.json')
+                if failed:scan.assert_not_called()
+            variables={key:env[key] for key in ('BW_GUI_HDD_ACTUAL_V9_PRELUDE_B64','BW_GUI_HDD_ACTUAL_V9_PRELUDE_SHA256','BW_FINITE_INVENTORY_V10_TEMPLATE_B64','BW_FINITE_INVENTORY_V10_SHA256')}
+            source=D(base64.b64decode(env['BW_GUI_HDD_ACTUAL_V9_PRELUDE_B64']))['source']
+            expected={'schema':'bw.gui-hdd.inventory-failure-expectation.v10' if failed else 'bw.gui-hdd.inventory-admission.v10','source':source,
+              'template':ROW(raw),'runId':90,'workflowSha':'a'*40,'dependencyPins':copy.deepcopy(c.FINITE_V10_PINS),'bootstrapSource':copy.deepcopy(c.BOOTSTRAP_SOURCE),'repositoryVariables':variables}
+            if failed:
+                self.assertEqual(value['schema'],'bw.gui-hdd.inventory-failure.v10');self.assertEqual(value['firstFailure']['phase'],'inventory-resolver')
+                expected['failure']=ROW(E(value));self.assertEqual(r.verify_inventory_failure(E(value),raw,expected)['schema'],'bw.gui-hdd.inventory-failure-reader.v10')
+                self.assertFalse(value['gitSource']['reached'])
+            else:
+                expected['original']=ROW(E(value));self.assertEqual(value['resolverObservation']['kind'],'symlink')
+                self.assertEqual(r.verify_inventory_original_v10(E(value),raw,expected)['schema'],'bw.gui-hdd.inventory-reader.v10')
+
+
+    def reader_finite_v10_packet(self,symlink=False):
+        value,old,expected=self.finite_v9_packet();template=D(old)
+        # Keep the exact current source graph and literal witnesses, not old pin reinterpretation.
+        vendor_raw=E(r.FINITE_V10_PINS);vendor=ROW(vendor_raw)
+        source=copy.deepcopy(value['source']);source['files']['vendor-pins.json']=vendor
+        value['source']=source;expected['source']=source;value['dependencyPins']=copy.deepcopy(r.FINITE_V10_PINS)
+        value['commands'][2+sorted(r.SOURCE).index('vendor-pins.json')]['stdout']=vendor
+        for name,(size,pin) in r.FINITE_V10_CUI_WITNESSES.items():value['installedFiles'][name]={'byteLength':size,'sha256':pin}
+        endpoint='/run/systemd/resolve/stub-resolv.conf';link='../run/systemd/resolve/stub-resolv.conf'
+        template.update(schema='bw.gui-hdd.inventory-template.v10',dependencyPins=copy.deepcopy(r.FINITE_V10_PINS),resolverRole={'path':'/etc/resolv.conf','allowedKinds':['regular','symlink'],'symlinkAlternatives':[{'linkText':link,'target':endpoint}]})
+        template['files']=sorted(set(template['files'])-{'/etc/resolv.conf'}|{endpoint})
+        value['runtime']['files'][endpoint]=ROW(b'endpoint')
+        observed={'kind':'symlink','path':'/etc/resolv.conf','linkText':link,'target':endpoint} if symlink else {'kind':'regular','path':'/etc/resolv.conf'}
+        if symlink:
+            value['runtime']['files'].pop('/etc/resolv.conf',None);value['runtime']['aliases']['/etc/resolv.conf']={'linkText':link,'target':endpoint}
+        raw=E(template)
+        files,_,_=self.actual_v8_packet();request=D(files['request.original.json'])
+        prelude={'schema':'bw.gui-hdd.actual-v9-prelude.v1','repository':r.REPOSITORY,'pullRequest':8,'source':source,'template':ROW(raw),'build':request['build'],'nativeFontAdmission':request['nativeFontAdmission'],'nativeSourceGit':request['nativeSourceGit'],'dispatch':{'ref':'refs/heads/lane/test-only-v9','workflow':{'path':'.github/workflows/i80386-hdd-gui-actual.yml','sha256':source['files']['.github/workflows/i80386-hdd-gui-actual.yml']['sha256']}},'resources':{'jobSeconds':2100,'ackWaitSeconds':180,'cleanupReserveSeconds':60,'scenarioSeconds':{'freedos-hdd-persistence':1250,'forward-debug':180}}}
+        prelude['build'].update(head=source['head'],sourceFiles=source['files'])
+        prelude['build']['sourceAdmission'].update(checkoutTree=source['tree'],sourceFiles=source['files'])
+        prelude_raw=E(prelude)
+        variables={'BW_GUI_HDD_ACTUAL_V9_PRELUDE_SHA256':H(prelude_raw),'BW_GUI_HDD_ACTUAL_V9_PRELUDE_B64':base64.b64encode(prelude_raw).decode(),'BW_FINITE_INVENTORY_V10_SHA256':H(raw),'BW_FINITE_INVENTORY_V10_TEMPLATE_B64':base64.b64encode(raw).decode()}
+        platform=value['platform'];platform.update(GITHUB_JOB='actual-v9',GITHUB_EVENT_NAME='workflow_dispatch',GITHUB_WORKFLOW_SHA=source['head'],GITHUB_WORKFLOW_REF=r.REPOSITORY+'/.github/workflows/i80386-hdd-gui-actual.yml@'+prelude['dispatch']['ref'])
+        event={'repository':{'full_name':r.REPOSITORY},'sender':{'login':'CrispStrobe'},'ref':prelude['dispatch']['ref'],'inputs':{'protocol':'actual-v9','source_ref':prelude['dispatch']['ref'],'pull_request':'8','source_head':source['head'],'request_sha256':'','tag_name':'','prelude_sha256':H(prelude_raw)}}
+        event_raw=E(event)
+        guard=D(base64.b64decode(value['guardAdmission']['base64']));guard.update(schema='bw.gui-hdd.finite-inventory-guard.v10',templateSha256=H(raw),eventSha256=H(event_raw),source=source,dependencyPins=copy.deepcopy(r.FINITE_V10_PINS),vendorPinsOriginal=dict(vendor,base64=base64.b64encode(vendor_raw).decode()),platform={key:platform.get(key)for key in ('GITHUB_RUN_ID','GITHUB_RUN_ATTEMPT','GITHUB_JOB','GITHUB_REPOSITORY','GITHUB_WORKFLOW_SHA','BW_EXPECTED_HEAD')})
+        guard['bootstrapAdmission']['gitHead']=source['head']
+        value.update(schema='bw.gui-hdd.inventory-original.v10',templateSha256=H(raw),event=dict(ROW(event_raw),base64=base64.b64encode(event_raw).decode()),guardAdmission=dict(ROW(E(guard)),base64=base64.b64encode(E(guard)).decode()),resolverObservation=observed,bootstrapAdmission=guard['bootstrapAdmission'])
+        expected.update(schema='bw.gui-hdd.inventory-admission.v10',template=ROW(raw),original=ROW(E(value)),workflowSha=source['head'],dependencyPins=copy.deepcopy(r.FINITE_V10_PINS),repositoryVariables=variables)
+        return value,raw,expected,prelude_raw
+
+    def test_reader_f10_both_roles_and_coherently_rehashed_role_adversaries(self):
+        for symlink in (False,True):
+            value,raw,expected,_=self.reader_finite_v10_packet(symlink)
+            result=r.verify_inventory_original_v10(E(value),raw,expected)
+            self.assertEqual(result['schema'],'bw.gui-hdd.inventory-reader.v10');self.assertFalse(result['qualified']);self.assertFalse(result['actualRequestSupported'])
+            for cut in ('wrong-kind','missing-resolver','overlap','endpoint','old-pins','guest-authority','link-text'):
+                changed=copy.deepcopy(value)
+                if cut=='wrong-kind':changed['resolverObservation']['kind']='socket'
+                elif cut=='missing-resolver':changed['runtime']['files'].pop('/etc/resolv.conf',None);changed['runtime']['aliases'].pop('/etc/resolv.conf',None)
+                elif cut=='overlap':changed['runtime']['files']['/etc/resolv.conf']=ROW(b'invented');changed['runtime']['aliases']['/etc/resolv.conf']={'linkText':'../run/systemd/resolve/stub-resolv.conf','target':'/run/systemd/resolve/stub-resolv.conf'}
+                elif cut=='endpoint':changed['runtime']['files'].pop('/run/systemd/resolve/stub-resolv.conf')
+                elif cut=='old-pins':changed['dependencyPins']=copy.deepcopy(r.FINITE_V9_PINS)
+                elif cut=='guest-authority':changed['guestApproved']=True
+                else:changed['resolverObservation']['linkText']='unselected'
+                selected=copy.deepcopy(expected);selected['original']=ROW(E(changed))
+                with self.subTest(symlink=symlink,cut=cut),self.assertRaises((ValueError,KeyError)):r.verify_inventory_original_v10(E(changed),raw,selected)
+
+    def test_reader_f10_unknown_template_target_and_dispatch_cuts(self):
+        value,raw,expected,prelude_raw=self.reader_finite_v10_packet(True)
+        template=D(raw)
+        for cut in ('unknown-target','overlap','old-schema','old-pins','extra-kind'):
+            changed=copy.deepcopy(template)
+            if cut=='unknown-target':changed['resolverRole']['symlinkAlternatives']=[{'linkText':'/unselected','target':'/unselected'}]
+            elif cut=='overlap':changed['files'].append('/etc/resolv.conf')
+            elif cut=='old-schema':changed['schema']='bw.gui-hdd.inventory-template.v9'
+            elif cut=='old-pins':changed['dependencyPins']=copy.deepcopy(r.FINITE_V9_PINS)
+            else:changed['resolverRole']['allowedKinds'].append('fifo')
+            body=E(changed)
+            with self.subTest(cut=cut),self.assertRaises(ValueError):r.finite_v10_template(body,H(body))
+        event=base64.b64decode(value['event']['base64']);env=dict(value['platform'],**expected['repositoryVariables'])
+        self.assertEqual(r.bind_finite_v10_event(event,value['source']['head'],H(raw),env),raw)
+        for field in ('GITHUB_JOB','GITHUB_RUN_ATTEMPT','GITHUB_WORKFLOW_SHA','BW_EXPECTED_HEAD'):
+            changed=dict(env);changed[field]='unselected'
+            with self.subTest(field=field),self.assertRaises(ValueError):r.bind_finite_v10_event(event,value['source']['head'],H(raw),changed)
+
+    def reader_phase_v9_packet(self):
+        value,template,admission,prelude=self.reader_finite_v10_packet(True)
+        run={'id':90,'run_attempt':1,'status':'in_progress','conclusion':None,'event':'workflow_dispatch','head_sha':value['source']['head'],'path':'.github/workflows/i80386-hdd-gui-actual.yml','repository':{'full_name':r.REPOSITORY},'actor':{'login':'CrispStrobe'}}
+        job={'started_at':'2026-10-28T00:00:00Z','id':91,'run_id':90,'name':'actual-v9','status':'in_progress','conclusion':None,'steps':[{'number':i,'name':name,'status':'completed','conclusion':'success'}for i,name in enumerate(r.STARTUP_STEPS_V9[:4],1)]+[{'number':5,'name':'Await ACK','status':'in_progress','conclusion':None}]}
+        deadline={'schema':'bw.gui-hdd.actual-v9-deadline.v1','runId':90,'runAttempt':1,'jobId':91,'sourceHead':value['source']['head'],'startedMonotonicNs':8000000000,'deadlineMonotonicNs':2108000000000,'cleanupReserveSeconds':60,'clock':{'schema':'bw.gui-hdd.actual-v9-clock.v1','jobStartedAt':'2026-10-28T00:00:00Z','httpDate':'Wed, 28 Oct 2026 00:00:01 GMT','requestMonotonicNs':10000000000,'responseMonotonicNs':11000000000,'requestWallTimeNs':10000000000,'responseWallTimeNs':11000000000,'serverDateSeconds':1793145601,'jobStartedSeconds':1793145600,'elapsedUpperNs':3000000000}}
+        raw_event=base64.b64decode(value['event']['base64'])
+        files={'gui-actual-v9/prelude.original.json':prelude,'gui-actual-v9/event.original.json':raw_event,'gui-actual-v9/dispatch-job.original.json':E(job),'gui-actual-v9/deadline.json':E(deadline),'gui-actual-v9/dispatch-clock.original.json':E(deadline['clock']),'gui-finite-inventory-v10/runtime-template.json':template,'gui-finite-inventory-v10/event.original.json':raw_event,'gui-finite-inventory-v10/guard-admission.json':base64.b64decode(value['guardAdmission']['base64']),'gui-finite-inventory-v10/inventory.json':E(value),'gui-finite-inventory-v10/bootstrap.stdout':base64.b64decode(value['bootstrapHelper']['stdout']['base64']),'gui-finite-inventory-v10/bootstrap.stderr':b''}
+        prefix=['/usr/bin/git','--no-replace-objects','-c','gc.auto=0','-c','maintenance.auto=false','-c','core.fsmonitor=false','-c','core.hooksPath=/dev/null']
+        source=value['source'];args=[['rev-parse','HEAD'],['rev-parse','HEAD^{tree}']]+[['cat-file','blob',source['head']+':'+path]for path in sorted(r.SOURCE)]
+        source_bytes={path:E(r.FINITE_V10_PINS) if path=='vendor-pins.json' else ('source:'+path).encode()for path in r.SOURCE}
+        helper=r.BOOTSTRAP_SOURCE;helperraw=(root/helper['path']).read_bytes()
+        for family,guard_stage in (('inventory-git-originals',False),('guard-originals',True)):
+            log={};selected=args+([['ls-tree','-z',source['head'],'--',helper['path']],['cat-file','blob',source['head']+':'+helper['path']]]if guard_stage else [])
+            for i,arguments in enumerate(selected):
+                if i<2:body=(source['head' if i==0 else 'tree']+'\n').encode()
+                elif i<2+len(r.SOURCE):body=source_bytes[sorted(r.SOURCE)[i-2]]
+                elif arguments[0]=='ls-tree':body=('100644 blob '+helper['gitBlob']+'\t'+helper['path']+'\0').encode()
+                else:body=helperraw
+                role='git-'+str(i);log[role+'.stdout']=body;log[role+'.stderr']=b'';log[role+'.process.json']=E(proc(prefix+arguments,body))
+            if guard_stage:
+                log['result.json']=base64.b64decode(value['guardAdmission']['base64']);log['inventory.json']=E({'schema':'bw.gui-hdd.originals.v1','files':{name:ROW(raw)for name,raw in log.items()}})
+            for name,body in log.items():files['gui-finite-inventory-v10/'+family+'/'+name]=body
+        source_guard={'jobs.original.json':E({'total_count':1,'jobs':[job]}),'pr.original.json':E({'number':8,'state':'open','draft':False,'head':{'sha':source['head'],'repo':{'full_name':r.REPOSITORY,'fork':False}},'base':{'ref':'main','repo':{'full_name':r.REPOSITORY}},'body':'<!-- BW_GUI_HDD_ACTUAL_V9_PRELUDE_SHA256='+H(prelude)+' -->'}),'result.json':E({'schema':'bw.gui-hdd.actual-v9-source-guard.v1','pass':True,'guestApproved':False,'firstFailure':None})}
+        source_guard['inventory.json']=E({'schema':'bw.gui-hdd.originals.v1','files':{name:ROW(raw)for name,raw in source_guard.items()}})
+        for name,body in source_guard.items():files['gui-actual-v9/guard-originals/'+name]=body
+        raw=zip_(files)
+        artifact={'id':92,'name':'i80386-hdd-gui-actual-v9-phase-90-1','expired':False,'size_in_bytes':len(raw),'digest':'sha256:'+H(raw),'workflow_run':{'id':90,'head_sha':value['source']['head']}}
+        expected={'schema':'bw.gui-hdd.actual-v9-phase-expectation.v1','source':value['source'],'prelude':ROW(prelude),'template':ROW(template),'inventory':ROW(E(value)),'inventoryAdmission':admission,'run':run,'job':job,'artifact':artifact,'uploadStep':{'number':4,'name':'Retain immutable V10 same-job phase originals'},'artifactBytes':len(raw),'artifactSha256':H(raw),'workflowSha':value['source']['head']}
+        return files,expected
+
+    def test_reader_v9_phase_inprogress_is_not_final_or_guest_success(self):
+        files,expected=self.reader_phase_v9_packet();report=r.verify_actual_v9_phase(zip_(files),expected)
+        self.assertTrue(report['phaseAdmitted']);self.assertFalse(report['guestApproved']);self.assertFalse(report['jobSuccessProved'])
+        for cut in ('upload-incomplete','wrong-job','completed-run','artifact-rebound','injected-guest','deadline','missing-guard','inventory-drift','raw-source','raw-guard','missing-triplet'):
+            f=copy.deepcopy(files);e=copy.deepcopy(expected)
+            if cut=='upload-incomplete':e['job']['steps'][3].update(status='in_progress',conclusion=None)
+            elif cut=='wrong-job':e['job']['id']=999
+            elif cut=='completed-run':e['run'].update(status='completed',conclusion='success')
+            elif cut=='artifact-rebound':e['artifact']['workflow_run']['id']=999
+            elif cut=='injected-guest':f['gui-actual-v9/proof.json']=E({'pass':True})
+            elif cut=='deadline':v=D(f['gui-actual-v9/deadline.json']);v['deadlineMonotonicNs']+=1;f['gui-actual-v9/deadline.json']=E(v)
+            elif cut=='missing-guard':f.pop('gui-finite-inventory-v10/guard-admission.json')
+            elif cut=='raw-source':f['gui-finite-inventory-v10/inventory-git-originals/git-2.stdout']=b'changed'
+            elif cut=='raw-guard':f['gui-finite-inventory-v10/guard-originals/result.json']=E({'pass':True})
+            elif cut=='missing-triplet':f.pop('gui-finite-inventory-v10/inventory-git-originals/git-0.stderr')
+            else:v=D(f['gui-finite-inventory-v10/inventory.json']);v['runtime']['files']['/run/systemd/resolve/stub-resolv.conf']=ROW(b'changed');f['gui-finite-inventory-v10/inventory.json']=E(v)
+            raw=zip_(f);e.update(artifactBytes=len(raw),artifactSha256=H(raw));e['artifact'].update(size_in_bytes=len(raw),digest='sha256:'+H(raw))
+            with self.subTest(cut=cut),self.assertRaises((ValueError,KeyError)):r.verify_actual_v9_phase(raw,e)
+
+    def reader_ack_v9_packet(self):
+        value,template,admission,prelude_raw=self.reader_finite_v10_packet(True);prelude=D(prelude_raw);head=value['source']['head']
+        same={'schema':'bw.gui-hdd.same-job.v1','runId':90,'runAttempt':1,'jobId':91,'preludeSha256':H(prelude_raw),'templateSha256':H(template),'inventorySha256':H(E(value)),'artifactId':92,'artifactSha256':'a'*64,'ackRef':'refs/heads/bw-gui-hdd-actual-v9-ack-90-91-'+head}
+        request={key:prelude[key]for key in ('repository','pullRequest','source','build','nativeFontAdmission','nativeSourceGit','dispatch')};request['sameJob']=same;request['schema']='bw.gui-hdd.actual-request.v9'
+        request_raw=E(request);ack={'schema':'bw.gui-hdd.actual-v9-ack.v1','repository':r.REPOSITORY,'sourceHead':head,**{key:same[key]for key in ('runId','runAttempt','jobId','preludeSha256','templateSha256','inventorySha256','artifactId','artifactSha256')},'request':dict(ROW(request_raw),gitBlob=r.git_blob_sha_v9(request_raw))};ack_raw=E(ack)
+        commit='c'*40;tree='d'*40;ackblob=r.git_blob_sha_v9(ack_raw)
+        files={'request.original.json':request_raw,'same-job/ack.original.json':ack_raw,'same-job/ack-ref.original.json':E({'ref':same['ackRef'],'object':{'type':'commit','sha':commit}}),'same-job/ack-commit.original.json':E({'sha':commit,'parents':[],'tree':{'sha':tree}}),'same-job/ack-tree.original.json':E({'sha':tree,'truncated':False,'tree':[{'path':name,'mode':'100644','type':'blob','sha':r.git_blob_sha_v9(raw),'size':len(raw)}for name,raw in [('ack.json',ack_raw),('request.json',request_raw)]]}),'same-job/ack-blob.original.json':E({'sha':ackblob,'size':len(ack_raw),'encoding':'base64','content':base64.b64encode(ack_raw).decode()}),'same-job/input-install.json':E(ack['request']),'same-job/prelude.original.json':prelude_raw,'same-job/template.original.json':template,'same-job/inventory.original.json':E(value),'same-job/deadline.json':E({'schema':'bw.gui-hdd.actual-v9-deadline.v1','runId':90,'runAttempt':1,'jobId':91,'sourceHead':head,'startedMonotonicNs':8000000000,'deadlineMonotonicNs':2108000000000,'cleanupReserveSeconds':60,'clock':{'schema':'bw.gui-hdd.actual-v9-clock.v1','jobStartedAt':'2026-10-28T00:00:00Z','httpDate':'Wed, 28 Oct 2026 00:00:01 GMT','requestMonotonicNs':10000000000,'responseMonotonicNs':11000000000,'requestWallTimeNs':10000000000,'responseWallTimeNs':11000000000,'serverDateSeconds':1793145601,'jobStartedSeconds':1793145600,'elapsedUpperNs':3000000000}})}
+        files['same-job/ack-ref-after.original.json']=files['same-job/ack-ref.original.json']
+        return files,request,{'ackCommit':commit,'ackBlob':ackblob,'ackSha256':H(ack_raw)}
+
+    def test_reader_v9_ack_exact_reachable_request_and_negative_object_roles(self):
+        files,request,expected=self.reader_ack_v9_packet();self.assertEqual(r.verify_actual_v9_ack(files,request,expected)['jobId'],91)
+        for cut in ('wrong-job','replayed-request','mutable-history','missing-request','symlink','wrong-ref','changed-blob','install-substitution'):
+            f=copy.deepcopy(files);e=copy.deepcopy(expected)
+            if cut=='wrong-job':v=D(f['same-job/ack.original.json']);v['jobId']=999;f['same-job/ack.original.json']=E(v)
+            elif cut=='replayed-request':f['request.original.json']+=b' '
+            elif cut=='mutable-history':v=D(f['same-job/ack-commit.original.json']);v['parents']=[{'sha':'f'*40}];f['same-job/ack-commit.original.json']=E(v)
+            elif cut in ('missing-request','symlink'):
+                v=D(f['same-job/ack-tree.original.json'])
+                if cut=='missing-request':v['tree']=v['tree'][:1]
+                else:v['tree'][1]['mode']='120000'
+                f['same-job/ack-tree.original.json']=E(v)
+            elif cut=='wrong-ref':v=D(f['same-job/ack-ref.original.json']);v['ref']='refs/heads/other';f['same-job/ack-ref.original.json']=E(v)
+            elif cut=='changed-blob':v=D(f['same-job/ack-blob.original.json']);v['content']=base64.b64encode(b'changed').decode();f['same-job/ack-blob.original.json']=E(v)
+            else:f['same-job/input-install.json']=E(dict(D(f['same-job/input-install.json']),sha256='0'*64))
+            with self.subTest(cut=cut),self.assertRaises(ValueError):r.verify_actual_v9_ack(f,request,e)
+
+    def reader_final_v9_packet(self):
+        files,expected,env=self.actual_v8_packet();request=D(files['request.original.json'])
+        value,template,admission,prelude_raw=self.reader_finite_v10_packet(True);prelude=D(prelude_raw)
+        request.update(schema='bw.gui-hdd.actual-request.v9',pullRequest=prelude['pullRequest'],source=copy.deepcopy(value['source']),build=copy.deepcopy(prelude['build']),dependencyPins=copy.deepcopy(r.FINITE_V10_PINS),dispatch=copy.deepcopy(prelude['dispatch']))
+        vendor=E(r.FINITE_V10_PINS);request['criticalFiles']['vendor-pins.json']=ROW(vendor)
+        for name,row in value['installedFiles'].items():request['installedFiles'][name]=row
+        value['installedFiles']=copy.deepcopy(request['installedFiles'])
+        for role in ('files','aliases','directoryAliases'):
+            if role=='files':request['runtime'][role].pop('/etc/resolv.conf',None)
+            if role=='files':request['runtime'][role].update(value['runtime'][role])
+            else:request['runtime'][role]=copy.deepcopy(value['runtime'][role])
+        admission.update(original=ROW(E(value)),runId=200)
+        value['platform']['GITHUB_RUN_ID']='200'
+        guard=D(base64.b64decode(value['guardAdmission']['base64']));guard['platform']['GITHUB_RUN_ID']='200';value['guardAdmission']=dict(ROW(E(guard)),base64=base64.b64encode(E(guard)).decode());admission['original']=ROW(E(value))
+        reference=copy.deepcopy(request['inventoryAdmission']);reference.update(schema='bw.gui-hdd.actual-finite-inventory-reference.v7',metadataAdmission=admission,jobId=expected['jobId'],artifactId=992,artifactSha256='a'*64);reference['workflow']['commit']=value['source']['head'];request['inventoryAdmission']=reference
+        head=request['source']['head'];jobid=expected['jobId']
+        same={'schema':'bw.gui-hdd.same-job.v1','runId':200,'runAttempt':1,'jobId':jobid,'preludeSha256':H(prelude_raw),'templateSha256':H(template),'inventorySha256':H(E(value)),'artifactId':992,'artifactSha256':'a'*64,'ackRef':'refs/heads/bw-gui-hdd-actual-v9-ack-200-'+str(jobid)+'-'+head};request['sameJob']=same
+        raw=E(request);pin=H(raw);files['request.original.json']=raw
+        expected.update(schema='bw.gui-hdd.actual-expectation.v9',requestSha256=pin,buildSourceAdmissionSha256=H(E(request['build']['sourceAdmission'])),inventoryOriginal=dict(ROW(E(value)),base64=base64.b64encode(E(value)).decode()),inventoryTemplate=dict(ROW(template),base64=base64.b64encode(template).decode()),inventoryReferenceSha256=H(E(reference)),dependencyPins=request['dependencyPins'],vendorPinsSha256=ROW(vendor)['sha256'],artifactName='i80386-hdd-gui-actual-v9-200-1')
+        for phase in ('before','after'):
+            files['source.'+phase+'.json']=E(request['source']);files['installed.'+phase+'.json']=E(request['installedFiles'])
+            runtime=D(files['runtime.'+phase+'.json'])
+            for role in ('files','aliases','directoryAliases'):runtime[role]=copy.deepcopy(request['runtime'][role])
+            runtime['identities']={path:runtime['identities'].get(path,{'dev':1,'ino':100+i})for i,path in enumerate(sorted(request['runtime']['files']))}
+            runtime['directoryIdentities']={row['target']:runtime['directoryIdentities'].get(row['target'],{'dev':1,'ino':2,'mode':stat.S_IFDIR|0o755})for row in runtime['directoryAliases'].values()}
+            files['runtime.'+phase+'.json']=E(runtime)
+            startup=D(files['python-startup.'+phase+'.json']);startup['arguments'][1]='actual-v9';startup['arguments'][startup['arguments'].index('--expected-sha256')+1]=pin;files['python-startup.'+phase+'.json']=E(startup)
+        index=2+sorted(r.SOURCE).index('vendor-pins.json');files['git-'+str(index)+'.stdout']=vendor;process=D(files['git-'+str(index)+'.process.json']);process['streams']['stdout']=ROW(vendor);files['git-'+str(index)+'.process.json']=E(process)
+        event=base64.b64decode(value['event']['base64']);files['event.original.json']=event
+        env.update(GITHUB_JOB='actual-v9',GITHUB_REF=request['dispatch']['ref'],GITHUB_REF_TYPE='branch',GITHUB_REF_NAME=request['dispatch']['ref'].removeprefix('refs/heads/'),GITHUB_WORKFLOW_REF=r.REPOSITORY+'/.github/workflows/i80386-hdd-gui-actual.yml@'+request['dispatch']['ref'])
+        platform=dict(env,schema='bw.gui-hdd.actual-v9-platform.v1')
+        pr=D(files['dispatch-pr.original.json']);pr['number']=request['pullRequest'];pr['body']='<!-- BW_GUI_HDD_ACTUAL_V9_REQUEST_SHA256='+pin+' -->';files['dispatch-pr.original.json']=E(pr)
+        files.pop('dispatch-tag.original.json');files['dispatch-branch.original.json']=E({'ref':request['dispatch']['ref'],'object':{'type':'commit','sha':head}})
+        expected['dispatchProof']={'pullRequest':ROW(files['dispatch-pr.original.json']),'branchRef':ROW(files['dispatch-branch.original.json'])}
+        expected['job']['name']='actual-v9';expected['job']['steps']=[{'number':i,'name':name,'status':'completed','conclusion':'success'}for i,name in enumerate(r.STARTUP_STEPS_V9,1)];expected['artifact']['name']=expected['artifactName']
+        result=D(files['result.json']);result.update(schema='bw.gui-hdd.result.v9',requestSha256=pin,dependencyPins=request['dependencyPins'],dispatchPlatform=platform);files['result.json']=E(result)
+        stage=D(files['native-font.stage.json']);stage.update(requestSha256=pin,eventSha256=H(event),source=request['source']);stage['platform']['GITHUB_JOB']='actual-v9';files['native-font.stage.json']=E(stage)
+        proof_admission=D(files['probe-admission.json']);proof_admission.update(boardPin=r.FINITE_V10_PINS['bw-board'],criticalFiles=request['criticalFiles']);files['probe-admission.json']=E(proof_admission)
+        for scenario in r.SCENARIOS:
+            files[scenario+'/admission.json']=E(proof_admission);proof=D(files[scenario+'/proof.json']);proof.update(boardPin=r.FINITE_V10_PINS['bw-board'],admissionSha256=H(E(proof_admission)));files[scenario+'/proof.json']=E(proof)
+            process=D(files[scenario+'.process.json']);process['environment']['PROOF_BROWSER_SHA256']=request['runtime']['files'][request['runtime']['chromium']]['sha256'];files[scenario+'.process.json']=E(process)
+            launch=D(files[scenario+'/browser-launch.json']);launch.update(sha256=request['runtime']['files'][request['runtime']['chromium']]['sha256'],byteLength=request['runtime']['files'][request['runtime']['chromium']]['byteLength']);files[scenario+'/browser-launch.json']=E(launch)
+        for role in ('bootstrap-admission.json','bootstrap-helper.stdout','bootstrap-helper.stderr'):files.pop(role)
+        ack={'schema':'bw.gui-hdd.actual-v9-ack.v1','repository':r.REPOSITORY,'sourceHead':head,**{key:same[key]for key in ('runId','runAttempt','jobId','preludeSha256','templateSha256','inventorySha256','artifactId','artifactSha256')},'request':dict(ROW(raw),gitBlob=r.git_blob_sha_v9(raw))};ack_raw=E(ack);commit='c'*40;tree='d'*40;blob=r.git_blob_sha_v9(ack_raw)
+        files.update({'same-job/prelude.original.json':prelude_raw,'same-job/event.original.json':event,'same-job/dispatch-job.original.json':E({'id':jobid,'run_id':200,'name':'actual-v9','status':'in_progress','started_at':'2026-10-28T00:00:00Z'}),'same-job/ack.original.json':ack_raw,'same-job/ack-ref.original.json':E({'ref':same['ackRef'],'object':{'type':'commit','sha':commit}}),'same-job/ack-commit.original.json':E({'sha':commit,'parents':[],'tree':{'sha':tree}}),'same-job/ack-tree.original.json':E({'sha':tree,'truncated':False,'tree':[{'path':name,'mode':'100644','type':'blob','sha':r.git_blob_sha_v9(body),'size':len(body)}for name,body in [('ack.json',ack_raw),('request.json',raw)]]}),'same-job/ack-blob.original.json':E({'sha':blob,'size':len(ack_raw),'encoding':'base64','content':base64.b64encode(ack_raw).decode()}),'same-job/input-install.json':E(ack['request']),'same-job/inventory.original.json':E(value),'same-job/template.original.json':template,'same-job/dispatch-pr.original.json':files['dispatch-pr.original.json'],'same-job/runtime-after-ack.json':files['runtime.before.json']})
+        files['same-job/ack-ref-after.original.json']=files['same-job/ack-ref.original.json']
+        phase_files,phase_expected=self.reader_phase_v9_packet();deadline=D(phase_files['gui-actual-v9/deadline.json']);deadline.update(runId=200,jobId=jobid);files['same-job/deadline.json']=E(deadline);files['same-job/dispatch-clock.original.json']=E(deadline['clock'])
+        files['same-job/entry-budget.json']=E({'schema':'bw.gui-hdd.actual-v9-entry-budget.v1','observedMonotonicNs':12000000000,'deadlineMonotonicNs':deadline['deadlineMonotonicNs'],'remainingNs':deadline['deadlineMonotonicNs']-12000000000,'requiredNs':1490000000000})
+        files['runtime.entry.json']=files['runtime.before.json']
+        core=D(files['runtime.before.json']);core['schema']='bw.gui-hdd.runtime-observation.v4';core.pop('nativeFontDirectories')
+        stage,_=r.native_font_layout(request['nativeFontAdmission'])
+        for path in (request['nativeFontAdmission']['font']['path'],request['nativeFontAdmission']['font']['licensePath'],str(stage/'fontconfig.xml')):
+            core['files'].pop(path);core['identities'].pop(path)
+        files['same-job/core-runtime-after-ack.json']=E(core)
+        for i,scenario in enumerate(r.SCENARIOS):
+            process=D(files[scenario+'.process.json']);process.update(startedNs=20000000000+i*10000000000,endedNs=21000000000+i*10000000000);files[scenario+'.process.json']=E(process)
+        expected.update(ackCommit=commit,ackBlob=blob,ackSha256=H(ack_raw))
+        with tempfile.TemporaryDirectory(dir=root.parent) as temporary:
+            output=c.V8Originals(pathlib.Path(temporary)/'git-envelopes')
+            indices=sorted(int(name.removeprefix('git-').removesuffix('.stdout'))for name in files if name.startswith('git-') and name.endswith('.stdout'))
+            for i in indices:
+                for suffix in c.V8Originals.MEMBER_ORDER:output.save('git-'+str(i)+'.'+suffix,files.pop('git-'+str(i)+'.'+suffix))
+            files.update({path.name:path.read_bytes()for path in output.root.iterdir()})
+        return files,expected
+
+    def test_reader_v9_complete_terminal_packet_and_coherently_rehashed_negatives(self):
+        files,expected=self.reader_final_v9_packet()
+        self.assertTrue(r.audit_v9(files,expected)['pass'])
+        archived=copy.deepcopy(files);archived['inventory.json']=E({'schema':'bw.gui-hdd.originals.v1','files':{name:ROW(raw)for name,raw in archived.items()}});archive=zip_({'originals/'+name:raw for name,raw in archived.items()})
+        selected=copy.deepcopy(expected);selected.update(artifactBytes=len(archive),artifactSha256=H(archive));selected['artifact'].update(size_in_bytes=len(archive),digest='sha256:'+H(archive))
+        self.assertTrue(r.audit_v9(r.archive_originals_v9(archive),selected)['pass'])
+        for cut in ('not-terminal','failed-job','foreign-artifact','post-ack-drift','budget','guest-proof','cleanup','core-omission','core-resolver-drift','missing-staging'):
+            f=copy.deepcopy(files);e=copy.deepcopy(expected)
+            if cut=='not-terminal':e['run'].update(status='in_progress',conclusion=None)
+            elif cut=='failed-job':e['job']['conclusion']='failure'
+            elif cut=='foreign-artifact':e['artifact']['workflow_run']['id']=999
+            elif cut=='post-ack-drift':v=D(f['same-job/runtime-after-ack.json']);v['files']['/etc/unselected']=ROW(b'changed');f['same-job/runtime-after-ack.json']=E(v)
+            elif cut=='budget':v=D(f['same-job/entry-budget.json']);v['remainingNs']=1;f['same-job/entry-budget.json']=E(v)
+            elif cut=='guest-proof':v=D(f['forward-debug/proof.json']);v['boardPin']='0'*40;f['forward-debug/proof.json']=E(v)
+            elif cut=='core-omission':v=D(f['same-job/core-runtime-after-ack.json']);v['files'].pop('/run/systemd/resolve/stub-resolv.conf');f['same-job/core-runtime-after-ack.json']=E(v)
+            elif cut=='core-resolver-drift':v=D(f['same-job/core-runtime-after-ack.json']);v['aliases']['/etc/resolv.conf']['linkText']='changed';f['same-job/core-runtime-after-ack.json']=E(v)
+            elif cut=='missing-staging':v=D(f['same-job/runtime-after-ack.json']);path=D(f['request.original.json'])['nativeFontAdmission']['font']['path'];v['files'].pop(path);f['same-job/runtime-after-ack.json']=E(v)
+            else:v=D(f['forward-debug.process.json']);v['remainingDescendants']=[{'pid':999}];f['forward-debug.process.json']=E(v)
+            with self.subTest(cut=cut),self.assertRaises((ValueError,KeyError)):r.audit_v9(f,e)
+
+
+    def test_reader_v9_clock_checkout_cost_and_roundtrip_bound(self):
+        phase,e=self.reader_phase_v9_packet();deadline=D(phase['gui-actual-v9/deadline.json']);self.assertEqual(r.actual_v9_deadline(E(deadline),{'runId':90,'jobId':91},deadline['sourceHead']),deadline)
+        for cut in ('ignore-checkout','clock-rollback','date-parse','date-seconds','elapsed','boolean','reserve'):
+            changed=copy.deepcopy(deadline)
+            if cut=='ignore-checkout':changed['startedMonotonicNs']=changed['clock']['responseMonotonicNs'];changed['deadlineMonotonicNs']=changed['startedMonotonicNs']+2100000000000
+            elif cut=='clock-rollback':changed['clock']['requestMonotonicNs']=changed['clock']['responseMonotonicNs']+1
+            elif cut=='date-parse':changed['clock']['httpDate']='Wed, 28 Oct 2026 00:00:01 +0000'
+            elif cut=='date-seconds':changed['clock']['serverDateSeconds']+=1
+            elif cut=='elapsed':changed['clock']['elapsedUpperNs']-=1
+            elif cut=='boolean':changed['clock']['responseMonotonicNs']=True
+            else:changed['cleanupReserveSeconds']=1
+            with self.subTest(cut=cut),self.assertRaises(ValueError):r.actual_v9_deadline(E(changed),{'runId':90,'jobId':91},changed['sourceHead'])
+
+        # Recompute every derived clock/deadline fact: only the reviewed bounds refuse.
+        for cut in ('31-second-roundtrip','2101-second-job-age'):
+            changed=copy.deepcopy(deadline);clock=changed['clock']
+            clock.update(requestMonotonicNs=10000000000000,responseMonotonicNs=10001000000000)
+            if cut=='31-second-roundtrip':clock['responseMonotonicNs']=clock['requestMonotonicNs']+31000000000
+            else:clock.update(httpDate='Wed, 28 Oct 2026 00:35:01 GMT',serverDateSeconds=clock['jobStartedSeconds']+2101)
+            clock['elapsedUpperNs']=(clock['serverDateSeconds']+1-clock['jobStartedSeconds'])*1000000000+clock['responseMonotonicNs']-clock['requestMonotonicNs']
+            changed['startedMonotonicNs']=clock['responseMonotonicNs']-clock['elapsedUpperNs'];changed['deadlineMonotonicNs']=changed['startedMonotonicNs']+2100000000000
+            with self.subTest(cut=cut),self.assertRaisesRegex(ValueError,'bounded official job age and metadata interval'):
+                r.actual_v9_deadline(E(changed),{'runId':90,'jobId':91},changed['sourceHead'])
+
+    def test_reader_v9_and_f10_default_disabled_before_any_input_read(self):
+        for mode in ('--actual-v9-phase','--actual-v9','--inventory-original-v10','--inventory-failure-v10'):
+            args=[mode,'--artifact','unread','--expected','unread']if mode.startswith('--actual')else[mode,'--original','unread','--template','unread','--expected','unread']
+            with self.subTest(mode=mode),patch.object(r,'bounded_input',side_effect=AssertionError('input read before disabled guard')),self.assertRaises(ValueError):r.main(args)
+
+    def test_producer_actual_v9_full_parse_join_and_coherent_phase_cuts(self):
+        files,expected=self.reader_final_v9_packet();raw=files['request.original.json'];request=c.parse_request(raw,H(raw))
+        prelude=D(files['same-job/prelude.original.json']);ack=D(files['same-job/ack.original.json']);deadline=D(files['same-job/deadline.json'])
+        inventory=files['same-job/inventory.original.json'];template=files['same-job/template.original.json']
+        c.actual_v9_join_request(request,ack,prelude,deadline,inventory,template)
+        for cut in ('old-pins','wrong-job','different-inventory','changed-resolver','missing-alias','wrong-build','added-runtime-file'):
+            changed=copy.deepcopy(request)
+            if cut=='old-pins':changed['dependencyPins']=copy.deepcopy(c.FINITE_V9_PINS)
+            elif cut=='wrong-job':changed['sameJob']['jobId']+=1
+            elif cut=='different-inventory':changed['sameJob']['inventorySha256']='0'*64
+            elif cut=='changed-resolver':changed['runtime']['files']['/etc/resolv.conf']=ROW(b'changed')
+            elif cut=='missing-alias':changed['runtime']['aliases'].pop(next(iter(changed['runtime']['aliases'])))
+            elif cut=='wrong-build':changed['build']['jobId']+=1
+            else:changed['runtime']['files']['/etc/unselected-host-config']=ROW(b'extra')
+            with self.subTest(cut=cut),self.assertRaises(ValueError):
+                parsed=c.parse_request(E(changed),H(E(changed)))
+                c.actual_v9_join_request(parsed,ack,prelude,deadline,inventory,template)
+
+    def test_producer_actual_v9_execute_preserves_samejob_and_primary_branch_failure(self):
+        files,expected=self.reader_final_v9_packet()
+        job=D(files['same-job/dispatch-job.original.json']);job['run_attempt']=1;files['same-job/dispatch-job.original.json']=E(job)
+        request=D(files['request.original.json']);pin=H(files['request.original.json'])
+        env=dict(request['inventoryAdmission']['metadataAdmission']['repositoryVariables'])
+        env.update({key:value for key,value in D(files['result.json'])['dispatchPlatform'].items() if key!='schema'})
+        env['GITHUB_EVENT_PATH']='/mock/event.json'
+        class Memory:
+            def __init__(self,path):self.root=pathlib.Path(path);self.raw={};self.files={};self.total=0;instances.append(self)
+            def save(self,name,raw):
+                if name in self.raw:raise AssertionError('duplicate original')
+                self.raw[name]=raw;self.files[name]=ROW(raw);self.total+=len(raw)
+            def seal(self,result):self.save('result.json',E(result))
+        def startup(where,mode,args):
+            observed=D(files['python-startup.before.json']);observed['arguments']=['scripts/run-i80386-hdd-gui-actual.py',mode]+args
+            c.validate_startup(observed,c.startup_installation(files['python-startup.original.txt']),mode,args)
+            return files['python-startup.original.txt'],observed
+        def raw(path,cap):
+            text=str(path)
+            if text=='/mock/event.json':return files['event.original.json']
+            if text=='/checkout/gui-inputs/request.json':return files['request.original.json']
+            if text.startswith('/checkout/gui-actual-v9/'):return files['same-job/'+text.removeprefix('/checkout/gui-actual-v9/')]
+            raise AssertionError('unexpected read '+text)
+        def selected_file(path,row):
+            name=str(path).removeprefix('/checkout/')
+            return E(c.FINITE_V10_PINS) if name=='vendor-pins.json' else ('source:'+name).encode()
+        for cut in ('pr-head','branch-head'):
+            instances=[];calls=[];pr=D(files['dispatch-pr.original.json']);branch=D(files['dispatch-branch.original.json'])
+            if cut=='pr-head':pr['head']['sha']='0'*40
+            else:branch['object']['sha']='0'*40
+            class Fake:
+                def __init__(self,where,output,environment):self.output=output;self.index=0;self.deadline=1800
+                def git(self,args):
+                    self.index+=1
+                    if args[0]=='rev-parse':return (request['source']['head' if args[1]=='HEAD' else 'tree']+'\n').encode()
+                    return selected_file('/checkout/'+args[2].split(':',1)[1],{})
+                def api(self,route):
+                    calls.append(route)
+                    return E(pr) if route.startswith('/pulls/') else E(branch)
+                def run(self,*args):raise AssertionError('guest/build edge before PR and branch admission')
+            with patch.object(c,'V8Originals',Memory),patch.object(c,'regular',side_effect=raw),patch.object(c,'regular_empty',side_effect=raw),patch.object(c,'check_file',side_effect=selected_file),patch.object(c,'observe_python_startup',side_effect=startup),patch.object(c,'observe_runtime',return_value=D(files['runtime.before.json'])),patch.object(c.time,'monotonic_ns',return_value=12000000000),patch.object(c.time,'monotonic',return_value=12):
+                result=c.execute(files['request.original.json'],pin,pathlib.Path('/checkout'),pathlib.Path('/checkout/owned-originals'),env,factory=Fake,startup_mode='actual-v9')
+            self.assertEqual(result,1);retained=instances[0].raw;failure=D(retained['result.json'])['firstFailure']
+            self.assertTrue('same-job/ack.original.json' in retained,failure);self.assertTrue('event.original.json' in retained,failure)
+            self.assertIn('PR marker/head' if cut=='pr-head' else 'source branch',failure['message'])
+            self.assertEqual(len(calls),1 if cut=='pr-head' else 2)
+            self.assertEqual(D(retained['result.json'])['secondary'],[])
+
+
+    def test_producer_actual_v9_ack_positive_exact_install_reobserve_and_replay_refusal(self):
+        files,expected=self.reader_final_v9_packet();request=D(files['request.original.json']);ack=D(files['same-job/ack.original.json'])
+        job=D(files['same-job/dispatch-job.original.json']);job['run_attempt']=1;files['same-job/dispatch-job.original.json']=E(job)
+        env=dict(request['inventoryAdmission']['metadataAdmission']['repositoryVariables'])
+        env.update({key:value for key,value in D(files['result.json'])['dispatchPlatform'].items() if key!='schema'})
+        writes={};instances=[];calls=[];installs=[]
+        class Memory:
+            def __init__(self,path):self.root=pathlib.Path(path);self.raw={};instances.append(self)
+            def save(self,name,raw):
+                if name in self.raw:raise AssertionError('duplicate ACK original')
+                self.raw[name]=raw
+            def seal(self,result):self.save('result.json',E(result))
+        class Fake:
+            def __init__(self,where,output,environment):self.deadline=1800
+            def api(self,route):
+                calls.append(route)
+                if route.startswith('/git/ref/'):return files['same-job/ack-ref.original.json']
+                if route.startswith('/git/commits/'):return files['same-job/ack-commit.original.json']
+                if route.startswith('/git/trees/'):return files['same-job/ack-tree.original.json']
+                if route.startswith('/git/blobs/'):return files['same-job/ack-blob.original.json']
+                if route.startswith('/pulls/'):return files['dispatch-pr.original.json']
+                raise AssertionError('unselected metadata route')
+        def raw(path,cap):
+            text=str(path)
+            if text in writes:return writes[text]
+            if text=='/checkout/gui-finite-inventory-v10/inventory.json':return files['same-job/inventory.original.json']
+            if text.startswith('/checkout/gui-actual-v9/'):return files['same-job/'+text.removeprefix('/checkout/gui-actual-v9/')]
+            raise AssertionError('unselected local original')
+        def install(blob,digest,target,environment,deadline=None):
+            self.assertEqual((blob,digest),(ack['request']['gitBlob'],ack['request']['sha256']))
+            self.assertLessEqual(deadline,192);installs.append((blob,digest))
+            if str(target) in writes:raise FileExistsError('exclusive input')
+            writes[str(target)]=files['request.original.json'];return dict(ack['request'])
+        def keep(path,raw):
+            if str(path) in writes:raise FileExistsError('exclusive state')
+            writes[str(path)]=raw
+        def observe(initial):
+            core=D(files['same-job/core-runtime-after-ack.json'])
+            self.assertEqual(initial['schema'],'bw.gui-hdd.actual-request.v4')
+            self.assertEqual(initial['runtime']['files'],core['files'])
+            return core
+        with patch.object(c,'ACTUAL_V9_ENABLED',True),patch.object(c,'FINITE_INVENTORY_V10_ENABLED',True),patch.object(c,'Originals',Memory),patch.object(c,'regular',side_effect=raw),patch.object(c.Path,'exists',lambda path:str(path) in writes),patch.object(c,'install_input',side_effect=install),patch.object(c,'exclusive_stage_write',side_effect=keep),patch.object(c,'observe_runtime',side_effect=observe) as observed,patch.object(c.time,'monotonic_ns',return_value=12000000000),patch.object(c.time,'monotonic',return_value=12):
+            installed=c.actual_v9_wait_ack(pathlib.Path('/checkout'),env,factory=Fake,sleep=lambda _:self.fail('ACK available on first poll'))
+            self.assertEqual(installed,ack['request']);self.assertEqual(len(installs),1);self.assertEqual(observed.call_count,1)
+            self.assertEqual(D(writes['/checkout/gui-actual-v9/core-runtime-after-ack.json'])['files'],D(files['same-job/core-runtime-after-ack.json'])['files'])
+            before=len(calls)
+            with self.assertRaisesRegex(ValueError,'exclusive ACK/request'):c.actual_v9_wait_ack(pathlib.Path('/checkout'),env,factory=Fake)
+            self.assertEqual(len(calls),before);self.assertEqual(len(installs),1)
+        self.assertTrue(D(instances[0].raw['result.json'])['pass'])
+        retained=dict(files)
+        for name,raw in writes.items():
+            if name.startswith('/checkout/gui-actual-v9/'):retained['same-job/'+name.removeprefix('/checkout/gui-actual-v9/')]=raw
+        r.verify_actual_v9_ack(retained,request,expected)
+        r.verify_actual_v9_core_runtime(retained,request,D(files['same-job/inventory.original.json']))
+        c.actual_v9_verify_core(D(retained['same-job/core-runtime-after-ack.json']),D(files['runtime.before.json']),request)
+
+
+    def test_producer_actual_v9_core_and_native_staging_exact_negatives(self):
+        files,_expected=self.reader_final_v9_packet();request=D(files['request.original.json']);core=D(files['same-job/core-runtime-after-ack.json']);full=D(files['runtime.before.json'])
+        c.actual_v9_verify_core(core,full,request)
+        for cut in ('omitted-core','changed-resolver','missing-staged-font','changed-staged-notice','extra-core','new-alias'):
+            a=copy.deepcopy(core);b=copy.deepcopy(full)
+            if cut=='omitted-core':a['files'].pop(next(iter(a['files'])))
+            elif cut=='changed-resolver':a['aliases']['/etc/resolv.conf']['linkText']='unselected'
+            elif cut=='missing-staged-font':b['files'].pop(request['nativeFontAdmission']['font']['path'])
+            elif cut=='changed-staged-notice':b['files'][request['nativeFontAdmission']['font']['licensePath']]=ROW(b'changed')
+            elif cut=='extra-core':a['files']['/etc/unselected']=ROW(b'extra')
+            else:a['aliases']['/etc/unselected']={'linkText':'/node','target':'/node'}
+            with self.subTest(cut=cut),self.assertRaises(ValueError):c.actual_v9_verify_core(a,b,request)
+
+
+    def test_producer_actual_v9_external_wait_expires_without_install_or_guest(self):
+        files,_expected=self.reader_final_v9_packet();request=D(files['request.original.json'])
+        job=D(files['same-job/dispatch-job.original.json']);job['run_attempt']=1;files['same-job/dispatch-job.original.json']=E(job)
+        env=dict(request['inventoryAdmission']['metadataAdmission']['repositoryVariables']);env.update({key:value for key,value in D(files['result.json'])['dispatchPlatform'].items() if key!='schema'})
+        clock=[12];calls=[];sealed=[]
+        class Memory:
+            def __init__(self,path):self.root=pathlib.Path(path)
+            def save(self,*args):pass
+            def seal(self,result):sealed.append(copy.deepcopy(result))
+        class Missing:
+            def __init__(self,*args):self.deadline=1800
+            def api(self,route):
+                calls.append(route);raise c.urllib.error.HTTPError('https://api.github.com/owned-ACK',404,'absent',None,None)
+        def raw(path,cap):
+            text=str(path)
+            if text=='/checkout/gui-finite-inventory-v10/inventory.json':return files['same-job/inventory.original.json']
+            if text.startswith('/checkout/gui-actual-v9/'):return files['same-job/'+text.removeprefix('/checkout/gui-actual-v9/')]
+            raise AssertionError('unselected original')
+        def sleep(seconds):clock[0]+=seconds
+        with patch.object(c,'ACTUAL_V9_ENABLED',True),patch.object(c,'FINITE_INVENTORY_V10_ENABLED',True),patch.object(c,'Originals',Memory),patch.object(c,'regular',side_effect=raw),patch.object(c.Path,'exists',return_value=False),patch.object(c,'install_input') as install,patch.object(c,'observe_runtime') as observe,patch.object(c.time,'monotonic',side_effect=lambda:clock[0]),patch.object(c.time,'monotonic_ns',side_effect=lambda:int(clock[0]*10**9)):
+            with self.assertRaisesRegex(ValueError,'admission deadline expired'):
+                c.actual_v9_wait_ack(pathlib.Path('/checkout'),env,factory=Missing,sleep=sleep)
+            install.assert_not_called();observe.assert_not_called()
+        self.assertEqual(clock[0],192);self.assertLessEqual(len(calls),37);self.assertEqual(len(set(calls)),1)
+        self.assertEqual(len(sealed),1);self.assertFalse(sealed[0]['pass']);self.assertFalse(sealed[0]['guestApproved'])
+        self.assertIn('admission deadline expired',sealed[0]['firstFailure']['message'])
+
+
 class NativeV2Originals(unittest.TestCase):
     def fresh(self):
         files,expected=fixture_v5();request=D(files['request.original.json']);ref=request['nativeFontAdmission']
@@ -5532,7 +6042,10 @@ test('standalone original reader: complete manufactured packet and coherent nega
         assert.ok(summary.controls>0);assert.equal(summary.failures,0);assert.equal(summary.errors,0);
         total+=summary.controls;
     }
-    assert.equal(total,167,'all historical standalone methods remain covered exactly once');
+    const historicalMethodCount=167;
+    const sameJobMethodCount=14; // Seven new reader and seven connected producer methods.
+    assert.equal(total,historicalMethodCount+sameJobMethodCount,
+        'all 167 historical plus 14 same-job standalone methods remain covered exactly once');
 });
 
 test('actual v6 parts: exact bounded transport and independent reader parity', () => {
@@ -5757,9 +6270,9 @@ test('metadata diagnostic step and job budgets contain the collector without wid
     assert.ok(jobMinutes>=setupMinutes+recordMinutes+1,'metadata job includes setup, record and finite overhead margin');
     assert.match(workflow.split('  actual:')[1].split('  actual-v7:')[0],/false &&/);
     const actualV7=workflow.split('  actual-v7:')[1].split('  actual-v8:')[0];
-    const actualV8=workflow.split('  actual-v8:')[1].split('  font-bridge:')[0];
+    const actualV8=workflow.split('  actual-v8:')[1].split('  actual-v9:')[0].split('  font-bridge:')[0];
     assert.match(actualV7,/false &&/);
-    assert.match(actualV8,/true && github\.event_name == 'workflow_dispatch'/);
+    assert.match(actualV8,/false && github\.event_name == 'workflow_dispatch'/);
     assert.match(actualV7,/timeout-minutes: 35/);
     assert.match(actualV8,/timeout-minutes: 35/);
     assert.match(controller,/ACTUAL_ENABLED = False/);
@@ -5948,23 +6461,176 @@ const assertGuiCuiSelection = (consumer, selected, dependency='bw-circuit-ui') =
 test('GUI consumer explicitly matches current canonical Board and CUI declarations', () => {
     const controller=fs.readFileSync(root+'scripts/run-i80386-hdd-gui-actual.py','utf8');
     const reader=fs.readFileSync(root+'scripts/read-i80386-hdd-gui-originals.py','utf8');
-    for(const [dependency,declaration] of [['bw-circuit-ui','CUI'],['bw-board','CURRENT_BOARD']]){
-        const pattern=new RegExp("^"+declaration+" = '([0-9a-f]{40})'$",'m');
-        const readerPattern=dependency==='bw-circuit-ui' ? /^CUI_V8 = '([0-9a-f]{40})'$/m : pattern;
-        const consumer=controller.match(pattern)?.[1], selected=guiCuiSelection(dependency);
+    const pattern=/^FINITE_V10_PINS = \{'bw-board':'([0-9a-f]{40})','bw-circuit-ui':'([0-9a-f]{40})','sb3-creator':'([0-9a-f]{40})'\}$/m;
+    for(const [dependency,index] of [['bw-board',1],['bw-circuit-ui',2]]){
+        const consumer=controller.match(pattern)?.[index], selected=guiCuiSelection(dependency);
         assertGuiCuiSelection(consumer,selected,dependency);
-        assertGuiCuiSelection(reader.match(readerPattern)?.[1],selected,dependency);
+        assertGuiCuiSelection(reader.match(pattern)?.[index],selected,dependency);
         assert.throws(()=>assertGuiCuiSelection('0'.repeat(40),selected,dependency));
         for(let i=0;i<selected.length;i++){
             const drift=[...selected];drift[i]=drift[i].replace(consumer,'0'.repeat(40));
             assert.throws(()=>assertGuiCuiSelection(consumer,drift,dependency));
         }
-        // Each single reader/controller declaration independently remains live.
-        for(const [source,sourcePattern] of [[controller,pattern],[reader,readerPattern]]){
-            const changed=source.replace(sourcePattern,(dependency==='bw-circuit-ui' && source===reader ? 'CUI_V8' : declaration)+" = '"+'0'.repeat(40)+"'");
+        for(const source of [controller,reader]){
+            const changed=source.replace(pattern,line=>line.replace(consumer,'0'.repeat(40)));
             assert.notEqual(changed,source);
-            assert.throws(()=>assertGuiCuiSelection(changed.match(sourcePattern)?.[1],selected,dependency));
+            assert.throws(()=>assertGuiCuiSelection(changed.match(pattern)?.[index],selected,dependency));
         }
     }
     assert.doesNotMatch(reader,/^CUI = /m,'unused historical reader literal removed without changing old validators');
+});
+const producerV10Controls = String.raw`
+class ProducerV10(unittest.TestCase):
+    def role(self):
+        return {'path':'/etc/resolv.conf','allowedKinds':['regular','symlink'],'symlinkAlternatives':[{'linkText':'../run/systemd/resolve/stub-resolv.conf','target':'/run/systemd/resolve/stub-resolv.conf'}]}
+    def template(self):
+        files=sorted(['/node','/usr/bin/python3.12','/chrome','/usr/bin/git','/usr/bin/gh','/usr/bin/curl','/usr/lib/libselected.so','/run/systemd/resolve/stub-resolv.conf'])
+        return {'schema':'bw.gui-hdd.inventory-template.v10','sourceHead':'a'*40,'files':files,'aliases':[],
+          'directoryAliases':[],'node':'/node','python':'/usr/bin/python3.12','chromium':'/chrome','tools':{'git':'/usr/bin/git','gh':'/usr/bin/gh'},
+          'emptyPythonSources':Originals.empty_selection(None),'libraries':['/usr/lib/libselected.so'],'scope':c.finite_v5_scope(),
+          'dependencyPins':copy.deepcopy(c.FINITE_V10_PINS),'bootstrapSource':copy.deepcopy(c.BOOTSTRAP_SOURCE),'resolverRole':self.role()}
+    def prelude(self):
+        template=self.template();raw=E(template)
+        source={'head':'a'*40,'tree':'b'*40,'files':{name:ROW(('source:'+name).encode()) for name in c.SOURCE}}
+        build={'runId':80,'attempt':1,'head':source['head'],'jobId':81,'jobName':'build','artifactId':82,'name':'github-pages',
+          'metadataBytes':1,'zipBytes':1,'sha256':'c'*64,'checkoutHead':source['head'],'sourceFiles':source['files'],
+          'sourceAdmission':{'schema':'bw.gui-hdd.frontend-source-admission.v1','checkoutHead':source['head'],'checkoutTree':source['tree'],
+            'sourceFiles':source['files'],'checkoutLog':ROW(b'log'),'workflow':{'commit':source['head'],'path':'.github/workflows/build.yml','sha256':'d'*64}}}
+        return {'schema':'bw.gui-hdd.actual-v9-prelude.v1','repository':c.REPOSITORY,'pullRequest':123,'source':source,
+          'template':ROW(raw),'build':build,'nativeFontAdmission':{},'nativeSourceGit':{},
+          'dispatch':{'ref':'refs/heads/lane/manufactured-v9','workflow':{'path':c.ACTUAL_V8_WORKFLOW,'sha256':source['files'][c.ACTUAL_V8_WORKFLOW]['sha256']}},
+          'resources':copy.deepcopy(c.ACTUAL_V9_RESOURCES)}
+    def env(self,prelude):
+        raw=E(prelude);template=E(self.template());head=prelude['source']['head'];ref=prelude['dispatch']['ref']
+        return {'GITHUB_REPOSITORY':c.REPOSITORY,'GITHUB_EVENT_NAME':'workflow_dispatch','GITHUB_ACTOR':'CrispStrobe',
+          'GITHUB_RUN_ID':'90','GITHUB_RUN_ATTEMPT':'1','GITHUB_JOB':'actual-v9','GITHUB_REF':ref,'GITHUB_REF_TYPE':'branch',
+          'GITHUB_REF_NAME':ref[len('refs/heads/'):],'GITHUB_SHA':head,'GITHUB_WORKFLOW_SHA':head,'BW_EXPECTED_HEAD':head,
+          'GITHUB_WORKFLOW_REF':c.REPOSITORY+'/'+c.ACTUAL_V8_WORKFLOW+'@'+ref,
+          'BW_GUI_HDD_ACTUAL_V9_PRELUDE_SHA256':H(raw),'BW_GUI_HDD_ACTUAL_V9_PRELUDE_B64':base64.b64encode(raw).decode(),
+          'BW_FINITE_INVENTORY_V10_SHA256':H(template),'BW_FINITE_INVENTORY_V10_TEMPLATE_B64':base64.b64encode(template).decode()}
+    def event(self,value):
+        return E({'inputs':{'protocol':'actual-v9','pull_request':'123','source_head':value['source']['head'],
+           'source_ref':value['dispatch']['ref'],'prelude_sha256':H(E(value)),'request_sha256':'','tag_name':''},
+           'ref':value['dispatch']['ref'],'repository':{'full_name':c.REPOSITORY},'sender':{'login':'CrispStrobe'}})
+    def test_template_and_dispatch_are_closed_and_separate(self):
+        template=self.template();c.finite_v10_template(E(template),H(E(template)))
+        prelude=self.prelude();env=self.env(prelude);raw=self.event(prelude)
+        self.assertEqual(c.actual_v9_prelude_from_env(env),prelude)
+        self.assertEqual(c.bind_finite_v10_event(raw,'a'*40,H(E(template)),env),E(template))
+        for key,value in [('GITHUB_JOB','actual-v8'),('GITHUB_SHA','0'*40),('GITHUB_RUN_ATTEMPT','2'),('GITHUB_REF_TYPE','tag')]:
+            changed=dict(env);changed[key]=value
+            with self.assertRaises(ValueError):c.bind_finite_v10_event(raw,'a'*40,H(E(template)),changed)
+        for cut in ('kind','target','literal','overlap','missing-endpoint','historical-pins'):
+            changed=copy.deepcopy(template)
+            if cut=='kind':changed['resolverRole']['allowedKinds']=['regular']
+            if cut=='target':changed['resolverRole']['symlinkAlternatives'][0]['target']='/etc/passwd'
+            if cut=='literal':changed['resolverRole']['symlinkAlternatives'][0]['linkText']='/run/systemd/resolve/stub-resolv.conf'
+            if cut=='overlap':changed['files']=sorted(changed['files']+['/etc/resolv.conf'])
+            if cut=='missing-endpoint':changed['files'].remove('/run/systemd/resolve/stub-resolv.conf')
+            if cut=='historical-pins':changed['dependencyPins']=copy.deepcopy(c.FINITE_V9_PINS)
+            with self.assertRaises(ValueError):c.finite_v10_template(E(changed),H(E(changed)))
+    def info(self,mode,ino=1):
+        return SimpleNamespace(st_dev=1,st_ino=ino,st_mode=mode,st_uid=0,st_gid=0,st_nlink=1,st_size=39,st_mtime_ns=3)
+    def test_both_observed_resolver_branches_and_metadata_races(self):
+        template=self.template();endpoint='/run/systemd/resolve/stub-resolv.conf';path='/etc/resolv.conf';literal=self.role()['symlinkAlternatives'][0]['linkText']
+        for kind in ('regular','symlink'):
+            with self.subTest(kind=kind):
+                runtime={'files':{endpoint:ROW(b'endpoint')},'aliases':{},'directoryAliases':{}}
+                failure={'firstFailure':None,'secondary':[]};kept=[]
+                mode=(stat.S_IFREG|0o644) if kind=='regular' else (stat.S_IFLNK|0o777)
+                with patch.object(c.os,'lstat',return_value=self.info(mode)),patch.object(c.os,'readlink',return_value=literal),patch.object(c,'regular',return_value=b'resolver'),patch.object(c,'check_file',return_value=b'endpoint'):
+                    value=c.observe_resolver_role(template,runtime,failure,lambda *args:kept.append(args),c.time.monotonic()+5)
+                self.assertEqual(value['kind'],kind);self.assertIsNone(failure['firstFailure']);self.assertEqual(len(kept),1)
+                self.assertEqual(path in runtime['files'],kind=='regular');self.assertEqual(path in runtime['aliases'],kind=='symlink')
+                c.runtime_alias_policy(runtime)
+        for cut in ('unknown-link','inode-race','wrong-type','endpoint-drift','expired'):
+            runtime={'files':{endpoint:ROW(b'endpoint')},'aliases':{},'directoryAliases':{}};failure={'firstFailure':None,'secondary':[]}
+            before=self.info(stat.S_IFLNK|0o777);after=self.info(stat.S_IFLNK|0o777,2)
+            if cut=='wrong-type':before=self.info(stat.S_IFIFO|0o600)
+            with patch.object(c.os,'lstat',side_effect=[before,after] if cut=='inode-race' else lambda _:before),patch.object(c.os,'readlink',return_value='unselected' if cut=='unknown-link' else literal),patch.object(c,'check_file',side_effect=ValueError('endpoint changed') if cut=='endpoint-drift' else None):
+                value=c.observe_resolver_role(template,runtime,failure,lambda *args:None,c.time.monotonic()+(-1 if cut=='expired' else 5))
+            self.assertIsNone(value);self.assertIsNotNone(failure['firstFailure'])
+    def ack_fixture(self):
+        prelude=self.prelude();template=E(self.template());inventory=E({'schema':'manufactured'});head=prelude['source']['head']
+        deadline={'runId':90,'runAttempt':1,'jobId':91,'sourceHead':head}
+        request=E({'schema':'manufactured-request'});git=lambda raw:hashlib.sha1(b'blob '+str(len(raw)).encode()+b'\0'+raw).hexdigest()
+        ack={'schema':'bw.gui-hdd.actual-v9-ack.v1','repository':c.REPOSITORY,'runId':90,'runAttempt':1,'jobId':91,'sourceHead':head,
+           'preludeSha256':H(E(prelude)),'templateSha256':H(template),'inventorySha256':H(inventory),'artifactId':92,'artifactSha256':'c'*64,
+           'request':dict(ROW(request),gitBlob=git(request))}
+        raw=E(ack);blob={'sha':git(raw),'encoding':'base64','size':len(raw),'content':base64.b64encode(raw).decode()}
+        tree={'sha':'d'*40,'truncated':False,'tree':[{'path':'ack.json','mode':'100644','type':'blob','sha':git(raw),'size':len(raw)},
+          {'path':'request.json','mode':'100644','type':'blob','sha':git(request),'size':len(request)}]}
+        commit={'sha':'e'*40,'parents':[],'tree':{'sha':tree['sha']}}
+        ref={'ref':c.actual_v9_ack_ref(90,91,head),'object':{'type':'commit','sha':commit['sha']}}
+        return [ref,commit,tree,blob],prelude,deadline,inventory,template
+    def test_closed_ack_objects_and_all_binding_cuts(self):
+        objects,prelude,deadline,inventory,template=self.ack_fixture()
+        ack,_=c.actual_v9_ack_objects(*(E(item) for item in objects),prelude,deadline,inventory,template)
+        self.assertEqual(ack['jobId'],91)
+        for index,mutate in ((0,lambda x:x.update(ref=c.actual_v9_ack_ref(90,92,'a'*40))),
+          (1,lambda x:x.update(parents=[{'sha':'f'*40}])),(2,lambda x:x.update(truncated=True)),
+          (2,lambda x:x['tree'].pop()),(2,lambda x:x['tree'][1].update(sha='0'*40)),
+          (3,lambda x:x.update(content=base64.b64encode(b'changed').decode()))):
+            changed=copy.deepcopy(objects);mutate(changed[index])
+            with self.assertRaises(ValueError):c.actual_v9_ack_objects(*(E(item) for item in changed),prelude,deadline,inventory,template)
+        for key,value in [('runId',91),('jobId',92),('sourceHead','f'*40)]:
+            changed=dict(deadline);changed[key]=value
+            with self.assertRaises(ValueError):c.actual_v9_ack_objects(*(E(item) for item in objects),prelude,changed,inventory,template)
+    def test_job_deadline_and_guest_budget_refuse_expiry(self):
+        prelude=self.prelude();env=self.env(prelude)
+        clock=c.actual_v9_clock({'schema':'bw.gui-hdd.actual-v9-clock.v1','jobStartedAt':'2026-10-28T12:00:00Z',
+          'httpDate':'Wed, 28 Oct 2026 12:00:00 GMT','requestMonotonicNs':2000000000,'responseMonotonicNs':3000000000,
+          'requestWallTimeNs':10**18,'responseWallTimeNs':10**18+1000000000},construct=True)
+        value={'schema':'bw.gui-hdd.actual-v9-deadline.v1','runId':90,'runAttempt':1,'jobId':91,'sourceHead':'a'*40,
+          'startedMonotonicNs':1000000000,'deadlineMonotonicNs':2101000000000,'cleanupReserveSeconds':60,'clock':clock}
+        with patch.object(c.time,'monotonic_ns',return_value=4000000000):
+            c.actual_v9_deadline(value,prelude,env,91);c.actual_v9_check_remaining(value,1490)
+        with patch.object(c.time,'monotonic_ns',return_value=700000000000):
+            with self.assertRaises(ValueError):c.actual_v9_check_remaining(value,1490)
+        with patch.object(c.time,'monotonic_ns',return_value=2101000000000):
+            with self.assertRaises(ValueError):c.actual_v9_deadline(value,prelude,env,91)
+    def test_official_clock_accounts_checkout_and_ignores_host_wall_skew(self):
+        raw={'schema':'bw.gui-hdd.actual-v9-clock.v1','jobStartedAt':'2026-10-28T12:00:00Z',
+          'httpDate':'Wed, 28 Oct 2026 12:02:00 GMT','requestMonotonicNs':500000000000,'responseMonotonicNs':501000000000,
+          'requestWallTimeNs':10**18,'responseWallTimeNs':10**18+1000000000}
+        clock=c.actual_v9_clock(raw,construct=True);self.assertEqual(clock['elapsedUpperNs'],122000000000)
+        skew=copy.deepcopy(raw);skew['responseWallTimeNs']=1
+        self.assertEqual(c.actual_v9_clock(skew,construct=True)['elapsedUpperNs'],clock['elapsedUpperNs'])
+        for change in ({'jobStartedAt':'2026-10-28T12:03:00Z'},{'httpDate':'not a date'},{'responseMonotonicNs':raw['requestMonotonicNs']-1}):
+            changed=dict(raw,**change)
+            with self.assertRaises(ValueError):c.actual_v9_clock(changed,construct=True)
+    def test_ack_missing_or_failed_phase_never_installs(self):
+        with patch.object(c,'ACTUAL_V9_ENABLED',True),patch.object(c,'FINITE_INVENTORY_V10_ENABLED',True),patch.object(c,'actual_v9_read_state',return_value=(self.prelude(),{'deadlineMonotonicNs':10**18})),patch.object(c,'regular',return_value=E({'schema':'bw.gui-hdd.inventory-failure.v10'})),patch.object(c,'install_input') as install:
+            with self.assertRaisesRegex(ValueError,'partial inventory'):
+                c.actual_v9_wait_ack(pathlib.Path('/manufactured'),self.env(self.prelude()))
+            install.assert_not_called()
+    def test_current_and_historical_supplier_roles_are_independent(self):
+        old=copy.deepcopy(c.FINITE_V9_PINS);witness=copy.deepcopy(c.FINITE_V9_CUI_WITNESSES)
+        with patch.object(c,'CUI','0'*40),patch.object(c,'CURRENT_BOARD','1'*40),patch.object(c,'CURRENT_SB3','2'*40):
+            self.assertEqual(c.FINITE_V9_PINS,old)
+            self.assertEqual(c.FINITE_V9_CUI_WITNESSES,witness)
+            self.assertEqual(c.FINITE_V10_PINS['bw-board'],'8785e4688cc308b34fea434c1734523caa621f74')
+        for mode in ('actual-v9-guard','actual-v9-ack','actual-v9','finite-inventory-v10'):
+            with self.assertRaisesRegex(ValueError,'disabled'):
+                with patch.object(c,'ACTUAL_V9_ENABLED',False):c.main([mode])
+`;
+
+test('finite10 producer: typed resolver, exact same-job dispatch, ACK and deadline controls', () => {
+    const suite="suite=unittest.TestSuite(Originals(name) for name in unittest.defaultTestLoader.getTestCaseNames(Originals) if not name.startswith(('test_finite_v4','test_finite_v6','test_finite_v7','test_finite_v8','test_finite_v9','test_actual_v6_parts_','test_actual_v8_')))";
+    const selected=controls.replace(suite,producerV10Controls+'\nsuite=unittest.defaultTestLoader.loadTestsFromTestCase(ProducerV10)');
+    assert.notEqual(selected,controls);
+    const result=spawnSync('/usr/bin/python3',['-B','-',root],{input:selected,cwd:root,encoding:'utf8',timeout:60000,maxBuffer:4*1024*1024});
+    assert.equal(result.status,0,`${result.error?.stack || ''}\n${result.stdout}\n${result.stderr}`);
+    const summary=readOriginalControlSummary(result.stdout);
+    assert.ok(summary.controls>=6);assert.equal(summary.failures,0);assert.equal(summary.errors,0);
+});
+
+test('same-job actual9 producer: connected inventory, ACK, request and exact staging controls', () => {
+    const original="suite=unittest.TestSuite(Originals(name) for name in unittest.defaultTestLoader.getTestCaseNames(Originals) if not name.startswith(('test_finite_v4','test_finite_v6','test_finite_v7','test_finite_v8','test_finite_v9','test_actual_v6_parts_','test_actual_v8_')))";
+    const selected=controls.replace(original,"suite=unittest.TestSuite(Originals(name) for name in unittest.defaultTestLoader.getTestCaseNames(Originals) if name.startswith(('test_producer_finite_v10','test_producer_actual_v9')))");
+    assert.notEqual(selected,controls);
+    const result=spawnSync('/usr/bin/python3',['-B','-',root],{input:selected,cwd:root,encoding:'utf8',timeout:60000,maxBuffer:4*1024*1024});
+    assert.equal(result.status,0,`${result.error?.stack || ''}\n${result.stdout}\n${result.stderr}`);
+    const summary=readOriginalControlSummary(result.stdout);
+    assert.ok(summary.controls>=6);assert.equal(summary.failures,0);assert.equal(summary.errors,0);
 });
