@@ -57,6 +57,17 @@ explicit selected branch and endpoint, and reject unknown targets or drift.
 A different actual runner must still satisfy the frozen request; supporting two
 inventory forms does not establish cross-job byte or role stability.
 
+**Same-job acceptance is required.** Supporting two resolver forms does not
+make either form transferable to a different hosted machine. The new claim
+therefore includes a distinct Actual-V9 prelude: capture the V10 inventory on
+the retained actual job, finalize its early artifact, obtain separate external
+admission, install the exact request once, and re-observe before guest entry.
+The bounded admission uses a unique immutable ACK Git ref with complete
+run/job/source/inventory/request bindings. Preserve the final terminal reader,
+all runtime identity checks, scenario caps and the 35-minute outer deadline.
+Keep the previous Actual-V8 route disabled. Do not spend a standalone V10
+inventory event hoping the next runner has identical configuration.
+
 **Body capacity.** PR1318's consumed transport body is near its size limit.
 Preserve that body and its historical events. Use a fresh successor source PR
 with a compact body for the new V10 selection and current actual request; bind
@@ -84,17 +95,20 @@ freeze consumed profiles as historical roles rather than rewriting their pins.
    source closure from its selected original. A proposed PR merge SHA or a later
    live PR base is not proof of what that Build checked out. Rebind preparations
    explicitly when the source or event changes; never edit a receipt to fit.
-3. Only after final source and Build admission, separately select one new V10
-   inventory event.
+3. Only after final source and Build admission, separately select one new
+   Actual-V9 prelude. Capture V10 inventory on that retained job and finalize
+   its early immutable artifact.
    Join official event/run/job/step/artifact metadata; acquire each selected log
    and artifact once; run the independent reader once. Preserve strict file,
    alias and directory roles and all existing limits. Missing custody or a spent
    slot is a recovery task, not permission to select another event.
-4. Join the admitted current runtime with the retained Native2 reference, then
-   construct and separately admit the actual-V8 request, source tag, response and
-   sole selected Build ZIP. Exercise FreeDOS HDD export/reload and forward
-   debugging in the actual browser. Require guest-rendered responses, terminal
-   observations, independent original audit and finite cleanup.
+4. Independently read the phase original and bind its job, completed upload
+   step and artifact. Join the retained Native2 reference; publish one immutable
+   ACK with the exact admitted request identity. The same job installs that
+   request exclusively, re-observes runtime, and acquires the sole selected Build
+   ZIP. Require adequate remaining time before entry. Exercise FreeDOS HDD
+   export/reload and forward debugging in the actual browser, with guest-rendered
+   responses, final terminal observations, independent audit and finite cleanup.
 5. Merge the successor source only after affected actual acceptance and every
    enabled final-head check succeeds (Lite code PRs need the `ci:full` label), with declared skips
    proved from source and the matched merge head/tree/parents checked. Update the

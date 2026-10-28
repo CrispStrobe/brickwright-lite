@@ -1,7 +1,8 @@
 # x86 finite V10 resolver-kind inventory and current GUI acceptance
 
 Owner: x86 coordinator. Status: CLAIM ONLY; implementation and execution disabled.
-Base: Lite main `8acc3b962803e360a0c561c696d097839046c1ab`.
+Initial base: Lite main `8acc3b962803e360a0c561c696d097839046c1ab`.
+Current composition also preserves later Main changes.
 
 ## Problem and boundary
 
@@ -20,6 +21,44 @@ must not import the producer or infer a positive result from a partial failure.
 Before implementation, review how the new observation joins the later actual
 job: a prior runner's configuration is not proof of a different runner's bytes.
 Do not silently remove that identity requirement or promise cross-job stability.
+
+## Required same-job execution boundary
+
+A typed inventory alone cannot qualify the next runner: the hosted label does
+not reserve a machine or freeze its configuration. Do not select a new finite
+event on the assumption that its resolver bytes or role will transfer.
+
+Introduce a distinct, initially disabled Actual-V9 route. Its prelude descriptor
+binds the exact source, template, admitted Build, native reference and fixed
+limits before setup. The same retained job then captures the V10 inventory,
+finalizes an early immutable artifact, and waits for a separately audited
+external admission. The independent phase reader must bind the in-progress
+job, exact completed upload step and selected artifact; its result is not final
+job or guest success.
+
+The external controller publishes one unique immutable ACK Git ref carrying a
+closed run/attempt/job/source/template/inventory/artifact/request binding. Use
+an owned branch namespace with normal pushes; no personal credential enters
+the job, no mutable-ref replacement and no new private binary publication.
+The job polls only that exact contents-readable ref, validates the selected Git
+objects and current PR marker, and installs the admitted request once using
+the existing exclusive installation checks. Repository variables evaluated at
+job start are not a live mailbox; do not assume the job token can read the
+Variables API. Request bytes must be reachable by their selected Git identity.
+
+Immediately re-observe the exact admitted runtime before guest entry and retain
+the unchanged before/after identity assertions. The final independent reader
+still requires terminal official success, genuine guest observations and finite
+cleanup. The early and final artifacts have distinct roles and are each
+acquired once. Keep Actual-V8 disabled with historical controls intact.
+
+Preserve the 35-minute outer limit and both existing scenario caps. Propagate
+one job deadline through setup, inventory, bounded external wait, request
+installation, execution and cleanup. Refuse guest entry unless the remaining
+budget covers both scenario caps and a fixed reviewed cleanup reserve. No
+claim that the declared maxima fit follows from mock controls; source and
+actual timing qualification remain required. Do not omit host configuration
+or relax cross-job equality as a shortcut.
 
 ## Owned paths
 
@@ -42,8 +81,8 @@ main's board pin and other owners' changes. No CPU, package, dependency pin,
 lockfile, Build workflow, shared setup helper, guest media or product UI change.
 If a separate helper module is necessary, extend this claim before adding it.
 
-Use distinct V10 schemas, CLI, job, label, variables, body marker and artifact
-namespace. Retire V9 execution while retaining its historical schemas, strict
+Use distinct V10 and Actual-V9 schemas, CLI, job, selection, transport, body
+marker and artifact namespaces, plus the separately bound prelude and ACK. Retire V9 execution while retaining its historical schemas, strict
 reader and original failure. New execution guards start false; source arming and
 actual selection require separate qualification. Keep existing time, memory,
 archive, request-body and repository-variable limits. Never refresh historical
@@ -58,11 +97,13 @@ positive ordinary behavior and historical negative controls. Review exact body
 profiles before their narrow updates. Run all enabled final-head checks,
 including the code tier, and admit the actual frontend Build checkout.
 
-Then separately admit one new V10 inventory event and independently read its
-originals once. Join the current runtime/native reference before selecting a
-newly admitted actual GUI request. Require actual FreeDOS HDD export/reload,
+Then separately admit one new same-job Actual-V9 prelude and independently
+read its V10 phase originals once before any ACK. Bind the native reference and
+new actual request to that same job and inventory. Require actual FreeDOS HDD export/reload,
 forward debugging, guest-rendered observations, independent reader and finite
 cleanup. Merge source only after that affected acceptance and every enabled
 final-head check succeeds; verify matched head, tree and parents. Keep all
-original failures. No whole-OS, physical timing, Windows or release claim follows
+original failures. Include stale/duplicate/wrong-job ACKs, incomplete upload, expired waiting,
+request substitution/replay, post-ACK drift, inadequate remaining time and
+unconditional cleanup controls. No whole-OS, physical timing, Windows or release claim follows
 from a resolver metadata repair.
