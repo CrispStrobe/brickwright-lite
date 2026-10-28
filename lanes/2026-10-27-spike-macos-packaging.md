@@ -1,6 +1,6 @@
 # SPIKE macOS packaging: bundled Renode, signing and installed test
 
-Status: CLAIMED — operator-authorized follow-up to
+Status: DONE — implementation and signed dry run 40507444319 (see docs/SPIKE-MACOS.md); open items listed there. Operator-authorized follow-up to
 `lanes/2026-10-26-spike-macos-runtime-feasibility.md`.
 Owner: Claude, operator-approved (including `.github/workflows/release.yml`).
 Base: current main at claim time.
