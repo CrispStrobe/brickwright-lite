@@ -248,22 +248,23 @@ const BELT_VELOCITY_STEPS = 4;
 /**
  * Historical body-inertia benchmark behind the retained motor iteration policy. Native rotor
  * adoption preserves this policy; fresh affected qualification is still required.
- * Solver iterations for an island holding a motorised hinge (Jolt's defaults 10 / 2). The DC motor
- * (applyHingeTorque) drives the hinge's output body, which carries the motor's rotor reflected through
- * its gearbox (setRotorInertia: ~3e-4 kg·m² about the axis) on a few grams of parts. A contact on that
- * body (an arm driven into a block) is solved as if it pushed an 8 g body: its impulse mostly
- * TRANSLATES the body, the hinge takes the translation back, and the turn the contact must stop is
+ * Solver iterations for an island holding a motorised hinge (Jolt's defaults 10 / 2). In the historical
+ * benchmark, the DC motor drove an output body whose inertia included the reflected rotor
+ * (~3e-4 kg·m² about the axis) on a few grams of parts. A contact on that body (an arm driven
+ * into a block) was solved as if it pushed an 8 g body: its impulse mostly translated the
+ * body, the hinge took the translation back, and the turn the contact had to stop was
  * reduced per iteration only by ε = m·r² / (I_axis + m·r²) (motorEpsilon). With Jolt's defaults a
  * medium motor drove a beam-5 arm (ε = 0.011) through a static block (test/bw-sim-validation.test.mjs,
  * stall: first touch +92.35° / −33.52°, the arm went to +276.6° / −401°). Measured on that bench,
  * stop minus first touch (+ / −): velocity steps hardly matter (30–500) and are not monotonic; the
- * POSITION steps are what pushes the arm back out of the block:
+ * POSITION steps pushed the arm back out of the block:
  *   position  5: +6.4° / −0.8° (after part masses moved the arm's centre of mass)   10: +6.5°
  *            20: +2.8° / −0.7°   30: +2.0° / −0.7°   40: +1.5° / −0.7°   60: +1.2° / −0.6°
  * Position steps re-solve every contact of the island, so they are what costs (the driving base:
- * 77 µs per step with 30/5, 155 µs with 20, 207 µs with 30). Each motorised hinge therefore gets
+ * 77 µs per step with 30/5, 155 µs with 20, 207 µs with 30). The retained policy gives each motorised hinge
  * MOTOR_POSITION_PER_EPS / ε of them, within [MOTOR_POSITION_STEPS, MOTOR_POSITION_STEPS_MAX]: the arm
- * (ε 0.011) 30, a SPIKE wheel (ε 0.048) 7, a chassis side (ε ≈ 0.8) the minimum.
+ * (ε 0.011) 30, a SPIKE wheel (ε 0.048) 7, a chassis side (ε ≈ 0.8) the minimum
+ * in that historical benchmark. These figures do not qualify the native rotor's behavior.
  */
 const MOTOR_VELOCITY_STEPS = 30;
 const MOTOR_POSITION_STEPS = 5;
