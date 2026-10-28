@@ -21,7 +21,7 @@ report. History-role citations are unchanged.
 ## Pending
 
 - Board census (`docs/generated/bw-board-census.json`, both census-snapshot.js
-  mirrors) and the language/device matrix need a fresh read at `c7bcbe4b`; they
-  still name `dfa4be8e` and are not hand-edited.
-- bw-circuit-ui lock integrity must be recomputed by a normal lockfile refresh.
+  mirrors) was read fresh at `c7bcbe4b` with the census generator, and the
+  language/device matrix regenerated from it; neither is hand-edited.
+- bw-circuit-ui lock integrity was recomputed from the packed `da28bb8c` tree (the same method reproduces the previous `66e37240` value).
 - Full CI after #1478 lands.
