@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "id": "rimrun-swapped",
+  "language": "en",
+  "what": "The comparison for RimRun: the same incline, gate, program and two 39-part rollers, but the ballast layouts are exchanged between the lanes. The green roller now carries its paired ballast 32 mm from the axis, the orange roller 16 mm. Mass (73.28 g each), wheels and outside rolling radius (43.904 mm) are unchanged. If the inner-ballast roller still leads, the result belongs to the mass distribution, not to one lane being faster.",
+  "try": [
+    "In Robot Lab, choose File → Open a model… and import rimrun-swapped.ldr afresh. Paste programs/rimrun.bw into the Code tab, choose ⇦ To blocks, then use Robot Lab's Run button.",
+    "Before running, predict which colour leads now. Last time green carried the inner ballast; now orange does.",
+    "Compare the roller centres while both are still on the free runway, before either touches a spring catch. Watch the spokes too: the faster roller also turns faster.",
+    "Reload the complete scene before every repeat. Returning the gate does not put the rollers back."
+  ],
+  "why": "A rolling body shares its energy between moving forward and spinning. With the same mass and radius, the roller whose mass sits farther from the axis has the larger moment of inertia, so more of the released energy goes into spinning and less into forward speed. Exchanging the layouts tests the explanation: the lead must follow the ballast, not the lane.",
+  "matters": "Swapping the arrangement between two positions is the simplest guard against a hidden bias in the set-up, such as one lane being slightly steeper or smoother. Experiments in the lab and in industry use the same trick.",
+  "question": "In the supplied native recordings the inner-ballast roller led in both scenes. What would it have meant if green had led in both scenes instead?",
+  "answer": "Then the lane, not the ballast, would decide the race, and the inertia explanation would be in doubt. In the recordings the inner-ballast roller leads in both scenes, with fitted accelerations of 0.884 against 0.815 m/s² in the main scene and 0.883 against 0.818 m/s² swapped, a ratio of about 1.08 where the admitted inertia predicts 1.078.",
+  "further": [
+    "Use a₀ = g·sin α / (1 + I/(M·R²)) with I = 4.34·10⁻⁵ and 5.78·10⁻⁵ kg·m², M = 73.28 g and R = 43.904 mm to estimate both accelerations.",
+    "Why does the ratio of the accelerations not depend on the slope angle?",
+    "Would a solid disc or a ring of the same mass and radius win the race? Why?"
+  ],
+  "formula": "a₀ = g·sin α / (1 + I/(M·R²)); a_inner / a_outer = (1 + I_outer/(M·R²)) / (1 + I_inner/(M·R²)) ≈ 1.078 for the admitted inertias.",
+  "related": [
+    "carry-ratio.ldr",
+    "switchback-lift.ldr",
+    "travel-dial.ldr"
+  ]
+}

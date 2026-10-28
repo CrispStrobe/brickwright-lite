@@ -550,6 +550,27 @@
         "Hubvolumen",
         "Verdichtungsweg"
       ]
+    },
+    {
+      "models": [
+        "samebeat",
+        "pivot-exchange"
+      ],
+      "name": {
+        "en": "Reversible compound pendulum — Kater principle",
+        "de": "Reversionspendel — Kater-Prinzip"
+      },
+      "aliases": [
+        "reversible pendulum",
+        "compound pendulum",
+        "physical pendulum",
+        "Kater pendulum",
+        "conjugate pivots",
+        "centre of oscillation",
+        "Reversionspendel",
+        "physikalisches Pendel",
+        "konjugierte Aufhängepunkte"
+      ]
     }
   ]
 }

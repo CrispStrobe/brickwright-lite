@@ -2,7 +2,7 @@
   "version": 1,
   "id": "samebeat",
   "language": "de",
-  "what": "Ein umkehrbares physikalisches Pendel. Ein Motor bewegt kurz die Aufhängung eines getrennten starren Körpers und hält danach an. Hänge denselben Körper an einem anderen Technic-Loch auf und vergleiche seine freie Schwingungsdauer. Die beiden vorgesehenen Abstände zum Schwerpunkt sind ungleich; ein dritter Aufhängepunkt dient als Vergleich.",
+  "what": "Reversionspendel — Kater-Prinzip. Ein umkehrbares physikalisches Pendel. Ein Motor bewegt kurz die Aufhängung eines getrennten starren Körpers und hält danach an. Hänge denselben Körper an einem anderen Technic-Loch auf und vergleiche seine freie Schwingungsdauer. Die beiden vorgesehenen Abstände zum Schwerpunkt sind ungleich; ein dritter Aufhängepunkt dient als Vergleich. Ein kurzer Motorimpuls bewegt die Aufhängung eines passiven starren Pendels. Hänge denselben Körper am ungleichen zweiten Punkt auf und vergleiche die Perioden; prüfe danach einen dritten Punkt mit denselben Teilen und demselben Programm.",
   "try": [
     "Lade das Modell, drücke Zurücksetzen und dann Start. Nach 1 s fährt die Aufhängung auf +8°, wartet 0,12 s, kehrt auf 0° zurück und hält 22 s. Beobachte das passive Pendel während dieser letzten Haltephase.",
     "Miss vollständige Schwingungen: von einem Durchgang durch die untere Ruhelage bis zum nächsten Durchgang in derselben Richtung. Eine halbe Schwingung und der Motorwinkel sind keine Periodenmessung.",

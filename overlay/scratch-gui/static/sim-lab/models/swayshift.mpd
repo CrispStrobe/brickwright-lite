@@ -1,0 +1,432 @@
+0 FILE swayshift.ldr
+0 SwayShift — timed transfers and passive sway cancellation
+0 Name: swayshift.ldr
+0 Author: CrispStrobe
+0 !LICENSE BSD-3-Clause : see ../licenses/swayshift.txt
+0 !LDRAW_ORG Unofficial_Model
+0 // One hub, one motor A, two physical guides, one passive pendulum.
+0 // Original add-on; canonical rack and hinge interfaces informed by Brickwright models.
+0 // Compare swayshift.bw and swayshift-in-phase.bw after a fresh full scene import.
+0 // 01 — broad foundation and four-point hub mounting
+0 !BW ID base_frame_left
+1 72 -120 115 -170 1 0 0 0 1 0 0 0 1 39790.dat
+0 !BW ID base_frame_right
+1 72 120 115 -170 1 0 0 0 1 0 0 0 1 39790.dat
+0 !BW ID base_bridge_rear
+1 72 0 95 -270 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID base_join_rear_-20
+1 0 -20 105 -270 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID base_join_rear_20
+1 0 20 105 -270 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID base_bridge_front
+1 72 0 95 -70 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID base_join_front_-20
+1 0 -20 105 -70 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID base_join_front_20
+1 0 20 105 -70 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID hub
+1 15 0 85 -170 1 0 0 0 1 0 0 0 1 45601.dat
+0 !BW ID hub_pin_-60_-270
+1 0 -60 85 -270 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID hub_pin_-60_-70
+1 0 -60 85 -70 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID hub_pin_60_-270
+1 0 60 85 -270 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID hub_pin_60_-70
+1 0 60 85 -70 0 1 0 1 0 0 0 0 -1 2780.dat
+0 STEP
+0 // 02 — two tall pinned gantry sides
+0 !BW ID tower_left_0
+1 72 -240 -5 -170 0 1 0 -1 0 0 0 0 1 39790.dat
+0 !BW ID tower_left_1
+1 72 -240 -225 -170 0 1 0 -1 0 0 0 0 1 39790.dat
+0 !BW ID tower_left_2
+1 72 -240 -445 -170 0 1 0 -1 0 0 0 0 1 39790.dat
+0 !BW ID tower_foot_left_-310
+1 72 -220 95 -310 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID tower_foot_pin_left_-310
+1 0 -220 105 -310 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID tower_lap_left_-115_-310
+1 72 -260 -105 -310 0 1 0 0 0 1 1 0 0 32524.dat
+0 !BW ID tower_seam_left_-115_-310_-50
+1 0 -250 -165 -310 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID tower_seam_left_-115_-310_-10
+1 0 -250 -125 -310 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID tower_seam_left_-115_-310_10
+1 0 -250 -105 -310 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID tower_seam_left_-115_-310_50
+1 0 -250 -65 -310 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID tower_lap_left_-335_-310
+1 72 -260 -345 -310 0 1 0 0 0 1 1 0 0 32525.dat
+0 !BW ID tower_seam_left_-335_-310_-90
+1 0 -250 -425 -310 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID tower_seam_left_-335_-310_-10
+1 0 -250 -345 -310 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID tower_seam_left_-335_-310_10
+1 0 -250 -325 -310 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID tower_seam_left_-335_-310_50
+1 0 -250 -285 -310 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID tower_foot_left_-30
+1 72 -220 95 -30 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID tower_foot_pin_left_-30
+1 0 -220 105 -30 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID tower_lap_left_-115_-30
+1 72 -260 -105 -30 0 1 0 0 0 1 1 0 0 32524.dat
+0 !BW ID tower_seam_left_-115_-30_-50
+1 0 -250 -165 -30 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID tower_seam_left_-115_-30_-10
+1 0 -250 -125 -30 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID tower_seam_left_-115_-30_10
+1 0 -250 -105 -30 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID tower_seam_left_-115_-30_50
+1 0 -250 -65 -30 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID tower_lap_left_-335_-30
+1 72 -260 -345 -30 0 1 0 0 0 1 1 0 0 32525.dat
+0 !BW ID tower_seam_left_-335_-30_-90
+1 0 -250 -425 -30 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID tower_seam_left_-335_-30_-10
+1 0 -250 -345 -30 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID tower_seam_left_-335_-30_10
+1 0 -250 -325 -30 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID tower_seam_left_-335_-30_50
+1 0 -250 -285 -30 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID tower_right_0
+1 72 240 -5 -170 0 1 0 -1 0 0 0 0 1 39790.dat
+0 !BW ID tower_right_1
+1 72 240 -225 -170 0 1 0 -1 0 0 0 0 1 39790.dat
+0 !BW ID tower_right_2
+1 72 240 -445 -170 0 1 0 -1 0 0 0 0 1 39790.dat
+0 !BW ID tower_foot_right_-310
+1 72 220 95 -310 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID tower_foot_pin_right_-310
+1 0 220 105 -310 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID tower_lap_right_-115_-310
+1 72 260 -105 -310 0 1 0 0 0 1 1 0 0 32524.dat
+0 !BW ID tower_seam_right_-115_-310_-50
+1 0 250 -165 -310 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID tower_seam_right_-115_-310_-10
+1 0 250 -125 -310 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID tower_seam_right_-115_-310_10
+1 0 250 -105 -310 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID tower_seam_right_-115_-310_50
+1 0 250 -65 -310 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID tower_lap_right_-335_-310
+1 72 260 -345 -310 0 1 0 0 0 1 1 0 0 32525.dat
+0 !BW ID tower_seam_right_-335_-310_-90
+1 0 250 -425 -310 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID tower_seam_right_-335_-310_-10
+1 0 250 -345 -310 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID tower_seam_right_-335_-310_10
+1 0 250 -325 -310 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID tower_seam_right_-335_-310_50
+1 0 250 -285 -310 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID tower_foot_right_-30
+1 72 220 95 -30 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID tower_foot_pin_right_-30
+1 0 220 105 -30 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID tower_lap_right_-115_-30
+1 72 260 -105 -30 0 1 0 0 0 1 1 0 0 32524.dat
+0 !BW ID tower_seam_right_-115_-30_-50
+1 0 250 -165 -30 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID tower_seam_right_-115_-30_-10
+1 0 250 -125 -30 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID tower_seam_right_-115_-30_10
+1 0 250 -105 -30 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID tower_seam_right_-115_-30_50
+1 0 250 -65 -30 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID tower_lap_right_-335_-30
+1 72 260 -345 -30 0 1 0 0 0 1 1 0 0 32525.dat
+0 !BW ID tower_seam_right_-335_-30_-90
+1 0 250 -425 -30 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID tower_seam_right_-335_-30_-10
+1 0 250 -345 -30 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID tower_seam_right_-335_-30_10
+1 0 250 -325 -30 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID tower_seam_right_-335_-30_50
+1 0 250 -285 -30 1 0 0 0 1 0 0 0 1 2780.dat
+0 STEP
+0 // 03 — guide crossmembers and retained parallel rails
+0 !BW ID guide_cross_rear_half_left
+1 72 -120 -365 -310 0 0 1 0 1 0 -1 0 0 32525.dat
+0 !BW ID guide_cross_rear_elbow_left
+1 72 -220 -385 -310 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID guide_cross_rear_end_pin_left
+1 0 -220 -375 -310 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID guide_cross_rear_half_right
+1 72 120 -365 -310 0 0 1 0 1 0 -1 0 0 32525.dat
+0 !BW ID guide_cross_rear_elbow_right
+1 72 220 -385 -310 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID guide_cross_rear_end_pin_right
+1 0 220 -375 -310 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID guide_cross_rear_lap
+1 72 0 -345 -310 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID guide_cross_rear_lap_pin_-120
+1 0 -120 -355 -310 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID guide_cross_rear_lap_pin_120
+1 0 120 -355 -310 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID guide_cross_front_half_left
+1 72 -120 -365 -30 0 0 1 0 1 0 -1 0 0 32525.dat
+0 !BW ID guide_cross_front_elbow_left
+1 72 -220 -385 -30 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID guide_cross_front_end_pin_left
+1 0 -220 -375 -30 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID guide_cross_front_half_right
+1 72 120 -365 -30 0 0 1 0 1 0 -1 0 0 32525.dat
+0 !BW ID guide_cross_front_elbow_right
+1 72 220 -385 -30 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID guide_cross_front_end_pin_right
+1 0 220 -375 -30 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID guide_cross_front_lap
+1 72 0 -345 -30 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID guide_cross_front_lap_pin_-120
+1 0 -120 -355 -30 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID guide_cross_front_lap_pin_120
+1 0 120 -355 -30 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID guide_left
+1 0 -60 -420 -170 0 -1 0 0 0 -1 1 0 0 3708.dat
+0 !BW ID guide_tee_left_front
+1 71 -60 -420 -50 0 -1 0 -1 0 0 0 0 -1 32039.dat
+0 !BW ID guide_stub_left_front
+1 0 -60 -385 -30 0 1 0 1 0 0 0 0 -1 44294.dat
+0 !BW ID guide_holder_left_front
+1 71 -60 -380 -30 0 0 1 0 -1 0 1 0 0 6632.dat
+0 !BW ID guide_holder_pin_left_front
+1 1 -40 -365 -30 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID guide_stub_bush_left_front_-440
+1 71 -60 -440 -30 1 0 0 0 0 1 0 -1 0 3713.dat
+0 !BW ID guide_stub_bush_left_front_-325
+1 71 -60 -325 -30 1 0 0 0 0 1 0 -1 0 3713.dat
+0 !BW ID guide_tee_left_rear
+1 71 -60 -420 -290 0 1 0 -1 0 0 0 0 1 32039.dat
+0 !BW ID guide_stub_left_rear
+1 0 -60 -385 -310 0 1 0 1 0 0 0 0 -1 44294.dat
+0 !BW ID guide_holder_left_rear
+1 71 -60 -380 -310 0 0 1 0 -1 0 1 0 0 6632.dat
+0 !BW ID guide_holder_pin_left_rear
+1 1 -40 -365 -310 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID guide_stub_bush_left_rear_-440
+1 71 -60 -440 -310 1 0 0 0 0 1 0 -1 0 3713.dat
+0 !BW ID guide_stub_bush_left_rear_-325
+1 71 -60 -325 -310 1 0 0 0 0 1 0 -1 0 3713.dat
+0 !BW ID guide_end_bush_left_-270
+1 71 -60 -420 -270 1 0 0 0 1 0 0 0 1 3713.dat
+0 !BW ID guide_end_bush_left_-70
+1 71 -60 -420 -70 1 0 0 0 1 0 0 0 1 3713.dat
+0 !BW ID guide_right
+1 0 60 -420 -170 0 -1 0 0 0 -1 1 0 0 3708.dat
+0 !BW ID guide_tee_right_front
+1 71 60 -420 -50 0 -1 0 -1 0 0 0 0 -1 32039.dat
+0 !BW ID guide_stub_right_front
+1 0 60 -385 -30 0 1 0 1 0 0 0 0 -1 44294.dat
+0 !BW ID guide_holder_right_front
+1 71 60 -380 -30 0 0 -1 0 -1 0 -1 0 0 6632.dat
+0 !BW ID guide_holder_pin_right_front
+1 1 40 -365 -30 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID guide_stub_bush_right_front_-440
+1 71 60 -440 -30 1 0 0 0 0 1 0 -1 0 3713.dat
+0 !BW ID guide_stub_bush_right_front_-325
+1 71 60 -325 -30 1 0 0 0 0 1 0 -1 0 3713.dat
+0 !BW ID guide_tee_right_rear
+1 71 60 -420 -290 0 1 0 -1 0 0 0 0 1 32039.dat
+0 !BW ID guide_stub_right_rear
+1 0 60 -385 -310 0 1 0 1 0 0 0 0 -1 44294.dat
+0 !BW ID guide_holder_right_rear
+1 71 60 -380 -310 0 0 -1 0 -1 0 -1 0 0 6632.dat
+0 !BW ID guide_holder_pin_right_rear
+1 1 40 -365 -310 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID guide_stub_bush_right_rear_-440
+1 71 60 -440 -310 1 0 0 0 0 1 0 -1 0 3713.dat
+0 !BW ID guide_stub_bush_right_rear_-325
+1 71 60 -325 -310 1 0 0 0 0 1 0 -1 0 3713.dat
+0 !BW ID guide_end_bush_right_-270
+1 71 60 -420 -270 1 0 0 0 1 0 0 0 1 3713.dat
+0 !BW ID guide_end_bush_right_-70
+1 71 60 -420 -70 1 0 0 0 1 0 0 0 1 3713.dat
+0 STEP
+0 // 04 — two bearings and a retained 3:1 speed-up transmission
+0 !BW ID output_bearing_-100
+1 72 -100 -385 -250 0 1 0 -1 0 0 0 0 1 15100.dat
+0 !BW ID bearing_rail_-100
+1 72 -100 -405 -170 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID bearing_spacer_-100_-310
+1 72 -100 -385 -310 1 0 0 0 1 0 0 0 1 18654.dat
+0 !BW ID bearing_rail_pin_-100_-310
+1 1 -100 -385 -310 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID bearing_spacer_-100_-30
+1 72 -100 -385 -30 1 0 0 0 1 0 0 0 1 18654.dat
+0 !BW ID bearing_rail_pin_-100_-30
+1 1 -100 -385 -30 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID output_bearing_80
+1 72 80 -385 -250 0 1 0 -1 0 0 0 0 1 15100.dat
+0 !BW ID bearing_rail_80
+1 72 80 -405 -170 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID bearing_spacer_80_-310
+1 72 80 -385 -310 1 0 0 0 1 0 0 0 1 18654.dat
+0 !BW ID bearing_rail_pin_80_-310
+1 1 80 -385 -310 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID bearing_spacer_80_-30
+1 72 80 -385 -30 1 0 0 0 1 0 0 0 1 18654.dat
+0 !BW ID bearing_rail_pin_80_-30
+1 1 80 -385 -30 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID pinion_axle
+1 0 20 -385 -250 1 0 0 0 1 0 0 0 1 50451.dat
+0 !BW ID pinion
+1 71 0 -385 -250 0 0 1 -1 0 0 0 -1 0 3648.dat
+0 !BW ID transmission_output
+1 4 100 -385 -250 0 0 1 -1 0 0 0 -1 0 32270.dat
+0 !BW ID output_bush_-120
+1 71 -120 -385 -250 0 0 1 -1 0 0 0 -1 0 3713.dat
+0 !BW ID output_bush_-80
+1 71 -80 -385 -250 0 0 1 -1 0 0 0 -1 0 3713.dat
+0 !BW ID output_bush_-60
+1 71 -60 -385 -250 0 0 1 -1 0 0 0 -1 0 3713.dat
+0 !BW ID output_bush_-40
+1 71 -40 -385 -250 0 0 1 -1 0 0 0 -1 0 3713.dat
+0 !BW ID output_bush_-20
+1 71 -20 -385 -250 0 0 1 -1 0 0 0 -1 0 3713.dat
+0 !BW ID output_bush_20
+1 71 20 -385 -250 0 0 1 -1 0 0 0 -1 0 3713.dat
+0 !BW ID output_bush_40
+1 71 40 -385 -250 0 0 1 -1 0 0 0 -1 0 3713.dat
+0 !BW ID output_bush_60
+1 71 60 -385 -250 0 0 1 -1 0 0 0 -1 0 3713.dat
+0 !BW ID output_bush_120
+1 71 120 -385 -250 0 0 1 -1 0 0 0 -1 0 3713.dat
+0 !BW ID transmission_motor
+1 14 100 -325 -250 0 0 1 -1 0 0 0 -1 0 32498.dat
+0 !BW ID motor_axle
+1 4 100 -325 -250 1 0 0 0 1 0 0 0 1 4519.dat
+0 !BW ID motor_outer_bush
+1 71 80 -325 -250 0 0 1 -1 0 0 0 -1 0 3713.dat
+0 STEP
+0 // 05 — restrained stator and separated motor mounting pins
+0 !BW ID motor_A
+0 !BW PORT A
+1 15 160 -325 -250 0 1 0 -1 0 0 0 0 1 54696p01.dat
+0 !BW ID motor_back_rail
+1 72 160 -325 -90 1 0 0 0 0 -1 0 1 0 32316.dat
+0 !BW ID motor_back_pin_-345
+1 0 160 -345 -100 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID motor_back_pin_-305
+1 0 160 -305 -100 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID motor_cross_-325_half_left
+1 72 -140 -325 -10 0 0 1 0 1 0 -1 0 0 32525.dat
+0 !BW ID motor_cross_-325_half_right
+1 72 140 -325 -10 0 0 1 0 1 0 -1 0 0 32525.dat
+0 !BW ID motor_cross_-325_lap
+1 72 0 -305 -10 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID motor_cross_-325_lap_pin_-120
+1 0 -120 -315 -10 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID motor_cross_-325_lap_pin_-40
+1 0 -40 -315 -10 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID motor_cross_-325_lap_pin_40
+1 0 40 -315 -10 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID motor_cross_-325_lap_pin_120
+1 0 120 -315 -10 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID motor_mount_elbow_-240_-325
+1 72 -240 -305 -10 0 0 1 0 1 0 -1 0 0 15100.dat
+0 !BW ID motor_mount_pin_-240_-325
+1 0 -240 -315 -10 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID motor_mount_elbow_240_-325
+1 72 240 -305 -10 0 0 1 0 1 0 -1 0 0 15100.dat
+0 !BW ID motor_mount_pin_240_-325
+1 0 240 -315 -10 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID motor_branch_-325
+1 72 160 -345 -30 1 0 0 0 1 0 0 0 1 32316.dat
+0 !BW ID motor_branch_elbow_-325
+1 72 160 -325 -70 0 0 1 0 1 0 -1 0 0 15100.dat
+0 !BW ID motor_branch_rail_pin_-325
+1 0 160 -335 -70 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID motor_branch_cross_pin_-325
+1 0 160 -335 -10 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID motor_cross_-285_half_left
+1 72 -140 -285 -10 0 0 1 0 1 0 -1 0 0 32525.dat
+0 !BW ID motor_cross_-285_half_right
+1 72 140 -285 -10 0 0 1 0 1 0 -1 0 0 32525.dat
+0 !BW ID motor_cross_-285_lap
+1 72 0 -265 -10 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID motor_cross_-285_lap_pin_-120
+1 0 -120 -275 -10 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID motor_cross_-285_lap_pin_-40
+1 0 -40 -275 -10 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID motor_cross_-285_lap_pin_40
+1 0 40 -275 -10 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID motor_cross_-285_lap_pin_120
+1 0 120 -275 -10 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID motor_mount_elbow_-240_-285
+1 72 -240 -265 -10 0 0 1 0 1 0 -1 0 0 15100.dat
+0 !BW ID motor_mount_pin_-240_-285
+1 0 -240 -275 -10 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID motor_mount_elbow_240_-285
+1 72 240 -265 -10 0 0 1 0 1 0 -1 0 0 15100.dat
+0 !BW ID motor_mount_pin_240_-285
+1 0 240 -275 -10 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID motor_branch_-285
+1 72 160 -305 -30 1 0 0 0 1 0 0 0 1 32316.dat
+0 !BW ID motor_branch_elbow_-285
+1 72 160 -285 -70 0 0 1 0 1 0 -1 0 0 15100.dat
+0 !BW ID motor_branch_rail_pin_-285
+1 0 160 -295 -70 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID motor_branch_cross_pin_-285
+1 0 160 -295 -10 0 1 0 1 0 0 0 0 -1 2780.dat
+0 STEP
+0 // 06 — two-guide trolley with a keyed and retained rack
+0 !BW ID rack
+1 71 0 -420 -174 0 0 1 0 -1 0 1 0 0 64781.dat
+0 !BW ID carriage_axle
+1 0 0 -420 -74 1 0 0 0 1 0 0 0 1 32073.dat
+0 !BW ID upright_left
+1 72 -20 -420 -74 0 -1 0 -1 0 0 0 0 -1 32140.dat
+0 !BW ID fork_arm_left
+1 72 -40 -420 -74 0 1 0 -1 0 0 0 0 1 32140.dat
+0 !BW ID fork_beam_left
+1 72 -20 -480 -14 0 1 0 0 0 -1 -1 0 0 40490.dat
+0 !BW ID fork_pin_left_-420
+1 0 -30 -420 -14 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID fork_pin_left_-440
+1 0 -30 -440 -14 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID slide_left
+1 72 -30 -420 -114 0 1 0 -1 0 0 0 0 1 48496.dat
+0 !BW ID pendulum_takeoff_left
+1 72 -40 -560 -14 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID pendulum_takeoff_pin_left
+1 0 -40 -570 -14 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID upright_right
+1 72 20 -420 -74 0 -1 0 -1 0 0 0 0 -1 32140.dat
+0 !BW ID fork_arm_right
+1 72 40 -420 -74 0 1 0 -1 0 0 0 0 1 32140.dat
+0 !BW ID fork_beam_right
+1 72 20 -480 -14 0 1 0 0 0 -1 -1 0 0 40490.dat
+0 !BW ID fork_pin_right_-420
+1 0 30 -420 -14 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID fork_pin_right_-440
+1 0 30 -440 -14 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID slide_right
+1 72 30 -420 -114 0 -1 0 -1 0 0 0 0 -1 48496.dat
+0 !BW ID pendulum_takeoff_right
+1 72 40 -560 -14 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID pendulum_takeoff_pin_right
+1 0 40 -570 -14 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID trolley_crossbeam
+1 25 0 -580 -14 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID pendulum_support
+1 25 -180 -600 -14 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID pendulum_support_pin_-120
+1 0 -120 -590 -14 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID pendulum_support_pin_-80
+1 0 -80 -590 -14 0 1 0 1 0 0 0 0 -1 2780.dat
+0 STEP
+0 // 07 — passive free-pin pendulum and a two-pin rigid lap
+0 !BW ID pendulum_hanger
+1 72 -320 -620 -14 0 1 0 1 0 0 0 0 -1 15100.dat
+0 !BW ID pendulum_free_pin
+1 71 -330 -620 -14 1 0 0 0 1 0 0 0 1 3673.dat
+0 !BW ID pendulum_upper
+1 4 -340 -480 -14 0 1 0 0 0 1 1 0 0 32278.dat
+0 !BW ID pendulum_lower
+1 14 -360 -220 -14 0 1 0 0 0 1 1 0 0 32278.dat
+0 !BW ID pendulum_splice_-360
+1 0 -350 -360 -14 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID pendulum_splice_-340
+1 0 -350 -340 -14 1 0 0 0 1 0 0 0 1 2780.dat
+0 NOFILE

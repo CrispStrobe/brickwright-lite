@@ -65,6 +65,8 @@ const LAZY = [
         why: 'the import() in overlay/scratch-gui/src/playground/render-gui.jsx (webpackChunkName "bw-project-safety")'},
     {what: 'the History & autosave panel', marker: 'bw-autosave-confirm-restore', chunk: 'bw-history-panel',
         why: 'the import() in overlay/scratch-gui/src/lib/bw-project-safety.js (webpackChunkName "bw-history-panel")'},
+    {what: 'the About dialog\'s app showcase', marker: 'about-app-showcase', chunk: 'about-apps',
+        why: 'the React.lazy AppShowcase in overlay/scratch-gui/src/components/menu-bar/bw-about.jsx (webpackChunkName "about-apps")'},
     {what: 'Robot Lab tab', marker: 'Open the Robot Lab here', chunk: 'bw-robotlab-tab',
         why: 'the React.lazy RobotLabTab in components/gui/gui.jsx'},
     {what: 'LEGO SPIKE Prime driver', marker: 'ID: spikeprime\\n', altMarkers: ['ID: spikeprime\n'], chunk: 'ext-spikeprime',

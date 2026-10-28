@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "issue": 1435,
+  "historicalBase": "7b4f2f84ac55e238bbb75663acbdc1e26f3d0358",
+  "engine": {
+    "version": "1.1.0-bw.7",
+    "pinSource": "scripts/integrate.mjs",
+    "integrity": "sha512-shojIKWdaQJrb4IcKwonFCl3585GCn2KqS3HKbpe4bEWfN2DqNNOXf0UElM+sQ+as7HOL4SyocQbs8HrB+5o9A=="
+  },
+  "historicalSources": {
+    "core": {"file": "overlay/scratch-gui/src/lib/bw-sim/physics/jolt-core.js", "sha256": "d793b51541af6a1a6ecccc61548670999bc378d2fb427456cf1fc6e19107cf58"},
+    "catalogue": {"file": "overlay/scratch-gui/src/lib/bw-sim/part-meta/parts.json", "sha256": "dbde6c29d4ca0b5aff97bc75676bc12c723a447d0a5daecd124b4b7b6799dba9"}
+  },
+  "inputs": [
+    {"id": "orrery-raised", "file": "inputs/obliquity-orrery-raised.ldr", "bytes": 4407, "sha256": "3d5b09ddf62e4912c4b68eb337e4f7e2170d72eb8bc296f8e963adfb57f41e86",
+     "servedAt7b4f": "overlay/scratch-gui/static/sim-lab/models/obliquity-orrery.ldr"},
+    {"id": "orrery-coplanar", "file": "inputs/obliquity-orrery-coplanar.ldr", "bytes": 4405, "sha256": "77d8536566d87150e014f2a022114a65cd1e3014ec746ddc950d94288c2ae2a8",
+     "derivedFrom": "orrery-raised", "change": {"line": 13, "from": "1 72 40 199.0 60 0 0 1 0 1 0 -1 0 0 32278.dat", "to": "1 72 40 200 60 0 0 1 0 1 0 -1 0 0 32278.dat"}},
+    {"id": "driving-base", "file": "inputs/driving-base.ldr", "bytes": 1035, "sha256": "19d7a9a8bedf1383917e1a49e864b06d059fbbf3fee1337fcbcdd5a3dd7ca17e",
+     "servedAt7b4f": "overlay/scratch-gui/static/sim-lab/models/driving-base.ldr"},
+    {"id": "gearbox", "file": "inputs/gearbox.ldr", "bytes": 2121, "sha256": "1ae5840f5eace5b47a8b0095f3ab416ba474bff27a5bfe17ac85efb54c98fd0b",
+     "servedAt7b4f": "overlay/scratch-gui/static/sim-lab/models/gearbox.ldr"}
+  ],
+  "preparation": {"mat": "plain"},
+  "frameParts": ["base_rail_0", "base_rail_1", "base_rail_2", "base_rail_3"],
+  "clock": {"stepHz": 200, "dtSeconds": 0.005, "steps": 350, "settlingSteps": 0},
+  "cases": [
+    {"id": "orrery-raised-complete", "input": "orrery-raised", "mechanism": "complete", "subject": "frame"},
+    {"id": "orrery-raised-isolated", "input": "orrery-raised", "mechanism": "isolated-frame", "subject": "frame"},
+    {"id": "orrery-coplanar-complete", "input": "orrery-coplanar", "mechanism": "complete", "subject": "frame"},
+    {"id": "orrery-coplanar-isolated", "input": "orrery-coplanar", "mechanism": "isolated-frame", "subject": "frame"},
+    {"id": "driving-base-complete", "input": "driving-base", "mechanism": "complete", "subject": "heaviest"},
+    {"id": "gearbox-complete", "input": "gearbox", "mechanism": "complete", "subject": "heaviest"}
+  ],
+  "rowFields": ["step", "t", "px", "py", "pz", "qx", "qy", "qz", "qw", "vx", "vy", "vz", "wx", "wy", "wz", "groundContact"],
+  "quaternionNormTolerance": 1e-6,
+  "summaryTolerance": 1e-9,
+  "reportedComparison": {"note": "Issue #1435 reported roughly 10 mm and 3 degrees in 1.75 s. Comparison data only, never a pass/fail tolerance.", "displacementM": 0.010, "yawDeg": 3}
+}

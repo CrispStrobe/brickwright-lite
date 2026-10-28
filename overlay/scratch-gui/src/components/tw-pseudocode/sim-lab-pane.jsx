@@ -944,6 +944,7 @@ class SimLabPane extends React.Component {
                 canUndo: () => !!this.editor?.canUndo,
                 canRedo: () => !!this.editor?.canRedo,
                 depth: () => ({undo: this.editor?.undoDepth || 0, redo: this.editor?.redoDepth || 0}),
+                steps: () => this.editor?.historyLabels || null,
                 undo: () => {
                     if (!this.editor?.canUndo || !this.editView) return false;
                     this.editView.undo();

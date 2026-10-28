@@ -179,7 +179,10 @@ class CodeMirrorEditor extends React.Component {
                     this.props.onChange(update.state.doc.toString());
                     this._updating = false;
                 }
-                if (update.docChanged) notifyUndoState();
+                if (update.docChanged) {
+                    this._trackHistoryNames(update);
+                    notifyUndoState();
+                }
             }),
             EditorView.lineWrapping
         ];
@@ -191,12 +194,15 @@ class CodeMirrorEditor extends React.Component {
             }),
             parent: this._ref.current
         });
+        this._undoNames = [];
+        this._redoNames = [];
         this._unregisterUndo = registerUndoSurface('code', {
             label: 'Code',
             canUndo: () => !!this._view && undoDepth(this._view.state) > 0,
             canRedo: () => !!this._view && redoDepth(this._view.state) > 0,
             depth: () => (this._view ? {undo: undoDepth(this._view.state), redo: redoDepth(this._view.state)} :
                 {undo: 0, redo: 0}),
+            steps: () => ({past: this._undoNames.slice(), future: this._redoNames.slice().reverse()}),
             undo: () => !!this._view && undo(this._view),
             redo: () => !!this._view && redo(this._view)
         });
@@ -207,6 +213,34 @@ class CodeMirrorEditor extends React.Component {
         }
 
         window.addEventListener('bw-settings-change', this._onSettingsChange);
+    }
+
+    // History list names for CodeMirror's history events (typing merges into
+    // one event, so a name is added only when the undo depth grows).
+    _trackHistoryNames (update) {
+        if (!this._undoNames) {
+            this._undoNames = [];
+            this._redoNames = [];
+        }
+        const before = undoDepth(update.startState), after = undoDepth(update.state);
+        const isUndo = update.transactions.some(tr => tr.isUserEvent('undo'));
+        const isRedo = update.transactions.some(tr => tr.isUserEvent('redo'));
+        if (isUndo && after < before) {
+            for (let i = before - after; i > 0 && this._undoNames.length; i--) this._redoNames.push(this._undoNames.pop());
+        } else if (isRedo && after > before) {
+            for (let i = after - before; i > 0 && this._redoNames.length; i--) this._undoNames.push(this._redoNames.pop());
+        } else if (after > before) {
+            const tr = update.transactions[update.transactions.length - 1];
+            const kinds = [['input.paste', 'Paste'], ['input.drop', 'Drop'], ['input.type', 'Type'],
+                ['input.complete', 'Complete'], ['delete', 'Delete'], ['move', 'Move'], ['input', 'Edit']];
+            const kind = kinds.find(([event]) => tr && tr.isUserEvent(event));
+            for (let i = after - before; i > 0; i--) this._undoNames.push(kind ? kind[1] : 'Change');
+            this._redoNames = [];
+        }
+        // Keep the names aligned with CodeMirror's own (capped or reset) history.
+        if (this._undoNames.length > after) this._undoNames.splice(0, this._undoNames.length - after);
+        const redoAfter = redoDepth(update.state);
+        if (this._redoNames.length > redoAfter) this._redoNames.splice(0, this._redoNames.length - redoAfter);
     }
 
     componentDidUpdate (prevProps) {

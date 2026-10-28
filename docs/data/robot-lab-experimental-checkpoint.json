@@ -2628,6 +2628,11 @@
         "pageErrors": 0,
         "nan": false,
         "simMs": 10800
+      },
+      "promotionReview": {
+        "date": "2026-10-27",
+        "decision": "STAYS_EXPERIMENTAL",
+        "reason": "The qualification contract requires a cold settle of at least 500 ms; the recorded unpowered pusher droops about 4 deg/s and the unchanged program refuses to start beyond 2 deg (cold 1000 refused). The law is also only qualitative (dissipative contact chain). Not run on this branch."
       }
     },
     {
@@ -2862,6 +2867,11 @@
         "pageErrors": 0,
         "nan": false,
         "simMs": 59867
+      },
+      "promotionReview": {
+        "date": "2026-10-27",
+        "decision": "STAYS_EXPERIMENTAL",
+        "reason": "The physical prediction dpsi = -Iw*dalpha/Jlocked from compiled colliders gives Iw/J = 0.026 per wheel degree at the saved pose. The recorded 0.124-0.129 equals (Iw+Jr)/(J+2Jr) with the SPIKE medium motor's reflected rotor inertia Jr = 3.0e-4 kg m2, which the engine adds to both hinge bodies (jolt-core setRotorInertia documents this as wrong when both turn about the axis, as platform and wheel do here). The observed reorientation is dominated by that engine model, so no honest physical judge passes it."
       }
     },
     {
@@ -2926,6 +2936,11 @@
         "pageErrors": 0,
         "nan": false,
         "simMs": 30067
+      },
+      "promotionReview": {
+        "date": "2026-10-27",
+        "decision": "STAYS_EXPERIMENTAL",
+        "reason": "The compiled model reports a locked-hinges warning (absorber anchor and bearing islands merged) and four elastic-band spring couplings; the current qualification harness accepts neither an undeclared compiler issue nor imposed couplings. Needs a reviewed declared-issue mechanism (PR #1455 proposes one) and a band-coupling judge first. Not run on this branch."
       }
     },
     {
@@ -3118,6 +3133,13 @@
         "pageErrors": 0,
         "nan": false,
         "simMs": 30167
+      },
+      "promoted": {
+        "to": "established library (MODELS)",
+        "date": "2026-10-27",
+        "judge": "compound-pendulum-exchange-v1",
+        "harness": "motorless: no driven port; disconnection removes the near arm's axle and bushes",
+        "verified": "PENDING: hosted native qualification of this branch"
       }
     },
     {
@@ -3391,6 +3413,18 @@
         "pageErrors": 0,
         "nan": false,
         "simMs": 30067
+      },
+      "promoted": {
+        "to": "established library (MODELS)",
+        "date": "2026-10-27",
+        "judge": "compound-pendulum-v1",
+        "verified": "Hosted native qualification of the exact head 07ff8d7c7c1 (Build 40538484853, unit shards): ordinary and strict real-VM runs pass compound-pendulum-v1 (period 0.507628 s against 0.507567 s predicted, 0.012%); frozen-output, 1 cm world-shift and pendulum_support_axle disconnection are rejected. The ci:full run 40566353980 passed the generic browser shards, none of which loads Samebeat. The browserRun record above is the earlier experimental checkpoint, not evidence for this promotion.",
+        "notRun": [
+          "per-model browser run (qualify-robot-lab-models --mode=full, chromium and webkit)",
+          "saved-project replay",
+          "export",
+          "manual controls"
+        ]
       }
     },
     {
@@ -3577,6 +3611,11 @@
         "pageErrors": 0,
         "nan": false,
         "simMs": 41400
+      },
+      "promotionReview": {
+        "date": "2026-10-27",
+        "decision": "STAYS_EXPERIMENTAL",
+        "reason": "The hubless harness path now qualifies it: stirling-quadrature-v1 passes in the real VM (pistons within 0.0012 mm of the slider-crank closure, strokes 32.001 mm, cranks 90.00004 deg apart, 803.9 mm2 per turn vs pi r2 = 804.25), the final hold is read as 'hold' from the lab-direct controller, and removing conrod_B and wristpin_B leaves piston B 0.02 mm of stroke. The established-library construction gate refuses the unchanged model bytes, however: gear_idler (3649) interpenetrates motor_A (54696p01), 2525 mesh points up to 7.5 LDU deep, and idlershaft, crank pins, tie pins and other pins reach 0.5 to 2.2 LDU into solid parts. A geometry fix is needed before promotion."
       }
     },
     {
@@ -3610,6 +3649,208 @@
         "nan": false,
         "simMs": 41200
       }
+    },
+    {
+      "id": "rimrun",
+      "title": "RimRun — equal weight, different roll",
+      "placements": 506,
+      "archive": "rimrun-addon.zip sha256 3d59bd7595790799bc4eefb0ac282ceafdcb4c8ad110869b15d453c5b5fa977f",
+      "canonicalLdrawSha256": "f09778a4a20fd4ab5bb72283a80c39152834f14a3fff3ba1037fdcf5ae8d426a",
+      "program": "rimrun.bw",
+      "programSha256": "e260b0f1619ef8c5e352edf6d621d94e23386e73afa49a3615e0809f1af96532",
+      "adaptation": "Model, program and licence bytes unchanged from the package; the supplied lesson's links to the still-experimental afterturn and inertia-loop were dropped (lessons may link only established models); comparison lessons and the per-file comparison licence copies written here. Needs the virtual SPIKE hub (toolbar Run connects it).",
+      "supplierClaims": "Rolling comparison PASS; complete native qualification FAIL (post-finish catch/settling, fault-stop hold speed) (supplier)",
+      "simulatorLaw": {
+        "verdict": "AGREES",
+        "scope": "Re-run on main b2e419acc (2026-10-27) with the package's own runner and judge; only its pinned-commit check was relaxed. Native tracks byte-identical to the supplied recordings. Inner/outer fitted a0 0.884448/0.815241 m/s2, ratio 1.084891 vs 1.077842 predicted; inner lead 14.424 mm at 200 mm. Catch and watchdog-hold gates still FAIL as declared."
+      },
+      "poweredMotion": "HEADLESS_COMPLETED (SPIKE)",
+      "mechanicalLaw": "SIMULATOR_AGREES",
+      "causalControl": "PASS (rimrun-swapped)",
+      "browserLoad": "NOT_RUN",
+      "savedProjectReplay": "NOT_RUN",
+      "noveltyNote": "Importer warns loose-part for the frame because the hub stands free beside the ramp (declared in ASSEMBLY.md); blocks promotion until mounted."
+    },
+    {
+      "id": "rimrun-swapped",
+      "title": "RimRun — ballast layouts exchanged (comparison)",
+      "placements": 506,
+      "archive": "rimrun-addon.zip sha256 3d59bd7595790799bc4eefb0ac282ceafdcb4c8ad110869b15d453c5b5fa977f",
+      "canonicalLdrawSha256": "ec8760bfe2e870e3265b80569d085884054a3e567ccb490def72e969ffbdb498",
+      "program": "rimrun.bw",
+      "programSha256": "e260b0f1619ef8c5e352edf6d621d94e23386e73afa49a3615e0809f1af96532",
+      "adaptation": "Model, program and licence bytes unchanged from the package; the supplied lesson's links to the still-experimental afterturn and inertia-loop were dropped (lessons may link only established models); comparison lessons and the per-file comparison licence copies written here. Needs the virtual SPIKE hub (toolbar Run connects it).",
+      "supplierClaims": "as rimrun",
+      "simulatorLaw": {
+        "verdict": "AGREES",
+        "scope": "Re-run on main b2e419acc (2026-10-27) with the package's own runner and judge; only its pinned-commit check was relaxed. Native tracks byte-identical to the supplied recordings. Inner/outer a0 0.883437/0.817677, ratio 1.080423; lane-swap differences within limits."
+      },
+      "poweredMotion": "HEADLESS_COMPLETED (SPIKE)",
+      "mechanicalLaw": "SIMULATOR_AGREES",
+      "causalControl": "IS_CONTROL",
+      "browserLoad": "NOT_RUN",
+      "savedProjectReplay": "NOT_RUN"
+    },
+    {
+      "id": "swayshift",
+      "title": "SwayShift — timing an anti-sway transfer",
+      "placements": 204,
+      "archive": "swayshift-addon.zip sha256 5c51b852c1d95be7946c4e4eefcaee69ed3c3e3a6009103a2cf64bf54fca778e",
+      "canonicalLdrawSha256": "f5198199c280fc362ed09dd29bb82d68c2c5a6ef1e5baee4ce4d27be87037bf7",
+      "program": "swayshift.bw",
+      "programSha256": "6a540c8116e07e613e7ee051d31394de81f0dc8183d1ac2472deb3bbb66c78d2",
+      "adaptation": "Model, program, lesson and licence bytes unchanged from the package; comparison lessons and the per-file comparison licence copies written here. Needs the virtual SPIKE hub (toolbar Run connects it).",
+      "supplierClaims": "Native model/program qualification PASS for both timing programs (supplier)",
+      "simulatorLaw": {
+        "verdict": "AGREES",
+        "scope": "Re-run on main b2e419acc (2026-10-27) with the package's own runner and judge; only its pinned-commit check was relaxed. Native tracks byte-identical to the supplied recordings. Common-window RMS sway 0.264979 deg (half period) vs 10.465006 deg (full period), 97.47% less; arrival-relative 97.43% less; watchdog 11/11."
+      },
+      "poweredMotion": "HEADLESS_COMPLETED (SPIKE)",
+      "mechanicalLaw": "SIMULATOR_AGREES",
+      "causalControl": "PASS (swayshift-in-phase: same model, start_gap 0.760 s)",
+      "browserLoad": "NOT_RUN",
+      "savedProjectReplay": "NOT_RUN"
+    },
+    {
+      "id": "swayshift-in-phase",
+      "title": "SwayShift — full-period timing (comparison)",
+      "placements": 204,
+      "archive": "swayshift-addon.zip sha256 5c51b852c1d95be7946c4e4eefcaee69ed3c3e3a6009103a2cf64bf54fca778e",
+      "canonicalLdrawSha256": "f5198199c280fc362ed09dd29bb82d68c2c5a6ef1e5baee4ce4d27be87037bf7",
+      "program": "swayshift-in-phase.bw",
+      "programSha256": "44086418ddc02bda88c9b9707f836151f7ef5e300ad7ed50c47de64689a784c4",
+      "adaptation": "Model, program, lesson and licence bytes unchanged from the package; comparison lessons and the per-file comparison licence copies written here. Needs the virtual SPIKE hub (toolbar Run connects it).",
+      "supplierClaims": "as swayshift",
+      "simulatorLaw": {
+        "verdict": "AGREES",
+        "scope": "Re-run on main b2e419acc (2026-10-27) with the package's own runner and judge; only its pinned-commit check was relaxed. Native tracks byte-identical to the supplied recordings. Full-period gap: 10.465 deg common-window RMS sway, 105/105 per-run gates."
+      },
+      "poweredMotion": "HEADLESS_COMPLETED (SPIKE)",
+      "mechanicalLaw": "SIMULATOR_AGREES",
+      "causalControl": "IS_CONTROL",
+      "browserLoad": "NOT_RUN",
+      "savedProjectReplay": "NOT_RUN"
+    },
+    {
+      "id": "tipline",
+      "title": "Tipline — sliding versus tipping",
+      "placements": 174,
+      "archive": "tipline-addon.zip sha256 a639c17e60dbb5e0c58b26d851f7970c33d4074b842f219a607b1ddb655f1d99",
+      "canonicalLdrawSha256": "890b7a6da4b3db341d25a4637214e3b06f49d7f8bd97bcd17b7bbc98bdfaa3ef",
+      "program": "tipline.bw",
+      "programSha256": "50513368569cb159fc7a24e6efc7f6444e8d6a00477b3eb8ff3560ff48b605d4",
+      "adaptation": "Model, program, lesson and licence bytes unchanged from the package; comparison lessons and the per-file comparison licence copies written here.",
+      "supplierClaims": "Main, swapped and pair qualification PASS (supplier)",
+      "simulatorLaw": {
+        "verdict": "AGREES",
+        "scope": "Re-run on main b2e419acc (2026-10-27) with the package's own runner and judge; only its pinned-commit check was relaxed. Native tracks byte-identical to the supplied recordings. High ballast first tip 14.979094 deg, low ballast first slide 22.130475 deg; 51/51 gates; construction and clearance identical."
+      },
+      "poweredMotion": "HEADLESS_COMPLETED",
+      "mechanicalLaw": "SIMULATOR_AGREES",
+      "causalControl": "PASS (tipline-swapped)",
+      "browserLoad": "NOT_RUN",
+      "savedProjectReplay": "NOT_RUN"
+    },
+    {
+      "id": "tipline-swapped",
+      "title": "Tipline — ballast heights swapped (comparison)",
+      "placements": 174,
+      "archive": "tipline-addon.zip sha256 a639c17e60dbb5e0c58b26d851f7970c33d4074b842f219a607b1ddb655f1d99",
+      "canonicalLdrawSha256": "2b8dd2bc031861c78c518fddd64657f59505b52d2b0e8a9528e9de8a6d408736",
+      "program": "tipline.bw",
+      "programSha256": "50513368569cb159fc7a24e6efc7f6444e8d6a00477b3eb8ff3560ff48b605d4",
+      "adaptation": "Model, program, lesson and licence bytes unchanged from the package; comparison lessons and the per-file comparison licence copies written here.",
+      "supplierClaims": "as tipline",
+      "simulatorLaw": {
+        "verdict": "AGREES",
+        "scope": "Re-run on main b2e419acc (2026-10-27) with the package's own runner and judge; only its pinned-commit check was relaxed. Native tracks byte-identical to the supplied recordings. Tip 14.980174 deg, slide 22.129190 deg; outcomes follow the ballast across lanes."
+      },
+      "poweredMotion": "HEADLESS_COMPLETED",
+      "mechanicalLaw": "SIMULATOR_AGREES",
+      "causalControl": "IS_CONTROL",
+      "browserLoad": "NOT_RUN",
+      "savedProjectReplay": "NOT_RUN"
+    },
+    {
+      "id": "twistspan",
+      "title": "TwistSpan — two-cord torsion pendulum",
+      "placements": 107,
+      "archive": "twistspan-addon-2.zip sha256 b65d7cabae406b24fe0fe5f8af22940df4010c67cee39866f50c992b54b94543",
+      "canonicalLdrawSha256": "e29a245634f3b264b316d567a7b305798f46b142ca924ec11d25ad2cbb349d8d",
+      "program": "twistspan.bw",
+      "programSha256": "7fe17625040c1b47b2c1f9fe4476082a5fc5734733eed1472586e508884f8fb0",
+      "adaptation": "Model, program, lesson and licence bytes unchanged from the package; comparison lessons and the per-file comparison licence copies written here. The earlier twistspan-addon.zip was a superseded working checkpoint and was not used.",
+      "supplierClaims": "Native judge 28/28 per variant, pair 9/9 (supplier)",
+      "simulatorLaw": {
+        "verdict": "AGREES",
+        "scope": "Re-run on main b2e419acc (2026-10-27) with the package's own runner and judge; only its pinned-commit check was relaxed. Native tracks byte-identical to the supplied recordings. Median period 0.77035195 s (outer ties) vs 0.76837 s predicted; 28/28 gates; construction and clearance identical."
+      },
+      "poweredMotion": "HEADLESS_COMPLETED",
+      "mechanicalLaw": "SIMULATOR_AGREES",
+      "causalControl": "PASS (twistspan-inner)",
+      "browserLoad": "NOT_RUN",
+      "savedProjectReplay": "NOT_RUN"
+    },
+    {
+      "id": "twistspan-inner",
+      "title": "TwistSpan — inner ties (comparison)",
+      "placements": 107,
+      "archive": "twistspan-addon-2.zip sha256 b65d7cabae406b24fe0fe5f8af22940df4010c67cee39866f50c992b54b94543",
+      "canonicalLdrawSha256": "899f49e9732299229e224b15850bf23d3fef80425c1b7fd79eb104f9f7af5fc0",
+      "program": "twistspan.bw",
+      "programSha256": "7fe17625040c1b47b2c1f9fe4476082a5fc5734733eed1472586e508884f8fb0",
+      "adaptation": "Model, program, lesson and licence bytes unchanged from the package; comparison lessons and the per-file comparison licence copies written here.",
+      "supplierClaims": "as twistspan",
+      "simulatorLaw": {
+        "verdict": "AGREES",
+        "scope": "Re-run on main b2e419acc (2026-10-27) with the package's own runner and judge; only its pinned-commit check was relaxed. Native tracks byte-identical to the supplied recordings. Median period 1.52201482 s vs 1.53675 s predicted; ratio 1.97574 (limit 1.85-2.15)."
+      },
+      "poweredMotion": "HEADLESS_COMPLETED",
+      "mechanicalLaw": "SIMULATOR_AGREES",
+      "causalControl": "IS_CONTROL",
+      "browserLoad": "NOT_RUN",
+      "savedProjectReplay": "NOT_RUN"
+    },
+    {
+      "id": "evenhand",
+      "title": "Evenhand — counterbalanced two-joint arm",
+      "placements": 97,
+      "archive": "evenhand.ldr / evenhand-control.ldr / evenhand.bw (bare files, evenhand.ldr sha256 2ec879e420ce19e5, evenhand-control.ldr sha256 564966b5b9da4213, evenhand.bw sha256 e48a31ec36709f50)",
+      "canonicalLdrawSha256": "2ec879e420ce19e5291ccfba2b45d7ffa11c2965cdc05ca8e93ad3f134db9129",
+      "program": "evenhand.bw",
+      "programSha256": "e48a31ec36709f504012d5f5ecb8db22f994ff9450908483dfd5d3c52a268413",
+      "adaptation": "Supplied as bare files: MPD wrappers, licence, catalog entry, details and EN/DE lessons written here; model and program bytes unchanged. Needs the virtual SPIKE hub (toolbar Run connects it).",
+      "supplierClaims": "none supplied",
+      "simulatorLaw": {
+        "verdict": "AGREES",
+        "scope": "Measured here on main b2e419acc with the direct VM + SPIKE, motor torque from jointDynamics over the second half of each 1.2 s hold: shoulder 0.33-0.36 mN m, elbow < 0.01 mN m at all nine poses; poses reached within 0.1 deg."
+      },
+      "poweredMotion": "HEADLESS_COMPLETED (SPIKE), completed=1, 11 arrivals",
+      "mechanicalLaw": "SIMULATOR_AGREES",
+      "causalControl": "PASS (evenhand-control)",
+      "browserLoad": "NOT_RUN",
+      "savedProjectReplay": "NOT_RUN",
+      "noveltyNote": "Positions alone cannot show the balance: the engine's motors hold any load (self-locking), so the evidence is holding torque, not sag."
+    },
+    {
+      "id": "evenhand-control",
+      "title": "Evenhand — weights moved inward (control)",
+      "placements": 97,
+      "archive": "evenhand.ldr / evenhand-control.ldr / evenhand.bw (bare files, evenhand.ldr sha256 2ec879e420ce19e5, evenhand-control.ldr sha256 564966b5b9da4213, evenhand.bw sha256 e48a31ec36709f50)",
+      "canonicalLdrawSha256": "564966b5b9da4213abe194a2794c9eb4d3ef26ef21d6c9fd7ea103b1b46bf8ac",
+      "program": "evenhand.bw",
+      "programSha256": "e48a31ec36709f504012d5f5ecb8db22f994ff9450908483dfd5d3c52a268413",
+      "adaptation": "As evenhand. Needs the virtual SPIKE hub (toolbar Run connects it).",
+      "supplierClaims": "none supplied",
+      "simulatorLaw": {
+        "verdict": "AGREES",
+        "scope": "Forearm weights 60 instead of 100 LDU behind the elbow: shoulder 4.70-5.20 mN m; elbow 0.39-0.61 mN m = 0.61 cos(A+B) within 0.01 at all nine poses; same poses reached."
+      },
+      "poweredMotion": "HEADLESS_COMPLETED (SPIKE), completed=1, 11 arrivals",
+      "mechanicalLaw": "SIMULATOR_AGREES",
+      "causalControl": "IS_CONTROL",
+      "browserLoad": "NOT_RUN",
+      "savedProjectReplay": "NOT_RUN"
     }
   ],
   "appVerification": {

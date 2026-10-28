@@ -100,7 +100,9 @@ for (const id of only ? [only] : Object.keys(MAP)) {
         // Recorded per file, because not every bundle comes from the same
         // repository: controller is vendored from the bw-board package, which
         // ships the extension and is pinned by sha like any other package.
-        ...(from.repo === UPSTREAM_REPO && from.commit === UPSTREAM_COMMIT ? {} : {repo: from.repo, commit: from.commit})
+        // An entry with its own vendor-pins.json pin always records it, even
+        // when that pin happens to equal UPSTREAM_COMMIT.
+        ...(typeof MAP[id] === 'string' ? {} : {repo: from.repo, commit: from.commit})
     };
 
     if (!check) {

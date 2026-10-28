@@ -394,6 +394,29 @@ const FpgaTab = (props) => {
         }, 800);
         return () => clearTimeout(timer);
     }, [hdl, text]);
+    // Project save carries this design (lib/bw-project-bundle.js `fpga`): flush it
+    // now, not 800 ms later; a loaded project replaces it in place.
+    const designRef = React.useRef({hdl, text});
+    designRef.current = {hdl, text};
+    React.useEffect(() => {
+        const collect = () => {
+            try {
+                localStorage.setItem(FPGA_AUTOSAVE_KEY, JSON.stringify(designRef.current));
+            } catch (e) { /* the save carries the last autosave instead */ }
+        };
+        const loaded = () => {
+            let next = null;
+            try { next = JSON.parse(localStorage.getItem(FPGA_AUTOSAVE_KEY) || 'null'); } catch (e) { next = null; }
+            setHdl(next && typeof next.hdl === 'string' ? next.hdl : '');
+            setText(next && typeof next.text === 'string' ? next.text : EXAMPLE);
+        };
+        window.addEventListener('bw-project-bundle-collect', collect);
+        window.addEventListener('bw-project-bundle-loaded', loaded);
+        return () => {
+            window.removeEventListener('bw-project-bundle-collect', collect);
+            window.removeEventListener('bw-project-bundle-loaded', loaded);
+        };
+    }, []);
     const [seed, setSeed] = React.useState(null);
     const [synth, setSynth] = React.useState(null);
     const [backend, setBackend] = React.useState('auto');

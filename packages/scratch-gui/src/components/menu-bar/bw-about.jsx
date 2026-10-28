@@ -4,6 +4,7 @@ import React from 'react';
 import {connect} from 'react-redux';
 
 import styles from './bw-about.css';
+import EditorErrorBoundary from '../editor-error-boundary/editor-error-boundary.jsx';
 
 const VERSION = (typeof process.env.BW_VERSION === 'string' && process.env.BW_VERSION) || 'unknown';
 const BUILD_TIME = (typeof process.env.BW_BUILD_TIME === 'string' && process.env.BW_BUILD_TIME) || '';
@@ -55,6 +56,10 @@ const PROVIDER = {
     phone: '+49 176 6421 8601'
 };
 
+// "Our apps" (App Store / TestFlight links and icons): its own chunk, fetched
+// only when the dialog shows it.
+const AppShowcase = React.lazy(() => import(/* webpackChunkName: "about-apps" */ './app-showcase.jsx'));
+
 const L10N = {
     en: {
         about: 'About Brickwright',
@@ -77,6 +82,8 @@ const L10N = {
             'and learn beside the project — in the browser or native app.',
         copied: 'Copied',
         copy: 'Copy version details',
+        apps: 'Our apps',
+        appsLoading: 'Loading apps…',
         provider: 'Provider (Impressum)',
         contact: 'Contact',
         email: 'E-mail',
@@ -133,6 +140,8 @@ const L10N = {
             'live debuggen und direkt am Projekt lernen — im Browser oder in der nativen App.',
         copied: 'Kopiert',
         copy: 'Versionsdetails kopieren',
+        apps: 'Unsere Apps',
+        appsLoading: 'Apps werden geladen…',
         provider: 'Anbieter (Impressum)',
         contact: 'Kontakt',
         email: 'E-Mail',
@@ -365,6 +374,15 @@ class BwAbout extends React.Component {
 
                             {known ? null :
                                 <p className={styles.warning}>{t('unknownVersion')}</p>}
+
+                            <div className={styles.section}>
+                                <div className={styles.heading}>{t('apps')}</div>
+                                <EditorErrorBoundary name={t('apps')}>
+                                    <React.Suspense fallback={<p role="status">{t('appsLoading')}</p>}>
+                                        <AppShowcase locale={locale} />
+                                    </React.Suspense>
+                                </EditorErrorBoundary>
+                            </div>
 
                             <div className={styles.section}>
                                 <div className={styles.heading}>{t('provider')}</div>

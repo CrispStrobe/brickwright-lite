@@ -5,6 +5,10 @@
 //! native folder picker is the only way a path enters: the web layer can ask to choose,
 //! show or forget the folder, and hand over bytes plus a bare `.sb3` file name, but it never
 //! names a path. Only files this module wrote (the `" autosave "` pattern) are ever pruned.
+//!
+//! iPhone and iPad have no folder picker; "choosing" there turns on a fixed folder, the
+//! app's Documents/Autosave, which the Files app shows under On My iPad › Brickwright
+//! (`UIFileSharingEnabled` in Info.ios.plist).
 
 use std::path::{Path, PathBuf};
 
@@ -64,18 +68,44 @@ fn prune(folder: &Path, filename: &str, keep: usize) -> std::io::Result<()> {
     Ok(())
 }
 
+fn remember_folder(app: &AppHandle, folder: &Path) -> Result<(), String> {
+    let setting = setting_file(app)?;
+    if let Some(parent) = setting.parent() {
+        std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    }
+    std::fs::write(&setting, folder.display().to_string()).map_err(|e| e.to_string())
+}
+
+/// How the folder is shown: its path, except on iOS, where the sandbox path means
+/// nothing to a user and the Files app is where they find it.
+#[cfg(not(target_os = "ios"))]
+fn display(path: &Path) -> String {
+    path.display().to_string()
+}
+
+#[cfg(target_os = "ios")]
+fn display(_path: &Path) -> String {
+    "Files › Brickwright › Autosave".into()
+}
+
 /// The chosen folder, for display; None when there is none (or it disappeared).
 #[tauri::command]
 pub fn autosave_folder(app: AppHandle) -> Option<String> {
-    stored_folder(&app).map(|path| path.display().to_string())
+    stored_folder(&app).map(|path| display(&path))
 }
 
-/// Native folder picker. Returns the chosen folder, or None when cancelled.
-/// Phones have no folder picker in the dialog plugin; their autosaves stay in the webview.
+/// Mobile: no folder picker, so turn on the app's own Documents/Autosave folder.
 #[cfg(mobile)]
 #[tauri::command]
-pub async fn choose_autosave_folder(_app: AppHandle) -> Result<Option<String>, String> {
-    Err("choosing an autosave folder is not available on this device".into())
+pub async fn choose_autosave_folder(app: AppHandle) -> Result<Option<String>, String> {
+    let folder = app
+        .path()
+        .document_dir()
+        .map_err(|e| e.to_string())?
+        .join("Autosave");
+    std::fs::create_dir_all(&folder).map_err(|e| e.to_string())?;
+    remember_folder(&app, &folder)?;
+    Ok(Some(display(&folder)))
 }
 
 #[cfg(desktop)]
@@ -90,12 +120,8 @@ pub async fn choose_autosave_folder(app: AppHandle) -> Result<Option<String>, St
         return Ok(None);
     };
     let folder = folder.into_path().map_err(|e| e.to_string())?;
-    let setting = setting_file(&app)?;
-    if let Some(parent) = setting.parent() {
-        std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
-    }
-    std::fs::write(&setting, folder.display().to_string()).map_err(|e| e.to_string())?;
-    Ok(Some(folder.display().to_string()))
+    remember_folder(&app, &folder)?;
+    Ok(Some(display(&folder)))
 }
 
 #[tauri::command]

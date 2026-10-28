@@ -261,6 +261,11 @@ class CircuitTab extends React.Component {
             canUndo: () => depth().undo > 0,
             canRedo: () => depth().redo > 0,
             depth,
+            // The history coordinator names these steps (lib/bw-circuit-step-names.js).
+            snapshots: () => {
+                const h = history();
+                return h && Array.isArray(h._stack) ? {stack: h._stack, cursor: h._cursor} : null;
+            },
             undo: () => press('↶'),
             redo: () => press('↷')
         });

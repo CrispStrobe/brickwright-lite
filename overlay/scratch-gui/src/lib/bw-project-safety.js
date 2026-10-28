@@ -6,7 +6,7 @@
 //   - a visible note when an editor's error boundary stopped it.
 
 import {instrumentProjectHistory} from './bw-project-history.js';
-import {startAutosave} from './bw-autosave.js';
+import {recoveryCandidate, restoreVersion, startAutosave} from './bw-autosave.js';
 import {getUndoState, redoActiveSurface, undoActiveSurface} from './global-undo.js';
 
 const waitFor = (read, tries = 150) => new Promise((resolve, reject) => {
@@ -103,6 +103,58 @@ const installShortcuts = () => {
     });
 };
 
+// After a session that ended with unsaved changes: offer its last autosave.
+const RECOVERY_TEXT = {
+    en: {title: 'Brickwright closed with unsaved changes', body: 'Reopen “{title}” as autosaved at {time}?',
+        open: 'Reopen', later: 'Not now', failed: 'Could not reopen it: {error}'},
+    de: {title: 'Brickwright wurde mit ungespeicherten Änderungen beendet', body: '„{title}“ wie um {time} automatisch gespeichert wieder öffnen?',
+        open: 'Wieder öffnen', later: 'Nicht jetzt', failed: 'Konnte nicht geöffnet werden: {error}'}
+};
+const offerRecovery = async store => {
+    const candidate = await recoveryCandidate();
+    if (!candidate || typeof document === 'undefined') return;
+    let locale = 'en';
+    try {
+        locale = store.getState().locales.locale;
+    } catch (e) { /* English */ }
+    const T = RECOVERY_TEXT[String(locale).startsWith('de') ? 'de' : 'en'];
+    const fill = (text, values) => text.replace(/\{(\w+)\}/g, (m, k) => values[k]);
+    const box = document.createElement('div');
+    box.setAttribute('role', 'dialog');
+    box.setAttribute('data-testid', 'bw-autosave-recovery');
+    Object.assign(box.style, {position: 'fixed', left: '12px', bottom: '12px', zIndex: 2147483000,
+        maxWidth: 'min(420px, calc(100vw - 24px))', background: '#eff6ff', color: '#1e3a8a',
+        border: '1px solid #93c5fd', borderRadius: '8px', padding: '10px 12px',
+        font: '13px system-ui, sans-serif', boxShadow: '0 4px 14px rgba(0,0,0,.15)'});
+    const title = document.createElement('strong');
+    title.textContent = T.title;
+    const body = document.createElement('div');
+    body.style.margin = '4px 0 8px';
+    body.textContent = fill(T.body, {title: candidate.title, time: new Date(candidate.at).toLocaleString()});
+    const button = (label, primary) => {
+        const element = document.createElement('button');
+        element.type = 'button';
+        element.textContent = label;
+        Object.assign(element.style, {minHeight: '32px', padding: '4px 10px', marginRight: '6px', borderRadius: '6px',
+            border: '1px solid #93c5fd', cursor: 'pointer', background: primary ? '#1d4ed8' : '#fff',
+            color: primary ? '#fff' : '#1e3a8a'});
+        return element;
+    };
+    const open = button(T.open, true);
+    open.setAttribute('data-testid', 'bw-autosave-recovery-open');
+    const later = button(T.later, false);
+    open.onclick = () => {
+        open.disabled = true;
+        restoreVersion(candidate.id).then(() => box.remove(), error => {
+            body.textContent = fill(T.failed, {error: describe(error)});
+            open.disabled = false;
+        });
+    };
+    later.onclick = () => box.remove();
+    box.append(title, body, open, later);
+    document.body.appendChild(box);
+};
+
 /**
  * @returns {Promise<void>} resolves once the safety net is running
  */
@@ -117,4 +169,5 @@ export default async function initProjectSafety () {
     const vm = await waitFor(() => store.getState().scratchGui.vm);
     instrumentProjectHistory(vm);
     startAutosave(vm, store);
+    offerRecovery(store).catch(() => { /* recovery is an offer, never a failure */ });
 }

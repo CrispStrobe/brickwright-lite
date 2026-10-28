@@ -936,15 +936,16 @@ test('the canvas has undo/redo (buttons + Ctrl-Z), snapshotting before edits', (
     assert.match(ui, /data-testid="bw-fpga-rf-undo"/, 'an Undo button');
     assert.match(ui, /data-testid="bw-fpga-rf-redo"/, 'a Redo button');
     // snapshots must guard the discrete edits, or undo has nothing to step back to
-    for (const site of [/const placeNode = \(item, position\) => \{\s*takeSnapshot\(\)/,
-        /onConnect = React\.useCallback\(params => \{ takeSnapshot\(\)/,
-        /const loadModel = model => \{\s*takeSnapshot\(\)/,
-        /const deleteNode = id => \{\s*takeSnapshot\(\)/]) {
+    // (each names its step for the menu-bar History list)
+    for (const site of [/const placeNode = \(item, position\) => \{\s*takeSnapshot\('[^']*'\)/,
+        /onConnect = React\.useCallback\(params => \{ takeSnapshot\('[^']*'\)/,
+        /const loadModel = model => \{\s*takeSnapshot\('[^']*'\)/,
+        /const deleteNode = id => \{\s*takeSnapshot\('[^']*'\)/]) {
         assert.match(ui, site, `a mutation is not snapshotted: ${site}`);
     }
     assert.match(ui, /onKeyDownCapture=\{onCanvasKeyDown\}/, 'keyboard undo/redo + snapshot-before-delete');
     assert.match(ui, /e\.shiftKey\) redo\(\); else undo\(\)/, 'Ctrl-Z undo, Ctrl-Shift-Z redo');
-    assert.match(ui, /onNodeDragStart=\{\(\) => takeSnapshot\(\)\}/, 'a move is undoable too');
+    assert.match(ui, /onNodeDragStart=\{\(\) => takeSnapshot\('Move'\)\}/, 'a move is undoable too');
 });
 
 // ── cross-tab: the FPGA outputs as a seven-segment number (opt-in) ──

@@ -17,7 +17,7 @@ import {inspectTilemapPalette, observeTilemapPalette, tilemapPixelColor, drawTil
 import {activateUndoSurface, notifyUndoState, registerUndoSurface} from '../../lib/global-undo.js';
 import {
     TILE_SIZES, findTilemapBlocks, writeTilemapBlock, tilemapText, paintCell, eraseCell, fillCells, setWall, resizeTilemap,
-    setTileSize, addTile, removeTile, paintTilePixel, renameTile, createHistory, commit, undo, redo, createTilemap, addTilemapBlock
+    setTileSize, addTile, removeTile, paintTilePixel, renameTile, createHistory, commit, undo, redo, historyStepNames, createTilemap, addTilemapBlock
 } from '../../lib/bw-makecode/tilemap-editor.js';
 import {
     findMapPlacements, placeableSprites, stagePlacement, unstagePlacement, placementsChanged, writePlacements
@@ -123,6 +123,7 @@ class TilemapEditor extends React.Component {
             canUndo: () => history().past.length > 0,
             canRedo: () => history().future.length > 0,
             depth: () => ({undo: history().past.length, redo: history().future.length}),
+            steps: () => historyStepNames(history()),
             undo: () => step(undo),
             redo: () => step(redo)
         });
