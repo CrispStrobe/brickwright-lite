@@ -1,72 +1,94 @@
-# SAMD engine adoption handoff — 2026-10-27
+# SAMD engine adoption handoff — updated 2026-10-28
 
-**Adoption is unfinished.** No SAMD engine pin or normal native SAMD GUI route
-landed. [PR1456](https://github.com/CrispStrobe/brickwright-lite/pull/1456), remote
-reviewed head `cf6fc849aec62c6a06845e333df931414fdd9f2f`, remains unmerged.
-Continue `lanes/2026-10-26-samd-native-game-engine-adoption.md` and read
-`lanes/PROTOCOL.md`; do not open a duplicate lane.
+**Consumer adoption is unfinished.** Continue existing
+[PR1533](https://github.com/CrispStrobe/brickwright-lite/pull/1533), branch
+`lane/samd-release-adoption-20261028`, head
+`bb8a63216637ae827ded1e7836a199e65b1ef6b2`. Read
+`lanes/2026-10-26-samd-native-game-engine-adoption.md` and `lanes/PROTOCOL.md`.
+Do not start a duplicate lane. Refresh remote heads/checks before acting.
 
-## Prepared work and evidence
+## Completed prerequisites
 
-The dispatch-only qualifier admits official frontend/native/engine originals,
-checks source/archive identities, and drives three fresh simulator instances
-in Chromium and three in installed Tauri/WebKit. Independent RGB checks require
-moving frames, targets and press/release. Collectors distinguish JS heap from
-sampled process-tree RSS, including observer/shared-page limits. 28 focused
-source/gate/census checks passed. Actual browser/installed SAMD acceptance is
-still pending. Supplier prerequisites are the
-[Core handoff](https://github.com/CrispStrobe/labwired-core/blob/main/docs/engineering/samd-software-profile-handoff.md)
-and [producer handoff](https://github.com/CrispStrobe/bw-board/blob/master/docs/SAMD-ENGINE-RELEASE-HANDOFF.md).
+Core [PR262](https://github.com/CrispStrobe/labwired-core/pull/262) merged as
+`3b655aef4085082152129c84849d4e2ad5004a7f` after fleet, selected guest and CLI
+qualification. BW [PR711](https://github.com/CrispStrobe/bw-board/pull/711) merged
+as `1f92a1aa85e808827a4c28b219bf11a572f07882` after12 successful enabled checks
+and declared skips; reviewed parents and landed tree were verified.
 
-## Current enabled failure
+The [immutable release](https://github.com/CrispStrobe/bw-board/releases/tag/labwired-wasm-3b655aef-locked)
+has API `immutable: true`; all nine publisher digests match the retained qualified
+originals. The earlier unlocked tag is preserved and is not the proposed pin.
+Producer [40699886470](https://github.com/CrispStrobe/bw-board/actions/runs/40699886470)
+passed two builds, determinism,125 existing tests and three active-game samples;
+independent review checked565 files and51 RGB frames. Motion remains deferred.
+See the [producer handoff](https://github.com/CrispStrobe/bw-board/blob/master/docs/SAMD-ENGINE-RELEASE-HANDOFF.md).
+Infrastructure [PR1456](https://github.com/CrispStrobe/brickwright-lite/pull/1456)
+merged as `dea504b32a9a4bd43a2a9d25b587590a0ac9763f`. The native-package owner
+released the former PR1318-first hold for this exact adoption and its two claimed
+repairs. No general package boundary is open.
 
-[Browser-light job122000439786](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40446187634/job/122000439786)
-failed `Browser gate — circuit UX`: `ADC_POINT_MODE_PUBLICATION` after selecting
-sample mode, with `channels=[]` and `publicationReady=false`. Cause remains
-unestablished. This is not a SAMD qualifier result, but blocks the infrastructure
-merge. Its original log is retained; reuse it rather than download it again.
+## Current candidate and preserved failures
 
-Refresh main and coordinate with the existing circuit/386 owner before repairs.
-Compare qualified main's verifier with the exact tested checkout. Preserve lane
-ownership, assertions, publication/ownership fences and wait bounds; no unchanged
-rerun or shared-native-producer edit to conceal this failure.
+PR1533 changes engine/glue/profile identity in `scripts/sync-labwired-wasm.mjs`
+and matching Node identity in `.github/workflows/target-performance.yml`.
+No board/compiler/CUI package pin, native producer or compile default changes.
 
-## Ordered completion
+Original [run40734487998](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40734487998)
+failed unit6 historical-study controls. Its successful producing job also
+minified the verified153114-byte glue to51263 bytes. Strict emitted-byte admission
+refused it. Both failures and the acquired original remain retained; this
+quarantined frontend must never feed native or actual-game acceptance.
 
-1. Refresh exact PR/main heads and all enabled checks. Resolve the circuit gate
-   with its owner, then qualify the final infrastructure. Preserve all CI
-   pointers/census observations. Disjoint Markdown composition follows the lean
-   protocol; do not repeat a full hosted cycle solely for prose. A real failure
-   still stops landing.
-2. Merge with `--match-head-commit` only after all checks; prove parents/tree and
-   notify the 386/native-package owner of landed SHA/tree/paths. The separate
-   **PR1318-first engine/package pin publication hold remains unreleased**.
-   This is not a global main hold; confirm release before publishing the pin.
-3. After the qualified supplier's immutable release, update exact `PIN`, `TAG`,
-   web engine/glue/profile SHA256s in `scripts/sync-labwired-wasm.mjs` and the
-   matching `.github/workflows/target-performance.yml` identity. Preserve board,
-   compiler/package pins and shared producer/default-profile settings.
-4. Finalize consumer source first. Use its successful automatic Build run
-   (`build` job, `github-pages`). Dispatch the existing native executable producer
-   with all three overrides together: `consumer`, `frontend_run`, `compile_pins`,
-   keeping reviewed default compile pins. Admit successful originals once;
-   do not rebuild a successful executable simply to inspect it.
-5. Dispatch registered `samd-native-game-qualification.yml` once with exact
-   `consumer`, `frontend_run`, `native_run`, `producer_run`, `producer_head`.
-   Admission requires first-attempt success, complete bounded rosters, publisher
-   digests and actual checkout/frontend/native/engine/profile/guest joins.
-   Unexpected executable composition fails closed; only declared Markdown
-   composition is allowed.
-6. Require both actual Chromium and installed Tauri/WebKit jobs, three fresh
-   instances each, independent raw RGB/input/RSS review and all final-head
-   checks. Preserve failures. Then merge normally and close the adoption claim
-   with receipts already available.
+The corrected candidate carries only the explicitly claimed repairs:
 
-The observer canvas is a controller-memory view. A normal native SAMD
-compile/import/export/GUI route needs separate scope for target selection,
-configuration, supported-format/refusal, input/display and installed interaction.
-Active-game real-time speed and physical panel/electrical/silicon qualification
-are also separate. A pin or Node result grants none of those claims.
+- Both tracked webpack configurations preserve exactly
+  `static/labwired/labwired_wasm.js` through the existing copy hook. Existing
+  content-addressed broker rules and unrelated minification remain intact.
+  Four controls cover equality, near misses, mirror equality and omitted rules.
+- The source owner's released three-path study repair seals four complete
+  historical input files, isolates synthetic collector fixtures and retains the
+  exact historical UI manifest. Original experiment pins, identity sources,
+  thresholds, captures and intent stay unchanged. Current-pin/never-pinned
+  guards stay strict elsewhere. Do not import the supplier's entire PR.
 
-Private paths, evidence custody and watcher details stay in the ignored local
-handoff, never public prose, PR bodies or workflow logs.
+All88 focused Node22 controls passed with zero skips, including both formerly
+failing collector cases. The retained
+[five-target benchmark](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40730146231)
+passed its unchanged floor at source `317c069003803f9e8bfbe570ca7c371da6e52c10`;
+its benchmark inputs are unchanged in the corrected candidate. These authored
+core-loop ceilings do not qualify active-game or hardware speed.
+
+## Remaining work, in order
+
+1. Refresh exact-head checks and existing
+   [Build40765450222](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40765450222).
+   `ci:full` was restored before this final source checkpoint after an earlier
+   removal; keep it present. Implementation bytes match the88-test candidate. Wait for every enabled check; do not duplicate
+   live jobs or rerun a known unchanged failure. After successful overall Build,
+   admit its single `build` job and `github-pages` artifact before one acquisition.
+   Independently bind the actual checkout, complete frontend inventory and these
+   SHA256s: glue `a29729658f267617e7d2539d756bd4dbe0662b25768348ecaeab723a9b032e1f`,
+   WASM `1ad2947b99df8a13fce29c9240a79c61fb66e4d57ede26ca50880f141f3e3978`,
+   profile `0fe1e72ae684153696efbca5874d2633007b92a9c9144f38cd62fdd28d030750`.
+   Only declared Markdown composition may differ in the actual frontend checkout.
+2. Dispatch `native-installed-qualification.yml` once with all three overrides:
+   full reviewed `consumer`, its successful automatic `frontend_run`, and unchanged
+   closed `compile_pins` defaults from the reviewed producer. Independently audit
+   the successful executable/receipt; do not rebuild an original to inspect it.
+3. Dispatch `samd-native-game-qualification.yml` once with the same `consumer`,
+   `frontend_run`, admitted `native_run`, producer run `40699886470` and producer
+   head `8ea3767903d5135f4bd1e74914e25663b530d502`. Require admission plus three
+   fresh actual Chromium and three installed Tauri/WebKit instances. Independently
+   audit raw RGB movement, actual press/release, sampled RSS and source/package
+   joins. No native or actual-game dispatch has occurred at this checkpoint.
+4. After every enabled final-head check and affected guest acceptance succeeds,
+   merge PR1533 normally with `--match-head-commit`; verify predicted/landed
+   parents and tree. Notify the native-package owner of the qualified landed
+   identity, update this handoff and close the existing claim. Preserve failures;
+   never relax assertions or silently change a dependency pin to land.
+
+Retain BW's narrow Node22 `--no-turbo-inline-js-wasm-calls` workaround where
+required for its V8 Deoptimizer crash. The observer canvas is a controller-memory
+view. A normal native SAMD compile/import/export/GUI route, active-game real-time
+playability and physical panel/electrical/silicon qualification remain separate
+scope. Keep private evidence and operational details outside public files/logs.

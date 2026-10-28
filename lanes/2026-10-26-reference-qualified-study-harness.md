@@ -1,6 +1,8 @@
 # Reference-qualified teaching-circuit study — phase one implementation
 
-CLAIMED — Codex circuit/instrument owner. Exact initial Lite base
+IN PROGRESS — forward repair by the Codex circuit/instrument owner; integration
+requires all enabled exact-head checks and its separately admitted numerical
+study before merge. Exact initial Lite base
 `fd2618f1006b501ce6c251d55edfcddda7ed0ba6`; branch
 `claim/reference-study-harness-20261026`. This implements only step1 of the
 [ordered six-item campaign](2026-10-26-reference-qualified-instrument-campaign.md),
@@ -129,3 +131,124 @@ Source controls may run for ordinary changes to this harness. The actual study
 requires its distinct frozen selection and pre-execution admission; unrelated
 x86 labels, dispatches and other lanes' pointers must not select or duplicate it.
 No experiment is dispatched merely to populate the census.
+
+## Source implementation checkpoint
+
+Source work continues on `lane/reference-qualified-instruments-20261026`.
+The candidate has 32 authored native JSON inputs: 31 distinct candidate graphs
+and one LT1763 precision-refusal control. At this pre-execution source checkpoint the numerical execution and qualification
+counts were zero; they are not inferred from source controls. The CLI must preserve the complete loaded graph/models;
+15 capture designs additionally bind actual imported-graph receipts, while
+16 static designs bind the retained native input and identity-loader route.
+This does not establish foreign-format importer coverage or an internal solver
+transcript. The supported direct-RC ADP7118 topology is reused with a new load,
+reference and observation intent; no new-domain or novel-topology claim follows.
+
+Forty-five synthetic controls pass under Node 22, with no skipped controls.
+These include independent readback, coherent byte-receipt mutations, complete
+loaded-graph joins, current signs, clocks, units, DMM windows, prior reviewed-head
+admission and remaining-time limits. A setup refusal retains all 32 not-run
+rows as an incomplete outcome; forged conformance and concealed execution are
+rejected. The recorded error text does not independently prove its cause. Source/policy and whitespace controls are
+separate from the actual numerical study. The exact frozen head, profile, references and independent reader require review
+and the distinct admission authority before selection. No experiment had been
+selected at this source checkpoint. The implementation PR carries the subsequent
+qualification receipts; this record does not invent a future run or self-hash.
+
+## Retained v1 failure and forward v2 admission repair
+
+The consumed v1 ref remains at `92a9ab6e7e4c639fb43299451a974c6a700592d3`.
+Run 40335666363 failed; one acquired artifact and one frozen independent readback
+returned valid-incomplete exit 2: 23 designs and 3,726 values passed,9 requests unsuccessful
+in the full 32-input denominator. Six requests exceeded the CLI rate contract;
+two nonlinear networks were conservatively refused; the named LT1763 refusal
+had exit 2 rather than the harness's incorrect 1. No old outcome is rewritten.
+
+Local corrections on `lane/reference-qualified-instruments-v2-20261026` stay
+within the owned harness paths. The new identity preserves the 20 µs window,
+20 ns solver cap and numerical tolerances, requests 2 MHz and 40 samples for LM741,
+validates capture clocks before selection, and admits only exact refusal exit 2.
+A qualified supplier-domain repair and explicitly claimed package/pin return leg
+remain prerequisites; no v2 event or variable mutation is authorized by a passing
+mock test. The original head cannot land. Future final source qualification and
+actual readback remain required. No product source, pin or lock change is made
+by this harness-only checkpoint.
+
+At the local harness-only v2 checkpoint, all 47 synthetic source controls
+passed under Node 22 without skips, including wrong-refusal-code and invalid
+rate/clock negatives. All 11 gate-audit controls passed with unchanged baselines.
+No v2 numerical experiment, package pin change or supplier implementation is
+claimed by those source-only results.
+
+Held-v2 reference admission: derive equal TEMP/TNOM from the actual ngspice42
+source constants, not revised SI constants. The old conversion was about8.77nV
+below the declared25.85mV thermal law. A new source control checks all16DC decks
+and rejects that old conversion. This is an independent preselection conditions
+correction, not a solver-observation fit; the already-matched supplier test's
+separate numerical failure remains unresolved. No v2 run/pin/variable selected.
+
+The next reference admission names NPN substrate=collector explicitly for the
+zero-RB/RC authored three-terminal law. All DC decks retain1pS physical junction
+conductance and disable numerical shunt/GMIN/source fallbacks; sweep continuation
+remains declared. A source negative restores the omitted fourth pin and must
+fail admission. This follows source-proved ngspice substrate semantics, not
+voltage fitting; no native graph, model parameter or tolerance changed.
+
+## Qualified-supplier source preparation
+
+The held v2 harness is being composed locally with the separately claimed
+package return leg. Its source identities now bind qualified bw-board
+`dfa4be8eff4cef22462ac508a67da5f706f7d72d` and bw-circuit-ui
+`66e3724020e795c3442f8da9a7af149dd5f74bd9`, including independently derived
+runtime fingerprints and the exact UI package manifest. Circuit inputs,
+reference methods, numerical bounds and case counts are unchanged. This is
+source preparation, not an installed-package or numerical qualification.
+
+The previously selected v1 head, run and original failures remain immutable.
+The v2 ref and selection variable remain untouched. Final source admission and
+the package wave's actual installed/GUI qualification must precede a separately
+admitted study event; passing synthetic controls does not select that event.
+Only this workflow's census entry and pointer are composed, preserving other
+owners' records. The active x86 current-supplier qualification lands first;
+final composition must use its actual landed parent and reviewed role profiles.
+
+The qualified-supplier local checkpoint passes49 source/synthetic-reader
+controls and11 gate-audit controls, with no skips. The initial source check
+correctly rejected the retained old UI manifest digest; the reader now binds
+the exact qualified UI source bytes. Its failing original is retained. The
+circuit/reference/collector bodies are unchanged except source identities;
+no numerical comparison or scientific experiment has been executed here.
+
+## Current-supplier source admission (Board c7bcbe4b, CUI da28bb8c)
+
+Lite main now pins bw-board `c7bcbe4bcd583d2215372dd4ee1e65002e249a04` and
+bw-circuit-ui `da28bb8ce9b38aa18d2e424f692c6570fc1d6d1d`. Because these differ
+from the prepared `dfa4be8e`/`66e37240` binding, this is a fresh source
+admission, not a literal edit. Rationale:
+
+- Board `c7bcbe4b` has no `src/` or `package.json` difference from the
+  previously reviewed `97f60b97b694c84b016b630b697fd955bbe31595`, so its runtime,
+  including the LM741 linear-pole model, is identical to that reviewed source.
+  Relative to `dfa4be8e` it adds the opt-in nominal 25 C LM741 bias/supply law.
+- CUI `da28bb8c` is `66e37240` plus the scope capture-select re-render fix
+  (`a5860b9c`), the LM741 bias/supply precision CLI and the opt-in precision
+  passive batch, and it pins Board `c7bcbe4b`. Defaults are unchanged: the new
+  domains are opt-in and none of the 32 authored requests selects them.
+
+Re-derived from the exact Git sources, not edited by hand: both runtime
+fingerprints were computed with the collector's own fingerprint function over
+the archived trees (Board 321 files, `f71c24a8…`; UI 434 files with
+`bin/bwc.mjs`, `d6d314b7…`), and cross-checked by a separate byte-level
+re-hash in another language. The same method reproduces the old `47880658…` and
+`52bb0c75…` values from `dfa4be8e`/`66e37240`. The UI package manifest digest
+is `aa2e7cdd…`, the exact bytes of `da28bb8c` `package.json`. The frozen intent
+changes only in its `sources` and `runtimeFingerprints` fields; schema, study
+name, bounds, counts and all 32 cases are byte-identical. The new intent is
+`2b3a5be44e6dcfcd3fbef73c5888921118c792a6825795066258154fe793b430`.
+
+Preserved unchanged: the full 32-input denominator, circuit and model
+parameters, comparison bounds, the 2 MHz/40-sample LM741 requests, the 20 ns
+cap, the named-refusal exit, the BJT substrate topology, the version-42 thermal
+constants, other workflows' census and pointer entries, and the immutable v1
+source, ref and run. This is source admission only. No study event, v2 ref or
+reviewed-head variable is created or changed by it.

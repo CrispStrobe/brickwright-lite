@@ -333,6 +333,28 @@ Linux: Packet.Net and pip are inside the Linux package's single-file Renode host
 them there needs a multi-file Linux build plus builder and test changes, so it was not
 done.
 
+## Slow first emulated second: cause and fix (2026-10-28)
+
+The signed installed test needed about 550 s of wall time for the guest's first
+emulated second. Hosted timing (renode-spike-prime `macos-spike-timing.yml`,
+runs 40649468110 and 40664692021) isolated the cause:
+
+| Package | macos-14/15/latest arm64 | macos-15-intel |
+|---|---|---|
+| Unfrozen producer package (absolute paths) | 6.7–8.2 s | 14.3–14.5 s |
+| Frozen resource profile (as bundled) | 534–693 s | 1227–1229 s (no snapshot within 900 s) |
+| Frozen, platform path absolute | 7.1 s | — |
+| Frozen, platform path `$ORIGIN/platforms/...` | 7.5 s | — |
+
+Sandboxing and signing made no difference. The frozen scenario named
+`@platforms/boards/spike-prime.repl` relative. Renode resolved that against its own
+bundled platform tree, so it loaded the unstaged board. That board downloads an SVD
+over the network and lacks the aggregate display clock, so the guest stepped a
+per-pixel display timer. The slow logs show the SVD download; the fast logs don't.
+`scripts/lib/spike-resource-profile.mjs` now anchors the path to the scenario's own
+directory (`$ORIGIN/...`), and re-freezing converts earlier bare-relative profiles.
+Linux packages use the same profile, so they had the same issue.
+
 ## Remaining work for full App Store packaging
 
 Owned by the model-delivery lane (`release.yml`) or needing its coordination:
