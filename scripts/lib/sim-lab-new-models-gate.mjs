@@ -165,6 +165,7 @@ export async function newModelsInteractions(page, opts) {
             ...modelOpts, models: [id], judge: judgeNewModel, captureModel:captureRenderedModel, extendedObservations:SIX_INTAKES.includes(id)||id==='cross-ratio', completionHoldMsFor:key=>key==='cross-ratio'?500:SIX_INTAKES.includes(key)?1000:null,
             simulatedMsFor: key => SPEC[key].simulatedMs, completeWhenPausedFor:key=>key==='root-bridge', speed: 4, observeProgram: true
         }));
+        if(id==='cross-ratio')await crossRatioRoundtrip(page,modelOpts);
         await manualMechanicsInteractions(page,{...modelOpts,models:[id],captureModel:captureRenderedModel});
         await page.getByTestId('bw-sim-lab-instructions').click();
         await page.waitForFunction(()=>window.__bwSimLabInstructions?.status==='ready',null,{timeout:120000});
@@ -181,7 +182,6 @@ export async function newModelsInteractions(page, opts) {
         await captureUiScreenshot(page,{path:resolve(opts.shotsDir,id+'-bom.png')},page.getByTestId('bw-sim-instructions'));
         await page.keyboard.press('Escape');
         console.log(`PASS ${id}: manual controls, ${plan.steps.length} connected instruction pages and ${count+bands}-piece BOM`);
-        if(id==='cross-ratio')await crossRatioRoundtrip(page,modelOpts);
         if([...SIX_INTAKES,'cable-compass','cable-compass-control','rise-ratio','rise-ratio-control','cascade','cascade-control','wavemaker','wavemaker-control','sine-shuttle','quartermaster','watt-line','twin-tempo','root-bridge','balance-engine'].includes(id))await intakeRoundtrip(page,modelOpts,id,judgeNewModel);
     }
     writeFileSync(resolve(opts.shotsDir, 'new-model-measurements.json'), `${JSON.stringify(results, null, 2)}\n`);

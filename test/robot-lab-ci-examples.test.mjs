@@ -74,4 +74,5 @@ test('Cross Ratio coverage rejects an absent or duplicated dedicated journey',()
  const helper=read('scripts/lib/sim-lab-new-models-gate.mjs');
  assert.match(helper,/id==='cross-ratio'\?\{includeExperimental:true\}/,'explicit experimental opt-in');
  assert.match(helper,/if\(id==='cross-ratio'\)await crossRatioRoundtrip\(page,modelOpts\)/,'actual project replay stays connected');
+ assert.ok(helper.indexOf("if(id==='cross-ratio')await crossRatioRoundtrip")<helper.indexOf('await manualMechanicsInteractions(page,'),'save the actual gallery program before manual reload');
 });

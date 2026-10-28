@@ -857,7 +857,7 @@ try {
                     locale: language === 'de' ? 'de-DE' : 'en-US', serviceWorkers: 'block'});
                 lesson.on('pageerror', error => errors.push(error.stack || error.message));
                 lesson.on('dialog', dialog => dialog.accept());
-                try { await newModelLesson(lesson, id==='cross-ratio'?{...opts,includeExperimental:true}:opts, id, language); }
+                try { await newModelLesson(lesson, opts, id, language); }
                 finally { await lesson.close(); }
             }
         }
