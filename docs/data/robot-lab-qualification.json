@@ -352,6 +352,31 @@
       "disconnectInputDeg": 3000,
       "observeAir": true,
       "disconnectMeasure": true
+    },
+    {
+      "id": "samebeat",
+      "judge": "compound-pendulum-v1",
+      "parts": 92,
+      "ports": [
+        "A"
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 45000,
+      "afterMs": 500,
+      "frameMs": 10,
+      "withSpike": true,
+      "frozenOutput": "pendulum_ballast",
+      "disconnect": [
+        "pendulum_support_axle"
+      ],
+      "disconnectInputDeg": 7,
+      "disconnectLaw": true,
+      "notRun": [
+        "per-model browser run (qualify-robot-lab-models --mode=full, chromium and webkit)",
+        "saved-project replay",
+        "export",
+        "manual controls"
+      ]
     }
   ]
 }

@@ -829,6 +829,37 @@ export const MODEL_LESSONS = Object.freeze({
             "markiertes Lineal"
         ]
     },
+    "samebeat.ldr": {
+        "pieces": 92,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "forces",
+        "description": {
+            "en": "A brief motor pulse moves a support and releases a passive rigid pendulum. Rehang the same body at its unequal paired pivot and compare periods; then test a third suspension with the same parts and program.",
+            "de": "Ein kurzer Motorimpuls bewegt die Aufhängung eines passiven starren Pendels. Hänge denselben Körper am ungleichen zweiten Punkt auf und vergleiche die Perioden; prüfe danach einen dritten Punkt mit denselben Teilen und demselben Programm."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Reversible compound pendulum — Kater principle",
+            "de": "Reversionspendel — Kater-Prinzip"
+        },
+        "keywords": [
+            "Reversible compound pendulum — Kater principle",
+            "Reversionspendel — Kater-Prinzip",
+            "reversible pendulum",
+            "compound pendulum",
+            "physical pendulum",
+            "Kater pendulum",
+            "conjugate pivots",
+            "centre of oscillation",
+            "Reversionspendel",
+            "physikalisches Pendel",
+            "konjugierte Aufhängepunkte"
+        ]
+    },
     "carry-ratio.ldr": {
         "pieces": 70,
         "motors": 1,

@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
 
 const store = new Map();
 globalThis.localStorage = {
@@ -7,7 +8,7 @@ globalThis.localStorage = {
     setItem: (key, value) => store.set(key, String(value)),
     removeItem: key => store.delete(key)
 };
-const {readSettings, writeSettings, folderPickerAvailable} = await import('../overlay/scratch-gui/src/lib/bw-autosave.js');
+const {readSettings, writeSettings, folderPickerAvailable, fixedFolder} = await import('../overlay/scratch-gui/src/lib/bw-autosave.js');
 
 test('autosave is on by default and its settings stay in safe bounds', () => {
     store.clear();
@@ -22,4 +23,36 @@ test('autosave is on by default and its settings stay in safe bounds', () => {
 
 test('a folder can be chosen only where the platform offers a picker', () => {
     assert.equal(folderPickerAvailable(), false, 'plain Node has neither the app bridge nor showDirectoryPicker');
+});
+
+test('the app on an iPad uses its own Files-app folder instead of a picker', () => {
+    const ua = (agent, touch) => Object.defineProperty(globalThis, 'navigator',
+        {value: {userAgent: agent, maxTouchPoints: touch}, configurable: true});
+    const saved = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
+    try {
+        globalThis.window = {__TAURI__: {core: {invoke: () => null}}};
+        ua('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)', 5);
+        assert.equal(fixedFolder(), true, 'iPadOS reports as Macintosh, with touch points');
+        ua('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)', 0);
+        assert.equal(fixedFolder(), false, 'the Mac app keeps its folder picker');
+        globalThis.window = {};
+        ua('Mozilla/5.0 (iPad; CPU OS 18_0 like Mac OS X)', 5);
+        assert.equal(fixedFolder(), false, 'Safari on iPad is not the app');
+    } finally {
+        delete globalThis.window;
+        if (saved) Object.defineProperty(globalThis, 'navigator', saved);
+    }
+    const rust = readFileSync(new URL('../apps/tauri/src-tauri/src/autosave.rs', import.meta.url), 'utf8');
+    assert.match(rust, /document_dir\(\)[\s\S]*?\.join\("Autosave"\)/, 'mobile choose turns on Documents/Autosave');
+    const plist = readFileSync(new URL('../apps/tauri/src-tauri/Info.ios.plist', import.meta.url), 'utf8');
+    assert.match(plist, /<key>UIFileSharingEnabled<\/key>\s*<true\/>/, 'the Files app shows that folder');
+});
+
+test('an unsaved session is marked, and the next start offers its autosave', () => {
+    const source = readFileSync(new URL('../overlay/scratch-gui/src/lib/bw-autosave.js', import.meta.url), 'utf8');
+    assert.match(source, /if \(changed\) localStorage\.setItem\(UNCLEAN_KEY/);
+    assert.match(source, /else localStorage\.removeItem\(UNCLEAN_KEY\)/);
+    assert.match(source, /export const recoveryCandidate = /);
+    const safety = readFileSync(new URL('../overlay/scratch-gui/src/lib/bw-project-safety.js', import.meta.url), 'utf8');
+    assert.match(safety, /offerRecovery\(store\)/);
 });

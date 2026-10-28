@@ -136,6 +136,8 @@ export const MODELS = Object.freeze([
         manualJog: {A: {minDeg: -85, maxDeg: 85, stepDeg: 5, speedDps: 30}}},
     {file: 'thirdline.ldr', title: {en: 'Thirdline — angle trisector', de: 'Thirdline — Winkeldreiteiler'}, example: 'thirdline.bw', mat: 'plain',
         manualJog: {A: {minDeg: -5, maxDeg: 40, stepDeg: 5, speedDps: 8}}},
+    {file: 'samebeat.ldr', title: {en: 'Samebeat — reversible pendulum', de: 'Samebeat — Reversionspendel'}, example: 'samebeat.bw', mat: 'plain',
+        manualJog: {A: {minDeg: -8, maxDeg: 8, stepDeg: 4, speedDps: 60}}},
     {file: 'carry-ratio.ldr', title: {en: 'Carry Ratio — a free ball carried by a driven tray', de: 'Carry Ratio — eine freie Kugel auf einem angetriebenen Tisch'}, example: 'carry-ratio.bw', mat: 'plain',
         manualJog: {A: {minDeg: -180, maxDeg: 2880, stepDeg: 90, speedDps: 120}}},
     {file: 'air-budget.ldr', title: {en: 'Air Budget — one pump, finite stored air', de: 'Air Budget — eine Pumpe, begrenzter Luftvorrat'}, example: 'air-budget.bw', mat: 'plain',

@@ -253,6 +253,86 @@ remain and are needed.
   (above), which removes two LGPL-noticed items.
 - Add the .NET runtime notices to the macOS bundle.
 
+## Packaging follow-through (2026-10-27)
+
+Claim: [`lanes/2026-10-27-spike-macos-packaging.md`](../lanes/2026-10-27-spike-macos-packaging.md).
+
+**Runtime changes (owner's forks).**
+- `renode-infrastructure-spike-prime` #39 (merged `712fb3f3`): opt-in
+  `RENODE_TLIB_DIRECTORY` (default `tlib/` beside the host). The first CPU that needs a
+  translation library loads the shipped file in place instead of a copy extracted from
+  `Infrastructure.dll`. Further CPUs of the same architecture keep per-CPU extraction,
+  because tlib has per-image global state. A shipped file is never deleted. Also opt-in
+  `RENODE_SERVER_BIND_ADDRESS` (for example `127.0.0.1`) for the monitor and other socket
+  servers; the default stays all interfaces. Unit tests: 7 passed.
+- `renode-spike-prime` #62 (merged `961a01f5`): gitlink to that Infrastructure, plus the
+  reusable `macos-spike-renode.yml`. It builds the multi-file SPIKE layout for
+  `osx-arm64`/`osx-x64`: `tlib/translate-arm-m-le.so` as a separate file, the .NET
+  runtime notices (`licenses/dotnet-runtime-0-license`, `-1-license`), and no Packet.Net
+  or `Lib/ensurepip`.
+- Qualification in #62's final run:
+  - Linux boots the own guest three ways: default (no shipped tlib, listens on
+    `0.0.0.0`), shipped tlib, and loopback (listens on `127.0.0.1` only).
+  - macOS, sandboxed parent → `inherit` child: boots using the shipped tlib, writes no
+    extracted tlib file into the container, and has no all-interfaces listener.
+  - Original failure kept: the first Linux attempt (run 40457986283) read a snapshot
+    from a surviving `dotnet` process behind the `renode` wrapper.
+- **`network.server` is still required with loopback-only listeners.** The parent with
+  only `network.client`, and the parent with no network entitlement, both abort:
+  `Unable to create '127.0.0.1:39554' socket: [AccessDenied]`.
+
+**App integration (this repository).**
+- **Supervisor:** `renode_supervisor.rs` gives the Renode child
+  `RENODE_SERVER_BIND_ADDRESS=127.0.0.1` and, when `tlib/` sits beside the verified
+  host, `RENODE_TLIB_DIRECTORY`. On macOS it also sets `TMPDIR` to the app's temporary
+  directory, which for a sandboxed app is inside its container.
+- **Staging:** `scripts/stage-spike-macos-resources.mjs` checks the layout. It refuses a
+  single-file host, a missing tlib or missing .NET notices, and Packet.Net or
+  `ensurepip`. It relocates the Linux-produced NuttX package's absolute scenario root,
+  freezes the profile with the existing resource-profile code, and emits the Tauri
+  resource map and `BW_RENODE_*` pins. The Renode tree ends up at
+  `Contents/Resources/renode/`.
+- **Release workflow, macOS leg only:**
+  - builds the own guest and the SPIKE Renode (`renode-spike-prime@961a01f5`), stages
+    them, and bundles them;
+  - signs every nested Mach-O under `Contents/Resources/renode` with the Mac App Store
+    identity;
+  - signs the host with `entitlements-renode-child.plist` (`app-sandbox`, `inherit`,
+    `cs.allow-jit`) and re-seals the app;
+  - builds the `.pkg`, then installs it on the hosted runner and runs
+    `scripts/macos/spike-installed-test.sh`.
+- Upload to App Store Connect is still tag-only. This lane created no tag and made no
+  upload.
+
+**Signed dry runs (workflow_dispatch on the lane branch).**
+
+| Run | Result |
+|---|---|
+| 40473029718 | Failed at staging: the package's absolute producer root in `nuttx.resc` was rejected as an unknown template. Fixed by relocation. |
+| 40485901116 | Signed app and `.pkg` built. `codesign --verify --deep --strict`: valid; child Team ID set; entitlements `app-sandbox`, `inherit`, `allow-jit`. Every Team-ID hardened variant loaded the signed shipped tlib, but the first emulated second took about 9 min of wall time, so the 240 s client limit expired (failed). |
+| **40507444319** | **Passed.** Installed `.pkg`; the app's own signed child, started as a sandboxed inherit child, booted the own NuttX guest: first state snapshot after 554 s, virtual time 1.0 s → 1.52 s. Controls on the same runner: ad-hoc without hardened runtime 631 s for the first emulated second (no snapshot within 300 s); Team ID without hardened runtime 577 s; Team ID hardened with only `app-sandbox` + `inherit` (no `allow-jit`) 556 s. |
+
+What this establishes:
+- **Signing works.** With the real Team ID and the hardened runtime, the bundled
+  runtime, the shipped signed tlib and the JIT all work. `allow-jit` was not needed in
+  this measurement. It stays in the child entitlements until App Review or a later macOS
+  says otherwise.
+- **`disable-library-validation` is not needed.** Every file carries the same Team ID
+  and nothing is extracted.
+- **The installed app cannot launch on the runner.** Its MAS production provisioning
+  profile is refused (`taskgated`: "Only Development Provisioning Profiles …",
+  AMFI "No matching profile found"). That is expected. Launching the real app needs
+  TestFlight or a development profile, which this lane did not use.
+- **The guest is very slow on this runner.** On `macos-latest` it runs about 500 times
+  slower than in the earlier `macos-14` probes, independent of signing (the ad-hoc
+  control is equally slow). The cause is not established; the open candidates are the
+  runner image and the frozen versus producer package. This is the main open item:
+  a user would wait minutes for the first frame.
+
+Linux: Packet.Net and pip are inside the Linux package's single-file Renode host. Removing
+them there needs a multi-file Linux build plus builder and test changes, so it was not
+done.
+
 ## Remaining work for full App Store packaging
 
 Owned by the model-delivery lane (`release.yml`) or needing its coordination:
