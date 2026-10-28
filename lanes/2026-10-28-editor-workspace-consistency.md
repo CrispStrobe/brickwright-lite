@@ -37,3 +37,11 @@ strip into Robot Lab Manual controls in `sim-lab-pane.jsx`, preserving real
 button/connection callbacks and release behavior. Own only these presentation
 hunks and affected source/browser controls. No simulator/input-delivery change.
 Qualify the affected GUI and preserve all existing source merge gates.
+
+Browser-driver compatibility follow-up: update only Code-menu open/close
+interactions in `scripts/verify-local-asm-listing.mjs` and
+`scripts/verify-makecode.mjs`, plus the palette-opening interaction in
+`scripts/lib/editor-touch-checks.mjs`, using the existing shared menu/picker
+helpers. Preserve every offline compiler, program, guest, numerical, byte/image,
+mutation and save/reopen assertion, input fixture, timeout and acquisition.
+No importer/compiler behavior or consumed original/fixture changes.

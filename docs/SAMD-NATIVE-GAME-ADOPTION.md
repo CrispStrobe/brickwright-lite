@@ -1,7 +1,11 @@
 # SAMD software-profile engine adoption
 
-Status: qualification in progress. No engine pin or shipped native SAMD GUI route
-has changed in this lane. The existing Arcade JavaScript route remains separate.
+Status: upstream assembly, qualification and immutable engine release are
+complete. Consumer [PR1533](https://github.com/CrispStrobe/brickwright-lite/pull/1533)
+remains unmerged at `48df0f93f9b6b642238c13448e6f075d8871eb83`; source CI and
+fresh browser/installed acceptance are pending. No normal native SAMD GUI route
+has landed. Continue the [current handoff](SAMD-NATIVE-GAME-HANDOFF.md), refresh
+remote state, and reuse retained originals rather than repeating supplier work.
 
 The owned supplier fixes are qualified and merged:
 
@@ -22,36 +26,52 @@ calibration/serial packets; they are not hardware captures or physical page-size
 measurements. A colour is unknown until the actual guest uploads the complete
 RGBSET table. No host-installed default LUT is permitted.
 
-## Required sequence before adoption can close
+## Completed work and remaining acceptance
 
-1. Complete the explicit Core assembly's enabled final-head checks and actual
-   CLI guest coverage. The [native/Node WASM game campaign](https://github.com/CrispStrobe/codal-samd/pull/93)
-   passed all six independently audited samples. Its original picture failure
-   was the paused system menu caused by active-high virtual input IDs; the
-   authored game now selects the runtime's existing active-low IDs1050–1057.
-   Original budgets, runtime, physical input model and picture assertions remain.
-   [Measured results and limits](https://github.com/CrispStrobe/codal-samd/blob/35ca8138ae4f7b9b9ecb5dc9a1d04dbf02e5619f/docs/SAMD-NATIVE-GAME-RESULTS.md)
-   establish functional execution, not real-time playability or Lite adoption.
-2. Retain the independently audited official original source, compiler inputs, firmware,
-   chip/system/display, calibration, render frames and three fresh samples per
-   engine. Record startup, render-return intervals, input latency and process
-   memory with observation costs and limits. Node execution alone does not
-   qualify a browser or installed app.
-3. Land the qualified supplier source. Build the engine and its exact-source
-   profile asset twice on independent hosted runners. Require identical engine,
-   glue, loader marker and profile bytes, the complete existing legacy suite,
-   and the same active game on the production WASM. Retain component notices,
-   original failures and immutable release identities.
-4. Publish an immutable release; update Lite's exact engine/profile SHA256 pins
-   and matching performance-workflow identity together. The portable
-   `scripts/verify-samd-native-game.mjs` admits the pinned profile, all exact
-   source YAML and complete authored input identities. Metadata admission is
-   explicitly not an actual-guest qualification result.
-5. Qualify the same source-built guest on actual browser WASM and the installed
-   package, binding engine/configuration/firmware/frontend/native package bytes
-   and checking moving frames plus actual press/release. Pass all enabled
-   exact-head consumer checks, then land the qualified consumer and close its
-   adoption claim. Keep other owners' vendor/importer/package changes intact.
+1. **Done — explicit Core assembly.**
+   [Core PR262](https://github.com/CrispStrobe/labwired-core/pull/262) merged as
+   `3b655aef4085082152129c84849d4e2ad5004a7f` after fleet, selected guest and CLI
+   qualification. Do not substitute the historical PyBadge descriptor. Original
+   failures, authored inputs and qualification limits remain retained.
+2. **Done — source-built native and Node game evidence.** The
+   [native/Node campaign](https://github.com/CrispStrobe/codal-samd/pull/93)
+   passed six independently audited samples. The original paused-menu failure
+   came from active-high virtual input IDs; the authored game selects the
+   runtime's existing active-low IDs1050–1057. Budgets, runtime, physical input
+   model and picture assertions remain unchanged.
+   [Results and limits](https://github.com/CrispStrobe/codal-samd/blob/35ca8138ae4f7b9b9ecb5dc9a1d04dbf02e5619f/docs/SAMD-NATIVE-GAME-RESULTS.md)
+   establish functional execution, not real-time playability or Lite acceptance.
+3. **Done — production WASM and immutable release.**
+   [BW PR711](https://github.com/CrispStrobe/bw-board/pull/711) merged after its
+   enabled checks and independent retained-original audit.
+   [Producer40699886470](https://github.com/CrispStrobe/bw-board/actions/runs/40699886470)
+   passed two hosted builds, determinism,125 legacy tests and three production
+   game samples. Engine, glue, Node loader marker and exact-source profile bytes
+   match across builds. The
+   [locked release](https://github.com/CrispStrobe/bw-board/releases/tag/labwired-wasm-3b655aef-locked)
+   has API `immutable: true`; its nine asset digests match the qualified originals.
+   Motion qualification remains deferred. Keep component notices and the narrow
+   Node22 inlining workaround documented by the
+   [producer handoff](https://github.com/CrispStrobe/bw-board/blob/master/docs/SAMD-ENGINE-RELEASE-HANDOFF.md).
+4. **Pending — consumer source and emitted assets.** PR1533 proposes the exact
+   web engine/glue/profile hashes and matching performance-workflow identity.
+   It preserves raw glue through asset optimization and carries bounded
+   historical-study/native-observation test repairs. Keep the original failures;
+   the native failure remains unattributed. Require every enabled final-head
+   source check, then admit one successful official frontend and independently
+   bind its checkout and complete inventory. The three release hashes must match
+   the emitted assets. The portable profile verifier's metadata admission is
+   not an actual-guest result. No native or actual-game dispatch has occurred at
+   this checkpoint; follow the current handoff's exact identities and order.
+5. **Pending — actual consumer and landing.** Build one source-bound native
+   executable after source admission with unchanged compile defaults. Then run
+   three fresh actual Chromium and three installed Tauri/WebKit instances of the
+   same source-built guest on the shipped engine assets. Independently check raw
+   RGB movement, actual press/release, sampled RSS and complete source/frontend/
+   executable/engine/profile/firmware joins. Only after those and every enabled
+   final-head check pass, merge normally with matched-head protection, verify
+   parents/tree, update these records and close both existing claims. Preserve
+   other owners' vendor/importer/package changes.
 
 ## Separate work
 
