@@ -21,7 +21,8 @@ import {SPIKE_MEDIUM_ANGULAR} from '../overlay/scratch-gui/src/lib/bw-sim/device
 const J = await loadJolt();
 const DT = 0.005;
 
-const disc = (id, y, massKg, radius) => ({id, motion: 'dynamic', position: [0, y, 0], rotation: [0, 0, 0, 1], massKg,
+// No body damping (Jolt's default 0.05/s): a drag on each body is outside the law tested here.
+const disc = (id, y, massKg, radius) => ({id, motion: 'dynamic', position: [0, y, 0], rotation: [0, 0, 0, 1], massKg, angularDamping: 0,
     colliders: [{shape: 'cylinder', radius, halfHeight: 0.002}], parts: []});
 const moment = ({massKg, radius}) => 0.5 * massKg * radius * radius;
 
@@ -44,9 +45,10 @@ const run = ({housing, output, withRotor = true, steps = 100}) => {
     const driven = core.jointState('j').angle;
     // Then the same torque reversed for as long, back to about rest: the coupling's one-step lag
     // (jolt-core.js applyRotorCoupling) is a rate error of order Jr·Δω per step, so its turn
-    // error vanishes with the rate. Rest to rest is where the turn ratio is compared.
+    // error vanishes with the rate. Rest to rest (the step the hinge's rate crosses zero) is where
+    // the turn ratio is compared.
     core.setMotor('j', {mode: 'torque', torqueNm: -T, dampingNmsPerRad: C});
-    for (let i = 0; i < steps; i++) core.step(DT);
+    for (let i = 0; i < 4 * steps && core.jointState('j').velocity > 0; i++) core.step(DT);
     const q = core.bodyPose('housing').rotation;
     const psi = 2 * Math.atan2(q[1], q[3]);
     const alpha = core.jointState('j').angle;
@@ -70,8 +72,8 @@ test('a free housing turns -I2/(I1+I2) per hinge turn, the rotor adding nothing 
     assert.ok(bothBodies > 3 * physical, 'the case separates the two treatments');
     assert.ok(rest < 0.05 * Math.abs(rates.out - rates.housing), `back to about rest (${rest} rad/s)`);
     // While driven, the rates lag the momentum law by one step's coupling impulse: reported, and bounded.
-    assert.ok(Math.abs(rateRatio - physical) < 0.1 * physical, `rate ratio ${rateRatio} vs physical ${physical}`);
-    assert.ok(Math.abs(ratio - physical) < 0.02 * physical, `ratio ${ratio} vs physical ${physical} (Jr on both: ${bothBodies})`);
+    assert.ok(Math.abs(rateRatio - physical) < 0.02 * physical, `rate ratio ${rateRatio} vs physical ${physical}`);
+    assert.ok(Math.abs(ratio - physical) < 0.01 * physical, `ratio ${ratio} vs physical ${physical} (Jr on both: ${bothBodies})`);
 });
 
 test('the rotor still slows the relative turn: Jr is in the relative mode (#1494)', t => {
