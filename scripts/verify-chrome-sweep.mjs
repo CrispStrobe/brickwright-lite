@@ -181,8 +181,38 @@ try {
     check(download.suggestedFilename() === 'program.bw', 'Code File > Save uses the actual filename policy');
     check(Buffer.concat(chunks).equals(Buffer.from(importedSource)),
         'Code File open/save preserves the exact source bytes, comments and Unicode');
-    await openMenu('File');
-    await page.keyboard.press('Escape');
+    const vmHasConversionProbe = () => {
+        const vm = window.__brickwrightStore.getState().scratchGui.vm;
+        return vm.runtime.targets.some(target => Object.values(target.blocks._blocks).some(block => {
+            if (block.opcode !== 'looks_say') return false;
+            const input = block.inputs.MESSAGE;
+            const value = input && target.blocks.getBlock(input.block);
+            return value?.opcode === 'text' && value.fields?.TEXT?.value === 'menu_conversion_probe';
+        }));
+    };
+    check(!(await page.evaluate(vmHasConversionProbe)), 'VM starts without the conversion probe');
+    await editor.click();
+    await page.keyboard.press('Control+a');
+    await page.keyboard.insertText('SPRITE Cat:\n  WHEN flag clicked:\n    say "menu_conversion_probe"\n');
+    await openMenu('Edit');
+    await menuItem('Convert code to blocks').click();
+    await page.waitForFunction(vmHasConversionProbe);
+    await page.waitForFunction(() => {
+        const button = document.querySelector('[data-testid="bw-code-action-row"] button');
+        return button && !button.disabled;
+    });
+    check(true, 'Edit > Convert code to blocks produces the actual VM say block');
+    await editor.click();
+    await page.keyboard.press('Control+a');
+    await page.keyboard.insertText('SPRITE Cat:\n  WHEN flag clicked:\n    say "menu_stale_buffer"\n');
+    check(await page.evaluate(vmHasConversionProbe), 'editing Code leaves the converted VM project intact');
+    await openMenu('Edit');
+    await menuItem('Generate code from blocks').click();
+    await page.waitForFunction(() => {
+        const text = document.querySelector('.cm-content')?.textContent || '';
+        return text.includes('menu_conversion_probe') && !text.includes('menu_stale_buffer');
+    });
+    check(true, 'Edit > Generate code from blocks replaces stale text from the actual VM');
     await page.getByRole('tab', {name: 'Circuit', exact: true}).click();
     await openMenu('File');
     check(await menuItem('Open code file…').count() === 0, 'Circuit File menu excludes Code actions');
@@ -194,6 +224,8 @@ try {
     await openMenu('Edit');
     check(await menuItem('Find and replace…').count() === 0 && await menuItem('Select all').count() === 0,
         'Blocks Edit menu excludes Code commands');
+    check(await menuItem('Convert code to blocks').count() === 0 &&
+        await menuItem('Generate code from blocks').count() === 0, 'Blocks Edit menu excludes Code conversion commands');
 } catch (error) {
     check(false, 'chrome sweep journey completes', error.message);
 } finally {

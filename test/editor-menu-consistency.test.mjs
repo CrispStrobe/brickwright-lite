@@ -91,7 +91,8 @@ test('new menu commands have German labels through the shared chrome catalog', a
     const {chromeMessages} = await import('../overlay/scratch-gui/src/lib/bw-chrome-messages.js');
     for (const [key, label] of Object.entries({findReplace: 'Suchen und ersetzen…',
         goToLine: 'Zu Zeile springen…', selectAll: 'Alles auswählen',
-        openCodeFile: 'Code-Datei öffnen…', saveCodeFile: 'Code speichern unter…'})) {
+        openCodeFile: 'Code-Datei öffnen…', saveCodeFile: 'Code speichern unter…',
+        codeToBlocks: 'Code in Blöcke umwandeln', codeFromBlocks: 'Code aus Blöcken erzeugen'})) {
         assert.equal(chromeMessages.de[`gui.menuBar.${key}`], label);
     }
 });

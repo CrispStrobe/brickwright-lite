@@ -1319,7 +1319,7 @@ class PseudocodeImporter extends React.Component {
 
     componentDidMount () {
         this._unmounted = false;
-        this._unregisterFileMenu = registerEditorMenuActions('code', () => this.codeFileMenuActions());
+        this._unregisterCodeMenu = registerEditorMenuActions('code', () => this.codeMenuActions());
         window.addEventListener('bw-microbit-run-request', this._onMicrobitRunRequest);
         // CodeMirror arrives when the tab is first shown (_reveal), not now:
         // every TabPanel is force-rendered, so "mounted" is every first paint.
@@ -1562,7 +1562,8 @@ class PseudocodeImporter extends React.Component {
 
     componentDidUpdate (prevProps, prevState) {
         if (prevProps.isVisible !== this.props.isVisible || prevState.busy !== this.state.busy ||
-            prevState.revealed !== this.state.revealed) notifyEditorMenuActions();
+            prevState.revealed !== this.state.revealed || prevState.buffers !== this.state.buffers ||
+            prevState.lang !== this.state.lang || prevState.asmMode !== this.state.asmMode) notifyEditorMenuActions();
         if (this.props.isVisible && !this.state.revealed) this._reveal();
         // Tools may have opened while a hardware device was selected. If the
         // user then chooses "none" without closing it, onToggle does not fire
@@ -2101,10 +2102,12 @@ class PseudocodeImporter extends React.Component {
         return `${(dev ? dev[1].toLowerCase() : f.base)}.${f.ext}`;
     }
 
-    // Save the code ITSELF, comments and all. The .sb3 round-trip preserves a
-    // program but not a single comment — blocks carry no file-level text — so
-    // a documented source can only survive as its own file.
-    codeFileMenuActions () {
+    canCompileToBlocks () {
+        return !this.state.busy && !!this.activeCode().trim() &&
+            (TWO_WAY.has(this.state.lang) || this.canLiftAsm());
+    }
+
+    codeMenuActions () {
         if (this._unmounted || !this.props.isVisible || !this.state.revealed) return null;
         return {
             open: {
@@ -2112,10 +2115,15 @@ class PseudocodeImporter extends React.Component {
                 run: () => this._codeFileInput.current.click()
             },
             // Match the toolbar: saving a snapshot is allowed while compiling.
-            save: {enabled: true, run: this.saveCodeFile}
+            save: {enabled: true, run: this.saveCodeFile},
+            'to-blocks': {enabled: this.canCompileToBlocks(), run: this.compile},
+            'from-blocks': {enabled: !this.state.busy, run: this.fromBlocks}
         };
     }
 
+    // Save the code ITSELF, comments and all. The .sb3 round-trip preserves a
+    // program but not a single comment — blocks carry no file-level text — so
+    // a documented source can only survive as its own file.
     saveCodeFile () {
         const code = this.activeCode() || '';
         if (!code.trim()) { this.setState({status: this.L.saveEmpty}); return; }
@@ -2613,7 +2621,7 @@ class PseudocodeImporter extends React.Component {
 
     componentWillUnmount () {
         this._unmounted = true;
-        if (this._unregisterFileMenu) this._unregisterFileMenu();
+        if (this._unregisterCodeMenu) this._unregisterCodeMenu();
         this._makeCodeRequest = null;
         const vm = this.props.vm;
         if (vm && vm.runtime && this._onProjectChanged) {
@@ -5957,7 +5965,7 @@ class PseudocodeImporter extends React.Component {
                         alignItems: 'center', gap: 6, flexWrap: 'wrap', flexShrink: 1, minWidth: 0}}>
                         <button onClick={this.compile}
                             aria-label={this.L.toBlocks}
-                            disabled={this.state.busy || !this.activeCode().trim() || !(TWO_WAY.has(this.state.lang) || this.canLiftAsm())}
+                            disabled={!this.canCompileToBlocks()}
                             title={this.L.toBlocksTitle(LANG_LABEL[this.state.lang])}
                             style={actionBtn}>
                             <span aria-hidden="true">⇦ ▣</span>

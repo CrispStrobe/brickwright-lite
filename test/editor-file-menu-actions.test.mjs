@@ -90,8 +90,9 @@ test('subscribers see registration, availability updates and disposal and stop a
 test('actual Code provider invokes its original chooser and bound save handler with toolbar availability', () => {
     const calls = [];
     const host = {props: {isVisible: true}, state: {revealed: true, busy: false},
-        _codeFileInput: {current: {click: () => calls.push('chooser')}}, saveCodeFile: () => calls.push('save')};
-    const actions = method(importer, '    codeFileMenuActions ()', '');
+        _codeFileInput: {current: {click: () => calls.push('chooser')}}, saveCodeFile: () => calls.push('save'), canCompileToBlocks: () => true,
+        compile: () => calls.push('compile'), fromBlocks: () => calls.push('from-blocks')};
+    const actions = method(importer, '    codeMenuActions ()', '');
     const unregister = registerEditorMenuActions('test-code', () => actions.call(host));
     try {
         assert.equal(runEditorMenuAction('test-code', 'open'), true);
@@ -114,7 +115,7 @@ test('actual Code provider invokes its original chooser and bound save handler w
 
 test('Code menu provider registers and cleans up at actual component lifecycle boundaries', () => {
     assert.match(scopeAfter(importer, '    componentDidMount ()'), /registerEditorMenuActions\('code'/);
-    assert.match(scopeAfter(importer, '    componentWillUnmount ()'), /this\._unregisterFileMenu\(\)/);
+    assert.match(scopeAfter(importer, '    componentWillUnmount ()'), /this\._unregisterCodeMenu\(\)/);
     const update = scopeAfter(importer, '    componentDidUpdate (prevProps, prevState)');
     for (const state of ['isVisible', 'busy', 'revealed']) assert.ok(update.includes(`prev${state === 'isVisible' ? 'Props' : 'State'}.${state}`));
     assert.match(update, /notifyEditorMenuActions\(\)/);

@@ -213,6 +213,8 @@ class MenuBar extends React.Component {
             undoSurface: 'blocks',
             codeOpenAvailable: false,
             codeSaveAvailable: false,
+            codeToBlocksAvailable: false,
+            codeFromBlocksAvailable: false,
             // Desktop app: File > Load/Save use native project documents (lib/tauri-bridge.js).
             nativeDocuments: false,
             recentProjects: []
@@ -233,11 +235,15 @@ class MenuBar extends React.Component {
             this.setState({globalCanUndo: canUndo, globalCanRedo: canRedo, undoSurface: label});
         });
         this.activateTabUndoSurface();
-        this._unsubscribeFileActions = subscribeEditorMenuActions(() => {
+        this._unsubscribeCodeActions = subscribeEditorMenuActions(() => {
             const codeOpenAvailable = editorMenuActionEnabled('code', 'open');
             const codeSaveAvailable = editorMenuActionEnabled('code', 'save');
-            if (codeOpenAvailable !== this.state.codeOpenAvailable || codeSaveAvailable !== this.state.codeSaveAvailable) {
-                this.setState({codeOpenAvailable, codeSaveAvailable});
+            const codeToBlocksAvailable = editorMenuActionEnabled('code', 'to-blocks');
+            const codeFromBlocksAvailable = editorMenuActionEnabled('code', 'from-blocks');
+            if (codeOpenAvailable !== this.state.codeOpenAvailable || codeSaveAvailable !== this.state.codeSaveAvailable ||
+                codeToBlocksAvailable !== this.state.codeToBlocksAvailable ||
+                codeFromBlocksAvailable !== this.state.codeFromBlocksAvailable) {
+                this.setState({codeOpenAvailable, codeSaveAvailable, codeToBlocksAvailable, codeFromBlocksAvailable});
             }
         });
     }
@@ -245,7 +251,7 @@ class MenuBar extends React.Component {
         this._mounted = false;
         document.removeEventListener('keydown', this.handleKeyPress);
         if (this._unsubscribeUndo) this._unsubscribeUndo();
-        if (this._unsubscribeFileActions) this._unsubscribeFileActions();
+        if (this._unsubscribeCodeActions) this._unsubscribeCodeActions();
     }
     componentDidUpdate (prevProps) {
         if (prevProps.activeTabIndex !== this.props.activeTabIndex) this.activateTabUndoSurface();
@@ -266,6 +272,11 @@ class MenuBar extends React.Component {
     }
     handleCodeFileAction (action) {
         this.props.onRequestCloseFile();
+        if (this.props.activeTabIndex !== 3) return false;
+        return runEditorMenuAction('code', action);
+    }
+    handleCodeConversionAction (action) {
+        this.props.onRequestCloseEdit();
         if (this.props.activeTabIndex !== 3) return false;
         return runEditorMenuAction('code', action);
     }
@@ -800,6 +811,22 @@ class MenuBar extends React.Component {
                                         </MenuItem>
                                         <MenuItem onClick={() => this.handleCodeEditorCommand('select-all')}>
                                             <FormattedMessage id="gui.menuBar.selectAll" defaultMessage="Select all" />
+                                        </MenuItem>
+                                    </MenuSection>
+                                )}
+                                {this.props.activeTabIndex === 3 && (
+                                    <MenuSection>
+                                        <MenuItem
+                                            disabled={!this.state.codeToBlocksAvailable}
+                                            onClick={() => this.handleCodeConversionAction('to-blocks')}
+                                        >
+                                            <FormattedMessage id="gui.menuBar.codeToBlocks" defaultMessage="Convert code to blocks" />
+                                        </MenuItem>
+                                        <MenuItem
+                                            disabled={!this.state.codeFromBlocksAvailable}
+                                            onClick={() => this.handleCodeConversionAction('from-blocks')}
+                                        >
+                                            <FormattedMessage id="gui.menuBar.codeFromBlocks" defaultMessage="Generate code from blocks" />
                                         </MenuItem>
                                     </MenuSection>
                                 )}
