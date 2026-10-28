@@ -51,7 +51,8 @@ circle-intersection fixtures and corruption controls. Those analytic fixtures
 are not engine evidence. The synchronous preflight precedes importing the native
 harness, so a broken consumer cannot continue into engine qualification.
 The existing unit artifact retains bounded NDJSON records inside the TAP log.
-Evidence uses a direct backpressure-aware stream, bypassing the VM helper's
+Evidence uses a direct stream that awaits every write callback and rejects
+pending-write errors/closure, bypassing the VM helper's
 console capture. Four supplementary Node 24 motion cases passed their internal
 checks at an earlier candidate, but its console-based raw records were not
 retained. That TAP is preserved and supplies no standalone record acceptance;
@@ -78,7 +79,7 @@ controls are implemented. The existing 30-minute job cap and every old gate
 remain unchanged. Zero-reading budget registration still awaits its scope
 extension; no new runtime or historical timing is claimed.
 
-Five lightweight analytic preflights (39 data corruptions plus a receiver failure, including the
+Five lightweight analytic preflights (39 data corruptions plus receiver failures, including the
 four-case retained-TAP transport and same-opcode program edits) and 15 browser shard/inventory checks pass;
 these checks import no engine and do not qualify motion.
 
