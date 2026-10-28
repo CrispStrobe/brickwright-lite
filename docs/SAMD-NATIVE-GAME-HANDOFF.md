@@ -27,6 +27,11 @@ merged as `dea504b32a9a4bd43a2a9d25b587590a0ac9763f`. The native-package owner
 released the former PR1318-first hold for this exact adoption and its two claimed
 repairs. No general package boundary is open.
 
+For the current successor, require every enabled exact-head source check,
+including the full Rust suite, before any native or actual-game dispatch. The
+previous guarded continuation is stopped with zero dispatches. Fresh source
+and actual acceptance remain pending; the original native failure is not waived.
+
 ## Current candidate and preserved failures
 
 PR1533 changes engine/glue/profile identity in `scripts/sync-labwired-wasm.mjs`
@@ -84,23 +89,25 @@ The final-head historical-study source controls passed49 tests with zero skips
 and the actual study job was correctly skipped. GUI infrastructure controls and
 vendor checks also passed. The main Build remains queued at this checkpoint.
 
-The test-only successor is now pushed as
-`ac0c45e0744c7a16cc97f406541826d70121fb23`. It holds the admitted child identity
-for termination and cleanup, keeps complete PID publication and the original
-three-second assertion, and retains bounded failure snapshots. A negative
-fixture reads the actual registered kill signal before clearing it, requires
-survival through the same window, then cleans its exact child. Python runs in
-isolated mode with explicit checks; this is a Linux test prerequisite only.
-Production native bytes before the test module remain identical. Four bounded
-extracted-method controls and three adversarial cuts pass; their explicit
-synthetic supervisor boundary is not full Rust or actual-guest qualification.
-Require all enabled source checks, including the full native suite, before any
-expensive dispatch. The original failure remains unattributed and unwaived.
+Test-only successor: the
+[Linux observation claim](../lanes/2026-10-28-linux-owner-death-observation.md)
+owns only the supervisor's test module; production bytes remain unchanged.
+The candidate binds parent/group identity and a held process descriptor, requires
+complete PID publication, retains bounded failure snapshots and signals only the
+admitted child. The original three-second assertion stays intact. A negative
+fixture observes the actual supervisor's kill signal before deliberately
+clearing it and requiring survival through the same window, then exact cleanup.
+Private extracted-method controls and three adversarial cuts passed; their
+explicit synthetic supervisor boundary is not full Rust or guest qualification.
+Full affected Rust CI and fresh actual SAMD acceptance still must pass on the
+successor head. The original failure is not reclassified as a proven flake.
+The separate current SPIKE delivery claim owns only MicroPython manifest hunks;
+preserve those and the old dirty worktrees.
 
 ## Remaining work, in order
 
 1. Qualify the test-only successor against the native source gate above, then
-   refresh all enabled exact-head source checks and existing
+   refresh exact-head checks and existing
    [Build40777652451](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40777652451).
    `ci:full` was restored before this final source checkpoint after an earlier
    removal; keep it present. Implementation bytes match the88-test candidate. Wait for every enabled check; do not duplicate
