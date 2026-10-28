@@ -111,3 +111,22 @@ test('observed intrinsic replacement permanently revokes a music result profile'
     }finally{Object.defineProperty(Math,'max',original);}
     assert.equal(profile.current(),false);assert.deepEqual([...graph.typesAt(calls[0])],[]);
 });
+
+test('Array APIs cannot retain music-derived Number facts after consumed proof expiry',()=>{
+    const program=parseMakeCodeTs('let values=[music.tempo()];let alias=values');
+    const call=getters(program)[0],read=program.body[1].decls[0].init;
+    const graph=analyseSourceValueProducers(program,{arrayValues:true,arrayEffectSites:true,
+        ordinaryPrimitiveSdkNumbers:true,unboundIsOpaque:true});
+    assert.deepEqual([...graph.typesAt(call)],['Number']);
+    assert.deepEqual([...graph.arrayElementTypesAt(read)],['Number']);
+    assert.equal(graph.arrayMapReceiverSafeAt(read),true);
+    const before=program.body[0].decls[0].name;program.body[0].decls[0].name='edited';
+    assert.deepEqual([...graph.typesAt(call)],[]);
+    program.body[0].decls[0].name=before;
+    assert.deepEqual([...graph.arrayElementTypesAt(read)],[]);
+    assert.deepEqual(graph.arrayAllocationsAt(read),[]);
+    assert.deepEqual(graph.possibleArrayAllocationsAt(read),[]);
+    assert.equal(graph.arrayMapReceiverSafeAt(read),false);
+    assert.equal(graph.isInitializedAt(read),false);
+    assert.ok(graph.arrayConstraintErrorsAt(read).length);
+});

@@ -20,6 +20,7 @@ import {SDK_FONT_FIELDS} from './sdk-font-value-descriptors.js';
 import {ordinaryPlayerScoreNumberCalls,ordinaryCameraPropertyNumberLeaves,ordinaryMathNumberCalls} from './ordinary-primitive-sdk-number-source.js';
 import {ordinarySceneClockNumberCalls} from './ordinary-scene-clock-number-source.js';
 import {createOrdinaryMusicNumberSource} from './ordinary-music-number-source.js';
+import {localArrayDeclarationResetSource} from './local-array-declaration-reset-source.js';
 import {BUTTON_EVENTS,controllerButtonEventNumberLeaves} from './controller-button-event-number-source.js';
 
 const spriteEventNumber=Number;
@@ -203,6 +204,9 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
     // An unused occurrence proof contributes no type facts to invalidate.
     let controlEntryUsed=false;
     const initializedReads=new WeakSet(),initializationAt=new WeakMap(),localUndefinedDeclarations=new Set();
+    const declarationArrayResets=arrayValues?localArrayDeclarationResetSource(program):null;
+    let declarationArrayResetUsed=false;
+    const declarationArrayResetCurrent=()=>!declarationArrayResetUsed||declarationArrayResets.current();
     const deadResets=deadLocalResets(program),writing=new WeakSet(),owners=new WeakMap(),cells=new WeakMap(),types=new Map(),edges=[],scales=[],texts=[],derived=[],prints=[],classes=new Map(),classCalls=[],classWrites=new Set(),declarations=new Map(),functions=new Map(),calls=[],numericCalls=[],unsupported=[];
     const fail=message=>{if(!unsupported.includes(message))unsupported.push(message);};
     const scope=parent=>({parent,bindings:new Map()});
@@ -244,7 +248,7 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
         }
         if(node.type==='Declaration'){
             let functionOwner=owner;while(functionOwner&&!functionOwner.result)functionOwner=functionOwner.parent;
-            for(const decl of node.decls){const target=binding(owner,decl.name);if(arrayValues&&decl.isArray&&decl.typeName)arrayConstraints.push({cell:target,type:decl.typeName.replace(/\[\]$/,'')});if(multiplayer&&(decl.isArray||decl.typeName&&!['any','mp.Player'].includes(decl.typeName)))playerConstraints.add(target);if(decl.init){visit(decl.init,owner);edge(cell(decl.init),target);}
+            for(const decl of node.decls){const target=binding(owner,decl.name);if(arrayValues&&decl.isArray&&decl.typeName)arrayConstraints.push({cell:target,type:decl.typeName.replace(/\[\]$/,'')});if(multiplayer&&(decl.isArray||decl.typeName&&!['any','mp.Player'].includes(decl.typeName)))playerConstraints.add(target);if(decl.init){visit(decl.init,owner);if(declarationArrayResets?.discount(decl))declarationArrayResetUsed=true;else edge(cell(decl.init),target);}
                 else if(declaredLocalUndefined&&functionOwner&&node.kind==='let'&&declarations.get(target)?.size===1&&!decl.isArray&&(!decl.typeName||['number','string','boolean','any'].includes(decl.typeName))){add(target,'Undefined');localUndefinedDeclarations.add(decl);}
                 if(decl.typeName==='image.Font')owner.fontAnnotations=(owner.fontAnnotations||new Set()).add(target);}return;
         }
@@ -433,7 +437,9 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
     let invalidated;do{invalidated=false;for(const op of nullableLengthIssued)if(!nullableLengthEligible(op))invalidated=add(op.result,'Opaque')||invalidated;if(!unsafePlayerWrite&&playerWriteUnsafe()){unsafePlayerWrite=true;invalidated=true;}for(const item of derived)if(!derivedValid(item))invalidated=add(item.result,'Opaque')||invalidated;for(const item of numericCalls)if(item.node.args.length||!exactType(item.receiver,'NumericCallable'))invalidated=add(item.result,'Opaque')||invalidated;propagate();}while(invalidated);
     const fontAnnotations=new Set();const collectScope=node=>{if(!node||typeof node!=='object')return;if(Array.isArray(node)){node.forEach(collectScope);return;}const owner=owners.get(node);for(let s=owner;s;s=s.parent)for(const value of s.fontAnnotations||[])fontAnnotations.add(value);Object.values(node).forEach(value=>{if(value&&typeof value==='object')collectScope(value);});};collectScope(program);
     const immutableFunction=node=>{const fn=unchangedFunction(node);return fn&&!cyclic(knownBinding(fn))?fn:null;};
-    const currentTypes=value=>new Set((!controlEntryUsed||controlEntry.current())&&(!frameDeltaNumberUsed||frameDeltaNumbers.current())&&(!ordinaryEntry||ordinaryEntry.current())&&(!nullableLengthUsed||nullableLengthSource.current())&&(!callbackEntry||callbackEntry.current())&&(!loopEntry||loopEntry.current())&&(!spriteAyNumbers||spriteAyNumbers.current())&&(!musicNumberUsed||musicNumbers.current())&&(!cameraNumberInput||cameraNumberInput.current())?types.get(value)||[]:[]);
+    const factsCurrent=()=>declarationArrayResetCurrent()&&(!controlEntryUsed||controlEntry.current())&&(!frameDeltaNumberUsed||frameDeltaNumbers.current())&&(!ordinaryEntry||ordinaryEntry.current())&&(!nullableLengthUsed||nullableLengthSource.current())&&(!callbackEntry||callbackEntry.current())&&(!loopEntry||loopEntry.current())&&(!spriteAyNumbers||spriteAyNumbers.current())&&(!musicNumberUsed||musicNumbers.current())&&(!cameraNumberInput||cameraNumberInput.current());
+    const currentTypes=value=>new Set(factsCurrent()?types.get(value)||[]:[]);
+    const currentArrayTypes=value=>factsCurrent()?arrayTypes(value):null;
     // Construct this independent execution frontier only on demand. It cannot
     // add initialization/type facts or be selected by public source options.
     let lexicalReadiness;
@@ -449,7 +455,7 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
     // Copies prevent a consumer from changing another consumer's proof facts.
     // Binding facts do not discharge initialization at an expression occurrence.
     return Object.freeze({
-        ...(arrayEffectSites?{possibleArrayAllocationsAt:node=>Object.freeze([...(types.get(cell(node))||[])].filter(type=>type?.kind==='Array').map(type=>type.site))}:{}),
+        ...(arrayEffectSites?{possibleArrayAllocationsAt:node=>Object.freeze([...currentTypes(cell(node))].filter(type=>type?.kind==='Array').map(type=>type.site))}:{}),
         typesAt:node=>owners.has(node)?currentTypes(cell(node)):new Set(),
         bindingTypesAt:(node,name=node?.name)=>currentTypes(knownBinding(node,name)),
         musicNumberResultsUsed:()=>musicNumberUsed,
@@ -457,14 +463,14 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
         bindingOf:knownBinding,
         bindingKindsAt:(node,name=node?.name)=>new Set([...(declarations.get(knownBinding(node,name))||[])].map(declaration=>
             typeof declaration==='symbol'?'parameter':({FunctionDeclaration:'function',Class:'class',Enum:'enum'}[declaration.type]||'variable'))),
-        isLexicalDeclarationExecutedAt:(node,binding)=>lexical().isDeclarationExecutedAt(node,binding),
-        isCapturedLexicalDeclarationReadyAt:node=>lexical().isCapturedReadyAt(node),
-        lexicalDeclarationReadinessCurrent:()=> (!ordinaryEntry||ordinaryEntry.current())&&(!lexicalSource||lexicalSource.current()),
+        isLexicalDeclarationExecutedAt:(node,binding)=>factsCurrent()&&lexical().isDeclarationExecutedAt(node,binding),
+        isCapturedLexicalDeclarationReadyAt:node=>factsCurrent()&&lexical().isCapturedReadyAt(node),
+        lexicalDeclarationReadinessCurrent:()=> factsCurrent()&&(!ordinaryEntry||ordinaryEntry.current())&&(!lexicalSource||lexicalSource.current()),
         closedOrdinaryEntryCurrent:()=>!ordinaryEntry||ordinaryEntry.current(),
         ordinaryEntryUnreachableAt:node=>ordinaryEntry?.isUnreachable(node)===true,
         nullableArrayLengthCurrent:()=>!nullableLengthSource||nullableLengthSource.current(),
-        isInitializedAt:node=>(!ordinaryEntry||ordinaryEntry.current())&&initializedReads.has(node),
-        isBindingInitializedAt:(node,binding)=>(!ordinaryEntry||ordinaryEntry.current())&&initializationAt.get(node)?.has(binding)===true,
+        isInitializedAt:node=>factsCurrent()&&(!ordinaryEntry||ordinaryEntry.current())&&initializedReads.has(node),
+        isBindingInitializedAt:(node,binding)=>factsCurrent()&&(!ordinaryEntry||ordinaryEntry.current())&&initializationAt.get(node)?.has(binding)===true,
         localUndefinedDeclarations:Object.freeze([...localUndefinedDeclarations]),
         declarationCountAt:(node,name=node?.name)=>declarations.get(knownBinding(node,name))?.size||0,
         immutableFunctionAt:immutableFunction,
@@ -474,14 +480,14 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
         fontScales:Object.freeze(scales.map(item=>item.node)),
         fontSelections:Object.freeze(texts.map(item=>item.node)),
         fontPrints:Object.freeze(prints.map(item=>Object.freeze({...item}))),
-        arrayConstraintErrorsAt:node=>{const tokens=new Set(arrayTypes(cell(node))||[]),domains={number:'Number',string:'String',boolean:'Boolean'};return arrayConstraints.filter(record=>record.type!=='any'&&(arrayTypes(record.cell)||[]).some(token=>tokens.has(token)&&(!domains[record.type]||[...(types.get(token.element)||[])].some(type=>type!==domains[record.type]&&!['Null','Undefined'].includes(type))))).map(record=>`actual Array elements contradict declared ${record.type}[] constraint`);},
-        arrayMapReceiverSafeAt:node=>!!arrayTypes(cell(node))&&arrayTypes(cell(node)).every(token=>!unsafeArrayMethods.has(token)),
+        arrayConstraintErrorsAt:node=>{if(!factsCurrent())return ['Array producer source expired'];const tokens=new Set(arrayTypes(cell(node))||[]),domains={number:'Number',string:'String',boolean:'Boolean'};return arrayConstraints.filter(record=>record.type!=='any'&&(arrayTypes(record.cell)||[]).some(token=>tokens.has(token)&&(!domains[record.type]||[...(types.get(token.element)||[])].some(type=>type!==domains[record.type]&&!['Null','Undefined'].includes(type))))).map(record=>`actual Array elements contradict declared ${record.type}[] constraint`);},
+        arrayMapReceiverSafeAt:node=>!!currentArrayTypes(cell(node))&&currentArrayTypes(cell(node)).every(token=>!unsafeArrayMethods.has(token)),
         // The exact game.eventContext().deltaTime read admitted by the closed
         // frame census: a Number on normal return, never an initialization fact.
         frameDeltaNumberAt:node=>!!frameDeltaNumbers?.isNumberRead(node),
         frameDeltaNumbersCurrent:()=>!frameDeltaNumbers||frameDeltaNumbers.current(),
-        arrayAllocationsAt:node=>Object.freeze([...(arrayTypes(cell(node))||[])].map(token=>token.site)),
-        arrayElementTypesAt:node=>new Set((arrayTypes(cell(node))||[]).flatMap(token=>[...(types.get(token.element)||[])])),
+        arrayAllocationsAt:node=>Object.freeze([...(currentArrayTypes(cell(node))||[])].map(token=>token.site)),
+        arrayElementTypesAt:node=>new Set((currentArrayTypes(cell(node))||[]).flatMap(token=>[...(types.get(token.element)||[])])),
         arrayMapCalls:Object.freeze(arrayMaps.map(operation=>operation.node)),
         functionParameterBinding:(node,index)=>functionScopes.get(node)?.bindings.get(node.params[index])||null,
         functionParameterTypes:(node,index)=>currentTypes(functionScopes.get(node)?.bindings.get(node.params[index])),

@@ -1,7 +1,8 @@
 # Arcade integration and compatibility completion campaign
 
 Status: ACTIVE; registered on main, integration source checkpoint published;
-music Number-result implementation and external qualification in progress.
+music Number-result and local Array-reset source implemented; external
+qualification and remaining producer families in progress.
 Owner: Arcade completion, following the operator's instruction to finish the
 qualification, current-main composition, remaining producer repairs and genuine
 corpus reassessment in order. Use isolated branches and normal pushes.

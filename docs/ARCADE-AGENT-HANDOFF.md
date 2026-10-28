@@ -1,5 +1,45 @@
 # Arcade compatibility: fresh-agent handoff and methodology
 
+## 28 October: local Array declaration resets and missing-index arithmetic
+
+The next completion checkpoint fixes a producer-domain loss in the actual
+exported missing-index fixture. Its emitter builds an Array with
+`let temporary = null; temporary = []; temporary.push(1)`. The declaration's
+null initializer previously remained in the complete writer domain, preventing
+the indexed read from receiving any domain. The new source proof discounts only
+that unobservable reset on a unique, uncaptured ordinary-function local followed
+immediately by an assignment of a fresh empty Array to the same lexical binding.
+The actual reset, allocation, evaluation order and runtime source stay intact.
+Later null/incompatible writers still poison the receiver. No annotation,
+initialization, bounds, presence or Number-only element fact is manufactured:
+the missing element retains `Undefined` and ordinary addition produces `NaN`.
+
+Globals, var/const/multiple declarations, nonempty or computed allocations,
+intervening statements, conditional overwrites, duplicate bindings, defaults and
+nested function/class captures cannot acquire the discount. The source and
+analysis-intrinsic snapshots expire permanently after observed changes. Every
+dependent Array value/safety/readiness query uses the shared fact-currentness
+guard; music-derived Array element facts expire with their music producer too.
+
+The combined source cohort passes 14 controls. Four reset cuts independently
+detect a missing graph discount, empty-allocation restriction, class capture
+guard and permanent expiry; exact source bytes were restored. The unchanged
+missing-index fixture now exports without refusals in a bounded conversion
+probe. Its original PXT/native/Code/saved-project acceptance is still required:
+
+```sh
+node --import ./scripts/lib/register-gui-scope.mjs --test --test-concurrency=1 test/arcade-local-array-declaration-reset.test.mjs test/arcade-music-number-source.test.mjs test/makecode-arcade-value-arithmetic.test.mjs
+```
+
+The separately observed `created-partial-fields` refusal is now localized to
+the LEFT Identifier operand of `result += 0` after `result = easy.read()`:
+its domain is `Opaque | Number` with initialization true. The preceding String
+trace additions are not the first refused operands. Continue by tracing the
+existing class normal-result producer and its actual constructor/callback effect
+closure, preserving parameter-property visibility during `onCreated`, yields,
+scene ownership, return writers and overrides. Do not add callback Sprite
+parameter authority as a speculative fix for this result-cell failure.
+
 ## 28 October: completion integration and music Number results
 
 The [registered completion campaign](../lanes/2026-10-28-arcade-completion-integration.md)
