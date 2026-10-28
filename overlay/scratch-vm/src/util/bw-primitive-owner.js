@@ -15,7 +15,21 @@ const failureCalls = new WeakMap();
 const cachedOwner = require('./bw-cached-primitive-owner');
 const conditionWaits = require('./bw-source-condition-waits');
 const sceneClockNumber = require('./bw-scene-clock-number');
-const frameDeltaNumber = require('./bw-frame-delta-number');
+// The frame-delta Number owner is Arcade-only and lives in the lazy Arcade
+// chunk; that chunk installs it before any arcade_frameDeltaTime block can
+// run. Until then no owner exists, exactly as before installation.
+let frameDeltaNumber=Object.freeze({
+    beforeInputs(){},
+    finish(){},
+    after(record,result){if(record.operation.opcode==='arcade_frameDeltaTime')throw Error('Frame delta Number: original result owner missing');return result;}
+});
+let frameDeltaInstalled=false;
+function installFrameDeltaNumber(owner){
+    // Set once by the actual module load; later callers cannot replace it.
+    if(frameDeltaInstalled)throw Error('Frame delta Number: owner already installed');
+    if(!owner||typeof owner.after!=='function'||typeof owner.finish!=='function'||typeof owner.beforeInputs!=='function')throw Error('Frame delta Number: invalid owner installation');
+    frameDeltaNumber=owner;frameDeltaInstalled=true;
+}
 // The engine loan and Number-input adapter share this explicit role table.
 // A loan alone does not authorize interpretation of arbitrary input sockets.
 const roles=Object.freeze(Object.fromEntries(Object.entries({
@@ -146,7 +160,7 @@ function beforeInputs(runtime,thread,container,blockCached) {
     sceneClockNumber.beforeInputs(runtime,thread,container,blockCached,ready);
     frameDeltaNumber.beforeInputs(runtime,thread,container,blockCached,ready);return ready;
 }
-module.exports=Object.freeze({__proto__:null,beforeInputs,invoke,current,stepNested,handles,permitsNumberInput,captureActiveCall,captureFailureCall,isFailureActive,dispatchArrayFailure,isActiveCall});
+module.exports=Object.freeze({__proto__:null,installFrameDeltaNumber,beforeInputs,invoke,current,stepNested,handles,permitsNumberInput,captureActiveCall,captureFailureCall,isFailureActive,dispatchArrayFailure,isActiveCall});
 
 // Exceptions publishes one stable frozen function object at module entry;
 // no late Module._load call receives a private current-call context.

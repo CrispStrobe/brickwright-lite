@@ -7,8 +7,10 @@ import {INTEGRATED} from './helpers/bw-integrated.mjs';
 const require=createRequire(import.meta.url),Module=require('node:module');
 const root=INTEGRATED+'/node_modules/scratch-vm/src/util/';
 const keys={
- 'bw-primitive-owner':['beforeInputs','invoke','current','stepNested','handles','permitsNumberInput','captureActiveCall','captureFailureCall','isFailureActive','dispatchArrayFailure','isActiveCall'],
- 'bw-array-operations':['registerSource','bind','consumeFailureLease','sourceValueBinary','sourceValueUnary'],
+ 'bw-primitive-owner':['installFrameDeltaNumber','beforeInputs','invoke','current','stepNested','handles','permitsNumberInput','captureActiveCall','captureFailureCall','isFailureActive','dispatchArrayFailure','isActiveCall'],
+ // Arcade-only source value operations moved to bw-array-source-values (lazy
+ // Arcade chunk), which takes this module's private support exactly once.
+ 'bw-array-operations':['registerSource','bind','consumeFailureLease','sourceValueSupport'],
  'bw-arcade-exceptions':['rejectConditionWait','create','consume','failed','capture','stale','diagnostic','reported','arrayCoordinatorReady','rejectArrayOperation','attachArrayCoordinator']
 };
 function actualEntry(first){

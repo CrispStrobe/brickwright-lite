@@ -43,6 +43,7 @@ const SUPPORT = {
     cast: 'util/cast',
     'bw-values': 'util/bw-values',
     'bw-array-operations': 'util/bw-array-operations',
+    'bw-array-source-values': 'util/bw-array-source-values',
     'bw-extension-result-factory': 'util/bw-extension-result-factory',
     'bw-primitive-owner': 'util/bw-primitive-owner',
     'bw-source-condition-waits': 'util/bw-source-condition-waits',
@@ -57,7 +58,7 @@ const SUPPORT = {
     'bw-animation-resource-menu': 'util/bw-animation-resource-menu'
 };
 // Overlay-owned support modules: same installed instance, but only when its bytes are the overlay's.
-const OVERLAY_SUPPORT = new Set(['bw-frame-delta-number', 'bw-scene-clock-number', 'bw-null-sprite-getter', 'bw-procedure-entry', 'bw-procedure-constraint-model', 'bw-values', 'bw-array-operations', 'bw-extension-result-factory', 'bw-animation-resource-menu', 'bw-primitive-owner', 'bw-current-number-input', 'bw-cached-primitive-owner', 'bw-arcade-exceptions', 'bw-source-condition-waits']);
+const OVERLAY_SUPPORT = new Set(['bw-frame-delta-number', 'bw-scene-clock-number', 'bw-null-sprite-getter', 'bw-procedure-entry', 'bw-procedure-constraint-model', 'bw-values', 'bw-array-operations', 'bw-array-source-values', 'bw-extension-result-factory', 'bw-animation-resource-menu', 'bw-primitive-owner', 'bw-current-number-input', 'bw-cached-primitive-owner', 'bw-arcade-exceptions', 'bw-source-condition-waits']);
 function installedOverlaySupport (base) {
     const installed = path.join(VM_SRC, `${SUPPORT[base]}.js`);
     const overlay = path.join(REPO, 'overlay', 'scratch-vm', 'src', `${SUPPORT[base]}.js`);

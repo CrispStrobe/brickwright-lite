@@ -185,3 +185,6 @@ function beforeInputs(runtime,thread,container,blockCached,ready=true){owners.ge
 function finish(record){if(record.operation.opcode===opcode)owners.get(record.runtime)?.discard(record);}
 function after(record,result){const owner=owners.get(record.runtime);if(record.operation.opcode===opcode&&!owner)fail('original result owner missing');return owner?owner.after(record,result):result;}
 module.exports=Object.freeze({create,declaration,bindAdapterInfo,beforeInputs,after,finish});
+// The eager primitive owner no longer requires this Arcade-only module (it
+// stays in the lazy Arcade chunk); loading it installs the actual owner.
+loan().installFrameDeltaNumber(module.exports);
