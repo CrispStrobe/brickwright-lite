@@ -130,3 +130,8 @@ remains failed and its changed emitted glue remains refused. The retained
 passed its unchanged floor; these authored core-loop ceilings do not qualify
 active-game or hardware performance. Fresh source, emitted-byte and actual
 browser/installed acceptance still must succeed before adoption lands.
+
+Qualification request refreshed after the required `ci:full` label was removed
+from the earlier event. The label is restored before this source checkpoint.
+The88-control qualified implementation bytes remain unchanged; require the new
+head's automatic frontend and all enabled checks, then actual guest acceptance.
