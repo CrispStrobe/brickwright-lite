@@ -829,6 +829,119 @@ export const MODEL_LESSONS = Object.freeze({
             "markiertes Lineal"
         ]
     },
+    "tipline.ldr": {
+        "pieces": 174,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "forces",
+        "description": {
+            "en": "One motor tilts two equally heavy free towers with low or high internal ballast. In the native recordings, high ballast tips near 15° and low ballast slides near 22°. Swap the ballast heights between lanes; a tall passive wall arrests the later motion.",
+            "de": "Ein Motor neigt zwei gleich schwere freie Türme mit tiefem oder hohem innerem Ballast. In den nativen Aufzeichnungen kippt die hohe Anordnung bei etwa 15°; die tiefe rutscht bei etwa 22°. Vertausche die Ballasthöhen zwischen den Spuren; eine hohe passive Wand fängt die spätere Bewegung ab."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "matched-load incline: center of mass, friction and first instability",
+            "de": "Neigungsversuch mit gleichen Lasten: Schwerpunkt, Reibung und erste Instabilität"
+        },
+        "keywords": [
+            "matched-load incline: center of mass, friction and first instability",
+            "Neigungsversuch mit gleichen Lasten: Schwerpunkt, Reibung und erste Instabilität",
+            "Tipline",
+            "inclined plane",
+            "tilting deck",
+            "sliding",
+            "tipping",
+            "center of mass",
+            "ballast height",
+            "same mass",
+            "friction",
+            "static stability",
+            "lane swap",
+            "schiefe Ebene",
+            "Rutschen",
+            "Kippen",
+            "Schwerpunkt",
+            "Ballasthöhe",
+            "Reibung",
+            "Standfestigkeit",
+            "passive catch wall",
+            "Auffangwand"
+        ]
+    },
+    "twistspan.ldr": {
+        "pieces": 107,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "forces",
+        "description": {
+            "en": "One motor turns an upper bar; two fixed 104 mm cords suspend a separate passive payload. Compare 64 mm and 32 mm tie spacing with the same rigid parts: the recorded period changes from about 0.77 s to 1.52 s.",
+            "de": "Ein Motor dreht den oberen Balken; zwei feste 104-mm-Schnüre tragen eine eigene passive Last. Vergleiche 64 mm und 32 mm Befestigungsabstand bei denselben starren Teilen: Die aufgezeichnete Periode ändert sich von etwa 0,77 s auf 1,52 s."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "bifilar torsional pendulum",
+            "de": "bifilares Torsionspendel"
+        },
+        "keywords": [
+            "bifilar torsional pendulum",
+            "bifilares Torsionspendel",
+            "bifilar",
+            "two cords",
+            "fixed-length suspension",
+            "torsional pendulum",
+            "gravity",
+            "moment of inertia",
+            "attachment spacing",
+            "passive oscillation",
+            "Zweifadenpendel",
+            "Torsionspendel",
+            "Schwerkraft",
+            "Trägheitsmoment",
+            "Fadenabstand"
+        ]
+    },
+    "swayshift.ldr": {
+        "pieces": 204,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "forces",
+        "description": {
+            "en": "One motor drives a rack trolley through a 3:1 speed increase. A freely hinged rigid pendulum has a 216 mm hole span. Compare the same nominal 22 mm + 22 mm transfer with half-period or full-period timing between move starts, then observe the passive load after arrival.",
+            "de": "Ein Motor bewegt einen Zahnstangenschlitten mit dreifacher Ausgangsdrehzahl. Das frei gelagerte starre Pendel hat 216 mm Abstand zwischen den äußeren Löchern. Vergleiche dieselbe Sollfahrt von 22 mm + 22 mm mit einer halben oder einer ganzen Periode zwischen den Bewegungsstarts und beobachte das Nachschwingen."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "3:1 gear-driven rack trolley and passive rigid pendulum: finite command shaping",
+            "de": "Zahnstangenschlitten mit 3:1-Zahnradantrieb und passivem starrem Pendel: Formung endlicher Fahrbefehle"
+        },
+        "keywords": [
+            "3:1 gear-driven rack trolley and passive rigid pendulum: finite command shaping",
+            "Zahnstangenschlitten mit 3:1-Zahnradantrieb und passivem starrem Pendel: Formung endlicher Fahrbefehle",
+            "SwayShift",
+            "input shaping",
+            "command shaping",
+            "anti-sway",
+            "residual vibration",
+            "passive pendulum",
+            "rack trolley",
+            "half period",
+            "phase cancellation",
+            "Eingangsformung",
+            "Nachschwingen",
+            "Pendel",
+            "Zahnstangenschlitten",
+            "halbe Periode"
+        ]
+    },
     "samebeat.ldr": {
         "pieces": 92,
         "motors": 1,
