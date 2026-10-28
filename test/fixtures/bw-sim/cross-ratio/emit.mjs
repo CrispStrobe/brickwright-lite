@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2026 CrispStrobe
+import assert from 'node:assert/strict';
+import {createHash} from 'node:crypto';
 // Test helpers capture console methods during VM imports. Await actual stream
 // acknowledgments, not just the buffer threshold, and never end shared stdout.
 const writeLine=(output,line)=>new Promise((resolve,reject)=>{
@@ -16,10 +18,22 @@ const writeLine=(output,line)=>new Promise((resolve,reject)=>{
  if(output.destroyed||output.writableEnded){done(new Error('record receiver already closed'));return;}
  try{output.write(line,done);}catch(error){done(error);}
 });
+const wire=item=>{
+ const bytes=Buffer.from(JSON.stringify(item));assert.ok(bytes.length<=2*1024*1024,'bounded record item');
+ return 'CROSS_RATIO_WIRE_V1 '+bytes.length+' '+createHash('sha256').update(bytes).digest('hex')+' '+bytes.toString('base64');
+};
+function* items(record){
+ const {track,...header}=record;yield {type:'header',record:header};
+ for(const frame of track)yield {type:'frame',frame};
+ yield {type:'end',record:{finishedAt:record.finishedAt}};
+}
 export async function writeCrossRatioRecord(record,output=process.stdout){
- const emit=item=>writeLine(output,'CROSS_RATIO '+JSON.stringify(item)+'\n');
- const {track,...header}=record;
- await emit({type:'header',record:header});
- for(const frame of track)await emit({type:'frame',frame});
- await emit({type:'end',record:{finishedAt:record.finishedAt}});
+ for(const item of items(record))await writeLine(output,wire(item)+'\n');
+}
+// Node TAP escapes JSON stdout and can split raw data events. Diagnostics are
+// structured test messages; Base64 contains none of TAP's escape characters.
+// This acknowledges framework enqueue, NOT artifact durability. The independent
+// retained-artifact reader must still prove the complete four-case census.
+export function diagnoseCrossRatioRecord(record,context){
+ for(const item of items(record))context.diagnostic(wire(item));
 }

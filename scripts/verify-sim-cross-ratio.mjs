@@ -138,7 +138,13 @@ export function readCrossRatio(record,{expectedIdentity}={}){
  return result;
 }
 export function readCrossRatioLines(text,options){
- const lines=text.split(/\r?\n/).map(x=>x.replace(/^# /,'')).filter(x=>x.startsWith('CROSS_RATIO ')).map(x=>JSON.parse(x.slice(12)));
+ const lines=text.split(/\r?\n/).map(x=>x.replace(/^\s*# /,'')).filter(x=>x.startsWith('CROSS_RATIO_WIRE_V1 ')).map(line=>{
+  const match=/^CROSS_RATIO_WIRE_V1 ([0-9]+) ([a-f0-9]{64}) ([A-Za-z0-9+/]+={0,2})$/.exec(line);check(match,'canonical evidence wire');
+  const count=Number(match[1]);check(Number.isSafeInteger(count)&&count>0&&count<=2*1024*1024,'bounded advertised item');
+  check(match[3].length<=Math.ceil(count/3)*4,'bounded encoded item');
+  const bytes=Buffer.from(match[3],'base64');check(bytes.length===count&&bytes.toString('base64')===match[3],'exact canonical decoded bytes');
+  check(sha(bytes)===match[2],'record item SHA-256');return JSON.parse(bytes.toString('utf8'));
+ });
  const records=[];let current;
  for(const item of lines){
   if(item.type==='header'){check(!current,'unterminated original');current={...item.record,track:[]};}

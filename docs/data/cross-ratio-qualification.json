@@ -13,8 +13,8 @@
   "scope": "Finite software-law candidate only; no physical, hardware or library-wide claim.",
   "lightweightChecks": {
     "engineExecuted": false,
-    "readerPreflightTests": 6,
-    "rejectedCorruptions": 45,
+    "readerPreflightTests": 7,
+    "rejectedCorruptions": 49,
     "quaternionSignInvariant": true,
     "globalTranslationInvariant": true,
     "browserShardInventoryTests": 15,
@@ -24,9 +24,10 @@
       "identitySchema": 2,
       "sameOpcodeProgramContent": 7,
       "detachedCaptureCensus": 4,
-      "browserClockAndApi": 6
+      "browserClockAndApi": 6,
+      "damagedWire": 4
     },
-    "recordTransport": "DIRECT_STREAM_EACH_WRITE_ACKNOWLEDGED; BACKPRESSURE, DELAYED_ACK, CALLBACK_ERROR, PREMATURE_CLOSE, MUTED_CONSOLE_CONTROLS"
+    "recordTransport": "STRUCTURED_NESTED_TAP_DIAGNOSTICS_LENGTH_SHA256_BASE64; ARTIFACT_COMPLETENESS_REQUIRED; SEPARATE_WRITABLE_ACK_CONTROLS"
   },
   "diagnosticPreflight": {
     "status": "FIRST_CONTROL_TOPOLOGY_REFUSAL_RETAINED",

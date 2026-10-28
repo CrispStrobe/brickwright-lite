@@ -50,15 +50,21 @@ Original records are emitted before assertions, including failed cases.
 circle-intersection fixtures and corruption controls. Those analytic fixtures
 are not engine evidence. The synchronous preflight precedes importing the native
 harness, so a broken consumer cannot continue into engine qualification.
-The existing unit artifact retains bounded NDJSON records inside the TAP log.
-Evidence uses a direct stream that awaits every write callback and rejects
-pending-write errors/closure, bypassing the VM helper's
-console capture. Four supplementary Node 24 motion cases passed their internal
-checks at an earlier candidate, but its console-based raw records were not
-retained. That TAP is preserved and supplies no standalone record acceptance;
-the successful motion cases were not replayed to recover output. The transport
-fix is validated with analytic records and a real backpressured Writable; fresh
-hosted qualification remains required.
+The existing unit artifact retains the TAP log. Native cases enqueue structured
+Node test diagnostics using `CROSS_RATIO_WIRE_V1`: exact byte length, SHA-256 and
+canonical Base64 for each header/frame/end item. Items are bounded to 2 MiB and
+the original to 64 MiB. The independent reader decodes the exact JSON bytes and
+requires all four complete cases. Framework enqueue is not artifact durability.
+A real nested-TAP probe recovers four analytic cases with 256 KiB padded headers;
+raw JSON stdout is unsuitable because TAP escapes comments and splits writes.
+The standalone Writable utility separately awaits every callback and rejects
+pending-write errors/closure without ending shared stdout.
+
+Four supplementary Node 24 motion cases passed their internal checks at an
+earlier candidate, but its console-based raw records were not retained. That TAP
+is preserved and supplies no standalone record acceptance; successful motion
+cases were not replayed to recover output. Fresh hosted qualification of the
+current evidence transport remains required.
 To audit an admitted original without importing the producer or replaying Jolt:
 
 ```sh
@@ -83,7 +89,7 @@ controls are implemented. The existing 30-minute job cap and every old gate
 remain unchanged. Zero-reading budget registration still awaits its scope
 extension; no new runtime or historical timing is claimed.
 
-Six lightweight analytic preflights (45 data corruptions plus receiver failures, including the
+Seven lightweight analytic preflights (49 data corruptions plus receiver failures, including the
 four-case retained-TAP transport and same-opcode program edits) and 15 browser shard/inventory checks pass;
 these checks import no engine and do not qualify motion.
 

@@ -8,7 +8,7 @@ import {execFileSync} from 'node:child_process';
 import {Writable} from 'node:stream';
 import {once} from 'node:events';
 import {finished} from 'node:stream/promises';
-import {writeCrossRatioRecord} from './fixtures/bw-sim/cross-ratio/emit.mjs';
+import {writeCrossRatioRecord,diagnoseCrossRatioRecord} from './fixtures/bw-sim/cross-ratio/emit.mjs';
 import {readCrossRatio,readCrossRatioLines} from '../scripts/verify-sim-cross-ratio.mjs';
 import {judgeCrossRatio,crossRatioProgramGraph,assertCrossRatioBrowserProgram} from '../scripts/lib/sim-lab-cross-ratio-judge.mjs';
 import {analyticRecord,ANALYTIC_IDENTITY} from './fixtures/bw-sim/cross-ratio/analytic.mjs';
@@ -59,24 +59,32 @@ assert.throws(()=>readCrossRatioLines('',{expectedIdentity:ANALYTIC_IDENTITY}));
 test('Cross Ratio: independent circle fixtures, 20 corruptions, sign and translation controls',()=>assert.equal(Object.keys(corruptions).length,20));
 // Exercise the actual retained-TAP transport, including cold-clock boundaries,
 // complete case census and refused corruption, before any engine is imported.
-const analyticLines=[];
+const wireItems=[];
 for(const coldMs of C.timing.coldMs)for(const control of [false,true]){
  const record=analyticRecord(control,coldMs),{track,...header}=record;
- analyticLines.push('# CROSS_RATIO '+JSON.stringify({type:'header',record:header}),
-  ...track.map(frame=>'# CROSS_RATIO '+JSON.stringify({type:'frame',frame})),
-  '# CROSS_RATIO '+JSON.stringify({type:'end',record:{finishedAt:record.finishedAt}}));
+ wireItems.push({type:'header',record:header},...track.map(frame=>({type:'frame',frame})),{type:'end',record:{finishedAt:record.finishedAt}});
 }
-const wire=analyticLines.join('\n'),wireOptions={expectedIdentity:ANALYTIC_IDENTITY};
+// Consumer fixtures encode independently of the producer's transport helper.
+const encodeItem=item=>{const b=Buffer.from(JSON.stringify(item));return '# CROSS_RATIO_WIRE_V1 '+b.length+' '+hash(b)+' '+b.toString('base64');};
+const encodeItems=items=>items.map(encodeItem).join('\n');
+const wire=encodeItems(wireItems),wireOptions={expectedIdentity:ANALYTIC_IDENTITY};
 assert.equal(readCrossRatioLines(wire,wireOptions).length,4);
+const unknown=structuredClone(wireItems);unknown.find(i=>i.type==='frame').type='invented';
+const wrongTime=structuredClone(wireItems);wrongTime.find(i=>i.type==='frame'&&i.frame.t===25).frame.t=24;
 const wireCuts=[
- analyticLines.slice(0,-1).join('\n'),
- wire+'\n'+wire,
- analyticLines.filter(l=>!l.includes('"type":"header"')).join('\n'),
- analyticLines.filter(l=>!l.includes('"type":"frame"')).join('\n'),
- wire.replace('"type":"frame"','"type":"invented"'),
- wire.replace('"t":25,','"t":24,')
+ encodeItems(wireItems.slice(0,-1)),wire+'\n'+wire,
+ encodeItems(wireItems.filter(i=>i.type!=='header')),encodeItems(wireItems.filter(i=>i.type!=='frame')),
+ encodeItems(unknown),encodeItems(wrongTime)
 ];
 for(const broken of wireCuts){assert.notEqual(broken,wire);assert.throws(()=>readCrossRatioLines(broken,wireOptions));}
+const firstLine=encodeItem(wireItems[0]),fields=firstLine.slice(2).split(' ');
+const damagedWire=[
+ [fields[0],fields[1],'0'.repeat(64),fields[3]].join(' '),
+ [fields[0],Number(fields[1])+1,fields[2],fields[3]].join(' '),
+ [fields[0],fields[1],fields[2],fields[3]+'*'].join(' '),
+ [fields[0],fields[1],fields[2],(fields[3][0]==='A'?'B':'A')+fields[3].slice(1)].join(' ')
+];
+for(const broken of damagedWire)assert.throws(()=>readCrossRatioLines(broken+'\n'+wire,wireOptions));
 test('Cross Ratio: retained TAP four-case readback and six stream corruptions',()=>assert.equal(wireCuts.length,6));
 const graphFixture={targets:[{name:'Stage',isStage:true,blocks:{hat:{opcode:'event_whenflagclicked',next:'move',inputs:{},fields:{},topLevel:true},move:{opcode:'data_setvariableto',parent:'hat',next:null,fields:{VARIABLE:['x','x']},inputs:{VALUE:[1,[4,'1']]},mutation:{tag:'original'}}},variables:{x:['x',1]},lists:{route:['route',[60,30,45]]},broadcasts:{watch:'watchdog'}}]};
 const graphCuts=[
@@ -109,14 +117,14 @@ const brokenTransport=new Writable({highWaterMark:1,write(chunk,encoding,callbac
 await assert.rejects(writeCrossRatioRecord(good,brokenTransport),/deliberate receiver failure/);
 const directStreamChild=execFileSync(process.execPath,['--max-old-space-size=128','--input-type=module','--eval',`
  import {analyticRecord} from './test/fixtures/bw-sim/cross-ratio/analytic.mjs';
- import {writeCrossRatioRecord} from './test/fixtures/bw-sim/cross-ratio/emit.mjs';
+ import {writeCrossRatioRecord,diagnoseCrossRatioRecord} from './test/fixtures/bw-sim/cross-ratio/emit.mjs';
  console.log=()=>{};
  for(const coldMs of [0,1000])for(const control of [false,true])await writeCrossRatioRecord(analyticRecord(control,coldMs));
 `],{cwd:new URL('../',import.meta.url),maxBuffer:8*1024*1024});
 assert.equal(readCrossRatioLines(directStreamChild.toString(),wireOptions).length,4,'default stdout retains all records even when console.log is captured');
 let acknowledged=false;
 const acknowledgedTransport=new Writable({highWaterMark:16*1024*1024,write(chunk,encoding,callback){
- const item=JSON.parse(chunk.toString().slice(12));
+ const item=JSON.parse(Buffer.from(chunk.toString().trim().split(' ').at(-1),'base64').toString());
  if(item.type==='end')this.emit('final-record-pending',callback);else setImmediate(callback);
 }});
 const pendingAck=once(acknowledgedTransport,'final-record-pending');
@@ -140,6 +148,9 @@ const browserClockCuts=[
 ];
 for(const edit of browserClockCuts){const bad=structuredClone(browserClock);edit(bad);assert.throws(()=>assertCrossRatioBrowserProgram(bad,browserLimits));}
 test('Cross Ratio: browser clock, hold and actual motor API admission',()=>assert.equal(browserClockCuts.length,6));
+const actualTap=execFileSync(process.execPath,['--max-old-space-size=128','--test','--test-reporter=tap','test/fixtures/bw-sim/cross-ratio/transport-probe.mjs'],{cwd:new URL('../',import.meta.url),maxBuffer:8*1024*1024});
+assert.equal(readCrossRatioLines(actualTap.toString(),wireOptions).length,4,'actual TAP reporter preserves complete large diagnostic records');
+test('Cross Ratio: actual TAP diagnostic encoding and four damaged-wire refusals',()=>assert.equal(damagedWire.length,4));
 const {runRobotLabProgram}=await import('./helpers/robot-lab-direct-vm.mjs');
 const {catalogFrom,prepareModel}=await import('../overlay/scratch-gui/src/lib/bw-sim/sim-session.js');
 const original=read('overlay/scratch-gui/static/sim-lab/models/cross-ratio.ldr'),program=read('overlay/scratch-gui/static/sim-lab/programs/cross-ratio.bw');
@@ -157,7 +168,7 @@ for(const [i,p]of prepared.entries()){
 }
 for(const p of prepared){assert.equal(p.mechanism.actuators.length,1);assert.equal(p.mechanism.actuators[0].port,'A');}
 const identity={commit:execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim(),tree:execFileSync('git',['rev-parse','HEAD^{tree}'],{encoding:'utf8'}).trim(),files:Object.fromEntries(C.identityPaths.map(p=>[p,hash(readFileSync(new URL('../'+p,import.meta.url)))]))};
-for(const coldMs of C.timing.coldMs)for(const control of [false,true])test(`Cross Ratio actual VM/Jolt: ${control?'remove P':'original'}, cold ${coldMs}ms`,{timeout:240000},async()=>{
+for(const coldMs of C.timing.coldMs)for(const control of [false,true])test(`Cross Ratio actual VM/Jolt: ${control?'remove P':'original'}, cold ${coldMs}ms`,{timeout:240000},async context=>{
  const vmErrors=[];let setup;
  const r=await runRobotLabProgram(program,{modelText:control?removed:original,catalog,autoPorts:false,frameMs:25,coldMs,afterMs:C.timing.afterMs,timeLimitMs:C.timing.timeLimitMs,
   observeSetup:({session,vm,prepared})=>{
@@ -173,7 +184,7 @@ for(const coldMs of C.timing.coldMs)for(const control of [false,true])test(`Cros
  // Keep raw failure records before any acceptance assertion. NDJSON avoids
  // one enormous log line; the existing unit artifact retains the original TAP.
  const record={...r,schema:1,kind:'cross-ratio-native',identity,contractSha256:hash(read('test/fixtures/bw-sim/cross-ratio/contract.json')),variant:control?'remove-pivot-P':'original',input:{originalModel:original,program,model:control?removed:original,modelSha256:hash(control?removed:original)},timing:{...C.timing,coldMs},vmErrors};
- await writeCrossRatioRecord(record);
+ diagnoseCrossRatioRecord(record,context);
  assert.ok(r.track.every(f=>!f.extra.sessionFailed));
  judgeCrossRatio(r,{control,expectedIssueKeys:C.topology[control?'remove-pivot-P':'original'].issueKeys});
  const independent=readCrossRatio(record,{expectedIdentity:identity});

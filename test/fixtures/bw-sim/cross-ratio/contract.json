@@ -85,7 +85,8 @@
     "test/fixtures/bw-sim/cross-ratio/contract.json",
     "scripts/verify-sim-cross-ratio.mjs",
     "scripts/lib/sim-lab-cross-ratio-judge.mjs",
-    "test/fixtures/bw-sim/cross-ratio/emit.mjs"
+    "test/fixtures/bw-sim/cross-ratio/emit.mjs",
+    "test/fixtures/bw-sim/cross-ratio/transport-probe.mjs"
   ],
   "topology": {
     "original": {
@@ -397,5 +398,12 @@
         "warning:loose-part:pivot_capture_P_80"
       ]
     }
+  },
+  "wire": {
+    "schema": "CROSS_RATIO_WIRE_V1",
+    "itemMaxBytes": 2097152,
+    "originalMaxBytes": 67108864,
+    "nativeSink": "structured Node TestContext diagnostics",
+    "artifactCompletenessMandatory": true
   }
 }
