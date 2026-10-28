@@ -1524,6 +1524,201 @@ export const EXPERIMENTAL_MODELS = Object.freeze([
         },
         "experimental": true,
         "blocked": false
+    },
+    {
+        "file": "rimrun.ldr",
+        "title": {
+            "en": "RimRun — equal weight, different roll",
+            "de": "RimRun — gleiche Masse, anderes Rollverhalten"
+        },
+        "example": "rimrun.bw",
+        "mat": "plain",
+        "experimental": true,
+        "blocked": false,
+        "intro": {
+            "en": "One motor lifts a shared release gate above two free rollers on a fixed incline. Their parts, mass and rolling radius match; only the balanced ballast sits nearer the axis or farther out. Compare their free rolling before the four independent spring catches, then exchange the ballast layouts between lanes with the supplied comparison model and run the same program. The native rolling comparison passes; complete-run qualification and one watchdog holding limit fail.",
+            "de": "Ein Motor hebt eine gemeinsame Startschranke über zwei freien Rollkörpern auf einer festen schiefen Ebene. Teile, Masse und Rollradius stimmen überein; nur der symmetrische Ballast sitzt näher an der Achse oder weiter außen. Vergleiche das freie Rollen vor den vier unabhängigen Federfängern, vertausche dann die Ballastanordnungen mit dem Vergleichsmodell zwischen den Spuren und starte dasselbe Programm. Der native Rollvergleich besteht die Prüfungen; die Gesamtqualifikation und ein Haltegrenzwert des Zeitwächters bestehen sie nicht."
+        }
+    },
+    {
+        "file": "rimrun-swapped.ldr",
+        "title": {
+            "en": "RimRun — ballast layouts exchanged (comparison)",
+            "de": "RimRun — Ballast getauscht (Vergleich)"
+        },
+        "example": "rimrun.bw",
+        "mat": "plain",
+        "experimental": true,
+        "blocked": false,
+        "intro": {
+            "en": "The same two rollers with their ballast layouts exchanged between the lanes: green now carries the outer ballast, orange the inner. If the inner-ballast roller still leads, the result follows the mass distribution, not the lane.",
+            "de": "Dieselben zwei Rollkörper mit vertauschten Ballastanordnungen: Grün trägt jetzt den äußeren Ballast, Orange den inneren. Führt der Rollkörper mit innerem Ballast weiterhin, folgt das Ergebnis der Massenverteilung und nicht der Spur."
+        }
+    },
+    {
+        "file": "swayshift.ldr",
+        "title": {
+            "en": "SwayShift — timing an anti-sway transfer",
+            "de": "SwayShift — Nachschwingen durch gezieltes Timing mindern"
+        },
+        "example": "swayshift.bw",
+        "mat": "plain",
+        "experimental": true,
+        "blocked": false,
+        "intro": {
+            "en": "One motor drives a rack trolley through a 3:1 speed increase. A freely hinged rigid pendulum has a 216 mm hole span. Compare the same nominal 22 mm + 22 mm transfer with half-period or full-period timing between move starts, then observe the passive load after arrival.",
+            "de": "Ein Motor bewegt einen Zahnstangenschlitten mit dreifacher Ausgangsdrehzahl. Das frei gelagerte starre Pendel hat 216 mm Abstand zwischen den äußeren Löchern. Vergleiche dieselbe Sollfahrt von 22 mm + 22 mm mit einer halben oder einer ganzen Periode zwischen den Bewegungsstarts und beobachte das Nachschwingen."
+        }
+    },
+    {
+        "id": "swayshift-in-phase",
+        "file": "swayshift.ldr",
+        "title": {
+            "en": "SwayShift — full-period timing (comparison)",
+            "de": "SwayShift — Timing über eine ganze Periode (Vergleich)"
+        },
+        "example": "swayshift-in-phase.bw",
+        "mat": "plain",
+        "experimental": true,
+        "blocked": false,
+        "intro": {
+            "en": "The same trolley and the same two 22 mm moves, but the second move now starts one full swing period after the first instead of half a period. The two pushes add up and the pendulum keeps swinging after arrival.",
+            "de": "Derselbe Schlitten mit denselben zwei 22-mm-Fahrten, aber die zweite Fahrt startet jetzt eine ganze statt einer halben Schwingungsperiode nach der ersten. Beide Anstöße addieren sich, und das Pendel schwingt nach der Ankunft weiter."
+        }
+    },
+    {
+        "file": "tipline.ldr",
+        "title": {
+            "en": "Tipline — sliding versus tipping",
+            "de": "Tipline — Rutschen oder Kippen"
+        },
+        "example": "tipline.bw",
+        "mat": "plain",
+        "experimental": true,
+        "blocked": false,
+        "intro": {
+            "en": "One motor tilts two equally heavy free towers with low or high internal ballast. In the native recordings, high ballast tips near 15° and low ballast slides near 22°. Swap the ballast heights between lanes; a tall passive wall arrests the later motion.",
+            "de": "Ein Motor neigt zwei gleich schwere freie Türme mit tiefem oder hohem innerem Ballast. In den nativen Aufzeichnungen kippt die hohe Anordnung bei etwa 15°; die tiefe rutscht bei etwa 22°. Vertausche die Ballasthöhen zwischen den Spuren; eine hohe passive Wand fängt die spätere Bewegung ab."
+        }
+    },
+    {
+        "file": "tipline-swapped.ldr",
+        "title": {
+            "en": "Tipline — ballast heights swapped (comparison)",
+            "de": "Tipline — Ballasthöhen getauscht (Vergleich)"
+        },
+        "example": "tipline.bw",
+        "mat": "plain",
+        "experimental": true,
+        "blocked": false,
+        "intro": {
+            "en": "The same machine with the ballast heights exchanged between the towers: green now has the high ballast, orange the low. The outcomes swap lanes too: the high-ballast tower still tips first, the low-ballast tower still slides.",
+            "de": "Dieselbe Maschine mit vertauschten Ballasthöhen: Grün hat jetzt den hohen Ballast, Orange den tiefen. Auch die Ergebnisse wechseln die Spur: Der Turm mit hohem Ballast kippt weiterhin zuerst, der mit tiefem rutscht."
+        }
+    },
+    {
+        "file": "twistspan.ldr",
+        "title": {
+            "en": "TwistSpan — two-cord torsion pendulum",
+            "de": "TwistSpan — Zweifaden-Torsionspendel"
+        },
+        "example": "twistspan.bw",
+        "mat": "plain",
+        "experimental": true,
+        "blocked": false,
+        "intro": {
+            "en": "One motor turns an upper bar; two fixed 104 mm cords suspend a separate passive payload. Compare 64 mm and 32 mm tie spacing with the same rigid parts: the recorded period changes from about 0.77 s to 1.52 s.",
+            "de": "Ein Motor dreht den oberen Balken; zwei feste 104-mm-Schnüre tragen eine eigene passive Last. Vergleiche 64 mm und 32 mm Befestigungsabstand bei denselben starren Teilen: Die aufgezeichnete Periode ändert sich von etwa 0,77 s auf 1,52 s."
+        },
+        "manualJog": {
+            "A": {
+                "minDeg": 0,
+                "maxDeg": 20,
+                "stepDeg": 5,
+                "speedDps": 10
+            }
+        }
+    },
+    {
+        "file": "twistspan-inner.ldr",
+        "title": {
+            "en": "TwistSpan — inner ties (comparison)",
+            "de": "TwistSpan — innere Befestigung (Vergleich)"
+        },
+        "example": "twistspan.bw",
+        "mat": "plain",
+        "experimental": true,
+        "blocked": false,
+        "intro": {
+            "en": "The same two cords moved from the red outer collars to the green inner collars, halving the tie spacing from 64 mm to 32 mm. Every rigid part, the payload and the program stay the same; the passive twist now takes about twice as long.",
+            "de": "Dieselben zwei Schnüre hängen jetzt an den grünen inneren statt an den roten äußeren Bundringen; der Befestigungsabstand halbiert sich von 64 mm auf 32 mm. Alle starren Teile, die Last und das Programm bleiben gleich; die passive Drehschwingung dauert jetzt etwa doppelt so lang."
+        },
+        "manualJog": {
+            "A": {
+                "minDeg": 0,
+                "maxDeg": 20,
+                "stepDeg": 5,
+                "speedDps": 10
+            }
+        }
+    },
+    {
+        "file": "evenhand.ldr",
+        "title": {
+            "en": "Evenhand — counterbalanced two-joint arm",
+            "de": "Evenhand — ausgewogener Zweigelenkarm"
+        },
+        "example": "evenhand.bw",
+        "mat": "plain",
+        "experimental": true,
+        "blocked": false,
+        "intro": {
+            "en": "Two motors move a shoulder and an elbow through nine poses. Counterweights behind each joint balance the links, so in the simulator both motors hold every pose with almost no torque. The comparison moves the same forearm weights inward and runs the same program.",
+            "de": "Zwei Motoren bewegen Schulter und Ellbogen durch neun Stellungen. Gegengewichte hinter jedem Gelenk gleichen die Glieder aus, sodass beide Motoren im Simulator jede Stellung fast ohne Drehmoment halten. Der Vergleich rückt dieselben Unterarmgewichte nach innen und nutzt dasselbe Programm."
+        },
+        "manualJog": {
+            "A": {
+                "minDeg": -20,
+                "maxDeg": 20,
+                "stepDeg": 5,
+                "speedDps": 20
+            },
+            "B": {
+                "minDeg": -30,
+                "maxDeg": 30,
+                "stepDeg": 5,
+                "speedDps": 25
+            }
+        }
+    },
+    {
+        "file": "evenhand-control.ldr",
+        "title": {
+            "en": "Evenhand — weights moved inward (control)",
+            "de": "Evenhand — Gewichte nach innen versetzt (Kontrolle)"
+        },
+        "example": "evenhand.bw",
+        "mat": "plain",
+        "experimental": true,
+        "blocked": false,
+        "intro": {
+            "en": "Control: the same forearm counterweights sit 60 LDU instead of 100 LDU behind the elbow. The arm reaches the same nine poses, but now the motors must hold it against gravity, and the elbow torque changes with the forearm's angle.",
+            "de": "Kontrolle: Dieselben Unterarm-Gegengewichte sitzen 60 statt 100 LDU hinter dem Ellbogen. Der Arm erreicht dieselben neun Stellungen, doch jetzt müssen die Motoren ihn gegen die Schwerkraft halten, und das Ellbogenmoment ändert sich mit dem Winkel des Unterarms."
+        },
+        "manualJog": {
+            "A": {
+                "minDeg": -20,
+                "maxDeg": 20,
+                "stepDeg": 5,
+                "speedDps": 20
+            },
+            "B": {
+                "minDeg": -30,
+                "maxDeg": 30,
+                "stepDeg": 5,
+                "speedDps": 25
+            }
+        }
     }
 ]);
 export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
@@ -3806,6 +4001,412 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
             "experimental",
             "experimentell"
         ],
+        "experimental": true
+    },
+    "rimrun.ldr": {
+        "pieces": 506,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "inertia",
+        "description": {
+            "en": "One motor lifts a shared release gate above two free rollers on a fixed incline. Their parts, mass and rolling radius match; only the balanced ballast sits nearer the axis or farther out. Compare their free rolling before the four independent spring catches, then exchange the ballast layouts between lanes with the supplied comparison model and run the same program. The native rolling comparison passes; complete-run qualification and one watchdog holding limit fail.",
+            "de": "Ein Motor hebt eine gemeinsame Startschranke über zwei freien Rollkörpern auf einer festen schiefen Ebene. Teile, Masse und Rollradius stimmen überein; nur der symmetrische Ballast sitzt näher an der Achse oder weiter außen. Vergleiche das freie Rollen vor den vier unabhängigen Federfängern, vertausche dann die Ballastanordnungen mit dem Vergleichsmodell zwischen den Spuren und starte dasselbe Programm. Der native Rollvergleich besteht die Prüfungen; die Gesamtqualifikation und ein Haltegrenzwert des Zeitwächters bestehen sie nicht."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "gravity-driven rolling: matched mass and radius, different axial inertia, lane-swap control",
+            "de": "schwerkraftgetriebenes Rollen: gleiche Masse und gleicher Radius, anderes Trägheitsmoment, Spurtausch als Kontrolle"
+        },
+        "keywords": [
+            "RimRun",
+            "rolling inertia",
+            "moment of inertia",
+            "radial ballast",
+            "same mass",
+            "rolling race",
+            "inclined plane",
+            "no-slip rolling",
+            "energy partition",
+            "lane swap",
+            "shared release gate",
+            "Trägheitsmoment",
+            "Rollversuch",
+            "schiefe Ebene",
+            "Ballast",
+            "gleiche Masse",
+            "Spurtausch",
+            "Startschranke",
+            "experimental",
+            "prototype",
+            "unverified",
+            "experimentell"
+        ],
+        "experimental": true
+    },
+    "rimrun-swapped.ldr": {
+        "pieces": 506,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "inertia",
+        "description": {
+            "en": "The same two rollers with their ballast layouts exchanged between the lanes: green now carries the outer ballast, orange the inner. If the inner-ballast roller still leads, the result follows the mass distribution, not the lane.",
+            "de": "Dieselben zwei Rollkörper mit vertauschten Ballastanordnungen: Grün trägt jetzt den äußeren Ballast, Orange den inneren. Führt der Rollkörper mit innerem Ballast weiterhin, folgt das Ergebnis der Massenverteilung und nicht der Spur."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "gravity-driven rolling: matched mass and radius, different axial inertia, lane-swap control",
+            "de": "schwerkraftgetriebenes Rollen: gleiche Masse und gleicher Radius, anderes Trägheitsmoment, Spurtausch als Kontrolle"
+        },
+        "keywords": [
+            "RimRun",
+            "rolling inertia",
+            "moment of inertia",
+            "radial ballast",
+            "same mass",
+            "rolling race",
+            "inclined plane",
+            "no-slip rolling",
+            "energy partition",
+            "lane swap",
+            "shared release gate",
+            "Trägheitsmoment",
+            "Rollversuch",
+            "schiefe Ebene",
+            "Ballast",
+            "gleiche Masse",
+            "Spurtausch",
+            "Startschranke",
+            "experimental",
+            "prototype",
+            "unverified",
+            "experimentell"
+        ],
+        "experimental": true
+    },
+    "swayshift.ldr": {
+        "pieces": 204,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "forces",
+        "description": {
+            "en": "One motor drives a rack trolley through a 3:1 speed increase. A freely hinged rigid pendulum has a 216 mm hole span. Compare the same nominal 22 mm + 22 mm transfer with half-period or full-period timing between move starts, then observe the passive load after arrival.",
+            "de": "Ein Motor bewegt einen Zahnstangenschlitten mit dreifacher Ausgangsdrehzahl. Das frei gelagerte starre Pendel hat 216 mm Abstand zwischen den äußeren Löchern. Vergleiche dieselbe Sollfahrt von 22 mm + 22 mm mit einer halben oder einer ganzen Periode zwischen den Bewegungsstarts und beobachte das Nachschwingen."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "3:1 gear-driven rack trolley and passive rigid pendulum: finite command shaping",
+            "de": "Zahnstangenschlitten mit 3:1-Zahnradantrieb und passivem starrem Pendel: Formung endlicher Fahrbefehle"
+        },
+        "keywords": [
+            "SwayShift",
+            "input shaping",
+            "command shaping",
+            "anti-sway",
+            "residual vibration",
+            "passive pendulum",
+            "rack trolley",
+            "half period",
+            "phase cancellation",
+            "Eingangsformung",
+            "Nachschwingen",
+            "Pendel",
+            "Zahnstangenschlitten",
+            "halbe Periode",
+            "experimental",
+            "prototype",
+            "unverified",
+            "experimentell"
+        ],
+        "experimental": true
+    },
+    "swayshift-in-phase": {
+        "pieces": 204,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "forces",
+        "description": {
+            "en": "The same trolley and the same two 22 mm moves, but the second move now starts one full swing period after the first instead of half a period. The two pushes add up and the pendulum keeps swinging after arrival.",
+            "de": "Derselbe Schlitten mit denselben zwei 22-mm-Fahrten, aber die zweite Fahrt startet jetzt eine ganze statt einer halben Schwingungsperiode nach der ersten. Beide Anstöße addieren sich, und das Pendel schwingt nach der Ankunft weiter."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "3:1 gear-driven rack trolley and passive rigid pendulum: finite command shaping",
+            "de": "Zahnstangenschlitten mit 3:1-Zahnradantrieb und passivem starrem Pendel: Formung endlicher Fahrbefehle"
+        },
+        "keywords": [
+            "SwayShift",
+            "input shaping",
+            "command shaping",
+            "anti-sway",
+            "residual vibration",
+            "passive pendulum",
+            "rack trolley",
+            "half period",
+            "phase cancellation",
+            "Eingangsformung",
+            "Nachschwingen",
+            "Pendel",
+            "Zahnstangenschlitten",
+            "halbe Periode",
+            "experimental",
+            "prototype",
+            "unverified",
+            "experimentell"
+        ],
+        "experimental": true
+    },
+    "tipline.ldr": {
+        "pieces": 174,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "forces",
+        "description": {
+            "en": "One motor tilts two equally heavy free towers with low or high internal ballast. In the native recordings, high ballast tips near 15° and low ballast slides near 22°. Swap the ballast heights between lanes; a tall passive wall arrests the later motion.",
+            "de": "Ein Motor neigt zwei gleich schwere freie Türme mit tiefem oder hohem innerem Ballast. In den nativen Aufzeichnungen kippt die hohe Anordnung bei etwa 15°; die tiefe rutscht bei etwa 22°. Vertausche die Ballasthöhen zwischen den Spuren; eine hohe passive Wand fängt die spätere Bewegung ab."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "matched-load incline: center of mass, friction and first instability",
+            "de": "Neigungsversuch mit gleichen Lasten: Schwerpunkt, Reibung und erste Instabilität"
+        },
+        "keywords": [
+            "Tipline",
+            "inclined plane",
+            "tilting deck",
+            "sliding",
+            "tipping",
+            "center of mass",
+            "ballast height",
+            "same mass",
+            "friction",
+            "static stability",
+            "lane swap",
+            "schiefe Ebene",
+            "Rutschen",
+            "Kippen",
+            "Schwerpunkt",
+            "Ballasthöhe",
+            "Reibung",
+            "Standfestigkeit",
+            "passive catch wall",
+            "Auffangwand",
+            "experimental",
+            "prototype",
+            "unverified",
+            "experimentell"
+        ],
+        "experimental": true
+    },
+    "tipline-swapped.ldr": {
+        "pieces": 174,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "forces",
+        "description": {
+            "en": "The same machine with the ballast heights exchanged between the towers: green now has the high ballast, orange the low. The outcomes swap lanes too: the high-ballast tower still tips first, the low-ballast tower still slides.",
+            "de": "Dieselbe Maschine mit vertauschten Ballasthöhen: Grün hat jetzt den hohen Ballast, Orange den tiefen. Auch die Ergebnisse wechseln die Spur: Der Turm mit hohem Ballast kippt weiterhin zuerst, der mit tiefem rutscht."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "matched-load incline: center of mass, friction and first instability",
+            "de": "Neigungsversuch mit gleichen Lasten: Schwerpunkt, Reibung und erste Instabilität"
+        },
+        "keywords": [
+            "Tipline",
+            "inclined plane",
+            "tilting deck",
+            "sliding",
+            "tipping",
+            "center of mass",
+            "ballast height",
+            "same mass",
+            "friction",
+            "static stability",
+            "lane swap",
+            "schiefe Ebene",
+            "Rutschen",
+            "Kippen",
+            "Schwerpunkt",
+            "Ballasthöhe",
+            "Reibung",
+            "Standfestigkeit",
+            "passive catch wall",
+            "Auffangwand",
+            "experimental",
+            "prototype",
+            "unverified",
+            "experimentell"
+        ],
+        "experimental": true
+    },
+    "twistspan.ldr": {
+        "pieces": 107,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "forces",
+        "description": {
+            "en": "One motor turns an upper bar; two fixed 104 mm cords suspend a separate passive payload. Compare 64 mm and 32 mm tie spacing with the same rigid parts: the recorded period changes from about 0.77 s to 1.52 s.",
+            "de": "Ein Motor dreht den oberen Balken; zwei feste 104-mm-Schnüre tragen eine eigene passive Last. Vergleiche 64 mm und 32 mm Befestigungsabstand bei denselben starren Teilen: Die aufgezeichnete Periode ändert sich von etwa 0,77 s auf 1,52 s."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "bifilar torsional pendulum",
+            "de": "bifilares Torsionspendel"
+        },
+        "keywords": [
+            "bifilar",
+            "two cords",
+            "fixed-length suspension",
+            "torsional pendulum",
+            "gravity",
+            "moment of inertia",
+            "attachment spacing",
+            "passive oscillation",
+            "Zweifadenpendel",
+            "Torsionspendel",
+            "Schwerkraft",
+            "Trägheitsmoment",
+            "Fadenabstand",
+            "experimental",
+            "prototype",
+            "unverified",
+            "experimentell"
+        ],
+        "experimental": true
+    },
+    "twistspan-inner.ldr": {
+        "pieces": 107,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "forces",
+        "description": {
+            "en": "The same two cords moved from the red outer collars to the green inner collars, halving the tie spacing from 64 mm to 32 mm. Every rigid part, the payload and the program stay the same; the passive twist now takes about twice as long.",
+            "de": "Dieselben zwei Schnüre hängen jetzt an den grünen inneren statt an den roten äußeren Bundringen; der Befestigungsabstand halbiert sich von 64 mm auf 32 mm. Alle starren Teile, die Last und das Programm bleiben gleich; die passive Drehschwingung dauert jetzt etwa doppelt so lang."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "bifilar torsional pendulum",
+            "de": "bifilares Torsionspendel"
+        },
+        "keywords": [
+            "bifilar",
+            "two cords",
+            "fixed-length suspension",
+            "torsional pendulum",
+            "gravity",
+            "moment of inertia",
+            "attachment spacing",
+            "passive oscillation",
+            "Zweifadenpendel",
+            "Torsionspendel",
+            "Schwerkraft",
+            "Trägheitsmoment",
+            "Fadenabstand",
+            "experimental",
+            "prototype",
+            "unverified",
+            "experimentell"
+        ],
+        "experimental": true
+    },
+    "evenhand.ldr": {
+        "pieces": 97,
+        "motors": 2,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "forces",
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Counterbalanced two-joint arm: gravity torque about each joint",
+            "de": "Ausgewogener Zweigelenkarm: Schweremoment um jedes Gelenk"
+        },
+        "keywords": [
+            "counterweight",
+            "counterbalance",
+            "gravity torque",
+            "two-joint arm",
+            "serial arm",
+            "holding torque",
+            "lever arm",
+            "Gegengewicht",
+            "Gewichtsausgleich",
+            "Schweremoment",
+            "Zweigelenkarm",
+            "Haltemoment",
+            "Hebelarm",
+            "experimental",
+            "prototype",
+            "unverified",
+            "experimentell"
+        ],
+        "description": {
+            "en": "Two motors move a shoulder and an elbow through nine poses. Counterweights behind each joint balance the links, so in the simulator both motors hold every pose with almost no torque. The comparison moves the same forearm weights inward and runs the same program.",
+            "de": "Zwei Motoren bewegen Schulter und Ellbogen durch neun Stellungen. Gegengewichte hinter jedem Gelenk gleichen die Glieder aus, sodass beide Motoren im Simulator jede Stellung fast ohne Drehmoment halten. Der Vergleich rückt dieselben Unterarmgewichte nach innen und nutzt dasselbe Programm."
+        },
+        "experimental": true
+    },
+    "evenhand-control.ldr": {
+        "pieces": 97,
+        "motors": 2,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "forces",
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Counterbalanced two-joint arm: gravity torque about each joint",
+            "de": "Ausgewogener Zweigelenkarm: Schweremoment um jedes Gelenk"
+        },
+        "keywords": [
+            "counterweight",
+            "counterbalance",
+            "gravity torque",
+            "two-joint arm",
+            "serial arm",
+            "holding torque",
+            "lever arm",
+            "Gegengewicht",
+            "Gewichtsausgleich",
+            "Schweremoment",
+            "Zweigelenkarm",
+            "Haltemoment",
+            "Hebelarm",
+            "experimental",
+            "prototype",
+            "unverified",
+            "experimentell"
+        ],
+        "description": {
+            "en": "Control: the same forearm counterweights sit 60 LDU instead of 100 LDU behind the elbow. The arm reaches the same nine poses, but now the motors must hold it against gravity, and the elbow torque changes with the forearm's angle.",
+            "de": "Kontrolle: Dieselben Unterarm-Gegengewichte sitzen 60 statt 100 LDU hinter dem Ellbogen. Der Arm erreicht dieselben neun Stellungen, doch jetzt müssen die Motoren ihn gegen die Schwerkraft halten, und das Ellbogenmoment ändert sich mit dem Winkel des Unterarms."
+        },
         "experimental": true
     }
 });

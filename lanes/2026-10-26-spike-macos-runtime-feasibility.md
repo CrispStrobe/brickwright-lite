@@ -1,6 +1,6 @@
 # SPIKE macOS runtime feasibility (Renode under the App Sandbox)
 
-Status: CLAIMED — feasibility study, not a macOS SPIKE delivery.
+Status: DONE — feasibility merged (#1450); follow-through in `lanes/2026-10-27-spike-macos-packaging.md`.
 Owner: Claude, operator-authorized SPIKE macOS feasibility task.
 Base: `8bf40b2c3d2` (main at claim time).
 

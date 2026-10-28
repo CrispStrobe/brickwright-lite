@@ -963,20 +963,15 @@ their own evidence. No Linux package is uploaded. See
   installer: signature verification of the exact artifact digest, notarization receipts
   where they apply, update-manifest signature checks, and installed tests of the signed
   artifact. Signing must not change the recorded resource bytes.
-- *SPIKE runtime on macOS (separate contract, feasibility shown, not implemented):*
-  [SPIKE-MACOS.md](SPIKE-MACOS.md) (2026-10-26). Hosted runs in the owner's
-  `renode-spike-prime` fork built the pinned Runtime (`41338096`/`1253d925`, tlib
-  `d50c868f`) for `osx-arm64` and `osx-x64`, and a sandboxed launcher spawning Renode as
-  an `app-sandbox` + `inherit` child booted the own source-built NuttX guest to a live
-  state snapshot on both (runs 40336239431, 40343918260). Needed: the non-single-file
-  Renode layout under `Contents/Resources` (the upstream single-file host aborts in the
-  sandbox), `network.server`, the container `tmp`. tlib uses a double mapping, not
-  `MAP_JIT`; that worked in every tested configuration. Hardened-runtime entitlements
-  and tlib's run-time extraction need a Team-ID-signed measurement. macOS crate
-  inventories are generated (304/305 linked, all macOS-only crates permissive). Open:
-  .NET runtime notices in the macOS bundle, the app integration and signed packaging
-  (release workflow owned by the model-delivery lane, which this lane does not
-  dispatch), an installed test on macOS.
+- *SPIKE runtime on macOS (packaged in the release workflow's macOS leg; not released):*
+  [SPIKE-MACOS.md](SPIKE-MACOS.md). The multi-file Renode, with tlib as a separate signed
+  file (Infrastructure #39, Runtime #62), is staged under `Contents/Resources/renode` and
+  signed with the Mac App Store identity: child `app-sandbox` + `inherit` + `allow-jit`,
+  app `network.server`/`client`. The supervisor passes the container `TMPDIR`, the shipped
+  tlib directory and a loopback bind. Signed dry run 40507444319: the installed `.pkg`'s
+  own child booted the own NuttX guest with the real Team ID. Open: guest speed on
+  `macos-latest` (first emulated second ~9 min, independent of signing), launching the
+  real app (needs TestFlight), App Review, and the Linux Packet.Net/pip removal.
 - *Firmware L11 / Runtime inputs Lite depends on:* the NuttX/guest staged profile
   manifest and file list in `scripts/lib/spike-resource-profile.mjs` (including the
   licence files it requires), `state-config.json` `identity.firmware` and
