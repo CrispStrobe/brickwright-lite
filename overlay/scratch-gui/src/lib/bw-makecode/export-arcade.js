@@ -352,6 +352,38 @@ class ArcadeEmitter {
             return false;
         }
     }
+    // The same owned-copy bridge for closed execution-root reachability, so
+    // an uncalled procedure is unreachable through both export routes.
+    isUnreachable(target,node) {
+        if(isProjectJsonSnapshot(this.project))return this.closedOrdinaryEntry.isUnreachable(target,node);
+        if(!this.arrayOwnedSource?.current())return false;
+        try{
+            if(this.entryOwnedSnapshot===undefined){
+                const snapshot=createProjectJsonSnapshot(this.arrayOwnedSource.json);
+                this.entryOwnedSnapshot={snapshot,authority:createClosedOrdinaryProjectEntry(snapshot)};
+            }
+            const targets=arraySourceDescriptor(this.project,'targets')?.value;
+            const count=arraySourceDescriptor(targets,'length')?.value;
+            let index=-1,id=null;
+            for(let i=0;i<count;i++)if(arraySourceDescriptor(targets,i)?.value===target){if(index!==-1)return false;index=i;}
+            if(index<0)return false;
+            const blocks=arraySourceDescriptor(target,'blocks')?.value;
+            const names=arraySourceKeys(blocks),size=arraySourceDescriptor(names,'length').value;
+            for(let i=0;i<size;i++){
+                const key=arraySourceDescriptor(names,i).value;
+                if(typeof key==='string'&&arraySourceDescriptor(blocks,key)?.value===node){if(id!==null)return false;id=key;}
+            }
+            const actual=this.entryOwnedSnapshot.snapshot.targets[index],value=id!==null&&actual?.blocks?.[id];
+            if(!value||!this.entryOwnedSnapshot.authority.isUnreachable(actual,value)||!this.arrayOwnedSource.current())return false;
+            this.entryOwnedSourceUsed=true;return true;
+        }catch{
+            return false;
+        }
+    }
+    closedOrdinaryEntryCurrent() {
+        return this.closedOrdinaryEntry.current()&&(!this.entryOwnedSourceUsed||
+            this.arrayOwnedSource.current()&&this.entryOwnedSnapshot.authority.current());
+    }
     frameDeltaNumbersCurrent() {
         return this.frameDeltaNumber.current()&&(!this.frameDeltaOwnedSourceUsed||
             this.arrayOwnedSource.current()&&this.frameDeltaOwnedSnapshot.authority.current());
@@ -1649,7 +1681,7 @@ class ArcadeEmitter {
             if(source&&!sourceValueOperation(b)){this.note(`unsupported Arcade source value operation ${op}`);return this.na();}
             if(!names[op] || unary && !['+','-','~'].includes(op)){this.note(`unsupported value operation ${op}`);return this.na();}
             if(source&&(unary||['&','|','^','<<','>>','>>>'].includes(op))&&!this.sourceBitwiseExportOperands?.has(b)){this.note('Arcade source bitwise operation requires actual Array or primitive operand producers');return this.na();}
-            if(!source&&!compare&&(unary?op==='~':['&','|','^','<<','>>','>>>'].includes(op))&&!this.nativeBitwiseExportOperands?.has(b)&&!this.closedOrdinaryEntry.isUnreachable(this.target,b)&&!this.callablePrimitiveOperands(b,unary?['VALUE']:['LEFT','RIGHT'])){this.note('Native bitwise operation requires actual primitive operand producers');return this.na();}
+            if(!source&&!compare&&(unary?op==='~':['&','|','^','<<','>>','>>>'].includes(op))&&!this.nativeBitwiseExportOperands?.has(b)&&!this.isUnreachable(this.target,b)&&!this.callablePrimitiveOperands(b,unary?['VALUE']:['LEFT','RIGHT'])){this.note('Native bitwise operation requires actual primitive operand producers');return this.na();}
             // A qualified class-callable graph can retain primitive Number
             // addition directly. Generic Any helpers lose the Arrow's actual
             // result signature on source reparse; declarations alone cannot
@@ -3680,7 +3712,7 @@ class ArcadeEmitter {
             const seen = new Set();
             const visit = id => {
                 if (typeof id !== 'string' || seen.has(id) || !blocks[id]) return;
-                if(this.closedOrdinaryEntry.isUnreachable(target,blocks[id]))return;
+                if(this.isUnreachable(target,blocks[id]))return;
                 seen.add(id);const block = blocks[id];inspectionVisited.add(block);
                 if(block.opcode==='arcade_throwValue'){
                     const operand=inputBlock(blocks,block,'VALUE');
@@ -3926,7 +3958,7 @@ class ArcadeEmitter {
         for(const [block,operands]of nativeBitwiseInputs){
             const target=this.project.targets.find(t=>Object.values(t.blocks||{}).includes(block));
             if(operands.every(value=>inspectionTypes(value,['number','boolean','string','null','undefined'],new Set(),null,true))||
-                target&&this.closedOrdinaryEntry.isUnreachable(target,block))this.nativeBitwiseExportOperands.add(block);
+                target&&this.isUnreachable(target,block))this.nativeBitwiseExportOperands.add(block);
         }
         for(const expected of this.procedureConstraints?.allObligations||[]){
             const actual=procedureInputs.find(item=>item.block===expected.block&&item.obligation===expected.obligation);
@@ -4782,7 +4814,7 @@ function emitProjectToArcade (project, opts, snapshotCallbacks) {
         try{for(const diagnostic of validateProcedureConstraintSource(parseMakeCodeTs(projectTs,{parameterDefaults:true,retainParentheses:true}),{onlyFunctions:selected,ordinaryPrimitiveSdkNumbers:true,sceneClockNumbers:true,closedOrdinaryEntries:true}))e.note(diagnostic);}catch(error){e.note(error.message);}
     }
     if(!e.frameDeltaNumbersCurrent())e.note('Frame delta Number: current saved reporter proof environment changed during export');
-    if(!e.closedOrdinaryEntry.current())e.note('Arcade ordinary entry: current execution roots changed during export');
+    if(!e.closedOrdinaryEntryCurrent())e.note('Arcade ordinary entry: current execution roots changed during export');
     // Host artwork callbacks can edit current project objects during rendering.
     // Stale owner/global/local inventories must never become a clean export.
     if(!e.functionSymbols?.current())e.note('Arcade ordinary symbol: current project or owner inventory changed during export');
