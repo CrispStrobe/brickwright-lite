@@ -3,11 +3,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync,writeFileSync,mkdirSync,mkdtempSync,rmSync,existsSync,copyFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
-import {join,resolve} from 'node:path';
+import {join,resolve,dirname} from 'node:path';
+import {pathToFileURL} from 'node:url';
 import {spawnSync} from 'node:child_process';
 import {createManifest,createCases,canonical,sha256,topologySignature,SOURCES,RUNTIME_FINGERPRINTS,validateCaptureClock} from '../scripts/lib/reference-qualified-circuits.mjs';
 import {referenceDeck,referenceVectors,parseReference,parseCsv,compareDc,compareCapture,close,summarize,referenceMean} from '../scripts/lib/reference-qualified-compare.mjs';
-import {cliArgs,recordCommand,inventory,checkCohortBudget,remainingCohortWall,validateStudyAdmission,runStudy} from '../scripts/reference-qualified-instrument-study.mjs';
+import {cliArgs,recordCommand,inventory,checkCohortBudget,remainingCohortWall,validateStudyAdmission} from '../scripts/reference-qualified-instrument-study.mjs';
 
 const ROOT=resolve(import.meta.dirname,'..');
 const HEAD='a'.repeat(40),RUN='123456789';
@@ -21,6 +22,25 @@ const hashFile=name=>sha256(readFileSync(join(ROOT,name)));
 const manifest=createManifest();
 const numerical=manifest.cases.filter(c=>c.eligibility==='comparable');
 const value=vector=>vector.startsWith('i(')?-.002:1.25;
+// The completed study's collector still admits only its historical suppliers.
+// Exercise its unchanged source in an isolated synthetic consumer; never borrow
+// this checkout's later production pins or weaken the real preflight.
+async function historicalCollector(t) {
+    const root=mkdtempSync(join(tmpdir(),'reference-historical-source-'));
+    t.after(()=>rmSync(root,{recursive:true,force:true}));
+    for(const file of ['package.json','package-lock.json',
+        'scripts/reference-qualified-instrument-study.mjs',
+        'scripts/lib/reference-qualified-circuits.mjs','scripts/lib/reference-qualified-compare.mjs',
+        'scripts/package-provenance.mjs','scripts/read-reference-qualified-instruments.py',
+        '.github/workflows/reference-qualified-instruments.yml']) {
+        const target=join(root,file);mkdirSync(dirname(target),{recursive:true});
+        copyFileSync(join(ROOT,file),target);
+    }
+    put(root,'vendor-pins.json',SOURCES);
+    const loaded=await import(pathToFileURL(join(root,'scripts/reference-qualified-instrument-study.mjs')).href);
+    return {root,runStudy:loaded.runStudy};
+}
+
 function syncInventory(root){put(root,'inventory.json',inventory(root));}
 function processRecord(root,prefix,role,args,status=0,stdout='',stderr='') {
     put(root,prefix+'.stdout',stdout);put(root,prefix+'.stderr',stderr);
@@ -145,9 +165,9 @@ function fixture(t) {
     put(root,'results.json',results);put(root,'summary.json',{...summarize(manifest,results),preflightError:null});
     syncInventory(root);return root;
 }
-function reader(root,head=HEAD,run=RUN) {
+function reader(root,head=HEAD,run=RUN,sourceRoot=ROOT) {
     const p=spawnSync('/usr/bin/python3',['-I','-B','scripts/read-reference-qualified-instruments.py',root,'--head',head,'--run',run],
-        {cwd:ROOT,encoding:'utf8',timeout:30000,maxBuffer:1024*1024});
+        {cwd:sourceRoot,encoding:'utf8',timeout:30000,maxBuffer:1024*1024});
     if(p.error)throw p.error;
     return p;
 }
@@ -360,6 +380,8 @@ test('reference quadrature accepts declared clock rounding and rejects a missing
 test('actual collector with process/source doubles roundtrips through the independent reader',
     {skip:process.versions.node.split('.')[0]!=='22'?'collector runtime admission requires Node22; executed by the source-controls workflow':false},async t=>{
         const template=fixture(t),parent=mkdtempSync(join(tmpdir(),'reference-collector-'));
+        const historical=await historicalCollector(t);
+        const historicalRead=output=>reader(output,HEAD,RUN,historical.root);
         t.after(()=>rmSync(parent,{recursive:true,force:true}));
         const installedRoot=join(parent,'installed'),uiRoot=join(installedRoot,'bw-circuit-ui');
         mkdirSync(join(uiRoot,'bin'),{recursive:true});writeFileSync(join(uiRoot,'package.json'),uiManifestBytes);
@@ -399,16 +421,27 @@ test('actual collector with process/source doubles roundtrips through the indepe
         let summary;
         const packages=get(template,'package-proof.json');
         try {
-            summary=await runStudy({output:join(parent,'output'),installedRoot,boardSource:parent,cuiSource:parent,
+            summary=await historical.runStudy({output:join(parent,'output'),installedRoot,boardSource:parent,cuiSource:parent,
                 admittedIntent:sha256(canonical(manifest)),admissionFile,execute,verifyPackages:()=>packages.proof,
                 fingerprintRuntime:root=>root.endsWith('bw-board')?packages.board:packages.ui});
+            assert.equal(calls,96,'historical-source control reaches every admitted process double');
+            put(historical.root,'vendor-pins.json',{...SOURCES,'bw-board':'0'.repeat(40)});
+            const refused=await historical.runStudy({output:join(parent,'changed-pins-output'),
+                installedRoot,boardSource:parent,cuiSource:parent,
+                admittedIntent:sha256(canonical(manifest)),admissionFile,
+                execute:()=>assert.fail('changed pins must refuse before any command'),
+                verifyPackages:()=>assert.fail('changed pins must refuse before package admission')});
+            assert.match(refused.preflightError,/Consumer source pins changed/);
+            assert.equal(refused.evidenceComplete,false);
+            assert.equal(refused.counts.missing,32);
+            put(historical.root,'vendor-pins.json',SOURCES);
         } finally {
             for(const [key,value]of Object.entries(previous)) {if(value===undefined)delete process.env[key];else process.env[key]=value;}
         }
         assert.equal(calls,96,'32 loads +32 requested measurements +31 references +1 version; all process doubles');
         assert.equal(summary.evidenceComplete,true);assert.equal(summary.numericalConformance,true);
         assert.equal(summary.counts.passed,31);assert.equal(summary.counts.refused,1);
-        const independent=reader(join(parent,'output'));assert.equal(independent.status,0,independent.stderr+independent.stdout);
+        const independent=historicalRead(join(parent,'output'));assert.equal(independent.status,0,independent.stderr+independent.stdout);
         assert.equal(JSON.parse(independent.stdout).physicalCalibration,false);
     });
 
@@ -434,6 +467,8 @@ test('capture design counts distinguish requests from actual numerical passes',(
 test('actual collector preserves a preflight failure as independently readable incomplete evidence',
     {skip:process.versions.node.split('.')[0]!=='22'?'collector runtime admission requires Node22; executed by the source-controls workflow':false},async t=>{
         const template=fixture(t),parent=mkdtempSync(join(tmpdir(),'reference-preflight-'));
+        const historical=await historicalCollector(t);
+        const historicalRead=output=>reader(output,HEAD,RUN,historical.root);
         t.after(()=>rmSync(parent,{recursive:true,force:true}));
         const admissionFile=join(parent,'admission.json');copyFileSync(join(template,'event-admission.json'),admissionFile);
         const values={GITHUB_RUN_ID:RUN,GITHUB_RUN_ATTEMPT:'1',GITHUB_SHA:HEAD,
@@ -442,7 +477,7 @@ test('actual collector preserves a preflight failure as independently readable i
         Object.assign(process.env,values);let calls=0;
         const output=join(parent,'output');let summary;
         try {
-            summary=await runStudy({output,installedRoot:parent,boardSource:parent,cuiSource:parent,
+            summary=await historical.runStudy({output,installedRoot:parent,boardSource:parent,cuiSource:parent,
                 admittedIntent:sha256(canonical(manifest)),admissionFile,
                 verifyPackages:()=>{throw 'synthetic package admission refusal: '+ '🧪'.repeat(5000);},
                 execute:()=>{calls++;throw new Error('no process may run before package admission');}});
@@ -451,20 +486,20 @@ test('actual collector preserves a preflight failure as independently readable i
         assert.equal(Array.from(summary.preflightError).length,4096);
         assert.ok(readFileSync(join(output,'preflight-error.txt'),'utf8').length>5000);
         assert.equal(summary.evidenceComplete,false);assert.equal(summary.numericalConformance,false);
-        const report=reader(output);assert.equal(report.status,2,report.stderr+report.stdout);
+        const report=historicalRead(output);assert.equal(report.status,2,report.stderr+report.stdout);
         const decoded=JSON.parse(report.stdout);assert.equal(decoded.preflightFailureRecorded,true);
         assert.equal(decoded.failureCauseIndependentlyEstablished,false);
         const saved=get(output,'summary.json'),rows=get(output,'results.json');
         for(const [name,invalid,pattern] of [['summary.json',[],/summary must/],['results.json',{},/results must/],['results.json',[1],/results must/]]) {
-            put(output,name,invalid);syncInventory(output);const bad=reader(output);
+            put(output,name,invalid);syncInventory(output);const bad=historicalRead(output);
             assert.equal(bad.status,3);assert.match(bad.stderr,pattern);
             put(output,'summary.json',saved);put(output,'results.json',rows);
         }
         saved.numericalConformance=true;put(output,'summary.json',saved);syncInventory(output);
-        const forged=reader(output);assert.equal(forged.status,3);assert.match(forged.stderr,/preflight incomplete summary/);
+        const forged=historicalRead(output);assert.equal(forged.status,3);assert.match(forged.stderr,/preflight incomplete summary/);
         saved.numericalConformance=false;put(output,'summary.json',saved);
         mkdirSync(join(output,manifest.cases[0].id));put(output,manifest.cases[0].id+'/cli.stdout','hidden attempt');syncInventory(output);
-        const hidden=reader(output);assert.equal(hidden.status,3);assert.match(hidden.stderr,/conceal case execution/);
+        const hidden=historicalRead(output);assert.equal(hidden.status,3);assert.match(hidden.stderr,/conceal case execution/);
     });
 
 
