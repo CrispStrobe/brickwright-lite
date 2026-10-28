@@ -51,7 +51,13 @@ The expected commit, tree and file hashes must be independently obtained from
 the actual CI checkout. A branch name or the producer's own header is insufficient.
 Acquire each official original once and retain the first failure.
 
-Pending: hosted native cases and independent original readback; actual Chromium
-load/run; project CRC/content checks before a real reopen and fresh law-qualified
-run; all exact-head gates and normal matched-head merge. No native, browser,
+The browser candidate now registers explicit experimental opt-in, passive law
+and hinge checks, and a real project roundtrip. It checks the exported SB3 CRC,
+model sidecar and program content before opening a fresh context and running
+the saved program. These are source assertions, not executed browser evidence.
+The dedicated workflow step, its inventory and zero-reading budget registration
+are still pending.
+
+Pending: complete that CI integration; hosted native cases and independent
+original readback; actual Chromium load/run and saved-project replay; all exact-head gates and normal matched-head merge. No native, browser,
 WebKit, saved-file, physical buildability or hardware acceptance is claimed yet.
