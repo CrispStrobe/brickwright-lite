@@ -23,6 +23,7 @@ import {classCallableDefaultProjectGate} from './class-callable-default-project-
 import {sdkFontInputAuthority} from './sdk-font-input-authority.js';
 import {parseMakeCodeTs} from './ts-import.js';
 import {analyseSourceValueProducers} from './source-value-producers.js';
+import {dormantSpriteDeclarations} from './dormant-sprite-declarations.js';
 import {callableSourceGate} from './callable-source-gate.js';
 import {inspectCallableExportGraph,createCallableLexicalEmitter,renderCallableSignature,validateCallableCurrentBodyTypes,callableReflectionOperand,callableReflectionVariable,callableCurrentInputType} from './callable-export-graph.js';
 import {namedArrayItemExportAuthority} from './named-array-item-export-authority.js';
@@ -4316,6 +4317,7 @@ class ArcadeEmitter {
         const flagScripts = [];                             // green-flag scripts: {script, clonable, sv, plain}
         const handlers = [];
         const functions = [];
+        const ordinaryDeclarations = [];
         const stage = this.project.targets.find(t => t.isStage);
         this.hasHandles = this.project.targets.some(t => Object.values(t.blocks || {})
             .some(b => b?.opcode?.startsWith('arcade_') &&
@@ -4612,7 +4614,8 @@ class ArcadeEmitter {
                     // A stop/clone guard exits with a bare \`return\`; in a function that
                     // returns a value PXT rejects that ("Not all code paths return a value").
                     const body = returns ? script.map(line => line.replace(/\breturn\s*$/, 'return undefined')) : script;
-                    const lines = [...locals.map(name => this.localDeclaration(name, key)), ...body, ...tail];
+                    const localLines=locals.map(name=>this.localDeclaration(name,key));
+                    const lines = [...localLines, ...body, ...tail];
                     const dormantTypes=this.inferUnreachableSpriteParameterTypes(t,b,proto,names,
                         `function ${fn} (${params.join(', ')})${returnType} {\n${lines.join('\n')}\n}`);
                     const injected=params.length-names.length;
@@ -4625,7 +4628,15 @@ class ArcadeEmitter {
                             this.note(`Procedure parameter constraint: dormant flags receiver ${names[i]} requires a Sprite declaration, incompatible with ${declaredTypes[i]}`);
                         }else if(!declaredTypes[i]&&(!types[i]||types[i]==='any'))params[injected+i]=`${names[i]}: ${type}`;
                     }
-                    functions.push(`function ${fn} (${params.join(', ')})${returnType} {\n${lines.join('\n')}\n}`);
+                    const declaration={target:t,definition:b,name:fn,resultType:returnType,
+                        localTypes:new Map(locals.map(name=>[name,this.objectClassExport?.localDeclarationType?.(key,name)??this.localValueTypes.get(key)?.get(name)??'any'])),
+                        index:functions.length,
+                        render:plan=>`function ${fn} (${params.join(', ')})${plan?.result?': Sprite':returnType} {\n${[
+                            ...locals.map((name,index)=>plan?.locals.has(name)?`    let ${name}: Sprite = null`:localLines[index]),
+                            ...body,...tail].join('\n')}\n}`};
+                    declaration.source=declaration.render();
+                    ordinaryDeclarations.push(declaration);
+                    functions.push(declaration.source);
                 } else if (/^(procedures_prototype|argument_|.*_menu$)/.test(b.opcode)) {
                     continue;
                 } else if (b.opcode === 'event_whenthisspriteclicked' || b.opcode === 'event_whenstageclicked') {
@@ -4834,6 +4845,17 @@ class ArcadeEmitter {
             startup = flagScripts.map(({script, clonable, sv}) =>
                 `control.runInParallel(function () {\n${clonable ? `    const self = ${sv}\n` : ''}${script.join('\n')}\n})`);
         }
+        const dormantDeclarations=dormantSpriteDeclarations({project:this.project,records:ordinaryDeclarations,
+            isUnreachable:(target,node)=>this.isUnreachable(target,node),current:()=>this.closedOrdinaryEntryCurrent(),
+            literal:(target,node,name)=>this.literalInput(node,name),resolveCall:(target,node)=>this.functionSymbols.call(target,node),
+            namedArrays:this.namedArrays,globalName:(target,name)=>{
+                if(typeof name!=='string')return null;
+                const local=Object.values(target.variables||{}).some(value=>value[0]===name);
+                if(local&&this.isClonable(target)&&!this.isGlobalVar(name))return 'self';
+                const owner=local?target:this.project.targets.find(value=>value.isStage)||target;
+                return this.globals.get(`${owner.isStage?'':owner.name}:${name}`)||null;
+            }});
+        if(this.closedOrdinaryEntryCurrent())for(const [record,plan]of dormantDeclarations)functions[record.index]=record.render(plan);
         const assemble=definitions=>{
             const chunks=[...helperSource(this.helpers),...definitions,
                 ...pre,...generated,...this.generated,...functions,...out,...handlers,...startup];

@@ -1,5 +1,27 @@
 # Arcade compatibility: fresh-agent handoff and methodology
 
+## 28 October: dormant Sprite local/return declaration candidate
+
+The [separate dormant-declaration claim](../lanes/2026-10-28-arcade-dormant-sprite-declarations.md)
+now has an isolated source implementation for null-initialized locals and
+null-returning ordinary helpers whose complete affected closure stays dormant.
+Physical reads/writes/callers must match actual emitted lexical bindings. Real
+null assignments must precede every local read; generated zero initialization
+provides no evidence. The compatible declarations survive export and reimport
+without adding initialized Sprite or Number facts to the live graph.
+
+The 28 selected source controls pass; three separate cuts detect missing local
+rendering, result rendering and physical initialization. The external acceptance
+case was excluded from that bounded source probe.
+The claim provides the exact external acceptance command and the source-only
+boundary. Its enabled-by-default original-PXT/native test still needs an external
+prepared worker. Source probes and read-only review do not qualify a corpus row.
+The original typed-reference fixture still has its separate Array receiver and
+native-addition refusals; preserve those failures. After actual acceptance,
+compose with current integration/main and qualify the final head. Broader
+reference producer support and editable serialized reference annotations remain
+separate capabilities, not implied by this declaration repair.
+
 ## 28 October: typed-bitwise reimport source candidate
 
 The [typed-bitwise claim and scoped continuation](../lanes/2026-10-28-arcade-typed-bitwise-reimport.md)
