@@ -22,7 +22,7 @@ for any later qualified replacement. Candidate pins are Board
 | 1. Reference study | v2 run 40681635060: 32 inputs, 31 comparable passes, one named refusal, 4,260 values, 15 captures, 83/84 passing selector locations | Original source `bfa530fc`, historical Board `c7bcbe4b` / CUI `da28bb8c`; numerical conformance to admitted ngspice-42 references, not calibration or a new-pin cohort |
 | 2. Four earlier disagreements | All noncomparable; no demonstrated model defect (PR1495) | Preserve original denominators; do not fit a model to an uncertain reference root |
 | 3. Scope rearm cause | CUI PR128 merged; unmerged negative PR129 fails the injected host re-render control with identical tests and the exact historical component | Establishes that mechanism, not every historical timeout or race |
-| 4. Longer captures | At candidate `e85dc904`, three hosted RC regressions pass all 5,000 points per waveform, trigger checks, voltage means and current magnitudes; original refusals pass | Step, pulse and sine; first sample at 1 microsecond. Current-polarity coverage is separate. Regression assertions do not relabel older retained raw captures as new outputs |
+| 4. Longer captures | At successor `93aba754`, three hosted RC regressions pass all 5,000 points per waveform, trigger checks, voltage means and current magnitudes; original refusals pass | Step, pulse and sine; first sample at 1 microsecond. Current-polarity coverage is separate. Regression assertions do not relabel older retained raw captures as new outputs |
 | 5. LM741 | At `e85dc904`, hosted v2 passes six sign/load combinations, refusals, default-off output and GUI non-exposure; the v1 TODO remains | Nominal typical 25 C domain. Successful per-load JSON was not separately retained; this is CI assertion evidence |
 | 6. Coupling and provenance | At `e85dc904`, four installed AC tests pass, including three buildable supplier mutants. Independent retained-log reader accepts all 60 values across three modes | One authored two-channel circuit; maximum error below 5e-16 V. CLI-only RC view; no physical calibration or probe-loading claim. Provenance/redaction integration still needs final combined qualification |
 
@@ -93,6 +93,13 @@ its package pins while that combined delivery is active.
 Only then close the six-item campaign and ask for the next priority. No seventh
 implementation lane is opened. Package adoption and browser qualification do
 not establish a newer signed release or deployment.
+
+The corrected successor also passes
+[unit shard 6](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40767699282/job/123128359151):
+three long-capture assertions, original refusals, all four historical seals and
+the previously failing documentation-trigger check. The shard reports zero
+ordinary failures; its four declared Arcade TODOs remain recorded. The complete
+combined application result is still owed.
 
 The successor `93aba754` unit-shard-3 original also passes the same four AC
 checks and three mutations. Its independent reader accepts all 60 values,

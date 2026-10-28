@@ -170,3 +170,10 @@ or consumed-study replay. Every enabled full application check applies to the
 combined UI target. This handover does not close the campaign: actual qualified
 application evidence, integrated-head reconciliation and final documentation
 remain required; deployment is reported only from its own evidence.
+
+At frozen `93aba754`, all six hosted unit shards now pass. The corrected
+unit-shard-6 original confirms the three long-capture assertions, original
+refusals, four historical seals and repaired documentation-trigger check;
+zero ordinary failures, with four declared Arcade TODOs preserved. The separate
+Arcade qualification is still queued at this checkpoint. This is not the final
+combined application result and does not release an independent source merge.

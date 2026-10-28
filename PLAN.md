@@ -33,7 +33,10 @@ Hosted evidence at the earlier `e85dc904` candidate accepts 60 AC values and
 three actual supplier mutants, the LM741 settled-window assertion and the
 long-capture assertions. Its unit-6 documentation-trigger failure is preserved;
 `93aba754` repairs only the TODO documentation pointer and its dedicated record.
-Thirty-five focused successor checks pass; fresh exact-head CI remains pending.
+Thirty-five focused successor checks and all six hosted unit shards pass. The
+corrected unit-6 original accepts the three long captures, four historical seals
+and documentation-trigger check; final combined application qualification is
+still pending.
 
 Next: the coordinated menu/editor delivery owner must qualify and promote CUI
 PR131, compose the complete frozen circuit ancestry, perform one explicit Lite

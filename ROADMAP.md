@@ -12,13 +12,15 @@ remains open through qualification and final reconciliation.
 | 1. Supplier return and reference study | Historical adoption PR1478; accepted v2 run 40681635060: 31/31, 4,260 values, 15 captures, one named refusal | Preserve original source/pins; never replay the consumed study |
 | 2. Four disagreements | All noncomparable; no demonstrated model defect (PR1495) | Preserve classification and original denominators |
 | 3. Scope rearm | PR128 merged; identical before-fix PR129 fails the injected re-render control | Accepted for that mechanism; no blanket race attribution |
-| 4. Long captures | Three hosted 5,000-point waveform assertions pass at `e85dc904` | Qualify and land combined Lite PR1538 |
+| 4. Long captures | Three hosted 5,000-point waveform assertions pass at `93aba754` | Qualify and land combined Lite PR1538 |
 | 5. LM741 currents/power | Hosted settled-window/refusal/default-off checks pass at `e85dc904`; v1 TODO retained | Whole-app metadata/GUI checks remain in PR1538 qualification |
 | 6. Provenance and realism | Provenance/redaction and exact CUI `373d562b` adoption in PR1538; four hosted AC tests and 60 independent numerical rows pass at `e85dc904` | Complete hosted qualification, preserve historical study seals, verify source landing |
 
 The forward checkpoint `93aba754` fixes the original unit-6 documentation-trigger
 failure with a dedicated receipt and TODO pointer only. Pins, numerical bodies
-and workflow policy are unchanged; 35 focused checks pass, fresh CI is pending.
+and workflow policy are unchanged; 35 focused checks pass. All six hosted unit
+shards now pass, including the repaired documentation-trigger gate; final
+combined application qualification remains pending.
 
 The coordinated menu/editor delivery owner now carries CUI PR131 qualification,
 its explicit Lite adoption and the combined source/application landing. Preserve
