@@ -3,11 +3,11 @@
 **Consumer adoption is unfinished.** Continue existing
 [PR1533](https://github.com/CrispStrobe/brickwright-lite/pull/1533), branch
 `lane/samd-release-adoption-20261028`, head
-`ac0c45e0744c7a16cc97f406541826d70121fb23`. Read
+`48df0f93f9b6b642238c13448e6f075d8871eb83`. Read
 `lanes/2026-10-26-samd-native-game-engine-adoption.md` and `lanes/PROTOCOL.md`.
 Do not start a duplicate lane. Refresh remote heads/checks before acting.
 
-**Current Build: [40777652451](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40777652451).**
+**Current Build: [40783464522](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40783464522).**
 Build40765450222, retained in the historical sequence below, is superseded and
 cannot qualify this candidate. Use the current Build for all admission/dispatch inputs.
 
@@ -98,7 +98,8 @@ Test-only successor: the
 owns only the supervisor's test module; production bytes remain unchanged.
 The candidate binds parent/group identity and a held process descriptor, requires
 complete PID publication, retains bounded failure snapshots and signals only the
-admitted child. The original three-second assertion stays intact. A negative
+admitted child. The original three-second assertion stays intact. The original immediate-crash
+case remains; the100 ms live-owner case uses a separate fresh fixture. A negative
 fixture observes the actual supervisor's kill signal before deliberately
 clearing it and requiring survival through the same window, then exact cleanup.
 Private extracted-method controls and three adversarial cuts passed; their
