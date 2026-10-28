@@ -16,7 +16,7 @@ import zipfile
 ACTUAL_ENABLED = False
 REPOSITORY = 'CrispStrobe/brickwright-lite'
 LABEL = 'x86-hdd-gui-actual'
-BOARD = '836867513c3e7fac420ddaa32c17e1c7b6d3e513'
+BOARD = 'c7bcbe4bcd583d2215372dd4ee1e65002e249a04'
 SB3 = '1cbaeed325f5a890e43b78a4211acae8f801f2d2'
 JSON_CAP = 4 << 20
 STREAM_CAP = 1 << 20

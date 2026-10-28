@@ -1,12 +1,30 @@
 # Qualified junction DC packages — consumer adoption
 
-CLAIM — Codex circuit/instrument owner. Exact initial main base
+LOCAL PACKAGE METADATA PREPARATION — Codex circuit/instrument owner. Exact initial main base
 `2318dd8e26ae7c41b928b4d8a537d42f929f1412`; branch
 `claim/junction-packages-adoption-20261026`. This is the direct consumer return
 within task1 of the ordered reference-qualified instrument campaign. Merge this
-claim before implementation. Supplier targets remain unresolved: require the
-normally merged, fully qualified bw-board junction repair and the matching
-bw-circuit-ui package adoption before changing either pin in Lite.
+claim before implementation. Claim #1453 merged before implementation. The normally merged and qualified
+supplier targets are bw-board `dfa4be8eff4cef22462ac508a67da5f706f7d72d` and
+bw-circuit-ui `66e3724020e795c3442f8da9a7af149dd5f74bd9`.
+
+The current checkpoint derives both package scopes, their canonical locks and
+expected source-notice records. Every unrelated dependency field and license
+byte is preserved. Only the Board-backed controller record in bundled upstream
+metadata follows this Board pin; the circuit record belongs to the extensions
+repository and is preserved. Source-derived metadata is not installed-content
+proof. Generator evidence, current package assertions, coordinated x86 roles,
+normal installed-package verification and final combined qualification remain
+pending. Keep canonical main pins stable through the current-supplier x86 GUI
+checkpoint, then compose on its actual landed main before qualification. The
+static census has now been regenerated at the exact supplier revision: all 38
+rows and standing CI fields are preserved, with byte-identical module mirrors.
+Nine current package-identity tests and the two protected-profile supplier
+selectors follow the new packages; all behavioral assertions, numerical case
+and method definitions, triggers and completed receipts remain unchanged.
+The protected experiment is not selected or replayed. Final capability-report
+and matrix generation must use the actual composed x86 parent, and ROM/current
+versus historical role decisions remain coordinated with that owner.
 
 ## Owned package and derived boundary
 
@@ -20,7 +38,8 @@ bw-circuit-ui package adoption before changing either pin in Lite.
 - Generated Board census: docs/generated/bw-board-census.json,
   overlay/scratch-gui/src/lib/bw-matrix/census-snapshot.js and its exact
   packages/scratch-gui/src/lib/bw-matrix/census-snapshot.js mirror;
-  docs/generated/I8086-CAPABILITY-REPORT.md and LANGUAGE-DEVICE-MATRIX.md.
+  docs/generated/I8086-CAPABILITY-REPORT.md and
+  docs/generated/LANGUAGE-DEVICE-MATRIX.md.
 - Generated current ROM identity only in overlay/scratch-gui/static/roms/
   i8086-bios.provenance.json and i8086-demos.provenance.json. Preserve actual
   historical source-change and measured qualification identities; stop for an
