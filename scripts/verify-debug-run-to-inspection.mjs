@@ -104,8 +104,8 @@ try {
     check('run-to control appeared', await runTo.count() === 1);
     // The capability check can enable the control a moment after it appears;
     // wait (bounded) for the enabled state before judging it.
-    await panel.locator('[data-run-to-address]:not([disabled])')
-        .waitFor({state: 'visible', timeout: 10000}).catch(() => {});
+    await page.waitForFunction(() => document.querySelector('[data-run-to-address]')?.disabled === false,
+        null, {timeout: 10000}).catch(() => {});
     check('run-to is capability-gated and enabled on the attached target', !(await runTo.isDisabled()));
 
     let promptSeen = '';
