@@ -57,3 +57,11 @@ published archive is the already-qualified scalar/SIMD package, not a rebuild.
 These Lite controls have not executed against it. Fresh affected native/model,
 rendered worker and saved-project qualification remain prerequisites; upstream
 package qualification does not qualify this combined consumer source.
+
+The same package-pin implementation includes only the canonical
+`JOLT_PHYSICS_URL` and `JOLT_PHYSICS_INTEGRITY` literals and their adjacent
+archive SHA/release-history comment in `scripts/integrate.mjs`, which produces
+the GUI manifest and checks its lock entry. This does not expand ownership to
+other pins or toolchains; all other constants, dependency maps, GUI consumer
+rows, core guards and model inputs remain unchanged. No integration/install
+script or engine qualification has been run for this source candidate.
