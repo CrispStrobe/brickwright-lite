@@ -60,14 +60,14 @@ function expected(sign, load) {
     return {ibp, ibn, iload, iout, vpos, vneg, inp: -ibp, inn: -ibn, power, energy: power * DURATION};
 }
 
-function runCli(dir, circuit, meters, extra = []) {
+function runCli(dir, circuit, meters, extra = [], duration = '20us') {
     const file = path.join(dir, 'follower.json');
     writeFileSync(file, JSON.stringify(circuit));
     const env = {...process.env}; delete env.BW_BOARD;
     return spawnSync(process.execPath, [CLI, 'measure', file, '--profile', 'precision-v1',
         '--initial', 'zero-state', '--scope', 'U.out,G.gnd',
         ...meters.flatMap(m => ['--meter', `current:${m}`]),
-        '--duration', '20us', '--rate', '2MHz', '--json', ...extra],
+        '--duration', duration, '--rate', '2MHz', '--json', ...extra],
     {encoding: 'utf8', env, timeout: 120000});
 }
 
@@ -82,7 +82,15 @@ test('the installed packages are the pinned Board/CUI pair carrying the domain',
 const METERS = ['U.vpos', 'U.vneg', 'U.inp', 'U.inn', 'U.out', 'VP.pos', 'VN.neg'];
 const LOADS = [null, {ohms: 10000, volts: -1}, {ohms: 10000, volts: 1}];
 
-test('installed CLI: terminal KCL, rail power/energy, both bias polarities, zero and nonzero load', () => {
+// v1 (instant-settling) predicate, frozen and committed before its first run.
+// ORIGINAL OBSERVED FAILURE (2026-10-28, first local run, kept verbatim):
+//   'sign 1, load 10000 ohm to -1 V: V+ pin -0.0018000219515663727 expected -0.00180007'
+// It compares 0-20 us observed means against steady-state values, ignoring the
+// zero-state load-step transient. Retained unedited as an expected failure (todo);
+// the v2 predicate below replaces it as the acceptance gate.
+test('v1-instant-settling: installed CLI terminal KCL, rail power/energy, both polarities, zero and nonzero load', {
+    todo: 'expected failure preserved: v1 ignores start-up transient; see v2-post-settling-window',
+}, () => {
     const dir = mkdtempSync(path.join(tmpdir(), 'lite-lm741-bias-'));
     try {
         for (const sign of [1, -1]) for (const load of LOADS) {
@@ -178,3 +186,50 @@ test('GUI does not expose the domain: palette default and editors are unchanged 
         'only the CLI precision report admits the domain; no GUI editor authors it');
 });
 
+
+// v2 predicate, frozen a priori from the pinned Board linear-pole card (gbwHz 1e6,
+// a0 2e5) before its first run. A unity-gain follower closes the loop at GBW, so
+// its small-signal time constant is tau = 1/(2*pi*1e6) ~= 159 ns. The window
+// starts at 10 us >= 60*tau (well above the requested >= 10*tau); exp(-60) makes
+// any start-up residue negligible against the 1e-10/1e-9 A tolerances. The CLI
+// meter reports the mean since capture start, so the [10 us, 20 us] window mean is
+// (20*mean20 - 10*mean10)/10 from two deterministic runs of the same circuit.
+const TAU = 1 / (2 * Math.PI * 1e6), T1 = 10e-6, T2 = 20e-6;
+test('v2-post-settling-window: terminal KCL, rail power/energy, both polarities, zero and nonzero load', () => {
+    assert.ok(T1 >= 10 * TAU && T1 >= 60 * TAU);
+    const dir = mkdtempSync(path.join(tmpdir(), 'lite-lm741-bias-v2-'));
+    const failures = [];
+    try {
+        for (const sign of [1, -1]) for (const load of LOADS) {
+            const label = `v2 sign ${sign}, load ${load ? `${load.ohms} ohm to ${load.volts} V` : 'none'}`;
+            const meters = load ? [...METERS, 'RL.a'] : METERS;
+            const means = ['10us', '20us'].map(d => {
+                const r = runCli(dir, follower({sign, load}), meters, [], d);
+                assert.equal(r.status, 0, `${label} ${d}: ${r.stderr}`);
+                const report = JSON.parse(r.stdout);
+                assert.match(report.precisionCapture.admission, /nominal-typical-25c-bias-supply$/);
+                return report.meters.map(m => { assert.equal(m.reading.note, null); return m.reading.siValue; });
+            });
+            const got = Object.fromEntries(meters.map((m, i) =>
+                [m, (T2 * means[1][i] - T1 * means[0][i]) / (T2 - T1)]));
+            const e = expected(sign, load);
+            const tol = load ? 1e-9 : 1e-10;
+            const check = (name, actual, want, t = tol) => {
+                if (!(Math.abs(actual - want) <= t)) failures.push(`${label}: ${name} ${actual} expected ${want}`);
+            };
+            check('V+ pin', got['U.vpos'], e.vpos);
+            check('V- pin', got['U.vneg'], e.vneg);
+            check('inp bias', got['U.inp'], e.inp);
+            check('inn bias', got['U.inn'], e.inn);
+            check('out', got['U.out'], e.iout);
+            if (load) check('load', -got['RL.a'], e.iload);
+            check('package KCL', got['U.vpos'] + got['U.vneg'] + got['U.inp'] + got['U.inn'] + got['U.out'], 0);
+            check('V+ source', got['VP.pos'], -got['U.vpos'], 1e-12);
+            check('V- source', got['VN.neg'], -got['U.vneg'], 1e-12);
+            const power = RAIL * -got['U.vpos'] + RAIL * got['U.vneg'];
+            check('rail power', power, e.power, RAIL * 2 * tol);
+            check('rail energy over window', power * (T2 - T1), e.power * (T2 - T1), RAIL * 2 * tol * (T2 - T1));
+        }
+    } finally { rmSync(dir, {recursive: true, force: true}); }
+    assert.deepEqual(failures, [], 'every v2 case must meet the frozen nominal expectation');
+});
