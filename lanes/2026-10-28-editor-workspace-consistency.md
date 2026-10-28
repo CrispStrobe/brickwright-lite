@@ -27,6 +27,6 @@ Qualification: source routing, layout, symmetric geometry and currentness
 controls; hosted affected browser/build checks before matched-head product merge.
 Use the existing bounded shared-VPS policy; no large local build or SDK install.
 
-Checkpoint `276245968d1` implements this scope. Continue with
+Checkpoints `276245968d1` and `5efac017229` implement this scope and the independent actual-SVG browser acceptance driver. Continue with
 [the editor UX handoff](../docs/EDITOR-WORKSPACE-UX-HANDOFF.md); hosted affected
 browser/build checks and separately qualified Circuit adoption remain pending.
