@@ -571,6 +571,56 @@
         "physikalisches Pendel",
         "konjugierte Aufhängepunkte"
       ]
+    },
+    {
+      "models": [
+        "final-squeeze"
+      ],
+      "name": {
+        "en": "Equal-link knee press with passive spring-loaded platen",
+        "de": "Kniehebelpresse mit gleichen Gliedern und passiver federbelasteter Druckplatte"
+      },
+      "aliases": [
+        "knee press",
+        "toggle press",
+        "equal-link slider-crank",
+        "mechanical advantage",
+        "virtual work",
+        "shock absorber",
+        "platen",
+        "Kniehebelpresse",
+        "Kniehebel",
+        "Totpunkt",
+        "virtuelle Arbeit",
+        "Kraftübersetzung",
+        "Feder",
+        "Druckplatte"
+      ]
+    },
+    {
+      "models": [
+        "high-select"
+      ],
+      "name": {
+        "en": "Gravity-loaded unilateral maximum selector",
+        "de": "Schwerkraftbelasteter Maximumwähler mit einseitigen Kontakten"
+      },
+      "aliases": [
+        "mechanical maximum",
+        "maximum selector",
+        "MAX",
+        "rack",
+        "gravity",
+        "contact",
+        "handover",
+        "commutativity",
+        "mechanisches Maximum",
+        "Maximumwähler",
+        "Zahnstange",
+        "Schwerkraft",
+        "Kontaktwechsel",
+        "Kommutativität"
+      ]
     }
   ]
 }

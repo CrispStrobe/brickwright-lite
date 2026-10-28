@@ -1092,6 +1092,78 @@ export const MODEL_LESSONS = Object.freeze({
             "konjugierte Aufhängepunkte"
         ]
     },
+    "final-squeeze.ldr": {
+        "pieces": 168,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "forces",
+        "description": {
+            "en": "One motor straightens two equal links against a stock shock load. The passive platen advances less per degree near alignment while the ideal output force per input torque rises. The finite program stops short of dead centre and returns.",
+            "de": "Ein Motor streckt zwei gleich lange Glieder gegen eine Federlast. Die passive Druckplatte bewegt sich nahe der Strecklage je Grad weniger, während die ideale Ausgangskraft je Eingangsdrehmoment steigt. Das endliche Programm bleibt vor dem Totpunkt und kehrt zurück."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Equal-link knee press with passive spring-loaded platen",
+            "de": "Kniehebelpresse mit gleichen Gliedern und passiver federbelasteter Druckplatte"
+        },
+        "keywords": [
+            "Equal-link knee press with passive spring-loaded platen",
+            "Kniehebelpresse mit gleichen Gliedern und passiver federbelasteter Druckplatte",
+            "knee press",
+            "toggle press",
+            "equal-link slider-crank",
+            "mechanical advantage",
+            "virtual work",
+            "shock absorber",
+            "platen",
+            "Kniehebelpresse",
+            "Kniehebel",
+            "Totpunkt",
+            "virtuelle Arbeit",
+            "Kraftübersetzung",
+            "Feder",
+            "Druckplatte"
+        ]
+    },
+    "high-select.ldr": {
+        "pieces": 288,
+        "motors": 2,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "forces",
+        "description": {
+            "en": "Two independently driven supports lift a separate gravity-loaded bridge. The higher support determines its settled height. Compare lower-input motion, handover and equal-height ties, then exchange the two input sequences.",
+            "de": "Zwei unabhängig angetriebene Stützen heben eine separate, schwerkraftbelastete Brücke. Die höhere Stütze bestimmt ihre Höhe nach dem Einschwingen. Vergleiche Bewegungen der niedrigeren Eingabe, den Kontaktwechsel und gleiche Höhen; vertausche anschließend die beiden Eingabefolgen."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Gravity-loaded unilateral maximum selector",
+            "de": "Schwerkraftbelasteter Maximumwähler mit einseitigen Kontakten"
+        },
+        "keywords": [
+            "Gravity-loaded unilateral maximum selector",
+            "Schwerkraftbelasteter Maximumwähler mit einseitigen Kontakten",
+            "mechanical maximum",
+            "maximum selector",
+            "MAX",
+            "rack",
+            "gravity",
+            "contact",
+            "handover",
+            "commutativity",
+            "mechanisches Maximum",
+            "Maximumwähler",
+            "Zahnstange",
+            "Schwerkraft",
+            "Kontaktwechsel",
+            "Kommutativität"
+        ]
+    },
     "watt-line.ldr": {
         "pieces": 148,
         "motors": 1,
