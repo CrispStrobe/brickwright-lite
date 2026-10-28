@@ -24,36 +24,31 @@ test('Vercel production deploy is validated main plus manual and nightly at 02:0
     assert.match(workflow, /workflow_run\.head_repository\.full_name == github\.repository/);
     assert.match(workflow, /needs\.eligible\.outputs\.ready == 'true'/);
     assert.match(workflow, /--eligibility >> \"\$GITHUB_OUTPUT\"/);
+    assert.match(workflow, /VALIDATED_SHA: \$\{\{ github\.event\.workflow_run\.head_sha \}\}/,
+        'eligibility judges the commit whose validation completed, not whatever main is by then');
     assert.match(workflow, /node scripts\/verify-vercel-main-checks\.mjs "\$local_sha"/);
     assert.match(workflow, /node scripts\/verify-vercel-live-version\.mjs "\$local_sha"/);
 });
 
-test('every Vercel production run deploys the current main checkout', () => {
+test('every Vercel production run publishes the newest validated main, never an older tree', () => {
     assert.match(workflow, /^\s{10}ref: main\s*$/m);
     assert.match(workflow, /vercel build --prod/);
     assert.match(workflow, /vercel deploy --prebuilt --prod/);
-    assert.match(workflow, /git ls-remote origin refs\/heads\/main/,
-        'main can advance during the build, so freshness must be checked immediately before publication');
-    // The verdict used to be a step output consumed by `if:`. It is now an
-    // inline comparison inside a retry loop, because a single attempt that
-    // skipped the publish still exited 0 -- on 2026-09-20 three dispatches in
-    // a row published nothing and all reported success. What the policy
-    // actually requires is unchanged and asserted here directly: the publish
-    // must be guarded by the post-build comparison, never reached otherwise.
-    assert.match(workflow, /if \[ "\$local_sha" = "\$remote_sha" \]; then\s*\n\s*vercel deploy --prebuilt --prod/,
-        'the production publish must be guarded by the post-build freshness comparison');
-    // And the gap that let a skip masquerade as a deploy: a run that never
-    // wins the race must fail, not exit 0 having published nothing.
-    assert.match(workflow, /::error::main advanced during all/,
-        'a run that never publishes must say so as an error');
+    // Candidates come only from main's own first-parent history, newest first.
+    assert.match(workflow, /git rev-list --first-parent --max-count=\d+ FETCH_HEAD/);
+    // Production must never move backwards: what it serves must be an ancestor
+    // of the target, checked before the build and again right before publishing.
+    assert.match(workflow, /git merge-base --is-ancestor "\$live_sha" "\$target_sha"/);
+    assert.match(workflow, /if git merge-base --is-ancestor "\$now_live" "\$local_sha" && \[ "\$now_live" != "\$local_sha" \]; then\s*\n\s*vercel deploy --prebuilt --prod/,
+        'the production publish must be guarded by the post-build ancestry comparison');
+    // Green means published or already current: a run that cannot validate any
+    // recent main commit, or loses the race, fails.
+    assert.match(workflow, /::error::no validated main commit found/);
+    assert.match(workflow, /::error::production moved to/);
     assert.match(workflow, /\n\s*exit 1\s*$/m,
         'a run that never publishes must fail, so that green means published');
     // The adjacency check above pins THE guarded publish; it cannot see a
-    // SECOND one. An unguarded `vercel deploy` added elsewhere in this job —
-    // a fallback after the loop, say — would satisfy every assertion above
-    // while shipping exactly the stale tree the comparison exists to stop.
-    // So the publish site is required to be unique, which is what makes
-    // "published" imply "guarded" rather than only "guarded somewhere".
+    // SECOND one. The publish site must stay unique.
     assert.equal((workflow.match(/vercel deploy --prebuilt --prod/g) || []).length, 1,
         'more than one production publish site — the guard above covers only the first');
     for (const secret of ['VERCEL_TOKEN', 'VERCEL_ORG_ID', 'VERCEL_PROJECT_ID']) {

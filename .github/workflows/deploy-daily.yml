@@ -43,7 +43,11 @@ jobs:
       - id: check
         env:
           GH_TOKEN: ${{ github.token }}
-        run: node scripts/verify-vercel-main-checks.mjs "$(git rev-parse HEAD)" --eligibility >> "$GITHUB_OUTPUT"
+          # The commit whose validation just completed. Judging main's tip instead
+          # made every event ineligible whenever main had moved on, which on a
+          # busy day is always: production sat 356 commits behind on 2026-10-28.
+          VALIDATED_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: node scripts/verify-vercel-main-checks.mjs "$VALIDATED_SHA" --eligibility >> "$GITHUB_OUTPUT"
 
   deploy:
     name: Deploy current BrickWright Lite
@@ -61,8 +65,10 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           # workflow_dispatch allows choosing a ref in the UI. Production does
-          # not: every trigger publishes the canonical current main.
+          # not: every trigger publishes from main's own history.
           ref: main
+          # Enough first-parent history to find the newest validated main commit.
+          fetch-depth: 200
 
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
@@ -84,49 +90,60 @@ jobs:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
 
-      # Build the tree, then publish it only if `main` still points at what we
-      # built. An older tree must never overwrite a newer one — that guard is
-      # not negotiable and is unchanged.
+      # Publish the newest main commit whose complete validation succeeded.
       #
-      # What IS new is convergence. Previously a single attempt skipped the
-      # publish when `main` moved and the job still exited 0, so "the deploy
-      # succeeded" and "the site was updated" were different facts with the
-      # same green tick. On 2026-09-20 three consecutive dispatches published
-      # NOTHING and all reported success; one lost by 26 seconds. The site sat
-      # on an old bundle while every signal said otherwise.
+      # Until 2026-10-28 this published only the current tip, and only if the tip
+      # itself was fully validated and did not move during the build. With main
+      # Builds queuing for hours, the tip never qualified: every event was
+      # skipped or refused and production sat 356 commits (two days) behind
+      # while GitHub Pages stayed current.
       #
-      # So: re-fetch, rebuild and retry. A build is ~3 minutes, so three
-      # attempts cover roughly ten minutes of merge traffic, and each attempt
-      # publishes a strictly newer tree than the last would have. If every
-      # attempt loses, FAIL — a red job that published nothing is honest, and
-      # the next scheduled run picks it up. Never exit 0 without publishing.
-      - name: Build and publish the current main, retrying while main advances
+      # The non-negotiable guard is unchanged in substance: an older tree must
+      # never overwrite a newer one. It is now checked against what production
+      # actually serves: the live commit must be an ancestor of the target.
+      # Green still means published. A run that finds nothing newer to publish
+      # says so as a notice; a run that cannot validate any recent main commit
+      # fails.
+      - name: Build and publish the newest validated main
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          attempts=3
-          for attempt in $(seq 1 "$attempts"); do
-            git fetch --quiet origin main
-            git checkout --quiet --force FETCH_HEAD
-            local_sha=$(git rev-parse HEAD)
-            node scripts/verify-vercel-main-checks.mjs "$local_sha"
-            echo "::group::attempt $attempt/$attempts — building $local_sha"
-            vercel build --prod --token="$VERCEL_TOKEN"
-            echo "::endgroup::"
-
-            remote_sha=$(git ls-remote origin refs/heads/main | awk '{print $1}')
-            test -n "$remote_sha"
-            echo "checkout=$local_sha remote-main=$remote_sha"
-            if [ "$local_sha" = "$remote_sha" ]; then
-              vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN"
-              node scripts/verify-vercel-live-version.mjs "$local_sha"
-              echo "::notice::published $local_sha to the production domains"
+          live_sha=$(curl -fsS --max-time 15 "https://brickwright-lite.vercel.app/brickwright-version.json?probe=$GITHUB_RUN_ID" \
+            | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const c=JSON.parse(s).commit||"";if(!/^[a-f0-9]{40}$/.test(c))process.exit(1);console.log(c)})')
+          git fetch --quiet --depth=200 origin main
+          target_sha=""
+          for candidate in $(git rev-list --first-parent --max-count=60 FETCH_HEAD); do
+            if [ "$candidate" = "$live_sha" ]; then break; fi
+            if node scripts/verify-vercel-main-checks.mjs "$candidate" > /dev/null 2>&1; then target_sha=$candidate; break; fi
+          done
+          if [ -z "$target_sha" ]; then
+            if git merge-base --is-ancestor "$live_sha" FETCH_HEAD 2>/dev/null && \
+               git rev-list --first-parent --max-count=60 FETCH_HEAD | grep -qx "$live_sha"; then
+              echo "::notice::production already serves $live_sha, the newest validated main commit; nothing newer to publish"
               exit 0
             fi
-            echo "::notice::main advanced $local_sha -> $remote_sha during attempt $attempt; rebuilding the newer tree"
-          done
-          echo "::error::main advanced during all $attempts attempts, so nothing was published. \
-          This is a busy-repository outcome, not a broken tree: re-run when merges settle, or let the schedule catch it."
+            echo "::error::no validated main commit found within the last 60 first-parent commits, so nothing was published."
+            exit 1
+          fi
+          # Monotonic: what production serves must be an ancestor of what we publish.
+          git merge-base --is-ancestor "$live_sha" "$target_sha"
+          git checkout --quiet --force "$target_sha"
+          local_sha=$(git rev-parse HEAD)
+          node scripts/verify-vercel-main-checks.mjs "$local_sha"
+          echo "::group::building validated main $local_sha (production serves $live_sha)"
+          vercel build --prod --token="$VERCEL_TOKEN"
+          echo "::endgroup::"
+          # Re-read production right before publishing: the concurrency group
+          # serialises our own runs, but a manual publish could still land.
+          now_live=$(curl -fsS --max-time 15 "https://brickwright-lite.vercel.app/brickwright-version.json?probe=$GITHUB_RUN_ID-2" \
+            | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s).commit||""))')
+          if git merge-base --is-ancestor "$now_live" "$local_sha" && [ "$now_live" != "$local_sha" ]; then
+            vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN"
+            node scripts/verify-vercel-live-version.mjs "$local_sha"
+            echo "::notice::published validated main $local_sha to the production domains"
+            exit 0
+          fi
+          echo "::error::production moved to $now_live during the build, which is not older than $local_sha; nothing was published."
           exit 1
