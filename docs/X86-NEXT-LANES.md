@@ -123,7 +123,7 @@ published, whatever the result. Do not call this physical 386 timing.
 
 Read-only diagnostics against board master
 `260126831d76c297ac1ca8481eb89f953b5da203` executed the authored loop in
-Node 22 and Chromium 153, for CPU-only and AT paths. Each used 25,000 separate
+Node 24.22.1 and Chromium 153, for CPU-only and AT paths. Each used 25,000 separate
 warmup instructions followed by one million measured retirements. Architectural
 state checks passed. The Node children were bounded to one CPU, 512 MiB and
 10 seconds each; the browser service to one CPU, 1 GiB and 20 seconds, with
