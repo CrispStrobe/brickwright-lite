@@ -1,6 +1,6 @@
 # Code file actions in the shared File menu
 
-Owner: shared editor-menu UX maintainer. Status: CLAIMED.
+Owner: shared editor-menu UX maintainer. Status: DONE (source implementation); final hosted qualification pending.
 Base: 88f7367ed653398560c725f75e78845172c066f5.
 
 Extend the existing shared menu task: expose Open code and Save code as through

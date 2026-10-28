@@ -1,6 +1,6 @@
 # Cross-editor menu coverage and keyboard navigation
 
-Owner: shared editor-menu UX maintainer. Status: CLAIMED.
+Owner: shared editor-menu UX maintainer. Status: DONE (source implementation); final hosted qualification pending.
 Base: main 1a10d5e3c16; continue existing product PR #1536.
 
 Expose existing Pixel and Tilemap commands through contextual File/Edit sections.

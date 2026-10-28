@@ -1,6 +1,6 @@
 # Editor menu consistency
 
-Owner: shared menu UX maintainer. Status: CLAIMED.
+Owner: shared menu UX maintainer. Status: DONE (source implementation); final hosted qualification pending.
 
 Base: c450e75265674d9f10bc1ccdc5ed819a57726240.
 

@@ -1,6 +1,6 @@
 # Code and blocks conversion through Edit
 
-Owner: shared editor-menu UX maintainer. Status: CLAIMED.
+Owner: shared editor-menu UX maintainer. Status: DONE (source implementation); final hosted qualification pending.
 Base: main cb28becdb169a1a53174e20f79a486408f418321;
 source continuation: existing menu PR #1536 at 7e3f06a634b.
 
