@@ -110,3 +110,13 @@ and reopen assertions remain; diagnostics now report runtime/Creator errors
 first and identify the failing generation. This is an open runtime/connected
 producer task, not a qualified representative or a source-export regression
 that may be waived.
+
+## Addendum: game.runtime operands
+
+`game.runtime()` with no arguments is recognized as a Number under the same
+`game` namespace guard. Without it an accumulator such as
+`n=n+game.runtime()` in an update handler kept an Opaque writer and was
+refused for native addition, where main exports it. This is the refusal in
+`makecode-arcade-controller-repeat`. The SDK Number test adds an accumulator
+and string-join program and a rebinding negative; the candidate cut is
+detected. No clock or timing behaviour is claimed.
