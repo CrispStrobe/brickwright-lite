@@ -30,3 +30,10 @@ Use the existing bounded shared-VPS policy; no large local build or SDK install.
 Checkpoints `276245968d1` and `5efac017229` implement this scope and the independent actual-SVG browser acceptance driver. Continue with
 [the editor UX handoff](../docs/EDITOR-WORKSPACE-UX-HANDOFF.md); hosted affected
 browser/build checks and separately qualified Circuit adoption remain pending.
+
+Follow-up scope approved 2026-10-28: add a hide/show minimap control in
+`fpga-gate-builder-rf.jsx`; move the remaining program-handler Brick buttons
+strip into Robot Lab Manual controls in `sim-lab-pane.jsx`, preserving real
+button/connection callbacks and release behavior. Own only these presentation
+hunks and affected source/browser controls. No simulator/input-delivery change.
+Qualify the affected GUI and preserve all existing source merge gates.
