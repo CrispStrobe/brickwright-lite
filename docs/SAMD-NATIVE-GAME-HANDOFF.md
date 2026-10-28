@@ -3,9 +3,13 @@
 **Consumer adoption is unfinished.** Continue existing
 [PR1533](https://github.com/CrispStrobe/brickwright-lite/pull/1533), branch
 `lane/samd-release-adoption-20261028`, head
-`bb8a63216637ae827ded1e7836a199e65b1ef6b2`. Read
+`ac0c45e0744c7a16cc97f406541826d70121fb23`. Read
 `lanes/2026-10-26-samd-native-game-engine-adoption.md` and `lanes/PROTOCOL.md`.
 Do not start a duplicate lane. Refresh remote heads/checks before acting.
+
+**Current Build: [40777652451](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40777652451).**
+Build40765450222, retained in the historical sequence below, is superseded and
+cannot qualify this candidate. Use the current Build for all admission/dispatch inputs.
 
 ## Completed prerequisites
 
@@ -26,6 +30,11 @@ Infrastructure [PR1456](https://github.com/CrispStrobe/brickwright-lite/pull/145
 merged as `dea504b32a9a4bd43a2a9d25b587590a0ac9763f`. The native-package owner
 released the former PR1318-first hold for this exact adoption and its two claimed
 repairs. No general package boundary is open.
+
+For the current successor, require every enabled exact-head source check,
+including the full Rust suite, before any native or actual-game dispatch. The
+previous guarded continuation is stopped with zero dispatches. Fresh source
+and actual acceptance remain pending; the original native failure is not waived.
 
 ## Current candidate and preserved failures
 
@@ -65,7 +74,7 @@ failed `renode_supervisor::tests::linux_owner_crash_terminates_simulator` at
 `apps/tauri/src-tauri/src/renode_supervisor.rs:1838`: the test observed the
 synthetic direct child surviving abrupt owner death after its existing
 three-second observation bound. The suite reports269 passed,1 failed,11 ignored.
-Its original log is retained once. The fixture and test are byte-identical to
+Its original log is retained once. On that failed head, the fixture and test were byte-identical to
 original commit `3d77472b518ae4e9a57fd8cfb154e31ecba1b432`; SAMD changes no Rust.
 The evidence does not establish a flake or distinguish termination failure from
 an observation problem: the test retains neither terminal process state nor
