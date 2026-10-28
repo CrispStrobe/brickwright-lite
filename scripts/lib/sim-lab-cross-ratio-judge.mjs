@@ -36,3 +36,15 @@ export function judgeCrossRatio(r,{control=false}={}){
  else {assert.ok(m.outputSpanDeg>=10);assert.ok(m.lawErrorDeg<=.5,JSON.stringify(m));assert.ok(m.couplerErrorDeg<=.5,JSON.stringify(m));assert.ok(m.planeDeg<=.5,JSON.stringify(m));}
  return m;
 }
+
+// Serialize program semantics, including literal inputs, edges, mutations,
+// variables, lists and broadcasts. Opcode histograms are readiness only.
+export function crossRatioProgramGraph(project){
+ assert.ok(Array.isArray(project?.targets)&&project.targets.length>0);
+ const graph=project.targets.map(t=>{
+  assert.equal(typeof t.name,'string');assert.ok(t.blocks&&typeof t.blocks==='object');
+  return structuredClone({name:t.name,isStage:t.isStage,blocks:t.blocks,variables:t.variables||{},lists:t.lists||{},broadcasts:t.broadcasts||{}});
+ }).sort((a,b)=>a.name.localeCompare(b.name));
+ assert.equal(new Set(graph.map(t=>t.name)).size,graph.length,'unique program target names');
+ return graph;
+}

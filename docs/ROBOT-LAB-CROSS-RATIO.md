@@ -27,8 +27,10 @@ uses rotation matrices and an independently derived rational full-angle circle
 vector. It also reconstructs both sides of every true hinge from the compiled
 world point and initial body transform. Its acceptance bounds are frozen before
 engine observation: law/coupler/planarity 0.5°, closure 0.5 mm, axis agreement 1°,
-and at least 119° of actual input motion. All ten physical arrival holds and
-actual program completion are required.
+and at least 119° of actual input motion. All ten physical arrival holds must occur in route order, each for the authored
+1500 ms; actual program completion is required. The independent identity schema
+requires the full declared source/SDK hash map, not just a commit label. Exactly
+one static ground and four distinct dynamic roles are mandatory.
 
 The causal control removes only `pivot_axle_P` from a test copy of the source.
 It must retain all four moving roles and motor A, remove precisely the
@@ -53,15 +55,16 @@ Acquire each official original once and retain the first failure.
 
 The browser candidate now registers explicit experimental opt-in, passive law
 and hinge checks, and a real project roundtrip. It checks the exported SB3 CRC,
-model sidecar and program content before opening a fresh context and running
-the saved program. These are source assertions, not executed browser evidence.
+model sidecar and the full serialized program graph/data before opening a fresh
+context. The newly loaded graph/data must match again before pressing actual Run.
+Opcode histograms are used only for loader readiness. These are source assertions, not executed browser evidence.
 A dedicated eight-minute gate on existing `robotaddon1` and its exact inventory
 controls are implemented. The existing 30-minute job cap and every old gate
 remain unchanged. Zero-reading budget registration still awaits its scope
 extension; no new runtime or historical timing is claimed.
 
-Two lightweight analytic preflights (21 rejected corruptions, including the
-four-case retained-TAP transport) and 15 browser shard/inventory checks pass;
+Three lightweight analytic preflights (35 rejected corruptions, including the
+four-case retained-TAP transport and same-opcode program edits) and 15 browser shard/inventory checks pass;
 these checks import no engine and do not qualify motion.
 
 Pending: complete budget registration; hosted native cases and independent

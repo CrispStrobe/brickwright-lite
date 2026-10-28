@@ -6,7 +6,7 @@ import {readFileSync} from 'node:fs';
 import {createHash} from 'node:crypto';
 import {execFileSync} from 'node:child_process';
 import {readCrossRatio,readCrossRatioLines} from '../scripts/verify-sim-cross-ratio.mjs';
-import {judgeCrossRatio} from '../scripts/lib/sim-lab-cross-ratio-judge.mjs';
+import {judgeCrossRatio,crossRatioProgramGraph} from '../scripts/lib/sim-lab-cross-ratio-judge.mjs';
 import {analyticRecord,ANALYTIC_IDENTITY} from './fixtures/bw-sim/cross-ratio/analytic.mjs';
 const read=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8'),hash=x=>createHash('sha256').update(x).digest('hex');
 const C=JSON.parse(read('test/fixtures/bw-sim/cross-ratio/contract.json'));
@@ -30,7 +30,12 @@ const corruptions={
  'whole assembly control':r=>{r.variant='remove-pivot-P';r.mechanism.bodies.pop();},
  'forged completion':r=>r.track.at(-1).extra.variables.failed=1,
  'early hold end':r=>r.track.pop(),
- 'wrong control bytes':r=>{r.variant='remove-pivot-P';}
+ 'wrong control bytes':r=>{r.variant='remove-pivot-P';},
+ 'dynamic floor':r=>r.mechanism.bodies.find(b=>b.id==='ground').motion='dynamic',
+ 'missing ground':r=>r.mechanism.bodies.find(b=>b.id==='ground').id='floor',
+ 'fixed input':r=>r.mechanism.bodies.find(b=>b.id==='input').motion='static',
+ 'one-frame holds':r=>{let last=-1;for(const f of r.track){const v=f.extra.variables;if(v.stage===last)v.arrived=0;else last=v.stage;}},
+ 'swapped repeated-angle holds':r=>{for(const f of r.track){const v=f.extra.variables;if(v.stage===0)v.stage=3;else if(v.stage===3)v.stage=0;}}
 };
 for(const [name,mutate]of Object.entries(corruptions)){
  const r=structuredClone(good);mutate(r);assert.throws(()=>check(r),undefined,name);
@@ -42,8 +47,12 @@ const shifted=structuredClone(good);for(const f of shifted.track)for(const p of 
 // A global translation changes neither a relative law nor true hinge closure.
 assert.ok(check(shifted).lawErrorDeg<1e-8);
 assert.throws(()=>readCrossRatio(good),/external/);
+for(const files of [{},Object.fromEntries(Object.entries(ANALYTIC_IDENTITY.files).slice(1))]){
+ const identity={...ANALYTIC_IDENTITY,files},r={...good,identity};
+ assert.throws(()=>readCrossRatio(r,{expectedIdentity:identity}),/file census/);
+}
 assert.throws(()=>readCrossRatioLines('',{expectedIdentity:ANALYTIC_IDENTITY}));
-test('Cross Ratio: independent circle fixtures, 15 corruptions, sign and translation controls',()=>assert.equal(Object.keys(corruptions).length,15));
+test('Cross Ratio: independent circle fixtures, 20 corruptions, sign and translation controls',()=>assert.equal(Object.keys(corruptions).length,20));
 // Exercise the actual retained-TAP transport, including cold-clock boundaries,
 // complete case census and refused corruption, before any engine is imported.
 const analyticLines=[];
@@ -65,6 +74,19 @@ const wireCuts=[
 ];
 for(const broken of wireCuts){assert.notEqual(broken,wire);assert.throws(()=>readCrossRatioLines(broken,wireOptions));}
 test('Cross Ratio: retained TAP four-case readback and six stream corruptions',()=>assert.equal(wireCuts.length,6));
+const graphFixture={targets:[{name:'Stage',isStage:true,blocks:{hat:{opcode:'event_whenflagclicked',next:'move',inputs:{},fields:{},topLevel:true},move:{opcode:'data_setvariableto',parent:'hat',next:null,fields:{VARIABLE:['x','x']},inputs:{VALUE:[1,[4,'1']]},mutation:{tag:'original'}}},variables:{x:['x',1]},lists:{route:['route',[60,30,45]]},broadcasts:{watch:'watchdog'}}]};
+const graphCuts=[
+ p=>p.targets[0].blocks.move.fields.VARIABLE[0]='y',
+ p=>p.targets[0].blocks.move.inputs.VALUE[1][1]='999',
+ p=>p.targets[0].blocks.hat.next=null,
+ p=>p.targets[0].blocks.move.mutation.tag='edited',
+ p=>p.targets[0].lists.route[1][1]=150,
+ p=>p.targets[0].variables.x[1]=99,
+ p=>p.targets[0].broadcasts.watch='other'
+];
+const expectedGraph=crossRatioProgramGraph(graphFixture);
+for(const edit of graphCuts){const changed=structuredClone(graphFixture);edit(changed);assert.notDeepEqual(crossRatioProgramGraph(changed),expectedGraph);}
+test('Cross Ratio: full saved-program graph rejects seven same-opcode content edits',()=>assert.equal(graphCuts.length,7));
 const {runRobotLabProgram}=await import('./helpers/robot-lab-direct-vm.mjs');
 const {catalogFrom,prepareModel}=await import('../overlay/scratch-gui/src/lib/bw-sim/sim-session.js');
 const original=read('overlay/scratch-gui/static/sim-lab/models/cross-ratio.ldr'),program=read('overlay/scratch-gui/static/sim-lab/programs/cross-ratio.bw');
@@ -76,13 +98,7 @@ assert.equal(prepared[0].mechanism.joints.length-prepared[1].mechanism.joints.le
 assert.equal(prepared[0].model.parts.length,127);assert.equal(prepared[1].model.parts.length,126);
 assert.equal(prepared[0].mechanism.bodies.length,5);assert.equal(prepared[1].mechanism.bodies.length,5);
 for(const p of prepared){assert.equal(p.mechanism.actuators.length,1);assert.equal(p.mechanism.actuators[0].port,'A');}
-const identity={commit:execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim(),tree:execFileSync('git',['rev-parse','HEAD^{tree}'],{encoding:'utf8'}).trim(),files:Object.fromEntries([
- 'vendor-pins.json','package-lock.json','scripts/lib/gui-scope-allowed.json',
- 'overlay/scratch-gui/src/lib/bw-sim/part-meta/parts.json',
- 'overlay/scratch-gui/src/lib/bw-sim/sim-session.js','overlay/scratch-gui/src/lib/bw-sim/physics/jolt-core.js',
- 'test/helpers/robot-lab-direct-vm.mjs','test/bw-sim-cross-ratio.test.mjs',
- 'test/fixtures/bw-sim/cross-ratio/contract.json','scripts/verify-sim-cross-ratio.mjs',
- 'scripts/lib/sim-lab-cross-ratio-judge.mjs'].map(p=>[p,hash(readFileSync(new URL('../'+p,import.meta.url)))]))};
+const identity={commit:execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim(),tree:execFileSync('git',['rev-parse','HEAD^{tree}'],{encoding:'utf8'}).trim(),files:Object.fromEntries(C.identityPaths.map(p=>[p,hash(readFileSync(new URL('../'+p,import.meta.url)))]))};
 for(const coldMs of C.timing.coldMs)for(const control of [false,true])test(`Cross Ratio actual VM/Jolt: ${control?'remove P':'original'}, cold ${coldMs}ms`,{timeout:240000},async()=>{
  const vmErrors=[];let setup;
  const r=await runRobotLabProgram(program,{modelText:control?removed:original,catalog,autoPorts:false,frameMs:25,coldMs,afterMs:C.timing.afterMs,timeLimitMs:C.timing.timeLimitMs,

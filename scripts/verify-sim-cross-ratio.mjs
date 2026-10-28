@@ -29,6 +29,11 @@ function relativeVector(initial,now,baseInitial,baseNow,reference){
 function transported(body,now,point){return plus(now.position,apply(matrix(now.rotation),apply(transpose(matrix(body.rotation)),minus(point,body.position))));}
 export function readCrossRatio(record,{expectedIdentity}={}){
  check(expectedIdentity,'external exact CI commit/tree/file identities are mandatory');
+ assert.deepEqual(Object.keys(expectedIdentity).sort(),['commit','files','tree'],'closed external identity schema');
+ assert.deepEqual(Object.keys(expectedIdentity.files||{}).sort(),[...C.identityPaths].sort(),'complete required source/SDK file census');
+ check(Object.values(expectedIdentity.files).every(x=>typeof x==='string'&&/^[a-f0-9]{64}$/.test(x)),'exact file SHA-256 values');
+ check(expectedIdentity.files['test/fixtures/bw-sim/cross-ratio/contract.json']===sha(contractBytes),'expected frozen contract');
+ check(expectedIdentity.files['overlay/scratch-gui/static/sim-lab/models/cross-ratio.ldr']===C.modelSha256&&expectedIdentity.files['overlay/scratch-gui/static/sim-lab/programs/cross-ratio.bw']===C.programSha256,'expected source input hashes');
  assert.deepEqual(record.identity,expectedIdentity,'original CI identity');
  check(/^[a-f0-9]{40}$/.test(expectedIdentity.commit)&&/^[a-f0-9]{40}$/.test(expectedIdentity.tree),'exact commit/tree');
  check(record.schema===1&&record.kind==='cross-ratio-native','native record schema');
@@ -47,11 +52,13 @@ export function readCrossRatio(record,{expectedIdentity}={}){
  check(record.issues?.filter(i=>i.severity==='error').length===0,'no compiler errors');
  check(record.unsupported?.length===0,'no unsupported operation');
  const m=record.mechanism;check(m.bodies.length===5,'four free bodies and floor');
- check(m.bodies.filter(b=>b.motion==='static').every(b=>b.id==='ground'),'only floor may be fixed');
+ check(new Set(m.bodies.map(b=>b.id)).size===5,'unique physical body IDs');
+ const floor=m.bodies.filter(b=>b.id==='ground');check(floor.length===1&&floor[0].motion==='static','one static ground body');
+ check(m.bodies.filter(b=>b.motion==='static').length===1,'only floor may be fixed');
  const roles=Object.fromEntries(Object.entries(C.roles).map(([role,part])=>{
   const b=m.bodies.filter(b=>b.parts.includes(part));check(b.length===1,role+' unique membership');pose(b[0]);return[role,b[0]];
  }));
- check(new Set(Object.values(roles).map(b=>b.id)).size===4,'distinct physical roles');
+ check(new Set(Object.values(roles).map(b=>b.id)).size===4&&Object.values(roles).every(b=>b.motion==='dynamic'),'four distinct dynamic physical roles');
  check(m.actuators.length===1&&m.actuators[0].port==='A','actual input A only');
  const joints=m.joints;check(joints.length===(record.variant==='original'?4:3),'declared hinge census');
  check(joints.every(j=>j.type==='hinge'),'hinges only');
@@ -66,7 +73,7 @@ export function readCrossRatio(record,{expectedIdentity}={}){
  check(frames.at(-1).t===record.finishedAt+C.timing.afterMs,'full final hold');
  let previous=-C.timing.frameMs,minInput=Infinity,maxInput=-Infinity,minOutput=Infinity,maxOutput=-Infinity;
  let lawErrorDeg=0,couplerErrorDeg=0,planeDeg=0,closureMm=0,axisDeg=0;
- const stageHolds=new Set();
+ const stageHolds=[];let hold=null;
  for(const f of frames){
   check(Number.isFinite(f.t)&&f.t===previous+C.timing.frameMs,'exact recording cadence; no missing/duplicate/reordered rows');previous=f.t;
   check(f.phase===(f.t<=record.timing.coldMs?'cold':f.t<=record.finishedAt?'program':'after'),'actual phase clock');
@@ -96,15 +103,24 @@ export function readCrossRatio(record,{expectedIdentity}={}){
    axisDeg=Math.max(axisDeg,degrees(Math.acos(Math.min(1,Math.max(-1,dot(...axes))))));
   }
   const vars=f.extra?.variables;check(vars,'actual VM variables');
-  if(Number(vars.arrived)===1&&Number(vars.inputReady)===1){
-   const stage=Number(vars.stage);check(Number.isInteger(stage)&&stage>=0&&stage<10,'actual route stage');
-   check(Math.abs(th-C.route[stage])<=.5,'actual physical stage arrival, no target-as-pose');stageHolds.add(stage);
+  check(!f.extra.sessionFailed,'no hidden session failure');
+  if(vars.failed!==undefined)check(Number(vars.failed)===0,'no failed program frame is hidden by later success');
+  const arrived=Number(vars.arrived)===1&&Number(vars.inputReady)===1&&f.phase==='program';
+  const stage=Number(vars.stage);
+  if(hold&&(!arrived||stage!==hold.stage)){
+   check(f.t-hold.start>=C.timing.holdMs,'full authored 1500ms hold before next stage');
+   stageHolds.push(hold.stage);hold=null;
+  }
+  if(arrived){
+   check(Number.isInteger(stage)&&stage>=0&&stage<10,'actual route stage');
+   if(!hold){check(stage===stageHolds.length,'route holds occur once in authored order');hold={stage,start:f.t};}
+   check(Math.abs(th-C.route[stage])<=.5,'actual physical stage arrival, no target-as-pose');
   }
  }
  for(const f of frames.filter(f=>f.t>=record.finishedAt))check(Number(f.extra.variables.completed)===1&&Number(f.extra.variables.failed)===0&&Number(f.extra.variables.stage)===10,'actual completion persists throughout final hold');
  const last=frames.at(-1),vars=last.extra.variables;
  check(Number(vars.completed)===1&&Number(vars.failed)===0&&Number(vars.stage)===10,'original program completes entire route');
- check(stageHolds.size===10,'all ten observed route holds');
+ check(!hold&&stageHolds.length===10,'all ten complete ordered route holds');
  check(Object.keys(last.busy).length===1&&last.busy.A===false&&last.extra.modes.A==='hold','input is actually idle in hold');
  check(maxInput-minInput>=C.limits.inputSpanDeg,'nontrivial actual input sweep');
  check(closureMm<=C.limits.closureMm&&axisDeg<=C.limits.axisDeg,'remaining true hinges stay closed/aligned');

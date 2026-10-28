@@ -37,7 +37,8 @@
     "coldMs": [
       0,
       1000
-    ]
+    ],
+    "holdMs": 1500
   },
   "control": {
     "removePart": "pivot_axle_P",
@@ -55,5 +56,24 @@
     120,
     90,
     60
+  ],
+  "identityPaths": [
+    "vendor-pins.json",
+    "package.json",
+    "package-lock.json",
+    "packages/scratch-gui/package.json",
+    "packages/scratch-gui/package-lock.json",
+    "scripts/lib/gui-scope-allowed.json",
+    "overlay/scratch-gui/src/lib/bw-sim/part-meta/parts.json",
+    "overlay/scratch-gui/src/lib/bw-sim/sim-session.js",
+    "overlay/scratch-gui/src/lib/bw-sim/physics/jolt-core.js",
+    "overlay/scratch-gui/static/sim-lab/models/cross-ratio.ldr",
+    "overlay/scratch-gui/static/sim-lab/programs/cross-ratio.bw",
+    "test/helpers/robot-lab-direct-vm.mjs",
+    "test/bw-sim-cross-ratio.test.mjs",
+    "test/fixtures/bw-sim/cross-ratio/analytic.mjs",
+    "test/fixtures/bw-sim/cross-ratio/contract.json",
+    "scripts/verify-sim-cross-ratio.mjs",
+    "scripts/lib/sim-lab-cross-ratio-judge.mjs"
   ]
 }

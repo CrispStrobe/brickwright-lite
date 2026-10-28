@@ -13,10 +13,16 @@
   "scope": "Finite software-law candidate only; no physical, hardware or library-wide claim.",
   "lightweightChecks": {
     "engineExecuted": false,
-    "readerPreflightTests": 2,
-    "rejectedCorruptions": 21,
+    "readerPreflightTests": 3,
+    "rejectedCorruptions": 35,
     "quaternionSignInvariant": true,
     "globalTranslationInvariant": true,
-    "browserShardInventoryTests": 15
+    "browserShardInventoryTests": 15,
+    "rejectionInventory": {
+      "rawRecord": 20,
+      "stream": 6,
+      "identitySchema": 2,
+      "sameOpcodeProgramContent": 7
+    }
   }
 }
