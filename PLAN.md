@@ -35,12 +35,14 @@ long-capture assertions. Its unit-6 documentation-trigger failure is preserved;
 `93aba754` repairs only the TODO documentation pointer and its dedicated record.
 Thirty-five focused successor checks pass; fresh exact-head CI remains pending.
 
-Next: complete applicable exact-head fast checks, preserve both the historical
-study seals and the separately owned pin-history reader fix, verify the matched
-merge tree/parents, then reconcile superseded PRs and final campaign documents.
-Use fast tier unless full qualification is necessary; the explicitly approved
-absent-`ci:full` verdict exception does not waive real fast failures. Coordinate
-one final combined-main qualification with its owner. No seventh task is opened.
+Next: the coordinated menu/editor delivery owner must qualify and promote CUI
+PR131, compose the complete frozen circuit ancestry, perform one explicit Lite
+package adoption and qualify the combined application before landing. Circuit
+retains numerical-original custody, independent readback and final documentation;
+no competing source merge or pin update is authorized. All enabled full checks
+apply to that combined UI target; the earlier fast-tier label exception is not
+inherited. Then verify integrated source heads, reconcile the four campaign
+documents and audit actual delivery evidence. No seventh task is opened.
 The [active handoff](docs/CIRCUIT-INSTRUMENT-REGRESSION.md#active-continuation--2026-10-28)
 keeps exact actions, evidence boundaries and remaining limits.
 

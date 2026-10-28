@@ -155,3 +155,18 @@ observations at their original identity. It repairs the unit-6 documentation-
 trigger omission by moving the LM741 TODO record to a dedicated receipt; all
 numerical assertions, pins and workflow policy remain unchanged. Fresh exact-head
 qualification and final application acceptance are still pending.
+
+## Coordinated delivery custody — 2026-10-28
+
+The [menu/workspace delivery claim](2026-10-28-circuit-menu-workspace-delivery.md)
+now owns the CUI PR131 promotion, explicit Lite package adoption and combined
+editor/menu/circuit source landing. Preserve complete frozen `93aba754` ancestry,
+the unchanged Board pin and historical study seals. No independent circuit
+source merge or competing package refresh proceeds during this delivery.
+Circuit retains numerical-original acquisition/readback and the four campaign
+documentation surfaces. The exact combined head, pins, run and job must bind the
+independent reader before original acquisition; no numerical predicate changes
+or consumed-study replay. Every enabled full application check applies to the
+combined UI target. This handover does not close the campaign: actual qualified
+application evidence, integrated-head reconciliation and final documentation
+remain required; deployment is reported only from its own evidence.

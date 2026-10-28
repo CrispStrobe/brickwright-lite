@@ -20,9 +20,15 @@ The forward checkpoint `93aba754` fixes the original unit-6 documentation-trigge
 failure with a dedicated receipt and TODO pointer only. Pins, numerical bodies
 and workflow policy are unchanged; 35 focused checks pass, fresh CI is pending.
 
-After the combined candidate qualifies: reconcile PR1516/1515/1517 against its
-actual landed ancestry; update this roadmap, PLAN and handoff; coordinate the
-final combined-main qualification once, then ask for the next priority.
+The coordinated menu/editor delivery owner now carries CUI PR131 qualification,
+its explicit Lite adoption and the combined source/application landing. Preserve
+all `93aba754` ancestry; do not independently merge PR1538 or change its pins.
+Circuit retains numerical-original readback and the final four-document handoff.
+Before new raw-log acquisition, freeze exact combined head/pin/run/job identities;
+read retained originals once and do not replay the study. After all enabled full
+application checks and actual landing, reconcile PR1516/1515/1517/1538, update
+this roadmap, PLAN and handoff, and verify the coordinated delivery evidence.
+Then ask for the next priority.
 Physical calibration, probe loading, a GUI AC-coupling selector and the unreachable
 32 MiB output-cap boundary remain outside this acceptance. Source/package
 adoption is not installed release or deployment evidence. No seventh lane is

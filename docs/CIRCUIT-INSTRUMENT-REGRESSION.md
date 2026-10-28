@@ -60,27 +60,45 @@ x86 history-reader changes must be composed without replacing this guard.
 
 ### Next actions, in order
 
-1. Finish every applicable exact-head fast check for PR1538. On a real failure,
-   retain its original once after metadata admission and repair forward. The
-   operator-approved absent-`ci:full` verdict exception does not waive a test.
-2. Coordinate the shared repair, then perform a matched-head merge and verify
-   actual parents/tree and unchanged Board pin. The shared historical repair
-   lands atomically with this candidate; it does not need a duplicate PR.
-3. Close PR1516/1515/1517 only after their exact current heads are proven
-   integrated. Preserve their branches, original failures and evidence.
-4. Reconcile this handoff, PLAN, ROADMAP and the campaign record against actual
-   landing/qualification identities. Earlier candidate observations remain
-   attached to their original heads.
-5. Use one coordinated automatic main Build for final application acceptance,
-   reusing an already-qualified exact combined descendant if available instead
-   of dispatching a duplicate. The light-shard circuit UX and rendering gates
-   exercise actual scope rearming, raw/ADC views, triggers, CSV/HOLD stability,
-   reset/refusal behavior and LM741 meter recovery. Admit and read the actual
-   originals before declaring that boundary complete.
+The coordinated delivery claim is
+[`circuit-menu-workspace-delivery`](../lanes/2026-10-28-circuit-menu-workspace-delivery.md).
+Its owner carries the qualified CUI menu/editor integration, one explicit Lite
+package adoption, combined source landing and deployment evidence. The circuit
+campaign retains numerical-original custody, independent readback and these
+four final documentation surfaces. Do not independently merge PR1538 or advance
+its package pins while that combined delivery is active.
+
+1. Qualify and promote CUI PR131 before selecting its exact descendant for Lite.
+   A branch head, supplier test or earlier CUI pin is not consumer acceptance.
+2. Compose the complete frozen `93aba754` source ancestry with the editor/menu
+   delivery. Preserve the Board pin, historical study seals and separately owned
+   pin-history reader. Verify every enabled final combined check, including its
+   full application/browser checks; the earlier fast-tier label exception does
+   not apply to this combined qualification.
+3. Before acquiring combined numerical logs, freeze the independent reader's
+   exact consumer head, supplier pins, run and job identities. Preserve all
+   numerical predicates. Acquire each original once, share retained files and
+   never replay the consumed study. Read actual browser results from the same
+   qualified application artifact, rather than substituting older GUI receipts.
+4. After verified landing, reconcile PR1516/1515/1517/1538 against the actual
+   integrated heads and tree. Preserve branches, original failures and evidence.
+   Update this handoff, PLAN, ROADMAP and the campaign record against those
+   identities; qualify their final documentation change.
+5. Verify the coordinated application and deployment results within their
+   observed boundaries. Do not dispatch a duplicate combined qualification or
+   claim an installed release from source/package adoption alone. The light
+   circuit UX and rendering gates cover scope rearming, raw/ADC views, triggers,
+   CSV/HOLD stability, reset/refusal behavior and LM741 meter recovery.
 
 Only then close the six-item campaign and ask for the next priority. No seventh
 implementation lane is opened. Package adoption and browser qualification do
 not establish a newer signed release or deployment.
+
+The successor `93aba754` unit-shard-3 original also passes the same four AC
+checks and three mutations. Its independent reader accepts all 60 values,
+with maximum error below 5e-16 V. This repeats the same authored input at CUI
+`373d562b`; it adds no distinct designs and does not qualify the later menu
+package. [Original job](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40767699282/job/123128359044).
 
 ### Explicit remaining limits
 
