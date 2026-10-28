@@ -25,7 +25,9 @@ pin, workflow policy, deployment or physical-calibration claim.
 
 The completed v2 study must remain bound to its measured historical suppliers.
 Also own `test/pin-move-chain.test.mjs` and
-`test/reference-qualified-instrument-study.test.mjs` for this boundary only:
+`test/reference-qualified-instrument-study.test.mjs`, plus the exact historical
+UI manifest fixture `docs/receipts/reference-qualified-v2-ui-package.json`, for
+this boundary only:
 classify the three exact consumed-study source/workflow identities as sealed
 historical evidence with explicit byte/hash checks, and run synthetic collector
 controls against an isolated copy of that unchanged historical source and its
