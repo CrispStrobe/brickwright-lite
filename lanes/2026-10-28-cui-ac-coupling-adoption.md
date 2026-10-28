@@ -20,3 +20,17 @@ independent high-pass expectations, refusal-before-capture controls and causal
 mutations of the new acceptance gate. Run affected clean hosted qualification
 before a matched-head merge. No GUI coupling selector, Board model, unrelated
 pin, workflow policy, deployment or physical-calibration claim.
+
+## Pin-boundary evidence repair discovered during qualification
+
+The completed v2 study must remain bound to its measured historical suppliers.
+Also own `test/pin-move-chain.test.mjs` and
+`test/reference-qualified-instrument-study.test.mjs` for this boundary only:
+classify the three exact consumed-study source/workflow identities as sealed
+historical evidence with explicit byte/hash checks, and run synthetic collector
+controls against an isolated copy of that unchanged historical source and its
+historical pins. Keep stale-current and never-pinned negatives load-bearing.
+Do not edit the consumed collector, comparator, fixture, reader or workflow,
+weaken its real pin preflight, or dispatch another study. This repair is needed
+because the separate Board pin advance exposed current-vs-historical conflation
+before the new CUI pin; it also protects the subsequent package adoption.
