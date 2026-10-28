@@ -1,0 +1,59 @@
+{
+  "schema": 1,
+  "id": "cross-ratio",
+  "status": "FROZEN_BEFORE_OBSERVATION",
+  "modelSha256": "c3a22ff07aefbb8e35ae8e98ca6af71a2132c5dea68b5e4310ce0e10ee43ffee",
+  "programSha256": "c553bf618c6487eb5c6745e07e76184196b1605222bb6743e5bf418d7095a413",
+  "roles": {
+    "base": "motor_rail_-40_-140",
+    "input": "input_beam",
+    "output": "output_beam",
+    "coupler": "coupler_beam"
+  },
+  "geometry": {
+    "shortLdu": 80,
+    "longLdu": 160,
+    "k": 3,
+    "initialInputDeg": 60,
+    "initialOutputDeg": 120,
+    "initialCouplerDeg": 180,
+    "worldPlane": "XZ; theta=atan2(-z,x); lduToWorld=[x,-y,-z]*0.0004"
+  },
+  "limits": {
+    "lawDeg": 0.5,
+    "couplerDeg": 0.5,
+    "planeDeg": 0.5,
+    "closureMm": 0.5,
+    "axisDeg": 1,
+    "quaternionNorm": 1e-05,
+    "inputSpanDeg": 119,
+    "minimumOutputSpanDeg": 10
+  },
+  "timing": {
+    "frameMs": 25,
+    "physicsStepMs": 5,
+    "timeLimitMs": 181000,
+    "afterMs": 500,
+    "coldMs": [
+      0,
+      1000
+    ]
+  },
+  "control": {
+    "removePart": "pivot_axle_P",
+    "removedJoints": 1,
+    "preserveInput": true
+  },
+  "route": [
+    60,
+    30,
+    45,
+    60,
+    90,
+    120,
+    150,
+    120,
+    90,
+    60
+  ]
+}

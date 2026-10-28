@@ -1,0 +1,14 @@
+{
+  "schema": 1,
+  "id": "cross-ratio",
+  "status": "CANDIDATE_NOT_QUALIFIED",
+  "experimental": true,
+  "contract": "test/fixtures/bw-sim/cross-ratio/contract.json",
+  "nativeTests": "test/bw-sim-cross-ratio.test.mjs",
+  "independentReader": "scripts/verify-sim-cross-ratio.mjs",
+  "nativeOriginals": "NOT_RUN",
+  "browserLoad": "NOT_RUN",
+  "savedProjectReplay": "NOT_RUN",
+  "independentSavedProjectBytes": "NOT_ACQUIRED",
+  "scope": "Finite software-law candidate only; no physical, hardware or library-wide claim."
+}
