@@ -78,6 +78,17 @@ try {
   await page.getByTestId('bw-fpga-editor').selectOption('canvas');
   const canvas = page.getByTestId('bw-fpga-rf-canvas');
   await canvas.waitFor({ state: 'visible', timeout: 30000 });
+  const minimap = canvas.locator('.react-flow__minimap');
+  const minimapToggle = page.getByTestId('bw-fpga-rf-minimap-toggle');
+  await minimap.waitFor({state: 'visible'});
+  const nodeCount = await canvas.locator('.react-flow__node').count();
+  await minimapToggle.click();
+  await minimap.waitFor({state: 'detached'});
+  check(await minimapToggle.getAttribute('aria-pressed') === 'false', 'minimap hides with correct toggle state');
+  await minimapToggle.press('Enter');
+  await minimap.waitFor({state: 'visible'});
+  check(await minimapToggle.getAttribute('aria-pressed') === 'true', 'keyboard restores minimap');
+  check(await canvas.locator('.react-flow__node').count() === nodeCount, 'minimap toggle preserves the gate design');
   const box = await canvas.boundingBox();
 
   /**

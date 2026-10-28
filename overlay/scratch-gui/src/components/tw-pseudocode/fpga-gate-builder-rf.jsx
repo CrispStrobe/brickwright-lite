@@ -52,6 +52,7 @@ const L10N = {
         addInput: '+ Input',
         addOutput: '+ Output',
         width: 'width',
+        showMinimap: 'Show minimap', hideMinimap: 'Hide minimap',
         widthTitle: 'Bit width of the next node — >1 makes a bus',
         saveAsSubcircuit: '⤓ Save as subcircuit',
         saveTitle: 'Save this whole design as a reusable subcircuit',
@@ -65,6 +66,7 @@ const L10N = {
         addInput: '+ Eingang',
         addOutput: '+ Ausgang',
         width: 'Breite',
+        showMinimap: 'Minikarte anzeigen', hideMinimap: 'Minikarte ausblenden',
         widthTitle: 'Bitbreite des nächsten Knotens — >1 erzeugt einen Bus',
         saveAsSubcircuit: '⤓ Als Teilschaltung speichern',
         saveTitle: 'Speichere diesen gesamten Entwurf als wiederverwendbare Teilschaltung',
@@ -427,6 +429,7 @@ const InnerBuilder = ({onUseVerilog, seed, locale}) => {
     const [running, setRunning] = React.useState(false); // live-simulation mode
     const [inputs, setInputs] = React.useState({}); // live input values, by input name
     const [clockState, setClockState] = React.useState({}); // dff state for stepClock
+    const [showMinimap, setShowMinimap] = React.useState(true);
     const [showLearn, setShowLearn] = React.useState(false); // learning-path panel
     const [active, setActive] = React.useState(null); // active challenge id
     const [passed, setPassed] = React.useState(loadProgress); // completed challenge ids
@@ -801,6 +804,11 @@ const InnerBuilder = ({onUseVerilog, seed, locale}) => {
                 <button type="button" onClick={() => setTtOpen(true)}
                     title={t(locale, 'tip.truthTable')}
                     style={{cursor: 'pointer'}} data-testid="bw-fpga-rf-tt">{'⊞ Truth table'}</button>
+                <button type="button" data-testid="bw-fpga-rf-minimap-toggle"
+                    aria-pressed={showMinimap} title={L10N[pickLocale(locale)][showMinimap ? 'hideMinimap' : 'showMinimap']}
+                    onClick={() => setShowMinimap(visible => !visible)} style={{cursor: 'pointer'}}>
+                    {L10N[pickLocale(locale)][showMinimap ? 'hideMinimap' : 'showMinimap']}
+                </button>
                 <button type="button" data-testid="bw-fpga-rf-undo"
                     onClick={undo} disabled={!pastRef.current.length}
                     title={t(locale, 'tip.undo')} style={{cursor: pastRef.current.length ? 'pointer' : 'default'}}>{'↶ Undo'}</button>
@@ -878,7 +886,7 @@ const InnerBuilder = ({onUseVerilog, seed, locale}) => {
                             the corner — visible in the App Store capture of run
                             36295089997. Give it the canvas's own colours and the nodes
                             a colour that matches their role, and it reads as a map. */}
-                        <MiniMap
+                        {showMinimap ? <MiniMap
                             pannable
                             zoomable
                             style={{
@@ -898,7 +906,7 @@ const InnerBuilder = ({onUseVerilog, seed, locale}) => {
                                 return '#e2e8f0';
                             }}
                             nodeStrokeColor="#475569"
-                            nodeStrokeWidth={2} />
+                            nodeStrokeWidth={2} /> : null}
                     </ReactFlow>
                 </div>
                 {inspectNode ? (

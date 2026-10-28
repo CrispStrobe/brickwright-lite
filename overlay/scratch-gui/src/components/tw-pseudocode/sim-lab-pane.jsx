@@ -33,7 +33,6 @@ import SimLabInfo from './sim-lab-info.jsx';
 import SimLabReadings from './sim-lab-readings.jsx';
 import SimLabConnections from './sim-lab-connections.jsx';
 import SimLabBrickButtons from './sim-lab-brick-buttons.jsx';
-import {programUsesBrickButtons} from './sim-lab-brick-handlers.js';
 import SimLabMeasurements, {measurementWords} from './sim-lab-measurements.jsx';
 import {measurementDefinitions} from '../../lib/bw-sim/measurements/schema.js';
 import {CONTROL_PAIR_SCHEMA, restoreControlPair} from '../../lib/bw-sim/measurements/control-pairs.js';
@@ -3453,8 +3452,6 @@ class SimLabPane extends React.Component {
                 {message && <div role="alert" data-testid="bw-sim-lab-message" style={{fontSize: 12, color: '#b91c1c'}}>{message}</div>}
                 {this.renderInfo()}
                 {this.renderBlockers()}
-                {simulate && this.session && !this.session.lockstep && programUsesBrickButtons(this.props.vm) &&
-                    this.renderBrickButtons()}
                 <div data-testid="bw-sim-lab-main" style={{display: 'flex', flex: '1 1 auto', minHeight: compact ? 220 : 240, minWidth: 0, position: 'relative'}}>
                     {this.renderPalettePanel()}
                     <div ref={this.viewWrap} style={{flex: '1 1 auto', minHeight: compact ? 220 : 240, minWidth: 0, position: 'relative', display: 'flex',
@@ -3524,7 +3521,7 @@ class SimLabPane extends React.Component {
 
                 </div>
                 {simulate && this.state.controlsOpen && !this.state.programLoading && this.session && !this.session.lockstep && this.renderMixer(button,
-                    programUsesBrickButtons(this.props.vm) || !this.api?.brickButtons()?.length ? null : this.renderBrickButtons())}
+                    !this.api?.brickButtons()?.length ? null : this.renderBrickButtons())}
                 {build && this.state.shortcuts && (
                     <SimLabShortcuts T={this.etext} wheelMode={this.state.wheelMode} onWheelMode={mode => this.setWheelMode(mode)}
                         mousePreset={this.state.mousePreset} onMousePreset={preset => this.setMousePreset(preset)}
