@@ -12,7 +12,12 @@ import {cliArgs,recordCommand,inventory,checkCohortBudget,remainingCohortWall,va
 
 const ROOT=resolve(import.meta.dirname,'..');
 const HEAD='a'.repeat(40),RUN='123456789';
-const uiManifestBytes=readFileSync(process.env.REFERENCE_UI_PACKAGE_JSON??join(ROOT,'node_modules/bw-circuit-ui/package.json'));
+// Metadata of the consumed study, not the live installed UI package.
+const frozenUiManifestBytes=readFileSync(join(ROOT,'docs/receipts/reference-qualified-v2-ui-package.json'));
+assert.equal(sha256(frozenUiManifestBytes),'aa2e7cdd01c31f9622339ebccf16fcd5c3728d497903b4230fbd1842fd1ddc16');
+const uiManifestBytes=process.env.REFERENCE_UI_PACKAGE_JSON
+    ? readFileSync(process.env.REFERENCE_UI_PACKAGE_JSON) : frozenUiManifestBytes;
+assert.deepEqual(uiManifestBytes,frozenUiManifestBytes,'external admitted metadata must equal the sealed historical fixture');
 assert.equal(sha256(uiManifestBytes),'aa2e7cdd01c31f9622339ebccf16fcd5c3728d497903b4230fbd1842fd1ddc16','exact pinned UI manifest required for source controls');
 const declaredBoardSpec=JSON.parse(uiManifestBytes).devDependencies['bw-board'];
 const json=value=>JSON.stringify(value,null,2)+'\n';
