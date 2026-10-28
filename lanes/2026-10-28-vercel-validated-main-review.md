@@ -1,6 +1,6 @@
 # Vercel validated-main deployment review and repair
 
-Status: CLAIMED; review of existing PR #1507, implementation after claim landing.
+Status: DONE source candidate; hosted qualification and live publication pending.
 Owner: Codex delivery coordinator, continuing the requested delivery loop.
 Branch: `ci/vercel-newest-validated-20261028`, isolated coordinator worktree.
 Base: `b9fa2e844` main; existing proposal head `b347912a6`.
@@ -15,3 +15,15 @@ Review executable selection and publication cases, qualify the final source on
 the fast PR tier, and verify the live production version after a guarded merge.
 
 No native release, unrelated CI policy, package pins or other owners' lanes.
+
+Review: reproduced the original fetch-pinning failure before repair. Removed
+only the two census rows for resolver lines deleted by the proposal; the scan
+and its set-equality assertions are unchanged. The actual workflow shell now
+runs in six executable fixture scenarios against real Git history, including
+pending tips, already-current production, unknown lineage, malformed identity
+and concurrent production advances. The validation service and publisher are
+fixture doubles, so these are orchestration controls, not a Vercel publish.
+All 35 focused controls pass. The fetch-pinning prover caught all 11 mutations
+and restored its seven touched files byte-for-byte. Original CI and local
+failure receipts remain retained. Merge only after the final source's hosted
+fast tier is green; then confirm the live production version.

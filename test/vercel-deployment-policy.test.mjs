@@ -1,9 +1,79 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import test from 'node:test';
+import {execFileSync, spawnSync} from 'node:child_process';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
 
 const config = JSON.parse(fs.readFileSync('vercel.json', 'utf8'));
 const workflow = fs.readFileSync('.github/workflows/deploy-daily.yml', 'utf8');
+
+test('the actual publication shell selects validated history and refuses production races', () => {
+    // Run the authored workflow step against real Git history. Only the external
+    // validation verdict, live HTTP endpoint and Vercel service are fixture doubles;
+    // candidate ordering, checkout, both ancestry checks and shell failures are real.
+    const marker = '- name: Build and publish the newest validated main';
+    const body = workflow.slice(workflow.indexOf(marker)).split('        run: |\n')[1];
+    assert.ok(body, 'the publication step is present');
+    const shell = body.trimEnd().split('\n').map(line => line.slice(10)).join('\n');
+    const root = fs.mkdtempSync(join(tmpdir(), 'bw-vercel-policy-'));
+    const git = (cwd, ...args) => execFileSync('git', args, {cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe']}).trim();
+    try {
+        const origin = join(root, 'origin.git'), seed = join(root, 'seed'), bin = join(root, 'bin');
+        fs.mkdirSync(seed); fs.mkdirSync(bin);
+        git(root, 'init', '--bare', '--initial-branch=main', origin);
+        git(seed, 'init', '--initial-branch=main');
+        git(seed, 'config', 'user.name', 'Publication test');
+        git(seed, 'config', 'user.email', 'publication@example.invalid');
+        git(seed, 'config', 'commit.gpgsign', 'false');
+        fs.mkdirSync(join(seed, 'scripts'));
+        fs.writeFileSync(join(seed, 'scripts/verify-vercel-main-checks.mjs'),
+            'process.exit(process.env.BW_TEST_VALIDATED.split(",").includes(process.argv[2]) ? 0 : 1);\n');
+        fs.writeFileSync(join(seed, 'scripts/verify-vercel-live-version.mjs'),
+            'import fs from "node:fs"; process.exit(fs.readFileSync(process.env.BW_TEST_LIVE,"utf8").trim() === process.argv[2] ? 0 : 1);\n');
+        const commits = [];
+        for (let i = 0; i < 3; i++) {
+            fs.writeFileSync(join(seed, 'version'), String(i));
+            git(seed, 'add', 'scripts', 'version');
+            git(seed, 'commit', '-qm', `version ${i}`);
+            commits.push(git(seed, 'rev-parse', 'HEAD'));
+        }
+        git(seed, 'remote', 'add', 'origin', origin);
+        git(seed, 'push', '-q', 'origin', 'main');
+        fs.writeFileSync(join(bin, 'curl'), `#!/usr/bin/env node
+const fs = require('node:fs');
+console.log(JSON.stringify({commit: fs.readFileSync(process.env.BW_TEST_LIVE, 'utf8').trim()}));
+`, {mode: 0o755});
+        fs.writeFileSync(join(bin, 'vercel'), `#!/usr/bin/env node
+const fs = require('node:fs'), cp = require('node:child_process');
+const sha = cp.execFileSync('git', ['rev-parse', 'HEAD'], {encoding:'utf8'}).trim();
+fs.appendFileSync(process.env.BW_TEST_CALLS, process.argv[2] + ' ' + sha + '\\n');
+if (process.argv[2] === 'build' && process.env.BW_TEST_MOVE_TO) fs.writeFileSync(process.env.BW_TEST_LIVE, process.env.BW_TEST_MOVE_TO);
+if (process.argv[2] === 'deploy') fs.writeFileSync(process.env.BW_TEST_LIVE, sha);
+`, {mode: 0o755});
+        const [old, green, tip] = commits;
+        const cases = [
+            {name: 'pending tip', live: old, eligible: green, publish: green, status: 0},
+            {name: 'already current', live: green, eligible: green, publish: null, status: 0},
+            {name: 'unknown production lineage', live: 'f'.repeat(40), eligible: green, publish: null, status: 128},
+            {name: 'newer production during build', live: old, eligible: green, move: tip, publish: null, status: 1},
+            {name: 'ancestor production during build', live: old, eligible: tip, move: green, publish: tip, status: 0},
+            {name: 'malformed production identity', live: 'bad', eligible: tip, publish: null, status: 1}
+        ];
+        for (const [i, scenario] of cases.entries()) {
+            const checkout = join(root, `checkout-${i}`), live = join(root, `live-${i}`), calls = join(root, `calls-${i}`);
+            git(root, 'clone', '-q', origin, checkout);
+            fs.writeFileSync(live, scenario.live); fs.writeFileSync(calls, '');
+            const run = spawnSync('bash', ['-c', shell], {cwd: checkout, encoding: 'utf8', timeout: 10000,
+                env: {...process.env, PATH: `${bin}:${process.env.PATH}`, GITHUB_RUN_ID: 'fixture', VERCEL_TOKEN: 'fixture',
+                    BW_TEST_LIVE: live, BW_TEST_CALLS: calls, BW_TEST_VALIDATED: scenario.eligible,
+                    BW_TEST_MOVE_TO: scenario.move || ''}});
+            assert.equal(run.status, scenario.status, `${scenario.name}: ${run.stderr}\n${run.stdout}`);
+            const published = fs.readFileSync(calls, 'utf8').split('\n').filter(line => line.startsWith('deploy '));
+            assert.deepEqual(published, scenario.publish ? [`deploy ${scenario.publish}`] : [], scenario.name);
+        }
+    } finally { fs.rmSync(root, {recursive: true, force: true}); }
+});
 
 test('Vercel Git integration cannot deploy pushes or pull requests', () => {
     assert.equal(config.git?.deploymentEnabled, false);
