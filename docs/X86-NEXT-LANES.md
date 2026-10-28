@@ -38,21 +38,24 @@ only open x86 lane, and three optional follow-ups are scoped after it.
   been removed under a later-reversed instruction. All its other checks
   passed, and PR718's full tier on a later base was entirely green.
 
-### Lane 1: close current GUI qualification first (open, PR1318 successor)
+### Lane 1: close current GUI qualification first (draft PR1540)
 
-**Scope:** the existing PR1318 lane and its claimed paths. Start with
-[`lanes/2026-10-27-x86-finite-v9-resolver-role.md`](../lanes/2026-10-27-x86-finite-v9-resolver-role.md),
+**Scope:** [PR1540](https://github.com/CrispStrobe/brickwright-lite/pull/1540),
+the successor to the now-closed PR1318. Start with
+[`lanes/2026-10-28-x86-finite-v10-resolver-kind.md`](../lanes/2026-10-28-x86-finite-v10-resolver-kind.md),
 `scripts/run-i80386-hdd-gui-actual.py`,
 `scripts/read-i80386-hdd-gui-originals.py`, their tests and
 `.github/workflows/i80386-hdd-gui-actual.yml` at the actual candidate head.
-Main's older producer is not the prepared V9 implementation.
+The published candidate is `4257afa4052c4b14667ac4c54f482b2cc0cb1c40`.
+Main's older producer is not this prepared implementation.
 
 **Do not select V9 again.** Its one selected hosted attempt failed because the
 resolver was a symlink; the earlier V8 attempt had required a symlink and found
 a regular file. Both attempts are consumed and their failures remain retained.
-[PR1524](https://github.com/CrispStrobe/brickwright-lite/pull/1524) claims a new
-V10 typed resolver observation. Merge that claim before implementing the new
-profile. Keep the resolver in the complete observed runtime graph, bind the
+The [V10 claim](../lanes/2026-10-28-x86-finite-v10-resolver-kind.md) is on
+main and its implementation is published in draft PR1540 with all new guards
+false. The owner-released sealed-study repair passes 83 affected source controls;
+hosted checks and actual guest acceptance remain pending. Keep the resolver in the complete observed runtime graph, bind the
 explicit selected branch and endpoint, and reject unknown targets or drift.
 A different actual runner must still satisfy the frozen request; supporting two
 inventory forms does not establish cross-job byte or role stability.
@@ -69,27 +72,27 @@ Keep the previous Actual-V8 route disabled. Do not spend a standalone V10
 inventory event hoping the next runner has identical configuration.
 
 **Body capacity.** PR1318's consumed transport body is near its size limit.
-Preserve that body and its historical events. Use a fresh successor source PR
-with a compact body for the new V10 selection and current actual request; bind
-its own PR number, exact source head and dispatch inputs. Historical references
+Preserve that body and its historical events. PR1540 provides the compact
+successor body for the new selection and current actual request; bind its own
+PR number, exact source head and dispatch inputs. Historical references
 retain their original event identities. No previous admission transfers.
 
-**Base moved.** Main changed the board pin to `8785e468` (PR1503), and that
-commit also changed the `BOARD` constants in both GUI scripts above, which
-PR1318 edits too. Expect a conflict there. Resolve it by normally merging
-current main, keeping PR1318's reviewed changes plus main's current pins, and
-requalify the merged head: a gate frozen against the older base cannot grade
-the new one, and none of PR1318's earlier check results carry over. Read
-`vendor-pins.json` for the current board, circuit UI and other dependencies;
-freeze consumed profiles as historical roles rather than rewriting their pins.
+**Current and historical pins have separate roles.** The candidate normally
+composes current main and preserves its canonical `vendor-pins.json`. Consumed
+F7/F8/F9 constants retain their historical meanings; the new F10 pin map and
+witnesses bind the current suppliers. Read the canonical pins again before any
+source refresh. A later pin move needs explicit review of the new current map,
+witnesses and fixed body profiles; never rewrite historical constants to make a
+receipt look current. No previous head's qualification transfers automatically.
 
-1. Refresh main, PR1318's exact head, every enabled check, full run/job pagination
+1. Refresh main, PR1540's exact head, every enabled check, full run/job pagination
    and raw numbered steps. Retain any terminal failure before changing source.
    Do not rerun an unchanged failure or borrow a previous head's success.
    Normally merge current main, preserve other owners' changes and all reviewed
-   source/profile bytes. After the V10 claim merges, implement and review its
-   template, guard, collector, independent reader, workflow and connected
-   controls. New guards start false. Preserve the strict historical V8/V9
+   source/profile bytes. Review the implemented template, guard, collector,
+   independent reader, workflow and connected controls. Complete and review the
+   external phase-admission, request/ACK and final-reader tooling before arming.
+   New guards remain false until that separate review. Preserve the strict historical V8/V9
    readers, retire V9 execution, and requalify the final head.
 2. Admit the successful frontend Build's actual checkout, tree, dependency and
    source closure from its selected original. A proposed PR merge SHA or a later
