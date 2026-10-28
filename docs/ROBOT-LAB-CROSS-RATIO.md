@@ -55,9 +55,14 @@ The browser candidate now registers explicit experimental opt-in, passive law
 and hinge checks, and a real project roundtrip. It checks the exported SB3 CRC,
 model sidecar and program content before opening a fresh context and running
 the saved program. These are source assertions, not executed browser evidence.
-The dedicated workflow step, its inventory and zero-reading budget registration
-are still pending.
+A dedicated eight-minute gate on existing `robotaddon1` and its exact inventory
+controls are implemented. The existing 30-minute job cap and every old gate
+remain unchanged. Zero-reading budget registration still awaits its scope
+extension; no new runtime or historical timing is claimed.
 
-Pending: complete that CI integration; hosted native cases and independent
+The lightweight analytic preflight and 15 browser shard/inventory checks pass;
+these checks import no engine and do not qualify motion.
+
+Pending: complete budget registration; hosted native cases and independent
 original readback; actual Chromium load/run and saved-project replay; all exact-head gates and normal matched-head merge. No native, browser,
 WebKit, saved-file, physical buildability or hardware acceptance is claimed yet.

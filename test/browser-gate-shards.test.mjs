@@ -175,3 +175,12 @@ test('runner source mapping refuses missing duplicate wrong-reference output and
     ];
     for (const changed of variants) { assert.notEqual(changed, yml);assert.throws(() => runnerSourceMap(changed)); }
 });
+
+test('Cross Ratio has one addon1 assignment and its own runner terminal scalar',()=>{
+ const name='Browser gate — Robot Lab Cross Ratio complete example',p=partition(jobs);
+ const assigned=[...p.byShard].flatMap(([shard,steps])=>steps.filter(s=>s===name).map(()=>shard));
+ assert.deepEqual(assigned,['robotaddon1']);
+ const scalar="bw_browser_audit_0263\t${{ steps['bw_browser_audit_0263'].outcome }}\t${{ steps['bw_browser_audit_0263'].conclusion }}";
+ assert.equal(yml.split(scalar).length,2,'exactly one actual runner-terminal row');
+ assert.equal(job.steps.filter(s=>s.name===name).length,1);
+});

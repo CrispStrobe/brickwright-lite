@@ -63,3 +63,15 @@ test('Atlas CI partition preserves original export and full replay under existin
  assert.throws(()=>checkAtlasPartition(workflow.replace("matrix.shard == 'robotaddon9'","matrix.shard == 'robotaddon8'")),/same job/);
  assert.throws(()=>checkAtlasPartition(workflow.replace(/(saved-project replay\n(?:        id: \S+\n)?        timeout-minutes: )8/,'$19')),/bounded step/);
 });
+
+test('Cross Ratio coverage rejects an absent or duplicated dedicated journey',()=>{
+ const workflow=read('.github/workflows/build.yml');
+ const command='run: npm run verify:sim-lab -- --part=examples --examples=cross-ratio';
+ assert.equal(workflow.split(command+'\n').length,2,'one new original-program journey');
+ checkExampleCoverage(workflow);
+ assert.throws(()=>checkExampleCoverage(workflow.replace(command+'\n','run: true\n')));
+ assert.throws(()=>checkExampleCoverage(workflow+'\n'+command+'\n'),/duplicate work/);
+ const helper=read('scripts/lib/sim-lab-new-models-gate.mjs');
+ assert.match(helper,/id==='cross-ratio'\?\{includeExperimental:true\}/,'explicit experimental opt-in');
+ assert.match(helper,/if\(id==='cross-ratio'\)await crossRatioRoundtrip\(page,modelOpts\)/,'actual project replay stays connected');
+});

@@ -58,3 +58,13 @@ test('all newly delivered primary experiments have one complete journey with unc
         assert.deepEqual([...body.matchAll(/^        run: (.*)$/gm)].map(m=>m[1]),['npm run verify:sim-lab -- --part=examples --examples='+id+(id==='atlas-six'?' --intake-capture=atlas-six':'')]);
     }
 });
+
+test('Cross Ratio adds one bounded gate to addon1 without redistributing existing cases',()=>{
+ const name='Browser gate — Robot Lab Cross Ratio complete example';
+ const hits=job.steps.filter(s=>s.name===name);assert.equal(hits.length,1);
+ const step=hits[0];assert.deepEqual(shardsOf(step),['robotaddon1']);
+ assert.equal(step.timeout,8);assert.equal(job.timeout,30);
+ assert.equal(step.ifs,"${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotaddon1' }}");
+ const at=job.steps.indexOf(step),end=job.steps[at+1]?.line-1||lines.length;
+ assert.match(lines.slice(step.line-1,end).join('\n'),/^        run: npm run verify:sim-lab -- --part=examples --examples=cross-ratio$/m);
+});
