@@ -1,6 +1,6 @@
 # Robot Lab repaired-model qualification coverage
 
-Status: CLAIMED — scope only; merge before new public verification code.
+Status: IMPLEMENTATION CANDIDATE — Door source controls prepared; affected qualification pending.
 Owner: Codex, authorized ordered Robot Lab continuation.
 
 Carry the published Phasor Twin (#1510) and Paired Door Sync (#1514) repairs in
@@ -49,3 +49,12 @@ cycle, duplicate dispatch or repeated label. Keep official originals once after
 metadata admission and audit saved bytes independently. The broader user loop
 remains open through native rotor, coasting, buildable steering, contact and
 final documentation qualification.
+
+Door successor normally composes the published geometry repair with scope main.
+The candidate explicitly includes Door in construction checks without promoting
+MODELS, preserves the intact pre-repair geometry as a negative control, and adds
+authored finite programme outcome and raw source/runtime/step evidence. Setup
+encoder and actual pre-flag datum are recorded separately. Mechanical-law
+accuracy, rendered worker and saved-project replay remain unqualified; no new
+engine or programme has run for this candidate. Phasor work remains separately
+ordered, and no prior generic green result substitutes for these new gates.

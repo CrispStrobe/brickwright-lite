@@ -894,6 +894,7 @@ jobs:
             /tmp/unit.tap
             test-results/fast.census.json
             test-results/fast.gui-scope.tsv
+            test-results/paired-door/
           if-no-files-found: error
 
   build:

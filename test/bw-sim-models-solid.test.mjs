@@ -62,6 +62,9 @@ const SKIN = 0.5;
 const models = () => {
     const out = MODELS.map(m => [`models/${m.file}`,
         parseModel(readFileSync(path.join(GUI, MODELS_BASE, m.file), 'utf8'), {catalog: CATALOG}).model]);
+    // Reviewed experimental construction input; this does not promote MODELS.
+    out.push(['experimental/paired-door-sync.ldr', parseModel(readFileSync(
+        path.join(GUI, MODELS_BASE, 'paired-door-sync.ldr'), 'utf8'), {catalog: CATALOG}).model]);
     const walk = dir => readdirSync(dir, {withFileTypes: true}).flatMap(e =>
         (e.isDirectory() ? walk(path.join(dir, e.name)) : [path.join(dir, e.name)]));
     for (const file of walk(FIXTURES).sort()) {
@@ -383,4 +386,27 @@ test('a phased motor socket accepts its aligned axle, rejects wrong clocking and
     assert.deepEqual(pointsInside(axle, motor), []);
     assert.ok(pointsInside(axle, {...motor, rotorAngle: 0}).length > 0, 'the static zero-angle socket really intersects a 45-degree axle');
     assert.ok(pointsInside({...axle, position: [0,-70,0]}, motor).length > 0, 'phase never excuses reaching past the socket into the housing');
+});
+
+test('Door pin repair separates actual intact parent geometry from repaired seating',()=>{
+    const repaired=parseModel(readFileSync(path.join(GUI,MODELS_BASE,'paired-door-sync.ldr'),'utf8'),{catalog:CATALOG}).model;
+    const parent=parseModel(readFileSync(path.join(ROOT,'test/fixtures/model-files/paired-door-sync-pre-repair.ldr'),'utf8'),{catalog:CATALOG}).model;
+    assert.equal(repaired.parts.length,88);assert.equal(parent.parts.length,88);
+    const old=new Map(parent.parts.map(p=>[p.id,p])),now=new Map(repaired.parts.map(p=>[p.id,p]));assert.deepEqual([...old.keys()],[...now.keys()]);
+    const changed=['carriage_pin_0_-120','carriage_pin_0_120','carriage_pin_1_-120','carriage_pin_1_120'];
+    for(const [id,p]of old){
+        const q=now.get(id);assert.equal(q.part,p.part);assert.deepEqual(q.rotation,p.rotation);
+        if(changed.includes(id)){assert.equal(p.part,'6558.dat');assert.deepEqual(q.position,[p.position[0],p.position[1],p.position[2]-3]);}
+        else assert.deepEqual(q,p,'the entire remaining drive chain and passive outputs are preserved');
+    }
+    // Existing checkpoint repair narrative names these specific independent
+    // mesh witnesses; unchanged SKIN decides depth, not fitted point counts.
+    for(const [pin,solid]of [['carriage_pin_0_-120','carriage_front'],['carriage_pin_0_120','carriage_front'],['carriage_pin_1_-120','rack_back'],['carriage_pin_1_120','rack_back']]){
+        assert.ok(pointsInside(old.get(pin),old.get(solid)).some(hit=>hit.depth>SKIN),'actual parent pin witness must be detected');
+        assert.deepEqual(pointsInside(now.get(pin),now.get(solid)),[],'repaired pin seats outside solid');
+    }
+    // Existing positive MODEL_LIST gates check ALL repaired pairs/collider,
+    // solid mesh, seated pin/axle/socket and shared-hole occupancy. Do not treat
+    // these selected witnesses as a substitute for those full positive gates.
+    assert.deepEqual(sharedHoles(repaired),[]);
 });
