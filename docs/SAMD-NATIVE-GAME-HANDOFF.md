@@ -58,9 +58,35 @@ passed its unchanged floor at source `317c069003803f9e8bfbe570ca7c371da6e52c10`;
 its benchmark inputs are unchanged in the corrected candidate. These authored
 core-loop ceilings do not qualify active-game or hardware speed.
 
+## New native source gate failure
+
+[Tauri40765450230](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40765450230)
+failed `renode_supervisor::tests::linux_owner_crash_terminates_simulator` at
+`apps/tauri/src-tauri/src/renode_supervisor.rs:1838`: the test observed the
+synthetic direct child surviving abrupt owner death after its existing
+three-second observation bound. The suite reports269 passed,1 failed,11 ignored.
+Its original log is retained once. The fixture and test are byte-identical to
+original commit `3d77472b518ae4e9a57fd8cfb154e31ecba1b432`; SAMD changes no Rust.
+The evidence does not establish a flake or distinguish termination failure from
+an observation problem: the test retains neither terminal process state nor
+process-start identity. No recorded repair has been found.
+
+The guarded continuation was stopped before any native or actual-game dispatch.
+**Do not dispatch from this candidate while this source gate is unresolved.**
+Coordinate the existing SPIKE native-supervision claims before changing the
+supervisor. First diagnose the owner-death signal and fixture observations with
+bounded identity/state evidence. Keep the current timeout, failure, assertions,
+normal ownership and teardown controls. A justified repair needs its claimed
+scope, affected controls and clean guest qualification as applicable; do not
+rerun the unchanged failure or widen the SAMD implementation silently.
+
+The final-head historical-study source controls passed49 tests with zero skips
+and the actual study job was correctly skipped. GUI infrastructure controls and
+vendor checks also passed. The main Build remains queued at this checkpoint.
+
 ## Remaining work, in order
 
-1. Refresh exact-head checks and existing
+1. Resolve the native source gate above, then refresh exact-head checks and existing
    [Build40765450222](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40765450222).
    `ci:full` was restored before this final source checkpoint after an earlier
    removal; keep it present. Implementation bytes match the88-test candidate. Wait for every enabled check; do not duplicate
