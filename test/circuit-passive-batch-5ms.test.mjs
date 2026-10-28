@@ -82,6 +82,8 @@ for (const [name, c] of Object.entries(CIRCUITS)) {
             const lines = readFileSync(csv, 'utf8').trim().split('\n');
             assert.match(lines[0], /capture=sample startTimeNs=1000 sampleIntervalNs=1000 points=5000$/);
             const rows = lines.slice(2).map(line => line.split(',').map(Number));
+            // Specified convention (operator-accepted 2026-10-28): first sample at dt = 1 us,
+            // never t = 0. A pre-observation t = 0 expectation was wrong and is kept on record.
             // Capture cadence equals report cadence here: 5,000 raw points at k*1 us,
             // k = 1..5000 (first sample at dt, last at 5 ms); t = 0 is not a sample.
             assert.equal(rows.length, 5000);
