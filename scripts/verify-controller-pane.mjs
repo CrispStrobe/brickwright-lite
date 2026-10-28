@@ -74,6 +74,36 @@ try {
             "(document.querySelector('[data-testid=\"bw-controller-canvas\"]')||{}).clientHeight > 0",
             null, {timeout: 20000, polling: 150}).catch(() => {});
 
+        // Read the layout only once it has stopped moving. The pane, toolbar and
+        // editor reflow for several frames after the canvas first gets a height
+        // (fonts, the widgets grid, the dock); a single early read saw controls
+        // mid-reflow and reported them covered — once in landscape, once in
+        // portrait, on builds with no related change. Settled means every
+        // control's rectangle is identical across STABLE consecutive frames.
+        // Not settling within the bound is itself a failure, not a pass.
+        const settle = () => page.evaluate(async ({stable, boundMs}) => {
+            if (document.fonts && document.fonts.ready) await document.fonts.ready;
+            const sel = 'button,select,[role="button"],[role="tab"],input,textarea';
+            const snap = () => [...document.querySelectorAll(sel)].map(el => {
+                const b = el.getBoundingClientRect();
+                return `${b.left},${b.top},${b.width},${b.height}`;
+            }).join('|');
+            const frame = () => new Promise(r => requestAnimationFrame(() => r()));
+            const t0 = performance.now();
+            let last = snap();
+            let same = 0;
+            while (performance.now() - t0 < boundMs) {
+                await frame();
+                const now = snap();
+                same = now === last ? same + 1 : 0;
+                last = now;
+                if (same >= stable) return {settled: true, ms: Math.round(performance.now() - t0)};
+            }
+            return {settled: false, ms: Math.round(performance.now() - t0)};
+        }, {stable: 10, boundMs: 15000});
+        const settled = await settle();
+        check(settled.settled, `${o.name}: the layout settles before it is read`, JSON.stringify(settled));
+
         // `scoped` restricts the sweep to the pane's own subtree. Necessary in
         // full screen: the editor behind the overlay keeps its controls in the
         // DOM, and they are legitimately covered BY the overlay — counting them
@@ -164,6 +194,9 @@ try {
         await page.waitForFunction(
             "!!document.querySelector('[data-testid=\"bw-widgets-exit-fullscreen\"]')",
             null, {timeout: 10000, polling: 100}).catch(() => {});
+        const settledFull = await settle();
+        check(settledFull.settled, `${o.name}: full screen — the layout settles before it is read`,
+            JSON.stringify(settledFull));
         const exit = await page.evaluate(() => {
             const vis = el => (el.checkVisibility ? el.checkVisibility({
                 contentVisibilityAuto: true, opacityProperty: true, visibilityProperty: true,

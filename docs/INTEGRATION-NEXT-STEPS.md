@@ -17,6 +17,7 @@ deployment work has succeeded.
 | Measurement editor | PR1339, `23514574` | 19 React tests and actual Jolt Edit/Save/Cancel plus CRC-checked SB3 save/reopen. Successful standalone SB3 bytes were not retained; no separate downloaded-file audit is claimed. |
 | Installed lifecycle and usability | PR1345/PR1354/PR1355/PR1358 and the G02/G03 sections in the [SPIKE guide](SPIKE-STATUS-AND-LANES.md) | Finite installed Linux matrix, generation census and UI fixes; original timing/controller failures remain recorded. |
 | Linux package and release exercise | PR1368 and the v0.1.27 hosted package exercise | Hosted packaging and upload evidence; placeholder exercise inputs do not qualify a production runtime, signed delivery or TestFlight availability. |
+| Versioned TestFlight availability | [Existing read-only audit](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40378785039), release `v0.1.27` / `23ec9082` | iOS and macOS valid, unexpired, linked to internal/external tester groups and in beta testing; review approved and EN/DE notes matched at the recorded observation. This does not deliver newer main features or qualify installed hardware/runtime behavior. |
 | Experimental registry | PR1336 and subsequent model/control updates | 61 active experimental entries, 63 checkpoint records and 14 qualification contracts at the inspected snapshot. Registry inclusion does not establish model-wide mechanical acceptance. |
 | NXT data-file calls | PR1430, `2f3ba1fa` | 83 affected cases across ten files; 40 checks, 33 successful and seven declared skips. Details: [NXT RXE VM](NXT-RXE-VM.md). |
 | API sparse timestamp correction | PR1444, `696f0076` | Three hosted Jolt regressions; 44 checks, 37 successful and seven declared skips. Source and finite operator adoption are accepted; the cutover used dense recording and did not exercise deployed sparse sampling. |
@@ -71,12 +72,13 @@ no new cutover job, promotion, request comment or receipt acquisition is needed.
    A checkpoint marked `NOT_RUN` is not a completed replay. Admit only the named
    model/law/control/browser result; do not rerun already accepted established
    models or claim that every experimental entry is qualified.
-3. **Verify delivery availability only when that is the requested outcome.**
-   For TestFlight, inspect Apple's actual processing and intended tester-group
-   availability for v0.1.27 before marking it available; do not retag, rebuild or
-   upload again just to check. Signed/non-Linux packaging, redistribution review,
-   physical hardware and reference-firmware acceptance remain separate work,
-   requiring their own scoped claims and exact evidence.
+3. **Keep platform and redistribution work separately scoped.** The existing
+   v0.1.27 TestFlight availability check is complete, as recorded below; do not
+   repeat it merely to inspect its successful original. Signed/non-Linux runtime
+   packaging, redistribution review, physical hardware and reference-firmware
+   acceptance still require their own claims and exact evidence. A new release
+   or changed-availability request needs its own admitted readback; an old
+   observation is not a permanent availability guarantee.
 
 ### Rules for the next agent
 
@@ -337,10 +339,23 @@ including its additive Sarrus control and other owners' claims.
 
 The published `v0.1.27` tag identifies `23ec9082`; the release and mobile
 workflows succeeded, including signed iOS upload, tester-note synchronization and the TestFlight
-internal/external distribution step. Existing
-versioned TestFlight readback ownership is retained. Publication/upload success
-does not by itself establish processing, tester-group availability or beta-review
-approval for the new version.
+internal/external distribution step. The separate versioned, GET-only audit
+completed on 2026-10-26 from observer source `29f30420`, admitting the immutable
+`v0.1.27` release source `23ec908232f6d4c4604ed6f7dcb23b75af19053d` before
+credential access. Its retained categorical artifact was independently checked
+against provider metadata, archive digest/CRC and the release version/bundle
+identity. Both iOS and macOS report `VALID`, not expired, internal and external
+group relationships, `IN_BETA_TESTING` for both tester classes, `APPROVED`
+review, and matching English/German notes. Ten changed-source/version,
+missing-platform, unavailable/expired, note and privacy-envelope corruptions
+were refused by the standalone reader.
+
+This closes the named release-availability verification without another build,
+upload, audit dispatch, recovery action or tester-policy change. It is retained
+categorical observer evidence, not an independent raw App Store response or
+signed-binary audit, installed-runtime/hardware acceptance, or a claim that
+newer main features are already in that release. Source/readback ownership is
+preserved for any genuinely new release or changed-state request.
 
 The accepted PR1327 model/browser results above remain complete. The separate
 [PR1336](https://github.com/CrispStrobe/brickwright-lite/pull/1336) merged as
