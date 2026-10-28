@@ -60,7 +60,8 @@ controls are implemented. The existing 30-minute job cap and every old gate
 remain unchanged. Zero-reading budget registration still awaits its scope
 extension; no new runtime or historical timing is claimed.
 
-The lightweight analytic preflight and 15 browser shard/inventory checks pass;
+Two lightweight analytic preflights (21 rejected corruptions, including the
+four-case retained-TAP transport) and 15 browser shard/inventory checks pass;
 these checks import no engine and do not qualify motion.
 
 Pending: complete budget registration; hosted native cases and independent

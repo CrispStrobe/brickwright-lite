@@ -44,6 +44,27 @@ assert.ok(check(shifted).lawErrorDeg<1e-8);
 assert.throws(()=>readCrossRatio(good),/external/);
 assert.throws(()=>readCrossRatioLines('',{expectedIdentity:ANALYTIC_IDENTITY}));
 test('Cross Ratio: independent circle fixtures, 15 corruptions, sign and translation controls',()=>assert.equal(Object.keys(corruptions).length,15));
+// Exercise the actual retained-TAP transport, including cold-clock boundaries,
+// complete case census and refused corruption, before any engine is imported.
+const analyticLines=[];
+for(const coldMs of C.timing.coldMs)for(const control of [false,true]){
+ const record=analyticRecord(control,coldMs),{track,...header}=record;
+ analyticLines.push('# CROSS_RATIO '+JSON.stringify({type:'header',record:header}),
+  ...track.map(frame=>'# CROSS_RATIO '+JSON.stringify({type:'frame',frame})),
+  '# CROSS_RATIO '+JSON.stringify({type:'end',record:{finishedAt:record.finishedAt}}));
+}
+const wire=analyticLines.join('\n'),wireOptions={expectedIdentity:ANALYTIC_IDENTITY};
+assert.equal(readCrossRatioLines(wire,wireOptions).length,4);
+const wireCuts=[
+ analyticLines.slice(0,-1).join('\n'),
+ wire+'\n'+wire,
+ analyticLines.filter(l=>!l.includes('"type":"header"')).join('\n'),
+ analyticLines.filter(l=>!l.includes('"type":"frame"')).join('\n'),
+ wire.replace('"type":"frame"','"type":"invented"'),
+ wire.replace('"t":25,','"t":24,')
+];
+for(const broken of wireCuts){assert.notEqual(broken,wire);assert.throws(()=>readCrossRatioLines(broken,wireOptions));}
+test('Cross Ratio: retained TAP four-case readback and six stream corruptions',()=>assert.equal(wireCuts.length,6));
 const {runRobotLabProgram}=await import('./helpers/robot-lab-direct-vm.mjs');
 const {catalogFrom,prepareModel}=await import('../overlay/scratch-gui/src/lib/bw-sim/sim-session.js');
 const original=read('overlay/scratch-gui/static/sim-lab/models/cross-ratio.ldr'),program=read('overlay/scratch-gui/static/sim-lab/programs/cross-ratio.bw');

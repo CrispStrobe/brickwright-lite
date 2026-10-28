@@ -10,5 +10,13 @@
   "browserLoad": "NOT_RUN",
   "savedProjectReplay": "NOT_RUN",
   "independentSavedProjectBytes": "NOT_ACQUIRED",
-  "scope": "Finite software-law candidate only; no physical, hardware or library-wide claim."
+  "scope": "Finite software-law candidate only; no physical, hardware or library-wide claim.",
+  "lightweightChecks": {
+    "engineExecuted": false,
+    "readerPreflightTests": 2,
+    "rejectedCorruptions": 21,
+    "quaternionSignInvariant": true,
+    "globalTranslationInvariant": true,
+    "browserShardInventoryTests": 15
+  }
 }

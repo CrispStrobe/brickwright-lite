@@ -8,7 +8,7 @@ const read=p=>readFileSync(new URL('../../../../'+p,import.meta.url),'utf8');
 const contractBytes=read('test/fixtures/bw-sim/cross-ratio/contract.json'),C=JSON.parse(contractBytes);
 const digest=s=>createHash('sha256').update(s).digest('hex');
 export const ANALYTIC_IDENTITY={commit:'1'.repeat(40),tree:'2'.repeat(40),files:{analytic:'3'.repeat(64)}};
-export function analyticRecord(control=false){
+export function analyticRecord(control=false,coldMs=0){
  const a=.032,b=.064,root=Math.sqrt(3),A=[0,0,0],B=[a,0,0],P0=[b/2,0,-b*root/2];
  const q=d=>[0,Math.sin(d*Math.PI/360),0,Math.cos(d*Math.PI/360)];
  const body=(id,parts,position)=>({id,parts,position,rotation:q(0),motion:'dynamic'});
@@ -31,5 +31,10 @@ export function analyticRecord(control=false){
  }
  // Twelve samples at every route arrival; the final twenty frames are the
  // final datum hold. The original-program clock here is an analytic fixture.
- return {schema:1,kind:'cross-ratio-native',identity:ANALYTIC_IDENTITY,contractSha256:digest(contractBytes),variant:control?'remove-pivot-P':'original',input,timing:{...C.timing,coldMs:0},mechanism:{bodies,joints,actuators:[{port:'A'}]},track:frames,finishedAt:3000,issues:[],unsupported:[],vmErrors:[]};
+ if(coldMs){
+  const cold=Array.from({length:coldMs/25},(_,i)=>({...structuredClone(frames[0]),t:i*25,phase:'cold'}));
+  for(const f of frames)f.t+=coldMs;
+  frames.unshift(...cold);
+ }
+ return {schema:1,kind:'cross-ratio-native',identity:ANALYTIC_IDENTITY,contractSha256:digest(contractBytes),variant:control?'remove-pivot-P':'original',input,timing:{...C.timing,coldMs},mechanism:{bodies,joints,actuators:[{port:'A'}]},track:frames,finishedAt:3000+coldMs,issues:[],unsupported:[],vmErrors:[]};
 }
