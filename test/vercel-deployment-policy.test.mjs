@@ -17,10 +17,14 @@ test('the actual publication shell selects validated history and refuses product
     assert.ok(body, 'the publication step is present');
     const shell = body.trimEnd().split('\n').map(line => line.slice(10)).join('\n');
     const root = fs.mkdtempSync(join(tmpdir(), 'bw-vercel-policy-'));
-    const git = (cwd, ...args) => execFileSync('git', args, {cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe']}).trim();
+    const git = (cwd, ...args) => execFileSync('/usr/bin/git', args, {cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe']}).trim();
     try {
         const origin = join(root, 'origin.git'), seed = join(root, 'seed'), bin = join(root, 'bin');
         fs.mkdirSync(seed); fs.mkdirSync(bin);
+        // The workflow and fixture scripts use the same selected Git and Node,
+        // regardless of other tools installed on the machine running this test.
+        fs.symlinkSync('/usr/bin/git', join(bin, 'git'));
+        fs.symlinkSync(process.execPath, join(bin, 'node'));
         git(root, 'init', '--bare', '--initial-branch=main', origin);
         git(seed, 'init', '--initial-branch=main');
         git(seed, 'config', 'user.name', 'Publication test');
@@ -46,7 +50,7 @@ console.log(JSON.stringify({commit: fs.readFileSync(process.env.BW_TEST_LIVE, 'u
 `, {mode: 0o755});
         fs.writeFileSync(join(bin, 'vercel'), `#!/usr/bin/env node
 const fs = require('node:fs'), cp = require('node:child_process');
-const sha = cp.execFileSync('git', ['rev-parse', 'HEAD'], {encoding:'utf8'}).trim();
+const sha = cp.execFileSync('/usr/bin/git', ['rev-parse', 'HEAD'], {encoding:'utf8'}).trim();
 fs.appendFileSync(process.env.BW_TEST_CALLS, process.argv[2] + ' ' + sha + '\\n');
 if (process.argv[2] === 'build' && process.env.BW_TEST_MOVE_TO) fs.writeFileSync(process.env.BW_TEST_LIVE, process.env.BW_TEST_MOVE_TO);
 if (process.argv[2] === 'deploy') fs.writeFileSync(process.env.BW_TEST_LIVE, sha);
@@ -64,8 +68,8 @@ if (process.argv[2] === 'deploy') fs.writeFileSync(process.env.BW_TEST_LIVE, sha
             const checkout = join(root, `checkout-${i}`), live = join(root, `live-${i}`), calls = join(root, `calls-${i}`);
             git(root, 'clone', '-q', origin, checkout);
             fs.writeFileSync(live, scenario.live); fs.writeFileSync(calls, '');
-            const run = spawnSync('bash', ['-c', shell], {cwd: checkout, encoding: 'utf8', timeout: 10000,
-                env: {...process.env, PATH: `${bin}:${process.env.PATH}`, GITHUB_RUN_ID: 'fixture', VERCEL_TOKEN: 'fixture',
+            const run = spawnSync('/bin/bash', ['-c', shell], {cwd: checkout, encoding: 'utf8', timeout: 10000,
+                env: {...process.env, PATH: `${bin}:/usr/bin:/bin`, GITHUB_RUN_ID: 'fixture', VERCEL_TOKEN: 'fixture',
                     BW_TEST_LIVE: live, BW_TEST_CALLS: calls, BW_TEST_VALIDATED: scenario.eligible,
                     BW_TEST_MOVE_TO: scenario.move || ''}});
             assert.equal(run.status, scenario.status, `${scenario.name}: ${run.stderr}\n${run.stdout}`);
