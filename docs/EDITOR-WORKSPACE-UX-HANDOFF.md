@@ -1,17 +1,18 @@
 # Editor workspace UX handoff
 
-Updated 2026-10-28. Source candidate: [Lite PR #1536](https://github.com/CrispStrobe/brickwright-lite/pull/1536), checkpoint `5efac017229e57d1692114c9f750301f51d7e3d1`. **Not merged or browser-qualified.** Refresh its actual head and every enabled check before acting.
+Updated 2026-10-28. Source candidate: [Lite PR #1536](https://github.com/CrispStrobe/brickwright-lite/pull/1536), checkpoint `12f862a2455f7210a4c1a9e23ce6d52cd7cb5e2f`. **Not merged or browser-qualified.** Refresh its actual head and every enabled check before acting.
 
 ## Implemented in the candidate
 
-- FPGA: Design, Build and Simulate workspaces; selectors for examples, circuit realization, build target and simulation view; a few corresponding primary actions. Explanation prose moves into labelled information popovers. Diagnostics, circuit-replacement warnings and netlist-only limitations remain visible. Hidden workspaces retain their mounted editor state.
+- FPGA: Design, Build and Simulate workspaces; selectors for examples, circuit realization, build target and simulation view; a few corresponding primary actions. Explanation prose moves into labelled information popovers. Diagnostics, circuit-replacement warnings and netlist-only limitations remain visible. Hidden workspaces retain their mounted editor state. The gate canvas now has an accessible Show/Hide minimap toggle; its browser journey verifies mouse hiding, keyboard restoration and unchanged gate count.
 - Paint/vector: one horizontally scrolling command strip, with Fill/Outline/outline width pinned first; numeric hover/accessibility labels; one vertically scrolling tool column even in narrow panes. Regular polygons and stars use uniform scaling instead of elliptical stretching.
 - Pixel: compact foreground/background/swap controls and a 4-by-4 colour popover with 44-pixel swatches, keyboard navigation and palette/brush access. The palette no longer occupies a permanent row.
 - Code: grouped Robot-style overflow popup, outside/Escape dismissal, and keyboard-accessible file opening. The native file input remains mounted so the main File menu still works.
+- Robot controls: Program connection already landed inside Manual controls in PR #1487. This candidate also moves the remaining handler-dependent Brick buttons strip there; all available brick buttons use the existing folded section and input/release callbacks.
 - Shared File/Edit menus: active Pixel/Tilemap, vector/costume, sound, Robot and Circuit commands use the real editor callbacks. Current target/selection/visibility/availability are checked again on execution. Toggles expose checked state; global Undo/Redo keep their existing owners.
-- Circuit consumer: optional supplier-command bridge plus host panel selectors. The currently pinned supplier remains supported. The redesigned supplier is separate [CUI PR #131](https://github.com/CrispStrobe/bw-circuit-ui/pull/131), checkpoint `fcb6d3f3ce416f01f5a8234b6ce7d6fe0264e12b`; it has not been adopted in Lite.
+- Circuit consumer: optional supplier-command bridge plus host panel selectors. The currently pinned supplier remains supported. The redesigned supplier is separate [CUI PR #131](https://github.com/CrispStrobe/bw-circuit-ui/pull/131), checkpoint `37946dbc3c2a38838434e3fd0c5c46e52a230cb6`; it is ready for review but has not been merged/adopted. A follow-up fixes stale-command refusal results and replaces a popup hook unavailable in Lite’s React version. All 26 focused Circuit controls and an actual React 16 DOM popup compatibility control pass; full hosted interaction/oracle qualification remains queued.
 
-Focused validation: 92 selected source/behavior controls passed, no skips; two independent SVG-reader controls also passed; 29 changed JSX files and 22 affected browser/helper scripts parsed; all 16 changed tracked overlay/package pairs matched. These are bounded source controls, not rendered application acceptance. The first local FPGA control attempt lacked Babel; the successful bounded repeat used an existing dependency cache without an installation. Existing unrelated dependency/setup failures remain separate.
+Focused validation: 92 selected source/behavior controls passed, no skips; two independent SVG-reader controls also passed; 29 changed JSX files and 22 affected browser/helper scripts parsed; all 16 changed tracked overlay/package pairs matched. The minimap/Manual-controls follow-up passes 27 affected controls; both JSX sources and browser scripts parse. These are bounded source controls, not rendered application acceptance. The first local FPGA control attempt lacked Babel; the successful bounded repeat used an existing dependency cache without an installation. Existing unrelated dependency/setup failures remain separate.
 
 ## Continue in this order
 
@@ -23,3 +24,17 @@ Focused validation: 92 selected source/behavior controls passed, no skips; two i
 6. Merge each source PR only after every enabled final-head check succeeds, with declared skips only and a matched head. Verify the actual merge parents/tree against the reviewed prediction. Update this document and the lane status after landing; preserve any unresolved browser or dependency boundary.
 
 Do not run heavy builds or browser suites on a resource-constrained shared host. Keep machine paths, raw receipts and session coordination in ignored private notes. No simulator/physics/firmware/compiler/history-service or release qualification is claimed by this UX work.
+
+## Production deployment
+
+The operator also requests Vercel redeployment after the qualified current UX checkpoint lands. At the 2026-10-28 inspection, production `brickwright-version.json` served `5cd027707eceed3451bd62eaa21125a051650e59` from October 26; that commit does not contain PR #1487. This explains why the already-merged connection fold was absent in production.
+
+Use the existing `.github/workflows/deploy-daily.yml` production workflow, which builds qualified current main and verifies the live commit. A production run was already pending at inspection; observe it before dispatching another. After source merges and required main checks succeed, allow the automatic deployment or dispatch that workflow once if none is active. Verify `https://brickwright-lite.vercel.app/brickwright-version.json` reports the deployed main SHA containing both the requested UX and explicitly adopted Circuit package. Do not publish the unqualified PR branch to production or claim deployment from a queued run.
+
+## Vercel configuration incident resolved; deployment still pending
+
+The incomplete `677f9bf` commit triggered a native Vercel attempt that failed before building: the project-level Ignored Build Step still referenced obsolete `bash scripts/vercel-ignore.sh`. That script is intentionally absent, and repository policy disables Git-triggered deployments in favour of the guarded production workflow. The complete tree was restored normally at `643f50c`; independent comparison against `430b3db` preserved every original file mode/blob and added only two legitimate Markdown claims.
+
+The stale project-level command has now been removed and a fresh API read confirmed it is null. Build/install/runtime settings were preserved; all 21 existing deployment-policy controls pass. Do not add a dummy ignore script or retry the incomplete commit. The repaired main still needs its required hosted results before the existing production flow can publish it; a fixed setting is not evidence of a completed redeployment.
+
+The first CUI menu browser run reported all 83 scenarios: 81 passed and the two PMOS import/OP scenarios failed on their common old emoji Import locator. Successor `37946db` changes only that locator to the actual named Import action; every other browser-script byte is identical and all 26 focused controls pass. Preserve the original failure; obtain the successor's complete hosted qualification before merging.
