@@ -4591,6 +4591,12 @@ def tracked_source_originals_v9(files,request):
              'current V8 raw selected vendor pins')
 
 
+def actual_v9_job_identity(job,source_head):
+    need(type(job) is dict,'typed official Actual9 job identity')
+    integer(job.get('run_attempt'),1,1)
+    need(job.get('head_sha')==source_head,'official Actual9 job source head')
+
+
 def verify_actual_v9_core_runtime(files,request,prior_inventory):
     """Before staging, every admitted runtime row except three owned inputs exists."""
     core=decode(files['same-job/core-runtime-after-ack.json'])
@@ -4733,7 +4739,9 @@ def audit_v9(files, expected):
     need(reference['jobId']==same['jobId'] and reference['artifactId']==same['artifactId'] and reference['artifactSha256']==same['artifactSha256'] and metadata['runId']==same['runId'] and metadata['source']==request['source'],'inventory admission joins same retained job and early immutable artifact')
     need(files['same-job/inventory.original.json']==expected_embedded_original(expected['inventoryOriginal']) and files['same-job/template.original.json']==expected_embedded_original(expected['inventoryTemplate']),'same-job original custody to external final selection')
     need(files['same-job/event.original.json']==files['event.original.json'],'same-job event unchanged')
-    job=decode(files['same-job/dispatch-job.original.json']);need(job.get('id')==same['jobId'] and job.get('run_id')==same['runId'] and job.get('name')=='actual-v9' and job.get('status')=='in_progress','retained initial same-job identity')
+    job=decode(files['same-job/dispatch-job.original.json'])
+    actual_v9_job_identity(job,request['source']['head'])
+    need(job.get('id')==same['jobId'] and job.get('run_id')==same['runId'] and job.get('name')=='actual-v9' and job.get('status')=='in_progress','retained initial same-job identity')
     after_ack=decode(files['same-job/runtime-after-ack.json']);before=decode(files['runtime.before.json']);entry_runtime=decode(files['runtime.entry.json']);after=decode(files['runtime.after.json'])
     verify_actual_v9_core_runtime(files,request,decode(expected_embedded_original(expected['inventoryOriginal'])))
     for key in ('files','aliases','directoryAliases','identities','directoryIdentities','resources','emptyPythonSources'):need(after_ack[key]==before[key]==entry_runtime[key]==after[key],'post-staging runtime remains exact through guest completion '+key)
@@ -4768,6 +4776,7 @@ def official_joins_v9(request,originals,expected,observed_platform):
          'external V8 source head equals request and exact Build head')
     run,job,artifact=expected['run'],expected['job'],expected['artifact']
     typed_metadata(run,job,artifact)
+    actual_v9_job_identity(job,request['source']['head'])
     need(run.get('id')==expected['runId'] and run.get('run_attempt')==1 and
          run.get('status')=='completed' and run.get('conclusion')=='success' and
          run.get('event')=='workflow_dispatch' and
@@ -5008,6 +5017,7 @@ def verify_actual_v9_phase(archive_raw,expected):
         fields(expected[name],'byteLength sha256');need(expected[name]=={'byteLength':len(raw),'sha256':sha(raw)},'independently selected phase '+name)
     prelude=actual_v9_prelude(prelude_raw,expected['prelude']['sha256']);need(prelude['source']==source and prelude['template']==expected['template'],'same early source/template admission')
     run,job,artifact=expected['run'],expected['job'],expected['artifact'];typed_metadata(run,job,artifact)
+    actual_v9_job_identity(job,source['head'])
     need(run.get('status')=='in_progress' and run.get('conclusion') is None and run.get('run_attempt')==1 and run.get('event')=='workflow_dispatch' and run.get('head_sha')==source['head'] and run.get('path')==prelude['dispatch']['workflow']['path'] and run.get('repository',{}).get('full_name')==REPOSITORY and run.get('actor',{}).get('login')=='CrispStrobe','early phase alone admits exact in-progress owned run')
     need(job.get('run_id')==run.get('id') and job.get('name')=='actual-v9' and job.get('status')=='in_progress' and job.get('conclusion') is None,'early phase selected in-progress same job')
     for value in (run.get('id'),job.get('id'),artifact.get('id')):integer(value,1,2**63-1)
@@ -5045,6 +5055,7 @@ def verify_actual_v9_phase(archive_raw,expected):
     need(type(pr.get('number')) is int and pr['number']==prelude['pullRequest'] and pr.get('state')=='open' and pr.get('draft') is False and pr.get('head',{}).get('sha')==source['head'] and pr.get('head',{}).get('repo',{}).get('full_name')==REPOSITORY and pr.get('head',{}).get('repo',{}).get('fork') is False and pr.get('base',{}).get('ref')=='main' and pr.get('base',{}).get('repo',{}).get('full_name')==REPOSITORY,'phase exact retained source PR')
     need(type(pr.get('body')) is str and len(pr['body'].encode())<=65536 and pr['body'].count('<!-- BW_GUI_HDD_ACTUAL_V9_PRELUDE_SHA256=')==1 and pr['body'].count(marker)==1,'phase unique prelude marker before setup')
     verify_phase_git_originals_v9(files,value,decode(files['gui-finite-inventory-v10/guard-admission.json']),source)
+    actual_v9_job_identity(decode(files['gui-actual-v9/dispatch-job.original.json']),source['head'])
     need(decode(files['gui-actual-v9/dispatch-job.original.json']).get('id')==job['id'],'retained prelude job is selected job')
     deadline=actual_v9_deadline(files['gui-actual-v9/deadline.json'],{'runId':run['id'],'jobId':job['id']},source['head'])
     need(decode(files['gui-actual-v9/dispatch-clock.original.json'])==deadline['clock'] and decode(files['gui-actual-v9/dispatch-job.original.json']).get('started_at')==deadline['clock']['jobStartedAt'],'phase retained official response clock/job start custody')

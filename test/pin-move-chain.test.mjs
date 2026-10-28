@@ -113,9 +113,9 @@ const CURRENT_X86_FINITE_V9_READER = "FINITE_V9_PINS = {'bw-board':CURRENT_BOARD
 // including clock and core/full-runtime parity. Any later source edit revokes
 // their occurrence roles until another explicit review; never auto-restamp.
 const HISTORICAL_X86_SOURCE_PROFILES = Object.freeze({
-    'scripts/run-i80386-hdd-gui-actual.py': Object.freeze({bytes: 344281, sha256: 'ecf73339027482c725b0517325110cb6026b0d2ed283d48e005b6bc3910203ca'}),
-    'scripts/read-i80386-hdd-gui-originals.py': Object.freeze({bytes: 454712, sha256: '5956be5c9af2ea30568afb10902b33737f24f2fb274bd3acf2acdc9f74eedc99'}),
-    'test/i80386-hdd-gui-actual.test.mjs': Object.freeze({bytes: 618120, sha256: '5347cf89bbf3ba0bd1d2ee55b2bfd9dee9da5f5223d670af953421e71230d370'}),
+    'scripts/run-i80386-hdd-gui-actual.py': Object.freeze({bytes: 344632, sha256: '8ad4ca23886a87b3daf0ff0491326ce80fe7339c57a06036b7d73c9bc8518fbf'}),
+    'scripts/read-i80386-hdd-gui-originals.py': Object.freeze({bytes: 455211, sha256: '4c96b6205f19b3ad9c23bb52341bec9ff810cfcbc67f60dacafd01506884abba'}),
+    'test/i80386-hdd-gui-actual.test.mjs': Object.freeze({bytes: 623143, sha256: 'c8c5cec21189f256eff44492d17d85d19030e39b82aef7352375e78805e9fcf9'}),
 });
 
 import {explainGitFailure} from './helpers/git-absence.mjs';

@@ -4308,6 +4308,12 @@ def actual_v9_deadline(value,prelude,env,job=None):
     return value
 
 
+def actual_v9_job_identity(job,source_head):
+    need(type(job) is dict,'typed official Actual9 job identity')
+    integer(job.get('run_attempt'),1,1)
+    need(job.get('head_sha')==source_head,'official Actual9 job source head')
+
+
 def actual_v9_read_state(root,env):
     root=Path(root);prelude=actual_v9_prelude_from_env(env)
     need(regular(root/'gui-actual-v9/prelude.original.json',JSON_CAP)==base64.b64decode(env['BW_GUI_HDD_ACTUAL_V9_PRELUDE_B64'],validate=True),
@@ -4315,6 +4321,7 @@ def actual_v9_read_state(root,env):
     deadline=actual_v9_deadline(decode(regular(root/'gui-actual-v9/deadline.json',JSON_CAP)),prelude,env)
     need(regular(root/'gui-actual-v9/dispatch-clock.original.json',JSON_CAP)==encode(deadline['clock']),'retained server-clock projection')
     job=decode(regular(root/'gui-actual-v9/dispatch-job.original.json',JSON_CAP))
+    actual_v9_job_identity(job,prelude['source']['head'])
     need(job.get('id')==deadline['jobId'] and job.get('run_id')==deadline['runId'] and
          job.get('run_attempt')==1 and job.get('started_at')==deadline['clock']['jobStartedAt'] and job.get('name')=='actual-v9' and job.get('status')=='in_progress',
          'same actual9 officially assigned running job')
@@ -4340,6 +4347,7 @@ def actual_v9_guard(root,env,factory=None):
              type(job_rows.get('jobs')) is list and len(job_rows['jobs'])==job_rows['total_count'],'complete bounded first-attempt jobs')
         selected=[job for job in job_rows['jobs'] if job.get('name')=='actual-v9']
         need(len(selected)==1,'one actual9 official job');job=selected[0]
+        actual_v9_job_identity(job,prelude['source']['head'])
         need(job.get('status')=='in_progress' and job.get('run_id')==int(env['GITHUB_RUN_ID']) and
              job.get('run_attempt')==1 and job.get('head_sha')==prelude['source']['head'],'exact running actual9 source job')
         integer(job.get('id'),1,2**63-1)
