@@ -1,6 +1,6 @@
 # Dormant Sprite local and return declaration fidelity
 
-Status: SOURCE CANDIDATE; canonical claim registered, implementation prepared.
+Status: DONE — scoped source implementation and focused controls completed.
 External original-PXT/native and composed-head qualification remain pending.
 Owner: Arcade dormant-declaration repair in an isolated branch.
 Registration base: main `cb28becdb16`.
@@ -134,3 +134,20 @@ first originals once, qualify every enabled exact-head check and verify landed
 tree/parents. Keep the separate original declared-reference failure and unrelated
 integration failures visible. General reference annotation authoring, initialized
 Sprite producer support and broader reference-return graphs remain separate work.
+
+### Primitive declaration conflicts
+
+A later edit can replace null with a Number, String or Boolean while retaining
+a Sprite flags getter. The actual emitted primitive declaration is now checked
+against physical flags uses and their emitted lexical binding. Export lists the
+incompatible local/result declaration and preserves its exact type and body;
+it neither silently returns invalid typed code nor coerces the value to Sprite.
+The expanded negative covers all three primitive types for locals and results.
+Removing only diagnostic publication produces two expected assertion failures;
+restoration retains the passing 28 selected source controls. Prior local/result/
+initialization mutation receipts remain associated with their earlier checkpoint.
+
+Source work is complete for this narrow contract. Publication and original
+intake stay with this candidate's author through external qualification. The
+DONE status does not assert original-PXT/native acceptance, corpus closure,
+landing or broader reference-graph support.

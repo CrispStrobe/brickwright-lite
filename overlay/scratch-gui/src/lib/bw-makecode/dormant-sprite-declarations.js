@@ -3,6 +3,7 @@ import {analyseSourceValueProducers} from './source-value-producers.js';
 
 const metadata=new Set(['originalBody','paramTypes','parameterDefaults','typeParameters','returnType','source']);
 const identifier=name=>typeof name==='string'&&/^[A-Za-z_]\w*$/.test(name);
+const primitiveDeclarations=new Set(['number','string','boolean']);
 const nullInput=(record,node)=>{
     const value=record.target.blocks[node.inputs?.VALUE?.[1]];
     return value?.opcode==='arrays_specialValue'&&value.mutation==null&&
@@ -49,11 +50,19 @@ export function dormantSpriteDeclarations({project,records,isUnreachable,current
             if(record)byRecord.get(record).push(row);
         }
         const dormant=record=>isUnreachable(record.target,record.definition);
-        const locals=new Map(),results=new Map();
+        const locals=new Map(),results=new Map(),localConflicts=new Map(),resultConflicts=new Map();
         for(const record of records){
             if(!dormant(record))continue;
             const rows=byRecord.get(record);
             for(const [name,type]of record.localTypes){
+                if(primitiveDeclarations.has(type)&&identifier(name)){
+                    const reads=rows.filter(({id,node})=>node.opcode==='arcade_getLocal'&&
+                        literal(record.target,node,'NAME')===name&&flagsReceiver(record,id,node)&&isUnreachable(record.target,node));
+                    if(reads.length){
+                        if(!localConflicts.has(record))localConflicts.set(record,new Map());
+                        localConflicts.get(record).set(name,{type,reads:reads.length});
+                    }
+                }
                 if(type!=='any'||!identifier(name))continue;
                 const writes=[],reads=[];let valid=true;
                 for(const {id,node}of rows){
@@ -75,6 +84,13 @@ export function dormantSpriteDeclarations({project,records,isUnreachable,current
                     locals.get(record).set(name,{writes:writes.length,reads:reads.length});
                 }
             }
+            const primitiveResult=record.resultType.slice(2);
+            if(primitiveDeclarations.has(primitiveResult)){
+                const flags=physical.filter(row=>row.node.opcode==='arcade_callFunction'&&
+                    resolveCall(row.target,row.node)===record.name&&row.record&&dormant(row.record)&&
+                    isUnreachable(row.target,row.node)&&flagsReceiver(row.record,row.id,row.node)).length;
+                if(flags)resultConflicts.set(record,{type:primitiveResult,flags});
+            }
             if(record.resultType!==': any')continue;
             const returns=rows.filter(({node})=>node.opcode==='arcade_returnValue');
             if(!returns.length||returns.some(({node})=>!nullInput(record,node)||!isUnreachable(record.target,node)))continue;
@@ -90,7 +106,7 @@ export function dormantSpriteDeclarations({project,records,isUnreachable,current
             }
             if(valid&&calls.length&&flags)results.set(record,{returns:returns.length,calls:calls.length,flags});
         }
-        if(!locals.size&&!results.size)return denied();
+        if(!locals.size&&!results.size&&!localConflicts.size&&!resultConflicts.size)return denied();
         const program=parseMakeCodeTs(records.map(record=>record.source).join('\n'));
         if(program.body.length!==records.length||program.body.some(node=>node.type!=='FunctionDeclaration'))return denied();
         const functions=new Map();
@@ -120,7 +136,27 @@ export function dormantSpriteDeclarations({project,records,isUnreachable,current
         };visit(program);
         const plans=new Map();
         for(const record of records){
-            const fn=functions.get(record),selected=new Set();
+            const fn=functions.get(record),selected=new Set(),conflicts=[];
+            // Diagnose the actual rendered primitive declaration, not a type
+            // inferred from an annotation or a desired flags result. Keep the
+            // declaration and body intact; this is never a coercion/admission.
+            for(const [name,expected]of localConflicts.get(record)||[]){
+                const declarations=fn.body.filter(node=>node.type==='Declaration').flatMap(node=>node.decls)
+                    .filter(decl=>decl.name===name&&decl.typeName===expected.type);
+                const binding=graph.bindingOf(fn.body[0],name),kinds=graph.bindingKindsAt(fn.body[0],name);
+                if(declarations.length!==1||!binding||kinds.size!==1||!kinds.has('variable')||
+                    graph.declarationCountAt(fn.body[0],name)!==1)continue;
+                const reads=nodes.filter(node=>node.type==='Identifier'&&graph.bindingOf(node)===binding&&
+                    owners.get(node)===fn&&flagsRead(node,parents.get(node),parents)).length;
+                if(reads===expected.reads)conflicts.push(`Arcade dormant flags receiver ${record.name}.${name}: incompatible ${expected.type} local declaration`);
+            }
+            const resultConflict=resultConflicts.get(record);
+            if(resultConflict&&fn.returnType===resultConflict.type){
+                const calls=nodes.filter(node=>node.type==='Call'&&graph.unchangedFunctionAt(node)===fn&&
+                    flagsRead(node,parents.get(node),parents)&&
+                    recordByName.has(owners.get(node)?.name)&&dormant(recordByName.get(owners.get(node).name))).length;
+                if(calls===resultConflict.flags)conflicts.push(`Arcade dormant flags receiver ${record.name}(): incompatible ${resultConflict.type} result declaration`);
+            }
             for(const [name,physicalCounts]of locals.get(record)||[]){
                 const binding=graph.bindingOf(fn.body[0],name),kinds=graph.bindingKindsAt(fn.body[0],name);
                 if(!binding||kinds.size!==1||!kinds.has('variable')||graph.declarationCountAt(fn.body[0],name)!==1)continue;
@@ -152,7 +188,7 @@ export function dormantSpriteDeclarations({project,records,isUnreachable,current
                 }
                 result=valid&&calls===expected.calls&&flags===expected.flags;
             }
-            if(selected.size||result)plans.set(record,{locals:selected,result});
+            if(selected.size||result||conflicts.length)plans.set(record,{locals:selected,result,conflicts});
         }
         return current()?plans:denied();
     }catch{return denied();}

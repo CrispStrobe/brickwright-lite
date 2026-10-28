@@ -4855,7 +4855,10 @@ class ArcadeEmitter {
                 const owner=local?target:this.project.targets.find(value=>value.isStage)||target;
                 return this.globals.get(`${owner.isStage?'':owner.name}:${name}`)||null;
             }});
-        if(this.closedOrdinaryEntryCurrent())for(const [record,plan]of dormantDeclarations)functions[record.index]=record.render(plan);
+        if(this.closedOrdinaryEntryCurrent())for(const [record,plan]of dormantDeclarations){
+            for(const conflict of plan.conflicts)this.note(conflict);
+            functions[record.index]=record.render(plan);
+        }
         const assemble=definitions=>{
             const chunks=[...helperSource(this.helpers),...definitions,
                 ...pre,...generated,...this.generated,...functions,...out,...handlers,...startup];

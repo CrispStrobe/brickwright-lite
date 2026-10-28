@@ -1,6 +1,6 @@
 # Typed-bitwise procedure reimport fidelity
 
-Status: SOURCE CANDIDATE; the claim is landed and the implementation is isolated.
+Status: DONE — scoped source implementation and focused controls completed.
 Original-PXT/native qualification and integration remain pending; ownership is
 retained until that evidence is available.
 Owner: Arcade typed-bitwise repair, explicitly available for an independent

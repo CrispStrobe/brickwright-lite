@@ -34,10 +34,17 @@ const localWriter=project=>{
     const writes=Object.entries(record.target.blocks).filter(([,node])=>node.opcode==='arcade_setLocal'&&node.inputs.NAME[1][1]==='actor');
     assert.equal(writes.length,1);return {...record,writerId:writes[0][0],writer:writes[0][1]};
 };
-const numberInsteadOfNull=(target,node)=>{
+const primitiveInsteadOfNull=(target,node,type='number')=>{
     const id=node.inputs.VALUE[1];assert.equal(target.blocks[id]?.opcode,'arrays_specialValue');
-    delete target.blocks[id];node.inputs.VALUE=[1,[4,'7']];
+    delete target.blocks[id];
+    if(type==='boolean'){
+        const parent=Object.entries(target.blocks).find(([,value])=>value===node)?.[0];assert.ok(parent);
+        target.blocks[id]={opcode:'operator_equals',parent,next:null,topLevel:false,shadow:false,
+            inputs:{OPERAND1:[1,[4,'1']],OPERAND2:[1,[4,'1']]},fields:{}};
+        node.inputs.VALUE=[2,id];
+    }else node.inputs.VALUE=[1,type==='string'?[10,'edited']:[4,'7']];
 };
+const numberInsteadOfNull=(target,node)=>primitiveInsteadOfNull(target,node);
 
 test('dormant Sprite result and local declarations survive both routes and three exported-file reimports',()=>{
     for(const [source,pattern]of [[returned,resultSprite],[local,localSprite]]){
@@ -65,17 +72,21 @@ test('a live caller cannot borrow a dormant result or local declaration',()=>{
     }
 });
 
-test('a non-null local writer or result is preserved without a Sprite declaration',()=>{
-    for(const source of [local,returned]){
+test('incompatible primitive locals and results retain their bodies and list the declaration conflict',()=>{
+    for(const type of ['number','string','boolean'])for(const source of [local,returned]){
         const project=create(source).project;
-        if(source===local){const row=localWriter(project);numberInsteadOfNull(row.target,row.writer);}
+        if(source===local){const row=localWriter(project);primitiveInsteadOfNull(row.target,row.writer,type);}
         else {
             const row=definition(project,'returned'),node=row.target.blocks[row.node.next];
-            assert.equal(node.opcode,'arcade_returnValue');numberInsteadOfNull(row.target,node);
+            assert.equal(node.opcode,'arcade_returnValue');primitiveInsteadOfNull(row.target,node,type);
         }
         for(const out of both(project)){
             assert.doesNotMatch(out.ts,source===local?localSprite:resultSprite);
-            assert.match(out.ts,source===local?/actor\s*=\s*7/:/return 7/);
+            const value=type==='number'?'7':type==='string'?'"edited"':'true';
+            assert.match(out.ts,new RegExp((source===local?'actor\\s*=\\s*':'return ')+value));
+            assert.ok(out.unsupported.some(reason=>reason===
+                (source===local?`Arcade dormant flags receiver Game_unusedLocal.actor: incompatible ${type} local declaration`:
+                    `Arcade dormant flags receiver Game_returned(): incompatible ${type} result declaration`)));
         }
     }
 });
@@ -126,7 +137,10 @@ test('later callers and incompatible writers revoke a previously successful decl
     for(const out of both(original))assert.doesNotMatch(out.ts,resultSprite);
     const project=create(local).project;clean(project,localSprite);
     const row=localWriter(project);numberInsteadOfNull(row.target,row.writer);
-    for(const out of both(project))assert.doesNotMatch(out.ts,localSprite);
+    for(const out of both(project)){
+        assert.doesNotMatch(out.ts,localSprite);
+        assert.ok(out.unsupported.some(reason=>/incompatible number local declaration/.test(reason)));
+    }
 });
 
 test('multiple dormant flags consumers preserve every call and side effect',()=>{

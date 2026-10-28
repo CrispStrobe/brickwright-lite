@@ -5,6 +5,8 @@
 The [separate dormant-declaration claim](../lanes/2026-10-28-arcade-dormant-sprite-declarations.md)
 now has an isolated source implementation for null-initialized locals and
 null-returning ordinary helpers whose complete affected closure stays dormant.
+Conflicting Number, String or Boolean locals/results now retain their code and
+list an explicit incompatible-flags declaration refusal.
 Physical reads/writes/callers must match actual emitted lexical bindings. Real
 null assignments must precede every local read; generated zero initialization
 provides no evidence. The compatible declarations survive export and reimport
@@ -5065,3 +5067,31 @@ the earlier export. Independent saved-result review verified current inputs,
 source and module loads. Preserve the outer wrapper failure on Node's module
 format warning; this is an observed conversion result, not an all-pass wrapper
 or a GUI/SDK/corpus result. See [the exact boundary and remaining acceptance](ARCADE-NUMERIC-CLOSURE-RESULTS.md#ordinary-default-export-observation--2026-10-22).
+
+## Ordered continuation after the dormant-declaration checkpoint
+
+1. Qualify the final narrow stacked candidate once through automatic CI. Run
+   the enabled original-PXT/native declaration case, preserve its first result,
+   and fix actual failures before any readiness/landing claim. Do not substitute
+   the bounded source-only selection for this acceptance. Avoid additional
+   dispatches and full-CI labels unless the affected browser gate requires them.
+2. Have the integration owner compose the reviewed parameter/declaration repairs
+   into the active Arcade stack. Recheck the separate frozen-control pin-receipt
+   repair against the current tracked script bytes; do not silently move pins.
+   Existing integration failures remain a landing gate even if this narrow case
+   passes. Refresh all exact-head results after source composition.
+3. Continue native-addition operand failures by actual producer/writer family:
+   opaque cells, ordinary/SDK call results, Sprite receiver properties, indexed
+   reads and superclass results. Claim the exact family and ownership boundary
+   before edits. A familiar API/property name or desired annotation cannot
+   replace the actual initialized receiver, call result and all-writer proof.
+4. Run the immutable corpus and complete original project contexts on a qualified
+   external worker, retaining source hashes and the first results. Separate
+   import, export/reimport, original PXT execution, Lite execution and controller/
+   presentation outcomes. Promote a partial only when its whole actual program
+   passes the required routes; synthetic helper successes change no corpus row.
+5. Keep Blocks, Code and graphics authoring gaps in the capability handoff.
+   In particular, arbitrary reference annotation editing/serialization and the
+   broader initialized Sprite/reference graphs remain outside these dormant
+   declaration repairs. Require save/reopen and MakeCode roundtrip evidence for
+   each authoring capability rather than inferring it from converter support.
