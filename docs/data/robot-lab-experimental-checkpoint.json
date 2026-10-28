@@ -3134,10 +3134,12 @@
         "nan": false,
         "simMs": 30167
       },
-      "promotionReview": {
+      "promoted": {
+        "to": "established library (MODELS)",
         "date": "2026-10-27",
-        "decision": "STAYS_EXPERIMENTAL",
-        "reason": "Observation-only model with no motor; the qualification contract and its disconnection control require at least one driven port and real input travel. A passive-observation contract would be a separate harness change. Not run on this branch."
+        "judge": "compound-pendulum-exchange-v1",
+        "harness": "motorless: no driven port; disconnection removes the near arm's axle and bushes",
+        "verified": "PENDING: hosted native qualification of this branch"
       }
     },
     {
@@ -3613,7 +3615,7 @@
       "promotionReview": {
         "date": "2026-10-27",
         "decision": "STAYS_EXPERIMENTAL",
-        "reason": "A reviewed stirling-quadrature-v1 judge passed its law on hosted native CI (pistons within 0.0012 mm of the slider-crank closure, strokes 32.001 mm, cranks 90.00004 deg apart with 0.0006 deg span, 803.9 mm2 per turn vs pi r2 = 804.25). The model is hubless, while the shared qualification harness reads the hold state through hub motor controllers (final mode reported 'idle' after the program's lab stop motor A hold) and its disconnection control observes from a 'hub' part. A reviewed hubless harness path is needed first."
+        "reason": "The hubless harness path now qualifies it: stirling-quadrature-v1 passes in the real VM (pistons within 0.0012 mm of the slider-crank closure, strokes 32.001 mm, cranks 90.00004 deg apart, 803.9 mm2 per turn vs pi r2 = 804.25), the final hold is read as 'hold' from the lab-direct controller, and removing conrod_B and wristpin_B leaves piston B 0.02 mm of stroke. The established-library construction gate refuses the unchanged model bytes, however: gear_idler (3649) interpenetrates motor_A (54696p01), 2525 mesh points up to 7.5 LDU deep, and idlershaft, crank pins, tie pins and other pins reach 0.5 to 2.2 LDU into solid parts. A geometry fix is needed before promotion."
       }
     },
     {

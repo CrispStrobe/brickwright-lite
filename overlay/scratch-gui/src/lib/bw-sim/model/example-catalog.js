@@ -1061,6 +1061,37 @@ export const MODEL_LESSONS = Object.freeze({
             "Schlupf"
         ]
     },
+    "pivot-exchange.ldr": {
+        "pieces": 159,
+        "motors": 0,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "forces",
+        "description": {
+            "en": "Three identical weighted arms swing freely from different holes, released from a saved 8° deflection with no motor. Two nearly conjugate pivots keep the same period (Kater's reversible pendulum); the central-hole control swings about twice as slowly.",
+            "de": "Drei gleiche beschwerte Arme schwingen frei an verschiedenen Bohrungen, losgelassen aus einer gespeicherten 8°-Auslenkung, ohne Motor. Zwei nahezu konjugierte Aufhängungen halten dieselbe Periode (Katers Reversionspendel); die Kontrolle an der mittleren Bohrung schwingt etwa halb so schnell."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Reversible compound pendulum — Kater principle",
+            "de": "Reversionspendel — Kater-Prinzip"
+        },
+        "keywords": [
+            "Reversible compound pendulum — Kater principle",
+            "Reversionspendel — Kater-Prinzip",
+            "reversible pendulum",
+            "compound pendulum",
+            "physical pendulum",
+            "Kater pendulum",
+            "conjugate pivots",
+            "centre of oscillation",
+            "Reversionspendel",
+            "physikalisches Pendel",
+            "konjugierte Aufhängepunkte"
+        ]
+    },
     "watt-line.ldr": {
         "pieces": 148,
         "motors": 1,

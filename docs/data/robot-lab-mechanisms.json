@@ -553,7 +553,8 @@
     },
     {
       "models": [
-        "samebeat"
+        "samebeat",
+        "pivot-exchange"
       ],
       "name": {
         "en": "Reversible compound pendulum — Kater principle",

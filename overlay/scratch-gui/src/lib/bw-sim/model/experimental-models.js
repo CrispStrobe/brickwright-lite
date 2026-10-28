@@ -1070,21 +1070,6 @@ export const EXPERIMENTAL_MODELS = Object.freeze([
         }
     },
     {
-        "file": "pivot-exchange.ldr",
-        "title": {
-            "en": "Pivot Exchange — nearly equal periods from different pivots",
-            "de": "Pivot Exchange — nahezu gleiche Perioden an verschiedenen Aufhängungen"
-        },
-        "example": "pivot-exchange.bw",
-        "mat": "plain",
-        "experimental": true,
-        "blocked": false,
-        "intro": {
-            "en": "Three identical weighted arms hang from different holes. From an 8° saved release, compare two nearly conjugate suspensions with a slower central-hole control. One shared observation program lets gravity provide the motion.",
-            "de": "Drei identische beschwerte Arme hängen an verschiedenen Bohrungen. Vergleiche aus einer gespeicherten 8°-Auslenkung zwei nahezu konjugierte Aufhängungen mit der langsameren Kontrolle an der mittleren Bohrung. Ein gemeinsames Beobachtungsprogramm lässt die Schwerkraft für die Bewegung sorgen."
-        }
-    },
-    {
         "file": "pivot-exchange-wide.ldr",
         "title": {
             "en": "Pivot Exchange — 20° release comparison",

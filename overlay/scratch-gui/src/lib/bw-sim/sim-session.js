@@ -150,6 +150,7 @@ export const MODELS = Object.freeze([
         manualJog: {A: {minDeg: -35, maxDeg: 35, stepDeg: 5, speedDps: 10}}},
     {file: 'travel-dial.ldr', title: {en: 'Travel Dial — passive measuring wheel', de: 'Travel Dial — passives Messrad'}, example: 'travel-dial.bw', mat: 'plain',
         manualJog: {A: {minDeg: -60, maxDeg: 60, stepDeg: 15, speedDps: 15}}},
+    {file: 'pivot-exchange.ldr', title: {en: 'Pivot Exchange — nearly equal periods from different pivots', de: 'Pivot Exchange — nahezu gleiche Perioden an verschiedenen Aufhängungen'}, example: 'pivot-exchange.bw', mat: 'plain'},
     {file: 'watt-line.ldr', title: {en: "Watt’s Line — approximate straight-line linkage", de: 'Watt’s Line — angenäherte Geradführung'}, example: 'watt-line.bw', mat: 'plain',
         manualJog: {A: {minDeg: -20, maxDeg: 20, stepDeg: 2, speedDps: 6}}},
     {file: 'twin-tempo.ldr', title: {en: 'TwinTempo — three-to-one hoist', de: 'TwinTempo — Seilzüge im Verhältnis drei zu eins'}, example: 'twin-tempo.bw', mat: 'plain',

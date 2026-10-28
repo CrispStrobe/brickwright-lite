@@ -377,6 +377,32 @@
         "export",
         "manual controls"
       ]
+    },
+    {
+      "id": "pivot-exchange",
+      "judge": "compound-pendulum-exchange-v1",
+      "parts": 159,
+      "ports": [],
+      "motorless": true,
+      "expectedIssues": [
+        {
+          "code": "no-motor",
+          "parts": []
+        }
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 30000,
+      "afterMs": 500,
+      "frameMs": 20,
+      "frozenOutput": "arm_near_beam",
+      "disconnect": [
+        "arm_near_fixed_axle",
+        "arm_near_inner_bush_back",
+        "arm_near_outer_bush_back",
+        "arm_near_inner_bush_front",
+        "arm_near_outer_bush_front"
+      ],
+      "disconnectLaw": true
     }
   ]
 }
