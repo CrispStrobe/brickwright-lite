@@ -5,6 +5,9 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {createHash} from 'node:crypto';
 import {execFileSync} from 'node:child_process';
+import {Writable} from 'node:stream';
+import {finished} from 'node:stream/promises';
+import {writeCrossRatioRecord} from './fixtures/bw-sim/cross-ratio/emit.mjs';
 import {readCrossRatio,readCrossRatioLines} from '../scripts/verify-sim-cross-ratio.mjs';
 import {judgeCrossRatio,crossRatioProgramGraph} from '../scripts/lib/sim-lab-cross-ratio-judge.mjs';
 import {analyticRecord,ANALYTIC_IDENTITY} from './fixtures/bw-sim/cross-ratio/analytic.mjs';
@@ -95,6 +98,22 @@ const detachedCuts=[
 ];
 for(const edit of detachedCuts){const bad=structuredClone(cut);edit(bad);assert.throws(()=>check(bad));}
 test('Cross Ratio: exact detached-capture diagnostics and all-body pose census',()=>assert.equal(detachedCuts.length,4));
+// Real Writable backpressure and the independent consumer test retention
+// without replaying physics. No console method is an evidence transport.
+const chunks=[],transport=new Writable({highWaterMark:1,write(chunk,encoding,callback){chunks.push(Buffer.from(chunk));setImmediate(callback);}});
+for(const coldMs of C.timing.coldMs)for(const control of [false,true])await writeCrossRatioRecord(analyticRecord(control,coldMs),transport);
+transport.end();await finished(transport);
+assert.equal(readCrossRatioLines(Buffer.concat(chunks).toString(),wireOptions).length,4);
+const brokenTransport=new Writable({highWaterMark:1,write(chunk,encoding,callback){setImmediate(()=>callback(new Error('deliberate receiver failure')));}});
+await assert.rejects(writeCrossRatioRecord(good,brokenTransport),/deliberate receiver failure/);
+const directStreamChild=execFileSync(process.execPath,['--max-old-space-size=128','--input-type=module','--eval',`
+ import {analyticRecord} from './test/fixtures/bw-sim/cross-ratio/analytic.mjs';
+ import {writeCrossRatioRecord} from './test/fixtures/bw-sim/cross-ratio/emit.mjs';
+ console.log=()=>{};
+ for(const coldMs of [0,1000])for(const control of [false,true])await writeCrossRatioRecord(analyticRecord(control,coldMs));
+`],{cwd:new URL('../',import.meta.url),maxBuffer:8*1024*1024});
+assert.equal(readCrossRatioLines(directStreamChild.toString(),wireOptions).length,4,'default stdout retains all records even when console.log is captured');
+test('Cross Ratio: direct record stream handles backpressure and refuses receiver failure',()=>assert.ok(transport.writableFinished));
 const {runRobotLabProgram}=await import('./helpers/robot-lab-direct-vm.mjs');
 const {catalogFrom,prepareModel}=await import('../overlay/scratch-gui/src/lib/bw-sim/sim-session.js');
 const original=read('overlay/scratch-gui/static/sim-lab/models/cross-ratio.ldr'),program=read('overlay/scratch-gui/static/sim-lab/programs/cross-ratio.bw');
@@ -128,9 +147,7 @@ for(const coldMs of C.timing.coldMs)for(const control of [false,true])test(`Cros
  // Keep raw failure records before any acceptance assertion. NDJSON avoids
  // one enormous log line; the existing unit artifact retains the original TAP.
  const record={...r,schema:1,kind:'cross-ratio-native',identity,contractSha256:hash(read('test/fixtures/bw-sim/cross-ratio/contract.json')),variant:control?'remove-pivot-P':'original',input:{originalModel:original,program,model:control?removed:original,modelSha256:hash(control?removed:original)},timing:{...C.timing,coldMs},vmErrors};
- const {track,...header}=record;console.log('CROSS_RATIO '+JSON.stringify({type:'header',record:header}));
- for(const frame of track)console.log('CROSS_RATIO '+JSON.stringify({type:'frame',frame}));
- console.log('CROSS_RATIO '+JSON.stringify({type:'end',record:{finishedAt:r.finishedAt}}));
+ await writeCrossRatioRecord(record);
  assert.ok(r.track.every(f=>!f.extra.sessionFailed));
  judgeCrossRatio(r,{control,expectedIssueKeys:C.topology[control?'remove-pivot-P':'original'].issueKeys});
  const independent=readCrossRatio(record,{expectedIdentity:identity});

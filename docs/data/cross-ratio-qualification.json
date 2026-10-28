@@ -13,7 +13,7 @@
   "scope": "Finite software-law candidate only; no physical, hardware or library-wide claim.",
   "lightweightChecks": {
     "engineExecuted": false,
-    "readerPreflightTests": 4,
+    "readerPreflightTests": 5,
     "rejectedCorruptions": 39,
     "quaternionSignInvariant": true,
     "globalTranslationInvariant": true,
@@ -24,7 +24,8 @@
       "identitySchema": 2,
       "sameOpcodeProgramContent": 7,
       "detachedCaptureCensus": 4
-    }
+    },
+    "recordTransport": "DIRECT_STREAM_BACKPRESSURE_AND_FAILURE_CONTROLS"
   },
   "diagnosticPreflight": {
     "status": "FIRST_CONTROL_TOPOLOGY_REFUSAL_RETAINED",
@@ -34,5 +35,14 @@
     "exactDetachedWarnings": 7,
     "motionCasesExecuted": 0,
     "nodeMajor": 24
+  },
+  "supplementaryNativeDiagnostic": {
+    "source": "bc84fb62e3f9d057a5be4e85249f0737ed30ecdd",
+    "nodeMajor": 24,
+    "internalMotionPass": 4,
+    "rawRecordsRetained": false,
+    "standaloneReadback": "UNAVAILABLE",
+    "replayedForOutput": false,
+    "scope": "Supplementary capped component diagnostic; not clean hosted/GitHub/full SDK qualification."
   }
 }

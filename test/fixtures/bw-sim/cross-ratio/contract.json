@@ -84,7 +84,8 @@
     "test/fixtures/bw-sim/cross-ratio/analytic.mjs",
     "test/fixtures/bw-sim/cross-ratio/contract.json",
     "scripts/verify-sim-cross-ratio.mjs",
-    "scripts/lib/sim-lab-cross-ratio-judge.mjs"
+    "scripts/lib/sim-lab-cross-ratio-judge.mjs",
+    "test/fixtures/bw-sim/cross-ratio/emit.mjs"
   ],
   "topology": {
     "original": {
