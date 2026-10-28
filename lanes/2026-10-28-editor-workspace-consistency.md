@@ -1,6 +1,6 @@
 # Consistent editor workspaces and remaining menu coverage
 
-Owner: editor UX maintainer. Status: CLAIMED.
+Owner: editor UX maintainer. Status: SOURCE IMPLEMENTED; qualification pending in PR #1536.
 
 Implement the requested editor UI pass: compact Pixel foreground/background
 colour controls and palette popover; a single horizontally scrollable Paint
@@ -26,3 +26,14 @@ no hidden Lite copy or silent pin move. Coordinate exact shared owner hunks.
 Qualification: source routing, layout, symmetric geometry and currentness
 controls; hosted affected browser/build checks before matched-head product merge.
 Use the existing bounded shared-VPS policy; no large local build or SDK install.
+
+Checkpoints `276245968d1` and `5efac017229` implement this scope and the independent actual-SVG browser acceptance driver. Continue with
+[the editor UX handoff](../docs/EDITOR-WORKSPACE-UX-HANDOFF.md); hosted affected
+browser/build checks and separately qualified Circuit adoption remain pending.
+
+Follow-up scope approved 2026-10-28: add a hide/show minimap control in
+`fpga-gate-builder-rf.jsx`; move the remaining program-handler Brick buttons
+strip into Robot Lab Manual controls in `sim-lab-pane.jsx`, preserving real
+button/connection callbacks and release behavior. Own only these presentation
+hunks and affected source/browser controls. No simulator/input-delivery change.
+Qualify the affected GUI and preserve all existing source merge gates.
