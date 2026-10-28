@@ -3005,11 +3005,6 @@
         "pageErrors": 0,
         "nan": false,
         "simMs": 33533
-      },
-      "promotionReview": {
-        "date": "2026-10-28",
-        "decision": "STAYS_EXPERIMENTAL",
-        "reason": "The cold-settle back-drive is already repaired on main by the rest-stop bushes of 1b251e04231 (3713 under each carriage's lower toggle eye): re-measured in the direct VM with the real program, both rack motors read 0.195 deg after 500 ms and after 1000 ms cold settle with velocity ~0, below the program's 0.5 deg zero guard, and the program proceeds past stage 1; the construction gate (colliders, meshes, pin seating, shared holes) is clean. The program's guard is correct and unchanged; model bytes unchanged. Not promoted: no independently reviewed judge for the max(a,b) law is registered in QUALIFICATION_JUDGES yet."
       }
     },
     {
@@ -3042,11 +3037,6 @@
         "pageErrors": 0,
         "nan": false,
         "simMs": 54200
-      },
-      "promotionReview": {
-        "date": "2026-10-28",
-        "decision": "STAYS_EXPERIMENTAL",
-        "reason": "The cold-settle back-drive is already repaired on main by the rest-stop bushes of 1b251e04231 (3713 under each carriage's lower toggle eye): re-measured in the direct VM with the real program, both rack motors read 0.195 deg after 500 ms and after 1000 ms cold settle with velocity ~0, below the program's 0.5 deg zero guard, and the program proceeds past stage 1; the construction gate (colliders, meshes, pin seating, shared holes) is clean. The program's guard is correct and unchanged; model bytes unchanged. Not promoted: no independently reviewed judge for the max(a,b) law is registered in QUALIFICATION_JUDGES yet."
       }
     },
     {

@@ -43,10 +43,10 @@ with the reason recorded.
 - **High Select**: no edit needed. The cold-settle back-drive was already fixed
   on main by the rest-stop bushes of `1b251e04231`. Both motors now read
   0.195° after a 500 ms or 1000 ms cold settle, under the program's 0.5° guard,
-  and construction is clean. The guard is correct. The model stays experimental
-  because no reviewed judge exists for its law.
+  and construction is clean. The guard is correct. Its promotion and its `max-select-v1`
+  judge belong to the batch lane (#1508); this lane leaves its records alone.
 
 Next batches: equal-share, stroke-shift, triad-table, paired-door-sync, apex,
-aster-governor, vesper-quickreturn, bloom and final-squeeze (geometry);
+aster-governor, vesper-quickreturn, and bloom (geometry; final-squeeze is repaired in #1508);
 spiral-scribe (rack pitch); solstice-pumpjack and tempest-pendulum (pose);
 inertia-loop last, after #1494.
