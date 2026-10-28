@@ -95,7 +95,7 @@ const LOADS = [null, {ohms: 10000, volts: -1}, {ohms: 10000, volts: 1}];
 // zero-state load-step transient. Retained unedited as an expected failure (todo);
 // the v2 predicate below replaces it as the acceptance gate.
 test('v1-instant-settling: installed CLI terminal KCL, rail power/energy, both polarities, zero and nonzero load', {
-    todo: 'expected failure preserved: v1 ignores start-up transient; tracked in docs/CIRCUIT-INSTRUMENT-REGRESSION.md (item 5); see v2-post-settling-window',
+    todo: 'expected failure preserved: v1 ignores start-up transient; tracked in docs/receipts/lm741-startup-window.md; see v2-post-settling-window',
 }, () => {
     const dir = mkdtempSync(path.join(tmpdir(), 'lite-lm741-bias-'));
     try {

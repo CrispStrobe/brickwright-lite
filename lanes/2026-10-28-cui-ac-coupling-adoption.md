@@ -56,3 +56,13 @@ synthetic consumer. Whole-file seals protect the three historical identity
 sources and the byte-frozen UI manifest. Ordinary stale-current and never-pinned
 receipt controls remain mandatory. No numerical study, compiler, guest, hardware
 or deployment is run or claimed by those synthetic controls.
+
+## Hosted documentation-trigger repair
+
+Unit shard 6 found that the preserved LM741 TODO reason made the broad
+campaign handoff a code-mentioned document without a matching build trigger.
+Also own `docs/receipts/lm741-startup-window.md` as the focused public failure
+record and the existing LM741 acceptance test's documentation pointer only.
+Receipt documents already trigger Build. Keep the general campaign handoff
+prose-only; preserve the original TODO, all test bodies, numerical bounds,
+package pins, workflow policy and the shared historical-study guard.
