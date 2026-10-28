@@ -1,1 +1,0 @@
-Owner-supplied Phase Bridge original models, Christian Ströbele (CrispStrobe), BSD-3-Clause. Exact model bytes retained. Hash-gated adaptation: scripts/adapt-phase-bridge.mjs. Downloaded generators, controllers and predicted animations are not executed or bundled as simulation output.

@@ -1,1 +1,0 @@
-seahash 4.1.0 by ticki and Tom Almeida (authors field of the published Cargo.toml). Declared licence: MIT. LICENSE is the upstream repository licence file, which carries no copyright line.

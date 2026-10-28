@@ -1,2 +1,0 @@
-# Preserve the original served CRLF bytes; CR is an intentional line ending.
-intact.ldr -text whitespace=trailing-space,space-before-tab,cr-at-eol
