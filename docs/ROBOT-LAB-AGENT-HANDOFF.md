@@ -162,7 +162,9 @@ rules above.
   runtimes booting at once) rather than raising timeouts again.
 - The controller-pane layout gate (browser light) failed once in landscape and once locally in
   portrait ("Undo; text; Blocks; …" covered, full-screen entry not hittable) without a related
-  change: the gate reads the layout before it has settled.
+  change: the gate read the layout before it had settled. It now waits until every
+  control's rectangle is unchanged for ten consecutive frames (bounded at 15 s; not settling
+  fails the gate), before the normal and the full-screen reads.
 
 ### P6 — not code
 - TI service-pack PR on CrispStrobe/extensions waits for git.ti.com; its bytes are licensed
