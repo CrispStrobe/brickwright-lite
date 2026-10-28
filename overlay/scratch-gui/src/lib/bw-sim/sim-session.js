@@ -334,6 +334,9 @@ export const prepareModel = (text, catalog, {mat = null, autoPorts: plugIn = !OW
     for (const issue of unknownOf.values()) {
         if (issue.count > 1) issue.message = `${issue.message} (and ${issue.count - 1} more)`;
     }
+    if (refusals.some(r => r.code === 'bad-motor-direction')) {
+        return {model: parsedModel, runModel: parsedModel, mechanism: null, issues};
+    }
     if (parsedModel.parts.length === 0) {
         issues.push({severity: 'error', code: 'empty-model', message: 'The model has no parts the Sim Lab knows.', parts: []});
         return {model: parsedModel, runModel: parsedModel, mechanism: null, issues};

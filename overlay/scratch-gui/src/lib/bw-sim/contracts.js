@@ -721,6 +721,9 @@ export const validatePlacedModel = (model, catalog) => {
     const out = [];
     if (!model || typeof model !== 'object') return ['model: not an object'];
     if (model.version !== 1 && model.version !== 2) out.push(`model.version: expected 1, got ${model.version}`);
+    if (model.motorDirection !== undefined && !['legacy', 'motor-frame'].includes(model.motorDirection)) {
+        out.push('model.motorDirection: expected legacy or motor-frame');
+    }
     if (!Array.isArray(model.parts)) return [...out, 'model.parts: not an array'];
     uniqueIds(model.parts, 'model.parts', out);
     if (model.drawings !== undefined) {
