@@ -7,6 +7,10 @@
 `lanes/2026-10-26-samd-native-game-engine-adoption.md` and `lanes/PROTOCOL.md`.
 Do not start a duplicate lane. Refresh remote heads/checks before acting.
 
+**Current Build: [40777652451](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40777652451).**
+Build40765450222, retained in the historical sequence below, is superseded and
+cannot qualify this candidate. Use the current Build for all admission/dispatch inputs.
+
 ## Completed prerequisites
 
 Core [PR262](https://github.com/CrispStrobe/labwired-core/pull/262) merged as
@@ -108,7 +112,7 @@ preserve those and the old dirty worktrees.
 
 1. Qualify the test-only successor against the native source gate above, then
    refresh exact-head checks and existing
-   [Build40777652451](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40777652451).
+   [Build40765450222](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40765450222).
    `ci:full` was restored before this final source checkpoint after an earlier
    removal; keep it present. Implementation bytes match the88-test candidate. Wait for every enabled check; do not duplicate
    live jobs or rerun a known unchanged failure. After successful overall Build,
