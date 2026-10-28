@@ -569,6 +569,19 @@ function create(runtime, cells, scoreOwner=null, sceneClock=null, frameDelta=nul
                     else domains.add(['-','*','/','%','**','&','|','^','<<','>>','>>>'].includes(operation)?'number':'unknown');
                     return true;
                 }
+                if (op==='arcade_mathBinary') {
+                    // mathBinary returns one actual operand for min/max and a
+                    // Number for atan2/randomRange; other operations throw.
+                    const operation=literal(node,'OP');
+                    if(!['min','max','atan2','randomRange'].includes(operation))return false;
+                    if(!domains)return safe(input(node,'A'))&&safe(input(node,'B'));
+                    const left=new Set(),right=new Set();if(!safe(input(node,'A'),false,null,left)||!safe(input(node,'B'),false,null,right))return false;
+                    if(operation==='min'||operation==='max'){
+                        if(!left.size||!right.size)domains.add('unknown');
+                        for(const type of [...left,...right])domains.add(type);
+                    }else domains.add('number');
+                    return true;
+                }
                 if (op==='arrays_valueUnary') {
                     if(!safe(input(node,'VALUE')))return false;
                     if(domains){const operation=literal(node,'OP');domains.add(operation==='typeof'?'string':operation==='!'?'boolean':['+','-','~'].includes(operation)?'number':'unknown');}return true;
