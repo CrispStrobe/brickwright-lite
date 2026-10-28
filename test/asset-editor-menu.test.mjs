@@ -23,6 +23,7 @@ const pixelHost = () => {
     for (const name of ['save','exportPng','exportSheet','exportFramesAsCostumes','copySelection','cutSelection',
         'pasteSelection','clearSelection','cropToSelection','revert','addLayer','deleteLayer','moveLayer','addFrame',
         'deleteFrame','moveFrame','togglePlayback','transform']) host[name] = (...args) => calls.push([name, ...args]);
+    host.canTransform = operation => new Function(`return function(operation) ${scopeAfter(pixel, '    canTransform (operation)')}`)().call(host, operation);
     return {host, calls};
 };
 
@@ -75,6 +76,7 @@ test('Pixel rotation rejects locked animation layers and oversized selection', (
     host.state.frames.push({id:'other',layers:[{locked:true}]});
     assert.equal(get.call(host)['rotate-cw'].enabled, false);
     assert.equal(get.call(host)['flip-h'].enabled, true);
+    assert.match(pixel, /disabled=\{!this\.canTransform\(operation\)\}/, 'toolbar uses the same transform guard');
     host.state.selection = {width:32,height:2};
     assert.equal(get.call(host)['rotate-cw'].enabled, false);
 });

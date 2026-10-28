@@ -372,10 +372,19 @@ class PixelArtEditor extends React.Component {
 
     // Autosave: unsaved pixel work is kept as a draft (lib/bw-editor-drafts.js)
     // and offered back when this costume is opened again after a reload or crash.
+    canTransform (operation) {
+        const {image, selection, w, h} = this.state;
+        const layer = this.activeLayer();
+        const turn = operation.startsWith('rotate');
+        return !!(image && layer && !layer.locked && layer.visible) &&
+            !(turn && !selection && this.materializeFrames().some(frame => frame.layers.some(item => item.locked))) &&
+            !(turn && selection && (selection.height > w || selection.width > h));
+    }
+
     editorMenuActions () {
         if (!this._menuMounted || getUndoState().surface !== 'pixel') return null;
         const locale = this.props.locale || browserLocale();
-        const {image, layers, frames, activeLayerId, activeFrameId, selection, w, h, exportingFrames} = this.state;
+        const {image, layers, frames, activeLayerId, activeFrameId, selection, exportingFrames} = this.state;
         const layer = this.activeLayer();
         const editable = !!(image && layer && !layer.locked && layer.visible);
         const selected = !!(image && selection);
@@ -414,10 +423,7 @@ class PixelArtEditor extends React.Component {
         };
         for (const [operation, label] of [['flip-h', 'px.flipH'], ['flip-v', 'px.flipV'],
             ['rotate-ccw', 'px.rotateCCW'], ['rotate-cw', 'px.rotateCW']]) {
-            const turn = operation.startsWith('rotate');
-            const enabled = editable && !(turn && !selection && this.materializeFrames().some(frame =>
-                frame.layers.some(item => item.locked))) && !(turn && selection && (selection.height > w || selection.width > h));
-            actions[operation] = action(label, 'edit', enabled, () => this.transform(operation), t(locale, 'px.transforms'));
+            actions[operation] = action(label, 'edit', this.canTransform(operation), () => this.transform(operation), t(locale, 'px.transforms'));
         }
         return actions;
     }
@@ -1822,10 +1828,7 @@ class PixelArtEditor extends React.Component {
                         <button key={operation} type="button" style={btn(false)}
                             data-testid={`bw-pixel-${operation}`} aria-label={t(locale, label)}
                             title={t(locale, label)}
-                            disabled={!activeLayer || activeLayer.locked || !activeLayer.visible ||
-                                (operation.startsWith('rotate') && !selection && layers.some(layer => layer.locked)) ||
-                                (operation.startsWith('rotate') && selection &&
-                                (selection.height > w || selection.width > h))}
+                            disabled={!this.canTransform(operation)}
                             onClick={() => this.transform(operation)}>{symbol}</button>)}
                     <span style={{fontSize: 12}}>{t(locale, 'px.zoom')} {Math.round(zoom * 100)}%</span>
                     <button type="button" style={btn(false)} data-testid="bw-pixel-show-img"

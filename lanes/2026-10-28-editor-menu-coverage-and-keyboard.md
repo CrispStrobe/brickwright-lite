@@ -46,3 +46,7 @@ check. Preserve any original failures; fix source causes without relaxed gates.
 Then matched-head merge and verify parents/tree. Further coverage (FPGA, widget,
 vector and sound editor commands) needs an actual-handler inventory and separate
 owner-boundary agreement; this checkpoint does not claim those menus complete.
+
+Pixel transform toolbar buttons and menu entries share one availability predicate,
+including locked layers in other animation frames and selection bounds. Existing
+transform algorithms and undo recording remain unchanged.
