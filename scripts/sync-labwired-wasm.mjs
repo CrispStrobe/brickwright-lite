@@ -51,7 +51,7 @@ const PIN = '3b655aef4085082152129c84849d4e2ad5004a7f';
 // from. Built and PUBLISHED by CI — two independent runners agreed byte for
 // byte before the asset was uploaded, so the sha256 below is a claim anyone can
 // re-derive rather than one machine's fingerprint.
-const TAG = 'labwired-wasm-3b655aef';
+const TAG = 'labwired-wasm-3b655aef-locked';
 const REPO = 'CrispStrobe/bw-board';
 // The WEB glue, not the nodejs one. The published release carries both: the
 // nodejs glue require()s and reads the module off disk, which cannot survive a

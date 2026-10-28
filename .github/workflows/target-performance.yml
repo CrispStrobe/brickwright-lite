@@ -33,7 +33,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p .bench/labwired-wasm
-          gh release download labwired-wasm-3b655aef --repo CrispStrobe/bw-board \
+          gh release download labwired-wasm-3b655aef-locked --repo CrispStrobe/bw-board \
             --pattern 'nodejs-*' --dir .bench/labwired-wasm
           echo '747cb78d8118854e87ff728c10c24710d7302c55871d920c2784537afd1f965d  .bench/labwired-wasm/nodejs-labwired_wasm.js' | sha256sum --check --strict
           echo '1ad2947b99df8a13fce29c9240a79c61fb66e4d57ede26ca50880f141f3e3978  .bench/labwired-wasm/nodejs-labwired_wasm_bg.wasm' | sha256sum --check --strict
