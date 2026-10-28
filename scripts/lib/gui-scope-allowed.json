@@ -110,6 +110,8 @@
       "test/bw-sim-renode-lockstep.test.mjs",
       "test/bw-sim-robot-lab-api.test.mjs",
       "test/bw-sim-robot-lab-program-clock.test.mjs",
+      "test/bw-sim-native-rotor-state-effort.test.mjs",
+      "test/bw-sim-rotor-inertia.test.mjs",
       "test/bw-sim-rope.test.mjs",
       "test/bw-sim-s1-driving-base.test.mjs",
       "test/bw-sim-sarrus-lift.test.mjs",
