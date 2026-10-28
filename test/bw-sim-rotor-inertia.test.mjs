@@ -39,26 +39,36 @@ const run = ({housing, output, withRotor = true, steps = 100}) => {
     if (withRotor) attachMotor(core, 'j', device);
     core.setMotor('j', {mode: 'torque', torqueNm: T, dampingNmsPerRad: C});
     for (let i = 0; i < steps; i++) core.step(DT);
+    const rate = id => core.bodyAngularVelocity(id)[1];
+    const rates = {housing: rate('housing'), out: rate('out')};
+    const driven = core.jointState('j').angle;
+    // Then brake to rest: the housing's turn is compared rest to rest.
+    core.setMotor('j', {mode: 'brake'});
+    for (let i = 0; i < 200; i++) core.step(DT);
     const q = core.bodyPose('housing').rotation;
     const psi = 2 * Math.atan2(q[1], q[3]);
     const alpha = core.jointState('j').angle;
+    const rest = Math.abs(core.jointState('j').velocity);
     core.destroy();
-    return {psi, alpha, Jr: device.motor.rotorInertiaKgM2};
+    return {psi, alpha, driven, rates, rest, Jr: device.motor.rotorInertiaKgM2};
 };
 
 test('a free housing turns -I2/(I1+I2) per hinge turn, the rotor adding nothing (#1494)', t => {
     const housing = {massKg: 0.5, radius: 0.0947};
     const output = {massKg: 0.05, radius: 0.0482};
     const [I1, I2] = [moment(housing), moment(output)];
-    const {psi, alpha, Jr} = run({housing, output});
+    const {psi, alpha, rates, rest, Jr} = run({housing, output});
     const physical = I2 / (I1 + I2);
     const bothBodies = (I2 + Jr) / (I1 + I2 + 2 * Jr);
     const ratio = -psi / alpha;
+    const rateRatio = -rates.housing / (rates.out - rates.housing);
     t.diagnostic(`I1 ${I1.toExponential(3)} I2 ${I2.toExponential(3)} Jr ${Jr.toExponential(3)}; hinge ${alpha.toFixed(4)} rad, ` +
-        `housing ${psi.toFixed(5)} rad; ratio ${ratio.toFixed(5)}, physical ${physical.toFixed(5)}, Jr-on-both ${bothBodies.toFixed(5)}`);
+        `housing ${psi.toFixed(5)} rad; ratio ${ratio.toFixed(5)}, while driven ${rateRatio.toFixed(5)}, physical ${physical.toFixed(5)}, Jr-on-both ${bothBodies.toFixed(5)}`);
     assert.ok(alpha > 0.2, `the motor turned the hinge (${alpha})`);
     assert.ok(bothBodies > 3 * physical, 'the case separates the two treatments');
-    assert.ok(Math.abs(ratio - physical) < 0.05 * physical, `ratio ${ratio} vs physical ${physical} (Jr on both: ${bothBodies})`);
+    assert.ok(rest < 1e-3, `braked to rest (${rest} rad/s)`);
+    assert.ok(Math.abs(rateRatio - physical) < 0.01 * physical, `rate ratio ${rateRatio} vs physical ${physical}`);
+    assert.ok(Math.abs(ratio - physical) < 0.02 * physical, `ratio ${ratio} vs physical ${physical} (Jr on both: ${bothBodies})`);
 });
 
 test('the rotor still slows the relative turn: Jr is in the relative mode (#1494)', t => {
@@ -71,7 +81,7 @@ test('the rotor still slows the relative turn: Jr is in the relative mode (#1494
     const mu = I1 * I2 / (I1 + I2);
     const turn = I => { const tau = I / C, tt = 40 * DT; return (T / C) * (tt - tau * (1 - Math.exp(-tt / tau))); };
     const predicted = turn(mu + loaded.Jr) / turn(mu);
-    const measured = loaded.alpha / bare.alpha;
+    const measured = loaded.driven / bare.driven;
     t.diagnostic(`hinge turn with rotor / without ${measured.toFixed(4)}, predicted from mu + Jr ${predicted.toFixed(4)}`);
     assert.ok(Math.abs(measured - predicted) < 0.1 * predicted, `measured ${measured} vs ${predicted}`);
 });
