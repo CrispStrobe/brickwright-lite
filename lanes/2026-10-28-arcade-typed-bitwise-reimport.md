@@ -65,11 +65,11 @@ Writes, mixed uses, ambiguous formals and generated/global/local name captures
 deny this fallback. Explicit procedure constraints retain precedence. This does
 not populate the live value graph or grant initialized Sprite/Number authority.
 
-The focused regression has 14 passing source tests, without skips. It covers
+The focused regression has 17 passing source tests, without skips. It covers
 both public export routes, three reimports, Code rebuild, SB3 project reopen,
 live opaque refusal, malformed graphs and binding collisions. Removing only the
 final signature override produces two expected positive assertion failures;
-restoring the exact source restores all 14 passes. Original failed fixture
+restoring the exact source restored all 14 passes in that checkpoint. Original failed fixture
 expectations were corrected to preserve existing scalar inference and visible
 malformed-operand refusals, without relaxing product acceptance.
 
@@ -99,3 +99,30 @@ identities. A missing setup input is an unavailable qualification, not a pass.
 Fix genuine failures on the owning branch, preserve their originals, and run
 final composed-head qualification. Do not rerun an unchanged failed original or
 claim native parity from the focused source-only results above.
+
+### Declaration-conflict follow-up
+
+Explicit ordinary Number, String and Boolean constraints continue to control the
+rendered formal. If that formal is exclusively a dormant Sprite-flags receiver,
+the exporter now lists the incompatible declaration instead of silently returning
+clean TypeScript that accesses `.flags` on a primitive. It preserves the explicit
+signature and never changes the runtime body or coerces the operand. This adds a
+refusal for an invalid declaration; it does not authorize additional value types.
+
+The expanded 17-test source cohort also verifies that a new actual caller or
+formal writer added to a previously exported project cannot reuse the old dormant
+proof. Removing only the declaration-conflict diagnostic yields one expected
+failure; restoring the exact source restores all 17 passes. Original PXT/native
+acceptance and final integration qualification remain pending as above.
+
+Read-only follow-up found separate dormant return/local declaration losses:
+`function returned(): Sprite { return null }` can export an `any` result, and
+`let actor: Sprite = null` inside an unused helper can export an `any` local.
+A flags use then refuses on reimport. These are not fixed by the parameter lane.
+Before changing them, obtain release of the overlapping integration scope and
+merge a separate claim. A proper repair needs current whole-dormant call/local
+use and writer proofs, compatible declaration rendering and null initialization;
+never infer live Sprite initialization from the annotation or null. Cover both
+public routes, Code/archive roundtrips, edits/callers, primitive/reference
+conflicts and unchanged original PXT/native comparisons. Keep the separate
+existing declared-reference failure visible until its actual input passes.

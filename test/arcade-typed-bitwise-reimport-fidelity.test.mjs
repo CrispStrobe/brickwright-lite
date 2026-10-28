@@ -265,3 +265,44 @@ test('a dormant declaration never supplies a live opaque flags operand proof',()
         assert.match(after[route].ts,spriteSignature);
     }
 });
+
+
+test('explicit primitive constraints retain precedence and report an incompatible dormant Sprite declaration',()=>{
+    for(const type of ['Number','String','Boolean']){
+        const project=create(source).project,{proto}=helper(project);
+        prepend(project,{opcode:'arcade_declareParameterConstraint',inputs:{},fields:{
+            PROCEDURE:[proto.mutation.proccode,null],PARAMETER:['actor',null],TYPE:[type,null]
+        }});
+        for(const out of both(project)){
+            assert.doesNotMatch(out.ts,spriteSignature);
+            assert.match(out.ts,new RegExp('function\\s+\\w*unusedSprite\\s*\\([^)]*\\bactor:\\s*'+type.toLowerCase()+'\\b'));
+            assert.ok(out.unsupported.some(reason=>reason===
+                `Procedure parameter constraint: dormant flags receiver actor requires a Sprite declaration, incompatible with ${type.toLowerCase()}`));
+        }
+    }
+});
+
+test('adding a real caller to an already exported project revokes its dormant signature proof',()=>{
+    const project=create(source).project;
+    cleanExport(project);
+    const called=create(source+';let actor=sprites.create(image.create(1,1),1);let result=unusedSprite(actor)').project;
+    opaqueArgument(called,'unusedSprite');
+    // Keep the same public project object: exporting it once cannot authorize
+    // the replacement physical roots or an actual later caller.
+    project.targets=called.targets;
+    for(const out of both(project)){
+        assert.ok(out.unsupported.some(reason=>/Native bitwise operation/.test(reason)));
+    }
+});
+
+test('editing a previously exported formal writer invalidates the old Sprite signature',()=>{
+    const project=create(source).project;
+    cleanExport(project);
+    prepend(project,{opcode:'arcade_setLocal',fields:{},
+        inputs:{NAME:[1,[10,'actor']],VALUE:[1,[4,'0']]}});
+    for(const out of both(project)){
+        assert.doesNotMatch(out.ts,spriteSignature);
+        assert.match(out.ts,/function\s+\w*unusedSprite\s*\([^)]*\bactor:\s*number\b/);
+        assert.match(out.ts,/\bactor\s*=\s*0/);
+    }
+});

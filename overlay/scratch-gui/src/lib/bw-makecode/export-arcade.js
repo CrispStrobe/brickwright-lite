@@ -4616,7 +4616,15 @@ class ArcadeEmitter {
                     const dormantTypes=this.inferUnreachableSpriteParameterTypes(t,b,proto,names,
                         `function ${fn} (${params.join(', ')})${returnType} {\n${lines.join('\n')}\n}`);
                     const injected=params.length-names.length;
-                    for(const [i,type]of dormantTypes)if(!declaredTypes[i]&&(!types[i]||types[i]==='any'))params[injected+i]=`${names[i]}: ${type}`;
+                    for(const [i,type]of dormantTypes){
+                        // Explicit primitive constraints remain authoritative.
+                        // A dormant body still has to compile: retaining a
+                        // Number/String/Boolean formal beside `.flags` is a
+                        // declaration conflict, not permission to coerce it.
+                        if(['number','string','boolean'].includes(declaredTypes[i])){
+                            this.note(`Procedure parameter constraint: dormant flags receiver ${names[i]} requires a Sprite declaration, incompatible with ${declaredTypes[i]}`);
+                        }else if(!declaredTypes[i]&&(!types[i]||types[i]==='any'))params[injected+i]=`${names[i]}: ${type}`;
+                    }
                     functions.push(`function ${fn} (${params.join(', ')})${returnType} {\n${lines.join('\n')}\n}`);
                 } else if (/^(procedures_prototype|argument_|.*_menu$)/.test(b.opcode)) {
                     continue;
