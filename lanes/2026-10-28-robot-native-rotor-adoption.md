@@ -51,6 +51,9 @@ rotor impulses, scalar speed and energy. Rollback restores JavaScript metadata
 without reconfiguring the already-restored native rotor. The original issue1494
 fixture is retained verbatim; new controls cover atomic configuration, bare body
 properties, optional effort copies, stale samples and exact native checkpoints.
-No package pin has moved. These controls have not executed against a new engine;
-the old pinned package cannot qualify the new API. Owning-fork native/packed
-qualification and the exact reviewed consumer pin remain prerequisites.
+The consumer now pins the qualified `1.1.0-bw.8` archive from the owning fork's
+`bw.8-qualified-20261028` release, including its exact SHA-512 integrity. The
+published archive is the already-qualified scalar/SIMD package, not a rebuild.
+These Lite controls have not executed against it. Fresh affected native/model,
+rendered worker and saved-project qualification remain prerequisites; upstream
+package qualification does not qualify this combined consumer source.
