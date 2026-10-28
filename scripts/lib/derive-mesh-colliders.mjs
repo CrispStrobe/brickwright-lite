@@ -63,8 +63,8 @@ export function deriveBoxes(part, entry, read) {
         if (!inside.length) throw new Error(`${part}: no mesh inside ${what}`);
         const lo = [0, 1, 2].map(i => Math.min(...inside.map(v => v[i])));
         const hi = [0, 1, 2].map(i => Math.max(...inside.map(v => v[i])));
-        // The first range spans the box along its axis (a face need not have a vertex on the boundary);
-        // any further range only selects vertices.
+        // Every range clips faces. The first range also fixes the box's axial span,
+        // including its boundaries even when no source vertex lies on them.
         const [axis, bounds] = planes[0];
         [lo[axis], hi[axis]] = bounds;
         const intervals = lo.map((v, i) => conservativeInterval(v, hi[i]));
