@@ -1,10 +1,10 @@
 # CLI instrument regression
 
-## Current handoff — 2026-10-27
+## Current handoff — 2026-10-27, updated 2026-10-28
 
 **The earlier five-item campaign is complete; the subsequent six-item campaign
-is not.** Its supplier repairs are landed, but the consumer return and new
-reference-qualified study still need acceptance. This section is the current
+is not.** Lite adoption (step 1) and the v2 reference-qualified study (step 2)
+are accepted as of 2026-10-28; tasks 3 to 6 remain open or partial. This section is the current
 handoff; dated results below retain their original sources and limits. The
 [ordered contract](../lanes/2026-10-26-reference-qualified-instrument-campaign.md)
 owns this sequence. Read `LANES.md` and the affected lane records before edits.
@@ -17,6 +17,8 @@ owns this sequence. Read `LANES.md` and the affected lane records before edits.
 | New teaching-study acquisition | [Run40335666363](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40335666363), retained and independently read once | Failed/incomplete: 23 conforming designs, not a completed 31-design qualification |
 | Board junction DC reachability | [Board PR710](https://github.com/CrispStrobe/bw-board/pull/710), merged `dfa4be8eff4cef22462ac508a67da5f706f7d72d` | Conservative DC-path admission repaired; no new transistor law or solver calibration |
 | Matching CUI package return | [CUI PR124](https://github.com/CrispStrobe/bw-circuit-ui/pull/124), merged `66e3724020e795c3442f8da9a7af149dd5f74bd9`; actual Circuit/CLI checks, 17 SPICE checks and 83 browser scenarios | Supplier acceptance; not Lite adoption or v2 study execution |
+| Lite adoption of the repaired pair | [Lite PR1478](https://github.com/CrispStrobe/brickwright-lite/pull/1478), merged `e643932e`; pins Board `c7bcbe4b` and CUI `da28bb8c` | Step 1 done; packaged GUI acceptance of the LM741 domain is still owed (task 5) |
+| v2 reference-qualified study | Harness [PR1501](https://github.com/CrispStrobe/brickwright-lite/pull/1501), merged `8afe1333` at reviewed head `bfa530fc`; sole event [Run40681635060](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40681635060) attempt 1, read independently once | **Accepted** as numerical conformance against admitted ngspice-42 references; no physical calibration claim |
 | Scope proof source | Merged publication observer and strict gates; forward native-keyboard diagnostic composed in [Lite PR1437](https://github.com/CrispStrobe/brickwright-lite/pull/1437) | Forward native-keyboard path accepted in the actual browser; source PR remains unmerged at the recorded handoff; historical cause and product repair remain unproved |
 
 Board's new checks exercise Shockley bridge and NPN-tail connectivity rather
@@ -30,6 +32,28 @@ CUI's actual installed-package tests preserve Circuit state while comparing
 signed node/branch observations and conservation against independent bounds.
 
 ### Current Lite boundary and preserved failures
+
+#### 2026-10-28
+
+Lite PR1478 (merged `e643932e`) now pins Board `c7bcbe4b` and CUI `da28bb8c`.
+Board carries PR710's junction repair and PR717's opt-in LM741 nominal 25 C
+bias/supply domain, using TI SNOSC25D typical values. CUI carries PR124, the
+PR127 LM741 CLI, the PR126 opt-in passive precision batch and one whole-capture
+budget. The paragraphs below describe the 2026-10-27 boundary and are retained
+as history; the pins and local-only preparations they name are superseded.
+
+The v2 study ran once: harness PR1501 merged `8afe1333` at reviewed head
+`bfa530fc`, and the sole `study/reference-qualified-v2` event produced run
+40681635060, attempt 1, success. Its original artifact (sha256 `59752a74…`) was
+acquired once. An independent reader and a standalone recount matched the
+frozen intent (`2b3a5be4…`) and found: 32/32 inputs; 31/31 comparable designs
+conforming with 0 disagreements; 4,260/4,260 values; 15/15 captures; 83/84
+selector locations, the 84th being the LT1763 named-refusal control that
+correctly exited 2; no errors. The verdict is numerical conformance against
+admitted ngspice-42 references, not physical calibration. The v1 result
+(23 conforming, nine unsuccessful) stays recorded as failed/incomplete.
+
+#### 2026-10-27
 
 At this handoff Lite still pins Board
 `836867513c3e7fac420ddaa32c17e1c7b6d3e513` and CUI
@@ -91,6 +115,11 @@ do not start a duplicate run or alter its released scope leaf.
 
 ### Resume in this order
 
+**2026-10-28:** steps 1 and 2 below are done (Lite PR1478; v2 run 40681635060
+accepted) and task 2 is recorded (PR1495). Resume with task 3, then the task 4
+batch comparison, task 5 packaged CLI/GUI acceptance and task 6. The original
+order is retained for its rules.
+
 1. **Close the dependency boundary, then qualify Lite adoption.** Preserve the
    agreed current-supplier x86 GUI/PR1318 landing sequence. That lane owns its
    producer, reader, workflow and current-versus-historical source roles. Its
@@ -129,10 +158,10 @@ do not start a duplicate run or alter its released scope leaf.
 
 | Task | Bounded next work | Acceptance and stop condition |
 | --- | --- | --- |
-| 2. Four historical disagreements | **Completed as classification.** All four rows are noncomparable on their disputed observables; other observables in those rows agree. 830/5564: a cutoff MOS drain on an unconnected label floats; ngspice sits 0.01 V below the source at 5 V and 3 V, ours at the source. Witnesses w09/w10 show the gap depends on source voltage, not node name; a finite drain load removes it. 4525/6597: no DC path fixes the common mode, so the DC root is not unique; with a tied common mode both engines agree to about 1e-7 V on both sides of the M2 threshold and for both capacitor placements. Ten of the twelve admitted witness cases were used; native output was identical at Board `761153ff` and `dfa4be8e`. | No model or importer defect was demonstrated, so no repair was made and no fitting toward either reference. Unknowns remain: the physical cause of ngspice's 0.01 V offset, which solve path ours took (not observable without instrumentation), the importer warnings (retained only as hashes) and whether a 26.83 C versus 27 C temperature difference applied at the historical head. The first witness harness had hash-path defects that stopped runs before any simulation; these failures and the wrong initial loaded-drain predictions are preserved, not rewritten. |
+| 2. Four historical disagreements | **Completed as classification** (recorded in PR1495). All four rows are noncomparable on their disputed observables; other observables in those rows agree. 830/5564: a cutoff MOS drain on an unconnected label floats; ngspice sits 0.01 V below the source at 5 V and 3 V, ours at the source. Witnesses w09/w10 show the gap depends on source voltage, not node name; a finite drain load removes it. 4525/6597: no DC path fixes the common mode, so the DC root is not unique; with a tied common mode both engines agree to about 1e-7 V on both sides of the M2 threshold and for both capacitor placements. Ten of the twelve admitted witness cases were used; native output was identical at Board `761153ff` and `dfa4be8e`. | No model or importer defect was demonstrated, so no repair was made and no fitting toward either reference. Unknowns remain: the physical cause of ngspice's 0.01 V offset, which solve path ours took (not observable without instrumentation), the importer warnings (retained only as hashes) and whether a 26.83 C versus 27 C temperature difference applied at the historical head. The first witness harness had hash-path defects that stopped runs before any simulation; these failures and the wrong initial loaded-drain predictions are preserved, not rewritten. |
 | 3. Scope rearm causality | Reuse the existing owner's accepted diagnostic receipt without reacquisition or replay. Separate the native-keyboard path from the original synthetic input/change restoration and stale-envelope observation. | Retain ordered original getters, handles, event/element identities and failures. A causal fix needs failing-before/passing-after evidence for its actual mechanism and affected hosted GUI acceptance. A passing different path alone does not close causality. |
-| 4. Longer captures | Start with a bounded passive-RC 5 ms/1 MHz batch. Account for whole-capture steps, solves, advances, history, output bytes and meter quadrature; distinguish capture from report cadence. | Compare all requested raw points, trigger times and meter windows to admitted references. Preserve the refused request and existing defaults/refusals. There is no universal 5,000-point cap: first establish which actual route/budget refused it. No per-chunk budget renewal or truncated-success claim. |
-| 5. LM741 bias, supply and power | First define an opt-in nominal 25 C domain from published conditions: input bias/offset currents, quiescent current, rail return paths and output-load rail accounting. Keep unsupported domains unavailable. | Independent nominal equations plus terminal KCL and rail-power/energy checks, both bias polarities, zero/nonzero loads and refusal negatives; then actual packaged CLI/GUI acceptance. Typical datasheet values are not guaranteed limits. The 2.8 mA warning budget is not an existing measured-current law. |
+| 4. Longer captures | **Partial (2026-10-28).** The refusal was traced to the precision-watch domain gate, not a sample cap. CUI's opt-in passive batch (PR126, one whole-capture budget) landed and Lite adopted it. The 5 ms/1 MHz batch comparison against closed-form/ngspice references has **not** been run. Original scope: start with a bounded passive-RC 5 ms/1 MHz batch. Account for whole-capture steps, solves, advances, history, output bytes and meter quadrature; distinguish capture from report cadence. | Compare all requested raw points, trigger times and meter windows to admitted references. Preserve the refused request and existing defaults/refusals. There is no universal 5,000-point cap: first establish which actual route/budget refused it. No per-chunk budget renewal or truncated-success claim. |
+| 5. LM741 bias, supply and power | **Partial (2026-10-28).** The opt-in domain landed (Board PR717, CUI PR127) and Lite adopted it, with Board focused tests for KCL, rail power/energy, both bias polarities, zero/nonzero load and refusals. Packaged CLI/GUI acceptance is not done. Original scope: first define an opt-in nominal 25 C domain from published conditions: input bias/offset currents, quiescent current, rail return paths and output-load rail accounting. Keep unsupported domains unavailable. | Independent nominal equations plus terminal KCL and rail-power/energy checks, both bias polarities, zero/nonzero loads and refusal negatives; then actual packaged CLI/GUI acceptance. Typical datasheet values are not guaranteed limits. The 2.8 mA warning budget is not an existing measured-current law. |
 | 6. Provenance and instrument realism | Complete the static-asset provenance transaction and assignment-prefixed census-location redaction, with failing omission/stale/changed-byte/leak controls. Then select one demonstrated bandwidth/coupling gap. | Canonical identity/mirror/notice checks, no confidential locations in generated output, independently expected time-domain behavior, unchanged ideal/raw defaults. Noise needs a separately justified model; randomness is not accuracy. |
 
 The acceptance endpoint is a truthful completed/partial/refused result for each
