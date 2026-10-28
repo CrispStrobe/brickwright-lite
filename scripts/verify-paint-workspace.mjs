@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import assert from 'node:assert/strict';
+import {readLinearSvgPath, assertRadialShape} from './lib-regular-svg.mjs';
 import {mkdtempSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import path from 'node:path';
@@ -270,6 +271,70 @@ try {
     await panAndCheck('bitmap brush', -80, -45);
     await paint.getByRole('button', {name: /Convert to Vector/}).click();
     await panAndCheck('vector', 80, 45);
+    // Exercise the real tools and read the VM's actual exported SVG. This reader
+    // imports neither Paper nor the shape producer, and applies serialized SVG transforms.
+    const exportedPaths = () => paint.evaluate(() => {
+        const target = window.__brickwrightStore.getState().scratchGui.vm.editingTarget;
+        const costume = target.getCostumes()[target.currentCostume];
+        const holder = document.createElement('div');
+        holder.style.cssText = 'position:absolute;left:0;top:0;visibility:hidden;pointer-events:none';
+        holder.innerHTML = new TextDecoder().decode(costume.asset.data);
+        document.body.appendChild(holder);
+        try {
+            return Array.from(holder.querySelectorAll('path')).filter(path => !path.closest('defs,clipPath'))
+                .map(path => {
+                    const m = path.getCTM();
+                    return {data: path.getAttribute('d'), matrix: [m.a, m.b, m.c, m.d, m.e, m.f]};
+                });
+        } finally { holder.remove(); }
+    });
+    for (const star of [false, true]) {
+        for (const count of star ? [5] : [3, 5, 6]) {
+            for (const [width, height] of [[140, 60], [60, 140]]) {
+                const previousCount = await paint.evaluate(() => window.__brickwrightStore.getState().scratchGui.vm.editingTarget.getCostumes().length);
+                await paint.getByTestId('bw-file-menu-trigger').click();
+                await paint.getByRole('menuitem', {name: 'Paint', exact: true}).click();
+                await paint.waitForFunction(previous => window.__brickwrightStore.getState().scratchGui.vm.editingTarget.getCostumes().length === previous + 1, previousCount);
+                await paint.getByTestId('bw-paint-workspace').waitFor();
+                await paint.locator(`[class*="paint-editor_mode-selector"] [role="button"][title="${star ? 'Star' : 'Polygon'}"]`).click();
+                const showProperties = paint.getByRole('button', {name: 'Show properties', exact: true});
+                if (await showProperties.isVisible()) await showProperties.click();
+                const sides = paint.getByRole('spinbutton', {name: star ? 'Points' : 'Sides', exact: true});
+                await sides.fill(String(count));
+                await sides.press('Enter');
+                const original = await paint.evaluate(() => {
+                    const target = window.__brickwrightStore.getState().scratchGui.vm.editingTarget;
+                    return target.getCostumes()[target.currentCostume].asset.assetId;
+                });
+                const canvas = await paint.locator('canvas[resize="true"]:visible').boundingBox();
+                const x = canvas.x + canvas.width * 0.3, y = canvas.y + canvas.height * 0.3;
+                await paint.mouse.move(x, y);
+                await paint.mouse.down();
+                await paint.mouse.move(x + width, y + height, {steps: 8});
+                await paint.mouse.up();
+                await paint.waitForFunction(before => {
+                    const target = window.__brickwrightStore.getState().scratchGui.vm.editingTarget;
+                    return target.getCostumes()[target.currentCostume].asset.assetId !== before;
+                }, original);
+                const paths = await exportedPaths();
+                assert.equal(paths.length, 1, 'blank costume exports exactly the drawn shape');
+                assertRadialShape(readLinearSvgPath(paths[0].data, paths[0].matrix), count, star);
+            }
+        }
+    }
+    const lastShape = await exportedPaths();
+    const geometryProject = path.join(path.dirname(savedProject), 'regular-shapes.sb3');
+    await paint.getByTestId('bw-file-menu-trigger').click();
+    const shapeDownload = paint.waitForEvent('download');
+    await paint.getByText('Save to your computer', {exact: true}).click();
+    await (await shapeDownload).saveAs(geometryProject);
+    await paint.getByTestId('bw-file-menu-trigger').click();
+    await paint.getByText('Load from your computer', {exact: true}).click();
+    await paint.locator('body > input[type="file"][accept*=".sb3"]').setInputFiles(geometryProject);
+    await paint.locator('[role="tab"]', {hasText: /Costume|Kost/}).first().click();
+    await paint.getByTestId('bw-paint-workspace').waitFor();
+    assert.deepEqual(await exportedPaths(), lastShape, 'actual SVG shape and transforms survive SB3 save/reopen');
+    console.log('PASS: actual polygon/star SVG geometry stays symmetric after wide/tall drags and save/reopen');
     await paint.close();
     console.log('PASS: vector and bitmap workspaces fit iPad widths and canvas focus returns by touch');
     console.log('PASS: bitmap brush opacity survives SB3 save/reopen');

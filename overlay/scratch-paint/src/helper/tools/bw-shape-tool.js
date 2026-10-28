@@ -13,7 +13,7 @@ import NudgeTool from '../selection-tools/nudge-tool';
  * shape guard — with the one rectangle-specific line replaced by a `buildPath` callback. The
  * shape is inscribed in the dragged rectangle rather than drawn from a centre and radius, so a
  * polygon stays regular inside the drag box; shift still
- * means "regular".
+ * constrains that box to a square.
  */
 class BwShapeTool extends paper.Tool {
     static get TOLERANCE () {
