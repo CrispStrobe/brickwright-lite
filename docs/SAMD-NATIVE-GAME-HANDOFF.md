@@ -3,7 +3,7 @@
 **Consumer adoption is unfinished.** Continue existing
 [PR1533](https://github.com/CrispStrobe/brickwright-lite/pull/1533), branch
 `lane/samd-release-adoption-20261028`, head
-`bb8a63216637ae827ded1e7836a199e65b1ef6b2`. Read
+`ac0c45e0744c7a16cc97f406541826d70121fb23`. Read
 `lanes/2026-10-26-samd-native-game-engine-adoption.md` and `lanes/PROTOCOL.md`.
 Do not start a duplicate lane. Refresh remote heads/checks before acting.
 
@@ -65,7 +65,7 @@ failed `renode_supervisor::tests::linux_owner_crash_terminates_simulator` at
 `apps/tauri/src-tauri/src/renode_supervisor.rs:1838`: the test observed the
 synthetic direct child surviving abrupt owner death after its existing
 three-second observation bound. The suite reports269 passed,1 failed,11 ignored.
-Its original log is retained once. The fixture and test are byte-identical to
+Its original log is retained once. On that failed head, the fixture and test were byte-identical to
 original commit `3d77472b518ae4e9a57fd8cfb154e31ecba1b432`; SAMD changes no Rust.
 The evidence does not establish a flake or distinguish termination failure from
 an observation problem: the test retains neither terminal process state nor
@@ -84,10 +84,24 @@ The final-head historical-study source controls passed49 tests with zero skips
 and the actual study job was correctly skipped. GUI infrastructure controls and
 vendor checks also passed. The main Build remains queued at this checkpoint.
 
+The test-only successor is now pushed as
+`ac0c45e0744c7a16cc97f406541826d70121fb23`. It holds the admitted child identity
+for termination and cleanup, keeps complete PID publication and the original
+three-second assertion, and retains bounded failure snapshots. A negative
+fixture reads the actual registered kill signal before clearing it, requires
+survival through the same window, then cleans its exact child. Python runs in
+isolated mode with explicit checks; this is a Linux test prerequisite only.
+Production native bytes before the test module remain identical. Four bounded
+extracted-method controls and three adversarial cuts pass; their explicit
+synthetic supervisor boundary is not full Rust or actual-guest qualification.
+Require all enabled source checks, including the full native suite, before any
+expensive dispatch. The original failure remains unattributed and unwaived.
+
 ## Remaining work, in order
 
-1. Resolve the native source gate above, then refresh exact-head checks and existing
-   [Build40765450222](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40765450222).
+1. Qualify the test-only successor against the native source gate above, then
+   refresh all enabled exact-head source checks and existing
+   [Build40777652451](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40777652451).
    `ci:full` was restored before this final source checkpoint after an earlier
    removal; keep it present. Implementation bytes match the88-test candidate. Wait for every enabled check; do not duplicate
    live jobs or rerun a known unchanged failure. After successful overall Build,
