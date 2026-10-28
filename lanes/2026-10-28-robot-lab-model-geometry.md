@@ -36,7 +36,7 @@ with the reason recorded.
   checkpoint. After the repair the construction checks report nothing, and the
   real-VM hubless qualification passes: 803.9 mm² per crank turn against
   π r² = 804.25 mm², strokes 32.001 mm, cranks 90.0003° apart. It also passes
-  the frozen-output and 0.01 mm world-shift controls, and removing
+  the frozen-output and 1 cm (0.01 m) world-shift controls, and removing
   `conrod_B`/`wristpin_B` leaves piston B 0.026 mm of stroke while the input
   still turns 720°. The in-phase control gets the same repair and stays an
   experimental comparison.
@@ -50,3 +50,21 @@ Next batches: equal-share, stroke-shift, triad-table, paired-door-sync, apex,
 aster-governor, vesper-quickreturn, and bloom (geometry; final-squeeze is repaired in #1508);
 spiral-scribe (rack pitch); solstice-pumpjack and tempest-pendulum (pose);
 inertia-loop last, after #1494.
+
+## Current-main qualification continuation
+
+The retained original native qualification used actual checkout
+`d71eabd48268c422118ce7efd2d9a268ec7e02d4`, whose complete tree equals the
+then-published `e15bfa35dd7fbcb04d186e1c91c4c02c21aa0c21` tree. Phasor source,
+ordinary/strict real-VM, disconnection and experimental hubless cases and the
+solid-construction controls passed without target skips or TODOs. Retained TAP
+and reported metrics were audited independently; raw trajectories were not
+retained for a fresh position-by-position recomputation, and no Phasor-specific
+rendered save/reopen or export claim is made.
+
+The source-preserving continuation composes main
+`cb28becdb169a1a53174e20f79a486408f418321`, including its current GUI/dependency
+changes. Earlier results qualify their tested tree; this combined candidate
+requires fresh exact-head qualification. Model/program bytes, the judge and its
+numerical guards remain unchanged. The historical claim-and-change sequence
+above is preserved, not offered as the protocol for new implementation.
