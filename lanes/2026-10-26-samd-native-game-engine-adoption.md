@@ -59,3 +59,10 @@ matching performance-workflow identity on branch `lane/samd-release-adoption-202
 Browser and installed qualification remain mandatory; default-branch pin
 publication waits for coordination with the native-package owner. Motion
 qualification remains explicitly deferred; no real-time gameplay claim.
+
+Final source checkpoint:18 focused admission/loader tests and the synchronizer's
+three-asset check passed. Native-package boundary coordination clears this exact
+three-path proposal after source and actual guest acceptance; broader package,
+native or helper edits require fresh coordination. The `ci:full` label selects
+the required affected thorough checks. Qualification and normal landing remain
+pending; the owner retains the lane through both.

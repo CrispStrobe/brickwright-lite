@@ -45,12 +45,10 @@ import {fetchRetry} from './lib-pin.mjs';
  *  Full 40 hex: an abbreviation is not a name anything can fetch by. */
 const PIN = '3b655aef4085082152129c84849d4e2ad5004a7f';
 /** The release that carries the built artifact. */
-// The release lives on bw-board, not on the labwired fork: the fork stays a
-// clean mirror of upstream (it is synced, and a workflow of ours would diverge
-// it), while bw-board already owns the build script and is what lite vendors
-// from. Built and PUBLISHED by CI — two independent runners agreed byte for
-// byte before the asset was uploaded, so the sha256 below is a claim anyone can
-// re-derive rather than one machine's fingerprint.
+// BW owns the producer recipe and release; the owned LabWired fork supplies
+// the qualified source. Two independent hosted builds agreed on the asset
+// bytes. Their retained outputs were independently audited before publication;
+// the locked release and hashes below preserve that exact source/byte identity.
 const TAG = 'labwired-wasm-3b655aef-locked';
 const REPO = 'CrispStrobe/bw-board';
 // The WEB glue, not the nodejs one. The published release carries both: the
