@@ -1,0 +1,25 @@
+# Editor workspace UX handoff
+
+Updated 2026-10-28. Source candidate: [Lite PR #1536](https://github.com/CrispStrobe/brickwright-lite/pull/1536), checkpoint `276245968d1371178d082eb8eb0169f9f95ddfec`. **Not merged or browser-qualified.** Refresh its actual head and every enabled check before acting.
+
+## Implemented in the candidate
+
+- FPGA: Design, Build and Simulate workspaces; selectors for examples, circuit realization, build target and simulation view; a few corresponding primary actions. Explanation prose moves into labelled information popovers. Diagnostics, circuit-replacement warnings and netlist-only limitations remain visible. Hidden workspaces retain their mounted editor state.
+- Paint/vector: one horizontally scrolling command strip, with Fill/Outline/outline width pinned first; numeric hover/accessibility labels; one vertically scrolling tool column even in narrow panes. Regular polygons and stars use uniform scaling instead of elliptical stretching.
+- Pixel: compact foreground/background/swap controls and a 4-by-4 colour popover with 44-pixel swatches, keyboard navigation and palette/brush access. The palette no longer occupies a permanent row.
+- Code: grouped Robot-style overflow popup, outside/Escape dismissal, and keyboard-accessible file opening. The native file input remains mounted so the main File menu still works.
+- Shared File/Edit menus: active Pixel/Tilemap, vector/costume, sound, Robot and Circuit commands use the real editor callbacks. Current target/selection/visibility/availability are checked again on execution. Toggles expose checked state; global Undo/Redo keep their existing owners.
+- Circuit consumer: optional supplier-command bridge plus host panel selectors. The currently pinned supplier remains supported. The redesigned supplier is separate [CUI PR #131](https://github.com/CrispStrobe/bw-circuit-ui/pull/131), checkpoint `fcb6d3f3ce416f01f5a8234b6ce7d6fe0264e12b`; it has not been adopted in Lite.
+
+Focused validation: 92 selected source/behavior controls passed, no skips; 29 changed JSX files and 22 affected browser/helper scripts parsed; all 16 changed tracked overlay/package pairs matched. These are bounded source controls, not rendered application acceptance. The first local FPGA control attempt lacked Babel; the successful bounded repeat used an existing dependency cache without an installation. Existing unrelated dependency/setup failures remain separate.
+
+## Continue in this order
+
+1. Refresh exact-head PR #1536 checks. Keep `ci:full`; use its existing hosted workflows. Diagnose genuine failures without changing thresholds, frozen reference pins or another owner's source. No duplicate dispatch or successful-artifact acquisition.
+2. Complete affected real-browser acceptance on the hosted build or a capable approved worker. Run the existing editor-chrome, Pixel crop/colour-slot/source-roundtrip, Tilemap painter, Code artwork and Paint workspace journeys, plus FPGA surface/builder/pinch journeys with FPGA enabled. Their original save/reopen, image-byte, editing and touch assertions remain required. New controls must be exercised through their actual buttons/selectors.
+3. Explicitly inspect narrow and wide panes: Paint has one command band, Fill/Outline remain first while commands scroll, all tools remain reachable in one column; Pixel colours do not reserve a row; Code popup/file input survives close/reopen; FPGA workspace switching retains the design, errors remain visible and each selector exposes the correct real actions. Check English/German, keyboard focus, Escape/outside dismissal and touch targets. Current source controls do not establish this visual result.
+4. Add/obtain rendered polygon acceptance: create a blank vector costume, draw at least triangle/pentagon/hexagon with wide and tall drags, export the actual SVG, and independently verify equal edges/angles; verify star radii and normal save/reopen. The mathematical helper tests already cover n=3 through 24 but do not replace an actual Paper/editor exercise.
+5. Qualify CUI #131 independently with every enabled exact-head check, including interaction acceptance. Only then use a separate explicit Lite dependency-adoption change with the current Circuit adoption owner. Test realistic-canvas menus, alternate-view cleanup, selection/history/clipboard guards, and the optional host bridge. Do not silently change the supplier pin or claim its new menu already ships in this candidate.
+6. Merge each source PR only after every enabled final-head check succeeds, with declared skips only and a matched head. Verify the actual merge parents/tree against the reviewed prediction. Update this document and the lane status after landing; preserve any unresolved browser or dependency boundary.
+
+Do not run heavy builds or browser suites on a resource-constrained shared host. Keep machine paths, raw receipts and session coordination in ignored private notes. No simulator/physics/firmware/compiler/history-service or release qualification is claimed by this UX work.

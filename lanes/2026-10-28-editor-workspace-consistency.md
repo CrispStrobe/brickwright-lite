@@ -1,6 +1,6 @@
 # Consistent editor workspaces and remaining menu coverage
 
-Owner: editor UX maintainer. Status: CLAIMED.
+Owner: editor UX maintainer. Status: SOURCE IMPLEMENTED; qualification pending in PR #1536.
 
 Implement the requested editor UI pass: compact Pixel foreground/background
 colour controls and palette popover; a single horizontally scrollable Paint
@@ -26,3 +26,7 @@ no hidden Lite copy or silent pin move. Coordinate exact shared owner hunks.
 Qualification: source routing, layout, symmetric geometry and currentness
 controls; hosted affected browser/build checks before matched-head product merge.
 Use the existing bounded shared-VPS policy; no large local build or SDK install.
+
+Checkpoint `276245968d1` implements this scope. Continue with
+[the editor UX handoff](../docs/EDITOR-WORKSPACE-UX-HANDOFF.md); hosted affected
+browser/build checks and separately qualified Circuit adoption remain pending.
