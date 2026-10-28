@@ -197,12 +197,22 @@ export const portsForCopies = (model, catalog, parts) => {
     return parts.map(p => assigned.get(p.id));
 };
 
+// History list names for editor commands.
+const STEP_WORDS = {place: 'Add', delete: 'Remove', deleteMany: 'Remove', move: 'Move', moveMany: 'Move',
+    clone: 'Duplicate', cloneMany: 'Duplicate', recolor: 'Colour', paint: 'Colour', setPort: 'Set port',
+    group: 'Group', ungroup: 'Ungroup', renameGroup: 'Rename group', align: 'Align', distribute: 'Distribute',
+    mirror: 'Mirror', toGrid: 'Snap to grid', addBelt: 'Add band', removeBelt: 'Remove band', addRope: 'Add rope',
+    removeRope: 'Remove rope', addHose: 'Add hose', removeHose: 'Remove hose', setPen: 'Pen'};
+
 export const createEditor = ({model, catalog}) => {
     const catalogMap = catalog instanceof Map ? catalog : new Map(Object.entries(catalog || {}));
     let current = importModel(model);
     // History holds the frozen models themselves: nothing in them can change, so no copies.
     const undoStack = [];
     const redoStack = [];
+    // The History list's name for each step, parallel to the stacks.
+    const undoLabels = [];
+    const redoLabels = [];
     const subs = new Set();
 
     // > 0 while a batch runs its steps: they neither notify nor record history.
@@ -213,12 +223,19 @@ export const createEditor = ({model, catalog}) => {
         for (const fn of subs) fn(current);
     };
 
-    const pushHistory = prev => {
+    const pushHistory = (prev, label = 'Edit') => {
         if (batching) return;
         undoStack.push(prev);
+        undoLabels.push(label);
         redoStack.length = 0;
+        redoLabels.length = 0;
     };
 
+    const stepLabel = cmd => {
+        const word = STEP_WORDS[cmd && cmd.type] || 'Edit';
+        const meta = cmd && cmd.type === 'place' && catalogMap.get(cmd.part);
+        return meta && meta.name ? `${word} ${meta.name}` : word;
+    };
     const indexOf = id => current.parts.findIndex(p => p.id === id);
     const hasPart = id => current.parts.some(p => p.id === id);
     /**
@@ -259,6 +276,10 @@ export const createEditor = ({model, catalog}) => {
         get model() { return current; },
         get canUndo() { return undoStack.length > 0; },
         get canRedo() { return redoStack.length > 0; },
+        get undoDepth() { return undoStack.length; },
+        get redoDepth() { return redoStack.length; },
+        /** Step names for the History list: past oldest first, future next redo first. */
+        get historyLabels() { return {past: undoLabels.slice(), future: redoLabels.slice().reverse()}; },
         subscribe(fn) {
             subs.add(fn);
             return () => subs.delete(fn);
@@ -517,7 +538,7 @@ export const createEditor = ({model, catalog}) => {
             const errs = validatePlacedModel(next, catalog);
             if (errs.length) throw new Error(errs[0]);
 
-            pushHistory(prev);
+            pushHistory(prev, stepLabel(cmd));
             current = next;
             notify();
             return current;
@@ -525,6 +546,7 @@ export const createEditor = ({model, catalog}) => {
         undo() {
             if (!undoStack.length) return current;
             redoStack.push(current);
+            redoLabels.push(undoLabels.pop());
             current = undoStack.pop();
             notify();
             return current;
@@ -532,6 +554,7 @@ export const createEditor = ({model, catalog}) => {
         redo() {
             if (!redoStack.length) return current;
             undoStack.push(current);
+            undoLabels.push(redoLabels.pop());
             current = redoStack.pop();
             notify();
             return current;
@@ -561,7 +584,8 @@ export const createEditor = ({model, catalog}) => {
         } finally {
             batching--;
         }
-        pushHistory(prev);
+        pushHistory(prev, cmd.type === 'moveMany' ? stepLabel(cmd) :
+            steps.every(step => step.type === steps[0].type) ? stepLabel(steps[0]) : 'Edit');
         notify();
         return current;
     };

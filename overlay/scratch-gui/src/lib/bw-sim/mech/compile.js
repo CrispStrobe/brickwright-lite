@@ -29,6 +29,14 @@ import {freePinWelds} from './free-pins.js';
 import {rescueLoose, weldByContact, nearBallJoints} from './loose-rescue.js';
 import {breakHingeLoops} from './loops.js';
 
+/** Physical retaining links for connectivity diagnostics; transmission ratios
+ * alone do not hold a body in space. Constraint construction is unchanged. */
+export const structuralCouplingLinks = couplings => couplings.flatMap(c => {
+    if (c.kind === 'rope') return c.points.map(p => ({type: 'rope', body1: p.body, body2: c.hook.body}));
+    if (c.kind === 'universalJoint') return [{type: 'universalJoint', body1: c.body1, body2: c.body2}];
+    return [];
+});
+
 /**
  * Solver iterations for the joints of a model from elsewhere that hold a light body (below massKg) against one ratio
  * times heavier (physics/jolt-core.js lightLinks). Bodies keep their parts' masses.
@@ -362,9 +370,9 @@ export const compile = (model, catalog, opts = {}) => {
     // Loose parts: bodies that no joint links, directly or through other bodies, to the
     // body carrying the hub (or, without a hub, to the largest connected group). They are
     // not held by the robot: they fall off or lie where they are.
-    // A part hanging on a rope (kinds/rope.js) is held by it, not loose: the rope links its ends' bodies here.
-    const ropeLinks = detected.couplings.filter(c => c.kind === 'rope').flatMap(c => c.points.map(p => ({type: 'rope', body1: p.body, body2: c.hook.body})));
-    for (const group of looseGroups(islands.bodies, [...joints, ...ropeLinks], catalogMap, nodes)) {
+    // Ropes and universal joints physically retain their endpoint bodies too.
+    const retainingLinks = structuralCouplingLinks(detected.couplings);
+    for (const group of looseGroups(islands.bodies, [...joints, ...retainingLinks], catalogMap, nodes)) {
         diagnostics.push({severity: 'warning', code: 'loose-part', message: `Not connected to the rest of the model: ${group.join(', ')}`, parts: group});
     }
 

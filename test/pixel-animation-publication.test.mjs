@@ -30,7 +30,7 @@ const methods={
     save:method('save (resourceOverride) {','resourceOverride',{layersDocument,layersToSvg,setCostumeDocument,syncAnimationResources}),
     publishAnimation:method('publishAnimation () {','',{newAnimationResourceId}),
     removeAnimationBinding:method('removeAnimationBinding () {','',{}),
-    remember:method('remember () {','',{}),
+    remember:method('remember (label = \'Change\') {','label=\'Change\'',{}),
     undo:method('undo () {','',{}),
     restore:method('restore (snapshot) {','snapshot',{composeLayers})
 };

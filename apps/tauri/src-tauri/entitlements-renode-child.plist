@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <!-- The bundled SPIKE Renode (Contents/Resources/renode/renode) runs as a child of
+       the app and inherits the app's sandbox and container. See docs/SPIKE-MACOS.md. -->
+  <key>com.apple.security.app-sandbox</key>
+  <true/>
+  <key>com.apple.security.inherit</key>
+  <true/>
+  <!-- Hardened runtime: CoreCLR and tlib generate code at run time. -->
+  <key>com.apple.security.cs.allow-jit</key>
+  <true/>
+</dict>
+</plist>

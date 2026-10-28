@@ -65,7 +65,7 @@ test('actual editor preset resize/save retains layers, frames, logical pixels an
     const layers=[first,second],frames=[{id:'a',durationMs:100,layers,activeLayerId:'first'},{id:'b',durationMs:240,layers,activeLayerId:'second'}];
     const costume={};let rendered;
     const editor={props:{costumeIndex:0,vm:{updateSvg:(index,svg,cx,cy)=>{rendered={index,svg,cx,cy};}}},undoStack:[],redoStack:[],state:{image:composeLayers(layers,160,120),w:160,h:120,scale:4,layers,frames,activeFrameId:'a',activeLayerId:'first',palette:ARCADE_PALETTE,original:{layers,frames,palette:ARCADE_PALETTE,w:160,h:120,scale:4}},
-        remember:bind('remember () {','',{}),restore:bind('restore (snapshot) {','snapshot',{composeLayers}),materializeFrames(state=this.state){return state.frames;},stopPlayback(){},costume:()=>costume,
+        remember:bind('remember (label = \'Change\') {','label=\'Change\'',{}),restore:bind('restore (snapshot) {','snapshot',{composeLayers}),materializeFrames(state=this.state){return state.frames;},stopPlayback(){},costume:()=>costume,
         setState(patch){Object.assign(this.state,typeof patch==='function'?patch(this.state):patch);}};
     resize.call(editor,160,120,3);assert.equal(editor.undoStack[0].scale,4);assert.ok(dirty.call(editor));
     bind('undo () {','',{}).call(editor);assert.equal(editor.state.scale,4);

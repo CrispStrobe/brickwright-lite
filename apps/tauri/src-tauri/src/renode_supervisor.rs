@@ -47,6 +47,25 @@ const RENODE_PLATFORM_ENV: &[(&str, &str)] = if cfg!(target_os = "macos") {
     &[]
 };
 
+/// Host-derived environment for the Renode child, computed from the verified executable
+/// path only (never from project or webview input):
+/// - `RENODE_SERVER_BIND_ADDRESS=127.0.0.1` so Renode's monitor and socket servers listen on
+///   loopback only (Runtimes without the variable ignore it and keep their default).
+/// - `RENODE_TLIB_DIRECTORY` when a `tlib` directory ships beside the executable, so the
+///   signed translation library is loaded in place instead of being extracted.
+/// - On macOS, `TMPDIR` is the app's own temporary directory, which for a sandboxed app is
+///   inside its container; the inheriting child must write there.
+fn renode_child_env(executable: &Path, temp_dir: &Path) -> Vec<(&'static str, std::ffi::OsString)> {
+    let mut env = vec![("RENODE_SERVER_BIND_ADDRESS", std::ffi::OsString::from("127.0.0.1"))];
+    if let Some(tlib) = executable.parent().map(|dir| dir.join("tlib")) {
+        if tlib.is_dir() && !tlib.is_symlink() { env.push(("RENODE_TLIB_DIRECTORY", tlib.into_os_string())); }
+    }
+    if cfg!(target_os = "macos") && temp_dir.is_absolute() {
+        env.push(("TMPDIR", temp_dir.as_os_str().to_owned()));
+    }
+    env
+}
+
 /// The wall bound the session worker enforces right now.
 fn session_bound(launch: Duration, lockstep: bool) -> Duration {
     if lockstep { launch.max(lockstep_session_time()) } else { launch }
@@ -853,6 +872,7 @@ impl RenodeSupervisor {
             .env_remove("BW_SPIKE_FLASH_JOB_DIR")
             .env_remove("BW_SPIKE_FLASH_IMAGE_SHA256");
         command.envs(RENODE_PLATFORM_ENV.iter().copied());
+        command.envs(renode_child_env(&executable, &std::env::temp_dir()));
         if let Some(job) = &checkpoint {
             command
                 .env("BW_SPIKE_FLASH_JOB_DIR", &job.directory)
@@ -1339,6 +1359,24 @@ fn drain_bounded(
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn renode_child_env_binds_loopback_and_finds_shipped_tlib() {
+        let root = std::env::temp_dir().join(format!("bw-renode-env-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        std::fs::create_dir_all(root.join("renode")).unwrap();
+        let exe = root.join("renode").join("renode");
+        std::fs::write(&exe, b"x").unwrap();
+        let temp = root.join("tmp");
+        let env = super::renode_child_env(&exe, &temp);
+        assert!(env.contains(&("RENODE_SERVER_BIND_ADDRESS", "127.0.0.1".into())));
+        assert!(!env.iter().any(|(k, _)| *k == "RENODE_TLIB_DIRECTORY"), "no tlib directory, no variable");
+        std::fs::create_dir(root.join("renode").join("tlib")).unwrap();
+        let env = super::renode_child_env(&exe, &temp);
+        assert!(env.contains(&("RENODE_TLIB_DIRECTORY", root.join("renode").join("tlib").into_os_string())));
+        assert_eq!(env.iter().any(|(k, v)| *k == "TMPDIR" && v == temp.as_os_str()), cfg!(target_os = "macos"));
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
     use super::*;
 
     struct FlashFixture(PathBuf);

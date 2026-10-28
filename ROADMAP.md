@@ -1,5 +1,30 @@
 # brickwright-lite — roadmap
 
+## Circuit/instrument resume queue — 2026-10-27
+
+Use the [current handoff](docs/CIRCUIT-INSTRUMENT-REGRESSION.md#current-handoff--2026-10-27)
+for accepted source/run identities, known failures, live-owner boundaries and
+fresh-agent recovery. The [six-item contract](lanes/2026-10-26-reference-qualified-instrument-campaign.md)
+remains incomplete. The first item includes both package return and the new
+teaching study; the remaining five stay ordered, not parallel reservations.
+
+| Order | State | Next bounded endpoint |
+| --- | --- | --- |
+| 1a. Supplier return | Board PR710/CUI PR124 landed; Lite adoption prepared, unqualified | After the agreed x86 PR1318 boundary, compose actual main, regenerate canonical package identities/reports, qualify standard installed bytes, one engine and actual GUI |
+| 1b. Teaching reference study | v1 failed/incomplete; v2 source prepared, no new event | Freeze exact new source/intent/reader after package acceptance; one separately admitted study; independent original-only full-denominator readback |
+| 2. Four disagreements | Reference comparability unresolved | Admit method/model/root before diagnosis; minimal distinguishing witnesses; fix only proven causes |
+| 3. Scope rearm | Strict publication proof merged; forward native-keyboard browser path accepted; PR1437 source merge pending | Reuse its owner's actual outcome, then establish causal failing-before/passing-after behavior without retries or weakened assertions |
+| 4. Long captures | Previous request refused; design measurement only | Whole-capture budgeted passive-RC batch, complete raw waveform and meter/oracle checks, preserved old refusals |
+| 5. LM741 currents/power | Useful model domain measured; no new bias/IQ law implemented | Explicit nominal domain, terminal/rail KCL and energy, independent expectations, packaged CLI/GUI qualification |
+| 6. Provenance and realism | Specific transaction/redaction gaps measured | Causal provenance/hygiene controls, then one justified bandwidth/coupling model with unchanged raw defaults |
+
+Do not refresh supplier pins merely because their default branches advanced,
+replay protected/completed studies, silently reinterpret historical identities,
+or report source controls as numerical/GUI acceptance. The detailed acceptance
+criteria and repository boundaries are in the handoff; take a phase-specific
+claim before new implementation. Stop and request the next priority only after
+the sixth item and result reconciliation, unless the operator changes scope.
+
 ## Current circuit measurement sequence — 2026-10-25
 
 Follow the [ordered plan](PLAN.md#current-imported-circuit-and-model-accuracy-sequence--2026-10-25)
@@ -40,7 +65,9 @@ follow-up. The older sequence below remains completed historical evidence.
 
 ### Scoped follow-ons after consumer acceptance
 
-These are unclaimed proposals, not automatic extensions of this campaign:
+These dated proposals were subsequently incorporated into the ordered six-item
+campaign above. They are retained as design context, not competing claims or
+authority to start duplicate work:
 
 - **Attribute intermittent capture-mode/rearm failures:** preserve the earlier
   mode-publication timeout and point-rearm failure. Start with the ordered

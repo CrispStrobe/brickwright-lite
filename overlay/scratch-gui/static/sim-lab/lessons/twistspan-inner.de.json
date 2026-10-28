@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "id": "twistspan-inner",
+  "language": "de",
+  "what": "Der Vergleich zu TwistSpan: Dieselben zwei 104-mm-Schnüre hängen jetzt an den grünen inneren statt an den roten äußeren Bundringen; der Befestigungsabstand halbiert sich von 64 mm auf 32 mm. Alle 107 starren Teile, ihre Lage, die 15-g-Last und das Programm bleiben gleich. Beide Bundringpaare bleiben an der Maschine.",
+  "try": [
+    "Öffne twistspan-inner.ldr neu im Roboter-Labor, setze programs/twistspan.bw in den Code-Tab, wähle ⇦ Zu Blöcken und drücke Run.",
+    "Zähle während der 18 s Haltezeit volle Schwingungen des orangen Balkens in dieselbe Richtung und stoppe die Zeit.",
+    "Vergleiche mit twistspan.ldr: Sage vorher voraus, ob der halbe Abstand die Periode verdoppelt, halbiert oder gleich lässt."
+  ],
+  "why": "Verdrehen hebt den Balken leicht an, weil Schnüre fester Länge an Höhe verlieren, wenn sich ihre Enden seitlich verschieben. Liegen die Befestigungen enger, verschiebt dieselbe Drehung die Schnurenden weniger, hebt den Balken weniger und erzeugt ein schwächeres Rückstellmoment. Die Periode eines Zweifadenpendels ist umgekehrt proportional zum Befestigungsabstand; halber Abstand bedeutet doppelte Periode.",
+  "matters": "Ingenieure hängen Bauteile an zwei Drähte und messen ihre Drehschwingung, um Trägheitsmomente zu bestimmen, vom Modellflugzeug bis zum Satellitenbauteil.",
+  "question": "Schnüre, Last und Programm sind unverändert. Warum schwingt der Balken jetzt etwa halb so schnell?",
+  "answer": "Das Rückstellmoment entsteht durch das Anheben der Last, und der Hub bei gegebener Drehung wächst mit dem Quadrat des Befestigungsabstands. Halber Abstand bedeutet ein Viertel der Steifigkeit und die doppelte Periode. In den mitgelieferten nativen Aufzeichnungen steigt die Periode von 0,770 s auf 1,522 s, ein Verhältnis von 1,976 gegenüber vorhergesagten 2.",
+  "further": [
+    "Berechne mit T = 2π·√(I·L/(m·g·a²)) das Trägheitsmoment der Last aus der gemessenen Periode.",
+    "Welcher Befestigungsabstand ergäbe genau 1 s Periode?",
+    "Warum hängt die Formel nicht davon ab, wie weit du verdrehst, solange die Drehung klein bleibt?"
+  ],
+  "formula": "T = 2π·√(I_z·L / (m·g·a²)), a = halber Befestigungsabstand. Außen: a = 32 mm; innen: a = 16 mm ⇒ T_innen / T_außen = 2.",
+  "related": [
+    "twin-tempo.ldr",
+    "sky-courier.ldr",
+    "pendulum-array.ldr",
+    "resonance-lab.ldr"
+  ]
+}

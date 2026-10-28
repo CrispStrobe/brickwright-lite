@@ -2,28 +2,34 @@
 import {captureTargetArtwork, restoreTargetArtwork,
     syncAnimationResources} from './bw-artwork-bundle.js';
 import {getAssetLibraryRole, restoreAssetLibraryRole} from './bw-asset-library.js';
+import {recordSpriteDeletion, withoutHistory} from './bw-project-history.js';
 
 const owns = (vm, target, stage) => vm.runtime.getTargetForStage() === stage && vm.runtime.targets.includes(target);
 
+// Delete a sprite with its editable artwork. Undo (menu-bar history or the Edit
+// menu's Restore, whichever comes first) rebuilds it; Redo deletes it again.
 export const deleteTargetArtwork = (vm, target, stage, onRestore) => {
     if (!owns(vm, target, stage)) return null;
-    const artwork = captureTargetArtwork(target), role = getAssetLibraryRole(target);
-    const restoreSprite = vm.deleteSprite(target.id);
-    syncAnimationResources(vm);
-    return async () => {
-        if (vm.runtime.getTargetForStage() !== stage) return false;
-        const before = new Set(vm.runtime.targets);
-        await restoreSprite();
-        if (vm.runtime.getTargetForStage() !== stage) return false;
-        const added = vm.runtime.targets.filter(candidate => candidate.isOriginal !== false && !before.has(candidate));
-        if (added.length !== 1) throw new Error('Restored artwork target is missing or ambiguous');
-        const restored = added[0];
-        restoreTargetArtwork(restored, artwork, vm);
-        if (role && !restoreAssetLibraryRole(vm, restored, role, stage)) return false;
-        vm.emitTargetsUpdate();
-        onRestore?.(restored);
-        return true;
+    const remove = doomed => {
+        const artwork = captureTargetArtwork(doomed), role = getAssetLibraryRole(doomed);
+        const restoreSprite = withoutHistory(() => vm.deleteSprite(doomed.id));
+        syncAnimationResources(vm);
+        return async () => {
+            if (vm.runtime.getTargetForStage() !== stage) return false;
+            const before = new Set(vm.runtime.targets);
+            await restoreSprite();
+            if (vm.runtime.getTargetForStage() !== stage) return false;
+            const added = vm.runtime.targets.filter(candidate => candidate.isOriginal !== false && !before.has(candidate));
+            if (added.length !== 1) throw new Error('Restored artwork target is missing or ambiguous');
+            const restored = added[0];
+            restoreTargetArtwork(restored, artwork, vm);
+            if (role && !restoreAssetLibraryRole(vm, restored, role, stage)) return false;
+            vm.emitTargetsUpdate();
+            onRestore?.(restored);
+            return restored;
+        };
     };
+    return recordSpriteDeletion(vm, target, remove(target), remove);
 };
 
 export const duplicateTargetArtwork = async (vm, target, stage) => {

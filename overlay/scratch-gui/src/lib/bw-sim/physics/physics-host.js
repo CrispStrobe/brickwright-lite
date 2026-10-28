@@ -152,8 +152,8 @@ export const createPhysicsHost = ({ loadJolt, createPhysicsCore, createSimRunner
                     }
                     try {
                         const start = now();
-                        const { frames, t, bodies, joints, air, linear, angular, rolling, ropes, bodyDynamics, jointDynamics } = sim.run(msg);
-                        post({ type: 'sim-frames', id, frames, t, bodies, joints, air, linear, angular, rolling, ropes, bodyDynamics, jointDynamics, workMs: now() - start }, [bodies.buffer, joints.buffer]);
+                        const { frames, t, bodies, joints, air, linear, angular, rolling, ropes, bodyDynamics, jointDynamics, screws, contacts, observations } = sim.run(msg);
+                        post({ type: 'sim-frames', id, frames, t, bodies, joints, air, linear, angular, rolling, ropes, bodyDynamics, jointDynamics, screws, contacts, observations, workMs: now() - start }, [bodies.buffer, joints.buffer]);
                     } catch (err) {
                         post({ type: 'error', id, message: err.message ?? String(err) });
                     }

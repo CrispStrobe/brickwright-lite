@@ -1,0 +1,3073 @@
+{
+  "scope": "Read-only source-bound normal-start diagnostics; programme completion does not admit a mechanical law or app journey",
+  "baselineMain": "b6f39a12348b984dc9c5f59b826e7680539b6148",
+  "attempts": 61,
+  "statusCounts": {
+    "completed-program-only": 43,
+    "unfinished-within-diagnostic-budget": 11,
+    "program-fault": 4
+  },
+  "wallTimeoutsInconclusive": 15,
+  "batch": [
+    {
+      "id": "cross-ratio",
+      "exitCode": 0,
+      "wallSeconds": 4.610630989074707
+    },
+    {
+      "id": "bend-ripple",
+      "exitCode": 0,
+      "wallSeconds": 6.587709903717041
+    },
+    {
+      "id": "apex",
+      "exitCode": 0,
+      "wallSeconds": 11.532350063323975
+    },
+    {
+      "id": "bloom",
+      "exitCode": 0,
+      "wallSeconds": 142.16985392570496
+    },
+    {
+      "id": "vector-delta",
+      "exitCode": 0,
+      "wallSeconds": 34.60492706298828
+    },
+    {
+      "id": "cadence-geneva",
+      "exitCode": 0,
+      "wallSeconds": 22.063254833221436
+    },
+    {
+      "id": "equinox-differential",
+      "exitCode": 0,
+      "wallSeconds": 26.604918003082275
+    },
+    {
+      "id": "kestrel-flapper",
+      "exitCode": 0,
+      "wallSeconds": 8.305627822875977
+    },
+    {
+      "id": "lumen-iris",
+      "exitCode": 0,
+      "wallSeconds": 10.58039116859436
+    },
+    {
+      "id": "helios-transmission",
+      "exitCode": 0,
+      "wallSeconds": 32.755187034606934
+    },
+    {
+      "id": "aster-governor",
+      "exitCode": 0,
+      "wallSeconds": 16.317039728164673
+    },
+    {
+      "id": "orion-cardan",
+      "exitCode": 0,
+      "wallSeconds": 16.45134687423706
+    },
+    {
+      "id": "meridian-linkage",
+      "exitCode": 0,
+      "wallSeconds": 14.044021368026733
+    },
+    {
+      "id": "solstice-pumpjack",
+      "exitCode": 0,
+      "wallSeconds": 12.222441911697388
+    },
+    {
+      "id": "inertia-loop",
+      "exitCode": 0,
+      "wallSeconds": 20.532553911209106
+    },
+    {
+      "id": "offset-relay",
+      "exitCode": 0,
+      "wallSeconds": 31.292941093444824
+    },
+    {
+      "id": "rack-decoder",
+      "exitCode": 0,
+      "wallSeconds": 26.102069854736328
+    },
+    {
+      "id": "tangent-table",
+      "exitCode": 0,
+      "wallSeconds": 24.265772104263306
+    },
+    {
+      "id": "pan-shift",
+      "exitCode": 0,
+      "wallSeconds": 18.591270923614502
+    },
+    {
+      "id": "remote-pivot",
+      "exitCode": 0,
+      "wallSeconds": 13.603883981704712
+    },
+    {
+      "id": "vesper-quickreturn",
+      "exitCode": 0,
+      "wallSeconds": 18.739558935165405
+    },
+    {
+      "id": "tempest-pendulum",
+      "exitCode": 0,
+      "wallSeconds": 9.742860794067383
+    },
+    {
+      "id": "schmidt-shift",
+      "exitCode": 0,
+      "wallSeconds": 19.38118600845337
+    },
+    {
+      "id": "poise",
+      "exitCode": 0,
+      "wallSeconds": 11.249675035476685
+    },
+    {
+      "id": "poise-mass-control",
+      "exitCode": 0,
+      "wallSeconds": 10.765296936035156
+    },
+    {
+      "id": "equal-share",
+      "timeoutSeconds": 150
+    },
+    {
+      "id": "equal-share-even-springs",
+      "timeoutSeconds": 150
+    },
+    {
+      "id": "spiral-scribe",
+      "exitCode": 0,
+      "wallSeconds": 5.685096979141235
+    },
+    {
+      "id": "stroke-shift",
+      "exitCode": 0,
+      "wallSeconds": 5.879197120666504
+    },
+    {
+      "id": "triad-table",
+      "exitCode": 0,
+      "wallSeconds": 7.746149063110352
+    },
+    {
+      "id": "paired-door-sync",
+      "exitCode": 0,
+      "wallSeconds": 2.723371744155884
+    },
+    {
+      "id": "impulse-line",
+      "timeoutSeconds": 150
+    },
+    {
+      "id": "impulse-line-missing-middle",
+      "timeoutSeconds": 150
+    },
+    {
+      "id": "final-squeeze",
+      "exitCode": 0,
+      "wallSeconds": 3.5652148723602295
+    },
+    {
+      "id": "travel-dial",
+      "timeoutSeconds": 150
+    },
+    {
+      "id": "travel-dial-wheel-raised",
+      "timeoutSeconds": 150
+    },
+    {
+      "id": "ghost-pivot",
+      "timeoutSeconds": 150
+    },
+    {
+      "id": "ghost-pivot-unequal-link",
+      "timeoutSeconds": 150
+    },
+    {
+      "id": "afterturn",
+      "timeoutSeconds": 150
+    },
+    {
+      "id": "afterturn-fixed-masses",
+      "timeoutSeconds": 150
+    },
+    {
+      "id": "quiet-partner",
+      "exitCode": 0,
+      "wallSeconds": 11.97836709022522
+    },
+    {
+      "id": "quiet-partner-control",
+      "exitCode": 0,
+      "wallSeconds": 4.170175075531006
+    },
+    {
+      "id": "high-select",
+      "exitCode": 0,
+      "wallSeconds": 1.9547300338745117
+    },
+    {
+      "id": "high-select-mirror",
+      "exitCode": 0,
+      "wallSeconds": 1.727863073348999
+    },
+    {
+      "id": "obliquity-orrery",
+      "exitCode": 0,
+      "wallSeconds": 1.4731519222259521
+    },
+    {
+      "id": "obliquity-orrery-turned-axis",
+      "exitCode": 0,
+      "wallSeconds": 1.4698121547698975
+    },
+    {
+      "id": "pivot-exchange",
+      "exitCode": 0,
+      "wallSeconds": 1.0470902919769287
+    },
+    {
+      "id": "pivot-exchange-wide",
+      "exitCode": 0,
+      "wallSeconds": 1.1281070709228516
+    },
+    {
+      "id": "air-budget",
+      "exitCode": 0,
+      "wallSeconds": 1.575524091720581
+    },
+    {
+      "id": "air-budget-two-tanks",
+      "exitCode": 0,
+      "wallSeconds": 1.5519442558288574
+    },
+    {
+      "id": "foldback",
+      "timeoutSeconds": 150
+    },
+    {
+      "id": "foldback-open",
+      "timeoutSeconds": 150
+    },
+    {
+      "id": "thirdline-control",
+      "exitCode": 0,
+      "wallSeconds": 8.486358165740967
+    },
+    {
+      "id": "samebeat",
+      "timeoutSeconds": 150
+    },
+    {
+      "id": "samebeat-conjugate",
+      "timeoutSeconds": 150
+    },
+    {
+      "id": "samebeat-control",
+      "timeoutSeconds": 150
+    },
+    {
+      "id": "carry-ratio",
+      "exitCode": 0,
+      "wallSeconds": 3.0216329097747803
+    },
+    {
+      "id": "carry-ratio-control",
+      "exitCode": 0,
+      "wallSeconds": 1.8152410984039307
+    },
+    {
+      "id": "sarrus-lift-single-chain",
+      "exitCode": 0,
+      "wallSeconds": 1.5836310386657715
+    },
+    {
+      "id": "phasor-twin",
+      "exitCode": 0,
+      "wallSeconds": 2.233470916748047
+    },
+    {
+      "id": "phasor-twin-control",
+      "exitCode": 0,
+      "wallSeconds": 2.3945040702819824
+    }
+  ],
+  "models": [
+    {
+      "id": "air-budget",
+      "file": "air-budget.ldr",
+      "program": "air-budget.bw",
+      "main": "b6f39a12348b984dc9c5f59b826e7680539b6148",
+      "modelSha256": "77c3203ea9fd0d68f00e2541e29df66e6d44198e407d58718ac9394b1c55b363",
+      "programSha256": "305c8ae0a946087377f56e5e5e4d57f8b3e09c60650f1f6a151585aaaa59b91c",
+      "coldMs": 0,
+      "timeLimitMs": 90000,
+      "explicitlyContinuous": false,
+      "finishedAt": 27966.666666666366,
+      "finite": true,
+      "variables": {
+        "stage": "2",
+        "settled": "0",
+        "complete": "1",
+        "fault": "0",
+        "targetA": "0",
+        "trimA": "0",
+        "Air Budget fault": "Air Budget fault",
+        "Air Budget watchdog": "Air Budget watchdog",
+        "Air Budget move A": "Air Budget move A"
+      },
+      "issues": [],
+      "status": "completed-program-only",
+      "scope": "Read-only original-source native diagnostic; no independent passive-law or actual app acceptance",
+      "acquisition": {
+        "id": "air-budget",
+        "exitCode": 0,
+        "wallSeconds": 1.575524091720581
+      },
+      "existingGalleryBlocked": false
+    },
+    {
+      "id": "air-budget-two-tanks",
+      "file": "air-budget-two-tanks.ldr",
+      "program": "air-budget.bw",
+      "main": "b6f39a12348b984dc9c5f59b826e7680539b6148",
+      "modelSha256": "17b185efa7a3995f3c3943df0f80f9c99b829c8e0a707aeebd4ebbdb6e61779f",
+      "programSha256": "305c8ae0a946087377f56e5e5e4d57f8b3e09c60650f1f6a151585aaaa59b91c",
+      "coldMs": 0,
+      "timeLimitMs": 90000,
+      "explicitlyContinuous": false,
+      "finishedAt": 27966.666666666366,
+      "finite": true,
+      "variables": {
+        "stage": "2",
+        "settled": "0",
+        "complete": "1",
+        "fault": "0",
+        "targetA": "0",
+        "trimA": "0",
+        "Air Budget fault": "Air Budget fault",
+        "Air Budget watchdog": "Air Budget watchdog",
+        "Air Budget move A": "Air Budget move A"
+      },
+      "issues": [],
+      "status": "completed-program-only",
+      "scope": "Read-only original-source native diagnostic; no independent passive-law or actual app acceptance",
+      "acquisition": {
+        "id": "air-budget-two-tanks",
+        "exitCode": 0,
+        "wallSeconds": 1.5519442558288574
+      },
+      "existingGalleryBlocked": false
+    },
+    {
+      "id": "apex",
+      "file": "apex.ldr",
+      "program": "apex.bw",
+      "main": "b6f39a12348b984dc9c5f59b826e7680539b6148",
+      "modelSha256": "5172c27b1828dd068b7b0ea9130e44009ee4eee0e9ade33874d1ae19d2e2cb18",
+      "programSha256": "4db8b69cfc7bde6e39b58309b143a5bfa357b6384534052ada3f1a98643c10c3",
+      "coldMs": 0,
+      "timeLimitMs": 90000,
+      "finishedAt": 75733.33333333377,
+      "finite": true,
+      "variables": {
+        "target": "0",
+        "requestedSpeed": "48",
+        "moveSpeed": "6",
+        "attempts": 2,
+        "stage": "4",
+        "settled": "1",
+        "completed": "1",
+        "failed": "0",
+        "Apex watchdog": "Apex watchdog",
+        "Apex move": "Apex move"
+      },
+      "issues": [],
+      "status": "completed-program-only",
+      "scope": "Read-only original-source native diagnostic; no independent passive-law or actual app acceptance",
+      "acquisition": {
+        "id": "apex",
+        "exitCode": 0,
+        "wallSeconds": 11.532350063323975
+      },
+      "existingGalleryBlocked": false
+    },
+    {
+      "id": "aster-governor",
+      "file": "aster-governor.ldr",
+      "program": "aster-governor.bw",
+      "main": "b6f39a12348b984dc9c5f59b826e7680539b6148",
+      "modelSha256": "cb459d98ecff3f6b9f1b6706b06cea3cf5e21c3434886989a6241ba063f020d9",
+      "programSha256": "3f6fc4aff0e58e3d1e825c1a6bb2dfafe88400379ac700f9abdf90c7dbdc6c06",
+      "coldMs": 0,
+      "timeLimitMs": 90000,
+      "finishedAt": null,
+      "finite": true,
+      "variables": {
+        "completed": "0",
+        "failed": "0",
+        "stage": "14",
+        "driveSpeed": 380,
+        "spindleEncoder": 37112.6,
+        "measuredMotorSpeed": 380,
+        "Aster observe": "Aster observe",
+        "Aster watchdog": "Aster watchdog"
+      },
+      "issues": [],
+      "status": "unfinished-within-diagnostic-budget",
+      "scope": "Read-only original-source native diagnostic; no independent passive-law or actual app acceptance",
+      "acquisition": {
+        "id": "aster-governor",
+        "exitCode": 0,
+        "wallSeconds": 16.317039728164673
+      },
+      "existingGalleryBlocked": false
+    },
+    {
+      "id": "bend-ripple",
+      "file": "bend-ripple.ldr",
+      "program": "bend-ripple.bw",
+      "main": "b6f39a12348b984dc9c5f59b826e7680539b6148",
+      "modelSha256": "ff9fee60b1c13bb31f31b86c22d54747beaceec530f2617eec7497c31f5249df",
+      "programSha256": "0569e19e533cfd193cd955597b1d4172ef9a77fb315ac22349809208d9eff91a",
+      "coldMs": 0,
+      "timeLimitMs": 90000,
+      "finishedAt": null,
+      "finite": true,
+      "variables": {
+        "directionA": "1",
+        "directionB": "1",
+        "routeIndex": 8,
+        "stage": 7,
+        "arrived": "0",
+        "arrivedA": "0",
+        "arrivedB": "1",
+        "inputReady": "0",
+        "completed": "0",
+        "failed": "0",
+        "movingMask": 1,
+        "targetA": 0,
+        "targetB": 0,
+        "capA": 24,
+        "capB": 0,
+        "inputTargetAngleDeg": 0,
+        "bendTargetDeg": 10,
+        "correctionsA": "0",
+        "distanceA": 405.1,
+        "profilePeakA": 24,
+        "profileDurationA": 18.879166666666666,
+        "profileBrakeDistanceA": 24,
+        "profileRemainingA": 395.3,
+        "profileBrakeSpeedA": 97.40225870070982,
+        "profileDeadlineA": 41.75833333333333,
+        "profileStartedA": 88.53333325195312,
+        "profileElapsedA": 1.4000000000000057,
+        "profileSpeedA": 19.0534230276,
+        "trimStartedA": "0",
+        "correctionsB": "0",
+        "distanceB": 19.9,
+        "profilePeakB": 4,
+        "profileDurationB": 6.975,
+        "profileBrakeDistanceB": 4,
+        "profileRemainingB": 0.2,
+        "profileBrakeSpeedB": 0.8944271909999159,
+        "profileDeadlineB": 17.95,
+        "profileStartedB": 78.93333325195313,
+        "profileElapsedB": 6.5,
+        "profileSpeedB": 0.8944271909999159,
+        "trimStartedB": "0",
+        "profileDirectionA": "-1",
+        "trimDirectionA": "1",
+        "profileDirectionB": "-1",
+        "trimDirectionB": "1",
+        "motorATargets": [
+          0,
+          360,
+          405,
+          405,
+          765,
+          405,
+          405,
+          0
+        ],
+        "motorBTargets": [
+          0,
+          0,
+          0,
+          20,
+          20,
+          20,
+          0,
+          0
+        ],
+        "motorACaps": [
+          0,
+          24,
+          24,
+          0,
+          24,
+          24,
+          0,
+          24
+        ],
+        "motorBCaps": [
+          0,
+          0,
+          0,
+          4,
+          0,
+          0,
+          4,
+          0
+        ],
+        "inputAngleTargets": [
+          0,
+          360,
+          405,
+          405,
+          765,
+          405,
+          405,
+          0
+        ],
+        "bendTargets": [
+          10,
+          10,
+          10,
+          30,
+          30,
+          30,
+          10,
+          10
+        ],
+        "movingMasks": [
+          0,
+          1,
+          1,
+          2,
+          1,
+          1,
+          2,
+          1
+        ],
+        "Bend Ripple watchdog": "Bend Ripple watchdog",
+        "Bend Ripple move": "Bend Ripple move"
+      },
+      "issues": [],
+      "status": "unfinished-within-diagnostic-budget",
+      "scope": "Read-only original-source native diagnostic; no independent passive-law or actual app acceptance",
+      "acquisition": {
+        "id": "bend-ripple",
+        "exitCode": 0,
+        "wallSeconds": 6.587709903717041
+      },
+      "existingGalleryBlocked": false
+    },
+    {
+      "id": "bloom",
+      "file": "bloom.ldr",
+      "program": "bloom.bw",
+      "main": "b6f39a12348b984dc9c5f59b826e7680539b6148",
+      "modelSha256": "6136a05cd5eedbbc822513471ec6fb394afb2e17af929502d5010d07df07ee6e",
+      "programSha256": "d050c34a652675c3cc3a277d2faf76b9ccc163d8a0216ff77d100abd478b7a78",
+      "coldMs": 0,
+      "timeLimitMs": 90000,
+      "finishedAt": 80533.33333333307,
+      "finite": true,
+      "variables": {
+        "target": 47.8,
+        "requestedSpeed": "36",
+        "moveSpeed": "36",
+        "attempts": 1,
+        "stage": "5",
+        "completed": "1",
+        "failed": "0",
+        "dx": 8.4,
+        "dy": 0,
+        "dz": 0,
+        "spanXY": 8.4,
+        "spanYZ": 8.399999999999999,
+        "spanZX": 8.4,
+        "spanMean": 8.399999999999999,
+        "spanTarget": 8.366666666666667,
+        "trimScale": "0.00573",
+        "trimAttempts": 1,
+        "correction": 11.634671320535153,
+        "homeSpan": 8.366666666666667,
+        "homeAngle": 47.8,
+        "trimTotal": 11.634671320535153,
+        "fineSteps": "0",
+        "spanBefore": 8.3,
+        "Bloom watchdog": "Bloom watchdog",
+        "Bloom measure": "Bloom measure",
+        "Bloom trim": "Bloom trim",
+        "Bloom move": "Bloom move",
+        "Bloom trim step": "Bloom trim step"
+      },
+      "issues": [
+        {
+          "severity": "warning",
+          "code": "locked-hinges",
+          "message": "Hinges between b16 and b83 lock, merging islands",
+          "parts": [
+            "cage_XY_02_A_elbow",
+            "cage_XY_02_A_end_start",
+            "drive_input_axle",
+            "drive_secondary_axle"
+          ]
+        }
+      ],
+      "status": "completed-program-only",
+      "scope": "Read-only original-source native diagnostic; no independent passive-law or actual app acceptance",
+      "acquisition": {
+        "id": "bloom",
+        "exitCode": 0,
+        "wallSeconds": 142.16985392570496
+      },
+      "existingGalleryBlocked": false
+    },
+    {
+      "id": "cadence-geneva",
+      "file": "cadence-geneva.ldr",
+      "program": "cadence-geneva.bw",
+      "main": "b6f39a12348b984dc9c5f59b826e7680539b6148",
+      "modelSha256": "7783a77d461b88cd5a4a7026a507eb24572328fd75b82e69ca1b9da8dae4b80f",
+      "programSha256": "6ed053800f78526054be5732bebfd876f3cde711a5494889e964f8742a84546c",
+      "coldMs": 0,
+      "timeLimitMs": 90000,
+      "finishedAt": null,
+      "finite": true,
+      "variables": {
+        "completed": "0",
+        "failed": "0",
+        "dialSweep": 209.50000000000003,
+        "lastHeading": -150.5,
+        "currentHeading": -150.5,
+        "headingDelta": 0,
+        "crankTurns": 7.452500000000001,
+        "ticks": 7,
+        "Cadence observe": "Cadence observe",
+        "Cadence watchdog": "Cadence watchdog"
+      },
+      "issues": [],
+      "status": "unfinished-within-diagnostic-budget",
+      "scope": "Read-only original-source native diagnostic; no independent passive-law or actual app acceptance",
+      "acquisition": {
+        "id": "cadence-geneva",
+        "exitCode": 0,
+        "wallSeconds": 22.063254833221436
+      },
+      "existingGalleryBlocked": false
+    },
+    {
+      "id": "carry-ratio",
+      "file": "carry-ratio.ldr",
+      "program": "carry-ratio.bw",
+      "main": "b6f39a12348b984dc9c5f59b826e7680539b6148",
+      "modelSha256": "6be4d48f3c2818865a2415085cf1662187b52f303b0aa5e8fe4a449c76a5f135",
+      "programSha256": "0a0d2d1a7019cd937a92fe5267865422e5df05c0e4c6e0066dc2b02f97c02c6a",
+      "coldMs": 0,
+      "timeLimitMs": 90000,
+      "explicitlyContinuous": false,
+      "finishedAt": 28899.999999999665,
+      "finite": true,
+      "variables": {
+        "stage": "7",
+        "completed": "1",
+        "failed": "0",
+        "settled": "1",
+        "targetA": "0",
+        "speedA": "240",
+        "correctionAttempts": "0",
+        "Carry Ratio watchdog": "Carry Ratio watchdog",
+        "Carry Ratio move": "Carry Ratio move",
+        "Carry Ratio arrival guard": "Carry Ratio arrival guard"
+      },
+      "issues": [
+        {
+          "severity": "warning",
+          "code": "loose-part",
+          "message": "Not connected to the rest of the model: roller_ball",
+          "parts": [
+            "roller_ball"
+          ]
+        }
+      ],
+      "status": "completed-program-only",
+      "scope": "Read-only original-source native diagnostic; no independent passive-law or actual app acceptance",
+      "acquisition": {
+        "id": "carry-ratio",
+        "exitCode": 0,
+        "wallSeconds": 3.0216329097747803
+      },
+      "existingGalleryBlocked": false
+    },
+    {
+      "id": "carry-ratio-control",
+      "file": "carry-ratio-control.ldr",
+      "program": "carry-ratio.bw",
+      "main": "b6f39a12348b984dc9c5f59b826e7680539b6148",
+      "modelSha256": "f6bc7bb6e338f766aa16f00f45df8eb62c82da53edd359ae83c11e3e52a0519d",
+      "programSha256": "0a0d2d1a7019cd937a92fe5267865422e5df05c0e4c6e0066dc2b02f97c02c6a",
+      "coldMs": 0,
+      "timeLimitMs": 90000,
+      "explicitlyContinuous": false,
+      "finishedAt": 28899.999999999665,
+      "finite": true,
+      "variables": {
+        "stage": "7",
+        "completed": "1",
+        "failed": "0",
+        "settled": "1",
+        "targetA": "0",
+        "speedA": "240",
+        "correctionAttempts": "0",
+        "Carry Ratio watchdog": "Carry Ratio watchdog",
+        "Carry Ratio move": "Carry Ratio move",
+        "Carry Ratio arrival guard": "Carry Ratio arrival guard"
+      },
+      "issues": [
+        {
+          "severity": "warning",
+          "code": "loose-part",
+          "message": "Not connected to the rest of the model: roller_ball",
+          "parts": [
+            "roller_ball"
+          ]
+        }
+      ],
+      "status": "completed-program-only",
+      "scope": "Read-only original-source native diagnostic; no independent passive-law or actual app acceptance",
+      "acquisition": {
+        "id": "carry-ratio-control",
+        "exitCode": 0,
+        "wallSeconds": 1.8152410984039307
+      },
+      "existingGalleryBlocked": false
+    },
+    {
+      "id": "cross-ratio",
+      "file": "cross-ratio.ldr",
+      "program": "cross-ratio.bw",
+      "main": "b6f39a12348b984dc9c5f59b826e7680539b6148",
+      "modelSha256": "c3a22ff07aefbb8e35ae8e98ca6af71a2132c5dea68b5e4310ce0e10ee43ffee",
+      "programSha256": "c553bf618c6487eb5c6745e07e76184196b1605222bb6743e5bf418d7095a413",
+      "coldMs": 0,
+      "timeLimitMs": 90000,
+      "finishedAt": 52866.666666667654,
+      "finite": true,
+      "variables": {
+        "directionA": "1",
+        "routeIndex": 11,
+        "stage": "10",
+        "arrived": "0",
+        "arrivedA": "1",
+        "inputReady": "0",
+        "completed": "1",
+        "failed": "0",
+        "movingMask": "0",
+        "targetA": 0,
+        "capA": 12,
+        "inputTargetAngleDeg": 60,
+        "correctionsA": "0",
+        "distanceA": 30,
+        "profilePeakA": 12,
+        "profileDurationA": 3.5,
+        "profileBrakeDistanceA": 6,
+        "profileRemainingA": 0.2,
+        "profileBrakeSpeedA": 2.1908902300206643,
+        "profileDeadlineA": 9,
+        "profileStartedA": 46.93333325195312,
+        "profileElapsedA": 3.3000000000000043,
+        "profileSpeedA": 2.1908902300206643,
+        "trimStartedA": "0",
+        "profileDirectionA": "-1",
+        "trimDirectionA": "1",
+        "motorATargets": [
+          0,
+          -30,
+          -15,
+          0,
+          30,
+          60,
+          90,
+          60,
+          30,
+          0
+        ],
+        "motorACaps": [
+          0,
+          12,
+          12,
+          12,
+          12,
+          12,
+          12,
+          12,
+          12,
+          12
+        ],
+        "inputAngleTargets": [
+          60,
+          30,
+          45,
+          60,
+          90,
+          120,
+          150,
+          120,
+          90,
+          60
+        ],
+        "movingMasks": [
+          0,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "Cross Ratio watchdog": "Cross Ratio watchdog",
+        "Cross Ratio move": "Cross Ratio move"
+      },
+      "issues": [],
+      "status": "completed-program-only",
+      "scope": "Read-only original-source native diagnostic; no independent passive-law or actual app acceptance",
+      "acquisition": {
+        "id": "cross-ratio",
+        "exitCode": 0,
+        "wallSeconds": 4.610630989074707
+      },
+      "existingGalleryBlocked": false
+    },
+    {
+      "id": "equal-share",
+      "file": "equal-share.ldr",
+      "program": "equal-share.bw",
+      "main": "b6f39a12348b984dc9c5f59b826e7680539b6148",
+      "modelSha256": "dab7916b2d6cb95c8073596a529b2e80afd67bc33c3ae560e015ff9c32bcb778",
+      "programSha256": "86e288aeb92541e241c3a729ff20002d1f652a6d2f39369f20f33a24746db260",
+      "coldMs": 0,
+      "timeLimitMs": 90000,
+      "finishedAt": 12566.666666666717,
+      "finite": true,
+      "variables": {
+        "targetA": "15",
+        "stage": "1",
+        "dwelling": "0",
+        "arrivals": "0",
+        "completed": "0",
+        "failed": "1",
+        "Equal Share watchdog": "Equal Share watchdog",
+        "Equal Share stage": "Equal Share stage"
+      },
+      "issues": [],
+      "status": "program-fault",
+      "scope": "Read-only original-source native diagnostic; no independent passive-law or actual app acceptance",
+      "acquisition": {
+        "id": "equal-share",
+        "timeoutSeconds": 150
+      },
+      "existingGalleryBlocked": false
+    },
+    {
+      "id": "equal-share-even-springs",
+      "file": "equal-share-even-springs.ldr",
+      "program": "equal-share.bw",
+      "main": "b6f39a12348b984dc9c5f59b826e7680539b6148",
+      "modelSha256": "903eb6f8503a05d3eb2a018bc5057d94594f9066d9a5afdb4480bfdce6f1312c",
+      "programSha256": "86e288aeb92541e241c3a729ff20002d1f652a6d2f39369f20f33a24746db260",
+      "coldMs": 0,
+      "timeLimitMs": 90000,
+      "finishedAt": 9266.666666666657,
+      "finite": true,
+      "variables": {
+        "targetA": "15",
+        "stage": "1",
+        "dwelling": "0",
+        "arrivals": "0",
+        "completed": "0",
+        "failed": "1",
+        "Equal Share watchdog": "Equal Share watchdog",
+        "Equal Share stage": "Equal Share stage"
+      },
+      "issues": [],
+      "status": "program-fault",
+      "scope": "Read-only original-source native diagnostic; no independent passive-law or actual app acceptance",
+      "acquisition": {
+        "id": "equal-share-even-springs",
+        "timeoutSeconds": 150
+      },
+      "existingGalleryBlocked": false
+    },
+    {
+      "id": "equinox-differential",
+      "file": "equinox-differential.ldr",
+      "program": "equinox-differential.bw",
+      "main": "b6f39a12348b984dc9c5f59b826e7680539b6148",
+      "modelSha256": "d67aee5320bd6bc3772fc4e546d96744600cfd4054608d5bb6c83498fd075448",
+      "programSha256": "a94693e9807f3046cf5b20057f59bc5fcdd45fcd8eb0666fdf3efc2d14bb8884",
+      "coldMs": 0,
+      "timeLimitMs": 90000,
+      "finishedAt": 53400.000000001026,
+      "finite": true,
+      "variables": {
+        "completed": "1",
+        "failed": "0",
+        "stage": "5",
+        "inputTurns": -0.001388888888888889,
+        "rightBrakeTurns": -0.011388888888888888,
+        "leftBrakeTurns": -0.009444444444444445,
+        "moveDegrees": -2521.1,
+        "Equinox observe": "Equinox observe",
+        "Equinox watchdog": "Equinox watchdog"
+      },
+      "issues": [],
+      "status": "completed-program-only",
+      "scope": "Read-only original-source native diagnostic; no independent passive-law or actual app acceptance",
+      "acquisition": {
+        "id": "equinox-differential",
+        "exitCode": 0,
+        "wallSeconds": 26.604918003082275
+      },
+      "existingGalleryBlocked": false
+    },
+    {
+      "id": "final-squeeze",
+      "file": "final-squeeze.ldr",
+      "program": "final-squeeze.bw",
+      "main": "b6f39a12348b984dc9c5f59b826e7680539b6148",
+      "modelSha256": "5bdb0dfb4e876bd2b5765410779b48e8988eaff4c39bde41d17877ede6425244",
+      "programSha256": "252f4517af930e1e9f8a640b4b1dfc0e158f58215fa3712b4d94d9146fedb377",
+      "coldMs": 0,
+      "timeLimitMs": 90000,
+      "finishedAt": 26166.66666666643,
+      "finite": true,
+      "variables": {
+        "stage": "12",
+        "controlSpeed": -0.8,
+        "targetA": "0",
+        "settled": "0",
+        "completed": "1",
+        "fault": "0",
+        "trims": 1,
+        "Final Squeeze fault": "Final Squeeze fault",
+        "Final Squeeze watchdog": "Final Squeeze watchdog",
+        "Final Squeeze move": "Final Squeeze move",
+        "Final Squeeze arrival": "Final Squeeze arrival",
+        "Final Squeeze approach": "Final Squeeze approach"
+      },
+      "issues": [],
+      "status": "completed-program-only",
+      "scope": "Read-only original-source native diagnostic; no independent passive-law or actual app acceptance",
+      "acquisition": {
+        "id": "final-squeeze",
+        "exitCode": 0,
+        "wallSeconds": 3.5652148723602295
+      },
+      "existingGalleryBlocked": false
+    },
+    {
+      "id": "foldback",
+      "file": "foldback.ldr",
+      "program": "foldback.bw",
+      "main": "b6f39a12348b984dc9c5f59b826e7680539b6148",
+      "modelSha256": "257d722c48485b12bd5dc4d78c109301e079a53eea0f7cf10801714e9afd8ec4",
+      "programSha256": "ddd7a9bce1b1d24ca1156a448858dd8f5e5f08bfbc2817b114a7b30373a5799e",
+      "coldMs": 0,
+      "timeLimitMs": 90000,
+      "explicitlyContinuous": false,
+      "finishedAt": 30099.99999999962,
+      "finite": true,
+      "variables": {
+        "targetA": "0",
+        "dwell": "1",
+        "stage": "7",
+        "held": "1",
+        "completed": "1",
+        "failed": "0",
+        "corrections": "0",
+        "Foldback watchdog": "Foldback watchdog",
+        "Foldback fault": "Foldback fault",
+        "Foldback move and observe": "Foldback move and observe"
+      },
+      "issues": [],
+      "status": "completed-program-only",
+      "scope": "Read-only original-source native diagnostic; no independent passive-law or actual app acceptance",
+      "acquisition": {
+        "id": "foldback",
+        "timeoutSeconds": 150
+      },
+      "existingGalleryBlocked": false
+    },
+    {
+      "id": "foldback-open",
+      "file": "foldback-open.ldr",
+      "program": "foldback.bw",
+      "main": "b6f39a12348b984dc9c5f59b826e7680539b6148",
+      "modelSha256": "96661f9f5794b33111c0f25034d7b6b0939e9a7b7aee335d143ad601c324d256",
+      "programSha256": "ddd7a9bce1b1d24ca1156a448858dd8f5e5f08bfbc2817b114a7b30373a5799e",
+      "coldMs": 0,
+      "timeLimitMs": 90000,
+      "explicitlyContinuous": false,
+      "finishedAt": 30099.99999999962,
+      "finite": true,
+      "variables": {
+        "targetA": "0",
+        "dwell": "1",
+        "stage": "7",
+        "held": "1",
+        "completed": "1",
+        "failed": "0",
+        "corrections": "0",
+        "Foldback watchdog": "Foldback watchdog",
+        "Foldback fault": "Foldback fault",
+        "Foldback move and observe": "Foldback move and observe"
+      },
+      "issues": [],
+      "status": "completed-program-only",
+      "scope": "Read-only original-source native diagnostic; no independent passive-law or actual app acceptance",
+      "acquisition": {
+        "id": "foldback-open",
+        "timeoutSeconds": 150
+      },
+      "existingGalleryBlocked": false
+    },
+    {
+      "id": "ghost-pivot",
+      "file": "ghost-pivot.ldr",
+      "program": "ghost-pivot.bw",
+      "main": "b6f39a12348b984dc9c5f59b826e7680539b6148",
+      "modelSha256": "dd959adb32beac4abe48199b0f3c5ea665af8ed6f143afa9d59a6a95396062ce",
+      "programSha256": "5cfa24f678ba0aad5add863ae4cb99804d56275c5c0dd025d8f3ee67489743dc",
+      "coldMs": 0,
+      "timeLimitMs": 90000,
+      "finishedAt": 26099.999999999767,
+      "finite": true,
+      "variables": {
+        "targetA": "0",
+        "speedA": "30",
+        "stage": "7",
+        "moving": "0",
+        "dwelling": "0",
+        "arrivals": 6,
+        "completed": "1",
+        "failed": "0",
+        "Ghost Pivot watchdog": "Ghost Pivot watchdog",
+        "Ghost Pivot move": "Ghost Pivot move"
+      },
+      "issues": [],
+      "status": "completed-program-only",
+      "scope": "Read-only original-source native diagnostic; no independent passive-law or actual app acceptance",
+      "acquisition": {
+        "id": "ghost-pivot",
+        "timeoutSeconds": 150
+      },
+      "existingGalleryBlocked": false
+    },
+    {
+      "id": "helios-transmission",
+      "file": "helios-transmission.ldr",
+      "program": "helios-transmission.bw",
+      "main": "b6f39a12348b984dc9c5f59b826e7680539b6148",
+      "modelSha256": "8c91ef69f4e2f82a8b33b2bb84cecedcc831b1bfd5695c925fe688326fefd634",
+      "programSha256": "db14980328bd7438d906eb06d4fb1def93a19325ed83e584cd8a4a68651e787c",
+      "coldMs": 0,
+      "timeLimitMs": 90000,
+      "finishedAt": 58933.33333333476,
+      "finite": true,
+      "variables": {
+        "completed": "1",
+        "failed": "0",
+        "stage": "8",
+        "inputDegrees": -0.5,
+        "controlDegrees": 0.6,
+        "controlSpeed": 3.419486915845482e-14,
+        "returnA": -845,
+        "returnB": 1177,
+        "returnedA": "1",
+        "returnedB": "1",
+        "Helios observe": "Helios observe",
+        "Helios watchdog": "Helios watchdog",
+        "Helios return A": "Helios return A",
+        "Helios return B": "Helios return B"
+      },
+      "issues": [],
+      "status": "completed-program-only",
+      "scope": "Read-only original-source native diagnostic; no independent passive-law or actual app acceptance",
+      "acquisition": {
+        "id": "helios-transmission",
+        "exitCode": 0,
+        "wallSeconds": 32.755187034606934
+      },
+      "existingGalleryBlocked": false
+    },
+    {
+      "id": "high-select",
+      "file": "high-select.ldr",
+      "program": "high-select.bw",
+      "main": "b6f39a12348b984dc9c5f59b826e7680539b6148",
+      "modelSha256": "f6c61fd1fa61d4c2c3de7f1405643072b4e11fe532bf1257125db1705be4c19f",
+      "programSha256": "cda2ae410c9e5ae15f2b52aca38895acb3dabc13e09a1937f106f5c1e1ca2dc3",
+      "coldMs": 0,
+      "timeLimitMs": 90000,
+      "explicitlyContinuous": false,
+      "finishedAt": 19466.666666666675,
+      "finite": true,
+      "variables": {
+        "stage": "10",
+        "settled": "0",
+        "complete": "1",
+        "fault": "0",
+        "targetA": "0.0000000000",
+        "targetB": "0.0000000000",
+        "targetHeightA": "0",
+        "targetHeightB": "0",
+        "trimA": "0",
+        "trimB": "0",
+        "High Select fault": "High Select fault",
+        "High Select watchdog": "High Select watchdog",
+        "High Select move A": "High Select move A",
+        "High Select move B": "High Select move B"
+      },
+      "issues": [],
+      "status": "completed-program-only",
+      "scope": "Read-only original-source native diagnostic; no independent passive-law or actual app acceptance",
+      "acquisition": {
+        "id": "high-select",
+        "exitCode": 0,
+        "wallSeconds": 1.9547300338745117
+      },
+      "existingGalleryBlocked": false
+    },
+    {
+      "id": "high-select-mirror",
+      "file": "high-select-mirror.ldr",
+      "program": "high-select-mirror.bw",
+      "main": "b6f39a12348b984dc9c5f59b826e7680539b6148",
+      "modelSha256": "5f4f99b73667f60b2e26c50a03ff311e09a23378af0ef993127760fae7f8345d",
+      "programSha256": "7c5af628837ea4588145e8864120af30aa1b84194468a493d5eb1e4e028d05f2",
+      "coldMs": 0,
+      "timeLimitMs": 90000,
+      "explicitlyContinuous": false,
+      "finishedAt": 19466.666666666675,
+      "finite": true,
+      "variables": {
+        "stage": "10",
+        "settled": "0",
+        "complete": "1",
+        "fault": "0",
+        "targetA": "0.0000000000",
+        "targetB": "0.0000000000",
+        "targetHeightA": "0",
+        "targetHeightB": "0",
+        "trimA": "0",
+        "trimB": "0",
+        "High Select fault": "High Select fault",
+        "High Select watchdog": "High Select watchdog",
+        "High Select move A": "High Select move A",
+        "High Select move B": "High Select move B"
+      },
+      "issues": [],
+      "status": "completed-program-only",
+      "scope": "Read-only original-source native diagnostic; no independent passive-law or actual app acceptance",
+      "acquisition": {
+        "id": "high-select-mirror",
+        "exitCode": 0,
+        "wallSeconds": 1.727863073348999
+      },
+      "existingGalleryBlocked": false
+    },
+    {
+      "id": "impulse-line",
+      "file": "impulse-line.ldr",
+      "program": "impulse-line.bw",
+      "main": "b6f39a12348b984dc9c5f59b826e7680539b6148",
+      "modelSha256": "0961df70c48adc6e943c98ad7edf251c5e00f656a3f83151c1da2814dd025787",
+      "programSha256": "41889ab24b76913132c43c927d85f1b19e0596bfb8370d97774ad04a91f5281d",
+      "coldMs": 0,
+      "timeLimitMs": 90000,
+      "finishedAt": 3233.3333333333367,
+      "finite": true,
+      "variables": {
+        "targetA": "-24.5423968763",
+        "speedA": "15",
+        "stage": "1",
+        "loaded": "0",
+        "released": "0",
+        "observing": "0",
+        "arrivals": "0",
+        "completed": "0",
+        "failed": "1",
+        "pulsing": "0",
+        "pulseStarted": "0",
+        "Impulse Line watchdog": "Impulse Line watchdog",
+        "Impulse Line move": "Impulse Line move"
+      },
+      "issues": [],
+      "status": "program-fault",
+      "scope": "Read-only original-source native diagnostic; no independent passive-law or actual app acceptance",
+      "acquisition": {
+        "id": "impulse-line",
+        "timeoutSeconds": 150
+      },
+      "existingGalleryBlocked": false
+    },
+    {
+      "id": "impulse-line-missing-middle",
+      "file": "impulse-line-missing-middle.ldr",
+      "program": "impulse-line.bw",
+      "main": "b6f39a12348b984dc9c5f59b826e7680539b6148",
+      "modelSha256": "3fead9ef4c096baf3cd877317e267a63038a5b5c79964f2a07183b2906bccfb0",
+      "programSha256": "41889ab24b76913132c43c927d85f1b19e0596bfb8370d97774ad04a91f5281d",
+      "coldMs": 0,
+      "timeLimitMs": 90000,
+      "finishedAt": 3233.3333333333367,
+      "finite": true,
+      "variables": {
+        "targetA": "-24.5423968763",
+        "speedA": "15",
+        "stage": "1",
+        "loaded": "0",
+        "released": "0",
+        "observing": "0",
+        "arrivals": "0",
+        "completed": "0",
+        "failed": "1",
+        "pulsing": "0",
+        "pulseStarted": "0",
+        "Impulse Line watchdog": "Impulse Line watchdog",
+        "Impulse Line move": "Impulse Line move"
+      },
+      "issues": [],
+      "status": "program-fault",
+      "scope": "Read-only original-source native diagnostic; no independent passive-law or actual app acceptance",
+      "acquisition": {
+        "id": "impulse-line-missing-middle",
+        "timeoutSeconds": 150
+      },
+      "existingGalleryBlocked": false
+    },
+    {
+      "id": "inertia-loop",
+      "file": "inertia-loop.ldr",
+      "program": "inertia-loop.bw",
+      "main": "b6f39a12348b984dc9c5f59b826e7680539b6148",
+      "modelSha256": "62de372b6541e8b4f4d5c9541991cc69377f188ab8b734cc0a5b6c56e2acfb6f",
+      "programSha256": "98225083c8198e591a914388710377cbe0e6e5647096a1a4921e6f7a79326626",
+      "coldMs": 0,
+      "timeLimitMs": 90000,
+      "finishedAt": null,
+      "finite": true,
+      "variables": {
+        "directionA": "1",
+        "directionB": "-1",
+        "targetA": "10800",
+        "targetB": "0",
+        "flywheelTargetDeg": "6480",
+        "expansionTargetMm": "0",
+        "stage": "3",
+        "caseId": "2",
+        "movingMotor": "1",
+        "arrived": "0",
+        "arrivedA": "0",
+        "arrivedB": "1",
+        "correctionsA": 2,
+        "correctionsB": "0",
+        "completed": "0",
+        "failed": "0",
+        "Inertia Loop watchdog": "Inertia Loop watchdog",
+        "Inertia Loop move": "Inertia Loop move"
+      },
+      "issues": [
+        {
+          "severity": "warning",
+          "code": "gear-not-on-hinge",
+          "message": "Gear negative_ballast_0 not on hinge",
+          "parts": [
+            "negative_ballast_0"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "gear-not-on-hinge",
+          "message": "Gear negative_ballast_1 not on hinge",
+          "parts": [
+            "negative_ballast_1"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "gear-not-on-hinge",
+          "message": "Gear negative_ballast_2 not on hinge",
+          "parts": [
+            "negative_ballast_2"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "gear-not-on-hinge",
+          "message": "Gear positive_ballast_0 not on hinge",
+          "parts": [
+            "positive_ballast_0"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "gear-not-on-hinge",
+          "message": "Gear positive_ballast_1 not on hinge",
+          "parts": [
+            "positive_ballast_1"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "gear-not-on-hinge",
+          "message": "Gear positive_ballast_2 not on hinge",
+          "parts": [
+            "positive_ballast_2"
+          ]
+        }
+      ],
+      "status": "unfinished-within-diagnostic-budget",
+      "scope": "Read-only original-source native diagnostic; no independent passive-law or actual app acceptance",
+      "acquisition": {
+        "id": "inertia-loop",
+        "exitCode": 0,
+        "wallSeconds": 20.532553911209106
+      },
+      "existingGalleryBlocked": false
+    },
+    {
+      "id": "kestrel-flapper",
+      "file": "kestrel-flapper.ldr",
+      "program": "kestrel-flapper.bw",
+      "main": "b6f39a12348b984dc9c5f59b826e7680539b6148",
+      "modelSha256": "767c84e57bbd91ee5f7c9f55e6b7467a6dde7e5266e259b0a0dd3499b05fed32",
+      "programSha256": "0912ffaa0c3a62f672b719214b76a0f0afd451d848297d89b19df0e9ab24d421",
+      "coldMs": 0,
+      "timeLimitMs": 90000,
+      "finishedAt": 34166.66666666629,
+      "finite": true,
+      "variables": {
+        "completed": "1",
+        "failed": "0",
+        "stage": "5",
+        "inputTurns": -0.0002777777777777778,
+        "moveDegrees": -720.1,
+        "Kestrel observe": "Kestrel observe",
+        "Kestrel watchdog": "Kestrel watchdog"
+      },
+      "issues": [],
+      "status": "completed-program-only",
+      "scope": "Read-only original-source native diagnostic; no independent passive-law or actual app acceptance",
+      "acquisition": {
+        "id": "kestrel-flapper",
+        "exitCode": 0,
+        "wallSeconds": 8.305627822875977
+      },
+      "existingGalleryBlocked": false
+    },
+    {
+      "id": "lumen-iris",
+      "file": "lumen-iris.ldr",
+      "program": "lumen-iris.bw",
+      "main": "b6f39a12348b984dc9c5f59b826e7680539b6148",
+      "modelSha256": "7153ebc0689e537f64a932c52781383ad978c5e0ec10a7c243b626e020719d01",
+      "programSha256": "ea74d96cba8a8a01cd727d307fd9149e2cede38224768798535ba3dfa9e8d9ff",
+      "coldMs": 0,
+      "timeLimitMs": 90000,
+      "finishedAt": 19166.666666666686,
+      "finite": true,
+      "variables": {
+        "completed": "1",
+        "failed": "0",
+        "stage": "11",
+        "cycle": "2",
+        "inputDegrees": 0.2,
+        "targetDegrees": "0",
+        "moveDegrees": 55.3,
+        "Lumen observe": "Lumen observe",
+        "Lumen watchdog": "Lumen watchdog"
+      },
+      "issues": [],
+      "status": "completed-program-only",
+      "scope": "Read-only original-source native diagnostic; no independent passive-law or actual app acceptance",
+      "acquisition": {
+        "id": "lumen-iris",
+        "exitCode": 0,
+        "wallSeconds": 10.58039116859436
+      },
+      "existingGalleryBlocked": false
+    },
+    {
+      "id": "meridian-linkage",
+      "file": "meridian-linkage.ldr",
+      "program": "meridian-linkage.bw",
+      "main": "b6f39a12348b984dc9c5f59b826e7680539b6148",
+      "modelSha256": "c807b8f9e3e11112026671ce37dc0e001c6603b703b8c0265befa99af2476cc7",
+      "programSha256": "c86070968f4e5a095d78d186f4472926adeba8eab330519d128714bca3d17b48",
+      "coldMs": 0,
+      "timeLimitMs": 90000,
+      "finishedAt": 48333.33333333399,
+      "finite": true,
+      "variables": {
+        "completed": "1",
+        "failed": "0",
+        "stage": "7",
+        "moving": "0",
+        "inputEncoder": -0.2,
+        "inputCrankDegrees": -0.2,
+        "targetDegrees": "0",
+        "targetCrankDegrees": "0",
+        "moveDegrees": 60.1,
+        "Meridian observe": "Meridian observe",
+        "Meridian watchdog": "Meridian watchdog"
+      },
+      "issues": [],
+      "status": "completed-program-only",
+      "scope": "Read-only original-source native diagnostic; no independent passive-law or actual app acceptance",
+      "acquisition": {
+        "id": "meridian-linkage",
+        "exitCode": 0,
+        "wallSeconds": 14.044021368026733
+      },
+      "existingGalleryBlocked": false
+    },
+    {
+      "id": "obliquity-orrery",
+      "file": "obliquity-orrery.ldr",
+      "program": "obliquity-orrery.bw",
+      "main": "b6f39a12348b984dc9c5f59b826e7680539b6148",
+      "modelSha256": "3d5b09ddf62e4912c4b68eb337e4f7e2170d72eb8bc296f8e963adfb57f41e86",
+      "programSha256": "b49a1380c5b294a39379307c2e6435a8942845b382eee1fa7a18006a0aef3ba5",
+      "coldMs": 0,
+      "timeLimitMs": 90000,
+      "explicitlyContinuous": false,
+      "finishedAt": 35366.66666666638,
+      "finite": true,
+      "variables": {
+        "stage": "99",
+        "settled": "0",
+        "completed": "1",
+        "failed": "0",
+        "targetA": "0",
+        "speedA": "20",
+        "trims": "0",
+        "a0": 0.1,
+        "Orrery watchdog": "Orrery watchdog",
+        "Orrery station": "Orrery station"
+      },
+      "issues": [
+        {
+          "severity": "warning",
+          "code": "locked-hinges",
+          "message": "Hinges between b2 and b3 lock, merging islands",
+          "parts": [
+            "beam_middle",
+            "post_mid_low_e",
+            "post_mid_low_w"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "locked-hinges",
+          "message": "Hinges between b2 and b6 lock, merging islands",
+          "parts": [
+            "hub",
+            "hub_pin_front",
+            "hub_pin_rear"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "locked-hinges",
+          "message": "Hinges between b3 and b4 lock, merging islands",
+          "parts": [
+            "beam_top",
+            "post_top_e",
+            "post_top_w"
+          ]
+        }
+      ],
+      "status": "completed-program-only",
+      "scope": "Read-only original-source native diagnostic; no independent passive-law or actual app acceptance",
+      "acquisition": {
+        "id": "obliquity-orrery",
+        "exitCode": 0,
+        "wallSeconds": 1.4731519222259521
+      },
+      "existingGalleryBlocked": false
+    },
+    {
+      "id": "obliquity-orrery-turned-axis",
+      "file": "obliquity-orrery-turned-axis.ldr",
+      "program": "obliquity-orrery-turned-axis.bw",
+      "main": "b6f39a12348b984dc9c5f59b826e7680539b6148",
+      "modelSha256": "baf56227e9a3b520ac349199604bdcc8c7cb4f464eb3fc6d6f786a66c738a4b9",
+      "programSha256": "a6c9edc6df1a28cfb8a295405c4ca1aae380ad356767ed73e6337b49c3ac79af",
+      "coldMs": 0,
+      "timeLimitMs": 90000,
+      "explicitlyContinuous": false,
+      "finishedAt": 35366.66666666638,
+      "finite": true,
+      "variables": {
+        "stage": "99",
+        "settled": "0",
+        "completed": "1",
+        "failed": "0",
+        "targetA": "0",
+        "speedA": "20",
+        "trims": "0",
+        "a0": 0.1,
+        "Orrery watchdog": "Orrery watchdog",
+        "Orrery station": "Orrery station"
+      },
+      "issues": [
+        {
+          "severity": "warning",
+          "code": "locked-hinges",
+          "message": "Hinges between b2 and b3 lock, merging islands",
+          "parts": [
+            "beam_middle",
+            "post_mid_low_e",
+            "post_mid_low_w"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "locked-hinges",
+          "message": "Hinges between b2 and b6 lock, merging islands",
+          "parts": [
+            "hub",
+            "hub_pin_front",
+            "hub_pin_rear"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "locked-hinges",
+          "message": "Hinges between b3 and b4 lock, merging islands",
+          "parts": [
+            "beam_top",
+            "post_top_e",
+            "post_top_w"
+          ]
+        }
+      ],
+      "status": "completed-program-only",
+      "scope": "Read-only original-source native diagnostic; no independent passive-law or actual app acceptance",
+      "acquisition": {
+        "id": "obliquity-orrery-turned-axis",
+        "exitCode": 0,
+        "wallSeconds": 1.4698121547698975
+      },
+      "existingGalleryBlocked": false
+    },
+    {
+      "id": "offset-relay",
+      "file": "offset-relay.ldr",
+      "program": "offset-relay.bw",
+      "main": "b6f39a12348b984dc9c5f59b826e7680539b6148",
+      "modelSha256": "eb99c7f77b20edff60edfa13b43aed627285325d5fbe13fcb525e0a7c27aea2c",
+      "programSha256": "e618e90134f78a395db299b82aa405759a445a1d0a6d8977777fd790335abc8b",
+      "coldMs": 0,
+      "timeLimitMs": 90000,
+      "finishedAt": null,
+      "finite": true,
+      "variables": {
+        "directionA": "1",
+        "directionB": "-1",
+        "targetA": "0",
+        "targetB": "0",
+        "speedA": "90",
+        "speedB": "15",
+        "inputTargetDeg": "0",
+        "offsetTargetMm": "32",
+        "stage": "8",
+        "caseId": "4",
+        "movingMask": "1",
+        "arrived": "0",
+        "arrivedA": "0",
+        "arrivedB": "1",
+        "correctionsA": "0",
+        "correctionsB": "0",
+        "completed": "0",
+        "failed": "0",
+        "Offset Relay watchdog": "Offset Relay watchdog",
+        "Offset Relay move": "Offset Relay move"
+      },
+      "issues": [],
+      "status": "unfinished-within-diagnostic-budget",
+      "scope": "Read-only original-source native diagnostic; no independent passive-law or actual app acceptance",
+      "acquisition": {
+        "id": "offset-relay",
+        "exitCode": 0,
+        "wallSeconds": 31.292941093444824
+      },
+      "existingGalleryBlocked": false
+    },
+    {
+      "id": "orion-cardan",
+      "file": "orion-cardan.ldr",
+      "program": "orion-cardan.bw",
+      "main": "b6f39a12348b984dc9c5f59b826e7680539b6148",
+      "modelSha256": "e526ea81c28c05e80bdddedbe110b2ae2b0bbbf36d023ace3a911f2e551fa23a",
+      "programSha256": "9023ebdc4a02a7f1002628cb825bd3fb95c5ef1814f103138415a31b606e41c0",
+      "coldMs": 0,
+      "timeLimitMs": 90000,
+      "finishedAt": null,
+      "finite": true,
+      "variables": {
+        "completed": "0",
+        "failed": "0",
+        "stage": "18",
+        "driveSpeed": "0",
+        "inputEncoder": 1431.9,
+        "measuredMotorSpeed": -180.1,
+        "returnDegrees": -6102,
+        "Orion observe": "Orion observe",
+        "Orion watchdog": "Orion watchdog"
+      },
+      "issues": [],
+      "status": "unfinished-within-diagnostic-budget",
+      "scope": "Read-only original-source native diagnostic; no independent passive-law or actual app acceptance",
+      "acquisition": {
+        "id": "orion-cardan",
+        "exitCode": 0,
+        "wallSeconds": 16.45134687423706
+      },
+      "existingGalleryBlocked": false
+    },
+    {
+      "id": "paired-door-sync",
+      "file": "paired-door-sync.ldr",
+      "program": "paired-door-sync.bw",
+      "main": "b6f39a12348b984dc9c5f59b826e7680539b6148",
+      "modelSha256": "43f96eae054d5897a83ad50af292a38283b7b1ab2686348f13fa1b853079d0c1",
+      "programSha256": "483ebd35317bbc9840a4a2dd285ee90d2cdd3fb3a124568a8221c3c0d9bab101",
+      "coldMs": 0,
+      "timeLimitMs": 90000,
+      "finishedAt": 43466.66666666697,
+      "finite": true,
+      "variables": {
+        "stage": "5",
+        "settled": "0",
+        "completed": "1",
+        "failed": "0",
+        "targetA": "0",
+        "speedA": "15",
+        "correctionAttempts": "0",
+        "PairedDoorSync watchdog": "PairedDoorSync watchdog",
+        "PairedDoorSync move": "PairedDoorSync move"
+      },
+      "issues": [],
+      "status": "completed-program-only",
+      "scope": "Read-only original-source native diagnostic; no independent passive-law or actual app acceptance",
+      "acquisition": {
+        "id": "paired-door-sync",
+        "exitCode": 0,
+        "wallSeconds": 2.723371744155884
+      },
+      "existingGalleryBlocked": false
+    },
+    {
+      "id": "pan-shift",
+      "file": "pan-shift.ldr",
+      "program": "pan-shift.bw",
+      "main": "b6f39a12348b984dc9c5f59b826e7680539b6148",
+      "modelSha256": "d4a21d566ae36e6b16515255e79764c95ceb102ac39d6474c1aaba300630ef55",
+      "programSha256": "d91097cc55f4bbdfceedc3a843c8ebd3820f296dd288cddd06e037ff8b6412e8",
+      "coldMs": 0,
+      "timeLimitMs": 90000,
+      "finishedAt": null,
+      "finite": true,
+      "variables": {
+        "directionA": "1",
+        "directionB": "1",
+        "routeIndex": 3,
+        "stage": 2,
+        "arrived": "0",
+        "arrivedA": "0",
+        "arrivedB": "1",
+        "inputsReady": "0",
+        "completed": "0",
+        "failed": "0",
+        "movingMask": 1,
+        "targetA": 0,
+        "targetB": 0,
+        "capA": 10,
+        "capB": 0,
+        "loadTargetDeg": 0,
+        "trimTargetDeg": 0,
+        "correctionsA": "0",
+        "distanceA": 179.9,
+        "profilePeakA": 10,
+        "profileDurationA": 25.990000000000002,
+        "profileBrakeDistanceA": 40,
+        "profileRemainingA": 76.4,
+        "profileBrakeSpeedA": 13.820274961085255,
+        "profileDeadlineA": 67.98,
+        "profileStartedA": 75.53333325195312,
+        "profileElapsedA": 14.400000000000006,
+        "profileSpeedA": 10,
+        "trimStartedA": "0",
+        "correctionsB": "0",
+        "distanceB": "0",
+        "profilePeakB": "0",
+        "profileDurationB": "0",
+        "profileBrakeDistanceB": "0",
+        "profileRemainingB": "0",
+        "profileBrakeSpeedB": "0",
+        "profileDeadlineB": "0",
+        "profileStartedB": "0",
+        "profileElapsedB": "0",
+        "profileSpeedB": "0",
+        "trimStartedB": "0",
+        "profileDirectionA": "-1",
+        "trimDirectionA": "1",
+        "profileDirectionB": "1",
+        "trimDirectionB": "1",
+        "motorATargets": [
+          0,
+          180,
+          0,
+          0,
+          180,
+          180,
+          0,
+          0
+        ],
+        "motorBTargets": [
+          0,
+          0,
+          0,
+          60,
+          60,
+          -60,
+          -60,
+          0
+        ],
+        "motorACaps": [
+          0,
+          10,
+          10,
+          0,
+          10,
+          0,
+          10,
+          0
+        ],
+        "motorBCaps": [
+          0,
+          0,
+          0,
+          5,
+          0,
+          5,
+          0,
+          5
+        ],
+        "loadTargets": [
+          0,
+          180,
+          0,
+          0,
+          180,
+          180,
+          0,
+          0
+        ],
+        "trimTargets": [
+          0,
+          0,
+          0,
+          60,
+          60,
+          -60,
+          -60,
+          0
+        ],
+        "movingMasks": [
+          0,
+          1,
+          1,
+          2,
+          1,
+          2,
+          1,
+          2
+        ],
+        "Pan Shift watchdog": "Pan Shift watchdog",
+        "Pan Shift move": "Pan Shift move"
+      },
+      "issues": [],
+      "status": "unfinished-within-diagnostic-budget",
+      "scope": "Read-only original-source native diagnostic; no independent passive-law or actual app acceptance",
+      "acquisition": {
+        "id": "pan-shift",
+        "exitCode": 0,
+        "wallSeconds": 18.591270923614502
+      },
+      "existingGalleryBlocked": false
+    },
+    {
+      "id": "phasor-twin",
+      "file": "phasor-twin.ldr",
+      "program": "phasor-twin.bw",
+      "main": "b6f39a12348b984dc9c5f59b826e7680539b6148",
+      "modelSha256": "0a21a1ecfe4f246df957978a78149bdebc039871a614b616ea7cf70281e72db1",
+      "programSha256": "749ee91516c0b8aa8e0710c01ec175195dc74982afc0f7a28e1d2f92aa838ec0",
+      "coldMs": 0,
+      "timeLimitMs": 90000,
+      "explicitlyContinuous": false,
+      "finishedAt": 35266.66666666637,
+      "finite": true,
+      "variables": {
+        "stage": "3",
+        "completed": "1",
+        "failed": "0",
+        "settled": "0",
+        "targetA": "0",
+        "correctionAttempts": "0",
+        "Phasor Twin watchdog": "Phasor Twin watchdog",
+        "Phasor Twin move": "Phasor Twin move",
+        "Phasor Twin arrival guard": "Phasor Twin arrival guard"
+      },
+      "issues": [],
+      "status": "completed-program-only",
+      "scope": "Read-only original-source native diagnostic; no independent passive-law or actual app acceptance",
+      "acquisition": {
+        "id": "phasor-twin",
+        "exitCode": 0,
+        "wallSeconds": 2.233470916748047
+      },
+      "existingGalleryBlocked": false
+    },
+    {
+      "id": "phasor-twin-control",
+      "file": "phasor-twin-control.ldr",
+      "program": "phasor-twin.bw",
+      "main": "b6f39a12348b984dc9c5f59b826e7680539b6148",
+      "modelSha256": "a4e98842939aca6447b798a8a165225113d28abd35a841054485fc5ed04f06d4",
+      "programSha256": "749ee91516c0b8aa8e0710c01ec175195dc74982afc0f7a28e1d2f92aa838ec0",
+      "coldMs": 0,
+      "timeLimitMs": 90000,
+      "explicitlyContinuous": false,
+      "finishedAt": 35266.66666666637,
+      "finite": true,
+      "variables": {
+        "stage": "3",
+        "completed": "1",
+        "failed": "0",
+        "settled": "0",
+        "targetA": "0",
+        "correctionAttempts": "0",
+        "Phasor Twin watchdog": "Phasor Twin watchdog",
+        "Phasor Twin move": "Phasor Twin move",
+        "Phasor Twin arrival guard": "Phasor Twin arrival guard"
+      },
+      "issues": [],
+      "status": "completed-program-only",
+      "scope": "Read-only original-source native diagnostic; no independent passive-law or actual app acceptance",
+      "acquisition": {
+        "id": "phasor-twin-control",
+        "exitCode": 0,
+        "wallSeconds": 2.3945040702819824
+      },
+      "existingGalleryBlocked": false
+    },
+    {
+      "id": "pivot-exchange",
+      "file": "pivot-exchange.ldr",
+      "program": "pivot-exchange.bw",
+      "main": "b6f39a12348b984dc9c5f59b826e7680539b6148",
+      "modelSha256": "dac8d0d5003ae68f90d8c3b4f1233d4e20aa3c2f50fc6fc2ff884e32b1d990fd",
+      "programSha256": "e74aa7a5931429073e0a147db06ed07a916019245f6f3256c3222d7288c58118",
+      "coldMs": 0,
+      "timeLimitMs": 90000,
+      "explicitlyContinuous": false,
+      "finishedAt": 18066.666666666726,
+      "finite": true,
+      "variables": {
+        "observing": "0",
+        "complete": "1",
+        "fault": "0"
+      },
+      "issues": [
+        {
+          "severity": "warning",
+          "code": "no-motor",
+          "message": "No motor is connected to a hub port, so nothing will move on its own.",
+          "parts": []
+        }
+      ],
+      "status": "completed-program-only",
+      "scope": "Read-only original-source native diagnostic; no independent passive-law or actual app acceptance",
+      "acquisition": {
+        "id": "pivot-exchange",
+        "exitCode": 0,
+        "wallSeconds": 1.0470902919769287
+      },
+      "existingGalleryBlocked": false
+    },
+    {
+      "id": "pivot-exchange-wide",
+      "file": "pivot-exchange-wide.ldr",
+      "program": "pivot-exchange.bw",
+      "main": "b6f39a12348b984dc9c5f59b826e7680539b6148",
+      "modelSha256": "9f4bec6518514f90810c3dd00f7e6d815ed6d27904af3bdfcaa8ec9584c77ff8",
+      "programSha256": "e74aa7a5931429073e0a147db06ed07a916019245f6f3256c3222d7288c58118",
+      "coldMs": 0,
+      "timeLimitMs": 90000,
+      "explicitlyContinuous": false,
+      "finishedAt": 18066.666666666726,
+      "finite": true,
+      "variables": {
+        "observing": "0",
+        "complete": "1",
+        "fault": "0"
+      },
+      "issues": [
+        {
+          "severity": "warning",
+          "code": "no-motor",
+          "message": "No motor is connected to a hub port, so nothing will move on its own.",
+          "parts": []
+        }
+      ],
+      "status": "completed-program-only",
+      "scope": "Read-only original-source native diagnostic; no independent passive-law or actual app acceptance",
+      "acquisition": {
+        "id": "pivot-exchange-wide",
+        "exitCode": 0,
+        "wallSeconds": 1.1281070709228516
+      },
+      "existingGalleryBlocked": false
+    },
+    {
+      "id": "poise",
+      "file": "poise.ldr",
+      "program": "poise.bw",
+      "main": "b6f39a12348b984dc9c5f59b826e7680539b6148",
+      "modelSha256": "b1d42ec1761bd45408de23c502dda2069ebc7f755ef14e877aa4dfa5e2fdfe63",
+      "programSha256": "1d1578098fb79b7fcf6c47ce8199c53c8676151d147c9d5b72e62cbe3b95f084",
+      "coldMs": 0,
+      "timeLimitMs": 90000,
+      "finishedAt": 52600.00000000097,
+      "finite": true,
+      "variables": {
+        "targetA": "0",
+        "targetB": "0",
+        "stage": "6",
+        "dwelling": "0",
+        "arrivals": 5,
+        "completed": "1",
+        "failed": "0",
+        "Poise watchdog": "Poise watchdog",
+        "Poise stage": "Poise stage",
+        "Poise move both": "Poise move both"
+      },
+      "issues": [],
+      "status": "completed-program-only",
+      "scope": "Read-only original-source native diagnostic; no independent passive-law or actual app acceptance",
+      "acquisition": {
+        "id": "poise",
+        "exitCode": 0,
+        "wallSeconds": 11.249675035476685
+      },
+      "existingGalleryBlocked": false
+    },
+    {
+      "id": "poise-mass-control",
+      "file": "poise-mass-control.ldr",
+      "program": "poise.bw",
+      "main": "b6f39a12348b984dc9c5f59b826e7680539b6148",
+      "modelSha256": "cb4692688b413eeb1bec77ec6638f2f63ff8d584f31dccae589bb80db4f088a9",
+      "programSha256": "1d1578098fb79b7fcf6c47ce8199c53c8676151d147c9d5b72e62cbe3b95f084",
+      "coldMs": 0,
+      "timeLimitMs": 90000,
+      "finishedAt": 52600.00000000097,
+      "finite": true,
+      "variables": {
+        "targetA": "0",
+        "targetB": "0",
+        "stage": "6",
+        "dwelling": "0",
+        "arrivals": 5,
+        "completed": "1",
+        "failed": "0",
+        "Poise watchdog": "Poise watchdog",
+        "Poise stage": "Poise stage",
+        "Poise move both": "Poise move both"
+      },
+      "issues": [],
+      "status": "completed-program-only",
+      "scope": "Read-only original-source native diagnostic; no independent passive-law or actual app acceptance",
+      "acquisition": {
+        "id": "poise-mass-control",
+        "exitCode": 0,
+        "wallSeconds": 10.765296936035156
+      },
+      "existingGalleryBlocked": false
+    },
+    {
+      "id": "quiet-partner",
+      "file": "quiet-partner.ldr",
+      "program": "quiet-partner.bw",
+      "main": "b6f39a12348b984dc9c5f59b826e7680539b6148",
+      "modelSha256": "0d751869fc66909bd2df565c3aea25b632abcc15d7491d220ef55861d4ebbb69",
+      "programSha256": "3293584cc64197eb69d6f3da02c4a8ff3d527c11653d3a774c184a8b84af104e",
+      "coldMs": 0,
+      "timeLimitMs": 90000,
+      "explicitlyContinuous": false,
+      "finishedAt": 20166.66666666665,
+      "finite": true,
+      "variables": {
+        "phase": "4",
+        "cycle": 16,
+        "half": "0",
+        "target": "0",
+        "complete": "1",
+        "fault": "0",
+        "Quiet Partner watchdog": "Quiet Partner watchdog",
+        "Quiet Partner fault": "Quiet Partner fault",
+        "Quiet Partner rock": "Quiet Partner rock"
+      },
+      "issues": [
+        {
+          "severity": "warning",
+          "code": "locked-hinges",
+          "message": "Hinges between b0 and b1 lock, merging islands",
+          "parts": [
+            "absorber_anchor_axle_neg",
+            "absorber_anchor_axle_pos",
+            "absorber_anchor_bridge",
+            "absorber_axle",
+            "absorber_key"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "locked-hinges",
+          "message": "Hinges between b0 and b2 lock, merging islands",
+          "parts": [
+            "absorber_anchor_axle_neg",
+            "absorber_anchor_axle_pos",
+            "absorber_beam"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "locked-hinges",
+          "message": "Hinges between b4 and b5 lock, merging islands",
+          "parts": [
+            "input_anchor_axle_neg",
+            "input_anchor_axle_pos",
+            "input_anchor_bridge",
+            "input_axle",
+            "input_key"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "locked-hinges",
+          "message": "Hinges between b4 and b6 lock, merging islands",
+          "parts": [
+            "input_anchor_axle_neg",
+            "input_anchor_axle_pos",
+            "input_beam"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "locked-hinges",
+          "message": "Hinges between b7 and b8 lock, merging islands",
+          "parts": [
+            "primary_anchor_axle_neg",
+            "primary_anchor_axle_pos",
+            "primary_anchor_bridge",
+            "primary_axle",
+            "primary_key"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "locked-hinges",
+          "message": "Hinges between b7 and b9 lock, merging islands",
+          "parts": [
+            "primary_anchor_axle_neg",
+            "primary_anchor_axle_pos",
+            "primary_beam"
+          ]
+        }
+      ],
+      "status": "completed-program-only",
+      "scope": "Read-only original-source native diagnostic; no independent passive-law or actual app acceptance",
+      "acquisition": {
+        "id": "quiet-partner",
+        "exitCode": 0,
+        "wallSeconds": 11.97836709022522
+      },
+      "existingGalleryBlocked": false
+    },
+    {
+      "id": "quiet-partner-control",
+      "file": "quiet-partner-control.ldr",
+      "program": "quiet-partner.bw",
+      "main": "b6f39a12348b984dc9c5f59b826e7680539b6148",
+      "modelSha256": "1be7a07e81ab8f0f52c5d129f2ffc714f39ee1598c2978ffd68224f9266017fd",
+      "programSha256": "3293584cc64197eb69d6f3da02c4a8ff3d527c11653d3a774c184a8b84af104e",
+      "coldMs": 0,
+      "timeLimitMs": 90000,
+      "explicitlyContinuous": false,
+      "finishedAt": 20066.666666666653,
+      "finite": true,
+      "variables": {
+        "phase": "4",
+        "cycle": 16,
+        "half": "0",
+        "target": "0",
+        "complete": "1",
+        "fault": "0",
+        "Quiet Partner watchdog": "Quiet Partner watchdog",
+        "Quiet Partner fault": "Quiet Partner fault",
+        "Quiet Partner rock": "Quiet Partner rock"
+      },
+      "issues": [
+        {
+          "severity": "warning",
+          "code": "locked-hinges",
+          "message": "Hinges between b0 and b1 lock, merging islands",
+          "parts": [
+            "absorber_anchor_axle_neg",
+            "absorber_anchor_axle_pos",
+            "absorber_anchor_bridge",
+            "absorber_axle",
+            "absorber_key"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "locked-hinges",
+          "message": "Hinges between b0 and b2 lock, merging islands",
+          "parts": [
+            "absorber_anchor_axle_neg",
+            "absorber_anchor_axle_pos",
+            "absorber_beam"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "locked-hinges",
+          "message": "Hinges between b4 and b5 lock, merging islands",
+          "parts": [
+            "input_anchor_axle_neg",
+            "input_anchor_axle_pos",
+            "input_anchor_bridge",
+            "input_axle",
+            "input_key"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "locked-hinges",
+          "message": "Hinges between b4 and b6 lock, merging islands",
+          "parts": [
+            "input_anchor_axle_neg",
+            "input_anchor_axle_pos",
+            "input_beam"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "locked-hinges",
+          "message": "Hinges between b7 and b8 lock, merging islands",
+          "parts": [
+            "primary_anchor_axle_neg",
+            "primary_anchor_axle_pos",
+            "primary_anchor_bridge",
+            "primary_axle",
+            "primary_key"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "locked-hinges",
+          "message": "Hinges between b7 and b9 lock, merging islands",
+          "parts": [
+            "primary_anchor_axle_neg",
+            "primary_anchor_axle_pos",
+            "primary_beam"
+          ]
+        }
+      ],
+      "status": "completed-program-only",
+      "scope": "Read-only original-source native diagnostic; no independent passive-law or actual app acceptance",
+      "acquisition": {
+        "id": "quiet-partner-control",
+        "exitCode": 0,
+        "wallSeconds": 4.170175075531006
+      },
+      "existingGalleryBlocked": false
+    },
+    {
+      "id": "rack-decoder",
+      "file": "rack-decoder.ldr",
+      "program": "rack-decoder.bw",
+      "main": "b6f39a12348b984dc9c5f59b826e7680539b6148",
+      "modelSha256": "482d814c67ef84c8084db07b5d781926b6f5493330b4e7d655f01332488c9fa4",
+      "programSha256": "b6247884f620858ed872f88414aaeec924357312f0f47fe964e91d28a933e53f",
+      "coldMs": 0,
+      "timeLimitMs": 90000,
+      "finishedAt": null,
+      "finite": true,
+      "variables": {
+        "dwellA": 0,
+        "dwellB": -114.5,
+        "windowOpen": "0",
+        "windowStart": 86.66666674804688,
+        "windowA": 0,
+        "windowB": -114.5,
+        "driftA": 0,
+        "driftB": 0,
+        "directionA": "1",
+        "directionB": "-1",
+        "targetA": "-57.29577951308232",
+        "targetB": "57.29577951308232",
+        "speedA": "7.16197243913529",
+        "speedB": "21.48591731740587",
+        "rackATargetMm": "-6",
+        "rackBTargetMm": "-6",
+        "stage": "7",
+        "caseId": "1",
+        "movingMask": "3",
+        "arrived": "0",
+        "arrivedA": "0",
+        "arrivedB": "0",
+        "correctionsA": "0",
+        "correctionsB": "0",
+        "trimDirectionA": "1",
+        "trimDirectionB": "1",
+        "trimStartedA": 84.66666674804688,
+        "trimStartedB": 49.533333251953124,
+        "coarseDoneA": "0",
+        "coarseDoneB": "0",
+        "completed": "0",
+        "failed": "0",
+        "Rack Decoder watchdog": "Rack Decoder watchdog",
+        "Rack Decoder move": "Rack Decoder move"
+      },
+      "issues": [],
+      "status": "unfinished-within-diagnostic-budget",
+      "scope": "Read-only original-source native diagnostic; no independent passive-law or actual app acceptance",
+      "acquisition": {
+        "id": "rack-decoder",
+        "exitCode": 0,
+        "wallSeconds": 26.102069854736328
+      },
+      "existingGalleryBlocked": false
+    },
+    {
+      "id": "remote-pivot",
+      "file": "remote-pivot.ldr",
+      "program": "remote-pivot.bw",
+      "main": "b6f39a12348b984dc9c5f59b826e7680539b6148",
+      "modelSha256": "5ae709b12107c6759420ba74c8e4554e1ec337deb7bff37ca0e5150dbd0f43a4",
+      "programSha256": "26565cd4225d3b40f60a17bfb3430a089977fcd77d80c8d856228949e0d8607e",
+      "coldMs": 0,
+      "timeLimitMs": 90000,
+      "finishedAt": 63066.666666668396,
+      "finite": true,
+      "variables": {
+        "directionA": "1",
+        "routeIndex": 9,
+        "stage": "8",
+        "arrived": "0",
+        "arrivedA": "1",
+        "inputReady": "0",
+        "completed": "1",
+        "failed": "0",
+        "movingMask": "0",
+        "targetA": 0,
+        "capA": 8,
+        "inputTargetAngleDeg": 90,
+        "correctionsA": "0",
+        "distanceA": 29.9,
+        "profilePeakA": 8,
+        "profileDurationA": 5.7375,
+        "profileBrakeDistanceA": 8,
+        "profileRemainingA": 0.2,
+        "profileBrakeSpeedA": 1.2649110640673518,
+        "profileDeadlineA": 15.475,
+        "profileStartedA": 54.033333251953124,
+        "profileElapsedA": 5.399999999999999,
+        "profileSpeedA": 1.2649110640673518,
+        "trimStartedA": "0",
+        "profileDirectionA": "1",
+        "trimDirectionA": "1",
+        "motorATargets": [
+          0,
+          -30,
+          -15,
+          0,
+          15,
+          30,
+          -30,
+          0
+        ],
+        "motorACaps": [
+          0,
+          8,
+          8,
+          8,
+          8,
+          8,
+          8,
+          8
+        ],
+        "inputAngleTargets": [
+          90,
+          60,
+          75,
+          90,
+          105,
+          120,
+          60,
+          90
+        ],
+        "movingMasks": [
+          0,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "Remote Pivot watchdog": "Remote Pivot watchdog",
+        "Remote Pivot move": "Remote Pivot move"
+      },
+      "issues": [],
+      "status": "completed-program-only",
+      "scope": "Read-only original-source native diagnostic; no independent passive-law or actual app acceptance",
+      "acquisition": {
+        "id": "remote-pivot",
+        "exitCode": 0,
+        "wallSeconds": 13.603883981704712
+      },
+      "existingGalleryBlocked": false
+    },
+    {
+      "id": "samebeat",
+      "file": "samebeat.ldr",
+      "program": "samebeat.bw",
+      "main": "b6f39a12348b984dc9c5f59b826e7680539b6148",
+      "modelSha256": "381f187394622c58d14e450c5b4ff786072637404a21dc0981848ffd99b9652f",
+      "programSha256": "1cb584c493d25cff006a8f4f1f79c295b200c8ab2af53eed8a5929cda4c39457",
+      "coldMs": 0,
+      "timeLimitMs": 90000,
+      "explicitlyContinuous": false,
+      "finishedAt": 23633.33333333319,
+      "finite": true,
+      "variables": {
+        "targetA": "0",
+        "dwell": "22",
+        "stage": "2",
+        "held": "1",
+        "completed": "1",
+        "failed": "0",
+        "Samebeat watchdog": "Samebeat watchdog",
+        "Samebeat fault": "Samebeat fault",
+        "Samebeat move and hold": "Samebeat move and hold"
+      },
+      "issues": [],
+      "status": "completed-program-only",
+      "scope": "Read-only original-source native diagnostic; no independent passive-law or actual app acceptance",
+      "acquisition": {
+        "id": "samebeat",
+        "timeoutSeconds": 150
+      },
+      "existingGalleryBlocked": false
+    },
+    {
+      "id": "samebeat-conjugate",
+      "file": "samebeat-conjugate.ldr",
+      "program": "samebeat.bw",
+      "main": "b6f39a12348b984dc9c5f59b826e7680539b6148",
+      "modelSha256": "9516c0f9fc51287896010a78f5d321fcb3d6a918d2bfefe3fb749aece79c66f5",
+      "programSha256": "1cb584c493d25cff006a8f4f1f79c295b200c8ab2af53eed8a5929cda4c39457",
+      "coldMs": 0,
+      "timeLimitMs": 90000,
+      "explicitlyContinuous": false,
+      "finishedAt": 23633.33333333319,
+      "finite": true,
+      "variables": {
+        "targetA": "0",
+        "dwell": "22",
+        "stage": "2",
+        "held": "1",
+        "completed": "1",
+        "failed": "0",
+        "Samebeat watchdog": "Samebeat watchdog",
+        "Samebeat fault": "Samebeat fault",
+        "Samebeat move and hold": "Samebeat move and hold"
+      },
+      "issues": [],
+      "status": "completed-program-only",
+      "scope": "Read-only original-source native diagnostic; no independent passive-law or actual app acceptance",
+      "acquisition": {
+        "id": "samebeat-conjugate",
+        "timeoutSeconds": 150
+      },
+      "existingGalleryBlocked": false
+    },
+    {
+      "id": "samebeat-control",
+      "file": "samebeat-control.ldr",
+      "program": "samebeat.bw",
+      "main": "b6f39a12348b984dc9c5f59b826e7680539b6148",
+      "modelSha256": "b2df2fd9914048ae1965aa725063749faaebf69b77cd65a6daa19e6aa7beedc1",
+      "programSha256": "1cb584c493d25cff006a8f4f1f79c295b200c8ab2af53eed8a5929cda4c39457",
+      "coldMs": 0,
+      "timeLimitMs": 90000,
+      "explicitlyContinuous": false,
+      "finishedAt": 23633.33333333319,
+      "finite": true,
+      "variables": {
+        "targetA": "0",
+        "dwell": "22",
+        "stage": "2",
+        "held": "1",
+        "completed": "1",
+        "failed": "0",
+        "Samebeat watchdog": "Samebeat watchdog",
+        "Samebeat fault": "Samebeat fault",
+        "Samebeat move and hold": "Samebeat move and hold"
+      },
+      "issues": [],
+      "status": "completed-program-only",
+      "scope": "Read-only original-source native diagnostic; no independent passive-law or actual app acceptance",
+      "acquisition": {
+        "id": "samebeat-control",
+        "timeoutSeconds": 150
+      },
+      "existingGalleryBlocked": false
+    },
+    {
+      "id": "sarrus-lift-single-chain",
+      "file": "sarrus-lift-single-chain.ldr",
+      "program": "sarrus-lift-single-chain.bw",
+      "main": "b6f39a12348b984dc9c5f59b826e7680539b6148",
+      "modelSha256": "602698633267bcd2823bb8f6063042caae415a47b0fac33ae82c70eff4f75f97",
+      "programSha256": "4a9c6ee290cd6905c782a4dce5bc3264237cb69c7ddf99887e03326005d0d8b6",
+      "coldMs": 0,
+      "timeLimitMs": 90000,
+      "explicitlyContinuous": false,
+      "finishedAt": 8066.666666666638,
+      "finite": true,
+      "variables": {},
+      "issues": [
+        {
+          "severity": "warning",
+          "code": "locked-hinges",
+          "message": "Hinges between b2 and b5 lock, merging islands",
+          "parts": [
+            "gearbox_case",
+            "gearbox_case_pin_-20_-30",
+            "gearbox_case_pin_-20_30",
+            "gearbox_case_pin_20_-30",
+            "gearbox_case_pin_20_30"
+          ]
+        }
+      ],
+      "status": "completed-program-only",
+      "scope": "Read-only original-source native diagnostic; no independent passive-law or actual app acceptance",
+      "acquisition": {
+        "id": "sarrus-lift-single-chain",
+        "exitCode": 0,
+        "wallSeconds": 1.5836310386657715
+      },
+      "existingGalleryBlocked": false
+    },
+    {
+      "id": "schmidt-shift",
+      "file": "schmidt-shift.ldr",
+      "program": "schmidt-shift.bw",
+      "main": "b6f39a12348b984dc9c5f59b826e7680539b6148",
+      "modelSha256": "2fd6d4c2746cd59be306dac049b446e6d3913293071d76165344c878998e63c5",
+      "programSha256": "bb757ed3b4c19f10d1f18e7927d583aaa5bccfb3dede27a768dc08c3499c6dab",
+      "coldMs": 0,
+      "timeLimitMs": 90000,
+      "finishedAt": 75333.33333333382,
+      "finite": true,
+      "variables": {
+        "targetA": "0",
+        "stage": "4",
+        "completed": "1",
+        "failed": "0",
+        "Schmidt watchdog": "Schmidt watchdog",
+        "Schmidt move": "Schmidt move"
+      },
+      "issues": [],
+      "status": "completed-program-only",
+      "scope": "Read-only original-source native diagnostic; no independent passive-law or actual app acceptance",
+      "acquisition": {
+        "id": "schmidt-shift",
+        "exitCode": 0,
+        "wallSeconds": 19.38118600845337
+      },
+      "existingGalleryBlocked": false
+    },
+    {
+      "id": "solstice-pumpjack",
+      "file": "solstice-pumpjack.ldr",
+      "program": "solstice-pumpjack.bw",
+      "main": "b6f39a12348b984dc9c5f59b826e7680539b6148",
+      "modelSha256": "fb7edde35e329b35af4bcab107be8e5c560db48cbfcaaea451cc60cc9a168d72",
+      "programSha256": "77ebf25fd16693953e719959294c28d9bfe23690a06f3d31f2c4e0686c513a41",
+      "coldMs": 0,
+      "timeLimitMs": 90000,
+      "finishedAt": 54433.333333334434,
+      "finite": true,
+      "variables": {
+        "completed": "1",
+        "failed": "0",
+        "stage": "7",
+        "moving": "0",
+        "inputEncoder": -0.3,
+        "inputCrankDegrees": -0.3,
+        "targetDegrees": "0",
+        "targetCrankDegrees": "0",
+        "moveDegrees": -360.1,
+        "Solstice observe": "Solstice observe",
+        "Solstice watchdog": "Solstice watchdog"
+      },
+      "issues": [],
+      "status": "completed-program-only",
+      "scope": "Read-only original-source native diagnostic; no independent passive-law or actual app acceptance",
+      "acquisition": {
+        "id": "solstice-pumpjack",
+        "exitCode": 0,
+        "wallSeconds": 12.222441911697388
+      },
+      "existingGalleryBlocked": false
+    },
+    {
+      "id": "spiral-scribe",
+      "file": "spiral-scribe.ldr",
+      "program": "spiral-scribe.bw",
+      "main": "b6f39a12348b984dc9c5f59b826e7680539b6148",
+      "modelSha256": "b67fd04fba5744001932944ad838759d1493d5d825c11957508092dfe7f52339",
+      "programSha256": "73bc601d534d57c1eff08b5d902acc55dac0a7931858009cf174ef302410a6d1",
+      "coldMs": 0,
+      "timeLimitMs": 90000,
+      "finishedAt": 50066.66666666745,
+      "finite": true,
+      "variables": {
+        "phase": 10,
+        "completed": "1",
+        "failed": "0",
+        "targetA": "0",
+        "speedA": "120",
+        "cycle": 2,
+        "trims": "0",
+        "Spiral watchdog": "Spiral watchdog",
+        "Spiral move": "Spiral move",
+        "Spiral arrival": "Spiral arrival"
+      },
+      "issues": [],
+      "status": "completed-program-only",
+      "scope": "Read-only original-source native diagnostic; no independent passive-law or actual app acceptance",
+      "acquisition": {
+        "id": "spiral-scribe",
+        "exitCode": 0,
+        "wallSeconds": 5.685096979141235
+      },
+      "existingGalleryBlocked": false
+    },
+    {
+      "id": "stroke-shift",
+      "file": "stroke-shift.ldr",
+      "program": "stroke-shift.bw",
+      "main": "b6f39a12348b984dc9c5f59b826e7680539b6148",
+      "modelSha256": "bc3857651b1d588517c61fd81ce2ea08c0df7227c35dedc9b1a8e992c2367ec0",
+      "programSha256": "5d4fc358feb5ac8a33bf2f70149a78a9fecab475c442c5574fe7810be7203077",
+      "coldMs": 0,
+      "timeLimitMs": 90000,
+      "finishedAt": 61566.66666666829,
+      "finite": true,
+      "variables": {
+        "stage": "6",
+        "trial": 3,
+        "completed": "1",
+        "failed": "0",
+        "targetA": "0",
+        "targetB": "0",
+        "speedA": "180",
+        "speedB": "360",
+        "trimsA": "0",
+        "trimsB": "0",
+        "radiusSign": 1,
+        "Stroke Shift watchdog": "Stroke Shift watchdog",
+        "Stroke Shift move A": "Stroke Shift move A",
+        "Stroke Shift move B": "Stroke Shift move B",
+        "Stroke Shift arrival": "Stroke Shift arrival"
+      },
+      "issues": [],
+      "status": "completed-program-only",
+      "scope": "Read-only original-source native diagnostic; no independent passive-law or actual app acceptance",
+      "acquisition": {
+        "id": "stroke-shift",
+        "exitCode": 0,
+        "wallSeconds": 5.879197120666504
+      },
+      "existingGalleryBlocked": false
+    },
+    {
+      "id": "tangent-table",
+      "file": "tangent-table.ldr",
+      "program": "tangent-table.bw",
+      "main": "b6f39a12348b984dc9c5f59b826e7680539b6148",
+      "modelSha256": "857c6d4c61c12c8860b0baac23375fd11ce0dc68b99ea5fb0d7c22f59adf1f05",
+      "programSha256": "ffa877576b230c01deb66af6c8d5f173a5e57107129626161d31e907b1c6d1ed",
+      "coldMs": 0,
+      "timeLimitMs": 90000,
+      "finishedAt": null,
+      "finite": true,
+      "variables": {
+        "directionA": "1",
+        "directionB": "-1",
+        "targetA": 0,
+        "targetB": 0,
+        "speedA": 1.1885859483556176,
+        "speedB": 300,
+        "thetaTargetDeg": 0,
+        "xTargetMm": 40,
+        "routeIndex": 8,
+        "stage": 7,
+        "movingMask": 3,
+        "arrived": "0",
+        "arrivedA": "0",
+        "arrivedB": "0",
+        "correctionsA": "0",
+        "correctionsB": "0",
+        "trimDirectionA": "-1",
+        "trimDirectionB": "1",
+        "trimStartedA": 78.96666674804688,
+        "trimStartedB": 80.33333325195312,
+        "completed": "0",
+        "failed": "0",
+        "motorATargets": [
+          0,
+          15,
+          15,
+          -15,
+          -15,
+          14.036243467926477,
+          9.462322208025617,
+          0
+        ],
+        "motorBTargets": [
+          0,
+          2388.297343019206,
+          -2388.297343019206,
+          -2388.297343019206,
+          2388.297343019206,
+          2388.297343019206,
+          -2388.297343019206,
+          0
+        ],
+        "motorASpeeds": [
+          0,
+          1.8841875,
+          0,
+          8,
+          0,
+          8,
+          0.2872708421296484,
+          1.1885859483556176
+        ],
+        "motorBSpeeds": [
+          0,
+          300,
+          300,
+          0,
+          300,
+          0,
+          300,
+          300
+        ],
+        "angleTargets": [
+          0,
+          15,
+          15,
+          -15,
+          -15,
+          14.036243467926477,
+          9.462322208025617,
+          0
+        ],
+        "reachTargetsMm": [
+          40,
+          32,
+          48,
+          48,
+          32,
+          32,
+          48,
+          40
+        ],
+        "movingMasks": [
+          0,
+          3,
+          2,
+          1,
+          2,
+          1,
+          3,
+          3
+        ],
+        "Tangent Table watchdog": "Tangent Table watchdog",
+        "Tangent Table move": "Tangent Table move"
+      },
+      "issues": [],
+      "status": "unfinished-within-diagnostic-budget",
+      "scope": "Read-only original-source native diagnostic; no independent passive-law or actual app acceptance",
+      "acquisition": {
+        "id": "tangent-table",
+        "exitCode": 0,
+        "wallSeconds": 24.265772104263306
+      },
+      "existingGalleryBlocked": false
+    },
+    {
+      "id": "tempest-pendulum",
+      "file": "tempest-pendulum.ldr",
+      "program": "tempest-pendulum.bw",
+      "main": "b6f39a12348b984dc9c5f59b826e7680539b6148",
+      "modelSha256": "83b3e27b932f8356b5d2fff557f524f1ef589d871cf8f3aa64bd5647d86a3902",
+      "programSha256": "6b4bd9bf40610de86dbd773622592b65127d72fd52d0b795a8b9ba3cc4786fd8",
+      "coldMs": 0,
+      "timeLimitMs": 90000,
+      "finishedAt": 45866.666666667144,
+      "finite": true,
+      "variables": {
+        "completed": "1",
+        "failed": "0",
+        "stage": "4",
+        "phase": "complete",
+        "moving": "0",
+        "carrierEncoder": 0,
+        "carrierDegrees": 0,
+        "targetDegrees": "-0",
+        "targetCarrierDegrees": "0",
+        "moveDegrees": -60.5,
+        "observationWindow": "0",
+        "trimStage": "0",
+        "trimAttempts": 2,
+        "trimStartedAt": 37.56666674804688,
+        "Tempest observe": "Tempest observe",
+        "Tempest watchdog": "Tempest watchdog"
+      },
+      "issues": [],
+      "status": "completed-program-only",
+      "scope": "Read-only original-source native diagnostic; no independent passive-law or actual app acceptance",
+      "acquisition": {
+        "id": "tempest-pendulum",
+        "exitCode": 0,
+        "wallSeconds": 9.742860794067383
+      },
+      "existingGalleryBlocked": false
+    },
+    {
+      "id": "thirdline-control",
+      "file": "thirdline-control.ldr",
+      "program": "thirdline.bw",
+      "main": "b6f39a12348b984dc9c5f59b826e7680539b6148",
+      "modelSha256": "ff42e529eeffd246f9ab51364bf94b9843deb9ffccb6c455dbc150d3f5b83d1b",
+      "programSha256": "74c707d41c7f79106a640c60b31d505f30792068a60c09d77aa2d103f999d71e",
+      "coldMs": 0,
+      "timeLimitMs": 90000,
+      "explicitlyContinuous": false,
+      "finishedAt": 28533.333333333012,
+      "finite": true,
+      "variables": {
+        "targetA": "0",
+        "dwell": "1",
+        "stage": "7",
+        "held": "1",
+        "completed": "1",
+        "failed": "0",
+        "corrections": "0",
+        "Thirdline watchdog": "Thirdline watchdog",
+        "Thirdline fault": "Thirdline fault",
+        "Thirdline move and observe": "Thirdline move and observe"
+      },
+      "issues": [],
+      "status": "completed-program-only",
+      "scope": "Read-only original-source native diagnostic; no independent passive-law or actual app acceptance",
+      "acquisition": {
+        "id": "thirdline-control",
+        "exitCode": 0,
+        "wallSeconds": 8.486358165740967
+      },
+      "existingGalleryBlocked": false
+    },
+    {
+      "id": "travel-dial",
+      "file": "travel-dial.ldr",
+      "program": "travel-dial.bw",
+      "main": "b6f39a12348b984dc9c5f59b826e7680539b6148",
+      "modelSha256": "38481e12e7b60651db8b999534ba27c93dee2f0edf7c8d2b52f281119845609b",
+      "programSha256": "1a47a6cb427e61c31fa9c3b7c74ff4770f4dcf3fbb712c7e51b6680224253067",
+      "coldMs": 0,
+      "timeLimitMs": 90000,
+      "finishedAt": 28066.666666666362,
+      "finite": true,
+      "variables": {
+        "targetA": "0",
+        "speedA": "45",
+        "stage": "7",
+        "moving": "0",
+        "dwelling": "0",
+        "arrivals": 6,
+        "completed": "1",
+        "failed": "0",
+        "Travel Dial watchdog": "Travel Dial watchdog",
+        "Travel Dial move": "Travel Dial move"
+      },
+      "issues": [],
+      "status": "completed-program-only",
+      "scope": "Read-only original-source native diagnostic; no independent passive-law or actual app acceptance",
+      "acquisition": {
+        "id": "travel-dial",
+        "timeoutSeconds": 150
+      },
+      "existingGalleryBlocked": false
+    },
+    {
+      "id": "travel-dial-wheel-raised",
+      "file": "travel-dial-wheel-raised.ldr",
+      "program": "travel-dial.bw",
+      "main": "b6f39a12348b984dc9c5f59b826e7680539b6148",
+      "modelSha256": "339ad6cd746481ea942bdc96bb7faef7f59cf879cfe780adedc7429317159e96",
+      "programSha256": "1a47a6cb427e61c31fa9c3b7c74ff4770f4dcf3fbb712c7e51b6680224253067",
+      "coldMs": 0,
+      "timeLimitMs": 90000,
+      "finishedAt": 28333.33333333302,
+      "finite": true,
+      "variables": {
+        "targetA": "0",
+        "speedA": "45",
+        "stage": "7",
+        "moving": "0",
+        "dwelling": "0",
+        "arrivals": 6,
+        "completed": "1",
+        "failed": "0",
+        "Travel Dial watchdog": "Travel Dial watchdog",
+        "Travel Dial move": "Travel Dial move"
+      },
+      "issues": [],
+      "status": "completed-program-only",
+      "scope": "Read-only original-source native diagnostic; no independent passive-law or actual app acceptance",
+      "acquisition": {
+        "id": "travel-dial-wheel-raised",
+        "timeoutSeconds": 150
+      },
+      "existingGalleryBlocked": false
+    },
+    {
+      "id": "triad-table",
+      "file": "triad-table.ldr",
+      "program": "triad-table.bw",
+      "main": "b6f39a12348b984dc9c5f59b826e7680539b6148",
+      "modelSha256": "c15ac7cf3c3bb9bab2ccf19d930094f89ec3c4c330a291bd7f6316da07a015fd",
+      "programSha256": "d76ead5a6ea5daab919192374938987585c0ee6c3a01e81ff35a9e1601c9997c",
+      "coldMs": 0,
+      "timeLimitMs": 90000,
+      "finishedAt": null,
+      "finite": true,
+      "variables": {
+        "stage": "10",
+        "settled": "0",
+        "completed": "0",
+        "failed": "0",
+        "travelBound": 829.7,
+        "targetA": "0",
+        "speedA": 158.76099795106663,
+        "trimsA": "0",
+        "targetB": "0",
+        "speedB": 158.76099795106663,
+        "trimsB": "0",
+        "targetC": "0",
+        "speedC": 180,
+        "trimsC": "0",
+        "Triad fail all": "Triad fail all",
+        "Triad watchdog": "Triad watchdog",
+        "Triad prepare": "Triad prepare",
+        "Triad move all": "Triad move all",
+        "Triad arrival": "Triad arrival"
+      },
+      "issues": [
+        {
+          "severity": "warning",
+          "code": "locked-hinges",
+          "message": "Hinges between b0 and b10 lock, merging islands",
+          "parts": [
+            "leg_body_cross_0_A",
+            "leg_body_cross_20_A",
+            "leg_body_pin_0_A",
+            "leg_body_pin_20_A"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "locked-hinges",
+          "message": "Hinges between b1 and b11 lock, merging islands",
+          "parts": [
+            "leg_body_cross_0_B",
+            "leg_body_cross_20_B",
+            "leg_body_pin_0_B",
+            "leg_body_pin_20_B"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "locked-hinges",
+          "message": "Hinges between b12 and b2 lock, merging islands",
+          "parts": [
+            "actuator_body_C",
+            "leg_body_pin_0_C",
+            "leg_body_pin_20_C"
+          ]
+        }
+      ],
+      "status": "unfinished-within-diagnostic-budget",
+      "scope": "Read-only original-source native diagnostic; no independent passive-law or actual app acceptance",
+      "acquisition": {
+        "id": "triad-table",
+        "exitCode": 0,
+        "wallSeconds": 7.746149063110352
+      },
+      "existingGalleryBlocked": false
+    },
+    {
+      "id": "vector-delta",
+      "file": "vector-delta.ldr",
+      "program": "vector-delta.bw",
+      "main": "b6f39a12348b984dc9c5f59b826e7680539b6148",
+      "modelSha256": "09bffd73e7ba2259bb02018a9444c42457eb5f2d01bf0209469c6e8209704137",
+      "programSha256": "69fe5e225b3cb74f314929e737dbdcd06f6f9298a244aa7da16ae820dfb903ff",
+      "coldMs": 0,
+      "timeLimitMs": 90000,
+      "finishedAt": 33566.66666666625,
+      "finite": true,
+      "variables": {
+        "completed": "1",
+        "failed": "0",
+        "waypoint": "12",
+        "atTarget": "1",
+        "targetX": "0.000000000000",
+        "targetY": "202.474088674589",
+        "targetZ": "0.000000000000",
+        "phi": "210",
+        "radial": 0,
+        "D": 140,
+        "q2": 60595.75658460533,
+        "rho": 246.1620535025765,
+        "K": 0.9376573243180215,
+        "theta": 35.00000000000014,
+        "thetaA": 35.00000000000014,
+        "thetaB": 35.00000000000014,
+        "thetaC": 35.00000000000014,
+        "targetA": -4.263256414560601e-13,
+        "targetB": -4.263256414560601e-13,
+        "targetC": -4.263256414560601e-13,
+        "deltaA": -46.60000000000043,
+        "deltaB": -46.400000000000425,
+        "deltaC": -46.500000000000426,
+        "speedA": 15,
+        "speedB": 14.935622317596566,
+        "speedC": 14.967811158798282,
+        "maxDelta": 46.60000000000043,
+        "homeX": 0,
+        "homeY": -14.9,
+        "homeZ": 0,
+        "measuredX": 0,
+        "measuredY": 0,
+        "measuredZ": 0,
+        "actualError": 0,
+        "Vector watchdog": "Vector watchdog",
+        "Vector solve": "Vector solve",
+        "Vector schedule": "Vector schedule",
+        "Vector move": "Vector move",
+        "Vector measure": "Vector measure",
+        "Vector leg": "Vector leg"
+      },
+      "issues": [],
+      "status": "completed-program-only",
+      "scope": "Read-only original-source native diagnostic; no independent passive-law or actual app acceptance",
+      "acquisition": {
+        "id": "vector-delta",
+        "exitCode": 0,
+        "wallSeconds": 34.60492706298828
+      },
+      "existingGalleryBlocked": false
+    },
+    {
+      "id": "vesper-quickreturn",
+      "file": "vesper-quickreturn.ldr",
+      "program": "vesper-quickreturn.bw",
+      "main": "b6f39a12348b984dc9c5f59b826e7680539b6148",
+      "modelSha256": "791e9b8843359153bde34aa803c7cf39228643819be45c562f79f27dbaa3c5a3",
+      "programSha256": "1d0aa655c223bbf4511967202ea56dd376e4dcea053943442cce87fda6643bfd",
+      "coldMs": 0,
+      "timeLimitMs": 90000,
+      "finishedAt": null,
+      "finite": true,
+      "variables": {
+        "completed": "0",
+        "failed": "0",
+        "stage": "3",
+        "moving": "1",
+        "inputEncoder": 528.8,
+        "inputCrankDegrees": 528.8,
+        "targetDegrees": "1080",
+        "targetCrankDegrees": "1080",
+        "moveDegrees": 1080.1,
+        "Vesper observe": "Vesper observe",
+        "Vesper watchdog": "Vesper watchdog"
+      },
+      "issues": [],
+      "status": "unfinished-within-diagnostic-budget",
+      "scope": "Read-only original-source native diagnostic; no independent passive-law or actual app acceptance",
+      "acquisition": {
+        "id": "vesper-quickreturn",
+        "exitCode": 0,
+        "wallSeconds": 18.739558935165405
+      },
+      "existingGalleryBlocked": false
+    }
+  ],
+  "wallTimeoutsWithSummary": 12,
+  "missingSummaries": [
+    "ghost-pivot-unequal-link",
+    "afterturn",
+    "afterturn-fixed-masses"
+  ]
+}

@@ -1,0 +1,269 @@
+0 Cross Ratio — crossed four-bar half-angle transform
+0 Name: cross-ratio.ldr
+0 Author: CrispStrobe
+0 !LICENSE BSD-3-Clause : see ../licenses/cross-ratio.txt
+0 // Original placements. Stock LDraw drawings retain their own notices.
+0 // Complete source with real backed input stops and ground feet; no final model clamp or synthetic coupling.
+0 // Assembly group 1
+0 !BW ID motor_A
+0 !BW PORT A
+0 !BW ROTOR -60
+1 71 0 120 0 -1 0 0 0 1 0 0 0 -1 54696p01.dat
+0 !BW ID motor_rail_-40_-140
+1 72 -40 140 0 0 1 0 -1 0 0 0 0 1 32316.dat
+0 !BW ID motor_mount_-40_-140_-20
+1 0 -30 140 -20 1 0 0 0 0 -1 0 1 0 2780.dat
+0 !BW ID motor_mount_-40_-140_20
+1 0 -30 140 20 1 0 0 0 0 -1 0 1 0 2780.dat
+0 !BW ID motor_rail_-40_-100
+1 72 -40 100 0 0 1 0 -1 0 0 0 0 1 32316.dat
+0 !BW ID motor_mount_-40_-100_-20
+1 0 -30 100 -20 1 0 0 0 0 -1 0 1 0 2780.dat
+0 !BW ID motor_mount_-40_-100_20
+1 0 -30 100 20 1 0 0 0 0 -1 0 1 0 2780.dat
+0 !BW ID motor_rail_40_-140
+1 72 40 140 0 0 1 0 -1 0 0 0 0 1 32316.dat
+0 !BW ID motor_mount_40_-140_-20
+1 0 30 140 -20 1 0 0 0 0 -1 0 1 0 2780.dat
+0 !BW ID motor_mount_40_-140_20
+1 0 30 140 20 1 0 0 0 0 -1 0 1 0 2780.dat
+0 !BW ID motor_rail_40_-100
+1 72 40 100 0 0 1 0 -1 0 0 0 0 1 32316.dat
+0 !BW ID motor_mount_40_-100_-20
+1 0 30 100 -20 1 0 0 0 0 -1 0 1 0 2780.dat
+0 !BW ID motor_mount_40_-100_20
+1 0 30 100 20 1 0 0 0 0 -1 0 1 0 2780.dat
+0 !BW ID motor_post_-1
+1 72 -60 120 0 0 1 0 0 0 -1 -1 0 0 32524.dat
+0 !BW ID motor_post_pin_-1_-140
+1 0 -50 140 0 1 0 0 0 0 -1 0 1 0 2780.dat
+0 !BW ID motor_post_pin_-1_-100
+1 0 -50 100 0 1 0 0 0 0 -1 0 1 0 2780.dat
+0 !BW ID bearing_corner_-1
+1 72 -40 60 0 0 1 0 -1 0 0 0 0 1 15100.dat
+0 !BW ID bearing_corner_pin_-1
+1 0 -50 60 0 1 0 0 0 0 -1 0 1 0 2780.dat
+0 !BW ID motor_post_1
+1 72 60 120 0 0 1 0 0 0 -1 -1 0 0 32524.dat
+0 !BW ID motor_post_pin_1_-140
+1 0 50 140 0 1 0 0 0 0 -1 0 1 0 2780.dat
+0 !BW ID motor_post_pin_1_-100
+1 0 50 100 0 1 0 0 0 0 -1 0 1 0 2780.dat
+0 !BW ID bearing_corner_1
+1 72 40 60 0 0 1 0 -1 0 0 0 0 1 15100.dat
+0 !BW ID bearing_corner_pin_1
+1 0 50 60 0 1 0 0 0 0 -1 0 1 0 2780.dat
+0 !BW ID ground_bearing
+1 72 40 40 0 0 0 1 0 -1 0 1 0 0 40490.dat
+0 STEP
+0 // Assembly group 2
+0 !BW ID input_beam
+1 4 40 0 69.282032302755 -0.866025403784 0 0.5 0 -1 0 0.5 0 0.866025403784 32525.dat
+0 !BW ID output_beam
+1 14 40 -80 69.282032302755 -0.866025403784 0 -0.5 0 -1 0 -0.5 0 0.866025403784 32525.dat
+0 !BW ID coupler_beam
+1 2 40 -120 138.56406460551 0 0 -1 0 -1 0 -1 0 0 32524.dat
+0 !BW ID pivot_key_A
+1 4 0 -20 0 -0.866025403784 0 0.5 0 -1 0 0.5 0 0.866025403784 7229.dat
+0 !BW ID pivot_key_pin_A_-20
+1 0 -10 -10 -17.320508075689 0 -0.866025403784 -0.5 -1 0 0 0 0.5 -0.866025403784 2780.dat
+0 !BW ID pivot_key_pin_A_20
+1 0 10 -10 17.320508075689 0 -0.866025403784 -0.5 -1 0 0 0 0.5 -0.866025403784 2780.dat
+0 !BW ID pivot_key_P
+1 4 80 20 138.56406460551 -0.866025403784 0 0.5 0 -1 0 0.5 0 0.866025403784 7229.dat
+0 !BW ID pivot_key_pin_P_-20
+1 0 70 10 121.243556529821 0 -0.866025403784 -0.5 -1 0 0 0 0.5 -0.866025403784 2780.dat
+0 !BW ID pivot_key_pin_P_20
+1 0 90 10 155.884572681199 0 -0.866025403784 -0.5 -1 0 0 0 0.5 -0.866025403784 2780.dat
+0 !BW ID pivot_key_B
+1 14 80 -60 0 -0.866025403784 0 -0.5 0 -1 0 -0.5 0 0.866025403784 7229.dat
+0 !BW ID pivot_key_pin_B_-20
+1 0 90 -70 -17.320508075689 0 -0.866025403784 0.5 -1 0 0 0 -0.5 -0.866025403784 2780.dat
+0 !BW ID pivot_key_pin_B_20
+1 0 70 -70 17.320508075689 0 -0.866025403784 0.5 -1 0 0 0 -0.5 -0.866025403784 2780.dat
+0 !BW ID pivot_key_Q
+1 14 0 -60 138.56406460551 -0.866025403784 0 -0.5 0 -1 0 -0.5 0 0.866025403784 7229.dat
+0 !BW ID pivot_key_pin_Q_-20
+1 0 10 -70 121.243556529821 0 -0.866025403784 0.5 -1 0 0 0 -0.5 -0.866025403784 2780.dat
+0 !BW ID pivot_key_pin_Q_20
+1 0 -10 -70 155.884572681199 0 -0.866025403784 0.5 -1 0 0 0 -0.5 -0.866025403784 2780.dat
+0 !BW ID pivot_axle_A
+1 0 0 20 0 0 -0.866025403784 -0.5 -1 0 0 0 0.5 -0.866025403784 44294.dat
+0 !BW ID pivot_capture_A_-60
+1 71 0 60 0 0.5 -0.866025403784 0 0 0 -1 0.866025403784 0.5 0 3713.dat
+0 !BW ID pivot_capture_A_-20
+1 71 0 20 0 0.5 -0.866025403784 0 0 0 -1 0.866025403784 0.5 0 3713.dat
+0 !BW ID pivot_capture_A_40
+1 71 0 -40 0 0.5 -0.866025403784 0 0 0 -1 0.866025403784 0.5 0 3713.dat
+0 !BW ID pivot_axle_B
+1 0 80 -20 0 0 -0.866025403784 0.5 -1 0 0 0 -0.5 -0.866025403784 60485.dat
+0 !BW ID pivot_capture_B_-60
+1 71 80 60 0 -0.5 -0.866025403784 0 0 0 -1 0.866025403784 -0.5 0 3713.dat
+0 !BW ID pivot_capture_B_-20
+1 71 80 20 0 -0.5 -0.866025403784 0 0 0 -1 0.866025403784 -0.5 0 3713.dat
+0 !BW ID pivot_capture_B_0
+1 71 80 0 0 -0.5 -0.866025403784 0 0 0 -1 0.866025403784 -0.5 0 3713.dat
+0 !BW ID pivot_capture_B_20
+1 71 80 -20 0 -0.5 -0.866025403784 0 0 0 -1 0.866025403784 -0.5 0 3713.dat
+0 !BW ID pivot_capture_B_40
+1 71 80 -40 0 -0.5 -0.866025403784 0 0 0 -1 0.866025403784 -0.5 0 3713.dat
+0 !BW ID pivot_capture_B_100
+1 71 80 -100 0 -0.5 -0.866025403784 0 0 0 -1 0.866025403784 -0.5 0 3713.dat
+0 !BW ID pivot_axle_P
+1 0 80 -50 138.56406460551 0 -0.866025403784 -0.5 -1 0 0 0 0.5 -0.866025403784 3737.dat
+0 !BW ID pivot_capture_P_-40
+1 71 80 40 138.56406460551 0.5 -0.866025403784 0 0 0 -1 0.866025403784 0.5 0 3713.dat
+0 !BW ID pivot_capture_P_20
+1 71 80 -20 138.56406460551 0.5 -0.866025403784 0 0 0 -1 0.866025403784 0.5 0 3713.dat
+0 !BW ID pivot_capture_P_40
+1 71 80 -40 138.56406460551 0.5 -0.866025403784 0 0 0 -1 0.866025403784 0.5 0 3713.dat
+0 !BW ID pivot_capture_P_60
+1 71 80 -60 138.56406460551 0.5 -0.866025403784 0 0 0 -1 0.866025403784 0.5 0 3713.dat
+0 !BW ID pivot_capture_P_80
+1 71 80 -80 138.56406460551 0.5 -0.866025403784 0 0 0 -1 0.866025403784 0.5 0 3713.dat
+0 !BW ID pivot_capture_P_100
+1 71 80 -100 138.56406460551 0.5 -0.866025403784 0 0 0 -1 0.866025403784 0.5 0 3713.dat
+0 !BW ID pivot_capture_P_140
+1 71 80 -140 138.56406460551 0.5 -0.866025403784 0 0 0 -1 0.866025403784 0.5 0 3713.dat
+0 !BW ID pivot_axle_Q
+1 0 0 -90 138.56406460551 0 -0.866025403784 0.5 -1 0 0 0 -0.5 -0.866025403784 3706.dat
+0 !BW ID pivot_capture_Q_40
+1 71 0 -40 138.56406460551 -0.5 -0.866025403784 0 0 0 -1 0.866025403784 -0.5 0 3713.dat
+0 !BW ID pivot_capture_Q_100
+1 71 0 -100 138.56406460551 -0.5 -0.866025403784 0 0 0 -1 0.866025403784 -0.5 0 3713.dat
+0 !BW ID pivot_capture_Q_140
+1 71 0 -140 138.56406460551 -0.5 -0.866025403784 0 0 0 -1 0.866025403784 -0.5 0 3713.dat
+0 STEP
+0 // Assembly group 3
+0 !BW ID base_depth_-40
+1 72 -40 180 0 -1 0 0 0 -1 0 0 0 1 32278.dat
+0 !BW ID base_depth_40
+1 72 40 180 0 -1 0 0 0 -1 0 0 0 1 32278.dat
+0 !BW ID base_depth_120
+1 72 120 180 0 -1 0 0 0 -1 0 0 0 1 32278.dat
+0 !BW ID base_depth_240
+1 72 240 180 0 -1 0 0 0 -1 0 0 0 1 32278.dat
+0 !BW ID base_cross_-120
+1 72 100 200 -120 0 0 1 0 -1 0 1 0 0 32278.dat
+0 !BW ID base_cross_pin_-120_-40
+1 0 -40 190 -120 0 0 -1 -1 0 0 0 1 0 2780.dat
+0 !BW ID base_cross_pin_-120_40
+1 0 40 190 -120 0 0 -1 -1 0 0 0 1 0 2780.dat
+0 !BW ID base_cross_pin_-120_120
+1 0 120 190 -120 0 0 -1 -1 0 0 0 1 0 2780.dat
+0 !BW ID base_cross_pin_-120_240
+1 0 240 190 -120 0 0 -1 -1 0 0 0 1 0 2780.dat
+0 !BW ID base_cross_120
+1 72 100 200 120 0 0 1 0 -1 0 1 0 0 32278.dat
+0 !BW ID base_cross_pin_120_-40
+1 0 -40 190 120 0 0 -1 -1 0 0 0 1 0 2780.dat
+0 !BW ID base_cross_pin_120_40
+1 0 40 190 120 0 0 -1 -1 0 0 0 1 0 2780.dat
+0 !BW ID base_cross_pin_120_120
+1 0 120 190 120 0 0 -1 -1 0 0 0 1 0 2780.dat
+0 !BW ID base_cross_pin_120_240
+1 0 240 190 120 0 0 -1 -1 0 0 0 1 0 2780.dat
+0 !BW ID base_motor_corner_-1
+1 72 -40 160 0 -1 0 0 0 -1 0 0 0 1 15100.dat
+0 !BW ID base_motor_pin_-1
+1 0 -40 170 0 0 0 -1 -1 0 0 0 1 0 2780.dat
+0 !BW ID base_motor_corner_1
+1 72 40 160 0 1 0 0 0 -1 0 0 0 -1 15100.dat
+0 !BW ID base_motor_pin_1
+1 0 40 170 0 0 0 -1 -1 0 0 0 1 0 2780.dat
+0 !BW ID hub
+1 15 180 170 0 1 0 0 0 1 0 0 0 1 45601.dat
+0 !BW ID hub_mount_120_-100
+1 0 120 170 -100 0 0 -1 -1 0 0 0 1 0 2780.dat
+0 !BW ID hub_mount_120_100
+1 0 120 170 100 0 0 -1 -1 0 0 0 1 0 2780.dat
+0 !BW ID hub_mount_240_-100
+1 0 240 170 -100 0 0 -1 -1 0 0 0 1 0 2780.dat
+0 !BW ID hub_mount_240_100
+1 0 240 170 100 0 0 -1 -1 0 0 0 1 0 2780.dat
+0 STEP
+0 // Assembly group 4
+0 !BW ID stop_crossbar
+1 72 0 200 20 0 0 1 0 -1 0 1 0 0 41239.dat
+0 !BW ID stop_crossbar_pin_-40
+1 0 -40 190 20 0 0 -1 -1 0 0 0 1 0 2780.dat
+0 !BW ID stop_crossbar_pin_40
+1 0 40 190 20 0 0 -1 -1 0 0 0 1 0 2780.dat
+0 !BW ID stop_crossbar_pin_120
+1 0 120 190 20 0 0 -1 -1 0 0 0 1 0 2780.dat
+0 !BW ID stop_axle_lower
+1 0 100 110 20 0 0 -1 -1 0 0 0 1 0 3708.dat
+0 !BW ID stop_key_lower
+1 72 100 180 20 0 0 -1 0 -1 0 -1 0 0 60483.dat
+0 !BW ID stop_key_pin_lower
+1 0 80 190 20 0 0 -1 -1 0 0 0 1 0 2780.dat
+0 !BW ID stop_backing_lower_-220
+1 71 100 220 20 1 0 0 0 0 -1 0 1 0 3713.dat
+0 !BW ID stop_backing_lower_-160
+1 71 100 160 20 1 0 0 0 0 -1 0 1 0 3713.dat
+0 !BW ID stop_backing_lower_-140
+1 71 100 140 20 1 0 0 0 0 -1 0 1 0 3713.dat
+0 !BW ID stop_backing_lower_-120
+1 71 100 120 20 1 0 0 0 0 -1 0 1 0 3713.dat
+0 !BW ID stop_backing_lower_-100
+1 71 100 100 20 1 0 0 0 0 -1 0 1 0 3713.dat
+0 !BW ID stop_backing_lower_-80
+1 71 100 80 20 1 0 0 0 0 -1 0 1 0 3713.dat
+0 !BW ID stop_backing_lower_-60
+1 71 100 60 20 1 0 0 0 0 -1 0 1 0 3713.dat
+0 !BW ID stop_backing_lower_-40
+1 71 100 40 20 1 0 0 0 0 -1 0 1 0 3713.dat
+0 !BW ID stop_backing_lower_-20
+1 71 100 20 20 1 0 0 0 0 -1 0 1 0 3713.dat
+0 !BW ID stop_backing_lower_0
+1 71 100 0 20 1 0 0 0 0 -1 0 1 0 3713.dat
+0 !BW ID stop_axle_upper
+1 0 -100 110 20 0 0 -1 -1 0 0 0 1 0 3708.dat
+0 !BW ID stop_key_upper
+1 72 -100 180 20 0 0 1 0 -1 0 1 0 0 60483.dat
+0 !BW ID stop_key_pin_upper
+1 0 -80 190 20 0 0 -1 -1 0 0 0 1 0 2780.dat
+0 !BW ID stop_backing_upper_-220
+1 71 -100 220 20 1 0 0 0 0 -1 0 1 0 3713.dat
+0 !BW ID stop_backing_upper_-160
+1 71 -100 160 20 1 0 0 0 0 -1 0 1 0 3713.dat
+0 !BW ID stop_backing_upper_-140
+1 71 -100 140 20 1 0 0 0 0 -1 0 1 0 3713.dat
+0 !BW ID stop_backing_upper_-120
+1 71 -100 120 20 1 0 0 0 0 -1 0 1 0 3713.dat
+0 !BW ID stop_backing_upper_-100
+1 71 -100 100 20 1 0 0 0 0 -1 0 1 0 3713.dat
+0 !BW ID stop_backing_upper_-80
+1 71 -100 80 20 1 0 0 0 0 -1 0 1 0 3713.dat
+0 !BW ID stop_backing_upper_-60
+1 71 -100 60 20 1 0 0 0 0 -1 0 1 0 3713.dat
+0 !BW ID stop_backing_upper_-40
+1 71 -100 40 20 1 0 0 0 0 -1 0 1 0 3713.dat
+0 !BW ID stop_backing_upper_-20
+1 71 -100 20 20 1 0 0 0 0 -1 0 1 0 3713.dat
+0 !BW ID stop_backing_upper_0
+1 71 -100 0 20 1 0 0 0 0 -1 0 1 0 3713.dat
+0 !BW ID foot_-120_0
+1 72 0 220 -120 0 0 1 0 -1 0 1 0 0 32316.dat
+0 !BW ID foot_pin_-120_0_-20
+1 0 -20 210 -120 0 0 -1 -1 0 0 0 1 0 2780.dat
+0 !BW ID foot_pin_-120_0_20
+1 0 20 210 -120 0 0 -1 -1 0 0 0 1 0 2780.dat
+0 !BW ID foot_-120_200
+1 72 200 220 -120 0 0 1 0 -1 0 1 0 0 32316.dat
+0 !BW ID foot_pin_-120_200_-20
+1 0 180 210 -120 0 0 -1 -1 0 0 0 1 0 2780.dat
+0 !BW ID foot_pin_-120_200_20
+1 0 220 210 -120 0 0 -1 -1 0 0 0 1 0 2780.dat
+0 !BW ID foot_120_0
+1 72 0 220 120 0 0 1 0 -1 0 1 0 0 32316.dat
+0 !BW ID foot_pin_120_0_-20
+1 0 -20 210 120 0 0 -1 -1 0 0 0 1 0 2780.dat
+0 !BW ID foot_pin_120_0_20
+1 0 20 210 120 0 0 -1 -1 0 0 0 1 0 2780.dat
+0 !BW ID foot_120_200
+1 72 200 220 120 0 0 1 0 -1 0 1 0 0 32316.dat
+0 !BW ID foot_pin_120_200_-20
+1 0 180 210 120 0 0 -1 -1 0 0 0 1 0 2780.dat
+0 !BW ID foot_pin_120_200_20
+1 0 220 210 120 0 0 -1 -1 0 0 0 1 0 2780.dat

@@ -236,9 +236,13 @@ against rename/delete.
 The owned `file-syscalls.nxc` fixture was compiled once through the hosted compiler;
 tests read the committed executable without compiling or networking. Focused controls
 cover binary reads above the telegram limit, append, word errors, resolve, rename,
-listing, stop/normal cleanup and snapshot completion. Hosted affected qualification
-is required before landing; these controls do not establish physical firmware or
-general NXC compatibility.
+listing, stop/normal cleanup and snapshot completion. PR1430's fresh hosted
+qualification passed all 83 affected tests across ten files, including the
+compiled fixture's three runtime cases and source-identity control. The six
+unit artifacts passed independent retained-original readers. All 40 checks
+finished with 33 successes and seven declared skips before the normal matched
+merge. These controls do not establish physical firmware or general NXC
+compatibility.
 
 STARTPROGRAM (FW `c_cmd.c:398–417`; PF): a missing file is 0xC0; an existing one is accepted (status 0) and
 activated — a file the VM refuses never runs (`hub.s.lastProgram`, a `program-refused` event). A running program is
@@ -270,6 +274,7 @@ upload, start.
 - Direct commands that change an output while a program runs bypass the program's IO map (the firmware writes
   both into one map).
 - Floats converted to integers: truncated toward zero (the firmware's conversion of negative floats into unsigned
-  registers is not defined by its source). File and Bluetooth system calls, the display as
-  pixels, buttons, NXT-G's semaphore calls.
+  registers is not defined by its source). Bluetooth system calls, the display as
+  pixels, buttons and NXT-G's semaphore calls remain unsupported. The file-call
+  subset above uses bounded virtual state; physical flash behaviour is not modelled.
 - The instruction rate (above); the firmware's RAMPUP / RAMPDOWN and synchronised regulation (the brick's model).

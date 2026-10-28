@@ -287,3 +287,35 @@ test('live measurements observe native motion and wheel loads identically throug
         assert.ok(moving, 'the real body moved'); assert.ok(loaded, 'the wheel carried a real load');
     } finally {await p.close();}
 });
+
+test('completed-step analysis preserves native trajectories and is identical through accepted worker batches', async () => {
+    const p = await pair('driving-base.ldr');
+    try {
+        const joints = p.here.mechanism.joints.filter(j => j.type === 'hinge' && j.motor).map(j => j.id).slice(0, 2);
+        assert.equal(joints.length, 2);
+        p.here.setMeasurementObservation({joints}); p.there.setMeasurementObservation({joints});
+        p.both(h => { h.motors.runAtSpeed('A', -360); h.motors.runAtSpeed('B', 360); });
+        for (let i = 0; i < 35; i++) {
+            await p.tick(20); assertSame(p, `observed fixed-step trajectory ${i}`);
+            assert.deepEqual(p.there.measurementPrecision, p.here.measurementPrecision, 'accepted native fixed-step work and crossings agree exactly');
+        }
+        assert.ok(p.here.measurementPrecision.rows.some(row => Math.abs(row.workJ) > 1e-8), 'actual native effort contributes nonzero signed work');
+        assert.equal(p.there.measurementPrecision.gap, false);
+        p.hubHere.motors.runAtSpeed('A', -120);
+        p.here.tick(20);
+        p.there.tick(20);
+        p.hubThere.motors.runAtSpeed('A', -120);
+        await p.there.idle();
+        assert.ok(p.there.stats.redos > 0, 'an actual hub edit caused retry');
+        assertSame(p, 'retried observations preserve accepted native state');
+        assert.deepEqual(p.there.measurementPrecision, p.here.measurementPrecision, 'discarded native retry samples never double-count work');
+        p.there.tick(20);
+        p.there.resetMeasurementPrecision();
+        await p.there.idle();
+        assert.ok(p.there.measurementPrecision.rows.every(row => row.workJ === null), 'reset fences the old in-flight observation revision');
+        p.here.tick(20); assertSame(p, 'analytical reset does not alter native state');
+        p.here.setMeasurementObservation();
+        for (let i = 0; i < 5; i++) { await p.tick(20); assertSame(p, 'observed and unobserved native trajectories remain equal'); }
+        p.there.setMeasurementObservation();
+    } finally { await p.close(); }
+});

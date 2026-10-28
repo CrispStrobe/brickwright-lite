@@ -1,4 +1,99 @@
-# Integration qualification handoff — 2026-10-24
+# Integration closeout and next tasks — 2026-10-27
+
+## Start here: current closeout
+
+This section is the fresh-agent entry point. The sections below retain the
+qualification history; an older pending statement there does not reopen a task
+marked complete here. Refresh remote main, the linked PRs and the relevant
+`lanes/` claims before making changes. This closeout publishes completed work
+and explicitly hands off unfinished operations; it does not claim that pending
+deployment work has succeeded.
+
+### Completed work to preserve
+
+| Work | Landed result | Scope of the evidence |
+| --- | --- | --- |
+| Core, native handover and models | PR1322 and PR1327; API integration PR1337 | Qualified combined source, finite installed own-NuttX handover, and named Sine Shuttle/Quartermaster comparisons. Reuse the retained originals. |
+| Measurement editor | PR1339, `23514574` | 19 React tests and actual Jolt Edit/Save/Cancel plus CRC-checked SB3 save/reopen. Successful standalone SB3 bytes were not retained; no separate downloaded-file audit is claimed. |
+| Installed lifecycle and usability | PR1345/PR1354/PR1355/PR1358 and the G02/G03 sections in the [SPIKE guide](SPIKE-STATUS-AND-LANES.md) | Finite installed Linux matrix, generation census and UI fixes; original timing/controller failures remain recorded. |
+| Linux package and release exercise | PR1368 and the v0.1.27 hosted package exercise | Hosted packaging and upload evidence; placeholder exercise inputs do not qualify a production runtime, signed delivery or TestFlight availability. |
+| Experimental registry | PR1336 and subsequent model/control updates | 61 active experimental entries, 63 checkpoint records and 14 qualification contracts at the inspected snapshot. Registry inclusion does not establish model-wide mechanical acceptance. |
+| NXT data-file calls | PR1430, `2f3ba1fa` | 83 affected cases across ten files; 40 checks, 33 successful and seven declared skips. Details: [NXT RXE VM](NXT-RXE-VM.md). |
+| API sparse timestamp correction | PR1444, `696f0076` | Three hosted Jolt regressions; 44 checks, 37 successful and seven declared skips. Source and finite operator adoption are accepted; the cutover used dense recording and did not exercise deployed sparse sampling. |
+| Driven linkage floor contact | PR1445, `7b4f2f84` | Eight floor cases and the unchanged broader gates; 41 checks, 34 successful and seven declared skips. [Contact contract](ROBOT-LAB-FLOOR-CONTACT.md); issue #1436 is closed. |
+
+Earlier API transport, ownership, positive/negative job and terminal-release
+checks passed for their recorded worker. They do not establish acceptance of a
+new deployment merely because its source or worker tag exists.
+
+### Operator cutover accepted — 2026-10-27
+
+The deployment owner promoted the unaliased candidate at 05:51:54 UTC using
+lightweight tag `model-api-worker-696f007`, source
+`696f00761b92cc2a4121a568d94b496241ef8afe`, and `tools/model-api` tree
+`b3015561950a9174249163c94162b451d72c2e1d`. Recorded environment updates are
+limited to `MODEL_API_REF` and `MODEL_API_WORKER_REVISION`. The private delivery
+kit now identifies this revision; the previous production remains the rollback.
+
+Independent retained-original readback accepted candidate and production Sine
+Shuttle reports: 1,421 aligned dense samples each, completed program, unchanged
+input identities, actual provider/source and measurement-reader joins, engine
+identity matching the pinned lockfile, and a 31-file deployment manifest matching
+Git. Operator judge outputs bind to the reports; two scalar metrics were also
+recomputed independently. Twelve deliberately corrupted report copies were
+refused. Reservation snapshots show candidate release before promotion and
+production release afterward, ending at zero active reservations. The existing
+terminal reservation was reconciled through the service before the candidate
+job was reserved; no reset or duplicate job was used for this readback.
+
+This is finite acceptance of the recorded cutover. It does not claim a new
+independent full-judge implementation, signing-key/MAC audit, loaded engine
+binary inspection, physical calibration or model-library acceptance. The dense
+jobs did not exercise the sparse branch; its separate three source regressions
+remain the evidence for that correction. The original stalled-prefix probe
+remains inconclusive with its admission flag false. Reuse the existing originals;
+no new cutover job, promotion, request comment or receipt acquisition is needed.
+
+### Pending work: exact pickup and stopping conditions
+
+1. **Keep resting-frame creep separate.** [Issue #1435](https://github.com/CrispStrobe/brickwright-lite/issues/1435)
+   remains open. [PR1472](https://github.com/CrispStrobe/brickwright-lite/pull/1472)
+   owns the diagnostic implementation at this checkpoint; preserve its source,
+   runs and original acquisition. Start with the [resting-creep handoff](ROBOT-LAB-RESTING-CREEP.md),
+   refresh that PR and coordinate before implementing.
+   Preserve the unpowered intact/control geometry and existing drift limits;
+   diagnose against the actual engine without borrowing #1436's contact result
+   as acceptance. Any fix needs affected clean hosted qualification and a normal
+   exact-head merge. No physical-calibration claim follows from either lane.
+2. **Qualify experimental models individually when requested.** Start from the
+   registry/checkpoint and the model's existing contract, original program,
+   licence and control. Refresh counts rather than hardcoding this snapshot.
+   A checkpoint marked `NOT_RUN` is not a completed replay. Admit only the named
+   model/law/control/browser result; do not rerun already accepted established
+   models or claim that every experimental entry is qualified.
+3. **Verify delivery availability only when that is the requested outcome.**
+   For TestFlight, inspect Apple's actual processing and intended tester-group
+   availability for v0.1.27 before marking it available; do not retag, rebuild or
+   upload again just to check. Signed/non-Linux packaging, redistribution review,
+   physical hardware and reference-firmware acceptance remain separate work,
+   requiring their own scoped claims and exact evidence.
+
+### Rules for the next agent
+
+Read this section, then only the linked contract for the task being continued.
+Check current ownership before coding; active owners keep their source, runs and
+originals. Keep raw receipts, credentials, deployment identifiers and machine
+locations in ignored local handoffs. Public records contain repository paths,
+source identities and bounded conclusions only. Acquire each official original
+once after metadata admission, audit it independently, and retain failures.
+Do not change pins, assertions, deadlines or capacity to obtain a pass. Source
+changes need affected clean hosted qualification; documentation-only updates use
+the source-policy/docs gates. Merge normally only after every enabled exact-head
+check succeeds, allowing only source-declared skips, and verify actual parents
+and tree against the reviewed prediction. Update this current section in the
+same final commit rather than creating a second commit just to record its hash.
+
+## Retained integration history
 
 Refresh GitHub heads, checks and the current owner claims before acting. This
 queue covers integration follow-through; it does not transfer other lanes.
@@ -112,10 +207,12 @@ is covered by the combined qualification above.
 
 ### 5. Submitted-model API integration — [PR1282](https://github.com/CrispStrobe/brickwright-lite/pull/1282)
 
-The API source has resource/authentication/refusal controls, private SHA-CAS
-admission evidence and a source-bound hosted VM/Jolt fixture-worker result. Those are not
-production dispatch or deployment evidence. Retain truthful zero/unobserved
-production workflow steps; never dispatch only to populate a census.
+At the PR1282/PR1337 source-only stage, the API had resource/authentication/refusal
+controls, private SHA-CAS admission evidence and a source-bound hosted VM/Jolt
+fixture-worker result. That stage did not establish production dispatch or
+deployment. Its zero/unobserved production steps remain historical observations;
+the subsequent configured-service readback is recorded in Delivery readback below.
+Never dispatch merely to populate a census.
 
 [PR1337](https://github.com/CrispStrobe/brickwright-lite/pull/1337) preserves
 PR1282 and normally composes qualified main in a new owned branch. Its fresh
@@ -128,11 +225,12 @@ pre-label full-CI guard failure remains recorded; the successful current-label
 guard superseded that verdict under the workflow policy. No actual test failure
 was waived. PR1337 merged normally with the reviewed parents and tree, and
 PR1282 was closed as included with its branch and original outcomes retained. Keep deployment and actual configured Node-host service acceptance
-separate. This source closeout performs no environment, secret
-or production-dispatch writes and does not claim a live API from a manufactured
+separate. The PR1337 source closeout performed no environment, secret or
+production-dispatch writes and did not claim a live API from a manufactured
 terminal ledger or an unconfigured response. The
-[model-delivery lane](../lanes/2026-10-24-robot-model-delivery-loop.md) owns its
-separate hosted-service follow-through after the qualified source prerequisite.
+[model-delivery lane](../lanes/2026-10-24-robot-model-delivery-loop.md) retained
+ownership of the subsequent hosted-service follow-through; its later retained
+results are recorded below without relabeling the earlier source-only evidence.
 
 ## Saved measurement definition editing
 
@@ -164,6 +262,179 @@ check succeeded before the normal matched-head merge; its actual parents and
 tree matched the reviewed prediction. No schema, persistence, physics, native, transport, pin
 or workflow change is included in this panel follow-on.
 
+## Measurement experiments — qualified follow-on
+
+[PR1375](https://github.com/CrispStrobe/brickwright-lite/pull/1375) landed as
+`eef726fe67d505733b31c599a677ab1897f96a94`; its owning
+[closeout](../lanes/2026-10-25-robot-measurement-experiments.md) landed through
+[PR1387](https://github.com/CrispStrobe/brickwright-lite/pull/1387). The source
+passed 31 checks, with six declared conditional skips, including all 18 browser
+shards. This adds scene-assisted measurement picks, sampled acceleration and
+pneumatic gauge pressure, bounded two-run recording and CSV comparison, and
+four additional authored lesson families.
+
+The owner acquired the four successful official originals once. A standalone
+reader accepted the saved-project CRCs, model/sidecar/reopened-definition joins
+and both recorded CSV runs' source, time, unit and definition joins. These are
+retained originals from this later workflow; PR1339's earlier successful files
+remain unavailable for a separate byte audit. Material estimates and tracked
+coasting/steering limits remain documented. The subsequent
+[PR1404](https://github.com/CrispStrobe/brickwright-lite/pull/1404) adds completed-step
+signed motor torque, separate local stop reactions and mechanical power, plus
+bounded saved histories and finite inspector properties. Its 39 checks completed
+with 33 successes and six declared skips; retained saved-project and CSV joins
+passed a standalone audit. Mechanical power is not electrical consumption, and
+local joint reactions are not total contact force. These virtual controls do not
+establish physical accuracy or experimental-model qualification.
+
+## Virtual-brick data and crane winch — qualified follow-on
+
+[PR1415](https://github.com/CrispStrobe/brickwright-lite/pull/1415) landed normally
+as `5cd027707e`, with the predicted parents and tree. It adds bounded NXT
+FLATTEN/UNFLATTEN and EV3 virtual program-data files, including handle and
+snapshot lifecycle controls. The shipped crane gains a retained motor-C winch
+and an independent rope-hung payload. Its revised mechanical leverage trades
+example range for lower angular sensitivity: the same luff command predicts
+about 16.7 degrees of movement and 26 mm of lift, rather than 30.5 degrees and
+35 mm. Motor commands, timing, payload masses and motion tolerances are preserved.
+
+All 340 affected tests across 13 files passed; the exact head completed 38
+checks with 31 successes and seven declared skips. The sole retained official
+originals passed independent hash, checkout, census and result readers. Crane
+measurements were 26.1 mm lift against 26.5 mm predicted, 0.29 mm hold sink,
+and 16.6 degrees of hook turn against 16.7 degrees predicted. Its reverse and
+removed-counterweight controls passed. Both bounded 5 ms physics windows and
+the actual GUI save/CRC-sidecar/fresh-context reopen gate passed. The existing
+workflow did not retain successful SB3 bytes, so this does not add an independent
+downloaded-SB3 byte audit.
+
+The earlier global position-precision experiment remains a retained failure;
+the product restores the previous solver setup. The unchanged actuator and
+excavator checks pass on the landed candidate. Eight-decimal model coordinates
+preserve the existing catalogue-mass balance assertion. These virtual results
+qualify the named software cases, not physical calibration or a new deployment.
+
+## NXT VM virtual file calls
+
+[PR1430](https://github.com/CrispStrobe/brickwright-lite/pull/1430) implements
+FileOpenRead, FileOpenWrite, FileOpenAppend, FileRead, FileWrite, FileClose,
+FileResolveHandle, FileRename, FileDelete and ListFiles for compiled programs.
+They share bounded virtual flash with telegram file operations while preserving
+fixed-upload completion, program-owned handle retirement and snapshot state.
+Unsupported calls still refuse by name. These calls do not access the host
+filesystem or establish physical flash behavior or broad NXC compatibility.
+
+All 83 affected hosted tests across ten files passed, including the owned
+compiled NXC fixture's source identity and three runtime cases. Each of the six
+unit artifacts was acquired once and accepted by independent retained-original
+readers. The exact head completed 40 checks: 33 successes and seven declared
+conditional skips, with no legacy status contexts. PR1430 then merged normally
+as `2f3ba1fa`, with the predicted parents and tree. All 15 lane files match the
+qualified candidate and all 15,839 other entries match the preceding main,
+including its additive Sarrus control and other owners' claims.
+
+## Delivery readback — 2026-10-26
+
+The published `v0.1.27` tag identifies `23ec9082`; the release and mobile
+workflows succeeded, including signed iOS upload, tester-note synchronization and the TestFlight
+internal/external distribution step. Existing
+versioned TestFlight readback ownership is retained. Publication/upload success
+does not by itself establish processing, tester-group availability or beta-review
+approval for the new version.
+
+The accepted PR1327 model/browser results above remain complete. The separate
+[PR1336](https://github.com/CrispStrobe/brickwright-lite/pull/1336) merged as
+`c62595f6`, bringing 60 experimental entries. The subsequent
+[PR1432](https://github.com/CrispStrobe/brickwright-lite/pull/1432) merged as
+`22329fc1` and added the Sarrus single-chain control, for 61 entries at that
+checkpoint. Its observe-only headless completion and simulator agreement remain
+distinct from browser load and saved-project replay, which are recorded NOT_RUN.
+
+At inspected main `560cf7e6`, [PR1446](https://github.com/CrispStrobe/brickwright-lite/pull/1446)
+and [PR1449](https://github.com/CrispStrobe/brickwright-lite/pull/1449) have promoted
+Toggle Lever and Thirdline and added Phasor Twin and its control. There are now
+61 active experimental entries, 63 retained checkpoint records and 14 separate
+qualification contracts. The prior twelve contracts are unchanged; the two
+promoted models have new contracts and retain their named browser and causal
+control results. Their source-fixture provenance hashes match the retained Git
+blobs. The Phasor pair remains experimental, with recorded headless and browser
+passes but no full-qualification contract; its canonical model/program hashes
+match the checkpoint, while its original builder archive was not independently
+rehashed in this readback.
+
+Catalogue presence, lessons and individual evidence records do not establish
+full model qualification. The checkpoint retains all prior records, including
+promotion annotations, and records saved-project replay as NOT_RUN for all 63.
+The active experimental IDs have no exact registration in the separate fourteen
+contracts. These are the recorded boundaries, not a claim of new failed runs or
+universal mechanical acceptance. Availability in a deployed client still requires
+a build of the corresponding merged source.
+
+
+PR1367 qualified the streamed-body refusal repair and engine-asset identity.
+The retained report on that earlier qualified worker contains 306 samples;
+independent checks joined its input hashes, normalized submission,
+measurement-reader source and reported engine version to that immutable source
+and lockfile metadata. That report remains historical evidence after a runtime
+change; it does not verify the current deployment, the signed grant or the
+selected engine entry's bytes.
+
+Independent review of retained candidate and production cutover records joins
+the same normalized input and immutable worker `bd47d9b3`. Both reports contain
+1,421 dense 5 ms samples and pose frames over a 7,100 ms scene, with fourteen
+available columns and no program errors. Their parsed motion records are identical;
+only wall time differs. Input travel and peak hinge gap were independently
+reproduced, with separate full-trace sine/cosine deviations below 0.008 mm. This
+is not a complete independent reimplementation of every judge window or model
+admission. The 31-file deployment manifest matches the source Git objects;
+candidate readiness and promotion records, worker-run identities and reservation
+snapshots are retained. No historical model job was rerun to read these records.
+
+Current configured-service observations include authenticated capabilities,
+1,048,577-byte declared and chunked requests refused with `413 too-large`, and
+malformed JSON refused with `400 invalid-json`. One separate single-part,
+unpowered 250 ms control was submitted once: authenticated status and result reads
+returned 200, the worker completed, and its six-sample report joined the input,
+normalized grant, worker, reader source and reported engine/lock identity.
+A deliberately nonexistent pose target then produced the expected failed worker
+report, also returned through the authenticated result endpoint with HTTP 200.
+The actual terminal release removed that request's reservation while preserving
+another reservation unchanged. Neither request was resubmitted.
+
+A subsequent current-credential request returned `404 not-found` for an unexpired
+retained receipt with a different decoded owner. The pre-response launch record
+binds the request to that grant and response. This is an operational refusal,
+not an independent audit of server MACs, key continuity or the internal rejection
+cause. The reported engine is Jolt `1.1.0-bw.7`; installed engine-entry bytes were
+not separately acquired. The original transport-only packet remains unadmitted;
+its source, ledger and worker-result checks are joined separately here. The host-buffered stalled upload did not establish the application's deadline;
+client abort did not establish origin-side cancellation. These inconclusive
+boundaries and the original deadlines are preserved.
+
+These observations provide finite operational readback, not physical, model,
+library or full security qualification.
+The retained zero-cold sparse trace also exposed an elapsed-label defect: the
+first observation follows a 25 ms VM tick but carries elapsed time zero. Its
+scene timestamp remains available; this operational readback does not qualify
+that elapsed-label interpretation. The separate source correction in
+[PR1444](https://github.com/CrispStrobe/brickwright-lite/pull/1444) qualified three
+actual hosted Jolt cases for zero-cold sampling, cold-start phase association and
+early-completion phase boundaries. All 44 exact-head checks completed with 37
+successes and seven declared skips. The normal merge `696f00761b92` preserves
+the qualified API files and all other main entries; its parents and tree match
+the predicted composition. Sparse elapsed labels now use observed scene time,
+while phase association follows the actual observation index. The original
+reports are retained unchanged; the 25 ms VM frame, 5 ms physics step, recording
+cadence and resource caps are unchanged.
+
+The worker used for the earlier retained operational observations is reachable
+from main after PR1336, while remaining an older snapshot. Its API tools and
+worker workflow match the inspected commit `8bf40b2c` byte-for-byte. Those earlier
+checks changed no worker pin, server configuration or credential registry. The
+immutable-worker adoption of `696f00761b92` subsequently completed. Candidate and
+production retained readback, promotion and delivery-kit source update are
+accepted under the finite boundary in the current closeout section above.
+
 ## Independent follow-up and ownership
 
 Refresh each owning claim before starting. These tasks remain separate from the
@@ -174,12 +445,14 @@ finite qualifications above; their detailed contracts are in the
 | --- | --- | --- |
 | G02 generation collector | DONE 2026-10-24: host-side 100 ms process census during the six-generation MicroPython matrix, largest gap 132 ms, six distinct Renode processes, no overlap or leak; see the [SPIKE guide](SPIKE-STATUS-AND-LANES.md#g02-current-main-installed-matrix--2026-10-24). | Finite installed Linux result; the first 200 ms-period run that missed the limit by 2.7 ms is retained. |
 | Remaining G02 cases | DONE 2026-10-24 on current main: MicroPython matrix, NuttX storage/restart/cancellation/backend/view cases, selected-image races and the pane-disposal fix (PR1355); see the SPIKE guide. | Finite installed Linux results; no physical, reference or release claim. |
-| G03 sandbox/editor usability | Follow the existing G03 claim. Inspect free sandbox access, shared 2D/3D state, topology, reset/edit/save/reopen, keyboard/touch input, long feedback and narrow layouts with a large right pane. Fix demonstrated gaps only. | Real rendered controls remain usable across view changes, preserve one world and cannot start an unavailable backend. |
-| G05 packaging/provenance | Inventory the exact distributed runtime/native components and notices, source-to-binary joins, relocation/tamper refusals and cleanup. Coordinate firmware L11 and Runtime ownership. | Reproducible exact assembly and platform-specific installed evidence, with per-component obligations retained. Linux results do not qualify signed or non-Unix delivery. |
-| Configured API host | Use the API host contract after source integration: verify the actual Node handler, body/streaming limits, authentication, abort/deadline behavior and encrypted result/source joins. Keep deployment, configuration, secrets and production dispatch outside the completed source qualification. | Separately owned configured-host acceptance with actual request/job/result evidence; manufactured ledgers and unconfigured responses remain insufficient. |
+| G03 sandbox/editor usability | DONE finite scoped work: PR1345/PR1354 record rendered controls and repair touch Move-drag; PR1358 adds an idle empty-editor action after failed conversion while preserving the source buffer. See the current G03 section in the SPIKE guide. | EN/DE, touch, large pane, long reports, mat save/reopen and bounded Identify retain their observed UI boundary; no firmware or physical accuracy claim. |
+| G05 packaging/provenance | Finite Linux source/notices and real installed layout work landed through PR1347/PR1353/PR1356/PR1360. The hosted workflow landed in PR1368 and its post-merge v0.1.27 package exercise passed. | Real Linux installation and hosted pipeline results with placeholder runtime/support/frontend inputs stay distinct. Signed/non-Unix delivery and redistribution clearance remain separate. |
+| Configured API host | Finite operational readback completed: authenticated transport refusals, one current owned status/result, a different-owner receipt refusal, input/worker/report joins and actual terminal reservation release. The unchanged worker commit is now reachable from main. | No key/MAC audit, separately acquired installed engine bytes, capacity saturation or model/library qualification. Host-buffered stalled upload remains inconclusive; source deadlines are unchanged. |
+| Experimental-model floor contacts | PR1445 landed the finite driven-linkage contact repair for [#1436](https://github.com/CrispStrobe/brickwright-lite/issues/1436) at `7b4f2f84`: eight hosted old/current drop, driven single-chain, intact and held controls passed alongside the unchanged broader gates. See [the floor-contact contract](ROBOT-LAB-FLOOR-CONTACT.md). The separate unpowered coplanar-frame drift report [#1435](https://github.com/CrispStrobe/brickwright-lite/issues/1435) remains with its owning lane. | The repair preserves authored geometry, drive programs, numerical limits and pins. Its finite footprint and downward linear-risk trigger do not establish general contact stability or physical calibration; retain the rejected geometry candidates and original failures. |
 
-The retained two-UI-Stop result qualifies its named older package; it does not
-close the whole G02 matrix. Preserve original cold-start and collector failures
+The retained two-UI-Stop result qualifies its named older package. The current
+finite G02 matrix closure comes from the separate installed matrix referenced
+above. Preserve original cold-start and collector failures
 without assigning a cause from later successful runs. No physical-accuracy,
 reference-firmware, full-OS, performance or blanket licence-clearance claim
 follows from these software results.

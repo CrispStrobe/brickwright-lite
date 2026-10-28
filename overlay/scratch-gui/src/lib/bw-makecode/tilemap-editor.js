@@ -173,6 +173,33 @@ export function paintTilePixel (data, index, x, y, colour) {
 /** An undo history of map values: {past, present, future}. */
 export const createHistory = present => ({past: [], present, future: []});
 
+/**
+ * Name the step from one tile map to the next, for the menu-bar History list.
+ * @param {object} before map data
+ * @param {object} after the next map data
+ * @returns {string} what changed
+ */
+export function tilemapStepName (before, after) {
+    if (!before || !after) return 'Edit';
+    if (before.columns !== after.columns || before.rows !== after.rows || before.tileSize !== after.tileSize) return 'Resize map';
+    if (after.images.length > before.images.length) return 'Add tile';
+    if (after.images.length < before.images.length) return 'Remove tile';
+    if (after.images.some((image, i) => image !== before.images[i] && image.displayName !== before.images[i].displayName)) {
+        return 'Rename tile';
+    }
+    if (after.images.some((image, i) => image !== before.images[i])) return 'Draw tile';
+    if (after.walls !== before.walls) return 'Walls';
+    if (after.indices !== before.indices) return 'Paint map';
+    return 'Edit';
+}
+
+/** @returns {{past: Array<string>, future: Array<string>}} step names: oldest first / next redo first */
+export function historyStepNames (history) {
+    const states = [...history.past, history.present, ...history.future];
+    const names = states.slice(1).map((state, i) => tilemapStepName(states[i], state));
+    return {past: names.slice(0, history.past.length), future: names.slice(history.past.length)};
+}
+
 export function commit (history, next) {
     if (next === history.present) return history;
     return {past: [...history.past, history.present].slice(-HISTORY_LIMIT), present: next, future: []};

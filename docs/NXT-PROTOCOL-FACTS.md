@@ -210,7 +210,7 @@ Versions in the open-source release: protocol 0x017C (1.124), firmware 0x011D (1
 | STARTPROGRAM / PLAYSOUNDFILE, missing file | 0xBD "request failed (i.e. file not found)" | 0xC0 |
 | GETINPUTVALUES calibrated value | "currently unused" | the normalized value |
 | GET DEVICE INFO bytes 25–28 | one ULONG signal strength | one link-quality byte per connection (4) |
-| Unknown system command | — | no answer defined (the system handler leaves the length unset) — the Virtual NXT answers 0xBE (ours) |
+| Unknown system command | — | no status defined: the system handler's default case writes nothing and leaves the reply length at the received length, so with a reply requested the firmware sends 0x02, the opcode and stale buffer bytes (FW129 `c_comm.c:1177`, `:378–383`, USB `:316`, Bluetooth `:1222`). The Virtual NXT answers 0xBE (ours); the real bytes after the opcode are not a status |
 | NBC on RESET_COUNT | "resets all rotation counters" (NBC comment) | resets TachoCount and the target only (FWD `d_output.c:255–271`) |
 
 ## Unverified (no source settles it)
