@@ -177,7 +177,13 @@ test('real numeric and class Array exports retain all initializers through outer
             assert.ok(all.some(row=>row.node.opcode==='arcade_setLocal'&&nullWrite(row)),'real pure local reset remains');
             assert.ok(!all.some(row=>row.node.opcode==='data_setvariableto'&&nullWrite(row)),'no global reset is invented for an uninitialized reference declaration');
             clean(raw); // Existing deadReset admits this pure local prefix without the new theorem.
-        }else assert.ok(raw.unsupported.length,'unowned reset graph remains refused');
+        }else{
+            // Since aa04 the direct API carries descriptor-checked owned JSON
+            // evidence, so this plain reimported project proves its reset as
+            // the JSON route does. Caller objects and mutable metadata still
+            // cannot enroll (see the owned-JSON test above).
+            clean(raw);assert.deepEqual(raw.files,projectJsonToArcade(JSON.stringify(second.project)).files,'direct and JSON routes agree');
+        }
         clean(projectJsonToArcade(JSON.stringify(second.project)));
         assert.equal(JSON.stringify(c.project),before,'Code/export retain original physical program');
     }
