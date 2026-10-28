@@ -1,6 +1,127 @@
 # CLI instrument regression
 
-## Current handoff — 2026-10-27, updated 2026-10-28
+## Current handoff — 2026-10-28 (wrap-up)
+
+**Read this section first; it supersedes the 2026-10-27 handoff below, which is
+kept as history.** The six-item
+[campaign contract](../lanes/2026-10-26-reference-qualified-instrument-campaign.md)
+is **not closed**. Items 1 and 2 are accepted; items 3 to 6 each have an open
+pull request awaiting CI or review. A fresh agent works the "Open work" list
+below in the order given, refreshing every live identity first.
+
+### Accepted on 2026-10-28
+
+- **Item 1, supplier return and Lite adoption.** Lite PR1478 merged
+  `e643932e`. Lite pins Board `c7bcbe4bcd583d2215372dd4ee1e65002e249a04` and
+  CUI `da28bb8ce9b38aa18d2e424f692c6570fc1d6d1d`. Board carries PR710
+  (junction DC-path repair) and PR717 (opt-in LM741 nominal 25 C bias/supply
+  domain). CUI carries PR124, PR127 (LM741 CLI) and PR126 (opt-in passive
+  precision batch). The Board census was read again at `c7bcbe4b`.
+- **Item 1b, v2 study.** Harness PR1501 merged `8afe1333` at reviewed head
+  `bfa530fc`. Its sole event, run 40681635060 attempt 1, was read once,
+  independently: 32/32 inputs, 31/31 conforming designs, 0 disagreements,
+  4,260/4,260 values, 15/15 captures, 83/84 selector locations (the 84th is the
+  LT1763 named-refusal control, exit 2). This is numerical conformance to
+  ngspice-42 references, not physical calibration. Never rerun it.
+- **Item 2, historical disagreements.** Recorded in PR1495: all four rows are
+  noncomparable and no model defect was demonstrated (details in the task table
+  further below).
+- **CI policy (operator, 2026-10-27/28).** Pull requests merge on the fast tier
+  without `ci:full`; the `full CI requested` gate is expected red on code PRs.
+  Merge only with `--match-head-commit` after every other enabled check on that
+  exact head passes. One `ci:full` run on main follows once items 3–6 land.
+  Kaggle CPU kernels may be used when the hosted queue stalls; they cannot
+  replace the GitHub checks a merge needs, and their workers have no internet.
+
+### Open work, in order
+
+Each entry states the live identity at handoff, the exact next action, and the
+stop condition. Refresh PR heads and checks before acting. Never change a frozen
+expectation after observing a result; a wrong expectation is kept on record and
+a new expectation is frozen and committed before its first run.
+
+1. **Item 4, longer captures — Lite PR1516** (head `a18d5cd4`). Adds the
+   passive-RC 5 ms / 1 MHz batch regression (step, pulse and sine circuits, 5,000
+   points each). Local result: every point agreed with the closed form and
+   ngspice-42 within at most 4e-7 V (tolerance 1e-5 V); triggers within 3e-10 s;
+   meters matched their integrals; three refusals (passive `--watch`,
+   `--max-step 50ns`, a 200,000-attempt capture) exit 2 with no output. The
+   frozen expectation of a first sample at t=0 failed; the CLI's first sample is
+   at 1 µs, and the operator accepted that as the specification. **Next:** when
+   the fast tier is green on the exact head, merge with `--match-head-commit`.
+   If a check fails, read its log, fix only the defect it shows, and push.
+   **Known limit:** the 32 MiB output-byte cap cannot be reached through the CLI
+   while the 20,000-attempt cap holds; it is untested, not proven.
+2. **Item 5, LM741 bias/supply packaged acceptance — Lite PR1515** (draft, head
+   `56fe23d2`). Tests the installed CLI: pins, five refusals, default-off output
+   byte-identical, and the GUI (which does not expose the option; it is CLI-only
+   by decision). The first frozen check (`v1-instant-settling`) failed by 48 nA
+   with a 10 kΩ load, because the output dips 2.9 mV at start-up; it is kept as
+   a TODO with the observed values. A second check (`v2-post-settling-window`,
+   window 10–20 µs, about 60 time constants of the model's 1 MHz pole) was
+   frozen before running and **has not run anywhere yet**. **Next:** read the
+   hosted result of v2. If green, mark ready and merge with
+   `--match-head-commit`. If v2 fails, record the failure verbatim in the PR,
+   do not edit v2, and report item 5 as partial.
+3. **Item 6a, provenance and redaction — Lite PR1517** (head `26f3866c`). Adds
+   `scripts/admit-static-provenance.mjs` (moves the three Board static-asset
+   provenance records together or refuses) and treats `=` as a path delimiter in
+   census redaction (fixes a published machine path in the `masm` row). Its
+   tests failed before the fix and pass after it; seven mutation controls each
+   fail their own test. `no-nul-in-text` was not run locally. **Next:** merge
+   on a green fast tier with `--match-head-commit`.
+4. **Item 6b, AC input coupling — CUI PR130** (draft, head `3ec388e4`). Opt-in,
+   CLI-only `--ac-couple <tip>[,<ref>]` with exactly one of `--ac-corner-hz` or
+   `--ac-rc`, and `--ac-initial uncharged|settled`. First-order RC high-pass on
+   a copy of the samples, discretised exactly for piecewise-linear input. No
+   default corner; default output byte-identical; invalid combinations refuse
+   before capture. 10/10 new tests and four code mutations pass locally. Two
+   reference-formula errors in the test were corrected after the first run and
+   disclosed in the PR, so treat that part as weaker evidence. A local
+   `cli-measure` run showed two failures (ADP7118 installed package, receipt
+   binding) with borrowed dependencies; cause unconfirmed. **Next:** if CI is
+   green, mark ready and merge with `--match-head-commit`. Then adopt it in Lite
+   exactly as PR1478 did: pins, both manifests and locks (recompute CUI
+   integrity with `npm pack --ignore-scripts`, which reproduced the previous
+   value), notices, source identities, identity tests, current-role citations
+   that `test/pin-move-chain.test.mjs` checks, `packages/` mirrors of
+   dual-tracked overlay files, and the generated documents. A GUI coupling
+   selector is out of scope unless the operator asks.
+5. **Item 3, scope rearm causality — CUI PR128 (after) and PR129 (before).**
+   Hypothesis: a host re-render during `selectOption`'s `input` event reset the
+   capture selector to its stored `envelope` before React committed `sample`;
+   CUI `a5860b9c` ("keep scope capture choice across a re-render", adopted in
+   Lite by another session) is the candidate fix. The same test drives the
+   original Playwright path and asserts committed React state and the published
+   selector. PR128 (on master, includes `a5860b9c`) passed all three checks.
+   PR129 must **fail** its `interaction-gate` for the cause to count as
+   demonstrated. Its branch was first based on pre-fix `bf4434c`; master was
+   then merged in (which brought in the fix), and commit `1f4bd111` restored
+   the pre-fix ScopePanel from `66e37240`. Verify before reading the result
+   that PR129's ScopePanel at its head is byte-identical to `66e37240`'s and
+   that the test file equals PR128's; its checks were pending at handoff. **Next:** read PR129's result. If it fails on the
+   asserted mechanism, record item 3 as causally demonstrated, close PR129
+   unmerged, and merge PR128's test. If PR129 passes, the hypothesis is not
+   demonstrated: record item 3 as unproved, keep both results, and do not
+   claim a fix. Never merge PR129.
+6. **Close the campaign.** After entries 1–5 resolve, run one `ci:full` on Lite
+   main, fix what it reveals, then update this handoff, `PLAN.md` and
+   `ROADMAP.md` with each item's final completed/partial/unproved state, and
+   ask the operator for the next priority. Do not start a seventh item.
+
+### Rules that still bind
+
+- Shared models belong in `CrispStrobe/bw-board`; import, CLI and instrument
+  behaviour in `CrispStrobe/bw-circuit-ui`; Lite adopts exact merged packages.
+- Acquire each official original once, after admission; never rerun a consumed
+  study or completed batch to read it again.
+- Current-role citations must name live pins; history-role citations never
+  change. The x86 lane owns its run script, reader and workflow roles; the
+  operator approved this campaign's current-pin edits to them on 2026-10-28,
+  and Lite PR1318 will need to resolve conflicts in those files.
+- Public text carries no machine paths, hostnames or session identifiers.
+
+## Previous handoff — 2026-10-27, updated 2026-10-28
 
 **The earlier five-item campaign is complete; the subsequent six-item campaign
 is not.** Lite adoption (step 1) and the v2 reference-qualified study (step 2)
