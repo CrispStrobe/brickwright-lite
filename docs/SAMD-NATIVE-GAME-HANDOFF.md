@@ -84,9 +84,25 @@ The final-head historical-study source controls passed49 tests with zero skips
 and the actual study job was correctly skipped. GUI infrastructure controls and
 vendor checks also passed. The main Build remains queued at this checkpoint.
 
+Test-only successor: the
+[Linux observation claim](../lanes/2026-10-28-linux-owner-death-observation.md)
+owns only the supervisor's test module; production bytes remain unchanged.
+The candidate binds parent/group identity and a held process descriptor, requires
+complete PID publication, retains bounded failure snapshots and signals only the
+admitted child. The original three-second assertion stays intact. A negative
+fixture observes the actual supervisor's kill signal before deliberately
+clearing it and requiring survival through the same window, then exact cleanup.
+Private extracted-method controls and three adversarial cuts passed; their
+explicit synthetic supervisor boundary is not full Rust or guest qualification.
+Full affected Rust CI and fresh actual SAMD acceptance still must pass on the
+successor head. The original failure is not reclassified as a proven flake.
+The separate current SPIKE delivery claim owns only MicroPython manifest hunks;
+preserve those and the old dirty worktrees.
+
 ## Remaining work, in order
 
-1. Resolve the native source gate above, then refresh exact-head checks and existing
+1. Qualify the test-only successor against the native source gate above, then
+   refresh exact-head checks and existing
    [Build40765450222](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40765450222).
    `ci:full` was restored before this final source checkpoint after an earlier
    removal; keep it present. Implementation bytes match the88-test candidate. Wait for every enabled check; do not duplicate

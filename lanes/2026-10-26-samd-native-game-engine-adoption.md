@@ -135,3 +135,11 @@ Qualification request refreshed after the required `ci:full` label was removed
 from the earlier event. The label is restored before this source checkpoint.
 The88-control qualified implementation bytes remain unchanged; require the new
 head's automatic frontend and all enabled checks, then actual guest acceptance.
+
+The native test gate exposed a separate unchanged owner-death observation failure
+on the previous head. Continue its bounded
+[test-only dependency](2026-10-28-linux-owner-death-observation.md) with the
+original failure retained. Production native launch, timing limits, model/runtime
+pins, producer helpers and compile defaults remain unchanged. Do not resume the
+old qualification request: bind a successful successor frontend/native source
+before the actual consumer runs.

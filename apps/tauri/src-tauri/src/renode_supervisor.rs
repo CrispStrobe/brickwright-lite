@@ -1786,37 +1786,165 @@ mod tests {
     }
 
     #[cfg(target_os = "linux")]
+    fn owner_fixture_pid(text: &str) -> Option<i32> {
+        let digits = text.strip_suffix('\n')?;
+        if digits.is_empty() || digits.len() > 10 || !digits.bytes().all(|c| c.is_ascii_digit()) { return None; }
+        digits.parse::<i32>().ok().filter(|pid| *pid > 1)
+    }
+
+    #[cfg(target_os = "linux")]
+    fn owner_child_snapshot(pid: i32) -> io::Result<(char, u32, i32, u64)> {
+        let raw = std::fs::read_to_string(format!("/proc/{pid}/stat"))?;
+        let (_, rest) = raw.rsplit_once(')').ok_or_else(|| io::Error::other("missing process comm"))?;
+        let fields: Vec<_> = rest.split_whitespace().collect();
+        if fields.len() < 20 { return Err(io::Error::other("incomplete process stat")); }
+        let parse = || -> Option<(char, u32, i32, u64)> {
+            Some((fields[0].chars().next()?, fields[1].parse().ok()?, fields[2].parse().ok()?, fields[19].parse().ok()?))
+        };
+        parse().ok_or_else(|| io::Error::other("invalid process identity"))
+    }
+
+    // A pidfd stays bound to the admitted direct child after numeric PID reuse.
+    // poll readiness means termination; read failures never stand in for exit.
+    // https://man7.org/linux/man-pages/man2/pidfd_open.2.html
+    #[cfg(target_os = "linux")]
+    struct OwnerDeathChild {
+        handle: std::os::fd::OwnedFd,
+        pid: i32,
+        before: (char, u32, i32, u64),
+    }
+
+    #[cfg(target_os = "linux")]
+    impl OwnerDeathChild {
+        fn bind(pid: i32, owner: u32) -> io::Result<Self> {
+            use std::os::fd::FromRawFd;
+            if pid <= 1 { return Err(io::Error::other("invalid fixture child PID")); }
+            let fd = unsafe { libc::syscall(libc::SYS_pidfd_open, pid, 0u32) };
+            if fd < 0 { return Err(io::Error::last_os_error()); }
+            let handle = unsafe { std::os::fd::OwnedFd::from_raw_fd(fd as i32) };
+            let before = owner_child_snapshot(pid)?;
+            if before.1 != owner || before.2 != pid {
+                return Err(io::Error::other("fixture PID is not the owner's direct group leader"));
+            }
+            let child = Self { handle, pid, before };
+            if child.exited()? { return Err(io::Error::other("fixture child exited before admission")); }
+            Ok(child)
+        }
+
+        fn exited(&self) -> io::Result<bool> {
+            use std::os::fd::AsRawFd;
+            let mut item = libc::pollfd { fd: self.handle.as_raw_fd(), events: libc::POLLIN, revents: 0 };
+            let count = unsafe { libc::poll(&mut item, 1, 0) };
+            if count < 0 { return Err(io::Error::last_os_error()); }
+            if item.revents & (libc::POLLERR | libc::POLLNVAL) != 0 {
+                return Err(io::Error::other("pidfd observation refused"));
+            }
+            Ok(count == 1 && item.revents & (libc::POLLIN | libc::POLLHUP) != 0)
+        }
+
+        fn kill_exact(&self) -> io::Result<()> {
+            use std::os::fd::AsRawFd;
+            let result = unsafe { libc::syscall(libc::SYS_pidfd_send_signal,
+                self.handle.as_raw_fd(), libc::SIGKILL, std::ptr::null::<libc::siginfo_t>(), 0u32) };
+            if result == 0 { Ok(()) } else { Err(io::Error::last_os_error()) }
+        }
+    }
+
+    #[cfg(target_os = "linux")]
+    impl Drop for OwnerDeathChild {
+        fn drop(&mut self) {
+            // Only an already-admitted child can be signalled, even on assertion failure.
+            if !matches!(self.exited(), Ok(true)) { let _ = self.kill_exact(); }
+        }
+    }
+
+    #[cfg(target_os = "linux")]
+    struct OwnerDeathProcess(std::process::Child);
+    #[cfg(target_os = "linux")]
+    impl Drop for OwnerDeathProcess {
+        fn drop(&mut self) { let _ = self.0.kill(); let _ = self.0.wait(); }
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn linux_owner_pid_publication_requires_a_complete_single_record() {
+        assert_eq!(owner_fixture_pid("12345\n"), Some(12345));
+        for text in ["", "12345", "1\n", "0\n", "-2\n", "12\n34\n", "12 \n", "2147483648\n"] {
+            assert_eq!(owner_fixture_pid(text), None, "incomplete or counterfeit record {text:?}");
+        }
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn linux_owner_pidfd_refuses_a_counterfeit_parent_and_observes_exact_exit() {
+        use std::os::unix::process::CommandExt;
+        let mut process = OwnerDeathProcess(Command::new("/bin/sleep")
+            .arg("20").process_group(0).spawn().unwrap());
+        let pid = process.0.id() as i32;
+        assert!(OwnerDeathChild::bind(pid, std::process::id() + 1).is_err());
+        let child = OwnerDeathChild::bind(pid, std::process::id()).unwrap();
+        assert!(!child.exited().unwrap(), "a live child cannot count as terminated");
+        child.kill_exact().unwrap();
+        let deadline = Instant::now() + Duration::from_secs(3);
+        while !child.exited().unwrap() && Instant::now() < deadline { thread::sleep(Duration::from_millis(10)); }
+        assert!(child.exited().unwrap(), "exact synthetic cleanup must terminate its child");
+        process.0.wait().unwrap();
+        assert!(child.exited().unwrap(), "reaping cannot redirect or revive the held identity");
+    }
+
+    #[cfg(target_os = "linux")]
     #[test]
     #[ignore = "subprocess fixture for linux_owner_crash_terminates_simulator"]
     fn linux_owner_death_fixture() {
         let Some(root) = std::env::var_os("BW_TEST_LINUX_OWNER_DIR") else { return; };
         let root = PathBuf::from(root);
-        let executable = Path::new("/bin/sh");
+        let clears_guard = std::env::var_os("BW_TEST_LINUX_CLEAR_GUARD").is_some();
+        let (executable, arguments) = if clears_guard {
+            // Actual supervisor registration must be observed before this child
+            // deliberately clears it. This is a negative fixture, never a guest.
+            (Path::new("/usr/bin/python3"), vec!["-I".into(), "-c".into(), r#"import ctypes, os, pathlib, time
+libc = ctypes.CDLL(None)
+signal = ctypes.c_int()
+if libc.prctl(2, ctypes.byref(signal), 0, 0, 0) != 0 or signal.value != 9:
+    raise RuntimeError("supervisor death guard was not registered")
+if libc.prctl(1, 0, 0, 0, 0) != 0:
+    raise RuntimeError("negative fixture could not clear its death guard")
+if libc.prctl(2, ctypes.byref(signal), 0, 0, 0) != 0 or signal.value != 0:
+    raise RuntimeError("negative fixture death guard was not cleared")
+pathlib.Path('guard-cleared').write_text('registered=9 cleared=0')
+pathlib.Path('child.pid').write_text(str(os.getpid()) + '\n')
+# Bound cleanup even if fixture admission fails before a pidfd can be held.
+root = pathlib.Path.cwd()
+deadline = time.monotonic() + 20
+while root.exists() and time.monotonic() < deadline:
+    time.sleep(0.01)
+"#.into()])
+        } else {
+            (Path::new("/bin/sh"), vec!["-c".into(),
+                "printf '%s\\n' \"$$\" > child.pid; while :; do sleep 0.1; done".into()])
+        };
         let supervisor = RenodeSupervisor::new();
-        supervisor.start_verified(executable, &sha256(executable).unwrap(),
-            &["-c".into(), "printf '%s' \"$$\" > child.pid; while :; do sleep 0.1; done".into()],
+        supervisor.start_verified(executable, &sha256(executable).unwrap(), &arguments,
             &root, Duration::from_secs(60), 1024).unwrap();
         std::fs::write(root.join("owner.ready"), b"ready").unwrap();
         thread::sleep(Duration::from_secs(60));
     }
 
     #[cfg(target_os = "linux")]
-    #[test]
-    fn linux_owner_crash_terminates_simulator() {
-        struct TestOwner(std::process::Child);
-        impl Drop for TestOwner {
-            fn drop(&mut self) { let _ = self.0.kill(); let _ = self.0.wait(); }
-        }
+    fn owner_death_fixture_pair(clears_guard: bool) -> (FlashFixture, OwnerDeathProcess, OwnerDeathChild) {
         let fixture = FlashFixture::new();
-        let mut owner = TestOwner(Command::new(std::env::current_exe().unwrap())
-            .args(["--ignored", "--exact", "renode_supervisor::tests::linux_owner_death_fixture"])
+        let mut command = Command::new(std::env::current_exe().unwrap());
+        command.args(["--ignored", "--exact", "renode_supervisor::tests::linux_owner_death_fixture"])
             .env("BW_TEST_LINUX_OWNER_DIR", &fixture.0)
-            .stdout(Stdio::null()).stderr(Stdio::null()).spawn().unwrap());
+            .env_remove("BW_TEST_LINUX_CLEAR_GUARD")
+            .stdout(Stdio::null()).stderr(Stdio::null());
+        if clears_guard { command.env("BW_TEST_LINUX_CLEAR_GUARD", "1"); }
+        let mut owner = OwnerDeathProcess(command.spawn().unwrap());
         let deadline = Instant::now() + Duration::from_secs(10);
         let pid: i32 = loop {
             if fixture.0.join("owner.ready").exists() {
                 if let Some(pid) = std::fs::read_to_string(fixture.0.join("child.pid")).ok()
-                    .and_then(|value| value.parse::<i32>().ok()) { break pid; }
+                    .and_then(|value| owner_fixture_pid(&value)) { break pid; }
             }
             assert!(owner.0.try_wait().unwrap().is_none(), "owner fixture exited before spawn");
             assert!(Instant::now() < deadline, "owner fixture did not create its child");
@@ -1824,18 +1952,49 @@ mod tests {
         };
         assert!(pid > 1);
         assert_eq!(unsafe {libc::getpgid(pid)}, pid, "synthetic child must own its group");
+        let child = OwnerDeathChild::bind(pid, owner.0.id()).unwrap();
+        thread::sleep(Duration::from_millis(100));
+        assert!(!child.exited().unwrap(), "live owner must retain its admitted child");
+        (fixture, owner, child)
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn linux_owner_crash_terminates_simulator() {
+        let (_fixture, mut owner, child) = owner_death_fixture_pair(false);
         owner.0.kill().unwrap(); owner.0.wait().unwrap();
-        let running = || std::fs::read_to_string(format!("/proc/{pid}/status"))
-            .map(|status| !status.lines().any(|line| line.starts_with("State:")
-                && line.split_whitespace().nth(1) == Some("Z"))).unwrap_or(false);
-        let deadline = Instant::now() + Duration::from_secs(3);
-        while running() && Instant::now() < deadline { thread::sleep(Duration::from_millis(10)); }
-        let survived = running();
+        let began = Instant::now();
+        let deadline = began + Duration::from_secs(3);
+        while !child.exited().unwrap() && Instant::now() < deadline { thread::sleep(Duration::from_millis(10)); }
+        let survived = !child.exited().unwrap();
         if survived {
-            // Clean the exact synthetic group even when a mutation breaks the guard.
-            unsafe { libc::kill(-pid, libc::SIGKILL); }
+            let snapshot = owner_child_snapshot(child.pid);
+            let same_start = snapshot.as_ref().map(|value| value.3 == child.before.3);
+            let signals = std::fs::read_to_string(format!("/proc/{}/status", child.pid)).map(|text|
+                text.lines().filter(|line| ["State:", "PPid:", "SigPnd:", "ShdPnd:"]
+                    .iter().any(|key| line.starts_with(key))).take(4)
+                    .map(|line| line.chars().take(80).collect::<String>()).collect::<Vec<_>>());
+            eprintln!("owner-death observation: owner={} child={} before={:?} numeric_pid_snapshot={:?} same_start={:?} numeric_pid_signals={:?} elapsed={:?}",
+                owner.0.id(), child.pid, child.before, snapshot, same_start, signals, began.elapsed());
+            // Cleanup is bound to the held synthetic child, never a reused process group.
+            eprintln!("exact synthetic cleanup: {:?}", child.kill_exact());
         }
         assert!(!survived, "simulator survived abrupt owner death");
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn linux_owner_observation_detects_a_deliberately_cleared_death_guard() {
+        let (fixture, mut owner, child) = owner_death_fixture_pair(true);
+        assert_eq!(std::fs::read_to_string(fixture.0.join("guard-cleared")).unwrap(), "registered=9 cleared=0");
+        owner.0.kill().unwrap(); owner.0.wait().unwrap();
+        let deadline = Instant::now() + Duration::from_secs(3);
+        while !child.exited().unwrap() && Instant::now() < deadline { thread::sleep(Duration::from_millis(10)); }
+        assert!(!child.exited().unwrap(), "disabled guard must fail the original three-second death predicate");
+        child.kill_exact().unwrap();
+        let cleanup = Instant::now() + Duration::from_secs(3);
+        while !child.exited().unwrap() && Instant::now() < cleanup { thread::sleep(Duration::from_millis(10)); }
+        assert!(child.exited().unwrap(), "the negative fixture must clean its exact child");
     }
 
     #[cfg(target_os = "linux")]
