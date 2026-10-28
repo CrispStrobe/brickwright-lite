@@ -79,6 +79,18 @@ const SCOPED_PINS = ['stc-compiler-flasher', 'arrays-values', 'circuitplayground
 const ENV_DIR = {'bw-board': 'BW_BOARD_DIR', 'sb3-creator': 'SB3_CREATOR_DIR', 'bw-circuit-ui': 'BW_CIRCUIT_UI_DIR'};
 const PROVENANCE = 'overlay/scratch-gui/static/roms/i8086-bios.provenance.json';
 const HEX40 = /\b[0-9a-f]{40}\b/g;
+
+// These consumed-study inputs describe a measured historical runtime. They
+// cannot follow today's installed packages without falsifying that evidence.
+// The role is admitted only for these exact complete-file bytes; changing even
+// a comment refuses. Ordinary source and never-pinned receipt checks stay live.
+export const SEALED_STUDY_FILES = Object.freeze({
+    '.github/workflows/reference-qualified-instruments.yml': '657110ef93474d26f03dc1ae2fa8b8ce49063f8288ef65550fb0c558f0a9cd29',
+    'scripts/lib/reference-qualified-circuits.mjs': '6efaeccdcb7aa855715020420dc9714f56c6f023a277f34a373aaf8f640bc341',
+    'scripts/read-reference-qualified-instruments.py': 'b4fda49432bfc5cea9ad6ee81fea413c2acaa0dd551aeb48f959e0f35b2c491c',
+    'docs/receipts/reference-qualified-v2-ui-package.json': 'aa2e7cdd01c31f9622339ebccf16fcd5c3728d497903b4230fbd1842fd1ddc16'
+});
+
 const HISTORICAL_X86_CUI_V5_V7 = '91d8434a79d373cef2837c137ab356356f1a3b44';
 // The CUI pin the F7/F8 x86 epochs were reviewed and executed at. It was the
 // current pin until the capture-select fix moved CUI to CURRENT_X86_CUI; from
@@ -163,6 +175,7 @@ export const parsePreviousPins = (logText, currentShas = new Set(), allowedKeys 
 
 /** Role of a tracked file for this test: 'ledger' | 'receipt' | 'docs-prose' | 'skip' | 'code'. */
 export const roleOf = file => {
+    if (Object.hasOwn(SEALED_STUDY_FILES, file)) return 'receipt';
     if (/^(LANES|HISTORY|ROADMAP|PLAN|BLOCKED|HANDOFF|CI-POINTERS)\.md$/.test(file) || /^lanes\/[^/]+\.(md|tsv)$/.test(file)) return 'ledger';
     if (/^docs\/generated\//.test(file)) return 'code';
     // A dated run receipt records the pin it was MEASURED at; moving that sha
@@ -516,6 +529,10 @@ export const historicalV10Spans = (file, text, known) =>
 export const judgeFile = (file, text, known) => {
     const role = roleOf(file);
     if (role !== 'code' && role !== 'receipt') return [];
+    if (Object.hasOwn(SEALED_STUDY_FILES, file)) {
+        assert.equal(createHash('sha256').update(text).digest('hex'), SEALED_STUDY_FILES[file],
+            `${file}: sealed completed-study source changed; preserve the consumed experiment`);
+    }
     let body = text;
     if (file === PROVENANCE) {
         // the one history FIELD, exempt by role (see header); everything else in the manifest must be the pin
@@ -611,7 +628,8 @@ const historicalTestKnown = () => ({current: new Set([CURRENT_X86_CUI]),
 const historicalFixtureSpans = f => (file, text, known) =>
     historicalCuiSpansForProfile(file, text, known, f.profiles);
 const historicalJudgeWith = (recognize, recognizeBoard = () => [], recognizeV8 = () => [], recognizeV10 = () => []) => vm.runInNewContext(`(${judgeFile.toString()})`,
-    {roleOf, PROVENANCE, COMMENT, CODE_EXT, HEX40, historicalCuiSpans: recognize,
+    {roleOf, PROVENANCE, COMMENT, CODE_EXT, HEX40, SEALED_STUDY_FILES, assert, createHash,
+        historicalCuiSpans: recognize,
         historicalBoardSpans: recognizeBoard, historicalV8CuiSpans: recognizeV8, historicalV10Spans: recognizeV10});
 
 test('three exact historical CUI occurrences are previous-pin roles, not code-file exemptions', () => {
@@ -1378,3 +1396,17 @@ test('a real merge replacement remains previous-pin evidence instead of a never-
         assert.equal(previous.has(never),false,'unrecorded values remain unrecorded');
     }finally{rmSync(directory,{recursive:true,force:true});}
 });
+
+
+for (const file of Object.keys(SEALED_STUDY_FILES)) {
+    test(`completed-study historical role requires exact sealed bytes: ${file}`, () => {
+        const text = readFileSync(path.join(ROOT, file), 'utf8');
+        assert.equal(roleOf(file), 'receipt');
+        assert.deepEqual(judgeFile(file, text, known), []);
+        assert.throws(() => judgeFile(file, text + '\n', known), /sealed completed-study source changed/);
+        const former = previous.keys().next().value;
+        assert.ok(former, 'history authority is populated');
+        assert.equal(judgeFile('scripts/current-package-authority.mjs',
+            `const PIN = '${former}';`, known).length, 1, 'ordinary current code still rejects a former pin');
+    });
+}

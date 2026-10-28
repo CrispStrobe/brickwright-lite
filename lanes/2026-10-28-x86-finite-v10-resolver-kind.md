@@ -124,7 +124,9 @@ identity and replay, deadline accounting and cleanup. Workflow controls preserve
 isolated Python startup, upload ordering and action pins. The pin-history reader
 also includes first-parent merge diffs, with a real conflicting-merge regression;
 this recovers previously adopted pins without exempting current or unrecorded
-values. Unrelated reference-qualified frozen pins remain with their owner.
+values. The owner-released sealed study repair is integrated without changing
+its original sources or pins; 83 affected synthetic and pin-policy controls pass.
+Hosted qualification and actual x86 acceptance remain pending.
 
 Next: compose current main, resolve all source-policy findings with their owners
 and pass enabled candidate checks. Then review arming separately, admit the exact
