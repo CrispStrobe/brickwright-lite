@@ -1,6 +1,7 @@
 # Robot Lab resting-frame creep — issue #1435
 
-Status: CLAIMED (successor) — diagnostic baseline steps 1–5 in progress.
+Status: DONE (diagnostic). Baseline #1472 and contact stage #1498 merged; cause located.
+The fix is unclaimed: see docs/ROBOT-LAB-QUALIFICATION-HANDOFF-20261028.md, section 4.
 Continuation: Claude Code successor, 2026-10-27, after the Codex owner's handoff
 (#1466) released the lane with no active writer. Same owned paths and limits as
 below; still diagnostic only, no solver/setting/pin change.
