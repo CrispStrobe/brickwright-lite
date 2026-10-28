@@ -557,17 +557,6 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
         return [0, 1, 2].map(r => [0, 1, 2].map(k => 0.5 * (inv[r][k] + inv[k][r])));
     };
 
-    /** aᵀ·I⁻¹·a for a body-space axis a: the inverse of the body's moment about that axis to an impulse along it. */
-    const axialInverseInertia = (mp, local) => {
-        const m = mp.GetLocalSpaceInverseInertia();
-        const c = [m.GetAxisX(), m.GetAxisY(), m.GetAxisZ()].map(v => [v.GetX(), v.GetY(), v.GetZ()]);
-        const n = Math.hypot(...local);
-        const a = local.map(v => v / n);
-        let k = 0;
-        for (let col = 0; col < 3; col++) for (let r = 0; r < 3; r++) k += a[r] * c[col][r] * a[col];
-        return k;
-    };
-
     // Light bodies between joints (LIGHT_BODY_VELOCITY_STEPS).
     const lightBetweenJoints = new Set();
     {
@@ -1443,27 +1432,42 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
         const len = Math.hypot(...worldAxis);
         return len > 0 ? worldAxis.map(v => v / len) : worldAxis;
     };
-    /**
-     * After a Jolt step (setRotorInertia): a hinge whose rotor couples two moving bodies. Its
-     * motor part applied the axial impulse λ (−λ to body1, +λ to body2) to bodies carrying
-     * I1 + x and I2 + x; that gives the right RELATIVE change. The common rate c is then shifted
-     * so the pair's bare momentum I1·Δ1 + I2·Δ2 from λ is zero, as M requires: λ is internal.
-     */
+    /** A hinge whose two bodies both move (setRotorInertia's rotor coupling). */
+    const movesBoth = jointId => {
+        const j = jointMap.get(jointId);
+        return [j.body1, j.body2].every(id => { const e = bodyMap.get(id); return !!e && e.motionType !== J.EMotionType_Static; });
+    };
     let rotorCoupled = false;
-    const correctRotorCoupling = () => {
-        for (const [, entry] of hingeMap) {
-            if (!entry.rotorAdd || !entry.rotorAdd[0] || !entry.rotorAdd[1]) continue;
-            const lambda = entry.hinge.GetTotalLambdaMotor();
-            if (!(Math.abs(lambda) > 0)) continue;
-            const k = [[entry.bodyA, entry.localAxis1], [entry.bodyB, entry.localAxis2]]
-                .map(([body, local]) => axialInverseInertia(body.GetMotionProperties(), local));
-            const bare = k.map((v, i) => 1 / v - entry.rotorAdd[i]);
-            const ds = [-lambda * k[0], lambda * k[1]];
-            const c = -(bare[0] * ds[0] + bare[1] * ds[1]) / (bare[0] + bare[1]);
-            if (!Number.isFinite(c) || c === 0) continue;
+    const axialRates = (entry, axis) => [entry.bodyAID, entry.bodyBID].map(id => {
+        const w = bodyInterface.GetAngularVelocity(id);
+        return w.GetX() * axis[0] + w.GetY() * axis[1] + w.GetZ() * axis[2];
+    });
+    /** Before a Jolt step: each coupled rotor's hinge (setRotorInertia), its rates as of the last step's end. */
+    const rotorRatesBefore = () => {
+        const out = [];
+        for (const [id, entry] of hingeMap) {
+            if (!(entry.rotorInertia > 0) || !movesBoth(id)) continue;
+            if (!entry.rotorRates) entry.rotorRates = axialRates(entry, worldAxisOf(entry));
+            out.push(entry);
+        }
+        return out;
+    };
+    /**
+     * After a Jolt step: M's off-diagonal as axial impulses, Jr·Δω2 on body1 and Jr·Δω1 on body2
+     * (setRotorInertia). Δ runs from the previous step's end, so it includes the previous
+     * coupling impulse: the passes are a Jacobi iteration whose fixed point solves M.
+     */
+    const applyRotorCoupling = coupled => {
+        for (const entry of coupled) {
             const axis = worldAxisOf(entry);
+            const after = axialRates(entry, axis);
+            const before = entry.rotorRates;
+            entry.rotorRates = after;
+            const Jr = entry.rotorInertia;
+            const impulses = [Jr * (after[1] - before[1]), Jr * (after[0] - before[0])];
             [entry.bodyAID, entry.bodyBID].forEach((id, i) => {
-                const L = c / k[i];
+                const L = impulses[i];
+                if (!(Math.abs(L) > 0)) return;
                 const v = new J.Vec3(axis[0] * L, axis[1] * L, axis[2] * L);
                 bodyInterface.AddAngularImpulse(id, v);
                 J.destroy(v);
@@ -1599,18 +1603,19 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
     });
     stateRegistry.register('hinges', {
         save: () => [...hingeMap.values()].map(e => [e.rawPrev, e.unwrapped, e.velocity, e.mode, e.target, e.targetSpeed, e.driveTorque, e.damping,
-            e.hinge.GetMaxFrictionTorque(), e.rotorInertia, e.coastFrictionNm]),
+            e.hinge.GetMaxFrictionTorque(), e.rotorInertia, e.coastFrictionNm, e.rotorRates ? [...e.rotorRates] : null]),
         restore: saved => {
             let i = 0;
             for (const [id, e] of hingeMap) {
-                let friction, rotorInertia;
-                [e.rawPrev, e.unwrapped, e.velocity, e.mode, e.target, e.targetSpeed, e.driveTorque, e.damping, friction, rotorInertia, e.coastFrictionNm] = saved[i++];
+                let friction, rotorInertia, rotorRates;
+                [e.rawPrev, e.unwrapped, e.velocity, e.mode, e.target, e.targetSpeed, e.driveTorque, e.damping, friction, rotorInertia, e.coastFrictionNm, rotorRates] = saved[i++];
                 // Motor settings are not part of Jolt's saved state: put back the checkpoint's.
                 if (e.isMotor) {
                     setMotorSettings(e, e.mode === 'torque' ? {limit: 1e6, damping: e.damping} : {limit: e.maxTorque});
                     e.hinge.SetMaxFrictionTorque(friction);
                     if (rotorInertia !== e.rotorInertia) core.setRotorInertia(id, rotorInertia);
                 }
+                e.rotorRates = rotorRates ? [...rotorRates] : null;
             }
         }
     });
@@ -1850,6 +1855,7 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
             acc += dtSeconds;
             const eps = 1e-12;
             while (acc + eps >= dtFixed) {
+                const coupled = rotorCoupled ? rotorRatesBefore() : null;
                 for (const [, entry] of hingeMap) if (entry.mode === 'position') {
                     const err = entry.target - entry.unwrapped;
                     const lim = entry.targetSpeed !== null && entry.targetSpeed !== undefined ? entry.targetSpeed : entry.maxSpeed;
@@ -1880,7 +1886,7 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
                         J.EMotionQuality_Discrete, J.EMotionQuality_LinearCast,
                         () => joltInterface.Step(dtFixed, experiments.collisionSteps || 1));
                 } else joltInterface.Step(dtFixed, experiments.collisionSteps || 1);
-                if (rotorCoupled) correctRotorCoupling();
+                if (coupled && coupled.length) applyRotorCoupling(coupled);
                 timeSteps += 1;
                 acc -= dtFixed;
                 if (acc < 0 && acc > -1e-12) acc = 0;
@@ -1980,24 +1986,22 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
          * A motor's rotor inertia reflected through its gearbox (kg·m² at the output), Jr. The
          * rotor turns with the hinge's RELATIVE angle: kinetic energy ½·Jr·(ω2 − ω1)², so about
          * the axis the pair's inertia matrix is M = [[I1 + Jr, −Jr], [−Jr, I2 + Jr]] (issue
-         * #1494). Its relative mode has the moment μ + Jr (μ = I1·I2/(I1 + I2)); its common mode
-         * I1 + I2, and the pair's momentum I1·ω1 + I2·ω2 has no Jr term: under the motor's own
+         * #1494); the pair's momentum I1·ω1 + I2·ω2 has no Jr term, and under the motor's own
          * torque a free housing turns −I2/(I1 + I2) per hinge turn, whatever Jr is.
          *
-         * One body static (a clamped motor): M is the moving body's I + Jr, added to that body
-         * about the axis as before. As body inertia, unlike a term in the motor constraint, the
-         * rotor's momentum is in the bodies the gear and contact constraints see (measured: as a
-         * motor term the rotor drove a light 24T and arm through a static block, the gear
-         * constraint slipping).
+         * The diagonal of M is body inertia: Jr is added about the hinge axis to each body that
+         * moves. As body inertia, unlike a term in the motor constraint, the rotor's momentum is in
+         * the bodies the gear and contact constraints see (measured: as a motor term the rotor
+         * drove a light 24T and arm through a static block, the gear constraint slipping). With
+         * one side static (a clamped motor) that is all of M.
          *
-         * Both moving: no body inertia reproduces M. Each body gets x about the axis, x chosen so
-         * the relative mode's moment (I1 + x)(I2 + x)/(I1 + I2 + 2x) is exactly μ + Jr — the hinge
-         * motor then solves with the right inertia; x → Jr as either body gets heavy, the clamped
-         * case. That leaves the momentum split of the motor's own impulse wrong (the bodies'
-         * inflated common mode), which correctRotorCoupling corrects after each step. Contacts and
-         * other constraints still see the inflated common mode I1 + I2 + 2x, not I1 + I2: a residual,
-         * kept because it is what the clamped and driving-base cases already used. Setting, not
-         * adding: a second call with the same value changes nothing.
+         * When both bodies move, the off-diagonal −Jr is applied after each Jolt step
+         * (applyRotorCoupling): M·ω̇ = τ is diag(M)·ω̇ = τ + Jr·(ω̇2, ω̇1), so body1 gets the axial
+         * impulse Jr·Δω2 and body2 Jr·Δω1, from the step's own axial rate changes. That is a Jacobi
+         * iteration of M carried one step per pass: it converges because M is positive definite
+         * (Jr² < (I1 + Jr)(I2 + Jr)), constraints on either body only make it converge faster, and
+         * it adds nothing at constant rates. Its residual is a one-step lag. Setting, not adding: a
+         * second call with the same value changes nothing.
          */
         setRotorInertia(jointId, inertiaKgM2) {
             ensureAlive();
@@ -2005,29 +2009,20 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
             if (!entry || !entry.isMotor) throw new Error(`joint ${jointId} is not a motorised hinge`);
             const I = Number(inertiaKgM2);
             if (!(I >= 0) || !Number.isFinite(I)) throw new Error('setRotorInertia needs a finite inertia >= 0');
-            if (I === entry.rotorInertia) return;
+            const delta = I - entry.rotorInertia;
+            if (delta === 0) return;
             const j = jointMap.get(jointId);
-            const sides = [[j.body1, entry.bodyA, entry.localAxis1], [j.body2, entry.bodyB, entry.localAxis2]];
-            const moving = sides.map(([id]) => { const e = bodyMap.get(id); return !!e && e.motionType !== J.EMotionType_Static; });
-            const old = entry.rotorAdd || [0, 0];
-            const bare = sides.map(([, body, local], i) => (moving[i] ? 1 / axialInverseInertia(body.GetMotionProperties(), local) - old[i] : 0));
-            let add;
-            if (moving[0] && moving[1]) {
-                const S = bare[0] + bare[1], m = bare[0] * bare[1] / S + I, b = S - 2 * m;
-                const x = (-b + Math.sqrt(b * b + 4 * I * S)) / 2;
-                add = [x, x];
-            } else add = moving.map(v => (v ? I : 0));
-            sides.forEach(([, body, local], i) => {
-                const delta = add[i] - old[i];
-                if (!moving[i] || delta === 0) return;
+            for (const [id, body, local] of [[j.body1, entry.bodyA, entry.localAxis1], [j.body2, entry.bodyB, entry.localAxis2]]) {
+                const e = bodyMap.get(id);
+                if (!e || e.motionType === J.EMotionType_Static) continue;
                 const n = Math.hypot(...local);
                 const a = local.map(v => v / n);
                 const mp = body.GetMotionProperties();
                 setInertia(mp, inertiaOf(mp).map((row, r) => row.map((v, k) => v + delta * a[r] * a[k])));
-            });
-            entry.rotorAdd = add;
+            }
             entry.rotorInertia = I;
-            rotorCoupled = [...hingeMap.values()].some(e => e.rotorAdd && e.rotorAdd[0] && e.rotorAdd[1]);
+            entry.rotorRates = null;
+            rotorCoupled = [...hingeMap.entries()].some(([id, e]) => e.rotorInertia > 0 && movesBoth(id));
             setMotorSteps(entry, j);
         },
         /**
@@ -2153,6 +2148,8 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
             bodyInterface.SetLinearAndAngularVelocity(e.bodyID, v, w);
             J.destroy(v);
             J.destroy(w);
+            // A set rate is not a step's change: the rotor coupling restarts from it.
+            for (const [, h] of hingeMap) h.rotorRates = null;
         },
         bodyAngularVelocity(bodyId) {
             ensureAlive();
