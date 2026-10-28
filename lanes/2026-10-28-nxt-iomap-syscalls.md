@@ -37,7 +37,11 @@ modules remain documented; this is finite virtual IO-map compatibility.
 The candidate supports only `Button.mod` release-counter and held projections,
 plus exact three-zero-byte counter clearing. Unknown names and unmodeled or
 arbitrary writes refuse; the stock firmware's wider raw access is not claimed.
-Nine engine-free ABI/state controls pass. The owned 2,482-byte fixture compiled
+Nine engine-free ABI/state controls pass. The final owned 2,410-byte fixture input compiled
 once; source and executable hashes are frozen in its hosted-only brick test.
-Compiler version is not reported by the service. Actual upload/run, signed
-errors, Stop/restart and snapshot cases remain required hosted evidence.
+Compiler version is not reported by the service. Four bounded local virtual-brick cases now pass: actual upload/run, signed
+errors, Stop/restart and running snapshot. Fresh hosted evidence remains required.
+The first distinct compiled fixture failed three local cases because field
+assignments emitted string-copy instructions. Direct Buffer initialization fixes
+the fixture; expected numeric assertions and VM behavior are unchanged. Both
+compiler responses and the first failure are preserved.

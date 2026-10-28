@@ -150,6 +150,10 @@ Not implemented (the program stops with **UNIMPLEMENTED_SYSCALL** naming the cal
 ### Bounded program IO-map access
 
 This is an implementation candidate; fresh hosted qualification remains pending.
+Four bounded component cases pass locally. The first fixture exposed string-copy
+lowering for buffer assignments; direct buffer initialization corrected that
+input without changing the VM or its expected numeric assertions. The first
+failed source/executable and runtime result are retained.
 The [stock syscall wrappers](https://github.com/schodet/nxt-firmware/blob/lego-1.29/AT91SAM7S256/Source/c_cmd.c#L7171-L7301)
 define read arguments as signed-byte Result, ModuleName string, U16 Offset,
 U16 Count and output byte array. Write has Result, ModuleName, Offset and input

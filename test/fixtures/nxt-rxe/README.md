@@ -39,14 +39,21 @@ a short while a four-byte promoted value correctly fails that template size.
 
 The `iomap-buttons` fixture was compiled once on 2026-10-28 through the same
 hosted service. Its source SHA-256 is
-`f7b80fe5d8ffa3f0921ff5899199752cd16acf8bf309fb94f5afa539ec8bab8c`;
-its 2,482-byte RXE SHA-256 is
-`98dad4688109d14d4c8260b72ae52e3d5c519e8e73252f5d7485495a9a52d25b`.
+`0baf668c0cb75143a402d94012243b2acbfe0192975cca156b0324cca3c2397e`;
+its 2,410-byte RXE SHA-256 is
+`850c20375793c255808eb9a3d5076e353222e52b4b1af2c3c146f836f932a5a2`.
 The service returned successful compilation but no compiler-version field.
 It exercises standard name-based IOMapRead/Write, signed errors, destination
 preservation/clearing and the bounded Button reset. Its tests seed one release
 and a held button, and require upload/run, Stop/restart and running-snapshot
 behavior on the actual virtual brick. Tests never invoke the compiler.
+The first distinct input was also compiled once. Its byte-array field
+assignments lowered to string-copy instructions, losing the final byte or
+introducing a NUL. The corrected source initializes the Buffer fields directly;
+expected numeric values stay unchanged. Original source, RXE and first runtime
+failures are preserved. This is a fixture correction, not a VM string-semantics
+change. Four bounded component cases pass locally; fresh hosted qualification
+remains required.
 
 The original ten fixtures were compiled on 2026-10-20 with the owner's hosted NBC/NXC compiler,
 `POST https://lego-compiler.vercel.app/compile` with `{"compiler": "nxc", "code": <the .nxc text>}`, which

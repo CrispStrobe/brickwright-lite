@@ -41,9 +41,9 @@ const start = hub => assert.deepEqual(exec(hub, [0, 0, ...name20('iomap.rxe')]),
 const prepared = () => { const hub = new NxtVirtualHub({id: 'iomap-proof'}); upload(hub); seed(hub); return hub; };
 
 test('IOMap fixture binds the one hosted compiler response to owned source and executable bytes', () => {
-    assert.equal(sha(source), 'f7b80fe5d8ffa3f0921ff5899199752cd16acf8bf309fb94f5afa539ec8bab8c');
-    assert.equal(sha(rxe), '98dad4688109d14d4c8260b72ae52e3d5c519e8e73252f5d7485495a9a52d25b');
-    assert.equal(rxe.length, 2482);
+    assert.equal(sha(source), '0baf668c0cb75143a402d94012243b2acbfe0192975cca156b0324cca3c2397e');
+    assert.equal(sha(rxe), '850c20375793c255808eb9a3d5076e353222e52b4b1af2c3c146f836f932a5a2');
+    assert.equal(rxe.length, 2410);
     assert.deepEqual([...rxe.subarray(0, 14)], [...Buffer.from('MindstormsNXT\0')]);
 });
 

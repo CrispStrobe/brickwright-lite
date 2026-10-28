@@ -5,7 +5,6 @@ task main()
 {
     IOMapReadType r;
     IOMapWriteType w;
-    byte data[];
     int size;
     r.ModuleName = "Button.mod";
     r.Offset = 33;
@@ -22,15 +21,13 @@ task main()
     NumOut(0, LCD_LINE1, r.Buffer[2]);
     w.ModuleName = "Button.mod";
     w.Offset = 10;
-    ArrayInit(data, 0, 3);
-    data[0] = 1;
-    w.Buffer = data;
+    ArrayInit(w.Buffer, 0, 3);
+    w.Buffer[0] = 1;
     SysIOMapWrite(w);
     NumOut(0, LCD_LINE1, w.Result);
     SysIOMapRead(r);
     NumOut(0, LCD_LINE1, r.Buffer[2]);
-    data[0] = 0;
-    w.Buffer = data;
+    w.Buffer[0] = 0;
     SysIOMapWrite(w);
     NumOut(0, LCD_LINE1, w.Result);
     SysIOMapRead(r);
@@ -41,8 +38,7 @@ task main()
     r.Count = 1;
     SysIOMapRead(r);
     NumOut(0, LCD_LINE1, r.Buffer[0]);
-    ArrayInit(data, 99, 1);
-    r.Buffer = data;
+    ArrayInit(r.Buffer, 99, 1);
     r.ModuleName = "Missing.mod";
     SysIOMapRead(r);
     NumOut(0, LCD_LINE1, r.Result);
@@ -60,8 +56,7 @@ task main()
     NumOut(0, LCD_LINE1, r.Result);
     size = ArrayLen(r.Buffer);
     NumOut(0, LCD_LINE1, size);
-    ArrayInit(data, 0, 65);
-    w.Buffer = data;
+    ArrayInit(w.Buffer, 0, 65);
     SysIOMapWrite(w);
     NumOut(0, LCD_LINE1, w.Result);
     r.Count = 64;
@@ -74,7 +69,7 @@ task main()
     size = ArrayLen(r.Buffer);
     NumOut(0, LCD_LINE1, size);
     w.Offset = 36;
-    w.Buffer = r.Buffer;
+    ArrayInit(w.Buffer, 0, 0);
     SysIOMapWrite(w);
     NumOut(0, LCD_LINE1, w.Result);
     Wait(100);
