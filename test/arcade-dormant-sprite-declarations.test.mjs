@@ -177,11 +177,22 @@ test('original PXT/native: dormant declarations compile and preserve startup thr
         assert.equal(variables.length,1);assert.equal(variables[0].value,1);
         assert.deepEqual(run.errors,[]);assert.deepEqual(run.creator.warnings,[]);
     };
+    const checkOriginal=globals=>{
+        const markers=Object.entries(globals).filter(([name])=>['ready','Game_ready'].includes(name));
+        assert.equal(markers.length,1,'original simulator publishes exactly one mutable startup marker');
+        assert.equal(markers[0][1],1);return markers[0][1];
+    };
     try{
         for(const [source,pattern]of [[returned,resultSprite],[local,localSprite]]){
-            const expected=await runPxtArcade(source,{fakeClock:true});assert.equal(expected.ready,1);
-            const creator=create(source),output=clean(creator.project,pattern);
-            const compiled=await runPxtArcade(output.files,{fakeClock:true});assert.equal(compiled.ready,expected.ready);
+            // A single unused constant is not a reliable simulator-global
+            // observation: the original compiler may omit its storage. Use
+            // an executed read/modify/write marker in every route, retaining
+            // the same exact startup value and leaving the helpers dormant.
+            const runtimeSource=source.replace(/let ready=1$/,'let ready=0;ready+=1');
+            assert.notEqual(runtimeSource,source);
+            const expected=checkOriginal(await runPxtArcade(runtimeSource,{fakeClock:true}));
+            const creator=create(runtimeSource),output=clean(creator.project,pattern);
+            const compiled=await runPxtArcade(output.files,{fakeClock:true});assert.equal(checkOriginal(compiled),expected);
             let first;
             for(const code of [creator.decompile(),create(output.files).decompile()]){
                 const run=await runProgram(code,{frames:8,storage:true});runs.push(run);check(run);first ||= run;
@@ -194,7 +205,7 @@ test('original PXT/native: dormant declarations compile and preserve startup thr
             const exported=projectJsonToArcade(typeof reopened==='string'?reopened:JSON.stringify(reopened));
             assert.deepEqual(exported.unsupported,[]);assert.match(exported.ts,pattern);
             const compiledReopened=await runPxtArcade(exported.files,{fakeClock:true});
-            assert.equal(compiledReopened.ready,expected.ready);
+            assert.equal(checkOriginal(compiledReopened),expected);
         }
     }finally{for(const run of runs)run.vm.quit();clearStrayTimers();}
 });

@@ -111,6 +111,13 @@ Independent read-only review found no concrete counterexample; that is not
 runtime qualification.
 
 The same new test file contains an enabled-by-default original-PXT/native case.
+Its [first hosted attempt](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40758182799/job/123090494998)
+failed in the original simulator's startup-marker observation, before Lite ran:
+the single unused constant was absent from simulator globals. The corrected
+fixture executes `ready = 0; ready += 1` and requires exactly one published
+`ready`/`Game_ready` marker equal to 1 in each original route. Native startup,
+declaration, compilation and saved-project assertions remain required. The
+corrected case has no passing external verdict yet; retain the first failure.
 It compiles original and exported files in the pinned simulator, checks actual
 Lite startup through Code and reimport, and reopens a fresh VM from SB3. It does
 not execute the intentionally dormant null receiver bodies or assert hardware

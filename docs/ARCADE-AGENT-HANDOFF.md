@@ -1,5 +1,60 @@
 # Arcade compatibility: fresh-agent handoff and methodology
 
+## 28 October: ExtendableSprite constructor-result source candidate
+
+The constructor-effect service now has a bounded `sprites.ExtendableSprite`
+profile. It preserves parameter-property stores before the superclass call,
+executes the admitted creation handler after the complete virtual `setKind`
+return, and retains the same partial instance in a private registry snapshot.
+This follows the [selected original constructor](https://github.com/microsoft/pxt-common-packages/blob/v14.1.4/libs/game/extendableSprite.ts):
+notification uses its supplied creation kind after physics registration, even
+when an override changes current membership. The default identity control binds
+the exact pinned target and original constructor source bytes.
+Handler field writes and source overrides contribute before the actual method
+result is observed. Only current primitive occurrence results are published;
+private instances and snapshots provide no generic Sprite, Array or initialized
+value certificates. The ordinary class graph's conservative foreign-effect
+refusals remain intact.
+
+Ten selected source controls pass: seven new groups and three unchanged Sprite
+ownership/writer controls. Cuts detect missing handler execution,
+parameter-store ordering, snapshot escape refusal, uncertain kind matching and
+notification before the override suffix;
+exact source bytes were restored. The unchanged `created-partial-fields` fixture
+now exports without refusals in a bounded conversion probe. Its longer
+export/reimport control reached the local CPU cap; full authoring and original
+PXT/native qualification remain pending. No application completion is inferred.
+
+Kind matching uses private identities for unchanged SDK members, not invented
+ordinal numbers. This slice admits one named kind family, or exact numeric
+kinds; mixed or different named identities and arithmetic without a proved key
+refuse the whole interpretation, including earlier collected observations.
+The retained original [`spritekind.ts`](../overlay/scratch-vm/src/extensions/crispstrobe/arcade/kind-source/spritekind.ts)
+and its provenance identify the source for a later distinctness/creation proof;
+do not replace uncertainty with a guessed Player/Enemy number. Yielding,
+scene changes, escaping partial instances/snapshots, nested creation during
+notification and unsupported reentrancy also retain explicit refusal.
+
+Run on the prepared external worker, preserving existing acceptance assertions:
+
+```sh
+node --import ./scripts/lib/register-gui-scope.mjs --test --test-concurrency=1 test/arcade-extendable-constructor-scalar-source.test.mjs test/arcade-sdk-constructor-scalar-effects.test.mjs test/makecode-arcade-sdk-sprite-class.test.mjs test/arcade-dormant-sprite-declarations.test.mjs
+```
+
+The first hosted dormant-declaration test failed in its original-PXT observation,
+before Lite execution: the single unused constant marker was absent from the
+simulator globals. Its corrected fixture uses an executed
+`ready = 0; ready += 1` marker. The original, exported and fresh-SB3 original
+simulators must each publish exactly one `ready`/`Game_ready` marker equal to 1;
+the native checks, source compilation, declaration assertions and frame budget
+remain required. This correction has no passing external verdict yet. Preserve
+the original failed result and qualify the corrected test.
+
+This is converter proof work, not a new authoring-control delivery. Serialized
+reference declarations/parameter properties, their Blocks and Code controls,
+and graphics/animation/tile-map editing parity still need their own complete
+editing, save/reopen and original MakeCode acceptance evidence.
+
 ## 28 October: local Array declaration resets and missing-index arithmetic
 
 The next completion checkpoint fixes a producer-domain loss in the actual
@@ -36,11 +91,11 @@ node --import ./scripts/lib/register-gui-scope.mjs --test --test-concurrency=1 t
 The separately observed `created-partial-fields` refusal is now localized to
 the LEFT Identifier operand of `result += 0` after `result = easy.read()`:
 its domain is `Opaque | Number` with initialization true. The preceding String
-trace additions are not the first refused operands. Continue by tracing the
-existing class normal-result producer and its actual constructor/callback effect
-closure, preserving parameter-property visibility during `onCreated`, yields,
-scene ownership, return writers and overrides. Do not add callback Sprite
-parameter authority as a speculative fix for this result-cell failure.
+trace additions are not the first refused operands. The constructor-result
+candidate above addresses this observed scalar path; qualify it before claiming
+closure. Later expansions must preserve parameter-property visibility during
+`onCreated`, yields, scene ownership, return writers and overrides. Callback
+Sprite parameter authority is a separate capability, not this result-cell fix.
 
 ## 28 October: completion integration and music Number results
 

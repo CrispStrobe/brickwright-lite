@@ -1,3 +1,4 @@
+import {staticSdkNamespaceReceivers} from './static-sdk-namespaces.js';
 import {SDK_SPRITE_CLASS_NODES} from './sdk-sprite-class-descriptors.js';
 import {analyseCallableBindings} from './callable-bindings.js';
 import {nativeSdkSpriteSource} from './native-sdk-sprite-source.js';
@@ -7,6 +8,9 @@ import {inspectNativeArrayAddHelpers} from './native-array-binary-helper-source.
 
 const metadata=new Set(['originalBody','parameterDefaults','paramTypes','typeParameters','returnType','assertedType','ordinaryParameterDefaultNames','bwProcedureConstraintSource']);
 const primitive=new Set(['Number','String','Boolean','Null','Undefined']);
+// The default-on identity control binds this constructor frontier to the
+// selected original SDK source; it is not an entry or producer certificate.
+export const EXTENDABLE_SPRITE_SOURCE_SHA256='5deac86004236ed206f821987efe310e8217e6e581e446e23bfe70ca2b95931b';
 const denied=Object.freeze({current:()=>true,typesAt:()=>null,initialized:()=>false});
 const isArray=Array.isArray,own=Object.hasOwn,keys=Reflect.ownKeys,descriptor=Object.getOwnPropertyDescriptor,prototype=Object.getPrototypeOf,same=Object.is;
 const safe=name=>typeof name==='string'&&/^[A-Za-z_$][\w$]*$/.test(name)&&!['constructor','prototype','__proto__','toString','valueOf'].includes(name);
@@ -59,7 +63,7 @@ export function sdkSpriteConstructorScalarEffects(program,profile=GENERATED_HELP
     const data=(object,key)=>{const d=object&&typeof object==='object'?descriptor(object,key):null;return d&&own(d,'value')?d.value:undefined;};
     const body=data(program,'body'),length=data(body,'length');
     if(!isArray(body)||!Number.isSafeInteger(length)||length>10000)return denied;
-    let selected=false;for(let i=0;i<length;i++){const node=data(body,String(i));if(data(node,'type')==='Class'&&data(node,'base')==='Sprite')selected=true;}
+    let selected=false;for(let i=0;i<length;i++){const node=data(body,String(i));if(data(node,'type')==='Class'&&['Sprite','sprites.ExtendableSprite'].includes(data(node,'base')))selected=true;}
     if(!selected)return denied;
     const syntax=inspectGeneratedHelperBindings(program,profile),unchanged=sourceCurrent(program);
     if(!syntax.isCurrent()||!unchanged())return denied;
@@ -67,15 +71,29 @@ export function sdkSpriteConstructorScalarEffects(program,profile=GENERATED_HELP
     const scan=(node,parent=null)=>{if(!node||typeof node!=='object')return;if(Array.isArray(node)){for(const n of node)scan(n,parent);return;}nodes.push(node);parents.set(node,parent);for(const [key,value]of Object.entries(node))if(!metadata.has(key))scan(value,node);};
     scan(program);
     const sdk=nativeSdkSpriteSource(program,lexical,nodes,parents),base=sdk.base('Sprite');
-    if(!base||prepareObjectClassStructure(program).unsupported.length)return denied;
+    const extendable=sdk.base('sprites.ExtendableSprite'),namespace=staticSdkNamespaceReceivers(program);
+    if(!base||!extendable||prepareObjectClassStructure(program).unsupported.length)return denied;
     // These canonical SDK services close over the actual module namespaces.
-    if(['Sprite','sprites','game','scene','Fx','Fx8','screen','Image','Math','control','Array'].some(name=>lexical.global.names.has(name)))return denied;
+    if(['Sprite','SpriteKind','sprites','game','scene','Fx','Fx8','screen','Image','Math','control','Array'].some(name=>lexical.global.names.has(name)))return denied;
     const helperSyntax=inspectNativeArrayAddHelpers(program,profile),helpers=new Map([...helperSyntax.helpers.values()].map(row=>[row.declaration,row]));
     let live=true;
     const current=()=>{if(!live)return false;try{const valid=syntax.isCurrent()&&helperSyntax.current()&&sdk.current()&&unchanged();if(!valid)live=false;return valid;}catch(error){live=false;throw error;}};
     const failure=Object.freeze({}),fail=()=>{throw failure;};
-    const result=new WeakMap(),actualNodes=new WeakSet(nodes),called=new Set(),active=new Set(),classes=new Map(),globals=new Map(),registrations=new Set(),writers=new Map(),primitiveReads=new Set();
+    const result=new WeakMap(),actualNodes=new WeakSet(nodes),called=new Set(),active=new Set(),classes=new Map(),globals=new Map(),registrations=new Set(),handlers=[],writers=new Map(),primitiveReads=new Set();
     const scalar=(type,value)=>({type,value}),undefinedValue=scalar('Undefined'),nullValue=scalar('Null');
+    const namedKinds=new Map(['Player','Projectile','Food','Enemy'].map(name=>[name,Symbol(name)]));
+    let kindDomain=null,namedKind=null;
+    const kindKey=value=>{
+        if(value?.type!=='Number')fail();
+        if(value.kindIdentity){
+            // Same unchanged SDK member means the same kind. Do not invent
+            // its numeric value or distinctness from another member/literal.
+            if(kindDomain==='literal'||namedKind&&namedKind!==value.kindIdentity)fail();
+            kindDomain='named';namedKind=value.kindIdentity;return value.kindIdentity;
+        }
+        if(kindDomain==='named'||!Number.isSafeInteger(value.value)||value.value<0)fail();
+        kindDomain='literal';return value.value;
+    };
     const isPrimitive=value=>primitive.has(value?.type),isNumber=value=>value?.type==='Number';
     const write=(b,value)=>{if(['function','class'].includes(value?.type))fail();if(!writers.has(b))writers.set(b,new Set());writers.get(b).add(isPrimitive(value)?value.type:'Reference');};
     const observed=(b,value)=>{if(isPrimitive(value))primitiveReads.add(b);return value;};
@@ -87,10 +105,11 @@ export function sdkSpriteConstructorScalarEffects(program,profile=GENERATED_HELP
         for(let current=frame;current;current=current.parent)if(current.values.has(b))return observed(b,current.values.get(b));
         if(globals.has(b))return observed(b,globals.get(b));fail();
     };
+    const partial=value=>value?.type==='instance'&&!value.complete||value?.type==='snapshot'&&value.items.some(partial);
     const store=(node,value,frame)=>{
         const b=binding(node);if(!b||['class','function','receiver'].includes(b.kind))fail();write(b,value);
-        if(b.scope===lexical.global){if(!globals.has(b)||value?.type==='instance'&&!value.complete)fail();globals.set(b,value);return;}
-        for(let current=frame;current;current=current.parent)if(current.values.has(b)){current.values.set(b,value);return;}fail();
+        if(b.scope===lexical.global){if(!globals.has(b)||partial(value))fail();globals.set(b,value);return;}
+        for(let current=frame;current;current=current.parent)if(current.values.has(b)){if(current!==frame&&partial(value))fail();current.values.set(b,value);return;}fail();
     };
     const closedParameters=fn=>{
         if(!Array.isArray(fn.params)||fn.params.some(name=>!safe(name))||new Set(fn.params).size!==fn.params.length)return false;
@@ -102,7 +121,7 @@ export function sdkSpriteConstructorScalarEffects(program,profile=GENERATED_HELP
     };
     const sdkNames=new Set(reservedSdkMembers);
 
-    const ancestors=new Set();let ancestor=base;
+    const ancestors=new Set();let ancestor=extendable;
     while(ancestor){
         if(ancestors.has(ancestor)||!SDK_SPRITE_CLASS_NODES.includes(ancestor))return denied;ancestors.add(ancestor);
         for(const member of [...ancestor.fields,...ancestor.methods])sdkNames.add(member.name);
@@ -115,7 +134,7 @@ export function sdkSpriteConstructorScalarEffects(program,profile=GENERATED_HELP
             }
             if(node.type!=='Class')continue;
             const b=lexical.global.names.get(node.name);
-            if(!b||b.node!==node||b.written||node.base!=='Sprite'||node.isStatic||node.typeParameters?.length||node.unsupported?.length||!isArray(node.fields)||!isArray(node.methods)||!node.ctor||!closedParameters(node.ctor))fail();
+            if(!b||b.node!==node||b.written||!['Sprite','sprites.ExtendableSprite'].includes(node.base)||node.isStatic||node.typeParameters?.length||node.unsupported?.length||!isArray(node.fields)||!isArray(node.methods)||!node.ctor||!closedParameters(node.ctor))fail();
             const properties=node.ctor.parameterProperties||[],parameterNames=new Set();
             if(!Array.isArray(properties))fail();
             for(const property of properties){if(!safe(property.name)||parameterNames.has(property.name)||!node.ctor.params.includes(property.name))fail();parameterNames.add(property.name);}
@@ -131,16 +150,24 @@ export function sdkSpriteConstructorScalarEffects(program,profile=GENERATED_HELP
         }
     }catch(error){if(error!==failure)throw error;return denied;}
     if(!classes.size)return denied;
-    const returned=Symbol();let steps=0;
+    const extendedProfile=[...classes.values()].some(row=>row.node.base==='sprites.ExtendableSprite');
+    const root=node=>node?.type==='Identifier'?node.name:node?.type==='Member'||node?.type==='Index'?root(node.object):null;
+    for(const node of nodes){const target=node.type==='Assignment'?node.left:node.type==='Update'||node.type==='Unary'&&node.op==='delete'?node.argument:null;if(target&&['sprites','SpriteKind','Sprite','Image','Math'].includes(root(target)))return denied;}
+    const returned=Symbol();let steps=0,notificationDepth=0;
     const binary=(op,a,b)=>{
+        if(['===','!=='].includes(op)){
+            if(!isPrimitive(a)||!isPrimitive(b)){if(!a||!b||!['instance','snapshot'].includes(a.type)||!['instance','snapshot'].includes(b.type))fail();}
+            return scalar('Boolean');
+        }
+        if(['<','>','<=','>=','==','!='].includes(op)){if(!isPrimitive(a)||!isPrimitive(b))fail();return scalar('Boolean');}
         if(!isPrimitive(a)||!isPrimitive(b))fail();
         if(op==='+')return a.type==='String'||b.type==='String'?scalar('String'):scalar('Number',isNumber(a)&&isNumber(b)&&a.value!==undefined&&b.value!==undefined?a.value+b.value:undefined);
         if(!['-','*','/','%'].includes(op)||!isNumber(a)||!isNumber(b))fail();
         const x=a.value,y=b.value;return scalar('Number',x===undefined||y===undefined?undefined:op==='-'?x-y:op==='*'?x*y:op==='/'?x/y:x%y);
     };
-    const invoke=(fn,args,object=null,method=null)=>{
+    const invoke=(fn,args,object=null,method=null,parent=null)=>{
         if(++steps>20000||active.size>=32||active.has(fn)||!closedParameters(fn)||args.length!==fn.params.length)fail();
-        called.add(fn);active.add(fn);const scope=lexical.scopes.get(fn),frame={values:new Map(),parent:null,object,method,superCalls:0,constructor:object&&fn===object.cls.node.ctor};
+        called.add(fn);active.add(fn);const scope=lexical.scopes.get(fn),frame={values:new Map(),parent,object,method,superCalls:0,constructor:object&&fn===object.cls.node.ctor};
         if(!scope)fail();for(let i=0;i<args.length;i++){const b=scope.names.get(fn.params[i]);if(!b||b.kind!=='parameter')fail();write(b,args[i]);frame.values.set(b,args[i]);}
         let response;
         try{
@@ -182,10 +209,14 @@ export function sdkSpriteConstructorScalarEffects(program,profile=GENERATED_HELP
             object.sdk.set('_width',scalar('Number'));object.sdk.set('_height',scalar('Number'));
             object.sdk.set('_hitbox',sdkStorage(object));object.imageReady=true;
         }else if(name==='setKind'){
-            // Only the constructor's no-kind path. Registration or callbacks
-            // for arbitrary source-selected kinds are outside this slice.
-            if(args.length!==1||!isNumber(args[0])||args[0].value!==-1)fail();
-            object.sdk.set('_kind',scalar('Number',-1));object.sdk.set('_kindsOverlappedWith',sdkStorage(object));object.kindReady=true;
+            // setKind updates registry membership only. ExtendableSprite's
+            // creation notification follows the COMPLETE virtual call return,
+            // including any source override suffix, in sdkConstructor below.
+            if(args.length!==1||!isNumber(args[0]))fail();
+            const noKind=args[0].value===-1&&!args[0].kindIdentity;
+            const key=noKind?null:kindKey(args[0]);
+            if(!noKind&&(object.cls.node.base!=='sprites.ExtendableSprite'||!object.baseComplete||object.notified||notificationDepth))fail();
+            object.sdk.set('_kind',args[0]);object.kindKey=key;object.sdk.set('_kindsOverlappedWith',sdkStorage(object));object.kindReady=true;
         }else fail();
         frame.superCalls++;return undefinedValue;
     };
@@ -194,25 +225,38 @@ export function sdkSpriteConstructorScalarEffects(program,profile=GENERATED_HELP
         return method?invoke(method,args,object,name):sdkMethod(object,name,args,{superCalls:0});
     };
     const sdkConstructor=(object,args,frame)=>{
-        if(frame.superCalls||object.registered||args.length!==1||args[0]?.kind!=='sdkImage')fail();
+        const extended=object.cls.node.base==='sprites.ExtendableSprite';
+        if(frame.superCalls||object.registered||args.length!==(extended?2:1)||args[0]?.kind!=='sdkImage')fail();
+        const creationKey=extended?kindKey(args[1]):null;
         frame.superCalls++;
         // BaseSprite: canonical z setter, then Scene.addSprite appends this
         // alias to SDK allSprites and assigns id. This is known SDK storage,
         // not nonescape: its selected implementation calls no user code.
-        // Source Scene/registry observers, mutations, callbacks and yielding
-        // are unmodeled operations and decline the complete interpretation.
+        // Only the fixed-kind creation notification below admits a source
+        // observer. Scene changes, arbitrary SDK calls and yielding refuse.
         object.sdk.set('_z',scalar('Number'));registrations.add(object);object.registered=true;object.sdk.set('id',scalar('Number'));
         // Sprite constructor prefix precedes both virtual calls. Reserved
         // slots cannot be supplied by source fields/getters/overrides.
         for(const name of ['_x','_y','_lastX','_lastY','_vx','_vy','_ax','_ay','_fx','_fy','_sx','_sy','flags'])object.sdk.set(name,scalar('Number'));
         object.sdkPrefix=true;object.baseStarted=true;
-        virtual(object,'setImage',args);virtual(object,'setKind',[scalar('Number',-1)]);
+        virtual(object,'setImage',[args[0]]);virtual(object,'setKind',[scalar('Number',-1)]);
         // The actual selected constructor suffix follows the virtual calls.
         // Private collections do not issue Array or initialization authority.
         object.sdk.set('layer',scalar('Number',1));object.sdk.set('lifespan',undefinedValue);
         object.sdk.set('_overlappers',sdkStorage(object));object.sdk.set('_obstacles',sdkStorage(object));object.suffixReady=true;
         if(!object.registered||!object.sdkPrefix||!object.imageReady||!object.kindReady||!object.suffixReady)fail();
-        object.baseComplete=true;return undefinedValue;
+        object.baseComplete=true;
+        if(extended){
+            virtual(object,'setKind',[args[1]]);
+            // Canonical ExtendableSprite adds the instance to physics before
+            // notifying the supplied creation kind. That key is independent
+            // of any kind change performed by the source override itself.
+            if(notificationDepth||object.notified)fail();object.notified=true;notificationDepth++;
+            try{for(const handler of handlers)if(handler.kind===creationKey)invoke(handler.fn,[object],null,null,handler.frame);}
+            finally{notificationDepth--;}
+            object.sdk.set('hasCustomDimensions',scalar('Boolean',false));
+        }
+        return undefinedValue;
     };
     const fieldRead=(object,name)=>{
         if(object?.type!=='instance')fail();
@@ -232,10 +276,10 @@ export function sdkSpriteConstructorScalarEffects(program,profile=GENERATED_HELP
         case 'Identifier':value=node.name==='super'?{type:'super',object:frame.object}:lookup(node,frame);break;
         case 'Template':value=sdk.literal(node,lexical.scopes.get(node));if(!value)fail();break;
         case 'Array':{if(!isArray(node.items))fail();const items=node.items.map(item=>expression(item,frame));if(items.some(item=>item?.kind!=='sdkImage'))fail();value={type:'images',items};break;}
-        case 'Index':{const a=expression(node.object,frame),i=expression(node.index,frame);if(a.type!=='images'||!isNumber(i)||!Number.isSafeInteger(i.value)||i.value<0||i.value>=a.items.length)fail();value=a.items[i.value];break;}
+        case 'Index':{const a=expression(node.object,frame),i=expression(node.index,frame);if(!['images','snapshot'].includes(a.type)||!isNumber(i)||!Number.isSafeInteger(i.value)||i.value<0||i.value>=a.items.length)fail();value=a.items[i.value];break;}
         case 'Unary':{const a=expression(node.argument,frame);if(!['+','-'].includes(node.op)||!isNumber(a))fail();value=scalar('Number',a.value===undefined?undefined:node.op==='-'?-a.value:a.value);break;}
         case 'Binary':value=binary(node.op,expression(node.left,frame),expression(node.right,frame));break;
-        case 'Member':value=fieldRead(expression(node.object,frame),node.name);break;
+        case 'Member':{if(namespace.has(node)&&node.object?.name==='SpriteKind'&&['Player','Projectile','Food','Enemy'].includes(node.name)){value={...scalar('Number'),kindIdentity:namedKinds.get(node.name)};break;}value=fieldRead(expression(node.object,frame),node.name);break;}
         case 'Assignment':{
             let object;if(node.left?.type==='Member')object=expression(node.left.object,frame);else if(node.left?.type!=='Identifier')fail();
             const old=node.op==='='?null:node.left.type==='Identifier'?lookup(node.left,frame):fieldRead(object,node.left.name);
@@ -251,6 +295,15 @@ export function sdkSpriteConstructorScalarEffects(program,profile=GENERATED_HELP
             }
             if(callee.type==='Member'){
                 if(node.isNew||callee.optional)fail();
+                if(namespace.has(callee)&&callee.object?.name==='sprites'&&['onCreated','allOfKind'].includes(callee.name)){
+                    if(!extendedProfile)fail();
+                    const kind=kindKey(expression(node.args[0],frame));
+                    if(callee.name==='onCreated'){
+                        const fn=node.args[1];if(node.args.length!==2||fn?.type!=='FunctionExpression'||fn.params.length!==1||!closedParameters(fn)||registrations.size||handlers.some(h=>h.kind===kind))fail();
+                        handlers.push({kind,fn,frame});value=undefinedValue;
+                    }else{if(node.args.length!==1)fail();value={type:'snapshot',items:[...registrations].filter(object=>object.kindKey===kind)};}
+                    break;
+                }
                 if(sdk.role(callee)==='round'){const args=node.args.map(arg=>expression(arg,frame));if(args.length!==1||!isNumber(args[0])||!Number.isFinite(args[0].value))fail();value=scalar('Number',Math.round(args[0].value));break;}
                 const object=expression(callee.object,frame),args=node.args.map(arg=>expression(arg,frame));
                 if(object.type==='images'&&callee.name==='push'){
@@ -265,7 +318,7 @@ export function sdkSpriteConstructorScalarEffects(program,profile=GENERATED_HELP
             }
             if(callee.type!=='Identifier')fail();const target=lookup(callee,frame),args=node.args.map(arg=>expression(arg,frame));
             if(node.isNew){
-                if(target.type!=='class'||args.some(arg=>!isPrimitive(arg)&&arg?.kind!=='sdkImage'))fail();
+                if(notificationDepth||target.type!=='class'||args.some(arg=>!isPrimitive(arg)&&arg?.kind!=='sdkImage'))fail();
                 const object={type:'instance',cls:target,fields:new Map(),sdk:new Map(),registered:false,sdkPrefix:false,imageReady:false,kindReady:false,suffixReady:false,baseStarted:false,baseComplete:false,complete:false};
                 // Declared fields carry no value/readiness until an actual
                 // parameter store, initializer or executed assignment.
@@ -273,6 +326,7 @@ export function sdkSpriteConstructorScalarEffects(program,profile=GENERATED_HELP
             }
             if(target.type!=='function')fail();
             if(helpers.has(target.node)){if(args.length!==2)fail();value=binary('+',args[0],args[1]);called.add(target.node);}
+            else if(syntax.root(target.node)&&(syntax.matches(target.node,'function __bwCompareStrictEqual(left: any, right: any): boolean { return left === right }',new Map([[target.node.name,'__bwCompareStrictEqual']]))||syntax.matches(target.node,'function __bwCompareLess(left: any, right: any): boolean { return left < right }',new Map([[target.node.name,'__bwCompareLess']])))){if(args.length!==2)fail();value=binary(target.node.body[0].value.op,args[0],args[1]);called.add(target.node);}
             else {if(args.some(arg=>!isPrimitive(arg)))fail();value=invoke(target.node,args);}break;
         }
         default:fail();
