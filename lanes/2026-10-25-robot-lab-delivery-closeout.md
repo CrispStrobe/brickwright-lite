@@ -57,6 +57,15 @@ and control updates leave 61 active experimental entries, 63 checkpoint records
 and 14 separate qualification contracts. Individual experimental evidence remains
 separate from established-model qualification and saved-project replay.
 
+The existing v0.1.27 versioned TestFlight audit was also verified from its
+retained original: source `23ec9082`, iOS/macOS valid and unexpired, internal
+and external groups linked and in beta testing, approved review, and matching
+EN/DE notes. The archive digest/CRC, observer and release identities, categorical
+privacy envelope and ten negative controls passed standalone readback. No new
+audit event, release, upload, recovery or tester-distribution change was made.
+This is the recorded release snapshot, not current-main feature delivery,
+independent signed-binary inspection or installed/hardware qualification.
+
 The API acceptance uses retained candidate/production cutover reports and two
 distinct current-token jobs: a positive bounded job and an intentionally
 unavailable pose target. Authenticated status/results, input and worker joins,

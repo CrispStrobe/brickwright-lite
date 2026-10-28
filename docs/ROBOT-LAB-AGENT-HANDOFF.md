@@ -86,7 +86,6 @@ transport), [ROBOT-LAB-EV3-NXT.md](ROBOT-LAB-EV3-NXT.md), [NXT-PROTOCOL-FACTS.md
 
 | PR | What | State and next step |
 |---|---|---|
-| #1162 | Motor power (duty cycle) blocks for SPIKE, Powered Up and others | Its agent stopped on a network error while waiting for #1163. Package **P1** below. |
 | #1138 | Physics library: models, lessons, compact controls | Draft of another lane; needs `flywheel-differential.ldr` and `screw-crane.ldr` in `NEEDS_REST` (PR comment has the fix). |
 | #1125, #1128 | Arcade (other lane) | Diagnosis for #1128 is in its PR comment (fetch-pinning census, TMPDIR, GUI-scope allow-list, runtime locks). |
 | #1099, #1100 | SPIKE G02 drafts (other lane) | Main merged in; owner to finish. |
@@ -96,35 +95,24 @@ transport), [ROBOT-LAB-EV3-NXT.md](ROBOT-LAB-EV3-NXT.md), [NXT-PROTOCOL-FACTS.md
 Each package is one PR unless it says otherwise. Read the linked docs first; follow the
 rules above.
 
-### P1 — finish the motor power blocks (#1162)
-- **Goal:** proper power/duty-cycle blocks and words (en + de) wherever the real hub has
-  them; the virtual hubs run them as unregulated drives (torque mode, DC motor model), so a
-  motor slows under load and end stops stall it.
-- **Steps:** merge `origin/main` once #1163 is in; rerun `node scripts/gen-extension-menu-args.mjs`
-  so the new blocks are in the menu table and `test/extension-menu-args.test.mjs` passes;
-  re-vendor CrispStrobe/extensions at or after `f2474f0` (it carries the power blocks, #60,
-  and the SPIKE invalid-port guard, #61); replace the core-level 50 % power case in
-  `test/bw-sim-differential-car.test.mjs` with a real program driving motor B into the rack
-  stop (B stalls within 5° of ±114.6°, parked car turns < 0.2°).
-- **Acceptance:** conversion round trips, a duty-cycle drive slows under load in the
-  virtual hub, the car stall test runs from a program, `ci:full` green.
-
-### P2 — two upstream extension bugs (CrispStrobe/extensions, then re-vendor)
-- The SPIKE 3 Python writer reads two-motor ports such as `A+B` as `A` when given a project
-  directly (Lite does not use that path today).
-- micro:bit+ `setpull` reads `args.MODE`, but the block declares `PULL`: the pull setting is
-  ignored.
-- Also in legonxt (from #1113): bridge mode cannot work (`getBattery()` does not exist and
-  the bridge returns parsed values where the code expects reply bytes); `getRawSensorValue`
-  returns the normalized value, not the raw one.
-- **Acceptance:** fixes and tests in the extensions repo, merged; re-vendored here with a
-  brickwright test per fix. Can be folded into P1's re-vendor.
+### P1 and P2 — done
+- **P1:** the motor power blocks landed with #1162 (after #1163).
+- **P2:** CrispStrobe/extensions #68 fixed micro:bit+ `set pin pull` (it read `MODE`, the block
+  declares `PULL`) and NXT `raw value of sensor` (it read the normalized word at 10–11; the raw
+  ADC word is at 8–9, which touch-pressed `raw < 500` assumes). Both are vendored here with
+  `test/extension-p2-pin-fixes.test.mjs`. The legonxt bridge items were fixed earlier (#58, #59).
+  The SPIKE 3 Python writer's `A+B` report was **not reproduced**: transpiling a stored project
+  whose port menu holds `A+B` emits one command per port, and the superseded BLE extension has
+  only single-port menus. Reopen with a concrete project if it recurs.
 
 ### P3 — NXT and EV3 gaps
 - NXT (ROBOT-LAB-EV3-NXT.md, NXT-PROTOCOL-FACTS.md "still unverified"): ultrasonic value with
   no echo (we use 255), echoes 1–7, the interval default, whether off mode keeps the last
   reading; firmware timing after SETINPUTMODE and for I²C transactions (we complete at
-  once); reply to an unknown system command (we answer 0xBE).
+  once). These remain documented as unverified there, with the reason.
+- Settled: the reply to an unknown system command. Firmware 1.29 returns status 0x02 with
+  the opcode and stale bytes (NXT-PROTOCOL-FACTS.md §Disagreements, #1489); the Virtual NXT
+  deliberately keeps 0xBE.
 - NXT `.rxe` VM (NXT-RXE-VM.md): FLATTEN/UNFLATTEN and standard virtual-file calls
   (0–8, 47) are implemented; Bluetooth, IOMapRead/Write, colour sensor, datalog and
   pictures remain refused by name. File calls share bounded virtual flash, with
@@ -174,7 +162,9 @@ rules above.
   runtimes booting at once) rather than raising timeouts again.
 - The controller-pane layout gate (browser light) failed once in landscape and once locally in
   portrait ("Undo; text; Blocks; …" covered, full-screen entry not hittable) without a related
-  change: the gate reads the layout before it has settled.
+  change: the gate read the layout before it had settled. It now waits until every
+  control's rectangle is unchanged for ten consecutive frames (bounded at 15 s; not settling
+  fails the gate), before the normal and the full-screen reads.
 
 ### P6 — not code
 - TI service-pack PR on CrispStrobe/extensions waits for git.ti.com; its bytes are licensed

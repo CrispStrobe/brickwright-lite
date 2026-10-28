@@ -1,6 +1,6 @@
 {
-  "bw-circuit-ui": "a5860b9cf6cb0e7f652130ce987d51dc42651b8b",
-  "bw-board": "836867513c3e7fac420ddaa32c17e1c7b6d3e513",
+  "bw-circuit-ui": "da28bb8ce9b38aa18d2e424f692c6570fc1d6d1d",
+  "bw-board": "8785e4688cc308b34fea434c1734523caa621f74",
   "sb3-creator": "1cbaeed325f5a890e43b78a4211acae8f801f2d2",
   "stc-compiler-flasher": "30f43384a9f226de3c3cb753e119dd93ca2e81ff",
   "arrays-values": "4db2813d366af8a110fc79599afb55d1cd42d8df",
@@ -9,6 +9,6 @@
   "spikeprime": "ff74f1309b8807713508884048292182a369f8f5",
   "ev3comprehensive": "ff74f1309b8807713508884048292182a369f8f5",
   "legoboostunified": "ff74f1309b8807713508884048292182a369f8f5",
-  "legonxt": "428d440353120856620dac86a257e8e1b91d7348",
+  "legonxt": "cc7b802cd4c149d401ef0d289baa975aed6ea443",
   "legopoweredup": "817f01ac3c8edbc4bf3e4a19af6b1cc3bf3c22ec"
 }

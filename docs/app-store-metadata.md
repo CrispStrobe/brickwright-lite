@@ -221,6 +221,12 @@ instructions loaded from Examples.
   Keep manual overrides off while running the example program.
 - Save and reopen a Robot Lab project. Check its geometry, program, motor ports,
   connected instructions and parts list. Also try importing its LDR/MPD files.
+- Try Undo, Redo and the History list in the menu bar in every editor, including
+  deleting or renaming sprites, costumes and sounds. Check Settings > Autosave &
+  history: restore an earlier version. On iPad, also save into the Autosave
+  folder and find the files in Files > On My iPad > Brickwright > Autosave.
+  Close the app with unsaved changes: the next start offers to reopen them.
+  Report any editor that stops with an error.
 
 ## What to Test — 0.1.28 de-DE
 
@@ -243,6 +249,13 @@ Lektionen und Bauanleitungen aus der Beispielauswahl.
 - Speichere ein Robot-Lab-Projekt und öffne es erneut. Prüfe Geometrie, Programm,
   Motoranschlüsse, zusammenhängende Bauanleitung und Teileliste. Probiere auch
   den Import seiner LDR/MPD-Dateien.
+- Probiere Rückgängig, Wiederholen und den Verlauf in der Menüleiste in jedem
+  Editor, auch beim Löschen oder Umbenennen von Figuren, Kostümen und Klängen.
+  Stelle unter Einstellungen > Automatisch speichern & Verlauf eine frühere
+  Version wieder her. Speichere auf dem iPad auch im Autosave-Ordner und finde
+  die Dateien unter Dateien > Auf meinem iPad > Brickwright > Autosave. Beende
+  die App mit ungesicherten Änderungen: Beim nächsten Start wird angeboten, sie
+  wieder zu öffnen. Melde jeden Editor, der mit einem Fehler anhält.
 
 ## What to Test — 0.1.27 en-US
 

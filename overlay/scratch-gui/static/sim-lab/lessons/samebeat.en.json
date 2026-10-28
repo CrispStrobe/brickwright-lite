@@ -2,7 +2,7 @@
   "version": 1,
   "id": "samebeat",
   "language": "en",
-  "what": "A reversible compound pendulum. One motor briefly moves the support of a separate rigid body and then holds. Rehang the same body from a different stock hole and compare the free-swing period. The paired suspension distances are unequal; a third pivot provides a physical comparison.",
+  "what": "Reversible compound pendulum — Kater principle. A reversible compound pendulum. One motor briefly moves the support of a separate rigid body and then holds. Rehang the same body from a different stock hole and compare the free-swing period. The paired suspension distances are unequal; a third pivot provides a physical comparison. A brief motor pulse moves a support and releases a passive rigid pendulum. Rehang the same body at its unequal paired pivot and compare periods; then test a third suspension with the same parts and program.",
   "try": [
     "Load the model, press Reset, then Run. After a 1 s hold, the support moves to +8°, waits 0.12 s, returns to 0° and holds for 22 s. Watch the passive pendulum during that final hold.",
     "Count complete swings from one crossing of the downward position to the next crossing in the same direction. Do not use a half-swing or the motor encoder as the period.",

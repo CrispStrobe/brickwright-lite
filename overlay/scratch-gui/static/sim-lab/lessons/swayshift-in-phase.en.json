@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "id": "swayshift-in-phase",
+  "language": "en",
+  "what": "The comparison for SwayShift: the same trolley, pendulum, speeds and two nominal 22 mm moves, but the second move starts one full swing period (0.760 s) after the first instead of half a period (0.380 s). The only difference between the two programs is the value of start_gap.",
+  "try": [
+    "Open swayshift.ldr afresh in Robot Lab, paste programs/swayshift-in-phase.bw into the Code tab, choose ⇦ To blocks and press Robot Lab's Run button.",
+    "Watch the pendulum while the trolley holds at the 44 mm target. Then reload the scene, run programs/swayshift.bw and compare the swing after arrival.",
+    "Count the swings during the hold: the period is about 0.757 s, so the second push of the in-phase program arrives when the pendulum is swinging the same way as after the first push."
+  ],
+  "why": "Each start and stop of the trolley kicks the pendulum. If the second kick comes half a period after the first, it meets the pendulum swinging the other way and cancels most of the motion. One full period later it meets the pendulum in the same phase, so the two kicks add and the swing roughly doubles.",
+  "matters": "Cranes, pick-and-place robots and 3D printers use this idea, called input shaping, to move loads quickly without leaving them swinging or ringing.",
+  "question": "The two programs move the trolley the same distance at the same speed. Why does one leave the pendulum almost still and the other leave it swinging strongly?",
+  "answer": "Because the timing between the two moves decides whether their kicks cancel or add. In the supplied native recordings the half-period gap leaves 0.265° RMS sway in the common window and the full-period gap 10.47°, 97.5% less swing for the same move.",
+  "further": [
+    "Estimate the pendulum's period from its length and compare it with the measured 0.757 s.",
+    "What would happen with a gap of one and a half periods?",
+    "Why does the method depend on knowing the period well? What happens if the load changes?"
+  ],
+  "formula": "Two equal impulses Δt apart: residual amplitude ∝ |1 + e^(iωΔt)| = 2·|cos(ωΔt/2)|. Δt = T/2 ⇒ 0 (cancel); Δt = T ⇒ 2 (add).",
+  "related": [
+    "rack-shuttle.ldr",
+    "sky-courier.ldr",
+    "resonance-lab.ldr",
+    "cascade.ldr"
+  ]
+}

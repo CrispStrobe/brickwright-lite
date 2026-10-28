@@ -225,3 +225,41 @@ test('the safety net loads after first paint, never at startup', () => {
             `${file} must not import the lazy safety modules`);
     }
 });
+
+test('Robot Lab steps are named by command, and the names follow Undo and Redo', async () => {
+    const {createEditor} = await import('../overlay/scratch-gui/src/lib/bw-sim/editor/editor-state.js');
+    const catalog = new Map(JSON.parse(readFileSync(path.join(root,
+        'overlay/scratch-gui/src/lib/bw-sim/part-meta/parts.json'), 'utf8')).parts.map(p => [p.part, p]));
+    const I = [1, 0, 0, 0, 1, 0, 0, 0, 1];
+    const editor = createEditor({model: {version: 1, parts: []}, catalog});
+    editor.apply({type: 'place', part: '32524.dat', position: [0, 0, 0], rotation: I});
+    const id = editor.model.parts[0].id;
+    editor.apply({type: 'move', id, position: [0, 0, 80], rotation: I});
+    assert.deepEqual(editor.historyLabels, {past: ['Add Technic beam 7', 'Move'], future: []});
+    editor.undo();
+    assert.deepEqual(editor.historyLabels, {past: ['Add Technic beam 7'], future: ['Move']});
+    editor.redo();
+    assert.deepEqual(editor.historyLabels.past, ['Add Technic beam 7', 'Move']);
+});
+
+test('Circuit and Tilemap steps are named by comparing snapshots', async () => {
+    const {circuitStepName, circuitSteps} = await import('../overlay/scratch-gui/src/lib/bw-circuit-step-names.js');
+    const snap = (parts, wires = [], vcc = 5) => JSON.stringify({vcc, parts, wires});
+    const r1 = {id: 'r1', kind: 'resistor', x: 0, y: 0, rotation: 0, params: {ohms: 220}};
+    const led = {id: 'l1', kind: 'led', x: 40, y: 0, rotation: 0, params: {}};
+    const wire = {from: 'r1:b', to: 'l1:a'};
+    const s0 = snap([]), s1 = snap([r1]), s2 = snap([r1, led]), s3 = snap([r1, led], [wire]),
+        s4 = snap([r1, {...led, x: 80}], [wire]), s5 = snap([{...r1, params: {ohms: 330}}, {...led, x: 80}], [wire]);
+    assert.deepEqual([[s0, s1], [s1, s2], [s2, s3], [s3, s4], [s4, s5], [s5, s4]].map(([a, b]) => circuitStepName(a, b)),
+        ['Add resistor', 'Add led', 'Add wire', 'Move led', 'Change resistor', 'Change resistor']);
+    assert.equal(circuitStepName(s3, s2), 'Remove wire');
+    assert.deepEqual(circuitSteps([s0, s1, s2], 1), {past: ['Add resistor'], future: ['Add led']});
+
+    const tm = await import('../overlay/scratch-gui/src/lib/bw-makecode/tilemap-editor.js');
+    const map = tm.createTilemap({columns: 4, rows: 3});
+    let history = tm.createHistory(map);
+    history = tm.commit(history, tm.addTile(map).data);
+    assert.deepEqual(tm.historyStepNames(history), {past: ['Add tile'], future: []});
+    history = tm.undo(history);
+    assert.deepEqual(tm.historyStepNames(history), {past: [], future: ['Add tile']});
+});
