@@ -188,6 +188,8 @@
   },
   "scratch-vm/src/util/bw-procedure-constraint-model.js": {
     "tests": [
+      "test/arcade-music-number-authoring.test.mjs",
+      "test/arcade-music-number-source.test.mjs",
       "test/native-array-captured-class-scalar-domain.test.mjs",
       "test/array-native-frame-reset.test.mjs",
       "test/array-native-frame-custom-kind.test.mjs",

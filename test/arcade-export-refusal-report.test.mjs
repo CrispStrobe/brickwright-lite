@@ -18,14 +18,14 @@ const context=()=>{const c={props:{vm:{}},state:{conversionReport:null},setState
         c[name]=new Function(args,method(`${name} (${args})`).slice(1,-1));return c;};
 const exported=text=>{const imported=arcadeToPseudocode(text);assert.deepEqual(imported.unsupported,[]);const creator=new Creator();creator.parse(imported.code);
     assert.deepEqual(creator.errors,[]);const before=JSON.stringify(creator.project),out=projectJsonToArcade(before);assert.equal(JSON.stringify(creator.project),before);observations.push({source:text,importedCode:imported.code,project:JSON.parse(before),output:out});return {creator,out};};
-// Tempo is a valid authored reporter, but has no independently qualified
-// primitive producer in the native-addition source proof. Image.create + 1 is
-// now supported and must no longer manufacture this diagnostic fixture.
-const refusedPseudocode='DEVICE ARCADE\nGLOBAL result\nSPRITE Game:\nWHEN flag clicked:\n  set result to (calculate value (arcade music tempo) op "+" with (1))';
+// Scroll offsets have raw setters, so their getters cannot acquire a Number
+// result from their API name alone. Music tempo/volume now have independently
+// guarded coercing-result profiles and must not manufacture this refusal.
+const refusedPseudocode='DEVICE ARCADE\nGLOBAL result\nSPRITE Game:\nWHEN flag clicked:\n  set result to (calculate value (arcade background scroll offset x layer (0)) op "+" with (1))';
 const refusalCreator=()=>{
     const creator=new Creator();creator.parse(refusedPseudocode);
     assert.deepEqual(creator.errors,[]);assert.deepEqual(creator.unparsed,[]);
-    assert.equal(creator.project.targets.flatMap(target=>Object.values(target.blocks)).filter(node=>node.opcode==='arcade_musicTempo').length,1);
+    assert.equal(creator.project.targets.flatMap(target=>Object.values(target.blocks)).filter(node=>node.opcode==='arcade_backgroundScrollOffset').length,1);
     return {creator,code:refusedPseudocode};
 };
 const refused=()=>{
@@ -60,7 +60,7 @@ test('actual exporter retains its candidate draft and observed facts without inv
     assert.equal(source.split(needle).length,2,'one diagnostic collector call');
     const faulted=source.replace(needle,"throw new Error('collector observation failed');\n                    "+needle)
         .replace(/\b(from\s+|import\s*\(\s*|import\s+)(['"])(\.{1,2}\/[^'"\n]+)\2/g,(_,prefix,quote,specifier)=>`${prefix}${quote}${new URL(specifier,url).href}${quote}`);
-    assert.equal([...source.matchAll(/\b(from\s+|import\s*\(\s*|import\s+)(['"])(\.{1,2}\/[^'"\n]+)\2/g)].length,48,'all current literal dependencies are rebased, including parent paths');
+    assert.equal([...source.matchAll(/\b(from\s+|import\s*\(\s*|import\s+)(['"])(\.{1,2}\/[^'"\n]+)\2/g)].length,50,'all current literal dependencies are rebased, including parent paths');
     assert.equal(/\b(from\s+|import\s*\(\s*|import\s+)(['"])(\.{1,2}\/[^'"\n]+)\2/.test(faulted),false,'data URL retains no relative literal import');
     const copy=await import('data:text/javascript;base64,'+Buffer.from(faulted).toString('base64'));
     const observed=copy.projectJsonToArcade(JSON.stringify(creator.project));

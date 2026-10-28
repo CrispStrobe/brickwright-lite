@@ -1,5 +1,58 @@
 # Arcade compatibility: fresh-agent handoff and methodology
 
+## 28 October: completion integration and music Number results
+
+The [registered completion campaign](../lanes/2026-10-28-arcade-completion-integration.md)
+owns the remaining Arcade continuation. Its separate integration branch composes
+the dormant-declaration source with current main, preserves the newer compatible
+Board and Creator changes from their respective parents, retains the Array pin
+and Acorn, and rebinds the two frozen x86 receipt rows to the actual composed
+script bytes. Frozen values and byte spans are unchanged. The pin metadata check
+passes; installed dependency identity and runtime qualification remain pending.
+Do not treat this composition as a qualified main landing.
+
+The next source candidate adds independently guarded `music.tempo()` and
+`music.volume()` Number results. The generated mixer coerces both stored values;
+that proves a Number on normal return, without certifying their inputs. The
+profile binds the generated mixer hash, closes mutable Math/music dependencies,
+aliases and callback effects, rejects erased defaults and unrecognized syntax,
+and permanently revokes consumed facts after an observed source/intrinsic change.
+Native projections also retain an earlier source admission/currentness gate.
+The existing helper recognizer already rejects defaults without their entry
+prologue; do not report that defensive projection gate as a newly reproduced
+runtime defect. Scroll-offset getters remain separate: their setters store raw
+inputs, so their API names or result annotations cannot supply this proof.
+
+Seven focused source controls pass. Three independent cuts detect a missing
+Math dependency guard, erased-default refusal and permanent revocation; exact
+source bytes were restored. A bounded conversion probe exports the unchanged
+full music authoring fixture without refusals. Separate controls cover the source profile, both export routes,
+repeated reimports, Code rebuild and actual SB3 archive reopening. The longer
+authoring control reached its local CPU cap and has no passing full verdict yet.
+Run the following on a prepared external Node 22 worker with locked, integrated
+GUI/VM dependencies, pinned original PXT and the browser dependencies required by
+the existing music acceptance test:
+
+```sh
+node --import ./scripts/lib/register-gui-scope.mjs --test --test-concurrency=1 test/arcade-music-number-source.test.mjs test/arcade-music-number-authoring.test.mjs test/arcade-export-refusal-report.test.mjs test/makecode-arcade-music.test.mjs
+```
+
+Keep the existing native/original-PXT test unchanged. The diagnostic-report
+fixture now uses an unproved scroll-offset getter, because a guarded tempo
+getter must no longer manufacture a refusal. Its transport, provenance, capture
+and stale-publication assertions remain required. The exporter import census
+includes the two added declaration dependencies.
+
+Continue in order: retain/classify the frozen PR #1544 terminal originals once;
+qualify the final composed source; close actual Array callback-entry/index,
+SDK Sprite callback/partial-construction and ordinary-result/missing-index
+producer gaps; then reassess all 184 immutable inputs and authentic complete
+contexts through conversion, native/original execution, controller and saved
+project routes. Only actual whole-case evidence changes the unchanged raw
+147 translated / 36 partial / one parse failure census. Finish by refreshing the
+Blocks, Code, graphics, animation and tile-map authoring gap inventory. Existing
+editor lanes remain with their owners.
+
 ## 28 October: dormant Sprite local/return declaration candidate
 
 The [separate dormant-declaration claim](../lanes/2026-10-28-arcade-dormant-sprite-declarations.md)

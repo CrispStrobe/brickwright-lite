@@ -8,6 +8,8 @@ import {GENERATED_HELPER_PROFILES,inspectGeneratedHelperBindings,mapGeneratedSou
 import {lowerNamedArrayItemHelpers} from './named-array-item-helpers.js';
 import {nativeClassScalarView} from './native-class-scalar-view.js';
 import {ordinaryPlayerScoreNumberCalls,ordinaryCameraPropertyNumberLeaves,ordinaryMathNumberCalls} from './ordinary-primitive-sdk-number-source.js';
+import {createOrdinaryMusicNumberSource} from './ordinary-music-number-source.js';
+import {physicalUpdateSourceSnapshot} from './physical-update-source-snapshot.js';
 import {ordinarySceneClockNumberCalls} from './ordinary-scene-clock-number-source.js';
 
 const primitive=new Set(['Number','String','Boolean','Null','Undefined']);
@@ -145,27 +147,40 @@ function inspectDomains(program,profile,ordinaryExportSelection) {
     };
     // Reuse the existing complete body/binding/registry/ambient proof rather
     // than independently recognizing a JSON or named registry helper family.
-    const named=lowerNamedArrayItemHelpers(prepare(program),{profile});
+    const prepared=prepare(program);
+    // Capture before named/class/normal-return projections can erase syntax or
+    // hidden parameter metadata. Only recognized generated helper effects have
+    // been projected here; every user declaration/default remains observable.
+    const originalMusic=createOrdinaryMusicNumberSource(prepared);
+    const originalMusicSnapshot=originalMusic.reason===null?physicalUpdateSourceSnapshot(program):null;
+    const musicAllowed=originalMusic.reason===null&&!!originalMusicSnapshot;
+    const named=lowerNamedArrayItemHelpers(prepared,{profile});
     if(named.unsupported.length)return {helpers:new Map(),current:syntax.current,reason:'native addition named-helper source proof refused: '+named.unsupported.join('; ')};
     const classView=nativeClassScalarView(named.program,profile);
     const bindings=inspectGeneratedHelperBindings(classView.program,profile);
     let closureResults=null,closureLive=true,imageResults=null,imageLive=true;
     let imageOrigins=null,imageOriginView=null,imageOriginUsed=false,imageOriginLive=true;
     let callableAdditionProof=null,callableAdditionUsed=false,callableAdditionLive=true;
+    let musicResultSource=null,musicUsed=false,musicLive=true;const usedMusicSources=[];
     let operationUsed=false,operationLive=true,classResultUsed=false,classResultLive=true,frameDeltaUsed=false,frameDeltaLive=true;const operationAbsences=[];
     const closureNormalTokens=new Set(),imageNormalTokens=new Set();
     const current=()=>{
         if(operationUsed&&!operationLive||classResultUsed&&!classResultLive)return false;
         try{
+            musicUsed=musicUsed||graph.musicNumberResultsUsed?.()===true||usedMusicSources.length>0;
+            let musicCurrent=graph.musicNumbersCurrent?.()!==false&&(!musicUsed||
+                originalMusic.current()&&originalMusicSnapshot?.current());
+            for(let i=0;i<usedMusicSources.length;i++)if(!usedMusicSources[i].current())musicCurrent=false;
             if(callableAdditionUsed){
                 if(!callableAdditionLive||!imageOriginView.current()){callableAdditionLive=false;return false;}
                 try{assertCurrentClassSourceProof(callableAdditionProof,imageOriginView.program);}catch{callableAdditionLive=false;return false;}
             }
             const now=syntax.current()&&unaryProof.isCurrent()&&classView.current()&&bindings.isCurrent()&&graph.lexicalDeclarationReadinessCurrent()&&
-                (!frameDeltaUsed||graph.frameDeltaNumbersCurrent());
+                (!frameDeltaUsed||graph.frameDeltaNumbersCurrent())&&musicCurrent;
             // Like the other consumed facts, any observed staleness permanently
             // expires a used frame-delta proof; restoring the text cannot revive it.
             if(frameDeltaUsed&&!now)frameDeltaLive=false;
+            if(musicUsed&&!now)musicLive=false;
             if(closureNormalTokens.size&&(!now||!closureResults.current()))closureLive=false;
             if(imageNormalTokens.size&&(!now||!imageResults.current()))imageLive=false;
             if(recursiveNormalTokens.size&&(!now||!recursiveResults.current()))recursiveLive=false;
@@ -174,8 +189,8 @@ function inspectDomains(program,profile,ordinaryExportSelection) {
             if(operationUsed&&(!valid||!operationAbsences.every(({object,key})=>!Object.hasOwn(object,key)&&!(key in object))))operationLive=false;
             if(classResultUsed&&!valid)classResultLive=false;
             if(callableAdditionUsed&&!valid)callableAdditionLive=false;
-            return valid&&(!frameDeltaUsed||frameDeltaLive)&&(!operationUsed||operationLive)&&(!classResultUsed||classResultLive)&&(!imageOriginUsed||imageOriginLive);
-        }catch(error){if(operationUsed)operationLive=false;if(classResultUsed)classResultLive=false;if(imageOriginUsed)imageOriginLive=false;if(callableAdditionUsed)callableAdditionLive=false;if(frameDeltaUsed)frameDeltaLive=false;throw error;}
+            return valid&&(!musicUsed||musicLive)&&(!frameDeltaUsed||frameDeltaLive)&&(!operationUsed||operationLive)&&(!classResultUsed||classResultLive)&&(!imageOriginUsed||imageOriginLive);
+        }catch(error){if(musicUsed)musicLive=false;if(operationUsed)operationLive=false;if(classResultUsed)classResultLive=false;if(imageOriginUsed)imageOriginLive=false;if(callableAdditionUsed)callableAdditionLive=false;if(frameDeltaUsed)frameDeltaLive=false;throw error;}
     };
     const domainHelpers=[...helpers.values()].map(helper=>({...helper,calls:[]}));
     const observed=new Set(),provedHelperResults=new WeakSet();
@@ -213,7 +228,7 @@ function inspectDomains(program,profile,ordinaryExportSelection) {
     const analyse=model=>analyseSourceValueProducers(model,{
         arrayValues:true,arrayEffectSites:true,parenthesized:true,unboundIsOpaque:true,
         uninitializedLocalsAreOpaque:true,declaredLocalUndefined:true,initializationEntries:true,
-        ordinaryPrimitiveSdkNumbers:true,sceneClockNumbers:true
+        ordinaryPrimitiveSdkNumbers:true,ordinaryMusicNumbers:musicAllowed,sceneClockNumbers:true
     });
     let model=rewrite(classView.program),graph=analyse(model);
     const hasClosureCandidate=bindings.nodes.some(node=>node.type==='FunctionExpression'&&bindings.parentOf(node)?.type==='Return');
@@ -305,8 +320,12 @@ function inspectDomains(program,profile,ordinaryExportSelection) {
     // are Number results on NORMAL return, never input or initialization facts
     // about their arguments. The complete original argument/effect census is
     // still below; omitted safe-index callbacks are intentionally conservative.
-    const numberResults=source=>[ordinaryPlayerScoreNumberCalls(source),ordinaryCameraPropertyNumberLeaves(source),
-        ordinaryMathNumberCalls(source),ordinarySceneClockNumberCalls(source)];
+    const numberResults=source=>{
+        musicResultSource=musicAllowed?createOrdinaryMusicNumberSource(source):null;
+        return [ordinaryPlayerScoreNumberCalls(source),ordinaryCameraPropertyNumberLeaves(source),
+            ordinaryMathNumberCalls(source),ordinarySceneClockNumberCalls(source),
+            ...(musicResultSource?[musicResultSource]:[])];
+    };
     let numberResultSets=numberResults(model);
     const nodes=[],parents=new WeakMap();
     const visit=(node,parent=null)=>{
@@ -326,7 +345,10 @@ function inspectDomains(program,profile,ordinaryExportSelection) {
         // actual joined result, not their still-opaque recursive callee binding.
         const projected=actual(node);
         if(projected!==node&&projected.type==='Conditional'&&recursiveNormalTokens.has(projected.nativeRecursiveDomainNormalCall)&&recursiveResults.current())return true;
-        if(numberResultSets.some(producers=>producers.has(actual(node))))return true;
+        for(const producers of numberResultSets)if(producers.has(actual(node))){
+            if(producers===musicResultSource&&!usedMusicSources.includes(producers))usedMusicSources.push(producers);
+            return true;
+        }
         if(node.type==='Member'&&graph.frameDeltaNumberAt?.(actual(node))){frameDeltaUsed=true;return true;}
         if(node.type==='Identifier'&&!graph.isInitializedAt(actual(node))&&!graph.immutableFunctionAt(actual(node)))return false;
         return Object.entries(node).every(([key,value])=>metadata.has(key)||initialized(value));
