@@ -138,3 +138,14 @@ stop conditions are in the
 which supersedes the 2026-10-27 closeout above. This claim stays open until
 items 3–6 resolve and the campaign is reconciled; it does not cover a seventh
 item.
+
+## Combined continuation — 2026-10-28
+
+The source continuation is frozen in Lite PR1538 at `e85dc904`, containing
+the original PR1516/1515/1517 heads and exact CUI `373d562b` adoption with
+Board `8785e468` unchanged. Scope causality controls are accepted for the
+injected re-render mechanism. Eleven minimal-consumer actual CLI tests pass;
+whole-application exact-head qualification and source landing remain pending.
+Historical studies keep their measured supplier identities and unchanged
+source bytes. The active handoff supersedes older pending instructions; no
+new experiment, duplicate qualification or seventh implementation is implied.

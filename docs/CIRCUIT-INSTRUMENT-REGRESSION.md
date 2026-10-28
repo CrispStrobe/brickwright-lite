@@ -1,5 +1,56 @@
 # CLI instrument regression
 
+## Active continuation — 2026-10-28
+
+The campaign remains open. This section supersedes pending statements in the
+retained wrap-up below. Refresh live heads and checks before acting; never
+rerun the consumed v1 or v2 studies to read their results.
+
+- **Accepted study:** v2 run 40681635060 measured 31/31 conforming designs,
+  4,260 checked values, 15/15 captures and zero numerical disagreements.
+  One of 32 inputs is a named refusal; 83/84 selector locations passed.
+  This is conformance to admitted ngspice-42 references, not physical calibration.
+- **Scope mechanism demonstrated:** CUI PR128 merged `373d562b`; PR129 was
+  closed unmerged as the negative control. Identical tests and the exact
+  historical before-fix component establish the injected host re-render
+  mechanism: `envelope` replaces the expected `sample` selection before the
+  repair. This does not attribute every historical timeout or browser race.
+- **Combined consumer candidate:** [Lite PR1538](https://github.com/CrispStrobe/brickwright-lite/pull/1538),
+  frozen at `e85dc904ac5c56d327e993c47dc730c5d1c7abeb`, contains the original
+  longer-capture PR1516, repaired LM741 PR1515 and provenance PR1517 heads.
+  It adopts CUI `373d562b741c69a5a1dd441c4f8d0ea1053b4fd3`; Board remains
+  `8785e4688cc308b34fea434c1734523caa621f74`. Source landing is pending.
+- **Actual CLI preflight:** an isolated minimal consumer, with both installed
+  packages byte-checked against their exact package archives, passed four
+  AC-coupling tests, four long-capture tests and three selected LM741 tests.
+  AC controls include three buildable copied-package mutants; long captures
+  check 5,000 points per waveform; LM741 checks cover the settled window,
+  named refusals and default-off output. No expectation or tolerance changed
+  after these observations. This does not replace whole-app hosted or GUI
+  qualification. The original LM741 v1 failure remains recorded as a TODO.
+- **Historical boundary:** the consumed collector, fixture, comparator,
+  reader and workflow retain their original bytes and supplier identities.
+  Four explicit whole-file seals protect historical pin roles and the old
+  package manifest. Synthetic controls run that source in an isolated
+  historical consumer; 49 controls pass, with changed-pin and isolation
+  negatives. Ordinary stale-current and never-pinned checks remain strict.
+  No new numerical study was executed.
+- **Next actions:** finish every applicable exact-head fast check for PR1538;
+  audit any failure and repair forward without weakening numerical bounds;
+  coordinate the shared pin-gate history-reader integration; then perform a
+  matched-head merge and verify actual parents/tree. Only after that landing,
+  reconcile the superseded PRs and update this handoff, PLAN and ROADMAP.
+- **Qualification policy:** use fast tier unless affected behavior requires
+  full qualification. The absent `ci:full` label verdict is the explicitly
+  approved exception; genuine enabled fast-check failures block merging.
+  Coordinate the campaign's final combined-main qualification with its owner
+  rather than dispatching a duplicate.
+
+Limits remain explicit: CLI AC coupling adds no GUI selector or probe loading;
+no physical calibration is claimed; the 32 MiB output cap remains untested
+because the separate attempt limit prevents reaching it through this CLI.
+The six-item contract remains active; no seventh implementation task is opened.
+
 ## Current handoff — 2026-10-28 (wrap-up)
 
 **Read this section first; it supersedes the 2026-10-27 handoff below, which is

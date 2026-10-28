@@ -2,23 +2,27 @@
 
 ## Circuit/instrument resume queue — 2026-10-28
 
-Use the [current handoff](docs/CIRCUIT-INSTRUMENT-REGRESSION.md#current-handoff--2026-10-28-wrap-up)
-for live heads, next actions and stop conditions. The
+Use the [active handoff](docs/CIRCUIT-INSTRUMENT-REGRESSION.md#active-continuation--2026-10-28)
+and refresh live heads before acting. The
 [six-item contract](lanes/2026-10-26-reference-qualified-instrument-campaign.md)
-remains open until items 3–6 resolve.
+remains open through qualification and final reconciliation.
 
-| Order | State | Next bounded endpoint |
+| Order | Verified state | Next bounded endpoint |
 | --- | --- | --- |
-| 1a. Supplier return | **Accepted:** Lite PR1478 pins Board `c7bcbe4b`, CUI `da28bb8c` | — |
-| 1b. Teaching reference study | **Accepted:** v2 run 40681635060, 31/31, 0 disagreements | Never rerun |
-| 2. Four disagreements | **Accepted as classification:** all noncomparable, no defect (PR1495) | — |
-| 3. Scope rearm | Hypothesis: re-render during `input` reset the selector; fix candidate CUI `a5860b9c` | CUI PR129 (pre-fix) must fail and PR128 (post-fix) pass; otherwise record unproved |
-| 4. Long captures | 5 ms/1 MHz passive batch matches references; first sample at 1 µs accepted as spec | Merge Lite PR1516 on green |
-| 5. LM741 currents/power | Domain adopted; packaged CLI test with settled-window check pending CI | Merge Lite PR1515 only if the frozen v2 check passes; else record partial |
-| 6. Provenance and realism | Lite PR1517 (provenance + redaction); CUI PR130 (opt-in AC coupling) | Merge both on green, then adopt CUI PR130 in Lite |
+| 1. Supplier return and reference study | Historical adoption PR1478; accepted v2 run 40681635060: 31/31, 4,260 values, 15 captures, one named refusal | Preserve original source/pins; never replay the consumed study |
+| 2. Four disagreements | All noncomparable; no demonstrated model defect (PR1495) | Preserve classification and original denominators |
+| 3. Scope rearm | PR128 merged; identical before-fix PR129 fails the injected re-render control | Accepted for that mechanism; no blanket race attribution |
+| 4. Long captures | Three 5,000-point waveforms; four actual minimal-consumer regression tests pass | Qualify and land combined Lite PR1538 |
+| 5. LM741 currents/power | Settled-window, refusal and default-off CLI checks pass; original v1 failure retained | Whole-app metadata/GUI checks remain in PR1538 qualification |
+| 6. Provenance and realism | Provenance/redaction and exact CUI `373d562b` adoption in PR1538; four AC tests with three actual copied-source mutants pass | Complete hosted qualification, preserve historical study seals, verify source landing |
 
-After items 3–6: one `ci:full` run on main, final reconciliation, then ask the
-operator for the next priority.
+After the combined candidate qualifies: reconcile PR1516/1515/1517 against its
+actual landed ancestry; update this roadmap, PLAN and handoff; coordinate the
+final combined-main qualification once, then ask for the next priority.
+Physical calibration, probe loading, a GUI AC-coupling selector and the unreachable
+32 MiB output-cap boundary remain outside this acceptance. Source/package
+adoption is not installed release or deployment evidence. No seventh lane is
+opened by this list.
 
 ## Current circuit measurement sequence — 2026-10-25
 

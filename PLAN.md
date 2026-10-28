@@ -18,19 +18,29 @@ gates.
 ## Current circuit/instrument handoff — 2026-10-28
 
 The [six-item campaign](lanes/2026-10-26-reference-qualified-instrument-campaign.md)
-is **not closed**. Items 1 (supplier return, Lite adoption and the v2 teaching
-study) and 2 (four historical disagreements) are accepted: Lite pins Board
-`c7bcbe4b` and CUI `da28bb8c` (PR1478), the v2 study passed 31/31 with no
-disagreements (run 40681635060), and all four disagreements are noncomparable
-with no model defect (PR1495). Items 3 to 6 each have an open pull request:
-scope rearm causality (CUI PR128/PR129), long captures (Lite PR1516), LM741
-packaged acceptance (Lite PR1515), provenance and redaction (Lite PR1517) and
-AC input coupling (CUI PR130, then a Lite adoption).
+remains open through final consumer qualification and documentation reconciliation.
+The accepted v2 study at historical Board `c7bcbe4b` / CUI `da28bb8c` measured
+31/31 conforming designs, 4,260 values and 15/15 captures, with one named refusal
+among 32 inputs. All four earlier disagreements remain noncomparable; no model
+repair was inferred from them. Historical supplier identities never advance.
 
-The [current handoff](docs/CIRCUIT-INSTRUMENT-REGRESSION.md#current-handoff--2026-10-28-wrap-up)
-gives each one's live head, exact next action and stop condition, in order.
-Pull requests merge on the fast tier without `ci:full`; one `ci:full` run on
-main follows once items 3–6 land. No seventh item is implied.
+Scope PR128 and its unmerged negative PR129 establish the injected re-render
+mechanism. Combined [Lite PR1538](https://github.com/CrispStrobe/brickwright-lite/pull/1538)
+contains longer captures, the repaired LM741 acceptance, provenance/redaction,
+and CUI AC-coupling adoption. Its frozen head is `e85dc904`; Board remains
+`8785e468`, and CUI advances to `373d562b`. Source landing is still pending.
+An exact-package minimal consumer passes 11 CLI tests, including numerical
+AC-coupling mutation controls, long captures and selected LM741 behavior;
+this does not replace affected hosted application qualification.
+
+Next: complete applicable exact-head fast checks, preserve both the historical
+study seals and the separately owned pin-history reader fix, verify the matched
+merge tree/parents, then reconcile superseded PRs and final campaign documents.
+Use fast tier unless full qualification is necessary; the explicitly approved
+absent-`ci:full` verdict exception does not waive real fast failures. Coordinate
+one final combined-main qualification with its owner. No seventh task is opened.
+The [active handoff](docs/CIRCUIT-INSTRUMENT-REGRESSION.md#active-continuation--2026-10-28)
+keeps exact actions, evidence boundaries and remaining limits.
 
 ## Current imported-circuit and model-accuracy sequence — 2026-10-25
 
