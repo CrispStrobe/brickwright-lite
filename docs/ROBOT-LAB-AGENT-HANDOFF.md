@@ -2,7 +2,7 @@
 
 For the current experimental checkpoint and explicit unchecked work, start with [the 24 October checkpoint](ROBOT-LAB-CHECKPOINT-2026-10-24.md).
 
-Updated 2026-10-21. This is the public entry point for continuing Robot Lab work (the
+Updated 2026-10-28. This is the public entry point for continuing Robot Lab work (the
 `lib/bw-sim/` simulator, the virtual hubs, the Robot Lab tab) without chat history.
 It records what landed, how work lands here, what is in flight and — scoped so a new
 agent can pick it up cold — every open item. Verify the state of a PR or branch before
@@ -84,16 +84,20 @@ transport), [ROBOT-LAB-EV3-NXT.md](ROBOT-LAB-EV3-NXT.md), [NXT-PROTOCOL-FACTS.md
 
 ## In flight at handoff
 
+Refreshed 2026-10-28. Robot Lab has no open PRs of its own.
+
 | PR | What | State and next step |
 |---|---|---|
-| #1138 | Physics library: models, lessons, compact controls | Draft of another lane; needs `flywheel-differential.ldr` and `screw-crane.ldr` in `NEEDS_REST` (PR comment has the fix). |
-| #1125, #1128 | Arcade (other lane) | Diagnosis for #1128 is in its PR comment (fetch-pinning census, TMPDIR, GUI-scope allow-list, runtime locks). |
-| #1099, #1100 | SPIKE G02 drafts (other lane) | Main merged in; owner to finish. |
+| #1128 | Arcade numeric integration (other lane) | Draft, owned by the Arcade lane. Its fixes (for example `game.runtime()` as an SDK Number source) land on that lane's integration branch first. Do not take it over. |
+
+#1138, #1099 and #1100 have merged; #1125 was closed.
 
 ## Open work, scoped for a fresh agent
 
 Each package is one PR unless it says otherwise. Read the linked docs first; follow the
-rules above.
+rules above. Put a claim file in `lanes/` in the same PR. For a code change, run the
+affected tests locally only when the host is idle. Otherwise let CI's change-scope job pick
+the browser shards. Merge with `--match-head-commit` only after every enabled check passes.
 
 ### P1 and P2 — done
 - **P1:** the motor power blocks landed with #1162 (after #1163).
@@ -132,39 +136,136 @@ rules above.
   tests never call the network.
 
 ### P4 — physics follow-ups
+
+**P4a. A tracked frame coasts about 4.4× longer than its real parts would.**
+- *Cause (read from code, not yet measured):*
+  - `physics/jolt-core.js` gives every gear and sprocket body a floor of
+    `GEAR_MIN_INERTIA = 3e-5` kg·m² (:978, reason at :964–977) and `GEAR_MIN_MASS_KG = 0.02`
+    (:991, applied at :993–1012).
+  - Chain and tread sprockets get both floors at :1138.
+  - At the tread's outer radius (r ≈ 25 mm, `test/bw-sim-chain.test.mjs` :265), the inertia
+    floor equals about 48 g of extra linear inertia per sprocket. A real sprocket adds about
+    0.2 g.
+  - `physics/rolling.js` sizes the coasting drag (c_rr·N·r) from the true weight.
+  - So the floored sprockets store spin energy that the drag was never sized to remove.
+- *The existing check does not catch it:* `test/bw-sim-chain.test.mjs:251–299` predicts the
+  deceleration from the floored values (:259, :290–293), so it proves the solver agrees with
+  itself, not with the real parts. ROBOT-LAB-VALIDATION.md :280–281 quotes the 4.4×; no test
+  asserts it.
+- *Step 1, measure first:* on an idle host or in hosted CI, record the tread bench's coast
+  deceleration under three floors at :1138: the current value, 1e-5 and 3e-6. Also compute
+  the true-parts prediction c_rr·g·M / (M + ΣI_true/r²).
+- *Step 2, the fix, in order of preference:*
+  1. **Coast-only drag correction in `rolling.js`.** Scale the coasting friction torque by
+     k = (M_solver + I_solver/r²) / (M + I_true/r²). Jolt-core already records the
+     configured mass and baseline inertia (:660–663).
+     - Apply k only above a small |ω| threshold, and keep the static hold at plain c_rr.
+       Otherwise the 0.5° and 3° slope-hold rows break.
+  2. **Lower or remove the floor for chain sprockets only.** The floor was measured for a 24T
+     arm against a block, never for a tread. Watch for tread slip and sprocket rocking when
+     the motor stalls.
+  3. **Merge the sprocket's spin inertia into its motor rotor.** This is the largest change: it
+     touches the compiler's islands, jolt-core and `bodyDynamics` (:2066).
+- *Do not* use Jolt angular damping. It is viscous (proportional to speed), not Coulomb, and
+  distorts the curve that validation row 25 checks.
+- *Acceptance:*
+  - `bw-sim-chain.test.mjs` predicts from the true parts and passes.
+  - Row 25 and the "Rolling resistance" rows (cart 0.1376 m/s²; the 180 g cart parks on 0.5°
+    and 3° slopes) still pass.
+  - The hosted Robot Lab shards for the tracked and excavator models pass.
+  - ROBOT-LAB-VALIDATION.md :280 is updated with the new measured ratio.
+
+**P4b. The differential car turns 4.9 % wider than the bicycle model.**
+- *Cause:*
+  - `scripts/gen-differential-car-model.mjs` (it writes
+    `static/sim-lab/models/differential-car.ldr`) puts the 5L tie rods in line with the rack,
+    level with the steering-arm pins (rack at z = ZT = −40, end holes at x = ±120; arm pins at
+    x = ±40).
+  - The rack moves both inner pivots together, so the linkage is close to parallel steer. At
+    the program's rack position the wheels steer 19.6° inner and 18.6° outer; exact Ackermann
+    for that inner angle is 16.8°.
+  - The run test (`test/bw-sim-differential-car.test.mjs` :402–421) therefore accepts any
+    radius between the two front wheels' own turn centres. The static test at :218–240 checks
+    only "short of Ackermann, better than straight arms".
+  - ROBOT-LAB-ARCHITECTURE.md :1927–1932 has the measured numbers.
+- *Measured from the geometry (planar linkage solve; it reproduces today's angles):*
+  - Moving the rack 20–25 LDU **forward** (toward the kingpins) cuts the wheels' turn-centre
+    spread from 5.7 % to 0.6–0.7 %.
+  - Moving the rack backward, or using straight arms, makes it worse (7–8 %).
+  - **But that layout is not buildable with stock parts.** Every improving offset needs a
+    tie-rod span between pin holes of 80.6–89.4 LDU, and Technic liftarms span multiples of
+    20 LDU. The only exact fit, a 6L rod with the rack 60 forward, overshoots to 10 %.
+    Do not place a rod whose pins miss their holes.
+- *What remains is a part-level redesign. Options:*
+  1. Use the arm's hole x2 (40 in), which gives 4.6 %. The tie rod's inner end then swings into
+     motor A's front face at z = −30, so motor A moves back 20–40 LDU. That also moves the
+     differential's pinion mesh and the rear-axle geometry tests.
+  2. Use a different steering-arm part whose pin offset makes a whole-stud tie rod meet the
+     rack at the improving angle. Search the parts library for liftarms with the right
+     hole pattern.
+  3. Use a rack with different end-hole positions.
+- *Acceptance:*
+  - Regenerate the `.ldr` with the generator (never hand-edit it).
+  - `test/bw-sim-differential-car.test.mjs` passes in full. Its static test hard-codes
+    L = 240 and w = 120, and `worst(h3)` must follow a changed hole.
+  - `test/bw-sim-models-solid.test.mjs` and `test/bw-sim-models.test.mjs` pass (no overlaps;
+    every pin in a hole).
+  - The hosted Robot Lab shards that run the example program pass: steady circle, steering at
+    speed, parked no-turn, rack stops.
+  - Then tighten the run test's band back toward the bicycle model and update the
+    ARCHITECTURE numbers.
+
+**P4c. Other physics items (unchanged, not started):**
 - Measure, or source better, restitution and rolling resistance for LEGO parts on the mat
   (ABS e 0.4 and tyre/tread c_rr are cited estimates; ROBOT-LAB-VALIDATION.md "Materials").
-- A brick dropped from 50 cm or 1 m bounces straight once but Jolt's solver gives a flat
-  multi-contact bounce 0.1–0.3 rad/s of spin, so it lands tilted after the second bounce
-  (validation row 7c was reformulated to "first bounce straight, no tunnelling").
-- Solver mass/inertia floors make a sprocket-driven tracked frame coast about 4.4× longer
-  than its real parts would.
-- The differential car's rack moves both tie rods together, so it turns 4.9 % wider than
-  the bicycle model (the check now accepts the band between the front wheels' own turn
-  centres). Deeper steering arms recover Ackermann but rub motor A — a geometry rework.
+  This needs real measurements or a citable source; do not tune the values to make tests pass.
+- A dropped brick bounces straight once, but Jolt gives the flat multi-contact bounce
+  0.1–0.3 rad/s of spin, so it lands tilted after the second bounce. Validation row 7c was
+  reformulated to "first bounce straight, no tunnelling". A fix belongs in the contact
+  settings or the Jolt fork and needs the drop rows re-run.
 - The crane winch continuation replaces the fixed hook link with a retained drum on C,
-  a moving boom-tip guide and balanced rope-hung payload. Require its affected hosted
-  hoist/hold/payout/slack and real project save/reopen qualification before landing;
+  a moving boom-tip guide and balanced rope-hung payload. Before it lands it needs the
+  affected hosted hoist/hold/payout/slack qualification and a real project save/reopen;
   virtual tension checks do not establish physical accuracy.
 - The Jolt fork's next step is the multithreaded build (the native part-pair filter in bw.5
   removed the JS callback that blocked it).
 
-### P5 — CI flakes still seen
-- `verify-arcade-legacy-layout.mjs` `runEdited` 30 s timeout; `verify-arcade-physics-engine-browser.mjs:99`
-  (`oldX` 22 vs 20 — a frame race); `verify:debug-inspection` ("1 debugger browser check
-  failed"); the browser step audit failing when GitHub reports steps late. Each should be
-  fixed at the cause (wait on the state the assertion needs), not retried; record them in
-  docs/ARCADE-888-OPEN-FAILURES.md if they belong to that lane.
-- Load-sensitive Arcade unit tests in `unit (3/4)`: value-arithmetic (`makecode-arcade-value-arithmetic.test.mjs`
-  :54 and :144), `makecode-export-arcade.test.mjs` :275 and :360, and randint authoring failed
-  together on main once (after #1169), with the PXT program never starting within the 20 s guard;
-  a rerun of the same SHA passed. Look for shared-runtime contention in that shard (several PXT
-  runtimes booting at once) rather than raising timeouts again.
-- The controller-pane layout gate (browser light) failed once in landscape and once locally in
-  portrait ("Undo; text; Blocks; …" covered, full-screen entry not hittable) without a related
-  change: the gate read the layout before it had settled. It now waits until every
-  control's rectangle is unchanged for ten consecutive frames (bounded at 15 s; not settling
-  fails the gate), before the normal and the full-screen reads.
+### P5 — CI flakes
+
+Done (2026-10-28):
+- **Controller-pane layout gate** (browser light), #1502. `scripts/verify-controller-pane.mjs`
+  now waits for fonts and for every control's rectangle to stay unchanged for ten consecutive
+  frames (bounded at 15 s; not settling fails the gate) before the normal and the full-screen
+  reads. The assertions are unchanged.
+- **`verify:debug-inspection`** ("1 debugger browser check failed"), #1504.
+  - Exactly one failure means a Playwright wait threw. A failing `check()` reports two,
+    because it also fails the journey.
+  - The run-to step polled for the brief `running` phase, which the 9-byte ROM can skip
+    between two polls. A MutationObserver armed before the click now latches it, and the gate
+    still requires that running happened.
+  - The run-to control's enabled state and the selected inspection's panes are now awaited
+    before they are judged.
+  - The cause was read from the code; no failing CI log was found to confirm it.
+- **Browser step audit failing when GitHub reports steps late**: already fixed on main on
+  2026-10-24 (`4d121180`). The audit runs with `--runner-terminals-v1` and reads earlier step
+  outcomes from the workflow's `steps` context, not the jobs API. A later failure reading
+  "one unique declared ID per preceding step" (`scripts/audit-job-steps.mjs:320`) is a
+  workflow edit in which a step before the audit lacks a unique `id:`. It fails every time;
+  fix the workflow, do not rerun.
+
+Open (the Arcade lane owns these, and docs/ARCADE-888-OPEN-FAILURES.md records them):
+- `verify-arcade-legacy-layout.mjs` `runEdited` 30 s timeout, and
+  `verify-arcade-physics-engine-browser.mjs:99` (`oldX` 22 vs 20, a frame race). Fix each by
+  waiting on the state the assertion needs, not by retrying or raising the timeout.
+- Load-sensitive Arcade unit tests failed together on main once, then passed on a rerun:
+  value-arithmetic (`makecode-arcade-value-arithmetic.test.mjs` :54 and :144),
+  `makecode-export-arcade.test.mjs` :275 and :360, and randint authoring. In each the PXT
+  program never started within the 20 s guard. Look for several PXT runtimes booting at once
+  in that unit shard. Do not raise the timeouts again.
+
+When a gate fails without a related change, compare it with the same check on main's own
+Build at the PR's merge base. If main passed with the identical UI, re-run only the failed
+job once, keep the original log, and record the flake here.
 
 ### P6 — not code
 - TI service-pack PR on CrispStrobe/extensions waits for git.ti.com; its bytes are licensed
