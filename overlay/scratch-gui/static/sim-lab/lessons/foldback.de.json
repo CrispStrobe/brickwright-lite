@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "id": "foldback",
+  "language": "de",
+  "what": "Antiparallelogramm. Foldback ist ein Antiparallelogramm: Ein Motor treibt ein gekreuztes Viergelenk mit zwei gleich langen 32-mm-Kurbeln und einer 48-mm-Koppel zwischen festen Lagern im Abstand von 48 mm an. Der passive Abtrieb dreht sich entgegengesetzt mit einem veränderlichen Winkelverhältnis. Die separat aufgebaute offene Vergleichsanordnung verwendet dieselben Teile und dasselbe Programm; sie folgt dem Antrieb ideal im Verhältnis eins zu eins. Ein Antiparallelogramm ist ein Viergelenk mit gekreuzten langen Gliedern. Motor A schwenkt den Eingangsarm um 90°; der passive Ausgangsarm dreht gegenläufig und folgt tan(φ/2) = −5·tan(θ/2) auf 0,03° genau.",
+  "try": [
+    "Lade das Modell, drücke Zurücksetzen und dann Start. Motor A dreht nur den blauen Eingangsarm; der rote Abtriebsarm ist passiv. Der gespeicherte Eingangswinkel beträgt 90°.",
+    "Vergleiche die ersten vier Haltepositionen. Beobachte danach den ganzen Rücklauf und den folgenden Vorlauf. Sage voraus, ob das Umkehren des Motors dieselbe Bewegungsbahn zurückverfolgt.",
+    "Lade foldback-open.ldr, behalte dasselbe Programm foldback.bw, setze zurück und starte erneut. Vergleiche die tatsächliche Abtriebsrichtung und die Abtriebsänderungen der drei gleichen Eingangsschritte.",
+    "Bleibe im gelieferten Eingangsbereich von 20° bis 110°. Der Prüfbereich von 18° bis 112° ist eine Grenze der Geometrieprüfung und kein mechanischer Anschlag. Verwende für den offenen Vergleich die separat gespeicherte Anordnung; versuche den Montagezweig nicht durch Überfahren einer gestreckten Stellung zu wechseln."
+  ],
+  "why": "Die festen Lager seien O=(0,0) und D=(a,0) mit a=48 mm. Die gleich langen Kurbeln mit b=32 mm setzen B=b(cos θ,sin θ) und C=(a,0)+b(cos φ,sin φ). Die Bedingung |C−B|=a für die Koppellänge besitzt zwei Montagelösungen. Das offene Parallelogramm ergibt φ=θ. Das gekreuzte Antiparallelogramm ergibt tan(φ/2)=−5 tan(θ/2) auf dem stetigen Zweig mit negativem Abtriebswinkel. Die Längen allein bestimmen also noch nicht die Bewegung: Auch die Ausgangsmontage ist entscheidend.",
+  "matters": "Ein mechanisches Getriebe kann ohne Zahnräder die Drehrichtung umkehren und seine Winkelübersetzung verändern. Gleiche Eingangsschritte müssen keine gleichen Ausgangsschritte ergeben. Derselbe Teilesatz kann in einem anderen Montagezweig anders laufen. Hier werden die Montageanordnung, die Messung des passiven Abtriebs und die veränderliche Übersetzung sichtbar. Das gekreuzte Getriebe hat noch eine Überraschung: Eingangs- und Abtriebsarm drehen sich genau wie zwei gleiche elliptische Zahnräder, die ineinandergreifen und sich jeweils um einen Brennpunkt drehen. Deshalb können elliptische Zahnräder es in Maschinen ersetzen, die während jeder Umdrehung eine wechselnde Geschwindigkeit brauchen.",
+  "question": "Bedeutet die −5 in tan(φ/2)=−5 tan(θ/2), dass sich der Abtrieb für jedes Eingangsgrad immer um fünf Grad rückwärts bewegt? Was ändert sich im offenen Vergleich?",
+  "answer": "Nein. Der Faktor multipliziert die Tangenswerte der halben Winkel, nicht die Winkel selbst. Das lokale Winkelverhältnis ist im gekreuzten Aufbau −5/[cos²(θ/2)+25 sin²(θ/2)] und hängt von der Stellung ab. In der offenen Anordnung gilt φ=θ mit dem idealen Verhältnis +1. Dieselben Motorziele führen deshalb zu einem anderen gemessenen Abtrieb.",
+  "further": [
+    "Die idealen Montagezweige treffen sich in gestreckten Stellungen bei 0° und 180°. Diese liegen außerhalb des gelieferten Betriebsbereichs. Die endliche Bauteildicke, die Achssicherung und der tatsächliche Bewegungsraum müssen zusätzlich geprüft werden.",
+    "Vergleiche Tempo Loop. Dort betragen Grundabstand, Eingangskurbel, Koppel und Ausgangskurbel 16/32/40/40 mm; beide Kurbeln drehen vollständig in derselben Richtung. Foldback vergleicht dagegen den offenen und den gekreuzten Aufbau bei paarweise gleichen gegenüberliegenden Längen.",
+    "Im Simulator folgt der gekreuzte Abtrieb tan(φ/2) = −5·tan(θ/2) über den ganzen Lauf auf 0,022° genau, der offene Vergleich bleibt auf 0,008° bei 1:1. Echte Pins haben Spiel: Schätze, wie stark 0,1 mm Spiel an jedem Gelenk den Abtriebswinkel nahe θ = 20° verändern würde, wo sich der Abtrieb am schnellsten bewegt."
+  ],
+  "formula": "a=48 mm, b=32 mm; gekreuzt: tan(φ/2)=−5 tan(θ/2), dφ/dθ=−5/[cos²(θ/2)+25 sin²(θ/2)]; offen: φ=θ. θ=90°−A, wobei A der Motorencoder relativ zur gespeicherten Stellung ist. Vorgegebener Bereich: θ=20°…110°.",
+  "related": [
+    "tempo-loop.ldr",
+    "scale-echo.ldr",
+    "crank-rocker.ldr"
+  ]
+}

@@ -1,0 +1,5 @@
+### Scene-owned forever conversion — 2026-10-08
+
+Root claims `lane/arcade-scene-continuation-20261008`, stacked on callback CI repair. Scope: forever/game.forever/basic.forever registration at authored call sites without scene-stack selection, lexical captures, deferred startup, scene suspension and native/export/SB3 qualification. Also repair the pending-scene clock assertion to require retained elapsed time. Keep unrelated array/export/browser gates explicit.
+
+Forever result: source `94882c6a57d9f32462ec2579efc56fe2d9e35e45`,61 affected checks pass after reruns,0 skips. Deferred closures and repeat input agree across original/exported PXT and native/decompile/reimport/SB3. Production `gui.4e20cd56.js` passes visible file→Code→Blocks→Run→A→From blocks and four preceding journeys,0 page/block/build errors; initial4,360,790 bytes unchanged. Same184 import-only102/81/1,0 changed diagnostic rows. Scene tests retain pending elapsed time and independent child clock. Initial failures retained; next sprite callback registration, timing and unrelated hosted export/browser cleanup. [Receipt](docs/receipts/2026-10-08-arcade-scene-continuation.json).

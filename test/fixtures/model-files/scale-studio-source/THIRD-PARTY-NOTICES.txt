@@ -1,0 +1,94 @@
+SCALE STUDIO — SOURCE AND THIRD-PARTY NOTICES
+
+ORIGINAL / ADAPTED WORK
+
+The authored Scale Studio model, deterministic placements, native program,
+lessons, assembly text and original checks are credited to CrispStrobe.
+Copyright (c) 2026 CrispStrobe / Christian Ströbele. BSD-3-Clause.
+See licenses/scale-studio.txt.
+
+APPLICATION SOURCE AND ADAPTED HELPERS
+
+Repository: https://github.com/CrispStrobe/brickwright-lite
+Revision: 0a23bd8446f3cdb9a51668ea17dedb054648480a
+License: BSD-3-Clause, reproduced in licenses/brickwright-source.txt.
+
+The geometric helper section in source/check_model_mesh.mjs is copied
+unchanged from test/bw-sim-models-solid.test.mjs at that revision, with
+attribution preserved. The single-model wrapper/report is authored here.
+The runtime check imports the real compiler, public model preparation,
+Robot Lab controller/extension, and the app's official test-clock helper.
+No whole application checkout, dependency installation or binary runtime
+is included in this package.
+
+EXTERNAL STANDARD LDRAW GEOMETRY
+
+The 13 placed part types resolve to 213 standard LDraw files. Those files
+are external dependencies, not redistributed inside the LDR/MPD or ZIP.
+The model references standard components; it does not claim authorship
+of their meshes. The CAD illustration is rendered from those components.
+The layout/assembly is new; the underlying component geometry is unchanged.
+
+LDraw source: https://library.ldraw.org/library/updates/complete.zip
+Recorded source date: 2026-09-30
+Source SHA256: f3e496d0ede69ca7942fa4aa198e661ee2d22723906101e2e339d8917a4dd5f2
+
+The selected files are licensed under CC BY 4.0; some also offer CC BY 2.0.
+This package uses the CC BY 4.0 option. See licenses/CAreadme.txt and
+licenses/CAlicense4.txt; the inherited CC BY 2.0 text is also preserved.
+License link: https://creativecommons.org/licenses/by/4.0/
+
+Per-file authors, license lines, histories, byte counts and SHA256 values
+are preserved in evidence/dependencies.json. The LDraw geometry authors
+credited by those source headers are:
+
+  Alex Taylor [anathema]
+  Chris Dee [cwdee]
+  Donald Sutter [technog]
+  Franklin W. Cain [fwcain]
+  Gerald Lasser [GeraldLasser]
+  Guy Vivan [guyvivan]
+  Ishino Keiichiro
+  J.C. Tchang [tchang]
+  James Jessiman
+  Jens Brühl [jb70]
+  Magnus Forsberg [MagFors]
+  Marc Klein [marckl]
+  Mark Kennedy [mkennedy]
+  Massimo Maso [Sirio]
+  Max Martin Richter [MMR1988]
+  Max Murtazin [SwampKryakwa]
+  Michael Heidemann [mikeheide]
+  Niels Karsdorp [nielsk]
+  Orion Pobursky [OrionP]
+  Paul Easter [pneaster]
+  Philippe Hurbain [Philo]
+  Ross Crawford [rosco]
+  Santeri Piippo [arezey]
+  Steffen [Steffen]
+  Steve Bliss [sbliss]
+  Tim Gould [timgould]
+  Tore Eriksson [Tore_Eriksson]
+  Willy Tschager [Holly-Wood]
+  [PTadmin]
+
+NATIVE RUNTIME DEPENDENCIES
+
+Exact dependency versions and resolved package integrity values are in
+source/runtime/package-lock.json. They retain their respective package
+licenses and must be obtained separately. Key dependencies are Scratch VM
+4.8.115, Scratch render/audio, JSZip and the selected custom Jolt build.
+The test environment and operative Jolt integrity are in
+evidence/environment.json.
+
+SUPPLIED COLLECTION
+
+The source catalog is the user's corrected 53-assembly collection. Its 61
+entries are preserved unchanged in the merged catalog. Existing model
+files and their notices remain in the supplied collection; this add-on
+only contains the new model and additive metadata. Source identities are
+recorded in evidence/source-identities.json.
+
+The educational idea of a pantograph is not a claim of a new mechanical
+invention. This particular assembly, experiment and integration package
+were developed for the supplied collection.

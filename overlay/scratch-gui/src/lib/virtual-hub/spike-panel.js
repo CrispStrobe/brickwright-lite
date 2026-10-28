@@ -1,0 +1,228 @@
+// SPDX-License-Identifier: Apache-2.0
+let panel = null;
+
+const element = (tag, attributes = {}, text = '') => {
+    const node = document.createElement(tag);
+    for (const [key, value] of Object.entries(attributes)) {
+        if (key === 'style') node.style.cssText = value;
+        else node.setAttribute(key, value);
+    }
+    node.textContent = text;
+    return node;
+};
+
+export const canConfigureVirtualHub = hub => !hub.configurationOwner && !hub.externalBackend && hub.clockOwner !== 'renode';
+
+export const applyVirtualPortInput = (hubState, port, kind, value) => {
+    if (!canConfigureVirtualHub(hubState)) return false;
+    const number = Number(value);
+    if (kind === 'motor') hubState.setPort(port, kind, {speed: number, position: 0});
+    else if (kind === 'boostMotor') hubState.setPort(port, kind, {deviceId: 38, duty: number});
+    else if (kind === 'boostColorDistance') hubState.setPort(port, kind, {deviceId: 37, color: number});
+    else if (kind === 'distance') hubState.setPort(port, kind, {distance: number});
+    else if (kind === 'color') hubState.setPort(port, kind, {color: number, red: 0, green: 0, blue: 0});
+    else if (kind === 'force') hubState.setPort(port, kind, {force: number, pressed: number > 0});
+    else if (kind === 'matrix3') hubState.setPort(port, kind, {pixels: Array(9).fill(number)});
+    else hubState.setPort(port, 'none');
+};
+
+export const loadSpikeTestRig = hubState => {
+    if (!canConfigureVirtualHub(hubState)) return false;
+    hubState.setFirmwareTarget('official-v3');
+    hubState.setPort('A', 'boostMotor', {deviceId: 38, duty: 0});
+    hubState.setPort('B', 'force', {deviceId: 63, force: 0, pressed: false});
+    hubState.setPort('C', 'color', {deviceId: 61, color: -1, red: 0, green: 0, blue: 0});
+    hubState.setPort('D', 'motor', {deviceId: 75, speed: 0, position: 0});
+    hubState.setPort('E', 'motor', {deviceId: 65, speed: 0, position: 0});
+    hubState.setPort('F', 'boostColorDistance', {deviceId: 37, color: -1});
+    hubState.setSimulationEnabled(true);
+};
+
+export const closeVirtualSpikePanel = () => {
+    if (panel?.unsubscribe) panel.unsubscribe();
+    if (panel?.node?.parentNode) panel.node.parentNode.removeChild(panel.node);
+    panel?.previousFocus?.focus?.();
+    panel = null;
+};
+
+export const openVirtualSpikePanel = hubState => {
+    closeVirtualSpikePanel();
+    const previousFocus = document.activeElement;
+    const configurationControls = [];
+    const refreshConfiguration = () => {
+        const locked = !canConfigureVirtualHub(hubState);
+        for (const control of configurationControls) control.disabled = locked;
+    };
+    const shade = element('div', {role: 'dialog', 'aria-modal': 'true',
+        'aria-label': 'Virtual SPIKE Prime controls', tabindex: '-1',
+        style: 'position:fixed;inset:0;z-index:2147483500;background:rgba(12,16,22,.72);' +
+        'display:flex;align-items:center;justify-content:center;padding:16px;font:14px system-ui'});
+    const card = element('div', {style: 'background:#fff;color:#18212b;border-radius:14px;width:min(680px,100%);' +
+        'max-height:90vh;overflow:auto;padding:18px;box-shadow:0 18px 48px #0008'});
+    card.appendChild(element('h2', {style: 'margin:0 0 6px'}, 'Virtual SPIKE Prime'));
+    card.appendChild(element('p', {style: 'margin:0 0 14px;color:#596675'},
+        'One simulated hub shared by modern BLE and Classic Scratch Link. Disconnect always stops its motors.'));
+
+    const enabled = element('input', {type: 'checkbox'});
+    enabled.checked = hubState.data.simulationEnabled;
+    enabled.addEventListener('change', () => {if (canConfigureVirtualHub(hubState)) hubState.setSimulationEnabled(enabled.checked);});
+    const enabledLabel = element('label', {style: 'display:flex;gap:8px;margin-bottom:12px'});
+    enabledLabel.append(enabled, document.createTextNode('Enable virtual SPIKE simulation'));
+    card.appendChild(enabledLabel);
+
+    const profile = element('select', {'aria-label': 'Firmware profile',
+        style: 'width:100%;padding:8px;margin-bottom:12px'});
+    for (const [value, label] of [
+        ['legacy-v2', 'LEGO SPIKE legacy firmware v2 — Classic'],
+        ['official-v3', 'LEGO SPIKE official firmware v3 — BLE'],
+        ['brickwright', 'Brickwright firmware — Classic + BLE compatibility']
+    ]) profile.appendChild(element('option', {value}, label));
+    profile.value = hubState.data.firmwareTarget;
+    profile.addEventListener('change', () => {if (canConfigureVirtualHub(hubState)) hubState.setFirmwareTarget(profile.value);});
+    card.appendChild(profile);
+
+    const battery = element('input', {type: 'range', min: '0', max: '100', value: String(hubState.data.battery)});
+    const batteryLabel = element('label', {style: 'display:grid;grid-template-columns:110px 1fr 42px;gap:8px'});
+    const batteryValue = element('span', {}, `${hubState.data.battery}%`);
+    battery.addEventListener('input', () => { if (!canConfigureVirtualHub(hubState)) return; hubState.setBattery(battery.value); batteryValue.textContent = `${battery.value}%`; });
+    batteryLabel.append(element('span', {}, 'Battery'), battery, batteryValue);
+    card.appendChild(batteryLabel);
+    const focusable = [enabled, profile, battery];
+    configurationControls.push(enabled, profile, battery);
+
+    const brick = element('div', {style: 'margin-top:14px;padding:14px;border-radius:18px;background:#7654c6;' +
+        'box-shadow:inset 0 -5px 0 #54379d;color:white'});
+    brick.appendChild(element('div', {style: 'text-align:center;font-weight:700;margin-bottom:10px'},
+        'BRICKWRIGHT · SPIKE PRIME'));
+    const portView = element('div', {style: 'display:grid;grid-template-columns:repeat(6,1fr);gap:7px'});
+    const portLabels = [];
+    for (const port of 'ABCDEF') {
+        const socket = element('div', {style: 'background:#241d36;border:3px solid #b9adcf;border-radius:8px;' +
+            'padding:7px 3px;text-align:center;min-width:0'});
+        socket.appendChild(element('strong', {}, port));
+        const status = element('div', {style: 'font-size:10px;overflow:hidden;text-overflow:ellipsis'}, 'empty');
+        socket.appendChild(status);
+        portLabels.push(status);
+        portView.appendChild(socket);
+    }
+    brick.appendChild(portView);
+    card.appendChild(brick);
+    const refreshBrick = () => hubState.data.sensors.forEach((sensor, index) => {
+        if (!sensor) portLabels[index].textContent = 'empty';
+        else if (sensor.kind === 'motor') portLabels[index].textContent = `motor ${hubState.data.motors[index].speed}%`;
+        else if (sensor.kind === 'boostMotor') portLabels[index].textContent = 'Boost motor';
+        else if (sensor.kind === 'boostColorDistance') portLabels[index].textContent = 'Boost sensor';
+        else if (sensor.kind === 'distance') portLabels[index].textContent = `${sensor.distance ?? -1} mm`;
+        else if (sensor.kind === 'force') portLabels[index].textContent = `force ${sensor.force ?? 0}%`;
+        else portLabels[index].textContent = sensor.kind;
+    });
+    refreshBrick();
+    const unsubscribe = hubState.subscribe(() => {refreshBrick();refreshConfiguration();});
+
+    const grid = element('div', {style: 'display:grid;grid-template-columns:40px 140px 1fr;gap:8px;margin-top:14px'});
+    const portControls = [];
+    for (const [index, port] of [...'ABCDEF'].entries()) {
+        const kind = element('select', {'aria-label': `Port ${port} device type`});
+        for (const name of ['none', 'motor', 'boostMotor', 'distance', 'color', 'force',
+            'matrix3', 'boostColorDistance']) {
+            kind.appendChild(element('option', {value: name}, name));
+        }
+        const value = element('input', {type: 'number', value: '0', min: '-1000', max: '1000',
+            'aria-label': `Port ${port} value`});
+        const apply = () => applyVirtualPortInput(hubState, port, kind.value, value.value);
+        kind.addEventListener('change', apply);
+        value.addEventListener('input', apply);
+        focusable.push(kind, value);
+        configurationControls.push(kind, value);
+        portControls.push({kind, value, index});
+        grid.append(element('strong', {}, port), kind, value);
+    }
+    card.appendChild(grid);
+    const preset = element('button', {type: 'button', style: 'margin-top:10px;padding:7px 12px'},
+        'Load A–F test setup');
+    preset.addEventListener('click', () => {
+        if (!canConfigureVirtualHub(hubState)) return;
+        loadSpikeTestRig(hubState);
+        enabled.checked = true;
+        profile.value = 'official-v3';
+        for (const {kind, value, index} of portControls) {
+            const sensor = hubState.data.sensors[index];
+            kind.value = sensor?.kind || 'none';
+            value.value = String(sensor?.speed ?? sensor?.force ?? sensor?.color ?? sensor?.duty ?? 0);
+        }
+    });
+    focusable.push(preset);
+    configurationControls.push(preset);
+    card.appendChild(preset);
+
+    const imu = element('div', {style: 'display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px'});
+    for (const axis of ['yaw', 'pitch', 'roll']) {
+        const input = element('input', {type: 'number', value: String(hubState.data.imu[axis])});
+        input.addEventListener('input', () => {if (canConfigureVirtualHub(hubState)) hubState.setImu({[axis]: Number(input.value)});});
+        focusable.push(input);
+        configurationControls.push(input);
+        const label = element('label', {style: 'display:flex;flex-direction:column;gap:4px'}, axis);
+        label.appendChild(input);
+        imu.appendChild(label);
+    }
+    card.appendChild(imu);
+    // Raw samples are separate from the arena's heading and calibrated UI units.
+    if (hubState.externalBackend?.adapter?.hubIo) {
+        const section = element('div', {style: 'margin-top:14px'});
+        section.appendChild(element('h3', {}, 'Firmware hub inputs'));
+        section.appendChild(element('p', {}, 'IMU values are signed 16-bit raw samples, without physical calibration.'));
+        const available = () => Boolean(hubState.externalBackend?.adapter?.hubIo && !hubState.externalBackend.closed);
+        for (const name of ['left', 'center', 'right', 'bluetooth']) {
+            const label = element('label', {style: 'margin-right:12px'}, name);
+            const input = element('input', {type: 'checkbox', 'aria-label': `Hub ${name} button`});
+            input.checked = hubState.data.buttons[name] ?? false;
+            input.addEventListener('change', () => {
+                if (!available()) return;
+                hubState.data.buttons[name] = input.checked; hubState.changed();
+            });
+            label.appendChild(input); section.appendChild(label); focusable.push(input);
+        }
+        for (const [name, length] of [['temperature', 1], ['angularRate', 3], ['acceleration', 3]]) {
+            for (let i = 0; i < length; i++) {
+                const label = element('label', {style: 'display:flex;gap:8px;margin-top:6px'},
+                    length === 1 ? 'Raw temperature' : `Raw ${name} ${'xyz'[i]}`);
+                const input = element('input', {type: 'number', min: '-32768', max: '32767', step: '1',
+                    'aria-label': length === 1 ? 'Raw temperature' : `Raw ${name} ${'xyz'[i]}`});
+                input.value = String(length === 1 ? hubState.data.imuRaw[name] : hubState.data.imuRaw[name][i]);
+                input.addEventListener('input', () => {
+                    const value = Number(input.value);
+                    if (!available() || input.value.trim() === '' || !Number.isInteger(value) || value < -32768 || value > 32767) return;
+                    if (length === 1) hubState.data.imuRaw[name] = value;
+                    else hubState.data.imuRaw[name][i] = value;
+                    hubState.changed();
+                });
+                label.appendChild(input); section.appendChild(label); focusable.push(input);
+            }
+        }
+        card.appendChild(section);
+    }
+    const close = element('button', {style: 'margin-top:16px;padding:9px 18px'}, 'Done');
+    close.addEventListener('click', () => { unsubscribe(); closeVirtualSpikePanel(); });
+    focusable.push(close);
+    card.appendChild(close);
+    shade.appendChild(card);
+    document.body.appendChild(shade);
+    shade.addEventListener('keydown', event => {
+        if (event.key === 'Escape') { event.preventDefault(); closeVirtualSpikePanel(); return; }
+        if (event.key !== 'Tab') return;
+        const at = focusable.indexOf(document.activeElement);
+        const next = event.shiftKey ? (at <= 0 ? focusable.length - 1 : at - 1) :
+            (at < 0 || at === focusable.length - 1 ? 0 : at + 1);
+        event.preventDefault(); focusable[next].focus();
+    });
+    panel = {node: shade, unsubscribe, previousFocus};
+    refreshConfiguration();
+    enabled.focus();
+    return shade;
+};
+
+export default function initVirtualSpikePanel (hubState) {
+    if (typeof window === 'undefined') return 'no window';
+    window.addEventListener('bw-open-virtual-spike', () => openVirtualSpikePanel(hubState));
+    return 'installed';
+}

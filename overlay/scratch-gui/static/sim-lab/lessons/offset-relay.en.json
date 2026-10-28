@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "id": "offset-relay",
+  "language": "en",
+  "what": "A Schmidt offset coupling with three discs on parallel shafts. Motor A turns the input shaft directly (1:1). A floating middle disc sits between input and output. The output shaft runs in a bearing carriage that motor B slides sideways through a rack, changing the offset between the input and output axes. Each neighbouring pair of discs is joined by four equal 32 mm links that all stay parallel to each other. Only the input angle and the carriage position are commanded; the middle disc and the output turn passively. The program turns the input two revolutions at a fixed 32 mm offset, then two revolutions each while the offset changes 32 → 48, 48 → 24 and 24 → 32 mm, runs the same three changes backwards, and finishes with two revolutions back at 32 mm.",
+  "try": [
+    "Reset, then Run. In stage 1 (fixed 32 mm offset) put a mark on the input, middle and output discs in your mind and compare their angles at the end of each revolution.",
+    "Stages 2–4 move the output shaft while the input turns. Predict: does the output lag behind, run ahead, or stay exactly in step with the input?",
+    "Watch the middle disc’s centre rather than its angle. Where does it go when the offset grows to 48 mm, and where when it shrinks to 24 mm?",
+    "Stages 5–7 repeat the offset changes with the input turning backwards; stage 8 returns at fixed offset. Compare the matching stages forward and back."
+  ],
+  "why": "In each link set, every link joins a peg on one disc to the matching peg on the next disc, and all four links have the same length and stay parallel. A quadrilateral with two equal and parallel opposite sides is a parallelogram, so the second disc keeps exactly the orientation of the first: it may shift sideways but cannot turn relative to it. Applied twice, this gives output angle = middle angle = input angle at every instant, for any offset within the limits and even while the offset is changing. What the offset does change is where the middle disc sits. Its centre must be one link length L from both shaft axes, so it lies halfway between them, at a distance h = √(L² − (e/2)²) from the line joining the axes.",
+  "matters": "Schmidt couplings join shafts whose spacing changes in service, for example rollers in printing presses and paper machines, while keeping exactly constant speed with only pin joints. Compare Crossglide and Offset Orbit: an Oldham coupling also gives 1:1, but through sliding faces. A Cardan joint (Phase Bridge) handles an angle between shafts rather than a parallel offset, and adds speed ripple.",
+  "question": "While motor B moves the output shaft from 32 mm to 48 mm offset during a two-turn input move, does the output fall behind or run ahead of the input? Where does the middle disc’s centre go?",
+  "answer": "Neither. The parallelograms force output angle = input angle at every moment, so the output completes exactly two turns in step with the input. The middle disc’s centre moves instead: with L = 32 mm it sits √(32² − 16²) ≈ 27.7 mm from the line joining the axes at 32 mm offset and √(32² − 24²) ≈ 21.2 mm at 48 mm offset, always halfway between the axes. It would reach that line only at e = 2L = 64 mm, the stretched dead position that the program avoids.",
+  "further": [
+    "Calculate h for the 24 mm stages (≈ 29.7 mm) and compare with where the middle disc’s centre actually settles.",
+    "Why four links per stage? Two parallel links alone can flip into a crossed branch when they line up with the line between the centres. With pegs at 90° spacing, at least two links are always well away from that. The classic coupling uses three at 120°. In a rigid-body simulator the extra links are redundant constraints, so small geometry errors can turn into forces fighting each other.",
+    "The working range has two ends: at zero offset the middle disc could swing freely around the common axis, and at 2L = 64 mm the links lock straight. The program stays between 24 and 48 mm; its software envelope stops at 23.2 and 48.8 mm.",
+    "In a headless Robot Lab simulation of the shipped program, measured from the disc poses relative to the frame: output and middle disc stayed within 0.1° of the input over all 2,880° and every offset change, and the middle disc’s centre sat within 0.04 mm of the predicted h. That is a simulation observation, not a physical test."
+  ],
+  "formula": "θ_out = θ_mid = θ_in for every offset 0 < e < 2L. Middle-disc centre: halfway between the axes (e/2 from each), at h = √(L² − e²/4) from the line joining them, L = 32 mm. e = 24 mm → h ≈ 29.66 mm; e = 32 mm → h ≈ 27.71 mm; e = 48 mm → h ≈ 21.17 mm. Offset e = 32 mm − (π/30 mm per degree) × motor B angle (B = −152.8° → 48 mm, B = +76.4° → 24 mm). Input angle = motor A angle.",
+  "related": [
+    "crossglide.ldr",
+    "offset-orbit.ldr",
+    "phase-bridge.ldr"
+  ]
+}

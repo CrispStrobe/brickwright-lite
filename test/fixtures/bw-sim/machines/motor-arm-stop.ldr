@@ -1,0 +1,24 @@
+0 motor-arm-stop (Brickwright Robot Lab validation machine)
+0 Name: motor-arm-stop.ldr
+0 Author: Brickwright
+0 !LDRAW_ORG Unofficial_Model
+0 // Motor arm and stop post (Robot Lab validation, test/bw-sim-validation.test.mjs).
+0 // A SPIKE medium motor (port A, output up); a beam 5 lies on its output along z (friction pins in out2/out3),
+0 // the arm (layer y -70..-50). A beam 7 stands upright beside the housing (holes along x), pinned into the
+0 // housing's side holes s1/s5 (x 10..30, y -20 and 20, z -20) by friction pins: it is rigid with the housing
+0 // and its top end (y -69) reaches into the arm's layer at x 30..50, z -29..-11 - the stop the arm swings into.
+0 !BW ID motor
+0 !BW PORT A
+1 71 0 0 0 1 0 0 0 1 0 0 0 1 54696p01.dat
+0 !BW ID arm
+1 4 0 -60 0 1 0 0 0 1 0 0 0 1 32316.dat
+0 !BW ID armPin1
+1 0 0 -50 20 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID armPin2
+1 0 0 -50 -20 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID post
+1 72 40 0 -20 0 1 0 0 0 1 1 0 0 32524.dat
+0 !BW ID postPin1
+1 0 30 -20 -20 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID postPin2
+1 0 30 20 -20 1 0 0 0 1 0 0 0 1 2780.dat

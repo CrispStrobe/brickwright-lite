@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "id": "samebeat",
+  "language": "en",
+  "what": "Reversible compound pendulum — Kater principle. A reversible compound pendulum. One motor briefly moves the support of a separate rigid body and then holds. Rehang the same body from a different stock hole and compare the free-swing period. The paired suspension distances are unequal; a third pivot provides a physical comparison. A brief motor pulse moves a support and releases a passive rigid pendulum. Rehang the same body at its unequal paired pivot and compare periods; then test a third suspension with the same parts and program.",
+  "try": [
+    "Load the model, press Reset, then Run. After a 1 s hold, the support moves to +8°, waits 0.12 s, returns to 0° and holds for 22 s. Watch the passive pendulum during that final hold.",
+    "Count complete swings from one crossing of the downward position to the next crossing in the same direction. Do not use a half-swing or the motor encoder as the period.",
+    "Predict what turning the same body over and hanging it from the paired hole will do. Load samebeat-conjugate.ldr, reset and repeat with the same program.",
+    "Repeat with samebeat-control.ldr. Compare its period, its swing amplitude and the held support position with the paired cases."
+  ],
+  "why": "A rigid body has distributed mass. Its small-angle period depends on the ratio of rotational inertia about the pivot to the gravitational restoring torque. Two unequal pivot-to-centre distances can give the same ratio when their product equals the central moment of inertia divided by the total mass. This is conjugate suspension. A third pivot changes that balance even though the body and input program stay the same.",
+  "matters": "Henry Kater used this principle in 1817 to measure gravity: he adjusted two knife edges on one bar until the periods matched, then the distance between them was the effective length, and g = 4π²L/T² followed without knowing the centre of mass. In the simulator this body, hung from holes 23.8 mm and 40.2 mm from its centre of mass, swings with periods of 0.50760 s and 0.50759 s. The predictions use the simulator's own masses and shapes; a real gravity measurement would need calibration.",
+  "question": "Can hanging the same body from a hole closer to its centre of mass make it swing more slowly? Why might two unequal suspension distances have nearly the same period?",
+  "answer": "Yes. Near the centre of mass the restoring torque becomes weak, while the body retains rotational inertia. The period depends on d + k²/d, where k² = I_G/M. Two unequal positive distances d1 and d2 give the same ideal small-angle period when d1*d2 = k². Equal periods alone do not establish conjugacy if the two distances are simply equal.",
+  "further": [
+    "Compare the exact prepared-body predictions with periods measured from actual passive motion. Keep the source prediction separate from the measurement.",
+    "Inspect the swing amplitudes. Finite swings are slightly slower than the infinitesimal-amplitude limit, so different amplitudes can create a small period difference.",
+    "Compare Pendulum Array, which changes the lengths and mass distributions of three different arms. Here the rigid body is the same and its suspension changes.",
+    "A physical Technic bearing has friction and play. The supplied numerical experiment does not establish a precision gravity instrument."
+  ],
+  "formula": "T0 = 2π sqrt[(I_G + M d²)/(M g d)] = 2π sqrt[(d + k_G²/d)/g], k_G²=I_G/M. For unequal conjugate distances d1*d2=k_G². For collinear opposite-side pivots, D=d1+d2 and T0=2π sqrt(D/g). Finite amplitude A in radians: T/T0≈1+A²/16.",
+  "related": [
+    "pendulum-array.ldr",
+    "cascade.ldr"
+  ]
+}

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SYNTHETIC, hand-made: NOT LDD data. A 3L Technic axle drawn from its end face at the
+     origin along -z (angle -90 about x turns the Axel's local +y to -z), 2.4 LDD units long. -->
+<LEGOPrimitive versionMajor="0" versionMinor="1">
+  <Annotations><Annotation designname="Synthetic Technic Axle 3" /></Annotations>
+  <Connectivity>
+    <Axel type="2" length="2.4" angle="-90" ax="1" ay="0" az="0" tx="0" ty="0" tz="0" />
+  </Connectivity>
+</LEGOPrimitive>

@@ -1,0 +1,518 @@
+#!/usr/bin/env node
+/**
+ * End-to-end proof of the native broker boundary in a REAL packaged desktop app.
+ *
+ * Everything else that tests this boundary tests a model of it. The Node suites read Rust and
+ * JSON as text. The browser gates run without Tauri, so `__TAURI_INTERNALS__` is a stub written
+ * by the gate itself — and an assertion against a stub you wrote proves the stub agrees with
+ * itself, which is the failure this repository has spent a day cataloguing. The packaged desktop
+ * gate builds the app and stops; it never launches it.
+ *
+ * This launches it. tauri-driver speaks WebDriver to the real binary, so the script below runs
+ * inside the app's MAIN webview and every `invoke` crosses the real Tauri ACL — the same ACL
+ * that `native_broker_ready` widens at runtime, in the same process, with the same capabilities.
+ *
+ * What it proves, and each is unprovable anywhere else:
+ *
+ *   ACK REACHED THE ACL.  `native_broker_audit` is granted ONLY by the runtime capability that
+ *   `native_broker_ready` adds. If the broker realm failed to load, failed to install its
+ *   receiver, or failed to acknowledge, that capability was never added and this invoke is
+ *   refused by Tauri before any of our code runs. A resolving audit call is therefore an
+ *   end-to-end proof of the whole C5d chain, observed from the editor.
+ *
+ *   THE EDITOR HOLDS NO TRANSPORT.  `native_broker_reply` and `native_broker_lease` are granted
+ *   to the broker webview alone. Called from main they must be refused BY THE ACL, not by our
+ *   label check — the label check is the second line, and this proves the first one exists.
+ *
+ * Usage: node scripts/verify-native-broker-e2e.mjs <path-to-app-binary>
+ */
+import {spawnOwnedDriver} from './lib/owned-driver.mjs';
+import {existsSync} from 'node:fs';
+import path from 'node:path';
+
+const binary = process.argv[2];
+if (!binary || !existsSync(binary)) {
+    console.error(`usage: node scripts/verify-native-broker-e2e.mjs <app-binary>\n  not found: ${binary}`);
+    process.exit(2);
+}
+const DRIVER_PORT = Number(process.env.TAURI_DRIVER_PORT || 4444);
+const base = `http://127.0.0.1:${DRIVER_PORT}`;
+// The distro puts WebKitWebDriver in different places depending on the webkit2gtk packaging;
+// resolve it rather than hard-coding one and failing with a path error that looks like a
+// boundary error.
+const nativeDriver = process.env.NATIVE_DRIVER ||
+    ['/usr/bin/WebKitWebDriver', '/usr/lib/x86_64-linux-gnu/webkit2gtk-4.1/WebKitWebDriver',
+        '/usr/bin/webkitwebdriver'].find(candidate => existsSync(candidate)) || '/usr/bin/WebKitWebDriver';
+
+const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+const call = async (method, url, body) => {
+    const response = await fetch(base + url, {
+        method,
+        headers: {'Content-Type': 'application/json'},
+        body: body === undefined ? undefined : JSON.stringify(body)
+    });
+    const text = await response.text();
+    let parsed;
+    try { parsed = JSON.parse(text); } catch { parsed = {raw: text}; }
+    return {status: response.status, body: parsed};
+};
+
+// Resolve tauri-driver from where cargo installs it rather than from PATH. Binding a gate to
+// whatever the machine happens to have is the species stc-compiler-70 found the hard way: their
+// assembler suites called sdcc by bare name, bound to the developer's toolchain, and never once
+// exercised the binaries the service ships. `audit-gate-shapes.mjs` flagged this very line, which
+// is the sweep catching its own author. Prefer the known path; fall back to PATH but SAY so.
+const cargoBin = path.join(process.env.CARGO_HOME || path.join(process.env.HOME || '', '.cargo'), 'bin');
+const driverBin = [path.join(cargoBin, 'tauri-driver'), '/usr/local/bin/tauri-driver']
+    .find(candidate => existsSync(candidate));
+if (!driverBin) {
+    console.error(`tauri-driver not found in ${cargoBin} — install it with \`cargo install tauri-driver --locked\``);
+    process.exit(2);
+}
+console.log(`driver binary: ${driverBin}`);
+const {child: driver, stop: stopDriver} = spawnOwnedDriver(driverBin, ['--port', String(DRIVER_PORT), '--native-driver', nativeDriver],
+    {stdio: ['ignore', 'pipe', 'pipe']});
+/**
+ * Which binaries produced this verdict. A gate that fails closed on a tool's ABSENCE still says
+ * nothing about its IDENTITY, and a different WebKitWebDriver is a different oracle. This does
+ * not pin them; it records them, so the artifact can be compared across runs.
+ */
+const toolVersions = async () => {
+    const {execFile} = await import('node:child_process');
+    const {promisify} = await import('node:util');
+    const run = promisify(execFile);
+    const out = {node: process.version, platform: `${process.platform}/${process.arch}`};
+    for (const [name, bin, args] of [
+        ['tauriDriver', driverBin, ['--help']],
+        ['webkitDriver', nativeDriver, ['--version']]
+    ]) {
+        try {
+            const {stdout, stderr} = await run(bin, args, {timeout: 5000});
+            out[name] = String(stdout || stderr).split('\n')[0].trim().slice(0, 80) || 'present';
+        } catch (error) {
+            out[name] = `unreadable: ${(error && error.message ? error.message : String(error)).slice(0, 60)}`;
+        }
+    }
+    return out;
+};
+
+const driverLog = [];
+driver.stdout.on('data', chunk => driverLog.push(String(chunk)));
+driver.stderr.on('data', chunk => driverLog.push(String(chunk)));
+
+let session = null;
+const shutdown = async () => {
+    if (session) await call('DELETE', `/session/${session}`).catch(() => {});
+    stopDriver();
+};
+
+const fail = async message => {
+    console.error(`FAIL: ${message}`);
+    if (driverLog.length) console.error('--- tauri-driver ---\n' + driverLog.join('').slice(-4000));
+    await shutdown();
+    process.exit(1);
+};
+
+try {
+    // Wait for the driver to bind, and FAIL if it never does. The first version swallowed every
+    // attempt and fell through to POST /session, which then reported `fetch failed` — an error
+    // about the harness's own socket, dressed up as an error about the app. A wait loop that
+    // cannot report never-ready is the same shape as a gate that cannot fail.
+    let ready = false;
+    for (let attempt = 0; attempt < 60 && !ready; attempt++) {
+        try { await call('GET', '/status'); ready = true; } catch { await sleep(500); }
+        if (driver.exitCode !== null) {
+            await fail(`tauri-driver exited with code ${driver.exitCode} before accepting a connection`);
+        }
+    }
+    if (!ready) await fail(`tauri-driver never accepted a connection on ${base} after 30s`);
+
+    console.log(`tauri-driver ready on ${base}; native driver ${nativeDriver}`);
+    const created = await call('POST', '/session', {
+        capabilities: {alwaysMatch: {'tauri:options': {application: path.resolve(binary)}}}
+    });
+    session = created.body?.value?.sessionId;
+    if (!session) await fail(`no WebDriver session: ${JSON.stringify(created.body).slice(0, 500)}`);
+
+    // The broker webview loads and acknowledges at document start, but the app has only just
+    // launched; give the realm a bounded moment to exist before asking the editor about it.
+    const evaluate = async script => {
+        const result = await call('POST', `/session/${session}/execute/async`, {script, args: []});
+        return result.body?.value;
+    };
+
+    const probe = `
+        const done = arguments[arguments.length - 1];
+        const invoke = globalThis.__TAURI_INTERNALS__ && globalThis.__TAURI_INTERNALS__.invoke;
+        if (typeof invoke !== 'function') { done({fatal: 'no __TAURI_INTERNALS__.invoke in the main webview'}); return; }
+        const attempt = async (name, args) => {
+            try { return {name, ok: true, value: await invoke(name, args)}; }
+            catch (error) { return {name, ok: false, error: String(error && error.message || error)}; }
+        };
+        (async () => {
+            // Retry the audit briefly: the acknowledgement is asynchronous and the editor may be
+            // ready first. A refusal that never becomes a grant is a real failure; one that
+            // resolves on the second look is a race in the TEST, not in the boundary.
+            let audit = await attempt('native_broker_audit');
+            for (let i = 0; i < 20 && !audit.ok; i++) {
+                await new Promise(r => setTimeout(r, 250));
+                audit = await attempt('native_broker_audit');
+            }
+            const reply = await attempt('native_broker_reply',
+                {session: '0'.repeat(64), correlation: '0'.repeat(64), requestId: 0, payload: '{}'});
+            const lease = await attempt('native_broker_lease');
+            done({audit, reply, lease});
+        })();`;
+
+    // Before judging, look at the broker realm itself. A refused audit read has three very
+    // different causes — the realm never loaded, its receiver never installed, or the
+    // acknowledgement was refused — and they are indistinguishable from the editor, because the
+    // bootstrap deliberately swallows a failed acknowledgement and disposes itself quietly.
+    // A harness that cannot tell them apart makes its own verdict unactionable.
+    const handles = (await call('GET', `/session/${session}/window/handles`)).body?.value || [];
+    const realms = [];
+    for (const handle of handles) {
+        await call('POST', `/session/${session}/window`, {handle});
+        const seen = await call('POST', `/session/${session}/execute/sync`, {
+            script: `return {
+                href: String(globalThis.location && globalThis.location.href),
+                origin: String(globalThis.location && globalThis.location.origin),
+                receiver: typeof globalThis.__brickwrightBrokerReceive,
+                factoryStillThere: typeof globalThis.__brickwrightInstallBrokerHost,
+                tauri: typeof (globalThis.__TAURI_INTERNALS__ || {}).invoke,
+                // Tauri injects __TAURI_INTERNALS__ and the IPC regardless of whether the
+                // DOCUMENT loaded, so their presence is not evidence that the frontend is
+                // there. Six rounds were spent reading the broker realm's failure as
+                // broker-specific without ever checking whether the EDITOR had loaded either.
+                title: String(globalThis.document && globalThis.document.title),
+                doc: String(globalThis.document && globalThis.document.documentElement &&
+                    globalThis.document.documentElement.outerHTML || '').slice(0, 120)
+            };`, args: []
+        });
+        realms.push({handle, ...(seen.body?.value || {error: 'unreadable'})});
+    }
+    console.log('realms: ' + JSON.stringify(realms, null, 1));
+
+    // Residual risk 1, partially closed: this gate fails closed when its tools are ABSENT, and
+    // nothing pinned WHICH tools. Recording their versions beside the result does not pin them
+    // either — but it makes a changed oracle VISIBLE in the evidence artifact instead of
+    // inferred, which is the difference between noticing and not.
+    console.log('tools: ' + JSON.stringify(await toolVersions(), null, 1));
+    // Select the editor by IDENTITY, never by position. This read `handles[0]` until the broker
+    // realm started loading its document: a second realm then appeared, the order was not the one
+    // assumed, and the probe ran INSIDE the broker — where `native_broker_audit` is refused by
+    // design, because it is bound to the main label. The harness reported that as "the boundary
+    // is broken" when the boundary was working correctly and the harness was standing in the
+    // wrong room. A gate that identifies its subject positionally asserts about whatever is at
+    // that index.
+    const isBroker = realm => /capability-broker\.html/.test(String(realm.href));
+    const editors = realms.filter(realm => !isBroker(realm));
+    const brokers = realms.filter(isBroker);
+    if (editors.length !== 1) {
+        await fail(`expected exactly one editor realm, found ${editors.length}: ` +
+            JSON.stringify(realms.map(r => r.href)));
+    }
+    if (brokers.length !== 1) {
+        await fail(`expected exactly one broker realm, found ${brokers.length}: ` +
+            JSON.stringify(realms.map(r => r.href)));
+    }
+    // Zero page errors, using the signal the realm already emits: the init script's catch writes
+    // `document.title = 'BROKER-ERR ' + message`, which survives whether or not IPC or CSP allow
+    // anything else. CP3-E asks for a slice with no page errors; this is the realm's own word for
+    // one, and it is the DOCUMENT title (not `webview.title()`, which reports the WINDOW's and is
+    // never synced from the page).
+    for (const realm of realms) {
+        if (/^BROKER-ERR/.test(String(realm.title))) {
+            await fail(`a realm reported its own initialisation failure: ${realm.title}`);
+        }
+    }
+
+    // The realm must hold its OWN document. It rendered WebKit's "The URL can't be shown" page
+    // for seven CI runs while every other signal looked healthy, so this is asserted, not assumed.
+    if (!/Capability Broker/.test(String(brokers[0].doc) + String(brokers[0].title))) {
+        await fail('the broker realm did not load its document: ' +
+            JSON.stringify({title: brokers[0].title, doc: String(brokers[0].doc).slice(0, 160)}));
+    }
+    // No reusable handle, asserted rather than logged. All four of these facts were already in
+    // the realms dump and nothing checked any of them — the "collected but never gated" shape:
+    // a measurement printed beside a verdict reads as though it were part of it.
+    if (brokers[0].receiver !== 'function') {
+        await fail(`the broker host did not install: receiver is ${brokers[0].receiver}`);
+    }
+    if (brokers[0].factoryStillThere !== 'undefined') {
+        await fail('__brickwrightInstallBrokerHost survived installation — the factory is ' +
+            'one-shot precisely so a second host cannot be installed over the first');
+    }
+    for (const [what, value] of [['a broker receiver', editors[0].receiver],
+        ['the broker host factory', editors[0].factoryStillThere]]) {
+        if (value !== 'undefined') await fail(`the EDITOR realm exposes ${what} (${value})`);
+    }
+
+    await call('POST', `/session/${session}/window`, {handle: editors[0].handle});
+
+    const outcome = await evaluate(probe);
+    if (!outcome || outcome.fatal) await fail(outcome?.fatal || 'the probe returned nothing');
+
+    if (!outcome.audit.ok) {
+        await fail('the editor could not read the broker audit, so `native_broker_ready` never ' +
+            `granted its runtime capability: ${outcome.audit.error}`);
+    }
+    if (!Array.isArray(outcome.audit.value)) {
+        await fail(`the audit did not return rows: ${JSON.stringify(outcome.audit.value).slice(0, 200)}`);
+    }
+    if (outcome.reply.ok) await fail('the EDITOR was able to call native_broker_reply — the broker half of the ACL is not disjoint');
+    if (outcome.lease.ok) await fail('the EDITOR was able to mint a lease — a semantic grant reached the wrong webview');
+
+    // ── CP3-D1: one real semantic operation, driven end to end ────────────────────────────
+    // Until this ran the audit returned ZERO rows, so "the audit is readable" was true of an
+    // empty list and proved only the grant. A vertical slice has to actually cross the boundary.
+    const before = outcome.audit.value.length;
+    await call('POST', `/session/${session}/window`, {handle: brokers[0].handle});
+    const slice = await evaluate(`
+        const done = arguments[arguments.length - 1];
+        (async () => {
+            const invoke = globalThis.__TAURI_INTERNALS__ && globalThis.__TAURI_INTERNALS__.invoke;
+            if (typeof invoke !== 'function') { done({fatal: 'the broker realm has no invoke'}); return; }
+            // Each call reports separately. Wrapping the pair in one try produced exactly one
+            // word — "capability refused" — with no way to tell WHICH call refused or why, which
+            // is the undiagnosable-diagnostic shape this repository exists to catch.
+            let lease;
+            try { lease = await invoke('native_broker_lease'); }
+            catch (error) { done({fatal: 'native_broker_lease refused: ' + String(error)}); return; }
+
+            // sequence 0, because a fresh lease's next_sequence IS 0 and authorize() denies
+            // OutOfSequence on anything else. resource 'platform/default', the name
+            // Resource::parse accepts — 'platform' is an UnknownResource and denies identically,
+            // so a wrong name here would have looked like a broken boundary.
+            const call = {lease, sequence: 0, operation: 'platform.kind.read', resource: 'platform/default', args: {}};
+            let value;
+            try { value = await invoke('native_broker_invoke', call); }
+            catch (error) { done({fatal: 'native_broker_invoke refused: ' + String(error)}); return; }
+
+            // Re-sending the SAME sequence must be refused: it was consumed above, so this is a
+            // replay. An executor this side-effect-free would otherwise answer twice with
+            // nothing visibly going wrong.
+            let replay;
+            try { replay = {ok: true, value: await invoke('native_broker_invoke', call)}; }
+            catch (error) { replay = {ok: false, error: String(error)}; }
+            done({lease, value, replay});
+        })();`);
+    if (!slice || slice.fatal) await fail(`the semantic slice did not run: ${slice && slice.fatal}`);
+
+    // The value is the platform the runner actually is — asserted against the harness's own
+    // view of the OS, so this cannot pass by agreeing with itself.
+    const expected = process.platform === 'darwin' ? 'macos' : process.platform === 'win32' ? 'windows' : 'linux';
+    if (slice.value !== expected) {
+        await fail(`platform.kind.read returned ${JSON.stringify(slice.value)}, expected ${expected}`);
+    }
+    if (slice.replay.ok) {
+        await fail(`a replayed sequence was answered: ${JSON.stringify(slice.replay.value)} — the sequence is not a guard`);
+    }
+
+    // Back to the editor: the operation must now be VISIBLE in the audit, and still redacted.
+    await call('POST', `/session/${session}/window`, {handle: editors[0].handle});
+    const after = await evaluate(`
+        const done = arguments[arguments.length - 1];
+        (async () => {
+            try { done({ok: true, rows: await globalThis.__TAURI_INTERNALS__.invoke('native_broker_audit')}); }
+            catch (error) { done({ok: false, error: String((error && error.message) || error)}); }
+        })();`);
+    if (!after) await fail('the audit re-read returned nothing from the editor realm');
+    if (!after.ok) await fail(`the editor could not re-read the audit after the operation: ${after.error}`);
+    if (!(after.rows.length > before)) {
+        await fail(`the audit did not record the operation: ${before} row(s) before, ${after.rows.length} after`);
+    }
+    const recorded = JSON.stringify(after.rows);
+    for (const [what, secret] of [['the lease id', slice.lease], ['the result', slice.value]]) {
+        if (recorded.includes(secret)) {
+            await fail(`the audit leaked ${what} to the editor: ${recorded.slice(0, 200)}`);
+        }
+    }
+    if (!after.rows.some(row => row.operation === 'platform.kind.read' && row.decision === 'allowed')) {
+        await fail(`no allowed platform.kind.read row in the audit: ${recorded.slice(0, 300)}`);
+    }
+
+    // ── CP3-D1: JavaScript and Rust return the SAME platform result ───────────────────────
+    // The clause this lane could not close until the boundary worked. It cannot be tested in the
+    // browser gate: there is no Tauri there, `__TAURI_INTERNALS__` is a stub, and a same-result
+    // assertion against a stub proves only that the stub agrees with itself — the
+    // doubles-with-no-producer species already in this repository's catalogue.
+    //
+    // The EDITOR realm drives it, through the transport, exactly as the VM's handler does: name
+    // the operation, name no resource, hold no lease. `slice.value` above is the same operation
+    // reached the other way — directly from the broker realm — so the two must agree.
+    await call('POST', `/session/${session}/window`, {handle: editors[0].handle});
+    const viaJs = await evaluate(`
+        const done = arguments[arguments.length - 1];
+        (async () => {
+            try {
+                const invoke = globalThis.__TAURI_INTERNALS__.invoke;
+                const brokerSession = await invoke('native_broker_open');
+                const raw = await invoke('native_broker_request', {
+                    session: brokerSession, requestId: 0,
+                    payload: JSON.stringify({kind: 'capability', operation: 'platform.kind.read', args: {}})
+                });
+                done({ok: true, raw});
+            } catch (error) { done({ok: false, error: String((error && error.message) || error)}); }
+        })();`);
+    if (!viaJs || !viaJs.ok) {
+        await fail(`the JavaScript path could not reach platform.kind.read: ${viaJs && viaJs.error}`);
+    }
+    let jsReply;
+    try {
+        jsReply = JSON.parse(viaJs.raw);
+    } catch (error) {
+        await fail(`the JavaScript path got a non-JSON reply: ${String(viaJs.raw).slice(0, 200)}`);
+    }
+    if (jsReply.kind !== 'capability' || typeof jsReply.result !== 'string') {
+        await fail(`the JavaScript path got ${JSON.stringify(jsReply).slice(0, 200)}, not a capability result`);
+    }
+    if (jsReply.result !== slice.value) {
+        await fail(`JavaScript and Rust disagree: JS said ${JSON.stringify(jsReply.result)}, ` +
+            `the native executor said ${JSON.stringify(slice.value)}`);
+    }
+    // And the editor still holds nothing it could reuse: the same call again must open its own
+    // round trip, never replay. A second request at the SAME id is a replay and must be refused.
+    const replayed = await evaluate(`
+        const done = arguments[arguments.length - 1];
+        (async () => {
+            try {
+                const invoke = globalThis.__TAURI_INTERNALS__.invoke;
+                const brokerSession = await invoke('native_broker_open');
+                await invoke('native_broker_request', {session: brokerSession, requestId: 0,
+                    payload: JSON.stringify({kind: 'capability', operation: 'platform.kind.read', args: {}})});
+                const again = await invoke('native_broker_request', {session: brokerSession, requestId: 0,
+                    payload: JSON.stringify({kind: 'capability', operation: 'platform.kind.read', args: {}})});
+                done({ok: true, again});
+            } catch (error) { done({ok: false, error: String((error && error.message) || error)}); }
+        })();`);
+    if (replayed && replayed.ok) {
+        await fail(`a replayed request id was answered: ${JSON.stringify(replayed.again).slice(0, 200)}`);
+    }
+
+    // ── CP3-D2: the TTL is enforced against the REAL clock ────────────────────────────────
+    // `expiry_boundary_and_revocation_are_enforced` proves the rule with an INJECTED `now`, which
+    // says nothing about whether the running host advances time the way the policy expects.
+    // lease_ttl is 60_000ms, so this waits it out. The wait is on the HARNESS side, in two short
+    // scripts: a 61s sleep inside the page would exceed WebDriver's script timeout and report as
+    // a driver error rather than as the thing being measured.
+    await call('POST', `/session/${session}/window`, {handle: brokers[0].handle});
+    const aged = await evaluate(`
+        const done = arguments[arguments.length - 1];
+        globalThis.__TAURI_INTERNALS__.invoke('native_broker_lease')
+            .then(lease => done({lease}))
+            .catch(error => done({fatal: 'could not mint a lease to age: ' + String(error)}));`);
+    if (!aged || aged.fatal) await fail(`the expiry check could not start: ${aged && aged.fatal}`);
+    await sleep(61000);
+    const afterTtl = await evaluate(`
+        const done = arguments[arguments.length - 1];
+        globalThis.__TAURI_INTERNALS__.invoke('native_broker_invoke', {
+            lease: ${JSON.stringify(aged.lease)}, sequence: 0,
+            operation: 'platform.kind.read', resource: 'platform/default', args: {}
+        }).then(value => done({ok: true, value})).catch(error => done({ok: false, error: String(error)}));`);
+    if (!afterTtl) await fail('the post-TTL invoke returned nothing');
+    if (afterTtl.ok) {
+        await fail('a lease older than its 60s TTL still authorised a call ' +
+            `(returned ${JSON.stringify(afterTtl.value)}) — the TTL is enforced against the ` +
+            'injected clock the unit test uses, but not against the real one');
+    }
+
+    // ── CP3-D2 (lifecycle half): a navigation attempt must leave ZERO stale authority ──────
+    // The realm guard denies any navigation away from its own document AND revokes on the way
+    // past. Proving the denial alone would be half a gate: the interesting claim is that the
+    // authority already handed out stops working, not that the page stayed put.
+    await call('POST', `/session/${session}/window`, {handle: brokers[0].handle});
+    const lifecycle = await evaluate(`
+        const done = arguments[arguments.length - 1];
+        (async () => {
+            const invoke = globalThis.__TAURI_INTERNALS__.invoke;
+            const lease = ${JSON.stringify(slice.lease)};
+            try { globalThis.location.href = 'tauri://localhost/index.html'; } catch (error) {}
+            // The navigation is handled on the Rust side; give it a moment to be refused.
+            await new Promise(resolve => setTimeout(resolve, 500));
+            const still = {href: String(globalThis.location.href)};
+            // sequence 1 is the NEXT legitimate sequence for this lease, so a refusal here is
+            // revocation and not the replay guard firing again.
+            try {
+                still.after = {ok: true, value: await invoke('native_broker_invoke', {
+                    lease, sequence: 1, operation: 'platform.kind.read', resource: 'platform/default', args: {}
+                })};
+            } catch (error) { still.after = {ok: false, error: String(error)}; }
+            done(still);
+        })();`);
+    if (!lifecycle) await fail('the lifecycle probe returned nothing');
+    if (!/capability-broker\.html/.test(lifecycle.href)) {
+        await fail(`the realm navigated away from its document: ${lifecycle.href}`);
+    }
+    if (lifecycle.after.ok) {
+        await fail('a lease minted before a refused navigation still authorised a call ' +
+            `afterwards (returned ${JSON.stringify(lifecycle.after.value)}) — the revocation on ` +
+            'the navigation path is not reaching the policy');
+    }
+
+    await call('POST', `/session/${session}/window`, {handle: editors[0].handle});
+    const revoked = await evaluate(`
+        const done = arguments[arguments.length - 1];
+        (async () => {
+            try { done({ok: true, rows: await globalThis.__TAURI_INTERNALS__.invoke('native_broker_audit')}); }
+            catch (error) { done({ok: false, error: String((error && error.message) || error)}); }
+        })();`);
+    if (!revoked || !revoked.ok) await fail(`could not read the audit after revocation: ${revoked && revoked.error}`);
+    if (!revoked.rows.some(row => row.decision === 'revoked')) {
+        await fail('the revocation is not visible in the diagnostics the learner can see: ' +
+            JSON.stringify(revoked.rows).slice(0, 300));
+    }
+
+    // The app's own trace, on success as well as failure. It was printed only by fail(), so the
+    // evidence artifact carried a PASS line asserting the acknowledgement happened and nothing
+    // showing it — the reader had to take the assertion's word for the thing it asserts. These
+    // are the broker's `[broker] …` eprintln lines, picked out of the driver's stream.
+    const brokerTrace = driverLog.join('').split('\n').filter(line => line.includes('[broker]'));
+    if (brokerTrace.length) console.log('--- broker trace ---\n' + brokerTrace.join('\n'));
+    else console.log('--- broker trace --- (none captured; the app printed no [broker] lines)');
+
+    // ── CP3-D2: RELOAD leaves zero stale authority, asserted rather than inferred ──────────
+    // `canonical_reload_revokes_before_allowing_fresh_document` proves the rule with a synthetic
+    // event pair. The navigation case shows that real page events reach these handlers, but that
+    // is an argument about shared plumbing, not a demonstration of THIS path. Recorded as an open
+    // residual risk earlier today; closed here.
+    await call('POST', `/session/${session}/window`, {handle: brokers[0].handle});
+    const preReload = await evaluate(`
+        const done = arguments[arguments.length - 1];
+        globalThis.__TAURI_INTERNALS__.invoke('native_broker_lease')
+            .then(lease => done({lease}))
+            .catch(error => done({fatal: String(error)}));`);
+    if (!preReload || preReload.fatal) {
+        await fail(`could not mint a lease before the reload check: ${preReload && preReload.fatal}`);
+    }
+    await call('POST', `/session/${session}/refresh`, {});
+    await sleep(1500);
+    // The realm reloads and re-runs its init script. The lease minted BEFORE the reload must no
+    // longer authorise anything: a second page-load Started revokes.
+    const afterReload = await evaluate(`
+        const done = arguments[arguments.length - 1];
+        globalThis.__TAURI_INTERNALS__.invoke('native_broker_invoke', {
+            lease: ${JSON.stringify(preReload.lease)}, sequence: 0,
+            operation: 'platform.kind.read', resource: 'platform/default', args: {}
+        }).then(value => done({ok: true, value})).catch(error => done({ok: false, error: String(error)}));`);
+    if (!afterReload) await fail('the post-reload invoke returned nothing');
+    if (afterReload.ok) {
+        await fail('a lease minted before a RELOAD still authorised a call afterwards ' +
+            `(returned ${JSON.stringify(afterReload.value)}) — the reload path does not revoke`);
+    }
+
+    console.log(`PASS: acknowledgement reached the ACL; platform.kind.read returned ${JSON.stringify(slice.value)} ` +
+        `through a broker-minted lease and is recorded in the audit (${before} -> ${after.rows.length} rows, ` +
+        'lease and result both absent from what the editor can see); a replayed sequence was refused; ' +
+        'editor refused native_broker_reply and native_broker_lease at the real Tauri boundary; ' +
+        'a lease aged past its 60s TTL was refused against the REAL clock; ' +
+        'a refused navigation revoked the outstanding lease and the revocation is visible in the audit; ' +
+        'no realm reported an initialisation error; ' +
+        'and the JavaScript path returned the same platform result as the native executor, ' +
+        'naming only the operation, with a replayed request id refused; ' +
+        'a reload revoked a lease minted before it');
+    await shutdown();
+    process.exit(0);
+} catch (error) {
+    await fail(`harness error: ${error && error.stack || error}`);
+}

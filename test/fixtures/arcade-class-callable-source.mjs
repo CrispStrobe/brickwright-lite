@@ -1,0 +1,2 @@
+// Independently authored ordinary class/callback qualification fixture.
+export const source='class State {value:number;constructor(){this.value=1}}class Holder {read:()=>number;state:State;constructor(state:State){this.state=state;this.read=()=>this.state.value}apply<T>(action:(s:State)=>T):T{return action(this.state)}}let state=new State();let holder=new Holder(state);let n=holder.apply((s:State)=>{s.value+=2;return s.value});let text=holder.apply((s:State)=>"ok");let seen=holder.read();n+=0;text+="";seen+=0;';

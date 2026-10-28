@@ -1,0 +1,408 @@
+{
+  "version": 1,
+  "models": [
+    {
+      "id": "sine-shuttle",
+      "judge": "scotch-yoke-v1",
+      "parts": 105,
+      "ports": [
+        "A"
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 92000,
+      "afterMs": 500,
+      "frameMs": 25,
+      "frozenOutput": "yoke_end_-100",
+      "disconnect": [
+        "crank_pin",
+        "crank_pin_cap",
+        "crank_pivot_bush_-35.5",
+        "crank_pivot_bush_-4.5"
+      ]
+    },
+    {
+      "id": "quartermaster",
+      "judge": "latched-indexer-v1",
+      "parts": 209,
+      "ports": [
+        "A",
+        "B"
+      ],
+      "coldMs": 1000,
+      "timeLimitMs": 122000,
+      "afterMs": 1000,
+      "frameMs": 25,
+      "frozenOutput": "output_spine_Z",
+      "disconnect": [
+        "drive_roller_axle",
+        "drive_roller",
+        "drive_roller_spacer",
+        "drive_roller_retainer"
+      ]
+    },
+    {
+      "id": "wavemaker",
+      "judge": "cardan-differential-v1",
+      "nativeSuite": "wavemaker",
+      "parts": 298,
+      "ports": [
+        "A"
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 80000,
+      "afterMs": 500,
+      "frameMs": 25,
+      "frozenOutput": "pointer_beam",
+      "physicalControl": "wavemaker-control.ldr"
+    },
+    {
+      "id": "cascade",
+      "judge": "serial-pendulum-v1",
+      "nativeSuite": "cascade",
+      "parts": 70,
+      "ports": [
+        "A"
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 32000,
+      "afterMs": 500,
+      "frameMs": 25,
+      "frozenOutput": "lower_link",
+      "physicalControl": "cascade-control.ldr"
+    },
+    {
+      "id": "rise-ratio",
+      "judge": "scissor-rack-v1",
+      "nativeSuite": "rise-ratio",
+      "parts": 182,
+      "ports": [
+        "A"
+      ],
+      "coldMs": 1000,
+      "timeLimitMs": 90000,
+      "afterMs": 1000,
+      "frameMs": 25,
+      "frozenOutput": "top_fork_front",
+      "physicalControl": "rise-ratio-control.ldr"
+    },
+    {
+      "id": "cable-compass",
+      "judge": "cable-winch-v1",
+      "nativeSuite": "cable-compass",
+      "parts": 175,
+      "ports": [
+        "A",
+        "B"
+      ],
+      "coldMs": 1000,
+      "timeLimitMs": 160000,
+      "afterMs": 1000,
+      "frameMs": 25,
+      "frozenOutput": "payload_tie",
+      "physicalControl": "cable-compass-control.ldr"
+    },
+    {
+      "id": "rod-ratio",
+      "judge": "rod-ratio-v1",
+      "nativeSuite": "rod-ratio",
+      "parts": 167,
+      "ports": [
+        "A"
+      ],
+      "coldMs": 1000,
+      "timeLimitMs": 160000,
+      "afterMs": 1000,
+      "frameMs": 25,
+      "frozenOutput": "short_slider",
+      "internalComparison": "two-connecting-rod-lengths"
+    },
+    {
+      "id": "vernier-drive",
+      "judge": "vernier-drive-v1",
+      "nativeSuite": "vernier-drive",
+      "parts": 176,
+      "ports": [
+        "A"
+      ],
+      "coldMs": 1000,
+      "timeLimitMs": 160000,
+      "afterMs": 1000,
+      "frameMs": 25,
+      "frozenOutput": "output_pointer",
+      "internalComparison": "opposing-differential-branches"
+    },
+    {
+      "id": "line-turner",
+      "judge": "scott-russell-v1",
+      "nativeSuite": "line-turner",
+      "parts": 145,
+      "ports": [
+        "A"
+      ],
+      "coldMs": 1000,
+      "timeLimitMs": 70000,
+      "afterMs": 1000,
+      "frameMs": 25,
+      "frozenOutput": "long_link",
+      "internalComparison": "perpendicular-input-output-lines"
+    },
+    {
+      "id": "dune-strider",
+      "judge": "paired-jansen-v1",
+      "nativeSuite": "dune-strider",
+      "parts": 202,
+      "ports": [
+        "A"
+      ],
+      "coldMs": 1000,
+      "timeLimitMs": 90000,
+      "afterMs": 1000,
+      "frameMs": 25,
+      "frozenOutput": "near_toe",
+      "internalComparison": "opposed-jansen-legs"
+    },
+    {
+      "id": "atlas-six",
+      "judge": "stewart-platform-v1",
+      "nativeSuite": "atlas-six",
+      "parts": 676,
+      "ports": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E",
+        "F"
+      ],
+      "coldMs": 1000,
+      "timeLimitMs": 490000,
+      "afterMs": 1000,
+      "frameMs": 25,
+      "frozenOutput": "platform_row_-380_-350_0",
+      "internalComparison": "six-independent-platform-axes"
+    },
+    {
+      "id": "oblique",
+      "judge": "oblique-trammel-v1",
+      "nativeSuite": "oblique",
+      "parts": 291,
+      "ports": [
+        "A",
+        "B"
+      ],
+      "coldMs": 1000,
+      "timeLimitMs": 98000,
+      "afterMs": 1100,
+      "frameMs": 25,
+      "frozenOutput": "marker_Q",
+      "internalComparison": "two-real-guide-settings"
+    },
+    {
+      "id": "toggle-lever",
+      "judge": "toggle-dead-centre-v1",
+      "parts": 112,
+      "ports": [
+        "A"
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 30000,
+      "afterMs": 500,
+      "frameMs": 10,
+      "frozenOutput": "jaw_lever",
+      "disconnect": [
+        "crank_pin",
+        "crank_pin_cap"
+      ],
+      "disconnectInputDeg": 80
+    },
+    {
+      "id": "thirdline",
+      "judge": "neusis-trisector-v1",
+      "parts": 179,
+      "ports": [
+        "A"
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 60000,
+      "afterMs": 500,
+      "frameMs": 25,
+      "frozenOutput": "ruler_cross_100",
+      "disconnect": [
+        "joint_B_pin"
+      ],
+      "disconnectInputDeg": 35
+    },
+    {
+      "id": "cross-ratio",
+      "judge": "crossed-four-bar-v1",
+      "parts": 127,
+      "ports": [
+        "A"
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 60000,
+      "afterMs": 500,
+      "frameMs": 25,
+      "frozenOutput": "output_beam",
+      "disconnect": [
+        "pivot_axle_P"
+      ],
+      "disconnectInputDeg": 85,
+      "disconnectMeasure": true
+    },
+    {
+      "id": "foldback",
+      "judge": "antiparallelogram-v1",
+      "parts": 95,
+      "ports": [
+        "A"
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 40000,
+      "afterMs": 500,
+      "frameMs": 25,
+      "frozenOutput": "output_arm",
+      "disconnect": [
+        "joint_P_pin"
+      ],
+      "disconnectInputDeg": 65,
+      "disconnectMeasure": true
+    },
+    {
+      "id": "ghost-pivot",
+      "judge": "remote-centre-v1",
+      "parts": 86,
+      "ports": [
+        "A"
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 40000,
+      "afterMs": 500,
+      "frameMs": 25,
+      "frozenOutput": "tool_link",
+      "disconnect": [
+        "upper_link"
+      ],
+      "disconnectInputDeg": 30,
+      "disconnectMeasure": true
+    },
+    {
+      "id": "travel-dial",
+      "judge": "rolling-odometer-v1",
+      "parts": 194,
+      "ports": [
+        "A"
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 40000,
+      "afterMs": 500,
+      "frameMs": 25,
+      "frozenOutput": "wheel",
+      "disconnect": [
+        "connecting_rod"
+      ],
+      "disconnectInputDeg": 55,
+      "disconnectMeasure": true
+    },
+    {
+      "id": "carry-ratio",
+      "judge": "rolling-carry-v1",
+      "parts": 70,
+      "ports": [
+        "A"
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 40000,
+      "afterMs": 500,
+      "frameMs": 25,
+      "frozenOutput": "roller_ball",
+      "disconnect": [
+        "tray_deck",
+        "deck_top",
+        "tray_top_plate"
+      ],
+      "disconnectInputDeg": 2800,
+      "expectedIssues": [
+        {
+          "code": "loose-part",
+          "parts": [
+            "roller_ball"
+          ]
+        }
+      ],
+      "disconnectMeasure": true
+    },
+    {
+      "id": "air-budget",
+      "judge": "air-pump-budget-v1",
+      "parts": 157,
+      "ports": [
+        "A"
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 40000,
+      "afterMs": 500,
+      "frameMs": 25,
+      "frozenOutput": "pump_rod",
+      "disconnect": [
+        "crank_pin_axle",
+        "crank_pin_bush_-25",
+        "crank_pin_bush_25"
+      ],
+      "disconnectInputDeg": 3000,
+      "observeAir": true,
+      "disconnectMeasure": true
+    },
+    {
+      "id": "samebeat",
+      "judge": "compound-pendulum-v1",
+      "parts": 92,
+      "ports": [
+        "A"
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 45000,
+      "afterMs": 500,
+      "frameMs": 10,
+      "withSpike": true,
+      "frozenOutput": "pendulum_ballast",
+      "disconnect": [
+        "pendulum_support_axle"
+      ],
+      "disconnectInputDeg": 7,
+      "disconnectLaw": true,
+      "notRun": [
+        "per-model browser run (qualify-robot-lab-models --mode=full, chromium and webkit)",
+        "saved-project replay",
+        "export",
+        "manual controls"
+      ]
+    },
+    {
+      "id": "pivot-exchange",
+      "judge": "compound-pendulum-exchange-v1",
+      "parts": 159,
+      "ports": [],
+      "motorless": true,
+      "expectedIssues": [
+        {
+          "code": "no-motor",
+          "parts": []
+        }
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 30000,
+      "afterMs": 500,
+      "frameMs": 20,
+      "frozenOutput": "arm_near_beam",
+      "disconnect": [
+        "arm_near_fixed_axle",
+        "arm_near_inner_bush_back",
+        "arm_near_outer_bush_back",
+        "arm_near_inner_bush_front",
+        "arm_near_outer_bush_front"
+      ],
+      "disconnectLaw": true
+    }
+  ]
+}

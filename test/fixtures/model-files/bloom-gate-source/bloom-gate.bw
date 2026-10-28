@@ -1,0 +1,60 @@
+DEVICE SPIKE
+# BLOOM GATE - one motor opens four mechanically geared aperture blades.
+# Copyright (c) 2026 CrispStrobe. SPDX-License-Identifier: BSD-3-Clause.
+# Import the Bloom Gate CAD in Robot Lab before starting this program.
+# Reset restores the closed saved pose and its zero encoder datum.
+# Native -45 degrees drives all four 40T blades through +45 physical XZ degrees.
+# Two sweeps compare aperture geometry at 9 and 18 motor degrees per second.
+# Each command uses target minus the freshly read unwrapped encoder angle.
+# All speeds below are degrees/second, not percent. The watchdog is finite.
+WHEN flag clicked:
+  set complete to 0
+  set fault to 0
+  if (lab status) = "no-model" then:
+    say "Import Bloom Gate in Robot Lab first."
+    stop all
+  reset timer
+  broadcast "Bloom Gate watchdog"
+  lab reset
+  lab start
+  lab stop motor A hold
+  wait 0.35 seconds
+  if (abs of (lab motor A angle)) > 1 then:
+    set fault to 1
+    say "Saved encoder datum failed. Reset the model and check port A."
+    lab stop motor A hold
+    stop all
+  set sweep to 1
+  set driveSpeed to 9
+  repeat 2:
+    set target to -15
+    repeat 3:
+      broadcast "Bloom Gate sample" and wait
+      change target by -15
+    set target to -30
+    repeat 3:
+      broadcast "Bloom Gate sample" and wait
+      change target by 15
+    change sweep by 1
+    set driveSpeed to 18
+  lab stop motor A hold
+  set complete to 1
+  say "Complete: the same aperture opened and closed at two speeds."
+
+WHEN I receive "Bloom Gate sample":
+  lab run motor A for (target - (lab motor A angle)) degrees at driveSpeed degrees per second
+  lab stop motor A hold
+  if (abs of (target - (lab motor A angle))) > 2 then:
+    set fault to 1
+    say "Motor target failed. Check the gearing and port A."
+    stop all
+  wait 0.35 seconds
+
+WHEN I receive "Bloom Gate watchdog":
+  repeat until complete = 1:
+    if timer > 35 then:
+      set fault to 1
+      lab stop motor A hold
+      say "35 second watchdog: stopped and holding. Reset before retrying."
+      stop all
+    wait 0.02 seconds

@@ -1,0 +1,199 @@
+/*
+ * The collapsed chrome. Slice 1 of reference/gui-layout.md.
+ *
+ * Everything here hangs off one class on <body>, so the rest of the editor needs
+ * no knowledge of it. Selectors are :global because the elements they touch are
+ * rendered by components with their own CSS modules -- reaching them from a
+ * module-scoped class is not possible, and duplicating those components to add a
+ * modifier class would be a far larger change than the feature is worth.
+ */
+
+/* The toggle is portaled to the body, outside the scrolling tab list.
+   Expanded, it occupies the viewport top-right corner above the menu bar.
+   This must be
+   position:fixed — absolute resolved against the nearest positioned
+   ancestor, which is the editor wrapper, landing the button exactly on
+   top of the right-pane toggle at 1024px and eating its clicks (the
+   red-CI streak of 2026-08-15: dead pane toggle, vanished stage-view
+   buttons once the mis-click collapsed the chrome).
+   Compact mode anchors it at the left, with space reserved beside the tabs. */
+.chrome-toggle {
+    -webkit-appearance: none;
+    appearance: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    position: fixed;
+    top: 6px;
+    right: 8px;
+    z-index: 600;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: 1px solid rgba(0, 0, 0, 0.15);
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.85);
+    color: #575e75;
+    font-size: 15px;
+    line-height: 1;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.chrome-toggle > [data-bw-chrome-icon] {
+    display: block;
+    position: relative;
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+    pointer-events: none;
+}
+
+/* Plain borders and dots avoid SVG stroke/font rendering differences in the
+   physical iPad webview. Both states have their own visible painted shape. */
+.chrome-toggle > [data-bw-chrome-icon]::before {
+    content: '';
+    position: absolute;
+    box-sizing: border-box;
+}
+
+.chrome-toggle > [data-bw-chrome-icon="collapse"]::before {
+    width: 12px;
+    height: 12px;
+    top: 7px;
+    left: 4px;
+    border-top: 3px solid currentColor;
+    border-left: 3px solid currentColor;
+    transform: rotate(45deg);
+}
+
+.chrome-toggle > [data-bw-chrome-icon="expand"]::before {
+    width: 4px;
+    height: 4px;
+    top: 8px;
+    left: 2px;
+    border-radius: 50%;
+    background: currentColor;
+    box-shadow: 6px 0 currentColor, 12px 0 currentColor;
+}
+
+.chrome-toggle:hover {
+    background: #fff;
+    border-color: rgba(0, 0, 0, 0.3);
+}
+
+.chrome-toggle[hidden] {
+    display: none;
+}
+
+/* ---- collapsed ---------------------------------------------------------- */
+
+.responsive-editor {
+    min-width: 0;
+    min-height: 0;
+}
+
+.responsive-editor :global([class*="gui_tabs"]),
+.responsive-editor :global([class*="gui_tab-panel"]) {
+    min-width: 0;
+    min-height: 0;
+}
+
+:global(html:not([data-bw-touch])) .responsive-editor :global([class*="gui_tab-list"]) {
+    width: calc(100% - 36px);
+    height: auto;
+    min-height: 44px;
+    flex-wrap: wrap;
+}
+
+.responsive-editor :global([role="tab"]) {
+    flex-grow: 0;
+    height: auto;
+    min-height: 32px;
+    margin: 0;
+    padding: 0 10px;
+}
+
+/* A shrinking circuit column must keep its toolbar and overflow menu above
+   the canvas, which otherwise covers their hit targets. */
+.responsive-editor :global([data-circuit-toolbar]) {
+    flex-shrink: 0;
+    position: relative;
+    z-index: 1;
+}
+
+/* Anchor the dropdown to the whole toolbar so a narrow button does not place
+   secondary controls outside the canvas column, under the parts rail. */
+.responsive-editor :global([data-toolbar-more]) {
+    position: static !important;
+}
+
+.responsive-editor :global([data-toolbar-more-menu]) {
+    top: 100% !important;
+}
+
+/* The menu bar hides entirely — its functionality is one click away via the
+   hamburger icon that now lives in the tab row. */
+:global(body.bw-compact-chrome) [class*="menu-bar_menu-bar"] {
+    display: none !important;
+}
+
+/* Only tabs, never the tab list or expand button, receive tab styling. */
+.responsive-editor :global([role="tablist"]) {
+    padding: 0;
+    gap: 2px;
+}
+.responsive-editor :global([role="tab"]) {
+    flex: 0 0 auto;
+    box-sizing: border-box;
+    min-width: 32px;
+    margin: 0 !important;
+    gap: 4px;
+}
+.responsive-editor :global([data-bw-tab-icon]) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 16px;
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+    margin: 0;
+}
+.responsive-editor :global([data-bw-tab-label]) {
+    font-size: 12px;
+}
+.responsive-editor :global([data-bw-tab-icons-only] [data-bw-tab-label]) {
+    display: none;
+}
+:global(body.bw-compact-chrome) .responsive-editor :global([role="tablist"]) {
+    height: auto;
+    min-height: 32px;
+    position: relative;
+    left: auto;
+    right: auto;
+    z-index: 600;
+    pointer-events: auto;
+}
+:global(html:not([data-bw-touch]) body.bw-compact-chrome) .responsive-editor :global([role="tablist"]) {
+    padding-left: 40px;
+}
+:global(body.bw-compact-chrome) .responsive-editor :global([role="tab"]) {
+    padding: 0 10px;
+    line-height: 32px;
+}
+
+/* The body takes back the entire menu-bar row. */
+:global(body.bw-compact-chrome) [class*="gui_body-wrapper"] {
+    height: calc(100% - 0px);
+}
+
+/* The body-level portal stays outside the scrolling tab strip in both states. */
+:global(body.bw-compact-chrome) .chrome-toggle {
+    position: fixed;
+    left: 8px;
+    right: auto;
+    z-index: 600;
+    margin: 0;
+    flex-shrink: 0;
+}

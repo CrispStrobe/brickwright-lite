@@ -1,0 +1,90 @@
+// Integer and float arithmetic, conversions, logic, comparisons and SELECT.
+DATA32 Add32
+DATA32 Sub32
+DATA32 Mul32
+DATA32 Div32
+DATA32 DivZeroPos
+DATA32 DivZeroNeg
+DATA32 Mod32
+DATA32 Wrap16
+DATA32 Wrap8
+DATA32 Clamp8
+DATA32 FloatTo32
+DATA32 NegFloatTo32
+DATA32 And32
+DATA32 Or32
+DATA32 Xor32
+DATA32 Shift32
+DATA32 Compare
+DATA32 Selected
+DATAF  AddF
+DATAF  DivF
+DATAF  SqrtF
+DATAF  RoundF
+DATAF  FloorF
+DATAF  AbsF
+DATAF  IntToF
+
+vmthread MAIN
+{
+  DATA16 S16
+  DATA8  S8
+  DATA8  Flag
+  DATAF  F
+
+  ADD32(2000000000, 2000000000, Add32)
+  SUB32(5, 12, Sub32)
+  MUL32(-7, 6, Mul32)
+  DIV32(-17, 5, Div32)
+  DIV32(9, 0, DivZeroPos)
+  DIV32(-9, 0, DivZeroNeg)
+  MATH(MOD32, 17, 5, Mod32)
+  ADD16(32000, 1000, S16)
+  MOVE16_32(S16, Wrap16)
+  ADD8(100, 100, S8)
+  MOVE8_32(S8, Wrap8)
+  MOVE32_8(300, S8)
+  MOVE8_32(S8, Clamp8)
+  MOVEF_32(7.9F, FloatTo32)
+  MOVEF_32(-7.9F, NegFloatTo32)
+  AND32(0x0F0F, 0x00FF, And32)
+  OR32(0x0F00, 0x00F0, Or32)
+  XOR32(0xFF, 0x0F, Xor32)
+  RL32(3, 4, Shift32)
+  CP_LT32(-1, 1, Flag)
+  MOVE8_32(Flag, Compare)
+  SELECT32(Flag, 11, 22, Selected)
+  ADDF(1.5F, 2.25F, AddF)
+  DIVF(1.0F, 4.0F, DivF)
+  MATH(SQRT, 2.0F, SqrtF)
+  MATH(ROUND, -2.5F, RoundF)
+  MATH(FLOOR, -2.5F, FloorF)
+  MATH(ABS, -3.5F, AbsF)
+  MOVE32_F(-12, IntToF)
+  // Report: each result written to the brick's console, in declaration order.
+  UI_WRITE(VALUE32, Add32)
+  UI_WRITE(VALUE32, Sub32)
+  UI_WRITE(VALUE32, Mul32)
+  UI_WRITE(VALUE32, Div32)
+  UI_WRITE(VALUE32, DivZeroPos)
+  UI_WRITE(VALUE32, DivZeroNeg)
+  UI_WRITE(VALUE32, Mod32)
+  UI_WRITE(VALUE32, Wrap16)
+  UI_WRITE(VALUE32, Wrap8)
+  UI_WRITE(VALUE32, Clamp8)
+  UI_WRITE(VALUE32, FloatTo32)
+  UI_WRITE(VALUE32, NegFloatTo32)
+  UI_WRITE(VALUE32, And32)
+  UI_WRITE(VALUE32, Or32)
+  UI_WRITE(VALUE32, Xor32)
+  UI_WRITE(VALUE32, Shift32)
+  UI_WRITE(VALUE32, Compare)
+  UI_WRITE(VALUE32, Selected)
+  UI_WRITE(VALUEF, AddF)
+  UI_WRITE(VALUEF, DivF)
+  UI_WRITE(VALUEF, SqrtF)
+  UI_WRITE(VALUEF, RoundF)
+  UI_WRITE(VALUEF, FloorF)
+  UI_WRITE(VALUEF, AbsF)
+  UI_WRITE(VALUEF, IntToF)
+}

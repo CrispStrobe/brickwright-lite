@@ -1,0 +1,16 @@
+0 RCX rotation sensor bench (test fixture)
+0 Name: rcx-rotation-bench.ldr
+0 Author: Brickwright
+0 !LDRAW_ORG Unofficial_Model
+0 // An RCX 2.0 with one 9 V mini-motor (output A) under it; the motor's output axle runs
+0 // into the turning insert of a rotation sensor (input 3) hung beside it on a 2 x 4 brick.
+0 !BW ID hub
+1 7 0 0 0 1 0 0 0 1 0 0 0 1 76454c02.dat
+0 !BW ID motor
+0 !BW PORT A
+1 0 -20 96 -80 0 0 1 0 1 0 -1 0 0 71427.dat
+0 !BW ID brick
+1 72 -80 96 -60 0 0 1 0 1 0 -1 0 0 3001.dat
+0 !BW ID rotation
+0 !BW PORT 3
+1 7 -80 120 -60 0 0 1 0 1 0 -1 0 0 72632.dat

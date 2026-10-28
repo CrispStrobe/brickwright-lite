@@ -1,0 +1,97 @@
+name: Fixed CLI instrument regression
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_run:
+        description: Admitted TestFlight audit run 40048235422; actual internal and external availability was independently verified.
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: circuit-instrument-regression
+  cancel-in-progress: false
+
+jobs:
+  campaign:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Admit release metadata and previously verified summary
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_RUN: ${{ inputs.release_run }}
+        run: |
+          [[ "$RELEASE_RUN" =~ ^[1-9][0-9]*$ ]] || exit 1
+          mkdir release-evidence
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$RELEASE_RUN" > release-evidence/run.json
+          node scripts/circuit-instrument-regression.mjs --check-release-run release-evidence/run.json
+          RELEASE_HEAD=$(node -e 'console.log(require("./release-evidence/run.json").head_sha)')
+          git merge-base --is-ancestor "$RELEASE_HEAD" HEAD
+          RELEASE_ATTEMPT=$(node -e 'console.log(require("./release-evidence/run.json").run_attempt)')
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$RELEASE_RUN/attempts/$RELEASE_ATTEMPT/jobs?per_page=100" > release-evidence/jobs.json
+          node scripts/circuit-instrument-regression.mjs --admit-release-observation \
+            release-evidence/run.json release-evidence/jobs.json release-evidence/observation.json
+      - name: Read exact source pins
+        run: |
+          node --input-type=module - <<'JS'
+          import {readFileSync} from 'node:fs';
+          import {CONTRACT_SOURCES} from './scripts/lib/instrument-regression-cases.mjs';
+          const pins = JSON.parse(readFileSync('vendor-pins.json'));
+          for (const [key, sha] of Object.entries(CONTRACT_SOURCES)) {
+            if (pins[key] !== sha) throw new Error('Audited source contract changed');
+          }
+          JS
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          repository: CrispStrobe/bw-board
+          ref: 8785e4688cc308b34fea434c1734523caa621f74
+          path: admitted-sources/bw-board
+          persist-credentials: false
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          repository: CrispStrobe/bw-circuit-ui
+          ref: da28bb8ce9b38aa18d2e424f692c6570fc1d6d1d
+          path: admitted-sources/bw-circuit-ui
+          persist-credentials: false
+      - name: Install locked consumer and independent oracle
+        run: |
+          npm ci --ignore-scripts
+          sudo apt-get update -qq
+          sudo apt-get install --no-install-recommends -y ngspice
+      - name: Pure harness controls
+        run: node --test test/circuit-instrument-regression.test.mjs
+      - name: Run fixed authored campaign once
+        env:
+          NODE_OPTIONS: ''
+          NODE_PATH: ''
+          BW_BOARD: ''
+        run: |
+          node scripts/circuit-instrument-regression.mjs --run \
+            --output instrument-evidence \
+            --installed-root node_modules \
+            --board-source admitted-sources/bw-board \
+            --cui-source admitted-sources/bw-circuit-ui \
+            --release-run release-evidence/run.json \
+            --release-observation release-evidence/observation.json
+      - name: Preserve original results, including failures
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: instrument-regression-${{ github.run_id }}
+          path: |
+            instrument-evidence/
+            release-evidence/
+          if-no-files-found: error
+          retention-days: 30

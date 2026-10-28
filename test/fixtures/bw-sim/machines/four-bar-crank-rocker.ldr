@@ -1,0 +1,38 @@
+0 four-bar-crank-rocker (Brickwright Robot Lab validation machine)
+0 Name: four-bar-crank-rocker.ldr
+0 Author: Brickwright
+0 !LDRAW_ORG Unofficial_Model
+0 // Crank-rocker four-bar (Robot Lab validation, test/bw-sim-validation.test.mjs).
+0 // Lengths in LDU, in the horizontal x-z plane: crank a = 40, coupler b = 100, rocker c = 60, ground d = 100
+0 // (Grashof: 40 + 100 <= 100 + 60, the shortest link is the crank: crank-rocker). The SPIKE medium motor
+0 // (port A, output up) is the ground pivot O = (0, 0); a beam 5 on its output (friction pins in out0/out1)
+0 // is the crank, its end hole B at x = 40. A beam 7 (holes 0 and 5, 100 apart) is the coupler, one layer up,
+0 // on a frictionless pin at B. A beam 5 (holes 0 and 3, 60 apart) is the rocker, one layer further up, on a
+0 // frictionless pin at C; it turns on an 8L axle at D = (100, 0) that turns in the end hole of the beam 11
+0 // frame under the housing (pinned into u0/u1). Built at crank angle 0: B = (40, 0), C = (123.333, -55.277).
+0 // Gravity acts along the pins (the plane is horizontal), so the linkage carries no gravity load.
+0 !BW ID motor
+0 !BW PORT A
+1 71 0 0 0 1 0 0 0 1 0 0 0 1 54696p01.dat
+0 !BW ID frame
+1 72 0 40 0 0 0 1 0 1 0 -1 0 0 32525.dat
+0 !BW ID framePin1
+1 0 20 30 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID framePin2
+1 0 -20 30 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID crank
+1 4 0 -60 0 0 0 1 0 1 0 -1 0 0 32316.dat
+0 !BW ID crankPin1
+1 0 20 -50 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID crankPin2
+1 0 -20 -50 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID pinB
+1 71 40 -70 0 0 1 0 1 0 0 0 0 -1 3673.dat
+0 !BW ID coupler
+1 14 90 -80 -33.166248 -0.552771 0 0.833333 0 1 0 -0.833333 0 -0.552771 32524.dat
+0 !BW ID pinC
+1 71 123.333333 -90 -55.27708 0 1 0 1 0 0 0 0 -1 3673.dat
+0 !BW ID rocker
+1 1 115.555556 -100 -36.851387 -0.921285 0 0.388889 0 1 0 -0.388889 0 -0.921285 32316.dat
+0 !BW ID axleD
+1 4 100 -30 0 0 1 0 1 0 0 0 0 -1 3707.dat

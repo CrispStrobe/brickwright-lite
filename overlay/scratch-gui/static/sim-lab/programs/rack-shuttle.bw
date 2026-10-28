@@ -1,0 +1,10 @@
+DEVICE SPIKE
+
+# A drives an 8T pinion: pitch radius 4 mm, 25.13 mm travel per turn.
+# Reset before repeating. Two turns move the table 50.27 mm before returning.
+WHEN flag clicked:
+  set motor stop action A hold
+  set motor speed A 20
+  run motor A clockwise 720 degrees
+  wait 1 seconds
+  run motor A counterclockwise 720 degrees

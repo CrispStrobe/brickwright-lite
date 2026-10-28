@@ -1,0 +1,55 @@
+{
+  "date": "2026-10-08",
+  "testedSource": "7aef65c5f12761a946eb7c11e672aa292351538b",
+  "base": "fcc4eec9c1aec308e14129ddbe0c3d555394bb70",
+  "scope": "Test-only repair of hosted integration contracts; no runtime, converter, opcode, dependency or workflow change",
+  "tests": {
+    "qualifiedDistinct": 54,
+    "failedAfterReruns": 0,
+    "skipped": 0,
+    "firstBatch": 21,
+    "secondBatch": 33,
+    "truthValueCells": 1080,
+    "observations": [
+      "Real Code compile remains busy through deferred native block refresh and publishes applied device only after load",
+      "Parse/load/refresh failures stay visible; strict refresh rejection tested from a fresh fixture",
+      "Button-only startup installs native callback; post-setup input displays and dismisses correct long-text dialog",
+      "Independent100/200ms intervals fire immediately after setup and at controlled100/200ms boundaries",
+      "Dynamic100ms interval keeps evaluated period after source variable changes to1",
+      "Interval import/Blocks decompile/MakeCode export retains both registrations; exported PXT compiles",
+      "Sound-stop callback dispatches real sound_stopallsounds primitive once",
+      "Creation callbacks retain real sprite artwork execution; camera/terrain numeric selector parentheses accepted",
+      "Costume contract follows current uploads snapshot and balanced compile body"
+    ],
+    "preservedFailures": [
+      "Initial21 tests:16 failures",
+      "Initial33 tests:5 failures",
+      "Intermediate clock/representation and scope extraction failures retained in private evidence"
+    ]
+  },
+  "build": {
+    "rerun": false,
+    "reason": "Executable source unchanged; prior production qualification remains historical evidence only"
+  },
+  "corpus": {
+    "rerun": false,
+    "lastImportOnly": {
+      "translated": 102,
+      "partial": 81,
+      "malformed": 1
+    },
+    "claim": "No count improvement or complete-game equivalence inferred from test repair"
+  },
+  "remaining": [
+    "Pending frame callbacks across scene push/pop",
+    "Untranslated array for-of behavior",
+    "F5 export return/self/list value behavior",
+    "Sprite property diagnostics through values the stage cannot follow",
+    "Overlay module reachability",
+    "Camera/pixel-bounds/multi-physics/speech hosted browser failures",
+    "Fresh exact-head full unit/browser/corpus checks and stacked integration",
+    "Forever/sprite registration consistency, common startup/wait/scene timing",
+    "Dedicated tilemap painter and remaining tracked GUI parity"
+  ],
+  "integration": "Draft stacked PR; hosted exact-head checks required before merge"
+}

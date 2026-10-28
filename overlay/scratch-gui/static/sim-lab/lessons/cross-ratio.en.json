@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "id": "cross-ratio",
+  "language": "en",
+  "what": "Crossed four-bar. Crossed four-bar linkage (antiparallelogram). Motor A turns the 64 mm input arm directly, 1:1. A 32 mm coupler drives an equally long 64 mm output arm whose pivot sits 32 mm from the input pivot; output arm and coupler are passive. Opposite links are equal, but the loop is assembled on its crossed branch: the two long arms cross over each other on separate layers instead of forming a parallelogram. The program steps the input through 60°, 30°, 45°, 60°, 90°, 120°, 150°, 120°, 90° and back to 60°, holding each pose for 1.5 s so you can read the output angle. Motor A turns the input beam of a crossed four-bar. The coupler makes the passive output beam follow tan(φ/2) = 3·tan(θ/2): over a 120° input sweep the output turns 92° and stays within 0.02° of the law.",
+  "try": [
+    "Open Cross Ratio with its program, press Reset, then Run. The input starts at its saved 60° pose, where encoder A reads 0°; the passive output arm then points at 120° and the coupler lies parallel to the ground link.",
+    "Stages 1–6 move the input to 30°, 45°, 60°, 90°, 120° and 150°. Before each step, predict the output angle with the formula, then compare during the hold. The first 15° step (30° → 45°) should turn the output about 24.8°; the 30° step from 120° to 150° only about 11.6°.",
+    "Watch the coupler too. In the ideal crossed linkage its heading equals input plus output angle (θ + φ): 180° at the start, about 233° at θ = 90°.",
+    "Stages 7–9 retrace 120° and 90° back to 60°. Compare each return pose with the outbound one: ideally the output depends only on the input angle, not on direction or history. Only motor A is controlled; the program never sets the output."
+  ],
+  "why": "In an antiparallelogram the two long links (length L) and the two short links, ground and coupler (length g), are pairwise equal, but folded so that the long links cross. Loop closure on this branch gives L·sin((φ − θ)/2) = g·sin((φ + θ)/2), which rearranges to tan(φ/2) = (L + g)/(L − g) · tan(θ/2). With L = 64 mm and g = 32 mm the factor is 3. So the angle is not tripled; the tangent of the half-angle is. The instantaneous ratio dφ/dθ = 3/(5 − 4 cos θ) therefore falls from about 1.95 at 30° to 0.60 at 90° and 0.35 at 150°. Over the whole 30°–150° input sweep the output covers only about 92°.",
+  "matters": "A gear pair has one fixed ratio; a linkage gives a ratio that changes along its travel. The crossed four-bar shows that the same four lengths give either 1:1 motion (parallelogram) or this strongly varying ratio, depending only on how the loop is assembled. Mechanisms like this are used where a stroke should be fast at one end and slow but forceful at the other. In a headless run of the Brickwright simulator, the measured output arm followed tan(φ/2) = 3·tan(θ/2) to within 0.007° over the whole run (for example 143.15° at θ = 90.02°). That is a simulation observation; no physical LEGO build has been tested.",
+  "question": "The half-angle factor is 3. From the saved pose (input 60°, output 120°) the input moves to 90°. Will the output reach 270°, 150° or something else? And will the next 30° step (90° → 120°) turn the output more or less than this one?",
+  "answer": "Neither 270° nor 150°. At θ = 90°, tan(θ/2) = 1, so tan(φ/2) = 3 and φ = 2·atan 3 ≈ 143.1°: 30° of input gives about 23.1° of output. The next step to 120° gives tan(φ/2) = 3·tan 60° ≈ 5.196, φ ≈ 158.2°, only about 15.1° more. The ratio keeps falling because dφ/dθ = 3/(5 − 4 cos θ) decreases as θ grows.",
+  "further": [
+    "Predict the output at 45° and 150° (≈ 102.3° and ≈ 169.8°) and compare with the arm in the hold windows. Also check that outbound and return poses agree at equal input angles.",
+    "The crossing point of the two long arms is the instantaneous centre of the coupler. Its distances to the two ground pivots always add up to 64 mm, so it travels on an ellipse whose foci are the ground pivots.",
+    "Assembled uncrossed (as a parallelogram), the same four lengths give φ = θ at every angle. The lengths alone do not fix the motion; the assembly branch does. The loop could only switch branch at the collinear positions θ = 0° or 180°; the stops (about 21.5° and 158.5°) and the program envelope (encoder −30° to +90°) keep it away from them.",
+    "Limits: the simulation assumes rigid links and ideal pins. This experiment says nothing about torque, backlash, the layer offsets of the arms or a physical build."
+  ],
+  "formula": "L = 64 mm (160 LDU), g = 32 mm (80 LDU), crossed branch: L·sin((φ − θ)/2) = g·sin((φ + θ)/2) ⇒ tan(φ/2) = (L + g)/(L − g)·tan(θ/2) = 3·tan(θ/2); φ = 2·atan2(3 sin(θ/2), cos(θ/2)); dφ/dθ = 3/(5 − 4 cos θ); coupler heading = θ + φ. θ = 60° + encoder A. Examples: θ = 30° → φ ≈ 77.6°; 60° → 120°; 90° → 143.1°; 150° → 169.8°.",
+  "related": [
+    "tempo-loop.ldr",
+    "crank-rocker.ldr"
+  ]
+}

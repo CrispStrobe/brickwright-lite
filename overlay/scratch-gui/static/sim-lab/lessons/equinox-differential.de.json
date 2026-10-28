@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "id": "equinox-differential",
+  "language": "de",
+  "what": "Offenes Kegelraddifferenzial auf einem Prüfstand. Motor A treibt das Differenzialgehäuse, den Träger, über ein 12er-Kegelritzel an dessen 28er-Tellerrad an (12:28). Innen verbinden drei 12er-Ausgleichskegelräder zwei 12er-Achswellenräder, eines pro Abtriebswelle; jede Welle trägt ein Anzeigerad. Die Motoren B und C sind nur Bremsen: Jeder sitzt über ein 12:20-Kegelradpaar an einem Abtrieb (B rechts, C links) und wird zwischen Auslaufen und Halten umgeschaltet, nie angetrieben. Jede der ersten drei Stufen dreht den Träger genau einmal (840° an A): beide Abtriebe frei, rechts gehalten, links gehalten. Die letzte Stufe dreht den Träger bei freien Abtrieben dreimal zurück.",
+  "try": [
+    "Öffne Equinox mit Programm, drücke Zurücksetzen und dann Start. Jede Stufe beginnt mit einer kurzen Pause, während die Bremsen umschalten; dann dreht A mit 105°/s um 840° (8 s), eine Trägerumdrehung.",
+    "Stufe 2, rechter Abtrieb von B gehalten: Das linke Rad dreht sich zweimal, während sich der Träger einmal dreht. Stufe 3 tauscht die Rollen: Links wird gehalten, und das rechte Rad macht zwei Umdrehungen.",
+    "Stufe 1, beide frei: Die Summe liegt fest – zusammen machen die Abtriebe zwei Umdrehungen –, doch die Aufteilung hängt von Reibung und Trägheit auf jeder Seite ab. Die baugleichen auslaufenden Motoren machen eine gleichmäßige Aufteilung wahrscheinlich, aber nicht sicher. Stufe 4 dreht den Träger auf dieselbe Weise dreimal rückwärts.",
+    "Die angezeigten Werte rightBrakeTurns und leftBrakeTurns sind Umdrehungen der Bremsmotoren, nicht der Räder: Über die 12:20-Kegelräder dreht sich ein Bremsmotor pro Radumdrehung 5/3-mal; zwei Radumdrehungen erscheinen also als etwa 3,3 Motorumdrehungen."
+  ],
+  "why": "In einem Differenzial mit gleich großen Achswellenrädern können sich die Ausgleichsräder um ihre eigenen Achsen drehen; deshalb ist nur der Mittelwert der beiden Abtriebswellen an den Träger gebunden: ω_L + ω_R = 2·ω_T (alle Drehzahlen um dieselbe Achsrichtung gezählt). Das ist eine Gleichung für zwei Unbekannte. Wird ein Abtrieb gehalten (ω_R = 0), liefert das die zweite Gleichung, und es folgt ω_L = 2·ω_T; wird der andere gehalten, gilt ω_R = 2·ω_T. Sind beide frei, entscheiden nicht die Zahnräder über die Aufteilung, sondern die Drehmomente. Ein ideales offenes Differenzial verteilt das Drehmoment gleichmäßig auf beide Seiten; die Seite mit dem geringeren Widerstand dreht schneller.",
+  "matters": "Deshalb kann ein Auto durch eine Kurve fahren: Das äußere Rad rollt einen längeren Weg als das innere, während der Motor den Träger antreibt. Und deshalb verliert ein offenes Differenzial die Traktion, wenn ein Rad auf Eis durchdreht: Gleiches Drehmoment heißt, dass das haftende Rad nicht mehr bekommt als das durchdrehende. Dieselbe Mittelwertbildung steckt in Mean Machine und Vernier Drive. Der Lieferant weist auf eine Einschränkung beim Zahnspiel der äußeren Kegelradeingriffe hin; der Zahneingriff im Modell ist also keine Garantie für einen realen Aufbau. In einem Lauf des Brickwright-Simulators ohne Oberfläche blieb links plus rechts in jeder Stufe auf 0,02° genau gleich dem doppelten Trägerwinkel; ein gehaltener Abtrieb kroch weniger als 0,4°, und die freie Aufteilung betrug vorwärts 359,9°/360,5° und rückwärts 1077,5°/1083,3°. Das ist eine Simulationsbeobachtung; ein realer LEGO-Aufbau wurde nicht geprüft.",
+  "question": "Motor B hält den rechten Abtrieb, während A den Träger genau einmal dreht. Wie viele Umdrehungen macht das linke Rad, und wie viele Umdrehungen meldet der auslaufende Motor C am linken Abtrieb?",
+  "answer": "Aus ω_L + ω_R = 2·ω_T mit ω_R = 0 folgt: Der linke Abtrieb macht 2 Umdrehungen pro Trägerumdrehung. Motor C ist über 12:20-Kegelräder mit ihm verbunden und dreht sich 20/12-mal so weit, also etwa 3,33 Umdrehungen. Motor A selbst hat sich um 840° = 2,33 Umdrehungen gedreht, weil der Träger nur 12/28 des Winkels von A zurücklegt.",
+  "further": [
+    "Sage Stufe 4 voraus: Der Träger dreht sich bei freien Abtrieben dreimal rückwärts. Unabhängig von der Aufteilung verlangen ideale Zahnräder links + rechts = −6 Umdrehungen.",
+    "Die Stufen 1 und 4 überlassen die Aufteilung der simulierten Reibung. Notiere beide Räder und prüfe ihre Summe; erwarte nicht, dass sich die Einzelwerte genau wiederholen oder die Räder genau in ihre gespeicherte Stellung zurückkehren.",
+    "Sage einen Fall voraus, den das Programm nicht fährt: Stünde der Träger still (ω_T = 0) und würde ein Abtrieb gedreht, müsste sich der andere gleich weit in Gegenrichtung drehen, ω_L = −ω_R.",
+    "Vergleiche Differential, Mean Machine und Vernier Drive, die dasselbe Mittelwertgesetz für Kurvenfahrt, mechanische Mittelwertbildung und eine starke Untersetzung nutzen."
+  ],
+  "formula": "θ_T = (12/28)·θ_A; θ_L + θ_R = 2·θ_T (gleiche 12er-Achswellenräder). Pro Stufe θ_A = 840° → θ_T = 360°. Rechts gehalten: θ_L = 720°. Links gehalten: θ_R = 720°. Bremsmotoren: |θ_B| = (20/12)·|θ_R|, |θ_C| = (20/12)·|θ_L|. Stufe 4: θ_A 2520° → 0° ⇒ θ_T = −1080°, θ_L + θ_R = −2160°. T = Träger.",
+  "related": [
+    "differential.ldr",
+    "mean-machine.ldr",
+    "vernier-drive.ldr"
+  ]
+}

@@ -1,0 +1,84 @@
+{
+  "id": "rb10-bump-and-turn",
+  "title": {
+    "en": "Bump and turn",
+    "de": "Anstoßen und abbiegen"
+  },
+  "intro": {
+    "en": "A boulder blocks the way, but you cannot see how far off it is. Drive until the force sensor on the bumper touches it, back off 10 cm, turn left and drive 30 cm into the shelter behind the ridge.",
+    "de": "Ein Felsbrocken versperrt den Weg, aber du siehst nicht, wie weit er entfernt ist. Fahre, bis der Kraftsensor an der Stoßstange ihn berührt, setze 10 cm zurück, biege links ab und fahre 30 cm in den Unterstand hinter dem Hügel."
+  },
+  "hints": [
+    {
+      "en": "\"force sensor pressed\" is true while the button is pushed in.",
+      "de": "„Kraftsensor gedrückt“ ist wahr, solange der Knopf eingedrückt ist."
+    },
+    {
+      "en": "Back off before you turn, or the rover's corner will scrape the boulder.",
+      "de": "Setze vor dem Drehen zurück, sonst streift die Ecke des Rovers den Felsbrocken."
+    }
+  ],
+  "mat": {
+    "width": 140,
+    "height": 100,
+    "background": "orange",
+    "paint": "#d9825b",
+    "shapes": []
+  },
+  "objects": [
+    {
+      "id": "boulder",
+      "shape": {
+        "type": "rect",
+        "x": 105,
+        "y": 55,
+        "w": 14,
+        "h": 40
+      },
+      "color": "#7a5a48",
+      "label": {
+        "en": "boulder",
+        "de": "Felsbrocken"
+      }
+    }
+  ],
+  "zones": [
+    {
+      "id": "shelter",
+      "role": "goal",
+      "shape": {
+        "type": "circle",
+        "x": 75,
+        "y": 24,
+        "r": 9
+      },
+      "label": {
+        "en": "shelter",
+        "de": "Unterstand"
+      }
+    }
+  ],
+  "start": {
+    "x": 20,
+    "y": 55,
+    "heading": 0
+  },
+  "timeLimitMs": 25000,
+  "success": [
+    {
+      "type": "touch",
+      "object": "boulder"
+    },
+    {
+      "type": "stopIn",
+      "zone": "shelter"
+    }
+  ],
+  "failure": [
+    {
+      "type": "noWallContact"
+    }
+  ],
+  "solution": "rb10-bump-and-turn.bw",
+  "wrong": "rb10-bump-and-turn.wrong.bw"
+}

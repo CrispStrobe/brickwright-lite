@@ -1,0 +1,1946 @@
+{
+  "vcc": 5,
+  "parts": [
+    {
+      "id": "cpu",
+      "kind": "w65c02",
+      "params": {},
+      "terminals": [
+        "vpb",
+        "rdy",
+        "phi1o",
+        "irqb",
+        "mlb",
+        "nmib",
+        "sync",
+        "vdd",
+        "a0",
+        "a1",
+        "a2",
+        "a3",
+        "a4",
+        "a5",
+        "a6",
+        "a7",
+        "a8",
+        "a9",
+        "a10",
+        "a11",
+        "resb",
+        "phi2o",
+        "sob",
+        "phi2",
+        "be",
+        "nc",
+        "rwb",
+        "d0",
+        "d1",
+        "d2",
+        "d3",
+        "d4",
+        "d5",
+        "d6",
+        "d7",
+        "a15",
+        "a14",
+        "a13",
+        "a12",
+        "vss"
+      ],
+      "x": 64,
+      "y": 349
+    },
+    {
+      "id": "ram",
+      "kind": "62256",
+      "params": {},
+      "terminals": [
+        "a14",
+        "a12",
+        "a7",
+        "a6",
+        "a5",
+        "a4",
+        "a3",
+        "a2",
+        "a1",
+        "a0",
+        "d0",
+        "d1",
+        "d2",
+        "gnd",
+        "vcc",
+        "web",
+        "a13",
+        "a8",
+        "a9",
+        "a11",
+        "oeb",
+        "a10",
+        "csb",
+        "d7",
+        "d6",
+        "d5",
+        "d4",
+        "d3"
+      ],
+      "x": 330,
+      "y": 709
+    },
+    {
+      "id": "rom",
+      "kind": "28c256",
+      "params": {},
+      "terminals": [
+        "a14",
+        "a12",
+        "a7",
+        "a6",
+        "a5",
+        "a4",
+        "a3",
+        "a2",
+        "a1",
+        "a0",
+        "d0",
+        "d1",
+        "d2",
+        "gnd",
+        "vcc",
+        "web",
+        "a13",
+        "a8",
+        "a9",
+        "a11",
+        "oeb",
+        "a10",
+        "ceb",
+        "d7",
+        "d6",
+        "d5",
+        "d4",
+        "d3"
+      ],
+      "x": 568,
+      "y": 709
+    },
+    {
+      "id": "via",
+      "kind": "w65c22",
+      "params": {},
+      "terminals": [
+        "vss",
+        "pa0",
+        "pa1",
+        "pa2",
+        "pa3",
+        "pa4",
+        "pa5",
+        "pa6",
+        "pa7",
+        "pb0",
+        "pb1",
+        "pb2",
+        "pb3",
+        "pb4",
+        "pb5",
+        "pb6",
+        "pb7",
+        "cb1",
+        "cb2",
+        "vdd",
+        "ca1",
+        "ca2",
+        "rs0",
+        "rs1",
+        "rs2",
+        "rs3",
+        "resb",
+        "d0",
+        "d1",
+        "d2",
+        "d3",
+        "d4",
+        "d5",
+        "d6",
+        "d7",
+        "phi2",
+        "cs1",
+        "cs2b",
+        "rwb",
+        "irqb"
+      ],
+      "x": 386,
+      "y": 349
+    },
+    {
+      "id": "acia",
+      "kind": "w65c51",
+      "params": {},
+      "terminals": [
+        "vss",
+        "cs0",
+        "cs1b",
+        "resb",
+        "rwb",
+        "irqb",
+        "phi2",
+        "d0",
+        "d1",
+        "d2",
+        "d3",
+        "d4",
+        "d5",
+        "d6",
+        "vdd",
+        "xtli",
+        "xtlo",
+        "dcdb",
+        "dsrb",
+        "rxd",
+        "dtrb",
+        "ctsb",
+        "rtsb",
+        "nc",
+        "txd",
+        "rs1",
+        "rs0",
+        "d7"
+      ],
+      "x": 64,
+      "y": 1069
+    },
+    {
+      "id": "glue1",
+      "kind": "74hc00",
+      "params": {},
+      "terminals": [
+        "1a",
+        "1b",
+        "1y",
+        "2a",
+        "2b",
+        "2y",
+        "gnd",
+        "3y",
+        "3a",
+        "3b",
+        "4y",
+        "4a",
+        "4b",
+        "vcc"
+      ],
+      "x": 484,
+      "y": 1069
+    },
+    {
+      "id": "glue2",
+      "kind": "74hc00",
+      "params": {},
+      "terminals": [
+        "1a",
+        "1b",
+        "1y",
+        "2a",
+        "2b",
+        "2y",
+        "gnd",
+        "3y",
+        "3a",
+        "3b",
+        "4y",
+        "4a",
+        "4b",
+        "vcc"
+      ],
+      "x": 624,
+      "y": 1069
+    },
+    {
+      "id": "lcd",
+      "kind": "hd44780",
+      "params": {},
+      "terminals": [
+        "vss",
+        "vdd",
+        "v0",
+        "rs",
+        "rw",
+        "e",
+        "d0",
+        "d1",
+        "d2",
+        "d3",
+        "d4",
+        "d5",
+        "d6",
+        "d7",
+        "a",
+        "k"
+      ],
+      "x": 64,
+      "y": 615
+    },
+    {
+      "id": "kbd",
+      "kind": "ps2",
+      "params": {},
+      "terminals": [
+        "d0",
+        "d1",
+        "d2",
+        "d3",
+        "d4",
+        "d5",
+        "d6",
+        "d7",
+        "da"
+      ],
+      "x": 80,
+      "y": 60
+    },
+    {
+      "id": "xtal",
+      "kind": "555",
+      "params": {},
+      "terminals": [
+        "gnd",
+        "trigger",
+        "output",
+        "reset",
+        "control",
+        "threshold",
+        "discharge",
+        "vcc"
+      ],
+      "x": 64,
+      "y": 1391
+    },
+    {
+      "id": "osc",
+      "kind": "555",
+      "params": {},
+      "terminals": [
+        "gnd",
+        "trigger",
+        "output",
+        "reset",
+        "control",
+        "threshold",
+        "discharge",
+        "vcc"
+      ],
+      "x": 162,
+      "y": 1391
+    },
+    {
+      "id": "resetBtn",
+      "kind": "button",
+      "params": {},
+      "terminals": [
+        "a",
+        "b"
+      ],
+      "x": 554,
+      "y": 1391
+    },
+    {
+      "id": "resetR",
+      "kind": "resistor",
+      "params": {
+        "ohms": 10000
+      },
+      "terminals": [
+        "a",
+        "b"
+      ],
+      "x": 764,
+      "y": 975
+    },
+    {
+      "id": "c_cpu",
+      "kind": "capacitor",
+      "params": {
+        "farads": 1e-7
+      },
+      "terminals": [
+        "a",
+        "b"
+      ],
+      "x": 260,
+      "y": 1335
+    },
+    {
+      "id": "c_ram",
+      "kind": "capacitor",
+      "params": {
+        "farads": 1e-7
+      },
+      "terminals": [
+        "a",
+        "b"
+      ],
+      "x": 302,
+      "y": 1335
+    },
+    {
+      "id": "c_rom",
+      "kind": "capacitor",
+      "params": {
+        "farads": 1e-7
+      },
+      "terminals": [
+        "a",
+        "b"
+      ],
+      "x": 344,
+      "y": 1335
+    },
+    {
+      "id": "c_via",
+      "kind": "capacitor",
+      "params": {
+        "farads": 1e-7
+      },
+      "terminals": [
+        "a",
+        "b"
+      ],
+      "x": 386,
+      "y": 1335
+    },
+    {
+      "id": "c_acia",
+      "kind": "capacitor",
+      "params": {
+        "farads": 1e-7
+      },
+      "terminals": [
+        "a",
+        "b"
+      ],
+      "x": 428,
+      "y": 1335
+    },
+    {
+      "id": "c_glue1",
+      "kind": "capacitor",
+      "params": {
+        "farads": 1e-7
+      },
+      "terminals": [
+        "a",
+        "b"
+      ],
+      "x": 470,
+      "y": 1335
+    },
+    {
+      "id": "pwrLed",
+      "kind": "led",
+      "params": {
+        "color": "red"
+      },
+      "terminals": [
+        "anode",
+        "cathode"
+      ],
+      "x": 512,
+      "y": 1335
+    },
+    {
+      "id": "pwrR",
+      "kind": "resistor",
+      "params": {
+        "ohms": 220
+      },
+      "terminals": [
+        "a",
+        "b"
+      ],
+      "x": 708,
+      "y": 349
+    },
+    {
+      "id": "vcc1",
+      "kind": "vcc",
+      "params": {
+        "volts": 5
+      },
+      "terminals": [
+        "vcc"
+      ],
+      "x": 220,
+      "y": 60
+    },
+    {
+      "id": "gnd1",
+      "kind": "gnd",
+      "params": {},
+      "terminals": [
+        "gnd"
+      ],
+      "x": 360,
+      "y": 60
+    },
+    {
+      "id": "contrast",
+      "kind": "potentiometer",
+      "params": {
+        "ohms": 10000,
+        "position": 0.15
+      },
+      "terminals": [
+        "a",
+        "wiper",
+        "b"
+      ],
+      "x": 250,
+      "y": 620,
+      "rotation": 0
+    }
+  ],
+  "wires": [
+    {
+      "id": "w_flat_0",
+      "netId": "bb1:n-col-b11",
+      "from": {
+        "part": "acia",
+        "terminal": "rs0"
+      },
+      "to": {
+        "part": "cpu",
+        "terminal": "a0"
+      }
+    },
+    {
+      "id": "w_flat_1",
+      "netId": "bb1:n-col-b11",
+      "from": {
+        "part": "acia",
+        "terminal": "rs0"
+      },
+      "to": {
+        "part": "ram",
+        "terminal": "a0"
+      }
+    },
+    {
+      "id": "w_flat_2",
+      "netId": "bb1:n-col-b11",
+      "from": {
+        "part": "acia",
+        "terminal": "rs0"
+      },
+      "to": {
+        "part": "rom",
+        "terminal": "a0"
+      }
+    },
+    {
+      "id": "w_flat_3",
+      "netId": "bb1:n-col-b11",
+      "from": {
+        "part": "acia",
+        "terminal": "rs0"
+      },
+      "to": {
+        "part": "via",
+        "terminal": "rs0"
+      }
+    },
+    {
+      "id": "w_flat_4",
+      "netId": "bb1:n-col-b12",
+      "from": {
+        "part": "acia",
+        "terminal": "rs1"
+      },
+      "to": {
+        "part": "cpu",
+        "terminal": "a1"
+      }
+    },
+    {
+      "id": "w_flat_5",
+      "netId": "bb1:n-col-b12",
+      "from": {
+        "part": "acia",
+        "terminal": "rs1"
+      },
+      "to": {
+        "part": "ram",
+        "terminal": "a1"
+      }
+    },
+    {
+      "id": "w_flat_6",
+      "netId": "bb1:n-col-b12",
+      "from": {
+        "part": "acia",
+        "terminal": "rs1"
+      },
+      "to": {
+        "part": "rom",
+        "terminal": "a1"
+      }
+    },
+    {
+      "id": "w_flat_7",
+      "netId": "bb1:n-col-b12",
+      "from": {
+        "part": "acia",
+        "terminal": "rs1"
+      },
+      "to": {
+        "part": "via",
+        "terminal": "rs1"
+      }
+    },
+    {
+      "id": "w_flat_8",
+      "netId": "bb1:n-col-b13",
+      "from": {
+        "part": "cpu",
+        "terminal": "a2"
+      },
+      "to": {
+        "part": "ram",
+        "terminal": "a2"
+      }
+    },
+    {
+      "id": "w_flat_9",
+      "netId": "bb1:n-col-b13",
+      "from": {
+        "part": "cpu",
+        "terminal": "a2"
+      },
+      "to": {
+        "part": "rom",
+        "terminal": "a2"
+      }
+    },
+    {
+      "id": "w_flat_10",
+      "netId": "bb1:n-col-b13",
+      "from": {
+        "part": "cpu",
+        "terminal": "a2"
+      },
+      "to": {
+        "part": "via",
+        "terminal": "rs2"
+      }
+    },
+    {
+      "id": "w_flat_11",
+      "netId": "bb1:n-col-b14",
+      "from": {
+        "part": "cpu",
+        "terminal": "a3"
+      },
+      "to": {
+        "part": "ram",
+        "terminal": "a3"
+      }
+    },
+    {
+      "id": "w_flat_12",
+      "netId": "bb1:n-col-b14",
+      "from": {
+        "part": "cpu",
+        "terminal": "a3"
+      },
+      "to": {
+        "part": "rom",
+        "terminal": "a3"
+      }
+    },
+    {
+      "id": "w_flat_13",
+      "netId": "bb1:n-col-b14",
+      "from": {
+        "part": "cpu",
+        "terminal": "a3"
+      },
+      "to": {
+        "part": "via",
+        "terminal": "rs3"
+      }
+    },
+    {
+      "id": "w_flat_14",
+      "netId": "bb1:n-col-b15",
+      "from": {
+        "part": "cpu",
+        "terminal": "a4"
+      },
+      "to": {
+        "part": "ram",
+        "terminal": "a4"
+      }
+    },
+    {
+      "id": "w_flat_15",
+      "netId": "bb1:n-col-b15",
+      "from": {
+        "part": "cpu",
+        "terminal": "a4"
+      },
+      "to": {
+        "part": "rom",
+        "terminal": "a4"
+      }
+    },
+    {
+      "id": "w_flat_16",
+      "netId": "bb1:n-col-b16",
+      "from": {
+        "part": "cpu",
+        "terminal": "a5"
+      },
+      "to": {
+        "part": "ram",
+        "terminal": "a5"
+      }
+    },
+    {
+      "id": "w_flat_17",
+      "netId": "bb1:n-col-b16",
+      "from": {
+        "part": "cpu",
+        "terminal": "a5"
+      },
+      "to": {
+        "part": "rom",
+        "terminal": "a5"
+      }
+    },
+    {
+      "id": "w_flat_18",
+      "netId": "bb1:n-col-b17",
+      "from": {
+        "part": "cpu",
+        "terminal": "a6"
+      },
+      "to": {
+        "part": "ram",
+        "terminal": "a6"
+      }
+    },
+    {
+      "id": "w_flat_19",
+      "netId": "bb1:n-col-b17",
+      "from": {
+        "part": "cpu",
+        "terminal": "a6"
+      },
+      "to": {
+        "part": "rom",
+        "terminal": "a6"
+      }
+    },
+    {
+      "id": "w_flat_20",
+      "netId": "bb1:n-col-b18",
+      "from": {
+        "part": "cpu",
+        "terminal": "a7"
+      },
+      "to": {
+        "part": "ram",
+        "terminal": "a7"
+      }
+    },
+    {
+      "id": "w_flat_21",
+      "netId": "bb1:n-col-b18",
+      "from": {
+        "part": "cpu",
+        "terminal": "a7"
+      },
+      "to": {
+        "part": "rom",
+        "terminal": "a7"
+      }
+    },
+    {
+      "id": "w_flat_22",
+      "netId": "bb1:n-col-b19",
+      "from": {
+        "part": "cpu",
+        "terminal": "a8"
+      },
+      "to": {
+        "part": "ram",
+        "terminal": "a8"
+      }
+    },
+    {
+      "id": "w_flat_23",
+      "netId": "bb1:n-col-b19",
+      "from": {
+        "part": "cpu",
+        "terminal": "a8"
+      },
+      "to": {
+        "part": "rom",
+        "terminal": "a8"
+      }
+    },
+    {
+      "id": "w_flat_24",
+      "netId": "bb1:n-col-b20",
+      "from": {
+        "part": "cpu",
+        "terminal": "a9"
+      },
+      "to": {
+        "part": "ram",
+        "terminal": "a9"
+      }
+    },
+    {
+      "id": "w_flat_25",
+      "netId": "bb1:n-col-b20",
+      "from": {
+        "part": "cpu",
+        "terminal": "a9"
+      },
+      "to": {
+        "part": "rom",
+        "terminal": "a9"
+      }
+    },
+    {
+      "id": "w_flat_26",
+      "netId": "bb1:n-col-b21",
+      "from": {
+        "part": "cpu",
+        "terminal": "a10"
+      },
+      "to": {
+        "part": "ram",
+        "terminal": "a10"
+      }
+    },
+    {
+      "id": "w_flat_27",
+      "netId": "bb1:n-col-b21",
+      "from": {
+        "part": "cpu",
+        "terminal": "a10"
+      },
+      "to": {
+        "part": "rom",
+        "terminal": "a10"
+      }
+    },
+    {
+      "id": "w_flat_28",
+      "netId": "bb1:n-col-b22",
+      "from": {
+        "part": "cpu",
+        "terminal": "a11"
+      },
+      "to": {
+        "part": "ram",
+        "terminal": "a11"
+      }
+    },
+    {
+      "id": "w_flat_29",
+      "netId": "bb1:n-col-b22",
+      "from": {
+        "part": "cpu",
+        "terminal": "a11"
+      },
+      "to": {
+        "part": "rom",
+        "terminal": "a11"
+      }
+    },
+    {
+      "id": "w_flat_30",
+      "netId": "bb1:n-col-b27",
+      "from": {
+        "part": "kbd",
+        "terminal": "d0"
+      },
+      "to": {
+        "part": "via",
+        "terminal": "pa0"
+      }
+    },
+    {
+      "id": "w_flat_31",
+      "netId": "bb1:n-col-b28",
+      "from": {
+        "part": "kbd",
+        "terminal": "d1"
+      },
+      "to": {
+        "part": "via",
+        "terminal": "pa1"
+      }
+    },
+    {
+      "id": "w_flat_32",
+      "netId": "bb1:n-col-b29",
+      "from": {
+        "part": "kbd",
+        "terminal": "d2"
+      },
+      "to": {
+        "part": "via",
+        "terminal": "pa2"
+      }
+    },
+    {
+      "id": "w_flat_33",
+      "netId": "bb1:n-col-b30",
+      "from": {
+        "part": "kbd",
+        "terminal": "d3"
+      },
+      "to": {
+        "part": "via",
+        "terminal": "pa3"
+      }
+    },
+    {
+      "id": "w_flat_34",
+      "netId": "bb1:n-col-b31",
+      "from": {
+        "part": "kbd",
+        "terminal": "d4"
+      },
+      "to": {
+        "part": "via",
+        "terminal": "pa4"
+      }
+    },
+    {
+      "id": "w_flat_35",
+      "netId": "bb1:n-col-b32",
+      "from": {
+        "part": "kbd",
+        "terminal": "d5"
+      },
+      "to": {
+        "part": "via",
+        "terminal": "pa5"
+      }
+    },
+    {
+      "id": "w_flat_36",
+      "netId": "bb1:n-col-b33",
+      "from": {
+        "part": "kbd",
+        "terminal": "d6"
+      },
+      "to": {
+        "part": "via",
+        "terminal": "pa6"
+      }
+    },
+    {
+      "id": "w_flat_37",
+      "netId": "bb1:n-col-b34",
+      "from": {
+        "part": "kbd",
+        "terminal": "d7"
+      },
+      "to": {
+        "part": "via",
+        "terminal": "pa7"
+      }
+    },
+    {
+      "id": "w_flat_38",
+      "netId": "bb1:n-col-b35",
+      "from": {
+        "part": "lcd",
+        "terminal": "rs"
+      },
+      "to": {
+        "part": "via",
+        "terminal": "pb0"
+      }
+    },
+    {
+      "id": "w_flat_39",
+      "netId": "bb1:n-col-b36",
+      "from": {
+        "part": "lcd",
+        "terminal": "rw"
+      },
+      "to": {
+        "part": "via",
+        "terminal": "pb1"
+      }
+    },
+    {
+      "id": "w_flat_40",
+      "netId": "bb1:n-col-b37",
+      "from": {
+        "part": "lcd",
+        "terminal": "e"
+      },
+      "to": {
+        "part": "via",
+        "terminal": "pb2"
+      }
+    },
+    {
+      "id": "w_flat_41",
+      "netId": "bb1:n-col-b39",
+      "from": {
+        "part": "lcd",
+        "terminal": "d4"
+      },
+      "to": {
+        "part": "via",
+        "terminal": "pb4"
+      }
+    },
+    {
+      "id": "w_flat_42",
+      "netId": "bb1:n-col-b4",
+      "from": {
+        "part": "acia",
+        "terminal": "vdd"
+      },
+      "to": {
+        "part": "c_acia",
+        "terminal": "a"
+      }
+    },
+    {
+      "id": "w_flat_43",
+      "netId": "bb1:n-col-b4",
+      "from": {
+        "part": "acia",
+        "terminal": "vdd"
+      },
+      "to": {
+        "part": "c_cpu",
+        "terminal": "a"
+      }
+    },
+    {
+      "id": "w_flat_44",
+      "netId": "bb1:n-col-b4",
+      "from": {
+        "part": "acia",
+        "terminal": "vdd"
+      },
+      "to": {
+        "part": "c_glue1",
+        "terminal": "a"
+      }
+    },
+    {
+      "id": "w_flat_45",
+      "netId": "bb1:n-col-b4",
+      "from": {
+        "part": "acia",
+        "terminal": "vdd"
+      },
+      "to": {
+        "part": "c_ram",
+        "terminal": "a"
+      }
+    },
+    {
+      "id": "w_flat_46",
+      "netId": "bb1:n-col-b4",
+      "from": {
+        "part": "acia",
+        "terminal": "vdd"
+      },
+      "to": {
+        "part": "c_rom",
+        "terminal": "a"
+      }
+    },
+    {
+      "id": "w_flat_47",
+      "netId": "bb1:n-col-b4",
+      "from": {
+        "part": "acia",
+        "terminal": "vdd"
+      },
+      "to": {
+        "part": "c_via",
+        "terminal": "a"
+      }
+    },
+    {
+      "id": "w_flat_48",
+      "netId": "bb1:n-col-b4",
+      "from": {
+        "part": "acia",
+        "terminal": "vdd"
+      },
+      "to": {
+        "part": "contrast",
+        "terminal": "a"
+      }
+    },
+    {
+      "id": "w_flat_49",
+      "netId": "bb1:n-col-b4",
+      "from": {
+        "part": "acia",
+        "terminal": "vdd"
+      },
+      "to": {
+        "part": "cpu",
+        "terminal": "be"
+      }
+    },
+    {
+      "id": "w_flat_50",
+      "netId": "bb1:n-col-b4",
+      "from": {
+        "part": "acia",
+        "terminal": "vdd"
+      },
+      "to": {
+        "part": "cpu",
+        "terminal": "irqb"
+      }
+    },
+    {
+      "id": "w_flat_51",
+      "netId": "bb1:n-col-b4",
+      "from": {
+        "part": "acia",
+        "terminal": "vdd"
+      },
+      "to": {
+        "part": "cpu",
+        "terminal": "nmib"
+      }
+    },
+    {
+      "id": "w_flat_52",
+      "netId": "bb1:n-col-b4",
+      "from": {
+        "part": "acia",
+        "terminal": "vdd"
+      },
+      "to": {
+        "part": "cpu",
+        "terminal": "rdy"
+      }
+    },
+    {
+      "id": "w_flat_53",
+      "netId": "bb1:n-col-b4",
+      "from": {
+        "part": "acia",
+        "terminal": "vdd"
+      },
+      "to": {
+        "part": "cpu",
+        "terminal": "vdd"
+      }
+    },
+    {
+      "id": "w_flat_54",
+      "netId": "bb1:n-col-b4",
+      "from": {
+        "part": "acia",
+        "terminal": "vdd"
+      },
+      "to": {
+        "part": "glue1",
+        "terminal": "vcc"
+      }
+    },
+    {
+      "id": "w_flat_55",
+      "netId": "bb1:n-col-b4",
+      "from": {
+        "part": "acia",
+        "terminal": "vdd"
+      },
+      "to": {
+        "part": "glue2",
+        "terminal": "vcc"
+      }
+    },
+    {
+      "id": "w_flat_56",
+      "netId": "bb1:n-col-b4",
+      "from": {
+        "part": "acia",
+        "terminal": "vdd"
+      },
+      "to": {
+        "part": "lcd",
+        "terminal": "a"
+      }
+    },
+    {
+      "id": "w_flat_57",
+      "netId": "bb1:n-col-b4",
+      "from": {
+        "part": "acia",
+        "terminal": "vdd"
+      },
+      "to": {
+        "part": "lcd",
+        "terminal": "vdd"
+      }
+    },
+    {
+      "id": "w_flat_58",
+      "netId": "bb1:n-col-b4",
+      "from": {
+        "part": "acia",
+        "terminal": "vdd"
+      },
+      "to": {
+        "part": "osc",
+        "terminal": "vcc"
+      }
+    },
+    {
+      "id": "w_flat_59",
+      "netId": "bb1:n-col-b4",
+      "from": {
+        "part": "acia",
+        "terminal": "vdd"
+      },
+      "to": {
+        "part": "pwrR",
+        "terminal": "a"
+      }
+    },
+    {
+      "id": "w_flat_60",
+      "netId": "bb1:n-col-b4",
+      "from": {
+        "part": "acia",
+        "terminal": "vdd"
+      },
+      "to": {
+        "part": "ram",
+        "terminal": "vcc"
+      }
+    },
+    {
+      "id": "w_flat_61",
+      "netId": "bb1:n-col-b4",
+      "from": {
+        "part": "acia",
+        "terminal": "vdd"
+      },
+      "to": {
+        "part": "resetR",
+        "terminal": "a"
+      }
+    },
+    {
+      "id": "w_flat_62",
+      "netId": "bb1:n-col-b4",
+      "from": {
+        "part": "acia",
+        "terminal": "vdd"
+      },
+      "to": {
+        "part": "rom",
+        "terminal": "vcc"
+      }
+    },
+    {
+      "id": "w_flat_63",
+      "netId": "bb1:n-col-b4",
+      "from": {
+        "part": "acia",
+        "terminal": "vdd"
+      },
+      "to": {
+        "part": "vcc1",
+        "terminal": "vcc"
+      }
+    },
+    {
+      "id": "w_flat_64",
+      "netId": "bb1:n-col-b4",
+      "from": {
+        "part": "acia",
+        "terminal": "vdd"
+      },
+      "to": {
+        "part": "via",
+        "terminal": "vdd"
+      }
+    },
+    {
+      "id": "w_flat_65",
+      "netId": "bb1:n-col-b4",
+      "from": {
+        "part": "acia",
+        "terminal": "vdd"
+      },
+      "to": {
+        "part": "xtal",
+        "terminal": "vcc"
+      }
+    },
+    {
+      "id": "w_flat_66",
+      "netId": "bb1:n-col-b40",
+      "from": {
+        "part": "lcd",
+        "terminal": "d5"
+      },
+      "to": {
+        "part": "via",
+        "terminal": "pb5"
+      }
+    },
+    {
+      "id": "w_flat_67",
+      "netId": "bb1:n-col-b41",
+      "from": {
+        "part": "lcd",
+        "terminal": "d6"
+      },
+      "to": {
+        "part": "via",
+        "terminal": "pb6"
+      }
+    },
+    {
+      "id": "w_flat_68",
+      "netId": "bb1:n-col-b42",
+      "from": {
+        "part": "lcd",
+        "terminal": "d7"
+      },
+      "to": {
+        "part": "via",
+        "terminal": "pb7"
+      }
+    },
+    {
+      "id": "w_flat_69",
+      "netId": "bb1:n-col-b53",
+      "from": {
+        "part": "pwrLed",
+        "terminal": "anode"
+      },
+      "to": {
+        "part": "pwrR",
+        "terminal": "b"
+      }
+    },
+    {
+      "id": "w_flat_70",
+      "netId": "bb1:n-col-t18",
+      "from": {
+        "part": "cpu",
+        "terminal": "a15"
+      },
+      "to": {
+        "part": "glue1",
+        "terminal": "1a"
+      }
+    },
+    {
+      "id": "w_flat_71",
+      "netId": "bb1:n-col-t18",
+      "from": {
+        "part": "cpu",
+        "terminal": "a15"
+      },
+      "to": {
+        "part": "glue1",
+        "terminal": "1b"
+      }
+    },
+    {
+      "id": "w_flat_72",
+      "netId": "bb1:n-col-t19",
+      "from": {
+        "part": "cpu",
+        "terminal": "a14"
+      },
+      "to": {
+        "part": "glue1",
+        "terminal": "2a"
+      }
+    },
+    {
+      "id": "w_flat_73",
+      "netId": "bb1:n-col-t19",
+      "from": {
+        "part": "cpu",
+        "terminal": "a14"
+      },
+      "to": {
+        "part": "glue1",
+        "terminal": "2b"
+      }
+    },
+    {
+      "id": "w_flat_74",
+      "netId": "bb1:n-col-t19",
+      "from": {
+        "part": "cpu",
+        "terminal": "a14"
+      },
+      "to": {
+        "part": "glue1",
+        "terminal": "4b"
+      }
+    },
+    {
+      "id": "w_flat_75",
+      "netId": "bb1:n-col-t19",
+      "from": {
+        "part": "cpu",
+        "terminal": "a14"
+      },
+      "to": {
+        "part": "ram",
+        "terminal": "a14"
+      }
+    },
+    {
+      "id": "w_flat_76",
+      "netId": "bb1:n-col-t19",
+      "from": {
+        "part": "cpu",
+        "terminal": "a14"
+      },
+      "to": {
+        "part": "rom",
+        "terminal": "a14"
+      }
+    },
+    {
+      "id": "w_flat_77",
+      "netId": "bb1:n-col-t20",
+      "from": {
+        "part": "cpu",
+        "terminal": "a13"
+      },
+      "to": {
+        "part": "glue2",
+        "terminal": "2a"
+      }
+    },
+    {
+      "id": "w_flat_78",
+      "netId": "bb1:n-col-t20",
+      "from": {
+        "part": "cpu",
+        "terminal": "a13"
+      },
+      "to": {
+        "part": "glue2",
+        "terminal": "2b"
+      }
+    },
+    {
+      "id": "w_flat_79",
+      "netId": "bb1:n-col-t20",
+      "from": {
+        "part": "cpu",
+        "terminal": "a13"
+      },
+      "to": {
+        "part": "ram",
+        "terminal": "a13"
+      }
+    },
+    {
+      "id": "w_flat_80",
+      "netId": "bb1:n-col-t20",
+      "from": {
+        "part": "cpu",
+        "terminal": "a13"
+      },
+      "to": {
+        "part": "rom",
+        "terminal": "a13"
+      }
+    },
+    {
+      "id": "w_flat_81",
+      "netId": "bb1:n-col-t20",
+      "from": {
+        "part": "cpu",
+        "terminal": "a13"
+      },
+      "to": {
+        "part": "via",
+        "terminal": "cs1"
+      }
+    },
+    {
+      "id": "w_flat_82",
+      "netId": "bb1:n-col-t21",
+      "from": {
+        "part": "acia",
+        "terminal": "cs0"
+      },
+      "to": {
+        "part": "cpu",
+        "terminal": "a12"
+      }
+    },
+    {
+      "id": "w_flat_83",
+      "netId": "bb1:n-col-t21",
+      "from": {
+        "part": "acia",
+        "terminal": "cs0"
+      },
+      "to": {
+        "part": "ram",
+        "terminal": "a12"
+      }
+    },
+    {
+      "id": "w_flat_84",
+      "netId": "bb1:n-col-t21",
+      "from": {
+        "part": "acia",
+        "terminal": "cs0"
+      },
+      "to": {
+        "part": "rom",
+        "terminal": "a12"
+      }
+    },
+    {
+      "id": "w_flat_85",
+      "netId": "bb1:n-col-t26",
+      "from": {
+        "part": "kbd",
+        "terminal": "da"
+      },
+      "to": {
+        "part": "via",
+        "terminal": "ca1"
+      }
+    },
+    {
+      "id": "w_flat_86",
+      "netId": "bb1:n-col-t3",
+      "from": {
+        "part": "cpu",
+        "terminal": "resb"
+      },
+      "to": {
+        "part": "resetBtn",
+        "terminal": "a"
+      }
+    },
+    {
+      "id": "w_flat_87",
+      "netId": "bb1:n-col-t3",
+      "from": {
+        "part": "cpu",
+        "terminal": "resb"
+      },
+      "to": {
+        "part": "resetR",
+        "terminal": "b"
+      }
+    },
+    {
+      "id": "w_flat_88",
+      "netId": "bb1:n-col-t43",
+      "from": {
+        "part": "glue1",
+        "terminal": "4y"
+      },
+      "to": {
+        "part": "glue2",
+        "terminal": "1a"
+      }
+    },
+    {
+      "id": "w_flat_89",
+      "netId": "bb1:n-col-t43",
+      "from": {
+        "part": "glue1",
+        "terminal": "4y"
+      },
+      "to": {
+        "part": "glue2",
+        "terminal": "1b"
+      }
+    },
+    {
+      "id": "w_flat_90",
+      "netId": "bb1:n-col-t43",
+      "from": {
+        "part": "glue1",
+        "terminal": "4y"
+      },
+      "to": {
+        "part": "via",
+        "terminal": "cs2b"
+      }
+    },
+    {
+      "id": "w_flat_91",
+      "netId": "bb1:rail-b-",
+      "from": {
+        "part": "acia",
+        "terminal": "vss"
+      },
+      "to": {
+        "part": "c_acia",
+        "terminal": "b"
+      }
+    },
+    {
+      "id": "w_flat_92",
+      "netId": "bb1:rail-b-",
+      "from": {
+        "part": "acia",
+        "terminal": "vss"
+      },
+      "to": {
+        "part": "c_cpu",
+        "terminal": "b"
+      }
+    },
+    {
+      "id": "w_flat_93",
+      "netId": "bb1:rail-b-",
+      "from": {
+        "part": "acia",
+        "terminal": "vss"
+      },
+      "to": {
+        "part": "c_glue1",
+        "terminal": "b"
+      }
+    },
+    {
+      "id": "w_flat_94",
+      "netId": "bb1:rail-b-",
+      "from": {
+        "part": "acia",
+        "terminal": "vss"
+      },
+      "to": {
+        "part": "c_ram",
+        "terminal": "b"
+      }
+    },
+    {
+      "id": "w_flat_95",
+      "netId": "bb1:rail-b-",
+      "from": {
+        "part": "acia",
+        "terminal": "vss"
+      },
+      "to": {
+        "part": "c_rom",
+        "terminal": "b"
+      }
+    },
+    {
+      "id": "w_flat_96",
+      "netId": "bb1:rail-b-",
+      "from": {
+        "part": "acia",
+        "terminal": "vss"
+      },
+      "to": {
+        "part": "c_via",
+        "terminal": "b"
+      }
+    },
+    {
+      "id": "w_flat_97",
+      "netId": "bb1:rail-b-",
+      "from": {
+        "part": "acia",
+        "terminal": "vss"
+      },
+      "to": {
+        "part": "contrast",
+        "terminal": "b"
+      }
+    },
+    {
+      "id": "w_flat_98",
+      "netId": "bb1:rail-b-",
+      "from": {
+        "part": "acia",
+        "terminal": "vss"
+      },
+      "to": {
+        "part": "cpu",
+        "terminal": "vss"
+      }
+    },
+    {
+      "id": "w_flat_99",
+      "netId": "bb1:rail-b-",
+      "from": {
+        "part": "acia",
+        "terminal": "vss"
+      },
+      "to": {
+        "part": "glue1",
+        "terminal": "gnd"
+      }
+    },
+    {
+      "id": "w_flat_100",
+      "netId": "bb1:rail-b-",
+      "from": {
+        "part": "acia",
+        "terminal": "vss"
+      },
+      "to": {
+        "part": "glue2",
+        "terminal": "gnd"
+      }
+    },
+    {
+      "id": "w_flat_101",
+      "netId": "bb1:rail-b-",
+      "from": {
+        "part": "acia",
+        "terminal": "vss"
+      },
+      "to": {
+        "part": "gnd1",
+        "terminal": "gnd"
+      }
+    },
+    {
+      "id": "w_flat_102",
+      "netId": "bb1:rail-b-",
+      "from": {
+        "part": "acia",
+        "terminal": "vss"
+      },
+      "to": {
+        "part": "lcd",
+        "terminal": "k"
+      }
+    },
+    {
+      "id": "w_flat_103",
+      "netId": "bb1:rail-b-",
+      "from": {
+        "part": "acia",
+        "terminal": "vss"
+      },
+      "to": {
+        "part": "lcd",
+        "terminal": "vss"
+      }
+    },
+    {
+      "id": "w_flat_104",
+      "netId": "bb1:rail-b-",
+      "from": {
+        "part": "acia",
+        "terminal": "vss"
+      },
+      "to": {
+        "part": "osc",
+        "terminal": "gnd"
+      }
+    },
+    {
+      "id": "w_flat_105",
+      "netId": "bb1:rail-b-",
+      "from": {
+        "part": "acia",
+        "terminal": "vss"
+      },
+      "to": {
+        "part": "pwrLed",
+        "terminal": "cathode"
+      }
+    },
+    {
+      "id": "w_flat_106",
+      "netId": "bb1:rail-b-",
+      "from": {
+        "part": "acia",
+        "terminal": "vss"
+      },
+      "to": {
+        "part": "ram",
+        "terminal": "gnd"
+      }
+    },
+    {
+      "id": "w_flat_107",
+      "netId": "bb1:rail-b-",
+      "from": {
+        "part": "acia",
+        "terminal": "vss"
+      },
+      "to": {
+        "part": "resetBtn",
+        "terminal": "b"
+      }
+    },
+    {
+      "id": "w_flat_108",
+      "netId": "bb1:rail-b-",
+      "from": {
+        "part": "acia",
+        "terminal": "vss"
+      },
+      "to": {
+        "part": "rom",
+        "terminal": "gnd"
+      }
+    },
+    {
+      "id": "w_flat_109",
+      "netId": "bb1:rail-b-",
+      "from": {
+        "part": "acia",
+        "terminal": "vss"
+      },
+      "to": {
+        "part": "via",
+        "terminal": "vss"
+      }
+    },
+    {
+      "id": "w_flat_110",
+      "netId": "bb1:rail-b-",
+      "from": {
+        "part": "acia",
+        "terminal": "vss"
+      },
+      "to": {
+        "part": "xtal",
+        "terminal": "gnd"
+      }
+    },
+    {
+      "id": "w_flat_111",
+      "netId": "bb2:n-col-t30",
+      "from": {
+        "part": "glue1",
+        "terminal": "3y"
+      },
+      "to": {
+        "part": "ram",
+        "terminal": "csb"
+      }
+    },
+    {
+      "id": "w_flat_112",
+      "netId": "bb2:n-col-t47",
+      "from": {
+        "part": "glue1",
+        "terminal": "1y"
+      },
+      "to": {
+        "part": "glue1",
+        "terminal": "3a"
+      }
+    },
+    {
+      "id": "w_flat_113",
+      "netId": "bb2:n-col-t47",
+      "from": {
+        "part": "glue1",
+        "terminal": "1y"
+      },
+      "to": {
+        "part": "glue1",
+        "terminal": "4a"
+      }
+    },
+    {
+      "id": "w_flat_114",
+      "netId": "bb2:n-col-t47",
+      "from": {
+        "part": "glue1",
+        "terminal": "1y"
+      },
+      "to": {
+        "part": "rom",
+        "terminal": "ceb"
+      }
+    },
+    {
+      "id": "w_flat_115",
+      "netId": "bb2:n-col-t5",
+      "from": {
+        "part": "contrast",
+        "terminal": "wiper"
+      },
+      "to": {
+        "part": "lcd",
+        "terminal": "v0"
+      }
+    },
+    {
+      "id": "w_flat_116",
+      "netId": "bb3:n-col-b38",
+      "from": {
+        "part": "glue1",
+        "terminal": "2y"
+      },
+      "to": {
+        "part": "glue1",
+        "terminal": "3b"
+      }
+    },
+    {
+      "id": "w_flat_117",
+      "netId": "bb3:n-col-b45",
+      "from": {
+        "part": "glue2",
+        "terminal": "1y"
+      },
+      "to": {
+        "part": "glue2",
+        "terminal": "3a"
+      }
+    },
+    {
+      "id": "w_flat_118",
+      "netId": "bb3:n-col-b48",
+      "from": {
+        "part": "glue2",
+        "terminal": "2y"
+      },
+      "to": {
+        "part": "glue2",
+        "terminal": "3b"
+      }
+    },
+    {
+      "id": "w_flat_119",
+      "netId": "bb3:n-col-b5",
+      "from": {
+        "part": "acia",
+        "terminal": "cs1b"
+      },
+      "to": {
+        "part": "glue2",
+        "terminal": "3y"
+      }
+    }
+  ],
+  "holeWires": []
+}

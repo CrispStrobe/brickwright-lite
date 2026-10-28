@@ -1,0 +1,56 @@
+DEVICE SPIKE
+# COUNTERTURN - internal flywheel motion turns the free carrier the other way.
+# Copyright (c) 2026 CrispStrobe. SPDX-License-Identifier: BSD-3-Clause.
+# Import Counterturn first. Motor A is horizontal and drives the vertical rotor
+# through a real 12:20 bevel pair. The carrier's yaw bearing is always passive.
+# Native lab speeds are degrees per second. The program does not read or drive yaw.
+WHEN flag clicked:
+  set complete to 0
+  set fault to 0
+  set phase to 0
+  if (lab status) = "no-model" then:
+    say "Import Counterturn in Robot Lab first."
+    stop all
+  reset timer
+  broadcast "Counterturn watchdog"
+  lab reset
+  lab start
+  lab stop motor A coast
+  wait 5 seconds
+  if (abs of (lab motor A angle)) > 1 then:
+    set fault to 1
+    lab stop motor A hold
+    say "The input moved during coast startup. Reset and inspect the build."
+    stop all
+  lab stop motor A hold
+  wait 0.25 seconds
+  set phase to 1
+  say "Spin the flywheel: watch the carrier turn the other way."
+  lab run motor A for (1440 - (lab motor A angle)) degrees at 180 degrees per second
+  lab stop motor A hold
+  wait 1 seconds
+  if (abs of ((lab motor A angle) - 1440)) > 1 then:
+    set fault to 1
+    say "The outward input target was not reached. Reset before retrying."
+    stop all
+  set phase to 2
+  say "Reverse the same input travel and observe the carrier return."
+  lab run motor A for (0 - (lab motor A angle)) degrees at 180 degrees per second
+  lab stop motor A hold
+  wait 1 seconds
+  if (abs of (lab motor A angle)) > 1 then:
+    set fault to 1
+    say "The return input target was not reached. Reset before retrying."
+    stop all
+  set phase to 3
+  set complete to 1
+  say "Complete. Motor A holds; the carrier bearing remains free."
+
+WHEN I receive "Counterturn watchdog":
+  repeat until complete = 1:
+    if timer > 35 then:
+      set fault to 1
+      lab stop motor A hold
+      say "35 second watchdog: motor stopped and holding. Reset before retrying."
+      stop all
+    wait 0.02 seconds

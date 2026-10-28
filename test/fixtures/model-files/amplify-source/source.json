@@ -1,0 +1,9 @@
+{
+  "author": "CrispStrobe",
+  "license": "BSD-3-Clause",
+  "archive": "amplify-bsd-source.zip",
+  "archiveSha256": "cdae7a911e603aa8a3608248a84f611b1a1d00eea8c8129896836eed2d913ede",
+  "modelSha256": "54dafff4443b5d59a7e4627f86bb1be82ab37673ec75557d8463a6ecc84a8ab0",
+  "programSha256": "32dbbaccec6dd376fdbb3c4e0f1d12c4ba0b49b33409a62862db652a56c82bcf",
+  "note": "Raw source retained as data; no bundled generators or runtimes executed."
+}

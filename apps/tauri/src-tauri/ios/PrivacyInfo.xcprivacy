@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <!-- Privacy manifest, required by Apple since iOS 17 for apps that touch a
+       "Required Reason API". Brickwright itself does not call these, but
+       Tauri's core plugins do (preferences, the offline asset cache, download
+       packs), and the requirement covers the whole binary. Missing or
+       incomplete = upload rejection at validation time.
+
+       Source of truth is apps/tauri/src-tauri/ios/PrivacyInfo.xcprivacy; the
+       copy inside src-tauri/gen/apple/ is generated. Installed into the Xcode
+       project by scripts/patch-ios-privacy.mjs, which must run after
+       `tauri ios init` (which regenerates the project) and before the build. -->
+
+  <!-- No tracking, no data collection: everything the editor makes stays on
+       device, and no analytics/ads SDKs are linked. Keep this consistent with
+       the App Privacy "nutrition label" ("Data Not Collected"). -->
+  <key>NSPrivacyTracking</key>
+  <false/>
+  <key>NSPrivacyTrackingDomains</key>
+  <array/>
+  <key>NSPrivacyCollectedDataTypes</key>
+  <array/>
+
+  <key>NSPrivacyAccessedAPITypes</key>
+  <array>
+    <!-- NSUserDefaults — Tauri stores window state and plugin preferences. -->
+    <dict>
+      <key>NSPrivacyAccessedAPIType</key>
+      <string>NSPrivacyAccessedAPICategoryUserDefaults</string>
+      <key>NSPrivacyAccessedAPITypeReasons</key>
+      <array>
+        <string>CA92.1</string>
+      </array>
+    </dict>
+    <!-- File timestamps — the offline asset cache and download packs read and
+         write file metadata inside the app container. -->
+    <dict>
+      <key>NSPrivacyAccessedAPIType</key>
+      <string>NSPrivacyAccessedAPICategoryFileTimestamp</string>
+      <key>NSPrivacyAccessedAPITypeReasons</key>
+      <array>
+        <string>C617.1</string>
+      </array>
+    </dict>
+    <!-- Disk space — checked before writing downloaded library packs. -->
+    <dict>
+      <key>NSPrivacyAccessedAPIType</key>
+      <string>NSPrivacyAccessedAPICategoryDiskSpace</string>
+      <key>NSPrivacyAccessedAPITypeReasons</key>
+      <array>
+        <string>E174.1</string>
+      </array>
+    </dict>
+  </array>
+</dict>
+</plist>

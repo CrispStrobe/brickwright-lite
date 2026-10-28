@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "id": "cross-ratio",
+  "language": "de",
+  "what": "Gekreuztes Viergelenk. Gekreuztes Viergelenk (Antiparallelogramm). Motor A dreht den 64 mm langen Antriebsarm direkt im Verhältnis 1:1. Eine 32 mm lange Koppel bewegt einen ebenso langen 64-mm-Abtriebsarm, dessen Drehpunkt 32 mm neben dem des Antriebsarms liegt; Abtriebsarm und Koppel sind passiv. Gegenüberliegende Glieder sind gleich lang, doch die Kette ist im gekreuzten Zweig montiert: Die beiden langen Arme überkreuzen sich auf verschiedenen Ebenen, statt ein Parallelogramm zu bilden. Das Programm fährt den Antrieb über 60°, 30°, 45°, 60°, 90°, 120°, 150°, 120° und 90° zurück auf 60° und hält jede Stellung 1,5 s, damit du den Abtriebswinkel ablesen kannst. Motor A dreht den Eingangsbalken eines gekreuzten Viergelenks. Die Koppel zwingt den passiven Ausgangsbalken auf tan(φ/2) = 3·tan(θ/2): Bei 120° Eingangsweg dreht der Ausgang um 92° und bleibt dabei innerhalb von 0,02° am Gesetz.",
+  "try": [
+    "Öffne Cross Ratio mit Programm, drücke Zurücksetzen und dann Start. Der Antrieb beginnt in der gespeicherten 60°-Stellung, in der Encoder A 0° anzeigt; der passive Abtriebsarm steht dann bei 120°, und die Koppel liegt parallel zum Gestell.",
+    "Die Stufen 1–6 fahren den Antrieb auf 30°, 45°, 60°, 90°, 120° und 150°. Sage vor jedem Schritt den Abtriebswinkel mit der Formel voraus und vergleiche in der Haltezeit. Der erste 15°-Schritt (30° → 45°) sollte den Abtrieb um etwa 24,8° drehen, der 30°-Schritt von 120° auf 150° nur um etwa 11,6°.",
+    "Beobachte auch die Koppel. Im idealen gekreuzten Viergelenk ist ihre Richtung die Summe aus Antriebs- und Abtriebswinkel (θ + φ): 180° in der Startstellung, etwa 233° bei θ = 90°.",
+    "Die Stufen 7–9 fahren über 120° und 90° zurück auf 60°. Vergleiche jede Stellung des Rückwegs mit der des Hinwegs: Im Ideal hängt der Abtrieb nur vom Antriebswinkel ab, nicht von Richtung oder Vorgeschichte. Nur Motor A wird geregelt; das Programm setzt den Abtrieb nie."
+  ],
+  "why": "Im Antiparallelogramm sind die beiden langen Glieder (Länge L) und die beiden kurzen Glieder, Gestell und Koppel (Länge g), paarweise gleich lang, aber so gefaltet, dass sich die langen Glieder kreuzen. Die Schließbedingung dieses Zweigs lautet L·sin((φ − θ)/2) = g·sin((φ + θ)/2); umgeformt ergibt sich tan(φ/2) = (L + g)/(L − g) · tan(θ/2). Mit L = 64 mm und g = 32 mm ist der Faktor 3. Verdreifacht wird also nicht der Winkel, sondern der Tangens des halben Winkels. Die momentane Übersetzung dφ/dθ = 3/(5 − 4·cos θ) fällt deshalb von etwa 1,95 bei 30° über 0,60 bei 90° auf 0,35 bei 150°. Über den ganzen Bereich von 30° bis 150° überstreicht der Abtrieb nur etwa 92°.",
+  "matters": "Ein Zahnradpaar hat ein festes Übersetzungsverhältnis, ein Koppelgetriebe dagegen eines, das sich mit der Stellung ändert. Das gekreuzte Viergelenk zeigt, dass dieselben vier Längen je nach Montage entweder eine 1:1-Bewegung (Parallelogramm) oder diese stark veränderliche Übersetzung ergeben. Solche Getriebe setzt man ein, wenn ein Hub an einem Ende schnell und am anderen langsam, aber kraftvoll ablaufen soll. In einem Lauf des Brickwright-Simulators ohne Oberfläche folgte der gemessene Abtriebsarm tan(φ/2) = 3·tan(θ/2) über den ganzen Lauf auf 0,007° genau (zum Beispiel 143,15° bei θ = 90,02°). Das ist eine Simulationsbeobachtung; ein realer LEGO-Aufbau wurde nicht geprüft.",
+  "question": "Der Halbwinkelfaktor ist 3. Aus der Startstellung (Antrieb 60°, Abtrieb 120°) fährt der Antrieb auf 90°. Erreicht der Abtrieb 270°, 150° oder etwas anderes? Und dreht der nächste 30°-Schritt (90° → 120°) den Abtrieb weiter oder weniger weit als dieser?",
+  "answer": "Weder 270° noch 150°. Bei θ = 90° ist tan(θ/2) = 1, also tan(φ/2) = 3 und φ = 2·arctan 3 ≈ 143,1°: 30° Antrieb ergeben etwa 23,1° Abtrieb. Der nächste Schritt auf 120° liefert tan(φ/2) = 3·tan 60° ≈ 5,196, also φ ≈ 158,2° – nur noch etwa 15,1° mehr. Die Übersetzung sinkt weiter, weil dφ/dθ = 3/(5 − 4·cos θ) mit wachsendem θ kleiner wird.",
+  "further": [
+    "Berechne den Abtrieb bei 45° und 150° (≈ 102,3° und ≈ 169,8°) und vergleiche ihn in den Haltezeiten mit dem Arm. Prüfe auch, ob Hin- und Rückweg bei gleichem Antriebswinkel übereinstimmen.",
+    "Der Kreuzungspunkt der beiden langen Arme ist der Momentanpol der Koppel. Seine Abstände zu den beiden Gestelldrehpunkten ergeben zusammen immer 64 mm; er wandert also auf einer Ellipse mit den Gestelldrehpunkten als Brennpunkten.",
+    "Ungekreuzt montiert (als Parallelogramm) ergeben dieselben vier Längen bei jedem Winkel φ = θ. Die Längen allein legen die Bewegung nicht fest, der Montagezweig schon. Wechseln könnte die Kette nur in den Strecklagen bei θ = 0° oder 180°; die Anschläge (etwa 21,5° und 158,5°) und der Softwarebereich des Programms (Encoder −30° bis +90°) halten sie davon fern.",
+    "Grenzen: Die Simulation nimmt starre Glieder und ideale Gelenke an. Über Drehmoment, Spiel, die Höhenversätze der Arme oder einen realen Aufbau sagt dieser Versuch nichts aus."
+  ],
+  "formula": "L = 64 mm (160 LDU), g = 32 mm (80 LDU), gekreuzter Zweig: L·sin((φ − θ)/2) = g·sin((φ + θ)/2) ⇒ tan(φ/2) = (L + g)/(L − g)·tan(θ/2) = 3·tan(θ/2); φ = 2·atan2(3·sin(θ/2), cos(θ/2)); dφ/dθ = 3/(5 − 4·cos θ); Koppelrichtung = θ + φ. θ = 60° + Encoder A. Beispiele: θ = 30° → φ ≈ 77,6°; 60° → 120°; 90° → 143,1°; 150° → 169,8°.",
+  "related": [
+    "tempo-loop.ldr",
+    "crank-rocker.ldr"
+  ]
+}

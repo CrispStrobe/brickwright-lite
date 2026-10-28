@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "id": "tidal-trio",
+  "language": "en",
+  "what": "A rotating crank drives a coupler and a rocker through a closed four-bar linkage. Wave: three 16/48/32/48 mm four-bar linkages compare crank phase and nonlinear rocker motion. Offsets [0, 120, 240] degrees.",
+  "try": [
+    "Reset and run. Compare the continuously turning crank with the rocking output.",
+    "Find the two extremes of the output and watch its changing speed between them.",
+    "For Tidal Trio, compare Wave, Together, Alternating and Reverse Wave from Reset."
+  ],
+  "why": "All four link lengths constrain the loop at once. The output angle is a nonlinear function of crank angle. Tidal Trio uses 16/48/32/48 mm links and a rocker sweep near 63.07°; three crank phase offsets create a travelling pattern.",
+  "matters": "Linkages turn simple rotary drives into useful repeated motions.",
+  "question": "Does a 120° crank offset mean a 120° rocker offset?",
+  "answer": "No. The nonlinear four-bar relation changes the rocker angle and speed throughout each cycle.",
+  "further": [
+    "Compare equal crank-phase spacing with equal time spacing of rocker peaks.",
+    "Compare the nearly parallel tray of the lift."
+  ],
+  "formula": "crank vector + coupler vector = fixed-pivot vector + rocker vector",
+  "related": [
+    "parallel-lift.ldr"
+  ]
+}

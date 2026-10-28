@@ -1,0 +1,9 @@
+// A program that reaches an opcode the Virtual EV3 does not implement (a mailbox).
+DATA32 Before
+
+vmthread MAIN
+{
+  MOVE32_32(1, Before)
+  MAILBOX_OPEN(0, 1, 'box', 0, 0)
+  MOVE32_32(2, Before)
+}

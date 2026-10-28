@@ -1,0 +1,35 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright (c) 2026 Brickwright contributors
+// FlattenVar preserves the declared width; Flatten's numeric wrapper uses a long.
+task main()
+{
+    unsigned int word = 4660;
+    unsigned int restoredWord = 9;
+    string data = FlattenVar(word);
+    NumOut(0, LCD_LINE1, StrLen(data));
+    int ok = UnflattenVar(data, restoredWord);
+    NumOut(0, LCD_LINE1, ok);
+    NumOut(0, LCD_LINE1, restoredWord);
+    long number = -16909060;
+    long restoredNumber = 9;
+    data = FlattenVar(number);
+    ok = UnflattenVar(data, restoredNumber);
+    NumOut(0, LCD_LINE1, ok);
+    NumOut(0, LCD_LINE1, restoredNumber);
+    float fraction = -0.5;
+    float restoredFraction = 0.0;
+    data = FlattenVar(fraction);
+    NumOut(0, LCD_LINE1, StrLen(data));
+    for (int i = 0; i < StrLen(data); i++)
+        NumOut(0, LCD_LINE1, StrIndex(data, i));
+    ok = UnflattenVar(data, restoredFraction);
+    NumOut(0, LCD_LINE1, ok);
+    NumOut(0, LCD_LINE1, restoredFraction * 10);
+    string label = "NXT";
+    string restoredLabel = "---";
+    data = FlattenVar(label);
+    NumOut(0, LCD_LINE1, StrLen(data));
+    ok = UnflattenVar(data, restoredLabel);
+    NumOut(0, LCD_LINE1, ok);
+    TextOut(0, LCD_LINE1, restoredLabel);
+}

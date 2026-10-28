@@ -1,0 +1,10 @@
+{
+ "author": "CrispStrobe",
+ "license": "BSD-3-Clause",
+ "files": {
+  "models/ghost-pivot.ldr": "dd959adb32beac4abe48199b0f3c5ea665af8ed6f143afa9d59a6a95396062ce",
+  "programs/ghost-pivot.bw": "60ad764da8580cb3bcdb5c82a0255ac4cb6ed8822437ea022885bce67699a2b2",
+  "LICENSE.txt": "5f48a3052c7fc8b1f0a996da47fcfdf75a606dd9cc4796bf931f0502b9726c0c",
+  "SOURCES.md": "fbeceec3f49b7d5e46c6a341fa9fcf483f03672b14bf47f94f717dc6d2ef9a20"
+ }
+}

@@ -1,0 +1,8 @@
+{
+  "$schema": "../gen/schemas/mobile-schema.json",
+  "identifier": "ios-depth-capture",
+  "description": "iOS-only LiDAR scene-depth capture initiated by Camera Capture blocks.",
+  "platforms": ["iOS"],
+  "windows": ["main"],
+  "permissions": ["depth-capture:default"]
+}

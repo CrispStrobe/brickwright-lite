@@ -1,0 +1,539 @@
+name: tauri
+
+on:
+  workflow_dispatch:
+    inputs:
+      spike_prime_only:
+        description: Run only the heavy pinned SPIKE Prime Renode integration proof
+        required: false
+        type: boolean
+        default: false
+      ev3_only:
+        description: Run only the heavy pinned EV3 ARM926 Renode integration proof
+        required: false
+        type: boolean
+        default: false
+  push:
+    branches: [main]
+    paths:
+      - 'apps/tauri/**'
+      - 'overlay/scratch-vm/src/extension-support/native-broker-*.js'
+      - 'packages/scratch-vm/src/extension-support/native-broker-*.js'
+      - 'overlay/scratch-vm/src/extension-support/native-renode-capability.js'
+      - 'overlay/scratch-vm/src/extension-support/spike-program-uart-contract.js'
+      - 'packages/scratch-vm/src/extension-support/native-renode-capability.js'
+      - 'packages/scratch-vm/src/extension-support/spike-program-uart-contract.js'
+      # The JS-side vocabulary DECLARES platform.kind.read, so it belongs to the boundary's
+      # contract even though it is not named native-broker-*. Editing it used to leave the
+      # e2e gate unrun, and a trigger too narrow is nearly a gate nothing runs.
+      - 'overlay/scratch-vm/src/extension-support/capability-broker.js'
+      - 'packages/scratch-vm/src/extension-support/capability-broker.js'
+      - 'overlay/scratch-gui/static/native-broker/**'
+      - 'packages/scratch-gui/static/native-broker/**'
+      - 'scripts/package-native-broker-*.mjs'
+      - 'scripts/prepare-spike-micropython-pins.mjs'
+      - 'scripts/verify-native-broker-e2e.mjs'
+      - 'overlay/scratch-gui/static/capability-broker.html'
+      - 'packages/scratch-gui/static/capability-broker.html'
+      - 'overlay/scratch-gui/src/lib/distribution-policy.js'
+      - 'packages/scratch-gui/src/lib/distribution-policy.js'
+      - 'overlay/scratch-gui/src/components/menu-bar/bw-about.jsx'
+      - 'packages/scratch-gui/src/components/menu-bar/bw-about.jsx'
+      - 'overlay/scratch-gui/webpack.config.js'
+      - 'packages/scratch-gui/webpack.config.js'
+      - 'overlay/scratch-gui/src/containers/extension-library.jsx'
+      - 'packages/scratch-gui/src/containers/extension-library.jsx'
+      - 'overlay/scratch-gui/src/lib/sdcc-wasm/**'
+      - 'packages/scratch-gui/src/lib/sdcc-wasm/**'
+      - 'overlay/scratch-gui/src/lib/bw-machines/**'
+      - 'packages/scratch-gui/src/lib/bw-machines/**'
+      - 'overlay/scratch-vm/src/extension-support/extension-manager.js'
+      - 'packages/scratch-vm/src/extension-support/extension-manager.js'
+      - '.github/workflows/tauri.yml'
+      - 'scripts/verify-native-downloads-e2e.mjs'
+      - 'scripts/verify-native-confirm-e2e.mjs'
+      - 'overlay/scratch-gui/src/lib/native-dialog.js'
+      - 'packages/scratch-gui/src/lib/native-dialog.js'
+      - 'overlay/scratch-gui/src/containers/menu-bar-hoc.jsx'
+      - 'packages/scratch-gui/src/containers/menu-bar-hoc.jsx'
+      - 'scripts/verify-native-prompt-e2e.mjs'
+      - 'overlay/scratch-gui/src/lib/prompt-modal.jsx'
+      - 'packages/scratch-gui/src/lib/prompt-modal.jsx'
+      - 'overlay/scratch-gui/src/containers/extension-library.jsx'
+      - 'packages/scratch-gui/src/containers/extension-library.jsx'
+      - 'scripts/verify-build-policy.mjs'
+      - 'scripts/vercel-build.sh'
+      - 'test/native-*.test.mjs'
+      - 'test/*build-policy*.test.mjs'
+      - 'test/gpl-toolchain-not-bundled.test.mjs'
+      - 'test/ble-startup.test.mjs'
+      - 'test/workflow-trigger-coverage.test.mjs'
+  pull_request:
+    paths:
+      - 'apps/tauri/**'
+      - 'overlay/scratch-vm/src/extension-support/native-broker-*.js'
+      - 'packages/scratch-vm/src/extension-support/native-broker-*.js'
+      - 'overlay/scratch-vm/src/extension-support/native-renode-capability.js'
+      - 'overlay/scratch-vm/src/extension-support/spike-program-uart-contract.js'
+      - 'packages/scratch-vm/src/extension-support/native-renode-capability.js'
+      - 'packages/scratch-vm/src/extension-support/spike-program-uart-contract.js'
+      # The JS-side vocabulary DECLARES platform.kind.read, so it belongs to the boundary's
+      # contract even though it is not named native-broker-*. Editing it used to leave the
+      # e2e gate unrun, and a trigger too narrow is nearly a gate nothing runs.
+      - 'overlay/scratch-vm/src/extension-support/capability-broker.js'
+      - 'packages/scratch-vm/src/extension-support/capability-broker.js'
+      - 'overlay/scratch-gui/static/native-broker/**'
+      - 'packages/scratch-gui/static/native-broker/**'
+      - 'scripts/package-native-broker-*.mjs'
+      - 'scripts/prepare-spike-micropython-pins.mjs'
+      - 'scripts/verify-native-broker-e2e.mjs'
+      - 'overlay/scratch-gui/static/capability-broker.html'
+      - 'packages/scratch-gui/static/capability-broker.html'
+      - 'overlay/scratch-gui/src/lib/distribution-policy.js'
+      - 'packages/scratch-gui/src/lib/distribution-policy.js'
+      - 'overlay/scratch-gui/src/components/menu-bar/bw-about.jsx'
+      - 'packages/scratch-gui/src/components/menu-bar/bw-about.jsx'
+      - 'overlay/scratch-gui/webpack.config.js'
+      - 'packages/scratch-gui/webpack.config.js'
+      - 'overlay/scratch-gui/src/containers/extension-library.jsx'
+      - 'packages/scratch-gui/src/containers/extension-library.jsx'
+      - 'overlay/scratch-gui/src/lib/sdcc-wasm/**'
+      - 'packages/scratch-gui/src/lib/sdcc-wasm/**'
+      - 'overlay/scratch-gui/src/lib/bw-machines/**'
+      - 'packages/scratch-gui/src/lib/bw-machines/**'
+      - 'overlay/scratch-vm/src/extension-support/extension-manager.js'
+      - 'packages/scratch-vm/src/extension-support/extension-manager.js'
+      - '.github/workflows/tauri.yml'
+      - 'scripts/verify-native-downloads-e2e.mjs'
+      - 'scripts/verify-native-confirm-e2e.mjs'
+      - 'overlay/scratch-gui/src/lib/native-dialog.js'
+      - 'packages/scratch-gui/src/lib/native-dialog.js'
+      - 'overlay/scratch-gui/src/containers/menu-bar-hoc.jsx'
+      - 'packages/scratch-gui/src/containers/menu-bar-hoc.jsx'
+      - 'scripts/verify-native-prompt-e2e.mjs'
+      - 'overlay/scratch-gui/src/lib/prompt-modal.jsx'
+      - 'packages/scratch-gui/src/lib/prompt-modal.jsx'
+      - 'overlay/scratch-gui/src/containers/extension-library.jsx'
+      - 'packages/scratch-gui/src/containers/extension-library.jsx'
+      - 'scripts/verify-build-policy.mjs'
+      - 'scripts/vercel-build.sh'
+      - 'test/native-*.test.mjs'
+      - 'test/*build-policy*.test.mjs'
+      - 'test/gpl-toolchain-not-bundled.test.mjs'
+      - 'test/ble-startup.test.mjs'
+      - 'test/workflow-trigger-coverage.test.mjs'
+
+# A PR branch is already tested by pull_request; running the same job again for
+# its push doubles the Rust queue without producing a second verdict. Keep the
+# post-merge main run, and cancel an obsolete run when that same PR is updated.
+concurrency:
+  group: tauri-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    if: github.event_name != 'workflow_dispatch' || (inputs.spike_prime_only != true && inputs.ev3_only != true)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/tauri
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Check native broker packaged assets
+        working-directory: .
+        run: |
+          node scripts/package-native-broker-proof-pins.mjs --check
+          node scripts/package-native-broker-assets.mjs --check
+
+      - name: Install Tauri system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev libgtk-3-dev librsvg2-dev \
+            libayatana-appindicator3-dev patchelf libdbus-1-dev libudev-dev
+
+      - uses: dtolnay/rust-toolchain@4360b52568e2003a75bf9bc1d59f33a8e3fc893c # stable branch head, 2026-08-24
+        with:
+          toolchain: stable
+          components: clippy
+
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          workspaces: apps/tauri/src-tauri
+
+      # tauri::generate_context! validates frontendDist at compile time; the web
+      # build isn't committed, so provide a minimal stub for the compile.
+      - name: Stub frontendDist
+        run: |
+          mkdir -p ../../packages/scratch-gui/build
+          echo '<!doctype html><title>ci-stub</title>' > ../../packages/scratch-gui/build/index.html
+
+      - name: cargo test
+        run: cargo test --manifest-path src-tauri/Cargo.toml
+
+      - name: cargo clippy
+        run: cargo clippy --manifest-path src-tauri/Cargo.toml -- -D warnings
+
+      # Peer sessions (task E11) compile only with the `peers` feature, which no shipped build
+      # sets. Build it here anyway, so the gated code cannot rot unseen: its protocol tests
+      # (handshake, nonce counters, pre-authentication limits, address and consent policy)
+      # run, and clippy holds it to the same bar as the default build.
+      - name: cargo test --features peers (peer sessions, off by default)
+        run: 'cargo test --manifest-path src-tauri/Cargo.toml --features peers peer::'
+
+      - name: cargo clippy --features peers
+        run: cargo clippy --manifest-path src-tauri/Cargo.toml --features peers -- -D warnings
+
+  # The only gate that LAUNCHES the app. Everything else tests a model of this boundary: the Node
+  # suites read Rust and JSON as text, the browser gates stub __TAURI_INTERNALS__ themselves, and
+  # release.yml builds the app and stops. tauri-driver drives the real binary, so every invoke
+  # below crosses the real Tauri ACL in the real process.
+  e2e:
+    if: github.event_name != 'workflow_dispatch' || (inputs.spike_prime_only != true && inputs.ev3_only != true)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+
+      - name: Install Tauri system dependencies and a WebDriver
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev libgtk-3-dev librsvg2-dev \
+            libayatana-appindicator3-dev patchelf libdbus-1-dev libudev-dev \
+            webkit2gtk-driver xvfb dbus-x11 bluez
+          # The app initialises a BLE handler at startup (ScratchLink). With no session bus and
+          # no org.bluez the first run logged
+          #   failed to initialize handler: Btleplug(... org.bluez was not provided ...)
+          # and the WebDriver connection died mid-session. bluez plus a real session bus below
+          # give it something to talk to; the gate is about the broker, and an unrelated
+          # subsystem failing to start is noise that looks exactly like a boundary failure.
+
+      - uses: dtolnay/rust-toolchain@4360b52568e2003a75bf9bc1d59f33a8e3fc893c # stable branch head, 2026-08-24
+        with:
+          toolchain: stable
+
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.8.1
+        with:
+          workspaces: apps/tauri/src-tauri
+          # A DISTINCT key. The `test` job stubs frontendDist with index.html alone, and
+          # tauri-build EMBEDS that directory at compile time. Sharing one cache let this job
+          # restore a binary whose embedded assets had no capability-broker.html, so the broker
+          # webview loaded nothing, its realm check threw, no acknowledgement was sent, and the
+          # audit read was refused — a harness fault wearing the costume of a boundary fault.
+          key: e2e-real-frontend
+
+      # PINNED, not floating. The e2e gate's verdict depends on this binary: it is the oracle
+      # that drives the app and reports what the boundary did. `--locked` pins the dependency
+      # tree; it does NOT pin tauri-driver itself, so an upstream release could silently change
+      # the oracle and every conclusion drawn from it. Recording the version beside the verdict
+      # (the harness does) makes a change visible; pinning makes it deliberate.
+      #
+      # 2.0.6 is what CI has been resolving to and what every green run in this lane was proven
+      # against. Raising it is a one-line edit that shows up in review, which is the point.
+      - name: Install tauri-driver
+        run: cargo install tauri-driver --version 2.0.6 --locked
+
+      # This job used to embed a one-page broker stub. That proved the broker boundary but could
+      # not prove that the actual native editor retained its remote extension/toolchain/machine
+      # paths. Build the same allow-profile frontend release jobs package, then drive both claims
+      # through the real WebKit/Tauri process below.
+      - name: Build the real allow-profile frontend
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BW_REMOTE_CODE_POLICY: allow
+        run: |
+          npm ci --ignore-scripts --no-audit --no-fund
+          bash scripts/vercel-build.sh
+
+      # Force tauri-build to re-run so the frontend assembled above is the one embedded. A
+      # cached build script output is silent about which assets it captured.
+      # --features custom-protocol is REQUIRED, not an optimisation. Without tauri/custom-protocol
+      # Tauri does not embed or serve frontendDist at all — it expects a dev server — so every
+      # webview loads an empty document. Measured: the broker realm reported htmlLen=61, metas=0
+      # and an empty title, which is `<html><head></head><body></body></html>`, not the broker
+      # page. `tauri build` passes this feature; a bare `cargo build` does not, and that
+      # difference is invisible until something reads the DOM.
+      - name: Build the app against the frontend just assembled
+        run: |
+          # No `cargo clean` here, and no `touch build.rs`. Both were added chasing a stale
+          # embedded asset set, which was NOT the cause — the realm was failing to load because
+          # of `.incognito(true)` (see native_broker.rs). The editor's own document later proved
+          # assets were being served correctly the whole time. Leaving the clean in would cost a
+          # full rebuild on every run to defend a falsified hypothesis.
+          cargo build --manifest-path apps/tauri/src-tauri/Cargo.toml --features custom-protocol
+
+      # A precondition, because six hypotheses were spent reading a symptom of this job's own
+      # build as a verdict about the code under test. If the broker document is not where the
+      # config says it is, say so HERE rather than letting the harness report an empty realm.
+      - name: The frontend the config points at must contain the broker document
+        run: |
+          set -eu
+          mkdir -p e2e-evidence
+          dist=$(python3 -c "import json;print(json.load(open('apps/tauri/src-tauri/tauri.conf.json'))['build']['frontendDist'])")
+          root=apps/tauri/src-tauri
+          resolved=$(cd "$root" && cd "$dist" && pwd)
+          { echo "frontendDist resolves to: $resolved"; ls -la "$resolved"; } \
+            | tee e2e-evidence/frontend-dist.log
+          test -f "$resolved/capability-broker.html" \
+            || { echo "::error::capability-broker.html is absent from the frontend the app will embed"; exit 1; }
+
+      - name: Drive the packaged broker boundary
+        run: |
+          set -o pipefail
+          mkdir -p e2e-evidence
+          xvfb-run -a dbus-run-session -- node scripts/verify-native-broker-e2e.mjs \
+            apps/tauri/src-tauri/target/debug/brickwright-tauri \
+            2>&1 | tee e2e-evidence/broker-boundary.log
+          # `set -o pipefail` above, because otherwise this step's status would be `tee`'s and a
+          # failing harness would report success. That exact confusion — a pipeline's exit code
+          # taken for the command's — has already cost this repository a "PUSHED" on a rejected
+          # push, so it is worth the one line.
+
+      - name: Drive remote downloads through the real native WebView
+        run: |
+          set -o pipefail
+          timeout --signal=TERM --kill-after=15s 360s \
+            xvfb-run -a dbus-run-session -- node scripts/verify-native-downloads-e2e.mjs \
+            apps/tauri/src-tauri/target/debug/brickwright-tauri \
+            2>&1 | tee e2e-evidence/native-downloads.log
+
+      # Task E6: the dialog plugin's init script turns window.confirm into an always-truthy
+      # Promise. This drives File > New in the real WebView with the native message box answered
+      # from script: Cancel must keep the project, OK must replace it.
+      - name: Drive File > New's question through the real native WebView
+        run: |
+          set -o pipefail
+          timeout --signal=TERM --kill-after=15s 300s \
+            xvfb-run -a dbus-run-session -- node scripts/verify-native-confirm-e2e.mjs \
+            apps/tauri/src-tauri/target/debug/brickwright-tauri \
+            2>&1 | tee e2e-evidence/native-confirm.log
+
+      # Task E8: on macOS/iOS window.prompt answers null at once (wry 0.55.1 has no WKWebView
+      # text-input panel), so the app asks for text with its own modal. This drives Extension
+      # from URL in the real WebView with window.prompt recording and answering null: the modal
+      # must appear, its answer must reach the next question, and Escape must cancel.
+      - name: Drive Extension from URL's text question through the real native WebView
+        run: |
+          set -o pipefail
+          timeout --signal=TERM --kill-after=15s 300s \
+            xvfb-run -a dbus-run-session -- node scripts/verify-native-prompt-e2e.mjs \
+            apps/tauri/src-tauri/target/debug/brickwright-tauri \
+            2>&1 | tee e2e-evidence/native-prompt.log
+
+      # CP3-E asks that the artifacts SHOW the real vertical slice. The log is the evidence: it
+      # carries the realm dump (both documents, so "the frontend loaded" is visible rather than
+      # assumed), the broker's own trace, and the PASS line naming each property proven. Uploaded
+      # on failure too — a red run is exactly when someone needs to read it, and for seven hours
+      # today the only way to see this output was to re-run the job.
+      - name: Keep the boundary evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: broker-boundary-evidence
+          path: e2e-evidence/
+          if-no-files-found: error
+          retention-days: 14
+
+  # Deliberately manual: building the exact Renode fork is too heavy for every native PR. This
+  # job is the release-grade CP05 proof that Lite's semantic broker drives the real emulator,
+  # not only the bounded fake sockets in the ordinary Rust suite.
+  spike-prime-renode:
+    if: github.event_name == 'workflow_dispatch' && inputs.spike_prime_only == true
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: Check out Brickwright Lite
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: Check out exact permissive Renode fork
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          repository: CrispStrobe/renode-spike-prime
+          ref: 06d86c517d2d295745748833171906176aa8dd54
+          path: renode
+          submodules: recursive
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Set up .NET 8 for the pinned Renode build
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Build public SPIKE payload and headless Renode
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends gcc-arm-none-eabi \
+            libwebkit2gtk-4.1-dev libgtk-3-dev librsvg2-dev \
+            libayatana-appindicator3-dev patchelf libdbus-1-dev libudev-dev
+          cd renode
+          ./build.sh --net --no-gui --external-lib-only
+          ./build.sh --net --no-gui --skip-fetch
+          cd tests/platforms/SPIKE_Prime
+          arm-none-eabi-gcc -mcpu=cortex-m4 -mthumb -nostdlib \
+            -Wl,-T,stm32f413-throughput.ld -o stm32f413-throughput.elf \
+            stm32f413-throughput.S
+          test "$(arm-none-eabi-readelf -h stm32f413-throughput.elf | awk '/Entry point/{print $4}')" = 0x8000009
+
+      - name: Export exact Renode package pins
+        shell: bash
+        run: |
+          root="$GITHUB_WORKSPACE/renode"
+          executable="$root/renode"
+          scenario="$root/scripts/single-node/spike-prime.resc"
+          firmware="$root/tests/platforms/SPIKE_Prime/stm32f413-throughput.elf"
+          state_script="$root/scripts/spike-state-server.py"
+          state_config="$root/contracts/brick-state/renode-prime.example.json"
+          {
+            echo "BW_RENODE_EXECUTABLE=$executable"
+            echo "BW_RENODE_SHA256=$(sha256sum "$executable" | awk '{print $1}')"
+            echo "BW_RENODE_SPIKE_ROOT=$root"
+            echo "BW_RENODE_SPIKE_SCENARIO=$scenario"
+            echo "BW_RENODE_SPIKE_SCENARIO_SHA256=$(sha256sum "$scenario" | awk '{print $1}')"
+            echo "BW_RENODE_SPIKE_FIRMWARE=$firmware"
+            echo "BW_RENODE_SPIKE_FIRMWARE_SHA256=$(sha256sum "$firmware" | awk '{print $1}')"
+            echo "BW_RENODE_SPIKE_STATE_SCRIPT=$state_script"
+            echo "BW_RENODE_SPIKE_STATE_SCRIPT_SHA256=$(sha256sum "$state_script" | awk '{print $1}')"
+            echo "BW_RENODE_SPIKE_STATE_CONFIG=$state_config"
+            echo "BW_RENODE_SPIKE_STATE_CONFIG_SHA256=$(sha256sum "$state_config" | awk '{print $1}')"
+          } >> "$GITHUB_ENV"
+
+      - name: Drive the complete Lite SPIKE semantic debugger contract
+        shell: bash
+        run: |
+          mkdir -p packages/scratch-gui/build
+          cargo test --manifest-path apps/tauri/src-tauri/Cargo.toml --lib \
+            renode_debugger::tests::packaged_spike_session_drives_the_complete_cpu_and_state_contract \
+            -- --ignored --exact --nocapture
+
+      - name: Write immutable SPIKE integration receipt
+        shell: bash
+        run: |
+          jq -n \
+            --arg lite "$GITHUB_SHA" \
+            --arg renode "06d86c517d2d295745748833171906176aa8dd54" \
+            --arg firmware_sha256 "$BW_RENODE_SPIKE_FIRMWARE_SHA256" \
+            '{schema:1,target:"spike-prime",lite_commit:$lite,renode_commit:$renode,firmware_sha256:$firmware_sha256,operations:["start","registers","memory","breakpoint-set","breakpoint-clear","step","run","pause","state","reset","close"],result:"pass"}' \
+            > spike-prime-renode-e2e.json
+          cat spike-prime-renode-e2e.json >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload SPIKE integration receipt
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: spike-prime-renode-e2e
+          path: spike-prime-renode-e2e.json
+
+  # Manual and isolated for the same reason as the SPIKE lane above. This lane proves that the
+  # shared semantic debugger contract selects ARM926/CPSR/32-bit ARM breakpoints and observes the
+  # public smoke image's real UART output after its AM1808 AINTC IRQ handler acknowledges IRQ 53.
+  ev3-renode:
+    if: github.event_name == 'workflow_dispatch' && inputs.ev3_only == true
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: Check out Brickwright Lite
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: Check out exact permissive Renode fork
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          repository: CrispStrobe/renode-spike-prime
+          ref: e0e38e7a87072dc6e1dcf4f2718678f4350de423
+          path: renode
+          submodules: recursive
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Set up .NET 8 for the pinned Renode build
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Build public EV3 payload and headless Renode
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends gcc-arm-none-eabi \
+            libwebkit2gtk-4.1-dev libgtk-3-dev librsvg2-dev \
+            libayatana-appindicator3-dev patchelf libdbus-1-dev libudev-dev
+          cd renode
+          ./build.sh --net --no-gui --external-lib-only
+          ./build.sh --net --no-gui --skip-fetch
+          cd tests/platforms/LEGO_EV3
+          for guest in am1808-smoke am1808-motor-smoke; do
+            arm-none-eabi-gcc -mcpu=arm926ej-s -nostdlib \
+              -Wl,-T,am1808-smoke.ld -o "$guest.elf" "$guest.S"
+          done
+          test "$(arm-none-eabi-readelf -h am1808-smoke.elf | awk '/Entry point/{print $4}')" = 0xffff0000
+
+      - name: Export exact EV3 Renode package pins
+        shell: bash
+        run: |
+          root="$GITHUB_WORKSPACE/renode"
+          executable="$root/renode"
+          platform="$root/platforms/boards/lego-ev3.repl"
+          firmware="$root/tests/platforms/LEGO_EV3/am1808-smoke.elf"
+          state_script="$root/scripts/spike-state-server.py"
+          state_config="$root/contracts/brick-state/renode-ev3.example.json"
+          {
+            echo "BW_RENODE_EXECUTABLE=$executable"
+            echo "BW_RENODE_SHA256=$(sha256sum "$executable" | awk '{print $1}')"
+            echo "BW_RENODE_EV3_ROOT=$root"
+            echo "BW_RENODE_EV3_PLATFORM=$platform"
+            echo "BW_RENODE_EV3_PLATFORM_SHA256=$(sha256sum "$platform" | awk '{print $1}')"
+            echo "BW_RENODE_EV3_FIRMWARE=$firmware"
+            echo "BW_RENODE_EV3_FIRMWARE_SHA256=$(sha256sum "$firmware" | awk '{print $1}')"
+            echo "BW_RENODE_EV3_STATE_SCRIPT=$state_script"
+            echo "BW_RENODE_EV3_STATE_SCRIPT_SHA256=$(sha256sum "$state_script" | awk '{print $1}')"
+            echo "BW_RENODE_EV3_STATE_CONFIG=$state_config"
+            echo "BW_RENODE_EV3_STATE_CONFIG_SHA256=$(sha256sum "$state_config" | awk '{print $1}')"
+          } >> "$GITHUB_ENV"
+
+      - name: Drive the complete Lite EV3 semantic debugger contract
+        shell: bash
+        run: |
+          mkdir -p packages/scratch-gui/build
+          cargo test --manifest-path apps/tauri/src-tauri/Cargo.toml --lib \
+            renode_debugger::tests::packaged_ev3_session_drives_the_complete_cpu_and_evidence_contract \
+            -- --ignored --exact --nocapture
+
+      - name: Observe all four guest-driven motors through the Lite debugger
+        shell: bash
+        run: |
+          export BW_RENODE_EV3_FIRMWARE="$GITHUB_WORKSPACE/renode/tests/platforms/LEGO_EV3/am1808-motor-smoke.elf"
+          export BW_RENODE_EV3_FIRMWARE_SHA256="$(sha256sum "$BW_RENODE_EV3_FIRMWARE" | awk '{print $1}')"
+          cargo test --manifest-path apps/tauri/src-tauri/Cargo.toml --lib \
+            renode_debugger::tests::packaged_ev3_motor_guest_drives_observed_motion_and_inputs \
+            -- --ignored --exact --nocapture
+          echo "BW_RENODE_EV3_MOTOR_FIRMWARE_SHA256=$BW_RENODE_EV3_FIRMWARE_SHA256" >> "$GITHUB_ENV"
+
+      - name: Write immutable EV3 integration receipt
+        shell: bash
+        run: |
+          jq -n \
+            --arg lite "$GITHUB_SHA" \
+            --arg renode "e0e38e7a87072dc6e1dcf4f2718678f4350de423" \
+            --arg firmware_sha256 "$BW_RENODE_EV3_FIRMWARE_SHA256" \
+            --arg motor_firmware_sha256 "$BW_RENODE_EV3_MOTOR_FIRMWARE_SHA256" \
+            --arg state_script_sha256 "$BW_RENODE_EV3_STATE_SCRIPT_SHA256" \
+            --arg state_config_sha256 "$BW_RENODE_EV3_STATE_CONFIG_SHA256" \
+            --arg uart "EV3 ARM9 IRQ" \
+            '{schema:1,target:"ev3",architecture:"arm926ej-s",lite_commit:$lite,renode_commit:$renode,firmware_sha256:$firmware_sha256,motor_firmware_sha256:$motor_firmware_sha256,state_script_sha256:$state_script_sha256,state_config_sha256:$state_config_sha256,operations:["start","registers-cpsr","memory","breakpoint-set-arm32","breakpoint-clear-arm32","step","run","pause","state","button-press-release","analog-set-channel","analog-bounds-rejection","reset","close"],evidence:{uart:$uart,aintc_irq_53_acknowledged:true,display_width:178,display_height:128,display_samples:22784,motor_ports:["A","B","C","D"],all_motor_edges_positive:true,motor_direction:1,motor_duty_cycle:0.5,adc_channels:16,analog_channel_3:777},result:"pass"}' \
+            > ev3-renode-e2e.json
+          cat ev3-renode-e2e.json >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload EV3 integration receipt
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: ev3-renode-e2e
+          path: ev3-renode-e2e.json

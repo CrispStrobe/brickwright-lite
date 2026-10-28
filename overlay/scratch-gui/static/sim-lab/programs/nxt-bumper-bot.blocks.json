@@ -1,0 +1,402 @@
+{
+ "extensions": [
+  "legonxt"
+ ],
+ "blocks": {
+  "b1": {
+   "opcode": "event_whenflagclicked",
+   "next": "b2",
+   "parent": null,
+   "inputs": {},
+   "fields": {},
+   "shadow": false,
+   "topLevel": true,
+   "x": 40,
+   "y": 40
+  },
+  "b2": {
+   "opcode": "legonxt_setupTouchSensorNXT",
+   "next": "b4",
+   "parent": "b1",
+   "inputs": {
+    "PORT": [
+     1,
+     "s3"
+    ]
+   },
+   "fields": {},
+   "shadow": false,
+   "topLevel": false
+  },
+  "s3": {
+   "opcode": "legonxt_menu_SENSOR_PORT",
+   "next": null,
+   "parent": "b2",
+   "inputs": {},
+   "fields": {
+    "SENSOR_PORT": [
+     "S1",
+     null
+    ]
+   },
+   "shadow": true,
+   "topLevel": false
+  },
+  "b4": {
+   "opcode": "legonxt_motorRunDegrees",
+   "next": "b8",
+   "parent": "b2",
+   "inputs": {
+    "PORT": [
+     1,
+     "s5"
+    ],
+    "POWER": [
+     1,
+     "s6"
+    ],
+    "DEGREES": [
+     1,
+     "s7"
+    ]
+   },
+   "fields": {},
+   "shadow": false,
+   "topLevel": false
+  },
+  "s5": {
+   "opcode": "legonxt_menu_MOTOR_PORT",
+   "next": null,
+   "parent": "b4",
+   "inputs": {},
+   "fields": {
+    "MOTOR_PORT": [
+     "B",
+     null
+    ]
+   },
+   "shadow": true,
+   "topLevel": false
+  },
+  "s6": {
+   "opcode": "math_number",
+   "next": null,
+   "parent": "b4",
+   "inputs": {},
+   "fields": {
+    "NUM": [
+     "75",
+     null
+    ]
+   },
+   "shadow": true,
+   "topLevel": false
+  },
+  "s7": {
+   "opcode": "math_number",
+   "next": null,
+   "parent": "b4",
+   "inputs": {},
+   "fields": {
+    "NUM": [
+     "360",
+     null
+    ]
+   },
+   "shadow": true,
+   "topLevel": false
+  },
+  "b8": {
+   "opcode": "legonxt_motorRunDegrees",
+   "next": "b12",
+   "parent": "b4",
+   "inputs": {
+    "PORT": [
+     1,
+     "s9"
+    ],
+    "POWER": [
+     1,
+     "s10"
+    ],
+    "DEGREES": [
+     1,
+     "s11"
+    ]
+   },
+   "fields": {},
+   "shadow": false,
+   "topLevel": false
+  },
+  "s9": {
+   "opcode": "legonxt_menu_MOTOR_PORT",
+   "next": null,
+   "parent": "b8",
+   "inputs": {},
+   "fields": {
+    "MOTOR_PORT": [
+     "C",
+     null
+    ]
+   },
+   "shadow": true,
+   "topLevel": false
+  },
+  "s10": {
+   "opcode": "math_number",
+   "next": null,
+   "parent": "b8",
+   "inputs": {},
+   "fields": {
+    "NUM": [
+     "75",
+     null
+    ]
+   },
+   "shadow": true,
+   "topLevel": false
+  },
+  "s11": {
+   "opcode": "math_number",
+   "next": null,
+   "parent": "b8",
+   "inputs": {},
+   "fields": {
+    "NUM": [
+     "360",
+     null
+    ]
+   },
+   "shadow": true,
+   "topLevel": false
+  },
+  "b12": {
+   "opcode": "control_wait",
+   "next": "b14",
+   "parent": "b8",
+   "inputs": {
+    "DURATION": [
+     1,
+     "s13"
+    ]
+   },
+   "fields": {},
+   "shadow": false,
+   "topLevel": false
+  },
+  "s13": {
+   "opcode": "math_positive_number",
+   "next": null,
+   "parent": "b12",
+   "inputs": {},
+   "fields": {
+    "NUM": [
+     "2",
+     null
+    ]
+   },
+   "shadow": true,
+   "topLevel": false
+  },
+  "b14": {
+   "opcode": "legonxt_motorOn",
+   "next": "b17",
+   "parent": "b12",
+   "inputs": {
+    "PORT": [
+     1,
+     "s15"
+    ],
+    "POWER": [
+     1,
+     "s16"
+    ]
+   },
+   "fields": {},
+   "shadow": false,
+   "topLevel": false
+  },
+  "s15": {
+   "opcode": "legonxt_menu_MOTOR_PORT",
+   "next": null,
+   "parent": "b14",
+   "inputs": {},
+   "fields": {
+    "MOTOR_PORT": [
+     "B",
+     null
+    ]
+   },
+   "shadow": true,
+   "topLevel": false
+  },
+  "s16": {
+   "opcode": "math_number",
+   "next": null,
+   "parent": "b14",
+   "inputs": {},
+   "fields": {
+    "NUM": [
+     "60",
+     null
+    ]
+   },
+   "shadow": true,
+   "topLevel": false
+  },
+  "b17": {
+   "opcode": "legonxt_motorOn",
+   "next": "b22",
+   "parent": "b14",
+   "inputs": {
+    "PORT": [
+     1,
+     "s18"
+    ],
+    "POWER": [
+     1,
+     "s19"
+    ]
+   },
+   "fields": {},
+   "shadow": false,
+   "topLevel": false
+  },
+  "s18": {
+   "opcode": "legonxt_menu_MOTOR_PORT",
+   "next": null,
+   "parent": "b17",
+   "inputs": {},
+   "fields": {
+    "MOTOR_PORT": [
+     "C",
+     null
+    ]
+   },
+   "shadow": true,
+   "topLevel": false
+  },
+  "s19": {
+   "opcode": "math_number",
+   "next": null,
+   "parent": "b17",
+   "inputs": {},
+   "fields": {
+    "NUM": [
+     "60",
+     null
+    ]
+   },
+   "shadow": true,
+   "topLevel": false
+  },
+  "b20": {
+   "opcode": "legonxt_isTouchPressed",
+   "next": null,
+   "parent": "b22",
+   "inputs": {
+    "PORT": [
+     1,
+     "s21"
+    ]
+   },
+   "fields": {},
+   "shadow": false,
+   "topLevel": false
+  },
+  "s21": {
+   "opcode": "legonxt_menu_SENSOR_PORT",
+   "next": null,
+   "parent": "b20",
+   "inputs": {},
+   "fields": {
+    "SENSOR_PORT": [
+     "S1",
+     null
+    ]
+   },
+   "shadow": true,
+   "topLevel": false
+  },
+  "b22": {
+   "opcode": "control_wait_until",
+   "next": "b23",
+   "parent": "b17",
+   "inputs": {
+    "CONDITION": [
+     2,
+     "b20"
+    ]
+   },
+   "fields": {},
+   "shadow": false,
+   "topLevel": false
+  },
+  "b23": {
+   "opcode": "legonxt_motorStop",
+   "next": "b25",
+   "parent": "b22",
+   "inputs": {
+    "PORT": [
+     1,
+     "s24"
+    ]
+   },
+   "fields": {
+    "ACTION": [
+     "brake",
+     null
+    ]
+   },
+   "shadow": false,
+   "topLevel": false
+  },
+  "s24": {
+   "opcode": "legonxt_menu_MOTOR_PORT",
+   "next": null,
+   "parent": "b23",
+   "inputs": {},
+   "fields": {
+    "MOTOR_PORT": [
+     "B",
+     null
+    ]
+   },
+   "shadow": true,
+   "topLevel": false
+  },
+  "b25": {
+   "opcode": "legonxt_motorStop",
+   "next": null,
+   "parent": "b23",
+   "inputs": {
+    "PORT": [
+     1,
+     "s26"
+    ]
+   },
+   "fields": {
+    "ACTION": [
+     "brake",
+     null
+    ]
+   },
+   "shadow": false,
+   "topLevel": false
+  },
+  "s26": {
+   "opcode": "legonxt_menu_MOTOR_PORT",
+   "next": null,
+   "parent": "b25",
+   "inputs": {},
+   "fields": {
+    "MOTOR_PORT": [
+     "C",
+     null
+    ]
+   },
+   "shadow": true,
+   "topLevel": false
+  }
+ }
+}

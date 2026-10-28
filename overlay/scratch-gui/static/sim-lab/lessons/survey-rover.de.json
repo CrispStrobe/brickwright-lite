@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "id": "survey-rover",
+  "language": "de",
+  "what": "Zwei Radmotoren bewegen das Fahrgestell; ein dritter neigt den Abstandssensorkopf. Die Schwerkraft verdreht den Sensorkopf, wenn der Motor seine Position nicht aktiv hält.",
+  "try": [
+    "Setze zurück und starte die kurze Erkundungsfahrt.",
+    "Beobachte den Kopf beim Wechsel von Bewegung zu Halten.",
+    "Stoppe, ändere den Kopfwinkel vorsichtig und vergleiche die Messrichtung."
+  ],
+  "why": "Die Schwerkraft erzeugt am versetzten Kopf ein Drehmoment. Aktives Positionshalten wirkt dagegen; bloßes Bremsen garantiert keinen festen Winkel. Die Sensorrichtung ändert sich mit der Kopfpose.",
+  "matters": "Robotersensoren brauchen eine stabile Montage und eine bekannte Blickrichtung.",
+  "question": "Ist Drehzahl null immer dasselbe wie Positionshalten?",
+  "answer": "Nein. Halten erzeugt über Positionsrückkopplung ein Ausgleichsmoment. Bei passivem Bremsen kann die Schwerkraft den Kopf verdrehen.",
+  "further": [
+    "Vergleiche den Kopf während der Fahrt und im Stillstand.",
+    "Beziehe den Sensorwert auf den Strahl, nicht nur auf die Fahrgestellrichtung."
+  ],
+  "formula": "Schwerkraftmoment = Masse × Erdbeschleunigung × senkrechter Hebelarm",
+  "related": [
+    "wall-stopper.ldr",
+    "centrifugal-governor.ldr"
+  ]
+}

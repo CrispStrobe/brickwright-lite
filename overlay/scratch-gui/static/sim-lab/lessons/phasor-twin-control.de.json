@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "id": "phasor-twin-control",
+  "language": "de",
+  "what": "Die Kontrolle zu Phasor Twin. Motor, Zahnräder, Kurbeln, Pleuel und beide Zylinderführungen sind gleich, aber die zweite Kurbelscheibe steht im selben Winkel wie die erste statt 90° voraus. Beide Kolben bewegen sich jetzt gemeinsam. Im Simulator bleiben beide Hübe 32,00 mm, während die Schleife, die die beiden Kolbenwege gegeneinander zeichnen, von 805,8 mm² auf etwa 4 mm² pro Kurbelumdrehung zusammenfällt: eine Gerade.",
+  "try": [
+    "Lade diese Kontrolle, drücke Zurücksetzen und dann Start und beobachte beide Kolbenstangen: Sie bewegen sich jetzt nebeneinander.",
+    "Vergleiche mit Phasor Twin: Dort steht der eine Kolben in der Hubmitte und bewegt sich am schnellsten, wenn der andere am Hubende anhält.",
+    "Stell dir die beiden Kolbenwege gegeneinander aufgetragen vor. In dieser Kontrolle liegen die Punkte auf einer Geraden; in Phasor Twin laufen sie auf einer geschlossenen Schleife.",
+    "Prüfe die Hübe: Beide Kolben fahren weiter 32 mm, geändert hat sich nur die Phase, nicht die Bewegung eines einzelnen Kolbens."
+  ],
+  "why": "Die Schleifenfläche ∮ x_A dx_B misst, wie weit die beiden Bewegungen außer Takt sind. Für zwei Schubkurbeln mit gleichem Kurbelradius r ist sie π r² sin φ, mit dem Phasenwinkel φ zwischen den Kurbeln. Bei φ = 0 wiederholt der zweite Kolben stets den ersten, jedem Schritt des einen entspricht derselbe Schritt des anderen, und die eingeschlossene Fläche ist null. Sonst hat sich an der Maschine nichts geändert; die Kontrolle zeigt also, dass die Fläche in Phasor Twin aus dem 90°-Versatz der Kurbeln kommt.",
+  "matters": "In einem Stirlingmotor müssen sich die beiden Gasvolumen versetzt ändern; ein Motor, dessen Volumen sich gemeinsam bewegen, schließt in seinem Druck-Volumen-Diagramm keine Fläche ein und leistet keine Arbeit, wie schnell er auch dreht. Dieselbe Prüfung gilt für jede Maschine, die einen Kreisprozess braucht: Zwei gleichphasige Bewegungen können groß sein, aber sie laufen nicht um.",
+  "question": "Beide Kolben fahren weiter 32 mm. Warum ist die Schleifenfläche in dieser Kontrolle fast null, während Phasor Twin etwa 805 mm² einschließt?",
+  "answer": "Mit gleich gestellten Kurbeln laufen die beiden Kolben im Takt, ihre Wege zeichnen eine Gerade: Die Fläche π r² sin φ ist bei φ = 0 null. In Phasor Twin stehen die Kurbeln 90° auseinander, sin φ = 1, und die Fläche ist π · (16 mm)² ≈ 804 mm².",
+  "further": [
+    "Sag die Schleifenfläche für einen Versatz von 45° mit π r² sin φ voraus.",
+    "Welcher Versatz ergibt die größte Fläche, und warum ergibt 180° wieder null?",
+    "Warum arbeiten Stirlingmotoren mit etwa 90° zwischen den beiden Volumen?"
+  ],
+  "formula": "A = ∮ x_A dx_B = π r² sin φ; hier φ = 0° ⇒ A = 0 (Simulator etwa 4 mm² pro Umdrehung); Phasor Twin φ = 90° ⇒ A ≈ 804 mm².",
+  "related": [
+    "balance-engine.ldr",
+    "rod-ratio.ldr",
+    "crank-rocker.ldr"
+  ]
+}

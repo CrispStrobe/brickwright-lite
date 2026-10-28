@@ -1,0 +1,63 @@
+{
+  "date": "2026-10-09",
+  "testedSource": "7c05309b9d29c81ef936012d6573eaf3d0fb44cb",
+  "base": "7797fa455",
+  "producerPinChanged": false,
+  "observed": {
+    "question": "Hosted question buttons remain disabled beyond the 500 ms guard because the pure stage container receives the same mutated dialog object",
+    "stageWaits": "Callback/sprite reload waits dereference an absent stage during normal project replacement",
+    "pixelEditor": "Palette journey clicks a hidden green flag while still in the graphics editor"
+  },
+  "fixes": [
+    "Publish a fresh dialog snapshot on each dialog notification; dismissal closure still owns the live queue",
+    "Stage waits require a present replacement stage with a different ID before checking Blocks loaded",
+    "Open the right pane and return visibly to Blocks before running the persisted palette block"
+  ],
+  "baseline": {
+    "passed": 7,
+    "failed": 1,
+    "regression": "Pure UI readiness snapshot identity assertion fails before implementation",
+    "log": "arcade-dialog-readiness-baseline.log"
+  },
+  "local": {
+    "passed": 23,
+    "failed": 0,
+    "skipped": 0,
+    "log": "arcade-dialog-readiness-qualified-source.log",
+    "files": [
+      "test/arcade-boolean-question.test.mjs",
+      "test/arcade-browser-bundle.test.mjs",
+      "test/makecode-arcade-direct-controllers.test.mjs",
+      "test/arcade-callback-completion.test.mjs",
+      "test/makecode-arcade-sprite-registration.test.mjs",
+      "test/arcade-project-palette-authoring.test.mjs",
+      "test/overlay-packages-pairs.test.mjs"
+    ],
+    "checks": [
+      "Previous dialog snapshot retains elapsed zero; ready notification has new identity and elapsed 500",
+      "Old snapshot dismissal retains live queue authority and settles once",
+      "Original PXT boolean answers and native Code/SB3/export roundtrips pass",
+      "Development/production extension bundle and controller bindings pass",
+      "All three changed browser scripts pass syntax checks"
+    ]
+  },
+  "hosted": {
+    "parentSource": "17e178bd3c6e398068a1f7fa053cbe0a64b44ee9",
+    "parentBuild": "SUCCESS",
+    "parentLight": "FAILURE: question guard and hidden palette Run control",
+    "parentHeavy": "FAILURE: callback/sprite reload stage waits",
+    "lightJob": "https://github.com/CrispStrobe/brickwright-lite/actions/runs/37909605019/job/113761385275",
+    "heavyJob": "https://github.com/CrispStrobe/brickwright-lite/actions/runs/37909605019/job/113761385270",
+    "freshSourceBrowser": "Pending; local regressions do not establish integrated GUI success"
+  },
+  "corpus": {
+    "boundary": "Importer/producer unchanged by this follow-up; latest measured import-only census remains the direct-controller source receipt",
+    "translated": 105,
+    "partial": 78,
+    "malformed": 1
+  },
+  "remaining": [
+    "Fresh exact-head hosted browser gates and all enabled checks required before merge",
+    "78 partial imports and 1 malformed input remain; translated entries are not complete-game compatibility claims"
+  ]
+}

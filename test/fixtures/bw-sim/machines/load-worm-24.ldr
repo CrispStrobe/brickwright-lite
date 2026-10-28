@@ -1,0 +1,26 @@
+0 load-worm-24 (Brickwright Robot Lab validation machine)
+0 Name: load-worm-24.ldr
+0 Author: Brickwright
+0 !LDRAW_ORG Unofficial_Model
+0 // Worm self-lock rig (Robot Lab validation, test/bw-sim-validation.test.mjs).
+0 // The worm rig of test/bw-sim-worm.test.mjs as an LDraw build: SPIKE medium motor output up, the worm 4716
+0 // on a 4L axle in its output; a 3 x 5 L-beam pinned to the motor's side holds a 24T's 4L axle along x,
+0 // 40 LDU from the worm's axis (worm pitch radius 10 + wheel 30); a thin liftarm 6632 on the wheel's axle
+0 // points along -z (horizontal), so gravity loads it with its full moment.
+0 !BW ID motor
+0 !BW PORT A
+1 71 0 0 0 1 0 0 0 1 0 0 0 1 54696p01.dat
+0 !BW ID pin
+1 0 30 -20 -20 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID frame
+1 72 40 -20 -20 0 1 0 0 0 -1 -1 0 0 32526.dat
+0 !BW ID wormAxle
+1 4 0 -80 0 0 -1 0 1 0 0 0 0 1 3705.dat
+0 !BW ID worm
+1 16 0 -100 0 1 0 0 0 0 -1 0 1 0 4716.dat
+0 !BW ID wheelAxle
+1 4 20 -100 -40 1 0 0 0 1 0 0 0 1 3705.dat
+0 !BW ID wheel
+1 16 0 -100 -40 0 0 1 0 1 0 -1 0 0 3648.dat
+0 !BW ID arm
+1 4 -15 -100 -40 0 1 0 1 0 0 0 0 -1 6632.dat

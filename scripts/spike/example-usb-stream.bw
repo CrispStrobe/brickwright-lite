@@ -1,0 +1,12 @@
+when flag clicked
+display text "A"
+set motor speed A 30
+run motor A forward 0.6 seconds
+wait 0.3 seconds
+run motor A backward 0.6 seconds
+display text "F"
+set motor speed F 30
+run motor F forward 0.6 seconds
+wait 0.3 seconds
+run motor F backward 0.6 seconds
+display clear

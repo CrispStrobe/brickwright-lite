@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "id": "ellipse-engine",
+  "language": "de",
+  "what": "Ein Motor fährt auf dem oberen Schlitten mit. Ein starrer Koppelstab verbindet ihn mit einem passiven Schlitten auf einer rechtwinkligen Führung. Die rote und die blaue Markierung beschreiben senkrecht zueinander stehende Ellipsen von je 112 × 48 mm. Beide Schlitten haben 64 mm Hub. Alle 169 gelieferten LEGO-Positionen bleiben erhalten; die farbigen Kappen sind Markierungen und keine Tintenstifte. Zwei rechtwinklige Schlitten und ein mitfahrender Motor führen zwei Punkte auf senkrecht zueinander stehenden Ellipsen von 112 × 48 mm. Vergleiche Schlittenhub und Markerbahnen.",
+  "try": [
+    "Wähle Ellipse Engine unter Beispiele; das native Programm wird automatisch in Blöcke geladen. Setze auf die gespeicherte Stellung zurück und drücke Start. Der Motor dreht dreimal ohne Zwischenhalt mit 30 Grad pro Sekunde, hält kurz und dreht dreimal zurück nach Hause.",
+    "Beobachte neben der Welle auch das mitfahrende Motorgehäuse. Der obere Schlitten folgt einer Führung, der untere orange Schlitten der rechtwinkligen Führung. Vergleiche ihre Richtungen nach jeder Vierteldrehung.",
+    "Verfolge rote und blaue Kappe getrennt. Ihre großen Ellipsenachsen stehen rechtwinklig zueinander. Nutze nach dem Zurücksetzen kleine manuelle Schritte an Motor A für Zwischenstellungen; setze vor einem erneuten Programmlauf wieder zurück."
+  ],
+  "why": "A und B seien die projizierten Gelenkpunkte auf rechtwinkligen Führungslinien. Ihr Abstand beträgt 32 mm. Mit φ als Winkel des tatsächlichen Vektors von B nach A gilt A = (32 cos φ, 0) und B = (0, −32 sin φ). Der Mittelpunkt liegt bei (16 cos φ, −16 sin φ). Für eine Markierung im vorzeichenbehafteten Abstand s mm vom Mittelpunkt gilt P = ((16+s) cos φ, (s−16) sin φ). Bei s = −40 oder +40 mm ergeben sich die Halbachsen 24 und 56 mm in umgekehrter Reihenfolge. Die vollen Achsenlängen betragen somit 48 und 112 mm.",
+  "matters": "Ein rechtwinkliger Ellipsenzirkel wandelt einen Drehantrieb in geführte Verschiebungen und elliptische Punktbahnen um. Führungen und echte Gelenkverbindungen bestimmen die Bahnen. Das Programm gibt Motorwinkel vor, keine Markerkoordinaten. Das Modell enthält weder Papier noch echte Stifte oder simulierten Tintenkontakt.",
+  "question": "Welche Bahn hätte eine dritte Markierung genau in der Mitte des Koppelstabs, und wie groß wäre ihr Durchmesser?",
+  "answer": "Einen Kreis mit 32 mm Durchmesser: Für s = 0 gilt x = 16 cos φ und z = −16 sin φ. Beide Halbachsen sind 16 mm lang. Die vorhandenen äußeren Markierungen haben ungleiche Halbachsen und beschreiben deshalb Ellipsen.",
+  "further": [
+    "Vergleiche mit Quickstroke: Dort gibt es eine versetzte Führung, eine Kurbel und eine Stange; Ellipse Engine führt zwei rechtwinklige Schlitten.",
+    "Ändere zum rechnerischen Vergleich s in der Gleichung. Bei s = +16 oder −16 mm liegt die Markierung an einem Gelenk und folgt einer Geraden. Eine echte versetzte Markierung braucht eine neu geprüfte Montage.",
+    "Vergleiche tatsächliche Körperpositionen mit der Gleichung, auch während der Bewegung und bei der Rückkehr. Erreichte Motorwinkel allein beweisen keine Ellipse."
+  ],
+  "formula": "A = (32 cos φ, 0), B = (0, −32 sin φ) mm; P(s) = ((16+s) cos φ, (s−16) sin φ) mm. s = ±40 mm ⇒ volle Achsen 112 × 48 mm. s = 0 ⇒ Kreisdurchmesser 32 mm.",
+  "related": [
+    "quickstroke.ldr",
+    "twinpoint.ldr",
+    "straight-eight.ldr"
+  ]
+}

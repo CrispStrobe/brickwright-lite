@@ -1,0 +1,235 @@
+{
+  "id": "cp01-supply-run",
+  "title": {
+    "en": "Supply run",
+    "de": "Versorgungsfahrt"
+  },
+  "intro": {
+    "en": "The station needs a supply crate moved to the depot. 1) Follow the black track to its red end. 2) Turn to face north and drive until the bumper presses the call button on the north wall. 3) Back off, turn to face east and push the crate onto the blue depot. 4) Back off a little, turn to face south and park in the garage, 15 cm from the south wall.",
+    "de": "Die Station braucht eine Versorgungskiste im Depot. 1) Folge der schwarzen Spur bis zu ihrem roten Ende. 2) Drehe dich nach Norden und fahre, bis die Stoßstange den Rufknopf an der Nordwand drückt. 3) Setze zurück, drehe dich nach Osten und schiebe die Kiste auf das blaue Depot. 4) Setze ein Stück zurück, drehe dich nach Süden und parke in der Garage, 15 cm vor der Südwand."
+  },
+  "hints": [
+    {
+      "en": "Reset the yaw once, at the start, while the rover faces east. Then every direction is an absolute yaw: north is -90, east is 0, south is 90. Turn until the yaw reaches the direction, and wobble from the line follower does not add up.",
+      "de": "Setze den Gierwinkel einmal zu Beginn zurück, während der Rover nach Osten schaut. Dann ist jede Richtung ein fester Gierwinkel: Norden ist -90, Osten 0, Süden 90. Drehe, bis der Gierwinkel die Richtung erreicht, dann summiert sich das Wackeln des Linienfolgers nicht auf."
+    },
+    {
+      "en": "Back off before every turn that starts against something: the rover's corners stick out.",
+      "de": "Setze vor jeder Drehung zurück, die an einem Hindernis beginnt: Die Ecken des Rovers stehen vor."
+    },
+    {
+      "en": "The crate hides the distance sensor while you push, so push a fixed distance: the depot is about 25 cm past the crate's starting place.",
+      "de": "Beim Schieben verdeckt die Kiste den Abstandssensor, darum schiebe eine feste Strecke: Das Depot liegt etwa 25 cm hinter der Startstelle der Kiste."
+    }
+  ],
+  "mat": {
+    "width": 200,
+    "height": 130,
+    "background": "white",
+    "paint": "#dee2e6",
+    "shapes": [
+      {
+        "color": "black",
+        "shape": {
+          "type": "line",
+          "points": [
+            [
+              10,
+              110
+            ],
+            [
+              60,
+              110
+            ],
+            [
+              90,
+              95
+            ],
+            [
+              125,
+              95
+            ]
+          ],
+          "width": 2.5
+        }
+      },
+      {
+        "color": "red",
+        "shape": {
+          "type": "circle",
+          "x": 125,
+          "y": 95,
+          "r": 6
+        }
+      },
+      {
+        "color": "blue",
+        "paint": "#a5d8ff",
+        "shape": {
+          "type": "rect",
+          "x": 170,
+          "y": 32,
+          "w": 18,
+          "h": 22
+        }
+      },
+      {
+        "color": "white",
+        "paint": "#fff3bf",
+        "shape": {
+          "type": "rect",
+          "x": 150,
+          "y": 106,
+          "w": 24,
+          "h": 18
+        }
+      }
+    ]
+  },
+  "objects": [
+    {
+      "id": "button",
+      "shape": {
+        "type": "rect",
+        "x": 121,
+        "y": 8,
+        "w": 16,
+        "h": 8
+      },
+      "color": "#e03131",
+      "label": {
+        "en": "call button",
+        "de": "Rufknopf"
+      }
+    },
+    {
+      "id": "crate",
+      "pushable": true,
+      "shape": {
+        "type": "rect",
+        "x": 145,
+        "y": 32,
+        "w": 10,
+        "h": 10
+      },
+      "color": "#8d6e63",
+      "label": {
+        "en": "supply crate",
+        "de": "Versorgungskiste"
+      }
+    }
+  ],
+  "zones": [
+    {
+      "id": "track-mid",
+      "role": "checkpoint",
+      "shape": {
+        "type": "circle",
+        "x": 60,
+        "y": 110,
+        "r": 9
+      },
+      "label": {
+        "en": "middle of the track",
+        "de": "Mitte der Spur"
+      }
+    },
+    {
+      "id": "track-end",
+      "role": "checkpoint",
+      "shape": {
+        "type": "circle",
+        "x": 117,
+        "y": 95,
+        "r": 9
+      },
+      "label": {
+        "en": "end of the track",
+        "de": "Ende der Spur"
+      }
+    },
+    {
+      "id": "depot",
+      "role": "goal",
+      "shape": {
+        "type": "rect",
+        "x": 170,
+        "y": 32,
+        "w": 18,
+        "h": 22
+      },
+      "label": {
+        "en": "depot",
+        "de": "Depot"
+      }
+    },
+    {
+      "id": "garage",
+      "role": "goal",
+      "shape": {
+        "type": "rect",
+        "x": 150,
+        "y": 106,
+        "w": 24,
+        "h": 18
+      },
+      "label": {
+        "en": "garage",
+        "de": "Garage"
+      }
+    }
+  ],
+  "start": {
+    "x": 15,
+    "y": 107,
+    "heading": 0
+  },
+  "timeLimitMs": 90000,
+  "success": [
+    {
+      "type": "sequence",
+      "zones": [
+        "track-mid",
+        "track-end"
+      ]
+    },
+    {
+      "type": "touch",
+      "object": "button"
+    },
+    {
+      "type": "push",
+      "object": "crate",
+      "zone": "depot"
+    },
+    {
+      "type": "stopIn",
+      "zone": "garage"
+    }
+  ],
+  "stages": [
+    {
+      "en": "Follow the track to its end",
+      "de": "Der Spur bis zum Ende folgen"
+    },
+    {
+      "en": "Press the call button",
+      "de": "Den Rufknopf drücken"
+    },
+    {
+      "en": "Push the crate onto the depot",
+      "de": "Die Kiste auf das Depot schieben"
+    },
+    {
+      "en": "Park in the garage",
+      "de": "In der Garage parken"
+    }
+  ],
+  "failure": [
+    {
+      "type": "noWallContact"
+    }
+  ],
+  "solution": "cp01-supply-run.bw",
+  "wrong": "cp01-supply-run.wrong.bw"
+}

@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "id": "counterturn",
+  "language": "en",
+  "what": "A motor spins an internal flywheel, and the platform carrying the motor and hub turns the other way. Motor A drives a horizontal 12-tooth bevel gear, which turns the vertical flywheel through a 20-tooth gear. The platform's vertical bearing is free: no motor drives it directly. Observe the platform to see the useful output, rather than judging the experiment from the motor encoder alone.",
+  "try": [
+    "Import Counterturn and load its matching program. Reset and run. The program first coasts for five seconds, then turns Motor A through four revolutions at 180° per second. It pauses, returns the motor close to its starting angle using a fresh encoder reading, and finishes holding the input. Watch the flywheel and platform throughout the outward and return motions.",
+    "Compare three angles: the motor encoder, the flywheel's rotation relative to the platform, and the platform's yaw relative to the base. Four motor turns ideally produce 2.4 flywheel turns relative to the platform. Does the platform turn in the same direction? Does its counterturn equal 2.4 turns, or does it depend on what the platform carries?",
+    "Compare the included locked-platform experiment after resetting to its starting pose. A removable brace fixes the carrier to the base while the same motor still drives the flywheel. The carrier should no longer produce useful yaw; the support takes the reaction. A stationary output in the ordinary free-platform experiment would fail its output test, even if the motor completed every command."
+  ],
+  "why": "The internal drive exchanges angular momentum between the vertical flywheel and its carrier. With negligible external torque about the vertical bearing, increasing the flywheel's momentum requires an opposite change in the carrier. The amount of counterturn depends on both moments of inertia. Mass farther from an axis contributes more inertia, approximately in proportion to the square of its radius. The horizontal motor shaft keeps its large modeled internal spin inertia out of the vertical component being studied.",
+  "matters": "Reaction wheels let a vehicle change its orientation by moving mass inside it. This model makes one axis of that principle visible and separates a motor's relative encoder angle from the motion of the body carrying the motor. It also shows why a simulation prediction must use the inertia actually represented by the simulator. The native model uses numerical mass and inertia floors on a light input assembly. For this build, its predicted counterturn gain is 4.53686% lower than the app's shape-based estimate. Neither value is a calibrated prediction for real hardware.",
+  "question": "If the motor completes four turns, must the platform counterturn by four turns too? What should change if equal ballast is moved farther from the platform axis while the flywheel stays the same?",
+  "answer": "No. The bevel ratio gives 2.4 flywheel turns relative to the carrier, while the carrier's turn depends on the share of total yaw inertia belonging to the flywheel. Moving balanced ballast outward on the carrier increases carrier inertia and reduces its counterturn for the same flywheel rotation. Moving ballast outward on the flywheel has the opposite tendency. Reversing the motor reverses the transfer, but damping, small base motion and numerical error can leave a return residual; the validation measures that residual instead of assuming it is zero.",
+  "further": [
+    "Plot observed platform yaw against observed flywheel rotation relative to the platform. Keep the outward and return samples in time order. Compare the slope with the prediction from the complete native inertia record; do not calculate the displayed platform position from the motor angle.",
+    "Predict the result of moving equal ballast inward or outward in balanced pairs. A revised rotor or carrier is a new configuration and needs fresh retention, sweep, startup and native checks. Use the documented finite program and keep clear of the rotating arm envelope.",
+    "Compare Flywheel Differential, where a fixed frame distributes motion between two outputs, and Centrifugal Governor, where speed changes an arm angle. Here the freely supported carrier is itself the output. Browser use and a physical build need their own checks; the headless native result alone establishes neither."
+  ],
+  "formula": "Let α be motor angle, β flywheel angle relative to the carrier, and ψ carrier yaw relative to a stationary base. The placed bevel drive gives β≈(12/20)α=0.6α. For a level coaxial flywheel with zero initial vertical momentum and negligible external vertical torque, (Ic+If)ψ̇+Ifβ̇=0 and Δψ=−[If/(Ic+If)]Δβ. If is flywheel axial inertia; Ic includes the carrier and the horizontal input assembly's transverse and orbital yaw inertia. Angles may all use degrees for these ratios; inertias use kg·m². The native prediction uses the reported solver-effective inertias, including its 0.020 kg gear-body mass floor and 3×10⁻⁵ kg·m² principal-inertia floor where applied.",
+  "related": [
+    "flywheel-differential.ldr",
+    "centrifugal-governor.ldr",
+    "motor-bench.ldr"
+  ]
+}

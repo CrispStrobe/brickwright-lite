@@ -1,0 +1,1 @@
+Original model and program from quickstroke-bsd-source.zip, copyright 2026 CrispStrobe, BSD-3-Clause. All 111 placements preserved. The source archive validation reports are references, not qualification of this application revision. Current tests rerun the actual native program and independently measure carriage motion and stroke timing.

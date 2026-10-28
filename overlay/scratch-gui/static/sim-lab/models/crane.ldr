@@ -1,0 +1,184 @@
+0 Crane (Brickwright Robot Lab reference model)
+0 Name: crane.ldr
+0 Author: Brickwright
+0 !LDRAW_ORG Unofficial_Model
+0 // A slewing crane on a SPIKE Prime hub: motor A turns the turntable (8 teeth into 28), motor B luffs the boom
+0 // with a small linear actuator. Motor C winds a rope over the tip guide. scripts/gen-crane-model.mjs writes this file.
+0 !BW ID hub
+1 71 0 0 0 1 0 0 0 1 0 0 0 1 45601.dat
+0 STEP
+0 !BW ID outriggerPinLF
+1 0 -60 0 -100 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID outriggerPinRF
+1 0 60 0 -100 0 0 1 1 0 0 0 1 0 2780.dat
+0 STEP
+0 !BW ID outriggerLF
+1 72 -158.99494937 10 -198.99494937 -0.70710678 0 -0.70710678 0 1 0 0.70710678 0 -0.70710678 32278.dat
+0 !BW ID outriggerRF
+1 72 158.99494937 10 -198.99494937 -0.70710678 0 0.70710678 0 1 0 -0.70710678 0 -0.70710678 32278.dat
+0 STEP
+0 !BW ID outriggerPinLB
+1 0 -60 0 100 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID outriggerPinRB
+1 0 60 0 100 0 0 1 1 0 0 0 1 0 2780.dat
+0 STEP
+0 !BW ID outriggerLB
+1 72 -158.99494937 10 198.99494937 0.70710678 0 -0.70710678 0 1 0 0.70710678 0 0.70710678 32278.dat
+0 !BW ID outriggerRB
+1 72 158.99494937 10 198.99494937 0.70710678 0 0.70710678 0 1 0 -0.70710678 0 0.70710678 32278.dat
+0 STEP
+0 !BW ID ttMountAxlePinR
+1 0 60 -80 100 0 0 -1 -1 0 0 0 1 0 43093.dat
+0 !BW ID ttMountAxlePinL
+1 0 -60 -80 100 0 0 -1 -1 0 0 0 1 0 43093.dat
+0 STEP
+0 !BW ID ttMountR
+1 71 40 -90 100 0 -1 0 1 0 0 0 0 1 42003.dat
+0 !BW ID ttMountL
+1 71 -40 -90 100 0 1 0 1 0 0 0 0 -1 42003.dat
+0 STEP
+0 !BW ID slewPinHi
+1 0 40 -50 120 0 0 -1 0 1 0 1 0 0 6558.dat
+0 !BW ID slewPinLo
+1 0 40 -10 120 0 0 -1 0 1 0 1 0 0 6558.dat
+0 !BW ID ttMountPinR
+1 0 20 -90 110 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID ttMountPinL
+1 0 -20 -90 110 0 0 -1 0 1 0 1 0 0 2780.dat
+0 STEP
+0 !BW ID slewMotor
+0 !BW PORT A
+1 71 20 -30 160 0 0 -1 0 1 0 1 0 0 54696p01.dat
+0 !BW ID ttBottom
+1 72 0 -110 120 1 0 0 0 1 0 0 0 1 99009.dat
+0 STEP
+0 !BW ID slewAxle
+1 0 20 -90 160 0 0 1 1 0 0 0 1 0 4519.dat
+0 STEP
+0 !BW ID slewPinion
+1 71 20 -110 160 0 1 0 0 0 1 1 0 0 3647.dat
+0 !BW ID ttTop
+1 72 0 -110 120 1 0 0 0 1 0 0 0 1 99010.dat
+0 !BW ID frameFront
+1 72 0 -130 100 0 0 1 1 0 0 0 1 0 32524.dat
+0 !BW ID framePinR
+1 0 20 -130 120 0 0 -1 0 1 0 1 0 0 6558.dat
+0 !BW ID framePinL
+1 0 -20 -130 120 0 0 -1 0 1 0 1 0 0 6558.dat
+0 STEP
+0 !BW ID postMountPinR
+1 0 60 -130 80 0 0 -1 0 1 0 1 0 0 6558.dat
+0 STEP
+0 !BW ID postMountR
+1 71 60 -130 60 1 0 0 0 0 -1 0 1 0 15100.dat
+0 STEP
+0 !BW ID frameBack
+1 72 0 -130 140 0 0 1 1 0 0 0 1 0 32316.dat
+0 !BW ID postR
+1 72 80 -190 60 0 1 0 0 0 1 1 0 0 40490.dat
+0 STEP
+0 !BW ID postMountPinL
+1 0 -60 -130 80 0 0 -1 0 1 0 1 0 0 6558.dat
+0 STEP
+0 !BW ID postMountL
+1 71 -60 -130 60 -1 0 0 0 0 1 0 1 0 15100.dat
+0 STEP
+0 !BW ID postL
+1 71 -80 -210 60 0 1 0 0 0 1 1 0 0 32525.dat
+0 STEP
+0 !BW ID boomPivot
+1 0 70 -250 60 1 0 0 0 1 0 0 0 1 3705.dat
+0 STEP
+0 !BW ID boom
+1 72 50 -274.31074487 -77.87308542 0 1 0 0.98480775 0 -0.17364818 -0.17364818 0 -0.98480775 32278.dat
+0 !BW ID tipGuideAxle
+1 0 50 -298.62148975 -215.74617084 1 0 0 0 1 0 0 0 1 3705.dat
+0 !BW ID tipGuide
+1 71 30 -298.62148975 -215.74617084 0 0 1 0 1 0 -1 0 0 3713.dat
+0 !BW ID tipStopInner
+1 71 15 -298.62148975 -215.74617084 0 0 1 0 1 0 -1 0 0 4265c.dat
+0 !BW ID tipStopOuter
+1 71 65 -298.62148975 -215.74617084 0 0 1 0 1 0 -1 0 0 4265c.dat
+0 STEP
+0 !BW ID boomPivotInnerStop
+1 71 35 -250 60 0 0 1 0 1 0 -1 0 0 4265c.dat
+0 !BW ID boomPivotOuterStop
+1 71 95 -250 60 0 0 1 0 1 0 -1 0 0 4265c.dat
+0 STEP
+0 !BW ID luffLaAxle
+1 0 80 -150 60 1 0 0 0 1 0 0 0 1 3708.dat
+0 !BW ID luffMotorPinA
+1 0 90 -210 60 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID luffMotorPinB
+1 0 90 -170 60 1 0 0 0 1 0 0 0 1 2780.dat
+0 STEP
+0 !BW ID luffLaBody
+1 25 0 -150 60 1 0 0 0 -0.56889955 -0.82240702 0 0.82240702 -0.56889955 92693c01.dat
+0 !BW ID luffLaAxleGear
+1 0 15 -150 60 0 0 -1 0 1 0 1 0 0 6589.dat
+0 !BW ID luffMotor
+0 !BW PORT B
+1 71 120 -190 60 0 -1 0 1 0 0 0 0 1 54696p01.dat
+0 STEP
+0 !BW ID hoistMotorPinA
+1 0 -100 -270 60 1 0 0 0 1 0 0 0 1 6558.dat
+0 !BW ID hoistMotorPinB
+1 0 -100 -230 60 1 0 0 0 1 0 0 0 1 6558.dat
+0 STEP
+0 !BW ID luffLaGear16
+1 71 180 -150 60 0 0 1 0 1 0 -1 0 0 94925.dat
+0 !BW ID hoistMotor
+0 !BW PORT C
+1 71 -140 -250 60 0 1 0 -1 0 0 0 0 1 54696p01.dat
+0 STEP
+0 !BW ID hoistAxle
+1 0 -120 -290 60 1 0 0 0 1 0 0 0 1 3737.dat
+0 !BW ID hoistDrum
+1 4 -60 -290 60 0 0 1 0 1 0 -1 0 0 3713.dat
+0 !BW ID hoistStopInner
+1 71 -45 -290 60 0 0 1 0 1 0 -1 0 0 4265c.dat
+0 !BW ID hoistStopOuter
+1 71 -95 -290 60 0 0 1 0 1 0 -1 0 0 4265c.dat
+0 STEP
+0 !BW ID hoistGear16
+1 71 -200 -290 60 0 0 1 0 1 0 -1 0 0 94925.dat
+0 STEP
+0 !BW ID luffLaEye
+1 0 20 -263.89185421 -18.78462024 1 0 0 0 1 0 0 0 1 3705.dat
+0 !BW ID luffMotorAxle
+1 0 171 -190 60 1 0 0 0 1 0 0 0 1 32062.dat
+0 STEP
+0 !BW ID luffLaPiston
+1 72 0 -263.89185421 -18.78462024 1 0 0 0 -0.56889955 -0.82240702 0 0.82240702 -0.56889955 92696.dat
+0 !BW ID luffLaSpindle
+1 25 0 -174.67221053 42.93301351 1 0 0 0 -0.56889955 -0.82240702 0 0.82240702 -0.56889955 92695.dat
+0 !BW ID luffMotorGear
+1 71 180 -190 60 0 0 1 1 0 0 0 1 0 94925.dat
+0 STEP
+0 !BW ID hoistMotorAxle
+1 0 -191 -250 60 1 0 0 0 -1 0 0 0 -1 32062.dat
+0 STEP
+0 !BW ID hoistMotorGear
+1 71 -200 -250 60 0 0 1 -1 0 0 0 -1 0 94925.dat
+0 !BW ID luffLaStubGear
+1 0 0 -162.33610526 51.46650676 -1 0 0 0 0.56889955 -0.82240702 0 -0.82240702 -0.56889955 6589.dat
+0 STEP
+0 // Thread the rope from the retained drum over the tip guide and tie it to the exposed centre of the hook pin between the beams; add both upper counterweights symmetrically.
+0 !BW ID hookLink
+1 0 30 -68.62148975 -215.74617084 1 0 0 0 1 0 0 0 1 6558.dat
+0 STEP
+0 !BW ID load
+1 4 10 -68.62148975 -215.74617084 0 1 0 -0.63577432 0 0.771875 0.771875 0 0.63577432 32316.dat
+0 !BW ID loadCounterweight
+1 4 50 -68.62148975 -215.74617084 0 1 0 0.63577432 0 0.771875 0.771875 0 -0.63577432 32316.dat
+0 STEP
+0 !BW ID loadAxlePin
+1 0 0 -99.49648975 -241.17714359 -1 0 0 0 1 0 0 0 -1 43093.dat
+0 !BW ID loadCounterweightAxlePin
+1 0 60 -99.49648975 -190.31519809 1 0 0 0 1 0 0 0 1 43093.dat
+0 !BW ID loadBush
+1 4 -10 -99.49648975 -241.17714359 0 0 -1 0 1 0 1 0 0 3713.dat
+0 !BW ID loadCounterweightBush
+1 4 70 -99.49648975 -190.31519809 0 0 1 0 1 0 -1 0 0 3713.dat
+0 STEP
+0 !BW ROPE hoistCord 512.4 hoistDrum tipGuide hookLink

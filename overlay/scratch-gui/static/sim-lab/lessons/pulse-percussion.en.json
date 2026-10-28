@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "id": "pulse-percussion",
+  "language": "en",
+  "what": "One shaft drives three phased pegs. Each peg lifts a free beater and releases it onto a fixed strike bar. One camshaft lifts and releases three gravity beaters. Compare shaft phase, falling motion and tempo.",
+  "try": [
+    "Reset and run the three tempo stages. Watch a beater, its peg and the strike bar.",
+    "Count each channel’s drops during two shaft revolutions at one speed.",
+    "Compare the short-short-long rhythm at the three speeds."
+  ],
+  "why": "Peg contact raises the beater; after release, gravity returns it. Mechanical 0°/90°/180° indexing sets the rhythm. Speed changes tempo while the phase pattern stays fixed. The app visualises impacts rather than synthesising sound.",
+  "matters": "Cams coordinate repeated contact events with one drive, as in mechanical sequencers.",
+  "question": "Does doubling shaft speed change the 90°/90°/180° spacing into equal spacing?",
+  "answer": "No. The angular spacing is fixed by the physical pegs. At steady speed, all time intervals halve, preserving the short-short-long pattern.",
+  "further": [
+    "Distinguish a turning shaft from a genuinely lifted and released beater.",
+    "The model does not predict tuned pitch, loudness, friction or real acoustic quality."
+  ],
+  "formula": "event interval = phase gap / shaft angular speed",
+  "related": [
+    "tidal-trio.ldr"
+  ]
+}

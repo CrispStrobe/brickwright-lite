@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "id": "equal-share-even-springs",
+  "language": "en",
+  "what": "Whippletree control with equal springs. This is Equal Share with the right-hand pair of shock absorbers replaced by one matching shock on the beam’s centre plane, so each end of the free blue beam now presses one identical spring. The motor, crank, free centre pivot, frame and program are unchanged.",
+  "try": [
+    "Open Equal Share Even Springs with its program, press Reset, then Robot Lab’s Run button (the program needs the SPIKE connection that Run sets up).",
+    "During each held pause at 15°, 25° and 35°, compare the compression of the left and right shocks and the angle of the blue beam.",
+    "Compare the same pauses with the main Equal Share model, where one spring faces a parallel pair: there the beam turns and the single spring compresses twice as far."
+  ],
+  "why": "With equal stiffness on both sides and equal arms, the beam needs no rotation to balance the moments: equal compressions give equal forces. The crank pushes the centre forward and both springs share the motion equally. Any difference between the sides would point to unequal geometry, friction or a fault, not to the whippletree principle.",
+  "matters": "A control isolates one cause. Changing only the number of springs on one side, while keeping the free beam, shows that the beam rotation and the 2:1 compression in the main model come from the stiffness difference. In a headless run of the Brickwright simulator, started with the SPIKE connection that the Run button provides, the single shock compressed 2.000 times as far as each shock of the pair at 15°, 25° and 35° (12.67 mm against 6.34 mm at 35°) and the beam turned 3.77°; in the equal-spring control the ratio was 1.000 and the beam stayed square. These are simulation observations based on the simulator’s spring law; no physical LEGO build has been tested.",
+  "question": "With one identical spring on each side, does the beam rotate when the crank moves to 35°? How do the two compressions compare?",
+  "answer": "Ideally the beam does not rotate and both springs compress by the same amount, about 9.5 mm at 35° in this geometry. The ratio is 1:1 instead of the 2:1 seen with the parallel pair.",
+  "further": [
+    "Predict the compression at 35° from the crank radius of 16 mm and the shock geometry, then compare with the measured value.",
+    "Compare Mean Machine, which averages two inputs with a differential instead of a beam."
+  ],
+  "formula": "Equal springs and equal arms: k·δ_L = k·δ_R ⇒ δ_L = δ_R, beam angle ≈ 0°. Main model for comparison: k·δ_L = 2k·δ_R ⇒ δ_L = 2δ_R.",
+  "related": [
+    "mean-machine.ldr",
+    "snapgate.ldr"
+  ]
+}

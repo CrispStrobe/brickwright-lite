@@ -1,0 +1,14 @@
+{
+  "id": "capstone",
+  "title": {
+    "en": "Capstone: supply run",
+    "de": "Abschlussmission: Versorgungsfahrt"
+  },
+  "intro": {
+    "en": "One long mission that needs everything so far - line following, gyro turns, the force sensor, pushing, and the distance sensor. It is judged in four stages, so a run that fails still shows how far it got.",
+    "de": "Eine lange Mission, die alles Bisherige braucht - Linienfolgen, Drehungen mit dem Kreiselsensor, den Kraftsensor, Schieben und den Abstandssensor. Sie wird in vier Etappen bewertet, so zeigt auch ein gescheiterter Lauf, wie weit er gekommen ist."
+  },
+  "challenges": [
+    "cp01-supply-run"
+  ]
+}

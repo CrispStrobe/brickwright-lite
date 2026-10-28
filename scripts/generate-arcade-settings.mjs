@@ -1,0 +1,32 @@
+// Retain the original typed Settings, MessagePack and simulator storage algorithms.
+import {readFileSync,writeFileSync} from 'node:fs';
+import {createHash} from 'node:crypto';
+import {createRequire} from 'node:module';
+import {resolve} from 'node:path';
+const root=resolve(import.meta.dirname,'..'),require=createRequire(resolve(root,'packages/scratch-gui/package.json'));
+const ts=require('typescript'),folder=resolve(root,'overlay/scratch-vm/src/extensions/crispstrobe/arcade');
+const target=JSON.parse(readFileSync(resolve(root,'packages/scratch-gui/static/makecode/arcade/target.json'),'utf8'));
+const settingsSource=target.bundledpkgs.settings['settings.ts'],bufferSource=target.bundledpkgs.base['buffer.ts'];
+const digest=value=>createHash('sha256').update(value).digest('hex');
+if(digest(settingsSource)!=='d9d06674d5d84a6ff07737e59df21172bba0f0069d963b90bed96efe00e85720' || digest(bufferSource)!=='970960b537291a5c8028afda5f210318dd1143de8f3835d4d71efb2ed9359061')throw new Error('Settings codec source differs from reviewed pinned inputs');
+const parse=(name,source)=>ts.createSourceFile(name,source,ts.ScriptTarget.Latest,true);
+const settings=parse('settings.ts',settingsSource).statements.find(n=>ts.isModuleDeclaration(n)&&n.name.text==='settings');
+const names=new Set(['clear','writeBuffer','writeString','writeNumber','writeNumberArray','readBuffer','readString','readNumber','readNumberArray','list','remove','exists']);
+const selected=settings.body.statements.filter(n=>ts.isFunctionDeclaration(n)&&names.delete(n.name.text));
+if(names.size)throw new Error('Original Settings method boundary changed');
+const msgpack=parse('buffer.ts',bufferSource).statements.find(n=>ts.isModuleDeclaration(n)&&n.name.text==='msgpack');
+if(!msgpack || !ts.isModuleBlock(msgpack.body))throw new Error('Missing original MessagePack namespace');
+const source='namespace settings {\n'+selected.map(n=>n.getFullText()).join('\n')+'\n}\n'+msgpack.getFullText();
+const compiled=ts.transpileModule(source,{compilerOptions:{target:ts.ScriptTarget.ES2018},reportDiagnostics:true});
+if(compiled.diagnostics?.some(d=>d.category===ts.DiagnosticCategory.Error))throw new Error('Settings transpilation failed');
+const common=readFileSync(resolve(root,'packages/scratch-gui/static/makecode/arcade/sim/common-sim.js'),'utf8');
+const startMarker='        let currSize = 0;\n        const MAX_SIZE = 16 * 1024;',endMarker='        settings._list = _list;';
+const start=common.indexOf(startMarker),end=common.indexOf(endMarker,start);
+if(start<0||end<0||common.indexOf(startMarker,start+1)!==-1)throw new Error('Original settings storage boundary changed');
+const backend=common.slice(start,end+endMarker.length);
+if(digest(backend)!=='df926f1368ad2c26abec0dc16d84a9ea13c3d1a1aa69447fb7e8c3721344d1f9')throw new Error('Settings backend differs from reviewed pinned source');
+const hash=value=>createHash('sha256').update(value).digest('hex');
+const text=`// Generated from pinned Arcade 4.2.1 pxt-common-packages Settings/MessagePack (MIT).\n// Copyright (c) Microsoft Corporation; see static/licenses/pxt-common-packages.MIT.txt.\n// settings.ts SHA256 ${hash(settingsSource)}; base/buffer.ts SHA256 ${hash(bufferSource)}.\n// Original simulator backend SHA256 ${hash(backend)}.\n// Regenerate: node scripts/generate-arcade-settings.mjs\nmodule.exports = {\n initializeSettings(host) {\n const {control,Buffer,NumberFormat,pins,_set,_get,_exists,_remove,_userClean,_list}=host;\n${compiled.outputText}\n return {settings,msgpack};\n },\n initializeBackend(pxsim) {\n const settings={};\n${backend}\n // Restore capacity accounting for the retained per-program device snapshot.\n computeSize();\n return settings;\n }\n};\n`;
+const output=resolve(folder,'settings-pxt.js');
+if(process.argv.includes('--check')){if(readFileSync(output,'utf8')!==text)throw new Error('Settings algorithms differ from original pinned inputs');console.log('Verified original Settings, MessagePack and simulator byte storage algorithms');}
+else writeFileSync(output,text);

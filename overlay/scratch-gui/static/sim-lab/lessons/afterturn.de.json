@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "id": "afterturn",
+  "language": "de",
+  "what": "Hub und zwei Motoren sitzen auf einer Plattform mit frei drehbarem senkrechtem Lager. Motor A dreht ein ausgewuchtetes Reaktionsrad. Motor B bewegt zwei ausgewuchtete Massen nach innen und außen. Beobachte die Plattformrichtung, nachdem Massen und beide Motorwinkel wieder ihre Ausgangswerte erreicht haben. Die Reihenfolge der inneren Bewegungen kann entscheidend sein, obwohl die innere Form am Ende gleich aussieht.",
+  "try": [
+    "Lade afterturn.ldr und afterturn.bw. Stelle mit Reset die gespeicherte Lage her und drücke Run in der Robot-Lab-Werkzeugleiste. Suche die freie Plattform, das Reaktionsrad und die beiden beweglichen Massen.",
+    "Verfolge den ersten geschlossenen Zyklus: B bewegt sich auf 70° und führt die Massen nach innen, A dreht bis 900°, B führt die Massen nach außen zurück, dann kehrt A zu 0° zurück. Vergleiche die Plattform beim ersten Haltepunkt mit dem Unterbau.",
+    "Beobachte die umgekehrte Reihenfolge. Sage voraus, ob sie die erste Plattformdrehung vergrößert oder rückgängig macht. Prüfe neben den Encodern auch die tatsächlichen Massenpositionen.",
+    "Lade afterturn-fixed-masses.ldr und starte nach Reset dasselbe mitgelieferte Programm. Vergleiche die verbleibende Plattformdrehung mit dem Modell mit beweglichen Massen und prüfe, ob die Antriebsbewegungen abgeschlossen werden.",
+    "Verwende vor einer Wiederholung nach Handbewegungen, Unterbrechung oder abgeschlossenem Versuch Reset. Die innere Ausgangsstellung ist nicht automatisch die ursprüngliche Plattformrichtung. Halte das mitgelieferte endliche Programm und seine Bewegungsgrenzen ein."
+  ],
+  "why": "Ein Motor tauscht Drehimpuls zwischen Rotor und Halterung aus. Bei festem Massenradius hängt die Plattformreaktion auf eine Radbewegung vom Trägheitsmoment des gesamten drehbaren Aufbaus ab. Werden die ausgewuchteten Massen versetzt, ändert sich dieses Trägheitsmoment. Ein Vorwärtsdrehen des Rads bei innenliegenden Massen und das Zurückdrehen bei außenliegenden Massen müssen deshalb keine gleich großen entgegengesetzten Plattformdrehungen ergeben. Die Rückkehr der inneren Form ist etwas anderes als die Rückkehr der Richtung des gesamten Aufbaus.",
+  "matters": "Ein Mechanismus kann seine Richtung durch einen geordneten Zyklus innerer Bewegungen ändern, ohne dass ein Motor sein Traglager direkt antreibt. Das veranschaulicht die geometrische Phase: Der Weg durch die inneren Konfigurationen zählt. Zugleich zeigt es, warum erfolgreiches Encoder-Homing allein keine globale Lage bestätigt.",
+  "question": "Muss die Plattform wieder in ihre ursprüngliche Richtung zeigen, wenn beide Encoder ihre Ausgangswerte anzeigen und die Massen außen stehen? Was sollte bei derselben Radbewegung mit festgesetzten Massen geschehen?",
+  "answer": "Nein. Mit beweglichen Massen erfolgen Vor- und Rücklauf des Rads bei verschiedenen Trägheitsmomenten; ihre Plattformdrehungen müssen sich deshalb nicht aufheben. Bleiben die Massen fest, entfällt dieser Unterschied und die idealen entgegengesetzten Radbewegungen gleichen sich aus. Aussagekräftig ist die unabhängig beobachtete verbleibende Plattformdrehung bei übereinstimmenden abgeschlossenen Eingangsbewegungen. Dämpfung, Anfangsbewegung und endliche Rückkehrfehler müssen trotzdem gemessen werden. Im mitgelieferten endlichen nativen Versuch blieben bei beweglichen Massen nach dem ersten Zyklus 4,6625° und nach dem Gegenzyklus 0,0261° übrig. Beim Vergleich mit festgesetzten Massen waren es nach dem ersten Zyklus 0,0037°. Das sind native Beobachtungen, keine gemessene Genauigkeit realer LEGO-Hardware.",
+  "further": [
+    "Zeichne den tatsächlichen Reaktionsradwinkel auf einer Achse und den mittleren beobachteten Massenradius auf der anderen. Die gewählten nominalen Radien betragen 51,056819 mm innen und 64 mm außen. Die umgekehrte Reihenfolge kehrt den Umlaufsinn um. Der mitgelieferte begrenzte Verstellhub beträgt 70°; die Kurbel dreht keine volle Umdrehung.",
+    "Vergleiche Counterturn und Momentum Twins. Dort wird Drehimpuls bei festem Trägheitsmoment ausgetauscht. Afterturn ändert die innere Konfiguration zwischen Vor- und Rücklauf des Rads.",
+    "Die Motoren liefern Energie. Eine bleibende Richtungsänderung bei kleinem Gesamtdrehimpuls bedeutet weder Energieerzeugung noch ein reibungsfreies Perpetuum mobile oder Kreiselpräzession.",
+    "Die Vorhersage muss die realen Motorbaugruppen, den Hub, die Schlittenmassen und die Glieder des Verstellantriebs berücksichtigen. Lagerdämpfung, Unterbaubewegung und Kabelkräfte können einen endlichen Versuch beeinflussen. Native Ergebnisse sind keine Zusicherung von Hardwaregenauigkeit oder Belastbarkeit.",
+    "Behalte die vorgesehene Hub-Ablage und den Ausgleichspin bei. Ein geneigtes Lager und eine seitlich versetzte mitbewegte Masse können ein Schwerkraftmoment erzeugen. Ein freies Lager allein garantiert daher noch keinen von äußeren Momenten isolierten Drehimpulsversuch."
+  ],
+  "formula": "Idealisierter Abschnitt bei festgehaltener Form: Δψ ≈ −Iw·Δα/Jlocked(r). ψ ist die Plattformdrehung relativ zum Unterbau, α der Radwinkel relativ zur Plattform, Iw das axiale Radträgheitsmoment und Jlocked(r) das gesamte Gierträgheitsmoment bei blockierten inneren Bewegungen am Radius r. Für +Δα bei innenliegenden Massen und −Δα bei außenliegenden Massen gilt näherungsweise ΔψZyklus ≈ −Iw·Δα·[1/Jinnen − 1/Jaußen]. Diese vereinfachte Planungsbeziehung setzt ein vernachlässigbares äußeres Giermoment voraus. Die vollständige Vorhersage berücksichtigt auch den Drehimpuls der beweglichen Verstellglieder. Die beobachtete Plattformdrehung wird aus Körperlagen gemessen, nicht aus dieser Formel erzeugt. Die Formel verwendet für α und ψ dieselbe positive Achse. Im Modell ist die native A-Achse der angegebenen positiven Plattform-Gierachse entgegengesetzt; für den dargestellten Eingang gilt deshalb α = −A.",
+  "related": [
+    "counterturn.ldr",
+    "momentum-twins.ldr",
+    "flywheel-differential.ldr"
+  ]
+}

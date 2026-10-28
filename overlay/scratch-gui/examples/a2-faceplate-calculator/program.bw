@@ -1,0 +1,146 @@
+# A2 calculator — faceplate edition.
+#
+# Same logic as 78-a2-calculator but driven by the controller panel:
+# the keypad widget replaces the hardware 4x4 matrix scan, and the
+# lcd widget replaces the 8-digit 7-segment display. No pin wiring
+# needed — input and output flow through Scratch variables.
+#
+#   keypad widget:  7 8 9 /    side buttons:  C     clear all
+#                   4 5 6 *                   +/-   negate
+#                   1 2 3 -                   DEL   backspace
+#                   0 . = +                   M     memory recall
+#
+# The program polls key_input and button variables each tick.
+
+WHEN flag clicked:
+  set acc to 0
+  set entry to 0
+  set op to 0
+  set fresh to 1
+  set mem to 0
+  set lcd_text to "0"
+  set key_input to ""
+  set lastkey to ""
+  FOREVER:
+    # Keypad input: key_input is set by the widget on press
+    IF NOT key_input = "" AND NOT key_input = lastkey THEN:
+      # Digits
+      IF key_input = "0" OR key_input = "1" OR key_input = "2" OR key_input = "3" OR key_input = "4" OR key_input = "5" OR key_input = "6" OR key_input = "7" OR key_input = "8" OR key_input = "9" THEN:
+        IF fresh = 1 THEN:
+          set entry to key_input
+          set fresh to 0
+        ELSE:
+          IF entry < 10000000 THEN:
+            set entry to entry * 10 + key_input
+        set lcd_text to entry
+
+      # Decimal point (append as string)
+      IF key_input = "." THEN:
+        set lcd_text to join entry "."
+
+      # Operators
+      IF key_input = "+" THEN:
+        IF fresh = 0 AND op > 0 THEN:
+          # apply pending op
+          IF op = 1 THEN:
+            set acc to acc + entry
+          IF op = 2 THEN:
+            set acc to acc - entry
+          IF op = 3 THEN:
+            set acc to acc * entry
+          IF op = 4 AND NOT entry = 0 THEN:
+            set acc to acc / entry
+        ELSE:
+          IF fresh = 0 THEN:
+            set acc to entry
+        set op to 1
+        set fresh to 1
+        set lcd_text to acc
+      IF key_input = "-" THEN:
+        IF fresh = 0 AND op > 0 THEN:
+          IF op = 1 THEN:
+            set acc to acc + entry
+          IF op = 2 THEN:
+            set acc to acc - entry
+          IF op = 3 THEN:
+            set acc to acc * entry
+          IF op = 4 AND NOT entry = 0 THEN:
+            set acc to acc / entry
+        ELSE:
+          IF fresh = 0 THEN:
+            set acc to entry
+        set op to 2
+        set fresh to 1
+        set lcd_text to acc
+      IF key_input = "*" THEN:
+        IF fresh = 0 AND op > 0 THEN:
+          IF op = 1 THEN:
+            set acc to acc + entry
+          IF op = 2 THEN:
+            set acc to acc - entry
+          IF op = 3 THEN:
+            set acc to acc * entry
+          IF op = 4 AND NOT entry = 0 THEN:
+            set acc to acc / entry
+        ELSE:
+          IF fresh = 0 THEN:
+            set acc to entry
+        set op to 3
+        set fresh to 1
+        set lcd_text to acc
+      IF key_input = "/" THEN:
+        IF fresh = 0 AND op > 0 THEN:
+          IF op = 1 THEN:
+            set acc to acc + entry
+          IF op = 2 THEN:
+            set acc to acc - entry
+          IF op = 3 THEN:
+            set acc to acc * entry
+          IF op = 4 AND NOT entry = 0 THEN:
+            set acc to acc / entry
+        ELSE:
+          IF fresh = 0 THEN:
+            set acc to entry
+        set op to 4
+        set fresh to 1
+        set lcd_text to acc
+
+      # Equals
+      IF key_input = "=" THEN:
+        IF op > 0 AND fresh = 0 THEN:
+          IF op = 1 THEN:
+            set acc to acc + entry
+          IF op = 2 THEN:
+            set acc to acc - entry
+          IF op = 3 THEN:
+            set acc to acc * entry
+          IF op = 4 AND NOT entry = 0 THEN:
+            set acc to acc / entry
+          set op to 0
+          set lcd_text to acc
+        set fresh to 1
+
+    set lastkey to key_input
+
+    # Side buttons
+    IF btnC = 1 THEN:
+      set acc to 0
+      set entry to 0
+      set op to 0
+      set fresh to 1
+      set lcd_text to "0"
+      set btnC to 0
+    IF btnBack = 1 THEN:
+      set entry to (entry - entry mod 10) / 10
+      set lcd_text to entry
+      set btnBack to 0
+    IF btnSign = 1 THEN:
+      set entry to 0 - entry
+      set lcd_text to entry
+      set btnSign to 0
+    IF btnMem = 1 THEN:
+      set entry to mem
+      set fresh to 0
+      set lcd_text to mem
+      set btnMem to 0
+    wait 25 ms

@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "id": "chain-drive",
+  "language": "en",
+  "what": "A closed chain transfers rotation between sprockets on separate shafts. A chain couples separated shafts in the same direction with a tooth-count ratio.",
+  "try": [
+    "Reset and run the example. Watch a link pass around both sprockets.",
+    "Compare input and output turns through the full forward-and-reverse motion.",
+    "Predict what a larger driven sprocket does before changing a design."
+  ],
+  "why": "The same chain speed passes both pitch circles. A larger sprocket advances through fewer turns for that chain travel. An uncrossed chain keeps both shafts turning in the same direction.",
+  "matters": "Chains transmit motion across distances that a direct gear mesh cannot span.",
+  "question": "Does an uncrossed chain reverse the output like one external gear mesh?",
+  "answer": "No. Its two sprockets turn the same way. The speed ratio comes from their tooth counts.",
+  "further": [
+    "Compare the long 16:24 chain with the smaller 8:24 example.",
+    "Explain why correct chain length and shaft spacing both matter."
+  ],
+  "formula": "ωout / ωin = input sprocket teeth / output sprocket teeth",
+  "related": [
+    "chain-transmission.ldr",
+    "ratio-workbench.ldr"
+  ]
+}

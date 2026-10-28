@@ -1,0 +1,130 @@
+{
+  "date": "2026-10-08",
+  "testedImplementation": "c7663e730008e50fdf352807dade1e93340d7154",
+  "buildSource": "ed1618baca8d18e393f32aac0b44fc617114222b",
+  "producer": {
+    "repo": "CrispStrobe/sb3-creator",
+    "source": "a8609c0f0fe0e2946b6640656d615ce237f2b98c",
+    "pr": 69,
+    "wordsAdded": 6,
+    "testsPassed": 1
+  },
+  "APIs": [
+    "scene.getTile",
+    "scene.getTilesByType",
+    "scene.setTileAt",
+    "scene.place",
+    "scene.placeOnRandomTile",
+    "tiles.Tile.place",
+    "tiles.Tile.x/y/tileSet"
+  ],
+  "semantics": [
+    "distinct legacy Tile reference kind and creating-map ownership",
+    "fresh Tile and list identities, column-first scan order",
+    "Tile arrays, loops, procedures and exported tiles.Tile declarations",
+    "current-map mutation using retained Tile coordinates and current scale",
+    "live map-image edits and sprite placement",
+    "receiver-before-sprite evaluation",
+    "disabled-map tileSet throws like original PXT",
+    "real Blocks property dropdown with literal fields"
+  ],
+  "tests": {
+    "affectedAndRegressionsPassed": 39,
+    "ciContractsPassed": 18,
+    "producerPassed": 1,
+    "canonicalSpikeArtifact": "Included unchanged artifact assertions in39 regressions",
+    "failed": 0,
+    "skipped": 0
+  },
+  "build": {
+    "errors": 0,
+    "guiBundle": "gui.8dc99749.js",
+    "initialBytes": 4360525,
+    "previousInitialBytes": 4360511,
+    "unchangedInitialLimit": 4467136,
+    "bootPayload": "passed"
+  },
+  "browser": {
+    "status": "passed",
+    "pageErrors": [],
+    "legacyTileValues": {
+      "nativeFileImport": true,
+      "codeToBlocks": true,
+      "columnFirstList": true,
+      "freshIdentity": true,
+      "retainedMapAcrossScenes": true,
+      "crossScaleMutation": 6,
+      "controllerIndex": 9,
+      "spriteX": 11
+    },
+    "promotedOriginalApps": [
+      {
+        "file": "arcade-39dfb14c26b43e1b.ts",
+        "kind": "Car",
+        "count": 1,
+        "codeToBlocks": true,
+        "nativeFileImport": true,
+        "position": [
+          24,
+          56
+        ]
+      },
+      {
+        "file": "arcade-5eb37c864dd21005.ts",
+        "kind": "Flower",
+        "count": 40,
+        "codeToBlocks": true,
+        "nativeFileImport": true,
+        "playerBeforeX": 80,
+        "playerAfterX": 83.19921875
+      }
+    ],
+    "priorJourneys": "All preceding production journeys pass"
+  },
+  "corpus": {
+    "original184ImportOnly": {
+      "translated": 100,
+      "partial": 83,
+      "malformed": 1
+    },
+    "previous": {
+      "translated": 98,
+      "partial": 85,
+      "malformed": 1
+    },
+    "promotedSources": 2,
+    "promotedQualification": "Original/exported PXT and240 native frames agree on sprite count, summed positions, dimensions and artwork pixel sums; no block errors or creator warnings",
+    "completeGameEquivalence": false,
+    "tutorials": "No new tutorial/package qualification in this slice"
+  },
+  "retainedFailures": [
+    "Original disabled-map Tile.tileSet throws; preserved and implemented",
+    "New reference kind initially missing from serialization allowlist",
+    "Controller fixture initially assumed an odd-width sprite center; finite fixture uses2x2 artwork",
+    "Exported loop reimport was observed before completion; qualification steps24 frames",
+    "First real-app browser observer omitted y; corrected observation only",
+    "Second real-app observer read Player before the flower loop created it; now waits for actual Player admission",
+    "First local fetch census lacked sparse service sources; expanded owned checkout and reran"
+  ],
+  "hostedGateRepairs": [
+    "Opcode contract updated to182 at adopted compiler pin",
+    "Immutable tutorial license receipt URL classified in fetch census",
+    "Unit browser installation runs after overlays despite independent guard failures, with one bounded installation and an explicit unit-test prerequisite"
+  ],
+  "predecessorCi": {
+    "pr": 727,
+    "run": 37787524964,
+    "build": "Failed; canonical SPIKE pin now passes, stale dialect count and browser prerequisite repaired locally",
+    "remaining": "GUI busy/device-hint/retarget test failures and full hosted qualification remain open"
+  },
+  "remaining": [
+    "legacy onHitTile/tileHitFrom",
+    "mixed modern/legacy inherited map data and wall semantics",
+    "dedicated map painter, color palette/index controls and resource edit lifecycle",
+    "invalid/dynamic scales beyond standard enum values",
+    "missing package artwork, custom palettes, effects and music",
+    "full-game semantic and screen comparison",
+    "exact-head hosted CI and stacked integration"
+  ],
+  "publication": "Draft stacked PR; not merged"
+}

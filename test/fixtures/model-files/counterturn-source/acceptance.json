@@ -1,0 +1,73 @@
+{
+  "schema": "counterturn-native-acceptance-v1",
+  "status": "PREDECLARED_BEFORE_ANY_COMPLETE_MACHINE_RUN",
+  "author": "CrispStrobe",
+  "experiment": "Counterturn: horizontal motor, 12:20 bevel drive, vertical flywheel and freely yawing carrier",
+  "scope": "Actual native compiler, SB3, Scratch VM, Robot Lab extension, real SPIKE hub/controller and pinned Jolt. Complete machine on the plain mat under ordinary import. Browser and physical build remain separate qualifications.",
+  "prior_evidence": "Only the explicitly clamped 61-part lab-direct development fixture has run. No complete-machine native result exists when this contract is frozen.",
+  "program": {
+    "port": "A",
+    "coast_startup_seconds": 5,
+    "absolute_targets_degrees": [1440, 0],
+    "speed_degrees_per_second": 180,
+    "target_dwell_seconds": 1,
+    "watchdog_seconds": 35,
+    "final_action": "hold",
+    "passive_output": "The program never commands the carrier yaw bearing."
+  },
+  "roles": {
+    "base_part": "yaw_base",
+    "carrier_part": "yaw_platform",
+    "flywheel_part": "g20",
+    "input_gear_part": "g12",
+    "motor_part": "motor_A",
+    "hub_part": "hub"
+  },
+  "limits": {
+    "minimum_total_samples": 500,
+    "minimum_active_samples_each_direction": 100,
+    "active_motor_speed_threshold_degrees_per_second": 30,
+    "minimum_carrier_yaw_span_degrees": 30,
+    "minimum_relative_flywheel_span_degrees": 360,
+    "expected_relative_flywheel_per_motor_turn": 0.6,
+    "gear_ratio_relative_error_max": 0.01,
+    "gear_phase_error_max_degrees": 2,
+    "native_gain_relative_error_max": 0.03,
+    "native_prediction_trajectory_error_max_degrees": 5,
+    "opposite_direction_fraction_min": 0.99,
+    "momentum_residual_fraction_max": 0.02,
+    "reflected_motor_inertia_vertical_leakage_fraction_max": 0.005,
+    "motor_target_error_max_degrees": 1,
+    "carrier_return_error_max_degrees": 5,
+    "input_shaft_tilt_max_degrees": 0.1,
+    "base_translation_max_mm": 2,
+    "base_tilt_max_degrees": 0.5,
+    "base_yaw_max_degrees": 0.5,
+    "hinge_center_closure_max_mm": 1,
+    "cold_start_carrier_yaw_drift_max_degrees": 0.2,
+    "locked_control_relative_carrier_yaw_span_max_degrees": 1
+  },
+  "measurement": {
+    "output": "Unwrapped carrier and flywheel rotations from recorded body poses, independently of motor encoder or joint-reported yaw, relative to the measured base.",
+    "native_prediction": "psi = -q beta, where beta is observed flywheel rotation relative to carrier, psi is observed carrier rotation relative to base, and q is derived from separately measured native mass/COM/inertia at the saved pose. q is not fitted to the trajectory.",
+    "gain_test": "Fit observed psi against observed beta only as a measurement statistic, then compare that fitted slope with the independent native-inertia prediction. Also enforce the separate full-trajectory angle residual.",
+    "momentum": "All dynamic model bodies, including the moving base, contribute native bodyAngularMomentum about the FIXED INITIAL bearing origin. Project onto the FIXED INITIAL vertical bearing axis. Normalize maximum absolute change from the initial total by maximum sum of absolute per-body projected momenta. This is a constrained-yaw test under the unmodified native default damping and gravity, not an isolated ideal system.",
+    "moving_reference": "Pose-derived output, base drift/tilt/yaw and hinge closure use the measured body poses. The momentum origin is deliberately not translated with the measured base.",
+    "inertia_diagnostics": "Separate unadvanced diagnostic instances measure shape-only, normal gear-floor and motor-augmented mass/COM/inertia. Only the shape-only diagnostic omits couplings to avoid numerical gear floors; it is never stepped and is not an execution result. The actual native execution uses the delivered model and ordinary options unchanged.",
+    "physical_gain_divergence": "Report the shape-only gain, native gain, and their relative difference explicitly. The right-angle layout avoids direct reflected-J yaw augmentation; remaining gear mass/inertia floors are quantified.",
+    "gyro_scope": "Native gyroscopic forces are disabled. Only approximately level constrained scalar yaw is claimed. Observe shaft tilt and directly bound the reflected-J vertical contribution."
+  },
+  "main_requirements": [
+    "Exact delivered model and program hashes, actual compiled and executed SB3, current checker hash.",
+    "Ordinary import options only; all model bodies dynamic; only the mat is static.",
+    "Exactly one real SPIKE hub on the carrier, one useful motor A and intended free yaw/rotor hinges plus one bevel coupling.",
+    "No lab-direct hub, clamped base, synthetic joint, extra output motor, source patch or collision-policy change.",
+    "Default damping and any numerical floors remain unchanged and are reported.",
+    "Native completion and finite watchdog; independently useful opposite carrier yaw and both travel directions.",
+    "Five-second unpowered coast startup is included in the executed main program; a redundant second startup is unnecessary unless a concrete stability question remains."
+  ],
+  "controls": {
+    "physical_locked_bearing": "Use the same native program and original placements plus a documented removable real-part locking brace between carrier and base. Preserve motor, hub, rotor and ordinary import. Require normal motor/rotor travel, geometry, completion and base-stability gates, but require negligible relative carrier yaw. Report this intentional mechanism change and hash the actual executed control LDR.",
+    "offline_frozen_carrier": "Create a separately labeled measurement-only negative by replacing recorded carrier poses with their initial transform relative to the observed base. The same useful-yaw judge must reject it. It is never sent to the simulator and is not presented as a physical run."
+  }
+}

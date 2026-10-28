@@ -1,0 +1,210 @@
+# Calculator faceplate: 17 button widgets -> OLED display widget.
+#
+# An integer four-function calculator. Each button widget writes its
+# variable to 1 on press; the program consumes it (writes it back to 0)
+# and updates oled_text, which the OLED display widget shows.
+#
+# The dialect has no string-expression evaluator, so this keeps a running
+# accumulator (acc), the number being typed (entry), and the pending
+# operator (op: 1=+ 2=- 3=* 4=/) rather than building and eval-ing a
+# string. Pressing an operator or = applies the pending op first.
+
+WHEN flag clicked:
+  set acc to 0
+  set entry to 0
+  set op to 0
+  set fresh to 1
+  set oled_text to "0"
+  FOREVER:
+    # Digit buttons 0..9
+    IF btn0 = 1 THEN:
+      set btn0 to 0
+      IF fresh = 1 THEN:
+        set entry to 0
+        set fresh to 0
+      ELSE:
+        IF entry < 100000000 THEN:
+          set entry to entry * 10 + 0
+      set oled_text to entry
+    IF btn1 = 1 THEN:
+      set btn1 to 0
+      IF fresh = 1 THEN:
+        set entry to 1
+        set fresh to 0
+      ELSE:
+        IF entry < 100000000 THEN:
+          set entry to entry * 10 + 1
+      set oled_text to entry
+    IF btn2 = 1 THEN:
+      set btn2 to 0
+      IF fresh = 1 THEN:
+        set entry to 2
+        set fresh to 0
+      ELSE:
+        IF entry < 100000000 THEN:
+          set entry to entry * 10 + 2
+      set oled_text to entry
+    IF btn3 = 1 THEN:
+      set btn3 to 0
+      IF fresh = 1 THEN:
+        set entry to 3
+        set fresh to 0
+      ELSE:
+        IF entry < 100000000 THEN:
+          set entry to entry * 10 + 3
+      set oled_text to entry
+    IF btn4 = 1 THEN:
+      set btn4 to 0
+      IF fresh = 1 THEN:
+        set entry to 4
+        set fresh to 0
+      ELSE:
+        IF entry < 100000000 THEN:
+          set entry to entry * 10 + 4
+      set oled_text to entry
+    IF btn5 = 1 THEN:
+      set btn5 to 0
+      IF fresh = 1 THEN:
+        set entry to 5
+        set fresh to 0
+      ELSE:
+        IF entry < 100000000 THEN:
+          set entry to entry * 10 + 5
+      set oled_text to entry
+    IF btn6 = 1 THEN:
+      set btn6 to 0
+      IF fresh = 1 THEN:
+        set entry to 6
+        set fresh to 0
+      ELSE:
+        IF entry < 100000000 THEN:
+          set entry to entry * 10 + 6
+      set oled_text to entry
+    IF btn7 = 1 THEN:
+      set btn7 to 0
+      IF fresh = 1 THEN:
+        set entry to 7
+        set fresh to 0
+      ELSE:
+        IF entry < 100000000 THEN:
+          set entry to entry * 10 + 7
+      set oled_text to entry
+    IF btn8 = 1 THEN:
+      set btn8 to 0
+      IF fresh = 1 THEN:
+        set entry to 8
+        set fresh to 0
+      ELSE:
+        IF entry < 100000000 THEN:
+          set entry to entry * 10 + 8
+      set oled_text to entry
+    IF btn9 = 1 THEN:
+      set btn9 to 0
+      IF fresh = 1 THEN:
+        set entry to 9
+        set fresh to 0
+      ELSE:
+        IF entry < 100000000 THEN:
+          set entry to entry * 10 + 9
+      set oled_text to entry
+
+    # Operators: apply the pending op, then remember the new one
+    IF btnAdd = 1 THEN:
+      set btnAdd to 0
+      IF op > 0 AND fresh = 0 THEN:
+        IF op = 1 THEN:
+          set acc to acc + entry
+        IF op = 2 THEN:
+          set acc to acc - entry
+        IF op = 3 THEN:
+          set acc to acc * entry
+        IF op = 4 AND NOT entry = 0 THEN:
+          set acc to acc / entry
+      ELSE:
+        IF fresh = 0 THEN:
+          set acc to entry
+      set op to 1
+      set fresh to 1
+      set oled_text to acc
+    IF btnSub = 1 THEN:
+      set btnSub to 0
+      IF op > 0 AND fresh = 0 THEN:
+        IF op = 1 THEN:
+          set acc to acc + entry
+        IF op = 2 THEN:
+          set acc to acc - entry
+        IF op = 3 THEN:
+          set acc to acc * entry
+        IF op = 4 AND NOT entry = 0 THEN:
+          set acc to acc / entry
+      ELSE:
+        IF fresh = 0 THEN:
+          set acc to entry
+      set op to 2
+      set fresh to 1
+      set oled_text to acc
+    IF btnMul = 1 THEN:
+      set btnMul to 0
+      IF op > 0 AND fresh = 0 THEN:
+        IF op = 1 THEN:
+          set acc to acc + entry
+        IF op = 2 THEN:
+          set acc to acc - entry
+        IF op = 3 THEN:
+          set acc to acc * entry
+        IF op = 4 AND NOT entry = 0 THEN:
+          set acc to acc / entry
+      ELSE:
+        IF fresh = 0 THEN:
+          set acc to entry
+      set op to 3
+      set fresh to 1
+      set oled_text to acc
+    IF btnDiv = 1 THEN:
+      set btnDiv to 0
+      IF op > 0 AND fresh = 0 THEN:
+        IF op = 1 THEN:
+          set acc to acc + entry
+        IF op = 2 THEN:
+          set acc to acc - entry
+        IF op = 3 THEN:
+          set acc to acc * entry
+        IF op = 4 AND NOT entry = 0 THEN:
+          set acc to acc / entry
+      ELSE:
+        IF fresh = 0 THEN:
+          set acc to entry
+      set op to 4
+      set fresh to 1
+      set oled_text to acc
+
+    # Equals: apply the pending op and show the result
+    IF btnEq = 1 THEN:
+      set btnEq to 0
+      IF op > 0 AND fresh = 0 THEN:
+        IF op = 1 THEN:
+          set acc to acc + entry
+        IF op = 2 THEN:
+          set acc to acc - entry
+        IF op = 3 THEN:
+          set acc to acc * entry
+        IF op = 4 AND NOT entry = 0 THEN:
+          set acc to acc / entry
+        set op to 0
+        set oled_text to acc
+      set fresh to 1
+
+    # Clear
+    IF btnC = 1 THEN:
+      set btnC to 0
+      set acc to 0
+      set entry to 0
+      set op to 0
+      set fresh to 1
+      set oled_text to "0"
+
+    # Decimal point: this is an integer calculator, so consume and ignore
+    IF btnDot = 1 THEN:
+      set btnDot to 0
+
+    wait 25 ms

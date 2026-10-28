@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "id": "ghost-pivot-unequal-link",
+  "language": "en",
+  "what": "Ghost Pivot with one loop link replaced by a longer stock beam. Motor A, the input link, the tool beam and the same ghost-pivot.bw program are unchanged, and the motor sweeps the same −35° to +35°. Only the length of one link in the double parallelogram differs, so the two loops are no longer true parallelograms.",
+  "try": [
+    "Load this control at its saved pose and press Run in the Robot Lab toolbar. Reload before every run.",
+    "Before the sweep, find the tool beam's empty end hole, the point that stayed put in Ghost Pivot.",
+    "Watch that hole while the motor sweeps. Does it stay in one place now, or does it travel?",
+    "Compare the tool's heading with the input's heading. In Ghost Pivot they matched; here they drift apart by several degrees."
+  ],
+  "why": "The fixed point in Ghost Pivot comes entirely from geometry: equal opposite sides make each loop a parallelogram, which copies the input's direction onto the tool, and the chosen distances make the tool's translation and rotation cancel at one point. Lengthening one link breaks the parallelogram condition. The loop then no longer copies the direction exactly, and the cancellation is lost. In the simulator the empty hole moved up to about 21.5 mm instead of 0.02 mm, and the tool heading lagged the input by up to about 5.8°, for the same motor sweep. The remote centre therefore depends on the exact link lengths, not on the motor targets.",
+  "matters": "Remote-centre mechanisms in surgical robots and camera rigs depend on precise link lengths: a small manufacturing error moves the virtual pivot, which in surgery means the instrument would push on the entry point. Comparing an intentionally wrong link with the right one shows how sensitive such a mechanism is.",
+  "question": "The motor reaches exactly the same angles as in Ghost Pivot. Why does the empty hole now travel by more than 20 mm?",
+  "answer": "Because the fixed point is a property of the parallelogram geometry, not of the motor. With one link longer, the loop is no longer a parallelogram, the tool no longer keeps the input's direction, and its rotation and translation no longer cancel at the hole. In the simulator the hole moved about 21.5 mm and the heading lagged by up to about 5.8°.",
+  "further": [
+    "Sketch the loop with the longer link and find where its pivots must lie for opposite sides to be parallel again. Which part would you change?",
+    "Estimate how much a 1 mm error in one link would move the remote centre, using the 21.5 mm result as a guide."
+  ],
+  "formula": "Parallelogram condition: opposite sides equal, so the coupler keeps the input direction u. Ideal: R = A − (2/3)(B − A) = −48e, independent of u. With one link longer, B is no longer 80u − 48e and R depends on the input angle.",
+  "related": [
+    "pantograph-doubler.ldr",
+    "scale-echo.ldr",
+    "gimbal-lab.ldr"
+  ]
+}

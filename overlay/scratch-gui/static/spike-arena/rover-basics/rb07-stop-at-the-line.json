@@ -1,0 +1,102 @@
+{
+  "id": "rb07-stop-at-the-line",
+  "title": {
+    "en": "Stop at the line",
+    "de": "Halt an der Linie"
+  },
+  "intro": {
+    "en": "A black survey line marks the edge of safe ground; beyond it the ground gives way. Drive forward and stop as soon as the colour sensor sees the black line. You do not know how far away it is - let the sensor tell you.",
+    "de": "Eine schwarze Messlinie markiert den Rand des sicheren Bodens; dahinter bricht der Boden ein. Fahre los und halte an, sobald der Farbsensor die schwarze Linie sieht. Wie weit sie entfernt ist, weißt du nicht - lass es dir vom Sensor sagen."
+  },
+  "hints": [
+    {
+      "en": "\"wait until\" pauses the program until a condition becomes true, while the motors keep running.",
+      "de": "„warte bis“ hält das Programm an, bis eine Bedingung wahr wird, während die Motoren weiterlaufen."
+    },
+    {
+      "en": "The colour sensor sits a little in front of the wheels.",
+      "de": "Der Farbsensor sitzt etwas vor den Rädern."
+    }
+  ],
+  "mat": {
+    "width": 150,
+    "height": 100,
+    "background": "orange",
+    "paint": "#d9825b",
+    "shapes": [
+      {
+        "color": "black",
+        "shape": {
+          "type": "rect",
+          "x": 101,
+          "y": 50,
+          "w": 3,
+          "h": 100
+        }
+      },
+      {
+        "color": "black",
+        "paint": "#6b4130",
+        "shape": {
+          "type": "rect",
+          "x": 135,
+          "y": 50,
+          "w": 30,
+          "h": 100
+        }
+      }
+    ]
+  },
+  "zones": [
+    {
+      "id": "safe",
+      "role": "goal",
+      "shape": {
+        "type": "rect",
+        "x": 95,
+        "y": 50,
+        "w": 12,
+        "h": 100
+      },
+      "label": {
+        "en": "stopping band",
+        "de": "Haltestreifen"
+      }
+    },
+    {
+      "id": "soft-ground",
+      "role": "hazard",
+      "shape": {
+        "type": "rect",
+        "x": 135,
+        "y": 50,
+        "w": 30,
+        "h": 100
+      },
+      "label": {
+        "en": "soft ground",
+        "de": "weicher Boden"
+      }
+    }
+  ],
+  "start": {
+    "x": 20,
+    "y": 50,
+    "heading": 0
+  },
+  "timeLimitMs": 15000,
+  "success": [
+    {
+      "type": "stopIn",
+      "zone": "safe"
+    }
+  ],
+  "failure": [
+    {
+      "type": "avoid",
+      "zone": "soft-ground"
+    }
+  ],
+  "solution": "rb07-stop-at-the-line.bw",
+  "wrong": "rb07-stop-at-the-line.wrong.bw"
+}

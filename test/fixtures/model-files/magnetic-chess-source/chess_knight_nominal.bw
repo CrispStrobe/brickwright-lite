@@ -1,0 +1,27 @@
+DEVICE SPIKE
+
+# MAGNETIC CHESS TRANSPORT: precomputed occupancy-aware routes.
+# XY calibration: SIMULATED NOMINAL SCALE, 10 LDU pinion radius; NOT measured hardware calibration.
+# No chess AI, piece sensor, homing routine, or simulated magnet is implied.
+# Start head at X=0, Z=0 LDU, magnet lowered.
+# Establish the physical datum before running; reset the matching CAD scene.
+WHEN flag clicked:
+  set motor stop action A hold
+  set motor stop action B hold
+  set motor stop action C hold
+  set motor speed A 5
+  set motor speed B 5
+  set motor speed C 5
+  # Transfer 1: w_knight_g1, g1 -> f3
+  run motor A counterclockwise 2005.35228296 degrees
+  run motor B counterclockwise 2807.49319614 degrees
+  run motor C clockwise 180.00000000 degrees
+  wait 1 seconds
+  run motor A clockwise 401.07045659 degrees
+  run motor B clockwise 1604.28182637 degrees
+  run motor A clockwise 401.07045659 degrees
+  wait 1 seconds
+  run motor C counterclockwise 180.00000000 degrees
+  wait 1 seconds
+  run motor A clockwise 1203.21136977 degrees
+  run motor B clockwise 1203.21136977 degrees

@@ -1,0 +1,42 @@
+0 balance-unequal (Brickwright Robot Lab validation machine)
+0 Name: balance-unequal.ldr
+0 Author: Brickwright
+0 !LDRAW_ORG Unofficial_Model
+0 // Unequal balance (Robot Lab validation, test/bw-sim-validation.test.mjs).
+0 // A beam 7 stands upright (holes along z, layer z -30..-10); a frictionless pin 3673 joins its top hole
+0 // to the centre hole of a beam 15, the lever (layer z -10..10, holes x -140..140).
+0 // Left arm: a SPIKE distance sensor (8 g, a large light box) behind the lever, held by friction pins in its
+0 // side holes at x = -120 and -80 (its centre at x = -100). Right arm: three beam 9 (3 g each) stacked in front
+0 // (z 10..70) at x = 100, pinned lever-beam, beam-beam, beam-beam. The right arm is heavier (9 g + pins vs
+0 // 8 g) but much smaller (3 x 64 000 vs 642 000 cubic LDU of collider).
+0 !BW ID stand
+1 72 0 60 -20 -1 0 0 0 0 1 0 1 0 32524.dat
+0 !BW ID pivot
+1 71 0 0 -10 0 1 0 0 0 1 1 0 0 3673.dat
+0 !BW ID lever
+1 4 0 0 0 0 0 1 1 0 0 0 1 0 32278.dat
+0 !BW ID sensor
+0 !BW PORT B
+1 0 -100 0 -80 0 1 0 0 0 1 1 0 0 37316.dat
+0 !BW ID sensorPin1
+1 0 -120 0 -10 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID sensorPin2
+1 0 -80 0 -10 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID weight1
+1 1 100 0 20 0 0 1 1 0 0 0 1 0 40490.dat
+0 !BW ID weight2
+1 1 100 0 40 0 0 1 1 0 0 0 1 0 40490.dat
+0 !BW ID weight3
+1 1 100 0 60 0 0 1 1 0 0 0 1 0 40490.dat
+0 !BW ID weightPin1
+1 0 40 0 10 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID weightPin2
+1 0 140 0 10 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID weightPin3
+1 0 60 0 30 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID weightPin4
+1 0 120 0 30 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID weightPin5
+1 0 80 0 50 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID weightPin6
+1 0 100 0 50 0 1 0 0 0 1 1 0 0 2780.dat

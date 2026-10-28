@@ -1,0 +1,51 @@
+{
+  "date": "2026-10-09",
+  "testedSource": "9523aa4c62922158a5e96f7fb8ff5ce8e025d9cb",
+  "base": "a0f80ec5477217aa6da22f84992ad52b1f182c22",
+  "producerPin": "eca752b7011656b9e73917bc6f816ffed24ad4b9",
+  "implemented": [
+    "Native Image.copyFrom with matching-dimensions rule, zero pixel copy, preserved destination aliases/buffer/palette",
+    "Dedicated source and destination Blocks inputs and canonical pseudocode",
+    "Typed images, sprite.image and typed procedure parameters in MakeCode interchange"
+  ],
+  "local": {
+    "finalCopy": {
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0,
+      "originalPixelCases": 16,
+      "log": "arcade-copyfrom-final-qualified.log"
+    },
+    "earlierBatch": {
+      "passed": 24,
+      "failed": 0,
+      "skipped": 0,
+      "initialCopyChecks": 4,
+      "unchangedRegressionChecks": 20,
+      "log": "arcade-copyfrom-qualified.log"
+    },
+    "producer": {
+      "passed": 328,
+      "failed": 0,
+      "skipped": 0
+    },
+    "boundary": "Original PXT pixel/execution comparison, native VM/controller keys, Code/Blocks/export/reimport/SB3 and fresh development/production extension bundles. Full rendered app browser journey prepared and pending."
+  },
+  "corpus": {
+    "hashVerifiedInputs": 184,
+    "inputChanges": 0,
+    "translated": 109,
+    "partial": 74,
+    "malformed": 1,
+    "changedDiagnosticRows": 0
+  },
+  "retainedFailures": [
+    "Initial consumer parse before producer vocabulary synchronization; resolved by adopting the exact producer pin"
+  ],
+  "remaining": [
+    "All enabled exact-head hosted consumer and producer checks before merge",
+    "Full native file/controller-pane rendered pixel journey",
+    "Screen compositor, screen handle/clone, renderables and paint/shade callbacks per proposed S01-S05 contract",
+    "74 partial imports and one malformed input remain"
+  ]
+}

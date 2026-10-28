@@ -1,0 +1,339 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Brickwright Model Measurement API",
+    "version": "1.1.0",
+    "description": "Bounded, token-protected native simulation measurements. Run completion is separate from model qualification."
+  },
+  "servers": [
+    {
+      "url": "/api/v1"
+    }
+  ],
+  "security": [
+    {
+      "agentToken": []
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "agentToken": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    },
+    "schemas": {
+      "File": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "text"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 128
+          },
+          "text": {
+            "type": "string"
+          }
+        }
+      },
+      "Submission": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "model"
+        ],
+        "properties": {
+          "model": {
+            "$ref": "#/components/schemas/File"
+          },
+          "program": {
+            "$ref": "#/components/schemas/File"
+          },
+          "settings": {
+            "type": "object",
+            "properties": {
+              "programMs": {
+                "type": "integer",
+                "minimum": 250,
+                "maximum": 120000,
+                "multipleOf": 25
+              },
+              "coldMs": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 2000,
+                "multipleOf": 25
+              },
+              "afterMs": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 30000,
+                "multipleOf": 25
+              },
+              "sampleMs": {
+                "type": "integer",
+                "minimum": 5,
+                "maximum": 5000,
+                "multipleOf": 5,
+                "description": "Normal profile: multiples of25, minimum25. physicsSamples: exactly5."
+              },
+              "physicsSamples": {
+                "type": "boolean",
+                "default": false,
+                "description": "Observe after every existing 5 ms native bridge step. Does not change VM cadence."
+              },
+              "poseParts": {
+                "type": "array",
+                "maxItems": 4,
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128
+                },
+                "description": "Semantic part IDs selecting up to four actual native bodies; report contains full native world positions in metres and quaternions [x,y,z,w]. Unknown targets are refused."
+              }
+            },
+            "additionalProperties": false,
+            "description": "VM remains 25 ms and physics remains 5 ms. physicsSamples records each existing physics step without changing commands: at most 15000 ms total including cold/after, 24 readings, and 3001 rows. Result is capped at 4 MiB."
+          },
+          "measurements": {
+            "type": "array",
+            "maxItems": 64,
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "kind"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "maxLength": 128
+                },
+                "kind": {
+                  "enum": [
+                    "mass",
+                    "weight",
+                    "speed",
+                    "angularSpeed",
+                    "distance",
+                    "angle",
+                    "jointAngle",
+                    "jointSpeed",
+                    "travel",
+                    "tension",
+                    "normalLoad",
+                    "pointCoordinate",
+                    "signedAngle",
+                    "hingeGap",
+                    "programVariable"
+                  ]
+                },
+                "label": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 80
+                },
+                "targets": {
+                  "type": "array",
+                  "minItems": 1,
+                  "maxItems": 3,
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128
+                  },
+                  "description": "One part for mass/weight/speed/angularSpeed/normalLoad; two for distance; three for unsigned angle."
+                },
+                "joint": {
+                  "type": "string",
+                  "maxLength": 128,
+                  "description": "Exact joint ID, exclusive with port."
+                },
+                "port": {
+                  "type": "string",
+                  "pattern": "^[A-F]$",
+                  "description": "Motor port for jointAngle/jointSpeed/travel, exclusive with joint."
+                },
+                "rope": {
+                  "type": "string",
+                  "maxLength": 128
+                },
+                "point": {
+                  "$ref": "#/components/schemas/Marker"
+                },
+                "reference": {
+                  "$ref": "#/components/schemas/Marker",
+                  "description": "Optional current reference part/frame; omit for world coordinates."
+                },
+                "axis": {
+                  "enum": [
+                    "x",
+                    "y",
+                    "z"
+                  ],
+                  "default": "x"
+                },
+                "vectorLdu": {
+                  "type": "array",
+                  "minItems": 3,
+                  "maxItems": 3,
+                  "items": {
+                    "type": "number",
+                    "minimum": -100000,
+                    "maximum": 100000
+                  },
+                  "default": [
+                    1,
+                    0,
+                    0
+                  ],
+                  "description": "Nonzero authored-part vector for signedAngle."
+                },
+                "variable": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128
+                }
+              },
+              "additionalProperties": false,
+              "description": "Only fields appropriate to kind are accepted. pointCoordinate/signedAngle require point; joint readings require exactly one of joint/port; tension requires rope; programVariable requires variable; hingeGap takes no targets."
+            }
+          }
+        }
+      },
+      "Marker": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "part"
+        ],
+        "properties": {
+          "part": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "localLdu": {
+            "type": "array",
+            "minItems": 3,
+            "maxItems": 3,
+            "items": {
+              "type": "number",
+              "minimum": -100000,
+              "maximum": 100000
+            },
+            "default": [
+              0,
+              0,
+              0
+            ]
+          }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/capabilities": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Supported measurements and bounds"
+          },
+          "401": {
+            "description": "Authentication required"
+          }
+        }
+      }
+    },
+    "/runs": {
+      "post": {
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Submission"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Queued; response contains signed job id and status/result URLs"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "408": {
+            "description": "Request body not received within the 10 s body deadline"
+          },
+          "413": {
+            "description": "Body (declared or chunked) or compressed dispatch too large; JSON refusal written before the request is ended"
+          },
+          "422": {
+            "description": "Invalid typed input"
+          },
+          "503": {
+            "description": "Worker unavailable"
+          }
+        }
+      }
+    },
+    "/runs/{id}": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Worker status"
+          },
+          "404": {
+            "description": "Unknown, expired or foreign-owned job"
+          }
+        }
+      }
+    },
+    "/runs/{id}/result": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Measurement or failed-run report, with input/runtime identity and units"
+          },
+          "404": {
+            "description": "Unknown or foreign-owned job"
+          },
+          "409": {
+            "description": "Result not ready"
+          },
+          "410": {
+            "description": "Artifact expired or unavailable"
+          }
+        }
+      }
+    }
+  }
+}

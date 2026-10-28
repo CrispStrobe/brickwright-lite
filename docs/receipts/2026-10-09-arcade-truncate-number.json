@@ -1,0 +1,107 @@
+{
+  "date": "2026-10-09",
+  "testedSource": "fbc9c5265cc4fe04c301891f2828c0adc3755daf",
+  "implementationSource": "6f312b83823e283fbb58df2eb7f6af2a6e47378c",
+  "adoptionSource": "3c58a272b87b04cefdb2c6dd2a42cca785f565c5",
+  "base": "16ce6b4317dd1ea264ef93ec5fd586926b6c2d7c",
+  "producerPin": "ef312b0a61101140591c30c9feee452eae12fa39",
+  "implemented": [
+    "Native truncate-number reporter exposed in the Arcade Blocks palette and canonical pseudocode",
+    "Math.trunc import/export preserves the native number operation, without a 32-bit bitwise substitute",
+    "Original PXT comparisons for positive/negative fractions, signed zero, NaN/infinities, large numbers and single argument evaluation",
+    "Code/Blocks/decompile/MakeCode export/reimport/saved SB3 restart",
+    "Prepared fresh native-file/controller-pane browser journey for fractional sprite coordinates"
+  ],
+  "local": {
+    "implementation": {
+      "source": "6f312b83823e283fbb58df2eb7f6af2a6e47378c",
+      "passed": 20,
+      "failed": 0,
+      "skipped": 0,
+      "log": "arcade-truncate-qualified-source.log"
+    },
+    "adoption": {
+      "source": "3c58a272b87b04cefdb2c6dd2a42cca785f565c5",
+      "passed": 20,
+      "failed": 0,
+      "skipped": 0,
+      "log": "arcade-truncate-qualified-adoption.log"
+    },
+    "finalPin": {
+      "source": "fbc9c5265cc4fe04c301891f2828c0adc3755daf",
+      "passed": 7,
+      "failed": 0,
+      "skipped": 0,
+      "log": "arcade-truncate-final-pin.log"
+    },
+    "producer": {
+      "passed": 322,
+      "failed": 0,
+      "skipped": 0,
+      "boundary": "Dialect and full Boolean value-position census; sibling-dependent circuit corpus is a separate pending hosted boundary",
+      "eslint": "pass"
+    },
+    "files": [
+      "test/makecode-arcade-truncate-number.test.mjs",
+      "test/makecode-arcade-value-arithmetic.test.mjs",
+      "test/dialect-arcade-import-lines.test.mjs",
+      "test/lego-spike-roundtrip.test.mjs",
+      "test/arcade-browser-bundle.test.mjs",
+      "test/overlay-packages-pairs.test.mjs"
+    ],
+    "boundary": "Native numeric comparisons and real development/production extension bundles; no fresh full-app browser success claim"
+  },
+  "corpus": {
+    "hashVerifiedInputs": 184,
+    "inputChanges": 0,
+    "before": {
+      "translated": 105,
+      "partial": 78,
+      "malformed": 1
+    },
+    "after": {
+      "translated": 106,
+      "partial": 77,
+      "malformed": 1
+    },
+    "changedImportDiagnosticRows": 1,
+    "changes": [
+      {
+        "file": "arcade-d39d8e617365f7ae.ts",
+        "before": [
+          "Math.trunc() as a value"
+        ],
+        "after": []
+      }
+    ]
+  },
+  "realApp": {
+    "file": "arcade-d39d8e617365f7ae.ts",
+    "importDiagnostics": [],
+    "runtimeErrors": [],
+    "codeWarnings": [],
+    "startupDialog": "Sprite Walker",
+    "buttonCoordinateDialog": "X=-3 Y=40",
+    "exportCompiled": true,
+    "reimportDiagnostics": [],
+    "boundary": "Headless native VM, explicit authoring primitive fractional-position setup and keyboard button steering; not a rendered browser or whole-game proof. Original source unchanged."
+  },
+  "producerGateRepair": {
+    "parentJob": "https://github.com/CrispStrobe/sb3-creator/actions/runs/37915347929/job/113770053467",
+    "observed": [
+      "Boolean census inventory 12 != 11, with multiplayer pressed-query predicate missing from the updated count",
+      "Circuit model ea94554 committed 2026-09-27 exceeded the ten-day pin age bound"
+    ],
+    "fix": [
+      "Explicitly cover arcade_playerButtonPressed in the complete value-position census and retain exact count 12",
+      "Adopt circuit-model revision 557c4716236536829456818789c50772d0e65fa8, already pinned by the Lite consumer; actual commit date 2026-10-07"
+    ],
+    "qualification": "Full hosted sibling-dependent tests pending; no circuit quantity expectations or freshness bounds weakened"
+  },
+  "remaining": [
+    "Fresh full-app truncation/controller browser qualification",
+    "All enabled producer and consumer exact-head checks, including circuit-model adoption, before merge",
+    "77 partial imports and 1 malformed input remain; translated is an import-only classification"
+  ],
+  "runtimeAndImporterUnchangedSinceImplementationQualification": true
+}

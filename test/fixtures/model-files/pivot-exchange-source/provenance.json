@@ -1,0 +1,10 @@
+{
+ "author": "CrispStrobe",
+ "license": "BSD-3-Clause",
+ "files": {
+  "models/pivot-exchange.ldr": "dac8d0d5003ae68f90d8c3b4f1233d4e20aa3c2f50fc6fc2ff884e32b1d990fd",
+  "programs/pivot-exchange.bw": "e74aa7a5931429073e0a147db06ed07a916019245f6f3256c3222d7288c58118",
+  "LICENSE.txt": "5f48a3052c7fc8b1f0a996da47fcfdf75a606dd9cc4796bf931f0502b9726c0c",
+  "SOURCES.md": "7773a53d5b1e354a288df5fcdc76fcca07980afcc38a0422d5b77343b4f6e504"
+ }
+}

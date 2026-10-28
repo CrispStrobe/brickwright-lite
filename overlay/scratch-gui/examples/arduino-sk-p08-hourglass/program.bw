@@ -1,0 +1,38 @@
+# Ported from arduino-examples/examples/10.StarterKit_BasicKit/p08_DigitalHourglass, CC0
+DEVICE ARDUINO-UNO
+CLOCK 16000000
+PIN led2 = D2 OUTPUT
+PIN led3 = D3 OUTPUT
+PIN led4 = D4 OUTPUT
+PIN led5 = D5 OUTPUT
+PIN led6 = D6 OUTPUT
+PIN led7 = D7 OUTPUT
+PIN tilt = D8 INPUT
+
+WHEN flag clicked:
+  set currentLed to 0
+  set interval to 10
+  FOREVER:
+    IF currentLed >= 1 THEN:
+      turn on led2
+    IF currentLed >= 2 THEN:
+      turn on led3
+    IF currentLed >= 3 THEN:
+      turn on led4
+    IF currentLed >= 4 THEN:
+      turn on led5
+    IF currentLed >= 5 THEN:
+      turn on led6
+    IF currentLed >= 6 THEN:
+      turn on led7
+    wait interval seconds
+    IF currentLed < 6 THEN:
+      change currentLed by 1
+    IF read tilt THEN:
+      set currentLed to 0
+      turn off led2
+      turn off led3
+      turn off led4
+      turn off led5
+      turn off led6
+      turn off led7

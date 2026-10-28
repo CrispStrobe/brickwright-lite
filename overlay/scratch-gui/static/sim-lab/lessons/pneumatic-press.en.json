@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "id": "pneumatic-press",
+  "language": "en",
+  "what": "A motor changes a valve that sends compressed air to a piston. Pressure drives a cylinder; the valve reverses its motion.",
+  "try": [
+    "Reset and run the valve sequence. Watch the piston change direction.",
+    "Compare the motor’s valve motion with the cylinder stroke.",
+    "Stop and change the valve command; observe whether the piston follows immediately."
+  ],
+  "why": "The valve chooses the pressure connections. Pressure acts over piston area to create force; moving the valve is not the same as directly commanding piston position.",
+  "matters": "Pneumatics separate a small control motion from a force-producing actuator.",
+  "question": "Does twice the valve angle necessarily give twice the piston extension?",
+  "answer": "No. The valve changes air flow paths. Pressure, load, time and the cylinder’s travel limits decide the resulting motion.",
+  "further": [
+    "Compare extension and retraction.",
+    "Compare an air cylinder with the screw-driven crane."
+  ],
+  "formula": "force ≈ pressure difference × piston area",
+  "related": [
+    "screw-crane.ldr"
+  ]
+}

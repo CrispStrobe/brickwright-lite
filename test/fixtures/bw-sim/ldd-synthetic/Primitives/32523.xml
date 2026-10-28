@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SYNTHETIC, hand-made for test/bw-sim-canonical-frame.test.mjs: NOT LDD data. It imitates
+     the shape of an LDD part primitive (LEGOPrimitive / Connectivity / Axel) for a Technic beam 3
+     drawn in a frame chosen by hand: the beam along +x, its holes along z, the origin on the
+     front face of the end hole. Each Axel runs along its local +y from its point (tx ty tz) for
+     `length` (LDD units, 0.8 = one hole); angle -90 about x turns +y to -z, into the beam. -->
+<LEGOPrimitive versionMajor="0" versionMinor="1">
+  <Annotations><Annotation designname="Synthetic Technic Beam 3" /></Annotations>
+  <Connectivity>
+    <Axel type="7" length="0.8" angle="-90" ax="1" ay="0" az="0" tx="0" ty="0" tz="0" />
+    <Axel type="7" length="0.8" angle="-90" ax="1" ay="0" az="0" tx="0.8" ty="0" tz="0" />
+    <Axel type="7" length="0.8" angle="-90" ax="1" ay="0" az="0" tx="1.6" ty="0" tz="0" />
+  </Connectivity>
+</LEGOPrimitive>

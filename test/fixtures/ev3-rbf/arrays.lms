@@ -1,0 +1,67 @@
+// Arrays by handle (ARRAY, ARRAY_WRITE / READ / APPEND), byte arrays (READ8 / WRITE8) and strings.
+DATA32 Read2
+DATA32 Grown
+DATA32 Appended
+DATA32 Size
+DATA32 Copied
+DATA32 InitSum
+DATA32 Byte3
+DATA32 StrLen
+DATA32 Same
+DATAS  Joined 32
+DATAS  Number 8
+
+vmthread MAIN
+{
+  HANDLE hA
+  HANDLE hB
+  DATA32 V
+  DATA16 L
+  DATA8  B
+  DATA8  Eq
+  ARRAY8 Bytes 8
+
+  ARRAY(CREATE32, 4, hA)
+  ARRAY(FILL, hA, 7)
+  ARRAY_WRITE(hA, 2, 42)
+  ARRAY_READ(hA, 2, Read2)
+  ARRAY_WRITE(hA, 6, 99)
+  ARRAY_READ(hA, 6, Grown)
+  ARRAY_APPEND(hA, 5)
+  ARRAY_READ(hA, 7, Appended)
+  ARRAY(SIZE, hA, Size)
+  ARRAY(CREATE32, 1, hB)
+  ARRAY(COPY, hA, hB)
+  ARRAY_READ(hB, 6, Copied)
+  ARRAY(INIT32, hB, 0, 3, 10, 20, 30)
+  ARRAY_READ(hB, 0, V)
+  MOVE32_32(V, InitSum)
+  ARRAY_READ(hB, 1, V)
+  ADD32(V, InitSum, InitSum)
+  ARRAY_READ(hB, 2, V)
+  ADD32(V, InitSum, InitSum)
+  ARRAY(RESIZE, hB, 2)
+  ARRAY(DELETE, hB)
+  WRITE8(3, 3, Bytes)
+  WRITE8(65, 4, Bytes)
+  READ8(Bytes, 3, B)
+  MOVE8_32(B, Byte3)
+  STRINGS(NUMBER_TO_STRING, 42, 3, Number)
+  STRINGS(ADD, 'n=', Number, Joined)
+  STRINGS(GET_SIZE, Joined, L)
+  MOVE16_32(L, StrLen)
+  STRINGS(COMPARE, Joined, 'n=042', Eq)
+  MOVE8_32(Eq, Same)
+  // Report: each result written to the brick's console, in declaration order.
+  UI_WRITE(VALUE32, Read2)
+  UI_WRITE(VALUE32, Grown)
+  UI_WRITE(VALUE32, Appended)
+  UI_WRITE(VALUE32, Size)
+  UI_WRITE(VALUE32, Copied)
+  UI_WRITE(VALUE32, InitSum)
+  UI_WRITE(VALUE32, Byte3)
+  UI_WRITE(VALUE32, StrLen)
+  UI_WRITE(VALUE32, Same)
+  UI_WRITE(PUT_STRING, Joined)
+  UI_WRITE(PUT_STRING, Number)
+}

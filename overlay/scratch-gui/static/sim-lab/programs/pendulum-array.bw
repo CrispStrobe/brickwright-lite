@@ -1,0 +1,13 @@
+DEVICE SPIKE
+
+# Pendulum array, CrispStrobe — BSD-3-Clause.
+# Reset first. Spin the common support, then hold it while the three arms swing freely.
+# Red: 7L / 48 mm; blue: 13L / 96 mm; yellow: 11L / 80 mm pivot-to-tip.
+WHEN flag clicked:
+  set motor stop action A hold
+  set motor speed A 25
+  run motor A clockwise 180 degrees
+  wait 8 seconds
+  set motor speed A 20
+  run motor A counterclockwise 180 degrees
+  wait 8 seconds

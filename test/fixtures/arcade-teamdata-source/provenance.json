@@ -1,0 +1,9 @@
+{
+  "repository": "microsoft/pxt-kickoff",
+  "revision": "c2c7f8193af1dafaebda3a7cda235df4c42b87ae",
+  "source": "https://github.com/microsoft/pxt-kickoff/blob/c2c7f8193af1dafaebda3a7cda235df4c42b87ae/teamdata.ts",
+  "license": "MIT",
+  "sourceSha256": "79d2141d20a88696bbd9e97c3bb0fe81fbc35e7663f00c79252cdec8048568ef",
+  "licenseSha256": "9906940f61b1f0b533fa7d99baf55178b2808fbe113ea51dfbfad8572ccd5f2b",
+  "boundary": "Complete unchanged licensed source retained for class/whenUsed controls; no full kickoff game admission."
+}

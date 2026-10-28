@@ -1,0 +1,11 @@
+DEVICE SPIKE
+
+# 16T drives 24T through a chain: both turn the same way, output speed is 2/3.
+# Three input turns produce two output turns. Reverse to return the pointer.
+WHEN flag clicked:
+  set motor stop action A hold
+  set motor speed A 20
+  run motor A clockwise 1080 degrees
+  wait 2 seconds
+  run motor A counterclockwise 1080 degrees
+  wait 1 seconds

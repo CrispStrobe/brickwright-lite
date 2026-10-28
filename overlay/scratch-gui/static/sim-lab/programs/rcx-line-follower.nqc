@@ -1,0 +1,23 @@
+// Robot Lab: RCX line follower (NQC, for the RCX's standard firmware).
+// Model: RCX bumper car on the Line Oval mat - mini-motors on outputs A (left,
+// mounted mirror-image: forward is reverse) and C (right), light sensor on
+// input 2 looking down at the right of the castor. It follows the line's edge:
+// on white it pivots toward the line on wheel C, on the line it pivots back on
+// wheel A.
+
+#define THRESHOLD 41   // between white (about 51 %) and the black line (about 31 %)
+
+task main()
+{
+    SetSensor(SENSOR_2, SENSOR_LIGHT);
+    SetPower(OUT_A + OUT_C, 2);
+    while (true) {
+        if (SENSOR_2 > THRESHOLD) {
+            Off(OUT_A);
+            OnFwd(OUT_C);
+        } else {
+            OnRev(OUT_A);
+            Off(OUT_C);
+        }
+    }
+}

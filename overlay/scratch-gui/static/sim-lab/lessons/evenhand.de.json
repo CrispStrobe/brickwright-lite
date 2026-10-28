@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "id": "evenhand",
+  "language": "de",
+  "what": "Evenhand ist ein Zweigelenkarm in der senkrechten Ebene. Motor A dreht die Schulter, Motor B den Ellbogen. Hinter jedem Gelenk wirken gewöhnliche Standardteile als Gegengewichte: Sie gleichen den Oberarm um die Schulter und den Unterarm um den Ellbogen aus. Das Programm fährt neun Stellungen an, jede Kombination aus Schulter −20°, 0°, +20° und Ellbogen −30°, 0°, +30°, hält jede 1,2 s und kehrt zurück. Im Simulator halten beide Motoren jede Stellung fast ohne Drehmoment: Die Schulter braucht etwa 0,35 mN·m, der Ellbogen weniger als 0,01 mN·m.",
+  "try": [
+    "Wähle im Roboter-Labor Datei → Ein Modell öffnen… und öffne evenhand.ldr. Setze programs/evenhand.bw in den Code-Tab, wähle ⇦ Zu Blöcken und drücke den Run-Knopf des Roboter-Labors; er verbindet den virtuellen SPIKE-Hub.",
+    "Beobachte die Gegengewichte während der neun Stellungen: Senkt sich ein Glied auf einer Seite, hebt sich sein Gegengewicht auf der anderen.",
+    "Nutze die Handsteuerung (Schulter ±20°, Ellbogen ±30°) und lass in jeder Stellung los: Der ausgewogene Arm hat keine Neigung zurückzufallen.",
+    "Öffne dann evenhand-control.ldr, in dem die Unterarmgewichte näher am Ellbogen sitzen, und starte dasselbe Programm. Lade vor jedem Vergleich die ganze Szene neu."
+  ],
+  "why": "Die Schwerkraft zieht an jedem Teil eines Glieds. Um sein Gelenk erzeugen die Teile davor und dahinter entgegengesetzte Drehmomente. Ist die Masse des Gegengewichts mal seinem Abstand hinter dem Gelenk gleich der Masse des Glieds mal dem Abstand seines Schwerpunkts davor, heben sich die Momente bei jedem Winkel auf, weil beide mit dem Kosinus desselben Winkels wachsen. Ein ausgewogener Arm braucht Motormoment nur zum Beschleunigen, nicht zum Halten.",
+  "matters": "Schreibtischlampen, Roboterarme, Kräne, Klappbrücken und Garagentore nutzen Gegengewichte oder Federn aus demselben Grund: Motor oder Mensch müssen die Last nur bewegen, nicht tragen.",
+  "question": "Warum braucht der ausgewogene Arm in jeder Stellung fast kein Haltemoment und nicht nur, wenn er waagerecht steht?",
+  "answer": "Weil das Moment des Glieds und das des Gegengewichts sich beide mit dem Kosinus des Gliedwinkels ändern. Heben sie sich waagerecht auf, heben sie sich bei jedem Winkel auf. Das kleine verbleibende Schultermoment von etwa 0,35 mN·m zeigt, dass der Ausgleich nicht perfekt ist; es ist aber mehr als zehnmal kleiner als in der Kontrolle.",
+  "further": [
+    "Schätze mit m₁·d₁ = m₂·d₂, wie weit hinter dem Ellbogen die Unterarmgewichte sitzen müssen, um den Unterarm auszugleichen.",
+    "Warum muss das Schultergegengewicht außer dem Oberarm auch den Ellbogenmotor und den Unterarm mit seinen Gegengewichten ausgleichen?",
+    "Finde heraus, wie eine ausgewogene Schreibtischlampe Federn statt Gewichten nutzt."
+  ],
+  "formula": "Haltemoment um ein Gelenk: τ = g·cos(φ)·Σ mᵢ·dᵢ (dᵢ vorzeichenbehafteter Abstand entlang des Glieds). Ausgewogen, wenn Σ mᵢ·dᵢ = 0; dann ist τ = 0 für jedes φ.",
+  "related": [
+    "crane.ldr"
+  ]
+}

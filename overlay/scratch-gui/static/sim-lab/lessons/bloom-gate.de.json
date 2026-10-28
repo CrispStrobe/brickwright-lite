@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "id": "bloom-gate",
+  "language": "de",
+  "what": "Ein Motor öffnet vier farbige Blätter um eine freie Mitte. Acht Zahnräder am Rand halten die Blätter im Gleichlauf; unterschiedliche Höhen erlauben ihre Überlappung. Bei einer Motordrehung von 45° wächst die quadratische Öffnung von geschlossen auf eine ideale freie Breite von 26,51 mm. Vier überlappende Blätter bilden eine quadratische Öffnung. Vergleiche die nichtlineare Änderung von Weite und Fläche bei zwei Motordrehzahlen.",
+  "try": [
+    "Wähle das Beispiel in Robot Lab, setze es zurück und starte es. Das passende Programm wird automatisch geladen. Beobachte das begrenzte Experiment und die Pausen.",
+    "Blicke senkrecht zu den Blättern durch die Mitte. Verfolge ein Eckzahnrad und das benachbarte kleinere Zahnrad: Sie drehen sich entgegengesetzt, während alle vier Blätter gleichsinnig laufen. Vergleiche die Öffnung bei gleichem Motorwinkel in den beiden Geschwindigkeitsstufen.",
+    "Sage die Öffnung bei der Hälfte der Motorbewegung von 0° auf −45° voraus, bevor du die Antwort unten prüfst. Vergleiche die tatsächlichen Blattkanten und die freie Öffnung; ein erreichter Encoder-Zielwinkel allein belegt die Öffnungsgröße nicht. Bleibe beim manuellen Erkunden zwischen −45° und 0° an Motor A."
+  ],
+  "why": "Motor A dreht direkt das nordöstliche Eckzahnrad mit 40 Zähnen. Je ein Zwischenrad mit 24 Zähnen verbindet zwei benachbarte Eckzahnräder mit 40 Zähnen. Zwei äußere Zahneingriffe kehren die Drehrichtung zweimal um und ergeben insgesamt das Verhältnis 1:1. Deshalb drehen sich alle vier Blätter gleichsinnig. Die kleineren Zwischenräder drehen sich entgegengesetzt mit dem 5/3-Fachen der Eckdrehzahl. Mit der gelieferten Montage und Encoder-Konvention ergeben −45° an Motor A einen Blattöffnungswinkel von +45°. Die gerade Innenkante jedes Blatts bewegt sich um dessen festen Eckdrehpunkt. In der idealen Projektion bleibt die Öffnung quadratisch, ihre Breite hängt jedoch von Sinus und Kosinus des Blattwinkels ab. Gleiche Motorwinkelschritte ändern Breite und Fläche deshalb unterschiedlich stark.",
+  "matters": "Gekoppelte Blätter verändern eine Öffnung, während ihre Mitte frei von einer Antriebswelle bleibt. Ein Motorzielwinkel kann eine Öffnungsgröße wählen; die Geometrie bestimmt den dafür nötigen Winkel. Der Versuch mit zwei Geschwindigkeiten trennt diesen geometrischen Zusammenhang von Beschleunigung, Einschwingen und Zahnflankenspiel.",
+  "question": "Ist die Öffnung bei der halben vollen Motorbewegung, −22,5° ab der geschlossenen Ausgangsstellung, halb so breit? Hat sie die halbe maximale Fläche? Was sollte sich ändern, wenn dieselbe Bewegung mit doppelter Motorgeschwindigkeit abläuft?",
+  "answer": "Die Blätter haben sich um 22,5° gedreht. Die ideale freie Breite beträgt 19,62 mm, also etwa 74,0 % der maximalen 26,51 mm. Die Öffnungsfläche beträgt 384,95 mm², etwa 54,8 % der maximalen 702,76 mm². Schnelleres Bewegen verändert den zeitlichen Ablauf; die ideale Öffnung bei einem bestimmten Winkel bleibt gleich. Beschleunigung und Einschwingen können das gemessene Übergangsverhalten verändern.",
+  "further": [
+    "Vergleiche gleich große Motorwinkelschritte nahe der geschlossenen und der vollständig offenen Stellung. Nahe geschlossen ändert sich die Breite schnell, nahe dem Blattwinkel von 45° langsam. Die Fläche beginnt bei null und hängt vom Quadrat der Breite ab.",
+    "Vergleiche langsamen und schnellen Lauf sowohl anhand des Motorwinkels als auch anhand der vergangenen Zeit. Achte auf dieselbe Öffnungskurve und auf Unterschiede beim Beschleunigen, Umkehren oder Einschwingen. Trenne mithilfe der Messergebnisse des Pakets Vorhersagen von beobachteten Ergebnissen.",
+    "Vergleiche Ratio Workbench für feste Zahnradübersetzungen, Tempo Loop für veränderliche Abtriebsgeschwindigkeit und Scale Studio für geometrische Skalierung. Hier liefern die Zahnräder ein festes Winkelverhältnis; die Blattgeometrie erzeugt die nichtlineare Öffnung."
+  ],
+  "formula": "φ ist der native Winkel von Motor A ab der geschlossenen Ausgangsstellung, θ der geometrische Blattöffnungswinkel, positiv zur offenen Stellung hin: θ=−φ; −45°≤φ≤0°, 0°≤θ≤45°. Die vier Eckzahnräder haben das Winkelverhältnis 1:1; jedes Zwischenrad mit 24 Zähnen dreht sich entgegengesetzt mit dem 5/3-Fachen ihrer Drehzahl. Für sin und cos wird θ im Bogenmaß eingesetzt. In der Chassisebene gilt: halbe Öffnungsbreite r=32(cos θ+sin θ−1) mm; freie Quadratbreite d=2r=64(cos θ+sin θ−1) mm; Öffnungsfläche S=d²=4096(cos θ+sin θ−1)² mm². Der größte mittige Kreis, der durch das Quadrat passt, hat den Durchmesser d.",
+  "related": [
+    "ratio-workbench.ldr",
+    "tempo-loop.ldr",
+    "scale-studio.ldr"
+  ]
+}

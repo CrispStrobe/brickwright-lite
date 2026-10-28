@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "id": "echo-bridge",
+  "language": "en",
+  "what": "Two equal pendulums hang from free pins. Two rubber bands join small anchors above and below the pivots. Motor A briefly moves only the left support, returns that support to its starting height, and holds it. The pendulum arms remain free: their swinging amplitudes rise and fall as the elastic links transfer motion between them. One motor briefly moves the left support and returns home. Two free pendulums then exchange motion through balanced elastic links; compare their changing amplitudes with a no-band control.",
+  "try": [
+    "Select this example and run it; Reset before running again after manual motion.",
+    "Watch the red left arm and the blue right arm. Identify intervals when each side swings more strongly. The motor is holding the support during this observation, so the right arm's changing motion must be measured independently of the motor encoder.",
+    "Compare the included no-band control. It uses the same model, motor pulse and import profile, with only the two flexible BELT records removed. The wheel bobs keep the native passive hinge-friction policy the same in both runs."
+  ],
+  "why": "The two bands are equally stretched in the vertical saved pose. Their attachment points lie 8 mm above and below each pivot, so their static turning effects cancel. When the two pendulums lean differently, one band stretches more and the other less. Together they exert a restoring coupling torque. At small angles and fixed level supports, equal pendulums have an in-phase mode and an opposite-phase mode. These modes have different frequencies; their superposition makes the visible amplitudes exchange dominance. The driven support gives the initial excitation, and the bands mediate the subsequent coupled motion.",
+  "matters": "This is a model of coupled oscillation: an initially quiet part can acquire a substantial response through an elastic connection. Measuring both outputs reveals behavior that a motor encoder cannot show. A no-band comparison also helps distinguish elastic transfer from motion transmitted through the common frame.",
+  "question": "Why use two bands on opposite sides of each pivot? Once the motor holds at zero, must the pendulum that is moving most strongly remain the stronger one? Does a larger share of squared angle prove the same share of mechanical energy?",
+  "answer": "The symmetric bands cancel the static torque that a single stretched band would apply to a vertical arm. Their incremental coupling torques add when the pendulum angles differ. After the launch, the two normal modes can interfere so that the stronger visible motion alternates between sides. The comparison subtracts each one-second window’s mean angle before taking its RMS. Squared RMS shares compare amplitudes, not complete energy: kinetic energy depends on angular speed, and the coupling bands store energy too. Damping, unequal excitation and real material behavior can prevent complete transfer.",
+  "further": [
+    "Use the measured chart to mark left-dominant and right-dominant intervals after the motor has returned. Compare an entire oscillation window; a single frame near a turning point can be misleading.",
+    "Compare the coupled and no-band receiver travel. Keep the frame, bob masses, pivot pins, program and measurement method unchanged. The delivered negative control removes only the two band directives and checks that the inferred hinge-friction entries stay equal.",
+    "Compare Pendulum Array, which investigates unequal free-pendulum periods, with Echo Bridge, which couples equal pendulums elastically. Changes to bob mass, band size or anchor distance form new experiments and require new clearance, startup and runtime checks."
+  ],
+  "formula": "Let θL and θR be small pendulum angles in radians, J each complete moving arm's inertia about its pivot, G=gΣmjℓj its gravitational torque coefficient, a=0.008 m the anchor offset, and K the effective center-to-center stiffness of each band. For fixed level pivots and negligible damping: JθL''+GθL+2Ka²(θL−θR)=0, with the symmetric equation for the right arm. Therefore ωin²=G/J and ωopposite²=(G+4Ka²)/J. The pinned native model uses K=100×15/33≈45.4545 N/m for each 33 mm band; this is a simulator approximation, not a measured property of real rubber. The wheel centers lie 0.104 m below the pivots, but J and G include the complete arms, anchors, brackets and bobs. The program's moving-pivot launch is outside the fixed-pivot modal approximation.",
+  "related": [
+    "pendulum-array.ldr",
+    "scale-studio.ldr",
+    "bloom-gate.ldr"
+  ]
+}

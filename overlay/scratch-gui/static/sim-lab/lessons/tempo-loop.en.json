@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "id": "tempo-loop",
+  "language": "en",
+  "what": "One motor drives a four-bar double-crank linkage. The red input crank and blue output crank both make complete turns in the same direction. Over a whole turn the ratio is 1:1, yet the blue crank speeds up and slows down within that turn. A yellow coupler carries the motion between them. Two full-turn cranks share a coupler: equal revolution counts, changing angular-speed ratio.",
+  "try": [
+    "Reset, load tempo-loop.bw and Run. Count two complete red-crank turns and two blue-crank turns, then watch both retrace their motion in reverse.",
+    "Watch the blue crank catch up and fall behind during one turn. In ideal motion with steady input speed, its instantaneous angular speed ranges from about 0.560 to 2.014 times the input speed.",
+    "Pause during the continuous run at several input angles. Compare the red and blue crank advances over equal input sectors. Reset before restarting the demonstration."
+  ],
+  "why": "The fixed pivots are 16 mm apart. The input crank is 32 mm long, and both the coupler and output crank span 40 mm between joints. These lengths allow both cranks to rotate continuously. The coupler must preserve its length as the input pin moves around its circle, so equal input-angle changes need not produce equal output-angle changes. The continuous assembly branch repeats after every full input turn, giving a mean revolution ratio of 1:1.",
+  "matters": "Link geometry can shape the timing of a rotating output without gears or a second motor. This model separates the number of completed turns from the angular speed at a particular moment. Its kinematics make no assumption that the motor supplies constant torque or constant power.",
+  "question": "If both cranks complete one turn in the same cycle, must they turn at the same speed throughout that cycle?",
+  "answer": "No. Their total angle changes match over the cycle, but their instantaneous angular speeds differ. For a continuously turning input, the output keeps the input's direction: it has a slower part and a faster part, with no stop or reversal imposed by the geometry. The equal-step program makes the unequal angle changes easy to compare.",
+  "further": [
+    "Compare with crank-rocker.ldr: there the output swings back and forth; here both cranks turn fully. Compare with ratio-workbench.ldr: fixed gear ratios preserve a constant angular-speed relationship, while this linkage varies that relationship through each turn.",
+    "The quoted speeds and step angles come from rigid planar geometry. Motor tracking, pin play, friction, flex and collisions can affect actual operation; the supplied files have not been run in the Brickwright runtime or physically built here."
+  ],
+  "formula": "Positions in mm; α and β are continuous angles in radians. A = (0, 0), D = (16, 0), B = (32 cos α, 32 sin α), q = |B-D|. β = α + atan2(16 sin α, 32-16 cos α) + acos(q/80). Reset: α = 0°, β ≈ 78.463041°. β(α+2π) = β(α)+2π; 0.559903… ≤ dβ/dα ≤ 2.013878….",
+  "related": [
+    "crank-rocker.ldr",
+    "ratio-workbench.ldr"
+  ]
+}

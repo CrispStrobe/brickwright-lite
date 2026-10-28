@@ -1,0 +1,9 @@
+DEVICE SPIKE
+
+# Rover basics 9 - stop at the cliff (reference solution).
+WHEN flag clicked:
+  set movement motors A B
+  set movement speed 30
+  start moving steering 0
+  wait until spike distance D < 10
+  stop movement

@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "id": "ev3-wall-stopper",
+  "language": "de",
+  "what": "Eine Abstandsrückmeldung verändert die Fahrbefehle nahe einem Hindernis. Eine Ultraschall-Abstandsrückmeldung bestimmt den Haltepunkt.",
+  "try": [
+    "Nutze Matte und Programm des Beispiels, setze zurück und starte.",
+    "Vergleiche den Sensorwert mit dem wirklichen Abstand der Roboterfront.",
+    "Ändere Stoppschwelle oder Geschwindigkeit und starte erneut gleich."
+  ],
+  "why": "Die Entfernung wird vom Sensorort in Blickrichtung gemessen. Während Befehle und Bremsung wirken, fährt das Fahrgestell weiter. Die Schwelle muss Montageort und Bewegung berücksichtigen.",
+  "matters": "Mobile Roboter brauchen Reaktionsweg vor einer Wand.",
+  "question": "Sind bei 5 cm Sensorwert alle vorderen Teile 5 cm von der Wand entfernt?",
+  "answer": "Nein. Der Sensor kann hinter dem vordersten Teil sitzen und misst entlang seines eigenen Strahls.",
+  "further": [
+    "Vergleiche zwei Geschwindigkeiten mit derselben Schwelle.",
+    "Beobachte im Labyrinth, wie eine Drehung die Messrichtung verändert."
+  ],
+  "formula": "Reaktionsweg ≈ Geschwindigkeit × Reaktionszeit",
+  "related": [
+    "survey-rover.ldr"
+  ]
+}

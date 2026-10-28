@@ -1,0 +1,323 @@
+0 Watt's Line - a rotating linkage draws a nearly straight path
+0 Name: watt-line.ldr
+0 Author: CrispStrobe
+0 !LICENSE BSD-3-Clause : see ../licenses/watt-line.txt
+0 !LDRAW_ORG Unofficial_Model
+0 // One hub; one direct-drive motor A; no custom parts or imposed output path.
+0 // O=(0,0), D=(200,80), OB=DC=100, BC=80 LDU in the XZ plane.
+0 // Saved datum: input +X; coupler +Z. Operating input +/-20 degrees.
+0 // Orange rails are physical stops before the negative-angle toggle.
+0 // Battery 45610 additional; route integral cable behind motor to hub.
+0 // Motor cradle adapted from corrected Quickstroke / Pantograph Doubler.
+0 Assembly stage 1
+0 !BW ID base_rail_hub_left
+1 72 -60 120 -320 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID base_rail_hub_right
+1 72 60 120 -320 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID base_rail_motor_left
+1 72 -40 120 -80 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID base_rail_motor_right
+1 72 40 120 -80 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID base_rail_stop_left
+1 72 120 120 0 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID base_rail_stop_right
+1 72 160 120 0 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID base_rail_output
+1 72 200 120 40 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID base_cross_rear
+1 72 0 140 -420 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID base_cross_hub_front
+1 72 0 140 -220 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID base_cross_bridge
+1 72 60 140 -180 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID base_cross_stop_rear
+1 72 80 140 -60 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID base_cross_stop_front
+1 72 80 140 60 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID base_cross_nose
+1 72 120 140 120 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID base_pin_hub_left_bridge
+1 0 -60 130 -180 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID base_pin_hub_right_bridge
+1 0 60 130 -180 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID base_pin_motor_left_hub_front
+1 0 -40 130 -220 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID base_pin_motor_left_stop_rear
+1 0 -40 130 -60 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID base_pin_motor_left_stop_front
+1 0 -40 130 60 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID base_pin_motor_right_hub_front
+1 0 40 130 -220 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID base_pin_motor_right_stop_rear
+1 0 40 130 -60 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID base_pin_motor_right_stop_front
+1 0 40 130 60 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID base_pin_stop_left_nose
+1 0 120 130 120 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID base_pin_stop_right_nose
+1 0 160 130 120 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID base_pin_output_stop_rear
+1 0 200 130 -60 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID base_pin_output_stop_front
+1 0 200 130 60 0 1 0 1 0 0 0 0 -1 2780.dat
+0 STEP
+0 Assembly stage 2
+0 !BW ID hub
+1 15 0 110 -320 1 0 0 0 1 0 0 0 1 45601.dat
+0 !BW ID hub_mount_-60_-420
+1 1 -60 120 -420 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID hub_mount_-60_-220
+1 1 -60 120 -220 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID hub_mount_60_-420
+1 1 60 120 -420 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID hub_mount_60_-220
+1 1 60 120 -220 0 1 0 1 0 0 0 0 -1 6558.dat
+0 STEP
+0 Assembly stage 3
+0 !BW ID motor_side_-1
+1 72 -40 20 -80 0 1 0 -1 0 0 0 0 1 32525.dat
+0 !BW ID motor_mount_-1_-140
+1 0 -30 20 -140 -1 0 0 0 1 0 0 0 -1 2780.dat
+0 !BW ID motor_mount_-1_-20
+1 0 -30 20 -20 -1 0 0 0 1 0 0 0 -1 2780.dat
+0 !BW ID motor_front_shared_-1
+1 1 -40 20 20 -1 0 0 0 1 0 0 0 -1 6558.dat
+0 !BW ID motor_post_-1_-180
+1 72 -60 60 -180 0 1 0 0 0 1 1 0 0 32316.dat
+0 !BW ID motor_post_top_-1
+1 0 -50 20 -180 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID motor_foot_-1_-180
+1 72 -40 100 -180 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID motor_foot_shared_-1
+1 1 -40 120 -180 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID motor_post_-1_20
+1 72 -60 60 20 0 1 0 0 0 1 1 0 0 32316.dat
+0 !BW ID motor_foot_-1_20
+1 72 -40 100 20 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID motor_foot_front_-1
+1 0 -40 110 20 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID motor_side_1
+1 72 40 20 -80 0 1 0 -1 0 0 0 0 1 32525.dat
+0 !BW ID motor_mount_1_-140
+1 0 30 20 -140 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID motor_mount_1_-20
+1 0 30 20 -20 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID motor_front_shared_1
+1 1 40 20 20 1 0 0 0 1 0 0 0 1 6558.dat
+0 !BW ID motor_post_1_-180
+1 72 60 60 -180 0 1 0 0 0 1 1 0 0 32316.dat
+0 !BW ID motor_post_top_1
+1 0 50 20 -180 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID motor_foot_1_-180
+1 72 40 100 -180 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID motor_foot_shared_1
+1 1 40 120 -180 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID motor_post_1_20
+1 72 60 60 20 0 1 0 0 0 1 1 0 0 32316.dat
+0 !BW ID motor_foot_1_20
+1 72 40 100 20 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID motor_foot_front_1
+1 0 40 110 20 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID motor_A
+0 !BW PORT A
+1 15 0 0 0 -1 0 0 0 1 0 0 0 -1 54696p01.dat
+0 STEP
+0 Assembly stage 4
+0 !BW ID output_pier_-80
+1 71 200 -80 80 1 0 0 0 1 0 0 0 1 32316.dat
+0 !BW ID output_pier_-60
+1 71 200 -60 80 1 0 0 0 1 0 0 0 1 32316.dat
+0 !BW ID output_pier_-40
+1 71 200 -40 80 1 0 0 0 1 0 0 0 1 32316.dat
+0 !BW ID output_pier_-20
+1 71 200 -20 80 1 0 0 0 1 0 0 0 1 32316.dat
+0 !BW ID output_pier_0
+1 71 200 0 80 1 0 0 0 1 0 0 0 1 32316.dat
+0 !BW ID output_pier_20
+1 71 200 20 80 1 0 0 0 1 0 0 0 1 32316.dat
+0 !BW ID output_pier_40
+1 71 200 40 80 1 0 0 0 1 0 0 0 1 32316.dat
+0 !BW ID output_pier_60
+1 71 200 60 80 1 0 0 0 1 0 0 0 1 32316.dat
+0 !BW ID output_pier_80
+1 71 200 80 80 1 0 0 0 1 0 0 0 1 32316.dat
+0 !BW ID output_pier_100
+1 71 200 100 80 1 0 0 0 1 0 0 0 1 32316.dat
+0 !BW ID output_pier_pin_-80_60
+1 0 200 -70 60 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID output_pier_pin_-80_100
+1 0 200 -70 100 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID output_pier_pin_-60_40
+1 0 200 -50 40 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID output_pier_pin_-60_120
+1 0 200 -50 120 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID output_pier_pin_-40_60
+1 0 200 -30 60 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID output_pier_pin_-40_100
+1 0 200 -30 100 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID output_pier_pin_-20_40
+1 0 200 -10 40 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID output_pier_pin_-20_120
+1 0 200 -10 120 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID output_pier_pin_0_60
+1 0 200 10 60 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID output_pier_pin_0_100
+1 0 200 10 100 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID output_pier_pin_20_40
+1 0 200 30 40 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID output_pier_pin_20_120
+1 0 200 30 120 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID output_pier_pin_40_60
+1 0 200 50 60 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID output_pier_pin_40_100
+1 0 200 50 100 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID output_pier_pin_60_40
+1 0 200 70 40 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID output_pier_pin_60_120
+1 0 200 70 120 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID output_pier_pin_80_60
+1 0 200 90 60 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID output_pier_pin_80_100
+1 0 200 90 100 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID output_pier_foot_back
+1 0 200 110 40 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID output_pier_foot_front
+1 1 200 120 120 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID output_pier_clearance_top
+1 71 200 -100 80 1 0 0 0 1 0 0 0 1 32316.dat
+0 !BW ID output_pier_clearance_pin_40
+1 0 200 -90 40 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID output_pier_clearance_pin_120
+1 0 200 -90 120 0 1 0 1 0 0 0 0 -1 2780.dat
+0 STEP
+0 Assembly stage 5
+0 !BW ID stop_wall_-1_-40
+1 72 140 -40 -60 0 0 1 0 1 0 -1 0 0 32316.dat
+0 !BW ID stop_wall_-1_-20
+1 72 140 -20 -60 0 0 1 0 1 0 -1 0 0 32316.dat
+0 !BW ID stop_wall_-1_0
+1 72 140 0 -60 0 0 1 0 1 0 -1 0 0 32316.dat
+0 !BW ID stop_wall_-1_20
+1 72 140 20 -60 0 0 1 0 1 0 -1 0 0 32316.dat
+0 !BW ID stop_wall_-1_40
+1 72 140 40 -60 0 0 1 0 1 0 -1 0 0 32316.dat
+0 !BW ID stop_wall_-1_60
+1 72 140 60 -60 0 0 1 0 1 0 -1 0 0 32316.dat
+0 !BW ID stop_wall_-1_80
+1 72 140 80 -60 0 0 1 0 1 0 -1 0 0 32316.dat
+0 !BW ID stop_wall_-1_100
+1 72 140 100 -60 0 0 1 0 1 0 -1 0 0 32316.dat
+0 !BW ID stop_wall_pin_-1_-40_100
+1 0 100 -30 -60 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID stop_wall_pin_-1_-40_180
+1 0 180 -30 -60 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID stop_wall_pin_-1_-20_120
+1 0 120 -10 -60 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID stop_wall_pin_-1_-20_160
+1 0 160 -10 -60 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID stop_wall_pin_-1_0_100
+1 0 100 10 -60 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID stop_wall_pin_-1_0_180
+1 0 180 10 -60 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID stop_wall_pin_-1_20_120
+1 0 120 30 -60 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID stop_wall_pin_-1_20_160
+1 0 160 30 -60 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID stop_wall_pin_-1_40_100
+1 0 100 50 -60 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID stop_wall_pin_-1_40_180
+1 0 180 50 -60 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID stop_wall_pin_-1_60_120
+1 0 120 70 -60 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID stop_wall_pin_-1_60_160
+1 0 160 70 -60 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID stop_wall_pin_-1_80_100
+1 0 100 90 -60 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID stop_wall_pin_-1_80_180
+1 0 180 90 -60 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID stop_wall_foot_-1_120
+1 1 120 120 -60 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID stop_wall_foot_-1_160
+1 1 160 120 -60 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID stop_rail_-1
+1 25 100 -60 -50 1 0 0 0 0 1 0 -1 0 3702.dat
+0 !BW ID stop_rail_pin_-1_120
+1 0 120 -50 -60 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID stop_rail_pin_-1_160
+1 0 160 -50 -60 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID stop_wall_1_-40
+1 72 140 -40 60 0 0 1 0 1 0 -1 0 0 32316.dat
+0 !BW ID stop_wall_1_-20
+1 72 140 -20 60 0 0 1 0 1 0 -1 0 0 32316.dat
+0 !BW ID stop_wall_1_0
+1 72 140 0 60 0 0 1 0 1 0 -1 0 0 32316.dat
+0 !BW ID stop_wall_1_20
+1 72 140 20 60 0 0 1 0 1 0 -1 0 0 32316.dat
+0 !BW ID stop_wall_1_40
+1 72 140 40 60 0 0 1 0 1 0 -1 0 0 32316.dat
+0 !BW ID stop_wall_1_60
+1 72 140 60 60 0 0 1 0 1 0 -1 0 0 32316.dat
+0 !BW ID stop_wall_1_80
+1 72 140 80 60 0 0 1 0 1 0 -1 0 0 32316.dat
+0 !BW ID stop_wall_1_100
+1 72 140 100 60 0 0 1 0 1 0 -1 0 0 32316.dat
+0 !BW ID stop_wall_pin_1_-40_100
+1 0 100 -30 60 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID stop_wall_pin_1_-40_180
+1 0 180 -30 60 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID stop_wall_pin_1_-20_120
+1 0 120 -10 60 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID stop_wall_pin_1_-20_160
+1 0 160 -10 60 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID stop_wall_pin_1_0_100
+1 0 100 10 60 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID stop_wall_pin_1_0_180
+1 0 180 10 60 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID stop_wall_pin_1_20_120
+1 0 120 30 60 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID stop_wall_pin_1_20_160
+1 0 160 30 60 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID stop_wall_pin_1_40_100
+1 0 100 50 60 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID stop_wall_pin_1_40_180
+1 0 180 50 60 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID stop_wall_pin_1_60_120
+1 0 120 70 60 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID stop_wall_pin_1_60_160
+1 0 160 70 60 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID stop_wall_pin_1_80_100
+1 0 100 90 60 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID stop_wall_pin_1_80_180
+1 0 180 90 60 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID stop_wall_foot_1_120
+1 1 120 120 60 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID stop_wall_foot_1_160
+1 1 160 120 60 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID stop_rail_1
+1 25 100 -60 50 1 0 0 0 0 -1 0 1 0 3702.dat
+0 !BW ID stop_rail_pin_1_120
+1 0 120 -50 60 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID stop_rail_pin_1_160
+1 0 160 -50 60 0 1 0 1 0 0 0 0 -1 2780.dat
+0 STEP
+0 Assembly stage 6
+0 !BW ID input_arm
+1 14 40 -60 0 0 0 1 0 1 0 -1 0 0 32524.dat
+0 !BW ID rotor_pin_-20
+1 0 -20 -50 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID rotor_pin_20
+1 0 20 -50 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 STEP
+0 Assembly stage 7
+0 !BW ID output_arm
+1 1 160 -120 80 0 0 -1 0 1 0 1 0 0 32524.dat
+0 !BW ID pivot_D
+1 71 200 -110 80 0 1 0 1 0 0 0 0 -1 3673.dat
+0 STEP
+0 Assembly stage 8
+0 !BW ID coupler
+1 4 100 -100 40 1 0 0 0 1 0 0 0 1 32316.dat
+0 !BW ID pivot_B
+1 71 100 -80 0 0 1 0 1 0 0 0 0 -1 32556a.dat
+0 !BW ID pivot_C
+1 71 100 -110 80 0 1 0 1 0 0 0 0 -1 3673.dat

@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "id": "atlas-arm",
+  "language": "en",
+  "what": "Three motors position a robot arm: two 24:1 worm drives move the shoulder and elbow, and a direct drive opens the gripper. Two 24:1 worm drives position an articulated arm; a third motor opens the gripper. Compare shaft turns, joint angles and active holding.",
+  "try": [
+    "Reset and run the example. Compare a full shoulder motor turn with the much smaller arm movement.",
+    "Watch the shoulder move 15°, the elbow 25° and the gripper through a 45° opening-and-closing range. All return to the model datum.",
+    "Pause at a raised pose and compare its holding behaviour with Switchback Lift. Use short manual jogs within the arm range; reset before running again."
+  ],
+  "why": "Each turn of a single-start worm advances its 24-tooth wheel by one tooth. The reduction trades output speed for mechanical advantage. The worm resists being driven backward by the arm load. The two arm joints combine their rotations, so equal motor increments do not make a straight tool path.",
+  "matters": "Reduction drives let a small motor position a loaded arm slowly. Joint coordinates and tool coordinates describe different things; practical arms also need limits, calibration and load checks.",
+  "question": "How many motor degrees produce a 25° elbow movement with this reduction?",
+  "answer": "600 motor degrees: 25 × 24. The gripper is direct drive, so the same calculation does not apply to it.",
+  "further": [
+    "Change one joint target by a small amount and predict how the tool path changes. Preserve the original travel range.",
+    "Compare the direct two-joint positioning arm and the backdrivable rack lift."
+  ],
+  "formula": "θjoint = θmotor / 24; ideal output torque = 24 × input torque (losses reduce it)",
+  "related": [
+    "positioning-arm.ldr",
+    "switchback-lift.ldr",
+    "screw-crane.ldr"
+  ]
+}

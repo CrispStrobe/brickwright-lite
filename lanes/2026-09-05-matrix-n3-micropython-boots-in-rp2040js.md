@@ -1,0 +1,1 @@
+| matrix N3: MicroPython boots in rp2040js | lego-ac delegate + a bw-board reviewer | lite `103432e18`; bw-board `be02550` + `ff744c5` | Premise inverted: it boots; the flash filesystem needed six bootrom entries, landed upstream. Lite half (N3a–c) blocked on the bw-board pin bump (target-kinds.js consolidation, three lanes). |

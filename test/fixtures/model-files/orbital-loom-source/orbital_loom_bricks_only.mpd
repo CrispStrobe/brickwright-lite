@@ -1,0 +1,324 @@
+0 FILE orbital_loom.ldr
+0 ORBITAL LOOM / two-motor epicycle drawing machine / v1.0
+0 Name: orbital_loom.ldr
+0 Author: OpenAI
+0 !LDRAW_ORG Unofficial_Model
+0 !LICENSE Licensed under CC BY 4.0 : see README.txt
+0 // Original digital prototype; not physically built or tested.
+0 // One SPIKE Prime hub, two medium angular motors, no sensors.
+0 // See README.txt before assembly and first operation.
+0 // Decorative non-LEGO references are the final assembly step.
+0 // Plate is half a stud offset in X and Z for legal stud-pin alignment.
+0 // Platter is parked +3 degrees to mesh the gears with a zero-phase drive axle.
+0 // Build the bearing base.
+1 16 0 0 0 1 0 0 0 1 0 0 0 1 01_base.ldr
+0 STEP
+0 // Add motor A and gear reduction.
+1 16 0 0 0 1 0 0 0 1 0 0 0 1 02_table_drive.ldr
+0 STEP
+0 // Build and brace the gantry.
+1 16 0 0 0 1 0 0 0 1 0 0 0 1 03_gantry.ldr
+0 STEP
+0 // Fit motor B.
+1 16 0 0 0 1 0 0 0 1 0 0 0 1 04_pen_motor.ldr
+0 STEP
+0 // Attach the hub and route leads.
+1 16 0 0 0 1 0 0 0 1 0 0 0 1 05_hub.ldr
+0 STEP
+1 16 0 -70 0 0.99862953 0 0.05233596 0 1 0 -0.05233596 0 0.99862953 06_platter.ldr
+0 STEP
+1 16 80 -460 0 0 0 1 0 1 0 -1 0 0 07_pen_holder.ldr
+0 STEP
+0 // NON-LEGO references: paper, 120 mm x 8 mm marker, two elastic loops.
+0 FILE 01_base.ldr
+0 01 / Rigid bearing base and lower cross rails
+0 Name: 01_base.ldr
+0 Author: OpenAI
+0 !LDRAW_ORG Unofficial_Model
+0 !LICENSE Licensed under CC BY 4.0 : see README.txt
+0 // Original digital prototype; not physically built or tested.
+1 71 -60 -10 0 0 1 0 -1 0 0 0 0 1 64178.dat
+1 71 60 -10 0 0 1 0 -1 0 0 0 0 1 64178.dat
+0 STEP
+0 // Fit both lower cross rails and their central splices.
+1 0 -160 -10 -80 0 0 1 1 0 0 0 1 0 32278.dat
+1 0 160 -10 -80 0 0 1 1 0 0 0 1 0 32278.dat
+1 0 0 -10 -100 0 0 1 1 0 0 0 1 0 32524.dat
+1 0 -60 -10 -90 0 1 0 0 0 1 1 0 0 2780.dat
+1 0 -40 -10 -90 0 1 0 0 0 1 1 0 0 2780.dat
+1 0 -20 -10 -90 0 1 0 0 0 1 1 0 0 2780.dat
+1 0 20 -10 -90 0 1 0 0 0 1 1 0 0 2780.dat
+1 0 40 -10 -90 0 1 0 0 0 1 1 0 0 2780.dat
+1 0 60 -10 -90 0 1 0 0 0 1 1 0 0 2780.dat
+1 0 -60 -10 -70 0 1 0 0 0 1 1 0 0 2780.dat
+1 0 60 -10 -70 0 1 0 0 0 1 1 0 0 2780.dat
+1 0 -160 -10 80 0 0 1 1 0 0 0 1 0 32278.dat
+1 0 160 -10 80 0 0 1 1 0 0 0 1 0 32278.dat
+1 0 0 -10 100 0 0 1 1 0 0 0 1 0 32524.dat
+1 0 -60 -10 90 0 1 0 0 0 1 1 0 0 2780.dat
+1 1 -40 -10 100 0 1 0 0 0 1 1 0 0 6558.dat
+1 0 -20 -10 90 0 1 0 0 0 1 1 0 0 2780.dat
+1 0 20 -10 90 0 1 0 0 0 1 1 0 0 2780.dat
+1 1 40 -10 100 0 1 0 0 0 1 1 0 0 6558.dat
+1 0 60 -10 90 0 1 0 0 0 1 1 0 0 2780.dat
+1 0 -60 -10 70 0 1 0 0 0 1 1 0 0 2780.dat
+1 0 60 -10 70 0 1 0 0 0 1 1 0 0 2780.dat
+0 STEP
+0 // The bearing bottom mounts on four horizontal pins, at z +/- 20.
+1 0 0 -70 0 1 0 0 0 1 0 0 0 1 18939.dat
+1 0 -50 -50 -20 1 0 -0 0 0 1 0 -1 0 2780.dat
+1 0 -50 -50 20 1 0 -0 0 0 1 0 -1 0 2780.dat
+1 0 50 -50 -20 1 0 -0 0 0 1 0 -1 0 2780.dat
+1 0 50 -50 20 1 0 -0 0 0 1 0 -1 0 2780.dat
+0 STEP
+0 // Upper hub support: two 11L rails and long pins through the frame crossbars.
+1 72 0 -30 80 0 0 1 1 0 0 0 1 0 32525.dat
+1 72 0 -30 100 0 0 1 1 0 0 0 1 0 32525.dat
+1 1 -60 -30 80 0 1 0 0 0 1 1 0 0 6558.dat
+1 1 60 -30 80 0 1 0 0 0 1 1 0 0 6558.dat
+0 FILE 02_table_drive.ldr
+0 02 / Motor A, 20:60 reduction, captured drive axle
+0 Name: 02_table_drive.ldr
+0 Author: OpenAI
+0 !LDRAW_ORG Unofficial_Model
+0 !LICENSE Licensed under CC BY 4.0 : see README.txt
+0 // Original digital prototype; not physically built or tested.
+1 15 -100 10 0 0 0 -1 0 1 0 1 0 0 54696p01.dat
+0 STEP
+0 // Two 9L rails attach to the motor side holes. Cable exits toward -X.
+1 72 -160 -10 -40 0 0 1 1 0 0 0 1 0 40490.dat
+1 0 -80 -10 -30 0 1 0 0 0 1 1 0 0 2780.dat
+1 0 -120 -10 -30 0 1 0 0 0 1 1 0 0 2780.dat
+1 0 -240 -10 -30 0 1 0 0 0 1 1 0 0 2780.dat
+1 72 -180 -10 -60 0 0 1 1 0 0 0 1 0 32316.dat
+1 1 -160 -10 -60 -0 -1 0 -0 0 1 -1 0 -0 6558.dat
+1 1 -200 -10 -60 -0 -1 0 -0 0 1 -1 0 -0 6558.dat
+1 72 -160 -10 40 0 0 1 1 0 0 0 1 0 40490.dat
+1 0 -80 -10 30 0 1 0 0 0 1 1 0 0 2780.dat
+1 0 -120 -10 30 0 1 0 0 0 1 1 0 0 2780.dat
+1 0 -240 -10 30 0 1 0 0 0 1 1 0 0 2780.dat
+1 72 -180 -10 60 0 0 1 1 0 0 0 1 0 32316.dat
+1 1 -160 -10 60 0 1 0 0 0 1 1 0 0 6558.dat
+1 1 -200 -10 60 0 1 0 0 0 1 1 0 0 6558.dat
+0 STEP
+0 // 4L axle; two half bushes; pinion is 5 studs from axis and 0.5 stud below ring centre.
+1 0 -100 -50 0 0 -1 0 1 0 -0 0 0 1 3705.dat
+1 71 -100 -60 0 1 0 0 0 0 1 0 -1 0 32269.dat
+1 71 -100 -45 0 1 0 0 0 0 1 0 -1 0 32123a.dat
+1 71 -100 -75 0 1 0 0 0 0 1 0 -1 0 32123a.dat
+0 FILE 03_gantry.ldr
+0 03 / Four columns with eight 6-8-10 diagonal braces
+0 Name: 03_gantry.ldr
+0 Author: OpenAI
+0 !LDRAW_ORG Unofficial_Model
+0 !LICENSE Licensed under CC BY 4.0 : see README.txt
+0 // Original digital prototype; not physically built or tested.
+1 14 -280 -150 -100 -1 0 0 0 0 1 0 1 0 32278.dat
+1 0 -280 -10 -90 0 1 0 0 0 1 1 0 0 2780.dat
+1 72 -280 -10 -120 -1 0 0 0 0 1 0 1 0 32316.dat
+1 0 -280 -50 -110 0 1 0 0 0 1 1 0 0 2780.dat
+1 0 -280 -30 -110 0 1 0 0 0 1 1 0 0 2780.dat
+1 0 -280 -10 -110 0 1 0 0 0 1 1 0 0 2780.dat
+1 4 -260 30 -160 0 0 -1 0 1 0 1 0 0 39793.dat
+1 0 -280 30 -130 0 1 0 0 0 1 1 0 0 2780.dat
+1 14 -280 -150 100 -1 0 0 0 0 1 0 1 0 32278.dat
+1 0 -280 -10 90 0 1 0 0 0 1 1 0 0 2780.dat
+1 72 -280 -10 120 -1 0 0 0 0 1 0 1 0 32316.dat
+1 0 -280 -50 110 0 1 0 0 0 1 1 0 0 2780.dat
+1 0 -280 -30 110 0 1 0 0 0 1 1 0 0 2780.dat
+1 0 -280 -10 110 0 1 0 0 0 1 1 0 0 2780.dat
+1 4 -260 30 160 0 0 -1 0 1 0 1 0 0 39793.dat
+1 0 -280 30 130 0 1 0 0 0 1 1 0 0 2780.dat
+1 14 280 -150 -100 -1 0 0 0 0 1 0 1 0 32278.dat
+1 0 280 -10 -90 0 1 0 0 0 1 1 0 0 2780.dat
+1 72 280 -10 -120 -1 0 0 0 0 1 0 1 0 32316.dat
+1 0 280 -50 -110 0 1 0 0 0 1 1 0 0 2780.dat
+1 0 280 -30 -110 0 1 0 0 0 1 1 0 0 2780.dat
+1 0 280 -10 -110 0 1 0 0 0 1 1 0 0 2780.dat
+1 4 260 30 -160 0 0 -1 0 1 0 1 0 0 39793.dat
+1 0 280 30 -130 0 1 0 0 0 1 1 0 0 2780.dat
+1 14 280 -150 100 -1 0 0 0 0 1 0 1 0 32278.dat
+1 0 280 -10 90 0 1 0 0 0 1 1 0 0 2780.dat
+1 72 280 -10 120 -1 0 0 0 0 1 0 1 0 32316.dat
+1 0 280 -50 110 0 1 0 0 0 1 1 0 0 2780.dat
+1 0 280 -30 110 0 1 0 0 0 1 1 0 0 2780.dat
+1 0 280 -10 110 0 1 0 0 0 1 1 0 0 2780.dat
+1 4 260 30 160 0 0 -1 0 1 0 1 0 0 39793.dat
+1 0 280 30 130 0 1 0 0 0 1 1 0 0 2780.dat
+0 STEP
+0 // Overlap each upper 15L column with the lower column by 5 holes.
+1 14 -280 -350 -80 -1 0 0 0 0 1 0 1 0 32278.dat
+1 0 -280 -210 -90 0 1 0 0 0 1 1 0 0 2780.dat
+1 0 -280 -230 -90 0 1 0 0 0 1 1 0 0 2780.dat
+1 0 -280 -250 -90 0 1 0 0 0 1 1 0 0 2780.dat
+1 0 -280 -270 -90 0 1 0 0 0 1 1 0 0 2780.dat
+1 0 -280 -290 -90 0 1 0 0 0 1 1 0 0 2780.dat
+1 14 -280 -350 80 -1 0 0 0 0 1 0 1 0 32278.dat
+1 0 -280 -210 90 0 1 0 0 0 1 1 0 0 2780.dat
+1 0 -280 -230 90 0 1 0 0 0 1 1 0 0 2780.dat
+1 0 -280 -250 90 0 1 0 0 0 1 1 0 0 2780.dat
+1 0 -280 -270 90 0 1 0 0 0 1 1 0 0 2780.dat
+1 0 -280 -290 90 0 1 0 0 0 1 1 0 0 2780.dat
+1 14 280 -350 -80 -1 0 0 0 0 1 0 1 0 32278.dat
+1 0 280 -210 -90 0 1 0 0 0 1 1 0 0 2780.dat
+1 0 280 -230 -90 0 1 0 0 0 1 1 0 0 2780.dat
+1 0 280 -250 -90 0 1 0 0 0 1 1 0 0 2780.dat
+1 0 280 -270 -90 0 1 0 0 0 1 1 0 0 2780.dat
+1 0 280 -290 -90 0 1 0 0 0 1 1 0 0 2780.dat
+1 14 280 -350 80 -1 0 0 0 0 1 0 1 0 32278.dat
+1 0 280 -210 90 0 1 0 0 0 1 1 0 0 2780.dat
+1 0 280 -230 90 0 1 0 0 0 1 1 0 0 2780.dat
+1 0 280 -250 90 0 1 0 0 0 1 1 0 0 2780.dat
+1 0 280 -270 90 0 1 0 0 0 1 1 0 0 2780.dat
+1 0 280 -290 90 0 1 0 0 0 1 1 0 0 2780.dat
+0 STEP
+0 // Fit the front and rear top rails.
+1 14 -160 -490 -60 0 0 1 1 0 0 0 1 0 32278.dat
+1 14 160 -490 -60 0 0 1 1 0 0 0 1 0 32278.dat
+1 14 0 -490 -80 0 0 1 1 0 0 0 1 0 32524.dat
+1 0 -60 -490 -70 0 1 0 0 0 1 1 0 0 2780.dat
+1 0 -40 -490 -70 0 1 0 0 0 1 1 0 0 2780.dat
+1 0 -20 -490 -70 0 1 0 0 0 1 1 0 0 2780.dat
+1 0 20 -490 -70 0 1 0 0 0 1 1 0 0 2780.dat
+1 0 40 -490 -70 0 1 0 0 0 1 1 0 0 2780.dat
+1 0 60 -490 -70 0 1 0 0 0 1 1 0 0 2780.dat
+1 0 -280 -490 -70 0 1 0 0 0 1 1 0 0 2780.dat
+1 0 280 -490 -70 0 1 0 0 0 1 1 0 0 2780.dat
+1 14 -160 -490 60 0 0 1 1 0 0 0 1 0 32278.dat
+1 14 160 -490 60 0 0 1 1 0 0 0 1 0 32278.dat
+1 14 0 -490 80 0 0 1 1 0 0 0 1 0 32524.dat
+1 0 -60 -490 70 0 1 0 0 0 1 1 0 0 2780.dat
+1 0 -40 -490 70 0 1 0 0 0 1 1 0 0 2780.dat
+1 0 -20 -490 70 0 1 0 0 0 1 1 0 0 2780.dat
+1 0 20 -490 70 0 1 0 0 0 1 1 0 0 2780.dat
+1 0 40 -490 70 0 1 0 0 0 1 1 0 0 2780.dat
+1 0 60 -490 70 0 1 0 0 0 1 1 0 0 2780.dat
+1 0 -280 -490 70 0 1 0 0 0 1 1 0 0 2780.dat
+1 0 280 -490 70 0 1 0 0 0 1 1 0 0 2780.dat
+0 STEP
+0 // Lower triangles: 8 studs horizontal, 6 vertical, 10 along each 11L brace.
+1 72 -200 -70 -120 -0.6 0 0.8 0.8 0 0.6 0 1 0 32525.dat
+1 0 -280 -130 -110 0 1 0 0 0 1 1 0 0 2780.dat
+1 72 -120 -10 -100 0 0 1 1 0 0 0 1 0 32523.dat
+1 1 -120 -10 -100 -0 -1 0 -0 0 1 -1 0 -0 6558.dat
+1 0 -100 -10 -90 0 1 0 0 0 1 1 0 0 2780.dat
+1 72 -200 -70 120 -0.6 0 0.8 0.8 0 0.6 0 1 0 32525.dat
+1 0 -280 -130 110 0 1 0 0 0 1 1 0 0 2780.dat
+1 72 -120 -10 100 0 0 1 1 0 0 0 1 0 32523.dat
+1 1 -120 -10 100 0 1 0 0 0 1 1 0 0 6558.dat
+1 0 -100 -10 90 0 1 0 0 0 1 1 0 0 2780.dat
+1 72 200 -70 -120 -0.6 0 -0.8 -0.8 0 0.6 0 1 0 32525.dat
+1 0 280 -130 -110 0 1 0 0 0 1 1 0 0 2780.dat
+1 72 120 -10 -100 0 0 1 1 0 0 0 1 0 32523.dat
+1 1 120 -10 -100 -0 -1 0 -0 0 1 -1 0 -0 6558.dat
+1 0 100 -10 -90 0 1 0 0 0 1 1 0 0 2780.dat
+1 72 200 -70 120 -0.6 0 -0.8 -0.8 0 0.6 0 1 0 32525.dat
+1 0 280 -130 110 0 1 0 0 0 1 1 0 0 2780.dat
+1 72 120 -10 100 0 0 1 1 0 0 0 1 0 32523.dat
+1 1 120 -10 100 0 1 0 0 0 1 1 0 0 6558.dat
+1 0 100 -10 90 0 1 0 0 0 1 1 0 0 2780.dat
+0 STEP
+0 // Upper triangles: 6 studs horizontal, 8 vertical, 10 along the 11L brace.
+1 72 -220 -410 -100 0.8 0 0.6 0.6 0 -0.8 -0 1 0 32525.dat
+1 0 -280 -330 -90 0 1 0 0 0 1 1 0 0 2780.dat
+1 72 -160 -490 -80 0 0 1 1 0 0 0 1 0 32523.dat
+1 1 -160 -490 -80 -0 -1 0 -0 0 1 -1 0 -0 6558.dat
+1 0 -140 -490 -70 0 1 0 0 0 1 1 0 0 2780.dat
+1 72 -220 -410 100 0.8 0 0.6 0.6 0 -0.8 -0 1 0 32525.dat
+1 0 -280 -330 90 0 1 0 0 0 1 1 0 0 2780.dat
+1 72 -160 -490 80 0 0 1 1 0 0 0 1 0 32523.dat
+1 1 -160 -490 80 0 1 0 0 0 1 1 0 0 6558.dat
+1 0 -140 -490 70 0 1 0 0 0 1 1 0 0 2780.dat
+1 72 220 -410 -100 0.8 0 -0.6 -0.6 0 -0.8 0 1 0 32525.dat
+1 0 280 -330 -90 0 1 0 0 0 1 1 0 0 2780.dat
+1 72 160 -490 -80 0 0 1 1 0 0 0 1 0 32523.dat
+1 1 160 -490 -80 -0 -1 0 -0 0 1 -1 0 -0 6558.dat
+1 0 140 -490 -70 0 1 0 0 0 1 1 0 0 2780.dat
+1 72 220 -410 100 0.8 0 -0.6 -0.6 0 -0.8 0 1 0 32525.dat
+1 0 280 -330 90 0 1 0 0 0 1 1 0 0 2780.dat
+1 72 160 -490 80 0 0 1 1 0 0 0 1 0 32523.dat
+1 1 160 -490 80 0 1 0 0 0 1 1 0 0 6558.dat
+1 0 140 -490 70 0 1 0 0 0 1 1 0 0 2780.dat
+0 FILE 04_pen_motor.ldr
+0 04 / Motor B mounted above the complete pen envelope
+0 Name: 04_pen_motor.ldr
+0 Author: OpenAI
+0 !LDRAW_ORG Unofficial_Model
+0 !LICENSE Licensed under CC BY 4.0 : see README.txt
+0 // Original digital prototype; not physically built or tested.
+1 15 80 -510 0 0 0 1 0 -1 0 1 0 0 54696p01.dat
+1 72 140 -490 -40 0 0 1 1 0 0 0 1 0 40490.dat
+1 0 60 -490 -30 0 1 0 0 0 1 1 0 0 2780.dat
+1 0 100 -490 -30 0 1 0 0 0 1 1 0 0 2780.dat
+1 0 220 -490 -30 0 1 0 0 0 1 1 0 0 2780.dat
+1 0 80 -490 -50 0 1 0 0 0 1 1 0 0 2780.dat
+1 0 120 -490 -50 0 1 0 0 0 1 1 0 0 2780.dat
+1 0 180 -490 -50 0 1 0 0 0 1 1 0 0 2780.dat
+1 0 200 -490 -50 0 1 0 0 0 1 1 0 0 2780.dat
+1 72 140 -490 40 0 0 1 1 0 0 0 1 0 40490.dat
+1 0 60 -490 30 0 1 0 0 0 1 1 0 0 2780.dat
+1 0 100 -490 30 0 1 0 0 0 1 1 0 0 2780.dat
+1 0 220 -490 30 0 1 0 0 0 1 1 0 0 2780.dat
+1 0 80 -490 50 0 1 0 0 0 1 1 0 0 2780.dat
+1 0 120 -490 50 0 1 0 0 0 1 1 0 0 2780.dat
+1 0 180 -490 50 0 1 0 0 0 1 1 0 0 2780.dat
+1 0 200 -490 50 0 1 0 0 0 1 1 0 0 2780.dat
+0 FILE 05_hub.ldr
+0 05 / One SPIKE Prime hub, battery included
+0 Name: 05_hub.ldr
+0 Author: OpenAI
+0 !LDRAW_ORG Unofficial_Model
+0 !LICENSE Licensed under CC BY 4.0 : see README.txt
+0 // Original digital prototype; not physically built or tested.
+1 15 0 0 220 1 0 0 0 1 0 0 0 1 45601c01.dat
+1 0 -40 -30 110 0 1 0 0 0 1 1 0 0 2780.dat
+1 0 40 -30 110 0 1 0 0 0 1 1 0 0 2780.dat
+0 // Route A and B leads around the outside; cables deliberately omitted from CAD.
+0 FILE 06_platter.ldr
+0 06 / Smooth 16 x 16 platter on four perpendicular stud mounts
+0 Name: 06_platter.ldr
+0 Author: OpenAI
+0 !LDRAW_ORG Unofficial_Model
+0 !LICENSE Licensed under CC BY 4.0 : see README.txt
+0 // Original digital prototype; not physically built or tested.
+1 72 0 0 0 1 0 0 0 1 0 0 0 1 18938.dat
+0 STEP
+0 // Four 15100 connectors pin inward into the upper turntable flange holes.
+1 71 -60 -20 -20 1 0 0 0 1 0 0 0 1 15100.dat
+1 71 -60 -20 20 1 0 0 0 1 0 0 0 1 15100.dat
+1 71 60 -20 -20 -1 0 0 0 1 0 0 0 -1 15100.dat
+1 71 60 -20 20 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 STEP
+0 // Four 4274 half pins present studs upward into the plate underside.
+1 71 -60 -30 -20 0 1 0 -1 0 0 0 0 1 4274.dat
+1 71 -60 -30 20 0 1 0 -1 0 0 0 0 1 4274.dat
+1 71 60 -30 -20 0 1 0 -1 0 0 0 0 1 4274.dat
+1 71 60 -30 20 0 1 0 -1 0 0 0 0 1 4274.dat
+0 STEP
+0 // Shift the plate half a stud in BOTH X and Z to match the stud grid.
+1 71 10 -38 10 1 0 0 0 1 0 0 0 1 91405.dat
+1 15 10 -46 -70 1 0 0 0 1 0 0 0 1 90498.dat
+1 15 10 -46 90 1 0 0 0 1 0 0 0 1 90498.dat
+0 FILE 07_pen_holder.ldr
+0 07 / Rigid rotating pen crank
+0 Name: 07_pen_holder.ldr
+0 Author: OpenAI
+0 !LDRAW_ORG Unofficial_Model
+0 !LICENSE Licensed under CC BY 4.0 : see README.txt
+0 // Original digital prototype; not physically built or tested.
+0 // Origin at motor B rotor face centre. Native Y points down.
+0 // Pen axis local X=40 Z=40. Radius=56.568542 LDU, phase=45 degrees.
+0 // Marker diameter 20 LDU, upper end Y=43.5, nib Y=343.5.
+0 // Motor excluded. Two pins project into its rotor holes.
+1 4 20 10 0 0 0 1 0 1 0 -1 0 0 32316.dat
+1 0 -20 0 0 0 -1 0 1 0 0 0 0 1 2780.dat
+0 // Three layer pin: motor rotor -> 5L crank -> biscuit
+1 1 20 10 0 0 -1 0 1 0 0 0 0 1 6558.dat
+0 STEP
+1 4 40 50 0 0 0 1 1 0 0 0 1 0 39793.dat
+1 0 60 20 0 0 -1 0 1 0 0 0 0 1 2780.dat
+0 STEP
+1 4 40 110 20 1 0 0 0 0 1 0 -1 0 40490.dat
+1 0 40 30 10 0 0 -1 0 1 0 1 0 0 2780.dat
+1 0 40 70 10 0 0 -1 0 1 0 1 0 0 2780.dat
+0 NOFILE

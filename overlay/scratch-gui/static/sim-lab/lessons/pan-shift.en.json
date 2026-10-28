@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "id": "pan-shift",
+  "language": "en",
+  "what": "A Roberval balance. Two parallel beams pivot on a fixed post and hold an upright pan post at their ends, forming a parallelogram: the pan pivots are 48 mm from the centre pivots and the two beams are 32 mm apart. The parallelogram keeps the pan upright as the beams tilt. Motor A rides on the pan and swings a weighted arm horizontally: at 0° the weight sits towards the centre, at 180° it is 48 mm farther out. It is the same load in a different place on the pan. Motor B rides on the other end of the upper beam and tilts a hanging trim weight sideways by ±60°. Nothing drives the beam; its angle is the passive output. Each stage holds its inputs for 20 s so the balance can settle, then 4 s for comparison.",
+  "try": [
+    "Reset, then Run, and note the beam angle once stage 0 has settled.",
+    "Stages 1–2 move the pan weight 48 mm outwards and back with the trim unchanged. Predict the beam angle before you watch.",
+    "Stage 3 tilts the trim weight to +60°. Stage 4 then moves the pan weight out again at this new trim. Compare stage 4 with stage 3.",
+    "Stages 5–6 repeat that comparison at −60° trim, and stage 7 restores the trim. Compare the +60° and −60° beam angles with the untrimmed one."
+  ],
+  "why": "The pan can only translate, not rotate, because the two beams and the two posts form a parallelogram. A load W placed a distance d away from the pan’s pivot line is equivalent to W acting on the pivot line plus a couple W·d. A pan that cannot rotate cannot pass that couple on as beam tilt. The couple is carried instead as a push in one beam and a pull in the other, F = W·d/h, where h is the beam spacing. So the turning moment about the centre pivot is W·a (a = 48 mm), wherever the load sits on the pan. This is Roberval’s paradox, presented in 1669. The trim weight is different: it sits on the beam itself, so moving it sideways changes the beam’s own moment, m·g·r·sin β for a weight hanging on an arm of length r tilted by β. The beam must then move to a new rest angle, or onto a stop.",
+  "matters": "Kitchen and letter scales with the pan above the beam use this parallelogram, so the reading does not depend on where the parcel is placed. The experiment separates two things that look alike: moving mass on the pan (should not matter) and moving mass on the beam (must matter). If the beam angle changes in stages 1–2, look for friction, joint compliance or a pan that is not kept truly parallel.",
+  "question": "When motor A moves the pan weight 48 mm outwards, does the beam tip towards the pan side? What changes inside the mechanism instead?",
+  "answer": "Ideally the beam angle does not change. The pan’s whole weight still acts on the beam at the pan pivots, 48 mm from the centre, because the parallelogram stops the pan from rotating. The off-centre position only creates a couple, which appears as opposite horizontal forces in the upper and lower beams (W·d/h). Only moving mass on the beam, as the trim weight does, tips the balance; +60° and −60° trim should tilt it in opposite directions.",
+  "further": [
+    "Estimate the trim: the hanging weight is 24 mm below its axle, so ±60° moves it sideways by 24 × sin 60° ≈ 20.8 mm and lifts it by 24 × (1 − cos 60°) = 12 mm.",
+    "At 90° the pan weight swings out of the plane of the beams. That moment is taken by the hinge axles, not by the beam’s tilt, so ideally the angle still does not change. The program compares only the settled 0° and 180° positions.",
+    "Pivot friction in real balances causes a small position-dependent error (the corner-load error), and scale makers adjust the parallelogram to minimise it. Simulated joints are slightly compliant, so a tiny change may appear here too.",
+    "In a headless Robot Lab simulation of the shipped program, measured from the beam’s pose relative to the frame: moving the pan weight 48 mm changed the settled beam angle by at most 0.004°, while the ±60° trim moved it to −14.1° and +14.3°. That is a simulation observation, not a physical test."
+  ],
+  "formula": "Moment of the pan load about the centre pivot: M = W·a with a = 48 mm, independent of the load offset d. Beam forces from the offset: F = W·d/h with h = 32 mm (moving the load by 48 mm changes F by 1.5·W). Trim moment: ΔM = m_trim·g·r·sin β with r = 24 mm; β = ±60° gives ±20.8 mm of sideways shift. Motors A and B turn their arms 1:1; software envelopes: A −1…181°, B −61…61°.",
+  "related": [
+    "parallel-lift.ldr",
+    "sarrus-lift.ldr"
+  ]
+}

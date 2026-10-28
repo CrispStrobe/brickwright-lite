@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "id": "pulse-percussion",
+  "language": "de",
+  "what": "Eine Welle treibt drei versetzte Stifte an. Jeder hebt einen freien Schlägel und lässt ihn auf einen festen Balken fallen. Eine Nockenwelle hebt drei Schwerkraftschlägel und gibt sie frei. Vergleiche Wellenphase, Fallbewegung und Tempo.",
+  "try": [
+    "Setze zurück und starte die drei Tempostufen. Beobachte Schlägel, Stift und Schlagbalken.",
+    "Zähle die Schläge jedes Kanals bei zwei Wellenumdrehungen einer Stufe.",
+    "Vergleiche den Kurz-kurz-lang-Rhythmus bei drei Drehzahlen."
+  ],
+  "why": "Der Stiftkontakt hebt den Schlägel; nach der Freigabe führt ihn die Schwerkraft zurück. Die mechanische 0°/90°/180°-Teilung bestimmt den Rhythmus. Drehzahl verändert das Tempo, nicht die Phasenfolge. Die App zeigt die Stöße und erzeugt keinen Klang.",
+  "matters": "Nocken koordinieren wiederholte Kontakte mit nur einem Antrieb, etwa in mechanischen Ablaufsteuerungen.",
+  "question": "Werden aus 90°/90°/180° bei doppelter Drehzahl gleich große Abstände?",
+  "answer": "Nein. Die Winkelabstände sind durch die Stifte vorgegeben. Bei gleichförmiger Fahrt halbieren sich alle Zeitabstände; kurz-kurz-lang bleibt erhalten.",
+  "further": [
+    "Unterscheide eine drehende Welle vom wirklichen Heben und Freigeben eines Schlägels.",
+    "Das Modell sagt weder Tonhöhe noch Lautstärke, Reibung oder echte Klangqualität voraus."
+  ],
+  "formula": "Zeitabstand = Phasenabstand / Winkelgeschwindigkeit der Welle",
+  "related": [
+    "tidal-trio.ldr"
+  ]
+}

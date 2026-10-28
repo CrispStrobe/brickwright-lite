@@ -1,0 +1,70 @@
+0 carts (Brickwright Robot Lab validation machine, round 2)
+0 Name: carts.ldr
+0 Author: Brickwright
+0 !LDRAW_ORG Unofficial_Model
+0 // Two free carts ahead of the shipped SPIKE driving base (static/sim-lab/models/driving-base.ldr, copied unchanged
+0 // below; forward is LDraw +z). Each cart: a Technic beam 15 on its edge along z (holes along x) at axle height,
+0 // its ends (+-149 LDU) the bumpers; a 6L rear axle at -60 with SPIKE wheels 39367p01 (radius 70 LDU) at x = +-30
+0 // and an 8L front axle at +60 with wheels at x = +-70 (front and rear wheels side by side, so the wheelbase is
+0 // shorter than a tyre diameter and the tyres stay inside the bumpers: the carts meet beam end to beam end).
+0 // Cart 1 (centre z = 250): its rear tyres 10 LDU (4 mm) ahead of the hub's front face (z = 110); the robot pushes
+0 // it by them. Cart 2 (centre z = 598): its rear bumper 50 LDU (20 mm) ahead of cart 1's front bumper. The carts
+0 // are loose by design. Mass per cart: beam 4.8 g + axles 0.8 + 1.0 g + wheels 4 x 12 g.
+0 !BW ID hub
+1 71 0 0 0 1 0 0 0 1 0 0 0 1 45601.dat
+0 !BW ID motorR
+0 !BW PORT B
+1 71 100 10 80 0 -1 0 -1 0 0 0 0 -1 54696p01.dat
+0 !BW ID pinR
+1 0 70 -10 80 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID axleR
+1 0 170 10 80 1 0 0 0 1 0 0 0 1 3705.dat
+0 !BW ID wheelR
+1 15 170 10 80 0 0 1 0 -1 0 1 0 0 39367p01.dat
+0 !BW ID motorL
+0 !BW PORT A
+1 71 -100 10 80 0 1 0 1 0 0 0 0 -1 54696p01.dat
+0 !BW ID pinL
+1 0 -70 -10 80 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID axleL
+1 0 -170 10 80 1 0 0 0 1 0 0 0 1 3705.dat
+0 !BW ID wheelL
+1 15 -170 10 80 0 0 1 0 -1 0 1 0 0 39367p01.dat
+0 !BW ID frontBeam
+1 71 0 -10 -120 0 0 1 1 0 0 0 1 0 32524.dat
+0 !BW ID frontPin1
+1 1 40 -10 -120 0 0 -1 0 1 0 1 0 0 6558.dat
+0 !BW ID frontPin2
+1 1 -40 -10 -120 0 0 -1 0 1 0 1 0 0 6558.dat
+0 !BW ID castor
+1 71 0 10 -140 0 0 -1 0 1 0 1 0 0 39370.dat
+0 !BW ID ball
+1 15 0 56 -140 1 0 0 0 1 0 0 0 1 52629.dat
+0 !BW ID cart1
+1 4 0 10 250 0 1 0 -1 0 0 0 0 1 32278.dat
+0 !BW ID cart1AxleRear
+1 0 0 10 190 1 0 0 0 1 0 0 0 1 3706.dat
+0 !BW ID cart1AxleFront
+1 0 0 10 310 1 0 0 0 1 0 0 0 1 3707.dat
+0 !BW ID cart1Wheel0
+1 15 -30 10 190 0 0 1 0 -1 0 1 0 0 39367p01.dat
+0 !BW ID cart1Wheel1
+1 15 30 10 190 0 0 1 0 -1 0 1 0 0 39367p01.dat
+0 !BW ID cart1Wheel2
+1 15 -70 10 310 0 0 1 0 -1 0 1 0 0 39367p01.dat
+0 !BW ID cart1Wheel3
+1 15 70 10 310 0 0 1 0 -1 0 1 0 0 39367p01.dat
+0 !BW ID cart2
+1 1 0 10 598 0 1 0 -1 0 0 0 0 1 32278.dat
+0 !BW ID cart2AxleRear
+1 0 0 10 538 1 0 0 0 1 0 0 0 1 3706.dat
+0 !BW ID cart2AxleFront
+1 0 0 10 658 1 0 0 0 1 0 0 0 1 3707.dat
+0 !BW ID cart2Wheel0
+1 15 -30 10 538 0 0 1 0 -1 0 1 0 0 39367p01.dat
+0 !BW ID cart2Wheel1
+1 15 30 10 538 0 0 1 0 -1 0 1 0 0 39367p01.dat
+0 !BW ID cart2Wheel2
+1 15 -70 10 658 0 0 1 0 -1 0 1 0 0 39367p01.dat
+0 !BW ID cart2Wheel3
+1 15 70 10 658 0 0 1 0 -1 0 1 0 0 39367p01.dat

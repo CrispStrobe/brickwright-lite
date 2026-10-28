@@ -1,0 +1,24 @@
+{
+  "id": "rb01-leave-the-lander",
+  "title": {"en": "Leave the lander", "de": "Runter vom Lander"},
+  "intro": {
+    "en": "Your rover has just rolled off the lander ramp. Drive straight ahead and stop inside the blue survey square, 60 cm away. One wheel turn moves the rover about 17.6 cm.",
+    "de": "Dein Rover ist gerade die Rampe des Landers heruntergerollt. Fahre geradeaus und halte im blauen Messfeld, 60 cm entfernt. Eine Radumdrehung bringt den Rover etwa 17,6 cm weit."
+  },
+  "hints": [
+    {"en": "The block \"move forward … cm\" drives both wheels together.", "de": "Der Block „fahre vorwärts … cm“ dreht beide Räder gemeinsam."},
+    {"en": "Measure from the middle of the rover's axle to the middle of the square.", "de": "Miss von der Mitte der Radachse bis zur Mitte des Feldes."}
+  ],
+  "mat": {"width": 150, "height": 90, "background": "orange", "paint": "#d9825b",
+    "shapes": [{"color": "white", "paint": "#c8ccd2", "shape": {"type": "rect", "x": 12, "y": 45, "w": 24, "h": 34}}]},
+  "zones": [
+    {"id": "survey", "role": "goal", "shape": {"type": "rect", "x": 80, "y": 45, "w": 20, "h": 30},
+      "label": {"en": "survey square", "de": "Messfeld"}}
+  ],
+  "start": {"x": 20, "y": 45, "heading": 0},
+  "timeLimitMs": 10000,
+  "success": [{"type": "stopIn", "zone": "survey"}],
+  "failure": [{"type": "noWallContact"}],
+  "solution": "rb01-leave-the-lander.bw",
+  "wrong": "rb01-leave-the-lander.wrong.bw"
+}

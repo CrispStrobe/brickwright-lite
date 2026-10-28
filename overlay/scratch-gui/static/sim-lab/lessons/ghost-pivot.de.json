@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "id": "ghost-pivot",
+  "language": "de",
+  "what": "Doppelparallelogramm mit fernem Drehpunkt. Motor A bewegt zwei gekoppelte Parallelogramme. Ihr passiver Ausgang ist ein langer Werkzeugträger. Beobachte dessen freies Endloch: Der Träger schwenkt um diesen Punkt, obwohl dort weder Achse noch Lager sitzt. Im Vergleichsmodell wird ein Koppelglied durch einen längeren Standardbalken ersetzt; das Motorprogramm bleibt gleich. Zwei gekoppelte Parallelogramme drehen ein Werkzeug um einen Punkt, an dem kein Gelenk sitzt. Während Motor A um ±35° schwenkt, behält das Werkzeug die Richtung des Eingangs auf 0,002° genau, und das ferne Drehzentrum wandert weniger als 0,02 mm.",
+  "try": [
+    "Lade ghost-pivot.ldr und das zugehörige Programm ghost-pivot.bw. Stelle mit Reset die gespeicherte Lage her und drücke Run in der Robot-Lab-Werkzeugleiste. Suche vor dem Schwenken das freie Endloch des Werkzeugträgers.",
+    "Beobachte zwei Größen getrennt: den Drehwinkel des Trägers und den Weg genau dieses Lochs relativ zum Rahmen. Ein ruhender Punkt ist hier nur aussagekräftig, wenn sich die Ausrichtung des Trägers tatsächlich ändert.",
+    "Sage das Ergebnis mit längerem Koppelglied voraus, bevor du ghost-pivot-unequal-link.ldr lädst. Verwende dasselbe Programm und verfolge dasselbe Loch. Erhalten gleiche Motorwinkel auch den fernliegenden Drehpunkt?",
+    "Verwende nach Handbewegungen oder einer Unterbrechung vor der Wiederholung Reset. Halte den mitgelieferten endlichen Schwenkbereich ein; das Modell zeigt einen begrenzten Montagezweig und keine beliebige Rundumdrehung."
+  ],
+  "why": "Ein Parallelogramm überträgt eine Richtung durch ein bewegliches Gestänge. Zwei gekoppelte Parallelogramme verbinden diese Richtungsbeziehung mit passenden Abständen. Dadurch heben sich Verschiebung und Drehung des Werkzeugträgers an einem bestimmten Punkt auf. Die umliegenden Glieder erzwingen die Bewegung; im Endloch steckt kein verborgenes Lager. Ein längeres Koppelglied verändert den Schleifenschluss und hebt die genaue geometrische Aufhebung auf.",
+  "matters": "Ein fernliegender Drehpunkt erlaubt es, die Ausrichtung eines Werkzeugs zu ändern und einen ausgewählten Ort dabei zugänglich zu halten. Die Lager können an anderer Stelle sitzen und dennoch die Bewegung um diesen Ort erzwingen. Das Modell untersucht dieses kinematische Prinzip, keine Tragfähigkeit und kein medizinisches Gerät.",
+  "question": "Ist der ganze Werkzeugträger unbeweglich, wenn sein Endloch stillsteht? Müsste das Modell mit längerem Koppelglied denselben festen Punkt behalten, nur weil sein Motor dieselben Ziele erreicht?",
+  "answer": "Nein. Ein starrer Träger kann sich drehen, während einer seiner Punkte fest bleibt. Das Gestänge macht das freie Endloch zu diesem Punkt. Das längere Koppelglied verändert die Geometrie; gleiche Eingangswinkel halten das Loch deshalb nicht zwangsläufig an einem Ort. Vergleiche tatsächliche Lochposition und Ausrichtung. Der Motorencoder allein misst keine dieser Ausgangseigenschaften.",
+  "further": [
+    "Verfolge während des gesamten Schwenkens und Umkehrens dasselbe physische Endloch. Bestimme nicht nachträglich für jedes Paar von Werkzeuglagen einen neuen Mittelpunkt.",
+    "Vergleiche Pantograph Doubler und Scale Echo. Sie vergrößern die Bahn eines bewegten Punkts. Ghost Pivot hält einen Punkt eines sich drehenden starren Trägers an einem Ort.",
+    "Eine gute Rückkehr beweist nicht, dass der Drehpunkt unterwegs fest blieb. Prüfe die größte beobachtete Verschiebung ebenso wie die Endlage.",
+    "Reales Bolzenspiel, Balkenverformung und Reibung können den scheinbaren Mittelpunkt verschieben. Native Ergebnisse gelten für die mitgelieferte endliche Simulation; Steifigkeit und Genauigkeit eines physischen Aufbaus benötigen eigene Messungen.",
+    "Im aufgezeichneten nativen Versuch überstrich der Hauptträger 70,264°, während sein Endloch höchstens 0,143540 mm im Raum abwich. Das Vergleichsmodell mit längerem Koppelglied erreichte 21,519175 mm relativ zu seinem eigenen gespeicherten Ausgangspunkt. Diese Werte beschreiben die mitgelieferte endliche Simulation, keine zugesicherte Genauigkeit eines physischen Aufbaus."
+  ],
+  "formula": "Ideale Hauptgeometrie in mm: u ist der drehende Einheitsvektor des Eingangs, e die feste Richtung von O1 nach O2. Die Parallelogramme ergeben A = 32u − 48e und B = 80u − 48e. Das tatsächliche Endloch des Trägers liegt bei R = A − (2/3)(B − A) = −48e, unabhängig von u. Der gemessene Mittelpunktfehler ist |R_beobachtet(q) − R_beobachtet(0)| relativ zum beobachteten Rahmen; die Gleichung liefert nicht die Beobachtung.",
+  "related": [
+    "pantograph-doubler.ldr",
+    "scale-echo.ldr",
+    "positioning-arm.ldr",
+    "gimbal-lab.ldr"
+  ]
+}

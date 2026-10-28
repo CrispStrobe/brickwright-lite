@@ -1,0 +1,16 @@
+DEVICE SPIKE
+
+# A turns the screw actuator (about 1.206 mm per turn); C slews the crane (8:28 reduction).
+# Reset the model before repeating the experiment.
+WHEN flag clicked:
+  set motor stop action A hold
+  set motor stop action C hold
+  set motor speed A 70
+  set motor speed C 10
+  run motor A clockwise 1800 degrees
+  run motor C clockwise 105 degrees
+  wait 1 seconds
+  run motor C counterclockwise 210 degrees
+  wait 1 seconds
+  run motor C clockwise 105 degrees
+  run motor A counterclockwise 1800 degrees

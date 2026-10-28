@@ -1,0 +1,7 @@
+# The motor bench has no hub: the Robot Lab turns its motor itself (lab words, docs/SIM-LAB.md).
+WHEN flag clicked:
+  lab run motor A for 360 degrees at 180 degrees per second
+  wait 1 seconds
+  lab run motor A at 90 degrees per second
+  wait 2 seconds
+  lab stop motor A brake

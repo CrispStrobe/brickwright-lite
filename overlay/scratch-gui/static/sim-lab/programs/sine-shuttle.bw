@@ -1,0 +1,87 @@
+# SineShuttle — captured-block Scotch yoke
+# Copyright (c) 2026 CrispStrobe. SPDX-License-Identifier: BSD-3-Clause.
+# Original finite experiment; bounded feedback structure adapted from TwinTempo.
+# Load the matching LDR and reset it to its saved pose before running.
+# One SPIKE hub, one motor on A; the yoke and transverse follower are passive.
+# Robot Lab simulation code; this is not uploaded SPIKE hardware firmware.
+# Absolute unwrapped encoder targets: 0 -> 360 -> 1080 -> 0 degrees.
+# Slow leg: one turn at 30 degrees/s. Fast leg: two turns at 90 degrees/s.
+# Reverse leg: three turns at 90 degrees/s; the relative degree command is negative.
+# Program qualification envelope: -5 through +1085 encoder degrees.
+# Every move uses target minus a fresh encoder reading. Hold captures the attained
+# angle, so at most two 12 degrees/s trims precede each 1.5 degree arrival guard.
+# A parallel 90 second watchdog stops and holds a stalled experiment.
+DEVICE SPIKE
+GLOBAL stage = 0
+GLOBAL completed = 0
+GLOBAL failed = 0
+GLOBAL targetA = 0
+GLOBAL speedA = 30
+GLOBAL correctionAttempts = 0
+
+WHEN flag clicked:
+  set stage to 0
+  set completed to 0
+  set failed to 0
+  set targetA to 0
+  set speedA to 30
+  set correctionAttempts to 0
+  reset timer
+  lab start
+  lab stop motor A hold
+  IF (abs of (lab motor A angle)) > 1 THEN:
+    set failed to 1
+    say "Reset SineShuttle to its saved pose before running."
+    stop all
+  broadcast "SineShuttle watchdog"
+  set stage to 1
+  set targetA to 360
+  set speedA to 30
+  broadcast "SineShuttle move" and wait
+  wait 0.5 seconds
+  broadcast "SineShuttle arrival guard" and wait
+  set stage to 2
+  set targetA to 1080
+  set speedA to 90
+  broadcast "SineShuttle move" and wait
+  wait 0.5 seconds
+  broadcast "SineShuttle arrival guard" and wait
+  set stage to 3
+  set targetA to 0
+  set speedA to 90
+  broadcast "SineShuttle move" and wait
+  wait 0.5 seconds
+  broadcast "SineShuttle arrival guard" and wait
+  lab stop motor A hold
+  set stage to 4
+  set completed to 1
+  say "SineShuttle complete: compare both sliders, stroke timing and speed."
+
+WHEN I receive "SineShuttle move":
+  IF (abs of (targetA - (lab motor A angle))) > 0.1 THEN:
+    lab run motor A for (targetA - (lab motor A angle)) degrees at (speedA) degrees per second
+  lab stop motor A hold
+  set correctionAttempts to 0
+  REPEAT 2:
+    IF (abs of (targetA - (lab motor A angle))) > 0.5 THEN:
+      change correctionAttempts by 1
+      lab run motor A for (targetA - (lab motor A angle)) degrees at 12 degrees per second
+      lab stop motor A hold
+      wait 0.1 seconds
+  broadcast "SineShuttle arrival guard" and wait
+
+WHEN I receive "SineShuttle arrival guard":
+  IF (abs of (targetA - (lab motor A angle))) > 1.5 THEN:
+    lab stop motor A hold
+    set failed to 1
+    say "SineShuttle missed or drifted from its encoder target. Inspect and reset."
+    stop all
+
+WHEN I receive "SineShuttle watchdog":
+  REPEAT UNTIL (completed = 1):
+    IF (timer) > 90 THEN:
+      lab stop motor A hold
+      set failed to 1
+      say "SineShuttle: 90 second watchdog stopped the experiment. Reset before retrying."
+      stop all
+    wait 0.1 seconds

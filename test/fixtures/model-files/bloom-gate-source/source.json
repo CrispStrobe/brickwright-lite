@@ -1,0 +1,9 @@
+{
+  "author": "CrispStrobe",
+  "license": "BSD-3-Clause",
+  "archive": "bloom-gate-addon.zip",
+  "archiveSha256": "812c01d23950b8488ae7657ce7ae7e9d057ec97848efedc27a5cf27260308615",
+  "modelSha256": "926f200d1cc0e564e29f01e9352f8f57774807270e65dc906d531620985ea69d",
+  "programSha256": "8d57b5c5d9622a6b8ea170493b15f041b5791b07bf9479599f8c430303af9e1d",
+  "note": "Raw source retained as data; no bundled generators or runtimes executed."
+}

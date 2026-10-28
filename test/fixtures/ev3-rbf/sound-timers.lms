@@ -1,0 +1,39 @@
+// Sound and timers: tones with SOUND_READY and SOUND_TEST, TIMER_WAIT / READY, TIMER_READ, RANDOM, KEEP_ALIVE.
+DATA32 Start
+DATA32 Elapsed
+DATA32 Busy
+DATA32 Idle
+DATA32 Rand
+DATA32 Minutes
+DATA32 Timer
+
+vmthread MAIN
+{
+  DATA8  B
+  DATA16 R
+  DATA8  M
+  TIMER_READ(Start)
+  SOUND(TONE, 50, 440, 300)
+  SOUND_TEST(B)
+  MOVE8_32(B, Busy)
+  SOUND_READY()
+  SOUND_TEST(B)
+  MOVE8_32(B, Idle)
+  SOUND(TONE, 30, 660, 100)
+  TIMER_WAIT(250, Timer)
+  TIMER_READY(Timer)
+  SOUND(BREAK)
+  TIMER_READ(Elapsed)
+  SUB32(Elapsed, Start, Elapsed)
+  RANDOM(10, 20, R)
+  MOVE16_32(R, Rand)
+  KEEP_ALIVE(M)
+  MOVE8_32(M, Minutes)
+  // Report: each result written to the brick's console, in declaration order.
+  UI_WRITE(VALUE32, Start)
+  UI_WRITE(VALUE32, Elapsed)
+  UI_WRITE(VALUE32, Busy)
+  UI_WRITE(VALUE32, Idle)
+  UI_WRITE(VALUE32, Rand)
+  UI_WRITE(VALUE32, Minutes)
+}

@@ -1,0 +1,75 @@
+{
+  "date": "2026-10-09",
+  "implementationSource": "9fcc3b1a9d5afb7e050fc711d9b57d82f2086440",
+  "testedInfoRoutingSource": "a2a096f789102716fdbe98852c9e4a1020b9f670",
+  "producerPin": "88aa7123bab943f8a420f3b0dc7fecf3dae6c5b5",
+  "local": {
+    "originalCameraAndInterchange": {
+      "passed": 18,
+      "failed": 0
+    },
+    "freshGuiRuleExtensionBundles": {
+      "passed": 2,
+      "failed": 0
+    },
+    "infoRoutingCameraAndSceneChecks": {
+      "passed": 21,
+      "failed": 0
+    },
+    "infoLifeSceneAndPinGates": {
+      "passed": 10,
+      "failed": 0
+    },
+    "producerDialectBoolean": {
+      "passed": 323,
+      "failed": 0,
+      "eslint": "PASS"
+    }
+  },
+  "corpus": {
+    "before": {
+      "translated": 106,
+      "partial": 77,
+      "malformed": 1
+    },
+    "after": {
+      "translated": 107,
+      "partial": 76,
+      "malformed": 1
+    },
+    "changedRows": [
+      {
+        "file": "arcade-eff7a8e71d415ee0.ts",
+        "before": [
+          "scene.cameraShake()"
+        ],
+        "after": []
+      }
+    ],
+    "unchangedOriginalInputHashes": 184
+  },
+  "realApp": {
+    "file": "arcade-eff7a8e71d415ee0.ts",
+    "sha256": "a24e3b5054cd2d9da6b6c9e1819a4953288378b0fdf5cac15ef77072fd8ea8fc",
+    "importDiagnostics": [],
+    "runtimeErrors": [],
+    "life": 2,
+    "liveSprites": 1,
+    "shakeAmplitude": 4,
+    "shakeDuration": 500,
+    "expired": true,
+    "exportCompiled": true,
+    "reimportDiagnostics": [],
+    "boundary": "Unchanged recovered overlap callback with two actors supplied through native authoring primitives; headless smoke and original export compilation, not complete rendered gameplay."
+  },
+  "pending": [
+    "Fresh shipped native-file/controller browser journey",
+    "producer hosted full sibling-dependent suite",
+    "wall-time behavior across suspended tabs/modal pauses"
+  ],
+  "failureRetention": [
+    "initial camera clock adapter harness error",
+    "initial stale opcode-count assertion",
+    "real recovered callback life-routing mismatch and intermediate inspection logs"
+  ]
+}

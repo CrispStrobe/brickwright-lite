@@ -1,0 +1,360 @@
+import assert from 'node:assert/strict';
+import {createRequire} from 'node:module';
+import {readFileSync} from 'node:fs';
+import test from 'node:test';
+
+const require_ = createRequire(import.meta.url);
+const {createNativeRenodeCapabilities, OPERATIONS} = require_(
+    '../overlay/scratch-vm/src/extension-support/native-renode-capability.js');
+
+test('overlay and packaged Renode capability adapters are byte-identical', () => {
+    assert.equal(
+        readFileSync(new URL('../packages/scratch-vm/src/extension-support/native-renode-capability.js',
+            import.meta.url), 'utf8'),
+        readFileSync(new URL('../overlay/scratch-vm/src/extension-support/native-renode-capability.js',
+            import.meta.url), 'utf8')
+    );
+});
+
+test('Renode operations are absent without the native boundary', () => {
+    assert.equal(createNativeRenodeCapabilities(), null);
+    assert.equal(createNativeRenodeCapabilities({invoke: null}), null);
+});
+
+test('Renode debugger operations use the broker transport and share an ordered session', async () => {
+    const calls = [];
+    const invoke = async (command, params) => {
+        calls.push({command, params});
+        if (command === 'native_broker_open') return 'a'.repeat(64);
+        const request = JSON.parse(params.payload);
+        return JSON.stringify({kind: 'capability', result: request.operation});
+    };
+    const handlers = createNativeRenodeCapabilities({invoke});
+    assert.deepEqual(Object.keys(handlers).sort(), Object.values(OPERATIONS).sort());
+    const callsByOperation = [
+        [OPERATIONS.start, {}], [OPERATIONS.run, {}], [OPERATIONS.pause, {}],
+        [OPERATIONS.reset, {}], [OPERATIONS.step, {}], [OPERATIONS.registers, {}],
+        [OPERATIONS.memory, {address: 0x20000000, length: 32}],
+        [OPERATIONS.state, {}],
+        [OPERATIONS.setBreakpoint, {address: 0x08000120}],
+        [OPERATIONS.clearBreakpoint, {address: 0x08000120}], [OPERATIONS.close, {}],
+        [OPERATIONS.ev3Start, {}], [OPERATIONS.ev3Run, {}], [OPERATIONS.ev3Pause, {}],
+        [OPERATIONS.ev3Reset, {}], [OPERATIONS.ev3Step, {}], [OPERATIONS.ev3Registers, {}],
+        [OPERATIONS.ev3Memory, {address: 0xffff0000, length: 32}], [OPERATIONS.ev3State, {}],
+        [OPERATIONS.ev3Button, {button: 'center', pressed: true}],
+        [OPERATIONS.ev3Analog, {channel: 3, value: 777}],
+        [OPERATIONS.ev3SetBreakpoint, {address: 0xffff0040}],
+        [OPERATIONS.ev3ClearBreakpoint, {address: 0xffff0040}], [OPERATIONS.ev3Close, {}]
+    ];
+    for (const [operation, args] of callsByOperation) {
+        assert.equal(await handlers[operation](args), operation);
+    }
+    const requests = calls.filter(call => call.command === 'native_broker_request');
+    assert.deepEqual(requests.map(call => call.params.requestId), callsByOperation.map((_, index) => index));
+    assert.deepEqual(requests.map(call => JSON.parse(call.params.payload)), callsByOperation.map(
+        ([operation, args]) => ({kind: 'capability', operation, args})));
+    assert.equal(calls.filter(call => call.command === 'native_broker_open').length, 1);
+    assert.equal(calls.some(call => /lease|invoke/.test(call.command)), false);
+});
+
+test('malformed reply drops the session and the next operation reopens it', async () => {
+    let opens = 0;
+    let malformed = true;
+    const invoke = async command => {
+        if (command === 'native_broker_open') {
+            opens++;
+            return 'b'.repeat(64);
+        }
+        if (command === 'native_broker_main_teardown') return;
+        if (malformed) {
+            malformed = false;
+            return JSON.stringify({kind: 'call', result: 'ready'});
+        }
+        return JSON.stringify({kind: 'capability', result: 'closed'});
+    };
+    const handlers = createNativeRenodeCapabilities({invoke});
+    await assert.rejects(() => handlers[OPERATIONS.start]({}), /malformed/);
+    assert.equal(await handlers[OPERATIONS.close]({}), 'closed');
+    assert.equal(opens, 2);
+});
+
+test('a valid native failure reports its fixed code and renews without replaying the failed operation', async () => {
+    const calls = [];
+    let opens = 0;
+    const handlers = createNativeRenodeCapabilities({invoke: async (command, params) => {
+        calls.push({command, params});
+        if (command === 'native_broker_open') return `owned-${++opens}`;
+        if (command === 'native_broker_main_teardown') return;
+        if (opens === 1) return JSON.stringify({kind: 'failure', request_kind: 'capability', code: 'operation-failed'});
+        return JSON.stringify({kind: 'capability', result: 'closed'});
+    }});
+    await assert.rejects(handlers[OPERATIONS.start]({}), error =>
+        error.code === 'operation-failed' && error.message === 'Firmware simulator request failed (operation-failed)');
+    assert.equal(await handlers[OPERATIONS.close]({}), 'closed');
+    assert.equal(opens, 2);
+    assert.deepEqual(calls.filter(call => call.command === 'native_broker_request')
+        .map(call => JSON.parse(call.params.payload).operation), [OPERATIONS.start, OPERATIONS.close]);
+});
+
+test('failure replies cannot inject native details, invent codes or change request kind', async () => {
+    const baseline = {kind: 'failure', request_kind: 'capability', code: 'timeout'};
+    for (const reply of [baseline, {...baseline, code: 'closed'},
+        {...baseline, message: 'restricted native detail'}, {...baseline, code: 'restricted native detail'},
+        {...baseline, request_kind: 'load'}, {...baseline, code: null}]) {
+        const handlers = createNativeRenodeCapabilities({invoke: async command =>
+            command === 'native_broker_open' ? 'owned' : JSON.stringify(reply)});
+        const valid = reply === baseline || reply.code === 'closed';
+        await assert.rejects(handlers[OPERATIONS.start]({}), error => valid ?
+            error.code === reply.code && !error.message.includes('malformed') :
+            error.code === undefined && error.message.includes('malformed') &&
+                !error.message.includes('restricted native detail'));
+    }
+});
+
+test('long-running capabilities renew the bounded relay without replaying operations', async () => {
+    const calls = [];
+    let opens = 0;
+    const invoke = async (command, params) => {
+        calls.push({command, params});
+        if (command === 'native_broker_open') return `session-${++opens}`;
+        if (command === 'native_broker_main_teardown') return;
+        return JSON.stringify({kind: 'capability', result: String(params.requestId)});
+    };
+    const handlers = createNativeRenodeCapabilities({invoke});
+    for (let i = 0; i < 1300; i++) {
+        assert.equal(await handlers[OPERATIONS.state]({}), String(i % 512));
+    }
+    assert.equal(opens, 3);
+    assert.equal(calls.filter(c => c.command === 'native_broker_request').length, 1300);
+    assert.deepEqual(calls.filter(c => c.command === 'native_broker_main_teardown').map(c => c.params),
+        [{session: 'session-1'}, {session: 'session-2'}]);
+});
+
+test('simultaneous first calls share one open and unique request IDs', async () => {
+    let finishOpen;
+    const calls = [];
+    const invoke = async (command, params) => {
+        calls.push({command, params});
+        if (command === 'native_broker_open') return new Promise(resolve => { finishOpen = resolve; });
+        return JSON.stringify({kind: 'capability', result: String(params.requestId)});
+    };
+    const handlers = createNativeRenodeCapabilities({invoke});
+    const first = handlers[OPERATIONS.state]({});
+    const second = handlers[OPERATIONS.pause]({});
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(calls.length, 1);
+    finishOpen('owned');
+    assert.deepEqual(await Promise.all([first, second]), ['0', '1']);
+    assert.deepEqual(calls.filter(c => c.params).map(c => c.params.requestId), [0, 1]);
+});
+
+test('a later semantic request cannot overtake a pending relay request', async () => {
+    let finishFirst;
+    const submitted = [];
+    const handlers = createNativeRenodeCapabilities({invoke: async (command, params) => {
+        if (command === 'native_broker_open') return 'owned';
+        submitted.push(params.requestId);
+        if (params.requestId === 0) return new Promise(resolve => { finishFirst = resolve; });
+        return JSON.stringify({kind: 'capability', result: 'second'});
+    }});
+    const first = handlers[OPERATIONS.state]({});
+    const second = handlers[OPERATIONS.microUartRead]({generation: 1, limit: 32, deadlineMs: 100});
+    await new Promise(resolve => setImmediate(resolve));
+    assert.deepEqual(submitted, [0], 'native scheduler must not receive a later ID before the pending reply');
+    finishFirst(JSON.stringify({kind: 'capability', result: 'first'}));
+    assert.deepEqual(await Promise.all([first, second]), ['first', 'second']);
+    assert.deepEqual(submitted, [0, 1]);
+});
+
+test('renewal drains in-flight replies before teardown and fails closed if cleanup fails', async () => {
+    let resolveLast;
+    let failCleanup = true;
+    let opens = 0;
+    const calls = [];
+    const invoke = async (command, params) => {
+        calls.push({command, params});
+        if (command === 'native_broker_open') return `session-${++opens}`;
+        if (command === 'native_broker_main_teardown') {
+            if (failCleanup) throw new Error('cleanup refused');
+            return;
+        }
+        if (params.requestId === 511) return new Promise(resolve => { resolveLast = resolve; });
+        return JSON.stringify({kind: 'capability', result: 'ok'});
+    };
+    const handlers = createNativeRenodeCapabilities({invoke});
+    for (let i = 0; i < 511; i++) await handlers[OPERATIONS.state]({});
+    const unknown = assert.rejects(handlers[OPERATIONS.start]({backend: 'nuttx', topology: 'unknown'}),
+        {message: 'unknown SPIKE topology'});
+    const last = handlers[OPERATIONS.state]({});
+    await new Promise(resolve => setImmediate(resolve));
+    const next = handlers[OPERATIONS.pause]({});
+    const rejected = assert.rejects(next, /cleanup refused/);
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(calls.some(c => c.command === 'native_broker_main_teardown'), false);
+    resolveLast(JSON.stringify({kind: 'capability', result: 'last'}));
+    assert.equal(await last, 'last');
+    await rejected;
+    assert.equal(opens, 1);
+    failCleanup = false;
+    assert.equal(await handlers[OPERATIONS.pause]({}), 'ok');
+    assert.equal(opens, 2);
+    assert.equal(calls.filter(c => c.params?.payload &&
+        JSON.parse(c.params.payload).operation === OPERATIONS.pause).length, 1);
+});
+
+test('full firmware packet capability accepts only the bounded upload ABI', () => {
+    const {OPERATIONS: broker} = require_('../overlay/scratch-vm/src/extension-support/capability-broker.js');
+    const validate = broker['renode.spike.program.packet'].validate;
+    assert.equal(validate({bytes:[112,1,5,0,0,0,0,0]}), true);
+    for (const args of [{bytes:[112,1,3,0,0,0,0,0]}, {bytes:[112,1,5,0,0,0,0,0],address:0},
+        {bytes:[112,1,5,0,0,0,0,true]}, {bytes:[112,1,5,0,0,0,0,256]}]) assert.equal(validate(args), false);
+});
+
+test('backend selection is an enum and cannot supply images or monitor text', () => {
+    const {OPERATIONS: broker}=require_('../overlay/scratch-vm/src/extension-support/capability-broker.js');
+    const valid=broker['renode.spike.session.start'].validate;
+    for(const args of [{},{backend:'guest'},{backend:'nuttx'}])assert.equal(valid(args),true);
+    for(const args of [{backend:'nuttx; quit'},{backend:'lego'},{backend:'nuttx',path:'/tmp/image'},{backend:true}])assert.equal(valid(args),false);
+});
+
+
+test('MicroPython UART broker arguments are closed, bounded byte DTOs', () => {
+    const {OPERATIONS: broker} = require_('../overlay/scratch-vm/src/extension-support/capability-broker.js');
+    const validators = Object.fromEntries(['read', 'write', 'close'].map(name =>
+        [name, broker[`renode.spike.micropython.uart.${name}`].validate]));
+    for (const generation of [1, Number.MAX_SAFE_INTEGER]) {
+        for (const maxBytes of [1, 4096]) assert.equal(validators.read({generation, maxBytes}), true);
+        for (const bytes of [[0], Array(32).fill(255)]) assert.equal(validators.write({generation, bytes}), true);
+        assert.equal(validators.close({generation}), true);
+    }
+    for (const generation of [0, -1, true, 1.5, Number.MAX_SAFE_INTEGER + 1]) {
+        assert.equal(validators.close({generation}), false);
+    }
+    for (const args of [{generation:1,maxBytes:0}, {generation:1,maxBytes:4097},
+        {generation:1,maxBytes:1,port:123}, {generation:1,maxBytes:true}]) assert.equal(validators.read(args), false);
+    for (const args of [{generation:1,bytes:[]}, {generation:1,bytes:Array(33).fill(0)},
+        {generation:1,bytes:[true]}, {generation:1,bytes:[256]}, {generation:1,bytes:Array(1)},
+        {generation:1,bytes:[0],path:'/tmp/firmware'}, {generation:1,bytes:Object.assign([0],{route:'external:x'})}]) {
+        assert.equal(validators.write(args), false);
+    }
+    assert.equal(validators.close({generation:1,monitor:'quit'}), false);
+    let reads = 0;
+    const getter = {generation:1};
+    Object.defineProperty(getter, 'bytes', {enumerable:true,get:()=>{reads++;return [0];}});
+    assert.equal(validators.write(getter), false);assert.equal(reads, 0);
+    const bytes = [0];Object.defineProperty(bytes,'0',{get:()=>{reads++;return 0;}});
+    assert.equal(validators.write({generation:1,bytes}), false);assert.equal(reads, 0);
+});
+
+test('packaged UART validator and broker vocabulary match the overlay', () => {
+    for (const name of ['spike-program-uart-contract.js','capability-broker.js']) {
+        assert.equal(readFileSync(new URL(`../packages/scratch-vm/src/extension-support/${name}`,import.meta.url),'utf8'),
+            readFileSync(new URL(`../overlay/scratch-vm/src/extension-support/${name}`,import.meta.url),'utf8'));
+    }
+});
+
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright (c) 2026 Brickwright contributors
+const echoProfileTransport = calls => async (command, params) => {
+    calls.push({command, params});
+    if (command === 'native_broker_open') return 'profile-owned';
+    return JSON.stringify({kind: 'capability', result: 'ok'});
+};
+
+test('unknown SPIKE topologies fail locally without allocating native authority', async () => {
+    const calls = [];
+    const handlers = createNativeRenodeCapabilities({invoke: echoProfileTransport(calls)});
+    for (const topology of ['', 'dual', 'DEFAULT', 'nuttx; quit']) {
+        await assert.rejects(handlers[OPERATIONS.start]({backend: 'nuttx', topology}),
+            {message: 'unknown SPIKE topology'});
+    }
+    assert.deepEqual(calls, []);
+});
+
+test('custom SPIKE profiles refuse unsupported backends before native dispatch', async () => {
+    const calls = [];
+    const handlers = createNativeRenodeCapabilities({invoke: echoProfileTransport(calls)});
+    for (const topology of ['six-motors', 'dual-ultrasonic']) {
+        for (const backend of [undefined, 'guest', 'other']) {
+            await assert.rejects(handlers[OPERATIONS.start]({backend, topology}),
+                {message: 'custom topology requires own NuttX firmware'});
+        }
+    }
+    await assert.rejects(handlers[OPERATIONS.start]({backend: 'micropython', topology: 'dual-ultrasonic'}),
+        {message: 'custom topology requires own NuttX firmware'});
+    assert.deepEqual(calls, []);
+});
+
+test('preflight forwards supported profiles unchanged and does not apply SPIKE rules to EV3', async () => {
+    const calls = [];
+    const handlers = createNativeRenodeCapabilities({invoke: echoProfileTransport(calls)});
+    const profiles = [{}, {backend: 'guest'}, {backend: 'nuttx'}, {backend: 'micropython'},
+        {backend: 'nuttx', topology: 'default'}, {backend: 'nuttx', topology: 'six-motors'},
+        {backend: 'nuttx', topology: 'dual-ultrasonic'}, {backend: 'micropython', topology: 'six-motors'}];
+    for (const args of profiles) assert.equal(await handlers[OPERATIONS.start](args), 'ok');
+    const ev3 = {topology: 'other'};
+    assert.equal(await handlers[OPERATIONS.ev3Start](ev3), 'ok');
+    const requests = calls.filter(call => call.command === 'native_broker_request');
+    assert.deepEqual(requests.map(call => JSON.parse(call.params.payload).args), [...profiles, ev3]);
+    assert.deepEqual(requests.map(call => call.params.requestId), profiles.map((_, i) => i).concat(profiles.length));
+});
+
+test('a local profile refusal preserves the pending operation and existing session without ID gaps', async () => {
+    const calls = [];
+    let finish;
+    const echo = echoProfileTransport(calls);
+    const handlers = createNativeRenodeCapabilities({invoke: async (command, params) => {
+        if (command === 'native_broker_request' && params.requestId === 0) {
+            calls.push({command, params});
+            return new Promise(resolve => { finish = resolve; });
+        }
+        return echo(command, params);
+    }});
+    const first = handlers[OPERATIONS.state]({});
+    const refused = assert.rejects(handlers[OPERATIONS.start]({backend: 'guest', topology: 'dual-ultrasonic'}),
+        {message: 'custom topology requires own NuttX firmware'});
+    const unknown = assert.rejects(handlers[OPERATIONS.start]({backend: 'nuttx', topology: 'unknown'}),
+        {message: 'unknown SPIKE topology'});
+    const last = handlers[OPERATIONS.state]({});
+    await new Promise(resolve => setImmediate(resolve));
+    assert.deepEqual(calls.map(call => call.command), ['native_broker_open', 'native_broker_request']);
+    finish(JSON.stringify({kind: 'capability', result: 'pending'}));
+    assert.equal(await first, 'pending');
+    await refused;
+    await unknown;
+    assert.equal(await last, 'ok');
+    assert.deepEqual(calls.map(call => call.command),
+        ['native_broker_open', 'native_broker_request', 'native_broker_request']);
+    assert.deepEqual(calls.filter(call => call.params).map(call => call.params.requestId), [0, 1]);
+});
+
+test('queued topology edits are checked at dispatch and preflight does not evaluate accessors', async () => {
+    const calls = [];
+    const handlers = createNativeRenodeCapabilities({invoke: echoProfileTransport(calls)});
+    const args = {backend: 'nuttx', topology: 'default'};
+    const request = handlers[OPERATIONS.start](args);
+    args.topology = 'unknown';
+    await assert.rejects(request, {message: 'unknown SPIKE topology'});
+    assert.deepEqual(calls, []);
+    let reads = 0;
+    const accessor = {topology: 'dual-ultrasonic'};
+    Object.defineProperty(accessor, 'backend', {enumerable: true, get: () => { reads++; return 'nuttx'; }});
+    await assert.rejects(handlers[OPERATIONS.start](accessor),
+        {message: 'custom topology requires own NuttX firmware'});
+    assert.equal(reads, 0);
+    assert.deepEqual(calls, []);
+});
+
+test('preflight does not turn malformed topology DTOs into detailed native policy errors', async () => {
+    for (const topology of [null, true, 1, {}, []]) {
+        const calls = [];
+        const handlers = createNativeRenodeCapabilities({invoke: async (command, params) => {
+            calls.push({command, params});
+            if (command === 'native_broker_open') return 'owned';
+            return JSON.stringify({kind: 'failure', request_kind: 'capability', code: 'operation-failed'});
+        }});
+        await assert.rejects(handlers[OPERATIONS.start]({backend: 'nuttx', topology}),
+            {message: 'Firmware simulator request failed (operation-failed)', code: 'operation-failed'});
+        assert.equal(calls.filter(call => call.command === 'native_broker_request').length, 1);
+    }
+});

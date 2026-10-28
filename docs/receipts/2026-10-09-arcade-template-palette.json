@@ -1,0 +1,74 @@
+{
+  "date": "2026-10-09",
+  "testedSource": "cdb3a75d7777bf96f514e9ba6b407618aa6ff938",
+  "base": "a649bacee41303ec9c4df87eec0dcf1c72890b08",
+  "producerPin": "de2ac6ce2e93f7193ff7b1a04bc941c5e1a76d45",
+  "implemented": [
+    "Global palette adopts readable indexed Arcade template clones already alive",
+    "Template clones created under an active palette immediately use its colors",
+    "Costume changes preserve active project colors and release replaced skins",
+    "Runtime-only palette sources route through indexed Arcade runtime; template command recognized by native-rendering diagnostic",
+    "Existing controller browser gate adds visible old-clone recoloring and new-clone creation assertions"
+  ],
+  "local": {
+    "passed": 52,
+    "failed": 0,
+    "skipped": 0,
+    "log": "arcade-template-palette-final-source.log",
+    "files": [
+      "test/arcade-template-palette.test.mjs",
+      "test/makecode-project-palette.test.mjs",
+      "test/arcade-project-palette-authoring.test.mjs",
+      "test/makecode-arcade-image-mutation.test.mjs",
+      "test/makecode-arcade-native-image-renderer.test.mjs",
+      "test/makecode-indexed-palette.test.mjs",
+      "test/makecode-arcade-scaling-runtime.test.mjs",
+      "test/makecode-arcade-scaling-import.test.mjs",
+      "test/overlay-packages-pairs.test.mjs"
+    ],
+    "controls": [
+      "Duplicate RGB indices and transparent index zero retained",
+      "Template asset bytes, position and dimensions unchanged",
+      "Repeated palette updates reuse skins; destruction/restart release private skins",
+      "Vector artwork remains unmodified and receives no fabricated indexed image",
+      "Simple template GUI authoring survives Code, SB3 and export with current VM assets",
+      "Runtime-only palette original/exported PXT complete screen and palette agree"
+    ]
+  },
+  "correction": {
+    "priorReceipt": "2026-10-09-arcade-project-palette-gui.json",
+    "priorFinding": "Simple-template exported VM project reported handle/image size mismatch",
+    "actualCause": "Headless export callback looked up pre-load creator assets by post-load VM asset IDs; missing lookup triggered documented placeholder artwork",
+    "verified": "Current VM target costume asset bytes yield zero unsupported export entries",
+    "productBoundary": "The original test failure is retained, but does not establish an exporter resizing defect. Indexed clone palette adoption was independently absent and is implemented here."
+  },
+  "corpus": {
+    "hashVerifiedOriginalInputs": 184,
+    "freshImportOnly": true,
+    "translated": 102,
+    "partial": 81,
+    "malformed": 1,
+    "changedImportOnlyDiagnosticRows": 0,
+    "fullAudit": "Same counts; four rows add existing Code-to-Blocks empty-body warnings at the richer audit boundary",
+    "inputsChanged": false,
+    "fullCompatibilityClaim": false
+  },
+  "browser": {
+    "newProductionControllerAssertions": "Added; syntax and authored fixture import checked",
+    "freshProductionExecution": "Pending hosted build; prior reference bundle does not contain this lifecycle change"
+  },
+  "preservedFailures": [
+    "Initial reimport diagnostic did not recognize native create template; runtime support and importer routing now corrected",
+    "First full-census comparison included Code-to-Blocks warnings absent from prior import-only census; identical-boundary remeasurement has zero changed rows",
+    "Earlier headless asset lookup failure and all probes retained privately"
+  ],
+  "remaining": [
+    "Fresh production controller/graphics and all enabled exact-head checks",
+    "Ordinary Scratch/vector artwork has no Arcade indexed palette semantics",
+    "Template size mismatch genuinely authored in Blocks still remains diagnostic",
+    "Additional Buffer/palette-extension/effect/dialog capabilities",
+    "81 original-input partials and one malformed input",
+    "Stacked integration"
+  ],
+  "publication": "Own-repository draft; not merged"
+}

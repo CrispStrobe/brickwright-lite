@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "id": "pivot-exchange",
+  "language": "de",
+  "what": "Reversionspendel — Kater-Prinzip. Drei gleiche Arme hängen nebeneinander an einem Rahmen. Jeder Arm ist derselbe 15er-Lochbalken mit sechs Reibungspins als Gewichten, alle drei haben also dieselbe Masse (6,3 g) und dieselbe Massenverteilung. Nur das Loch, an dem ein Arm hängt, ist verschieden: Der rote Arm hängt an Loch 5, der blaue an Loch 15 und der gelbe an Loch 8, direkt neben dem Schwerpunkt. Alle drei starten 8° aus der Senkrechten. Es gibt keine Motoren: Das Programm startet nur das Labor und beobachtet 18 s lang. Im Simulator schwingen Rot und Blau mit 0,5677 s Periode, auf 0,002 % gleich, Gelb braucht 1,137 s, fast genau doppelt so lange. Drei gleiche beschwerte Arme schwingen frei an verschiedenen Bohrungen, losgelassen aus einer gespeicherten 8°-Auslenkung, ohne Motor. Zwei nahezu konjugierte Aufhängungen halten dieselbe Periode (Katers Reversionspendel); die Kontrolle an der mittleren Bohrung schwingt etwa halb so schnell.",
+  "try": [
+    "Lade das Modell, drücke Zurücksetzen und dann Start und beobachte Rot und Blau. Ihre Drehpunkte liegen 80 mm auseinander, trotzdem bleiben sie den ganzen Lauf im Gleichtakt.",
+    "Zähle die Schwingungen von Gelb gegen die von Rot. Während Gelb einmal hin und her schwingt, schaffen Rot und Blau zwei volle Schwingungen.",
+    "Sag zuerst voraus: Blau hängt am Loch, das am weitesten vom Schwerpunkt entfernt ist (60 mm), Rot an einem Loch nur 20 mm davon. Welcher Arm sollte langsamer schwingen? Dann beobachte.",
+    "Setze zurück und starte erneut: Das Ergebnis ist jedes Mal gleich, weil nichts im Modell angetrieben wird. Allein die Schwerkraft bestimmt jede Periode."
+  ],
+  "why": "Ein schwingender starrer Körper ist ein physikalisches Pendel. Seine Periode ist T = 2π·√(L/g) mit der reduzierten Pendellänge L = h + k²/h. Dabei ist h der Abstand vom Drehpunkt zum Schwerpunkt und k der Trägheitsradius, der beschreibt, wie die Masse um den Schwerpunkt verteilt ist (k² = I_S/m). Der erste Term wächst mit h, der zweite schrumpft, deshalb hat die reduzierte Länge bei h = k ein Minimum. Zwei verschiedene Abstände ergeben dieselbe Länge, wenn h₁·h₂ = k². Für diese Arme ist k² = 1207 mm². Rot (h = 20,2 mm) und Blau (h = 59,8 mm) ergeben h₁·h₂ = 1208 mm², beide verhalten sich also wie ein Fadenpendel von etwa 80 mm. Gelbs Drehpunkt liegt nur 3,8 mm vom Schwerpunkt, k²/h ist daher groß: Die reduzierte Länge beträgt 321 mm, das Vierfache, und das verdoppelt die Periode.",
+  "matters": "Das ist das Prinzip von Katers Reversionspendel (1817), mit dem über ein Jahrhundert lang die Erdbeschleunigung am genauesten gemessen wurde. Das Pendel schwingt an zwei Schneiden, deren Lage so lange verstellt wird, bis beide Perioden gleich sind. Der Abstand der Schneiden ist dann genau die reduzierte Pendellänge, und g = 4π²L/T² folgt, ohne dass man wissen muss, wo der Schwerpunkt liegt oder wie die Masse verteilt ist. Dieselbe Idee erklärt den „Sweet Spot“ eines Schlägers: Er ist der Stoßmittelpunkt, konjugiert zur Hand.",
+  "question": "Blau hängt dreimal so weit vom Schwerpunkt entfernt wie Rot. Warum schwingt Blau nicht langsamer, und unter welcher Bedingung sind die beiden Perioden gleich?",
+  "answer": "Ein größerer Abstand zum Schwerpunkt vergrößert sowohl das Drehmoment der Schwerkraft als auch das Trägheitsmoment um den Drehpunkt. Die reduzierte Länge h + k²/h ist für zwei Abstände h₁ und h₂ gleich, wenn h₁·h₂ = k². Hier ist 20,2 mm × 59,8 mm ≈ 1207 mm² = k², beide Arme wirken also wie ein 80-mm-Fadenpendel mit etwa 0,567 s Periode.",
+  "further": [
+    "Berechne die reduzierte Länge für Loch 1 (h = 52,2 mm) und für Loch 6 (h = 12,2 mm). Welches Loch ergibt die kürzeste Periode von allen?",
+    "Bestimme den Abstand h mit der kürzestmöglichen Periode für diese Arme (h = k ≈ 34,7 mm) und die Periode dort.",
+    "Vergleiche mit dem 20°-Modell: Die Perioden sind etwa 0,4 % länger. Warum dauern größere Schwingungen etwas länger, obwohl Arme und Drehpunkte gleich sind?"
+  ],
+  "formula": "T₀ = 2π·√(L/g), L = h + k²/h, k² = I_S/m = 1207 mm². Loch 5: h = 20,2 mm, L = 80,0 mm; Loch 15: h = 59,8 mm, L = 80,0 mm; Loch 8: h = 3,8 mm, L = 320,8 mm. Gleiche Perioden, wenn h₁·h₂ = k².",
+  "related": [
+    "pendulum-array.ldr",
+    "cascade.ldr",
+    "momentum-twins.ldr"
+  ]
+}

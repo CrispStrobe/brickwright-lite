@@ -1,0 +1,52 @@
+0 NXT bumper bot (Brickwright Robot Lab reference model)
+0 Name: nxt-bumper-bot.ldr
+0 Author: Brickwright
+0 !LDRAW_ORG Unofficial_Model
+0 // A MINDSTORMS NXT between two Technic beams 15 (two 3L pins through brick, beam and motor), two NXT
+0 // motors behind it with their drive hubs at the rear (B left, C right) turning 88 mm wheels, two
+0 // free 88 mm wheels on 3L axles turning in the beams, and an NXT touch sensor (input 1)
+0 // held between the front of the beams by two axles: its button is the bumper. The front axles
+0 // sit one hole above the motors' hubs, so the robot leans forward a little. Forward is LDraw +z.
+0 !BW ID hub
+1 7 0 0 0 1 0 0 0 1 0 0 0 1 53788.dat
+0 !BW ID beamC
+1 0 100 -90 60 0 1 0 -1 0 0 0 0 1 32278.dat
+0 !BW ID pinAC
+1 1 100 -90 -80 1 0 0 0 1 0 0 0 1 6558.dat
+0 !BW ID pinBC
+1 1 100 -90 -40 1 0 0 0 1 0 0 0 1 6558.dat
+0 !BW ID motorC
+0 !BW PORT C
+1 7 140 -70 -220 -1 0 0 0 1 0 0 0 -1 53787.dat
+0 !BW ID axleC
+1 71 170 -70 -220 1 0 0 0 1 0 0 0 1 3705.dat
+0 !BW ID wheelC
+1 15 189.5 -70 -220 0 0 1 0 1 0 -1 0 0 49295p01.dat
+0 !BW ID frontAxleC
+1 71 125 -90 140 1 0 0 0 1 0 0 0 1 4519.dat
+0 !BW ID frontC
+1 15 129.5 -90 140 0 0 1 0 1 0 -1 0 0 49295p01.dat
+0 !BW ID beamB
+1 0 -100 -90 60 0 1 0 -1 0 0 0 0 1 32278.dat
+0 !BW ID pinAB
+1 1 -100 -90 -80 1 0 0 0 1 0 0 0 1 6558.dat
+0 !BW ID pinBB
+1 1 -100 -90 -40 1 0 0 0 1 0 0 0 1 6558.dat
+0 !BW ID motorB
+0 !BW PORT B
+1 7 -140 -70 -220 -1 0 0 0 1 0 0 0 -1 53787.dat
+0 !BW ID axleB
+1 71 -170 -70 -220 1 0 0 0 1 0 0 0 1 3705.dat
+0 !BW ID wheelB
+1 15 -189.5 -70 -220 0 0 1 0 1 0 -1 0 0 49295p01.dat
+0 !BW ID frontAxleB
+1 71 -125 -90 140 1 0 0 0 1 0 0 0 1 4519.dat
+0 !BW ID frontB
+1 15 -129.5 -90 140 0 0 1 0 1 0 -1 0 0 49295p01.dat
+0 !BW ID bumperAxleFront
+1 71 0 -90 200 1 0 0 0 1 0 0 0 1 3708.dat
+0 !BW ID bumperAxle
+1 71 0 -90 160 1 0 0 0 1 0 0 0 1 3708.dat
+0 !BW ID bumper
+0 !BW PORT 1
+1 7 0 -90 180 -1 0 0 0 1 0 0 0 -1 53793.dat

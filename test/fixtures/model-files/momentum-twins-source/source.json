@@ -1,0 +1,9 @@
+{
+  "author": "CrispStrobe",
+  "license": "BSD-3-Clause",
+  "archive": "momentum-twins-addon-20261021.zip",
+  "archiveSha256": "ddf27b7e7e1912936438e7f81d71bbe65a90e56557c015658316af199f7e4a2e",
+  "modelSha256": "8d87d88aeb2d7f93e6835d867272230fc2760b27409788305a22194cf00eaa90",
+  "programSha256": "15a1b23a23371050407d3c9aa7ed075d4d406fbfebb83dbb07528ed391f965dd",
+  "note": "Raw source retained as data; no bundled generators or runtimes executed."
+}
