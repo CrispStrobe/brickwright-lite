@@ -2628,6 +2628,11 @@
         "pageErrors": 0,
         "nan": false,
         "simMs": 10800
+      },
+      "promotionReview": {
+        "date": "2026-10-27",
+        "decision": "STAYS_EXPERIMENTAL",
+        "reason": "The qualification contract requires a cold settle of at least 500 ms; the recorded unpowered pusher droops about 4 deg/s and the unchanged program refuses to start beyond 2 deg (cold 1000 refused). The law is also only qualitative (dissipative contact chain). Not run on this branch."
       }
     },
     {
@@ -2862,6 +2867,11 @@
         "pageErrors": 0,
         "nan": false,
         "simMs": 59867
+      },
+      "promotionReview": {
+        "date": "2026-10-27",
+        "decision": "STAYS_EXPERIMENTAL",
+        "reason": "The physical prediction dpsi = -Iw*dalpha/Jlocked from compiled colliders gives Iw/J = 0.026 per wheel degree at the saved pose. The recorded 0.124-0.129 equals (Iw+Jr)/(J+2Jr) with the SPIKE medium motor's reflected rotor inertia Jr = 3.0e-4 kg m2, which the engine adds to both hinge bodies (jolt-core setRotorInertia documents this as wrong when both turn about the axis, as platform and wheel do here). The observed reorientation is dominated by that engine model, so no honest physical judge passes it."
       }
     },
     {
@@ -2926,6 +2936,11 @@
         "pageErrors": 0,
         "nan": false,
         "simMs": 30067
+      },
+      "promotionReview": {
+        "date": "2026-10-27",
+        "decision": "STAYS_EXPERIMENTAL",
+        "reason": "The compiled model reports a locked-hinges warning (absorber anchor and bearing islands merged) and four elastic-band spring couplings; the current qualification harness accepts neither an undeclared compiler issue nor imposed couplings. Needs a reviewed declared-issue mechanism (PR #1455 proposes one) and a band-coupling judge first. Not run on this branch."
       }
     },
     {
@@ -3118,6 +3133,11 @@
         "pageErrors": 0,
         "nan": false,
         "simMs": 30167
+      },
+      "promotionReview": {
+        "date": "2026-10-27",
+        "decision": "STAYS_EXPERIMENTAL",
+        "reason": "Observation-only model with no motor; the qualification contract and its disconnection control require at least one driven port and real input travel. A passive-observation contract would be a separate harness change. Not run on this branch."
       }
     },
     {
@@ -3391,6 +3411,18 @@
         "pageErrors": 0,
         "nan": false,
         "simMs": 30067
+      },
+      "promoted": {
+        "to": "established library (MODELS)",
+        "date": "2026-10-27",
+        "judge": "compound-pendulum-v1",
+        "verified": "Hosted native qualification of the exact head 07ff8d7c7c1 (Build 40538484853, unit shards): ordinary and strict real-VM runs pass compound-pendulum-v1 (period 0.507628 s against 0.507567 s predicted, 0.012%); frozen-output, 1 cm world-shift and pendulum_support_axle disconnection are rejected. The ci:full run 40566353980 passed the generic browser shards, none of which loads Samebeat. The browserRun record above is the earlier experimental checkpoint, not evidence for this promotion.",
+        "notRun": [
+          "per-model browser run (qualify-robot-lab-models --mode=full, chromium and webkit)",
+          "saved-project replay",
+          "export",
+          "manual controls"
+        ]
       }
     },
     {
@@ -3577,6 +3609,11 @@
         "pageErrors": 0,
         "nan": false,
         "simMs": 41400
+      },
+      "promotionReview": {
+        "date": "2026-10-27",
+        "decision": "STAYS_EXPERIMENTAL",
+        "reason": "A reviewed stirling-quadrature-v1 judge passed its law on hosted native CI (pistons within 0.0012 mm of the slider-crank closure, strokes 32.001 mm, cranks 90.00004 deg apart with 0.0006 deg span, 803.9 mm2 per turn vs pi r2 = 804.25). The model is hubless, while the shared qualification harness reads the hold state through hub motor controllers (final mode reported 'idle' after the program's lab stop motor A hold) and its disconnection control observes from a 'hub' part. A reviewed hubless harness path is needed first."
       }
     },
     {
