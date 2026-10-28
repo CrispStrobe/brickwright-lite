@@ -2,6 +2,7 @@
 // y(t)=V*exp(-t/tau), measured from the first retained sample. This tests the
 // installed CLI/package boundary, not a physical scope or circuit-loading model.
 import test from 'node:test';
+import {createHash} from 'node:crypto';
 import assert from 'node:assert/strict';
 import {readFileSync, writeFileSync, mkdtempSync, rmSync, existsSync, cpSync, symlinkSync} from 'node:fs';
 import {spawnSync} from 'node:child_process';
@@ -36,6 +37,17 @@ function coupledRows(text) {
     assert.match(lines[0], /coupling=\{/);
     assert.equal(lines[1], 'elapsed_seconds,input_volts,volts');
     return lines.slice(2).map(line => line.split(',').map(Number));
+}
+
+function recordReceipt(t, input, mode, captured) {
+    const pins = JSON.parse(readFileSync(path.join(root, 'vendor-pins.json'), 'utf8'));
+    t.diagnostic('PACKAGED_SCOPE_AC_RECEIPT ' + JSON.stringify({schemaVersion: 1,
+        sourcePins: {'bw-board': pins['bw-board'], 'bw-circuit-ui': pins['bw-circuit-ui']},
+        inputSha256: createHash('sha256').update(readFileSync(input)).digest('hex'),
+        mode, clockOrigin: 'first-retained-sample', units: {time: 's', voltage: 'V'},
+        descriptor: captured.report.scope[0].coupling.descriptor,
+        rows: coupledRows(captured.text),
+        limits: {physicalCalibration: false, modelsProbeLoading: false}}));
 }
 
 function assertDecay(rows) {
@@ -79,6 +91,7 @@ test('installed AC coupling keeps raw defaults and the unselected channel while 
     assertDecay(rows);
     assert.ok(rows.some(([, , volts]) => Math.abs(volts - 2) > 1), 'dropping the transform is observable');
     assert.ok(rows.some(([time, , volts]) => Math.abs(volts - 2 * Math.exp(-time / (1.1 * tau))) > 0.01), 'wrong tau is observable');
+    recordReceipt(t, input, 'uncharged-tau', ac);
 });
 
 test('installed explicit corner matches tau and settled initialization removes constant DC', t => {
@@ -88,11 +101,13 @@ test('installed explicit corner matches tau and settled initialization removes c
         assert.equal(raw, 2);
         assert.ok(Math.abs(volts - 2 * Math.exp(-time / tau)) < 1e-12);
     }
+    recordReceipt(t, input, 'uncharged-corner', corner);
     const settled = capture(input, dir, 'settled', ['--ac-couple', 'V1.pos,V1.neg', '--ac-rc', String(tau), '--ac-initial', 'settled']);
     for (const [, raw, volts] of coupledRows(settled.text)) {
         assert.equal(raw, 2);
         assert.ok(Math.abs(volts) < 1e-15, 'settled capacitor removes DC from the first sample');
     }
+    recordReceipt(t, input, 'settled', settled);
 });
 
 test('installed invalid coupling options refuse by name before producing CSV', t => {
