@@ -2705,11 +2705,9 @@
         "judgeCredit": "knee-press-v1, contract, fixture and registrations from f2d1cb546 (PR #1497, batch C), adapted",
         "causalControl": "passive_link removed (qualification disconnection)",
         "intakeCanonicalLdrawSha256": "5bdb0dfb4e876bd2b5765410779b48e8988eaff4c39bde41d17877ede6425244",
-        "verified": "Native qualification on the Mac (branch lane/robot-batchD-20261028): ordinary and strict real-VM runs pass knee-press-v1, platen advance 12.763 mm against 12.767 mm predicted, five settled steps 3.406/3.025/2.579/2.134/1.698 mm within 0.0013 mm of the closure; frozen output and 1 cm world shift are rejected; with passive_link removed the input still turns 24.9 deg and the platen moves 1.03 mm. Also passes at a 1000 ms cold settle (12.751 mm against 12.756 mm). solidOverlaps, mesh, pin-reach and shared-hole checks clean; prepareModel issues [].",
+        "verified": "Native qualification on the Mac (branch lane/robot-batchD-20261028): ordinary and strict real-VM runs pass knee-press-v1, platen advance 12.763 mm against 12.767 mm predicted, five settled steps 3.406/3.025/2.579/2.134/1.698 mm within 0.0013 mm of the closure; frozen output and 1 cm world shift are rejected; with passive_link removed the input still turns 24.9 deg and the platen moves 1.03 mm. Also passes at a 1000 ms cold settle (12.751 mm against 12.756 mm). solidOverlaps, mesh, pin-reach and shared-hole checks clean; prepareModel issues []. Full qualification (qualify-robot-lab-models --models=final-squeeze,high-select --mode=full, Node 22.23.3, on the Mac at f94ebec21): catalogue, lessons, registrations 129/129, construction 271/271, native motion and negatives 12/12, mirrors, production build, Chromium and WebKit example runs (no page errors), export (111 LDR/MPD pairs, 121 examples) and candidate identity all PASS; admitted.",
         "notRun": [
-          "per-model browser run (qualify-robot-lab-models --mode=full, chromium and webkit)",
           "saved-project replay",
-          "export",
           "manual controls"
         ]
       }
@@ -3027,11 +3025,9 @@
         "judge": "max-select-v1",
         "causalControl": "both bridge foot tiles and foot bricks removed (qualification disconnection); exchanged-input comparison high-select-mirror stays experimental",
         "intakeCanonicalLdrawSha256": "f6c61fd1fa61d4c2c3de7f1405643072b4e11fe532bf1257125db1705be4c19f",
-        "verified": "Native qualification on the Mac (branch lane/robot-batchD-20261028): ordinary and strict real-VM runs pass max-select-v1: at all 11 settled holds the bridge equals max(a,b) of the measured pad heights within 0.033 mm (tolerance 0.1 mm), carriages within 0.047 mm of their commanded heights, three lower-input-only moves leave the bridge within 0.035 mm; frozen output and 1 cm world shift are rejected. Disconnected (feet removed) the inputs still cover 16 mm and the bridge leaves the law by 3.7 mm; it then rests on the carriages through other parts, so it follows the higher carriage with a shifted datum. The mirror program passes the same judge (0.026 mm) with sides exchanged; both pass at a 1000 ms cold settle.",
+        "verified": "Native qualification on the Mac (branch lane/robot-batchD-20261028): ordinary and strict real-VM runs pass max-select-v1: at all 11 settled holds the bridge equals max(a,b) of the measured pad heights within 0.033 mm (tolerance 0.1 mm), carriages within 0.047 mm of their commanded heights, three lower-input-only moves leave the bridge within 0.035 mm; frozen output and 1 cm world shift are rejected. Disconnected (feet removed) the inputs still cover 16 mm and the bridge leaves the law by 3.7 mm; it then rests on the carriages through other parts, so it follows the higher carriage with a shifted datum. The mirror program passes the same judge (0.026 mm) with sides exchanged; both pass at a 1000 ms cold settle. Full qualification (qualify-robot-lab-models --models=final-squeeze,high-select --mode=full, Node 22.23.3, on the Mac at f94ebec21): catalogue, lessons, registrations 129/129, construction 271/271, native motion and negatives 12/12, mirrors, production build, Chromium and WebKit example runs (no page errors), export (111 LDR/MPD pairs, 121 examples) and candidate identity all PASS; admitted.",
         "notRun": [
-          "per-model browser run (qualify-robot-lab-models --mode=full, chromium and webkit)",
           "saved-project replay",
-          "export",
           "manual controls"
         ]
       }
