@@ -1,9 +1,39 @@
 # Robot Lab rotor correction: preserve reaction, contact and endpoint guards
 
-Status: CLAIMED — scope only; merge before new implementation.
+Status: CLAIMED — source candidate; native qualification pending.
 Owner: Codex, user-approved ordered measurement and physics continuation.
 Carrier branch: `lane/robot-coast-steering-20261028` (scope-only stage).
 Base: `b9fa2e844f66566f9f801c94a4dfd425e973bdd6`.
+
+## Source successor checkpoint
+
+Scope merged by PR1531. Source carrier:
+`lane/robot-rotor-correction-successor-20261028`, composed normally from
+published `92fb5d37` and scope merge `0ecd77de`.
+
+Candidate replaces lagged whole-step rate feedback with current native signed
+motor/friction impulses. A pure rotor algebra module computes effective axial
+moments from inverse tensors, rebuilds all rank-one additions from captured
+bare tensors, and computes a full common vector for each free rotor component.
+Anchored components receive no common kick. Native warm-started motor lambda
+uses the pinned body1-negative/body2-positive convention in N m s; no extra
+previous-step impulse or timestep multiplier is applied. Rollback restores
+rotor configuration together and rebuilds derived tensors without rate history.
+
+Six independent pure algebra controls pass, including anisotropic rotated-axis
+momentum, scalar-axis mutation detection, effective moments, multiple additions,
+removal and non-dynamic endpoints. Six new native controls are prepared for
+configuration, signed torque, passive friction, shared velocity servos, clamped
+orientation and rollback. Native controls have NOT RUN. The existing free-pair,
+Sarrus, collision and transport assertions are unchanged byte-for-byte.
+
+This remains a provisional diagonal approximation. Shared or differently aligned
+rotors do not get an exact coupled inertia matrix; contacts retain inflated
+common-mode inertia and positions integrate before the velocity correction.
+The core currently constructs static/dynamic bodies, so kinematic admission has
+pure algebra coverage only. No physical, contact, browser, endpoint or combined
+main qualification is claimed. Failure of the original guards or meaningful
+new controls stops this candidate and requires separately scoped native work.
 
 The qualification handoff in PR1521 delegates completion of published PR1505.
 Read its frozen source and first failure originals before choosing a correction.
