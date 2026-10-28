@@ -147,6 +147,20 @@ What these observations show, and no more:
 - None of this identifies a solver cause or qualifies a fix. Comparing with the
   reported figures is informational, not a tolerance.
 
+### Contact stage (#1498) and next step
+
+The contact-stage diagnostics (#1498, merged) located the mechanism. The creep
+occurs when a collider hovers within the 2 mm speculative contact distance
+(`LEGO_SPECULATIVE_CONTACT_M`) above the floor while contact-manifold reduction
+is on. In the Orrery, those colliders are the two `post_mid_low` parts, 1.6 mm up.
+Removing them, lifting them out of the band, or turning manifold reduction off
+removes the drift. A synthetic plate with a cube hovering 1.6–1.9 mm above the
+floor reproduces the drift; at 1.2 mm and 2.1 mm it does not.
+
+The full table and the scoped fix task are in
+[the qualification handoff](ROBOT-LAB-QUALIFICATION-HANDOFF-20261028.md#4-resting-frame-creep-1435-cause-located).
+A solver or setting fix needs its own claim; issue #1435 stays open until it lands.
+
 ## Owned paths and adjacent work
 
 Only the new `test/bw-sim-resting-creep.test.mjs`, fixtures under

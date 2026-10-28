@@ -2697,6 +2697,12 @@
         "pageErrors": 0,
         "nan": false,
         "simMs": 47800
+      },
+      "promotionReview": {
+        "date": "2026-10-27",
+        "decision": "STAYS_EXPERIMENTAL",
+        "reason": "A knee-closure judge (s = L1 cos a + sqrt(L2^2 - (L1 sin a - e)^2), L1 = L2 = 32.000 mm, e = 0 from the compiled joints) passed natively: advance 12.763 mm vs 12.767 predicted, settled 5-degree steps within 0.002 mm, moving lag <= 0.18 mm; removing passive_link left the platen at 1.03 mm while the input still turned 24.9 degrees. But the library construction gate (test/bw-sim-models-solid.test.mjs, solidOverlaps) refuses the saved geometry: anchor_spacer and anchor_retainer_45 overlap shock_cylinder, and platen_spacer_40 and platen_retainer_75 overlap shock_rod. A fix needs a geometry change, and model bytes must stay unchanged.",
+        "hostedEvidence": "PR #1497 unit shard 1/6 at f2d1cb54"
       }
     },
     {
@@ -3005,6 +3011,11 @@
         "pageErrors": 0,
         "nan": false,
         "simMs": 33533
+      },
+      "promotionReview": {
+        "date": "2026-10-27",
+        "decision": "STAYS_EXPERIMENTAL",
+        "reason": "Its saved pose back-drives both rack motors by about 9.6 deg during the contract's mandatory 500 ms cold settle, so its own zero guard refuses to start. A fix needs a pose or program change, and model and program bytes must stay unchanged."
       }
     },
     {
@@ -3069,6 +3080,11 @@
         "pageErrors": 0,
         "nan": false,
         "simMs": 62700
+      },
+      "promotionReview": {
+        "date": "2026-10-27",
+        "decision": "BLOCKED",
+        "reason": "Open issue #1460: the compiler ignores motor orientation, so a real build of the repaired orrery would turn the other way, into the half of the orbit that collides. Its judge passes in the simulator (#1455), but promotion waits for #1460."
       }
     },
     {

@@ -18,6 +18,9 @@ test('compiled NuttX templates relocate without loading retained source types ag
             const result=await freezeResourceProfile('nuttx',source,output,resources);
             const text=await readFile(join(output,'nuttx.resc'),'utf8');
             assert.ok(text.startsWith('mach create\n'));
+            // Anchored to the package, never Renode's own bundled platform tree.
+            assert.match(text,/^machine LoadPlatformDescription \$ORIGIN\/platforms\/boards\/spike-prime\.repl$/m);
+            assert.doesNotMatch(text,/@platforms\//);
             assert.ok(!text.includes('include @') && !text.includes(source));
             assert.equal(result.manifest['models.cs'],manifest['models.cs']);
             // Already portable compiled profiles remain accepted byte-for-byte.
@@ -77,5 +80,22 @@ test('freezer rejects linked artifacts and escapes before copying',async()=>{
         const file=join(source,'arena-demo.repl');await rename(file,join(root,'outside'));await symlink(join(root,'outside'),file);
         await assert.rejects(freezeResourceProfile('guest',source,join(resources,'guest'),resources),/regular file/);
         await assert.rejects(freezeResourceProfile('guest',source,join(root,'outside-output'),resources),/destination/);
+    }finally{await rm(root,{recursive:true,force:true});}
+});
+
+test('a profile frozen with the earlier bare relative platform path re-freezes to the anchored path',async()=>{
+    const root=await mkdtemp(join(tmpdir(),'bw-profile-legacy-'));try{
+        const {source}=await syntheticProfile(root,'nuttx',{seed:true,compiled:true});
+        const resources=join(root,'resources');await mkdir(resources);
+        const first=join(resources,'nuttx');
+        await freezeResourceProfile('nuttx',source,first,resources);
+        const anchored=await readFile(join(first,'nuttx.resc'),'utf8');
+        const legacy=Buffer.from(anchored.replace('$ORIGIN/platforms/','@platforms/'));
+        const manifest=JSON.parse(await readFile(join(first,'manifest.json'),'utf8'));
+        await writeFile(join(first,'nuttx.resc'),legacy);manifest['nuttx.resc']=sha(legacy);
+        await writeFile(join(first,'manifest.json'),JSON.stringify(manifest));
+        const second=join(resources,'second');
+        await freezeResourceProfile('nuttx',first,second,resources);
+        assert.equal(await readFile(join(second,'nuttx.resc'),'utf8'),anchored);
     }finally{await rm(root,{recursive:true,force:true});}
 });
