@@ -21,11 +21,18 @@ const t=makeT({en:{
 }});
 const button={minHeight:44,padding:'8px 10px',border:'1px solid #cbd5e1',borderRadius:6,background:'#fff',
     fontSize:12,whiteSpace:'normal',maxWidth:'100%',cursor:'pointer'};
+// A project whose startup blocks cannot be read (a missing or cyclic block) must
+// not take the palette panel down: show the reason and lock editing instead.
+const inspect=vm=>{try{return inspectProjectPalette(vm);}catch(error){
+    return {kind:'unreadable',signature:'',colors:[...DEFAULT_PROJECT_PALETTE],laterChanges:false,start:null,
+        reason:String(error&&error.message||error)};}};
+const previewSvg=(image,colors)=>{try{return image&&imageToSvg(image,{scale:4,palette:[null,...colors.slice(1)]});}
+    catch(error){return null;}};
 class ProjectPaletteEditor extends React.Component {
-    constructor(props){super(props);const project=inspectProjectPalette(props.vm);
-        this.state={project,colors:project.colors,busy:false,status:'',error:''};}
+    constructor(props){super(props);const project=inspect(props.vm);
+        this.state={project,colors:project.colors,busy:false,status:'',error:project.reason||''};}
     change(colors){this.setState({colors,status:'',error:''});if(this.props.previewing)this.props.onPreview([null,...colors.slice(1)]);}
-    reload(){const project=inspectProjectPalette(this.props.vm);this.setState({project,colors:project.colors,status:'',error:''});
+    reload(){const project=inspect(this.props.vm);this.setState({project,colors:project.colors,status:'',error:project.reason||''});
         if(this.props.previewing)this.props.onPreview([null,...project.colors.slice(1)]);}
     async apply(){
         this.setState({busy:true,status:'',error:''});
@@ -36,9 +43,9 @@ class ProjectPaletteEditor extends React.Component {
     }
     render(){
         const locale=this.props.locale || browserLocale(),{project,colors,busy,status,error}=this.state;
-        const blocked=project.kind==='conflict' || project.kind==='dynamic';
+        const blocked=project.kind==='conflict' || project.kind==='dynamic' || project.kind==='unreadable';
         const preset=PALETTE_PRESETS.find(item=>item.colors.slice(1).every((color,index)=>color===colors[index+1]))?.id || '';
-        const svg=this.props.image && imageToSvg(this.props.image,{scale:4,palette:[null,...colors.slice(1)]});
+        const svg=previewSvg(this.props.image,colors);
         return <section data-testid="bw-project-palette" style={{width:'100%',display:'grid',gap:8,borderTop:'1px solid #cbd5e1',paddingTop:10}}>
             <strong>{t(locale,'title')}</strong><p style={{fontSize:12,margin:0}}>{t(locale,'hint')}</p>
             <div style={{display:'grid',gridTemplateColumns:'repeat(4,minmax(0,1fr))',gap:6}}>

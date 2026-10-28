@@ -1,0 +1,11 @@
+# SARRUS LIFT — single-chain control: observe the deck with the motor held.
+# Copyright (c) 2026 CrispStrobe. BSD-3-Clause.
+# The passive perpendicular chain B is removed. Motor A holds its saved angle;
+# nothing is driven. Watch whether the deck can stay level on chain A alone.
+DEVICE SPIKE
+
+WHEN flag clicked:
+  lab start
+  lab stop motor A hold
+  wait 8 seconds
+  say "Single-chain control complete: compare the deck with the full Sarrus Lift."

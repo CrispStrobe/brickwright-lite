@@ -1,0 +1,417 @@
+0 FILE tipline-swapped.ldr
+0 Tipline — matched loads, sliding versus tipping (ballast exchanged)
+0 Name: tipline-swapped.ldr
+0 Author: CrispStrobe
+0 !LICENSE BSD-3-Clause : see ../licenses/tipline.txt
+0 !LDRAW_ORG Unofficial_Model
+0 // Original isolated collection add-on. One hub and one motor on A.
+0 // Free loads have identical parts, mass, footprint and external frame.
+0 // Main: left ballast low; right ballast high. Comparison exchanges only ballast heights.
+0 // Reset the scene before each experiment; the motor restores the deck, not the loads.
+0 // 01 — broad base and pinned hub
+0 !BW ID base_frame_left
+1 72 -120 100 0 1 0 0 0 1 0 0 0 1 39790.dat
+0 !BW ID base_frame_right
+1 72 120 100 0 1 0 0 0 1 0 0 0 1 39790.dat
+0 !BW ID base_bridge_rear
+1 72 0 80 -100 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID base_join_rear_-20
+1 0 -20 90 -100 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID base_join_rear_20
+1 0 20 90 -100 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID base_bridge_front
+1 72 0 80 100 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID base_join_front_-20
+1 0 -20 90 100 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID base_join_front_20
+1 0 20 90 100 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID hub
+1 15 0 70 0 1 0 0 0 1 0 0 0 1 45601.dat
+0 !BW ID hub_pin_-60_-100
+1 0 -60 70 -100 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID hub_pin_-60_100
+1 0 -60 70 100 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID hub_pin_60_-100
+1 0 60 70 -100 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID hub_pin_60_100
+1 0 60 70 100 0 1 0 1 0 0 0 0 -1 2780.dat
+0 STEP
+0 // 02 — bearing towers and motor reaction posts
+0 !BW ID tower_left
+1 72 -240 -60 0 0 1 0 0 0 1 1 0 0 39790.dat
+0 !BW ID tower_foot_left_-100
+1 72 -220 80 -100 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID tower_foot_pin_left_-100
+1 0 -220 90 -100 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID tower_foot_left_100
+1 72 -220 80 100 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID tower_foot_pin_left_100
+1 0 -220 90 100 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID tower_right
+1 72 240 -60 0 0 1 0 0 0 1 1 0 0 39790.dat
+0 !BW ID tower_foot_right_-100
+1 72 220 80 -100 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID tower_foot_pin_right_-100
+1 0 220 90 -100 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID tower_foot_right_100
+1 72 220 80 100 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID tower_foot_pin_right_100
+1 0 220 90 100 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID motor_post_-20
+1 72 -240 -60 -20 0 1 0 0 0 1 1 0 0 41239.dat
+0 !BW ID motor_post_60
+1 72 -240 -60 60 0 1 0 0 0 1 1 0 0 41239.dat
+0 !BW ID motor_post_cross_-120
+1 72 -220 -120 0 0 1 0 -1 0 0 0 0 1 32525.dat
+0 !BW ID motor_post_join_-120_-100
+1 0 -230 -120 -100 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID motor_post_join_-120_-20
+1 0 -230 -120 -20 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID motor_post_join_-120_60
+1 0 -230 -120 60 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID motor_post_join_-120_100
+1 0 -230 -120 100 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID motor_post_cross_40
+1 72 -220 40 0 0 1 0 -1 0 0 0 0 1 32525.dat
+0 !BW ID motor_post_join_40_-100
+1 0 -230 40 -100 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID motor_post_join_40_-20
+1 0 -230 40 -20 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID motor_post_join_40_60
+1 0 -230 40 60 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID motor_post_join_40_100
+1 0 -230 40 100 1 0 0 0 1 0 0 0 1 2780.dat
+0 STEP
+0 // 03 — physical level rest beneath the uphill deck
+0 !BW ID level_rest_elbow_left
+1 72 -220 -160 -100 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID level_rest_spacer_left
+1 72 -220 -180 -100 1 0 0 0 1 0 0 0 1 18654.dat
+0 !BW ID level_rest_half_left
+1 72 -120 -200 -100 0 0 1 0 1 0 -1 0 0 32525.dat
+0 !BW ID level_rest_stack_left
+1 1 -220 -180 -100 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID level_rest_elbow_right
+1 72 220 -160 -100 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID level_rest_spacer_right
+1 72 220 -180 -100 1 0 0 0 1 0 0 0 1 18654.dat
+0 !BW ID level_rest_half_right
+1 72 120 -200 -100 0 0 1 0 1 0 -1 0 0 32525.dat
+0 !BW ID level_rest_stack_right
+1 1 220 -180 -100 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID level_rest_lap
+1 72 0 -180 -100 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID level_rest_join_-100
+1 0 -100 -190 -100 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID level_rest_join_-60
+1 0 -60 -190 -100 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID level_rest_join_60
+1 0 60 -190 -100 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID level_rest_join_100
+1 0 100 -190 -100 0 1 0 1 0 0 0 0 -1 2780.dat
+0 STEP
+0 // 04 — restrained motor with four mounting rails
+0 !BW ID motor_A
+0 !BW PORT A
+1 15 -300 -200 20 0 -1 0 0 0 1 -1 0 0 54696p01.dat
+0 !BW ID motor_cheek_-320_-40
+1 72 -320 -140 -20 -1 0 0 0 0 1 0 1 0 32525.dat
+0 !BW ID motor_top_pin_-320_-40
+1 0 -320 -220 -10.0 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID motor_cheek_-280_-40
+1 72 -280 -140 -20 -1 0 0 0 0 1 0 1 0 32525.dat
+0 !BW ID motor_top_pin_-280_-40
+1 0 -280 -220 -10.0 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID motor_tie_-180_-40
+1 72 -280 -180 -40.0 0 0 1 1 0 0 0 1 0 32316.dat
+0 !BW ID motor_stack_-320_-180_-40
+1 1 -320 -180 -20 0 0 -1 0 1 0 1 0 0 6558.dat
+0 !BW ID motor_stack_-280_-180_-40
+1 1 -280 -180 -20 0 0 -1 0 1 0 1 0 0 6558.dat
+0 !BW ID motor_tie_elbow_-180_-40
+1 72 -260 -180 -20 1 0 0 0 0 -1 0 1 0 15100.dat
+0 !BW ID motor_tie_frame_pin_-180_-40
+1 0 -260 -180 -30.0 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID motor_tie_-60_-40
+1 72 -280 -60 -40.0 0 0 1 1 0 0 0 1 0 32316.dat
+0 !BW ID motor_stack_-320_-60_-40
+1 1 -320 -60 -20 0 0 -1 0 1 0 1 0 0 6558.dat
+0 !BW ID motor_stack_-280_-60_-40
+1 1 -280 -60 -20 0 0 -1 0 1 0 1 0 0 6558.dat
+0 !BW ID motor_tie_elbow_-60_-40
+1 72 -260 -60 -20 1 0 0 0 0 -1 0 1 0 15100.dat
+0 !BW ID motor_tie_frame_pin_-60_-40
+1 0 -260 -60 -30.0 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID motor_cheek_-320_40
+1 72 -320 -140 60 -1 0 0 0 0 1 0 1 0 32525.dat
+0 !BW ID motor_top_pin_-320_40
+1 0 -320 -220 50.0 0 0 1 0 1 0 -1 0 0 2780.dat
+0 !BW ID motor_cheek_-280_40
+1 72 -280 -140 60 -1 0 0 0 0 1 0 1 0 32525.dat
+0 !BW ID motor_top_pin_-280_40
+1 0 -280 -220 50.0 0 0 1 0 1 0 -1 0 0 2780.dat
+0 !BW ID motor_tie_-180_40
+1 72 -280 -180 80.0 0 0 1 1 0 0 0 1 0 32316.dat
+0 !BW ID motor_stack_-320_-180_40
+1 1 -320 -180 60 0 0 1 0 1 0 -1 0 0 6558.dat
+0 !BW ID motor_stack_-280_-180_40
+1 1 -280 -180 60 0 0 1 0 1 0 -1 0 0 6558.dat
+0 !BW ID motor_tie_elbow_-180_40
+1 72 -260 -180 60 1 0 0 0 0 -1 0 1 0 15100.dat
+0 !BW ID motor_tie_frame_pin_-180_40
+1 0 -260 -180 70.0 0 0 1 0 1 0 -1 0 0 2780.dat
+0 !BW ID motor_tie_-60_40
+1 72 -280 -60 80.0 0 0 1 1 0 0 0 1 0 32316.dat
+0 !BW ID motor_stack_-320_-60_40
+1 1 -320 -60 60 0 0 1 0 1 0 -1 0 0 6558.dat
+0 !BW ID motor_stack_-280_-60_40
+1 1 -280 -60 60 0 0 1 0 1 0 -1 0 0 6558.dat
+0 !BW ID motor_tie_elbow_-60_40
+1 72 -260 -60 60 1 0 0 0 0 -1 0 1 0 15100.dat
+0 !BW ID motor_tie_frame_pin_-60_40
+1 0 -260 -60 70.0 0 0 1 0 1 0 -1 0 0 2780.dat
+0 STEP
+0 // 05 — two retained deck shafts
+0 !BW ID deck_axle_left
+1 0 -190 -200 20 1 0 0 0 1 0 0 0 1 3707.dat
+0 !BW ID deck_bush_left_130
+1 71 -130 -200 20 0 0 1 0 1 0 -1 0 0 3713.dat
+0 !BW ID deck_bush_left_170
+1 71 -170 -200 20 0 0 1 0 1 0 -1 0 0 3713.dat
+0 !BW ID deck_bush_left_220
+1 71 -220 -200 20 0 0 1 0 1 0 -1 0 0 3713.dat
+0 !BW ID deck_key_left
+1 14 -150 -210 20 0 0 1 0 1 0 -1 0 0 32064a.dat
+0 !BW ID deck_axle_right
+1 0 190 -200 20 1 0 0 0 1 0 0 0 1 3707.dat
+0 !BW ID deck_bush_right_130
+1 71 130 -200 20 0 0 1 0 1 0 -1 0 0 3713.dat
+0 !BW ID deck_bush_right_170
+1 71 170 -200 20 0 0 1 0 1 0 -1 0 0 3713.dat
+0 !BW ID deck_bush_right_220
+1 71 220 -200 20 0 0 1 0 1 0 -1 0 0 3713.dat
+0 !BW ID deck_bush_right_260
+1 71 260 -200 20 0 0 1 0 1 0 -1 0 0 3713.dat
+0 !BW ID deck_key_right
+1 14 150 -210 20 0 0 1 0 1 0 -1 0 0 32064a.dat
+0 STEP
+0 // 06 — rigid smooth approach and passive arresting wall
+0 !BW ID deck_backing_lower_-100
+1 14 0 -218 -180 1 0 0 0 1 0 0 0 1 3027.dat
+0 !BW ID deck_backing_lower_20
+1 14 0 -218 -60 1 0 0 0 1 0 0 0 1 3027.dat
+0 !BW ID deck_backing_lower_140
+1 14 0 -218 60 1 0 0 0 1 0 0 0 1 3027.dat
+0 !BW ID deck_edge_rail_-150_main
+1 14 -150 -226 -120 0 0 1 0 1 0 -1 0 0 3460.dat
+0 !BW ID deck_edge_rail_-150_approach
+1 14 -150 -226 -10 0 0 1 0 1 0 -1 0 0 3623.dat
+0 !BW ID deck_edge_rail_150_main
+1 14 150 -226 -120 0 0 1 0 1 0 -1 0 0 3460.dat
+0 !BW ID deck_edge_rail_150_approach
+1 14 150 -226 -10 0 0 1 0 1 0 -1 0 0 3623.dat
+0 !BW ID approach_bearing_-70
+1 14 -70 -226 -10 0 0 1 0 1 0 -1 0 0 63864.dat
+0 !BW ID approach_bearing_70
+1 14 70 -226 -10 0 0 1 0 1 0 -1 0 0 63864.dat
+0 !BW ID catch_wall_foundation
+1 14 0 -226 40 1 0 0 0 1 0 0 0 1 4282.dat
+0 !BW ID deck_tile_-80
+1 71 0 -234 -120 1 0 0 0 1 0 0 0 1 48288.dat
+0 !BW ID approach_tile_-80_-30
+1 71 -80 -234 -30 1 0 0 0 1 0 0 0 1 4162.dat
+0 !BW ID approach_tile_80_-30
+1 71 80 -234 -30 1 0 0 0 1 0 0 0 1 4162.dat
+0 !BW ID approach_tile_-80_-10
+1 71 -80 -234 -10 1 0 0 0 1 0 0 0 1 4162.dat
+0 !BW ID approach_tile_80_-10
+1 71 80 -234 -10 1 0 0 0 1 0 0 0 1 4162.dat
+0 !BW ID approach_tile_-80_10
+1 71 -80 -234 10 1 0 0 0 1 0 0 0 1 4162.dat
+0 !BW ID approach_tile_80_10
+1 71 80 -234 10 1 0 0 0 1 0 0 0 1 4162.dat
+0 !BW ID catch_wall_-80_0
+1 14 -80 -250 40 1 0 0 0 1 0 0 0 1 3007.dat
+0 !BW ID catch_wall_80_0
+1 14 80 -250 40 1 0 0 0 1 0 0 0 1 3007.dat
+0 !BW ID catch_wall_center_1
+1 14 0 -274 40 1 0 0 0 1 0 0 0 1 3007.dat
+0 !BW ID catch_wall_edge_-120_1
+1 14 -120 -274 40 1 0 0 0 1 0 0 0 1 3001.dat
+0 !BW ID catch_wall_edge_120_1
+1 14 120 -274 40 1 0 0 0 1 0 0 0 1 3001.dat
+0 !BW ID catch_wall_-80_2
+1 14 -80 -298 40 1 0 0 0 1 0 0 0 1 3007.dat
+0 !BW ID catch_wall_80_2
+1 14 80 -298 40 1 0 0 0 1 0 0 0 1 3007.dat
+0 !BW ID catch_wall_center_3
+1 14 0 -322 40 1 0 0 0 1 0 0 0 1 3007.dat
+0 !BW ID catch_wall_edge_-120_3
+1 14 -120 -322 40 1 0 0 0 1 0 0 0 1 3001.dat
+0 !BW ID catch_wall_edge_120_3
+1 14 120 -322 40 1 0 0 0 1 0 0 0 1 3001.dat
+0 !BW ID catch_wall_-80_4
+1 14 -80 -346 40 1 0 0 0 1 0 0 0 1 3007.dat
+0 !BW ID catch_wall_80_4
+1 14 80 -346 40 1 0 0 0 1 0 0 0 1 3007.dat
+0 !BW ID catch_wall_center_5
+1 14 0 -370 40 1 0 0 0 1 0 0 0 1 3007.dat
+0 !BW ID catch_wall_edge_-120_5
+1 14 -120 -370 40 1 0 0 0 1 0 0 0 1 3001.dat
+0 !BW ID catch_wall_edge_120_5
+1 14 120 -370 40 1 0 0 0 1 0 0 0 1 3001.dat
+0 !BW ID catch_wall_-80_6
+1 14 -80 -394 40 1 0 0 0 1 0 0 0 1 3007.dat
+0 !BW ID catch_wall_80_6
+1 14 80 -394 40 1 0 0 0 1 0 0 0 1 3007.dat
+0 !BW ID catch_wall_center_7
+1 14 0 -418 40 1 0 0 0 1 0 0 0 1 3007.dat
+0 !BW ID catch_wall_edge_-120_7
+1 14 -120 -418 40 1 0 0 0 1 0 0 0 1 3001.dat
+0 !BW ID catch_wall_edge_120_7
+1 14 120 -418 40 1 0 0 0 1 0 0 0 1 3001.dat
+0 !BW ID catch_wall_-80_8
+1 14 -80 -442 40 1 0 0 0 1 0 0 0 1 3007.dat
+0 !BW ID catch_wall_80_8
+1 14 80 -442 40 1 0 0 0 1 0 0 0 1 3007.dat
+0 !BW ID catch_wall_center_9
+1 14 0 -466 40 1 0 0 0 1 0 0 0 1 3007.dat
+0 !BW ID catch_wall_edge_-120_9
+1 14 -120 -466 40 1 0 0 0 1 0 0 0 1 3001.dat
+0 !BW ID catch_wall_edge_120_9
+1 14 120 -466 40 1 0 0 0 1 0 0 0 1 3001.dat
+0 STEP
+0 // 07 — two independent matched loads; eight ballast plates change height
+0 !BW ID left_load_base
+0 !BW LOAD
+1 2 -70 -242 -150 1 0 0 0 1 0 0 0 1 3032.dat
+0 !BW ID left_load_roof
+0 !BW LOAD
+1 2 -70 -466 -150 1 0 0 0 1 0 0 0 1 3032.dat
+0 !BW ID left_load_post_-50_-30_1
+0 !BW LOAD
+1 2 -120 -314 -180 1 0 0 0 1 0 0 0 1 14716.dat
+0 !BW ID left_load_post_-50_-30_2
+0 !BW LOAD
+1 2 -120 -386 -180 1 0 0 0 1 0 0 0 1 14716.dat
+0 !BW ID left_load_post_-50_-30_3
+0 !BW LOAD
+1 2 -120 -458 -180 1 0 0 0 1 0 0 0 1 14716.dat
+0 !BW ID left_load_post_-50_30_1
+0 !BW LOAD
+1 2 -120 -314 -120 1 0 0 0 1 0 0 0 1 14716.dat
+0 !BW ID left_load_post_-50_30_2
+0 !BW LOAD
+1 2 -120 -386 -120 1 0 0 0 1 0 0 0 1 14716.dat
+0 !BW ID left_load_post_-50_30_3
+0 !BW LOAD
+1 2 -120 -458 -120 1 0 0 0 1 0 0 0 1 14716.dat
+0 !BW ID left_load_post_50_-30_1
+0 !BW LOAD
+1 2 -20 -314 -180 1 0 0 0 1 0 0 0 1 14716.dat
+0 !BW ID left_load_post_50_-30_2
+0 !BW LOAD
+1 2 -20 -386 -180 1 0 0 0 1 0 0 0 1 14716.dat
+0 !BW ID left_load_post_50_-30_3
+0 !BW LOAD
+1 2 -20 -458 -180 1 0 0 0 1 0 0 0 1 14716.dat
+0 !BW ID left_load_post_50_30_1
+0 !BW LOAD
+1 2 -20 -314 -120 1 0 0 0 1 0 0 0 1 14716.dat
+0 !BW ID left_load_post_50_30_2
+0 !BW LOAD
+1 2 -20 -386 -120 1 0 0 0 1 0 0 0 1 14716.dat
+0 !BW ID left_load_post_50_30_3
+0 !BW LOAD
+1 2 -20 -458 -120 1 0 0 0 1 0 0 0 1 14716.dat
+0 !BW ID left_load_ballast_0
+0 !BW LOAD
+1 4 -70 -402 -150 1 0 0 0 1 0 0 0 1 3031.dat
+0 !BW ID left_load_ballast_1
+0 !BW LOAD
+1 4 -70 -410 -150 1 0 0 0 1 0 0 0 1 3031.dat
+0 !BW ID left_load_ballast_2
+0 !BW LOAD
+1 4 -70 -418 -150 1 0 0 0 1 0 0 0 1 3031.dat
+0 !BW ID left_load_ballast_3
+0 !BW LOAD
+1 4 -70 -426 -150 1 0 0 0 1 0 0 0 1 3031.dat
+0 !BW ID left_load_ballast_4
+0 !BW LOAD
+1 4 -70 -434 -150 1 0 0 0 1 0 0 0 1 3031.dat
+0 !BW ID left_load_ballast_5
+0 !BW LOAD
+1 4 -70 -442 -150 1 0 0 0 1 0 0 0 1 3031.dat
+0 !BW ID left_load_ballast_6
+0 !BW LOAD
+1 4 -70 -450 -150 1 0 0 0 1 0 0 0 1 3031.dat
+0 !BW ID left_load_ballast_7
+0 !BW LOAD
+1 4 -70 -458 -150 1 0 0 0 1 0 0 0 1 3031.dat
+0 !BW ID right_load_base
+0 !BW LOAD
+1 25 70 -242 -150 1 0 0 0 1 0 0 0 1 3032.dat
+0 !BW ID right_load_roof
+0 !BW LOAD
+1 25 70 -466 -150 1 0 0 0 1 0 0 0 1 3032.dat
+0 !BW ID right_load_post_-50_-30_1
+0 !BW LOAD
+1 25 20 -314 -180 1 0 0 0 1 0 0 0 1 14716.dat
+0 !BW ID right_load_post_-50_-30_2
+0 !BW LOAD
+1 25 20 -386 -180 1 0 0 0 1 0 0 0 1 14716.dat
+0 !BW ID right_load_post_-50_-30_3
+0 !BW LOAD
+1 25 20 -458 -180 1 0 0 0 1 0 0 0 1 14716.dat
+0 !BW ID right_load_post_-50_30_1
+0 !BW LOAD
+1 25 20 -314 -120 1 0 0 0 1 0 0 0 1 14716.dat
+0 !BW ID right_load_post_-50_30_2
+0 !BW LOAD
+1 25 20 -386 -120 1 0 0 0 1 0 0 0 1 14716.dat
+0 !BW ID right_load_post_-50_30_3
+0 !BW LOAD
+1 25 20 -458 -120 1 0 0 0 1 0 0 0 1 14716.dat
+0 !BW ID right_load_post_50_-30_1
+0 !BW LOAD
+1 25 120 -314 -180 1 0 0 0 1 0 0 0 1 14716.dat
+0 !BW ID right_load_post_50_-30_2
+0 !BW LOAD
+1 25 120 -386 -180 1 0 0 0 1 0 0 0 1 14716.dat
+0 !BW ID right_load_post_50_-30_3
+0 !BW LOAD
+1 25 120 -458 -180 1 0 0 0 1 0 0 0 1 14716.dat
+0 !BW ID right_load_post_50_30_1
+0 !BW LOAD
+1 25 120 -314 -120 1 0 0 0 1 0 0 0 1 14716.dat
+0 !BW ID right_load_post_50_30_2
+0 !BW LOAD
+1 25 120 -386 -120 1 0 0 0 1 0 0 0 1 14716.dat
+0 !BW ID right_load_post_50_30_3
+0 !BW LOAD
+1 25 120 -458 -120 1 0 0 0 1 0 0 0 1 14716.dat
+0 !BW ID right_load_ballast_0
+0 !BW LOAD
+1 4 70 -250 -150 1 0 0 0 1 0 0 0 1 3031.dat
+0 !BW ID right_load_ballast_1
+0 !BW LOAD
+1 4 70 -258 -150 1 0 0 0 1 0 0 0 1 3031.dat
+0 !BW ID right_load_ballast_2
+0 !BW LOAD
+1 4 70 -266 -150 1 0 0 0 1 0 0 0 1 3031.dat
+0 !BW ID right_load_ballast_3
+0 !BW LOAD
+1 4 70 -274 -150 1 0 0 0 1 0 0 0 1 3031.dat
+0 !BW ID right_load_ballast_4
+0 !BW LOAD
+1 4 70 -282 -150 1 0 0 0 1 0 0 0 1 3031.dat
+0 !BW ID right_load_ballast_5
+0 !BW LOAD
+1 4 70 -290 -150 1 0 0 0 1 0 0 0 1 3031.dat
+0 !BW ID right_load_ballast_6
+0 !BW LOAD
+1 4 70 -298 -150 1 0 0 0 1 0 0 0 1 3031.dat
+0 !BW ID right_load_ballast_7
+0 !BW LOAD
+1 4 70 -306 -150 1 0 0 0 1 0 0 0 1 3031.dat
+0 NOFILE

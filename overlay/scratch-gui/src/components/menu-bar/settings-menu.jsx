@@ -156,6 +156,9 @@ const SettingsMenu = ({intl, canChangeLanguage, canChangeTheme, isRtl, onRequest
                             onRequestClose={onRequestClose}
                         />
                     </MenuItem>}
+                    <MenuItem onClick={() => { emit('bw-open-history-panel', {view: 'autosave'}); onRequestClose(); }}>
+                        {t('gui.menuBar.autosaveHistory', 'Autosave & history…')}
+                    </MenuItem>
                     <MenuItem onClick={() => { emit('bw-open-scratchlink-transport'); onRequestClose(); }}>
                         <FormattedMessage
                             defaultMessage="How Scratch Link connects…"

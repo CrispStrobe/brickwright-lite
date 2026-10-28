@@ -2,14 +2,14 @@
 import {createHash} from 'node:crypto';
 
 export const SOURCES = Object.freeze({
-    'bw-board': 'dfa4be8eff4cef22462ac508a67da5f706f7d72d',
-    'bw-circuit-ui': '66e3724020e795c3442f8da9a7af149dd5f74bd9'
+    'bw-board': 'c7bcbe4bcd583d2215372dd4ee1e65002e249a04',
+    'bw-circuit-ui': 'da28bb8ce9b38aa18d2e424f692c6570fc1d6d1d'
 });
 export const RUNTIME_FINGERPRINTS = freeze({
     board: {packageName:'bw-board',version:'0.1.0',files:321,
-        jsJsonTreeSha256:'47880658cf7b9e089e97ebb3fafbd03974176fafdab3a3b615282f85c6b6af3c'},
+        jsJsonTreeSha256:'f71c24a83f1a5e16b37d16cfb01a9c555790e02a53bf12b4b743857e3c3f34fa'},
     ui: {packageName:'bw-circuit-ui',version:'0.1.0',files:434,
-        jsJsonTreeSha256:'52bb0c751bfd02dce5a0e990784cab791cee20f2e66553b8ae60aacf88e5c3f6'}
+        jsJsonTreeSha256:'d6d314b7ac8e7330a6b8e231c3153d41da685a0c781a5bdb47c552361cfa96b5'}
 });
 export const STUDY = 'authored-reference-designs-v2';
 // Pinned CLI's public measure-rate contract; this does not enlarge its domain.

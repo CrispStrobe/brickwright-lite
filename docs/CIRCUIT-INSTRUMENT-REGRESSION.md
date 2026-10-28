@@ -1,5 +1,166 @@
 # CLI instrument regression
 
+## Current handoff — 2026-10-27
+
+**The earlier five-item campaign is complete; the subsequent six-item campaign
+is not.** Its supplier repairs are landed, but the consumer return and new
+reference-qualified study still need acceptance. This section is the current
+handoff; dated results below retain their original sources and limits. The
+[ordered contract](../lanes/2026-10-26-reference-qualified-instrument-campaign.md)
+owns this sequence. Read `LANES.md` and the affected lane records before edits.
+
+### What is actually complete
+
+| Boundary | Accepted evidence | Limit |
+| --- | --- | --- |
+| Previous consumer and fixed regression | Lite PR1413; 312 cases and 87,488 checks in the separately retained numerical run | 12 authored topologies; not 312 distinct imported designs, a new run on a later head, or physical calibration |
+| New teaching-study acquisition | [Run40335666363](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40335666363), retained and independently read once | Failed/incomplete: 23 conforming designs, not a completed 31-design qualification |
+| Board junction DC reachability | [Board PR710](https://github.com/CrispStrobe/bw-board/pull/710), merged `dfa4be8eff4cef22462ac508a67da5f706f7d72d` | Conservative DC-path admission repaired; no new transistor law or solver calibration |
+| Matching CUI package return | [CUI PR124](https://github.com/CrispStrobe/bw-circuit-ui/pull/124), merged `66e3724020e795c3442f8da9a7af149dd5f74bd9`; actual Circuit/CLI checks, 17 SPICE checks and 83 browser scenarios | Supplier acceptance; not Lite adoption or v2 study execution |
+| Scope proof source | Merged publication observer and strict gates; forward native-keyboard diagnostic composed in [Lite PR1437](https://github.com/CrispStrobe/brickwright-lite/pull/1437) | Forward native-keyboard path accepted in the actual browser; source PR remains unmerged at the recorded handoff; historical cause and product repair remain unproved |
+
+Board's new checks exercise Shockley bridge and NPN-tail connectivity rather
+than disguising a floating circuit with a ground resistor. A reference mismatch
+was traced to ngspice's omitted fourth BJT terminal: its grounded substrate adds
+a collector-to-substrate conductance absent from the authored three-terminal
+law. The admitted zero-base/collector-resistance reference now explicitly ties
+substrate to collector and retains physical junction conductance. This is a
+reference-domain correction, not evidence for a Newton or voltage-fitting fix.
+CUI's actual installed-package tests preserve Circuit state while comparing
+signed node/branch observations and conservation against independent bounds.
+
+### Current Lite boundary and preserved failures
+
+At this handoff Lite still pins Board
+`836867513c3e7fac420ddaa32c17e1c7b6d3e513` and CUI
+`1bc233c9297e03abb9b7eb603e045b4e92b0bb40`. The new pair above is qualified
+at its suppliers. Package/lock/provenance preparation and v2 source controls
+have been retained, but are **not published consumer acceptance**. The preserved package preparation is checkpoint
+`5cfc7499ccabd0e45cf72b8806f43f466d0f48fc`; the stacked harness preparation
+is `466f115f5c0591976a4f94a52660af9be69c5d4d`. Both are local-only, unpushed
+and unqualified; they are recovery identities, not remotely available accepted
+commits. Recover them through the ignored operational handoff, or reconstruct
+the scoped work if unavailable. Verify live
+`vendor-pins.json` and open PRs before resuming; neither a newer supplier default
+branch nor prepared lock metadata proves an installed Lite package or GUI.
+
+The v1 study contains 32 inputs: 31 graph-distinct candidate designs and one
+named-refusal control. Its independent readback reported 23 conforming designs,
+zero observed numerical disagreements, nine unsuccessful requests, 3,726
+conforming values, 9/15 successful capture designs and 59/84 successful selector
+locations. All 32 inputs remain in the denominator. Six LM741 requests exceeded
+the CLI's 2 MHz contract, two nonlinear requests hit the repaired DC-path
+admission, and the LT1763 refusal returned 2 while the harness expected 1.
+Zero disagreement among acquired values does not qualify missing observations.
+
+The consumed v1 source `92a9ab6e7e4c639fb43299451a974c6a700592d3`, its
+`study/reference-qualified-v1` ref, official run, originals and reader verdict
+remain immutable. The protected 312-case experiment and completed research
+batches must not be repeated to populate this new study. No v2 event has been
+selected. Prepared v2 requests use 2 MHz/40 samples for the same 20 microsecond
+LM741 window and 20 ns solver cap, the real named-refusal exit, explicit BJT
+substrate topology and version-42 thermal constants. Circuit/model parameters,
+comparison bounds and the full denominator are preserved. The prepared source
+passes 49 synthetic/source controls and 11 gate controls; these are not circuit
+simulations or numerical qualification.
+
+The scope failure has a separate boundary. An actual retained run observed the
+same selector as sample during input capture, then envelope before change
+capture and afterwards. The strict publication predicate correctly rejected it.
+Playwright's option-selection return describes its pre-event selection and does
+not prove React committed it. No observer write path or exact restoration
+trigger has been established. PR1437's forward diagnostic uses one focus and one
+page-level native ArrowDown, preserving actual identity, channel-removal,
+precommit-negative, committed-mode, ADC, sole-add and rearm assertions. Four pure
+controls and eight isolated syntax-valid mutants passed source review. The
+owner's subsequent original-log audit accepted Browser light job122009150417 in
+[Build40446909033](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40446909033):
+all81 assigned gates passed without skips or failures. The actual trace records
+one focus/input/change, the observed envelope-to-sample ArrowDown action,
+precommit rejection and strict final focused sample/ADC/zero-channel publication.
+This accepts the finite changed user path; it does not identify the original
+restoration cause or establish a product repair. At this recorded receipt the
+source PR was still open, pending its remaining checks and guarded merge.
+The exact source diagnostic is
+`4ea3c00858d5e56a45e0abdbc6baecf809f95567`, composed at owner head
+`8a8421706541f706628d9872ca86e8b7b1fe34fd` in PR1437. Its three released
+source/test/lane blobs are the reviewed handoff; a later composition needs an
+explicit source and qualification join, not an assumption of identity.
+The existing combined-browser owner retains this run and its one-time intake;
+do not start a duplicate run or alter its released scope leaf.
+
+### Resume in this order
+
+1. **Close the dependency boundary, then qualify Lite adoption.** Preserve the
+   agreed current-supplier x86 GUI/PR1318 landing sequence. That lane owns its
+   producer, reader, workflow and current-versus-historical source roles. Its
+   rejected environment admission is not a guest pass and must not be retried
+   unchanged. Once its accepted source lands, fetch actual main and compose the
+   [junction package return](../lanes/2026-10-26-junction-package-adoption.md)
+   against that parent. Require Board/CUI compatibility, both root and GUI
+   manifests/locks, canonical notices and source identities, census mirrors,
+   current identity tests and generated reports/matrix. Review current ROM
+   identities with their owner; retain archived qualification/source identities
+   and do not replace SHAs globally. The matrix output is
+   `docs/generated/LANGUAGE-DEVICE-MATRIX.md`. Acceptance requires the standard
+   hosted install, actual non-symlink full-source identity, one resolved engine,
+   affected CLI/integration tests and the actual built GUI. Local metadata
+   preparation is not a substitute. Preserve protected-profile cases, numerical
+   methods and bounds; changing its current source selector must not dispatch it.
+2. **Admit and execute one new v2 study.** Resume only after qualified package
+   return, under the [harness scope](../lanes/2026-10-26-reference-qualified-study-harness.md).
+   Bind exact qualified sources, UI manifest and independently derived runtime
+   fingerprints; freeze the resulting intent and independent reader before any
+   observation. Retained preparation binds Board `dfa4be8e` and CUI `66e37240`;
+   a different supplier requires a fresh source admission, not a quiet literal
+   edit. Keep other workflows' census/pointer entries intact. Perform exact-head
+   source qualification, then separately admit the reviewed-head variable and
+   sole `study/reference-qualified-v2` event. Source controls do not authorize
+   this event. Acquire admitted originals once; independently reconcile all
+   inputs, refusals, errors, values, captures, locations and clocks. Preserve a
+   failed study as failed; no unchanged rerun or post-observation tuning. The
+   original requirement for numerical acceptance before harness merge remains.
+3. **Finish the remaining five tasks below in order.** First record the study's
+   actual verdict and limits. Coordinate current owners and merge a bounded
+   phase claim before implementation. Do not start a seventh task or imply the
+   six-item campaign is complete because this documentation is merged.
+
+### Scoped remaining tasks and acceptance
+
+| Task | Bounded next work | Acceptance and stop condition |
+| --- | --- | --- |
+| 2. Four historical disagreements | **Completed as classification.** All four rows are noncomparable on their disputed observables; other observables in those rows agree. 830/5564: a cutoff MOS drain on an unconnected label floats; ngspice sits 0.01 V below the source at 5 V and 3 V, ours at the source. Witnesses w09/w10 show the gap depends on source voltage, not node name; a finite drain load removes it. 4525/6597: no DC path fixes the common mode, so the DC root is not unique; with a tied common mode both engines agree to about 1e-7 V on both sides of the M2 threshold and for both capacitor placements. Ten of the twelve admitted witness cases were used; native output was identical at Board `761153ff` and `dfa4be8e`. | No model or importer defect was demonstrated, so no repair was made and no fitting toward either reference. Unknowns remain: the physical cause of ngspice's 0.01 V offset, which solve path ours took (not observable without instrumentation), the importer warnings (retained only as hashes) and whether a 26.83 C versus 27 C temperature difference applied at the historical head. The first witness harness had hash-path defects that stopped runs before any simulation; these failures and the wrong initial loaded-drain predictions are preserved, not rewritten. |
+| 3. Scope rearm causality | Reuse the existing owner's accepted diagnostic receipt without reacquisition or replay. Separate the native-keyboard path from the original synthetic input/change restoration and stale-envelope observation. | Retain ordered original getters, handles, event/element identities and failures. A causal fix needs failing-before/passing-after evidence for its actual mechanism and affected hosted GUI acceptance. A passing different path alone does not close causality. |
+| 4. Longer captures | Start with a bounded passive-RC 5 ms/1 MHz batch. Account for whole-capture steps, solves, advances, history, output bytes and meter quadrature; distinguish capture from report cadence. | Compare all requested raw points, trigger times and meter windows to admitted references. Preserve the refused request and existing defaults/refusals. There is no universal 5,000-point cap: first establish which actual route/budget refused it. No per-chunk budget renewal or truncated-success claim. |
+| 5. LM741 bias, supply and power | First define an opt-in nominal 25 C domain from published conditions: input bias/offset currents, quiescent current, rail return paths and output-load rail accounting. Keep unsupported domains unavailable. | Independent nominal equations plus terminal KCL and rail-power/energy checks, both bias polarities, zero/nonzero loads and refusal negatives; then actual packaged CLI/GUI acceptance. Typical datasheet values are not guaranteed limits. The 2.8 mA warning budget is not an existing measured-current law. |
+| 6. Provenance and instrument realism | Complete the static-asset provenance transaction and assignment-prefixed census-location redaction, with failing omission/stale/changed-byte/leak controls. Then select one demonstrated bandwidth/coupling gap. | Canonical identity/mirror/notice checks, no confidential locations in generated output, independently expected time-domain behavior, unchanged ideal/raw defaults. Noise needs a separately justified model; randomness is not accuracy. |
+
+The acceptance endpoint is a truthful completed/partial/refused result for each
+bounded task, not a promise to simulate every imported circuit or every physical
+oscilloscope effect. Shared models belong only in the owned `CrispStrobe/bw-board`
+fork; shared import/CLI/instrument behavior belongs in the owned
+`CrispStrobe/bw-circuit-ui` fork; Lite adopts qualified exact packages. No
+third-party original, release or deployment is changed by this handoff.
+
+### Fresh-agent checklist
+
+- Read this handoff, `LANES.md`, the ordered contract and relevant phase leaves;
+  refresh remote main, live pins, PR heads and actually enabled checks. Historical
+  claim text describes an envelope, not proof that its implementation landed.
+- Recover unpublished prepared candidates and retained-original identities from
+  the private operational handoff when available. Their local locations and raw
+  evidence are intentionally absent here. If unavailable, reconstruct and review
+  the narrowly scoped source changes; never invent a missing original or replay
+  an already consumed experiment to replace it.
+- Preserve other owners' live work. The x86 lane controls current/historical
+  roles; the combined-browser lane controls its actual diagnostic acquisition.
+  Poll at most once a minute and acquire each admitted official original once.
+- Keep public commits, prose, workflow output and artifacts free of confidential
+  payloads and operational locations. Put operational recovery details only in
+  ignored local notes. After the sixth task and final reconciliation, close the
+  campaign and request the next priority; until then, report remaining limits.
+
+
 ## Current sequence — 2026-10-25
 
 The [five-item contract](../lanes/2026-10-25-imported-circuit-instrument-campaign.md)

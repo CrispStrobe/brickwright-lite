@@ -2,7 +2,7 @@
   "version": 1,
   "id": "travel-dial",
   "language": "en",
-  "what": "Motor A moves a guided sled beneath a separate rubber measuring wheel. The wheel turns freely: contact with the passing surface supplies its rotation. Follow both the sled and one of the wheel’s visible spokes, then compare with the supplied model that holds the wheel clear of the surface.",
+  "what": "Rolling odometer. Motor A moves a guided sled beneath a separate rubber measuring wheel. The wheel turns freely: contact with the passing surface supplies its rotation. Follow both the sled and one of the wheel’s visible spokes, then compare with the supplied model that holds the wheel clear of the surface. A crank drives a sled back and forth. A free 56 mm wheel on a gravity-loaded arm rolls on the sled without slipping, so its turn measures the travel: Δs = −R·Δθ with R = 28 mm, within 0.15 mm over a 42 mm stroke.",
   "try": [
     "Load travel-dial.ldr and its matching travel-dial.bw program. Reset the saved model, then press Run in Robot Lab’s toolbar. Follow the sled’s outward stroke and return.",
     "Compare the six programmed arrivals: +60°, −60°, 0° at 15°/s, then the same route at 45°/s. The slider-crank makes sled speed vary along each stroke. For the same actual surface travel, should the measuring wheel need the same angle or the same time?",

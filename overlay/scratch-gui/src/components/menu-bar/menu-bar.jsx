@@ -85,7 +85,7 @@ import {
 import collectMetadata from '../../lib/collect-metadata';
 
 import styles from './menu-bar.css';
-import {activateUndoSurface, subscribeUndoState, undoActiveSurface} from '../../lib/global-undo.js';
+import {activateUndoSurface, redoActiveSurface, subscribeUndoState, undoActiveSurface} from '../../lib/global-undo.js';
 
 import mystuffIcon from './icon--mystuff.png';
 import profileIcon from './icon--profile.png';
@@ -178,6 +178,8 @@ AboutButton.propTypes = {
     onClick: PropTypes.func.isRequired
 };
 
+const openHistoryPanel = () => window.dispatchEvent(new CustomEvent('bw-open-history-panel'));
+
 class MenuBar extends React.Component {
     constructor (props) {
         super(props);
@@ -198,13 +200,15 @@ class MenuBar extends React.Component {
             'handleNativeOpen',
             'rememberDocumentSaver',
             'handleCloseOfflineLibrary',
-            'handleGlobalUndo'
+            'handleGlobalUndo',
+            'handleGlobalRedo'
         ]);
         // Local UI state for the Brickwright offline-library dialog (native app
         // only). Kept out of Redux — it's app-specific and self-contained.
         this.state = {
             offlineLibraryOpen: false,
             globalCanUndo: false,
+            globalCanRedo: false,
             undoSurface: 'blocks',
             // Desktop app: File > Load/Save use native project documents (lib/tauri-bridge.js).
             nativeDocuments: false,
@@ -217,8 +221,13 @@ class MenuBar extends React.Component {
         nativeDocumentsAvailable().then(nativeDocuments => {
             if (this._mounted && nativeDocuments) this.setState({nativeDocuments});
         });
-        this._unsubscribeUndo = subscribeUndoState(({canUndo, surface}) => {
-            this.setState({globalCanUndo: canUndo, undoSurface: surface});
+        // Remember which editor each tab last used (a tab can hold several:
+        // Costumes has paint, pixel and tilemap), so returning to it restores it.
+        this._tabSurfaces = {};
+        this._unsubscribeUndo = subscribeUndoState(({canUndo, canRedo, label, surface}) => {
+            if (surface !== this._lastSurface) this._tabSurfaces[this.props.activeTabIndex] = surface;
+            this._lastSurface = surface;
+            this.setState({globalCanUndo: canUndo, globalCanRedo: canRedo, undoSurface: label});
         });
         this.activateTabUndoSurface();
     }
@@ -231,11 +240,18 @@ class MenuBar extends React.Component {
         if (prevProps.activeTabIndex !== this.props.activeTabIndex) this.activateTabUndoSurface();
     }
     activateTabUndoSurface () {
-        const surface = {0: 'blocks', 3: 'code', 4: 'circuit'}[this.props.activeTabIndex];
-        if (surface) activateUndoSurface(surface);
+        // Tabs without a fixed editor here (FPGA, Robots) activate their own
+        // surface when shown; until then nothing else's history is touched.
+        this._lastSurface = null;
+        const index = this.props.activeTabIndex;
+        activateUndoSurface(this._tabSurfaces[index] ||
+            ['blocks', 'costumes', 'sounds', 'code', 'circuit'][index] || `tab-${index}`);
     }
     handleGlobalUndo () {
         undoActiveSurface();
+    }
+    handleGlobalRedo () {
+        redoActiveSurface();
     }
     async handleClickNew () {
         // if the project is dirty, and user owns the project, we will autosave.
@@ -805,11 +821,42 @@ class MenuBar extends React.Component {
                         data-testid="bw-global-undo"
                         disabled={!this.state.globalCanUndo}
                         aria-label={this.props.intl.formatMessage({id: 'gui.menuBar.undo', defaultMessage: 'Undo'})}
-                        title={`${this.props.intl.formatMessage({id: 'gui.menuBar.undo', defaultMessage: 'Undo'})} (${this.state.undoSurface})`}
+                        title={this.props.intl.formatMessage({id: 'gui.menuBar.undo', defaultMessage: 'Undo'}) +
+                            (this.state.undoSurface ? ` (${this.state.undoSurface})` : '')}
                         onClick={this.handleGlobalUndo}
                     >
                         <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                             <path d="M9 4 4 9l5 5M4 9h10a5.5 5.5 0 0 1 0 11h-3"
+                                fill="none" stroke="currentColor" strokeWidth="2"
+                                strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                    </button>
+                    <button
+                        type="button"
+                        className={classNames(styles.menuBarItem, styles.globalUndoButton)}
+                        data-testid="bw-global-redo"
+                        disabled={!this.state.globalCanRedo}
+                        aria-label={this.props.intl.formatMessage({id: 'gui.menuBar.redo', defaultMessage: 'Redo'})}
+                        title={this.props.intl.formatMessage({id: 'gui.menuBar.redo', defaultMessage: 'Redo'}) +
+                            (this.state.undoSurface ? ` (${this.state.undoSurface})` : '')}
+                        onClick={this.handleGlobalRedo}
+                    >
+                        <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                            <path d="m15 4 5 5-5 5m5-5H10a5.5 5.5 0 0 0 0 11h3"
+                                fill="none" stroke="currentColor" strokeWidth="2"
+                                strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                    </button>
+                    <button
+                        type="button"
+                        className={classNames(styles.menuBarItem, styles.globalUndoButton)}
+                        data-testid="bw-global-history"
+                        aria-label={this.props.intl.formatMessage({id: 'gui.menuBar.history', defaultMessage: 'History'})}
+                        title={this.props.intl.formatMessage({id: 'gui.menuBar.history', defaultMessage: 'History'})}
+                        onClick={openHistoryPanel}
+                    >
+                        <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                            <path d="M3 12a9 9 0 1 0 3-6.7L3 8m0-5v5h5m4-1v5l3 2"
                                 fill="none" stroke="currentColor" strokeWidth="2"
                                 strokeLinecap="round" strokeLinejoin="round" />
                         </svg>

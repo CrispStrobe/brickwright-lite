@@ -349,8 +349,14 @@ const Row = ({tone, children}) => (
     }}>{children}</li>
 );
 
+const FPGA_AUTOSAVE_KEY = 'bw-fpga-autosave';
+
 const FpgaTab = (props) => {
-    const [text, setText] = React.useState(EXAMPLE);
+    // Autosave: the Verilog and constraints survive a reload (as Code and Circuit do).
+    const saved = React.useMemo(() => {
+        try { return JSON.parse(localStorage.getItem(FPGA_AUTOSAVE_KEY) || 'null'); } catch (e) { return null; }
+    }, []);
+    const [text, setText] = React.useState(saved && typeof saved.text === 'string' ? saved.text : EXAMPLE);
     const [netlistText, setNetlistText] = React.useState('');
     const [inputs, setInputs] = React.useState({});
     // How many clock edges the sequential design has been stepped by. A clocked
@@ -379,7 +385,38 @@ const FpgaTab = (props) => {
         try { return localStorage.getItem('bw-fpga-guide-done') === '1'; } catch { return false; }
     });
     const [sim, setSim] = React.useState({values: {}, note: null, problems: []});
-    const [hdl, setHdl] = React.useState('');
+    const [hdl, setHdl] = React.useState(saved && typeof saved.hdl === 'string' ? saved.hdl : '');
+    React.useEffect(() => {
+        const timer = setTimeout(() => {
+            try {
+                localStorage.setItem(FPGA_AUTOSAVE_KEY, JSON.stringify({hdl, text}));
+            } catch (e) { /* storage full or private mode: the editor keeps working */ }
+        }, 800);
+        return () => clearTimeout(timer);
+    }, [hdl, text]);
+    // Project save carries this design (lib/bw-project-bundle.js `fpga`): flush it
+    // now, not 800 ms later; a loaded project replaces it in place.
+    const designRef = React.useRef({hdl, text});
+    designRef.current = {hdl, text};
+    React.useEffect(() => {
+        const collect = () => {
+            try {
+                localStorage.setItem(FPGA_AUTOSAVE_KEY, JSON.stringify(designRef.current));
+            } catch (e) { /* the save carries the last autosave instead */ }
+        };
+        const loaded = () => {
+            let next = null;
+            try { next = JSON.parse(localStorage.getItem(FPGA_AUTOSAVE_KEY) || 'null'); } catch (e) { next = null; }
+            setHdl(next && typeof next.hdl === 'string' ? next.hdl : '');
+            setText(next && typeof next.text === 'string' ? next.text : EXAMPLE);
+        };
+        window.addEventListener('bw-project-bundle-collect', collect);
+        window.addEventListener('bw-project-bundle-loaded', loaded);
+        return () => {
+            window.removeEventListener('bw-project-bundle-collect', collect);
+            window.removeEventListener('bw-project-bundle-loaded', loaded);
+        };
+    }, []);
     const [seed, setSeed] = React.useState(null);
     const [synth, setSynth] = React.useState(null);
     const [backend, setBackend] = React.useState('auto');

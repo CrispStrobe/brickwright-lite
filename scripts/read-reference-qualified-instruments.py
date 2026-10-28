@@ -9,14 +9,14 @@ from pathlib import Path
 import re
 import sys
 
-ADMITTED_INTENT = '607fc165a56e0936b48e37a86986742c9edd793087afcfbcd3a58dfedd941e85'
-SOURCES = {'bw-board': 'dfa4be8eff4cef22462ac508a67da5f706f7d72d',
-           'bw-circuit-ui': '66e3724020e795c3442f8da9a7af149dd5f74bd9'}
+ADMITTED_INTENT = '2b3a5be44e6dcfcd3fbef73c5888921118c792a6825795066258154fe793b430'
+SOURCES = {'bw-board': 'c7bcbe4bcd583d2215372dd4ee1e65002e249a04',
+           'bw-circuit-ui': 'da28bb8ce9b38aa18d2e424f692c6570fc1d6d1d'}
 RUNTIME_FINGERPRINTS = {
     'board': {'packageName': 'bw-board', 'version': '0.1.0', 'files': 321,
-              'jsJsonTreeSha256': '47880658cf7b9e089e97ebb3fafbd03974176fafdab3a3b615282f85c6b6af3c'},
+              'jsJsonTreeSha256': 'f71c24a83f1a5e16b37d16cfb01a9c555790e02a53bf12b4b743857e3c3f34fa'},
     'ui': {'packageName': 'bw-circuit-ui', 'version': '0.1.0', 'files': 434,
-           'jsJsonTreeSha256': '52bb0c751bfd02dce5a0e990784cab791cee20f2e66553b8ae60aacf88e5c3f6'}
+           'jsJsonTreeSha256': 'd6d314b7ac8e7330a6b8e231c3153d41da685a0c781a5bdb47c552361cfa96b5'}
 }
 IDS = ('multitap-divider loaded-potentiometer loaded-wheatstone-bridge passive-summing-mixer '
        'two-bit-r2r-ladder loaded-rc-lowpass rc-bandpass-cascade crc-pi-filter twin-t-notch '
@@ -26,7 +26,7 @@ IDS = ('multitap-divider loaded-potentiometer loaded-wheatstone-bridge passive-s
        'darlington-follower lm741-voltage-follower lm741-inverting-stage lm741-noninverting-stage '
        'lm741-summing-stage lm741-difference-stage lm741-sallen-key zener-shunt-regulator '
        'adp7118-loaded-startup lt1763-precision-refusal').split()
-UI_PACKAGE_SHA256 = '9cfac6308bb43487363f1ca18d039a3ec0e28638e8777fbec7cc4d66617ef981'
+UI_PACKAGE_SHA256 = 'aa2e7cdd01c31f9622339ebccf16fcd5c3728d497903b4230fbd1842fd1ddc16'
 FILE_LIMIT = 16 * 1024 * 1024
 TOTAL_LIMIT = 256 * 1024 * 1024
 

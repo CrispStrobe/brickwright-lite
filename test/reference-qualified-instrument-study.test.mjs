@@ -12,7 +12,7 @@ import {cliArgs,recordCommand,inventory,checkCohortBudget,remainingCohortWall,va
 const ROOT=resolve(import.meta.dirname,'..');
 const HEAD='a'.repeat(40),RUN='123456789';
 const uiManifestBytes=readFileSync(process.env.REFERENCE_UI_PACKAGE_JSON??join(ROOT,'node_modules/bw-circuit-ui/package.json'));
-assert.equal(sha256(uiManifestBytes),'9cfac6308bb43487363f1ca18d039a3ec0e28638e8777fbec7cc4d66617ef981','exact pinned UI manifest required for source controls');
+assert.equal(sha256(uiManifestBytes),'aa2e7cdd01c31f9622339ebccf16fcd5c3728d497903b4230fbd1842fd1ddc16','exact pinned UI manifest required for source controls');
 const declaredBoardSpec=JSON.parse(uiManifestBytes).devDependencies['bw-board'];
 const json=value=>JSON.stringify(value,null,2)+'\n';
 const put=(root,name,value)=>writeFileSync(join(root,name),typeof value==='string'?value:json(value));

@@ -4,11 +4,25 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import SimLabMeasurementPlot from './sim-lab-measurement-plot.jsx';
 import SimLabMeasurementRecorder from './sim-lab-measurement-recorder.jsx';
+import SimLabControlPair from './sim-lab-control-pair.jsx';
+import SimLabMeasurementPrecision from './sim-lab-measurement-precision.jsx';
 import SimLabPhysicsInspector from './sim-lab-physics-inspector.jsx';
 import {createMeasurementHistory, PLOT_LIMIT} from '../../lib/bw-sim/measurements/history.js';
 import {MEASUREMENT_KINDS, MEASUREMENT_LIMIT} from '../../lib/bw-sim/measurements/schema.js';
 import {measurementText, jointBinding, ropeBinding} from '../../lib/bw-sim/measurements/readings.js';
+import {roleMeasurementPacks} from '../../lib/bw-sim/measurements/role-presets.js';
 import {jointTargetContext} from '../../lib/bw-sim/measurements/target-context.js';
+
+const rolePackCache = new WeakMap();
+const packsFor = (session, locale) => {
+    if (!session) return [];
+    let cached = rolePackCache.get(session);
+    if (!cached || cached.locale !== locale) {
+        cached = {locale, packs: roleMeasurementPacks(session, locale)};
+        rolePackCache.set(session, cached);
+    }
+    return cached.packs;
+};
 
 export const measurementWords = locale => locale === 'de' ? {
     title: 'Messungen', close: 'Schließen', add: 'Messung hinzufügen', edit: 'Bearbeiten', save: 'Änderungen speichern', cancel: 'Abbrechen', remove: 'Entfernen', presets: 'Auf empfohlene Messungen zurücksetzen',
@@ -20,9 +34,9 @@ export const measurementWords = locale => locale === 'de' ? {
     replay: 'Live-Messungen sind während der Positionswiedergabe ausgeblendet.', empty: 'Füge eine Messung hinzu oder wähle die empfohlenen Messungen.',
     help: 'Teile wählen ihre starre Baugruppe für Masse und Bewegung. Geschwindigkeit gilt am Schwerpunkt. Abstand und Winkel messen Teilursprünge (A–B–C: Scheitel B).',
     vectors: 'Pfeile: Geschwindigkeit × 0,1 s; Kräfte 20 mm/N.',
-    kinds: {modelMass: 'Modellmasse', mass: 'Masse der Baugruppe', weight: 'Berechnete Gewichtskraft', speed: 'Geschwindigkeit der Baugruppe', angularSpeed: 'Drehgeschwindigkeit der Baugruppe', acceleration: 'Abgetastete Beschleunigung', pressure: 'Pneumatik-Überdruck',
+    kinds: {passiveTorque: 'Passives Reibmoment', motorForce: 'Schieber-Motorkraft', limitForce: 'Schieber-Anschlagkraft', sliderPower: 'Schieber-Motorleistung', screwSlips: 'Spindel-Schlupfereignisse', screwLoad: 'Gefilterte Spindel-Stützlast', contact: 'Kontakt vorhanden (0/1)', modelMass: 'Modellmasse', mass: 'Masse der Baugruppe', weight: 'Berechnete Gewichtskraft', speed: 'Geschwindigkeit der Baugruppe', angularSpeed: 'Drehgeschwindigkeit der Baugruppe', acceleration: 'Abgetastete Beschleunigung', pressure: 'Pneumatik-Überdruck',
         distance: 'Abstand A–B', angle: 'Winkel A–B–C', jointAngle: 'Gelenkwinkel', jointSpeed: 'Gelenkdrehzahl', motorTorque: 'Motor-Drehmoment', limitTorque: 'Gelenkanschlag-Drehmoment', motorPower: 'Mechanische Motorleistung', travel: 'Schieberweg', tension: 'Seilspannung', normalLoad: 'Rad-Normallast'},
-    sources: {'configured-model-mass': 'Konfigurierte Modell-Baugruppen ohne Umgebung', 'configured-mass': 'Konfigurierte Masse', 'configured-weight': 'Konfigurierte Masse × Schwerkraft', 'jolt-com-velocity': 'Jolt: Schwerpunktgeschwindigkeit',
+    sources: {'jolt-passive-friction-impulse': 'Passiver Reibimpuls / Zeitschritt', 'jolt-slider-motor-impulse': 'Schieber-Motorimpuls / Zeitschritt', 'jolt-slider-limit-impulse': 'Schieber-Anschlagimpuls / Zeitschritt', 'jolt-slider-motor-power': 'Motorkraft × zugehörige Schiebergeschwindigkeit', 'screw-slip-count': 'Kumulierte Spindel-Schlupfereignisse', 'screw-filtered-support-load': 'Gefilterter Betrag der vorherigen Stützlast', 'jolt-contact-presence': 'Aktueller nativer Körperkontakt; kein Kraftbetrag', 'configured-model-mass': 'Konfigurierte Modell-Baugruppen ohne Umgebung', 'configured-mass': 'Konfigurierte Masse', 'configured-weight': 'Konfigurierte Masse × Schwerkraft', 'jolt-com-velocity': 'Jolt: Schwerpunktgeschwindigkeit',
         'sampled-jolt-com-acceleration': 'Schwerpunkt-Geschwindigkeitsdifferenz / Simulationszeit', 'jolt-air-network-gauge-pressure': 'Pneumatikmodell: verbundener Netzwerk-Überdruck',
         'jolt-motor-impulse': 'Jolt: Motorimpuls / Zeitschritt', 'jolt-limit-impulse': 'Jolt: Anschlagimpuls / Zeitschritt', 'jolt-motor-power': 'Jolt: Motor-Drehmoment × zugehörige Drehzahl',
         'jolt-angular-velocity': 'Jolt: Winkelgeschwindigkeit', 'part-origins': 'Teilursprünge', 'jolt-joint': 'Jolt: Gelenkkoordinate',
@@ -37,9 +51,9 @@ export const measurementWords = locale => locale === 'de' ? {
     replay: 'Live measurements are hidden during pose replay.', empty: 'Add a measurement or choose the recommended measurements.',
     help: 'Parts select their rigid assembly for mass and motion. Speed is at its centre of mass. Distance and angle use part origins (A–B–C: vertex B).',
     vectors: 'Arrows: velocity × 0.1 s; forces 20 mm/N.',
-    kinds: {modelMass: 'Model mass', mass: 'Assembly mass', weight: 'Calculated weight', speed: 'Assembly speed', angularSpeed: 'Assembly angular speed', acceleration: 'Sampled acceleration', pressure: 'Pneumatic gauge pressure',
+    kinds: {passiveTorque: 'Passive friction torque', motorForce: 'Slider motor force', limitForce: 'Slider limit force', sliderPower: 'Slider motor power', screwSlips: 'Screw slip events', screwLoad: 'Filtered screw supporting load', contact: 'Contact presence (0/1)', modelMass: 'Model mass', mass: 'Assembly mass', weight: 'Calculated weight', speed: 'Assembly speed', angularSpeed: 'Assembly angular speed', acceleration: 'Sampled acceleration', pressure: 'Pneumatic gauge pressure',
         distance: 'Distance A–B', angle: 'Angle A–B–C', jointAngle: 'Joint angle', jointSpeed: 'Joint angular speed', motorTorque: 'Motor torque', limitTorque: 'Joint limit torque', motorPower: 'Mechanical motor power', travel: 'Slider travel', tension: 'Rope tension', normalLoad: 'Wheel normal load'},
-    sources: {'configured-model-mass': 'Configured model assemblies, excluding scenery', 'configured-mass': 'Configured mass', 'configured-weight': 'Configured mass × gravity', 'jolt-com-velocity': 'Jolt centre-of-mass velocity',
+    sources: {'jolt-passive-friction-impulse': 'Passive friction impulse / fixed step', 'jolt-slider-motor-impulse': 'Slider motor impulse / fixed step', 'jolt-slider-limit-impulse': 'Slider limit impulse / fixed step', 'jolt-slider-motor-power': 'Motor force × matching slider velocity', 'screw-slip-count': 'Cumulative screw slip events', 'screw-filtered-support-load': 'Filtered previous-step absolute supporting load', 'jolt-contact-presence': 'Current native body contact; no force magnitude', 'configured-model-mass': 'Configured model assemblies, excluding scenery', 'configured-mass': 'Configured mass', 'configured-weight': 'Configured mass × gravity', 'jolt-com-velocity': 'Jolt centre-of-mass velocity',
         'sampled-jolt-com-acceleration': 'COM velocity difference / simulated time', 'jolt-air-network-gauge-pressure': 'Pneumatic model: connected network gauge pressure',
         'jolt-motor-impulse': 'Jolt motor impulse / fixed step', 'jolt-limit-impulse': 'Jolt local limit impulse / fixed step', 'jolt-motor-power': 'Jolt motor torque × matching relative speed',
         'jolt-angular-velocity': 'Jolt angular velocity', 'part-origins': 'Part origins', 'jolt-joint': 'Jolt joint coordinate',
@@ -50,7 +64,7 @@ export const measurementWords = locale => locale === 'de' ? {
 class SimLabMeasurements extends React.Component {
     constructor (props) {
         super(props);
-        this.state = {kind: 'distance', label: '', targets: ['', '', ''], joint: '', rope: '', plots: (props.initialPlots || []).slice(0, PLOT_LIMIT), editor: null, editorStatus: '', picking: null};
+        this.state = {rolePackId: '', kind: 'distance', label: '', targets: ['', '', ''], joint: '', rope: '', plots: (props.initialPlots || []).slice(0, PLOT_LIMIT), editor: null, editorStatus: '', picking: null};
         this.history = createMeasurementHistory();
         this.form = React.createRef();
         this.nameInput = React.createRef();
@@ -63,6 +77,7 @@ class SimLabMeasurements extends React.Component {
         this.props.onPreview?.(null);
     }
     componentDidUpdate (previous) {
+        if (previous.session !== this.props.session && this.state.rolePackId) this.setState({rolePackId: ''});
         if (previous.session !== this.props.session || previous.mechanism !== this.props.mechanism) this.previewActive = false;
         if (previous.session !== this.props.session || previous.mechanism !== this.props.mechanism ||
             this.props.replaying || previous.definitions !== this.props.definitions) this.cancelPicking();
@@ -356,11 +371,29 @@ class SimLabMeasurements extends React.Component {
                     </div> : <button type="submit" disabled={!valid || definitions.length >= MEASUREMENT_LIMIT} data-testid="bw-sim-lab-measurement-add">{T.add}</button>}
                 </form>
                 {this.props.session && <SimLabPhysicsInspector locale={locale} session={this.props.session} replaying={replaying} onHighlight={this.props.onHighlight} />}
-                <SimLabMeasurementRecorder locale={locale} recorder={this.props.recorder} session={this.props.session} modelKey={this.props.modelKey || ''}
+                <SimLabMeasurementPrecision locale={locale} session={this.props.session} definitions={definitions}
+                    options={this.props.precisionOptions} onOptions={this.props.onPrecisionOptions} enabled={this.props.precisionEnabled} replaying={replaying} onToggle={this.props.onPrecisionToggle} />
+                <SimLabControlPair locale={locale} context={this.props.modelContext && {...this.props.modelContext, definitions}}
+                    histories={this.props.histories || []} pair={this.props.controlPair} disabled={replaying || Boolean(this.props.recorder?.snapshot().active)}
+                    onPair={this.props.onControlPair} onClear={this.props.onClearControlPair} />
+                <SimLabMeasurementRecorder pairActive={Boolean(this.props.controlPair)} locale={locale} recorder={this.props.recorder} session={this.props.session} modelKey={this.props.modelKey || ''}
                     modelContext={this.props.modelContext} recorderRevision={this.props.recorderRevision} recordingAllowed={this.props.recordingAllowed} onHistoryChanged={this.props.onHistoryChanged} onRestoredSelection={ids => this.setState({plots: ids.slice(0, PLOT_LIMIT)}, () => this.props.onPlotSelection?.(ids))}
                     definitions={definitions} selected={selected} rows={rows} sampleTime={this.props.sampleTime}
                     replaying={replaying} paused={this.props.paused} />
                 <p style={{fontSize: 10}}>{de ? 'Bis zu 4 Diagramme mit je 128 echten Simulationszeitwerten. Lücken bedeuten: nicht verfügbar.' : 'Up to 4 plots, each with 128 actual simulation-time samples. Gaps mean unavailable.'}</p>
+                {packsFor(this.props.session, locale).length > 0 && <fieldset data-testid="bw-sim-role-packs" disabled={replaying} style={{minWidth: 0}}>
+                    <legend>{de ? 'Messpakete für dieses Modell' : 'Measurement packs for this model'}</legend>
+                    <select aria-label={de ? 'Messpaket' : 'Measurement pack'} data-testid="bw-sim-role-pack-choice" style={input} value={this.state.rolePackId} onChange={e => this.setState({rolePackId: e.target.value})}>
+                        <option value="">{de ? 'Rolle ausdrücklich wählen' : 'Choose a role explicitly'}</option>
+                        {packsFor(this.props.session, locale).map(pack => <option key={pack.id} value={pack.id}>{pack.title}</option>)}
+                    </select>
+                    <button type="button" data-testid="bw-sim-role-pack-apply" disabled={!packsFor(this.props.session, locale).some(pack => pack.id === this.state.rolePackId)} onClick={() => {
+                        const pack = packsFor(this.props.session, locale).find(p => p.id === this.state.rolePackId);
+                        if (pack) this.cancelEdit(() => onChange(pack.definitions));
+                    }}>{de ? 'Aktuelle Messungen durch Paket ersetzen' : 'Replace current measurements with pack'}</button>
+                    <p>{packsFor(this.props.session, locale).find(pack => pack.id === this.state.rolePackId)?.help}</p>
+                    <p>{de ? 'Strukturelle Rollen mit Modellbindungen; keine Bestätigung eines mechanischen Gesetzes. Die angewendeten Messungen werden mit dem Projekt gespeichert.' : 'Structural roles bound to this model; no mechanical-law qualification. Applied definitions are saved with the project.'}</p>
+                </fieldset>}
                 {this.props.teachingPreset && <button type="button" data-testid="bw-sim-measurement-teaching-preset"
                             onClick={() => this.cancelEdit(() => onChange(this.props.teachingPreset.definitions))} style={{marginTop: 6}}>
                     {de ? 'Lektionsmessungen anwenden' : 'Apply lesson measurements'}: {this.props.teachingPreset.title}</button>}
@@ -374,6 +407,9 @@ class SimLabMeasurements extends React.Component {
     }
 }
 SimLabMeasurements.propTypes = {
+    controlPair: PropTypes.object, histories: PropTypes.array, onControlPair: PropTypes.func, onClearControlPair: PropTypes.func,
+    precisionOptions: PropTypes.object, onPrecisionOptions: PropTypes.func,
+    precisionEnabled: PropTypes.bool, onPrecisionToggle: PropTypes.func,
     locale: PropTypes.string.isRequired, definitions: PropTypes.array.isRequired, rows: PropTypes.array.isRequired,
     parts: PropTypes.array.isRequired, mechanism: PropTypes.object.isRequired, shown: PropTypes.bool.isRequired, replaying: PropTypes.bool.isRequired,
     onPickTarget: PropTypes.func, onHighlight: PropTypes.func, onPreview: PropTypes.func, readPreview: PropTypes.func, modelKey: PropTypes.string,

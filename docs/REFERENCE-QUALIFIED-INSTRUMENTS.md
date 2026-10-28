@@ -89,8 +89,10 @@ complete failing report does not qualify its circuits.
 ## Source and method admission
 
 The prepared v2 study source contract is `bw-board`
-`dfa4be8eff4cef22462ac508a67da5f706f7d72d` and `bw-circuit-ui`
-`66e3724020e795c3442f8da9a7af149dd5f74bd9`. The package return leg owns dependency pin changes; this harness
+`c7bcbe4bcd583d2215372dd4ee1e65002e249a04` and `bw-circuit-ui`
+`da28bb8ce9b38aa18d2e424f692c6570fc1d6d1d`, the suppliers Lite main pins.
+They replace the earlier prepared `dfa4be8e`/`66e37240` binding through a fresh
+source admission recorded in the harness lane. The package return leg owns dependency pin changes; this harness
 only binds its exact, separately qualified supplier identities. Before numerical work, the collector compares both installed npm
 payloads to their exact owned Git sources, verifies that the UI resolves the
 sibling engine, and checks the independently admitted JS/JSON fingerprints.

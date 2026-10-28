@@ -1,4 +1,5 @@
 import React from 'react';
+import {activateUndoSurface, notifyUndoState, registerUndoSurface} from '../../lib/global-undo.js';
 import {connect} from 'react-redux';
 import {ReactFlow, ReactFlowProvider, Background, Controls, MiniMap, addEdge,
     useNodesState, useEdgesState, useReactFlow, Handle, Position} from '@xyflow/react';
@@ -303,8 +304,18 @@ const STARTER = () => modelToReactFlow({
     ]
 }, {a: {x: 0, y: 20}, b: {x: 0, y: 110}, g: {x: 160, y: 60}, y: {x: 300, y: 60}});
 
+const GATES_AUTOSAVE_KEY = 'bw-fpga-gates-autosave';
+
 const InnerBuilder = ({onUseVerilog, seed, locale}) => {
-    const start = React.useMemo(() => (seed ? modelToReactFlow(seed) : STARTER()), [seed]);
+    // Autosave: the canvas comes back after a reload unless an example seeds it.
+    const start = React.useMemo(() => {
+        if (seed) return modelToReactFlow(seed);
+        try {
+            const saved = JSON.parse(localStorage.getItem(GATES_AUTOSAVE_KEY) || 'null');
+            if (saved) return modelToReactFlow(saved);
+        } catch (e) { /* an unreadable draft falls back to the starter */ }
+        return STARTER();
+    }, [seed]);
     const [nodes, setNodes, onNodesChange] = useNodesState(start.nodes);
     const [edges, setEdges, onEdgesChange] = useEdgesState(start.edges);
 
@@ -320,23 +331,80 @@ const InnerBuilder = ({onUseVerilog, seed, locale}) => {
     const pastRef = React.useRef([]);
     const futureRef = React.useRef([]);
     const [, bumpHist] = React.useReducer(x => x + 1, 0);
-    const takeSnapshot = React.useCallback(() => {
-        pastRef.current.push({nodes: nodesRef.current, edges: edgesRef.current});
-        if (pastRef.current.length > 100) pastRef.current.shift();
+    const takeSnapshot = React.useCallback((label = 'Change') => {
+        pastRef.current.push({label, nodes: nodesRef.current, edges: edgesRef.current});
+        if (pastRef.current.length > 200) pastRef.current.shift();
         futureRef.current = [];
         bumpHist();
+        notifyUndoState();
     }, []);
+    // The refs move with each step, so several steps before a re-render (menu-bar
+    // History: "10 back") still record the right states.
     const undo = React.useCallback(() => {
         const prev = pastRef.current.pop();
-        if (!prev) return;
-        futureRef.current.push({nodes: nodesRef.current, edges: edgesRef.current});
-        setNodes(prev.nodes); setEdges(prev.edges); bumpHist();
+        if (!prev) return false;
+        futureRef.current.push({label: prev.label, nodes: nodesRef.current, edges: edgesRef.current});
+        nodesRef.current = prev.nodes; edgesRef.current = prev.edges;
+        setNodes(prev.nodes); setEdges(prev.edges); bumpHist(); notifyUndoState();
+        return true;
     }, [setNodes, setEdges]);
     const redo = React.useCallback(() => {
         const next = futureRef.current.pop();
-        if (!next) return;
-        pastRef.current.push({nodes: nodesRef.current, edges: edgesRef.current});
-        setNodes(next.nodes); setEdges(next.edges); bumpHist();
+        if (!next) return false;
+        pastRef.current.push({label: next.label, nodes: nodesRef.current, edges: edgesRef.current});
+        nodesRef.current = next.nodes; edgesRef.current = next.edges;
+        setNodes(next.nodes); setEdges(next.edges); bumpHist(); notifyUndoState();
+        return true;
+    }, [setNodes, setEdges]);
+    // Menu-bar Undo / Redo / History (lib/global-undo.js), active while the FPGA tab shows.
+    React.useEffect(() => {
+        const unregister = registerUndoSurface('fpga', {
+            label: 'FPGA gate builder',
+            canUndo: () => pastRef.current.length > 0,
+            canRedo: () => futureRef.current.length > 0,
+            depth: () => ({undo: pastRef.current.length, redo: futureRef.current.length}),
+            steps: () => ({past: pastRef.current.map(step => step.label || 'Change'),
+                future: futureRef.current.map(step => step.label || 'Change').reverse()}),
+            undo, redo
+        });
+        activateUndoSurface('fpga');
+        return unregister;
+    }, [undo, redo]);
+    React.useEffect(() => {
+        const timer = setTimeout(() => {
+            try {
+                localStorage.setItem(GATES_AUTOSAVE_KEY, JSON.stringify(reactFlowToModel(nodes, edges)));
+            } catch (e) { /* storage full, private mode or a half-built canvas: try again on the next edit */ }
+        }, 1000);
+        return () => clearTimeout(timer);
+    }, [nodes, edges]);
+    // Project save carries this canvas (lib/bw-project-bundle.js `fpga`); a
+    // loaded project replaces it and starts a fresh history.
+    React.useEffect(() => {
+        const collect = () => {
+            try {
+                localStorage.setItem(GATES_AUTOSAVE_KEY, JSON.stringify(reactFlowToModel(nodesRef.current, edgesRef.current)));
+            } catch (e) { /* the save carries the last autosave instead */ }
+        };
+        const loaded = () => {
+            let next = STARTER();
+            try {
+                const saved = JSON.parse(localStorage.getItem(GATES_AUTOSAVE_KEY) || 'null');
+                if (saved) next = modelToReactFlow(saved);
+            } catch (e) { /* an unreadable design falls back to the starter */ }
+            pastRef.current = [];
+            futureRef.current = [];
+            setNodes(next.nodes);
+            setEdges(next.edges);
+            bumpHist();
+            notifyUndoState();
+        };
+        window.addEventListener('bw-project-bundle-collect', collect);
+        window.addEventListener('bw-project-bundle-loaded', loaded);
+        return () => {
+            window.removeEventListener('bw-project-bundle-collect', collect);
+            window.removeEventListener('bw-project-bundle-loaded', loaded);
+        };
     }, [setNodes, setEdges]);
 
     React.useEffect(() => {
@@ -430,7 +498,7 @@ const InnerBuilder = ({onUseVerilog, seed, locale}) => {
     // defaults to a 4x4 (2-bit addr, 4-bit data) — the shape that fits the
     // header pins and is proven to place-and-route to a bitstream.
     const placeNode = (item, position) => {
-        takeSnapshot();
+        takeSnapshot('Add gate');
         if (item.kind === 'gate') {
             setNodes(ns => [...ns, {id: nid('g'), type: 'gate', position, data: {kind: 'gate', gtype: item.gtype, width: newWidth}}]);
         } else if (item.kind === 'in' || item.kind === 'out') {
@@ -483,7 +551,7 @@ const InnerBuilder = ({onUseVerilog, seed, locale}) => {
         try { item = JSON.parse(raw); } catch (err) { return; }
         placeNode(item, rf.screenToFlowPosition({x: e.clientX, y: e.clientY}));
     };
-    const onConnect = React.useCallback(params => { takeSnapshot(); setEdges(es => addEdge(params, es)); }, [setEdges, takeSnapshot]);
+    const onConnect = React.useCallback(params => { takeSnapshot('Connect'); setEdges(es => addEdge(params, es)); }, [setEdges, takeSnapshot]);
 
     // Keyboard on the canvas: Ctrl-Z undo, Ctrl-Shift-Z / Ctrl-Y redo, and a
     // snapshot just before React Flow deletes the selection (capture phase fires
@@ -497,7 +565,7 @@ const InnerBuilder = ({onUseVerilog, seed, locale}) => {
     const pasteSelection = () => {
         const clip = clipRef.current;
         if (!clip || !clip.nodes.length) return;
-        takeSnapshot();
+        takeSnapshot('Paste');
         const {nodes: cn, edges: ce} = cloneSelection(clip.nodes, clip.edges, {dx: 40, dy: 40},
             () => nid('c'), () => `ce${idRef.current++}`);
         setNodes(ns => [...ns.map(n => ({...n, selected: false})), ...cn]);
@@ -511,12 +579,12 @@ const InnerBuilder = ({onUseVerilog, seed, locale}) => {
         else if (meta && (e.key === 'c' || e.key === 'C')) { copySelection(); }
         else if (meta && (e.key === 'v' || e.key === 'V')) { e.preventDefault(); pasteSelection(); }
         else if (meta && (e.key === 'a' || e.key === 'A')) { e.preventDefault(); selectAll(); }
-        else if (e.key === 'Delete' || e.key === 'Backspace') { takeSnapshot(); }
+        else if (e.key === 'Delete' || e.key === 'Backspace') { takeSnapshot('Delete'); }
     };
 
     // Load a freshly synthesised (or otherwise built) model onto the canvas.
     const loadModel = model => {
-        takeSnapshot();
+        takeSnapshot('Load design');
         // Lay the generated design out as a schematic (inputs left → output
         // right, gates by depth) instead of the bridge's naive zig-zag.
         const seeded = modelToReactFlow(model, layerPositions(model));
@@ -545,13 +613,13 @@ const InnerBuilder = ({onUseVerilog, seed, locale}) => {
 
     // Editing a placed node: double-click opens the inspector; a patch merges
     // into node.data (the bridge reads width/name/dataWidth/addrWidth from there).
-    const patchNode = (id, patch) => { takeSnapshot(); setNodes(ns => ns.map(n => (n.id === id ? {...n, data: {...n.data, ...patch}} : n))); };
+    const patchNode = (id, patch) => { takeSnapshot('Change gate'); setNodes(ns => ns.map(n => (n.id === id ? {...n, data: {...n.data, ...patch}} : n))); };
     const deleteNode = id => {
-        takeSnapshot();
+        takeSnapshot('Delete gate');
         setNodes(ns => ns.filter(n => n.id !== id));
         setEdges(es => es.filter(e => e.source !== id && e.target !== id));
     };
-    const duplicateNode = id => { takeSnapshot(); return setNodes(ns => {
+    const duplicateNode = id => { takeSnapshot('Duplicate gate'); return setNodes(ns => {
         const src = ns.find(n => n.id === id);
         if (!src) return ns;
         const copy = {...src, id: nid('c'), position: {x: src.position.x + 30, y: src.position.y + 30},
@@ -740,7 +808,7 @@ const InnerBuilder = ({onUseVerilog, seed, locale}) => {
                     onClick={redo} disabled={!futureRef.current.length}
                     title={t(locale, 'tip.redo')} style={{cursor: futureRef.current.length ? 'pointer' : 'default'}}>{'↷ Redo'}</button>
                 <button type="button" data-testid="bw-fpga-rf-clear"
-                    onClick={() => { takeSnapshot(); setNodes([]); setEdges([]); setCheckResult(null); }}
+                    onClick={() => { takeSnapshot('Clear'); setNodes([]); setEdges([]); setCheckResult(null); }}
                     title={t(locale, 'tip.clear')} style={{cursor: 'pointer'}}>{'🗑 Clear'}</button>
                 <button type="button" data-testid="bw-fpga-rf-svg" onClick={exportSvg}
                     title={t(locale, 'tip.svg')} style={{cursor: 'pointer'}}>{'⤓ SVG'}</button>
@@ -793,7 +861,7 @@ const InnerBuilder = ({onUseVerilog, seed, locale}) => {
                     <ReactFlow
                         nodes={shownNodes} edges={shownEdges}
                         onNodesChange={onNodesChange} onEdgesChange={onEdgesChange} onConnect={onConnect}
-                        onNodeDragStart={() => takeSnapshot()}
+                        onNodeDragStart={() => takeSnapshot('Move')}
                         onInit={inst => { try { inst.fitView({padding: 0.2}); } catch (e) { /* no-op */ } }}
                         onNodeClick={onNodeClick}
                         onNodeDoubleClick={onNodeDoubleClick} onNodeContextMenu={onNodeContextMenu}

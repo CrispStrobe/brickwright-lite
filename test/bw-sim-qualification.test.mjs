@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2026 CrispStrobe
 import {test} from 'node:test';import assert from 'node:assert/strict';import {readFileSync,mkdirSync,writeFileSync} from 'node:fs';import {createHash} from 'node:crypto';
-import {qualificationContracts,QUALIFICATION_JUDGES,disconnectedSource} from '../scripts/lib/robot-lab-qualification.mjs';
+import {qualificationContracts,QUALIFICATION_JUDGES,disconnectedSource,issueKeys} from '../scripts/lib/robot-lab-qualification.mjs';
 import {toggleLeverLawErrorDeg} from '../scripts/lib/sim-lab-toggle-thirdline-judge.mjs';
+import {batch3DisconnectionLoss} from '../scripts/lib/sim-lab-batch3-judges.mjs';
+import {batch2DisconnectionLoss} from '../scripts/lib/sim-lab-batch2-judges.mjs';
 import {catalogFrom,prepareModel,MODELS} from '../overlay/scratch-gui/src/lib/bw-sim/sim-session.js';
 import {runRobotLabProgram} from './helpers/robot-lab-direct-vm.mjs';import {observeAddon} from '../scripts/lib/sim-lab-addon-judge.mjs';
 import Creator from '../overlay/scratch-gui/src/lib/sb3-creator-register-art.js';
@@ -15,18 +17,18 @@ const run=async(c,modelText,autoPorts,label=autoPorts===false?'strict':'ordinary
  const errors=[];let hooked=false;const r=await runRobotLabProgram(read(lab+'programs/'+c.id+'.bw'),{...c,modelText,autoPorts,observeFrame:({session,vm,hub})=>{
   if(!hooked){vm.runtime.on('ERROR',e=>errors.push(String(e)));vm.runtime.on('BLOCKS_ERROR',e=>errors.push(String(e)));hooked=true;}
   for(const b of vm.runtime.targets.flatMap(t=>Object.values(t.blocks._blocks))){const literal=Object.keys(b.fields||{}).length===1&&Object.keys(b.inputs||{}).length===0;assert.ok(b.opcode in vm.runtime._primitives||b.opcode in vm.runtime._hats||literal,'actual registered opcode: '+b.opcode);}
-  return{variables:Object.fromEntries(vm.runtime.targets.flatMap(t=>Object.values(t.variables||{}).map(v=>[v.name,v.value]))),modes:hub.motors._controllers.map(c=>c.mode),sessionFailed:session.failed?String(session.failed):null};
+  return{variables:Object.fromEntries(vm.runtime.targets.flatMap(t=>Object.values(t.variables||{}).map(v=>[v.name,v.value]))),modes:hub.motors._controllers.map(c=>c.mode),sessionFailed:session.failed?String(session.failed):null,...(c.observeAir?{air:session.core.airState?session.core.airState():[]}:{})};
  }});if(process.env.BW_MODEL_QUALIFY_EVIDENCE_DIR){const dir=process.env.BW_MODEL_QUALIFY_EVIDENCE_DIR;mkdirSync(dir,{recursive:true});writeFileSync(dir+'/'+c.id+'-'+label+'.json',JSON.stringify(r)+'\n');}assert.deepEqual(errors,[]);assert.ok(r.track.every(f=>!f.extra.sessionFailed));return r;
 };
 for(const c of qualificationContracts(selected).filter(c=>!c.nativeSuite)){
- const source=read(lab+'models/'+c.id+'.ldr'),program=read(lab+'programs/'+c.id+'.bw'),judge=r=>QUALIFICATION_JUDGES[c.judge](r,{native:true});
+ const source=read(lab+'models/'+c.id+'.ldr'),program=read(lab+'programs/'+c.id+'.bw'),judge=r=>QUALIFICATION_JUDGES[c.judge](r,{native:true,contract:c});
  test(c.id+': exact source, licence, topology, compiler, unassisted equality and complete registration',()=>{
   const dir='test/fixtures/model-files/'+c.id+'-source/',provenance=JSON.parse(read(dir+'provenance.json'));
   for(const [file,hash]of Object.entries(provenance.files))assert.equal(createHash('sha256').update(read(dir+file)).digest('hex'),hash);
   assert.equal(source,read(dir+(c.id==='quartermaster'?'quartermaster.ldr':'models/'+c.id+'.ldr')));assert.equal(program,read(dir+(c.id==='quartermaster'?'quartermaster.bw':'programs/'+c.id+'.bw')));
   assert.match(source,/^0 Author: CrispStrobe$/m);assert.match(read(lab+'licenses/'+c.id+'.txt'),/BSD 3-Clause License/);
   const entry=MODELS.find(m=>m.file===c.id+'.ldr');assert.ok(entry);assert.equal(entry.example,c.id+'.bw');assert.ok(entry.manualJog);
-  const p=prepareModel(source,catalog),strict=prepareModel(source,catalog,{autoPorts:false});assert.deepEqual(p,strict);assert.deepEqual(p.issues,[]);assert.equal(p.model.parts.length,c.parts);assert.deepEqual(p.mechanism.actuators.map(a=>a.port).sort(),c.ports);
+  const p=prepareModel(source,catalog),strict=prepareModel(source,catalog,{autoPorts:false});assert.deepEqual(p,strict);assert.deepEqual(issueKeys(p.issues),issueKeys(c.expectedIssues||[]));assert.equal(p.model.parts.length,c.parts);assert.deepEqual(p.mechanism.actuators.map(a=>a.port).sort(),c.ports);
   const creator=new Creator();creator.parse(program);assert.deepEqual(creator.errors||[],[]);assert.deepEqual(creator.warnings||[],[]);
  });
  for(const autoPorts of [undefined,false])test(c.id+': '+(autoPorts===false?'strict':'ordinary')+' real VM, passive laws, frozen-output and world-drift controls',async t=>{
@@ -36,7 +38,7 @@ for(const c of qualificationContracts(selected).filter(c=>!c.nativeSuite)){
   const shifted=structuredClone(r);for(const b of Object.values(shifted.track.at(-1).bodies))b.position[0]+=.01;assert.throws(()=>judge(shifted),/stationary chassis/,'relative output laws do not hide world drift');
  });
  test(c.id+': physical disconnection destroys the intended output while the real input still completes',async t=>{
-  const r=await run(c,disconnectedSource(source,c.disconnect),false,'disconnected'),o=observeAddon(r),input=r.mechanism.joints.find(j=>j.motor?.port==='A'),travel=Math.max(...r.track.map(f=>f.joints[input.id].angle))*180/Math.PI;
+  const r=await run(c,disconnectedSource(source,c.disconnect),false,'disconnected'),o=observeAddon(r),input=r.mechanism.joints.find(j=>j.motor?.port==='A'),travel=Math.max(...r.track.map(f=>Math.abs(f.joints[input.id].angle)))*180/Math.PI;
   assert.ok(r.finishedAt>0);assert.ok(travel>(c.disconnectInputDeg??(c.id==='sine-shuttle'?1070:1430)),'input genuinely still turns');
   let motion;
   if(c.id==='sine-shuttle'){
@@ -52,6 +54,10 @@ for(const c of qualificationContracts(selected).filter(c=>!c.nativeSuite)){
   // loss of the declared closure law (within 2.5° when connected), not an invented frozen pose.
   else if(c.id==='toggle-lever'){motion=toggleLeverLawErrorDeg(r);assert.ok(motion>5,'without the crank pin the lever leaves the toggle closure law');}
   else if(c.id==='thirdline'){const un=a=>{let p=a[0],s=p;return a.map(v=>{s+=Math.atan2(Math.sin(v-p),Math.cos(v-p));p=v;return s;});},din=un(r.track.map(f=>o.angle(f,'input_arm',[0,1,0],[1,0,0]))),dru=un(r.track.map(f=>o.angle(f,c.frozenOutput,[0,1,0],[1,0,0])));motion=Math.max(...r.track.map((f,i)=>Math.abs((dru[i]-dru[0])-(din[i]-din[0])/3)))*180/Math.PI;assert.ok(motion>.5,'without the marked joint the ruler leaves the one-third law');}
+  // Third batch: the judge module measures each law's own loss (sim-lab-batch3-judges.mjs).
+  else if(c.disconnectLaw){const loss=batch3DisconnectionLoss(c.id,r);motion=loss.value;assert.ok(loss.lost,'disconnection loses the law: '+JSON.stringify(loss));}
+  // Second batch: each law has its own measured loss (see sim-lab-batch2-judges.mjs for the thresholds).
+  else if(c.disconnectMeasure){const loss=batch2DisconnectionLoss(c.id,r);motion=loss.value;assert.ok(loss.lost,'disconnection loses the law: '+loss.metric+' '+loss.value);}
   else{const j=r.mechanism.joints.find(j=>!j.motor&&j.body2===o.body(c.frozenOutput).id);const angles=r.track.map(f=>o.angle(f,c.frozenOutput,j.axis,[0,0,1]));motion=(Math.max(...angles)-Math.min(...angles))*180/Math.PI;assert.ok(motion<1,'wheel loses indexing without the roller');}
   assert.throws(()=>judge(r));t.diagnostic(JSON.stringify({id:c.id,inputTravelDeg:travel,disconnectedOutputMotion:motion}));
  });

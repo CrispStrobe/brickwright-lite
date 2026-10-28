@@ -415,6 +415,161 @@
         "Neusis",
         "markiertes Lineal"
       ]
+    },
+    {
+      "models": [
+        "cross-ratio"
+      ],
+      "name": {
+        "en": "Crossed four-bar",
+        "de": "Gekreuztes Viergelenk"
+      },
+      "aliases": [
+        "antiparallelogram",
+        "crossed four-bar",
+        "crossed parallelogram",
+        "half-angle",
+        "variable ratio",
+        "Antiparallelogramm",
+        "gekreuztes Viergelenk",
+        "veränderliche Übersetzung",
+        "half-angle transform"
+      ]
+    },
+    {
+      "models": [
+        "foldback"
+      ],
+      "name": {
+        "en": "Antiparallelogram linkage",
+        "de": "Antiparallelogramm"
+      },
+      "aliases": [
+        "antiparallelogram",
+        "crossed parallelogram",
+        "crossed four-bar",
+        "assembly branch",
+        "tangent half angle",
+        "gekreuztes Viergelenk",
+        "Montagezweig"
+      ]
+    },
+    {
+      "models": [
+        "ghost-pivot"
+      ],
+      "name": {
+        "en": "Double-parallelogram remote centre",
+        "de": "Doppelparallelogramm mit fernem Drehpunkt"
+      },
+      "aliases": [
+        "remote centre",
+        "remote center",
+        "RCM",
+        "virtual pivot",
+        "double parallelogram",
+        "passive linkage",
+        "Fernzentrum",
+        "Drehpunkt",
+        "Doppelparallelogramm",
+        "Koppelgetriebe"
+      ]
+    },
+    {
+      "models": [
+        "travel-dial"
+      ],
+      "name": {
+        "en": "Rolling odometer",
+        "de": "Abrollende Wegmessung"
+      },
+      "aliases": [
+        "measuring wheel",
+        "odometer",
+        "rolling contact",
+        "linear measurement",
+        "slip",
+        "Messrad",
+        "Wegmessung",
+        "Abrollen",
+        "Schlupf"
+      ]
+    },
+    {
+      "models": [
+        "carry-ratio"
+      ],
+      "name": {
+        "en": "Ball rolling on a moving tray",
+        "de": "Rollende Kugel auf bewegtem Tisch"
+      },
+      "aliases": [
+        "rolling without slipping",
+        "no-slip transport",
+        "rolling contact",
+        "inertia-limited transport",
+        "moment of inertia ratio",
+        "friction cone",
+        "contact limit",
+        "Coulomb friction",
+        "ungrasped payload",
+        "spool on a plank",
+        "Rollkontakt",
+        "Rollen ohne Gleiten",
+        "Transportverhältnis",
+        "Trägheitsverhältnis",
+        "Haftreibung",
+        "Kontaktgrenze",
+        "ungriffige Förderung"
+      ]
+    },
+    {
+      "models": [
+        "air-budget"
+      ],
+      "name": {
+        "en": "Crank-driven air pump",
+        "de": "Kurbelgetriebene Luftpumpe"
+      },
+      "aliases": [
+        "pneumatics",
+        "air pressure",
+        "pump",
+        "reservoir volume",
+        "one-way pump",
+        "stored air",
+        "swept volume",
+        "compression travel",
+        "check valve",
+        "Pneumatik",
+        "Luftdruck",
+        "Pumpe",
+        "Speichervolumen",
+        "Rückschlagventil",
+        "Luftvorrat",
+        "Hubvolumen",
+        "Verdichtungsweg"
+      ]
+    },
+    {
+      "models": [
+        "samebeat"
+      ],
+      "name": {
+        "en": "Reversible compound pendulum — Kater principle",
+        "de": "Reversionspendel — Kater-Prinzip"
+      },
+      "aliases": [
+        "reversible pendulum",
+        "compound pendulum",
+        "physical pendulum",
+        "Kater pendulum",
+        "conjugate pivots",
+        "centre of oscillation",
+        "Reversionspendel",
+        "physikalisches Pendel",
+        "konjugierte Aufhängepunkte"
+      ]
     }
   ]
 }

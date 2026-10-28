@@ -1,6 +1,6 @@
 # Universal-joint structural connectivity diagnostic
 
-Status: CLAIMED — merge before implementation.
+Status: DONE — checkpoint implementation delivered; full model admission remains pending.
 Owner: Codex, nine-Technic-intake follow-up.
 Branch: `docs/technic-physical-connectivity-claim-20261026`.
 Base: `bafc9f91a`.
@@ -25,3 +25,9 @@ part to remain diagnosed, and an angle-only coupling to grant no structural
 support. Existing mechanism regressions and all enabled exact-head hosted checks
 must pass before a normal matched-head landing. Carry the qualified source into
 the nine-model intake normally, preserving original diagnostics and reports.
+
+Checkpoint continuation: [nine-model handoff](../docs/ROBOT-LAB-NINE-MODELS-HANDOFF.md).
+Source fixtures, repairs and focused native controls are included. Browser
+qualification and broad regression completion are explicitly pending; no model
+admission, exact-head hosted-green result or release is claimed. This checkpoint
+releases this implementation scope. Claim follow-up work before continuing.

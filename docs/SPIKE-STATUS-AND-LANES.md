@@ -1,5 +1,11 @@
 # SPIKE execution: current state and next lanes
 
+The current integration closeout, completed-work summary and scoped pending
+tasks are in the [fresh-agent handoff](INTEGRATION-NEXT-STEPS.md#start-here-current-closeout).
+Read that section before treating an older dated pending statement below as
+current work. The G02/G03 finite results and remaining platform boundaries stay
+recorded here.
+
 Recorded 2026-10-05; adoption checkpoint 2026-10-07; lifecycle follow-up 2026-10-15. Refresh the public default branches and `LANES.md` before
 claiming a task. This is a bounded handover, not full firmware compatibility or
 physical SPIKE qualification. Repository-relative paths below belong to the
@@ -880,11 +886,14 @@ show a bounded error rather than an indefinite ellipsis.
 one world and cannot start an unavailable backend. Doable now; this lane first
 records already working features and fixes only demonstrated gaps.
 
-**Status (2026-10-24):** the rendered-UI pass recorded in the lane ledger
-checked EN/DE labels, touch, long conversion reports, a 50–75 % right pane,
-mat save/reopen and bounded Identify. It fixed one defect: a touch drag with
-the Move tool was cancelled as a page scroll. Still open: the
-saved-Python → empty-Pseudocode transition, which belongs to the importer owner.
+**Status (2026-10-25):** the finite G03 work is merged. The rendered-UI
+pass checked EN/DE labels, touch, long conversion reports, a 50–75 % right pane,
+mat save/reopen and bounded Identify; PR1354 repaired touch dragging with the
+Move tool. PR1358 then closed the saved-Python/empty-Pseudocode case: after a
+failed conversion, the error line offers an empty destination-language editor
+when idle, preserving the source buffer. Successful conversion is unchanged.
+Its three focused controls include two that reject the original source. This
+records the scoped UI work; it does not imply physical or firmware accuracy.
 
 ### G04 — Extend API/topology parity through declared capabilities
 
@@ -918,13 +927,23 @@ own packaging and platform acceptance evidence.
 platform-specific installed tests. Linux inventory work is doable now; other
 platform/signing tests require their build environment and credentials.
 
-**Linux status (2026-10-24):** the linked crate set is generated and bound to
-`Cargo.lock`, flagged licences are reviewed, the builder enforces seven Renode/.NET/LLVM
-notices and installs crate notices (including reviewed texts for the 13 crates that publish
-none), and an installed-layout check exists. Renode composition is reviewed: tlib, NetMQ and
-Packet.Net ship, and their source binding stays open because the runtime source revision
-is unrecorded. Gtk# and mcs are not shipped. No hosted workflow runs the Linux builder yet. See
-[SPIKE-LINUX-DESKTOP.md](SPIKE-LINUX-DESKTOP.md#licence-review-of-the-linked-crate-set-2026-10-24).
+**Linux status (2026-10-25):** the linked crate inventory is bound to
+`Cargo.lock`; all 13 supplemental crate texts have reviewed origins and digests.
+The shipped runtime's corresponding-source joins are recorded for
+`renode-spike-prime@41338096`, `renode-infrastructure-spike-prime@1253d925`,
+`tlib@d50c868f`, NetMQ 4.0.1.12 and PacketDotNet 1.0.0. Gtk# and mcs are not
+shipped. The real Linux package exercise from `f51ec8c2` passed all 36 installed
+layout checks. PR1360 also made the crate-notice check reject empty directories
+left by a package-manager documentation exclusion.
+
+The hosted packaging workflow landed in PR1368. Its current-main v0.1.27
+exercise passed compilation, packaging and all 36 layout checks. An independent
+review of a successful official exercise with byte-identical executable inputs
+also accepted 651 reported crate-notice files and all 36 checks. Runtime,
+support and frontend inputs are explicitly labelled placeholders, so this proves
+the packaging pipeline and layout. Application startup and guest execution need
+their own evidence. No Linux package is uploaded. See
+[SPIKE-LINUX-DESKTOP.md](SPIKE-LINUX-DESKTOP.md#hosted-packaging-exercise).
 
 **Separate contracts, not met by Linux evidence:**
 - *Non-Unix staging (Windows, macOS):* needs its own builder path and runner (Windows
@@ -944,20 +963,15 @@ is unrecorded. Gtk# and mcs are not shipped. No hosted workflow runs the Linux b
   installer: signature verification of the exact artifact digest, notarization receipts
   where they apply, update-manifest signature checks, and installed tests of the signed
   artifact. Signing must not change the recorded resource bytes.
-- *SPIKE runtime on macOS (separate contract, feasibility shown, not implemented):*
-  [SPIKE-MACOS.md](SPIKE-MACOS.md) (2026-10-26). Hosted runs in the owner's
-  `renode-spike-prime` fork built the pinned Runtime (`41338096`/`1253d925`, tlib
-  `d50c868f`) for `osx-arm64` and `osx-x64`, and a sandboxed launcher spawning Renode as
-  an `app-sandbox` + `inherit` child booted the own source-built NuttX guest to a live
-  state snapshot on both (runs 40336239431, 40343918260). Needed: the non-single-file
-  Renode layout under `Contents/Resources` (the upstream single-file host aborts in the
-  sandbox), `network.server`, the container `tmp`. tlib uses a double mapping, not
-  `MAP_JIT`; that worked in every tested configuration. Hardened-runtime entitlements
-  and tlib's run-time extraction need a Team-ID-signed measurement. macOS crate
-  inventories are generated (304/305 linked, all macOS-only crates permissive). Open:
-  .NET runtime notices in the macOS bundle, the app integration and signed packaging
-  (release workflow owned by the model-delivery lane, which this lane does not
-  dispatch), an installed test on macOS.
+- *SPIKE runtime on macOS (packaged in the release workflow's macOS leg; not released):*
+  [SPIKE-MACOS.md](SPIKE-MACOS.md). The multi-file Renode, with tlib as a separate signed
+  file (Infrastructure #39, Runtime #62), is staged under `Contents/Resources/renode` and
+  signed with the Mac App Store identity: child `app-sandbox` + `inherit` + `allow-jit`,
+  app `network.server`/`client`. The supervisor passes the container `TMPDIR`, the shipped
+  tlib directory and a loopback bind. Signed dry run 40507444319: the installed `.pkg`'s
+  own child booted the own NuttX guest with the real Team ID. Open: guest speed on
+  `macos-latest` (first emulated second ~9 min, independent of signing), launching the
+  real app (needs TestFlight), App Review, and the Linux Packet.Net/pip removal.
 - *Firmware L11 / Runtime inputs Lite depends on:* the NuttX/guest staged profile
   manifest and file list in `scripts/lib/spike-resource-profile.mjs` (including the
   licence files it requires), `state-config.json` `identity.firmware` and

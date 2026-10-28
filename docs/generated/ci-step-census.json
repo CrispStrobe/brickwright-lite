@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-25T09:54:03.359Z",
+  "generatedAt": "2026-10-28T06:01:11.363Z",
   "repo": "CrispStrobe/brickwright-lite",
   "headSha": "a87a7b447",
   "newestMainRun": 36409366028,
@@ -1953,6 +1953,24 @@
       "workflow": "model-measurements.yml",
       "branch": "lane/model-api-resource-takeover-20261023",
       "sha": "a11711d61"
+    },
+    {
+      "run": 40335666363,
+      "workflow": "reference-qualified-instruments.yml",
+      "branch": "study/reference-qualified-v1",
+      "sha": "92a9ab6e7"
+    },
+    {
+      "run": 40328280734,
+      "workflow": "reference-qualified-instruments.yml",
+      "branch": "lane/reference-qualified-instruments-20261026",
+      "sha": "92a9ab6e7"
+    },
+    {
+      "run": 40316864685,
+      "workflow": "reference-qualified-instruments.yml",
+      "branch": "lane/reference-qualified-instruments-20261026",
+      "sha": "a77bf7ae2"
     }
   ],
   "workflowsInTree": [
@@ -1983,6 +2001,7 @@
     "robot-lab-own-firmware.yml",
     "robot-model-webkit-comparison.yml",
     "rust-notices.yml",
+    "samd-native-game-qualification.yml",
     "spike-linux-package.yml",
     "target-performance.yml",
     "tauri.yml",
@@ -7763,8 +7782,34 @@
       "jobs": {},
       "sourceSha": "working-tree"
     },
-    "reference-qualified-instruments.yml": {
+    "samd-native-game-qualification.yml": {
       "runs": 0,
+      "stepsInFile": [
+        "Validate explicit immutable request",
+        "Exercise independent metadata, checkout and asset refusal controls",
+        "Admit official metadata, acquire each original once, and join all source bytes",
+        "Install the existing locked browser observer",
+        "Three fresh actual browser game instances on shipped assets",
+        "Install existing native observer dependencies",
+        "Install the existing pinned Tauri driver",
+        "Three fresh actual installed game instances on embedded assets"
+      ],
+      "inFileInNoRun": [
+        "Validate explicit immutable request",
+        "Exercise independent metadata, checkout and asset refusal controls",
+        "Admit official metadata, acquire each original once, and join all source bytes",
+        "Install the existing locked browser observer",
+        "Three fresh actual browser game instances on shipped assets",
+        "Install existing native observer dependencies",
+        "Install the existing pinned Tauri driver",
+        "Three fresh actual installed game instances on embedded assets"
+      ],
+      "steps": {},
+      "jobs": {},
+      "sourceSha": "working-tree"
+    },
+    "reference-qualified-instruments.yml": {
+      "runs": 3,
       "stepsInFile": [
         "Test source and independent retained-original reader with synthetic inputs",
         "Admit the frozen candidate intent without executing a circuit",
@@ -7774,23 +7819,122 @@
         "Independently read retained originals without rerunning a simulator",
         "Preserve original event admission and outputs including failures"
       ],
-      "inFileInNoRun": [
-        "Test source and independent retained-original reader with synthetic inputs",
-        "Admit the frozen candidate intent without executing a circuit",
-        "Admit one frozen owned push before setup or numerical work",
-        "Install locked public packages and the admitted oracle version",
-        "Collect the new authored cohort once with diagnostics preserved",
-        "Independently read retained originals without rerunning a simulator",
-        "Preserve original event admission and outputs including failures"
-      ],
-      "steps": {},
-      "jobs": {},
-      "sourceSha": "working-tree"
+      "inFileInNoRun": [],
+      "steps": {
+        "Test source and independent retained-original reader with synthetic inputs": {
+          "existed": 3,
+          "ran": 3,
+          "existedMain": 0,
+          "ranMain": 0,
+          "skippedInFailedRuns": 0,
+          "skippedInGreenRuns": 0,
+          "jobs": [
+            "controls"
+          ],
+          "clause": null,
+          "class": "always"
+        },
+        "Admit the frozen candidate intent without executing a circuit": {
+          "existed": 3,
+          "ran": 3,
+          "existedMain": 0,
+          "ranMain": 0,
+          "skippedInFailedRuns": 0,
+          "skippedInGreenRuns": 0,
+          "jobs": [
+            "controls"
+          ],
+          "clause": null,
+          "class": "always"
+        },
+        "Admit one frozen owned push before setup or numerical work": {
+          "existed": 1,
+          "ran": 1,
+          "existedMain": 0,
+          "ranMain": 0,
+          "skippedInFailedRuns": 0,
+          "skippedInGreenRuns": 0,
+          "jobs": [
+            "study"
+          ],
+          "clause": null,
+          "class": "always"
+        },
+        "Install locked public packages and the admitted oracle version": {
+          "existed": 1,
+          "ran": 1,
+          "existedMain": 0,
+          "ranMain": 0,
+          "skippedInFailedRuns": 0,
+          "skippedInGreenRuns": 0,
+          "jobs": [
+            "study"
+          ],
+          "clause": null,
+          "class": "always"
+        },
+        "Collect the new authored cohort once with diagnostics preserved": {
+          "existed": 1,
+          "ran": 1,
+          "existedMain": 0,
+          "ranMain": 0,
+          "skippedInFailedRuns": 0,
+          "skippedInGreenRuns": 0,
+          "jobs": [
+            "study"
+          ],
+          "clause": null,
+          "class": "always"
+        },
+        "Independently read retained originals without rerunning a simulator": {
+          "existed": 1,
+          "ran": 1,
+          "existedMain": 0,
+          "ranMain": 0,
+          "skippedInFailedRuns": 0,
+          "skippedInGreenRuns": 0,
+          "jobs": [
+            "study"
+          ],
+          "clause": "always() && steps.collect.outcome != 'skipped'",
+          "class": "always"
+        },
+        "Preserve original event admission and outputs including failures": {
+          "existed": 1,
+          "ran": 1,
+          "existedMain": 0,
+          "ranMain": 0,
+          "skippedInFailedRuns": 0,
+          "skippedInGreenRuns": 0,
+          "jobs": [
+            "study"
+          ],
+          "clause": "always()",
+          "class": "always"
+        }
+      },
+      "jobs": {
+        "controls": {
+          "existed": 3,
+          "ran": 3,
+          "existedMain": 0,
+          "ranMain": 0,
+          "class": "always"
+        },
+        "study": {
+          "existed": 3,
+          "ran": 1,
+          "existedMain": 0,
+          "ranMain": 0,
+          "class": "sometimes"
+        }
+      },
+      "sourceSha": "92a9ab6e7"
     }
   },
   "lastRefresh": {
     "workflow": "reference-qualified-instruments.yml",
-    "at": "2026-10-26T10:33:35.816Z",
-    "sourceSha": "working-tree"
+    "at": "2026-10-28T06:01:11.363Z",
+    "sourceSha": "92a9ab6e7"
   }
 }

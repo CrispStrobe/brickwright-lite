@@ -13,7 +13,7 @@ import {setProjectTitle} from '../../reducers/project-title';
 import {activateTab} from '../../reducers/editor-tab';
 import {noCircuitMessage} from '../../lib/example-device-only.js';
 import {getIsAnyCreatingNewState} from '../../reducers/project-state';
-import {activateUndoSurface, registerUndoSurface} from '../../lib/global-undo.js';
+import {activateUndoSurface, notifyUndoState, registerUndoSurface} from '../../lib/global-undo.js';
 import {confirmAsync} from '../../lib/native-dialog.js';
 import {applyBenchTemperature, clampBenchTemperature, loadBenchTemperature, saveBenchTemperature} from
     '../../lib/bench-temperature.js';
@@ -239,14 +239,35 @@ class CircuitTab extends React.Component {
 
     componentDidMount () {
         this.subscribeCpxRuntime(this.props.vm?.runtime);
-        this._unregisterUndo = registerUndoSurface('circuit', {
-            canUndo: () => !!this._findUndoButton(),
-            undo: () => {
-                const button = this._findUndoButton();
-                if (!button) return false;
-                button.click();
-                return true;
+        // The Designer's own ↶ / ↷ buttons run its undo and redo (they also
+        // refresh its view); the model's history (bw-circuit-ui model/history.js)
+        // says how many steps each way there are.
+        const history = () => this.props.vm?.runtime?.circuitModel?.history;
+        const depth = () => {
+            const h = history();
+            if (h && typeof h._cursor === 'number' && typeof h.length === 'number') {
+                return {undo: Math.max(0, h._cursor), redo: Math.max(0, h.length - 1 - h._cursor)};
             }
+            return {undo: this._findUndoButton() ? 1 : 0, redo: this._findHistoryButton('↷') ? 1 : 0};
+        };
+        const press = symbol => {
+            const button = this._findHistoryButton(symbol);
+            if (!button) return false;
+            button.click();
+            return true;
+        };
+        this._unregisterUndo = registerUndoSurface('circuit', {
+            label: 'Circuit',
+            canUndo: () => depth().undo > 0,
+            canRedo: () => depth().redo > 0,
+            depth,
+            // The history coordinator names these steps (lib/bw-circuit-step-names.js).
+            snapshots: () => {
+                const h = history();
+                return h && Array.isArray(h._stack) ? {stack: h._stack, cursor: h._cursor} : null;
+            },
+            undo: () => press('↶'),
+            redo: () => press('↷')
         });
         if (this.props.isVisible) {
             activateUndoSurface('circuit');
@@ -552,9 +573,11 @@ class CircuitTab extends React.Component {
         }
     }
 
-    _findUndoButton = () => this._boxRef.current && Array.from(
+    _findHistoryButton = symbol => this._boxRef.current && Array.from(
         this._boxRef.current.querySelectorAll('button')
-    ).find(button => button.textContent.trim() === '↶')
+    ).find(button => button.textContent.trim() === symbol)
+
+    _findUndoButton = () => this._findHistoryButton('↶')
 
     componentDidUpdate (prevProps, prevState) {
         if (prevProps.vm?.runtime !== this.props.vm?.runtime) this.subscribeCpxRuntime(this.props.vm?.runtime);
@@ -1174,6 +1197,7 @@ class CircuitTab extends React.Component {
      * fire on the circuit arriving, only on a change to it.
      */
     handleCircuitEdit (detail) {
+        notifyUndoState();
         if (typeof window === 'undefined') return;
         window.dispatchEvent(new CustomEvent('bw-circuit-changed', {detail: detail || {}}));
     }

@@ -18,7 +18,8 @@ test('custom chrome catalog follows app locale and preserves upstream messages',
 test('German chrome translations have real English defaults and preserve interpolation fields', () => {
     const defaults = new Map();
     for (const file of ['components/gui/gui.jsx', 'components/gui/chrome-toggle.jsx',
-        'components/menu-bar/menu-bar.jsx', 'components/menu-bar/settings-menu.jsx']) {
+        'components/menu-bar/menu-bar.jsx', 'components/menu-bar/settings-menu.jsx',
+        'components/editor-error-boundary/editor-error-boundary.jsx']) {
         const source = readFileSync(new URL(`../overlay/scratch-gui/src/${file}`, import.meta.url), 'utf8');
         for (const match of source.matchAll(/\bt\('([^']+)', '([^']*)'\)/g)) defaults.set(match[1], match[2]);
         for (const match of source.matchAll(/\bid:\s*'([^']+)',\s*defaultMessage:\s*'([^']*)'/g)) defaults.set(match[1], match[2]);

@@ -138,7 +138,7 @@ test('actual Pixel editor loads full wide frames, resizes with Undo and refuses 
     for (const [name, signature, parameters, bindings] of [
         ['materializeFrames', 'materializeFrames (state = this.state) {', 'state=this.state', {}],
         ['stopPlayback', 'stopPlayback () {', '', {}],
-        ['remember', 'remember () {', '', {}], ['restore', 'restore (snapshot) {', 'snapshot', {composeLayers}],
+        ['remember', 'remember (label = \'Change\') {', 'label=\'Change\'', {}], ['restore', 'restore (snapshot) {', 'snapshot', {composeLayers}],
         ['undo', 'undo () {', '', {}], ['redo', 'redo () {', '', {}],
         ['resize', 'resize (w, h, scale = this.state.scale) {', 'w,h,scale=this.state.scale',
             {MAX_PIXEL_DIMENSION, editablePixelLayerBudget, resizeLayers, composeLayers, t: (_locale, key) => key}]

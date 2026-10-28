@@ -218,3 +218,37 @@ correctly rejected the retained old UI manifest digest; the reader now binds
 the exact qualified UI source bytes. Its failing original is retained. The
 circuit/reference/collector bodies are unchanged except source identities;
 no numerical comparison or scientific experiment has been executed here.
+
+## Current-supplier source admission (Board c7bcbe4b, CUI da28bb8c)
+
+Lite main now pins bw-board `c7bcbe4bcd583d2215372dd4ee1e65002e249a04` and
+bw-circuit-ui `da28bb8ce9b38aa18d2e424f692c6570fc1d6d1d`. Because these differ
+from the prepared `dfa4be8e`/`66e37240` binding, this is a fresh source
+admission, not a literal edit. Rationale:
+
+- Board `c7bcbe4b` has no `src/` or `package.json` difference from the
+  previously reviewed `97f60b97b694c84b016b630b697fd955bbe31595`, so its runtime,
+  including the LM741 linear-pole model, is identical to that reviewed source.
+  Relative to `dfa4be8e` it adds the opt-in nominal 25 C LM741 bias/supply law.
+- CUI `da28bb8c` is `66e37240` plus the scope capture-select re-render fix
+  (`a5860b9c`), the LM741 bias/supply precision CLI and the opt-in precision
+  passive batch, and it pins Board `c7bcbe4b`. Defaults are unchanged: the new
+  domains are opt-in and none of the 32 authored requests selects them.
+
+Re-derived from the exact Git sources, not edited by hand: both runtime
+fingerprints were computed with the collector's own fingerprint function over
+the archived trees (Board 321 files, `f71c24a8…`; UI 434 files with
+`bin/bwc.mjs`, `d6d314b7…`), and cross-checked by a separate byte-level
+re-hash in another language. The same method reproduces the old `47880658…` and
+`52bb0c75…` values from `dfa4be8e`/`66e37240`. The UI package manifest digest
+is `aa2e7cdd…`, the exact bytes of `da28bb8c` `package.json`. The frozen intent
+changes only in its `sources` and `runtimeFingerprints` fields; schema, study
+name, bounds, counts and all 32 cases are byte-identical. The new intent is
+`2b3a5be44e6dcfcd3fbef73c5888921118c792a6825795066258154fe793b430`.
+
+Preserved unchanged: the full 32-input denominator, circuit and model
+parameters, comparison bounds, the 2 MHz/40-sample LM741 requests, the 20 ns
+cap, the named-refusal exit, the BJT substrate topology, the version-42 thermal
+constants, other workflows' census and pointer entries, and the immutable v1
+source, ref and run. This is source admission only. No study event, v2 ref or
+reviewed-head variable is created or changed by it.

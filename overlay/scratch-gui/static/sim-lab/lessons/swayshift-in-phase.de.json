@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "id": "swayshift-in-phase",
+  "language": "de",
+  "what": "Der Vergleich zu SwayShift: derselbe Schlitten, dasselbe Pendel, dieselben Geschwindigkeiten und zwei Sollfahrten von 22 mm, aber die zweite Fahrt startet eine ganze Schwingungsperiode (0,760 s) nach der ersten statt einer halben (0,380 s). Der einzige Unterschied zwischen den Programmen ist der Wert von start_gap.",
+  "try": [
+    "Öffne swayshift.ldr neu im Roboter-Labor, füge programs/swayshift-in-phase.bw im Code-Tab ein, wähle ⇦ Zu Blöcken und drücke den Run-Knopf des Roboter-Labors.",
+    "Beobachte das Pendel, während der Schlitten am 44-mm-Ziel hält. Lade dann die Szene neu, starte programs/swayshift.bw und vergleiche das Nachschwingen.",
+    "Zähle die Schwingungen während des Haltens: Die Periode beträgt etwa 0,757 s. Der zweite Anstoß des gleichphasigen Programms kommt, wenn das Pendel in dieselbe Richtung schwingt wie nach dem ersten."
+  ],
+  "why": "Jedes Anfahren und Anhalten des Schlittens stößt das Pendel an. Kommt der zweite Stoß eine halbe Periode nach dem ersten, trifft er auf ein Pendel, das gerade entgegengesetzt schwingt, und hebt die Bewegung größtenteils auf. Eine ganze Periode später trifft er es in gleicher Phase; die Stöße addieren sich, und die Schwingung verdoppelt sich ungefähr.",
+  "matters": "Kräne, Bestückungsroboter und 3D-Drucker nutzen diese Idee, die Eingangsformung, um Lasten schnell zu bewegen, ohne dass sie nachschwingen.",
+  "question": "Beide Programme fahren den Schlitten gleich weit und gleich schnell. Warum bleibt das Pendel beim einen fast ruhig und schwingt beim anderen stark?",
+  "answer": "Weil der zeitliche Abstand der Fahrten entscheidet, ob sich ihre Stöße aufheben oder addieren. In den mitgelieferten nativen Aufzeichnungen bleiben bei der halben Periode 0,265° RMS-Schwingung im gemeinsamen Zeitfenster, bei der ganzen Periode 10,47°: 97,5 % weniger Schwingung bei derselben Fahrt.",
+  "further": [
+    "Schätze die Periode des Pendels aus seiner Länge und vergleiche sie mit den gemessenen 0,757 s.",
+    "Was geschähe bei einem Abstand von anderthalb Perioden?",
+    "Warum muss man die Periode gut kennen? Was passiert, wenn sich die Last ändert?"
+  ],
+  "formula": "Zwei gleiche Stöße im Abstand Δt: Restamplitude ∝ |1 + e^(iωΔt)| = 2·|cos(ωΔt/2)|. Δt = T/2 ⇒ 0 (Auslöschung); Δt = T ⇒ 2 (Verstärkung).",
+  "related": [
+    "rack-shuttle.ldr",
+    "sky-courier.ldr",
+    "resonance-lab.ldr",
+    "cascade.ldr"
+  ]
+}

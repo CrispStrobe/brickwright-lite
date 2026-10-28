@@ -61,7 +61,15 @@ const german = {
         "brickwrightLessons": "Brickwright-Lektionen…",
         "tutorialsFile": "Scratch-Anleitungen",
         "offlineLibrary": "Offline-Bibliothek…",
-        "downloadMindstormsLms": "Als LEGO MINDSTORMS (.lms) speichern"
+        "downloadMindstormsLms": "Als LEGO MINDSTORMS (.lms) speichern",
+        "undo": "Rückgängig",
+        "redo": "Wiederholen",
+        "history": "Verlauf",
+        "autosaveHistory": "Automatisch speichern & Verlauf…"
+    },
+    "bw": {
+        "editorError": "{name} hatte ein Problem und wurde angehalten. Dein Projekt ist sicher.",
+        "editorErrorRetry": "Erneut versuchen"
     }
 };
 export const chromeMessages = {de: Object.fromEntries(Object.entries(german).flatMap(([section, messages]) =>

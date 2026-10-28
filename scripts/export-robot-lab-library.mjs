@@ -8,13 +8,21 @@ import {createHash} from 'node:crypto';
 import {createRequire} from 'node:module';
 import {resolve} from 'node:path';
 import assert from 'node:assert/strict';
-import {MODELS,catalogFrom} from '../overlay/scratch-gui/src/lib/bw-sim/sim-session.js';
+import {MODELS as QUALIFIED_MODELS,catalogFrom} from '../overlay/scratch-gui/src/lib/bw-sim/sim-session.js';
+import {EXPERIMENTAL_MODELS,EXPERIMENTAL_MODEL_DETAILS} from '../overlay/scratch-gui/src/lib/bw-sim/model/experimental-models.js';
 import {MODEL_LESSONS} from '../overlay/scratch-gui/src/lib/bw-sim/model/example-catalog.js';
 import {flattenPart} from '../overlay/scratch-gui/src/lib/bw-sim/ldraw/ldraw-geometry.js';
 import {phasedMotorRead, phasedMotorSource} from '../overlay/scratch-gui/src/lib/bw-sim/ldraw/motor-phase.js';
 import {parseModel} from '../overlay/scratch-gui/src/lib/bw-sim/model/ldraw-model.js';
-const [directory,archive]=process.argv.slice(2);
+const [directory,archive,...options]=process.argv.slice(2);
 if(!directory||!archive)throw Error('Usage: export-robot-lab-library.mjs output-directory output.zip');
+assert.ok(options.length<=1&&options.every(o=>/^--models=[a-z0-9,-]+$/.test(o)),'Optional --models=id,id selects explicit examples, including enabled experimental models');
+const selected=options[0]?.slice('--models='.length).split(',');
+if(selected)assert.equal(new Set(selected).size,selected.length,'Unique model selectors');
+const MODELS=selected?selected.map(id=>{
+ const matches=[...QUALIFIED_MODELS,...EXPERIMENTAL_MODELS].filter(m=>(m.id||m.file.replace(/\.ldr$/,''))===id);
+ assert.equal(matches.length,1,'Exactly one known example: '+id);assert.ok(!matches[0].blocked,'Blocked examples cannot be exported as working candidates: '+id);return matches[0];
+}):QUALIFIED_MODELS;
 assert.ok(!existsSync(directory)&&!existsSync(archive),'Use new export paths; preserve existing evidence');
 const root=new URL('../',import.meta.url),base=new URL('overlay/scratch-gui/static/sim-lab/',root),JSZip=createRequire(new URL('../packages/scratch-gui/package.json',import.meta.url))('jszip');
 const C=catalogFrom(JSON.parse(readFileSync(new URL('overlay/scratch-gui/src/lib/bw-sim/part-meta/parts.json',root))));
@@ -59,10 +67,11 @@ for(const name of ['CAreadme.txt','CAlicense.txt','CAlicense4.txt'])put('license
 for(const program of new Set(MODELS.map(m=>m.example).filter(Boolean)))put('programs/'+program,readFileSync(new URL('programs/'+program,base)));
 for(const optional of ['axis-plotter-curves.bw','axis-plotter-pixel-costume.bw','orbit-mixer-steps.bw','phase-bridge-steps.bw','magnetic-chess-capture.bw'].filter(n=>!n.startsWith('magnetic-chess')||MODELS.some(m=>m.file==='magnetic-chess.ldr')))put('programs/'+optional,readFileSync(new URL('programs/'+optional,base)));
 for(const folder of ['lessons','licenses'])for(const name of readdirSync(new URL(folder+'/',base)).sort())put(folder+'/'+name,readFileSync(new URL(folder+'/'+name,base)));
-const catalog=MODELS.map(m=>({...m,...MODEL_LESSONS[m.id||m.file]}));
+const catalog=MODELS.map(m=>({...m,...(MODEL_LESSONS[m.id||m.file]||EXPERIMENTAL_MODEL_DETAILS[m.file])}));
 put('catalog.json',JSON.stringify(catalog,null,2)+'\n');put('manifest.json',JSON.stringify({examples:MODELS.length,assemblies:manifest.length,models:manifest},null,2)+'\n');
 put('LICENSE-BSD-3-Clause.txt',readFileSync(new URL('LICENSE',root)));
 put('README.txt',`Brickwright Robot Lab — fixed model library\n\n${MODELS.length} example choices; ${manifest.length} distinct assemblies. Each assembly has a flat\nLDraw .ldr and equivalent single-root .mpd; programs and EN/DE lessons are included.\nOpen either model format in Brickwright or an editor with the standard LDraw library.\nThe app loads example programs into blocks automatically; press Run to start.\n\nOriginal models are BSD-3-Clause. Owner-supplied designs are credited to\nCrispStrobe; individual notices are in licenses/. Referenced LDraw part files\nretain their own authors and licences and are resolved by the viewer library.\nThe included motor pose .dat files retain LDraw’s CC BY attribution; see\nlicenses/CAreadme.txt and CAlicense4.txt. The MPDs embed these rotor poses. Authored BSD material DAT sidecars and\ntheir licence are also included; the Chess MPD embeds its material geometry.\n\nIntegral: 155 pieces, motors A/B; passive friction-wheel integrator, reset before each run.\nAtlas Arm: 237 pieces, motors A/B/D; reset before the bounded program.\nSwitchback Lift: 341 pieces including one free ball, motors A/B/D.\nStraight Eight: 113 pieces, motor A; keep the crank within ±60°.\nMean Machine: 212 pieces, motors A/B; four signed-mean experiments.\nStepworks: 240 pieces including a free pallet, motor A; reset after three transfers.\nStride Lab: 75 pieces, motor A; approximate straight working stroke.\nTwinpoint: 117 pieces, motors A/B; coordinated circle and bounded line.\nButterfly: 224 pieces, motor A; one guided flap.\nTempo Loop: 85 pieces, motor A; changing instantaneous speed ratio.\nTilt Lab: 161 pieces including a free ball, motors A/B; use ±6° A / ±10° B.\nAxis Plotter: 256 pieces, motors A/B/C; reset before each drawing.\nPhase Bridge: 144 explicit placements (146 with two inferred crosses), one motor.\nOrbit Mixer: 161 pieces, motors A/B; planetary orientation control.\nMagnetic Chess: 1,208 physical pieces (1,203 LEGO, glass, four bonded gaskets), A/B/C.\nSarrus Lift: 144 pieces, motor A; keep the linkage between 20 and 70 degrees.\nQuickstroke: 111 pieces, motor A; three continuous turns each way.\nEllipse Engine: 169 pieces, motor A; orthogonal trammel, two 112 x 48 mm marker ellipses.\nScale Echo: 148 pieces, motors A/B; two-to-one pantograph, reset before bounded moves.\nTurnwise: 127 pieces, motor A; unequal-angle steering bench, asymmetric bounded targets.\n\nQualification is simulation-based, not a physical LEGO building test.\n`);
+if(selected)put('README.txt',`Brickwright — selected fixed model files\n\n${MODELS.length} selected examples; ${manifest.length} assemblies. Each model includes\na flat LDR and equivalent MPD, its program, EN/DE lessons and licence.\nExperimental status is preserved in catalog.json; this export is not a\nphysical-build or catalogue-promotion certificate.\n\n${manifest.map(m=>m.file+': '+m.pieces+' explicit placements'+(m.file==='phasekeeper.ldr'?' + two universal-joint crosses = 83 physical pieces':'')).join('\n')}\n\nOriginal contributions: CrispStrobe, BSD-3-Clause. Referenced LDraw geometry\nretains its original authors and licences; see individual notices in licenses/.\nRotor-pose sidecars preserve the visible initial motor pose in LDraw viewers.\nThe app loads the example program into blocks automatically; reset before Run.\n`);
 for(const [path,bytes]of files){const target=resolve(directory,path);mkdirSync(resolve(target,'..'),{recursive:true});writeFileSync(target,bytes);zip.file('brickwright-fixed-models/'+path,bytes);}
 mkdirSync(resolve(archive,'..'),{recursive:true});writeFileSync(archive,await zip.generateAsync({type:'nodebuffer',compression:'DEFLATE'}));
 process.stdout.write(`${manifest.length} verified LDR/MPD pairs, ${MODELS.length} examples, ${files.size} files\n`);

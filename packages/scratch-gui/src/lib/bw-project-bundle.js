@@ -38,8 +38,12 @@ const BUNDLE_FORMAT = 'brickwright-state';
 const BUNDLE_VERSION = 2;
 const MAX_BUNDLE_BYTES = 2 * 1024 * 1024;
 const SECTION_LIMITS = Object.freeze({code: 512 * 1024, circuit: 1024 * 1024,
-    controller: 512 * 1024, spikeArena: 1024 * 1024, simLab: SIM_LAB_LIMIT});
-const KNOWN_SECTIONS = Object.freeze(['code', 'circuit', 'controller', 'legacyWidgets', 'spikeArena', 'simLab']);
+    controller: 512 * 1024, spikeArena: 1024 * 1024, simLab: SIM_LAB_LIMIT, fpga: 512 * 1024});
+const KNOWN_SECTIONS = Object.freeze(['code', 'circuit', 'controller', 'legacyWidgets', 'spikeArena', 'simLab', 'fpga']);
+// The FPGA lab's Verilog/constraints and its gate-builder canvas (fpga-tab.jsx,
+// fpga-gate-builder-rf.jsx) travel as one optional `fpga` section.
+const FPGA_DESIGN_KEY = 'bw-fpga-autosave';
+const FPGA_GATES_KEY = 'bw-fpga-gates-autosave';
 let preservedBundle = null;
 const utf8Size = value => new TextEncoder().encode(value).byteLength;
 
@@ -50,7 +54,7 @@ const utf8Size = value => new TextEncoder().encode(value).byteLength;
  * project, and copying them between machines would be a surprise.
  */
 const EXACT_KEYS = ['bw-circuit-autosave', 'bw-code-autosave', 'bw-ctl-widgets', SANDBOX_STORAGE_KEY,
-    SIM_LAB_STORAGE_KEY];
+    SIM_LAB_STORAGE_KEY, FPGA_DESIGN_KEY, FPGA_GATES_KEY];
 // The old per-widget prefix stays on the allowlist so a file saved while it
 // was documented (nothing ever wrote such keys, but a hand-built bundle
 // might) still restores; the panel itself serializes to ONE key above.
@@ -79,6 +83,15 @@ const decodeSection = (name, value) => {
     if (name === 'spikeArena') return sandboxWorld(value);
     // The Sim Lab model (LDraw text, bw-sim/model/sim-lab-persist.js).
     if (name === 'simLab') return simLabRecord(value);
+    if (name === 'fpga') {
+        const {design, gates} = value;
+        if (design !== undefined && (!isRecord(design) || (design.hdl !== undefined && typeof design.hdl !== 'string') ||
+            (design.text !== undefined && typeof design.text !== 'string'))) {
+            throw new Error('fpga design must contain string hdl and text');
+        }
+        if (gates !== undefined && !isRecord(gates)) throw new Error('fpga gates must be an object');
+        return {...(design !== undefined && {design}), ...(gates !== undefined && {gates})};
+    }
     return value;
 };
 
@@ -101,6 +114,10 @@ const encodeProjectState = raw => {
         state.controller = decodeStored('controller', raw['bw-ctl-widgets']);
     }
     if (raw[SIM_LAB_STORAGE_KEY] !== undefined) state.simLab = decodeStored('simLab', raw[SIM_LAB_STORAGE_KEY]);
+    if (raw[FPGA_DESIGN_KEY] !== undefined || raw[FPGA_GATES_KEY] !== undefined) {
+        const parse = key => (raw[key] === undefined ? undefined : JSON.parse(raw[key]));
+        state.fpga = decodeSection('fpga', {design: parse(FPGA_DESIGN_KEY), gates: parse(FPGA_GATES_KEY)});
+    }
     const legacyWidgets = Object.fromEntries(Object.entries(raw)
         .filter(([key, value]) => KEY_PREFIXES.some(prefix => key.startsWith(prefix)) &&
             typeof value === 'string'));
@@ -121,6 +138,11 @@ const decodeProjectState = state => {
         raw['bw-ctl-widgets'] = JSON.stringify(decodeSection('controller', state.controller));
     }
     if (state.simLab !== undefined) raw[SIM_LAB_STORAGE_KEY] = JSON.stringify(decodeSection('simLab', state.simLab));
+    if (state.fpga !== undefined) {
+        const fpga = decodeSection('fpga', state.fpga);
+        if (fpga.design) raw[FPGA_DESIGN_KEY] = JSON.stringify(fpga.design);
+        if (fpga.gates) raw[FPGA_GATES_KEY] = JSON.stringify(fpga.gates);
+    }
     if (state.legacyWidgets !== undefined) {
         if (!isRecord(state.legacyWidgets)) throw new Error('legacyWidgets must be an object');
         for (const [key, value] of Object.entries(state.legacyWidgets)) {
