@@ -94,6 +94,8 @@ not establish a newer signed release or deployment.
   must first admit terminal orientation and include a wrong-sign mutation.
 - The 32 MiB output-byte cap is untested through this CLI because the separate
   20,000-attempt cap prevents reaching it. Preserve both limits.
+- AC coupling explicitly refuses combination with ADC reconstruction, watch
+  mode or receipt/replay. These need separate composition/replay admission.
 - A GUI AC-coupling selector, physical front-end calibration, noise and broader
   vendor-device domains remain separately scoped work.
 
