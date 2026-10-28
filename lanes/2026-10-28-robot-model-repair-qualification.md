@@ -58,3 +58,10 @@ encoder and actual pre-flag datum are recorded separately. Mechanical-law
 accuracy, rendered worker and saved-project replay remain unqualified; no new
 engine or programme has run for this candidate. Phasor work remains separately
 ordered, and no prior generic green result substitutes for these new gates.
+
+Each Door physics case runs in its own child process under an independent
+parent180second kill deadline, including startup and imports. The parent loads
+no VM or WASM; its extra one-second test allowance is for reaping and evidence
+sealing only. The existing unit workflow budget and steps remain unchanged.
+Deadline, abort and output-cap failures retain child stdout/stderr and actual
+partial evidence bytes even when the child cannot run cleanup.
