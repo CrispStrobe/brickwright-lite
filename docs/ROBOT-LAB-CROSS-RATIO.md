@@ -43,7 +43,9 @@ that this edit would retain five bodies. It actually frees seven capture
 collars: twelve bodies, three hinges and seven specific loose-part warnings.
 The contract now freezes both complete body-part groupings and those exact
 warnings; every dynamic body must have finite recorded poses. All other warnings
-refuse. The single-part source edit is unchanged. Its physical effects include
+refuse. Ground must be static and every other body dynamic, so missing motion
+metadata cannot hide a capture and its poses. Error and unsupported-operation
+ledgers must be empty arrays, not strings. The single-part source edit is unchanged. Its physical effects include
 contacts by the freed collars, so it does not isolate the missing hinge as the
 sole possible cause. The first refusal is preserved; no motion case ran before
 this structural correction. A muted input or deleted assembly cannot count as a control.
@@ -94,7 +96,7 @@ controls are implemented. The existing 30-minute job cap and every old gate
 remain unchanged. The canonical budget registry includes the new gate with zero
 readings; no measured runtime or historical timing is claimed.
 
-Eight lightweight analytic/observation preflights (49 data corruptions plus receiver failures, including the
+Eight lightweight analytic/observation preflights (52 data corruptions plus receiver failures, including the
 four-case retained-TAP transport and same-opcode program edits) and 15 browser shard/inventory checks pass;
 these checks import no engine and do not qualify motion.
 

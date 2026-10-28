@@ -48,16 +48,17 @@ export function readCrossRatio(record,{expectedIdentity}={}){
  const model=record.variant==='original'?original:original.replace(block,'');
  check(record.input.model===model,'only the declared physical axle is removed');
  check(record.input.modelSha256===sha(model),'actual model digest');
- check(record.vmErrors?.length===0,'actual VM error stream is empty');
+ check(Array.isArray(record.vmErrors)&&record.vmErrors.length===0,'actual VM error stream is an empty array');
  const topology=C.topology[record.variant];
  assert.deepEqual(record.issues.map(i=>i.severity+':'+i.code+':'+[...(i.parts||[])].sort().join(',')).sort(),topology.issueKeys,'only exact source-derived diagnostics');
- check(record.unsupported?.length===0,'no unsupported operation');
+ check(Array.isArray(record.unsupported)&&record.unsupported.length===0,'unsupported-operation ledger is an empty array');
  const m=record.mechanism;check(m.bodies.length===topology.bodyCount,'exact declared body count');
  const groups=m.bodies.map(b=>[...b.parts].sort()).sort((a,b)=>a.join('\0')<b.join('\0')?-1:a.join('\0')>b.join('\0')?1:0);
  assert.deepEqual(groups,topology.bodyPartGroups,'exact compiler body-part census');
  check(new Set(m.bodies.map(b=>b.id)).size===topology.bodyCount,'unique physical body IDs');
  const floor=m.bodies.filter(b=>b.id==='ground');check(floor.length===1&&floor[0].motion==='static','one static ground body');
  check(m.bodies.filter(b=>b.motion==='static').length===1,'only floor may be fixed');
+ check(m.bodies.every(b=>b.id==='ground'?b.motion==='static':b.motion==='dynamic'),'every non-ground body is dynamic; no capture can escape the pose census');
  const roles=Object.fromEntries(Object.entries(C.roles).map(([role,part])=>{
   const b=m.bodies.filter(b=>b.parts.includes(part));check(b.length===1,role+' unique membership');pose(b[0]);return[role,b[0]];
  }));

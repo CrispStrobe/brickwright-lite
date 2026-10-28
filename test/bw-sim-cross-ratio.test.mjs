@@ -36,6 +36,8 @@ const corruptions={
  'missing stage':r=>{for(const f of r.track)if(f.extra.variables.stage===5)f.extra.variables.arrived=0;},
  'whole assembly control':r=>{r.variant='remove-pivot-P';r.mechanism.bodies.pop();},
  'forged completion':r=>r.track.at(-1).extra.variables.failed=1,
+ 'string VM error ledger':r=>{r.vmErrors='';},
+ 'string unsupported ledger':r=>{r.unsupported='';},
  'early hold end':r=>r.track.pop(),
  'wrong control bytes':r=>{r.variant='remove-pivot-P';},
  'dynamic floor':r=>r.mechanism.bodies.find(b=>b.id==='ground').motion='dynamic',
@@ -59,7 +61,7 @@ for(const files of [{},Object.fromEntries(Object.entries(ANALYTIC_IDENTITY.files
  assert.throws(()=>readCrossRatio(r,{expectedIdentity:identity}),/file census/);
 }
 assert.throws(()=>readCrossRatioLines('',{expectedIdentity:ANALYTIC_IDENTITY}));
-test('Cross Ratio: independent circle fixtures, 20 corruptions, sign and translation controls',()=>assert.equal(Object.keys(corruptions).length,20));
+test('Cross Ratio: independent circle fixtures, 22 corruptions, sign and translation controls',()=>assert.equal(Object.keys(corruptions).length,22));
 // Exercise the actual retained-TAP transport, including cold-clock boundaries,
 // complete case census and refused corruption, before any engine is imported.
 const wireItems=[];
@@ -106,10 +108,11 @@ const detachedCuts=[
  r=>r.issues.push({severity:'warning',code:'loose-part',parts:['invented']}),
  r=>r.issues.pop(),
  r=>{delete r.track[5].bodies.capture0;},
- r=>r.mechanism.bodies.find(b=>b.id==='capture0').motion='static'
+ r=>r.mechanism.bodies.find(b=>b.id==='capture0').motion='static',
+ r=>{delete r.mechanism.bodies.find(b=>b.id==='capture0').motion;for(const frame of r.track)delete frame.bodies.capture0;}
 ];
 for(const edit of detachedCuts){const bad=structuredClone(cut);edit(bad);assert.throws(()=>check(bad));}
-test('Cross Ratio: exact detached-capture diagnostics and all-body pose census',()=>assert.equal(detachedCuts.length,4));
+test('Cross Ratio: exact detached-capture diagnostics and all-body pose census',()=>assert.equal(detachedCuts.length,5));
 // Real Writable backpressure and the independent consumer test retention
 // without replaying physics. No console method is an evidence transport.
 const chunks=[],transport=new Writable({highWaterMark:1,write(chunk,encoding,callback){chunks.push(Buffer.from(chunk));setImmediate(callback);}});
