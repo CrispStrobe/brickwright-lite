@@ -50,3 +50,12 @@ checks pass (28 focused tests). The collectors distinguish optional JavaScript
 heap statistics from required observed process-tree RSS, recording scope and
 shared-page/sampling limits. Actual browser/installed guest qualification and
 engine adoption remain pending; keep this claim active through those steps.
+
+2026-10-28 continuation: qualified Core `3b655aef4085082152129c84849d4e2ad5004a7f`
+is released as `labwired-wasm-3b655aef` from the independently audited original
+BW campaign [40699886470](https://github.com/CrispStrobe/bw-board/actions/runs/40699886470).
+The proposed consumer carries the exact web engine/glue/profile hashes and
+matching performance-workflow identity on branch `lane/samd-release-adoption-20261028`.
+Browser and installed qualification remain mandatory; default-branch pin
+publication waits for coordination with the native-package owner. Motion
+qualification remains explicitly deferred; no real-time gameplay claim.
