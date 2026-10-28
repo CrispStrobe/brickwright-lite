@@ -8,12 +8,13 @@ import {loadJolt,createPhysicsCore} from '../overlay/scratch-gui/src/lib/bw-sim/
 const J=await loadJolt(),DT=.005,JR=3e-4;
 const near=(a,b,tol=1e-6)=>assert.ok(Math.abs(a-b)<=tol*Math.max(1e-9,Math.abs(a),Math.abs(b)),`${a} != ${b}`);
 const tensorsNear=(a,b)=>a.flat().forEach((v,i)=>near(v,b.flat()[i],2e-5));
-const bench=({shared=false,clamped=false,reverse=false}={})=>{
+const bench=({shared=false,clamped=false,reverse=false,passiveNeighbor=false}={})=>{
     const bodies=[['a',.5,.095],['b',.05,.048],...(shared?[['c',.08,.06]]:[])].map(([id,massKg,radius],i)=>({
         id,motion:clamped&&id==='a'?'static':'dynamic',massKg,position:[0,i*.05,0],rotation:[0,0,0,1],angularDamping:0,
         colliders:[{shape:'cylinder',radius,halfHeight:.002}],parts:[]}));
     const hinge=(id,body1,body2,y)=>({id,type:'hinge',body1,body2,point:[0,y,0],axis:[0,1,0],motor:{port:id==='j1'?'A':'B',maxTorqueNm:.2,maxSpeedRadPerSec:30}});
     const joints=[reverse?hinge('j1','b','a',.025):hinge('j1','a','b',.025),...(shared?[hinge('j2','b','c',.075)]:[])];
+    if(passiveNeighbor){delete joints[1].motor;joints[1].axis=[1,0,0];}
     const core=createPhysicsCore(J,{version:1,gravity:[0,0,0],bodies,joints,gears:[],diagnostics:[]},{stepHz:1/DT});
     return {core,ids:bodies.filter(b=>b.motion==='dynamic').map(b=>b.id)};
 };
@@ -41,7 +42,7 @@ test('current signed motor impulse conserves bare pair momentum for acceleration
     try{
         const m=bareMoments(core,ids);core.setRotorInertia('j1',JR);
         for(const torqueNm of [.003,-.003]){
-            core.setMotor('j1',{mode:'torque',torqueNm,dampingNmsPerRad:0});
+            core.setMotor('j1',{mode:'torque',torqueNm,dampingNmsPerRad:.0001});
             for(let i=0;i<80;i++){
                 core.step(DT);const p=momentum(core,m);
                 assert.ok(Math.abs(p)<1e-7,`bare momentum ${p}`);
@@ -90,4 +91,29 @@ test('rollback restores changed rotor configuration and the next trajectory exac
         core.setRotorInertia('j1',0);core.setMotor('j1',{mode:'velocity',radPerSec:-2});step(core,10);
         core.rollback();step(core,30);assert.deepEqual(record(core),expected);
     }finally{core.destroy();}
+});
+
+test('rotor correction must not reopen an ordinary neighboring hinge transverse constraint',t=>{
+    const slips=[];
+    for(const jr of [0,JR]){
+        const {core}=bench({shared:true,passiveNeighbor:true});
+        try{
+            core.setRotorInertia('j1',jr);core.setMotor('j1',{mode:'velocity',radPerSec:3});
+            let slip=0;
+            for(let i=0;i<200;i++){
+                core.step(DT);const b=core.bodyAngularVelocity('b'),c=core.bodyAngularVelocity('c');
+                // This ordinary hinge permits only relative local-x rotation;
+                // use the current b frame to recover its actual world direction.
+                const q=core.bodyPose('b').rotation,[x,y,z,w]=q;
+                const axis=[1-2*(y*y+z*z),2*(x*y+w*z),2*(x*z-w*y)];
+                const relative=b.map((v,k)=>v-c[k]),along=relative.reduce((s,v,k)=>s+v*axis[k],0);
+                slip=Math.max(slip,Math.hypot(...relative.map((v,k)=>v-along*axis[k])));
+            }
+            assert.ok(Math.abs(core.jointState('j1').angle)>.1,'the rotor motor actually turns');
+            slips.push(slip);
+        }finally{core.destroy();}
+    }
+    t.diagnostic(JSON.stringify({baselineTransverseRadS:slips[0],rotorTransverseRadS:slips[1]}));
+    assert.ok(slips[0]<1e-4,'ordinary native hinge baseline holds its transverse angular constraint');
+    assert.ok(slips[1]<1e-4,'rotor correction preserves the same ordinary hinge constraint');
 });

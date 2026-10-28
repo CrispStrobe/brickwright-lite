@@ -22,9 +22,10 @@ rotor configuration together and rebuilds derived tensors without rate history.
 
 Six independent pure algebra controls pass, including anisotropic rotated-axis
 momentum, scalar-axis mutation detection, effective moments, multiple additions,
-removal and non-dynamic endpoints. Six new native controls are prepared for
+removal and non-dynamic endpoints. Seven new native controls are prepared for
 configuration, signed torque, passive friction, shared velocity servos, clamped
-orientation and rollback. Native controls have NOT RUN. The existing free-pair,
+orientation, rollback and a transverse ordinary neighboring hinge. Native
+controls have NOT RUN. The existing free-pair,
 Sarrus, collision and transport assertions are unchanged byte-for-byte.
 
 This remains a provisional diagonal approximation. Shared or differently aligned
@@ -34,6 +35,10 @@ The core currently constructs static/dynamic bodies, so kinematic admission has
 pure algebra coverage only. No physical, contact, browser, endpoint or combined
 main qualification is claimed. Failure of the original guards or meaningful
 new controls stops this candidate and requires separately scoped native work.
+In particular, a correction shared only by rotor-linked bodies may reopen an
+ordinary neighboring hinge's transverse angular constraint. The new causal
+control measures that risk against the same bench without rotor inertia; it
+has not yet been executed. Do not treat the source checkpoint as qualification.
 
 The qualification handoff in PR1521 delegates completion of published PR1505.
 Read its frozen source and first failure originals before choosing a correction.

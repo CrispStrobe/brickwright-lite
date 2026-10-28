@@ -11,7 +11,7 @@ export const rotorInverse = a => {
         [a[1][0]*a[2][1]-a[1][1]*a[2][0], a[0][1]*a[2][0]-a[0][0]*a[2][1], a[0][0]*a[1][1]-a[0][1]*a[1][0]]
     ];
     const d = a[0].reduce((s, v, i) => s + v * cof[i][0], 0);
-    if (!(d > 0) || !Number.isFinite(d)) throw new Error('rotor inertia tensor must be positive definite');
+    if (!(d > 0) || !Number.isFinite(d)) throw new Error('rotor tensor must have a finite positive determinant');
     return cof.map(row => row.map(v => v / d));
 };
 export const rotorAxialMoment = (tensor, axis) => {
