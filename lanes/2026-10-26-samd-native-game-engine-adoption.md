@@ -97,3 +97,27 @@ official frontend must emit the release's exact web glue, WASM and profile
 hashes. Keep the strict asset joins. Then source gates and three actual Chromium
 plus three installed Tauri/WebKit instances remain required before the normal
 matched-head adoption merge. No new hardware or real-time performance claim.
+
+## Released historical-study gate repair — dependency scope, 2026-10-28
+
+The source owner released a narrow repair from
+[`e85dc904ac5c56d327e993c47dc730c5d1c7abeb`](https://github.com/CrispStrobe/brickwright-lite/commit/e85dc904ac5c56d327e993c47dc730c5d1c7abeb)
+for this continuation. Claim these three paths before carrying it into the next
+SAMD qualification head:
+
+- `test/pin-move-chain.test.mjs`: only the four-file `SEALED_STUDY_FILES` table,
+  its complete-file hash enforcement in role classification/judgement, and the
+  four associated controls. Preserve unrelated history and x86 roles.
+- `test/reference-qualified-instrument-study.test.mjs`: the exact released
+  synthetic fixture isolation and sealed-manifest controls.
+- `docs/receipts/reference-qualified-v2-ui-package.json`: the exact released
+  manifest, SHA256 `aa2e7cdd01c31f9622339ebccf16fcd5c3728d497903b4230fbd1842fd1ddc16`.
+
+Keep the experiment's three identity sources, original pins, numerical
+thresholds, captures, intent and authority unchanged. The repair distinguishes
+a sealed historical experiment from current runtime configuration and tests its
+unchanged collector/reader in an isolated synthetic consumer. Current-pin and
+never-pinned guards remain strict outside that exact sealed role. No CUI
+adoption, package-pin move, product/model change or new study execution is part
+of this dependency. Include the released controls with the emitted-glue repair
+before the next exact-head qualification; the original failed run stays retained.
