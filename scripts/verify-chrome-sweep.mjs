@@ -152,7 +152,7 @@ try {
     await page.keyboard.press('Escape');
     await openMenu('Edit');
     await menuItem('Go to line…').click();
-    await page.locator('.cm-gotoLine input').waitFor({state: 'visible'});
+    await page.locator('.cm-editor input[name="line"]').waitFor({state: 'visible'});
     await page.keyboard.press('Escape');
     await openMenu('Edit');
     await menuItem('Select all').click();

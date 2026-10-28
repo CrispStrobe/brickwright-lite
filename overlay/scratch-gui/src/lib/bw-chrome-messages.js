@@ -64,6 +64,9 @@ const german = {
         "downloadMindstormsLms": "Als LEGO MINDSTORMS (.lms) speichern",
         "undo": "Rückgängig",
         "redo": "Wiederholen",
+        "findReplace": "Suchen und ersetzen…",
+        "goToLine": "Zu Zeile springen…",
+        "selectAll": "Alles auswählen",
         "history": "Verlauf",
         "autosaveHistory": "Automatisch speichern & Verlauf…"
     },

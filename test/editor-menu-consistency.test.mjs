@@ -84,3 +84,12 @@ test('all changed GUI overlays match their runtime package mirrors', () => {
         assert.equal(read(`overlay/scratch-gui/src/${file}`), read(`packages/scratch-gui/src/${file}`), file);
     }
 });
+
+
+test('new menu commands have German labels through the shared chrome catalog', async () => {
+    const {chromeMessages} = await import('../overlay/scratch-gui/src/lib/bw-chrome-messages.js');
+    for (const [key, label] of Object.entries({findReplace: 'Suchen und ersetzen…',
+        goToLine: 'Zu Zeile springen…', selectAll: 'Alles auswählen'})) {
+        assert.equal(chromeMessages.de[`gui.menuBar.${key}`], label);
+    }
+});
