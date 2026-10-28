@@ -127,3 +127,14 @@ first unfinished dependency. Preserve original failed studies and the existing
 actual-study-before-harness-merge requirement. New implementation outside a
 merged phase envelope needs a new bounded claim. Private recovery locations and
 raw receipts belong only in ignored local notes. No seventh task is opened.
+
+## Wrap-up — 2026-10-28
+
+Items 1 (supplier return, Lite adoption PR1478 and the accepted v2 study, run
+40681635060) and 2 (PR1495, all four disagreements noncomparable) are accepted.
+Items 3 to 6 each have an open pull request. Their live heads, next actions and
+stop conditions are in the
+[current handoff](../docs/CIRCUIT-INSTRUMENT-REGRESSION.md#current-handoff--2026-10-28-wrap-up),
+which supersedes the 2026-10-27 closeout above. This claim stays open until
+items 3–6 resolve and the campaign is reconciled; it does not cover a seventh
+item.
