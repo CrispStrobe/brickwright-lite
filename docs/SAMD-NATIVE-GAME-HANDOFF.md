@@ -89,7 +89,8 @@ Test-only successor: the
 owns only the supervisor's test module; production bytes remain unchanged.
 The candidate binds parent/group identity and a held process descriptor, requires
 complete PID publication, retains bounded failure snapshots and signals only the
-admitted child. The original three-second assertion stays intact. A negative
+admitted child. The original three-second assertion stays intact. The original immediate-crash
+case remains; the100 ms live-owner case uses a separate fresh fixture. A negative
 fixture observes the actual supervisor's kill signal before deliberately
 clearing it and requiring survival through the same window, then exact cleanup.
 Private extracted-method controls and three adversarial cuts passed; their

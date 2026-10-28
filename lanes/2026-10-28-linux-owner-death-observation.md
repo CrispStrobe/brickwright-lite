@@ -41,3 +41,10 @@ checks. No production bytes before the test module changed. Independent review
 found no scoped blocker; bounded extracted-method controls and three cuts pass.
 Those private controls retain their synthetic boundary; full Rust/source CI and
 affected actual consumer qualification remain pending. Keep this claim active.
+
+Final timing review preserves the original immediate-crash trigger after identity
+admission. A fresh100 ms live-owner control is a separate case, never a delay of
+the original trigger. Both retain their own unchanged three-second post-crash
+bound; failure diagnostics label the case. Final extracted methods pass and the
+disabled held guard is detected specifically in the zero-delay case. Full Rust
+and affected consumer qualification remain required.

@@ -1953,7 +1953,6 @@ while root.exists() and time.monotonic() < deadline:
         assert!(pid > 1);
         assert_eq!(unsafe {libc::getpgid(pid)}, pid, "synthetic child must own its group");
         let child = OwnerDeathChild::bind(pid, owner.0.id()).unwrap();
-        thread::sleep(Duration::from_millis(100));
         assert!(!child.exited().unwrap(), "live owner must retain its admitted child");
         (fixture, owner, child)
     }
@@ -1961,25 +1960,30 @@ while root.exists() and time.monotonic() < deadline:
     #[cfg(target_os = "linux")]
     #[test]
     fn linux_owner_crash_terminates_simulator() {
-        let (_fixture, mut owner, child) = owner_death_fixture_pair(false);
-        owner.0.kill().unwrap(); owner.0.wait().unwrap();
-        let began = Instant::now();
-        let deadline = began + Duration::from_secs(3);
-        while !child.exited().unwrap() && Instant::now() < deadline { thread::sleep(Duration::from_millis(10)); }
-        let survived = !child.exited().unwrap();
-        if survived {
-            let snapshot = owner_child_snapshot(child.pid);
-            let same_start = snapshot.as_ref().map(|value| value.3 == child.before.3);
-            let signals = std::fs::read_to_string(format!("/proc/{}/status", child.pid)).map(|text|
-                text.lines().filter(|line| ["State:", "PPid:", "SigPnd:", "ShdPnd:"]
-                    .iter().any(|key| line.starts_with(key))).take(4)
-                    .map(|line| line.chars().take(80).collect::<String>()).collect::<Vec<_>>());
-            eprintln!("owner-death observation: owner={} child={} before={:?} numeric_pid_snapshot={:?} same_start={:?} numeric_pid_signals={:?} elapsed={:?}",
-                owner.0.id(), child.pid, child.before, snapshot, same_start, signals, began.elapsed());
-            // Cleanup is bound to the held synthetic child, never a reused process group.
-            eprintln!("exact synthetic cleanup: {:?}", child.kill_exact());
+        // Preserve immediate owner death; the delayed live-owner control is separate.
+        for live_delay in [Duration::ZERO, Duration::from_millis(100)] {
+            let (_fixture, mut owner, child) = owner_death_fixture_pair(false);
+            if !live_delay.is_zero() { thread::sleep(live_delay); }
+            assert!(!child.exited().unwrap(), "live-owner control must remain live before crash");
+            owner.0.kill().unwrap(); owner.0.wait().unwrap();
+            let began = Instant::now();
+            let deadline = began + Duration::from_secs(3);
+            while !child.exited().unwrap() && Instant::now() < deadline { thread::sleep(Duration::from_millis(10)); }
+            let survived = !child.exited().unwrap();
+            if survived {
+                let snapshot = owner_child_snapshot(child.pid);
+                let same_start = snapshot.as_ref().map(|value| value.3 == child.before.3);
+                let signals = std::fs::read_to_string(format!("/proc/{}/status", child.pid)).map(|text|
+                    text.lines().filter(|line| ["State:", "PPid:", "SigPnd:", "ShdPnd:"]
+                        .iter().any(|key| line.starts_with(key))).take(4)
+                        .map(|line| line.chars().take(80).collect::<String>()).collect::<Vec<_>>());
+                eprintln!("owner-death observation: live_delay={:?} owner={} child={} before={:?} numeric_pid_snapshot={:?} same_start={:?} numeric_pid_signals={:?} elapsed={:?}",
+                    live_delay, owner.0.id(), child.pid, child.before, snapshot, same_start, signals, began.elapsed());
+                // Cleanup is bound to the held synthetic child, never a reused process group.
+                eprintln!("exact synthetic cleanup: {:?}", child.kill_exact());
+            }
+            assert!(!survived, "simulator survived abrupt owner death");
         }
-        assert!(!survived, "simulator survived abrupt owner death");
     }
 
     #[cfg(target_os = "linux")]

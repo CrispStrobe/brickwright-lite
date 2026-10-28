@@ -86,7 +86,9 @@ persistent spawning thread also installs a parent-death signal, so abrupt deskto
 termination kills the direct simulator child. This additional crash protection
 does not cover forked descendants and is not qualified on other operating systems.
 
-The Linux owner-death tests bind the expected parent and process-group leader
+The Linux owner-death tests retain immediate owner death after child admission
+and separately check a fresh delayed live-owner case. Both use the original
+three-second post-crash assertion. They bind the expected parent and group leader
 before holding a kernel process descriptor. They retain the original three-second
 termination assertion, refuse incomplete PID publication and observe termination
 through that held identity. Cleanup signals only the admitted direct child.
