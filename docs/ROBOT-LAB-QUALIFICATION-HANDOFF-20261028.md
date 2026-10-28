@@ -8,17 +8,23 @@ state below was true when this was written and will drift.
 
 ## Standing rules (apply to every task below)
 
-- **Lanes.** Read `LANES.md` and `lanes/PROTOCOL.md`. Each task has a lane file
-  under `lanes/`. A claim and its change may go in one PR. Work in your own
-  isolated worktree. Never touch another owner's PR, branch or worktree.
+- **Lanes.** Read `LANES.md` and `lanes/PROTOCOL.md`. Merge the applicable
+  scope claim before new source implementation. Existing published work is not
+  discarded to repair its historical claim sequence. Carry an explicitly
+  delegated continuation in an owned isolated worktree; preserve other owners'
+  unpublished source, branches and original evidence. Refresh live ownership
+  before treating a snapshot's open task as unclaimed.
 - **CI and `ci:full`.**
   - Iterate without the `ci:full` label and let the unit shards run.
-  - Add `ci:full` **once**, on the final head. Browser shards, saved-project
-    replay and export run only with it.
+  - Admit the actual opened-event scope before adding `ci:full` **once** on
+    the final candidate. Browser shards, saved-project replay and export require
+    the applicable thorough tier. Do not repeat a one-shot label, dispatch or
+    Ready cycle; substantive successors use ordinary synchronize events.
   - The `full CI requested` check fails on code PRs without the label. That is
     the gate working, not a test failure, and such a PR cannot merge.
-  - Adding or removing the label starts a new Build run that cancels the old
-    one. Watch the new run ID.
+  - Label events create their own runs. Current concurrency distinguishes
+    those from code events; do not assume a label cancels the preceding run.
+    Bind each enabled result to its actual event, head, checkout and tree.
 - **Merging.**
   - Use `gh pr merge N --merge --match-head-commit <sha>`, and only after every
     enabled check on that exact head is SUCCESS. Only conditional jobs and
@@ -90,15 +96,18 @@ Merged on main:
 #1497 (batch C) merged too, but promoted nothing. Final Squeeze, High Select
 and Obliquity Orrery were reviewed and kept experimental.
 
-Open PRs: refresh each one. Unless a PR is marked otherwise below, take it over
-by finishing its CI, adding `ci:full` once, and merging under the rules above.
+Open PRs: refresh each one and coordinate the existing owner before carrying
+its published continuation. Where the author delegates finishing qualification,
+retain the frozen source and originals. Add `ci:full` only if absent and its
+one-shot admission has not already happened; never blindly repeat it. Merge only
+a fully qualified current combination, after source-review blockers are resolved.
 
 | PR | Branch | Content | State at handoff |
 |---|---|---|---|
 | #1508 | `lane/robot-batchD-20261028` | Promotes High Select (judge `max-select-v1`) and Final Squeeze (construction repaired); records the batch-6 browser run | Unit checks running; no `ci:full` yet |
 | #1510 | `fix/robot-lab-model-geometry-20261028` | Repairs Phasor Twin's construction (idler gear sat 7.5 LDU inside the motor; 20 pins reached into solid parts) and promotes it. The edit table is in the PR body | `ci:full` on; full run in progress |
-| #1512 | `fix/robot-lab-mesh-colliders-20261028` | Derives the shock-absorber (2909/2910) and linear-actuator colliders in `part-meta/parts.json` from the real meshes | Unit checks green apart from `full CI requested`. Add `ci:full` once. **Every shipped model's verdict must be unchanged**; if any changes, stop and investigate before merging |
-| #1514 | `fix/robot-lab-model-geometry-b3-20261028` | Seats Paired Door Sync's carriage pins | Unit checks running |
+| #1512 | `fix/robot-lab-mesh-colliders-20261028` | Mesh-derived shock-absorber and linear-actuator colliders | Full label admitted and added once; run40729193655 pending. Independent slab-containment, conservative-rounding and repeat-generation admission gaps require correction scope #1531. No actual missed surface is claimed. Every shipped model verdict must remain unchanged |
+| #1514 | `fix/robot-lab-model-geometry-b3-20261028` | Seats Paired Door Sync's carriage pins | Full label admitted and added once; run40729199310 pending. Four along-axis moves, 88-placement canonical/MPD and checkpoint-hash joins are source-consistent; hosted clearance and program qualification remain necessary |
 | #1505 | `fix/rotor-inertia-1494` | Rotor-inertia fix | Blocked; see section 3 |
 
 ## 2. Remaining models
@@ -137,19 +146,29 @@ free platform therefore turns 0.124 per wheel degree, where physics predicts
 about 0.026.
 
 What #1505 does:
-- **Derivation.** The rotor turns with the hinge's relative angle, so the
-  coupled inertia is [[I1+Jr, −Jr], [−Jr, I2+Jr]]. The fix keeps the
-  diagonal terms and applies the missing −Jr terms as axial impulses after each
-  step.
-- **Convergence.** Repeated each step, this converges to the exact solution with
-  a one-step lag.
+- **Derivation.** The ideal axial model has coupled inertia
+  [[I1+Jr, −Jr], [−Jr, I2+Jr]]. Published source
+  `92fb5d37cb244855b9a8af40dd122b444a21ec7a` still applies a lagged correction
+  derived from whole-step angular-rate changes. Its current PR description
+  discusses a different motor-impulse-only candidate; bind the actual source
+  instead of assuming that description is already implemented.
+- **Limit.** Post-step correction is not proof of exact contact/common-mode or
+  integrated-position dynamics. A candidate must pass the original guards and
+  independent momentum, servo and rollback controls; algebra alone is not
+  qualification. A required native solver extension needs separately reviewed
+  ownership, build/release and explicit pin adoption.
 - **Regression test.** `test/bw-sim-rotor-inertia.test.mjs` is a free-floating
   analytic case: physical ratio 0.02525, main 0.12381, #1505 0.02525. It fails on
   main and passes on #1505.
 
-**Blocker.** In `test/bw-sim-sarrus-lift.test.mjs`, the motor-carrying baseplate's
-lowest point is now 0.0042 mm *below* the floor, where main keeps it 0.453 mm
-above. That test's clearance must not simply be relaxed. Next action:
+**Blockers.** Retained first failure logs from run40688505800 bind actual
+synthetic checkout `9c14fbd252b21cae00b009bbabc2ae839284e1ad`, whose rotor and
+failing test bytes equal the published head. Sarrus clearance is −0.004174 mm;
+the world collision bench travels 0.012009 m against its unchanged <0.01 m guard;
+City and Essential BLE/ScratchLink endpoint comparisons also fail their 0.5°
+agreement guards. These are completed assertions, not missing command events or
+infrastructure failures. Preserve every failure and original assertion. Scope
+#1531 prepares a source correction; do not import a tolerance relaxation. Next:
 
 1. Log, per step, the reaction impulse the coupling applies to the baseplate.
    Compare it with the physical reaction Jr·(relative angular acceleration)·dt,
@@ -157,9 +176,10 @@ above. That test's clearance must not simply be relaxed. Next action:
 2. **If the applied impulse is too large,** for example because the lag doubles
    it at a step change, fix the coupling with a same-step or implicit solution.
    Don't keep the lagged correction.
-3. **If it matches the physical value,** the tilt is real. Then derive the
-   Sarrus expectation from the measured reaction and state the reasoning in the
-   PR. A bare tolerance change is not acceptable.
+3. **If it matches the ideal model,** investigate contact and integrated-pose
+   behavior under the original Sarrus, world and transport guards. Preserve
+   their assertions. Do not infer a physical measurement from the simulation or
+   replace a source correction with a looser clearance tolerance.
 4. Add `ci:full` once and compare the 13 promoted models' verdicts with main's.
    On main all of them pass: air-budget, carry-ratio, cross-ratio, foldback,
    ghost-pivot, quartermaster, samebeat, sine-shuttle, thirdline, toggle-lever,
@@ -198,8 +218,10 @@ distance is `LEGO_SPECULATIVE_CONTACT_M = 0.002`. The body then sinks below the
 floor and drifts. Removing the hovering collider, moving it out of the 2 mm band,
 or turning manifold reduction off each removes the creep.
 
-**Next action.** Make a separately claimed fix PR. The diagnostic lanes didn't
-authorise solver changes. Candidates:
+**Next action.** Refresh live ownership of the correction before creating a
+new fix: the merged diagnostics do not imply that the implementation is still
+unclaimed. Preserve and coordinate any active successor; the diagnostic lanes
+did not authorize solver changes. Candidate approaches include:
 - (a) disable manifold reduction for ground contacts only, for example through a
   contact listener or the body's `mUseManifoldReduction` / `SetUseManifoldReduction`;
 - (b) reduce the speculative distance.
@@ -207,7 +229,7 @@ authorise solver changes. Candidates:
 Prefer (a), because (b) moves the band rather than closing it. Requirements:
 - a regression test from the #1498 cases that fails before the fix and passes
   after: coplanar all-colliders and plate-hover 1.6/1.9 mm drift go to about 0;
-- no change to qualified models' verdicts under `ci:full`;
+- no change to currently qualified models' verdicts under affected full qualification;
 - the existing floor-contact tests, `docs/ROBOT-LAB-FLOOR-CONTACT.md`, still pass;
 - no engine-pin change.
 
