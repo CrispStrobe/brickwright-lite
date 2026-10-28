@@ -49,3 +49,5 @@ The earlier experimental checkpoint observations remain historical. Neither
 those observations nor a successful generic browser shard qualify this source.
 These are simulation results; physical construction, cord/contact behavior on
 hardware and releases remain outside this promotion.
+
+CI catalogue follow-up: the retained SwayShift comparison shares the primary model geometry but has its own example ID. The experimental catalogue control now uses `entry.id || entry.file`, matching the Examples UI, and still requires experimental details for every comparison. The full runner includes this control in its registration stage. Model, program, judge and threshold bytes are unchanged; the source PR records the fresh committed-head receipt.
