@@ -23,7 +23,7 @@ const check=run=>{
     assert.equal(BW.equal(values.get('nested'),values.get('nestedAlias')),true);
     save('native-observations-'+(++observationSequence)+'.json',Object.fromEntries(values));
 };
-test('reference Array aliases preserve local/procedure identity, startup defaults and mutation through all authoring routes',async()=>{
+test('reference Array aliases preserve local/procedure identity, startup defaults and mutation through all authoring routes',async t=>{
     const runs=[];
     const execute=async code=>{const run=await runProgram(code,{frames:40,storage:true});runs.push(run);assert.deepEqual(run.creator.warnings,[]);check(run);return run;};
     try{
@@ -41,6 +41,16 @@ test('reference Array aliases preserve local/procedure identity, startup default
         // Retain the exact input and refusal details even when export fails;
         // the existing opt-in evidence destination is outside the project.
         save('export-project.json',first.creator.project);save('export-observation.json',exported);
+        if(exported.unsupported.length){
+            // This test uses a checked-in public fixture. TAP diagnostics keep
+            // the generated refusal available in the ordinary unit artifact
+            // without changing the assertion or requiring a workflow change.
+            const diagnostic=JSON.stringify({unsupported:exported.unsupported,details:exported.unsupportedDetails||[],
+                draft:exported.refusalEvidence?.nativeAdditionDraft||null});
+            t.diagnostic(/\/(?:home|mnt|tmp|Users)\/|[A-Za-z]:\\\\/.test(diagnostic)?
+                'Arcade reference Array export refusal contains a local path; use the opt-in private capture':
+                `Arcade reference Array export refusal: ${diagnostic}`);
+        }
         assert.deepEqual(exported.unsupported,[]);save('export-files.json',exported.files);
         if(!process.env.ARRAY_ALIAS_NATIVE_ONLY){
             const original=await runPxtArcade(exported.files,{fakeClock:true,waitForGlobals:{complete:1},onCompilation:p=>save('export-compilation.json',p)});save('export-observations.json',original);

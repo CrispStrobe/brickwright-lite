@@ -63,7 +63,9 @@ Continue in this order:
    leaf of the update-handler witness, then its concatenations. Native result
    domains and occurrence initialization remain separate obligations.
    The reference-Array fixture itself passes a bounded source-domain probe; its
-   retained failure is in the exported program. The existing test now saves
+   retained failure is in the exported program. On a failure the test writes
+   structured refusal and generated source as a TAP diagnostic for the standard
+   unit log, unless it contains a local path. The test also saves
    `export-project.json` and `export-observation.json` before the unchanged
    assertion when `ARRAY_ALIAS_EVIDENCE` is set. In the next authorized hosted
    run, set that variable to an artifact directory and upload it even on
