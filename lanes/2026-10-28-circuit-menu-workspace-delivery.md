@@ -13,3 +13,12 @@ Keep `ci:full` on the combined editor candidate. Complete all enabled exact-fina
 Only then normally merge matched to the reviewed head and verify actual parents/tree. Resolve the superseded separate PR only after its source is preserved and qualified. Deploy qualified current main through the existing Vercel production workflow, observing active work before a single new dispatch, and verify the live version contains the qualified editor and Circuit package changes. Source readiness, queued CI and a pending deployment are not completion.
 
 Use hosted CI or a capable available worker; no heavy builds or browser suites on a loaded shared host. Keep local paths, receipts and session coordination in ignored private notes.
+
+Pre-adoption browser compatibility: also own only the menu/popup lookup hunks
+in `scripts/verify-circuit-ux.mjs`, a small `scripts/lib/circuit-actions.mjs`
+helper and its focused test. Bind the originating visible designer trigger's
+`aria-controls` to its page-level popup; retain the legacy in-designer menu
+path for the current pin. Update only real Open/Import/zoom control lookups.
+No broad first match, direct importer dispatch or owner substitution; preserve
+all fixtures, chooser events, assertions, waits, viewport/measurement bounds
+and science intake. No supplier pin move before CUI qualification.
