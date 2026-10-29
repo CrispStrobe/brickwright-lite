@@ -83,6 +83,26 @@ historical exemptions to quiet an ordinary stale live contract. Updating live
 source authority authorizes no completed study, CLI or reader replay and turns
 neither old study nor predecessor CI into new-pin evidence.
 
+
+The frozen combined successor is `09a4f407b67cba99455ff432c2df835d5dffb32d`.
+It includes main `da85ea2f` and both registered CI follow-through repairs:
+selected-tier admission and supported-event numeric-consumer selection. The
+manual consumer is skipped because its existing artifact trust admits push/PR
+only; successful supported events remain required. The obsolete wiring-message
+assertion now executes the real classifier-output forwarding and verifies its
+tier bindings. Locally, 39 focused CI controls and 11 gate-shape checks pass,
+and three isolated wiring mutants fail. These are source controls, not browser
+or delivery acceptance.
+
+Fresh fast [Build40867342348](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40867342348)
+and necessary full [Build40867478231](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40867478231)
+are pending on that exact source. The earlier manual run `40856189963` was
+cancelled before application execution after its unsupported consumer context
+was identified; it is not qualification. The prior fast head `d32860b8` had one
+real unit-2 wiring-assertion failure. Both originals remain distinct from this
+successor; neither failures nor cancelled checks are waived. No main landing or
+production deployment is claimed yet.
+
 ### Next actions, in order
 
 PR1538 was closed without merging to consolidate the queue. Its complete
