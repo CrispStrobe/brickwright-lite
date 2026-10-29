@@ -28,7 +28,12 @@ Continue in this order:
    with `sprites.allOfKind`. The existing inert-event-copy rule covers only the
    copy: the complete control still refuses the indexed Array read. Prove the
    intervening operations cannot read/expose that private frame before its
-   definite overwrite. Do not classify arbitrary property access, coercion,
+   definite overwrite. For the trace write, prove a non-cloud global binding
+   and a closed primitive invariant over its initial value and every writer.
+   For the field read, prove a plain declared data field for every possible
+   event receiver class, with no accessor, callable field or SDK collision;
+   `arcade_objectField` can invoke authored getter procedures. A fixed spelling
+   or opcode alone does not establish that effect boundary. Do not classify arbitrary property access, coercion,
    authored calls, captures or yields as inert. Preserve the original full
    ExtendableSprite export/reimport control.
 3. Continue native-addition receiver/result/initialization work from the actual
