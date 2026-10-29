@@ -39,16 +39,36 @@ const bad=f=>assert.equal(decision(query(f)).ok,false);
 test('a fixed event read into a different private local may precede the definite Array overwrite',()=>{
  for(const which of ['first','second'])for(const name of ['actor','renamed'])good(fixture(which,name));
 });
+test('a primitive literal written to a different local may precede the Array overwrite',()=>{
+ for(const value of [[4,'7'],[10,'text']]){
+  const f=fixture();delete f.blocks[f.event];f.blocks[f.copy].inputs.VALUE=[1,value];good(f);
+ }
+ const f=fixture();delete f.blocks[f.event];f.blocks[f.copy].inputs.VALUE=[1,[12,'out','out']];bad(f);
+});
 
-test('a conditional overwrite cannot hide an earlier read of the reset local',()=>{
+function conditionalFixture(readReset){
  const f=fixture(),{blocks,node,copy,overwrite,store}=f;
- const condition=node('arcade_getLocal',{NAME:[10,'refs']});
+ const condition=readReset?node('arcade_getLocal',{NAME:[10,'refs']}):[4,'1'];
  const kind=node('arcade_spriteKindValue',{NAME:[10,'Player']});
  const snapshot=node('arcade_spritesOfKind',{KIND:kind});
  const other=node('arcade_setLocal',{NAME:[10,'refs'],VALUE:snapshot});
  const branch=node('control_if_else',{CONDITION:condition,SUBSTACK:overwrite,SUBSTACK2:other});
  blocks[copy].next=branch;blocks[branch].parent=copy;blocks[branch].next=store;blocks[store].parent=branch;
  blocks[overwrite].next=null;blocks[overwrite].parent=branch;blocks[other].parent=branch;
+ return f;
+}
+test('a conditional overwrite cannot hide an earlier read of the reset local',()=>{
+ bad(conditionalFixture(true));
+});
+test('a literal condition with immediate overwrites on both branches retains the Array producer',()=>{
+ good(conditionalFixture(false));
+});
+test('a branch cannot expose the reset value before its overwrite',()=>{
+ const f=conditionalFixture(false),{blocks,node,copy,overwrite}=f,branch=blocks[copy].next;
+ const read=node('arcade_getLocal',{NAME:[10,'refs']});
+ const expose=node('data_setvariableto',{VALUE:read},{VARIABLE:['out','out']});
+ blocks[branch].inputs.SUBSTACK=[2,expose];blocks[expose].parent=branch;
+ blocks[expose].next=overwrite;blocks[overwrite].parent=expose;
  bad(f);
 });
 

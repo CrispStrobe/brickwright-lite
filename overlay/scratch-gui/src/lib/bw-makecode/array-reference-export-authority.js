@@ -691,6 +691,16 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         const inherited=watcherOwnDescriptor(Object.prototype,name);
         if(inherited&&(!prefixHasOwn(inherited,'value')||inherited.writable!==true))return false;
         const valueSlot=node.inputs.VALUE;
+        // A primitive literal stored into the same private frame has no cell
+        // reads, coercion or calls. It cannot expose the reset destination.
+        if(watcherIsArray(valueSlot)&&valueSlot.length===2&&valueSlot[0]===1&&watcherIsArray(valueSlot[1])&&
+            valueSlot[1].length===2&&([4,5,6,7,8].includes(valueSlot[1][0])&&
+                ['string','number'].includes(typeof valueSlot[1][1])&&watcherFinite(watcherNumber(valueSlot[1][1]))||
+                valueSlot[1][0]===10&&typeof valueSlot[1][1]==='string')){
+            if(records.some(r=>(r.scope===scope&&r.node.opcode==='arcade_setLocal'||r.target===scope.target&&r.node.opcode==='arcade_setCaptured')&&
+                (typeof literal(r.node,'NAME',r.target)!=='string'||literal(r.node,'NAME',r.target)==='__proto__')))return false;
+            return true;
+        }
         if(!watcherIsArray(valueSlot)||![2,3].includes(valueSlot[0])||valueSlot.length!==valueSlot[0]||
             typeof valueSlot[1]!=='string'||valueSlot[0]===3&&!watcherIsArray(valueSlot[2]))return false;
         if(records.some(r=>(r.scope===scope&&r.node.opcode==='arcade_setLocal'||r.target===scope.target&&r.node.opcode==='arcade_setCaptured')&&
