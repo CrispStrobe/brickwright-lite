@@ -1,3 +1,4 @@
+import {analyseSourceValueProducers} from './source-value-producers.js';
 import {localArrayDeclarationResetSource} from './local-array-declaration-reset-source.js';
 import {analyseCallableBindings} from './callable-bindings.js';
 import {physicalUpdateSourceSnapshot} from './physical-update-source-snapshot.js';
@@ -13,11 +14,30 @@ const descriptor=Object.getOwnPropertyDescriptor,keys=Reflect.ownKeys,proto=Obje
 const realm=globalThis,globalNames=['Object','Array','Map','Set','WeakMap','WeakSet','Reflect','JSON','Number','String','Function','Math'];
 const globalRows=globalNames.map(name=>[name,descriptor(realm,name)]);
 const ambient=[Object,Object.prototype,Array,Array.prototype,Map,Map.prototype,Set,Set.prototype,WeakMap,WeakMap.prototype,WeakSet,WeakSet.prototype,Reflect,JSON,Number,Number.prototype,String,String.prototype,Function,Function.prototype,Math,proto([][Symbol.iterator]()),proto(new Set()[Symbol.iterator]()),proto(new Map()[Symbol.iterator]())].map(object=>({object,parent:proto(object),fields:keys(object).map(key=>[key,descriptor(object,key)])}));
-const equalDescriptor=(a,b)=>!!a&&!!b&&a.enumerable===b.enumerable&&a.configurable===b.configurable&&a.writable===b.writable&&same(a.value,b.value)&&same(a.get,b.get)&&same(a.set,b.set);
-const realmCurrent=()=>globalRows.every(([name,d])=>equalDescriptor(descriptor(realm,name),d))&&ambient.every(row=>{const names=keys(row.object);return proto(row.object)===row.parent&&names.length===row.fields.length&&names.every((key,i)=>key===row.fields[i][0]&&equalDescriptor(descriptor(row.object,key),row.fields[i][1]));});
+const owns=Object.hasOwn;
+const descriptorFields=['enumerable','configurable','writable','value','get','set'];
+const equalDescriptor=(a,b)=>{
+ if(!a||!b)return false;
+ for(let i=0;i<descriptorFields.length;i++){
+  const key=descriptorFields[i],left=owns(a,key),right=owns(b,key);
+  if(left!==right||left&&!same(a[key],b[key]))return false;
+ }
+ return true;
+};
+// Check the captured realm without calling the very Array methods being
+// checked. Descriptor comparison never reads absent inherited fields.
+const realmCurrent=()=>{
+ for(let i=0;i<globalRows.length;i++)if(!equalDescriptor(descriptor(realm,globalRows[i][0]),globalRows[i][1]))return false;
+ for(let i=0;i<ambient.length;i++){
+  const row=ambient[i],names=keys(row.object);
+  if(proto(row.object)!==row.parent||names.length!==row.fields.length)return false;
+  for(let j=0;j<names.length;j++)if(names[j]!==row.fields[j][0]||!equalDescriptor(descriptor(row.object,names[j]),row.fields[j][1]))return false;
+ }
+ return true;
+};
 const sdkSnapshot=physicalUpdateSourceSnapshot(SDK_SPRITE_CLASS_NODES);
 const metadata=new Set(['originalBody','parameterDefaults','paramTypes','typeParameters','returnType','assertedType','optionalParams','parameterProperties','calls']);
-const syntax=new Set(['Program','Namespace','Declaration','ExpressionStatement','FunctionExpression','FunctionDeclaration','Return','Number','String','Boolean','Null','Undefined','Identifier','Template','Binary','Unary','Assignment','Update','Call','Member','Index','Parenthesized','Array']);
+const syntax=new Set(['Program','Namespace','Declaration','ExpressionStatement','FunctionExpression','FunctionDeclaration','Return','Number','String','Boolean','Null','Undefined','Identifier','Template','Binary','Unary','Assignment','Update','Call','Member','Index','Parenthesized','Array','While']);
 const roots=new Set(['sprites','SpriteKind','img','pause']);
 const denied=reason=>Object.freeze({has:()=>false,current:()=>true,reason});
 
@@ -99,11 +119,36 @@ export function createDestroyedSpriteCallbackNumberSource(program){
   const kind=n=>n?.type==='Identifier'&&flatAliases.has(ref(n))&&flatReadReady(n,flatAliases.get(ref(n)))||
    n?.type==='Member'&&canonical(n.object,'SpriteKind')&&(['Player','Projectile','Food','Enemy'].includes(n.name)||custom.has(n.name)||flatSlots.has(n.name)&&flatReadReady(n,[...flatAliases.values()][0]));
   const shape=fn=>fn.exported!==true&&Array.isArray(fn.body)&&Array.isArray(fn.params)&&fn.params.every(name=>typeof name==='string')&&fn.params.length===1&&new Set(fn.params).size===1&&[fn,fn.params].every(value=>!Object.hasOwn(value,'restParam')&&!['async','isAsync','generator','isGenerator'].some(k=>value[k])&&['parameterDefaults','optionalParams','typeParameters','genericParams','parameterProperties'].every(k=>value[k]===undefined||Array.isArray(value[k])&&!value[k].length)&&!Object.keys(value.paramDefaults||{}).length);
-  const closedShape=(fn,count)=>fn.exported!==true&&Array.isArray(fn.body)&&Array.isArray(fn.params)&&fn.params.length===count&&[fn,fn.params].every(value=>!Object.hasOwn(value,'restParam')&&!['async','isAsync','generator','isGenerator'].some(k=>value[k])&&['parameterDefaults','optionalParams','typeParameters','genericParams','parameterProperties'].every(k=>value[k]===undefined||Array.isArray(value[k])&&!value[k].length)&&!Object.keys(value.paramDefaults||{}).length);
-  const ordinary=new Map(),ordinaryCalls=new Set(),edges=new Map();
-  for(const fn of nodes.filter(n=>n.type==='FunctionDeclaration')){const b=bindings.global.names.get(fn.name);if(!program.body.includes(fn)||!b||b.node!==fn||b.written||!closedShape(fn,0))return denied('ordinary declaration shape');ordinary.set(b,fn);edges.set(fn,new Set());}
+  const closedShape=(fn,count)=>fn.exported!==true&&Array.isArray(fn.body)&&Array.isArray(fn.params)&&fn.params.length===count&&fn.params.every(name=>typeof name==='string')&&new Set(fn.params).size===count&&[fn,fn.params].every(value=>!Object.hasOwn(value,'restParam')&&!['async','isAsync','generator','isGenerator'].some(k=>value[k])&&['parameterDefaults','optionalParams','typeParameters','genericParams','parameterProperties'].every(k=>value[k]===undefined||Array.isArray(value[k])&&!value[k].length)&&!Object.keys(value.paramDefaults||{}).length);
+  const ordinary=new Map(),ordinaryCalls=new Set(),edges=new Map(),comparisons=new Map(),comparisonExpressions=new WeakSet(),unaries=new Map(),unaryExpressions=new WeakSet();
+  for(const fn of nodes.filter(n=>n.type==='FunctionDeclaration')){
+   const b=bindings.global.names.get(fn.name);if(!program.body.includes(fn)||!b||b.node!==fn||b.written)return denied('ordinary declaration identity');
+   if(!closedShape(fn,0)){
+    const expr=fn.body?.[0]?.value,scope=bindings.scopes.get(fn);
+    if(fn.body?.length!==1||fn.body[0].type!=='Return')return denied('ordinary pure body shape');
+    const negativeOne=n=>n?.type==='Number'&&(n.value===-1||n.value==='-1')||n?.type==='Unary'&&n.op==='-'&&n.argument?.type==='Number'&&(n.argument.value===1||n.argument.value==='1');
+    const directUnary=expr?.type==='Unary'&&['+','-'].includes(expr.op)&&expr.argument?.type==='Identifier'&&ref(expr.argument)===scope?.names.get(fn.params[0]);
+    const multipliedMinus=expr?.type==='Binary'&&expr.op==='*'&&negativeOne(expr.left)&&expr.right?.type==='Identifier'&&ref(expr.right)===scope?.names.get(fn.params[0]);
+    if(closedShape(fn,1)&&(directUnary||multipliedMinus)){
+     // Only primitive actual arguments enter this profile. For those inputs,
+     // canonical -1 * formal has the same NORMAL conversion/sign result as
+     // unary minus; its literal left operand has no source effect. BigInt and
+     // object coercion are excluded by the unchanged complete caller census.
+     unaries.set(b,{fn,expr,equivalentUnaryOp:multipliedMinus?'-':expr.op});unaryExpressions.add(expr);
+    }else{
+     if(!closedShape(fn,2)||expr?.type!=='Binary'||!['===','!==','<','<=','>','>='].includes(expr.op)||
+        expr.left?.type!=='Identifier'||expr.right?.type!=='Identifier'||ref(expr.left)!==scope?.names.get(fn.params[0])||ref(expr.right)!==scope?.names.get(fn.params[1]))return denied('ordinary comparison shape');
+     comparisons.set(b,{fn,expr,relational:!['===','!=='].includes(expr.op)});comparisonExpressions.add(expr);
+    }
+   }
+   ordinary.set(b,fn);edges.set(fn,new Set());
+  }
   const functionOwner=node=>{for(let p=parents.get(node);p;p=parents.get(p))if(['FunctionDeclaration','FunctionExpression'].includes(p.type))return p;return null;};
-  for(const n of nodes)if(n.type==='Identifier'&&ordinary.has(ref(n))){const call=parents.get(n),owner=functionOwner(n);if(call?.type!=='Call'||call.callee!==n||call.args?.length||owner?.type==='FunctionExpression')return denied('ordinary callable escape');ordinaryCalls.add(call);if(owner)edges.get(owner)?.add(ordinary.get(ref(n)));}
+  for(const n of nodes)if(n.type==='Identifier'&&ordinary.has(ref(n))){
+   const call=parents.get(n),owner=functionOwner(n),comparison=comparisons.get(ref(n)),unary=unaries.get(ref(n));
+   if(call?.type!=='Call'||call.callee!==n||call.args?.length!==(comparison?2:unary?1:0)||owner?.type==='FunctionExpression'&&!comparison&&!unary)return denied('ordinary callable escape');
+   ordinaryCalls.add(call);if(owner?.type==='FunctionDeclaration')edges.get(owner)?.add(ordinary.get(ref(n)));
+  }
   for(const fn of ordinary.values())if(![...ordinaryCalls].some(c=>ref(c.callee)===bindings.global.names.get(fn.name)))return denied('uncalled ordinary body');
   const cycle=(fn,active=new Set())=>active.has(fn)||[...edges.get(fn)||[]].some(next=>cycle(next,new Set([...active,fn])));
   if([...ordinary.values()].some(fn=>cycle(fn)))return denied('ordinary recursion');
@@ -132,12 +177,62 @@ export function createDestroyedSpriteCallbackNumberSource(program){
    if(n.type==='Assignment'&&n.left?.type==='Identifier')addWriter(ref(n.left),['=','+=','-=','*=','/=','%='].includes(n.op)?n.right:null);
    if(n.type==='Update'&&n.argument?.type==='Identifier')addWriter(ref(n.argument),null);
   }
+  let independentGraph=null,graphUsed=false,graphViewSnapshot=null;
+  const graphNodes=new WeakMap();
+  const graph=()=>{
+   if(independentGraph)return independentGraph;
+   // This view retains the ORIGINAL unary operation at each proven direct
+   // call. It neither substitutes a constant nor lends a shared formal's
+   // joined domain to a different call. The original complete effect census
+   // below still requires every actual argument to be primitive.
+   const omitted=new Set();for(const profile of unaries.values())omitted.add(profile.fn);
+   const clone=value=>{
+    if(!value||typeof value!=='object')return value;
+    if(graphNodes.has(value))return graphNodes.get(value);
+    const parent=proto(value);if(parent!==Object.prototype&&parent!==Array.prototype&&parent!==null)throw new Error('opaque graph source');
+    const call=value.type==='Call'&&ordinaryCalls.has(value)&&unaries.get(ref(value.callee));
+    if(call){
+     // The consumed callee/argument envelope must contain no hidden data or
+     // expression that would disappear when the exact direct call is inlined.
+     for(const key of keys(value.callee))if(!['type','name'].includes(key))throw new Error('unary callee envelope');
+     for(const key of keys(value.args))if(key!=='0'&&key!=='length')throw new Error('unary argument envelope');
+     if(Object.hasOwn(value,'op')||Object.hasOwn(value,'argument'))throw new Error('unary operation collision');
+    }
+    const out=Array.isArray(value)?[]:Object.create(parent);graphNodes.set(value,out);
+    let index=0;
+    for(const key of keys(value)){
+     const d=descriptor(value,key);if(typeof key!=='string'||!d||!Object.hasOwn(d,'value'))throw new Error('non-data graph source');
+     if(Array.isArray(value)&&key==='length')continue;
+     if(value===program.body&&/^(0|[1-9][0-9]*)$/.test(key)){
+      if(omitted.has(d.value))continue;
+      Object.defineProperty(out,String(index++),{...d,value:clone(d.value)});continue;
+     }
+     if(call&&(key==='callee'||key==='args'))continue;
+     Object.defineProperty(out,key,{...d,value:call&&key==='type'?'Unary':clone(d.value)});
+    }
+    if(Array.isArray(value)){const d=descriptor(value,'length');Object.defineProperty(out,'length',{...d,value:value===program.body?index:d.value});}
+    if(call){Object.defineProperty(out,'op',{value:call.equivalentUnaryOp,writable:true,enumerable:true,configurable:true});Object.defineProperty(out,'argument',{value:clone(value.args[0]),writable:true,enumerable:true,configurable:true});}
+    return out;
+   };
+   const view=clone(program);graphViewSnapshot=physicalUpdateSourceSnapshot(view);if(!graphViewSnapshot)throw new Error('invalid operation graph');
+   independentGraph=analyseSourceValueProducers(view,{ordinaryPrimitiveSdkNumbers:false,arrayValues:true,parenthesized:true,unboundIsOpaque:true,declaredLocalUndefined:true,initializationEntries:true});
+   return independentGraph;
+  };
+  const graphTypes=node=>{const analysis=graph(),privateNode=graphNodes.get(node);return privateNode?analysis.typesAt(privateNode):new Set();};
+  const graphPrimitive=n=>{
+   if(n?.type!=='Identifier'||flatAliases.has(ref(n)))return false;
+   const types=graphTypes(n);if(!types.size||[...types].some(type=>!['Number','String','Boolean','Null','Undefined'].includes(type)))return false;graphUsed=true;return true;
+  };
+  const numericIndex=n=>{const types=graphTypes(n);if(types.size!==1||!types.has('Number'))return false;graphUsed=true;return true;};
   const primitive=(n,active=new Set())=>{
    if(!n)return false;if(selected.has(n))return true;if(['Number','String','Boolean','Null','Undefined'].includes(n.type))return true;
    if(n.type==='Parenthesized')return primitive(n.expression,active);
    if(n.type==='Unary'&&['+','-','!','~'].includes(n.op))return primitive(n.argument,active);
    if(n.type==='Binary'&&['+','-','*','/','%','<','>','<=','>=','===','!==','==','!='].includes(n.op))return primitive(n.left,active)&&primitive(n.right,active);
-   if(n.type==='Identifier'){const b=ref(n),values=writers.get(b);return !!b&&!!values?.length&&(active.has(b)?values.some(v=>coordinateInput(v)):values.every(v=>primitive(v,new Set([...active,b]))));}
+   if(n.type==='Member'&&n.name==='length'&&snapshotArray(n.object))return true;
+   if(n.type==='Call'&&n.callee?.type==='Identifier'&&unaries.has(ref(n.callee)))return n.args.length===1&&primitive(n.args[0],active);
+   if(n.type==='Call'&&n.callee?.type==='Identifier'&&comparisons.has(ref(n.callee))){const profile=comparisons.get(ref(n.callee));return !profile.relational||n.args.length===2&&n.args.every(arg=>primitive(arg,active));}
+   if(n.type==='Identifier'){if(graphPrimitive(n))return true;const b=ref(n),values=writers.get(b);return !!b&&!!values?.length&&(active.has(b)?values.some(v=>coordinateInput(v)):values.every(v=>primitive(v,new Set([...active,b]))));}
    return false;
   };
   const coordinateInput=n=>{if(!n||typeof n!=='object')return false;if(['Number','String','Boolean','Null','Undefined'].includes(n.type))return true;if(n.type==='Parenthesized')return coordinateInput(n.expression);if(n.type==='Unary'&&['+','-','!','~'].includes(n.op))return coordinateInput(n.argument);if(n.type==='Binary'&&['+','-','*','/','%','<','>','<=','>=','===','!=='].includes(n.op))return coordinateInput(n.left)&&coordinateInput(n.right);return false;};
@@ -158,7 +253,9 @@ export function createDestroyedSpriteCallbackNumberSource(program){
   // This never issues Sprite identity, readiness or an initialized variable.
   const sprite=n=>{if(n?.type!=='Identifier')return false;const b=ref(n),values=writers.get(b);return entries.has(b)||aliases.has(b)||!!values?.length&&values.some(factory)&&values.every(v=>factory(v)||['Null','Undefined'].includes(v?.type));};
   const snapshotCall=n=>sdkCall(n,'allOfKind')&&n.args.length===1&&kind(n.args[0]);
-  const snapshotArray=n=>snapshotCall(n)||n?.type==='Identifier'&&!!writers.get(ref(n))?.length&&writers.get(ref(n)).every(snapshotCall);
+  const snapshotArray=n=>{if(snapshotCall(n))return true;if(n?.type!=='Identifier')return false;const values=writers.get(ref(n));return !!values?.length&&values.some(snapshotCall)&&values.every(v=>snapshotCall(v)||['Null','Undefined'].includes(v?.type));};
+  const snapshotElement=n=>n?.type==='Index'&&snapshotArray(n.object)&&numericIndex(n.index);
+  const indexedDestroyReceiver=n=>snapshotElement(n)||n?.type==='Identifier'&&!!writers.get(ref(n))?.length&&writers.get(ref(n)).some(snapshotElement)&&writers.get(ref(n)).every(v=>snapshotElement(v)||['Null','Undefined'].includes(v?.type));
   // The only ingress alias is in the callback's leading let-null list,
   // immediately followed by its exact formal assignment. Every other formal
   // or alias occurrence must be an x read after that bridge, in this entry.
@@ -179,8 +276,9 @@ export function createDestroyedSpriteCallbackNumberSource(program){
    if(n.type==='Identifier'&&['this','globalThis','global','window','self','eval','Function','Object','Array','Reflect','Fx','Fx8','Sprite','Image','Math','arguments'].includes(n.name))return denied('reflection or SDK dependency escape');
    if(n.type==='Identifier'&&!ref(n)&&!roots.has(n.name))return denied('unknown identifier');
    if(n.type==='Identifier'&&roots.has(n.name)){const p=parents.get(n);if(n.name==='pause'?(p?.type!=='Call'||p.callee!==n):(p?.type!=='Member'||p.object!==n))return denied('SDK namespace escape');}
-   if(n.type==='Binary'&&!['===','!=='].includes(n.op)&&(!primitive(n.left)||!primitive(n.right)))return denied('opaque operand coercion');
-   if(n.type==='Unary'&&!primitive(n.argument))return denied('opaque unary coercion');
+   if(n.type==='While'&&(!Array.isArray(n.body)||!primitive(n.test)))return denied('opaque while condition');
+   if(n.type==='Binary'&&!comparisonExpressions.has(n)&&!unaryExpressions.has(n)&&!['===','!=='].includes(n.op)&&(!primitive(n.left)||!primitive(n.right)))return denied('opaque operand coercion');
+   if(n.type==='Unary'&&!unaryExpressions.has(n)&&!primitive(n.argument))return denied('opaque unary coercion');
    if(n.type==='Template'&&!image(n))return denied('image factory input');
    if(n.type==='Array'&&(!Array.isArray(n.items)||!n.items.every(coordinateInput)))return denied('nonprimitive Array construction');
    if(n.type==='Assignment'&&n.left?.type!=='Identifier'&&!flatSlotStores.has(n)){
@@ -194,9 +292,11 @@ export function createDestroyedSpriteCallbackNumberSource(program){
     if(p?.type==='Call'&&p.callee===n)continue;
     return denied('unproved member read');
    }
-   if(n.type==='Index'&&(!snapshotArray(n.object)||n.index?.type!=='Number'||!Number.isSafeInteger(Number(n.index.value))||Number(n.index.value)<0))return denied('unproved indexed effect');
+   if(n.type==='Index'&&!snapshotElement(n))return denied('unproved indexed effect');
    if(n.type!=='Call')continue;
-   if(registrations.includes(n)||factory(n)||ordinaryCalls.has(n)||flatCreates.has(n))continue;
+   if(ordinaryCalls.has(n)){const comparison=comparisons.get(ref(n.callee));if(comparison?.relational&&!n.args.every(arg=>primitive(arg)))return denied('opaque comparison operand');if(unaries.has(ref(n.callee))&&!primitive(n.args[0]))return denied('opaque unary argument');continue;}
+   if(registrations.includes(n)||factory(n)||flatCreates.has(n))continue;
+   if(n.callee?.type==='Member'&&n.callee.name==='destroy'&&indexedDestroyReceiver(n.callee.object)&&n.args.length===0)continue;
    if(n.callee?.type==='Member'&&n.callee.name==='push'&&n.callee.object?.type==='Identifier'&&primitiveArray(n.callee.object)&&n.args.length===1&&coordinateInput(n.args[0]))continue;
    if(n.callee?.object?.name==='SpriteKind'&&n.callee.name==='create'&&namespaces.some(ns=>{for(let p=n;p;p=parents.get(p))if(p===ns)return true;return false;}))continue;
    if(sdkCall(n,'allOfKind')||sdkCall(n,'destroyAllSpritesOfKind')){if(n.args.length!==1||!kind(n.args[0]))return denied('kind operation');continue;}
@@ -208,7 +308,13 @@ export function createDestroyedSpriteCallbackNumberSource(program){
    return denied('unknown invocation');
   }
   if(invalid)return denied('unbound writer');
-  let live=true;const current=()=>{if(live&&(!realmCurrent()||!sdkSnapshot.current()||!snapshot.current()||!resets.current()))live=false;return live;};
+  let live=true;const current=()=>{
+   if(!live)return false;
+   try{if(!realmCurrent()||!sdkSnapshot.current()||!snapshot.current()||!resets.current()||
+     graphUsed&&(!graphViewSnapshot?.current()||!independentGraph.lexicalDeclarationReadinessCurrent()))live=false;}
+   catch{live=false;}
+   return live;
+  };
   return Object.freeze({current,has:node=>current()&&selected.has(node),reason:null});
  }catch{return denied('unclosed source');}
 }

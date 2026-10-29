@@ -11,6 +11,7 @@ test('destroyed callback supplies only its actual property result to the primiti
  const graph=analyseSourceValueProducers(p,options);assert.deepEqual([...graph.typesAt(read)],['Number']);
  assert.equal(graph.functionParameterTypes(fn,0).has('Sprite'),false);assert.equal(graph.functionParameterTypes(fn,0).has('Array'),false);
  const off=analyseSourceValueProducers(p,{...options,ordinaryPrimitiveSdkNumbers:false});assert.equal(off.typesAt(read).has('Number'),false);
+ const inhibited=analyseSourceValueProducers(p,{...options,ordinaryDestroyedNumbers:false});assert.equal(inhibited.typesAt(read).has('Number'),false);
  const captured=graph.typesAt(read);p.extra='changed';assert.deepEqual([...graph.typesAt(read)],[]);assert.equal(graph.lexicalDeclarationReadinessCurrent(),false);assert.deepEqual([...captured],['Number']);delete p.extra;assert.deepEqual([...graph.typesAt(read)],[]);
 });
 test('later fixed-point dependency mutation cannot authorize the callback property',()=>{

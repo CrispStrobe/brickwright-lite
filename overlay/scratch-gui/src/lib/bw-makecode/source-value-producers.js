@@ -108,7 +108,7 @@ function deadLocalResets(program) {
 
 // Analyze actual lexical producers and all writers without rewriting the AST.
 // Source annotations constrain consumers; they never seed producer authority.
-function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpers:provedHelpers=new Set(),parenthesized=false,unboundIsOpaque=false,opaqueDeclarationValues=false,uninitializedLocalsAreOpaque=false,declaredLocalUndefined=false,multiplayerPlayerProperties=false,consoleInspection=false,arrayValues=false,arrayEffectSites=false,arrayCallbackParameters=false,arrayLoopEntries=false,provenArrayLength=false,ordinaryPrimitiveSdkNumbers=false,ordinaryMusicNumbers=true,sceneClockNumbers=false,initializationEntries=false,primitiveComparisons=false,closureEntries=false,normalCompletion=null,closedOrdinaryEntries=false,physicalUpdateSource=null}={},privateSpriteAyProof=null,identityInput=null,cameraNumberInput=null,controlEntry=null,arrayCallbackBootstrap=false) {
+function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpers:provedHelpers=new Set(),parenthesized=false,unboundIsOpaque=false,opaqueDeclarationValues=false,uninitializedLocalsAreOpaque=false,declaredLocalUndefined=false,multiplayerPlayerProperties=false,consoleInspection=false,arrayValues=false,arrayEffectSites=false,arrayCallbackParameters=false,arrayLoopEntries=false,provenArrayLength=false,ordinaryPrimitiveSdkNumbers=false,ordinaryMusicNumbers=true,ordinaryDestroyedNumbers=true,sceneClockNumbers=false,initializationEntries=false,primitiveComparisons=false,closureEntries=false,normalCompletion=null,closedOrdinaryEntries=false,physicalUpdateSource=null}={},privateSpriteAyProof=null,identityInput=null,cameraNumberInput=null,controlEntry=null,arrayCallbackBootstrap=false) {
     const ordinaryEntry=closedOrdinaryEntries?createClosedOrdinarySourceEntry(program):null;
     const nullableLengthSource=arrayValues?nullableArrayLengthSource(program):null;
     const nullableLengthIssued=new Set();let nullableLengthUsed=false;
@@ -195,7 +195,7 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
     const mathNumbers=ordinaryPrimitiveSdkNumbers?ordinaryMathNumberCalls(program):null;
     const musicNumbers=ordinaryPrimitiveSdkNumbers&&ordinaryMusicNumbers?createOrdinaryMusicNumberSource(program,safeClockIndex):null;
     let musicNumberUsed=false;
-    const destroyedNumbers=ordinaryPrimitiveSdkNumbers?createDestroyedSpriteCallbackNumberSource(program):null;
+    const destroyedNumbers=ordinaryPrimitiveSdkNumbers&&ordinaryDestroyedNumbers?createDestroyedSpriteCallbackNumberSource(program):null;
     let destroyedNumberUsed=false;
     const spriteAyNumbers=privateSpriteAyProof||(ordinaryPrimitiveSdkNumbers?ordinarySpriteAyNumberReads(program):null);
     const sceneNumbers=sceneClockNumbers?ordinarySceneClockNumberCalls(program,safeClockIndex):null;
@@ -466,6 +466,8 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
         ...(arrayEffectSites?{possibleArrayAllocationsAt:node=>Object.freeze([...currentTypes(cell(node))].filter(type=>type?.kind==='Array').map(type=>type.site))}:{}),
         typesAt:node=>owners.has(node)?currentTypes(cell(node)):new Set(),
         bindingTypesAt:(node,name=node?.name)=>currentTypes(knownBinding(node,name)),
+        destroyedNumberResultsUsed:()=>destroyedNumberUsed,
+        destroyedNumbersCurrent:()=>!destroyedNumberUsed||destroyedNumbers.current(),
         musicNumberResultsUsed:()=>musicNumberUsed,
         musicNumbersCurrent:()=>!musicNumberUsed||musicNumbers.current(),
         bindingOf:knownBinding,

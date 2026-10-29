@@ -56,8 +56,11 @@ including non-enumerable ones, participate in the effect census. A review found
 that boundary gap and a regression now detects hidden mutations and unknown
 calls.
 
-Twenty bounded source controls and one actual import/authoring/export control
-pass. Three current mutation cuts detect missing consumer facts, missing alias
+The 32 service source cases pass in bounded partitions, and five primitive
+consumer/native-domain controls pass. The aggregate local source-file run
+reached its CPU safety cap; that failure is retained and full-suite execution
+remains hosted work. The earlier minimal import/authoring/export control also
+passes. Three current mutation cuts detect missing consumer facts, missing alias
 ingress and skipped hidden executable fields; original bytes were restored.
 The earlier seven-control authored-source checkpoint and its failures remain
 historical evidence, not a runtime verdict.
@@ -72,8 +75,30 @@ fallback and is not sufficient evidence of this repair.
 Run the complete controls on the prepared external worker:
 
 ```sh
-node --import ./scripts/lib/register-gui-scope.mjs --test --test-concurrency=1 test/arcade-destroyed-sprite-callback-number-source.test.mjs test/arcade-destroyed-callback-consumer.test.mjs test/makecode-arcade-sprite-collections.test.mjs
+node --import ./scripts/lib/register-gui-scope.mjs --test --test-concurrency=1 test/arcade-destroyed-sprite-callback-number-source.test.mjs test/arcade-destroyed-callback-consumer.test.mjs test/native-array-destroyed-callback-domain.test.mjs test/makecode-arcade-sprite-collections.test.mjs
 ```
+
+The source effect profile now admits the actual snapshot `while` loop,
+immutable direct comparison helpers and the compiler's pure unary helpers,
+including `-1 * value`. It checks every actual argument and source writer.
+Numeric indices come from the independent original source graph; nullable
+snapshot/index receivers provide only a normal method-effect boundary, with
+possible throws retained. No element presence or Sprite/Array initialization
+certificate is published.
+
+Pure unary calls are represented by their original operation at each actual
+site in a private graph. This prevents one caller's unresolved formal domain
+from contaminating another caller and never substitutes a numeric constant.
+The native addition consumer proves original getter operations before its
+existing unary/result projections, then joins exact private property identities
+and carries original-source/SDK/currentness checks through the analysis.
+Its type-only normal-result projection occurs after class/source interpretation;
+actual emitted operations and evaluation order stay intact. Supplied tags cannot
+enroll a proof. Original refusal inhibits later graph issuance. Throwing source
+observations permanently revoke the receipt, and changed Array intrinsics are
+observed without invoking the changed method. Mutation controls detect missing
+normal-result projection, foreign method invocation and missing exception
+revocation; the original source is restored.
 
 The exporter also flattens a custom kind into a namespace slot declaration and
 three adjacent root statements: `alias = undefined`,

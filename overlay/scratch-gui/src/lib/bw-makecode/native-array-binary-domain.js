@@ -9,6 +9,7 @@ import {lowerNamedArrayItemHelpers} from './named-array-item-helpers.js';
 import {nativeClassScalarView} from './native-class-scalar-view.js';
 import {ordinaryPlayerScoreNumberCalls,ordinaryCameraPropertyNumberLeaves,ordinaryMathNumberCalls} from './ordinary-primitive-sdk-number-source.js';
 import {createOrdinaryMusicNumberSource} from './ordinary-music-number-source.js';
+import {createDestroyedSpriteCallbackNumberSource} from './destroyed-sprite-callback-number-source.js';
 import {physicalUpdateSourceSnapshot} from './physical-update-source-snapshot.js';
 import {ordinarySceneClockNumberCalls} from './ordinary-scene-clock-number-source.js';
 
@@ -98,7 +99,7 @@ function inspectDomains(program,profile,ordinaryExportSelection) {
     const syntax=inspectNativeArrayAddHelpers(program,profile),helpers=syntax.helpers;
     if(!helpers.size)return {helpers:new Map(),current:syntax.current,reason:null};
     const suppliedTags=new Set(['NativeNamedArrayCreate','NativeNamedArrayDelete','LegacyParsedValue','LegacyJsonValue','NativeArrayAccess']);
-    const supplied=node=>node&&typeof node==='object'&&(Object.hasOwn(node,'bwNativeNamedArray')||Object.hasOwn(node,'nativeArrayDomainCall')||Object.hasOwn(node,'nativeArrayDomainNormalCall')||Object.hasOwn(node,'nativeClosureDomainNormalCall')||Object.hasOwn(node,'nativeImageDomainNormalCall')||Object.hasOwn(node,'nativeRecursiveSourceCall')||Object.hasOwn(node,'nativeRecursiveDomainNormalCall')||
+    const supplied=node=>node&&typeof node==='object'&&(Object.hasOwn(node,'bwNativeNamedArray')||Object.hasOwn(node,'nativeArrayDomainCall')||Object.hasOwn(node,'nativeArrayDomainNormalCall')||Object.hasOwn(node,'nativeDestroyedSourceProperty')||Object.hasOwn(node,'nativeDestroyedDomainNormalProperty')||Object.hasOwn(node,'nativeClosureDomainNormalCall')||Object.hasOwn(node,'nativeImageDomainNormalCall')||Object.hasOwn(node,'nativeRecursiveSourceCall')||Object.hasOwn(node,'nativeRecursiveDomainNormalCall')||
         suppliedTags.has(node.type)||Object.entries(node).some(([key,value])=>!metadata.has(key)&&(Array.isArray(value)?value.some(supplied):supplied(value))));
     if(supplied(program))return {helpers:new Map(),current:syntax.current,reason:'native addition requires original source, not supplied private named-helper tags'};
     // A complete unary conversion body returns Number whenever it returns.
@@ -125,6 +126,17 @@ function inspectDomains(program,profile,ordinaryExportSelection) {
     // ordinary cloning; no caller-supplied spelling or metadata can select it.
     const selected=new Set([...helpers.values()].map(helper=>helper.declaration).concat([...unaryDeclarations])),originalCalls=new Map(),tokens=new Map(),unaryTokens=new Set();
     for(const helper of helpers.values())for(const call of helper.calls)originalCalls.set(call,{helper,ordinal:originalCalls.size});
+    // Prove the original getter operations before unary/class/result-only
+    // projections can erase a callee or hidden source effect. This optional
+    // source receipt inhibits later graph issuance when original closure fails.
+    let destroyedOriginView=null,destroyedOriginProof=null,destroyedSnapshot=null;
+    if(unaryProof.nodes.some(node=>node.type==='Call'&&node.callee?.type==='Member'&&node.callee.name==='onDestroyed'))try{
+        destroyedOriginView=imageOriginOperationView(program,syntax);
+        destroyedOriginProof=createDestroyedSpriteCallbackNumberSource(destroyedOriginView.program);
+        if(destroyedOriginProof.reason===null)destroyedSnapshot=physicalUpdateSourceSnapshot(program);
+    }catch{ /* No original receipt supplies no added property fact. */ }
+    const destroyedAllowed=destroyedOriginProof?.reason===null&&!!destroyedSnapshot;
+    const destroyedTokens=new Set();let destroyedUsed=false,destroyedLive=true;
     const prepare=node=>{
         if(!node||typeof node!=='object')return node;
         if(Array.isArray(node)){const next=mapGeneratedSourceArray(node,prepare);return node.some(value=>selected.has(value))?next.filter((value,index)=>!selected.has(node[index])):next;}
@@ -140,6 +152,9 @@ function inspectDomains(program,profile,ordinaryExportSelection) {
             return {type:'Conditional',test:prepare(node.args[0]),consequent:{type:'Number',value:'0'},alternate:{type:'Number',value:'0'},nativeArrayDomainNormalCall:token};
         }
         const copy=Object.fromEntries(Object.entries(node).map(([key,value])=>[key,metadata.has(key)?value:prepare(value)]));
+        if(destroyedAllowed&&node.type==='Member'&&destroyedOriginProof.has(destroyedOriginView.modelOf(node))){
+            const token=Symbol();destroyedTokens.add(token);copy.nativeDestroyedSourceProperty=token;
+        }
         if(recursiveResults.has(node)){
             const token=Symbol();recursiveSourceTokens.set(token,node);copy.nativeRecursiveSourceCall=token;
         }
@@ -158,6 +173,15 @@ function inspectDomains(program,profile,ordinaryExportSelection) {
     if(named.unsupported.length)return {helpers:new Map(),current:syntax.current,reason:'native addition named-helper source proof refused: '+named.unsupported.join('; ')};
     const classView=nativeClassScalarView(named.program,profile);
     const bindings=inspectGeneratedHelperBindings(classView.program,profile);
+    const joinedDestroyed=new Set();
+    for(const node of bindings.nodes)if(Object.hasOwn(node,'nativeDestroyedSourceProperty')){
+        const token=node.nativeDestroyedSourceProperty;
+        if(node.type!=='Member'||node.name!=='x'||!destroyedTokens.has(token)||joinedDestroyed.has(token))
+            return {helpers:new Map(),current:()=>false,reason:'native addition destroyed callback source identity is ambiguous'};
+        joinedDestroyed.add(token);
+    }
+    if(joinedDestroyed.size!==destroyedTokens.size)return {helpers:new Map(),current:()=>false,
+        reason:'native addition destroyed callback source identity was not preserved'};
     let closureResults=null,closureLive=true,imageResults=null,imageLive=true;
     let imageOrigins=null,imageOriginView=null,imageOriginUsed=false,imageOriginLive=true;
     let callableAdditionProof=null,callableAdditionUsed=false,callableAdditionLive=true;
@@ -168,6 +192,8 @@ function inspectDomains(program,profile,ordinaryExportSelection) {
         if(operationUsed&&!operationLive||classResultUsed&&!classResultLive)return false;
         try{
             musicUsed=musicUsed||graph.musicNumberResultsUsed?.()===true||usedMusicSources.length>0;
+            destroyedUsed=destroyedUsed||destroyedTokens.size>0||graph.destroyedNumberResultsUsed?.()===true;
+            if(destroyedUsed&&(!destroyedLive||!destroyedOriginView.current()||!destroyedOriginProof.current()||!destroyedSnapshot.current()))destroyedLive=false;
             let musicCurrent=graph.musicNumbersCurrent?.()!==false&&(!musicUsed||
                 originalMusic.current()&&originalMusicSnapshot?.current());
             for(let i=0;i<usedMusicSources.length;i++)if(!usedMusicSources[i].current())musicCurrent=false;
@@ -176,7 +202,7 @@ function inspectDomains(program,profile,ordinaryExportSelection) {
                 try{assertCurrentClassSourceProof(callableAdditionProof,imageOriginView.program);}catch{callableAdditionLive=false;return false;}
             }
             const now=syntax.current()&&unaryProof.isCurrent()&&classView.current()&&bindings.isCurrent()&&graph.lexicalDeclarationReadinessCurrent()&&
-                (!frameDeltaUsed||graph.frameDeltaNumbersCurrent())&&musicCurrent;
+                (!frameDeltaUsed||graph.frameDeltaNumbersCurrent())&&musicCurrent&&(!destroyedUsed||destroyedLive);
             // Like the other consumed facts, any observed staleness permanently
             // expires a used frame-delta proof; restoring the text cannot revive it.
             if(frameDeltaUsed&&!now)frameDeltaLive=false;
@@ -190,7 +216,7 @@ function inspectDomains(program,profile,ordinaryExportSelection) {
             if(classResultUsed&&!valid)classResultLive=false;
             if(callableAdditionUsed&&!valid)callableAdditionLive=false;
             return valid&&(!musicUsed||musicLive)&&(!frameDeltaUsed||frameDeltaLive)&&(!operationUsed||operationLive)&&(!classResultUsed||classResultLive)&&(!imageOriginUsed||imageOriginLive);
-        }catch(error){if(musicUsed)musicLive=false;if(operationUsed)operationLive=false;if(classResultUsed)classResultLive=false;if(imageOriginUsed)imageOriginLive=false;if(callableAdditionUsed)callableAdditionLive=false;if(frameDeltaUsed)frameDeltaLive=false;throw error;}
+        }catch(error){if(destroyedUsed)destroyedLive=false;if(musicUsed)musicLive=false;if(operationUsed)operationLive=false;if(classResultUsed)classResultLive=false;if(imageOriginUsed)imageOriginLive=false;if(callableAdditionUsed)callableAdditionLive=false;if(frameDeltaUsed)frameDeltaLive=false;throw error;}
     };
     const domainHelpers=[...helpers.values()].map(helper=>({...helper,calls:[]}));
     const observed=new Set(),provedHelperResults=new WeakSet();
@@ -223,12 +249,17 @@ function inspectDomains(program,profile,ordinaryExportSelection) {
         else{
             next={};for(const [key,value]of Object.entries(node))if(key!=='nativeArrayDomainCall')next[key]=metadata.has(key)?value:rewrite(value);
         }
+        if(destroyedTokens.has(node.nativeDestroyedSourceProperty)){
+            delete next.nativeDestroyedSourceProperty;
+            next={type:'Conditional',test:next,consequent:{type:'Number',value:'0'},alternate:{type:'Number',value:'0'},
+                nativeDestroyedDomainNormalProperty:node.nativeDestroyedSourceProperty};
+        }
         replacements.set(node,next);return next;
     };
     const analyse=model=>analyseSourceValueProducers(model,{
         arrayValues:true,arrayEffectSites:true,arrayCallbackParameters:true,parenthesized:true,unboundIsOpaque:true,
         uninitializedLocalsAreOpaque:true,declaredLocalUndefined:true,initializationEntries:true,
-        ordinaryPrimitiveSdkNumbers:true,ordinaryMusicNumbers:musicAllowed,sceneClockNumbers:true
+        ordinaryPrimitiveSdkNumbers:true,ordinaryMusicNumbers:musicAllowed,ordinaryDestroyedNumbers:destroyedAllowed,sceneClockNumbers:true
     });
     let model=rewrite(classView.program),graph=analyse(model);
     const hasClosureCandidate=bindings.nodes.some(node=>node.type==='FunctionExpression'&&bindings.parentOf(node)?.type==='Return');

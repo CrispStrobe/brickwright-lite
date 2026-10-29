@@ -236,3 +236,165 @@ test('computed member flags and malformed callback envelopes never select the li
   assert.equal(createDestroyedSpriteCallbackNumberSource(p).has(read),false,target);
  }
 });
+
+const registryLoop=`function below(a:any,b:any):boolean{return a<b}
+function identical(a:any,b:any):boolean{return a===b}
+let positions=0
+sprites.onDestroyed(SpriteKind.Enemy,function(eventSprite:Sprite){
+ let sprite:Sprite=null
+ sprite=eventSprite
+ positions=positions+sprite.x
+})
+let first=sprites.create(img\`1\`,SpriteKind.Enemy)
+first.setPosition(10,60)
+let saved:Sprite[]=null
+saved=sprites.allOfKind(SpriteKind.Enemy)
+let cursor=0
+let element:Sprite=null
+while(below(cursor,saved.length)){
+ element=saved[cursor]
+ element.destroy()
+ cursor=(+cursor)+1
+}
+let same=identical(saved[0],first)`;
+
+test('renamed pure comparisons and closed snapshot while retain only callback x authority',()=>{
+ const {p,proof,reads}=inspect(registryLoop);assert.equal(proof.reason,null);assert.equal(proof.has(reads[0]),true);
+ for(const n of walk(p))if(n.type==='Identifier'||n.type==='Index'||n.type==='Call'||n.type==='Member'&&n.name==='length')assert.equal(proof.has(n),false);
+ assert.equal(accepted(registryLoop.replaceAll('below','otherName').replaceAll('identical','differentName')),true);
+ assert.equal(accepted(registryLoop.replace('element=saved[cursor]','element=saved[-1]')),true,'normal missing-element effect may throw; no presence claim');
+});
+
+test('snapshot writer/index domains are actual source facts, never annotations or names',()=>{
+ for(const text of [
+  registryLoop.replace('let cursor=0','let cursor:number'),
+  registryLoop.replace('let cursor=0','let cursor="zero"'),
+  registryLoop.replace('saved[cursor]','saved[unknown()]'),
+  registryLoop.replace('saved[cursor]','saved[img`1`]'),
+  registryLoop+'\nsaved=foreign();',
+  registryLoop+'\nsaved=img`1`;',
+  registryLoop.replace('element=saved[cursor]','element=foreign()'),
+  registryLoop.replace('element.destroy()','element.setPosition(10,60)'),
+  registryLoop.replace('element.destroy()','positions=positions+element.x'),
+  registryLoop.replace('element.destroy()','foreign(element)'),
+  registryLoop.replace('element.destroy()','element.destroy(1)'),
+  registryLoop.replace('while(below(cursor,saved.length))','while(foreign())'),
+  registryLoop.replace('cursor=(+cursor)+1','cursor="later"')
+ ])assert.equal(accepted(text),false,text);
+});
+
+test('pure comparison profiles bind exact bodies, formals, calls and coercion boundaries',()=>{
+ for(const text of [
+  registryLoop.replace('return a<b','return b<a'),
+  registryLoop.replace('return a<b','foreign();return a<b'),
+  registryLoop.replace('return a<b','return below(a,b)'),
+  registryLoop.replace('below(a:any,b:any)','below(a:any,b:any,c:any)'),
+  registryLoop.replace('below(a:any,b:any)','below(a:any,b:any=1)'),
+  registryLoop.replace('return a===b','return a==b'),
+  registryLoop.replace('below(cursor,saved.length)','below(first,saved.length)'),
+  registryLoop.replace('below(cursor,saved.length)','below(cursor)'),
+  registryLoop+'\nlet escaped=below;',
+  registryLoop+'\nbelow=identical;',
+  registryLoop.replace('positions=positions+sprite.x','positions=positions+sprite.x;first=below'),
+  registryLoop.replace('return a<b','return foreign(a,b)')
+ ])assert.equal(accepted(text),false,text);
+ assert.equal(accepted(registryLoop.replace('positions=positions+sprite.x','positions=positions+sprite.x;let compared=identical(sprite.x,1)')),true,'callback may call only the pure comparison profile');
+});
+
+test('consumed scalar/index graph facts retain the service source-expiry boundary',()=>{
+ const {p,proof,reads}=inspect(registryLoop);assert.equal(proof.has(reads[0]),true);
+ const index=walk(p).find(n=>n.type==='Index'&&n.index?.name==='cursor'),old=index.index.name;
+ index.index.name='positions';assert.equal(proof.current(),false);index.index.name=old;assert.equal(proof.current(),false);
+});
+
+const originalUnaryLoop='function numericStep(input:any):number{return +input}\n'+registryLoop.replace('cursor=(+cursor)+1','cursor=numericStep(cursor)+1');
+test('actual original unary operation profile closes loop effects without projection badges',()=>{
+ const {p,proof,reads}=inspect(originalUnaryLoop);assert.equal(proof.reason,null);assert.equal(proof.has(reads[0]),true);
+ for(const node of walk(p))if(node.type==='Call'&&node.callee?.name==='numericStep'||node.type==='Identifier'&&node.name==='input')assert.equal(proof.has(node),false);
+ assert.equal(accepted(originalUnaryLoop.replaceAll('numericStep','anotherOrdinaryName')),true);
+ assert.equal(accepted(originalUnaryLoop.replace('return +input','return -input')),true);
+ assert.equal(accepted(originalUnaryLoop.replace('positions=positions+sprite.x','positions=positions+sprite.x;let converted=numericStep(sprite.x)')),true);
+});
+
+test('pure unary profiles require exact source body, binding, calls and primitive actual operands',()=>{
+ for(const text of [
+  originalUnaryLoop.replace('return +input','return +other'),
+  originalUnaryLoop.replace('return +input','foreign();return +input'),
+  originalUnaryLoop.replace('return +input','return numericStep(input)'),
+  originalUnaryLoop.replace('return +input','return ~input'),
+  originalUnaryLoop.replace('numericStep(input:any)','numericStep(input:any,extra:any)'),
+  originalUnaryLoop.replace('numericStep(input:any)','numericStep(input:any=1)'),
+  originalUnaryLoop.replace('numericStep(cursor)','numericStep(first)'),
+  originalUnaryLoop.replace('numericStep(cursor)','numericStep(saved)'),
+  originalUnaryLoop.replace('numericStep(cursor)','numericStep()'),
+  originalUnaryLoop.replace('numericStep(cursor)','numericStep(cursor,1)'),
+  originalUnaryLoop+'\nlet escaped=numericStep;',
+  originalUnaryLoop+'\nnumericStep=below;',
+  originalUnaryLoop.replace('function numericStep','export function numericStep')
+ ])assert.equal(accepted(text),false,text);
+ const p=parse(originalUnaryLoop),fn=walk(p).find(n=>n.type==='FunctionDeclaration'&&n.name==='numericStep');fn.params.restParam='input';assert.equal(createDestroyedSpriteCallbackNumberSource(p).has(walk(p).find(n=>n.type==='Member'&&n.name==='x')),false);
+});
+
+test('a numeric conditional projection token remains outside this original-operation proof',()=>{
+ const p=parse(originalUnaryLoop),call=walk(p).find(n=>n.type==='Call'&&n.callee?.name==='numericStep');
+ call.type='Conditional';call.test=call.args[0];call.consequent={type:'Number',value:'0'};call.alternate={type:'Number',value:'0'};call.nativeArrayDomainNormalCall=Symbol('inert projection');delete call.callee;delete call.args;
+ assert.equal(createDestroyedSpriteCallbackNumberSource(p).has(walk(p).find(n=>n.type==='Member'&&n.name==='x')),false);
+});
+
+test('changed Array.every cannot certify its own analysis realm or revive a consumed proof',()=>{
+ const {proof,reads}=inspect(source);assert.equal(proof.has(reads[0]),true);const before=Array.prototype.every;let calls=0,observed;
+ try{Array.prototype.every=()=>{calls++;return true;};observed=proof.current();}finally{Array.prototype.every=before;}
+ assert.equal(observed,false);assert.equal(calls,0,'revocation observes the changed method without calling it');
+ assert.equal(proof.current(),false);assert.equal(proof.has(reads[0]),false);
+});
+
+test('private original unary operation views isolate actual callers without a shared formal domain loan',()=>{
+ const text=originalUnaryLoop.replace('positions=positions+sprite.x','positions=positions+sprite.x;let converted=numericStep(sprite.x)');
+ const {p,proof,reads}=inspect(text),before=JSON.stringify(p);assert.equal(proof.reason,null);assert.equal(proof.has(reads[0]),true);assert.equal(JSON.stringify(p),before);
+ for(const n of walk(p))if(n.type==='Call'&&n.callee?.name==='numericStep')assert.equal(proof.has(n),false);
+ assert.equal(accepted(text.replace('numericStep(sprite.x)','numericStep(first)')),false,'the original complete callee effect census still validates this caller');
+ assert.equal(accepted(text.replace('return +input','return foreign(input)')),false,'no arbitrary function body is erased');
+});
+
+test('operation view cloning keeps source descriptors and array metadata or declines hidden callee envelopes',()=>{
+ const p=parse(originalUnaryLoop),before=JSON.stringify(p),metadataValue='inert array metadata';
+ Object.defineProperty(p.body,'analysisNote',{value:metadataValue,writable:true,enumerable:false,configurable:true});
+ const proof=createDestroyedSpriteCallbackNumberSource(p),read=walk(p).find(n=>n.type==='Member'&&n.name==='x');assert.equal(proof.has(read),true);assert.equal(JSON.stringify(p),before);
+ assert.deepEqual(Object.getOwnPropertyDescriptor(p.body,'analysisNote'),{value:metadataValue,writable:true,enumerable:false,configurable:true});
+ p.body.analysisNote='changed';assert.equal(proof.current(),false);p.body.analysisNote=metadataValue;assert.equal(proof.current(),false);
+ for(const part of ['callee','args']){
+  const fresh=parse(originalUnaryLoop),call=walk(fresh).find(n=>n.type==='Call'&&n.callee?.name==='numericStep');
+  Object.defineProperty(call[part],'hiddenEnvelope',{value:{type:'Number',value:'7'},enumerable:false,configurable:true});
+  const denied=createDestroyedSpriteCallbackNumberSource(fresh);assert.equal(denied.has(walk(fresh).find(n=>n.type==='Member'&&n.name==='x')),false);
+ }
+});
+
+test('original unary body and call changes expire a consumed per-call graph permanently',()=>{
+ const {p,proof,reads}=inspect(originalUnaryLoop);assert.equal(proof.has(reads[0]),true);
+ const fn=walk(p).find(n=>n.type==='FunctionDeclaration'&&n.name==='numericStep'),expr=fn.body[0].value,op=expr.op;
+ expr.op='-';assert.equal(proof.current(),false);expr.op=op;assert.equal(proof.current(),false);
+});
+
+test('throwing source observation permanently revokes the standalone property proof',()=>{
+ const {p,proof,reads}=inspect(source);assert.equal(proof.has(reads[0]),true);
+ const original=p.body[0];let observations=0;
+ try{p.body[0]=new Proxy(original,{getPrototypeOf(){observations++;throw new Error('source observation failed');}});let current;assert.doesNotThrow(()=>{current=proof.current();});assert.equal(current,false);}
+ finally{p.body[0]=original;}
+ assert.equal(observations,1);assert.equal(proof.current(),false);assert.equal(proof.has(reads[0]),false);
+});
+
+test('canonical negative-one multiplication retains the genuine original unary operation effect',()=>{
+ const text=originalUnaryLoop.replace('return +input','return -1*input').replace('positions=positions+sprite.x','positions=positions+sprite.x;let converted=numericStep(sprite.x)');
+ const {p,proof,reads}=inspect(text);assert.equal(proof.reason,null);assert.equal(proof.has(reads[0]),true);
+ for(const node of walk(p))if(node.type==='Call'&&node.callee?.name==='numericStep'||node.type==='Identifier'&&node.name==='input')assert.equal(proof.has(node),false);
+ assert.equal(accepted(text.replaceAll('numericStep','ordinaryNegative')),true);
+ for(const body of ['return input*-1','return -2*input','return -1*other','return (-1*input)+0','return -1*numericStep(input)'])assert.equal(accepted(text.replace('return -1*input',body)),false,body);
+ assert.equal(accepted(text.replace('numericStep(sprite.x)','numericStep(first)')),false);
+});
+
+test('negative-one multiplication profile still rejects nonprimitive actual values and stale bodies',()=>{
+ const text=originalUnaryLoop.replace('return +input','return -1*input');
+ for(const argument of ['first','saved','foreign()','{value:1}'])assert.equal(accepted(text.replace('numericStep(cursor)','numericStep('+argument+')')),false,argument);
+ const {p,proof,reads}=inspect(text);assert.equal(proof.has(reads[0]),true);
+ const fn=walk(p).find(n=>n.type==='FunctionDeclaration'&&n.name==='numericStep'),body=fn.body[0].value,op=body.op;body.op='+';assert.equal(proof.current(),false);body.op=op;assert.equal(proof.current(),false);
+});
