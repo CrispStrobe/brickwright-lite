@@ -51,12 +51,16 @@ rotor impulses, scalar speed and energy. Rollback restores JavaScript metadata
 without reconfiguring the already-restored native rotor. The original issue1494
 fixture is retained verbatim; new controls cover atomic configuration, bare body
 properties, optional effort copies, stale samples and exact native checkpoints.
-The consumer now pins the qualified `1.1.0-bw.8` archive from the owning fork's
-`bw.8-qualified-20261028` release, including its exact SHA-512 integrity. The
-published archive is the already-qualified scalar/SIMD package, not a rebuild.
-These Lite controls have not executed against it. Fresh affected native/model,
-rendered worker and saved-project qualification remain prerequisites; upstream
-package qualification does not qualify this combined consumer source.
+The candidate now pins the qualified `1.1.0-bw.9` archive from the owning fork's
+`bw.9-qualified-20261029` release, including its exact SHA-512 integrity and
+archive SHA256. Those published bytes are the already-qualified built/packed
+scalar/SIMD package, with native coupled soft-motor/rotor rows; no rebuild is
+substituted. Earlier bw.8 consumer failures remain preserved, including hub
+full-turn endpoints, clutch-bench transmission, Twinpoint loop closure and
+Butterfly wing sweep. Library qualification does not establish their repair.
+Fresh main composition and affected native/model, programme, rendered worker
+and saved-project qualification remain pending at this package. No consumer
+acceptance follows from the owning forks' bounded native/package results.
 
 The same package-pin implementation includes only the canonical
 `JOLT_PHYSICS_URL` and `JOLT_PHYSICS_INTEGRITY` literals and their adjacent
