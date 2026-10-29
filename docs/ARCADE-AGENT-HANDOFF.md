@@ -45,6 +45,14 @@ license before retaining or redistributing those assets. Where a user supplies
 an actual project and lawful resources, pass the original file map to the
 importer and preserve their bytes; leave missing assets explicit otherwise.
 
+A focused synthetic control in `test/arcade-supplied-gallery-context.test.mjs`
+now exercises the existing dependency-preparation path with genuine annotated
+fixed-instance declarations and supplied JRES bytes. Its imported project has
+no unsupported entries and retains background, velocity and stay-on-screen
+blocks; a missing resource is refused. This is a source-level control, not a
+complete game or license determination. JRES namespace metadata by itself does
+not declare a TypeScript member; require the real configured source binding.
+
 Continue in this order:
 
 1. The terminal numeric evidence for the current live PR has been retained and
