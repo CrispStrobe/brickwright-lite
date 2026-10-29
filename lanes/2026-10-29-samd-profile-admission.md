@@ -1,6 +1,6 @@
 # Explicit SAMD software-profile admission
 
-Owner: Codex SAMD continuation. Status: CLAIMED. Base: current Main at claim.
+Owner: Codex SAMD continuation. Status: DONE — admission boundary and focused controls complete; GUI integration remains separate. Base: current Main at claim.
 
 The qualified SAMD software profile is an authored simulation assembly, distinct
 from the existing PyBadge board descriptor. Prepare a narrow, explicit profile
@@ -19,3 +19,8 @@ Qualify exact approved bytes, corruption, missing/extra fields and wrong engine
 identity with meaningful negative controls. Preserve successful guest originals;
 no replay merely to inspect them. Run focused controls and enabled fast checks
 before a normal matched-head landing. No ci:full label.
+
+The browser-side reader verifies the pinned profile, exact source YAML bindings,
+closed authored inputs and field unions. Synthetic positive and negative controls
+pass; the retained original release profile also admitted with its exact digest.
+No guest was replayed and no default board or product route was changed.
