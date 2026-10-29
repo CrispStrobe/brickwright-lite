@@ -68,3 +68,65 @@ test('rest parser refusal and mutated default envelopes cannot hide callback eff
  for(const key of ['restParam','parameterDefaults','parameterProperties']){const p=parse(source),fn=walk(p).find(n=>n.type==='FunctionExpression');fn[key]=key==='restParam'?'sprite':{hidden:'effect'};const proof=createDestroyedSpriteCallbackNumberSource(p);assert.equal(proof.has(walk(p).find(n=>n.type==='Member'&&n.name==='x')),false);}
  const p=parse(source),declaration=walk(p).find(n=>n.type==='Declaration'&&n.decls.some(d=>d.name==='positions'));declaration.decls[0].hiddenInitializer={type:'Call'};assert.equal(createDestroyedSpriteCallbackNumberSource(p).has(walk(p).find(n=>n.type==='Member'&&n.name==='x')),false);
 });
+
+// Reconstructed from the retained actual exporter draft AFTER the existing
+// addition recognizer has removed its genuine helper and rewritten that call.
+// This test never blesses an arbitrary function body by its generated name.
+const generatedModel=`function begin() {
+ let tmp: number[] = null
+ positions = (0 + 0)
+ tmp = []
+ tmp.push((0 + 1))
+ values = tmp
+ sprites.onDestroyed(SpriteKind.Enemy,function(eventSprite: Sprite){
+  let sprite: Sprite = null
+  sprite = eventSprite
+  positions = positions + sprite.x
+ })
+ ready = (0 + 1)
+}
+let values: number[]
+let ready: number
+let positions = 0
+begin()`;
+test('closed zeroarg source and exact callback ingress accept the genuine rewritten generated model',()=>{
+ const {p,proof,reads}=inspect(generatedModel);assert.equal(reads.length,1);assert.equal(proof.reason,null);assert.equal(proof.has(reads[0]),true);
+ const binary=walk(p).find(n=>n.type==='Binary'&&n.right?.name==='x');binary.nativeArrayDomainCall=Symbol('private recognition identity');
+ const tagged=createDestroyedSpriteCallbackNumberSource(p);assert.equal(tagged.has(reads[0]),true);
+ const token=binary.nativeArrayDomainCall;binary.nativeArrayDomainCall=Symbol('replacement');assert.equal(tagged.current(),false);binary.nativeArrayDomainCall=token;assert.equal(tagged.current(),false);
+ assert.equal(tagged.has(reads[0]),false);
+});
+
+test('ordinary entry and callback alias ingress remain closed against every actual reference/writer',()=>{
+ for(const text of [
+  generatedModel.replace('function begin()','function begin(value:number)'),
+  generatedModel.replace('begin()','begin(value=1)'),
+  generatedModel+'\nlet escaped=begin;',
+  generatedModel.replace('ready = (0 + 1)','ready=(0+1);begin()'),
+  generatedModel.replace('ready = (0 + 1)','ready=(0+1);unknown()'),
+  generatedModel.replace('sprite = eventSprite','positions=sprite.x; sprite = eventSprite'),
+  generatedModel.replace('sprite = eventSprite','sprite = eventSprite; sprite=eventSprite'),
+  generatedModel.replace('sprite = eventSprite','sprite = eventSprite;let alias=sprite'),
+  generatedModel.replace('sprite = eventSprite','sprite = eventSprite;let nested=function(){return sprite.x}'),
+  generatedModel.replace('positions = positions + sprite.x','positions=positions+sprite.x;eventSprite=first'),
+  generatedModel.replace('tmp.push((0 + 1))','tmp.push(unknown())'),
+  generatedModel.replace('tmp.push((0 + 1))','tmp.push(img`1`)'),
+  generatedModel.replace('tmp.push((0 + 1))','tmp.push((0+1));tmp.push(values)')
+ ])assert.equal(accepted(text),false,text);
+});
+
+test('inert rewrite identity never authorizes symbolic executable fields or copied receiver nodes',()=>{
+ const p=parse(generatedModel),binary=walk(p).find(n=>n.type==='Binary'&&n.right?.name==='x'),read=binary.right;
+ binary.nativeArrayDomainCall=Symbol('inert');binary.op=Symbol('unknown executable operator');assert.equal(createDestroyedSpriteCallbackNumberSource(p).has(read),false);
+ const fresh=inspect(generatedModel);assert.equal(fresh.proof.has({...fresh.reads[0]}),false);
+});
+
+test('non-enumerable executable fields cannot hide later SDK mutations or foreign calls',()=>{
+ for(const text of ['Fx.add=foreign;','unknown();']){
+  const p=parse(source),hidden=parse(text).body[0],expr=hidden.expr;
+  Object.defineProperty(hidden,'expr',{value:expr,enumerable:false,writable:true,configurable:true});p.body.push(hidden);
+  const read=walk(p).find(n=>n.type==='Member'&&n.name==='x');assert.equal(createDestroyedSpriteCallbackNumberSource(p).has(read),false);
+ }
+ const p=parse(generatedModel),fn=p.body.find(n=>n.type==='FunctionDeclaration');fn.exported=true;
+ assert.equal(createDestroyedSpriteCallbackNumberSource(p).has(walk(p).find(n=>n.type==='Member'&&n.name==='x')),false);
+});

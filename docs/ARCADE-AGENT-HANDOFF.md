@@ -28,51 +28,56 @@ terminal originals for that head, then require the official numeric GUI job to
 produce and independently audit a fresh complete capture. Never relabel the
 older unavailable record or relax its freshness checks.
 
-The direct `onDestroyed` coordinate-result proof is a separate, unintegrated
-source checkpoint: seven pure-source controls and two detected mutation cuts
-pass. It does not yet admit generated startup/helper code and
-must not be described as closing the collection fixtures. Before integration,
-prove all actual callback routes, initialized primitive coordinate writers,
-protected SDK fixed-point dependencies, source/descriptor currentness and
-original getter ownership; retain refusal for unproved cases.
+### Conditional destruction-callback result source candidate
 
+The primitive producer graph now consumes selected `sprite.x` Number results
+from genuine direct `onDestroyed` callbacks. This also handles closed
+zero-argument ordinary startup calls and the emitter's callback-local
+`let sprite = null; sprite = eventParameter` ingress. Lexical binding identity,
+all references/writers, read-after-assignment order and source/SDK/intrinsic
+currentness are required. The actual reset and operations remain in the program.
+An inline callback or local alias does not become a generic Sprite or initialized
+value certificate. The fixed-point getter dependencies stay protected; coordinate
+setter arguments remain independently literal primitive expressions.
 
+The private source model closes primitive Array construction/push effects too.
+A retained null receiver writer can still throw before registration; admitting
+that operation's effects on its normal path grants no Array, presence or
+initialization fact. Existing null-reset discounts are consumed only through
+their independent proof. Inert recognition tokens retain identity/currentness;
+they cannot authorize executable AST fields. All executable own data fields,
+including non-enumerable ones, participate in the effect census. A review found
+that boundary gap and a regression now detects hidden mutations and unknown
+calls.
 
-### Next bounded repair: generated destruction callback ingress
+Thirteen bounded source controls and one actual import/authoring/export control
+pass. Three current mutation cuts detect missing consumer facts, missing alias
+ingress and skipped hidden executable fields; original bytes were restored.
+The earlier seven-control authored-source checkpoint and its failures remain
+historical evidence, not a runtime verdict.
 
 The minimal diagnostic is an ordinary primitive Array plus
 `sprites.onDestroyed(SpriteKind.Enemy, function(sprite) { positions += sprite.x })`.
-Its first export refuses the **left** `positions` operand with `Number | Opaque`
-and initialization true; the callback getter contaminates its complete writer
-domain. The same source without an Array uses the existing ordinary fallback,
-so that successful export alone does not establish this repair.
+Before this repair its first export refused the **left** `positions` operand
+with `Number | Opaque` and initialization true. The same actual conversion now
+exports without refusals. Omitting the Array uses the pre-existing ordinary
+fallback and is not sufficient evidence of this repair.
 
-The actual emitter introduces a zero-argument startup procedure and, inside the
-callback, `let sprite: Sprite = null; sprite = eventParameter` before reading
-`sprite.x`. Continue from the unintegrated
-`destroyed-sprite-callback-number-source.js`, not an API-name whitelist:
+Run the complete controls on the prepared external worker:
 
-1. Admit closed ordinary startup invocation by actual lexical caller/body proof,
-   never its generated name. Keep unknown, extracted, recursive or escaping
-   routes refused until proved. Account for genuine addition helper removal
-   through the existing private helper-recognition identity join.
-2. Prove the callback-local alias ingress: unique binding, exact null declaration
-   and immediate formal assignment, no other writers/captures/escapes, and every
-   selected read after that assignment in the same entry. Preserve the actual
-   reset and source evaluation. A `Sprite` annotation supplies no authority.
-3. Handle the actual collection-destruction loop's snapshot/index receiver and
-   canonical factory construction effects without granting general Array or
-   Sprite certificates. Do not erase unproved callees or source effects to make
-   this smaller than the emitted program.
-4. Consume only the selected getter occurrence's conditional Number result in
-   native addition. Carry original source/descriptor/intrinsic currentness
-   across every private projection and expire consumed facts permanently.
-5. Add generated positive and incompatible/early/escaped/changed-writer controls,
-   then run both unchanged positive collection fixtures through original PXT,
-   native execution, Code, export/reimport and fresh saved-project routes.
-   Their snapshot callbacks, replacement sprites, pauses, retained handles and
-   final coordinates stay required. No count or runtime claim follows from the
-   authored-source proof alone.
+```sh
+node --import ./scripts/lib/register-gui-scope.mjs --test --test-concurrency=1 test/arcade-destroyed-sprite-callback-number-source.test.mjs test/arcade-destroyed-callback-consumer.test.mjs test/makecode-arcade-sprite-collections.test.mjs
+```
+
+The new default-on acceptance must actually destroy a created Sprite and observe
+`positions = 10`, `callbacks = 1`, `ready = 1` through original PXT, Lite, Code,
+export/reimport and fresh saved-project routes. It is unexecuted locally.
+The two unchanged snapshot-destruction fixtures also remain unqualified: their
+replacement sprites, pauses, retained handles, snapshot loop/index receiver
+and final coordinates must all pass. Do not erase an unproved callee or loop,
+broaden this result proof into Array/Sprite authority, or promote a corpus row
+from the minimal conversion. Extend only the first actual remaining emitted
+operation, retaining its all-writer, entry and currentness obligations.
 
 ## 29 October: primitive Array callbacks and qualification checkpoint
 
