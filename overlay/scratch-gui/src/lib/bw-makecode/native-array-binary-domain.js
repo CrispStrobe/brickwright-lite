@@ -17,6 +17,122 @@ import {ordinarySceneClockNumberCalls} from './ordinary-scene-clock-number-sourc
 
 const primitive=new Set(['Number','String','Boolean','Null','Undefined']);
 const metadata=new Set(['originalBody','parameterDefaults','paramTypes','typeParameters','returnType','assertedType','bwProcedureConstraintSource','sourceReferenceDeclarations','sourceCallableDeclarations','sourceScalarDeclarations']);
+const startupKeys=Reflect.ownKeys,startupDescriptor=Object.getOwnPropertyDescriptor,
+    startupPrototype=Object.getPrototypeOf,startupSame=Object.is;
+const startupAmbient=[Array,Array.prototype,Object,Object.prototype,String,String.prototype]
+    .map(object=>({object,parent:startupPrototype(object),keys:startupKeys(object),
+        fields:startupKeys(object).map(key=>[key,startupDescriptor(object,key)])}));
+const startupArrayIndex=key=>typeof key==='string'&&/^(?:0|[1-9][0-9]*)$/.test(key)&&
+    Number(key)<=4294967294;
+const startupNoInheritedIndex=startupAmbient.filter(row=>row.object===Array.prototype||row.object===Object.prototype)
+    .every(row=>row.keys.every(key=>!startupArrayIndex(key)));
+const startupAmbientCurrent=()=>startupNoInheritedIndex&&startupAmbient.every(row=>{
+    const keys=startupKeys(row.object);
+    return startupPrototype(row.object)===row.parent&&keys.length===row.keys.length&&
+        keys.every((key,index)=>key===row.keys[index]&&(()=>{
+            const before=row.fields[index][1],now=startupDescriptor(row.object,key);
+            return !!now&&before.enumerable===now.enumerable&&before.configurable===now.configurable&&
+                before.writable===now.writable&&startupSame(before.value,now.value)&&
+                startupSame(before.get,now.get)&&startupSame(before.set,now.set);
+        })());
+});
+
+// An exported startup may initialize a global Array from a private, freshly
+// filled local. The ordinary all-writer graph correctly keeps the global's
+// earlier null writer; it cannot use that global as an Array at every point.
+// This certificate concerns only the read inside the immediately following
+// indexed store. It gives no Array, element-presence or later-read fact.
+function startupPrimitiveIndexRead(program,bindings,profile,read,tokens) {
+    if(read?.type!=='Index'||read.object?.type!=='Identifier'||read.index?.type!=='Number'||
+        !Number.isSafeInteger(Number(read.index.value))||Number(read.index.value)<0||
+        Number(read.index.value)>4294967294||!bindings.isCurrent()||!startupAmbientCurrent())return false;
+    const rows=bindings.declarationAt(read.object),parent=bindings.parentOf(read),call=parent?.type==='Binary'&&parent.op==='+'&&parent.left===read?parent:null;
+    const store=call&&bindings.parentOf(call),statement=store&&bindings.parentOf(store);
+    if(!rows||store?.type!=='Assignment'||store.op!=='='||store.right!==call||
+        store.left?.type!=='Index'||statement?.type!=='ExpressionStatement'||statement.expr!==store||
+        store.left.object?.type!=='Identifier'||bindings.declarationAt(store.left.object)!==rows||
+        store.left.index?.type!=='Number'||Number(store.left.index.value)!==Number(read.index.value))return false;
+    const entry=tokens.get(call?.nativeArrayDomainCall);
+    // The original helper body and every call were checked before this view
+    // replaced those calls with private Binary nodes.
+    if(!entry)return false;
+    let startup=statement;
+    while(startup&&startup.type!=='FunctionDeclaration')startup=bindings.parentOf(startup);
+    if(!startup||startup.name!=='__bwStartup'||startup.params?.length||!bindings.root(startup))return false;
+    const body=startup.body,at=body.indexOf(statement);
+    if(at<3||program.body.at(-1)?.type!=='ExpressionStatement')return false;
+    const rootCall=program.body.at(-1).expr;
+    if(rootCall?.type!=='Call'||rootCall.args?.length||rootCall.callee?.type!=='Identifier'||
+        bindings.declarationAt(rootCall.callee)!==startup||bindings.calls(startup,[0])?.length!==1||
+        bindings.calls(startup,[0])[0]!==rootCall)return false;
+    if(program.body.some(node=>node!==program.body.at(-1)&&node.type!=='FunctionDeclaration'&&
+        !(node.type==='Declaration'&&['let','const'].includes(node.kind)&&node.decls?.every(decl=>
+            !decl.init||['Null','Undefined','Number','String','Boolean'].includes(decl.init.type)))))return false;
+    const rowsDeclaration=program.body.find(node=>node.type==='Declaration'&&node.decls?.includes(rows));
+    if(!rowsDeclaration||rowsDeclaration.kind!=='let'||rowsDeclaration.decls.length!==1||rows.init?.type!=='Null')return false;
+    const assign=body[at-1]?.type==='ExpressionStatement'&&body[at-1].expr;
+    if(assign?.type!=='Assignment'||assign.op!=='='||assign.left?.type!=='Identifier'||
+        bindings.declarationAt(assign.left)!==rows||assign.right?.type!=='Identifier')return false;
+    const temp=bindings.declarationAt(assign.right),tempDeclaration=body.find(node=>node.type==='Declaration'&&node.decls?.includes(temp));
+    if(!temp||!tempDeclaration||tempDeclaration.kind!=='let'||tempDeclaration.decls.length!==1||
+        temp.init?.type!=='Null'||body.indexOf(tempDeclaration)>=at-1)return false;
+    const literal=node=>{
+        if(!node||!['Number','String','Boolean','Null','Undefined'].includes(node.type))return false;
+        const keys=Reflect.ownKeys(node);
+        if(keys.some(key=>!['type','value','parenthesized'].includes(key))||
+            node.parenthesized!==undefined&&node.parenthesized!==true)return false;
+        if(['Null','Undefined'].includes(node.type))return !Object.hasOwn(node,'value');
+        if(node.type==='Boolean')return typeof node.value==='boolean';
+        if(typeof node.value!=='string')return false;
+        return node.type==='Number'?Number.isFinite(Number(node.value)):true;
+    };
+    const reset=body.find((node,index)=>index>body.indexOf(tempDeclaration)&&index<at-1&&
+        node.type==='ExpressionStatement'&&node.expr?.type==='Assignment'&&node.expr.op==='='&&
+        node.expr.left?.type==='Identifier'&&bindings.declarationAt(node.expr.left)===temp&&
+        node.expr.right?.type==='Array'&&node.expr.right.items?.length===0);
+    const first=body.indexOf(reset);
+    if(first<0)return false;
+    const resetAssignment=reset.expr;
+    // No effectful operation can intervene between fresh allocation and this
+    // read. Pushes have primitive literal inputs; a missing slot is Undefined.
+    const pushes=[];
+    for(const node of body.slice(first+1,at-1)){
+        const op=node?.type==='ExpressionStatement'&&node.expr;
+        if(op?.type!=='Call'||op.callee?.type!=='Member'||op.callee.name!=='push'||
+            op.callee.object?.type!=='Identifier'||bindings.declarationAt(op.callee.object)!==temp||
+            op.args?.length!==1||!literal(op.args[0]))return false;
+        pushes.push(op);
+    }
+    if(body.slice(body.indexOf(tempDeclaration)+1,first).some(node=>{
+        // The private temporary must not be observed before its overwrite.
+        const seen=new Set();const contains=value=>{
+            if(!value||typeof value!=='object'||seen.has(value))return false;
+            seen.add(value);return value.type==='Identifier'&&bindings.declarationAt(value)===temp||
+                Object.values(value).some(child=>Array.isArray(child)?child.some(contains):contains(child));
+        };return contains(node);
+    }))return false;
+    // Complete binding-use inventory: no alias, capture, foreign call, earlier
+    // indexed writer or second global assignment can change the pointwise read.
+    const withinStartup=node=>{for(let owner=node;owner;owner=bindings.parentOf(owner))if(owner===startup)return true;return false;};
+    const statementOf=node=>{for(let owner=node;owner;owner=bindings.parentOf(owner))if(body.includes(owner))return owner;return null;};
+    for(const node of bindings.nodes){
+        if(node.type!=='Identifier')continue;
+        const declaration=bindings.declarationAt(node);
+        if(declaration!==rows&&declaration!==temp)continue;
+        if(!withinStartup(node))return false;
+        const p=bindings.parentOf(node),owner=statementOf(node),position=body.indexOf(owner);
+        if(declaration===temp){
+            if(p===resetAssignment&&p.left===node||p===assign&&p.right===node||
+                pushes.some(push=>p===push.callee&&p.object===node))continue;
+            return false;
+        }
+        if(p===assign&&p.left===node)continue;
+        if(p?.type==='Index'&&p.object===node&&position>=at&&
+            (p===read||p===store.left||position>at))continue;
+        return false;
+    }
+    return bindings.ambient()&&bindings.isCurrent();
+}
 
 // Use ORIGINAL operations for origin observations, before result-only Number
 // projections. Only syntax-owned closed addition calls become native +. Their
@@ -247,9 +363,10 @@ function inspectDomains(program,profile,ordinaryExportSelection) {
     let musicResultSource=null,musicUsed=false,musicLive=true;const usedMusicSources=[];
     let operationUsed=false,operationLive=true,classResultUsed=false,classResultLive=true,frameDeltaUsed=false,frameDeltaLive=true;const operationAbsences=[];
     const closureNormalTokens=new Set(),imageNormalTokens=new Set();
-    let domainLive=true;
+    let domainLive=true,startupUsed=false;
     const current=()=>{
         if(!domainLive||operationUsed&&!operationLive||classResultUsed&&!classResultLive)return false;
+        if(startupUsed&&!startupAmbientCurrent()){domainLive=false;return false;}
         try{
             musicUsed=musicUsed||graph.musicNumberResultsUsed?.()===true||usedMusicSources.length>0;
             destroyedUsed=destroyedUsed||destroyedTokens.size>0||graph.destroyedNumberResultsUsed?.()===true;
@@ -984,6 +1101,7 @@ function inspectDomains(program,profile,ordinaryExportSelection) {
         if(refused&&arg.type==='Call'&&playerTokens.has(arg.nativePlayerNumberSourceCall))continue;
         if(refused&&normalPrimitiveOperation(arg)){operationUsed=true;continue;}
         if(refused&&normalPrimitiveClass(arg)){classResultUsed=true;continue;}
+        if(refused&&arg.type==='Index'&&startupPrimitiveIndexRead(classView.program,bindings,profile,arg,tokens)){startupUsed=true;continue;}
         if(refused){
             const result={helpers:new Map(),current,reason:'native addition requires initialized primitive or proved flat Array operands'};
             // Diagnostics must never replace the original refusal, including

@@ -6159,6 +6159,14 @@ behavior still need their own qualification. This result changes no corpus row.
    source/prototype currentness. Do not discard nullable alternatives globally.
    Confirm the actual post-VM refusal first; this source-only result does not
    prove it is the same operand or establish an application completion.
+   A subsequent narrow candidate proves the primitive normal result of that
+   particular startup indexed read when a verified sole entry assigns a fresh,
+   privately populated Array immediately before its self-update. It checks the
+   actual bindings, writers, effects and source/prototype currentness; it does
+   not issue a general Array or element-presence fact. Focused source controls,
+   direct issuer rejection cases and the maintained fixture's importer-to-exporter
+   path pass. The official post-VM diagnostic and full PXT, SB3, browser and
+   corpus qualification remain pending; no partial has been promoted.
 4. Run the immutable corpus and complete original project contexts on a qualified
    external worker, retaining source hashes and the first results. Separate
    import, export/reimport, original PXT execution, Lite execution and controller/
