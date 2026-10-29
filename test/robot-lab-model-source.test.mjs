@@ -46,3 +46,28 @@ test('regex punctuation, ID prefixes and embedded comments never widen the remov
  assert.equal(disconnectedModelSource(crlf(text), ['pin.[0]']), header + part('pin.[0]_other') + '0 note 0 !BW ID pin.[0]\n');
  assert.throws(() => disconnectedModelSource('0 !BW ID pin \r\n' + part('pin_extra'), ['pin']), /exactly one/);
 });
+
+test('qualification consumer preserves published source and provenance while disconnecting a CRLF view', async () => {
+ const {readFileSync} = await import('node:fs');
+ const {createHash} = await import('node:crypto');
+ const {disconnectedSource, qualificationContracts} = await import('../scripts/lib/robot-lab-qualification.mjs');
+ const read = p => readFileSync(new URL('../' + p, import.meta.url), 'utf8');
+ const root = 'test/fixtures/model-files/sine-shuttle-source/';
+ const original = read('overlay/scratch-gui/static/sim-lab/models/sine-shuttle.ldr');
+ const saved = read(root + 'models/sine-shuttle.ldr');
+ const provenance = JSON.parse(read(root + 'provenance.json'));
+ const sha = text => createHash('sha256').update(text).digest('hex');
+ assert.equal(original, saved);
+ assert.equal(sha(saved), provenance.files['models/sine-shuttle.ldr']);
+ assert.match(original, /^0 Author: CrispStrobe$/m);
+ const contract = qualificationContracts(['sine-shuttle'])[0];
+ const input = crlf(original), originalHash = sha(input);
+ assert.notEqual(originalHash, sha(original));
+ const disconnected = disconnectedSource(input, contract.disconnect);
+ assert.equal(sha(input), originalHash, 'consumer never mutates provenance input');
+ assert.equal(disconnected, disconnectedSource(original, contract.disconnect));
+ for (const id of contract.disconnect) {
+  assert.ok(original.includes('0 !BW ID ' + id + '\n'));
+  assert.ok(!disconnected.includes('0 !BW ID ' + id + '\n'));
+ }
+});
