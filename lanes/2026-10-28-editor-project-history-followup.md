@@ -1,5 +1,9 @@
 # Editor handoff T3 — remaining project undo operations
 
+Delivery integration (2026-10-29): this scope is assembled on
+`delivery/robot-editor-compat-20261029`. Original source history is preserved;
+final hosted and main qualification is pending.
+
 Status: DONE in this source candidate; hosted checks and merge pending.
 Owner: Codex delivery coordinator, continuing the editor handoff.
 Branch: `lane/editor-followups-20261028`, isolated coordinator checkout.

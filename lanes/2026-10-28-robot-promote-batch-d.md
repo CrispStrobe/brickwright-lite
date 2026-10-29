@@ -1,5 +1,9 @@
 # Robot Lab — promote batch D (High Select, Final Squeeze)
 
+Delivery integration (2026-10-29): this scope is assembled on
+`delivery/robot-editor-compat-20261029`. Original source history is preserved;
+final hosted and main qualification is pending.
+
 Status: CLAIMED — claim and change in one PR.
 Owner: Claude, Robot Lab promotion lane.
 Branch: `lane/robot-batchD-20261028`.

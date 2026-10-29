@@ -1,5 +1,9 @@
 # Robot Lab — Tipline, TwistSpan and SwayShift promotion
 
+Delivery integration (2026-10-29): this scope is assembled on
+`delivery/robot-editor-compat-20261029`. Original source history is preserved;
+final hosted and main qualification is pending.
+
 Status: DONE in this source candidate; full qualification and hosted merge admission required.
 Owner: Codex delivery coordinator, continuing the 2026-10-28 handoff.
 Branch: `lane/robot-promote-batchE-20261028`, isolated coordinator worktree.

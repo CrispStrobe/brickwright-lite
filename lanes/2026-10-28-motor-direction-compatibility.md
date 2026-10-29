@@ -1,5 +1,9 @@
 # Motor direction compatibility — issue #1460
 
+Delivery integration (2026-10-29): this scope is assembled on
+`delivery/robot-editor-compat-20261029`. Original source history is preserved;
+final hosted and main qualification is pending.
+
 Status: DONE source candidate; hosted qualification and guarded merge pending.
 Owner: Codex delivery coordinator. Owner decision, 2026-10-28: add an explicit
 per-model compatibility setting; preserve existing models and opt new or
