@@ -64,8 +64,8 @@ Final source checkpoint:18 focused admission/loader tests and the synchronizer's
 three-asset check passed. Native-package boundary coordination clears this exact
 three-path proposal after source and actual guest acceptance; broader package,
 native or helper edits require fresh coordination. The `ci:full` label selects
-the required affected thorough checks. Qualification and normal landing remain
-pending; the owner retains the lane through both.
+the required affected thorough checks. This was the earlier checkpoint;
+qualification and normal landing are now complete as recorded below.
 
 ## Emitted runtime byte preservation — scope extension, 2026-10-28
 

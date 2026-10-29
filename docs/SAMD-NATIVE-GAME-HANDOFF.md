@@ -55,7 +55,7 @@ Preserved failures and bounded repairs:
   with identical wire bytes/order, all 1,000 exchanges and original assertions.
   Production prefixes are byte-identical. Hosted40828350448 passed 275 standard
   native tests (11 existing ignored) plus nine explicit ignored-suite controls.
-  Final-head checks still gate landing; the original failure is not waived.
+  Required final-head checks passed before landing; the original failure remains retained.
 
 - Fast run40830119499 passed five unit shards and build, but shard2 correctly
   rejected the installed gate's unrecognized reader/scripts invocation. The
