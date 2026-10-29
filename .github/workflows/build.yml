@@ -2216,6 +2216,12 @@ jobs:
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotaddon1' }}
         run: npm run verify:sim-lab -- --part=examples --examples=ripple-relay
 
+      - name: Browser gate — Robot Lab Cross Ratio complete example
+        id: bw_browser_audit_0263
+        timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotaddon1' }}
+        run: npm run verify:sim-lab -- --part=examples --examples=cross-ratio
+
       - name: Browser gate — Robot Lab crossglide complete example
         id: bw_browser_audit_0067
         timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
@@ -3848,6 +3854,7 @@ jobs:
             bw_browser_audit_0064	${{ steps['bw_browser_audit_0064'].outcome }}	${{ steps['bw_browser_audit_0064'].conclusion }}
             bw_browser_audit_0065	${{ steps['bw_browser_audit_0065'].outcome }}	${{ steps['bw_browser_audit_0065'].conclusion }}
             bw_browser_audit_0066	${{ steps['bw_browser_audit_0066'].outcome }}	${{ steps['bw_browser_audit_0066'].conclusion }}
+            bw_browser_audit_0263	${{ steps['bw_browser_audit_0263'].outcome }}	${{ steps['bw_browser_audit_0263'].conclusion }}
             bw_browser_audit_0067	${{ steps['bw_browser_audit_0067'].outcome }}	${{ steps['bw_browser_audit_0067'].conclusion }}
             bw_browser_audit_0068	${{ steps['bw_browser_audit_0068'].outcome }}	${{ steps['bw_browser_audit_0068'].conclusion }}
             bw_browser_audit_0069	${{ steps['bw_browser_audit_0069'].outcome }}	${{ steps['bw_browser_audit_0069'].conclusion }}
@@ -3861,8 +3868,8 @@ jobs:
             bw_browser_audit_0077	${{ steps['bw_browser_audit_0077'].outcome }}	${{ steps['bw_browser_audit_0077'].conclusion }}
             bw_browser_audit_0078	${{ steps['bw_browser_audit_0078'].outcome }}	${{ steps['bw_browser_audit_0078'].conclusion }}
             bw_browser_audit_0079	${{ steps['bw_browser_audit_0079'].outcome }}	${{ steps['bw_browser_audit_0079'].conclusion }}
-            bw_browser_audit_0080	${{ steps['bw_browser_audit_0080'].outcome }}	${{ steps['bw_browser_audit_0080'].conclusion }}
           BW_BROWSER_RUNNER_TERMINALS_V1_2: |
+            bw_browser_audit_0080	${{ steps['bw_browser_audit_0080'].outcome }}	${{ steps['bw_browser_audit_0080'].conclusion }}
             measurement_success	${{ steps['measurement_success'].outcome }}	${{ steps['measurement_success'].conclusion }}
             bw_browser_audit_0081	${{ steps['bw_browser_audit_0081'].outcome }}	${{ steps['bw_browser_audit_0081'].conclusion }}
             bw_browser_audit_0082	${{ steps['bw_browser_audit_0082'].outcome }}	${{ steps['bw_browser_audit_0082'].conclusion }}
@@ -3962,8 +3969,8 @@ jobs:
             bw_browser_audit_0176	${{ steps['bw_browser_audit_0176'].outcome }}	${{ steps['bw_browser_audit_0176'].conclusion }}
             bw_browser_audit_0177	${{ steps['bw_browser_audit_0177'].outcome }}	${{ steps['bw_browser_audit_0177'].conclusion }}
             bw_browser_audit_0178	${{ steps['bw_browser_audit_0178'].outcome }}	${{ steps['bw_browser_audit_0178'].conclusion }}
-            bw_browser_audit_0179	${{ steps['bw_browser_audit_0179'].outcome }}	${{ steps['bw_browser_audit_0179'].conclusion }}
           BW_BROWSER_RUNNER_TERMINALS_V1_3: |
+            bw_browser_audit_0179	${{ steps['bw_browser_audit_0179'].outcome }}	${{ steps['bw_browser_audit_0179'].conclusion }}
             bw_browser_audit_0180	${{ steps['bw_browser_audit_0180'].outcome }}	${{ steps['bw_browser_audit_0180'].conclusion }}
             bw_browser_audit_0181	${{ steps['bw_browser_audit_0181'].outcome }}	${{ steps['bw_browser_audit_0181'].conclusion }}
             bw_browser_audit_0182	${{ steps['bw_browser_audit_0182'].outcome }}	${{ steps['bw_browser_audit_0182'].conclusion }}

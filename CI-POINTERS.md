@@ -53,6 +53,8 @@ executed in 20 green main runs, five files recorded nowhere.
 
 ## Steps that run elsewhere
 
+- build.yml :: Browser gate — Robot Lab Cross Ratio complete example :: Registration-only, 2026-10-28: one new bounded eight-minute step on existing robotaddon1, selected by the existing Robot Lab scope. Executes the experimental original program, passive-law/hinge checks, and CRC/content-before-reopen saved-project replay. No successful run is recorded yet; preserve historical census observations until the canonical generator observes this step. Native cold and physical-disconnection cases run separately in test/bw-sim-cross-ratio.test.mjs.
+
 - samd-native-game-qualification.yml :: * :: Manual SAMD source-game qualification dispatched 2026-10-29 with explicit consumer/frontend/native/producer inputs. Dated scoped census observations retain original admission and Chromium/Tauri-WebKit execution, including failures; step execution supplies no guest verdict. Chromium run40826297334 passed three instances. See docs/SAMD-NATIVE-GAME-HANDOFF.md for installed acceptance and original failures. The realm selector avoids replaying successful guests.
 
 - build.yml :: Audit — every browser gate ran :: 2026-10-24 evidence-mode source change: the unchanged inline always-last audit selects bounded explicit runner outcome/conclusion scalars, with complete checked-workflow ID/name/order/shard mapping. Legacy API/cache/file behavior and its six 10-second absence refusal remain separate and unchanged. Stored census snapshots and recorded definitions remain historical; they do not invent a hosted observation of this new mode. Fresh final-head hosted qualification is still required. Codex CI audit repair.
