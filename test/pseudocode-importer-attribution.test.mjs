@@ -7,7 +7,7 @@ import test from 'node:test';
 
 import {attributePseudocodeImporter, P21_EMITTED_FLOOR_BYTES} from
     '../scripts/lib/p21-pseudocode-attribution.mjs';
-import {openCodeActions} from '../scripts/lib-code-actions.mjs';
+import {openCodeActions, closeCodeActions} from '../scripts/lib-code-actions.mjs';
 
 const read = filename => readFileSync(new URL(`../${filename}`, import.meta.url), 'utf8');
 const ROOT = path.resolve(import.meta.dirname, '..');
@@ -53,10 +53,48 @@ test('Code actions wait for the lazy importer before opening its menu', async ()
     };
     const page = {
         locator: () => menu,
+        getByTestId: () => ({count: async () => 0}),
         waitForFunction: async () => calls.push(['open'])
     };
     assert.equal(await openCodeActions(page), true);
     assert.deepEqual(calls, [['waitFor', 'attached'], ['click'], ['open']]);
+});
+
+test('current Code popup waits for attachment and opens/closes idempotently', async () => {
+    const calls = [];
+    let attached = false;
+    let expanded = false;
+    const menu = {waitFor: async options => {
+        assert.equal(options.state, 'attached');
+        attached = true;
+        calls.push('attached');
+    }};
+    const trigger = {
+        count: async () => { assert.equal(attached, true); return 1; },
+        getAttribute: async name => {
+            assert.equal(name, 'aria-expanded');
+            return String(expanded);
+        },
+        click: async () => { expanded = !expanded; calls.push(expanded ? 'open' : 'close'); }
+    };
+    const panel = {waitFor: async options => {
+        assert.equal(expanded, true);
+        assert.equal(options.state, 'visible');
+        calls.push('visible');
+    }};
+    const page = {
+        locator: () => menu,
+        getByTestId: id => {
+            assert.ok(['bw-code-actions-trigger', 'bw-code-actions-menu'].includes(id));
+            return id === 'bw-code-actions-trigger' ? trigger : panel;
+        }
+    };
+    assert.equal(await openCodeActions(page), true);
+    assert.equal(await openCodeActions(page), true);
+    await closeCodeActions(page);
+    await closeCodeActions(page);
+    assert.equal(expanded, false);
+    assert.deepEqual(calls, ['attached', 'open', 'visible', 'attached', 'close']);
 });
 
 const fixture = (bytes = 76800) => ({
