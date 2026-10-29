@@ -1,6 +1,49 @@
 import {ARCADE_NAMESPACE_MEMBERS} from './arcade-namespace-members.js';
 import {HELPERS} from './arcade-runtime.js';
-import {sdkExportClasses,sdkClassPublicName} from './sdk-class-descriptors.js';
+import {SDK_SPRITE_CLASS_NODES,SDK_DIALOG_CLASS_NODES,sdkClassPublicName} from './sdk-class-descriptors.js';
+import {SDK_FONT_RECORD_NAME} from './sdk-font-value-descriptors.js';
+
+const sdkDescriptor=Object.getOwnPropertyDescriptor,sdkPrototype=Object.getPrototypeOf,sdkOwn=Object.hasOwn,
+ sdkArray=Array.isArray,sdkSame=Object.is,sdkSafeInteger=Number.isSafeInteger;
+// Hygiene needs names only. Materializing classes would read unrelated SDK
+// base/field/constructor metadata and could execute an inherited accessor.
+// Bind the actual supplier slots and own names without reading those values.
+function sdkHygieneNames(){
+ const slots=[],parents=new Map(),names=[];let expired=false;
+ const own=(object,key)=>{
+  if(!object||typeof object!=='object')throw Error('SDK name inventory requires data');
+  const parent=sdkPrototype(object);
+  if(parent!==(sdkArray(object)?Array.prototype:Object.prototype))throw Error('SDK name inventory requires canonical prototypes');
+  parents.set(object,parent);
+  const descriptor=sdkDescriptor(object,key);
+  if(!descriptor||!sdkOwn(descriptor,'value'))throw Error('SDK name inventory requires own data slots');
+  slots.push({object,key,descriptor});return descriptor.value;
+ };
+ try{
+  for(const supplier of [SDK_SPRITE_CLASS_NODES,SDK_DIALOG_CLASS_NODES]){
+   if(!sdkArray(supplier))return null;
+   const length=own(supplier,'length');if(!sdkSafeInteger(length)||length<0||length>256)return null;
+   for(let i=0;i<length;i++){
+    const name=own(own(supplier,String(i)),'name');
+    if(typeof name!=='string'||!name||names.includes(name))return null;
+    names.push(name);
+   }
+  }
+ }catch{return null;}
+ const roots=[...names,SDK_FONT_RECORD_NAME].map(name=>sdkClassPublicName(name).split('.')[0]);
+ const current=()=>{
+  if(expired)return false;
+  try{
+   if(![...parents].every(([object,parent])=>sdkPrototype(object)===parent)||!slots.every(({object,key,descriptor:before})=>{
+    const now=sdkDescriptor(object,key);
+    return !!now&&sdkOwn(now,'value')&&sdkSame(now.value,before.value)&&now.writable===before.writable&&
+     now.enumerable===before.enumerable&&now.configurable===before.configurable;
+   }))expired=true;
+  }catch{expired=true;}
+  return !expired;
+ };
+ return {roots,current};
+}
 
 const ident=value=>{const name=String(value||'v').replace(/[^A-Za-z0-9_]/g,'_');return /^[0-9]/.test(name)?'_'+name:name;};
 const keywords=new Set(('break case catch class const continue debugger default delete do else enum export extends false finally for function if import in instanceof new null return super switch this throw true try typeof var void while with let static yield await implements interface package private protected public namespace type declare abstract readonly as any boolean number string never unknown undefined constructor').split(' '));
@@ -38,10 +81,10 @@ function snapshot(value){
 }
 
 /** Names reserve hygiene only; they never establish a procedure/value owner. */
-function hygiene(project){
+function hygiene(project,sdkNames){
  const reserved=new Set([...keywords,...Object.keys(ARCADE_NAMESPACE_MEMBERS).map(n=>n.split('.')[0]),
   'score','life','pause','forever','String','Number','Boolean','Array','Object','JSON','Math','Infinity','NaN','parseInt','parseFloat','isNaN','isFinite','Sprite','Image','Buffer','Font','SpriteLike','TextSprite','Dart','Corgio','SevenSegDigit','DigitCounter','ArcadePhysicsEngine','animation','textsprite','mp','scroller','characterAnimations','carnival','helpers','bwStringArraySettings','myTiles','myAnimations','mySongs']);
- for(const cls of sdkExportClasses())reserved.add(sdkClassPublicName(cls.name).split('.')[0]);
+ for(const name of sdkNames)reserved.add(name);
  // These declarations are actual fixed producer families; suffix closure covers
  // the existing allocator's collision suffixes without rendering any bodies.
  const suffixBases=new Set(['_na','_stopAll','_broadcast','_backdrops','_backdropNames','_bd','_setBackdrop','_backdropHats','__bwStartup','__bwAnimationAssets','__bwAnimationFrames','__bwAnimationFreshFrames','__bwAnimationInterval','__bwSongAssets','__bwNamedParseValue','__bwNamedJsonValue','__bwScratchMin','__bwScratchMax','__bwArrayAccess','__bwControllerAxisStep','__bwLiteralNegativeZero']);
@@ -73,10 +116,11 @@ function hygiene(project){
 }
 
 export function createOrdinaryExportSymbols(project,note=()=>{}){
- const initial=snapshot(project),byTarget=new Map(),records=[],pins=new Map(),reported=new Set();
+ const initial=snapshot(project),sdkNames=sdkHygieneNames(),byTarget=new Map(),records=[],pins=new Map(),reported=new Set();
  const report=message=>{if(!reported.has(message)){reported.add(message);note('Arcade ordinary symbol: '+message);}};
- const current=()=>{const now=snapshot(project);return !!initial&&!!now&&initial.text===now.text&&initial.identities.length===now.identities.length&&initial.identities.every((v,i)=>v===now.identities[i]);};
- if(!initial||!project||!Object.hasOwn(project,'targets')||!Array.isArray(project.targets)||new Set(project.targets).size!==project.targets.length||project.targets.some(target=>!target||typeof target!=='object'||Array.isArray(target)||!Object.hasOwn(target,'name')||!Object.hasOwn(target,'isStage')||typeof target.name!=='string'||typeof target.isStage!=='boolean'||target.blocks!=null&&(typeof target.blocks!=='object'||Array.isArray(target.blocks)))){report('requires an actual plain current project');return{current:()=>false,name:()=>null,values:()=>[],pin:()=>false,call:()=>null};}
+ const current=()=>{if(!sdkNames?.current())return false;const now=snapshot(project);return !!initial&&!!now&&initial.text===now.text&&initial.identities.length===now.identities.length&&initial.identities.every((v,i)=>v===now.identities[i]);};
+ if(!initial||!project||!Object.hasOwn(project,'targets')||!Array.isArray(project.targets)||new Set(project.targets).size!==project.targets.length||project.targets.some(target=>!target||typeof target!=='object'||Array.isArray(target)||!Object.hasOwn(target,'name')||!Object.hasOwn(target,'isStage')||typeof target.name!=='string'||typeof target.isStage!=='boolean'||target.blocks!=null&&(typeof target.blocks!=='object'||Array.isArray(target.blocks)))){report('requires an actual plain current project');return{current:()=>false,sdkNamesCurrent:()=>false,name:()=>null,values:()=>[],pin:()=>false,call:()=>null};}
+ if(!sdkNames||!sdkNames.current()){report('requires a current own-data SDK name inventory');return{current:()=>false,sdkNamesCurrent:()=>false,name:()=>null,values:()=>[],pin:()=>false,call:()=>null};}
  const blocked=new Set();
  for(const[targetIndex,target]of project.targets.entries()){
   const table=new Map();byTarget.set(target,table);const blocks=target.blocks||{},definitions=new Map();
@@ -98,7 +142,7 @@ export function createOrdinaryExportSymbols(project,note=()=>{}){
   }
  }
  const legacyOwners=new Map();for(const r of records){const key=(r.target.isStage?'':r.target.name)+':'+r.code;if(legacyOwners.has(key)){blocked.add(r);blocked.add(legacyOwners.get(key));report('legacy analysis keys conflate distinct actual procedure owners');}else legacyOwners.set(key,r);}
- const hygieneReserved=hygiene(project),preferred=new Set(records.map(r=>r.base)),used=new Set(),counts=new Map();
+ const hygieneReserved=hygiene(project,sdkNames.roots),preferred=new Set(records.map(r=>r.base)),used=new Set(),counts=new Map();
  for(const r of records)counts.set(r.base,(counts.get(r.base)||0)+1);
  // Freeze each unique legal candidate first. Collision names cannot steal a
  // different owner's preferred authored name, including already-qualified names.
@@ -138,5 +182,7 @@ export function createOrdinaryExportSymbols(project,note=()=>{}){
   }
   return name(target,code);
  };
- return Object.freeze({current,name,pin,call,values:()=>records.filter(r=>!blocked.has(r)).map(r=>pins.get(r)||r.symbol)});
+ // Frozen-project entry consumers need only this additional mutable dependency;
+ // they need not repeat the complete project snapshot for every entry query.
+ return Object.freeze({current,name,pin,call,sdkNamesCurrent:sdkNames.current,values:()=>records.filter(r=>!blocked.has(r)).map(r=>pins.get(r)||r.symbol)});
 }

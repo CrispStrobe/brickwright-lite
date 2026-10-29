@@ -71,9 +71,9 @@ export function createClosedOrdinaryProjectEntry(project){
     const symbols=createOrdinaryExportSymbols(project,()=>{invalid=true;});
     const current=()=>{
         if(expired)return false;
-        // The admitted project and every descendant are frozen by the private
-        // JSON constructor. Only ambient dispatch can change after admission.
-        try{if(!ambientCurrent())expired=true;}
+        // Project descendants are frozen, but symbol hygiene also depends on
+        // the mutable SDK name suppliers. Preserve that receipt after entry.
+        try{if(!ambientCurrent()||!symbols.sdkNamesCurrent())expired=true;}
         catch(error){expired=true;throw error;}
         return !expired;
     };

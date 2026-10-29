@@ -55,10 +55,10 @@ accessors and SDK collisions, and expires if the underlying SDK descriptor
 suppliers or their prototypes change. The retained full reimport graph's
 previously refused Array input now passes this component proof. Full export,
 PXT, native, Code/Blocks and saved-project checks remain pending; this does not
-promote a corpus app. A separate pre-existing boundary remains: constructing a
-fresh authority after installing an inherited SDK metadata getter can invoke the
-getter before this new proof is created. Investigate that construction order in
-its own scoped change; the new proof itself expires without invoking it.
+promote a corpus app. The separate ordinary symbol-hygiene path now reads SDK names from own data
+slots without materializing unrelated class metadata. Its closed-entry receipt
+also expires when those name suppliers change. Other SDK consumers need their
+own getter-safety assessment; this change does not certify them.
 
 The callback prefix proof now also admits an exact non-cloud global write when its initial value and all physical writers preserve a closed primitive domain. Unknown effects, calls, monitors and incompatible writers refuse; this is only a frame-effect fact. The following class-field read uses the separate bounded proof above.
 
