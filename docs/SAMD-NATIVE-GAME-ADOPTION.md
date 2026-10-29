@@ -7,7 +7,10 @@ fresh instances each. Independent audits decoded all 102 original RGB frames,
 verified press/release and sampled RSS, and joined source/frontend/executable/
 engine/profile/firmware identities. Consumer
 [PR1533](https://github.com/CrispStrobe/brickwright-lite/pull/1533) folds the
-SPIKE support closure and normally merged as `9f1a620f2aae5ee988ed02069a8bf34c18949123` after the required fast, native and product checks passed.
+SPIKE support closure and merged as
+`9f1a620f2aae5ee988ed02069a8bf34c18949123`. Seventeen final-head checks passed,
+but the enabled `full CI requested` check failed before that merge. The source
+landed; enabled-check closure and retained-evidence custody review remain open.
 No normal native SAMD GUI compile/import/export route is claimed. See
 [the current handoff](SAMD-NATIVE-GAME-HANDOFF.md) for results and preserved
 failures; reuse successful originals rather than replaying guests.
@@ -65,11 +68,15 @@ RGBSET table. No host-installed default LUT is permitted.
    Runtime glue, Wasm and profile exactly match the locked release. Native compile
    defaults are unchanged. Original acquisition, installation and test failures
    remain retained with the bounded repairs in the current handoff.
-5. **Done — consumer acceptance and landing.** Three fresh actual Chromium and
-   three installed Tauri/WebKit game instances passed, with independent RGB,
-   input, memory and identity readback. The composed SPIKE package passed 13
-   installed lifecycle cases. PR1533 normally merged as `9f1a620f2aae5ee988ed02069a8bf34c18949123` after
-   required checks; reviewed parents and tree matched the landed merge.
+5. **Consumer acceptance recorded; source landed with an enabled-check failure.**
+   Three fresh actual Chromium and three installed Tauri/WebKit game instances
+   passed, with the recorded independent RGB, input, memory and identity readback.
+   The composed SPIKE package passed 13 installed lifecycle cases. PR1533 merged
+   as `9f1a620f2aae5ee988ed02069a8bf34c18949123`; reviewed parents and tree matched
+   the landed merge. Seventeen checks passed, but the enabled admission check
+   failed. Follow the [handoff's forward qualification steps](SAMD-NATIVE-GAME-HANDOFF.md#continuation-boundaries)
+   for the selected-tier policy, final-head checks and retained-original binding
+   review before claiming that closure.
 
 ## Separate work
 

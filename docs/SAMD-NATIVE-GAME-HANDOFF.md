@@ -1,6 +1,16 @@
 # SAMD engine adoption handoff — updated 2026-10-29
 
-**Delivered.** [PR1533](https://github.com/CrispStrobe/brickwright-lite/pull/1533) normally merged as `9f1a620f2aae5ee988ed02069a8bf34c18949123`, folding PR1547. The 17 required fast, native and product checks passed on head `4e225970574ca517d7908811fe9bf9c3ed2f4fb4`; the reviewed parents and predicted tree matched the landed merge. The unlabelled PR's ci:full reminder failed as expected under the operator's fast-tier instruction. Original source branches, guest evidence and failures remain retained.
+**Source landed; enabled-check closure remains open.**
+[PR1533](https://github.com/CrispStrobe/brickwright-lite/pull/1533) merged as
+`9f1a620f2aae5ee988ed02069a8bf34c18949123`, folding PR1547. On reviewed head
+`4e225970574ca517d7908811fe9bf9c3ed2f4fb4`, 17 checks succeeded and 11 were
+conditionally skipped. The enabled
+[`full CI requested` check](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40836953746/job/123335306292)
+failed before the merge because the executing policy required the `ci:full`
+label. The operator's fast-tier preference did not change that source policy or
+turn its failed verdict into success. The landed tree matches the merge of the
+reviewed parents; that structural proof does not close the enabled-check failure.
+Original source branches, guest evidence and failures remain retained.
 
 The full [source run40783464522](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40783464522)
 and [native run40803428616](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40803428616)
@@ -55,7 +65,8 @@ Preserved failures and bounded repairs:
   with identical wire bytes/order, all 1,000 exchanges and original assertions.
   Production prefixes are byte-identical. Hosted40828350448 passed 275 standard
   native tests (11 existing ignored) plus nine explicit ignored-suite controls.
-  Required final-head checks passed before landing; the original failure remains retained.
+  Seventeen final-head checks passed; the enabled admission failure recorded above
+  remains open. The original native failure remains retained.
 
 - Fast run40830119499 passed five unit shards and build, but shard2 correctly
   rejected the installed gate's unrecognized reader/scripts invocation. The
@@ -177,8 +188,18 @@ MicroPython manifest hunks and old dirty worktrees.
 
 ## Continuation boundaries
 
-The selected software delivery and acceptance are complete. Reuse the retained
-originals; physical capture and a normal SAMD GUI route are separate work.
+The source landing and the software acceptance results recorded above remain
+separate from closure of the failed enabled check. The selected-tier policy
+repair is owned by [PR1536](https://github.com/CrispStrobe/brickwright-lite/pull/1536).
+Its final source and artifact-event admission must qualify before a preserving
+normal composition reaches main. Require every enabled check on that final head
+to succeed; a manual run does not replace an enabled PR admission check.
+
+Confirm custody and reuse the retained actual-game originals for source, frontend,
+executable, observer and asset binding review. Do not describe a new review as an
+independent original audit until those retained originals have been accessed.
+Record the qualified forward landing and its checks when available. Physical
+capture and a normal SAMD GUI route remain separate work.
 
 Normal project compile/import/export and GUI-route adoption remain separate,
 scoped work in [the adoption guide](SAMD-NATIVE-GAME-ADOPTION.md). No current
