@@ -4,6 +4,10 @@ See [WeDo/iPad integration handoff](docs/WEDO-IPAD-INTEGRATION-HANDOFF.md) for c
 
 STM32, A13 and iPad/WeDo source integrations are on remote main. The integrated iOS app compiled; signing awaits Mac unlock. Follow the linked record for exact source, the signing continuation and remaining physical acceptance tasks.
 
+Editor undo/redo, History, autosave and crash isolation (2026-10-28): done and on
+main. Open tasks, starting with iPad acceptance of TestFlight 0.1.27.2, are scoped
+in [docs/EDITOR-HISTORY-HANDOFF.md](docs/EDITOR-HISTORY-HANDOFF.md).
+
 The August record below is historical, not the current task queue.
 
 ---

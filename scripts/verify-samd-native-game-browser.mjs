@@ -11,7 +11,9 @@ import {runSamdNativeGame} from './samd-native-game-browser.mjs';
 import {execFileSync} from 'node:child_process';
 const need=(ok,why)=>{if(!ok)throw new Error(why);};
 const sha=raw=>createHash('sha256').update(raw).digest('hex');
-const root=resolve(dirname(fileURLToPath(import.meta.url)),'..');
+const readerRoot=resolve(dirname(fileURLToPath(import.meta.url)),'..');
+// The qualification reader can advance independently of the immutable guest.
+const root=process.env.BW_SAMD_ADMISSION_SOURCE?resolve(process.env.BW_SAMD_ADMISSION_SOURCE):readerRoot;
 // Independent intake: this reader never imports the frontend/native producers.
 export function admitOfficialMetadata ({run,jobs,artifacts,repository,workflow,event,head,id,job,artifact}) {
     need(/^[0-9a-f]{40}$/.test(head)&&Number.isSafeInteger(id)&&id>0,'immutable source and positive run required');
@@ -93,8 +95,9 @@ export function verifyNativeReceipt ({receipt,consumer,checkout,frontendRun,fron
 export async function admitSamdOfficialInputs ({consumer,frontendRun,nativeRun,producerRun,producerHead,out}) {
     need(/^[0-9a-f]{40}$/.test(consumer)&&/^[0-9a-f]{40}$/.test(producerHead),'immutable consumer and supplier producer source');
     need(execFileSync('/usr/bin/git',['rev-parse','HEAD'],{cwd:root,encoding:'utf8'}).trim()===consumer,'exact consumer reader checkout');
+    const reader={commit:execFileSync('/usr/bin/git',['rev-parse','HEAD'],{cwd:readerRoot,encoding:'utf8'}).trim(),helperSha256:sha(readFileSync(fileURLToPath(import.meta.url)))};
     mkdirSync(out);
-    const api=(repo,path)=>execFileSync('/usr/bin/gh',['api',`repos/${repo}/${path}`],{maxBuffer:8*1024*1024});
+    const api=(repo,path)=>execFileSync('/usr/bin/gh',['api','--allow-escape-sequences',`repos/${repo}/${path}`],{maxBuffer:8*1024*1024});
     const intake=(label,repo,id,workflow,event,head,job,name)=>{
         const raw={run:api(repo,`actions/runs/${id}`),jobs:api(repo,`actions/runs/${id}/jobs?per_page=100`),artifacts:api(repo,`actions/runs/${id}/artifacts?per_page=100`)};
         const data=Object.fromEntries(Object.entries(raw).map(([k,v])=>[k,JSON.parse(v)]));
@@ -111,7 +114,7 @@ export async function admitSamdOfficialInputs ({consumer,frontendRun,nativeRun,p
     for(const [label,repo,data,mode] of [['frontend','CrispStrobe/brickwright-lite',frontend,'frontend'],['native','CrispStrobe/brickwright-lite',native,'native'],['fixture','CrispStrobe/bw-board',supplier,'fixture']]) {
         const archive=join(out,label+'-original.zip');
         const fd=(await import('node:fs')).openSync(archive,'wx');
-        try {execFileSync('/usr/bin/gh',['api',`repos/${repo}/actions/artifacts/${data.artifact.id}/zip`],{stdio:['ignore',fd,'pipe'],maxBuffer:1024*1024});}finally{(await import('node:fs')).closeSync(fd);}
+        try {execFileSync('/usr/bin/gh',['api','--allow-escape-sequences',`repos/${repo}/actions/artifacts/${data.artifact.id}/zip`],{stdio:['ignore',fd,'pipe'],maxBuffer:1024*1024});}finally{(await import('node:fs')).closeSync(fd);}
         const bytes=readFileSync(archive);need(bytes.length===data.artifact.size_in_bytes&&'sha256:'+sha(bytes)===data.artifact.digest,'original publisher archive integrity');
         extractSamdArchive(archive,mode,join(out,label));
     }
@@ -121,7 +124,7 @@ export async function admitSamdOfficialInputs ({consumer,frontendRun,nativeRun,p
     const receipt=JSON.parse(readFileSync(join(out,'native/receipt.json')));
     verifyNativeReceipt({receipt,consumer,checkout,frontendRun,frontendArtifact:frontend.artifact,inventory,binarySha256:sha(readFileSync(join(out,'native/brickwright-tauri'))),producer:native.run.head_sha});
     const packet=await prepareSamdPacket({frontend:join(out,'frontend'),fixture:join(out,'fixture')});
-    writeFileSync(join(out,'admission.json'),JSON.stringify({status:'SAMD_OFFICIAL_INPUTS_ADMITTED',consumer,checkout,frontendRun,nativeRun,producerRun,producerHead,engine:packet.engineSource,fixture_manifest_sha256:packet.fixture_manifest_sha256,actual_guest_qualified:false},null,2)+'\n',{flag:'wx'});
+    writeFileSync(join(out,'admission.json'),JSON.stringify({status:'SAMD_OFFICIAL_INPUTS_ADMITTED',reader,consumer,checkout,frontendRun,nativeRun,producerRun,producerHead,engine:packet.engineSource,fixture_manifest_sha256:packet.fixture_manifest_sha256,actual_guest_qualified:false},null,2)+'\n',{flag:'wx'});
 }
 function walk (folder,prefix='',maxBytes=16_000_000) {
     const names=[];
