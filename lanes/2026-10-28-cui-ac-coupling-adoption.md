@@ -1,6 +1,7 @@
 # Adopt the qualified CLI AC-coupling package
 
-CLAIMED — reference-qualified instrument campaign item 6b.
+IMPLEMENTED — reference-qualified instrument campaign item 6b; exact-head
+fast qualification remains mandatory before source landing.
 
 Base: `8acc3b962803e360a0c561c696d097839046c1ab`. Merge this claim before implementation.
 Adopt the normally merged CUI AC-coupling implementation PR130 and scope
@@ -36,3 +37,32 @@ Do not edit the consumed collector, comparator, fixture, reader or workflow,
 weaken its real pin preflight, or dispatch another study. This repair is needed
 because the separate Board pin advance exposed current-vs-historical conflation
 before the new CUI pin; it also protects the subsequent package adoption.
+
+## Candidate implementation
+
+The exact CUI target is `373d562b`; Board remains `8785e468`.
+Both manifests and locks derive from that pin. Canonical npm packing first
+reproduces the previous CUI integrity; generated source notices remain separate
+from the still-required installed-content proof. Current-role citations move;
+consumed-study inputs do not.
+
+The installed-CLI acceptance covers uncharged decay, the equivalent explicit
+corner, settled DC rejection, preserved raw clocks/values and unselected output,
+and refusals before CSV. Three buildable mutants run only in a private copied
+package fixture; the actual install and shared dependency store are never edited.
+The same independent decay/refusal assertions must detect each mutant.
+The historical collector controls run unchanged source and reader in an isolated
+synthetic consumer. Whole-file seals protect the three historical identity
+sources and the byte-frozen UI manifest. Ordinary stale-current and never-pinned
+receipt controls remain mandatory. No numerical study, compiler, guest, hardware
+or deployment is run or claimed by those synthetic controls.
+
+## Hosted documentation-trigger repair
+
+Unit shard 6 found that the preserved LM741 TODO reason made the broad
+campaign handoff a code-mentioned document without a matching build trigger.
+Also own `docs/receipts/lm741-startup-window.md` as the focused public failure
+record and the existing LM741 acceptance test's documentation pointer only.
+Receipt documents already trigger Build. Keep the general campaign handoff
+prose-only; preserve the original TODO, all test bodies, numerical bounds,
+package pins, workflow policy and the shared historical-study guard.
