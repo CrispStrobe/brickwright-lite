@@ -74,6 +74,33 @@ and claim checks pass all 49 controls without skips. The sound consumer's
 encoding/selection transaction repair is scoped separately; coordinator tests
 do not establish actual sound-write cancellation or audio playback acceptance.
 
+## Sound edit operations
+
+Sound effects, paste, delete/crop and Undo/Redo share one visible busy operation.
+Their mutation controls and trim gestures are disabled while work is pending;
+playback, copying and selecting another sound remain available. Each operation
+captures its actual VM, target, sound object and index. Completion checks that
+context, including the target's continued presence in the runtime, before
+writing. Selection changes and unmount invalidate stale work.
+
+Undo/Redo move their stacks and labels only after the encoding and VM update
+succeed, and return their actual success/refusal to the coordinator. Offline
+effects and resampling expose promise rejection so errors release the busy
+state; callback-only WebKit completion remains supported. Earlier attempted
+delayed-stack code was rejected because it could remove an intervening edit.
+
+The combined focused suite passes70 controls without skips; all four source
+files pass ESLint. A separate Chromium helper probe exercises real offline
+reverse and resampling, but required production acceptance is the maintained
+global-Undo browser gate: actual WAV buffers, Reverse/menu Undo/Redo, disabled
+controls during a held real render, sound selection before render completion,
+and a renderer rejection. These are software observations, not device playback.
+
+The independently started Copy-to-New callback/VM decoding path remains outside
+this operation gate; its button is disabled while these operations are busy.
+A VM update that throws after partially changing its own state is not rolled
+back by this controller. Neither limitation is represented as fixed here.
+
 ## Validation
 
 The final combined Node 22 run passed all 37 controls, including project/global

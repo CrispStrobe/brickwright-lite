@@ -53,7 +53,10 @@ class SoundEditor extends React.Component {
             chunkLevels: computeChunkedRMS(this.props.samples),
             playhead: null, // null is not playing, [0 -> 1] is playing percent
             trimStart: null,
-            trimEnd: null
+            trimEnd: null,
+            soundBusy: false,
+            soundBusyNotice: false,
+            soundError: false
         };
 
         this.redoStack = [];
@@ -64,31 +67,36 @@ class SoundEditor extends React.Component {
         this.stepLabel = null;
 
         this.ref = null;
+        this.soundOperation = null;
+        this.soundUnmounted = false;
+        this.soundTarget = this.props.vm.editingTarget;
+        this.soundObject = this.soundTarget && this.soundTarget.sprite.sounds[this.props.soundIndex];
     }
     componentDidMount () {
         this.audioBufferPlayer = new AudioBufferPlayer(this.props.samples, this.props.sampleRate);
 
         document.addEventListener('keydown', this.handleKeyPress);
-        // Brickwright: menu-bar Undo / Redo / History. Steps run one after another
-        // (each re-encodes the sound), so a multi-step jump cannot interleave.
-        let queue = Promise.resolve();
-        const serial = work => {
-            queue = queue.then(work, work);
-            return queue;
-        };
+        // Brickwright: the shared History waits for each sound step. Direct
+        // operations are refused while an encode or effect is in progress.
         this.unregisterUndo = registerUndoSurface('sounds', {
             label: 'Sounds',
             canUndo: () => this.undoStack.length > 0,
             canRedo: () => this.redoStack.length > 0,
             depth: () => ({undo: this.undoStack.length, redo: this.redoStack.length}),
             steps: () => ({past: this.undoLabels.slice(), future: this.redoLabels.slice().reverse()}),
-            undo: () => serial(() => (this.undoStack.length ? this.handleUndo() : false)),
-            redo: () => serial(() => (this.redoStack.length ? this.handleRedo() : false))
+            undo: () => (this.undoStack.length ? this.handleUndo() : false),
+            redo: () => (this.redoStack.length ? this.handleRedo() : false)
         });
         activateUndoSurface('sounds');
     }
     componentWillReceiveProps (newProps) {
-        if (newProps.soundId !== this.props.soundId) { // A different sound has been selected
+        const target = newProps.vm.editingTarget;
+        const sound = target && target.sprite.sounds[newProps.soundIndex];
+        if (this.soundOperation && !this.currentSoundOperation(this.soundOperation, newProps)) {
+            this.soundOperation = null;
+            this.setState({soundBusy: false, soundBusyNotice: false, soundError: false});
+        }
+        if (newProps.soundId !== this.props.soundId || target !== this.soundTarget || sound !== this.soundObject) {
             this.redoStack = [];
             this.undoStack = [];
             this.undoLabels = [];
@@ -100,8 +108,12 @@ class SoundEditor extends React.Component {
                 trimEnd: null
             });
         }
+        this.soundTarget = target;
+        this.soundObject = sound;
     }
     componentWillUnmount () {
+        this.soundUnmounted = true;
+        this.soundOperation = null;
         this.audioBufferPlayer.stop();
         if (this.unregisterUndo) this.unregisterUndo();
 
@@ -167,37 +179,73 @@ class SoundEditor extends React.Component {
             playhead: null
         });
     }
-    submitNewSamples (samples, sampleRate, skipUndo) {
+    currentSoundOperation (operation, props = this.props) {
+        const target = props.vm.editingTarget;
+        return !this.soundUnmounted && this.soundOperation === operation && props.vm === operation.vm &&
+            target === operation.target && props.soundIndex === operation.index &&
+            props.soundId === operation.soundId && operation.vm.runtime &&
+            operation.vm.runtime.targets.includes(operation.target) &&
+            target && target.sprite && target.sprite.sounds[operation.index] === operation.sound;
+    }
+    runSoundOperation (work) {
+        if (this.soundOperation) {
+            this.setState({soundBusyNotice: true});
+            return Promise.resolve(false);
+        }
+        const target = this.props.vm.editingTarget;
+        const sound = target && target.sprite && target.sprite.sounds[this.props.soundIndex];
+        if (!sound || this.soundUnmounted) return Promise.resolve(false);
+        const operation = {vm: this.props.vm, target, sound, index: this.props.soundIndex, soundId: this.props.soundId};
+        this.soundOperation = operation;
+        this.setState({soundBusy: true, soundBusyNotice: false, soundError: false});
+        return Promise.resolve().then(() => this.currentSoundOperation(operation) && work(operation))
+            .catch(error => {
+                log.error(`Encountered error while editing sound: ${error.message}`);
+                return false;
+            })
+            .then(result => {
+                if (result === false && this.currentSoundOperation(operation)) this.setState({soundError: true});
+                return result;
+            })
+            .finally(() => {
+                if (this.soundOperation === operation) {
+                    this.soundOperation = null;
+                    this.stepLabel = null;
+                    if (!this.soundUnmounted) this.setState({soundBusy: false, soundBusyNotice: false});
+                }
+            });
+    }
+    submitNewSamples (samples, sampleRate, skipUndo, operation) {
         return downsampleIfNeeded({samples, sampleRate}, this.resampleBufferToRate)
             .then(({samples: newSamples, sampleRate: newSampleRate}) =>
-                WavEncoder.encode({
-                    sampleRate: newSampleRate,
-                    channelData: [newSamples]
-                }).then(wavBuffer => {
+                WavEncoder.encode({sampleRate: newSampleRate, channelData: [newSamples]}).then(wavBuffer => {
+                    if (!this.currentSoundOperation(operation)) return false;
+                    const player = new AudioBufferPlayer(newSamples, newSampleRate);
+                    const chunkLevels = computeChunkedRMS(newSamples);
+                    const undoItem = skipUndo ? null : this.getUndoItem();
+                    operation.vm.updateSoundBuffer(operation.index, player.buffer, new Uint8Array(wavBuffer));
+                    if (!this.currentSoundOperation(operation)) return false;
+                    this.audioBufferPlayer.stop();
+                    this.audioBufferPlayer = player;
+                    this.setState({chunkLevels, playhead: null});
                     if (!skipUndo) {
                         this.redoStack = [];
                         this.redoLabels = [];
                         if (this.undoStack.length >= UNDO_STACK_SIZE) {
-                            this.undoStack.shift(); // Drop the first element off the array
+                            this.undoStack.shift();
                             this.undoLabels.shift();
                         }
-                        this.undoStack.push(this.getUndoItem());
+                        this.undoStack.push(undoItem);
                         this.undoLabels.push(this.stepLabel || 'Change');
                     }
                     this.stepLabel = null;
-                    this.resetState(newSamples, newSampleRate);
                     notifyUndoState();
-                    this.props.vm.updateSoundBuffer(
-                        this.props.soundIndex,
-                        this.audioBufferPlayer.buffer,
-                        new Uint8Array(wavBuffer));
-                    return true; // Edit was successful
+                    return true;
                 })
             )
             .catch(e => {
-                // Encoding failed, or the sound was too large to save so edit is rejected
                 log.error(`Encountered error while trying to encode sound update: ${e.message}`);
-                return false; // Edit was not applied
+                return false;
             });
     }
     handlePlay () {
@@ -222,50 +270,41 @@ class SoundEditor extends React.Component {
         this.props.vm.renameSound(this.props.soundIndex, name);
     }
     handleDelete () {
-        this.stepLabel = 'Delete selection';
-        const {samples, sampleRate} = this.copyCurrentBuffer();
-        const sampleCount = samples.length;
-        const startIndex = Math.floor(this.state.trimStart * sampleCount);
-        const endIndex = Math.floor(this.state.trimEnd * sampleCount);
-        const firstPart = samples.slice(0, startIndex);
-        const secondPart = samples.slice(endIndex, sampleCount);
-        const newLength = firstPart.length + secondPart.length;
-        let newSamples;
-        if (newLength === 0) {
-            newSamples = new Float32Array(1);
-        } else {
-            newSamples = new Float32Array(newLength);
+        return this.runSoundOperation(operation => {
+            this.stepLabel = 'Delete selection';
+            const {samples, sampleRate} = this.copyCurrentBuffer();
+            const startIndex = Math.floor(this.state.trimStart * samples.length);
+            const endIndex = Math.floor(this.state.trimEnd * samples.length);
+            const firstPart = samples.slice(0, startIndex);
+            const secondPart = samples.slice(endIndex);
+            const newLength = firstPart.length + secondPart.length;
+            const newSamples = new Float32Array(Math.max(1, newLength));
             newSamples.set(firstPart, 0);
             newSamples.set(secondPart, firstPart.length);
-        }
-        this.submitNewSamples(newSamples, sampleRate).then(() => {
-            this.setState({
-                trimStart: null,
-                trimEnd: null
+            return this.submitNewSamples(newSamples, sampleRate, false, operation).then(success => {
+                if (success && this.currentSoundOperation(operation)) this.setState({trimStart: null, trimEnd: null});
+                return success;
             });
         });
     }
     handleDeleteInverse () {
-        this.stepLabel = 'Crop';
-        // Delete everything outside of the trimmers
-        const {samples, sampleRate} = this.copyCurrentBuffer();
-        const sampleCount = samples.length;
-        const startIndex = Math.floor(this.state.trimStart * sampleCount);
-        const endIndex = Math.floor(this.state.trimEnd * sampleCount);
-        let clippedSamples = samples.slice(startIndex, endIndex);
-        if (clippedSamples.length === 0) {
-            clippedSamples = new Float32Array(1);
-        }
-        this.submitNewSamples(clippedSamples, sampleRate).then(success => {
-            if (success) {
-                this.setState({
-                    trimStart: null,
-                    trimEnd: null
-                });
-            }
+        return this.runSoundOperation(operation => {
+            this.stepLabel = 'Crop';
+            const {samples, sampleRate} = this.copyCurrentBuffer();
+            const startIndex = Math.floor(this.state.trimStart * samples.length);
+            const endIndex = Math.floor(this.state.trimEnd * samples.length);
+            let clippedSamples = samples.slice(startIndex, endIndex);
+            if (clippedSamples.length === 0) clippedSamples = new Float32Array(1);
+            return this.submitNewSamples(clippedSamples, sampleRate, false, operation).then(success => {
+                if (success && this.currentSoundOperation(operation)) this.setState({trimStart: null, trimEnd: null});
+                return success;
+            });
         });
     }
     handleUpdateTrim (trimStart, trimEnd) {
+        if (this.soundOperation) {
+            this.setState({soundBusyNotice: true}); return;
+        }
         this.setState({trimStart, trimEnd});
         this.handleStopPlaying();
     }
@@ -280,27 +319,28 @@ class SoundEditor extends React.Component {
         };
     }
     handleEffect (name) {
-        this.stepLabel = `Effect ${name}`;
-        const trimStart = this.state.trimStart === null ? 0.0 : this.state.trimStart;
-        const trimEnd = this.state.trimEnd === null ? 1.0 : this.state.trimEnd;
-
-        // Offline audio context needs at least 2 samples
-        if (this.audioBufferPlayer.buffer.length < 2) {
-            return;
-        }
-
-        const effects = new AudioEffects(this.audioBufferPlayer.buffer, name, trimStart, trimEnd);
-        effects.process((renderedBuffer, adjustedTrimStart, adjustedTrimEnd) => {
-            const samples = renderedBuffer.getChannelData(0);
-            const sampleRate = renderedBuffer.sampleRate;
-            this.submitNewSamples(samples, sampleRate).then(success => {
-                if (success) {
-                    if (this.state.trimStart === null) {
-                        this.handlePlay();
-                    } else {
-                        this.setState({trimStart: adjustedTrimStart, trimEnd: adjustedTrimEnd}, this.handlePlay);
-                    }
-                }
+        return this.runSoundOperation(operation => {
+            this.stepLabel = `Effect ${name}`;
+            const trimStart = this.state.trimStart === null ? 0.0 : this.state.trimStart;
+            const trimEnd = this.state.trimEnd === null ? 1.0 : this.state.trimEnd;
+            if (this.audioBufferPlayer.buffer.length < 2) return false;
+            const effects = new AudioEffects(this.audioBufferPlayer.buffer, name, trimStart, trimEnd);
+            return new Promise((resolve, reject) => {
+                const rendering = effects.process((renderedBuffer, adjustedTrimStart, adjustedTrimEnd) => {
+                    if (!this.currentSoundOperation(operation)) return resolve(false);
+                    this.submitNewSamples(renderedBuffer.getChannelData(0), renderedBuffer.sampleRate, false, operation)
+                        .then(success => {
+                            if (success && this.currentSoundOperation(operation)) {
+                                if (this.state.trimStart === null) this.handlePlay();
+                                else {
+                                    this.setState({trimStart: adjustedTrimStart, trimEnd: adjustedTrimEnd},
+                                        this.handlePlay);
+                                }
+                            }
+                            resolve(success);
+                        }, reject);
+                });
+                if (rendering && typeof rendering.catch === 'function') rendering.catch(reject);
             });
         });
     }
@@ -321,28 +361,36 @@ class SoundEditor extends React.Component {
         };
     }
     handleUndo () {
-        this.redoStack.push(this.getUndoItem());
-        this.redoLabels.push(this.undoLabels.pop());
-        const {samples, sampleRate, trimStart, trimEnd} = this.undoStack.pop();
-        if (samples) {
-            return this.submitNewSamples(samples, sampleRate, true).then(success => {
-                if (success) {
-                    this.setState({trimStart: trimStart, trimEnd: trimEnd}, this.handlePlay);
-                }
+        return this.runSoundOperation(operation => {
+            const item = this.undoStack[this.undoStack.length - 1];
+            if (!item || !item.samples) return false;
+            const current = this.getUndoItem();
+            return this.submitNewSamples(item.samples, item.sampleRate, true, operation).then(success => {
+                if (!success || !this.currentSoundOperation(operation)) return false;
+                this.undoStack.pop();
+                this.redoStack.push(current);
+                this.redoLabels.push(this.undoLabels.pop());
+                notifyUndoState();
+                this.setState({trimStart: item.trimStart, trimEnd: item.trimEnd}, this.handlePlay);
+                return true;
             });
-        }
+        });
     }
     handleRedo () {
-        const {samples, sampleRate, trimStart, trimEnd} = this.redoStack.pop();
-        this.undoLabels.push(this.redoLabels.pop());
-        if (samples) {
-            this.undoStack.push(this.getUndoItem());
-            return this.submitNewSamples(samples, sampleRate, true).then(success => {
-                if (success) {
-                    this.setState({trimStart: trimStart, trimEnd: trimEnd}, this.handlePlay);
-                }
+        return this.runSoundOperation(operation => {
+            const item = this.redoStack[this.redoStack.length - 1];
+            if (!item || !item.samples) return false;
+            const current = this.getUndoItem();
+            return this.submitNewSamples(item.samples, item.sampleRate, true, operation).then(success => {
+                if (!success || !this.currentSoundOperation(operation)) return false;
+                this.redoStack.pop();
+                this.undoStack.push(current);
+                this.undoLabels.push(this.redoLabels.pop());
+                notifyUndoState();
+                this.setState({trimStart: item.trimStart, trimEnd: item.trimEnd}, this.handlePlay);
+                return true;
             });
-        }
+        });
     }
     handleCopy () {
         this.copy();
@@ -393,68 +441,60 @@ class SoundEditor extends React.Component {
             source.buffer = audioBuffer;
             source.connect(offlineContext.destination);
             source.start();
-            offlineContext.startRendering();
             offlineContext.oncomplete = ({renderedBuffer}) => {
                 resolve({
                     samples: renderedBuffer.getChannelData(0),
                     sampleRate: newRate
                 });
             };
+            const rendering = offlineContext.startRendering();
+            if (rendering && typeof rendering.catch === 'function') rendering.catch(reject);
         });
     }
-    paste () {
+    paste (copyBuffer, operation) {
         this.stepLabel = 'Paste';
-        // If there's no selection, paste at the end of the sound
         const {samples} = this.copyCurrentBuffer();
         if (this.state.trimStart === null) {
-            const newLength = samples.length + this.state.copyBuffer.samples.length;
-            const newSamples = new Float32Array(newLength);
+            const newSamples = new Float32Array(samples.length + copyBuffer.samples.length);
             newSamples.set(samples, 0);
-            newSamples.set(this.state.copyBuffer.samples, samples.length);
-            this.submitNewSamples(newSamples, this.props.sampleRate, false).then(success => {
-                if (success) {
-                    this.handlePlay();
-                }
-            });
-        } else {
-            // else replace the selection with the pasted sound
-            const trimStartSamples = this.state.trimStart * samples.length;
-            const trimEndSamples = this.state.trimEnd * samples.length;
-            const firstPart = samples.slice(0, trimStartSamples);
-            const lastPart = samples.slice(trimEndSamples);
-            const newLength = firstPart.length + this.state.copyBuffer.samples.length + lastPart.length;
-            const newSamples = new Float32Array(newLength);
-            newSamples.set(firstPart, 0);
-            newSamples.set(this.state.copyBuffer.samples, firstPart.length);
-            newSamples.set(lastPart, firstPart.length + this.state.copyBuffer.samples.length);
-
-            const trimStartSeconds = trimStartSamples / this.props.sampleRate;
-            const trimEndSeconds = trimStartSeconds +
-                (this.state.copyBuffer.samples.length / this.state.copyBuffer.sampleRate);
-            const newDurationSeconds = newSamples.length / this.state.copyBuffer.sampleRate;
-            const adjustedTrimStart = trimStartSeconds / newDurationSeconds;
-            const adjustedTrimEnd = trimEndSeconds / newDurationSeconds;
-            this.submitNewSamples(newSamples, this.props.sampleRate, false).then(success => {
-                if (success) {
-                    this.setState({
-                        trimStart: adjustedTrimStart,
-                        trimEnd: adjustedTrimEnd
-                    }, this.handlePlay);
-                }
+            newSamples.set(copyBuffer.samples, samples.length);
+            return this.submitNewSamples(newSamples, this.props.sampleRate, false, operation).then(success => {
+                if (success && this.currentSoundOperation(operation)) this.handlePlay();
+                return success;
             });
         }
+        const trimStartSamples = this.state.trimStart * samples.length;
+        const trimEndSamples = this.state.trimEnd * samples.length;
+        const firstPart = samples.slice(0, trimStartSamples);
+        const lastPart = samples.slice(trimEndSamples);
+        const newSamples = new Float32Array(firstPart.length + copyBuffer.samples.length + lastPart.length);
+        newSamples.set(firstPart, 0);
+        newSamples.set(copyBuffer.samples, firstPart.length);
+        newSamples.set(lastPart, firstPart.length + copyBuffer.samples.length);
+        const trimStartSeconds = trimStartSamples / this.props.sampleRate;
+        const trimEndSeconds = trimStartSeconds + (copyBuffer.samples.length / copyBuffer.sampleRate);
+        const newDurationSeconds = newSamples.length / copyBuffer.sampleRate;
+        const adjustedTrimStart = trimStartSeconds / newDurationSeconds;
+        const adjustedTrimEnd = trimEndSeconds / newDurationSeconds;
+        return this.submitNewSamples(newSamples, this.props.sampleRate, false, operation).then(success => {
+            if (success && this.currentSoundOperation(operation)) {
+                this.setState({trimStart: adjustedTrimStart, trimEnd: adjustedTrimEnd}, this.handlePlay);
+            }
+            return success;
+        });
     }
     handlePaste () {
-        if (!this.state.copyBuffer) return;
-        if (this.state.copyBuffer.sampleRate === this.props.sampleRate) {
-            this.paste();
-        } else {
-            this.resampleBufferToRate(this.state.copyBuffer, this.props.sampleRate).then(buffer => {
-                this.setState({
-                    copyBuffer: buffer
-                }, this.paste);
+        if (!this.state.copyBuffer) return Promise.resolve(false);
+        return this.runSoundOperation(operation => {
+            const copyBuffer = this.state.copyBuffer;
+            const buffer = copyBuffer.sampleRate === this.props.sampleRate ? Promise.resolve(copyBuffer) :
+                this.resampleBufferToRate(copyBuffer, this.props.sampleRate);
+            return buffer.then(result => {
+                if (!this.currentSoundOperation(operation)) return false;
+                if (result !== copyBuffer) this.setState({copyBuffer: result});
+                return this.paste(result, operation);
             });
-        }
+        });
     }
     setRef (element) {
         this.ref = element;
@@ -467,8 +507,24 @@ class SoundEditor extends React.Component {
     }
     render () {
         const {effectTypes} = AudioEffects;
-        return (
+        const german = String(this.props.locale || '').toLowerCase()
+            .startsWith('de');
+        return (<>
+            {this.state.soundBusy ? <div
+                aria-live="polite"
+                role="status"
+            >
+                {this.state.soundBusyNotice ?
+                    (german ? 'Bitte warte, bis die Klangbearbeitung abgeschlossen ist.' :
+                        'Please wait for the current sound edit to finish.') :
+                    (german ? 'Klang wird bearbeitet…' : 'Editing sound…')}
+            </div> : null}
+            {this.state.soundError ? <div role="alert">
+                {german ? 'Der Klang konnte nicht bearbeitet werden. Bitte versuche es erneut.' :
+                    'Could not complete the sound edit. Please try again.'}
+            </div> : null}
             <SoundEditorComponent
+                editingBusy={this.state.soundBusy}
                 canPaste={this.state.copyBuffer !== null}
                 canRedo={this.redoStack.length > 0}
                 canUndo={this.undoStack.length > 0}
@@ -501,12 +557,13 @@ class SoundEditor extends React.Component {
                 onStop={this.handleStopPlaying}
                 onUndo={this.handleUndo}
             />
-        );
+        </>);
     }
 }
 
 SoundEditor.propTypes = {
     isFullScreen: PropTypes.bool,
+    locale: PropTypes.string,
     name: PropTypes.string.isRequired,
     sampleRate: PropTypes.number,
     samples: PropTypes.instanceOf(Float32Array),
@@ -526,6 +583,7 @@ const mapStateToProps = (state, {soundIndex}) => {
         sampleRate: audioBuffer.sampleRate,
         samples: audioBuffer.getChannelData(0),
         isFullScreen: state.scratchGui.mode.isFullScreen,
+        locale: state.locales.locale,
         name: sound.name,
         vm: state.scratchGui.vm
     };
