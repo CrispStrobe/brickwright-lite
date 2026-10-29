@@ -104,14 +104,20 @@ matched commit `3d77472b518ae4e9a57fd8cfb154e31ecba1b432`; SAMD had changed no
 Rust. The original cause remains unknown, not a proven flake or engine regression.
 The original log is retained once; do not rerun the unchanged failure.
 
-The [Linux observation claim](../lanes/2026-10-28-linux-owner-death-observation.md)
-limits the repair to the supervisor test module. Production bytes are unchanged.
-The test binds complete PID publication, parent/group/start identity and a held
-process descriptor, preserves the original immediate-crash case and three-second
-assertion, and adds a separate fresh 100 ms live-owner case. A negative fixture
-observes then deliberately clears the actual kill signal, survives the same
-window and receives exact cleanup. Full hosted Rust CI now passes these cases.
-This does not qualify all native lifetimes or hardware. Preserve other owners'
+Test-only successor: the
+[Linux observation claim](../lanes/2026-10-28-linux-owner-death-observation.md)
+owns only the supervisor's test module; production bytes remain unchanged.
+The candidate binds parent/group identity and a held process descriptor, requires
+complete PID publication, retains bounded failure snapshots and signals only the
+admitted child. The original three-second assertion stays intact. The original immediate-crash
+case remains; the100 ms live-owner case uses a separate fresh fixture. A negative
+fixture observes the actual supervisor's kill signal before deliberately
+clearing it and requiring survival through the same window, then exact cleanup.
+Private extracted-method controls and three adversarial cuts passed; their
+explicit synthetic supervisor boundary is not full Rust or guest qualification.
+Full hosted Rust CI now passes these cases, as recorded above. Actual SAMD
+acceptance remains pending; the original failure is not reclassified as a flake.
+Production bytes and the original assertion are unchanged. Preserve other owners'
 MicroPython manifest hunks and old dirty worktrees.
 
 ## Remaining work, in order
