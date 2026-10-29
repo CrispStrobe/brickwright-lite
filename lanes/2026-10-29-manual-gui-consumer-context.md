@@ -52,3 +52,20 @@ with the manual skip explicitly accounted for. A fixture or cancelled original
 does not qualify an application. No unchanged dispatch repeat, consumed-study
 replay, full-tier label, second original GET, threshold relaxation or deployment
 claim is authorized.
+
+## Additional dependent wiring test — unit shard 2
+
+The once-retained original for fast run `40845058229`, unit job `123370936203`,
+contains one true TAP failure in `test/ci-browser-scope.test.mjs`: its CLI/wiring
+case still expects the deliberately removed no-browser admission message.
+Quoted workflow comments and the final repeated failure summary are not extra
+test failures. This is not an observed LM741 or numerical-model failure.
+
+Extend the exact envelope by only `test/ci-browser-scope.test.mjs`. Replace the
+obsolete diagnostic-message assertion with checks that real classifier output
+reaches `GITHUB_OUTPUT`, maps through the scope job's outputs and feeds the
+existing matrix/FPGA/browser selectors. Preserve its actual CLI false-output
+case, all classifier/import-closure behavior and shard-selection assertions.
+Do not restore the old empty-tier admission bypass or delete the wiring test.
+This is test maintenance for the separately registered selected-tier policy;
+it changes no application, data, numerical predicate, threshold or supplier.
