@@ -1631,6 +1631,7 @@ class DebugPanel extends React.Component {
                     <div data-samd-software-buttons style={{display: 'flex', gap: 4, flexWrap: 'wrap'}}>
                         {['left', 'up', 'down', 'right', 'select', 'start', 'a', 'b'].map(name =>
                             <button key={name} style={this.state.runner ? BTN : OFF} disabled={!this.state.runner}
+                                aria-pressed={this._samdPressed.has(name)}
                                 onPointerDown={e => { e.preventDefault(); if (e.currentTarget.setPointerCapture) e.currentTarget.setPointerCapture(e.pointerId); this.setSamdButton(name, true); }}
                                 onPointerUp={() => this.setSamdButton(name, false)}
                                 onPointerCancel={() => this.setSamdButton(name, false)}

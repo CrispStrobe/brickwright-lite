@@ -24,3 +24,8 @@ The browser-side reader verifies the pinned profile, exact source YAML bindings,
 closed authored inputs and field unions. Synthetic positive and negative controls
 pass; the retained original release profile also admitted with its exact digest.
 No guest was replayed and no default board or product route was changed.
+
+The later, separately registered product route is now folded into draft PR
+#1565; its uncompleted supplier, pin, actual GUI and hosted-check work is
+specified in `lanes/2026-10-29-samd-explicit-debugger-route.md`. This admission
+boundary alone does not close that route.
