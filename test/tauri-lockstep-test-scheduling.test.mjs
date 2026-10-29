@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync,mkdtempSync,mkdirSync,writeFileSync,rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import path from 'node:path';
-import {execFileSync,spawnSync} from 'node:child_process';
+import {spawnSync} from 'node:child_process';
 
 const ROOT=path.resolve(import.meta.dirname,'..');
 const fullName='renode_brick_state::tests::lockstep_steps_land_exactly_one_quantum_apart_without_polling';
@@ -35,9 +35,9 @@ test('default Cargo selection and isolated selection cover every test exactly on
 });
 
 test('the named Rust timing test and its assertion remain present',()=>{
- // gate-shapes-allow: git reads this repository's committed test definition;
- // no Rust compiler, executable or guest is invoked by this source control.
- const source=execFileSync('git',['show','HEAD:apps/tauri/src-tauri/src/renode_brick_state.rs'],{cwd:ROOT,encoding:'utf8'});
+ // Inspect the checked-out source, including an uncommitted assertion edit.
+ // Missing source fails closed; no Git binary or Rust execution is required.
+ const source=readFileSync(path.join(ROOT,'apps/tauri/src-tauri/src/renode_brick_state.rs'),'utf8');
  const short=fullName.split('::').at(-1);
  assert.equal([...source.matchAll(new RegExp('fn\\s+'+short+'\\s*\\(','g'))].length,1);
  assert.match(source,/wall\[0\]\s*<\s*Duration::from_micros\(2500\)/);

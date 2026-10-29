@@ -36,7 +36,8 @@ test('actual closed SDK and scene-clock Number producers compose with native sca
     assert.equal(inspectNativeArrayBinaryDomains(program,profile).helpers.size,0);
     // These profiles deliberately do not infer a Number from a declared
     // return annotation, an arbitrary API spelling or a parser callback.
-    for(const expression of ['foreign()','parseInt("7")'])
+    good('let result=__bwBinaryAdd(parseInt("7"),1)');
+    for(const expression of ['foreign()','parseInt(foreign())','parseInt("7",foreign())'])
         bad(`let result=__bwBinaryAdd(${expression},1)`);
 });
 
