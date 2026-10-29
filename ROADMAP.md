@@ -34,8 +34,8 @@ Neither component result establishes final application acceptance. Do not
 independently merge the superseded PR1538 or change its pins.
 
 Use fast-tier PR qualification without `ci:full` labels. Claim PR1558 scopes the
-policy guard's admission of selected execution; its registration must land before
-implementation. Preserve every enabled job, tier selector and numerical/bundle
+policy guard's admission of selected execution; registration landed at `f5acf3b3`
+and the bounded repair is published at `0f5dca52`. Preserve every enabled job, tier selector and numerical/bundle
 bound. Complete exact combined-head checks, actual affected GUI evidence with
 source/artifact binding, FPGA flag-on acceptance and the unchanged profiling
 byte guard. A normal production byte inventory is a separate observation.

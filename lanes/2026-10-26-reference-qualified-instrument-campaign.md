@@ -15,7 +15,8 @@ Packaged native confirmation is accepted at `17bbefca`; measured editor/menu
 repairs are checkpointed at `a0c0a60e`, with final acceptance still pending.
 Fast-tier PR checks are the default and no `ci:full` labels are to be applied.
 Claim PR1558 scopes only policy admission of actual selected execution, not
-weaker test coverage. Complete its merged registration before implementation.
+weaker test coverage. Registration landed at `f5acf3b3`; its bounded repair is
+published in combined PR1536 head `0f5dca52`.
 All enabled final-head checks, exact-bound affected GUI/FPGA evidence, the
 unchanged profiling-byte guard, actual main and production delivery remain owed.
 No completed study replay or duplicate original intake is authorized. Keep

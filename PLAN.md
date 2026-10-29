@@ -51,8 +51,8 @@ controls and trigger-owned Escape/Tab dismissal. The source checkpoint
 `a0c0a60e` contains those repairs; it is not final consumer or delivery acceptance.
 
 Fast-tier PR checks are the operator's default, without `ci:full` labels. Claim
-PR1558 scopes alignment of the legacy policy verdict with actual selected CI
-execution; implementation waits for its merged registration. Every enabled
+PR1558 registered alignment of the legacy policy verdict with selected CI
+execution at `f5acf3b3`; the bounded repair is published in PR1536 at `0f5dca52`. Every enabled
 selected check and actual affected application acceptance must still pass.
 Production GUI observations require exact source/configuration/artifact binding;
 FPGA flag-on behavior and the unchanged profiling-build byte guard remain owed.

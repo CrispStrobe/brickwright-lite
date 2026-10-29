@@ -93,8 +93,9 @@ Packaged native confirmation is accepted at `17bbefca`. Forward checkpoint
 `a0c0a60e` carries the measured viewport, Pixel and trigger Escape/Tab repairs.
 These bounded results do not qualify the final combined application.
 
-1. Complete claim PR1558's registration and align only the legacy policy guard
-   with actual selected fast/thorough execution. The operator requires fast
+1. Registration and bounded policy source are complete: claim PR1558 landed at
+   `f5acf3b3`; published PR1536 head `0f5dca52` admits selected fast/thorough
+   execution and detects invalid/empty inputs through executable controls. The operator requires fast
    PR checks by default and no `ci:full` labels. Do not change job selection,
    thresholds, browser assertions or main/dispatch behavior.
 2. Batch the guard and editor repairs into the existing PR1536. Require all
