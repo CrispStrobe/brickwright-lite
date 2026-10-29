@@ -45,3 +45,10 @@ interactions in `scripts/verify-local-asm-listing.mjs` and
 helpers. Preserve every offline compiler, program, guest, numerical, byte/image,
 mutation and save/reopen assertion, input fixture, timeout and acquisition.
 No importer/compiler behavior or consumed original/fixture changes.
+
+Controller-unit fixture follow-up: update the old Page double in
+`test/pseudocode-importer-attribution.test.mjs` for the current popup helper API,
+retaining the legacy-details lazy-attachment assertions and all P21 ownership,
+bundle-floor and source-boundary controls. Add a current-popup open/close and
+idempotence control. No emitted-size threshold, production helper or importer
+behavior change is included.
