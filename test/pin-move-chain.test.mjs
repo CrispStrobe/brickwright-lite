@@ -1370,11 +1370,13 @@ test('F10 keeps every consumed supplier position historical and every new input 
 
 test('a real merge replacement remains previous-pin evidence instead of a never-pinned finding', () => {
     const directory=mkdtempSync(path.join(tmpdir(),'bw-pin-merge-history-'));
+    writeFileSync(path.join(directory,'git'),'#!/bin/sh\nexit 87\n',{mode:0o755});
     const cleanEnv={...Object.fromEntries(Object.entries(process.env).filter(([key])=>!key.startsWith('GIT_'))),
+        PATH:directory+path.delimiter+(process.env.PATH||''),
         GIT_CONFIG_GLOBAL:'/dev/null',GIT_CONFIG_NOSYSTEM:'1',
         GIT_AUTHOR_NAME:'pin history control',GIT_AUTHOR_EMAIL:'pins@example.invalid',
         GIT_COMMITTER_NAME:'pin history control',GIT_COMMITTER_EMAIL:'pins@example.invalid'};
-    const invoke=(...args)=>execFileSync('git',['-c','core.hooksPath=/dev/null','-c','commit.gpgsign=false',...args],
+    const invoke=(...args)=>execFileSync('/usr/bin/git',['-c','core.hooksPath=/dev/null','-c','commit.gpgsign=false',...args],
         {cwd:directory,env:cleanEnv,encoding:'utf8',stdio:['ignore','pipe','pipe']});
     const base='0'.repeat(40), former='a'.repeat(40), selected='b'.repeat(40), never='d'.repeat(40);
     const setPin=pin=>writeFileSync(path.join(directory,'vendor-pins.json'),JSON.stringify({'bw-board':pin},null,2)+'\n');
