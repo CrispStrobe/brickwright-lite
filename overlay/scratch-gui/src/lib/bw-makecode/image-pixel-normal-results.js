@@ -135,11 +135,44 @@ function inspectPixelResults(program,profile,mode) {
         for(const key of mutableKeys(call.callee.object))if(!['type','name'].includes(key))return answer();
         for(const key of mutableKeys(fn.body))if(key!=='length'&&!(typeof key==='string'&&/^(0|[1-9][0-9]*)$/.test(key)))return answer();
         const formal=scope.names.get(fn.params[0]);if(!formal||formal.kind!=='parameter'||formal.node!==fn||formal.written||createdCallbacks.has(fn))return answer();
+        // The emitter may preserve one inert local bridge while using either
+        // the original formal or the bridged local for subsequent width reads.
+        // Do not erase its null declaration or manufacture an initialization:
+        // the actual interpreter executes both source writers below.
+        let ingress=null,bridgeIndex=0;const prefix=[];
+        while(bridgeIndex<fn.body.length){const st=fn.body[bridgeIndex];if(st?.type!=='Declaration'||st.kind!=='let'||st.decls?.length!==1||st.decls[0].init?.type!=='Null')break;prefix.push(st);bridgeIndex++;}
+        const bridgeStatement=fn.body[bridgeIndex],bridge=bridgeStatement?.expr;
+        if(prefix.length&&bridgeStatement?.type==='ExpressionStatement'&&bridge?.type==='Assignment'&&bridge.op==='='&&bridge.left?.type==='Identifier'&&bridge.right?.type==='Identifier'&&binding(bridge.right)===formal){
+            const alias=binding(bridge.left),declarations=prefix.filter(st=>st.decls[0]===alias?.node);
+            if(!alias||alias.kind!=='local'||alias.scope!==scope||alias.functionOwner!==scope||declarations.length!==1)return answer();
+            for(const st of prefix){
+                for(const key of mutableKeys(st))if(!['type','kind','decls'].includes(key))return answer();
+                for(const key of mutableKeys(st.decls))if(!['0','length'].includes(key))return answer();
+                for(const key of mutableKeys(st.decls[0]))if(!['name','init','isArray','typeName','whenUsed'].includes(key))return answer();
+                for(const key of mutableKeys(st.decls[0].init))if(key!=='type')return answer();
+            }
+            for(const key of mutableKeys(bridgeStatement))if(!['type','expr'].includes(key))return answer();
+            for(const key of mutableKeys(bridge))if(!['type','op','left','right'].includes(key))return answer();
+            for(const identifier of [bridge.left,bridge.right])for(const key of mutableKeys(identifier))if(!['type','name'].includes(key))return answer();
+            let declarationsCount=0,writersCount=0;
+            for(const node of syntax.nodes){
+                if(node.type==='Declaration')for(const decl of node.decls||[])if(lexical.scopes.get(node)?.names.get(decl.name)===alias){declarationsCount++;if(decl!==alias.node)return answer();}
+                if(node.type==='Assignment'&&node.left?.type==='Identifier'&&binding(node.left)===alias){writersCount++;if(node!==bridge||node.op!=='=')return answer();}
+                if(node.type==='Update'&&node.argument?.type==='Identifier'&&binding(node.argument)===alias)return answer();
+            }
+            if(declarationsCount!==1||writersCount!==1)return answer();
+            ingress={alias,bridge,bridgeIndex};
+        }
+        if(prefix.length&&!ingress)return answer();
         for(const node of syntax.nodes){
             if(node.type==='Declaration')for(const decl of node.decls||[])if(lexical.scopes.get(node)?.names.get(decl.name)===formal)return answer();
-            if(node.type!=='Identifier'||binding(node)!==formal)continue;
-            let owner=syntax.parentOf(node);while(owner&&owner!==fn){if(['FunctionExpression','FunctionDeclaration'].includes(owner.type))return answer();owner=syntax.parentOf(owner);}
-            const member=syntax.parentOf(node),use=member&&syntax.parentOf(member);
+            if(node.type!=='Identifier'||binding(node)!==formal&&(!ingress||binding(node)!==ingress.alias))continue;
+            const parent=syntax.parentOf(node),isAlias=ingress&&binding(node)===ingress.alias;
+            if(ingress&&parent===ingress.bridge&&(isAlias&&parent.left===node||!isAlias&&parent.right===node))continue;
+            let owner=parent;while(owner&&owner!==fn){if(['FunctionExpression','FunctionDeclaration'].includes(owner.type))return answer();owner=syntax.parentOf(owner);}
+            let statement=node;while(syntax.parentOf(statement)&&syntax.parentOf(statement)!==fn)statement=syntax.parentOf(statement);
+            if(isAlias&&fn.body.indexOf(statement)<=ingress.bridgeIndex)return answer();
+            const member=parent,use=member&&syntax.parentOf(member);
             if(owner!==fn||member?.type!=='Member'||member.object!==node||member.name!=='width'||member.optional||member.computed||
                 use?.type==='Assignment'&&use.left===member||use?.type==='Update'||use?.type==='Call'&&use.callee===member)return answer();
             createdWidthReads.add(member);

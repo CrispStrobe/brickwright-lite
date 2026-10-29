@@ -27,16 +27,26 @@ Nine leaf controls and three graph/frame/native controls pass. The original
 realm-guard and native integration failures are retained. Removing the exact
 native normal-return receipt is detected by the positive control.
 
+A bounded pure authoring probe of the actual core-values source now imports,
+constructs its editable project and exports with no diagnostics. It executes
+neither Lite nor PXT. The generated-images authoring probe now also imports, constructs its editable
+project and exports without diagnostics after closing the actual emitted alias
+ingress. Its original refused probe is retained. The callback introduces a local
+Sprite initialized to null, assigns the supplied formal once, then reads width.
+The proof retains both writers and supports the original formal or that one
+local alias after the bridge; extra writers, early reads and escapes refuse.
+
 The mutable Image profile also supports an exact top-level inline
 `sprites.onCreated` observer reading the direct formal's width privately.
 Canonical creation attaches the issued Image before matching handlers run in
 registration order, following the pinned original constructor, factory and
 registration code. Width remains an unknown private Number; the public API
 still issues only actual `getPixel` receipts. Classes, scaling/rotation,
-formal reassignment/alias/capture/escape, scene changes, yielding and reentrant
+formal reassignment, additional aliasing/capture/escape, scene changes, yielding and reentrant
 creation/registration remain refused. Uninvoked writes/effects stay visible.
-Fifteen source controls and all 17 unchanged Image controls pass. Mutations
-that remove Image attachment or reverse handler order are detected.
+Eighteen source controls, all 17 unchanged Image controls and two native-domain
+controls pass. Mutations that remove Image attachment, reverse handler order or
+disconnect alias-ingress recognition are detected.
 
 Continue in this order:
 
@@ -49,9 +59,9 @@ Continue in this order:
    executed original PXT export/reimport and presentation budgets. Diagnose the
    actual first remaining refusal; these source passes promote no corpus row.
 3. If emitted source still fails, close its actual callback entry/alias ingress.
-   The current profile accepts only top-level registration and direct formal
-   width reads; startup registration, emitted aliases and width-dependent
-   branches remain outside it. Prove original entry, all writers, lifetime and
+   The current profile accepts top-level registration and direct formal or
+   unique bridged-local width reads. Startup registration, multiple aliases and
+   width-dependent branches remain outside it. Prove original entry, all writers, lifetime and
    notification order rather than treating callback annotations as authority.
 4. Extend parsing to independently proved nonliteral primitive inputs only when
    observed authoring failures require it. Preserve coercion effects and actual
@@ -94,7 +104,7 @@ permanent currentness. Supplied tags or copied nodes cannot enroll the receipt.
 The reviewed original `ImageMethods::getPixel` contract returns a pixel integer
 or zero out of range; source identities are recorded without executing SDK code.
 
-Fifteen current source groups, all 17 unchanged Image controls and two native-domain
+Eighteen current source groups, all 17 unchanged Image controls and two native-domain
 controls pass. Three mutations detect missing occurrence membership, skipped
 unexecuted effects and missing native projection; exact original bytes are
 restored. The unchanged authored artwork source is covered by the source test.
@@ -134,7 +144,8 @@ The next distinct acceptance task is **generated Image creation callback closure
 `test/makecode-arcade-generated-images.test.mjs` still contains
 `sprites.onCreated(SpriteKind.Player, function(sprite) { callbackWidth = sprite.width })`.
 The top-level direct-formal source slice now accepts that observer privately,
-as described above. Emitted alias/startup entry remains pending. Prove the actual
+as described above, including its unique emitted null/alias bridge. Startup
+registration and broader alias graphs remain pending. Prove the actual
 registered entry, receiver and width getter together with Image attachment
 before notification; do not infer ordering from a callback annotation or name.
 Preserve alias and clone identities, handler replacement, reentrancy, receiver

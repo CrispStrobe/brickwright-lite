@@ -214,3 +214,86 @@ test('uninvoked callback writes and notification source mutation cannot revive r
  const {p,proof,calls}=inspect(generatedImagesWithCreated);assert.equal(proof.has(calls[0]),true);
  const fn=walk(p).find(n=>n.type==='FunctionExpression'),before=fn.body[0].expr.right.name;fn.body[0].expr.right.name='height';assert.equal(proof.current(),false);fn.body[0].expr.right.name=before;assert.equal(proof.current(),false);
 });
+
+// Actual emitted authoring source, including its inert local bridge. The
+// original addition body stays present and is interpreted as its real source.
+const emittedCreatedImages=`function __bwBinaryAdd(left:any,right:any):any{return left+right}
+let hero:Sprite
+let foe:Sprite
+let third:Sprite
+let picture:Image
+let alias:Image
+let width:number
+let height:number
+let copied:Image=null
+let callbackWidth=0
+let sampled:any=0
+let actualWidth=0
+let actualHeight=0
+width=(0+4)
+height=(0+3)
+picture=image.create(width,height)
+picture.fill(0)
+picture.fillRect(1,0,2,2,5)
+picture.drawLine(3,2,0,2,7)
+picture.setPixel(0,0,2)
+copied=picture.clone()
+alias=picture
+copied.flipX()
+copied.replace(7,8)
+callbackWidth=(0+0)
+sprites.onCreated(SpriteKind.Player,function(__bwCreatedSprite___bwCreated1:Sprite){
+ let sprite:Sprite=null
+ sprite=__bwCreatedSprite___bwCreated1
+ callbackWidth=__bwCreatedSprite___bwCreated1.width
+})
+hero=null
+hero=sprites.create(picture,SpriteKind.Player)
+foe=null
+foe=sprites.create(alias,SpriteKind.Enemy)
+third=null
+third=sprites.create(copied,SpriteKind.Food)
+alias.setPixel(0,0,3)
+sampled=__bwBinaryAdd(picture.getPixel(2,1),(0+1))
+actualWidth=picture.width
+actualHeight=copied.height`;
+const bridgeText='sprite=__bwCreatedSprite___bwCreated1';
+const localWidthText='callbackWidth=__bwCreatedSprite___bwCreated1.width';
+
+test('actual emitted creation callback preserves its inert alias bridge and genuine Sprite payload',()=>{
+ const {p,proof,calls}=inspect(emittedCreatedImages),before=JSON.stringify(p);assert.equal(calls.length,1);assert.equal(proof.has(calls[0]),true);assert.equal(JSON.stringify(p),before);
+ for(const n of walk(p))if(n.type==='Identifier'||n.type==='Member'&&n.name==='width')assert.equal(proof.has(n),false);
+ good(emittedCreatedImages.replace(localWidthText,'callbackWidth=sprite.width'));
+ good(emittedCreatedImages.replace('let sprite:Sprite=null','let spare:Sprite=null;let sprite:Sprite=null'));
+ good(emittedCreatedImages.replace(/\bsprite\b/g,'ordinaryCarrier').replaceAll('__bwCreatedSprite___bwCreated1','ordinaryEvent'));
+ const old=imagePixelNormalResults(p,profile);assert.equal(old.has(calls[0]),false);
+});
+
+test('callback alias ingress retains exact declaration, bridge, frontier and complete writer census',()=>{
+ for(const text of [
+  emittedCreatedImages.replace(bridgeText,'callbackWidth=sprite.width;'+bridgeText),
+  emittedCreatedImages.replace(bridgeText,'callbackWidth=0;'+bridgeText),
+  emittedCreatedImages.replace(bridgeText,'sprite=hero'),
+  emittedCreatedImages.replace(bridgeText,bridgeText+';sprite=null'),
+  emittedCreatedImages.replace(bridgeText,bridgeText+';'+bridgeText),
+  emittedCreatedImages.replace(bridgeText,bridgeText+';__bwCreatedSprite___bwCreated1=hero'),
+  emittedCreatedImages.replace(bridgeText,bridgeText+';let escaped=sprite'),
+  emittedCreatedImages.replace(bridgeText,bridgeText+';let nested=function(){return sprite.width}'),
+  emittedCreatedImages.replace(bridgeText,bridgeText+';foreign(sprite)'),
+  emittedCreatedImages.replace('let sprite:Sprite=null','let sprite:Sprite=hero'),
+  emittedCreatedImages.replace('let sprite:Sprite=null','let sprite:Sprite=null;let spare:Sprite=sprite.width'),
+  emittedCreatedImages.replace('let sprite:Sprite=null','let sprite:Sprite=null, spare:Sprite=null'),
+  emittedCreatedImages.replace(localWidthText,'sprite.width=4;'+localWidthText),
+  emittedCreatedImages.replace(localWidthText,'callbackWidth=sprite.height')
+ ])bad(text);
+});
+
+test('hidden bridge/declaration writers cannot disappear into parser metadata or later restoration',()=>{
+ for(const where of ['declaration','decls','declarator','null','statement','assignment','left','right']){
+  const p=parse(emittedCreatedImages),fn=walk(p).find(n=>n.type==='FunctionExpression'),declaration=fn.body[0],statement=fn.body[1],assignment=statement.expr;
+  const target=where==='declaration'?declaration:where==='decls'?declaration.decls:where==='declarator'?declaration.decls[0]:where==='null'?declaration.decls[0].init:where==='statement'?statement:where==='assignment'?assignment:where==='left'?assignment.left:assignment.right;
+  Object.defineProperty(target,'hiddenWriter',{value:{type:'Assignment',op:'=',left:{type:'Identifier',name:'sprite'},right:{type:'Null'}},enumerable:false,configurable:true});
+  const proof=mutableImagePixelNormalResults(p,profile);assert.equal(proof.has(walk(p).find(n=>n.type==='Call'&&n.callee?.name==='getPixel')),false,where);
+ }
+ const {p,proof,calls}=inspect(emittedCreatedImages);assert.equal(proof.has(calls[0]),true);const fn=walk(p).find(n=>n.type==='FunctionExpression'),before=fn.body[1].expr.right.name;fn.body[1].expr.right.name='hero';assert.equal(proof.current(),false);fn.body[1].expr.right.name=before;assert.equal(proof.current(),false);
+});
