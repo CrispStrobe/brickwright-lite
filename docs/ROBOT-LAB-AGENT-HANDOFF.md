@@ -1,3 +1,5 @@
+> **Read first, 2026-10-29:** [Current delivery continuation and fully scoped open tasks](DELIVERY-CONTINUATION-2026-10-29.md). This supersedes dated next-action sections below. Five-model promotion is blocked by zero browser dispatch despite a green receipt; do not mark the kit from that receipt. The motor compatibility decision is already made.
+
 # Robot Lab: fresh-agent handoff
 
 For the current experimental checkpoint and explicit unchecked work, start with [the 24 October checkpoint](ROBOT-LAB-CHECKPOINT-2026-10-24.md).
