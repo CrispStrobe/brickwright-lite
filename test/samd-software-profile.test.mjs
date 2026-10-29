@@ -19,6 +19,13 @@ test('admission joins the profile, engine, source configurations and both input 
     assert.equal(result.profile.source,source);assert.deepEqual(Object.keys(result.inputs).sort(),Object.keys(p.inputs).sort());
     assert.equal(result.inputs.LABWIRED_SAMD51_SIM_SW0.length,1024);
 });
+test('admission parses the same snapshot it hashes when the caller reuses its buffer',async()=>{
+    const args=request(fixture());
+    const pending=admitSamdProfile(args);
+    args.bytes.fill(0);
+    const result=await pending;
+    assert.equal(result.profile.source,source);
+});
 test('admission refuses changed bytes, wrong engine and physical relabel',async()=>{
     await assert.rejects(admitSamdProfile(request(fixture(),{expectedSha256:'0'.repeat(64)})),/SHA-256/);
     await assert.rejects(admitSamdProfile(request(fixture(),{engineSource:'b'.repeat(40)})),/different engine/);

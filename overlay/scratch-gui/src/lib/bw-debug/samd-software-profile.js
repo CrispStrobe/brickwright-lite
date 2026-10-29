@@ -8,8 +8,11 @@ const encode = value => new TextEncoder().encode(value);
 export async function admitSamdProfile ({bytes, expectedSha256, engineSource}) {
     need(/^[0-9a-f]{64}$/.test(expectedSha256) && /^[0-9a-f]{40}$/.test(engineSource), 'immutable engine and profile identities required');
     need(bytes instanceof Uint8Array && bytes.length > 0 && bytes.length < 512_000, 'bounded profile asset');
-    need(await sha(bytes) === expectedSha256, 'pinned profile asset SHA-256 mismatch');
-    const profile = JSON.parse(new TextDecoder('utf-8', {fatal: true}).decode(bytes));
+    // Hash and parse the same snapshot even if the caller reuses its buffer
+    // while Web Crypto is pending.
+    const snapshot = Uint8Array.from(bytes);
+    need(await sha(snapshot) === expectedSha256, 'pinned profile asset SHA-256 mismatch');
+    const profile = JSON.parse(new TextDecoder('utf-8', {fatal: true}).decode(snapshot));
     need(JSON.stringify(Object.keys(profile).sort()) === JSON.stringify(['schema','source','profile','kind','physical_capture','source_bindings','chip_yaml','system_yaml','display_yaml','inputs','boundary'].sort()), 'closed profile fields required');
     need(typeof profile.boundary === 'string' && profile.boundary.length > 0 && profile.boundary.length < 4096, 'explicit profile boundary required');
     need(profile.schema === 1 && profile.source === engineSource, 'profile belongs to a different engine source');
