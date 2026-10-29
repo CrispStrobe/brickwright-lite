@@ -1,34 +1,62 @@
 # SAMD engine adoption handoff — updated 2026-10-29
 
-**Consumer acceptance and landing are unfinished.** Continue existing
+**Installed acceptance and normal landing remain open.** Continue
 [PR1533](https://github.com/CrispStrobe/brickwright-lite/pull/1533), branch
-`lane/samd-release-adoption-20261028`, reviewed head
-`48df0f93f9b6b642238c13448e6f075d8871eb83`. Read
-[the adoption claim](../lanes/2026-10-26-samd-native-game-engine-adoption.md) and
-[the lane protocol](../lanes/PROTOCOL.md). Refresh GitHub state before acting;
-do not create a duplicate lane or dispatch.
+`lane/samd-release-adoption-20261028`. It contains the complete SPIKE change from
+closed PR1547; both original source branches and failures remain retained.
+Firmware57 and Runtime66 merged normally. Do not create another consumer lane.
+Keep PR checks on the fast tier without ci:full; review every real enabled gate.
 
-The full source [Build40783464522](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40783464522)
+The original full [source40783464522](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40783464522)
 and [native40803428616](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40803428616)
-finished successfully on immutable guest source48df above. Preserve their original
-artifacts and independent audits. Keep the folded PR on fast CI without ci:full;
-the later label-only run executed no source tests and does not replace that pass.
+passed on consumer48df0f93f9b6b642238c13448e6f075d8871eb83. Independent original
+archive/source audit joined all8,563 frontend files,184 native sources and binary
+b1e644b68b203e196f25203ed2424220b2fcff15766f31cee32ba245b45c8a38.
+Compile defaults and those qualified original inputs remain unchanged.
 
-[Actual-game40826003752](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40826003752)
-failed before guest launch because current GitHub CLI refused ANSI-bearing job
-logs. The reader-only repair ecde65772ed2dbf7dfe227bf7afadc0f6d55ccf8 explicitly
-captures raw responses into buffers/files, records its own source/hash, and reads
-the separate exact consumer checkout. All metadata, artifact and native identity
-checks remain intact. Guest source and executable are unchanged.
+**Chromium acceptance passed:** [40826297334](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40826297334),
+three fresh instances and51 retained RGB frames. Independent decoding confirmed
+all eight targets, ball motion, eight-pixel press displacement and stopped
+movement after release in each instance. Sample walls were164.38–165.40 seconds;
+496 one-second RSS observations reached1,059,164,160 summed bytes. This includes
+the observer/browser process tree and shared pages per process; it is not PSS or
+a continuous peak. Do not replay these successful guests merely to inspect them.
 
-The sole successor [40826297334](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40826297334)
-passed admission; actual browser/installed jobs are pending. Its inputs remain
-consumer48df, frontend40783464522, native40803428616, producer40699886470 and
-producer head8ea3767903d5135f4bd1e74914e25663b530d502. Do not duplicate this run.
-The complete SPIKE consumer change from PR1547 is folded into PR1533 to share one
-final fast-CI queue. Its private combined package has separate acceptance and
-cannot substitute for official SAMD guests. Both original branches/evidence stay
-retained. Physical capture and distribution clearance remain outside these claims.
+**Sole active installed successor:** [40828345515](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40828345515),
+installed realm only, observer sourcee859cecd3adcfa001c9311b585ffe6983db49c76.
+Admission passed; the actual game is running. It retains consumer48df,
+frontend40783464522, native40803428616, producer40699886470 and producer head
+8ea3767903d5135f4bd1e74914e25663b530d502. Require three fresh Tauri/WebKit
+instances and independently inspect original RGB/input/RSS and observer/source/
+frontend/executable joins. Do not start another dispatch while it runs.
+
+Retained acquisition/installation failures and bounded repairs:
+
+- Run40826003752 stopped before guests: current gh refused ANSI-bearing job
+  logs. Reader ecde65772 captures raw responses into buffers/files and records
+  its own source/hash separately from the exact guest checkout.
+- The installed job in40826297334 launched a bare executable without Tauri's
+  resource directory. The workflow now installs the same admitted executable in
+  a local usr/bin plus usr/lib/Brickwright prefix. SAMD uses embedded frontend
+  assets; this prefix contains no private SPIKE resources.
+- Installed40827218429 reached the game RPC, then Node fetch's implicit300-second
+  header cutoff aborted it. The new node:http transport honors the existing
+ 4,900-second RPC and4,800-second script deadlines. Guest frame/input budgets,
+  startup limits, picture assertions and workflow deadline remain unchanged.
+  Twelve metadata/archive/RGB/memory/HTTP controls pass; originals stay retained.
+
+The folded native check also preserved the real timing failure in40827224550:
+fastest exchange3.12547 ms exceeded the unchanged2.5 ms bound. The maintainer's
+published fb43bdf543c6bb8b54cddc2aeaa6775cff5a7b46 repairs only mock JSON-line
+writes, with identical wire bytes/order, all1,000 exchanges and original timing
+assertions. Production prefixes are byte-identical. Hosted40828350448 passed
+275 standard native tests (11 existing ignored) plus nine explicit ignored-suite
+controls. Final-head checks still gate landing; no failure is waived as a flake.
+
+The composed private SPIKE package is separately qualified, never substituted
+for official SAMD guests. Twelve of its13 installed lifecycle cases have passed;
+natural session expiry remains active. The package retains its redistribution
+false marker and makes no physical-silicon or external-firmware claim.
 
 ## Completed supplier work
 
@@ -51,7 +79,7 @@ merged as `dea504b32a9a4bd43a2a9d25b587590a0ac9763f`. The package owner released
 the former PR1318-first hold for this exact adoption and its claimed repairs;
 no general package boundary is open.
 
-## Current consumer evidence
+## Retained prerequisite identity evidence
 
 PR1533 updates web engine/glue/profile identity in `scripts/sync-labwired-wasm.mjs`
 and matching Node identity in `.github/workflows/target-performance.yml`.
