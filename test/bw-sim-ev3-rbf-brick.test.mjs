@@ -372,3 +372,14 @@ test('compiled note names run through virtual EV3 download and program start', (
             523,554,587,622,659,698,740,784,831,880,932,988,
             1047,1109,1175,1245,1319,1397,1480,1568,1661,1760,1865,1976,440,440,440]);
 });
+
+test('compiled mutable note strings run on the virtual EV3', () => {
+    const hub = brick();
+    const link = connect(hub);
+    download(link, '../prjs/bw/note-memory.rbf', fixture('note-frequency-memory'));
+    assert.equal(startProgram(link, '../prjs/bw/note-memory.rbf')[4], 0x02);
+    bench(hub, 1000);
+    assert.equal(hub.s.lastProgram.how, 'ok');
+    assert.equal(hub.s.lastProgram.error, null);
+    assert.deepEqual(hub.events.filter(e => e.kind === 'write').map(e => e.value ?? e.text), [262, 440]);
+});

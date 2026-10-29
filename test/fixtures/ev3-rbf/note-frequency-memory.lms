@@ -1,0 +1,17 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright (c) 2026 Brickwright contributors
+// Note strings stored in mutable fixed memory.
+DATAS Name 8
+DATA16 Frequency
+DATA32 Output
+vmthread MAIN
+{
+  STRINGS(ADD, 'C', '4', Name)
+  NOTE_TO_FREQ(Name, Frequency)
+  MOVE16_32(Frequency, Output)
+  UI_WRITE(VALUE32, Output)
+  STRINGS(ADD, 'C', '3', Name)
+  NOTE_TO_FREQ(Name, Frequency)
+  MOVE16_32(Frequency, Output)
+  UI_WRITE(VALUE32, Output)
+}
