@@ -8,6 +8,10 @@ closeout remain complete, with their original evidence and limits.
 
 ## Transferred delivery checkpoint — 2026-10-29
 
+PR1538 was closed without merging to consolidate the queue. Its complete
+source ancestry is preserved in PR1536, whose main landing remains pending.
+Do not reopen the old PR or infer main adoption from its closure.
+
 The operator transferred remaining PR1536 integration, fixes, qualification,
 normal landing, deployment and final documentation here. Preserve the original
 source ancestry and exact CUI `4b65f154` adoption; Board stays unchanged.

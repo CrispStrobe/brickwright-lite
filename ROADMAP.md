@@ -26,7 +26,13 @@ only the earlier approved absent-`ci:full` verdict exception. Full combined UI
 qualification must pass every enabled check.
 
 CUI PR131 landed as `4b65f15485abbc039958d8e1a8a29ac3459b75f9` with its
-three enabled checks and retained browser evidence accepted. The operator transferred the remaining delivery to this campaign's maintainer.
+three enabled checks and retained browser evidence accepted.
+
+PR1538 was closed without merging to consolidate the queue. Its complete
+source ancestry is preserved in PR1536, whose main landing remains pending.
+Do not reopen the old PR or infer main adoption from its closure.
+
+The operator transferred the remaining delivery to this campaign's maintainer.
 PR1536 preserves the complete `93aba754` ancestry and adopts the landed CUI
 head without changing Board. Packaged native confirmation is accepted at
 `17bbefca`; checkpoint `a0c0a60e` adds the measured editor and menu repairs.

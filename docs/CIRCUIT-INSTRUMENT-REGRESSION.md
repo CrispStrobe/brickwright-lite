@@ -85,6 +85,10 @@ neither old study nor predecessor CI into new-pin evidence.
 
 ### Next actions, in order
 
+PR1538 was closed without merging to consolidate the queue. Its complete
+source ancestry is preserved in PR1536, whose main landing remains pending.
+Do not reopen the old PR or infer main adoption from its closure.
+
 The operator transferred remaining delivery to this campaign's maintainer under
 [`circuit-menu-workspace-delivery`](../lanes/2026-10-28-circuit-menu-workspace-delivery.md).
 The coordinator's former separate source/pin writer stopped. PR1536 contains

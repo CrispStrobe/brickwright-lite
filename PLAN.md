@@ -43,6 +43,10 @@ exception.
 
 CUI PR131 has now landed as `4b65f15485abbc039958d8e1a8a29ac3459b75f9`
 after its three enabled checks and retained browser evidence were accepted.
+PR1538 was closed without merging to consolidate the queue. Its complete
+source ancestry is preserved in PR1536, whose main landing remains pending.
+Do not reopen the old PR or infer main adoption from its closure.
+
 The operator transferred the remaining integration to this campaign's maintainer.
 PR1536 now preserves the frozen Circuit source and adopts this CUI head with
 Board unchanged. The packaged native confirmation journey passes at `17bbefca`;
