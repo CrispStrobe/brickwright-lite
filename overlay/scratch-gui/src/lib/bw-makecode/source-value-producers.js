@@ -23,6 +23,7 @@ import {ordinarySceneClockNumberCalls} from './ordinary-scene-clock-number-sourc
 import {createOrdinaryMusicNumberSource} from './ordinary-music-number-source.js';
 import {createDestroyedSpriteCallbackNumberSource} from './destroyed-sprite-callback-number-source.js';
 import {localArrayDeclarationResetSource} from './local-array-declaration-reset-source.js';
+import {createStringCharCodeNumberSource} from './string-char-code-number-source.js';
 import {BUTTON_EVENTS,controllerButtonEventNumberLeaves} from './controller-button-event-number-source.js';
 
 const spriteEventNumber=Number;
@@ -194,6 +195,7 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
     const ordinaryNumbers=ordinaryPrimitiveSdkNumbers?ordinaryPlayerScoreNumberCalls(program,safeClockIndex):null;
     const parseIntegerNumbers=ordinaryPrimitiveSdkNumbers&&ordinaryParseIntegerNumbers?createOrdinaryParseIntegerNumberSource(program):null;
     let parseIntegerNumberUsed=false;
+    let stringCharCodeNumbers=null,stringCharCodeNumberUsed=false;
     const cameraPropertyNumbers=ordinaryPrimitiveSdkNumbers?ordinaryCameraPropertyNumberLeaves(program):null;
     const mathNumbers=ordinaryPrimitiveSdkNumbers?ordinaryMathNumberCalls(program):null;
     const musicNumbers=ordinaryPrimitiveSdkNumbers&&ordinaryMusicNumbers?createOrdinaryMusicNumberSource(program,safeClockIndex):null;
@@ -289,6 +291,14 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
         else if(node.type==='Template'&&node.tag==='img')add(current,'Image');
         else if(node.type==='Call'&&!node.isNew&&node.callee?.type==='Member'&&node.callee.name==='clone')derived.push({result:current,type:'Image',operands:[cell(node.callee.object)],signature:node.args.length===0,domain:'Image'});
         else if(node.type==='Call'&&!node.isNew&&node.callee?.type==='Member'&&node.callee.name==='toString')derived.push({result:current,type:'String',operands:[cell(node.callee.object)],signature:node.args.length===0,domain:'Number'});
+        else if(node.type==='Call'&&node.callee?.type==='Member'&&node.callee.name==='charCodeAt'){
+            stringCharCodeNumbers ||= createStringCharCodeNumberSource(program);
+            if(stringCharCodeNumbers.isCall(node))derived.push({result:current,type:'Number',operands:[cell(node.callee.object),...node.args.map(cell)],signature:true,stringCharCode:node});
+            else add(current,'Opaque');
+            // Preserve the original unknown-call mutation effects even when
+            // this separate normal-result signature cannot admit its inputs.
+            if(arrayValues)for(const value of [node.callee.object,...node.args])arrayOperations.push({kind:'escape',receiver:cell(value)});
+        }
         else if(node.type==='Binary'&&['===','!==','==','!=','<','>','<=','>='].includes(node.op)||node.type==='Unary'&&node.op==='!')derived.push({result:current,type:'Boolean',operands:(node.type==='Unary'?[node.argument]:[node.left,node.right]).map(cell),signature:true,inspectionPrimitive:true});
         else if(arrayValues&&node.type==='Unary'&&node.op==='typeof')derived.push({result:current,type:'String',operands:[cell(node.argument)],signature:true,inspectionPrimitive:true});
         else if(node.type==='Unary'&&['+','-','~'].includes(node.op))derived.push({result:current,type:'Number',operands:[cell(node.argument)],signature:true,domain:node.op==='~'?'SourceBitwise':'Number'});
@@ -390,7 +400,15 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
     // Fixed bitwise operations return Number on normal completion. This result
     // signature neither proves their operands nor skips their execution; the
     // importer separately requires actual Array-or-primitive operand writers.
-    const derivedValid=item=>item.inspectionPrimitive?(consoleInspection||internalInspection||arrayValues||primitiveComparisons)&&item.operands.every(operand=>inspectionDomain(operand,primitiveTypes)):item.inspection?item.signature&&inspectionDomain(item.operands[0],primitiveTypes)&&(item.operands.length===1||inspectionDomain(item.operands[1],new Set(['Number','Undefined']))):item.signature&&(item.domain==='SourceBitwise'||primitiveAddition(item)||item.operands.every(operand=>item.domain==='Player'?playerOperand(operand):item.domain==='Number'&&item.type==='Number'?numericOperand(operand):exactType(operand,item.domain)));
+    const stringCharCodeValid=item=>{
+        const receiver=types.get(item.operands[0]),index=types.get(item.operands[1]);
+        const valid=item.operands.length===2&&receiver?.has('String')&&
+            [...receiver].every(type=>['String','Null','Undefined'].includes(type))&&index?.size&&
+            [...index].every(type=>['Number','Undefined'].includes(type))&&stringCharCodeNumbers.isCall(item.stringCharCode);
+        if(valid)stringCharCodeNumberUsed=true;
+        return valid;
+    };
+    const derivedValid=item=>item.stringCharCode?stringCharCodeValid(item):item.inspectionPrimitive?(consoleInspection||internalInspection||arrayValues||primitiveComparisons)&&item.operands.every(operand=>inspectionDomain(operand,primitiveTypes)):item.inspection?item.signature&&inspectionDomain(item.operands[0],primitiveTypes)&&(item.operands.length===1||inspectionDomain(item.operands[1],new Set(['Number','Undefined']))):item.signature&&(item.domain==='SourceBitwise'||primitiveAddition(item)||item.operands.every(operand=>item.domain==='Player'?playerOperand(operand):item.domain==='Number'&&item.type==='Number'?numericOperand(operand):exactType(operand,item.domain)));
     const arrayTypes=value=>{const set=types.get(value);return set?.size&&[...set].every(type=>type?.kind==='Array')?[...set]:null;};
     // Effects on actual allocation alternatives remain real when an indexed
     // lookup or nullable binding can also be absent. On the absent branch the
@@ -484,7 +502,7 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
     let invalidated;do{invalidated=false;for(const op of nullableLengthIssued)if(!nullableLengthEligible(op))invalidated=add(op.result,'Opaque')||invalidated;if(!unsafePlayerWrite&&playerWriteUnsafe()){unsafePlayerWrite=true;invalidated=true;}for(const item of derived)if(!derivedValid(item))invalidated=add(item.result,'Opaque')||invalidated;for(const item of numericCalls)if(item.node.args.length||!exactType(item.receiver,'NumericCallable'))invalidated=add(item.result,'Opaque')||invalidated;propagate();}while(invalidated);
     const fontAnnotations=new Set();const collectScope=node=>{if(!node||typeof node!=='object')return;if(Array.isArray(node)){node.forEach(collectScope);return;}const owner=owners.get(node);for(let s=owner;s;s=s.parent)for(const value of s.fontAnnotations||[])fontAnnotations.add(value);Object.values(node).forEach(value=>{if(value&&typeof value==='object')collectScope(value);});};collectScope(program);
     const immutableFunction=node=>{const fn=unchangedFunction(node);return fn&&!cyclic(knownBinding(fn))?fn:null;};
-    const factsCurrent=()=>declarationArrayResetCurrent()&&(!parseIntegerNumberUsed||parseIntegerNumbers.current())&&(!controlEntryUsed||controlEntry.current())&&(!frameDeltaNumberUsed||frameDeltaNumbers.current())&&(!ordinaryEntry||ordinaryEntry.current())&&(!nullableLengthUsed||nullableLengthSource.current())&&(!callbackEntry||callbackEntry.current())&&(!loopEntry||loopEntry.current())&&(!spriteAyNumbers||spriteAyNumbers.current())&&(!musicNumberUsed||musicNumbers.current())&&(!destroyedNumberUsed||destroyedNumbers.current())&&(!cameraNumberInput||cameraNumberInput.current());
+    const factsCurrent=()=>declarationArrayResetCurrent()&&(!stringCharCodeNumberUsed||stringCharCodeNumbers.current())&&(!parseIntegerNumberUsed||parseIntegerNumbers.current())&&(!controlEntryUsed||controlEntry.current())&&(!frameDeltaNumberUsed||frameDeltaNumbers.current())&&(!ordinaryEntry||ordinaryEntry.current())&&(!nullableLengthUsed||nullableLengthSource.current())&&(!callbackEntry||callbackEntry.current())&&(!loopEntry||loopEntry.current())&&(!spriteAyNumbers||spriteAyNumbers.current())&&(!musicNumberUsed||musicNumbers.current())&&(!destroyedNumberUsed||destroyedNumbers.current())&&(!cameraNumberInput||cameraNumberInput.current());
     const currentTypes=value=>new Set(factsCurrent()?types.get(value)||[]:[]);
     const currentArrayTypes=value=>factsCurrent()?arrayTypes(value):null;
     // Construct this independent execution frontier only on demand. It cannot

@@ -6113,6 +6113,18 @@ or a GUI/SDK/corpus result. See [the exact boundary and remaining acceptance](AR
 
 ## Ordered continuation after the dormant-declaration checkpoint
 
+The string character-code candidate proves only a numeric normal result for a
+direct, current `charCodeAt` call with independently proved primitive receiver
+and index writers. An indexed receiver can still be absent; this proof does not
+establish array element presence, initialization, or successful execution.
+The source-only prompt example now passes its native-addition analysis while
+retaining its String-or-undefined receiver. Ten focused controls and seven
+mutation cuts passed; the affected arithmetic groups passed separately. The
+aggregate local run exceeded its existing CPU limit and is not a passing suite.
+The selected SDK declaration and simulator bytes have focused identity controls;
+the saved-project round trip, original MakeCode execution, browser and native
+behavior still need their own qualification. This result changes no corpus row.
+
 1. Qualify the final narrow stacked candidate once through automatic CI. Run
    the enabled original-PXT/native declaration case, preserve its first result,
    and fix actual failures before any readiness/landing claim. Do not substitute
