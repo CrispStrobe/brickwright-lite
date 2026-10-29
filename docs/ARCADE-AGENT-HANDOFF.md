@@ -1,61 +1,77 @@
 # Arcade compatibility: fresh-agent handoff and methodology
 
-## Active next area: creation-handler class field receivers
+## Prepared follow-up: creation-handler class field receivers
 
-The isolated `lane/arcade-created-field-receivers-20261029` branch prepares the
-next receiver proof. It does **not yet discharge the GUI/block exporter gap**.
-The existing failing control is the post-`setKind` case in
-`test/arcade-extendable-constructor-scalar-source.test.mjs`: the handler writes
-9 into the real instance after its virtual override suffix writes a String.
-`class-primitive-export-proof.js` still requires an actual declared receiver for
-that field write. A cast or retained class declaration is insufficient.
+The `lane/arcade-created-field-receivers-20261029` branch prepares the next
+exporter repair. The existing full control is the post-`setKind` case in
+`test/arcade-extendable-constructor-scalar-source.test.mjs`: the creation handler
+writes 9 into the real instance after its virtual override suffix writes a
+String. A cast or retained class declaration alone is insufficient.
 
-The constructor source service now exposes `fieldReceiverClassesAt(assignment)`
-for an exact observed assignment. Its result contains every actual constructed
-class observed there, after complete SDK kind/notification dispatch. Missing
-fields, unsupported invocations or effects, and partial-instance escape deny
-the whole receipt. Lookalike/copied nodes receive none. The receipt supplies no
-receiver initialization, primitive result, RHS type or writable-field authority.
-Four source groups pass, covering the override suffix, multiple classes at one
-occurrence, incompatible/escaped receivers and permanent source expiry; three
-cuts exercise observation, universal class accumulation and expiry.
+Implemented source boundaries:
 
-Complete the consumer in this order:
+- `sdk-sprite-constructor-scalar-effects.js` exposes
+  `fieldReceiverClassesAt(assignment)` for the exact observed assignment. It
+  retains every constructed class observed after complete SDK kind/notification
+  dispatch. Missing fields, unsupported effects or invocations, and partial
+  instance escape deny the whole receipt. Copied/lookalike nodes receive none.
+- `export-arcade.js` records each actual non-class-body field-write emission
+  with its physical target and block. `created-field-export-receivers.js` joins
+  its parsed assignment to a unique occurrence in each complete newly parsed
+  output: plain TypeScript and the ordered executable companion files. Duplicate
+  emissions, ambiguous source occurrences, differing receiver sets, unknown
+  effects or a stale project refuse the receipt. Syntax locates an occurrence;
+  the constructor interpreter establishes the receiver.
+- `object-class-export.js` runs the complete primitive validator after source
+  assembly, including native-helper selection paths. No diagnostic is removed
+  afterward. The receiver obligation applies only to that field writer's
+  `OBJECT` input; RHS production, declared field/type, visibility and readonly
+  checks still run. Private, protected, readonly, accessor and callable fields
+  cannot consume this new receipt. Multiple distinct receiver classes remain
+  refused until their MakeCode field layouts are independently qualified; the
+  source observer deliberately preserves all of them rather than picking one.
+- Receipts supply no general input type, receiver initialization, scalar result,
+  Array fact or writable-field authority. Observed source/project expiry is
+  permanent. Class-body receiver rewriting retains its existing validation.
 
-1. Record actual current field-write emissions in `export-arcade.js`, holding
-   the physical target, block and `OBJECT` slot. Join only to the exact occurrence
-   in freshly reconstructed complete source. Require one-to-one mapping; an
-   ambiguous match must refuse. Generated names, casts, comments, retained
-   source or serialized metadata cannot establish receiver authority.
-2. Buffer only the unresolved receiver obligation while
-   `object-class-export.js` renders. Keep unrelated diagnostics immediate.
-   Resolve that obligation only after complete source assembly, including each
-   executable TypeScript representation and companion source files. Every
-   successful export path must run the final validation.
-3. Feed the occurrence receiver fact into `checkClassPrimitiveExport()` only
-   for that field writer's `OBJECT` input. Preserve RHS production, declared
-   field, visibility, readonly and compatibility checks for every observed
-   class; check field/layout compatibility rather than choosing the first class.
-   Failed reconstruction or unsupported effects keep the original diagnostic.
-4. Bind source receipts to the current project/compiler emission and repeat
-   currentness checks before publication. Restoring an observed stale source
-   must not revive authority. Preserve reentrant creation, scene-effect,
-   partial-escape and unknown-kind limits until separately qualified.
-5. Run the unchanged original-PXT/native post-`setKind` control and editable
-   Code/Blocks, saved/fresh SB3, export and reimport paths externally. Add
-   incompatible field/class unions, readonly/private fields, changed receiver or
-   field, source edits, unknown callbacks and namespace negatives. No complete
-   application or raw corpus status changes from source receipts alone.
-
-Focused source command:
+Focused source controls cover actual override/handler order, class unions,
+lookalikes, partial escape and namespace effects; emission controls cover unique
+physical/source matching, all output variants, expiry and field restrictions.
+Seven deliberate source cuts exercise observation, universal class accumulation,
+source expiry, unique joins, companion validation, readonly enforcement and the
+actual exporter-to-validator connection.
+The minimal real import → blocks → export control returns empty unsupported and
+warnings lists without modifying the project. These are bounded source controls,
+not original-PXT/native/browser or whole-application completion evidence.
 
 ```sh
 node --test test/sdk-created-field-receiver-observations.test.mjs
+node --test test/created-field-export-receivers.test.mjs
+node --test test/arcade-created-field-export.test.mjs
 ```
 
-The source claim is the existing Arcade completion campaign. The live PR's
-terminal-original intake and publication remain with its source owner; prepare
-this follow-up separately while the live head qualifies.
+Complete the remaining qualification in this order:
+
+1. Finish read-only source review and retain the focused controls and mutation
+   results. Keep the live PR head unchanged until its pending terminal numeric
+   original has been admitted, retained once and independently read.
+2. Compose this follow-up normally into the owned integration branch. Preserve
+   supplier pins, assertions, old failures and other owners' source. Qualify the
+   exact final head through its enabled hosted checks; do not duplicate live
+   runs or infer success from a predecessor.
+3. Run the unchanged original-PXT/native post-`setKind` control and editable
+   Code/Blocks, saved/fresh SB3, export and reimport paths externally. Confirm the
+   final reconstructed output retains creation ordering and final Number result.
+   Exercise incompatible/readonly/private fields, changed receivers, unknown
+   callbacks, source edits and namespace replacement without weakening negatives.
+4. After whole-case evidence, reassess the immutable corpus and update genuine
+   application statuses. No corpus row is promoted by the source controls alone.
+5. A separate continuation may prove compatible inherited field layouts for
+   multiple observed classes; keep this refusal until that exact evidence exists.
+
+The source claim remains the existing Arcade completion campaign. The live PR's
+terminal-original intake and publication remain with its source owner; this
+follow-up stays separate while the live head qualifies.
 
 ## Prepared follow-up: creation callback local Array overwrite
 

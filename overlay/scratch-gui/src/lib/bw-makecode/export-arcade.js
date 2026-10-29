@@ -33,6 +33,7 @@ import {scalarExportFlow,closedRemovalScalarAddition} from './scalar-export-flow
 import {sourceScalarProject} from './source-scalar-project.js';
 import {createImageConsumerAbiExport} from './image-consumer-abi-export.js';
 import {prepareObjectClassExport} from './object-class-export.js';
+import {createCreatedFieldExportReceivers} from './created-field-export-receivers.js';
 import {STRING_ARRAY_SETTINGS_PATH,STRING_ARRAY_SETTINGS_SOURCE} from './string-array-settings.generated.js';
 import {LEGACY_CHARACTER_NATIVE_IDENTITY} from './legacy-character-source-admission.generated.js';
 const LEGACY_CHARACTER_REVISION=LEGACY_CHARACTER_NATIVE_IDENTITY.revision;
@@ -423,6 +424,7 @@ class ArcadeEmitter {
         this.arrayReceiverAuthority = createArrayReferenceExportAuthority(project, opts, this.animationFrameProducers);
         this.arrayOwnedSource=isProjectJsonSnapshot(project)?null:arrayExportSource(project);
         this.arrayOwnedSnapshot=null;this.arrayOwnedSourceUsed=false;
+        this.createdFieldWriteSites=[];
         this.arrayProofChecks=arraySourceCreate(null);this.arrayProofCheckCount=0;this.arrayProofInputs=new WeakMap();
         this.unsupported = [];
         // Diagnose each physical current clock reporter without rendering its
@@ -2348,7 +2350,13 @@ class ArcadeEmitter {
         case 'arcade_declareSourceScalar':case 'arcade_declareSourceReference':return;
         case 'arcade_setObjectField':{
             if(this.objectClassExport.inputTypes(this.target,b,'OBJECT').has('__bwSDK_Font'))this.note('SDK Font field mutation is not qualified by the read slice');
-        }if(this.currentClassConstructor&&this.objectClassExport?.parameterPropertyBlocks.has(b))return;push(`;${this.objectClassExport.receiver(b,true)}.${this.objectFieldName(b)} = ${this.arrayValue(b,'VALUE')}`);return;
+        }if(this.currentClassConstructor&&this.objectClassExport?.parameterPropertyBlocks.has(b))return;{
+            const statement=`;${this.objectClassExport.receiver(b,true)}.${this.objectFieldName(b)} = ${this.arrayValue(b,'VALUE')}`;
+            // Class bodies subsequently rewrite their lexical receiver to this.
+            // They keep their existing validator; do not join pre-rewrite text.
+            if(!this.currentClassName)this.createdFieldWriteSites.push({target:this.target,block:b,statement});
+            push(statement);return;
+        }
         case 'data_setvariableto': {
             const scratchName = this.field(b, 'VARIABLE');
             const info = this.infoVariable(scratchName);
@@ -4999,6 +5007,13 @@ function emitProjectToArcade (project, opts, snapshotCallbacks) {
         const selected=new Set(e.procedureConstraints.procedures().map(({target,code})=>e.functionName(target,code)));
         try{for(const diagnostic of validateProcedureConstraintSource(parseMakeCodeTs(projectTs,{parameterDefaults:true,retainParentheses:true}),{onlyFunctions:selected,ordinaryPrimitiveSdkNumbers:true,sceneClockNumbers:true,closedOrdinaryEntries:true}))e.note(diagnostic);}catch(error){e.note(error.message);}
     }
+    const createdFieldReceivers=e.createdFieldWriteSites.length&&[...e.objectClassExport.classes.values()].some(cls=>!cls.intrinsic)?createCreatedFieldExportReceivers({
+        sources:[ts,JSON.parse(files['pxt.json']).files.filter(name=>name.endsWith('.ts')).map(name=>files[name]).join('\n')],
+        sites:e.createdFieldWriteSites,current:()=>isProjectJsonSnapshot(e.project)||!!e.arrayOwnedSource?.current()
+    }):()=>null;
+    // Validate only after the complete class/handler program exists. Every
+    // existing producer/RHS/declaration equation still runs, even on refusal.
+    e.objectClassExport.validatePrimitiveExport(createdFieldReceivers);
     if(!e.frameDeltaNumbersCurrent())e.note('Frame delta Number: current saved reporter proof environment changed during export');
     if(!e.closedOrdinaryEntryCurrent())e.note('Arcade ordinary entry: current execution roots changed during export');
     // Host artwork callbacks can edit current project objects during rendering.

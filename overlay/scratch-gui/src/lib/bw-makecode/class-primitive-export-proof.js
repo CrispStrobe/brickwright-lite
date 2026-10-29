@@ -6,7 +6,7 @@ import {sdkSpriteExportClasses} from './sdk-sprite-class-descriptors.js';
 // Validate current ordinary-class constraints. Declaration types constrain a
 // writer. Symbolic declaration constraints remain distinct from actual facts;
 // neither supplies runtime/provenance authority or changes a value.
-export function checkClassPrimitiveExport({project,classes,procedures,note,dynamicReceiver=()=>false,qualifiedInput=()=>null}) {
+export function checkClassPrimitiveExport({project,classes,procedures,note,dynamicReceiver=()=>false,qualifiedInput=()=>null,qualifiedFieldReceivers=()=>null}) {
     const primitive=sdkFontInputAuthority(project),ordinary=[...classes.values()].filter(cls=>!cls.intrinsic);
     const expected=new Map([['number','Number'],['string','String'],['boolean','Boolean']]);
     if(!ordinary.length)return;
@@ -75,6 +75,19 @@ export function checkClassPrimitiveExport({project,classes,procedures,note,dynam
         if(value)actual=expression(target,value);
         else if(Array.isArray(slot)){if([4,5,6,7,8].includes(slot[0]))actual=new Set(['Number']);else if(slot[0]===10)actual=new Set(['String']);else if(slot[0]===12)actual=variable(target,slot[2]);}
         if(!actual)actual=opaque();
+        if(actual.has('Opaque')&&block.opcode==='arcade_setObjectField'&&name==='OBJECT'){
+            const receivers=qualifiedFieldReceivers(target,block),property=fixed(target,block,'FIELD');
+            // This obligation is narrower than a general input type. Every
+            // observed class must have the same writable public data surface.
+            // Emission currently uses one class cast: multiple distinct class
+            // layouts remain refused, even if their field names agree.
+            // No readonly/private/accessor escape can consume this receipt.
+            if(Array.isArray(receivers)&&receivers.length===1&&receivers.every(receiver=>{
+                const found=classes.has(receiver)&&member(receiver,property);
+                return found&&!found.cls.intrinsic&&(!found.value.visibility||found.value.visibility==='public')&&
+                    !found.value.readonly&&!found.value.getter&&!found.value.setter&&found.value.valueKind!=='callable';
+            }))return new Set(receivers.map(receiver=>'@'+receiver));
+        }
         // Existing v2 current-body validation owns lexical Arrow parameters.
         // Only its registered input certificate can extend this ordinary view.
         if(actual.has('Opaque')){const certified=qualifiedInput(target,block,name);if(certified?.kind==='named'){

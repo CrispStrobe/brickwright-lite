@@ -375,10 +375,10 @@ export function prepareObjectClassExport(emitter) {
         }
         return null;
     }
-    function render() {
+    function validatePrimitiveExport(qualifiedFieldReceivers=()=>null) {
     // Preserve the existing current accessor mismatch escape; this predicate
     // does not establish where an authored `as any` cast originated.
-    checkClassPrimitiveExport({project:emitter.project,classes,procedures,qualifiedInput:(target,block,name)=>{
+    checkClassPrimitiveExport({project:emitter.project,classes,procedures,qualifiedFieldReceivers,qualifiedInput:(target,block,name)=>{
         if(emitter.callableExports?.get(target)?.graph.plan.version!==2)return null;
         try{return classCallableProvider(target).currentInputType(block,name);}catch{return null;}
     },note:message=>emitter.note(message),dynamicReceiver:(target,block,write,method,currentClassName)=>{
@@ -391,7 +391,8 @@ export function prepareObjectClassExport(emitter) {
                 (member.type!=='boolean'&&emitter.isBoolean(child(target,block,'VALUE'))||[...graph.node(input(target,block,'VALUE')).types].some(value=>['number','boolean','string'].includes(value)&&value!==member.type));
         });
     }});
-
+    }
+    function render() {
         const saved={target:emitter.target,blocks:emitter.blocks,currentLocalNames:emitter.currentLocalNames,currentClassName:emitter.currentClassName,currentClassReceiver:emitter.currentClassReceiver,currentClassConstructor:emitter.currentClassConstructor,currentCallableContext:emitter.currentCallableContext};
         const out=[];
         function body(code,cls,parameters,constructor=false) {
@@ -472,7 +473,7 @@ export function prepareObjectClassExport(emitter) {
         if(!modes.has(sdkImagePrototype))modes.set(sdkImagePrototype,createClassCallableExportProvider({target,project:emitter.project,classes,definitions,valueTypes,literal,key,builtinNames,sdkImagePrototype,literalResource:emitter.sdkImageLiteralResources?.resource}));
         return modes.get(sdkImagePrototype);
     };
-    const result={sdkDialogConstructor,classes,procedures,variableTypes,variableDeclarationTypes,localDeclarationType,procedureParameterType,procedureResultType,valueTypes,inputTypes:(target,block,name)=>publicTypes(input(target,block,name)),fontGlyphInput:(target,block,name)=>graph.node(input(target,block,name))===graph.node('field:__bwSDK_Font:data'),localType,render,receiver,superCall,parameterPropertyBlocks,
+    const result={sdkDialogConstructor,classes,procedures,variableTypes,variableDeclarationTypes,localDeclarationType,procedureParameterType,procedureResultType,valueTypes,inputTypes:(target,block,name)=>publicTypes(input(target,block,name)),fontGlyphInput:(target,block,name)=>graph.node(input(target,block,name))===graph.node('field:__bwSDK_Font:data'),localType,render,validatePrimitiveExport,receiver,superCall,parameterPropertyBlocks,
         sdkVariable:name=>emitter.project.targets.some(target=>Object.entries(target.variables||{}).some(([id,value])=>emitter.varName(target,value[0])===name&&[...(emitter.callableExports||[])].some(([actual,entry])=>entry.sdkImageEnabled&&classCallableProvider(actual).sdkVariable(id)))),
         classCallableProvider,publicName:sdkClassPublicName,hasType:type=>classes.has(sdkClassName(type.replace(/(?:\[\])+$/,'')))};
     imageAbiApply(modelSet,imageAbiModels,[result,{project:emitter.project,current:modelCurrent,constructor:sdkDialogConstructor}]);
