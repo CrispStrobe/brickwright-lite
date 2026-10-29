@@ -69,6 +69,11 @@ test('a conditional overwrite cannot hide an earlier read of the reset local',()
 test('a literal condition with immediate overwrites on both branches retains the Array producer',()=>{
  good(conditionalFixture(false));
 });
+test('a malformed shadow condition cannot certify a conditional overwrite',()=>{
+ const f=conditionalFixture(false),{blocks,node,copy}=f,branch=blocks[copy].next;
+ const condition=node('math_number',{}, {NUM:[{},null]});blocks[condition].shadow=true;
+ blocks[condition].parent=branch;blocks[branch].inputs.CONDITION=[1,condition];bad(f);
+});
 test('a branch cannot expose the reset value before its overwrite',()=>{
  const f=conditionalFixture(false),{blocks,node,copy,overwrite}=f,branch=blocks[copy].next;
  const read=node('arcade_getLocal',{NAME:[10,'refs']});

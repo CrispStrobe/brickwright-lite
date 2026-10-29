@@ -11,8 +11,7 @@ passed; its actual checkout tree equals the reviewed tree and contains the
 unchanged submitted Rust fixture repair. This does not erase earlier failures.
 The [Build run](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40830557085)
 has successful build output but failed unit checks and a failed full-CI request
-gate; its official numeric job is pending at this checkpoint. Preserve the head
-until terminal evidence is retained. Do not duplicate running qualifications or
+gate; its official numeric job passed. Its original log and proof artifact were retained and independently checked, including all five authoring records and the clean export capture. Do not duplicate running qualifications or
 apply a full-CI label for this continuation.
 
 The raw application census remains **184 inputs: 147 translated, 36 partial,
@@ -45,7 +44,7 @@ Continue in this order:
 
 The local reset proof can cross an inline or physical shadow primitive literal written to a different private local, with the same frame and prototype safeguards as the event copy. The actual trace and instance-field effects still need separate proof.
 
-The local reset proof also refuses conditional overwrites when their condition can read the reset cell, or when either branch executes an unproved statement before overwriting it. Literal conditions and immediate overwrites retain the bounded path. The focused regression is in `test/project-event-copy-reset-prefix.test.mjs`.
+The local reset proof also refuses conditional overwrites when their condition can read the reset cell, or when either branch executes an unproved statement before overwriting it. Inline primitive conditions and immediate overwrites retain the bounded path; physical shadow conditions remain conservatively refused. The focused regression is in `test/project-event-copy-reset-prefix.test.mjs`.
 
 ## Prepared repair: normal mutation effects on nullable Array alternatives
 
