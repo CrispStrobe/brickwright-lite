@@ -17,7 +17,7 @@ const ROOT=fileURLToPath(new URL('../../',import.meta.url));
 const sha=b=>createHash('sha256').update(b).digest('hex');
 const vars=vm=>Object.fromEntries(Object.values(vm.runtime.getTargetForStage().variables).map(v=>[v.name,v.value]));
 const markers=['rack_front','rack_back','door_front_0','door_front_1','door_back_0','door_back_1'];
-const CAP=48*1024**2,TRACE_CAP=32*1024**2,JSON_CAP=8*1024**2;
+const CAP=128*1024**2,TRACE_CAP=104*1024**2,JSON_CAP=8*1024**2;
 const git=(...args)=>execFileSync('git',args,{cwd:ROOT,encoding:'utf8'}).trim();
 function sourceRuntime(){
     const head=git('rev-parse','HEAD'),tree=git('rev-parse','HEAD^{tree}');

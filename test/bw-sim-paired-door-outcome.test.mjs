@@ -22,3 +22,9 @@ test('failed, partial or incomplete outcome refuses',()=>{for(const mutate of [r
 test('bad encoder, missing output binding or nonprogressing native clock refuses',()=>{for(const mutate of [r=>r.frames[0].encoderAngleDeg=149,r=>r.bindings.pop(),r=>r.nativeEndSeconds=0]){const r=fixture();mutate(r);assert.throws(()=>judge(r));}});
 
 test('flag datum is distinct from setup and obeys authored2degree bound',()=>{const raw=fixture();raw.setupEncoderAngleDeg=0;raw.flagDatumEncoderAngleDeg=3;assert.throws(()=>judge(raw),/flag-time datum/);});
+test('recorded Scratch variables are canonical decimal strings; other strings refuse',()=>{
+    const r=fixture();const text=v=>Object.fromEntries(Object.entries(v).map(([k,x])=>[k,String(x)]));
+    r.final=text(r.final);r.frames.forEach(f=>{f.variables=text(f.variables);});judge(r);
+    for(const bad of ['01','1.0',' 1','','one']){const b=fixture();b.final.completed=bad;assert.throws(()=>judge(b));}
+    for(const bad of ['0.0','-0','']){const b=fixture();b.frames[0].variables.correctionAttempts=bad;assert.throws(()=>judge(b),/integer correction/);}
+});
