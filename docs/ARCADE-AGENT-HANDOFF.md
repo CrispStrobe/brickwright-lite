@@ -34,6 +34,17 @@ warnings. Diagnose the original file-map, generated resources and dependency
 context before changing that dispatch; duplicating legacy motion support would
 not establish the missing Sprite or image behavior.
 
+One concrete context example is the [pinned upstream free-throw tutorial](https://github.com/microsoft/pxt-arcade/blob/8ae4f42df2b2f4a0472b0da04c3cdcd3438dbb02/docs/tutorials/free-throw.md#L625),
+which declares an unpinned external artwork package. Its
+[manifest](https://github.com/kiki-lee/throw_imgs/blob/master/pxt.json) lists
+[image resources](https://github.com/kiki-lee/throw_imgs/blob/master/images.g.jres).
+The tutorial and package are separate sources: the tutorial's license does not
+establish the artwork package's license, and the manifest version does not
+identify an immutable dependency revision. Verify both provenance and applicable
+license before retaining or redistributing those assets. Where a user supplies
+an actual project and lawful resources, pass the original file map to the
+importer and preserve their bytes; leave missing assets explicit otherwise.
+
 Continue in this order:
 
 1. The terminal numeric evidence for the current live PR has been retained and
