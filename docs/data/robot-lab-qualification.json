@@ -424,6 +424,112 @@
       ],
       "disconnectInputDeg": 700,
       "disconnectLaw": true
+    },
+    {
+      "id": "final-squeeze",
+      "judge": "knee-press-v1",
+      "parts": 168,
+      "ports": [
+        "A"
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 60000,
+      "afterMs": 500,
+      "frameMs": 25,
+      "frozenOutput": "platen_crossbar",
+      "disconnect": [
+        "passive_link"
+      ],
+      "disconnectInputDeg": 20,
+      "disconnectLoss": "batch-c"
+    },
+    {
+      "id": "high-select",
+      "judge": "max-select-v1",
+      "parts": 288,
+      "ports": [
+        "A",
+        "B"
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 60000,
+      "afterMs": 500,
+      "frameMs": 10,
+      "frozenOutput": "bridge_spine_0",
+      "disconnect": [
+        "bridge_A_foot",
+        "bridge_A_foot_brick_-10",
+        "bridge_A_foot_brick_10",
+        "bridge_B_foot",
+        "bridge_B_foot_brick_-10",
+        "bridge_B_foot_brick_10"
+      ],
+      "disconnectInputDeg": 140,
+      "disconnectLoss": "batch-c"
+    },
+    {
+      "id": "tipline",
+      "judge": "tip-versus-slide-v1",
+      "parts": 174,
+      "ports": [
+        "A"
+      ],
+      "coldMs": 2000,
+      "timeLimitMs": 65000,
+      "afterMs": 3000,
+      "frameMs": 16.666666666666668,
+      "frozenOutput": "right_load_base",
+      "disconnect": [
+        "deck_axle_left",
+        "deck_bush_left_130",
+        "deck_bush_left_170",
+        "deck_bush_left_220"
+      ],
+      "disconnectInputDeg": 20,
+      "disconnectLaw": true,
+      "secondFrameMs": 20
+    },
+    {
+      "id": "twistspan",
+      "judge": "bifilar-torsion-v1",
+      "parts": 107,
+      "ports": [
+        "A"
+      ],
+      "coldMs": 2000,
+      "timeLimitMs": 43000,
+      "afterMs": 3000,
+      "frameMs": 16.666666666666668,
+      "frozenOutput": "payload_bar",
+      "disconnect": [
+        "drive_axle",
+        "drive_spacer_-460",
+        "drive_spacer_-440",
+        "drive_lower_retainer"
+      ],
+      "disconnectInputDeg": 15,
+      "disconnectLaw": true,
+      "secondFrameMs": 20
+    },
+    {
+      "id": "swayshift",
+      "judge": "timed-sway-cancellation-v1",
+      "parts": 204,
+      "ports": [
+        "A"
+      ],
+      "coldMs": 2000,
+      "timeLimitMs": 30000,
+      "afterMs": 2000,
+      "frameMs": 16.666666666666668,
+      "frozenOutput": "pendulum_upper",
+      "disconnect": [
+        "transmission_motor"
+      ],
+      "disconnectInputDeg": 65,
+      "disconnectLaw": true,
+      "withSpike": true,
+      "secondFrameMs": 10
     }
   ]
 }

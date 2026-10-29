@@ -150,10 +150,10 @@ class AudioEffects {
 
         this.source.start();
 
-        this.audioContext.startRendering();
         this.audioContext.oncomplete = ({renderedBuffer}) => {
             done(renderedBuffer, this.adjustedTrimStart, this.adjustedTrimEnd);
         };
+        return this.audioContext.startRendering();
 
     }
 }

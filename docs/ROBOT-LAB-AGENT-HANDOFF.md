@@ -1,6 +1,83 @@
+> **Read first, 2026-10-29:** [Current delivery continuation and fully scoped open tasks](DELIVERY-CONTINUATION-2026-10-29.md). This supersedes dated next-action sections below. Five-model promotion is blocked by zero browser dispatch despite a green receipt; do not mark the kit from that receipt. The motor compatibility decision is already made.
+
 # Robot Lab: fresh-agent handoff
 
 For the current experimental checkpoint and explicit unchecked work, start with [the 24 October checkpoint](ROBOT-LAB-CHECKPOINT-2026-10-24.md).
+
+## Read first: status and open work, 2026-10-28
+
+This section supersedes older "in flight" notes below where they disagree. Check every PR's live state before you act on it.
+
+**Where things stand**
+- **The library grew:**
+  - **#1446** promoted Toggle Lever and Thirdline.
+  - **#1455** promoted six models: Cross Ratio, Foldback, Ghost Pivot, Travel Dial, Carry Ratio and Air Budget. It also added High Select's four rest-stop bushes and the qualification harness extensions.
+  - **#1508**, if merged, promotes High Select and Final Squeeze; see O1.
+- **Experimental intake:**
+  - #1499 added RimRun, SwayShift, Tipline, TwistSpan and Evenhand, ten entries with their comparison scenes.
+  - For RimRun, SwayShift, Tipline and TwistSpan, each package's own runner was re-run on main, with tracks byte-identical to the supplied recordings.
+  - All ten entries complete in Chrome on the live GitHub Pages site.
+  - Evidence for every entry is in `docs/data/robot-lab-experimental-checkpoint.json`.
+- **See new models on GitHub Pages.** https://crispstrobe.github.io/brickwright-lite is current. https://brickwright-lite.vercel.app can lag by days; check `/brickwright-version.json` against main, and see O3.
+- **`ci:full` policy changed (owner, 2026-10-27).** No `ci:full` label on PRs at all, overriding the rule further down: merge on the fast tier and fix forward from main's full run.
+  - Removing the label doesn't change a run that's already queued, because the scope comes from the event payload.
+  - To swap a queued full run for a fast one, close and reopen the PR.
+
+**Open work**
+
+**O1. Merge #1508 (High Select and Final Squeeze promotion) and watch main.**
+- `--mode=full` qualification, limited to the two models, passed all 11 steps.
+- When its fast tier is green (`build`, `unit (1/6)`…`unit (6/6)`; ignore `full CI requested`), merge normally with `gh pr merge 1508 --merge`.
+- Then watch main's Build for the merge commit. If it goes red, read the failing job's assertion text and fix forward in a new PR.
+- Known weakness, recorded in the PR: High Select's disconnection control misses the max(a,b) law by only 3.7 mm. The bridge still rests on the higher carriage, so no part removal fully breaks "follows the maximum".
+
+**O2. Decide #1460 (motor orientation; owner decision first).**
+- The compiler merges collinear hinge candidates and takes axis and body order from `group[0]` in `mech/joints.js`. A bearing hinge can therefore decide a motor's drive direction.
+- Branch `fix/motor-orientation-axis-1460` (6fcdffe99) uses the motor member as the lead. It breaks 23 behavioural tests, because those programs then drive the wrong way:
+
+  | Test file | Failures with the fix |
+  |---|---|
+  | `bw-sim-seven-machines` | 2 (mean-machine, stepworks) |
+  | `six-technic-intakes` | 8 (atlas-six, dune-strider, oblique, vernier-drive) |
+  | `phase-bridge` | 4 |
+  | `physics-addons` | 2 (ripple-relay) |
+  | `sarrus-lift` | 1 |
+  | `wavemaker` | 4 |
+  | `new-models` | 1 (gimbal-lab) |
+
+  Main passes them all. The full table is in the #1460 comments.
+- Options:
+  - (a) land the fix together with updated programs and expectations for every affected model;
+  - (b) add a compatibility path that keeps the old behaviour for existing models and applies the fix to new or flagged ones.
+- Ask the owner which. Obliquity Orrery's promotion stays blocked until then: #1497 records it "BLOCKED by #1460".
+
+**O3. Vercel production lag, proposal #1507 (workflow owner's review).**
+- `deploy-daily.yml` publishes only main's tip, and only if that exact commit is fully validated and main doesn't move during the build. With main Builds queuing for hours, it publishes nothing: on 2026-10-28 production served `5cd027707` from 2026-10-26, 356 commits behind.
+- #1507 publishes the newest validated first-parent main commit instead. It keeps the guard against an older tree overwriting a newer one, as an ancestry check against the live commit.
+- Do not merge without the owner's approval. After it merges, confirm that `/brickwright-version.json` reaches a recent validated main commit within a day.
+
+**O4. Next promotion candidates (one batch PR).**
+- **Ready:** Tipline, TwistSpan and SwayShift each passed their package's full native qualification on main, so they are the next candidates. For each:
+  - write a judge in `scripts/lib/` that rejects a frozen output and a 1 cm world shift;
+  - add a contract in `docs/data/robot-lab-qualification.json`, a source fixture with `provenance.json`, and a disconnection branch in `test/bw-sim-qualification.test.mjs` that asserts the law is lost;
+  - register the model everywhere `MODELS` is enumerated;
+  - run `node scripts/qualify-robot-lab-models.mjs --mode=full`.
+- **Worked examples:** commits `f94ebec21` (#1508), `d58d8b92b` and `6b8501171`.
+- **Model notes:**
+  - SwayShift: the comparison is a second program on the same model (entry id `swayshift-in-phase`).
+  - TwistSpan: the control is `twistspan-inner`.
+  - Tipline: the control is `tipline-swapped`.
+- **Evenhand** needs a torque judge. Its law is visible only in motor holding torque (`session.core.jointDynamics(id).motorTorqueNm`), not in poses, because the engine's motors hold any load:
+  - balanced, all nine poses: shoulder 0.33–0.36 mN·m, elbow < 0.01 mN·m;
+  - control: elbow 0.61·cos(A+B) mN·m.
+- **RimRun** is not ready: its hub stands free beside the ramp, so `prepareModel(...).issues` reports `loose-part` for the frame and promotion requires `issues: []`. First mount the hub to the frame with real pins or plates. Re-run its package's construction and rolling checks, which still pass on main. Its post-finish catch and watchdog-hold gates fail by its author's own declaration and need a design change too.
+
+**O5. #1477 closed after verification, 2026-10-28.**
+- #1486 fixed the scope-capture re-render. The five most recent completed main Builds after that fix succeeded; their three selected `browser (light)` jobs passed, and the other two did not select that shard. Newer queued runs were not counted as passing evidence.
+- The [issue closeout](https://github.com/CrispStrobe/brickwright-lite/issues/1477) links all five runs. Preserve the assertion trace and run link if `ADC_POINT_MODE_PUBLICATION` recurs.
+
+**O6. #1435 (coplanar flat-beam frame creeps on the floor).** Diagnostics PR #1498 merged; this does not establish that the engine defect is fixed. Preserve the owning lane and re-qualify affected models only after its engine fix lands.
+
 
 Updated 2026-10-28. This is the public entry point for continuing Robot Lab work (the
 `lib/bw-sim/` simulator, the virtual hubs, the Robot Lab tab) without chat history.

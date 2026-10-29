@@ -743,3 +743,28 @@ See [their mechanisms, bounded design revisions and validation](ROBOT-LAB-COUNTE
 Both have one motor, automatic example programs, bilingual lessons and connected
 building instructions. The current source library has 72 assemblies and 80 example
 choices; individual release tags preserve their own documented inventories.
+
+## Motor direction compatibility
+
+Models without a direction declaration keep their existing behavior. A new or
+deliberately migrated model can opt into the motor's own shaft frame by placing
+this line once in its main LDraw/MPD model section:
+
+```text
+0 !BW MOTOR_DIRECTION motor-frame
+```
+
+With this setting, turning a motor over reverses its drive direction in world
+coordinates, and inserting a symmetric axle the other way around does not
+reverse the motor. `0 !BW MOTOR_DIRECTION legacy` explicitly keeps the older
+bearing-led convention. Build edits, undo, save and reopen preserve the setting;
+embedded submodels do not override their receiving model's choice. Invalid or
+duplicate declarations refuse simulation.
+
+This does not migrate any existing example. A migration must check its program,
+lesson directions and mechanical-law qualification together. The setting makes
+the compiler consistent with the motor's frame; it does not establish a
+physical SPIKE motor's clockwise/counterclockwise command convention. See
+[issue #1460](https://github.com/CrispStrobe/brickwright-lite/issues/1460).
+Qualify an opted-in model on a runtime revision that includes this setting;
+older pinned-worker receipts cannot qualify the changed drive behavior.

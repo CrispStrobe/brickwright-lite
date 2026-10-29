@@ -2673,10 +2673,10 @@
       "placements": 168,
       "archive": "final-squeeze-complete.zip sha256 1d1a80543a0ea2897b627756d243cd542ec4df16131b549b35d8e03ecfd46a51",
       "originalLdrawSha256": "08ad93e18a6a2784254eb3ea7895c80a9c561c11ae4d604cc735fcb63f6095de",
-      "canonicalLdrawSha256": "5bdb0dfb4e876bd2b5765410779b48e8988eaff4c39bde41d17877ede6425244",
+      "canonicalLdrawSha256": "37c71dfa2fbb846400fd65968bac3926b8e2242f1fa837868324d3dc729a1abc",
       "program": "final-squeeze.bw",
       "programSha256": "252f4517af930e1e9f8a640b4b1dfc0e158f58215fa3712b4d94d9146fedb377",
-      "adaptation": "Licence path only in the model. Program: start guard widened from 0.5 to 2 degrees, because the unpowered preloaded shock back-drives the input 1.43 degrees within 100 ms; stage 1 drives to the absolute 0 target, so the route is unchanged.",
+      "adaptation": "Licence path only in the model. Program: start guard widened from 0.5 to 2 degrees, because the unpowered preloaded shock back-drives the input 1.43 degrees within 100 ms; stage 1 drives to the absolute 0 target, so the route is unchanged. Construction repair (2026-10-28, for the library solid gate): the 2909/2910 shock moves 2.5 LDU down its two axles (y 60 -> 62.5) so both eyes clear their bush stacks; anchor_spacer is a half bush (4265c) instead of a bush (3713); platen_axle is a 9L axle (60485) instead of 8L (3707), so platen_retainer_80 (was _75) sits fully on it below the rod eye. 168 placements; links, guide and saved angle unchanged.",
       "supplierClaims": "Held platen advance at 15 deg 12.753856 mm; last 5 deg ~half the first.",
       "simulatorLaw": {
         "verdict": "AGREES",
@@ -2698,11 +2698,18 @@
         "nan": false,
         "simMs": 47800
       },
-      "promotionReview": {
-        "date": "2026-10-27",
-        "decision": "STAYS_EXPERIMENTAL",
-        "reason": "A knee-closure judge (s = L1 cos a + sqrt(L2^2 - (L1 sin a - e)^2), L1 = L2 = 32.000 mm, e = 0 from the compiled joints) passed natively: advance 12.763 mm vs 12.767 predicted, settled 5-degree steps within 0.002 mm, moving lag <= 0.18 mm; removing passive_link left the platen at 1.03 mm while the input still turned 24.9 degrees. But the library construction gate (test/bw-sim-models-solid.test.mjs, solidOverlaps) refuses the saved geometry: anchor_spacer and anchor_retainer_45 overlap shock_cylinder, and platen_spacer_40 and platen_retainer_75 overlap shock_rod. A fix needs a geometry change, and model bytes must stay unchanged.",
-        "hostedEvidence": "PR #1497 unit shard 1/6 at f2d1cb54"
+      "promoted": {
+        "to": "established library (MODELS)",
+        "date": "2026-10-28",
+        "judge": "knee-press-v1",
+        "judgeCredit": "knee-press-v1, contract, fixture and registrations from f2d1cb546 (PR #1497, batch C), adapted",
+        "causalControl": "passive_link removed (qualification disconnection)",
+        "intakeCanonicalLdrawSha256": "5bdb0dfb4e876bd2b5765410779b48e8988eaff4c39bde41d17877ede6425244",
+        "verified": "Native qualification on the Mac (branch lane/robot-batchD-20261028): ordinary and strict real-VM runs pass knee-press-v1, platen advance 12.763 mm against 12.767 mm predicted, five settled steps 3.406/3.025/2.579/2.134/1.698 mm within 0.0013 mm of the closure; frozen output and 1 cm world shift are rejected; with passive_link removed the input still turns 24.9 deg and the platen moves 1.03 mm. Also passes at a 1000 ms cold settle (12.751 mm against 12.756 mm). solidOverlaps, mesh, pin-reach and shared-hole checks clean; prepareModel issues []. Full qualification (qualify-robot-lab-models --models=final-squeeze,high-select --mode=full, Node 22.23.3, on the Mac at f94ebec21): catalogue, lessons, registrations 129/129, construction 271/271, native motion and negatives 12/12, mirrors, production build, Chromium and WebKit example runs (no page errors), export (111 LDR/MPD pairs, 121 examples) and candidate identity all PASS; admitted.",
+        "notRun": [
+          "saved-project replay",
+          "manual controls"
+        ]
       }
     },
     {
@@ -2984,19 +2991,19 @@
     {
       "id": "high-select",
       "title": "High Select — mechanical maximum",
-      "placements": 284,
+      "placements": 288,
       "archive": "high-select-complete.zip sha256 54cede66d31a72561fbfafbee8c2dec70b1877c5055ef609af033e0dc98f6688",
       "originalLdrawSha256": "31581c8ff71004b98d0908c0e0a9a8d8393a89ea2617e909660321383a6459f8",
-      "canonicalLdrawSha256": "f6c61fd1fa61d4c2c3de7f1405643072b4e11fe532bf1257125db1705be4c19f",
+      "canonicalLdrawSha256": "46374404f02195b1c101389b11d69e703375f9bd34c7aac23588a9d383f72b96",
       "program": "high-select.bw",
       "programSha256": "cda2ae410c9e5ae15f2b52aca38895acb3dabc13e09a1937f106f5c1e1ca2dc3",
-      "adaptation": "Licence path only; geometry and program unchanged.",
+      "adaptation": "Licence path; program unchanged. Rest stops (#1455): a Technic bush (3713) on each of the four input guide axles under each carriage, so the unpowered start pose rests on them; cold sag 9.54 deg -> 0.27 deg. 288 placements.",
       "supplierClaims": "Settled bridge height h = max(a,b) over 0-16 mm inputs.",
       "simulatorLaw": {
         "verdict": "AGREES",
         "scope": "headless cold 0: at all 11 holds the bridge equals max(a,b) within 0.032 mm, including handovers and the 16 mm tie; the mirror program gives the same bridge heights with sides exchanged"
       },
-      "poweredMotion": "HEADLESS_COMPLETED (cold 0); cold 1000 refuses start: unpowered carriages sink ~2 mm",
+      "poweredMotion": "HEADLESS_COMPLETED at cold 500 and 1000 ms (after the #1455 rest stops; the earlier cold-1000 refusal came from the 284-part geometry)",
       "mechanicalLaw": "SIMULATOR_AGREES",
       "causalControl": "EXCHANGED_INPUTS (high-select-mirror)",
       "browserLoad": "PASS",
@@ -3012,28 +3019,35 @@
         "nan": false,
         "simMs": 33533
       },
-      "promotionReview": {
-        "date": "2026-10-27",
-        "decision": "STAYS_EXPERIMENTAL",
-        "reason": "Its saved pose back-drives both rack motors by about 9.6 deg during the contract's mandatory 500 ms cold settle, so its own zero guard refuses to start. A fix needs a pose or program change, and model and program bytes must stay unchanged."
+      "promoted": {
+        "to": "established library (MODELS)",
+        "date": "2026-10-28",
+        "judge": "max-select-v1",
+        "causalControl": "both bridge foot tiles and foot bricks removed (qualification disconnection); exchanged-input comparison high-select-mirror stays experimental",
+        "intakeCanonicalLdrawSha256": "f6c61fd1fa61d4c2c3de7f1405643072b4e11fe532bf1257125db1705be4c19f",
+        "verified": "Native qualification on the Mac (branch lane/robot-batchD-20261028): ordinary and strict real-VM runs pass max-select-v1: at all 11 settled holds the bridge equals max(a,b) of the measured pad heights within 0.033 mm (tolerance 0.1 mm), carriages within 0.047 mm of their commanded heights, three lower-input-only moves leave the bridge within 0.035 mm; frozen output and 1 cm world shift are rejected. Disconnected (feet removed) the inputs still cover 16 mm and the bridge leaves the law by 3.7 mm; it then rests on the carriages through other parts, so it follows the higher carriage with a shifted datum. The mirror program passes the same judge (0.026 mm) with sides exchanged; both pass at a 1000 ms cold settle. Full qualification (qualify-robot-lab-models --models=final-squeeze,high-select --mode=full, Node 22.23.3, on the Mac at f94ebec21): catalogue, lessons, registrations 129/129, construction 271/271, native motion and negatives 12/12, mirrors, production build, Chromium and WebKit example runs (no page errors), export (111 LDR/MPD pairs, 121 examples) and candidate identity all PASS; admitted.",
+        "notRun": [
+          "saved-project replay",
+          "manual controls"
+        ]
       }
     },
     {
       "id": "high-select-mirror",
       "title": "High Select — exchanged-input comparison",
-      "placements": 284,
+      "placements": 288,
       "archive": "high-select-complete.zip sha256 54cede66d31a72561fbfafbee8c2dec70b1877c5055ef609af033e0dc98f6688",
       "originalLdrawSha256": "31581c8ff71004b98d0908c0e0a9a8d8393a89ea2617e909660321383a6459f8",
-      "canonicalLdrawSha256": "5f4f99b73667f60b2e26c50a03ff311e09a23378af0ef993127760fae7f8345d",
+      "canonicalLdrawSha256": "707ea12d89f529fda1a754c3357f2f2aeac2fda8a7ffa698bf41a0a2ce7d8d8c",
       "program": "high-select-mirror.bw",
       "programSha256": "7c5af628837ea4588145e8864120af30aa1b84194468a493d5eb1e4e028d05f2",
-      "adaptation": "Licence path only; geometry and program unchanged. The supplied mirror preset shares the main model file; the registry is keyed by file, so it ships as an identical model copy high-select-mirror.ldr with its own program.",
+      "adaptation": "Licence path; program unchanged. Rest stops (#1455): a Technic bush (3713) on each of the four input guide axles under each carriage, so the unpowered start pose rests on them; cold sag 9.54 deg -> 0.27 deg. 288 placements. The supplied mirror preset shares the main model file; the registry is keyed by file, so it ships as an identical model copy high-select-mirror.ldr with its own program.",
       "supplierClaims": "Settled bridge height h = max(a,b) over 0-16 mm inputs.",
       "simulatorLaw": {
         "verdict": "AGREES",
         "scope": "headless cold 0: at all 11 holds the bridge equals max(a,b) within 0.032 mm, including handovers and the 16 mm tie; the mirror program gives the same bridge heights with sides exchanged"
       },
-      "poweredMotion": "HEADLESS_COMPLETED (cold 0); cold 1000 refuses start: unpowered carriages sink ~2 mm",
+      "poweredMotion": "HEADLESS_COMPLETED at cold 500 and 1000 ms (after the #1455 rest stops; the earlier cold-1000 refusal came from the 284-part geometry)",
       "mechanicalLaw": "SIMULATOR_AGREES",
       "causalControl": "IS_COMPARISON",
       "browserLoad": "PASS",
@@ -3048,6 +3062,11 @@
         "pageErrors": 0,
         "nan": false,
         "simMs": 54200
+      },
+      "mirrorCheck": {
+        "date": "2026-10-28",
+        "intakeCanonicalLdrawSha256": "5f4f99b73667f60b2e26c50a03ff311e09a23378af0ef993127760fae7f8345d",
+        "result": "max-select-v1 passes on the mirror program at cold 500 and 1000 ms (0.026 mm); stays an experimental comparison entry, as other promoted models' comparisons do."
       }
     },
     {
@@ -3727,7 +3746,14 @@
       "mechanicalLaw": "SIMULATOR_AGREES",
       "causalControl": "PASS (swayshift-in-phase: same model, start_gap 0.760 s)",
       "browserLoad": "NOT_RUN",
-      "savedProjectReplay": "NOT_RUN"
+      "savedProjectReplay": "NOT_RUN",
+      "promoted": {
+        "to": "established library (MODELS)",
+        "date": "2026-10-28",
+        "judge": "timed-sway-cancellation-v1",
+        "qualification": "The matching source PR retains final full-runner receipts and source fingerprint. See docs/ROBOT-LAB-BATCH-E-QUALIFICATION.md for the required boundary and preserved 20 ms SwayShift sampling failure. Earlier checkpoint fields remain historical observations, not this promotion receipt.",
+        "hardware": "NOT_TESTED"
+      }
     },
     {
       "id": "swayshift-in-phase",
@@ -3767,7 +3793,14 @@
       "mechanicalLaw": "SIMULATOR_AGREES",
       "causalControl": "PASS (tipline-swapped)",
       "browserLoad": "NOT_RUN",
-      "savedProjectReplay": "NOT_RUN"
+      "savedProjectReplay": "NOT_RUN",
+      "promoted": {
+        "to": "established library (MODELS)",
+        "date": "2026-10-28",
+        "judge": "tip-versus-slide-v1",
+        "qualification": "The matching source PR retains final full-runner receipts and source fingerprint. See docs/ROBOT-LAB-BATCH-E-QUALIFICATION.md for the required boundary and preserved 20 ms SwayShift sampling failure. Earlier checkpoint fields remain historical observations, not this promotion receipt.",
+        "hardware": "NOT_TESTED"
+      }
     },
     {
       "id": "tipline-swapped",
@@ -3807,7 +3840,14 @@
       "mechanicalLaw": "SIMULATOR_AGREES",
       "causalControl": "PASS (twistspan-inner)",
       "browserLoad": "NOT_RUN",
-      "savedProjectReplay": "NOT_RUN"
+      "savedProjectReplay": "NOT_RUN",
+      "promoted": {
+        "to": "established library (MODELS)",
+        "date": "2026-10-28",
+        "judge": "bifilar-torsion-v1",
+        "qualification": "The matching source PR retains final full-runner receipts and source fingerprint. See docs/ROBOT-LAB-BATCH-E-QUALIFICATION.md for the required boundary and preserved 20 ms SwayShift sampling failure. Earlier checkpoint fields remain historical observations, not this promotion receipt.",
+        "hardware": "NOT_TESTED"
+      }
     },
     {
       "id": "twistspan-inner",
