@@ -6,6 +6,7 @@ import {existsSync} from 'node:fs';
 import {extname, join, normalize, resolve, dirname} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {chromium} from 'playwright';
+import {openCircuitActions, circuitFileControl} from './lib/circuit-actions.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const build = join(root, 'packages', 'scratch-gui', 'build');
@@ -380,19 +381,15 @@ try {
     const moreControls = designer.getByRole('button', {name: 'More circuit controls'});
     check('save/load/zoom controls have a single overflow slot', await moreControls.count() === 1 && await designer.locator('[data-toolbar-more]').count() === 1);
     if (await moreControls.getAttribute('aria-expanded') === 'true') await moreControls.click();
-    await moreControls.click({force: true});
-    // The file controls were consolidated into the "..." overflow menu (owner
-    // request): Save / Load / Zoom plus Import ▸ / Export ▸ submenus, rather than
-    // the old standalone "Save wiring as file" / "Load wiring from file" buttons.
-    const moreMenu = designer.locator('[data-toolbar-more-menu]');
-    await moreMenu.first().waitFor({state: 'attached', timeout: 2000}).catch(() => {});
+    // Follow this designer's trigger to its actual menu, including a body portal.
+    const moreMenu = await openCircuitActions(page, designer, {force: true, timeout: 2000});
     const menuN = await moreMenu.count();
     // The load control is labelled Open/Öffnen (File-menu convention), not "Load".
     const saveN = menuN ? await moreMenu.getByText(/Save|Speichern/).count() : 0;
     const openN = menuN ? await moreMenu.getByText(/Open|Öffnen/).count() : 0;
-    const zoomN = await designer.locator('[data-zoom-indicator]').count();
+    const zoomN = await moreMenu.locator('[data-zoom-indicator]').count();
     check('overflow slot exposes Save, Open, and Zoom', menuN >= 1 && saveN >= 1 && openN >= 1 && zoomN >= 1, `menu=${menuN} save=${saveN} open=${openN} zoom=${zoomN}`);
-    check('zoom indicator has readable contrast styling', await designer.locator('[data-zoom-indicator]').evaluate(el => getComputedStyle(el).color !== getComputedStyle(el.parentElement).backgroundColor));
+    check('zoom indicator has readable contrast styling', await moreMenu.locator('[data-zoom-indicator]').evaluate(el => getComputedStyle(el).color !== getComputedStyle(el.parentElement).backgroundColor));
     await moreControls.click({force: true});
     check('toolbar explicitly wraps when space is constrained', await designer.locator('[data-circuit-toolbar]').evaluate(el => getComputedStyle(el).flexWrap === 'wrap'));
 
@@ -685,9 +682,9 @@ try {
             {id: 'signal', terminals: [{part: 'scope-v', terminal: 'pos'}, {part: 'scope-r', terminal: 'a'}, {part: 'scope-c', terminal: 'a'}]},
             {id: 'ground', terminals: [{part: 'scope-v', terminal: 'neg'}, {part: 'scope-r', terminal: 'b'}, {part: 'scope-g', terminal: 'gnd'}, {part: 'scope-c', terminal: 'b'}]}
         ]};
-        await designer.getByRole('button', {name: 'More circuit controls', exact: true}).click();
+        const scopeMenu = await openCircuitActions(scopePage, designer);
         const choosing = scopePage.waitForEvent('filechooser');
-        await designer.getByRole('button', {name: /^📂 Open$/}).click();
+        await (await circuitFileControl(scopeMenu, 'open')).click();
         await (await choosing).setFiles({name: 'scope-reset.json', mimeType: 'application/json',
             buffer: Buffer.from(JSON.stringify(fixture))});
         await scopePage.waitForFunction(() => window.__board === window.__circuit?.board
@@ -882,9 +879,9 @@ try {
             await meterPage.getByRole('tab', {name: /Circuit/}).click();
             const designer = meterPage.locator('.bw-circuit-designer:visible').last();
             await designer.locator('[data-canvas]').waitFor({timeout: 60000});
-            await designer.getByRole('button', {name: 'More circuit controls', exact: true}).click();
+            const meterMenu = await openCircuitActions(meterPage, designer);
             const choosing = meterPage.waitForEvent('filechooser');
-            await designer.getByRole('button', {name: /^📂 Open$/}).click();
+            await (await circuitFileControl(meterMenu, 'open')).click();
             await (await choosing).setFiles({name: 'lm741-current-authority.json', mimeType: 'application/json',
                 buffer: await readFile(join(root, 'test/fixtures/lm741-voltage-follower.json'))});
             await meterPage.waitForFunction(() => window.__board === window.__circuit?.board
@@ -965,9 +962,9 @@ try {
             {id:'ground',terminals:[{part:'adc-v',terminal:'neg'},{part:'adc-r',terminal:'b'},
               {part:'adc-g',terminal:'gnd'},{part:'adc-bad',terminal:'pos'},{part:'adc-bad',terminal:'neg'}]},
           ]};
-          await designer.getByRole('button',{name:'More circuit controls',exact:true}).click();
+          const adcMenu = await openCircuitActions(adcPage, designer);
           const choosing=adcPage.waitForEvent('filechooser');
-          await designer.getByRole('button',{name:/^📂 Open$/}).click();
+          await (await circuitFileControl(adcMenu, 'open')).click();
           await (await choosing).setFiles({name:'ideal-adc-bench.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(fixture))});
           await adcPage.waitForFunction(()=>window.__board === window.__circuit?.board
             && window.__circuit.parts.some(p=>p.id==='adc-v'));
@@ -1348,10 +1345,10 @@ try {
                 `M1 out gate source ${grounded ? '0' : 'source'} PM W=5u L=2u`,
                 '.model PM PMOS(LEVEL=1 VTO=-1 KP=100u LAMBDA=.02)', '.op', '.end', ''
             ].join('\n');
-            await designer.getByRole('button', {name: 'More circuit controls', exact: true}).click();
-            await designer.getByRole('button', {name: /^📥 Import/}).click();
+            const pmosMenu = await openCircuitActions(pmosPage, designer);
+            await (await circuitFileControl(pmosMenu, 'import')).click();
             const choosing = pmosPage.waitForEvent('filechooser');
-            await designer.locator('[data-import-format="spice"]').click();
+            await pmosMenu.locator('[data-import-format="spice"]').click();
             await (await choosing).setFiles({name: grounded ? 'pmos-ground-bulk.cir' : 'pmos-source-bulk.cir',
                 mimeType: 'text/plain', buffer: Buffer.from(text)});
             await pmosPage.waitForFunction(expectedSource => {

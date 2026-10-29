@@ -1,48 +1,26 @@
 // SPDX-License-Identifier: BSD-3-Clause
-// The Robot Lab "Brick buttons" panel shows by default only when the program has brick-button
-// handlers; otherwise Manual controls offers it as a folded "Brick controls" section.
+// Brick buttons and program connection belong inside Manual controls, including
+// programs with button handlers. Actual button delivery and release stay unchanged.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createRequire} from 'node:module';
+import {resolve} from 'node:path';
 import {readFileSync} from 'node:fs';
-import {isBrickButtonOpcode, programUsesBrickButtons} from '../overlay/scratch-gui/src/components/tw-pseudocode/sim-lab-brick-handlers.js';
 import * as motorControl from '../overlay/scratch-gui/src/components/tw-pseudocode/sim-lab-motor-control.js';
 
-const vmWith = (...opcodes) => ({runtime: {targets: [{blocks: {_blocks: Object.fromEntries(opcodes.map((opcode, i) => [`b${i}`, {opcode}]))}}]}});
-
-test('brick-button opcodes of robot hubs count as handlers', () => {
-    for (const opcode of ['spikeprime_whenButtonPressed', 'spikeprime_isButtonPressed', 'ev3_whenButtonPressed',
-        'ev3_buttonPressed', 'legonxt_buttonPressed', 'ev3comprehensive_waitForButton', 'legopoweredup_whenButtonPressed']) {
-        assert.equal(isBrickButtonOpcode(opcode), true, opcode);
-    }
-});
-
-test('button lights, remotes and non-hub devices are not brick-button handlers', () => {
-    for (const opcode of ['spikeprime_setCenterButtonColor', 'ev3comprehensive_irRemoteButton', 'microbit_whenButtonPressed',
-        'arcade_whenButton', 'universalgamepad_isButtonPressed', 'circuitplayground_whenbutton', 'spikeprime_motorRun', null]) {
-        assert.equal(isBrickButtonOpcode(opcode), false, String(opcode));
-    }
-});
-
-test('program scan follows the project, including edits that add a handler', () => {
-    assert.equal(programUsesBrickButtons(null), false);
-    assert.equal(programUsesBrickButtons({runtime: {targets: []}}), false);
-    const vm = vmWith('event_whenflagclicked', 'spikeprime_motorRun');
-    assert.equal(programUsesBrickButtons(vm), false);
-    vm.runtime.targets[0].blocks._blocks.added = {opcode: 'spikeprime_whenButtonPressed'};
-    assert.equal(programUsesBrickButtons(vm), true);
-    assert.equal(programUsesBrickButtons(vmWith('ev3_whenButtonPressed')), true);
-});
-
-test('the pane renders the standalone panel only for handlers and offers it in Manual controls otherwise', () => {
+test('brick buttons have one rendering site inside Manual controls regardless of program handlers', () => {
     const pane = readFileSync(new URL('../overlay/scratch-gui/src/components/tw-pseudocode/sim-lab-pane.jsx', import.meta.url), 'utf8');
-    assert.match(pane, /programUsesBrickButtons\(this\.props\.vm\) &&\s+this\.renderBrickButtons\(\)\}/);
-    assert.match(pane, /this\.renderMixer\(button,\s+programUsesBrickButtons\(this\.props\.vm\) \|\| !this\.api\?\.brickButtons\(\)\?\.length \? null : this\.renderBrickButtons\(\)\)/);
+    assert.doesNotMatch(pane, /programUsesBrickButtons/);
+    assert.match(pane, /this\.renderMixer\(button,\s+!this\.api\?\.brickButtons\(\)\?\.length \? null : this\.renderBrickButtons\(\)\)/);
     assert.match(pane, /brick=\{brick \|\| null\}/);
+    assert.equal((pane.match(/this\.renderBrickButtons\(\)/g) || []).length, 1);
     assert.equal((pane.match(/<SimLabBrickButtons /g) || []).length, 1);
+    assert.match(pane, /connection=\{this\.renderConnections\(\)\}/);
 });
 
-const requireGui = createRequire(new URL('../packages/scratch-gui/package.json', import.meta.url));
+const requireGui = createRequire(process.env.BW_TEST_BABEL_ROOT
+    ? resolve(process.env.BW_TEST_BABEL_ROOT, 'package.json')
+    : new URL('../packages/scratch-gui/package.json', import.meta.url));
 const loadMixer = () => {
     const babel = requireGui('@babel/core');
     const source = readFileSync(new URL('../overlay/scratch-gui/src/components/tw-pseudocode/sim-lab-motor-mixer.jsx', import.meta.url), 'utf8');

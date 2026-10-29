@@ -163,6 +163,20 @@ try {
     await page.mouse.click(p.x, p.y);
     // Add a wall on its right neighbour.
     await page.locator('[data-testid="bw-tilemap-tool-wall"]').click();
+    await page.getByTestId('bw-edit-menu-trigger').click();
+    const toolsMenu = page.getByRole('menuitem', {name: 'Tile tools', exact: true});
+    await toolsMenu.focus();
+    await toolsMenu.press('ArrowRight');
+    await page.getByRole('menuitem', {name: 'Paint', exact: true}).press('Enter');
+    check('Edit tile tools selects the actual painter tool',
+        await page.getByTestId('bw-tilemap-tool-paint').getAttribute('aria-pressed') === 'true');
+    await page.getByTestId('bw-edit-menu-trigger').click();
+    await toolsMenu.focus();
+    await toolsMenu.press('ArrowRight');
+    await page.getByRole('menuitem', {name: 'Walls', exact: true}).press('Enter');
+    check('Edit tile tools restores the actual wall tool',
+        await page.getByTestId('bw-tilemap-tool-wall').getAttribute('aria-pressed') === 'true');
+
     p = await cellPoint(column + 1, row);
     await page.mouse.click(p.x, p.y);
     // Undo the wall, check, redo it.
@@ -178,6 +192,9 @@ try {
     await page.mouse.click(tileBox.x + 2, tileBox.y + 2);
     await page.screenshot({path: join(out, 'painter.png')});
     await page.locator('[data-testid="bw-tilemap-save"]').click();
+    await page.getByTestId('bw-file-menu-trigger').click();
+    await page.getByRole('menuitem', {name: 'Save tile map to blocks', exact: true}).click();
+
     const status = await page.locator('[data-testid="bw-tilemap-status"]').innerText();
     check('save reports where the level went', /Saved|gespeichert/.test(status), status);
 

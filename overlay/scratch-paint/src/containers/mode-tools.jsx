@@ -3,6 +3,10 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import {connect} from 'react-redux';
 import bindAll from 'lodash.bindall';
+import {injectIntl, intlShape} from 'react-intl';
+import tx from '../lib/bw-messages';
+import {groupSelection, ungroupSelection, shouldShowGroup, shouldShowUngroup} from '../helper/group';
+import {bringForward, sendBackward, bringToFront, sendToBack, shouldShowBringForward, shouldShowSendBackward} from '../helper/order';
 
 import CopyPasteHOC from '../hocs/copy-paste-hoc.jsx';
 import ModeToolsComponent from '../components/mode-tools/mode-tools.jsx';
@@ -20,13 +24,14 @@ import {HANDLE_RATIO, ensureClockwise} from '../helper/math';
 import {getRaster} from '../helper/layer';
 import {flipBitmapHorizontal, flipBitmapVertical, selectAllBitmap} from '../helper/bitmap';
 import {rotateBy} from '../helper/bw/transform';
-import Formats, {isBitmap} from '../lib/format';
+import Formats, {isBitmap, isVector} from '../lib/format';
 import Modes from '../lib/modes';
 
 class ModeTools extends React.Component {
     constructor (props) {
         super(props);
         bindAll(this, [
+            'editorMenuActions',
             '_getSelectedUncurvedPoints',
             '_getSelectedUnpointedPoints',
             'hasSelectedUncurvedPoints',
@@ -44,6 +49,74 @@ class ModeTools extends React.Component {
             'handlePasteFromClipboard',
             'handlePointPoints'
         ]);
+    }
+    componentDidMount () {
+        this._menuMounted = true;
+        this.publishMenuActions();
+    }
+    componentDidUpdate (prevProps) {
+        if (prevProps.onEditorMenuActions !== this.props.onEditorMenuActions && this.unregisterMenuChannel) this.unregisterMenuChannel();
+        if (['format', 'mode', 'selectedItems', 'clipboardItems', 'editorMenuOwner', 'onEditorMenuActions', 'intl']
+            .some(key => prevProps[key] !== this.props[key])) this.publishMenuActions();
+    }
+    componentWillUnmount () {
+        this._menuMounted = false;
+        if (this.unregisterMenuChannel) this.unregisterMenuChannel();
+    }
+    publishMenuActions () {
+        if (this._menuMounted && typeof this.props.onEditorMenuActions === 'function') {
+            this.unregisterMenuChannel = this.props.onEditorMenuActions('selection', this.editorMenuActions, this.props.editorMenuOwner);
+        }
+    }
+    editorMenuActions () {
+        if (!this._menuMounted || !paper.project || typeof this.props.onUpdateImage !== 'function') return null;
+        const vector = isVector(this.props.format);
+        const selecting = this.props.mode === Modes.SELECT || this.props.mode === Modes.BIT_SELECT;
+        const reshaping = this.props.mode === Modes.RESHAPE;
+        const path = reshaping ? this.getSelectedPath() : null;
+        const selected = getSelectedRootItems().length > 0;
+        const label = (key, fallback, prefix = 'paint.modeTools') => this.props.intl.formatMessage({id: `${prefix}.${key}`, defaultMessage: fallback});
+        const action = (key, fallback, enabled, run, submenu = '', prefix) => ({label: label(key, fallback, prefix),
+            location: 'edit', submenu, enabled: !!enabled && typeof run === 'function', run});
+        const transform = tx(this.props.intl.locale, 'transform');
+        const object = tx(this.props.intl.locale, 'object');
+        const selectedItems = () => this.props.setSelectedItems(this.props.format);
+        return {
+            copy: action('copy', 'Copy', selecting, this.props.onCopyToClipboard),
+            paste: action('paste', 'Paste', selecting && this.props.clipboardItems.length > 0, this.handlePasteFromClipboard),
+            delete: action('delete', 'Delete', selecting || reshaping, this.handleDelete),
+            'select-all': action('selectAll', this.props.intl.locale.startsWith('de') ? 'Alles auswählen' : 'Select all', true, () => {
+                // The existing keyboard Select All path, using the same real helpers.
+                if (isBitmap(this.props.format)) {
+                    selectAllBitmap(this.props.clearSelectedItems);
+                    selectedItems();
+                } else if (reshaping) {
+                    if (selectAllSegments()) selectedItems();
+                } else if (selectAllItems()) selectedItems();
+            }),
+            'flip-horizontal': action('flipHorizontal', 'Flip Horizontal', selecting && (!vector || selected), this.handleFlipHorizontal, transform),
+            'flip-vertical': action('flipVertical', 'Flip Vertical', selecting && (!vector || selected), this.handleFlipVertical, transform),
+            'rotate-clockwise': action('rotateClockwise', tx(this.props.intl.locale, 'rotateClockwise'), selecting && isBitmap(this.props.format) && selected, this.handleRotateClockwise, transform),
+            'rotate-counter-clockwise': action('rotateCounterClockwise', tx(this.props.intl.locale, 'rotateCounterClockwise'), selecting && isBitmap(this.props.format) && selected, this.handleRotateCounterClockwise, transform),
+            group: action('group', 'Group', vector && shouldShowGroup(),
+                () => groupSelection(this.props.clearSelectedItems, selectedItems, this.props.onUpdateImage), transform, 'paint.paintEditor'),
+            ungroup: action('ungroup', 'Ungroup', vector && shouldShowUngroup(),
+                () => ungroupSelection(this.props.clearSelectedItems, selectedItems, this.props.onUpdateImage), transform, 'paint.paintEditor'),
+            forward: action('forward', 'Forward', vector && shouldShowBringForward(),
+                () => bringForward(this.props.onUpdateImage), transform, 'paint.paintEditor'),
+            backward: action('backward', 'Backward', vector && shouldShowSendBackward(),
+                () => sendBackward(this.props.onUpdateImage), transform, 'paint.paintEditor'),
+            front: action('front', 'Front', vector && shouldShowBringForward(),
+                () => bringToFront(this.props.onUpdateImage), transform, 'paint.paintEditor'),
+            back: action('back', 'Back', vector && shouldShowSendBackward(),
+                () => sendToBack(this.props.onUpdateImage), transform, 'paint.paintEditor'),
+            'curve-points': action('curved', 'Curved', reshaping && this.hasSelectedUncurvedPoints(), this.handleCurvePoints, object),
+            'point-points': action('pointed', 'Pointed', reshaping && this.hasSelectedUnpointedPoints(), this.handlePointPoints, object),
+            'close-path': action('closePath', 'Close path', path && !path.closed && path.segments.length >= 3, this.handleClosePath, object),
+            'open-path': action('openPath', 'Open path', path && path.closed, this.handleOpenPath, object),
+            'split-path': action('splitPath', 'Split at node', reshaping && this.getSplitSegment(), this.handleSplitPath, object),
+            'join-paths': action('joinPaths', 'Join paths', reshaping && this.getJoinPaths(), this.handleJoinPaths, object)
+        };
     }
     getSelectedPath () {
         const items = getSelectedLeafItems();
@@ -322,6 +395,10 @@ class ModeTools extends React.Component {
 }
 
 ModeTools.propTypes = {
+    intl: intlShape.isRequired,
+    onEditorMenuActions: PropTypes.func,
+    editorMenuOwner: PropTypes.string,
+    clipboardItems: PropTypes.array,
     clearSelectedItems: PropTypes.func.isRequired,
     format: PropTypes.oneOf(Object.keys(Formats)),
     mode: PropTypes.oneOf(Object.keys(Modes)),
@@ -337,7 +414,8 @@ ModeTools.propTypes = {
 const mapStateToProps = state => ({
     format: state.scratchPaint.format,
     mode: state.scratchPaint.mode,
-    selectedItems: state.scratchPaint.selectedItems
+    selectedItems: state.scratchPaint.selectedItems,
+    clipboardItems: state.scratchPaint.clipboard.items
 });
 const mapDispatchToProps = dispatch => ({
     clearSelectedItems: () => {
@@ -348,7 +426,7 @@ const mapDispatchToProps = dispatch => ({
     }
 });
 
-export default CopyPasteHOC(connect(
+export default injectIntl(CopyPasteHOC(connect(
     mapStateToProps,
     mapDispatchToProps
-)(ModeTools));
+)(ModeTools)));

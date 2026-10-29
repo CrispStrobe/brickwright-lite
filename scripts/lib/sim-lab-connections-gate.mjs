@@ -25,8 +25,7 @@ const loadExample = async page => {
     }, null, {timeout: 60000});
 };
 
-// The Brick buttons panel shows by default only when the Code tab program has brick-button
-// handlers; otherwise it is the optional Brick controls section of Manual controls.
+// Brick buttons always live in the folded Brick controls section of Manual controls.
 const brickPanel = async page => {
     const panel = page.getByTestId('bw-sim-lab-brick-buttons');
     if (await panel.count()) return panel;

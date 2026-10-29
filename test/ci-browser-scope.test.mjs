@@ -88,7 +88,27 @@ test('the CLI prints GITHUB_OUTPUT lines, and build.yml wires them', () => {
     assert.ok(r.stdout.startsWith(ALL.map(s => s+'=false\n').join('')+'browser=false\nany=false\nsummary='));
     const yml = readFileSync(path.join(ROOT, '.github/workflows/build.yml'), 'utf8');
     assert.match(yml, /node scripts\/ci-browser-scope\.mjs < \/tmp\/changed\.txt/);
-    assert.match(yml, /no browser-relevant paths changed: \$SUMMARY/);
+    const calls = yml.split('\n').filter(line => /^\s*node scripts\/ci-browser-scope\.mjs < \/tmp\/changed\.txt/.test(line));
+    assert.equal(calls.length, 1, 'one real classifier output forwarding command');
+    const forwarding = / \| sed '([^']+)' >> "\$GITHUB_OUTPUT"$/.exec(calls[0]);
+    assert.ok(forwarding, 'classifier output must append to the actual step outputs');
+    const forwarded = spawnSync('/usr/bin/sed', [forwarding[1]], {input: r.stdout, encoding: 'utf8'});
+    assert.equal(forwarded.status, 0, forwarded.stderr);
+    const mapped = Object.fromEntries(forwarded.stdout.trim().split('\n').map(line => {
+        const at = line.indexOf('='); return [line.slice(0, at), line.slice(at + 1)];
+    }));
+    for (const shard of ALL) assert.equal(mapped[`scope_${shard}`], 'false', shard);
+    assert.equal(mapped.browser, 'false'); assert.equal(mapped.any, 'false');
+    assert.match(mapped.summary, /^\d+ file\(s\):/);
+    const scope = /^  scope:\n([\s\S]*?)(?=^  [a-z][\w-]*:\n)/m.exec(yml)?.[1];
+    assert.ok(scope, 'actual scope job required');
+    for (const shard of ['heavy', 'light', 'robotlab', 'fpga']) {
+        assert.ok(scope.includes(`          NEED_${shard.toUpperCase()}: \${{ steps.files.outputs.scope_${shard} }}\n`),
+            `${shard}: classifier value must reach the actual tier selector`);
+        assert.ok(scope.includes(`      ${shard}: \${{ steps.tier.outputs.${shard} }}\n`),
+            `${shard}: selected tier value must reach downstream jobs`);
+    }
+    assert.ok(scope.includes('      browser: ${{ steps.tier.outputs.browser }}\n'));
     for (const s of ['heavy', 'light', 'robotlab'])
         assert.match(yml, new RegExp(`- shard: \\$\\{\\{ needs\\.scope\\.outputs\\.${s} != 'true' && '${s}' \\|\\| 'none' \\}\\}`), s);
     assert.match(yml, /needs\.scope\.outputs\.thorough == 'true' && needs\.scope\.outputs\.fpga == 'true'/);

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import {pixelControl} from './lib-pixel-controls.mjs';
 import assert from 'node:assert/strict';
 import {chromium} from 'playwright';
 
@@ -27,18 +28,35 @@ try {
     };
     const saved = () => page.evaluate(storageKey => JSON.parse(localStorage.getItem(storageKey)), key);
     const primary = async index => assert.equal(
-        await page.getByTestId(`bw-pixel-colour-${index}`).getAttribute('aria-checked'), 'true');
+        await (await pixelControl(page, `bw-pixel-colour-${index}`)).getAttribute('aria-checked'), 'true');
     const secondary = async index => assert.equal(
-        await page.getByTestId(`bw-pixel-colour-${index}`).evaluate(button =>
+        await (await pixelControl(page, `bw-pixel-colour-${index}`)).evaluate(button =>
             getComputedStyle(button).outlineStyle), 'dashed');
 
     await page.goto(process.env.PROOF_URL || 'http://127.0.0.1:8620/', {waitUntil: 'domcontentloaded'});
     await openEditor();
     assert.equal(await page.evaluate(storageKey => localStorage.getItem(storageKey), key), null,
         'opening the editor alone does not write a preference');
-    await page.getByTestId('bw-pixel-colour-10').tap();
+    assert.equal(await page.getByTestId('bw-pixel-palette-toolbar').isVisible(), false,
+        'the palette does not consume a permanent editor row');
+    const colours = await page.getByTestId('bw-pixel-colour-controls').boundingBox();
+    assert.ok(colours.width < 180 && colours.height <= 48, 'colours occupy a compact toolbar group');
+    await page.getByTestId('bw-pixel-colour-trigger').click();
+    const palette = page.getByTestId('bw-pixel-palette-toolbar');
+    assert.equal(await palette.getByRole('radio').count(), 16);
+    const swatch = page.getByTestId('bw-pixel-colour-2');
+    const swatchBox = await swatch.boundingBox();
+    assert.ok(swatchBox.width >= 44 && swatchBox.height >= 44, 'popover swatches remain touch targets');
+    await swatch.focus();
+    await swatch.press('ArrowRight');
+    assert.equal(await page.getByTestId('bw-pixel-colour-3').getAttribute('aria-checked'), 'true');
+    assert.equal(await page.getByTestId('bw-pixel-colour-3').evaluate(node => node === document.activeElement), true);
+    await page.getByTestId('bw-pixel-colour-3').press('Escape');
+    assert.equal(await palette.isVisible(), false);
+    assert.equal(await page.getByTestId('bw-pixel-colour-trigger').evaluate(node => node === document.activeElement), true);
+    await (await pixelControl(page, 'bw-pixel-colour-10')).tap();
     await page.getByTestId('bw-pixel-secondary-colour').tap();
-    await page.getByTestId('bw-pixel-colour-3').tap();
+    await (await pixelControl(page, 'bw-pixel-colour-3')).tap();
     assert.deepEqual(await saved(), {colour: 10, secondaryColour: 3});
 
     await page.reload({waitUntil: 'domcontentloaded'});
@@ -60,11 +78,11 @@ try {
     await secondary(7);
     // Project palette authoring uses the same shipped graphics editor. VM reads
     // observe the result; all mutations below go through visible controls.
-    const originalSwatch = await page.getByTestId('bw-pixel-colour-1').evaluate(node => getComputedStyle(node).backgroundColor);
-    await page.getByTestId('bw-pixel-palette-toggle').click();
+    const originalSwatch = await (await pixelControl(page, 'bw-pixel-colour-1')).evaluate(node => getComputedStyle(node).backgroundColor);
+    await (await pixelControl(page, 'bw-pixel-palette-toggle')).click();
     await page.getByTestId('bw-project-palette-color-1').fill('#123456');
     await page.getByTestId('bw-project-palette-use-preview').check();
-    assert.equal(await page.getByTestId('bw-pixel-colour-1').evaluate(node => getComputedStyle(node).backgroundColor), 'rgb(18, 52, 86)');
+    assert.equal(await (await pixelControl(page, 'bw-pixel-colour-1')).evaluate(node => getComputedStyle(node).backgroundColor), 'rgb(18, 52, 86)');
     await page.getByTestId('bw-project-palette-apply').click();
     await page.getByTestId('bw-project-palette').getByRole('status').waitFor();
     await page.waitForFunction(() => window.__brickwrightStore.getState().scratchGui.vm.runtime.bwArcadeDeviceState?.palette[1] === '#123456');
@@ -72,8 +90,8 @@ try {
         .filter(target => target.isOriginal).flatMap(target => Object.values(target.blocks._blocks))
         .filter(block => block.opcode === 'arcade_setPalette').length);
     assert.equal(commands, 1, 'graphics controls persist a normal startup palette block');
-    await page.getByTestId('bw-pixel-palette-toggle').click();
-    assert.equal(await page.getByTestId('bw-pixel-colour-1').evaluate(node => getComputedStyle(node).backgroundColor), originalSwatch,
+    await (await pixelControl(page, 'bw-pixel-palette-toggle')).click();
+    assert.equal(await (await pixelControl(page, 'bw-pixel-colour-1')).evaluate(node => getComputedStyle(node).backgroundColor), originalSwatch,
         'closing the project preview restores artwork colors');
     await page.getByRole('tab', {name: 'Blocks', exact: true}).click();
     await setStageVisible(true);

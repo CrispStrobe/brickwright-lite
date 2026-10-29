@@ -26,6 +26,7 @@ import downloadBlob from '../lib/download-blob';
 import {copyCostumeDocument, syncAnimationResources} from '../lib/bw-artwork-bundle';
 import {makeT} from '../lib/bw-i18n';
 import {activateUndoSurface} from '../lib/global-undo.js';
+import {notifyEditorMenuActions} from '../lib/editor-menu-actions.js';
 import EditorErrorBoundary from '../components/editor-error-boundary/editor-error-boundary.jsx';
 import styles from './costume-tab.css';
 
@@ -96,6 +97,7 @@ class CostumeTab extends React.Component {
         this.pixelEditor = React.createRef();
         this.tilemapEditor = React.createRef();
         bindAll(this, [
+            'costumeMenuActions',
             'handleSelectCostume',
             'handleDeleteCostume',
             'handleDuplicateCostume',
@@ -122,12 +124,21 @@ class CostumeTab extends React.Component {
         }
     }
     componentDidMount () {
+        this._menuMounted = true;
         // The paint editor's text tool draws with the render fonts, which are a
         // lazy chunk (lib/lazy-render-fonts.js). This tab is mounted only while
         // it is shown, so this is the first moment they are worth having.
         getFonts.loadFonts().catch(() => { /* fallback faces; the tool still works */ });
     }
+    componentWillUnmount () {
+        this._menuMounted = false;
+        notifyEditorMenuActions();
+    }
     componentDidUpdate (prevProps, prevState) {
+        if (prevState.selectedCostumeIndex !== this.state.selectedCostumeIndex ||
+            prevState.pixelMode !== this.state.pixelMode || prevState.tilemapMode !== this.state.tilemapMode ||
+            prevProps.editingTarget !== this.props.editingTarget || prevProps.sprites !== this.props.sprites ||
+            prevProps.stage !== this.props.stage || prevProps.intl !== this.props.intl) notifyEditorMenuActions();
         // Menu-bar Undo / Redo / History follow the editor that is showing.
         if (prevState.pixelMode !== this.state.pixelMode || prevState.tilemapMode !== this.state.tilemapMode) {
             activateUndoSurface(this.state.tilemapMode ? 'tilemap' : this.state.pixelMode ? 'pixel' : 'costumes');
@@ -294,6 +305,22 @@ class CostumeTab extends React.Component {
         // Round up width and height for scratch-flash compatibility
         // https://github.com/LLK/scratch-flash/blob/9fbac92ef3d09ceca0c0782f8a08deaa79e4df69/src/ui/media/MediaInfo.as#L224-L237
         return `${Math.ceil(size[0] / resolution)} x ${Math.ceil(size[1] / resolution)}`;
+    }
+    costumeMenuActions () {
+        const target = this.props.vm.editingTarget;
+        const index = this.state.selectedCostumeIndex;
+        const costume = target?.sprite?.costumes?.[index];
+        if (!this._menuMounted || this.state.pixelMode || this.state.tilemapMode ||
+            !target || target.currentCostume !== index || !costume) return null;
+        const intl = this.props.intl;
+        const action = (label, enabled, run) => ({label, location: 'file', enabled: !!enabled, run});
+        return {
+            open: action(editorT(intl.locale, 'open'), typeof this.fileInput?.click === 'function', this.handleFileUploadClick),
+            export: action(editorT(intl.locale, 'save'), costume.asset, () => this.handleExportCostume(index)),
+            new: action(intl.formatMessage(messages.addBlankCostumeMsg), true, this.handleNewBlankCostume),
+            duplicate: action(intl.formatMessage({id: 'gui.spriteSelectorItem.contextMenuDuplicate', defaultMessage: 'duplicate'}),
+                true, () => this.handleDuplicateCostume(index))
+        };
     }
     render () {
         const {
@@ -527,6 +554,8 @@ class CostumeTab extends React.Component {
                             <div style={{display: this.state.pixelMode || this.state.tilemapMode ? 'none' : 'contents'}}>
                                 <EditorErrorBoundary name="Paint editor"><PaintEditorWrapper
                                     selectedCostumeIndex={this.state.selectedCostumeIndex}
+                                    isSelectedEditor={!this.state.pixelMode && !this.state.tilemapMode}
+                                    getFileMenuActions={this.costumeMenuActions}
                                     editorTools={editorTools(false)}
                                 /></EditorErrorBoundary>
                             </div>

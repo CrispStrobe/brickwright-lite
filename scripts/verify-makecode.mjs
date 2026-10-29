@@ -27,7 +27,7 @@ import {extname, join, normalize, resolve, dirname} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {chromium} from 'playwright';
 import JSZip from 'jszip';
-import {openCodeActions} from './lib-code-actions.mjs';
+import {openCodeActions, closeCodeActions} from './lib-code-actions.mjs';
 import {makeCodeProjectFile} from '../overlay/scratch-gui/src/lib/bw-makecode/project-file.js';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -264,8 +264,7 @@ try {
         // intentionally restarts retained firmware as well as VM blocks; clear
         // our image through the product control before later native scenarios.
         // Its display can own the dock now, so reach the debugger explicitly.
-        const serialActions = page.locator('[data-testid="bw-code-actions"]');
-        if (await serialActions.evaluate(menu => menu.open)) await serialActions.locator('summary').click();
+        await closeCodeActions(page);
         await page.locator('[data-testid="bw-open-circuit-debugger"]').click();
         await page.locator('[data-debug-panel]:visible [data-firmware-back]').click();
         await page.locator('[data-debug-panel]:visible [data-firmware-chip]').waitFor({state: 'detached', timeout: 30000});
@@ -363,9 +362,7 @@ try {
             check('the CPX MakeCode run uses the real adafruit simulator frame', !!(await simFrame('adafruit')));
             await pane.locator('[data-testid="bw-makecode-stop"]').click();
         }
-        await page.evaluate(() => {
-            for (const details of document.querySelectorAll('[data-testid="bw-code-actions"]')) details.open = false;
-        });
+        await closeCodeActions(page);
         await page.getByRole('button', {name: /To blocks|Zu Blöcken/i}).first().click();
         const loaded = await waitFor(() => page.evaluate(() => {
             const vm = window.__brickwrightStore?.getState().scratchGui.vm;
@@ -535,12 +532,8 @@ try {
         // The import only WRITES the program; its sprites and costumes exist in the
         // project once ⇦ To blocks builds it. Without this the Costumes tab shows the
         // default sprite, and "reads it exactly" would be a question about the cat.
-        // The ⋯ actions menu is a <details> that stays open after an item is chosen
-        // (zIndex 70, over the editor toolbar). With the Arcade items it now reaches
-        // over ⇦ To blocks, and a forced click lands on a menu item; close it first.
-        await page.evaluate(() => {
-            for (const d of document.querySelectorAll('[data-testid="bw-code-actions"]')) d.open = false;
-        });
+        // Close the actual actions popup before using the editor toolbar below it.
+        await closeCodeActions(page);
         await page.getByRole('button', {name: /To blocks|Zu Blöcken/i}).first().click({force: true}).catch(() => {});
         const built = await waitFor(() => page.evaluate(() => {
             const vm = window.__brickwrightStore && window.__brickwrightStore.getState().scratchGui.vm;
