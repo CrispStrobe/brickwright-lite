@@ -14,6 +14,7 @@ const MenuComponent = ({
 }) => (
     <ul
         role="menu"
+        tabIndex={-1}
         onKeyDown={event => handleMenuKeyDown(event, onRequestClose)}
         className={classNames(
             styles.menu,

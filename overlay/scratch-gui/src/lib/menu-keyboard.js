@@ -7,6 +7,7 @@ export const focusMenuEdge = (menu, last = false) => {
     const items = menuItems(menu);
     const item = items[last ? items.length - 1 : 0];
     if (item) { item.focus(); item.scrollIntoView?.({block: 'nearest'}); }
+    else menu?.focus?.();
 };
 
 export const openMenuFromKeyboard = (event, open) => {

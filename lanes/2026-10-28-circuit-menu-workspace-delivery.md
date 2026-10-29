@@ -1,6 +1,6 @@
 # Qualified Circuit menu and editor workspace delivery
 
-Owner: editor UX integration coordinator. Status: CLAIMED; adoption implementation waits for qualified CUI PR #131.
+Owner: Circuit/instrument integration maintainer, following the operator-directed transfer on 2026-10-29. Status: ACTIVE; supplier landed, final consumer qualification and deployment pending.
 
 The operator authorizes completing CUI #131, explicit Lite adoption, editor UX #1536, qualified main integration and Vercel redeployment in that order. The Circuit campaign owner has handed downstream pin/adoption writing to this coordinator, retaining circuit audit and final evidence review. Avoid competing source publication or official artifact/log intake.
 
@@ -22,3 +22,47 @@ path for the current pin. Update only real Open/Import/zoom control lookups.
 No broad first match, direct importer dispatch or owner substitution; preserve
 all fixtures, chooser events, assertions, waits, viewport/measurement bounds
 and science intake. No supplier pin move before CUI qualification.
+
+## Remaining integration transfer — 2026-10-29
+
+The operator explicitly transferred the remaining integration, fixes,
+qualification, normal landing, deployment and documentation to the Circuit
+maintainer. The former coordinator stopped writes and handed over retained
+original custody. Preserve frozen `b1d4b5e`, qualified supplier `4b65f154` and
+all Circuit source ancestry; no competing branch or pin writer.
+
+Own the measured remaining editor boundaries: menu keyboard helper/component
+and its focused test; example-catalogue layout inside the existing Code popup;
+Costume command-band space for the pane toggle; required generated mirrors;
+existing chrome, Paint, bitmap and independent-handle browser controllers;
+and this delivery handoff. Keep loading/compiler bodies, artwork models,
+selection guards, actual clicks, transforms, save/reopen assertions, waits and
+viewport budgets intact. Restore real capture bounds after tool changes and
+report actual layout/selection failures; do not replace a valid Finish-path
+selector or force-click a covered control.
+
+The old heavy-job rejection is an initial-JavaScript size excess of 17,222
+bytes, before runtime measurement. Trace the retained bundle graph, repair a
+real dependency boundary and preserve the 4,476,352-byte limit. No runtime
+speed or physical claim follows from it. Native Rust diagnosis is separately
+owned and does not authorize overlapping changes here.
+
+The original combined Build `40822785950` was cancelled without a source-head
+change. Preserve it as cancelled, not qualified. Use fast-tier checks during
+preparation; the corrected editor candidate needs actual full application and
+browser qualification because touch layout, hit testing and menus change.
+Select that final head once, retain `ci:full` for its qualification, and require
+every enabled check to succeed before a matched normal merge. No completed
+study replay, duplicate original download, threshold relaxation or unchanged
+failed rerun. Final production version/UI and campaign docs remain owed.
+
+Bounded bundle candidate: keep the Circuit runtime host eager. Defer only the
+shared Library presentation behind its existing visibility-gated callers.
+Own `components/library/{library,library-content}.jsx`, the tiny cancellable
+`lib/library-component-loader.js`, their mirrors, focused lifecycle controls,
+the unchanged message-catalogue move and the existing chrome acceptance journey.
+The original 343-line implementation, relative imports, defaults, international
+context and callbacks remain byte-identical in the sibling content module.
+No initial modal is visible; loading has a real close control and fresh retry.
+Require both hosted initial-graph/budget evidence and actual open/filter/close/
+reopen/sprite-add behavior. Source closure sizes are not emitted-byte savings.

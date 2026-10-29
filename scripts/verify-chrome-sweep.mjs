@@ -25,6 +25,13 @@ const check = (condition, message, detail = '') => {
     if (!condition) failures.push(`${message}${detail ? ` — ${detail}` : ''}`);
 };
 
+const libraryRequests = [];
+page.on('request', request => {
+    if (/\/chunks\/bw-library(?:[.\/-])/.test(new URL(request.url()).pathname)) {
+        libraryRequests.push(request.url());
+    }
+});
+
 try {
     await mkdir(ARTIFACTS, {recursive: true});
     await page.addInitScript(() => {
@@ -63,11 +70,13 @@ try {
         if (trigger?.getAttribute('aria-expanded') !== 'true' || !menu) return false;
         const enabled = [...menu.querySelectorAll('[role^="menuitem"]')].filter(item =>
             item.closest('[role="menu"]') === menu && item.getAttribute('aria-disabled') !== 'true');
-        // A fresh project may have no enabled Edit action. Keep focus on its
-        // trigger; never focus a disabled Undo/Restore item just to satisfy a gate.
-        return enabled.length ? enabled.includes(document.activeElement) : document.activeElement === trigger;
+        // A fresh project may have no enabled Edit action. Its menu still
+        // receives Escape; never focus a disabled Undo/Restore item.
+        return enabled.length ? enabled.includes(document.activeElement) : document.activeElement === menu;
     });
     await page.keyboard.press('Escape');
+    check(await page.getByTestId('bw-edit-menu-trigger').getAttribute('aria-expanded') === 'false',
+        'horizontal menu navigation dismisses the actual Edit menu on Escape');
     check(await page.getByTestId('bw-edit-menu-trigger').evaluate(button => button === document.activeElement),
         'horizontal arrows switch to the next real menu');
 
@@ -258,6 +267,48 @@ try {
         'Blocks Edit menu excludes Code commands');
     check(await menuItem('Convert code to blocks').count() === 0 &&
         await menuItem('Generate code from blocks').count() === 0, 'Blocks Edit menu excludes Code conversion commands');
+
+    {
+        // Exercise the real deferred dialog only after the earlier editor witnesses.
+        await page.keyboard.press('Escape');
+        await page.waitForFunction(() => document.querySelector('[data-testid="bw-edit-menu-trigger"]')
+            ?.getAttribute('aria-expanded') === 'false');
+        check(libraryRequests.length === 0, 'library implementation is not requested before an actual chooser opens');
+        const pane = page.locator('[data-right-pane-toggle]');
+        if (await pane.getAttribute('aria-pressed') !== 'true') await pane.click();
+        await page.waitForFunction(() => document.querySelector('[data-right-pane-toggle]')
+            ?.getAttribute('aria-pressed') === 'true');
+        const chooser = page.locator('[class*="action-menu_main-button"][aria-label="Choose a Sprite"]');
+        await chooser.click();
+        const library = page.getByRole('dialog', {name: 'Choose a Sprite', exact: true});
+        const search = library.getByPlaceholder('Search', {exact: true});
+        const abby = library.getByRole('button', {name: 'Abby', exact: true});
+        await search.waitFor({state: 'visible'});
+        await abby.waitFor({state: 'visible'});
+        check(libraryRequests.length > 0, 'opening the chooser requests the real library implementation');
+        await search.fill('brickwright-no-such-sprite');
+        await abby.waitFor({state: 'hidden'});
+        await search.fill('Abby');
+        await abby.waitFor({state: 'visible'});
+        check(await abby.count() === 1, 'the loaded library filters a known sprite rather than an empty catalogue');
+        await library.getByRole('button', {name: 'Back', exact: true}).click();
+        await library.waitFor({state: 'hidden'});
+        await chooser.click();
+        await search.waitFor({state: 'visible'});
+        await abby.waitFor({state: 'visible'});
+        check(await search.inputValue() === '', 'closing and reopening the library resets its search state');
+        const beforeTargets = await page.evaluate(() => window.__brickwrightStore.getState().scratchGui.vm.runtime
+            .targets.filter(target => !target.isStage).map(target => target.id));
+        await search.fill('Abby');
+        await abby.click();
+        await library.waitFor({state: 'hidden'});
+        await page.waitForFunction(before => {
+            const added = window.__brickwrightStore.getState().scratchGui.vm.runtime.targets
+                .filter(target => !target.isStage && !before.includes(target.id));
+            return added.length === 1 && /^Abby/.test(added[0].getName()) && added[0].getCostumes().length > 0;
+        }, beforeTargets);
+        check(true, 'the deferred library adds one real sprite with costumes through the original callback');
+    }
 } catch (error) {
     check(false, 'chrome sweep journey completes', error.message);
 } finally {

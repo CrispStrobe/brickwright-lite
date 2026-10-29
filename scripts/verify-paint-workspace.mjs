@@ -55,6 +55,19 @@ try {
         assert.equal(await rail.evaluate(node => getComputedStyle(node).flexDirection), 'column');
         assert.equal(await rail.evaluate(node => getComputedStyle(node).overflowY), 'auto');
 
+        if (!(bounds.x >= 0 && bounds.x + bounds.width <= viewport.width + 1)) {
+            console.log('PAINT_LAYOUT_BOUNDARY', JSON.stringify(await editor.evaluate(node => {
+                const rows = [];
+                for (let el = node; el && rows.length < 8; el = el.parentElement) {
+                    const box = el.getBoundingClientRect(), css = getComputedStyle(el);
+                    rows.push({tag: el.tagName, classes: String(el.className).slice(0, 160),
+                        x: box.x, y: box.y, width: box.width, height: box.height,
+                        scrollLeft: el.scrollLeft, scrollWidth: el.scrollWidth,
+                        minWidth: css.minWidth, flex: css.flex, overflowX: css.overflowX});
+                }
+                return {viewport: {width: innerWidth, height: innerHeight}, ancestors: rows};
+            })));
+        }
         assert.ok(bounds.x >= 0 && bounds.x + bounds.width <= viewport.width + 1,
             'the vector workspace must fit the tablet viewport');
         for (const name of ['bw-costume-import', 'bw-costume-export', 'bw-pixel-toggle']) {

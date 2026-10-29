@@ -5511,7 +5511,7 @@ class PseudocodeImporter extends React.Component {
         }) : list;
         const open = this.state.showCatalog;
         return (
-            <span style={{position: 'relative', alignSelf: 'center'}}>
+            <span style={{display: 'block', width: '100%', minWidth: 0}}>
                 <button type="button"
                     onClick={() => { this.loadCatalog(); this.setState(s => ({showCatalog: !s.showCatalog})); }}
                     style={{...csel, cursor: 'pointer', border: '1px solid #cbd5e1',
@@ -5521,8 +5521,8 @@ class PseudocodeImporter extends React.Component {
                     {this.L.loadExample}
                 </button>
                 {open && (
-                    <div style={{position: 'absolute', top: '100%', ...(this.state.actionsAlignLeft ? {left: 0} : {right: 0}), zIndex: 60, marginTop: 4,
-                        width: 340, maxHeight: 380, display: 'flex', flexDirection: 'column',
+                    <div style={{marginTop: 4, boxSizing: 'border-box',
+                        width: '100%', maxWidth: 340, maxHeight: 380, display: 'flex', flexDirection: 'column',
                         background: '#fff', border: '1px solid #cbd5e1', borderRadius: 8,
                         boxShadow: '0 8px 24px rgba(15,23,42,.18)', textAlign: 'left'}}
                         data-testid="bw-catalog-panel"

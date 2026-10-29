@@ -66,3 +66,14 @@ test('root horizontal arrows open the next menu through its actual button',()=>{
         assert.equal(focused,0);assert.equal(clicked,0);assert.equal(closed,2);
     }finally{globalThis.requestAnimationFrame=old;}
 });
+
+test('an empty menu receives keyboard focus and can dismiss itself with Escape',()=>{
+    const s=setup();let menuFocused=false,closed=0;
+    s.menu.querySelectorAll=()=>[];
+    s.menu.focus=()=>{menuFocused=true;};
+    focusMenuEdge(s.menu);
+    assert.equal(menuFocused,true);
+    handleMenuKeyDown(s.event('Escape'),()=>closed++);
+    assert.equal(closed,1);
+    assert.equal(s.focus(),'opener');
+});

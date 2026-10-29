@@ -46,3 +46,44 @@ The `91a227c` CUI run passed its main 83-scenario browser journey and both unit/
 Lite checkpoint `8dcf060` fixes the source-suite Page double to support the current Code popup and adds idempotent open/close coverage. Its Circuit driver follows the originating visible designer's trigger and `aria-controls` into the portaled popup, while retaining legacy scoped controls for the current supplier. Fourteen focused controls pass. Hosted Build run `40805051663` is pending; keep `ci:full`. No pin has moved. The complete source suite was not run locally because the root test dependency is unavailable; do not install or build on the shared host merely to repeat hosted qualification.
 
 Vercel configuration was re-read on October 29: the obsolete Ignored Build Step remains null. Production still reports `5cd027707eceed3451bd62eaa21125a051650e59`; a fresh deployment and live UX acceptance are outstanding.
+
+## Forward repair checkpoint — 2026-10-29
+
+The original `b1d4b5e` Build was cancelled and its scientific jobs did not
+complete. Other same-head runs are distinct events; do not borrow identities
+or treat cancelled/skipped checks as acceptance. Preserve original-reader
+bindings and freeze each final head/run/job before any new original intake.
+
+Prepared repairs keep the catalogue in the Code popup's scroll flow, reserve
+the pane-toggle footprint in the Costume command band without adding another
+phone chrome row, and focus an empty menu so Escape reaches its close handler.
+The browser oracle now requires actual menu dismissal as well as focus return.
+Fifteen tiny keyboard/phone source controls pass; omitting empty-menu focus is
+rejected and restoration passes. This is not actual browser qualification.
+
+Two retained-log diagnoses were corrected: the catalogue chip was outside the
+viewport, and Finish path still exists when a draft exists. Bitmap rotation
+correctly refuses without an actual selection. Keep those guards and selectors.
+Tablet controllers read current canvas bounds after tool changes and report
+real hit/selection state; Paint overflow reports ancestor bounds before its
+unchanged assertion. The old log supplied no measured Paint width, so no
+universal layout cause or closure is claimed before fresh browser evidence.
+
+The old heavy wrapper failed the initial-JavaScript budget: 4,493,574 bytes
+against 4,476,352, an excess of 17,222. It did not reach runtime benchmarking.
+The transferred retained stats are the source for a dependency-boundary repair;
+keep the budget and qualify the corrected artifact. Native Rust lockstep work
+has a separate owner. No performance, calibration or deployment claim follows.
+
+The bundle candidate defers the shared Library presentation, with the original
+implementation moved byte-for-byte to its sibling module. The Circuit runtime
+host stays eager: delaying it would lose nonretained events and synchronous
+save handling. Library callers already mount only when their modal is open;
+no static member or imperative consumer was found. A cancellable loader refuses
+old completions, reports load failures and starts a new request on retry. Its
+seven pure controls pass; an omitted stale-completion guard is detected and
+restoration passes. Combined with keyboard/phone controls, 22 tiny checks pass.
+The existing chrome journey now checks no pre-open library request, real loading,
+known-item filtering, close/reopen state and one actual sprite addition with
+costumes. These are prepared acceptance assertions, not executed GUI results.
+Hosted stats still must establish the actual unchanged size budget.
