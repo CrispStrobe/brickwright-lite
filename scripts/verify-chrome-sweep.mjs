@@ -27,7 +27,7 @@ const check = (condition, message, detail = '') => {
 
 const libraryRequests = [];
 page.on('request', request => {
-    if (/\/chunks\/bw-library(?:[.\/-])/.test(new URL(request.url()).pathname)) {
+    if (/\/chunks\/bw-library(?:[.\/-])/.test(new globalThis.URL(request.url()).pathname)) {
         libraryRequests.push(request.url());
     }
 });
@@ -63,6 +63,14 @@ try {
 
     await page.getByTestId('bw-file-menu-trigger').focus();
     await page.getByTestId('bw-file-menu-trigger').press('ArrowDown');
+    // Opening schedules focus after render. As in the vertical cases above,
+    // establish that this menu owns focus before exercising its next key.
+    await page.waitForFunction(() => {
+        const trigger = document.querySelector('[data-testid="bw-file-menu-trigger"]');
+        const menu = trigger?.closest('[data-bw-menu-root]')?.querySelector('[role="menu"]');
+        return menu && document.activeElement?.closest('[role="menu"]') === menu &&
+            document.activeElement.getAttribute('aria-disabled') !== 'true';
+    });
     await page.keyboard.press('ArrowRight');
     await page.waitForFunction(() => {
         const trigger = document.querySelector('[data-testid="bw-edit-menu-trigger"]');

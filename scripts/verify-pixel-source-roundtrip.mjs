@@ -207,7 +207,7 @@ try {
     await page.mouse.up();
     assert.notEqual(await canvas.evaluate(element => element.toDataURL()), beforeRect,
         'the rectangle tool must draw its outline');
-    await page.getByRole('button', {name: 'Mirror', exact: true}).click();
+    await (await pixelControl(page, 'bw-pixel-mirror')).click();
     await page.getByTestId('bw-pixel-tool-pencil').click();
     await page.mouse.click(box.x + box.width * 0.20, box.y + box.height * 0.55);
     const widthBeforeZoom = await canvas.evaluate(element => element.getBoundingClientRect().width);
@@ -260,7 +260,7 @@ try {
     await page.getByTestId('bw-pixel-rename-input').fill('Highlights');
     await page.getByTestId('bw-pixel-rename-input').press('Enter');
     assert.equal(await newLayer.textContent(), 'Highlights');
-    await page.getByRole('button', {name: 'Mirror', exact: true}).click();
+    await (await pixelControl(page, 'bw-pixel-mirror')).click();
     await (await pixelControl(page, 'bw-pixel-colour-11')).click();
     const paintBox = await canvas.boundingBox();
     await showPanel('more');
@@ -641,15 +641,17 @@ try {
         await tablet.locator('[role="tab"]', {hasText: /Costume|Kost/}).first().click();
         await tablet.getByTestId('bw-pixel-toggle').click();
         await tablet.getByTestId('bw-pixel-canvas').waitFor();
+        assert.equal(await tablet.getByTestId('bw-pixel-palette-toolbar').isVisible(), false,
+            'the palette opens on demand instead of consuming a permanent row');
         const layout = await tablet.evaluate(() => {
             const box = name => document.querySelector(`[data-testid="bw-pixel-${name}"]`).getBoundingClientRect();
             const editor = box('editor');
             const toolbar = box('primary-toolbar');
-            const palette = box('palette-toolbar');
+            const palette = box('colour-controls');
             const canvas = box('canvas');
             const stage = box('viewport');
             const save = box('save');
-            const paletteButton = box('palette-toggle');
+            const paletteButton = box('colour-trigger');
             return {editor: {top: editor.top, bottom: editor.bottom},
                 toolbar: {top: toolbar.top, bottom: toolbar.bottom, height: toolbar.height},
                 palette: {top: palette.top, bottom: palette.bottom, height: palette.height},
@@ -659,9 +661,11 @@ try {
                 paletteButton: {left: paletteButton.left, right: paletteButton.right}};
         });
         assert.ok(layout.toolbar.height <= 52 && layout.palette.height <= 52,
-            'drawing controls must use two compact rows');
+            'drawing and colour controls must share one compact toolbar row');
+        assert.ok(layout.palette.top >= layout.toolbar.top && layout.palette.bottom <= layout.toolbar.bottom,
+            'the persistent colour controls must stay inside the toolbar');
         assert.ok(layout.save.right <= viewport.width && layout.paletteButton.right <= viewport.width,
-            'Save and palette settings must remain visible at iPad widths');
+            'Save and the colour/palette opener must remain visible at iPad widths');
         assert.ok(layout.stage.bottom - layout.stage.top >= (viewport.height === 768 ? 400 : 800),
             `the canvas workspace must retain most of the available height: ${JSON.stringify({viewport, layout})}`);
         assert.ok(layout.stage.left >= 0 && layout.stage.right <= viewport.width,

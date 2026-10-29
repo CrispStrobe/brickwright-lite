@@ -1797,6 +1797,7 @@ class PixelArtEditor extends React.Component {
                         onClick={() => this.setState({panel: panel === 'brush' ? null : 'brush', colourPickerOpen: false})}>
                         {toolIcon('brush')}<span style={{fontSize: 10, marginLeft: -4}}>{brushSize}</span></button>
                     <button type="button" style={{...iconBtn(mirror), flexShrink: 0}} aria-label={t(locale, 'px.mirror')}
+                        data-testid="bw-pixel-mirror"
                         title={t(locale, 'px.mirror')} aria-pressed={mirror}
                         onClick={() => this.setState({mirror: !mirror})}>{toolIcon('mirror')}</button>
                     <button type="button" style={{...iconBtn(panel === 'palette'), position: 'relative', flexShrink: 0}}
@@ -1838,7 +1839,7 @@ class PixelArtEditor extends React.Component {
                     </div>
 
                     <div data-testid="bw-pixel-tools-strip" style={{display: 'flex', gap: 4,
-                        flex: '0 0 auto', minWidth: 0, overflowX: 'auto', overflowY: 'hidden',
+                        flex: '1 1 auto', minWidth: 0, overflowX: 'auto', overflowY: 'hidden',
                         overscrollBehaviorX: 'contain'}}>
                     {['pencil', 'line', 'rect', 'filledRect', 'circle', 'filledCircle', 'select', 'lasso', 'wand', 'move',
                         'fill', 'erase', 'pick', 'hand'].map(k =>

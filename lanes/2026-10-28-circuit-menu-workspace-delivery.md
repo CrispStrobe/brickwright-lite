@@ -8,7 +8,7 @@ After every enabled exact-head CUI check passes and its normal matched-head merg
 
 Own the integration branch, dependency declarations/locks, vendor pin and matching static package provenance; affected package-adoption controls and integration documentation. Preserve the Board pin, numerical predicates, reference roles and fixture/study boundaries. Carry forward the published Circuit workflow/test changes only as reviewed parent source; no new workflow-policy, threshold, timeout, reference-baseline or simulator/compiler/physics change. Any new genuine failure outside this envelope must be routed to its owner.
 
-Keep `ci:full` on the combined editor candidate. Complete all enabled exact-final-head checks and affected actual GUI acceptance, including menu routing, FPGA workspaces/minimap, Pixel/Paint layout, symmetric exported geometry, Manual controls input/release and relevant Circuit/package acceptance. No consumed actual study, successful official run or acquired original is replayed/re-downloaded to read it. Retain failures and unsupported boundaries.
+The operator’s later fast-default/no-`ci:full` direction supersedes the original label requirement. Complete all enabled exact-final-head fast checks and affected actual production GUI acceptance, including menu routing, FPGA workspaces/minimap, Pixel/Paint layout, symmetric exported geometry, Manual controls input/release and relevant Circuit/package acceptance. No consumed actual study, successful official run or acquired original is replayed/re-downloaded to read it. Retain failures and unsupported boundaries.
 
 Only then normally merge matched to the reviewed head and verify actual parents/tree. Resolve the superseded separate PR only after its source is preserved and qualified. Deploy qualified current main through the existing Vercel production workflow, observing active work before a single new dispatch, and verify the live version contains the qualified editor and Circuit package changes. Source readiness, queued CI and a pending deployment are not completion.
 
@@ -51,8 +51,8 @@ The original combined Build `40822785950` was cancelled without a source-head
 change. Preserve it as cancelled, not qualified. Use fast-tier checks during
 preparation; the corrected editor candidate needs actual full application and
 browser qualification because touch layout, hit testing and menus change.
-Select that final head once, retain `ci:full` for its qualification, and require
-every enabled check to succeed before a matched normal merge. No completed
+Select that final head once under the current fast-default policy and require
+every enabled check plus actual affected acceptance before a matched normal merge. No completed
 study replay, duplicate original download, threshold relaxation or unchanged
 failed rerun. Final production version/UI and campaign docs remain owed.
 
@@ -66,3 +66,17 @@ context and callbacks remain byte-identical in the sibling content module.
 No initial modal is visible; loading has a real close control and fresh retry.
 Require both hosted initial-graph/budget evidence and actual open/filter/close/
 reopen/sprite-add behavior. Source closure sizes are not emitted-byte savings.
+
+Operator-directed continuation: compose the GUI owner’s measured patch from
+PR1536 comment 6490168065. Scope the hidden-stage Costume pane to the viewport,
+let the Pixel tool strip shrink, reach Mirror through the actual colour picker,
+and establish real File-menu focus before horizontal navigation. Preserve the
+existing 52-pixel and canvas-height bounds, transforms and save/reopen checks.
+Use `globalThis.URL` in the request witness because its proof-address constant
+is named `URL`; execute that real callback against a shadowed-name regression.
+No additional command-band reservation or package/model change is introduced.
+
+The selected-tier verdict alignment has separate claim PR1558. Until it lands,
+its legacy label-only red is a policy mismatch, not application acceptance.
+No `ci:full` labels are to be reapplied. Actual emitted-byte, FPGA flag-on,
+production-bundle and affected UI evidence remain required before source landing.

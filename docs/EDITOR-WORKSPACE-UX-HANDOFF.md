@@ -6,7 +6,7 @@ Updated 2026-10-29. The supplier menu work is qualified and merged. The combined
 
 - [CUI #131](https://github.com/CrispStrobe/bw-circuit-ui/pull/131) merged normally at `4b65f15485abbc039958d8e1a8a29ac3459b75f9`, tree `c07bedfe0a003c361621fbe9fb2b3a0bb9413d46`. All three exact-head checks passed. Independent original-log readback verified 83/83 scenarios, zero failures/skips, and all seven required browser/touch steps. CI and landed parents/tree matched the prediction. [Qualification run](https://github.com/CrispStrobe/bw-circuit-ui/actions/runs/40802516708).
 - [Lite #1536](https://github.com/CrispStrobe/brickwright-lite/pull/1536) checkpoint `b1d4b5eadc17059feeb6a2d5d704942d51fe89b6` normally composes the complete frozen Circuit #1538 source `93aba75473e65042925928fe8c1a0a4427fd59ca`, editor source and main through `e15b7e11c8fdb0862ff73369dab50bf55ead52b8`. It explicitly adopts CUI `4b65f154`; Board remains `8785e4688cc308b34fea434c1734523caa621f74`.
-- Keep `ci:full`. Combined [Build run 40822785950](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40822785950) was pending at this checkpoint. Refresh the actual final head and checks before acting; no queued result is acceptance.
+- The current operator policy is fast-default qualification with no `ci:full` labels; the original label instruction is historical. Combined [Build run 40822785950](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40822785950) was pending at this checkpoint. Refresh the actual final head and checks before acting; no queued result is acceptance.
 
 ## Implemented source
 
@@ -87,3 +87,28 @@ The existing chrome journey now checks no pre-open library request, real loading
 known-item filtering, close/reopen state and one actual sprite addition with
 costumes. These are prepared acceptance assertions, not executed GUI results.
 Hosted stats still must establish the actual unchanged size budget.
+
+## Current qualification policy and measured GUI return
+
+The operator explicitly requested no `ci:full` PR labels. Preserve fast build,
+unit, corpus and other enabled checks together with actual affected production
+acceptance. Do not repeat label changes: external removal cancelled the old
+thorough selection before it supplied application evidence. The legacy
+label-only verdict conflicts with the current policy; PR1558 scopes admission
+of actual selected fast/thorough execution without changing any test, selector,
+main/dispatch behavior, budget or numerical bound. It must not turn an empty
+code-tier attempt into qualification. Shared protocol-document ownership stays
+with its existing owner; this handoff records the current direction.
+
+The GUI owner measured a 1024-pixel ancestor at the 834-pixel Paint viewport.
+Its returned patch limits only the hidden-stage Costume pane to `100vw`, leaving
+the global floor intact. Pixel’s nonshrinking tool strip placed Save at x=1117;
+allowing that strip to shrink brought it to x=822 in the bounded observation.
+Mirror is reached through its real colour popover. A captured focus trace also
+showed the next key arriving before scheduled File-menu focus; the driver now
+waits for that precondition without changing its timeout or navigation assertions.
+The new request witness uses `globalThis.URL`, fixing a real proof-address
+shadow; its executed regression reproduces the old failure. Twenty-four local
+pure controls pass. The owner’s broader development-mode journeys and focused
+controls are useful bounded evidence, not final production/source qualification.
+Production readback, flag-on FPGA and emitted-budget verification are still owed.
