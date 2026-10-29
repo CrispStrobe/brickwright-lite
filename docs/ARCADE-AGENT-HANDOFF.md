@@ -80,11 +80,13 @@ Continue in this order:
    failure. Inspect `refusalEvidence.nativeAdditionDraft` and the operand details
    to bind the failure to its real producer before changing the domain proof.
    Run the full original PXT path; do not set `ARRAY_ALIAS_NATIVE_ONLY`.
-4. Coordinate the three inherited reference-instrument failures with their
-   source owner: the current-pin census identifies three stale Board references,
-   and two collector controls fail. Do not substitute a new SHA into historical
-   fingerprints or weaken collector counts. Final landing still requires every
-   enabled exact-head gate and applicable affected runtime qualification.
+4. Main now contains the reference-instrument owner's historical-study repair.
+   The prepared integration preserves both its exact-byte sealed-study checks
+   and the Arcade branch's separate frozen-controller checks. The prior live PR
+   reported a stale-pin guard and two collector failures; run the combined head
+   to establish whether those failures are resolved. Do not substitute a new SHA
+   into historical fingerprints or weaken collector counts. Final landing still
+   requires every enabled exact-head gate and applicable runtime qualification.
 
 The callback prefix proof now also admits a strict comparison between the
 fixed first creation-event Sprite's plain declared data field and a primitive
