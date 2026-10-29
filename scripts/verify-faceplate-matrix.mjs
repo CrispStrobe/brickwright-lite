@@ -178,7 +178,9 @@ await page.mouse.up();
         .catch(() => fail('mb05-faceplate-matrix not in the catalog (vendored examples stale?)'));
     const previousStageId = await page.evaluate(() =>
         window.__vm.runtime.getTargetForStage()?.id);
-    await item.click();
+    // A plain row click on the title: the row's device chips wrap under it in the
+    // narrow actions menu, and a centre click would pick a chip's device instead.
+    await item.click({ position: { x: 12, y: 8 } });
     await page.waitForFunction(oldStageId => {
         const p = window.__vm.runtime.controllerPanel;
         const scr = p && p.getWidget('scr');
