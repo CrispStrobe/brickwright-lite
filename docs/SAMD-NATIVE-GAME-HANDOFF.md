@@ -1,27 +1,78 @@
 # SAMD engine adoption handoff — updated 2026-10-29
 
-**Consumer acceptance and landing are unfinished.** Continue existing
-[PR1533](https://github.com/CrispStrobe/brickwright-lite/pull/1533), branch
-`lane/samd-release-adoption-20261028`, reviewed head
-`48df0f93f9b6b642238c13448e6f075d8871eb83`. Read
-[the adoption claim](../lanes/2026-10-26-samd-native-game-engine-adoption.md) and
-[the lane protocol](../lanes/PROTOCOL.md). Refresh GitHub state before acting;
-do not create a duplicate lane or dispatch.
+**Delivered.** [PR1533](https://github.com/CrispStrobe/brickwright-lite/pull/1533) normally merged as `9f1a620f2aae5ee988ed02069a8bf34c18949123`, folding PR1547. The 17 required fast, native and product checks passed on head `4e225970574ca517d7908811fe9bf9c3ed2f4fb4`; the reviewed parents and predicted tree matched the landed merge. The unlabelled PR's ci:full reminder failed as expected under the operator's fast-tier instruction. Original source branches, guest evidence and failures remain retained.
 
-Current source [Build40783464522](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40783464522)
-has a successful frontend-producing job and all six unit shards, but its
-browser/FPGA/Arcade checks remain pending. Preparatory
-[native run40803428616](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40803428616)
-succeeded and its executable/source/frontend identity audit passed. No actual-game
-dispatch has occurred; remaining source checks still gate actual acceptance.
+The full [source run40783464522](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40783464522)
+and [native run40803428616](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40803428616)
+passed on consumer `48df0f93f9b6b642238c13448e6f075d8871eb83`. Independent original
+archive/source audit joined all 8,563 frontend files, 184 native sources and
+binary `b1e644b68b203e196f25203ed2424220b2fcff15766f31cee32ba245b45c8a38`.
+Compile defaults and qualified original inputs remained unchanged.
 
-Native preparation now overlaps pending source CI after successful producing-job,
-unit and Rust checks plus strict emitted-byte admission. This supersedes the
-previous ordering that waited for every source check before any native dispatch.
-The existing native producer admits a successful automatic frontend job.
-**Every enabled exact-head source check and successful overall frontend workflow
-are still mandatory before actual-game dispatch and merge.** A pending overall
-workflow is not reported as qualified. No final acceptance gate is waived.
+**Both actual game realms passed:** Chromium in
+[40826297334](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40826297334),
+installed Tauri/WebKit in
+[40828345515](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40828345515).
+Each ran three fresh instances and retained 51 RGB frames. Independent decoding
+confirmed eight targets, ball motion, eight-pixel press displacement and stopped
+movement after release in all six instances. Original source/frontend/executable,
+observer/transport and engine/profile/firmware identities joined exactly.
+
+| Realm | Sample wall seconds | RSS observations | Maximum observed summed RSS |
+| --- | --- | --- | --- |
+| Chromium | 165.3971 / 164.9345 / 164.3794 | 496 | 1,059,164,160 bytes |
+| Installed Tauri/WebKit | 157.864 / 154.202 / 153.912 | 470 | 1,487,085,568 bytes |
+
+RSS is a one-second process-tree sum including observer processes and shared
+pages per process; it is not PSS or a continuous peak. These functional results
+do not establish real-time playability, physical capture or a normal SAMD GUI
+compile/import/export route.
+
+The installed result uses observer
+`e859cecd3adcfa001c9311b585ffe6983db49c76`, the original consumer above,
+frontend40783464522, native40803428616, producer40699886470 and producer head
+`8ea3767903d5135f4bd1e74914e25663b530d502`. Observer and HTTP transport hashes
+are retained in its original result. Reuse the original artifacts for review.
+
+Preserved failures and bounded repairs:
+
+- Run40826003752 stopped before guests: current gh refused ANSI-bearing job
+  logs. The reader captures raw responses into buffers/files and records its
+  own source/hash separately from the exact guest checkout.
+- The installed job in40826297334 lacked Tauri's resource directory. The same
+  admitted binary is now installed in a local usr/bin plus usr/lib/Brickwright
+  prefix. SAMD uses embedded frontend assets; no private SPIKE resources were
+  added to this qualification.
+- Installed40827218429 reached the game RPC before Node fetch's implicit
+  300-second header cutoff aborted it. The node:http transport honors the
+  existing 4,900-second RPC and 4,800-second script deadlines. Guest frame/input
+  budgets, startup limits, picture assertions and workflow deadline remain.
+  Twelve metadata/archive/RGB/memory/HTTP controls passed. The successful
+  installed game exceeds five minutes without changing these declared limits.
+- Native40827224550 retained a real timing failure: fastest exchange 3.12547 ms
+  exceeded the unchanged 2.5 ms bound. Maintainer commit
+  `fb43bdf543c6bb8b54cddc2aeaa6775cff5a7b46` repairs only mock JSON-line writes,
+  with identical wire bytes/order, all 1,000 exchanges and original assertions.
+  Production prefixes are byte-identical. Hosted40828350448 passed 275 standard
+  native tests (11 existing ignored) plus nine explicit ignored-suite controls.
+  Required final-head checks passed before landing; the original failure remains retained.
+
+- Fast run40830119499 passed five unit shards and build, but shard2 correctly
+  rejected the installed gate's unrecognized reader/scripts invocation. The
+  workflow now uses working-directory reader and the canonical node scripts
+  command. All six observer/input/output paths resolve identically. The observer,
+  game, arguments, budgets and successful originals are unchanged. Twenty-three
+  coverage/census controls and45 related workflow/budget/skip controls passed;
+  the failed original remains retained. No successful guest is replayed.
+
+The separate composed private SPIKE package passed all 13 installed lifecycle
+cases, including view switching, exact owned-process loss and natural session
+expiry at 120.14 seconds with fresh-session recovery. Independent audit joined
+one installed image, binary, firmware, source/helper identities, zero exits and
+unchanged CPU/memory/network bounds across all 13 cases. See
+[the delivery record](SPIKE-CURRENT-RUNTIME-DELIVERY-2026-10-28.md). Its existing
+redistribution false marker remains; it is separate from official SAMD input
+admission and makes no external MicroPython or physical-silicon claim.
 
 ## Completed supplier work
 
@@ -44,7 +95,7 @@ merged as `dea504b32a9a4bd43a2a9d25b587590a0ac9763f`. The package owner released
 the former PR1318-first hold for this exact adoption and its claimed repairs;
 no general package boundary is open.
 
-## Current consumer evidence
+## Retained prerequisite identity evidence
 
 PR1533 updates web engine/glue/profile identity in `scripts/sync-labwired-wasm.mjs`
 and matching Node identity in `.github/workflows/target-performance.yml`.
@@ -124,33 +175,10 @@ acceptance remains pending; the original failure is not reclassified as a flake.
 Production bytes and the original assertion are unchanged. Preserve other owners'
 MicroPython manifest hunks and old dirty worktrees.
 
-## Remaining work, in order
+## Continuation boundaries
 
-1. Refresh PR1533 and current Build40783464522. Wait for every enabled exact-head
-   check; only declared conditional skips are allowed. Retain ci:full for this
-   shared webpack/engine change. Preserve any new failure and diagnose before
-   changing source; do not duplicate live jobs or rerun unchanged failures.
-2. Native40803428616 and its independent identity audit are complete. Reuse the
-   retained original executable/receipt and reader report; do not dispatch another
-   build or download successful originals again to inspect them. Source CI must
-   still finish before actual-game dispatch.
-3. Once all source checks pass, verify successful overall Build40783464522 and
-   join that metadata to the retained frontend audit without downloading it again.
-   Review current Main composition. Then dispatch
-   `samd-native-game-qualification.yml` once with consumer
-   `48df0f93f9b6b642238c13448e6f075d8871eb83`, frontend_run `40783464522`,
-   admitted native_run `40803428616`, producer_run `40699886470` and producer_head
-   `8ea3767903d5135f4bd1e74914e25663b530d502`. Require three fresh actual Chromium
-   and three installed Tauri/WebKit instances. Independently inspect original
-   RGB movement, press/release, sampled RSS and source/frontend/executable joins.
-   Metadata admission alone is not an actual-guest result. Locate retained
-   originals through private operational notes; never replay a successful guest
-   merely to inspect its output.
-4. After actual acceptance, refresh every enabled check and Main. Merge normally
-   with `--match-head-commit`, verify reviewed/predicted/landed tree and parents,
-   then update this handoff, adoption guide and both claims. Do not force-push or
-   auto-merge. Keep only public identities and result links in published prose.
-   Notify the dependent lane with the qualified landed SHA.
+The selected software delivery and acceptance are complete. Reuse the retained
+originals; physical capture and a normal SAMD GUI route are separate work.
 
 Normal project compile/import/export and GUI-route adoption remain separate,
 scoped work in [the adoption guide](SAMD-NATIVE-GAME-ADOPTION.md). No current
