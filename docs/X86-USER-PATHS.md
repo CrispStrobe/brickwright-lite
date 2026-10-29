@@ -59,3 +59,47 @@ Existing [FreeDOS interaction acceptance](I80386-FREEDOS-INTERACTION.md) covers 
 [Media Lab](https://github.com/CrispStrobe/brickwright-media-lab) keeps separately licensed software/assets outside the app. Its Minix 2 README's login/shell narrative is historical project evidence, not newly audited here. Freedoom/FastDoom was not executed in its packaging environment; OpenGEM's full-run proof remains pending. Use free or authored examples and their exact notices, not an assumption that every packaged project runs.
 
 Coordinate a supplier-pin update with its active owner before editing shared package/lock/generated files. After the separate debugger correction, qualify one existing free client through the actual installed package: visible completion/input, pause, breakpoint, step, register/memory change, resume and pane switch without losing the session. Record the exact package/pin/source and observable failure state. This guide changes no pin and claims no new GUI adoption, performance, physical RTx or full OS compatibility.
+
+## Finite inventory bootstrap checkpoint — 2026-10-26
+
+The [once-selected finite V7 inventory](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40352829291)
+failed Chromium dependency setup before inventory observation. Its failure is
+retained and the event is spent. The [distinct F8 lane](../lanes/2026-10-26-x86-finite-v8-browser-bootstrap.md)
+starts disabled and reuses the existing official-Ubuntu mirror preparation
+helper unchanged, with explicit Git/workspace source admission before package
+setup. Historical readers, supplier identities and limits remain separate.
+
+This bootstrap source change adds no GUI feature or successful installed graph.
+Fresh source/Build and F8 original qualification are required before the
+separate actual-V8 HDD/JSON export, fresh reload/readback and forward-debug
+acceptance. Those actual GUI results remain pending; no whole-OS, physical or
+performance result follows from bootstrap or synthetic controls.
+
+## Reviewed F8 source arming — 2026-10-26
+
+The preceding bootstrap checkpoint records disabled Phase A. A separately
+reviewed source commit now arms only the F8 producer, independent reader and
+workflow route. F7 execution stays retired; its failed original and historical
+reader are retained. Fixed supplier epochs, the unchanged mirror helper and
+all limits are held. Source controls pass, but final exact-head source/Build
+qualification and separate one-shot F8 admission remain pending. Actual V8
+GUI export/reload and forward-debug acceptance remain unselected and unproved.
+
+## Finite V9 resolver-role source checkpoint — 2026-10-27
+
+The [once-selected V8 inventory](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40422314383)
+passed source and trusted setup, then refused `/etc/resolv.conf` because its
+selected alias role did not match the observed regular file. Its independent
+negative reader joined the event with qualification false. Preserve that
+failure and the earlier V7 setup failure; both events are spent.
+
+The [distinct V9 continuation](../lanes/2026-10-27-x86-finite-v9-resolver-role.md)
+has a disabled source candidate selecting only that path as a regular file.
+Historical V8 wire meanings and strict alias checks remain held. Source controls
+and pin-role separation do not qualify a new hosted inventory. Separate reviewed
+arming, exact-head source/Build admission, one V9 event and independent original
+reading precede native/runtime joins and the still-pending actual-V8 FreeDOS
+export/reload and forward-debug GUI acceptance.
+
+Current source status: [separately reviewed V9 arming](../lanes/2026-10-27-x86-finite-v9-resolver-role.md#separate-v9-source-arming-checkpoint--2026-10-27)
+is armed but unselected; final source CI, Build admission and actual events remain pending.
