@@ -177,21 +177,25 @@ try {
     // Main menus must reach the same live editor as its toolbar/shortcuts.
     const openMenu = async name => page.getByText(name, {exact: true}).first().click();
     const menuItem = name => page.locator('li:visible').filter({has: page.getByText(name, {exact: true})});
-    const beforeMenuEdit = await editor.textContent();
+    // Compare whole documents: .cm-content renders only the visible lines of this
+    // 500-line buffer, and Control+Home scrolls on Linux but not on macOS.
+    const docText = () => editor.evaluate(el => el.cmTile.root.view.state.doc.toString());
+    const editorHandle = await editor.elementHandle();
+    const waitForDoc = expected => page.waitForFunction(([el, text]) => el.cmTile.root.view.state.doc.toString() === text,
+        [editorHandle, expected]);
+    const beforeMenuEdit = await docText();
     await editor.click();
     await page.keyboard.press('Control+Home');
     await page.keyboard.insertText('menu_probe\n');
-    const afterMenuEdit = await editor.textContent();
+    const afterMenuEdit = await docText();
     check(afterMenuEdit !== beforeMenuEdit, 'menu undo control has a real edit');
     await openMenu('Edit');
     check(await menuItem('Undo').getAttribute('aria-disabled') !== 'true', 'Edit > Undo is enabled');
     await menuItem('Undo').click();
-    await page.waitForFunction(expected => document.querySelector('.cm-content')?.textContent === expected,
-        beforeMenuEdit);
+    await waitForDoc(beforeMenuEdit);
     await openMenu('Edit');
     await menuItem('Redo').click();
-    await page.waitForFunction(expected => document.querySelector('.cm-content')?.textContent === expected,
-        afterMenuEdit);
+    await waitForDoc(afterMenuEdit);
     check(true, 'Edit Undo and Redo restore the actual Code buffer');
     await openMenu('Edit');
     await menuItem('Find and replace…').click();

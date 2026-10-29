@@ -47,3 +47,18 @@ test('supplier clear notifications drop stale commands and do nothing after unmo
     receive.call(owner,[]);assert.deepEqual(owner._designerMenuActions,[]);
     owner._menuMounted=false;receive.call(owner,[{name:'stale'}]);assert.deepEqual(owner._designerMenuActions,[]);assert.equal(notified,2);
 });
+
+test('designer file commands sit flat in File under the host circuit names',()=>{
+    const owner=host(),get=makeProvider('circuit');
+    owner._designerMenuActions=['open','save','import','export','clear'].map(name=>
+        ({name,label:name,location:'file',submenu:'file',enabled:name!=='clear',run:()=>{}}));
+    const unregister=registerEditorMenuActions('test-circuit-file',()=>get.call(owner));
+    try{
+        const file=getEditorMenuItems('test-circuit-file','file');
+        assert.deepEqual(file.map(item=>item.label),['Open circuit…','Save circuit','Import circuit…','Export circuit…','clear']);
+        assert.ok(file.every(item=>item.submenu===''),'the supplier group key is not a visible submenu');
+        assert.equal(file[4].enabled,false);
+        owner.props.locale='de';
+        assert.equal(getEditorMenuItems('test-circuit-file','file')[0].label,'Schaltung öffnen…');
+    }finally{unregister();}
+});
