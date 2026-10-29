@@ -1,5 +1,42 @@
 # Arcade compatibility: fresh-agent handoff and methodology
 
+## Prepared follow-up: creation callback local Array overwrite
+
+A captured reimported creation callback has this actual sequence: reset `refs`
+to Null, copy the fixed event value into another local, assign the genuine
+`sprites.allOfKind` Array to `refs`, then read its element. The Array-input
+service refused the unmodified graph; reconnecting only the reset and overwrite
+made that component pass. This identifies the intervening event copy, rather
+than an inferred KIND or nominal class-type exemption.
+
+`array-reference-export-authority.js` now permits that bounded inert local copy
+at the occurrence-specific definite-overwrite frontier. It requires an owned
+immutable JSON graph, same valid scope, exact fixed local name distinct from the
+reset cell, exact `arcade_eventSprite` input with `first` or `second`, and no
+unsafe inherited property, dynamic frame writer or prototype write. Intervening calls,
+control flow, capture operations and early reads retain the reset; incompatible
+Array writers remain refused. The copied event value issues no Sprite, Array or initialization fact.
+Only an actual successful reset discount retains the new dependency; observed
+ambient changes permanently expire it before early exits and publication.
+
+Four independent physical-graph groups pass, including separate local/captured
+prototype writers, dynamic names, wrong event operations, ownership edits and
+expiry after restoration. Disabling the inert-copy rule or its expiry guard
+fails the controls. Four existing local-reset controls remain green. The exact
+captured reimport graph's Array-input query now passes. The complete second
+export, original SDK/native execution and saved-project routes still need
+external qualification; a component pass does not qualify the whole game.
+
+After the normal dependency/integration setup, run the source control with the
+repository's GUI scope hook:
+
+```sh
+node --test --import ./scripts/lib/register-gui-scope.mjs test/project-event-copy-reset-prefix.test.mjs
+```
+
+The GUI dependency registry explicitly admits this test's canonical procedure
+constraint model import. Keep that narrow row in step with the test.
+
 ## Prepared follow-up: genuine SDK registry receiver lineage
 
 The isolated `lane/arcade-sdk-snapshot-receivers-20261029` follow-up extends
@@ -26,9 +63,10 @@ cuts each fail the controls and are restored exactly. The minimized actual
 import → editable project → export probe has no diagnostics. These are source
 and authoring observations, not SDK/VM execution or a whole-project promotion.
 
-Before integrating this follow-up, finish terminal original intake for the live
-PR #1554 head. Compose the separately owned Rust timing fixture repair normally;
-never modify its source in this lane. Then qualify the final exact head using
+Terminal original intake for PR #1554 head `6e513efc20e` is complete. The prepared
+branch already contains the separately owned Rust timing fixture repair
+`fb43bdf543c` by normal composition; never modify its source in this lane. Qualify
+the final exact head using
 unchanged original/native tests, especially
 `test/makecode-arcade-array-callbacks.test.mjs` and the Sprite/reference tests.
 The focused source command is:
@@ -44,23 +82,34 @@ The raw corpus remains 147 translated / 36 partial / 1 parse failure.
 
 ## 29 October: current qualification and ordered repairs
 
-PR #1554's reviewed head `ae22d4a2618a943eb44755bf0385a867dd76555f`
-passed build, debugger, vendor, x86, Rust notices and PXT-control workflows.
-The [official numeric authoring job](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40813980059/job/123260459663)
-also passed. A standalone reader checked its retained artifact: all five GUI
-records report passed, their source/tree receipts agree, and 411 observed
-bundle hashes and byte lengths join the build receipt. The clean export after
-a refusal now has `COMPLETE` capture: consumed JSON and semantic-result bytes
-match both recorded SHA-256 hashes; unsupported and warning lists are empty.
-These are bounded authoring journeys, not whole-corpus compatibility.
-Earlier skipped or freshness-unavailable captures remain separate failures or
-unavailable observations; do not relabel them using this successor's success.
+PR #1554 head `6e513efc20e472d3f5a57b7ebdd83c342442ae91`
+passed build, corpus, Tauri, debugger, vendor, x86, Rust notices and PXT controls.
+The [official numeric authoring job](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40826166493/job/123293573362)
+passed all five bounded GUI journeys. A standalone reader checked 411 observed
+bundle hashes/byte lengths and the complete clean export input/result hashes.
+Its actual build checkout is `2e5345c50381743706f53ac73e75686b44535c7d`,
+tree `6b764fb64d4ae7d5bc65a45d209c31f6a2115b01`. This synthetic merge differs
+from the reviewed head only by the newly registered native-fixture claim
+Markdown. Its exact parents, predicted tree and sole changed path were verified;
+application source bytes agree. Preserve this actual checkout identity rather
+than asserting full-tree equality with the reviewed head.
 
-The same head has **37 blocking unit-test identities** across six shards.
-These are unit controls, not 37 corpus projects. Original logs and the numeric
-artifact are retained once; consult ignored operational notes before any intake.
-Use attempt-specific metadata; a base run endpoint previously returned stale
-queued status. No product from this candidate is merged into main.
+The six unit shards still contain **33 blocking test identities**, down from
+37 on `ae22d4a`. Four controls are resolved, including the complete multiplayer
+Player test's original-SDK/native, Code, saved/fresh SB3 and exported-PXT routes.
+The containing shard remains failed. No new failing identity appeared; the
+source-shape ratchet now reveals a remaining segment-match suspect after its
+ambient-Git failure was fixed. The successor replaces the truncated Rust test
+name extraction with explicit short/full selector equality; no ratchet baseline
+changes. Other producer/effect failures remain open.
+
+Original failed logs and numeric artifacts for both heads are retained once;
+consult ignored operational notes before any intake. The `6e513` numeric capture
+is `COMPLETE`, with no unsupported entries or warnings. Its earlier strict
+full-tree equality audit failed and is retained alongside the separately
+verified claim-only composition. Earlier skipped/freshness-unavailable captures
+remain separate observations. These journeys do not qualify a complete corpus
+application, the pending source changes, physical devices or a release.
 
 The prepared successor repairs four exposed control problems: the literal
 `parseInt("7")` normal-result case is positive while opaque-input cases still
@@ -68,7 +117,7 @@ refuse; the refusal-observer dependency inventory matches the current module;
 the portable Player fixture has an explicit `mp.Player` parameter for strict
 original-PXT compilation; and the Tauri source control reads the checked-out
 Rust file instead of requiring Git from PATH. Fourteen focused controls pass;
-the original-PXT Player execution still needs hosted qualification. The newly
+the original-PXT Player execution passed on `6e513`; the new successor still needs its own qualification. The newly
 [registered document-trigger claim](../lanes/2026-10-29-arcade-lineage-doc-trigger.md)
 adds the lineage document read by a source test to the Build push-input list.
 Existing complete trigger census and mutation controls remain mandatory.
@@ -90,10 +139,12 @@ refusal after restoration. Cutting that latch fails its new control. Nine
 existing primitive-addition/operator controls also pass. These bounded source
 checks establish neither VM/original execution nor a completed corpus row.
 
-The [isolated Tauri timing job](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40813806300/job/123250070998)
+The earlier [isolated Tauri timing job](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40813806300/job/123250070998)
 still failed: fastest 2.591604 ms against the preserved 2.5 ms assertion,
 median 4.736635 ms. The remaining default suite passed 269 with 11 declared
-ignored tests. Scheduling isolation alone is insufficient. Preserve this and
+ignored tests. A subsequent unchanged-fixture Tauri run on `6e513` passed; that
+finite success does not erase the failures or establish a timing root cause.
+Scheduling isolation alone was insufficient in the failed observation. Preserve this and
 the earlier 2.555585 ms failure; route the actual Rust-source investigation to
 its separately coordinated owner. Do not retry unchanged or relax the threshold.
 

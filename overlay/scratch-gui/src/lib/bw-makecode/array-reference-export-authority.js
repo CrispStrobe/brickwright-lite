@@ -179,6 +179,13 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
             else for(const owner of owners){const fn=functions.get(owner?.procedure);if(fn)fn.unknownEntry=true;}
         }
     }
+    let eventCopyPrefixUsed=false,eventCopyPrefixExpired=false;
+    const eventCopyPrefixCurrent=()=>{
+        if(!eventCopyPrefixUsed)return true;
+        if(!eventCopyPrefixExpired)try{if(!privatePrefixAmbientCurrent())eventCopyPrefixExpired=true;}
+        catch(_){eventCopyPrefixExpired=true;}
+        return !eventCopyPrefixExpired;
+    };
     let literalPrefixUsed=false,literalPrefixExpired=false;
     const literalPrefixCurrent=()=>{
         if(!literalPrefixUsed)return true;
@@ -669,6 +676,30 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         if(!['operator_add','operator_subtract','operator_multiply'].includes(n.opcode)||!exactKeys(n,['NUM1','NUM2']))return false;
         return ['NUM1','NUM2'].every(name=>{const slot=n.inputs[name];if(!Array.isArray(slot))return false;if(Array.isArray(slot[1]))return [4,5,6,7,8,10].includes(slot[1][0]);return inertLiteral(target,block(target,slot[1]),seen);});
     };
+    // Reading the fixed event slot and storing it in a different private local
+    // neither reads this reset cell nor calls/yields to authored code. This is
+    // an effect fact only: no Sprite, Array or initialization fact is issued.
+    const inertEventCopy=(node,c,scope)=>{
+        if(!isProjectJsonSnapshot(project)||!eventCopyPrefixCurrent()||!privatePrefixAmbientCurrent()||
+            !node||invalid.has(node)||owners.get(node)!==scope||scope.invalid||scope.unknownEntry||
+            node.opcode!=='arcade_setLocal'||node.shadow!==false||node.topLevel!==false||node.mutation!=null||
+            !exactKeys(node,['NAME','VALUE'])||watcherOwnKeys(node.fields||{}).length)return false;
+        const slot=node.inputs.NAME,name=literal(node,'NAME',scope.target);
+        if(!watcherIsArray(slot)||slot.length!==2||slot[0]!==1||!watcherIsArray(slot[1])||
+            slot[1].length!==2||slot[1][0]!==10||typeof name!=='string'||name==='__proto__'||
+            localCell(scope,name)===c)return false;
+        const inherited=watcherOwnDescriptor(Object.prototype,name);
+        if(inherited&&(!prefixHasOwn(inherited,'value')||inherited.writable!==true))return false;
+        const valueSlot=node.inputs.VALUE;
+        if(!watcherIsArray(valueSlot)||![2,3].includes(valueSlot[0])||valueSlot.length!==valueSlot[0]||
+            typeof valueSlot[1]!=='string'||valueSlot[0]===3&&!watcherIsArray(valueSlot[2]))return false;
+        if(records.some(r=>(r.scope===scope&&r.node.opcode==='arcade_setLocal'||r.target===scope.target&&r.node.opcode==='arcade_setCaptured')&&
+            (typeof literal(r.node,'NAME',r.target)!=='string'||literal(r.node,'NAME',r.target)==='__proto__')))return false;
+        const value=child(node,'VALUE',scope.target),which=value?.fields?.WHICH;
+        return !!value&&!invalid.has(value)&&owners.get(value)===scope&&value.opcode==='arcade_eventSprite'&&
+            value.shadow===false&&value.topLevel===false&&value.next==null&&value.mutation==null&&exactKeys(value,[],['WHICH'])&&
+            watcherIsArray(which)&&which.length===2&&which[1]===null&&['first','second'].includes(which[0]);
+    };
     const killedReset=(c,w,at)=>{
         if(!resetFlowReady||!(resetValue(w.value?.node)||!c.global&&w.value?.node&&inertLiteral(w.target,w.value.node))||invalid.has(w.node)||w.scope.invalid)return false;
         const scope=owners.get(at);if(!scope||w.scope!==scope||!scope.executedBefore)return false;
@@ -679,16 +710,22 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
             if(scope.root.opcode!=='arcade_whenSourceStarts'||!onceNode(w.node)||!topChain(scope,w.node))return false;
             return c.writers.some(o=>valid(o)&&topChain(scope,o.node)&&!!scope.executedBefore.get(o.node)?.has(w.node));
         }
-        // A local reset must be followed IMMEDIATELY by its definite overwrite:
+        // A local reset must reach its definite overwrite without exposure:
         // a direct writer, or an if/else whose both branches write the cell
-        // before any exit. Nothing else may run between reset and overwrite.
-        const next=block(w.target,w.node.next);
+        // before any exit. Only a fixed event copy to another local may cross
+        // this frontier; calls, captures and other effects retain the reset.
+        let next=block(w.target,w.node.next);const skipped=new Set();
+        while(next&&before.has(next)&&!skipped.has(next)&&inertEventCopy(next,c,scope)){
+            skipped.add(next);next=block(w.target,next.next);
+        }
         if(!next||!before.has(next))return false;
-        if(c.writers.some(o=>valid(o)&&o.node===next))return true;
+        if(c.writers.some(o=>valid(o)&&o.node===next)){if(skipped.size)eventCopyPrefixUsed=true;return true;}
         const branchAssigns=id=>{const seen=new Set();for(let n=block(w.target,id);n&&!seen.has(n);n=block(w.target,n.next)){seen.add(n);
             if(c.writers.some(o=>o.node===n&&o.scope===scope&&o.value&&!resetValue(o.value.node)&&!invalid.has(n)&&!(o.value.cell===c)&&!(o.value.node&&readsCell(o.target,o.value.node,c))))return true;
             if(/return|stop|break|continue|throw/i.test(n.opcode))return false;}return false;};
-        return next.opcode==='control_if_else'&&!invalid.has(next)&&branchAssigns(next.inputs?.SUBSTACK?.[1])&&branchAssigns(next.inputs?.SUBSTACK2?.[1]);
+        const result=next.opcode==='control_if_else'&&!invalid.has(next)&&branchAssigns(next.inputs?.SUBSTACK?.[1])&&branchAssigns(next.inputs?.SUBSTACK2?.[1]);
+        if(result&&skipped.size)eventCopyPrefixUsed=true;
+        return result;
     };
     // `x := v` immediately followed by `if not truthy(x) then x := e`, with the
     // occurrence after that if: a possibly absent (falsy) v cannot reach it.
@@ -1638,9 +1675,10 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
     };
     // Observe a newly used dependency before publishing the cached authority.
     // A later validation still observes it before any diagnostic early exit.
-    sourceStartReset.current();prefixResetCurrent();literalPrefixCurrent();
+    sourceStartReset.current();prefixResetCurrent();literalPrefixCurrent();eventCopyPrefixCurrent();
     return Object.freeze({spriteFlagWriters,validateInput(target,node,name='ARRAY'){
         try{
+        if(!eventCopyPrefixCurrent())return {ok:false,reason:'requires the current inert event-copy prefix for a discounted Array reset'};
         if(!literalPrefixCurrent())return {ok:false,reason:'requires the current numeric-literal local prefix for a discounted Array reset'};
         if(!conditionalCurrent())return {ok:false,reason:'requires the current conditional source-entry Array frontier'};
         // Observe the used frame theorem before every diagnostic exit. A
@@ -1690,12 +1728,13 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
             {ok:false,reason:'requires the current owned parameter declaration prefix for a discounted Array reset'}:result.ok&&!privatePrefixCurrent()?
             {ok:false,reason:'requires the current private identity-call prefix for a discounted Array reset'}:result.ok&&!conditionalCurrent()?
             {ok:false,reason:'requires the current conditional source-entry Array frontier'}:result.ok&&!literalPrefixCurrent()?
-            {ok:false,reason:'requires the current numeric-literal local prefix for a discounted Array reset'}:result;
+            {ok:false,reason:'requires the current numeric-literal local prefix for a discounted Array reset'}:result.ok&&!eventCopyPrefixCurrent()?
+            {ok:false,reason:'requires the current inert event-copy prefix for a discounted Array reset'}:result;
         if(deadOccurrence(target,node))return publish({ok:true});
         if(ordinaryEntry.isUnreachable(target,node))return publish({ok:true});
         if(occurrence?.candidate(target,node,name))return publish(occurrence.validateInput(target,node,name)?{ok:true}:{ok:false,reason:'requires the current closed occurrence Array producer and complete writer proof'});
         const value=input(node,name,target),types=readInput(value);return publish(singleArray(types)&&initialized(value)?{ok:true}:{ok:false,reason:'requires an actual initialized Array producer and compatible all writers'});
-        }catch(error){if(literalPrefixUsed)literalPrefixExpired=true;throw error;}
-        finally{literalPrefixCurrent();}
+        }catch(error){if(literalPrefixUsed)literalPrefixExpired=true;if(eventCopyPrefixUsed)eventCopyPrefixExpired=true;throw error;}
+        finally{literalPrefixCurrent();eventCopyPrefixCurrent();}
     }});
 }

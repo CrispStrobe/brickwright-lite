@@ -524,6 +524,7 @@
       "test/project-readonly-number-operands.test.mjs",
       "test/makecode-startup-number-roundtrip.test.mjs",
       "test/project-conditional-array-entry.test.mjs",
+      "test/project-event-copy-reset-prefix.test.mjs",
       "test/project-conditional-array-value-calls.test.mjs",
       "test/project-array-publication-frontier.test.mjs",
       "test/arcade-frame-delta-array-reads.test.mjs",

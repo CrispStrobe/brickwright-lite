@@ -38,7 +38,8 @@ test('the named Rust timing test and its assertion remain present',()=>{
  // Inspect the checked-out source, including an uncommitted assertion edit.
  // Missing source fails closed; no Git binary or Rust execution is required.
  const source=readFileSync(path.join(ROOT,'apps/tauri/src-tauri/src/renode_brick_state.rs'),'utf8');
- const short=fullName.split('::').at(-1);
+ const short='lockstep_steps_land_exactly_one_quantum_apart_without_polling';
+ assert.equal(fullName,'renode_brick_state::tests::'+short,'source name and complete Cargo selector agree');
  assert.equal([...source.matchAll(new RegExp('fn\\s+'+short+'\\s*\\(','g'))].length,1);
  assert.match(source,/wall\[0\]\s*<\s*Duration::from_micros\(2500\)/);
  assert.match(source,/for k in 0\.\.STEPS/);
