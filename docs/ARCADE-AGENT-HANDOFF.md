@@ -6148,6 +6148,17 @@ behavior still need their own qualification. This result changes no corpus row.
    the executed project. The existing flat-Array callback proof deliberately
    excludes SDK `allOfKind` results; do not generalize it without independently
    proving the SDK collection, callback, writer and currentness boundaries.
+   The compound-value arithmetic round trip now emits the actual post-VM
+   addition refusal and generated draft as a TAP diagnostic on failure, before
+   its unchanged assertion. A separate source-only export of the checked-in
+   fixture refuses the indexed left operand of a startup array update. Its
+   producer graph retains the global array's initial null alongside its fresh
+   allocation. The local reset proof does not establish when that global is
+   assigned: a future pointwise proof must close the startup entry and call
+   order, allocation and alias lineage, all writers, intervening effects and
+   source/prototype currentness. Do not discard nullable alternatives globally.
+   Confirm the actual post-VM refusal first; this source-only result does not
+   prove it is the same operand or establish an application completion.
 4. Run the immutable corpus and complete original project contexts on a qualified
    external worker, retaining source hashes and the first results. Separate
    import, export/reimport, original PXT execution, Lite execution and controller/

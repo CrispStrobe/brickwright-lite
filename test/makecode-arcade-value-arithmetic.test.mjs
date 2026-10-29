@@ -15,10 +15,23 @@ async function execute(imported){
     const run=await runProgram(imported.code,{frames:80,uploads:imported.costumes,storage:true});
     assert.deepEqual(run.errors,[],JSON.stringify({vars:vars(run),code:imported.code}));assert.deepEqual(run.creator.warnings,[]);return run;
 }
-async function roundtrip(source,check){
+async function roundtrip(source,check,diagnostic=null){
     const imported=arcadeToPseudocode(source),run=await execute(imported);await check(run);
     await check(await execute({...imported,code:run.creator.decompile()}));
-    const exported=projectToArcade(run.creator.project,{costumeSvg:(t,c)=>run.creator.assets.get(c.assetId)?.data});assert.deepEqual(exported.unsupported,[]);
+    const exported=projectToArcade(run.creator.project,{costumeSvg:(t,c)=>run.creator.assets.get(c.assetId)?.data});
+    if(exported.unsupported.length&&diagnostic){
+        // The selected caller uses a checked-in fixture. Keep the original
+        // assertion and expose the actual post-VM draft when export refuses.
+        try {
+            const detail=JSON.stringify({unsupported:exported.unsupported,details:exported.unsupportedDetails||[],draft:exported.refusalEvidence?.nativeAdditionDraft||null});
+            diagnostic(/\/(?:home|mnt|tmp|Users)\/|[A-Za-z]:\\\\/.test(detail)?
+                'Arcade value arithmetic refusal contains a local path; retain privately':
+                `Arcade value arithmetic export refusal: ${detail}`);
+        } catch {
+            // Evidence collection must never replace the original assertion.
+        }
+    }
+    assert.deepEqual(exported.unsupported,[]);
     const built=await compile('arcade',exported.files);assert.equal(built.success,true,JSON.stringify({diagnostics:built.diagnostics,ts:exported.ts}));
     await check(await execute(arcadeToPseudocode(exported.ts)));
     await run.vm.loadProject(Buffer.from(await(await run.vm.saveProjectSb3()).arrayBuffer()));run.vm.greenFlag();await stepFrames(run.vm,80);await check(run);
@@ -53,7 +66,7 @@ if(!(absent<=0)){checks+=16}`,async run=>{
         assert.deepEqual(actual,['52',3,3,2,NaN,Infinity,-Infinity,-1,1,5,-5]);
     });
 });
-test('compound stores, numeric increments and paused calls retain actual value types',async()=>{
+test('compound stores, numeric increments and paused calls retain actual value types',async t=>{
     await roundtrip(`let force:any=undefined
 let text:any="5"
 text+=2
@@ -75,7 +88,7 @@ let values=[text,counter,rows[0],rows[1],returned,minusZero,copiedZero]`,async r
         for(let i=0;i<7;i++)actual.push(await arrayOperation(run.vm,'referenceItem',{ARRAY:v.values,INDEX:i}));
         assert.deepEqual(actual,['52',6,'52',NaN,NaN,0,0]);
         assert.equal(v.text,'52');assert.equal(v.counter,6);assert.ok(Number.isNaN(v.returned));assert.ok(Object.is(v.minusZero,0));
-    });
+    },message=>t.diagnostic(message));
 });
 
 test('numeric array reads select native missing-value arithmetic without a lazy-expression marker',async()=>{
