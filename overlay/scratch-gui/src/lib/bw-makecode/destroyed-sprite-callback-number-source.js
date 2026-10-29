@@ -32,25 +32,74 @@ export function createDestroyedSpriteCallbackNumberSource(program){
    if(Array.isArray(value)){for(let i=0;i<value.length;i++){if(!Object.hasOwn(value,i)){invalid=true;continue;}visit(value[i],value);}return;}
    nodes.push(value);for(const key of keys(value))if(!metadata.has(key))visit(descriptor(value,key).value,value);
   };visit(program);
-  if(invalid||program.type!=='Program'||nodes.some(n=>n.type&&!syntax.has(n.type)||n.optional||n.callee?.optional||n.isNew||n.constructorCall||n.typeArguments?.length||n.kind==='var'||n.unsupported?.length))return denied('unclosed syntax');
+  if(invalid||program.type!=='Program'||nodes.some(n=>n.type&&!syntax.has(n.type)||n.optional||n.computed||n.callee?.optional||n.isNew||n.constructorCall||n.typeArguments?.length||n.kind==='var'||n.unsupported?.length))return denied('unclosed syntax');
   for(const n of nodes){if(keys(n).some(key=>typeof descriptor(n,key).value==='symbol'&&key!=='nativeArrayDomainCall'))return denied('symbol structural field');if(n.type==='Binary'&&!['+','-','*','/','%','<','>','<=','>=','===','!==','==','!='].includes(n.op)||n.type==='Unary'&&!['+','-','!','~'].includes(n.op)||n.type==='Assignment'&&!['=','+=','-=','*=','/=','%='].includes(n.op)||n.type==='Update'&&!['++','--'].includes(n.op))return denied('unknown operator');if(n.type==='Number'&&(!['number','string'].includes(typeof n.value)||String(n.value).trim()===''||Number.isNaN(Number(n.value)))||n.type==='String'&&typeof n.value!=='string'||n.type==='Boolean'&&typeof n.value!=='boolean')return denied('literal shape');}
   const bindings=analyseCallableBindings(program),ref=n=>bindings.references.get(n);
   const scopeAt=n=>{for(let p=n;p;p=parents.get(p)){const s=bindings.scopes.get(p);if(s)return s;}return bindings.global;};
   const lookup=(n,name)=>{for(let s=scopeAt(n);s;s=s.parent)if(s.names.has(name))return s.names.get(name);return null;};
   const namespaces=nodes.filter(n=>n.type==='Namespace');
-  const custom=new Set();
+  const custom=new Set(),flatSlots=new Map();
+  const forbiddenKinds=new Set(['Player','Projectile','Food','Enemy','create','nextKind','_nextKind','constructor','prototype','__proto__']);
   for(const ns of namespaces){
    if(ns.name!=='SpriteKind'||!program.body.includes(ns))return denied('foreign namespace');
-   for(const st of ns.body||[]){if(st.type!=='Declaration'||st.kind!=='const'||!st.exported)return denied('noncanonical kind declaration');
-    for(const d of st.decls){const c=d.init;if(custom.has(d.name)||['Player','Projectile','Food','Enemy','create'].includes(d.name)||c?.type!=='Call'||c.callee?.object?.name!=='SpriteKind'||c.callee.name!=='create'||c.args.length)return denied('noncanonical kind factory');custom.add(d.name);}}
+   for(const st of ns.body||[]){if(st.type!=='Declaration'||!['const','let'].includes(st.kind)||!st.exported)return denied('noncanonical kind declaration');
+    for(const d of st.decls){
+     if(custom.has(d.name)||flatSlots.has(d.name)||forbiddenKinds.has(d.name))return denied('reserved or duplicate kind slot');
+     if(st.kind==='let'){if(st.decls.length!==1||d.init!=null)return denied('kind slot initializer');flatSlots.set(d.name,d);continue;}
+     const c=d.init;if(c?.type!=='Call'||c.callee?.object?.name!=='SpriteKind'||c.callee.name!=='create'||c.args.length)return denied('noncanonical kind factory');custom.add(d.name);
+    }
+   }
   }
-  if(namespaces.length>1)return denied('ambiguous kind namespace');
+  if(namespaces.length>1||flatSlots.size>1)return denied('ambiguous kind namespace');
   const namespaceBinding=bindings.global.names.get('SpriteKind');
   const canonical=(node,name)=>node?.type==='Identifier'&&node.name===name&&(!lookup(node,name)||name==='SpriteKind'&&lookup(node,name)===namespaceBinding&&namespaces.length===1);
   const sdkCall=(n,name)=>n?.type==='Call'&&n.callee?.type==='Member'&&n.callee.name===name&&canonical(n.callee.object,'sprites');
-  const kind=n=>n?.type==='Member'&&canonical(n.object,'SpriteKind')&&(['Player','Projectile','Food','Enemy'].includes(n.name)||custom.has(n.name));
-  const shape=fn=>Array.isArray(fn.params)&&fn.params.length===1&&new Set(fn.params).size===1&&[fn,fn.params].every(value=>!Object.hasOwn(value,'restParam')&&!['async','isAsync','generator','isGenerator'].some(k=>value[k])&&['parameterDefaults','optionalParams','typeParameters','genericParams','parameterProperties'].every(k=>value[k]===undefined||Array.isArray(value[k])&&!value[k].length)&&!Object.keys(value.paramDefaults||{}).length);
-  const closedShape=(fn,count)=>fn.exported!==true&&Array.isArray(fn.params)&&fn.params.length===count&&[fn,fn.params].every(value=>!Object.hasOwn(value,'restParam')&&!['async','isAsync','generator','isGenerator'].some(k=>value[k])&&['parameterDefaults','optionalParams','typeParameters','genericParams','parameterProperties'].every(k=>value[k]===undefined||Array.isArray(value[k])&&!value[k].length)&&!Object.keys(value.paramDefaults||{}).length);
+  const rootRank=node=>{for(let n=node;n;n=parents.get(n))if(parents.get(n)===program.body)return program.body.indexOf(n);return -1;};
+  const kindInput=node=>{
+   const args=parents.get(node),call=Array.isArray(args)?parents.get(args):null;if(call?.type!=='Call'||call.args!==args)return false;
+   return sdkCall(call,'create')&&call.args[1]===node||['onDestroyed','allOfKind','destroyAllSpritesOfKind'].some(name=>sdkCall(call,name)&&call.args[0]===node);
+  };
+  const flatAliases=new Map(),flatSlotStores=new WeakSet(),flatCreates=new WeakSet(),flatAllowed=new WeakSet();
+  for(const [slot,decl]of flatSlots){
+   const matches=[];
+   for(let i=0;i+2<program.body.length;i++){
+    const a=program.body[i]?.expr,b=program.body[i+1]?.expr,c=program.body[i+2]?.expr;
+    if([i,i+1,i+2].some(at=>program.body[at]?.type!=='ExpressionStatement')||a?.type!=='Assignment'||a.op!=='='||a.left?.type!=='Identifier'||a.right?.type!=='Undefined'||
+       b?.type!=='Assignment'||b.op!=='='||b.left?.type!=='Identifier'||ref(a.left)!==ref(b.left)||
+       b.right?.type!=='Call'||b.right.callee?.type!=='Member'||!canonical(b.right.callee.object,'SpriteKind')||b.right.callee.name!=='create'||b.right.args.length||
+       c?.type!=='Assignment'||c.op!=='='||c.left?.type!=='Member'||!canonical(c.left.object,'SpriteKind')||c.left.name!==slot||c.right?.type!=='Identifier'||ref(c.right)!==ref(a.left))continue;
+    const binding=ref(a.left),declarations=nodes.filter(n=>n.type==='Declaration').flatMap(st=>(st.decls||[]).filter(d=>lookup(st,d.name)===binding).map(d=>({st,d})));
+    if(!binding||binding.scope!==bindings.global||declarations.length!==1||!program.body.includes(declarations[0].st)||declarations[0].st.kind!=='let'||declarations[0].st.decls.length!==1||declarations[0].d!==binding.node||declarations[0].d.init!=null||rootRank(declarations[0].st)>=i||rootRank(decl)>=i)continue;
+    matches.push({binding,a,b,c,end:i+2});
+   }
+   if(matches.length!==1)return denied('flattened kind triad');
+   const receipt=matches[0];flatAliases.set(receipt.binding,receipt);flatSlotStores.add(receipt.c);flatCreates.add(receipt.b.right);
+   flatAllowed.add(receipt.a.left);flatAllowed.add(receipt.b.left);flatAllowed.add(receipt.c.right);
+   for(const n of nodes){
+    if(n.type==='Assignment'&&n.left?.type==='Identifier'&&ref(n.left)===receipt.binding&&n!==receipt.a&&n!==receipt.b||n.type==='Update'&&n.argument?.type==='Identifier'&&ref(n.argument)===receipt.binding)return denied('extra kind alias writer');
+    if(n.type==='Member'&&canonical(n.object,'SpriteKind')&&n.name===slot){const parent=parents.get(n);if(parent?.type==='Assignment'&&parent.left===n&&parent!==receipt.c||parent?.type==='Update')return denied('extra kind slot writer');}
+   }
+  }
+  const flatReadReady=(node,receipt)=>{
+   if(rootRank(node)<=receipt.end||!kindInput(node))return false;
+   for(let owner=parents.get(node);owner;owner=parents.get(owner)){
+    if(owner.type==='FunctionDeclaration')return false;
+    if(owner.type==='FunctionExpression'){const args=parents.get(owner),call=Array.isArray(args)?parents.get(args):null;if(!sdkCall(call,'onDestroyed')||call.args!==args||call.args[1]!==owner)return false;}
+   }
+   return true;
+  };
+  for(const node of nodes){
+   if(node.type==='Identifier'&&flatAliases.has(ref(node))){const r=flatAliases.get(ref(node));if(!flatAllowed.has(node)&&!flatReadReady(node,r))return denied('kind alias read outside input frontier');}
+   if(node.type==='Member'&&canonical(node.object,'SpriteKind')&&flatSlots.has(node.name)){
+    const parent=parents.get(node),r=[...flatAliases.values()][0];if(!(parent?.type==='Assignment'&&parent.left===node&&flatSlotStores.has(parent))&&!flatReadReady(node,r))return denied('kind slot read outside input frontier');
+   }
+  }
+  // This predicate is only an SDK kind INPUT receipt. It never joins the
+  // scalar primitive producer, supplies a numeric value, or initializes a cell.
+  const kind=n=>n?.type==='Identifier'&&flatAliases.has(ref(n))&&flatReadReady(n,flatAliases.get(ref(n)))||
+   n?.type==='Member'&&canonical(n.object,'SpriteKind')&&(['Player','Projectile','Food','Enemy'].includes(n.name)||custom.has(n.name)||flatSlots.has(n.name)&&flatReadReady(n,[...flatAliases.values()][0]));
+  const shape=fn=>fn.exported!==true&&Array.isArray(fn.body)&&Array.isArray(fn.params)&&fn.params.every(name=>typeof name==='string')&&fn.params.length===1&&new Set(fn.params).size===1&&[fn,fn.params].every(value=>!Object.hasOwn(value,'restParam')&&!['async','isAsync','generator','isGenerator'].some(k=>value[k])&&['parameterDefaults','optionalParams','typeParameters','genericParams','parameterProperties'].every(k=>value[k]===undefined||Array.isArray(value[k])&&!value[k].length)&&!Object.keys(value.paramDefaults||{}).length);
+  const closedShape=(fn,count)=>fn.exported!==true&&Array.isArray(fn.body)&&Array.isArray(fn.params)&&fn.params.length===count&&[fn,fn.params].every(value=>!Object.hasOwn(value,'restParam')&&!['async','isAsync','generator','isGenerator'].some(k=>value[k])&&['parameterDefaults','optionalParams','typeParameters','genericParams','parameterProperties'].every(k=>value[k]===undefined||Array.isArray(value[k])&&!value[k].length)&&!Object.keys(value.paramDefaults||{}).length);
   const ordinary=new Map(),ordinaryCalls=new Set(),edges=new Map();
   for(const fn of nodes.filter(n=>n.type==='FunctionDeclaration')){const b=bindings.global.names.get(fn.name);if(!program.body.includes(fn)||!b||b.node!==fn||b.written||!closedShape(fn,0))return denied('ordinary declaration shape');ordinary.set(b,fn);edges.set(fn,new Set());}
   const functionOwner=node=>{for(let p=parents.get(node);p;p=parents.get(p))if(['FunctionDeclaration','FunctionExpression'].includes(p.type))return p;return null;};
@@ -134,19 +183,20 @@ export function createDestroyedSpriteCallbackNumberSource(program){
    if(n.type==='Unary'&&!primitive(n.argument))return denied('opaque unary coercion');
    if(n.type==='Template'&&!image(n))return denied('image factory input');
    if(n.type==='Array'&&(!Array.isArray(n.items)||!n.items.every(coordinateInput)))return denied('nonprimitive Array construction');
-   if(n.type==='Assignment'&&n.left?.type!=='Identifier'){
+   if(n.type==='Assignment'&&n.left?.type!=='Identifier'&&!flatSlotStores.has(n)){
     if(n.left?.type!=='Member'||!['x','y','vx','vy','ax','ay','fx','fy','width','height'].includes(n.left.name)||!sprite(n.left.object)||(entries.has(ref(n.left.object))||aliases.has(ref(n.left.object)))||n.op!=='='||!coordinateInput(n.right))return denied('coordinate writer');
    }
    if(n.type==='Update'&&n.argument?.type!=='Identifier')return denied('coordinate update');
    if(n.type==='Member'){
     const p=parents.get(n);
+    if(parents.get(n)?.type==='Assignment'&&parents.get(n).left===n&&flatSlotStores.has(parents.get(n)))continue;
     if(kind(n)||selected.has(n)||n.name==='x'&&sprite(n.object)||n.name==='length'&&(snapshotArray(n.object)||primitiveArray(n.object)))continue;
     if(p?.type==='Call'&&p.callee===n)continue;
     return denied('unproved member read');
    }
    if(n.type==='Index'&&(!snapshotArray(n.object)||n.index?.type!=='Number'||!Number.isSafeInteger(Number(n.index.value))||Number(n.index.value)<0))return denied('unproved indexed effect');
    if(n.type!=='Call')continue;
-   if(registrations.includes(n)||factory(n)||ordinaryCalls.has(n))continue;
+   if(registrations.includes(n)||factory(n)||ordinaryCalls.has(n)||flatCreates.has(n))continue;
    if(n.callee?.type==='Member'&&n.callee.name==='push'&&n.callee.object?.type==='Identifier'&&primitiveArray(n.callee.object)&&n.args.length===1&&coordinateInput(n.args[0]))continue;
    if(n.callee?.object?.name==='SpriteKind'&&n.callee.name==='create'&&namespaces.some(ns=>{for(let p=n;p;p=parents.get(p))if(p===ns)return true;return false;}))continue;
    if(sdkCall(n,'allOfKind')||sdkCall(n,'destroyAllSpritesOfKind')){if(n.args.length!==1||!kind(n.args[0]))return denied('kind operation');continue;}

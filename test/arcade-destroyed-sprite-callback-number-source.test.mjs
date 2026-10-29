@@ -161,3 +161,78 @@ test('nullable factory receivers supply effect closure without issuing Sprite or
  assert.equal(accepted(multiPrefix+'\nlet first:Sprite=null;first.setPosition(10,60);'),false);
  assert.equal(accepted(multiPrefix+'\nlet first:Sprite;first=sprites.create(img`1`,SpriteKind.Enemy);first.setPosition(10,60);'),true);
 });
+
+// The flattened alias is deliberately an ordinary name: no generated-name
+// prefix enrolls a Number, identity or initialized-variable producer.
+const flatKindSource=`namespace SpriteKind { export let Custom:number }
+let assignedKind:number
+let positions=0
+assignedKind=undefined
+assignedKind=SpriteKind.create()
+SpriteKind.Custom=assignedKind
+sprites.onDestroyed(assignedKind,function(eventSprite:Sprite){
+ let sprite:Sprite=null
+ let replacement:Sprite=null
+ sprite=eventSprite
+ positions=positions+sprite.x
+ replacement=sprites.create(img\`1\`,assignedKind)
+ replacement.setPosition(90,60)
+})
+let first=sprites.create(img\`1\`,assignedKind)
+first.setPosition(10,60)
+let retained=sprites.allOfKind(assignedKind)
+sprites.destroyAllSpritesOfKind(assignedKind)`;
+
+test('canonical flattened kind triad issues only SDK kind input authority after its frontier',()=>{
+ const {p,proof,reads}=inspect(flatKindSource);assert.equal(proof.reason,null);assert.equal(reads.length,1);assert.equal(proof.has(reads[0]),true);
+ for(const node of walk(p))if(node.type==='Identifier'&&node.name==='assignedKind')assert.equal(proof.has(node),false);
+ assert.equal(accepted(flatKindSource.replace('onDestroyed(assignedKind','onDestroyed(SpriteKind.Custom')),true);
+ assert.equal(accepted(flatKindSource.replace('let assignedKind:number','let ordinaryAlias:number').replaceAll('assignedKind','ordinaryAlias')),true);
+ assert.equal(accepted(source),true,'the authored const kind path remains independent');
+});
+
+test('flattened kind alias and slot retain every writer and the exact adjacent root triad',()=>{
+ for(const text of [
+  flatKindSource.replace('assignedKind=SpriteKind.create()','assignedKind=other.create()'),
+  'let SpriteKind=other;'+flatKindSource,
+  flatKindSource.replace('assignedKind=SpriteKind.create()','assignedKind=SpriteKind.other()'),
+  flatKindSource.replace('let assignedKind:number','let assignedKind:number;let assignedKind:number'),
+  flatKindSource.replace('assignedKind=SpriteKind.create()','positions=0;assignedKind=SpriteKind.create()'),
+  flatKindSource+'\nassignedKind=0;',
+  flatKindSource+'\nassignedKind++;',
+  flatKindSource+'\nSpriteKind.Custom=0;',
+  flatKindSource.replace('SpriteKind.Custom=assignedKind','SpriteKind.Other=assignedKind'),
+  flatKindSource+'\nSpriteKind.create=other;',
+  flatKindSource.replace('assignedKind=undefined','sprites.allOfKind(assignedKind);assignedKind=undefined'),
+  flatKindSource.replace('assignedKind=undefined','sprites.allOfKind(SpriteKind.Custom);assignedKind=undefined'),
+  flatKindSource+'\nfunction observe(){sprites.allOfKind(assignedKind)}observe();',
+  flatKindSource+'\nlet copy=assignedKind;',
+  flatKindSource+'\npositions+=assignedKind;',
+  flatKindSource+'\nfirst.setPosition(assignedKind,60);',
+  flatKindSource.replace('assignedKind=undefined','assignedKind=null'),
+  flatKindSource.replace('export let Custom:number','export let Custom:number=0'),
+  flatKindSource.replaceAll('Custom','nextKind'),
+  flatKindSource.replaceAll('Custom','_nextKind'),
+  flatKindSource.replaceAll('Custom','constructor'),
+  flatKindSource+'\nlet extracted=SpriteKind.create;'
+ ])assert.equal(accepted(text),false,text);
+});
+
+test('flattened kind receipt expires on removed absence and writer changes',()=>{
+ const {p,proof,reads}=inspect(flatKindSource);assert.equal(proof.has(reads[0]),true);
+ const triad=walk(p).find(n=>n.type==='Assignment'&&n.left?.type==='Member'&&n.left.name==='Custom'),before=triad.left.name;
+ triad.left.name='Other';assert.equal(proof.current(),false);triad.left.name=before;assert.equal(proof.current(),false);
+ const fresh=inspect(flatKindSource);fresh.p.body.push({type:'ExpressionStatement',expr:{type:'Assignment',op:'=',left:{type:'Identifier',name:'assignedKind'},right:{type:'Number',value:'1'}}});assert.equal(fresh.proof.current(),false);
+});
+
+test('computed member flags and malformed callback envelopes never select the literal SDK contract',()=>{
+ for(const target of ['registration','property','exported','parameter','body']){
+  const p=parse(source),all=walk(p),read=all.find(n=>n.type==='Member'&&n.name==='x'),fn=all.find(n=>n.type==='FunctionExpression');
+  if(target==='registration')all.find(n=>n.type==='Call'&&n.callee?.name==='onDestroyed').callee.computed=true;
+  if(target==='property')read.computed=true;
+  if(target==='exported')fn.exported=true;
+  if(target==='parameter')fn.params[0]={type:'Identifier',name:fn.params[0]};
+  if(target==='body')fn.body={type:'ExpressionStatement',expr:{type:'Number',value:'0'}};
+  assert.equal(createDestroyedSpriteCallbackNumberSource(p).has(read),false,target);
+ }
+});

@@ -56,7 +56,7 @@ including non-enumerable ones, participate in the effect census. A review found
 that boundary gap and a regression now detects hidden mutations and unknown
 calls.
 
-Sixteen bounded source controls and one actual import/authoring/export control
+Twenty bounded source controls and one actual import/authoring/export control
 pass. Three current mutation cuts detect missing consumer facts, missing alias
 ingress and skipped hidden executable fields; original bytes were restored.
 The earlier seven-control authored-source checkpoint and its failures remain
@@ -74,6 +74,18 @@ Run the complete controls on the prepared external worker:
 ```sh
 node --import ./scripts/lib/register-gui-scope.mjs --test --test-concurrency=1 test/arcade-destroyed-sprite-callback-number-source.test.mjs test/arcade-destroyed-callback-consumer.test.mjs test/makecode-arcade-sprite-collections.test.mjs
 ```
+
+The exporter also flattens a custom kind into a namespace slot declaration and
+three adjacent root statements: `alias = undefined`,
+`alias = SpriteKind.create()`, `SpriteKind.Custom = alias`. The private input
+receipt now recognizes one such slot with unique lexical bindings and the
+complete writer census. Alias/slot reads must be direct admitted SDK kind
+inputs after that frontier; an inline callback must itself be registered later.
+The source name is immaterial. No numeric kind value, kind equality or variable
+initialization is inferred, and this receipt never joins the primitive producer.
+Extra writers, changed factory identity, copied aliases, earlier use, ordinary
+function captures and reserved/internal slots retain refusal. Multiple flattened
+slots and additional kind-producer shapes remain open.
 
 The new default-on acceptance must actually destroy a created Sprite and observe
 `positions = 10`, `callbacks = 1`, `ready = 1` through original PXT, Lite, Code,
