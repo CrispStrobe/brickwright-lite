@@ -107,7 +107,7 @@ function deadLocalResets(program) {
 
 // Analyze actual lexical producers and all writers without rewriting the AST.
 // Source annotations constrain consumers; they never seed producer authority.
-function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpers:provedHelpers=new Set(),parenthesized=false,unboundIsOpaque=false,opaqueDeclarationValues=false,uninitializedLocalsAreOpaque=false,declaredLocalUndefined=false,multiplayerPlayerProperties=false,consoleInspection=false,arrayValues=false,arrayEffectSites=false,arrayCallbackParameters=false,arrayLoopEntries=false,provenArrayLength=false,ordinaryPrimitiveSdkNumbers=false,ordinaryMusicNumbers=true,sceneClockNumbers=false,initializationEntries=false,primitiveComparisons=false,closureEntries=false,normalCompletion=null,closedOrdinaryEntries=false,physicalUpdateSource=null}={},privateSpriteAyProof=null,identityInput=null,cameraNumberInput=null,controlEntry=null) {
+function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpers:provedHelpers=new Set(),parenthesized=false,unboundIsOpaque=false,opaqueDeclarationValues=false,uninitializedLocalsAreOpaque=false,declaredLocalUndefined=false,multiplayerPlayerProperties=false,consoleInspection=false,arrayValues=false,arrayEffectSites=false,arrayCallbackParameters=false,arrayLoopEntries=false,provenArrayLength=false,ordinaryPrimitiveSdkNumbers=false,ordinaryMusicNumbers=true,sceneClockNumbers=false,initializationEntries=false,primitiveComparisons=false,closureEntries=false,normalCompletion=null,closedOrdinaryEntries=false,physicalUpdateSource=null}={},privateSpriteAyProof=null,identityInput=null,cameraNumberInput=null,controlEntry=null,arrayCallbackBootstrap=false) {
     const ordinaryEntry=closedOrdinaryEntries?createClosedOrdinarySourceEntry(program):null;
     const nullableLengthSource=arrayValues?nullableArrayLengthSource(program):null;
     const nullableLengthIssued=new Set();let nullableLengthUsed=false;
@@ -137,7 +137,7 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
     const numericArrows=new Set(provedArrows),numericHelpers=new Set(provedHelpers);
     // Optional actual Array allocations retain per-allocation element cells.
     // Default consumers receive exactly their prior domain and traversal.
-    const arraySites=new WeakMap(),arrayOperations=[],arrayMaps=[],arrayConstraints=[],unsafeArrayMethods=new Set();
+    const arraySites=new WeakMap(),arrayOperations=[],arrayMaps=[],arrayCallbacks=[],arrayConstraints=[],unsafeArrayMethods=new Set();
     const arrayToken=node=>{if(!arraySites.has(node))arraySites.set(node,Object.freeze({kind:'Array',site:node,element:Symbol('array element')}));return arraySites.get(node);};
 
     const inspection=consoleInspection?consoleInspectSourceCalls(program):null;
@@ -266,9 +266,11 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
         if(arrayValues&&node.type==='Index'){arrayOperations.push({kind:'read',receiver:cell(node.object),result:current});return;}
         if(provenArrayLengthAt(node)){add(current,'Number');return;}
         if(arrayValues&&node.type==='Member'&&node.name==='length'){arrayOperations.push({kind:'length',node,receiver:cell(node.object),result:current});return;}
-        if(arrayValues&&node.type==='Call'&&!node.isNew&&node.callee?.type==='Member'&&['map','push','pop','shift','unshift'].includes(node.callee.name)){
+        if(arrayValues&&node.type==='Call'&&!node.isNew&&node.callee?.type==='Member'&&(['map','push','pop','shift','unshift'].includes(node.callee.name)||['forEach','filter'].includes(node.callee.name)&&(arrayCallbackBootstrap||callbackEntry?.calls.has(node)))){
             const operation={kind:node.callee.name,node,receiver:cell(node.callee.object),result:current};arrayOperations.push(operation);
-            if(operation.kind==='map'){operation.token=arrayToken(node);add(current,operation.token);arrayMaps.push(operation);}return;
+            if(['map','filter'].includes(operation.kind)){operation.token=arrayToken(node);add(current,operation.token);}
+            if(operation.kind==='map')arrayMaps.push(operation);
+            if(['map','forEach','filter'].includes(operation.kind))arrayCallbacks.push(operation);return;
         }
 
         if(multiplayer?.isRegistration(node)){const handler=node.args[1],scope=functionScopes.get(handler);if(scope)add(binding(scope,handler.params[0]),'Player');}
@@ -417,10 +419,12 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
             if(op.kind==='length'||['push','unshift'].includes(op.kind))changed=add(op.result,'Number')||changed;
             if(['read','pop','shift'].includes(op.kind)){changed=add(op.result,'Undefined')||changed;for(const token of tokens)for(const type of types.get(token.element)||[])changed=add(op.result,type)||changed;}
             if(op.kind==='write'||['push','unshift'].includes(op.kind))for(const token of tokens)for(const value of op.kind==='write'?[op.value]:op.node.args.map(cell))for(const type of types.get(value)||[])changed=add(token.element,type)||changed;
-            if(op.kind==='map'){const fn=op.node.args[0],owner=functionScopes.get(fn);if(!owner)continue;
-                if(fn.params[0]){const target=owner.bindings.get(fn.params[0]);changed=add(target,'Undefined')||changed;for(const token of tokens)for(const type of types.get(token.element)||[])changed=add(target,type)||changed;}
-                if(fn.params[1])changed=add(owner.bindings.get(fn.params[1]),'Number')||changed;
-                for(const type of types.get(owner.result)||[])changed=add(op.token.element,type)||changed;
+            if(['map','forEach','filter'].includes(op.kind)){const fn=op.node.args[0],owner=functionScopes.get(fn);if(!owner)continue;
+                if(fn.params[0]&&(op.kind==='map'||callbackEntry?.entries.has(fn))){const target=owner.bindings.get(fn.params[0]);changed=add(target,'Undefined')||changed;for(const token of tokens)for(const type of types.get(token.element)||[])changed=add(target,type)||changed;}
+                if(fn.params[1]&&(op.kind==='map'||callbackEntry?.entries.has(fn)))changed=add(owner.bindings.get(fn.params[1]),'Number')||changed;
+                if(op.kind==='map')for(const type of types.get(owner.result)||[])changed=add(op.token.element,type)||changed;
+                if(op.kind==='filter')for(const token of tokens)for(const type of types.get(token.element)||[])changed=add(op.token.element,type)||changed;
+                if(op.kind==='forEach')changed=add(op.result,'Undefined')||changed;
             }
         }return changed;
     };
@@ -489,6 +493,7 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
         arrayAllocationsAt:node=>Object.freeze([...(currentArrayTypes(cell(node))||[])].map(token=>token.site)),
         arrayElementTypesAt:node=>new Set((currentArrayTypes(cell(node))||[]).flatMap(token=>[...(types.get(token.element)||[])])),
         arrayMapCalls:Object.freeze(arrayMaps.map(operation=>operation.node)),
+        arrayCallbackCalls:Object.freeze(arrayCallbacks.map(operation=>operation.node)),
         functionParameterBinding:(node,index)=>functionScopes.get(node)?.bindings.get(node.params[index])||null,
         functionParameterTypes:(node,index)=>currentTypes(functionScopes.get(node)?.bindings.get(node.params[index])),
         functionResultTypes:node=>currentTypes(functionScopes.get(node)?.result),
@@ -496,12 +501,12 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
     });
 }
 
-// Optional entry facts for ordinary constrained calls inside actual map callbacks.
+// Optional entry facts for ordinary constrained calls inside actual closed Array callbacks.
 // This private proof uses the SAME Program and literal/all-writer graph. It does
 // not expose general Array index/length/mutation producers to default consumers.
 function proveArrayCallbackPrimitiveEntries(program,normalCompletion){
     let snapshot;try{snapshot=physicalUpdateSourceSnapshot(program);}catch{return null;}
-    if(!snapshot||snapshot.objects.some(value=>Array.isArray(value)&&Reflect.ownKeys(value).some(key=>typeof Object.getOwnPropertyDescriptor(value,key).value==='function')))return null;
+    if(!spriteAyArrayCurrent()||!snapshot||snapshot.opaque.some(value=>typeof value==='function'))return null;
     const metadata=new Set(['originalBody','parameterDefaults','paramTypes','typeParameters','returnType','assertedType','bwProcedureConstraintSource','optionalParams','parameterProperties','sourceReferenceDeclarations','sourceCallableDeclarations','sourceScalarDeclarations']);
     const nodes=[],parents=new WeakMap(),seen=new Set();let closed=true;
     const visit=(value,parent=null)=>{
@@ -510,10 +515,40 @@ function proveArrayCallbackPrimitiveEntries(program,normalCompletion){
         if(!Array.isArray(value))nodes.push(value);
         for(const key of Reflect.ownKeys(value))if(!metadata.has(key))visit(Object.getOwnPropertyDescriptor(value,key).value,value);
     };
-    visit(program);if(!closed||!nodes.some(node=>node.type==='Call'&&node.callee?.type==='Member'&&node.callee.name==='map'))return null;
+    visit(program);if(!closed||!nodes.some(node=>node.type==='Call'&&node.callee?.type==='Member'&&['map','forEach','filter'].includes(node.callee.name)))return null;
+    // Bootstrap may not erase unrecognized effects or default-entry code.
+    // Reject sparse/malformed literal origins before the value graph visits
+    // their elements; an explicit Undefined AST value remains a real element.
+    const syntax=new Set(['Program','Declaration','FunctionDeclaration','FunctionExpression','Block',
+        'ExpressionStatement','Return','ThrowStatement','If','While','For','ForOf','Break','Continue','Switch',
+        'Number','String','Boolean','Null','Undefined','Identifier','Array','Binary','Logical','Unary',
+        'Assignment','Update','Conditional','Call','Member','Index','Template','Parenthesized']);
+    for(const node of nodes){
+        if(node.type&&!syntax.has(node.type))return null;
+        if(node.type==='Identifier'&&['eval','Function','globalThis','global','window','self','arguments','Reflect'].includes(node.name))return null;
+        if(node.type==='Array'){
+            if(!Array.isArray(node.items))return null;
+            for(let i=0;i<node.items.length;i++){
+                const slot=Object.getOwnPropertyDescriptor(node.items,String(i));
+                if(!slot||!Object.hasOwn(slot,'value')||!slot.value||typeof slot.value!=='object')return null;
+            }
+        }
+        if(['FunctionDeclaration','FunctionExpression'].includes(node.type)){
+            if(!Array.isArray(node.params))return null;
+            for(const owner of [node,node.params]){
+                if(Object.hasOwn(owner,'restParam')||['async','isAsync','generator','isGenerator'].some(key=>owner[key]))return null;
+                for(const key of ['optionalParams','parameterDefaults','genericParams','typeParameters'])
+                    if(owner[key]!==undefined&&(!Array.isArray(owner[key])||owner[key].length))return null;
+                if(owner.paramDefaults!==undefined&&(!owner.paramDefaults||typeof owner.paramDefaults!=='object'||Object.keys(owner.paramDefaults).length))return null;
+            }
+        }
+    }
+    // Private bootstrap: tentative filter allocations are visible only to this
+    // issuer's closed-lineage census. No new callback parameter facts issue.
+    // Exported options cannot enroll this mode or supply an accepted call set.
     const graph=analyseGraph(program,{arrayValues:true,parenthesized:true,unboundIsOpaque:true,
-        uninitializedLocalsAreOpaque:true,declaredLocalUndefined:true,initializationEntries:true,normalCompletion});
-    const primitive=new Set(['Number','String','Boolean','Null','Undefined']),maps=new Set(graph.arrayMapCalls),safeMaps=new Set();
+        uninitializedLocalsAreOpaque:true,declaredLocalUndefined:true,initializationEntries:true,normalCompletion},null,null,null,null,true);
+    const primitive=new Set(['Number','String','Boolean','Null','Undefined']),maps=new Set(graph.arrayCallbackCalls),safeMaps=new Set();
     const initialized=value=>{
         if(!value||typeof value!=='object')return true;
         if(value.type==='Identifier'&&!graph.isInitializedAt(value)&&!graph.immutableFunctionAt(value))return false;
@@ -521,46 +556,100 @@ function proveArrayCallbackPrimitiveEntries(program,normalCompletion){
     };
     for(const call of maps){
         const fn=call.args[0],receiver=call.callee.object;
-        if(call.isNew||call.constructorCall||call.typeArguments?.length||call.args.length!==1||fn?.type!=='FunctionExpression'||
-            fn.params.length>2||new Set(fn.params).size!==fn.params.length||fn.optionalParams?.length||fn.parameterDefaults?.length||
-            Object.keys(fn.paramDefaults||{}).length||fn.genericParams?.length||fn.typeParameters?.length||
+        if(call.isNew||call.constructorCall||call.optional||call.callee.optional||call.typeArguments?.length||call.args.length!==1||fn?.type!=='FunctionExpression'||
+            !Array.isArray(fn.params)||fn.params.length>2||[fn,fn.params].some(value=>Object.hasOwn(value,'restParam')||
+                ['async','isAsync','generator','isGenerator'].some(key=>value[key])||
+                ['optionalParams','parameterDefaults','genericParams','typeParameters'].some(key=>value[key]!==undefined&&(!Array.isArray(value[key])||value[key].length))||Object.keys(value.paramDefaults||{}).length)||new Set(fn.params).size!==fn.params.length||
             !graph.arrayAllocationsAt(receiver).length||!graph.arrayMapReceiverSafeAt(receiver)||graph.arrayConstraintErrorsAt(receiver).length||!initialized(receiver))return null;
         safeMaps.add(call);
     }
     if(!safeMaps.size)return null;
+    // Creator builds reference Arrays with an empty allocation followed by
+    // contiguous one-argument pushes. Admit the construction frontier, never
+    // a general push method. Each argument is independently primitive and
+    // contains no call/member/index that could publish the receiver mid-build.
+    const constructionCalls=new Set(),constructed=new WeakSet();
+    const independentPrimitive=(value,binding)=>{
+        if(!value||typeof value!=='object')return true;
+        if(Array.isArray(value))return value.every(child=>independentPrimitive(child,binding));
+        if(value.type==='Identifier'&&graph.bindingOf(value)===binding)return false;
+        if(['Call','Member','Index','FunctionExpression','Assignment','Update','Object','Spread','Unknown'].includes(value.type))return false;
+        return Object.entries(value).filter(([key])=>!metadata.has(key)).every(([,child])=>independentPrimitive(child,binding));
+    };
+    for(const site of nodes.filter(node=>node.type==='Array'&&Array.isArray(node.items)&&node.items.length===0)){
+        let callbackOwner=false;for(let owner=parents.get(site);owner;owner=parents.get(owner))if(owner.type==='FunctionExpression'){callbackOwner=true;break;}
+        if(callbackOwner)continue;
+        let statement=parents.get(site),key=null;
+        if(statement?.type==='Assignment'&&statement.op==='='&&statement.right===site&&statement.left?.type==='Identifier'){
+            key=graph.bindingOf(statement.left);statement=parents.get(statement);
+            if(statement?.type!=='ExpressionStatement')continue;
+        }else{
+            const decl=statement,decls=parents.get(decl),owner=parents.get(decls);
+            if(owner?.type!=='Declaration'||owner.decls.length!==1||decl.init!==site)continue;
+            key=graph.bindingOf(owner,decl.name);statement=owner;
+        }
+        const list=parents.get(statement);if(!key||!Array.isArray(list))continue;
+        const at=list.indexOf(statement);if(at<0)continue;
+        const pushes=[];
+        for(let i=at+1;i<list.length;i++){
+            const call=list[i]?.type==='ExpressionStatement'?list[i].expr:null;
+            if(call?.type!=='Call'||call.callee?.type!=='Member'||call.callee.name!=='push'||call.callee.object?.type!=='Identifier'||graph.bindingOf(call.callee.object)!==key)break;
+            const arg=call.args?.[0],origins=graph.arrayAllocationsAt(call.callee.object),types=arg&&graph.typesAt(arg);
+            if(call.isNew||call.constructorCall||call.optional||call.callee.optional||call.typeArguments?.length||call.args.length!==1||
+                graph.declarationCountAt(call.callee.object)!==1||origins.length!==1||origins[0]!==site||!types?.size||[...types].some(type=>!primitive.has(type))||!initialized(arg)||!independentPrimitive(arg,key))return null;
+            pushes.push(call);
+        }
+        if(!pushes.length)continue;
+        // No other push through any alias may mutate this allocation after its
+        // construction group. The complete call census below rejects the rest.
+        constructed.add(site);for(const call of pushes)constructionCalls.add(call);
+    }
     // The initial slice preserves dense original indices: no property/index
     // writes, mutable Array methods, foreign getters, reflection or unknown
     // callees can alter a visited element/presence behind this entry fact.
     // Actual whole bodies remain visible; failure issues no callback facts.
     const tagsUsed=new Set(nodes.filter(node=>node.type==='Template').map(node=>node.tag));
     for(const node of nodes){
+        if(['Unknown','Object','Spread','Await','Yield','Class','Namespace'].includes(node.type)||node.optional||node.callee?.optional)return null;
         if(node.type==='Template'&&(!['img','hex'].includes(node.tag)||typeof node.value!=='string'||node.value.includes('${')))return null;
         if(node.params?.some(name=>tagsUsed.has(name))||node.decls?.some(decl=>tagsUsed.has(decl.name)))return null;
         if(node.type==='Identifier'&&!graph.bindingKindsAt(node).size&&!graph.isSdkNamespace(node))return null;
-        if(node.type==='Call'&&!safeMaps.has(node)&&!graph.immutableFunctionAt(node))return null;
+        if(node.type==='Call'&&!safeMaps.has(node)&&!constructionCalls.has(node)&&!graph.immutableFunctionAt(node))return null;
         const target=node.type==='Assignment'?node.left:node.type==='Update'?node.argument:node.type==='Unary'&&node.op==='delete'?node.argument:null;
         if(target&&target.type!=='Identifier')return null;
         if(node.type==='Member'){
             const parent=parents.get(node);
-            if(parent?.type==='Call'&&parent.callee===node&&safeMaps.has(parent))continue;
+            if(parent?.type==='Call'&&parent.callee===node&&(safeMaps.has(parent)||constructionCalls.has(parent)))continue;
             if(node.name==='length'&&graph.arrayMapReceiverSafeAt(node.object)&&graph.arrayAllocationsAt(node.object).length)continue;
             return null;
         }
         if(node.type==='Index'&&(!graph.arrayMapReceiverSafeAt(node.object)||!graph.arrayAllocationsAt(node.object).length||
             graph.typesAt(node.index).size!==1||!graph.typesAt(node.index).has('Number')))return null;
     }
-    const entries=new Map();
+    const entries=new Map(),issuedCalls=new Set();
     for(const call of safeMaps){
         const receiver=call.callee.object,allocations=graph.arrayAllocationsAt(receiver),types=graph.arrayElementTypesAt(receiver);
         if(!types.size||[...types].some(type=>!primitive.has(type)))continue;
-        if(allocations.some(site=>site.type!=='Array'||!Array.isArray(site.items)||!site.items.length||
-            Array.from({length:site.items.length},(_,i)=>Object.getOwnPropertyDescriptor(site.items,String(i))).some(d=>!d||!Object.hasOwn(d,'value')||!d.value||
-                !graph.typesAt(d.value).size||[...graph.typesAt(d.value)].some(type=>!primitive.has(type))||!initialized(d.value))))continue;
-        entries.set(call.args[0],[new Set(types),new Set(['Number'])]);
+        // A filter allocation is fresh and dense, but may be empty. Trace its
+        // complete receiver lineage to real literal entries; predicate results
+        // never become elements and cannot authorize their own receiver.
+        const literalLineage=(site,active=new Set())=>{
+            if(active.has(site))return false;const next=new Set(active);next.add(site);
+            if(site.type==='Call'&&site.callee?.type==='Member'&&site.callee.name==='filter'&&safeMaps.has(site)){
+                const origins=graph.arrayAllocationsAt(site.callee.object);
+                return origins.length>0&&origins.every(origin=>literalLineage(origin,next));
+            }
+            if(site.type==='Array'&&constructed.has(site))return true;
+            return site.type==='Array'&&Array.isArray(site.items)&&site.items.length>0&&
+                Array.from({length:site.items.length},(_,i)=>Object.getOwnPropertyDescriptor(site.items,String(i))).every(d=>d&&Object.hasOwn(d,'value')&&d.value&&
+                    graph.typesAt(d.value).size>0&&[...graph.typesAt(d.value)].every(type=>primitive.has(type))&&initialized(d.value));
+        };
+        if(!allocations.every(site=>literalLineage(site)))continue;
+        entries.set(call.args[0],[new Set(types),new Set(['Number'])]);issuedCalls.add(call);
     }
-    if(!entries.size||!snapshot.current())return null;
+    if(!entries.size||!snapshot.current()||!spriteAyArrayCurrent())return null;
     let expired=false;
-    return {entries,current(){if(!snapshot.current())expired=true;return !expired;}};
+    return {entries,calls:issuedCalls,current(){if(!snapshot.current()||!spriteAyArrayCurrent())expired=true;return !expired;}};
 }
 
 // Only this module issues initialized-entry receipts. Public options, names,

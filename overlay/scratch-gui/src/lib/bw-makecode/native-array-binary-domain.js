@@ -226,7 +226,7 @@ function inspectDomains(program,profile,ordinaryExportSelection) {
         replacements.set(node,next);return next;
     };
     const analyse=model=>analyseSourceValueProducers(model,{
-        arrayValues:true,arrayEffectSites:true,parenthesized:true,unboundIsOpaque:true,
+        arrayValues:true,arrayEffectSites:true,arrayCallbackParameters:true,parenthesized:true,unboundIsOpaque:true,
         uninitializedLocalsAreOpaque:true,declaredLocalUndefined:true,initializationEntries:true,
         ordinaryPrimitiveSdkNumbers:true,ordinaryMusicNumbers:musicAllowed,sceneClockNumbers:true
     });

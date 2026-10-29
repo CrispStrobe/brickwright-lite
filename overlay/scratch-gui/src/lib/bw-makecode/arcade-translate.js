@@ -3099,8 +3099,20 @@ const lowerArrayCallbacks = (program, source) => {
         if (body.length === 1 && body[0].type === 'Return' && body[0].value) return [{type: 'ExpressionStatement', expr: body[0].value}];
         return hasReturn(body) ? null : body;
     };
-    const predicate = fn => fn?.type === 'FunctionExpression' && fn.params.length === 1 && fn.body.length === 1 &&
-        fn.body[0].type === 'Return' && fn.body[0].value ? fn.body[0].value : null;
+    const closedCallback = fn => fn?.type === 'FunctionExpression' && Array.isArray(fn.params) &&
+        fn.params.length >= 1 && fn.params.length <= 2 && new Set(fn.params).size === fn.params.length &&
+        fn.params.every(name => typeof name === 'string') && Array.isArray(fn.body) &&
+        !['async','isAsync','generator','isGenerator','restParam'].some(key => fn[key]) &&
+        !['optionalParams','parameterDefaults','parameterProperties','typeParameters','genericParams'].some(key =>
+            fn[key]?.length || fn.params[key]?.length) && !Object.keys(fn.paramDefaults || {}).length;
+    const predicate = fn => {
+        if (!closedCallback(fn)) return null;
+        const last = fn.body[fn.body.length - 1], before = fn.body.slice(0, -1);
+        // Every predicate must produce its value after the same straight-line
+        // prefix. Early returns retain their original call and remain diagnosed.
+        if (last?.type !== 'Return' || !last.value || hasReturn(before)) return null;
+        return {before, value: last.value};
+    };
     const loop = (array, fn, statements) => {
         if (fn.params.length === 1) return [{type: 'ForOf', name: fn.params[0], kind: 'const', iterable: array, body: statements}];
         // A named array is indexed directly (keeping its element type); any
@@ -3117,18 +3129,18 @@ const lowerArrayCallbacks = (program, source) => {
         // A statement-level map discards its result array, so it visits like forEach.
         if (call?.type !== 'Call' || call.callee?.type !== 'Member' || call.callee.name !== 'forEach' || call.args.length !== 1) return null;
         const fn = call.args[0];
-        if (fn?.type !== 'FunctionExpression' || !fn.params.length || fn.params.length > 2) return null;
+        if (!closedCallback(fn)) return null;
         const statements = callbackStatements(fn);
         if (!statements) return null;
         const source = call.callee.object;
         const filter = source?.type === 'Call' && source.callee?.type === 'Member' && source.callee.name === 'filter' && source.args.length === 1 ?
             predicate(source.args[0]) : null;
         if (!filter) return loop(source, fn, statements);
-        const kept = fresh('__bwFiltered'), item = source.args[0].params[0];
+        const kept = fresh('__bwFiltered'), predicateFn = source.args[0], item = predicateFn.params[0];
         return [{type: 'Declaration', kind: 'let', decls: [{name: kept, init: {type: 'Array', items: []}, isArray: true}]},
-            {type: 'ForOf', name: item, kind: 'const', iterable: source.callee.object, body: [{type: 'If', test: filter,
+            ...loop(source.callee.object, predicateFn, [...filter.before, {type: 'If', test: filter.value,
                 consequent: [{type: 'ExpressionStatement', expr: {type: 'Call', callee: {type: 'Member', object: id(kept), name: 'push'}, args: [id(item)]}}],
-                alternate: null}]},
+                alternate: null}]),
             ...loop(id(kept), fn, statements)];
     };
     const visit = node => {

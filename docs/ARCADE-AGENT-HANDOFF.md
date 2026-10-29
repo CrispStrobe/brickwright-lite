@@ -1,5 +1,79 @@
 # Arcade compatibility: fresh-agent handoff and methodology
 
+
+## 29 October: primitive Array callbacks and qualification checkpoint
+
+The current source candidate proves primitive element and numeric index entry
+for closed `forEach` and `filter` calls. The proof requires dense literal origins
+or the emitter's unique empty local allocation followed by contiguous,
+independently primitive pushes. Filter results have fresh allocation identity
+and retain receiver elements, never predicate return types. Their callback
+indexes are the filtered array's compressed indexes. A private analysis pass
+checks lineage; public options cannot manufacture accepted calls or parameter
+facts. Receiver mutations, later alias pushes, foreign effects, unsupported
+callback/default syntax, sparse origins and source/intrinsic revocation refuse
+the proof. No element presence, callback execution, exact index value, generic
+Sprite receiver or initialized-value certificate is inferred.
+
+The importer also lowers two-parameter filter predicates and predicate bodies
+with a final value return. It executes the prefix and predicate for every
+original element before starting the final `forEach`, preserving predicate
+indexes separately from compressed result indexes. Early-return predicates
+retain explicit refusal. This is not a general callback or mutation-semantics
+completion.
+
+Eleven bounded source controls and two separate import/authoring/export
+controls pass. Two deliberate cuts detect missing entry facts and disabled
+sticky expiry; the original source was restored. A read-only review found no
+concrete bootstrap/lineage authority leak. Original PXT/native execution remains
+pending. The default-on runtime control requires `sum = 323`,
+`predicateIndexes = 1234` and `trace = "90:0;100:1;130:2;"` through original PXT,
+Lite execution and exported PXT, with the existing finite frame budget.
+
+Run on the prepared external worker:
+
+```sh
+node --import ./scripts/lib/register-gui-scope.mjs --test --test-concurrency=1 test/arcade-primitive-array-callback-source.test.mjs test/makecode-arcade-array-callbacks.test.mjs
+```
+
+The SDK `allOfKind` Sprite callback fixture is still a separate open producer
+family. Blocks/Code need complete callback creation, parameter naming,
+editing, save/reopen and export/reimport acceptance; these converter proofs do
+not establish that GUI capability. Sparse literal parsing also remains open.
+
+### Retained hosted results and next qualification
+
+[PR #1544](https://github.com/CrispStrobe/brickwright-lite/pull/1544) remains a
+frozen draft at `69010112e7f497d2cd67a6d0bad1ebdcae59363c`.
+Its [numeric-authoring job](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40758182799/job/123134743633)
+succeeded, while its six unit jobs and full-CI guard failed. An independent
+ZIP/JSON reader checked the retained proof's identity, receipt equality and
+411 bundle observations across five passing producer records. The receipt
+binds synthetic checkout `b4aa709a2d6947df012908d8eda7972c63c1c69a` to reviewed
+tree `57480c9861f5f354fd0d957b2cdc97d745911cfc`; this is a tree claim, not
+commit identity or independent guest replay. The clean export observer reports
+`UNAVAILABLE_FRESHNESS / OBSERVATION_MISSING`. It is not a complete capture and
+must be diagnosed separately from semantic refusal and the successful job.
+
+The original typed-bitwise PXT/native/Code/fresh-SB3 control passed on that frozen
+head. A corrected standalone TAP census binds each failing result to its own
+adjacent subtest and location: the earlier baseline had 42 actual blocking
+identities, not the historical 43-row summary; this head has 43 (one bitwise
+repair, plus a stale import census and the new dormant marker failure).
+The declaration-reference TODO is not a completion. The later source candidate
+repairs the stale census and marker setup, but still needs final-head hosted
+qualification.
+
+Continue in order: qualify the combined source once on the current dependency
+composition; repair its actual remaining failures without changing assertions;
+resolve missing clean capture; then reassess all immutable original applications
+and authentic complete contexts. Only whole-project conversion, original PXT,
+Lite execution, controller/presentation and saved-project evidence promotes a
+corpus row. The recorded raw census remains **184 inputs: 147 translated,
+36 partial, 1 parse failure**; this checkpoint promotes none. Require every
+enabled final-head check to succeed before a normal matched-head landing.
+
+
 ## 28 October: ExtendableSprite constructor-result source candidate
 
 The constructor-effect service now has a bounded `sprites.ExtendableSprite`
