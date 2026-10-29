@@ -1,6 +1,7 @@
 # SPIKE current Runtime support closure — 2026-10-28
 
-Status: CLAIMED. Owner: Codex SPIKE software-delivery continuation, operator
+Status: DONE — implementation and declared local qualification complete;
+normal landing waits for enabled final-head hosted checks. Owner: Codex SPIKE software-delivery continuation, operator
 requested current Runtime/firmware and installed-consumer qualification.
 Branch: `qualify/spike-consumer-delivery-20261028`, isolated internal worktree.
 Base: `3d9763e4a`. Preserve existing owners' worktrees and other native functions.
@@ -27,3 +28,10 @@ file controls; affected Rust and packaging tests; source-bound Linux installed
 actual guest completion/error/cancellation and fresh-generation recovery;
 every enabled final-head check before normal matched-head landing. No ci:full.
 The separate native owner-death gate remains with its current owner.
+
+Results: 29 focused Node controls, 150 production native tests (ten existing
+ignored), an offline source-bound Linux package and twelve actual installed
+NuttX native/Python/storage/lifecycle cases passed. Original source-manifest,
+launch and view failures remain retained and scoped in
+[the delivery record](../docs/SPIKE-CURRENT-RUNTIME-DELIVERY-2026-10-28.md).
+PR: https://github.com/CrispStrobe/brickwright-lite/pull/1547.

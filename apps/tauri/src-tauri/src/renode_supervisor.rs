@@ -1116,7 +1116,7 @@ pub(crate) fn verify_micropython_manifest(root: &Path, manifest: &Path) -> Resul
         "tools/ev3_state_observer.py", "tools/spike_arena_inputs.py", "tools/spike_arena_mailbox.py",
         "tools/spike_nuttx_mailbox.py", "tools/spike_program_uart.py",
         "licenses/renode-models-MIT.txt", "licenses/brickwright-BSD-3-Clause.txt",
-    ], &["profile.json"], 17)?;
+    ], &["profile.json", "tools/spike_lockstep.py"], 18)?;
     if std::fs::metadata(root.join("boot-seed.bin")).map_err(|_| "boot seed unavailable")?.len() != 65536 {
         return Err("boot seed geometry mismatch".into());
     }
@@ -2235,6 +2235,50 @@ while root.exists() and time.monotonic() < deadline:
         std::fs::write(&manifest, serde_json::to_vec(&entries).unwrap()).unwrap();
         assert!(verify_support_manifest(&root, &manifest, &[], &allowed, 33).is_ok());
         std::fs::remove_dir_all(&root).unwrap();
+    }
+
+    #[test]
+    fn micropython_manifest_carries_bound_lockstep_without_opening_the_file_union() {
+        let root = std::env::temp_dir().join(format!("bw-micro-lockstep-{}", random_token().unwrap()));
+        std::fs::create_dir(&root).unwrap();
+        let mut map = serde_json::Map::new();
+        for name in ["models.cs", "program-uart.cs", "boot-seed.bin",
+            "platforms/boards/spike-prime.repl", "platforms/boards/spike-prime-brick-devices.repl",
+            "platforms/cpus/stm32f413vg.repl", "platforms/cpus/stm32f4.repl",
+            "scripts/spike-state-server.py", "tools/spike_state_monitor_protocol.py",
+            "tools/ev3_state_observer.py", "tools/spike_arena_inputs.py", "tools/spike_arena_mailbox.py",
+            "tools/spike_nuttx_mailbox.py", "tools/spike_program_uart.py",
+            "licenses/renode-models-MIT.txt", "licenses/brickwright-BSD-3-Clause.txt"] {
+            let path = root.join(name);
+            std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+            let bytes = if name == "boot-seed.bin" { vec![0; 65536] }
+                else if name == "scripts/spike-state-server.py" { b"import spike_lockstep\n".to_vec() }
+                else { b"synthetic support".to_vec() };
+            std::fs::write(&path, bytes).unwrap();
+            map.insert(name.into(), sha256(&path).unwrap().into());
+        }
+        let manifest = root.join("manifest.json");
+        std::fs::write(&manifest, serde_json::to_vec(&map).unwrap()).unwrap();
+        assert_eq!(verify_micropython_manifest(&root, &manifest).unwrap_err(),
+                   "lockstep helper is missing from manifest");
+        let helper = root.join("tools/spike_lockstep.py");
+        std::fs::write(&helper, b"synthetic lockstep helper").unwrap();
+        map.insert("tools/spike_lockstep.py".into(), sha256(&helper).unwrap().into());
+        let profile = root.join("profile.json");
+        std::fs::write(&profile, b"{}").unwrap();
+        map.insert("profile.json".into(), sha256(&profile).unwrap().into());
+        std::fs::write(&manifest, serde_json::to_vec(&map).unwrap()).unwrap();
+        assert!(verify_micropython_manifest(&root, &manifest).is_ok());
+        std::fs::write(&helper, b"changed helper").unwrap();
+        assert_eq!(verify_micropython_manifest(&root, &manifest).unwrap_err(),
+                   "arena support file digest mismatch");
+        std::fs::write(&helper, b"synthetic lockstep helper").unwrap();
+        let digest = map.remove("profile.json").unwrap();
+        map.insert("tools/unreviewed_helper.py".into(), digest);
+        std::fs::write(&manifest, serde_json::to_vec(&map).unwrap()).unwrap();
+        assert_eq!(verify_micropython_manifest(&root, &manifest).unwrap_err(),
+                   "arena manifest contains an unsupported file");
+        std::fs::remove_dir_all(root).unwrap();
     }
 
     #[test]
