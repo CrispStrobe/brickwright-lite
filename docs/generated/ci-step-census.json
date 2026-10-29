@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-29T06:24:40.627Z",
+  "generatedAt": "2026-10-29T06:34:29.078Z",
   "repo": "CrispStrobe/brickwright-lite",
   "headSha": "a87a7b447",
   "newestMainRun": 36409366028,
@@ -1971,6 +1971,12 @@
       "workflow": "reference-qualified-instruments.yml",
       "branch": "lane/reference-qualified-instruments-20261026",
       "sha": "a77bf7ae2"
+    },
+    {
+      "run": 40828345515,
+      "workflow": "samd-native-game-qualification.yml",
+      "branch": "lane/samd-release-adoption-20261028",
+      "sha": "e859cecd3"
     },
     {
       "run": 40827218429,
@@ -7801,7 +7807,7 @@
       "sourceSha": "working-tree"
     },
     "samd-native-game-qualification.yml": {
-      "runs": 3,
+      "runs": 4,
       "stepsInFile": [
         "Validate explicit immutable request",
         "Exercise independent metadata, checkout and asset refusal controls",
@@ -7815,8 +7821,8 @@
       "inFileInNoRun": [],
       "steps": {
         "Validate explicit immutable request": {
-          "existed": 3,
-          "ran": 3,
+          "existed": 4,
+          "ran": 4,
           "existedMain": 0,
           "ranMain": 0,
           "skippedInFailedRuns": 0,
@@ -7828,8 +7834,8 @@
           "class": "always"
         },
         "Exercise independent metadata, checkout and asset refusal controls": {
-          "existed": 3,
-          "ran": 3,
+          "existed": 4,
+          "ran": 4,
           "existedMain": 0,
           "ranMain": 0,
           "skippedInFailedRuns": 0,
@@ -7841,8 +7847,8 @@
           "class": "always"
         },
         "Admit official metadata, acquire each original once, and join all source bytes": {
-          "existed": 3,
-          "ran": 3,
+          "existed": 4,
+          "ran": 4,
           "existedMain": 0,
           "ranMain": 0,
           "skippedInFailedRuns": 0,
@@ -7854,8 +7860,8 @@
           "class": "always"
         },
         "Install existing native observer dependencies": {
-          "existed": 2,
-          "ran": 2,
+          "existed": 3,
+          "ran": 3,
           "existedMain": 0,
           "ranMain": 0,
           "skippedInFailedRuns": 0,
@@ -7867,8 +7873,8 @@
           "class": "always"
         },
         "Run dtolnay/rust-toolchain@4360b52568e2003a75bf9bc1d59f33a8e3fc893c": {
-          "existed": 2,
-          "ran": 2,
+          "existed": 3,
+          "ran": 3,
           "existedMain": 0,
           "ranMain": 0,
           "skippedInFailedRuns": 0,
@@ -7880,8 +7886,8 @@
           "class": "always"
         },
         "Install the existing pinned Tauri driver": {
-          "existed": 2,
-          "ran": 2,
+          "existed": 3,
+          "ran": 3,
           "existedMain": 0,
           "ranMain": 0,
           "skippedInFailedRuns": 0,
@@ -7893,8 +7899,8 @@
           "class": "always"
         },
         "Three fresh actual installed game instances on embedded assets": {
-          "existed": 2,
-          "ran": 2,
+          "existed": 3,
+          "ran": 3,
           "existedMain": 0,
           "ranMain": 0,
           "skippedInFailedRuns": 0,
@@ -7934,28 +7940,28 @@
       },
       "jobs": {
         "admission": {
-          "existed": 3,
-          "ran": 3,
+          "existed": 4,
+          "ran": 4,
           "existedMain": 0,
           "ranMain": 0,
           "class": "always"
         },
         "installed": {
-          "existed": 3,
-          "ran": 2,
+          "existed": 4,
+          "ran": 3,
           "existedMain": 0,
           "ranMain": 0,
           "class": "sometimes"
         },
         "browser": {
-          "existed": 3,
+          "existed": 4,
           "ran": 1,
           "existedMain": 0,
           "ranMain": 0,
           "class": "sometimes"
         }
       },
-      "sourceSha": "9770567b1"
+      "sourceSha": "e859cecd3"
     },
     "reference-qualified-instruments.yml": {
       "runs": 3,
@@ -8083,7 +8089,7 @@
   },
   "lastRefresh": {
     "workflow": "samd-native-game-qualification.yml",
-    "at": "2026-10-29T06:24:40.627Z",
-    "sourceSha": "9770567b1"
+    "at": "2026-10-29T06:34:29.078Z",
+    "sourceSha": "e859cecd3"
   }
 }
