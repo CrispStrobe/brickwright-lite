@@ -21,17 +21,16 @@ a refused or clean capture does not establish successful compilation or runtime.
 
 Three focused source controls pass, including the unchanged default-key check
 and execution of the actual stage-export method against the exporter. Two
-mutations detect either missing opt-in; original source is restored. The first
-new stage control used invalid pseudocode and was corrected to the canonical
-dialect before its passing run. This is source qualification only. The current
+mutations detect either missing opt-in; original source is restored. This is source qualification only. The current
 frozen [PR #1554](https://github.com/CrispStrobe/brickwright-lite/pull/1554) does
 not contain this follow-up. Compose it only after retaining the required
 terminal originals for that head, then require the official numeric GUI job to
 produce and independently audit a fresh complete capture. Never relabel the
 older unavailable record or relax its freshness checks.
 
-The direct `onDestroyed` coordinate-result proof is still an unpublished,
-unintegrated draft. It does not yet admit generated startup/helper code and
+The direct `onDestroyed` coordinate-result proof is a separate, unintegrated
+source checkpoint: seven pure-source controls and two detected mutation cuts
+pass. It does not yet admit generated startup/helper code and
 must not be described as closing the collection fixtures. Before integration,
 prove all actual callback routes, initialized primitive coordinate writers,
 protected SDK fixed-point dependencies, source/descriptor currentness and
