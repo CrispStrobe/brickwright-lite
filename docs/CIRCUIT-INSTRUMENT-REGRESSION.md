@@ -74,13 +74,14 @@ the entire `93aba754` source ancestry with the editor/menu changes and preparing
 the explicit package return. The new consumer menu helper resolves the actual
 trigger-owned popup. Its combined browser result is still pending.
 
-Keep the fixed authored regression's `CONTRACT_SOURCES` and matching workflow
-checkout historical. Its deliberate refusal when today's installed packages
-no longer match is not permission to rewrite or replay that experiment. It is
-separate from the four complete-file seals protecting the consumed reference-v2
-study. Live package-adoption assertions must follow the new pin; historical
-admission must remain byte-bound, with changed-seal and ordinary stale-input
-negatives. Neither old study nor predecessor CI becomes new-pin evidence.
+The authored regression's `CONTRACT_SOURCES` and matching workflow checkout
+are live current-package authorities; their prior adoption commits deliberately
+advanced them. They must follow the new CUI pin with the adoption assertions.
+This is separate from the four complete-file seals protecting the consumed
+reference-v2 study, whose bytes and identities stay unchanged. Do not broaden
+historical exemptions to quiet an ordinary stale live contract. Updating live
+source authority authorizes no completed study, CLI or reader replay and turns
+neither old study nor predecessor CI into new-pin evidence.
 
 ### Next actions, in order
 

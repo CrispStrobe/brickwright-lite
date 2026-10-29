@@ -33,7 +33,8 @@ merge PR1538 or change its pins. Circuit retains numerical-original readback
 and the final four-document handoff. The consumer driver now binds the actual
 trigger-owned popup; real file selection, numerical assertions and cramped
 navigation still need combined application qualification. Preserve fixed
-experiment contracts separately from current package-adoption assertions.
+consumed-study identities separately from the live regression contract and
+current package-adoption assertions.
 Before new raw-log acquisition, freeze exact combined head/pin/run/job identities;
 read retained originals once and do not replay the study. After all enabled full
 application checks and actual landing, reconcile PR1516/1515/1517/1538, update

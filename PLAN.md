@@ -48,8 +48,9 @@ with the editor/menu changes and preparing one explicit adoption of that CUI
 head; Board stays unchanged. The consumer browser driver now resolves the
 originating trigger's popup; combined application qualification, including
 cramped navigation and the original measurement/refusal assertions, is still owed.
-Fixed experiment contracts and consumed-study identities must stay historical;
-live adoption assertions alone follow the new package. Circuit
+Consumed-study identities stay historical. The separate live authored regression
+contract and current adoption assertions follow the new package without replaying
+any completed cohort. Circuit
 retains numerical-original custody, independent readback and final documentation;
 no competing source merge or pin update is authorized. All enabled full checks
 apply to that combined UI target; the earlier fast-tier label exception is not

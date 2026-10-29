@@ -206,6 +206,7 @@ enabled checks and retained browser evidence accepted. The coordinated delivery
 owner is preparing its explicit Lite return with the complete frozen circuit
 ancestry and editor/menu source. Circuit retains scientific-original custody
 and these four documentation surfaces. No new numerical or browser qualification
-is inferred from supplier landing. Preserve fixed experiment contracts, original
-readers and consumed-study seals; distinguish them from live package assertions.
+is inferred from supplier landing. Preserve original readers and consumed-study
+seals; distinguish them from the live authored regression contract and package
+assertions, which must track the adopted identity without replaying studies.
 The final combined application and documentation endpoints remain open.
