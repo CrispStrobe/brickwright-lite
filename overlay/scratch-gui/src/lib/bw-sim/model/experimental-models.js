@@ -1238,29 +1238,6 @@ export const EXPERIMENTAL_MODELS = Object.freeze([
         }
     },
     {
-        "file": "phasor-twin.ldr",
-        "title": {
-            "en": "Phasor Twin — the Stirling phase loop",
-            "de": "Phasor Twin — die Stirling-Phasenschleife"
-        },
-        "example": "phasor-twin.bw",
-        "mat": "plain",
-        "experimental": true,
-        "blocked": false,
-        "intro": {
-            "en": "Two vertical crank-slider pistons, coupled by a 40-tooth idler and two 16-tooth gears, run 90 degrees out of phase. Plotting the two passive piston displacements against each other gives a closed loop of area pi r^2; clocking both throws together collapses it to a line.",
-            "de": "Zwei senkrechte Kurbelschleifen-Kolben, über ein 40-Zahn-Zwischenrad und zwei 16-Zahn-Ritzel gekoppelt, laufen um 90 Grad versetzt. Trägt man die beiden passiven Kolbenwege gegeneinander auf, entsteht ein geschlossener Ring der Fläche pi r^2; bei gleichphasigen Kurbeln fällt er zu einer Geraden zusammen."
-        },
-        "manualJog": {
-            "A": {
-                "minDeg": 0,
-                "maxDeg": 720,
-                "stepDeg": 45,
-                "speedDps": 45
-            }
-        }
-    },
-    {
         "file": "phasor-twin-control.ldr",
         "title": {
             "en": "Phasor Twin — in phase (control)",
