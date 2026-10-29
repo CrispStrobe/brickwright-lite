@@ -198,7 +198,7 @@ class DebugPanel extends React.Component {
         // than in the runner: picking "Live board" and then pressing Run is the
         // order a user works in.
         this.state = {runner: null, ui: {phase: 'idle', message: ''}, kind: 'emulator', kinds: null,
-            labwiredChip: '', labwiredChips: null,
+            labwiredChip: '', labwiredChips: null, samdInputError: null,
             machineConfig: null, serialInput: '', modemInput: '', modemStatus: null,
             firmwareName: null,
             recordingStatus: null, reverseStatus: null, timelineStatus: null,
@@ -206,6 +206,7 @@ class DebugPanel extends React.Component {
         // Only the runner the panel currently owns may publish into it; see
         // lib/bw-debug/runner-ownership.js for the replaced-runner race.
         this._runnerOwnership = createRunnerOwnership();
+        this._samdPressed = new Set();
         this._hddDownloadMounted = false;
         this._hddDownloadToken = {};
         this._hddDownloadRunner = null;
@@ -686,6 +687,7 @@ class DebugPanel extends React.Component {
         import(/* webpackChunkName: "labwired-catalog" */ 'bw-board/labwired-catalog.js')
             .then(m => {
                 const chips = [
+                    {value: 'software:samd51-no-asf-simulation', label: 'SAMD51 software simulation (ELF / UF2)'},
                     ...Object.values(m.LABWIRED_CATALOG || {}).map(c => ({value: c.name, label: `${c.name} (${c.arch})`})),
                     // Boards: the chip plus the devices its manifest wires, a
                     // display among them — what the firmware draws reaches Widgets.
@@ -860,6 +862,7 @@ class DebugPanel extends React.Component {
      *  creation is async (a chunk import), so a plain state check races —
      *  two concurrent runner() calls once produced two live machines. */
     _teardownRunner () {
+        this.releaseSamdButtons();
         this._invalidateHddDownload();
         this._hddDownloadRunner = null;
         this._hddDownloadPhase = 'idle';
@@ -953,14 +956,35 @@ class DebugPanel extends React.Component {
     // A LabWired board with a display: its screen is a widget (the same mirror
     // a machine's VGA uses), sized from the first frame the engine reports.
     mirrorLabwiredDisplay (runner) {
-        if (this.state.kind !== 'labwired' || !String(this.state.labwiredChip || '').startsWith('board:')) return;
+        const selected = String(this.state.labwiredChip || '');
+        if (this.state.kind !== 'labwired' || !(selected.startsWith('board:') ||
+            selected === 'software:samd51-no-asf-simulation')) return;
         if (typeof runner.video !== 'function' || typeof window === 'undefined' ||
             typeof window.bwMirrorMachineVideo !== 'function') return;
         const first = runner.video();
         window.bwMirrorMachineVideo({videoFn: () => runner.video(), widget: {
             name: 'LabWired display', type: 'simplevga', source: 'video',
-            config: {width: (first && first.width) || 128, height: (first && first.height) || 64}
+            config: {width: (first && first.width) || 128,
+                height: (first && first.height) || (selected.startsWith('software:') ? 160 : 64)}
         }});
+    }
+
+    setSamdButton (name, pressed) {
+        const runner = this.state.runner;
+        if (!runner || typeof runner.setInputs !== 'function' || this._samdPressed.has(name) === pressed) return;
+        const result = runner.setInputs([{component: 'buttons', channel: name, value: pressed ? 1 : 0}]);
+        if (result.accepted) {
+            if (pressed) this._samdPressed.add(name); else this._samdPressed.delete(name);
+        }
+        this.setState({samdInputError: result.accepted ? null : result.reason || result.code});
+    }
+
+    releaseSamdButtons () {
+        const runner = this.state.runner;
+        if (runner && typeof runner.setInputs === 'function' && this._samdPressed.size) {
+            runner.setInputs([...this._samdPressed].map(channel => ({component: 'buttons', channel, value: 0})));
+        }
+        this._samdPressed.clear();
     }
 
     onSerialInput (e) { this.setState({serialInput: e.target.value}); }
@@ -1068,6 +1092,7 @@ class DebugPanel extends React.Component {
     onStop () {
         this._invalidateHddDownload();
         if (!this.state.runner) return;
+        this.releaseSamdButtons();
         this._runnerStoppedExplicitly = true;
         this.state.runner.stop();
     }
@@ -1601,6 +1626,21 @@ class DebugPanel extends React.Component {
                         </select>
                     </span>
                 </div>
+
+                {this.state.kind === 'labwired' && this.state.labwiredChip === 'software:samd51-no-asf-simulation' ?
+                    <div data-samd-software-buttons style={{display: 'flex', gap: 4, flexWrap: 'wrap'}}>
+                        {['left', 'up', 'down', 'right', 'select', 'start', 'a', 'b'].map(name =>
+                            <button key={name} style={this.state.runner ? BTN : OFF} disabled={!this.state.runner}
+                                onPointerDown={e => { e.preventDefault(); if (e.currentTarget.setPointerCapture) e.currentTarget.setPointerCapture(e.pointerId); this.setSamdButton(name, true); }}
+                                onPointerUp={() => this.setSamdButton(name, false)}
+                                onPointerCancel={() => this.setSamdButton(name, false)}
+                                onLostPointerCapture={() => this.setSamdButton(name, false)}
+                                onBlur={() => this.setSamdButton(name, false)}
+                                onKeyDown={e => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); this.setSamdButton(name, true); } }}
+                                onKeyUp={e => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); this.setSamdButton(name, false); } }}
+                            >{name.toUpperCase()}</button>)}
+                        {this.state.samdInputError ? <span role="status">{this.state.samdInputError}</span> : null}
+                    </div> : null}
 
                 {chipRefusals.length > 0 ? <div data-debug-chip-refusals
                     style={{display: 'flex', flexDirection: 'column', gap: 2, margin: '6px 0'}}>

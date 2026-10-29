@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Explicit browser-side admission; callers must supply trusted release pins.
 // This does not select a board or establish physical or guest qualification.
+import {SAMD_ENGINE_SOURCE, SAMD_PROFILE_SHA256} from './samd-release-pins.js';
 const need = (ok, why) => { if (!ok) throw new Error(why); };
 const hex = bytes => [...new Uint8Array(bytes)].map(n => n.toString(16).padStart(2, '0')).join('');
 const sha = async bytes => hex(await crypto.subtle.digest('SHA-256', bytes));
@@ -42,4 +43,13 @@ export async function admitSamdProfile ({bytes, expectedSha256, engineSource}) {
         inputs[name] = raw;
     }
     return {profile, inputs};
+}
+
+/** Load the shipped authored profile against the sync script's release pins. */
+export async function loadSamdSoftwareProfile ({base, fetcher = fetch}) {
+    need(typeof base === 'string' && base.length > 0, 'document base required');
+    const response = await fetcher(new URL('static/labwired/samd-no-asf-profile.json', base).href);
+    need(response.ok, 'SAMD software profile asset unavailable');
+    return admitSamdProfile({bytes: new Uint8Array(await response.arrayBuffer()),
+        expectedSha256: SAMD_PROFILE_SHA256, engineSource: SAMD_ENGINE_SOURCE});
 }

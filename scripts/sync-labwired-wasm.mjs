@@ -68,6 +68,17 @@ const LOCAL = {
 };
 
 const here = path.dirname(fileURLToPath(import.meta.url));
+// The browser cannot import this Node synchronizer. Refuse a sync if its
+// browser-facing release identities drift from this authoritative declaration.
+const browserPins = await readFile(path.join(here, '..', 'overlay', 'scratch-gui', 'src',
+    'lib', 'bw-debug', 'samd-release-pins.js'), 'utf8');
+for (const [name, expected] of [['SAMD_ENGINE_SOURCE', PIN],
+    ['SAMD_PROFILE_SHA256', EXPECT['samd-no-asf-profile.json']]]) {
+    const matches = [...browserPins.matchAll(new RegExp(`^export const ${name} = '([0-9a-f]+)';$`, 'gm'))];
+    if (matches.length !== 1 || matches[0][1] !== expected) {
+        throw new Error(`browser ${name} differs from the LabWired release pin`);
+    }
+}
 // static/, not src/. Webpack copies `static -> static` wholesale, so the engine
 // is served as a plain asset and fetched at RUNTIME — which means a checkout
 // that never ran this script still BUILDS. Putting it under src/ and importing
