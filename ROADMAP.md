@@ -60,18 +60,22 @@ adoption is not installed release or deployment evidence. No seventh lane is
 opened by this list.
 
 
-The frozen combined successor is `09a4f407b67cba99455ff432c2df835d5dffb32d`.
-It includes main `da85ea2f` and both registered CI follow-through repairs:
+The frozen combined successor is `2e7846f8a901726a296e3a8ef006cff24bc457b5`.
+It includes main `19c073bd` and both registered CI follow-through repairs:
 selected-tier admission and supported-event numeric-consumer selection. The
 manual consumer is skipped because its existing artifact trust admits push/PR
 only; successful supported events remain required. The obsolete wiring-message
 assertion now executes the real classifier-output forwarding and verifies its
 tier bindings. Locally, 39 focused CI controls and 11 gate-shape checks pass,
 and three isolated wiring mutants fail. These are source controls, not browser
-or delivery acceptance.
+or delivery acceptance. The reduced FPGA browser journey now switches all three
+workspaces and checks visibility, selected controls and exact retained node/HDL
+state; its live synthesis path remains byte-identical. Actual hosted acceptance
+is still required. The preceding `09a4f407` run set was superseded before any
+child started; cancellation followed explicit zero-running-child verification.
 
-Fresh fast [Build40867342348](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40867342348)
-and necessary full [Build40867478231](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40867478231)
+Fresh fast [Build40869114327](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40869114327)
+and necessary full [Build40869128682](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40869128682)
 are pending on that exact source. The earlier manual run `40856189963` was
 cancelled before application execution after its unsupported consumer context
 was identified; it is not qualification. The prior fast head `d32860b8` had one
