@@ -17,6 +17,17 @@ apply a full-CI label for this continuation.
 The raw application census remains **184 inputs: 147 translated, 36 partial,
 1 parse failure**. Unit-test counts are not application completion counts.
 
+The retained historical 36-partial import report also gives a useful starting
+point for the next corpus triage: ten partial inputs report unreadable background
+artwork; three report a projectile factory used as a value; and three each report
+`setVelocity` or `setStayInScreen` through the legacy stage fallback. Some inputs
+also lack referenced song or animation resources and package functions. These
+counts overlap and describe that historical report, not a current candidate
+measurement. Inspect each original project and its available package/assets
+before deciding whether to fix resolution, preserve an explicit missing-input
+report, or implement a runtime operation. Do not fabricate absent artwork or
+count a source-only fix as a completed game.
+
 Continue in this order:
 
 1. The terminal numeric evidence for the current live PR has been retained and
