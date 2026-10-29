@@ -1,6 +1,28 @@
 # Arcade compatibility: fresh-agent handoff and methodology
 
 
+## 29 October: active delivery checkpoint
+
+Source checkpoint `6acccd1cbeeeded76a73282563010e8d6a7eb4cd` includes the
+original-operation callback proof and clean-observation follow-up below.
+Composition `c18f2cdc8f179ca1289c3149290b9b433a6d4a53` adds the latest reviewed
+main, `47a9a122584`, through a normal documentation-only merge. Product
+qualification remains pending; neither source controls nor predecessor successes
+establish runtime or whole-application completion.
+
+[PR #1554](https://github.com/CrispStrobe/brickwright-lite/pull/1554) is the active
+integration delivery. Its initial `cda475baa206c51e4004f186344a780a150a400a`
+head was superseded after the separate source checkpoint was prepared. Only
+queued Build/debugger runs with no running children were cancelled; the running
+Tauri jobs were allowed to finish and both succeeded. Their originals were
+retained before advancing the integration head. The cancelled numeric job had
+no runner, steps or build artifact: `UNAVAILABLE_CANCELLED_BEFORE_PRODUCER`,
+with no semantic outcome. These facts qualify neither the successor nor a
+corpus row. Refresh the actual PR head and every enabled check before acting;
+require final-head guest and browser qualification before main.
+
+
+
 ## 29 October: clean export observation opt-in candidate
 
 The missing clean-export capture has a concrete producer cause:
@@ -21,10 +43,9 @@ a refused or clean capture does not establish successful compilation or runtime.
 
 Three focused source controls pass, including the unchanged default-key check
 and execution of the actual stage-export method against the exporter. Two
-mutations detect either missing opt-in; original source is restored. This is source qualification only. The current
-frozen [PR #1554](https://github.com/CrispStrobe/brickwright-lite/pull/1554) does
-not contain this follow-up. Compose it only after retaining the required
-terminal originals for that head, then require the official numeric GUI job to
+mutations detect either missing opt-in; original source is restored. This is source qualification only. The initial [PR #1554](https://github.com/CrispStrobe/brickwright-lite/pull/1554)
+head did not contain this follow-up. Its terminal custody is now complete;
+require the successor official numeric GUI job to
 produce and independently audit a fresh complete capture. Never relabel the
 older unavailable record or relax its freshness checks.
 
