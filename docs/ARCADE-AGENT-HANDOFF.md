@@ -1,5 +1,73 @@
 # Arcade compatibility: fresh-agent handoff and methodology
 
+## Fresh-agent checkpoint — 2026-10-29
+
+Start with [the lane protocol](../lanes/PROTOCOL.md), the active
+[Arcade integration claim](../lanes/2026-10-26-arcade-forward-integration.md),
+and this section. Refresh main, branch ownership, pull request heads and checks
+before changing anything. The prepared work is on
+[`lane/arcade-created-field-receivers-20261029`](https://github.com/CrispStrobe/brickwright-lite/tree/lane/arcade-created-field-receivers-20261029),
+not yet on [PR #1554](https://github.com/CrispStrobe/brickwright-lite/pull/1554)
+or main. The live PR's last observed head was `6b811d1d`; its build and numeric
+authoring job passed, but all six unit shards and the full-CI request gate
+failed. The 32 distinct failing test identities in those shards are not corpus
+rows. Preserve the original failures and do not report this PR as ready to land.
+
+The latest historical raw census is **184 inputs: 147 translated, 36 partial,
+one parse failure**. It predates the prepared candidate. No application has
+been promoted by the source-only work below, and the count is not a guarantee
+that all 147 run correctly on every route.
+
+The prepared branch includes creation-event and callback Array-effect proofs,
+SDK name inspection that avoids unrelated getters, a classless export crash
+repair, a narrow `charCodeAt` numeric normal-result proof, and a pointwise proof
+for an initialized startup Array self-update. The latter makes the maintained
+compound-arithmetic fixture pass a source-only importer, Creator and exporter
+check. Its three focused modules are
+`test/native-array-startup-indexed-primitive.test.mjs`,
+`test/native-array-startup-issuer-boundaries.test.mjs` and
+`test/native-array-startup-indexed-export.test.mjs`. Their last local runs
+passed 6, 3 and 1 tests respectively; they do not qualify VM, SB3, PXT or browser
+behavior. Other source controls and their restrictions are described below.
+
+Work in this order:
+
+1. **Compose and qualify the prepared branch.** Refresh the live PR and main;
+   preserve concurrent owners' changes and merge normally. Check the prepared
+   candidate's tree and existing claim, then publish one successor only when
+   the existing CI queue and owners allow it. Use the automatic checks for that
+   exact head; do not dispatch duplicate runs or add `ci:full` casually. Every
+   enabled final-head check must succeed before merging, including the request
+   gate if it remains enabled. Run affected original-PXT, native and browser
+   checks when the actual changes require them. Verify the reviewed and merged
+   trees and parents; predecessor results do not qualify a successor.
+2. **Diagnose actual export failures.** Preserve each first official log and
+   artifact once. The reference Array test can retain its project and result
+   through `ARRAY_ALIAS_EVIDENCE`; the callback test has the optional
+   `BW_ARRAY_CALLBACK_EVIDENCE_DIR` hook. Coordinate their upload with the
+   workflow owner rather than changing another lane's workflow. The compound
+   arithmetic test emits its structured post-VM refusal and generated draft as a
+   TAP diagnostic on failure. Use the actual failing operand, writer and source
+   order to select a repair; leave assertions and uncertainty intact. In
+   particular, source-only success for `rows[0]` does not identify the official
+   post-VM operand. The SDK Sprite collection callback index and indexed Image
+   pixel result are distinct unconfirmed candidates, not blanket type rules.
+3. **Recover and rerun the corpus on an appropriate external worker.** Freeze
+   the same 184 inputs, hashes, candidate and observer; retain every first
+   outcome and compare import, export/reimport, original MakeCode execution,
+   Lite execution and controller/editor behavior separately. The historical
+   partials include missing art and dependency contexts; use authentic lawful
+   project resources and report unavailable context rather than inventing it.
+   Prepare an offline dependency closure for the worker before scheduling a
+   run. Do not run large suites, browser builds or corpus jobs on a shared
+   resource-constrained host. Promote a row only after its complete program and
+   required routes pass; report old and new denominators and regressions.
+4. **Close authoring gaps alongside conversion.** For each implemented
+   operation, verify Blocks and pseudocode editing, graphic or tile editing when
+   applicable, save/reopen, export to MakeCode and reimport, with actual runtime
+   behavior. Record unsupported operations explicitly and retain failing cases;
+   converter acceptance alone is not GUI or game parity.
+
 ## Current qualification and next failure families
 
 [PR #1554](https://github.com/CrispStrobe/brickwright-lite/pull/1554) remains
