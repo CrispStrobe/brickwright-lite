@@ -545,26 +545,6 @@ const CENSUS = [
            + 'of scratch-gui. Asserted below.'
     },
     {
-        file: '.github/workflows/deploy-daily.yml',
-        kind: 'git',
-        text: "git ls-remote origin refs/heads/main | awk '{print $1}')",
-        class: 'resolver',
-        why: 'reads main\'s HEAD sha to refuse publishing a tree older than what is live: '
-           + 'the sha it PRODUCES is compared against the checkout\'s, no content is fetched. '
-           + 'The gate was red on main since f4ba84d62 for want of this row.'
-    },
-    {
-        file: 'test/vercel-deployment-policy.test.mjs',
-        kind: 'git',
-        text: 'git ls-remote origin refs\\/heads\\/main/,',
-        class: 'resolver',
-        why: 'not a fetch — this is the test that PINS the deploy-daily.yml resolver above, '
-           + 'asserting the publish step resolves main -> sha before deploying. The detector '
-           + 'matches the assertion regex\'s text; declared here rather than excluding the file '
-           + '(which would blind the scan to any real fetch it later gains), and classed with '
-           + 'the site it guards.'
-    },
-    {
         file: 'scripts/probe-pico-micropython.mjs',
         kind: 'micropython',
         text: 'micropython.org/resources/firmware/RPI_PICO-20240222-v1.22.2.uf2',
