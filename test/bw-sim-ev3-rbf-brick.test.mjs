@@ -358,3 +358,17 @@ test('Robot Lab: the EV3 wall stopper runs wall-stopper.rbf — drives at the wa
         session.dispose();
     }
 });
+
+test('compiled note names run through virtual EV3 download and program start', () => {
+    const hub = brick();
+    const link = connect(hub);
+    download(link, '../prjs/bw/notes.rbf', fixture('note-frequency'));
+    assert.equal(startProgram(link, '../prjs/bw/notes.rbf')[4], 0x02);
+    bench(hub, 1000);
+    assert.equal(hub.s.lastProgram.how, 'ok');
+    assert.equal(hub.s.lastProgram.error, null);
+    assert.deepEqual(hub.events.filter(e => e.kind === 'write').map(e => e.value ?? e.text),
+        [262,277,294,311,330,349,370,392,415,440,466,494,
+            523,554,587,622,659,698,740,784,831,880,932,988,
+            1047,1109,1175,1245,1319,1397,1480,1568,1661,1760,1865,1976,440,440,440]);
+});

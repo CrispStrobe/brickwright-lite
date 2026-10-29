@@ -895,7 +895,7 @@ TYPES.forEach((type, k) => op(OP.SELECT8 + k, (vm, c) => {
 // equal temperament rounded to the nearest hertz over that finite range.
 op(OP.NOTE_TO_FREQ, (vm, c) => {
     const note = c.str();
-    const match = /^([A-G])(#?)([4-6])$/.exec(note);
+    const match = /^([A-G])(#?)([4-6])(?![\s\S])/.exec(note);
     const offsets = {C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11};
     const midi = match ? (Number(match[3]) + 1) * 12 + offsets[match[1]] + (match[2] ? 1 : 0) : 0;
     const valid = match && (!match[2] || 'CDFGA'.includes(match[1]));

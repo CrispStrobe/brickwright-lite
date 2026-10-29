@@ -18,7 +18,22 @@ function runNote (note) {
 
 test('NOTE_TO_FREQ decodes notes, writes DATA16 and uses firmware fallback', () => {
     for (const [note, expected] of [['C4',262], ['C#4',277], ['A4',440], ['A#5',932], ['B6',1976],
-        ['C3',440], ['B#4',440], ['Db4',440], ['a4',440], ['',440], ['C4x',440]]) {
+        ['C3',440], ['B#4',440], ['Db4',440], ['a4',440], ['',440], ['C4x',440], ['C4\n',440]]) {
         assert.equal(runNote(note), expected, note);
     }
+});
+
+test('compiled EV3 program emits every supported note and unmatched-name fallback', async () => {
+    const {readFileSync} = await import('node:fs');
+    const bytes = readFileSync(new URL('./fixtures/ev3-rbf/note-frequency.rbf', import.meta.url));
+    const vm = new Ev3Vm();
+    assert.deepEqual(vm.start(bytes), {ok: true});
+    const writes = [];
+    vm.advanceTo(1000, {nowMs: () => 1000, event: (kind, value) => {
+        if (kind === 'write') writes.push(value.value);
+    }});
+    assert.notEqual(vm.status, 'error', JSON.stringify(vm.error));
+    assert.deepEqual(writes, [262,277,294,311,330,349,370,392,415,440,466,494,
+        523,554,587,622,659,698,740,784,831,880,932,988,
+        1047,1109,1175,1245,1319,1397,1480,1568,1661,1760,1865,1976,440,440,440]);
 });
