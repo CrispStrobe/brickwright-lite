@@ -45,6 +45,12 @@ test('a primitive literal written to a different local may precede the Array ove
  }
  const f=fixture();delete f.blocks[f.event];f.blocks[f.copy].inputs.VALUE=[1,[12,'out','out']];bad(f);
 });
+test('physical literal shadows have the same bounded effect as inline literals',()=>{
+ for(const [opcode,field,value] of [['text','TEXT','hello'],['math_number','NUM','7']]){
+  const f=fixture();f.blocks[f.event].opcode=opcode;f.blocks[f.event].fields={[field]:[value,null]};f.blocks[f.event].shadow=true;f.blocks[f.copy].inputs.VALUE=[1,f.event];good(f);
+ }
+ const f=fixture();f.blocks[f.event].opcode='text';f.blocks[f.event].fields={TEXT:[{},null]};f.blocks[f.event].shadow=true;f.blocks[f.copy].inputs.VALUE=[1,f.event];bad(f);
+});
 
 function conditionalFixture(readReset){
  const f=fixture(),{blocks,node,copy,overwrite,store}=f;

@@ -701,12 +701,24 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
                 (typeof literal(r.node,'NAME',r.target)!=='string'||literal(r.node,'NAME',r.target)==='__proto__')))return false;
             return true;
         }
-        if(!watcherIsArray(valueSlot)||![2,3].includes(valueSlot[0])||valueSlot.length!==valueSlot[0]||
+        if(!watcherIsArray(valueSlot)||![1,2,3].includes(valueSlot[0])||valueSlot.length!==(valueSlot[0]===3?3:2)||
             typeof valueSlot[1]!=='string'||valueSlot[0]===3&&!watcherIsArray(valueSlot[2]))return false;
         if(records.some(r=>(r.scope===scope&&r.node.opcode==='arcade_setLocal'||r.target===scope.target&&r.node.opcode==='arcade_setCaptured')&&
             (typeof literal(r.node,'NAME',r.target)!=='string'||literal(r.node,'NAME',r.target)==='__proto__')))return false;
         const value=child(node,'VALUE',scope.target),which=value?.fields?.WHICH;
-        return !!value&&!invalid.has(value)&&owners.get(value)===scope&&value.opcode==='arcade_eventSprite'&&
+        // Blockly also encodes an inline literal as a physical shadow block.
+        // Require the exact leaf shape and primitive payload, not its label.
+        if(value&&!invalid.has(value)&&owners.get(value)===scope&&value.shadow===true&&
+            value.topLevel===false&&value.next==null&&value.mutation==null){
+            const field=value.opcode==='text'?'TEXT':value.opcode==='math_number'?'NUM':null;
+            if(field&&exactKeys(value,[],[field])){
+                const item=value.fields[field];
+                if(watcherIsArray(item)&&item.length===2&&item[1]===null&&
+                    (field==='TEXT'?typeof item[0]==='string':
+                        ['string','number'].includes(typeof item[0])&&watcherFinite(watcherNumber(item[0]))))return true;
+            }
+        }
+        return valueSlot[0]!==1&&!!value&&!invalid.has(value)&&owners.get(value)===scope&&value.opcode==='arcade_eventSprite'&&
             value.shadow===false&&value.topLevel===false&&value.next==null&&value.mutation==null&&exactKeys(value,[],['WHICH'])&&
             watcherIsArray(which)&&which.length===2&&which[1]===null&&['first','second'].includes(which[0]);
     };
@@ -733,7 +745,9 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         const branchAssigns=id=>{const seen=new Set();for(let n=block(w.target,id);n&&!seen.has(n);n=block(w.target,n.next)){seen.add(n);
             if(c.writers.some(o=>o.node===n&&o.scope===scope&&o.value&&!resetValue(o.value.node)&&!invalid.has(n)&&!(o.value.cell===c)&&!(o.value.node&&readsCell(o.target,o.value.node,c))))return true;
             return false;}return false;};
-        const condition=next.inputs?.CONDITION?.[1],literalCondition=Array.isArray(condition)?[4,5,6,7,8,10].includes(condition[0]):inertLiteral(w.target,block(w.target,condition));
+        const condition=next.inputs?.CONDITION?.[1],literalCondition=Array.isArray(condition)?condition.length===2&&
+            ([4,5,6,7,8].includes(condition[0])&&['string','number'].includes(typeof condition[1])&&watcherFinite(watcherNumber(condition[1]))||condition[0]===10&&typeof condition[1]==='string'):
+            inertLiteral(w.target,block(w.target,condition));
         const result=next.opcode==='control_if_else'&&!invalid.has(next)&&literalCondition&&branchAssigns(next.inputs?.SUBSTACK?.[1])&&branchAssigns(next.inputs?.SUBSTACK2?.[1]);
         if(result&&skipped.size)eventCopyPrefixUsed=true;
         return result;
