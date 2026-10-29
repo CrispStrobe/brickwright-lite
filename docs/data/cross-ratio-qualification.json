@@ -13,7 +13,9 @@
   "scope": "Finite software-law candidate only; no physical, hardware or library-wide claim.",
   "lightweightChecks": {
     "engineExecuted": false,
-    "readerPreflightTests": 8,
+    "readerPreflightTests": 9,
+    "checkoutSupplierRejections": 7,
+    "checkoutToolBinding": "EXPLICIT_ABSOLUTE_EXECUTABLE_AND_ROOT; GIT_ENV_OVERRIDES_REMOVED; CI_COMMIT_CHECKED",
     "initialSnapshotObservedInputs": true,
     "rejectedCorruptions": 52,
     "quaternionSignInvariant": true,

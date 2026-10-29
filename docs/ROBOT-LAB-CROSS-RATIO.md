@@ -81,6 +81,12 @@ node scripts/verify-sim-cross-ratio.mjs ORIGINAL.log EXPECTED-CI-IDENTITY.json
 The expected commit, tree and file hashes must be independently obtained from
 the actual CI checkout. A branch name or the producer's own header is insufficient.
 Acquire each official original once and retain the first failure.
+The metadata supplier binds an explicit absolute Git executable and the actual
+repository root, removes inherited Git repository overrides, and requires the
+checkout to match the CI commit when supplied. Relative executable names,
+malformed or extra identity lines, commit mismatches and tool failures refuse.
+`BW_CROSS_RATIO_GIT_EXECUTABLE` can declare a different absolute executable;
+the system Git path is the default. This changes no physical acceptance bound.
 
 The browser candidate now registers explicit experimental opt-in, passive law
 and hinge checks, and a real project roundtrip. It checks the exported SB3 CRC,
@@ -96,7 +102,7 @@ controls are implemented. The existing 30-minute job cap and every old gate
 remain unchanged. The canonical budget registry includes the new gate with zero
 readings; no measured runtime or historical timing is claimed.
 
-Eight lightweight analytic/observation preflights (52 data corruptions plus receiver failures, including the
+Nine lightweight analytic/observation preflights (52 data corruptions plus seven checkout-supplier rejection controls and receiver failures, including the
 four-case retained-TAP transport and same-opcode program edits) and 15 browser shard/inventory checks pass;
 these checks import no engine and do not qualify motion.
 

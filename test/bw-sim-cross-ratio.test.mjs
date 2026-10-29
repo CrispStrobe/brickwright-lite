@@ -2,9 +2,11 @@
 // Copyright (c) 2026 CrispStrobe
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
+import {readFileSync,realpathSync,statSync,accessSync,constants} from 'node:fs';
 import {createHash} from 'node:crypto';
 import {execFileSync} from 'node:child_process';
+import {isAbsolute} from 'node:path';
+import {fileURLToPath} from 'node:url';
 import {Writable} from 'node:stream';
 import {once} from 'node:events';
 import {finished} from 'node:stream/promises';
@@ -17,6 +19,22 @@ const C=JSON.parse(read('test/fixtures/bw-sim/cross-ratio/contract.json'));
 // A new Node test runner owns its own IPC context. Inheriting the parent's
 // child role makes --test refuse to run the fixture as a recursive invocation.
 const childProcessEnv=Object.fromEntries(Object.entries(process.env).filter(([key])=>key!=='NODE_TEST_CONTEXT'));
+// Git supplies checkout metadata only. Bind its actual executable and repository
+// explicitly; the independent original reader still verifies both IDs and hashes.
+const checkoutIdentity=({root,executable,expectedCommit,environment=process.env,invoke=execFileSync})=>{
+ assert.ok(typeof executable==='string'&&isAbsolute(executable),'declare an absolute Git executable');
+ assert.ok(typeof root==='string'&&isAbsolute(root),'declare the repository root');
+ const tool=realpathSync(executable),cwd=realpathSync(root);
+ assert.ok(statSync(tool).isFile(),'Git executable is a regular file');accessSync(tool,constants.X_OK);
+ const env=Object.fromEntries(Object.entries(environment).filter(([key])=>!key.startsWith('GIT_')));
+ env.GIT_OPTIONAL_LOCKS='0';env.GIT_NO_REPLACE_OBJECTS='1';
+ const output=invoke(tool,['-c','gc.auto=0','-c','maintenance.auto=false','rev-parse','HEAD','HEAD^{tree}'],
+  {cwd,env,encoding:'utf8',timeout:5000,maxBuffer:1024,windowsHide:true});
+ const lines=output.split(/\r?\n/);if(lines.at(-1)==='')lines.pop();
+ assert.ok(lines.length===2&&lines.every(id=>/^[0-9a-f]{40}$/.test(id)),'exact commit and tree identities');
+ if(expectedCommit!==undefined){assert.match(expectedCommit,/^[0-9a-f]{40}$/);assert.equal(lines[0],expectedCommit,'actual checkout matches the CI commit');}
+ return{commit:lines[0],tree:lines[1]};
+};
 const check=r=>readCrossRatio(r,{expectedIdentity:ANALYTIC_IDENTITY});
 // Synchronous independent consumer preflight precedes even importing the
 // native harness. A failed negative control cannot continue into engine cases.
@@ -172,6 +190,22 @@ const initialChanged=captureCrossRatioInitial(initialInput);
 assert.equal(initialChanged.t,375);assert.equal(initialChanged.extra.variables.stage,9);assert.equal(initialChanged.busy.A,false);
 assert.equal(initialChanged.extra.modes.A,'hold');assert.equal(initialChanged.extra.sessionFailed,null);assert.equal(initialChanged.bodies['observed-body'].position[0],.04);
 test('Cross Ratio: initial snapshot reads actual clock, poses, variables and motor state',()=>assert.notDeepEqual(initialChanged,initialObserved));
+test('Cross Ratio: checkout identity binds an absolute tool, repository and CI commit',()=>{
+ const root=fileURLToPath(new URL('../',import.meta.url)),commit='1'.repeat(40),tree='2'.repeat(40);
+ let calls=0;
+ const base={root,executable:process.execPath,expectedCommit:commit,environment:{PATH:'untrusted',GIT_DIR:'elsewhere',GIT_WORK_TREE:'elsewhere'},invoke:(tool,args,options)=>{
+  calls++;assert.equal(tool,realpathSync(process.execPath));assert.ok(isAbsolute(tool));assert.equal(options.cwd,realpathSync(root));
+  assert.deepEqual(args,['-c','gc.auto=0','-c','maintenance.auto=false','rev-parse','HEAD','HEAD^{tree}']);
+  assert.deepEqual(options.env,{PATH:'untrusted',GIT_OPTIONAL_LOCKS:'0',GIT_NO_REPLACE_OBJECTS:'1'});
+  assert.equal(options.timeout,5000);assert.equal(options.maxBuffer,1024);return commit+'\n'+tree+'\n';
+ }};
+ assert.deepEqual(checkoutIdentity(base),{commit,tree});assert.equal(calls,1);
+ for(const executable of ['git',''])assert.throws(()=>checkoutIdentity({...base,executable}),/absolute Git/);
+ for(const output of [commit+'\n'+'g'.repeat(40)+'\n',commit+'\n',commit+'\n'+tree+'\n'+'3'.repeat(40)+'\n'])
+  assert.throws(()=>checkoutIdentity({...base,invoke:()=>output}),/exact commit and tree/);
+ assert.throws(()=>checkoutIdentity({...base,expectedCommit:'3'.repeat(40)}),/actual checkout matches/);
+ assert.throws(()=>checkoutIdentity({...base,invoke:()=>{throw new Error('metadata failure');}}),/metadata failure/);
+});
 const {runRobotLabProgram}=await import('./helpers/robot-lab-direct-vm.mjs');
 const {catalogFrom,prepareModel}=await import('../overlay/scratch-gui/src/lib/bw-sim/sim-session.js');
 const original=read('overlay/scratch-gui/static/sim-lab/models/cross-ratio.ldr'),program=read('overlay/scratch-gui/static/sim-lab/programs/cross-ratio.bw');
@@ -188,7 +222,9 @@ for(const [i,p]of prepared.entries()){
  assert.deepEqual(p.issues.map(i=>i.severity+':'+i.code+':'+[...(i.parts||[])].sort().join(',')).sort(),expected.issueKeys);
 }
 for(const p of prepared){assert.equal(p.mechanism.actuators.length,1);assert.equal(p.mechanism.actuators[0].port,'A');}
-const identity={commit:execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim(),tree:execFileSync('git',['rev-parse','HEAD^{tree}'],{encoding:'utf8'}).trim(),files:Object.fromEntries(C.identityPaths.map(p=>[p,hash(readFileSync(new URL('../'+p,import.meta.url)))]))};
+const identity={...checkoutIdentity({root:fileURLToPath(new URL('../',import.meta.url)),
+ executable:process.env.BW_CROSS_RATIO_GIT_EXECUTABLE??'/usr/bin/git',expectedCommit:process.env.GITHUB_SHA}),
+ files:Object.fromEntries(C.identityPaths.map(p=>[p,hash(readFileSync(new URL('../'+p,import.meta.url)))]))};
 for(const coldMs of C.timing.coldMs)for(const control of [false,true])test(`Cross Ratio actual VM/Jolt: ${control?'remove P':'original'}, cold ${coldMs}ms`,{timeout:240000},async context=>{
  const vmErrors=[];let setup;
  const r=await runRobotLabProgram(program,{modelText:control?removed:original,catalog,autoPorts:false,frameMs:25,coldMs,afterMs:C.timing.afterMs,timeLimitMs:C.timing.timeLimitMs,
