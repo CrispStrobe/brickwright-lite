@@ -37,6 +37,10 @@ asset edits through two sprite delete/restore cycles. Both fail with the
 original implementation; the combined focused suite passes all 30 controls.
 The sound fixture checks asset/history reconstruction, not audio playback.
 
+Independent review also reproduced a queued copy running after the loader had
+cleared its target but before `loadProject` resolved. Copies now retain the
+requested target identity and cancel in that intermediate loading window too.
+
 ## T5: Android autosaves
 
 Android native builds hide the inaccessible folder option, ignore a previously
@@ -60,6 +64,15 @@ the existing Undo error state. Synchronous editors retain their synchronous
 return values. Three coordinator regressions reproduce the original premature
 completion, misordered project steps and overcounted failures, then pass with
 the repair. This changes only the lazy coordinator, not the first-load core.
+
+A jump also stops before entering a different editor, a newly registered
+replacement for the same editor, or a replacement project's History. A
+project-only jump remains independent of tab selection. A late failure from
+the previous project cannot remove the replacement project's Redo entry.
+Together with the loading-window regression, the focused History/artwork/boot
+and claim checks pass all 49 controls without skips. The sound consumer's
+encoding/selection transaction repair is scoped separately; coordinator tests
+do not establish actual sound-write cancellation or audio playback acceptance.
 
 ## Validation
 

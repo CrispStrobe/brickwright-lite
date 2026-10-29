@@ -192,11 +192,15 @@ export const instrumentProjectHistory = vm => {
     // independent steps, rather than both snapshots claiming the same blocks.
     wrap('shareBlocksToTarget', (blocks, targetId, fromTargetId) => {
         const generation = projectGeneration;
+        const requestedTarget = vm.runtime.getTargetById(targetId);
         const copied = JSON.parse(JSON.stringify(blocks));
         const copy = () => {
             // A queued drag belongs to the project in which it was requested.
             if (generation !== projectGeneration) return;
             const target = vm.runtime.getTargetById(targetId);
+            // Loading clears the old targets before loadProject resolves and
+            // advances the generation. Cancel a drag while that gap is open.
+            if (requestedTarget && target !== requestedTarget) return;
             if (!target) return raw.shareBlocksToTarget(copied, targetId, fromTargetId);
             const before = new Set(Object.keys(target.blocks._blocks));
             const variableKeys = new Map(vm.runtime.targets.map(t => [t, new Set(Object.keys(t.variables))]));

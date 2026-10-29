@@ -138,6 +138,65 @@ test('a script copy finishing after project replacement cannot restore old Histo
     }
 });
 
+test('a queued script copy is canceled while project loading has cleared its target', async () => {
+    const {vm} = await runProgram('SPRITE Actor:\nWHEN flag clicked:\n  move 1 steps', {frames: 1});
+    instrumentProjectHistory(vm);
+    clearProjectHistory();
+    activateUndoSurface('test-project-only');
+    const actor = vm.runtime.targets.find(target => target.isOriginal && !target.isStage);
+    const json = vm.toJSON();
+    let releaseExtension;
+    const pendingExtension = new Promise(resolve => { releaseExtension = resolve; });
+    let enteredExtension;
+    const extensionStarted = new Promise(resolve => { enteredExtension = resolve; });
+    const manager = vm.extensionManager;
+    const isLoaded = manager.isExtensionLoaded.bind(manager);
+    const loadExtension = manager.loadExtensionURL.bind(manager);
+    manager.isExtensionLoaded = id => id === 'pen' ? false : isLoaded(id);
+    manager.loadExtensionURL = id => {
+        if (id !== 'pen') return loadExtension(id);
+        enteredExtension();
+        return pendingExtension;
+    };
+    let releaseInstall;
+    const pendingInstall = new Promise(resolve => { releaseInstall = resolve; });
+    let enteredInstall;
+    const installStarted = new Promise(resolve => { enteredInstall = resolve; });
+    const installTargets = vm.installTargets.bind(vm);
+    vm.installTargets = async (...args) => {
+        enteredInstall();
+        await pendingInstall;
+        return installTargets(...args);
+    };
+    const block = {id: 'pending-copy', opcode: 'pen_clear', next: null, parent: null,
+        inputs: {}, fields: {}, topLevel: true, shadow: false, x: 0, y: 0};
+    let loading;
+    try {
+        const first = vm.shareBlocksToTarget([block], actor.id);
+        await extensionStarted;
+        const queued = vm.shareBlocksToTarget([block], actor.id);
+        const copies = Promise.allSettled([first, queued]);
+        loading = vm.loadProject(json);
+        await installStarted;
+        assert.ok(!vm.runtime.targets.includes(actor), 'the VM has cleared the old target');
+        releaseExtension();
+        const results = await copies;
+        assert.deepEqual(results.map(result => result.status), ['fulfilled', 'fulfilled'],
+            'the queued old-project copy is canceled without a VM error');
+        releaseInstall();
+        await loading;
+        assert.deepEqual(getUndoState().project.past, []);
+        assert.ok(vm.runtime.targets.every(target => Object.values(target.blocks._blocks)
+            .every(current => current.opcode !== 'pen_clear')));
+    } finally {
+        releaseExtension();
+        releaseInstall();
+        await loading?.catch(() => {});
+        vm.quit();
+        clearProjectHistory();
+    }
+});
+
 test('deleting a costume is undone in place and redone, many times', async () => {
     const {vm, actor} = await fixture();
     try {
