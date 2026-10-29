@@ -41,12 +41,15 @@ checks, nine declared skips and no pending checks; only the explicitly excepted
 absent-`ci:full` verdict remains red. The final combined UI target has no such
 exception.
 
-Next: the coordinated menu/editor delivery owner must qualify and promote CUI
-PR131, compose the complete frozen circuit ancestry, perform one explicit Lite
-package adoption and qualify the combined application before landing.
-Its preflight must adapt the circuit browser driver's old menu labels and popup
-scope to the actual trigger-owned portal, keeping the measurement and refusal
-checks intact. Circuit
+CUI PR131 has now landed as `4b65f15485abbc039958d8e1a8a29ac3459b75f9`
+after its three enabled checks and retained browser evidence were accepted.
+The coordinated delivery owner is composing the complete frozen circuit ancestry
+with the editor/menu changes and preparing one explicit adoption of that CUI
+head; Board stays unchanged. The consumer browser driver now resolves the
+originating trigger's popup; combined application qualification, including
+cramped navigation and the original measurement/refusal assertions, is still owed.
+Fixed experiment contracts and consumed-study identities must stay historical;
+live adoption assertions alone follow the new package. Circuit
 retains numerical-original custody, independent readback and final documentation;
 no competing source merge or pin update is authorized. All enabled full checks
 apply to that combined UI target; the earlier fast-tier label exception is not

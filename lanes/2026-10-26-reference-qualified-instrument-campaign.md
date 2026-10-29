@@ -198,3 +198,14 @@ Both predecessor observers are stopped. Source/pin landing custody remains
 with the combined delivery owner; its full application target must pass every
 enabled check. Final application evidence, integrated-head reconciliation and
 four-document closeout remain pending. No consumed study was replayed.
+
+### Supplier landed; combined consumer pending — 2026-10-29
+
+CUI PR131 landed `4b65f15485abbc039958d8e1a8a29ac3459b75f9`, with all three
+enabled checks and retained browser evidence accepted. The coordinated delivery
+owner is preparing its explicit Lite return with the complete frozen circuit
+ancestry and editor/menu source. Circuit retains scientific-original custody
+and these four documentation surfaces. No new numerical or browser qualification
+is inferred from supplier landing. Preserve fixed experiment contracts, original
+readers and consumed-study seals; distinguish them from live package assertions.
+The final combined application and documentation endpoints remain open.

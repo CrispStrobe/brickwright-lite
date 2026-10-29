@@ -65,6 +65,23 @@ red verdict is the absent `ci:full` label covered by the earlier operator-approv
 fast-tier exception for this predecessor. This does not relabel the overall
 Build green or waive any enabled check on the final combined UI candidate.
 
+### Supplier return — 2026-10-29
+
+CUI PR131 landed at `4b65f15485abbc039958d8e1a8a29ac3459b75f9` after all
+three enabled checks and retained browser evidence were accepted. This is
+supplier evidence, not a qualified Lite adoption. The delivery owner is composing
+the entire `93aba754` source ancestry with the editor/menu changes and preparing
+the explicit package return. The new consumer menu helper resolves the actual
+trigger-owned popup. Its combined browser result is still pending.
+
+Keep the fixed authored regression's `CONTRACT_SOURCES` and matching workflow
+checkout historical. Its deliberate refusal when today's installed packages
+no longer match is not permission to rewrite or replay that experiment. It is
+separate from the four complete-file seals protecting the consumed reference-v2
+study. Live package-adoption assertions must follow the new pin; historical
+admission must remain byte-bound, with changed-seal and ordinary stale-input
+negatives. Neither old study nor predecessor CI becomes new-pin evidence.
+
 ### Next actions, in order
 
 The coordinated delivery claim is
@@ -75,21 +92,17 @@ campaign retains numerical-original custody, independent readback and these
 four final documentation surfaces. Do not independently merge PR1538 or advance
 its package pins while that combined delivery is active.
 
-1. Qualify and promote CUI PR131 before selecting its exact descendant for Lite.
-   A branch head, supplier test or earlier CUI pin is not consumer acceptance.
+1. Preserve the accepted CUI PR131 landing and adopt its exact `4b65f154` head.
+   Supplier browser evidence alone is not consumer acceptance.
 2. Compose the complete frozen `93aba754` source ancestry with the editor/menu
    delivery. Preserve the Board pin, historical study seals and separately owned
    pin-history reader. Verify every enabled final combined check, including its
    full application/browser checks; the earlier fast-tier label exception does
    not apply to this combined qualification.
-   Before that qualification, adapt `scripts/verify-circuit-ux.mjs` to the
-   new CUI menu: three Open locators and the Import locator still expect emoji
-   labels, while the popup now lives in a portal outside the designer. Resolve
-   the actual visible designer trigger's `aria-controls` dialog for Open,
-   Import, import-format and zoom controls; account for cramped navigation in
-   that popup. Preserve all existing measurement assertions, actual file chooser,
-   owner identity, layout coverage and refusal paths. Changing only the label
-   regex leaves the portal-scoping defect unresolved.
+   The menu-driver forward repair binds the visible originating trigger's
+   `aria-controls` popup for actual Open/Import and portal queries. Qualify
+   that repair in the combined application, including cramped navigation;
+   preserve every measurement assertion, real file chooser and refusal path.
 3. Before acquiring combined numerical logs, freeze the independent reader's
    exact consumer head, supplier pins, run and job identities. Preserve all
    numerical predicates. Acquire each original once, share retained files and

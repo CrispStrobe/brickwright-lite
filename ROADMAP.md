@@ -25,13 +25,15 @@ now terminal: 17 successful checks, nine declared skips, no pending jobs and
 only the earlier approved absent-`ci:full` verdict exception. Full combined UI
 qualification must pass every enabled check.
 
-The coordinated menu/editor delivery owner now carries CUI PR131 qualification,
-its explicit Lite adoption and the combined source/application landing. Preserve
-all `93aba754` ancestry; do not independently merge PR1538 or change its pins.
-Circuit retains numerical-original readback and the final four-document handoff.
-Preflight must adapt the circuit browser driver's old Open/Import emoji locators
-and designer-scoped popup queries to the new trigger-owned portal; preserve real
-file selection, assertions and cramped-navigation coverage before qualification.
+CUI PR131 landed as `4b65f15485abbc039958d8e1a8a29ac3459b75f9` with its
+three enabled checks and retained browser evidence accepted. The coordinated
+menu/editor delivery owner carries its explicit Lite adoption and combined
+source/application landing. Preserve all `93aba754` ancestry; do not independently
+merge PR1538 or change its pins. Circuit retains numerical-original readback
+and the final four-document handoff. The consumer driver now binds the actual
+trigger-owned popup; real file selection, numerical assertions and cramped
+navigation still need combined application qualification. Preserve fixed
+experiment contracts separately from current package-adoption assertions.
 Before new raw-log acquisition, freeze exact combined head/pin/run/job identities;
 read retained originals once and do not replay the study. After all enabled full
 application checks and actual landing, reconcile PR1516/1515/1517/1538, update
