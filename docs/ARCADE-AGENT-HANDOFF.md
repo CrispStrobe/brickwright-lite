@@ -25,7 +25,7 @@ permanent currentness. Supplied tags or copied nodes cannot enroll the receipt.
 The reviewed original `ImageMethods::getPixel` contract returns a pixel integer
 or zero out of range; source identities are recorded without executing SDK code.
 
-Nine new source groups, all 17 unchanged Image controls and two native-domain
+Ten new source groups, all 17 unchanged Image controls and two native-domain
 controls pass. Three mutations detect missing occurrence membership, skipped
 unexecuted effects and missing native projection; exact original bytes are
 restored. The unchanged authored artwork source is covered by the source test.
@@ -46,6 +46,31 @@ cap; do not substitute a higher local cap or call them application passes.
 This is a separate follow-up to the frozen `0eb57401b35` qualification head.
 Preserve its required terminal originals before publishing the successor.
 The immutable raw census remains **147 translated / 36 partial / 1 parse failure**.
+
+The generated-image follow-up also accepts `fillRect` and `drawLine` with
+five proved primitive int32 arguments, `replace` with two, and `flipX` with none.
+Every effect must execute in the closed source traversal. Issued Image dimensions
+can feed that private traversal, but do not receive public Number receipts.
+The pinned `screen/image.ts` helpers pack primitive coordinates and forward to
+pixel-only native methods; reviewed SHA-256 is
+`1fc7bed84554d0dab9d456c669babc746f0d0ddd7206b8efb29985cbb78e4a4a`.
+All 10 source, 17 unchanged Image and two native-domain controls pass after
+this extension. A missing drawing-input guard is detected by its negative
+control; restored bytes are checked.
+
+The next distinct task is **generated Image creation callback closure**.
+`test/makecode-arcade-generated-images.test.mjs` still contains
+`sprites.onCreated(SpriteKind.Player, function(sprite) { callbackWidth = sprite.width })`.
+The current pixel slice deliberately refuses that callback. Prove the actual
+registered entry, receiver and width getter together with Image attachment
+before notification; do not infer ordering from a callback annotation or name.
+Preserve alias and clone identities, handler replacement, reentrancy, receiver
+reassignment, scene changes and all incompatible writers. Keep the unchanged
+whole-fixture pixel arrays, callback width, Code, SB3 and original PXT assertions.
+The retained export failure supplied only a generic native-addition refusal,
+so identifying this source frontier is not proof that all other frontiers close.
+Run the complete generated-images test externally after the new boundary is
+implemented; no application completion is recorded here.
 
 GUI acceptance remains separate: edit either grouped animation frame, preserve
 shared-alias mutation and distinct equal-looking artwork sites, attach the edited

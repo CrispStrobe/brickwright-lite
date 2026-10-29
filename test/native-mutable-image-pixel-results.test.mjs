@@ -111,3 +111,11 @@ test('hidden rest/default and optional envelopes cannot alter a closed source fu
  }
  const p=parse(text),fn=walk(p).find(n=>n.type==='FunctionDeclaration');fn.parameterDefaultPrologue=[];const proof=mutableImagePixelNormalResults(p,profile);assert.equal(proof.has(walk(p).find(n=>n.type==='Call'&&n.callee?.name==='getPixel')),false);
 });
+
+test('generated Image drawing effects and private dimensions retain only pixel occurrence receipts',()=>{
+ const text='let width=4;let height=3;let picture=image.create(width,height);picture.fill(0);picture.fillRect(1,0,2,2,5);picture.drawLine(3,2,0,2,7);let copied=picture.clone();let alias=picture;copied.flipX();copied.replace(7,8);alias.setPixel(0,0,3);let sampled=picture.getPixel(2,1)+1;let actualWidth=picture.width;let actualHeight=copied.height;';
+ const {p,proof,calls}=inspect(text);assert.equal(calls.length,1);assert.equal(proof.has(calls[0]),true);
+ for(const n of walk(p))if(!calls.includes(n))assert.equal(proof.has(n),false,'dimensions and effects do not gain public authority');
+ for(const replacement of ['picture.fillRect(1,0,2,2,unknown)','picture.drawLine(3,2,0,2,picture)','copied.flipX(1)','copied.replace(7,foreign())','foreign.fillRect(1,0,2,2,5)'])bad(text.replace('picture.fillRect(1,0,2,2,5)',replacement));
+ for(const suffix of ['picture.fillRect=foreign;','picture.drawLine=foreign;','copied.flipX=foreign;','copied.replace=foreign;','picture.width=99;','function dormant(){picture.drawLine(0,0,1,1,7);}','sprites.onCreated(SpriteKind.Player,function(sprite){width=sprite.width;});'])bad(text+suffix);
+});

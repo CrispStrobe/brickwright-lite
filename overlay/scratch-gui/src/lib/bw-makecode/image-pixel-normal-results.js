@@ -7,6 +7,7 @@ const imageRound=Math.round;
 // Pinned original SDK data identities; qualification reads these files as data.
 export const MUTABLE_IMAGE_PIXEL_CPP_SHA256='74b51956789d8cc6da461415ae80a5016e207b140ae190ebfc60fa022baac193';
 export const MUTABLE_IMAGE_PIXEL_DTS_SHA256='bc899eb68811bf8f03a2844d5d8bfaa96d6a1e8c91765a84d5e7aa734d57d991';
+export const MUTABLE_IMAGE_HELPERS_TS_SHA256='1fc7bed84554d0dab9d456c669babc746f0d0ddd7206b8efb29985cbb78e4a4a';
 
 // The mutable profile is a separate issuer; callers cannot enroll it through
 // options or a source flag. The old immutable-list API retains its old gates.
@@ -165,8 +166,8 @@ function inspectPixelResults(program,profile,mode) {
     }
     if(mutable)for(const node of syntax.nodes){
         if(node.type==='Call'&&node.callee?.type==='Member'){
-            if(!['create','round','push','indexOf','getPixel','setPixel','fill','clone','setImage'].includes(node.callee.name))return answer();
-            if(['push','setPixel','fill','setImage'].includes(node.callee.name))mutableEffects.add(node);
+            if(!['create','round','push','indexOf','getPixel','setPixel','fill','clone','setImage','fillRect','drawLine','flipX','replace'].includes(node.callee.name))return answer();
+            if(['push','setPixel','fill','setImage','fillRect','drawLine','flipX','replace'].includes(node.callee.name))mutableEffects.add(node);
         }
     }
     // Record every normal observation of the SAME expression occurrence. A
@@ -242,6 +243,9 @@ function inspectPixelResults(program,profile,mode) {
         if(node.type==='Member'){
             if(builtinKind(node))return builtinKinds.get(node.name);
             const receiver=expr(node.object);
+            // Dimensions are private interpreter inputs, never public Number
+            // receipts. These pixel mutations preserve the allocation's shape.
+            if(mutable&&receiver?.kind==='Image'&&['width','height'].includes(node.name))return primitive('Number',receiver[node.name]);
             if(node.name!=='length'||receiver?.kind!=='Array')return fail();
             results.add(node);return primitive('Number',receiver.items.length);
         }
@@ -321,6 +325,10 @@ function inspectPixelResults(program,profile,mode) {
                 results.add(node);return primitive('Number',index);
             }
             if(receiver?.kind!=='Image')return fail();
+            // Reviewed Image helpers touch only these issued pixel buffers;
+            // primitive int32 inputs cannot invoke user coercion. No pixel
+            // value or rendering result is simulated or certified here.
+            if(mutable&&((['fillRect','drawLine'].includes(callee.name)&&args.length===5||callee.name==='replace'&&args.length===2||callee.name==='flipX'&&args.length===0)&&args.every(int32))){completedEffects.add(node);return undefinedValue;}
             if(callee.name==='fill'&&args.length===1&&args.every(int32)||callee.name==='setPixel'&&args.length===3&&args.every(int32)){if(mutable)completedEffects.add(node);return undefinedValue;}
             if(callee.name==='clone'&&args.length===0){images++;return {kind:'Image',site:node,width:receiver.width,height:receiver.height};}
             if(callee.name!=='getPixel'||args.length!==2||!args.every(arg=>numeric(arg)&&Number.isSafeInteger(arg.value)))return fail();
