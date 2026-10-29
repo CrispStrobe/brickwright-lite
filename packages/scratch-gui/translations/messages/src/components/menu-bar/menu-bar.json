@@ -81,6 +81,14 @@
     "defaultMessage": "Offline library…"
   },
   {
+    "id": "gui.menuBar.openCodeFile",
+    "defaultMessage": "Open code file…"
+  },
+  {
+    "id": "gui.menuBar.saveCodeFile",
+    "defaultMessage": "Save code as…"
+  },
+  {
     "id": "gui.menuBar.openCircuit",
     "defaultMessage": "Open circuit…"
   },
@@ -100,6 +108,34 @@
     "id": "gui.menuBar.edit",
     "description": "Text for edit dropdown menu",
     "defaultMessage": "Edit"
+  },
+  {
+    "id": "gui.menuBar.undo",
+    "defaultMessage": "Undo"
+  },
+  {
+    "id": "gui.menuBar.redo",
+    "defaultMessage": "Redo"
+  },
+  {
+    "id": "gui.menuBar.findReplace",
+    "defaultMessage": "Find and replace…"
+  },
+  {
+    "id": "gui.menuBar.goToLine",
+    "defaultMessage": "Go to line…"
+  },
+  {
+    "id": "gui.menuBar.selectAll",
+    "defaultMessage": "Select all"
+  },
+  {
+    "id": "gui.menuBar.codeToBlocks",
+    "defaultMessage": "Convert code to blocks"
+  },
+  {
+    "id": "gui.menuBar.codeFromBlocks",
+    "defaultMessage": "Generate code from blocks"
   },
   {
     "id": "gui.menuBar.turboModeOff",
