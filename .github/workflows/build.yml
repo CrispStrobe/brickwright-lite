@@ -4210,6 +4210,7 @@ jobs:
 
   arcade-numeric-authoring:
     name: Arcade numeric authoring (official build)
+    if: needs.build.result == 'success' && (github.event_name == 'push' || github.event_name == 'pull_request')
     needs: build
     runs-on: ubuntu-latest
     permissions:
