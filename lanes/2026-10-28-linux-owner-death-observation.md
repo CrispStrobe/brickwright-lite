@@ -31,3 +31,20 @@ failure's cause cannot be inferred from new passes. Preserve it and explicitly
 scope any remaining uncertainty. Keep production bytes outside the test module
 identical; all enabled final-head checks and affected actual SAMD browser plus
 installed qualification still precede the normal matched adoption merge.
+
+Candidate: strict complete PID publication, parent/group admission and held pidfd
+termination/cleanup; the three-second positive assertion is unchanged. Three
+new regular Linux controls cover malformed publication, counterfeit parent/live
+and reaped identities, and deliberately clearing the actual registered guard.
+The negative Python fixture uses isolated mode and explicit non-optimizable
+checks. No production bytes before the test module changed. Independent review
+found no scoped blocker; bounded extracted-method controls and three cuts pass.
+Those private controls retain their synthetic boundary; full Rust/source CI and
+affected actual consumer qualification remain pending. Keep this claim active.
+
+Final timing review preserves the original immediate-crash trigger after identity
+admission. A fresh100 ms live-owner control is a separate case, never a delay of
+the original trigger. Both retain their own unchanged three-second post-crash
+bound; failure diagnostics label the case. Final extracted methods pass and the
+disabled held guard is detected specifically in the zero-delay case. Full Rust
+and affected consumer qualification remain required.
