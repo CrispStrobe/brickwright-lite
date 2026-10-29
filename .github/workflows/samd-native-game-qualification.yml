@@ -45,13 +45,19 @@ jobs:
           ref: ${{ inputs.consumer }}
           path: consumer
           persist-credentials: false
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.sha }}
+          path: reader
+          persist-credentials: false
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: 22
       - name: Exercise independent metadata, checkout and asset refusal controls
-        run: node --test consumer/test/samd-native-profile.test.mjs
+        run: node --test reader/test/samd-native-profile.test.mjs
       - name: Admit official metadata, acquire each original once, and join all source bytes
         env:
+          BW_SAMD_ADMISSION_SOURCE: ${{ github.workspace }}/consumer
           GH_TOKEN: ${{ github.token }}
           CONSUMER: ${{ inputs.consumer }}
           FRONTEND: ${{ inputs.frontend_run }}
@@ -59,7 +65,7 @@ jobs:
           PRODUCER: ${{ inputs.producer_run }}
           PRODUCER_HEAD: ${{ inputs.producer_head }}
         run: |
-          node consumer/scripts/verify-samd-native-game-browser.mjs --admit-inputs "$CONSUMER" "$FRONTEND" "$NATIVE" "$PRODUCER" "$PRODUCER_HEAD" qualification
+          node reader/scripts/verify-samd-native-game-browser.mjs --admit-inputs "$CONSUMER" "$FRONTEND" "$NATIVE" "$PRODUCER" "$PRODUCER_HEAD" qualification
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
