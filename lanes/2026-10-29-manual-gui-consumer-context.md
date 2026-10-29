@@ -1,7 +1,7 @@
 # Align the official GUI consumer with its supported events
 
 Owner: Circuit/editor integration maintainer, coordinating the CI audit boundary.
-Status: source repair implemented; final hosted qualification pending. A dependent wiring-test amendment is registered separately before its edit.
+Status: source and registered dependent wiring-test repairs implemented; final hosted qualification pending.
 Base: `54df780e909db9652db16e928d05f4b5a220947d`.
 
 ## Observed failure and preserved boundary
@@ -73,9 +73,12 @@ it changes no application, data, numerical predicate, threshold or supplier.
 
 Registration landed at `2f1aced46b8e`. The three source paths now select only
 successful supported consumer events and enforce that source guard. The common
-metadata admission and existing test bodies remain unchanged. Two new actual
-source-selector controls pass locally, exercising ten event/dependency cases
-and four altered guards; an explicit unsupported-metadata zero-GET case is also
-present for hosted execution. Local ZIP dependencies are absent, so no complete
-archive/CLI suite is claimed here. Final enabled checks and actual application
-qualification remain required; source implementation is not deployment.
+metadata admission and existing test bodies remain unchanged. The actual source-selector controls exercise ten event/dependency cases and
+four altered guards. All 26 genuine artifact, producer-completion and runner
+controls pass, including ZIP/digest/manifest admission, CLI behavior and explicit
+unsupported-metadata zero-GET refusal. The registered dependent wiring test
+executes actual classifier-output forwarding and checks its tier bindings; all
+seven controls pass and three isolated forwarding/binding mutants fail. The
+combined focused CI-repair suite passes 39 tests with no failures or skips.
+Final enabled checks and actual application qualification remain required;
+source implementation is not deployment.
