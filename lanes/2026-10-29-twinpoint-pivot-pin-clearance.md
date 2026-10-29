@@ -1,8 +1,18 @@
 # Twinpoint pivot-pin axial clearance
 
-Status: CLAIM ONLY — no model implementation or repaired-physics acceptance.
+Status: SOURCE CANDIDATE — pure construction controls pass; fresh affected
+native and GUI/worker/save-reopen qualification and exact-head CI are pending.
+No repaired-physics acceptance or landing is claimed.
 Owner: Codex, user-authorized ordered Robot Lab continuation.
-Observed base: `f5acf3b3b898a962e19f6b42397f034d1ae7117e`.
+Claim merged in PR #1560 at `da720b01fcc2b737b65859bf1174277f0578daa7`.
+Implementation starts from that exact landed tree. Intervening main changes
+are not treated as independently qualified by this model's construction tests.
+
+The candidate changes only the declared Twinpoint generator block and generated
+pin placement, with its new focused test and construction note. Seven pure
+controls pass, including regeneration, topology, stock-profile retention and
+deliberate counterexamples. The original programme and all qualification guards
+remain unchanged. See [the construction boundary](../docs/ROBOT-LAB-TWINPOINT-PIN-CLEARANCE.md).
 
 Own a narrowly scoped successor for the Twinpoint model's central pivot pin.
 The current 2L frictionless pin has zero nominal axial gap to the two crank
