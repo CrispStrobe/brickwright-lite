@@ -26,7 +26,13 @@ counts overlap and describe that historical report, not a current candidate
 measurement. Inspect each original project and its available package/assets
 before deciding whether to fix resolution, preserve an explicit missing-input
 report, or implement a runtime operation. Do not fabricate absent artwork or
-count a source-only fix as a completed game.
+count a source-only fix as a completed game. The retained method cases also
+report unresolved creation artwork: the current modern Sprite route already
+implements velocity and stay-on-screen, but declines the whole route if a
+creation image cannot be resolved. Its legacy fallback then emits the method
+warnings. Diagnose the original file-map, generated resources and dependency
+context before changing that dispatch; duplicating legacy motion support would
+not establish the missing Sprite or image behavior.
 
 Continue in this order:
 
