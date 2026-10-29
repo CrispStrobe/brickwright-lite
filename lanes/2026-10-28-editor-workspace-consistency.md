@@ -37,3 +37,18 @@ strip into Robot Lab Manual controls in `sim-lab-pane.jsx`, preserving real
 button/connection callbacks and release behavior. Own only these presentation
 hunks and affected source/browser controls. No simulator/input-delivery change.
 Qualify the affected GUI and preserve all existing source merge gates.
+
+Browser-driver compatibility follow-up: update only Code-menu open/close
+interactions in `scripts/verify-local-asm-listing.mjs` and
+`scripts/verify-makecode.mjs`, plus the palette-opening interaction in
+`scripts/lib/editor-touch-checks.mjs`, using the existing shared menu/picker
+helpers. Preserve every offline compiler, program, guest, numerical, byte/image,
+mutation and save/reopen assertion, input fixture, timeout and acquisition.
+No importer/compiler behavior or consumed original/fixture changes.
+
+Controller-unit fixture follow-up: update the old Page double in
+`test/pseudocode-importer-attribution.test.mjs` for the current popup helper API,
+retaining the legacy-details lazy-attachment assertions and all P21 ownership,
+bundle-floor and source-boundary controls. Add a current-popup open/close and
+idempotence control. No emitted-size threshold, production helper or importer
+behavior change is included.
