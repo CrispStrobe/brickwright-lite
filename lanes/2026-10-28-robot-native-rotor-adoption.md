@@ -69,3 +69,10 @@ the GUI manifest and checks its lock entry. This does not expand ownership to
 other pins or toolchains; all other constants, dependency maps, GUI consumer
 rows, core guards and model inputs remain unchanged. No integration/install
 script or engine qualification has been run for this source candidate.
+
+The pin update also refreshes only the existing Jolt release row in the
+fetch-pinning census: URL, package version, archive SHA256 and the description
+of its qualification. Its content-hash classification, scanner, exclusions,
+assertions and all other rows remain unchanged. The first bw.9 CI build refused
+the stale bw.7 census; the original failure is retained. A direct source-policy
+check reproduced that undeclared URL before the metadata correction.
