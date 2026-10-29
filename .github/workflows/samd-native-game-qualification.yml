@@ -141,14 +141,15 @@ jobs:
       - name: Install the existing pinned Tauri driver
         run: cargo install tauri-driver --version 2.0.6 --locked
       - name: Three fresh actual installed game instances on embedded assets
+        working-directory: reader
         env:
           BW_SAMD_ADMISSION_SOURCE: ${{ github.workspace }}
         run: |
           # Tauri resolves ../lib/Brickwright relative to the installed binary.
           # SAMD uses embedded frontend assets only; this prefix carries no SPIKE resources.
-          install -Dm755 qualification/native/brickwright-tauri qualification/installed/usr/bin/brickwright-tauri
-          mkdir -p qualification/installed/usr/lib/Brickwright
-          xvfb-run -a dbus-run-session -- node reader/scripts/verify-samd-native-game-installed.mjs qualification/installed/usr/bin/brickwright-tauri qualification/native/receipt.json qualification/frontend qualification/fixture samd-installed-results
+          install -Dm755 ../qualification/native/brickwright-tauri ../qualification/installed/usr/bin/brickwright-tauri
+          mkdir -p ../qualification/installed/usr/lib/Brickwright
+          xvfb-run -a dbus-run-session -- node scripts/verify-samd-native-game-installed.mjs ../qualification/installed/usr/bin/brickwright-tauri ../qualification/native/receipt.json ../qualification/frontend ../qualification/fixture ../samd-installed-results
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:

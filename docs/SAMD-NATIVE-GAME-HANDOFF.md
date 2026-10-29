@@ -62,6 +62,14 @@ Preserved failures and bounded repairs:
   native tests (11 existing ignored) plus nine explicit ignored-suite controls.
   Final-head checks still gate landing; the original failure is not waived.
 
+- Fast run40830119499 passed five unit shards and build, but shard2 correctly
+  rejected the installed gate's unrecognized reader/scripts invocation. The
+  workflow now uses working-directory reader and the canonical node scripts
+  command. All six observer/input/output paths resolve identically. The observer,
+  game, arguments, budgets and successful originals are unchanged. Twenty-three
+  coverage/census controls and45 related workflow/budget/skip controls passed;
+  the failed original remains retained. No successful guest is replayed.
+
 The separate composed private SPIKE package passed all 13 installed lifecycle
 cases, including view switching, exact owned-process loss and natural session
 expiry at 120.14 seconds with fresh-session recovery. Independent audit joined
