@@ -2523,10 +2523,10 @@
       "placements": 88,
       "archive": "brickwright-model-lab branch agent/bw-opencode-mech-r1-20261025/synchronized_paired_doors @ fc69ad75e950a37c032cf8 (review_ready)",
       "originalLdrawSha256": "9a9db4de7a34f374abba5183299024b5cebd3410dd13ea5ca32fa3bc5e22d6c3",
-      "canonicalLdrawSha256": "43f96eae054d5897a83ad50af292a38283b7b1ab2686348f13fa1b853079d0c1",
+      "canonicalLdrawSha256": "a1ecbb2c21dd0a39f88c67ac5f4ed229ee40d365820be9b27c47993fa1c6cef6",
       "program": "paired-door-sync.bw",
       "programSha256": "483ebd35317bbc9840a4a2dd285ee90d2cdd3fb3a124568a8221c3c0d9bab101",
-      "adaptation": "Built by the automated model-builder agent bw-opencode-mech-r1-20261025 (OpenCode, deepseek-v4.1-flash). !LICENSE path pointed at the packaged licence; lessons renamed to the model id; keywords flattened. Geometry and program bytes unchanged.",
+      "adaptation": "Built by the automated model-builder agent bw-opencode-mech-r1-20261025 (OpenCode, deepseek-v4.1-flash). !LICENSE path pointed at the packaged licence; lessons renamed to the model id; keywords flattened. Geometry and program bytes unchanged. Geometry repair 2026-10-28 (construction gate): carriage_pin_0_+-120 (6558, 3L) z 42->39 and carriage_pin_1_+-120 z -42->-45, each along its own axis. The collar had sat 2.5 LDU inside carriage_front (1.9 LDU deep, 116 points) and the 3L pin's ridge inside rack_back (2.0 LDU, 134 points); after the shift both pins pass through their holes with the collar outside, and the construction checks and compiler report nothing. Carriage, racks, doors, gears and program unchanged.",
       "supplierClaims": "Hosted API (worker fa1bb8c, Jolt bw.6): racks follow +/-0.1396263 mm/deg within 4e-6 mm, sum within 2e-6 mm; control with the front chain removed keeps the rear law.",
       "simulatorLaw": {
         "verdict": "AGREES",

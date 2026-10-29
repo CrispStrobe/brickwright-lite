@@ -171,9 +171,9 @@
 0 !BW ID toggle_front
 1 72 0 -20 70 0 0 1 -1 0 0 0 -1 0 48496.dat
 0 !BW ID carriage_pin_0_-120
-1 0 -120 -20 42 0 0 1 0 1 0 -1 0 0 6558.dat
+1 0 -120 -20 39 0 0 1 0 1 0 -1 0 0 6558.dat
 0 !BW ID carriage_pin_0_120
-1 0 120 -20 42 0 0 1 0 1 0 -1 0 0 6558.dat
+1 0 120 -20 39 0 0 1 0 1 0 -1 0 0 6558.dat
 0 !BW ID drive_axle
 1 0 0 0 0 0 -1 0 1 0 0 0 0 1 3705.dat
 0 !BW ID rack_back
@@ -183,9 +183,9 @@
 0 !BW ID toggle_back
 1 72 0 -20 -70 0 0 1 1 0 0 0 1 0 48496.dat
 0 !BW ID carriage_pin_1_-120
-1 0 -120 -20 -42 0 0 1 0 1 0 -1 0 0 6558.dat
+1 0 -120 -20 -45 0 0 1 0 1 0 -1 0 0 6558.dat
 0 !BW ID carriage_pin_1_120
-1 0 120 -20 -42 0 0 1 0 1 0 -1 0 0 6558.dat
+1 0 120 -20 -45 0 0 1 0 1 0 -1 0 0 6558.dat
 0 STEP
 0 // Assembly: 06 - paired door leaves on the racks
 0 !BW ID door_front_0
