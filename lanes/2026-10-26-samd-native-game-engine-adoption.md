@@ -1,6 +1,6 @@
 # SAMD native game engine adoption — 2026-10-26
 
-Owner: Codex SAMD continuation. Status: CLAIMED.
+Owner: Codex SAMD continuation. Status: QUALIFIED — actual consumer software acceptance passed; final checks and normal landing pending.
 Base: `8bf40b2c3d2`. Branch: `lane/samd-game-adoption-20261026`.
 
 Carry the qualified no-ASF SAMD runtime and engine through representative native
@@ -143,3 +143,10 @@ original failure retained. Production native launch, timing limits, model/runtim
 pins, producer helpers and compile defaults remain unchanged. Do not resume the
 old qualification request: bind a successful successor frontend/native source
 before the actual consumer runs.
+
+29 October checkpoint: actual Chromium40826297334 and installed Tauri/WebKit
+40828345515 passed three fresh instances each; all 102 RGB frames, press/release,
+sampled RSS and source/native/observer joins passed independent readback. The
+originals and bounded acquisition/layout/HTTP/test-fixture failures are retained
+in the current handoff. PR1533 folds the complete SPIKE consumer change. Keep
+ci:full off; finish final checks and normal head/tree/parent-proved landing.

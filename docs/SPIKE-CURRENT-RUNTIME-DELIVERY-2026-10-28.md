@@ -1,5 +1,53 @@
 # Current SPIKE Runtime support and installed qualification
 
+## Combined consumer acceptance, 29 October 2026
+
+Firmware57 merged as `878e930dba99f0ee0d6e72ba9621b92856c717aa`; Runtime66 merged
+as `85a51d1305c8e53c61c1e64779e312131e2da230`. PR1547 is folded into PR1533 for
+one final fast-CI queue. Source checks and normal landing remain required.
+
+A fresh private package combines published SPIKE source
+`d328498b5dd88d127152699e1e5d5f99ba8b644e` and SAMD source
+`48df0f93f9b6b642238c13448e6f075d8871eb83`. Its actual source commit is
+`845d082c845dd70e88835ad608a8c545b6609436`, tree
+`14d6e42c4676baec7bc18dc859af9f9e1bcfd1c0`. The frontend contains the verified
+locked SAMD assets. Reviewed candidate frontend/package inputs are identical;
+the native difference is the separately qualified test-only JSON-line repair.
+Qualifier scripts and dated evidence have separate identities. This is a
+frozen private package result, not a final-head binary or release-byte claim.
+
+| Input | SHA256 |
+| --- | --- |
+| Combined Debian package | 605f1748bf5908e28105bab828a56e3531765e253f1c2da976ddda46b8a663ca |
+| Installed native executable | a9978467a39d8edeb6875785fa007a21b64a50143b22f7e6e31a2a79267ea68d |
+| Source-built Runtime executable | cdc11fcd0d1c97583fe8059462bf2dde8b582fcd034212ba36994195d2ec2793 |
+| NuttX userspace | 9ed800e046a78a2599f5aa2bd9dccf5bf1858258e65326d776e7529570920985 |
+
+All13 actual installed cases passed with that same image/executable: native and
+Python programs, native/Python cancellation, native/Python storage, native/Python
+app-restart storage, backend switching, pane disposal, four live view switches,
+exact owned-simulator process loss and natural session expiry. Expiry was observed
+at 120.14 seconds within the unchanged 119–125-second observation window; the old
+owner released and a fresh guest completed. Every case exited zero without OOM.
+Independent readback joined source/helper/app/firmware identities, Docker image,
+full inspection/log records and the unchanged two-CPU, 2 GiB, network-disabled
+limits. Controller inventories remain independently hash-verified.
+
+The initial combined installer was started before archive compression finished;
+its failed original is retained. The corrected attempt requires the completed
+package receipt and matching digest before dpkg. The earlier frontend build
+without engine assets is retained separately; it was never packaged or credited.
+No guest/resource/assertion deadline was widened. The current hosted native
+repair passed 275 standard tests (11 existing ignored) plus nine explicit controls.
+
+All earlier evidence below remains scoped to its original source/package. The
+combined package retains `redistributionValidated: false`, bundles only the
+source-built NuttX profile, and makes no external MicroPython raw-REPL, physical
+motor-accuracy, normal SAMD GUI-route or distribution-clearance claim. Official
+SAMD game acceptance is separately recorded in
+[the SAMD handoff](SAMD-NATIVE-GAME-HANDOFF.md).
+
+
 Current Runtime support imports `tools/spike_lockstep.py`. The previous compiled
 MicroPython support assembler and native manifest admission rejected that helper.
 The support union now accepts exactly this optional digest-bound file and carries
