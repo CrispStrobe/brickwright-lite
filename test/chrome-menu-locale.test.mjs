@@ -19,7 +19,8 @@ test('German chrome translations have real English defaults and preserve interpo
     const defaults = new Map();
     for (const file of ['components/gui/gui.jsx', 'components/gui/chrome-toggle.jsx',
         'components/menu-bar/menu-bar.jsx', 'components/menu-bar/settings-menu.jsx',
-        'components/editor-error-boundary/editor-error-boundary.jsx']) {
+        'components/editor-error-boundary/editor-error-boundary.jsx',
+        '../../scratch-paint/src/components/stroke-width-indicator.jsx']) {
         const source = readFileSync(new URL(`../overlay/scratch-gui/src/${file}`, import.meta.url), 'utf8');
         for (const match of source.matchAll(/\bt\('([^']+)', '([^']*)'\)/g)) defaults.set(match[1], match[2]);
         for (const match of source.matchAll(/\bid:\s*'([^']+)',\s*defaultMessage:\s*'([^']*)'/g)) defaults.set(match[1], match[2]);

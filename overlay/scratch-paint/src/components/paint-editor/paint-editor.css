@@ -33,6 +33,10 @@
 }
 
 .command-strip {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: $grid-unit;
     flex: 1 1 auto;
     min-width: 0;
     overflow-x: auto;
@@ -345,7 +349,8 @@ $border-radius: 0.25rem;
 
 @media only screen and (max-width: 900px) {
     .editor-container:not(.canvas-only) {
-        width: calc(100vw - 82px);
+        width: 100%;
+        max-width: 100%;
     }
 
     .mode-selector {
@@ -389,4 +394,33 @@ $border-radius: 0.25rem;
 
 .button-text {
     width: 100%; /* Fixes button text wrapping in Edge */
+}
+
+.command-strip > * {
+    flex-shrink: 0;
+}
+
+/* A single tool column is predictable even when the editor is a narrow pane
+   inside a wide browser window. Height, not viewport width, limits the rail. */
+.editor-container .mode-selector {
+    flex: 0 0 48px;
+    width: 48px;
+    max-width: 48px;
+    min-height: 0;
+    align-self: stretch;
+    flex-flow: column nowrap;
+    align-items: center;
+    justify-content: flex-start;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+}
+
+.editor-container .mode-selector > * {
+    flex-shrink: 0;
+}
+
+/* Keep colour popovers outside the scrolling/clipping strip. */
+.command-row > :first-child {
+    flex: 0 0 auto;
 }

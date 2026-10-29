@@ -178,11 +178,20 @@ try {
                     store.dispatch({type: 'scratch-gui/project-changed/SET_PROJECT_CHANGED', changed: true});
                 };
                 const clickNew = async () => {
-                    const fileLabel = await waitFor(() => [...document.querySelectorAll('span')]
-                        .find(span => ['File', 'Datei'].includes(span.textContent.trim())), 10000, 'the File menu');
-                    fileLabel.dispatchEvent(new MouseEvent('mouseup', {bubbles: true}));
-                    const item = await waitFor(() => [...document.querySelectorAll('li')]
-                        .find(li => ['New', 'Neu'].includes(li.textContent.trim())), 10000, 'File > New');
+                    const file = await waitFor(() => {
+                        const triggers = [...document.querySelectorAll('[data-testid="bw-file-menu-trigger"]')]
+                            .filter(button => !button.disabled && button.getClientRects().length);
+                        return triggers.length === 1 ? triggers[0] : null;
+                    }, 10000, 'the File menu');
+                    file.click();
+                    const item = await waitFor(() => {
+                        const menu = file.closest('[data-bw-menu-root]')?.querySelector('[role="menu"]');
+                        if (file.getAttribute('aria-expanded') !== 'true' || !menu || !menu.getClientRects().length) return null;
+                        const items = [...menu.querySelectorAll('[role="menuitem"]')].filter(li =>
+                            li.closest('[role="menu"]') === menu && li.getAttribute('aria-disabled') !== 'true' &&
+                            ['New', 'Neu'].includes(li.textContent.trim()));
+                        return items.length === 1 ? items[0] : null;
+                    }, 10000, 'File > New');
                     item.click();
                 };
                 // The editor exposes its VM before the default project has loaded; marking the

@@ -1,132 +1,235 @@
 # CLI instrument regression
 
-## Current handoff — 2026-10-28 (wrap-up)
+## Current handoff — 2026-10-29
 
-**Read this section first; it supersedes the 2026-10-27 handoff below, which is
-kept as history.** The six-item
-[campaign contract](../lanes/2026-10-26-reference-qualified-instrument-campaign.md)
-is **not closed**. Items 1 and 2 are accepted; items 3 to 6 each have an open
-pull request awaiting CI or review. A fresh agent works the "Open work" list
-below in the order given, refreshing every live identity first.
+The remaining delivery is owned by the Circuit/editor integration maintainer.
+The frozen [PR1536](https://github.com/CrispStrobe/brickwright-lite/pull/1536)
+head is `2e7846f8a901726a296e3a8ef006cff24bc457b5`. At the latest check its
+fast [Build40869114327](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40869114327),
+necessary full [Build40869128682](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40869128682)
+and other enabled workflows were queued. Refresh the actual head, default branch
+and checks before acting; a queued run is not a passing result. Use fast-tier PR
+checks by default and do not add a `ci:full` label.
 
-### Accepted on 2026-10-28
+To finish, in order:
 
-- **Item 1, supplier return and Lite adoption.** Lite PR1478 merged
-  `e643932e`. Lite pins Board `c7bcbe4bcd583d2215372dd4ee1e65002e249a04` and
-  CUI `da28bb8ce9b38aa18d2e424f692c6570fc1d6d1d`. Board carries PR710
-  (junction DC-path repair) and PR717 (opt-in LM741 nominal 25 C bias/supply
-  domain). CUI carries PR124, PR127 (LM741 CLI) and PR126 (opt-in passive
-  precision batch). The Board census was read again at `c7bcbe4b`.
-- **Item 1b, v2 study.** Harness PR1501 merged `8afe1333` at reviewed head
-  `bfa530fc`. Its sole event, run 40681635060 attempt 1, was read once,
-  independently: 32/32 inputs, 31/31 conforming designs, 0 disagreements,
-  4,260/4,260 values, 15/15 captures, 83/84 selector locations (the 84th is the
-  LT1763 named-refusal control, exit 2). This is numerical conformance to
-  ngspice-42 references, not physical calibration. Never rerun it.
-- **Item 2, historical disagreements.** Recorded in PR1495: all four rows are
-  noncomparable and no model defect was demonstrated (details in the task table
-  further below).
-- **CI policy (operator, 2026-10-27/28).** Pull requests merge on the fast tier
-  without `ci:full`; the `full CI requested` gate is expected red on code PRs.
-  Merge only with `--match-head-commit` after every other enabled check on that
-  exact head passes. One `ci:full` run on main follows once items 3–6 land.
-  Kaggle CPU kernels may be used when the hosted queue stalls; they cannot
-  replace the GitHub checks a merge needs, and their workers have no internet.
+1. Observe all enabled checks for the current candidate. Diagnose genuine failures
+   using the retained original evidence; make a bounded forward fix and qualify
+   its new head when necessary. Do not repeat an unchanged dispatch or weaken a
+   test, a numerical bound or the profiling-size ceiling.
+2. Admit the final run and job identities before reading any original. Preserve
+   the existing independent readers and their predicates; acquire each original
+   only once. The supported-event numeric consumer owns its Pages archive
+   acquisition, so use its retained proof instead of downloading that archive a
+   second time. Never replay the completed reference study.
+3. Establish affected application acceptance: Circuit and Manual browser journeys,
+   FPGA workspace visibility and retained design, the profiling-build byte guard,
+   and the required native checks. The manual full run uses separate production,
+   FPGA-enabled and profiling builds; do not claim byte identity between them or
+   the Pages artifact. The reduced FPGA gate does not qualify synthesis, simulation
+   correctness or an FPGA release.
+4. Refresh main and preserve concurrent changes. Once the reviewed candidate and
+   its enabled checks qualify, perform a normal matched-head merge, then verify
+   its actual parents and tree. PRs 1515, 1516, 1517 and 1538 are preserved through
+   the combined integration; do not describe their closed originals as merged.
+5. Observe existing production deployment activity before using the guarded
+   deployment workflow. Verify the published version and affected live UI, then
+   update this handoff, PLAN, ROADMAP and the campaign record with actual landing,
+   delivery and remaining limits. Close the campaign only after these endpoints.
 
-### Open work, in order
+The accepted historical study has 32 inputs, 31 conforming results and one named
+refusal; its supplier identities and four study seals stay historical. Live
+package contracts follow the currently adopted pins. Physical calibration, probe
+loading, a GUI AC-coupling selector and the untested 32 MiB output boundary remain
+outside the established evidence. Preserve the recorded LM741 TODO and the
+long-capture current-polarity limit. Keep private paths and evidence outside public
+repository documents.
 
-Each entry states the live identity at handoff, the exact next action, and the
-stop condition. Refresh PR heads and checks before acting. Never change a frozen
-expectation after observing a result; a wrong expectation is kept on record and
-a new expectation is frozen and committed before its first run.
+## Active continuation — 2026-10-28
 
-1. **Item 4, longer captures — Lite PR1516** (head `a18d5cd4`). Adds the
-   passive-RC 5 ms / 1 MHz batch regression (step, pulse and sine circuits, 5,000
-   points each). Local result: every point agreed with the closed form and
-   ngspice-42 within at most 4e-7 V (tolerance 1e-5 V); triggers within 3e-10 s;
-   meters matched their integrals; three refusals (passive `--watch`,
-   `--max-step 50ns`, a 200,000-attempt capture) exit 2 with no output. The
-   frozen expectation of a first sample at t=0 failed; the CLI's first sample is
-   at 1 µs, and the operator accepted that as the specification. **Next:** when
-   the fast tier is green on the exact head, merge with `--match-head-commit`.
-   If a check fails, read its log, fix only the defect it shows, and push.
-   **Known limit:** the 32 MiB output-byte cap cannot be reached through the CLI
-   while the 20,000-attempt cap holds; it is untested, not proven.
-2. **Item 5, LM741 bias/supply packaged acceptance — Lite PR1515** (draft, head
-   `56fe23d2`). Tests the installed CLI: pins, five refusals, default-off output
-   byte-identical, and the GUI (which does not expose the option; it is CLI-only
-   by decision). The first frozen check (`v1-instant-settling`) failed by 48 nA
-   with a 10 kΩ load, because the output dips 2.9 mV at start-up; it is kept as
-   a TODO with the observed values. A second check (`v2-post-settling-window`,
-   window 10–20 µs, about 60 time constants of the model's 1 MHz pole) was
-   frozen before running and **has not run anywhere yet**. **Next:** read the
-   hosted result of v2. If green, mark ready and merge with
-   `--match-head-commit`. If v2 fails, record the failure verbatim in the PR,
-   do not edit v2, and report item 5 as partial.
-3. **Item 6a, provenance and redaction — Lite PR1517** (head `26f3866c`). Adds
-   `scripts/admit-static-provenance.mjs` (moves the three Board static-asset
-   provenance records together or refuses) and treats `=` as a path delimiter in
-   census redaction (fixes a published machine path in the `masm` row). Its
-   tests failed before the fix and pass after it; seven mutation controls each
-   fail their own test. `no-nul-in-text` was not run locally. **Next:** merge
-   on a green fast tier with `--match-head-commit`.
-4. **Item 6b, AC input coupling — CUI PR130** (draft, head `3ec388e4`). Opt-in,
-   CLI-only `--ac-couple <tip>[,<ref>]` with exactly one of `--ac-corner-hz` or
-   `--ac-rc`, and `--ac-initial uncharged|settled`. First-order RC high-pass on
-   a copy of the samples, discretised exactly for piecewise-linear input. No
-   default corner; default output byte-identical; invalid combinations refuse
-   before capture. 10/10 new tests and four code mutations pass locally. Two
-   reference-formula errors in the test were corrected after the first run and
-   disclosed in the PR, so treat that part as weaker evidence. A local
-   `cli-measure` run showed two failures (ADP7118 installed package, receipt
-   binding) with borrowed dependencies; cause unconfirmed. **Next:** if CI is
-   green, mark ready and merge with `--match-head-commit`. Then adopt it in Lite
-   exactly as PR1478 did: pins, both manifests and locks (recompute CUI
-   integrity with `npm pack --ignore-scripts`, which reproduced the previous
-   value), notices, source identities, identity tests, current-role citations
-   that `test/pin-move-chain.test.mjs` checks, `packages/` mirrors of
-   dual-tracked overlay files, and the generated documents. A GUI coupling
-   selector is out of scope unless the operator asks.
-5. **Item 3, scope rearm causality — CUI PR128 (after) and PR129 (before).**
-   Hypothesis: a host re-render during `selectOption`'s `input` event reset the
-   capture selector to its stored `envelope` before React committed `sample`;
-   CUI `a5860b9c` ("keep scope capture choice across a re-render", adopted in
-   Lite by another session) is the candidate fix. The same test drives the
-   original Playwright path and asserts committed React state and the published
-   selector. PR128 (on master, includes `a5860b9c`) passed all three checks.
-   PR129 must **fail** its `interaction-gate` for the cause to count as
-   demonstrated. Its branch was first based on pre-fix `bf4434c`; master was
-   then merged in (which brought in the fix), and commit `1f4bd111` restored
-   the pre-fix ScopePanel from `66e37240`. Verify before reading the result
-   that PR129's ScopePanel at its head is byte-identical to `66e37240`'s and
-   that the test file equals PR128's; its checks were pending at handoff. **Next:** read PR129's result. If it fails on the
-   asserted mechanism, record item 3 as causally demonstrated, close PR129
-   unmerged, and merge PR128's test. If PR129 passes, the hypothesis is not
-   demonstrated: record item 3 as unproved, keep both results, and do not
-   claim a fix. Never merge PR129.
-6. **Close the campaign.** After entries 1–5 resolve, run one `ci:full` on Lite
-   main, fix what it reveals, then update this handoff, `PLAN.md` and
-   `ROADMAP.md` with each item's final completed/partial/unproved state, and
-   ask the operator for the next priority. Do not start a seventh item.
+**Status: frozen circuit source passed its approved fast-tier checks; combined
+application delivery and campaign closeout remain pending.** This is the
+only current action list. Dated snapshots below retain their original evidence
+and failures; their old resume instructions are historical. Read `LANES.md`
+and refresh live PR heads before acting. Never replay the consumed studies.
 
-### Rules that still bind
+The current [Lite PR1536](https://github.com/CrispStrobe/brickwright-lite/pull/1536)
+preserves longer-capture PR1516, repaired LM741 PR1515, provenance PR1517 and
+the complete frozen `93aba75473e65042925928fe8c1a0a4427fd59ca` ancestry.
+The separate PR1538 was closed without merging. Current candidate pins are Board
+`8785e4688cc308b34fea434c1734523caa621f74` (unchanged) and the qualified CUI
+PR131 landing `4b65f15485abbc039958d8e1a8a29ac3459b75f9`. Neither closed PRs
+nor supplier qualification establish this consumer's main landing or deployment.
 
-- Shared models belong in `CrispStrobe/bw-board`; import, CLI and instrument
-  behaviour in `CrispStrobe/bw-circuit-ui`; Lite adopts exact merged packages.
-- Acquire each official original once, after admission; never rerun a consumed
-  study or completed batch to read it again.
-- Current-role citations must name live pins; history-role citations never
-  change. The x86 lane owns its run script, reader and workflow roles; the
-  operator approved this campaign's current-pin edits to them on 2026-10-28,
-  and Lite PR1318 will need to resolve conflicts in those files.
-- Public text carries no machine paths, hostnames or session identifiers.
+### Verified results and their boundaries
+
+| Item | Verified result | Evidence boundary |
+| --- | --- | --- |
+| 1. Reference study | v2 run 40681635060: 32 inputs, 31 comparable passes, one named refusal, 4,260 values, 15 captures, 83/84 passing selector locations | Original source `bfa530fc`, historical Board `c7bcbe4b` / CUI `da28bb8c`; numerical conformance to admitted ngspice-42 references, not calibration or a new-pin cohort |
+| 2. Four earlier disagreements | All noncomparable; no demonstrated model defect (PR1495) | Preserve original denominators; do not fit a model to an uncertain reference root |
+| 3. Scope rearm cause | CUI PR128 merged; unmerged negative PR129 fails the injected host re-render control with identical tests and the exact historical component | Establishes that mechanism, not every historical timeout or race |
+| 4. Longer captures | At successor `93aba754`, three hosted RC regressions pass all 5,000 points per waveform, trigger checks, voltage means and current magnitudes; original refusals pass | Step, pulse and sine; first sample at 1 microsecond. Current-polarity coverage is separate. Regression assertions do not relabel older retained raw captures as new outputs |
+| 5. LM741 | At `e85dc904`, hosted v2 passes six sign/load combinations, refusals, default-off output and GUI non-exposure; the v1 TODO remains | Nominal typical 25 C domain. Successful per-load JSON was not separately retained; this is CI assertion evidence |
+| 6. Coupling and provenance | At `e85dc904`, four installed AC tests pass, including three buildable supplier mutants. Independent retained-log reader accepts all 60 values across three modes | One authored two-channel circuit; maximum error below 5e-16 V. CLI-only RC view; no physical calibration or probe-loading claim. Provenance/redaction integration still needs final combined qualification |
+
+The AC original is [unit shard 3](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40744838545/job/123035439525);
+LM741 is [unit shard 2](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40744838545/job/123035439624).
+The long-capture and historical-seal assertions passed inside
+[unit shard 6](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40744838545/job/123035439688),
+whose overall result failed the documentation-trigger gate. These observations
+retain their actual `e85dc904` source identity and do not qualify the successor.
+A private exact-package preflight also passed 11 CLI tests and two static
+metadata/GUI non-exposure checks; hosted application evidence remains distinct.
+
+The provenance helper admits all three static-asset records as one transaction
+or refuses before writing. Census redaction handles assignment-prefixed
+locations. Their causal controls remain part of the combined candidate; final
+current-head qualification is still required.
+
+### Failure preserved and forward repair
+
+The original unit-6 failure was a dependency-map omission: the LM741 TODO
+reason named this broad handoff while it was excluded from Build triggers.
+The same failure reproduced locally. The forward checkpoint instead points the
+TODO to the dedicated [startup-window record](receipts/lm741-startup-window.md),
+which already triggers Build under the existing receipt-directory rules.
+Thirty-five focused checks pass after the repair. Production code, package
+pins/locks, numerical test bodies and the historical-study guard are unchanged;
+the only non-Markdown change is that documentation pointer. No workflow policy
+or numerical bound was weakened. Fresh successor qualification is required.
+
+The consumed collector, fixture, comparator, reader and workflow keep their
+original bytes and pins. Four explicit complete-file seals protect historical
+roles and the old manifest; synthetic controls use an isolated historical root.
+Ordinary stale-current and never-pinned negatives remain mandatory. The separate
+x86 history-reader changes must be composed without replacing this guard.
+
+The final `93aba754` checkpoint has 17 successful checks, nine declared skips
+and no pending checks, including the successful Arcade official build. The sole
+red verdict is the absent `ci:full` label covered by the earlier operator-approved
+fast-tier exception for this predecessor. This does not relabel the overall
+Build green or waive any enabled check on the final combined UI candidate.
+
+### Supplier return — 2026-10-29
+
+CUI PR131 landed at `4b65f15485abbc039958d8e1a8a29ac3459b75f9` after all
+three enabled checks and retained browser evidence were accepted. This is
+supplier evidence, not a qualified Lite adoption. The delivery owner is composing
+the entire `93aba754` source ancestry with the editor/menu changes and preparing
+the explicit package return. The new consumer menu helper resolves the actual
+trigger-owned popup. Its combined browser result is still pending.
+
+The authored regression's `CONTRACT_SOURCES` and matching workflow checkout
+are live current-package authorities; their prior adoption commits deliberately
+advanced them. They must follow the new CUI pin with the adoption assertions.
+This is separate from the four complete-file seals protecting the consumed
+reference-v2 study, whose bytes and identities stay unchanged. Do not broaden
+historical exemptions to quiet an ordinary stale live contract. Updating live
+source authority authorizes no completed study, CLI or reader replay and turns
+neither old study nor predecessor CI into new-pin evidence.
+
+
+The frozen combined successor is `2e7846f8a901726a296e3a8ef006cff24bc457b5`.
+It includes main `19c073bd` and both registered CI follow-through repairs:
+selected-tier admission and supported-event numeric-consumer selection. The
+manual consumer is skipped because its existing artifact trust admits push/PR
+only; successful supported events remain required. The obsolete wiring-message
+assertion now executes the real classifier-output forwarding and verifies its
+tier bindings. Locally, 39 focused CI controls and 11 gate-shape checks pass,
+and three isolated wiring mutants fail. These are source controls, not browser
+or delivery acceptance. The reduced FPGA browser journey now switches all three
+workspaces and checks visibility, selected controls and exact retained node/HDL
+state; its live synthesis path remains byte-identical. Actual hosted acceptance
+is still required. The preceding `09a4f407` run set was superseded before any
+child started; cancellation followed explicit zero-running-child verification.
+
+Fresh fast [Build40869114327](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40869114327)
+and necessary full [Build40869128682](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40869128682)
+are pending on that exact source. The earlier manual run `40856189963` was
+cancelled before application execution after its unsupported consumer context
+was identified; it is not qualification. The prior fast head `d32860b8` had one
+real unit-2 wiring-assertion failure. Both originals remain distinct from this
+successor; neither failures nor cancelled checks are waived. No main landing or
+production deployment is claimed yet.
+
+### Next actions, in order
+
+PR1538 was closed without merging to consolidate the queue. Its complete
+source ancestry is preserved in PR1536, whose main landing remains pending.
+Do not reopen the old PR or infer main adoption from its closure.
+
+The operator transferred remaining delivery to this campaign's maintainer under
+[`circuit-menu-workspace-delivery`](../lanes/2026-10-28-circuit-menu-workspace-delivery.md).
+The coordinator's former separate source/pin writer stopped. PR1536 contains
+the full Circuit ancestry and exact CUI `4b65f154` adoption; Board is unchanged.
+Packaged native confirmation is accepted at `17bbefca`. Forward checkpoint
+`a0c0a60e` carries the measured viewport, Pixel and trigger Escape/Tab repairs.
+These bounded results do not qualify the final combined application.
+
+1. Registration and bounded policy source are complete: claim PR1558 landed at
+   `f5acf3b3`; published PR1536 head `0f5dca52` admits selected fast/thorough
+   execution and detects invalid/empty inputs through executable controls. The operator requires fast
+   PR checks by default and no `ci:full` labels. Do not change job selection,
+   thresholds, browser assertions or main/dispatch behavior.
+2. Batch the guard and editor repairs into the existing PR1536. Require all
+   enabled exact-final-head checks and actual affected application acceptance.
+   Bind the production GUI readback to source, configuration and artifact; finish
+   FPGA flag-on evidence and the unchanged profiling-build initial-JavaScript
+   guard. Production entry bytes and profiling-build bytes are distinct metrics.
+   Keep actual menu/chooser events, measurements, refusals and viewport limits.
+3. Freeze independent readers' exact final head, pins, run and job identities
+   before acquiring numerical originals. Preserve predicates and four historical
+   study seals, advance only live current-package authority, acquire each
+   original once and never replay the consumed study. Share retained native
+   originals with their original custodian rather than downloading them again.
+4. Normally merge the qualified matched head and verify parents/tree. Reconcile
+   PR1516/1515/1517/1538 as integrated through that actual landing, without
+   pretending the original PRs merged. Preserve source branches and failures.
+5. Verify the guarded production deployment and actual live version/UI, then
+   reconcile PLAN, ROADMAP, this handoff and the campaign record with actual
+   landing and delivery identities. Source/package and local patched production
+   observations are not release/deployment evidence.
+
+Only then close the six-item campaign and ask for the next priority. No seventh
+implementation lane is opened. Package adoption and browser qualification do
+not establish a newer signed release or deployment.
+
+The corrected successor also passes
+[unit shard 6](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40767699282/job/123128359151):
+three long-capture assertions, original refusals, all four historical seals and
+the previously failing documentation-trigger check. The shard reports zero
+ordinary failures; its four declared Arcade TODOs remain recorded. The complete
+combined application result is still owed.
+
+The successor `93aba754` unit-shard-3 original also passes the same four AC
+checks and three mutations. Its independent reader accepts all 60 values,
+with maximum error below 5e-16 V. This repeats the same authored input at CUI
+`373d562b`; it adds no distinct designs and does not qualify the later menu
+package. [Original job](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40767699282/job/123128359044).
+
+### Explicit remaining limits
+
+- Failed v1 study remains incomplete: 23 conforming inputs and nine unsuccessful
+  inputs. It is not combined with v2 to inflate design coverage.
+- The original pre-observation first-sample-at-zero expectation failed; the
+  operator accepted the 1-microsecond convention now frozen in the regression.
+- The original LM741 instant-settling predicate remains a documented TODO;
+  its independently frozen settled-window replacement is the acceptance check.
+- Long-capture current checks cover magnitude; a follow-on signed-current gate
+  must first admit terminal orientation and include a wrong-sign mutation.
+- The 32 MiB output-byte cap is untested through this CLI because the separate
+  20,000-attempt cap prevents reaching it. Preserve both limits.
+- AC coupling explicitly refuses combination with ADC reconstruction, watch
+  mode or receipt/replay. These need separate composition/replay admission.
+- A GUI AC-coupling selector, physical front-end calibration, noise and broader
+  vendor-device domains remain separately scoped work.
 
 ## Previous handoff — 2026-10-27, updated 2026-10-28
 
 **The earlier five-item campaign is complete; the subsequent six-item campaign
 is not.** Lite adoption (step 1) and the v2 reference-qualified study (step 2)
-are accepted as of 2026-10-28; tasks 3 to 6 remain open or partial. This section is the current
-handoff; dated results below retain their original sources and limits. The
+are accepted as of 2026-10-28; tasks 3 to 6 remain open or partial. This is a historical
+handoff; current actions are above, and dated results retain their original sources and limits. The
 [ordered contract](../lanes/2026-10-26-reference-qualified-instrument-campaign.md)
 owns this sequence. Read `LANES.md` and the affected lane records before edits.
 

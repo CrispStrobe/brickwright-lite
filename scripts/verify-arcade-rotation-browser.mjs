@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import {openCodeActions as openCodeMenu, closeCodeActions as closeCodeMenu} from './lib-code-actions.mjs';
+import {pixelControl} from './lib-pixel-controls.mjs';
 // Real Code -> Blocks -> controller -> restart -> export/file reimport journey.
 // VM access below observes state/renderer only; it does not install or steer code.
 import assert from 'node:assert/strict';
@@ -222,7 +224,7 @@ try {
     assert.match(decompiled, /\bdata\b/);
     assert.match(decompiled, /4096/);
     const actions = page.getByTestId('bw-code-actions');
-    if (!(await actions.getAttribute('open'))) await actions.locator('summary').click();
+    await openCodeMenu(page);
     const [download] = await Promise.all([
         page.waitForEvent('download', {timeout: 30000}),
         page.getByTestId('bw-makecode-arcade-export').click()
@@ -232,7 +234,7 @@ try {
     await download.saveAs(downloadedPath);
     const bytes = await fs.readFile(downloadedPath);
     assert.ok(bytes.length > 100, 'actual exported project downloaded');
-    if (!(await actions.getAttribute('open'))) await actions.locator('summary').click();
+    await openCodeMenu(page);
     await page.getByTestId('bw-open-file').locator('input[type=file]').setInputFiles({
         name: 'arcade-rotation-export.mkcd', mimeType: 'application/octet-stream', buffer: bytes});
     await page.getByText(/Imported the Arcade game.*arcade-rotation-export\.mkcd/).first()
@@ -240,7 +242,7 @@ try {
     const reimportedCode = await editor.evaluate(element => element.cmTile.root.view.state.doc.toString());
     assert.match(reimportedCode, /rotationDegrees/);
     assert.doesNotMatch(reimportedCode, /# unsupported/i);
-    if (await actions.getAttribute('open')) await actions.locator('summary').click();
+    await closeCodeMenu(page);
     await apply();
     await flag.click();
     const reimported = await sample('reimported', 0, 'ready', 0);
@@ -339,7 +341,7 @@ let discardedReady=true`;
     if (!(await page.getByTestId('bw-pixel-canvas').isVisible())) await page.getByTestId('bw-pixel-toggle').click();
     const assignedCanvas = page.getByTestId('bw-pixel-canvas');
     await assignedCanvas.waitFor({state: 'visible'});
-    await page.getByTestId('bw-pixel-colour-9').click();
+    await (await pixelControl(page, 'bw-pixel-colour-9')).click();
     await page.getByTestId('bw-pixel-tool-pencil').click();
     const beforePaint = await assignedCanvas.evaluate(canvas => canvas.toDataURL());
     const assignedBox = await assignedCanvas.boundingBox();
@@ -397,7 +399,7 @@ let discardedReady=true`;
     await stop.click();
     await page.getByRole('tab', {name: 'Code', exact: true}).click();
     // Loading an SB3 rebuilds the Code tab; open its real actions menu again.
-    if (!(await actions.getAttribute('open'))) await actions.locator('summary').click();
+    await openCodeMenu(page);
     // Handle both promises immediately so a timeout reaches the failure report.
     const [assignedExport] = await Promise.all([
         page.waitForEvent('download'),

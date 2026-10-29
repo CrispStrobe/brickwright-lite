@@ -4,10 +4,10 @@
 //
 // store: App Store id when the app is live there (mac: only on the Mac App Store);
 // beta: public TestFlight code; neither: a private beta, listed as coming soon.
-export const REFRESHED = '2026-10-27';
+export const REFRESHED = '2026-10-29';
 
 export const APPS = [
-    {slug: 'brickwright', id: '6788993444', name: 'Brickwright', beta: 'UngCMwHZ', self: true,
+    {slug: 'brickwright', id: '6788993444', name: 'Brickwright', beta: 'UngCMwHZ', icon: 'local', self: true,
         en: 'Code, Circuits & Machines', de: 'Code, Schaltungen, Maschinen'},
     {slug: 'cometbeat', id: '6791962816', name: 'CometBeat', store: '6791962816', beta: 'cKUMvyqU',
         en: 'Learn music theory by playing', de: 'Musik lernen mit Spielen'},
@@ -33,7 +33,7 @@ export const APPS = [
         en: 'AI Document Organizer & Search', de: 'Dokumente mit lokaler KI ordnen & durchsuchen'},
     {slug: 'crispsudoku', id: '6788990894', name: 'CrispSudoku', store: '6788990894', beta: 'gjFeKMcH',
         en: 'Classic, Killer, Thermo & more', de: 'Klassisch, Killer, Thermo'},
-    {slug: 'crisptuner', id: '6798295311', name: 'CrispTuner', beta: 'nfCbAzy4',
+    {slug: 'crisptuner', id: '6798295311', name: 'CrispTuner', store: '6798295311', beta: 'nfCbAzy4',
         en: 'Chromatic tuner & temperaments', de: 'Stimmgerät mit Temperaturen'},
     {slug: 'hectopolis', id: '6809142647', name: 'Hectopolis', store: '6809142647', mac: true, beta: 'paBCcWnH',
         en: 'Build, observe, understand', de: 'Bauen, beobachten, verstehen'},

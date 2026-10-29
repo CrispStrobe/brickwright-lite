@@ -191,7 +191,7 @@ const PREPARE = {
         // the other 24 passed, because this scene guessed. Two things were
         // wrong and scripts/drive-fpga.mjs already knew both:
         //
-        //   the readiness marker is [data-testid="bw-fpga-ic-gate"], not
+        //   the readiness marker is [data-testid="bw-fpga-workspace"], not
         //   `.react-flow` — the canvas library is an implementation detail;
         //
         //   and clicking the tab strip is not reliably enough after the app
@@ -216,7 +216,7 @@ const PREPARE = {
                 // over the byte floor: every automated check passed and the
                 // picture was of the wrong thing.
                 await until(page, `(() => {
-                    const el = document.querySelector('[data-testid="bw-fpga-ic-gate"]');
+                    const el = document.querySelector('[data-testid="bw-fpga-workspace"]');
                     if (!el || el.getBoundingClientRect().width === 0) return false;
                     const tabs = [...document.querySelectorAll('[role="tab"]')];
                     return tabs[5]?.getAttribute('aria-selected') === 'true';

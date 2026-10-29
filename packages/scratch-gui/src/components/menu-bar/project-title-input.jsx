@@ -32,7 +32,7 @@ const ProjectTitleInput = ({
         tabIndex="0"
         type="text"
         value={projectTitle}
-        onSubmit={onSubmit}
+        onSubmit={title => onSubmit(title, projectTitle)}
     />
 );
 
@@ -48,7 +48,11 @@ const mapStateToProps = state => ({
 });
 
 const mapDispatchToProps = dispatch => ({
-    onSubmit: title => dispatch(setProjectTitle(title))
+    onSubmit: (title, previous) => {
+        const apply = value => dispatch(setProjectTitle(value));
+        const history = globalThis.__bwGlobalUndo;
+        return history && history.changeProjectTitle ? history.changeProjectTitle(previous, title, apply) : apply(title);
+    }
 });
 
 export default injectIntl(connect(

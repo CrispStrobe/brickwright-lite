@@ -72,6 +72,7 @@ import {NXT_SENSOR_TYPE, nxtAnalog, nxtScaled, usRead, usWrite, usFreshState, US
 import {NxtVm} from '../../routes/nxt-vm/nxt-vm.js';
 import {UPDATE} from '../../routes/nxt-vm/nxt-bytecodes.js';
 import * as files from './nxt-files.js';
+import {readNxtIOMap, writeNxtIOMap} from './nxt-iomap.js';
 
 /** Regulated speed at power 100, °/s: the NXT motor's no-load speed at 9 V (Philo: 170 rpm). */
 export const FULL_SCALE_DPS = 1020;
@@ -658,6 +659,12 @@ export class NxtVirtualHub {
             messageRead: (q, remove) => this.messageRead(q, remove),
             keepAlive: () => this.keepAlive(),
             readButton: (index, reset) => this.readButton(index, reset),
+            ioMapRead: (name, offset, count) => readNxtIOMap(this.s.buttons, name, offset, count),
+            ioMapWrite: (name, offset, bytes) => {
+                const status = writeNxtIOMap(this.s.buttons, name, offset, bytes);
+                if (status === 0) this._changed();
+                return status;
+            },
             fileOpenRead: name => this._programFileOpen('read', name),
             fileOpenWrite: (name, size) => this._programFileOpen('write', name, size),
             fileOpenAppend: name => this._programFileOpen('append', name),

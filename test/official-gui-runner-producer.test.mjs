@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {runInNewContext} from 'node:vm';
 import {createHash} from 'node:crypto';
 import {execFileSync, spawnSync} from 'node:child_process';
 import {mkdtemp, mkdir, readFile, writeFile, rm} from 'node:fs/promises';
@@ -266,3 +267,60 @@ test('source and identity guard mutants accept the coherent hostile fixture only
     assert.equal(weakerIdentity.guiRunnerProducerReceipt(wire, source, {expected, env}).runId, 12,
         'the removed check would conceal a coherently changed header/context run');
 });
+
+const consumerGuard = sourceText => {
+    const bodies = sourceText.split('  arcade-numeric-authoring:\n');
+    assert.equal(bodies.length, 2, 'one official numeric consumer');
+    const consumer = bodies[1].split(/\n  [a-z][a-z-]*:\n/)[0];
+    const guards = [...consumer.matchAll(/^    if: (.+)$/gm)];
+    assert.equal(guards.length, 1, 'one explicit consumer event guard');
+    return guards[0][1];
+};
+const assertConsumerSelection = sourceText => {
+    const expression = consumerGuard(sourceText);
+    const cases = [
+        ['push', 'success', true], ['pull_request', 'success', true],
+        ['workflow_dispatch', 'success', false], ['schedule', 'success', false],
+        ['pull_request_target', 'success', false], [undefined, 'success', false],
+        ['push', 'failure', false], ['pull_request', 'cancelled', false],
+        ['push', 'skipped', false], ['pull_request', undefined, false]
+    ];
+    for (const [event, result, selected] of cases) {
+        const actual = runInNewContext(expression, {github: {event_name: event}, needs: {build: {result}}}, {timeout: 100});
+        assert.equal(actual, selected, `actual consumer guard: ${event}/${result}`);
+    }
+};
+
+test('actual consumer source requires successful supported push/PR events, with manual coverage supplied separately', () => {
+    assertConsumerSelection(workflow);
+    assert.doesNotThrow(() => guiRunnerProducerSource(workflow));
+});
+
+test('actual consumer source and event matrix reject removed, weakened and unconditional guards', () => {
+    const guard = consumerGuard(workflow);
+    const line = `    if: ${guard}\n`;
+    assert.equal(workflow.split(line).length - 1, 1, 'exact consumer guard anchor');
+    for (const replacement of ['', "    if: needs.build.result == 'success'\n", '    if: true\n',
+        "    if: needs.build.result == 'success' && github.event_name != 'workflow_dispatch'\n"]) {
+        const mutant = workflow.replace(line, replacement);
+        assert.throws(() => guiRunnerProducerSource(mutant), /Supported official GUI consumer events/,
+            'the actual source verifier must reject altered event authority');
+        assert.throws(() => assertConsumerSelection(mutant), {name: 'AssertionError'},
+            'the actual event/dependency matrix must detect the changed behavior');
+    }
+});
+
+
+test('unsupported manual metadata still refuses before the sole archive GET', async () => ownedTemporary(async dir => {
+    const e = {...expected, checkoutSha: expected.runHeadSha};
+    const meta = metadata(); meta.run.event = 'workflow_dispatch'; meta.run.head_branch = 'lane/reviewed-fixture';
+    const ref = `${repository}/.github/workflows/build.yml@refs/heads/lane/reviewed-fixture`;
+    const wire = render(e, {'github.workflow_ref': ref});
+    const env = {...environment(e), GITHUB_WORKFLOW_REF: ref, [GUI_RUNNER_ENV]: wire};
+    const fixture = transport({meta, bytes: Buffer.alloc(0)});
+    await assert.rejects(admitOfficialGui({expected: e, directory: path.join(dir, 'manual-refusal'),
+        token: 'authored-fixture', fetchImpl: fixture.fetchImpl, runnerEvidence: {wire, source, env}}),
+    /Only reviewed push\/PR build events/);
+    assert.equal(fixture.calls.filter(url => url === `${api}/artifacts/56/zip` ||
+        url === 'https://fixture.invalid/original').length, 0, 'no archive request before supported-event admission');
+}));

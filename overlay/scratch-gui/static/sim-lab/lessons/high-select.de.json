@@ -1,7 +1,8 @@
 {
   "version": 1,
+  "id": "high-select",
   "language": "de",
-  "what": "Zwei Motoren stellen unabhängig die Höhen zweier vertikaler Zahnstangenschlitten ein. Ihre nach oben gerichteten Standardfliesen können eine separate Brücke tragen, die unter Schwerkraft auf echten vertikalen Führungen gleitet. Die Brücke besitzt keinen Motor. Ihre Höhe nach dem Einschwingen wird von der höheren Stütze bestimmt; die niedrigere kann sich durch den Spalt darunter bewegen. Beide Varianten verwenden dieselbe gespeicherte Geometrie. Die zweite vertauscht die beiden Eingabefolgen. Eine Buchse auf jeder Führungsachse direkt unter jedem Schlitten ist dessen Ruheanschlag: In der Nullhöhe sitzt der Schlitten darauf, sodass die stromlose Startlage unter Schwerkraft hält, statt die Motoren zurückzudrehen, und beide Encoder beim Programmstart noch null anzeigen.",
+  "what": "Schwerkraftbelasteter Maximumwähler mit einseitigen Kontakten. Zwei Motoren stellen unabhängig die Höhen zweier vertikaler Zahnstangenschlitten ein. Ihre nach oben gerichteten Standardfliesen können eine separate Brücke tragen, die unter Schwerkraft auf echten vertikalen Führungen gleitet. Die Brücke besitzt keinen Motor. Ihre Höhe nach dem Einschwingen wird von der höheren Stütze bestimmt; die niedrigere kann sich durch den Spalt darunter bewegen. Beide Varianten verwenden dieselbe gespeicherte Geometrie. Die zweite vertauscht die beiden Eingabefolgen. Eine Buchse auf jeder Führungsachse direkt unter jedem Schlitten ist dessen Ruheanschlag: In der Nullhöhe sitzt der Schlitten darauf, sodass die stromlose Startlage unter Schwerkraft hält, statt die Motoren zurückzudrehen, und beide Encoder beim Programmstart noch null anzeigen. Zwei unabhängig angetriebene Stützen heben eine separate, schwerkraftbelastete Brücke. Die höhere Stütze bestimmt ihre Höhe nach dem Einschwingen. Vergleiche Bewegungen der niedrigeren Eingabe, den Kontaktwechsel und gleiche Höhen; vertausche anschließend die beiden Eingabefolgen.",
   "try": [
     "Lade das gespeicherte Modell vor jedem endlichen Programm neu. Anschluss A und Anschluss B treiben die beiden Stützen an. Starte zuerst das Hauptprogramm und lade das Modell für den Vergleich mit vertauschten Eingaben erneut.",
     "Beobachte eine Stufe, in der eine Stütze höher bleibt, während die andere ihre Höhe unter der Brücke ändert. Sage voraus, wann die Brücke der bewegten Stütze folgen sollte. Beobachte tatsächliche Fliesen- und Brückenlagen statt nur der Motorsollwerte.",
@@ -19,7 +20,6 @@
     "Die ideale Aussage gilt für eingeschwungene Lagen bei starren Kontakten und idealer Führung. Der Simulator verwendet endliche Standard-Kollisionskörper und einen Kontaktlöser. Führungen und Kontakte können Nachlauf, Spalten oder kleine Überlappungen erzeugen. Die gelieferten begrenzten nativen Programme bestätigen keine beliebigen Geschwindigkeiten, Lasten, realen Reibwerte oder Hardwareleistung."
   ],
   "formula": "Für nach oben positive Stützhöhen a und b sowie die ausgerichtete Ausgabekontakthöhe h gilt ideal nach dem Einschwingen h=max(a,b)=max(b,a). Die geometrischen Spalten sind gA=h-a≥0 und gB=h-b≥0. Ideale einseitige Normalkräfte erfüllen NA≥0, NB≥0, NA·gA=0 und NB·gB=0. Diese Komplementaritätsgleichungen erklären den Aufbau; Kräfte werden nicht allein aus Positionen abgeleitet. Die gelieferten Messungen vergleichen tatsächliche native Flächenreferenzen in eingeschwungenen Pausen und behandeln Übergangsbewegung getrennt.",
-  "id": "high-select",
   "related": [
     "root-bridge.ldr",
     "forklift.ldr"

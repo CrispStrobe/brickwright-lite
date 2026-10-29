@@ -1,6 +1,6 @@
 # Tilting tower first-crossing measurement
 
-Status: CLAIM ONLY — no source implementation or repaired-physics claim.
+Status: IMPLEMENTED — pure observer controls complete; affected actual-native qualification and current-head CI pending. No repaired-physics claim.
 Owner: Codex, user-authorized Robot Lab measurement and physics continuation.
 Base: `00f38286b12fab3a611df0c7d34f4a364bece863`.
 
@@ -46,3 +46,15 @@ no retuned tolerance, motor input or timing is admitted to get green.
 This scope repairs measurement timing if supported by qualification. It does
 not accept Twinpoint, Watt, tracked coasting, steering, contact-policy work,
 rendered saved projects, physical hardware accuracy, or the overall user loop.
+
+## Implementation checkpoint
+
+The scoped implementation adds a read-only completed-step observer in both
+directions and retains immutable first-crossing and separate late-check
+diagnostics. The original commands, settle/poll/hold durations, limits, strict
+5 degree predicate, critical-angle calculation and 0.5 degree assertion remain
+unchanged. Fourteen pure controls and six detected mutations cover the observer;
+no engine or VM qualification has run for this candidate. See
+[the qualification boundary](../docs/ROBOT-TILT-ONSET-QUALIFICATION.md).
+The scope remains owned until affected actual-native qualification and normal
+matched-head landing; other owners' physics/model/pin regions are unchanged.

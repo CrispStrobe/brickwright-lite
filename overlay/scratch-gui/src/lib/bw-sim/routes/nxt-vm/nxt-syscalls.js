@@ -10,7 +10,8 @@
 // system-call table and its wrappers), cited in docs/NXT-RXE-VM.md §Syscalls. The code is ours.
 //
 // Every call the table lists without `run` stops the program with UNIMPLEMENTED_SYSCALL (nxt-vm.js) —
-// Bluetooth, RS-485, the IO-map access calls, the colour sensor, datalogging, pictures.
+// Bluetooth, RS-485, the colour sensor, datalogging, pictures. IO-map calls have
+// only the explicitly documented virtual Button projection.
 
 import {TC, VM_STATUS} from './rxe-file.js';
 
@@ -201,7 +202,33 @@ export const SYSCALLS = Object.freeze([
     }},
     {name: 'CommBTCheckStatus'}, {name: 'CommBTWrite'}, {name: 'CommBTRead'},
     {name: 'KeepAlive', run (vm, [result], io) { vm._set(result, (io.keepAlive ? io.keepAlive() : 600000) >>> 0); }},
-    {name: 'IOMapRead'}, {name: 'IOMapWrite'}, {name: 'ColorSensorRead'}, {name: 'CommBTOnOff'}, {name: 'CommBTConnection'},
+    {name: 'IOMapRead', run (vm, [result, moduleName, offset, count, buffer], io) {
+        const name = vm._string(moduleName);
+        const start = num(vm, offset) & 0xffff;
+        const length = num(vm, count) & 0xffff;
+        vm._byteArray(buffer);
+        if (length > 64) {
+            vm._setBytes(buffer, []);
+            vm._set(result, ERR.ERR_INVALID_SIZE);
+            return;
+        }
+        const r = io.ioMapRead ? io.ioMapRead(name, start, length) : {status: 0x90};
+        if (r.status === 0) vm._setBytes(buffer, r.data);
+        vm._set(result, signed(r.status));
+    }},
+    {name: 'IOMapWrite', run (vm, [result, moduleName, offset, buffer], io) {
+        const name = vm._string(moduleName);
+        const start = num(vm, offset) & 0xffff;
+        vm._byteArray(buffer);
+        const bytes = vm._bytes(buffer);
+        if (bytes.length > 64) {
+            vm._set(result, ERR.ERR_INVALID_SIZE);
+            return;
+        }
+        const status = io.ioMapWrite ? io.ioMapWrite(name, start, bytes) : 0x90;
+        vm._set(result, signed(status));
+    }},
+    {name: 'ColorSensorRead'}, {name: 'CommBTOnOff'}, {name: 'CommBTConnection'},
     {name: 'CommHSWrite'}, {name: 'CommHSRead'}, {name: 'CommHSCheckStatus'}, {name: 'ReadSemData'}, {name: 'WriteSemData'},
     {name: 'ComputeCalibValue'}, {name: 'UpdateCalibCacheInfo'}, {name: 'DatalogWrite'}, {name: 'DatalogGetTimes'},
     {name: 'SetSleepTimeout'},

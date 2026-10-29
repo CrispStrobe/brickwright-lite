@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import {openCodeActions as openCodeMenu} from './lib-code-actions.mjs';
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2026 Brickwright contributors
 import assert from 'node:assert/strict';
@@ -165,7 +166,7 @@ try {
     await page.getByRole('button', {name: '🤖 micro:bit', exact: true}).click();
     assert.equal(await page.getByTestId('bw-microbit-flash').innerText(), '▶ Run');
     assert.equal(await page.getByTestId('bw-microbit-download-hex').isVisible(), false);
-    await page.getByTestId('bw-code-actions').locator('summary').click();
+    await openCodeMenu(page);
     assert.equal(await page.getByTestId('bw-microbit-download-hex').isVisible(), true);
     assert.match(await page.getByTestId('bw-microbit-download-hex').innerText(), /Export firmware \(\.hex\)/);
     check('simulator Run is compact and firmware export is clearly labelled in the file menu');

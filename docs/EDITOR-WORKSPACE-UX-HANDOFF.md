@@ -1,12 +1,12 @@
 # Editor workspace delivery handoff
 
-Updated 2026-10-29. The supplier menu work is qualified and merged. The combined Lite editor delivery is **not merged, qualified or deployed**.
+Updated 2026-10-29. The supplier menu work is qualified and merged. The combined Lite editor delivery is **not merged, qualified or deployed**. The operator transferred remaining integration to the Circuit maintainer on 2026-10-29; the previous coordinator stopped writes and handed over original custody.
 
 ## Current identities
 
 - [CUI #131](https://github.com/CrispStrobe/bw-circuit-ui/pull/131) merged normally at `4b65f15485abbc039958d8e1a8a29ac3459b75f9`, tree `c07bedfe0a003c361621fbe9fb2b3a0bb9413d46`. All three exact-head checks passed. Independent original-log readback verified 83/83 scenarios, zero failures/skips, and all seven required browser/touch steps. CI and landed parents/tree matched the prediction. [Qualification run](https://github.com/CrispStrobe/bw-circuit-ui/actions/runs/40802516708).
 - [Lite #1536](https://github.com/CrispStrobe/brickwright-lite/pull/1536) checkpoint `b1d4b5eadc17059feeb6a2d5d704942d51fe89b6` normally composes the complete frozen Circuit #1538 source `93aba75473e65042925928fe8c1a0a4427fd59ca`, editor source and main through `e15b7e11c8fdb0862ff73369dab50bf55ead52b8`. It explicitly adopts CUI `4b65f154`; Board remains `8785e4688cc308b34fea434c1734523caa621f74`.
-- Keep `ci:full`. Combined [Build run 40822785950](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40822785950) was pending at this checkpoint. Refresh the actual final head and checks before acting; no queued result is acceptance.
+- The current operator policy is fast-default qualification with no `ci:full` labels; the original label instruction is historical. Combined [Build run 40822785950](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40822785950) was pending at this checkpoint. Refresh the actual final head and checks before acting; no queued result is acceptance.
 
 ## Implemented source
 
@@ -46,3 +46,69 @@ The incomplete `677f9bf` commit exposed a stale project-level Ignored Build Step
 Production still reports `5cd027707eceed3451bd62eaa21125a051650e59` at `https://brickwright-lite.vercel.app/brickwright-version.json`. The configuration defect is fixed; **a fresh production deployment and live UX acceptance remain outstanding**. Do not retry the incomplete commit, add a dummy ignore script or bypass qualification.
 
 Use hosted CI or a capable worker for builds and suites. Keep operator paths, credentials, raw receipts and session coordination in ignored private notes.
+
+## Forward repair checkpoint — 2026-10-29
+
+The original `b1d4b5e` Build was cancelled and its scientific jobs did not
+complete. Other same-head runs are distinct events; do not borrow identities
+or treat cancelled/skipped checks as acceptance. Preserve original-reader
+bindings and freeze each final head/run/job before any new original intake.
+
+Prepared repairs keep the catalogue in the Code popup's scroll flow, reserve
+the pane-toggle footprint in the Costume command band without adding another
+phone chrome row, and focus an empty menu so Escape reaches its close handler.
+The browser oracle now requires actual menu dismissal as well as focus return.
+Fifteen tiny keyboard/phone source controls pass; omitting empty-menu focus is
+rejected and restoration passes. This is not actual browser qualification.
+
+Two retained-log diagnoses were corrected: the catalogue chip was outside the
+viewport, and Finish path still exists when a draft exists. Bitmap rotation
+correctly refuses without an actual selection. Keep those guards and selectors.
+Tablet controllers read current canvas bounds after tool changes and report
+real hit/selection state; Paint overflow reports ancestor bounds before its
+unchanged assertion. The old log supplied no measured Paint width, so no
+universal layout cause or closure is claimed before fresh browser evidence.
+
+The old heavy wrapper failed the initial-JavaScript budget: 4,493,574 bytes
+against 4,476,352, an excess of 17,222. It did not reach runtime benchmarking.
+The transferred retained stats are the source for a dependency-boundary repair;
+keep the budget and qualify the corrected artifact. Native Rust lockstep work
+has a separate owner. No performance, calibration or deployment claim follows.
+
+The bundle candidate defers the shared Library presentation, with the original
+implementation moved byte-for-byte to its sibling module. The Circuit runtime
+host stays eager: delaying it would lose nonretained events and synchronous
+save handling. Library callers already mount only when their modal is open;
+no static member or imperative consumer was found. A cancellable loader refuses
+old completions, reports load failures and starts a new request on retry. Its
+seven pure controls pass; an omitted stale-completion guard is detected and
+restoration passes. Combined with keyboard/phone controls, 22 tiny checks pass.
+The existing chrome journey now checks no pre-open library request, real loading,
+known-item filtering, close/reopen state and one actual sprite addition with
+costumes. These are prepared acceptance assertions, not executed GUI results.
+Hosted stats still must establish the actual unchanged size budget.
+
+## Current qualification policy and measured GUI return
+
+The operator explicitly requested no `ci:full` PR labels. Preserve fast build,
+unit, corpus and other enabled checks together with actual affected production
+acceptance. Do not repeat label changes: external removal cancelled the old
+thorough selection before it supplied application evidence. The legacy
+label-only verdict conflicts with the current policy; PR1558 scopes admission
+of actual selected fast/thorough execution without changing any test, selector,
+main/dispatch behavior, budget or numerical bound. It must not turn an empty
+code-tier attempt into qualification. Shared protocol-document ownership stays
+with its existing owner; this handoff records the current direction.
+
+The GUI owner measured a 1024-pixel ancestor at the 834-pixel Paint viewport.
+Its returned patch limits only the hidden-stage Costume pane to `100vw`, leaving
+the global floor intact. Pixel’s nonshrinking tool strip placed Save at x=1117;
+allowing that strip to shrink brought it to x=822 in the bounded observation.
+Mirror is reached through its real colour popover. A captured focus trace also
+showed the next key arriving before scheduled File-menu focus; the driver now
+waits for that precondition without changing its timeout or navigation assertions.
+The new request witness uses `globalThis.URL`, fixing a real proof-address
+shadow; its executed regression reproduces the old failure. Twenty-four local
+pure controls pass. The owner’s broader development-mode journeys and focused
+controls are useful bounded evidence, not final production/source qualification.
+Production readback, flag-on FPGA and emitted-budget verification are still owed.

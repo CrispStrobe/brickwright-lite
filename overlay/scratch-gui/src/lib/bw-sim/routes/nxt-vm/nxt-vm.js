@@ -245,6 +245,8 @@ const freshIn = () => ({type: 0, mode: 0, invalid: 1, oldType: 0, passes: 0});
  * @property {Function} [messageWrite] (queue, bytes) => status byte
  * @property {Function} [messageRead] (queue, remove) => {status, message}
  * @property {Function} [keepAlive] () => ms
+ * @property {Function} [ioMapRead] (moduleName, offset, count) => {status, data}
+ * @property {Function} [ioMapWrite] (moduleName, offset, bytes) => status byte
  * @property {Function} [fileOpenRead] (name) => {status, handle, size}
  * @property {Function} [fileOpenWrite] (name, capacity) => {status, handle}
  * @property {Function} [fileOpenAppend] (name) => {status, handle, size}
