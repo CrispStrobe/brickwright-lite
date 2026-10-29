@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-28T06:01:11.363Z",
+  "generatedAt": "2026-10-29T06:24:40.627Z",
   "repo": "CrispStrobe/brickwright-lite",
   "headSha": "a87a7b447",
   "newestMainRun": 36409366028,
@@ -1971,6 +1971,24 @@
       "workflow": "reference-qualified-instruments.yml",
       "branch": "lane/reference-qualified-instruments-20261026",
       "sha": "a77bf7ae2"
+    },
+    {
+      "run": 40827218429,
+      "workflow": "samd-native-game-qualification.yml",
+      "branch": "lane/samd-release-adoption-20261028",
+      "sha": "9770567b1"
+    },
+    {
+      "run": 40826297334,
+      "workflow": "samd-native-game-qualification.yml",
+      "branch": "lane/samd-release-adoption-20261028",
+      "sha": "ecde65772"
+    },
+    {
+      "run": 40826003752,
+      "workflow": "samd-native-game-qualification.yml",
+      "branch": "lane/samd-release-adoption-20261028",
+      "sha": "48df0f93f"
     }
   ],
   "workflowsInTree": [
@@ -7783,7 +7801,7 @@
       "sourceSha": "working-tree"
     },
     "samd-native-game-qualification.yml": {
-      "runs": 0,
+      "runs": 3,
       "stepsInFile": [
         "Validate explicit immutable request",
         "Exercise independent metadata, checkout and asset refusal controls",
@@ -7794,19 +7812,150 @@
         "Install the existing pinned Tauri driver",
         "Three fresh actual installed game instances on embedded assets"
       ],
-      "inFileInNoRun": [
-        "Validate explicit immutable request",
-        "Exercise independent metadata, checkout and asset refusal controls",
-        "Admit official metadata, acquire each original once, and join all source bytes",
-        "Install the existing locked browser observer",
-        "Three fresh actual browser game instances on shipped assets",
-        "Install existing native observer dependencies",
-        "Install the existing pinned Tauri driver",
-        "Three fresh actual installed game instances on embedded assets"
-      ],
-      "steps": {},
-      "jobs": {},
-      "sourceSha": "working-tree"
+      "inFileInNoRun": [],
+      "steps": {
+        "Validate explicit immutable request": {
+          "existed": 3,
+          "ran": 3,
+          "existedMain": 0,
+          "ranMain": 0,
+          "skippedInFailedRuns": 0,
+          "skippedInGreenRuns": 0,
+          "jobs": [
+            "admission"
+          ],
+          "clause": null,
+          "class": "always"
+        },
+        "Exercise independent metadata, checkout and asset refusal controls": {
+          "existed": 3,
+          "ran": 3,
+          "existedMain": 0,
+          "ranMain": 0,
+          "skippedInFailedRuns": 0,
+          "skippedInGreenRuns": 0,
+          "jobs": [
+            "admission"
+          ],
+          "clause": null,
+          "class": "always"
+        },
+        "Admit official metadata, acquire each original once, and join all source bytes": {
+          "existed": 3,
+          "ran": 3,
+          "existedMain": 0,
+          "ranMain": 0,
+          "skippedInFailedRuns": 0,
+          "skippedInGreenRuns": 0,
+          "jobs": [
+            "admission"
+          ],
+          "clause": null,
+          "class": "always"
+        },
+        "Install existing native observer dependencies": {
+          "existed": 2,
+          "ran": 2,
+          "existedMain": 0,
+          "ranMain": 0,
+          "skippedInFailedRuns": 0,
+          "skippedInGreenRuns": 0,
+          "jobs": [
+            "installed"
+          ],
+          "clause": null,
+          "class": "always"
+        },
+        "Run dtolnay/rust-toolchain@4360b52568e2003a75bf9bc1d59f33a8e3fc893c": {
+          "existed": 2,
+          "ran": 2,
+          "existedMain": 0,
+          "ranMain": 0,
+          "skippedInFailedRuns": 0,
+          "skippedInGreenRuns": 0,
+          "jobs": [
+            "installed"
+          ],
+          "clause": null,
+          "class": "always"
+        },
+        "Install the existing pinned Tauri driver": {
+          "existed": 2,
+          "ran": 2,
+          "existedMain": 0,
+          "ranMain": 0,
+          "skippedInFailedRuns": 0,
+          "skippedInGreenRuns": 0,
+          "jobs": [
+            "installed"
+          ],
+          "clause": null,
+          "class": "always"
+        },
+        "Three fresh actual installed game instances on embedded assets": {
+          "existed": 2,
+          "ran": 2,
+          "existedMain": 0,
+          "ranMain": 0,
+          "skippedInFailedRuns": 0,
+          "skippedInGreenRuns": 0,
+          "jobs": [
+            "installed"
+          ],
+          "clause": null,
+          "class": "always"
+        },
+        "Install the existing locked browser observer": {
+          "existed": 1,
+          "ran": 1,
+          "existedMain": 0,
+          "ranMain": 0,
+          "skippedInFailedRuns": 0,
+          "skippedInGreenRuns": 0,
+          "jobs": [
+            "browser"
+          ],
+          "clause": null,
+          "class": "always"
+        },
+        "Three fresh actual browser game instances on shipped assets": {
+          "existed": 1,
+          "ran": 1,
+          "existedMain": 0,
+          "ranMain": 0,
+          "skippedInFailedRuns": 0,
+          "skippedInGreenRuns": 0,
+          "jobs": [
+            "browser"
+          ],
+          "clause": null,
+          "class": "always"
+        }
+      },
+      "jobs": {
+        "admission": {
+          "existed": 3,
+          "ran": 3,
+          "existedMain": 0,
+          "ranMain": 0,
+          "class": "always"
+        },
+        "installed": {
+          "existed": 3,
+          "ran": 2,
+          "existedMain": 0,
+          "ranMain": 0,
+          "class": "sometimes"
+        },
+        "browser": {
+          "existed": 3,
+          "ran": 1,
+          "existedMain": 0,
+          "ranMain": 0,
+          "class": "sometimes"
+        }
+      },
+      "sourceSha": "9770567b1"
     },
     "reference-qualified-instruments.yml": {
       "runs": 3,
@@ -7933,8 +8082,8 @@
     }
   },
   "lastRefresh": {
-    "workflow": "reference-qualified-instruments.yml",
-    "at": "2026-10-28T06:01:11.363Z",
-    "sourceSha": "92a9ab6e7"
+    "workflow": "samd-native-game-qualification.yml",
+    "at": "2026-10-29T06:24:40.627Z",
+    "sourceSha": "9770567b1"
   }
 }
