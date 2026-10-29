@@ -52,6 +52,7 @@ test('compiled IOMap program uploads and runs through the actual virtual brick w
     assert.deepEqual(hub.s.lastProgram, {name: 'iomap.rxe', how: 'ok', error: null});
     assert.deepEqual(shown(hub), expected);
     assert.deepEqual(hub.readButton(1), {pressed: true, count: 0});
+    assert.deepEqual(exec(hub, [1, 0x94, 1, 0, 4, 0, 12, 0, 1, 0]), [2, 0x94, 0, 1, 0, 4, 0, 1, 0, 0]);
     assert.deepEqual(exec(hub, [1, 0x94, 1, 0, 4, 0, 33, 0, 1, 0]), [2, 0x94, 0, 1, 0, 4, 0, 1, 0, 128]);
     t.diagnostic(JSON.stringify({case: 'iomap-normal', sourceSha256: sha(source), rxeSha256: sha(rxe), shown: shown(hub)}));
 });
@@ -84,4 +85,15 @@ test('IOMap running snapshot restores deterministically and map writes address r
     assert.deepEqual(shown(original), expected);
     assert.deepEqual(restored.s.buttons, original.s.buttons);
     assert.deepEqual(restored.s.lastProgram, original.s.lastProgram);
+});
+
+test('restored button IOMap state diverges independently and agrees with direct reads', () => {
+    const original = new NxtVirtualHub({id: 'iomap-state-proof'}); seed(original);
+    const restored = new NxtVirtualHub({id: 'iomap-state-proof'}); restored.importState(original.exportState());
+    assert.deepEqual(restored.s.buttons, original.s.buttons);
+    assert.equal(original._programIo().ioMapWrite('Button.mod', 10, [0, 0, 0]), 0);
+    assert.deepEqual(original._programIo().ioMapRead('Button.mod', 10, 3).data, [0, 0, 0]);
+    assert.deepEqual(restored._programIo().ioMapRead('Button.mod', 10, 3).data, [1, 0, 1]);
+    assert.deepEqual(exec(original, [1, 0x94, 1, 0, 4, 0, 12, 0, 1, 0]), [2, 0x94, 0, 1, 0, 4, 0, 1, 0, 0]);
+    assert.deepEqual(exec(restored, [1, 0x94, 1, 0, 4, 0, 12, 0, 1, 0]), [2, 0x94, 0, 1, 0, 4, 0, 1, 0, 1]);
 });

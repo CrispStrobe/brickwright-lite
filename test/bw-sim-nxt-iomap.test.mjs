@@ -127,3 +127,12 @@ test('actual VM byte-array checks reject nested/nonbyte buffers and preserve the
     assert.throws(() => v._setBytes(0, Array(64).fill(0)), /memory pool/);
     assert.equal(JSON.stringify(v.s), before);
 });
+
+test('syscall32 rejects a late unsupported byte without exposing a partial prefix', () => {
+    const v = vm(), b = buttons();
+    v.v.count = 4; v.v.buffer = [73, 42, 19];
+    SYSCALLS[32].run(v, readArgs, {ioMapRead: (name, offset, count) => readNxtIOMap(b, name, offset, count)});
+    assert.equal(v.v.result, -111);
+    assert.equal(v.v.count, 4);
+    assert.deepEqual(v.v.buffer, [73, 42, 19]);
+});
