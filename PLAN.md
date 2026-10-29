@@ -25,10 +25,11 @@ among 32 inputs. All four earlier disagreements remain noncomparable; no model
 repair was inferred from them. Historical supplier identities never advance.
 
 Scope PR128 and its unmerged negative PR129 establish the injected re-render
-mechanism. Combined [Lite PR1538](https://github.com/CrispStrobe/brickwright-lite/pull/1538)
-contains longer captures, the repaired LM741 acceptance, provenance/redaction,
-and CUI AC-coupling adoption. Its forward checkpoint is `93aba754`; Board remains
-`8785e468`, and CUI advances to `373d562b`. Source landing is still pending.
+mechanism. Combined [Lite PR1536](https://github.com/CrispStrobe/brickwright-lite/pull/1536)
+preserves the frozen `93aba754` longer-capture, LM741 and provenance ancestry
+previously gathered in the now-closed, unmerged PR1538. Board remains `8785e468`;
+the current adoption targets qualified CUI PR131 landing `4b65f154`. Consumer
+source landing and deployment remain pending.
 Hosted evidence at the earlier `e85dc904` candidate accepts 60 AC values and
 three actual supplier mutants, the LM741 settled-window assertion and the
 long-capture assertions. Its unit-6 documentation-trigger failure is preserved;

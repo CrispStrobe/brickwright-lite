@@ -8,13 +8,13 @@ only current action list. Dated snapshots below retain their original evidence
 and failures; their old resume instructions are historical. Read `LANES.md`
 and refresh live PR heads before acting. Never replay the consumed studies.
 
-The combined [Lite PR1538](https://github.com/CrispStrobe/brickwright-lite/pull/1538)
-contains the original longer-capture PR1516, repaired LM741 PR1515 and
-provenance PR1517 heads, plus exact CUI AC-coupling adoption. Its forward
-checkpoint is `93aba75473e65042925928fe8c1a0a4427fd59ca`; follow the live PR
-for any later qualified replacement. Candidate pins are Board
-`8785e4688cc308b34fea434c1734523caa621f74` (unchanged) and CUI
-`373d562b741c69a5a1dd441c4f8d0ea1053b4fd3`. This is not yet a consumer landing.
+The current [Lite PR1536](https://github.com/CrispStrobe/brickwright-lite/pull/1536)
+preserves longer-capture PR1516, repaired LM741 PR1515, provenance PR1517 and
+the complete frozen `93aba75473e65042925928fe8c1a0a4427fd59ca` ancestry.
+The separate PR1538 was closed without merging. Current candidate pins are Board
+`8785e4688cc308b34fea434c1734523caa621f74` (unchanged) and the qualified CUI
+PR131 landing `4b65f15485abbc039958d8e1a8a29ac3459b75f9`. Neither closed PRs
+nor supplier qualification establish this consumer's main landing or deployment.
 
 ### Verified results and their boundaries
 

@@ -14,7 +14,7 @@ remains open through qualification and final reconciliation.
 | 3. Scope rearm | PR128 merged; identical before-fix PR129 fails the injected re-render control | Accepted for that mechanism; no blanket race attribution |
 | 4. Long captures | Three hosted 5,000-point waveform assertions pass at `93aba754` | Qualify and land the preserved ancestry through combined PR1536 |
 | 5. LM741 currents/power | Hosted settled-window/refusal/default-off checks pass at `e85dc904`; v1 TODO retained | Whole-app metadata/GUI checks remain in combined PR1536 qualification |
-| 6. Provenance and realism | Provenance/redaction and exact CUI `373d562b` adoption in PR1538; four hosted AC tests and 60 independent numerical rows pass at `e85dc904` | Complete hosted qualification, preserve historical study seals, verify source landing |
+| 6. Provenance and realism | Provenance/redaction ancestry preserved in PR1536, now targeting qualified CUI `4b65f154`; four hosted AC tests and 60 independent numerical rows pass at `e85dc904` | Complete hosted qualification, preserve historical study seals, verify source landing |
 
 The forward checkpoint `93aba754` fixes the original unit-6 documentation-trigger
 failure with a dedicated receipt and TODO pointer only. Pins, numerical bodies
