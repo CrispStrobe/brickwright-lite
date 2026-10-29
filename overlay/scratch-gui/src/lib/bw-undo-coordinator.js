@@ -170,8 +170,25 @@ export const clearProjectHistory = () => {
     core.announce();
 };
 
-const undoNewest = () => (projectNewer() ? undoProject() : core.step('undo') !== false);
-const redoNewest = () => (redoProjectNewer() ? redoProject() : core.step('redo') !== false);
+const stepEditor = direction => {
+    const result = core.step(direction);
+    // Sound edits resolve after re-encoding. Preserve that completion boundary
+    // before selecting the next entry from the merged project/editor timeline.
+    if (result && typeof result.then === 'function') {
+        return Promise.resolve(result).then(value => {
+            core.announce();
+            return value !== false;
+        }, error => {
+            core.setError(message(error));
+            core.announce();
+            return false;
+        });
+    }
+    return result !== false;
+};
+
+const undoNewest = () => (projectNewer() ? undoProject() : stepEditor('undo'));
+const redoNewest = () => (redoProjectNewer() ? redoProject() : stepEditor('redo'));
 
 /**
  * The History list: the active editor's steps and the project steps in one

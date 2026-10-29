@@ -17,5 +17,11 @@ inside the visible list. Preserve existing browser journeys and thresholds.
 Verify against a production GUI and update T6 in the editor handoff. No persistent
 history, native release or changes to unrelated browser gates.
 
+Continuation in the combined delivery: the stronger multi-step review exposed
+that `lib/bw-undo-coordinator.js` discarded asynchronous editor completions in
+the merged timeline. Its narrowly scoped repair awaits each completion before
+the next History entry and stops on refusal/rejection. The first-load core is
+unchanged; focused ordering/error regressions are in `test/editor-history.test.mjs`.
+
 Results and validation: `docs/EDITOR-HISTORY-FOLLOWUPS.md`. The claim landed
 in #1529 before implementation. No device release or persistent history.

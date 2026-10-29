@@ -53,6 +53,14 @@ and a 32-step jump it reopens History and checks that the selected Now row lies
 inside the visible list. Existing Widget, Code, costume, autosave and recovery
 journeys remain in the same gate.
 
+The merged History coordinator also waits for asynchronous editor steps before
+choosing the next editor/project entry. A rejected or refused edit stops the
+jump without counting an unapplied step; asynchronous errors appear through
+the existing Undo error state. Synchronous editors retain their synchronous
+return values. Three coordinator regressions reproduce the original premature
+completion, misordered project steps and overcounted failures, then pass with
+the repair. This changes only the lazy coordinator, not the first-load core.
+
 ## Validation
 
 The final combined Node 22 run passed all 37 controls, including project/global
