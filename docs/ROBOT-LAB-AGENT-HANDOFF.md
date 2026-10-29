@@ -118,7 +118,10 @@ the browser shards. Merge with `--match-head-commit` only after every enabled ch
   the opcode and stale bytes (NXT-PROTOCOL-FACTS.md §Disagreements, #1489); the Virtual NXT
   deliberately keeps 0xBE.
 - NXT `.rxe` VM (NXT-RXE-VM.md): FLATTEN/UNFLATTEN and standard virtual-file calls
-  (0–8, 47) are implemented; Bluetooth, IOMapRead/Write, colour sensor, datalog and
+  (0–8, 47) are implemented. A bounded IOMapRead/Write candidate adds shared Button
+  counter/held reads and exact three-counter zero writes; hosted qualification
+  remains pending. Other modules and arbitrary writes remain unsupported; see
+  NXT-RXE-VM.md for the exact subset. Bluetooth, colour sensor, datalog and
   pictures remain refused by name. File calls share bounded virtual flash, with
   explicit binary extents and program-owned cleanup; physical flash layout and an
   active-image loader handle are not modeled. Open
