@@ -1,5 +1,6 @@
 import {analyseCallableBindings} from './callable-bindings.js';
 import {physicalUpdateSourceSnapshot} from './physical-update-source-snapshot.js';
+import {createLocalArrayResetPrefixEffects} from './local-array-reset-prefix-effects.js';
 
 const metadata=new Set(['originalBody','parameterDefaults','paramTypes','typeParameters','returnType','assertedType']);
 const denied=Object.freeze({discount:()=>false,current:()=>true});
@@ -49,7 +50,7 @@ export function localArrayDeclarationResetSource(program) {
             for(const [key,child]of Object.entries(value))if(!metadata.has(key))visit(child,value);
         };visit(program);
         if(unsafe)return denied;
-        const lexical=analyseCallableBindings(program),discounted=new WeakSet();
+        const lexical=analyseCallableBindings(program),discounted=new WeakSet();let synchronousPrefix=null,synchronousUsed=false;
         const refers=(node,binding)=>{
             if(!node||typeof node!=='object')return false;
             if(Array.isArray(node))return node.some(child=>refers(child,binding));
@@ -59,7 +60,7 @@ export function localArrayDeclarationResetSource(program) {
         const shape=(node,required)=>!!node&&typeof node==='object'&&required.every(key=>descriptor(node,key))&&
             ownKeys(node).every(key=>required.includes(key)||key==='parenthesized'&&typeof node[key]==='boolean');
         const dense=list=>Array.isArray(list)&&ownKeys(list).length===list.length+1&&
-            Array.from({length:list.length},(_,i)=>!!descriptor(list,String(i))).every(Boolean);
+            Array.from({length:list.length},(_,i)=>!!descriptor(list,String(i))).every(value=>value===true);
         const literal=(node,scalar=false)=>{
             if(!node||typeof node!=='object')return false;
             if(['Null','Undefined'].includes(node.type))return shape(node,['type']);
@@ -109,7 +110,14 @@ export function localArrayDeclarationResetSource(program) {
                 const candidate=list[j];next=candidate;
                 if(!candidate||!unrelatedLiteralStatement(candidate,binding))break;
             }
-            const assignment=next?.type==='ExpressionStatement'&&next.expr;
+            let assignment=next?.type==='ExpressionStatement'&&next.expr;
+            if((assignment?.type!=='Assignment'||assignment.op!=='='||assignment.left?.type!=='Identifier'||
+                lexical.references.get(assignment.left)!==binding||assignment.right?.type!=='Array'||assignment.right.items?.length!==0)&&
+                list===binding.functionOwner.node.body){
+                synchronousPrefix ||= createLocalArrayResetPrefixEffects(program);
+                const certified=synchronousPrefix.overwrite(decl);
+                if(certified){next=certified;assignment=next.expr;synchronousUsed=true;}
+            }
             if(assignment?.type!=='Assignment'||assignment.op!=='='||assignment.left?.type!=='Identifier'||
                 lexical.references.get(assignment.left)!==binding||assignment.right?.type!=='Array'||assignment.right.items?.length!==0)continue;
             if(lexical.functions.some(fn=>fn!==binding.functionOwner&&fn.captures.has(binding)))continue;
@@ -129,7 +137,7 @@ export function localArrayDeclarationResetSource(program) {
         let live=true;
         const current=()=>{
             if(!live)return false;
-            try{if(!ambientCurrent()||!snapshot.current())live=false;}catch{live=false;}
+            try{if(!ambientCurrent()||!snapshot.current()||synchronousUsed&&!synchronousPrefix.current())live=false;}catch{live=false;}
             return live;
         };
         return Object.freeze({discount:decl=>apply(weakHas,discounted,[decl])&&current(),current});

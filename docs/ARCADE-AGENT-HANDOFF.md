@@ -116,10 +116,22 @@ object shorthand no longer invalidates the entire program. The focused and
 existing controls pass, including the unchanged pause negative; five guard cuts
 were detected.
 
-The actual emitted reference-Array fixture still refuses `labels.length`: its
-intervening calls require a separate closed synchronous-effect proof. Preserve
-the original startup reads and obtain the hosted post-load refusal before
-claiming that this source-only observation identifies the whole failure.
+A separate private synchronous-prefix evaluator now handles a bounded actual
+single startup entry, ordinary called helper bodies, primitive operations,
+fresh Array identities and alias mutations, and both branches of a proved strict
+comparison. It refuses unknown calls, pauses, recursion, dynamic scope, unsafe
+coercion, prototype changes, candidate exposure and unproved control flow. It
+supplies only reset non-exposure, never an Array, result or initialization fact.
+The supported profile requires an actually interpreted ordinary call; this is a
+conservative limit, not a claim about call-free prefixes. Existing pause and
+general-branch negatives remain unchanged.
+
+The retained source-only emitted reference-Array draft now passes its complete
+native-addition domain check. This draft came from the imported project before
+VM save/reload, so the unchanged hosted post-load fixture still needs its own
+capture and full original/native/export/reimport result. The original source-only
+full-export CPU-limit failure remains a separate result; no corpus app is
+promoted by this proof.
 
 ## Prepared repair: normal mutation effects on nullable Array alternatives
 
