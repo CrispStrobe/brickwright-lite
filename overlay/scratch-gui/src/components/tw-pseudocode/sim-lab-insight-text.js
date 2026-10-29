@@ -16,6 +16,7 @@
 export const INSIGHT_TEXT = {
     en: {
         issues: {
+            'bad-motor-direction': 'The motor direction setting on line {line} is unknown or repeated, so the robot cannot run. Check this setting in the model file.',
             'bad-slide': '{parts}: the sliding-hole instruction does not name a supported round hole. Check its connector name.',
             'bad-rotor': '{parts}: the saved motor angle is not valid. Use a finite angle for a supported motor.',
             'bad-drawing': 'The drawing surface instruction is incomplete or invalid. Check its surface, pen and dimensions.',
@@ -94,6 +95,7 @@ export const INSIGHT_TEXT = {
     },
     de: {
         issues: {
+            'bad-motor-direction': 'Die Einstellung für die Motordrehrichtung in Zeile {line} ist unbekannt oder steht mehrfach in der Datei. Darum kann der Roboter nicht starten. Prüfe diese Einstellung in der Modelldatei.',
             'bad-slide': '{parts}: Die Gleitbohrungsangabe nennt kein unterstütztes rundes Loch. Prüfe den Anschlussnamen.',
             'bad-rotor': '{parts}: Der gespeicherte Motorwinkel ist ungültig. Verwende einen endlichen Winkel für einen unterstützten Motor.',
             'bad-drawing': 'Die Zeichenflächenangabe ist unvollständig oder ungültig. Prüfe Fläche, Stift und Abmessungen.',
