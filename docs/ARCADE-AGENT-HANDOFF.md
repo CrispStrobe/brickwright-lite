@@ -6140,6 +6140,14 @@ behavior still need their own qualification. This result changes no corpus row.
    reads and superclass results. Claim the exact family and ownership boundary
    before edits. A familiar API/property name or desired annotation cannot
    replace the actual initialized receiver, call result and all-writer proof.
+   For the Array callback round-trip failure, first capture the actual exported
+   project, native-addition draft and structured refusal using the existing
+   `BW_ARRAY_CALLBACK_EVIDENCE_DIR` test hook. A reduced source probe suggests
+   an SDK Sprite collection callback index and indexed Image pixel results are
+   separate proof candidates, but it does not identify the failing operand in
+   the executed project. The existing flat-Array callback proof deliberately
+   excludes SDK `allOfKind` results; do not generalize it without independently
+   proving the SDK collection, callback, writer and currentness boundaries.
 4. Run the immutable corpus and complete original project contexts on a qualified
    external worker, retaining source hashes and the first results. Separate
    import, export/reimport, original PXT execution, Lite execution and controller/
