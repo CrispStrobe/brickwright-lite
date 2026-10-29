@@ -1,6 +1,6 @@
 # SAMD native game engine adoption — 2026-10-26
 
-Owner: Codex SAMD continuation. Status: CLAIMED.
+Owner: Codex SAMD continuation. Status: QUALIFIED — actual consumer software acceptance passed; final checks and normal landing pending.
 Base: `8bf40b2c3d2`. Branch: `lane/samd-game-adoption-20261026`.
 
 Carry the qualified no-ASF SAMD runtime and engine through representative native
@@ -50,6 +50,22 @@ checks pass (28 focused tests). The collectors distinguish optional JavaScript
 heap statistics from required observed process-tree RSS, recording scope and
 shared-page/sampling limits. Actual browser/installed guest qualification and
 engine adoption remain pending; keep this claim active through those steps.
+
+2026-10-28 continuation: qualified Core `3b655aef4085082152129c84849d4e2ad5004a7f`
+is released as `labwired-wasm-3b655aef-locked` from the independently audited original
+BW campaign [40699886470](https://github.com/CrispStrobe/bw-board/actions/runs/40699886470).
+The proposed consumer carries the exact web engine/glue/profile hashes and
+matching performance-workflow identity on branch `lane/samd-release-adoption-20261028`.
+Browser and installed qualification remain mandatory; default-branch pin
+publication waits for coordination with the native-package owner. Motion
+qualification remains explicitly deferred; no real-time gameplay claim.
+
+Final source checkpoint:18 focused admission/loader tests and the synchronizer's
+three-asset check passed. Native-package boundary coordination clears this exact
+three-path proposal after source and actual guest acceptance; broader package,
+native or helper edits require fresh coordination. The `ci:full` label selects
+the required affected thorough checks. Qualification and normal landing remain
+pending; the owner retains the lane through both.
 
 ## Emitted runtime byte preservation — scope extension, 2026-10-28
 
@@ -105,3 +121,32 @@ never-pinned guards remain strict outside that exact sealed role. No CUI
 adoption, package-pin move, product/model change or new study execution is part
 of this dependency. Include the released controls with the emitted-glue repair
 before the next exact-head qualification; the original failed run stays retained.
+
+Corrected candidate: the released sealed-study controls and exact emitted-glue
+preservation pass88 focused Node22 controls with zero skips. The retained
+[first consumer run](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40734487998)
+remains failed and its changed emitted glue remains refused. The retained
+[five-target benchmark](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40730146231)
+passed its unchanged floor; these authored core-loop ceilings do not qualify
+active-game or hardware performance. Fresh source, emitted-byte and actual
+browser/installed acceptance still must succeed before adoption lands.
+
+Qualification request refreshed after the required `ci:full` label was removed
+from the earlier event. The label is restored before this source checkpoint.
+The88-control qualified implementation bytes remain unchanged; require the new
+head's automatic frontend and all enabled checks, then actual guest acceptance.
+
+The native test gate exposed a separate unchanged owner-death observation failure
+on the previous head. Continue its bounded
+[test-only dependency](2026-10-28-linux-owner-death-observation.md) with the
+original failure retained. Production native launch, timing limits, model/runtime
+pins, producer helpers and compile defaults remain unchanged. Do not resume the
+old qualification request: bind a successful successor frontend/native source
+before the actual consumer runs.
+
+29 October checkpoint: actual Chromium40826297334 and installed Tauri/WebKit
+40828345515 passed three fresh instances each; all 102 RGB frames, press/release,
+sampled RSS and source/native/observer joins passed independent readback. The
+originals and bounded acquisition/layout/HTTP/test-fixture failures are retained
+in the current handoff. PR1533 folds the complete SPIKE consumer change. Keep
+ci:full off; finish final checks and normal head/tree/parent-proved landing.
