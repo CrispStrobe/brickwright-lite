@@ -445,6 +445,70 @@
       ],
       "disconnectInputDeg": 140,
       "disconnectLoss": "batch-c"
+    },
+    {
+      "id": "tipline",
+      "judge": "tip-versus-slide-v1",
+      "parts": 174,
+      "ports": [
+        "A"
+      ],
+      "coldMs": 2000,
+      "timeLimitMs": 65000,
+      "afterMs": 3000,
+      "frameMs": 16.666666666666668,
+      "frozenOutput": "right_load_base",
+      "disconnect": [
+        "deck_axle_left",
+        "deck_bush_left_130",
+        "deck_bush_left_170",
+        "deck_bush_left_220"
+      ],
+      "disconnectInputDeg": 20,
+      "disconnectLaw": true,
+      "secondFrameMs": 20
+    },
+    {
+      "id": "twistspan",
+      "judge": "bifilar-torsion-v1",
+      "parts": 107,
+      "ports": [
+        "A"
+      ],
+      "coldMs": 2000,
+      "timeLimitMs": 43000,
+      "afterMs": 3000,
+      "frameMs": 16.666666666666668,
+      "frozenOutput": "payload_bar",
+      "disconnect": [
+        "drive_axle",
+        "drive_spacer_-460",
+        "drive_spacer_-440",
+        "drive_lower_retainer"
+      ],
+      "disconnectInputDeg": 15,
+      "disconnectLaw": true,
+      "secondFrameMs": 20
+    },
+    {
+      "id": "swayshift",
+      "judge": "timed-sway-cancellation-v1",
+      "parts": 204,
+      "ports": [
+        "A"
+      ],
+      "coldMs": 2000,
+      "timeLimitMs": 30000,
+      "afterMs": 2000,
+      "frameMs": 16.666666666666668,
+      "frozenOutput": "pendulum_upper",
+      "disconnect": [
+        "transmission_motor"
+      ],
+      "disconnectInputDeg": 65,
+      "disconnectLaw": true,
+      "withSpike": true,
+      "secondFrameMs": 10
     }
   ]
 }

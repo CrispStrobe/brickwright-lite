@@ -621,6 +621,86 @@
         "Kontaktwechsel",
         "Kommutativität"
       ]
+    },
+    {
+      "models": [
+        "tipline"
+      ],
+      "name": {
+        "en": "matched-load incline: center of mass, friction and first instability",
+        "de": "Neigungsversuch mit gleichen Lasten: Schwerpunkt, Reibung und erste Instabilität"
+      },
+      "aliases": [
+        "Tipline",
+        "inclined plane",
+        "tilting deck",
+        "sliding",
+        "tipping",
+        "center of mass",
+        "ballast height",
+        "same mass",
+        "friction",
+        "static stability",
+        "lane swap",
+        "schiefe Ebene",
+        "Rutschen",
+        "Kippen",
+        "Schwerpunkt",
+        "Ballasthöhe",
+        "Reibung",
+        "Standfestigkeit",
+        "passive catch wall",
+        "Auffangwand"
+      ]
+    },
+    {
+      "models": [
+        "twistspan"
+      ],
+      "name": {
+        "en": "bifilar torsional pendulum",
+        "de": "bifilares Torsionspendel"
+      },
+      "aliases": [
+        "bifilar",
+        "two cords",
+        "fixed-length suspension",
+        "torsional pendulum",
+        "gravity",
+        "moment of inertia",
+        "attachment spacing",
+        "passive oscillation",
+        "Zweifadenpendel",
+        "Torsionspendel",
+        "Schwerkraft",
+        "Trägheitsmoment",
+        "Fadenabstand"
+      ]
+    },
+    {
+      "models": [
+        "swayshift"
+      ],
+      "name": {
+        "en": "3:1 gear-driven rack trolley and passive rigid pendulum: finite command shaping",
+        "de": "Zahnstangenschlitten mit 3:1-Zahnradantrieb und passivem starrem Pendel: Formung endlicher Fahrbefehle"
+      },
+      "aliases": [
+        "SwayShift",
+        "input shaping",
+        "command shaping",
+        "anti-sway",
+        "residual vibration",
+        "passive pendulum",
+        "rack trolley",
+        "half period",
+        "phase cancellation",
+        "Eingangsformung",
+        "Nachschwingen",
+        "Pendel",
+        "Zahnstangenschlitten",
+        "halbe Periode"
+      ]
     }
   ]
 }

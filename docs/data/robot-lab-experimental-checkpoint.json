@@ -3744,7 +3744,14 @@
       "mechanicalLaw": "SIMULATOR_AGREES",
       "causalControl": "PASS (swayshift-in-phase: same model, start_gap 0.760 s)",
       "browserLoad": "NOT_RUN",
-      "savedProjectReplay": "NOT_RUN"
+      "savedProjectReplay": "NOT_RUN",
+      "promoted": {
+        "to": "established library (MODELS)",
+        "date": "2026-10-28",
+        "judge": "timed-sway-cancellation-v1",
+        "qualification": "The matching source PR retains final full-runner receipts and source fingerprint. See docs/ROBOT-LAB-BATCH-E-QUALIFICATION.md for the required boundary and preserved 20 ms SwayShift sampling failure. Earlier checkpoint fields remain historical observations, not this promotion receipt.",
+        "hardware": "NOT_TESTED"
+      }
     },
     {
       "id": "swayshift-in-phase",
@@ -3784,7 +3791,14 @@
       "mechanicalLaw": "SIMULATOR_AGREES",
       "causalControl": "PASS (tipline-swapped)",
       "browserLoad": "NOT_RUN",
-      "savedProjectReplay": "NOT_RUN"
+      "savedProjectReplay": "NOT_RUN",
+      "promoted": {
+        "to": "established library (MODELS)",
+        "date": "2026-10-28",
+        "judge": "tip-versus-slide-v1",
+        "qualification": "The matching source PR retains final full-runner receipts and source fingerprint. See docs/ROBOT-LAB-BATCH-E-QUALIFICATION.md for the required boundary and preserved 20 ms SwayShift sampling failure. Earlier checkpoint fields remain historical observations, not this promotion receipt.",
+        "hardware": "NOT_TESTED"
+      }
     },
     {
       "id": "tipline-swapped",
@@ -3824,7 +3838,14 @@
       "mechanicalLaw": "SIMULATOR_AGREES",
       "causalControl": "PASS (twistspan-inner)",
       "browserLoad": "NOT_RUN",
-      "savedProjectReplay": "NOT_RUN"
+      "savedProjectReplay": "NOT_RUN",
+      "promoted": {
+        "to": "established library (MODELS)",
+        "date": "2026-10-28",
+        "judge": "bifilar-torsion-v1",
+        "qualification": "The matching source PR retains final full-runner receipts and source fingerprint. See docs/ROBOT-LAB-BATCH-E-QUALIFICATION.md for the required boundary and preserved 20 ms SwayShift sampling failure. Earlier checkpoint fields remain historical observations, not this promotion receipt.",
+        "hardware": "NOT_TESTED"
+      }
     },
     {
       "id": "twistspan-inner",

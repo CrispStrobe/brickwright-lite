@@ -2,9 +2,9 @@
   "version": 1,
   "id": "twistspan",
   "language": "de",
-  "what": "Ein Motor dreht kurz den gelben oberen Balken und hält ihn anschließend fest. Zwei Schnüre mit jeweils 104 mm fester Länge tragen eine eigene orangefarbene Baugruppe ohne Motor und ohne Lagerverbindung zum oberen Balken. Der orange Balken verdreht sich, hebt sich leicht an und schwingt unter Schwerkraft zurück. Im Hauptmodell liegen die roten Befestigungshülsen 64 mm auseinander. Im mitgelieferten Vergleichsmodell werden die grünen Hülsen mit 32 mm Abstand verwendet; alle 107 starren Teile sowie Masse und Massenverteilung der Last bleiben gleich.",
+  "what": "bifilares Torsionspendel. Ein Motor dreht kurz den gelben oberen Balken und hält ihn anschließend fest. Zwei Schnüre mit jeweils 104 mm fester Länge tragen eine eigene orangefarbene Baugruppe ohne Motor und ohne Lagerverbindung zum oberen Balken. Der orange Balken verdreht sich, hebt sich leicht an und schwingt unter Schwerkraft zurück. Im Hauptmodell liegen die roten Befestigungshülsen 64 mm auseinander. Im mitgelieferten Vergleichsmodell werden die grünen Hülsen mit 32 mm Abstand verwendet; alle 107 starren Teile sowie Masse und Massenverteilung der Last bleiben gleich. Ein Motor dreht den oberen Balken; zwei feste 104-mm-Schnüre tragen eine eigene passive Last. Vergleiche 64 mm und 32 mm Befestigungsabstand bei denselben starren Teilen: Die aufgezeichnete Periode ändert sich von etwa 0,77 s auf 1,52 s.",
   "try": [
-    "Importiere twistspan.ldr in Robot Lab. Lade den Text aus twistspan.bw in Code, wähle To Blocks und dann Run. Beginne mit dem frisch geladenen gespeicherten Modell. Dieses Zusatzpaket trägt sich nicht selbst in die Beispielgalerie ein.",
+    "Setze die gesamte Szene zurück, lade das Beispielprogramm dieses Modells und starte es. Setze die Szene vor jeder Wiederholung oder jedem Vergleich erneut zurück.",
     "In Phase 1 bewegt Motor A den oberen Balken auf +20 Grad und hält ihn 18 Sekunden lang. Beobachte den orangefarbenen Balken, nicht den Motorgeber. Zähle eine volle Schwingung vom Durchgang durch die Richtung des festgehaltenen oberen Balkens bis zum nächsten Durchgang in derselben Richtung. Verwende mehrere vollständige Schwingungen.",
     "Beobachte die geringe Anhebung nahe einem Umkehrpunkt und die tiefere Lage bei gleicher Ausrichtung. Danach fährt A mit 10 Grad pro Sekunde auf null zurück und hält weitere 6 Sekunden. Das Programm endet nach ungefähr 27,5 Sekunden; der passive orange Balken kann danach weiter ausschwingen.",
     "Sage vor dem Aufdecken der Antwort voraus, was der halbe Befestigungsabstand bewirkt. Importiere das vollständige gespeicherte Modell twistspan-inner.ldr neu, verwende genau dasselbe Programm twistspan.bw und wiederhole den Versuch. Beide Schnüre sind nun an beiden Enden an den grünen Hülsen befestigt. Entferne weder die unbenutzten roten Hülsen noch Ballast und füge keinen Ballast hinzu.",
@@ -23,9 +23,7 @@
   ],
   "formula": "Für kleine relative Verdrehung theta (Radiant), gleich lange gespannte Schnüre L, oben und unten gleichen halben Befestigungsabstand a, Lastmasse m und Trägheitsmoment Iz um die senkrechte Achse: T0 = 2*pi*sqrt(Iz*L/(m*g*a^2)). Hier gilt L = 0,104 m; a = 0,032 m (rote Hülsen) oder 0,016 m (grüne Hülsen). Bei unverändertem m, Iz und L ist T_innen/T_aussen = a_aussen/a_innen = 2. Für eine waagerechte symmetrische Last gilt: Hub(theta) = L - sqrt(L^2 - 4*a^2*sin(theta/2)^2). Das ist eine analytische Geometrievorhersage; tatsächliche Perioden und Anhebungen werden unabhängig aus nativen Körperpositionen ermittelt.",
   "related": [
-    "twin-tempo.ldr",
-    "sky-courier.ldr",
-    "pendulum-array.ldr",
-    "resonance-lab.ldr"
+    "samebeat.ldr",
+    "cascade.ldr"
   ]
 }

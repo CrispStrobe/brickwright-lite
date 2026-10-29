@@ -10,13 +10,19 @@ import {batchCDisconnectionLoss} from '../scripts/lib/sim-lab-batchC-judges.mjs'
 import {catalogFrom,prepareModel,MODELS} from '../overlay/scratch-gui/src/lib/bw-sim/sim-session.js';
 import {runRobotLabProgram} from './helpers/robot-lab-direct-vm.mjs';import {observeAddon} from '../scripts/lib/sim-lab-addon-judge.mjs';
 import Creator from '../overlay/scratch-gui/src/lib/sb3-creator-register-art.js';
+import {isBatchEPromotion,runBatchEPromotion} from './helpers/robot-lab-promotion-programs.mjs';
+import {batchEDisconnectionLoss} from '../scripts/lib/sim-lab-batchE-judges.mjs';
+import {BATCH_E_CONTRACTS} from '../scripts/lib/sim-lab-batchE-judges.mjs';
+import {evaluateTiplinePair} from '../scripts/lib/sim-lab-tipline-judge.mjs';
+import {evaluateTwistspanPair} from '../scripts/lib/sim-lab-twistspan-judge.mjs';
+import {judgeSwayShiftPair} from '../scripts/lib/sim-lab-swayshift-judge.mjs';
 const read=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8'),lab='overlay/scratch-gui/static/sim-lab/',catalog=catalogFrom(JSON.parse(read('overlay/scratch-gui/src/lib/bw-sim/part-meta/parts.json')));
 const selected=process.env.BW_MODEL_QUALIFY_MODELS?.split(',');
 test('qualification refuses unknown principles, missing models and incomplete disconnections',()=>{
  assert.throws(()=>qualificationContracts(['invented-pass']));assert.throws(()=>qualificationContracts([]));assert.throws(()=>disconnectedSource('0 model\n',['missing']));
 });
 const run=async(c,modelText,autoPorts,label=autoPorts===false?'strict':'ordinary')=>{
- const errors=[];let hooked=false;const r=await runRobotLabProgram(read(lab+'programs/'+c.id+'.bw'),{...c,modelText,autoPorts,observeFrame:({session,vm,hub})=>{
+ const errors=[];let hooked=false;const r=isBatchEPromotion(c.id)?await runBatchEPromotion(c,modelText,autoPorts):await runRobotLabProgram(read(lab+'programs/'+c.id+'.bw'),{...c,modelText,autoPorts,observeFrame:({session,vm,hub})=>{
   if(!hooked){vm.runtime.on('ERROR',e=>errors.push(String(e)));vm.runtime.on('BLOCKS_ERROR',e=>errors.push(String(e)));hooked=true;}
   for(const b of vm.runtime.targets.flatMap(t=>Object.values(t.blocks._blocks))){const literal=Object.keys(b.fields||{}).length===1&&Object.keys(b.inputs||{}).length===0;assert.ok(b.opcode in vm.runtime._primitives||b.opcode in vm.runtime._hats||literal,'actual registered opcode: '+b.opcode);}
   return{variables:Object.fromEntries(vm.runtime.targets.flatMap(t=>Object.values(t.variables||{}).map(v=>[v.name,v.value]))),modes:hub.motors._controllers.map(c=>c.mode),actuators:actuatorState(session),sessionFailed:session.failed?String(session.failed):null,...(c.observeAir?{air:session.core.airState?session.core.airState():[]}:{})};
@@ -39,6 +45,23 @@ for(const c of qualificationContracts(selected).filter(c=>!c.nativeSuite)){
   const frozen=structuredClone(r),body=r.mechanism.bodies.find(b=>b.parts.includes(c.frozenOutput));for(const f of frozen.track)f.bodies[body.id]=structuredClone(frozen.track[0].bodies[body.id]);assert.throws(()=>judge(frozen),'a stationary output cannot pass');
   const shifted=structuredClone(r);for(const b of Object.values(shifted.track.at(-1).bodies))b.position[0]+=.01;assert.throws(()=>judge(shifted),/stationary chassis/,'relative output laws do not hide world drift');
  });
+ if(isBatchEPromotion(c.id))test(c.id+': fresh longer cold start and causal comparison at the second cadence',async t=>{
+  const options={coldMs:2500},main=await runBatchEPromotion(c,source,false,options);
+  judge(main);assertFinalHold(c,main.track.at(-1));
+  let comparison,result;
+  if(c.id==='tipline'){
+   comparison=await runBatchEPromotion(c,read(lab+'models/tipline-swapped.ldr'),false,{...options,variant:'tipline-swapped'});
+   result=evaluateTiplinePair(main,comparison,{contract:BATCH_E_CONTRACTS.tipline});assert.equal(result.status,'PASS');
+  }else if(c.id==='twistspan'){
+   comparison=await runBatchEPromotion(c,read(lab+'models/twistspan-inner.ldr'),false,{...options,variant:'twistspan-inner'});
+   result=evaluateTwistspanPair(main,comparison,{contract:BATCH_E_CONTRACTS.twistspan});assert.equal(result.status,'PASS');
+  }else{
+   comparison=await runBatchEPromotion(c,source,false,{...options,mode:'in-phase',source:read(lab+'programs/swayshift-in-phase.bw')});
+   result=judgeSwayShiftPair(main,comparison,{contract:BATCH_E_CONTRACTS.swayshift});assert.equal(result.passed,true,JSON.stringify(result.gates.filter(g=>!g.passed)));
+  }
+  if(process.env.BW_MODEL_QUALIFY_EVIDENCE_DIR){const dir=process.env.BW_MODEL_QUALIFY_EVIDENCE_DIR;mkdirSync(dir,{recursive:true});writeFileSync(dir+'/'+c.id+'-cold-comparison.json',JSON.stringify({main,comparison})+'\n');}
+  t.diagnostic(JSON.stringify({id:c.id,coldMs:2500,frameMs:main.provenance.frameMs,comparison:'PASS'}));
+ });
  test(c.id+': physical disconnection destroys the intended output while the real input still completes',async t=>{
   const r=await run(c,disconnectedSource(source,c.disconnect),false,'disconnected'),o=observeAddon(r,c.observeBase??'hub'),input=c.motorless?null:r.mechanism.joints.find(j=>j.motor?.port===c.ports[0]),travel=input?Math.max(...r.track.map(f=>Math.abs(f.joints[input.id].angle)))*180/Math.PI:0;
   assert.ok(r.finishedAt>0);if(!c.motorless)assert.ok(travel>(c.disconnectInputDeg??(c.id==='sine-shuttle'?1070:1430)),'input genuinely still turns');
@@ -57,6 +80,7 @@ for(const c of qualificationContracts(selected).filter(c=>!c.nativeSuite)){
   else if(c.id==='toggle-lever'){motion=toggleLeverLawErrorDeg(r);assert.ok(motion>5,'without the crank pin the lever leaves the toggle closure law');}
   else if(c.id==='thirdline'){const un=a=>{let p=a[0],s=p;return a.map(v=>{s+=Math.atan2(Math.sin(v-p),Math.cos(v-p));p=v;return s;});},din=un(r.track.map(f=>o.angle(f,'input_arm',[0,1,0],[1,0,0]))),dru=un(r.track.map(f=>o.angle(f,c.frozenOutput,[0,1,0],[1,0,0])));motion=Math.max(...r.track.map((f,i)=>Math.abs((dru[i]-dru[0])-(din[i]-din[0])/3)))*180/Math.PI;assert.ok(motion>.5,'without the marked joint the ruler leaves the one-third law');}
   // Hubless and motorless models: the judge module measures each law's own loss (sim-lab-hubless-judges.mjs).
+  else if(isBatchEPromotion(c.id)){const loss=batchEDisconnectionLoss(c.id,r);motion=loss.value;assert.ok(loss.lost,'disconnection loses the measured physical law: '+JSON.stringify(loss));}
   else if(c.disconnectLaw&&Object.hasOwn(HUBLESS_DISCONNECTION_LOSSES,c.id)){const loss=HUBLESS_DISCONNECTION_LOSSES[c.id](r);motion=loss.value;assert.ok(loss.lost,'disconnection loses the law: '+JSON.stringify(loss));}
   // Batches C and D: the judge module measures each law's own loss (sim-lab-batchC-judges.mjs).
   else if(c.disconnectLoss==='batch-c'){const loss=batchCDisconnectionLoss(c.id,r);motion=loss.value;assert.ok(loss.lost,'disconnection loses the law: '+JSON.stringify(loss));}
