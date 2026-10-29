@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createProjectJsonSnapshot} from '../overlay/scratch-gui/src/lib/bw-makecode/project-json-snapshot.js';
 import {createArrayReferenceExportAuthority} from '../overlay/scratch-gui/src/lib/bw-makecode/array-reference-export-authority.js';
+import {SDK_CLASS_NODES,SDK_SPRITE_CLASS_NODES,SDK_DIALOG_CLASS_NODES} from '../overlay/scratch-gui/src/lib/bw-makecode/sdk-class-descriptors.js';
 
 // Independent physical graph of a reimported creation callback. No generated
 // name or source marker supplies a value, receiver or reset certificate.
@@ -116,6 +117,116 @@ test('a consumed primitive global prefix retains permanent ambient expiry',()=>{
   assert.equal(q.proof.validateInput(q.target,{...q.node}).ok,false);
  }finally{Object.defineProperty(Object.prototype,'valueOf',descriptor);}
  assert.equal(decision(q).ok,false);good(traceFixture());
+});
+
+function declareFieldClass(f,name='Easy',base='__bwSDK_ExtendableSprite',fields=[{name:'value',type:'number',readonly:false,visibility:'public',parameterProperty:true}]){
+ const inputs={NAME:[10,name],FIELDS:[10,JSON.stringify(fields)],INITIALIZER:[10,name+'_fields %s'],
+  CONSTRUCTOR:[10,name+'_constructor %s %s'],PARAMETERS:[10,'[]'],METHODS:[10,'[]']};
+ if(base)inputs.BASE=[10,base];
+ const hat=f.node('arcade_whenSourceStarts'),declaration=f.node(base?'arcade_declareSubclass':'arcade_declareClass',inputs);
+ f.blocks[hat].topLevel=true;f.blocks[hat].next=declaration;f.blocks[declaration].parent=hat;return declaration;
+}
+function fieldFixture(alias=false){
+ const f=traceFixture(),{blocks,node,traceWrite,overwrite}=f;f.project.targets[0].variables.seen=['seen',false];
+ const receiver=alias?node('arcade_getLocal',{NAME:[10,'actor']}):node('arcade_eventSprite',{}, {WHICH:['first',null]});
+ const field=node('arcade_objectField',{OBJECT:receiver,FIELD:[10,'value']});
+ const value=node('operator_add',{NUM1:[4,'0'],NUM2:[4,'3']});
+ const compare=node('arrays_valueCompare',{LEFT:field,RIGHT:value},{OP:['===',null]});
+ const write=node('data_setvariableto',{VALUE:compare},{VARIABLE:['seen','seen']});
+ blocks[traceWrite].next=write;blocks[write].parent=traceWrite;blocks[write].next=overwrite;blocks[overwrite].parent=write;
+ const declaration=declareFieldClass(f);return {...f,receiver,field,compare,fieldWrite:write,declaration};
+}
+test('strict comparisons of a fixed event plain data field preserve the private reset frontier',()=>{
+ good(fieldFixture());good(fieldFixture(true));
+ const f=fieldFixture();f.blocks[f.compare].fields.OP=['!==',null];good(f);
+ const inherited=fieldFixture();inherited.blocks[inherited.declaration].inputs.FIELDS=[1,[10,'[]']];
+ inherited.blocks[inherited.declaration].inputs.BASE=[1,[10,'Parent']];declareFieldClass(inherited,'Parent',null);good(inherited);
+});
+test('every class declaration must exclude selected direct and inherited accessors',()=>{
+ for(const property of ['getter','setter','valueKind','sdkType']){
+  const f=fieldFixture(),field={name:'value',type:'number',readonly:false,visibility:'public',[property]:property==='setter'?{procedure:'set %s',parameters:[]}:property==='valueKind'?'callable':'get %s'};
+  f.blocks[f.declaration].inputs.FIELDS=[1,[10,JSON.stringify([field])]];bad(f);
+ }
+ const inherited=fieldFixture();inherited.blocks[inherited.declaration].inputs.FIELDS=[1,[10,'[]']];
+ inherited.blocks[inherited.declaration].inputs.BASE=[1,[10,'Parent']];
+ declareFieldClass(inherited,'Parent',null,[{name:'value',type:'number',readonly:true,getter:'get %s'}]);bad(inherited);
+ const unrelated=fieldFixture();declareFieldClass(unrelated,'Other',null,[{name:'value',type:'number',readonly:true,getter:'get %s'}]);bad(unrelated);
+});
+test('field effects reject dynamic metadata unknown bases cycles duplicates and SDK collisions',()=>{
+ let f=fieldFixture();const dynamic=f.node('data_variable',{}, {VARIABLE:['out','out']});
+ f.blocks[f.field].inputs.FIELD=[2,dynamic];f.blocks[dynamic].parent=f.field;bad(f);
+ f=fieldFixture();f.blocks[f.declaration].inputs.FIELDS=[1,[10,'not JSON']];bad(f);
+ f=fieldFixture();f.blocks[f.declaration].inputs.BASE=[1,[10,'Unknown']];bad(f);
+ f=fieldFixture();f.blocks[f.declaration].inputs.BASE=[1,[10,'Easy']];bad(f);
+ f=fieldFixture();declareFieldClass(f);bad(f);
+ f=fieldFixture();f.blocks[f.field].inputs.FIELD=[1,[10,'x']];
+ f.blocks[f.declaration].inputs.FIELDS=[1,[10,'[{"name":"x","type":"number","readonly":false}]']];bad(f);
+ f=fieldFixture();f.blocks[f.declaration].inputs.NAME=[1,[10,'Sprite']];bad(f);
+ f=fieldFixture();f.blocks[f.declaration].inputs.METHODS=[1,[10,'[{"name":"value"}]']];bad(f);
+});
+test('field effects accept only the current fixed event or its still-live private copy',()=>{
+ let f=fieldFixture(true);f.blocks[f.receiver].inputs.NAME=[1,[10,'refs']];bad(f);
+ f=fieldFixture(true);f.blocks[f.receiver].inputs.NAME=[1,[10,'uninitialized']];bad(f);
+ f=fieldFixture();f.blocks[f.receiver].fields.WHICH=['second',null];bad(f);
+ f=fieldFixture(true);const overwrite=f.node('arcade_setLocal',{NAME:[10,'actor'],VALUE:[4,'7']});
+ f.blocks[f.traceWrite].next=overwrite;f.blocks[overwrite].parent=f.traceWrite;f.blocks[overwrite].next=f.fieldWrite;f.blocks[f.fieldWrite].parent=overwrite;bad(f);
+ f=fieldFixture(true);f.blocks[f.hat].next=f.copy;f.blocks[f.copy].parent=f.hat;
+ f.blocks[f.copy].next=f.reset;f.blocks[f.reset].parent=f.copy;f.blocks[f.reset].next=f.traceWrite;f.blocks[f.traceWrite].parent=f.reset;bad(f);
+});
+test('candidate reads calls coercive comparisons and cloud stores still retain the reset',()=>{
+ let f=fieldFixture();const read=f.node('arcade_getLocal',{NAME:[10,'refs']});
+ f.blocks[f.compare].inputs.RIGHT=[2,read];f.blocks[read].parent=f.compare;bad(f);
+ f=fieldFixture();const call=f.node('arcade_callFunction',{NAME:[10,'foreign'],ARGS:[10,'[]']});
+ f.blocks[f.compare].inputs.RIGHT=[2,call];f.blocks[call].parent=f.compare;bad(f);
+ f=fieldFixture();f.blocks[f.compare].fields.OP=['==',null];bad(f);
+ f=fieldFixture();f.project.targets[0].variables.seen.push(true);bad(f);
+ f=fieldFixture();f.blocks[f.field].parent=f.reset;bad(f);
+});
+test('plain field non-exposure gives no Array receiver or field value authority',()=>{
+ const f=fieldFixture();good(f);delete f.blocks[f.blocks[f.read].inputs.ARRAY[1]];
+ const event=f.node('arcade_eventSprite',{}, {WHICH:['first',null]});
+ const field=f.node('arcade_objectField',{OBJECT:event,FIELD:[10,'value']});
+ f.blocks[f.read].inputs.ARRAY=[2,field];f.blocks[field].parent=f.read;bad(f);
+});
+test('a consumed field inventory expires without invoking changed SDK metadata accessors',()=>{
+ const q=good(fieldFixture()),row=SDK_CLASS_NODES[0].fields[0],descriptor=Object.getOwnPropertyDescriptor(row,'name');let called=false;
+ try{Object.defineProperty(row,'name',{enumerable:descriptor.enumerable,configurable:descriptor.configurable,
+  get(){called=true;throw new Error('SDK metadata getter must not run');}});
+  assert.equal(q.proof.validateInput(q.target,{...q.node}).ok,false);
+ }finally{Object.defineProperty(row,'name',descriptor);}
+ assert.equal(called,false);assert.equal(decision(q).ok,false);good(fieldFixture());
+ const replaced=good(fieldFixture()),cls=SDK_CLASS_NODES[0],fields=cls.fields;let trapped=false;
+ try{cls.fields=new Proxy(fields,{getOwnPropertyDescriptor(){trapped=true;throw new Error('replacement SDK metadata must not be traversed');}});
+  assert.equal(replaced.proof.validateInput(replaced.target,{...replaced.node}).ok,false);
+ }finally{cls.fields=fields;}
+ assert.equal(trapped,false);assert.equal(decision(replaced).ok,false);good(fieldFixture());
+ const added=good(fieldFixture()),base=Object.getOwnPropertyDescriptor(cls,'base');assert.equal(base,undefined);
+ try{cls.base='Unknown';assert.equal(added.proof.validateInput(added.target,{...added.node}).ok,false);}
+ finally{delete cls.base;}
+ assert.equal(decision(added).ok,false);good(fieldFixture());
+});
+test('the field inventory binds both original SDK supplier arrays before and after admission',()=>{
+ for(const supplier of [SDK_SPRITE_CLASS_NODES,SDK_DIALOG_CLASS_NODES])for(const append of [false,true]){
+  const q=good(fieldFixture()),original=supplier[0],length=supplier.length;
+  const replacement={...original,name:'__bwSDK_Unexpected',fields:[{name:'value',typeName:'number',modifiers:[]}],methods:[]};
+  try{
+   if(append)supplier.push(replacement);else supplier[0]=replacement;
+   assert.equal(q.proof.validateInput(q.target,{...q.node}).ok,false);bad(fieldFixture());
+  }finally{if(append)supplier.length=length;else supplier[0]=original;}
+  assert.equal(decision(q).ok,false);good(fieldFixture());
+ }
+});
+test('SDK class descriptor and array prototype changes expire without reading inherited metadata',()=>{
+ const objects=[SDK_SPRITE_CLASS_NODES[0],SDK_SPRITE_CLASS_NODES[0].fields[0],SDK_DIALOG_CLASS_NODES[0].methods[0],SDK_SPRITE_CLASS_NODES];
+ for(const object of objects){
+  const q=good(fieldFixture()),parent=Object.getPrototypeOf(object),changed=Object.create(parent);let called=false;
+  Object.defineProperty(changed,'base',{get(){called=true;throw new Error('inherited SDK base getter must not run');}});
+  // Exercise the already admitted field proof. Fresh authority construction
+  // enters the independent ordinary-symbol initializer before this inventory.
+  try{Object.setPrototypeOf(object,changed);assert.equal(q.proof.validateInput(q.target,{...q.node}).ok,false);}
+  finally{Object.setPrototypeOf(object,parent);}
+  assert.equal(called,false);assert.equal(decision(q).ok,false);good(fieldFixture());
+ }
 });
 
 function conditionalFixture(readReset){

@@ -55,7 +55,19 @@ Continue in this order:
    fingerprints or weaken collector counts. Final landing still requires every
    enabled exact-head gate and applicable affected runtime qualification.
 
-The callback prefix proof now also admits an exact non-cloud global write when its initial value and all physical writers preserve a closed primitive domain. Unknown effects, calls, monitors and incompatible writers refuse; this is only a frame-effect fact. The actual class-field read remains pending.
+The callback prefix proof now also admits a strict comparison between the
+fixed first creation-event Sprite's plain declared data field and a primitive
+literal expression. It inventories physical classes and inheritance, refuses
+accessors and SDK collisions, and expires if the underlying SDK descriptor
+suppliers or their prototypes change. The retained full reimport graph's
+previously refused Array input now passes this component proof. Full export,
+PXT, native, Code/Blocks and saved-project checks remain pending; this does not
+promote a corpus app. A separate pre-existing boundary remains: constructing a
+fresh authority after installing an inherited SDK metadata getter can invoke the
+getter before this new proof is created. Investigate that construction order in
+its own scoped change; the new proof itself expires without invoking it.
+
+The callback prefix proof now also admits an exact non-cloud global write when its initial value and all physical writers preserve a closed primitive domain. Unknown effects, calls, monitors and incompatible writers refuse; this is only a frame-effect fact. The following class-field read uses the separate bounded proof above.
 
 The local reset proof can cross an inline or physical shadow primitive literal written to a different private local, with the same frame and prototype safeguards as the event copy. The actual trace and instance-field effects still need separate proof.
 

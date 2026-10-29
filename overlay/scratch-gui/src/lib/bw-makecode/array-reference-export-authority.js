@@ -5,6 +5,7 @@ import {createArraySourceStartResetEffects} from './array-source-start-reset-eff
 import {createProjectConditionalArrayEntry,createProjectArrayPublicationFrontier} from './project-conditional-array-entry.js';
 import {isProjectJsonSnapshot} from './project-json-snapshot.js';
 import {createClosedOrdinaryProjectEntry} from './closed-ordinary-project-entry.js';
+import {SDK_CLASS_NODES,SDK_SPRITE_CLASS_NODES,SDK_DIALOG_CLASS_NODES} from './sdk-class-descriptors.js';
 const watcherOwnDescriptor=Object.getOwnPropertyDescriptor,watcherOwnKeys=Reflect.ownKeys,watcherIsArray=Array.isArray,watcherFinite=Number.isFinite,watcherCreate=Object.create,watcherNumber=Number;
 const prefixGetPrototype=Object.getPrototypeOf,prefixHasOwn=Object.hasOwn,prefixSameValue=Object.is;
 const prefixAmbient=[Object.prototype,Array.prototype].map(object=>({object,parent:prefixGetPrototype(object),
@@ -23,6 +24,54 @@ const privatePrefixAmbientCurrent=()=>{
     }
     return true;
 };
+// Read only own data slots: a changed descriptor cannot run an SDK metadata
+// getter while checking this private dependency. The profile is solely a
+// refusal inventory of intrinsic class/member names, never a receiver fact.
+const privatePrefixSdkProfile=()=>{
+    const slots=[],prototypes=new Map();let valid=true;
+    const own=(object,key)=>{
+        if(!object||typeof object!=='object')return undefined;
+        const parent=prefixGetPrototype(object),expected=watcherIsArray(object)?Array.prototype:Object.prototype;
+        if(parent!==expected){valid=false;return undefined;}
+        prototypes.set(object,parent);
+        const descriptor=watcherOwnDescriptor(object,key);
+        slots.push({object,key,descriptor});
+        if(!descriptor||!prefixHasOwn(descriptor,'value'))return undefined;
+        return descriptor.value;
+    };
+    const list=value=>watcherIsArray(value)&&Number.isSafeInteger(own(value,'length'))&&own(value,'length')<=256;
+    if(!list(SDK_CLASS_NODES))return null;
+    // The aggregate is a spread snapshot. Source exporters reread the two
+    // supplier arrays, so their exact lengths, slots and composition are also
+    // required; neither replacement nor an appended class can hide behind it.
+    let offset=0;
+    for(const supplier of [SDK_SPRITE_CLASS_NODES,SDK_DIALOG_CLASS_NODES]){
+        if(!list(supplier))return null;
+        for(let i=0;i<own(supplier,'length');i++)if(own(supplier,i+'')!==own(SDK_CLASS_NODES,offset++ +''))return null;
+    }
+    if(offset!==own(SDK_CLASS_NODES,'length'))return null;
+    const names=new Set(),members=new Set();
+    for(let i=0;i<own(SDK_CLASS_NODES,'length');i++){
+        const cls=own(SDK_CLASS_NODES,i+''),name=own(cls,'name'),base=own(cls,'base');
+        if(typeof name!=='string'||names.has(name)||base!==undefined&&typeof base!=='string')return null;
+        names.add(name);
+        for(const slot of ['fields','methods']){
+            const rows=own(cls,slot);if(!list(rows))return null;
+            for(let j=0;j<own(rows,'length');j++){
+                const name=own(own(rows,j+''),'name');if(typeof name!=='string')return null;members.add(name);
+            }
+        }
+    }
+    if(!valid)return null;
+    const current=()=>[...prototypes].every(([object,parent])=>prefixGetPrototype(object)===parent)&&slots.every(({object,key,descriptor:d})=>{
+        const now=watcherOwnDescriptor(object,key);
+        if(!d)return !now;
+        return !!now&&prefixHasOwn(now,'value')&&prefixSameValue(now.value,d.value)&&now.writable===d.writable&&
+            now.enumerable===d.enumerable&&now.configurable===d.configurable;
+    });
+    return {names,members,current};
+};
+const privatePrefixParse=JSON.parse;
 import {sourceValueOperation} from './source-value-operator-helpers.js';
 import {createArrayOccurrenceExportAuthority} from './array-occurrence-export-authority.js';
 import {analyseConsoleCaptures} from './console-capture-provenance.js';
@@ -179,10 +228,12 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
             else for(const owner of owners){const fn=functions.get(owner?.procedure);if(fn)fn.unknownEntry=true;}
         }
     }
-    let eventCopyPrefixUsed=false,eventCopyPrefixExpired=false;
+    const fieldSdkOriginal=privatePrefixSdkProfile();
+    let eventCopyPrefixUsed=false,eventCopyPrefixExpired=false,fieldPrefixUsed=false;
     const eventCopyPrefixCurrent=()=>{
         if(!eventCopyPrefixUsed)return true;
-        if(!eventCopyPrefixExpired)try{if(!privatePrefixAmbientCurrent())eventCopyPrefixExpired=true;}
+        if(!eventCopyPrefixExpired)try{if(!privatePrefixAmbientCurrent()||fieldPrefixUsed&&
+            (!fieldSdkOriginal||!fieldSdkOriginal.current()))eventCopyPrefixExpired=true;}
         catch(_){eventCopyPrefixExpired=true;}
         return !eventCopyPrefixExpired;
     };
@@ -728,11 +779,9 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
     // discounted writers. Cyclic global reads are safe only because every
     // initial value is primitive and every write preserves that invariant.
     // This private effect check supplies no value or initialization facts.
-    const inertPrimitiveGlobalWrite=(node,c,scope)=>{
+    const privatePrefixProject=scope=>{
         if(!isProjectJsonSnapshot(project)||!eventCopyPrefixCurrent()||!privatePrefixAmbientCurrent()||invalidGlobalBinding||
-            !node||invalid.has(node)||owners.get(node)!==scope||scope.invalid||scope.unknownEntry||
-            node.opcode!=='data_setvariableto'||node.shadow!==false||node.topLevel!==false||node.mutation!=null||
-            !exactKeys(node,['VALUE'],['VARIABLE'])||watcherOwnKeys(node.fields||{}).length!==1)return false;
+            !scope||scope.invalid||scope.unknownEntry)return false;
         if(!watcherIsArray(project.extensions)||project.extensions.some(id=>!['arcade','arrays'].includes(id))||
             new Set(project.extensions).size!==project.extensions.length)return false;
         if(prefixHasOwn(project,'extensionURLs')?project.extensionURLs!=null&&Object.entries(project.extensionURLs).some(([id,url])=>
@@ -747,6 +796,12 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         }
         if(records.some(r=>(r.scope===scope&&r.node.opcode==='arcade_setLocal'||r.target===scope.target&&r.node.opcode==='arcade_setCaptured')&&
             (typeof literal(r.node,'NAME',r.target)!=='string'||literal(r.node,'NAME',r.target)==='__proto__')))return false;
+        return true;
+    };
+    const inertPrimitiveGlobalWrite=(node,c,scope)=>{
+        if(!privatePrefixProject(scope)||!node||invalid.has(node)||owners.get(node)!==scope||
+            node.opcode!=='data_setvariableto'||node.shadow!==false||node.topLevel!==false||node.mutation!=null||
+            !exactKeys(node,['VALUE'],['VARIABLE'])||watcherOwnKeys(node.fields||{}).length!==1)return false;
         let budget=1024;const checking=new Set(),complete=new Set();
         const primitive=value=>value===null||['string','boolean'].includes(typeof value)||typeof value==='number'&&watcherFinite(value);
         const shape=(n,s,inputs,fields=[])=>!!n&&!invalid.has(n)&&owners.get(n)===s&&!s.invalid&&!s.unknownEntry&&
@@ -790,6 +845,100 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         };
         return primitiveGlobal(globalCell(scope.target,node.fields?.VARIABLE?.[1]));
     };
+    // A fixed event receiver's plain declared data slot, compared strictly to
+    // a literal, cannot invoke a getter/coercion or expose the private frame.
+    // Inventory every physical class, including unrelated classes and bases:
+    // metadata or a cast alone never identifies the event's concrete class.
+    const inertEventFieldComparison=(node,c,scope,prefix)=>{
+        if(!privatePrefixProject(scope)||!fieldSdkOriginal||!fieldSdkOriginal.current()||
+            !node||invalid.has(node)||owners.get(node)!==scope||node.opcode!=='data_setvariableto'||
+            node.shadow!==false||node.topLevel!==false||node.mutation!=null||!exactKeys(node,['VALUE'],['VARIABLE'])||
+            watcherOwnKeys(node.fields||{}).length!==1||!ordinarySummaryGlobal(globalCell(scope.target,node.fields.VARIABLE?.[1])))return false;
+        const shape=(n,inputs,fields=[])=>!!n&&!invalid.has(n)&&owners.get(n)===scope&&n.next==null&&
+            n.mutation==null&&exactKeys(n,inputs,fields)&&watcherOwnKeys(n.fields||{}).length===fields.length;
+        const fixed=(n,name)=>{
+            const slot=n.inputs?.[name];return watcherIsArray(slot)&&slot.length===2&&slot[0]===1&&watcherIsArray(slot[1])&&
+                slot[1].length===2&&slot[1][0]===10&&typeof slot[1][1]==='string'?slot[1][1]:null;
+        };
+        const root=scope.root;
+        if(root.opcode!=='arcade_whenRegisteredCreated'||root.mutation!=null||!exactKeys(root,['TOKEN'])||
+            watcherOwnKeys(root.fields||{}).length||fixed(root,'TOKEN')===null)return false;
+        const comparison=child(node,'VALUE',scope.target),op=comparison?.fields?.OP;
+        if(!shape(comparison,['LEFT','RIGHT'],['OP'])||comparison.opcode!=='arrays_valueCompare'||
+            !watcherIsArray(op)||op.length!==2||op[1]!==null||!['===','!=='].includes(op[0]))return false;
+        const field=child(comparison,'LEFT',scope.target),name=field&&fixed(field,'FIELD');
+        if(!shape(field,['OBJECT','FIELD'])||field.opcode!=='arcade_objectField'||typeof name!=='string'||
+            !/^[A-Za-z_]\w*$/.test(name)||prefixHasOwn(Object.prototype,name)||fieldSdkOriginal.members.has(name))return false;
+        const event=n=>shape(n,[],['WHICH'])&&n.opcode==='arcade_eventSprite'&&n.shadow===false&&
+            watcherIsArray(n.fields.WHICH)&&n.fields.WHICH.length===2&&n.fields.WHICH[1]===null&&n.fields.WHICH[0]==='first';
+        const receiver=child(field,'OBJECT',scope.target);
+        if(!event(receiver)){
+            if(!shape(receiver,['NAME'])||receiver.opcode!=='arcade_getLocal')return false;
+            const local=localCell(scope,fixed(receiver,'NAME'));if(!local||local===c)return false;
+            let last=null;
+            for(const prior of prefix)if(prior.opcode==='arcade_setLocal'&&localCell(scope,fixed(prior,'NAME'))===local)last=prior;
+            if(!last||!inertEventCopy(last,c,scope)||!event(child(last,'VALUE',scope.target)))return false;
+        }
+        let budget=128;
+        const primitive=(value,path=new Set())=>{
+            if(--budget<0||!value)return false;
+            if(value.raw){const raw=value.raw;return watcherIsArray(raw)&&raw.length===2&&
+                (raw[0]===10&&typeof raw[1]==='string'||[4,5,6,7,8].includes(raw[0])&&
+                    ['number','string'].includes(typeof raw[1])&&watcherFinite(watcherNumber(raw[1])));}
+            const n=value.node;if(!n||path.has(n))return false;
+            if(['text','math_number'].includes(n.opcode)){
+                const key=n.opcode==='text'?'TEXT':'NUM',row=n.fields?.[key];
+                return shape(n,[],[key])&&n.shadow===true&&watcherIsArray(row)&&row.length===2&&row[1]===null&&
+                    (key==='TEXT'?typeof row[0]==='string':['string','number'].includes(typeof row[0])&&watcherFinite(watcherNumber(row[0])));
+            }
+            const next=new Set([...path,n]);return n.opcode==='operator_add'&&shape(n,['NUM1','NUM2'])&&
+                ['NUM1','NUM2'].every(key=>primitive(input(n,key,scope.target),next));
+        };
+        if(!primitive(input(comparison,'RIGHT',scope.target)))return false;
+        const classes=new Map();let found=false;
+        const identifier=value=>typeof value==='string'&&/^[A-Za-z_]\w*$/.test(value)&&!prefixHasOwn(Object.prototype,value);
+        const parse=(n,key)=>{const text=fixed(n,key);if(text===null)return null;try{const rows=privatePrefixParse(text);return watcherIsArray(rows)?rows:null;}catch{return null;}};
+        for(const target of targets)for(const declaration of Object.values(target.blocks||{})){
+            if(!['arcade_declareClass','arcade_declareSubclass'].includes(declaration.opcode))continue;
+            const owner=owners.get(declaration),subclass=declaration.opcode==='arcade_declareSubclass';
+            const inputs=['NAME','FIELDS','INITIALIZER','CONSTRUCTOR','PARAMETERS','METHODS',...(subclass?['BASE']:[])];
+            if(--budget<0||!owner||owner.invalid||owner.unknownEntry||invalid.has(declaration)||
+                owner.root.opcode!=='arcade_whenSourceStarts'||declaration.shadow!==false||declaration.topLevel!==false||
+                declaration.mutation!=null||!exactKeys(declaration,inputs)||watcherOwnKeys(declaration.fields||{}).length||
+                inputs.some(key=>fixed(declaration,key)===null))return false;
+            const className=fixed(declaration,'NAME'),base=subclass?fixed(declaration,'BASE'):null;
+            const fields=parse(declaration,'FIELDS'),methods=parse(declaration,'METHODS'),parameters=parse(declaration,'PARAMETERS');
+            if(!identifier(className)||classes.has(className)||fieldSdkOriginal.names.has(className)||className==='__bwOwnedSDKSprite'||
+                subclass&&!identifier(base)||!fields||!methods||!parameters)return false;
+            const memberNames=new Set();
+            for(const row of fields){
+                if(--budget<0||!row||typeof row!=='object'||watcherIsArray(row)||!prefixHasOwn(row,'name')||!identifier(row.name)||
+                    memberNames.has(row.name)||!prefixHasOwn(row,'type')||typeof row.type!=='string'||
+                    !prefixHasOwn(row,'readonly')||typeof row.readonly!=='boolean'||
+                    watcherOwnKeys(row).some(key=>!['name','type','readonly','visibility','initializer','parameterProperty','getter','setter','valueKind','callableSignature','sdkType'].includes(key)))return false;
+                memberNames.add(row.name);
+                if(row.name===name){
+                    if(['getter','setter','valueKind','callableSignature','sdkType'].some(key=>prefixHasOwn(row,key))||
+                        prefixHasOwn(row,'visibility')&&row.visibility!=='public')return false;
+                    found=true;
+                }
+            }
+            for(const row of methods){
+                if(--budget<0||!row||typeof row!=='object'||watcherIsArray(row)||!prefixHasOwn(row,'name')||
+                    !identifier(row.name)||memberNames.has(row.name)||row.name===name)return false;
+                memberNames.add(row.name);
+            }
+            classes.set(className,{base,memberNames});
+        }
+        if(!found)return false;
+        for(const [className,cls]of classes){
+            const seen=new Set([className]);let base=cls.base;
+            while(base&&!fieldSdkOriginal.names.has(base)){
+                if(seen.has(base)||!classes.has(base))return false;seen.add(base);base=classes.get(base).base;
+            }
+        }
+        return true;
+    };
     const killedReset=(c,w,at)=>{
         if(!resetFlowReady||!(resetValue(w.value?.node)||!c.global&&w.value?.node&&inertLiteral(w.target,w.value.node))||invalid.has(w.node)||w.scope.invalid)return false;
         const scope=owners.get(at);if(!scope||w.scope!==scope||!scope.executedBefore)return false;
@@ -804,19 +953,23 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         // a direct writer, or an if/else whose both branches write the cell
         // before any exit. Only the closed private prefix effects below may
         // cross this frontier; calls and captures retain the reset.
-        let next=block(w.target,w.node.next);const skipped=new Set();
-        while(next&&before.has(next)&&!skipped.has(next)&&(inertEventCopy(next,c,scope)||inertPrimitiveGlobalWrite(next,c,scope))){
+        let next=block(w.target,w.node.next),fieldUsed=false;const skipped=new Set();
+        while(next&&before.has(next)&&!skipped.has(next)){
+            if(!inertEventCopy(next,c,scope)&&!inertPrimitiveGlobalWrite(next,c,scope)){
+                if(!inertEventFieldComparison(next,c,scope,skipped))break;fieldUsed=true;
+            }
             skipped.add(next);next=block(w.target,next.next);
         }
         if(!next||!before.has(next))return false;
-        if(c.writers.some(o=>valid(o)&&o.node===next)){if(skipped.size)eventCopyPrefixUsed=true;return true;}
+        const used=()=>{if(skipped.size)eventCopyPrefixUsed=true;if(fieldUsed)fieldPrefixUsed=true;};
+        if(c.writers.some(o=>valid(o)&&o.node===next)){used();return true;}
         const branchAssigns=id=>{const seen=new Set();for(let n=block(w.target,id);n&&!seen.has(n);n=block(w.target,n.next)){seen.add(n);
             if(c.writers.some(o=>o.node===n&&o.scope===scope&&o.value&&!resetValue(o.value.node)&&!invalid.has(n)&&!(o.value.cell===c)&&!(o.value.node&&readsCell(o.target,o.value.node,c))))return true;
             return false;}return false;};
         const condition=next.inputs?.CONDITION?.[1],literalCondition=Array.isArray(condition)&&condition.length===2&&
             ([4,5,6,7,8].includes(condition[0])&&['string','number'].includes(typeof condition[1])&&watcherFinite(watcherNumber(condition[1]))||condition[0]===10&&typeof condition[1]==='string');
         const result=next.opcode==='control_if_else'&&!invalid.has(next)&&literalCondition&&branchAssigns(next.inputs?.SUBSTACK?.[1])&&branchAssigns(next.inputs?.SUBSTACK2?.[1]);
-        if(result&&skipped.size)eventCopyPrefixUsed=true;
+        if(result)used();
         return result;
     };
     // `x := v` immediately followed by `if not truthy(x) then x := e`, with the
