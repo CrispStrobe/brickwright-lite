@@ -49,6 +49,20 @@ the successor to the now-closed PR1318. Start with
 The published candidate is `4257afa4052c4b14667ac4c54f482b2cc0cb1c40`.
 Main's older producer is not this prepared implementation.
 
+The published test-only repair at `6da13f73194b316d2c4030c7c82ac161e9035474`
+binds the merge-history regression to the system Git executable and verifies
+that a hostile executable on `PATH` is ignored. The 34 pin controls and 11
+static gate controls pass; the scanner baseline remains unchanged. This fixes
+one CI failure and does not qualify the GUI guest or establish a speed result.
+
+Prepare the final qualification as one source head: complete the source/event
+admission and one-shot controller review, make the PR ready and apply `ci:full`
+**before** pushing that final source. Then admit its single synchronize Build
+with both tiers enabled. Do not combine a prior head's checks or treat a skipped
+browser tier as success. If readiness or label events create multiple Build runs
+on the selected final head, stop and review the cohort instead of relaxing the
+single-run admission rule. Current unarmed checks are preparation evidence.
+
 **Do not select V9 again.** Its one selected hosted attempt failed because the
 resolver was a symlink; the earlier V8 attempt had required a symlink and found
 a regular file. Both attempts are consumed and their failures remain retained.
