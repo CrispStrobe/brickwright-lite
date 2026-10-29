@@ -722,6 +722,74 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
             value.shadow===false&&value.topLevel===false&&value.next==null&&value.mutation==null&&exactKeys(value,[],['WHICH'])&&
             watcherIsArray(which)&&which.length===2&&which[1]===null&&['first','second'].includes(which[0]);
     };
+    // A closed primitive global write cannot call a coercion hook or publish
+    // this invocation's params object. Prove a preservation invariant over
+    // initial storage and EVERY physical writer, never the Array/type solver's
+    // discounted writers. Cyclic global reads are safe only because every
+    // initial value is primitive and every write preserves that invariant.
+    // This private effect check supplies no value or initialization facts.
+    const inertPrimitiveGlobalWrite=(node,c,scope)=>{
+        if(!isProjectJsonSnapshot(project)||!eventCopyPrefixCurrent()||!privatePrefixAmbientCurrent()||invalidGlobalBinding||
+            !node||invalid.has(node)||owners.get(node)!==scope||scope.invalid||scope.unknownEntry||
+            node.opcode!=='data_setvariableto'||node.shadow!==false||node.topLevel!==false||node.mutation!=null||
+            !exactKeys(node,['VALUE'],['VARIABLE'])||watcherOwnKeys(node.fields||{}).length!==1)return false;
+        if(!watcherIsArray(project.extensions)||project.extensions.some(id=>!['arcade','arrays'].includes(id))||
+            new Set(project.extensions).size!==project.extensions.length)return false;
+        if(prefixHasOwn(project,'extensionURLs')?project.extensionURLs!=null&&Object.entries(project.extensionURLs).some(([id,url])=>
+            id!=='arrays'||url!=='https://crispstrobe.github.io/extensions/CrispStrobe/arrays.js'):'extensionURLs' in project)return false;
+        if(prefixHasOwn(project,'monitors')?!flagsReadOnlyMonitors():'monitors' in project)return false;
+        const core=new Set(['argument','colour','control','data','event','looks','math','motion','operator','procedures','sensing','sound']);
+        for(const target of targets)for(const n of Object.values(target.blocks||{})){
+            if(typeof n.opcode!=='string')return false;
+            const at=n.opcode.indexOf('_');if(at<0){if(n.opcode!=='text')return false;continue;}
+            const owner=n.opcode.substring(0,at).replace(/[^\w-]/g,'-');
+            if(!core.has(owner)&&!['arcade','arrays'].includes(owner))return false;
+        }
+        if(records.some(r=>(r.scope===scope&&r.node.opcode==='arcade_setLocal'||r.target===scope.target&&r.node.opcode==='arcade_setCaptured')&&
+            (typeof literal(r.node,'NAME',r.target)!=='string'||literal(r.node,'NAME',r.target)==='__proto__')))return false;
+        let budget=1024;const checking=new Set(),complete=new Set();
+        const primitive=value=>value===null||['string','boolean'].includes(typeof value)||typeof value==='number'&&watcherFinite(value);
+        const shape=(n,s,inputs,fields=[])=>!!n&&!invalid.has(n)&&owners.get(n)===s&&!s.invalid&&!s.unknownEntry&&
+            n.next==null&&n.mutation==null&&exactKeys(n,inputs,fields)&&watcherOwnKeys(n.fields||{}).length===fields.length;
+        const scalar=(value,s,path=new Set())=>{
+            if(--budget<0||!value)return false;
+            if(value.cell)return value.cell!==c&&primitiveGlobal(value.cell);
+            if(value.raw){const r=value.raw;return watcherIsArray(r)&&r.length===2&&
+                (r[0]===10&&typeof r[1]==='string'||[4,5,6,7,8].includes(r[0])&&
+                    ['string','number'].includes(typeof r[1])&&watcherFinite(watcherNumber(r[1])));}
+            const n=value.node;if(!n||path.has(n)||invalid.has(n)||owners.get(n)!==s)return false;
+            const next=new Set([...path,n]);
+            if(n.opcode==='data_variable'&&shape(n,s,[],['VARIABLE']))return primitiveGlobal(binding(s.target,n));
+            if(['text','math_number','math_whole_number','math_integer','math_positive_number'].includes(n.opcode)){
+                const field=n.opcode==='text'?'TEXT':'NUM',row=n.fields?.[field];
+                return n.shadow===true&&shape(n,s,[],[field])&&watcherIsArray(row)&&row.length===2&&row[1]===null&&
+                    (field==='TEXT'?typeof row[0]==='string':['string','number'].includes(typeof row[0])&&watcherFinite(watcherNumber(row[0])));
+            }
+            const source=sourceValueOperation(n),inputs=n.opcode==='operator_add'?['NUM1','NUM2']:
+                (n.opcode==='arrays_valueBinary'&&literal(n,'OP',s.target)==='+'||source?.op==='+')?['LEFT','RIGHT']:null;
+            return !!inputs&&shape(n,s,inputs,n.opcode==='operator_add'?[]:['OP'])&&
+                inputs.every(name=>scalar(input(n,name,s.target),s,next));
+        };
+        const primitiveGlobal=cell=>{
+            if(--budget<0||!cell||cell===c||!ordinarySummaryGlobal(cell)||cell.directBad)return false;
+            if(complete.has(cell)||checking.has(cell))return true;
+            let declaration=null;
+            for(const [target,map]of globalCell.maps)for(const [id,key]of map)if(cells.get(key)===cell)declaration=target.variables[id];
+            if(!declaration||!primitive(declaration[1]))return false;
+            checking.add(cell);
+            // Include orphan, unreachable and alternate-entry writers. A
+            // missing indexed owner or a non-assignment writer refuses.
+            for(const target of targets)for(const n of Object.values(target.blocks||{})){
+                if(!['data_setvariableto','data_changevariableby'].includes(n.opcode)||globalCell(target,n.fields?.VARIABLE?.[1])!==cell)continue;
+                const s=owners.get(n);
+                if(--budget<0||n.opcode!=='data_setvariableto'||!s||s.invalid||s.unknownEntry||invalid.has(n)||
+                    n.shadow!==false||n.topLevel!==false||n.mutation!=null||!exactKeys(n,['VALUE'],['VARIABLE'])||watcherOwnKeys(n.fields||{}).length!==1||
+                    !scalar(input(n,'VALUE',target),s))return false;
+            }
+            checking.delete(cell);complete.add(cell);return true;
+        };
+        return primitiveGlobal(globalCell(scope.target,node.fields?.VARIABLE?.[1]));
+    };
     const killedReset=(c,w,at)=>{
         if(!resetFlowReady||!(resetValue(w.value?.node)||!c.global&&w.value?.node&&inertLiteral(w.target,w.value.node))||invalid.has(w.node)||w.scope.invalid)return false;
         const scope=owners.get(at);if(!scope||w.scope!==scope||!scope.executedBefore)return false;
@@ -734,10 +802,10 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         }
         // A local reset must reach its definite overwrite without exposure:
         // a direct writer, or an if/else whose both branches write the cell
-        // before any exit. Only a fixed event copy to another local may cross
-        // this frontier; calls, captures and other effects retain the reset.
+        // before any exit. Only the closed private prefix effects below may
+        // cross this frontier; calls and captures retain the reset.
         let next=block(w.target,w.node.next);const skipped=new Set();
-        while(next&&before.has(next)&&!skipped.has(next)&&inertEventCopy(next,c,scope)){
+        while(next&&before.has(next)&&!skipped.has(next)&&(inertEventCopy(next,c,scope)||inertPrimitiveGlobalWrite(next,c,scope))){
             skipped.add(next);next=block(w.target,next.next);
         }
         if(!next||!before.has(next))return false;

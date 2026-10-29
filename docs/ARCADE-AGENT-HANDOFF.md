@@ -55,6 +55,8 @@ Continue in this order:
    fingerprints or weaken collector counts. Final landing still requires every
    enabled exact-head gate and applicable affected runtime qualification.
 
+The callback prefix proof now also admits an exact non-cloud global write when its initial value and all physical writers preserve a closed primitive domain. Unknown effects, calls, monitors and incompatible writers refuse; this is only a frame-effect fact. The actual class-field read remains pending.
+
 The local reset proof can cross an inline or physical shadow primitive literal written to a different private local, with the same frame and prototype safeguards as the event copy. The actual trace and instance-field effects still need separate proof.
 
 The local reset proof also refuses conditional overwrites when their condition can read the reset cell, or when either branch executes an unproved statement before overwriting it. Inline primitive conditions and immediate overwrites retain the bounded path; physical shadow conditions remain conservatively refused. The focused regression is in `test/project-event-copy-reset-prefix.test.mjs`.

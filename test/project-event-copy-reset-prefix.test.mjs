@@ -52,6 +52,72 @@ test('physical literal shadows have the same bounded effect as inline literals',
  const f=fixture();f.blocks[f.event].opcode='text';f.blocks[f.event].fields={TEXT:[{},null]};f.blocks[f.event].shadow=true;f.blocks[f.copy].inputs.VALUE=[1,f.event];bad(f);
 });
 
+function traceFixture(){
+ const f=fixture(),{blocks,node,copy,overwrite}=f;
+ const target=f.project.targets[0];target.variables.trace=['trace',''];
+ const value=node('arrays_valueBinary',{LEFT:[12,'trace','trace'],RIGHT:[10,'H']},{OP:['+',null]});
+ const write=node('data_setvariableto',{VALUE:value},{VARIABLE:['trace','trace']});
+ blocks[copy].next=write;blocks[write].parent=copy;blocks[write].next=overwrite;blocks[overwrite].parent=write;
+ return {...f,trace:value,traceWrite:write};
+}
+function otherTraceWriter(f,value=[10,'C'],opcode='data_setvariableto'){
+ const hat=f.node('arcade_whenSourceStarts'),write=f.node(opcode,{VALUE:value},{VARIABLE:['trace','trace']});
+ f.blocks[hat].topLevel=true;f.blocks[hat].next=write;f.blocks[write].parent=hat;return write;
+}
+test('closed primitive global trace writes may precede a definite private Array overwrite',()=>{
+ good(traceFixture());
+ const source=traceFixture();source.blocks[source.trace].opcode='arcade_sourceValueBinary';good(source);
+ const f=traceFixture(),other=f.node('operator_add',{NUM1:[12,'trace','trace'],NUM2:[10,'C']});
+ otherTraceWriter(f,other);good(f);
+ const shadow=traceFixture();shadow.blocks[shadow.trace].inputs.RIGHT=[1,shadow.event];
+ shadow.blocks[shadow.event]={...shadow.blocks[shadow.event],opcode:'text',parent:shadow.trace,shadow:true,fields:{TEXT:['H',null]}};
+ shadow.blocks[shadow.copy].inputs.VALUE=[1,[4,'7']];good(shadow);
+});
+test('the primitive trace invariant checks every initial value and physical writer',()=>{
+ let f=traceFixture();f.project.targets[0].variables.trace[1]=[];bad(f);
+ f=traceFixture();otherTraceWriter(f,f.node('arrays_createReference',{VALUES:[10,'[]']}));bad(f);
+ f=traceFixture();otherTraceWriter(f,[10,'C'],'data_changevariableby');bad(f);
+ f=traceFixture();const orphan=otherTraceWriter(f);delete f.blocks[f.blocks[orphan].parent];f.blocks[orphan].parent=null;bad(f);
+ f=traceFixture();otherTraceWriter(f,f.node('arcade_getLocal',{NAME:[10,'refs']}));bad(f);
+ f=traceFixture();otherTraceWriter(f,f.node('arcade_callFunction',{NAME:[10,'foreign'],ARGS:[10,'[]']}));bad(f);
+});
+test('cyclic primitive global dependencies close only when every writer preserves them',()=>{
+ const make=()=>{const f=traceFixture();f.project.targets[0].variables.second=['second',0];
+  f.blocks[f.trace].inputs.LEFT=[1,[12,'second','second']];
+  const sum=f.node('arrays_valueBinary',{LEFT:[12,'trace','trace'],RIGHT:[10,'C']},{OP:['+',null]});
+  const hat=f.node('arcade_whenSourceStarts'),write=f.node('data_setvariableto',{VALUE:sum},{VARIABLE:['second','second']});
+  f.blocks[hat].topLevel=true;f.blocks[hat].next=write;f.blocks[write].parent=hat;return f;};
+ good(make());const f=make();otherTraceWriter(f,f.node('arrays_createReference',{VALUES:[10,'[]']}));bad(f);
+});
+test('trace effects refuse cloud external and writable monitor sources',()=>{
+ let f=traceFixture();f.project.targets[0].variables.trace.push(true);bad(f);
+ f=traceFixture();f.project.extensions.push('foreign');bad(f);
+ f=traceFixture();f.project.extensionURLs.arcade='https://example.invalid/foreign.js';bad(f);
+ f=traceFixture();f.node('foreign_mutateGlobals');bad(f);
+ f=traceFixture();f.project.monitors=[{id:'trace',opcode:'data_variable',mode:'slider',visible:true}];bad(f);
+ f=traceFixture();f.blocks[f.traceWrite].fields.VARIABLE=['different','trace'];bad(f);
+});
+test('trace effects do not admit local reads properties coercing values or Array receivers',()=>{
+ let f=traceFixture();const local=f.node('arcade_getLocal',{NAME:[10,'refs']});
+ f.blocks[f.trace].inputs.RIGHT=[2,local];f.blocks[local].parent=f.trace;bad(f);
+ f=traceFixture();const field=f.node('arcade_objectField',{OBJECT:[12,'out','out'],FIELD:[10,'value']});
+ f.blocks[f.trace].inputs.RIGHT=[2,field];f.blocks[field].parent=f.trace;bad(f);
+ f=traceFixture();f.blocks[f.trace].fields.OP=['==',null];bad(f);
+ f=traceFixture();good(f);delete f.blocks[f.blocks[f.read].inputs.ARRAY[1]];
+ f.blocks[f.read].inputs.ARRAY=[1,[12,'trace','trace']];bad(f);
+ f=traceFixture();f.blocks[f.traceWrite].parent=f.reset;bad(f);
+ f=traceFixture();f.blocks[f.traceWrite].mutation={foreign:'metadata'};bad(f);
+ f=traceFixture();const proto=f.node('arcade_setLocal',{NAME:[10,'__proto__'],VALUE:[10,'foreign']});
+ f.blocks[f.hat].next=proto;f.blocks[proto].parent=f.hat;f.blocks[proto].next=f.reset;f.blocks[f.reset].parent=proto;bad(f);
+});
+test('a consumed primitive global prefix retains permanent ambient expiry',()=>{
+ const q=good(traceFixture()),descriptor=Object.getOwnPropertyDescriptor(Object.prototype,'valueOf');
+ try{Object.defineProperty(Object.prototype,'valueOf',{...descriptor,value(){throw new Error('changed coercion must not run');}});
+  assert.equal(q.proof.validateInput(q.target,{...q.node}).ok,false);
+ }finally{Object.defineProperty(Object.prototype,'valueOf',descriptor);}
+ assert.equal(decision(q).ok,false);good(traceFixture());
+});
+
 function conditionalFixture(readReset){
  const f=fixture(),{blocks,node,copy,overwrite,store}=f;
  const condition=readReset?node('arcade_getLocal',{NAME:[10,'refs']}):[4,'1'];
