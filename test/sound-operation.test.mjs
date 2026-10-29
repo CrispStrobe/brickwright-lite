@@ -34,7 +34,7 @@ const Methods = vm.runInNewContext(`(class {${methods.map(n => source.slice(n.st
     log: {error: () => {}}, document: {removeEventListener: () => {}, addEventListener: () => {}},
     window: audioWindow, dropEveryOtherSample: buffer => buffer,
     HTMLInputElement: class {}, registerUndoSurface: (name, surface) => { registered = surface; return () => {}; },
-    activateUndoSurface: () => {}
+    activateUndoSurface: () => {}, registerEditorMenuActions: () => () => {}, notifyEditorMenuActions: () => {}
 });
 const samples = n => new Float32Array([n, n]);
 const item = n => ({samples: samples(n), sampleRate: 48000, trimStart: 0.1, trimEnd: 0.8});
