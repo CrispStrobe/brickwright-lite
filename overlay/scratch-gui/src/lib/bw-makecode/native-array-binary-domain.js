@@ -247,8 +247,9 @@ function inspectDomains(program,profile,ordinaryExportSelection) {
     let musicResultSource=null,musicUsed=false,musicLive=true;const usedMusicSources=[];
     let operationUsed=false,operationLive=true,classResultUsed=false,classResultLive=true,frameDeltaUsed=false,frameDeltaLive=true;const operationAbsences=[];
     const closureNormalTokens=new Set(),imageNormalTokens=new Set();
+    let domainLive=true;
     const current=()=>{
-        if(operationUsed&&!operationLive||classResultUsed&&!classResultLive)return false;
+        if(!domainLive||operationUsed&&!operationLive||classResultUsed&&!classResultLive)return false;
         try{
             musicUsed=musicUsed||graph.musicNumberResultsUsed?.()===true||usedMusicSources.length>0;
             destroyedUsed=destroyedUsed||destroyedTokens.size>0||graph.destroyedNumberResultsUsed?.()===true;
@@ -277,8 +278,12 @@ function inspectDomains(program,profile,ordinaryExportSelection) {
             if(operationUsed&&(!valid||!operationAbsences.every(({object,key})=>!Object.hasOwn(object,key)&&!(key in object))))operationLive=false;
             if(classResultUsed&&!valid)classResultLive=false;
             if(callableAdditionUsed&&!valid)callableAdditionLive=false;
-            return valid&&(!musicUsed||musicLive)&&(!frameDeltaUsed||frameDeltaLive)&&(!operationUsed||operationLive)&&(!classResultUsed||classResultLive)&&(!imageOriginUsed||imageOriginLive);
-        }catch(error){if(playerTokens.size)playerLive=false;if(parseTokens.size)parseLive=false;if(mutablePixelTokens.size)mutablePixelLive=false;if(destroyedUsed)destroyedLive=false;if(musicUsed)musicLive=false;if(operationUsed)operationLive=false;if(classResultUsed)classResultLive=false;if(imageOriginUsed)imageOriginLive=false;if(callableAdditionUsed)callableAdditionLive=false;if(frameDeltaUsed)frameDeltaLive=false;throw error;}
+            const result=valid&&(!musicUsed||musicLive)&&(!frameDeltaUsed||frameDeltaLive)&&(!operationUsed||operationLive)&&(!classResultUsed||classResultLive)&&(!imageOriginUsed||imageOriginLive);
+            // Every consumed domain expires after observed staleness, including
+            // paths that needed no optional normal-result producer service.
+            if(!result)domainLive=false;
+            return result;
+        }catch(error){domainLive=false;if(playerTokens.size)playerLive=false;if(parseTokens.size)parseLive=false;if(mutablePixelTokens.size)mutablePixelLive=false;if(destroyedUsed)destroyedLive=false;if(musicUsed)musicLive=false;if(operationUsed)operationLive=false;if(classResultUsed)classResultLive=false;if(imageOriginUsed)imageOriginLive=false;if(callableAdditionUsed)callableAdditionLive=false;if(frameDeltaUsed)frameDeltaLive=false;throw error;}
     };
     const domainHelpers=[...helpers.values()].map(helper=>({...helper,calls:[]}));
     const observed=new Set(),provedHelperResults=new WeakSet();

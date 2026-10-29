@@ -92,3 +92,18 @@ test('SDK root writes aliases shadowing actual writers and opaque coercion retai
     good('let values=[1];info.setScore(2);let result=__bwBinaryAdd(values,info.score())');
     good('let values=[1];let missing:any;let result=__bwBinaryAdd(values,Math.floor(missing))');
 });
+
+test('indexed arbitrary objects cannot borrow the numeric SDK field contract',()=>{
+    bad('let item=JSON.parse(\'[{"x":[1]}]\')[0];let result=__bwBinaryAdd(item.x,2)');
+    bad('let item=JSON.parse(\'[{"x":{"valueOf":1}}]\')[0];let result=__bwBinaryAdd(item.x,2)');
+});
+
+test('an observed edit permanently expires a domain with no optional producer',()=>{
+    const {program,proof}=good('let result=__bwBinaryAdd(1,2)');
+    const argument=program.body.find(node=>node.type==='Declaration').decls[0].init.args[0];
+    const before=argument.value;argument.value='3';
+    assert.equal(proof.current(),false);
+    argument.value=before;
+    assert.equal(proof.current(),false,'restoration cannot revive this held domain');
+    good('let result=__bwBinaryAdd(1,2)');
+});
