@@ -19,23 +19,16 @@ The raw application census remains **184 inputs: 147 translated, 36 partial,
 
 Continue in this order:
 
-1. Preserve the terminal numeric evidence once; qualify the prepared receiver
-   repair below on the final composed head, without removing any original
-   assertions or borrowing predecessor results.
-2. Repair the full creation-callback Array reset frontier. Its real reimported
-   callback resets `refs`, copies the fixed event Sprite, writes a primitive
-   trace, reads a declared instance field into a Boolean, then overwrites `refs`
-   with `sprites.allOfKind`. The existing inert-event-copy rule covers only the
-   copy: the complete control still refuses the indexed Array read. Prove the
-   intervening operations cannot read/expose that private frame before its
-   definite overwrite. For the trace write, prove a non-cloud global binding
-   and a closed primitive invariant over its initial value and every writer.
-   For the field read, prove a plain declared data field for every possible
-   event receiver class, with no accessor, callable field or SDK collision;
-   `arcade_objectField` can invoke authored getter procedures. A fixed spelling
-   or opcode alone does not establish that effect boundary. Do not classify arbitrary property access, coercion,
-   authored calls, captures or yields as inert. Preserve the original full
-   ExtendableSprite export/reimport control.
+1. The terminal numeric evidence for the current live PR has been retained and
+   independently checked. Qualify the prepared receiver repairs on the final
+   composed head without removing assertions or borrowing predecessor results.
+2. Qualify the creation-callback Array reset repair. Its real reimported
+   callback resets `refs`, copies the creation-event Sprite, writes a primitive
+   trace, reads a declared instance field, then overwrites `refs` with
+   `sprites.allOfKind`. The new effect proof accepts that retained block graph;
+   the unchanged full export/reimport and original PXT/native controls still
+   need external execution. Preserve negatives for accessors, inheritance,
+   arbitrary property access, coercion, authored calls, captures and yields.
 3. Continue native-addition receiver/result/initialization work from the actual
    failing operands. In the reference-Array fixture, preserve the early
    `readText()`/`readArray()` startup calls, aliases and mutations. Inspect each
