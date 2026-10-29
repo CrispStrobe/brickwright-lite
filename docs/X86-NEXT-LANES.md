@@ -38,7 +38,7 @@ only open x86 lane, and three optional follow-ups are scoped after it.
   been removed under a later-reversed instruction. All its other checks
   passed, and PR718's full tier on a later base was entirely green.
 
-### Lane 1: close current GUI qualification first (draft PR1540)
+### Lane 1: close current GUI qualification first (PR1540)
 
 **Scope:** [PR1540](https://github.com/CrispStrobe/brickwright-lite/pull/1540),
 the successor to the now-closed PR1318. Start with
@@ -68,8 +68,9 @@ single-run admission rule. Current unarmed checks are preparation evidence.
 resolver was a symlink; the earlier V8 attempt had required a symlink and found
 a regular file. Both attempts are consumed and their failures remain retained.
 The [V10 claim](../lanes/2026-10-28-x86-finite-v10-resolver-kind.md) is on
-main and its implementation is published in draft PR1540 with all new guards
-false. The owner-released sealed-study repair passes 83 affected source controls;
+main and its implementation has a reviewed source-arming candidate in PR1540.
+Its activated source flags do not authorize an actual event; separate source,
+Build, reference and once-only operational admission is still required. The owner-released sealed-study repair passes 83 affected source controls;
 hosted checks and actual guest acceptance remain pending. Keep the resolver in the complete observed runtime graph, bind the
 explicit selected branch and endpoint, and reject unknown targets or drift.
 A different actual runner must still satisfy the frozen request; supporting two
@@ -107,7 +108,7 @@ receipt look current. No previous head's qualification transfers automatically.
    source/profile bytes. Review the implemented template, guard, collector,
    independent reader, workflow and connected controls. Complete and review the
    external phase-admission, request/ACK and final-reader tooling before arming.
-   New guards remain false until that separate review. Preserve the strict historical V8/V9
+   Keep actual event selection closed until that separate review. Preserve the strict historical V8/V9
    readers, retire V9 execution, and requalify the final head.
 2. Admit the successful frontend Build's actual checkout, tree, dependency and
    source closure from its selected original. A proposed PR merge SHA or a later

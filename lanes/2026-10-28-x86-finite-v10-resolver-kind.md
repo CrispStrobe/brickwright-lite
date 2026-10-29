@@ -1,6 +1,6 @@
 # x86 finite V10 resolver-kind inventory and current GUI acceptance
 
-Owner: x86 coordinator. Status: UNARMED DRAFT [PR1540](https://github.com/CrispStrobe/brickwright-lite/pull/1540); execution disabled.
+Owner: x86 coordinator. Status: source-arming candidate [PR1540](https://github.com/CrispStrobe/brickwright-lite/pull/1540); actual selection and guest acceptance pending.
 Initial base: Lite main `8acc3b962803e360a0c561c696d097839046c1ab`.
 Current composition also preserves later Main changes.
 
@@ -193,3 +193,26 @@ The combined standalone suite now covers 185 methods, including four added
 parts controls; all earlier methods remain. Its wrapper and all 34 pin-policy
 controls pass. Manufactured large transport and small complete-reader parity
 are separate from actual guest qualification, which remains pending.
+
+
+## Source-arming candidate — 2026-10-29
+
+The candidate enables the two F10/Actual-V9 producer guards, the two matching
+reader guards and only the same-job Actual-V9 workflow gate. Its existing
+owned-actor, dispatch-input, first-attempt, source and admission conditions remain.
+The standalone F10 job and historical execution routes remain disabled.
+
+Two connected armed-entry controls bring the selected standalone methods from
+185 to 187. Earlier methods remain, including explicit disabled-before-input
+coverage. Focused Python, workflow, browser-source and body-profile controls
+pass. The complete standalone did not finish within its unchanged 60-second
+preparation bound; the complete pin suite also reported missing-checkout inputs.
+These failures remain recorded. Full exact-head source qualification and actual
+affected guest acceptance remain mandatory; no limit or assertion is waived.
+
+Private controller, one-pass, request/ACK and final-parts successors bind the
+reviewed armed source explicitly; previous versions remain historical. Source
+activation is not event admission. Select no actual event until complete source,
+Build, retained-reference and operational once-only control admission is finished.
+Only the new same-job FreeDOS persistence/export/reload, forward debugger and
+cleanup originals can close this lane. No measured speedup or full-OS claim follows.
