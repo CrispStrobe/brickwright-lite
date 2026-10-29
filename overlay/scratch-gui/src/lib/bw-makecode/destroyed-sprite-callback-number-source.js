@@ -65,13 +65,21 @@ export function createDestroyedSpriteCallbackNumberSource(program){
    const binding=bindings.scopes.get(fn)?.names.get(fn.params[0]);if(!binding||entries.has(binding))return denied('callback binding');entries.set(binding,fn);
   }
   const aliases=new Map(),bridges=new WeakSet();
-  for(const [formal,fn]of entries){const first=fn.body?.[0],second=fn.body?.[1],decl=first?.decls?.[0],a=second?.expr;
-   if(first?.type!=='Declaration'||first.kind!=='let'||first.decls.length!==1||decl.init?.type!=='Null'||second?.type!=='ExpressionStatement'||a?.type!=='Assignment'||a.op!=='='||a.left?.type!=='Identifier'||a.right?.type!=='Identifier'||ref(a.right)!==formal)continue;
-   const b=ref(a.left);if(!b||b.node!==decl||b.scope!==bindings.scopes.get(fn))return denied('alias declaration identity');aliases.set(b,{fn,formal,bridge:a,declaration:first});bridges.add(a);
+  for(const [formal,fn]of entries){
+   // Retain every leading declaration's real effect. Only one-local literal
+   // null declarations may precede the first executable bridge statement.
+   const prefix=[];let bridgeIndex=0;
+   while(bridgeIndex<fn.body.length){const st=fn.body[bridgeIndex];if(st?.type!=='Declaration'||st.kind!=='let'||st.decls?.length!==1||st.decls[0].init?.type!=='Null')break;prefix.push(st);bridgeIndex++;}
+   const statement=fn.body[bridgeIndex],a=statement?.expr;
+   if(!prefix.length||statement?.type!=='ExpressionStatement'||a?.type!=='Assignment'||a.op!=='='||a.left?.type!=='Identifier'||a.right?.type!=='Identifier'||ref(a.right)!==formal)continue;
+   const b=ref(a.left),declarations=prefix.filter(st=>st.decls[0]===b?.node);
+   if(!b||declarations.length!==1||b.scope!==bindings.scopes.get(fn))return denied('alias declaration identity');
+   aliases.set(b,{fn,formal,bridge:a,bridgeIndex,declaration:declarations[0]});bridges.add(a);
   }
+  const implicitUndefined=Object.freeze({type:'Undefined'});
   const writers=new Map(),addWriter=(b,v)=>{if(!b){invalid=true;return;}if(!writers.has(b))writers.set(b,[]);writers.get(b).push(v);};
   for(const n of nodes){
-   if(n.type==='Declaration')for(const d of n.decls){if(!['let','const'].includes(n.kind)||!Array.isArray(n.decls)||typeof d.name!=='string'||!/^[$A-Z_a-z][$\w]*$/.test(d.name)||Object.keys(d).some(k=>!['name','init','isArray','typeName','whenUsed'].includes(k))||d.isArray!==undefined&&typeof d.isArray!=='boolean'||d.typeName!==undefined&&typeof d.typeName!=='string')return denied('declaration shape');let inKind=false;for(let p=n;p;p=parents.get(p))if(p.type==='Namespace'){inKind=true;break;}if(inKind)continue;const b=scopeAt(n).names.get(d.name);if(roots.has(d.name)||['Fx','Fx8','Sprite','Image','Object','Array','Math','Reflect','eval','Function','globalThis','arguments'].includes(d.name))return denied('protected binding');if(d.init&&!resets.discount(d))addWriter(b,d.init);}
+   if(n.type==='Declaration')for(const d of n.decls){if(!['let','const'].includes(n.kind)||!Array.isArray(n.decls)||typeof d.name!=='string'||!/^[$A-Z_a-z][$\w]*$/.test(d.name)||Object.keys(d).some(k=>!['name','init','isArray','typeName','whenUsed'].includes(k))||d.isArray!==undefined&&typeof d.isArray!=='boolean'||d.typeName!==undefined&&typeof d.typeName!=='string')return denied('declaration shape');let inKind=false;for(let p=n;p;p=parents.get(p))if(p.type==='Namespace'){inKind=true;break;}if(inKind)continue;const b=scopeAt(n).names.get(d.name);if(roots.has(d.name)||['Fx','Fx8','Sprite','Image','Object','Array','Math','Reflect','eval','Function','globalThis','arguments'].includes(d.name))return denied('protected binding');if(!d.init)addWriter(b,implicitUndefined);else if(!resets.discount(d))addWriter(b,d.init);}
    if(n.type==='Assignment'&&n.left?.type==='Identifier')addWriter(ref(n.left),['=','+=','-=','*=','/=','%='].includes(n.op)?n.right:null);
    if(n.type==='Update'&&n.argument?.type==='Identifier')addWriter(ref(n.argument),null);
   }
@@ -96,10 +104,13 @@ export function createDestroyedSpriteCallbackNumberSource(program){
   const primitiveArray=n=>arrayDomain(n)?.literal===true;
   const image=n=>n?.type==='Template'&&n.tag==='img'&&!lookup(n,'img')&&!!parseExactImgLiteral('img`'+n.value+'`');
   const factory=n=>sdkCall(n,'create')&&n.args.length===2&&image(n.args[0])&&kind(n.args[1]);
-  const sprite=n=>{if(n?.type!=='Identifier')return false;const b=ref(n);return entries.has(b)||aliases.has(b)||!!writers.get(b)?.length&&writers.get(b).every(factory);};
+  // Receiver EFFECT closure only: nullish branches may throw before a
+  // method returns. Retain those writers; require a genuine factory as well.
+  // This never issues Sprite identity, readiness or an initialized variable.
+  const sprite=n=>{if(n?.type!=='Identifier')return false;const b=ref(n),values=writers.get(b);return entries.has(b)||aliases.has(b)||!!values?.length&&values.some(factory)&&values.every(v=>factory(v)||['Null','Undefined'].includes(v?.type));};
   const snapshotCall=n=>sdkCall(n,'allOfKind')&&n.args.length===1&&kind(n.args[0]);
   const snapshotArray=n=>snapshotCall(n)||n?.type==='Identifier'&&!!writers.get(ref(n))?.length&&writers.get(ref(n)).every(snapshotCall);
-  // The only ingress alias is the callback's first let-null declaration
+  // The only ingress alias is in the callback's leading let-null list,
   // immediately followed by its exact formal assignment. Every other formal
   // or alias occurrence must be an x read after that bridge, in this entry.
   for(const n of nodes)if(n.type==='Identifier'&&(entries.has(ref(n))||aliases.has(ref(n)))){
@@ -108,7 +119,7 @@ export function createDestroyedSpriteCallbackNumberSource(program){
    if(alias&&parent===alias.bridge&&parent.left===n)continue;
    if(functionOwner(n)!==fn)return denied('captured callback receiver');
    let statement=n;while(parents.get(statement)&&parents.get(statement)!==fn.body)statement=parents.get(statement);
-   if(alias&&fn.body.indexOf(statement)<2)return denied('early alias read');
+   if(alias&&fn.body.indexOf(statement)<=alias.bridgeIndex)return denied('early alias read');
    if(parent?.type!=='Member'||parent.object!==n||parent.name!=='x')return denied('callback receiver escape');
    const use=parents.get(parent);if(use?.type==='Assignment'&&use.left===parent||use?.type==='Update'||use?.type==='Call'&&use.callee===parent)return denied('callback coordinate writer');selected.add(parent);
   }

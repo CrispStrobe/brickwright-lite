@@ -130,3 +130,34 @@ test('non-enumerable executable fields cannot hide later SDK mutations or foreig
  const p=parse(generatedModel),fn=p.body.find(n=>n.type==='FunctionDeclaration');fn.exported=true;
  assert.equal(createDestroyedSpriteCallbackNumberSource(p).has(walk(p).find(n=>n.type==='Member'&&n.name==='x')),false);
 });
+
+const multiPrefix=generatedModel.replace('let sprite: Sprite = null','let sprite: Sprite = null\n  let replacement: Sprite = null').replace('positions = positions + sprite.x','positions = positions + sprite.x\n  replacement=sprites.create(img`1`,SpriteKind.Enemy)\n  replacement.setPosition(90,60)');
+test('callback ingress follows the whole inert null declaration list without erasing those declarations',()=>{
+ const {p,proof,reads}=inspect(multiPrefix),before=JSON.stringify(p);assert.equal(reads.length,1);assert.equal(proof.reason,null);assert.equal(proof.has(reads[0]),true);assert.equal(JSON.stringify(p),before);
+ assert.equal(accepted(generatedModel),true);
+});
+
+test('prefix effects and every alias read/write remain on the exact side of the bridge',()=>{
+ for(const text of [
+  multiPrefix.replace('let replacement: Sprite = null','let replacement: Sprite = first'),
+  multiPrefix.replace('let replacement: Sprite = null','let replacement: Sprite = sprites.create(img`1`,SpriteKind.Enemy)'),
+  multiPrefix.replace('sprite = eventSprite','ready=1; sprite = eventSprite'),
+  multiPrefix.replace('let replacement: Sprite = null','let replacement: Sprite = sprite.x'),
+  multiPrefix.replace('sprite = eventSprite','positions=sprite.x; sprite = eventSprite'),
+  multiPrefix.replace('positions = positions + sprite.x','positions=positions+sprite.x; sprite=null'),
+  multiPrefix.replace('sprite = eventSprite','sprite = eventSprite;let alias=sprite'),
+  multiPrefix.replace('let replacement: Sprite = null','let replacement: Sprite;'),
+  multiPrefix.replace('let replacement: Sprite = null','let replacement: Sprite = null, other: Sprite = null')
+ ])assert.equal(accepted(text),false,text);
+});
+
+test('nullable factory receivers supply effect closure without issuing Sprite or initialization facts',()=>{
+ for(const initial of ['null','undefined']){
+  const text=multiPrefix+'\nlet first:Sprite='+initial+';first=sprites.create(img`1`,SpriteKind.Enemy);first.setPosition(10,60);first.destroy();';
+  const {proof,reads,p}=inspect(text);assert.equal(proof.reason,null);assert.equal(proof.has(reads[0]),true);
+  for(const node of walk(p))if(node.type==='Identifier'&&['first','replacement'].includes(node.name))assert.equal(proof.has(node),false);
+ }
+ for(const suffix of ['first=foreign();','first=img`1`;','first=other;','first.x=unknown();'])assert.equal(accepted(multiPrefix+'\nlet first:Sprite=null;first=sprites.create(img`1`,SpriteKind.Enemy);'+suffix+'first.setPosition(10,60);'),false,suffix);
+ assert.equal(accepted(multiPrefix+'\nlet first:Sprite=null;first.setPosition(10,60);'),false);
+ assert.equal(accepted(multiPrefix+'\nlet first:Sprite;first=sprites.create(img`1`,SpriteKind.Enemy);first.setPosition(10,60);'),true);
+});

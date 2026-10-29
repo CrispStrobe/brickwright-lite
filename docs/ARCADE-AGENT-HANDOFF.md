@@ -33,7 +33,9 @@ older unavailable record or relax its freshness checks.
 The primitive producer graph now consumes selected `sprite.x` Number results
 from genuine direct `onDestroyed` callbacks. This also handles closed
 zero-argument ordinary startup calls and the emitter's callback-local
-`let sprite = null; sprite = eventParameter` ingress. Lexical binding identity,
+`let sprite = null; sprite = eventParameter` ingress. Other leading inert
+null declarations may precede that assignment, as the actual replacement-Sprite
+fixture requires. Lexical binding identity,
 all references/writers, read-after-assignment order and source/SDK/intrinsic
 currentness are required. The actual reset and operations remain in the program.
 An inline callback or local alias does not become a generic Sprite or initialized
@@ -41,6 +43,10 @@ value certificate. The fixed-point getter dependencies stay protected; coordinat
 setter arguments remain independently literal primitive expressions.
 
 The private source model closes primitive Array construction/push effects too.
+Nullable factory receivers retain every null/undefined writer and are used only
+for closing the admitted method effects: a non-Sprite branch may throw, and no
+Sprite or initialization fact is published for it. Foreign/object writers and
+receivers without an actual factory remain refused.
 A retained null receiver writer can still throw before registration; admitting
 that operation's effects on its normal path grants no Array, presence or
 initialization fact. Existing null-reset discounts are consumed only through
@@ -50,7 +56,7 @@ including non-enumerable ones, participate in the effect census. A review found
 that boundary gap and a regression now detects hidden mutations and unknown
 calls.
 
-Thirteen bounded source controls and one actual import/authoring/export control
+Sixteen bounded source controls and one actual import/authoring/export control
 pass. Three current mutation cuts detect missing consumer facts, missing alias
 ingress and skipped hidden executable fields; original bytes were restored.
 The earlier seven-control authored-source checkpoint and its failures remain
