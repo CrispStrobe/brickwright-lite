@@ -890,6 +890,18 @@ TYPES.forEach((type, k) => op(OP.SELECT8 + k, (vm, c) => {
     vm.put(c.ref(), type, flag ? a : b);
 }));
 
+// The firmware accepts uppercase natural and sharp notes in octaves 4–6; all
+// other strings fall back to 440 Hz. Its published integer values agree with
+// equal temperament rounded to the nearest hertz over that finite range.
+op(OP.NOTE_TO_FREQ, (vm, c) => {
+    const note = c.str();
+    const match = /^([A-G])(#?)([4-6])$/.exec(note);
+    const offsets = {C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11};
+    const midi = match ? (Number(match[3]) + 1) * 12 + offsets[match[1]] + (match[2] ? 1 : 0) : 0;
+    const valid = match && (!match[2] || 'CDFGA'.includes(match[1]));
+    vm.put(c.ref(), '16', valid ? Math.round(440 * (2 ** ((midi - 69) / 12))) : 440);
+});
+
 // ---- math [FDK §4.2 opMATH], RANDOM ------------------------------------------------------------------
 
 const DEG = Math.PI / 180;
