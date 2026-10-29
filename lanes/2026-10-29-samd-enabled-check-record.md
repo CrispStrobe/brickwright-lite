@@ -1,6 +1,6 @@
 # SAMD landed-source qualification record — 2026-10-29
 
-Owner: Codex qualification-record continuation. Status: CLAIMED.
+Owner: Codex qualification-record continuation. Status: DONE in this correction.
 Base: `54df780e909db9652db16e928d05f4b5a220947d`.
 Branch: `docs/samd-1533-enabled-gate-record-20261029`.
 
@@ -22,3 +22,10 @@ Qualification: verify exact public check metadata and merge parents/tree;
 review the added prose, relative links, privacy and whitespace; run the enabled
 documentation/source-policy checks. Do not repeat firmware or successful guests
 for this documentation correction. Close only this claim with the correction.
+
+Result: exact metadata confirms the 17 successes, 11 conditional skips and the
+failed enabled admission check. Independent merge-tree calculation matches the
+landed parents and tree. The two status documents preserve the acceptance
+records and identify the open forward qualification and original-custody steps.
+Added prose, relative links, privacy and whitespace checks pass. This correction
+changes no executable paths and claims no new audit of guest originals.
