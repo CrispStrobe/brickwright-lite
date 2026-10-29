@@ -67,3 +67,48 @@ test('compiled mutable string notes use the current string contents', async () =
     assert.notEqual(vm.status, 'error', JSON.stringify(vm.error));
     assert.deepEqual(writes, [262, 440]);
 });
+
+test('compiled array handle notes use live contents', async () => {
+    const {readFileSync} = await import('node:fs');
+    const bytes = readFileSync(new URL('./fixtures/ev3-rbf/note-frequency-handle.rbf', import.meta.url));
+    const vm = new Ev3Vm(); assert.deepEqual(vm.start(bytes), {ok: true});
+    const writes = [];
+    vm.advanceTo(1000, {nowMs: () => 1000, event: (kind, value) => {
+        if (kind === 'write') writes.push(value.value);
+    }});
+    assert.notEqual(vm.status, 'error', JSON.stringify(vm.error));
+    assert.deepEqual(writes, [622, 440]);
+});
+
+test('NOTE_TO_FREQ rejects an invalid string handle', () => {
+    const code = [0x63, 0xf1, 0, 0x62, 0x0a];
+    const bytes = new Uint8Array(28 + code.length);
+    bytes.set(Buffer.from('LEGO')); const view = new DataView(bytes.buffer);
+    view.setUint32(4, bytes.length, true); view.setUint16(8, 104, true);
+    view.setUint16(10, 1, true); view.setUint32(12, 4, true); view.setUint32(16, 28, true);
+    bytes.set(code, 28);
+    const vm = new Ev3Vm(); assert.deepEqual(vm.start(bytes), {ok: true});
+    vm.advanceTo(10, {});
+    assert.equal(vm.status, 'error'); assert.equal(vm.error.code, 'FAILBREAK');
+    assert.deepEqual(vm.s.globals.slice(2, 4), [0, 0]);
+});
+
+test('compiled handle note program continues identically after snapshot restore', async () => {
+    const {readFileSync} = await import('node:fs');
+    const bytes = readFileSync(new URL('./fixtures/ev3-rbf/note-frequency-handle.rbf', import.meta.url));
+    const original = new Ev3Vm({instrPerMs: 1});
+    assert.deepEqual(original.start(bytes), {ok: true});
+    original.advanceTo(2, {});
+    assert.equal(original.status, 'running');
+    assert.ok(original.s.handles.some(h => h && h.type === '8'), 'live array exists before snapshot');
+    const resumed = new Ev3Vm(); resumed.restore(original.snapshot(), bytes);
+    const outputs = [[], []];
+    for (const [vm, writes] of [[original, outputs[0]], [resumed, outputs[1]]]) {
+        vm.advanceTo(1000, {nowMs: () => 1000, event: (kind, value) => {
+            if (kind === 'write') writes.push(value.value);
+        }});
+        assert.notEqual(vm.status, 'error', JSON.stringify(vm.error));
+    }
+    assert.deepEqual(outputs, [[622, 440], [622, 440]]);
+    assert.deepEqual(resumed.s, original.s);
+});

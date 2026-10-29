@@ -16,6 +16,7 @@ never call the network.
 | `subcalls` | IN/OUT/IO parameters of 8, 16, 32 bits and float, a nested CALL, a string in and out |
 | `threads` | OBJECT_START of a second VMTHREAD, one subcall called by both (the second waits), a BLOCK by OBJECT_TRIG, OBJECT_WAIT |
 | `note-frequency-memory` | Mutable fixed-memory note strings, including unmatched-name fallback |
+| `note-frequency-handle` | Dynamically allocated note strings passed by handle |
 | `note-frequency` | All 36 supported note names and three unmatched names, written to the brick console using NOTE_TO_FREQ |
 | `sound-timers` | SOUND TONE / SOUND_TEST / SOUND_READY / BREAK, TIMER_WAIT / READY / READ, RANDOM, KEEP_ALIVE |
 | `unimplemented` | reaches MAILBOX_OPEN, which the Virtual EV3 does not implement |

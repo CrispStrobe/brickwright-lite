@@ -383,3 +383,14 @@ test('compiled mutable note strings run on the virtual EV3', () => {
     assert.equal(hub.s.lastProgram.error, null);
     assert.deepEqual(hub.events.filter(e => e.kind === 'write').map(e => e.value ?? e.text), [262, 440]);
 });
+
+test('compiled handle note strings run on the virtual EV3', () => {
+    const hub = brick();
+    const link = connect(hub);
+    download(link, '../prjs/bw/note-handle.rbf', fixture('note-frequency-handle'));
+    assert.equal(startProgram(link, '../prjs/bw/note-handle.rbf')[4], 0x02);
+    bench(hub, 1000);
+    assert.equal(hub.s.lastProgram.how, 'ok');
+    assert.equal(hub.s.lastProgram.error, null);
+    assert.deepEqual(hub.events.filter(e => e.kind === 'write').map(e => e.value ?? e.text), [622, 440]);
+});
