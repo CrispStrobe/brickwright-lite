@@ -117,5 +117,6 @@ test('generated Image drawing effects and private dimensions retain only pixel o
  const {p,proof,calls}=inspect(text);assert.equal(calls.length,1);assert.equal(proof.has(calls[0]),true);
  for(const n of walk(p))if(!calls.includes(n))assert.equal(proof.has(n),false,'dimensions and effects do not gain public authority');
  for(const replacement of ['picture.fillRect(1,0,2,2,unknown)','picture.drawLine(3,2,0,2,picture)','copied.flipX(1)','copied.replace(7,foreign())','foreign.fillRect(1,0,2,2,5)'])bad(text.replace('picture.fillRect(1,0,2,2,5)',replacement));
+ for(const invalid of ['2001','2147483647','-1','0.5'])bad(text.replace('let width=4','let width='+invalid));
  for(const suffix of ['picture.fillRect=foreign;','picture.drawLine=foreign;','copied.flipX=foreign;','copied.replace=foreign;','picture.width=99;','function dormant(){picture.drawLine(0,0,1,1,7);}','sprites.onCreated(SpriteKind.Player,function(sprite){width=sprite.width;});'])bad(text+suffix);
 });

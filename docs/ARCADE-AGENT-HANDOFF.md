@@ -49,7 +49,10 @@ The immutable raw census remains **147 translated / 36 partial / 1 parse failure
 
 The generated-image follow-up also accepts `fillRect` and `drawLine` with
 five proved primitive int32 arguments, `replace` with two, and `flipX` with none.
-Every effect must execute in the closed source traversal. Issued Image dimensions
+Every effect must execute in the closed source traversal. The mutable factory
+accepts only literal-proved int32 dimensions within the reviewed native
+`mkImage` bounds, zero through 2000; invalid dimensions cannot become issued
+origins for later control-flow selection. Issued Image dimensions
 can feed that private traversal, but do not receive public Number receipts.
 The pinned `screen/image.ts` helpers pack primitive coordinates and forward to
 pixel-only native methods; reviewed SHA-256 is

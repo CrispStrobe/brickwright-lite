@@ -273,7 +273,7 @@ function inspectPixelResults(program,profile,mode) {
                 return {kind:'Sprite',site:node,image};
             }
             if(imageFactory(node)){
-                const args=node.args.map(expr);if(failed||!args.every(int32)||args.some(value=>value.value<0))return fail();
+                const args=node.args.map(expr);if(failed||!args.every(int32)||args.some(value=>value.value<0||mutable&&value.value>2000))return fail();
                 images++;return {kind:'Image',site:node,width:args[0].value,height:args[1].value};
             }
             if(callee?.type==='Identifier'){
