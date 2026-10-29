@@ -3,8 +3,13 @@
 ## 29 October: delivery gate repairs and next qualification
 
 PR #1554's frozen `0eb57401b35` head has four successful prerequisite workflows,
-a failed debugger mirror check and a failed Tauri Rust test; Build remains
-pending. Refresh live metadata before acting. The prepared follow-up is on
+a failed debugger mirror check and a failed Tauri Rust test. Build is terminal:
+its build and all six unit shards stopped at that same mirror preflight, before
+unit payload results. Numeric authoring was skipped with no producer steps or
+numeric artifact (`UNAVAILABLE_SKIPPED`, semantic outcome `NOT_EXERCISED`).
+The original logs are retained once; use the ignored operational notes for
+receipt locations rather than downloading them again. Refresh attempt-specific
+live metadata before acting; the base run endpoint returned stale queued data. The prepared follow-up is on
 [`lane/arcade-mutable-image-pixel-source-20261029`](https://github.com/CrispStrobe/brickwright-lite/tree/lane/arcade-mutable-image-pixel-source-20261029).
 It is not product-qualified or merged into main.
 
@@ -25,13 +30,17 @@ values remain intact. Three source/shell controls pass and three guard cuts
 are detected. No Rust compilation or timing execution occurred locally;
 isolation remains a hypothesis until hosted qualification.
 
-Continue with the frozen Build/numeric terminal custody before advancing the
-integration head. If an owned stale queued run is superseded, cancellation
+Frozen Build/numeric terminal custody is complete. Advance the prepared
+integration source after checking the current remote head and exact tree. If an owned stale queued run is superseded, cancellation
 requires fresh proof that no child is running and durable terminal records;
 absence of a producer is an unavailable capture, never a semantic success.
 Compose the prepared source normally into PR #1554 after custody, then qualify
 that final head using the actually enabled checks and affected guest/browser
-routes. Use no duplicate dispatch or unchanged-failure retry. If the isolated
+routes. The browser-label verdict also failed because the required thorough
+tier was absent. When the final fast candidate is ready, use the workflow's
+label-only thorough qualification once; it avoids repeating the fast jobs.
+Do not remove/re-add an existing label or dispatch a duplicate. Preserve all
+original failures. If the isolated
 Rust test fails, preserve it and return to a separately claimed source repair;
 do not change its threshold. Verify landing tree and parents before main.
 
