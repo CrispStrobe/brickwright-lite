@@ -269,10 +269,22 @@ class SoundEditor extends React.Component {
     handleChangeName (name) {
         this.props.vm.renameSound(this.props.soundIndex, name);
     }
+    hasTrimSelection () {
+        return this.hasTrimSelectionForLength(this.audioBufferPlayer && this.audioBufferPlayer.buffer.length);
+    }
+    hasTrimSelectionForLength (sampleCount) {
+        const {trimStart, trimEnd} = this.state;
+        return Number.isSafeInteger(sampleCount) && sampleCount > 0 &&
+            Number.isFinite(trimStart) && Number.isFinite(trimEnd) &&
+            trimStart >= 0 && trimEnd <= 1 && trimStart < trimEnd &&
+            Math.floor(trimStart * sampleCount) < Math.floor(trimEnd * sampleCount);
+    }
     handleDelete () {
+        if (!this.soundOperation && !this.hasTrimSelection()) return Promise.resolve(false);
         return this.runSoundOperation(operation => {
-            this.stepLabel = 'Delete selection';
             const {samples, sampleRate} = this.copyCurrentBuffer();
+            if (!this.hasTrimSelectionForLength(samples.length)) return false;
+            this.stepLabel = 'Delete selection';
             const startIndex = Math.floor(this.state.trimStart * samples.length);
             const endIndex = Math.floor(this.state.trimEnd * samples.length);
             const firstPart = samples.slice(0, startIndex);
@@ -288,13 +300,14 @@ class SoundEditor extends React.Component {
         });
     }
     handleDeleteInverse () {
+        if (!this.soundOperation && !this.hasTrimSelection()) return Promise.resolve(false);
         return this.runSoundOperation(operation => {
-            this.stepLabel = 'Crop';
             const {samples, sampleRate} = this.copyCurrentBuffer();
+            if (!this.hasTrimSelectionForLength(samples.length)) return false;
+            this.stepLabel = 'Crop';
             const startIndex = Math.floor(this.state.trimStart * samples.length);
             const endIndex = Math.floor(this.state.trimEnd * samples.length);
-            let clippedSamples = samples.slice(startIndex, endIndex);
-            if (clippedSamples.length === 0) clippedSamples = new Float32Array(1);
+            const clippedSamples = samples.slice(startIndex, endIndex);
             return this.submitNewSamples(clippedSamples, sampleRate, false, operation).then(success => {
                 if (success && this.currentSoundOperation(operation)) this.setState({trimStart: null, trimEnd: null});
                 return success;

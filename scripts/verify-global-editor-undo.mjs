@@ -274,6 +274,13 @@ try {
     const busy = page.getByRole('status').filter({hasText: /Klang wird bearbeitet|Bitte warte/});
     const reverse = page.getByRole('button', {name: 'Umkehren', exact: true});
     await selectSound(soundA, 'History sound A');
+    // A focused sound-name input deliberately ignores these shortcuts. Move
+    // focus back to the real sound tile so the editor's keyboard handler runs.
+    // With no selected range, cropping must leave every decoded sample intact.
+    await soundA.click();
+    await page.keyboard.press('Shift+Delete');
+    await busy.waitFor({state: 'hidden'});
+    await waitSound('History sound A', false);
     await reverse.click();
     await waitSound('History sound A', true);
     await busy.waitFor({state: 'hidden'});

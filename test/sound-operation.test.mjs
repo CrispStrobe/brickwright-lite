@@ -11,7 +11,9 @@ const source = readFileSync(new URL('../overlay/scratch-gui/src/containers/sound
 const ast = parse(source);
 const editor = ast.program.body.find(n => n.type === 'ClassDeclaration' && n.id.name === 'SoundEditor');
 const names = ['currentSoundOperation', 'runSoundOperation', 'submitNewSamples', 'handleUndo', 'handleRedo',
-    'handleEffect', 'handleUpdateTrim', 'handleDelete', 'handleDeleteInverse', 'handlePaste', 'paste',
+    'handleEffect', 'handleUpdateTrim', 'hasTrimSelection', 'hasTrimSelectionForLength',
+    'handleDelete', 'handleDeleteInverse',
+    'handlePaste', 'paste',
     'componentDidMount', 'handleKeyPress', 'componentWillReceiveProps', 'componentWillUnmount', 'resampleBufferToRate'];
 const methods = editor.body.body.filter(n => n.type === 'ClassMethod' && names.includes(n.key.name));
 assert.equal(methods.length, names.length);
@@ -72,6 +74,47 @@ test('encoding refusal preserves sound, stacks, labels and trim', async () => {
     assert.equal(await undo, false); assert.equal(writes.length, 0); assert.equal(o.undoStack.length, 1);
     assert.equal(o.undoLabels[0], 'old'); assert.equal(o.redoStack.length, 0); assert.equal(o.state.trimStart, 0.2);
     assert.equal(o.state.soundBusy, false);
+});
+
+test('keyboard delete and crop require a real nonempty selection', async () => {
+    const {o, writes} = fixture();
+    o.state.trimStart = null; o.state.trimEnd = null;
+    let prevented = 0;
+    for (const shiftKey of [false, true]) {
+        o.handleKeyPress({target: {}, key: 'Delete', shiftKey, metaKey: false, ctrlKey: false,
+            preventDefault: () => { prevented++; }});
+        await tick();
+        assert.equal(encodes.length, 0, 'no WAV encoding without a selection');
+    }
+    assert.equal(prevented, 2);
+    for (const [start, end] of [[0.3, 0.3], [0.1, 0.2], [NaN, 0.5], [-0.1, 0.5], [0.3, 1.1]]) {
+        o.state.trimStart = start; o.state.trimEnd = end;
+        assert.equal(await o.handleDelete(), false);
+        assert.equal(await o.handleDeleteInverse(), false);
+        assert.equal(encodes.length, 0);
+    }
+    assert.equal(writes.length, 0);
+    assert.equal(o.undoStack.length, 1);
+    assert.equal(o.undoLabels[0], 'old');
+    assert.equal(o.state.soundBusy, undefined);
+});
+
+test('a valid crop and whole-selection delete still write one Undoable sound', async () => {
+    let {o, writes} = fixture();
+    o.state.trimStart = 0.2; o.state.trimEnd = 0.8;
+    const crop = o.handleDeleteInverse(); await tick();
+    assert.equal(encodes.length, 1); resolveEncode(); assert.equal(await crop, true);
+    assert.deepEqual(Array.from(o.audioBufferPlayer.buffer.getChannelData(0)), [2]);
+    assert.deepEqual(writes, [[0, 2]]);
+    assert.deepEqual(o.undoLabels, ['old', 'Crop']);
+
+    ({o, writes} = fixture());
+    o.state.trimStart = 0; o.state.trimEnd = 1;
+    const removeAll = o.handleDelete(); await tick();
+    assert.equal(encodes.length, 1); resolveEncode(); assert.equal(await removeAll, true);
+    assert.deepEqual(Array.from(o.audioBufferPlayer.buffer.getChannelData(0)), [0]);
+    assert.deepEqual(writes, [[0, 0]]);
+    assert.deepEqual(o.undoLabels, ['old', 'Delete selection']);
 });
 
 test('busy history visibly refuses effect, paste, delete and trim', async () => {

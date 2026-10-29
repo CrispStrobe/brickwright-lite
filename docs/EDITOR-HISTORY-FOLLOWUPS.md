@@ -89,7 +89,14 @@ effects and resampling expose promise rejection so errors release the busy
 state; callback-only WebKit completion remains supported. Earlier attempted
 delayed-stack code was rejected because it could remove an intervening edit.
 
-The combined focused suite passes70 controls without skips; all four source
+Delete and Crop require a finite selection covering at least one actual sample.
+Shift+Delete with no selection previously encoded one silent sample, while
+ordinary Delete added a redundant History entry. Both now refuse that input
+before encoding; valid crops and deleting a whole selected sound remain undoable.
+The maintained browser gate reproduces the original Shift+Delete corruption
+and checks that the repaired production editor preserves the decoded samples.
+
+The combined focused suite passes72 controls without skips; all four source
 files pass ESLint. A separate Chromium helper probe exercises real offline
 reverse and resampling, but required production acceptance is the maintained
 global-Undo browser gate: actual WAV buffers, Reverse/menu Undo/Redo, disabled

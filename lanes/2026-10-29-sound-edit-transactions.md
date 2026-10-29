@@ -33,6 +33,9 @@ physical audio/device acceptance from headless controls. No new dependencies,
 first-load imports, supplier pin, model/program/fixture/limit changes, persistent
 history, native release or App Store action. Claim #1559 landed at
 `47f2cf06b865a4187566cb34e5501d0231f8b251` before implementation. The combined
-focused suite passes70 controls with no skips and all four source files pass
+focused suite passes72 controls with no skips and all four source files pass
 ESLint. The maintained production browser gate must exercise the actual UI and
 sound buffers; helper/platform probes do not replace that acceptance.
+Delete/Crop also refuse absent or sub-sample selections before encoding. A
+source-bound regression and the maintained browser gate reproduce the original
+Shift+Delete corruption; valid crop and whole-selection delete remain undoable.
