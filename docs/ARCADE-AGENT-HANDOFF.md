@@ -25,7 +25,7 @@ permanent currentness. Supplied tags or copied nodes cannot enroll the receipt.
 The reviewed original `ImageMethods::getPixel` contract returns a pixel integer
 or zero out of range; source identities are recorded without executing SDK code.
 
-Eight new source groups, all 17 unchanged Image controls and two native-domain
+Nine new source groups, all 17 unchanged Image controls and two native-domain
 controls pass. Three mutations detect missing occurrence membership, skipped
 unexecuted effects and missing native projection; exact original bytes are
 restored. The unchanged authored artwork source is covered by the source test.
