@@ -113,6 +113,37 @@ test('compiled profile replaces platform aliases, preserves support/attribution,
     assert.equal(map[join(f.frozen, 'profile.json')], 'frozen/profile.json');
 });
 
+test('current service carries its digest-bound lockstep helper through compiled and frozen profiles', async t => {
+    const f=await fixture(t);
+    const service='scripts/spike-state-server.py', helper='tools/spike_lockstep.py';
+    const source=Buffer.from('from spike_program_uart import ProgramUartBinding\nimport spike_lockstep\n');
+    const bytes=Buffer.from('# synthetic lockstep fixture, never executed\n');
+    await writeFile(join(f.source,service),source);f.manifest[service]=hash(source);
+    await writeFile(join(f.source,helper),bytes);f.manifest[helper]=hash(bytes);await f.save();
+    const result=f.run();assert.equal(result.status,0,result.stderr);
+    assert.deepEqual(await readFile(join(f.output,helper)),bytes);
+    const frozen=f.freeze();assert.equal(frozen.status,0,frozen.stderr);
+    const manifest=JSON.parse(await readFile(join(f.frozen,'manifest.json')));
+    assert.equal(manifest[helper],hash(bytes));
+    const resources=JSON.parse(await readFile(join(f.frozen,'tauri-support-resources.json'))).bundle.resources;
+    assert.equal(resources[join(f.frozen,helper)],'frozen/'+helper);
+    await writeFile(join(f.output,helper),'tampered helper');
+    const rejected=spawnSync(process.execPath,[prepare,f.output,f.runtime,join(f.root,'damaged')],{encoding:'utf8'});
+    assert.notEqual(rejected.status,0);assert.match(rejected.stderr,/verification/);
+    await assert.rejects(access(join(f.root,'damaged')),{code:'ENOENT'});
+});
+
+test('both stages refuse a service import without a manifested lockstep helper before writing output', async t => {
+    const f=await fixture(t), service='scripts/spike-state-server.py';
+    const bytes=Buffer.from('import spike_lockstep\n');
+    await writeFile(join(f.source,service),bytes);f.manifest[service]=hash(bytes);await f.save();
+    const result=f.run();assert.notEqual(result.status,0);assert.match(result.stderr,/Missing lockstep helper/);
+    await assert.rejects(access(f.output),{code:'ENOENT'});
+    const pinned=spawnSync(process.execPath,[prepare,f.source,f.runtime,join(f.root,'missing')],{encoding:'utf8'});
+    assert.notEqual(pinned.status,0);assert.match(pinned.stderr,/Missing lockstep helper/);
+    await assert.rejects(access(join(f.root,'missing')),{code:'ENOENT'});
+});
+
 for (const defect of ['runtime mismatch', 'wrong kind', 'unknown field', 'invalid model commit', 'wrong version', 'descriptor corruption', 'unlisted descriptor']) {
     test(`compiled admission rejects ${defect} before freezing output`, async t => {
         const f = await fixture(t); assert.equal(f.run().status, 0);
