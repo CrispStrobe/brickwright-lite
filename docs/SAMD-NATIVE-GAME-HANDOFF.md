@@ -8,20 +8,27 @@
 [the lane protocol](../lanes/PROTOCOL.md). Refresh GitHub state before acting;
 do not create a duplicate lane or dispatch.
 
-Current source [Build40783464522](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40783464522)
-has a successful frontend-producing job and all six unit shards, but its
-browser/FPGA/Arcade checks remain pending. Preparatory
-[native run40803428616](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40803428616)
-succeeded and its executable/source/frontend identity audit passed. No actual-game
-dispatch has occurred; remaining source checks still gate actual acceptance.
+The full source [Build40783464522](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40783464522)
+and [native40803428616](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40803428616)
+finished successfully on immutable guest source48df above. Preserve their original
+artifacts and independent audits. Keep the folded PR on fast CI without ci:full;
+the later label-only run executed no source tests and does not replace that pass.
 
-Native preparation now overlaps pending source CI after successful producing-job,
-unit and Rust checks plus strict emitted-byte admission. This supersedes the
-previous ordering that waited for every source check before any native dispatch.
-The existing native producer admits a successful automatic frontend job.
-**Every enabled exact-head source check and successful overall frontend workflow
-are still mandatory before actual-game dispatch and merge.** A pending overall
-workflow is not reported as qualified. No final acceptance gate is waived.
+[Actual-game40826003752](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40826003752)
+failed before guest launch because current GitHub CLI refused ANSI-bearing job
+logs. The reader-only repair ecde65772ed2dbf7dfe227bf7afadc0f6d55ccf8 explicitly
+captures raw responses into buffers/files, records its own source/hash, and reads
+the separate exact consumer checkout. All metadata, artifact and native identity
+checks remain intact. Guest source and executable are unchanged.
+
+The sole successor [40826297334](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40826297334)
+passed admission; actual browser/installed jobs are pending. Its inputs remain
+consumer48df, frontend40783464522, native40803428616, producer40699886470 and
+producer head8ea3767903d5135f4bd1e74914e25663b530d502. Do not duplicate this run.
+The complete SPIKE consumer change from PR1547 is folded into PR1533 to share one
+final fast-CI queue. Its private combined package has separate acceptance and
+cannot substitute for official SAMD guests. Both original branches/evidence stay
+retained. Physical capture and distribution clearance remain outside these claims.
 
 ## Completed supplier work
 
@@ -126,31 +133,14 @@ MicroPython manifest hunks and old dirty worktrees.
 
 ## Remaining work, in order
 
-1. Refresh PR1533 and current Build40783464522. Wait for every enabled exact-head
-   check; only declared conditional skips are allowed. Retain ci:full for this
-   shared webpack/engine change. Preserve any new failure and diagnose before
-   changing source; do not duplicate live jobs or rerun unchanged failures.
-2. Native40803428616 and its independent identity audit are complete. Reuse the
-   retained original executable/receipt and reader report; do not dispatch another
-   build or download successful originals again to inspect them. Source CI must
-   still finish before actual-game dispatch.
-3. Once all source checks pass, verify successful overall Build40783464522 and
-   join that metadata to the retained frontend audit without downloading it again.
-   Review current Main composition. Then dispatch
-   `samd-native-game-qualification.yml` once with consumer
-   `48df0f93f9b6b642238c13448e6f075d8871eb83`, frontend_run `40783464522`,
-   admitted native_run `40803428616`, producer_run `40699886470` and producer_head
-   `8ea3767903d5135f4bd1e74914e25663b530d502`. Require three fresh actual Chromium
-   and three installed Tauri/WebKit instances. Independently inspect original
-   RGB movement, press/release, sampled RSS and source/frontend/executable joins.
-   Metadata admission alone is not an actual-guest result. Locate retained
-   originals through private operational notes; never replay a successful guest
-   merely to inspect its output.
-4. After actual acceptance, refresh every enabled check and Main. Merge normally
-   with `--match-head-commit`, verify reviewed/predicted/landed tree and parents,
-   then update this handoff, adoption guide and both claims. Do not force-push or
-   auto-merge. Keep only public identities and result links in published prose.
-   Notify the dependent lane with the qualified landed SHA.
+1. Finish the sole actual-game successor above. Require admission plus three
+   fresh Chromium and three installed Tauri/WebKit instances. Independently
+   inspect original RGB movement, press/release, sampled RSS and source joins.
+   Preserve failures; never replay successful guests merely to inspect output.
+2. Finish the composed SPIKE package acceptance and every final fast check.
+3. Review current Main and merge the folded PR normally with matched-head,
+   predicted/landed tree and parent proofs. Update this handoff, adoption guide
+   and both claims with actual results, preserving all original evidence.
 
 Normal project compile/import/export and GUI-route adoption remain separate,
 scoped work in [the adoption guide](SAMD-NATIVE-GAME-ADOPTION.md). No current

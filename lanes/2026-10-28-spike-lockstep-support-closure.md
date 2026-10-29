@@ -35,3 +35,8 @@ NuttX native/Python/storage/lifecycle cases passed. Original source-manifest,
 launch and view failures remain retained and scoped in
 [the delivery record](../docs/SPIKE-CURRENT-RUNTIME-DELIVERY-2026-10-28.md).
 PR: https://github.com/CrispStrobe/brickwright-lite/pull/1547.
+
+Integration: the complete SPIKE change is folded into existing PR1533 for one
+final fast-CI queue. PR1547 and its published branch preserve the original
+candidate. Firmware57 and Runtime66 merged normally. The composed desktop
+package and official SAMD acceptance remain separate required results.
