@@ -1053,6 +1053,54 @@ mod tests {
         }
     }
 
+    // Formatting a Value directly into TcpStream writes individual JSON tokens.
+    // Keep this mock peer's transport cost independent of the snapshot's field
+    // count: one complete JSON line per write_all, with unchanged wire bytes.
+    fn write_lockstep_test_line(writer: &mut impl Write, value: &serde_json::Value) {
+        let mut line = serde_json::to_vec(value).unwrap();
+        line.push(b'\n');
+        writer.write_all(&line).unwrap();
+    }
+
+    fn write_lockstep_test_reply(writer: &mut impl Write, command: &serde_json::Value) {
+        write_lockstep_test_line(writer, &serde_json::json!({"schemaVersion":1,"type":"result",
+            "requestId":command["requestId"],"seq":command["expectedSeq"],"accepted":true}));
+    }
+
+    #[test]
+    fn lockstep_peer_batches_identical_json_lines_without_changing_frame_order() {
+        #[derive(Default)]
+        struct Writes { bytes: Vec<u8>, calls: usize }
+        impl Write for Writes {
+            fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
+                self.calls += 1;
+                self.bytes.extend_from_slice(bytes);
+                Ok(bytes.len())
+            }
+            fn flush(&mut self) -> std::io::Result<()> { Ok(()) }
+        }
+        let command = serde_json::json!({"requestId":"input-4","expectedSeq":4});
+        let result = serde_json::json!({"schemaVersion":1,"type":"result",
+            "requestId":command["requestId"],"seq":command["expectedSeq"],"accepted":true});
+        let before = lockstep_frame(5, 1_000_000_000);
+        let after = lockstep_frame(6, 1_005_000_000);
+        let embedded = serde_json::json!({"schemaVersion":1,"type":"result",
+            "requestId":command["requestId"],"seq":command["expectedSeq"],"accepted":true,"data":after});
+        let mut original = Writes::default();
+        let mut batched = Writes::default();
+        for frame in [&before, &result, &after, &embedded, &after] {
+            writeln!(original, "{frame}").unwrap();
+            write_lockstep_test_line(&mut batched, frame);
+        }
+        assert_eq!(batched.bytes, original.bytes, "snapshots, results and their order must be byte-identical");
+        assert_eq!(batched.calls, 5, "one complete accepting write per JSON line");
+        assert!(original.calls > batched.calls, "the control must expose token-by-token formatting writes");
+        let mut reply = Writes::default();
+        write_lockstep_test_reply(&mut reply, &command);
+        assert_eq!(reply.bytes, format!("{result}\n").as_bytes());
+        assert_eq!(reply.calls, 1);
+    }
+
     #[test]
     fn lockstep_steps_land_exactly_one_quantum_apart_without_polling() {
         const T0: u64 = 1_000_000_000;
@@ -1064,13 +1112,13 @@ mod tests {
             stream.set_read_timeout(Some(Duration::from_secs(5))).unwrap();
             stream.set_nodelay(true).unwrap();
             let mut seq = 0;
-            writeln!(stream, "{}", lockstep_frame(seq, T0)).unwrap();
+            write_lockstep_test_line(&mut stream, &lockstep_frame(seq, T0));
             let begin = read_command(&mut stream);
             assert_eq!(begin["command"], "lockstep.begin");
             assert_eq!(begin["arguments"], serde_json::json!({"quantumUs":5000}));
-            reply(&mut stream, &begin);
+            write_lockstep_test_reply(&mut stream, &begin);
             seq += 1;
-            writeln!(stream, "{}", lockstep_frame(seq, T0)).unwrap();
+            write_lockstep_test_line(&mut stream, &lockstep_frame(seq, T0));
             let mut clock = T0;
             for k in 0..STEPS {
                 let step = read_command(&mut stream);
@@ -1079,27 +1127,27 @@ mod tests {
                 if k % 100 == 7 || k % 100 == 8 {
                     // A snapshot from before the quantum ran must not complete the step.
                     seq += 1;
-                    writeln!(stream, "{}", lockstep_frame(seq, clock)).unwrap();
+                    write_lockstep_test_line(&mut stream, &lockstep_frame(seq, clock));
                 }
                 clock += 5_000_000;
                 let mut after = lockstep_frame(seq + 1, clock);
                 seq += 1;
                 if k % 2 == 0 {
-                    reply(&mut stream, &step);
-                    writeln!(stream, "{after}").unwrap();
+                    write_lockstep_test_reply(&mut stream, &step);
+                    write_lockstep_test_line(&mut stream, &after);
                 } else {
                     // The Runtime's shape (renode-spike-prime#59): the result's data IS the
                     // snapshot, streamed right after the result.
                     after["motors"][0]["drive"]["mean"] = (-10000).into();
-                    writeln!(stream, "{}", serde_json::json!({"schemaVersion":1,"type":"result",
-                        "requestId":step["requestId"],"seq":step["expectedSeq"],"accepted":true,"data":after})).unwrap();
-                    writeln!(stream, "{after}").unwrap();
+                    write_lockstep_test_line(&mut stream, &serde_json::json!({"schemaVersion":1,"type":"result",
+                        "requestId":step["requestId"],"seq":step["expectedSeq"],"accepted":true,"data":after}));
+                    write_lockstep_test_line(&mut stream, &after);
                 }
             }
             let end = read_command(&mut stream);
             assert_eq!(end["command"], "lockstep.end");
-            reply(&mut stream, &end);
-            writeln!(stream, "{}", lockstep_frame(seq + 1, clock)).unwrap();
+            write_lockstep_test_reply(&mut stream, &end);
+            write_lockstep_test_line(&mut stream, &lockstep_frame(seq + 1, clock));
             thread::sleep(Duration::from_millis(100));
         });
         let feed = BrickStateFeed::connect(endpoint).unwrap();
