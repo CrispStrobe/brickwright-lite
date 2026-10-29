@@ -40,6 +40,18 @@ test('a fixed event read into a different private local may precede the definite
  for(const which of ['first','second'])for(const name of ['actor','renamed'])good(fixture(which,name));
 });
 
+test('a conditional overwrite cannot hide an earlier read of the reset local',()=>{
+ const f=fixture(),{blocks,node,copy,overwrite,store}=f;
+ const condition=node('arcade_getLocal',{NAME:[10,'refs']});
+ const kind=node('arcade_spriteKindValue',{NAME:[10,'Player']});
+ const snapshot=node('arcade_spritesOfKind',{KIND:kind});
+ const other=node('arcade_setLocal',{NAME:[10,'refs'],VALUE:snapshot});
+ const branch=node('control_if_else',{CONDITION:condition,SUBSTACK:overwrite,SUBSTACK2:other});
+ blocks[copy].next=branch;blocks[branch].parent=copy;blocks[branch].next=store;blocks[store].parent=branch;
+ blocks[overwrite].next=null;blocks[overwrite].parent=branch;blocks[other].parent=branch;
+ bad(f);
+});
+
 test('reset reads incompatible writers and unknown event inputs retain the original refusal',()=>{
  let f=fixture();f.blocks[f.event].opcode='arcade_getLocal';f.blocks[f.event].fields={};f.blocks[f.event].inputs={NAME:[1,[10,'refs']]};bad(f);
  f=fixture();f.blocks[f.copy].inputs.NAME=[1,[10,'refs']];bad(f);

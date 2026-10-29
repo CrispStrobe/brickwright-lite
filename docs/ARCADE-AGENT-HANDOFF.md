@@ -43,6 +43,8 @@ Continue in this order:
    fingerprints or weaken collector counts. Final landing still requires every
    enabled exact-head gate and applicable affected runtime qualification.
 
+The local reset proof also refuses conditional overwrites when their condition can read the reset cell, or when either branch executes an unproved statement before overwriting it. Literal conditions and immediate overwrites retain the bounded path. The focused regression is in `test/project-event-copy-reset-prefix.test.mjs`.
+
 ## Prepared repair: normal mutation effects on nullable Array alternatives
 
 `source-value-producers.js` now has an internal mutation-only view of actual

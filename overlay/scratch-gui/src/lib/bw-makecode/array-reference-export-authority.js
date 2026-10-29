@@ -722,8 +722,9 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         if(c.writers.some(o=>valid(o)&&o.node===next)){if(skipped.size)eventCopyPrefixUsed=true;return true;}
         const branchAssigns=id=>{const seen=new Set();for(let n=block(w.target,id);n&&!seen.has(n);n=block(w.target,n.next)){seen.add(n);
             if(c.writers.some(o=>o.node===n&&o.scope===scope&&o.value&&!resetValue(o.value.node)&&!invalid.has(n)&&!(o.value.cell===c)&&!(o.value.node&&readsCell(o.target,o.value.node,c))))return true;
-            if(/return|stop|break|continue|throw/i.test(n.opcode))return false;}return false;};
-        const result=next.opcode==='control_if_else'&&!invalid.has(next)&&branchAssigns(next.inputs?.SUBSTACK?.[1])&&branchAssigns(next.inputs?.SUBSTACK2?.[1]);
+            return false;}return false;};
+        const condition=next.inputs?.CONDITION?.[1],literalCondition=Array.isArray(condition)?[4,5,6,7,8,10].includes(condition[0]):inertLiteral(w.target,block(w.target,condition));
+        const result=next.opcode==='control_if_else'&&!invalid.has(next)&&literalCondition&&branchAssigns(next.inputs?.SUBSTACK?.[1])&&branchAssigns(next.inputs?.SUBSTACK2?.[1]);
         if(result&&skipped.size)eventCopyPrefixUsed=true;
         return result;
     };
