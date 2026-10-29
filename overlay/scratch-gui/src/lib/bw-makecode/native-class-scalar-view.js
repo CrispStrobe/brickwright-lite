@@ -340,6 +340,11 @@ export function nativeClassScalarView(program,profile=GENERATED_HELPER_PROFILES.
         if(!types.size)return;
         for(const type of types){
             if(type==='Null'||type==='Undefined')continue;
+            if(type==='sdkRegistryCollection'){
+                if(node.name==='length')add(result,'Number');
+                else {poisonAll();add(result,unknown);}
+                continue;
+            }
             if(type?.kind==='aggregate'){
                 const parent=parents.get(node);
                 if(type.unsafe){add(result,unknown);continue;}

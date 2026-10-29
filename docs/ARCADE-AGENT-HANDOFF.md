@@ -1,5 +1,47 @@
 # Arcade compatibility: fresh-agent handoff and methodology
 
+## Prepared follow-up: genuine SDK registry receiver lineage
+
+The isolated `lane/arcade-sdk-snapshot-receivers-20261029` follow-up extends
+`native-sdk-sprite-source.js` and `native-class-scalar-view.js`. It uses the
+existing ordinary factory/source proof to recognize an actual closed
+`sprites.allOfKind` call. The private registry collection already maps numeric
+indices to genuine SDK instance rows plus a possible missing value; its length
+now has a private Number result. This permits the exported canonical
+snapshot/alias/index-loop shape to retain its actual Sprite receiver before
+normal numeric x/y access. It grants no public Array, bounds, element-presence,
+receiver initialization or class-override certificate.
+
+Namespace aliases/extraction and reflected constructor/prototype access deny
+the ordinary profile. Existing collection writers, escapes, unknown calls and
+incompatible field writers poison the receiver rows. Source edits expire the
+held proof permanently. Arbitrary JSON-derived indexed objects remain refused,
+including when an unrelated genuine Sprite factory is present. The broader
+unknown-Index Opaque draft remains withheld; this follow-up does not need it.
+
+Three focused source groups pass: canonical/aliased snapshots; JSON, collection
+mutation/escape, incompatible field, namespace and reflection negatives; and
+source-edit/restore expiry. Registry-selection, length-result and namespace-guard
+cuts each fail the controls and are restored exactly. The minimized actual
+import → editable project → export probe has no diagnostics. These are source
+and authoring observations, not SDK/VM execution or a whole-project promotion.
+
+Before integrating this follow-up, finish terminal original intake for the live
+PR #1554 head. Compose the separately owned Rust timing fixture repair normally;
+never modify its source in this lane. Then qualify the final exact head using
+unchanged original/native tests, especially
+`test/makecode-arcade-array-callbacks.test.mjs` and the Sprite/reference tests.
+The focused source command is:
+
+```sh
+node --test test/native-sdk-sprite-snapshot-receivers.test.mjs
+```
+
+Run builds, browser, SDK and VM suites on an admitted external worker. Further
+callback entries, other numeric Sprite slots, class overrides, mutated snapshots
+and scene transitions require their own demonstrated receiver/effect boundaries.
+The raw corpus remains 147 translated / 36 partial / 1 parse failure.
+
 ## 29 October: current qualification and ordered repairs
 
 PR #1554's reviewed head `ae22d4a2618a943eb44755bf0385a867dd76555f`

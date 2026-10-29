@@ -64,11 +64,20 @@ export function nativeSdkSpriteSource(program,lexical,nodes,parents) {
     const literalImages=new WeakMap(),clonedImages=new WeakMap(),factoryImages=new WeakMap();
     const root=node=>node?.type==='Identifier'?node.name:node?.type==='Member'||node?.type==='Index'?root(node.object):null;
     const roots=new Set(['Sprite','sprites','SpriteKind','Math','img','Image']);
-    let closed=descriptorCurrent(),imageNamespaceClosed=true;
+    let closed=descriptorCurrent(),imageNamespaceClosed=true,ordinaryNamespaceClosed=true;
     for(const node of nodes){
         const target=node.type==='Assignment'?node.left:node.type==='Update'||node.type==='Unary'&&node.op==='delete'?node.argument:null;
         if(target&&roots.has(root(target)))closed=false;
         if(target&&root(target)==='image')imageNamespaceClosed=false;
+        // A retained namespace or reflected constructor/prototype can change
+        // the receiver contract without a direct write to the SDK root.
+        if(node.type==='Member'&&['constructor','prototype','__proto__'].includes(node.name)||
+            node.type==='Unary'&&node.op==='delete')ordinaryNamespaceClosed=false;
+        if(node.type==='Identifier'&&node.name==='sprites'&&sdk.has(node)){
+            const member=parents.get(node),call=parents.get(member);
+            if(member?.type!=='Member'||member.object!==node||call?.type!=='Call'||call.callee!==member||
+                call.isNew||call.constructorCall||call.typeArguments?.length)ordinaryNamespaceClosed=false;
+        }
     }
     const selected=nodes.some(node=>node.type==='Class'&&bases.has(node.base)&&
         !lexical.bindings.some(binding=>binding.name===node.base.split('.')[0]));
@@ -76,7 +85,7 @@ export function nativeSdkSpriteSource(program,lexical,nodes,parents) {
     // Keep the old subclass profile independent. Ordinary factory rows have
     // their own x/y and Image contracts; they never grant a child override a
     // selected SDK getter or broaden a registry receiver set containing classes.
-    const ordinary=imageNamespaceClosed&&!nodes.some(node=>node.type==='Class')&&nodes.some(node=>
+    const ordinary=imageNamespaceClosed&&ordinaryNamespaceClosed&&!nodes.some(node=>node.type==='Class')&&nodes.some(node=>
         node.type==='Member'&&node.object?.type==='Identifier'&&node.object.name==='sprites'&&
         node.name==='create'&&sdk.has(node)&&direct(node));
     const sourceCurrent=ordinary?ordinarySourceCurrent(program):()=>true;
@@ -87,7 +96,7 @@ export function nativeSdkSpriteSource(program,lexical,nodes,parents) {
         if(ordinaryReady&&direct(node)&&node.object.name==='sprites'&&node.name==='create')return 'factory';
         if(ordinaryReady&&direct(node)&&node.object.name==='image'&&node.name==='create')return 'imageFactory';
         if(direct(node)&&node.object.name==='Math'&&node.name==='round')return 'round';
-        if(!ordinary&&direct(node)&&node.object.name==='sprites'&&node.name==='allOfKind')return 'registry';
+        if(direct(node)&&node.object.name==='sprites'&&node.name==='allOfKind')return 'registry';
         return null;
     };
     const constant=node=>{
