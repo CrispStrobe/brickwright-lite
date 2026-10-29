@@ -25,7 +25,7 @@ function labwiredRxBlock() {
         const next = source.indexOf('\n    }\n', at);
         assert.match(source.slice(at, next), /return finishLabwiredAttach\(/, `${caller} ends in the shared finisher`);
     }
-    return new Function('lwAdapter', 'runner', 'lwTarget', body.slice(start, stop));
+    return new Function('lwAdapter', 'runner', 'lwTarget', 'allowPendingVideo', body.slice(start, stop));
 }
 
 test('labwired attach exposes sendSerial that feeds the adapter byte by byte', () => {
@@ -78,4 +78,7 @@ test('a board with a display gets runner.video; anything else clears a stale one
     const stale = {video: () => 'old machine'};
     labwiredRxBlock()({feedSerial() {}}, stale, {video: () => null});
     assert.equal('video' in stale, false, 'a target with nothing to draw removes the old screen');
+    const pending = {};
+    labwiredRxBlock()({feedSerial() {}}, pending, {video: () => null}, true);
+    assert.equal(typeof pending.video, 'function', 'an explicit profile display may attach before its first frame');
 });
