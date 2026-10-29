@@ -45,26 +45,27 @@ RGBSET table. No host-installed default LUT is permitted.
    [BW PR711](https://github.com/CrispStrobe/bw-board/pull/711) merged after its
    enabled checks and independent retained-original audit.
    [Producer40699886470](https://github.com/CrispStrobe/bw-board/actions/runs/40699886470)
-   passed two hosted builds, determinism,125 legacy tests and three production
+   passed two hosted builds, determinism, 125 legacy tests and three production
    game samples. Engine, glue, Node loader marker and exact-source profile bytes
    match across builds. The
    [locked release](https://github.com/CrispStrobe/bw-board/releases/tag/labwired-wasm-3b655aef-locked)
    has API `immutable: true`; its nine asset digests match the qualified originals.
    Motion qualification remains deferred. Keep component notices and the narrow
-   Node22 inlining workaround documented by the
+   Node 22 inlining workaround documented by the
    [producer handoff](https://github.com/CrispStrobe/bw-board/blob/master/docs/SAMD-ENGINE-RELEASE-HANDOFF.md).
-4. **Pending — consumer source and emitted assets.** PR1533 proposes the exact
-   web engine/glue/profile hashes and matching performance-workflow identity.
-   It preserves raw glue through asset optimization and carries bounded
-   historical-study/native-observation test repairs. Keep the original failures;
-   the native failure remains unattributed. Require every enabled final-head
-   source check, then admit one successful official frontend and independently
-   bind its checkout and complete inventory. The three release hashes must match
-   the emitted assets. The portable profile verifier's metadata admission is
-   not an actual-guest result. No native or actual-game dispatch has occurred at
-   this checkpoint; follow the current handoff's exact identities and order.
-5. **Pending — actual consumer and landing.** Build one source-bound native
-   executable after source admission with unchanged compile defaults. Then run
+4. **Partly done — emitted assets verified; full source CI pending.** PR1533
+   proposes the exact engine/glue/profile hashes and matching performance identity.
+   Its official frontend job and all six unit shards passed; independent review
+   verified all 8,563 emitted files and exact release asset hashes. Full Rust tests
+   and E2E passed. Preserve original failures; the old native failure's cause
+   remains unknown. Remaining browser/FPGA/Arcade source checks must pass before
+   actual-game dispatch or merge. Native run40803428616 succeeded with unchanged
+   compile defaults; independent audit bound 184 native source files, all 8,563
+   frontend files and the executable hash. Reuse its retained originals; do not
+   dispatch another build. Actual guest acceptance remains pending. Follow the
+   [current handoff](SAMD-NATIVE-GAME-HANDOFF.md) for exact identities and order.
+5. **Pending — actual consumer and landing.** The native identity audit passed;
+   wait for every enabled source check. Then run
    three fresh actual Chromium and three installed Tauri/WebKit instances of the
    same source-built guest on the shipped engine assets. Independently check raw
    RGB movement, actual press/release, sampled RSS and complete source/frontend/
