@@ -168,6 +168,32 @@ try {
         await expectPin(true, () => b.check(), 'AND output rises for a=1, b=1');
         await expectPin(false, () => a.uncheck(), 'AND output falls for a=0, b=1');
     } else {
+        // Reduced CI still exercises all three real presentation workspaces.
+        // Keep the live synthesis/demo path above independent and unchanged.
+        const identities = () => canvas.locator('.react-flow__node').evaluateAll(nodes =>
+            nodes.map(node => node.getAttribute('data-id')).sort());
+        const before = await identities();
+        check(before.length > 0 && before.every(id => typeof id === 'string' && id.length > 0) &&
+            new Set(before).size === before.length, 'the authored design has distinct stable node identities');
+        for (const [mode, previous, control] of [
+            ['build', 'design', 'bw-fpga-build-target'],
+            ['simulate', 'build', 'bw-fpga-simulation-view'],
+            ['design', 'simulate', 'bw-fpga-rf-canvas']
+        ]) {
+            await page.getByTestId(`bw-fpga-workspace-${mode}`).click();
+            await page.getByTestId(`bw-fpga-panel-${previous}`).waitFor({state: 'hidden'});
+            await page.getByTestId(`bw-fpga-panel-${mode}`).waitFor({state: 'visible'});
+            await page.getByTestId(control).waitFor({state: 'visible'});
+            check(await page.getByTestId(`bw-fpga-workspace-${mode}`).getAttribute('aria-pressed') === 'true' &&
+                await page.getByTestId(`bw-fpga-workspace-${previous}`).getAttribute('aria-pressed') === 'false',
+            `${mode} workspace is visible and selected after leaving ${previous}`);
+        }
+        check(JSON.stringify(await identities()) === JSON.stringify(before),
+            'workspace switching preserves every authored node identity');
+        const returnedHdl = await page.evaluate(() => [...document.querySelectorAll('textarea')]
+            .map(el => el.value).find(value => /assign\s+w_g\s*=\s*a\s*&\s*b;/.test(value)) || '');
+        check(returnedHdl === generatedHdl,
+            'workspace switching preserves the exact generated AND Verilog');
         console.log('  note: FPGA_SKIP_SYNTH=1 — synthesis and demo-circuit checks intentionally omitted');
     }
 

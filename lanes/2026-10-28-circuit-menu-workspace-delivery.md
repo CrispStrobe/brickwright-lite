@@ -80,3 +80,11 @@ The selected-tier verdict alignment has separate claim PR1558. Until it lands,
 its legacy label-only red is a policy mismatch, not application acceptance.
 No `ci:full` labels are to be reapplied. Actual emitted-byte, FPGA flag-on,
 production-bundle and affected UI evidence remain required before source landing.
+
+Final acceptance follow-through: the existing flag-on CI builder skips live
+synthesis, which also skipped its Build/Simulate clicks. Extend only the reduced
+branch of `scripts/verify-fpga-builder.mjs` to drive Design → Build → Simulate →
+Design, require actual panel visibility and selected controls, and compare exact
+node identities and generated Verilog after return. Keep the live synthesis/demo
+path byte-held. This is workspace presentation/state-retention evidence only,
+not synthesis, simulation correctness or an FPGA release receipt.
