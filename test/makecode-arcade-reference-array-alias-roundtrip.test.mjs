@@ -37,7 +37,11 @@ test('reference Array aliases preserve local/procedure identity, startup default
         const saved=Buffer.from(await(await first.vm.saveProjectSb3()).arrayBuffer());
         first.vm.stopAll();await first.vm.loadProject(saved);first.vm.greenFlag();await stepFrames(first.vm,40);check(first);
         const fresh=await runProgram('SPRITE Placeholder:\nWHEN flag clicked:\n  hide',{frames:0,storage:true});runs.push(fresh);fresh.vm.stopAll();await fresh.vm.loadProject(saved);fresh.vm.greenFlag();await stepFrames(fresh.vm,40);check(fresh);
-        const exported=projectToArcade(first.creator.project);assert.deepEqual(exported.unsupported,[]);save('export-files.json',exported.files);
+        const exported=projectToArcade(first.creator.project);
+        // Retain the exact input and refusal details even when export fails;
+        // the existing opt-in evidence destination is outside the project.
+        save('export-project.json',first.creator.project);save('export-observation.json',exported);
+        assert.deepEqual(exported.unsupported,[]);save('export-files.json',exported.files);
         if(!process.env.ARRAY_ALIAS_NATIVE_ONLY){
             const original=await runPxtArcade(exported.files,{fakeClock:true,waitForGlobals:{complete:1},onCompilation:p=>save('export-compilation.json',p)});save('export-observations.json',original);
             for(const [name,value] of Object.entries(expected))assert.equal(originalValue(original,name),value,name);

@@ -36,6 +36,14 @@ Continue in this order:
    `readText()`/`readArray()` startup calls, aliases and mutations. Inspect each
    leaf of the update-handler witness, then its concatenations. Native result
    domains and occurrence initialization remain separate obligations.
+   The reference-Array fixture itself passes a bounded source-domain probe; its
+   retained failure is in the exported program. The existing test now saves
+   `export-project.json` and `export-observation.json` before the unchanged
+   assertion when `ARRAY_ALIAS_EVIDENCE` is set. In the next authorized hosted
+   run, set that variable to an artifact directory and upload it even on
+   failure. Inspect `refusalEvidence.nativeAdditionDraft` and the operand details
+   to bind the failure to its real producer before changing the domain proof.
+   Run the full original PXT path; do not set `ARRAY_ALIAS_NATIVE_ONLY`.
 4. Coordinate the three inherited reference-instrument failures with their
    source owner: the current-pin census identifies three stale Board references,
    and two collector controls fail. Do not substitute a new SHA into historical
