@@ -1,24 +1,88 @@
 # brickwright-lite — roadmap
 
-## Circuit/instrument resume queue — 2026-10-28
+## Circuit/instrument resume queue — 2026-10-29
 
-Use the [current handoff](docs/CIRCUIT-INSTRUMENT-REGRESSION.md#current-handoff--2026-10-28-wrap-up)
-for live heads, next actions and stop conditions. The
+Use the [active handoff](docs/CIRCUIT-INSTRUMENT-REGRESSION.md#active-continuation--2026-10-28)
+and refresh live heads before acting. The
 [six-item contract](lanes/2026-10-26-reference-qualified-instrument-campaign.md)
-remains open until items 3–6 resolve.
+remains open through qualification and final reconciliation.
 
-| Order | State | Next bounded endpoint |
+| Order | Verified state | Next bounded endpoint |
 | --- | --- | --- |
-| 1a. Supplier return | **Accepted:** Lite PR1478 pins Board `c7bcbe4b`, CUI `da28bb8c` | — |
-| 1b. Teaching reference study | **Accepted:** v2 run 40681635060, 31/31, 0 disagreements | Never rerun |
-| 2. Four disagreements | **Accepted as classification:** all noncomparable, no defect (PR1495) | — |
-| 3. Scope rearm | Hypothesis: re-render during `input` reset the selector; fix candidate CUI `a5860b9c` | CUI PR129 (pre-fix) must fail and PR128 (post-fix) pass; otherwise record unproved |
-| 4. Long captures | 5 ms/1 MHz passive batch matches references; first sample at 1 µs accepted as spec | Merge Lite PR1516 on green |
-| 5. LM741 currents/power | Domain adopted; packaged CLI test with settled-window check pending CI | Merge Lite PR1515 only if the frozen v2 check passes; else record partial |
-| 6. Provenance and realism | Lite PR1517 (provenance + redaction); CUI PR130 (opt-in AC coupling) | Merge both on green, then adopt CUI PR130 in Lite |
+| 1. Supplier return and reference study | Historical adoption PR1478; accepted v2 run 40681635060: 31/31, 4,260 values, 15 captures, one named refusal | Preserve original source/pins; never replay the consumed study |
+| 2. Four disagreements | All noncomparable; no demonstrated model defect (PR1495) | Preserve classification and original denominators |
+| 3. Scope rearm | PR128 merged; identical before-fix PR129 fails the injected re-render control | Accepted for that mechanism; no blanket race attribution |
+| 4. Long captures | Three hosted 5,000-point waveform assertions pass at `93aba754` | Qualify and land the preserved ancestry through combined PR1536 |
+| 5. LM741 currents/power | Hosted settled-window/refusal/default-off checks pass at `e85dc904`; v1 TODO retained | Whole-app metadata/GUI checks remain in combined PR1536 qualification |
+| 6. Provenance and realism | Provenance/redaction ancestry preserved in PR1536, now targeting qualified CUI `4b65f154`; four hosted AC tests and 60 independent numerical rows pass at `e85dc904` | Complete hosted qualification, preserve historical study seals, verify source landing |
 
-After items 3–6: one `ci:full` run on main, final reconciliation, then ask the
-operator for the next priority.
+The forward checkpoint `93aba754` fixes the original unit-6 documentation-trigger
+failure with a dedicated receipt and TODO pointer only. Pins, numerical bodies
+and workflow policy are unchanged; 35 focused checks pass. All six hosted unit
+shards now pass, including the repaired documentation-trigger gate; final
+combined application qualification remains pending. The source checkpoint is
+now terminal: 17 successful checks, nine declared skips, no pending jobs and
+only the earlier approved absent-`ci:full` verdict exception. Full combined UI
+qualification must pass every enabled check.
+
+CUI PR131 landed as `4b65f15485abbc039958d8e1a8a29ac3459b75f9` with its
+three enabled checks and retained browser evidence accepted.
+
+PR1538 was closed without merging to consolidate the queue. Its complete
+source ancestry is preserved in PR1536, whose main landing remains pending.
+Do not reopen the old PR or infer main adoption from its closure.
+
+The operator transferred the remaining delivery to this campaign's maintainer.
+PR1536 preserves the complete `93aba754` ancestry and adopts the landed CUI
+head without changing Board. Packaged native confirmation is accepted at
+`17bbefca`; checkpoint `a0c0a60e` adds the measured editor and menu repairs.
+Neither component result establishes final application acceptance. Do not
+independently merge the superseded PR1538 or change its pins.
+
+Use fast-tier PR qualification without `ci:full` labels. Claim PR1558 scopes the
+policy guard's admission of selected execution; registration landed at `f5acf3b3`
+and the bounded repair is published at `0f5dca52`. Preserve every enabled job, tier selector and numerical/bundle
+bound. Complete exact combined-head checks, actual affected GUI evidence with
+source/artifact binding, FPGA flag-on acceptance and the unchanged profiling
+byte guard. A normal production byte inventory is a separate observation.
+Before numerical-original acquisition, freeze exact final head/pin/run/job
+identities. Preserve four consumed-study seals separately from live current-pin
+contracts, acquire originals once and never replay the completed study.
+
+After qualified combined landing, reconcile PR1516/1515/1517/1538 as integrated
+through the actual PR1536 landing, update the four campaign documents and verify
+the existing guarded production deployment and live version/UI. Queued checks,
+a component pass or supplier adoption cannot close this sequence.
+Then ask for the next priority.
+Physical calibration, probe loading, a GUI AC-coupling selector and the unreachable
+32 MiB output-cap boundary remain outside this acceptance. Source/package
+adoption is not installed release or deployment evidence. No seventh lane is
+opened by this list.
+
+
+The frozen combined successor is `2e7846f8a901726a296e3a8ef006cff24bc457b5`.
+It includes main `19c073bd` and both registered CI follow-through repairs:
+selected-tier admission and supported-event numeric-consumer selection. The
+manual consumer is skipped because its existing artifact trust admits push/PR
+only; successful supported events remain required. The obsolete wiring-message
+assertion now executes the real classifier-output forwarding and verifies its
+tier bindings. Locally, 39 focused CI controls and 11 gate-shape checks pass,
+and three isolated wiring mutants fail. These are source controls, not browser
+or delivery acceptance. The reduced FPGA browser journey now switches all three
+workspaces and checks visibility, selected controls and exact retained node/HDL
+state; its live synthesis path remains byte-identical. Actual hosted acceptance
+is still required. The preceding `09a4f407` run set was superseded before any
+child started; cancellation followed explicit zero-running-child verification.
+
+Fresh fast [Build40869114327](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40869114327)
+and necessary full [Build40869128682](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40869128682)
+are pending on that exact source. The earlier manual run `40856189963` was
+cancelled before application execution after its unsupported consumer context
+was identified; it is not qualification. The prior fast head `d32860b8` had one
+real unit-2 wiring-assertion failure. Both originals remain distinct from this
+successor; neither failures nor cancelled checks are waived. No main landing or
+production deployment is claimed yet.
+
 
 ## Current circuit measurement sequence — 2026-10-25
 
