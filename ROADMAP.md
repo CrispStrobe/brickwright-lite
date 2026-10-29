@@ -20,7 +20,10 @@ The forward checkpoint `93aba754` fixes the original unit-6 documentation-trigge
 failure with a dedicated receipt and TODO pointer only. Pins, numerical bodies
 and workflow policy are unchanged; 35 focused checks pass. All six hosted unit
 shards now pass, including the repaired documentation-trigger gate; final
-combined application qualification remains pending.
+combined application qualification remains pending. The source checkpoint is
+now terminal: 17 successful checks, nine declared skips, no pending jobs and
+only the earlier approved absent-`ci:full` verdict exception. Full combined UI
+qualification must pass every enabled check.
 
 The coordinated menu/editor delivery owner now carries CUI PR131 qualification,
 its explicit Lite adoption and the combined source/application landing. Preserve

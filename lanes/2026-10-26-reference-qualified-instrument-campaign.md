@@ -187,3 +187,14 @@ adapt the real button/filechooser paths and retain the existing numerical,
 layout, capture, ADC and refusal assertions. Cramped navigation must keep its
 coverage. This is a source finding, not an executed browser failure; it grants
 no permission to weaken the checks or start a competing circuit source writer.
+
+### Frozen source fast-tier terminal result — 2026-10-29
+
+Exact `93aba75473e65042925928fe8c1a0a4427fd59ca` has 17 successful checks,
+nine declared skips and zero pending checks; Arcade official build succeeded.
+The sole red verdict is absent `ci:full`, covered only by the operator's earlier
+fast-tier ruling for this predecessor. Overall Build is not relabelled green.
+Both predecessor observers are stopped. Source/pin landing custody remains
+with the combined delivery owner; its full application target must pass every
+enabled check. Final application evidence, integrated-head reconciliation and
+four-document closeout remain pending. No consumed study was replayed.

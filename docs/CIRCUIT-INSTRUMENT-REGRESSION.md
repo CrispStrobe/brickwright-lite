@@ -2,7 +2,8 @@
 
 ## Active continuation — 2026-10-28
 
-**Status: source qualification in progress; campaign not closed.** This is the
+**Status: frozen circuit source passed its approved fast-tier checks; combined
+application delivery and campaign closeout remain pending.** This is the
 only current action list. Dated snapshots below retain their original evidence
 and failures; their old resume instructions are historical. Read `LANES.md`
 and refresh live PR heads before acting. Never replay the consumed studies.
@@ -57,6 +58,12 @@ original bytes and pins. Four explicit complete-file seals protect historical
 roles and the old manifest; synthetic controls use an isolated historical root.
 Ordinary stale-current and never-pinned negatives remain mandatory. The separate
 x86 history-reader changes must be composed without replacing this guard.
+
+The final `93aba754` checkpoint has 17 successful checks, nine declared skips
+and no pending checks, including the successful Arcade official build. The sole
+red verdict is the absent `ci:full` label covered by the earlier operator-approved
+fast-tier exception for this predecessor. This does not relabel the overall
+Build green or waive any enabled check on the final combined UI candidate.
 
 ### Next actions, in order
 

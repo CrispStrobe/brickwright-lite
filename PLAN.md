@@ -36,7 +36,10 @@ long-capture assertions. Its unit-6 documentation-trigger failure is preserved;
 Thirty-five focused successor checks and all six hosted unit shards pass. The
 corrected unit-6 original accepts the three long captures, four historical seals
 and documentation-trigger check; final combined application qualification is
-still pending.
+still pending. The frozen source's final fast-tier checkpoint has 17 successful
+checks, nine declared skips and no pending checks; only the explicitly excepted
+absent-`ci:full` verdict remains red. The final combined UI target has no such
+exception.
 
 Next: the coordinated menu/editor delivery owner must qualify and promote CUI
 PR131, compose the complete frozen circuit ancestry, perform one explicit Lite
