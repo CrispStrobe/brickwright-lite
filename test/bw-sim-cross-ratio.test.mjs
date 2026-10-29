@@ -148,7 +148,7 @@ const directStreamChild=execFileSync(process.execPath,['--max-old-space-size=128
 assert.equal(readCrossRatioLines(directStreamChild.toString(),wireOptions).length,4,'default stdout retains all records even when console.log is captured');
 let acknowledged=false;
 const acknowledgmentItem=chunk=>{
- const frame=/^CROSS_RATIO_WIRE_V1 ([0-9]+) ([0-9a-f]{64}) ([A-Za-z0-9+/]+={0,2})\n$/.exec(chunk.toString());
+ const frame=/^CROSS_RATIO_WIRE_V1 ([0-9]+) ([0-9a-f]{64}) ([A-Za-z0-9+/]+={0,2})\n(?![\s\S])/.exec(chunk.toString());
  assert.ok(frame,'complete acknowledgment wire envelope');
  const bytes=Buffer.from(frame[3],'base64');
  assert.equal(bytes.length,Number(frame[1]),'acknowledgment byte extent');
@@ -159,7 +159,7 @@ const acknowledgmentItem=chunk=>{
 const ackBody=JSON.stringify({type:'end'}),ackFrame=`CROSS_RATIO_WIRE_V1 ${Buffer.byteLength(ackBody)} ${hash(ackBody)} ${Buffer.from(ackBody).toString('base64')}\n`;
 assert.deepEqual(acknowledgmentItem(ackFrame),{type:'end'});
 for(const damaged of [ackFrame.replace('CROSS_RATIO_WIRE_V1','OTHER_WIRE'),ackFrame.replace(' '+Buffer.byteLength(ackBody)+' ',' 1 '),
- ackFrame.replace(hash(ackBody),'0'.repeat(64)),ackFrame.replace(/=+\n$/,'\n'),ackFrame+'extra\n'])
+ ackFrame.replace(hash(ackBody),'0'.repeat(64)),ackFrame.replace(/=+\n$/,'\n'),ackFrame+'extra\n',ackFrame+'\n'])
  assert.throws(()=>acknowledgmentItem(damaged),'full acknowledgment envelope refuses a misleading payload');
 const acknowledgedTransport=new Writable({highWaterMark:16*1024*1024,write(chunk,encoding,callback){
  const item=acknowledgmentItem(chunk);

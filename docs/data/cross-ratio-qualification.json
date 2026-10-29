@@ -15,7 +15,7 @@
     "engineExecuted": false,
     "readerPreflightTests": 9,
     "checkoutSupplierRejections": 7,
-    "acknowledgmentEnvelopeRejections": 5,
+    "acknowledgmentEnvelopeRejections": 6,
     "checkoutToolBinding": "EXPLICIT_ABSOLUTE_EXECUTABLE_AND_ROOT; GIT_ENV_OVERRIDES_REMOVED; CI_COMMIT_CHECKED",
     "initialSnapshotObservedInputs": true,
     "rejectedCorruptions": 52,
