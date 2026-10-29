@@ -403,6 +403,48 @@
         "arm_near_outer_bush_front"
       ],
       "disconnectLaw": true
+    },
+    {
+      "id": "final-squeeze",
+      "judge": "knee-press-v1",
+      "parts": 168,
+      "ports": [
+        "A"
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 60000,
+      "afterMs": 500,
+      "frameMs": 25,
+      "frozenOutput": "platen_crossbar",
+      "disconnect": [
+        "passive_link"
+      ],
+      "disconnectInputDeg": 20,
+      "disconnectLoss": "batch-c"
+    },
+    {
+      "id": "high-select",
+      "judge": "max-select-v1",
+      "parts": 288,
+      "ports": [
+        "A",
+        "B"
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 60000,
+      "afterMs": 500,
+      "frameMs": 10,
+      "frozenOutput": "bridge_spine_0",
+      "disconnect": [
+        "bridge_A_foot",
+        "bridge_A_foot_brick_-10",
+        "bridge_A_foot_brick_10",
+        "bridge_B_foot",
+        "bridge_B_foot_brick_-10",
+        "bridge_B_foot_brick_10"
+      ],
+      "disconnectInputDeg": 140,
+      "disconnectLoss": "batch-c"
     }
   ]
 }

@@ -6,6 +6,7 @@ import {HUBLESS_DISCONNECTION_LOSSES} from '../scripts/lib/sim-lab-hubless-judge
 import {toggleLeverLawErrorDeg} from '../scripts/lib/sim-lab-toggle-thirdline-judge.mjs';
 import {batch3DisconnectionLoss} from '../scripts/lib/sim-lab-batch3-judges.mjs';
 import {batch2DisconnectionLoss} from '../scripts/lib/sim-lab-batch2-judges.mjs';
+import {batchCDisconnectionLoss} from '../scripts/lib/sim-lab-batchC-judges.mjs';
 import {catalogFrom,prepareModel,MODELS} from '../overlay/scratch-gui/src/lib/bw-sim/sim-session.js';
 import {runRobotLabProgram} from './helpers/robot-lab-direct-vm.mjs';import {observeAddon} from '../scripts/lib/sim-lab-addon-judge.mjs';
 import Creator from '../overlay/scratch-gui/src/lib/sb3-creator-register-art.js';
@@ -57,6 +58,8 @@ for(const c of qualificationContracts(selected).filter(c=>!c.nativeSuite)){
   else if(c.id==='thirdline'){const un=a=>{let p=a[0],s=p;return a.map(v=>{s+=Math.atan2(Math.sin(v-p),Math.cos(v-p));p=v;return s;});},din=un(r.track.map(f=>o.angle(f,'input_arm',[0,1,0],[1,0,0]))),dru=un(r.track.map(f=>o.angle(f,c.frozenOutput,[0,1,0],[1,0,0])));motion=Math.max(...r.track.map((f,i)=>Math.abs((dru[i]-dru[0])-(din[i]-din[0])/3)))*180/Math.PI;assert.ok(motion>.5,'without the marked joint the ruler leaves the one-third law');}
   // Hubless and motorless models: the judge module measures each law's own loss (sim-lab-hubless-judges.mjs).
   else if(c.disconnectLaw&&Object.hasOwn(HUBLESS_DISCONNECTION_LOSSES,c.id)){const loss=HUBLESS_DISCONNECTION_LOSSES[c.id](r);motion=loss.value;assert.ok(loss.lost,'disconnection loses the law: '+JSON.stringify(loss));}
+  // Batches C and D: the judge module measures each law's own loss (sim-lab-batchC-judges.mjs).
+  else if(c.disconnectLoss==='batch-c'){const loss=batchCDisconnectionLoss(c.id,r);motion=loss.value;assert.ok(loss.lost,'disconnection loses the law: '+JSON.stringify(loss));}
   // Third batch: the judge module measures each law's own loss (sim-lab-batch3-judges.mjs).
   else if(c.disconnectLaw){const loss=batch3DisconnectionLoss(c.id,r);motion=loss.value;assert.ok(loss.lost,'disconnection loses the law: '+JSON.stringify(loss));}
   // Second batch: each law has its own measured loss (see sim-lab-batch2-judges.mjs for the thresholds).

@@ -1,7 +1,8 @@
 {
   "version": 1,
+  "id": "high-select",
   "language": "en",
-  "what": "Two motors independently set the heights of two vertical rack carriages. Their upward-facing stock tile pads can support a separate bridge which slides on real vertical guides under gravity. The bridge has no motor. Its settled height is governed by the higher support, while the lower support can move through a gap beneath it. Both presets use the same saved geometry; the second exchanges the two input sequences. A bush on each guide axle just below each carriage is its rest stop: at zero height the carriage sits on it, so the unpowered start pose holds under gravity instead of back-driving the motors, and both encoders still read zero when the program starts.",
+  "what": "Gravity-loaded unilateral maximum selector. Two motors independently set the heights of two vertical rack carriages. Their upward-facing stock tile pads can support a separate bridge which slides on real vertical guides under gravity. The bridge has no motor. Its settled height is governed by the higher support, while the lower support can move through a gap beneath it. Both presets use the same saved geometry; the second exchanges the two input sequences. A bush on each guide axle just below each carriage is its rest stop: at zero height the carriage sits on it, so the unpowered start pose holds under gravity instead of back-driving the motors, and both encoders still read zero when the program starts. Two independently driven supports lift a separate gravity-loaded bridge. The higher support determines its settled height. Compare lower-input motion, handover and equal-height ties, then exchange the two input sequences.",
   "try": [
     "Reload the saved model before each finite program. Port A and port B drive the two supports. Use the main program first, then reload the same model for the exchanged-input comparison.",
     "Watch a stage in which one support remains higher while the other changes height beneath the bridge. Predict when the bridge should start to follow the moving support. Observe the actual pad and bridge positions rather than only the requested motor targets.",
@@ -19,7 +20,6 @@
     "The ideal statement concerns settled positions with rigid contact and ideal guidance. The actual simulator uses finite stock collision primitives and a contact solver; guides and contacts can produce lag, gaps or small overlap. The supplied bounded native programs do not qualify arbitrary speeds, payloads, physical friction or hardware performance."
   ],
   "formula": "For upward support heights a and b and an aligned output contact height h, the ideal settled relation is h=max(a,b)=max(b,a). The geometric contact gaps are gA=h-a≥0 and gB=h-b≥0. Ideal unilateral normal forces satisfy NA≥0, NB≥0, NA·gA=0 and NB·gB=0. These complementarity equations explain the construction; contact forces are not inferred from position alone. The delivered measurements compare actual native surface references at settled pauses and report transient motion separately.",
-  "id": "high-select",
   "related": [
     "root-bridge.ldr",
     "forklift.ldr"
