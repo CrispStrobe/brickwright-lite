@@ -38,6 +38,42 @@ original getter ownership; retain refusal for unproved cases.
 
 
 
+### Next bounded repair: generated destruction callback ingress
+
+The minimal diagnostic is an ordinary primitive Array plus
+`sprites.onDestroyed(SpriteKind.Enemy, function(sprite) { positions += sprite.x })`.
+Its first export refuses the **left** `positions` operand with `Number | Opaque`
+and initialization true; the callback getter contaminates its complete writer
+domain. The same source without an Array uses the existing ordinary fallback,
+so that successful export alone does not establish this repair.
+
+The actual emitter introduces a zero-argument startup procedure and, inside the
+callback, `let sprite: Sprite = null; sprite = eventParameter` before reading
+`sprite.x`. Continue from the unintegrated
+`destroyed-sprite-callback-number-source.js`, not an API-name whitelist:
+
+1. Admit closed ordinary startup invocation by actual lexical caller/body proof,
+   never its generated name. Keep unknown, extracted, recursive or escaping
+   routes refused until proved. Account for genuine addition helper removal
+   through the existing private helper-recognition identity join.
+2. Prove the callback-local alias ingress: unique binding, exact null declaration
+   and immediate formal assignment, no other writers/captures/escapes, and every
+   selected read after that assignment in the same entry. Preserve the actual
+   reset and source evaluation. A `Sprite` annotation supplies no authority.
+3. Handle the actual collection-destruction loop's snapshot/index receiver and
+   canonical factory construction effects without granting general Array or
+   Sprite certificates. Do not erase unproved callees or source effects to make
+   this smaller than the emitted program.
+4. Consume only the selected getter occurrence's conditional Number result in
+   native addition. Carry original source/descriptor/intrinsic currentness
+   across every private projection and expire consumed facts permanently.
+5. Add generated positive and incompatible/early/escaped/changed-writer controls,
+   then run both unchanged positive collection fixtures through original PXT,
+   native execution, Code, export/reimport and fresh saved-project routes.
+   Their snapshot callbacks, replacement sprites, pauses, retained handles and
+   final coordinates stay required. No count or runtime claim follows from the
+   authored-source proof alone.
+
 ## 29 October: primitive Array callbacks and qualification checkpoint
 
 The current source candidate proves primitive element and numeric index entry
