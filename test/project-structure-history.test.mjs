@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {runProgram} from './helpers/bw-vm.mjs';
-import {instrumentProjectHistory} from '../overlay/scratch-gui/src/lib/bw-project-history.js';
+import {instrumentProjectHistory, changeProjectTitle} from '../overlay/scratch-gui/src/lib/bw-project-history.js';
 import {
     activateUndoSurface, getUndoState, redoActiveSurface, undoActiveSurface
 } from '../overlay/scratch-gui/src/lib/global-undo.js';
@@ -26,6 +26,60 @@ const fixture = async () => {
 };
 const names = target => target.sprite.costumes.map(costume => costume.name);
 const sprites = vm => vm.runtime.targets.filter(t => t.isOriginal && !t.isStage).map(t => t.getName());
+
+test('a user title edit undoes and redoes without recording project loading', async () => {
+    clearProjectHistory();
+    activateUndoSurface('test-project-only');
+    let title = 'Before';
+    const apply = value => { title = value; };
+    try {
+        changeProjectTitle(title, 'After', apply);
+        assert.equal(title, 'After');
+        assert.deepEqual(getUndoState().project.past, ['Project: Rename “Before” → “After”']);
+        await undoActiveSurface(); assert.equal(title, 'Before');
+        await redoActiveSurface(); assert.equal(title, 'After');
+        assert.equal(getUndoState().project.past.length, 1);
+        changeProjectTitle(title, title, apply);
+        assert.equal(getUndoState().project.past.length, 1, 'an unchanged title adds no step');
+        apply('Loaded title');
+        assert.equal(getUndoState().project.past.length, 1, 'ordinary Redux/loading writes do not become user edits');
+    } finally { clearProjectHistory(); }
+});
+
+test('two concurrent script copies are independent reversible steps, with their local variables', async () => {
+    const {vm, actor} = await fixture();
+    try {
+        await vm.duplicateSprite(actor.id);
+        const target = vm.runtime.targets.find(t => t.isOriginal && !t.isStage && t !== actor);
+        clearProjectHistory();
+        actor.createVariable('copy-local', 'Private', '');
+        actor.variables['copy-local'].value = 42;
+        const block = {id: 'copy-source', opcode: 'data_setvariableto', next: null, parent: null,
+            inputs: {}, fields: {VARIABLE: {name: 'VARIABLE', value: 'Private', id: 'copy-local', variableType: ''}},
+            topLevel: true, shadow: false, x: 0, y: 0};
+        const initialBlocks = Object.keys(target.blocks._blocks).length;
+        const initialVariables = Object.keys(target.variables);
+        await Promise.all([vm.shareBlocksToTarget([block], target.id, actor.id),
+            vm.shareBlocksToTarget([block], target.id, actor.id)]);
+        assert.equal(Object.keys(target.blocks._blocks).length, initialBlocks + 2);
+        assert.equal(getUndoState().project.past.length, 2);
+        const shared = Object.values(target.blocks._blocks).filter(b => b.opcode === 'data_setvariableto');
+        assert.equal(shared.length, 2);
+        const id = shared[0].fields.VARIABLE.id;
+        assert.equal(target.variables[id].value, 0, 'Scratch initializes a newly shared local variable to zero');
+        assert.equal(actor.variables['copy-local'].value, 42, 'the source variable is unchanged');
+        await undoActiveSurface();
+        assert.equal(Object.keys(target.blocks._blocks).length, initialBlocks + 1);
+        assert.equal(target.variables[id].value, 0, 'the first copy still owns the variable');
+        await undoActiveSurface();
+        assert.equal(Object.keys(target.blocks._blocks).length, initialBlocks);
+        assert.deepEqual(Object.keys(target.variables), initialVariables);
+        await redoActiveSurface(); await redoActiveSurface();
+        assert.equal(Object.keys(target.blocks._blocks).length, initialBlocks + 2);
+        assert.equal(target.variables[id].value, 0);
+        assert.equal(getUndoState().project.past.length, 2);
+    } finally { vm.quit(); clearProjectHistory(); }
+});
 
 test('deleting a costume is undone in place and redone, many times', async () => {
     const {vm, actor} = await fixture();
