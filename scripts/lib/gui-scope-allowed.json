@@ -191,6 +191,7 @@
       "test/arcade-destroyed-callback-consumer.test.mjs",
       "test/arcade-primitive-array-callback-source.test.mjs",
       "test/arcade-extendable-constructor-scalar-source.test.mjs",
+      "test/arcade-event-sprite-field-writer.test.mjs",
       "test/arcade-music-number-authoring.test.mjs",
       "test/native-array-captured-class-scalar-domain.test.mjs",
       "test/array-native-frame-reset.test.mjs",

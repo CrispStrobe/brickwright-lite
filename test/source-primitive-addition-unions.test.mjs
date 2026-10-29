@@ -31,3 +31,32 @@ test('a primitive result never grants an earlier binding read its missing readin
  // discharge the independent pointwise declaration/read frontier.
  assert.deepEqual([...q.graph.typesAt(addition(q))].sort(),['Number','String']);assert.equal(q.graph.isInitializedAt(read),false);
 });
+
+test('non-addition arithmetic on primitive operands is Number; += and references keep their refusals',()=>{
+ for(const expression of ['"5"-2','true*2','null/2','undefined%2','("5" as any)**2']){
+  const q=inspect('let value='+expression),node=q.nodes.find(n=>n.type==='Binary'&&n.op!=='+');
+  assert.deepEqual([...q.graph.typesAt(node)],['Number'],expression);
+ }
+ for(const expression of ['[1]-2','img`1`*2','unknown/2']){
+  const q=inspect('let value='+expression),node=q.nodes.find(n=>n.type==='Binary');
+  assert.equal(q.graph.typesAt(node).has('Opaque'),true,expression);
+ }
+ // A compound += may concatenate: a String store keeps String in the domain.
+ const q=inspect('let text:any="5";text+=2;let read=text'),read=q.nodes.filter(n=>n.type==='Identifier'&&n.name==='text').at(-1);
+ assert.notDeepEqual([...q.graph.typesAt(read)],['Number']);
+});
+
+test('a nullish Array receiver read sees its allocation elements and nullable writes, and escapes make it Opaque',()=>{
+ const read=q=>q.nodes.filter(n=>n.type==='Index').at(-1);
+ const q=inspect('let rows:any[]=null\nfunction init(){rows=[];rows.push("5");rows[1]=2;let x=rows[0]}\ninit()');
+ assert.deepEqual([...q.graph.typesAt(read(q))].sort(),['Number','String','Undefined']);
+ // An Array written through the nullable binding reaches its later reads.
+ const nested=inspect('let rows:any[]=null\nfunction init(){let tmp:any[]=[1];rows=tmp;rows[0]=[2];let x=rows[1]}\ninit()');
+ assert.equal([...nested.graph.typesAt(read(nested))].some(type=>type?.kind==='Array'),true);
+ // An escape through the nullable binding makes its element reads Opaque.
+ const escaped=inspect('let rows:any[]=null\nfunction init(){let tmp:any[]=[1];rows=tmp;foreign(rows);let x=rows[0]}\ninit()');
+ assert.equal(escaped.graph.typesAt(read(escaped)).has('Opaque'),true);
+ // A receiver that may be any other non-Array value remains unknown.
+ const mixed=inspect('let rows:any=0\nfunction init(){rows=[];rows.push(1);let x=rows[0]}\ninit()');
+ assert.equal(mixed.graph.typesAt(read(mixed)).size,0);
+});

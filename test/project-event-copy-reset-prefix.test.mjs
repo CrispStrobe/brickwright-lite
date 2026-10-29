@@ -78,3 +78,44 @@ test('the consumed event-copy frontier expires before an unrelated diagnostic an
  }finally{Object.defineProperty(Array.prototype,'map',descriptor);}
  assert.equal(decision(q).ok,false);good(f);
 });
+
+// The reimported creation callback also stores trace/flag globals between the
+// reset and the overwrite. Only an exact global store with an inert value tree
+// may cross; a reset-cell read, a call or a malformed store keeps the reset.
+const withStore=(f,value)=>{
+ const store=f.node('data_setvariableto',{VALUE:value},{VARIABLE:['out','out']});
+ f.blocks[f.copy].next=store;f.blocks[store].parent=f.copy;f.blocks[store].next=f.overwrite;f.blocks[f.overwrite].parent=store;
+ return store;
+};
+const traceValue=f=>{const id=f.node('arrays_valueBinary',{RIGHT:[10,'H']},{OP:['+',null]});f.blocks[id].inputs.LEFT=[3,[12,'out','out'],[10,'']];return id;};
+const fieldCompare=f=>{
+ const event=f.node('arcade_eventSprite',{}, {WHICH:['first',null]}),field=f.node('arcade_objectField',{OBJECT:event,FIELD:[10,'value']});
+ return f.node('arrays_valueCompare',{LEFT:field,RIGHT:[4,'3']},{OP:['===',null]});
+};
+
+test('inert global stores between the reset and the definite Array overwrite may cross',()=>{
+ let f=fixture();withStore(f,traceValue(f));good(f);
+ f=fixture();withStore(f,fieldCompare(f));good(f);
+ f=fixture();const first=withStore(f,traceValue(f)),second=f.node('data_setvariableto',{VALUE:fieldCompare(f)},{VARIABLE:['out','out']});
+ f.blocks[first].next=second;f.blocks[second].parent=first;f.blocks[second].next=f.overwrite;f.blocks[f.overwrite].parent=second;good(f);
+});
+
+test('a reset read, call, malformed store or unknown global in the store prefix retains the reset',()=>{
+ let f=fixture();withStore(f,f.node('arrays_valueBinary',{LEFT:f.node('arcade_getLocal',{NAME:[10,'refs']}),RIGHT:[10,'H']},{OP:['+',null]}));bad(f);
+ f=fixture();withStore(f,f.node('arcade_callFunction',{NAME:[10,'foreign'],ARGS:[10,'[]']}));bad(f);
+ f=fixture();let store=withStore(f,traceValue(f));f.blocks[store].fields.EXTRA=['foreign',null];bad(f);
+ f=fixture();store=withStore(f,traceValue(f));f.blocks[store].fields.VARIABLE=['missing','missing'];bad(f);
+ f=fixture();store=withStore(f,traceValue(f));f.blocks[store].opcode='data_changevariableby';bad(f);
+ f=fixture();const value=traceValue(f);f.blocks[value].fields.EXTRA=['foreign',null];withStore(f,value);bad(f);
+});
+
+test('the consumed global-store frontier expires before an unrelated diagnostic and cannot revive',()=>{
+ const make=()=>{const f=fixture();withStore(f,traceValue(f));return f;};
+ const f=make(),q=good(f),descriptor=Object.getOwnPropertyDescriptor(Array.prototype,'map');
+ try{
+  Object.defineProperty(Array.prototype,'map',{...descriptor,value(){throw new Error('changed map must never run');}});
+  const result=q.proof.validateInput(q.target,{...q.node});
+  assert.equal(result.ok,false);assert.match(result.reason,/prefix/);
+ }finally{Object.defineProperty(Array.prototype,'map',descriptor);}
+ assert.equal(decision(q).ok,false);good(make());
+});

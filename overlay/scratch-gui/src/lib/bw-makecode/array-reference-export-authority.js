@@ -186,6 +186,13 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         catch(_){eventCopyPrefixExpired=true;}
         return !eventCopyPrefixExpired;
     };
+    let inertStorePrefixUsed=false,inertStorePrefixExpired=false;
+    const inertStorePrefixCurrent=()=>{
+        if(!inertStorePrefixUsed)return true;
+        if(!inertStorePrefixExpired)try{if(!privatePrefixAmbientCurrent())inertStorePrefixExpired=true;}
+        catch(_){inertStorePrefixExpired=true;}
+        return !inertStorePrefixExpired;
+    };
     let literalPrefixUsed=false,literalPrefixExpired=false;
     const literalPrefixCurrent=()=>{
         if(!literalPrefixUsed)return true;
@@ -700,6 +707,55 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
             value.shadow===false&&value.topLevel===false&&value.next==null&&value.mutation==null&&exactKeys(value,[],['WHICH'])&&
             watcherIsArray(which)&&which.length===2&&which[1]===null&&['first','second'].includes(which[0]);
     };
+    // A reimported callback can store unrelated globals (trace/flag scalars)
+    // between a local reset and its definite overwrite. Locals live in the
+    // running procedure frame and any accessor procedure runs in its own
+    // frame, so an exact global store whose complete value tree uses only
+    // these reporters cannot read, write or capture the reset local, and
+    // cannot branch, exit or register a callback. Local stores remain owned by
+    // the event-copy and numeric-literal prefix rules. Effect fact only: no
+    // Sprite, Array, value or initialization fact is issued.
+    const inertStoreReporters=Object.freeze({__proto__:null,arcade_eventSprite:[[],['WHICH']],arrays_specialValue:[[],['KIND']],
+        arrays_valueBinary:[['LEFT','RIGHT'],['OP']],arrays_valueCompare:[['LEFT','RIGHT'],['OP']],arcade_objectField:[['OBJECT','FIELD'],[]],
+        arcade_spriteKindValue:[['NAME'],[]],operator_add:[['NUM1','NUM2'],[]],operator_subtract:[['NUM1','NUM2'],[]],
+        operator_multiply:[['NUM1','NUM2'],[]],operator_divide:[['NUM1','NUM2'],[]],operator_mod:[['NUM1','NUM2'],[]]});
+    const sameNames=(object,names)=>{const keys=watcherOwnKeys(object||{});return keys.length===names.length&&keys.every(key=>typeof key==='string'&&names.includes(key));};
+    const inertStoreSlot=(slot,c,scope,seen)=>{
+        if(!watcherIsArray(slot)||![1,2,3].includes(slot[0])||slot.length!==(slot[0]===3?3:2))return false;
+        for(const raw of slot[0]===3?[slot[1],slot[2]]:[slot[1]]){
+            if(typeof raw==='string'){if(!inertStoreValue(block(scope.target,raw),c,scope,seen))return false;continue;}
+            if(!watcherIsArray(raw))return false;
+            if([4,5,6,7,8,10].includes(raw[0])){if(raw.length!==2||typeof raw[1]!=='string'&&typeof raw[1]!=='number')return false;continue;}
+            if(raw[0]===12){const g=raw.length===3&&typeof raw[2]==='string'?globalCell(scope.target,raw[2]):null;
+                if(!g||g===c||targets.find(t=>Object.hasOwn(t.variables||{},raw[2]))?.variables[raw[2]]?.[0]!==raw[1])return false;continue;}
+            return false;
+        }
+        return true;
+    };
+    const inertStoreValue=(node,c,scope,seen)=>{
+        const shape=node&&inertStoreReporters[node.opcode];
+        if(!shape||seen.has(node)||invalid.has(node)||owners.get(node)!==scope||node.shadow!==false||node.topLevel!==false||
+            node.next!=null||node.mutation!=null||!sameNames(node.inputs,shape[0])||!sameNames(node.fields,shape[1]))return false;
+        seen.add(node);
+        for(const name of shape[1]){const field=node.fields[name];
+            if(!watcherIsArray(field)||field.length!==2||typeof field[0]!=='string'||field[1]!==null)return false;}
+        if(node.opcode==='arcade_eventSprite'&&!['first','second'].includes(node.fields.WHICH[0]))return false;
+        if(node.opcode==='arrays_specialValue'&&!resetValue(node))return false;
+        if(node.opcode==='arcade_objectField'&&typeof literal(node,'FIELD',scope.target)!=='string')return false;
+        if(node.opcode==='arcade_spriteKindValue'&&typeof literal(node,'NAME',scope.target)!=='string')return false;
+        return shape[0].every(name=>inertStoreSlot(node.inputs[name],c,scope,seen));
+    };
+    const inertGlobalStore=(node,c,scope)=>{
+        if(!isProjectJsonSnapshot(project)||!inertStorePrefixCurrent()||!privatePrefixAmbientCurrent()||
+            !node||invalid.has(node)||owners.get(node)!==scope||scope.invalid||scope.unknownEntry||
+            node.opcode!=='data_setvariableto'||node.shadow!==false||node.topLevel!==false||node.mutation!=null||
+            !sameNames(node.inputs,['VALUE'])||!sameNames(node.fields,['VARIABLE']))return false;
+        const variable=node.fields.VARIABLE;
+        if(!watcherIsArray(variable)||variable.length!==2||typeof variable[0]!=='string'||typeof variable[1]!=='string')return false;
+        const g=globalCell(scope.target,variable[1]);
+        if(!g||g===c||targets.find(t=>Object.hasOwn(t.variables||{},variable[1]))?.variables[variable[1]]?.[0]!==variable[0])return false;
+        return inertStoreSlot(node.inputs.VALUE,c,scope,new Set([node]));
+    };
     const killedReset=(c,w,at)=>{
         if(!resetFlowReady||!(resetValue(w.value?.node)||!c.global&&w.value?.node&&inertLiteral(w.target,w.value.node))||invalid.has(w.node)||w.scope.invalid)return false;
         const scope=owners.get(at);if(!scope||w.scope!==scope||!scope.executedBefore)return false;
@@ -712,19 +768,22 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         }
         // A local reset must reach its definite overwrite without exposure:
         // a direct writer, or an if/else whose both branches write the cell
-        // before any exit. Only a fixed event copy to another local may cross
-        // this frontier; calls, captures and other effects retain the reset.
-        let next=block(w.target,w.node.next);const skipped=new Set();
-        while(next&&before.has(next)&&!skipped.has(next)&&inertEventCopy(next,c,scope)){
+        // before any exit. Only a fixed event copy to another local or an inert
+        // global store may cross this frontier; procedure calls, captures,
+        // control flow and reads of the reset cell retain the reset.
+        let next=block(w.target,w.node.next);const skipped=new Set();let copied=false,stored=false;
+        while(next&&before.has(next)&&!skipped.has(next)){
+            if(inertEventCopy(next,c,scope))copied=true;else if(inertGlobalStore(next,c,scope))stored=true;else break;
             skipped.add(next);next=block(w.target,next.next);
         }
+        const consume=()=>{if(copied)eventCopyPrefixUsed=true;if(stored)inertStorePrefixUsed=true;};
         if(!next||!before.has(next))return false;
-        if(c.writers.some(o=>valid(o)&&o.node===next)){if(skipped.size)eventCopyPrefixUsed=true;return true;}
+        if(c.writers.some(o=>valid(o)&&o.node===next)){consume();return true;}
         const branchAssigns=id=>{const seen=new Set();for(let n=block(w.target,id);n&&!seen.has(n);n=block(w.target,n.next)){seen.add(n);
             if(c.writers.some(o=>o.node===n&&o.scope===scope&&o.value&&!resetValue(o.value.node)&&!invalid.has(n)&&!(o.value.cell===c)&&!(o.value.node&&readsCell(o.target,o.value.node,c))))return true;
             if(/return|stop|break|continue|throw/i.test(n.opcode))return false;}return false;};
         const result=next.opcode==='control_if_else'&&!invalid.has(next)&&branchAssigns(next.inputs?.SUBSTACK?.[1])&&branchAssigns(next.inputs?.SUBSTACK2?.[1]);
-        if(result&&skipped.size)eventCopyPrefixUsed=true;
+        if(result)consume();
         return result;
     };
     // `x := v` immediately followed by `if not truthy(x) then x := e`, with the
@@ -1675,10 +1734,11 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
     };
     // Observe a newly used dependency before publishing the cached authority.
     // A later validation still observes it before any diagnostic early exit.
-    sourceStartReset.current();prefixResetCurrent();literalPrefixCurrent();eventCopyPrefixCurrent();
+    sourceStartReset.current();prefixResetCurrent();literalPrefixCurrent();eventCopyPrefixCurrent();inertStorePrefixCurrent();
     return Object.freeze({spriteFlagWriters,validateInput(target,node,name='ARRAY'){
         try{
         if(!eventCopyPrefixCurrent())return {ok:false,reason:'requires the current inert event-copy prefix for a discounted Array reset'};
+        if(!inertStorePrefixCurrent())return {ok:false,reason:'requires the current inert global-store prefix for a discounted Array reset'};
         if(!literalPrefixCurrent())return {ok:false,reason:'requires the current numeric-literal local prefix for a discounted Array reset'};
         if(!conditionalCurrent())return {ok:false,reason:'requires the current conditional source-entry Array frontier'};
         // Observe the used frame theorem before every diagnostic exit. A
@@ -1729,12 +1789,13 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
             {ok:false,reason:'requires the current private identity-call prefix for a discounted Array reset'}:result.ok&&!conditionalCurrent()?
             {ok:false,reason:'requires the current conditional source-entry Array frontier'}:result.ok&&!literalPrefixCurrent()?
             {ok:false,reason:'requires the current numeric-literal local prefix for a discounted Array reset'}:result.ok&&!eventCopyPrefixCurrent()?
-            {ok:false,reason:'requires the current inert event-copy prefix for a discounted Array reset'}:result;
+            {ok:false,reason:'requires the current inert event-copy prefix for a discounted Array reset'}:result.ok&&!inertStorePrefixCurrent()?
+            {ok:false,reason:'requires the current inert global-store prefix for a discounted Array reset'}:result;
         if(deadOccurrence(target,node))return publish({ok:true});
         if(ordinaryEntry.isUnreachable(target,node))return publish({ok:true});
         if(occurrence?.candidate(target,node,name))return publish(occurrence.validateInput(target,node,name)?{ok:true}:{ok:false,reason:'requires the current closed occurrence Array producer and complete writer proof'});
         const value=input(node,name,target),types=readInput(value);return publish(singleArray(types)&&initialized(value)?{ok:true}:{ok:false,reason:'requires an actual initialized Array producer and compatible all writers'});
-        }catch(error){if(literalPrefixUsed)literalPrefixExpired=true;if(eventCopyPrefixUsed)eventCopyPrefixExpired=true;throw error;}
-        finally{literalPrefixCurrent();eventCopyPrefixCurrent();}
+        }catch(error){if(literalPrefixUsed)literalPrefixExpired=true;if(eventCopyPrefixUsed)eventCopyPrefixExpired=true;if(inertStorePrefixUsed)inertStorePrefixExpired=true;throw error;}
+        finally{literalPrefixCurrent();eventCopyPrefixCurrent();inertStorePrefixCurrent();}
     }});
 }

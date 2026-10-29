@@ -249,6 +249,17 @@ export function checkClassPrimitiveExport({project,classes,procedures,note,dynam
     }
     const compatible=(actual,type)=>actual.size>0&&[...actual].every(value=>value===expected.get(type)||value==='Constraint:'+expected.get(type)||value==='Undefined'||value==='Null');
     const requireType=(actual,type,context)=>{if(expected.has(type)&&!compatible(actual,type))fail(context+' conflicts with declared '+type+' (actual '+[...actual].sort().join('|')+')');};
+    const eventSpriteField=(target,block,name)=>{
+        const object=child(target,block,'OBJECT'),which=object?.fields?.WHICH;
+        if(!object||object.opcode!=='arcade_eventSprite'||object.shadow||object.topLevel||object.next||object.mutation||
+            Object.keys(object.inputs||{}).length||Object.keys(object.fields||{}).join()!=='WHICH'||!Array.isArray(which)||!['first','second'].includes(which[0]))return null;
+        const candidates=ordinary.filter(cls=>member(cls.name,name));
+        if(candidates.length!==1||!isSdkSprite('@'+candidates[0].name))return null;
+        const found=member(candidates[0].name,name);
+        if(!found||found.cls.intrinsic||found.value.valueKind==='callable'||found.value.readonly||found.value.getter||found.value.setter||
+            found.value.visibility&&found.value.visibility!=='public')return null;
+        return found;
+    };
     for(const row of rows){const {target,block,owner}=row;if(bad.has(owner))continue;
         if(block.opcode==='arcade_setObjectField'){
             const name=fixed(target,block,'FIELD'),receivers=fieldReceivers(input(target,block,'OBJECT'));
@@ -260,6 +271,14 @@ export function checkClassPrimitiveExport({project,classes,procedures,note,dynam
                 if(fields.some(found=>!found||found.value.readonly)){fail('SDK Sprite field writer requires an actual writable declared property');continue;}
                 for(const found of fields)requireType(input(target,block,'VALUE'),found.value.type,'field '+found.cls.name+'.'+name+' writer');
             }else if(dynamicReceiver(target,block,true,false,methodOwners.get(owner)?.cls.name))continue;
+            else if(name!==null&&!receivers.has(sdkSprite)&&[...receivers].every(receiver=>receiver==='Opaque')){
+                // An event Sprite is an SDK Sprite-family instance with no
+                // producer type here. The exporter renders this write as a
+                // cast to the unique ordinary class declaring the field, so
+                // check the writer against exactly that public declaration.
+                const found=eventSpriteField(target,block,name);
+                if(found){requireType(input(target,block,'VALUE'),found.value.type,'field '+found.cls.name+'.'+name+' writer');continue;}
+            }
             if(name===null||!receivers.size||receivers.has(sdkSprite)&&![...receivers].every(isSdkSprite)||[...receivers].some(receiver=>receiver!==sdkSprite&&(!receiver.startsWith('@')||!classes.has(receiver.slice(1))))){fail('field writer requires an actual declared receiver and fixed property');continue;}
             for(const receiver of receivers){const found=receiver===sdkSprite?spriteField(name):receiver.startsWith('@')&&member(receiver.slice(1),name);
                 if(receiver===sdkSprite&&(!found||found.value.readonly)){fail('SDK Sprite field writer requires an actual writable declared property');continue;}

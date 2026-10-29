@@ -292,7 +292,7 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
         else if(node.type==='Binary'&&['===','!==','==','!=','<','>','<=','>='].includes(node.op)||node.type==='Unary'&&node.op==='!')derived.push({result:current,type:'Boolean',operands:(node.type==='Unary'?[node.argument]:[node.left,node.right]).map(cell),signature:true,inspectionPrimitive:true});
         else if(arrayValues&&node.type==='Unary'&&node.op==='typeof')derived.push({result:current,type:'String',operands:[cell(node.argument)],signature:true,inspectionPrimitive:true});
         else if(node.type==='Unary'&&['+','-','~'].includes(node.op))derived.push({result:current,type:'Number',operands:[cell(node.argument)],signature:true,domain:node.op==='~'?'SourceBitwise':'Number'});
-        else if(node.type==='Binary'&&['+','-','*','/','%','**','&','|','^','<<','>>','>>>'].includes(node.op))derived.push({result:current,type:'Number',operands:[cell(node.left),cell(node.right)],signature:true,domain:['&','|','^','<<','>>','>>>'].includes(node.op)?'SourceBitwise':'Number',stringConcat:node.op==='+'});
+        else if(node.type==='Binary'&&['+','-','*','/','%','**','&','|','^','<<','>>','>>>'].includes(node.op))derived.push({result:current,type:'Number',operands:[cell(node.left),cell(node.right)],signature:true,domain:['&','|','^','<<','>>','>>>'].includes(node.op)?'SourceBitwise':'Number',stringConcat:node.op==='+',primitiveNumeric:node.op!=='+'});
         else if(parseIntegerNumbers?.isNumberCall(node)){parseIntegerNumberUsed=true;add(current,'Number');}
         else if(node.type==='Call'&&!node.isNew&&(node.callee?.type==='Identifier'||numericArrows.size&&node.callee?.type==='Parenthesized'))calls.push({node,callee:node.callee.type==='Identifier'?binding(owner,node.callee.name):null,result:current});
         else if(node.type==='Parenthesized'&&parenthesized)edge(cell(node.expression),current);
@@ -385,12 +385,16 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
     // object coercion or unknown alternative may borrow that result domain.
     const primitiveAddition=item=>item.stringConcat&&item.operands.every(value=>types.get(value)?.size&&[...types.get(value)].every(type=>primitiveTypes.has(type)));
     const playerOperand=value=>!unsafePlayerWrite&&types.get(value)?.has('Player')&&[...types.get(value)].every(type=>['Player','Null','Undefined','OpaquePlayerConstraint'].includes(type));
+    // A binary - * / % ** on primitive operands invokes no ToPrimitive hook
+    // and returns Number on normal completion. Only these exact operator
+    // nodes carry primitiveNumeric; += and other compound stores keep the
+    // strict Number|Undefined domain because += may concatenate.
     const numericOperand=value=>types.get(value)?.size&&[...types.get(value)].every(type=>type==='Number'||type==='Undefined');
     const inspectionDomain=(operand,allowed)=>types.get(operand)?.size&&[...types.get(operand)].every(type=>allowed.has(type));
     // Fixed bitwise operations return Number on normal completion. This result
     // signature neither proves their operands nor skips their execution; the
     // importer separately requires actual Array-or-primitive operand writers.
-    const derivedValid=item=>item.inspectionPrimitive?(consoleInspection||internalInspection||arrayValues||primitiveComparisons)&&item.operands.every(operand=>inspectionDomain(operand,primitiveTypes)):item.inspection?item.signature&&inspectionDomain(item.operands[0],primitiveTypes)&&(item.operands.length===1||inspectionDomain(item.operands[1],new Set(['Number','Undefined']))):item.signature&&(item.domain==='SourceBitwise'||primitiveAddition(item)||item.operands.every(operand=>item.domain==='Player'?playerOperand(operand):item.domain==='Number'&&item.type==='Number'?numericOperand(operand):exactType(operand,item.domain)));
+    const derivedValid=item=>item.inspectionPrimitive?(consoleInspection||internalInspection||arrayValues||primitiveComparisons)&&item.operands.every(operand=>inspectionDomain(operand,primitiveTypes)):item.inspection?item.signature&&inspectionDomain(item.operands[0],primitiveTypes)&&(item.operands.length===1||inspectionDomain(item.operands[1],new Set(['Number','Undefined']))):item.signature&&(item.domain==='SourceBitwise'||primitiveAddition(item)||item.operands.every(operand=>item.domain==='Player'?playerOperand(operand):item.domain==='Number'&&item.type==='Number'?numericOperand(operand)||item.primitiveNumeric===true&&inspectionDomain(operand,primitiveTypes):exactType(operand,item.domain)));
     const arrayTypes=value=>{const set=types.get(value);return set?.size&&[...set].every(type=>type?.kind==='Array')?[...set]:null;};
     // Result-only alternative. The original strict Array receiver API above
     // remains unchanged; no nullish value becomes an Array or initialized read.
@@ -418,8 +422,39 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
             !!parseExactImgLiteral('img`'+node.value+'`')
     })===true;
     const nullableLengthEligible=op=>op.kind==='length'&&nullableLengthDomain(op.receiver)&&nullableLengthClosed();
+    // A nullish receiver faults before any element operation completes, so
+    // a NORMAL element read through a receiver whose domain is only
+    // Null/Undefined plus actual Array tokens observes those allocations.
+    // This is a separate, additive channel: the strict Array receiver API and
+    // every existing element domain are unchanged. Such reads see the
+    // allocation elements plus every element value written through a
+    // nullable receiver; any escape, property write or non-Number index write
+    // through a nullable receiver makes them Opaque. Length keeps its
+    // separate closed nullable proof below.
+    const nullableArrayTypes=value=>{const set=types.get(value);if(!set?.size)return null;let array=false;
+        for(const type of set){if(type==='Null'||type==='Undefined')continue;if(type?.kind!=='Array')return null;array=true;}
+        return array?[...set].filter(type=>type?.kind==='Array'):null;};
+    const nullableKinds=new Set(['read','pop','shift','write','push','unshift','update','escape','methodWrite']);
+    const nullableWritten=new Map(),nullablePoisoned=new Set();
+    const nullableWrite=(token,type)=>{let set=nullableWritten.get(token);if(!set)nullableWritten.set(token,set=new Set());if(set.has(type))return false;set.add(type);return true;};
+    const nullablePoison=token=>{if(nullablePoisoned.has(token))return false;nullablePoisoned.add(token);return true;};
+    const nullableOperation=(op,tokens)=>{let changed=false;
+        if(['escape','methodWrite'].includes(op.kind)||['write','update'].includes(op.kind)&&types.get(op.index)?.size&&!exactType(op.index,'Number'))
+            for(const token of tokens)changed=nullablePoison(token)||changed;
+        if(op.kind==='update')for(const token of tokens)changed=nullableWrite(token,'Number')||changed;
+        if(['push','unshift'].includes(op.kind))changed=add(op.result,'Number')||changed;
+        if(op.kind==='write'||['push','unshift'].includes(op.kind))for(const token of tokens)for(const value of op.kind==='write'?[op.value]:op.node.args.map(cell))
+            for(const type of types.get(value)||[])changed=nullableWrite(token,type)||changed;
+        if(['read','pop','shift'].includes(op.kind)){changed=add(op.result,'Undefined')||changed;
+            for(const token of tokens){
+                if(nullablePoisoned.has(token)){changed=add(op.result,'Opaque')||changed;continue;}
+                for(const type of [...(types.get(token.element)||[]),...(nullableWritten.get(token)||[])])changed=add(op.result,type)||changed;
+            }}
+        return changed;};
     const propagateArrays=()=>{let changed=false;
         for(const op of arrayOperations){const tokens=arrayTypes(op.receiver);if(!tokens){
+                const nullable=nullableKinds.has(op.kind)?nullableArrayTypes(op.receiver):null;
+                if(nullable){changed=nullableOperation(op,nullable)||changed;continue;}
                 if(nullableLengthEligible(op)){
                     nullableLengthUsed=true;nullableLengthIssued.add(op);changed=add(op.result,'Number')||changed;
                 }
@@ -454,7 +489,7 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
         for(const item of scales)if(isFont(item.receiver))changed=add(item.result,'Font')||changed;
         for(const item of texts)if(types.get(item.argument)?.size===1 && types.get(item.argument).has('String'))changed=add(item.result,'Font')||changed;
     }while(changed);};propagate();
-    if(arrayValues)for(const operation of arrayOperations)if(['write','update'].includes(operation.kind)&&!types.get(operation.index)?.size)for(const token of arrayTypes(operation.receiver)||[])unsafeArrayMethods.add(token);
+    if(arrayValues)for(const operation of arrayOperations)if(['write','update'].includes(operation.kind)&&!types.get(operation.index)?.size){for(const token of arrayTypes(operation.receiver)||[])unsafeArrayMethods.add(token);for(const token of nullableArrayTypes(operation.receiver)||[])nullablePoison(token);}
     const playerWriteUnsafe=()=>!!multiplayer?.computedWrites.some(node=>{const keys=types.get(cell(node));return !keys?.size||[...keys].some(type=>!['Number','Boolean','Null','Undefined'].includes(type));});
     let invalidated;do{invalidated=false;for(const op of nullableLengthIssued)if(!nullableLengthEligible(op))invalidated=add(op.result,'Opaque')||invalidated;if(!unsafePlayerWrite&&playerWriteUnsafe()){unsafePlayerWrite=true;invalidated=true;}for(const item of derived)if(!derivedValid(item))invalidated=add(item.result,'Opaque')||invalidated;for(const item of numericCalls)if(item.node.args.length||!exactType(item.receiver,'NumericCallable'))invalidated=add(item.result,'Opaque')||invalidated;propagate();}while(invalidated);
     const fontAnnotations=new Set();const collectScope=node=>{if(!node||typeof node!=='object')return;if(Array.isArray(node)){node.forEach(collectScope);return;}const owner=owners.get(node);for(let s=owner;s;s=s.parent)for(const value of s.fontAnnotations||[])fontAnnotations.add(value);Object.values(node).forEach(value=>{if(value&&typeof value==='object')collectScope(value);});};collectScope(program);
