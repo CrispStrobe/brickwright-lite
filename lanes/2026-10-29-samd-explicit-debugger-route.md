@@ -105,3 +105,18 @@ for the seven non-SAMD boards were renewed to 2026-11-27; plan the next operator
 decision before that date. The earlier clock and RAFFS software tasks landed in
 codal-samd #103; SPIKE host ownership/recovery landed in Runtime #66 and
 firmware #57. The private installed package is not redistribution-qualified.
+
+The full physical-capture procedure, starting files and done criteria are in
+`codal-samd/docs/PXT-NO-ASF-NEXT-LANES.md` H2 and H4–H6. In the SPIKE Runtime,
+`docs/SPIKE-STATUS-AND-LANES.md` remains the authoritative inventory: R01/R03/R06
+contain broader guest and consumer goals than the finite scenarios completed in
+#66 and #57; R02 capability APIs require choosing a documented operation and
+testing its freshness/refusal contract in both host fixtures and an actual
+MicroPython guest; R05 requires an evidenced model correction, exact dependency
+closure and affected guest qualification. R06 additionally requires consumer
+route/version identity and installed checks for each claimed platform. Its
+LPF2 DATA-budget, addressed-distance and paused-publication candidates have
+their own stated gates; review their actual PR/merge status before resuming,
+because their dated prose may predate later work. Do not infer support for
+external MicroPython raw REPL, arbitrary topology, hardware timing, or package
+redistribution from the finite combined-package matrix.
