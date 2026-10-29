@@ -1,6 +1,6 @@
 # Arcade qualification: isolate the preserved Tauri lockstep timing test
 
-Status: ACTIVE — claim registration before implementation.
+Status: DONE — source implementation; exact-head hosted qualification pending.
 Owner: Arcade integration; Rust-source repair remains separately routed.
 Isolated branch: `docs/arcade-tauri-lockstep-scheduling-20261029`.
 Base: main `bea6ff04f43c4b053bf5f2bfd01bf21615fa7d8a`.
@@ -53,3 +53,19 @@ also applies exact matching to exclusion filters. Source-policy controls must
 preserve complete coverage when splitting the two invocations. If isolation
 still fails, retain that original and return to the separately owned source
 diagnosis; do not retry or relax the gate.
+
+## Source checkpoint
+
+The remaining suite excludes only the full timing-test name with exact
+matching. The following mandatory step selects that same library test once,
+using one test thread and the unchanged Rust assertion. A pipefail-protected
+Cargo/tee pipeline preserves failure, and an exact named-pass counter refuses
+zero, wrong or duplicated executions. Existing peers and clippy commands stay
+intact. No Rust source changed.
+
+Three bounded source controls pass, including actual shell execution against
+an authored Cargo-output control. Removing pipefail, the nonempty/count guard
+or exact exclusion is detected; original bytes are restored. These controls
+invoke no compiler or guest. The scheduling hypothesis still requires the
+normal integration candidate's hosted Tauri result. Preserve the original
+failure and return to source diagnosis if that isolated execution fails.

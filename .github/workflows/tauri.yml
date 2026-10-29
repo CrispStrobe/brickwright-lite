@@ -173,8 +173,27 @@ jobs:
           mkdir -p ../../packages/scratch-gui/build
           echo '<!doctype html><title>ci-stub</title>' > ../../packages/scratch-gui/build/index.html
 
-      - name: cargo test
-        run: cargo test --manifest-path src-tauri/Cargo.toml
+      # Keep every default test, but measure the existing lockstep boundary
+      # after unrelated test threads have exited. Assertion and sampling stay
+      # in the unchanged Rust test; a failure is never retried here.
+      - name: cargo test (remaining default suite)
+        run: cargo test --manifest-path src-tauri/Cargo.toml -- --exact --skip renode_brick_state::tests::lockstep_steps_land_exactly_one_quantum_apart_without_polling
+
+      - name: cargo test (isolated lockstep timing)
+        shell: bash
+        run: |
+          set -euo pipefail
+          receipt="$RUNNER_TEMP/tauri-lockstep-timing.log"
+          cargo test --manifest-path src-tauri/Cargo.toml --lib renode_brick_state::tests::lockstep_steps_land_exactly_one_quantum_apart_without_polling -- --exact --test-threads=1 --format pretty --color never | tee "$receipt"
+          # Cargo succeeds with zero selected tests too. Require the exact
+          # named pass once, in addition to the pipeline's exit status.
+          passes=0
+          while IFS= read -r line; do
+            if [[ "$line" == "test renode_brick_state::tests::lockstep_steps_land_exactly_one_quantum_apart_without_polling ... ok" ]]; then
+              passes=$((passes + 1))
+            fi
+          done < "$receipt"
+          test "$passes" -eq 1
 
       - name: cargo clippy
         run: cargo clippy --manifest-path src-tauri/Cargo.toml -- -D warnings

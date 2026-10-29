@@ -1,5 +1,44 @@
 # Arcade compatibility: fresh-agent handoff and methodology
 
+## 29 October: delivery gate repairs and next qualification
+
+PR #1554's frozen `0eb57401b35` head has four successful prerequisite workflows,
+a failed debugger mirror check and a failed Tauri Rust test; Build remains
+pending. Refresh live metadata before acting. The prepared follow-up is on
+[`lane/arcade-mutable-image-pixel-source-20261029`](https://github.com/CrispStrobe/brickwright-lite/tree/lane/arcade-mutable-image-pixel-source-20261029).
+It is not product-qualified or merged into main.
+
+The debugger failure was the tracked packages copy of the stage importer
+missing the overlay's single `captureObservation: true` option. The follow-up
+synchronizes that copy; the HEAD-blob mirror check passes. Other importer/menu
+changes remain preserved.
+
+The [Tauri failure](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40801257415/job/123209645340)
+is the existing lockstep timing assertion, with a fastest exchange of
+2.555585 ms against 2.5 ms. Its Rust source is identical to main. The separately
+[registered scheduling claim](../lanes/2026-10-29-arcade-tauri-lockstep-scheduling.md)
+now has a workflow-only candidate: every other default test runs first, then
+the unchanged named timing test runs once in its own exact invocation.
+Failure propagates, and an exact named-pass counter prevents an empty or
+repeated selection from appearing green. Peers, clippy, limits and assertion
+values remain intact. Three source/shell controls pass and three guard cuts
+are detected. No Rust compilation or timing execution occurred locally;
+isolation remains a hypothesis until hosted qualification.
+
+Continue with the frozen Build/numeric terminal custody before advancing the
+integration head. If an owned stale queued run is superseded, cancellation
+requires fresh proof that no child is running and durable terminal records;
+absence of a producer is an unavailable capture, never a semantic success.
+Compose the prepared source normally into PR #1554 after custody, then qualify
+that final head using the actually enabled checks and affected guest/browser
+routes. Use no duplicate dispatch or unchanged-failure retry. If the isolated
+Rust test fails, preserve it and return to a separately claimed source repair;
+do not change its threshold. Verify landing tree and parents before main.
+
+The private corpus still needs a fresh external full census and authentic
+complete-context reassessment. The raw **147/36/1** result has not changed.
+The source and authoring successes below cannot promote a complete application.
+
 ## 29 October: multiplayer Player Number source checkpoint and GUI acceptance
 
 The unchanged Player fixture's bounded authoring probe now imports, constructs
