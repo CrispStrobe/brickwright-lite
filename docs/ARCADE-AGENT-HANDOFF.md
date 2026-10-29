@@ -104,6 +104,23 @@ The local reset proof can cross an inline or physical shadow primitive literal w
 
 The local reset proof also refuses conditional overwrites when their condition can read the reset cell, or when either branch executes an unproved statement before overwriting it. Inline primitive conditions and immediate overwrites retain the bounded path; physical shadow conditions remain conservatively refused. The focused regression is in `test/project-event-copy-reset-prefix.test.mjs`.
 
+## Prepared repair: hoisted private Array resets
+
+`local-array-declaration-reset-source.js` can now discount an uncaptured local
+Null/Undefined declaration reset followed by a fresh empty Array overwrite
+across unrelated literal declarations and literal assignments to other locals
+in the same function body. It does not grant an initialized read or index fact.
+Calls, pauses, properties, indices, captures, dynamic scope and control-flow
+statements still refuse. Unindexed candidate identifiers also refuse; unrelated
+object shorthand no longer invalidates the entire program. The focused and
+existing controls pass, including the unchanged pause negative; five guard cuts
+were detected.
+
+The actual emitted reference-Array fixture still refuses `labels.length`: its
+intervening calls require a separate closed synchronous-effect proof. Preserve
+the original startup reads and obtain the hosted post-load refusal before
+claiming that this source-only observation identifies the whole failure.
+
 ## Prepared repair: normal mutation effects on nullable Array alternatives
 
 `source-value-producers.js` now has an internal mutation-only view of actual

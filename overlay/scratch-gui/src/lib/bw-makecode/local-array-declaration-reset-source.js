@@ -28,9 +28,10 @@ const ambientCurrent=()=>{
     return true;
 };
 
-// A declaration reset followed immediately by a fresh empty Array assignment
-// cannot be observed through an uncaptured local. This removes only that reset
-// from the all-writer domain; it grants no initialization or indexed-read fact.
+// An uncaptured local declaration reset cannot be observed before its fresh
+// empty Array overwrite when only unrelated literal local statements intervene.
+// This removes only that reset from the all-writer domain; it grants no
+// initialization or indexed-read fact.
 export function localArrayDeclarationResetSource(program) {
     try{
         if(!ambientCurrent())return denied;
@@ -49,6 +50,41 @@ export function localArrayDeclarationResetSource(program) {
         };visit(program);
         if(unsafe)return denied;
         const lexical=analyseCallableBindings(program),discounted=new WeakSet();
+        const refers=(node,binding)=>{
+            if(!node||typeof node!=='object')return false;
+            if(Array.isArray(node))return node.some(child=>refers(child,binding));
+            if(node.type==='Identifier'&&lexical.references.get(node)===binding)return true;
+            return Object.entries(node).some(([key,child])=>!metadata.has(key)&&refers(child,binding));
+        };
+        const shape=(node,required)=>!!node&&typeof node==='object'&&required.every(key=>descriptor(node,key))&&
+            ownKeys(node).every(key=>required.includes(key)||key==='parenthesized'&&typeof node[key]==='boolean');
+        const dense=list=>Array.isArray(list)&&ownKeys(list).length===list.length+1&&
+            Array.from({length:list.length},(_,i)=>!!descriptor(list,String(i))).every(Boolean);
+        const literal=(node,scalar=false)=>{
+            if(!node||typeof node!=='object')return false;
+            if(['Null','Undefined'].includes(node.type))return shape(node,['type']);
+            if(['Number','String','Boolean'].includes(node.type))return shape(node,['type','value'])&&
+                (node.type==='Number'?typeof node.value==='string'&&Number.isFinite(Number(node.value)):
+                    typeof node.value===(node.type==='String'?'string':'boolean'));
+            if(node.type==='Array')return !scalar&&shape(node,['type','items'])&&dense(node.items)&&node.items.every(item=>literal(item));
+            if(node.type==='Unary')return shape(node,['type','op','argument'])&&['+','-','!','~','typeof','void'].includes(node.op)&&literal(node.argument,true);
+            return node.type==='Binary'&&shape(node,['type','op','left','right'])&&
+                ['+','-','*','/','%','**','===','!==','<','<=','>','>='].includes(node.op)&&literal(node.left,true)&&literal(node.right,true);
+        };
+        const unrelatedLiteralStatement=(node,binding)=>{
+            if(refers(node,binding))return false;
+            if(node.type==='Declaration')return shape(node,['type','kind','decls'])&&['let','const'].includes(node.kind)&&
+                dense(node.decls)&&node.decls.every(decl=>decl&&typeof decl.name==='string'&&
+                    ownKeys(decl).every(key=>['name','init','typeName','isArray'].includes(key))&&
+                    descriptor(decl,'name')&&descriptor(decl,'init')&&(!decl.init||literal(decl.init)));
+            if(node.type!=='ExpressionStatement'||!shape(node,['type','expr']))return false;
+            const assignment=node.expr;
+            if(assignment?.type!=='Assignment')return literal(assignment);
+            const destination=assignment.left,other=destination?.type==='Identifier'&&lexical.references.get(destination);
+            return shape(assignment,['type','op','left','right'])&&assignment.op==='='&&
+                shape(destination,['type','name'])&&other&&other!==binding&&other.kind==='local'&&
+                other.functionOwner===binding.functionOwner&&literal(assignment.right);
+        };
         const lookup=(scope,name)=>{for(let s=scope;s;s=s.parent)if(s.names.has(name))return s.names.get(name);return null;};
         const declarations=new Map();
         for(const node of nodes)if(node.type==='Declaration')for(const decl of node.decls||[]){
@@ -56,12 +92,23 @@ export function localArrayDeclarationResetSource(program) {
             declarations.set(binding,(declarations.get(binding)||0)+1);
         }
         for(const list of lists)for(let i=0;i+1<list.length;i++){
-            const statement=list[i],next=list[i+1];
+            const statement=list[i];
             if(statement?.type!=='Declaration'||statement.kind!=='let'||statement.decls?.length!==1)continue;
             const decl=statement.decls[0],binding=lookup(lexical.scopes.get(statement),decl.name);
             if(!['Null','Undefined'].includes(decl.init?.type)||!binding||binding.node!==decl||
                 binding.kind!=='local'||declarations.get(binding)!==1||
                 binding.functionOwner?.kind!=='function'||binding.functionOwner.className)continue;
+            // The lexical index omits some unrelated syntax (e.g. object
+            // shorthand). Only an unindexed read of THIS candidate's name
+            // prevents its private reset proof; unrelated names grant nothing.
+            if(nodes.some(node=>node.type==='Identifier'&&node.name===decl.name&&!lexical.references.has(node)))continue;
+            let next=list[i+1];
+            // Extend only an actual function body's own statement chain. No
+            // branch, loop, block, exit or declaration of a callable is crossed.
+            if(list===binding.functionOwner.node.body)for(let j=i+1;j<list.length;j++){
+                const candidate=list[j];next=candidate;
+                if(!candidate||!unrelatedLiteralStatement(candidate,binding))break;
+            }
             const assignment=next?.type==='ExpressionStatement'&&next.expr;
             if(assignment?.type!=='Assignment'||assignment.op!=='='||assignment.left?.type!=='Identifier'||
                 lexical.references.get(assignment.left)!==binding||assignment.right?.type!=='Array'||assignment.right.items?.length!==0)continue;
