@@ -1,5 +1,78 @@
 # Arcade compatibility: fresh-agent handoff and methodology
 
+## Current qualification and next failure families
+
+[PR #1554](https://github.com/CrispStrobe/brickwright-lite/pull/1554) remains
+unmerged at `6b811d1df941815a54a7409d603d56318e12dbee`. Its six failed unit
+jobs contain **32 distinct blocking tests**, compared with 33 at the preceding
+checkpoint: the gate-shape control is repaired and no new failing test appeared.
+The [Tauri run](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40830556918)
+passed; its actual checkout tree equals the reviewed tree and contains the
+unchanged submitted Rust fixture repair. This does not erase earlier failures.
+The [Build run](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40830557085)
+has successful build output but failed unit checks and a failed full-CI request
+gate; its official numeric job is pending at this checkpoint. Preserve the head
+until terminal evidence is retained. Do not duplicate running qualifications or
+apply a full-CI label for this continuation.
+
+The raw application census remains **184 inputs: 147 translated, 36 partial,
+1 parse failure**. Unit-test counts are not application completion counts.
+
+Continue in this order:
+
+1. Preserve the terminal numeric evidence once; qualify the prepared receiver
+   repair below on the final composed head, without removing any original
+   assertions or borrowing predecessor results.
+2. Repair the full creation-callback Array reset frontier. Its real reimported
+   callback resets `refs`, copies the fixed event Sprite, writes a primitive
+   trace, reads a declared instance field into a Boolean, then overwrites `refs`
+   with `sprites.allOfKind`. The existing inert-event-copy rule covers only the
+   copy: the complete control still refuses the indexed Array read. Prove the
+   intervening operations cannot read/expose that private frame before its
+   definite overwrite. Do not classify arbitrary property access, coercion,
+   authored calls, captures or yields as inert. Preserve the original full
+   ExtendableSprite export/reimport control.
+3. Continue native-addition receiver/result/initialization work from the actual
+   failing operands. In the reference-Array fixture, preserve the early
+   `readText()`/`readArray()` startup calls, aliases and mutations. Inspect each
+   leaf of the update-handler witness, then its concatenations. Native result
+   domains and occurrence initialization remain separate obligations.
+4. Coordinate the three inherited reference-instrument failures with their
+   source owner: the current-pin census identifies three stale Board references,
+   and two collector controls fail. Do not substitute a new SHA into historical
+   fingerprints or weaken collector counts. Final landing still requires every
+   enabled exact-head gate and applicable affected runtime qualification.
+
+## Prepared repair: normal mutation effects on nullable Array alternatives
+
+`source-value-producers.js` now has an internal mutation-only view of actual
+Array allocation tokens plus Null/Undefined. For example,
+`let empty=[]; let nested=[empty]; nested[0].push(9)` must retain the Number
+writer into `empty`, even though indexing `nested` also has an Undefined
+alternative. On an absent receiver the operation faults; on the actual Array
+alternative it still mutates that allocation.
+
+This view propagates indexed/update/push/unshift writes and method/prototype
+poisoning. It grants no strict Array receiver, initialization, callback entry or
+push/read result. The existing nullable-length theorem retains its own closed
+source requirements. Unknown and non-Array alternatives cannot use this new
+view: mutating mixed receivers instead conservatively poison their possible real
+allocation tokens with an unsafe-method marker and Opaque elements. Incompatible
+and reference element writers remain in their real domains.
+
+The first three focused controls failed on the predecessor. Five groups now
+pass, covering nested pushes, Null bindings, poisoning, declared-type conflicts,
+reference elements and unknown receiver alternatives. Four deliberate cuts check
+mutation propagation, strict result separation and both poisoning paths. Existing nullable-length
+and native-domain regression groups remain required. These source facts alone
+close no complete application or native-addition refusal.
+
+```sh
+node --test test/source-nullish-array-mutation-effects.test.mjs
+node --test test/arcade-nullable-array-length.test.mjs
+node --test test/native-array-binary-domain.test.mjs
+```
+
 ## Prepared follow-up: creation-handler class field receivers
 
 The `lane/arcade-created-field-receivers-20261029` branch prepares the next
