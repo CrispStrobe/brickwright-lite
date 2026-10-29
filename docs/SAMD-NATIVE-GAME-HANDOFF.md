@@ -1,11 +1,6 @@
 # SAMD engine adoption handoff — updated 2026-10-29
 
-**Software acceptance passed; final CI and normal landing remain open.** Continue
-[PR1533](https://github.com/CrispStrobe/brickwright-lite/pull/1533), branch
-`lane/samd-release-adoption-20261028`. It contains the complete SPIKE change from
-closed PR1547; both original source branches and failures remain retained.
-Firmware57 and Runtime66 merged normally. Keep final PR checks on the fast tier
-without ci:full. Do not replay successful guests or create another consumer lane.
+**Delivered.** [PR1533](https://github.com/CrispStrobe/brickwright-lite/pull/1533) normally merged as `9f1a620f2aae5ee988ed02069a8bf34c18949123`, folding PR1547. The 17 required fast, native and product checks passed on head `4e225970574ca517d7908811fe9bf9c3ed2f4fb4`; the reviewed parents and predicted tree matched the landed merge. The unlabelled PR's ci:full reminder failed as expected under the operator's fast-tier instruction. Original source branches, guest evidence and failures remain retained.
 
 The full [source run40783464522](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40783464522)
 and [native run40803428616](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40803428616)
@@ -180,15 +175,10 @@ acceptance remains pending; the original failure is not reclassified as a flake.
 Production bytes and the original assertion are unchanged. Preserve other owners'
 MicroPython manifest hunks and old dirty worktrees.
 
-## Remaining work, in order
+## Continuation boundaries
 
-1. Finish every enabled final-head fast/native/product check. Keep ci:full off;
-   its administrative reminder is intentionally red on an unlabelled code PR.
-   Preserve and diagnose any real failure before changing source.
-2. Refresh Main and review composition with both scoped acceptance records.
-   Merge normally with matched-head protection and verify predicted/landed tree
-   and parents. Update this handoff, adoption guide and both claims with the
-   actual merge. Inspect post-merge alarms and pull the owned clean checkouts.
+The selected software delivery and acceptance are complete. Reuse the retained
+originals; physical capture and a normal SAMD GUI route are separate work.
 
 Normal project compile/import/export and GUI-route adoption remain separate,
 scoped work in [the adoption guide](SAMD-NATIVE-GAME-ADOPTION.md). No current

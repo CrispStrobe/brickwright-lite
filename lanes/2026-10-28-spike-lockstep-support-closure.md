@@ -1,7 +1,6 @@
 # SPIKE current Runtime support closure — 2026-10-28
 
-Status: QUALIFIED — implementation and selected software acceptance complete;
-normal landing waits for enabled final-head hosted checks. Owner: Codex SPIKE software-delivery continuation, operator
+Status: DONE — selected software acceptance and normal landing completed through PR1533 (`9f1a620f2aae5ee988ed02069a8bf34c18949123`). Owner: Codex SPIKE software-delivery continuation, operator
 requested current Runtime/firmware and installed-consumer qualification.
 Branch: `qualify/spike-consumer-delivery-20261028`, isolated internal worktree.
 Base: `3d9763e4a`. Preserve existing owners' worktrees and other native functions.
@@ -39,7 +38,7 @@ PR: https://github.com/CrispStrobe/brickwright-lite/pull/1547.
 Integration: the complete SPIKE change is folded into existing PR1533 for one
 final fast-CI queue. PR1547 and its published branch preserve the original
 candidate. Firmware57 and Runtime66 merged normally. The composed desktop
-package and official SAMD acceptance remain separate required results.
+package and official SAMD acceptance passed as separate results.
 
 29 October checkpoint: the fresh composed package passed all 13 installed cases,
 including natural expiry at 120.14 seconds and fresh-session recovery. Independent
@@ -47,3 +46,5 @@ custody readback binds one image/app/source/firmware/helper set and unchanged
 resource bounds. The exact shared test-only JSON-line repair is adopted; hosted
 native 275 standard tests plus nine explicit controls passed. Original failures,
 private distribution boundary and normal landing requirements remain intact.
+
+Final landing: PR1533 merged as `9f1a620f2aae5ee988ed02069a8bf34c18949123` after the required checks passed.

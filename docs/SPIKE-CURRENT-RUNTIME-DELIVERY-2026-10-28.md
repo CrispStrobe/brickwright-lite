@@ -4,7 +4,7 @@
 
 Firmware57 merged as `878e930dba99f0ee0d6e72ba9621b92856c717aa`; Runtime66 merged
 as `85a51d1305c8e53c61c1e64779e312131e2da230`. PR1547 is folded into PR1533 for
-one final fast-CI queue. Source checks and normal landing remain required.
+one final fast-CI queue. PR1533 normally merged as `9f1a620f2aae5ee988ed02069a8bf34c18949123` after required checks passed.
 
 A fresh private package combines published SPIKE source
 `d328498b5dd88d127152699e1e5d5f99ba8b644e` and SAMD source
@@ -139,4 +139,4 @@ coarse transport failure. A separate observation-only run also passed.
 This records selected software acceptance, not physical silicon, analog motor
 accuracy, a distribution clearance or SAMD engine adoption. The package remains
 private and its existing `redistributionValidated: false` marker is retained.
-Enabled final-head hosted checks and matched-head landing remain required.
+Required final-head checks and matched-head landing completed through PR1533.

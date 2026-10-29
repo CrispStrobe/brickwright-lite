@@ -7,7 +7,7 @@ fresh instances each. Independent audits decoded all 102 original RGB frames,
 verified press/release and sampled RSS, and joined source/frontend/executable/
 engine/profile/firmware identities. Consumer
 [PR1533](https://github.com/CrispStrobe/brickwright-lite/pull/1533) folds the
-SPIKE support closure; final fast checks and normal landing remain pending.
+SPIKE support closure and normally merged as `9f1a620f2aae5ee988ed02069a8bf34c18949123` after the required fast, native and product checks passed.
 No normal native SAMD GUI compile/import/export route is claimed. See
 [the current handoff](SAMD-NATIVE-GAME-HANDOFF.md) for results and preserved
 failures; reuse successful originals rather than replaying guests.
@@ -65,13 +65,11 @@ RGBSET table. No host-installed default LUT is permitted.
    Runtime glue, Wasm and profile exactly match the locked release. Native compile
    defaults are unchanged. Original acquisition, installation and test failures
    remain retained with the bounded repairs in the current handoff.
-5. **Acceptance done; normal landing pending.** Three fresh actual Chromium and
-   three installed Tauri/WebKit game instances passed on shipped engine assets.
-   Original RGB movement, actual press/release, sampled RSS and complete identity
-   joins passed independent readback. The separate composed SPIKE package passed
-   13 installed lifecycle cases. Wait for final-head fast/native/product checks,
-   review Main composition and merge normally with head/tree/parent proofs. Then
-   update these records and both claims. Preserve other owners' source changes.
+5. **Done — consumer acceptance and landing.** Three fresh actual Chromium and
+   three installed Tauri/WebKit game instances passed, with independent RGB,
+   input, memory and identity readback. The composed SPIKE package passed 13
+   installed lifecycle cases. PR1533 normally merged as `9f1a620f2aae5ee988ed02069a8bf34c18949123` after
+   required checks; reviewed parents and tree matched the landed merge.
 
 ## Separate work
 

@@ -1,6 +1,6 @@
 # SAMD native game engine adoption — 2026-10-26
 
-Owner: Codex SAMD continuation. Status: QUALIFIED — actual consumer software acceptance passed; final checks and normal landing pending.
+Owner: Codex SAMD continuation. Status: DONE — selected consumer software acceptance and normal landing completed.
 Base: `8bf40b2c3d2`. Branch: `lane/samd-game-adoption-20261026`.
 
 Carry the qualified no-ASF SAMD runtime and engine through representative native
@@ -149,4 +149,6 @@ before the actual consumer runs.
 sampled RSS and source/native/observer joins passed independent readback. The
 originals and bounded acquisition/layout/HTTP/test-fixture failures are retained
 in the current handoff. PR1533 folds the complete SPIKE consumer change. Keep
-ci:full off; finish final checks and normal head/tree/parent-proved landing.
+ci:full remained off. Required checks passed and PR1533 normally landed as `9f1a620f2aae5ee988ed02069a8bf34c18949123`, with reviewed parents and tree verified.
+
+Final landing: PR1533 merged as `9f1a620f2aae5ee988ed02069a8bf34c18949123`. Physical capture and normal GUI-route work remain separate.
