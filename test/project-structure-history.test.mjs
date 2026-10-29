@@ -218,6 +218,56 @@ test('a deleted sprite comes back, and older steps follow it to its new target',
     }
 });
 
+for (const kind of ['costume', 'sound']) {
+test(`${kind} edits follow their asset identities through repeated sprite restoration`, async () => {
+    const {vm, actor} = await fixture();
+    try {
+        if (kind === 'sound') {
+            // One silent PCM sample: asset identity/ZIP restoration, not audio playback.
+            const wav = Buffer.alloc(46);
+            wav.write('RIFF', 0); wav.writeUInt32LE(38, 4); wav.write('WAVEfmt ', 8);
+            wav.writeUInt32LE(16, 16); wav.writeUInt16LE(1, 20); wav.writeUInt16LE(1, 22);
+            wav.writeUInt32LE(8000, 24); wav.writeUInt32LE(16000, 28);
+            wav.writeUInt16LE(2, 32); wav.writeUInt16LE(16, 34);
+            wav.write('data', 36); wav.writeUInt32LE(2, 40);
+            const storage = vm.runtime.storage;
+            const asset = storage.createAsset(storage.AssetType.Sound, 'wav', new Uint8Array(wav), null, true);
+            for (const name of ['First', 'Second', 'Third']) {
+                await vm.addSound({name, asset, md5: `${asset.assetId}.wav`, dataFormat: 'wav', rate: 8000, sampleCount: 1});
+            }
+            clearProjectHistory();
+        }
+        const list = target => target.sprite[`${kind}s`].map(item => item.name);
+        const suffix = kind === 'sound' ? 'Sound' : 'Costume';
+        const original = list(actor);
+        vm[`rename${suffix}`](1, 'Renamed');
+        vm[`reorder${suffix}`](actor.id, 1, 2);
+        await vm[`duplicate${suffix}`](2);
+        const edited = list(actor);
+        assert.equal(edited.length, original.length + 1);
+        let deletedItems = actor.sprite[`${kind}s`].slice();
+        vm.deleteSprite(actor.id);
+        for (let pass = 0; pass < 2; pass++) {
+            assert.equal(await undoActiveSurface(), true, 'restore the sprite through the real ZIP importer');
+            const restored = vm.runtime.targets.find(target => target.isOriginal && !target.isStage);
+            assert.notEqual(restored, actor);
+            restored.sprite[`${kind}s`].forEach((item, index) => {
+                assert.notEqual(item, deletedItems[index], 'the importer reconstructed each asset object');
+                assert.equal(item.assetId, deletedItems[index].assetId, 'the serialized asset identity is preserved');
+            });
+            assert.deepEqual(list(restored), edited);
+            assert.equal(await moveHistory(-3, 'project'), 3, 'undo duplicate, reorder and rename on rebuilt assets');
+            assert.deepEqual(list(restored), original);
+            assert.equal(await moveHistory(3, 'project'), 3);
+            assert.deepEqual(list(restored), edited);
+            deletedItems = restored.sprite[`${kind}s`].slice();
+            assert.equal(await redoActiveSurface(), true, 'redo sprite deletion before another reconstruction');
+            assert.deepEqual(sprites(vm), []);
+        }
+    } finally { vm.quit(); clearProjectHistory(); }
+});
+}
+
 test('stage drags and sprite info edits are one step each', async () => {
     const {vm, actor} = await fixture();
     try {

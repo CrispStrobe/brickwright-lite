@@ -28,6 +28,15 @@ its own History step remains, and ordinary new-project edits still record.
 The original implementation fails this regression; the repaired History,
 global Undo, artwork Undo and overlay checks pass all 28 controls.
 
+Restoring a deleted sprite also reconstructs its costume and sound objects.
+Earlier duplicate, rename and reorder steps now follow those restored identities
+rather than looking for the discarded objects. Matching retains the serialized
+order, names and asset identity, so differently named assets sharing the same
+SVG or WAV remain distinct. Real-VM regressions undo and redo both kinds of
+asset edits through two sprite delete/restore cycles. Both fail with the
+original implementation; the combined focused suite passes all 30 controls.
+The sound fixture checks asset/history reconstruction, not audio playback.
+
 ## T5: Android autosaves
 
 Android native builds hide the inaccessible folder option, ignore a previously

@@ -15,7 +15,37 @@ import {syncAnimationResources} from './bw-artwork-bundle.js';
 
 const instrumented = new WeakSet();
 const successor = new WeakMap();
+const assetSuccessor = new WeakMap();
 let suppress = 0;
+
+const rememberRestoredTarget = (before, after) => {
+    successor.set(before, after);
+    // The ZIP importer reconstructs costume/sound objects too. Match the
+    // serialized order, name and asset identity, never just shared image bytes
+    // (two differently named costumes can use the same SVG).
+    const identity = item => item?.asset?.assetId || item?.assetId || item?.md5ext || item?.md5;
+    for (const kind of ['costumes', 'sounds']) {
+        const oldItems = before.sprite?.[kind] || [];
+        const newItems = after.sprite?.[kind] || [];
+        if (oldItems.length !== newItems.length) continue;
+        oldItems.forEach((item, index) => {
+            const restored = newItems[index];
+            if (restored && item.name === restored.name && identity(item) && identity(item) === identity(restored)) {
+                assetSuccessor.set(item, restored);
+            }
+        });
+    }
+};
+
+const restoredItem = (list, item, kind) => {
+    const seen = new Set();
+    while (!list.includes(item) && assetSuccessor.has(item) && !seen.has(item)) {
+        seen.add(item);
+        item = assetSuccessor.get(item);
+    }
+    if (!list.includes(item)) throw new Error(`That ${kind} is no longer in this sprite`);
+    return item;
+};
 
 const live = (vm, target) => {
     let current = target;
@@ -116,7 +146,7 @@ export const recordSpriteDeletion = (vm, target, restore, remove) => {
     let current = {target, restore: once(quiet(restore))};
     const undo = () => current.restore().then(restored => {
         if (!restored || restored === true) return;
-        successor.set(current.target, restored);
+        rememberRestoredTarget(current.target, restored);
         current = {target: restored, restore: null};
     });
     const redo = () => {
@@ -241,7 +271,7 @@ export const instrumentProjectHistory = vm => {
             },
             redo: () => state.restore().then(restored => {
                 if (restored && restored !== true) {
-                    successor.set(state.target, restored);
+                    rememberRestoredTarget(state.target, restored);
                     state = {target: restored, restore: null};
                 }
             })
@@ -343,12 +373,13 @@ export const instrumentProjectHistory = vm => {
         const k = kinds[kind];
         const added = k.list(target).filter(item => !before.includes(item));
         if (added.length !== 1) return;
-        const item = added[0];
+        let item = added[0];
         let index = -1;
         record(vm, {
             label: `${area(kind, target)}: ${verb} ${quote(item.name)}`,
             undo: () => {
                 const t = live(vm, target);
+                item = restoredItem(k.list(t), item, kind);
                 index = k.list(t).indexOf(item);
                 if (index < 0 || !k.remove(t, index)) {
                     throw new Error(`The ${kind} ${quote(item.name)} cannot be removed (a sprite needs one costume)`);
@@ -376,7 +407,7 @@ export const instrumentProjectHistory = vm => {
     const wrapDelete = (name, kind) => wrap(name, index => {
         const target = vm.editingTarget;
         const k = kinds[kind];
-        const item = target && k.list(target)[index];
+        let item = target && k.list(target)[index];
         const restore = raw[name](index);
         if (!restore || !item) return restore;
         let deleted = true;
@@ -391,6 +422,7 @@ export const instrumentProjectHistory = vm => {
             undo: put,
             redo: () => {
                 const t = live(vm, target);
+                item = restoredItem(k.list(t), item, kind);
                 const at = k.list(t).indexOf(item);
                 if (at < 0 || !k.remove(t, at)) throw new Error(`The ${kind} ${quote(item.name)} cannot be removed`);
                 deleted = true;
@@ -405,13 +437,14 @@ export const instrumentProjectHistory = vm => {
     const wrapRename = (name, kind) => wrap(name, (index, newName) => {
         const target = vm.editingTarget;
         const k = kinds[kind];
-        const item = target && k.list(target)[index];
+        let item = target && k.list(target)[index];
         const oldName = item && item.name;
         const result = raw[name](index, newName);
         if (item && item.name !== oldName) {
             const renamed = item.name;
             const rename = value => () => {
                 const t = live(vm, target);
+                item = restoredItem(k.list(t), item, kind);
                 k.rename(t, k.list(t).indexOf(item), value);
             };
             record(vm, {label: `${area(kind, target)}: Rename ${quote(oldName)} → ${quote(renamed)}`,
@@ -425,11 +458,12 @@ export const instrumentProjectHistory = vm => {
     const wrapReorder = (name, kind) => wrap(name, (targetId, from, to) => {
         const target = vm.runtime.getTargetById(targetId);
         const k = kinds[kind];
-        const item = target && k.list(target)[from];
+        let item = target && k.list(target)[from];
         const result = raw[name](targetId, from, to);
         if (result && item) {
             const move = toIndex => () => {
                 const t = live(vm, target);
+                item = restoredItem(k.list(t), item, kind);
                 k.reorder(t, k.list(t).indexOf(item), toIndex);
             };
             record(vm, {label: `${area(kind, target)}: Reorder ${quote(item.name)}`, undo: move(from), redo: move(to)});
