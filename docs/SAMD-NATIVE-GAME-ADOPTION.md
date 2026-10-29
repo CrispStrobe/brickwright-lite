@@ -59,12 +59,13 @@ RGBSET table. No host-installed default LUT is permitted.
    verified all 8,563 emitted files and exact release asset hashes. Full Rust tests
    and E2E passed. Preserve original failures; the old native failure's cause
    remains unknown. Remaining browser/FPGA/Arcade source checks must pass before
-   actual-game dispatch or merge. Preparatory native run40803428616 is already
-   queued with unchanged compile defaults; do not dispatch another. This overlap
-   preserves all final source and actual-guest gates. Follow the
+   actual-game dispatch or merge. Native run40803428616 succeeded with unchanged
+   compile defaults; independent audit bound 184 native source files, all 8,563
+   frontend files and the executable hash. Reuse its retained originals; do not
+   dispatch another build. Actual guest acceptance remains pending. Follow the
    [current handoff](SAMD-NATIVE-GAME-HANDOFF.md) for exact identities and order.
-5. **Pending — actual consumer and landing.** Audit the existing source-bound
-   native build and wait for every enabled source check. Then run
+5. **Pending — actual consumer and landing.** The native identity audit passed;
+   wait for every enabled source check. Then run
    three fresh actual Chromium and three installed Tauri/WebKit instances of the
    same source-built guest on the shipped engine assets. Independently check raw
    RGB movement, actual press/release, sampled RSS and complete source/frontend/

@@ -12,7 +12,8 @@ Current source [Build40783464522](https://github.com/CrispStrobe/brickwright-lit
 has a successful frontend-producing job and all six unit shards, but its
 browser/FPGA/Arcade checks remain pending. Preparatory
 [native run40803428616](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40803428616)
-was dispatched once and is queued. No actual-game dispatch has occurred.
+succeeded and its executable/source/frontend identity audit passed. No actual-game
+dispatch has occurred; remaining source checks still gate actual acceptance.
 
 Native preparation now overlaps pending source CI after successful producing-job,
 unit and Rust checks plus strict emitted-byte admission. This supersedes the
@@ -72,9 +73,12 @@ No board/compiler/CUI package pin, native producer or compile default changes.
 - [Native40803428616](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40803428616)
   uses this reviewed consumer, frontend40783464522 and the unchanged closed
   `compile_pins` object from the reviewed
-  [qualification profile](../scripts/native-installed-qualification-profile.json).
-  It is preparatory until its successful original executable/receipt is audited
-  and the remaining source checks qualify.
+  [qualification profile](https://github.com/CrispStrobe/brickwright-lite/blob/48df0f93f9b6b642238c13448e6f075d8871eb83/scripts/native-installed-qualification-profile.json).
+  Both producing jobs succeeded. Its official originals were acquired once;
+  independent audit joined 184 native source files, all 8,563 frontend files and
+  executable SHA256 `b1e644b68b203e196f25203ed2424220b2fcff15766f31cee32ba245b45c8a38`.
+  Compile defaults are unchanged. This is an identity audit, not installed-game
+  acceptance; the remaining source workflow is still pending.
 
 The retained [five-target benchmark](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40730146231)
 passed its unchanged floor at source `317c069003803f9e8bfbe570ca7c371da6e52c10`.
@@ -126,11 +130,10 @@ MicroPython manifest hunks and old dirty worktrees.
    check; only declared conditional skips are allowed. Retain ci:full for this
    shared webpack/engine change. Preserve any new failure and diagnose before
    changing source; do not duplicate live jobs or rerun unchanged failures.
-2. Monitor existing native40803428616, never dispatch a replacement blindly.
-   After first-attempt success, acquire its official executable/receipt once and
-   independently join consumer, actual frontend checkout/inventory, native source,
-   binary hash and unchanged compile defaults. Source CI can finish in parallel;
-   preparatory native identity alone does not permit an actual-game dispatch.
+2. Native40803428616 and its independent identity audit are complete. Reuse the
+   retained original executable/receipt and reader report; do not dispatch another
+   build or download successful originals again to inspect them. Source CI must
+   still finish before actual-game dispatch.
 3. Once all source checks pass, verify successful overall Build40783464522 and
    join that metadata to the retained frontend audit without downloading it again.
    Review current Main composition. Then dispatch
