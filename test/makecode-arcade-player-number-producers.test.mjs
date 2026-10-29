@@ -31,6 +31,16 @@ test('registered Player property keeps actual identity and String output through
   const saved=Buffer.from(await(await run.vm.saveProjectSb3()).arrayBuffer());run.vm.stopAll();await run.vm.loadProject(saved);run.vm.runtime.bwArcadeFrameAuthority='manual';run.vm.greenFlag();await tick(run);
   const fresh=await runArcadeSourceCode('SPRITE Placeholder:\nWHEN flag clicked:\n  hide',{frames:0});runs.push(fresh);fresh.vm.stopAll();await fresh.vm.loadProject(saved);fresh.vm.runtime.bwArcadeFrameAuthority='manual';fresh.vm.greenFlag();await tick(fresh);
   const current=JSON.parse(run.vm.toJSON()),exported=projectToArcade(current);assert.deepEqual(exported.unsupported,[]);assert.match(exported.ts,/mp\.getPlayerProperty\([^\n]+mp\.PlayerProperty\.Number/);const again=arcadeToPseudocode(exported.files);assert.deepEqual(again.unsupported,[],exported.ts);await execute(again.code);
+  // These are separate executions of the original pinned SDK, with its own
+  // controller setter, event delivery and Player class. Source/host passes do
+  // not substitute for either original or exported application behavior.
+  const {runPxtArcade}=await import('./helpers/pxt-arcade-runtime.mjs');
+  assert.equal(JSON.parse(exported.files['pxt.json']).dependencies.multiplayer,'*');
+  const reference=await runPxtArcade(source,{dependencies:{device:'*',multiplayer:'*'},waitForGlobals:{ready:true}});
+  const reopenedReference=await runPxtArcade(exported.files,{waitForGlobals:{ready:true}});
+  for(const [name,value]of Object.entries({observed:'Player 2',count:1,ready:true,beforeNull:0,beforeUndefined:0,afterNumber:2})){
+   assert.equal(reference[name],value,'original '+name);assert.equal(reopenedReference[name],value,'executed export '+name);
+  }
   for(const change of ['selector','receiver','registration','writer','duplicateProcedure']){
    const edited=structuredClone(current),target=edited.targets.find(t=>Object.values(t.blocks||{}).some(b=>b.opcode==='arcade_playerProperty')),blocks=target.blocks;
    const findProperty=(node,seen=new Set())=>{if(!node||seen.has(node))return null;seen.add(node);if(node.opcode==='arcade_playerProperty')return node;for(const slot of Object.values(node.inputs||{})){const found=findProperty(blocks[slot[1]],seen);if(found)return found;}return null;};

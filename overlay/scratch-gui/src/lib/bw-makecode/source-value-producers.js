@@ -380,14 +380,17 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
     const isFont=current=>{const set=types.get(current);return !!set?.has('Font')&&set.size===1;};
     const exactType=(value,type)=>types.get(value)?.size===1&&types.get(value).has(type);
     const primitiveTypes=new Set(['String','Number','Boolean','Null','Undefined']);
-    const stringConcat=item=>item.stringConcat&&item.operands.some(value=>exactType(value,'String'))&&item.operands.every(value=>types.get(value)?.size&&[...types.get(value)].every(type=>primitiveTypes.has(type)));
+    // A shared ordinary + body can receive both String and Number callers.
+    // Primitive unions still return Number/String on normal completion; no
+    // object coercion or unknown alternative may borrow that result domain.
+    const primitiveAddition=item=>item.stringConcat&&item.operands.every(value=>types.get(value)?.size&&[...types.get(value)].every(type=>primitiveTypes.has(type)));
     const playerOperand=value=>!unsafePlayerWrite&&types.get(value)?.has('Player')&&[...types.get(value)].every(type=>['Player','Null','Undefined','OpaquePlayerConstraint'].includes(type));
     const numericOperand=value=>types.get(value)?.size&&[...types.get(value)].every(type=>type==='Number'||type==='Undefined');
     const inspectionDomain=(operand,allowed)=>types.get(operand)?.size&&[...types.get(operand)].every(type=>allowed.has(type));
     // Fixed bitwise operations return Number on normal completion. This result
     // signature neither proves their operands nor skips their execution; the
     // importer separately requires actual Array-or-primitive operand writers.
-    const derivedValid=item=>item.inspectionPrimitive?(consoleInspection||internalInspection||arrayValues||primitiveComparisons)&&item.operands.every(operand=>inspectionDomain(operand,primitiveTypes)):item.inspection?item.signature&&inspectionDomain(item.operands[0],primitiveTypes)&&(item.operands.length===1||inspectionDomain(item.operands[1],new Set(['Number','Undefined']))):item.signature&&(item.domain==='SourceBitwise'||stringConcat(item)||item.operands.every(operand=>item.domain==='Player'?playerOperand(operand):item.domain==='Number'&&item.type==='Number'?numericOperand(operand):exactType(operand,item.domain)));
+    const derivedValid=item=>item.inspectionPrimitive?(consoleInspection||internalInspection||arrayValues||primitiveComparisons)&&item.operands.every(operand=>inspectionDomain(operand,primitiveTypes)):item.inspection?item.signature&&inspectionDomain(item.operands[0],primitiveTypes)&&(item.operands.length===1||inspectionDomain(item.operands[1],new Set(['Number','Undefined']))):item.signature&&(item.domain==='SourceBitwise'||primitiveAddition(item)||item.operands.every(operand=>item.domain==='Player'?playerOperand(operand):item.domain==='Number'&&item.type==='Number'?numericOperand(operand):exactType(operand,item.domain)));
     const arrayTypes=value=>{const set=types.get(value);return set?.size&&[...set].every(type=>type?.kind==='Array')?[...set]:null;};
     // Result-only alternative. The original strict Array receiver API above
     // remains unchanged; no nullish value becomes an Array or initialized read.
@@ -439,7 +442,14 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
     const propagate=()=>{let changed;do{changed=propagateArrays();
         for(const[from,to,mode,name]of edges){if(mode==='imageDimension'){if(exactType(from,'Image'))changed=add(to,'Number')||changed;else if(types.get(from)?.size)changed=add(to,'Opaque')||changed;}else if(mode==='field'){if(isFont(from)){changed=add(to,name==='data'?'GlyphBuffer':'Number')||changed;if(name==='multiplier')changed=add(to,'Undefined')||changed;}else if(types.get(from)?.size)changed=add(to,'Opaque')||changed;}else for(const type of types.get(from)||[])changed=add(to,type)||changed;}
         for(const cell of playerConstraints)if(types.get(cell)?.has('Player'))changed=add(cell,'Opaque')||changed;
-        for(const item of derived)if(derivedValid(item))changed=add(item.result,stringConcat(item)?'String':item.type)||changed;
+        for(const item of derived)if(derivedValid(item)){
+            if(primitiveAddition(item)){
+                const certainString=item.operands.some(value=>exactType(value,'String'));
+                const possibleString=item.operands.some(value=>types.get(value).has('String'));
+                if(possibleString)changed=add(item.result,'String')||changed;
+                if(!certainString)changed=add(item.result,'Number')||changed;
+            }else changed=add(item.result,item.type)||changed;
+        }
         for(const item of numericCalls)if(!item.node.args.length&&exactType(item.receiver,'NumericCallable'))changed=add(item.result,'Number')||changed;
         for(const item of scales)if(isFont(item.receiver))changed=add(item.result,'Font')||changed;
         for(const item of texts)if(types.get(item.argument)?.size===1 && types.get(item.argument).has('String'))changed=add(item.result,'Font')||changed;

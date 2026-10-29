@@ -1,5 +1,89 @@
 # Arcade compatibility: fresh-agent handoff and methodology
 
+## 29 October: multiplayer Player Number source checkpoint and GUI acceptance
+
+The unchanged Player fixture's bounded authoring probe now imports, constructs
+its editable project and exports without diagnostics. The initial refused probe
+is retained. This is source/authoring evidence, not execution or corpus promotion.
+
+`multiplayer-player-number-normal-source.js` binds actual registered Player
+entry and receiver/helper writers to a closed effect census. The original
+`multiplayer/player.ts` contract returns zero for Null/Undefined, or the genuine
+Player's numeric index plus one for the named Number selector; its reviewed
+SHA-256 is `03de34ae9da35c2a387bb5a5ce8be08117614e8d8f1d1a40c941d2afcb5136e0`.
+Annotation markers are not value producers. The raw graph retains them; only the
+receiver-domain query distinguishes a marker from actual nonempty
+Player/Null/Undefined alternatives. Every other opaque alternative refuses.
+
+Namespace, selector, callee, prototype, `_index`/`getProperty`, all receiver
+writers/callers, primitive coercion and controller/event closure are required.
+Source, realm and namespace snapshots permanently revoke observed stale facts.
+The native consumer proves original operations before projections, joins exact
+fresh call identities, preserves the actual invocation and grants only its
+normal Number result. It initializes no receiver, variable or generic call.
+
+This also exposed a general shared-helper gap: a `+` body with both String and
+Number callers was becoming opaque. The ordinary producer graph now gives
+Number/String normal-result domains only when both complete operand sets are
+nonempty subsets of String, Number, Boolean, Null and Undefined. An exact String
+operand forces String; a merely possible String keeps Number|String. Unknown,
+reference, Array and any other alternatives still refuse. Initialization and
+effects remain independent; no opaque fact is subtracted.
+
+Ten Player source groups, four primitive-addition controls and two native
+controls pass, with eight existing operator/import and 17 existing Image
+controls unchanged. Five parse/Image native controls also pass. Removing the
+normal-result consumer or the primitive-union rule is detected. The initial
+aggregate CPU-cap failure is retained; candidate membership now uses captured
+intrinsics before scanning live dependencies for genuine occurrences, without
+executing a replaced observer. Limits were unchanged.
+
+The complete Player acceptance test now additionally executes original authored
+and exported programs in pinned PXT. Those guest executions remain **UNRUN**
+here. Run the existing test externally with its native, Code, hot/fresh SB3,
+reimport, negative-edit and original SDK assertions intact:
+
+```sh
+node --import ./scripts/lib/register-gui-scope.mjs --test --test-concurrency=1 test/source-primitive-addition-unions.test.mjs test/multiplayer-player-number-normal-source.test.mjs test/native-multiplayer-player-number-domain.test.mjs test/makecode-arcade-player-number-producers.test.mjs
+```
+
+Direct lookup results, Index/dynamic selectors, member access, arbitrary Player
+escape and unrelated callback entries need separate proofs and acceptance.
+Preserve the Player 2 output, both nullish zero results and every existing edit
+refusal while qualifying this boundary. No full multiplayer compatibility claim
+follows from these controls.
+
+The authoring surface is already broader than that proof task. The Arcade
+extension exposes Player number/index lookup, safe/member property access, a
+numeric property socket defaulting to 2, token-linked connection registration
+and callback hats, and the event Player reporter. Code/pseudocode words are
+reversible. This inventory establishes source presence, not GUI/runtime passes.
+
+Relevant implementation files are
+`overlay/scratch-vm/src/extensions/crispstrobe/arcade/index.js` (blocks, menus,
+identity, lookup and callback payload),
+`overlay/scratch-gui/src/lib/arcadeDialect.js` (Code words),
+`overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js` (SDK import and enum
+conversion), and `overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js`
+(export, typed callback entry, Player identity and inspection constraints).
+
+Acceptance tasks for the existing editor owners:
+
+- Author Number inspection from the actual event Player, then verify Blocks,
+  Code, saved/freshly reopened project and original export/reimport.
+- Change safe/member access and Number/Index independently. Retain the selected
+  semantics or show the precise missing-proof refusal; do not silently replace
+  either choice with Number. Dynamic selectors and direct lookup results need
+  their own proof before claiming those conversion routes.
+- Exercise a callback-local Null → Undefined → event Player alias without
+  replacing reference identity with a numeric player index.
+- Verify that property 2 exports as `mp.PlayerProperty.Number` and connection
+  event selections as named Connected/Disconnected enums.
+- Keep supported scalar inspection editable and make direct Player inspection
+  refusal actionable. Player-object coercion is a separate capability.
+- Scope labelled property selectors and clearer callback wiring separately with
+  their UI owners; the current property socket uses a number.
+
 ## 29 October: parsing and creation-callback source checkpoint
 
 The immutable raw corpus remains **147 translated / 36 partial / 1 parse failure**.

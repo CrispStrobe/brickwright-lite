@@ -2,6 +2,7 @@ import {proveClassCallableSource,assertCurrentClassSourceProof,classSdkImageValu
 import {numericRecursiveNormalResults} from './numeric-recursive-normal-results.js';
 import {imagePixelNormalResults,mutableImagePixelNormalResults} from './image-pixel-normal-results.js';
 import {createOrdinaryParseIntegerNumberSource} from './ordinary-parse-integer-number-source.js';
+import {multiplayerPlayerNumberNormalSource} from './multiplayer-player-number-normal-source.js';
 import {numericClosureNormalResults} from './numeric-closure-normal-results.js';
 import {analyseSourceValueProducers} from './source-value-producers.js';
 import {inspectNativeArrayAddHelpers} from './native-array-binary-helper-source.js';
@@ -100,7 +101,7 @@ function inspectDomains(program,profile,ordinaryExportSelection) {
     const syntax=inspectNativeArrayAddHelpers(program,profile),helpers=syntax.helpers;
     if(!helpers.size)return {helpers:new Map(),current:syntax.current,reason:null};
     const suppliedTags=new Set(['NativeNamedArrayCreate','NativeNamedArrayDelete','LegacyParsedValue','LegacyJsonValue','NativeArrayAccess']);
-    const supplied=node=>node&&typeof node==='object'&&(Object.hasOwn(node,'bwNativeNamedArray')||Object.hasOwn(node,'nativeArrayDomainCall')||Object.hasOwn(node,'nativeArrayDomainNormalCall')||Object.hasOwn(node,'nativeDestroyedSourceProperty')||Object.hasOwn(node,'nativeDestroyedDomainNormalProperty')||Object.hasOwn(node,'nativeMutablePixelSourceCall')||Object.hasOwn(node,'nativeMutablePixelNormalCall')||Object.hasOwn(node,'nativeParseIntegerSourceCall')||Object.hasOwn(node,'nativeParseIntegerNormalCall')||Object.hasOwn(node,'nativeClosureDomainNormalCall')||Object.hasOwn(node,'nativeImageDomainNormalCall')||Object.hasOwn(node,'nativeRecursiveSourceCall')||Object.hasOwn(node,'nativeRecursiveDomainNormalCall')||
+    const supplied=node=>node&&typeof node==='object'&&(Object.hasOwn(node,'bwNativeNamedArray')||Object.hasOwn(node,'nativeArrayDomainCall')||Object.hasOwn(node,'nativeArrayDomainNormalCall')||Object.hasOwn(node,'nativeDestroyedSourceProperty')||Object.hasOwn(node,'nativeDestroyedDomainNormalProperty')||Object.hasOwn(node,'nativeMutablePixelSourceCall')||Object.hasOwn(node,'nativeMutablePixelNormalCall')||Object.hasOwn(node,'nativeParseIntegerSourceCall')||Object.hasOwn(node,'nativeParseIntegerNormalCall')||Object.hasOwn(node,'nativePlayerNumberSourceCall')||Object.hasOwn(node,'nativePlayerNumberNormalCall')||Object.hasOwn(node,'nativeClosureDomainNormalCall')||Object.hasOwn(node,'nativeImageDomainNormalCall')||Object.hasOwn(node,'nativeRecursiveSourceCall')||Object.hasOwn(node,'nativeRecursiveDomainNormalCall')||
         suppliedTags.has(node.type)||Object.entries(node).some(([key,value])=>!metadata.has(key)&&(Array.isArray(value)?value.some(supplied):supplied(value))));
     if(supplied(program))return {helpers:new Map(),current:syntax.current,reason:'native addition requires original source, not supplied private named-helper tags'};
     // A complete unary conversion body returns Number whenever it returns.
@@ -142,6 +143,13 @@ function inspectDomains(program,profile,ordinaryExportSelection) {
     const mutablePixelTokens=new Set();
     let parseView=null,parseProof=null,parseSnapshot=null,parseLive=true;
     const parseTokens=new Set();
+    let playerView=null,playerProof=null,playerSnapshot=null,playerLive=true;
+    const playerTokens=new Set();
+    if(unaryProof.nodes.some(node=>node.type==='Call'&&node.callee?.type==='Member'&&node.callee.name==='getPlayerProperty'))try{
+        playerView=imageOriginOperationView(program,syntax);
+        playerProof=multiplayerPlayerNumberNormalSource(playerView.program);
+        if(playerProof.current())playerSnapshot=physicalUpdateSourceSnapshot(program);
+    }catch{ /* No original Player/namespace closure supplies no result fact. */ }
     if(unaryProof.nodes.some(node=>node.type==='Call'&&node.callee?.type==='Identifier'&&node.callee.name==='parseInt'))try{
         parseView=imageOriginOperationView(program,syntax);
         parseProof=createOrdinaryParseIntegerNumberSource(parseView.program);
@@ -175,6 +183,9 @@ function inspectDomains(program,profile,ordinaryExportSelection) {
         }
         if(parseSnapshot&&node.type==='Call'&&parseProof.isNumberCall(parseView.modelOf(node))){
             const token=Symbol();parseTokens.add(token);copy.nativeParseIntegerSourceCall=token;
+        }
+        if(playerSnapshot&&node.type==='Call'&&playerProof.has(playerView.modelOf(node))){
+            const token=Symbol();playerTokens.add(token);copy.nativePlayerNumberSourceCall=token;
         }
         if(recursiveResults.has(node)){
             const token=Symbol();recursiveSourceTokens.set(token,node);copy.nativeRecursiveSourceCall=token;
@@ -221,6 +232,15 @@ function inspectDomains(program,profile,ordinaryExportSelection) {
     }
     if(joinedParseCalls.size!==parseTokens.size)return {helpers:new Map(),current:()=>false,
         reason:'native addition parse integer source identity was not preserved'};
+    const joinedPlayerCalls=new Set();
+    for(const node of bindings.nodes)if(Object.hasOwn(node,'nativePlayerNumberSourceCall')){
+        const token=node.nativePlayerNumberSourceCall;
+        if(node.type!=='Call'||node.callee?.type!=='Member'||node.callee.name!=='getPlayerProperty'||node.callee.object?.type!=='Identifier'||node.callee.object.name!=='mp'||!playerTokens.has(token)||joinedPlayerCalls.has(token))
+            return {helpers:new Map(),current:()=>false,reason:'native addition Player Number source identity is ambiguous'};
+        joinedPlayerCalls.add(token);
+    }
+    if(joinedPlayerCalls.size!==playerTokens.size)return {helpers:new Map(),current:()=>false,
+        reason:'native addition Player Number source identity was not preserved'};
     let closureResults=null,closureLive=true,imageResults=null,imageLive=true;
     let imageOrigins=null,imageOriginView=null,imageOriginUsed=false,imageOriginLive=true;
     let callableAdditionProof=null,callableAdditionUsed=false,callableAdditionLive=true;
@@ -242,8 +262,9 @@ function inspectDomains(program,profile,ordinaryExportSelection) {
             }
             if(mutablePixelTokens.size&&(!mutablePixelLive||!mutablePixelView.current()||!mutablePixelProof.current()||!mutablePixelSnapshot.current()))mutablePixelLive=false;
             if(parseTokens.size&&(!parseLive||!parseView.current()||!parseProof.current()||!parseSnapshot.current()))parseLive=false;
+            if(playerTokens.size&&(!playerLive||!playerView.current()||!playerProof.current()||!playerSnapshot.current()))playerLive=false;
             const now=syntax.current()&&unaryProof.isCurrent()&&classView.current()&&bindings.isCurrent()&&graph.lexicalDeclarationReadinessCurrent()&&
-                (!frameDeltaUsed||graph.frameDeltaNumbersCurrent())&&musicCurrent&&(!destroyedUsed||destroyedLive)&&(!mutablePixelTokens.size||mutablePixelLive)&&(!parseTokens.size||parseLive);
+                (!frameDeltaUsed||graph.frameDeltaNumbersCurrent())&&musicCurrent&&(!destroyedUsed||destroyedLive)&&(!mutablePixelTokens.size||mutablePixelLive)&&(!parseTokens.size||parseLive)&&(!playerTokens.size||playerLive);
             // Like the other consumed facts, any observed staleness permanently
             // expires a used frame-delta proof; restoring the text cannot revive it.
             if(frameDeltaUsed&&!now)frameDeltaLive=false;
@@ -257,7 +278,7 @@ function inspectDomains(program,profile,ordinaryExportSelection) {
             if(classResultUsed&&!valid)classResultLive=false;
             if(callableAdditionUsed&&!valid)callableAdditionLive=false;
             return valid&&(!musicUsed||musicLive)&&(!frameDeltaUsed||frameDeltaLive)&&(!operationUsed||operationLive)&&(!classResultUsed||classResultLive)&&(!imageOriginUsed||imageOriginLive);
-        }catch(error){if(parseTokens.size)parseLive=false;if(mutablePixelTokens.size)mutablePixelLive=false;if(destroyedUsed)destroyedLive=false;if(musicUsed)musicLive=false;if(operationUsed)operationLive=false;if(classResultUsed)classResultLive=false;if(imageOriginUsed)imageOriginLive=false;if(callableAdditionUsed)callableAdditionLive=false;if(frameDeltaUsed)frameDeltaLive=false;throw error;}
+        }catch(error){if(playerTokens.size)playerLive=false;if(parseTokens.size)parseLive=false;if(mutablePixelTokens.size)mutablePixelLive=false;if(destroyedUsed)destroyedLive=false;if(musicUsed)musicLive=false;if(operationUsed)operationLive=false;if(classResultUsed)classResultLive=false;if(imageOriginUsed)imageOriginLive=false;if(callableAdditionUsed)callableAdditionLive=false;if(frameDeltaUsed)frameDeltaLive=false;throw error;}
     };
     const domainHelpers=[...helpers.values()].map(helper=>({...helper,calls:[]}));
     const observed=new Set(),provedHelperResults=new WeakSet();
@@ -304,6 +325,10 @@ function inspectDomains(program,profile,ordinaryExportSelection) {
             delete next.nativeParseIntegerSourceCall;
             // The source identity was joined above. Do not carry its Symbol
             // into the ordinary scalar snapshot or relax its opaque-data gate.
+            next={type:'Conditional',test:next,consequent:{type:'Number',value:'0'},alternate:{type:'Number',value:'0'}};
+        }
+        if(playerTokens.has(node.nativePlayerNumberSourceCall)){
+            delete next.nativePlayerNumberSourceCall;
             next={type:'Conditional',test:next,consequent:{type:'Number',value:'0'},alternate:{type:'Number',value:'0'}};
         }
         replacements.set(node,next);return next;
@@ -951,6 +976,7 @@ function inspectDomains(program,profile,ordinaryExportSelection) {
         // callee/read dependency. On normal return its value is Number; do not
         // turn that expression receipt into generic call/variable readiness.
         if(refused&&arg.type==='Call'&&parseTokens.has(arg.nativeParseIntegerSourceCall))continue;
+        if(refused&&arg.type==='Call'&&playerTokens.has(arg.nativePlayerNumberSourceCall))continue;
         if(refused&&normalPrimitiveOperation(arg)){operationUsed=true;continue;}
         if(refused&&normalPrimitiveClass(arg)){classResultUsed=true;continue;}
         if(refused){
