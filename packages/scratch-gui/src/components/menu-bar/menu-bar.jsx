@@ -641,7 +641,7 @@ class MenuBar extends React.Component {
                                 <button type="button" data-bw-menu-trigger="" data-testid="bw-file-menu-trigger"
                                     style={menuTriggerStyle} aria-haspopup="menu" aria-expanded={this.props.fileMenuOpen}
                                     aria-label={this.props.intl.formatMessage({id: 'gui.menuBar.file', defaultMessage: 'File'})}
-                                    onClick={this.handleOpenFileMenu} onKeyDown={event => openMenuFromKeyboard(event, this.handleOpenFileMenu)}>
+                                    onClick={this.handleOpenFileMenu} onKeyDown={event => openMenuFromKeyboard(event, this.handleOpenFileMenu, this.props.onRequestCloseFile)}>
 
                                 <img src={fileIcon} />
                                 <span className={styles.collapsibleLabel}>
@@ -829,7 +829,7 @@ class MenuBar extends React.Component {
                                 <button type="button" data-bw-menu-trigger="" data-testid="bw-edit-menu-trigger"
                                     style={menuTriggerStyle} aria-haspopup="menu" aria-expanded={this.props.editMenuOpen}
                                     aria-label={this.props.intl.formatMessage({id: 'gui.menuBar.edit', defaultMessage: 'Edit'})}
-                                    onClick={this.props.onClickEdit} onKeyDown={event => openMenuFromKeyboard(event, this.props.onClickEdit)}>
+                                    onClick={this.props.onClickEdit} onKeyDown={event => openMenuFromKeyboard(event, this.props.onClickEdit, this.props.onRequestCloseEdit)}>
 
                             <img src={editIcon} />
                             <span className={styles.collapsibleLabel}>

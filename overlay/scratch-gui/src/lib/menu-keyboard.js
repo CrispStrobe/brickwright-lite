@@ -10,7 +10,14 @@ export const focusMenuEdge = (menu, last = false) => {
     else menu?.focus?.();
 };
 
-export const openMenuFromKeyboard = (event, open) => {
+export const openMenuFromKeyboard = (event, open, close) => {
+    if (['Escape', 'Tab'].includes(event.key) &&
+        event.currentTarget.getAttribute('aria-expanded') === 'true' && typeof close === 'function') {
+        if (event.key === 'Escape') event.preventDefault();
+        event.stopPropagation();
+        close();
+        return;
+    }
     if (!['Enter', ' ', 'ArrowDown', 'ArrowUp'].includes(event.key)) return;
     event.preventDefault();
     event.stopPropagation();

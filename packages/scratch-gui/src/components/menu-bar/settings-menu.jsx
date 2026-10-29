@@ -76,7 +76,7 @@ const SettingsMenu = ({intl, canChangeLanguage, canChangeTheme, isRtl, onRequest
             <button type="button" data-bw-menu-trigger="" data-testid="bw-settings-menu-trigger"
                 style={menuTriggerStyle} aria-haspopup="menu" aria-expanded={settingsMenuOpen}
                 aria-label={intl.formatMessage({id: 'gui.menuBar.settings', defaultMessage: 'Settings'})}
-                onClick={onRequestOpen} onKeyDown={event => openMenuFromKeyboard(event, onRequestOpen)}>
+                onClick={onRequestOpen} onKeyDown={event => openMenuFromKeyboard(event, onRequestOpen, onRequestClose)}>
 
             <img src={settingsIcon} />
             <span className={styles.dropdownLabel}><FormattedMessage defaultMessage="Settings" id="gui.menuBar.settings" /></span>

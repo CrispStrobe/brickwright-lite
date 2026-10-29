@@ -51,6 +51,20 @@ test('keyboard trigger opens and focuses the first or last enabled item after re
     }finally{globalThis.requestAnimationFrame=old;}
 });
 
+test('a mouse-opened menu closes from its focused trigger without trapping Tab',()=>{
+    let opened=0,closed=0;
+    const event=(key,expanded=true)=>({key,currentTarget:{getAttribute:()=>String(expanded)},
+        preventDefault(){this.prevented=true;},stopPropagation(){this.stopped=true;}});
+    const escape=event('Escape');
+    openMenuFromKeyboard(escape,()=>opened++,()=>closed++);
+    assert.equal(closed,1);assert.equal(opened,0);assert.equal(escape.prevented,true);assert.equal(escape.stopped,true);
+    const tab=event('Tab');
+    openMenuFromKeyboard(tab,()=>opened++,()=>closed++);
+    assert.equal(closed,2);assert.equal(opened,0);assert.equal(tab.prevented,undefined);assert.equal(tab.stopped,true);
+    openMenuFromKeyboard(event('Escape',false),()=>opened++,()=>closed++);
+    assert.equal(closed,2,'a closed trigger leaves Escape available to the surrounding application');
+});
+
 
 test('root horizontal arrows open the next menu through its actual button',()=>{
     const s=setup();let focused=-1,clicked=-1,closed=0;
