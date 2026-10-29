@@ -2283,15 +2283,26 @@ class CircuitTab extends React.Component {
     editorMenuActions () {
         if (!this._menuMounted || this.props.isVisible !== true || getUndoState().surface !== 'circuit') return null;
         const entries = Object.create(null);
+        const de = String(this.props.locale || '').startsWith('de');
+        // The designer's file commands replace the host File bridge, so they sit
+        // flat in File with the host's names. The supplier's `file` group key is
+        // not a label to show.
+        const fileLabels = de ?
+            {open: 'Schaltung öffnen…', save: 'Schaltung speichern', import: 'Schaltung importieren…', export: 'Schaltung exportieren…'} :
+            {open: 'Open circuit…', save: 'Save circuit', import: 'Import circuit…', export: 'Export circuit…'};
         // Older qualified CUI pins simply omit this optional publication. The
         // original host File bridge remains available until supplier adoption.
         for (const action of this._designerMenuActions || []) {
             if (!action || ['undo', 'redo'].includes(action.name) || typeof action.name !== 'string' ||
                 typeof action.label !== 'string' || typeof action.run !== 'function' ||
                 !['file', 'edit'].includes(action.location)) continue;
-            entries[action.name] = {...action, enabled: action.enabled === true};
+            const entry = {...action, enabled: action.enabled === true};
+            if (action.location === 'file') {
+                delete entry.submenu;
+                if (Object.hasOwn(fileLabels, action.name)) entry.label = fileLabels[action.name];
+            }
+            entries[action.name] = entry;
         }
-        const de = String(this.props.locale || '').startsWith('de');
         const panels = de ? [['designer', 'Designer'], ['warnings', 'Warnungen'], ['bom', 'Stückliste'], ['examples', 'Beispiele']] :
             [['designer', 'Designer'], ['warnings', 'Warnings'], ['bom', 'Parts list'], ['examples', 'Examples']];
         for (const [panel, label] of panels) {
