@@ -1,5 +1,50 @@
 # CLI instrument regression
 
+## Current handoff — 2026-10-29
+
+The remaining delivery is owned by the Circuit/editor integration maintainer.
+The frozen [PR1536](https://github.com/CrispStrobe/brickwright-lite/pull/1536)
+head is `2e7846f8a901726a296e3a8ef006cff24bc457b5`. At the latest check its
+fast [Build40869114327](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40869114327),
+necessary full [Build40869128682](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40869128682)
+and other enabled workflows were queued. Refresh the actual head, default branch
+and checks before acting; a queued run is not a passing result. Use fast-tier PR
+checks by default and do not add a `ci:full` label.
+
+To finish, in order:
+
+1. Observe all enabled checks for the current candidate. Diagnose genuine failures
+   using the retained original evidence; make a bounded forward fix and qualify
+   its new head when necessary. Do not repeat an unchanged dispatch or weaken a
+   test, a numerical bound or the profiling-size ceiling.
+2. Admit the final run and job identities before reading any original. Preserve
+   the existing independent readers and their predicates; acquire each original
+   only once. The supported-event numeric consumer owns its Pages archive
+   acquisition, so use its retained proof instead of downloading that archive a
+   second time. Never replay the completed reference study.
+3. Establish affected application acceptance: Circuit and Manual browser journeys,
+   FPGA workspace visibility and retained design, the profiling-build byte guard,
+   and the required native checks. The manual full run uses separate production,
+   FPGA-enabled and profiling builds; do not claim byte identity between them or
+   the Pages artifact. The reduced FPGA gate does not qualify synthesis, simulation
+   correctness or an FPGA release.
+4. Refresh main and preserve concurrent changes. Once the reviewed candidate and
+   its enabled checks qualify, perform a normal matched-head merge, then verify
+   its actual parents and tree. PRs 1515, 1516, 1517 and 1538 are preserved through
+   the combined integration; do not describe their closed originals as merged.
+5. Observe existing production deployment activity before using the guarded
+   deployment workflow. Verify the published version and affected live UI, then
+   update this handoff, PLAN, ROADMAP and the campaign record with actual landing,
+   delivery and remaining limits. Close the campaign only after these endpoints.
+
+The accepted historical study has 32 inputs, 31 conforming results and one named
+refusal; its supplier identities and four study seals stay historical. Live
+package contracts follow the currently adopted pins. Physical calibration, probe
+loading, a GUI AC-coupling selector and the untested 32 MiB output boundary remain
+outside the established evidence. Preserve the recorded LM741 TODO and the
+long-capture current-polarity limit. Keep private paths and evidence outside public
+repository documents.
+
 ## Active continuation — 2026-10-28
 
 **Status: frozen circuit source passed its approved fast-tier checks; combined
