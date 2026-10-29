@@ -59,7 +59,7 @@ jobs:
         with:
           node-version: 22
       - name: Exercise independent metadata, checkout and asset refusal controls
-        run: node --test reader/test/samd-native-profile.test.mjs
+        run: node --test reader/test/samd-native-profile.test.mjs reader/test/samd-webdriver-request.test.mjs
       - name: Admit official metadata, acquire each original once, and join all source bytes
         env:
           BW_SAMD_ADMISSION_SOURCE: ${{ github.workspace }}/consumer
@@ -118,6 +118,11 @@ jobs:
         with:
           ref: ${{ inputs.consumer }}
           persist-credentials: false
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.sha }}
+          path: reader
+          persist-credentials: false
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: 22
@@ -136,12 +141,14 @@ jobs:
       - name: Install the existing pinned Tauri driver
         run: cargo install tauri-driver --version 2.0.6 --locked
       - name: Three fresh actual installed game instances on embedded assets
+        env:
+          BW_SAMD_ADMISSION_SOURCE: ${{ github.workspace }}
         run: |
           # Tauri resolves ../lib/Brickwright relative to the installed binary.
           # SAMD uses embedded frontend assets only; this prefix carries no SPIKE resources.
           install -Dm755 qualification/native/brickwright-tauri qualification/installed/usr/bin/brickwright-tauri
           mkdir -p qualification/installed/usr/lib/Brickwright
-          xvfb-run -a dbus-run-session -- node scripts/verify-samd-native-game-installed.mjs qualification/installed/usr/bin/brickwright-tauri qualification/native/receipt.json qualification/frontend qualification/fixture samd-installed-results
+          xvfb-run -a dbus-run-session -- node reader/scripts/verify-samd-native-game-installed.mjs qualification/installed/usr/bin/brickwright-tauri qualification/native/receipt.json qualification/frontend qualification/fixture samd-installed-results
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
