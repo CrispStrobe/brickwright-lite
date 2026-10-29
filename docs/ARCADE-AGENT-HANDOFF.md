@@ -1,6 +1,59 @@
 # Arcade compatibility: fresh-agent handoff and methodology
 
 
+## 29 October: mutable Image pixel occurrence follow-up
+
+A separate `mutableImagePixelNormalResults` source API now issues Number on
+normal return only for the actual observed `getPixel` occurrence. The old
+`imagePixelNormalResults` API, immutable-list Number gate and Image/primitive
+observation behavior remain independent. The new API exposes neither generic
+Image/Array authority nor pixel values, element presence or initialization.
+
+The closed profile tracks distinct Image allocations, clone identity, list
+aliases and literal pixel/fill mutation. It permits a canonical Sprite factory
+with a genuine issued Image and a named builtin kind input, plus `setImage`
+retention of that issued Image. It does not invent kind ordinals. Classes,
+callbacks, scene changes, namespace/method replacement, unknown escapes,
+incompatible receiver writers and unsafe list indices remain refused. Every
+mutable effect must be observed; an uncalled mutation body is not erased.
+
+The native consumer proves these original operations before result projections,
+joins fresh private call identities after class/source interpretation, and
+keeps the actual call and arguments in the type-only normal-result view.
+Original source, SDK descriptors, realm, absence and exception observations bind
+permanent currentness. Supplied tags or copied nodes cannot enroll the receipt.
+The reviewed original `ImageMethods::getPixel` contract returns a pixel integer
+or zero out of range; source identities are recorded without executing SDK code.
+
+Eight new source groups, all 17 unchanged Image controls and two native-domain
+controls pass. Three mutations detect missing occurrence membership, skipped
+unexecuted effects and missing native projection; exact original bytes are
+restored. The unchanged authored artwork source is covered by the source test.
+No runtime, rendered pixel or complete application verdict follows from it.
+
+Run the full existing acceptance on the prepared external worker:
+
+```sh
+node --import ./scripts/lib/register-gui-scope.mjs --test --test-concurrency=1 test/native-mutable-image-pixel-results.test.mjs test/native-array-mutable-image-domain.test.mjs test/native-image-pixel-normal-results.test.mjs test/native-image-origin-observations.test.mjs test/arcade-inline-animation-artwork.test.mjs
+```
+
+Keep the original expected pixels, identity comparisons, Code, saved-SB3,
+fresh reopening, executed PXT export and reimport checks unchanged. If another
+operand remains refused, retain its actual first diagnostic and extend only
+that producer. The previous full source/artwork probes reached the local CPU
+cap; do not substitute a higher local cap or call them application passes.
+
+This is a separate follow-up to the frozen `0eb57401b35` qualification head.
+Preserve its required terminal originals before publishing the successor.
+The immutable raw census remains **147 translated / 36 partial / 1 parse failure**.
+
+GUI acceptance remains separate: edit either grouped animation frame, preserve
+shared-alias mutation and distinct equal-looking artwork sites, attach the edited
+Image to a Sprite, then save/reopen and export/reimport through original Arcade.
+Source occurrence proofs do not establish those interactive editing routes.
+
+
+
 ## 29 October: active delivery checkpoint
 
 Source checkpoint `6acccd1cbeeeded76a73282563010e8d6a7eb4cd` includes the

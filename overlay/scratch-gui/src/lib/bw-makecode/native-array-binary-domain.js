@@ -1,6 +1,6 @@
 import {proveClassCallableSource,assertCurrentClassSourceProof,classSdkImageValueCandidate} from './class-callable-source-flow.js';
 import {numericRecursiveNormalResults} from './numeric-recursive-normal-results.js';
-import {imagePixelNormalResults} from './image-pixel-normal-results.js';
+import {imagePixelNormalResults,mutableImagePixelNormalResults} from './image-pixel-normal-results.js';
 import {numericClosureNormalResults} from './numeric-closure-normal-results.js';
 import {analyseSourceValueProducers} from './source-value-producers.js';
 import {inspectNativeArrayAddHelpers} from './native-array-binary-helper-source.js';
@@ -99,7 +99,7 @@ function inspectDomains(program,profile,ordinaryExportSelection) {
     const syntax=inspectNativeArrayAddHelpers(program,profile),helpers=syntax.helpers;
     if(!helpers.size)return {helpers:new Map(),current:syntax.current,reason:null};
     const suppliedTags=new Set(['NativeNamedArrayCreate','NativeNamedArrayDelete','LegacyParsedValue','LegacyJsonValue','NativeArrayAccess']);
-    const supplied=node=>node&&typeof node==='object'&&(Object.hasOwn(node,'bwNativeNamedArray')||Object.hasOwn(node,'nativeArrayDomainCall')||Object.hasOwn(node,'nativeArrayDomainNormalCall')||Object.hasOwn(node,'nativeDestroyedSourceProperty')||Object.hasOwn(node,'nativeDestroyedDomainNormalProperty')||Object.hasOwn(node,'nativeClosureDomainNormalCall')||Object.hasOwn(node,'nativeImageDomainNormalCall')||Object.hasOwn(node,'nativeRecursiveSourceCall')||Object.hasOwn(node,'nativeRecursiveDomainNormalCall')||
+    const supplied=node=>node&&typeof node==='object'&&(Object.hasOwn(node,'bwNativeNamedArray')||Object.hasOwn(node,'nativeArrayDomainCall')||Object.hasOwn(node,'nativeArrayDomainNormalCall')||Object.hasOwn(node,'nativeDestroyedSourceProperty')||Object.hasOwn(node,'nativeDestroyedDomainNormalProperty')||Object.hasOwn(node,'nativeMutablePixelSourceCall')||Object.hasOwn(node,'nativeMutablePixelNormalCall')||Object.hasOwn(node,'nativeClosureDomainNormalCall')||Object.hasOwn(node,'nativeImageDomainNormalCall')||Object.hasOwn(node,'nativeRecursiveSourceCall')||Object.hasOwn(node,'nativeRecursiveDomainNormalCall')||
         suppliedTags.has(node.type)||Object.entries(node).some(([key,value])=>!metadata.has(key)&&(Array.isArray(value)?value.some(supplied):supplied(value))));
     if(supplied(program))return {helpers:new Map(),current:syntax.current,reason:'native addition requires original source, not supplied private named-helper tags'};
     // A complete unary conversion body returns Number whenever it returns.
@@ -137,6 +137,13 @@ function inspectDomains(program,profile,ordinaryExportSelection) {
     }catch{ /* No original receipt supplies no added property fact. */ }
     const destroyedAllowed=destroyedOriginProof?.reason===null&&!!destroyedSnapshot;
     const destroyedTokens=new Set();let destroyedUsed=false,destroyedLive=true;
+    let mutablePixelView=null,mutablePixelProof=null,mutablePixelSnapshot=null,mutablePixelLive=true;
+    const mutablePixelTokens=new Set();
+    if(unaryProof.nodes.some(node=>node.type==='Call'&&node.callee?.type==='Member'&&node.callee.name==='getPixel'))try{
+        mutablePixelView=imageOriginOperationView(program,syntax);
+        mutablePixelProof=mutableImagePixelNormalResults(mutablePixelView.program,profile);
+        if(mutablePixelProof.current())mutablePixelSnapshot=physicalUpdateSourceSnapshot(program);
+    }catch{ /* Missing original Image closure supplies no added result. */ }
     const prepare=node=>{
         if(!node||typeof node!=='object')return node;
         if(Array.isArray(node)){const next=mapGeneratedSourceArray(node,prepare);return node.some(value=>selected.has(value))?next.filter((value,index)=>!selected.has(node[index])):next;}
@@ -154,6 +161,9 @@ function inspectDomains(program,profile,ordinaryExportSelection) {
         const copy=Object.fromEntries(Object.entries(node).map(([key,value])=>[key,metadata.has(key)?value:prepare(value)]));
         if(destroyedAllowed&&node.type==='Member'&&destroyedOriginProof.has(destroyedOriginView.modelOf(node))){
             const token=Symbol();destroyedTokens.add(token);copy.nativeDestroyedSourceProperty=token;
+        }
+        if(mutablePixelSnapshot&&node.type==='Call'&&mutablePixelProof.has(mutablePixelView.modelOf(node))){
+            const token=Symbol();mutablePixelTokens.add(token);copy.nativeMutablePixelSourceCall=token;
         }
         if(recursiveResults.has(node)){
             const token=Symbol();recursiveSourceTokens.set(token,node);copy.nativeRecursiveSourceCall=token;
@@ -182,6 +192,15 @@ function inspectDomains(program,profile,ordinaryExportSelection) {
     }
     if(joinedDestroyed.size!==destroyedTokens.size)return {helpers:new Map(),current:()=>false,
         reason:'native addition destroyed callback source identity was not preserved'};
+    const joinedMutablePixels=new Set();
+    for(const node of bindings.nodes)if(Object.hasOwn(node,'nativeMutablePixelSourceCall')){
+        const token=node.nativeMutablePixelSourceCall;
+        if(node.type!=='Call'||node.callee?.type!=='Member'||node.callee.name!=='getPixel'||!mutablePixelTokens.has(token)||joinedMutablePixels.has(token))
+            return {helpers:new Map(),current:()=>false,reason:'native addition mutable pixel source identity is ambiguous'};
+        joinedMutablePixels.add(token);
+    }
+    if(joinedMutablePixels.size!==mutablePixelTokens.size)return {helpers:new Map(),current:()=>false,
+        reason:'native addition mutable pixel source identity was not preserved'};
     let closureResults=null,closureLive=true,imageResults=null,imageLive=true;
     let imageOrigins=null,imageOriginView=null,imageOriginUsed=false,imageOriginLive=true;
     let callableAdditionProof=null,callableAdditionUsed=false,callableAdditionLive=true;
@@ -201,8 +220,9 @@ function inspectDomains(program,profile,ordinaryExportSelection) {
                 if(!callableAdditionLive||!imageOriginView.current()){callableAdditionLive=false;return false;}
                 try{assertCurrentClassSourceProof(callableAdditionProof,imageOriginView.program);}catch{callableAdditionLive=false;return false;}
             }
+            if(mutablePixelTokens.size&&(!mutablePixelLive||!mutablePixelView.current()||!mutablePixelProof.current()||!mutablePixelSnapshot.current()))mutablePixelLive=false;
             const now=syntax.current()&&unaryProof.isCurrent()&&classView.current()&&bindings.isCurrent()&&graph.lexicalDeclarationReadinessCurrent()&&
-                (!frameDeltaUsed||graph.frameDeltaNumbersCurrent())&&musicCurrent&&(!destroyedUsed||destroyedLive);
+                (!frameDeltaUsed||graph.frameDeltaNumbersCurrent())&&musicCurrent&&(!destroyedUsed||destroyedLive)&&(!mutablePixelTokens.size||mutablePixelLive);
             // Like the other consumed facts, any observed staleness permanently
             // expires a used frame-delta proof; restoring the text cannot revive it.
             if(frameDeltaUsed&&!now)frameDeltaLive=false;
@@ -216,7 +236,7 @@ function inspectDomains(program,profile,ordinaryExportSelection) {
             if(classResultUsed&&!valid)classResultLive=false;
             if(callableAdditionUsed&&!valid)callableAdditionLive=false;
             return valid&&(!musicUsed||musicLive)&&(!frameDeltaUsed||frameDeltaLive)&&(!operationUsed||operationLive)&&(!classResultUsed||classResultLive)&&(!imageOriginUsed||imageOriginLive);
-        }catch(error){if(destroyedUsed)destroyedLive=false;if(musicUsed)musicLive=false;if(operationUsed)operationLive=false;if(classResultUsed)classResultLive=false;if(imageOriginUsed)imageOriginLive=false;if(callableAdditionUsed)callableAdditionLive=false;if(frameDeltaUsed)frameDeltaLive=false;throw error;}
+        }catch(error){if(mutablePixelTokens.size)mutablePixelLive=false;if(destroyedUsed)destroyedLive=false;if(musicUsed)musicLive=false;if(operationUsed)operationLive=false;if(classResultUsed)classResultLive=false;if(imageOriginUsed)imageOriginLive=false;if(callableAdditionUsed)callableAdditionLive=false;if(frameDeltaUsed)frameDeltaLive=false;throw error;}
     };
     const domainHelpers=[...helpers.values()].map(helper=>({...helper,calls:[]}));
     const observed=new Set(),provedHelperResults=new WeakSet();
@@ -253,6 +273,11 @@ function inspectDomains(program,profile,ordinaryExportSelection) {
             delete next.nativeDestroyedSourceProperty;
             next={type:'Conditional',test:next,consequent:{type:'Number',value:'0'},alternate:{type:'Number',value:'0'},
                 nativeDestroyedDomainNormalProperty:node.nativeDestroyedSourceProperty};
+        }
+        if(mutablePixelTokens.has(node.nativeMutablePixelSourceCall)){
+            delete next.nativeMutablePixelSourceCall;
+            next={type:'Conditional',test:next,consequent:{type:'Number',value:'0'},alternate:{type:'Number',value:'0'},
+                nativeMutablePixelNormalCall:node.nativeMutablePixelSourceCall};
         }
         replacements.set(node,next);return next;
     };
