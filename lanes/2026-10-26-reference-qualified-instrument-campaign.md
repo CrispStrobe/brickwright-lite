@@ -6,6 +6,22 @@ HANDOFF PREPARED — circuit/instrument campaign remains incomplete. Initial Lit
 This is a new six-item sequence. The prior five-item campaign and its six-file
 closeout remain complete, with their original evidence and limits.
 
+## Transferred delivery checkpoint — 2026-10-29
+
+The operator transferred remaining PR1536 integration, fixes, qualification,
+normal landing, deployment and final documentation here. Preserve the original
+source ancestry and exact CUI `4b65f154` adoption; Board stays unchanged.
+Packaged native confirmation is accepted at `17bbefca`; measured editor/menu
+repairs are checkpointed at `a0c0a60e`, with final acceptance still pending.
+Fast-tier PR checks are the default and no `ci:full` labels are to be applied.
+Claim PR1558 scopes only policy admission of actual selected execution, not
+weaker test coverage. Complete its merged registration before implementation.
+All enabled final-head checks, exact-bound affected GUI/FPGA evidence, the
+unchanged profiling-byte guard, actual main and production delivery remain owed.
+No completed study replay or duplicate original intake is authorized. Keep
+historical seals distinct from live package contracts. This remains an active,
+incomplete six-item sequence; no seventh lane is opened.
+
 ## Initial ownership and repository authority
 
 This claim initially owns this lane record and read-only inventory/reference

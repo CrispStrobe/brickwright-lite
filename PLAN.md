@@ -15,7 +15,7 @@ This document turns the product review into an ordered implementation plan.
 completed and rejected work. This file defines outcomes, sequencing and release
 gates.
 
-## Current circuit/instrument handoff — 2026-10-28
+## Current circuit/instrument handoff — 2026-10-29
 
 The [six-item campaign](lanes/2026-10-26-reference-qualified-instrument-campaign.md)
 remains open through final consumer qualification and documentation reconciliation.
@@ -43,19 +43,27 @@ exception.
 
 CUI PR131 has now landed as `4b65f15485abbc039958d8e1a8a29ac3459b75f9`
 after its three enabled checks and retained browser evidence were accepted.
-The coordinated delivery owner is composing the complete frozen circuit ancestry
-with the editor/menu changes and preparing one explicit adoption of that CUI
-head; Board stays unchanged. The consumer browser driver now resolves the
-originating trigger's popup; combined application qualification, including
-cramped navigation and the original measurement/refusal assertions, is still owed.
-Consumed-study identities stay historical. The separate live authored regression
-contract and current adoption assertions follow the new package without replaying
-any completed cohort. Circuit
-retains numerical-original custody, independent readback and final documentation;
-no competing source merge or pin update is authorized. All enabled full checks
-apply to that combined UI target; the earlier fast-tier label exception is not
-inherited. Then verify integrated source heads, reconcile the four campaign
-documents and audit actual delivery evidence. No seventh task is opened.
+The operator transferred the remaining integration to this campaign's maintainer.
+PR1536 now preserves the frozen Circuit source and adopts this CUI head with
+Board unchanged. The packaged native confirmation journey passes at `17bbefca`;
+subsequent editor repairs include the measured hidden-stage viewport, Pixel
+controls and trigger-owned Escape/Tab dismissal. The source checkpoint
+`a0c0a60e` contains those repairs; it is not final consumer or delivery acceptance.
+
+Fast-tier PR checks are the operator's default, without `ci:full` labels. Claim
+PR1558 scopes alignment of the legacy policy verdict with actual selected CI
+execution; implementation waits for its merged registration. Every enabled
+selected check and actual affected application acceptance must still pass.
+Production GUI observations require exact source/configuration/artifact binding;
+FPGA flag-on behavior and the unchanged profiling-build byte guard remain owed.
+A production entry-byte count is not the profiling-build metric. Preserve the
+accepted component results without calling the combined application qualified.
+
+Consumed-study identities stay historical. The live authored regression contract
+and current adoption assertions follow the adopted package; neither authorizes
+replaying the completed cohort. After qualified combined landing, reconcile the
+original PRs, verify actual production delivery and finish these four documents.
+No seventh task is opened.
 The [active handoff](docs/CIRCUIT-INSTRUMENT-REGRESSION.md#active-continuation--2026-10-28)
 keeps exact actions, evidence boundaries and remaining limits.
 

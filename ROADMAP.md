@@ -1,6 +1,6 @@
 # brickwright-lite — roadmap
 
-## Circuit/instrument resume queue — 2026-10-28
+## Circuit/instrument resume queue — 2026-10-29
 
 Use the [active handoff](docs/CIRCUIT-INSTRUMENT-REGRESSION.md#active-continuation--2026-10-28)
 and refresh live heads before acting. The
@@ -12,8 +12,8 @@ remains open through qualification and final reconciliation.
 | 1. Supplier return and reference study | Historical adoption PR1478; accepted v2 run 40681635060: 31/31, 4,260 values, 15 captures, one named refusal | Preserve original source/pins; never replay the consumed study |
 | 2. Four disagreements | All noncomparable; no demonstrated model defect (PR1495) | Preserve classification and original denominators |
 | 3. Scope rearm | PR128 merged; identical before-fix PR129 fails the injected re-render control | Accepted for that mechanism; no blanket race attribution |
-| 4. Long captures | Three hosted 5,000-point waveform assertions pass at `93aba754` | Qualify and land combined Lite PR1538 |
-| 5. LM741 currents/power | Hosted settled-window/refusal/default-off checks pass at `e85dc904`; v1 TODO retained | Whole-app metadata/GUI checks remain in PR1538 qualification |
+| 4. Long captures | Three hosted 5,000-point waveform assertions pass at `93aba754` | Qualify and land the preserved ancestry through combined PR1536 |
+| 5. LM741 currents/power | Hosted settled-window/refusal/default-off checks pass at `e85dc904`; v1 TODO retained | Whole-app metadata/GUI checks remain in combined PR1536 qualification |
 | 6. Provenance and realism | Provenance/redaction and exact CUI `373d562b` adoption in PR1538; four hosted AC tests and 60 independent numerical rows pass at `e85dc904` | Complete hosted qualification, preserve historical study seals, verify source landing |
 
 The forward checkpoint `93aba754` fixes the original unit-6 documentation-trigger
@@ -26,19 +26,27 @@ only the earlier approved absent-`ci:full` verdict exception. Full combined UI
 qualification must pass every enabled check.
 
 CUI PR131 landed as `4b65f15485abbc039958d8e1a8a29ac3459b75f9` with its
-three enabled checks and retained browser evidence accepted. The coordinated
-menu/editor delivery owner carries its explicit Lite adoption and combined
-source/application landing. Preserve all `93aba754` ancestry; do not independently
-merge PR1538 or change its pins. Circuit retains numerical-original readback
-and the final four-document handoff. The consumer driver now binds the actual
-trigger-owned popup; real file selection, numerical assertions and cramped
-navigation still need combined application qualification. Preserve fixed
-consumed-study identities separately from the live regression contract and
-current package-adoption assertions.
-Before new raw-log acquisition, freeze exact combined head/pin/run/job identities;
-read retained originals once and do not replay the study. After all enabled full
-application checks and actual landing, reconcile PR1516/1515/1517/1538, update
-this roadmap, PLAN and handoff, and verify the coordinated delivery evidence.
+three enabled checks and retained browser evidence accepted. The operator transferred the remaining delivery to this campaign's maintainer.
+PR1536 preserves the complete `93aba754` ancestry and adopts the landed CUI
+head without changing Board. Packaged native confirmation is accepted at
+`17bbefca`; checkpoint `a0c0a60e` adds the measured editor and menu repairs.
+Neither component result establishes final application acceptance. Do not
+independently merge the superseded PR1538 or change its pins.
+
+Use fast-tier PR qualification without `ci:full` labels. Claim PR1558 scopes the
+policy guard's admission of selected execution; its registration must land before
+implementation. Preserve every enabled job, tier selector and numerical/bundle
+bound. Complete exact combined-head checks, actual affected GUI evidence with
+source/artifact binding, FPGA flag-on acceptance and the unchanged profiling
+byte guard. A normal production byte inventory is a separate observation.
+Before numerical-original acquisition, freeze exact final head/pin/run/job
+identities. Preserve four consumed-study seals separately from live current-pin
+contracts, acquire originals once and never replay the completed study.
+
+After qualified combined landing, reconcile PR1516/1515/1517/1538 as integrated
+through the actual PR1536 landing, update the four campaign documents and verify
+the existing guarded production deployment and live version/UI. Queued checks,
+a component pass or supplier adoption cannot close this sequence.
 Then ask for the next priority.
 Physical calibration, probe loading, a GUI AC-coupling selector and the unreachable
 32 MiB output-cap boundary remain outside this acceptance. Source/package

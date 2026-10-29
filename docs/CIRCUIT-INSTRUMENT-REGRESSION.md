@@ -85,39 +85,36 @@ neither old study nor predecessor CI into new-pin evidence.
 
 ### Next actions, in order
 
-The coordinated delivery claim is
+The operator transferred remaining delivery to this campaign's maintainer under
 [`circuit-menu-workspace-delivery`](../lanes/2026-10-28-circuit-menu-workspace-delivery.md).
-Its owner carries the qualified CUI menu/editor integration, one explicit Lite
-package adoption, combined source landing and deployment evidence. The circuit
-campaign retains numerical-original custody, independent readback and these
-four final documentation surfaces. Do not independently merge PR1538 or advance
-its package pins while that combined delivery is active.
+The coordinator's former separate source/pin writer stopped. PR1536 contains
+the full Circuit ancestry and exact CUI `4b65f154` adoption; Board is unchanged.
+Packaged native confirmation is accepted at `17bbefca`. Forward checkpoint
+`a0c0a60e` carries the measured viewport, Pixel and trigger Escape/Tab repairs.
+These bounded results do not qualify the final combined application.
 
-1. Preserve the accepted CUI PR131 landing and adopt its exact `4b65f154` head.
-   Supplier browser evidence alone is not consumer acceptance.
-2. Compose the complete frozen `93aba754` source ancestry with the editor/menu
-   delivery. Preserve the Board pin, historical study seals and separately owned
-   pin-history reader. Verify every enabled final combined check, including its
-   full application/browser checks; the earlier fast-tier label exception does
-   not apply to this combined qualification.
-   The menu-driver forward repair binds the visible originating trigger's
-   `aria-controls` popup for actual Open/Import and portal queries. Qualify
-   that repair in the combined application, including cramped navigation;
-   preserve every measurement assertion, real file chooser and refusal path.
-3. Before acquiring combined numerical logs, freeze the independent reader's
-   exact consumer head, supplier pins, run and job identities. Preserve all
-   numerical predicates. Acquire each original once, share retained files and
-   never replay the consumed study. Read actual browser results from the same
-   qualified application artifact, rather than substituting older GUI receipts.
-4. After verified landing, reconcile PR1516/1515/1517/1538 against the actual
-   integrated heads and tree. Preserve branches, original failures and evidence.
-   Update this handoff, PLAN, ROADMAP and the campaign record against those
-   identities; qualify their final documentation change.
-5. Verify the coordinated application and deployment results within their
-   observed boundaries. Do not dispatch a duplicate combined qualification or
-   claim an installed release from source/package adoption alone. The light
-   circuit UX and rendering gates cover scope rearming, raw/ADC views, triggers,
-   CSV/HOLD stability, reset/refusal behavior and LM741 meter recovery.
+1. Complete claim PR1558's registration and align only the legacy policy guard
+   with actual selected fast/thorough execution. The operator requires fast
+   PR checks by default and no `ci:full` labels. Do not change job selection,
+   thresholds, browser assertions or main/dispatch behavior.
+2. Batch the guard and editor repairs into the existing PR1536. Require all
+   enabled exact-final-head checks and actual affected application acceptance.
+   Bind the production GUI readback to source, configuration and artifact; finish
+   FPGA flag-on evidence and the unchanged profiling-build initial-JavaScript
+   guard. Production entry bytes and profiling-build bytes are distinct metrics.
+   Keep actual menu/chooser events, measurements, refusals and viewport limits.
+3. Freeze independent readers' exact final head, pins, run and job identities
+   before acquiring numerical originals. Preserve predicates and four historical
+   study seals, advance only live current-package authority, acquire each
+   original once and never replay the consumed study. Share retained native
+   originals with their original custodian rather than downloading them again.
+4. Normally merge the qualified matched head and verify parents/tree. Reconcile
+   PR1516/1515/1517/1538 as integrated through that actual landing, without
+   pretending the original PRs merged. Preserve source branches and failures.
+5. Verify the guarded production deployment and actual live version/UI, then
+   reconcile PLAN, ROADMAP, this handoff and the campaign record with actual
+   landing and delivery identities. Source/package and local patched production
+   observations are not release/deployment evidence.
 
 Only then close the six-item campaign and ask for the next priority. No seventh
 implementation lane is opened. Package adoption and browser qualification do
