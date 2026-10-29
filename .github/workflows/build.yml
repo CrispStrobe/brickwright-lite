@@ -250,12 +250,9 @@ jobs:
           { echo "fast=$fast"; echo "thorough=$thorough"; echo "full_label=$HAS_FULL"
             echo "browser=$browser"; echo "heavy=$heavy"; echo "light=$light"; echo "robotlab=$robotlab"; echo "fpga=$fpga"; } >> "$GITHUB_OUTPUT"
 
-  # MERGE DISCIPLINE. The merge rule is "every enabled check on the exact head
-  # is SUCCESS", and a PR without ci:full has the thorough tier SKIPPED, not
-  # green. This always-running check turns that into a red verdict for code
-  # changes, so the rule still forces the thorough tier before a code merge.
-  # It runs on every PR event, label ones included, so the newest verdict
-  # always reflects the current labels.
+  # ADMISSION DISCIPLINE. Fast PR qualification is the default. This check
+  # admits an actual selected tier or docs-only scope, never label presence
+  # alone. Every enabled selected job must still succeed before merge.
   full-ci-gate:
     name: full CI requested
     if: github.event_name == 'pull_request'
@@ -263,22 +260,23 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Require ci:full for code changes
+      - name: Admit selected CI tier
         env:
           DOCS_ONLY: ${{ needs.scope.outputs.docs_only }}
-          HAS_FULL: ${{ needs.scope.outputs.full_label }}
-          BROWSER_NEEDED: ${{ needs.scope.outputs.browser_needed }}
-          SUMMARY: ${{ needs.scope.outputs.browser_summary }}
-          ACTION: ${{ github.event.action }}
-          LABEL: ${{ github.event.label.name }}
+          FAST: ${{ needs.scope.outputs.fast }}
+          THOROUGH: ${{ needs.scope.outputs.thorough }}
         run: |
           set -euo pipefail
-          if [ "$DOCS_ONLY" = "true" ]; then echo "documentation-only change: the fast path is sufficient"; exit 0; fi
-          # scripts/ci-browser-scope.mjs: no browser or fpga shard reaches these files.
-          if [ "$BROWSER_NEEDED" = "false" ]; then echo "no browser-relevant paths changed: $SUMMARY"; exit 0; fi
-          if [ "$ACTION" = "unlabeled" ] && [ "$LABEL" = "ci:full" ]; then HAS_FULL=false; fi
-          if [ "$HAS_FULL" = "true" ]; then echo "ci:full present: the thorough tier runs for this PR"; exit 0; fi
-          echo "::error::code change: add the ci:full label so the thorough tier runs before merge"
+          for value in "$DOCS_ONLY" "$FAST" "$THOROUGH"; do
+            case "$value" in
+              true|false) ;;
+              *) echo "::error::missing or invalid selected CI tier"; exit 1 ;;
+            esac
+          done
+          if [ "$DOCS_ONLY" = "true" ]; then echo "documentation-only change: no code tier required"; exit 0; fi
+          if [ "$FAST" = "true" ]; then echo "fast tier selected: require every enabled check to succeed"; exit 0; fi
+          if [ "$THOROUGH" = "true" ]; then echo "thorough tier selected: require every enabled check to succeed"; exit 0; fi
+          echo "::error::code change has no selected CI tier"
           exit 1
 
   # SUPERSEDED MAIN COMMITS RUN CHEAP. Measured 2026-09-29: main took 100 commits
