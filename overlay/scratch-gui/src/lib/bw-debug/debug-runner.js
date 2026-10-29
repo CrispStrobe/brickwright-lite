@@ -2166,6 +2166,12 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
 
         // A chip picked in the panel means "my firmware on that chip", with no
         // circuit — whatever the project's own device is.
+        if (labwiredChip === 'software:samd51-no-asf-simulation') {
+            if (labwiredBoardVariant !== null) {
+                throw new Error('the SAMD software profile cannot replace a selected circuit variant');
+            }
+            return attachSamdSoftwareProfile(built, wasm, createDebugTarget, createDebugSession);
+        }
         if (labwiredChip) {
             if (labwiredBoardVariant !== null) {
                 throw new Error('a selected on-module variant needs a circuit-derived board, not a catalog override');
@@ -2309,10 +2315,31 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         return finishLabwiredAttach(lwTarget, lwAdapter, built.image.length, [], createDebugSession);
     }
 
+    async function attachSamdSoftwareProfile (built, wasm, createDebugTarget, createDebugSession) {
+        if (!built || !['elf', 'uf2'].includes(built.format) || !(built.image instanceof Uint8Array)) {
+            throw new Error('the SAMD software profile needs addressed .elf or .uf2 firmware');
+        }
+        const {loadSamdSoftwareProfile} = await import(
+            /* webpackChunkName: "samd-software-profile" */ './samd-software-profile.js');
+        const base = (typeof document !== 'undefined' && document.baseURI) || null;
+        const {profile, inputs} = await loadSamdSoftwareProfile({base});
+        const {target: lwTarget, adapter: lwAdapter} = await createDebugTarget('labwired', {
+            wasm, firmware: built.image, softwareProfile: {
+                name: profile.profile, kind: profile.kind, physicalCapture: profile.physical_capture,
+                chipYaml: profile.chip_yaml, systemYaml: profile.system_yaml,
+                blobs: inputs, clockHz: 120_000_000, displays: [{id: 'controller_memory'}]
+            }
+        });
+        board = null;
+        engineNotes = ['Authored SAMD software simulation with controller-memory display; no physical panel or circuit is represented.'];
+        emit();
+        return finishLabwiredAttach(lwTarget, lwAdapter, built.image.length, [], createDebugSession, true);
+    }
+
     /** What every labwired attach does once it has a target: the console (out
      *  AND in), the runner's target/session, and the ready line. Shared by the
      *  bench attach and the firmware-only one so the two cannot drift. */
-    function finishLabwiredAttach (lwTarget, lwAdapter, programBytes, pins, createDebugSession) {
+    function finishLabwiredAttach (lwTarget, lwAdapter, programBytes, pins, createDebugSession, allowPendingVideo = false) {
         if (lwAdapter && lwAdapter.onSerial) {
             let lineBuf = '';
             serialLines = [];
@@ -2376,7 +2403,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         // The board's display (a labwired board picked with its display): the
         // Widgets mirror polls this. Deleted otherwise, so an earlier machine's
         // screen cannot outlive it.
-        if (lwTarget && typeof lwTarget.video === 'function' && lwTarget.video() !== null) {
+        if (lwTarget && typeof lwTarget.video === 'function' && (allowPendingVideo || lwTarget.video() !== null)) {
             runner.video = () => lwTarget.video();
         } else {
             delete runner.video;
