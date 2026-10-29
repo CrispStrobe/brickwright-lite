@@ -99,3 +99,7 @@ checks the actual CI commit. Seven supplier rejection controls preserve the
 unchanged gate baseline. Mechanical contract, model, program, numerical bounds
 and timing remain unchanged; fresh affected current-head qualification remains
 mandatory before merge.
+The full gate audit also exposed a retained last-token selector in the
+acknowledgment fixture. Its replacement validates the whole wire envelope,
+byte extent, digest and canonical encoding, with five damaged-envelope
+controls. No gate baseline changes or exception markers are added.

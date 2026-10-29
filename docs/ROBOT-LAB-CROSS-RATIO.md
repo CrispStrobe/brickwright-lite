@@ -102,7 +102,7 @@ controls are implemented. The existing 30-minute job cap and every old gate
 remain unchanged. The canonical budget registry includes the new gate with zero
 readings; no measured runtime or historical timing is claimed.
 
-Nine lightweight analytic/observation preflights (52 data corruptions plus seven checkout-supplier rejection controls and receiver failures, including the
+Nine lightweight analytic/observation preflights (52 data corruptions plus seven checkout-supplier and five acknowledgment-envelope rejection controls and receiver failures, including the
 four-case retained-TAP transport and same-opcode program edits) and 15 browser shard/inventory checks pass;
 these checks import no engine and do not qualify motion.
 
