@@ -2,6 +2,11 @@ name: SAMD actual browser and installed game qualification
 on:
   workflow_dispatch:
     inputs:
+      realm:
+        description: Retry only the failed realm; preserve successful original guests
+        type: choice
+        options: [both, browser, installed]
+        default: both
       consumer:
         description: Exact reviewed Lite source commit
         type: string
@@ -74,6 +79,7 @@ jobs:
           if-no-files-found: error
           retention-days: 14
   browser:
+    if: ${{ inputs.realm != 'installed' }}
     needs: admission
     runs-on: ubuntu-24.04
     timeout-minutes: 120
@@ -103,6 +109,7 @@ jobs:
           if-no-files-found: error
           retention-days: 14
   installed:
+    if: ${{ inputs.realm != 'browser' }}
     needs: admission
     runs-on: ubuntu-24.04
     timeout-minutes: 120
@@ -130,7 +137,11 @@ jobs:
         run: cargo install tauri-driver --version 2.0.6 --locked
       - name: Three fresh actual installed game instances on embedded assets
         run: |
-          xvfb-run -a dbus-run-session -- node scripts/verify-samd-native-game-installed.mjs qualification/native/brickwright-tauri qualification/native/receipt.json qualification/frontend qualification/fixture samd-installed-results
+          # Tauri resolves ../lib/Brickwright relative to the installed binary.
+          # SAMD uses embedded frontend assets only; this prefix carries no SPIKE resources.
+          install -Dm755 qualification/native/brickwright-tauri qualification/installed/usr/bin/brickwright-tauri
+          mkdir -p qualification/installed/usr/lib/Brickwright
+          xvfb-run -a dbus-run-session -- node scripts/verify-samd-native-game-installed.mjs qualification/installed/usr/bin/brickwright-tauri qualification/native/receipt.json qualification/frontend qualification/fixture samd-installed-results
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
