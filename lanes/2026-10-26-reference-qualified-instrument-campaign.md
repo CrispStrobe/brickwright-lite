@@ -177,3 +177,13 @@ refusals, four historical seals and repaired documentation-trigger check;
 zero ordinary failures, with four declared Arcade TODOs preserved. The separate
 Arcade qualification is still queued at this checkpoint. This is not the final
 combined application result and does not release an independent source merge.
+
+Read-only consumer preflight identified a further adoption requirement in
+`scripts/verify-circuit-ux.mjs`: three Open locators and one Import locator expect
+old emoji labels, and popup/zoom/import-format queries assume the menu remains
+inside the designer. CUI's new menu portals to the document body. The delivery
+owner must bind the popup through the originating trigger's `aria-controls`,
+adapt the real button/filechooser paths and retain the existing numerical,
+layout, capture, ADC and refusal assertions. Cramped navigation must keep its
+coverage. This is a source finding, not an executed browser failure; it grants
+no permission to weaken the checks or start a competing circuit source writer.

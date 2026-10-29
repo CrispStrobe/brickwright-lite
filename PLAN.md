@@ -40,7 +40,10 @@ still pending.
 
 Next: the coordinated menu/editor delivery owner must qualify and promote CUI
 PR131, compose the complete frozen circuit ancestry, perform one explicit Lite
-package adoption and qualify the combined application before landing. Circuit
+package adoption and qualify the combined application before landing.
+Its preflight must adapt the circuit browser driver's old menu labels and popup
+scope to the actual trigger-owned portal, keeping the measurement and refusal
+checks intact. Circuit
 retains numerical-original custody, independent readback and final documentation;
 no competing source merge or pin update is authorized. All enabled full checks
 apply to that combined UI target; the earlier fast-tier label exception is not

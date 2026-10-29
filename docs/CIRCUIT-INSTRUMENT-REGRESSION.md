@@ -75,6 +75,14 @@ its package pins while that combined delivery is active.
    pin-history reader. Verify every enabled final combined check, including its
    full application/browser checks; the earlier fast-tier label exception does
    not apply to this combined qualification.
+   Before that qualification, adapt `scripts/verify-circuit-ux.mjs` to the
+   new CUI menu: three Open locators and the Import locator still expect emoji
+   labels, while the popup now lives in a portal outside the designer. Resolve
+   the actual visible designer trigger's `aria-controls` dialog for Open,
+   Import, import-format and zoom controls; account for cramped navigation in
+   that popup. Preserve all existing measurement assertions, actual file chooser,
+   owner identity, layout coverage and refusal paths. Changing only the label
+   regex leaves the portal-scoping defect unresolved.
 3. Before acquiring combined numerical logs, freeze the independent reader's
    exact consumer head, supplier pins, run and job identities. Preserve all
    numerical predicates. Acquire each original once, share retained files and
