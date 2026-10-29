@@ -364,7 +364,7 @@ test('same-job V9 source policy detects lost boundaries and nonexclusive setup',
     const early=step(block,'Retain immutable V10 same-job phase originals');
     const moved=block.replace(ack,'').replace(early,ack+early);
     assert.throws(()=>checkActualV9Source(workflow.replace(block,moved)));
-    assert.throws(()=>checkActualV9Source(workflow,actualV9Controller.replace(/^ACTUAL_V9_ENABLED = False$/m,'ACTUAL_V9_ENABLED = True')));
+    assert.throws(()=>checkActualV9Source(workflow,actualV9Controller.replace(/^ACTUAL_V9_ENABLED = (True|False)$/m,(_,value)=>'ACTUAL_V9_ENABLED = '+(value==='True'?'False':'True'))));
 });
 
 

@@ -895,10 +895,10 @@ jobs:
           retention-days: 14
 
   # Distinct same-job prelude, external admission and actual execution.
-  # Both source guards and this workflow gate remain unarmed until qualified.
+  # Source guards and this gate still require separate one-shot admission.
   actual-v9:
     if: >-
-      ${{ false && github.event_name == 'workflow_dispatch' && github.actor == 'CrispStrobe' &&
+      ${{ true && github.event_name == 'workflow_dispatch' && github.actor == 'CrispStrobe' &&
           github.repository == 'CrispStrobe/brickwright-lite' && github.run_attempt == 1 &&
           github.event.inputs.protocol == 'actual-v9' && github.ref_type == 'branch' &&
           github.event.inputs.pull_request != '' && github.event.inputs.prelude_sha256 != '' &&

@@ -5810,7 +5810,61 @@ class Originals(unittest.TestCase):
     def test_reader_v9_and_f10_default_disabled_before_any_input_read(self):
         for mode in ('--actual-v9-phase','--actual-v9','--inventory-original-v10','--inventory-failure-v10'):
             args=[mode,'--artifact','unread','--expected','unread']if mode.startswith('--actual')else[mode,'--original','unread','--template','unread','--expected','unread']
-            with self.subTest(mode=mode),patch.object(r,'bounded_input',side_effect=AssertionError('input read before disabled guard')),self.assertRaises(ValueError):r.main(args)
+            with self.subTest(mode=mode),patch.object(r,'ACTUAL_V9_READER_ENABLED',False),patch.object(r,'FINITE_INVENTORY_V10_READER_ENABLED',False),patch.object(r,'bounded_input',side_effect=AssertionError('input read before disabled guard')),self.assertRaises(ValueError):r.main(args)
+
+    def test_producer_actual_v9_armed_cli_routes_preserve_startup_and_request_boundaries(self):
+        self.assertTrue(c.ACTUAL_V9_ENABLED);self.assertTrue(c.FINITE_INVENTORY_V10_ENABLED)
+        for mode,edge in (('actual-v9-guard','actual_v9_guard'),('actual-v9-prelude','actual_v9_recheck_prelude'),('actual-v9-ack','actual_v9_wait_ack')):
+            sequence=[]
+            def startup(*args):sequence.append(('startup',args[1],args[2]))
+            def admitted(*args):sequence.append(('admission',mode));return {'schema':'manufactured-control-result','guestApproved':False}
+            with self.subTest(mode=mode),patch.object(c,'observe_python_startup',side_effect=startup)as observed,patch.object(c,edge,side_effect=admitted)as reached,patch.object(c.sys,'stdout',io.StringIO())as output:
+                self.assertEqual(c.main([mode]),0);self.assertEqual(D(output.getvalue().encode())['guestApproved'],False)
+                self.assertEqual(sequence,[('startup',mode,[]),('admission',mode)]);reached.assert_called_once()
+                sequence.clear()
+                with self.assertRaisesRegex(ValueError,'closed no-argument'):c.main([mode,'--output','unselected'])
+                self.assertEqual(sequence,[])
+        files,_=self.reader_final_v9_packet();raw=files['request.original.json'];pin=H(raw)
+        for mode in ('actual-v9-preflight','actual-v9'):
+            with self.subTest(mode=mode),patch.object(c,'regular',return_value=raw)as read,patch.object(c,'execute',return_value={'manufactured':True,'guestApproved':False})as execute:
+                result=c.main([mode,'--request','selected-request','--expected-sha256',pin,'--output','selected-output'])
+                self.assertFalse(result['guestApproved']);read.assert_called_once_with('selected-request',c.JSON_CAP)
+                self.assertEqual(execute.call_args.args[:2],(raw,pin));self.assertEqual(execute.call_args.kwargs,{'preflight':mode=='actual-v9-preflight','startup_mode':mode})
+        _,template,_,_=self.reader_finite_v10_packet();template_pin=H(template)
+        with patch.dict(c.os.environ,{'BW_FINITE_INVENTORY_V10_SHA256':template_pin}),patch.object(c,'actual_v9_read_state',return_value=({},{})),patch.object(c,'regular',return_value=template),patch.object(c,'actual_v9_template_from_env',return_value=template),patch.object(c,'inventory_observation',return_value={'manufactured':True,'guestApproved':False})as collect,patch.object(c,'retain_inventory_observation',side_effect=lambda value,path:value):
+            self.assertFalse(c.main(['finite-inventory-v10','--request','selected-template','--expected-sha256',template_pin,'--output','selected-output'])['guestApproved'])
+            collect.assert_called_once();self.assertEqual(collect.call_args.args[:2],(template,template_pin));collect.reset_mock()
+            with self.assertRaisesRegex(ValueError,'same admitted finite10 template'):c.main(['finite-inventory-v10','--request','selected-template','--expected-sha256','0'*64,'--output','selected-output'])
+            collect.assert_not_called()
+        with patch.object(c,'FINITE_INVENTORY_V10_ENABLED',False),patch.object(c,'regular',side_effect=AssertionError('request read with coupled gate false')):
+            with self.assertRaisesRegex(ValueError,'disabled'):c.main(['actual-v9'])
+
+    def test_reader_actual_v9_armed_cli_complete_phase_and_final_parity(self):
+        self.assertTrue(r.ACTUAL_V9_READER_ENABLED);self.assertTrue(r.FINITE_INVENTORY_V10_READER_ENABLED)
+        phase_files,phase_expected=self.reader_phase_v9_packet();phase_raw=zip_(phase_files)
+        phase_expected.update(artifactBytes=len(phase_raw),artifactSha256=H(phase_raw));phase_expected['artifact'].update(size_in_bytes=len(phase_raw),digest='sha256:'+H(phase_raw))
+        final_files,final_expected=self.reader_final_v9_packet();archived=copy.deepcopy(final_files)
+        archived['inventory.json']=E({'schema':'bw.gui-hdd.originals.v1','files':{name:ROW(raw)for name,raw in archived.items()}})
+        final_raw=zip_({'originals/'+name:raw for name,raw in archived.items()})
+        final_expected.update(artifactBytes=len(final_raw),artifactSha256=H(final_raw));final_expected['artifact'].update(size_in_bytes=len(final_raw),digest='sha256:'+H(final_raw))
+        for mode,artifact,expected in (('--actual-v9-phase',phase_raw,phase_expected),('--actual-v9',final_raw,final_expected)):
+            selected={'selected-expected':E(expected),'selected-artifact':artifact};reads=[]
+            def bounded(path,cap):
+                self.assertIn(str(path),selected);raw=selected[str(path)];self.assertLessEqual(len(raw),cap);reads.append(str(path));return raw
+            with self.subTest(mode=mode),patch.object(r,'bounded_input',side_effect=bounded),patch.object(r.sys,'stdout',io.StringIO())as output:
+                self.assertEqual(r.main([mode,'--artifact','selected-artifact','--expected','selected-expected']),0)
+                report=D(output.getvalue().encode());self.assertFalse(report['guestApproved']if mode=='--actual-v9-phase'else report.get('executionApproved',False))
+                self.assertEqual(reads,['selected-expected','selected-artifact'])
+                if mode=='--actual-v9-phase':self.assertTrue(report['phaseAdmitted']);self.assertFalse(report['jobSuccessProved'])
+                else:self.assertEqual(report,r.audit_v9(r.archive_originals_v9(artifact),expected))
+
+        for symlink in (False,True):
+            value,template,expected,_=self.reader_finite_v10_packet(symlink);selected={'selected-original':E(value),'selected-template':template,'selected-expected':E(expected)}
+            def bounded(path,cap):
+                self.assertIn(str(path),selected);raw=selected[str(path)];self.assertLessEqual(len(raw),cap);return raw
+            with self.subTest(resolverSymlink=symlink),patch.object(r,'bounded_input',side_effect=bounded),patch.object(r.sys,'stdout',io.StringIO())as output:
+                self.assertEqual(r.main(['--inventory-original-v10','--original','selected-original','--template','selected-template','--expected','selected-expected']),0)
+                self.assertEqual(D(output.getvalue().encode()),r.verify_inventory_original_v10(E(value),template,expected))
 
     def test_producer_actual_v9_full_parse_join_and_coherent_phase_cuts(self):
         files,expected=self.reader_final_v9_packet();raw=files['request.original.json'];request=c.parse_request(raw,H(raw))
@@ -6186,8 +6240,9 @@ test('standalone original reader: complete manufactured packet and coherent nega
     const historicalMethodCount=167;
     const sameJobMethodCount=14; // Seven new reader and seven connected producer methods.
     const sameJobPartsMethodCount=4;
-    assert.equal(total,historicalMethodCount+sameJobMethodCount+sameJobPartsMethodCount,
-        'all 167 historical plus 14 same-job plus 4 V9 parts methods remain covered exactly once');
+    const armedEntryMethodCount=2;
+    assert.equal(total,historicalMethodCount+sameJobMethodCount+sameJobPartsMethodCount+armedEntryMethodCount,
+        'all 167 historical plus 14 same-job plus 4 V9 parts plus 2 armed-entry methods remain covered exactly once');
 });
 
 test('actual v6 parts: exact bounded transport and independent reader parity', () => {

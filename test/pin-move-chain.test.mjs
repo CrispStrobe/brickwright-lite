@@ -107,15 +107,15 @@ const HISTORICAL_X86_FINITE_V7_PINS = "FINITE_V7_PINS = {'bw-board':'" + HISTORI
 const HISTORICAL_X86_FINITE_V8_PINS = "FINITE_V8_PINS = {'bw-board':'" + HISTORICAL_X86_CURRENT_BOARD + "','bw-circuit-ui':'" + HISTORICAL_X86_V8_CUI + "','sb3-creator':'1cbaeed325f5a890e43b78a4211acae8f801f2d2'}";
 const CURRENT_X86_FINITE_V9_PRODUCER = "FINITE_V9_PINS = {'bw-board':CURRENT_BOARD,'bw-circuit-ui':CUI,'sb3-creator':CURRENT_SB3}";
 const CURRENT_X86_FINITE_V9_READER = "FINITE_V9_PINS = {'bw-board':CURRENT_BOARD,'bw-circuit-ui':CUI_V8,'sb3-creator':CURRENT_SB3}";
-// Independently reviewed, unarmed same-job F10/Actual-V9 bodies. Historical
+// Reviewed arming-preparation F10/Actual-V9 bodies; actual admission is separate. Historical
 // F7/F8/F9 meanings remain fixed; only named positions are admitted below.
 // These profiles follow independent protocol/role review and connected controls,
 // including clock and core/full-runtime parity. Any later source edit revokes
 // their occurrence roles until another explicit review; never auto-restamp.
 const HISTORICAL_X86_SOURCE_PROFILES = Object.freeze({
-    'scripts/run-i80386-hdd-gui-actual.py': Object.freeze({bytes: 344632, sha256: '8ad4ca23886a87b3daf0ff0491326ce80fe7339c57a06036b7d73c9bc8518fbf'}),
-    'scripts/read-i80386-hdd-gui-originals.py': Object.freeze({bytes: 460209, sha256: '1c057f93bbf2aeb7fb7042165ae4e349135182c2b2701af07183c67f6e9fba10'}),
-    'test/i80386-hdd-gui-actual.test.mjs': Object.freeze({bytes: 631300, sha256: '2e5e4a9872f1b5ca62c4908f344d3cbfb0d7db7342308634e80fb8619a5101f0'}),
+    'scripts/run-i80386-hdd-gui-actual.py': Object.freeze({bytes: 344630, sha256: 'af354fec171b863fca3578ed381d4b37f46a63fab0db80924e5beff746a8a94b'}),
+    'scripts/read-i80386-hdd-gui-originals.py': Object.freeze({bytes: 460207, sha256: '4ea30c97cc552e847691d2c4d6201823c7b114c7c58efb7a4354030ae172dcf1'}),
+    'test/i80386-hdd-gui-actual.test.mjs': Object.freeze({bytes: 637722, sha256: 'f67da1bd8005744b9ff95d8817137816fff7145d7d46001639ac1f299cfdd75a'}),
 });
 
 import {explainGitFailure} from './helpers/git-absence.mjs';
