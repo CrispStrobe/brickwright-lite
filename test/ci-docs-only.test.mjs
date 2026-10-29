@@ -45,6 +45,7 @@ test('build.yml wires the tiers: scope, gate, fast and thorough conditions', () 
 });
 
 // Execute the checked-in shell, not a second JavaScript tier implementation.
+// Use the runner's explicit Bash path; absence fails closed, without PATH fallback.
 const workflowJob = (source, name) => {
     const jobs = new Map([...source.matchAll(/^  ([a-z][\w-]*):\n([\s\S]*?)(?=^  [a-z][\w-]*:\n|(?![\s\S]))/gm)]
         .map(match => [match[1], match[2]]));
@@ -71,7 +72,7 @@ const executeShell = (shell, inputs) => {
     const dir = mkdtempSync(path.join(tmpdir(), 'bw-ci-tier-'));
     const output = path.join(dir, 'output');
     try {
-        const run = spawnSync('bash', ['-c', shell], {
+        const run = spawnSync('/usr/bin/bash', ['-c', shell], {
             env: {PATH: process.env.PATH, EVENT: 'pull_request', ACTION: 'synchronize',
                 LABEL: '', HAS_FULL: 'false', DOCS_ONLY: 'false',
                 NEED_HEAVY: 'true', NEED_LIGHT: 'true', NEED_ROBOTLAB: 'true', NEED_FPGA: 'true',
@@ -144,7 +145,7 @@ test('admission matrix rejects buildable missing-branch and unconditional-succes
     });
     variants.push(['unconditional success', `exit 0\n${gateShell}`]);
     for (const [name, mutant] of variants) {
-        assert.equal(spawnSync('bash', ['-n'], {input: mutant}).status, 0, `${name}: buildable shell`);
+        assert.equal(spawnSync('/usr/bin/bash', ['-n'], {input: mutant}).status, 0, `${name}: buildable shell`);
         assert.throws(() => assertGateCases(mutant), {name: 'AssertionError'}, `${name}: real verdict must differ`);
     }
 });
