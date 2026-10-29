@@ -1,4 +1,5 @@
 import {analyseCallableBindings} from './callable-bindings.js';
+import {createOrdinaryParseIntegerNumberSource} from './ordinary-parse-integer-number-source.js';
 import {inspectGeneratedHelperBindings,GENERATED_HELPER_PROFILES} from './generated-helper-recognition.js';
 
 // Capture meta operations, global aliases, full intrinsic descriptors and the
@@ -82,10 +83,13 @@ const otherCalls=new Map([['pause',[1]],['randint',[2]],['Math.sign',[1]],['Math
 const path=n=>n?.type==='Identifier'?n.name:n?.type==='Member'&&!n.optional?path(n.object)+'.'+n.name:null;
 const root=n=>['Member','Index'].includes(n?.type)?root(n.object):n;
 
-export function createOrdinaryFrameDeltaNumberSource(program,safeIndex=()=>false,safeArrayCall=()=>false){
+export function createOrdinaryFrameDeltaNumberSource(program,safeIndex=()=>false,safeArrayCall=()=>false,allowParseIntegerEffects=true){
     if(!ambientCurrent()||typeof safeIndex!=='function'||typeof safeArrayCall!=='function'||!hasCandidate(program))return denied;
     const syntax=inspectGeneratedHelperBindings(program,GENERATED_HELPER_PROFILES.ordinary);
     if(!syntax.isCurrent())return denied;
+    const parseNumbers=allowParseIntegerEffects&&syntax.nodes.some(n=>n.type==='Call'&&n.callee?.type==='Identifier'&&n.callee.name==='parseInt')?createOrdinaryParseIntegerNumberSource(program):null;
+    let parseUsed=false;
+    const literalParseCall=n=>{if(!parseNumbers?.isNumberCall(n))return false;parseUsed=true;return true;};
     const lexical=analyseCallableBindings(program),binding=n=>lexical.references.get(n),candidates=new WeakSet();
     let unsafe=false,found=false;
     const functions=new Map();
@@ -114,7 +118,7 @@ export function createOrdinaryFrameDeltaNumberSource(program,safeIndex=()=>false
             n.type==='Declaration'&&n.kind==='var'&&(n.decls||[]).some(d=>['game','control'].includes(d.name))||
             ['ForOf','ForIn'].includes(n.type)&&n.kind==='var'&&['game','control'].includes(n.name))unsafe=true;
         if(n.type&&(!nodeTypes.has(n.type)||n.exported!==undefined&&n.exported!==false))unsafe=true;
-        if(n.type==='Identifier'&&!binding(n)&&!sdkRoots.has(n.name)&&!constants.has(n.name)&&!(['pause','randint'].includes(n.name)&&syntax.parentOf(n)?.callee===n))unsafe=true;
+        if(n.type==='Identifier'&&!binding(n)&&!sdkRoots.has(n.name)&&!constants.has(n.name)&&!(['pause','randint'].includes(n.name)&&syntax.parentOf(n)?.callee===n)&&!(n.name==='parseInt'&&syntax.parentOf(n)?.callee===n&&literalParseCall(syntax.parentOf(n))))unsafe=true;
         if(n.type==='FunctionExpression'){const call=syntax.parentOf(n),callee=call?.callee;if(!callback(n)||!plainCall(call,[1])||call.args[0]!==n||callee?.type!=='Member'||!['onPaint','onUpdate'].includes(callee.name)||callee.object?.type!=='Identifier'||callee.object.name!=='game'||binding(callee.object))unsafe=true;}
         if(n.type==='Identifier'&&['control','this','global','globalThis','window','self','eval','Function','Reflect','arguments'].includes(n.name)&&
             (n.name==='this'||!binding(n)))unsafe=true;
@@ -137,6 +141,7 @@ export function createOrdinaryFrameDeltaNumberSource(program,safeIndex=()=>false
             candidates.add(read);found=true;
         }
         if(n.type!=='Call')continue;
+        if(literalParseCall(n))continue;
         const r=root(n.callee),own=r?.type==='Identifier'?binding(r):null;
         // Same-named lexical receivers are ordinary values, never this SDK.
         if(own&&['game','control'].includes(r.name))continue;
@@ -151,6 +156,6 @@ export function createOrdinaryFrameDeltaNumberSource(program,safeIndex=()=>false
     }
     if(unsafe||!found||!ambientCurrent()||!syntax.isCurrent())return denied;
     let expired=false;
-    const current=()=>{if(expired)return false;try{if(!ambientCurrent()||!syntax.isCurrent())expired=true;}catch(error){expired=true;throw error;}return !expired;};
+    const current=()=>{if(expired)return false;try{if(!ambientCurrent()||!syntax.isCurrent()||parseUsed&&!parseNumbers.current())expired=true;}catch(error){expired=true;throw error;}return !expired;};
     return Object.freeze({current,isNumberRead:node=>current()&&candidates.has(node)});
 }

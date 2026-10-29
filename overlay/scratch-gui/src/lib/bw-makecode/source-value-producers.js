@@ -1,5 +1,6 @@
 import {inspectNativeArrayAddHelpers} from './native-array-binary-helper-source.js';
 import {createOrdinaryFrameDeltaNumberSource} from './ordinary-frame-delta-number-source.js';
+import {createOrdinaryParseIntegerNumberSource} from './ordinary-parse-integer-number-source.js';
 import {createSourceControlCellEntry} from './source-control-cell-entry.js';
 import {createClosedOrdinarySourceEntry} from './closed-ordinary-source-entry.js';
 import {nullableArrayLengthSource} from './nullable-array-length-source.js';
@@ -108,7 +109,7 @@ function deadLocalResets(program) {
 
 // Analyze actual lexical producers and all writers without rewriting the AST.
 // Source annotations constrain consumers; they never seed producer authority.
-function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpers:provedHelpers=new Set(),parenthesized=false,unboundIsOpaque=false,opaqueDeclarationValues=false,uninitializedLocalsAreOpaque=false,declaredLocalUndefined=false,multiplayerPlayerProperties=false,consoleInspection=false,arrayValues=false,arrayEffectSites=false,arrayCallbackParameters=false,arrayLoopEntries=false,provenArrayLength=false,ordinaryPrimitiveSdkNumbers=false,ordinaryMusicNumbers=true,ordinaryDestroyedNumbers=true,sceneClockNumbers=false,initializationEntries=false,primitiveComparisons=false,closureEntries=false,normalCompletion=null,closedOrdinaryEntries=false,physicalUpdateSource=null}={},privateSpriteAyProof=null,identityInput=null,cameraNumberInput=null,controlEntry=null,arrayCallbackBootstrap=false) {
+function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpers:provedHelpers=new Set(),parenthesized=false,unboundIsOpaque=false,opaqueDeclarationValues=false,uninitializedLocalsAreOpaque=false,declaredLocalUndefined=false,multiplayerPlayerProperties=false,consoleInspection=false,arrayValues=false,arrayEffectSites=false,arrayCallbackParameters=false,arrayLoopEntries=false,provenArrayLength=false,ordinaryPrimitiveSdkNumbers=false,ordinaryMusicNumbers=true,ordinaryDestroyedNumbers=true,ordinaryParseIntegerNumbers=true,ordinaryParseIntegerEffects=true,sceneClockNumbers=false,initializationEntries=false,primitiveComparisons=false,closureEntries=false,normalCompletion=null,closedOrdinaryEntries=false,physicalUpdateSource=null}={},privateSpriteAyProof=null,identityInput=null,cameraNumberInput=null,controlEntry=null,arrayCallbackBootstrap=false) {
     const ordinaryEntry=closedOrdinaryEntries?createClosedOrdinarySourceEntry(program):null;
     const nullableLengthSource=arrayValues?nullableArrayLengthSource(program):null;
     const nullableLengthIssued=new Set();let nullableLengthUsed=false;
@@ -191,6 +192,8 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
         return initialized(node.index);
     };
     const ordinaryNumbers=ordinaryPrimitiveSdkNumbers?ordinaryPlayerScoreNumberCalls(program,safeClockIndex):null;
+    const parseIntegerNumbers=ordinaryPrimitiveSdkNumbers&&ordinaryParseIntegerNumbers?createOrdinaryParseIntegerNumberSource(program):null;
+    let parseIntegerNumberUsed=false;
     const cameraPropertyNumbers=ordinaryPrimitiveSdkNumbers?ordinaryCameraPropertyNumberLeaves(program):null;
     const mathNumbers=ordinaryPrimitiveSdkNumbers?ordinaryMathNumberCalls(program):null;
     const musicNumbers=ordinaryPrimitiveSdkNumbers&&ordinaryMusicNumbers?createOrdinaryMusicNumberSource(program,safeClockIndex):null;
@@ -199,7 +202,7 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
     let destroyedNumberUsed=false;
     const spriteAyNumbers=privateSpriteAyProof||(ordinaryPrimitiveSdkNumbers?ordinarySpriteAyNumberReads(program):null);
     const sceneNumbers=sceneClockNumbers?ordinarySceneClockNumberCalls(program,safeClockIndex):null;
-    const frameDeltaNumbers=sceneClockNumbers?createOrdinaryFrameDeltaNumberSource(program,node=>safeClockIndex(node)||safeClockRead(node),safeClockArrayCall):null;
+    const frameDeltaNumbers=sceneClockNumbers?createOrdinaryFrameDeltaNumberSource(program,node=>safeClockIndex(node)||safeClockRead(node),safeClockArrayCall,ordinaryParseIntegerEffects):null;
     let frameDeltaNumberUsed=false;
     let screenWritten=false;
     const scanScreenWrites=node=>{if(!node||typeof node!=='object')return;if(Array.isArray(node)){node.forEach(scanScreenWrites);return;}const target=node.type==='Assignment'?node.left:node.type==='Update'?node.argument:null;if(target?.type==='Identifier'&&target.name==='screen'&&sdk.has(target))screenWritten=true;Object.values(node).forEach(scanScreenWrites);};scanScreenWrites(program);
@@ -290,6 +293,7 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
         else if(arrayValues&&node.type==='Unary'&&node.op==='typeof')derived.push({result:current,type:'String',operands:[cell(node.argument)],signature:true,inspectionPrimitive:true});
         else if(node.type==='Unary'&&['+','-','~'].includes(node.op))derived.push({result:current,type:'Number',operands:[cell(node.argument)],signature:true,domain:node.op==='~'?'SourceBitwise':'Number'});
         else if(node.type==='Binary'&&['+','-','*','/','%','**','&','|','^','<<','>>','>>>'].includes(node.op))derived.push({result:current,type:'Number',operands:[cell(node.left),cell(node.right)],signature:true,domain:['&','|','^','<<','>>','>>>'].includes(node.op)?'SourceBitwise':'Number',stringConcat:node.op==='+'});
+        else if(parseIntegerNumbers?.isNumberCall(node)){parseIntegerNumberUsed=true;add(current,'Number');}
         else if(node.type==='Call'&&!node.isNew&&(node.callee?.type==='Identifier'||numericArrows.size&&node.callee?.type==='Parenthesized'))calls.push({node,callee:node.callee.type==='Identifier'?binding(owner,node.callee.name):null,result:current});
         else if(node.type==='Parenthesized'&&parenthesized)edge(cell(node.expression),current);
         // The parser spells && / || / ?? as Binary; each yields one actual operand.
@@ -445,7 +449,7 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
     let invalidated;do{invalidated=false;for(const op of nullableLengthIssued)if(!nullableLengthEligible(op))invalidated=add(op.result,'Opaque')||invalidated;if(!unsafePlayerWrite&&playerWriteUnsafe()){unsafePlayerWrite=true;invalidated=true;}for(const item of derived)if(!derivedValid(item))invalidated=add(item.result,'Opaque')||invalidated;for(const item of numericCalls)if(item.node.args.length||!exactType(item.receiver,'NumericCallable'))invalidated=add(item.result,'Opaque')||invalidated;propagate();}while(invalidated);
     const fontAnnotations=new Set();const collectScope=node=>{if(!node||typeof node!=='object')return;if(Array.isArray(node)){node.forEach(collectScope);return;}const owner=owners.get(node);for(let s=owner;s;s=s.parent)for(const value of s.fontAnnotations||[])fontAnnotations.add(value);Object.values(node).forEach(value=>{if(value&&typeof value==='object')collectScope(value);});};collectScope(program);
     const immutableFunction=node=>{const fn=unchangedFunction(node);return fn&&!cyclic(knownBinding(fn))?fn:null;};
-    const factsCurrent=()=>declarationArrayResetCurrent()&&(!controlEntryUsed||controlEntry.current())&&(!frameDeltaNumberUsed||frameDeltaNumbers.current())&&(!ordinaryEntry||ordinaryEntry.current())&&(!nullableLengthUsed||nullableLengthSource.current())&&(!callbackEntry||callbackEntry.current())&&(!loopEntry||loopEntry.current())&&(!spriteAyNumbers||spriteAyNumbers.current())&&(!musicNumberUsed||musicNumbers.current())&&(!destroyedNumberUsed||destroyedNumbers.current())&&(!cameraNumberInput||cameraNumberInput.current());
+    const factsCurrent=()=>declarationArrayResetCurrent()&&(!parseIntegerNumberUsed||parseIntegerNumbers.current())&&(!controlEntryUsed||controlEntry.current())&&(!frameDeltaNumberUsed||frameDeltaNumbers.current())&&(!ordinaryEntry||ordinaryEntry.current())&&(!nullableLengthUsed||nullableLengthSource.current())&&(!callbackEntry||callbackEntry.current())&&(!loopEntry||loopEntry.current())&&(!spriteAyNumbers||spriteAyNumbers.current())&&(!musicNumberUsed||musicNumbers.current())&&(!destroyedNumberUsed||destroyedNumbers.current())&&(!cameraNumberInput||cameraNumberInput.current());
     const currentTypes=value=>new Set(factsCurrent()?types.get(value)||[]:[]);
     const currentArrayTypes=value=>factsCurrent()?arrayTypes(value):null;
     // Construct this independent execution frontier only on demand. It cannot

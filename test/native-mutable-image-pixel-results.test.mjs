@@ -120,3 +120,97 @@ test('generated Image drawing effects and private dimensions retain only pixel o
  for(const invalid of ['2001','2147483647','-1','0.5'])bad(text.replace('let width=4','let width='+invalid));
  for(const suffix of ['picture.fillRect=foreign;','picture.drawLine=foreign;','copied.flipX=foreign;','copied.replace=foreign;','picture.width=99;','function dormant(){picture.drawLine(0,0,1,1,7);}','sprites.onCreated(SpriteKind.Player,function(sprite){width=sprite.width;});'])bad(text+suffix);
 });
+
+// Unchanged authored generated-images fixture, including its actual creation
+// observer. These controls issue neither callback-width nor pixel-value facts.
+const generatedImagesWithCreated=`let width=4
+let height=3
+let picture=image.create(width,height)
+picture.fill(0)
+picture.fillRect(1,0,2,2,5)
+picture.drawLine(3,2,0,2,7)
+picture.setPixel(0,0,2)
+let copied=picture.clone()
+let alias=picture
+copied.flipX()
+copied.replace(7,8)
+let callbackWidth=0
+sprites.onCreated(SpriteKind.Player,function(sprite){callbackWidth=sprite.width})
+let hero=sprites.create(picture,SpriteKind.Player)
+let foe=sprites.create(alias,SpriteKind.Enemy)
+let third=sprites.create(copied,SpriteKind.Food)
+alias.setPixel(0,0,3)
+let sampled=picture.getPixel(2,1)+1
+let actualWidth=picture.width
+let actualHeight=copied.height`;
+
+test('unchanged generated images execute the closed creation width observer privately',()=>{
+ const {p,proof,calls}=inspect(generatedImagesWithCreated),before=JSON.stringify(p);assert.equal(calls.length,1);assert.equal(proof.has(calls[0]),true);assert.equal(JSON.stringify(p),before);
+ assert.deepEqual(Object.keys(proof).sort(),['current','has']);
+ for(const n of walk(p))if(!calls.includes(n))assert.equal(proof.has(n),false,'no callback/formal/width/Image authority');
+ const old=imagePixelNormalResults(p,profile);assert.equal(old.has(calls[0]),false,'the old callback refusal stays independent');
+});
+
+const orderedCreated=`let frames=[undefined,img\`1\`]
+let choice=0
+let observed=0
+let callbackWidth=0
+sprites.onCreated(SpriteKind.Player,function(sprite){callbackWidth=sprite.width;choice=1})
+sprites.onCreated(SpriteKind.Player,function(sprite){observed=frames[choice].getPixel(0,0)})
+let hero=sprites.create(img\`1\`,SpriteKind.Player)`;
+
+test('creation notification retains actual handler order, named-kind match and image-before-width frontier',()=>{
+ good(orderedCreated);
+ const first='sprites.onCreated(SpriteKind.Player,function(sprite){callbackWidth=sprite.width;choice=1})';
+ const second='sprites.onCreated(SpriteKind.Player,function(sprite){observed=frames[choice].getPixel(0,0)})';
+ bad(orderedCreated.replace(first+'\n'+second,second+'\n'+first));
+ bad(generatedImagesWithCreated.replace('onCreated(SpriteKind.Player','onCreated(SpriteKind.Projectile'));
+ good(generatedImagesWithCreated.replace('let hero=sprites.create(picture,SpriteKind.Player)','let hero=sprites.create(picture,SpriteKind.Player)\nlet another=sprites.create(picture,SpriteKind.Player)'));
+});
+
+test('creation callback formals cannot be reassigned aliased captured forwarded or used as setters',()=>{
+ for(const body of [
+  'sprite=hero;callbackWidth=sprite.width',
+  'let alias=sprite;callbackWidth=alias.width',
+  'callbackWidth=sprite.height',
+  'sprite.width=1',
+  'sprite.setImage(picture)',
+  'foreign(sprite)',
+  'let nested=function(){return sprite.width};callbackWidth=sprite.width',
+  'let sprite=hero;callbackWidth=sprite.width',
+  'callbackWidth=sprite.width;game.pushScene()',
+  'callbackWidth=sprite.width;pause(1)',
+  'callbackWidth=sprite.width;let reentrant=sprites.create(picture,SpriteKind.Player)',
+  'callbackWidth=sprite.width;sprites.onCreated(SpriteKind.Player,function(other){callbackWidth=other.width})'
+ ])bad(generatedImagesWithCreated.replace('callbackWidth=sprite.width',body));
+ const indirect='function construct(){let nested=sprites.create(img`1`,SpriteKind.Player)}\n'+generatedImagesWithCreated.replace('callbackWidth=sprite.width','callbackWidth=sprite.width;construct()');
+ bad(indirect);
+});
+
+test('registration is an exact top-level inline named-kind entry without hidden signature or call envelopes',()=>{
+ for(const text of [
+  generatedImagesWithCreated.replace('function(sprite)','function()'),
+  generatedImagesWithCreated.replace('function(sprite)','function(sprite,other)'),
+  generatedImagesWithCreated.replace('function(sprite)','function(sprite=hero)'),
+  generatedImagesWithCreated.replace('function(sprite)','sprite=>'),
+  generatedImagesWithCreated.replace('onCreated(SpriteKind.Player','onCreated(0'),
+  'let kind=SpriteKind.Player;'+generatedImagesWithCreated.replace('onCreated(SpriteKind.Player','onCreated(kind'),
+  generatedImagesWithCreated.replace('sprites.onCreated(SpriteKind.Player,function(sprite){callbackWidth=sprite.width})','function register(){sprites.onCreated(SpriteKind.Player,function(sprite){callbackWidth=sprite.width})}\nregister()'),
+  generatedImagesWithCreated.replace('sprites.onCreated(SpriteKind.Player,function(sprite){callbackWidth=sprite.width})','let handler=function(sprite){callbackWidth=sprite.width};sprites.onCreated(SpriteKind.Player,handler)'),
+  generatedImagesWithCreated+'\nsprites.onCreated=foreign;',
+  generatedImagesWithCreated+'\nSpriteKind.Player=0;',
+  generatedImagesWithCreated+'\nSprite.prototype.width=foreign;'
+ ])bad(text);
+ for(const envelope of ['function','params','call','args','callee']){
+  const p=parse(generatedImagesWithCreated),call=walk(p).find(n=>n.type==='Call'&&n.callee?.name==='onCreated'),fn=call.args[1];
+  const object=envelope==='function'?fn:envelope==='params'?fn.params:envelope==='call'?call:envelope==='args'?call.args:call.callee;
+  Object.defineProperty(object,'hiddenEntry',{value:{type:'Number',value:'7'},enumerable:false,configurable:true});
+  const proof=mutableImagePixelNormalResults(p,profile);assert.equal(proof.has(walk(p).find(n=>n.type==='Call'&&n.callee?.name==='getPixel')),false,envelope);
+ }
+});
+
+test('uninvoked callback writes and notification source mutation cannot revive receipts',()=>{
+ bad(generatedImagesWithCreated.replace('SpriteKind.Player,function(sprite)','SpriteKind.Projectile,function(sprite)'));
+ const {p,proof,calls}=inspect(generatedImagesWithCreated);assert.equal(proof.has(calls[0]),true);
+ const fn=walk(p).find(n=>n.type==='FunctionExpression'),before=fn.body[0].expr.right.name;fn.body[0].expr.right.name='height';assert.equal(proof.current(),false);fn.body[0].expr.right.name=before;assert.equal(proof.current(),false);
+});

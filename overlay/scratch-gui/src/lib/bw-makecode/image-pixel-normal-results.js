@@ -67,8 +67,9 @@ function inspectPixelResults(program,profile,mode) {
     let syntax,lexical,mutableSource=null;
     try{if(!data(program))return refused();syntax=inspectGeneratedHelperBindings(program,profile);if(!syntax.isCurrent())return refused();lexical=analyseCallableBindings(program);if(mutable){mutableSource=physicalUpdateSourceSnapshot(program);if(!mutableSource)return refused();}}
     catch{return refused();}
-    let live=true,eligible=false,numberEligible=true,failed=false,steps=0,images=0;
+    let live=true,eligible=false,numberEligible=true,failed=false,steps=0,images=0,notificationDepth=0;
     const imageObservations=new WeakMap(),primitiveObservations=new WeakMap();
+    const createdCallbacks=new Map(),createdWidthReads=new WeakSet(),createdHandlers=[];
     const results=new WeakSet(),pixelResults=new WeakSet(),mutableEffects=new Set(),completedEffects=new Set(),writes=new Set(),done=new Set(),functions=new Map(),running=new Set(),state=new Map(),constants=new Set();
     const current=()=>{
         if(live)try{
@@ -118,6 +119,33 @@ function inspectPixelResults(program,profile,mode) {
     const builtinKinds=new Map();for(const name of ['Player','Projectile','Food','Enemy'])builtinKinds.set(name,Object.freeze({kind:'BuiltinSpriteKind',name}));
     const builtinKind=node=>mutable&&node?.type==='Member'&&!node.optional&&!node.computed&&node.object?.type==='Identifier'&&node.object.name==='SpriteKind'&&!binding(node.object)&&builtinKinds.has(node.name);
     if(mutable)for(const entry of lexical.bindings)if(['sprites','SpriteKind','image','img','Image','Sprite','Fx','Fx8','Object','Array','Reflect','Math','eval','Function','globalThis'].includes(entry.name))return answer();
+    const createdRegistration=node=>mutable&&node?.type==='Call'&&plainCall(node)&&node.args.length===2&&node.callee?.type==='Member'&&!node.callee.optional&&!node.callee.computed&&node.callee.name==='onCreated'&&node.callee.object?.type==='Identifier'&&node.callee.object.name==='sprites'&&!binding(node.callee.object);
+    if(mutable)for(const call of syntax.nodes)if(createdRegistration(call)){
+        const statement=syntax.parentOf(call),fn=call.args[1],scope=fn&&lexical.scopes.get(fn);
+        if(statement?.type!=='ExpressionStatement'||statement.expr!==call||!program.body.includes(statement)||!builtinKind(call.args[0])||fn?.type!=='FunctionExpression'||
+            !scope||scope.parent!==lexical.global||scope.unsupported?.length||!list(fn.params)||fn.params.length!==1||typeof fn.params[0]!=='string'||!list(fn.body)||!noDefaults(fn)||fn.exported||fn.name||
+            !mutableOwn(fn,'paramTypes')||!mutableOwn(fn,'returnType')||!mutableOwn(fn,'optionalParams')||fn.functionKind&&fn.functionKind!=='function')return answer();
+        const fnKeys=new Set(['type','name','params','body','paramTypes','returnType','optionalParams','parameterDefaults','ordinaryParameterDefaultNames','parameterProperties','typeParameters','genericParams','functionKind','async','generator','isAsync','isGenerator','exported']);
+        for(const key of mutableKeys(fn))if(typeof key!=='string'||!fnKeys.has(key))return answer();
+        for(const key of mutableKeys(fn.params))if(!['0','length','optionalParams','parameterDefaults','ordinaryParameterDefaultNames','parameterProperties','typeParameters','genericParams'].includes(key))return answer();
+        for(const value of [fn,fn.params])if(mutableOwn(value,'restParam')||mutableOwn(value,'parameterDefaultPrologue')||['async','generator','isAsync','isGenerator'].some(key=>mutableOwn(value,key)&&own(value,key)!==false))return answer();
+        for(const key of mutableKeys(call))if(!['type','callee','args','isNew','constructorCall','optional','computed'].includes(key))return answer();
+        for(const key of mutableKeys(call.args))if(!['0','1','length'].includes(key))return answer();
+        for(const key of mutableKeys(call.callee))if(!['type','object','name','optional','computed'].includes(key))return answer();
+        for(const key of mutableKeys(call.callee.object))if(!['type','name'].includes(key))return answer();
+        for(const key of mutableKeys(fn.body))if(key!=='length'&&!(typeof key==='string'&&/^(0|[1-9][0-9]*)$/.test(key)))return answer();
+        const formal=scope.names.get(fn.params[0]);if(!formal||formal.kind!=='parameter'||formal.node!==fn||formal.written||createdCallbacks.has(fn))return answer();
+        for(const node of syntax.nodes){
+            if(node.type==='Declaration')for(const decl of node.decls||[])if(lexical.scopes.get(node)?.names.get(decl.name)===formal)return answer();
+            if(node.type!=='Identifier'||binding(node)!==formal)continue;
+            let owner=syntax.parentOf(node);while(owner&&owner!==fn){if(['FunctionExpression','FunctionDeclaration'].includes(owner.type))return answer();owner=syntax.parentOf(owner);}
+            const member=syntax.parentOf(node),use=member&&syntax.parentOf(member);
+            if(owner!==fn||member?.type!=='Member'||member.object!==node||member.name!=='width'||member.optional||member.computed||
+                use?.type==='Assignment'&&use.left===member||use?.type==='Update'||use?.type==='Call'&&use.callee===member)return answer();
+            createdWidthReads.add(member);
+        }
+        createdCallbacks.set(fn,{fn,scope,formal,call});mutableEffects.add(call);
+    }
     const allowedTypes=new Set(['Program','FunctionDeclaration','Declaration','ExpressionStatement','Return','If','Number','String','Boolean','Null','Undefined','Identifier','Array','Template','Binary','Unary','Parenthesized','Assignment','Call','Member','Index']);
     if(program?.type!=='Program'||!list(program.body)||program.body.some(node=>node.type==='Return'))return answer();
     // Every possible entry is an immutable direct source call. Definitions may
@@ -125,7 +153,7 @@ function inspectPixelResults(program,profile,mode) {
     // unknown executable node or unexecuted writer can borrow this exclusion.
     for(const node of syntax.nodes){
         if(mutable&&(node.optional||node.computed))return answer();
-        if(!allowedTypes.has(node.type)){
+        if(!allowedTypes.has(node.type)&&!(mutable&&node.type==='FunctionExpression'&&createdCallbacks.has(node))){
             const parent=syntax.parentOf(node);
             if(node.type===undefined&&parent?.type==='Declaration'&&parent.decls.includes(node))continue;
             return answer();
@@ -159,17 +187,18 @@ function inspectPixelResults(program,profile,mode) {
             const parent=syntax.parentOf(node),call=parent&&syntax.parentOf(parent);
             const consoleUse=!mutable&&node.name==='console'&&parent?.type==='Member'&&parent.object===node&&parent.name==='log'&&call?.type==='Call'&&call.callee===parent;
             const roundUse=node.name==='Math'&&roundedIndex(call)&&call.callee===parent&&parent.object===node;
-            const spriteUse=mutable&&node.name==='sprites'&&spriteFactory(call)&&call.callee===parent&&parent.object===node;
+            const spriteUse=mutable&&node.name==='sprites'&&(spriteFactory(call)||createdRegistration(call))&&call.callee===parent&&parent.object===node;
             const kindUse=mutable&&node.name==='SpriteKind'&&builtinKind(parent)&&parent.object===node;
             if(!consoleUse&&!roundUse&&!spriteUse&&!kindUse&&!(node.name==='image'&&imageFactory(call)&&call.callee===parent&&parent.object===node))return answer();
         }
     }
     if(mutable)for(const node of syntax.nodes){
         if(node.type==='Call'&&node.callee?.type==='Member'){
-            if(!['create','round','push','indexOf','getPixel','setPixel','fill','clone','setImage','fillRect','drawLine','flipX','replace'].includes(node.callee.name))return answer();
+            if(!['create','round','push','indexOf','getPixel','setPixel','fill','clone','setImage','fillRect','drawLine','flipX','replace','onCreated'].includes(node.callee.name))return answer();
             if(['push','setPixel','fill','setImage','fillRect','drawLine','flipX','replace'].includes(node.callee.name))mutableEffects.add(node);
         }
     }
+    if(mutable)for(const node of syntax.nodes)if(spriteFactory(node)||createdRegistration(node)){for(let owner=syntax.parentOf(node);owner;owner=syntax.parentOf(owner))if(owner.type==='FunctionExpression'&&createdCallbacks.has(owner))return answer();}
     // Record every normal observation of the SAME expression occurrence. A
     // later Image can never revive an occurrence once it returned anything else.
     const expr=node=>{
@@ -243,6 +272,7 @@ function inspectPixelResults(program,profile,mode) {
         if(node.type==='Member'){
             if(builtinKind(node))return builtinKinds.get(node.name);
             const receiver=expr(node.object);
+            if(mutable&&createdWidthReads.has(node)&&receiver?.kind==='Sprite'){if(receiver.image?.kind!=='Image')return fail();return {kind:'Number'};}
             // Dimensions are private interpreter inputs, never public Number
             // receipts. These pixel mutations preserve the allocation's shape.
             if(mutable&&receiver?.kind==='Image'&&['width','height'].includes(node.name))return primitive('Number',receiver[node.name]);
@@ -268,9 +298,27 @@ function inspectPixelResults(program,profile,mode) {
                 const index=expr(node.args[0]);if(!numeric(index))return fail();
                 return constant(index)?primitive('Number',imageRound(index.value)):{kind:'Number'};
             }
+            if(createdRegistration(node)){
+                if(notificationDepth)return fail();const record=createdCallbacks.get(node.args[1]),kind=expr(node.args[0]);
+                if(!record||kind?.kind!=='BuiltinSpriteKind')return fail();createdHandlers.push({...record,kind});completedEffects.add(node);return undefinedValue;
+            }
             if(spriteFactory(node)){
+                if(notificationDepth)return fail();
                 const image=expr(node.args[0]),kind=expr(node.args[1]);if(failed||image?.kind!=='Image'||kind?.kind!=='BuiltinSpriteKind')return fail();
-                return {kind:'Sprite',site:node,image};
+                // Original game/sprites.ts: new Sprite(img), setKind, physics
+                // addSprite, then filtered handlers in registration order.
+                // Sprite's unit scales precede setImage/recalcSize, and width
+                // reads Fx.toFloat(_width). Source classes/scale/rotation/FX,
+                // scene mutation and callback escapes are outside this slice.
+                const sprite={kind:'Sprite',site:node,image};
+                notificationDepth++;
+                try{for(const handler of createdHandlers){if(handler.kind!==kind)continue;if(running.has(handler.fn))return fail();
+                    const locals=[...handler.scope.names.values()],saved=locals.map(key=>[key,state.has(key),state.get(key)]);
+                    for(const key of locals)state.delete(key);state.set(handler.formal,sprite);running.add(handler.fn);
+                    try{body(handler.fn.body);}finally{running.delete(handler.fn);for(const [key,had,value]of saved)if(had)state.set(key,value);else state.delete(key);}
+                    if(failed)return fail();
+                }}finally{notificationDepth--;}
+                return sprite;
             }
             if(imageFactory(node)){
                 const args=node.args.map(expr);if(failed||!args.every(int32)||args.some(value=>value.value<0||mutable&&value.value>2000))return fail();

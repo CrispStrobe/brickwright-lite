@@ -1,5 +1,74 @@
 # Arcade compatibility: fresh-agent handoff and methodology
 
+## 29 October: parsing and creation-callback source checkpoint
+
+The immutable raw corpus remains **147 translated / 36 partial / 1 parse failure**.
+These are source-proof repairs awaiting complete application qualification.
+
+`ordinary-parse-integer-number-source.js` now proves exact unshadowed global
+`parseInt` calls with a literal String and an optional literal integer radix.
+Normal return is Number, including NaN. It does not fold results or grant finite
+values, completion or initialization. A closed scalar effect census rejects
+extraction, namespace/prototype writes, unknown calls/coercions, classes, Arrays
+and uncertain arguments. The selected original PXT and generated helper source
+hashes are recorded in the module. Captured realm aliases, descriptors and
+iterator chains, source snapshots and permanent revocation bind the receipt.
+
+The ordinary value graph consumes that result before its generic Call fallback.
+The frame-time census accepts the same independently proved calls, so a genuine
+`onUpdate` delta-time read can coexist with literal integer parsing. Native
+addition proves the original operations before class/result projections, joins
+fresh call identities, and consumes only the exact normal-return receipt.
+The actual call and arguments remain present; no binding or generic Call becomes
+initialized. Supplied source tags remain refused. Internal Symbol tags are
+consumed after identity joining rather than weakening opaque-source checks.
+
+Nine leaf controls and three graph/frame/native controls pass. The original
+realm-guard and native integration failures are retained. Removing the exact
+native normal-return receipt is detected by the positive control.
+
+The mutable Image profile also supports an exact top-level inline
+`sprites.onCreated` observer reading the direct formal's width privately.
+Canonical creation attaches the issued Image before matching handlers run in
+registration order, following the pinned original constructor, factory and
+registration code. Width remains an unknown private Number; the public API
+still issues only actual `getPixel` receipts. Classes, scaling/rotation,
+formal reassignment/alias/capture/escape, scene changes, yielding and reentrant
+creation/registration remain refused. Uninvoked writes/effects stay visible.
+Fifteen source controls and all 17 unchanged Image controls pass. Mutations
+that remove Image attachment or reverse handler order are detected.
+
+Continue in this order:
+
+1. Retain the frozen integration head's required terminal numeric originals,
+   then compose this follow-up normally into PR #1554. Require every enabled
+   final-head check and affected original/native/browser qualification before
+   main; predecessor successes do not qualify the successor.
+2. On a prepared external worker, run the unchanged whole-application controls
+   below. Preserve pixel arrays, identity, callback width, Code, hot/fresh SB3,
+   executed original PXT export/reimport and presentation budgets. Diagnose the
+   actual first remaining refusal; these source passes promote no corpus row.
+3. If emitted source still fails, close its actual callback entry/alias ingress.
+   The current profile accepts only top-level registration and direct formal
+   width reads; startup registration, emitted aliases and width-dependent
+   branches remain outside it. Prove original entry, all writers, lifetime and
+   notification order rather than treating callback annotations as authority.
+4. Extend parsing to independently proved nonliteral primitive inputs only when
+   observed authoring failures require it. Preserve coercion effects and actual
+   lexical/currentness obligations. Then reassess the immutable full corpus and
+   authentic complete project contexts externally, promoting whole cases only.
+5. Complete the tracked Blocks/Code and artwork editor acceptance: edit shared
+   frames, preserve distinct equal-looking images, attach to Sprites, save and
+   freshly reopen, then export/reimport. Coordinate existing editor owners.
+
+```sh
+node --import ./scripts/lib/register-gui-scope.mjs --test --test-concurrency=1 test/ordinary-parse-integer-number-source.test.mjs test/native-parse-integer-number-domain.test.mjs test/native-mutable-image-pixel-results.test.mjs test/native-array-mutable-image-domain.test.mjs test/makecode-arcade-core-values.test.mjs test/makecode-arcade-generated-images.test.mjs test/arcade-inline-animation-artwork.test.mjs
+```
+
+Full SDK/native/browser/corpus execution remains external. No runtime or
+whole-application pass is claimed by the bounded source controls above.
+
+
 
 ## 29 October: mutable Image pixel occurrence follow-up
 
@@ -25,7 +94,7 @@ permanent currentness. Supplied tags or copied nodes cannot enroll the receipt.
 The reviewed original `ImageMethods::getPixel` contract returns a pixel integer
 or zero out of range; source identities are recorded without executing SDK code.
 
-Ten new source groups, all 17 unchanged Image controls and two native-domain
+Fifteen current source groups, all 17 unchanged Image controls and two native-domain
 controls pass. Three mutations detect missing occurrence membership, skipped
 unexecuted effects and missing native projection; exact original bytes are
 restored. The unchanged authored artwork source is covered by the source test.
@@ -61,10 +130,11 @@ All 10 source, 17 unchanged Image and two native-domain controls pass after
 this extension. A missing drawing-input guard is detected by its negative
 control; restored bytes are checked.
 
-The next distinct task is **generated Image creation callback closure**.
+The next distinct acceptance task is **generated Image creation callback closure**.
 `test/makecode-arcade-generated-images.test.mjs` still contains
 `sprites.onCreated(SpriteKind.Player, function(sprite) { callbackWidth = sprite.width })`.
-The current pixel slice deliberately refuses that callback. Prove the actual
+The top-level direct-formal source slice now accepts that observer privately,
+as described above. Emitted alias/startup entry remains pending. Prove the actual
 registered entry, receiver and width getter together with Image attachment
 before notification; do not infer ordering from a callback annotation or name.
 Preserve alias and clone identities, handler replacement, reentrancy, receiver
