@@ -1,12 +1,13 @@
 # Robot Lab qualification: line-ending-safe physical source checks
 
-Status: CLAIMED, implementation pending.
+Status: IMPLEMENTED CANDIDATE, hosted qualification pending.
 Owner: Codex Robot Lab continuation, user-authorized ordered follow-up.
 Branch: `lane/robot-crlf-qualification-20261028`.
 
 The preceding hubless harness change landed in #1496. This narrow successor
-fixes the documented CRLF author-header and physical-disconnection parsing
-blockers. Model-building lanes retain their judge registrations and models.
+fixes CRLF physical-disconnection parsing. Inspection found the existing
+JavaScript multiline author assertion already accepts CRLF; it stays unchanged.
+Model-building lanes retain their judge registrations and models.
 
 Own a new engine-free source-text helper under `scripts/lib/`, its focused
 test, only the line-ending handling in `disconnectedSource` in

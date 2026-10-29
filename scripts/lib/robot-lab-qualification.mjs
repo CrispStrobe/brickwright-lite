@@ -2,6 +2,7 @@
 // Copyright (c) 2026 CrispStrobe
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
+export {disconnectedModelSource as disconnectedSource} from './robot-lab-model-source.mjs';
 import {judgeReviewedIntake} from './sim-lab-six-intake-judge.mjs';
 import {SIX_INTAKES} from './sim-lab-six-intake-contracts.mjs';
 import {judgeCableCompass} from './sim-lab-cable-compass-judge.mjs';
@@ -51,10 +52,6 @@ export function qualificationContracts(requested){
 }
 /** Compiler issues as order-free keys, to compare with a contract's declared expectedIssues. */
 export const issueKeys=issues=>issues.map(i=>i.code+':'+[...(i.parts||[])].sort().join(',')).sort();
-export function disconnectedSource(source,ids){
- for(const id of ids)assert.equal(source.split('\n').filter(line=>line==='0 !BW ID '+id).length,1,'exactly one removed physical part '+id);
- return source.split(/(?=^0 !BW ID )/m).filter(b=>!ids.some(id=>b.startsWith('0 !BW ID '+id+'\n'))).join('');
-}
 /**
  * Who drives the model's motors, read from the session itself: the Robot Lab's own lab-direct
  * controller of a hubless model (its per-port mode and pending moves), or a hub. Recorded per frame.
