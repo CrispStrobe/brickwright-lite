@@ -57,9 +57,16 @@ try {
     await page.getByTestId('bw-file-menu-trigger').focus();
     await page.getByTestId('bw-file-menu-trigger').press('ArrowDown');
     await page.keyboard.press('ArrowRight');
-    await page.waitForFunction(() => document.activeElement?.getAttribute('role') === 'menuitem' &&
-        document.activeElement.closest('[data-bw-menu-root]')?.querySelector('[data-bw-menu-trigger]')
-            ?.dataset.testid === 'bw-edit-menu-trigger');
+    await page.waitForFunction(() => {
+        const trigger = document.querySelector('[data-testid="bw-edit-menu-trigger"]');
+        const menu = trigger?.closest('[data-bw-menu-root]')?.querySelector('[role="menu"]');
+        if (trigger?.getAttribute('aria-expanded') !== 'true' || !menu) return false;
+        const enabled = [...menu.querySelectorAll('[role^="menuitem"]')].filter(item =>
+            item.closest('[role="menu"]') === menu && item.getAttribute('aria-disabled') !== 'true');
+        // A fresh project may have no enabled Edit action. Keep focus on its
+        // trigger; never focus a disabled Undo/Restore item just to satisfy a gate.
+        return enabled.length ? enabled.includes(document.activeElement) : document.activeElement === trigger;
+    });
     await page.keyboard.press('Escape');
     check(await page.getByTestId('bw-edit-menu-trigger').evaluate(button => button === document.activeElement),
         'horizontal arrows switch to the next real menu');

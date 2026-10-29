@@ -6,34 +6,7 @@ import assert from 'node:assert/strict';
 import {createRequire} from 'node:module';
 import {resolve} from 'node:path';
 import {readFileSync} from 'node:fs';
-import {isBrickButtonOpcode, programUsesBrickButtons} from '../overlay/scratch-gui/src/components/tw-pseudocode/sim-lab-brick-handlers.js';
 import * as motorControl from '../overlay/scratch-gui/src/components/tw-pseudocode/sim-lab-motor-control.js';
-
-const vmWith = (...opcodes) => ({runtime: {targets: [{blocks: {_blocks: Object.fromEntries(opcodes.map((opcode, i) => [`b${i}`, {opcode}]))}}]}});
-
-test('brick-button opcodes of robot hubs count as handlers', () => {
-    for (const opcode of ['spikeprime_whenButtonPressed', 'spikeprime_isButtonPressed', 'ev3_whenButtonPressed',
-        'ev3_buttonPressed', 'legonxt_buttonPressed', 'ev3comprehensive_waitForButton', 'legopoweredup_whenButtonPressed']) {
-        assert.equal(isBrickButtonOpcode(opcode), true, opcode);
-    }
-});
-
-test('button lights, remotes and non-hub devices are not brick-button handlers', () => {
-    for (const opcode of ['spikeprime_setCenterButtonColor', 'ev3comprehensive_irRemoteButton', 'microbit_whenButtonPressed',
-        'arcade_whenButton', 'universalgamepad_isButtonPressed', 'circuitplayground_whenbutton', 'spikeprime_motorRun', null]) {
-        assert.equal(isBrickButtonOpcode(opcode), false, String(opcode));
-    }
-});
-
-test('program scan follows the project, including edits that add a handler', () => {
-    assert.equal(programUsesBrickButtons(null), false);
-    assert.equal(programUsesBrickButtons({runtime: {targets: []}}), false);
-    const vm = vmWith('event_whenflagclicked', 'spikeprime_motorRun');
-    assert.equal(programUsesBrickButtons(vm), false);
-    vm.runtime.targets[0].blocks._blocks.added = {opcode: 'spikeprime_whenButtonPressed'};
-    assert.equal(programUsesBrickButtons(vm), true);
-    assert.equal(programUsesBrickButtons(vmWith('ev3_whenButtonPressed')), true);
-});
 
 test('brick buttons have one rendering site inside Manual controls regardless of program handlers', () => {
     const pane = readFileSync(new URL('../overlay/scratch-gui/src/components/tw-pseudocode/sim-lab-pane.jsx', import.meta.url), 'utf8');

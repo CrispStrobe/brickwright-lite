@@ -7,7 +7,7 @@ const paper = {
     Path: class {constructor(){this.segments=[];this.data={};}add(point){this.segments.push({point});}}
 };
 const {makePolygon,makeStar}=new Function('paper',source.replace(/^import .*;\n/gm,'')
-    .replace(/export \{[\s\S]*?\};?\s*$/,'')+';return {makePolygon,makeStar};')(paper);
+    .replace(/^export \{[^{}]*\};?\s*$/m,'')+';return {makePolygon,makeStar};')(paper);
 const near=(a,b,message)=>assert.ok(Math.abs(a-b)<1e-8,`${message}: ${a} vs ${b}`);
 const points=path=>path.segments.map(segment=>segment.point);
 const centre=vertices=>({x:vertices.reduce((sum,p)=>sum+p.x,0)/vertices.length,y:vertices.reduce((sum,p)=>sum+p.y,0)/vertices.length});

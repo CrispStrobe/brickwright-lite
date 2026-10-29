@@ -15,6 +15,7 @@ export async function openCircuitActions (page, designer, {timeout = 30000, forc
     if (expanded !== 'true' && (expanded || !await inline.isVisible())) await trigger.click({timeout, force});
     const id = await trigger.getAttribute('aria-controls');
     const menu = id ? page.locator(`[id=${JSON.stringify(id)}]`) : inline;
+    // gate-shapes-allow: synchronization before the caller's real action, not a popup-lifetime verdict.
     await menu.waitFor({state: 'visible', timeout});
     await one(menu, 'originating circuit actions popup');
     if (!await designer.isVisible()) throw new Error('Circuit designer changed while opening its popup');

@@ -47,7 +47,7 @@ try {
     console.log('opening pixel editor');
     let page = await open();
     const showPanel = async name => {
-        const toggle = page.getByTestId(`bw-pixel-${name}-toggle`);
+        const toggle = await pixelControl(page, `bw-pixel-${name}-toggle`);
         if (await toggle.getAttribute('aria-expanded') !== 'true') await toggle.click();
     };
     await (await pixelControl(page, 'bw-pixel-colour-10')).click();

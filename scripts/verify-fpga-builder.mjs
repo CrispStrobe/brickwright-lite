@@ -113,6 +113,7 @@ try {
         check(await wired.isVisible(), 'the FPGA journey creates a persistent demo circuit');
 
         await page.getByTestId('bw-fpga-workspace-build').click();
+        await page.getByTestId('bw-fpga-panel-design').waitFor({state: 'hidden'});
         await page.getByTestId('bw-fpga-build-target').selectOption('service');
         const synth = page.getByRole('button', {name: /Synthesise|Synthetisieren/i}).first();
         // Keep this as a locator operation: the Circuit-tab round trip can
