@@ -19,6 +19,15 @@ destination sprite present. VM tests also cover copied local variables, two
 concurrent copies, unchanged source variables, and the existing project-load
 History reset. The extension decision is a source/API audit, not a device test.
 
+A copy waiting for an extension belongs to the project where it started.
+Successful project replacement starts a fresh copy queue, cancels queued copies
+from the previous project, and prevents their late completions from adding old
+Undo entries. The real-VM regression holds an extension load open across project
+replacement and checks that a new-project copy completes independently, only
+its own History step remains, and ordinary new-project edits still record.
+The original implementation fails this regression; the repaired History,
+global Undo, artwork Undo and overlay checks pass all 28 controls.
+
 ## T5: Android autosaves
 
 Android native builds hide the inaccessible folder option, ignore a previously

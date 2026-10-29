@@ -148,18 +148,24 @@ export const instrumentProjectHistory = vm => {
         vm[name] = (...args) => (suppress ? raw[name](...args) : fn(...args));
     };
 
+    let projectGeneration = 0;
+    let sharing = Promise.resolve();
     const load = vm.loadProject.bind(vm);
     vm.loadProject = (...args) => load(...args).then(result => {
+        projectGeneration++;
+        sharing = Promise.resolve();
         clearProjectHistory();
         return result;
     });
 
     // Serialize copies so two simultaneous drags into the same sprite are two
     // independent steps, rather than both snapshots claiming the same blocks.
-    let sharing = Promise.resolve();
     wrap('shareBlocksToTarget', (blocks, targetId, fromTargetId) => {
+        const generation = projectGeneration;
         const copied = JSON.parse(JSON.stringify(blocks));
         const copy = () => {
+            // A queued drag belongs to the project in which it was requested.
+            if (generation !== projectGeneration) return;
             const target = vm.runtime.getTargetById(targetId);
             if (!target) return raw.shareBlocksToTarget(copied, targetId, fromTargetId);
             const before = new Set(Object.keys(target.blocks._blocks));
@@ -171,6 +177,9 @@ export const instrumentProjectHistory = vm => {
                 .filter(v => !variableKeys.get(owner)?.has(v.id)).map(v => ({owner, id: v.id,
                     name: v.name, type: v.type, isCloud: v.isCloud, value: JSON.parse(JSON.stringify(v.value))})));
             return Promise.resolve(result).then(value => {
+                // Extension loading may finish after another project replaced
+                // the target. Never repopulate its cleared History with old work.
+                if (generation !== projectGeneration || !vm.runtime.targets.includes(target)) return value;
                 const added = Object.values(target.blocks._blocks).filter(b => !before.has(b.id));
                 // A foreign asynchronous import may overlap unrelated edits.
                 // Never delete those edits as though this copy had made them.

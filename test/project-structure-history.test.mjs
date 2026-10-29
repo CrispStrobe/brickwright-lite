@@ -81,6 +81,63 @@ test('two concurrent script copies are independent reversible steps, with their 
     } finally { vm.quit(); clearProjectHistory(); }
 });
 
+test('a script copy finishing after project replacement cannot restore old History', async () => {
+    const {vm} = await runProgram('SPRITE Actor:\nWHEN flag clicked:\n  move 1 steps', {frames: 1});
+    instrumentProjectHistory(vm);
+    clearProjectHistory();
+    activateUndoSurface('test-project-only');
+    const actor = vm.runtime.targets.find(target => target.isOriginal && !target.isStage);
+    let release;
+    const pending = new Promise(resolve => { release = resolve; });
+    let entered;
+    const started = new Promise(resolve => { entered = resolve; });
+    const manager = vm.extensionManager;
+    const isLoaded = manager.isExtensionLoaded.bind(manager);
+    const loadExtension = manager.loadExtensionURL.bind(manager);
+    manager.isExtensionLoaded = id => id === 'pen' ? false : isLoaded(id);
+    manager.loadExtensionURL = id => {
+        if (id !== 'pen') return loadExtension(id);
+        entered();
+        return pending;
+    };
+    try {
+        const json = vm.toJSON();
+        const block = {id: 'pending-copy', opcode: 'pen_clear', next: null, parent: null,
+            inputs: {}, fields: {}, topLevel: true, shadow: false, x: 0, y: 0};
+        const first = vm.shareBlocksToTarget([block], actor.id);
+        await started;
+        const queued = vm.shareBlocksToTarget([block], actor.id);
+        // Attach immediately so a rejected stale queue does not escape the test.
+        const completed = Promise.allSettled([first, queued]);
+        await vm.loadProject(json);
+        assert.ok(!vm.runtime.targets.includes(actor), 'the real loader replaced the original target');
+        assert.deepEqual(getUndoState().project.past, []);
+        const current = vm.runtime.targets.find(target => target.isOriginal && !target.isStage);
+        let copiedCurrent = false;
+        const fresh = vm.shareBlocksToTarget([{...block, id: 'current-copy', opcode: 'motion_movesteps'}], current.id);
+        const currentResult = fresh.then(() => { copiedCurrent = true; });
+        // Drain this event-loop turn while the old extension remains blocked.
+        await new Promise(resolve => setImmediate(resolve));
+        assert.equal(copiedCurrent, true, 'new-project copies must not wait on the old extension load');
+        await currentResult;
+        const currentHistory = getUndoState().project.past;
+        assert.equal(currentHistory.length, 1);
+        release();
+        const results = await completed;
+        assert.deepEqual(getUndoState().project.past, currentHistory, 'late work must not resurrect cleared History');
+        assert.deepEqual(results.map(result => result.status), ['fulfilled', 'fulfilled'],
+            'a queued copy from the replaced project is cancelled before calling the VM');
+        assert.ok(vm.runtime.targets.every(target => Object.values(target.blocks._blocks)
+            .every(current => current.opcode !== 'pen_clear')), 'old work cannot alter the loaded project');
+        vm.renameSprite(current.id, 'Current project');
+        assert.equal(getUndoState().project.past.length, 2, 'new-project edits still record normally');
+    } finally {
+        release();
+        vm.quit();
+        clearProjectHistory();
+    }
+});
+
 test('deleting a costume is undone in place and redone, many times', async () => {
     const {vm, actor} = await fixture();
     try {
