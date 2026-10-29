@@ -4,6 +4,13 @@ import Creator from '../overlay/scratch-gui/src/lib/sb3-creator.js';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
 import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
 
+test('projects without class declarations still export normally',()=>{
+ const imported=arcadeToPseudocode('let score=1;score+=2;');assert.deepEqual(imported.unsupported,[]);
+ const creator=new Creator();creator.parse(imported.code);assert.deepEqual(creator.errors,[]);
+ const exported=projectToArcade(creator.project);assert.deepEqual(exported.unsupported,[]);
+ assert.match(exported.ts,/score/);
+});
+
 test('actual creation-handler field block exports after the complete virtual kind override suffix',()=>{
  const source='sprites.onCreated(SpriteKind.Player,function(sprite){(sprite as Easy).value=9});class Easy extends sprites.ExtendableSprite {constructor(art:Image,public value:any){super(art,SpriteKind.Player)}setKind(kind:number){super.setKind(kind);this.value="after"}}let easy=new Easy(img`1`,3)';
  const imported=arcadeToPseudocode(source);assert.deepEqual(imported.unsupported,[]);

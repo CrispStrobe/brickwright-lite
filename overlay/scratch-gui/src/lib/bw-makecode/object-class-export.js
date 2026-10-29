@@ -72,7 +72,7 @@ export function prepareObjectClassExport(emitter) {
     }
     const builtinNames=new Set(sdkExportClasses().map(cls=>cls.name));
     const builtinObject=emitter.project.targets.some(target=>Object.values(target.blocks).some(block=>block.opcode==='arcade_createObject' && builtinNames.has(literal(target,block,'CLASS'))));
-    if(!classes.size && !builtinObject && !hasSdkFontValues(emitter.project))return {classes,procedures,variableTypes:new Map(),valueTypes:()=>new Set(),inputTypes:()=>new Set(),fontGlyphInput:()=>false,localType:()=> 'any',render:()=>[],receiver:block=>{emitter.note('Arcade object member export requires a valid class declaration');return emitter.arrayValue(block,'OBJECT');}};
+    if(!classes.size && !builtinObject && !hasSdkFontValues(emitter.project))return {classes,procedures,variableTypes:new Map(),valueTypes:()=>new Set(),inputTypes:()=>new Set(),fontGlyphInput:()=>false,localType:()=> 'any',render:()=>[],validatePrimitiveExport:()=>{},receiver:block=>{emitter.note('Arcade object member export requires a valid class declaration');return emitter.arrayValue(block,'OBJECT');}};
     const canonicalSdk=new WeakSet();
     for(const cls of sdkExportClasses())if(!classes.has(cls.name)){classes.set(cls.name,cls);canonicalSdk.add(cls);}
     const callableTypes=classCallableExportTypes(classes,builtinNames);

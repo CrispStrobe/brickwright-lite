@@ -106,6 +106,14 @@ The local reset proof can cross an inline or physical shadow primitive literal w
 
 The local reset proof also refuses conditional overwrites when their condition can read the reset cell, or when either branch executes an unproved statement before overwriting it. Inline primitive conditions and immediate overwrites retain the bounded path; physical shadow conditions remain conservatively refused. The focused regression is in `test/project-event-copy-reset-prefix.test.mjs`.
 
+The class-receiver validation is now also available on the empty-class export
+model. A project without class declarations previously threw during export
+when the new final validation was called; a focused import-to-export regression
+now covers both classless and creation-handler cases. The prompt fixture no
+longer throws in source-only export, but still reports a native-addition refusal
+for the actual `result` producer; its full saved-project runtime and PXT paths
+remain pending.
+
 ## Prepared repair: hoisted private Array resets
 
 `local-array-declaration-reset-source.js` can now discount an uncaptured local
