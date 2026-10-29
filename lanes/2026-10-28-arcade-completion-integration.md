@@ -4,7 +4,8 @@ Status: ACTIVE; registered on main, integration source checkpoint published;
 music Number-result, local Array-reset and selected ExtendableSprite
 constructor-result and closed primitive Array callback source implemented;
 external qualification and remaining
-producer families in progress.
+producer families in progress. A separate follow-up implements explicit clean
+export observation opt-in while preserving the default result shape.
 Owner: Arcade completion, following the operator's instruction to finish the
 qualification, current-main composition, remaining producer repairs and genuine
 corpus reassessment in order. Use isolated branches and normal pushes.

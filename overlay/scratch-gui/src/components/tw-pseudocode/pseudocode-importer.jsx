@@ -2512,6 +2512,7 @@ class PseudocodeImporter extends React.Component {
         const {projectJsonToArcade} = await import(
             /* webpackChunkName: "bw-makecode" */ '../../lib/bw-makecode/export-arcade.js');
         return projectJsonToArcade(JSON.stringify(project), {
+            captureObservation: true,
             name: 'brickwright-game',
             animationDocuments,
             costumeSvg: (t, c) => svgs.get(c.assetId) || null,

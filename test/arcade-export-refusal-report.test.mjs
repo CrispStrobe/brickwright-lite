@@ -85,6 +85,41 @@ test('clean exports keep the old result shape and later exports do not inherit d
     assert.deepEqual(Object.keys(out).sort(),['files','ts','unsupported','warnings']);
 });
 
+test('explicit clean JSON capture retains one exact result while default API shape stays unchanged',()=>{
+    const {creator,out:baseline}=exported('let result=1+2;');
+    const input=JSON.stringify(creator.project,null,2)+'\n';
+    const out=projectJsonToArcade(input,{captureObservation:true}),capture=ownObservation(out);
+    assert.equal(capture.captureStatus,'COMPLETE');assert.equal(capture.inputJson,input);
+    assert.deepEqual(JSON.parse(capture.resultJson),baseline);
+    assert.deepEqual(out.unsupported,[]);assert.deepEqual(out.files,baseline.files);assert.equal(out.ts,baseline.ts);
+    assert.deepEqual(Object.keys(baseline).sort(),['files','ts','unsupported','warnings']);
+    const c=context(),request=c.beginArcadeReport();c.publishArcadeReport(request,out,'export','fresh');
+    assert.strictEqual(c.state.conversionReport.observation,capture);
+    let accessed=0;const options=Object.create({captureObservation:true});
+    Object.defineProperty(options,'captureObservation',{get(){accessed++;return true;}});
+    const noCapture=projectJsonToArcade(input,options);
+    assert.equal(accessed,0);assert.deepEqual(Object.keys(noCapture).sort(),Object.keys(baseline).sort());
+    assert.deepEqual(Object.keys(projectJsonToArcade(input,Object.create({captureObservation:true}))).sort(),Object.keys(baseline).sort());
+});
+
+test('stage exporter opts in to clean observation on the single actual export invocation',async()=>{
+    const creator=new Creator();creator.parse('DEVICE ARCADE\nGLOBAL result\nSPRITE Game:\nWHEN flag clicked:\n  set result to 3');
+    assert.deepEqual(creator.errors,[]);let exports=0,consumed;
+    const vm={toJSON:()=>JSON.stringify(creator.project),runtime:{targets:[]}};
+    let body=method('async arcadeFromStage ()').slice(1,-1);
+    body=body.replace(/const \{assetLibraryRecords, withoutAssetLibraries\} = await import\('[^']+'\);/,'');
+    body=body.replace(/const \{projectJsonToArcade\} = await import\([\s\S]*?export-arcade\.js'\);/,'');
+    assert.doesNotMatch(body,/await import/);
+    const AsyncFunction=Object.getPrototypeOf(async function(){}).constructor;
+    const execute=new AsyncFunction('assetLibraryRecords','withoutAssetLibraries','projectJsonToArcade',body);
+    const out=await execute.call({props:{vm}},()=>[],project=>project,(input,opts)=>{
+        exports++;consumed=input;assert.equal(opts.captureObservation,true);return projectJsonToArcade(input,opts);
+    });
+    assert.equal(exports,1);assert.deepEqual(out.unsupported,[]);
+    const capture=ownObservation(out);assert.equal(capture.captureStatus,'COMPLETE');assert.equal(capture.inputJson,consumed);
+    assert.deepEqual(JSON.parse(capture.resultJson).files,out.files);
+});
+
 test('real exporter output reaches the existing report with exact reasons and export-only wording',()=>{
     const {out}=refused(),c=context(),request=c.beginArcadeReport();
     c.publishArcadeReport(request,out,'export','Arcade source saved; not compiled or run.');

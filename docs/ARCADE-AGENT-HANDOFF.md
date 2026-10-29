@@ -1,6 +1,44 @@
 # Arcade compatibility: fresh-agent handoff and methodology
 
 
+## 29 October: clean export observation opt-in candidate
+
+The missing clean-export capture has a concrete producer cause:
+`projectJsonToArcade` previously attached its owned JSON observation only for
+refused results. A later successful export therefore had no observation to
+satisfy the existing freshness observer. The default successful API deliberately
+retains exactly `files`, `ts`, `unsupported` and `warnings`; its assertion is
+unchanged.
+
+The next candidate adds an explicit own-data `captureObservation: true` option.
+Only that opt-in extends successful results with the same bounded observation
+used for refusals. The stage exporter requests it on the single original
+invocation. Capture retains the exact consumed JSON and actual semantic result,
+without re-exporting or executing the project. Inherited or accessor options do
+not enable capture. Serialization failure and the existing byte limit retain
+unavailable outcomes. Original-source passthrough remains separately unavailable;
+a refused or clean capture does not establish successful compilation or runtime.
+
+Three focused source controls pass, including the unchanged default-key check
+and execution of the actual stage-export method against the exporter. Two
+mutations detect either missing opt-in; original source is restored. The first
+new stage control used invalid pseudocode and was corrected to the canonical
+dialect before its passing run. This is source qualification only. The current
+frozen [PR #1554](https://github.com/CrispStrobe/brickwright-lite/pull/1554) does
+not contain this follow-up. Compose it only after retaining the required
+terminal originals for that head, then require the official numeric GUI job to
+produce and independently audit a fresh complete capture. Never relabel the
+older unavailable record or relax its freshness checks.
+
+The direct `onDestroyed` coordinate-result proof is still an unpublished,
+unintegrated draft. It does not yet admit generated startup/helper code and
+must not be described as closing the collection fixtures. Before integration,
+prove all actual callback routes, initialized primitive coordinate writers,
+protected SDK fixed-point dependencies, source/descriptor currentness and
+original getter ownership; retain refusal for unproved cases.
+
+
+
 ## 29 October: primitive Array callbacks and qualification checkpoint
 
 The current source candidate proves primitive element and numeric index entry

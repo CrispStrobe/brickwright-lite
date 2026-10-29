@@ -5120,10 +5120,18 @@ const observeRefusedJson=(input,result)=>{
 };
 
 export function projectJsonToArcade(json,opts={}){
+    // The GUI can request an observation of a later clean export. Keep the
+    // default successful API result shape unchanged, and never invoke an
+    // accessor or accept an inherited option while selecting this diagnostic.
+    let captureClean=false;
+    try{
+        const captureOption=opts&&typeof opts==='object'?refusalDescriptor(opts,'captureObservation'):null;
+        captureClean=!!captureOption&&refusalOwn(captureOption,'value')&&captureOption.value===true;
+    }catch{ /* Diagnostic option inspection cannot replace the original export. */ }
     const result=emitProjectToArcade(createProjectJsonSnapshot(json),opts,true);
-    // The single original invocation has already completed. Capture only its
-    // refusal, never reparse/re-export or replace its original exception.
-    if(typeof json==='string'&&result.unsupported.length)try{
+    // The single original invocation has already completed. Capture its actual
+    // result, never reparse/re-export or replace its original exception.
+    if(typeof json==='string'&&(result.unsupported.length||captureClean))try{
         const observation=observeRefusedJson(json,result),previous=refusalDescriptor(result,'refusalEvidence');
         const old=previous&&refusalOwn(previous,'value')?previous.value:null;
         const evidence=refusalCreate(old?refusalPrototype(old):refusalObjectPrototype);
