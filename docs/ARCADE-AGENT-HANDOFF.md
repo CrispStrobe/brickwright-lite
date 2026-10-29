@@ -1,52 +1,96 @@
 # Arcade compatibility: fresh-agent handoff and methodology
 
-## 29 October: delivery gate repairs and next qualification
+## 29 October: current qualification and ordered repairs
 
-PR #1554's frozen `0eb57401b35` head has four successful prerequisite workflows,
-a failed debugger mirror check and a failed Tauri Rust test. Build is terminal:
-its build and all six unit shards stopped at that same mirror preflight, before
-unit payload results. Numeric authoring was skipped with no producer steps or
-numeric artifact (`UNAVAILABLE_SKIPPED`, semantic outcome `NOT_EXERCISED`).
-The original logs are retained once; use the ignored operational notes for
-receipt locations rather than downloading them again. Refresh attempt-specific
-live metadata before acting; the base run endpoint returned stale queued data. The prepared follow-up is on
-[`lane/arcade-mutable-image-pixel-source-20261029`](https://github.com/CrispStrobe/brickwright-lite/tree/lane/arcade-mutable-image-pixel-source-20261029).
-It is not product-qualified or merged into main.
+PR #1554's reviewed head `ae22d4a2618a943eb44755bf0385a867dd76555f`
+passed build, debugger, vendor, x86, Rust notices and PXT-control workflows.
+The [official numeric authoring job](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40813980059/job/123260459663)
+also passed. A standalone reader checked its retained artifact: all five GUI
+records report passed, their source/tree receipts agree, and 411 observed
+bundle hashes and byte lengths join the build receipt. The clean export after
+a refusal now has `COMPLETE` capture: consumed JSON and semantic-result bytes
+match both recorded SHA-256 hashes; unsupported and warning lists are empty.
+These are bounded authoring journeys, not whole-corpus compatibility.
+Earlier skipped or freshness-unavailable captures remain separate failures or
+unavailable observations; do not relabel them using this successor's success.
 
-The debugger failure was the tracked packages copy of the stage importer
-missing the overlay's single `captureObservation: true` option. The follow-up
-synchronizes that copy; the HEAD-blob mirror check passes. Other importer/menu
-changes remain preserved.
+The same head has **37 blocking unit-test identities** across six shards.
+These are unit controls, not 37 corpus projects. Original logs and the numeric
+artifact are retained once; consult ignored operational notes before any intake.
+Use attempt-specific metadata; a base run endpoint previously returned stale
+queued status. No product from this candidate is merged into main.
 
-The [Tauri failure](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40801257415/job/123209645340)
-is the existing lockstep timing assertion, with a fastest exchange of
-2.555585 ms against 2.5 ms. Its Rust source is identical to main. The separately
-[registered scheduling claim](../lanes/2026-10-29-arcade-tauri-lockstep-scheduling.md)
-now has a workflow-only candidate: every other default test runs first, then
-the unchanged named timing test runs once in its own exact invocation.
-Failure propagates, and an exact named-pass counter prevents an empty or
-repeated selection from appearing green. Peers, clippy, limits and assertion
-values remain intact. Three source/shell controls pass and three guard cuts
-are detected. No Rust compilation or timing execution occurred locally;
-isolation remains a hypothesis until hosted qualification.
+The prepared successor repairs four exposed control problems: the literal
+`parseInt("7")` normal-result case is positive while opaque-input cases still
+refuse; the refusal-observer dependency inventory matches the current module;
+the portable Player fixture has an explicit `mp.Player` parameter for strict
+original-PXT compilation; and the Tauri source control reads the checked-out
+Rust file instead of requiring Git from PATH. Fourteen focused controls pass;
+the original-PXT Player execution still needs hosted qualification. The newly
+[registered document-trigger claim](../lanes/2026-10-29-arcade-lineage-doc-trigger.md)
+adds the lineage document read by a source test to the Build push-input list.
+Existing complete trigger census and mutation controls remain mandatory.
 
-Frozen Build/numeric terminal custody is complete. Advance the prepared
-integration source after checking the current remote head and exact tree. If an owned stale queued run is superseded, cancellation
-requires fresh proof that no child is running and durable terminal records;
-absence of a producer is an unavailable capture, never a semantic success.
-Compose the prepared source normally into PR #1554 after custody, then qualify
-that final head using the actually enabled checks and affected guest/browser
-routes. The browser-label verdict also failed because the required thorough
-tier was absent. When the final fast candidate is ready, use the workflow's
-label-only thorough qualification once; it avoids repeating the fast jobs.
-Do not remove/re-add an existing label or dispatch a duplicate. Preserve all
-original failures. If the isolated
-Rust test fails, preserve it and return to a separately claimed source repair;
-do not change its threshold. Verify landing tree and parents before main.
+A minimized Sprite snapshot loop exposed a separate value-graph defect:
+indexing an unknown receiver emitted no result fact, so its destination looked
+as if it contained only its initial Null writer. A conservative Opaque-result
+draft fixed that omission, but review found an unsafe downstream interaction:
+`JSON.parse('[{"x":[1]}]')[0].x` could be mistaken for a numeric SDK field.
+The indexed-read draft is **withheld**, and its snapshot-positive control stays
+an unresolved obligation. New JSON-derived-object refusal controls prevent
+shipping that interaction. Do not merely add Opaque propagation and claim the
+snapshot case works: the numeric field consumer needs genuine receiver lineage.
 
-The private corpus still needs a fresh external full census and authentic
-complete-context reassessment. The raw **147/36/1** result has not changed.
-The source and authoring successes below cannot promote a complete application.
+A separate source-edit/restore control exposed revival of the native domain
+proof when no optional producer was involved. The successor adds a permanent
+expiry latch, preserving both the original staleness failure and subsequent
+refusal after restoration. Cutting that latch fails its new control. Nine
+existing primitive-addition/operator controls also pass. These bounded source
+checks establish neither VM/original execution nor a completed corpus row.
+
+The [isolated Tauri timing job](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40813806300/job/123250070998)
+still failed: fastest 2.591604 ms against the preserved 2.5 ms assertion,
+median 4.736635 ms. The remaining default suite passed 269 with 11 declared
+ignored tests. Scheduling isolation alone is insufficient. Preserve this and
+the earlier 2.555585 ms failure; route the actual Rust-source investigation to
+its separately coordinated owner. Do not retry unchanged or relax the threshold.
+
+Continue in order:
+
+1. Finish source/control repairs in the isolated successor. For each remaining
+   native-addition refusal, retain the original operation and first operand;
+   distinguish actual producers, readiness, effect closure and Array writers.
+   Do not solve these with annotations, helper names or blanket Opaque removal.
+2. Prioritize actual Sprite registry elements and callback/for-of aliases,
+   recursive class/virtual-call results, then remaining SDK/effect families.
+   For registry reads, extend a private receiver-lineage service from actual
+   `sprites.allOfKind` calls through aliases and canonical index/loop entries.
+   Prove namespace identity, complete writers, all collection mutations and
+   escapes, and genuine Sprite origins before issuing a numeric property result.
+   An empty snapshot stays an Array without invented element presence. Keep the
+   JSON-derived non-Sprite negative, changed KIND/namespace, incompatible writers,
+   early reads and source-expiry controls. Neither existing
+   `ordinarySpriteAyNumberReads` nor `nativeClassScalarView` currently proves
+   general registry elements; do not treat either name as an existing grant.
+   The ExtendableSprite reimport also needs its Array receiver/default-reset/
+   KIND readiness join; the constructor interpreter's private snapshot is not
+   an independent Array authority. Its post-setKind writer needs actual
+   callback receiver lineage at the class consumer. Preserve these refusals.
+3. Coordinate the inherited reference-instrument pin/fingerprint and collector
+   failures with their source owner. Keep historical fingerprints and source
+   identity guards; never replace an old SHA with the current pin by spelling.
+4. Publish a complete successor normally, qualify its enabled final-head checks
+   and affected SDK/native routes. When final fast checks are ready, request
+   the required browser tier with `ci:full` once. The label-only event avoids
+   repeating fast jobs. Do not remove/re-add labels or duplicate a dispatch.
+5. Merge only after all enabled exact-head gates succeed or have declared skips,
+   with reviewed/landed tree and parents verified. Then run the private raw
+   corpus and recovered complete contexts on an admitted external worker.
+
+The immutable raw census remains **184 = 147 translated / 36 partial / 1 parse
+failure**. Only fresh whole-application execution and roundtrip evidence can
+promote rows. Builds, browser, SDK, VM and corpus suites stay off the shared
+server. Public reports contain public repository paths and URLs only.
 
 ## 29 October: multiplayer Player Number source checkpoint and GUI acceptance
 

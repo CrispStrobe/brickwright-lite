@@ -1,6 +1,6 @@
 # Arcade qualification: isolate the preserved Tauri lockstep timing test
 
-Status: DONE — source implementation; exact-head hosted qualification pending.
+Status: DONE — source implementation; hosted isolation failed, Rust repair pending.
 Owner: Arcade integration; Rust-source repair remains separately routed.
 Isolated branch: `docs/arcade-tauri-lockstep-scheduling-20261029`.
 Base: main `bea6ff04f43c4b053bf5f2bfd01bf21615fa7d8a`.
@@ -39,6 +39,14 @@ native/source lane. The older Ubuntu mirror-preparation claim owns a separate
 step, which remains intact.
 
 ## Qualification and next step
+
+The unchanged isolated test subsequently failed on head `ae22d4a2618`:
+[official job](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40813806300/job/123250070998),
+fastest 2.591604 ms, median 4.736635 ms; the remaining default suite passed
+269 tests with 11 ignored. Original evidence is retained once. Isolation alone
+does not resolve the failure. Route a separately claimed Rust-source diagnosis;
+do not retry unchanged or change the timing assertion. This workflow change
+does not establish a source fix or any latency guarantee.
 
 Register this checked Markdown-only claim on canonical main before changing
 implementation. Validate privacy, claim shape and exact parent/tree scope.

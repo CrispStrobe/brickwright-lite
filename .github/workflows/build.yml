@@ -125,6 +125,7 @@ on:
       - 'docs/WAVE-OPEN-DEFECTS.md'
       - 'docs/app-store-metadata.md'
       - 'docs/ARCADE-888-OPEN-FAILURES.md'
+      - 'docs/ARCADE-CLASS-LINEAGE.md'
 permissions:
   contents: read
   pages: write
