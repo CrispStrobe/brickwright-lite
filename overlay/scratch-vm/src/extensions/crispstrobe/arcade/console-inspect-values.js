@@ -2,6 +2,7 @@
 // contract. Domain admission is separate from conversion: never call a
 // reference, getter, custom toString or Object.keys inspection path here.
 const primitiveOwner = require('../../../util/bw-primitive-owner');
+const graphVersion = require('../../../util/bw-graph-version');
 const reporterOwner = require('./font-selector-owner');
 const resultFactory = require('../../../util/bw-extension-result-factory');
 const analyseCaptures = require('./console-capture-provenance');
@@ -246,8 +247,28 @@ function create(runtime, cells, scoreOwner=null, sceneClock=null, frameDelta=nul
     const bound = !!runtime && typeof runtime.on === 'function' && Array.isArray(runtime.targets);
     const score=scoreRegistration(runtime,scoreOwner);
     const fail = reason => {throw new Error('Arcade inspection: ' + reason);};
+    // The graph is unchanged while every original target's container keeps its edit version,
+    // its variable table keeps its size and the target list is the one last verified in full.
+    let verifiedStamp = null, proofs = new Map();
+    const stampOf = () => {
+        const originals = runtime.targets.filter(target => target.isOriginal !== false);
+        const parts = [originals.length];
+        for (const target of originals) {
+            const version = graphVersion.versionOf(target.blocks);
+            if (version < 0) return null;
+            parts.push(version, Object.keys(target.variables || {}).length);
+        }
+        return {originals, key: parts.join(','), targets: originals};
+    };
     const current = () => {
         if (!bound || disposed || !snapshots.size) fail('inactive native owner; start the current project');
+        const stamp = stampOf();
+        if (stamp && verifiedStamp && verifiedStamp.key === stamp.key && verifiedStamp.targets.length === stamp.targets.length &&
+            verifiedStamp.targets.every((target, index) => target === stamp.targets[index])) return;
+        currentFull();
+        verifiedStamp = stamp;
+    };
+    const currentFull = () => {
         const originals = runtime.targets.filter(target => target.isOriginal !== false);
         if (originals.length !== snapshots.size || originals.some(target => {
             const saved = snapshots.get(target), blocks = Object.entries(target.blocks?._blocks || {}), variables=Object.entries(target.variables||{});
@@ -257,8 +278,9 @@ function create(runtime, cells, scoreOwner=null, sceneClock=null, frameDelta=nul
         })) fail('source graph changed; restart the project');
     };
     const snapshot = () => {
-        snapshots = new Map();
+        snapshots = new Map();verifiedStamp = null;proofs = new Map();
         if (!bound || disposed) return;
+        for (const target of runtime.targets) if (target.isOriginal !== false) graphVersion.track(target.blocks);
         if(score&&!score.disposed)score.targets=new Set(runtime.targets);
         for (const target of runtime.targets) if (target.isOriginal !== false)
             snapshots.set(target,{container:target.blocks,variables:new Map(Object.entries(target.variables||{}).map(([id,variable])=>[id,{variable,signature:JSON.stringify([variable.id,variable.name,variable.type])}])),blocks:new Map(Object.entries(target.blocks._blocks).map(([id,block]) =>
@@ -668,10 +690,17 @@ function create(runtime, cells, scoreOwner=null, sceneClock=null, frameDelta=nul
                 const name=path[path.length-1],child=target.blocks.getBlock(node.inputs?.[name]?.block);if(!child||child.parent!==node.id)fail('actual primitive input slot is missing or disconnected');
                 return {node,name};
             });
+            // A completed proof of this call site is reused until the graph (stamp) changes.
+            const key=block.id+'|'+JSON.stringify(requests.map(request=>request.node?[request.node.id,request.name]:[request.procedure,request.formal]));
+            const stamp=verifiedStamp&&verifiedStamp.key;
+            const cached=stamp&&proofs.get(key);
+            if(cached&&cached.stamp===stamp)return cached.result;
             const possible=new Map();prove(target,block,requests,possible,util,args);
-            return Object.freeze(requests.map((_,index)=>Object.freeze([...possible.get(index)])));
+            const result=Object.freeze(requests.map((_,index)=>Object.freeze([...possible.get(index)])));
+            if(stamp)proofs.set(key,{stamp,result});
+            return result;
         }finally{active=false;}
     };
-    return Object.freeze({inspect,inputDomains,snapshot,invalidate:()=>{snapshots=new Map();},dispose:()=>{disposed=true;snapshots=new Map();}});
+    return Object.freeze({inspect,inputDomains,snapshot,invalidate:()=>{snapshots=new Map();verifiedStamp=null;proofs=new Map();},dispose:()=>{disposed=true;snapshots=new Map();verifiedStamp=null;proofs=new Map();}});
 }
 module.exports=Object.assign(create,{primitive,scoreInfo,bindScoreAdapterInfo,bindSourceOperationAdapter});

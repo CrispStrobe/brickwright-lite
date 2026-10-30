@@ -1,4 +1,5 @@
 // Structural obligations only. This model never produces runtime value types.
+const graphVersion=require('./bw-graph-version');
 const TYPES=Object.freeze(['Number','String','Boolean','Any']);
 const OPCODE='arcade_declareParameterConstraint';
 const fail=message=>{throw Error('Procedure parameter constraint: '+message);};
@@ -66,11 +67,24 @@ function prepare(target) {
  }
  for(const block of Object.values(blocks))if(block?.opcode===OPCODE&&!declarations.has(block))fail('declarations must form an actual DEFINE prefix');
  for(const block of Object.values(blocks))if(block?.opcode==='procedures_call'){const entry=procedures.get(block.mutation?.proccode);if(entry)stockCall(entry,block);}
- const current=()=>{const now=blocksOf(target);return target?.blocks && snapshot.length===Object.keys(now).length&&snapshot.every(([id,block,saved])=>now[id]===block&&semantic(block)===saved);};
- return Object.freeze({target,procedures:readonly(procedures),declarations:readonly(declarations),current});
+ // Unchanged since the last full verification: every edit through the container's mutators moves its version.
+ const container=target?.blocks;graphVersion.track(container);let verified=graphVersion.versionOf(container);
+ const full=()=>{const now=blocksOf(target);return target?.blocks && snapshot.length===Object.keys(now).length&&snapshot.every(([id,block,saved])=>now[id]===block&&semantic(block)===saved);};
+ const current=()=>{
+  if(verified>=0&&target?.blocks===container&&graphVersion.versionOf(container)===verified)return true;
+  const ok=full();verified=ok?graphVersion.versionOf(container):-1;return ok;
+ };
+ return Object.freeze({target,procedures:readonly(procedures),declarations:readonly(declarations),current,version:()=>verified});
+}
+const prepared=new WeakMap();
+// The prepared model of a target is reused while its graph is unchanged.
+function preparedFor(target) {
+ const container=target?.blocks,version=graphVersion.versionOf(container),old=prepared.get(target);
+ if(old&&version>=0&&old.container===container&&old.version===version&&old.model.current())return old.model;
+ const model=prepare(target);prepared.set(target,{container,version:graphVersion.versionOf(container),model});return model;
 }
 function stockFormal(target,call,name) {
- const model=prepare(target),entry=model.procedures.get(call?.mutation?.proccode);
+ const model=preparedFor(target),entry=model.procedures.get(call?.mutation?.proccode);
  if(!entry||call.opcode!=='procedures_call')return null;
  stockCall(entry,call);
  const index=entry.ids.indexOf(name);
