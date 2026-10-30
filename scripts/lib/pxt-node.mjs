@@ -19,6 +19,10 @@ export const STATIC = path.join(ROOT, 'packages/scratch-gui/static/makecode');
 
 const sandboxes = new Map();
 
+let defaultFetchOptions;
+/** Pinned, licence-checked, cached fetching for every compile that fetches (see extension-fetch.js). */
+export const setDefaultFetchOptions = options => { defaultFetchOptions = options; };
+
 /** Is this target's runtime synced? */
 export const hasRuntime = target => fs.existsSync(path.join(STATIC, target, 'pxtworker.js'));
 
@@ -65,7 +69,7 @@ async function runCompiler (target, files, opts = {}, projectInputs = false) {
     const sb = await sandbox(target, true);
     const {onDemandExtensions} = await guiLibraries.import('bw-makecode/pxt-runtime.js');
     // CLI audits are offline by default. Fetch only when explicitly requested.
-    const onDemand = await onDemandExtensions(target, files, opts.fetchExtensions === true, opts.fetch);
+    const onDemand = await onDemandExtensions(target, files, opts.fetchExtensions === true, opts.fetch, opts.fetchOptions || defaultFetchOptions);
     // opts.emulator: the micro:bit V2 image the EMULATOR runs (compileMakeCodeForEmulator's
     // CLI twin) — the 'mbcodal' variant linked onto a Bluetooth-free base from hexcache-emu/,
     // through the same emulatorBase check the worker applies in the browser; never hexcache/.

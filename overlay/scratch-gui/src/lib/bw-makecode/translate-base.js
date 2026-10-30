@@ -1877,7 +1877,7 @@ export class BaseTranslator {
             }
             // The call as its own line (hoisted above the statement), and the
             // function's result variable in its place.
-            const args = (node.args || []).map(arg => this.single(arg, this.pre, ''));
+            const args = this.withDefaultArgs(fn, node.args || []).map(arg => this.single(arg, this.pre, ''));
             this.pre.push([fn.name, ...args].join(' '));
             // Copied at once: a second call in the same statement
             // (`f(4) + f(0)`) would otherwise overwrite the first result
@@ -1942,6 +1942,24 @@ export class BaseTranslator {
         return /^(not )/.test(value);
     }
 
+    /**
+     * A call that leaves trailing parameters out (`f()` for `function f(n = 0)`)
+     * with each missing argument filled by the parameter's declared default (0
+     * when the declaration's default was not kept): a DEFINE is called with one
+     * token per parameter, so a short call is not a statement the dialect reads.
+     */
+    withDefaultArgs (fn, args) {
+        const params = fn.params || [];
+        if (!Array.isArray(params) || args.length >= params.length) return args;
+        const defaults = params.parameterDefaults || [];
+        const out = [...args];
+        for (let i = args.length; i < params.length; i++) {
+            const row = defaults.find(d => d.name === params[i]);
+            out.push(row && row.value ? row.value : {type: 'Number', value: '0'});
+        }
+        return out;
+    }
+
     /** Commands. Subclasses override; the base can only report. */
     command (node, indent, out) {
         if (this.recordCall(node, {indent, out})) return;
@@ -1962,7 +1980,7 @@ export class BaseTranslator {
             // the DEFINE's template, so each argument has to be one token,
             // which is what single() guarantees.
             const pad = '  '.repeat(indent);
-            const args = (node.args || []).map(arg => this.single(arg, out, pad));
+            const args = this.withDefaultArgs(fn, node.args || []).map(arg => this.single(arg, out, pad));
             out.push(`${pad}${[fn.name, ...args].join(' ')}`);
             return;
         }
