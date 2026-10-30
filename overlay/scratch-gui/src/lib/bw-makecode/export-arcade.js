@@ -1758,7 +1758,14 @@ class ArcadeEmitter {
         case 'arrays_valueTruthy':return `!!(${this.arrayValue(b,'VALUE')})`;
 
         case 'arrays_referenceTruthy':return `!!${this.referenceArrayValue(b)}[${v('INDEX')}]`;
-        case 'arrays_referenceItem':return `${this.referenceArrayValue(b)}[${v('INDEX')}]`;
+        case 'arrays_referenceItem': {
+            // MakeCode refuses a non-number indexer: a variable that is typed `any`
+            // (mixed writers, or items of an array it cannot type) is read as a number.
+            let index = v('INDEX');
+            const kinds = this.kinds.get(index);
+            if (kinds && (kinds.has('any') || kinds.size > 1)) index = `<number>${index}`;
+            return `${this.referenceArrayValue(b)}[${index}]`;
+        }
         // A BW query can search for a value outside the array's element type.
         // Erase only the needle's static view; keep the array, its aliases and
         // the SDK's strict lookup/removal semantics unchanged.
@@ -2800,8 +2807,10 @@ class ArcadeEmitter {
                 this.currentLocalNames.add(name);
                 const valueBlock = this.block(typeof b.inputs?.VALUE?.[1] === 'string' ? b.inputs.VALUE[1] : null);
                 this.spawnAssignment = ['arcade_spawnSprite', 'arcade_spawnProjectile', 'arcade_spawnImageProjectile', 'arcade_spawnImageSprite', 'arcade_createSprite', 'arcade_createImageSprite'].includes(valueBlock?.opcode);
-                const value = this.arrayValue(b,'VALUE');
+                let value = this.arrayValue(b,'VALUE');
                 this.spawnAssignment = false;
+                // The importer's placeholder for a sprite producer it could not build.
+                if (value === '0' && this.localUsedAsSprite(name)) value = 'null';
                 push(`${name} = ${value}`);
                 if (['arcade_spawnSprite', 'arcade_spawnImageSprite'].includes(valueBlock?.opcode)) {
                     push(`${name}.setPosition(${this.value(valueBlock, 'X')}, ${this.value(valueBlock, 'Y')})`);
@@ -3443,9 +3452,20 @@ class ArcadeEmitter {
         return Object.freeze(mapped);
     }
 
+    /** A local that is the receiver (ID) of a sprite operation is a Sprite, even when
+     * the only value ever stored in it is an unsupported-producer placeholder. */
+    localUsedAsSprite (name) {
+        return Object.values(this.blocks || {}).some(block => {
+            if (!block || !/^arcade_/.test(block.opcode) || typeof block.inputs?.ID?.[1] !== 'string') return false;
+            const receiver = this.blocks[block.inputs.ID[1]];
+            return receiver?.opcode === 'arcade_getLocal' && this.literalInput(receiver, 'NAME') === name;
+        });
+    }
+
     localDeclaration (name, key) {
         const classType=this.objectClassExport?.localDeclarationType?.(key,name);
-        const type=classType??this.localValueTypes.get(key)?.get(name)??'any';
+        let type=classType??this.localValueTypes.get(key)?.get(name)??'any';
+        if (classType === undefined && ['number', 'any'].includes(type) && this.localUsedAsSprite(name)) type = 'Sprite';
         const initial=this.objectClassExport?.hasType?.(type)||type==='mp.Player' || type==='Image' || type==='Sprite' || type==='tiles.Location' || type==='tiles.Tile' || type==='animation.Animation' || type==='SevenSegDigit' || type==='DigitCounter' || type==='Dart' || type==='Corgio' || type==='TextSprite' || type==='scene.Scene' || type==='ArcadePhysicsEngine' || type.endsWith('[]') ? 'null' : type==='string' ? '""' : type==='boolean' ? 'false' : '0';
         return `    let ${name}: ${type} = ${initial}`;
     }
