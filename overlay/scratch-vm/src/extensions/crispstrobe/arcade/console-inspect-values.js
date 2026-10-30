@@ -530,6 +530,13 @@ function create(runtime, cells, scoreOwner=null, sceneClock=null, frameDelta=nul
                     if(!sourceNumber(node))return false;
                     origins?.add(node);domains?.add('number');return true;
                 }
+                if(!player&&op==='arrays_referenceLength'){
+                    // The length of an array held in a plain variable or local is
+                    // a side-effect-free Number; any other array producer is opaque.
+                    const array=input(node,'ARRAY');
+                    if(!['data_variable','arcade_getLocal','arcade_getCaptured'].includes(array?.opcode))return false;
+                    origins?.add(node);domains?.add('number');return true;
+                }
                 if (op === 'arcade_inspectValue') {
                     if(!domains)return safe(input(node,'VALUE'))&&safe(input(node,'LIMIT'));
                     const limit=new Set();if(!safe(input(node,'VALUE'))||!safe(input(node,'LIMIT'),false,null,limit))return false;

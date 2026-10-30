@@ -8,12 +8,13 @@
  * TurboWarp is clean-room only: the .sb3 mode is a Scratch-format check, with no
  * TurboWarp-specific cases and no TurboWarp-sourced inputs.
  * Usage: node scripts/compat-audit.mjs [--target microbit|arcade] [--out report.json]
- *        [--corpus-commit SHA] [--compile] [--prepare-extensions] [--fetch-extensions] [--execute] [--journey] [--context-catalogue FILE] [--context-root ID=directory] [--progress-jsonl FILE | --stdio-transcript] [--limit N] file-or-directory [...]
+ *        [--corpus-commit SHA] [--compile] [--prepare-extensions] [--fetch-extensions] [--execute] [--execute-timeout-ms N] [--journey] [--context-catalogue FILE] [--context-root ID=directory] [--progress-jsonl FILE | --stdio-transcript] [--limit N] file-or-directory [...]
  */
 import fs from 'node:fs';
 import path from 'node:path';
 import {createHash} from 'node:crypto';
 import {spawnSync} from 'node:child_process';
+import {fork} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 import JSZip from 'jszip';
 import {importArtefact} from '../overlay/scratch-gui/src/lib/bw-makecode/index.js';
@@ -120,6 +121,7 @@ let doCompile = false;
 let fetchExtensions = false;
 let prepareExtensions = false;
 let execute = false;
+let executeTimeoutMs = 120000;
 let journey = false;
 let journeyCreator = null;
 let limit = Infinity;
@@ -153,6 +155,10 @@ for (let i = 0; i < args.length; i++) {
     else if (a === '--fetch-extensions') fetchExtensions = true;
     else if (a === '--prepare-extensions') prepareExtensions = true;
     else if (a === '--execute') execute = true;
+    else if (a === '--execute-timeout-ms') {
+        executeTimeoutMs = Number(args[++i]);
+        if (!Number.isInteger(executeTimeoutMs) || executeTimeoutMs < 1) throw new Error('--execute-timeout-ms requires a positive integer');
+    }
     else if (a === '--journey') journey = true;
     else if (a.startsWith('-')) throw new Error(`unknown option ${a}`);
     else inputs.push(a);
@@ -185,7 +191,7 @@ invocationIdentity = snapshotIdentity();
 mark('PROVENANCE_END');
 if ((!inputs.length && !contextCatalogue) || !['microbit', 'arcade', 'calliopemini', 'ev3', 'adafruit'].includes(target) ||
     !Number.isFinite(limit) && limit !== Infinity || limit < 0) {
-    console.error('usage: node scripts/compat-audit.mjs [--target microbit|arcade] [--out report.json] [--markdown report.md] [--corpus-commit SHA] [--compile] [--prepare-extensions] [--fetch-extensions] [--execute] [--journey] [--context-catalogue FILE] [--context-root ID=directory] [--progress-jsonl FILE | --stdio-transcript] [--limit N] file-or-directory [...]');
+    console.error('usage: node scripts/compat-audit.mjs [--target microbit|arcade] [--out report.json] [--markdown report.md] [--corpus-commit SHA] [--compile] [--prepare-extensions] [--fetch-extensions] [--execute] [--execute-timeout-ms N] [--journey] [--context-catalogue FILE] [--context-root ID=directory] [--progress-jsonl FILE | --stdio-transcript] [--limit N] file-or-directory [...]');
     process.exit(2);
 }
 
@@ -339,21 +345,38 @@ async function applyOptionalGates (row, imported, preCompile = null, observed = 
     }
     if (execute && !['parse-failed', 'pxt-compile-failed'].includes(row.stage)) {
         try {
-            const {runProgram, quitStrandedVMs} = await import('../test/helpers/bw-vm.mjs');
-            try {
-                // The imported artwork rides along exactly as the importer GUI
-                // applies it (pseudocode-importer.jsx `uploads`); without it every
-                // Arcade image read fails and the run measures the harness.
-                const run = await runProgram(imported.code, {frames: 24,
-                    uploads: imported.costumes || [], storage: true});
-                row.execution = {status: run.errors.length ? 'block-error' :
-                    run.threadsStarted ? 'stepped' : 'no-green-flag-thread',
-                threadsStarted: run.threadsStarted, extensionCalls: run.extensionCalls,
-                variablesChanged: run.variablesChanged, errors: run.errors, errorEvents: compactConversionObservationGraph(run.errorEvents)};
-            } finally { quitStrandedVMs(); }
+            // The imported artwork rides along exactly as the importer GUI
+            // applies it (pseudocode-importer.jsx `uploads`); without it every
+            // Arcade image read fails and the run measures the harness.
+            // The program runs in a child process under a watchdog: a program
+            // that never returns is recorded as a timeout, not a stalled audit.
+            row.execution = await executeWithWatchdog(imported.code, imported.costumes || []);
         } catch (error) { row.execution = {status: 'failed', reason: normalize(error), exception: conversionObservationGraph(conversionException(error))}; }
     }
     return row;
+}
+
+/** Run one program in a child process; kill it (by PID) when it exceeds the
+ * per-input budget. Resolves to an `execution` row, never rejects. */
+function executeWithWatchdog (code, uploads) {
+    return new Promise(resolve => {
+        const child = fork(fileURLToPath(new URL('./lib/compat-audit-execute.mjs', import.meta.url)), [],
+            {serialization: 'advanced', stdio: ['ignore', 'ignore', 'ignore', 'ipc']});
+        let settled = false;
+        const finish = execution => {
+            if (settled) return;
+            settled = true; clearTimeout(timer);
+            if (child.exitCode === null) child.kill('SIGKILL');
+            resolve(execution);
+        };
+        const timer = setTimeout(() => finish({status: 'timeout', timeoutMs: executeTimeoutMs,
+            reason: `execution exceeded ${executeTimeoutMs} ms and was stopped`}), executeTimeoutMs);
+        child.once('message', reply => finish(reply.execution));
+        child.once('error', error => finish({status: 'failed', reason: normalize(error)}));
+        child.once('exit', exitCode => finish({status: 'failed',
+            reason: `execution process exited (${exitCode}) before reporting`}));
+        child.send({code, uploads});
+    });
 }
 
 async function sb3 (file) {
@@ -535,7 +558,7 @@ if (markdown || stdioTransport) {
         .filter(([id]) => (r.externalOpcodes || []).some(x => x.opcode.startsWith(`${id}_`)))
         .map(([id]) => id));
     const failed = rows.filter(r => r.reason || r.compile?.status === 'fail' ||
-        ['failed', 'block-error', 'no-green-flag-thread'].includes(r.execution?.status));
+        ['failed', 'timeout', 'block-error', 'no-green-flag-thread'].includes(r.execution?.status));
     const lines = ['# Conversion compatibility audit', '',
         `Generated ${report.generatedAt}; ${rows.length} files. A parsed project has not necessarily run correctly.`, '',
         `Source commit: ${report.provenance.source.commit}; dirty: ${report.provenance.source.dirty}. Corpus declared commit: ${corpusCommit || 'not supplied'} (not independently verified).`, '',

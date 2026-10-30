@@ -192,7 +192,8 @@ class ArcadeFramePhase {
         return frame?.timer && frame.timer.timeElapsed()<frame.duration;
     }
     _loopTickYield(t) {
-        return t.peekStackFrame()?.isLoop && t.blockContainer?.getBlock(t.peekStack())?.opcode!=='arcade_sourceWhile' && (this.runtime.redrawRequested || this.graphicsLoops.get(t)?.has(t.peekStack()));
+        return t.peekStackFrame()?.isLoop && t.blockContainer?.getBlock(t.peekStack())?.opcode!=='arcade_sourceWhile' && (this.runtime.redrawRequested || this.graphicsLoops.get(t)?.has(t.peekStack()) ||
+            t.blockContainer?.getBlock(t.peekStack())?.opcode==='control_forever');
     }
     _rememberGraphics(t) {
         if(!this.runtime.redrawRequested)return;

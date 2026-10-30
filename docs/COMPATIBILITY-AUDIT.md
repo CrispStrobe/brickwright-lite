@@ -75,7 +75,9 @@ Gap rankings count affected projects separately from diagnostic occurrences.
 - **`--execute`:** steps 24 frames after the green flag in a headless Scratch VM. The run
   includes the importer's artwork (`uploads`), exactly as the importer GUI applies it.
   Without the artwork, every Arcade image read fails, and the run measures the harness
-  instead of the game.
+  instead of the game. Each program runs in its own child process under a watchdog
+  (`--execute-timeout-ms N`, default 120000). A program that exceeds it is stopped and
+  recorded as `execution.status: "timeout"`; the audit goes on with the next input.
 - **`--limit N`:** gives a repeatable smoke run in sorted path order.
 - **Exit code:** nonzero for read, parse, missing-asset or missing-opcode rows.
 
