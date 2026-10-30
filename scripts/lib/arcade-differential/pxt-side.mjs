@@ -12,10 +12,10 @@ import {PXT_BUTTON} from './script.mjs';
 import {PXT_SNAPSHOT_SOURCE} from './pxt-snapshot.mjs';
 import {sampleTimes} from './script.mjs';
 import {packSamples} from './compare.mjs';
+import {PRNG_SOURCE} from './entropy.mjs';
+export {PRNG_SOURCE};
 
-export const PRNG_SOURCE = `(seed => { let s = seed >>> 0; return () => { s = (s + 0x6D2B79F5) >>> 0; let t = s;
-    t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; })`;
+export const PXT_PLATFORM_DRAWS = 'BaseBoard|FastRandom_constructor';
 
 /**
  * Record `source` once per schedule, in one browser, with a fresh simulator
@@ -63,14 +63,14 @@ async function recordOne(browser, port, code, schedule, {seconds, fps, seed, ent
         await page.goto(`http://127.0.0.1:${port}/simulator.html`);
         await assertPxtInitialClock(page);
         await bootstrapPxtProfilerClock(page);
-        await page.evaluate(({code, seed, entropy, prng, snapshotSource}) => {
+        await page.evaluate(({code, seed, entropy, prng, skip, snapshotSource}) => {
             pxsim.AudioContextManager.mute(true);
-            Math.random = entropy === 'constant' ? () => 0.5 : (0, eval)(prng)(seed);
+            window.__bwDraw = (0, eval)(prng)(seed, entropy === 'constant', skip); Math.random = window.__bwDraw;
             window.__bwSnapshot = (0, eval)(snapshotSource);
             const msg = {type: 'run', id: 'bw-differential', code, options: {}, mute: true};
             const runtime = new pxsim.Runtime(msg); window.__bwPxtRuntime = runtime;
             return runtime.board.initAsync(msg).then(() => runtime.run(() => { window.__bwPxtDone = true; }));
-        }, {code, seed, entropy, prng: PRNG_SOURCE, snapshotSource: PXT_SNAPSHOT_SOURCE});
+        }, {code, seed, entropy, prng: PRNG_SOURCE, skip: PXT_PLATFORM_DRAWS, snapshotSource: PXT_SNAPSHOT_SOURCE});
         const times = sampleTimes(seconds, fps), samples = [];
         let now = 0, error = null;
         for (let k = 0; k < times.length; k++) {

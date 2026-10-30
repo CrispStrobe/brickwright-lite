@@ -5,7 +5,7 @@ export const PXT_SNAPSHOT_SOURCE = `(globalsOf) => {
   const rt = window.__bwPxtRuntime, g = rt.globals;
   const strip = k => k.replace(/___\\d+$/, '');
   const find = n => { const k = Object.keys(g).find(k => strip(k) === n); return k === undefined ? undefined : g[k]; };
-  const out = {dead: !!rt.dead};
+  const out = {dead: !!rt.dead, draws: window.__bwDraw ? window.__bwDraw.count : null};
   // The simulator's display buffer holds resolved colours (not palette indices):
   // map each colour back to the first palette entry with that value. Comparison is
   // by resolved RGB, so duplicate palette entries (e.g. two blacks) are immaterial.

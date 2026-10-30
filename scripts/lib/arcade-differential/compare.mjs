@@ -97,7 +97,7 @@ export function sampleDiffs(a, b, framesA, framesB, opt = DEFAULTS) {
     }
     const fa = a.frame === null || a.frame === undefined ? null : framesA[a.frame], fb = b.frame === null || b.frame === undefined ? null : framesB[b.frame];
     const px = pixelDiff(fa, fb);
-    if (px) diffs.push({type: 'pixels', region: regionOf(px), ...px});
+    if (px) diffs.push({type: 'pixels', region: b.textPrompt ? 'text-prompt' : regionOf(px), ...px});
     return diffs;
 }
 
@@ -132,6 +132,14 @@ export function compareRecordings(orig, bw, opt = DEFAULTS) {
         const diffs = sampleDiffs(orig.samples[k], bw.samples[k], orig.frames, bw.frames, opt);
         if (diffs.length) { differingSamples++; if (!first) first = {k, t: orig.samples[k].t, diffs}; }
     }
+    // Random draws consumed so far at each sample: where the two streams first part company.
+    let firstDrawMismatchK = null;
+    for (let k = 0; k < n; k++) {
+        const x = orig.samples[k].draws, y = bw.samples[k].draws;
+        if (typeof x === 'number' && typeof y === 'number' && x !== y) { firstDrawMismatchK = k; break; }
+    }
+    const draws = firstDrawMismatchK === null ? undefined : {firstMismatchK: firstDrawMismatchK,
+        original: orig.samples[firstDrawMismatchK].draws, brickwright: bw.samples[firstDrawMismatchK].draws};
     if (!first && !lengthNote) return {class: 'identical', samples: n};
     // 2. Sequence of distinct states, so a pure timing offset is its own class.
     const da = distinctStates(orig.samples.slice(0, n), orig.frames), db = distinctStates(bw.samples.slice(0, n), bw.frames);
@@ -147,7 +155,7 @@ export function compareRecordings(orig, bw, opt = DEFAULTS) {
         return {class: 'same-states-different-timing', distinctStates: da.length, differingSamples, samples: n,
             medianOffsetMs: median(offsets), maxAbsOffsetMs: Math.max(...offsets.map(Math.abs)), firstDifference: first};
     }
-    return {class: 'diverges', samples: n, differingSamples, firstDifference: first,
+    return {class: 'diverges', samples: n, differingSamples, firstDifference: first, ...(draws && {randomDraws: draws}),
         primaryCause: causeName(first.diffs[0]),
         causes: [...new Set(first.diffs.map(d => d.type))],
         sequence: {original: da.length, brickwright: db.length, firstMismatch: firstSeqMismatch,

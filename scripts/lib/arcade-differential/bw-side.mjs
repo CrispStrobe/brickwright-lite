@@ -11,7 +11,7 @@ import {importProjectFiles} from '../../../overlay/scratch-gui/src/lib/bw-makeco
 import {runProgram, stepFrames, quitStrandedVMs, clearStrayTimers} from '../../../test/helpers/bw-vm.mjs';
 import {createArcadeDiscreteTimers} from '../../../test/helpers/arcade-discrete-timers.mjs';
 import {BW_KEY, sampleTimes} from './script.mjs';
-import {PRNG_SOURCE} from './pxt-side.mjs';
+import {PRNG_SOURCE} from './entropy.mjs';
 import {packSamples} from './compare.mjs';
 
 const hex = n => (n & 0xffffff).toString(16).padStart(6, '0');
@@ -32,7 +32,7 @@ export function imageKey(image) {
 /** Read-only snapshot of the Arcade extension's scene, in the shape the original side reports. */
 export function snapshotBrickwright(vm, globalsOf = []) {
     const state = vm.runtime.bwArcadeDeviceState || {};
-    const out = {dead: false, sprites: [], globals: {}};
+    const out = {dead: false, draws: globalThis.__bwDraw ? globalThis.__bwDraw.count : null, sprites: [], globals: {}};
     const frame = state.sceneFrame?.pixels;
     if (frame) {
         let s = ''; for (let i = 0; i < frame.length; i++) s += (frame[i] & 15).toString(16);
@@ -46,6 +46,8 @@ export function snapshotBrickwright(vm, globalsOf = []) {
     out.sprites.sort((a, b) => a.id - b.id);
     const p1 = state.players?.[0];
     out.score = typeof p1?.score === 'number' ? p1.score : (typeof state.score === 'number' ? state.score : 0);
+    // Text entry (askForString/askForNumber) is a Scratch ask prompt here, not drawn in the 160x120 frame.
+    out.textPrompt = !!vm.runtime.bwArcadeTextPrompt;
     out.life = typeof p1?.life === 'number' ? p1.life : null;
     if (globalsOf.length) {
         const wanted = new Set(globalsOf);
@@ -64,16 +66,27 @@ export function translateForBrickwright(source, name = 'differential') {
     return {code: imported.code, costumes: imported.costumes || [], unsupported: imported.unsupported || [], warnings: imported.warnings || []};
 }
 
+/**
+ * The seeded stream the program draws from. Scratch's own id generators also call Math.random while
+ * a program runs (clones, new blocks); they are served from a separate stream and are not counted.
+ */
+export function installProgramEntropy(seed, constant) {
+    const draw = (0, eval)(PRNG_SOURCE)(seed, constant, 'util/uid\\.js|sb3-creator|new FastRandom');
+    globalThis.__bwDraw = draw; Math.random = draw;
+}
+
 /** Run `source` and return {status, samples, translation}. Guest errors are data. */
 export async function recordBrickwright(source, {schedule, seconds, fps = 30, seed = 1, entropy = 'sequence', globalsOf = [], translated = null}) {
     let translation;
     try { translation = translated || translateForBrickwright(source); }
     catch (e) { return {status: 'import-error', error: String(e?.message || e).slice(0, 500), samples: []}; }
     const originalRandom = Math.random;
-    Math.random = entropy === 'constant' ? () => 0.5 : (0, eval)(PRNG_SOURCE)(seed);
     let run;
     try {
         run = await runProgram(translation.code, {frames: 0, frameAuthority: 'timed', uploads: translation.costumes, storage: true});
+        // Seed only now: loading the project draws Math.random for block, target and asset ids
+        // (hundreds of draws the original never makes), which would shift every program draw.
+        installProgramEntropy(seed, entropy === 'constant');
         const {vm} = run, clock = createArcadeDiscreteTimers();
         vm.stopAll();
         vm.runtime.bwArcadeProgramClock = clock;
@@ -94,7 +107,7 @@ export async function recordBrickwright(source, {schedule, seconds, fps = 30, se
     } catch (e) {
         return {status: 'error', error: String(e?.message || e).slice(0, 500), samples: [], unsupported: translation.unsupported};
     } finally {
-        Math.random = originalRandom;
+        Math.random = originalRandom; delete globalThis.__bwDraw;
         try { run?.vm?.stopAll(); run?.vm?.quit(); } catch {}
         quitStrandedVMs(); clearStrayTimers();
     }
