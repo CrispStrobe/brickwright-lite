@@ -99,6 +99,7 @@ export const EXTENSIONS = [
         holder: 'Microsoft Corporation',
         target: 'arcade',
         untagged: true,
+        native: true,
         usedBy: ['arcade tutorials alien, hundred, hawk, dunk, harlem-globetrotters']
     },
     {
@@ -113,7 +114,104 @@ export const EXTENSIONS = [
         holder: 'Microsoft Corporation',
         target: 'arcade',
         untagged: true,
+        native: true,
         usedBy: ['arcade character animation tutorials']
+    },
+    {
+        id: 'pxt-ws2812b',
+        spec: 'github:microsoft/pxt-ws2812b#v0.1.1',
+        repo: 'microsoft/pxt-ws2812b',
+        tag: 'v0.1.1',
+        commit: '725d33a65345c50c54240eb09b91f5ecc2805af8',
+        licence: 'MIT',
+        holder: 'Microsoft Corporation',
+        usedBy: ['dependency of pxt-neopixel']
+    },
+    {
+        id: 'pxt-neopixel',
+        spec: 'github:microsoft/pxt-neopixel#v0.7.6',
+        repo: 'microsoft/pxt-neopixel',
+        tag: 'v0.7.6',
+        commit: '9ef28dd8ec9e72548391746025a2c252fc8f9998',
+        licence: 'MIT',
+        holder: 'Microsoft Corporation',
+        usedBy: ['MakeCode approved list, preferred (Lights and Display); namespace neopixel']
+    },
+    {
+        id: 'pxt-sonar',
+        spec: 'github:microsoft/pxt-sonar#v0.0.6',
+        repo: 'microsoft/pxt-sonar',
+        tag: 'v0.0.6',
+        commit: 'd72f6d0733c1903b7097e055d6a12d32105365bb',
+        licence: 'MIT',
+        holder: 'Microsoft Corporation',
+        usedBy: ['MakeCode approved list, preferred (Science); namespace sonar']
+    },
+    {
+        id: 'pxt-status-bar',
+        spec: 'github:jwunderl/pxt-status-bar#v0.4.1',
+        repo: 'jwunderl/pxt-status-bar',
+        tag: 'v0.4.1',
+        commit: 'efcd376357ae7215e65616a11283e03bceaa7fa2',
+        licence: 'MIT',
+        holder: 'Joey Wunderlich',
+        target: 'arcade',
+        usedBy: ['dependency of arcade-carnival']
+    },
+    {
+        id: 'arcade-text',
+        spec: 'github:microsoft/arcade-text#v1.3.0',
+        repo: 'microsoft/arcade-text',
+        tag: 'v1.3.0',
+        commit: 'fa2439314c6633943666a763fdae32a5c67a9ae8',
+        licence: 'MIT',
+        holder: 'Microsoft Corporation',
+        target: 'arcade',
+        usedBy: ['dependency of arcade-carnival']
+    },
+    {
+        id: 'arcade-sprite-util',
+        spec: 'github:jwunderl/arcade-sprite-util#v0.3.1',
+        repo: 'jwunderl/arcade-sprite-util',
+        tag: 'v0.3.1',
+        commit: 'df4991a9793a0fff092225a67d0a81936b75d7e1',
+        licence: 'MIT',
+        holder: 'Joey Wunderlich',
+        target: 'arcade',
+        usedBy: ['dependency of arcade-carnival']
+    },
+    {
+        id: 'arcade-carnival',
+        spec: 'github:microsoft/arcade-carnival#v0.0.7',
+        repo: 'microsoft/arcade-carnival',
+        tag: 'v0.0.7',
+        commit: '915caca4a2d83a7071df59407a9987992c083750',
+        licence: 'MIT',
+        holder: 'Microsoft Corporation',
+        target: 'arcade',
+        usedBy: ['4 Arcade programs of the surveyed corpus (namespace carnival)']
+    },
+    {
+        id: 'pxt-settings-blocks',
+        spec: 'github:microsoft/pxt-settings-blocks#v1.0.0',
+        repo: 'microsoft/pxt-settings-blocks',
+        tag: 'v1.0.0',
+        commit: '068d05d80a063b04d373bf9b411af45201d7ce7a',
+        licence: 'MIT',
+        holder: 'Microsoft Corporation',
+        target: 'arcade',
+        usedBy: ['1 Arcade program of the surveyed corpus (namespace blockSettings); approved list, preferred']
+    },
+    {
+        id: 'arcade-sprite-data',
+        spec: 'github:microsoft/arcade-sprite-data#v0.2.1',
+        repo: 'microsoft/arcade-sprite-data',
+        tag: 'v0.2.1',
+        commit: '61a8caa503dcd83a192d935f6251f61013d60848',
+        licence: 'MIT',
+        holder: 'Microsoft Corporation',
+        target: 'arcade',
+        usedBy: ['MakeCode approved list, preferred (Sprites, Gameplay)']
     }
 ];
 
@@ -161,7 +259,7 @@ export async function fetchExtension (pin) {
     // Binary images (an icon) are not source and do not survive as text: not taken.
     for (const f of cfg.files || []) if (!/\.(png|jpe?g|gif)$/i.test(f)) files[f] = await raw(f);
     return {id: pin.id, spec: pin.spec, repo, tag: pin.tag, commit, licence: pin.licence, holder: pin.holder,
-        ...(pin.target ? {target: pin.target} : {}), ...(pin.untagged ? {untagged: true} : {}),
+        ...(pin.target ? {target: pin.target} : {}), ...(pin.untagged ? {untagged: true} : {}), ...(pin.native ? {native: true} : {}),
         licenceFile, licenceText: licence, usedBy: pin.usedBy, files};
 }
 

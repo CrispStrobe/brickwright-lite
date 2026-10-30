@@ -393,7 +393,14 @@ export class Emitter {
             // it is that call again rather than a comparison MakeCode would
             // show as a different block.
             if (this.isCoinToss(b)) return 'Math.randomBoolean()';
-            return this.booleanCompare(b, '==') || `(${v('OPERAND1')} == ${v('OPERAND2')})`;
+            // A sprite or Image variable's "none" is 0 in the dialect and null in
+            // MakeCode (an extension's `if (!_img)` guard); MakeCode will not
+            // compare an Image to a number.
+            const handles = name => (this.spriteVars && this.spriteVars.has(name)) || (this.imageVars && this.imageVars.has(name));
+            const [left, right] = [v('OPERAND1'), v('OPERAND2')];
+            if (handles(left) && right === '0') return `(${left} == null)`;
+            if (handles(right) && left === '0') return `(${right} == null)`;
+            return this.booleanCompare(b, '==') || `(${left} == ${right})`;
         }
         case 'operator_and': return `(${this.condition(b, 'OPERAND1')} && ${this.condition(b, 'OPERAND2')})`;
         case 'operator_or': return `(${this.condition(b, 'OPERAND1')} || ${this.condition(b, 'OPERAND2')})`;
