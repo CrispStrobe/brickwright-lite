@@ -77,6 +77,7 @@ export class RenodeLockstepDriver {
         this.clockNs = null;
         this.seq = -1;
         this.identity = null;
+        this.targetFrame = null;
         /** The last accepted snapshot. */
         this.frame = null;
         /** Ports of the emulated hub ([{id, attached, kind}], from the begin frame). */
@@ -107,7 +108,10 @@ export class RenodeLockstepDriver {
             }
             // Gate on the running target, as the arena gates its ops on the first frame's
             // capabilities: an older runtime is "unsupported", never a failed lockstep.begin.
-            if (!advertisesLockstep(await this._call(LOCKSTEP_OPS.stateRead, {}))) throw new LockstepUnsupportedError();
+            const target = await this._call(LOCKSTEP_OPS.stateRead, {});
+            if (!advertisesLockstep(target)) throw new LockstepUnsupportedError();
+            /** The running target's state.read frame: what beforeLockstep may adapt to (capabilities). */
+            this.targetFrame = target;
             if (this.manageSession) {
                 // The session starts with the debugger holding the guest; lockstep.begin
                 // stops a RUNNING emulation (renode-spike-prime#59), so resume it first.

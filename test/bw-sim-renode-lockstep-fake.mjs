@@ -40,7 +40,7 @@
 // Faults for tests: {skewAtStep: k, skewNs} reports a clock off by skewNs at
 // step k; {repeatSeqAtStep: k} repeats the previous seq at step k.
 
-const FULL_CAPABILITIES = ['arena-inputs/v1', 'arena-clock/v1', 'guest-motor-output/v1', 'state-sample/v1',
+export const FULL_CAPABILITIES = ['arena-inputs/v1', 'arena-clock/v1', 'guest-motor-output/v1', 'state-sample/v1',
     'nuttx-program/v1', 'lockstep/v1', 'motor-bridge-drive/v1', 'external-shaft/v1', 'nuttx-program-deferred-start/v1'];
 export const FAKE_IMAGE = 'f'.repeat(16) + '0123456789abcdef'.repeat(3);
 

@@ -30,6 +30,13 @@ export const ROUTE_PROGRAM_ID = 1;
 export const PROGRAM_STATE_NAMES = Object.freeze(['empty', 'ready', 'running', 'complete', 'stopped', 'fault']);
 
 export const PUBLICATION_CAPABILITY = 'nuttx-program-publication/v1';
+
+/**
+ * The state service advertises this when the package found the firmware's
+ * g_bw_program_instruction_abi 2 (ops 7/8, brickwright-spike-prime-fw#56); without it, ABI 1.
+ */
+export const INSTRUCTIONS_V2_CAPABILITY = 'nuttx-program-instructions/v2';
+export const instructionAbi = frame => (frame?.target?.capabilities?.includes(INSTRUCTIONS_V2_CAPABILITY) === true ? 2 : 1);
 const publicationSequence = value => Number.isInteger(value) && value > 0 && value <= 0xffffffff && value % 2 === 0;
 
 const OP_NAME = {[PROGRAM_OP.START]: 'START', [PROGRAM_OP.STOP]: 'STOP'};

@@ -863,13 +863,21 @@ stand-still. Refused controls (`the firmware refused START (−22)`) and a progr
     It uses the extension's 17.6 cm / 6.93 in per rotation. Multi-port `run motor … degrees`
     gets one op 7 per port and one op 8. The result is `version: 2` only when it uses these
     ops. The default `abi: 1` refuses these blocks as before.
-  - **Negotiation, still open.** No package or runtime reports the marker to the GUI yet, so
-    the route compiles with `abi: 1`. Minimal plumbing, following the addressed-sensor
-    marker: `prepare-spike-nuttx-package.mjs` discovers `g_bw_program_instruction_abi` and
-    writes `programInstructionAbi: 2` to `state-config.json`. The state service then
-    advertises `nuttx-program-instructions/v2` in `target.capabilities`, and the route
-    compiles with `abi: 2` when `state.read` shows it. If the GUI and image disagree anyway,
-    the old image fails loudly at COMMIT (−22, "refused the program upload").
+  - **Negotiation.** The firmware marker reaches the route in three steps.
+    1. `prepare-spike-nuttx-package.mjs` validates `g_bw_program_instruction_abi` in the
+       userspace ELF with `programInstructionAbi` from `scripts/lib/spike-addressed-sensor-marker.mjs`.
+       This uses the same ELF rules as the addressed-sensor marker and the firmware's
+       `tools/check_instruction_abi_marker.py`. It then writes `programInstructionAbi: 2` into
+       `state-config.json`. An image without the marker gets no key; a malformed marker fails
+       packaging.
+    2. The state service advertises `nuttx-program-instructions/v2` in `target.capabilities`
+       (renode-spike-prime#67).
+    3. The route takes `compile: abi => compileRouteProgram(vm, {abi})` instead of a finished
+       program. After `state.read` and before the upload, it compiles with `abi: 2` only when
+       that frame advertises the capability, else `abi: 1`. The result carries `abi` and
+       `compiled`, and the pane recompiles at Run for the same ABI.
+    - A mismatched image that advertises the capability without the ops fails loudly at
+      COMMIT (−22, "refused the program upload").
   - **Fake.** The fake emulator now implements op 7 and op 8 as the firmware does, and
     models a v1 image with `instructionAbi: 1`.
 

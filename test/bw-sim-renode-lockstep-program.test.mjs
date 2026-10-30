@@ -35,7 +35,8 @@ import {LOCKSTEP_OPS} from '../overlay/scratch-gui/src/lib/bw-sim/routes/renode-
 import {compileFirmwareProgram, FirmwareProgramError} from '../overlay/scratch-gui/src/lib/spike-arena/firmware-program.js';
 import {encodeInstructions, PROGRAM_OP} from '../overlay/scratch-gui/src/lib/spike-nuttx/upload-protocol.js';
 import {FIRMWARE_TEXT, firmwareRefusalSentence} from '../overlay/scratch-gui/src/components/tw-pseudocode/sim-lab-firmware-text.js';
-import {FakeSpikeRenode} from './bw-sim-renode-lockstep-fake.mjs';
+import {FakeSpikeRenode, FULL_CAPABILITIES} from './bw-sim-renode-lockstep-fake.mjs';
+import {instructionAbi, INSTRUCTIONS_V2_CAPABILITY} from '../overlay/scratch-gui/src/lib/bw-sim/routes/renode-lockstep/program.js';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SIM = path.join(ROOT, 'overlay/scratch-gui/src/lib/bw-sim');
@@ -81,9 +82,9 @@ const folded = log => log.reduce((out, [op]) => {
 const short = op => op.replace('renode.spike.', '');
 
 /** The firmware route's scene for the shipped driving base, as the pane opens it. */
-const openScene = async (program, fake = new FakeSpikeRenode()) => {
+const openScene = async (program, fake = new FakeSpikeRenode(), {compile = null} = {}) => {
     const changes = [];
-    const route = await openLockstepRoute({transport: fake, program, onProgramChange: c => changes.push(c.stateName)});
+    const route = await openLockstepRoute({transport: fake, ...(compile ? {compile} : {program}), onProgramChange: c => changes.push(c.stateName)});
     let hub = null;
     const {session} = await SimSession.fromText(MODEL_TEXT, {hubState: null, catalog: CATALOG,
         createHub: def => (hub = route.createHub(def))});
@@ -233,12 +234,31 @@ test('every refusal the compiler has is a sentence in English and German that na
     assert.match(firmwareRefusalSentence('de', new Error('Unknown topology')), /Unknown topology/);
 });
 
-test('firmware instruction ABI v2: `move forward 360 degrees` turns both wheels together and stops at the angle', async () => {
-    const {program, error} = compileRouteProgram(vmOf('  set movement speed 30\n  move forward 360 degrees\n'), {abi: 2});
-    assert.equal(error, null);
-    assert.deepEqual(program, {version: 2, instructions: [[7, 0, -360, 333], [7, 1, 360, 333], [8, 3, 0, 0], [0, 0, 0, 0]]});
-    const {fake, route, session, wheels, steps} = await openScene(program);
-    assert.deepEqual(fake.firmware.program, program.instructions, 'the v2 rows reached the firmware unchanged');
+const MOVE_360 = '  set movement speed 30\n  move forward 360 degrees\n';
+const V2_TARGET = [...FULL_CAPABILITIES, INSTRUCTIONS_V2_CAPABILITY];
+const routeCompile = body => {
+    const vm = vmOf(body), seen = [];
+    const compile = abi => { seen.push(abi); return compileRouteProgram(vm, {abi}); };
+    return {compile, seen};
+};
+
+test('the instruction ABI is 2 only when the target advertises nuttx-program-instructions/v2', () => {
+    assert.equal(INSTRUCTIONS_V2_CAPABILITY, 'nuttx-program-instructions/v2');
+    assert.equal(instructionAbi({target: {capabilities: V2_TARGET}}), 2);
+    for (const frame of [{target: {capabilities: FULL_CAPABILITIES}}, {target: {capabilities: ['nuttx-program-instructions/v3']}},
+        {target: {}}, {}, null]) assert.equal(instructionAbi(frame), 1);
+});
+
+test('an image advertising instruction ABI v2: the route compiles `move forward 360 degrees` to ops 7/8 and both wheels stop at the angle', async () => {
+    const {compile, seen} = routeCompile(MOVE_360);
+    const {fake, route, session, wheels, steps} = await openScene(null, new FakeSpikeRenode({capabilities: V2_TARGET}), {compile});
+    assert.deepEqual(seen, [2], 'compiled once, after state.read, for ABI 2');
+    assert.equal(route.abi, 2);
+    assert.equal(route.compiled.error, null);
+    assert.deepEqual(route.compiled.program, {version: 2, instructions: [[7, 0, -360, 333], [7, 1, 360, 333], [8, 3, 0, 0], [0, 0, 0, 0]]});
+    assert.deepEqual(fake.firmware.program, route.compiled.program.instructions, 'the v2 rows reached the firmware unchanged');
+    const ops = folded(fake.log).map(([op]) => short(op));
+    assert.deepEqual(ops.slice(0, 5), ['session.start', 'state.read', 'run', 'program.packet', 'lockstep.begin']);
     await route.program.start();
     await steps(60);
     const early = wheels();
@@ -253,11 +273,38 @@ test('firmware instruction ABI v2: `move forward 360 degrees` turns both wheels 
     await route.driver.end();
 });
 
-test('an image without instruction ABI v2 refuses the v2 program at COMMIT; the default compiler never emits it', async () => {
-    const vm = vmOf('  set movement speed 30\n  move forward 360 degrees\n');
-    assert.equal(compileRouteProgram(vm).error.code, 'two-motor-position', 'abi 1 (the default) still refuses the block');
-    const fake = new FakeSpikeRenode({instructionAbi: 1});
-    await assert.rejects(openLockstepRoute({transport: fake, program: compileRouteProgram(vm, {abi: 2}).program}),
-        /refused the program upload/);
+test('a target without the capability stays at instruction ABI 1: the block is refused, v1 programs upload as before', async () => {
+    const refused = routeCompile(MOVE_360);
+    const fake = new FakeSpikeRenode();
+    const route = await openLockstepRoute({transport: fake, compile: refused.compile});
+    assert.deepEqual(refused.seen, [1]);
+    assert.equal(route.abi, 1);
+    assert.equal(route.compiled.error.code, 'two-motor-position', 'named in the pane, never a silent stand-still');
+    assert.equal(route.program, null);
+    assert.ok(!fake.log.some(([op]) => op === LOCKSTEP_OPS.programPacket), 'nothing was uploaded');
+    await route.driver.end();
+    const drive = routeCompile(DRIVE);
+    const legacy = new FakeSpikeRenode();
+    const open = await openLockstepRoute({transport: legacy, compile: drive.compile});
+    assert.deepEqual(drive.seen, [1]);
+    assert.deepEqual(open.compiled.program, compiled(DRIVE), 'byte-identical to the explicit v1 program');
+    assert.deepEqual(legacy.firmware.program, compiled(DRIVE).instructions);
+    assert.equal(open.program.stateName, 'ready');
+    await open.driver.end();
+    // A v1-only program on a v2 target is still v1.
+    const v1OnV2 = routeCompile(DRIVE);
+    const v2 = await openLockstepRoute({transport: new FakeSpikeRenode({capabilities: V2_TARGET}), compile: v1OnV2.compile});
+    assert.equal(v2.abi, 2);
+    assert.equal(v2.compiled.program.version, 1);
+    await v2.driver.end();
+    await assert.rejects(openLockstepRoute({transport: legacy, compile: drive.compile, program: compiled(DRIVE)}), /compile replaces/);
+});
+
+test('a mismatched old image (capability advertised, no ops 7/8) refuses the v2 program at COMMIT and keeps none', async () => {
+    const {compile, seen} = routeCompile(MOVE_360);
+    const fake = new FakeSpikeRenode({capabilities: V2_TARGET, instructionAbi: 1});
+    await assert.rejects(openLockstepRoute({transport: fake, compile}), /refused the program upload/);
+    assert.deepEqual(seen, [2]);
     assert.equal(fake.firmware.program, null, 'the old image kept no v2 program');
+    assert.ok(fake.log.some(([op]) => op === LOCKSTEP_OPS.sessionClose), 'and the route closed the session');
 });

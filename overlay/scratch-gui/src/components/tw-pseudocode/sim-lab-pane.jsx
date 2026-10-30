@@ -1476,11 +1476,11 @@ class SimLabPane extends React.Component {
             // The program the emulated hub runs: the Code tab's blocks, compiled by the SPIKE
             // arena's firmware compiler and uploaded before lockstep. A block it cannot express
             // is named in the pane; the route still opens, with no program (the robot stands).
-            const compiled = this.compileFirmware();
-            refusal = compiled.error;
+            // The route compiles once state.read shows the image's instruction ABI (ops 7/8 or not).
             try {
                 firmware = await this.lib.openFirmwareRoute({capabilities: this.renodeCapabilities(), hubState: this.hub,
-                    program: compiled.program, onProgramChange: control => this.onFirmwareProgram(control)});
+                    compile: abi => this.compileFirmware(abi), onProgramChange: control => this.onFirmwareProgram(control)});
+                refusal = firmware.compiled?.error ?? null;
             } catch (error) {
                 if (token !== this.loadToken) return;
                 // The packaged runtime has no lockstep/v1: not a failure, an unavailable route.
@@ -1619,9 +1619,12 @@ class SimLabPane extends React.Component {
         });
     }
 
-    /** The Code tab's program for the firmware route: {program} or {error} (which block, why). */
-    compileFirmware () {
-        return this.lib.compileRouteProgram(this.props.vm, {topology: 'default'});
+    /**
+     * The Code tab's program for the firmware route: {program} or {error} (which block, why),
+     * for the instruction ABI the open route's image advertised (1 until one has).
+     */
+    compileFirmware (abi = this.firmware?.abi ?? 1) {
+        return this.lib.compileRouteProgram(this.props.vm, {topology: 'default', abi});
     }
 
     /**

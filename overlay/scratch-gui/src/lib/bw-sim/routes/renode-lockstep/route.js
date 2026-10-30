@@ -4,7 +4,8 @@
 // The Robot Lab's SPIKE firmware route over a lockstep transport
 // (docs/ROBOT-LAB-SPIKE-EMULATION.md §2.4, §2.6, §7.4). The order of operations:
 //
-//   session.start → state.read (lockstep/v1?) → run            the driver (driver.js)
+//   session.start → state.read (lockstep/v1? instructions/v2?) → run   the driver (driver.js)
+//   → compile(abi) when the caller passed `compile`              ABI 2 only if advertised
 //   → program.packet BEGIN, CHUNK…, COMMIT                      upload, guest free-running
 //   → lockstep.begin                                            the Lab's time 0
 //   → [Run] program.control.submit START → lockstep.step …      the program runs in lockstep
@@ -14,7 +15,7 @@
 // the robot stands, and the pane says which block the firmware cannot run.
 
 import {RenodeLockstepDriver} from './driver.js';
-import {LockstepProgram} from './program.js';
+import {LockstepProgram, instructionAbi} from './program.js';
 import {SpikeFirmwareVirtualHub} from '../../hubs/spike/spike-firmware-hub.js';
 import {compileFirmwareProgram, FirmwareProgramError} from '../../../spike-arena/firmware-program.js';
 
@@ -43,16 +44,31 @@ export {FirmwareProgramError};
  * @param {'nuttx'|'micropython'} [options.backend]
  * @param {'default'|'six-motors'|'dual-ultrasonic'} [options.topology]
  * @param {object} [options.program] compileFirmwareProgram's output, uploaded before lockstep
+ * @param {Function} [options.compile] instead of program: abi => compileRouteProgram's {program, error},
+ *        called once state.read showed the target's instruction ABI (2 with `nuttx-program-instructions/v2`,
+ *        else 1); the result carries it as `abi` and the compile result as `compiled`
  * @param {boolean} [options.manageSession] false when the caller started (and runs) the emulator
  * @param {Function} [options.onProgramChange] the LockstepProgram's onChange
  */
 export const openLockstepRoute = async ({transport, hubState = null, backend = 'nuttx', topology = 'default',
-    program = null, pythonSource = null, manageSession = true, onProgramChange = () => {}}) => {
+    program = null, pythonSource = null, compile = null, manageSession = true, onProgramChange = () => {}}) => {
     if (hubState?.configurationOwner) throw new Error('Hub configuration is owned by another session (the SPIKE arena?).');
-    if ((program !== null || pythonSource !== null) && backend !== 'nuttx') throw new Error('Only the NuttX firmware runs compiled block programs.');
+    if ((program !== null || pythonSource !== null || compile !== null) && backend !== 'nuttx') throw new Error('Only the NuttX firmware runs compiled block programs.');
+    if (compile !== null && (typeof compile !== 'function' || program !== null || pythonSource !== null)) {
+        throw new TypeError('compile replaces program and pythonSource');
+    }
     // Validates the program before anything starts: a program the ABI refuses starts no emulator.
-    const control = program !== null || pythonSource !== null ?
+    let control = program !== null || pythonSource !== null ?
         new LockstepProgram({transport, program, pythonSource, topology, onChange: onProgramChange}) : null;
+    let abi = 1, compiled = null;
+    // After state.read, before the upload: compile for the instruction ABI the target advertises.
+    const prepare = () => {
+        abi = instructionAbi(driver.targetFrame);
+        compiled = compile(abi);
+        control = compiled.program ?
+            new LockstepProgram({transport, program: compiled.program, topology, onChange: onProgramChange}) : null;
+        return control ? control.upload() : null;
+    };
     const release = () => {
         if (hubState?.configurationOwner === driver) {
             hubState.configurationOwner = null;
@@ -60,10 +76,10 @@ export const openLockstepRoute = async ({transport, hubState = null, backend = '
         }
     };
     const driver = new RenodeLockstepDriver({transport, backend, topology, manageSession, onEnd: release,
-        beforeLockstep: control ? () => control.upload() : null,
+        beforeLockstep: compile ? prepare : control ? () => control.upload() : null,
         // Pause/Reset/close: the program stops before lockstep ends (when it runs, or a START is in line).
-        beforeEnd: control ? () => control.stop() : null});
-    if (control) driver.observe(frame => control.observe(frame));
+        beforeEnd: control || compile ? () => control?.stop() : null});
+    if (control || compile) driver.observe(frame => control?.observe(frame));
     if (hubState) {
         hubState.configurationOwner = driver;
         hubState.changed?.();
@@ -78,5 +94,5 @@ export const openLockstepRoute = async ({transport, hubState = null, backend = '
         if (def.index > 0) throw new Error('The SPIKE firmware route runs a model with one hub.');
         return new SpikeFirmwareVirtualHub({id: def.id, driver, hubState});
     };
-    return {driver, createHub, program: control};
+    return {driver, createHub, program: control, abi, compiled};
 };
