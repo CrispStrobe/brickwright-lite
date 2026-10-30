@@ -42,6 +42,9 @@ const SUPPORT = {
     'target-type': 'extension-support/target-type',
     cast: 'util/cast',
     'bw-values': 'util/bw-values',
+    'bw-array-operations': 'util/bw-array-operations',
+    'bw-array-source-values': 'util/bw-array-source-values',
+    'bw-extension-result-factory': 'util/bw-extension-result-factory',
     'bw-primitive-owner': 'util/bw-primitive-owner',
     'bw-source-condition-waits': 'util/bw-source-condition-waits',
     'bw-procedure-entry': 'util/bw-procedure-entry',
@@ -49,12 +52,13 @@ const SUPPORT = {
     'bw-arcade-exceptions': 'util/bw-arcade-exceptions',
     'bw-null-sprite-getter': 'util/bw-null-sprite-getter',
     'bw-scene-clock-number': 'util/bw-scene-clock-number',
+    'bw-frame-delta-number': 'util/bw-frame-delta-number',
     'bw-current-number-input': 'util/bw-current-number-input',
     'bw-cached-primitive-owner': 'util/bw-cached-primitive-owner',
     'bw-animation-resource-menu': 'util/bw-animation-resource-menu'
 };
 // Overlay-owned support modules: same installed instance, but only when its bytes are the overlay's.
-const OVERLAY_SUPPORT = new Set(['bw-scene-clock-number', 'bw-null-sprite-getter', 'bw-procedure-entry', 'bw-procedure-constraint-model', 'bw-values', 'bw-animation-resource-menu', 'bw-primitive-owner', 'bw-current-number-input', 'bw-cached-primitive-owner', 'bw-arcade-exceptions', 'bw-source-condition-waits']);
+const OVERLAY_SUPPORT = new Set(['bw-frame-delta-number', 'bw-scene-clock-number', 'bw-null-sprite-getter', 'bw-procedure-entry', 'bw-procedure-constraint-model', 'bw-values', 'bw-array-operations', 'bw-array-source-values', 'bw-extension-result-factory', 'bw-animation-resource-menu', 'bw-primitive-owner', 'bw-current-number-input', 'bw-cached-primitive-owner', 'bw-arcade-exceptions', 'bw-source-condition-waits']);
 function installedOverlaySupport (base) {
     const installed = path.join(VM_SRC, `${SUPPORT[base]}.js`);
     const overlay = path.join(REPO, 'overlay', 'scratch-vm', 'src', `${SUPPORT[base]}.js`);
@@ -63,7 +67,7 @@ function installedOverlaySupport (base) {
         throw new Error(`bw-extensions: installed ${SUPPORT[base]}.js ${theirs === null ? 'is missing' : 'differs from the overlay'}` +
             ' — run `node scripts/apply-vm-overlay.mjs`');
     }
-    if (base === 'bw-current-number-input') {
+    if (base === 'bw-current-number-input' || base === 'bw-frame-delta-number') {
         installedOverlaySupport('bw-primitive-owner');
         installedOverlaySupport('bw-cached-primitive-owner');
     }
@@ -73,6 +77,12 @@ function installedOverlaySupport (base) {
 let adapterCache = null;
 function shimRequire (spec, from) {
     const base = path.basename(spec);
+    // This one lazy consumer needs the actual Runtime class whose constructor
+    // issued the private origin facts. Do not admit an arbitrary engine path
+    // or make another source-evaluated Runtime/metadata-factory instance.
+    if (spec === '../../../engine/runtime' && from === path.join(OVERLAY_EXT, 'arcade', 'console-inspect-values.js')) {
+        return nodeRequire(path.join(VM_SRC, 'engine', 'runtime.js'));
+    }
     if (base === 'adapter') return loadAdapter();
     if (spec === 'format-message') return nodeRequire(path.join(INTEGRATED, 'node_modules', spec));
     if (OVERLAY_SUPPORT.has(base)) return installedOverlaySupport(base);

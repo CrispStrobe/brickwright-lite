@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {EventEmitter} from 'node:events';
+import {createArcadeRuntimeMock} from './helpers/arcade-runtime-mock.mjs';
 import {loadExtensionClass} from './helpers/bw-extensions.mjs';
 import {runPxtArcade} from './helpers/pxt-arcade-runtime.mjs';
 const Arcade=loadExtensionClass('arcade');
-function game(){const runtime=new EventEmitter(),a=new Arcade(runtime);return {runtime,a};}
+function game(){const runtime=createArcadeRuntimeMock(),a=new Arcade(runtime);return {runtime,a};}
 function actor(a,{x=10,y=12,kind='Player',width=1,height=1,pixels=null}={}){
  const image=a.createImage({WIDTH:width,HEIGHT:height});if(pixels){for(const [x,y] of pixels)a.drawImage({IMAGE:image,OP:'fillRect',X:x,Y:y,W:1,H:1,COLOR:2});}else a.drawImage({IMAGE:image,OP:'fillRect',X:0,Y:0,W:width,H:height,COLOR:2});const id=a.createImageSprite({IMAGE:image,TEMPLATE:'',KIND:kind});a.setSpritePosition({ID:id,X:x,Y:y});return id;
 }

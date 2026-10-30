@@ -73,3 +73,10 @@ Unchanged original/emitted MakeCode, native execution and visible editor/saved
 project checks remain required before source landing. A better source census
 alone is not an application completion. First-class post-test loop authoring
 and broader callback/Array effects remain separately scoped GUI/runtime work.
+
+The private graph records whether occurrence readiness actually suppressed a
+synthetic Undefined edge. Every strengthened graph still checks the full sticky
+proof before publishing types. A proof that contributed no fact is not an
+invalidation dependency of that graph. This changes no public proof query,
+readiness condition, actual writer or limit. The affected 33-control source
+cohort passes; this is not a measured performance or guest qualification.

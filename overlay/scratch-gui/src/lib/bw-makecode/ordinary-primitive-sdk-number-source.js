@@ -100,22 +100,39 @@ export function ordinaryPlayerScoreNumberCalls(program, safeIndex = () => false)
 // root invalidates every leaf in the program.
 const CAMERA_PROPERTY_MEMBERS = Object.freeze(['X','Y','Left','Right','Top','Bottom']);
 export function ordinaryCameraPropertyNumberLeaves(program) {
-    const sdk=staticSdkNamespaceReceivers(program),candidates=[];
+    const sdk=staticSdkNamespaceReceivers(program,{builtinIdentifiers:['eval','Function']}),candidates=[];
+    // Recognize parser/normalizer syntax independently of particular SDK calls.
+    // An unknown binding/effect form cannot establish the builtin enum root.
+    const forms=new Set(['Program','Block','Declaration','DestructuringDeclaration','DestructuringForOf',
+        'ObjectPattern','ArrayPattern','BindingProperty','AssignmentPattern','RestElement',
+        'FunctionDeclaration','FunctionExpression','Class','For','ForOf','While','If','Switch',
+        'ExpressionStatement','Return','ThrowStatement','Break','Continue','Identifier','Member','Index',
+        'Call','Assignment','Update','Binary','Logical','Unary','Conditional','Parenthesized',
+        'Array','Object','Number','String','Boolean','Null','Undefined','Template','Interface','Namespace','Enum',
+        'As','TypeAssertion']);
     let unsafe=false;
     const rootOf=node=>{while(['Member','Index'].includes(node?.type))node=node.object;return node;};
-    const visit=(node,parent=null)=>{
+    const visit=(node,parent=null,assertedAncestor=false)=>{
         if(!node||typeof node!=='object')return;
-        if(Array.isArray(node)){for(const value of node)visit(value,parent);return;}
+        if(Array.isArray(node)){for(const value of node)visit(value,parent,assertedAncestor);return;}
+        const asserted=assertedAncestor||!!(node.assertedType||node.typeAssertions?.length)||['As','TypeAssertion'].includes(node.type);
+        if(typeof node.type==='string'&&!forms.has(node.type))unsafe=true;
+        if(node.type==='Identifier'&&['eval','Function'].includes(node.name)&&sdk.has(node))unsafe=true;
+        if(node.type==='Template'&&typeof node.tag==='string'&&
+            (node.tag==='CameraProperty'||node.tag.startsWith('CameraProperty.')))unsafe=true;
         if(node.type==='Identifier'&&node.name==='CameraProperty'&&sdk.has(node)){
             const member=parent?.type==='Member'&&parent.object===node?parent:null;
-            if(!member||member.optional||!CAMERA_PROPERTY_MEMBERS.includes(member.name))unsafe=true;
+            if(!member||member.optional||member.computed||node.optional||
+                node.assertedType||node.typeAssertions?.length||member.assertedType||member.typeAssertions?.length||
+                asserted||
+                !CAMERA_PROPERTY_MEMBERS.includes(member.name))unsafe=true;
             else candidates.push(member);
         }
         if(node.type==='Assignment'||node.type==='Update'||node.type==='Unary'&&node.op==='delete'){
             const root=rootOf(node.type==='Assignment'?node.left:node.argument);
             if(root?.type==='Identifier'&&root.name==='CameraProperty'&&sdk.has(root))unsafe=true;
         }
-        for(const value of Object.values(node))if(value&&typeof value==='object')visit(value,node);
+        for(const value of Object.values(node))if(value&&typeof value==='object')visit(value,node,asserted);
     };
     visit(program);
     return new WeakSet(unsafe?[]:candidates);
@@ -129,7 +146,7 @@ const MATH_NUMBER_MEMBERS = Object.freeze(['abs','acos','asin','atan','atan2','c
     'sqrt','tan','trunc','E','LN10','LN2','LOG10E','LOG2E','PI','SQRT1_2','SQRT2']);
 export function ordinaryMathNumberCalls(program) {
     const sdk=staticSdkNamespaceReceivers(program),candidates=[];
-    let randintBound=false,mathUnsafe=false;const bound=new Set(),constants=[];
+    let randintBound=false,mathUnsafe=false,gameUnsafe=false;const bound=new Set(),constants=[];
     const rootOf=node=>{while(['Member','Index'].includes(node?.type))node=node.object;return node;};
     const visit=(node,parent=null)=>{
         if(!node||typeof node!=='object')return;
@@ -146,11 +163,20 @@ export function ordinaryMathNumberCalls(program) {
             if(root?.type==='Identifier'&&root.name==='randint')randintBound=true;
             if(root?.type==='Identifier'&&['Infinity','NaN'].includes(root.name))bound.add(root.name);
             if(root?.type==='Identifier'&&root.name==='Math'&&sdk.has(root))mathUnsafe=true;
+            if(root?.type==='Identifier'&&root.name==='game'&&sdk.has(root))gameUnsafe=true;
         }
         if(node.type==='Identifier'&&node.name==='Math'&&sdk.has(node)&&!(parent?.type==='Member'&&parent.object===node))mathUnsafe=true;
+        if(node.type==='Identifier'&&node.name==='game'&&sdk.has(node)&&!(parent?.type==='Member'&&parent.object===node))gameUnsafe=true;
         if(node.type==='Call'&&!node.isNew&&!node.typeArguments?.length&&!node.args?.some(arg=>arg?.type==='Spread')){
             const callee=node.callee;
             if(callee?.type==='Identifier'&&callee.name==='randint'&&node.args.length===2)candidates.push({node,kind:'randint'});
+            // PXT game.askForNumber parses the entered text: a Number (possibly
+            // NaN) on normal return. No argument, timing or input fact follows.
+            if(callee?.type==='Member'&&!callee.optional&&callee.name==='askForNumber'&&callee.object?.type==='Identifier'&&callee.object.name==='game'&&
+                sdk.has(callee.object)&&node.args.length>=1&&node.args.length<=3)candidates.push({node,kind:'game'});
+            // PXT game.runtime() returns the elapsed milliseconds as a Number.
+            if(callee?.type==='Member'&&!callee.optional&&callee.name==='runtime'&&callee.object?.type==='Identifier'&&callee.object.name==='game'&&
+                sdk.has(callee.object)&&node.args.length===0)candidates.push({node,kind:'game'});
             if(callee?.type==='Member'&&!callee.optional&&callee.object?.type==='Identifier'&&callee.object.name==='Math'&&sdk.has(callee.object)&&MATH_NUMBER_MEMBERS.includes(callee.name))candidates.push({node,kind:'math'});
         }
         if(node.type==='Member'&&!node.optional&&node.object?.type==='Identifier'&&node.object.name==='Math'&&sdk.has(node.object)&&/^[A-Z0-9_]+$/.test(node.name)&&MATH_NUMBER_MEMBERS.includes(node.name)&&!(parent?.type==='Call'&&parent.callee===node))candidates.push({node,kind:'math'});
@@ -159,6 +185,6 @@ export function ordinaryMathNumberCalls(program) {
     visit(program);
     // `Infinity` and `NaN` are global Number values unless the program binds or writes them.
     const constantSafe=name=>!bound.has(name);
-    return new WeakSet([...candidates.filter(({kind})=>kind==='randint'?!randintBound:!mathUnsafe).map(({node})=>node),
+    return new WeakSet([...candidates.filter(({kind})=>kind==='randint'?!randintBound:kind==='game'?!gameUnsafe:!mathUnsafe).map(({node})=>node),
         ...constants.filter(node=>constantSafe(node.name))]);
 }

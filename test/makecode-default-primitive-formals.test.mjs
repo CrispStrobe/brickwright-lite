@@ -23,10 +23,17 @@ test('default structural selection leaves mixed signatures and callback AST on e
 });
 
 test('default obligations refuse actual bad callers and all writers without deselection',()=>{
- for(const s of ['function f(x:string){}f(2);','function f(x:string){x=2;}','function f(x:string){let later=()=>{x=2;}}','function f(x:number){}function later(){f("bad");}','function f(x:any=unknown){}f();']){
+ for(const s of ['function f(x:string){}f(2);','function f(x:string){x=2;}','function f(x:string){let later=()=>{x=2;}}','function f(x:number){}function later(){f("bad");}later();','function f(x:any=unknown){}f();']){
   const prepared=prepare(s);assert.ok(prepared.diagnostics.length,s);assert.ok(prepared.prefix(prepared.program.body[0],'f %s').length,s);
  }
  for(const [type,value]of[['string','"ok"'],['number','20'],['boolean','true']]){const result=translated(`function hold(x:${type}){}hold(${value});`);assert.deepEqual(result.unsupported,[]);assert.match(result.code,/declare arcade procedure/);}
+});
+
+test('a closed dormant caller preserves its actual body and formal contract until activation',()=>{
+ const source='function f(x:number){}function later(){f("bad");}',result=prepare(source);
+ assert.deepEqual(result.diagnostics,[]);assert.deepEqual(result.program,parse(source),'the dormant bad argument is retained');
+ assert.equal(result.prefix(result.program.body[0],'f %s').length,1,'formal contract remains emitted');
+ assert.ok(prepare(source+'later();').diagnostics.length,'actual activation restores the caller obligation');
 });
 
 test('only whole-root-owned zero-argument info.score supplies ordinary Number constraints',()=>{

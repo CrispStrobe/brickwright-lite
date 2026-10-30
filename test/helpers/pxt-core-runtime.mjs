@@ -13,6 +13,11 @@ export async function runPxtCore(source, {images=false} = {}) {
         // background frame loop in this synchronous language harness.
         const bundle=JSON.parse(fs.readFileSync(path.join(STATIC,'arcade/target.json'),'utf8'));
         files['original-screen-shims.d.ts']=bundle.bundledpkgs.screen['shims.d.ts'];
+        // The shipped `img` literal declaration only, without the screen and
+        // palette startup that follows it in the same target override file.
+        const literal=bundle.bundledpkgs.screen['targetoverrides.ts'].match(/(?:\/\/%[^\n]*\n)+function img\([^\n]*\n/)?.[0];
+        if(!literal)throw new Error('shipped Arcade image literal declaration not found');
+        files['original-image-literal.ts']=literal;
     }
     files['pxt.json']=JSON.stringify({name:'bw-language-oracle',dependencies:{core:'*'},files:Object.keys(files)});
     const built=await compile('arcade',files);

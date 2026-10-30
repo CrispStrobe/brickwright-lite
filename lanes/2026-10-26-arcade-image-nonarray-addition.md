@@ -1,6 +1,7 @@
 # Owned Image origins in ordinary native addition
 
-Status: CLAIMED; merge before implementation.
+Status: DONE — source implementation in the integration candidate. Hosted SDK, VM,
+editor qualification and landing remain pending.
 Owner: Arcade integration in #1128, preserving the existing forward-fix history.
 Base: main `a7f688940f96ac89771dfc533ea17dab635703b5`.
 
@@ -56,3 +57,13 @@ actual original/native execution, Code, JSON/SB3 reopen and affected editor
 journeys on the final exact integration head. Source acceptance alone is not a
 runtime or application completion. Use one coordinated final automatic CI set;
 merge only after every enabled exact-head check succeeds with tree/parents proof.
+
+The source proof now records all normal observations, preserves per-allocation
+Image identity, follows original arithmetic/argument order and refuses mixed
+observations or unknown effects. Ordinary Image selection is exporter-only;
+the source importer never erases an authored Image.join failure. Direct and
+JSON source round trips pass for the original factory fixture and its
+Array-free sibling. Costume-backed first export passes through the real wrapped
+frame selector; the generated source-entry Image bank still needs a separate
+second-export continuation, scoped in the Arcade handoff. No GUI, runtime or
+application completion follows from the source checks alone.

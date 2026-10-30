@@ -24,6 +24,8 @@ class ConnectionModal extends React.Component {
             'handleSendUpdate',
             'handleUpdatePeripheral'
         ]);
+        this._updateIntent = null;
+        this._updateDisposed = false;
         this.state = {
             extension: extensionData.find(ext => ext.extensionId === props.extensionId),
             phase: props.vm.getPeripheralIsConnected(props.extensionId) ?
@@ -34,11 +36,17 @@ class ConnectionModal extends React.Component {
         this.props.vm.on('PERIPHERAL_CONNECTED', this.handleConnected);
         this.props.vm.on('PERIPHERAL_REQUEST_ERROR', this.handleError);
     }
+    componentDidUpdate (previousProps) {
+        if (previousProps.extensionId !== this.props.extensionId) this._updateIntent = null;
+    }
     componentWillUnmount () {
+        this._updateDisposed = true;
+        this._updateIntent = null;
         this.props.vm.removeListener('PERIPHERAL_CONNECTED', this.handleConnected);
         this.props.vm.removeListener('PERIPHERAL_REQUEST_ERROR', this.handleError);
     }
     handleScanning () {
+        this._updateIntent = null;
         this.setState({
             phase: PHASES.scanning
         });
@@ -55,6 +63,7 @@ class ConnectionModal extends React.Component {
         });
     }
     handleDisconnect () {
+        this._updateIntent = null;
         try {
             this.props.vm.disconnectPeripheral(this.props.extensionId);
         } finally {
@@ -62,6 +71,7 @@ class ConnectionModal extends React.Component {
         }
     }
     handleCancel () {
+        this._updateIntent = null;
         try {
             // If we're not connected to a peripheral, close the websocket so we stop scanning.
             if (!this.props.vm.getPeripheralIsConnected(this.props.extensionId)) {
@@ -109,6 +119,7 @@ class ConnectionModal extends React.Component {
         });
     }
     handleUpdatePeripheral () {
+        this._updateIntent = null;
         this.setState({
             phase: PHASES.updatePeripheral
         });
@@ -123,7 +134,12 @@ class ConnectionModal extends React.Component {
      * @param {function(number): void} [progressCallback] Optional callback for progress updates in the range of [0..1].
      * @returns {Promise} Resolves when the update is complete.
      */
-    handleSendUpdate (progressCallback) {
+    handleSendUpdate (progressCallback, {isCurrent: isActionCurrent = () => true} = {}) {
+        const intent = {};
+        const extensionId = this.props.extensionId;
+        this._updateIntent = intent;
+        const isCurrent = () => !this._updateDisposed && this._updateIntent === intent &&
+            this.props.extensionId === extensionId && isActionCurrent();
         analytics.event({
             category: 'extensions',
             action: 'send update to peripheral',
@@ -131,7 +147,12 @@ class ConnectionModal extends React.Component {
         });
 
         // TODO: get this functionality from the extension
-        return selectAndUpdateMicroBit(progressCallback);
+        const progress = typeof progressCallback === 'function' ? value => {
+            if (isCurrent()) progressCallback(value);
+        } : progressCallback;
+        return selectAndUpdateMicroBit(progress, {isCurrent}).finally(() => {
+            if (this._updateIntent === intent) this._updateIntent = null;
+        });
     }
     render () {
         const canUpdatePeripheral = (this.props.extensionId === 'microbit') && isMicroBitUpdateSupported();

@@ -1,6 +1,8 @@
 # Readonly startup Number operands for actual arithmetic results
 
-Status: CLAIMED — implementation must wait for this claim to merge.
+Status: DONE in the source candidate — claim merged as PR #1461.
+Final combined-head SDK/native/editor qualification is pending; this status
+does not report a completed corpus application.
 Owner: Arcade integration, continuing its existing source lane in an isolated
 worktree. Base: main `696f00761b92cc2a4121a568d94b496241ef8afe` plus the existing
 Arcade integration candidate. No other runtime, supplier or editor takeover.
@@ -58,3 +60,24 @@ Preserve once-only original intake and numeric terminal intake before successors
 No extra full-CI label or duplicate dispatch. Merge only every enabled exact-head
 check successful, matched head and reviewed/landed parents/tree verified.
 Record GUI acceptance separately; promote no corpus app on source evidence.
+
+## Source checkpoint and next acceptance
+
+The private readonly issuer and both public export routes are implemented.
+Twenty-four focused source groups plus seven unchanged math-consumer groups
+pass without skips. They cover real Creator/importer graphs, two export
+reimports, emitted binding collisions, callback-only paint-witness transport,
+complete writers, entry order, operand domains and sticky helper metadata.
+Three independent guard cuts (complete writers, entry readiness and operand
+domain) each trigger a meaningful assertion; original source is restored.
+The retained snake source probe now has four refusal families, down from six;
+Array item/indexOf/mutation and native addition remain unsupported. The raw
+184-input census stays 147 translated / 36 partial / one parse failure.
+
+`test/makecode-startup-number-roundtrip.test.mjs` is hosted-only acceptance, not
+a locally observed result: original and exported pinned SDK execution, both
+export routes, three Lite generations, actual callback-only paint execution,
+and same/fresh VM SB3 reopen. The next source owner must retain its actual
+outcome and qualify visible Blocks/Code edits and connected graphics/controller
+behavior on the final head. General formatter alpha-renaming and conditional
+Array allocation remain separately scoped in `docs/ARCADE-AGENT-HANDOFF.md`.

@@ -1,6 +1,7 @@
 # Arcade atan2 through source, Blocks and runtime
 
-Status: CLAIMED; merge before implementation. Owner: Arcade integration,
+Status: IMPLEMENTED in the integration candidate; final exact-head runtime/editor
+qualification pending. Owner: Arcade integration,
 continuing PR #1128 after its SDK scalar proof repair.
 Base: `1496b3f4291f4ec0000c1422e869c23872e914ec`.
 

@@ -17,6 +17,23 @@ const currentResultProof=(record,program)=>{
     }
     return JSON.stringify(program)===record.source;
 };
+// Query selection only. Neither membership nor physical-snapshot eligibility
+// grants an Image/type fact; the complete internal clone still checks current
+// proof at entry/exit and every positive query uses the original public getter.
+const classCandidateApply=Reflect.apply;
+const classCandidateGet=WeakMap.prototype.get,classCandidateHas=WeakMap.prototype.has;
+export function assertCurrentClassSourceProof(proof,program) {
+    const record=classCandidateApply(classCandidateGet,completedResultProofs,[proof]);
+    if(!currentResultProof(record,program))throw Error('Class source metadata requires its actual unchanged source proof');
+}
+export function classSdkImageValueCandidate(proof,node) {
+    const record=classCandidateApply(classCandidateGet,completedResultProofs,[proof]);
+    return !!record&&classCandidateApply(classCandidateHas,record.sdkExpressions,[node]);
+}
+export function compilerOwnedClassSourceHasPhysicalSnapshot(proof,program) {
+    const record=classCandidateApply(classCandidateGet,completedResultProofs,[proof]);
+    return !!record&&record.program===program&&!!record.parameterPropertySnapshot;
+}
 export function classResultFlowCertificate(proof,program,method) {
     const record=completedResultProofs.get(proof);
     if(!currentResultProof(record,program))throw Error('Class result flow requires its actual unchanged source proof');
@@ -92,6 +109,8 @@ export function proveClassCallableSource(program,{sdkImagePrototype=false}={}) {
             constrain(row,type,label);
         }return value;}
         if(value.genericOrigin&&type){if(type.kind!=='named'||type.name!==value.genericOrigin)fail(label+' narrows an unbound generic result');return value;}
+        if(type?.kind==='named'&&type.name==='any'&&value.type?.kind==='named'&&
+            ['number','string','boolean','undefined'].includes(value.type.name))return value;
         if(type?.kind==='sdk'&&!images.isProduced(value))fail(label+' lacks an actual owned Image producer');
         if(type&&!equal(value.type,type))fail(label+' has an incompatible actual producer');
         return value;

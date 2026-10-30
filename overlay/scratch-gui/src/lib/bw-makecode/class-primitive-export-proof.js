@@ -1,3 +1,5 @@
+import {arrayMenuLiteral,isArrayMenuSelector} from './array-menu-literal.js';
+import {sourceValueOperation} from './source-value-operator-helpers.js';
 import {sdkFontInputAuthority} from './sdk-font-input-authority.js';
 import {sdkSpriteExportClasses} from './sdk-sprite-class-descriptors.js';
 
@@ -20,7 +22,7 @@ export function checkClassPrimitiveExport({project,classes,procedures,note,dynam
     };
     const owned=new WeakMap(),locations=new WeakMap(),definitions=new Map(),rows=[],bad=new Set(),methodOwners=new Map(),roots=new Set();
     const blocks=target=>target.blocks||{},child=(target,block,name)=>typeof block.inputs?.[name]?.[1]==='string'?blocks(target)[block.inputs[name][1]]:null;
-    const fixed=(target,block,name)=>{if(!block.inputs?.[name]&&typeof block.fields?.[name]?.[0]==='string')return block.fields[name][0];const input=block.inputs?.[name]?.[1],value=child(target,block,name);return Array.isArray(input)&&input[0]===10?String(input[1]):value?.shadow&&value.opcode==='text'?String(value.fields?.TEXT?.[0]):null;};
+    const fixed=(target,block,name)=>{if(isArrayMenuSelector(block,name))return arrayMenuLiteral(target,block,name);if(!block.inputs?.[name]&&typeof block.fields?.[name]?.[0]==='string')return block.fields[name][0];const input=block.inputs?.[name]?.[1],value=child(target,block,name);return Array.isArray(input)&&input[0]===10?String(input[1]):value?.shadow&&value.opcode==='text'?String(value.fields?.TEXT?.[0]):null;};
     const key=(target,name)=>`${project.targets.indexOf(target)}:${name}`;
     const opaque=()=>new Set(['Opaque']),union=sets=>new Set(sets.flatMap(set=>[...set]));
     const reporter=(block,names)=>!block.shadow&&!block.topLevel&&!block.next&&!block.mutation&&!Object.keys(block.fields||{}).length&&Object.keys(block.inputs||{}).sort().join(',')===names.slice().sort().join(',');
@@ -208,6 +210,10 @@ export function checkClassPrimitiveExport({project,classes,procedures,note,dynam
         case 'arcade_objectField':{const receivers=fieldReceivers(input(target,block,'OBJECT')),values=[];for(const name of receivers){const field=name===sdkSprite&&spriteField(fixed(target,block,'FIELD'));values.push(field&&expected.has(field.value.type)?new Set(['Constraint:'+expected.get(field.value.type)]):name.startsWith('@')?fieldValues(name.slice(1),fixed(target,block,'FIELD')):opaque());}types=values.length?union(values):opaque();break;}
         case 'arcade_callFunction':case 'arcade_callObjectMethod':{const defs=destinations(target,block);types=defs.length?union(defs.map(def=>{const declared=methodOwners.get(def)?.result;return expected.has(declared)?new Set(['Constraint:'+expected.get(declared)]):result(def);})):opaque();break;}
         default:{
+            if(['arcade_sourceValueBinary','arcade_sourceValueUnary'].includes(block.opcode)){
+                const operation=sourceValueOperation(block);
+                types=operation?.result==='Number'?new Set(['Number']):opaque();break;
+            }
             if(block.opcode==='arrays_valueBinary'){
                 const op=fixed(target,block,'OP'),left=input(target,block,'LEFT'),right=input(target,block,'RIGHT'),all=union([left,right]);
                 if(!left.size||!right.size){types=new Set();break;}
@@ -243,6 +249,17 @@ export function checkClassPrimitiveExport({project,classes,procedures,note,dynam
     }
     const compatible=(actual,type)=>actual.size>0&&[...actual].every(value=>value===expected.get(type)||value==='Constraint:'+expected.get(type)||value==='Undefined'||value==='Null');
     const requireType=(actual,type,context)=>{if(expected.has(type)&&!compatible(actual,type))fail(context+' conflicts with declared '+type+' (actual '+[...actual].sort().join('|')+')');};
+    const eventSpriteField=(target,block,name)=>{
+        const object=child(target,block,'OBJECT'),which=object?.fields?.WHICH;
+        if(!object||object.opcode!=='arcade_eventSprite'||object.shadow||object.topLevel||object.next||object.mutation||
+            Object.keys(object.inputs||{}).length||Object.keys(object.fields||{}).join()!=='WHICH'||!Array.isArray(which)||!['first','second'].includes(which[0]))return null;
+        const candidates=ordinary.filter(cls=>member(cls.name,name));
+        if(candidates.length!==1||!isSdkSprite('@'+candidates[0].name))return null;
+        const found=member(candidates[0].name,name);
+        if(!found||found.cls.intrinsic||found.value.valueKind==='callable'||found.value.readonly||found.value.getter||found.value.setter||
+            found.value.visibility&&found.value.visibility!=='public')return null;
+        return found;
+    };
     for(const row of rows){const {target,block,owner}=row;if(bad.has(owner))continue;
         if(block.opcode==='arcade_setObjectField'){
             const name=fixed(target,block,'FIELD'),receivers=fieldReceivers(input(target,block,'OBJECT'));
@@ -254,6 +271,14 @@ export function checkClassPrimitiveExport({project,classes,procedures,note,dynam
                 if(fields.some(found=>!found||found.value.readonly)){fail('SDK Sprite field writer requires an actual writable declared property');continue;}
                 for(const found of fields)requireType(input(target,block,'VALUE'),found.value.type,'field '+found.cls.name+'.'+name+' writer');
             }else if(dynamicReceiver(target,block,true,false,methodOwners.get(owner)?.cls.name))continue;
+            else if(name!==null&&!receivers.has(sdkSprite)&&[...receivers].every(receiver=>receiver==='Opaque')){
+                // An event Sprite is an SDK Sprite-family instance with no
+                // producer type here. The exporter renders this write as a
+                // cast to the unique ordinary class declaring the field, so
+                // check the writer against exactly that public declaration.
+                const found=eventSpriteField(target,block,name);
+                if(found){requireType(input(target,block,'VALUE'),found.value.type,'field '+found.cls.name+'.'+name+' writer');continue;}
+            }
             if(name===null||!receivers.size||receivers.has(sdkSprite)&&![...receivers].every(isSdkSprite)||[...receivers].some(receiver=>receiver!==sdkSprite&&(!receiver.startsWith('@')||!classes.has(receiver.slice(1))))){fail('field writer requires an actual declared receiver and fixed property');continue;}
             for(const receiver of receivers){const found=receiver===sdkSprite?spriteField(name):receiver.startsWith('@')&&member(receiver.slice(1),name);
                 if(receiver===sdkSprite&&(!found||found.value.readonly)){fail('SDK Sprite field writer requires an actual writable declared property');continue;}

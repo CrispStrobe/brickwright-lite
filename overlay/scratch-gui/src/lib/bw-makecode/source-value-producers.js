@@ -1,3 +1,12 @@
+import {inspectNativeArrayAddHelpers} from './native-array-binary-helper-source.js';
+import {createOrdinaryFrameDeltaNumberSource} from './ordinary-frame-delta-number-source.js';
+import {createOrdinaryParseIntegerNumberSource} from './ordinary-parse-integer-number-source.js';
+import {createSourceControlCellEntry} from './source-control-cell-entry.js';
+import {createClosedOrdinarySourceEntry} from './closed-ordinary-source-entry.js';
+import {nullableArrayLengthSource} from './nullable-array-length-source.js';
+import {lexicalDeclarationReadiness} from './lexical-declaration-readiness.js';
+import {constraints} from './ordinary-procedure-constraint-metadata.js';
+import {CAMERA_PROPERTIES} from './camera-property-constants.js';
 import {declarationIdentityInput} from './declaration-identity-input.js';
 import {consumeSharedImageEntryEffects,sharedImageEntryArrayDomain} from './shared-image-array-source-effects.js';
 import {parseExactImgLiteral} from './arcade-assets.js';
@@ -11,8 +20,13 @@ import {consoleInspectSourceCalls} from './console-inspect-source.js';
 import {SDK_FONT_FIELDS} from './sdk-font-value-descriptors.js';
 import {ordinaryPlayerScoreNumberCalls,ordinaryCameraPropertyNumberLeaves,ordinaryMathNumberCalls} from './ordinary-primitive-sdk-number-source.js';
 import {ordinarySceneClockNumberCalls} from './ordinary-scene-clock-number-source.js';
-import {controllerButtonEventNumberLeaves} from './controller-button-event-number-source.js';
+import {createOrdinaryMusicNumberSource} from './ordinary-music-number-source.js';
+import {createDestroyedSpriteCallbackNumberSource} from './destroyed-sprite-callback-number-source.js';
+import {localArrayDeclarationResetSource} from './local-array-declaration-reset-source.js';
+import {isRuntimeDispatchAddDeclaration} from './native-array-binary-helper-source.js';
+import {BUTTON_EVENTS,controllerButtonEventNumberLeaves} from './controller-button-event-number-source.js';
 
+const spriteEventNumber=Number;
 const spriteAyArrayPrototype=Array.prototype,spriteAyDescriptor=Object.getOwnPropertyDescriptor;
 const spriteAyKeys=Reflect.ownKeys,spriteAyPrototype=Object.getPrototypeOf,spriteAySame=Object.is,spriteAyHasOwn=Object.hasOwn;
 const spriteAyArrayKeys=spriteAyKeys(spriteAyArrayPrototype),spriteAyArrayFields=[];
@@ -38,15 +52,16 @@ export function analyseSourceValueProducers(program,options={}) {
     return analyseSourceValues(program,options,null);
 }
 
-function analyseSourceValues(program,options,identityInput) {
+function analyseSourceValues(program,options,identityInput,cameraNumberInput=null,primitiveControlEntries=false) {
+    const controlEntry=primitiveControlEntries?createSourceControlCellEntry(program):null;
     if(options.normalCompletion&&!sourceNormalCompletionFor(program,options.normalCompletion))throw new Error('Source completion proof must belong to the actual Program');
     const containsThrow=node=>node&&typeof node==='object'&&(node.type==='ThrowStatement'||Object.values(node).some(value=>Array.isArray(value)?value.some(containsThrow):containsThrow(value)));
-    if(!containsThrow(program))return analyseGraph(program,options,null,identityInput);
+    if(!containsThrow(program))return analyseGraph(program,options,null,identityInput,cameraNumberInput,controlEntry);
     // Bootstrap is private. No public option can bypass exceptional reachability
     // or supply a caller-made callee table after a consumer clones the AST.
-    const initial=analyseGraph(program,{...options,normalCompletion:null});
+    const initial=analyseGraph(program,{...options,normalCompletion:null},null,null,null,controlEntry);
     const completion=analyseSourceNormalCompletion(program,initial.immutableFunctionAt);
-    return Object.freeze({...analyseGraph(program,{...options,normalCompletion:completion}),normalCompletion:completion,constraintTypesAt:node=>new Set(initial.typesAt(node))});
+    return Object.freeze({...analyseGraph(program,{...options,normalCompletion:completion},null,null,null,controlEntry),normalCompletion:completion,constraintTypesAt:node=>new Set(initial.typesAt(node))});
 }
 
 
@@ -95,7 +110,11 @@ function deadLocalResets(program) {
 
 // Analyze actual lexical producers and all writers without rewriting the AST.
 // Source annotations constrain consumers; they never seed producer authority.
-function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpers:provedHelpers=new Set(),parenthesized=false,unboundIsOpaque=false,opaqueDeclarationValues=false,uninitializedLocalsAreOpaque=false,declaredLocalUndefined=false,multiplayerPlayerProperties=false,consoleInspection=false,arrayValues=false,arrayEffectSites=false,arrayCallbackParameters=false,arrayLoopEntries=false,provenArrayLength=false,ordinaryPrimitiveSdkNumbers=false,sceneClockNumbers=false,initializationEntries=false,primitiveComparisons=false,closureEntries=false,normalCompletion=null,physicalUpdateSource=null}={},privateSpriteAyProof=null,identityInput=null) {
+function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpers:provedHelpers=new Set(),parenthesized=false,unboundIsOpaque=false,opaqueDeclarationValues=false,uninitializedLocalsAreOpaque=false,declaredLocalUndefined=false,multiplayerPlayerProperties=false,consoleInspection=false,arrayValues=false,arrayEffectSites=false,arrayCallbackParameters=false,arrayLoopEntries=false,provenArrayLength=false,ordinaryPrimitiveSdkNumbers=false,ordinaryMusicNumbers=true,ordinaryDestroyedNumbers=true,ordinaryParseIntegerNumbers=true,ordinaryParseIntegerEffects=true,sceneClockNumbers=false,initializationEntries=false,primitiveComparisons=false,closureEntries=false,normalCompletion=null,closedOrdinaryEntries=false,physicalUpdateSource=null}={},privateSpriteAyProof=null,identityInput=null,cameraNumberInput=null,controlEntry=null,arrayCallbackBootstrap=false) {
+    const ordinaryEntry=closedOrdinaryEntries?createClosedOrdinarySourceEntry(program):null;
+    const nullableLengthSource=arrayValues?nullableArrayLengthSource(program):null;
+    const nullableLengthIssued=new Set();let nullableLengthUsed=false;
+    const lexicalSource=initializationEntries?lexicalDeclarationReadiness(program):null;
     const physicalEntry=physicalUpdateSource?physicalUpdateSourceRecord(program,physicalUpdateSource):null;
     if(physicalUpdateSource&&!physicalEntry)throw new Error('Physical update source proof must belong to the actual current Program');
     const loopEntry=arrayLoopEntries?proveDenseArrayLoopEntries(program,()=>analyseGraph(program,{parenthesized:true,unboundIsOpaque:true})):null;
@@ -121,7 +140,7 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
     const numericArrows=new Set(provedArrows),numericHelpers=new Set(provedHelpers);
     // Optional actual Array allocations retain per-allocation element cells.
     // Default consumers receive exactly their prior domain and traversal.
-    const arraySites=new WeakMap(),arrayOperations=[],arrayMaps=[],arrayConstraints=[],unsafeArrayMethods=new Set();
+    const arraySites=new WeakMap(),arrayOperations=[],arrayMaps=[],arrayCallbacks=[],arrayConstraints=[],unsafeArrayMethods=new Set();
     const arrayToken=node=>{if(!arraySites.has(node))arraySites.set(node,Object.freeze({kind:'Array',site:node,element:Symbol('array element')}));return arraySites.get(node);};
 
     const inspection=consoleInspection?consoleInspectSourceCalls(program):null;
@@ -131,7 +150,38 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
     // may supply these actual AST allocation sites. Ordinary analysis is unchanged.
     const sdk=staticSdkNamespaceReceivers(program,{builtinIdentifiers:['screen']}),fields=new Map(SDK_FONT_FIELDS.map(field=>[field.name,field.type]));
     const buttonEventNumbers=ordinaryPrimitiveSdkNumbers?controllerButtonEventNumberLeaves(program):null;
-    let clockIndexFacts;
+    let clockIndexFacts,clockReadFacts,clockWriteTargets;
+    // A numeric read of a value that can only be an Array, undefined or null
+    // runs no user code: own index data, or a TypeError on a nullish receiver.
+    // It cannot fold to a string key such as 'constructor'. Write targets keep
+    // the stronger allocation/all-writer proof below.
+    const safeClockRead=node=>{
+        if(!clockWriteTargets){
+            clockWriteTargets=new WeakSet();
+            const scan=value=>{if(!value||typeof value!=='object')return;if(Array.isArray(value)){value.forEach(scan);return;}
+                const target=value.type==='Assignment'?value.left:value.type==='Update'||value.type==='Unary'&&value.op==='delete'?value.argument:null;
+                if(target)clockWriteTargets.add(target);Object.values(value).forEach(scan);};
+            scan(program);
+        }
+        if(clockWriteTargets.has(node))return false;
+        const graph=clockReadFacts ||= analyseGraph(program,{arrayValues:true,parenthesized:true,unboundIsOpaque:true,
+            uninitializedLocalsAreOpaque:true,declaredLocalUndefined:true,initializationEntries:true});
+        const receiver=graph.typesAt(node.object),index=graph.typesAt(node.index);
+        if(!receiver.size||![...receiver].every(type=>type==='Undefined'||type==='Null'||type?.kind==='Array'||type==='Array'))return false;
+        if(index.size!==1||!index.has('Number'))return false;
+        const initialized=value=>!value||typeof value!=='object'||(Array.isArray(value)?value.every(initialized):
+            !(value.type==='Identifier'&&!graph.isInitializedAt(value))&&Object.values(value).every(initialized));
+        return initialized(node.index);
+    };
+    const safeClockArrayCall=call=>{
+        const graph=clockReadFacts ||= analyseGraph(program,{arrayValues:true,parenthesized:true,unboundIsOpaque:true,
+            uninitializedLocalsAreOpaque:true,declaredLocalUndefined:true,initializationEntries:true});
+        const receiver=graph.typesAt(call.callee.object);
+        if(!receiver.size||![...receiver].every(type=>type==='Undefined'||type==='Null'||type?.kind==='Array'||type==='Array'))return false;
+        // indexOf coerces its fromIndex; only primitive arguments are admitted.
+        return call.callee.name!=='indexOf'||call.args.every(arg=>{const found=graph.typesAt(arg);
+            return found.size>0&&[...found].every(type=>['Number','String','Boolean','Undefined','Null'].includes(type));});
+    };
     const safeClockIndex=node=>{
         const graph=clockIndexFacts ||= analyseGraph(program,{arrayValues:true,parenthesized:true,unboundIsOpaque:true,
             opaqueDeclarationValues:true,uninitializedLocalsAreOpaque:true,declaredLocalUndefined:true,initializationEntries:true});
@@ -143,13 +193,27 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
         return initialized(node.index);
     };
     const ordinaryNumbers=ordinaryPrimitiveSdkNumbers?ordinaryPlayerScoreNumberCalls(program,safeClockIndex):null;
+    const parseIntegerNumbers=ordinaryPrimitiveSdkNumbers&&ordinaryParseIntegerNumbers?createOrdinaryParseIntegerNumberSource(program):null;
+    let parseIntegerNumberUsed=false;
     const cameraPropertyNumbers=ordinaryPrimitiveSdkNumbers?ordinaryCameraPropertyNumberLeaves(program):null;
     const mathNumbers=ordinaryPrimitiveSdkNumbers?ordinaryMathNumberCalls(program):null;
+    const musicNumbers=ordinaryPrimitiveSdkNumbers&&ordinaryMusicNumbers?createOrdinaryMusicNumberSource(program,safeClockIndex):null;
+    let musicNumberUsed=false;
+    const destroyedNumbers=ordinaryPrimitiveSdkNumbers&&ordinaryDestroyedNumbers?createDestroyedSpriteCallbackNumberSource(program):null;
+    let destroyedNumberUsed=false;
     const spriteAyNumbers=privateSpriteAyProof||(ordinaryPrimitiveSdkNumbers?ordinarySpriteAyNumberReads(program):null);
     const sceneNumbers=sceneClockNumbers?ordinarySceneClockNumberCalls(program,safeClockIndex):null;
+    const frameDeltaNumbers=sceneClockNumbers?createOrdinaryFrameDeltaNumberSource(program,node=>safeClockIndex(node)||safeClockRead(node),safeClockArrayCall,ordinaryParseIntegerEffects):null;
+    let frameDeltaNumberUsed=false;
     let screenWritten=false;
     const scanScreenWrites=node=>{if(!node||typeof node!=='object')return;if(Array.isArray(node)){node.forEach(scanScreenWrites);return;}const target=node.type==='Assignment'?node.left:node.type==='Update'?node.argument:null;if(target?.type==='Identifier'&&target.name==='screen'&&sdk.has(target))screenWritten=true;Object.values(node).forEach(scanScreenWrites);};scanScreenWrites(program);
+    // Recheck this private dependency only if it strengthened this graph.
+    // An unused occurrence proof contributes no type facts to invalidate.
+    let controlEntryUsed=false;
     const initializedReads=new WeakSet(),initializationAt=new WeakMap(),localUndefinedDeclarations=new Set();
+    const declarationArrayResets=arrayValues?localArrayDeclarationResetSource(program):null;
+    let declarationArrayResetUsed=false;
+    const declarationArrayResetCurrent=()=>!declarationArrayResetUsed||declarationArrayResets.current();
     const deadResets=deadLocalResets(program),writing=new WeakSet(),owners=new WeakMap(),cells=new WeakMap(),types=new Map(),edges=[],scales=[],texts=[],derived=[],prints=[],classes=new Map(),classCalls=[],classWrites=new Set(),declarations=new Map(),functions=new Map(),calls=[],numericCalls=[],unsupported=[];
     const fail=message=>{if(!unsupported.includes(message))unsupported.push(message);};
     const scope=parent=>({parent,bindings:new Map()});
@@ -191,7 +255,7 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
         }
         if(node.type==='Declaration'){
             let functionOwner=owner;while(functionOwner&&!functionOwner.result)functionOwner=functionOwner.parent;
-            for(const decl of node.decls){const target=binding(owner,decl.name);if(arrayValues&&decl.isArray&&decl.typeName)arrayConstraints.push({cell:target,type:decl.typeName.replace(/\[\]$/,'')});if(multiplayer&&(decl.isArray||decl.typeName&&!['any','mp.Player'].includes(decl.typeName)))playerConstraints.add(target);if(decl.init){visit(decl.init,owner);edge(cell(decl.init),target);}
+            for(const decl of node.decls){const target=binding(owner,decl.name);if(arrayValues&&decl.isArray&&decl.typeName)arrayConstraints.push({cell:target,type:decl.typeName.replace(/\[\]$/,'')});if(multiplayer&&(decl.isArray||decl.typeName&&!['any','mp.Player'].includes(decl.typeName)))playerConstraints.add(target);if(decl.init){visit(decl.init,owner);if(declarationArrayResets?.discount(decl))declarationArrayResetUsed=true;else edge(cell(decl.init),target);}
                 else if(declaredLocalUndefined&&functionOwner&&node.kind==='let'&&declarations.get(target)?.size===1&&!decl.isArray&&(!decl.typeName||['number','string','boolean','any'].includes(decl.typeName))){add(target,'Undefined');localUndefinedDeclarations.add(decl);}
                 if(decl.typeName==='image.Font')owner.fontAnnotations=(owner.fontAnnotations||new Set()).add(target);}return;
         }
@@ -208,10 +272,12 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
         if(node.type==='Index'&&loopEntry?.entries.has(node)){for(const type of loopEntry.entries.get(node))add(current,type);return;}
         if(arrayValues&&node.type==='Index'){arrayOperations.push({kind:'read',receiver:cell(node.object),result:current});return;}
         if(provenArrayLengthAt(node)){add(current,'Number');return;}
-        if(arrayValues&&node.type==='Member'&&node.name==='length'){arrayOperations.push({kind:'length',receiver:cell(node.object),result:current});return;}
-        if(arrayValues&&node.type==='Call'&&!node.isNew&&node.callee?.type==='Member'&&['map','push','pop','shift','unshift'].includes(node.callee.name)){
+        if(arrayValues&&node.type==='Member'&&node.name==='length'){arrayOperations.push({kind:'length',node,receiver:cell(node.object),result:current});return;}
+        if(arrayValues&&node.type==='Call'&&!node.isNew&&node.callee?.type==='Member'&&(['map','push','pop','shift','unshift'].includes(node.callee.name)||['forEach','filter'].includes(node.callee.name)&&(arrayCallbackBootstrap||callbackEntry?.calls.has(node)))){
             const operation={kind:node.callee.name,node,receiver:cell(node.callee.object),result:current};arrayOperations.push(operation);
-            if(operation.kind==='map'){operation.token=arrayToken(node);add(current,operation.token);arrayMaps.push(operation);}return;
+            if(['map','filter'].includes(operation.kind)){operation.token=arrayToken(node);add(current,operation.token);}
+            if(operation.kind==='map')arrayMaps.push(operation);
+            if(['map','forEach','filter'].includes(operation.kind))arrayCallbacks.push(operation);return;
         }
 
         if(multiplayer?.isRegistration(node)){const handler=node.args[1],scope=functionScopes.get(handler);if(scope)add(binding(scope,handler.params[0]),'Player');}
@@ -226,8 +292,13 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
         else if(node.type==='Call'&&!node.isNew&&node.callee?.type==='Member'&&node.callee.name==='toString')derived.push({result:current,type:'String',operands:[cell(node.callee.object)],signature:node.args.length===0,domain:'Number'});
         else if(node.type==='Binary'&&['===','!==','==','!=','<','>','<=','>='].includes(node.op)||node.type==='Unary'&&node.op==='!')derived.push({result:current,type:'Boolean',operands:(node.type==='Unary'?[node.argument]:[node.left,node.right]).map(cell),signature:true,inspectionPrimitive:true});
         else if(arrayValues&&node.type==='Unary'&&node.op==='typeof')derived.push({result:current,type:'String',operands:[cell(node.argument)],signature:true,inspectionPrimitive:true});
-        else if(node.type==='Unary'&&['+','-','~'].includes(node.op))derived.push({result:current,type:'Number',operands:[cell(node.argument)],signature:true,domain:'Number'});
-        else if(node.type==='Binary'&&['+','-','*','/','%','**','&','|','^','<<','>>','>>>'].includes(node.op))derived.push({result:current,type:'Number',operands:[cell(node.left),cell(node.right)],signature:true,domain:'Number',stringConcat:node.op==='+'});
+        else if(node.type==='Unary'&&['+','-','~'].includes(node.op))derived.push({result:current,type:'Number',operands:[cell(node.argument)],signature:true,domain:node.op==='~'?'SourceBitwise':'Number'});
+        // An imported native value `+` (proven join or runtime-dispatch helper
+        // call): String/Number for primitive operands; any Array or unknown
+        // operand leaves the result Opaque through the same derived rule.
+        else if(node.type==='NativeArrayValueBinary'&&node.op==='+')derived.push({result:current,type:'Number',operands:[cell(node.left),cell(node.right)],signature:true,domain:'Number',stringConcat:true});
+        else if(node.type==='Binary'&&['+','-','*','/','%','**','&','|','^','<<','>>','>>>'].includes(node.op))derived.push({result:current,type:'Number',operands:[cell(node.left),cell(node.right)],signature:true,domain:['&','|','^','<<','>>','>>>'].includes(node.op)?'SourceBitwise':'Number',stringConcat:node.op==='+',primitiveNumeric:node.op!=='+'});
+        else if(parseIntegerNumbers?.isNumberCall(node)){parseIntegerNumberUsed=true;add(current,'Number');}
         else if(node.type==='Call'&&!node.isNew&&(node.callee?.type==='Identifier'||numericArrows.size&&node.callee?.type==='Parenthesized'))calls.push({node,callee:node.callee.type==='Identifier'?binding(owner,node.callee.name):null,result:current});
         else if(node.type==='Parenthesized'&&parenthesized)edge(cell(node.expression),current);
         // The parser spells && / || / ?? as Binary; each yields one actual operand.
@@ -235,7 +306,11 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
         else if(node.type==='Member'&&['width','height'].includes(node.name))edges.push([cell(node.object),current,'imageDimension',node.name]);
         else if(node.type==='Member'&&fields.has(node.name))edges.push([cell(node.object),current,'field',node.name]);
         else if(['Undefined','Null','String','Number','Boolean'].includes(node.type))add(current,node.type);
-        else if(ordinaryNumbers?.has(node)||cameraPropertyNumbers?.has(node)||mathNumbers?.has(node)||sceneNumbers?.has(node)||buttonEventNumbers?.has(node)||spriteAyNumbers?.has(node))add(current,'Number');
+        else if(node.type==='Member'&&frameDeltaNumbers?.isNumberRead(node)){frameDeltaNumberUsed=true;add(current,'Number');}
+        else if(musicNumbers?.has(node)){musicNumberUsed=true;add(current,'Number');}
+        else if(ordinaryNumbers?.has(node)||cameraPropertyNumbers?.has(node)||mathNumbers?.has(node)||sceneNumbers?.has(node)||buttonEventNumbers?.has(node)||spriteAyNumbers?.has(node)||cameraNumberInput?.has(node))add(current,'Number');
+        else if(destroyedNumbers?.has(node)){destroyedNumberUsed=true;add(current,'Number');}
+        else if(spriteAyNumbers?.primitiveHas?.(node)){for(const type of ['Number','String','Boolean','Null','Undefined'])add(current,type);}
         else if(node.type==='Call'&&sdk.has(node.callee)&&path(node.callee)==='game.askForString')add(current,'String');
         else {add(current,'Opaque');if(arrayValues&&node.type==='Call'&&node.callee?.type==='Member')for(const value of [node.callee.object,...node.args])arrayOperations.push({kind:'escape',receiver:cell(value)});}
     };
@@ -251,7 +326,8 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
             if(!writing.has(node)&&!(node.name==='screen'&&sdk.has(node))&&!mathNumbers?.has(node)&&!known.has(binding(owner,node.name))){
                 const id=binding(owner,node.name);
                 if(uninitializedLocalsAreOpaque&&global.bindings.get(node.name)!==id&&[...(declarations.get(id)||[])].some(declaration=>typeof declaration==='object'&&!['FunctionDeclaration','Class','Enum'].includes(declaration.type)))add(cell(node),'Opaque');
-                add(cell(node),'Undefined');
+                if(!controlEntry?.isInitializedRead(node))add(cell(node),'Undefined');
+                else controlEntryUsed=true;
             }return known;
         }
         // A closure expression is allocated here, after the currently proved
@@ -271,7 +347,7 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
     const resultFunctions=new Map([...functions].filter(([,fn])=>fn).map(([name,fn])=>[fn.result,name])),callGraph=new Map();
     for(const call of calls){let owner=owners.get(call.node);while(owner&&!owner.result)owner=owner.parent;const origin=resultFunctions.get(owner?.result);if(origin){if(!callGraph.has(origin))callGraph.set(origin,new Set());callGraph.get(origin).add(call.callee);}}
     const cyclic=(origin,current=origin,seen=new Set())=>{if(seen.has(current))return false;seen.add(current);for(const next of callGraph.get(current)||[])if(next===origin||cyclic(origin,next,seen))return true;return false;};
-    for(const call of calls){if(completion&&!completion.isReachable(call.node)){add(call.result,'Opaque');continue;}const fn=functions.get(call.callee);if(!fn&&mathNumbers?.has(call.node)){add(call.result,'Number');continue;}if(!fn||declarations.get(call.callee)?.size!==1||classWrites.has(call.callee)){
+    for(const call of calls){if(ordinaryEntry?.isUnreachable(call.node)){add(call.result,'Opaque');continue;}if(completion&&!completion.isReachable(call.node)){add(call.result,'Opaque');continue;}const fn=functions.get(call.callee);if(!fn&&mathNumbers?.has(call.node)){add(call.result,'Number');continue;}if(!fn||declarations.get(call.callee)?.size!==1||classWrites.has(call.callee)){
             if(numericArrows.size)numericCalls.push({node:call.node,result:call.result,receiver:cell(call.node.callee)});
             else add(call.result,'Opaque');if(arrayValues)for(const argument of call.node.args)arrayOperations.push({kind:'escape',receiver:cell(argument)});continue;
         }if(numericHelpers.has(fn.node)) {
@@ -309,51 +385,156 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
     const isFont=current=>{const set=types.get(current);return !!set?.has('Font')&&set.size===1;};
     const exactType=(value,type)=>types.get(value)?.size===1&&types.get(value).has(type);
     const primitiveTypes=new Set(['String','Number','Boolean','Null','Undefined']);
-    const stringConcat=item=>item.stringConcat&&item.operands.some(value=>exactType(value,'String'))&&item.operands.every(value=>types.get(value)?.size&&[...types.get(value)].every(type=>primitiveTypes.has(type)));
+    // A shared ordinary + body can receive both String and Number callers.
+    // Primitive unions still return Number/String on normal completion; no
+    // object coercion or unknown alternative may borrow that result domain.
+    const primitiveAddition=item=>item.stringConcat&&item.operands.every(value=>types.get(value)?.size&&[...types.get(value)].every(type=>primitiveTypes.has(type)));
     const playerOperand=value=>!unsafePlayerWrite&&types.get(value)?.has('Player')&&[...types.get(value)].every(type=>['Player','Null','Undefined','OpaquePlayerConstraint'].includes(type));
+    // A binary - * / % ** on primitive operands invokes no ToPrimitive hook
+    // and returns Number on normal completion. Only these exact operator
+    // nodes carry primitiveNumeric; += and other compound stores keep the
+    // strict Number|Undefined domain because += may concatenate.
     const numericOperand=value=>types.get(value)?.size&&[...types.get(value)].every(type=>type==='Number'||type==='Undefined');
     const inspectionDomain=(operand,allowed)=>types.get(operand)?.size&&[...types.get(operand)].every(type=>allowed.has(type));
-    const derivedValid=item=>item.inspectionPrimitive?(consoleInspection||internalInspection||arrayValues||primitiveComparisons)&&item.operands.every(operand=>inspectionDomain(operand,primitiveTypes)):item.inspection?item.signature&&inspectionDomain(item.operands[0],primitiveTypes)&&(item.operands.length===1||inspectionDomain(item.operands[1],new Set(['Number','Undefined']))):item.signature&&(stringConcat(item)||item.operands.every(operand=>item.domain==='Player'?playerOperand(operand):item.domain==='Number'&&item.type==='Number'?numericOperand(operand):exactType(operand,item.domain)));
+    // Fixed bitwise operations return Number on normal completion. This result
+    // signature neither proves their operands nor skips their execution; the
+    // importer separately requires actual Array-or-primitive operand writers.
+    const derivedValid=item=>item.inspectionPrimitive?(consoleInspection||internalInspection||arrayValues||primitiveComparisons)&&item.operands.every(operand=>inspectionDomain(operand,primitiveTypes)):item.inspection?item.signature&&inspectionDomain(item.operands[0],primitiveTypes)&&(item.operands.length===1||inspectionDomain(item.operands[1],new Set(['Number','Undefined']))):item.signature&&(item.domain==='SourceBitwise'||primitiveAddition(item)||item.operands.every(operand=>item.domain==='Player'?playerOperand(operand):item.domain==='Number'&&item.type==='Number'?numericOperand(operand)||item.primitiveNumeric===true&&inspectionDomain(operand,primitiveTypes):exactType(operand,item.domain)));
     const arrayTypes=value=>{const set=types.get(value);return set?.size&&[...set].every(type=>type?.kind==='Array')?[...set]:null;};
+    // Result-only alternative. The original strict Array receiver API above
+    // remains unchanged; no nullish value becomes an Array or initialized read.
+    const nativeLengthDomain=value=>{
+        const set=types.get(value);if(!set?.size)return false;
+        let allocation=false;
+        for(const type of set){
+            if(type==='Null'||type==='Undefined')continue;
+            if(type?.kind!=='Array'||arraySites.get(type.site)!==type||unsafeArrayMethods.has(type))return false;
+            allocation=true;
+        }
+        return allocation;
+    };
+    const nullableLengthDomain=value=>nativeLengthDomain(value)&&[...types.get(value)].some(type=>type==='Null'||type==='Undefined');
+    const nullableLengthClosed=()=>nullableLengthSource?.closed({
+        nativeLength:node=>nativeLengthDomain(cell(node.object)),
+        bound:node=>!!declarations.get(knownBinding(node))?.size,
+        functionAt:node=>{const fn=unchangedFunction(node);return fn&&!cyclic(knownBinding(fn))?fn:null;},
+        primitive:node=>{
+            const found=types.get(cell(node));
+            return !!found?.size&&[...found].every(type=>primitiveTypes.has(type))||
+                node?.type==='Member'&&node.name==='length'&&nullableLengthDomain(cell(node.object));
+        },
+        imageLiteral:node=>typeof node.value==='string'&&!declarations.get(knownBinding(node,'img'))?.size&&
+            !!parseExactImgLiteral('img`'+node.value+'`')
+    })===true;
+    const nullableLengthEligible=op=>op.kind==='length'&&nullableLengthDomain(op.receiver)&&nullableLengthClosed();
+    // A nullish receiver faults before any element operation completes, so
+    // a NORMAL element read through a receiver whose domain is only
+    // Null/Undefined plus actual Array tokens observes those allocations.
+    // This is a separate, additive channel: the strict Array receiver API and
+    // every existing element domain are unchanged. Such reads see the
+    // allocation elements plus every element value written through a
+    // nullable receiver; any escape, property write or non-Number index write
+    // through a nullable receiver makes them Opaque. Length keeps its
+    // separate closed nullable proof below.
+    const nullableArrayTypes=value=>{const set=types.get(value);if(!set?.size)return null;let array=false;
+        for(const type of set){if(type==='Null'||type==='Undefined')continue;if(type?.kind!=='Array')return null;array=true;}
+        return array?[...set].filter(type=>type?.kind==='Array'):null;};
+    const nullableKinds=new Set(['read','pop','shift','write','push','unshift','update','escape','methodWrite']);
+    const nullableWritten=new Map(),nullablePoisoned=new Set();
+    const nullableWrite=(token,type)=>{let set=nullableWritten.get(token);if(!set)nullableWritten.set(token,set=new Set());if(set.has(type))return false;set.add(type);return true;};
+    const nullablePoison=token=>{if(nullablePoisoned.has(token))return false;nullablePoisoned.add(token);return true;};
+    const nullableOperation=(op,tokens)=>{let changed=false;
+        if(['escape','methodWrite'].includes(op.kind)||['write','update'].includes(op.kind)&&types.get(op.index)?.size&&!exactType(op.index,'Number'))
+            for(const token of tokens)changed=nullablePoison(token)||changed;
+        if(op.kind==='update')for(const token of tokens)changed=nullableWrite(token,'Number')||changed;
+        if(['push','unshift'].includes(op.kind))changed=add(op.result,'Number')||changed;
+        if(op.kind==='write'||['push','unshift'].includes(op.kind))for(const token of tokens)for(const value of op.kind==='write'?[op.value]:op.node.args.map(cell))
+            for(const type of types.get(value)||[])changed=nullableWrite(token,type)||changed;
+        if(['read','pop','shift'].includes(op.kind)){changed=add(op.result,'Undefined')||changed;
+            for(const token of tokens){
+                if(nullablePoisoned.has(token)){changed=add(op.result,'Opaque')||changed;continue;}
+                for(const type of [...(types.get(token.element)||[]),...(nullableWritten.get(token)||[])])changed=add(op.result,type)||changed;
+            }}
+        return changed;};
     const propagateArrays=()=>{let changed=false;
-        for(const op of arrayOperations){const tokens=arrayTypes(op.receiver);if(!tokens)continue;
+        for(const op of arrayOperations){const tokens=arrayTypes(op.receiver);if(!tokens){
+                const nullable=nullableKinds.has(op.kind)?nullableArrayTypes(op.receiver):null;
+                if(nullable){changed=nullableOperation(op,nullable)||changed;continue;}
+                if(nullableLengthEligible(op)){
+                    nullableLengthUsed=true;nullableLengthIssued.add(op);changed=add(op.result,'Number')||changed;
+                }
+                continue;
+            }
             if(['escape','methodWrite'].includes(op.kind)||['write','update'].includes(op.kind)&&types.get(op.index)?.size&&!exactType(op.index,'Number'))for(const token of tokens){if(!unsafeArrayMethods.has(token)){unsafeArrayMethods.add(token);changed=true;}if(op.kind==='escape')changed=add(token.element,'Opaque')||changed;}
             if(op.kind==='update')for(const token of tokens){const prior=types.get(token.element);if(prior&&[...prior].some(type=>!primitiveTypes.has(type))){if(!unsafeArrayMethods.has(token)){unsafeArrayMethods.add(token);changed=true;}}else changed=add(token.element,'Number')||changed;}
             if(op.kind==='length'||['push','unshift'].includes(op.kind))changed=add(op.result,'Number')||changed;
             if(['read','pop','shift'].includes(op.kind)){changed=add(op.result,'Undefined')||changed;for(const token of tokens)for(const type of types.get(token.element)||[])changed=add(op.result,type)||changed;}
             if(op.kind==='write'||['push','unshift'].includes(op.kind))for(const token of tokens)for(const value of op.kind==='write'?[op.value]:op.node.args.map(cell))for(const type of types.get(value)||[])changed=add(token.element,type)||changed;
-            if(op.kind==='map'){const fn=op.node.args[0],owner=functionScopes.get(fn);if(!owner)continue;
-                if(fn.params[0]){const target=owner.bindings.get(fn.params[0]);changed=add(target,'Undefined')||changed;for(const token of tokens)for(const type of types.get(token.element)||[])changed=add(target,type)||changed;}
-                if(fn.params[1])changed=add(owner.bindings.get(fn.params[1]),'Number')||changed;
-                for(const type of types.get(owner.result)||[])changed=add(op.token.element,type)||changed;
+            if(['map','forEach','filter'].includes(op.kind)){const fn=op.node.args[0],owner=functionScopes.get(fn);if(!owner)continue;
+                if(fn.params[0]&&(op.kind==='map'||callbackEntry?.entries.has(fn))){const target=owner.bindings.get(fn.params[0]);changed=add(target,'Undefined')||changed;for(const token of tokens)for(const type of types.get(token.element)||[])changed=add(target,type)||changed;}
+                if(fn.params[1]&&(op.kind==='map'||callbackEntry?.entries.has(fn)))changed=add(owner.bindings.get(fn.params[1]),'Number')||changed;
+                if(op.kind==='map')for(const type of types.get(owner.result)||[])changed=add(op.token.element,type)||changed;
+                if(op.kind==='filter')for(const token of tokens)for(const type of types.get(token.element)||[])changed=add(op.token.element,type)||changed;
+                if(op.kind==='forEach')changed=add(op.result,'Undefined')||changed;
             }
         }return changed;
     };
     const propagate=()=>{let changed;do{changed=propagateArrays();
         for(const[from,to,mode,name]of edges){if(mode==='imageDimension'){if(exactType(from,'Image'))changed=add(to,'Number')||changed;else if(types.get(from)?.size)changed=add(to,'Opaque')||changed;}else if(mode==='field'){if(isFont(from)){changed=add(to,name==='data'?'GlyphBuffer':'Number')||changed;if(name==='multiplier')changed=add(to,'Undefined')||changed;}else if(types.get(from)?.size)changed=add(to,'Opaque')||changed;}else for(const type of types.get(from)||[])changed=add(to,type)||changed;}
         for(const cell of playerConstraints)if(types.get(cell)?.has('Player'))changed=add(cell,'Opaque')||changed;
-        for(const item of derived)if(derivedValid(item))changed=add(item.result,stringConcat(item)?'String':item.type)||changed;
+        for(const item of derived)if(derivedValid(item)){
+            if(primitiveAddition(item)){
+                const certainString=item.operands.some(value=>exactType(value,'String'));
+                const possibleString=item.operands.some(value=>types.get(value).has('String'));
+                if(possibleString)changed=add(item.result,'String')||changed;
+                if(!certainString)changed=add(item.result,'Number')||changed;
+            }else changed=add(item.result,item.type)||changed;
+        }
         for(const item of numericCalls)if(!item.node.args.length&&exactType(item.receiver,'NumericCallable'))changed=add(item.result,'Number')||changed;
         for(const item of scales)if(isFont(item.receiver))changed=add(item.result,'Font')||changed;
         for(const item of texts)if(types.get(item.argument)?.size===1 && types.get(item.argument).has('String'))changed=add(item.result,'Font')||changed;
     }while(changed);};propagate();
-    if(arrayValues)for(const operation of arrayOperations)if(['write','update'].includes(operation.kind)&&!types.get(operation.index)?.size)for(const token of arrayTypes(operation.receiver)||[])unsafeArrayMethods.add(token);
+    if(arrayValues)for(const operation of arrayOperations)if(['write','update'].includes(operation.kind)&&!types.get(operation.index)?.size){for(const token of arrayTypes(operation.receiver)||[])unsafeArrayMethods.add(token);for(const token of nullableArrayTypes(operation.receiver)||[])nullablePoison(token);}
     const playerWriteUnsafe=()=>!!multiplayer?.computedWrites.some(node=>{const keys=types.get(cell(node));return !keys?.size||[...keys].some(type=>!['Number','Boolean','Null','Undefined'].includes(type));});
-    let invalidated;do{invalidated=false;if(!unsafePlayerWrite&&playerWriteUnsafe()){unsafePlayerWrite=true;invalidated=true;}for(const item of derived)if(!derivedValid(item))invalidated=add(item.result,'Opaque')||invalidated;for(const item of numericCalls)if(item.node.args.length||!exactType(item.receiver,'NumericCallable'))invalidated=add(item.result,'Opaque')||invalidated;propagate();}while(invalidated);
+    let invalidated;do{invalidated=false;for(const op of nullableLengthIssued)if(!nullableLengthEligible(op))invalidated=add(op.result,'Opaque')||invalidated;if(!unsafePlayerWrite&&playerWriteUnsafe()){unsafePlayerWrite=true;invalidated=true;}for(const item of derived)if(!derivedValid(item))invalidated=add(item.result,'Opaque')||invalidated;for(const item of numericCalls)if(item.node.args.length||!exactType(item.receiver,'NumericCallable'))invalidated=add(item.result,'Opaque')||invalidated;propagate();}while(invalidated);
     const fontAnnotations=new Set();const collectScope=node=>{if(!node||typeof node!=='object')return;if(Array.isArray(node)){node.forEach(collectScope);return;}const owner=owners.get(node);for(let s=owner;s;s=s.parent)for(const value of s.fontAnnotations||[])fontAnnotations.add(value);Object.values(node).forEach(value=>{if(value&&typeof value==='object')collectScope(value);});};collectScope(program);
     const immutableFunction=node=>{const fn=unchangedFunction(node);return fn&&!cyclic(knownBinding(fn))?fn:null;};
-    const currentTypes=value=>new Set((!callbackEntry||callbackEntry.current())&&(!loopEntry||loopEntry.current())&&(!spriteAyNumbers||spriteAyNumbers.current())?types.get(value)||[]:[]);
+    const factsCurrent=()=>declarationArrayResetCurrent()&&(!parseIntegerNumberUsed||parseIntegerNumbers.current())&&(!controlEntryUsed||controlEntry.current())&&(!frameDeltaNumberUsed||frameDeltaNumbers.current())&&(!ordinaryEntry||ordinaryEntry.current())&&(!nullableLengthUsed||nullableLengthSource.current())&&(!callbackEntry||callbackEntry.current())&&(!loopEntry||loopEntry.current())&&(!spriteAyNumbers||spriteAyNumbers.current())&&(!musicNumberUsed||musicNumbers.current())&&(!destroyedNumberUsed||destroyedNumbers.current())&&(!cameraNumberInput||cameraNumberInput.current());
+    const currentTypes=value=>new Set(factsCurrent()?types.get(value)||[]:[]);
+    const currentArrayTypes=value=>factsCurrent()?arrayTypes(value):null;
+    // Construct this independent execution frontier only on demand. It cannot
+    // add initialization/type facts or be selected by public source options.
+    let lexicalReadiness;
+    const lexical=()=>lexicalReadiness ||= lexicalSource?lexicalSource.analyse({bindingOf:knownBinding,
+        declarationCountAt:(node,name=node?.name)=>declarations.get(knownBinding(node,name))?.size||0,immutableFunctionAt:immutableFunction,
+        isClosedArrayIndex:node=>{
+            if(!owners.has(node)||!owners.has(node.object)||!owners.has(node.index))return false;
+            const receiver=currentTypes(cell(node.object)),index=currentTypes(cell(node.index));
+            return receiver.size>0&&[...receiver].every(value=>value?.kind==='Array')&&
+                index.size===1&&index.has('Number')&&[...receiver].every(value=>!unsafeArrayMethods.has(value));
+        }}):
+        Object.freeze({current:()=>true,isDeclarationExecutedAt:()=>false,isCapturedReadyAt:()=>false});
     // Copies prevent a consumer from changing another consumer's proof facts.
     // Binding facts do not discharge initialization at an expression occurrence.
     return Object.freeze({
-        ...(arrayEffectSites?{possibleArrayAllocationsAt:node=>Object.freeze([...(types.get(cell(node))||[])].filter(type=>type?.kind==='Array').map(type=>type.site))}:{}),
+        ...(arrayEffectSites?{possibleArrayAllocationsAt:node=>Object.freeze([...currentTypes(cell(node))].filter(type=>type?.kind==='Array').map(type=>type.site))}:{}),
         typesAt:node=>owners.has(node)?currentTypes(cell(node)):new Set(),
         bindingTypesAt:(node,name=node?.name)=>currentTypes(knownBinding(node,name)),
+        destroyedNumberResultsUsed:()=>destroyedNumberUsed,
+        destroyedNumbersCurrent:()=>!destroyedNumberUsed||destroyedNumbers.current(),
+        musicNumberResultsUsed:()=>musicNumberUsed,
+        musicNumbersCurrent:()=>!musicNumberUsed||musicNumbers.current(),
         bindingOf:knownBinding,
         bindingKindsAt:(node,name=node?.name)=>new Set([...(declarations.get(knownBinding(node,name))||[])].map(declaration=>
             typeof declaration==='symbol'?'parameter':({FunctionDeclaration:'function',Class:'class',Enum:'enum'}[declaration.type]||'variable'))),
-        isInitializedAt:node=>initializedReads.has(node),
-        isBindingInitializedAt:(node,binding)=>initializationAt.get(node)?.has(binding)===true,
+        isLexicalDeclarationExecutedAt:(node,binding)=>factsCurrent()&&lexical().isDeclarationExecutedAt(node,binding),
+        isCapturedLexicalDeclarationReadyAt:node=>factsCurrent()&&lexical().isCapturedReadyAt(node),
+        lexicalDeclarationReadinessCurrent:()=> factsCurrent()&&(!ordinaryEntry||ordinaryEntry.current())&&(!lexicalSource||lexicalSource.current()),
+        closedOrdinaryEntryCurrent:()=>!ordinaryEntry||ordinaryEntry.current(),
+        ordinaryEntryUnreachableAt:node=>ordinaryEntry?.isUnreachable(node)===true,
+        nullableArrayLengthCurrent:()=>!nullableLengthSource||nullableLengthSource.current(),
+        isInitializedAt:node=>factsCurrent()&&(!ordinaryEntry||ordinaryEntry.current())&&initializedReads.has(node),
+        isBindingInitializedAt:(node,binding)=>factsCurrent()&&(!ordinaryEntry||ordinaryEntry.current())&&initializationAt.get(node)?.has(binding)===true,
         localUndefinedDeclarations:Object.freeze([...localUndefinedDeclarations]),
         declarationCountAt:(node,name=node?.name)=>declarations.get(knownBinding(node,name))?.size||0,
         immutableFunctionAt:immutableFunction,
@@ -363,11 +544,16 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
         fontScales:Object.freeze(scales.map(item=>item.node)),
         fontSelections:Object.freeze(texts.map(item=>item.node)),
         fontPrints:Object.freeze(prints.map(item=>Object.freeze({...item}))),
-        arrayConstraintErrorsAt:node=>{const tokens=new Set(arrayTypes(cell(node))||[]),domains={number:'Number',string:'String',boolean:'Boolean'};return arrayConstraints.filter(record=>record.type!=='any'&&(arrayTypes(record.cell)||[]).some(token=>tokens.has(token)&&(!domains[record.type]||[...(types.get(token.element)||[])].some(type=>type!==domains[record.type]&&!['Null','Undefined'].includes(type))))).map(record=>`actual Array elements contradict declared ${record.type}[] constraint`);},
-        arrayMapReceiverSafeAt:node=>!!arrayTypes(cell(node))&&arrayTypes(cell(node)).every(token=>!unsafeArrayMethods.has(token)),
-        arrayAllocationsAt:node=>Object.freeze([...(arrayTypes(cell(node))||[])].map(token=>token.site)),
-        arrayElementTypesAt:node=>new Set((arrayTypes(cell(node))||[]).flatMap(token=>[...(types.get(token.element)||[])])),
+        arrayConstraintErrorsAt:node=>{if(!factsCurrent())return ['Array producer source expired'];const tokens=new Set(arrayTypes(cell(node))||[]),domains={number:'Number',string:'String',boolean:'Boolean'};return arrayConstraints.filter(record=>record.type!=='any'&&(arrayTypes(record.cell)||[]).some(token=>tokens.has(token)&&(!domains[record.type]||[...(types.get(token.element)||[])].some(type=>type!==domains[record.type]&&!['Null','Undefined'].includes(type))))).map(record=>`actual Array elements contradict declared ${record.type}[] constraint`);},
+        arrayMapReceiverSafeAt:node=>!!currentArrayTypes(cell(node))&&currentArrayTypes(cell(node)).every(token=>!unsafeArrayMethods.has(token)),
+        // The exact game.eventContext().deltaTime read admitted by the closed
+        // frame census: a Number on normal return, never an initialization fact.
+        frameDeltaNumberAt:node=>!!frameDeltaNumbers?.isNumberRead(node),
+        frameDeltaNumbersCurrent:()=>!frameDeltaNumbers||frameDeltaNumbers.current(),
+        arrayAllocationsAt:node=>Object.freeze([...(currentArrayTypes(cell(node))||[])].map(token=>token.site)),
+        arrayElementTypesAt:node=>new Set((currentArrayTypes(cell(node))||[]).flatMap(token=>[...(types.get(token.element)||[])])),
         arrayMapCalls:Object.freeze(arrayMaps.map(operation=>operation.node)),
+        arrayCallbackCalls:Object.freeze(arrayCallbacks.map(operation=>operation.node)),
         functionParameterBinding:(node,index)=>functionScopes.get(node)?.bindings.get(node.params[index])||null,
         functionParameterTypes:(node,index)=>currentTypes(functionScopes.get(node)?.bindings.get(node.params[index])),
         functionResultTypes:node=>currentTypes(functionScopes.get(node)?.result),
@@ -375,12 +561,12 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
     });
 }
 
-// Optional entry facts for ordinary constrained calls inside actual map callbacks.
+// Optional entry facts for ordinary constrained calls inside actual closed Array callbacks.
 // This private proof uses the SAME Program and literal/all-writer graph. It does
 // not expose general Array index/length/mutation producers to default consumers.
 function proveArrayCallbackPrimitiveEntries(program,normalCompletion){
     let snapshot;try{snapshot=physicalUpdateSourceSnapshot(program);}catch{return null;}
-    if(!snapshot||snapshot.objects.some(value=>Array.isArray(value)&&Reflect.ownKeys(value).some(key=>typeof Object.getOwnPropertyDescriptor(value,key).value==='function')))return null;
+    if(!spriteAyArrayCurrent()||!snapshot||snapshot.opaque.some(value=>typeof value==='function'))return null;
     const metadata=new Set(['originalBody','parameterDefaults','paramTypes','typeParameters','returnType','assertedType','bwProcedureConstraintSource','optionalParams','parameterProperties','sourceReferenceDeclarations','sourceCallableDeclarations','sourceScalarDeclarations']);
     const nodes=[],parents=new WeakMap(),seen=new Set();let closed=true;
     const visit=(value,parent=null)=>{
@@ -389,10 +575,40 @@ function proveArrayCallbackPrimitiveEntries(program,normalCompletion){
         if(!Array.isArray(value))nodes.push(value);
         for(const key of Reflect.ownKeys(value))if(!metadata.has(key))visit(Object.getOwnPropertyDescriptor(value,key).value,value);
     };
-    visit(program);if(!closed||!nodes.some(node=>node.type==='Call'&&node.callee?.type==='Member'&&node.callee.name==='map'))return null;
+    visit(program);if(!closed||!nodes.some(node=>node.type==='Call'&&node.callee?.type==='Member'&&['map','forEach','filter'].includes(node.callee.name)))return null;
+    // Bootstrap may not erase unrecognized effects or default-entry code.
+    // Reject sparse/malformed literal origins before the value graph visits
+    // their elements; an explicit Undefined AST value remains a real element.
+    const syntax=new Set(['Program','Declaration','FunctionDeclaration','FunctionExpression','Block',
+        'ExpressionStatement','Return','ThrowStatement','If','While','For','ForOf','Break','Continue','Switch',
+        'Number','String','Boolean','Null','Undefined','Identifier','Array','Binary','Logical','Unary',
+        'Assignment','Update','Conditional','Call','Member','Index','Template','Parenthesized']);
+    for(const node of nodes){
+        if(node.type&&!syntax.has(node.type))return null;
+        if(node.type==='Identifier'&&['eval','Function','globalThis','global','window','self','arguments','Reflect'].includes(node.name))return null;
+        if(node.type==='Array'){
+            if(!Array.isArray(node.items))return null;
+            for(let i=0;i<node.items.length;i++){
+                const slot=Object.getOwnPropertyDescriptor(node.items,String(i));
+                if(!slot||!Object.hasOwn(slot,'value')||!slot.value||typeof slot.value!=='object')return null;
+            }
+        }
+        if(['FunctionDeclaration','FunctionExpression'].includes(node.type)){
+            if(!Array.isArray(node.params))return null;
+            for(const owner of [node,node.params]){
+                if(Object.hasOwn(owner,'restParam')||['async','isAsync','generator','isGenerator'].some(key=>owner[key]))return null;
+                for(const key of ['optionalParams','parameterDefaults','genericParams','typeParameters'])
+                    if(owner[key]!==undefined&&(!Array.isArray(owner[key])||owner[key].length))return null;
+                if(owner.paramDefaults!==undefined&&(!owner.paramDefaults||typeof owner.paramDefaults!=='object'||Object.keys(owner.paramDefaults).length))return null;
+            }
+        }
+    }
+    // Private bootstrap: tentative filter allocations are visible only to this
+    // issuer's closed-lineage census. No new callback parameter facts issue.
+    // Exported options cannot enroll this mode or supply an accepted call set.
     const graph=analyseGraph(program,{arrayValues:true,parenthesized:true,unboundIsOpaque:true,
-        uninitializedLocalsAreOpaque:true,declaredLocalUndefined:true,initializationEntries:true,normalCompletion});
-    const primitive=new Set(['Number','String','Boolean','Null','Undefined']),maps=new Set(graph.arrayMapCalls),safeMaps=new Set();
+        uninitializedLocalsAreOpaque:true,declaredLocalUndefined:true,initializationEntries:true,normalCompletion},null,null,null,null,true);
+    const primitive=new Set(['Number','String','Boolean','Null','Undefined']),maps=new Set(graph.arrayCallbackCalls),safeMaps=new Set();
     const initialized=value=>{
         if(!value||typeof value!=='object')return true;
         if(value.type==='Identifier'&&!graph.isInitializedAt(value)&&!graph.immutableFunctionAt(value))return false;
@@ -400,46 +616,100 @@ function proveArrayCallbackPrimitiveEntries(program,normalCompletion){
     };
     for(const call of maps){
         const fn=call.args[0],receiver=call.callee.object;
-        if(call.isNew||call.constructorCall||call.typeArguments?.length||call.args.length!==1||fn?.type!=='FunctionExpression'||
-            fn.params.length>2||new Set(fn.params).size!==fn.params.length||fn.optionalParams?.length||fn.parameterDefaults?.length||
-            Object.keys(fn.paramDefaults||{}).length||fn.genericParams?.length||fn.typeParameters?.length||
+        if(call.isNew||call.constructorCall||call.optional||call.callee.optional||call.typeArguments?.length||call.args.length!==1||fn?.type!=='FunctionExpression'||
+            !Array.isArray(fn.params)||fn.params.length>2||[fn,fn.params].some(value=>Object.hasOwn(value,'restParam')||
+                ['async','isAsync','generator','isGenerator'].some(key=>value[key])||
+                ['optionalParams','parameterDefaults','genericParams','typeParameters'].some(key=>value[key]!==undefined&&(!Array.isArray(value[key])||value[key].length))||Object.keys(value.paramDefaults||{}).length)||new Set(fn.params).size!==fn.params.length||
             !graph.arrayAllocationsAt(receiver).length||!graph.arrayMapReceiverSafeAt(receiver)||graph.arrayConstraintErrorsAt(receiver).length||!initialized(receiver))return null;
         safeMaps.add(call);
     }
     if(!safeMaps.size)return null;
+    // Creator builds reference Arrays with an empty allocation followed by
+    // contiguous one-argument pushes. Admit the construction frontier, never
+    // a general push method. Each argument is independently primitive and
+    // contains no call/member/index that could publish the receiver mid-build.
+    const constructionCalls=new Set(),constructed=new WeakSet();
+    const independentPrimitive=(value,binding)=>{
+        if(!value||typeof value!=='object')return true;
+        if(Array.isArray(value))return value.every(child=>independentPrimitive(child,binding));
+        if(value.type==='Identifier'&&graph.bindingOf(value)===binding)return false;
+        if(['Call','Member','Index','FunctionExpression','Assignment','Update','Object','Spread','Unknown'].includes(value.type))return false;
+        return Object.entries(value).filter(([key])=>!metadata.has(key)).every(([,child])=>independentPrimitive(child,binding));
+    };
+    for(const site of nodes.filter(node=>node.type==='Array'&&Array.isArray(node.items)&&node.items.length===0)){
+        let callbackOwner=false;for(let owner=parents.get(site);owner;owner=parents.get(owner))if(owner.type==='FunctionExpression'){callbackOwner=true;break;}
+        if(callbackOwner)continue;
+        let statement=parents.get(site),key=null;
+        if(statement?.type==='Assignment'&&statement.op==='='&&statement.right===site&&statement.left?.type==='Identifier'){
+            key=graph.bindingOf(statement.left);statement=parents.get(statement);
+            if(statement?.type!=='ExpressionStatement')continue;
+        }else{
+            const decl=statement,decls=parents.get(decl),owner=parents.get(decls);
+            if(owner?.type!=='Declaration'||owner.decls.length!==1||decl.init!==site)continue;
+            key=graph.bindingOf(owner,decl.name);statement=owner;
+        }
+        const list=parents.get(statement);if(!key||!Array.isArray(list))continue;
+        const at=list.indexOf(statement);if(at<0)continue;
+        const pushes=[];
+        for(let i=at+1;i<list.length;i++){
+            const call=list[i]?.type==='ExpressionStatement'?list[i].expr:null;
+            if(call?.type!=='Call'||call.callee?.type!=='Member'||call.callee.name!=='push'||call.callee.object?.type!=='Identifier'||graph.bindingOf(call.callee.object)!==key)break;
+            const arg=call.args?.[0],origins=graph.arrayAllocationsAt(call.callee.object),types=arg&&graph.typesAt(arg);
+            if(call.isNew||call.constructorCall||call.optional||call.callee.optional||call.typeArguments?.length||call.args.length!==1||
+                graph.declarationCountAt(call.callee.object)!==1||origins.length!==1||origins[0]!==site||!types?.size||[...types].some(type=>!primitive.has(type))||!initialized(arg)||!independentPrimitive(arg,key))return null;
+            pushes.push(call);
+        }
+        if(!pushes.length)continue;
+        // No other push through any alias may mutate this allocation after its
+        // construction group. The complete call census below rejects the rest.
+        constructed.add(site);for(const call of pushes)constructionCalls.add(call);
+    }
     // The initial slice preserves dense original indices: no property/index
     // writes, mutable Array methods, foreign getters, reflection or unknown
     // callees can alter a visited element/presence behind this entry fact.
     // Actual whole bodies remain visible; failure issues no callback facts.
     const tagsUsed=new Set(nodes.filter(node=>node.type==='Template').map(node=>node.tag));
     for(const node of nodes){
+        if(['Unknown','Object','Spread','Await','Yield','Class','Namespace'].includes(node.type)||node.optional||node.callee?.optional)return null;
         if(node.type==='Template'&&(!['img','hex'].includes(node.tag)||typeof node.value!=='string'||node.value.includes('${')))return null;
         if(node.params?.some(name=>tagsUsed.has(name))||node.decls?.some(decl=>tagsUsed.has(decl.name)))return null;
         if(node.type==='Identifier'&&!graph.bindingKindsAt(node).size&&!graph.isSdkNamespace(node))return null;
-        if(node.type==='Call'&&!safeMaps.has(node)&&!graph.immutableFunctionAt(node))return null;
+        if(node.type==='Call'&&!safeMaps.has(node)&&!constructionCalls.has(node)&&!graph.immutableFunctionAt(node))return null;
         const target=node.type==='Assignment'?node.left:node.type==='Update'?node.argument:node.type==='Unary'&&node.op==='delete'?node.argument:null;
         if(target&&target.type!=='Identifier')return null;
         if(node.type==='Member'){
             const parent=parents.get(node);
-            if(parent?.type==='Call'&&parent.callee===node&&safeMaps.has(parent))continue;
+            if(parent?.type==='Call'&&parent.callee===node&&(safeMaps.has(parent)||constructionCalls.has(parent)))continue;
             if(node.name==='length'&&graph.arrayMapReceiverSafeAt(node.object)&&graph.arrayAllocationsAt(node.object).length)continue;
             return null;
         }
         if(node.type==='Index'&&(!graph.arrayMapReceiverSafeAt(node.object)||!graph.arrayAllocationsAt(node.object).length||
             graph.typesAt(node.index).size!==1||!graph.typesAt(node.index).has('Number')))return null;
     }
-    const entries=new Map();
+    const entries=new Map(),issuedCalls=new Set();
     for(const call of safeMaps){
         const receiver=call.callee.object,allocations=graph.arrayAllocationsAt(receiver),types=graph.arrayElementTypesAt(receiver);
         if(!types.size||[...types].some(type=>!primitive.has(type)))continue;
-        if(allocations.some(site=>site.type!=='Array'||!Array.isArray(site.items)||!site.items.length||
-            Array.from({length:site.items.length},(_,i)=>Object.getOwnPropertyDescriptor(site.items,String(i))).some(d=>!d||!Object.hasOwn(d,'value')||!d.value||
-                !graph.typesAt(d.value).size||[...graph.typesAt(d.value)].some(type=>!primitive.has(type))||!initialized(d.value))))continue;
-        entries.set(call.args[0],[new Set(types),new Set(['Number'])]);
+        // A filter allocation is fresh and dense, but may be empty. Trace its
+        // complete receiver lineage to real literal entries; predicate results
+        // never become elements and cannot authorize their own receiver.
+        const literalLineage=(site,active=new Set())=>{
+            if(active.has(site))return false;const next=new Set(active);next.add(site);
+            if(site.type==='Call'&&site.callee?.type==='Member'&&site.callee.name==='filter'&&safeMaps.has(site)){
+                const origins=graph.arrayAllocationsAt(site.callee.object);
+                return origins.length>0&&origins.every(origin=>literalLineage(origin,next));
+            }
+            if(site.type==='Array'&&constructed.has(site))return true;
+            return site.type==='Array'&&Array.isArray(site.items)&&site.items.length>0&&
+                Array.from({length:site.items.length},(_,i)=>Object.getOwnPropertyDescriptor(site.items,String(i))).every(d=>d&&Object.hasOwn(d,'value')&&d.value&&
+                    graph.typesAt(d.value).size>0&&[...graph.typesAt(d.value)].every(type=>primitive.has(type))&&initialized(d.value));
+        };
+        if(!allocations.every(site=>literalLineage(site)))continue;
+        entries.set(call.args[0],[new Set(types),new Set(['Number'])]);issuedCalls.add(call);
     }
-    if(!entries.size||!snapshot.current())return null;
+    if(!entries.size||!snapshot.current()||!spriteAyArrayCurrent())return null;
     let expired=false;
-    return {entries,current(){if(!snapshot.current())expired=true;return !expired;}};
+    return {entries,calls:issuedCalls,current(){if(!snapshot.current()||!spriteAyArrayCurrent())expired=true;return !expired;}};
 }
 
 // Only this module issues initialized-entry receipts. Public options, names,
@@ -553,17 +823,22 @@ export function sourceImageArrayCloneEffects(program,sourceContext=null) {
 }
 
 // This private primitive producer does not publish Sprite or Array types. Its
-// allocation tokens describe only the receivers of exact physical ay reads.
+// allocation tokens describe only the receivers of exact physical numeric reads.
 // In particular, the translator's annotation-seeded reference sets are not used.
 function ordinarySpriteAyNumberReads(program) {
     if(!spriteAyArrayCurrent())return null;
+    // Numeric SDK Sprite accessors return Numbers on normal completion; flags
+    // have a separate primitive-domain invariant below. Dimensions keep their
+    // independent Image/receiver proof; property spelling
+    // alone never establishes a Sprite allocation or a compatible writer.
+    const properties=['x','y','vx','vy','ax','ay','fx','fy','left','right','top','bottom','flags'];
     // Necessary syntax only: a negative result skips this optional analysis,
     // never supplies a type or an eligibility fact. Do not invoke getters.
     const syntaxSeen=new Set();
     const possible=value=>{
         if(!value||typeof value!=='object'||syntaxSeen.has(value))return false;syntaxSeen.add(value);
         const type=Object.getOwnPropertyDescriptor(value,'type'),name=Object.getOwnPropertyDescriptor(value,'name');
-        if(type&&Object.hasOwn(type,'value')&&type.value==='Member'&&name&&Object.hasOwn(name,'value')&&name.value==='ay')return true;
+        if(type&&Object.hasOwn(type,'value')&&type.value==='Member'&&name&&Object.hasOwn(name,'value')&&properties.includes(name.value))return true;
         for(const key of Reflect.ownKeys(value)) {
             if(metadata.has(key))continue;const row=Object.getOwnPropertyDescriptor(value,key);
             if(row?.enumerable&&Object.hasOwn(row,'value')&&possible(row.value))return true;
@@ -593,7 +868,7 @@ function ordinarySpriteAyNumberReads(program) {
     const rank=node=>program.body.indexOf(root(node));
     const all=(items,predicate)=>{for(let i=0;i<items.length;i++)if(!predicate(items[i],i))return false;return true;};
     const any=(items,predicate)=>{for(let i=0;i<items.length;i++)if(predicate(items[i],i))return true;return false;};
-    const schema=fn=>Array.isArray(fn.params)&&all(fn.params,name=>typeof name==='string')&&new Set(fn.params).size===fn.params.length&&
+    const schema=fn=>fn.exported!==true&&Array.isArray(fn.params)&&all(fn.params,name=>typeof name==='string')&&new Set(fn.params).size===fn.params.length&&
         !fn.restParam&&!fn.typeParameters?.length&&all(['optionalParams','parameterDefaults','parameterProperties'],name=>
             (!fn[name]||Array.isArray(fn[name])&&!fn[name].length)&&(!fn.params[name]||Array.isArray(fn.params[name])&&!fn.params[name].length));
     for(const node of nodes) {
@@ -601,7 +876,9 @@ function ordinarySpriteAyNumberReads(program) {
             node.type==='Identifier'&&['this','globalThis','global','window','self','eval','Function','Reflect','Object','arguments'].includes(node.name)||
             node.type==='Member'&&['constructor','prototype','__proto__'].includes(node.name))return null;
         if(['FunctionDeclaration','FunctionExpression'].includes(node.type)&&!schema(node))return null;
-        if(node.name==='img'||node.decls&&any(node.decls,row=>row.name==='img')||node.params?.includes('img'))return null;
+        if(node.name==='img'||node.type!=='Member'&&node.name==='undefined'||
+            node.decls&&any(node.decls,row=>row.name==='img'||row.name==='undefined')||
+            node.params?.includes('img')||node.params?.includes('undefined'))return null;
         if(node.type==='Assignment'&&graph.isSdkNamespace(node.left)||node.type==='Update'&&graph.isSdkNamespace(node.argument))return null;
     }
     // Existing PXT image decoding pads shorter rows with transparency. Validate
@@ -616,13 +893,35 @@ function ordinarySpriteAyNumberReads(program) {
         }
         return pixels;
     };
-    const factories=new Set(),arrays=new Set(),writes=new Map(),values=new Map(),loops=[],pushes=[];
+    const factories=new Set(),spriteSources=new Map(),arrays=new Set(),writes=new Map(),values=new Map(),loops=[],pushes=[];
+    const ready=node=>{
+        if(!node||typeof node!=='object')return true;
+        if(Array.isArray(node))return all(node,ready);
+        if(node.type==='Identifier'&&!graph.isInitializedAt(node))return false;
+        return all(Reflect.ownKeys(node).filter(key=>!metadata.has(key)),key=>ready(node[key]));
+    };
+    const number=node=>{
+        const types=graph.typesAt(node);
+        return types.size===1&&types.has('Number')&&ready(node);
+    };
+    const kind=node=>number(node)||node?.type==='Member'&&node.object?.type==='Identifier'&&
+        node.object.name==='SpriteKind'&&['Player','Projectile','Food','Enemy'].includes(node.name)&&graph.isSdkNamespace(node);
     const write=(key,value,site)=>{if(!writes.has(key))writes.set(key,[]);writes.get(key).push({value,site});};
     for(const node of nodes) {
         if(node.type==='Array'&&Array.isArray(node.items)&&node.items.length===0)arrays.add(node);
         if(node.type==='Call'&&!node.isNew&&!node.constructorCall&&!node.optional&&!node.typeArguments?.length&&node.callee?.type==='Member'&&!node.callee.optional&&
-            path(node.callee)==='sprites.create'&&graph.isSdkNamespace(node.callee)&&Array.isArray(node.args)&&node.args.length===1&&
-            imageLiteral(node.args[0]))factories.add(node);
+            graph.isSdkNamespace(node.callee)&&Array.isArray(node.args)&&imageLiteral(node.args[0])){
+            const api=path(node.callee);
+            // Retained SDK create forwards kind to setKind; both an omitted
+            // kind and genuine undefined leave the constructor kind unchanged.
+            // This identifies a factory call, never a Number/Kind certificate.
+            if(api==='sprites.create'&&(node.args.length===1||node.args.length===2&&
+                (node.args[1]?.type==='Undefined'||kind(node.args[1]))))factories.add(node);
+            if(api==='sprites.createProjectileFromSide'&&node.args.length===3&&number(node.args[1])&&number(node.args[2]))factories.add(node);
+            if(api==='sprites.createProjectileFromSprite'&&node.args.length===4&&number(node.args[2])&&number(node.args[3])){
+                factories.add(node);spriteSources.set(node,node.args[1]);
+            }
+        }
         if(node.type==='Declaration')for(const row of node.decls||[])if(row.init)write(binding(node,row.name),row.init,row);
         if(node.type==='Assignment'&&node.left?.type==='Identifier')write(binding(node.left),node.op==='='?node.right:null,node);
         if(node.type==='Update'&&node.argument?.type==='Identifier')write(binding(node.argument),null,node);
@@ -631,7 +930,7 @@ function ordinarySpriteAyNumberReads(program) {
     }
     for(const node of nodes)if(node.type==='Identifier'&&node.name==='sprites'&&graph.isSdkNamespace(node)) {
         const member=parents.get(node),call=parents.get(member);
-        if(member?.type!=='Member'||member.object!==node||member.name!=='create'||call?.callee!==member||!factories.has(call))return null;
+        if(member?.type!=='Member'||member.object!==node||call?.callee!==member||!factories.has(call))return null;
     }
     // The ordinary public route lowers for-of before constraint analysis.
     // Reprove the actual dense loop, without trusting generated names or an
@@ -659,8 +958,24 @@ function ordinarySpriteAyNumberReads(program) {
         if(!closed)continue;
         denseElements.set(read,loop);denseLengths.add(test.right);
     }
+    // A parameterless immutable function can return one existing alias without
+    // replacing its evaluation. Full function-use and allocation-before-call
+    // checks below still apply; annotations and escaping function values grant
+    // nothing. A scalar-only prefix is independently validated below; the
+    // single final return excludes hidden early paths.
+    const aliasReturns=new Map();
+    for(const node of nodes)if(node.type==='Call'&&!node.isNew&&!node.constructorCall&&!node.optional&&
+        !node.typeArguments?.length&&node.args?.length===0&&node.callee?.type==='Identifier'){
+        const fn=graph.immutableFunctionAt(node.callee),ret=fn?.body?.at(-1),returned=ret?.value??ret?.argument;
+        if(fn?.type==='FunctionDeclaration'&&program.body.includes(fn)&&schema(fn)&&fn.params.length===0&&
+            fn.body.length>=1&&ret.type==='Return'&&returned?.type==='Identifier'&&
+            fn.body.slice(0,-1).every(statement=>statement.type==='ExpressionStatement'&&statement.expr?.type==='Assignment'&&
+                statement.expr.op==='='&&statement.expr.left?.type==='Identifier'))aliasReturns.set(node,{fn,returned});
+    }
+    const aliasReturnValues=new Set([...aliasReturns.values()].map(row=>row.returned));
     const value=node=>{
         if(node?.type==='Parenthesized')return value(node.expression);
+        if(aliasReturns.has(node))return values.get(binding(aliasReturns.get(node).returned));
         if(factories.has(node)||arrays.has(node))return new Set([node]);
         if(node?.type==='Identifier')return values.get(binding(node));
         if(denseElements.has(node)){
@@ -686,8 +1001,22 @@ function ordinarySpriteAyNumberReads(program) {
         }
         for(const loop of loops)for(const receiver of value(loop.iterable)||[])changed=add(binding(loop.body[0],loop.name),elements.get(receiver))||changed;
     }
+    // This slice proves Sprite reads, not every Array in the program. Retain
+    // all collections that may actually store a Sprite. Primitive-only arrays
+    // have their independent producer/initialization analysis and cannot grant
+    // a receiver token here. A Sprite escaping into an untracked collection is
+    // still rejected by the complete use census below.
+    for(const site of arrays)if(!any([...(elements.get(site)||[])],token=>factories.has(token)))arrays.delete(site);
+    for(const [key,tokens]of values){
+        for(const token of tokens)if(!factories.has(token)&&!arrays.has(token))tokens.delete(token);
+        if(!tokens.size)values.delete(key);
+    }
     const sprites=tokens=>tokens?.size&&all([...tokens],token=>factories.has(token));
     const collections=tokens=>tokens?.size&&all([...tokens],token=>arrays.has(token));
+    for(const source of spriteSources.values()){
+        let unwrapped=source;while(unwrapped?.type==='Parenthesized')unwrapped=unwrapped.expression;
+        if(unwrapped?.type!=='Null'&&!sprites(value(source)))return null;
+    }
     const loopBindings=new Map();
     for(const loop of loops) {
         const key=binding(loop.body[0],loop.name);
@@ -695,12 +1024,41 @@ function ordinarySpriteAyNumberReads(program) {
         loopBindings.set(key,loop);
     }
     const usedArrays=new Set(),candidates=new Set();
-    for(const node of nodes)if(node.type==='Member'&&node.name==='ay'&&sprites(value(node.object)))candidates.add(node);
+    for(const node of nodes)if(node.type==='Member'&&properties.includes(node.name)&&sprites(value(node.object)))candidates.add(node);
     if(!candidates.size)return null;
+    // Exported blocks explicitly reset Sprite slots to null before constructing
+    // them. Permit only a direct, preceding reset with a direct constructor that
+    // dominates every use; a later or conditional null writer remains unknown.
+    // This is an occurrence proof, never a nullable binding-wide Sprite type.
+    const resets=new Map();
+    const statementAt=(node,owner)=>{
+        const body=owner===program?program.body:owner?.body;
+        if(!Array.isArray(body))return null;
+        for(let at=node;at;at=parents.get(at))if(parents.get(at)===body)return at;
+        return null;
+    };
+    const writeStatement=(row,owner)=>{
+        const statement=statementAt(row.site,owner);
+        if(statement?.type==='ExpressionStatement'&&statement.expr===row.site&&row.site.type==='Assignment')return statement;
+        if(statement?.type==='Declaration'&&statement.decls?.includes(row.site))return statement;
+        return null;
+    };
     // No unknown writer may be hidden behind a compatible later assignment.
     for(const [key,tokens]of values) {
         const rows=writes.get(key)||[];
-        for(const row of rows)if(!value(row.value)?.size||any([...value(row.value)],token=>!tokens.has(token)))return null;
+        const missing=rows.filter(row=>!value(row.value)?.size||any([...value(row.value)],token=>!tokens.has(token)));
+        if(missing.length){
+            if(!sprites(tokens)||missing.some(row=>row.value?.type!=='Null'))return null;
+            const construction=rows.find(row=>sprites(value(row.value))),owner=construction&&owners.get(construction.site);
+            const statement=construction&&writeStatement(construction,owner),body=owner===program?program.body:owner?.body;
+            const position=statement&&body.indexOf(statement);
+            if(!statement||position<0||missing.some(row=>{
+                if(owners.get(row.site)!==owner)return true;
+                const before=writeStatement(row,owner),index=before?body.indexOf(before):-1;
+                return index<0||index>=position;
+            }))return null;
+            resets.set(key,{owner,position,body});
+        }
         for(const node of nodes)if(node.type==='Identifier'&&binding(node)===key&&graph.declarationCountAt(node)>1)return null;
     }
     const aliasUse=(node,parent)=>parent?.type==='Assignment'&&parent.op==='='&&parent.right===node&&parent.left?.type==='Identifier'||
@@ -722,11 +1080,28 @@ function ordinarySpriteAyNumberReads(program) {
             return null;
         }
         if(sprites(tokens)) {
-            if((factories.has(node)||denseElements.has(node))&&parent?.init===node)continue;
+            if(parent?.type==='Return'&&aliasReturnValues.has(node))continue;
+            if((factories.has(node)||denseElements.has(node)||aliasReturns.has(node))&&parent?.init===node)continue;
             if(aliasUse(node,parent)||parent?.type==='Assignment'&&parent.left===node&&parent.op==='=')continue;
             const call=argumentCall(node);
             if(call?.callee?.type==='Member'&&call.callee.name==='push'&&call.args.length===1&&call.args[0]===node&&collections(value(call.callee.object)))continue;
-            if(parent?.type==='Member'&&parent.object===node&&['x','y','vx','vy','ax','ay','fx','fy','left','right','top','bottom','width','height','image','overlapsWith'].includes(parent.name))continue;
+            if(spriteSources.get(call)===node)continue;
+            if(parent?.type==='Member'&&parent.object===node&&['setPosition','setVelocity'].includes(parent.name)){
+                const method=parents.get(parent);
+                if(method?.type==='Call'&&method.callee===parent&&!method.isNew&&!method.constructorCall&&!method.optional&&
+                    !method.typeArguments?.length&&method.args?.length===2&&all(method.args,number))continue;
+            }
+            if(parent?.type==='Member'&&parent.object===node&&[...properties,'width','height','image','overlapsWith'].includes(parent.name))continue;
+            // Known controller retention: the canonical SDK controller.moveSprite
+            // call keeps the Sprite and writes only numeric velocities each
+            // frame. Admit only the actual namespace call with this Sprite as
+            // its first argument and 1-3 arguments whose speeds are omitted or
+            // independently proved Numbers. Other controller members/arities refuse.
+            if(call&&call.args[0]===node&&!call.isNew&&!call.constructorCall&&!call.optional&&!call.typeArguments?.length&&
+                call.callee?.type==='Member'&&!call.callee.optional&&call.callee.name==='moveSprite'&&
+                call.callee.object?.type==='Identifier'&&call.callee.object.name==='controller'&&graph.isSdkNamespace(call.callee)&&
+                call.args.length>=1&&call.args.length<=3&&all(call.args.slice(1),number))continue;
+
             if(call?.callee?.type==='Member'&&call.callee.name==='overlapsWith'&&call.args.length===1&&call.args[0]===node&&sprites(value(call.callee.object)))continue;
             return null;
         }
@@ -741,6 +1116,25 @@ function ordinarySpriteAyNumberReads(program) {
         if(!fn||parent?.type!=='Call'||parent.callee!==node)return null;
         if(!callers.has(fn))callers.set(fn,[]);callers.get(fn).push(parent);
     }
+    // Reuse one closed registration shape for both top-level allocations and
+    // actual source-entry resets. A normalized event literal denotes only the
+    // same existing SDK event; it grants no receiver or initialization fact.
+    const registrationFor=fn=>{
+        if(fn?.type!=='FunctionExpression'||fn.params.length||
+            ['async','isAsync','generator','isGenerator'].some(key=>fn[key]===true))return null;
+        const call=argumentCall(fn),owner=call&&owners.get(call),statement=owner&&statementAt(call,owner);
+        if(call?.type!=='Call'||call.isNew||call.constructorCall||call.optional||call.typeArguments?.length||
+            call.callee?.type!=='Member'||call.callee.optional||!graph.isSdkNamespace(call.callee)||
+            statement?.type!=='ExpressionStatement'||statement.expr!==call||!Array.isArray(call.args))return null;
+        if(path(call.callee)==='game.onUpdate')return call.args.length===1&&call.args[0]===fn?call:null;
+        if(!/^controller\.(?:A|B|up|down|left|right)\.onEvent$/.test(path(call.callee)||'')||call.args.length!==2||call.args[1]!==fn)return null;
+        const event=call.args[0];
+        if(event?.type==='Member'&&event.object?.type==='Identifier'&&event.object.name==='ControllerButtonEvent'&&
+            (event.name==='Pressed'||event.name==='Released'||event.name==='Repeated')&&graph.isSdkNamespace(event))return call;
+        if(event?.type!=='Number'||!['string','number'].includes(typeof event.value))return null;
+        const code=spriteEventNumber(event.value);
+        return code===BUTTON_EVENTS.Pressed||code===BUTTON_EVENTS.Released||code===BUTTON_EVENTS.Repeated?call:null;
+    };
     const dominates=(owner,position,active=new Set())=>{
         if(owner===program)return true;
         if(active.has(owner))return false;const next=new Set(active);next.add(owner);
@@ -748,10 +1142,26 @@ function ordinarySpriteAyNumberReads(program) {
             const sites=callers.get(owner)||[];
             return sites.length>0&&all(sites,call=>owners.get(call)===program?rank(call)>position:dominates(owners.get(call),position,next));
         }
-        const call=argumentCall(owner);
-        return owner.type==='FunctionExpression'&&!owner.params.length&&call?.type==='Call'&&call.args?.length===1&&call.args[0]===owner&&
-            !call.isNew&&!call.constructorCall&&!call.optional&&!call.typeArguments?.length&&call.callee?.type==='Member'&&!call.callee.optional&&path(call.callee)==='game.onUpdate'&&
-            graph.isSdkNamespace(call.callee)&&owners.get(call)===program&&rank(call)>position&&root(call)?.type==='ExpressionStatement';
+        const call=registrationFor(owner);if(!call)return false;
+        const caller=owners.get(call);
+        return caller===program?rank(call)>position:dominates(caller,position,next);
+    };
+    // A captured alias may be read by a closed getter called after its
+    // producer in the same startup. Every actual call must cross that precise
+    // statement frontier; an earlier, recursive or escaping entry denies it.
+    const enteredAfter=(owner,reset,active=new Set())=>{
+        if(!owner||owner===program||active.has(owner))return false;
+        const next=new Set(active);next.add(owner);
+        const registration=owner.type==='FunctionExpression'?registrationFor(owner):null;
+        const sites=owner.type==='FunctionDeclaration'?callers.get(owner)||[]:registration?[registration]:[];
+        return sites.length>0&&all(sites,call=>{
+            const caller=owners.get(call);
+            if(caller===reset.owner){
+                const statement=statementAt(call,caller),index=statement?reset.body.indexOf(statement):-1;
+                return index>reset.position;
+            }
+            return enteredAfter(caller,reset,next);
+        });
     };
     const globalInitializers=new Map();
     for(const statement of program.body)if(statement.type==='Declaration')for(const row of statement.decls||[]) {
@@ -759,10 +1169,21 @@ function ordinarySpriteAyNumberReads(program) {
         if(row.init&&value(row.init)?.size&&graph.declarationCountAt(statement,row.name)===1)globalInitializers.set(key,statement);
     }
     const inside=(node,container)=>{for(let at=node;at;at=parents.get(at))if(at===container)return true;return false;};
+    const resetReads=new Set();
+    for(const node of nodes)if(node.type==='Identifier'&&resets.has(binding(node))){
+        const parent=parents.get(node);
+        if(parent?.type==='Assignment'&&parent.left===node&&parent.op==='=')continue;
+        const reset=resets.get(binding(node)),owner=owners.get(node);
+        if(owner===reset.owner){
+            const statement=statementAt(node,owner),index=statement?reset.body.indexOf(statement):-1;
+            if(index<=reset.position)return null;
+        }else if(reset.owner===program?!dominates(owner,reset.position):!enteredAfter(owner,reset))return null;
+        resetReads.add(node);
+    }
     for(const node of nodes)if(node.type==='Identifier'&&value(node)?.size) {
         const parent=parents.get(node);
         if(parent?.type==='Assignment'&&parent.left===node&&parent.op==='=')continue;
-        if(graph.isInitializedAt(node))continue;
+        if(graph.isInitializedAt(node)||resetReads.has(node))continue;
         const key=binding(node),loop=loopBindings.get(key);
         if(loop&&inside(node,loop.body))continue;
         const declaration=globalInitializers.get(key),owner=owners.get(node),position=declaration?rank(declaration):-1;
@@ -777,15 +1198,76 @@ function ordinarySpriteAyNumberReads(program) {
             if(owner===program&&node!==site&&rank(node)<position||!dominates(owner,position))return null;
         }
     }
-    // A native ay read has a Number result independently of the declared
+    // A native numeric read has a Number result independently of the declared
     // formal's type. Use that already established result only inside this
-    // private validation graph, then require every actual ay writer to agree.
+    // private validation graph, then require every actual property writer to agree.
     // No caller-supplied option or annotation can seed this graph.
-    const writerGraph=analyseGraph(program,{parenthesized:true,unboundIsOpaque:true},
-        {has:node=>candidates.has(node),current:()=>true});
+    // Supply this operation's private candidate set to prevent recursive Sprite
+    // analysis. Independent Math/score Number producers may validate a writer;
+    // an opaque call or annotation still contributes no Number fact.
+    const numericCandidates=new Set([...candidates].filter(node=>node.name!=='flags'));
+    const flagsCandidates=new Set([...candidates].filter(node=>node.name==='flags'));
+    const writerGraph=analyseGraph(program,{parenthesized:true,unboundIsOpaque:true,ordinaryPrimitiveSdkNumbers:true},
+        {has:node=>numericCandidates.has(node),primitiveHas:node=>flagsCandidates.has(node),current:()=>true});
+    // Primitive flags form a separate invariant: the fresh Sprite starts with
+    // primitive flags and every actual store must preserve the whole primitive
+    // domain. It never supplies a Number-only result or a receiver/Array fact.
+    const primitiveTypes=new Set(['Number','String','Boolean','Null','Undefined']);
+    let helperSyntax=null,helperUsed=false;
+    const activeScalars=new Set(),scalarDeclarations=new Set(),implicitScalarWriters=new Set();
+    for(const node of nodes){
+        if(node.type==='Declaration')for(const row of node.decls||[])scalarDeclarations.add(binding(node,row.name));
+        if(node.type==='ForOf'&&node.body?.length)implicitScalarWriters.add(binding(node.body[0],node.name));
+    }
+    let primitiveWork=0;
+    const primitiveValue=(node,depth=0)=>{
+        if(!node||depth>128||++primitiveWork>10000)return false;
+        if(primitiveTypes.has(node.type))return true;
+        if(node.type==='Parenthesized')return primitiveValue(node.expression,depth+1);
+        if(flagsCandidates.has(node)||numericCandidates.has(node))return true;
+        if(node.type==='Binary'&&['+','-','*','/','%','**','&','|','^','<<','>>','>>>','==','!=','===','!==','<','>','<=','>='].includes(node.op))
+            return primitiveValue(node.left,depth+1)&&primitiveValue(node.right,depth+1);
+        if(node.type==='Unary'&&['+','-','~','!','typeof'].includes(node.op))return primitiveValue(node.argument,depth+1);
+        if(node.type==='Identifier'){
+            const kinds=graph.bindingKindsAt(node),key=binding(node),rows=writes.get(key);
+            if(kinds.size===1&&kinds.has('variable')){
+                // Explicit assignments do not inventory implicit loop element
+                // stores. A later compatible assignment cannot hide one.
+                if(!scalarDeclarations.has(key)||implicitScalarWriters.has(key))return false;
+                if(!rows?.length)return true; // only lexical Undefined, never Number
+                if(activeScalars.has(key))return true;
+                activeScalars.add(key);const ok=all(rows,row=>primitiveValue(row.value,depth+1));activeScalars.delete(key);return ok;
+            }
+        }
+        if(node.type==='Call'&&!node.isNew&&!node.constructorCall&&!node.optional&&!node.typeArguments?.length&&node.callee?.type==='Identifier'){
+            const fn=graph.immutableFunctionAt(node.callee);
+            if(fn&&schema(fn)&&fn.params.length===2&&node.args?.length===2){
+                const ret=fn.body?.length===1&&fn.body[0],expr=ret?.type==='Return'&&ret.value;
+                const plain=expr?.type==='Binary'&&['+','-','*','/','%','**','&','|','^','<<','>>','>>>'].includes(expr.op)&&
+                    expr.left?.type==='Identifier'&&expr.left.name===fn.params[0]&&expr.right?.type==='Identifier'&&expr.right.name===fn.params[1];
+                if(!plain&&!helperSyntax)helperSyntax=inspectNativeArrayAddHelpers(program);
+                const joined=!plain&&[...helperSyntax.helpers.values()].some(row=>row.declaration===fn);
+                if((plain||joined)&&all(node.args,arg=>primitiveValue(arg,depth+1))){helperUsed=helperUsed||joined;return true;}
+            }
+        }
+        const found=writerGraph.typesAt(node);
+        return found.size>0&&all([...found],type=>primitiveTypes.has(type));
+    };
+    // A getter prefix may update only independently primitive scalar storage.
+    // Receiver aliases, function bindings, calls with unknown results and
+    // control/abrupt paths remain outside this straight-line slice.
+    for(const {fn}of aliasReturns.values())for(const statement of fn.body.slice(0,-1)){
+        const assignment=statement.expr,key=binding(assignment.left),kinds=graph.bindingKindsAt(assignment.left);
+        if(kinds.size!==1||!kinds.has('variable')||values.get(key)?.size||!primitiveValue(assignment.right))return null;
+    }
     for(const node of nodes) {
         const lhs=node.type==='Assignment'?node.left:node.type==='Update'?node.argument:null;
         if(!candidates.has(lhs))continue;
+        if(lhs.name==='flags'){
+            if(node.type==='Update'){if(!['++','--'].includes(node.op))return null;continue;}
+            if(!['=','+=','-=','*=','/=','%=','&=','|=','^=','<<=','>>=','>>>='].includes(node.op)||!primitiveValue(node.right))return null;
+            continue;
+        }
         if(node.type==='Update') {if(!['++','--'].includes(node.op))return null;continue;}
         if(!['=','+=','-=','*=','/=','%='].includes(node.op))return null;
         const types=writerGraph.typesAt(node.right);
@@ -795,7 +1277,7 @@ function ordinarySpriteAyNumberReads(program) {
     const current=()=>{
         if(expired)return false;
         try {
-            if(!spriteAyArrayCurrent())expired=true;
+            if(!spriteAyArrayCurrent()||helperUsed&&!helperSyntax.current())expired=true;
             else {
                 const now=physicalUpdateSourceSnapshot(program);
                 if(!now||now.shape!==initial.shape||now.objects.length!==initial.objects.length||now.opaque.length!==initial.opaque.length)expired=true;
@@ -805,7 +1287,7 @@ function ordinarySpriteAyNumberReads(program) {
         }catch(error){expired=true;throw error;}
         return !expired;
     };
-    return Object.freeze({has:node=>candidates.has(node)&&current(),current});
+    return Object.freeze({has:node=>numericCandidates.has(node)&&current(),primitiveHas:node=>flagsCandidates.has(node)&&current(),current});
 }
 
 const metadata=new Set(['originalBody','parameterDefaults','paramTypes','typeParameters','returnType','assertedType','bwProcedureConstraintSource','optionalParams','parameterProperties','sourceReferenceDeclarations','sourceCallableDeclarations','sourceScalarDeclarations']);
@@ -1110,4 +1592,309 @@ function proveImageArrayCloneEffectEntries(program,createGraph,sourceContext) {
         return Number.isFinite(expected)&&expected>0&&votes.get(call)===true&&visits.get(call)===expected||invariantVotes.has(call);
     }});
     });
+}
+
+
+// Shared complete validator: public entry retains its original eager graph and
+// option observations. No caller can supply a graph/factory to this engine.
+function primitiveConstraintGraphOptions(program,ordinaryPrimitiveSdkNumbers,sceneClockNumbers,closedOrdinaryEntries=false) {
+ // A comparison, `!` or typeof of proved primitive operands is a primitive
+ // producer for this consumer (exported Code booleans are `0 < 1` helpers).
+ // A callback closure is allocated after the bindings already initialized
+ // at that point; they stay initialized inside its body.
+ // Structural binary helpers (`function h(a,b){return a OP b}` at the top
+ // level, declared once and never written) are specialized per call site, as
+ // the callable source gate does: each call is Number only from Number operands.
+ // Fixed bitwise helpers use their actual body normal-return Number fact instead;
+ // specializing them by numeric operands would incorrectly reject Array input.
+ const helperNames=new Map();
+ for(const fn of program.body||[]){
+  const value=fn?.type==='FunctionDeclaration'&&fn.params?.length===2&&new Set(fn.params).size===2&&fn.body?.length===1&&fn.body[0].type==='Return'&&fn.body[0].value;
+  if(value?.type==='Binary'&&['+','-','*','/','%'].includes(value.op)&&value.left?.type==='Identifier'&&value.right?.type==='Identifier'&&value.left.name===fn.params[0]&&value.right.name===fn.params[1])
+   helperNames.set(fn.name,helperNames.has(fn.name)?null:fn);
+  // The exported runtime-dispatch addition helper is `+` for non-Array
+  // operands; Number operands are never Arrays, so the same rule holds.
+  else if(isRuntimeDispatchAddDeclaration(fn))helperNames.set(fn.name,helperNames.has(fn.name)?null:fn);
+ }
+ const written=new Set();const scanWrites=node=>{if(!node||typeof node!=='object')return;if(Array.isArray(node)){node.forEach(scanWrites);return;}
+  if(node.type==='Assignment'||node.type==='Update'){let target=node.type==='Assignment'?node.left:node.argument;while(['Member','Index'].includes(target?.type))target=target.object;if(target?.type==='Identifier')written.add(target.name);}
+  if(node.type==='Declaration')for(const decl of node.decls||[])written.add(decl.name);
+  if(Array.isArray(node.params))for(const name of node.params)written.add(name);
+  for(const child of Object.values(node))if(child&&typeof child==='object')scanWrites(child);};
+ scanWrites(program);
+ const numericHelpers=new Set([...helperNames].filter(([name,fn])=>fn&&!written.has(name)).map(([,fn])=>fn));
+ return {unboundIsOpaque:true,opaqueDeclarationValues:true,ordinaryPrimitiveSdkNumbers,sceneClockNumbers,arrayCallbackParameters:true,arrayLoopEntries:true,provenArrayLength:true,primitiveComparisons:true,closureEntries:true,numericHelpers,closedOrdinaryEntries};
+}
+export function validateProcedureConstraintSource(program,{onlyFunctions=null,ordinaryPrimitiveSdkNumbers=false,sceneClockNumbers=false,closedOrdinaryEntries=false}={}) {
+ const graph=analyseSourceValues(program,primitiveConstraintGraphOptions(program,ordinaryPrimitiveSdkNumbers,sceneClockNumbers,closedOrdinaryEntries),null,null,true);
+ return validatePrimitiveConstraintGraph(program,graph,onlyFunctions);
+}
+function validatePrimitiveConstraintGraph(program,graph,onlyFunctions) {
+ const constraintTypes=graph.constraintTypesAt||graph.typesAt;
+ const functions=new Map(),uses=[],calls=[],writes=[];
+ const ordinary=new Set((program.body||[]).filter(node=>node.type==='FunctionDeclaration'&&(!onlyFunctions||onlyFunctions.has(node.name))));
+ const walk=(node,parent=null,key=null)=>{
+  if(!node||typeof node!=='object')return;
+  if(Array.isArray(node)){node.forEach(child=>walk(child,parent,key));return;}
+  if(ordinary.has(node)) {const selected=constraints(node);if(selected.length)functions.set(node,{selected,escaped:false});}
+  if(node.type==='Identifier')uses.push({node,parent,key});
+  if(node.type==='Call')calls.push(node);
+  if(node.type==='Assignment'||node.type==='Update')writes.push(node);
+  for(const [name,value] of Object.entries(node))if(value&&typeof value==='object')walk(value,node,name);
+ };
+ walk(program);
+ // The callable/named/registered-callback lanes retain escaped function values.
+ // This ordinary declaration protocol only handles truly unescaped declarations.
+ for(const {node,parent,key} of uses) {
+  const declaration=graph.unchangedFunctionAt(node),entry=functions.get(declaration);
+  if(entry&&!(parent?.type==='Call'&&key==='callee'))entry.escaped=true;
+ }
+ const diagnostics=[];
+ for(const [fn,entry] of functions) {
+  if(entry.escaped)continue;
+  const requireTypes=(types,type,label)=>{if(type==='Any')return;if(!types.size||[...types].some(actual=>actual!==type))diagnostics.push(`Procedure parameter constraint: ${label} requires ${type} from actual producers`);};
+  // Default metadata is not a producer. Check the actual conditional RHS on
+  // the same source AST; only this bounded primitive default slice is selected.
+  for(let index=0;index<(fn.parameterDefaults||[]).length;index++){
+   const value=fn.body[index].consequent[0].expr.right,types=constraintTypes(value),parameterIndex=fn.params.indexOf(fn.parameterDefaults[index].name);
+   const formalBindings=new Map(fn.params.map((name,index)=>[graph.bindingOf(fn.body[0],name),index]).filter(([binding])=>binding));
+   const inspect=node=>{if(!node||typeof node!=='object')return;if(Array.isArray(node)){node.forEach(inspect);return;}if(node.type==='Identifier'&&formalBindings.has(graph.bindingOf(node))&&formalBindings.get(graph.bindingOf(node))>=parameterIndex)diagnostics.push(`Procedure parameter constraint: ${fn.name} default cannot reference its own or a later formal`);for(const child of Object.values(node))if(child&&typeof child==='object')inspect(child);};inspect(value);
+   if(!types.size||[...types].some(type=>!['Number','String','Boolean','Null','Undefined'].includes(type)))diagnostics.push(`Procedure parameter constraint: ${fn.name} default requires actual primitive producers`);
+  }
+  const incoming=calls.filter(call=>graph.unchangedFunctionAt(call)===fn);
+  for(const call of incoming) {
+   if(call.isNew||call.typeArguments?.length||call.args.length>fn.params.length||fn.params.slice(call.args.length).some(name=>!fn.optionalParams?.includes(name)||fn.paramTypes?.[name]?.text!=='any')){diagnostics.push('Procedure parameter constraint: actual call argument count/shape differs');continue;}
+   if(graph.ordinaryEntryUnreachableAt?.(call))continue;
+   for(const constraint of entry.selected)requireTypes(constraintTypes(call.args[fn.params.indexOf(constraint.name)]),constraint.type,`${fn.name}.${constraint.name}`);
+  }
+  // All assignments into an actual formal must discharge its contract. Its
+  // declared type is deliberately absent from the actual RHS producer proof.
+  const formalBindings=new Map(),anchor=fn.body?.[0];
+  for(const name of fn.params)if(anchor&&graph.bindingKindsAt(anchor,name).has('parameter'))formalBindings.set(graph.bindingOf(anchor,name),name);
+  for(const writer of writes) {
+   const lhs=writer.type==='Update'?writer.argument:writer.left;
+   if(lhs?.type!=='Identifier')continue;const name=formalBindings.get(graph.bindingOf(lhs)),constraint=entry.selected.find(c=>c.name===name);if(!constraint)continue;
+   if(writer.type==='Update'||writer.op!=='='){
+    if(constraint.type==='Any')continue;
+    const numeric=constraint.type==='Number'&&(writer.type==='Update'?['++','--'].includes(writer.op):['+=','-=','*=','/=','%=','|=','&=','^=','<<=','>>=','>>>='].includes(writer.op));
+    if(!numeric)diagnostics.push(`Procedure parameter constraint: ${fn.name}.${name} compound writer differs`);
+    else if(writer.type!=='Update')requireTypes(constraintTypes(writer.right),'Number',`${fn.name}.${name} compound writer`);
+   }else requireTypes(constraintTypes(writer.right),constraint.type,`${fn.name}.${name} writer`);
+  }
+ }
+ return Object.freeze([...new Set(diagnostics)]);
+}
+
+// Compiler-only CameraProperty derivation. These records and graphs never leave
+// this module. The complete entry below is called only by the synchronous owned
+// parser/normalizer preparation path; own-data rows are not a Proxy-origin token.
+const cameraRealm=globalThis,cameraKeys=Reflect.ownKeys,cameraDescriptor=Object.getOwnPropertyDescriptor;
+const cameraPrototype=Object.getPrototypeOf,cameraOwn=Object.hasOwn,cameraSame=Object.is,cameraApply=Reflect.apply;
+const CameraSet=Set,CameraWeakSet=WeakSet,cameraFreeze=Object.freeze,cameraDefine=Object.defineProperty;
+const cameraWeakHas=WeakSet.prototype.has,cameraWeakAdd=WeakSet.prototype.add;
+const cameraSetHas=Set.prototype.has,cameraSetAdd=Set.prototype.add,cameraSetDelete=Set.prototype.delete;
+const cameraSetValues=Set.prototype.values,cameraSetNext=cameraPrototype(new Set().values()).next;
+const cameraObjectPrototype=Object.prototype,cameraArrayPrototype=Array.prototype;
+const cameraRow=object=>{
+    const names=cameraKeys(object),fields=[];
+    for(let i=0;i<names.length;i++)fields[i]=cameraDescriptor(object,names[i]);
+    return {object,parent:cameraPrototype(object),names,fields};
+};
+const cameraRowCurrent=row=>{
+    const names=cameraKeys(row.object);
+    if(cameraPrototype(row.object)!==row.parent||names.length!==row.names.length)return false;
+    for(let i=0;i<names.length;i++){
+        if(names[i]!==row.names[i])return false;
+        const before=row.fields[i],now=cameraDescriptor(row.object,names[i]);
+        if(!now||now.enumerable!==before.enumerable||now.configurable!==before.configurable||
+            cameraOwn(now,'value')!==cameraOwn(before,'value'))return false;
+        if(cameraOwn(before,'value')){
+            if(now.writable!==before.writable||!cameraSame(now.value,before.value))return false;
+        }else if(now.get!==before.get||now.set!==before.set)return false;
+    }
+    return true;
+};
+const cameraIntrinsicObjects=[Object,Array,Map,Set,WeakMap,WeakSet,Reflect,Function,String,Number,RegExp,JSON,
+    Object.prototype,Array.prototype,Map.prototype,Set.prototype,WeakMap.prototype,WeakSet.prototype,
+    Function.prototype,String.prototype,Number.prototype,RegExp.prototype];
+// Include actual native iterator prototypes and every shared ancestor.
+for(const iterator of [[][Symbol.iterator](),new Map().entries(),new Set().values()]){
+    let proto=cameraPrototype(iterator);
+    while(proto){if(!cameraIntrinsicObjects.includes(proto))cameraIntrinsicObjects.push(proto);proto=cameraPrototype(proto);}
+}
+const cameraIntrinsicRows=[];
+for(let i=0;i<cameraIntrinsicObjects.length;i++)cameraIntrinsicRows[i]=cameraRow(cameraIntrinsicObjects[i]);
+const cameraGlobalNames=['globalThis','Object','Array','Map','Set','WeakMap','WeakSet','Reflect','Function','String','Number','RegExp','JSON'];
+const cameraGlobalFields=[];
+for(let i=0;i<cameraGlobalNames.length;i++)cameraGlobalFields[i]=cameraDescriptor(cameraRealm,cameraGlobalNames[i]);
+const cameraIntrinsicsCurrent=()=>{
+    for(let i=0;i<cameraIntrinsicRows.length;i++)if(!cameraRowCurrent(cameraIntrinsicRows[i]))return false;
+    for(let i=0;i<cameraGlobalNames.length;i++){
+        const before=cameraGlobalFields[i],now=cameraDescriptor(cameraRealm,cameraGlobalNames[i]);
+        if(!now||!cameraOwn(now,'value')||!cameraOwn(before,'value')||now.value!==before.value||
+            now.enumerable!==before.enumerable||now.configurable!==before.configurable||now.writable!==before.writable)return false;
+    }
+    return true;
+};
+// Necessary-candidate filter only, at the same private owned-data boundary.
+// Absence selects the complete original validator; presence proves nothing.
+// Captured operations avoid mutable iteration helpers and inherited index setters.
+function compilerMayHaveCameraMember(program){
+    try{
+        const pending=[program],seen=new CameraWeakSet();
+        while(pending.length){
+            const value=pending[pending.length-1];pending.length--;
+            if(!value||typeof value!=='object')continue;
+            if(cameraApply(cameraWeakHas,seen,[value]))continue;
+            cameraApply(cameraWeakAdd,seen,[value]);
+            const proto=cameraPrototype(value);
+            if(proto!==cameraObjectPrototype&&proto!==cameraArrayPrototype&&proto!==null)return true;
+            const type=cameraDescriptor(value,'type'),object=cameraDescriptor(value,'object');
+            if(type&&cameraOwn(type,'value')&&type.value==='Member'&&object&&cameraOwn(object,'value')&&object.value&&typeof object.value==='object'){
+                const kind=cameraDescriptor(object.value,'type'),name=cameraDescriptor(object.value,'name');
+                if(kind&&cameraOwn(kind,'value')&&kind.value==='Identifier'&&name&&cameraOwn(name,'value')&&name.value==='CameraProperty')return true;
+            }
+            const keys=cameraKeys(value);
+            for(let i=0;i<keys.length;i++){
+                const field=cameraDescriptor(value,keys[i]);
+                if(typeof keys[i]!=='string'||!field||!cameraOwn(field,'value'))return true;
+                if(field.value&&typeof field.value==='object')cameraDefine(pending,pending.length+'',{value:field.value,writable:true,enumerable:true,configurable:true});
+            }
+        }
+        return false;
+    }catch{return true;}
+}
+function compilerCameraNumberInput(program){
+    let expired=false;const rows=[];
+    const current=()=>{
+        if(expired)return false;
+        try{
+            if(!cameraIntrinsicsCurrent()){expired=true;return false;}
+            for(let i=0;i<rows.length;i++)if(!cameraRowCurrent(rows[i])){expired=true;return false;}
+            if(!cameraIntrinsicsCurrent()){expired=true;return false;}
+            return true;
+        }catch{expired=true;return false;}
+    };
+    try{
+        if(!cameraIntrinsicsCurrent())return null;
+        const seen=new CameraSet(),active=new CameraSet(),pending=[{value:program,depth:0,leave:false}];let slots=0;
+        while(pending.length){
+            const item=pending[pending.length-1];pending.length--;const value=item.value;
+            if(value===null||typeof value!=='object'){
+                if(['function','symbol','bigint'].includes(typeof value))return null;
+                continue;
+            }
+            if(item.leave){cameraApply(cameraSetDelete,active,[value]);continue;}
+            if(cameraApply(cameraSetHas,active,[value]))return null;
+            if(cameraApply(cameraSetHas,seen,[value]))continue;
+            if(item.depth>128||rows.length>=50000)return null;
+            const parent=cameraPrototype(value);
+            if(parent!==cameraObjectPrototype&&parent!==cameraArrayPrototype&&parent!==null)return null;
+            const row=cameraRow(value);if((slots+=row.names.length)>500000)return null;
+            cameraApply(cameraSetAdd,seen,[value]);cameraApply(cameraSetAdd,active,[value]);rows[rows.length]=row;
+            pending[pending.length]={value,depth:item.depth,leave:true};
+            for(let i=row.names.length-1;i>=0;i--){
+                const key=row.names[i],field=row.fields[i];
+                if(typeof key!=='string'||!field||!cameraOwn(field,'value'))return null;
+                pending[pending.length]={value:field.value,depth:item.depth+1,leave:false};
+            }
+        }
+        if(!current()||program?.type!=='Program'||!Array.isArray(program.body))return null;
+        const metadata=new CameraSet(['originalBody','parameterDefaults','paramTypes','typeParameters','returnType','assertedType',
+            'bwProcedureConstraintSource','optionalParams','parameterProperties','sourceReferenceDeclarations','sourceCallableDeclarations','sourceScalarDeclarations']);
+        const nodes=[],parents=new WeakMap(),executables=new CameraWeakSet();let unsafe=false;
+        const collect=(node,parent=null)=>{
+            if(!node||typeof node!=='object')return;
+            if(executables.has(node)){unsafe=true;return;}executables.add(node);
+            if(Array.isArray(node)){for(const child of node)collect(child,parent);return;}
+            nodes.push(node);parents.set(node,parent);
+            for(const[key,value]of Object.entries(node))if(!metadata.has(key))collect(value,node);
+        };
+        collect(program);if(unsafe)return null;
+        // Reuse the existing lexical SDK resolver, after proving that every
+        // binding-bearing executable form is covered at this owned normalizer
+        // seam. Residual destructuring/namespace/enum/ForOf and unknown forms
+        // decline this optional derivation rather than inventing a binding.
+        const knownForms=new CameraSet(['Program','Block','Declaration','FunctionDeclaration','FunctionExpression',
+            'Class','For','While','If','Switch','ExpressionStatement','Return','Break','Continue',
+            'Identifier','Member','Index','Call','Assignment','Update','Binary','Unary','Conditional',
+            'Array','Object','Number','String','Boolean','Null','Undefined','Template','Interface']);
+        for(const node of nodes){
+            if(node.type!==undefined&&!knownForms.has(node.type))unsafe=true;
+            if(node.type==='Declaration'&&(!['let','const','var'].includes(node.kind)||!Array.isArray(node.decls)||
+                node.decls.some(decl=>typeof decl.name!=='string')))unsafe=true;
+            if(node.type==='FunctionDeclaration'||node.type==='FunctionExpression'){
+                if(!Array.isArray(node.params)||node.params.some(name=>typeof name!=='string')||!Array.isArray(node.body)||
+                    node.type==='FunctionDeclaration'&&typeof node.name!=='string')unsafe=true;
+            }
+            if(node.type==='Object'&&!Array.isArray(node.props))unsafe=true;
+            if(node.type==='Template'&&typeof node.tag==='string'&&
+                (node.tag==='CameraProperty'||node.tag.startsWith('CameraProperty.')))unsafe=true;
+            if(node.type==='Class'){
+                if(node.unsupported?.length)unsafe=true;
+                if(typeof node.name!=='string'||!Array.isArray(node.fields)||!Array.isArray(node.methods))unsafe=true;
+                for(const method of [...(node.methods||[]),...(node.ctor?[node.ctor]:[])]){
+                    if(!Array.isArray(method.params)||method.params.some(name=>typeof name!=='string')||!Array.isArray(method.body))unsafe=true;
+                }
+            }
+        }
+        if(unsafe||!current())return null;
+        const sdk=staticSdkNamespaceReceivers(program);
+        const candidates=new CameraWeakSet();let candidateCount=0;
+        for(const node of nodes){
+            const parent=parents.get(node);
+            // These dynamic lexical/reflective constructs remain uncertain.
+            // Unrelated ordinary calls, callbacks, arrays, classes and local
+            // writes do not execute during compilation and cannot alter the
+            // canonical EnumMember's compile-time constant value.
+            if(node.type==='Identifier'&&['eval','Function'].includes(node.name))unsafe=true;
+            if(node.type!=='Identifier'||node.name!=='CameraProperty'||!sdk.has(node))continue;
+            const member=parent;
+            if(member?.type!=='Member'||member.object!==node||!sdk.has(member)||
+                !cameraOwn(CAMERA_PROPERTIES,member.name)||member.optional||member.computed||node.assertedType||member.assertedType){unsafe=true;continue;}
+            const owner=parents.get(member);
+            if(owner?.type==='Assignment'&&owner.left===member||owner?.type==='Update'&&owner.argument===member||
+                owner?.type==='Unary'&&owner.op==='delete'||owner?.type==='Call'&&owner.callee===member){unsafe=true;continue;}
+            let ancestor=owner;
+            while(ancestor){
+                if(ancestor.assertedType||ancestor.type==='As'||ancestor.type==='TypeAssertion'){unsafe=true;break;}
+                ancestor=parents.get(ancestor);
+            }
+            candidates.add(member);candidateCount++;
+        }
+        if(unsafe||!candidateCount||!current())return null;
+        return cameraFreeze({current,has:node=>cameraApply(cameraWeakHas,candidates,[node])&&current()});
+    }catch{return null;}
+}
+
+/** Internal COMPLETE compiler-owned derivation, not a public AST proof API.
+ * The only production client is prepareConstraints' existing compiler-owned
+ * branch after actual parsing/owned normalizers. No graph or cheap getter escapes.
+ * External low-level analysis and public validation keep the original path.
+ */
+export function validateCompilerOwnedProcedureConstraintSource(program,{onlyFunctions=null,ordinaryPrimitiveSdkNumbers=false,sceneClockNumbers=false,closedOrdinaryEntries=false}={}){
+    const original=()=>validateProcedureConstraintSource(program,{onlyFunctions,ordinaryPrimitiveSdkNumbers,sceneClockNumbers,closedOrdinaryEntries});
+    if(!ordinaryPrimitiveSdkNumbers||!compilerMayHaveCameraMember(program))return original();
+    let selected=onlyFunctions,eligible=true;
+    try{
+        if(!cameraIntrinsicsCurrent())eligible=false;
+        // No foreign caller Set method runs on the internal path. The actual
+        // prepare client makes this native Set locally; uncertain inputs fallback.
+        if(eligible&&selected!==null){
+            if(cameraPrototype(selected)!==CameraSet.prototype||cameraKeys(selected).length)eligible=false;
+            else{
+                const copied=new CameraSet(),iterator=cameraApply(cameraSetValues,selected,[]);
+                for(;;){const item=cameraApply(cameraSetNext,iterator,[]);if(item.done)break;cameraApply(cameraSetAdd,copied,[item.value]);}
+                if(!cameraIntrinsicsCurrent())eligible=false;selected=copied;
+            }
+        }
+    }catch{eligible=false;}
+    // Invoke fallback outside the observer catch. Original semantic errors and
+    // getter/callback side effects are observed exactly once, never retried.
+    if(!eligible)return original();
+    const proof=compilerCameraNumberInput(program);if(!proof)return original();
+    const options=primitiveConstraintGraphOptions(program,ordinaryPrimitiveSdkNumbers,sceneClockNumbers,closedOrdinaryEntries);
+    const graph=analyseSourceValues(program,options,null,proof,true);
+    const diagnostics=validatePrimitiveConstraintGraph(program,graph,selected);
+    return proof.current()?diagnostics:original();
 }

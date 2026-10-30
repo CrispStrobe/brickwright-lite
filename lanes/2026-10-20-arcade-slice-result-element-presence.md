@@ -1,6 +1,9 @@
 ## Arcade slice-result element presence — 2026-10-20
 
-CLAIM CANDIDATE — Codex Arcade Array/export lane. Merge before implementation.
+CLAIM MERGED in #1148 / SOURCE CANDIDATE — Codex Arcade Array/export lane.
+The complete affected pure module passes all 50 tests with no skips or TODOs.
+Native/original slice behavior, fresh SB3 and visible authoring qualification
+remain pending; no whole-corpus classification is changed.
 An unchanged complete four-group, twelve-program pure baseline has two failing
 positive groups and two passing refusal groups. Literal bounded slice results
 lose nested Array presence during export; the importer and Creator retain them.

@@ -22,7 +22,13 @@ test('installed Procedure exporter uses the real node_modules VM model without o
  try{
   mkdirSync(path.dirname(source),{recursive:true});mkdirSync(path.dirname(model),{recursive:true});
   writeFileSync(path.join(gui,'package.json'),'{}');writeFileSync(path.join(gui,'node_modules/scratch-vm/package.json'),'{"name":"scratch-vm","version":"0.0.0"}');
-  for(const name of ['procedure-constraint-export.js','console-capture-provenance.js'])copyFileSync(path.join(root,'overlay/scratch-gui/src/lib/bw-makecode',name),path.join(path.dirname(source),name));
+  // Exact local import closure of this installed exporter. Keep the VM model
+  // exclusively in its real node_modules location, with no resolver fallback.
+  const modules=['procedure-constraint-export.js','console-capture-provenance.js',
+   'closed-ordinary-project-entry.js','project-json-snapshot.js','ordinary-export-symbols.js',
+   'arcade-namespace-members.js','arcade-runtime.js','sdk-class-descriptors.js',
+   'sdk-font-value-descriptors.js','sdk-font-export-types.js','sdk-sprite-class-descriptors.js','sdk-dialog-class-descriptors.js'];
+  for(const name of modules)copyFileSync(path.join(root,'overlay/scratch-gui/src/lib/bw-makecode',name),path.join(path.dirname(source),name));
   copyFileSync(path.join(root,'overlay/scratch-vm/src/util/bw-procedure-constraint-model.js'),model);
   assert.deepEqual(readFileSync(model),readFileSync(path.join(root,'overlay/scratch-vm/src/util/bw-procedure-constraint-model.js')));
   const result=run(source,gui);assert.equal(result.status,0,result.stdout+result.stderr);assert.match(result.stdout,/resolved/);

@@ -26,7 +26,20 @@ on that reviewed candidate. Preserve original failures and all output/resource
 and cleanup checks; no private inputs or live assessment are enabled by this
 registration. Normal exact-head checks and matched-head landing still apply.
 
-Status: claim merged in [PR1167](https://github.com/CrispStrobe/brickwright-lite/pull/1167); controller implementation and qualification in progress. No credential setup, dispatch or complete-corpus result.
+Status: the claim and inert registration are merged in
+[PR1167](https://github.com/CrispStrobe/brickwright-lite/pull/1167) and
+[PR1186](https://github.com/CrispStrobe/brickwright-lite/pull/1186).
+The first metadata-only dispatch returned failure before a run could be
+admitted; its error text was not retained, so its cause is unestablished.
+A separate reviewed candidate fixes an invalid job environment reference by
+binding the temporary directory in step environments, where GitHub permits
+`runner.temp`. See [GitHub context availability](https://docs.github.com/en/actions/reference/workflows-and-actions/contexts#context-availability).
+That source correction is not a successful dispatch or isolation result.
+Controller qualification remains in progress: the public tool policy has no
+admitted runner/tool profile and the fixed nine-control kernel cohort remains
+unqualified. No private input, credential setup or complete-corpus result is
+enabled. Preserve the failed dispatch and the one-shot operation boundary;
+a source update alone does not authorize repeating a consumed event.
 
 Honor actual configured environment policies; this proposal introduces no mandatory human reviewer or confirmation gate. Scope a manual, reviewed Actions workflow and bounded input-admission, isolated-converter and ciphertext-only upload controllers. Use a repository-specific read-only deploy key, remove credential access before conversion, and admit every original raw and contextual subject without filtering. Use the already selected private input repository; a separate minimal input repository is an optional alternative, not a prerequisite.
 
@@ -78,3 +91,19 @@ with saved-data review of all 12 launched operations. It does not provide
 namespace or credential isolation. Persistent bounded sandbox storage, actual
 isolation controls, normal provider admission and the manual workflow remain
 pending before the complete assessment.
+
+## Registration landed; first metadata attempt — 2026-10-22
+
+[PR1186](https://github.com/CrispStrobe/brickwright-lite/pull/1186) is merged.
+All 29 enabled checks on the reviewed head succeeded; six conditional jobs were
+skipped. The actual merge tree and parents matched the reviewed composition,
+and the registered manual workflow is active. This qualifies registration only.
+
+The separately reviewed metadata-only candidate was published normally. Its one
+dispatch command failed, and the subsequent run list contained no dispatched
+run. The command wrapper did not retain the original error text; the cause is
+unestablished. Preserve that evidence limitation. No retry, runner profile,
+kernel-control result, private input or complete assessment is admitted by this
+attempt. Recover the dispatch diagnostic under an explicitly scoped next
+operation before authorizing further hosted qualification; do not guess tool
+identities or silently repeat the event.

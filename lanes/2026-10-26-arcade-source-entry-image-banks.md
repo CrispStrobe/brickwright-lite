@@ -1,6 +1,7 @@
 # Source-entry Image-bank allocation and indexed effects
 
-Status: CLAIMED; merge before implementation.
+Status: DONE — source implementation and focused source controls complete in
+the integration candidate; hosted runtime/editor qualification and landing pending.
 Owner: Arcade integration, continuing #1128 after its current hosted intake.
 Base: main `2318dd8e26ae7c41b928b4d8a537d42f929f1412`.
 

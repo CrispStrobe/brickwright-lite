@@ -60,3 +60,17 @@ test('domain query keeps unchanged inspection behavior and rejects lifecycle or 
  f.service.snapshot();f.service.invalidate();assert.throws(()=>query(f,['VALUE']),/inactive native owner/);
  const g=fixture();g.service.dispose();g.service.snapshot();assert.throws(()=>query(g,['VALUE']),/inactive native owner/);
 });
+test('Arcade math reporters supply their actual result domains to a formal',()=>{
+ const math=(op,a,b)=>{const f=formalFixture(),x=f.blocks;
+  x.incoming={id:'incoming',opcode:'arcade_mathBinary',parent:'call',inputs:{OP:{block:'op'},A:{block:'a'},B:{block:'b'}},fields:{}};
+  x.op={id:'op',opcode:'text',parent:'incoming',inputs:{},fields:{TEXT:{value:op}}};
+  x.a={id:'a',parent:'incoming',inputs:{},...a};x.b={id:'b',parent:'incoming',inputs:{},...b};f.service.snapshot();return f;};
+ const num=value=>({opcode:'math_number',fields:{NUM:{value}}}),txt=value=>({opcode:'text',fields:{TEXT:{value}}});
+ const request={procedure:'hold %s',formal:'value'},domains=f=>new Set(query(f,[request])[0]);
+ assert.deepEqual(domains(math('min',num('19'),num('14'))),new Set(['number']));
+ // min/max return one actual operand, so a text operand stays a String.
+ assert.deepEqual(domains(math('max',num('1'),txt('2'))),new Set(['number','string']));
+ assert.deepEqual(domains(math('atan2',txt('1'),num('2'))),new Set(['number']));
+ assert.throws(()=>query(math('pow',num('1'),num('2')),[request]),/domain evidence/);
+ assert.throws(()=>query(math('min',{opcode:'arcade_createSprite',fields:{}},num('2')),[request]),/domain evidence/);
+});

@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
 import {runProgram,stepFrames,clearStrayTimers} from './helpers/bw-vm.mjs';
+import {arrayOperation} from './helpers/arrays-current-operation.mjs';
 import {importGuiDependency} from './helpers/bw-integrated.mjs';
 import {runPxtArcade} from './helpers/pxt-arcade-runtime.mjs';
 const save=(name,value)=>{if(process.env.NAMED_ITEM_EVIDENCE){fs.mkdirSync(process.env.NAMED_ITEM_EVIDENCE,{recursive:true});fs.writeFileSync(path.join(process.env.NAMED_ITEM_EVIDENCE,name),JSON.stringify(value,(_key,v)=>v===undefined?{evidenceUndefined:true}:v,2));}};
@@ -69,8 +70,8 @@ test('actual owned native getMulti uses JSON while get2D and pop retain aggregat
         const dispatch=(await importGuiDependency('scratch-vm/src/dispatch/central-dispatch.js')).default;
         const label=run.vm.extensionManager._loadedExtensions.get('arrays'),adapter=dispatch.services[label],actual=adapter._inst;
         assert.equal(actual._runtime,run.vm.runtime,'capture the actual instance owned by this VM');
-        assert.equal(actual.getMulti({NAME:'matrix',INDICES:'[0,0]'}),'["word",false,null]');
-        const row=actual.get2D({NAME:'matrix',ROW:0,COL:0});assert.equal(Array.isArray(row),true);assert.equal(BW.isReference(row),false);assert.deepEqual(row,['word',false,null]);
-        const popped=actual.pop({NAME:'matrix'});assert.equal(Array.isArray(popped),true);assert.equal(BW.isReference(popped),false);assert.equal(popped[0],row);
+        assert.equal(await arrayOperation(run.vm,'getMulti',{NAME:'matrix',INDICES:'[0,0]'}),'["word",false,null]');
+        const row=await arrayOperation(run.vm,'get2D',{NAME:'matrix',ROW:0,COL:0});assert.equal(Array.isArray(row),true);assert.equal(BW.isReference(row),false);assert.deepEqual(row,['word',false,null]);
+        const popped=await arrayOperation(run.vm,'pop',{NAME:'matrix'});assert.equal(Array.isArray(popped),true);assert.equal(BW.isReference(popped),false);assert.equal(popped[0],row);
     }finally{run.vm.stopAll();run.vm.quit();clearStrayTimers();}
 });

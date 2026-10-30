@@ -32,6 +32,7 @@
 // (`legospike_turbowarp_transpile.js`). Deriving one from the other would mean
 // guessing, and a gate that guesses its own subject is worse than no gate. The
 // claim "this bundle is that file" is exactly what should be reviewable.
+import {registeredArraysSource} from '../lib/arrays-carrier.mjs';
 import {createHash} from 'node:crypto';
 import {readFileSync, existsSync} from 'node:fs';
 import {resolve, dirname} from 'node:path';
@@ -148,8 +149,9 @@ export const LITE_ONLY = {
  * has been argued for in review rather than one that arrived unannounced —
  * which is the only difference between this and the situation the audit found.
  */
-export const ALLOWED_DIVERGENCE = {
-};
+// SPIKE's encoder-based movement wait is preserved byte-for-byte in the
+// selected supplier (#51, retained by #62), so it no longer needs a divergence.
+export const ALLOWED_DIVERGENCE = {};
 
 /**
  * The extension source a bundle holds, or null if it is not a bundle at all.
@@ -172,6 +174,7 @@ export const bundleSource = function (id) {
     const p = bundlePath(id);
     if (!existsSync(p)) return null;
     const text = readFileSync(p, 'utf8');
+    if (id === 'arrays') return registeredArraysSource(text);
     if (!text.includes('makeExt(')) return null;
 
     let captured = null;

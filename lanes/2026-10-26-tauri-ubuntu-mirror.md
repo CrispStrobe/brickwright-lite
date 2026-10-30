@@ -1,6 +1,7 @@
 # Tauri test bootstrap: align the existing official Ubuntu mirror policy
 
-Status: CLAIMED; merge this scope before implementation.
+Status: DONE — implementation after merged claim #1438; final integration
+head still requires its enabled hosted Tauri checks.
 Owner: Arcade integration, carried into the next reviewed #1128 source head.
 Base: main `a7f688940f96ac89771dfc533ea17dab635703b5`.
 
@@ -37,3 +38,11 @@ integration head with the actually enabled hosted Tauri checks. Existing checks
 on another head do not qualify it. Use the integration's normal push; no extra
 full-browser label or dispatch is needed for this bootstrap edit. Merge only
 after all enabled exact-head checks pass and tree/parents match the review.
+
+## Source controls
+
+The existing four mirror-helper controls and a new root-directory/order control
+pass. The new control fails before the workflow change and detects a deliberate
+wrong working directory. The workflow difference is exactly one preparation
+step; all existing commands, package lists, permissions and pinned Actions are
+byte-identical. No local package installation, SDK build or guest run occurred.

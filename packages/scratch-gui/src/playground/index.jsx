@@ -6,7 +6,8 @@
 // "for Safari 9", two major versions below the floor. Promise.prototype.finally
 // STAYS: Safari 11.0 shipped without it (11.1 added it), and the floor is 11.
 // scripts/verify-boot-payload.mjs asserts the Intl polyfill is in no script.
-import 'core-js/fn/promise/finally';
+// Complete the existing compatibility dependencies before any app/VM graph.
+import '../lib/compatibility-bootstrap.js';
 
 import React from 'react';
 import ReactDOM from 'react-dom';

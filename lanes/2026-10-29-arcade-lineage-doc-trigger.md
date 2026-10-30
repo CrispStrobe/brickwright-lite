@@ -1,6 +1,6 @@
 # Arcade lineage document: restore its build-input trigger
 
-Status: CLAIMED; registration only, before implementation.
+Status: DONE — source implementation; hosted integration qualification pending.
 Owner: Arcade completion integration.
 Isolated branch: `lane/arcade-mutable-image-pixel-source-20261029`.
 Base: main `0d0c15a5fc5c4241db9939ee9849df918cf5ae77`.

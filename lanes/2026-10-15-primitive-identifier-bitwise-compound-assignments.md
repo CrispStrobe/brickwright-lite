@@ -11,3 +11,13 @@ controls. Reuse existing primitive producer proof, native value operations and
 local/captured/global assignment paths. No opaque coercion, assignment-as-value,
 member/index widening, new vocabulary, dependency pin or frame-clock change.
 Coordinate the Arcade translator with callable, inspection and numeric owners.
+
+### Source proof census repair — 2026-10-21
+
+Pending SOURCE follow-up: include the original six bitwise compound Assignment
+operand identities in the same producer census as Binary/Unary expressions.
+Later synthetic Binary emission grants no new primitive, Array or Number fact.
+Existing all-writer/receiver/current-source checks and opaque writer refusals
+remain. The three complete pure controls pass, including all six operators and opaque
+writer refusals. The original native compound module still requires qualification; no original results, assertions, SDK paths or thresholds
+are changed. Sprite flags export writer modeling is a separate pending scope.

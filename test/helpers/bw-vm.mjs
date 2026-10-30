@@ -105,7 +105,7 @@ export function conformance (project) {
  * false accusations while still going to zero for a program that lost its
  * hardware verbs to a syntax slip.
  */
-function registerBundledExtensions (vm, calls) {
+function registerBundledExtensions (vm, calls, countExtensionCalls = true) {
     const manager = vm.extensionManager;
     const original = manager.loadExtensionURL.bind(manager);
     manager.loadExtensionURL = id => {
@@ -116,7 +116,9 @@ function registerBundledExtensions (vm, calls) {
             // lifecycle events, without adding another frame listener.
             if (manager.isExtensionLoaded(key)) return Promise.resolve();
             const instance = new (extensionClass(key))(vm.runtime);
-            for (const name of Object.getOwnPropertyNames(instance)) {
+            // Ownership-sensitive cases select genuine production delegates.
+            // No call-counter observation is available in that explicit mode.
+            for (const name of countExtensionCalls ? Object.getOwnPropertyNames(instance) : []) {
                 const method = instance[name];
                 if (typeof method !== 'function' || name === 'getInfo') continue;
                 instance[name] = function (...args) {
@@ -200,7 +202,8 @@ export async function stepFrames(vm, frames, frameMs = 1000 / 30) {
     }
 }
 
-export async function runProgram (source, {frames = 12, keys = [], uploads = [], storage = false, retainExtensionTimers = false, frameAuthority = 'manual', observeCreator = null} = {}) {
+export async function runProgram (source, {frames = 12, keys = [], uploads = [], storage = false, retainExtensionTimers = false, frameAuthority = 'manual', observeCreator = null, countExtensionCalls = true} = {}) {
+    if(typeof countExtensionCalls!=='boolean')throw new Error('Extension call observation must be explicitly boolean');
     const creator = new SB3Creator();
     try { creator.parse(source); }
     catch (parseError) {
@@ -210,6 +213,19 @@ export async function runProgram (source, {frames = 12, keys = [], uploads = [],
         throw parseError;
     }
     if (observeCreator) observeCreator(creator, null);
+    return runCreatedProgram(creator, {frames, keys, uploads, storage, retainExtensionTimers,
+        frameAuthority, countExtensionCalls});
+}
+
+/** Continue an actual parsed Creator through the original VM path. Optional
+ * resource inputs mirror the GUI archive transaction; defaults preserve the
+ * historical runProgram route. observeRun retains raw events and owns cleanup
+ * even if load/start/step throws before a successful return.
+ */
+export async function runCreatedProgram (creator, {frames = 12, keys = [], uploads = [], storage = false,
+    retainExtensionTimers = false, frameAuthority = 'manual', countExtensionCalls = true,
+    animationResources = [], artworkContext = null, artworkVM = null, observeRun = null} = {}) {
+    if(typeof countExtensionCalls!=='boolean')throw new Error('Extension call observation must be explicitly boolean');
     for (const upload of uploads) {
         if (upload.mode === 'add') {
             // Code read back from blocks already declares the frame (COSTUME name);
@@ -224,9 +240,53 @@ export async function runProgram (source, {frames = 12, keys = [], uploads = [],
             }
         } else creator.applyCustomSVG(upload.sprite, upload.svg);
     }
-    const buffer = Buffer.from(await (await creator.generateSB3()).arrayBuffer());
+    let bytes = await (await creator.generateSB3()).arrayBuffer();
+    let artwork = null, preparedStorage = null;
+    if (animationResources.length || artworkContext) {
+        if (!storage) throw new Error('Journey artwork requires actual VM storage');
+        const Storage = (await importGuiDependency('scratch-storage/dist/node/scratch-storage.js')).default;
+        preparedStorage = new Storage();
+        const ZIP = (await importGuiDependency('jszip/lib/index.js')).default;
+        const zip = await ZIP.loadAsync(bytes);
+        const {inspectArtwork} = await importSource('src/lib/bw-artwork-bundle.js');
+        let revision;
+        let codeArtwork;
+        if (artworkContext) {
+            codeArtwork = await importSource('src/lib/bw-code-artwork.js');
+            if (!codeArtwork.retainCodeArtwork(zip, creator.project, artworkVM, artworkContext, uploads)) {
+                throw new Error('Code artwork context no longer matches the loaded VM');
+            }
+            revision = codeArtwork.captureCodeArtworkRevision(artworkVM, artworkContext);
+        }
+        if (animationResources.length) {
+            const {installAnimationImport} = await importSource('src/lib/bw-animation-import.js');
+            await installAnimationImport(zip, animationResources, data => preparedStorage.createAsset(
+                preparedStorage.AssetType.ImageVector, preparedStorage.DataFormat.SVG, data, null, true).assetId);
+        }
+        bytes = await zip.generateAsync({type: 'arraybuffer', compression: 'DEFLATE'});
+        artwork = await inspectArtwork(bytes);
+        if (artwork.outcome === 'invalid') throw new Error(artwork.reason);
+        if (artworkContext && (!codeArtwork.codeArtworkMatches(artworkVM, artworkContext) ||
+            !codeArtwork.codeArtworkRevisionMatches(artworkVM, revision))) {
+            throw new Error('Code artwork changed while preparing the next project');
+        }
+    }
+    const buffer = Buffer.from(bytes);
     if(!['manual','timed'].includes(frameAuthority))throw new Error('Frame authority must be manual or timed');
+    const errors = [], errorEvents = [];
+    const onError = (message, ...details) => {
+        // An owned journey keeps the raw event even if String(message) itself
+        // throws. Historical default callback/coercion order remains unchanged.
+        if (observeRun) errorEvents.push({message, details});
+        errors.push(String(message));
+        if (!observeRun) errorEvents.push({message, details});
+    };
     const vm = new VM();
+    const partial = observeRun ? {vm, creator, buffer, errors, errorEvents, state: 'constructed'} : null;
+    if (partial) {
+        vm.runtime.on('BLOCKS_ERROR', onError); vm.on('BLOCKS_ERROR', onError);
+        observeRun(partial);
+    }
     // Historical finite fixtures explicitly supply manual physical frames and
     // retain their real program/wait clock. GUI runtimes never receive this flag.
     // Exact source timer/scene controls select timed and inject an independent
@@ -234,11 +294,22 @@ export async function runProgram (source, {frames = 12, keys = [], uploads = [],
     vm.runtime.bwArcadeFrameAuthority=frameAuthority;
     if (storage) {
         const Storage = (await importGuiDependency('scratch-storage/dist/node/scratch-storage.js')).default;
-        vm.attachStorage(new Storage());
+        vm.attachStorage(preparedStorage || new Storage());
     }
     const calls = new Map();
-    registerBundledExtensions(vm, calls);
+    registerBundledExtensions(vm, calls, countExtensionCalls);
+    if (partial) partial.state = 'load-begin';
     await vm.loadProject(buffer);
+    if (partial) partial.state = 'load-return';
+    let appliedArtwork = null;
+    if (artwork) {
+        const {applyArtwork} = await importSource('src/lib/bw-artwork-bundle.js');
+        appliedArtwork = applyArtwork(artwork, vm);
+        if (Object.hasOwn(appliedArtwork, 'resourceError')) throw appliedArtwork.resourceError;
+        if (appliedArtwork.outcome !== artwork.outcome || appliedArtwork.count !== artwork.records.length) {
+            throw new Error('Loaded VM did not retain every inspected artwork document');
+        }
+    }
     if (creator.project.stc) vm.runtime.stc = creator.project.stc;
     const loadedOpcodes = new Set();
     let blockCount = 0;
@@ -248,12 +319,11 @@ export async function runProgram (source, {frames = 12, keys = [], uploads = [],
             blockCount++;
         }
     }
-    const errors = [];
-    const onError = message => errors.push(String(message));
-    vm.runtime.on('BLOCKS_ERROR', onError);
-    vm.on('BLOCKS_ERROR', onError);
+    if (!partial) { vm.runtime.on('BLOCKS_ERROR', onError); vm.on('BLOCKS_ERROR', onError); }
     const before = variableSnapshot(vm);
+    if (partial) partial.state = 'start-begin';
     vm.start();
+    if (partial) partial.state = 'green-flag-begin';
     vm.greenFlag();
     const greenFlagThreadsStarted = vm.runtime.threads.length;
     for (const key of keys) vm.postIOData('keyboard', {key, isDown: true});
@@ -261,7 +331,9 @@ export async function runProgram (source, {frames = 12, keys = [], uploads = [],
     // Drive deterministic frames ourselves, while allowing Promise reporters
     // and callback completions to resume between frames as they do in-browser.
     vm.quit();
+    if (partial) partial.state = 'step-begin';
     await stepFrames(vm, frames);
+    if (partial) partial.state = 'step-return';
     const after = variableSnapshot(vm);
     vm.quit();
     // Fiber-driven extension fixtures keep timers until their explicit cleanup.
@@ -270,7 +342,8 @@ export async function runProgram (source, {frames = 12, keys = [], uploads = [],
     for (const [name, value] of after) if (before.get(name) !== value) variablesChanged++;
     let extensionCalls = 0;
     for (const count of calls.values()) extensionCalls += count;
-    return {creator, vm, buffer, loadedOpcodes, blockCount, threadsStarted, greenFlagThreadsStarted, errors,
-        calls, extensionCalls, variablesChanged,
+    if (partial) partial.state = 'return';
+    return {creator, vm, buffer, loadedOpcodes, blockCount, threadsStarted, greenFlagThreadsStarted, errors, errorEvents, artwork, appliedArtwork,
+        calls, extensionCalls, extensionCallsObserved: countExtensionCalls, variablesChanged,
         loadedExtensions: new Set(vm.extensionManager._loadedExtensions.keys())};
 }

@@ -1,14 +1,18 @@
+import {lowerSourceValueOperatorHelpers} from './source-value-operator-helpers.js';
+import {lowerNativeArrayBinaryHelpers} from './native-array-binary-domain.js';
+import {lowerRuntimeDispatchAddHelpers} from './native-array-binary-helper-source.js';
 import {capturePreparedSharedImageSources,parseSharedImageSourceBoundary,parseSharedImageSourceProgram,bindPreparedSharedImageSource,sharedImageSourceContextCurrent} from './shared-image-array-source-effects.js';
 import {prepareSharedImageArrayTransport,projectSharedImageArrayTransport,finishSharedImageArrayTransport,currentSharedImageArrayTransport,reproveSharedImageArrayTransport} from './source-shared-image-array-transport.js';
 import {prepareProcedureConstraintSourceForTranslation,procedureConstraintAstMetadata} from './procedure-constraint-source.js';
 import {BUTTON_EVENTS,controllerButtonEventNumberLeaves} from './controller-button-event-number-source.js';
+import {CAMERA_PROPERTIES} from './camera-property-constants.js';
 import {createProcedureOwnerEmission} from './procedure-owner-emission.js';
 import {prepareThrowSource,prepareThrowEmission,reproveThrowEmission,hasThrowEmission} from './throw-source-gate.js';
 import {proveArrayMapValues} from './lower-array-map-values.js';
 import {selectNamedFunctionSourceProof} from './named-function-source-selection.js';
 import {lowerNamedFunctionValues} from './lower-named-function-values.js';
 import {selectClassCallableSourceProofForTranslation} from './class-callable-source-gate.js';
-import {withClassResultFlowProof} from './class-callable-result-flow-proof.js';
+import {withCompilerOwnedClassResultFlowProof} from './class-callable-result-flow-proof.js';
 import {numberLiteralCode,containsNonFiniteNumberLiteral} from './source-number-literal.js';
 import {lowerMathIdivValues} from './math-idiv-source.js';
 import {lowerConsoleInspectValues} from './lower-console-inspect-values.js';
@@ -19,7 +23,7 @@ import {validateClassCallablePlan} from './class-callable-plan.js';
 import {sourceCallableDeclarations} from './source-callable-declarations.js';
 import {callableDeclarationEnvelope,callableVariableEnvelope} from './callable-export-graph.js';
 import {lowerNamedArrayItemHelpers} from './named-array-item-helpers.js';
-import {GENERATED_HELPER_PROFILES,inspectGeneratedHelperBindings,mapGeneratedSourceArray} from './generated-helper-recognition.js';
+import {GENERATED_HELPER_PROFILES,inspectGeneratedHelperBindings,normalizeCompilerOwnedLegacyArrayHelpers,mapGeneratedSourceArray} from './generated-helper-recognition.js';
 import {lowerLiveFontMetrics} from './live-font-metrics.js';
 import {staticSdkNamespaceReceivers} from './static-sdk-namespaces.js';
 import {sourceReferenceDeclarations} from './source-reference-declarations.js';
@@ -114,7 +118,6 @@ const NOTE_FREQUENCIES = {C: 262, CSharp: 277, D: 294, Eb: 311, E: 330, F: 349, 
 import {parseTileAssets} from './tile-assets.js';
 import {createAssetKindLookup, lookupAssetTemplate} from './asset-kind-lookup.js';
 import {decodeTilemap, createNativeTilemapRegistry, resolveNativeTilemap} from './tilemap-values.js';
-import {LEGACY_PARSE_SOURCE, LEGACY_JSON_SOURCE, ARRAY_ACCESS_SOURCE} from './legacy-array-values.js';
 import {prepareAnimationImport} from '../bw-animation-import.js';
 import {ValueTypeGraph} from './value-type-graph.js';
 import {lowerSourceLoopControl} from './lower-source-loop-control.js';
@@ -127,6 +130,7 @@ import {ARCADE_SCENE_CONSTANTS} from './arcade-scene-constants.js';
 import {lowerStaticCallbackHelpers} from './static-callback-helpers.js';
 import {arcadeProjectSource} from './project-source.js';
 import {parseMakeCodeTs} from './ts-import.js';
+import {animationAssetArray} from './animation-asset-array.js';
 import {BaseTranslator, bodyOf, num, tsText} from './translate-base.js';
 import {analyseSourceValueProducers} from './source-value-producers.js';
 import {prepareOrdinaryCallOmissions} from './ordinary-call-omission.js';
@@ -185,7 +189,7 @@ const HALF_HEIGHT = 60;
 const COLLISION_DIRECTIONS = Object.freeze({Left:0, Top:1, Right:2, Bottom:3});
 // Retained Arcade game/sprite.ts TileDirection; Center also covers default.
 const TILE_DIRECTIONS = Object.freeze({...COLLISION_DIRECTIONS, Center:4});
-const CAMERA_PROPERTIES = Object.freeze({X:0, Y:1, Left:2, Right:3, Top:4, Bottom:5});
+
 
 
 /**
@@ -353,6 +357,33 @@ class ArcadeTranslator extends BaseTranslator {
         this.throwValueProgram=hasThrowEmission(node);this.throwSourceProgram=node;
         this.procedureConstraintSource=node.bwProcedureConstraintSource || null;
         this.provenArrayReferences=references.provenArrays;
+        this.sourceArrayArithmeticOperands=references.sourceArrayArithmeticOperands;
+        // This separate all-writer proof is consumed only by bitwise words.
+        // A real no-initializer scalar starts Undefined; inferImageReferences'
+        // conservative annotation graph intentionally remains unchanged.
+        this.sourceBitwiseOperands=new WeakSet();this.primitiveBitwiseOperands=new WeakSet();this.objectBitwiseOperands=new WeakSet();this.possibleBitwiseArrays=new WeakSet();
+        // Compound emitters construct a Binary expression later, but its two
+        // operands are these original Assignment nodes. Index their actual
+        // identities now; a synthetic expression is never a proof producer.
+        const bitwiseOperands=value=>value?.type==='Binary'&&['&','|','^','<<','>>','>>>'].includes(value.op)?[value.left,value.right]:
+            value?.type==='Unary'&&value.op==='~'?[value.argument]:
+            value?.type==='Assignment'&&['&=','|=','^=','<<=','>>=','>>>='].includes(value.op)?[value.left,value.right]:null;
+        const bitwise=value=>bitwiseOperands(value)!==null;
+        if(containsAst(node,bitwise)){
+            const facts=analyseSourceValueProducers(node,{arrayValues:true,parenthesized:true,unboundIsOpaque:true,
+                declaredLocalUndefined:true,ordinaryPrimitiveSdkNumbers:true,sceneClockNumbers:true});
+            const primitive=new Set(['Number','String','Boolean','Null','Undefined']);
+            containsAst(node,value=>{
+                if(bitwise(value))for(const operand of bitwiseOperands(value)){
+                    const types=facts.typesAt(operand),array=type=>type?.kind==='Array';
+                    if([...types].some(array)||references.arrays.has(operand))this.possibleBitwiseArrays.add(operand);
+                    if(types.size&&[...types].every(type=>primitive.has(type)||array(type)))this.sourceBitwiseOperands.add(operand);
+                    if(references.primitives.has(operand)||types.size&&[...types].every(type=>primitive.has(type)))this.primitiveBitwiseOperands.add(operand);
+                    if([...types].some(type=>typeof type==='string'&&!primitive.has(type)&&type!=='Opaque'))this.objectBitwiseOperands.add(operand);
+                }
+                return false;
+            });
+        }
         this.inferredSpriteParameters = references.parameters;
         this.primitiveReferences=references.primitives;
         this.sourceTypeOfOperands=references.sourceTypeOfOperands;
@@ -382,6 +413,7 @@ class ArcadeTranslator extends BaseTranslator {
         this.kindRuntimeProgram=containsAst(node,value=>value.type==='SpriteKindReset' || value.type==='Member' && this.path(value.object)==='SpriteKind' || value.type==='Call' && (this.path(value.callee)==='SpriteKind.create' || value.callee?.type==='Member' && ['kind','setKind'].includes(value.callee.name)));
         this.sceneStackProgram=this.kindRuntimeProgram || containsAst(node,value=>value.type==='Call' && /^(?:mp\.(?:onControllerEvent|onButtonEvent|getPlayerState|setPlayerState|changePlayerStateBy)|game\.(?:pushScene|popScene|addScenePushHandler|addScenePopHandler|removeScenePushHandler|removeScenePopHandler))$/.test(this.path(value.callee)||''));
         this.nativeInfoProgram=this.sceneStackProgram || containsAst(node,value=>value.type==='Call' && isInfoRegistration(this.path(value.callee)));
+        this.scoreRegistrationProof=scoreRegistrationProof(node);
         const registrations=discoverRuntimeRegistrations(node,this);
         this.createdRegistrations=new Map([...registrations].filter(([,record])=>record.kind==='creation'));
         this.terrainRegistrations=new Map([...registrations].filter(([,record])=>['wall','tile','legacyWall'].includes(record.kind)));
@@ -960,6 +992,7 @@ class ArcadeTranslator extends BaseTranslator {
         case 'Math.randomRange':
         case 'Math.min':
         case 'Math.max':
+        case 'Math.atan2':
         case 'Math.percentChance':
         case 'Math.clamp':
             if(this.bindsName('Math')) {this.note(`${name} refers to a shadowed Math binding`);return 'undefined value';}
@@ -967,6 +1000,11 @@ class ArcadeTranslator extends BaseTranslator {
             if(a.length!==arity){this.note(`${name}() requires exactly ${arity} arguments`);return 'undefined value';}
             if(name==='Math.random')return 'arcade random fraction';
             if(name==='Math.percentChance')return `arcade percent chance (${this.arrayElementValue(a[0])})`;
+            if(name==='Math.atan2'&&a.some(value=>['Array','Object'].includes(value?.type)||
+                this.arrayReferences?.has(value)||this.spriteReferences?.has(value)||
+                this.bufferReferences?.has(value)||this.imageReferences?.has(value))){
+                this.note('Math.atan2 reference argument conversion is not implemented');return 'undefined value';
+            }
             if(name==='Math.clamp'){
                 if(a.some(value=>!['Null','Undefined'].includes(value?.type) &&
                     (['Array','Object'].includes(value?.type) || this.arrayReferences?.has(value) || this.spriteReferences?.has(value) || this.bufferReferences?.has(value) || this.imageReferences?.has(value)))){
@@ -1085,6 +1123,8 @@ class ArcadeTranslator extends BaseTranslator {
      * The condition() a node is being written for is not a value slot.
      */
     expr (node) {
+        // Deletion is an unsupported mutation, never a numeric operand/fold.
+        if(node?.type==='Unary'&&node.op==='delete')return super.expr(node);
         if(node?.type==='Unary'&&containsNonFiniteNumberLiteral(node.argument)){this.unsupported.push('Non-finite source Number literals lack a qualified Code carrier');return 'undefined value';}
         if(node?.type==='Number'){
             if(!Number.isFinite(Number(node.value))){this.unsupported.push('Non-finite source Number literals lack a qualified Code carrier');return 'undefined value';}
@@ -1282,16 +1322,47 @@ class ArcadeTranslator extends BaseTranslator {
             this.usesArrays=true;
             return `compare value (${this.arrayElementValue(node.left)}) op "${node.op}" with (${this.arrayElementValue(node.right)})`;
         }
+        // Without native values the legacy integer words convert silently.
+        // An operand with a known object producer (an Image, an object
+        // literal...) is diagnosed as in the native route; ordinary SDK
+        // results keep the legacy conversion.
+        if(!this.nativeValues && (node?.type==='Binary' && ['&','|','^','<<','>>','>>>'].includes(node.op) || node?.type==='Unary' && node.op==='~')) {
+            const operands=node.type==='Binary'?[node.left,node.right]:[node.argument];
+            if(operands.some(value=>this.objectBitwiseOperands?.has(value)&&!this.primitiveBitwiseOperands?.has(value)&&!this.possibleBitwiseArrays?.has(value))){
+                this.unsupported.push('Bitwise operation requires proven primitive operands; opaque reference, object or unknown conversion is not implemented');return '0';
+            }
+        }
         if(this.nativeValues && (node?.type==='Binary' && ['&','|','^','<<','>>','>>>'].includes(node.op) || node?.type==='Unary' && node.op==='~')) {
             const operands=node.type==='Binary'?[node.left,node.right]:[node.argument];
-            if(operands.some(value=>!this.primitiveReferences?.has(value))){this.unsupported.push('Bitwise operation requires proven primitive operands; opaque reference, object or unknown conversion is not implemented');return 'undefined value';}
+            if(operands.some(value=>this.possibleBitwiseArrays?.has(value))){
+                if(operands.some(value=>!this.sourceBitwiseOperands?.has(value))){
+                    this.unsupported.push('Arcade source Array bitwise operation requires current Array or primitive operand producers');return 'undefined value';
+                }
+                this.usesArrays=true;
+                return node.type==='Binary'?`arcade source value (${this.arrayElementValue(node.left)}) op "${node.op}" with (${this.arrayElementValue(node.right)})`:
+                    `arcade source unary "~" of (${this.arrayElementValue(node.argument)})`;
+            }
+            if(operands.some(value=>!this.primitiveBitwiseOperands?.has(value))){this.unsupported.push('Bitwise operation requires proven primitive operands; opaque reference, object or unknown conversion is not implemented');return 'undefined value';}
             this.usesArrays=true;
             return node.type==='Binary'?`calculate value (${this.arrayElementValue(node.left)}) op "${node.op}" with (${this.arrayElementValue(node.right)})`:
                 `convert value (${this.arrayElementValue(node.argument)}) op "~"`;
         }
+        // A runtime-dispatch helper call in a program without native values
+        // has no Array value to dispatch on: it is exactly the ordinary `+`.
+        if(!this.nativeValues&&node?.type==='NativeArrayValueBinary')return this.valueExpr({type:'Binary',op:'+',left:node.left,right:node.right});
+        if(this.nativeValues&&node?.type==='NativeArrayValueBinary'){
+            this.usesArrays=true;return `calculate value (${this.arrayElementValue(node.left)}) op "+" with (${this.arrayElementValue(node.right)})`;
+        }
         if(this.nativeValues && node?.type==='Binary' && ['+','-','*','/','%','**'].includes(node.op)) {
             if([node.left,node.right].some(value=>this.spriteReferences?.has(value)))this.unsupported.push('sprite arithmetic conversion requires ToPrimitive support');
             if([node.left,node.right].some(value=>this.playerReferences?.has(value)))this.unsupported.push('player arithmetic conversion requires ToPrimitive support');
+            const operands=[node.left,node.right],array=operands.some(value=>this.arrayReferences?.has(value));
+            if(array){
+                if(operands.some(value=>!this.sourceArrayArithmeticOperands?.has(value))){
+                    this.unsupported.push('Arcade source Array arithmetic requires current Array or primitive operand producers');return 'undefined value';
+                }
+                this.usesArrays=true;return `arcade source value (${this.arrayElementValue(node.left)}) op "${node.op}" with (${this.arrayElementValue(node.right)})`;
+            }
             this.usesArrays=true;return `calculate value (${this.arrayElementValue(node.left)}) op "${node.op}" with (${this.arrayElementValue(node.right)})`;
         }
         // `!x` as a value. The value words have no unary `!` (BWValues.unary
@@ -1644,6 +1715,7 @@ class ArcadeTranslator extends BaseTranslator {
             case 'forever':push(`arcade register forever ${suffix}`);break;
             case 'parallel':push(`arcade run parallel ${suffix}`);break;
             case 'lifeZero':push(`arcade register life zero player (${playerOf(name)}) ${suffix}`);break;
+            case 'score':push(`arcade register score player (${SCORE_REGISTRATION_APIS.get(name)}) threshold (${this.expr(a[0])}) ${suffix}`);break;
             case 'countdown':push(`arcade register countdown ${suffix}`);break;
             case 'interval':push(`arcade register interval (${this.expr(a[0])}) ${suffix}`);break;
             case 'multiplayerConnection':push(`arcade register multiplayer connection event (${this.expr(a[0])}) ${suffix}`);break;
@@ -3031,8 +3103,20 @@ const lowerArrayCallbacks = (program, source) => {
         if (body.length === 1 && body[0].type === 'Return' && body[0].value) return [{type: 'ExpressionStatement', expr: body[0].value}];
         return hasReturn(body) ? null : body;
     };
-    const predicate = fn => fn?.type === 'FunctionExpression' && fn.params.length === 1 && fn.body.length === 1 &&
-        fn.body[0].type === 'Return' && fn.body[0].value ? fn.body[0].value : null;
+    const closedCallback = fn => fn?.type === 'FunctionExpression' && Array.isArray(fn.params) &&
+        fn.params.length >= 1 && fn.params.length <= 2 && new Set(fn.params).size === fn.params.length &&
+        fn.params.every(name => typeof name === 'string') && Array.isArray(fn.body) &&
+        !['async','isAsync','generator','isGenerator','restParam'].some(key => fn[key]) &&
+        !['optionalParams','parameterDefaults','parameterProperties','typeParameters','genericParams'].some(key =>
+            fn[key]?.length || fn.params[key]?.length) && !Object.keys(fn.paramDefaults || {}).length;
+    const predicate = fn => {
+        if (!closedCallback(fn)) return null;
+        const last = fn.body[fn.body.length - 1], before = fn.body.slice(0, -1);
+        // Every predicate must produce its value after the same straight-line
+        // prefix. Early returns retain their original call and remain diagnosed.
+        if (last?.type !== 'Return' || !last.value || hasReturn(before)) return null;
+        return {before, value: last.value};
+    };
     const loop = (array, fn, statements) => {
         if (fn.params.length === 1) return [{type: 'ForOf', name: fn.params[0], kind: 'const', iterable: array, body: statements}];
         // A named array is indexed directly (keeping its element type); any
@@ -3049,18 +3133,18 @@ const lowerArrayCallbacks = (program, source) => {
         // A statement-level map discards its result array, so it visits like forEach.
         if (call?.type !== 'Call' || call.callee?.type !== 'Member' || call.callee.name !== 'forEach' || call.args.length !== 1) return null;
         const fn = call.args[0];
-        if (fn?.type !== 'FunctionExpression' || !fn.params.length || fn.params.length > 2) return null;
+        if (!closedCallback(fn)) return null;
         const statements = callbackStatements(fn);
         if (!statements) return null;
         const source = call.callee.object;
         const filter = source?.type === 'Call' && source.callee?.type === 'Member' && source.callee.name === 'filter' && source.args.length === 1 ?
             predicate(source.args[0]) : null;
         if (!filter) return loop(source, fn, statements);
-        const kept = fresh('__bwFiltered'), item = source.args[0].params[0];
+        const kept = fresh('__bwFiltered'), predicateFn = source.args[0], item = predicateFn.params[0];
         return [{type: 'Declaration', kind: 'let', decls: [{name: kept, init: {type: 'Array', items: []}, isArray: true}]},
-            {type: 'ForOf', name: item, kind: 'const', iterable: source.callee.object, body: [{type: 'If', test: filter,
+            ...loop(source.callee.object, predicateFn, [...filter.before, {type: 'If', test: filter.value,
                 consequent: [{type: 'ExpressionStatement', expr: {type: 'Call', callee: {type: 'Member', object: id(kept), name: 'push'}, args: [id(item)]}}],
-                alternate: null}]},
+                alternate: null}]),
             ...loop(id(kept), fn, statements)];
     };
     const visit = node => {
@@ -3234,36 +3318,14 @@ const liftExporterStops = (program,profile) => {
 // tree: rewriting calls changed caller order and raw numeric selection.
 const lowerLibraryCalls = program => program;
 
-const inlineLegacyArrayHelpers = (program,profile) => {
-    const proof=inspectGeneratedHelperBindings(program,profile);
-    if(!proof.isCurrent())return program;
-    const recipes=[['__bwNamedParseValue',LEGACY_PARSE_SOURCE,'LegacyParsedValue'],
-        ['__bwNamedJsonValue',LEGACY_JSON_SOURCE,'LegacyJsonValue'],
-        ['__bwArrayAccess',ARRAY_ACCESS_SOURCE,'NativeArrayAccess']];
-    const candidates=new Map();
-    for(const fn of program.body)if(proof.root(fn))for(const [base,source,type]of recipes)
-        if(proof.matches(fn,source,new Map([[fn.name,base]])))candidates.set(fn,{type});
-    // A retained helper body becomes an external consumer of its dependencies.
-    // Recompute until removing one declaration cannot strand a retained caller.
-    const selected=new Set(candidates.keys());let changed;
-    do {changed=false;for(const fn of selected)if(!proof.closed(fn,selected)||proof.calls(fn,[1],selected)===null){selected.delete(fn);changed=true;}}while(changed);
-    const calls=new Map();for(const fn of selected)for(const call of proof.calls(fn,[1],selected))calls.set(call,candidates.get(fn));
-    if(!selected.size||!proof.isCurrent())return program;
-    const rewrite=node=>{
-        if(!node||typeof node!=='object')return node;
-        if(Array.isArray(node))return mapGeneratedSourceArray(node,rewrite);
-        if(calls.has(node))return {type:calls.get(node).type,value:rewrite(node.args[0])};
-        return Object.fromEntries(Object.entries(node).map(([key,value])=>[key,rewrite(value)]));
-    };
-    return rewrite({...program,body:program.body.filter(fn=>!selected.has(fn))});
-};
+
 
 const inlineValueHelpers = (program, requireUnshadowedBindings = false) => {
     const helpers=new Map();
     for(const fn of program.body) {
         if(fn.type!=='FunctionDeclaration' || !/^__bw(?:Binary|Unary|Compare)/.test(fn.name) || fn.body.length!==1 || fn.body[0].type!=='Return')continue;
         const value=fn.body[0].value;
-        if(value?.type==='Binary' && ['+','-','*','/','%','==','!=','===','!==','<','>','<=','>='].includes(value.op) && fn.params.length===2 && value.left?.type==='Identifier' && value.left.name===fn.params[0] && value.right?.type==='Identifier' && value.right.name===fn.params[1])helpers.set(fn.name,{fn,value});
+        if(value?.type==='Binary' && ['+','-','*','/','%','**','==','!=','===','!==','<','>','<=','>='].includes(value.op) && fn.params.length===2 && value.left?.type==='Identifier' && value.left.name===fn.params[0] && value.right?.type==='Identifier' && value.right.name===fn.params[1])helpers.set(fn.name,{fn,value});
         if(value?.type==='Unary' && ['+','-'].includes(value.op) && fn.params.length===1 && value.argument?.type==='Identifier' && value.argument.name===fn.params[0])helpers.set(fn.name,{fn,value});
     }
     const unsafe=new Set();
@@ -3487,6 +3549,7 @@ const inferImageReferences = (ast, pathOf, imageOf, isScopedAssetFactory = () =>
             if(left.has('string')||right.has('string'))return new Set(['string']);
             if(left.has('number')&&right.has('number'))return new Set(['number']);
         }
+        if(node?.type==='NativeArrayValueBinary')return new Set(['number','string']);
         if(node?.type==='NativeArrayAccess' || node?.type==='NativeNamedArrayCreate')return new Set(['array']);
         if(node?.type==='NativeNamedArrayDelete')return new Set(['null']);
         if(node?.type==='LegacyJsonValue')return new Set(['string']);
@@ -3711,12 +3774,13 @@ const inferImageReferences = (ast, pathOf, imageOf, isScopedAssetFactory = () =>
         const unknownMember=node.type==='Member' && !typeOf(node,owner).size;
         if(!primitiveAssertion && (unknownCall || unknownMember) || ['Identifier','Call','Member','Index','Object'].includes(node.type) && !graph.node(cell(node,owner)).types.size)graph.add(cell(node,owner),'unknown');
     }
-    const primitives=new WeakSet(),strictStrings=new WeakSet(),sourceTypeOfOperands=new WeakSet(),provenArrays=new WeakSet();
+    const primitives=new WeakSet(),strictStrings=new WeakSet(),sourceTypeOfOperands=new WeakSet(),provenArrays=new WeakSet(),sourceArrayArithmeticOperands=new WeakSet();
     const sourceTypeOfOpaque=new Set(entries.filter(({node})=>node.bwSourceTypeOfOpaque).map(({node,owner})=>graph.node(cell(node,owner))));
     const sourceTypeOfKinds=new Set(['number','boolean','string','null','undefined','array','Image','Buffer','object']);
     for(const {node,owner} of entries){
         const types=graph.node(cell(node,owner)).types;
         if(types.has('array') && [...types].every(type=>['array','null','undefined'].includes(type)))provenArrays.add(node);
+        if(types.size && [...types].every(type=>type==='array'||primitiveTypes.has(type)))sourceArrayArithmeticOperands.add(node);
         if(types.size && [...types].every(type=>primitiveTypes.has(type)))primitives.add(node);
         if(types.has('string') && [...types].every(type=>primitiveTypes.has(type)))strictStrings.add(node);
         if(!sourceTypeOfOpaque.has(graph.node(cell(node,owner))) && types.size && [...types].every(type=>sourceTypeOfKinds.has(type)) &&
@@ -3749,7 +3813,7 @@ const inferImageReferences = (ast, pathOf, imageOf, isScopedAssetFactory = () =>
         if(types.has('physics-engine') || graph.has(value,'PhysicsEngine') && !['number','string','boolean','Image','Sprite','Scene'].some(type=>graph.has(value,type)))physicsEngines.add(node);
         if(types.has('null') && [...types].every(type=>type==='null'||type==='sprite'))nulls.add(node);
     }
-    return {fonts,objects,primitives,strictStrings,sourceTypeOfOperands,provenArrays,textSprites, buffers, players, images: references, tiles, legacyTiles, sprites, animations, sevensegDigits, sevensegCounters, darts, corgis, scenes, physicsEngines, nulls, arrays, numbers, strings, booleans, data,
+    return {fonts,objects,primitives,strictStrings,sourceTypeOfOperands,provenArrays,sourceArrayArithmeticOperands,textSprites, buffers, players, images: references, tiles, legacyTiles, sprites, animations, sevensegDigits, sevensegCounters, darts, corgis, scenes, physicsEngines, nulls, arrays, numbers, strings, booleans, data,
         spriteFunctions:new Set([...functions].filter(([,fn])=>graph.has(fn.resultCell,'Sprite')).map(([name])=>name)),
         parameters:new Map([...functions].map(([name,fn])=>[name,new Set(fn.node.params.filter(param=>graph.has(binding(fn.owner,param),'Sprite')))]))};
 };
@@ -3758,7 +3822,47 @@ const containsAst = (node,predicate) => node && typeof node==='object' &&
     (predicate(node) || Object.values(node).some(value=>Array.isArray(value)?value.some(child=>containsAst(child,predicate)):containsAst(value,predicate)));
 const isFrameRegistration = name => ['game.onUpdate','game.onUpdateInterval','game.onPaint','game.onShade'].includes(name);
 const isButtonRegistration = name => /^controller\.(A|B|up|down|left|right)\.onEvent$/.test(name || '');
-const isInfoRegistration = name => /^info(?:\.player[1-4])?\.onLifeZero$/.test(name || '') || name==='info.onCountdownEnd';
+const SCORE_REGISTRATION_APIS = new Map([...['info','info.player1','info.player2','info.player3','info.player4'].map((root,index)=>[root+'.onScore',index || 1]),['info.player1.impl.onScore',1]]);
+// A known SDK spelling alone is not enough: close every actual info-root use,
+// reject aliases/property writers/shadows, and prove the threshold's Number
+// producer through the existing all-writer graph. The retained SDK's fixed
+// player-one impl receiver is admitted only with a side-effect-free threshold:
+// moving registration to the native command must not reorder receiver creation
+// across an authored side effect. No extracted/aliased impl object is admitted.
+const scoreRegistrationProof = program => {
+    const pathOf=node=>node?.type==='Identifier'?node.name:node?.type==='Member'?pathOf(node.object)+'.'+node.name:null;
+    if(!containsAst(program,node=>node.type==='Call'&&SCORE_REGISTRATION_APIS.has(pathOf(node.callee))))return {has:()=>false};
+    const proof=inspectGeneratedHelperBindings(program,GENERATED_HELPER_PROFILES.ordinary);
+    if(!proof.isCurrent())return {has:()=>false};
+    const methods=['score','hasScore','setScore','changeScoreBy','life','hasLife','setLife','changeLifeBy','onLifeZero','onScore'];
+    const publicCalls=new Set(['info','info.player1','info.player2','info.player3','info.player4'].flatMap(root=>methods.map(method=>root+'.'+method)));
+    for(const method of ['startCountdown','stopCountdown','onCountdownEnd','showScore','showLife','showCountdown'])publicCalls.add('info.'+method);
+    publicCalls.add('info.player1.impl.onScore');
+    for(const node of proof.nodes){
+        if(node.type==='Unknown'||node.type==='Identifier'&&['globalThis','global','window','self','eval','Function','Reflect','arguments'].includes(node.name)||
+            node.type==='Member'&&node.name==='constructor'||node.type==='Template'&&typeof node.tag==='string'&&node.tag.split('.')[0]==='info')return {has:()=>false};
+    }
+    for(const node of proof.nodes)if(node.type==='Identifier'&&node.name==='info'&&proof.unbound(node)){
+        let top=node,parent=proof.parentOf(top);
+        while(parent?.type==='Member'&&parent.object===top){top=parent;parent=proof.parentOf(top);}
+        if(parent?.type!=='Call'||parent.callee!==top||parent.isNew||!publicCalls.has(pathOf(top)))return {has:()=>false};
+    }
+    const facts=analyseSourceValueProducers(program,{arrayValues:true,parenthesized:true,unboundIsOpaque:true,
+        uninitializedLocalsAreOpaque:true,declaredLocalUndefined:true,initializationEntries:true,ordinaryPrimitiveSdkNumbers:true});
+    const pureRead=node=>node?.type==='Number'||node?.type==='Identifier'&&facts.isInitializedAt(node)||
+        node?.type==='Parenthesized'&&pureRead(node.expression)||node?.type==='Unary'&&['+','-'].includes(node.op)&&pureRead(node.argument);
+    const selected=new Set();
+    for(const node of proof.nodes)if(node.type==='Call'&&SCORE_REGISTRATION_APIS.has(pathOf(node.callee))){
+        let root=node.callee;while(root?.type==='Member')root=root.object;
+        if(!node.args?.length)continue;
+        const types=facts.typesAt(node.args[0]);
+        const internal=pathOf(node.callee)==='info.player1.impl.onScore';
+        if(!node.isNew&&!node.constructorCall&&!node.optional&&!node.typeArguments?.length&&!node.args.some(arg=>arg?.type==='Spread')&&
+            proof.unbound(root)&&types.size&&[...types].every(type=>type==='Number')&&(!internal||pureRead(node.args[0])))selected.add(node);
+    }
+    return {has:node=>proof.isCurrent()&&selected.has(node)};
+};
+const isInfoRegistration = name => SCORE_REGISTRATION_APIS.has(name)||/^info(?:\.player[1-4])?\.onLifeZero$/.test(name || '') || name==='info.onCountdownEnd';
 const isForeverRegistration = name => ['forever','game.forever','basic.forever'].includes(name);
 const isSpriteRegistration = name => ['sprites.onDestroyed','sprites.onOverlap'].includes(name);
 const isParallelLaunch = name => name==='control.runInParallel';
@@ -3774,6 +3878,7 @@ const sceneRegistrationSpec = name => {
         'control.runInParallel':{kind:'parallel',handlerIndex:0,arity:1,prefix:'__bwParallel',maxParams:0},
         'game.forever':{kind:'forever',handlerIndex:0,arity:1,prefix:'__bwForever',maxParams:0},
         'basic.forever':{kind:'forever',handlerIndex:0,arity:1,prefix:'__bwForever',maxParams:0},
+        ...Object.fromEntries([...SCORE_REGISTRATION_APIS.keys()].map(name=>[name,{kind:'score',handlerIndex:1,arity:2,prefix:'__bwScore',maxParams:0}])),
         'info.onLifeZero':{kind:'lifeZero',handlerIndex:0,arity:1,prefix:'__bwLifeZero',maxParams:0},
         'info.player1.onLifeZero':{kind:'lifeZero',handlerIndex:0,arity:1,prefix:'__bwLifeZero',maxParams:0},
         'info.onCountdownEnd':{kind:'countdown',handlerIndex:0,arity:1,prefix:'__bwCountdown',maxParams:0},
@@ -3815,7 +3920,7 @@ const discoverRuntimeRegistrations = (ast, translator) => {
         }
         const instance=node.type==='Call' && node.callee?.type==='Member' && node.callee.name==='onDestroyed' && translator.spriteReferences.has(node.callee.object);
         const spec=instance?{kind:'instanceDestroyed',handlerIndex:0,arity:1,prefix:'__bwInstanceDestroyed',maxParams:0}:node.type==='Call' && (specs[translator.path(node.callee)] || (translator.sceneStackProgram || isIndependentRegistration(translator.path(node.callee))) && sceneRegistrationSpec(translator.path(node.callee)));
-        if (spec) {
+        if (spec && (spec.kind!=='score'||translator.scoreRegistrationProof.has(node))) {
             const handler=node.args?.[spec.handlerIndex];
             const kind=node.args?.[0];
             const nativeScene=spec.maxParams!==undefined;
@@ -4286,7 +4391,7 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRunti
         if(node.type==='Call' && /^game\.(?:gameOver|over|setGameOver\w+)$/.test(t.path(node.callee)||''))return true;
         if(node.type==='Call' && node.callee?.type==='Member' && (node.callee.name==='startEffect' || node.callee.name==='destroy' && node.args?.length))return true;
         if(node.type==='Call' && (['controller.setRepeatDefault','controller._setUserEventsEnabled','game.splash','game.showLongText','game.currentScene','ArcadePhysicsEngine','sprites.allOfKind','scene.onHitTile','scene.tileHitFrom','scene.onHitWall','scene.onOverlapTile','scene.centerCameraAt','scene.cameraShake','scene.cameraFollowSprite','scene.cameraProperty','scene.cameraLeft','scene.cameraTop','game.pushScene','game.popScene','game.addScenePushHandler','game.addScenePopHandler','game.removeScenePushHandler','game.removeScenePopHandler'].includes(t.path(node.callee)) || /^tiles\./.test(t.path(node.callee)||'')))return true;
-        if(node.type==='Call' && /^info(?:\.player[1-4])?\.(?:life|hasLife|setLife|changeLifeBy|onLifeZero)$/.test(t.path(node.callee)||''))return true;
+        if(node.type==='Call' && /^info(?:\.player[1-4])?\.(?:life|hasLife|setLife|changeLifeBy|onLifeZero|onScore)$/.test(t.path(node.callee)||''))return true;
         if(node.type==='Member' && ['repeatDelay','repeatInterval'].includes(node.name) && (t.path(node.object)||'').startsWith('controller.'))return true;
         if(node.type==='Member' && ['fx','fy','sx','sy','scale','flags'].includes(node.name))return true;
         if(node.type==='Call' && node.callee?.type==='Member' && node.callee.name==='toString' && t.spriteReferences.has(node.callee.object))return true;
@@ -4299,7 +4404,7 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRunti
         if(['FunctionDeclaration','FunctionExpression'].includes(node.type) && node.body.some(st=>st.type==='Declaration'))return true;
         if (node.type==='Array' && node.items.some(item=>t.imageReferences.has(item)||t.spriteReferences.has(item))) return true;
         if(node.type==='Index' && (t.imageReferences.has(node)||t.spriteReferences.has(node)||t.arrayReferences.has(node.object)))return true;
-        if(node.type==='Call' && ['Math.random','Math.randomRange','Math.percentChance','Math.clamp','Math.min','Math.max','randint','Math.sign','Math.trunc','Math.sqrt','Math.log','Math.log10','Math.asin','Math.acos','Math.pow','Math.pickRandom'].includes(t.path(node.callee)))return true;
+        if(node.type==='Call' && ['Math.random','Math.randomRange','Math.percentChance','Math.clamp','Math.min','Math.max','Math.atan2','randint','Math.sign','Math.trunc','Math.sqrt','Math.log','Math.log10','Math.asin','Math.acos','Math.pow','Math.pickRandom'].includes(t.path(node.callee)))return true;
         if(node.type==='Call' && node.callee?.type==='Member' && t.arrayReferences.has(node.callee.object))return true;
         if (node.type === 'Declaration' && node.decls.some(d => t.imageOf(d.init))) return true;
         if (node.type === 'Return' && (t.imageOf(node.value) || t.imageReferences.has(node.value))) return true;
@@ -4423,7 +4528,7 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRunti
     const allowedCalls = new Set(['sprites.onCreated', 'sprites.onDestroyed', 'sprites.onOverlap', 'sprites.destroy',
         ...creationApis, 'game.onUpdateInterval', 'game.onUpdate', 'control.runInParallel', 'forever', 'game.forever', 'basic.forever',
         'controller.A.onEvent', 'controller.moveSprite', 'info.setLife', 'info.setScore',
-        'carnival.startCountdownGame', 'carnival.onGameOverExpanded', 'carnival.customGameOverExpanded', 'info.startCountdown', 'info.stopCountdown', 'info.onCountdownEnd', 'info.onLifeZero', 'console.log',
+        'carnival.startCountdownGame', 'carnival.onGameOverExpanded', 'carnival.customGameOverExpanded', 'info.startCountdown', 'info.stopCountdown', 'info.onCountdownEnd', 'info.onLifeZero', 'info.onScore', 'console.log',
         'pause', 'game.splash', 'game.showLongText', 'image.setPalette', 'scene.setBackgroundColor', 'scene.setBackgroundImage']);
     for (const [index, st] of ast.body.entries()) {
         if (st.type === 'Namespace' && st.name === 'SpriteKind') continue;
@@ -4434,7 +4539,7 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRunti
         if (ordinaryAssignment(st) || ['If', 'For', 'While','Block'].includes(st.type) || ast.loweredSourceLoopControl && ['Switch','Enum','Interface'].includes(st.type) || requiresSpriteRuntime && st.type==='ExpressionStatement' && ['Assignment','Update'].includes(st.expr?.type)) continue;
         const name = names[index];
         if (allowedCalls.has(name) || functionNames.has(name) ||
-            /^controller\.(A|B|up|down|left|right)\.onEvent$/.test(name || '') || /^info\.player[1-4]\.onLifeZero$/.test(name || '') ||
+            /^controller\.(A|B|up|down|left|right)\.onEvent$/.test(name || '') || /^info\.player[1-4]\.(?:onLifeZero|onScore)$/.test(name || '') ||
             // The runtime path keeps score and lives in native player state, which the HUD draws.
             /^info(?:\.player[1-4])?\.(setScore|changeScoreBy|setLife|changeLifeBy)$/.test(name || '') ||
             (name && /^[A-Za-z_]\w*\.onDestroyed$/.test(name)) ||
@@ -5041,10 +5146,7 @@ export function arcadeToPseudocode (files, opts = {}) {
                 return {type: 'Undefined'};
             }
             return {type: 'Array', ...(opts.animationResources ? {bwAnimationResourceId: resourceIds.get(animation.id)} : {}),
-                items: animation.frames.map(frame => ({type: 'Template', tag: 'img',
-                value: Array.from({length: animation.height}, (_, y) =>
-                    Array.from(frame.pixels.subarray(y * animation.width, (y + 1) * animation.width),
-                        index => index.toString(16)).join(' ')).join('\n')}))};
+                items: animationAssetArray(animation).items};
         }
         if (Array.isArray(node)) return node.map(lowerAnimationAssets);
         return Object.fromEntries(Object.entries(node).map(([key, value]) => [key, lowerAnimationAssets(value)]));
@@ -5062,17 +5164,19 @@ export function arcadeToPseudocode (files, opts = {}) {
     if(opts.sdkImagePrototype===true&&!classEligibility.eligible)projectInputDiagnostics.push(...classEligibility.unsupported,'SDK Image prototype requires its completed actual source producer proof');
     // Ordinary programs retain their ordinary parse. Only the proved numeric
     // surface uses lexical metadata and the existing callable lowering path.
-    const callableSourceInput=namedEnabled ? namedLowering.program : classEnabled ? withClassResultFlowProof(callableSourceParsed,classEligibility) : callableEnabled ? (callableEligibility.program || callableSourceParsed) : ordinarySource;
+    const callableSourceInput=namedEnabled ? namedLowering.program : classEnabled ? withCompilerOwnedClassResultFlowProof(callableSourceParsed,classEligibility) : callableEnabled ? (callableEligibility.program || callableSourceParsed) : ordinarySource;
     if(!namedEnabled&&!opts.callableLexicalPrototype&&!opts.classCallablePrototype&&!classEligibility.eligible){
         projectInputDiagnostics.push(...callableEligibility.unsupported,...classEligibility.unsupported,...namedEligibility.unsupported);
     }
     const sharedSourceContext = !namedEnabled&&!callableEnabled&&!classEnabled ? bindPreparedSharedImageSource(sharedSourcePreparation,ordinarySource) : null;
     const generatedProfile=(namedEnabled||classEnabled||callableEnabled||opts.procedureConstraintsPrototype===true)?
         GENERATED_HELPER_PROFILES.metadata:GENERATED_HELPER_PROFILES.ordinary;
-    const namedArrayInputs=lowerNamedArrayItemHelpers(inlineValueHelpers(callableSourceInput,true),{profile:generatedProfile});
+    const sourceOperatorInputs=lowerRuntimeDispatchAddHelpers(lowerSourceValueOperatorHelpers(callableSourceInput,generatedProfile),generatedProfile);
+    const nativeBinaryInputs=lowerNativeArrayBinaryHelpers(sourceOperatorInputs,generatedProfile);
+    const namedArrayInputs=lowerNamedArrayItemHelpers(inlineValueHelpers(nativeBinaryInputs.program,true),{profile:generatedProfile});
     // Recognition consumes the selected parse context before clone-heavy
     // lowerings erase its parameter descriptors or alter canonical bodies.
-    const generatedSource=inlineLegacyArrayHelpers(liftExporterStops(namedArrayInputs.program,generatedProfile),generatedProfile);
+    const generatedSource=normalizeCompilerOwnedLegacyArrayHelpers(liftExporterStops(namedArrayInputs.program,generatedProfile),generatedProfile);
     const parsed = lowerSourceLoopControl(inlineValueHelpers(desugarForOf(lowerArrayCallbacks(lowerIifes(lowerDestroyAllSprites(lowerLibraryCalls(
         lowerAnimationAssets(generatedSource)), source), source), source), source)));
     const containsPaletteCall = node => {
@@ -5141,7 +5245,7 @@ export function arcadeToPseudocode (files, opts = {}) {
         }
         const sourceReceiptDiagnostics=sharedSourceConsumed&&!sharedImageSourceContextCurrent(sharedSourceContext)?['Shared Image Array selected-source receipt expired; admitted source and artwork retained']:[];
         return {...result,code,costumes,animationResources,warnings:[...recovered.warnings,...sourceWarnings],
-            unsupported:[...new Set([...namedArrayInputs.unsupported,...animationDiagnostics,...projectInputDiagnostics,...paletteDiagnostics,...sourceReceiptDiagnostics,...result.unsupported])]};
+            unsupported:[...new Set([...nativeBinaryInputs.unsupported,...namedArrayInputs.unsupported,...animationDiagnostics,...projectInputDiagnostics,...paletteDiagnostics,...sourceReceiptDiagnostics,...result.unsupported])]};
     };
     let textSpriteInitializer=false;
     try {const cfg=JSON.parse(map['pxt.json'] || '{}');textSpriteInitializer=cfg.bwArcadeNativeLibraries?.textsprite==='v1.3.0' && selectedSource.entries.some(entry=>entry.name.startsWith('__bwDependencyInputs/arcade-text/') && entry.source===TEXT_SPRITE_INITIALIZER);}catch{}

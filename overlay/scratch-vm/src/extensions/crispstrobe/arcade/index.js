@@ -2,6 +2,7 @@ const makeExt = require('../adapter');
 const createConsoleInspectValues = require('./console-inspect-values');
 const nullSpriteGetter = require('../../../util/bw-null-sprite-getter');
 const sceneClockNumber = require('./scene-clock-number');
+const frameDeltaNumber = require('./frame-delta-number');
 
 // Shared game-console blocks. The original extension described a micro:bit
 // 5x5 game API but implemented every VM method as a no-op. Keep its opcodes
@@ -26,7 +27,9 @@ module.exports = makeExt(`// Name: Arcade
   const exceptionOwners = new WeakMap();
   const procedureOwners = new WeakMap();
   const scoreNumberOwners = new WeakMap();
+  const scoreThresholdRegistrations = new WeakMap();
   const sceneClockOwners = new WeakMap(), sceneClockValues = new WeakMap();
+  const frameDeltaOwners = new WeakMap(), frameDeltaValues = new WeakMap();
   const nullSpriteOwners = new WeakMap();
   const nullSpriteFaults = new WeakMap();
   const procedureEntryDisposers = new WeakMap();
@@ -49,16 +52,27 @@ module.exports = makeExt(`// Name: Arcade
         (child,args,util)=>spriteUpdateHosts.get(this)?.consumeChild(child,args,util));
       exceptionOwners.set(this,newExceptionOwner());
       managedReturnHosts.set(this,dependencies.createManagedReturnValues(runtime));
+      scoreThresholdRegistrations.set(this,new WeakMap());
       this._sourceScalarCells = dependencies.createSourceScalarCells(runtime, Scratch.BWValues, dependencies.sourceReferenceTypes, dependencies.sourceCallableCells);
       // A module-held owner ties the narrow score Number ingress to this actual
       // implementation, including its writers. It exposes no score/state value.
       const scorePrototype=Object.getPrototypeOf(this),scoreMethods=new Map(
         ['getInfo','getPlayerScore','setPlayerScore','changePlayerScore','_lifeState','_infoState','_state'].map(name=>
           [name,Object.getOwnPropertyDescriptor(scorePrototype,name)?.value]));
+      const sourceResultDescriptor=Object.getOwnPropertyDescriptor,sourceResultPrototype=Object.getPrototypeOf,sourceResultOwn=Object.prototype.hasOwnProperty,sourceResultApply=Reflect.apply;
+      const sourceResultMethods=['sourceValueBinary','sourceValueUnary','_bindSourceOperationAdapter'].map(name=>[name,Object.getOwnPropertyDescriptor(scorePrototype,name)?.value]);
       const scoreNumberOwner=Object.freeze({isInstance:value=>value===this,isCurrent:()=>Object.getPrototypeOf(this)===scorePrototype &&
         Object.getOwnPropertyDescriptor(this,'_runtime')?.value===runtime && [...scoreMethods].every(([name,method])=>
           typeof method==='function' && !Object.prototype.hasOwnProperty.call(this,name) &&
-          Object.getOwnPropertyDescriptor(scorePrototype,name)?.value===method)});
+          Object.getOwnPropertyDescriptor(scorePrototype,name)?.value===method),
+        isSourceCurrent:()=>{
+          if(sourceResultPrototype(this)!==scorePrototype||sourceResultDescriptor(this,'_runtime')?.value!==runtime)return false;
+          for(let i=0;i<sourceResultMethods.length;i++){
+            const name=sourceResultMethods[i][0],method=sourceResultMethods[i][1];
+            if(typeof method!=='function'||sourceResultApply(sourceResultOwn,this,[name])||sourceResultDescriptor(scorePrototype,name)?.value!==method)return false;
+          }
+          return true;
+        }});
       scoreNumberOwners.set(this,scoreNumberOwner);
       const getterPrototype=Object.getPrototypeOf(this),getterMethods=new Map(
         ['getInfo','spriteProperty'].map(name=>[name,Object.getOwnPropertyDescriptor(getterPrototype,name)?.value]));
@@ -79,7 +93,14 @@ module.exports = makeExt(`// Name: Arcade
         context:()=>({state:clockData(runtime,'bwArcadeDeviceState'),serial:clockData(this,'_ownedSpriteSceneSerial'),
           epoch:clockData(this,'_terrainEpoch'),scenes:clockData(this,'_sceneValues')})});
       sceneClockOwners.set(this,clockOwner);sceneClockValues.set(this,dependencies.sceneClockNumber.create(runtime,clockOwner));
-      this._consoleInspectValues=dependencies.createConsoleInspectValues(runtime,this._sourceScalarCells,scoreNumberOwner,sceneClockValues.get(this));
+      const frameMethods=new Map(['getInfo','frameDeltaTime','_state','_ensureSceneEngine','_activateScene','pushScene','popScene'].map(name=>[name,Object.getOwnPropertyDescriptor(clockPrototype,name)?.value]));
+      const frameOwner=Object.freeze({
+        isInstance:value=>value===this,
+        isCurrent:()=>Object.getPrototypeOf(this)===clockPrototype&&clockData(this,'_runtime')===runtime&&clockScenes instanceof Map&&clockData(this,'_sceneValues')===clockScenes&&[...frameMethods].every(([name,method])=>typeof method==='function'&&!Object.prototype.hasOwnProperty.call(this,name)&&clockData(clockPrototype,name)===method),
+        context:()=>({state:clockData(runtime,'bwArcadeDeviceState'),serial:clockData(this,'_ownedSpriteSceneSerial'),epoch:clockData(this,'_terrainEpoch'),scenes:clockData(this,'_sceneValues')})
+      });
+      frameDeltaOwners.set(this,frameOwner);frameDeltaValues.set(this,dependencies.frameDeltaNumber.create(runtime,frameOwner));
+      this._consoleInspectValues=dependencies.createConsoleInspectValues(runtime,this._sourceScalarCells,scoreNumberOwner,sceneClockValues.get(this),frameDeltaValues.get(this));
       const installProcedureOwner=()=>{
         procedureEntryDisposers.get(this)?.();procedureOwners.get(this)?.dispose();
         const owner=dependencies.createProcedureConstraints(runtime,this._consoleInspectValues);
@@ -290,7 +311,7 @@ module.exports = makeExt(`// Name: Arcade
           imageOwner.dispose();imageOwner=newImageOwner();sdkImageOwners.set(this,imageOwner);
           spriteOwner.dispose();spriteOwner=newSpriteOwner();ownedSpriteOwners.set(this,spriteOwner);
           this._sourceScalarCells.invalidate();this._sourceTypeOf.invalidateInputs();this._consoleInspectValues.dispose();managedReturnHosts.get(this).dispose();
-          this._consoleInspectValues=dependencies.createConsoleInspectValues(runtime,this._sourceScalarCells,scoreNumberOwner,sceneClockValues.get(this));
+          this._consoleInspectValues=dependencies.createConsoleInspectValues(runtime,this._sourceScalarCells,scoreNumberOwner,sceneClockValues.get(this),frameDeltaValues.get(this));
           installProcedureOwner();
           managedReturnHosts.set(this,dependencies.createManagedReturnValues(runtime));
           // Registry publications belong to the loaded project. GUI artwork
@@ -311,7 +332,7 @@ module.exports = makeExt(`// Name: Arcade
     getInfo() {
       const str = (name, def) => ({ [name]: { type: Scratch.ArgumentType.STRING, defaultValue: def || '' } });
       const n = (name, def) => ({ [name]: { type: Scratch.ArgumentType.NUMBER, defaultValue: def == null ? 0 : def } });
-      return dependencies.sceneClockNumber.declaration(dependencies.nullSpriteGetter.declaration(dependencies.createConsoleInspectValues.scoreInfo({
+      return dependencies.frameDeltaNumber.declaration(dependencies.sceneClockNumber.declaration(dependencies.nullSpriteGetter.declaration(dependencies.createConsoleInspectValues.scoreInfo({
         id: 'arcade',
         name: 'Arcade',
         color1: '#E64980',
@@ -353,6 +374,8 @@ module.exports = makeExt(`// Name: Arcade
           {opcode:'getLife',blockType:Scratch.BlockType.REPORTER,text:'Arcade life player [PLAYER]',arguments:n('PLAYER',1)},
           {opcode:'registerLifeZeroHandler',blockType:Scratch.BlockType.COMMAND,text:'Arcade register life zero player [PLAYER] as [TOKEN] capturing [CAPTURES]',arguments:{...n('PLAYER',1),...str('TOKEN','handler'),...str('CAPTURES','')}},
           {opcode:'whenRegisteredLifeZero',blockType:Scratch.BlockType.HAT,isEdgeActivated:false,text:'when Arcade life zero handler [TOKEN] runs',arguments:str('TOKEN','handler')},
+          {opcode:'registerScoreHandler',blockType:Scratch.BlockType.COMMAND,text:'Arcade register score player [PLAYER] threshold [SCORE] as [TOKEN] capturing [CAPTURES]',arguments:{...n('PLAYER',1),...n('SCORE',10),...str('TOKEN','handler'),...str('CAPTURES','')}},
+          {opcode:'whenRegisteredScore',blockType:Scratch.BlockType.HAT,isEdgeActivated:false,text:'when Arcade score handler [TOKEN] runs',arguments:str('TOKEN','handler')},
           {opcode:'pushScene',blockType:Scratch.BlockType.COMMAND,text:'Arcade push scene'},
           {opcode:'setPalette',blockType:Scratch.BlockType.COMMAND,text:'Arcade set palette hex [DATA]',arguments:str('DATA','000000ffffffff2121ff93c4ff8135fff609249ca378dc52003fad87f2ff8e2ec4a4839f5c406ce5cdc491463d000000')},
           {opcode:'popScene',blockType:Scratch.BlockType.COMMAND,text:'Arcade pop scene'},
@@ -366,6 +389,8 @@ module.exports = makeExt(`// Name: Arcade
           {opcode:'registerShadeHandler',blockType:Scratch.BlockType.COMMAND,text:'Arcade register shade as [TOKEN] capturing [CAPTURES]',arguments:{...str('TOKEN','handler'),...str('CAPTURES','')}},
           {opcode:'whenRegisteredShade',blockType:Scratch.BlockType.HAT,isEdgeActivated:false,text:'when Arcade shade handler [TOKEN] runs',arguments:str('TOKEN','handler')},
           {opcode:'screenImage',blockType:Scratch.BlockType.REPORTER,text:'Arcade screen image'},
+          {opcode:'sourceValueBinary',blockType:Scratch.BlockType.REPORTER,text:'Arcade source value [LEFT] [OP] with [RIGHT]',arguments:{...str('LEFT',''),OP:{type:Scratch.ArgumentType.STRING,menu:'sourceBinaryOperations',defaultValue:'+'},...str('RIGHT','')}},
+          {opcode:'sourceValueUnary',blockType:Scratch.BlockType.REPORTER,text:'Arcade source unary [OP] of [VALUE]',arguments:{OP:{type:Scratch.ArgumentType.STRING,menu:'sourceUnaryOperations',defaultValue:'~'},...str('VALUE','')}},
           {opcode:'sourceTypeOf',blockType:Scratch.BlockType.REPORTER,text:'Arcade source type of [VALUE]',arguments:{VALUE:{type:Scratch.ArgumentType.STRING}}},
           {opcode:'inspectValue',blockType:Scratch.BlockType.REPORTER,text:'Arcade inspect value [VALUE] limit [LIMIT]',output:'String',arguments:{...str('VALUE',''),...n('LIMIT',20)}},
           {opcode:'fontValue',blockType:Scratch.BlockType.REPORTER,text:'Arcade font [FONT]',arguments:{FONT:{type:Scratch.ArgumentType.STRING,menu:'fontValueNames',defaultValue:'font8'}}},
@@ -494,7 +519,7 @@ module.exports = makeExt(`// Name: Arcade
           {opcode:'beat',blockType:Scratch.BlockType.REPORTER,text:'Arcade beat [FRACTION]',arguments:{FRACTION:{type:Scratch.ArgumentType.STRING,menu:'beats',defaultValue:'Whole'}}},
           {opcode:'parseIntegerRadix',blockType:Scratch.BlockType.REPORTER,text:'Arcade parse integer [TEXT] radix [RADIX]',arguments:{...str('TEXT','ff'),...n('RADIX',16)}},
           {opcode:'parseInteger',blockType:Scratch.BlockType.REPORTER,text:'Arcade parse integer [TEXT]',arguments:str('TEXT','123')},
-          {opcode:'frameDeltaTime',blockType:Scratch.BlockType.REPORTER,text:'Arcade frame delta time'},
+          {opcode:'frameDeltaTime',blockType:Scratch.BlockType.REPORTER,text:'Arcade frame delta time',arguments:{}},
           {opcode:'musicVolume',blockType:Scratch.BlockType.REPORTER,text:'Arcade music volume'},
           {opcode:'musicTempo',blockType:Scratch.BlockType.REPORTER,text:'Arcade music tempo'},
           {opcode:'registerIntervalHandler',blockType:Scratch.BlockType.COMMAND,text:'Arcade register interval [INTERVAL] ms as [TOKEN] capturing [CAPTURES]',arguments:{...n('INTERVAL',1000),...str('TOKEN','handler'),...str('CAPTURES','')}},
@@ -1004,8 +1029,10 @@ module.exports = makeExt(`// Name: Arcade
           sourceReferenceTypes:{acceptReporters:false,items:'_sourceReferenceChoices'},
           constraintProcedures:{acceptReporters:false,items:'_constraintProcedures'},
           constraintParameters:{acceptReporters:false,items:'_constraintParameters'},
+          sourceBinaryOperations:{acceptReporters:false,items:['+','-','*','/','%','**','&','|','^','<<','>>','>>>']},
+          sourceUnaryOperations:{acceptReporters:false,items:['~']},
           sourceScalarTypes:{acceptReporters:false,items:['Number','Boolean','String','Any']},
-          mathOperations:{acceptReporters:false,items:['min','max','randomRange']},
+          mathOperations:{acceptReporters:false,items:['min','max','randomRange','atan2']},
           hudElements:{acceptReporters:false,items:['score','life','countdown']},
           buttons: {acceptReporters: true, items: [
             {text: 'A', value: 'a'}, {text: 'B', value: 'b'},
@@ -1093,7 +1120,7 @@ module.exports = makeExt(`// Name: Arcade
           spriteFlags: {acceptReporters: false, items: Object.keys(spriteFlags)}
           ,speechModes: {acceptReporters: false, items: ['text', 'legacy']}
         }
-      },scoreNumberOwners.get(this)),nullSpriteOwners.get(this)),sceneClockOwners.get(this));
+      },scoreNumberOwners.get(this)),nullSpriteOwners.get(this)),sceneClockOwners.get(this)),frameDeltaOwners.get(this));
     }
 
     // An owned runtime may inject {now:()=>milliseconds} for deterministic
@@ -1351,16 +1378,17 @@ module.exports = makeExt(`// Name: Arcade
       if(key===1)return this.getLife({PLAYER:player.index+1});
       return Scratch.BWValues.encode(this._customPlayerState(player,key).value);
     }
-    setPlayerState(args) {
+    setPlayerState(args,util) {return this._runTerrainGenerator(this._setPlayerStateSteps(args,util));}
+    *_setPlayerStateSteps(args,util) {
       const player=this._player(args.PLAYER);if(!player)return;
       const key=this._playerStateNumber(args.KEY),value=this._playerStateNumber(args.VALUE);
-      if(key===0)this.setPlayerScore({PLAYER:player.index+1,VALUE:value});
+      if(key===0){yield* this._setPlayerScoreSteps({PLAYER:player.index+1,VALUE:value},util);if(this._terrainStopped)return;}
       if(key===1)this.setLife({PLAYER:player.index+1,VALUE:value});
       this._customPlayerState(player,key).value=value;
     }
-    changePlayerState(args) {
+    changePlayerState(args,util) {
       if(!this._player(args.PLAYER))return;
-      this.setPlayerState({...args,VALUE:Scratch.BWValues.decode(this.getPlayerState(args))+this._playerStateNumber(args.VALUE)});
+      return this.setPlayerState({...args,VALUE:Scratch.BWValues.decode(this.getPlayerState(args))+this._playerStateNumber(args.VALUE)},util);
     }
     playerBySprite(args) {const sprite=Scratch.BWValues.decode(args.ID);return this._playerRef(this._players().find(player=>player.sprite===sprite));}
     playerProperty(args) {
@@ -1738,13 +1766,49 @@ module.exports = makeExt(`// Name: Arcade
       const state=this._infoState(),index=(Number(player)||1)-1;if(index<0 || index>3)return null;
       if(index>0){state.multiplayerInfo=true;this._hud().info._setInfoState(state.hudInfo);this._hud().info._initMultiHUD();}
       if(!state.players)state.players=[];
-      return state.players[index] || (state.players[index]={});
+      const PlayerState=this._hud().info.PlayerState;
+      return state.players[index] || (state.players[index]=new PlayerState());
     }
     hasLife(args) {const state=this._lifeState(args.PLAYER);return !!state && state.life!==undefined && state.life!==null;}
     getPlayerScore(args) {const state=this._lifeState(args.PLAYER);if(!state)return 0;if(state.showScore===undefined)state.showScore=true;if(state.showPlayer===undefined)state.showPlayer=true;if(state.score==null)state.score=0;if((Number(args.PLAYER)||1)===1)this._state().score=state.score;return state.score;}
     hasPlayerScore(args) {const state=this._lifeState(args.PLAYER);return !!state && state.score!==undefined;}
-    setPlayerScore(args) {const state=this._lifeState(args.PLAYER);if(state){const hud=this._state().hudInfo,V=this._hud().info.Visibility;if(!(hud.visibilityFlag & V._ExplicitlySetScore))hud.visibilityFlag|=V.Score;if(state.showScore===undefined)state.showScore=true;if(state.showPlayer===undefined)state.showPlayer=true;state.score=Number(args.VALUE)|0;if((Number(args.PLAYER)||1)===1)this._state().score=state.score;this._changed();}}
-    changePlayerScore(args) {this.setPlayerScore({PLAYER:args.PLAYER,VALUE:this.getPlayerScore(args)+Number(args.VALUE)});}
+    setPlayerScore(args,util) {return this._runTerrainGenerator(this._setPlayerScoreSteps(args,util));}
+    *_setPlayerScoreSteps(args,util) {
+      const owner=this._infoState(),state=this._lifeState(args.PLAYER);if(!state)return;
+      const hud=owner.hudInfo,V=this._hud().info.Visibility;
+      if(!(hud.visibilityFlag & V._ExplicitlySetScore))hud.visibilityFlag|=V.Score;
+      // The same score() side effects and integer assignment as PlayerInfoImpl.
+      const oldScore=this.getPlayerScore(args) || 0;
+      state.score=Number(args.VALUE)|0;if((Number(args.PLAYER)||1)===1)owner.score=state.score;
+      this._changed();
+      // PXT uses forEach: capture its initial length, but read each live row and
+      // the current score AFTER every completed callback, including suspension.
+      const handlers=state.scoreReachedHandlers,length=handlers.length;
+      for(let index=0;index<length;index++)if(index in handlers){
+        const entry=handlers[index];
+        if((oldScore<entry.score && state.score>=entry.score) || (oldScore>entry.score && state.score<=entry.score)){
+          const registration=scoreThresholdRegistrations.get(this).get(entry.handler);
+          if(!registration)throw new Error('Arcade score handler has no current registration');
+          yield* this._registeredCallbackSteps([registration],'arcade_whenRegisteredScore',{},util);
+          if(this._terrainStopped)return;
+        }
+      }
+    }
+    changePlayerScore(args,util) {return this.setPlayerScore({PLAYER:args.PLAYER,VALUE:this.getPlayerScore(args)+Number(args.VALUE)},util);}
+    registerScoreHandler(args,util) {
+      const player=Number(Scratch.BWValues.decode(args.PLAYER));
+      if(!Number.isInteger(player)||player<1||player>4)throw new Error('Arcade score registration requires a fixed player from 1 to 4');
+      const score=this._mathArgument(args,'SCORE',util,'Arcade score threshold requires a Number');
+      if(typeof score!=='number')throw new TypeError('Arcade score threshold requires a Number');
+      const state=this._lifeState(player);if(!state)return;
+      const registration=this._handlerRegistration(args,util);
+      const handler=()=>this._runTerrainGenerator(this._registeredCallbackSteps([registration],'arcade_whenRegisteredScore',{}));
+      scoreThresholdRegistrations.get(this).set(handler,registration);
+      const {info,players}=this._hud();info._setInfoState(this._state().hudInfo);
+      // Reuse the actual retained SDK registration/replacement algorithm.
+      players[player-1].onScore(score,handler);
+    }
+    whenRegisteredScore(args,util) {return this.whenRegisteredWall(args,util);}
     getLife(args) {const state=this._lifeState(args.PLAYER);if(!state)return 0;if(state.showLife===undefined)state.showLife=true;if(state.showPlayer===undefined)state.showPlayer=true;if(state.life===undefined)state.life=3;return state.life || 0;}
     setLife(args) {const state=this._lifeState(args.PLAYER);if(state){const hud=this._state().hudInfo,V=this._hud().info.Visibility;if(!(hud.visibilityFlag & V._ExplicitlySetLife))hud.visibilityFlag|=V.Life;if(state.showLife===undefined)state.showLife=true;if(state.showPlayer===undefined)state.showPlayer=true;state.life=Number(args.VALUE)|0;this._changed();}}
     changeLife(args) {this.setLife({PLAYER:args.PLAYER,VALUE:this.getLife(args)+Number(args.VALUE)});}
@@ -1924,6 +1988,7 @@ module.exports = makeExt(`// Name: Arcade
       if (operation==='min') value=a<=b?a:b;
       else if (operation==='max') value=a>=b?a:b;
       else if (operation==='randomRange') value=this._randomRange(a,b);
+      else if (operation==='atan2') value=Math.atan2(a,b);
       else throw new TypeError('Arcade math operation is not implemented: '+operation);
       return Scratch.BWValues.encode(value);
     }
@@ -2701,8 +2766,8 @@ module.exports = makeExt(`// Name: Arcade
       const sprite = this._sprite(args.NAME); if (!sprite) return false;
       const bounds = this._bounds(); return sprite.x <= 0 || sprite.x >= bounds.x || sprite.y <= 0 || sprite.y >= bounds.y;
     }
-    setscore(args) {this.setPlayerScore({PLAYER:1,VALUE:args.N});}
-    changescore(args) {this.changePlayerScore({PLAYER:1,VALUE:args.N});}
+    setscore(args,util) {return this.setPlayerScore({PLAYER:1,VALUE:args.N},util);}
+    changescore(args,util) {return this.changePlayerScore({PLAYER:1,VALUE:args.N},util);}
     getscore() {return this.getPlayerScore({PLAYER:1});}
     showscore() { this._state().scoreVisible = true; this._changed(); }
     log(args) {
@@ -5221,8 +5286,27 @@ module.exports = makeExt(`// Name: Arcade
     // PXT's own parseInt (helpers-pxt.js); its text argument is a string.
     parseInteger(args) {return dependencies.helpers.parseInt(String(Scratch.BWValues.decode(args.TEXT) ?? ''));}
     parseIntegerRadix(args) {return dependencies.helpers.parseInt(String(Scratch.BWValues.decode(args.TEXT) ?? ''),Scratch.Cast.toNumber(args.RADIX));}
-    // control.eventContext().deltaTime: seconds since the previous frame.
-    frameDeltaTime() {return this._state().frameDeltaTime || 0;}
+    // game.eventContext().deltaTime: seconds since the previous frame.
+    frameDeltaTime(args,util) {
+      return frameDeltaValues.get(this).read(args,util,()=>{
+        // Refuse effectful clock access before _state's existing initialization
+        // check. Genuine own data keeps that initializer and scene policy.
+        const current=Object.getOwnPropertyDescriptor(this._runtime,'bwArcadeDeviceState');
+        if(current&&!Object.prototype.hasOwnProperty.call(current,'value'))throw Error('Frame delta Number: scene accessor is not owned data');
+        const existing=current?.value;
+        if(existing&&typeof existing==='object'){
+          const prototype=Object.getPrototypeOf(existing),elapsed=Object.getOwnPropertyDescriptor(existing,'frameDeltaTime');
+          // _state reads frameDeltaTime before initializing it: an inherited getter
+          // must not run on the certified path when the own value is absent.
+          let inherited=false;for(let parent=prototype;parent;parent=Object.getPrototypeOf(parent))if(Object.getOwnPropertyDescriptor(parent,'frameDeltaTime')){inherited=true;break;}
+          if(prototype!==Object.prototype&&prototype!==null||!elapsed&&inherited||elapsed&&!Object.prototype.hasOwnProperty.call(elapsed,'value'))throw Error('Frame delta Number: frame accessor is not owned data');
+        }
+        const state=this._state(),elapsed=Object.getOwnPropertyDescriptor(state,'frameDeltaTime');
+        if(!elapsed||!Object.prototype.hasOwnProperty.call(elapsed,'value'))throw Error('Frame delta Number: frame value is not owned data');
+        const value=state.frameDeltaTime; // retain the original property read and its effects
+        return {state,value};
+      },()=>this._state().frameDeltaTime || 0);
+    }
     musicVolume() {return this._music().pxt.music.volume();}
     musicTempo() {return this._music().pxt.music.tempo();}
     _pxtText() {
@@ -5242,6 +5326,19 @@ module.exports = makeExt(`// Name: Arcade
         base64:data=>fromBytes(Uint8Array.from(atob(data),c=>c.charCodeAt(0)))
       });
       return this._textModule;
+    }
+    // Constructor-only delegate binding: the owner stays in this source closure.
+    _bindSourceOperationAdapter(adapter) {
+      dependencies.bindSourceOperationAdapter(adapter,this,scoreNumberOwners.get(this));
+    }
+
+    sourceValueBinary(args,util) {
+      try {this._sourceTypeOf.assertOwner();return dependencies.sourceValueBinary(this._runtime,args,util);}
+      catch(error){return exceptionOwners.get(this).rejectConstraint(args,util,error);}
+    }
+    sourceValueUnary(args,util) {
+      try {this._sourceTypeOf.assertOwner();return dependencies.sourceValueUnary(this._runtime,args,util);}
+      catch(error){return exceptionOwners.get(this).rejectConstraint(args,util,error);}
     }
     inspectValue(args,util) {return this._consoleInspectValues.inspect(args,util,error=>this._objectError(error));}
     sourceTypeOf(args,util) {
@@ -6108,6 +6205,8 @@ module.exports = makeExt(`// Name: Arcade
   primitiveOwner: require('../../../util/bw-primitive-owner'),
   cachedPrimitiveOwner: require('../../../util/bw-cached-primitive-owner'),
   arcadeExceptions: require('../../../util/bw-arcade-exceptions'),
+  sourceValueBinary: require('../../../util/bw-array-source-values').sourceValueBinary,
+  sourceValueUnary: require('../../../util/bw-array-source-values').sourceValueUnary,
   createClassCallableHost: require('./class-callable-host'),
   CallableDispatch: require('./callable-dispatch'),
   sourceReferenceTypes: require('./source-reference-types'),
@@ -6115,8 +6214,11 @@ module.exports = makeExt(`// Name: Arcade
   createSourceTypeOfValues: require('./source-typeof-values'),
   createConsoleInspectValues,
   bindScoreAdapterInfo: createConsoleInspectValues.bindScoreAdapterInfo,
+  bindSourceOperationAdapter: createConsoleInspectValues.bindSourceOperationAdapter,
   sceneClockNumber,
   bindSceneClockAdapterInfo: sceneClockNumber.bindAdapterInfo,
+  frameDeltaNumber,
+  bindFrameDeltaAdapterInfo: frameDeltaNumber.bindAdapterInfo,
   nullSpriteGetter,
   bindNullSpriteAdapterInfo: nullSpriteGetter.bindAdapterInfo,
   createProcedureConstraints: require('./procedure-parameter-constraints'),
