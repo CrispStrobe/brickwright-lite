@@ -1,6 +1,6 @@
-# Arcade Array identity constraint-prefix effects — claim only
+# Arcade Array identity constraint-prefix effects — implemented, qualification pending
 
-Owner: Arcade integration. Status: claim only; implementation waits for this claim to merge. Base: `3f1ba978bf69f01cca4122b258419f79ef849acc`. Isolated branch: `lane/arcade-array-identity-prefix-claim-20261022`. One active implementation at a time; preserve other owners’ boundaries. This continues this owner’s definite-overwrite and class reset-effect work; preserve the separate failed-control witness/capture lane and all existing qualification limits.
+Owner: Arcade integration. Status: implementation candidate complete; hosted qualification pending. Claims #1217 and #1218 are merged; implementation is not yet merged. Base: `3f1ba978bf69f01cca4122b258419f79ef849acc`. Isolated branch: `lane/arcade-array-identity-prefix-claim-20261022`. One active implementation at a time; preserve other owners’ boundaries. This continues this owner’s definite-overwrite and class reset-effect work; preserve the separate failed-control witness/capture lane and all existing qualification limits.
 
 ## Actual boundary
 
@@ -78,3 +78,20 @@ Source controls do not establish compilation or editor behavior. Require actual 
 Author/edit connected identity procedures, formal declarations and returns in Blocks and Code/pseudocode. Edit callee/formal/type selector/return/unsafe writer and show current named refusal diagnostics. Verify Code/Blocks conversion, SB3 save/fresh reopen, current assets, native execution, actual export/MakeCode compilation and fresh reimport with values/effects preserved. No new class/graphics editor or application-completion claim follows.
 
 The official numeric authoring StringArray settings project separately reports two genuine mutation/indexing Array producer refusals. Retain its visibility repair and unchanged clean-report assertion. Capture that actual project’s initialization, settings-return, writer and rejected-predicate facts before attributing its cause to this prefix or expanding the repair. All historical failures and the unremeasured 36 partial applications remain retained.
+
+## Implementation candidate and qualification status
+
+The two effect helpers now recognize only canonical owned leading `Any`
+declarations before the same identity return. A private dependency connects an
+actually used prefix proof to cached Array validation and expires after an
+observed source change. The four legacy reset/effect guards remain unchanged.
+The complete new eight-group module covers actual second export, unsafe
+entries/writers, physical formal ownership and retained-validation ABA. The
+existing nine complete modules and original assertions remain unchanged.
+
+No local native/SDK cohort was executed for this candidate. The full affected
+route requires genuine VM/runtime-hook providers; local resource fit is not
+established. Qualification uses the existing PR's automatic hosted checks,
+without a replacement dispatch or new CI label. Source review alone establishes
+no passing test, application completion or GUI/native/SDK acceptance. Keep this
+lane owned until the implementation and its required qualification land.

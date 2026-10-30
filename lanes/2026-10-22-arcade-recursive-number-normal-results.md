@@ -1,6 +1,6 @@
 # Arcade closed recursive Number normal results — claim
 
-Owner: Arcade integration. Status: claimed; implementation waits for this claim to merge. Base: `a4876dadf7c96897bd4019f8936dadb808814769`. Isolated branch: `lane/arcade-recursive-number-claim-20261022`. Coordinated continuation of this owner’s closure, lexical-readiness, refusal-reporting and animation claims; preserve their boundaries, all other owners, failures and qualification limits.
+Owner: Arcade integration. Status: DONE — implementation and complete source controls (55/55), with hosted native/SDK/editor qualification pending. This releases the implementation task, not compatibility or application completion. Base: `a4876dadf7c96897bd4019f8936dadb808814769`. Isolated branch: `lane/arcade-recursive-number-claim-20261022`. Coordinated continuation of this owner’s closure, lexical-readiness, refusal-reporting and animation claims; preserve their boundaries, all other owners, failures and qualification limits.
 
 ## Capability and observed boundary
 
@@ -34,3 +34,17 @@ Add meaningful complete controls for fib/mutual calls, parameter/local writes, a
 The complete original twelve-function-return module, genuine native VM/Creator/resources, actual original/emitted MakeCode compilation, Code feedback, fresh exact-file import and SB3 save/reload remain required. Preserve unrelated Sprite failure honestly. Follow the normal exact-head hosted matrix and affected clean guest requirements; source controls alone are not browser/SDK qualification.
 
 GUI work remains explicit: connected recursive value procedures and arguments, base/recursive edge edits, independent frames, current diagnostics on unsafe edits, Code/Blocks roundtrip, fresh reopen, current artwork, real export/compile/reimport and exact value/effect trace. Existing unsupported class/property/raw-ARGS authoring gaps stay visible. No corpus or partial-count credit follows from this claim or proof.
+
+## Implementation result
+
+The separate raw recursive Number proof and narrow native consumer are implemented.
+All preceding eleven modules / 47 controls and the complete eight new groups pass
+together: 55 passes, no failures, skips, TODOs or cancellations, within unchanged
+resource bounds. The original twelve-function-return module is unchanged. Earlier
+failed candidates remain retained; two newly authored test premises were corrected
+with explicit ordinary-function versus canonical-helper and syntax versus domain
+assertions. No production rule was weakened to satisfy those premises.
+
+Hosted final-head checks and native/original-emitted SDK, current Code/Blocks,
+save/fresh reopen and graphics acceptance remain required before landing. Keep the
+historical 36 partials until a complete admitted application assessment changes it.

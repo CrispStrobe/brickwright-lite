@@ -102,6 +102,11 @@ test('native plain-object prototype setters are not actual own local cells',()=>
     // These inherited writable data properties become ordinary own cells on
     // assignment; they are not the inherited __proto__ setter.
     for(const name of ['constructor','toString','hasOwnProperty'])assert.deepEqual(results(renamed(name)),[true],name);
+    for(const name of ['constructor','toString','hasOwnProperty']){
+        const beforeOwnWrite=renamed(name);
+        beforeOwnWrite.insert(beforeOwnWrite.resets[0],beforeOwnWrite.set('beforeOwnWrite',beforeOwnWrite.local(name)));
+        refuses(beforeOwnWrite);
+    }
 });
 
 test('inherited native procedure-cache entries cannot establish a fresh invocation frame',()=>{
@@ -226,4 +231,20 @@ test('a read between repeated resets cannot be hidden by a later valid Array wri
 test('a noncanonical writer among repeated resets remains an incompatible writer',()=>{
     const f=fixture();wrapEntry(f,'ordinary entry');
     f.insert(f.overwrites[0],f.set('cell0',f.number(7)));f.insert(f.overwrites[0],f.set('cell0',f.special('null')));refuses(f);
+});
+
+
+test('an unrelated mixed global cannot move a proved local frame receiver into the occurrence profile',()=>{
+    const f=fixture(),hat=Object.keys(f.blocks).find(id=>f.blocks[id].opcode==='arcade_whenSourceStarts');
+    const reset=f.global(f.special('undefined')),overwrite=f.global(f.create()),call=f.blocks[hat].next;
+    f.blocks[hat].next=reset;f.blocks[reset].parent=hat;f.blocks[reset].next=overwrite;
+    f.blocks[overwrite].parent=reset;f.blocks[overwrite].next=call;f.blocks[call].parent=overwrite;
+    const before=structuredClone(f.project),proof=createArrayReferenceExportAuthority(f.project);
+    assert.equal(f.blocks[f.blocks[reset].inputs.VALUE[1]].opcode,'arrays_specialValue');
+    assert.equal(f.blocks[f.blocks[overwrite].inputs.VALUE[1]].opcode,'arrays_createReference');
+    assert.deepEqual(results(f),[true]);
+    assert.equal(proof.validateInput(f.target,f.blocks[f.reads[0]]).ok,true);
+    assert.deepEqual(f.project,before,'classification preserves every global and local writer');
+    f.project.extensions.push('custom');
+    assert.equal(proof.validateInput(f.target,f.blocks[f.reads[0]]).ok,false,'the original frame currentness remains mandatory');
 });

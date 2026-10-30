@@ -1,6 +1,6 @@
 # Arcade exact refused-export observation — scope amendment
 
-CLAIMED. Owner: Arcade integration. Branch:
+DONE for source implementation; exact-head hosted qualification pending. Owner: Arcade integration. Branch:
 `lane/arcade-exact-refusal-capture-claim-20261023`.
 Base: `735174531` (resolve the complete object identity before composition).
 Merge this amendment before implementation. Existing published Arcade source
@@ -80,3 +80,75 @@ not a semantic fix. Mark source implementation DONE in its final candidate,
 retain original failures, and require all enabled exact-head checks before
 normal matched-head landing. A fresh agent can then diagnose the captured
 Array writer/reset/initialization frontier before proposing its narrow repair.
+
+## Implementation checkpoint
+
+Claim #1256 merged after four successful enabled checks and twelve declared
+skips, before implementation. The JSON entry now retains its exact consumed
+primitive input and descriptor-serialized actual result from the single original
+export invocation, on refusal only. The 8 MiB combined UTF-8 bound is retention,
+not process-memory qualification. Unsupported shapes and size failures are
+explicitly unavailable; no incomplete graph is called complete.
+
+The current report carries optional plain evidence through its existing ownership
+checks. The verifier retains a readonly pre-click component handle only when
+report/request are null and it is idle; the post-click report must belong to the
+same instance, VM and revision with a current request and matching visible text.
+Ambiguous, stale or incomplete ancestry is unavailable. React 16 and later fiber
+pointer names are supported. Capture precedes the unchanged clean-export assertion
+and preserves later asset checks. Missing evidence cannot replace that assertion.
+
+The existing export-report tests retain their six original groups and add six;
+the existing diagnostics module retains three and adds four. Complete source
+review and six syntax checks pass, with exact component mirror equality. No local
+browser, SDK or affected-test execution is claimed. Require actual hosted results
+before reporting usable capture, GUI acceptance or any application completion.
+
+Next: acquire the next completed numeric-authoring failure artifact once after
+metadata admission. Require COMPLETE observation, exact build/source identity,
+byte lengths and hashes for `clean-export-consumed-project.json` and
+`clean-export-semantic-result.json`; otherwise diagnose the explicit unavailable
+status. Then inspect the actual Array receiver/writer/initialization boundary and
+claim its narrow semantic repair. Preserve the original failure and every guard.
+
+## Fresh-component observation follow-up
+
+The completed hosted exporter/report module passes 12/12 and diagnostic source
+controls 7/7. The actual numeric GUI artifact still reports only
+`UNAVAILABLE_FRESHNESS`, so its failing input remains unavailable and the exact
+observer failure cause is unestablished. Keep that limitation and original
+clean-export assertion.
+
+Source review identifies a legitimate initial component state: its constructor
+has no request slot. Only beginning a report creates an object and invalidation
+assigns null. The follow-up admits true own absence with no inherited slot, while
+retaining null-report/idle and every same-instance/VM/revision/new-own-request
+postcondition. Own undefined, inherited data/getters and active requests remain
+refused. The pre-action anchor is the existing directly rendered editor root.
+Every unavailable branch now records a small fixed reason code and preserves an
+unavailable precondition's reason in the artifact. Nine complete diagnostic
+source groups preserve the seven preceding scenarios and add fresh-mount and
+reason controls. Source review is not actual GUI acceptance; require the next
+hosted artifact and COMPLETE bytes before diagnosing the Array refusal itself.
+
+## Idle previous-report ownership
+
+The later hosted observer reached its renderer anchor but declined capture
+because an earlier conversion report was already present. The actual component
+can keep that report, and dismissing it does not clear its previous Arcade
+request. An idle previous report or request does not establish a fresh export.
+
+The verifier now holds those exact baseline identities while the component is
+idle, retaining the current VM and revision. A prior request must be an own data
+slot with valid ownership, or the legitimate null/absent state. Undefined,
+inherited, accessor and foreign request states remain refused. The post-export
+check requires both a different own nonnull request and a different report,
+as well as the same component, VM and revision and the existing operation,
+visible text, schema and UTF-8 byte checks. The actual begin/publish methods
+allocate these new identities. No completion is inferred from a request shape.
+
+The observer still makes no extra export, click, serialization, state mutation
+or hook. The original application refusal assertion and later asset checks are
+unchanged. Complete exact input/result capture is still required before any
+semantic Array repair or completion claim. Source tests and the next actual
+browser result must qualify this continuation independently.

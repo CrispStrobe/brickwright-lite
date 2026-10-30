@@ -1,6 +1,6 @@
 # Claim: lexical declaration readiness for native addition
 
-Owner: Arcade compatibility lane. Status: claimed; implementation pending.
+Owner: Arcade compatibility lane. Status: merged claim; SOURCE candidate authored, qualification pending.
 Base: `dd22100df89269a940aef028a6bcaf9d0fcae683`.
 
 ## Scope
@@ -67,3 +67,16 @@ separate gates. Any broader corpus-repair attribution requires a new actual
 complete conversion census; this claim neither establishes the cause of the
 reported158 failures nor closes them. Preserve original failures and all
 existing thresholds/assertions. No implementation before this claim merges.
+
+## Candidate boundary
+
+A private lazy declaration-execution frontier now supplements the native domain
+only after its existing primitive occurrence and complete-writer checks. Actual
+owned statement/expression slots issue facts; defaulted callables and unsupported
+syntax conservatively refuse this new theorem. Closure allocation and closed
+hoisted all-entry intersection are separate. Existing value initialization,
+Array/effects/escape guards and old tests are unchanged. Two new complete
+focused modules contain four groups each. SOURCE review and all eight complete source-analysis modules now pass:
+23 tests, no skips. Earlier failures are preserved. Original/emitted SDK,
+affected native/GUI and final integration qualification remain pending; no
+corpus failure count or GUI/native closure is claimed. No dependency or supplier pin changed.

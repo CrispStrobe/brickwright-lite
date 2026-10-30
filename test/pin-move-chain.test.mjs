@@ -38,6 +38,12 @@
  *     is an ancestor of the pin and that behindPinBy is the true count. On
  *     main today that field is 7b8d1404, the one non-pin sha outside prose and
  *     ledgers. Every other sha in that manifest must be the pin.
+ *   - three exact frozen executable admission constants have source-bound
+ *     historical roles, listed in frozen-control-pin-admissions.json. Whole
+ *     file bytes/mode/Git blob are independently checked; only the supported
+ *     token can keep its shipped previous pin. Other code remains current.
+ *     Their old-candidate admission is preserved, never upgraded to a current
+ *     qualification by this exception.
  *   - run receipts (docs/receipts/*.json and original model-source READMEs)
  *     are their own role, and it
  *     is NARROWER than a ledger. A receipt is evidence of what was measured
@@ -66,7 +72,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {execFileSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
-import {readFileSync, existsSync, mkdtempSync, writeFileSync, rmSync} from 'node:fs';
+import {readFileSync, existsSync, lstatSync, mkdtempSync, writeFileSync, rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import path from 'node:path';
 import vm from 'node:vm';
@@ -103,8 +109,15 @@ const LIVE_X86_CUI = '4b65f15485abbc039958d8e1a8a29ac3459b75f9';
 const LIVE_X86_BOARD = 'c87cfa325a7b599846c1c4088a408eeabb83daaa';
 const HISTORICAL_X86_BOARD = '761153ff92d521c01107ee7b32922ba7adc10ee2';
 const HISTORICAL_X86_CURRENT_BOARD = '836867513c3e7fac420ddaa32c17e1c7b6d3e513';
-const HISTORICAL_X86_FINITE_V7_PINS = "FINITE_V7_PINS = {'bw-board':'" + HISTORICAL_X86_CURRENT_BOARD + "','bw-circuit-ui':'" + HISTORICAL_X86_V8_CUI + "','sb3-creator':'1cbaeed325f5a890e43b78a4211acae8f801f2d2'}";
-const HISTORICAL_X86_FINITE_V8_PINS = "FINITE_V8_PINS = {'bw-board':'" + HISTORICAL_X86_CURRENT_BOARD + "','bw-circuit-ui':'" + HISTORICAL_X86_V8_CUI + "','sb3-creator':'1cbaeed325f5a890e43b78a4211acae8f801f2d2'}";
+// The sb3-creator pin every reviewed F7/F8/F9 x86 epoch was executed at. It
+// was current until the Arcade atan2 move to LIVE_X86_SB3; from then on it is
+// a previous pin that only the exact named SB3/CURRENT_SB3/F7/F8 positions of
+// the reviewed bodies (historicalSb3Spans) and this declaration may carry.
+const HISTORICAL_X86_SB3 = '1cbaeed325f5a890e43b78a4211acae8f801f2d2';
+// The live F10 sb3-creator identity; it follows the current pin.
+const LIVE_X86_SB3 = 'c10bc94c38a279196441540e7f8309169c85d311';
+const HISTORICAL_X86_FINITE_V7_PINS = "FINITE_V7_PINS = {'bw-board':'" + HISTORICAL_X86_CURRENT_BOARD + "','bw-circuit-ui':'" + HISTORICAL_X86_V8_CUI + "','sb3-creator':'" + HISTORICAL_X86_SB3 + "'}";
+const HISTORICAL_X86_FINITE_V8_PINS = "FINITE_V8_PINS = {'bw-board':'" + HISTORICAL_X86_CURRENT_BOARD + "','bw-circuit-ui':'" + HISTORICAL_X86_V8_CUI + "','sb3-creator':'" + HISTORICAL_X86_SB3 + "'}";
 const CURRENT_X86_FINITE_V9_PRODUCER = "FINITE_V9_PINS = {'bw-board':CURRENT_BOARD,'bw-circuit-ui':CUI,'sb3-creator':CURRENT_SB3}";
 const CURRENT_X86_FINITE_V9_READER = "FINITE_V9_PINS = {'bw-board':CURRENT_BOARD,'bw-circuit-ui':CUI_V8,'sb3-creator':CURRENT_SB3}";
 // Reviewed arming-preparation F10/Actual-V9 bodies; actual admission is separate. Historical
@@ -113,8 +126,8 @@ const CURRENT_X86_FINITE_V9_READER = "FINITE_V9_PINS = {'bw-board':CURRENT_BOARD
 // including clock and core/full-runtime parity. Any later source edit revokes
 // their occurrence roles until another explicit review; never auto-restamp.
 const HISTORICAL_X86_SOURCE_PROFILES = Object.freeze({
-    'scripts/run-i80386-hdd-gui-actual.py': Object.freeze({bytes: 344630, sha256: '948459c3dd151a598790e043df1d2f0ea70f2a21c17e9eb246a7966d011deb5a'}),
-    'scripts/read-i80386-hdd-gui-originals.py': Object.freeze({bytes: 460207, sha256: '9409e9e20d4080caf08b480de357128f2cc112a31d5fe53c22d9bdc59c310bdd'}),
+    'scripts/run-i80386-hdd-gui-actual.py': Object.freeze({bytes: 344630, sha256: 'ca06caf8a9c009853aef1f1f40bec3ae31962041b3f887e0265fa6acd2fe74a9'}),
+    'scripts/read-i80386-hdd-gui-originals.py': Object.freeze({bytes: 460207, sha256: '9a2539d2de54e0a66000c872e74a213ade78b46d7749dc990ce3a82f07cd177c'}),
     'test/i80386-hdd-gui-actual.test.mjs': Object.freeze({bytes: 637722, sha256: '0bb6e8bba3a3860ceeac56e74f10a1d30372bea557368dc737dd489fe4addf82'}),
 });
 
@@ -123,7 +136,7 @@ import {explainGitFailure} from './helpers/git-absence.mjs';
 // `git` from PATH: the same AMBIENT-BINDING shape i8086-bios-provenance keeps
 // and defuses — every use below proves git answered before anything is judged.
 // gate-shapes-allow
-const git = (cwd, ...args) => execFileSync('git', ['-C', cwd, ...args], {encoding: 'utf8', maxBuffer: 64 << 20});
+const git = (cwd, ...args) => execFileSync('git', ['-c', 'gc.auto=0', '-c', 'maintenance.auto=false', '-C', cwd, ...args], {encoding: 'utf8', maxBuffer: 64 << 20});
 
 /** `git`, but a missing-blob failure explains itself instead of reading as a pin defect. */
 const gitReadingContent = (cwd, ...args) => {
@@ -297,9 +310,9 @@ const historicalCuiSpansForProfile = (file, text, known, profiles) => {
         const currentDeclarations = [
             ['CUI', `CUI = '${CURRENT_X86_CUI}'`],
             ['CURRENT_BOARD', `CURRENT_BOARD = '${HISTORICAL_X86_CURRENT_BOARD}'`],
-            ['SB3', "SB3 = '1cbaeed325f5a890e43b78a4211acae8f801f2d2'"],
-            ['CURRENT_SB3', "CURRENT_SB3 = '1cbaeed325f5a890e43b78a4211acae8f801f2d2'"],
-            ['FINITE_V7_PINS', "FINITE_V7_PINS = {'bw-board':'" + HISTORICAL_X86_CURRENT_BOARD + "','bw-circuit-ui':'" + HISTORICAL_X86_V8_CUI + "','sb3-creator':'1cbaeed325f5a890e43b78a4211acae8f801f2d2'}"],
+            ['SB3', `SB3 = '${HISTORICAL_X86_SB3}'`],
+            ['CURRENT_SB3', `CURRENT_SB3 = '${HISTORICAL_X86_SB3}'`],
+            ['FINITE_V7_PINS', HISTORICAL_X86_FINITE_V7_PINS],
             ['FINITE_V8_PINS', HISTORICAL_X86_FINITE_V8_PINS],
             ['FINITE_V9_PINS', CURRENT_X86_FINITE_V9_PRODUCER],
         ];
@@ -387,9 +400,9 @@ const historicalBoardSpansForProfile = (file, text, known, profiles) => {
     const selectedMap = file === 'scripts/run-i80386-hdd-gui-actual.py' ?
         CURRENT_X86_FINITE_V9_PRODUCER : CURRENT_X86_FINITE_V9_READER;
     const declarations = [
-        ['SB3', "SB3 = '1cbaeed325f5a890e43b78a4211acae8f801f2d2'"],
-        ['CURRENT_SB3', "CURRENT_SB3 = '1cbaeed325f5a890e43b78a4211acae8f801f2d2'"],
-        ['FINITE_V7_PINS', "FINITE_V7_PINS = {'bw-board':'" + HISTORICAL_X86_CURRENT_BOARD + "','bw-circuit-ui':'" + HISTORICAL_X86_V8_CUI + "','sb3-creator':'1cbaeed325f5a890e43b78a4211acae8f801f2d2'}"],
+        ['SB3', `SB3 = '${HISTORICAL_X86_SB3}'`],
+        ['CURRENT_SB3', `CURRENT_SB3 = '${HISTORICAL_X86_SB3}'`],
+        ['FINITE_V7_PINS', HISTORICAL_X86_FINITE_V7_PINS],
         ['FINITE_V8_PINS', HISTORICAL_X86_FINITE_V8_PINS],
         ['FINITE_V9_PINS', selectedMap],
     ];
@@ -452,13 +465,21 @@ export const historicalV8CuiSpans = (file, text, known) =>
 // context ONLY to obtain positions. judgeFile still scans every other token
 // using the ORIGINAL live current/previous sets. No caller supplies profiles.
 const F10_CURRENT_MAP = "FINITE_V10_PINS = {'bw-board':'" + LIVE_X86_BOARD +
-    "','bw-circuit-ui':'" + LIVE_X86_CUI + "','sb3-creator':'1cbaeed325f5a890e43b78a4211acae8f801f2d2'}";
+    "','bw-circuit-ui':'" + LIVE_X86_CUI + "','sb3-creator':'" + LIVE_X86_SB3 + "'}";
+// The F10 sb3-creator identity follows the current pin. Once it moved past
+// HISTORICAL_X86_SB3, the consumed SB3/CURRENT_SB3/F7/F8 positions of the same
+// reviewed bodies keep that shipped previous pin, exactly like the CUI/Board
+// epochs above. A never-shipped value or any other occurrence stays red.
+const sb3Moved = known => known.current.has(LIVE_X86_SB3) && !known.current.has(HISTORICAL_X86_SB3) &&
+    known.previous.get(HISTORICAL_X86_SB3)?.repo === 'sb3-creator';
 const historicalV10SpansForProfile = (file, text, known, profiles) => {
     if (!known.current.has(LIVE_X86_CUI) || !known.current.has(LIVE_X86_BOARD) ||
         known.current.has(CURRENT_X86_CUI) || known.current.has(HISTORICAL_X86_CURRENT_BOARD) ||
         known.previous.get(CURRENT_X86_CUI)?.repo !== 'bw-circuit-ui' ||
         known.previous.get(HISTORICAL_X86_CURRENT_BOARD)?.repo !== 'bw-board') return [];
-    const legacy = {...known, current: new Set([...known.current, CURRENT_X86_CUI, HISTORICAL_X86_CURRENT_BOARD])};
+    const moved = sb3Moved(known);
+    const legacy = {...known, current: new Set([...known.current, CURRENT_X86_CUI, HISTORICAL_X86_CURRENT_BOARD,
+        ...(moved ? [HISTORICAL_X86_SB3] : [])])};
     const policy = file === 'test/pin-move-chain.test.mjs';
     const producer = file === 'scripts/run-i80386-hdd-gui-actual.py';
     const reader = file === 'scripts/read-i80386-hdd-gui-originals.py';
@@ -472,7 +493,8 @@ const historicalV10SpansForProfile = (file, text, known, profiles) => {
     const slots = [];
     if (policy) {
         for (const [name, pin] of [['CURRENT_X86_CUI', CURRENT_X86_CUI],
-            ['HISTORICAL_X86_CURRENT_BOARD', HISTORICAL_X86_CURRENT_BOARD]]) {
+            ['HISTORICAL_X86_CURRENT_BOARD', HISTORICAL_X86_CURRENT_BOARD],
+            ...(moved ? [['HISTORICAL_X86_SB3', HISTORICAL_X86_SB3]] : [])]) {
             const line = `const ${name} = '${pin}';`;
             const rows = [...text.matchAll(new RegExp('^const ' + name + ' = .*$', 'gm'))];
             if (rows.length !== 1 || rows[0][0] !== line) return [];
@@ -489,8 +511,8 @@ const historicalV10SpansForProfile = (file, text, known, profiles) => {
             ['BOARD', `BOARD = '${HISTORICAL_X86_BOARD}'`],
             ['CURRENT_BOARD', `CURRENT_BOARD = '${HISTORICAL_X86_CURRENT_BOARD}'`],
             [cuiName, `${cuiName} = '${CURRENT_X86_CUI}'`],
-            ['SB3', "SB3 = '1cbaeed325f5a890e43b78a4211acae8f801f2d2'"],
-            ['CURRENT_SB3', "CURRENT_SB3 = '1cbaeed325f5a890e43b78a4211acae8f801f2d2'"],
+            ['SB3', `SB3 = '${HISTORICAL_X86_SB3}'`],
+            ['CURRENT_SB3', `CURRENT_SB3 = '${HISTORICAL_X86_SB3}'`],
             ['FINITE_V7_PINS', HISTORICAL_X86_FINITE_V7_PINS],
             ['FINITE_V8_PINS', HISTORICAL_X86_FINITE_V8_PINS],
             ['FINITE_V9_PINS', producer ? CURRENT_X86_FINITE_V9_PRODUCER : CURRENT_X86_FINITE_V9_READER],
@@ -510,6 +532,13 @@ const historicalV10SpansForProfile = (file, text, known, profiles) => {
             slots.push(positions.get(name) + line.indexOf(pin));
         }
         slots.push(positions.get(cuiName) + declarations.find(([key]) => key === cuiName)[1].indexOf(CURRENT_X86_CUI));
+        if (moved) {
+            if (text.split(`'${HISTORICAL_X86_SB3}'`).length - 1 !== 4) return [];
+            for (const name of ['SB3', 'CURRENT_SB3', 'FINITE_V7_PINS', 'FINITE_V8_PINS']) {
+                const line = declarations.find(([key]) => key === name)[1];
+                slots.push(positions.get(name) + line.indexOf(`'${HISTORICAL_X86_SB3}'`) + 1);
+            }
+        }
     }
     return [...new Set([...slots,
         ...historicalCuiSpansForProfile(file, text, legacy, profiles),
@@ -526,7 +555,7 @@ export const historicalV10Spans = (file, text, known) =>
  * @param {{current: Set<string>, previous: Map<string, object>, history: Map<string, string>}} known
  * @returns {Array<{file: string, line: number, sha: string, repo: string, was: string}>}
  */
-export const judgeFile = (file, text, known) => {
+export const judgeFile = (file, text, known, frozenAdmissions = new Map()) => {
     const role = roleOf(file);
     if (role !== 'code' && role !== 'receipt') return [];
     if (Object.hasOwn(SEALED_STUDY_FILES, file)) {
@@ -537,6 +566,18 @@ export const judgeFile = (file, text, known) => {
     if (file === PROVENANCE) {
         // the one history FIELD, exempt by role (see header); everything else in the manifest must be the pin
         try { const m = JSON.parse(text); if (m.source && m.source.lastTouchedBy && m.source.lastTouchedBy.sha) body = text.split(m.source.lastTouchedBy.sha).join('<lastTouchedBy>'); } catch { /* judged as text */ }
+    }
+    const admission = frozenAdmissions.get(file);
+    if (admission) {
+        assert.equal(createHash('sha256').update(text).digest('hex'), admission.sha256, 'frozen bytes remain bound at judgment');
+        assert.equal(blobOf(Buffer.from(text)), admission.gitBlob);
+    }
+    if (admission && known.previous.get(admission.value)?.repo === admission.repo) {
+        // Only a fully source-bound constant token is historical. Every other
+        // byte, including another old pin on this line, remains ordinary code.
+        const bytes = Buffer.from(body);
+        assert.equal(bytes.subarray(...admission.span).toString(), admission.value);
+        body = Buffer.concat([bytes.subarray(0, admission.span[0]), Buffer.alloc(40, 32), bytes.subarray(admission.span[1])]).toString();
     }
     const historical = new Set([...historicalCuiSpans(file, text, known),
         ...historicalBoardSpans(file, text, known), ...historicalV8CuiSpans(file, text, known),
@@ -559,6 +600,79 @@ export const judgeFile = (file, text, known) => {
     });
     return out;
 };
+
+// Frozen executable contracts keep their original candidate refusal. This is
+// an exact constant role, never a file exemption or permission to run them on
+// a newer candidate. Roles are code-owned; the receipt cannot add a role.
+const FROZEN_ADMISSIONS = 'docs/receipts/frozen-control-pin-admissions.json';
+const FROZEN_SCOPE = 'Exact frozen executable admission/reference contracts, not current supplier inputs or runtime qualification. Controllers remain unchanged and cannot qualify a new candidate.';
+// The robot WebKit controller key is joined from parts: a literal path here
+// would make the browser-scope census treat every sim-lab gate as a
+// prerequisite of all shards (this test is reachable from a prerequisite step).
+const frozenRoles = new Map([
+    [['scripts', 'qualify-robot-model-webkit.mjs'].join('/'), {field:'FROZEN.producerSha', pattern:/^    "producerSha": "([0-9a-f]{40})",$/gm}],
+    ['scripts/read-i80386-hdd-gui-originals.py', {field:'SB3', pattern:/^SB3 = '([0-9a-f]{40})'$/gm}],
+    ['scripts/run-i80386-hdd-gui-actual.py', {field:'SB3', pattern:/^SB3 = '([0-9a-f]{40})'$/gm}]
+]);
+const exactFields = (value, keys) => {
+    assert.ok(value && typeof value === 'object' && !Array.isArray(value));
+    assert.deepEqual(Object.keys(value).sort(), [...keys].sort());
+};
+const blobOf = bytes => createHash('sha1').update(Buffer.from(`blob ${bytes.length}\0`)).update(bytes).digest('hex');
+export function validateFrozenAdmissions(manifest, observations, knownPins, pins) {
+    exactFields(manifest, ['schema','scope','files']);
+    assert.equal(manifest.schema, 'bw.frozen-control-pin-admissions.v1');
+    assert.equal(manifest.scope, FROZEN_SCOPE);
+    assert.ok(Array.isArray(manifest.files));
+    assert.equal(manifest.files.length, frozenRoles.size);
+    const admitted = new Map();
+    for (const row of manifest.files) {
+        exactFields(row, ['file','mode','sha256','gitBlob','field','repo','value','span']);
+        const role = frozenRoles.get(row.file);
+        assert.ok(role && !admitted.has(row.file), 'unique supported frozen file role');
+        assert.equal(row.field, role.field); assert.equal(row.repo, 'sb3-creator');
+        assert.equal(row.mode, '100644');
+        assert.match(row.sha256, /^[0-9a-f]{64}$/); assert.match(row.gitBlob, /^[0-9a-f]{40}$/);
+        assert.match(row.value, /^[0-9a-f]{40}$/);
+        assert.ok(pins[row.repo] === row.value || knownPins.previous.get(row.value)?.repo === row.repo,
+            'frozen admission is a shipped pin of its exact supplier');
+        const observed = observations.get(row.file);
+        assert.ok(observed && observed.regular, 'actual regular frozen file');
+        assert.equal(observed.mode, row.mode); assert.equal(observed.gitBlob, row.gitBlob);
+        const bytes = observed.bytes;
+        assert.ok(Buffer.isBuffer(bytes));
+        assert.equal(createHash('sha256').update(bytes).digest('hex'), row.sha256);
+        assert.equal(blobOf(bytes), row.gitBlob, 'whole live bytes equal the tracked Git blob');
+        const text = bytes.toString('utf8'), matches = [...text.matchAll(new RegExp(role.pattern))];
+        assert.equal(matches.length, 1, 'one exact supported constant declaration');
+        const match = matches[0], start = Buffer.byteLength(text.slice(0, match.index + match[0].indexOf(match[1])));
+        assert.equal(match[1], row.value);
+        assert.deepEqual(row.span, [start, start + 40], 'exact constant token byte span');
+        admitted.set(row.file, row);
+    }
+    assert.deepEqual([...admitted.keys()].sort(), [...frozenRoles.keys()].sort());
+    return admitted;
+}
+function parseFrozenAdmissionReceipt(text) {
+    const manifest = JSON.parse(text);
+    assert.equal(text, JSON.stringify(manifest, null, 2) + '\n', 'canonical receipt excludes duplicate or ambiguous JSON keys');
+    return manifest;
+}
+function frozenAdmissionInventory() {
+    const manifest = parseFrozenAdmissionReceipt(readFileSync(path.join(ROOT, FROZEN_ADMISSIONS), 'utf8'));
+    const observations = new Map();
+    for (const file of frozenRoles.keys()) {
+        const stat = lstatSync(path.join(ROOT, file));
+        const entries = git(ROOT, 'ls-files', '--stage', '-z', '--', file).split('\0').filter(Boolean);
+        assert.equal(entries.length, 1, 'one tracked frozen file');
+        const match = /^(100644|100755) ([0-9a-f]{40}) 0\t(.+)$/.exec(entries[0]);
+        assert.ok(match && match[3] === file, 'regular stage-zero tracked frozen file');
+        observations.set(file, {regular:stat.isFile(), mode:stat.mode & 0o111 ? '100755' : '100644',
+            gitBlob:match[2], bytes:readFileSync(path.join(ROOT, file))});
+        assert.equal(match[1], observations.get(file).mode, 'live/tracked file mode');
+    }
+    return validateFrozenAdmissions(manifest, observations, known, currentPins());
+}
 
 const formatFindings = f => f.map(x => `${x.file}:${x.line}  ${x.sha.slice(0, 9)}  ${x.was}; current ${x.repo} pin is ${currentPins()[x.repo].slice(0, 9)}`).join('\n  ');
 
@@ -603,9 +717,9 @@ const historicalRoleFixtures = () => {
     const producer = `HISTORICAL_CUI = '${pin}'\n` +
         `CUI = '${CURRENT_X86_CUI}'\n` +
         `CURRENT_BOARD = '${HISTORICAL_X86_CURRENT_BOARD}'\n` +
-        "SB3 = '1cbaeed325f5a890e43b78a4211acae8f801f2d2'\n" +
-        "CURRENT_SB3 = '1cbaeed325f5a890e43b78a4211acae8f801f2d2'\n" +
-        "FINITE_V7_PINS = {'bw-board':'" + HISTORICAL_X86_CURRENT_BOARD + "','bw-circuit-ui':'" + HISTORICAL_X86_V8_CUI + "','sb3-creator':'1cbaeed325f5a890e43b78a4211acae8f801f2d2'}\n" +
+        `SB3 = '${HISTORICAL_X86_SB3}'\n` +
+        `CURRENT_SB3 = '${HISTORICAL_X86_SB3}'\n` +
+        HISTORICAL_X86_FINITE_V7_PINS + "\n" +
         HISTORICAL_X86_FINITE_V8_PINS + "\n" +
         CURRENT_X86_FINITE_V9_PRODUCER + "\n" +
         "def execute(request):\n    pins = (request['dependencyPins'] if request['schema']=='bw.gui-hdd.actual-request.v8' else\n" +
@@ -743,7 +857,7 @@ test('current input tokens remain red beside historical roles and expose broad-e
     assert.notEqual(without, original, 'remove exactly the reviewed-body guard');
     const noBodyGuard = vm.runInNewContext(`(${without})`, {HISTORICAL_X86_CUI_V5_V7,
         CURRENT_X86_CUI, HISTORICAL_X86_V8_CUI, HISTORICAL_X86_CURRENT_BOARD,
-        HISTORICAL_X86_FINITE_V8_PINS, CURRENT_X86_FINITE_V9_PRODUCER,
+        HISTORICAL_X86_SB3, HISTORICAL_X86_FINITE_V7_PINS, HISTORICAL_X86_FINITE_V8_PINS, CURRENT_X86_FINITE_V9_PRODUCER,
         historicalTokens, historicalLine, historicalFunction});
     assert.equal(noBodyGuard(f.producerPath, aliases[2], k, f.profiles).length, 0,
         'a split-string globals alias is refused even with a manufactured profile');
@@ -756,9 +870,9 @@ test('current input tokens remain red beside historical roles and expose broad-e
 const historicalBoardFixtures = () => {
     const pin = HISTORICAL_X86_BOARD;
     const producer = `BOARD = '${pin}'\nCURRENT_BOARD = '${HISTORICAL_X86_CURRENT_BOARD}'\n` +
-        "SB3 = '1cbaeed325f5a890e43b78a4211acae8f801f2d2'\n" +
-        "CURRENT_SB3 = '1cbaeed325f5a890e43b78a4211acae8f801f2d2'\n" +
-        "FINITE_V7_PINS = {'bw-board':'" + HISTORICAL_X86_CURRENT_BOARD + "','bw-circuit-ui':'" + HISTORICAL_X86_V8_CUI + "','sb3-creator':'1cbaeed325f5a890e43b78a4211acae8f801f2d2'}\n" +
+        `SB3 = '${HISTORICAL_X86_SB3}'\n` +
+        `CURRENT_SB3 = '${HISTORICAL_X86_SB3}'\n` +
+        HISTORICAL_X86_FINITE_V7_PINS + "\n" +
         HISTORICAL_X86_FINITE_V8_PINS + "\n" +
         CURRENT_X86_FINITE_V9_PRODUCER + "\n" +
         "def parse_request(request):\n    if request['schema']=='bw.gui-hdd.actual-request.v8':\n" +
@@ -766,9 +880,9 @@ const historicalBoardFixtures = () => {
         "def execute(request):\n    old = {'bw-board': BOARD}\n" +
         "    selected = CURRENT_BOARD if request['schema']=='bw.gui-hdd.actual-request.v8' else BOARD\n";
     const reader = `BOARD = '${pin}'\nCURRENT_BOARD = '${HISTORICAL_X86_CURRENT_BOARD}'\n` +
-        "SB3 = '1cbaeed325f5a890e43b78a4211acae8f801f2d2'\n" +
-        "CURRENT_SB3 = '1cbaeed325f5a890e43b78a4211acae8f801f2d2'\n" +
-        "FINITE_V7_PINS = {'bw-board':'" + HISTORICAL_X86_CURRENT_BOARD + "','bw-circuit-ui':'" + HISTORICAL_X86_V8_CUI + "','sb3-creator':'1cbaeed325f5a890e43b78a4211acae8f801f2d2'}\n" +
+        `SB3 = '${HISTORICAL_X86_SB3}'\n` +
+        `CURRENT_SB3 = '${HISTORICAL_X86_SB3}'\n` +
+        HISTORICAL_X86_FINITE_V7_PINS + "\n" +
         HISTORICAL_X86_FINITE_V8_PINS + "\n" +
         CURRENT_X86_FINITE_V9_READER + "\n" +
         "def audit(request):\n    selected_board = CURRENT_BOARD if request['schema']=='bw.gui-hdd.actual-request.v8' else BOARD\n" +
@@ -835,7 +949,7 @@ test('old Board source roles never admit current routing, aliases, moved slots o
     const original = historicalBoardSpansForProfile.toString(), without = original.replace(bodyGuard, '');
     assert.notEqual(without, original);
     const noBodyGuard = vm.runInNewContext(`(${without})`, {HISTORICAL_X86_BOARD, HISTORICAL_X86_V8_CUI,
-        HISTORICAL_X86_CURRENT_BOARD, HISTORICAL_X86_FINITE_V8_PINS,
+        HISTORICAL_X86_CURRENT_BOARD, HISTORICAL_X86_SB3, HISTORICAL_X86_FINITE_V7_PINS, HISTORICAL_X86_FINITE_V8_PINS,
         CURRENT_X86_FINITE_V9_PRODUCER, CURRENT_X86_FINITE_V9_READER,
         historicalTokens, historicalLine});
     const alias = f.producer + "\nglobals()['CURRENT_BOARD'] = BOARD\n";
@@ -869,18 +983,18 @@ test('historical F7 and F8 maps stay literal while current F9 uses exact symbols
         const changes = [
             [fixed7, fixed7.replace("'bw-board':'" + HISTORICAL_X86_CURRENT_BOARD + "'", "'bw-board':CURRENT_BOARD")],
             [fixed7, fixed7.replace("'bw-circuit-ui':'" + HISTORICAL_X86_V8_CUI + "'", "'bw-circuit-ui':CUI")],
-            [fixed7, fixed7.replace("'sb3-creator':'1cbaeed325f5a890e43b78a4211acae8f801f2d2'", "'sb3-creator':CURRENT_SB3")],
+            [fixed7, fixed7.replace("'sb3-creator':'" + HISTORICAL_X86_SB3 + "'", "'sb3-creator':CURRENT_SB3")],
             [fixed8, fixed8.replace("'bw-board':'" + HISTORICAL_X86_CURRENT_BOARD + "'", "'bw-board':CURRENT_BOARD")],
             [fixed8, fixed8.replace("'bw-circuit-ui':'" + HISTORICAL_X86_V8_CUI + "'", "'bw-circuit-ui':CUI")],
-            [fixed8, fixed8.replace("'sb3-creator':'1cbaeed325f5a890e43b78a4211acae8f801f2d2'", "'sb3-creator':CURRENT_SB3")],
+            [fixed8, fixed8.replace("'sb3-creator':'" + HISTORICAL_X86_SB3 + "'", "'sb3-creator':CURRENT_SB3")],
             [fixed8, current9.replace('FINITE_V9_PINS', 'FINITE_V8_PINS')],
             [current9, current9.replace("'bw-board':CURRENT_BOARD", "'bw-board':BOARD")],
             [current9, current9.replace("'bw-circuit-ui':" + (file === board.readerPath ? 'CUI_V8' : 'CUI'),
                 "'bw-circuit-ui':HISTORICAL_CUI")],
             [current9, current9.replace("'sb3-creator':CURRENT_SB3", "'sb3-creator':SB3")],
             [current9, fixed8.replace('FINITE_V8_PINS', 'FINITE_V9_PINS')],
-            ["CURRENT_SB3 = '1cbaeed325f5a890e43b78a4211acae8f801f2d2'", 'CURRENT_SB3 = SB3'],
-            ["SB3 = '1cbaeed325f5a890e43b78a4211acae8f801f2d2'", 'SB3 = CURRENT_SB3'],
+            [`CURRENT_SB3 = '${HISTORICAL_X86_SB3}'`, 'CURRENT_SB3 = SB3'],
+            [`SB3 = '${HISTORICAL_X86_SB3}'`, 'SB3 = CURRENT_SB3'],
         ];
         for (const [before, after] of changes) {
             const changed = source.replace(before, after);
@@ -899,7 +1013,7 @@ test('historical F7 and F8 maps stay literal while current F9 uses exact symbols
 
 const historicalV8Fixtures = () => {
     const body = current => `${current}\n` +
-        "SB3 = '1cbaeed325f5a890e43b78a4211acae8f801f2d2'\n" +
+        `SB3 = '${HISTORICAL_X86_SB3}'\n` +
         HISTORICAL_X86_FINITE_V7_PINS + '\n' + HISTORICAL_X86_FINITE_V8_PINS + '\n';
     const producer = body(`CUI = '${CURRENT_X86_CUI}'`) + CURRENT_X86_FINITE_V9_PRODUCER + '\n';
     const reader = body(`CUI_V8 = '${CURRENT_X86_CUI}'`) + CURRENT_X86_FINITE_V9_READER + '\n';
@@ -1061,6 +1175,7 @@ test('no tracked file outside a history role carries a vendored-repo sha other t
     // one of its code lines (lego-be's proof, 2026-09-07). A file with a NUL is text
     // here and is judged like any other; the only files not judged are the ones
     // outside a code role, and the count and reason are printed on every run.
+    const frozenAdmissions = frozenAdmissionInventory();
     const findings = [];
     const skipped = {role: 0, unreadable: []};
     const all = git(ROOT, 'ls-files', '-z').split('\0').filter(Boolean);
@@ -1073,7 +1188,7 @@ test('no tracked file outside a history role carries a vendored-repo sha other t
         let text;
         try { text = readFileSync(path.join(ROOT, file), 'utf8'); } catch (e) { skipped.unreadable.push(`${file} (${e.code || e.message})`); continue; }
         scanned++;
-        findings.push(...judgeFile(file, text, known));
+        findings.push(...judgeFile(file, text, known, frozenAdmissions));
     }
     t.diagnostic(`judged ${scanned} files (${receipts} receipts, which may also carry a previous pin); skipped ${skipped.role} by role (ledgers, docs prose, packages/) and ${skipped.unreadable.length} unreadable${skipped.unreadable.length ? ': ' + skipped.unreadable.join(', ') : ''}`);
     assert.deepEqual(skipped.unreadable, [], 'tracked files this gate could not read — it cannot say they are clean');
@@ -1326,8 +1441,9 @@ test('F10 keeps every consumed supplier position historical and every new input 
     const f = historicalRoleFixtures();
     const source = `BOARD = '${HISTORICAL_X86_BOARD}'\n` + f.producer + F10_CURRENT_MAP + '\n';
     const file = f.producerPath;
-    const k = {current: new Set([LIVE_X86_CUI, LIVE_X86_BOARD, '1cbaeed325f5a890e43b78a4211acae8f801f2d2']),
+    const k = {current: new Set([LIVE_X86_CUI, LIVE_X86_BOARD, LIVE_X86_SB3]),
         previous: new Map([[CURRENT_X86_CUI, {repo:'bw-circuit-ui'}],
+            [HISTORICAL_X86_SB3, {repo:'sb3-creator'}],
             [HISTORICAL_X86_CURRENT_BOARD, {repo:'bw-board'}],
             [HISTORICAL_X86_BOARD, {repo:'bw-board'}],
             [HISTORICAL_X86_CUI_V5_V7, {repo:'bw-circuit-ui'}],
@@ -1335,10 +1451,10 @@ test('F10 keeps every consumed supplier position historical and every new input 
     const profile = text => ({[file]:{bytes:Buffer.byteLength(text),sha256:createHash('sha256').update(text).digest('hex')}});
     const recognize = (path, text, known) => historicalV10SpansForProfile(path, text, known, profile(source));
     const judge = historicalJudgeWith(() => [], () => [], () => [], recognize);
-    assert.equal(recognize(file, source, k).length, 8);
+    assert.equal(recognize(file, source, k).length, 12, 'eight CUI/Board positions plus four consumed SB3 positions');
     assert.equal(judge(file, source, k).length, 0);
     assert.equal(historicalV10Spans(file, source, k).length, 0, 'public API refuses a manufactured body');
-    assert.equal(historicalJudgeWith(() => [], () => [], () => [])(file, source, k).length, 8,
+    assert.equal(historicalJudgeWith(() => [], () => [], () => [])(file, source, k).length, 12,
         'omitting the new role restores every stale-supplier finding');
     assert.equal(historicalV10Spans(file, source, {...k, profiles:profile(source)}).length, 0,
         'caller-supplied profiles cannot replace the fixed public policy');
@@ -1412,3 +1528,104 @@ for (const file of Object.keys(SEALED_STUDY_FILES)) {
             `const PIN = '${former}';`, known).length, 1, 'ordinary current code still rejects a former pin');
     });
 }
+
+test('frozen historical admission inventory remains exact independently of current-pin scanning', () => {
+    const admitted = frozenAdmissionInventory();
+    assert.equal(admitted.size, 3);
+    for (const [file, row] of admitted) {
+        assert.equal(roleOf(file), 'code');
+        assert.deepEqual(judgeFile(file, readFileSync(path.join(ROOT, file), 'utf8'), known, admitted), []);
+        assert.ok(currentPins()[row.repo] === row.value || previous.get(row.value)?.repo === row.repo,
+            'actual frozen value remains a shipped pin of its supplier');
+    }
+});
+
+// Negative controls use an explicit later-pin context, including when the
+// repository legitimately rolls back to the frozen pin. This never changes
+// the live inventory or the real whole-repository judgment above.
+const frozenHistoricalTestContext = manifest => {
+    const old = manifest.files[0].value, next = old === '0'.repeat(40) ? '1'.repeat(40) : '0'.repeat(40);
+    const pins = {...currentPins(), 'sb3-creator':next}, previous = new Map(known.previous);
+    for (const row of manifest.files) previous.set(row.value, {repo:row.repo});
+    return {pins, known:{...known, current:new Set(Object.values(pins)), previous}};
+};
+
+test('frozen admission bindings reject source, inventory, schema and unshipped-value mutations', () => {
+    const original = parseFrozenAdmissionReceipt(readFileSync(path.join(ROOT, FROZEN_ADMISSIONS), 'utf8'));
+    const observe = () => new Map(original.files.map(row => [row.file, {regular:true, mode:row.mode,
+        gitBlob:row.gitBlob, bytes:readFileSync(path.join(ROOT, row.file))}]));
+    const context = frozenHistoricalTestContext(original);
+    const validate = (manifest, observations = observe(), k = context.known) => validateFrozenAdmissions(manifest, observations, k, context.pins);
+    assert.equal(validate(original).size, 3);
+    for (const mutate of [
+        m => {m.extra = true;}, m => {m.schema = 'foreign';}, m => {delete m.files;},
+        m => {m.files.pop();}, m => {m.files[1] = structuredClone(m.files[0]);},
+        m => {m.files[0].file = 'scripts/copied-controller.mjs';},
+        m => {m.files[0].file = './' + m.files[0].file;},
+        m => {m.files[0].field = 'other';}, m => {m.files[0].repo = 'bw-board';},
+        m => {m.files[0].mode = '100755';}, m => {m.files[0].sha256 = '0'.repeat(64);},
+        m => {m.files[0].gitBlob = '0'.repeat(40);}, m => {m.files[0].span[0]++;},
+        m => {m.files[0].value = 'f'.repeat(40);}, m => {m.files[0].extra = true;}
+    ]) {
+        const manifest = structuredClone(original); mutate(manifest);
+        assert.throws(() => validate(manifest), undefined, String(mutate));
+    }
+    for (const mutate of [
+        o => {o.regular = false;}, o => {o.mode = '100755';}, o => {o.gitBlob = '0'.repeat(40);},
+        o => {o.bytes = Buffer.concat([o.bytes, Buffer.from('\n')]);},
+        o => {o.bytes = Buffer.from(o.bytes.toString().replace(original.files[0].value, context.pins['sb3-creator']));}
+    ]) {
+        const observations = observe(); mutate(observations.get(original.files[0].file));
+        assert.throws(() => validate(original, observations), undefined, String(mutate));
+    }
+    const observations = observe(); observations.delete(original.files[0].file);
+    assert.throws(() => validate(original, observations));
+    const duplicateJSON = JSON.stringify(original).replace('"schema":', '"schema":"duplicate","schema":');
+    assert.throws(() => parseFrozenAdmissionReceipt(duplicateJSON));
+    const wrongSupplier = {...context.known, previous:new Map(context.known.previous)};
+    wrongSupplier.previous.set(original.files[0].value, {repo:'bw-board'});
+    assert.throws(() => validate(original, observe(), wrongSupplier));
+    const never = 'f'.repeat(40), invented = structuredClone(original), row = invented.files[0];
+    const observed = observe(), before = observed.get(row.file).bytes;
+    const bytes = Buffer.concat([before.subarray(0,row.span[0]),Buffer.from(never),before.subarray(row.span[1])]);
+    row.value=never;row.sha256=createHash('sha256').update(bytes).digest('hex');row.gitBlob=blobOf(bytes);
+    observed.set(row.file,{regular:true,mode:row.mode,gitBlob:row.gitBlob,bytes});
+    const neverKnown={...context.known,previous:new Map(context.known.previous),history:new Map(context.known.history)};
+    neverKnown.previous.delete(never);neverKnown.history.set(never,'sb3-creator');
+    assert.throws(()=>validate(invented,observed,neverKnown),/shipped pin/,'a consistently rebound never-shipped token still cannot gain this role');
+    const currentPinsContext={...context.pins,'sb3-creator':original.files[0].value};
+    const currentKnown={...context.known,current:new Set(Object.values(currentPinsContext)),previous:new Map(context.known.previous)};
+    currentKnown.previous.delete(original.files[0].value);
+    const currentAdmission=validateFrozenAdmissions(original,observe(),currentKnown,currentPinsContext);
+    assert.equal(currentAdmission.size,3,'frozen contract remains valid when its pin is current');
+    const first=original.files[0];
+    assert.deepEqual(judgeFile(first.file,observe().get(first.file).bytes.toString(),currentKnown,currentAdmission),[]);
+
+});
+
+test('one frozen constant token never exempts another active pin or a copied controller', () => {
+    const manifest = parseFrozenAdmissionReceipt(readFileSync(path.join(ROOT, FROZEN_ADMISSIONS), 'utf8'));
+    const row = manifest.files[0], bytes = readFileSync(path.join(ROOT, row.file));
+    const context=frozenHistoricalTestContext(manifest);
+    const observations = new Map(manifest.files.map(r => [r.file, {regular:true, mode:r.mode,
+        gitBlob:r.gitBlob, bytes:readFileSync(path.join(ROOT, r.file))}]));
+    const rebound = (m, raw) => {
+        const changed = m.files[0];
+        changed.sha256 = createHash('sha256').update(raw).digest('hex'); changed.gitBlob = blobOf(raw);
+        observations.set(changed.file, {regular:true, mode:changed.mode, gitBlob:changed.gitBlob, bytes:raw});
+        return validateFrozenAdmissions(m, observations, context.known, context.pins);
+    };
+    // Even if a proposed new receipt binds the changed whole file, only the
+    // supported token has this role. A second active old pin still fails.
+    const extra = Buffer.concat([bytes, Buffer.from(`\nconst activeSupplier = "${row.value}";\n`)]);
+    const admitted = rebound(structuredClone(manifest), extra);
+    assert.equal(judgeFile(row.file, extra.toString(), context.known, admitted).length, 1);
+    assert.equal(judgeFile('scripts/copied-controller.mjs', bytes.toString(), context.known, admitted).length, 1);
+    assert.throws(() => judgeFile(row.file, extra.toString(), known, frozenAdmissionInventory()));
+    const duplicate = Buffer.concat([bytes, Buffer.from(`\n    "producerSha": "${row.value}",\n`)]);
+    assert.throws(() => rebound(structuredClone(manifest), duplicate));
+    const never = 'f'.repeat(40), k = {...known, history:new Map([...known.history, [never,'sb3-creator']])};
+    const wrong = structuredClone(manifest); wrong.files[0].value = never;
+    assert.ok(!known.current.has(never) && !known.previous.has(never));
+    assert.throws(() => validateFrozenAdmissions(wrong, observations, k, currentPins()));
+});

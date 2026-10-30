@@ -1,6 +1,8 @@
 # Typed-bitwise procedure reimport fidelity
 
-Status: CLAIMED; implementation starts after this claim merges.
+Status: DONE — scoped source implementation and focused controls completed.
+Original-PXT/native qualification and integration remain pending; ownership is
+retained until that evidence is available.
 Owner: Arcade typed-bitwise repair, explicitly available for an independent
 worker. Deliver an isolated normal-pushed candidate to the integration owner;
 do not push or supersede the active integration branch.
@@ -52,3 +54,75 @@ extra full-CI labels, duplicate dispatches and unchanged retries.
 Publish normal checkpoint pushes only. The integration owner composes the
 reviewed candidate, refreshes main and qualifies the complete final head before
 matched-head merging with verified parents/tree.
+
+## Source checkpoint
+
+The exporter reconstructs a declaration-only `Sprite` formal when the existing
+closed ordinary-entry proof establishes that the whole procedure is unreachable
+and every actual read of that formal is precisely a flags receiver. Physical
+block uses must agree with emitted TypeScript lexical bindings and read counts.
+Writes, mixed uses, ambiguous formals and generated/global/local name captures
+deny this fallback. Explicit procedure constraints retain precedence. This does
+not populate the live value graph or grant initialized Sprite/Number authority.
+
+The focused regression has 17 passing source tests, without skips. It covers
+both public export routes, three reimports, Code rebuild, SB3 project reopen,
+live opaque refusal, malformed graphs and binding collisions. Removing only the
+final signature override produces two expected positive assertion failures;
+restoring the exact source restored all 14 passes in that checkpoint. Original failed fixture
+expectations were corrected to preserve existing scalar inference and visible
+malformed-operand refusals, without relaxing product acceptance.
+
+These source results do not close a corpus row. Next, qualify the unchanged
+`test/makecode-arcade-typed-bitwise.test.mjs` with its original pinned PXT/native
+and Code/archive comparisons on an external builder, compose the narrow patch
+with current integration/main, and require every enabled final-head check before
+landing. Preserve the separate declared-reference Sprite-return failure and all
+other integration failures. No supplier pin or existing acceptance test changes.
+
+### External qualification recipe
+
+Use Node 22 in a clean checkout with the repository's locked dependencies,
+canonical integrated GUI/VM sources, synced pinned Arcade runtime under
+`packages/scratch-gui/static/makecode/arcade`, and Playwright Chromium available.
+Use the existing integration/runtime setup for that checkout; do not borrow a
+mutable neighboring checkout, update pins or replace the original simulator.
+The normal GUI scope loader, rather than a custom source-probe loader, must be
+active for acceptance:
+
+```sh
+node --import ./scripts/lib/register-gui-scope.mjs --test --test-concurrency=1 test/arcade-typed-bitwise-reimport-fidelity.test.mjs test/makecode-arcade-typed-bitwise.test.mjs
+```
+
+Retain the first result with the exact tested commit and dependency/runtime
+identities. A missing setup input is an unavailable qualification, not a pass.
+Fix genuine failures on the owning branch, preserve their originals, and run
+final composed-head qualification. Do not rerun an unchanged failed original or
+claim native parity from the focused source-only results above.
+
+### Declaration-conflict follow-up
+
+Explicit ordinary Number, String and Boolean constraints continue to control the
+rendered formal. If that formal is exclusively a dormant Sprite-flags receiver,
+the exporter now lists the incompatible declaration instead of silently returning
+clean TypeScript that accesses `.flags` on a primitive. It preserves the explicit
+signature and never changes the runtime body or coerces the operand. This adds a
+refusal for an invalid declaration; it does not authorize additional value types.
+
+The expanded 17-test source cohort also verifies that a new actual caller or
+formal writer added to a previously exported project cannot reuse the old dormant
+proof. Removing only the declaration-conflict diagnostic yields one expected
+failure; restoring the exact source restores all 17 passes. Original PXT/native
+acceptance and final integration qualification remain pending as above.
+
+Read-only follow-up found separate dormant return/local declaration losses:
+`function returned(): Sprite { return null }` can export an `any` result, and
+`let actor: Sprite = null` inside an unused helper can export an `any` local.
+A flags use then refuses on reimport. These are not fixed by the parameter lane.
+Before changing them, obtain release of the overlapping integration scope and
+merge a separate claim. A proper repair needs current whole-dormant call/local
+use and writer proofs, compatible declaration rendering and null initialization;
+never infer live Sprite initialization from the annotation or null. Cover both
+public routes, Code/archive roundtrips, edits/callers, primitive/reference
+conflicts and unchanged original PXT/native comparisons. Keep the separate
+existing declared-reference failure visible until its actual input passes.

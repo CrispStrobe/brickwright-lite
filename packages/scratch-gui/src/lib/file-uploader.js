@@ -1,7 +1,78 @@
 import {BitmapAdapter, sanitizeSvg} from 'scratch-svg-renderer';
 import randomizeSpritePosition from './randomize-sprite-position.js';
 import bmpConverter from './bmp-converter';
-import gifDecoder from './gif-decoder';
+// Acquired only after a GIF upload has actually selected this branch.
+const loadGifDecoder = () => import(/* webpackChunkName: "gif-decoder" */ './gif-decoder')
+    .then(module => module.default);
+
+const sameGifFailure = Object.is;
+
+/** A per-upload collector; the default loader uses the unchanged real decoder. */
+const createGifUploader = (loadDecoder = loadGifDecoder) =>
+    (fileData, storage, uploadFrame, handleCostume, handleError) => {
+        const frames = [];
+        const frameSettled = [];
+        let completedFrames = 0;
+        let completed = false;
+        let failed = false;
+        let completionThrew = false;
+        let completionError;
+        let errorHandlerThrew = false;
+        let errorHandlerError;
+        const fail = error => {
+            // A handler throw crossing the acquisition catch remains the same
+            // rejection, rather than being mistaken for another decoder error.
+            if (errorHandlerThrew && sameGifFailure(error, errorHandlerError)) throw error;
+            if (failed || (completed && (!completionThrew || !sameGifFailure(error, completionError)))) return;
+            failed = true;
+            try {
+                handleError(error);
+            } catch (handlerError) {
+                errorHandlerThrew = true;
+                errorHandlerError = handlerError;
+                throw handlerError;
+            }
+        };
+        // No rejected acquisition is retained between uploads. Initial decoder
+        // throws now use the owning upload's existing error callback.
+        return Promise.resolve().then(loadDecoder).then(decode => {
+            decode(fileData, (frameNumber, dataUrl, numFrames) => {
+                if (failed || completed) return;
+                uploadFrame(dataUrl, 'image/png', storage, costumes => {
+                    if (failed || completed || frameSettled[frameNumber]) return;
+                    frameSettled[frameNumber] = true;
+                    frames[frameNumber] = costumes;
+                    completedFrames++;
+                    if (completedFrames === numFrames) {
+                        const ordered = [];
+                        for (let i = 0; i < numFrames; i++) {
+                            ordered.push(...frames[i]);
+                        }
+                        completed = true;
+                        try {
+                            handleCostume(ordered);
+                        } catch (error) {
+                            completionThrew = true;
+                            completionError = error;
+                            throw error;
+                        }
+                    }
+                }, error => {
+                    // Settled failures ignore duplicate frame callbacks. The
+                    // acquisition catch calls fail directly to preserve a throw.
+                    if (failed) return;
+                    // The PNG promise catch must still report a throw from the
+                    // final costume callback, even though every frame settled.
+                    if (completionThrew && sameGifFailure(error, completionError)) return fail(error);
+                    if (completed || frameSettled[frameNumber]) return;
+                    frameSettled[frameNumber] = true;
+                    return fail(error);
+                });
+            });
+        }).catch(fail);
+    };
+
+const uploadGif = createGifUploader();
 
 /**
  * Extract the file name given a string of the form fileName + ext
@@ -128,15 +199,7 @@ const costumeUpload = function (fileData, fileType, storage, handleCostume, hand
         break;
     }
     case 'image/gif': {
-        let costumes = [];
-        gifDecoder(fileData, (frameNumber, dataUrl, numFrames) => {
-            costumeUpload(dataUrl, 'image/png', storage, costumes_ => {
-                costumes = costumes.concat(costumes_);
-                if (frameNumber === numFrames - 1) {
-                    handleCostume(costumes);
-                }
-            }, handleError);
-        });
+        uploadGif(fileData, storage, costumeUpload, handleCostume, handleError);
         return; // Abandon this load, do not try to load gif itself
     }
     default:
@@ -255,6 +318,7 @@ const spriteUpload = function (fileData, fileType, spriteName, storage, handleSp
 };
 
 export {
+    createGifUploader,
     handleFileUpload,
     costumeUpload,
     soundUpload,

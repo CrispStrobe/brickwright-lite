@@ -7,7 +7,7 @@ import {createHash} from 'node:crypto';
 import {fileURLToPath} from 'node:url';
 import {chromium} from 'playwright';
 import JSZip from 'jszip';
-import {openCodeActions} from './lib-code-actions.mjs';
+import {openCodeActions, closeCodeActions as closeSharedCodeActions} from './lib-code-actions.mjs';
 import {waitForArcadeStageFrame} from './lib/arcade-stage-frame.mjs';
 import {inspectGuiHarnessSource} from './lib/gui-harness-source.mjs';
 import {inspectGuiArtifactResponse} from './lib/gui-artifact-response.mjs';
@@ -56,6 +56,101 @@ const bodyChecks = [];
 const editor = () => page.getByTestId('bw-code-editor').locator('.cm-content');
 const codeTab = async () => { await page.getByRole('tab', {name: 'Code', exact: true}).click(); await editor().waitFor({state: 'visible'}); };
 const readCode = () => editor().evaluate(element => element.cmTile.root.view.state.doc.toString());
+// Read only actual component data. The pre-click handle is local to this
+// verifier; it never becomes a product hook, cache or report identity token.
+const observeCleanExport = (element, {phase, held, visibleText}) => {
+    const nonData = {};
+    const unavailable = (reasonCode, beforeReason) => {
+        const result = {captureStatus: 'UNAVAILABLE_FRESHNESS', reasonCode};
+        if (typeof beforeReason === 'string' && beforeReason.length <= 80) result.beforeReason = beforeReason;
+        return result;
+    };
+    try {
+        const own = (value, name) => {
+            if (!value || typeof value !== 'object') return undefined;
+            const descriptor = Object.getOwnPropertyDescriptor(value, name);
+            if (!descriptor) return undefined;
+            if (!Object.hasOwn(descriptor, 'value')) throw nonData;
+            return descriptor.value;
+        };
+        const vm = window.__brickwrightStore.getState().scratchGui.vm;
+        let fiber;
+        for (let node = element, count = 0; node && count < 64; node = node.parentElement, count++) {
+            const keys = Object.getOwnPropertyNames(node).filter(key => key.startsWith('__reactFiber$') || key.startsWith('__reactInternalInstance$'));
+            if (keys.length > 1) return unavailable('FIBER_POINTER_AMBIGUOUS');
+            if (keys.length === 1) { fiber = own(node, keys[0]); break; }
+        }
+        if (!fiber) return unavailable('FIBER_POINTER_MISSING');
+        const candidates = [], seenFibers = [];
+        for (let count = 0; fiber && count < 128; fiber = own(fiber, 'return'), count++) {
+            if (seenFibers.includes(fiber)) return unavailable('FIBER_CYCLE');
+            seenFibers.push(fiber);
+            const instance = own(fiber, 'stateNode'), state = own(instance, 'state'), props = own(instance, 'props');
+            if (state && Object.hasOwn(state, 'conversionReport') && own(props, 'vm') === vm && !candidates.includes(instance)) candidates.push(instance);
+        }
+        if (fiber) return unavailable('FIBER_DEPTH');
+        if (candidates.length !== 1) return unavailable('OWNER_AMBIGUOUS');
+        const instance = candidates[0], state = own(instance, 'state'), revision = own(instance, '_arcadeReportRevision') ?? 0;
+        if (!Number.isSafeInteger(revision) || revision < 0) return unavailable('REVISION_INVALID');
+        if (own(instance, '_unmounted')) return unavailable('COMPONENT_DISPOSED');
+        if (own(state, 'busy') !== false) return unavailable('COMPONENT_BUSY');
+        const requestDescriptor = Object.getOwnPropertyDescriptor(instance, '_arcadeReportRequest');
+        if (requestDescriptor && !Object.hasOwn(requestDescriptor, 'value')) throw nonData;
+        const request = requestDescriptor?.value, report = own(state, 'conversionReport');
+        if (phase === 'before') {
+            if (report !== null && (!report || typeof report !== 'object' || Array.isArray(report))) return unavailable('PRE_REPORT_INVALID');
+            // Imports and completed/dismissed reports can leave an idle prior
+            // report or request. Hold their identities, not a completion guess.
+            // The next phase must prove a genuinely NEW request AND report.
+            if (!requestDescriptor) {
+                if ('_arcadeReportRequest' in instance) return unavailable('PRE_REQUEST_INHERITED');
+            } else if (request === undefined) {
+                return unavailable('PRE_REQUEST_UNDEFINED');
+            } else if (request !== null && (!request || typeof request !== 'object' ||
+                own(request, 'vm') !== vm || own(request, 'revision') !== revision)) {
+                return unavailable('PRE_REQUEST_INVALID');
+            }
+            return {status: 'READY', instance, vm, revision, request, report};
+        }
+        if (phase !== 'after') return unavailable('OBSERVATION_SHAPE');
+        if (own(held, 'status') !== 'READY') return unavailable('HELD_NOT_READY', own(held, 'reasonCode'));
+        if (own(held, 'instance') !== instance) return unavailable('OWNER_CHANGED');
+        if (own(held, 'vm') !== vm) return unavailable('VM_CHANGED');
+        if (own(held, 'revision') !== revision) return unavailable('REVISION_CHANGED');
+        if (!requestDescriptor || !request || typeof request !== 'object' || own(request, 'vm') !== vm || own(request, 'revision') !== revision) return unavailable('REQUEST_INVALID');
+        if (request === own(held, 'request')) return unavailable('REQUEST_REUSED');
+        if (report === own(held, 'report')) return unavailable('REPORT_REUSED');
+        if (own(report, 'operation') !== 'export') return unavailable('REPORT_OPERATION');
+        const unsupported = own(report, 'unsupported');
+        if (!Array.isArray(unsupported)) return unavailable('OBSERVATION_SHAPE');
+        let reasons = '';
+        for (let i = 0; i < unsupported.length; i++) {
+            const reason = own(unsupported, String(i));
+            if (typeof reason !== 'string') return unavailable('OBSERVATION_SHAPE');
+            reasons += (i ? ' · ' : '') + reason;
+        }
+        if (visibleText !== 'Unsupported: ' + (reasons || 'nothing reported')) return unavailable('VISIBLE_TEXT_CHANGED');
+        const observation = own(report, 'observation');
+        if (!observation || own(observation, 'schema') !== 'arcade-clean-export-observation-v1') return unavailable('OBSERVATION_MISSING');
+        const result = {};
+        for (const name of ['schema', 'origin', 'captureStatus', 'inputJson', 'resultJson', 'inputUtf8Bytes', 'resultUtf8Bytes', 'totalUtf8Bytes', 'limitUtf8Bytes']) {
+            const value = own(observation, name);
+            if (value !== undefined) {
+                if (typeof value !== 'string' && typeof value !== 'number') return unavailable('OBSERVATION_SHAPE');
+                result[name] = value;
+            }
+        }
+        if (result.captureStatus === 'COMPLETE') {
+            if (result.origin !== 'owned-json-export' || typeof result.inputJson !== 'string' || typeof result.resultJson !== 'string') return unavailable('OBSERVATION_SHAPE');
+            if (result.limitUtf8Bytes !== 8388608 || !Number.isSafeInteger(result.totalUtf8Bytes) || result.totalUtf8Bytes > result.limitUtf8Bytes ||
+                result.inputJson.length + result.resultJson.length > result.limitUtf8Bytes) return unavailable('OBSERVATION_SIZE');
+            const inputBytes = new TextEncoder().encode(result.inputJson).byteLength, resultBytes = new TextEncoder().encode(result.resultJson).byteLength;
+            if (inputBytes !== result.inputUtf8Bytes || resultBytes !== result.resultUtf8Bytes || inputBytes + resultBytes !== result.totalUtf8Bytes ||
+                inputBytes + resultBytes > result.limitUtf8Bytes) return unavailable('OBSERVATION_SIZE');
+        } else if (typeof result.inputJson === 'string' || typeof result.resultJson === 'string') return unavailable('OBSERVATION_SHAPE');
+        return result;
+    } catch (error) { return unavailable(error === nonData ? 'NON_DATA_STATE' : 'OBSERVER_ERROR'); }
+};
 const fresh = async () => {
     const context = await browser.newContext({viewport: {width: 1600, height: 1100}, acceptDownloads: true});
     const tab = await context.newPage();
@@ -74,7 +169,35 @@ const fresh = async () => {
     await tab.addInitScript(() => { localStorage.clear(); sessionStorage.clear(); localStorage.setItem('bw-starter-v1-complete', '1'); localStorage.setItem('bw-right-pane-hidden', '0'); });
     await tab.goto(base, {waitUntil: 'domcontentloaded', timeout: 90000});
     await tab.waitForFunction(() => !!window.__brickwrightStore?.getState()?.scratchGui?.vm, null, {timeout: 60000});
-    await tab.evaluate(() => { window.__bwNumericErrors = []; window.__brickwrightStore.getState().scratchGui.vm.runtime.on('BLOCKS_ERROR', error => window.__bwNumericErrors.push(String(error))); });
+    await tab.evaluate(() => {
+        const ownDescriptor=Object.getOwnPropertyDescriptor,own=Object.hasOwn,define=Object.defineProperty;
+        const summaryFields=['rootIndex','rootLabel','keyKind','key','symbolPosition','comparison','changedField',
+            'actualType','savedType','actualFlag','savedFlag'];
+        const intrinsicSummary=error=>{try{
+            // No property getters, primitive calls, stack reads or coercion.
+            // Constraint signals wrap the newly-created native error as cause.
+            const direct=error&&(typeof error==='object'||typeof error==='function')?ownDescriptor(error,'bwArrayIntrinsicMismatch'):null;
+            const cause=error&&(typeof error==='object'||typeof error==='function')?ownDescriptor(error,'cause'):null;
+            const source=direct&&own(direct,'value')?direct:
+                cause&&own(cause,'value')&&cause.value&&typeof cause.value==='object'?ownDescriptor(cause.value,'bwArrayIntrinsicMismatch'):null;
+            if(!source||!own(source,'value')||!source.value||typeof source.value!=='object')return null;
+            const copy={};
+            for(let i=0;i<summaryFields.length;i++){
+                const key=summaryFields[i],descriptor=ownDescriptor(source.value,key);
+                if(!descriptor||!own(descriptor,'value'))return null;
+                const value=descriptor.value;
+                if(value!==null&&typeof value!=='string'&&typeof value!=='number'&&typeof value!=='boolean')return null;
+                define(copy,key,{value,enumerable:true});
+            }
+            return copy;
+        }catch(_observationFailure){return null;}};
+        window.__bwNumericErrors = [];
+        window.__bwNumericIntrinsicRefusals = [];
+        window.__brickwrightStore.getState().scratchGui.vm.runtime.on('BLOCKS_ERROR', error => {
+            window.__bwNumericIntrinsicRefusals.push(intrinsicSummary(error));
+            window.__bwNumericErrors.push(String(error));
+        });
+    });
     return tab;
 };
 const apply = async () => {
@@ -84,6 +207,18 @@ const apply = async () => {
     await page.getByText('Blocks loaded.', {exact: true}).waitFor();
     await page.getByRole('tab', {name: 'Blocks', exact: true}).click();
     await page.waitForFunction(() => window.Blockly?.getMainWorkspace()?.getAllBlocks(false).some(block => block.type === 'arcade_clampNumber'));
+};
+// Downloads do not close the Code actions menu. Close it the way a user does
+// before interacting with the report underneath the actions popover.
+const closeCodeActions = async () => {
+    // The Code actions are a popup trigger since #1536; the shared helper closes either form.
+    await closeSharedCodeActions(page);
+    await page.waitForFunction(() => {
+        const trigger = document.querySelector('[data-testid="bw-code-actions-trigger"]');
+        if (trigger) return trigger.getAttribute('aria-expanded') !== 'true';
+        const menu = document.querySelector('[data-testid="bw-code-actions"]');
+        return !menu || !menu.open;
+    });
 };
 const openFile = async file => {
     await codeTab(); await openCodeActions(page);
@@ -135,7 +270,7 @@ const editMenu = async (spec, choice, required) => {
 const observe = () => page.evaluate(() => {
     const vm = window.__brickwrightStore.getState().scratchGui.vm;
     const variables = Object.fromEntries(vm.runtime.targets.filter(t => t.isOriginal).flatMap(t => Object.values(t.variables)).map(v => [v.name.replace(/^(?:Game_)+/, ''), v.value]));
-    return {variables, errors: window.__bwNumericErrors};
+    return {variables, errors: window.__bwNumericErrors, intrinsicRefusals: window.__bwNumericIntrinsicRefusals};
 });
 const waitSample = sample => page.waitForFunction(sample => {
     const variables = Object.fromEntries(window.__brickwrightStore.getState().scratchGui.vm.runtime.targets.filter(t => t.isOriginal).flatMap(t => Object.values(t.variables)).map(v => [v.name.replace(/^(?:Game_)+/, ''), v.value]));
@@ -210,10 +345,15 @@ try {
     await cycle('unchanged-import', {}, files);
     await paletteCreate();
     await editNumber({opcode: 'arcade_clampNumber', input: 'MAX', value: '10'}, 12);
-    await editMenu({opcode: 'arcade_mathBinary', input: 'OP', value: 'min'}, 'max', ['min', 'max', 'randomRange']);
+    const mathOperations = ['min', 'max', 'randomRange', 'atan2'];
+    await editMenu({opcode: 'arcade_mathBinary', input: 'OP', value: 'min'}, 'max', mathOperations);
     await editMenu({opcode: 'arcade_settingsRead', input: 'TYPE', value: 'StringArray'}, 'String', ['StringArray', 'String']);
     await editMenu({opcode: 'arcade_settingsRead', input: 'TYPE', value: 'String'}, 'StringArray', ['StringArray', 'String']);
     const edited = {maximum: 12, operation: 'max'}; await cycle('visible-block-edits', edited, numericAuthoringFiles(edited));
+    await editMenu({opcode: 'arcade_mathBinary', input: 'OP', value: 'max'}, 'atan2', mathOperations);
+    const angle = {maximum: 12, operation: 'atan2'}; await cycle('visible-atan2-edit', angle, numericAuthoringFiles(angle));
+    await editMenu({opcode: 'arcade_mathBinary', input: 'OP', value: 'atan2'}, 'max', mathOperations);
+    await cycle('visible-math-restored', edited, numericAuthoringFiles(edited));
     await codeTab(); await page.getByRole('button', {name: /From blocks/}).first().click();
     await page.waitForFunction(() => {
         const code = document.querySelector('[data-testid="bw-code-editor"] .cm-content')?.cmTile.root.view.state.doc.toString();
@@ -242,12 +382,88 @@ try {
     });
     await openCodeActions(page);
     const [exported] = await Promise.all([page.waitForEvent('download'), page.getByTestId('bw-makecode-arcade-export').click()]);
-    const exportedPath = path.join(out, 'numeric-authoring-export.mkcd'); await exported.saveAs(exportedPath);
+    const exportedPath = path.join(out, 'numeric-authoring-export.mkcd'); await exported.saveAs(exportedPath);await closeCodeActions();
     const exportedBytes = await readFile(exportedPath), embedded = await readMakeCodeProjectText(exportedBytes.toString('utf8'), 'mkcd');
     report.export = {sha256: digest(exportedBytes), bytes: exportedBytes.length};
     await original(embedded.files, finalOptions, false); await original(embedded.files, finalOptions, true);
     await openFile(exportedPath); await apply(); await cycle('actual-export-reimport', finalOptions, embedded.files);
     await Promise.all(bodyChecks); assert.deepEqual(report.bundleFailures || [], []); assert.ok(report.bundleObservations.length); assert.deepEqual(report.pageErrors, []);
+    // Refusal reporting acceptance follows every original numeric journey.
+    // No compiler success is inferred from a downloaded partial project.
+    await codeTab();await page.getByRole('button', {name: /From blocks/}).first().click();
+    await page.waitForFunction(() => /DEVICE ARCADE/.test(document.querySelector('[data-testid="bw-code-editor"] .cm-content')?.cmTile.root.view.state.doc.toString() || ''));
+    const cleanAuthoringCode = await readCode();assert.match(cleanAuthoringCode, /DEVICE ARCADE/);
+    const partialCode = cleanAuthoringCode.replace('DEVICE ARCADE', 'DEVICE ARCADE\nGLOBAL refusalDiagnosticResult') +
+        '\nSPRITE RefusalDiagnostics:\nWHEN flag clicked:\n  set refusalDiagnosticResult to (calculate value (arcade music tempo) op "+" with (1))\n';
+    const authorCode = async text => {
+        await codeTab();await editor().click();await page.keyboard.press('Control+a');await page.keyboard.insertText(text);
+        assert.equal(await readCode(), text);await apply();await codeTab();
+    };
+    const currentAssets = () => page.evaluate(() => window.__brickwrightStore.getState().scratchGui.vm.runtime.targets
+        .filter(target => target.isOriginal).map(target => ({name: target.getName(),
+            costumes: target.sprite.costumes.map(costume => ({assetId: costume.assetId, bytes: Array.from(costume.asset.data)})),
+            sounds: target.sprite.sounds.map(sound => ({assetId: sound.assetId, bytes: Array.from(sound.asset.data)}))})));
+    await authorCode(partialCode);const assetsBeforeRefusal = await currentAssets();
+    await openCodeActions(page);
+    const [partialDownload] = await Promise.all([page.waitForEvent('download'), page.getByTestId('bw-makecode-arcade-export').click()]);
+    const partialPath = path.join(out, 'numeric-authoring-refusal.mkcd');await partialDownload.saveAs(partialPath);await closeCodeActions();
+    const panel = page.getByTestId('bw-conversion-report');await panel.waitFor({state: 'visible'});
+    const unsupported = page.getByTestId('bw-conversion-unsupported');await unsupported.waitFor({state: 'visible'});
+    // An unproved `+` operand (music tempo here) exports through the runtime-dispatch helper
+    // rather than refusing (owner decision 2026-10-30); the report therefore lists nothing.
+    assert.doesNotMatch(await unsupported.innerText(), /native addition requires/);
+    assert.equal(await page.getByTestId('bw-conversion-refusal-details').count(), 0);
+    const dispatched = (await readMakeCodeProjectText(await readFile(partialPath, 'utf8'), 'mkcd')).files['main.ts'];
+    const helper = /function ([A-Za-z_$][\w$]*)\(left: any, right: any\): any \{[^\n]*Array\.isArray\(left\)/.exec(dispatched);
+    assert.ok(helper, 'the export carries the runtime-dispatch helper');
+    assert.ok(new RegExp(`${helper[1].replace(/\$/g, '\\$')}\\(\\s*music\\.tempo\\(\\)\\s*,\\s*1\\s*\\)`).test(dispatched),
+        'the unproved addition goes through the helper');
+    const details = [];
+    assert.match(await page.getByTestId('bw-conversion-preserved').innerText(), /not been compiled or run/);
+    await panel.locator('div').first().click();assert.equal(await unsupported.isVisible(), false);
+    await panel.locator('div').first().click();assert.equal(await unsupported.isVisible(), true);
+    assert.deepEqual(await currentAssets(), assetsBeforeRefusal, 'export reporting retains current asset bytes');
+    report.refusalReporting = {details, unsupported: await unsupported.innerText(), assets: assetsBeforeRefusal};
+    await page.getByTestId('bw-dismiss-conversion-report').click();assert.equal(await panel.count(), 0);
+    await authorCode(cleanAuthoringCode);const assetsBeforeClean = await currentAssets();
+    assert.equal(await page.getByTestId('bw-conversion-refusal-details').count(), 0, 'editing cannot display a previous export result');
+    let cleanObservationOwner;
+    try { cleanObservationOwner = await page.getByTestId('bw-code-editor').evaluateHandle(observeCleanExport, {phase: 'before'}); }
+    catch { /* Missing freshness evidence cannot replace the original journey. */ }
+    await openCodeActions(page);
+    const [cleanDownload] = await Promise.all([page.waitForEvent('download'), page.getByTestId('bw-makecode-arcade-export').click()]);
+    await cleanDownload.saveAs(path.join(out, 'numeric-authoring-clean-after-refusal.mkcd'));await closeCodeActions();
+    await page.getByTestId('bw-conversion-report').waitFor({state: 'visible'});
+    const cleanUnsupported = page.getByTestId('bw-conversion-unsupported');
+    if (!await cleanUnsupported.isVisible()) await page.getByTestId('bw-conversion-report').locator('div').first().click();
+    await cleanUnsupported.waitFor({state: 'visible'});
+    assert.equal(await page.getByTestId('bw-conversion-refusal-details').count(), 0);
+    const cleanUnsupportedText = await cleanUnsupported.innerText();
+    report.cleanAfterRefusal = {unsupported: cleanUnsupportedText};
+    try {
+        const observed = await page.getByTestId('bw-conversion-report').evaluate(observeCleanExport,
+            {phase: 'after', held: cleanObservationOwner, visibleText: cleanUnsupportedText});
+        if (observed.captureStatus === 'COMPLETE') {
+            const input = Buffer.from(observed.inputJson, 'utf8'), result = Buffer.from(observed.resultJson, 'utf8');
+            if (input.length !== observed.inputUtf8Bytes || result.length !== observed.resultUtf8Bytes ||
+                input.length + result.length !== observed.totalUtf8Bytes || observed.totalUtf8Bytes > 8388608) throw new Error('observation byte mismatch');
+            const inputFile = 'clean-export-consumed-project.json', resultFile = 'clean-export-semantic-result.json';
+            await writeFile(path.join(out, inputFile), input);await writeFile(path.join(out, resultFile), result);
+            report.cleanAfterRefusal.observation = {schema: observed.schema, origin: observed.origin, captureStatus: 'COMPLETE',
+                inputFile, resultFile, inputUtf8Bytes: input.length, resultUtf8Bytes: result.length,
+                inputSha256: digest(input), resultSha256: digest(result)};
+        } else {
+            // Retain only small status data, never an incomplete graph as COMPLETE.
+            report.cleanAfterRefusal.observation = {captureStatus: observed.captureStatus || 'UNAVAILABLE_OBSERVATION',
+                schema: observed.schema, origin: observed.origin, reasonCode: observed.reasonCode, beforeReason: observed.beforeReason};
+        }
+    } catch { report.cleanAfterRefusal.observation = {captureStatus: 'UNAVAILABLE_OBSERVER'}; }
+    finally { try { await cleanObservationOwner?.dispose(); } catch { /* The original assertion stays authoritative. */ } }
+    try { await writeFile(path.join(out, 'clean-export-observation.json'), JSON.stringify(report.cleanAfterRefusal.observation, null, 2)); }
+    catch { report.cleanAfterRefusal.observation = {captureStatus: 'UNAVAILABLE_ARTIFACT_WRITE'}; }
+    assert.match(cleanUnsupportedText, /nothing reported/);
+    assert.deepEqual(await currentAssets(), assetsBeforeClean, 'later clean export also retains actual assets');
+    await Promise.all(bodyChecks);assert.deepEqual(report.bundleFailures || [], []);assert.deepEqual(report.pageErrors, []);
     await page.screenshot({path: path.join(out, 'numeric-authoring.png')}); report.status = 'passed';
 } catch (error) {
     report.status = 'failed'; report.failure = String(error.stack || error);

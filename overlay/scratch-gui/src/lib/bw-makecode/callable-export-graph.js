@@ -14,6 +14,15 @@ export function callableReflectionVariable(graph,block) {
     const id=Array.isArray(slot)&&slot[0]===12?slot[2]:value?.opcode==='data_variable'?value.fields?.VARIABLE?.[1]:null;
     return typeof id==='string'&&[...graph.globalBindings.values()].some(row=>row.variableId===id);
 }
+// The current lexical type proof of one input of an actual current-body block,
+// or null. It is read only while the proof's plan/body snapshot is unchanged.
+export function callableCurrentInputType(graph,block,name) {
+    try {
+        const proof=currentTypeProofs.get(graph);
+        if(!proof||proof.snapshot!==JSON.stringify([graph.plan,graph.target.blocks])||!Object.values(graph.target.blocks).includes(block))return null;
+        return proof.input(block,name)||null;
+    } catch (_) {return null;}
+}
 export function callableReflectionOperand(graph,block,project) {
     try {
     const proof=currentTypeProofs.get(graph);

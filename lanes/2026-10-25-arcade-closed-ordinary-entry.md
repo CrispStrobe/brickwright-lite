@@ -1,9 +1,33 @@
 # Closed ordinary procedure execution roots
 
-Status: CLAIMED; merge before implementation.
+Status: DONE implementation candidate; exact-head hosted, SDK/native and visible editor qualification pending.
 Base: `7f9edea2cc648d7139d1f57099d5121361d48a01`.
 Owner: Arcade integration, isolated source lane. Preserve the active Arcade
 integration publisher and its Sprite factory/property proof.
+
+Claim [#1398](https://github.com/CrispStrobe/brickwright-lite/pull/1398) merged at
+`d11627829b514398368a5e782e148f3386161983` before implementation, with all four
+required checks successful and declared conditional skips. The source component
+and actual project component each derive their own private current proof; no
+caller metadata supplies unreachable owners. Project proof accepts owned frozen
+JSON only. Complete actual Array storage writers can establish entry neutrality,
+but never type, initialization or successful execution.
+
+Twenty-one composed source controls pass. The affected source cohort has
+seventy-five passes; counts overlap. Eleven source guard cuts and five project
+guard cuts were detected across the retained cohorts; initial surviving cuts,
+namespace-alias and malformed-shadow failures were retained and corrected.
+Code reconstruction, three JSON generations, saved SB3 reopening and a separate
+loop/math conversion pass. A retained sorting source now imports/reconstructs
+cleanly and its retained project exports without unsupported diagnostics while
+keeping every authored procedure. No aggregate or application completion is
+claimed. Native helper lowering required no change for this bounded case.
+
+Next: coordinate the active integration publisher, qualify one final exact head,
+run the unchanged original/emitted MakeCode and native controls, verify visible
+Code/Blocks and saved-project behavior, then measure the full corpus. Broader
+callable/class/default/namespace entries and live Array read readiness remain
+separate work; this proof conservatively declines those entry shapes.
 
 ## Problem and intended behavior
 
