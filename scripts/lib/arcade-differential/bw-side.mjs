@@ -1,0 +1,101 @@
+// Brickwright side: the program as the importer translates it, run in the real
+// Scratch VM with the Arcade extension on an injected discrete clock (the same
+// "timed" authority the source-timer fixtures use), observed on the same
+// sample grid and driven by the same input script as the original.
+//
+// The 160x120 frame is the Arcade extension's own composed scene frame
+// (runtime.bwArcadeDeviceState.sceneFrame.pixels: palette indices, background,
+// tilemap, sprites, particles, renderables and HUD), read after each sample.
+// Nothing in the extension is modified or called to obtain it.
+import {importProjectFiles} from '../../../overlay/scratch-gui/src/lib/bw-makecode/index.js';
+import {runProgram, stepFrames, quitStrandedVMs, clearStrayTimers} from '../../../test/helpers/bw-vm.mjs';
+import {createArcadeDiscreteTimers} from '../../../test/helpers/arcade-discrete-timers.mjs';
+import {BW_KEY, sampleTimes} from './script.mjs';
+import {PRNG_SOURCE} from './pxt-side.mjs';
+import {packSamples} from './compare.mjs';
+
+const hex = n => (n & 0xffffff).toString(16).padStart(6, '0');
+
+export function paletteHex(palette) {
+    return Array.from(palette || [], c => typeof c === 'string' ? c.replace('#', '').toLowerCase().padStart(6, '0') : hex(Number(c)));
+}
+
+export function imageKey(image) {
+    if (!image) return null;
+    const w = image.width ?? image._width, h = image.height ?? image._height, px = image.pixels ?? image.data;
+    if (!(w >= 0) || !(h >= 0) || !px) return null;
+    let hash = 2166136261 >>> 0;
+    for (let i = 0; i < w * h; i++) hash = Math.imul(hash ^ (px[i] & 15), 16777619) >>> 0;
+    return `${w}x${h}:${hash.toString(16)}`;
+}
+
+/** Read-only snapshot of the Arcade extension's scene, in the shape the original side reports. */
+export function snapshotBrickwright(vm, globalsOf = []) {
+    const state = vm.runtime.bwArcadeDeviceState || {};
+    const out = {dead: false, sprites: [], globals: {}};
+    const frame = state.sceneFrame?.pixels;
+    if (frame) {
+        let s = ''; for (let i = 0; i < frame.length; i++) s += (frame[i] & 15).toString(16);
+        out.pix = s; out.palette = paletteHex(state.palette);
+    }
+    for (const sprite of Object.values(state.sprites || {})) {
+        if (!sprite || sprite._destroyed) continue;
+        out.sprites.push({id: sprite.pxtId, kind: sprite.kind, kindName: sprite.kindName, x: sprite.x, y: sprite.y, z: sprite.z,
+            image: imageKey(sprite.image), visible: !sprite.invisible, flags: sprite.flags});
+    }
+    out.sprites.sort((a, b) => a.id - b.id);
+    const p1 = state.players?.[0];
+    out.score = typeof p1?.score === 'number' ? p1.score : (typeof state.score === 'number' ? state.score : 0);
+    out.life = typeof p1?.life === 'number' ? p1.life : null;
+    if (globalsOf.length) {
+        const wanted = new Set(globalsOf);
+        for (const target of vm.runtime.targets) for (const variable of Object.values(target.variables || {})) {
+            if (!wanted.has(variable.name) || Object.hasOwn(out.globals, variable.name)) continue;
+            const v = variable.value;
+            if (typeof v === 'number' || typeof v === 'string' || typeof v === 'boolean') out.globals[variable.name] = v;
+        }
+    }
+    return out;
+}
+
+export function translateForBrickwright(source, name = 'differential') {
+    const files = {'main.ts': source, 'pxt.json': JSON.stringify({name, dependencies: {device: '*'}, files: ['main.ts']})};
+    const imported = importProjectFiles(files, {name, target: 'arcade'});
+    return {code: imported.code, costumes: imported.costumes || [], unsupported: imported.unsupported || [], warnings: imported.warnings || []};
+}
+
+/** Run `source` and return {status, samples, translation}. Guest errors are data. */
+export async function recordBrickwright(source, {schedule, seconds, fps = 30, seed = 1, entropy = 'sequence', globalsOf = [], translated = null}) {
+    let translation;
+    try { translation = translated || translateForBrickwright(source); }
+    catch (e) { return {status: 'import-error', error: String(e?.message || e).slice(0, 500), samples: []}; }
+    const originalRandom = Math.random;
+    Math.random = entropy === 'constant' ? () => 0.5 : (0, eval)(PRNG_SOURCE)(seed);
+    let run;
+    try {
+        run = await runProgram(translation.code, {frames: 0, frameAuthority: 'timed', uploads: translation.costumes, storage: true});
+        const {vm} = run, clock = createArcadeDiscreteTimers();
+        vm.stopAll();
+        vm.runtime.bwArcadeProgramClock = clock;
+        vm.runtime.updateCurrentMSecs = () => { vm.runtime.currentMSecs = clock.now(); };
+        vm.greenFlag();
+        await stepFrames(vm, 1, 0);
+        const samples = [];
+        const times = sampleTimes(seconds, fps);
+        let error = null;
+        for (let k = 0; k < times.length; k++) {
+            for (const edge of schedule.edgesAt(k)) vm.postIOData('keyboard', {key: BW_KEY[edge.button], isDown: edge.down});
+            await clock.advanceTo(times[k]);
+            if (run.errors.length) { error = run.errors[0]; }
+            samples.push({k, t: times[k], ...snapshotBrickwright(vm, globalsOf)});
+            if (error) break;
+        }
+        return {status: error ? 'error' : 'ok', error, ...packSamples(samples), unsupported: translation.unsupported, errors: run.errors.slice(0, 5)};
+    } catch (e) {
+        return {status: 'error', error: String(e?.message || e).slice(0, 500), samples: [], unsupported: translation.unsupported};
+    } finally {
+        Math.random = originalRandom;
+        try { run?.vm?.stopAll(); run?.vm?.quit(); } catch {}
+        quitStrandedVMs(); clearStrayTimers();
+    }
+}
