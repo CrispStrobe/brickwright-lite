@@ -1,5 +1,7 @@
 # Resting-frame creep: successor handoff
 
+Status 2026-10-30: mechanism found and fixed in the core; see [Fix](#fix-2026-10-30).
+
 Snapshot: 2026-10-27. The floor correction is complete; resting-frame creep is
 open. This document is sufficient to resume the diagnostic lane, together with
 [the repository protocol](../lanes/PROTOCOL.md) and
@@ -160,6 +162,110 @@ floor reproduces the drift; at 1.2 mm and 2.1 mm it does not.
 The full table and the scoped fix task are in
 [the qualification handoff](ROBOT-LAB-QUALIFICATION-HANDOFF-20261028.md#4-resting-frame-creep-1435-cause-located).
 A solver or setting fix needs its own claim; issue #1435 stays open until it lands.
+
+## Fix (2026-10-30)
+
+### Mechanism
+
+Jolt's contact manifold reduction merges every floor hit of a compound body
+that shares the floor normal into one manifold. When that manifold has more
+than four points, `PruneContactPoints` (Jolt
+`Physics/Collision/ManifoldBetweenTwoFaces.cpp`) keeps four. It ranks each
+point by its distance from the centre of mass times its squared point
+separation `(p2 - p1).LengthSq()`, clamped below at 1 mm². The separation has
+no sign. A speculative point 1.6 mm above the floor therefore ranks 2.56 times
+higher than a touching or slightly penetrating one.
+
+A collider hovering inside the 2 mm speculative band (`LEGO_SPECULATIVE_CONTACT_M`)
+takes one of the four slots, though it carries no load. A real support corner
+drops out. The logged first step of the synthetic plate with its 1.6 mm cube
+kept three rail corners and the hover point. The support triangle missed the
+centre of mass, so the plate tipped towards the dropped corner. It sank
+0.64 mm on that side, and the rank of each point changed with each step's
+penetration, so the chosen points changed from step to step. The friction
+anchors went with them, and the frame crept. The Orrery's two `post_mid_low`
+parts are such hover colliders. Raising `base_rail_0` by 1 LDU worked only by
+changing which points won.
+
+### Fix
+
+`jolt-core.js` installs a contact listener whenever the mechanism has the
+static `ground` body and a dynamic body with two or more colliders. A single
+convex collider gives at most a 4-point face, so its floor manifold is never
+pruned. For a hit between such a compound and the ground, `OnContactValidate`
+returns `RejectContact` only when all of the following hold:
+
+- the hit is separated by more than the penetration slop (0.2 mm);
+- its point's closing speed along the contact normal cannot close the gap in
+  this step, with a factor 2 margin: `gap > 2 · v_closing · dt + slop`.
+
+The closing speed is the point velocity `v + ω × r`, less the gravity Jolt
+has already added for this step. A resting body's supports cancel that
+gravity, and a body in free fall keeps its earlier speed.
+
+A hit that the rule drops would not have pushed in this step unless another
+constraint sped its point up within the step. A speculative constraint has zero
+impulse unless the gap closes. The only effect of dropping
+it is that the four pruned points are touching points again. Every touching
+hit, every hit that can close, every other body pair and every single-collider
+body take Jolt's unchanged path. No engine setting, fork or pin changes.
+`experiments.floorSpeculativeFilter: false` restores the previous behaviour
+for A/B runs.
+
+Alternatives measured and not taken:
+
+- Manifold reduction off moved 22 of 162 models, and is per body, not per
+  floor pair.
+- A smaller speculative distance moves the band without removing the
+  ranking.
+- The contact cache and the solver and sleep settings either moved unrelated
+  models or did not stop the creep (issue #1435 table).
+
+Fixing `PruneContactPoints` itself, so that separated points rank below
+touching ones, would be the engine-level fix. It needs a fork release and the
+owner's approval, and is not done here.
+
+### Measurements
+
+`test/bw-sim-resting-creep-fix.test.mjs` covers these cases over 350 steps at
+200 Hz, comparing the old path (filter off) with the fix:
+
+| Case | Old path | Fix |
+|---|---|---|
+| Coplanar Orrery, complete mechanism | 8.41 mm, 4.01°, tilt 0.81° | 0 mm, 0°, 0° |
+| Coplanar Orrery, isolated frame | 6.99 mm, 3.21°, tilt 0.61° | 0 mm, 0°, 0° |
+| Raised Orrery, hover parts up 0.5 mm | 9.37 mm, 5.10°, tilt 1.23° | 0 mm, 0°, 0° |
+| Plate with hover cube at 1.6 mm | 1.73 mm, 0.02°, tilt 0.56° | 0 mm, 0°, 0° |
+| Plate with hover cube at 1.9 mm | 2.75 mm, 0.05°, tilt 1.09° | 0 mm, 0°, 0° |
+| Four coplanar beams alone, 3 s | 0 | 0 |
+
+A plate dropped from 30 mm lands the same way on both paths.
+
+The at-rest sweep compared every shipped model with main, unpowered, at
+200 Hz for 2 s: 191 entries, the qualified `MODELS` plus
+`EXPERIMENTAL_MODELS`, unique by id and mat.
+
+- **172 models are bit-identical.** The rule never fires on them.
+- **9 models** have dropped hits and change by at most 0.0205°.
+- **All 72 models that are at rest on main are unchanged.** At rest means
+  every body moves 0.05 mm or 0.05° or less.
+- **10 models change by more than 0.05.** All ten already move on main.
+  - **The creep is gone in six.** sarrus-lift goes from 12.07 mm to 0.004 mm;
+    screw-crane from 4.83 mm to 0.14 mm; obliquity-orrery-turned-axis from
+    4.00 mm to 0.015 mm; paritydial from 0.54 mm to 0.048 mm; forklift from
+    0.85° to 0.09°. In snapgate, the 165-collider frame goes from 0.157 mm to
+    0 mm.
+  - **Freely swinging parts take a different path in three.** In tilt-lab,
+    pulse-percussion and axis-plotter, the frames and resting bodies agree
+    within 0.01 mm. A free lever, hammer or carriage that is already swinging
+    or sliding on main ends at a different angle, by up to 21°.
+  - **sarrus-lift-single-chain collapses on both paths.** This is the #1436
+    scenario. Its 209-collider frame moves 0.9 mm instead of 8.8 mm.
+
+The full table is in
+[ROBOT-LAB-RESTING-CREEP-SWEEP.md](ROBOT-LAB-RESTING-CREEP-SWEEP.md).
+Total CPU for the sweep is 22.37 s on main and 22.48 s with the fix (+0.5 %,
+within the noise on a shared machine).
 
 ## Owned paths and adjacent work
 
