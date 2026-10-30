@@ -589,6 +589,13 @@ class CircuitTab extends React.Component {
             prevState.panel !== this.state.panel) notifyEditorMenuActions();
         if (prevProps.vm?.runtime !== this.props.vm?.runtime) this.subscribeCpxRuntime(this.props.vm?.runtime);
         if (this.props.isVisible && !prevProps.isVisible) activateUndoSurface('circuit');
+        // Hiding the tab can unmount the Designer (debugger docked right/solo) while
+        // its debounced autosave is pending. Keep the live circuit as the data it
+        // remounts from, or re-entering the tab restores an older circuit.
+        if (prevProps.isVisible && !this.props.isVisible && !this._boxRef.current) {
+            const circuit = this.state.circuit;
+            if (circuit && typeof circuit.toJSON === 'function') this.setState({circuitData: circuit.toJSON()});
+        }
         // The event that opens this lazily rendered bench can precede the
         // DebugPanel listener in the same React commit. Replay the retained
         // image after that commit; the transition guard prevents a loop when
