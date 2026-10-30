@@ -7,10 +7,10 @@ import {readFileSync, mkdtempSync, writeFileSync, rmSync} from 'node:fs';
 import {join} from 'node:path';
 import {tmpdir} from 'node:os';
 import {spawnSync} from 'node:child_process';
-import {programAddressedSensorCapability as discover} from '../scripts/lib/spike-addressed-sensor-marker.mjs';
+import {programAddressedSensorCapability as discover, programInstructionAbi} from '../scripts/lib/spike-addressed-sensor-marker.mjs';
 const NAME = 'g_bw_program_addressed_sensor_abi';
 const symbol = `08060000 R ${NAME}\n`;
-function image () {
+function image (NAME_ = NAME, value = 1) {
     const elf = Buffer.alloc(800);
     Buffer.from('7f454c46010101', 'hex').copy(elf);
     elf.writeUInt16LE(2, 16);elf.writeUInt16LE(40, 18);elf.writeUInt32LE(1, 20);
@@ -20,9 +20,9 @@ function image () {
     words(52, [1, 256, 0x08060000, 0x08060000, 4, 4, 7, 4]);
     words(640, [0, 1, 6, 0x08060000, 256, 4, 0, 0, 4, 0]);
     words(680, [0, 2, 0, 0, 400, 32, 3, 0, 4, 16]);
-    const names = Buffer.from(`\0${NAME}\0`);names.copy(elf, 500);
+    const names = Buffer.from(`\0${NAME_}\0`);names.copy(elf, 500);
     words(720, [0, 3, 0, 0, 500, names.length, 0, 0, 1, 0]);
-    words(416, [1, 0x08060000, 4]);elf[428] = 0x11;elf.writeUInt16LE(1, 430);elf.writeUInt32LE(1, 256);
+    words(416, [1, 0x08060000, 4]);elf[428] = 0x11;elf.writeUInt16LE(1, 430);elf.writeUInt32LE(value, 256);
     return elf;
 }
 test('optional feature is distinct from legacy storage/debug ABI and binds the exact image', () => {
@@ -67,9 +67,10 @@ test('source mutations must fail the intended refusal controls', () => {
     const source = readFileSync(new URL('../scripts/lib/spike-addressed-sensor-marker.mjs', import.meta.url), 'utf8');
     const fixture = readFileSync(new URL(import.meta.url), 'utf8');
     const mutations = [
-        ['if (elf.readUInt32LE(objects[0]) !== 1)', 'if (false)', 'symbol kind'],
+        ['if (elf.readUInt32LE(objects[0]) !== version)', 'if (false)', 'symbol kind'],
         [' || (section[2] & 1)', '', 'malformed executable'],
-        [' || (physical < address + 4 && address < physical + memory)', '', 'overlapping virtual']
+        [' || (physical < address + 4 && address < physical + memory)', '', 'overlapping virtual'],
+        ["version: 2, label: 'Instruction ABI'", "version: 1, label: 'Instruction ABI'", 'instruction ABI 2']
     ];
     for (const [old, replacement, intended] of mutations) {
         assert.equal(source.split(old).length, 2, 'mutation must bind uniquely');
@@ -78,10 +79,30 @@ test('source mutations must fail the intended refusal controls', () => {
             writeFileSync(join(owned, 'marker.mjs'), source.replace(old, replacement));
             writeFileSync(join(owned, 'test.mjs'), fixture.replace('../scripts/lib/spike-addressed-sensor-marker.mjs', './marker.mjs'));
             const env = {...process.env};delete env.NODE_TEST_CONTEXT;
-            const result = spawnSync(process.execPath, ['--test', '--test-name-pattern', '^(optional|symbol|malformed|overlapping)', join(owned, 'test.mjs')], {encoding: 'utf8', env});
+            const result = spawnSync(process.execPath, ['--test', '--test-name-pattern', '^(optional|symbol|malformed|overlapping|instruction)', join(owned, 'test.mjs')], {encoding: 'utf8', env});
             assert.equal(result.status, 1, intended);
             assert.match(result.stdout, new RegExp(`not ok .*${intended}`));
             assert.match(result.stdout, /ERR_ASSERTION|AssertionError/);
         } finally {rmSync(owned, {recursive: true, force: true});}
     }
+});
+const INSTRUCTIONS = 'g_bw_program_instruction_abi';
+test('instruction ABI 2 is discovered from its own marker; absent stays 1, malformed or other versions refuse', () => {
+    const symbols = `08060000 R ${INSTRUCTIONS}\n`;
+    let abi = null;
+    assert.doesNotThrow(() => {abi = programInstructionAbi(image(INSTRUCTIONS, 2), symbols);});
+    assert.equal(abi, 2);
+    assert.equal(programInstructionAbi(image(INSTRUCTIONS, 2), symbols.replace(' R ', ' T ')), 2);
+    // An image without the symbol (older firmware) is instruction ABI 1.
+    assert.equal(programInstructionAbi(image(), symbol), 1);
+    assert.equal(programInstructionAbi(image(INSTRUCTIONS, 2), ''), 1);
+    // The addressed-sensor marker cannot establish it, nor the reverse.
+    assert.throws(() => programInstructionAbi(image(NAME, 2), symbols));
+    assert.equal(discover(image(INSTRUCTIONS, 2), symbols), null);
+    for (const value of [0, 1, 3]) assert.throws(() => programInstructionAbi(image(INSTRUCTIONS, value), symbols), /Instruction ABI/);
+    for (const bad of [symbols + symbols, symbols.replace(' R ', ' D '), symbols.replace('08060000', '20000000')]) {
+        assert.throws(() => programInstructionAbi(image(INSTRUCTIONS, 2), bad), /Instruction ABI/);
+    }
+    const elf = image(INSTRUCTIONS, 2);elf[428] = 0x12;
+    assert.throws(() => programInstructionAbi(elf, symbols), /Instruction ABI/);
 });

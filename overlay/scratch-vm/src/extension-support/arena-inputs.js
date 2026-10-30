@@ -23,9 +23,10 @@ const validArenaInputs = value => {
     return value.loads.every(item => keys(item, ['port', 'percent']) && integer(item.percent, 0, 100));
 };
 const validArenaProgram = value => {
-    if (!keys(value, ['version', 'instructions']) || value.version !== 1 ||
+    if (!keys(value, ['version', 'instructions']) || ![1, 2].includes(value.version) ||
         !Array.isArray(value.instructions) || !integer(value.instructions.length, 1, 256)) return false;
-    const count = value.instructions.length;
+    // v2 adds op 7 (op 6 without waiting) and op 8 (wait for a port bitmask), as arena_inputs.rs.
+    const count = value.instructions.length, v2 = value.version === 2;
     for (const instruction of value.instructions) {
         if (!Array.isArray(instruction) || instruction.length !== 4 ||
             ![0, 1, 2, 3].every(index => Number.isSafeInteger(instruction[index]))) return false;
@@ -37,7 +38,8 @@ const validArenaProgram = value => {
                 integer(b, 0, a <= 2 ? 65535 : a === 3 ? 1 : a === 4 ? 255 : 100) &&
                 (op === 3 ? c === 0 : integer(c, 0, count - 1))) ||
             (op === 4 && integer(a, 0, count - 1) && b === 0 && c === 0) ||
-            (op === 6 && integer(a, 0, 1) && integer(b, -36000, 36000) && integer(c, 1, 1110));
+            ((op === 6 || (v2 && op === 7)) && integer(a, 0, 1) && integer(b, -36000, 36000) && integer(c, 1, 1110)) ||
+            (v2 && op === 8 && integer(a, 1, 3) && b === 0 && c === 0);
         if (!valid) return false;
     }
     return value.instructions[count - 1].every(word => word === 0);

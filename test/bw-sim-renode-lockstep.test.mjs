@@ -55,8 +55,8 @@ const scratchDps = (() => {
     return hub.backend.percentToDps(0, SPEED_PCT);
 })();
 
-/** Forward 360° on both wheels (A is mounted mirrored), then brake (fake op 7 starts A without waiting). */
-const FORWARD_360 = [[7, 0, -360, Math.round(scratchDps)], [6, 1, 360, Math.round(scratchDps)], [2, 300, 0, 0], [0, 0, 0, 0]];
+/** Forward 360° on both wheels (A is mounted mirrored), then brake: ABI v2 op 7 arms both, op 8 waits for A and B. */
+const FORWARD_360 = [[7, 0, -360, Math.round(scratchDps)], [7, 1, 360, Math.round(scratchDps)], [8, 3, 0, 0], [0, 0, 0, 0]];
 
 /** Rotate v by the unit quaternion [x, y, z, w]. */
 const rotate = ([x, y, z, w], v) => {
