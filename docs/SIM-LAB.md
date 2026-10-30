@@ -768,3 +768,39 @@ physical SPIKE motor's clockwise/counterclockwise command convention. See
 [issue #1460](https://github.com/CrispStrobe/brickwright-lite/issues/1460).
 Qualify an opted-in model on a runtime revision that includes this setting;
 older pinned-worker receipts cannot qualify the changed drive behavior.
+
+## Motor rotor treatment
+
+A motor's rotor, reflected through its gearbox, adds inertia Jr to the hinge it
+drives (the SPIKE medium motor: about 3e-4 kg·m²). By default (`legacy`) the
+simulator adds Jr about the hinge axis to both hinge bodies. That is exact when
+the motor's housing does not turn about its own axis: a clamped motor, a frame
+standing on the floor, a driving base. It is wrong when the housing is free to
+turn about the axis: each body then gets its own Jr, and a free platform turns
+(Iw + Jr)/(J + 2·Jr) per wheel degree instead of Iw/J
+([issue #1494](https://github.com/CrispStrobe/brickwright-lite/issues/1494)).
+A model whose motor housing is free to turn about the motor axis can opt into
+the engine's relative hinge rotor by placing this line once in its main
+LDraw/MPD model section:
+
+```text
+0 !BW ROTOR_INERTIA native
+```
+
+With `native`, the rotor's kinetic energy is ½·Jr·(ω2 − ω1)². It depends only on
+the hinge's relative rate, and bare body mass, centre of mass and inertia stay
+unchanged. `0 !BW ROTOR_INERTIA legacy` explicitly keeps the default. (This is
+separate from `0 !BW ROTOR <degrees>`, which sets one motor output's initial angle.) Build edits, undo,
+save and reopen preserve the setting. Embedded submodels do not override the
+receiving model's choice. Invalid or duplicate declarations refuse simulation.
+Afterturn opts in. Its platform turns 0.0261 degrees per reaction-wheel degree,
+which matches Iw/J at the saved pose.
+
+Known limit: the engine solves the native rotor as its own constraint row
+alongside the output body's contact, end-stop, friction and gear-mesh rows, and
+those rows see the bare body. When the output is a light part (a gear, arm or
+wheel of a few grams) that is stopped, held or meshed, the rotor's momentum
+converges slowly. Arms then pass end stops, holds slip and gear trains can
+become unstable. Keep `legacy` for such models; a solver change that solves the
+rotor row with those rows is separate future work. Qualify an opted-in model on
+a runtime revision that includes this setting.

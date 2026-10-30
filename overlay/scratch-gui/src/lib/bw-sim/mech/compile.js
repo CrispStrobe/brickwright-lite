@@ -182,6 +182,9 @@ export const compile = (model, catalog, opts = {}) => {
     if (model?.motorDirection !== undefined && !['legacy', 'motor-frame'].includes(model.motorDirection)) {
         throw new RangeError('motorDirection must be legacy or motor-frame');
     }
+    if (model?.rotor !== undefined && !['legacy', 'native'].includes(model.rotor)) {
+        throw new RangeError('rotor must be legacy or native');
+    }
     const diagnostics = [];
     const catalogMap = toCatalogMap(catalog);
     const kinds = opts.kinds || BUILTIN_KINDS;
@@ -539,6 +542,8 @@ export const compile = (model, catalog, opts = {}) => {
     if (problemsOut.length > 0) {
         throw new Error(`compile produced invalid mechanism: ${problemsOut.join('; ')}`);
     }
+    // Only an opted-in model carries the rotor setting: legacy mechanisms stay byte-identical.
+    if (model.rotor === 'native') mechanism.rotor = 'native';
     if (!v2) return mechanism;
 
     // Meshes relative to a frame that is not both hinges' (mech/gears.js, gearbox lane): v2 only.

@@ -724,6 +724,9 @@ export const validatePlacedModel = (model, catalog) => {
     if (model.motorDirection !== undefined && !['legacy', 'motor-frame'].includes(model.motorDirection)) {
         out.push('model.motorDirection: expected legacy or motor-frame');
     }
+    if (model.rotor !== undefined && !['legacy', 'native'].includes(model.rotor)) {
+        out.push('model.rotor: expected legacy or native');
+    }
     if (!Array.isArray(model.parts)) return [...out, 'model.parts: not an array'];
     uniqueIds(model.parts, 'model.parts', out);
     if (model.drawings !== undefined) {
@@ -840,6 +843,7 @@ export const validatePlacedModel = (model, catalog) => {
 const checkMechanismV1 = (m, out, v2 = false, jointTypes = JOINT_TYPES_V1) => {
     if (!v2 && m.version !== 1) out.push(`mechanism.version: expected 1, got ${m.version}`);
     if (!isVec(m.gravity)) out.push('mechanism.gravity: not a Vec3');
+    if (m.rotor !== undefined && m.rotor !== 'native' && m.rotor !== 'legacy') out.push('mechanism.rotor: expected native or legacy');
     for (const k of ['bodies', 'joints', 'gears', 'diagnostics']) {
         if (!Array.isArray(m[k])) out.push(`mechanism.${k}: not an array`);
     }
@@ -1015,6 +1019,9 @@ export const dirToWorld = d => [d[0], 0 - d[1], 0 - d[2]];
  *               FOREIGN_LIGHT_LINKS, models from elsewhere only); bodies keep their own massKg.
  *               loopBalls?: the ids of the hinges made ball joints to break closed hinge loops (mech/loops.js).
  *               maxLinearVelocity?: m/s no body exceeds (mech/compile.js FOREIGN_MAX_SPEED_M_S).
+ *   rotor?      'native' when the model declares `0 !BW ROTOR_INERTIA native` (#1494): the core configures
+ *               the engine's relative hinge rotor instead of adding the reflected rotor inertia to
+ *               both hinge bodies (physics/jolt-core.js setRotorInertia). Absent: the legacy treatment.
  * The v1 fields are the derived v1 VIEW (mechanismV1Aliases): `gears` = the gear and
  * rackAndPinion couplings, `sensors` = the devices, `joint.motor` = the actuator's numbers
  * (port without its hub). validateCompiledMechanism checks they agree; mechanismV1(m)
@@ -1157,6 +1164,7 @@ export const upgradeMechanismV1 = m => {
     });
     const out = {version: 2, gravity: m.gravity, bodies: withBodyRoles(m.bodies), joints: m.joints, gears: m.gears, diagnostics: m.diagnostics};
     if (m.sensors !== undefined) out.sensors = m.sensors;
+    if (m.rotor !== undefined) out.rotor = m.rotor;
     return Object.assign(out, {hubs: [], actuators, couplings, devices, noCollide: noCollidePairs(m.joints, couplings)});
 };
 

@@ -52,6 +52,7 @@
   },
   "jolt-physics/wasm-compat": {
     "tests": [
+      "test/bw-sim-rotor-model.test.mjs",
       "test/bw-sim-motor-direction-compat.test.mjs",
       "test/bw-sim-teaching-presets.test.mjs",
       "test/bw-sim-arm-lift.test.mjs",
@@ -111,6 +112,8 @@
       "test/bw-sim-renode-lockstep.test.mjs",
       "test/bw-sim-robot-lab-api.test.mjs",
       "test/bw-sim-robot-lab-program-clock.test.mjs",
+      "test/bw-sim-native-rotor-state-effort.test.mjs",
+      "test/bw-sim-rotor-inertia.test.mjs",
       "test/bw-sim-rope.test.mjs",
       "test/bw-sim-s1-driving-base.test.mjs",
       "test/bw-sim-sarrus-lift.test.mjs",
@@ -555,7 +558,10 @@
   },
   "jolt-physics/wasm-simd-compat": {
     "tests": [
+      "test/bw-sim-rotor-model.test.mjs",
       "test/bw-sim-motor-direction-compat.test.mjs",
+      "test/bw-sim-native-rotor-state-effort.test.mjs",
+      "test/bw-sim-rotor-inertia.test.mjs",
       "test/bw-sim-brick-buttons-guest.test.mjs",
       "test/bw-sim-teaching-presets.test.mjs",
       "test/bw-sim-arm-lift.test.mjs",

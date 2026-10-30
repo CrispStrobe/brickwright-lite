@@ -23,7 +23,10 @@ test('Resting creep: frozen inputs, single-coordinate variant and source identit
     assert.equal(ids.engine.integrity,manifest.engine.integrity);
     const pinURL=new URL(ids.engine.resolved);
     assert.equal(pinURL.hostname,'github.com');
-    assert.equal(pinURL.pathname,'/CrispStrobe/JoltPhysics.js/releases/download/v'+manifest.engine.version+'/jolt-physics-'+manifest.engine.version+'.tgz');
+    // The producer's release tag names the bytes (bw.9: bw.9-qualified-20261029, not v<version>).
+    assert.equal(pinURL.pathname,'/CrispStrobe/JoltPhysics.js/releases/download/'+manifest.engine.releaseTag+'/jolt-physics-'+manifest.engine.version+'.tgz');
+    const lock=JSON.parse(readFileSync(new URL('../packages/scratch-gui/package-lock.json',import.meta.url),'utf8')).packages['node_modules/jolt-physics'];
+    assert.deepEqual({version:lock.version,resolved:lock.resolved,integrity:lock.integrity},{version:manifest.engine.version,resolved:pinURL.href,integrity:manifest.engine.integrity});
     assert.deepEqual(ids,expectedIdentities().identities,'producer and reader bind the same identities');
 });
 
