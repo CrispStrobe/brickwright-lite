@@ -17,11 +17,12 @@ const CHILD = path.join(HERE, 'child.mjs');
 
 /** Descendant pids of `root` (not including it), deepest first. */
 export function descendants(root) {
-    const table = spawnSync('ps', ['-axo', 'pid=,ppid='], {encoding: 'utf8'}).stdout || '';
+    const listing = spawnSync('ps', ['-axo', 'pid=,ppid='], {encoding: 'utf8'});
+    const table = listing.stdout || '';
     const kids = new Map();
     for (const line of table.split('\n')) {
         const [pid, ppid] = line.trim().split(/\s+/).map(Number);
-        if (!pid) continue;
+        if (!pid || pid === listing.pid) continue; // the ps that is listing, a child of ours, is not a leftover
         if (!kids.has(ppid)) kids.set(ppid, []);
         kids.get(ppid).push(pid);
     }

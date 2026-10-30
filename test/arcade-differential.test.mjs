@@ -9,6 +9,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {compareRecordings, distinctStates, packSamples, pixelDiff, regionOf, causeName, frameHash} from '../scripts/lib/arcade-differential/compare.mjs';
 import {makeSchedule, sampleTimes, SCRIPT_NAMES} from '../scripts/lib/arcade-differential/script.mjs';
+import {PRNG_SOURCE} from '../scripts/lib/arcade-differential/entropy.mjs';
 import {runJob, descendants} from '../scripts/lib/arcade-differential/watchdog.mjs';
 import {analyzeProgram, classifyScript, rollup, topLevelNames, normalizeError} from '../scripts/lib/arcade-differential/analyze.mjs';
 import {summarize, renderMarkdown} from '../scripts/lib/arcade-differential/report.mjs';
@@ -142,6 +143,28 @@ test('the summary holds counts and cause categories only', () => {
     const markdown = renderMarkdown(summary);
     assert.ok(!markdown.includes('private-'));
     assert.match(markdown, /\| 1 \| score \| diverges \| 2 \| 2 \|/);
+});
+
+test('platform draws are served from a separate stream, so program draw k is the same value on both sides', () => {
+    const make = (seed, skip) => (0, eval)(PRNG_SOURCE)(seed, false, skip);
+    // Side A draws once from "platform" code before the program; side B does not.
+    const a = make(5, 'platformCode'), b = make(5, 'platformCode');
+    const fromPlatform = d => { const platformCode = () => d(); return platformCode(); };
+    fromPlatform(a);
+    const first = [a(), a(), a()], second = [b(), b(), b()];
+    assert.deepEqual(first, second);
+    assert.equal(a.count, 3);
+    assert.equal(b.count, 3);
+    assert.notEqual(make(5)(), make(6)());
+    assert.equal((0, eval)(PRNG_SOURCE)(1, true)(), 0.5);
+});
+
+test('a difference while the Brickwright text prompt is up is attributed to the prompt, and diverging random draws are located', () => {
+    const a = recording(4, k => ({draws: k < 2 ? 3 : 5}));
+    const b = recording(4, k => ({draws: k < 2 ? 3 : 7, textPrompt: true, pix: withPixel(80, 60)}));
+    const result = compareRecordings(a, b);
+    assert.equal(result.primaryCause, 'pixels:text-prompt');
+    assert.deepEqual(result.randomDraws, {firstMismatchK: 2, original: 5, brickwright: 7});
 });
 
 // ---- watchdog -------------------------------------------------------------------------------
