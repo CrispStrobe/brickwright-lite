@@ -22,9 +22,9 @@ nullish operands against original PXT and the imported VM program.
 
 Open follow-up: a typed-SDK table (member/method result types from the pinned
 Arcade typings) so more operands get an exact static proof instead of the
-runtime dispatch. `scripts/verify-arcade-numeric-authoring-gui.mjs` still
-authors an unproven `music tempo + 1` to exercise the refusal panel; it needs
-a still-refusing fixture and a browser run.
+runtime dispatch. `scripts/verify-arcade-numeric-authoring-gui.mjs` now
+asserts that the unproven `music tempo + 1` exports through that helper with
+no refusal details; the panel's collapse and dismiss controls stay covered.
 
 ## Prepared follow-up: creation callback local Array overwrite
 

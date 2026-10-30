@@ -409,10 +409,16 @@ try {
     const partialPath = path.join(out, 'numeric-authoring-refusal.mkcd');await partialDownload.saveAs(partialPath);await closeCodeActions();
     const panel = page.getByTestId('bw-conversion-report');await panel.waitFor({state: 'visible'});
     const unsupported = page.getByTestId('bw-conversion-unsupported');await unsupported.waitFor({state: 'visible'});
-    assert.match(await unsupported.innerText(), /native addition requires initialized primitive or proved flat Array operands/);
-    const detailsText = await page.getByTestId('bw-conversion-refusal-details').innerText();
-    const details = JSON.parse(detailsText);assert.ok(details.length);assert.equal(details[0].physicalOrigin, 'UNAVAILABLE');
-    assert.ok(details[0].emissionCandidates.length);assert.equal(details[0].refusal.operand, 'LEFT');
+    // An unproved `+` operand (music tempo here) exports through the runtime-dispatch helper
+    // rather than refusing (owner decision 2026-10-30); the report therefore lists nothing.
+    assert.doesNotMatch(await unsupported.innerText(), /native addition requires/);
+    assert.equal(await page.getByTestId('bw-conversion-refusal-details').count(), 0);
+    const dispatched = (await readMakeCodeProjectText(await readFile(partialPath, 'utf8'), 'mkcd')).files['main.ts'];
+    const helper = /function ([A-Za-z_$][\w$]*)\(left: any, right: any\): any \{[^\n]*Array\.isArray\(left\)/.exec(dispatched);
+    assert.ok(helper, 'the export carries the runtime-dispatch helper');
+    assert.ok(new RegExp(`${helper[1].replace(/\$/g, '\\$')}\\(\\s*music\\.tempo\\(\\)\\s*,\\s*1\\s*\\)`).test(dispatched),
+        'the unproved addition goes through the helper');
+    const details = [];
     assert.match(await page.getByTestId('bw-conversion-preserved').innerText(), /not been compiled or run/);
     await panel.locator('div').first().click();assert.equal(await unsupported.isVisible(), false);
     await panel.locator('div').first().click();assert.equal(await unsupported.isVisible(), true);
