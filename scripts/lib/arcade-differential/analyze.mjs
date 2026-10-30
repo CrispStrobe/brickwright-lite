@@ -80,7 +80,7 @@ export async function analyzeProgram(source, opts) {
             else result.limitMs = opts.timeoutMs[side];
         }
         out[name] = result;
-        if (result.class === 'diverges' && opts.entropyProbe !== false && base.entropy !== 'constant') probes.push(name);
+        if (result.class === 'diverges' && opts.entropyProbe === true && base.entropy !== 'constant') probes.push(name);
         if (result.class === 'diverges' && opts.keepFrames !== false) frames[name] = divergenceFrames(o, b, result);
     }
     // Diverged scripts are re-run with constant entropy on both sides. If that run agrees, the
