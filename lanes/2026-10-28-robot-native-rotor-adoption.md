@@ -1,6 +1,6 @@
 # Robot Lab native reflected-rotor adoption
 
-Status: CLAIMED — scope only; merge before integration implementation.
+Status: IMPLEMENTATION CANDIDATE — native API migration prepared; qualification pending.
 Owner: Codex, user-authorized ordered measurement and physics continuation.
 Base: `a5705955b274ae75c3aa890fb4ce1424e9ee6afb`.
 
@@ -45,3 +45,34 @@ then apply the one full label when required. Every enabled exact-head check
 must succeed, only declared skips, before a normal matched-head merge and
 predicted/actual parent/tree preservation proof. Keep the broader user loop
 open through coasting, buildable steering, coordinated contact and final docs.
+
+The source candidate uses native hinge configuration and native completed-step
+rotor impulses, scalar speed and energy. Rollback restores JavaScript metadata
+without reconfiguring the already-restored native rotor. The original issue1494
+fixture is retained verbatim; new controls cover atomic configuration, bare body
+properties, optional effort copies, stale samples and exact native checkpoints.
+The candidate now pins the qualified `1.1.0-bw.9` archive from the owning fork's
+`bw.9-qualified-20261029` release, including its exact SHA-512 integrity and
+archive SHA256. Those published bytes are the already-qualified built/packed
+scalar/SIMD package, with native coupled soft-motor/rotor rows; no rebuild is
+substituted. Earlier bw.8 consumer failures remain preserved, including hub
+full-turn endpoints, clutch-bench transmission, Twinpoint loop closure and
+Butterfly wing sweep. Library qualification does not establish their repair.
+Fresh main composition and affected native/model, programme, rendered worker
+and saved-project qualification remain pending at this package. No consumer
+acceptance follows from the owning forks' bounded native/package results.
+
+The same package-pin implementation includes only the canonical
+`JOLT_PHYSICS_URL` and `JOLT_PHYSICS_INTEGRITY` literals and their adjacent
+archive SHA/release-history comment in `scripts/integrate.mjs`, which produces
+the GUI manifest and checks its lock entry. This does not expand ownership to
+other pins or toolchains; all other constants, dependency maps, GUI consumer
+rows, core guards and model inputs remain unchanged. No integration/install
+script or engine qualification has been run for this source candidate.
+
+The pin update also refreshes only the existing Jolt release row in the
+fetch-pinning census: URL, package version, archive SHA256 and the description
+of its qualification. Its content-hash classification, scanner, exclusions,
+assertions and all other rows remain unchanged. The first bw.9 CI build refused
+the stale bw.7 census; the original failure is retained. A direct source-policy
+check reproduced that undeclared URL before the metadata correction.
