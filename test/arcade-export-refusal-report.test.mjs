@@ -19,13 +19,15 @@ const context=()=>{const c={props:{vm:{}},state:{conversionReport:null},setState
 const exported=text=>{const imported=arcadeToPseudocode(text);assert.deepEqual(imported.unsupported,[]);const creator=new Creator();creator.parse(imported.code);
     assert.deepEqual(creator.errors,[]);const before=JSON.stringify(creator.project),out=projectJsonToArcade(before);assert.equal(JSON.stringify(creator.project),before);observations.push({source:text,importedCode:imported.code,project:JSON.parse(before),output:out});return {creator,out};};
 // Scroll offsets have raw setters, so their getters cannot acquire a Number
-// result from their API name alone. Music tempo/volume now have independently
-// guarded coercing-result profiles and must not manufacture this refusal.
-const refusedPseudocode='DEVICE ARCADE\nGLOBAL result\nSPRITE Game:\nWHEN flag clicked:\n  set result to (calculate value (arcade background scroll offset x layer (0)) op "+" with (1))';
+// result from their API name alone. Owner decision 2026-10-30: that unproved
+// operand now exports through the runtime-dispatch helper instead of
+// refusing. The report fixture is a genuine remaining export refusal.
+const dispatchPseudocode='DEVICE ARCADE\nGLOBAL result\nSPRITE Game:\nWHEN flag clicked:\n  set result to (calculate value (arcade background scroll offset x layer (0)) op "+" with (1))';
+const refusedPseudocode='DEVICE ARCADE\nGLOBAL result\nSPRITE Game:\nWHEN flag clicked:\n  set result to (arcade call function "missing %s" arguments ("[]"))';
 const refusalCreator=()=>{
     const creator=new Creator();creator.parse(refusedPseudocode);
     assert.deepEqual(creator.errors,[]);assert.deepEqual(creator.unparsed,[]);
-    assert.equal(creator.project.targets.flatMap(target=>Object.values(target.blocks)).filter(node=>node.opcode==='arcade_backgroundScrollOffset').length,1);
+    assert.equal(creator.project.targets.flatMap(target=>Object.values(target.blocks)).filter(node=>node.opcode==='arcade_callFunction').length,1);
     return {creator,code:refusedPseudocode};
 };
 const refused=()=>{
@@ -47,26 +49,23 @@ test('the former Image addition refusal is now a clean direct and owned-JSON exp
     assert.equal(JSON.stringify(creator.project),before);
 });
 
-test('actual exporter retains its candidate draft and observed facts without inventing a selected block',async()=>{
-    const {creator,out}=refused();assert.ok(out.unsupported.includes('native addition requires initialized primitive or proved flat Array operands'));
-    assert.equal(out.unsupportedDetails.length,1);const detail=out.unsupportedDetails[0];assert.equal(detail.physicalOrigin,'UNAVAILABLE');
-    assert.ok(detail.emissionCandidates.length);for(const site of detail.emissionCandidates){
-        const target=creator.project.targets.find(t=>t.name===site.target);assert.ok(target);assert.equal(target.blocks[site.blockId].opcode,site.opcode);
-        assert.deepEqual(site.operands,['LEFT','RIGHT']);}
-    assert.equal(typeof out.refusalEvidence.nativeAdditionDraft,'string');assert.ok(out.refusalEvidence.nativeAdditionDraft.includes(detail.refusal.helper));
+test('the former unproved scroll-offset addition exports through the runtime-dispatch helper and its collector cannot alter it',async()=>{
+    const creator=new Creator();creator.parse(dispatchPseudocode);
+    assert.deepEqual(creator.errors,[]);assert.deepEqual(creator.unparsed,[]);
+    const before=JSON.stringify(creator.project),out=projectJsonToArcade(before);
+    assert.deepEqual(out.unsupported,[]);assert.equal(Object.hasOwn(out,'unsupportedDetails'),false);assert.equal(Object.hasOwn(out,'refusalEvidence'),false);
+    assert.equal(out.ts.split('function __bwBinaryAdd(').length,2,'one runtime-dispatch helper per program');
+    assert.match(out.ts,/function __bwBinaryAdd\(left: any, right: any\): any \{ let a: any = left; if \(Array\.isArray\(left\)\) \{ let array: any\[\] = left; a = array\.join\(","\) \}; let b: any = right; if \(Array\.isArray\(right\)\) \{ let array: any\[\] = right; b = array\.join\(","\) \}; return a \+ b \}/);
     assert.equal(out.files['main.ts'],out.ts);assert.equal(JSON.stringify(out).includes('nativeArrayDomainCall'),false);
     const url=new URL('../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js',import.meta.url);
     const source=readFileSync(url,'utf8'),needle='const site=this.nativeAdditionSite(b,helper);';
     assert.equal(source.split(needle).length,2,'one diagnostic collector call');
     const faulted=source.replace(needle,"throw new Error('collector observation failed');\n                    "+needle)
         .replace(/\b(from\s+|import\s*\(\s*|import\s+)(['"])(\.{1,2}\/[^'"\n]+)\2/g,(_,prefix,quote,specifier)=>`${prefix}${quote}${new URL(specifier,url).href}${quote}`);
-    assert.equal([...source.matchAll(/\b(from\s+|import\s*\(\s*|import\s+)(['"])(\.{1,2}\/[^'"\n]+)\2/g)].length,50,'all current literal dependencies are rebased, including parent paths');
     assert.equal(/\b(from\s+|import\s*\(\s*|import\s+)(['"])(\.{1,2}\/[^'"\n]+)\2/.test(faulted),false,'data URL retains no relative literal import');
     const copy=await import('data:text/javascript;base64,'+Buffer.from(faulted).toString('base64'));
-    const observed=copy.projectJsonToArcade(JSON.stringify(creator.project));
-    assert.deepEqual(observed.unsupported,out.unsupported);assert.deepEqual(observed.files,out.files);
-    assert.equal(observed.refusalEvidence.nativeAdditionDraft,out.refusalEvidence.nativeAdditionDraft);
-    assert.deepEqual(observed.unsupportedDetails[0].emissionCandidates,[],'collector failure does not replace export/refusal');
+    const observed=copy.projectJsonToArcade(before);
+    assert.deepEqual(observed.unsupported,out.unsupported);assert.deepEqual(observed.files,out.files,'collector failure does not replace the export');
     const raw=exporter=>{
         const project=structuredClone(creator.project),counts={keys:0,descriptor:0};
         const target=project.targets.find(t=>Object.values(t.blocks).some(b=>b.opcode==='arrays_valueBinary'));
@@ -77,7 +76,8 @@ test('actual exporter retains its candidate draft and observed facts without inv
     const original=raw(projectToArcade),withoutCollector=raw(copy.projectToArcade);
     assert.deepEqual(original.counts,withoutCollector.counts,'raw provenance adds no source reflection/callback');
     assert.deepEqual(original.output.files,withoutCollector.output.files);assert.deepEqual(original.output.unsupported,withoutCollector.output.unsupported);
-    assert.deepEqual(original.output.unsupportedDetails[0].emissionCandidates,[],'raw objects never acquire owned-JSON provenance');
+    assert.deepEqual(original.output.files,out.files);
+    assert.equal(JSON.stringify(creator.project),before);
 });
 
 test('clean exports keep the old result shape and later exports do not inherit details',()=>{
@@ -123,7 +123,7 @@ test('stage exporter opts in to clean observation on the single actual export in
 test('real exporter output reaches the existing report with exact reasons and export-only wording',()=>{
     const {out}=refused(),c=context(),request=c.beginArcadeReport();
     c.publishArcadeReport(request,out,'export','Arcade source saved; not compiled or run.');
-    const report=c.state.conversionReport;assert.deepEqual(report.unsupported,out.unsupported);assert.strictEqual(report.details,out.unsupportedDetails);
+    const report=c.state.conversionReport;assert.deepEqual(report.unsupported,out.unsupported);assert.ok(out.unsupported.length);assert.deepEqual(report.details,out.unsupportedDetails||[]);
     assert.equal(report.direction,'Blocks → Arcade export');assert.equal(report.operation,'export');assert.equal(c.state.reportExpanded,true);
     assert.doesNotMatch(report.outcome,/generated and loaded/);assert.equal(report.preserved,false);
     assert.match(component,/data-testid="bw-conversion-refusal-details"/);
@@ -200,10 +200,11 @@ test('owned JSON refusal captures the exact nonASCII input and original semantic
     }
     const {ownedJsonObservation,...priorEvidence}=out.refusalEvidence;
     assert.strictEqual(ownedJsonObservation,capture);
-    const semantic={...out,refusalEvidence:priorEvidence},capturedResult=JSON.parse(capture.resultJson);
+    const {refusalEvidence:_attached,...withoutEvidence}=out,capturedResult=JSON.parse(capture.resultJson);
+    const semantic=Object.keys(priorEvidence).length?{...withoutEvidence,refusalEvidence:priorEvidence}:withoutEvidence;
     assert.deepEqual(capturedResult,semantic,'capture precedes attachment and retains every original result field');
-    assert.equal(Object.hasOwn(capturedResult.refusalEvidence,'ownedJsonObservation'),false);
-    assert.equal(capturedResult.refusalEvidence.nativeAdditionDraft,out.refusalEvidence.nativeAdditionDraft);
+    assert.equal(capturedResult.refusalEvidence?.ownedJsonObservation,undefined);
+    assert.equal(capturedResult.refusalEvidence?.nativeAdditionDraft,out.refusalEvidence.nativeAdditionDraft);
     assert.deepEqual(capturedResult.unsupportedDetails,out.unsupportedDetails);
 });
 
@@ -211,7 +212,7 @@ test('owned refusal observations do not attach to direct objects or leak across 
     const first=ownedRefusalInput('first capture'),out=projectJsonToArcade(first.input),capture=ownObservation(out);
     assert.equal(capture.captureStatus,'COMPLETE');
     const direct=projectToArcade(first.creator.project);assert.deepEqual(direct.unsupported,out.unsupported);assert.deepEqual(direct.files,out.files);
-    assert.equal(Object.hasOwn(direct.refusalEvidence,'ownedJsonObservation'),false);
+    assert.equal(Object.hasOwn(direct.refusalEvidence||{},'ownedJsonObservation'),false);
     const clean=exported('let result=1+2;').out;
     assert.deepEqual(Object.keys(clean).sort(),['files','ts','unsupported','warnings']);
     const later=ownedRefusalInput('second capture'),next=projectJsonToArcade(later.input),nextCapture=ownObservation(next);
@@ -276,7 +277,7 @@ test('current reports carry only own observation data and clean or stale reports
     const hostile=[getterOut,{...out,refusalEvidence:new Proxy({}, {getOwnPropertyDescriptor(){throw new Error('descriptor unavailable');}})}];
     for(const actual of hostile){
         const next=c.beginArcadeReport();c.publishArcadeReport(next,actual,'export','original refusal remains visible');
-        assert.deepEqual(c.state.conversionReport.unsupported,out.unsupported);assert.strictEqual(c.state.conversionReport.details,out.unsupportedDetails);
+        assert.deepEqual(c.state.conversionReport.unsupported,out.unsupported);assert.deepEqual(c.state.conversionReport.details,out.unsupportedDetails||[]);
         assert.equal(c.state.conversionReport.observation,null);assert.equal(c.state.conversionReport.outcome,'original refusal remains visible');
     }
     assert.equal(evidenceReads,0);

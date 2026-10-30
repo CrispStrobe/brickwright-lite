@@ -23,6 +23,7 @@ import {ordinarySceneClockNumberCalls} from './ordinary-scene-clock-number-sourc
 import {createOrdinaryMusicNumberSource} from './ordinary-music-number-source.js';
 import {createDestroyedSpriteCallbackNumberSource} from './destroyed-sprite-callback-number-source.js';
 import {localArrayDeclarationResetSource} from './local-array-declaration-reset-source.js';
+import {isRuntimeDispatchAddDeclaration} from './native-array-binary-helper-source.js';
 import {BUTTON_EVENTS,controllerButtonEventNumberLeaves} from './controller-button-event-number-source.js';
 
 const spriteEventNumber=Number;
@@ -292,6 +293,10 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
         else if(node.type==='Binary'&&['===','!==','==','!=','<','>','<=','>='].includes(node.op)||node.type==='Unary'&&node.op==='!')derived.push({result:current,type:'Boolean',operands:(node.type==='Unary'?[node.argument]:[node.left,node.right]).map(cell),signature:true,inspectionPrimitive:true});
         else if(arrayValues&&node.type==='Unary'&&node.op==='typeof')derived.push({result:current,type:'String',operands:[cell(node.argument)],signature:true,inspectionPrimitive:true});
         else if(node.type==='Unary'&&['+','-','~'].includes(node.op))derived.push({result:current,type:'Number',operands:[cell(node.argument)],signature:true,domain:node.op==='~'?'SourceBitwise':'Number'});
+        // An imported native value `+` (proven join or runtime-dispatch helper
+        // call): String/Number for primitive operands; any Array or unknown
+        // operand leaves the result Opaque through the same derived rule.
+        else if(node.type==='NativeArrayValueBinary'&&node.op==='+')derived.push({result:current,type:'Number',operands:[cell(node.left),cell(node.right)],signature:true,domain:'Number',stringConcat:true});
         else if(node.type==='Binary'&&['+','-','*','/','%','**','&','|','^','<<','>>','>>>'].includes(node.op))derived.push({result:current,type:'Number',operands:[cell(node.left),cell(node.right)],signature:true,domain:['&','|','^','<<','>>','>>>'].includes(node.op)?'SourceBitwise':'Number',stringConcat:node.op==='+',primitiveNumeric:node.op!=='+'});
         else if(parseIntegerNumbers?.isNumberCall(node)){parseIntegerNumberUsed=true;add(current,'Number');}
         else if(node.type==='Call'&&!node.isNew&&(node.callee?.type==='Identifier'||numericArrows.size&&node.callee?.type==='Parenthesized'))calls.push({node,callee:node.callee.type==='Identifier'?binding(owner,node.callee.name):null,result:current});
@@ -1607,6 +1612,9 @@ function primitiveConstraintGraphOptions(program,ordinaryPrimitiveSdkNumbers,sce
   const value=fn?.type==='FunctionDeclaration'&&fn.params?.length===2&&new Set(fn.params).size===2&&fn.body?.length===1&&fn.body[0].type==='Return'&&fn.body[0].value;
   if(value?.type==='Binary'&&['+','-','*','/','%'].includes(value.op)&&value.left?.type==='Identifier'&&value.right?.type==='Identifier'&&value.left.name===fn.params[0]&&value.right.name===fn.params[1])
    helperNames.set(fn.name,helperNames.has(fn.name)?null:fn);
+  // The exported runtime-dispatch addition helper is `+` for non-Array
+  // operands; Number operands are never Arrays, so the same rule holds.
+  else if(isRuntimeDispatchAddDeclaration(fn))helperNames.set(fn.name,helperNames.has(fn.name)?null:fn);
  }
  const written=new Set();const scanWrites=node=>{if(!node||typeof node!=='object')return;if(Array.isArray(node)){node.forEach(scanWrites);return;}
   if(node.type==='Assignment'||node.type==='Update'){let target=node.type==='Assignment'?node.left:node.argument;while(['Member','Index'].includes(target?.type))target=target.object;if(target?.type==='Identifier')written.add(target.name);}

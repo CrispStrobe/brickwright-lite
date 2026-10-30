@@ -3,7 +3,41 @@ import {createProjectMathNormalResults} from './project-math-normal-results.js';
 import {arrayMenuLiteral,isArrayMenuSelector,isKnownArrayMenuOperation} from './array-menu-literal.js';
 import {createProjectJsonSnapshot,isProjectJsonSnapshot} from './project-json-snapshot.js';
 import {sourceValueOperation} from './source-value-operator-helpers.js';
-import {nativeArrayAddHelperSource} from './native-array-binary-helper-source.js';
+import {nativeArrayAddHelperSource,runtimeDispatchAddHelperSource} from './native-array-binary-helper-source.js';
+// Refusals that only say an operand domain or an Array effect is unproved.
+// Each is decided at run time by the dispatch helper; every other native
+// addition refusal (supplied tags, ambiguous/changed source identity, a
+// refused named-helper source proof) still refuses the export.
+const RUNTIME_DISPATCH_ADDITION_REASONS=new Set([
+    'native addition requires initialized primitive or proved flat Array operands',
+    'native addition cannot prove the named getter index has primitive coercion',
+    'native addition cannot prove the canonical parser result is primitive',
+    'native addition has no private shape model for this named mutator',
+    'native helper does not join this actual Array operand position',
+    'native addition cannot prove unary conversion has no opaque coercion effects',
+    'native addition source graph contains unresolved producer constraints',
+    'native addition requires flat primitive allocation contents and no foreign escapes',
+    'native addition Array escapes through an unproved callback return',
+    'native addition Array-returning function escapes its actual callers',
+    'native addition Array escapes through an object literal',
+    'native addition Array escapes through a containing Array',
+    'native addition cannot prove host Number conversion has no opaque coercion effects',
+    'native addition cannot prove constructor, generic or spread call effects',
+    'native addition cannot prove a foreign member call effect',
+    'native addition SDK or builtin callee binding differs',
+    'native addition cannot prove an Array method writer or escape',
+    'native addition Array escapes through a member call',
+    'native addition cannot prove an actual callee effect',
+    'native addition Array escapes through an unproved callee',
+    'native addition builtin binding has an actual writer',
+    'native addition cannot prove a global or nonnumeric indexed writer',
+    'native addition cannot prove an indexed Array writer',
+    'native addition Array has an unproved property writer',
+    'native addition Array escapes through an object or indexed writer',
+    'native addition cannot prove an updated Array slot',
+    'native addition cannot prove a deleted Array property'
+]);
+const runtimeDispatchAdditionReason=reason=>typeof reason==='string'&&RUNTIME_DISPATCH_ADDITION_REASONS.has(reason);
 import {inspectNativeAdditionExportDomains} from './native-array-binary-domain.js';
 import {GENERATED_HELPER_PROFILES,mapGeneratedSourceArray} from './generated-helper-recognition.js';
 import {animationAssetArray} from './animation-asset-array.js';
@@ -4888,6 +4922,14 @@ class ArcadeEmitter {
             // ordinary helper below is main's pre-join export (operator
             // decision 2026-10-27). Every other refusal is retained unchanged.
             if(proof.reason&&proof.ordinaryFallback===true&&proof.current()){ /* ordinary helper */ }
+            // Owner decision 2026-10-30: an operand domain or Array effect the
+            // proof cannot establish no longer refuses the export. The helper
+            // decides per value at run time (Array.isArray -> the same join
+            // as the proven Array path, else ordinary `+`). Source-integrity
+            // refusals (supplied private tags, ambiguous or changed identity)
+            // keep refusing; proven paths below are unchanged.
+            else if(proof.reason&&runtimeDispatchAdditionReason(proof.reason))
+                return assemble(definitions.map(helper=>helper===addition?runtimeDispatchAddHelperSource(addition.name):helper.source));
             else if(proof.reason){
                 this.note(proof.reason);
                 try {
@@ -4899,6 +4941,8 @@ class ArcadeEmitter {
                     this.refusalEvidence={nativeAdditionDraft:draft};
                 }catch { /* Diagnostic failure must preserve the original reason. */ }
             }
+            else if(!proof.helpers.has(addition.name)&&proof.current())
+                return assemble(definitions.map(helper=>helper===addition?runtimeDispatchAddHelperSource(addition.name):helper.source));
             else if(!proof.helpers.has(addition.name))this.note('native addition requires its complete current helper body and actual caller proof');
             else if(!proof.current())this.note('native helper source changed before export selection');
             else if(proof.arrayHelpers?.has(addition.name))

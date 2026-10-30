@@ -1,5 +1,6 @@
 import {lowerSourceValueOperatorHelpers} from './source-value-operator-helpers.js';
 import {lowerNativeArrayBinaryHelpers} from './native-array-binary-domain.js';
+import {lowerRuntimeDispatchAddHelpers} from './native-array-binary-helper-source.js';
 import {capturePreparedSharedImageSources,parseSharedImageSourceBoundary,parseSharedImageSourceProgram,bindPreparedSharedImageSource,sharedImageSourceContextCurrent} from './shared-image-array-source-effects.js';
 import {prepareSharedImageArrayTransport,projectSharedImageArrayTransport,finishSharedImageArrayTransport,currentSharedImageArrayTransport,reproveSharedImageArrayTransport} from './source-shared-image-array-transport.js';
 import {prepareProcedureConstraintSourceForTranslation,procedureConstraintAstMetadata} from './procedure-constraint-source.js';
@@ -1346,6 +1347,9 @@ class ArcadeTranslator extends BaseTranslator {
             return node.type==='Binary'?`calculate value (${this.arrayElementValue(node.left)}) op "${node.op}" with (${this.arrayElementValue(node.right)})`:
                 `convert value (${this.arrayElementValue(node.argument)}) op "~"`;
         }
+        // A runtime-dispatch helper call in a program without native values
+        // has no Array value to dispatch on: it is exactly the ordinary `+`.
+        if(!this.nativeValues&&node?.type==='NativeArrayValueBinary')return this.valueExpr({type:'Binary',op:'+',left:node.left,right:node.right});
         if(this.nativeValues&&node?.type==='NativeArrayValueBinary'){
             this.usesArrays=true;return `calculate value (${this.arrayElementValue(node.left)}) op "+" with (${this.arrayElementValue(node.right)})`;
         }
@@ -5167,7 +5171,7 @@ export function arcadeToPseudocode (files, opts = {}) {
     const sharedSourceContext = !namedEnabled&&!callableEnabled&&!classEnabled ? bindPreparedSharedImageSource(sharedSourcePreparation,ordinarySource) : null;
     const generatedProfile=(namedEnabled||classEnabled||callableEnabled||opts.procedureConstraintsPrototype===true)?
         GENERATED_HELPER_PROFILES.metadata:GENERATED_HELPER_PROFILES.ordinary;
-    const sourceOperatorInputs=lowerSourceValueOperatorHelpers(callableSourceInput,generatedProfile);
+    const sourceOperatorInputs=lowerRuntimeDispatchAddHelpers(lowerSourceValueOperatorHelpers(callableSourceInput,generatedProfile),generatedProfile);
     const nativeBinaryInputs=lowerNativeArrayBinaryHelpers(sourceOperatorInputs,generatedProfile);
     const namedArrayInputs=lowerNamedArrayItemHelpers(inlineValueHelpers(nativeBinaryInputs.program,true),{profile:generatedProfile});
     // Recognition consumes the selected parse context before clone-heavy

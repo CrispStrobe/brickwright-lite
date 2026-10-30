@@ -4,6 +4,7 @@ import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arc
 import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
 import SB3Creator from '../overlay/scratch-gui/src/lib/sb3-creator.js';
 import {runPxtArcade} from './helpers/pxt-arcade-runtime.mjs';
+import {runtimeDispatchAddHelperSource} from '../overlay/scratch-gui/src/lib/bw-makecode/native-array-binary-helper-source.js';
 
 // Operator decision 2026-10-27 re-admits bounded native-addition cases. Each
 // case must export with no refusal AND the exported program must produce the
@@ -82,15 +83,21 @@ values.push(total)
 let count = values.length`, ['total', 'second', 'count']);
 });
 
-test('Array program: the same variable keeps the refusal once any write is an unknown call result', () => {
-    const out = exported(`let values = [1, 2]
+// Owner decision 2026-10-30: unproved operands use the runtime-dispatch helper.
+const dispatched = async (source, names) => {
+    await same(source, names);
+    assert.ok(exported(source).ts.includes(runtimeDispatchAddHelperSource('__bwBinaryAdd')));
+};
+
+test('Array program: a variable with an unknown call-result write exports through the runtime-dispatch helper', async () => {
+    await dispatched(`let values = [1, 2]
 let hero = sprites.create(img\`1\`, SpriteKind.Player)
 let px = 0
 px = hero.width
 px = music.tempo()
 let total = px + 5
-values.push(total)`);
-    assert.ok(out.unsupported.includes('native addition requires initialized primitive or proved flat Array operands'), JSON.stringify(out.unsupported));
+values.push(total)
+let count = values.length`, ['px', 'total', 'count']);
 });
 
 // Operator decisions 2026-10-28: nested sums over proven Numbers (including
@@ -132,10 +139,10 @@ values.push(1)
 let count = values.length`, ['moved', 'count']);
 });
 
-test('Array program: a sum that includes an unknown SDK result keeps the refusal', () => {
-    const out = exported(`let values = [1, 2]
+test('Array program: a sum that includes an unknown SDK result exports through the runtime-dispatch helper', async () => {
+    await dispatched(`let values = [1, 2]
 let v = 0
 v = v + music.tempo()
-values.push(v)`);
-    assert.ok(out.unsupported.includes('native addition requires initialized primitive or proved flat Array operands'), JSON.stringify(out.unsupported));
+values.push(v)
+let count = values.length`, ['v', 'count']);
 });
