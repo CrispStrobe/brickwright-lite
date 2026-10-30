@@ -110,3 +110,60 @@ test('capability refuses malformed programs before an executor can receive them'
     assert.equal(validate({version:1,instructions:[[0,0,0,0]],address:0x20000000}), false);
     assert.equal(validate({version:true,instructions:[[0,0,0,0]]}), false);
 });
+// Firmware instruction ABI v2 (brickwright-spike-prime-fw#56): op 7 arms a move without
+// waiting, op 8 waits for a port mask. Only `abi: 2` emits them, and only then is the result v2.
+const v2 = {abi:2};
+test('two motors by an amount stay refused under the default ABI', () => {
+    for (const source of ['  move forward 360 degrees\n', '  move forward 10 cm\n']) {
+        assert.throws(()=>compileFirmwareProgram(program(source)), error => error.code === 'two-motor-position');
+    }
+    const vm=program('  run motor A forward 90 degrees\n');
+    Object.values(vm.runtime.targets[0].blocks._blocks).find(b=>b.opcode==='spikeprime_motorRunFor').fields.PORT.value='AB';
+    assert.throws(()=>compileFirmwareProgram(vm), error => error.code === 'two-motor-position');
+    assert.throws(()=>compileFirmwareProgram(program('  wait 1 seconds\n'),{abi:3}),/instruction ABI/);
+});
+test('ABI v2 moves both movement motors together and waits for both', () => {
+    const forward = compileFirmwareProgram(program('  set movement speed 27\n  move forward 360 degrees\n'),v2);
+    assert.deepEqual(forward,{version:2,instructions:[[7,0,-360,300],[7,1,360,300],[8,3,0,0],[0,0,0,0]]});
+    assert.equal(validate(forward),true);
+    assert.deepEqual(compileFirmwareProgram(program('  set movement speed 50\n  move backward 10 cm\n'),v2).instructions,
+        [[7,0,205,555],[7,1,-205,555],[8,3,0,0],[0,0,0,0]]);
+    assert.deepEqual(compileFirmwareProgram(program('  set movement speed -50\n  move forward 2 rotations\n'),v2).instructions,
+        [[7,0,720,555],[7,1,-720,555],[8,3,0,0],[0,0,0,0]]);
+    const inches=program('  set movement speed 50\n  move forward 1 cm\n');
+    const move=Object.values(inches.runtime.targets[0].blocks._blocks).find(b=>b.opcode==='spikeprime_moveForward');
+    (move.fields.UNIT || inches.runtime.targets[0].blocks._blocks[move.inputs.UNIT.block].fields.TEXT).value='in';
+    assert.deepEqual(compileFirmwareProgram(inches,v2).instructions,[[7,0,-52,555],[7,1,52,555],[8,3,0,0],[0,0,0,0]]);
+    assert.throws(()=>compileFirmwareProgram(program('  set movement speed 0\n  move forward 90 degrees\n'),v2),error => error.code === 'zero-speed');
+    assert.throws(()=>compileFirmwareProgram(program('  move forward 36001 degrees\n'),v2),error => error.code === 'range');
+    (move.fields.UNIT || inches.runtime.targets[0].blocks._blocks[move.inputs.UNIT.block].fields.TEXT).value='parsecs';
+    assert.throws(()=>compileFirmwareProgram(inches,v2),error => error.code === 'unit');
+});
+test('ABI v2 runs multi-port motor moves together with their own speeds', () => {
+    const vm=program('  set motor speed A 20\n  set motor speed B -50\n  run motor A forward 90 degrees\n');
+    const run=Object.values(vm.runtime.targets[0].blocks._blocks).find(b=>b.opcode==='spikeprime_motorRunFor');
+    run.fields.PORT.value='AB';
+    assert.deepEqual(compileFirmwareProgram(vm,v2).instructions,[[7,0,90,222],[7,1,-90,555],[8,3,0,0],[0,0,0,0]]);
+    const sixVm=program('  set motor speed C 20\n  set motor speed F 50\n  run motor C forward 1 rotations\n');
+    Object.values(sixVm.runtime.targets[0].blocks._blocks).find(b=>b.opcode==='spikeprime_motorRunFor').fields.PORT.value='FC';
+    assert.deepEqual(compileFirmwareProgram(sixVm,{...six,...v2}),
+        {version:2,instructions:[[7,2,360,222],[7,5,360,555],[8,36,0,0],[0,0,0,0]]});
+});
+test('ABI v2 leaves programs without a group move byte-identical v1', () => {
+    for (const source of ['  set motor speed B 50\n  run motor B backward 90 degrees\n',
+        '  set movement speed 27\n  move forward 2 seconds\n', '  start tank 25 25\n  wait 0.5 seconds\n  stop movement\n']) {
+        assert.deepEqual(compileFirmwareProgram(program(source),v2),compileFirmwareProgram(program(source)));
+        assert.equal(compileFirmwareProgram(program(source),v2).version,1);
+    }
+});
+test('capability accepts v2 motor-group rows only in v2 programs, inside closed bounds', () => {
+    const pair=[[7,0,-360,300],[7,1,360,300],[8,3,0,0],[0,0,0,0]];
+    assert.equal(validate({version:2,instructions:pair}),true);
+    assert.equal(validate({version:1,instructions:pair}),false);
+    assert.equal(validate({version:2,instructions:[[7,1,-36000,1],[6,0,36000,1110],[8,1,0,0],[8,2,0,0],[0,0,0,0]]}),true);
+    for (const row of [[7,2,90,300],[7,-1,90,300],[7,0,36001,300],[7,0,90,0],[7,0,90,1111],
+        [8,0,0,0],[8,4,0,0],[8,-1,0,0],[8,3,1,0],[8,3,0,1],[9,0,0,0]]) {
+        assert.equal(validate({version:2,instructions:[row,[0,0,0,0]]}),false,JSON.stringify(row));
+    }
+    for (const version of [0,3,'2',2.5]) assert.equal(validate({version,instructions:[[0,0,0,0]]}),false);
+});

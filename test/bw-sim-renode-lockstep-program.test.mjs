@@ -19,7 +19,9 @@
  *   - a program the ABI refuses starts no emulator;
  *   - the compiler's refusals name the block, in English and German, for every code it has;
  *     `move forward … seconds` compiles, `move forward … cm` and a two-motor
- *     `run … degrees` are refused as two-motor position moves.
+ *     `run … degrees` are refused as two-motor position moves under ABI v1;
+ *   - with firmware instruction ABI v2 (`abi: 2`), `move forward 360 degrees` is op 7 + op 7 + op 8
+ *     and both wheels turn together; an image without v2 refuses that program at COMMIT.
  */
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
@@ -229,4 +231,33 @@ test('every refusal the compiler has is a sentence in English and German that na
     assert.match(firmwareRefusalSentence('de', sensor), /Abstandssensor nur an Anschluss D/);
     // A compiler error without a code (the topology check) still says what it is.
     assert.match(firmwareRefusalSentence('de', new Error('Unknown topology')), /Unknown topology/);
+});
+
+test('firmware instruction ABI v2: `move forward 360 degrees` turns both wheels together and stops at the angle', async () => {
+    const {program, error} = compileRouteProgram(vmOf('  set movement speed 30\n  move forward 360 degrees\n'), {abi: 2});
+    assert.equal(error, null);
+    assert.deepEqual(program, {version: 2, instructions: [[7, 0, -360, 333], [7, 1, 360, 333], [8, 3, 0, 0], [0, 0, 0, 0]]});
+    const {fake, route, session, wheels, steps} = await openScene(program);
+    assert.deepEqual(fake.firmware.program, program.instructions, 'the v2 rows reached the firmware unchanged');
+    await route.program.start();
+    await steps(60);
+    const early = wheels();
+    // Both start in the same service tick: neither waits for the other (op 6 would leave B at rest here).
+    assert.ok(early.A < -20 && early.B > 20 && Math.abs(early.A + early.B) < 0.1 * early.B, `both wheels turn at once (${JSON.stringify(early)})`);
+    await steps(800, () => fake.programState === 'complete');
+    assert.equal(fake.programState, 'complete', 'op 8 released once both motors were done, then END');
+    const w = wheels();
+    assert.ok(Math.abs(w.A + 360) < 3 && Math.abs(w.B - 360) < 3, `both wheels stopped at 360° (${JSON.stringify(w)})`);
+    session.dispose();
+    await new Promise(resolve => setTimeout(resolve, 0));
+    await route.driver.end();
+});
+
+test('an image without instruction ABI v2 refuses the v2 program at COMMIT; the default compiler never emits it', async () => {
+    const vm = vmOf('  set movement speed 30\n  move forward 360 degrees\n');
+    assert.equal(compileRouteProgram(vm).error.code, 'two-motor-position', 'abi 1 (the default) still refuses the block');
+    const fake = new FakeSpikeRenode({instructionAbi: 1});
+    await assert.rejects(openLockstepRoute({transport: fake, program: compileRouteProgram(vm, {abi: 2}).program}),
+        /refused the program upload/);
+    assert.equal(fake.firmware.program, null, 'the old image kept no v2 program');
 });

@@ -50,7 +50,7 @@ export class LockstepProgram {
      * @param {object} options
      * @param {{call: Function}} options.transport the route's transport (broker op names)
      * @param {string|null} [options.pythonSource] own-NuttX embedded Python, mutually exclusive with program
-     * @param {{version: 1, instructions: number[][]}} options.program compileFirmwareProgram's output
+     * @param {{version: 1|2, instructions: number[][]}} options.program compileFirmwareProgram's output
      * @param {'default'|'six-motors'|'dual-ultrasonic'} [options.topology]
      * @param {number} [options.id]
      * @param {Function} [options.onChange] called after the program's state or a control changed
@@ -66,7 +66,7 @@ export class LockstepProgram {
             this.key = `python:${pythonSource}`;
         } else {
             encodeInstructions(program, {topology});
-            this.program = {version: 1, instructions: program.instructions.map(row => [...row])};
+            this.program = {version: program.version, instructions: program.instructions.map(row => [...row])};
             this.key = JSON.stringify(this.program.instructions);
         }
         this.transport = transport;

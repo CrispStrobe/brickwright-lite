@@ -22,9 +22,10 @@ import {compileFirmwareProgram, FirmwareProgramError} from '../../../spike-arena
  * The VM's program for the firmware: {program} or {error} (a FirmwareProgramError naming
  * the block, or the compiler's other error). Never throws.
  */
-export const compileRouteProgram = (vm, {topology = 'default'} = {}) => {
+export const compileRouteProgram = (vm, {topology = 'default', abi = 1} = {}) => {
     try {
-        return {program: compileFirmwareProgram(vm, {topology}), error: null};
+        // abi 2 only once the package advertises firmware instruction ABI 2; nothing does yet.
+        return {program: compileFirmwareProgram(vm, {topology, abi}), error: null};
     } catch (error) {
         return {program: null, error};
     }

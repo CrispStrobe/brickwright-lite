@@ -849,6 +849,30 @@ stand-still. Refused controls (`the firmware refused START (−22)`) and a progr
   emits `[7, A, −deg, v], [7, B, +deg, v], [8, 0b11, 0, 0]` for a movement pair. (The fake
   emulator's op 7 in `test/bw-sim-renode-lockstep-fake.mjs` is exactly that op, fake-only.)*
 
+  **Implemented (2026-10-30):** see brickwright-spike-prime-fw#56 (firmware PR #58) and this repo's
+  consumer change.
+  - **Firmware.** Op 7 arms the move and continues in the same tick. Its port is owned, so
+    STOP, a fault and END brake it. Op 8 `{mask, 0, 0}` waits for every masked port. A
+    read-only `g_bw_program_instruction_abi = 2` advertises both ops. Images without the
+    symbol refuse ops 7/8 at COMMIT.
+  - **Validators.** `encodeInstructions`, `validArenaProgram` and `valid_program` accept
+    `version: 2` programs with op 7 (op 6's bounds) and op 8. The mask is 1–3 on A/B and
+    1–63 only in the encoder's six-motor topology. `version: 1` still means ops 0–6.
+  - **Compiler.** `compileFirmwareProgram(vm, {abi: 2})` (and `compileRouteProgram`) emits
+    `[7, 0, −deg, v], [7, 1, +deg, v], [8, 3, 0, 0]` for `move … degrees/rotations/cm/in`.
+    It uses the extension's 17.6 cm / 6.93 in per rotation. Multi-port `run motor … degrees`
+    gets one op 7 per port and one op 8. The result is `version: 2` only when it uses these
+    ops. The default `abi: 1` refuses these blocks as before.
+  - **Negotiation, still open.** No package or runtime reports the marker to the GUI yet, so
+    the route compiles with `abi: 1`. Minimal plumbing, following the addressed-sensor
+    marker: `prepare-spike-nuttx-package.mjs` discovers `g_bw_program_instruction_abi` and
+    writes `programInstructionAbi: 2` to `state-config.json`. The state service then
+    advertises `nuttx-program-instructions/v2` in `target.capabilities`, and the route
+    compiles with `abi: 2` when `state.read` shows it. If the GUI and image disagree anyway,
+    the old image fails loudly at COMMIT (−22, "refused the program upload").
+  - **Fake.** The fake emulator now implements op 7 and op 8 as the firmware does, and
+    models a v1 image with `instructionAbi: 1`.
+
 **Real Renode, through the route's own code path** (`npm run verify:sim-lab-renode`, Mac,
 stock Renode 1.16.1, restaged package of §7.1). The headless script now opens
 `openLockstepRoute` with its state-service transport (`manageSession: false`: it launched

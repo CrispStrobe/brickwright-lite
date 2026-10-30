@@ -5,6 +5,12 @@
  * (firmware-program v1: CrispStrobe/brickwright-spike-prime-fw apps/hubprogram/program.c,
  * mirrored by upload-protocol.js encodeInstructions and the desktop's arena_inputs.rs).
  *
+ * `abi: 2` is for firmware that exports g_bw_program_instruction_abi 2 (brickwright-spike-prime-fw#56).
+ * Only then are two or more motors moved by an amount: op 7 arms each move without waiting,
+ * and op 8 waits for the port mask. The result is `version: 2` only when it uses those ops,
+ * so every other program stays v1 and runs on older images. With the default `abi: 1`
+ * those blocks are refused as before.
+ *
  * A refusal is a FirmwareProgramError: its English message as before, plus `code`
  * (what the firmware cannot do), `blockId`/`opcode` and `block` — the refused block
  * written as the pseudocode line it reads as (`move forward 10 cm`) — and `params`,
@@ -82,8 +88,10 @@ export const describeBlock = (blocks, block) => {
     }
 };
 
-export function compileFirmwareProgram (vm, {topology = 'default'} = {}) {
+export function compileFirmwareProgram (vm, {topology = 'default', abi = 1} = {}) {
     validateTopology(topology);
+    if (abi !== 1 && abi !== 2) throw new TypeError('Unknown firmware instruction ABI');
+    let usesV2 = false;
     const six = topology === 'six-motors', dual = topology === 'dual-ultrasonic';
     const targets = vm?.runtime?.targets || [];
     const scripts = targets.filter(t => t.isOriginal !== false).flatMap(target =>
@@ -150,6 +158,12 @@ export function compileFirmwareProgram (vm, {topology = 'default'} = {}) {
         throw refuse('direction', `Firmware movement direction must be forward or backward, not '${raw}'`, block, {value: raw});
     };
     const speed = percent => Math.round(percent * 11.1);
+    // ABI v2: start every move in the same tick, then wait for all of them.
+    const groupMove = moves => {
+        usesV2 = true;
+        moves.forEach(([port, degrees, velocity]) => emit(7, port, degrees, velocity));
+        emit(8, moves.reduce((mask, [port]) => mask | (1 << port), 0), 0, 0);
+    };
     const stop = port => emit(1, port, 0, 0);
     const predicate = block => {
         if (six) throw refuse('no-sensors', 'Six-motor topology has no arena sensors', statement);
@@ -228,9 +242,22 @@ export function compileFirmwareProgram (vm, {topology = 'default'} = {}) {
                 const unit = literal(block, 'UNIT');
                 // Both wheels by a distance is a two-motor position move: ABI v1 has none
                 // (op 6 moves ONE motor and waits for it), docs/ROBOT-LAB-SPIKE-EMULATION.md §7.4.
-                if (unit !== 'seconds') throw refuse('two-motor-position', 'Firmware movement currently supports seconds only', statement, {unit});
-                const d = moveDirection(statement); emit(1, 0, -speed(movementSpeed * d), 0); emit(1, 1, speed(movementSpeed * d), 0);
-                emit(2, Math.round(number(block, 'VALUE', 0, 120) * 1000), 0, 0); stop(0); stop(1);
+                if (unit !== 'seconds' && abi < 2) throw refuse('two-motor-position', 'Firmware movement currently supports seconds only', statement, {unit});
+                const d = moveDirection(statement);
+                if (unit === 'seconds') {
+                    emit(1, 0, -speed(movementSpeed * d), 0); emit(1, 1, speed(movementSpeed * d), 0);
+                    emit(2, Math.round(number(block, 'VALUE', 0, 120) * 1000), 0, 0); stop(0); stop(1);
+                } else {
+                    // The extension's own conversions (spikeprime moveForward): 17.6 cm, 6.93 in per rotation.
+                    const perDegree = {degrees: 1, rotations: 1 / 360, cm: 17.6 / 360, in: 6.93 / 360}[unit];
+                    if (!perDegree) throw refuse('unit', `Firmware movement supports seconds, degrees, rotations, cm or in, not '${unit}'`, statement, {unit});
+                    const degrees = Math.round(number(block, 'VALUE', 0, 36000 * perDegree) / perDegree);
+                    const velocity = Math.abs(speed(movementSpeed));
+                    if (!velocity) throw refuse('zero-speed', 'Firmware position move needs a nonzero speed', statement);
+                    const signed = degrees * d * Math.sign(movementSpeed);
+                    // A is mounted mirrored, as in the seconds form.
+                    groupMove([[0, -signed, velocity], [1, signed, velocity]]);
+                }
             } else if (op === 'spikeprime_motorRunFor') {
                 const selected = ports(statement), unit = literal(block, 'UNIT'), d = direction(block);
                 if (unit === 'seconds') {
@@ -238,10 +265,13 @@ export function compileFirmwareProgram (vm, {topology = 'default'} = {}) {
                     emit(2, Math.round(number(block, 'VALUE', 0, 120) * 1000), 0, 0); selected.forEach(stop);
                 } else {
                     if (!['degrees', 'rotations'].includes(unit)) throw refuse('unit', `Firmware motor moves support seconds, degrees or rotations, not '${unit}'`, statement, {unit});
-                    if (selected.length !== 1) throw refuse('two-motor-position', 'Firmware position moves support one motor in degrees/rotations', statement, {unit});
-                    const p = selected[0], degrees = Math.round(number(block, 'VALUE', 0, unit === 'degrees' ? 36000 : 100) * (unit === 'rotations' ? 360 : 1));
-                    if (!speeds[p]) throw refuse('zero-speed', 'Firmware position move needs a nonzero speed', statement);
-                    emit(6, p, degrees * d * Math.sign(speeds[p]), Math.abs(speed(speeds[p])));
+                    if (selected.length !== 1 && abi < 2) throw refuse('two-motor-position', 'Firmware position moves support one motor in degrees/rotations', statement, {unit});
+                    const degrees = Math.round(number(block, 'VALUE', 0, unit === 'degrees' ? 36000 : 100) * (unit === 'rotations' ? 360 : 1));
+                    if (selected.some(p => !speeds[p])) throw refuse('zero-speed', 'Firmware position move needs a nonzero speed', statement);
+                    const moves = selected.map(p => [p, degrees * d * Math.sign(speeds[p]), Math.abs(speed(speeds[p]))]);
+                    // One motor keeps the v1 form (op 6 waits); several start together (v2).
+                    if (moves.length === 1) emit(6, ...moves[0]);
+                    else groupMove(moves);
                 }
             } else if (op === 'control_stop' && literal(block, 'STOP_OPTION') === 'all') emit(0, 0, 0, 0);
             else fail(block);
@@ -249,5 +279,5 @@ export function compileFirmwareProgram (vm, {topology = 'default'} = {}) {
         }
     };
     walk(blocks[id].next); statement = null; emit(0, 0, 0, 0);
-    return {version: 1, instructions: code};
+    return {version: usesV2 ? 2 : 1, instructions: code};
 }
