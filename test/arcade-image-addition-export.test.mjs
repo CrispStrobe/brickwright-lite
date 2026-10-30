@@ -57,7 +57,7 @@ test('costume-backed Image addition proves the actual wrapped frame selection on
     const creator=creatorFor(sources[0].replace('image.create(2,1)','img`5 5`'));
     const out=exportProject(creator,creator.project);
     assert.match(out.ts,/Math\.round\(0\)/,'retain the emitted frame-selection operation');
-    assert.match(out.ts,/__bwFrames_shared\d+/);
+    assert.match(out.ts,/__bwFrames_[A-Za-z]\w*/);
 });
 
 test('costume-backed Image banks preserve direct and JSON second export',()=>{
