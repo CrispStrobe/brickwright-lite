@@ -140,7 +140,7 @@ for (const mode of ['development','production']) test(`the GUI ${mode} bundle pr
         extension.setSpriteProperty({ID:hero,PROPERTY:'vx',VALUE:0});
         extension.setSpriteProperty({ID:hero,PROPERTY:'vy',VALUE:0});
         extension.followSprite({ID:hero,TARGET:goal,SPEED:25,TURN:400});
-        extension._inst._globalElapsedMs+=10;extension._moveFollowingSprites();
+        extension._inst._state().elapsedMs=(extension._inst._state().elapsedMs || 0)+10;extension._moveFollowingSprites();
         assert.equal(extension.spriteProperty({ID:hero,PROPERTY:'vx'}),2);
         extension.unfollowSprite({ID:hero});assert.equal(extension.spriteProperty({ID:hero,PROPERTY:'vx'}),0);
         extension.spriteSay({ID:hero,TEXT:'A',DURATION:100,ANIMATED:false,FOREGROUND:2,BACKGROUND:9,MODE:'text'});

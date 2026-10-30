@@ -231,6 +231,15 @@ class ArcadeFramePhase {
         return !!call?.caller && this._eligible(call.caller,seen);
     }
     _pump() {this._wakeSourceWaits();this.ext._pumpFunctionCalls();this.ext._pumpCreationWaits();this.ext._pumpTerrainWaits();}
+    // Scratch drops finished threads only inside Sequencer.stepThreads. Source
+    // turns (timed scene frames, continuations) step threads directly and never
+    // enter it, so release them here the same way: in place, keeping order.
+    _releaseDone() {
+        const threads=this.runtime.threads;let next=0;
+        for(let i=0;i<threads.length;i++){const t=threads[i];
+            if(t.stack.length!==0&&t.status!==t.constructor.STATUS_DONE)threads[next++]=t;}
+        threads.length=next;
+    }
     async _work(held,deadline,generation) {
         const rt=this.runtime;
         while(this.generation===generation&&!this.disposed) {
@@ -250,7 +259,7 @@ class ArcadeFramePhase {
                 if(t.status===t.constructor.STATUS_YIELD_TICK||this._waitingTimer(t)||(this.waitTimers.has(t)&&!this.waitTimers.get(t).ready)||
                     this._loopTickYield(t))held.add(t);
             }
-            this._pump();
+            this._pump();this._releaseDone();
             // Flush ready Promise continuations. Unresolved API promises remain
             // blocked, and authored future timers are not retried in this phase.
             await browserTurn();

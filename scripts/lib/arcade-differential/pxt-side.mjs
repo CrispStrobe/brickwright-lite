@@ -15,7 +15,8 @@ import {packSamples} from './compare.mjs';
 import {PRNG_SOURCE} from './entropy.mjs';
 export {PRNG_SOURCE};
 
-export const PXT_PLATFORM_DRAWS = 'BaseBoard|FastRandom_constructor';
+export const PXT_PLATFORM_DRAWS = 'BaseBoard';
+export const PXT_SEED_DRAWS = 'FastRandom_constructor';
 
 /**
  * Record `source` once per schedule, in one browser, with a fresh simulator
@@ -63,14 +64,14 @@ async function recordOne(browser, port, code, schedule, {seconds, fps, seed, ent
         await page.goto(`http://127.0.0.1:${port}/simulator.html`);
         await assertPxtInitialClock(page);
         await bootstrapPxtProfilerClock(page);
-        await page.evaluate(({code, seed, entropy, prng, skip, snapshotSource}) => {
+        await page.evaluate(({code, seed, entropy, prng, skip, seeds, snapshotSource}) => {
             pxsim.AudioContextManager.mute(true);
-            window.__bwDraw = (0, eval)(prng)(seed, entropy === 'constant', skip); Math.random = window.__bwDraw;
+            window.__bwDraw = (0, eval)(prng)(seed, entropy === 'constant', skip, seeds); Math.random = window.__bwDraw;
             window.__bwSnapshot = (0, eval)(snapshotSource);
             const msg = {type: 'run', id: 'bw-differential', code, options: {}, mute: true};
             const runtime = new pxsim.Runtime(msg); window.__bwPxtRuntime = runtime;
             return runtime.board.initAsync(msg).then(() => runtime.run(() => { window.__bwPxtDone = true; }));
-        }, {code, seed, entropy, prng: PRNG_SOURCE, skip: PXT_PLATFORM_DRAWS, snapshotSource: PXT_SNAPSHOT_SOURCE});
+        }, {code, seed, entropy, prng: PRNG_SOURCE, skip: PXT_PLATFORM_DRAWS, seeds: PXT_SEED_DRAWS, snapshotSource: PXT_SNAPSHOT_SOURCE});
         const times = sampleTimes(seconds, fps), samples = [];
         let now = 0, error = null;
         for (let k = 0; k < times.length; k++) {
