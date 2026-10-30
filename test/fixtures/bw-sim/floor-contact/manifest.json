@@ -8,6 +8,7 @@
   "engine": {
     "pinSource": "scripts/integrate.mjs",
     "version": "1.1.0-bw.9",
+    "releaseTag": "bw.9-qualified-20261029",
     "integrity": "sha512-H+Q8jQqKxdnDuM0a7sb66ZHz5tPBaZPSkPXU6wufo1UrDzVseyudgCNKWuA1kV3Ii/Ci6at/+zFVcMQm2yWY6w=="
   },
   "inputs": [
