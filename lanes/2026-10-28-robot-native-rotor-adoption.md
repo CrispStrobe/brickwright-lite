@@ -79,7 +79,7 @@ check reproduced that undeclared URL before the metadata correction.
 
 ## Findings on main + #1553 at bw.9 (2026-10-30, fix/rotor-1494-20261030)
 
-Status: BLOCKED ON A SOLVER DECISION. On this Mac, clean main (`e4fe7f8bc`, bw.7) passes all 271
+Measured on main + #1553 with bw.9 for every model. On this Mac, clean main (`e4fe7f8bc`, bw.7) passes all 271
 `bw-sim-*`, `robot-lab-*` and `*qualification*` files.
 
 The #1494 law holds with the native rotor. Afterturn's actual program reorients the
@@ -92,9 +92,9 @@ every listed consumer. The other bw.9 engine changes are therefore inert, and ev
 consumer change comes from the rotor treatment.
 
 Two changes were mechanical:
-- (a) Counterturn `reflectedVerticalLeakageFraction` measured the hack's body-tensor
-  increment. Under the native rotor it is 0/0. Fixed in `test/helpers/counterturn-inertia.mjs`:
-  bare tensors must be unchanged, and the leakage is (a·ŷ)² per motor axis. Both runs pass.
+- With native for every model, Counterturn's `reflectedVerticalLeakageFraction` (a measure of
+  the body-tensor increment) became 0/0. Under the opt-in decision below Counterturn stays
+  `legacy`, so its original test is kept unchanged.
 - Engine-pin bookkeeping: `test/fixtures/bw-sim/floor-contact/manifest.json` and
   `test/fixtures/resting-creep-1435/manifest.json` pin bw.7.
 
@@ -122,3 +122,18 @@ about I_light/Jr, roughly 1 %. This is the same failure the old setRotorInertia 
 recorded for a motor-term rotor: a gear slipped and an arm went through a block. Iteration
 count and substeps fix only some cases, and the stall, FDK and Watt fixed points do not
 converge. Fixing this needs a solver decision (fork). It is not a test or tolerance change.
+
+### Decision (owner, 2026-10-30): per-model opt-in now, solver later
+
+- The engine stays `jolt-physics 1.1.0-bw.9`. The default rotor is main's body-inertia
+  treatment, so unflagged models are byte- and behaviour-identical (all 271 baseline files).
+- `0 !BW ROTOR_INERTIA native` in a model's main section selects the native relative rotor, which
+  leaves bare body inertia unchanged. It works like `0 !BW MOTOR_DIRECTION`: parsed, validated,
+  kept through edits, undo, save and reopen; invalid or duplicate declarations refuse
+  simulation; submodels cannot override it (docs/SIM-LAB.md, "Motor rotor treatment").
+- Opted in: `afterturn` and `afterturn-fixed-masses`. In both, the motor housing is the free
+  yaw platform, and the motor axis is the yaw axis. Counterturn's carrier also yaws, but its
+  motor axis is horizontal ((a·ŷ)² = 0), so `legacy` is already exact there.
+- Afterturn law: test/bw-sim-rotor-model.test.mjs, Iw/J = 0.02608 within 1 %.
+- The general fix is separate Jolt-fork work: solve the rotor row together with the output
+  body's contact and gear rows.
