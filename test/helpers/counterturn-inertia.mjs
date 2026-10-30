@@ -17,11 +17,6 @@ export async function counterturnInertia(modelText,catalog){
  const measure=m=>{const c=createPhysicsCore(J,m,{stepHz:200});try{return tensors(c);}finally{c.destroy();}};
  const shape=structuredClone(p.mechanism);shape.couplings=[];shape.gears=[];const shapeTensors=measure(shape),floorTensors=measure(p.mechanism),hub=new HubState();hub.setSimulationEnabled(true);const session=new SimSession({...p,hubState:hub,catalog,mat:'plain',J});let augmentedTensors;try{augmentedTensors=tensors(session.core);}finally{session.dispose();}
  const base=p.mechanism.bodies.find(b=>b.parts.includes('yaw_base')),gain=t=>t[rotor.id].yawInertia/Object.entries(t).filter(([id])=>id!==base.id).reduce((s,[,x])=>s+x.yawInertia,0),shapeGain=gain(shapeTensors),nativeGain=gain(augmentedTensors);
- // The native hinge rotor (#1494) keeps every body's bare tensor: attaching the motors must change
- // none of them. Its reflected inertia Jr acts on the hinge's RELATIVE rate about the motor axis a
- // (kinetic energy ½·Jr·(a·(ω2 − ω1))²), so the share of it a yaw turn ŷ can reach is (a·ŷ)² per motor.
- const bareTensorChange=Math.max(...Object.keys(floorTensors).flatMap(id=>[0,1,2].flatMap(i=>[0,1,2].map(k=>Math.abs(augmentedTensors[id].tensor[i][k]-floorTensors[id].tensor[i][k])))));
- const motorAxes=p.mechanism.joints.filter(j=>j.type==='hinge'&&j.motor).map(j=>{const n=Math.hypot(...j.axis);return j.axis.map(x=>x/n);});
- const reflectedVerticalLeakageFraction=motorAxes.length?Math.max(...motorAxes.map(a=>a[1]*a[1])):NaN;
- return{origin,shapeTensors,floorTensors,augmentedTensors,shapeGain,nativeGain,gainDivergenceFraction:nativeGain/shapeGain-1,bareTensorChange,motorAxes,reflectedVerticalLeakageFraction};
+ const verticalMotorAddition=Object.keys(floorTensors).reduce((s,id)=>s+Math.abs(augmentedTensors[id].tensor[1][1]-floorTensors[id].tensor[1][1]),0),total=Math.max(...Object.keys(floorTensors).map(id=>[0,1,2].reduce((s,i)=>s+augmentedTensors[id].tensor[i][i]-floorTensors[id].tensor[i][i],0)));
+ return{origin,shapeTensors,floorTensors,augmentedTensors,shapeGain,nativeGain,gainDivergenceFraction:nativeGain/shapeGain-1,reflectedVerticalLeakageFraction:verticalMotorAddition/total};
 }
