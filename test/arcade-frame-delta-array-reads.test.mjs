@@ -3,14 +3,19 @@ import assert from 'node:assert/strict';
 import Creator from '../overlay/scratch-gui/src/lib/sb3-creator.js';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
 import {projectToArcade,projectJsonToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
+import {runtimeDispatchAddHelperSource} from '../overlay/scratch-gui/src/lib/bw-makecode/native-array-binary-helper-source.js';
 const clean=out=>{for(const key of ['unsupported','errors','warnings','unparsed'])if(Object.hasOwn(out,key))assert.deepEqual(out[key],[],key);};
 const create=text=>{const out=arcadeToPseudocode(text);clean(out);const c=new Creator();c.parse(out.code);clean(c);return c;};
 const exported=text=>projectJsonToArcade(JSON.stringify(create(text).project));
 // A negative may already be refused by the importer; otherwise the export
-// must keep a native-addition refusal.
+// must not select the proven native Array join. Owner decision 2026-10-30:
+// an unproved operand/effect exports the runtime-dispatch helper instead of
+// a native-addition refusal (either outcome withholds the proven join).
 const refused=text=>{const imported=arcadeToPseudocode(text);if(imported.unsupported?.length)return true;
     const c=new Creator();c.parse(imported.code);if(c.errors?.length||c.unsupported?.length)return true;
-    return projectJsonToArcade(JSON.stringify(c.project)).unsupported.some(reason=>/native addition/.test(reason));};
+    const out=projectJsonToArcade(JSON.stringify(c.project));
+    if(out.unsupported.some(reason=>/native addition/.test(reason)))return true;
+    return out.ts.includes(runtimeDispatchAddHelperSource('__bwBinaryAdd'))&&!out.ts.includes('typeof left === "object"');};
 
 // Representative frame-clock accumulators beside numeric reads and builtin
 // methods of a fresh published Array, as in a grid game's paint callback.

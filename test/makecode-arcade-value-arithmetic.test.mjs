@@ -9,10 +9,14 @@ import {runProgram,stepFrames,clearStrayTimers} from './helpers/bw-vm.mjs';
 import {arrayOperation} from './helpers/arrays-current-operation.mjs';
 import {runPxtArcade} from './helpers/pxt-arcade-runtime.mjs';
 import {compile} from '../scripts/lib/pxt-node.mjs';
+test.afterEach(()=>clearStrayTimers());
 const vars=run=>Object.fromEntries(run.vm.runtime.targets.flatMap(t=>Object.values(t.variables)).map(v=>[v.name.replace(/^Game_/,''),v.value]));
 async function execute(imported){
     assert.deepEqual(imported.unsupported,[]);
-    const run=await runProgram(imported.code,{frames:80,uploads:imported.costumes,storage:true});
+    // A paused source call keeps its VM-owned program-clock wait timer past the
+    // first 80 frames; the default stray-timer sweep would cancel it while the
+    // call is still waiting. Each test sweeps after its last route instead.
+    const run=await runProgram(imported.code,{frames:80,uploads:imported.costumes,storage:true,retainExtensionTimers:true});
     assert.deepEqual(run.errors,[],JSON.stringify({vars:vars(run),code:imported.code}));assert.deepEqual(run.creator.warnings,[]);return run;
 }
 async function roundtrip(source,check){
@@ -69,7 +73,13 @@ function echo(value:any){return value}
 let copiedZero=echo(minusZero)
 let values=[text,counter,rows[0],rows[1],returned,minusZero,copiedZero]`,async run=>{
         const deadline=Date.now()+20000; // wall-clock guard only: the loop exits as soon as the program has run (3 s was too short on a busy CI runner)
-        while(vars(run).values?.bwReference?.kind!=='array' && Date.now()<deadline){await stepFrames(run.vm,4);await new Promise(done=>setTimeout(done,10));}
+        // After a saved-SB3 reload the variable still holds the saved Array
+        // reference until the restarted program's paused call completes and
+        // stores a fresh one; wait for a live reference, not just its shape.
+        const live=async()=>{const value=vars(run).values;if(value?.bwReference?.kind!=='array')return false;
+            try{await arrayOperation(run.vm,'referenceLength',{ARRAY:value});return true;}
+            catch(error){if(/null or expired/.test(String(error?.message??error))&&Date.now()<deadline)return false;throw error;}};
+        while(!await live() && Date.now()<deadline){await stepFrames(run.vm,4);await new Promise(done=>setTimeout(done,10));}
         const v=vars(run);
         const actual=[];
         for(let i=0;i<7;i++)actual.push(await arrayOperation(run.vm,'referenceItem',{ARRAY:v.values,INDEX:i}));
