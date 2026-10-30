@@ -209,6 +209,35 @@ hero.image.fill(5)
 });
 
 
+test('executed audit stops a program that exceeds its per-input budget and records a timeout', () => {
+    // A program that never returns cannot be interrupted from inside the audit
+    // process, so each execution runs in a child under a watchdog. A 1 ms
+    // budget is shorter than any child start-up, which makes this deterministic.
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'bw-compat-timeout-'));
+    try {
+        const source = path.join(dir, 'tiny.ts');
+        fs.writeFileSync(source, 'let n = 0\nn += 1\n');
+        const json = path.join(dir, 'audit.json');
+        const started = Date.now();
+        const run = spawnSync(process.execPath, ['--disable-warning=MODULE_TYPELESS_PACKAGE_JSON', CLI,
+            '--target', 'arcade', '--execute', '--execute-timeout-ms', '1', '--out', json, source],
+        {cwd: ROOT, encoding: 'utf8', timeout: 120000});
+        assert.ok(Date.now() - started < 100000, 'the audit itself finished');
+        const row = JSON.parse(fs.readFileSync(json, 'utf8')).rows[0];
+        assert.equal(row.execution.status, 'timeout');
+        assert.equal(row.execution.timeoutMs, 1);
+        assert.equal(row.qualification.runtimeSmoke, 'timeout');
+        assert.notEqual(run.status, null, run.stderr);
+    } finally { fs.rmSync(dir, {recursive: true, force: true}); }
+});
+
+test('executed audit rejects a non-positive execution budget', () => {
+    const run = spawnSync(process.execPath, [CLI, '--target', 'arcade', '--execute-timeout-ms', '0', '--execute', os.tmpdir()],
+        {cwd: ROOT, encoding: 'utf8', timeout: 60000});
+    assert.notEqual(run.status, 0);
+    assert.match(run.stderr, /--execute-timeout-ms requires a positive integer/);
+});
+
 test('audit directory discovers native mkcd and pxt projects with their complete file maps', async () => {
     const {makeCodeProjectFile} = await import('../overlay/scratch-gui/src/lib/bw-makecode/project-file.js');
     const dir=fs.mkdtempSync(path.join(os.tmpdir(),'bw-native-audit-'));
