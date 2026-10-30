@@ -1,5 +1,31 @@
 # Arcade compatibility: fresh-agent handoff and methodology
 
+## 30 October: unproven native-addition operands use runtime dispatch (owner decision)
+
+Owner decision 2026-10-30: when the native-addition proof cannot establish
+both `+` operands as initialized primitives or flat Arrays (the operand-domain
+and Array-effect refusals, listed in `RUNTIME_DISPATCH_ADDITION_REASONS` in
+`export-arcade.js`), Arcade export no longer refuses. It emits one
+runtime-dispatch helper per program under the existing `__bwBinaryAdd` name:
+`Array.isArray` selects the same `array.join(",")` the proven Array path emits,
+and every other value keeps PXT's ordinary `+`. Proven primitive additions
+still emit `return left + right`; proven flat-Array additions still emit the
+existing join body. Source-integrity refusals (supplied private tags,
+ambiguous or changed identity, a refused named-helper proof) still refuse.
+
+Import recognizes only the exact dispatch body (unique root binding, own
+locals, unbound global `Array`, direct two-argument calls) and restores each
+call to the native value `+` (`calculate value ... op "+"`), which already
+decides per value in the VM; the producer graph types that node like `+`.
+`test/arcade-runtime-dispatch-addition.test.mjs` checks Array/number/string/
+nullish operands against original PXT and the imported VM program.
+
+Open follow-up: a typed-SDK table (member/method result types from the pinned
+Arcade typings) so more operands get an exact static proof instead of the
+runtime dispatch. `scripts/verify-arcade-numeric-authoring-gui.mjs` still
+authors an unproven `music tempo + 1` to exercise the refusal panel; it needs
+a still-refusing fixture and a browser run.
+
 ## Prepared follow-up: creation callback local Array overwrite
 
 A captured reimported creation callback has this actual sequence: reset `refs`
