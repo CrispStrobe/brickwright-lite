@@ -9,7 +9,7 @@
  *   [--seconds 8] [--fps 30] [--seed 1] [--entropy sequence|constant]
  *   [--scripts idle,arrows,ab] [--timeout-ms 120000] [--out report.json] [--markdown summary.md]
  *   [--audit-dir DIR --require-compile] [--limit N] [--offset N] [--only a.ts,b.ts]
- *   [--max-load 8] [--min-free-gb 12] [--work-dir DIR] [--resume] file-or-directory [...]
+ *   [--max-load 8] [--min-free-gb 12] [--wait-seconds 0] [--work-dir DIR] [--resume] file-or-directory [...]
  *
  * --out receives program sources' labels and per-sample detail: keep it private.
  * The Markdown summary holds counts and cause categories only.
@@ -23,7 +23,7 @@ import {SCRIPT_NAMES} from './lib/arcade-differential/script.mjs';
 
 const args = process.argv.slice(2), inputs = [];
 const opt = {seconds: 8, fps: 30, seed: 1, entropy: 'sequence', scripts: SCRIPT_NAMES, timeoutMs: null, out: null, markdown: null,
-    auditDir: null, requireCompile: false, limit: Infinity, offset: 0, only: null, maxLoad: 8, minFreeGb: 12, workDir: null, resume: false};
+    auditDir: null, requireCompile: false, limit: Infinity, offset: 0, only: null, maxLoad: 8, minFreeGb: 12, waitSeconds: 0, workDir: null, resume: false};
 const value = i => { if (i + 1 >= args.length) throw new Error(`${args[i]} needs a value`); return args[i + 1]; };
 for (let i = 0; i < args.length; i++) {
     const a = args[i];
@@ -42,6 +42,7 @@ for (let i = 0; i < args.length; i++) {
     else if (a === '--only') opt.only = value(i++).split(',');
     else if (a === '--max-load') opt.maxLoad = Number(value(i++));
     else if (a === '--min-free-gb') opt.minFreeGb = Number(value(i++));
+    else if (a === '--wait-seconds') opt.waitSeconds = Number(value(i++));
     else if (a === '--work-dir') opt.workDir = value(i++);
     else if (a === '--resume') opt.resume = true;
     else if (a.startsWith('--')) throw new Error('Unknown option ' + a);
@@ -93,7 +94,9 @@ let paused = null;
 for (const file of selected) {
     const label = path.basename(file);
     if (done.has(label)) { rows.push(done.get(label)); continue; }
-    paused = resourceProblem();
+    // Pause (not push on) while the machine is overloaded; give up and report after --wait-seconds.
+    const waitUntil = Date.now() + opt.waitSeconds * 1000;
+    while ((paused = resourceProblem()) && Date.now() < waitUntil) await new Promise(resolve => setTimeout(resolve, 15000));
     if (paused) break;
     const started = Date.now();
     const result = await analyzeProgram(fs.readFileSync(file, 'utf8'), {...opt, timeoutMs, workDir});
