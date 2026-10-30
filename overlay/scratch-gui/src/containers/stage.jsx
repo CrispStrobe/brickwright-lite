@@ -29,6 +29,7 @@ class Stage extends React.Component {
             'detachMouseEvents',
             'handleDoubleClick',
             'handleQuestionAnswered',
+            'handleQuestionInput',
             'handleArcadeDialogDismiss',
             'handleArcadeDialogButtonEdge',
             'onMouseUp',
@@ -209,6 +210,10 @@ class Stage extends React.Component {
     handleArcadeDialogDismiss (answer) {
         const dialog = this.state.arcadeDialog;
         if (dialog && dialog.dismiss) dialog.dismiss(answer);
+    }
+    handleQuestionInput (answer) {
+        // The Arcade text-entry screen shows the characters as they are typed.
+        if (this.props.vm.runtime.bwArcadeTextPrompt) this.props.vm.runtime.emit('ARCADE_PROMPT_INPUT', answer);
     }
     handleQuestionAnswered (answer) {
         this.setState({question: null, arcadePrompt: null}, () => {
@@ -530,6 +535,7 @@ class Stage extends React.Component {
                 onArcadeDialogDismiss={this.handleArcadeDialogDismiss}
                 onArcadeDialogButtonEdge={this.handleArcadeDialogButtonEdge}
                 onQuestionAnswered={this.handleQuestionAnswered}
+                onQuestionInput={this.handleQuestionInput}
                 {...props}
             />
         );

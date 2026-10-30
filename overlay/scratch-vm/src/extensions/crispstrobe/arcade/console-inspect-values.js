@@ -6,6 +6,9 @@ const reporterOwner = require('./font-selector-owner');
 const resultFactory = require('../../../util/bw-extension-result-factory');
 const analyseCaptures = require('./console-capture-provenance');
 const kinds = new Set(['Number','Boolean','String','Any']);
+// The readable Sprite fields the extension returns as Numbers (the menu of arcade_spriteProperty minus `data`).
+const SPRITE_NUMBER_PROPERTIES = new Set(['x','y','left','right','top','bottom','vx','vy','ax','ay','fx','fy','sx','sy','scale',
+    'width','height','z','lifespan','rotation','rotationDegrees','kind','flags']);
 const semantic = block => JSON.stringify([block.opcode,block.fields,block.inputs,block.next,
     block.mutation,block.shadow,block.parent,block.topLevel]);
 const scoreRegistrations = new WeakMap();
@@ -502,6 +505,18 @@ function create(runtime, cells, scoreOwner=null, sceneClock=null, frameDelta=nul
                     if(!(structural?frameDelta?.eligible(target,node):frameDelta?.prove(target,node,args,util)))return false;
                     origins?.add(node);domains?.add('number');return true;
                 }
+                if(!player&&op==='arcade_spriteProperty'){
+                    // PXT Sprite fields are typed. The extension reads each numeric field as a Number
+                    // (lifespan is undefined until set); `data` is an arbitrary value, so it stays unproven.
+                    const property=node.fields?.PROPERTY?.value;
+                    if(!SPRITE_NUMBER_PROPERTIES.has(property))return false;
+                    origins?.add(node);domains?.add('number');if(property==='lifespan')domains?.add('undefined');return true;
+                }
+                if(!player&&domains&&['arcade_signNumber','arcade_truncateNumber','arcade_controllerStep','arcade_randomNumber'].includes(op)){
+                    // These reporters return a Number on every normal completion; an operand the
+                    // block cannot convert throws, which supplies no value.
+                    origins?.add(node);domains.add('number');return true;
+                }
                 if(!player&&op==='arcade_getPlayerScore'){
                     if(!scoreNumber(node))return false;
                     origins?.add(node);domains?.add('number');return true;
@@ -566,6 +581,8 @@ function create(runtime, cells, scoreOwner=null, sceneClock=null, frameDelta=nul
                 }
                 if (op==='arrays_valueBinary') {
                     if(!domains)return safe(input(node,'LEFT'))&&safe(input(node,'RIGHT'));
+                    // Numeric-only operators complete with a Number whatever their operands are.
+                    if(['-','*','/','%','**','&','|','^','<<','>>','>>>'].includes(literal(node,'OP'))){origins?.add(node);domains.add('number');return true;}
                     const left=new Set(),right=new Set();if(!safe(input(node,'LEFT'),false,null,left)||!safe(input(node,'RIGHT'),false,null,right))return false;
                     const operation=literal(node,'OP');
                     if(operation==='+') {
@@ -590,6 +607,7 @@ function create(runtime, cells, scoreOwner=null, sceneClock=null, frameDelta=nul
                     return true;
                 }
                 if (op==='arrays_valueUnary') {
+                    if(domains&&['+','-','~','!','typeof'].includes(literal(node,'OP'))){const operation=literal(node,'OP');domains.add(operation==='typeof'?'string':operation==='!'?'boolean':'number');origins?.add(node);return true;}
                     if(!safe(input(node,'VALUE')))return false;
                     if(domains){const operation=literal(node,'OP');domains.add(operation==='typeof'?'string':operation==='!'?'boolean':['+','-','~'].includes(operation)?'number':'unknown');}return true;
                 }

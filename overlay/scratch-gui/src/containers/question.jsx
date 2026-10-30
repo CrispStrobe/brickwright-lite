@@ -37,6 +37,7 @@ class Question extends React.Component {
             }
         }
         this.setState({answer});
+        if (this.props.onQuestionInput) this.props.onQuestionInput(answer);
     }
     handleKeyPress (event) {
         if (event.key === 'Enter') this.handleSubmit();
@@ -60,6 +61,7 @@ class Question extends React.Component {
 
 Question.propTypes = {
     onQuestionAnswered: PropTypes.func.isRequired,
+    onQuestionInput: PropTypes.func,
     arcadePrompt: PropTypes.shape({
         answerLength: PropTypes.number.isRequired,
         numbersOnly: PropTypes.bool.isRequired
