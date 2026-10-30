@@ -1,11 +1,19 @@
 # SAMD software-profile engine adoption
 
-Status: upstream assembly, qualification and immutable engine release are
-complete. Consumer [PR1533](https://github.com/CrispStrobe/brickwright-lite/pull/1533)
-remains unmerged at `48df0f93f9b6b642238c13448e6f075d8871eb83`; source CI and
-fresh browser/installed acceptance are pending. No normal native SAMD GUI route
-has landed. Continue the [current handoff](SAMD-NATIVE-GAME-HANDOFF.md), refresh
-remote state, and reuse retained originals rather than repeating supplier work.
+Status: supplier assembly/release and actual consumer game acceptance are
+complete. Build run40783464522 supplied the admitted frontend; actual game
+runs40826297334 (Chromium) and40828345515 (installed Tauri/WebKit) passed three
+fresh instances each. Independent audits decoded all 102 original RGB frames,
+verified press/release and sampled RSS, and joined source/frontend/executable/
+engine/profile/firmware identities. Consumer
+[PR1533](https://github.com/CrispStrobe/brickwright-lite/pull/1533) folds the
+SPIKE support closure and merged as
+`9f1a620f2aae5ee988ed02069a8bf34c18949123`. Seventeen final-head checks passed,
+but the enabled `full CI requested` check failed before that merge. The source
+landed; enabled-check closure and retained-evidence custody review remain open.
+No normal native SAMD GUI compile/import/export route is claimed. See
+[the current handoff](SAMD-NATIVE-GAME-HANDOFF.md) for results and preserved
+failures; reuse successful originals rather than replaying guests.
 
 The owned supplier fixes are qualified and merged:
 
@@ -53,26 +61,22 @@ RGBSET table. No host-installed default LUT is permitted.
    Motion qualification remains deferred. Keep component notices and the narrow
    Node 22 inlining workaround documented by the
    [producer handoff](https://github.com/CrispStrobe/bw-board/blob/master/docs/SAMD-ENGINE-RELEASE-HANDOFF.md).
-4. **Partly done — emitted assets verified; full source CI pending.** PR1533
-   proposes the exact engine/glue/profile hashes and matching performance identity.
-   Its official frontend job and all six unit shards passed; independent review
-   verified all 8,563 emitted files and exact release asset hashes. Full Rust tests
-   and E2E passed. Preserve original failures; the old native failure's cause
-   remains unknown. Remaining browser/FPGA/Arcade source checks must pass before
-   actual-game dispatch or merge. Native run40803428616 succeeded with unchanged
-   compile defaults; independent audit bound 184 native source files, all 8,563
-   frontend files and the executable hash. Reuse its retained originals; do not
-   dispatch another build. Actual guest acceptance remains pending. Follow the
-   [current handoff](SAMD-NATIVE-GAME-HANDOFF.md) for exact identities and order.
-5. **Pending — actual consumer and landing.** The native identity audit passed;
-   wait for every enabled source check. Then run
-   three fresh actual Chromium and three installed Tauri/WebKit instances of the
-   same source-built guest on the shipped engine assets. Independently check raw
-   RGB movement, actual press/release, sampled RSS and complete source/frontend/
-   executable/engine/profile/firmware joins. Only after those and every enabled
-   final-head check pass, merge normally with matched-head protection, verify
-   parents/tree, update these records and close both existing claims. Preserve
-   other owners' vendor/importer/package changes.
+4. **Done — source, emitted assets and original native identity.** The full
+   source run40783464522 and native40803428616 passed on consumer48df0f93.
+   Independent original audit verified all 8,563 frontend files, 184 native sources
+   and executable SHA256 b1e644b68b203e196f25203ed2424220b2fcff15766f31cee32ba245b45c8a38.
+   Runtime glue, Wasm and profile exactly match the locked release. Native compile
+   defaults are unchanged. Original acquisition, installation and test failures
+   remain retained with the bounded repairs in the current handoff.
+5. **Consumer acceptance recorded; source landed with an enabled-check failure.**
+   Three fresh actual Chromium and three installed Tauri/WebKit game instances
+   passed, with the recorded independent RGB, input, memory and identity readback.
+   The composed SPIKE package passed 13 installed lifecycle cases. PR1533 merged
+   as `9f1a620f2aae5ee988ed02069a8bf34c18949123`; reviewed parents and tree matched
+   the landed merge. Seventeen checks passed, but the enabled admission check
+   failed. Follow the [handoff's forward qualification steps](SAMD-NATIVE-GAME-HANDOFF.md#continuation-boundaries)
+   for the selected-tier policy, final-head checks and retained-original binding
+   review before claiming that closure.
 
 ## Separate work
 

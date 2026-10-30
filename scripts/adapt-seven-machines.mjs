@@ -33,7 +33,16 @@ if(id==='tilt-lab'){
   put(`guard_contact_${z}`,'32316.dat',4,[-120,40,z],[0,0,1,0,1,0,-1,0,0]);
  }
 }
-if(id==='twinpoint')for(const p of model.parts)if(['linkBP','linkCP'].includes(p.id))p.part='4586.dat';
+if(id==='twinpoint'){
+ for(const p of model.parts){
+  if(['linkBP','linkCP'].includes(p.id))p.part='4586.dat';
+  if(p.id==='hingeP'){
+   // The stock 3/4 pin's connector is at local X=-5, not its origin.
+   // Translate along the unchanged local X axis to preserve the pivot centre.
+   p.part='32002.dat';p.position=p.position.map((v,i)=>v+5*p.rotation[3*i]);
+  }
+ }
+}
 if(id==='stride-lab'){
  model.parts=model.parts.filter(p=>p.id!=='hubMountPin80_0');
  const pin=model.parts.find(p=>p.id==='footBasePin80_0');pin.part='6558.dat';pin.position[1]=220;

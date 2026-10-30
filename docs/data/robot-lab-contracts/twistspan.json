@@ -1,0 +1,119 @@
+{
+  "revision": "prequalification-v3",
+  "model": "TwistSpan — bifilar torsion pendulum",
+  "physicalQuestion": "Does halving the separation of two equal-length fixed suspension cords approximately double the passive yaw oscillation period while the payload mass and inertia remain unchanged?",
+  "baseline": "e4ad97aaa7c84f387ee7fe314d782844abcc9722",
+  "units": {
+    "lduMm": 0.4,
+    "cordLengthLdu": 260,
+    "outerHalfSpacingLdu": 80,
+    "innerHalfSpacingLdu": 40
+  },
+  "assemblies": [
+    "freestanding chassis containing hub and motor stator",
+    "motor rotor, keyed axle and yellow upper bar",
+    "one independent orange payload with all four tie fittings"
+  ],
+  "markers": {
+    "chassis": [
+      "hub",
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "upper": [
+      "upper_bar",
+      [
+        0,
+        0,
+        -120
+      ],
+      [
+        0,
+        0,
+        120
+      ]
+    ],
+    "payload": [
+      "payload_bar",
+      [
+        0,
+        0,
+        -120
+      ],
+      [
+        0,
+        0,
+        120
+      ]
+    ],
+    "lowerTies": [
+      "lower_tie_-80",
+      "lower_tie_80"
+    ]
+  },
+  "topology": {
+    "hubs": 1,
+    "actuators": 1,
+    "motorPort": "A",
+    "ropeCouplings": 2,
+    "fixedDrumJoints": true,
+    "payloadMechanicalJoints": 0,
+    "dynamicAssemblies": 3
+  },
+  "program": {
+    "targetsDeg": [
+      0,
+      20,
+      0
+    ],
+    "speedsDps": [
+      60,
+      10
+    ],
+    "observationHoldSeconds": 18,
+    "finalHoldSeconds": 6,
+    "watchdogSeconds": 40,
+    "completion": "motor A returned to its encoder datum in hold; passive payload may continue to ring down"
+  },
+  "qualifiedEnvelope": {
+    "motorAbsDegMax": 23,
+    "payloadRelativeYawAbsDegMax": 30,
+    "payloadRollPitchDegMax": 3,
+    "chassisTiltDegMax": 2,
+    "chassisTranslationMmMax": 2,
+    "payloadHorizontalCentreDriftMmMax": 2
+  },
+  "nativeGates": {
+    "cyclesMin": 6,
+    "periodRelativeErrorMax": 0.08,
+    "innerOuterPeriodRatioMin": 1.85,
+    "innerOuterPeriodRatioMax": 2.15,
+    "passiveYawPeakToPeakDegMin": 5,
+    "cordLengthErrorMmMax": 0.25,
+    "riseEquationErrorMmMax": 0.25,
+    "encoderArrivalErrorDegMax": 1,
+    "coldSeconds": 2,
+    "afterSeconds": 3,
+    "frameMs": 16.666666666666668,
+    "fixedCordCommandFreeLengthErrorMmMax": 1e-06
+  },
+  "physicalLimits": "No physical yaw end stops. Cords remain attached in full rotation but may touch/wrap outside the checked envelope. Native strings have no contact, knot, bending, mass or compliance model. Manual target bounds are operating instructions, not mechanical stops.",
+  "clearance": "Check saved solids plus observed full native trajectory and a conservative independent ±30 degree rotor/payload yaw envelope; inspect actual meshes for any primitive-collider objections. No broad collision disabling.",
+  "causalComparison": "All LDraw placements, payload mass/inertia, program bytes, cord count and length are identical in the inner variant. Only the two selected matched tie pairs move from ±80 to ±40 LDU.",
+  "observerChallenge": "A frozen payload pose recording must fail the motion/cycle gates. This is an observer test, not another physical run.",
+  "untestedUntilObserved": [
+    "App browser import/Blocks/controls/rendering",
+    "Physical hardware build"
+  ],
+  "revisionReason": "Observer corrections before fresh qualification: distinguish initial float32 DistanceConstraint state at t=0 from the fixed cord length commanded before each native integration, and derive a truly perpendicular payload tilt axis from the delivered marker geometry. In the recorded final placement the former world-z transverse reference duplicated the longitudinal marker axis. The original v3 failure is preserved. Geometry, program, and all physical acceptance thresholds remain unchanged from contract-v2.",
+  "observer": {
+    "revision": "twistspan-observer-v2",
+    "fixedCordFreeLengthScope": "Apply the existing 1e-6 mm native fixed-cord commanded-free-length threshold only after at least one native integration, identified by session time t>0. Report the unstepped t=0 cold snapshot separately. Every geometric, motion, support, and envelope gate continues to include that snapshot.",
+    "initialStateSemantics": "Before the first step, DistanceConstraint starts with the float32 measured initial endpoint distance. Before every native step, createRopes.beforeStep sets the declared fixed length. The initial constraint state is not a motor command or integrated physics output.",
+    "transverseAxis": "Derive the initial horizontal transverse direction as normalize(cross(worldUp, initial payload marker axis)), and carry it with the observed payload. This is perpendicular to the long marker axis, independent of LDraw placement orientation.",
+    "periodFit": "Stage 1 with held=1, excluding the first 0.5 seconds; positive zero crossings linearly interpolated with 0.1 degree hysteresis; no predicted period used in crossing extraction."
+  }
+}

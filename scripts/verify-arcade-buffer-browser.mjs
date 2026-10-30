@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import {openCodeActions as openCodeMenu} from './lib-code-actions.mjs';
 // Visible authoring and field edits only. VM/Blockly access observes; no injected programs or heap mutations.
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
@@ -129,7 +130,7 @@ try {
   await cycle('saved-and-reopened');report.journey.push('real controller A/B/down → Code/Blocks reconstruction → File save/replacement/reopen → controller repeat');
   await page.screenshot({path:path.join(path.dirname(out),'buffer-native-blocks.png')});
   await codeTab();const actions=page.getByTestId('bw-code-actions');
-  if(await actions.getAttribute('open')===null)await actions.locator('summary').click();
+  await openCodeMenu(page);
   await page.getByTestId('bw-makecode-arcade-export').waitFor({state:'visible'});
   const [download]=await Promise.all([page.waitForEvent('download'),page.getByTestId('bw-makecode-arcade-export').click()]);assert.match(download.suggestedFilename(),/\.mkcd$/);
   const mkcd=path.join(path.dirname(out),'buffer-export.mkcd');await download.saveAs(mkcd);

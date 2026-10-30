@@ -44,8 +44,10 @@ test('bundled examples wait for the no-device Tools menu', () => {
         'showing Code must not fetch its optional bundled-example picker');
 
     const menu = source.slice(source.indexOf('renderActionMenu (csel)'), source.indexOf('render ()'));
-    assert.match(menu, /onToggle=\{event => \{[\s\S]*actionsOpen: event\.currentTarget\.open/,
-        'the component must retain whether Tools is open across device changes');
+    assert.match(menu, /onToggle=\{\(\) => this\.setState\(state => \(\{actionsOpen: !state\.actionsOpen\}\)\)\}/,
+        'the popup must retain whether Tools is open across device changes');
+    assert.match(menu, /onClose=\{\(\) => this\.setState\(\{actionsOpen: false\}\)\}/,
+        'dismissal must clear the same state that drives deferred example loading');
     const update = source.slice(source.indexOf('componentDidUpdate (prevProps, prevState)'),
         source.indexOf('readAutosave ()'));
     assert.match(update,

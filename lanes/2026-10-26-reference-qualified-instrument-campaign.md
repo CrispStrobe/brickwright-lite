@@ -6,6 +6,51 @@ HANDOFF PREPARED — circuit/instrument campaign remains incomplete. Initial Lit
 This is a new six-item sequence. The prior five-item campaign and its six-file
 closeout remain complete, with their original evidence and limits.
 
+## Transferred delivery checkpoint — 2026-10-29
+
+PR1538 was closed without merging to consolidate the queue. Its complete
+source ancestry is preserved in PR1536, whose main landing remains pending.
+Do not reopen the old PR or infer main adoption from its closure.
+
+The operator transferred remaining PR1536 integration, fixes, qualification,
+normal landing, deployment and final documentation here. Preserve the original
+source ancestry and exact CUI `4b65f154` adoption; Board stays unchanged.
+Packaged native confirmation is accepted at `17bbefca`; measured editor/menu
+repairs are checkpointed at `a0c0a60e`, with final acceptance still pending.
+Fast-tier PR checks are the default and no `ci:full` labels are to be applied.
+Claim PR1558 scopes only policy admission of actual selected execution, not
+weaker test coverage. Registration landed at `f5acf3b3`; its bounded repair is
+published in combined PR1536 head `0f5dca52`.
+All enabled final-head checks, exact-bound affected GUI/FPGA evidence, the
+unchanged profiling-byte guard, actual main and production delivery remain owed.
+No completed study replay or duplicate original intake is authorized. Keep
+historical seals distinct from live package contracts. This remains an active,
+incomplete six-item sequence; no seventh lane is opened.
+
+
+The frozen combined successor is `2e7846f8a901726a296e3a8ef006cff24bc457b5`.
+It includes main `19c073bd` and both registered CI follow-through repairs:
+selected-tier admission and supported-event numeric-consumer selection. The
+manual consumer is skipped because its existing artifact trust admits push/PR
+only; successful supported events remain required. The obsolete wiring-message
+assertion now executes the real classifier-output forwarding and verifies its
+tier bindings. Locally, 39 focused CI controls and 11 gate-shape checks pass,
+and three isolated wiring mutants fail. These are source controls, not browser
+or delivery acceptance. The reduced FPGA browser journey now switches all three
+workspaces and checks visibility, selected controls and exact retained node/HDL
+state; its live synthesis path remains byte-identical. Actual hosted acceptance
+is still required. The preceding `09a4f407` run set was superseded before any
+child started; cancellation followed explicit zero-running-child verification.
+
+Fresh fast [Build40869114327](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40869114327)
+and necessary full [Build40869128682](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40869128682)
+are pending on that exact source. The earlier manual run `40856189963` was
+cancelled before application execution after its unsupported consumer context
+was identified; it is not qualification. The prior fast head `d32860b8` had one
+real unit-2 wiring-assertion failure. Both originals remain distinct from this
+successor; neither failures nor cancelled checks are waived. No main landing or
+production deployment is claimed yet.
+
 ## Initial ownership and repository authority
 
 This claim initially owns this lane record and read-only inventory/reference
@@ -138,3 +183,75 @@ stop conditions are in the
 which supersedes the 2026-10-27 closeout above. This claim stays open until
 items 3–6 resolve and the campaign is reconciled; it does not cover a seventh
 item.
+
+## Combined continuation — 2026-10-28
+
+The source continuation is published in Lite PR1538, containing
+the original PR1516/1515/1517 heads and exact CUI `373d562b` adoption with
+Board `8785e468` unchanged. Scope causality controls are accepted for the
+injected re-render mechanism. Eleven minimal-consumer actual CLI tests pass;
+whole-application exact-head qualification and source landing remain pending.
+Historical studies keep their measured supplier identities and unchanged
+source bytes. The active handoff supersedes older pending instructions; no
+new experiment, duplicate qualification or seventh implementation is implied.
+
+Forward checkpoint `93aba754` preserves the earlier `e85dc904` hosted measurement
+observations at their original identity. It repairs the unit-6 documentation-
+trigger omission by moving the LM741 TODO record to a dedicated receipt; all
+numerical assertions, pins and workflow policy remain unchanged. Fresh exact-head
+qualification and final application acceptance are still pending.
+
+## Coordinated delivery custody — 2026-10-28
+
+The [menu/workspace delivery claim](2026-10-28-circuit-menu-workspace-delivery.md)
+now owns the CUI PR131 promotion, explicit Lite package adoption and combined
+editor/menu/circuit source landing. Preserve complete frozen `93aba754` ancestry,
+the unchanged Board pin and historical study seals. No independent circuit
+source merge or competing package refresh proceeds during this delivery.
+Circuit retains numerical-original acquisition/readback and the four campaign
+documentation surfaces. The exact combined head, pins, run and job must bind the
+independent reader before original acquisition; no numerical predicate changes
+or consumed-study replay. Every enabled full application check applies to the
+combined UI target. This handover does not close the campaign: actual qualified
+application evidence, integrated-head reconciliation and final documentation
+remain required; deployment is reported only from its own evidence.
+
+At frozen `93aba754`, all six hosted unit shards now pass. The corrected
+unit-shard-6 original confirms the three long-capture assertions, original
+refusals, four historical seals and repaired documentation-trigger check;
+zero ordinary failures, with four declared Arcade TODOs preserved. The separate
+Arcade qualification is still queued at this checkpoint. This is not the final
+combined application result and does not release an independent source merge.
+
+Read-only consumer preflight identified a further adoption requirement in
+`scripts/verify-circuit-ux.mjs`: three Open locators and one Import locator expect
+old emoji labels, and popup/zoom/import-format queries assume the menu remains
+inside the designer. CUI's new menu portals to the document body. The delivery
+owner must bind the popup through the originating trigger's `aria-controls`,
+adapt the real button/filechooser paths and retain the existing numerical,
+layout, capture, ADC and refusal assertions. Cramped navigation must keep its
+coverage. This is a source finding, not an executed browser failure; it grants
+no permission to weaken the checks or start a competing circuit source writer.
+
+### Frozen source fast-tier terminal result — 2026-10-29
+
+Exact `93aba75473e65042925928fe8c1a0a4427fd59ca` has 17 successful checks,
+nine declared skips and zero pending checks; Arcade official build succeeded.
+The sole red verdict is absent `ci:full`, covered only by the operator's earlier
+fast-tier ruling for this predecessor. Overall Build is not relabelled green.
+Both predecessor observers are stopped. Source/pin landing custody remains
+with the combined delivery owner; its full application target must pass every
+enabled check. Final application evidence, integrated-head reconciliation and
+four-document closeout remain pending. No consumed study was replayed.
+
+### Supplier landed; combined consumer pending — 2026-10-29
+
+CUI PR131 landed `4b65f15485abbc039958d8e1a8a29ac3459b75f9`, with all three
+enabled checks and retained browser evidence accepted. The coordinated delivery
+owner is preparing its explicit Lite return with the complete frozen circuit
+ancestry and editor/menu source. Circuit retains scientific-original custody
+and these four documentation surfaces. No new numerical or browser qualification
+is inferred from supplier landing. Preserve original readers and consumed-study
+seals; distinguish them from the live authored regression contract and package
+assertions, which must track the adopted identity without replaying studies.
+The final combined application and documentation endpoints remain open.

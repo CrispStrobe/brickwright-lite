@@ -829,6 +829,119 @@ export const MODEL_LESSONS = Object.freeze({
             "markiertes Lineal"
         ]
     },
+    "tipline.ldr": {
+        "pieces": 174,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "forces",
+        "description": {
+            "en": "One motor tilts two equally heavy free towers with low or high internal ballast. In the native recordings, high ballast tips near 15° and low ballast slides near 22°. Swap the ballast heights between lanes; a tall passive wall arrests the later motion.",
+            "de": "Ein Motor neigt zwei gleich schwere freie Türme mit tiefem oder hohem innerem Ballast. In den nativen Aufzeichnungen kippt die hohe Anordnung bei etwa 15°; die tiefe rutscht bei etwa 22°. Vertausche die Ballasthöhen zwischen den Spuren; eine hohe passive Wand fängt die spätere Bewegung ab."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "matched-load incline: center of mass, friction and first instability",
+            "de": "Neigungsversuch mit gleichen Lasten: Schwerpunkt, Reibung und erste Instabilität"
+        },
+        "keywords": [
+            "matched-load incline: center of mass, friction and first instability",
+            "Neigungsversuch mit gleichen Lasten: Schwerpunkt, Reibung und erste Instabilität",
+            "Tipline",
+            "inclined plane",
+            "tilting deck",
+            "sliding",
+            "tipping",
+            "center of mass",
+            "ballast height",
+            "same mass",
+            "friction",
+            "static stability",
+            "lane swap",
+            "schiefe Ebene",
+            "Rutschen",
+            "Kippen",
+            "Schwerpunkt",
+            "Ballasthöhe",
+            "Reibung",
+            "Standfestigkeit",
+            "passive catch wall",
+            "Auffangwand"
+        ]
+    },
+    "twistspan.ldr": {
+        "pieces": 107,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "forces",
+        "description": {
+            "en": "One motor turns an upper bar; two fixed 104 mm cords suspend a separate passive payload. Compare 64 mm and 32 mm tie spacing with the same rigid parts: the recorded period changes from about 0.77 s to 1.52 s.",
+            "de": "Ein Motor dreht den oberen Balken; zwei feste 104-mm-Schnüre tragen eine eigene passive Last. Vergleiche 64 mm und 32 mm Befestigungsabstand bei denselben starren Teilen: Die aufgezeichnete Periode ändert sich von etwa 0,77 s auf 1,52 s."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "bifilar torsional pendulum",
+            "de": "bifilares Torsionspendel"
+        },
+        "keywords": [
+            "bifilar torsional pendulum",
+            "bifilares Torsionspendel",
+            "bifilar",
+            "two cords",
+            "fixed-length suspension",
+            "torsional pendulum",
+            "gravity",
+            "moment of inertia",
+            "attachment spacing",
+            "passive oscillation",
+            "Zweifadenpendel",
+            "Torsionspendel",
+            "Schwerkraft",
+            "Trägheitsmoment",
+            "Fadenabstand"
+        ]
+    },
+    "swayshift.ldr": {
+        "pieces": 204,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "forces",
+        "description": {
+            "en": "One motor drives a rack trolley through a 3:1 speed increase. A freely hinged rigid pendulum has a 216 mm hole span. Compare the same nominal 22 mm + 22 mm transfer with half-period or full-period timing between move starts, then observe the passive load after arrival.",
+            "de": "Ein Motor bewegt einen Zahnstangenschlitten mit dreifacher Ausgangsdrehzahl. Das frei gelagerte starre Pendel hat 216 mm Abstand zwischen den äußeren Löchern. Vergleiche dieselbe Sollfahrt von 22 mm + 22 mm mit einer halben oder einer ganzen Periode zwischen den Bewegungsstarts und beobachte das Nachschwingen."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "3:1 gear-driven rack trolley and passive rigid pendulum: finite command shaping",
+            "de": "Zahnstangenschlitten mit 3:1-Zahnradantrieb und passivem starrem Pendel: Formung endlicher Fahrbefehle"
+        },
+        "keywords": [
+            "3:1 gear-driven rack trolley and passive rigid pendulum: finite command shaping",
+            "Zahnstangenschlitten mit 3:1-Zahnradantrieb und passivem starrem Pendel: Formung endlicher Fahrbefehle",
+            "SwayShift",
+            "input shaping",
+            "command shaping",
+            "anti-sway",
+            "residual vibration",
+            "passive pendulum",
+            "rack trolley",
+            "half period",
+            "phase cancellation",
+            "Eingangsformung",
+            "Nachschwingen",
+            "Pendel",
+            "Zahnstangenschlitten",
+            "halbe Periode"
+        ]
+    },
     "samebeat.ldr": {
         "pieces": 92,
         "motors": 1,
@@ -1090,6 +1203,114 @@ export const MODEL_LESSONS = Object.freeze({
             "Reversionspendel",
             "physikalisches Pendel",
             "konjugierte Aufhängepunkte"
+        ]
+    },
+    "phasor-twin.ldr": {
+        "pieces": 63,
+        "motors": 1,
+        "hubs": [],
+        "topic": "linkages",
+        "description": {
+            "en": "Two crank-slider pistons driven through a 40-tooth idler run with their crank throws 90° apart. Plotted against each other, the two passive piston displacements trace a closed loop of area π r² per crank turn: 803.9 mm² against 804.25 mm² for r = 16 mm.",
+            "de": "Zwei Schubkurbel-Kolben, über ein 40-Zahn-Zwischenrad angetrieben, laufen mit um 90° versetzten Kurbeln. Gegeneinander aufgetragen umschließen die beiden passiven Kolbenwege je Kurbelumdrehung eine Schleife der Fläche π r²: 803,9 mm² gegenüber 804,25 mm² für r = 16 mm."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Two crank-sliders clocked 90° apart (Stirling phase loop)",
+            "de": "Zwei Schubkurbeln mit 90° Versatz (Stirling-Phasenschleife)"
+        },
+        "keywords": [
+            "Two crank-sliders clocked 90° apart (Stirling phase loop)",
+            "Zwei Schubkurbeln mit 90° Versatz (Stirling-Phasenschleife)",
+            "Stirling cycle",
+            "Stirling engine",
+            "alpha Stirling",
+            "Schmidt analysis",
+            "phase angle",
+            "90 degree volume phase",
+            "quadrature piston phasing",
+            "kinematic Stirling analogy",
+            "crank-slider",
+            "Stirling-Zyklus",
+            "Stirling-Motor",
+            "Alpha-Stirling",
+            "Schmidt-Analyse",
+            "Phasenwinkel",
+            "90-Grad-Volumenphase",
+            "Phasenquadratur"
+        ]
+    },
+    "final-squeeze.ldr": {
+        "pieces": 168,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "forces",
+        "description": {
+            "en": "One motor straightens two equal links against a stock shock load. The passive platen advances less per degree near alignment while the ideal output force per input torque rises. The finite program stops short of dead centre and returns.",
+            "de": "Ein Motor streckt zwei gleich lange Glieder gegen eine Federlast. Die passive Druckplatte bewegt sich nahe der Strecklage je Grad weniger, während die ideale Ausgangskraft je Eingangsdrehmoment steigt. Das endliche Programm bleibt vor dem Totpunkt und kehrt zurück."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Equal-link knee press with passive spring-loaded platen",
+            "de": "Kniehebelpresse mit gleichen Gliedern und passiver federbelasteter Druckplatte"
+        },
+        "keywords": [
+            "Equal-link knee press with passive spring-loaded platen",
+            "Kniehebelpresse mit gleichen Gliedern und passiver federbelasteter Druckplatte",
+            "knee press",
+            "toggle press",
+            "equal-link slider-crank",
+            "mechanical advantage",
+            "virtual work",
+            "shock absorber",
+            "platen",
+            "Kniehebelpresse",
+            "Kniehebel",
+            "Totpunkt",
+            "virtuelle Arbeit",
+            "Kraftübersetzung",
+            "Feder",
+            "Druckplatte"
+        ]
+    },
+    "high-select.ldr": {
+        "pieces": 288,
+        "motors": 2,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "forces",
+        "description": {
+            "en": "Two independently driven supports lift a separate gravity-loaded bridge. The higher support determines its settled height. Compare lower-input motion, handover and equal-height ties, then exchange the two input sequences.",
+            "de": "Zwei unabhängig angetriebene Stützen heben eine separate, schwerkraftbelastete Brücke. Die höhere Stütze bestimmt ihre Höhe nach dem Einschwingen. Vergleiche Bewegungen der niedrigeren Eingabe, den Kontaktwechsel und gleiche Höhen; vertausche anschließend die beiden Eingabefolgen."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Gravity-loaded unilateral maximum selector",
+            "de": "Schwerkraftbelasteter Maximumwähler mit einseitigen Kontakten"
+        },
+        "keywords": [
+            "Gravity-loaded unilateral maximum selector",
+            "Schwerkraftbelasteter Maximumwähler mit einseitigen Kontakten",
+            "mechanical maximum",
+            "maximum selector",
+            "MAX",
+            "rack",
+            "gravity",
+            "contact",
+            "handover",
+            "commutativity",
+            "mechanisches Maximum",
+            "Maximumwähler",
+            "Zahnstange",
+            "Schwerkraft",
+            "Kontaktwechsel",
+            "Kommutativität"
         ]
     },
     "watt-line.ldr": {

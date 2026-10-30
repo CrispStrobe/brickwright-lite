@@ -119,6 +119,9 @@ export function guiRunnerProducerSource(workflowText) {
     const outputAt = build.indexOf('    outputs:\n');
     same(build.slice(outputAt).split(/(?=^    [a-z][a-z-]*:)/m)[0], expectedOutput, 'Closed producer output keys');
     assert.ok(/^    needs: build$/m.test(consumer), 'Exact same-workflow build dependency');
+    same([...consumer.matchAll(/^    if: (.+)$/gm)].map(match => match[1]).join('\n'),
+        "needs.build.result == 'success' && (github.event_name == 'push' || github.event_name == 'pull_request')",
+        'Supported official GUI consumer events');
     same([...consumer.matchAll(/^      (BW_GUI_PRODUCER_[A-Z0-9_]+):/gm)].map(match => match[1]).sort().join(','), [GUI_RUNNER_ENV, 'BW_GUI_PRODUCER_RESULT'].sort().join(','), 'Closed consumer producer inputs');
     for (const [key, expression] of [[GUI_RUNNER_ENV, '${{ needs.build.outputs.gui_producer_runner_v1 }}'],
         ['BW_GUI_PRODUCER_RESULT', '${{ needs.build.result }}']]) {

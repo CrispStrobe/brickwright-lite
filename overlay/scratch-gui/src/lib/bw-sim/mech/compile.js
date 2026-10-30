@@ -179,6 +179,9 @@ const toCatalogMap = catalog => {
  * @returns {object} CompiledMechanism
  */
 export const compile = (model, catalog, opts = {}) => {
+    if (model?.motorDirection !== undefined && !['legacy', 'motor-frame'].includes(model.motorDirection)) {
+        throw new RangeError('motorDirection must be legacy or motor-frame');
+    }
     const diagnostics = [];
     const catalogMap = toCatalogMap(catalog);
     const kinds = opts.kinds || BUILTIN_KINDS;
@@ -273,7 +276,7 @@ export const compile = (model, catalog, opts = {}) => {
     // Every weld merges two islands, so this settles in at most one pass per node.
     for (let pass = 0; pass <= nodes.size + 1; pass++) {
         islands = buildIslands(nodes, graphEdges, catalogMap, diagnostics, opts, extraRigidPairs);
-        jointsResult = buildJoints(nodes, graphEdges, islands, diagnostics);
+        jointsResult = buildJoints(nodes, graphEdges, islands, diagnostics, {motorDirection: model.motorDirection || 'legacy'});
         if (jointsResult.lockedPairs.length > 0) {
             jointsResult.lockedPairs.forEach(([bA, bB], i) => {
                 const parts = (jointsResult.lockedParts && jointsResult.lockedParts[i]) || [];

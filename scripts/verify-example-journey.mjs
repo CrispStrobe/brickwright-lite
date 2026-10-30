@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import {openCodeActions as openCodeMenu, closeCodeActions as closeCodeMenu} from './lib-code-actions.mjs';
 /**
  * CI-only production-browser proof for the example journey (Lane U).
  *
@@ -225,13 +226,7 @@ try {
     // honestly NOT VISIBLE — which is what Playwright said all along, while I
     // read it first as a bad selector and then as a panel covering it.
     const actions = page.locator('[data-testid="bw-code-actions"]');
-    const openActions = async () => {
-        if (await actions.evaluate(el => el.open)) return;
-        await actions.locator('summary').click();
-        await page.waitForFunction(() =>
-            document.querySelector('[data-testid="bw-code-actions"]')?.open === true,
-        null, {timeout: 15000});
-    };
+    const openActions = async () => openCodeMenu(page, {timeout: 15000});
     const openCatalog = async () => {
         await openActions();
         if (await toggle.getAttribute('aria-expanded') !== 'true') await toggle.click();

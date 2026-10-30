@@ -256,7 +256,14 @@ try {
     await tablet.mouse.up();
     await tablet.locator('[aria-label="Select"], [title="Select"]').first().tap();
     await tablet.getByTestId('bw-bitmap-select-wand').tap();
-    await tablet.mouse.click(tabletBox.x + tabletBox.width * .36, tabletBox.y + tabletBox.height * .16);
+    const selectionBox = await editor(tablet).boundingBox();
+    await tablet.mouse.click(selectionBox.x + selectionBox.width * .36, selectionBox.y + selectionBox.height * .16);
+    console.log('TABLET_BITMAP_SELECTION_BOUNDARY', JSON.stringify(await editor(tablet).evaluate(node => {
+        const box = node.getBoundingClientRect();
+        const selected = window.__brickwrightStore.getState().scratchPaint.selectedItems;
+        return {canvas: {x: box.x, y: box.y, width: box.width, height: box.height},
+            selectedItems: selected.length};
+    })));
     const touchTurn = tablet.getByTestId('bw-bitmap-select-rotate-cw');
     const touchTurnBox = await touchTurn.boundingBox();
     assert.ok(touchTurnBox.width >= 44 && touchTurnBox.height >= 44 && touchTurnBox.x >= 0 &&

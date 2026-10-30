@@ -6,6 +6,7 @@ import {existsSync} from 'node:fs';
 import {extname, join, normalize, resolve, dirname} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {chromium} from 'playwright';
+import {openCircuitActions, circuitFileControl} from './lib/circuit-actions.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const build = join(root, 'packages', 'scratch-gui', 'build');
@@ -331,17 +332,22 @@ try {
     const designer = dedicatedDesigner;
     check('Circuit Designer rendered', await designer.count() >= 1);
     // Shrinking the editor moves secondary navigation into the existing overflow menu.
+    // bw-circuit-ui portals that overflow menu to <body>, so the navigation is
+    // looked up in the designer first and then in its own open overflow popup.
+    const moreTrigger = designer.getByRole('button', {name: 'More circuit controls'});
+    const overflowMenu = page.locator('[data-toolbar-more-menu]:visible');
+    let navigation = designer;
     const ensureCircuitNavigation = async () => {
-        if (!await designer.locator('[data-circuit-view-toggle]').count()) {
-            await designer.getByRole('button', {name: 'More circuit controls'}).click();
-            await designer.locator('[data-circuit-view-toggle]').waitFor({state: 'visible'});
-        }
+        if (await designer.locator('[data-circuit-view-toggle]').count()) { navigation = designer; return; }
+        if (!await overflowMenu.locator('[data-circuit-view-toggle]').count()) await moreTrigger.click({force: true});
+        await overflowMenu.locator('[data-circuit-view-toggle]').waitFor({state: 'visible'});
+        navigation = overflowMenu;
     };
     await ensureCircuitNavigation();
     const modeToggle = designer.locator('[data-build-sim-toggle]');
     const toolbar = modeToggle.locator('..');
-    check('shared toolbar has view buttons', await designer.locator('[data-circuit-view-toggle] [aria-label="Realistic view"]').count() >= 1 && await designer.locator('[data-circuit-view-toggle] [aria-label="Schematic view"]').count() >= 1 && await designer.locator('[data-circuit-view-toggle] [aria-label="Board view"]').count() >= 1);
-    const viewToggle = designer.locator('[data-circuit-view-toggle]').first();
+    check('shared toolbar has view buttons', await navigation.locator('[data-circuit-view-toggle] [aria-label="Realistic view"]').count() >= 1 && await navigation.locator('[data-circuit-view-toggle] [aria-label="Schematic view"]').count() >= 1 && await navigation.locator('[data-circuit-view-toggle] [aria-label="Board view"]').count() >= 1);
+    const viewToggle = navigation.locator('[data-circuit-view-toggle]').first();
     const viewState = await viewToggle.getByRole('radio').evaluateAll(buttons => buttons.map(button => ({
         label: button.getAttribute('aria-label'),
         checked: button.getAttribute('aria-checked')
@@ -354,14 +360,14 @@ try {
     check('Build/Sim toggle segments have equal dimensions', modeMetrics.length === 2 && modeMetrics[0].width === modeMetrics[1].width && modeMetrics[0].height === modeMetrics[1].height, JSON.stringify(modeMetrics));
     // The warnings chip is a count-badged CHIP ("⚠ 3"), so its width is
     // content-driven by design; it still shares the 34px control height.
-    const toolbarButtonMetrics = await designer.locator('[data-circuit-toolbar] button:visible:not([data-warnings-chip])').evaluateAll(buttons => buttons.filter(button => !button.closest('[data-toolbar-more-menu]') || button.closest('[data-panel-navigation], [data-circuit-view-toggle]')).map(button => ({width: Math.round(button.getBoundingClientRect().width), height: Math.round(button.getBoundingClientRect().height)})));
+    const toolbarButtonMetrics = [...await designer.locator('[data-circuit-toolbar] button:visible:not([data-warnings-chip])').evaluateAll(buttons => buttons.filter(button => !button.closest('[data-toolbar-more-menu]') || button.closest('[data-panel-navigation], [data-circuit-view-toggle]')).map(button => ({width: Math.round(button.getBoundingClientRect().width), height: Math.round(button.getBoundingClientRect().height)}))), ...(navigation === designer ? [] : await overflowMenu.locator('[data-panel-navigation] button:visible, [data-circuit-view-toggle] button:visible').evaluateAll(buttons => buttons.filter(button => !button.closest('[data-toolbar-more-menu]') || button.closest('[data-panel-navigation], [data-circuit-view-toggle]')).map(button => ({width: Math.round(button.getBoundingClientRect().width), height: Math.round(button.getBoundingClientRect().height)}))))];
     check('toolbar buttons share one control size', toolbarButtonMetrics.length > 8 && toolbarButtonMetrics.every(metric => metric.width === 34 && metric.height === 34), JSON.stringify(toolbarButtonMetrics));
     const warningsChip = designer.locator('[data-circuit-toolbar] [data-warnings-chip]:visible');
     if (await warningsChip.count()) {
         const chipMetrics = await warningsChip.first().evaluate(el => ({height: Math.round(el.getBoundingClientRect().height)}));
         check('warnings chip shares the toolbar control height', chipMetrics.height === 34, JSON.stringify(chipMetrics));
     }
-    const toolbarGroupMetrics = await designer.locator('[data-circuit-toolbar] [data-circuit-control-group]:visible').evaluateAll(groups => groups.map(group => ({width: Math.round(group.getBoundingClientRect().width), height: Math.round((group.closest('[data-toolbar-more-menu]') ? group.firstElementChild : group).getBoundingClientRect().height), y: Math.round(group.getBoundingClientRect().y)})));
+    const toolbarGroupMetrics = [...await designer.locator('[data-circuit-toolbar] [data-circuit-control-group]:visible').evaluateAll(groups => groups.map(group => ({width: Math.round(group.getBoundingClientRect().width), height: Math.round((group.closest('[data-toolbar-more-menu]') ? group.firstElementChild : group).getBoundingClientRect().height), y: Math.round(group.getBoundingClientRect().y)}))), ...(navigation === designer ? [] : await overflowMenu.locator('[data-circuit-control-group]:visible').evaluateAll(groups => groups.map(group => ({width: Math.round(group.getBoundingClientRect().width), height: Math.round((group.closest('[data-toolbar-more-menu]') ? group.firstElementChild : group).getBoundingClientRect().height), y: Math.round(group.getBoundingClientRect().y)}))))];
     check('toolbar control groups stay touch-sized when rows wrap or enter the menu', toolbarGroupMetrics.length >= 4 && toolbarGroupMetrics.every(metric => metric.height >= 34 && metric.height <= 36), JSON.stringify(toolbarGroupMetrics));
     const modePaint = await modeToggle.getByRole('radio').evaluateAll(buttons => buttons.map(button => ({checked: button.getAttribute('aria-checked'), background: getComputedStyle(button).backgroundColor, color: getComputedStyle(button).color})));
     check('selected Build/Sim state is visibly painted', modePaint[0]?.checked === 'true' && modePaint[0].background !== modePaint[1].background && modePaint[0].background !== 'rgb(255, 255, 255)', JSON.stringify(modePaint));
@@ -369,30 +375,30 @@ try {
     check('power is a visible two-state toggle', await powerToggle.getByRole('radio').count() === 2 && await powerToggle.getByRole('radio', {name: 'Power on'}).getAttribute('aria-checked') === 'true');
     const powerPaint = await powerToggle.getByRole('radio').evaluateAll(buttons => buttons.map(button => ({checked: button.getAttribute('aria-checked'), background: getComputedStyle(button).backgroundColor})));
     check('selected power state is visibly painted', powerPaint[0]?.checked === 'true' && powerPaint[0].background !== powerPaint[1].background && powerPaint[0].background !== 'rgb(255, 255, 255)', JSON.stringify(powerPaint));
-    check('view buttons share the Build/Sim toolbar', await designer.locator('[data-circuit-view-switcher]').first().evaluate(el => !!el.closest('[data-circuit-toolbar]')?.querySelector('[data-build-sim-toggle]')));
-    const panelNavigation = designer.locator('[data-panel-navigation]');
+    check('view buttons share the Build/Sim toolbar', navigation === designer ?
+        await designer.locator('[data-circuit-view-switcher]').first().evaluate(el => !!el.closest('[data-circuit-toolbar]')?.querySelector('[data-build-sim-toggle]')) :
+        await moreTrigger.evaluate(el => !!el.closest('[data-circuit-toolbar]')?.querySelector('[data-build-sim-toggle]')) &&
+            await moreTrigger.getAttribute('aria-controls') === await overflowMenu.first().getAttribute('id'));
+    const panelNavigation = navigation.locator('[data-panel-navigation]');
     check('shared toolbar has panel navigation', await panelNavigation.count() === 1 && await panelNavigation.locator('button').count() >= 4, `containers=${await panelNavigation.count()} buttons=${await panelNavigation.locator('button').count()}`);
-    const panelButtonMetrics = await designer.getByRole('button', {name: 'Designer'}).evaluateAll(buttons => buttons.map(button => ({width: button.getBoundingClientRect().width, height: button.getBoundingClientRect().height})));
+    const panelButtonMetrics = await navigation.getByRole('button', {name: 'Designer'}).evaluateAll(buttons => buttons.map(button => ({width: button.getBoundingClientRect().width, height: button.getBoundingClientRect().height})));
     check('panel navigation uses compact equal buttons', panelButtonMetrics.length === 1 && panelButtonMetrics[0].width <= 42 && panelButtonMetrics[0].height >= 30, JSON.stringify(panelButtonMetrics));
     const toolbarBox = await toolbar.boundingBox();
     check('toolbar is touch-sized', !!toolbarBox && toolbarBox.height >= 40, toolbarBox ? `${toolbarBox.width}x${toolbarBox.height}` : 'missing');
     check('light presentation uses a light toolbar', await designer.locator('[data-circuit-toolbar]').evaluate(el => getComputedStyle(el).backgroundColor === 'rgb(248, 250, 252)'));
     const moreControls = designer.getByRole('button', {name: 'More circuit controls'});
     check('save/load/zoom controls have a single overflow slot', await moreControls.count() === 1 && await designer.locator('[data-toolbar-more]').count() === 1);
-    if (await moreControls.getAttribute('aria-expanded') === 'true') await moreControls.click();
-    await moreControls.click({force: true});
-    // The file controls were consolidated into the "..." overflow menu (owner
-    // request): Save / Load / Zoom plus Import ▸ / Export ▸ submenus, rather than
-    // the old standalone "Save wiring as file" / "Load wiring from file" buttons.
-    const moreMenu = designer.locator('[data-toolbar-more-menu]');
-    await moreMenu.first().waitFor({state: 'attached', timeout: 2000}).catch(() => {});
+    // The open popup can cover its own trigger in a narrow designer.
+    if (await moreControls.getAttribute('aria-expanded') === 'true') await moreControls.click({force: true});
+    // Follow this designer's trigger to its actual menu, including a body portal.
+    const moreMenu = await openCircuitActions(page, designer, {force: true, timeout: 2000});
     const menuN = await moreMenu.count();
     // The load control is labelled Open/Öffnen (File-menu convention), not "Load".
     const saveN = menuN ? await moreMenu.getByText(/Save|Speichern/).count() : 0;
     const openN = menuN ? await moreMenu.getByText(/Open|Öffnen/).count() : 0;
-    const zoomN = await designer.locator('[data-zoom-indicator]').count();
+    const zoomN = await moreMenu.locator('[data-zoom-indicator]').count();
     check('overflow slot exposes Save, Open, and Zoom', menuN >= 1 && saveN >= 1 && openN >= 1 && zoomN >= 1, `menu=${menuN} save=${saveN} open=${openN} zoom=${zoomN}`);
-    check('zoom indicator has readable contrast styling', await designer.locator('[data-zoom-indicator]').evaluate(el => getComputedStyle(el).color !== getComputedStyle(el.parentElement).backgroundColor));
+    check('zoom indicator has readable contrast styling', await moreMenu.locator('[data-zoom-indicator]').evaluate(el => getComputedStyle(el).color !== getComputedStyle(el.parentElement).backgroundColor));
     await moreControls.click({force: true});
     check('toolbar explicitly wraps when space is constrained', await designer.locator('[data-circuit-toolbar]').evaluate(el => getComputedStyle(el).flexWrap === 'wrap'));
 
@@ -430,7 +436,8 @@ try {
     await ensureCircuitNavigation();
     const examplesModeButton = page.locator('[data-panel-navigation] button[aria-label="Examples"]:visible').first();
     if (await examplesModeButton.count()) {
-        await examplesModeButton.click({force: true});
+        // A DOM click: the portalled overflow can scroll under a coordinate click.
+        await examplesModeButton.evaluate(button => button.click());
         await page.waitForTimeout(250);
         const examplesMode = page.locator('[data-examples-selector]:visible').last();
         const examplesContent = examplesMode.locator('[data-examples-selector-content]');
@@ -442,11 +449,11 @@ try {
             const metrics = await examplesContent.evaluate(el => ({scrollHeight: el.scrollHeight, clientHeight: el.clientHeight, overflowY: getComputedStyle(el).overflowY}));
             check('dedicated Examples mode is scrollable', metrics.scrollHeight > metrics.clientHeight && metrics.overflowY === 'auto', JSON.stringify(metrics));
         }
-        await page.locator('[data-panel-navigation] button[aria-label="Designer"]:visible').first().click({force: true});
+        await page.locator('[data-panel-navigation] button[aria-label="Designer"]:visible').first().evaluate(button => button.click());
         await page.waitForTimeout(150);
     }
     await ensureCircuitNavigation();
-    await designer.locator('[data-circuit-view-switcher] button[title="Schematic view"]').first().click();
+    await navigation.locator('[data-circuit-view-switcher] button[title="Schematic view"]').first().click();
     await page.waitForTimeout(150);
     const realisticEscape = page.locator('[data-schematic-escape] button[title="Realistic view"]');
     check('schematic view keeps an escape route', await realisticEscape.count() >= 1);
@@ -685,9 +692,9 @@ try {
             {id: 'signal', terminals: [{part: 'scope-v', terminal: 'pos'}, {part: 'scope-r', terminal: 'a'}, {part: 'scope-c', terminal: 'a'}]},
             {id: 'ground', terminals: [{part: 'scope-v', terminal: 'neg'}, {part: 'scope-r', terminal: 'b'}, {part: 'scope-g', terminal: 'gnd'}, {part: 'scope-c', terminal: 'b'}]}
         ]};
-        await designer.getByRole('button', {name: 'More circuit controls', exact: true}).click();
+        const scopeMenu = await openCircuitActions(scopePage, designer);
         const choosing = scopePage.waitForEvent('filechooser');
-        await designer.getByRole('button', {name: /^📂 Open$/}).click();
+        await (await circuitFileControl(scopeMenu, 'open')).click();
         await (await choosing).setFiles({name: 'scope-reset.json', mimeType: 'application/json',
             buffer: Buffer.from(JSON.stringify(fixture))});
         await scopePage.waitForFunction(() => window.__board === window.__circuit?.board
@@ -882,9 +889,9 @@ try {
             await meterPage.getByRole('tab', {name: /Circuit/}).click();
             const designer = meterPage.locator('.bw-circuit-designer:visible').last();
             await designer.locator('[data-canvas]').waitFor({timeout: 60000});
-            await designer.getByRole('button', {name: 'More circuit controls', exact: true}).click();
+            const meterMenu = await openCircuitActions(meterPage, designer);
             const choosing = meterPage.waitForEvent('filechooser');
-            await designer.getByRole('button', {name: /^📂 Open$/}).click();
+            await (await circuitFileControl(meterMenu, 'open')).click();
             await (await choosing).setFiles({name: 'lm741-current-authority.json', mimeType: 'application/json',
                 buffer: await readFile(join(root, 'test/fixtures/lm741-voltage-follower.json'))});
             await meterPage.waitForFunction(() => window.__board === window.__circuit?.board
@@ -965,9 +972,9 @@ try {
             {id:'ground',terminals:[{part:'adc-v',terminal:'neg'},{part:'adc-r',terminal:'b'},
               {part:'adc-g',terminal:'gnd'},{part:'adc-bad',terminal:'pos'},{part:'adc-bad',terminal:'neg'}]},
           ]};
-          await designer.getByRole('button',{name:'More circuit controls',exact:true}).click();
+          const adcMenu = await openCircuitActions(adcPage, designer);
           const choosing=adcPage.waitForEvent('filechooser');
-          await designer.getByRole('button',{name:/^📂 Open$/}).click();
+          await (await circuitFileControl(adcMenu, 'open')).click();
           await (await choosing).setFiles({name:'ideal-adc-bench.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(fixture))});
           await adcPage.waitForFunction(()=>window.__board === window.__circuit?.board
             && window.__circuit.parts.some(p=>p.id==='adc-v'));
@@ -1348,10 +1355,10 @@ try {
                 `M1 out gate source ${grounded ? '0' : 'source'} PM W=5u L=2u`,
                 '.model PM PMOS(LEVEL=1 VTO=-1 KP=100u LAMBDA=.02)', '.op', '.end', ''
             ].join('\n');
-            await designer.getByRole('button', {name: 'More circuit controls', exact: true}).click();
-            await designer.getByRole('button', {name: /^📥 Import/}).click();
+            const pmosMenu = await openCircuitActions(pmosPage, designer);
+            await (await circuitFileControl(pmosMenu, 'import')).click();
             const choosing = pmosPage.waitForEvent('filechooser');
-            await designer.locator('[data-import-format="spice"]').click();
+            await pmosMenu.locator('[data-import-format="spice"]').click();
             await (await choosing).setFiles({name: grounded ? 'pmos-ground-bulk.cir' : 'pmos-source-bulk.cir',
                 mimeType: 'text/plain', buffer: Buffer.from(text)});
             await pmosPage.waitForFunction(expectedSource => {

@@ -1,3 +1,4 @@
+import {openCodeActions as openCodeMenu} from './lib-code-actions.mjs';
 /**
  * Playwright verification: micro:bit MicroPython tab + simulator.
  *
@@ -288,7 +289,7 @@ async function verify () {
         // tab visibility predicate named microbit but omitted calliopemini.
         await deviceSelect.selectOption('microbit');
         const actions = page.locator('[data-testid="bw-code-actions"]');
-        if (!(await actions.getAttribute('open'))) await actions.locator('summary').click();
+        await openCodeMenu(page);
         const catalogToggle = page.locator('[data-testid="bw-catalog-toggle"]');
         await catalogToggle.waitFor({state: 'visible', timeout: 15000});
         await catalogToggle.click();

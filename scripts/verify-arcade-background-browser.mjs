@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import {openCodeActions as openCodeMenu} from './lib-code-actions.mjs';
+import {pixelControl} from './lib-pixel-controls.mjs';
 /** Visible Stage PNG → Pixel preset/painting → Code/Blocks → SB3 → original Arcade.
  * Product VM access observes only. Original PXT execution uses its normal simulator helper.
  */
@@ -194,7 +196,7 @@ try {
     await page.getByTestId('bw-pixel-add-layer').click();
     await page.getByTestId('bw-pixel-layers-toggle').click(); // close the floating panel before painting behind it
     for(const [x,y,colour] of AUTHORED_CORNERS){
-        await page.getByTestId(`bw-pixel-colour-${colour}`).click();
+        await (await pixelControl(page, `bw-pixel-colour-${colour}`)).click();
         await page.getByTestId('bw-pixel-tool-pencil').click();
         const canvas=page.getByTestId('bw-pixel-canvas');await canvas.scrollIntoViewIfNeeded();
         const box=await canvas.boundingBox();
@@ -265,7 +267,7 @@ try {
     report.journey.push('actual SB3 reopen retains160×120 editable source and exactrender');
     await openCode();
     const actions=page.getByTestId('bw-code-actions');
-    if(!(await actions.getAttribute('open')))await actions.locator('summary').click();
+    await openCodeMenu(page);
     const downloaded=page.waitForEvent('download');
     await page.getByTestId('bw-makecode-arcade-export').click();
     const download=await downloaded;assert.match(download.suggestedFilename(),/\.mkcd$/);

@@ -156,7 +156,7 @@ const SoundEditor = props => (
                 <div className={styles.buttonGroup}>
                     <button
                         className={styles.button}
-                        disabled={!props.canUndo}
+                        disabled={!props.canUndo || props.editingBusy}
                         title={props.intl.formatMessage(messages.undo)}
                         onClick={props.onUndo}
                     >
@@ -168,7 +168,7 @@ const SoundEditor = props => (
                     </button>
                     <button
                         className={styles.button}
-                        disabled={!props.canRedo}
+                        disabled={!props.canRedo || props.editingBusy}
                         title={props.intl.formatMessage(messages.redo)}
                         onClick={props.onRedo}
                     >
@@ -189,13 +189,14 @@ const SoundEditor = props => (
                 />
                 <IconButton
                     className={styles.toolButton}
-                    disabled={props.canPaste === false}
+                    disabled={props.canPaste === false || props.editingBusy}
                     img={pasteIcon}
                     title={props.intl.formatMessage(messages.paste)}
                     onClick={props.onPaste}
                 />
                 <IconButton
                     className={classNames(styles.toolButton, styles.flipInRtl)}
+                    disabled={props.editingBusy}
                     img={copyToNewIcon}
                     title={props.intl.formatMessage(messages.copyToNew)}
                     onClick={props.onCopyToNew}
@@ -203,7 +204,7 @@ const SoundEditor = props => (
             </div>
             <IconButton
                 className={styles.toolButton}
-                disabled={props.trimStart === null}
+                disabled={props.trimStart === null || props.editingBusy}
                 img={deleteIcon}
                 title={props.intl.formatMessage(messages.delete)}
                 onClick={props.onDelete}
@@ -216,14 +217,25 @@ const SoundEditor = props => (
                     height={160}
                     width={600}
                 />
-                <AudioSelector
-                    playhead={props.playhead}
-                    trimEnd={props.trimEnd}
-                    trimStart={props.trimStart}
-                    onPlay={props.onPlay}
-                    onSetTrim={props.onSetTrim}
-                    onStop={props.onStop}
-                />
+                <div
+                    aria-disabled={props.editingBusy}
+                    style={{position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        width: '100%',
+                        height: '100%',
+                        pointerEvents: props.editingBusy ? 'none' : 'auto'}}
+                >
+                    <AudioSelector
+                        disabled={props.editingBusy}
+                        playhead={props.playhead}
+                        trimEnd={props.trimEnd}
+                        trimStart={props.trimStart}
+                        onPlay={props.onPlay}
+                        onSetTrim={props.onSetTrim}
+                        onStop={props.onStop}
+                    />
+                </div>
             </div>
         </div>
         <div className={classNames(styles.row, styles.rowReverse)}>
@@ -254,18 +266,20 @@ const SoundEditor = props => (
             </div>
             <IconButton
                 className={styles.effectButton}
+                disabled={props.editingBusy}
                 img={fasterIcon}
                 title={<FormattedMessage {...messages.faster} />}
                 onClick={props.onFaster}
             />
             <IconButton
                 className={styles.effectButton}
+                disabled={props.editingBusy}
                 img={slowerIcon}
                 title={<FormattedMessage {...messages.slower} />}
                 onClick={props.onSlower}
             />
             <IconButton
-                disabled={props.tooLoud}
+                disabled={props.tooLoud || props.editingBusy}
                 className={classNames(styles.effectButton, styles.flipInRtl)}
                 img={louderIcon}
                 title={<FormattedMessage {...messages.louder} />}
@@ -273,36 +287,42 @@ const SoundEditor = props => (
             />
             <IconButton
                 className={classNames(styles.effectButton, styles.flipInRtl)}
+                disabled={props.editingBusy}
                 img={softerIcon}
                 title={<FormattedMessage {...messages.softer} />}
                 onClick={props.onSofter}
             />
             <IconButton
                 className={classNames(styles.effectButton, styles.flipInRtl)}
+                disabled={props.editingBusy}
                 img={muteIcon}
                 title={<FormattedMessage {...messages.mute} />}
                 onClick={props.onMute}
             />
             <IconButton
                 className={styles.effectButton}
+                disabled={props.editingBusy}
                 img={fadeInIcon}
                 title={<FormattedMessage {...messages.fadeIn} />}
                 onClick={props.onFadeIn}
             />
             <IconButton
                 className={styles.effectButton}
+                disabled={props.editingBusy}
                 img={fadeOutIcon}
                 title={<FormattedMessage {...messages.fadeOut} />}
                 onClick={props.onFadeOut}
             />
             <IconButton
                 className={styles.effectButton}
+                disabled={props.editingBusy}
                 img={reverseIcon}
                 title={<FormattedMessage {...messages.reverse} />}
                 onClick={props.onReverse}
             />
             <IconButton
                 className={styles.effectButton}
+                disabled={props.editingBusy}
                 img={robotIcon}
                 title={<FormattedMessage {...messages.robot} />}
                 onClick={props.onRobot}
@@ -316,6 +336,7 @@ SoundEditor.propTypes = {
     canRedo: PropTypes.bool.isRequired,
     canUndo: PropTypes.bool.isRequired,
     chunkLevels: PropTypes.arrayOf(PropTypes.number).isRequired,
+    editingBusy: PropTypes.bool,
     intl: intlShape,
     name: PropTypes.string.isRequired,
     onChangeName: PropTypes.func.isRequired,

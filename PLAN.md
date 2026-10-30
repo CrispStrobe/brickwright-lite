@@ -15,22 +15,86 @@ This document turns the product review into an ordered implementation plan.
 completed and rejected work. This file defines outcomes, sequencing and release
 gates.
 
-## Current circuit/instrument handoff — 2026-10-28
+## Current circuit/instrument handoff — 2026-10-29
 
 The [six-item campaign](lanes/2026-10-26-reference-qualified-instrument-campaign.md)
-is **not closed**. Items 1 (supplier return, Lite adoption and the v2 teaching
-study) and 2 (four historical disagreements) are accepted: Lite pins Board
-`c7bcbe4b` and CUI `da28bb8c` (PR1478), the v2 study passed 31/31 with no
-disagreements (run 40681635060), and all four disagreements are noncomparable
-with no model defect (PR1495). Items 3 to 6 each have an open pull request:
-scope rearm causality (CUI PR128/PR129), long captures (Lite PR1516), LM741
-packaged acceptance (Lite PR1515), provenance and redaction (Lite PR1517) and
-AC input coupling (CUI PR130, then a Lite adoption).
+remains open through final consumer qualification and documentation reconciliation.
+The accepted v2 study at historical Board `c7bcbe4b` / CUI `da28bb8c` measured
+31/31 conforming designs, 4,260 values and 15/15 captures, with one named refusal
+among 32 inputs. All four earlier disagreements remain noncomparable; no model
+repair was inferred from them. Historical supplier identities never advance.
 
-The [current handoff](docs/CIRCUIT-INSTRUMENT-REGRESSION.md#current-handoff--2026-10-28-wrap-up)
-gives each one's live head, exact next action and stop condition, in order.
-Pull requests merge on the fast tier without `ci:full`; one `ci:full` run on
-main follows once items 3–6 land. No seventh item is implied.
+Scope PR128 and its unmerged negative PR129 establish the injected re-render
+mechanism. Combined [Lite PR1536](https://github.com/CrispStrobe/brickwright-lite/pull/1536)
+preserves the frozen `93aba754` longer-capture, LM741 and provenance ancestry
+previously gathered in the now-closed, unmerged PR1538. Board remains `8785e468`;
+the current adoption targets qualified CUI PR131 landing `4b65f154`. Consumer
+source landing and deployment remain pending.
+Hosted evidence at the earlier `e85dc904` candidate accepts 60 AC values and
+three actual supplier mutants, the LM741 settled-window assertion and the
+long-capture assertions. Its unit-6 documentation-trigger failure is preserved;
+`93aba754` repairs only the TODO documentation pointer and its dedicated record.
+Thirty-five focused successor checks and all six hosted unit shards pass. The
+corrected unit-6 original accepts the three long captures, four historical seals
+and documentation-trigger check; final combined application qualification is
+still pending. The frozen source's final fast-tier checkpoint has 17 successful
+checks, nine declared skips and no pending checks; only the explicitly excepted
+absent-`ci:full` verdict remains red. The final combined UI target has no such
+exception.
+
+CUI PR131 has now landed as `4b65f15485abbc039958d8e1a8a29ac3459b75f9`
+after its three enabled checks and retained browser evidence were accepted.
+PR1538 was closed without merging to consolidate the queue. Its complete
+source ancestry is preserved in PR1536, whose main landing remains pending.
+Do not reopen the old PR or infer main adoption from its closure.
+
+The operator transferred the remaining integration to this campaign's maintainer.
+PR1536 now preserves the frozen Circuit source and adopts this CUI head with
+Board unchanged. The packaged native confirmation journey passes at `17bbefca`;
+subsequent editor repairs include the measured hidden-stage viewport, Pixel
+controls and trigger-owned Escape/Tab dismissal. The source checkpoint
+`a0c0a60e` contains those repairs; it is not final consumer or delivery acceptance.
+
+Fast-tier PR checks are the operator's default, without `ci:full` labels. Claim
+PR1558 registered alignment of the legacy policy verdict with selected CI
+execution at `f5acf3b3`; the bounded repair is published in PR1536 at `0f5dca52`. Every enabled
+selected check and actual affected application acceptance must still pass.
+Production GUI observations require exact source/configuration/artifact binding;
+FPGA flag-on behavior and the unchanged profiling-build byte guard remain owed.
+A production entry-byte count is not the profiling-build metric. Preserve the
+accepted component results without calling the combined application qualified.
+
+Consumed-study identities stay historical. The live authored regression contract
+and current adoption assertions follow the adopted package; neither authorizes
+replaying the completed cohort. After qualified combined landing, reconcile the
+original PRs, verify actual production delivery and finish these four documents.
+No seventh task is opened.
+
+The frozen combined successor is `2e7846f8a901726a296e3a8ef006cff24bc457b5`.
+It includes main `19c073bd` and both registered CI follow-through repairs:
+selected-tier admission and supported-event numeric-consumer selection. The
+manual consumer is skipped because its existing artifact trust admits push/PR
+only; successful supported events remain required. The obsolete wiring-message
+assertion now executes the real classifier-output forwarding and verifies its
+tier bindings. Locally, 39 focused CI controls and 11 gate-shape checks pass,
+and three isolated wiring mutants fail. These are source controls, not browser
+or delivery acceptance. The reduced FPGA browser journey now switches all three
+workspaces and checks visibility, selected controls and exact retained node/HDL
+state; its live synthesis path remains byte-identical. Actual hosted acceptance
+is still required. The preceding `09a4f407` run set was superseded before any
+child started; cancellation followed explicit zero-running-child verification.
+
+Fresh fast [Build40869114327](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40869114327)
+and necessary full [Build40869128682](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40869128682)
+are pending on that exact source. The earlier manual run `40856189963` was
+cancelled before application execution after its unsupported consumer context
+was identified; it is not qualification. The prior fast head `d32860b8` had one
+real unit-2 wiring-assertion failure. Both originals remain distinct from this
+successor; neither failures nor cancelled checks are waived. No main landing or
+production deployment is claimed yet.
+
+The [active handoff](docs/CIRCUIT-INSTRUMENT-REGRESSION.md#active-continuation--2026-10-28)
+keeps exact actions, evidence boundaries and remaining limits.
 
 ## Current imported-circuit and model-accuracy sequence — 2026-10-25
 

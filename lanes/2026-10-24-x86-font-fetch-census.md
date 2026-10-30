@@ -1,6 +1,6 @@
 # 386 native-font and GUI fetch census repair — claim, 2026-10-24
 
-**CLAIM ONLY.** Owner: Codex x86 GUI fetch-policy coordination. Base: `20f5ade6dda10616a3f51d5230496415c6e6b2f4`. Merge this claim before implementation. The [current GUI Build](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40056328600) failed the existing fetch-pinning census at source `ac7703a8b74103e20ee468687472df121564a949`. Preserve that failure and require a new exact-head qualification after repair.
+**Claim merged; source candidate only.** Owner: Codex x86 GUI fetch-policy coordination. Claim base: `20f5ade6dda10616a3f51d5230496415c6e6b2f4`; merged at `bc32b58d619cd379e8ac357306e5d40d630d2863` before implementation. The [current GUI Build](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40056328600) failed the existing fetch-pinning census at source `ac7703a8b74103e20ee468687472df121564a949`. Preserve that failure and require a new exact-head qualification after repair.
 
 ## Owned path and boundary
 
@@ -10,3 +10,9 @@
 The native selector's fixed font and notice URLs already name a full lowercase 40-hex Google Fonts commit. The GUI's current prefix-only URL check is insufficient to establish that property. Its existing owner will tighten producer and independent reader to accept only `https://raw.githubusercontent.com/google/fonts/<40 lowercase hex>/<safe nonempty path>` before any fetch. Keep exact selected byte lengths and SHA-256 checks before staging. Add meaningful source controls for the fixed valid URLs and refusal of a mutable tag, abbreviated SHA, traversal, query and malformed path; the inert fixture must use a full 40-hex commit. The fetch census will classify only what these controls actually prove, including the fixture's lack of a network request.
 
 Do not edit the census detectors, known waived set, skip accounting, thresholds or assertions to make the gate pass. This claim grants no download, native execution, browser, guest, actual event, source pin movement or licence conclusion. Preserve Circuit UI and Arcade ownership boundaries. After the coordinated source changes, require every enabled exact-head check to succeed with only declared skips before any normal matched-head merge; independently admit any later actual original once.
+
+## Source candidate checkpoint — 2026-10-24
+
+The combined native/GUI source introduces six distinct Google Fonts census keys: native producer, independent reader and inert controls; GUI producer, independent reader and inert fixture. The original full-tree gate refused all six. This candidate declares each exact key with its actual fetch, validation or fixture role. It keeps every detector, waiver, skip and assertion unchanged, and exercises accepted full-commit URLs plus mutable tag, short SHA, traversal, encoded traversal, query, fragment and wrong-origin refusals before any input GET or curl argument.
+
+On an owned full source tree, the source-only fetch gate passed 14 tests and the existing prover caught all 11 mutations and restored its seven touched files byte-for-byte with locally available Node 22.23.2. No npm install, download, browser, native selector, guest or actual event ran. This local interpreter is not the selected hosted Node 22.23.3; fresh exact-head CI and any later separately admitted actual evidence remain required. No GUI or native runtime, font-selection or licence claim follows from these controls.

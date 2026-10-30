@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import {pixelControl} from './lib-pixel-controls.mjs';
 // PREPARED ONLY. Browser execution requires an admitted official build.
 // Product mutations use visible UI events. VM/Blockly/CodeMirror access observes only.
 import assert from 'node:assert/strict';
@@ -106,7 +107,7 @@ const paint=async()=>{
  if(!(await page.getByTestId('bw-pixel-canvas').isVisible()))await page.getByTestId('bw-pixel-toggle').click();
  const canvas=page.getByTestId('bw-pixel-canvas');await canvas.waitFor({state:'visible'});
  await page.waitForFunction(palette=>{const c=document.querySelector('[data-testid="bw-pixel-canvas"]');if(!c?.width||!c?.height)return false;const ctx=c.getContext('2d');return [[0,0,1],[1,1,2]].every(([x,y,color])=>{const rgba=ctx.getImageData(Math.floor(c.width*(x+.5)/2),Math.floor(c.height*(y+.5)/2),1,1).data;const rgb=palette[color].slice(1).match(/../g).map(v=>parseInt(v,16));return rgb.every((v,i)=>rgba[i]===v)&&rgba[3]===255;});},ARCADE_PALETTE,{timeout:15000});
- for(const[x,y,color]of [[0,0,3],[1,1,4]]){await page.getByTestId(`bw-pixel-colour-${color}`).click();await page.getByTestId('bw-pixel-tool-pencil').click();await canvas.scrollIntoViewIfNeeded();const box=await canvas.boundingBox();assert.ok(box);await canvas.click({position:{x:box.width*(x+.5)/2,y:box.height*(y+.5)/2}});}
+ for(const[x,y,color]of [[0,0,3],[1,1,4]]){await (await pixelControl(page, `bw-pixel-colour-${color}`)).click();await page.getByTestId('bw-pixel-tool-pencil').click();await canvas.scrollIntoViewIfNeeded();const box=await canvas.boundingBox();assert.ok(box);await canvas.click({position:{x:box.width*(x+.5)/2,y:box.height*(y+.5)/2}});}
  await page.getByTestId('bw-pixel-save').click();await page.waitForFunction(({target,assetId})=>{const t=window.__brickwrightStore.getState().scratchGui.vm.runtime.getTargetById(target);return t.getCostumes()[t.currentCostume].assetId!==assetId;},before);
  const after=await artwork();assert.equal(after.format,'svg');const decoded=svgToPixels(after.svg);assert.equal(decoded.width,2);assert.equal(decoded.height,2);assert.equal(decoded.scale,4);assert.deepEqual(Array.from(decoded.pixels),[3,0,0,4]);
  report.artwork={before:{...before,svg:undefined},after:{...after,svg:undefined},svgSHA256:sha(after.svg),pixels:Array.from(decoded.pixels)};await chooseTarget(before.owner);report.journeys.push('actual Pixel canvas pointer strokes and save create current canonical SVG3/0/0/4');

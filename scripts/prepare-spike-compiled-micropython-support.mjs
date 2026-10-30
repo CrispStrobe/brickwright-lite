@@ -29,6 +29,7 @@ async function bounded(file, limit) {
     return readFile(file);
 }
 const manifest = JSON.parse(await bounded(join(support, 'manifest.json'), 65536));
+if (manifest && Object.hasOwn(manifest, 'tools/spike_lockstep.py')) names.push('tools/spike_lockstep.py');
 if (!manifest || Array.isArray(manifest) || Object.keys(manifest).length !== names.length ||
     names.some(name => !Object.hasOwn(manifest, name) || !/^[0-9a-f]{64}$/.test(manifest[name]))) {
     throw new Error('Expected the closed legacy support profile');
@@ -43,6 +44,8 @@ for (const name of names) {
     }
     files.set(name, bytes);
 }
+if (/^import spike_lockstep$/m.test(files.get('scripts/spike-state-server.py').toString('utf8')) &&
+    !files.has('tools/spike_lockstep.py')) throw new Error('Missing lockstep helper');
 // No fetch or checkout: read the exact public commit, independent of dirty
 // working files. Missing objects fail without lazy network acquisition.
 function blob(name) {

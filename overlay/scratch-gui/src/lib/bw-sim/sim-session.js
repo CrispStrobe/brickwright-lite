@@ -136,6 +136,69 @@ export const MODELS = Object.freeze([
         manualJog: {A: {minDeg: -85, maxDeg: 85, stepDeg: 5, speedDps: 30}}},
     {file: 'thirdline.ldr', title: {en: 'Thirdline — angle trisector', de: 'Thirdline — Winkeldreiteiler'}, example: 'thirdline.bw', mat: 'plain',
         manualJog: {A: {minDeg: -5, maxDeg: 40, stepDeg: 5, speedDps: 8}}},
+    {
+        "file": "tipline.ldr",
+        "title": {
+            "en": "Tipline — sliding versus tipping",
+            "de": "Tipline — Rutschen oder Kippen"
+        },
+        "example": "tipline.bw",
+        "mat": "plain",
+        "intro": {
+            "en": "One motor tilts two equally heavy free towers with low or high internal ballast. In the native recordings, high ballast tips near 15° and low ballast slides near 22°. Swap the ballast heights between lanes; a tall passive wall arrests the later motion.",
+            "de": "Ein Motor neigt zwei gleich schwere freie Türme mit tiefem oder hohem innerem Ballast. In den nativen Aufzeichnungen kippt die hohe Anordnung bei etwa 15°; die tiefe rutscht bei etwa 22°. Vertausche die Ballasthöhen zwischen den Spuren; eine hohe passive Wand fängt die spätere Bewegung ab."
+        },
+        "manualJog": {
+            "A": {
+                "minDeg": 0,
+                "maxDeg": 23.5,
+                "stepDeg": 1,
+                "speedDps": 1
+            }
+        }
+    },
+    {
+        "file": "twistspan.ldr",
+        "title": {
+            "en": "TwistSpan — two-cord torsion pendulum",
+            "de": "TwistSpan — Zweifaden-Torsionspendel"
+        },
+        "example": "twistspan.bw",
+        "mat": "plain",
+        "intro": {
+            "en": "One motor turns an upper bar; two fixed 104 mm cords suspend a separate passive payload. Compare 64 mm and 32 mm tie spacing with the same rigid parts: the recorded period changes from about 0.77 s to 1.52 s.",
+            "de": "Ein Motor dreht den oberen Balken; zwei feste 104-mm-Schnüre tragen eine eigene passive Last. Vergleiche 64 mm und 32 mm Befestigungsabstand bei denselben starren Teilen: Die aufgezeichnete Periode ändert sich von etwa 0,77 s auf 1,52 s."
+        },
+        "manualJog": {
+            "A": {
+                "minDeg": 0,
+                "maxDeg": 20,
+                "stepDeg": 5,
+                "speedDps": 10
+            }
+        }
+    },
+    {
+        "file": "swayshift.ldr",
+        "title": {
+            "en": "SwayShift — timing an anti-sway transfer",
+            "de": "SwayShift — Nachschwingen durch gezieltes Timing mindern"
+        },
+        "example": "swayshift.bw",
+        "mat": "plain",
+        "intro": {
+            "en": "One motor drives a rack trolley through a 3:1 speed increase. A freely hinged rigid pendulum has a 216 mm hole span. Compare the same nominal 22 mm + 22 mm transfer with half-period or full-period timing between move starts, then observe the passive load after arrival.",
+            "de": "Ein Motor bewegt einen Zahnstangenschlitten mit dreifacher Ausgangsdrehzahl. Das frei gelagerte starre Pendel hat 216 mm Abstand zwischen den äußeren Löchern. Vergleiche dieselbe Sollfahrt von 22 mm + 22 mm mit einer halben oder einer ganzen Periode zwischen den Bewegungsstarts und beobachte das Nachschwingen."
+        },
+        "manualJog": {
+            "A": {
+                "minDeg": -70,
+                "maxDeg": 0,
+                "stepDeg": 5,
+                "speedDps": 20
+            }
+        }
+    },
     {file: 'samebeat.ldr', title: {en: 'Samebeat — reversible pendulum', de: 'Samebeat — Reversionspendel'}, example: 'samebeat.bw', mat: 'plain',
         manualJog: {A: {minDeg: -8, maxDeg: 8, stepDeg: 4, speedDps: 60}}},
     {file: 'carry-ratio.ldr', title: {en: 'Carry Ratio — a free ball carried by a driven tray', de: 'Carry Ratio — eine freie Kugel auf einem angetriebenen Tisch'}, example: 'carry-ratio.bw', mat: 'plain',
@@ -151,6 +214,12 @@ export const MODELS = Object.freeze([
     {file: 'travel-dial.ldr', title: {en: 'Travel Dial — passive measuring wheel', de: 'Travel Dial — passives Messrad'}, example: 'travel-dial.bw', mat: 'plain',
         manualJog: {A: {minDeg: -60, maxDeg: 60, stepDeg: 15, speedDps: 15}}},
     {file: 'pivot-exchange.ldr', title: {en: 'Pivot Exchange — nearly equal periods from different pivots', de: 'Pivot Exchange — nahezu gleiche Perioden an verschiedenen Aufhängungen'}, example: 'pivot-exchange.bw', mat: 'plain'},
+    {file: 'phasor-twin.ldr', title: {en: 'Phasor Twin — the Stirling phase loop', de: 'Phasor Twin — die Stirling-Phasenschleife'}, example: 'phasor-twin.bw', mat: 'plain',
+        manualJog: {A: {minDeg: 0, maxDeg: 720, stepDeg: 45, speedDps: 45}}},
+    {file: 'final-squeeze.ldr', title: {en: 'Final Squeeze — a knee press', de: 'Final Squeeze — eine Kniehebelpresse'}, example: 'final-squeeze.bw', mat: 'plain',
+        manualJog: {A: {minDeg: 0, maxDeg: 25, stepDeg: 5, speedDps: 8}}},
+    {file: 'high-select.ldr', title: {en: 'High Select — mechanical maximum', de: 'High Select — mechanisches Maximum'}, example: 'high-select.bw', mat: 'plain',
+        manualJog: {A: {minDeg: 0, maxDeg: 152, stepDeg: 19, speedDps: 38}, B: {minDeg: 0, maxDeg: 152, stepDeg: 19, speedDps: 38}}},
     {file: 'watt-line.ldr', title: {en: "Watt’s Line — approximate straight-line linkage", de: 'Watt’s Line — angenäherte Geradführung'}, example: 'watt-line.bw', mat: 'plain',
         manualJog: {A: {minDeg: -20, maxDeg: 20, stepDeg: 2, speedDps: 6}}},
     {file: 'twin-tempo.ldr', title: {en: 'TwinTempo — three-to-one hoist', de: 'TwinTempo — Seilzüge im Verhältnis drei zu eins'}, example: 'twin-tempo.bw', mat: 'plain',
@@ -333,6 +402,9 @@ export const prepareModel = (text, catalog, {mat = null, autoPorts: plugIn = !OW
     }
     for (const issue of unknownOf.values()) {
         if (issue.count > 1) issue.message = `${issue.message} (and ${issue.count - 1} more)`;
+    }
+    if (refusals.some(r => r.code === 'bad-motor-direction')) {
+        return {model: parsedModel, runModel: parsedModel, mechanism: null, issues};
     }
     if (parsedModel.parts.length === 0) {
         issues.push({severity: 'error', code: 'empty-model', message: 'The model has no parts the Sim Lab knows.', parts: []});

@@ -18,7 +18,7 @@ import Divider from '../divider/divider.jsx';
 import SaveStatus from './save-status.jsx';
 import ProjectWatcher from '../../containers/project-watcher.jsx';
 import MenuBarMenu from './menu-bar-menu.jsx';
-import {MenuItem, MenuSection} from '../menu/menu.jsx';
+import {MenuItem, MenuSection, Submenu} from '../menu/menu.jsx';
 import OfflineLibraryModal from '../offline-library/offline-library-modal.jsx';
 import {isNativeApp} from '../../lib/offline-assets.js';
 import {
@@ -86,6 +86,7 @@ import collectMetadata from '../../lib/collect-metadata';
 
 import styles from './menu-bar.css';
 import {activateUndoSurface, redoActiveSurface, subscribeUndoState, undoActiveSurface} from '../../lib/global-undo.js';
+import {editorMenuActionEnabled, getEditorMenuItems, runEditorMenuAction, subscribeEditorMenuActions} from '../../lib/editor-menu-actions.js';
 
 import mystuffIcon from './icon--mystuff.png';
 import profileIcon from './icon--profile.png';
@@ -102,6 +103,7 @@ import prehistoricLogo from './prehistoric-logo.svg';
 import oldtimeyLogo from './oldtimey-logo.svg';
 
 import sharedMessages from '../../lib/shared-messages';
+import {menuTriggerStyle, openMenuFromKeyboard} from '../../lib/menu-keyboard.js';
 
 const ariaMessages = defineMessages({
     tutorials: {
@@ -210,6 +212,12 @@ class MenuBar extends React.Component {
             globalCanUndo: false,
             globalCanRedo: false,
             undoSurface: 'blocks',
+            assetFileItems: [],
+            assetEditItems: [],
+            codeOpenAvailable: false,
+            codeSaveAvailable: false,
+            codeToBlocksAvailable: false,
+            codeFromBlocksAvailable: false,
             // Desktop app: File > Load/Save use native project documents (lib/tauri-bridge.js).
             nativeDocuments: false,
             recentProjects: []
@@ -227,14 +235,29 @@ class MenuBar extends React.Component {
         this._unsubscribeUndo = subscribeUndoState(({canUndo, canRedo, label, surface}) => {
             if (surface !== this._lastSurface) this._tabSurfaces[this.props.activeTabIndex] = surface;
             this._lastSurface = surface;
+            this._activeEditorSurface = surface;
+            this.refreshAssetMenuItems();
             this.setState({globalCanUndo: canUndo, globalCanRedo: canRedo, undoSurface: label});
         });
         this.activateTabUndoSurface();
+        this._unsubscribeCodeActions = subscribeEditorMenuActions(() => {
+            this.refreshAssetMenuItems();
+            const codeOpenAvailable = editorMenuActionEnabled('code', 'open');
+            const codeSaveAvailable = editorMenuActionEnabled('code', 'save');
+            const codeToBlocksAvailable = editorMenuActionEnabled('code', 'to-blocks');
+            const codeFromBlocksAvailable = editorMenuActionEnabled('code', 'from-blocks');
+            if (codeOpenAvailable !== this.state.codeOpenAvailable || codeSaveAvailable !== this.state.codeSaveAvailable ||
+                codeToBlocksAvailable !== this.state.codeToBlocksAvailable ||
+                codeFromBlocksAvailable !== this.state.codeFromBlocksAvailable) {
+                this.setState({codeOpenAvailable, codeSaveAvailable, codeToBlocksAvailable, codeFromBlocksAvailable});
+            }
+        });
     }
     componentWillUnmount () {
         this._mounted = false;
         document.removeEventListener('keydown', this.handleKeyPress);
         if (this._unsubscribeUndo) this._unsubscribeUndo();
+        if (this._unsubscribeCodeActions) this._unsubscribeCodeActions();
     }
     componentDidUpdate (prevProps) {
         if (prevProps.activeTabIndex !== this.props.activeTabIndex) this.activateTabUndoSurface();
@@ -252,6 +275,68 @@ class MenuBar extends React.Component {
     }
     handleGlobalRedo () {
         redoActiveSurface();
+    }
+    resolveAssetMenuSurface () {
+        const surface = this._activeEditorSurface;
+        const tab = this.props.activeTabIndex;
+        if (['pixel', 'tilemap', 'costumes'].includes(surface) && tab === 1) return surface;
+        if (surface === 'sounds' && tab === 2) return surface;
+        if (surface === 'circuit' && tab === 4) return surface;
+        // The Robot provider additionally requires the full tab's explicit
+        // visibility, so an unshown arena dock cannot supply commands here.
+        if (surface === 'robots') return surface;
+        return null;
+    }
+    refreshAssetMenuItems () {
+        const surface = this.resolveAssetMenuSurface();
+        const assetFileItems = getEditorMenuItems(surface, 'file');
+        const assetEditItems = getEditorMenuItems(surface, 'edit');
+        if (JSON.stringify(assetFileItems) !== JSON.stringify(this.state.assetFileItems) ||
+            JSON.stringify(assetEditItems) !== JSON.stringify(this.state.assetEditItems)) {
+            this.setState({assetFileItems, assetEditItems});
+        }
+    }
+    handleAssetMenuAction (name, location) {
+        if (location === 'file') this.props.onRequestCloseFile();
+        else this.props.onRequestCloseEdit();
+        const surface = this.resolveAssetMenuSurface();
+        if (!surface) return false;
+        if (!getEditorMenuItems(surface, location).some(item => item.name === name && item.enabled)) return false;
+        return runEditorMenuAction(surface, name);
+    }
+    renderAssetMenuItems (location) {
+        const items = location === 'file' ? this.state.assetFileItems : this.state.assetEditItems;
+        if (!items.length) return null;
+        const groups = new Map();
+        for (const item of items) {
+            if (!groups.has(item.submenu)) groups.set(item.submenu, []);
+            groups.get(item.submenu).push(item);
+        }
+        const renderItems = entries => entries.map(item => (
+            <MenuItem key={item.name} disabled={!item.enabled} checked={item.checked} radio={item.radio}
+                onClick={() => this.handleAssetMenuAction(item.name, location)}>{item.label}</MenuItem>
+        ));
+        return <MenuSection>{Array.from(groups, ([label, entries]) => label ? (
+            <MenuItem key={label} ariaLabel={label}>
+                {label}<span aria-hidden="true" style={{float: this.props.isRtl ? 'left' : 'right'}}>›</span>
+                <Submenu place={this.props.isRtl ? 'left' : 'right'}>{renderItems(entries)}</Submenu>
+            </MenuItem>
+        ) : renderItems(entries))}</MenuSection>;
+    }
+    handleCodeFileAction (action) {
+        this.props.onRequestCloseFile();
+        if (this.props.activeTabIndex !== 3) return false;
+        return runEditorMenuAction('code', action);
+    }
+    handleCodeConversionAction (action) {
+        this.props.onRequestCloseEdit();
+        if (this.props.activeTabIndex !== 3) return false;
+        return runEditorMenuAction('code', action);
+    }
+    handleCodeEditorCommand (command) {
+        this.props.onRequestCloseEdit();
+        if (this.props.activeTabIndex !== 3 || typeof window === 'undefined') return;
+        window.dispatchEvent(new CustomEvent('bw-code-editor-command', {detail: {command}}));
     }
     async handleClickNew () {
         // if the project is dirty, and user owns the project, we will autosave.
@@ -551,8 +636,13 @@ class MenuBar extends React.Component {
                                 className={classNames(styles.menuBarItem, styles.hoverable, {
                                     [styles.active]: this.props.fileMenuOpen
                                 })}
-                                onMouseUp={this.handleOpenFileMenu}
+                                data-bw-menu-root="" style={{padding: 0}}
                             >
+                                <button type="button" data-bw-menu-trigger="" data-testid="bw-file-menu-trigger"
+                                    style={menuTriggerStyle} aria-haspopup="menu" aria-expanded={this.props.fileMenuOpen}
+                                    aria-label={this.props.intl.formatMessage({id: 'gui.menuBar.file', defaultMessage: 'File'})}
+                                    onClick={this.handleOpenFileMenu} onKeyDown={event => openMenuFromKeyboard(event, this.handleOpenFileMenu, this.props.onRequestCloseFile)}>
+
                                 <img src={fileIcon} />
                                 <span className={styles.collapsibleLabel}>
                                     <FormattedMessage
@@ -562,6 +652,7 @@ class MenuBar extends React.Component {
                                     />
                                 </span>
                                 <img src={dropdownCaret} />
+                                </button>
                                 <MenuBarMenu
                                     className={classNames(styles.menuBarMenu)}
                                     open={this.props.fileMenuOpen}
@@ -680,39 +771,52 @@ class MenuBar extends React.Component {
                                             </MenuItem>
                                         )}
                                     </MenuSection>
-                                    {/* Circuit file operations in the main File menu — the owner's
-                                        "maybe use File/ for load/save/import/export" note. Exactly
-                                        four top-level actions and nothing more; format variants are
-                                        picked in the Circuit tab's own dialogs, so no second-level
-                                        menu is needed here. Each emits a bw-circuit-file event that
-                                        the Circuit tab handles with the same handlers as the
-                                        designer's "..." menu (the receiver lives in bw-circuit-ui). */}
-                                    <MenuSection>
-                                        <MenuItem onClick={() => {
-                                            if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('bw-circuit-file', {detail: {action: 'load'}}));
-                                            this.props.onRequestCloseFile();
-                                        }}>
-                                            <FormattedMessage id="gui.menuBar.openCircuit" defaultMessage="Open circuit…" />
-                                        </MenuItem>
-                                        <MenuItem onClick={() => {
-                                            if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('bw-circuit-file', {detail: {action: 'save'}}));
-                                            this.props.onRequestCloseFile();
-                                        }}>
-                                            <FormattedMessage id="gui.menuBar.saveCircuit" defaultMessage="Save circuit" />
-                                        </MenuItem>
-                                        <MenuItem onClick={() => {
-                                            if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('bw-circuit-file', {detail: {action: 'import'}}));
-                                            this.props.onRequestCloseFile();
-                                        }}>
-                                            <FormattedMessage id="gui.menuBar.importCircuit" defaultMessage="Import circuit…" />
-                                        </MenuItem>
-                                        <MenuItem onClick={() => {
-                                            if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('bw-circuit-file', {detail: {action: 'export'}}));
-                                            this.props.onRequestCloseFile();
-                                        }}>
-                                            <FormattedMessage id="gui.menuBar.exportCircuit" defaultMessage="Export circuit…" />
-                                        </MenuItem>
-                                    </MenuSection>
+                                    {/* Editor files belong to their editor; project files stay global. */}
+                                    {this.renderAssetMenuItems('file')}
+                                    {this.props.activeTabIndex === 3 && (
+                                        <MenuSection>
+                                            <MenuItem
+                                                disabled={!this.state.codeOpenAvailable}
+                                                onClick={() => this.handleCodeFileAction('open')}
+                                            >
+                                                <FormattedMessage id="gui.menuBar.openCodeFile" defaultMessage="Open code file…" />
+                                            </MenuItem>
+                                            <MenuItem
+                                                disabled={!this.state.codeSaveAvailable}
+                                                onClick={() => this.handleCodeFileAction('save')}
+                                            >
+                                                <FormattedMessage id="gui.menuBar.saveCodeFile" defaultMessage="Save code as…" />
+                                            </MenuItem>
+                                        </MenuSection>
+                                    )}
+                                    {this.props.activeTabIndex === 4 && !this.state.assetFileItems.length && (
+                                        <MenuSection>
+                                            <MenuItem onClick={() => {
+                                                if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('bw-circuit-file', {detail: {action: 'load'}}));
+                                                this.props.onRequestCloseFile();
+                                            }}>
+                                                <FormattedMessage id="gui.menuBar.openCircuit" defaultMessage="Open circuit…" />
+                                            </MenuItem>
+                                            <MenuItem onClick={() => {
+                                                if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('bw-circuit-file', {detail: {action: 'save'}}));
+                                                this.props.onRequestCloseFile();
+                                            }}>
+                                                <FormattedMessage id="gui.menuBar.saveCircuit" defaultMessage="Save circuit" />
+                                            </MenuItem>
+                                            <MenuItem onClick={() => {
+                                                if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('bw-circuit-file', {detail: {action: 'import'}}));
+                                                this.props.onRequestCloseFile();
+                                            }}>
+                                                <FormattedMessage id="gui.menuBar.importCircuit" defaultMessage="Import circuit…" />
+                                            </MenuItem>
+                                            <MenuItem onClick={() => {
+                                                if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('bw-circuit-file', {detail: {action: 'export'}}));
+                                                this.props.onRequestCloseFile();
+                                            }}>
+                                                <FormattedMessage id="gui.menuBar.exportCircuit" defaultMessage="Export circuit…" />
+                                            </MenuItem>
+                                        </MenuSection>
+                                    )}
                                 </MenuBarMenu>
                             </div>
                         )}
@@ -720,8 +824,13 @@ class MenuBar extends React.Component {
                             className={classNames(styles.menuBarItem, styles.hoverable, {
                                 [styles.active]: this.props.editMenuOpen
                             })}
-                            onMouseUp={this.props.onClickEdit}
+                            data-bw-menu-root="" style={{padding: 0}}
                         >
+                                <button type="button" data-bw-menu-trigger="" data-testid="bw-edit-menu-trigger"
+                                    style={menuTriggerStyle} aria-haspopup="menu" aria-expanded={this.props.editMenuOpen}
+                                    aria-label={this.props.intl.formatMessage({id: 'gui.menuBar.edit', defaultMessage: 'Edit'})}
+                                    onClick={this.props.onClickEdit} onKeyDown={event => openMenuFromKeyboard(event, this.props.onClickEdit, this.props.onRequestCloseEdit)}>
+
                             <img src={editIcon} />
                             <span className={styles.collapsibleLabel}>
                                 <FormattedMessage
@@ -731,15 +840,66 @@ class MenuBar extends React.Component {
                                 />
                             </span>
                             <img src={dropdownCaret} />
+                            </button>
                             <MenuBarMenu
                                 className={classNames(styles.menuBarMenu)}
                                 open={this.props.editMenuOpen}
                                 place={this.props.isRtl ? 'left' : 'right'}
                                 onRequestClose={this.props.onRequestCloseEdit}
                             >
+                                <MenuSection>
+                                    <MenuItem
+                                        disabled={!this.state.globalCanUndo}
+                                        onClick={() => {
+                                            this.handleGlobalUndo();
+                                            this.props.onRequestCloseEdit();
+                                        }}
+                                    >
+                                        <FormattedMessage id="gui.menuBar.undo" defaultMessage="Undo" />
+                                    </MenuItem>
+                                    <MenuItem
+                                        disabled={!this.state.globalCanRedo}
+                                        onClick={() => {
+                                            this.handleGlobalRedo();
+                                            this.props.onRequestCloseEdit();
+                                        }}
+                                    >
+                                        <FormattedMessage id="gui.menuBar.redo" defaultMessage="Redo" />
+                                    </MenuItem>
+                                </MenuSection>
+                                {this.renderAssetMenuItems('edit')}
+                                {this.props.activeTabIndex === 3 && (
+                                    <MenuSection>
+                                        <MenuItem onClick={() => this.handleCodeEditorCommand('find')}>
+                                            <FormattedMessage id="gui.menuBar.findReplace" defaultMessage="Find and replace…" />
+                                        </MenuItem>
+                                        <MenuItem onClick={() => this.handleCodeEditorCommand('go-to-line')}>
+                                            <FormattedMessage id="gui.menuBar.goToLine" defaultMessage="Go to line…" />
+                                        </MenuItem>
+                                        <MenuItem onClick={() => this.handleCodeEditorCommand('select-all')}>
+                                            <FormattedMessage id="gui.menuBar.selectAll" defaultMessage="Select all" />
+                                        </MenuItem>
+                                    </MenuSection>
+                                )}
+                                {this.props.activeTabIndex === 3 && (
+                                    <MenuSection>
+                                        <MenuItem
+                                            disabled={!this.state.codeToBlocksAvailable}
+                                            onClick={() => this.handleCodeConversionAction('to-blocks')}
+                                        >
+                                            <FormattedMessage id="gui.menuBar.codeToBlocks" defaultMessage="Convert code to blocks" />
+                                        </MenuItem>
+                                        <MenuItem
+                                            disabled={!this.state.codeFromBlocksAvailable}
+                                            onClick={() => this.handleCodeConversionAction('from-blocks')}
+                                        >
+                                            <FormattedMessage id="gui.menuBar.codeFromBlocks" defaultMessage="Generate code from blocks" />
+                                        </MenuItem>
+                                    </MenuSection>
+                                )}
                                 <DeletionRestorer>{(handleRestore, {restorable, deletedItem}) => (
                                     <MenuItem
-                                        className={classNames({[styles.disabled]: !restorable})}
+                                        disabled={!restorable}
                                         onClick={this.handleRestoreOption(handleRestore)}
                                     >
                                         {this.restoreOptionMessage(deletedItem)}

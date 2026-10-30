@@ -16,11 +16,13 @@
 import PropTypes from 'prop-types';
 import React from 'react';
 import ProjectPaletteEditor from './project-palette-editor.jsx';
+import {Popup} from './sim-lab-toolbar.jsx';
 import EditorErrorBoundary from '../editor-error-boundary/editor-error-boundary.jsx';
-import {activateUndoSurface, notifyUndoState, registerUndoSurface} from '../../lib/global-undo.js';
+import {activateUndoSurface, getUndoState, notifyUndoState, registerUndoSurface} from '../../lib/global-undo.js';
 import {clearDraft, readDraft, writeDraft} from '../../lib/bw-editor-drafts.js';
 import styles from './pixel-art-editor.css';
 import downloadBlob from '../../lib/download-blob.js';
+import {notifyEditorMenuActions, registerEditorMenuActions} from '../../lib/editor-menu-actions.js';
 import {makeT, browserLocale} from '../../lib/bw-i18n.js';
 import {getCostumeDocument, setCostumeDocument, newAnimationResourceId, syncAnimationResources} from '../../lib/bw-artwork-bundle.js';
 import {blankLayer, clearSelectedPixels, composeLayers, containsCell, cropLayers, lassoSelection, layersDocument, layersToSvg,
@@ -42,6 +44,8 @@ const L10N = {
     en: {
         'px.pencil': 'Pencil', 'px.fill': 'Fill', 'px.erase': 'Eraser', 'px.pick': 'Pick colour',
         'px.arcadeBackground': 'Arcade background 160×120',
+        'px.colours': 'Colours', 'px.foregroundColour': 'Foreground colour',
+        'px.saveMenu': 'Save pixel artwork', 'px.revertMenu': 'Revert pixel artwork', 'px.transforms': 'Transform',
         'px.size': 'Size', 'px.save': 'Save', 'px.revert': 'Revert', 'px.saved': 'Saved to the costume.',
         'px.converted': 'This costume was not pixel art: it was converted to {w}×{h} palette pixels. Saving replaces it.',
         'px.draft': 'Unsaved pixel work from {time} was kept.', 'px.draftRestore': 'Restore it',
@@ -104,6 +108,8 @@ const L10N = {
     de: {
         'px.arcadeBackground': 'Arcade-Hintergrund 160×120',
         'px.pencil': 'Stift', 'px.fill': 'Füllen', 'px.erase': 'Radierer', 'px.pick': 'Farbe aufnehmen',
+        'px.colours': 'Farben', 'px.foregroundColour': 'Vordergrundfarbe',
+        'px.saveMenu': 'Pixelgrafik speichern', 'px.revertMenu': 'Pixelgrafik zurücksetzen', 'px.transforms': 'Transformieren',
         'px.size': 'Größe', 'px.save': 'Speichern', 'px.revert': 'Verwerfen', 'px.saved': 'Im Kostüm gespeichert.',
         'px.converted': 'Dieses Kostüm war keine Pixelgrafik: Es wurde in {w}×{h} Palettenpixel umgewandelt. Speichern ersetzt es.',
         'px.draft': 'Ungespeicherte Pixelarbeit vom {time} wurde aufbewahrt.', 'px.draftRestore': 'Wiederherstellen',
@@ -271,7 +277,7 @@ class PixelArtEditor extends React.Component {
             palette: [...ARCADE_PALETTE], previewPalette: null,
             scale: 4, zoom: 1, ...colourSlots, choosingSecondary: false,
             replaceFrom: 0, brushSize: 1, tool: 'pencil',
-            mirror: false, converted: false, selection: null, tolerance: 0,
+            mirror: false, converted: false, selection: null, tolerance: 0, colourPickerOpen: false,
             frames: [], activeFrameId: null, animationResource: null, animationName: '', animationError: '', animationWarnings: [], framesOpen: false, panel: null, exportingFrames: false,
             onionSkin: false, playing: false,
             sheetMode: false, sheetName: '', sheetWidth: 0, sheetHeight: 0,
@@ -280,6 +286,7 @@ class PixelArtEditor extends React.Component {
             status: '', w: 16, h: 16, renamingLayerId: null, renameValue: '',
             literalMode: null, literalText: '', literalError: '', paletteError: ''};
         this.canvas = React.createRef();
+        this.colourTrigger = React.createRef();
         this.viewport = React.createRef();
         this.root = React.createRef();
         this.paletteFile = React.createRef();
@@ -329,9 +336,13 @@ class PixelArtEditor extends React.Component {
             redo: () => this.redo() !== false
         });
         activateUndoSurface('pixel');
+        this._menuMounted = true;
+        this.unregisterMenu = registerEditorMenuActions('pixel', () => this.editorMenuActions());
     }
 
     componentWillUnmount () {
+        this._menuMounted = false;
+        if (this.unregisterMenu) this.unregisterMenu();
         this.loadToken = null;
         clearTimeout(this.playTimer);
         clearTimeout(this.draftTimer);
@@ -339,6 +350,7 @@ class PixelArtEditor extends React.Component {
     }
 
     componentDidUpdate (prev, prevState) {
+        notifyEditorMenuActions();
         if (this.state.panel !== 'palette' && this.state.previewPalette) this.setState({previewPalette: null});
         if (prevState.colour !== this.state.colour || prevState.secondaryColour !== this.state.secondaryColour) {
             writeColourSlots(this.state.colour, this.state.secondaryColour);
@@ -364,6 +376,76 @@ class PixelArtEditor extends React.Component {
 
     // Autosave: unsaved pixel work is kept as a draft (lib/bw-editor-drafts.js)
     // and offered back when this costume is opened again after a reload or crash.
+    handlePaletteKeyDown (event) {
+        const steps = {ArrowLeft: -1, ArrowRight: 1, ArrowUp: -4, ArrowDown: 4};
+        if (!(event.key in steps) && !['Home', 'End'].includes(event.key)) return;
+        event.preventDefault();
+        event.stopPropagation();
+        const buttons = Array.from(event.currentTarget.querySelectorAll('[role="radio"]'));
+        const current = buttons.indexOf(event.target);
+        if (current < 0 || !buttons.length) return;
+        const next = event.key === 'Home' ? 0 : event.key === 'End' ? buttons.length - 1 :
+            (current + steps[event.key] + buttons.length) % buttons.length;
+        buttons[next].focus();
+        this.setState(state => ({[state.choosingSecondary ? 'secondaryColour' : 'colour']: next}));
+    }
+
+    canTransform (operation) {
+        const {image, selection, w, h} = this.state;
+        const layer = this.activeLayer();
+        const turn = operation.startsWith('rotate');
+        return !!(image && layer && !layer.locked && layer.visible) &&
+            !(turn && !selection && this.materializeFrames().some(frame => frame.layers.some(item => item.locked))) &&
+            !(turn && selection && (selection.height > w || selection.width > h));
+    }
+
+    editorMenuActions () {
+        if (!this._menuMounted || getUndoState().surface !== 'pixel') return null;
+        const locale = this.props.locale || browserLocale();
+        const {image, layers, frames, activeLayerId, activeFrameId, selection, exportingFrames} = this.state;
+        const layer = this.activeLayer();
+        const editable = !!(image && layer && !layer.locked && layer.visible);
+        const selected = !!(image && selection);
+        const index = frames.findIndex(frame => frame.id === activeFrameId);
+        const layerIndex = layers.findIndex(item => item.id === activeLayerId);
+        const action = (label, location, enabled, run, submenu = '') =>
+            ({label: t(locale, label), location, enabled: !!enabled, run, submenu});
+        const actions = {
+            save: action('px.saveMenu', 'file', image, () => this.save()),
+            png: action('px.exportPng', 'file', image, () => this.exportPng()),
+            palette: action('px.importPalette', 'file', image && this.paletteFile.current, () => { this.setState({panel: 'palette'}); this.paletteFile.current.click(); }),
+            sheet: action('px.importSheet', 'file', image && this.sheetFile.current, () => { this.setState({panel: 'frames', framesOpen: true}); this.sheetFile.current.click(); }),
+            'export-sheet': action('px.exportSheet', 'file', image && frames.length >= 2, () => this.exportSheet()),
+            'export-frames': action('px.exportFrames', 'file', image && frames.length >= 2 && !exportingFrames,
+                () => this.exportFramesAsCostumes()),
+            copy: action('px.copySelection', 'edit', selected && layer && layer.visible, () => this.copySelection()),
+            cut: action('px.cutSelection', 'edit', selected && editable, () => this.cutSelection()),
+            paste: action('px.pasteSelection', 'edit', image && this.pixelClipboard, () => this.pasteSelection()),
+            clear: action('px.clearSelection', 'edit', selected && editable, () => this.clearSelection()),
+            crop: action('px.cropSelection', 'edit', selected, () => this.cropToSelection(), t(locale, 'px.transforms')),
+            revert: action('px.revertMenu', 'edit', image && this.hasUnsavedChanges(), () => this.revert()),
+            'add-layer': action('px.addLayer', 'edit', image, () => this.addLayer(), t(locale, 'px.layers')),
+            'delete-layer': action('px.deleteLayer', 'edit', image && layers.length > 1, () => this.deleteLayer(activeLayerId), t(locale, 'px.layers')),
+            'layer-up': action('px.layerUp', 'edit', image && layerIndex >= 0 && layerIndex < layers.length - 1,
+                () => this.moveLayer(activeLayerId, 1), t(locale, 'px.layers')),
+            'layer-down': action('px.layerDown', 'edit', image && layerIndex > 0,
+                () => this.moveLayer(activeLayerId, -1), t(locale, 'px.layers')),
+            'add-frame': action('px.addFrame', 'edit', image && frames.length < 64, () => this.addFrame(), t(locale, 'px.frames')),
+            'duplicate-frame': action('px.duplicateFrame', 'edit', image && frames.length < 64, () => this.addFrame(true), t(locale, 'px.frames')),
+            'delete-frame': action('px.deleteFrame', 'edit', image && frames.length > 1, () => this.deleteFrame(), t(locale, 'px.frames')),
+            'frame-earlier': action('px.frameUp', 'edit', image && index > 0, () => this.moveFrame(-1), t(locale, 'px.frames')),
+            'frame-later': action('px.frameDown', 'edit', image && index >= 0 && index < frames.length - 1,
+                () => this.moveFrame(1), t(locale, 'px.frames')),
+            playback: action(this.state.playing ? 'px.pause' : 'px.play', 'edit', image && frames.length > 1,
+                () => this.togglePlayback(), t(locale, 'px.frames'))
+        };
+        for (const [operation, label] of [['flip-h', 'px.flipH'], ['flip-v', 'px.flipV'],
+            ['rotate-ccw', 'px.rotateCCW'], ['rotate-cw', 'px.rotateCW']]) {
+            actions[operation] = action(label, 'edit', this.canTransform(operation), () => this.transform(operation), t(locale, 'px.transforms'));
+        }
+        return actions;
+    }
+
     draftKey () {
         const costume = this.loadedCostume;
         const target = this.props.vm && this.props.vm.editingTarget;
@@ -1668,9 +1750,94 @@ class PixelArtEditor extends React.Component {
                 onKeyDown={this.handleKeyDown}
                 style={{display: 'flex', flexDirection: 'column', gap: 8, padding: 12,
                     height: '100%', boxSizing: 'border-box', overflow: 'hidden', position: 'relative'}}>
+                    <input ref={this.paletteFile} type="file" accept=".hex,.txt,.gpl" style={{display: 'none'}}
+                        data-testid="bw-pixel-palette-file" onChange={event => this.importPalette(event)} />
+                    <input ref={this.sheetFile} type="file" accept="image/png,.png" style={{display: 'none'}}
+                        data-testid="bw-pixel-sheet-file" onChange={event => this.loadSheet(event)} />
                 <div data-testid="bw-pixel-primary-toolbar" role="toolbar"
                     style={{display: 'flex', gap: 4, alignItems: 'center', flexShrink: 0,
-                        minHeight: 48, minWidth: 0}}>
+                        minHeight: 48, minWidth: 0, overflowX: 'auto', overflowY: 'hidden'}}>
+                    <div data-testid="bw-pixel-colour-controls" role="group" aria-label={t(locale, 'px.colours')}
+                        style={{display: 'flex', gap: 4, flex: '0 0 auto', alignItems: 'center'}}>
+                        <Popup id="pixel-colours" role="dialog" label={t(locale, 'px.colours')} width={214}
+                            testId="bw-pixel-colour-popover" open={this.state.colourPickerOpen} closeOnPick={false}
+                            onToggle={() => this.setState(state => ({colourPickerOpen: !state.colourPickerOpen || state.choosingSecondary,
+                                choosingSecondary: false}))}
+                            onClose={() => this.setState({colourPickerOpen: false, choosingSecondary: false})}
+                            button={<button ref={this.colourTrigger} type="button" style={{...iconBtn(false),
+                                background: palette[colour] || 'repeating-conic-gradient(#e2e8f0 0 25%, #fff 0 50%) 50% / 8px 8px'}}
+                                data-testid="bw-pixel-colour-trigger" aria-label={t(locale, 'px.foregroundColour')}
+                                title={t(locale, 'px.foregroundColour')} />}>
+                            <div data-testid="bw-pixel-palette-toolbar" role="radiogroup"
+                                aria-label={t(locale, choosingSecondary ? 'px.secondaryColour' : 'px.foregroundColour')}
+                                onKeyDown={event => this.handlePaletteKeyDown(event)}
+                                style={{display: 'grid', gridTemplateColumns: 'repeat(4, 44px)', gap: 6}}>
+
+                        {(this.state.previewPalette || palette).map((c, i) => (
+                            <button key={i} type="button" role="radio" aria-checked={(choosingSecondary ? secondaryColour : colour) === i}
+                                title={c || t(locale, 'px.transparent')} data-testid={`bw-pixel-colour-${i}`}
+                                onClick={() => this.setState(state => ({
+                                    [state.choosingSecondary ? 'secondaryColour' : 'colour']: i,
+                                    choosingSecondary: false, colourPickerOpen: false, tool: state.tool === 'pick' ? 'pencil' : state.tool}), () => this.colourTrigger.current?.focus())}
+                                onContextMenu={event => {
+                                    event.preventDefault();
+                                    this.setState({secondaryColour: i, choosingSecondary: false, colourPickerOpen: false});
+                                }}
+                                style={{width: 44, height: 44, flexShrink: 0, borderRadius: 6, cursor: 'pointer',
+                                    border: colour === i ? '3px solid #0f172a' : '1px solid #94a3b8',
+                                    outline: secondaryColour === i ? '2px dashed #e58c11' : 'none',
+                                    outlineOffset: '-6px',
+                                    background: c || 'repeating-conic-gradient(#e2e8f0 0 25%, #fff 0 50%) 50% / 8px 8px'}} />
+                        ))}
+                    </div>
+                            <div style={{display: 'flex', gap: 6, borderTop: '1px solid #cbd5e1', paddingTop: 6}}>
+                    <button type="button" style={{...iconBtn(panel === 'brush'), flexShrink: 0}} aria-label={t(locale, 'px.brushSize')}
+                        title={`${t(locale, 'px.brushSize')} ${brushSize}`}
+                        data-testid="bw-pixel-brush-toggle" aria-expanded={panel === 'brush'}
+                        onClick={() => this.setState({panel: panel === 'brush' ? null : 'brush', colourPickerOpen: false})}>
+                        {toolIcon('brush')}<span style={{fontSize: 10, marginLeft: -4}}>{brushSize}</span></button>
+                    <button type="button" style={{...iconBtn(mirror), flexShrink: 0}} aria-label={t(locale, 'px.mirror')}
+                        data-testid="bw-pixel-mirror"
+                        title={t(locale, 'px.mirror')} aria-pressed={mirror}
+                        onClick={() => this.setState({mirror: !mirror})}>{toolIcon('mirror')}</button>
+                    <button type="button" style={{...iconBtn(panel === 'palette'), position: 'relative', flexShrink: 0}}
+                        aria-label={t(locale, 'px.paletteColour')}
+                        title={t(locale, 'px.paletteColour')} data-testid="bw-pixel-palette-toggle"
+                        aria-expanded={panel === 'palette'}
+                        onClick={() => this.setState({panel: panel === 'palette' ? null : 'palette', colourPickerOpen: false})}>
+                        {toolIcon('palette')}
+                        <span aria-hidden="true" style={{position: 'absolute', right: 3, bottom: 3,
+                            width: 12, height: 12, border: '1px solid #64748b', borderRadius: 3,
+                            background: (this.state.previewPalette || palette)[colour] ||
+                                'repeating-conic-gradient(#e2e8f0 0 25%, #fff 0 50%) 50% / 6px 6px'}} />
+                    </button>
+                            </div>
+                        </Popup>
+
+                    <button type="button" style={{...iconBtn(choosingSecondary), flexShrink: 0,
+                        background: (this.state.previewPalette || palette)[secondaryColour] ||
+                            'repeating-conic-gradient(#e2e8f0 0 25%, #fff 0 50%) 50% / 8px 8px'}}
+                        data-testid="bw-pixel-secondary-colour" aria-label={t(locale, 'px.secondaryColour')}
+                        title={t(locale, 'px.secondaryColour')} aria-pressed={choosingSecondary}
+                        onClick={() => this.setState(state => ({choosingSecondary: !(state.colourPickerOpen && state.choosingSecondary),
+                            colourPickerOpen: !(state.colourPickerOpen && state.choosingSecondary)}))}>
+                        <span aria-hidden="true" style={{width: 20, height: 20, border: '2px solid #0f172a',
+                            borderRadius: 3, background: (this.state.previewPalette || palette)[colour] ||
+                                'repeating-conic-gradient(#e2e8f0 0 25%, #fff 0 50%) 50% / 8px 8px'}} />
+                    </button>
+                    <button type="button" style={{...iconBtn(false), flexShrink: 0}}
+                        data-testid="bw-pixel-swap-colours" aria-label={t(locale, 'px.swapColours')}
+                        title={t(locale, 'px.swapColours')}
+                        onClick={() => this.setState(state => ({colour: state.secondaryColour,
+                            secondaryColour: state.colour, choosingSecondary: false, colourPickerOpen: false}))}>
+                        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor"
+                            strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
+                            <path d="M4 8h16m-4-4 4 4-4 4M20 16H4m4-4-4 4 4 4" />
+                        </svg>
+                    </button>
+
+                    </div>
+
                     <div data-testid="bw-pixel-tools-strip" style={{display: 'flex', gap: 4,
                         flex: '1 1 auto', minWidth: 0, overflowX: 'auto', overflowY: 'hidden',
                         overscrollBehaviorX: 'contain'}}>
@@ -1760,10 +1927,7 @@ class PixelArtEditor extends React.Component {
                         <button key={operation} type="button" style={btn(false)}
                             data-testid={`bw-pixel-${operation}`} aria-label={t(locale, label)}
                             title={t(locale, label)}
-                            disabled={!activeLayer || activeLayer.locked || !activeLayer.visible ||
-                                (operation.startsWith('rotate') && !selection && layers.some(layer => layer.locked)) ||
-                                (operation.startsWith('rotate') && selection &&
-                                (selection.height > w || selection.width > h))}
+                            disabled={!this.canTransform(operation)}
                             onClick={() => this.transform(operation)}>{symbol}</button>)}
                     <span style={{fontSize: 12}}>{t(locale, 'px.zoom')} {Math.round(zoom * 100)}%</span>
                     <button type="button" style={btn(false)} data-testid="bw-pixel-show-img"
@@ -1796,68 +1960,6 @@ class PixelArtEditor extends React.Component {
                             {t(locale, 'px.closeLiteral')}</button>
                     </div>
                 </div> : null}
-                <div data-testid="bw-pixel-palette-toolbar" style={{display: 'flex', gap: 4,
-                    flexWrap: 'nowrap', alignItems: 'center', flexShrink: 0, minHeight: 48,
-                    minWidth: 0}}>
-                    <div style={{display: 'flex', gap: 2, flexWrap: 'nowrap', flex: '1 1 auto', minWidth: 0,
-                        overflowX: 'auto', overflowY: 'hidden', overscrollBehaviorX: 'contain'}} role="radiogroup">
-                        {(this.state.previewPalette || palette).map((c, i) => (
-                            <button key={i} type="button" role="radio" aria-checked={colour === i}
-                                title={c || t(locale, 'px.transparent')} data-testid={`bw-pixel-colour-${i}`}
-                                onClick={() => this.setState(state => ({
-                                    [state.choosingSecondary ? 'secondaryColour' : 'colour']: i,
-                                    choosingSecondary: false, tool: state.tool === 'pick' ? 'pencil' : state.tool}))}
-                                onContextMenu={event => {
-                                    event.preventDefault();
-                                    this.setState({secondaryColour: i, choosingSecondary: false});
-                                }}
-                                style={{width: 44, height: 44, flexShrink: 0, borderRadius: 6, cursor: 'pointer',
-                                    border: colour === i ? '3px solid #0f172a' : '1px solid #94a3b8',
-                                    outline: secondaryColour === i ? '2px dashed #e58c11' : 'none',
-                                    outlineOffset: '-6px',
-                                    background: c || 'repeating-conic-gradient(#e2e8f0 0 25%, #fff 0 50%) 50% / 8px 8px'}} />
-                        ))}
-                    </div>
-                    <button type="button" style={{...iconBtn(choosingSecondary), flexShrink: 0,
-                        background: (this.state.previewPalette || palette)[secondaryColour] ||
-                            'repeating-conic-gradient(#e2e8f0 0 25%, #fff 0 50%) 50% / 8px 8px'}}
-                        data-testid="bw-pixel-secondary-colour" aria-label={t(locale, 'px.secondaryColour')}
-                        title={t(locale, 'px.secondaryColour')} aria-pressed={choosingSecondary}
-                        onClick={() => this.setState({choosingSecondary: !choosingSecondary})}>
-                        <span aria-hidden="true" style={{width: 20, height: 20, border: '2px solid #0f172a',
-                            borderRadius: 3, background: (this.state.previewPalette || palette)[colour] ||
-                                'repeating-conic-gradient(#e2e8f0 0 25%, #fff 0 50%) 50% / 8px 8px'}} />
-                    </button>
-                    <button type="button" style={{...iconBtn(false), flexShrink: 0}}
-                        data-testid="bw-pixel-swap-colours" aria-label={t(locale, 'px.swapColours')}
-                        title={t(locale, 'px.swapColours')}
-                        onClick={() => this.setState(state => ({colour: state.secondaryColour,
-                            secondaryColour: state.colour, choosingSecondary: false}))}>
-                        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor"
-                            strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
-                            <path d="M4 8h16m-4-4 4 4-4 4M20 16H4m4-4-4 4 4 4" />
-                        </svg>
-                    </button>
-                    <button type="button" style={{...iconBtn(panel === 'brush'), flexShrink: 0}} aria-label={t(locale, 'px.brushSize')}
-                        title={`${t(locale, 'px.brushSize')} ${brushSize}`}
-                        data-testid="bw-pixel-brush-toggle" aria-expanded={panel === 'brush'}
-                        onClick={() => this.setState({panel: panel === 'brush' ? null : 'brush'})}>
-                        {toolIcon('brush')}<span style={{fontSize: 10, marginLeft: -4}}>{brushSize}</span></button>
-                    <button type="button" style={{...iconBtn(mirror), flexShrink: 0}} aria-label={t(locale, 'px.mirror')}
-                        title={t(locale, 'px.mirror')} aria-pressed={mirror}
-                        onClick={() => this.setState({mirror: !mirror})}>{toolIcon('mirror')}</button>
-                    <button type="button" style={{...iconBtn(panel === 'palette'), position: 'relative', flexShrink: 0}}
-                        aria-label={t(locale, 'px.paletteColour')}
-                        title={t(locale, 'px.paletteColour')} data-testid="bw-pixel-palette-toggle"
-                        aria-expanded={panel === 'palette'}
-                        onClick={() => this.setState({panel: panel === 'palette' ? null : 'palette'})}>
-                        {toolIcon('palette')}
-                        <span aria-hidden="true" style={{position: 'absolute', right: 3, bottom: 3,
-                            width: 12, height: 12, border: '1px solid #64748b', borderRadius: 3,
-                            background: (this.state.previewPalette || palette)[colour] ||
-                                'repeating-conic-gradient(#e2e8f0 0 25%, #fff 0 50%) 50% / 6px 6px'}} />
-                    </button>
-                </div>
                 {panel === 'brush' ? <div style={{...popover, width: 260}}>
                     <label style={{display: 'flex', alignItems: 'center', gap: 8}}>
                         {t(locale, 'px.brushSize')} {brushSize}
@@ -1903,8 +2005,7 @@ class PixelArtEditor extends React.Component {
                         onClick={() => this.resetPalette()}>{t(locale, 'px.resetPalette')}</button>
                     <button type="button" style={btn(false)} data-testid="bw-pixel-palette-import" disabled={Boolean(this.state.previewPalette)}
                         onClick={() => this.paletteFile.current?.click()}>{t(locale, 'px.importPalette')}</button>
-                    <input ref={this.paletteFile} type="file" accept=".hex,.txt,.gpl" style={{display: 'none'}}
-                        data-testid="bw-pixel-palette-file" onChange={event => this.importPalette(event)} />
+
                     {paletteError ? <span role="alert" style={{color: '#b91c1c', fontSize: 12}}>{paletteError}</span> : null}
                     <EditorErrorBoundary name="Project palette">
                         <ProjectPaletteEditor vm={this.props.vm} locale={locale} image={image} artworkPalette={palette}
@@ -1977,8 +2078,7 @@ class PixelArtEditor extends React.Component {
                     alignItems: 'center', gap: 6}}>
                     <button type="button" style={btn(false)} data-testid="bw-pixel-import-sheet"
                         onClick={() => this.sheetFile.current?.click()}>{t(locale, 'px.importSheet')}</button>
-                    <input ref={this.sheetFile} type="file" accept="image/png,.png" style={{display: 'none'}}
-                        data-testid="bw-pixel-sheet-file" onChange={event => this.loadSheet(event)} />
+
                     <label style={{fontSize: 12}}>{t(locale, 'px.animationName')}
                         <input type="text" maxLength="80" value={animationName} data-testid="bw-pixel-animation-name"
                             onChange={event => { this.remember('Rename animation'); this.setState({animationName: event.target.value}); }} /></label>

@@ -95,17 +95,27 @@ try {
     assert.ok(target.width >= 44 && target.height >= 44, 'the toggle has an iPad-sized touch target');
     await touchToggle.tap();
     assert.equal(await touchToggle.getAttribute('aria-pressed'), 'true', 'touch enables independent handles');
+    await tablet.locator('[class*="paint-editor_mode-selector"] [role="button"][title^="Pen"]').tap();
     const tabletBox = await canvas(tablet).boundingBox();
     const ta = {x: tabletBox.x + tabletBox.width * .18, y: tabletBox.y + tabletBox.height * .30};
     const tb = {x: tabletBox.x + tabletBox.width * .30, y: tabletBox.y + tabletBox.height * .30};
     const tc = {x: tabletBox.x + tabletBox.width * .34, y: tabletBox.y + tabletBox.height * .42};
-    await tablet.locator('[class*="paint-editor_mode-selector"] [role="button"][title^="Pen"]').tap();
     await tablet.mouse.click(ta.x, ta.y);
     await tablet.mouse.move(tb.x, tb.y);
     await tablet.mouse.down();
     await tablet.mouse.move(tb.x + 25, tb.y - 35, {steps: 8});
     await tablet.mouse.up();
     await tablet.mouse.click(tc.x, tc.y);
+    console.log('TABLET_PEN_BOUNDARY', JSON.stringify(await canvas(tablet).evaluate((node, points) => {
+        const box = node.getBoundingClientRect();
+        return {canvas: {x: box.x, y: box.y, width: box.width, height: box.height},
+            points: points.map(point => {
+                const hit = document.elementFromPoint(point.x, point.y);
+                return {...point, canvasHit: hit === node, hitTag: hit?.tagName,
+                    hitTestId: hit?.getAttribute('data-testid')};
+            }), finishPathVisible: [...document.querySelectorAll('[role="button"][title="Finish path"]')]
+                .some(el => el.getClientRects().length)};
+    }, [ta, tb, tc])));
     await tablet.locator('[class*="paint-editor_mode-selector"] [role="button"][title="Finish path"]').tap();
     await tablet.locator('[class*="paint-editor_mode-selector"] [role="button"][title="Reshape"]').tap();
     await tablet.touchscreen.tap(ta.x, ta.y);

@@ -972,7 +972,7 @@ const GUIComponent = props => {
                                 minWidth: 0, minHeight: 0, flexShrink: 1,
                                 ...(isExplicitFraction(rightSize) ? {flex: '1 1 0%'} : {})
                             } : {
-                                display: 'flex', width: '100%', maxWidth: 'none', height: '100%',
+                                display: 'flex', width: '100%', maxWidth: costumesTabVisible ? '100vw' : 'none', height: '100%',
                                 flex: 'none', flexBasis: 'auto', minWidth: 0
                             })}
                         >

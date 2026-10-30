@@ -56,7 +56,8 @@ const rel = p => path.relative(root, p).replaceAll(path.sep, '/');
 // Host observations remain unchanged; public presentation omits local locations.
 export const publicSnapshot = doc => ({...doc, rows: doc.rows.map(row => ({...row,
     via: typeof row.via === 'string' ? row.via.replace(
-        /(^|[\s,;(])(?:\/[^\s,;)]*|[A-Za-z]:[\\/][^\s,;)]*|\\\\[^\s,;)]*)/g,
+        // Delimiters include `=` so assignment-prefixed discovery (`TOOL_DIR=/x`, `--root=/x`) is covered.
+        /(^|[\s,;(=])(?:\/[^\s,;)]*|[A-Za-z]:[\\/][^\s,;)]*|\\\\[^\s,;)]*)/g,
         '$1[local path omitted]') : row.via
 }))});
 
@@ -144,9 +145,18 @@ export function checkAgainst (dir) {
 
 const main = () => {
     const args = process.argv.slice(2);
+    if (args.length === 1 && args[0] === '--reproject') {
+        // Re-apply the public projection to the committed observation without re-probing
+        // this host: present/stable fields stay as read, only local locations are omitted.
+        const committed = JSON.parse(fs.readFileSync(output, 'utf8'));
+        const doc = publicSnapshot(committed);
+        fs.writeFileSync(output, `${JSON.stringify(doc, null, 2)}\n`);
+        console.log(`reprojected ${rel(output)} (${doc.rows.length} rows, bw-board ${doc.source.sha.slice(0, 9)})`);
+        return;
+    }
     const dirIdx = args.indexOf('--dir');
     const dir = dirIdx !== -1 ? path.resolve(args[dirIdx + 1] || '') : null;
-    if (!dir) { console.error('usage: gen-bw-board-census.mjs --dir <bw-board checkout> [--check]'); process.exit(2); }
+    if (!dir) { console.error('usage: gen-bw-board-census.mjs --dir <bw-board checkout> [--check] | --reproject'); process.exit(2); }
     if (args.includes('--check')) {
         checkAgainst(dir);
         console.log(`${rel(output)} is current against ${dir}`);

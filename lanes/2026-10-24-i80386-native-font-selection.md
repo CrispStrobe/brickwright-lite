@@ -1,7 +1,8 @@
 # Bounded native font selection observation — claim, 2026-10-24
 
-**CLAIM ONLY.** Owner: Codex x86 GUI native font observation. Base:
-`dc0897cc4fdf1984752ed4ead0a3836bcd1d2385`. Merge this claim before
+**CLAIM MERGED; active metadata source candidate, event unselected.** Owner:
+Codex x86 GUI native font observation. Base:
+`dc0897cc4fdf1984752ed4ead0a3836bcd1d2385`. This claim merged before
 implementation. It prepares one independently graded Fontconfig observation
 needed by a later, separately admitted 386 GUI browser acceptance. This claim
 does not approve or launch a native call, browser, guest, or actual GUI job.
@@ -68,3 +69,31 @@ with the exact current Build, installed browser/runtime, source and event.
 All enabled exact-head source checks must pass before a separately reviewed
 single metadata event. Acquire and audit its sole official original once;
 no old font label, event or artifact is replayed.
+
+## Current source checkpoint — 2026-10-24
+
+The five owned source files now implement an active, independently guarded
+metadata route. PR1318's published source head passed exact-head source CI;
+its composition with newer mainline census and Build changes is a new source
+head that still needs its own exact-head checks. No native metadata event,
+`fc-match` original, browser-font selection or guest result has been selected
+or observed. The separate HDD actual route remains guarded false. Freeze a new
+request to the final composed head and independently review its selected tool,
+font, service, resource and official-event bindings before one metadata event.
+
+The pre-event retention repair copies the genuine bounded event bytes into
+the uploaded owned directory before service startup and passes that exact
+copy to the service. Earlier unselected source retained only an event hash,
+which was insufficient for the unchanged independent reader. New source,
+request and workflow hashes require fresh qualification and admission; no
+native event has been selected or replayed by this repair.
+
+
+The raw-event admission repair uses separate bounded UTF-8 JSON decoders in
+the producer and standalone reader. They accept genuine runner formatting
+without canonicalizing retained bytes, reject duplicate and nonfinite nested
+values, and preserve all canonical request/original rules and raw hash joins.
+The prior exact-byte retention source assumed a canonical event representation;
+no event was selected under that source. New source/request/workflow identities
+require fresh qualification and admission; actual GUI and guest authority stay
+false.

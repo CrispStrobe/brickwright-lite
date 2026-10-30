@@ -61,44 +61,15 @@ try {
     const fpgaTab = page.locator('[role="tab"]', {hasText: /FPGA/i}).first();
     check(await fpgaTab.count() === 1, 'the exact artifact contains the flagged FPGA tab');
     await fpgaTab.click();
-    await page.getByRole('heading', {name: /FPGA.*Tang Nano 20K/i}).waitFor({timeout: 30000});
+    await page.getByTestId('bw-fpga-workspace').waitFor({state: 'visible', timeout: 30000});
 
-    // The second builder is the React Flow canvas. It starts with a wired AND,
-    // so this drives an actual visual model through the model bridge and HDL
-    // generator without depending on pixel coordinates.
-    // REHABILITATED 2026-09-23. This used to find the canvas positionally —
-    // `following-sibling::details[2]` from the Verilog heading — and the page
-    // has since grown more <details> sections, so the [2] resolved to the
-    // pin-check block and then to two <summary> elements at once ("strict mode
-    // violation"). A gate nothing runs rots exactly like this, which is the
-    // argument test/gate-coverage.test.mjs makes; counting siblings is the
-    // shape that rots fastest, because any unrelated section added above it
-    // silently changes what it points at.
-    //
-    // Anchored to the thing it wants: the disclosure that CONTAINS the canvas,
-    // found from the canvas's own testid. That cannot drift when a section is
-    // added above it, and needs no localized string — the summary's wording
-    // ("Build it visually — drag gates onto the canvas…") differs per locale
-    // and would be a second thing to keep true.
+    // Choose the real Design workspace and canvas editor. The canvas remains
+    // mounted across workspace changes; presence alone does not prove visibility.
+    await page.getByTestId('bw-fpga-workspace-design').click();
+    await page.getByTestId('bw-fpga-editor').selectOption('canvas');
     const canvas = page.getByTestId('bw-fpga-rf-canvas');
-    const fullCanvas = canvas.locator('xpath=ancestor::details[1]');
+    const fullCanvas = page.getByTestId('bw-fpga-canvas-editor');
     check(await fullCanvas.count() === 1, 'the full visual canvas is reachable');
-    // IDEMPOTENT. This disclosure ships OPEN, and clicking its summary
-    // unconditionally shut it — after which the gate waited out its timeout on
-    // a canvas it had just hidden itself. "Click to open" is only the same as
-    // "be open" when you know which way it started.
-    if (!(await fullCanvas.evaluate(el => el.open))) {
-        await fullCanvas.locator('summary').first().click();
-    }
-    // VISIBLE, not present: the panel force-renders, so the canvas is in the
-    // DOM with the disclosure shut and `count()` answers yes either way.
-    //
-    // The wait SYNCHRONISES the read below rather than standing on its own as
-    // the claim — "it appeared" is not the contract, "it mounted the starter
-    // design I am about to turn into Verilog" is, and an empty canvas would
-    // satisfy the first and fail the second. They stay adjacent on purpose:
-    // test/gate-shapes.test.mjs reads an appearance with nothing using it as an
-    // EVENT-AS-STATE suspect, and prose between the two hides the use.
     await canvas.waitFor({state: 'visible', timeout: 30000});
     const placed = await canvas.locator('.react-flow__node').count();
     check(placed > 0, 'the canvas mounts the starter design', `${placed} nodes`);
@@ -141,6 +112,9 @@ try {
         await wired.waitFor({timeout: 10000});
         check(await wired.isVisible(), 'the FPGA journey creates a persistent demo circuit');
 
+        await page.getByTestId('bw-fpga-workspace-build').click();
+        await page.getByTestId('bw-fpga-panel-design').waitFor({state: 'hidden'});
+        await page.getByTestId('bw-fpga-build-target').selectOption('service');
         const synth = page.getByRole('button', {name: /Synthesise|Synthetisieren/i}).first();
         // Keep this as a locator operation: the Circuit-tab round trip can
         // rerender the button, so an ElementHandle captured before it settles
@@ -150,18 +124,21 @@ try {
         await bitstream.waitFor({timeout});
         check(await bitstream.isVisible(), 'visual AND reaches a real bitstream download');
 
-        const inputHeading = page.getByRole('heading', {
+        await page.getByTestId('bw-fpga-workspace-simulate').click();
+        await page.getByTestId('bw-fpga-simulation-view').selectOption('pins');
+        const simulation = page.getByTestId('bw-fpga-panel-simulate');
+        const inputHeading = simulation.getByRole('heading', {
             name: /Design inputs|Design-Eingänge/i,
             includeHidden: true
         });
         await inputHeading.waitFor({state: 'attached', timeout: 30000});
-        const pinDetails = inputHeading.locator('xpath=ancestor::details[1]');
+        const pinDetails = page.getByTestId('bw-fpga-pins-view').locator('details').first();
         if (await pinDetails.getAttribute('open') === null) await pinDetails.locator('summary').first().click();
         const pinReport = await pinDetails.innerText();
         check(!/not brought out to a header/i.test(pinReport) &&
             /a\s*→\s*pin\s*74/i.test(pinReport) && /b\s*→\s*pin\s*76/i.test(pinReport),
         'generated AND inputs reach unique breadboard header pins');
-        const input = name => pinDetails.getByText(name, {exact: true})
+        const input = name => simulation.getByText(name, {exact: true})
             .locator('xpath=ancestor::label[1]').locator('input[type="checkbox"]');
         const a = input('a');
         const b = input('b');
@@ -191,6 +168,32 @@ try {
         await expectPin(true, () => b.check(), 'AND output rises for a=1, b=1');
         await expectPin(false, () => a.uncheck(), 'AND output falls for a=0, b=1');
     } else {
+        // Reduced CI still exercises all three real presentation workspaces.
+        // Keep the live synthesis/demo path above independent and unchanged.
+        const identities = () => canvas.locator('.react-flow__node').evaluateAll(nodes =>
+            nodes.map(node => node.getAttribute('data-id')).sort());
+        const before = await identities();
+        check(before.length > 0 && before.every(id => typeof id === 'string' && id.length > 0) &&
+            new Set(before).size === before.length, 'the authored design has distinct stable node identities');
+        for (const [mode, previous, control] of [
+            ['build', 'design', 'bw-fpga-build-target'],
+            ['simulate', 'build', 'bw-fpga-simulation-view'],
+            ['design', 'simulate', 'bw-fpga-rf-canvas']
+        ]) {
+            await page.getByTestId(`bw-fpga-workspace-${mode}`).click();
+            await page.getByTestId(`bw-fpga-panel-${previous}`).waitFor({state: 'hidden'});
+            await page.getByTestId(`bw-fpga-panel-${mode}`).waitFor({state: 'visible'});
+            await page.getByTestId(control).waitFor({state: 'visible'});
+            check(await page.getByTestId(`bw-fpga-workspace-${mode}`).getAttribute('aria-pressed') === 'true' &&
+                await page.getByTestId(`bw-fpga-workspace-${previous}`).getAttribute('aria-pressed') === 'false',
+            `${mode} workspace is visible and selected after leaving ${previous}`);
+        }
+        check(JSON.stringify(await identities()) === JSON.stringify(before),
+            'workspace switching preserves every authored node identity');
+        const returnedHdl = await page.evaluate(() => [...document.querySelectorAll('textarea')]
+            .map(el => el.value).find(value => /assign\s+w_g\s*=\s*a\s*&\s*b;/.test(value)) || '');
+        check(returnedHdl === generatedHdl,
+            'workspace switching preserves the exact generated AND Verilog');
         console.log('  note: FPGA_SKIP_SYNTH=1 — synthesis and demo-circuit checks intentionally omitted');
     }
 

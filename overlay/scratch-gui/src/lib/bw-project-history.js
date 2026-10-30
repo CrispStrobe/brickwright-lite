@@ -15,7 +15,37 @@ import {syncAnimationResources} from './bw-artwork-bundle.js';
 
 const instrumented = new WeakSet();
 const successor = new WeakMap();
+const assetSuccessor = new WeakMap();
 let suppress = 0;
+
+const rememberRestoredTarget = (before, after) => {
+    successor.set(before, after);
+    // The ZIP importer reconstructs costume/sound objects too. Match the
+    // serialized order, name and asset identity, never just shared image bytes
+    // (two differently named costumes can use the same SVG).
+    const identity = item => item?.asset?.assetId || item?.assetId || item?.md5ext || item?.md5;
+    for (const kind of ['costumes', 'sounds']) {
+        const oldItems = before.sprite?.[kind] || [];
+        const newItems = after.sprite?.[kind] || [];
+        if (oldItems.length !== newItems.length) continue;
+        oldItems.forEach((item, index) => {
+            const restored = newItems[index];
+            if (restored && item.name === restored.name && identity(item) && identity(item) === identity(restored)) {
+                assetSuccessor.set(item, restored);
+            }
+        });
+    }
+};
+
+const restoredItem = (list, item, kind) => {
+    const seen = new Set();
+    while (!list.includes(item) && assetSuccessor.has(item) && !seen.has(item)) {
+        seen.add(item);
+        item = assetSuccessor.get(item);
+    }
+    if (!list.includes(item)) throw new Error(`That ${kind} is no longer in this sprite`);
+    return item;
+};
 
 const live = (vm, target) => {
     let current = target;
@@ -32,6 +62,21 @@ const live = (vm, target) => {
 
 const nameOf = target => (target && target.sprite ? target.sprite.name : '');
 const quote = text => `“${String(text).slice(0, 40)}”`;
+
+/** Record only a user title edit; loading a project also sets its title. */
+export const changeProjectTitle = (before, after, apply) => {
+    const result = apply(after);
+    if (!suppress && before !== after) recordProjectEdit({
+        label: `Project: Rename ${quote(before)} → ${quote(after)}`,
+        undo: () => withoutHistory(() => apply(before)),
+        redo: () => withoutHistory(() => apply(after))
+    });
+    return result;
+};
+
+if (typeof globalThis !== 'undefined' && globalThis.__bwGlobalUndo) {
+    globalThis.__bwGlobalUndo.changeProjectTitle = changeProjectTitle;
+}
 
 /**
  * Run `fn` without recording (bulk operations that record one step themselves).
@@ -101,7 +146,7 @@ export const recordSpriteDeletion = (vm, target, restore, remove) => {
     let current = {target, restore: once(quiet(restore))};
     const undo = () => current.restore().then(restored => {
         if (!restored || restored === true) return;
-        successor.set(current.target, restored);
+        rememberRestoredTarget(current.target, restored);
         current = {target: restored, restore: null};
     });
     const redo = () => {
@@ -133,9 +178,75 @@ export const instrumentProjectHistory = vm => {
         vm[name] = (...args) => (suppress ? raw[name](...args) : fn(...args));
     };
 
+    let projectGeneration = 0;
+    let sharing = Promise.resolve();
     const load = vm.loadProject.bind(vm);
     vm.loadProject = (...args) => load(...args).then(result => {
+        projectGeneration++;
+        sharing = Promise.resolve();
         clearProjectHistory();
+        return result;
+    });
+
+    // Serialize copies so two simultaneous drags into the same sprite are two
+    // independent steps, rather than both snapshots claiming the same blocks.
+    wrap('shareBlocksToTarget', (blocks, targetId, fromTargetId) => {
+        const generation = projectGeneration;
+        const requestedTarget = vm.runtime.getTargetById(targetId);
+        const copied = JSON.parse(JSON.stringify(blocks));
+        const copy = () => {
+            // A queued drag belongs to the project in which it was requested.
+            if (generation !== projectGeneration) return;
+            const target = vm.runtime.getTargetById(targetId);
+            // Loading clears the old targets before loadProject resolves and
+            // advances the generation. Cancel a drag while that gap is open.
+            if (requestedTarget && target !== requestedTarget) return;
+            if (!target) return raw.shareBlocksToTarget(copied, targetId, fromTargetId);
+            const before = new Set(Object.keys(target.blocks._blocks));
+            const variableKeys = new Map(vm.runtime.targets.map(t => [t, new Set(Object.keys(t.variables))]));
+            const result = raw.shareBlocksToTarget(copied, targetId, fromTargetId);
+            // The VM resolves variable conflicts synchronously before loading
+            // extensions; capture exactly those creations before another edit.
+            const variables = vm.runtime.targets.flatMap(owner => Object.values(owner.variables)
+                .filter(v => !variableKeys.get(owner)?.has(v.id)).map(v => ({owner, id: v.id,
+                    name: v.name, type: v.type, isCloud: v.isCloud, value: JSON.parse(JSON.stringify(v.value))})));
+            return Promise.resolve(result).then(value => {
+                // Extension loading may finish after another project replaced
+                // the target. Never repopulate its cleared History with old work.
+                if (generation !== projectGeneration || !vm.runtime.targets.includes(target)) return value;
+                const added = Object.values(target.blocks._blocks).filter(b => !before.has(b.id));
+                // A foreign asynchronous import may overlap unrelated edits.
+                // Never delete those edits as though this copy had made them.
+                if (!added.length || added.length !== copied.length) return value;
+                const saved = JSON.parse(JSON.stringify(added));
+                const refresh = current => {
+                    current.blocks.updateTargetSpecificBlocks(current.isStage);
+                    if (vm.editingTarget === current) vm.emitWorkspaceUpdate();
+                };
+                record(vm, {
+                    label: `Blocks: Copy to ${quote(nameOf(target))}`,
+                    undo: () => {
+                        const current = live(vm, target);
+                        for (const block of saved) current.blocks.deleteBlock(block.id);
+                        for (const v of variables) live(vm, v.owner).deleteVariable(v.id);
+                        refresh(current);
+                    },
+                    redo: () => {
+                        const current = live(vm, target);
+                        for (const v of variables) {
+                            const owner = live(vm, v.owner);
+                            owner.createVariable(v.id, v.name, v.type, v.isCloud);
+                            owner.variables[v.id].value = JSON.parse(JSON.stringify(v.value));
+                        }
+                        for (const block of saved) current.blocks.createBlock(JSON.parse(JSON.stringify(block)));
+                        refresh(current);
+                    }
+                });
+                return value;
+            });
+        };
+        const result = sharing.then(copy);
+        sharing = result.catch(() => {});
         return result;
     });
 
@@ -164,7 +275,7 @@ export const instrumentProjectHistory = vm => {
             },
             redo: () => state.restore().then(restored => {
                 if (restored && restored !== true) {
-                    successor.set(state.target, restored);
+                    rememberRestoredTarget(state.target, restored);
                     state = {target: restored, restore: null};
                 }
             })
@@ -266,12 +377,13 @@ export const instrumentProjectHistory = vm => {
         const k = kinds[kind];
         const added = k.list(target).filter(item => !before.includes(item));
         if (added.length !== 1) return;
-        const item = added[0];
+        let item = added[0];
         let index = -1;
         record(vm, {
             label: `${area(kind, target)}: ${verb} ${quote(item.name)}`,
             undo: () => {
                 const t = live(vm, target);
+                item = restoredItem(k.list(t), item, kind);
                 index = k.list(t).indexOf(item);
                 if (index < 0 || !k.remove(t, index)) {
                     throw new Error(`The ${kind} ${quote(item.name)} cannot be removed (a sprite needs one costume)`);
@@ -299,7 +411,7 @@ export const instrumentProjectHistory = vm => {
     const wrapDelete = (name, kind) => wrap(name, index => {
         const target = vm.editingTarget;
         const k = kinds[kind];
-        const item = target && k.list(target)[index];
+        let item = target && k.list(target)[index];
         const restore = raw[name](index);
         if (!restore || !item) return restore;
         let deleted = true;
@@ -314,6 +426,7 @@ export const instrumentProjectHistory = vm => {
             undo: put,
             redo: () => {
                 const t = live(vm, target);
+                item = restoredItem(k.list(t), item, kind);
                 const at = k.list(t).indexOf(item);
                 if (at < 0 || !k.remove(t, at)) throw new Error(`The ${kind} ${quote(item.name)} cannot be removed`);
                 deleted = true;
@@ -328,13 +441,14 @@ export const instrumentProjectHistory = vm => {
     const wrapRename = (name, kind) => wrap(name, (index, newName) => {
         const target = vm.editingTarget;
         const k = kinds[kind];
-        const item = target && k.list(target)[index];
+        let item = target && k.list(target)[index];
         const oldName = item && item.name;
         const result = raw[name](index, newName);
         if (item && item.name !== oldName) {
             const renamed = item.name;
             const rename = value => () => {
                 const t = live(vm, target);
+                item = restoredItem(k.list(t), item, kind);
                 k.rename(t, k.list(t).indexOf(item), value);
             };
             record(vm, {label: `${area(kind, target)}: Rename ${quote(oldName)} → ${quote(renamed)}`,
@@ -348,11 +462,12 @@ export const instrumentProjectHistory = vm => {
     const wrapReorder = (name, kind) => wrap(name, (targetId, from, to) => {
         const target = vm.runtime.getTargetById(targetId);
         const k = kinds[kind];
-        const item = target && k.list(target)[from];
+        let item = target && k.list(target)[from];
         const result = raw[name](targetId, from, to);
         if (result && item) {
             const move = toIndex => () => {
                 const t = live(vm, target);
+                item = restoredItem(k.list(t), item, kind);
                 k.reorder(t, k.list(t).indexOf(item), toIndex);
             };
             record(vm, {label: `${area(kind, target)}: Reorder ${quote(item.name)}`, undo: move(from), redo: move(to)});

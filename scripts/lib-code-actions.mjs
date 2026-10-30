@@ -34,10 +34,28 @@ export async function openCodeActions (page, {timeout = 30000} = {}) {
         if (await menu.count() === 0) return false;
         throw error;
     }
+    const trigger = page.getByTestId('bw-code-actions-trigger');
+    if (await trigger.count()) {
+        if (await trigger.getAttribute('aria-expanded') === 'true') return true;
+        await trigger.click({timeout});
+        await page.getByTestId('bw-code-actions-menu').waitFor({state: 'visible', timeout});
+        return true;
+    }
+    // Retain old-deploy diagnostics without changing what their controls do.
     if (await menu.evaluate(el => el.open)) return true;
     await menu.locator('summary').click({timeout});
     await page.waitForFunction(
         () => !!document.querySelector('[data-testid="bw-code-actions"]')?.open,
         null, {timeout});
     return true;
+}
+
+export async function closeCodeActions (page, {timeout = 30000} = {}) {
+    const trigger = page.getByTestId('bw-code-actions-trigger');
+    if (await trigger.count()) {
+        if (await trigger.getAttribute('aria-expanded') === 'true') await trigger.click({timeout});
+        return;
+    }
+    const menu = page.getByTestId('bw-code-actions');
+    if (await menu.count() && await menu.evaluate(el => el.open)) await menu.locator('summary').click({timeout});
 }

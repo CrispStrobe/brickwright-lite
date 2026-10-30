@@ -722,6 +722,17 @@ export const parseModel = (text, {catalog} = {}) => {
     }
 
     const model = {version: 1, parts};
+    // One model-wide setting in the main section. Embedded parts/submodels do
+    // not override the receiving model's compatibility choice.
+    const directionLines = mainLines.filter(l => /^\s*0\s+!BW\s+MOTOR_DIRECTION(?:\s|$)/i.test(l.text));
+    if (directionLines.length) {
+        const value = directionLines[0].text.trim().replace(/^0\s+!BW\s+MOTOR_DIRECTION\s*/i, '').trim();
+        if (directionLines.length !== 1 || !['legacy', 'motor-frame'].includes(value)) {
+            model.motorDirection = 'invalid';
+            refusals.push({line: directionLines[0].lineNo, severity: 'error', code: 'bad-motor-direction',
+                message: 'MOTOR_DIRECTION needs exactly one legacy or motor-frame setting in the main model'});
+        } else model.motorDirection = value;
+    }
     // Keep a supplied model's attribution when Build edits or exports a derivative.
     const header = mainLines.map(l => l.text);
     const author = header.map(l => /^0\s+Author:\s*(.+)$/i.exec(l)?.[1]?.trim()).find(Boolean);
@@ -797,6 +808,9 @@ export const parseModel = (text, {catalog} = {}) => {
  * @returns {string} LDraw text with CRLF
  */
 export const serializeModel = (model, {name = 'model.ldr', title = 'Brickwright model', author = model.attribution?.author || 'Brickwright', precision = 6} = {}) => {
+    if (model.motorDirection !== undefined && !['legacy', 'motor-frame'].includes(model.motorDirection)) {
+        throw new RangeError('motorDirection must be legacy or motor-frame');
+    }
     if (![6, 12].includes(precision)) throw new RangeError('LDraw precision must be 6 or 12');
     const number = n => formatNumber(n, precision);
     const lines = [];
@@ -806,6 +820,7 @@ export const serializeModel = (model, {name = 'model.ldr', title = 'Brickwright 
     lines.push(`0 ${title}`);
     lines.push(`0 Name: ${name}`);
     lines.push(`0 Author: ${author}`);
+    if (model.motorDirection !== undefined) lines.push(`0 !BW MOTOR_DIRECTION ${model.motorDirection}`);
     if (model.attribution?.license) lines.push(`0 !LICENSE ${model.attribution.license}`);
     for (const d of model.drawings || []) {
         lines.push(`0 !BW DRAW ${d.surface} ${d.pen} ${[...d.tip, ...d.center, d.radiusLdu].map(number).join(' ')}`);

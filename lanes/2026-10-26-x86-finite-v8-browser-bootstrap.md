@@ -89,6 +89,50 @@ inventory and native/runtime joins can precede the distinct actual-V8 GUI
 export/reload and forward-debug acceptance. Preserve the consumed V7 event.
 No physical accuracy, whole OS, performance, release or broad licence claim.
 
+## Disabled implementation checkpoint
+
+The claim merged in [PR1451](https://github.com/CrispStrobe/brickwright-lite/pull/1451).
+Phase A introduces distinct finite V8 schemas and CLI routes with execution
+and reader guards false, and retires finite V7 execution while preserving its
+reader, fixed 836/1bc identities and eighteen historical witnesses. Current
+F8/V8 identities and witnesses are separately named, initially unchanged.
+
+The fixed helper sidecar joins reviewed Git mode/blob/extent/digest with actual
+regular workspace bytes. Current V8 installs its immutable request once before
+Node, requires source/bootstrap admission, runs the unchanged helper before
+npm/Chromium, then reuses the same request. Its preflight, guest-entry path and
+independent reader also require the retained matching bootstrap/helper evidence;
+workflow ordering alone cannot authorize them. A missing or cross-source packet
+refuses before media, frontend acquisition or guest. Bootstrap admission itself
+observes source only, not installed runtime or GUI acceptance.
+
+Synthetic controls cover the real collector/finalizer/independent-reader chain,
+retained historical F7 parsing, coherent current-role drift, failed partial
+inventory, typed event/source cuts and helper/one-request ordering. These are
+source controls, not a new official inventory. The prior whole-body profiles
+remain held and intentionally refuse changed source until separate independent
+review. Fresh exact-head source and Build qualification, separate arming and
+one-shot F8 admission, originals and independent reading remain required.
+
+## Separately reviewed source arming and role profiles — 2026-10-26
+
+The preceding disabled Phase A checkpoint remains historical. After review
+of the producer, independent reader and workflow, a separate source commit
+arms only the three F8 guards. F7 execution remains retired and its reader
+continues to accept its fixed historical wire. A genuine successful synthetic
+F8 collector now passes exclusive original retention and independent reading;
+the first omitted finalizer-version refusal is preserved. These controls do
+not create an official inventory or authorize a replacement F7 event.
+
+After independent review of the final armed bodies, a separate gate update
+fixes their exact lengths/digests and requires literal fixed F7 pins, distinct
+historical/current SB3 declarations and the current F8 pin map. It retains
+whole-body guards, the four named historical source slots and all current-input
+refusals; no caller profile, automatic refresh or broad exemption is added.
+Fresh exact-head source and Build qualification remain pending. A separately
+admitted one-shot F8 event and complete independently read originals must
+precede any distinct actual-V8 GUI acceptance. No such event is selected.
+
 ## Finite V8 failed-attempt checkpoint — 2026-10-27
 
 Source candidate [`2079bf18`](https://github.com/CrispStrobe/brickwright-lite/commit/2079bf1884199a294e7321612ce4cb9ef86807f2)
@@ -107,3 +151,12 @@ event is spent and must never be retried or reinterpreted. The distinct
 [finite V9 resolver-role continuation](2026-10-27-x86-finite-v9-resolver-role.md)
 requires its merged claim, separately reviewed source and fresh qualification.
 Actual-V8 FreeDOS export/reload and forward-debug acceptance remain pending.
+
+## V8 execution retired; V9 source continuation — 2026-10-27
+
+The failed V8 event above remains spent and unqualified. Its source execution
+flag is retired while its historical reader, supplier pins, eighteen witnesses
+and alias checks remain fixed. The separately claimed V9 source starts disabled
+and selects `/etc/resolv.conf` only as a regular file. It does not repair or
+reinterpret the original V8 record. New source/Build qualification and a new
+independently admitted V9 observation are required before actual-V8 GUI work.

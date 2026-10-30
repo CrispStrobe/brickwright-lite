@@ -1,6 +1,10 @@
 # About — Our apps refresh
 
-Status: CLAIMED, before implementation.
+Delivery integration (2026-10-29): this scope is assembled on
+`delivery/robot-editor-compat-20261029`. Original source history is preserved;
+final hosted and main qualification is pending.
+
+Status: IMPLEMENTED in an owned candidate; final hosted/main qualification pending.
 Owner: Robot Lab/editor delivery coordinator.
 Branch: `lane/editor-showcase-refresh-20261028`.
 
@@ -18,3 +22,12 @@ App Store Connect write, TestFlight upload or other owners' menu changes.
 Done after local catalogue/asset validation, all required hosted code checks,
 matched-head source merge, and the following main run. Refresh again before a
 later release; this source update is not a release authorization.
+
+
+Implementation (2026-10-29): the read-only Apple refresh checked 19 apps,
+9 App Store entries and 18 public TestFlight links. CrispTuner now has its
+current App Store link and artwork. Brickwright keeps its exact existing icon,
+marked `icon: 'local'` so future refreshes preserve it. Both checked PNGs are
+128 × 128; all four existing catalogue/rendering/refresh controls pass. No Apple
+records, releases or TestFlight builds were changed. This source will join the
+combined delivery candidate; final hosted checks and main qualification remain.

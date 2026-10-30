@@ -12,9 +12,10 @@
 import PropTypes from 'prop-types';
 import LegacyTileDefinitionEditor from './legacy-tile-definition-editor.jsx';
 import React from 'react';
+import {notifyEditorMenuActions, registerEditorMenuActions} from '../../lib/editor-menu-actions.js';
 import {makeT, browserLocale} from '../../lib/bw-i18n.js';
 import {inspectTilemapPalette, observeTilemapPalette, tilemapPixelColor, drawTilemapImage} from '../../lib/bw-makecode/tilemap-palette.js';
-import {activateUndoSurface, notifyUndoState, registerUndoSurface} from '../../lib/global-undo.js';
+import {activateUndoSurface, getUndoState, notifyUndoState, registerUndoSurface} from '../../lib/global-undo.js';
 import {
     TILE_SIZES, findTilemapBlocks, writeTilemapBlock, tilemapText, paintCell, eraseCell, fillCells, setWall, resizeTilemap,
     setTileSize, addTile, removeTile, paintTilePixel, renameTile, createHistory, commit, undo, redo, historyStepNames, createTilemap, addTilemapBlock
@@ -29,7 +30,7 @@ const L10N = {
         'tm.noneEditable': 'These layouts need a different editing path:', 'tm.notEditable': 'not editable', 'tm.paint': 'Paint', 'tm.erase': 'Erase', 'tm.fill': 'Fill',
         'tm.wall': 'Walls', 'tm.showWalls': 'Show walls', 'tm.undo': 'Undo', 'tm.redo': 'Redo',
         'tm.columns': 'Columns', 'tm.rows': 'Rows', 'tm.tileSize': 'Tile size', 'tm.resize': 'Resize',
-        'tm.tiles': 'Tiles', 'tm.tile': 'Tile {n}', 'tm.emptyTile': 'Tile 0 (empty)', 'tm.addTile': 'Add tile',
+        'tm.saveMenu': 'Save tile map to blocks', 'tm.revertMenu': 'Revert tile map', 'tm.tools': 'Tile tools', 'tm.tiles': 'Tiles', 'tm.tile': 'Tile {n}', 'tm.emptyTile': 'Tile 0 (empty)', 'tm.addTile': 'Add tile',
         'tm.removeTile': 'Remove tile', 'tm.colour': 'Colour {n}', 'tm.save': 'Save', 'tm.revert': 'Revert',
         'tm.paletteStartup': 'Preview uses the project startup palette; later code can change it while running.',
         'tm.paletteUnknown': 'The startup palette is dynamic or conflicting. Gray is an index preview, not the game colors. Edit the palette in Code or Blocks.',
@@ -54,7 +55,7 @@ const L10N = {
         'tm.noneEditable': 'Diese Grundrisse benötigen einen anderen Bearbeitungsweg:', 'tm.notEditable': 'nicht bearbeitbar', 'tm.paint': 'Malen', 'tm.erase': 'Radieren', 'tm.fill': 'Füllen',
         'tm.wall': 'Wände', 'tm.showWalls': 'Wände zeigen', 'tm.undo': 'Rückgängig', 'tm.redo': 'Wiederholen',
         'tm.columns': 'Spalten', 'tm.rows': 'Zeilen', 'tm.tileSize': 'Kachelgröße', 'tm.resize': 'Größe ändern',
-        'tm.tiles': 'Kacheln', 'tm.tile': 'Kachel {n}', 'tm.emptyTile': 'Kachel 0 (leer)', 'tm.addTile': 'Kachel hinzufügen',
+        'tm.saveMenu': 'Kachelkarte in Blöcken speichern', 'tm.revertMenu': 'Kachelkarte zurücksetzen', 'tm.tools': 'Kachelwerkzeuge', 'tm.tiles': 'Kacheln', 'tm.tile': 'Kachel {n}', 'tm.emptyTile': 'Kachel 0 (leer)', 'tm.addTile': 'Kachel hinzufügen',
         'tm.removeTile': 'Kachel entfernen', 'tm.colour': 'Farbe {n}', 'tm.save': 'Speichern', 'tm.revert': 'Verwerfen',
         'tm.paletteStartup': 'Die Vorschau verwendet die Projekt-Startpalette; späterer Code kann sie beim Ausführen ändern.',
         'tm.paletteUnknown': 'Die Startpalette ist dynamisch oder widersprüchlich. Grau zeigt nur die Indizes, nicht die Spielfarben. Bearbeite die Palette in Code oder Blöcken.',
@@ -128,12 +129,15 @@ class TilemapEditor extends React.Component {
             redo: () => step(redo)
         });
         activateUndoSurface('tilemap');
+        this._menuMounted = true;
+        this.unregisterMenu = registerEditorMenuActions('tilemap', () => this.editorMenuActions());
     }
     componentDidUpdate (prevProps, prevState) {
         if (prevProps.vm !== this.props.vm) {
             this.releasePalette();
             this.releasePalette = observeTilemapPalette(this.props.vm, this.refreshPalette);
         }
+        notifyEditorMenuActions();
         this.draw();
         if (prevState.history !== this.state.history) {
             this.pendingHistory = null;
@@ -142,6 +146,8 @@ class TilemapEditor extends React.Component {
     }
     componentWillUnmount () {
         this.releasePalette();
+        this._menuMounted = false;
+        if (this.unregisterMenu) this.unregisterMenu();
         if (this.unregisterUndo) this.unregisterUndo();
     }
     refreshPalette (palette) {
@@ -151,6 +157,39 @@ class TilemapEditor extends React.Component {
     get data () { return this.stroke ? this.stroke.data : this.state.history?.present; }
 
     /** True when the shown level differs from what the block holds. */
+    editorMenuActions () {
+        if (!this._menuMounted || getUndoState().surface !== 'tilemap') return null;
+        const locale = this.props.locale || browserLocale();
+        const {maps, selected, history, tile} = this.state;
+        const ready = !!history;
+        const legacy = maps[selected]?.kind === 'legacyLayout';
+        const action = (label, location, enabled, run, submenu = '') =>
+            ({label: t(locale, label), location, enabled: !!enabled, run, submenu});
+        const actions = {
+            new: action('tm.new', 'file', true, () => this.newMap()),
+            save: action('tm.saveMenu', 'file', ready, () => this.save()),
+            revert: action('tm.revertMenu', 'edit', ready && this.hasUnsavedChanges(), () => this.revertMap()),
+            'add-tile': action('tm.addTile', 'edit', ready && !legacy, () => this.addEditorTile(), t(locale, 'tm.tiles')),
+            'remove-tile': action('tm.removeTile', 'edit', ready && !legacy && tile >= 1,
+                () => this.apply(removeTile(history.present, tile)), t(locale, 'tm.tiles'))
+        };
+        for (const tool of ['paint', 'erase', 'fill', 'wall', 'place']) {
+            actions[tool] = action(`tm.${tool}`, 'edit', ready && (!legacy || !['wall', 'place'].includes(tool)),
+                () => this.setState({tool}), t(locale, 'tm.tools'));
+        }
+        return actions;
+    }
+
+    revertMap () {
+        this.setState(state => ({history: commit(state.history, state.saved), placementDraft: state.placements}));
+    }
+
+    addEditorTile () {
+        const added = addTile(this.state.history.present);
+        if (added.index < 0) return;
+        this.setState(state => ({history: commit(state.history, added.data), tile: added.index}));
+    }
+
     hasUnsavedChanges () {
         return Boolean(this.state.history && (this.state.history.present !== this.state.saved ||
             placementsChanged(this.state.placements, this.state.placementDraft)));
@@ -465,8 +504,7 @@ class TilemapEditor extends React.Component {
                     <span style={{flex: 1}} />
                     {this.hasUnsavedChanges() ? <span style={{fontSize: 12, color: '#b45309'}}>{t(locale, 'tm.unsaved')}</span> : null}
                     <button type="button" data-testid="bw-tilemap-revert" style={btn(false)} disabled={!this.hasUnsavedChanges()}
-                        onClick={() => this.setState(state => ({history: commit(state.history, state.saved),
-                            placementDraft: state.placements}))}>{t(locale, 'tm.revert')}</button>
+                        onClick={() => this.revertMap()}>{t(locale, 'tm.revert')}</button>
                     <button type="button" data-testid="bw-tilemap-save" style={{...btn(true), fontWeight: 600}}
                         onClick={() => this.save()}>{t(locale, 'tm.save')}</button>
                 </div>
@@ -490,11 +528,7 @@ class TilemapEditor extends React.Component {
                         </div>
                         {legacy ? <p data-testid="bw-tilemap-legacy-hint" style={{fontSize: 12}}>{t(locale, 'tm.legacyLayout')}</p> : <>
                         <div style={{display: 'flex', gap: 4}}>
-                            <button type="button" data-testid="bw-tilemap-add-tile" style={btn(false)} onClick={() => {
-                                const added = addTile(data);
-                                if (added.index < 0) return;
-                                this.setState(state => ({history: commit(state.history, added.data), tile: added.index}));
-                            }}>{t(locale, 'tm.addTile')}</button>
+                            <button type="button" data-testid="bw-tilemap-add-tile" style={btn(false)} onClick={() => this.addEditorTile()}>{t(locale, 'tm.addTile')}</button>
                             <button type="button" data-testid="bw-tilemap-remove-tile" style={btn(false)} disabled={tile < 1}
                                 onClick={() => this.apply(removeTile(data, tile))}>{t(locale, 'tm.removeTile')}</button>
                         </div>

@@ -19,6 +19,7 @@
  * body that carries its frame made static (the vice).
  */
 import {test} from 'node:test';
+import {createTiltOnset} from './helpers/tilt-onset.mjs';
 import assert from 'node:assert/strict';
 import {readFileSync, readdirSync} from 'node:fs';
 import path from 'node:path';
@@ -628,32 +629,53 @@ test('tilting table: a loose tower of two 1 × 1 × 3 bricks tips at tan θ = (h
         const housing = clamp(mech, mj.body1);
         const towerBody = bodyOf(mech, 'towerLow').id;
         const {core, hub, bridge, dispose} = withHub(mech, housing);
-        // Tilt about world x (the table's axis): the angle of a body's up vector in the y–z plane.
-        const ang = q => {
-            const v = qrot(q, [0, 1, 0]);
-            return Math.atan2(v[2], v[1]) * DEG;
-        };
-        const t0 = ang(core.bodyPose(towerBody).rotation);
-        const b0 = ang(core.bodyPose(mj.body2).rotation);
-        await tick(bridge, 300);
-        let standing = 0;
-        let tipped = null;
-        for (let k = 0; k < 40 && tipped === null; k++) {
-            let done = false;
-            hub.motors.runForDegrees('A', 0.5, 20 * dir).then(() => { done = true; });
-            for (let i = 0; i < 40 && !done; i++) await tick(bridge, 50);
-            await tick(bridge, 500);
-            const table = ang(core.bodyPose(mj.body2).rotation) - b0;
-            const towerTilt = wrap((ang(core.bodyPose(towerBody).rotation) - t0) / DEG) * DEG;
-            if (Math.abs(towerTilt - table) > 5) tipped = table;
-            else standing = table;
-        }
-        dispose();
-        return {standing, tipped};
+        try {
+            // Keep the original pose convention and the late check as diagnostics.
+            const ang = q => {
+                const v = qrot(q, [0, 1, 0]);
+                return Math.atan2(v[2], v[1]) * DEG;
+            };
+            const tableRotation = core.bodyPose(mj.body2).rotation;
+            const towerRotation = core.bodyPose(towerBody).rotation;
+            const t0 = ang(towerRotation);
+            const b0 = ang(tableRotation);
+            const onset = createTiltOnset({tableRotation, towerRotation});
+            let step = 0, phase = 'settle', command = null;
+            const observe = () => onset.observe({tableRotation: core.bodyPose(mj.body2).rotation,
+                towerRotation: core.bodyPose(towerBody).rotation, step: ++step, timeSeconds: core.time, phase, command});
+            await tick(bridge, 300, observe);
+            onset.arm();
+            let standing = 0;
+            let tipped = null;
+            let lateStanding = 0, lateTipped = null;
+            const lateChecks = [];
+            for (let k = 0; k < 40 && tipped === null; k++) {
+                command = k;
+                let done = false;
+                hub.motors.runForDegrees('A', 0.5, 20 * dir).then(() => { done = true; });
+                phase = 'poll';
+                for (let i = 0; i < 40 && !done; i++) await tick(bridge, 50, observe);
+                phase = 'hold';
+                await tick(bridge, 500, observe);
+                if (!done) throw new Error('tilt command did not complete within original polls and hold');
+                const table = ang(core.bodyPose(mj.body2).rotation) - b0;
+                const towerTilt = wrap((ang(core.bodyPose(towerBody).rotation) - t0) / DEG) * DEG;
+                if (Math.abs(towerTilt - table) > 5) lateTipped = table;
+                else lateStanding = table;
+                lateChecks.push({command: k, step, timeSeconds: core.time, table, towerTilt, done});
+                // An immutable first sample survives the original poll and full 500 ms hold.
+                tipped = onset.first()?.tableDegrees ?? null;
+                if (tipped === null) standing = table;
+            }
+            const observed = onset.result();
+            return {standing, tipped, first: observed.first, last: observed.last, samples: observed.samples,
+                lateStanding, lateTipped, lateChecks};
+        } finally { dispose(); }
     };
     const out = [await tilt(1), await tilt(-1)];
     t.diagnostic(`COM ${h.toFixed(2)} LDU above the face, half base ${half} LDU: sharp θc ${sharpCritical.toFixed(2)}°, rounded θc ${critical.toFixed(2)}°; ` +
         out.map(o => `stood at ${o.standing.toFixed(2)}°, tipped at ${o.tipped?.toFixed(2)}°`).join('; '));
+    t.diagnostic(JSON.stringify({tiltCompletedStepOnsets: out}));
     for (const o of out) assert.ok(o.tipped !== null && Math.abs(Math.abs(o.tipped) - critical) <= 0.5, `tipped at ${o.tipped}° vs ${critical}°`);
 });
 
