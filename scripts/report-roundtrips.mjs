@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /** Summarize the machine-readable conversion round-trip report. */
 import fs from 'node:fs';
-import {pathOutcome, BINARY_NOT_COMPARED} from './lib/roundtrip-status.mjs';
+import {pathOutcome, BINARY_NOT_COMPARED, NORMALIZED} from './lib/roundtrip-status.mjs';
 
 const [input, output] = process.argv.slice(2);
 if (!input || !output) {
@@ -17,7 +17,7 @@ const tally = rows => Object.fromEntries(paths.map(label => [label, rows.reduce(
     if (!p) return acc;
     const outcome = pathOutcome(p, row);
     const status = {failed: 'error', 'compile-failed': 'compile fail', 'source-invalid': 'source invalid',
-        [BINARY_NOT_COMPARED]: 'binary not compared'}[outcome] || outcome;
+        [BINARY_NOT_COMPARED]: 'binary not compared', [NORMALIZED]: 'normalized'}[outcome] || outcome;
     acc[status] = (acc[status] || 0) + 1;
     return acc;
 }, {})]));
@@ -30,8 +30,8 @@ const lines = ['# Conversion round trips', '',
     'Scratch-format SB3 checks do not establish TurboWarp-specific compatibility. No runtime or behavioral equivalence is measured here.', '',
     '## Gap ranking by affected projects', '', '| projects | occurrences | family |', '|---:|---:|---|',
     ...(report.gapRanking || []).map(g => `| ${g.affectedProjects} | ${g.occurrences} | ${escape(g.family)} |`), '',
-    '## Paths', '', '| corpus | permutation | preserved | partial | loss | compile fail | source invalid | error | structure preserved, binary assets not compared |',
-    '|---|---|---:|---:|---:|---:|---:|---:|---:|'];
+    '## Paths', '', '| corpus | permutation | preserved | partial | loss | compile fail | source invalid | error | structure preserved, binary assets not compared | normalized |',
+    '|---|---|---:|---:|---:|---:|---:|---:|---:|---:|'];
 for (const [name, chosen] of [
     ['Arcade TypeScript', rows.filter(r => r.target === 'arcade')],
     ['micro:bit TypeScript', rows.filter(r => r.target === 'microbit')],
@@ -39,7 +39,7 @@ for (const [name, chosen] of [
 ]) {
     for (const [label, counts] of Object.entries(tally(chosen))) {
         if (!Object.keys(counts).length) continue;
-        lines.push(`| ${name} | ${label} | ${counts.preserved || 0} | ${counts.partial || 0} | ${counts.loss || 0} | ${counts['compile fail'] || 0} | ${counts['source invalid'] || 0} | ${counts.error || 0} | ${counts['binary not compared'] || 0} |`);
+        lines.push(`| ${name} | ${label} | ${counts.preserved || 0} | ${counts.partial || 0} | ${counts.loss || 0} | ${counts['compile fail'] || 0} | ${counts['source invalid'] || 0} | ${counts.error || 0} | ${counts['binary not compared'] || 0} | ${counts.normalized || 0} |`);
     }
 }
 const lost = new Map();

@@ -109,6 +109,7 @@ export class Emitter {
     constructor (blocks) {
         this.blocks = blocks;
         this.unsupported = [];
+        this.arraysCreated = new Set();   // arrays whose first arrays_createEmpty became the declaration
         this.arrays = new Set();   // names met on `arrays` blocks; declared by the caller
     }
 
@@ -609,9 +610,14 @@ export class Emitter {
         // variable, so the declaration cannot come from target.variables the
         // way an ordinary one does. Each name met here is recorded, and
         // projectToMakeCodeTs emits `let <name>: number[] = []` for it.
-        case 'arrays_createEmpty':
-            this.arrays.add(this.arrayName(b));
-            return;                                   // the declaration IS the creation
+        case 'arrays_createEmpty': {
+            const name = this.arrayName(b);
+            // The first creation is the declaration. A later one is the author's
+            // own statement (it may empty a filled array) and is kept.
+            if (this.arraysCreated.has(name)) push(`${name} = []`);
+            else this.arraysCreated.add(name);
+            return;
+        }
         case 'arrays_create1D': {
             // The literal's own text, not value(): value() JSON-quotes a text
             // input, and stripping only the outer quotes left `[\"cat\"]`
