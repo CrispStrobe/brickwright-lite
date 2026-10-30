@@ -205,6 +205,29 @@ const withFloorSweeps = (ids, setQuality, discrete, linearCast, step) => {
     return result;
 };
 // FLOOR1436_GROUND_END
+/**
+ * Safety factor on the distance a floor point can close in one step (#1435): an idle speculative
+ * floor hit is dropped only when its gap is more than this many times that distance (plus the slop).
+ */
+export const FLOOR_SPECULATIVE_MARGIN = 2;
+/**
+ * Which floor hits the contact listener may drop as idle speculative points (#1435, see the
+ * listener in createPhysicsCore): the static ground body and the dynamic bodies of 2+ colliders
+ * (one convex collider gives at most a 4-point face, so Jolt never prunes its floor manifold).
+ * null when there is no such pair, or with experiments.floorSpeculativeFilter === false (A/B only).
+ */
+const floorSpeculativeFilterPlan = (mechanism, experiments, bodyMap, dtFixed) => {
+    if (experiments.floorSpeculativeFilter === false) return null;
+    const ground = mechanism.bodies.find(b => b.id === 'ground' && b.motion === 'static');
+    if (!ground || !bodyMap.has(ground.id)) return null;
+    const compounds = new Set();
+    for (const b of mechanism.bodies) {
+        if (b.motion === 'dynamic' && b.colliders.length > 1) compounds.add(bodyMap.get(b.id).bodyID.GetIndexAndSequenceNumber());
+    }
+    if (compounds.size === 0) return null;
+    return {groundIndex: bodyMap.get(ground.id).bodyID.GetIndexAndSequenceNumber(), compounds,
+        gravity: mechanism.gravity, margin: experiments.floorSpeculativeMargin ?? FLOOR_SPECULATIVE_MARGIN, dtFixed};
+};
 
 /**
  * Solver velocity iterations for an island holding a gear (Jolt's default is
@@ -1531,9 +1554,62 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
     for (const [id, e] of bodyMap) bodyIdOfIndex.set(e.bodyID.GetIndexAndSequenceNumber(), id);
     let contactLog = null;
     let contactListener = null;
+    // Idle speculative floor points (#1435, docs/ROBOT-LAB-RESTING-CREEP.md "Fix"). With manifold
+    // reduction, every floor hit of a compound body is merged into one manifold, and Jolt prunes it to
+    // 4 points weighting each by |point separation|², clamped below at 1 mm². That weight has no sign:
+    // a collider hovering 1–2 mm above the floor (inside LEGO_SPECULATIVE_CONTACT_M) outweighs the
+    // touching supports and takes one of the 4 slots. Its point carries no load, a real support corner
+    // drops out, the support polygon no longer holds the centre of mass, and the frame rocks, sinks
+    // (0.6–1.7 mm) and creeps as the chosen points change from step to step. Such a hit is rejected
+    // here only when it cannot close this step even at gravity's extra speed (so its speculative
+    // constraint could not push), on a dynamic body of 2+ colliders against the static ground. A hit
+    // that can close is kept, as is every touching hit and every other body pair.
+    const floorFilter = floorSpeculativeFilterPlan(mechanism, experiments, bodyMap, dtFixed);
+    if (recordContacts || floorFilter) {
+        contactListener = new J.ContactListenerJS();
+        let validate = () => J.ValidateResult_AcceptAllContactsForThisBodyPair;
+        if (floorFilter) {
+            const {groundIndex, compounds, gravity, margin} = floorFilter;
+            validate = (body1Ptr, body2Ptr, baseOffsetPtr, resultPtr) => {
+                // Body 1 has the higher motion type: against the static ground it is the dynamic one.
+                const b2 = J.wrapPointer(body2Ptr, J.Body);
+                if (b2.GetID().GetIndexAndSequenceNumber() !== groundIndex) return J.ValidateResult_AcceptAllContactsForThisBodyPair;
+                const b1 = J.wrapPointer(body1Ptr, J.Body);
+                if (!compounds.has(b1.GetID().GetIndexAndSequenceNumber())) return J.ValidateResult_AcceptAllContactsForThisBodyPair;
+                const hit = J.wrapPointer(resultPtr, J.CollideShapeResult);
+                const gap = -hit.mPenetrationDepth;
+                if (!(gap > LEGO_PENETRATION_SLOP_M)) return J.ValidateResult_AcceptContact;
+                // Closing speed of the hit point along the contact axis (body 1 into the ground), m/s.
+                // [Value]/[Ref] results are binding-owned: read them at once, never destroy them.
+                const axis = hit.mPenetrationAxis;
+                const ax = axis.GetX(), ay = axis.GetY(), az = axis.GetZ();
+                const len = Math.hypot(ax, ay, az);
+                if (!(len > 0)) return J.ValidateResult_AcceptContact;
+                const nx = ax / len, ny = ay / len, nz = az / len;
+                const r = hit.mContactPointOn1; // relative to the base offset: body 1's centre of mass
+                const rx = r.GetX(), ry = r.GetY(), rz = r.GetZ();
+                const w = b1.GetAngularVelocity();
+                const wx = w.GetX(), wy = w.GetY(), wz = w.GetZ();
+                const v = b1.GetLinearVelocity();
+                // Jolt has already added this step's gravity to the velocity; take it out again. A
+                // resting body's supports cancel it, so what is left is how the point was moving.
+                const gf = b1.GetMotionProperties().GetGravityFactor() * dtFixed;
+                const vx = v.GetX() - gravity[0] * gf + wy * rz - wz * ry;
+                const vy = v.GetY() - gravity[1] * gf + wz * rx - wx * rz;
+                const vz = v.GetZ() - gravity[2] * gf + wx * ry - wy * rx;
+                const closing = Math.max(0, vx * nx + vy * ny + vz * nz);
+                return gap > margin * closing * dtFixed + LEGO_PENETRATION_SLOP_M
+                    ? J.ValidateResult_RejectContact : J.ValidateResult_AcceptContact;
+            };
+        }
+        contactListener.OnContactValidate = validate;
+        contactListener.OnContactAdded = () => {};
+        contactListener.OnContactPersisted = () => {};
+        contactListener.OnContactRemoved = () => {};
+        physicsSystem.SetContactListener(contactListener);
+    }
     if (recordContacts) {
         contactLog = { pairs: new Map(), manifolds: 0 };
-        contactListener = new J.ContactListenerJS();
         const note = (body1Ptr, body2Ptr) => {
             const b1 = J.wrapPointer(body1Ptr, J.Body);
             const b2 = J.wrapPointer(body2Ptr, J.Body);
@@ -1543,11 +1619,8 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
             contactLog.pairs.set(key, (contactLog.pairs.get(key) || 0) + 1);
             contactLog.manifolds += 1;
         };
-        contactListener.OnContactValidate = () => J.ValidateResult_AcceptAllContactsForThisBodyPair;
         contactListener.OnContactAdded = (b1, b2) => note(b1, b2);
         contactListener.OnContactPersisted = (b1, b2) => note(b1, b2);
-        contactListener.OnContactRemoved = () => {};
-        physicsSystem.SetContactListener(contactListener);
     }
 
 
