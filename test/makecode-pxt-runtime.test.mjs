@@ -169,12 +169,24 @@ test('the network counter counts: a GitHub package is refused offline and the at
     // counter that never fires would make those assertions vacuous.
     const files = tinyMicrobit('basic.showNumber(1)\n');
     const cfg = JSON.parse(files['pxt.json']);
-    cfg.dependencies = {...cfg.dependencies, neopixel: 'github:microsoft/pxt-neopixel#v0.7.6'};
+    // Deliberately a package that is NOT vendored (neopixel is, and compiles offline).
+    cfg.dependencies = {...cfg.dependencies, dht11: 'github:microsoft/pxt-dht11#v0.0.1'};
     files['pxt.json'] = JSON.stringify(cfg);
     const before = netAttempts('microbit').length;
     const r = await compile('microbit', files).catch(e => ({threw: e.message}));
     assert.ok(r.threw || r.success === false, 'a GitHub dependency compiled with the network refused');
     assert.ok(netAttempts('microbit').length > before, 'the refused fetch was not counted');
+});
+
+test('a vendored GitHub package compiles offline without a network attempt', {skip}, async () => {
+    const files = tinyMicrobit('basic.showNumber(1)\n');
+    const cfg = JSON.parse(files['pxt.json']);
+    cfg.dependencies = {...cfg.dependencies, neopixel: 'github:microsoft/pxt-neopixel#v0.7.6'};
+    files['pxt.json'] = JSON.stringify(cfg);
+    const before = netAttempts('microbit').length;
+    const r = await compile('microbit', files);
+    assert.equal(r.success, true, JSON.stringify(r.diagnostics));
+    assert.equal(netAttempts('microbit').length, before, 'a vendored package reached for the network');
 });
 
 test('the firmware carries the project: MakeCode\'s own importer (and ours) opens it', {skip}, async () => {
