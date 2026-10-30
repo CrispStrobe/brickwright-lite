@@ -191,6 +191,7 @@
   },
   "scratch-vm/src/util/bw-procedure-constraint-model.js": {
     "tests": [
+      "test/makecode-roundtrip-gap-fixes.test.mjs",
       "test/arcade-destroyed-callback-consumer.test.mjs",
       "test/arcade-primitive-array-callback-source.test.mjs",
       "test/arcade-extendable-constructor-scalar-source.test.mjs",

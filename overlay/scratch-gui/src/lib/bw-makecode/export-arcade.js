@@ -2806,11 +2806,19 @@ class ArcadeEmitter {
             } else {
                 this.currentLocalNames.add(name);
                 const valueBlock = this.block(typeof b.inputs?.VALUE?.[1] === 'string' ? b.inputs.VALUE[1] : null);
-                this.spawnAssignment = ['arcade_spawnSprite', 'arcade_spawnProjectile', 'arcade_spawnImageProjectile', 'arcade_spawnImageSprite', 'arcade_createSprite', 'arcade_createImageSprite'].includes(valueBlock?.opcode);
+                this.spawnAssignment = this.spawnProducerOpcodes.includes(valueBlock?.opcode);
                 let value = this.arrayValue(b,'VALUE');
                 this.spawnAssignment = false;
                 // The importer's placeholder for a sprite producer it could not build.
-                if (value === '0' && this.localUsedAsSprite(name)) value = 'null';
+                const spriteProducer = this.spawnProducerOpcodes.includes(valueBlock?.opcode);
+                const writes = this.currentLocalNames.localWrites || (this.currentLocalNames.localWrites = new Map());
+                // The importer stores a literal 0 where it could not build a sprite producer.
+                const placeholder = !spriteProducer && value === '0';
+                if (placeholder && this.localUsedAsSprite(name)) value = 'null';
+                // Remember what kind of value this procedure writes, so the declaration can tell a
+                // sprite-only local from one that also holds a primitive.
+                const kind = spriteProducer || placeholder ? 'sprite' : 'other';
+                writes.set(name, writes.has(name) && writes.get(name) !== kind ? 'mixed' : kind);
                 push(`${name} = ${value}`);
                 if (['arcade_spawnSprite', 'arcade_spawnImageSprite'].includes(valueBlock?.opcode)) {
                     push(`${name}.setPosition(${this.value(valueBlock, 'X')}, ${this.value(valueBlock, 'Y')})`);
@@ -3462,10 +3470,15 @@ class ArcadeEmitter {
         });
     }
 
-    localDeclaration (name, key) {
+    get spawnProducerOpcodes () {
+        return ['arcade_spawnSprite', 'arcade_spawnProjectile', 'arcade_spawnImageProjectile', 'arcade_spawnImageSprite', 'arcade_createSprite', 'arcade_createImageSprite'];
+    }
+
+    localDeclaration (name, key, procedureLocals = null) {
         const classType=this.objectClassExport?.localDeclarationType?.(key,name);
         let type=classType??this.localValueTypes.get(key)?.get(name)??'any';
-        if (classType === undefined && ['number', 'any'].includes(type) && this.localUsedAsSprite(name)) type = 'Sprite';
+        // Only a local written solely from a sprite producer in this procedure and used as a sprite receiver.
+        if (classType === undefined && type === 'number' && procedureLocals?.localWrites?.get(name) === 'sprite' && this.localUsedAsSprite(name)) type = 'Sprite';
         const initial=this.objectClassExport?.hasType?.(type)||type==='mp.Player' || type==='Image' || type==='Sprite' || type==='tiles.Location' || type==='tiles.Tile' || type==='animation.Animation' || type==='SevenSegDigit' || type==='DigitCounter' || type==='Dart' || type==='Corgio' || type==='TextSprite' || type==='scene.Scene' || type==='ArcadePhysicsEngine' || type.endsWith('[]') ? 'null' : type==='string' ? '""' : type==='boolean' ? 'false' : '0';
         return `    let ${name}: ${type} = ${initial}`;
     }
@@ -3495,7 +3508,7 @@ class ArcadeEmitter {
         this.implicitLoopYield=true;
         const script = [];this.stmts(entry.block.next,1,script);
         const scope=`${entry.target.name}:script:${Object.keys(this.blocks).find(id=>this.blocks[id]===entry.block)}`;
-        script.unshift(...[...this.currentLocalNames].filter(name=>name!==parameter && name!==location && name!==second).map(name=>this.localDeclaration(name,scope)));
+        script.unshift(...[...this.currentLocalNames].filter(name=>name!==parameter && name!==location && name!==second).map(name=>this.localDeclaration(name,scope,this.currentLocalNames)));
         this.compilingRegisteredCallbacks.delete(token);
         Object.assign(this,saved);
         const result = {parameter,second,location,kind:entry.kind,script};this.registeredCallbacks.set(token,result);return result;
@@ -4536,9 +4549,10 @@ class ArcadeEmitter {
                     if(entry?.graph.plan.version===3&&b.opcode==='arcade_whenSourceStarts')this.currentCallableContext=entry.emitter.moduleContext(b);
                     const lines = emitBody();
                     const locals = [...this.currentLocalNames].filter(name => !parameters.includes(name));
+                    const procedureLocals = this.currentLocalNames;
                     this.currentLocalNames = saved;this.currentCallableContext=savedContext;
                     const scope = `${t.name}:script:${Object.keys(this.blocks).find(id => this.blocks[id] === b)}`;
-                    return [...locals.map(name => this.localDeclaration(name, scope)), ...lines];
+                    return [...locals.map(name => this.localDeclaration(name, scope, procedureLocals)), ...lines];
                 };
                 const plainBody = parameters => scoped(() => this.body(b.next, this.stopGuards(), this.tokenLine()), parameters);
                 // An Arcade event hat gets its event's sprites as parameters.
@@ -4658,6 +4672,7 @@ class ArcadeEmitter {
                     }
                     script = this.body(b.next, [...this.stopGuards(), ...(clonable ? ['_gone(self)'] : [])], [], !this.managedValueProcedures.has(key));
                     const locals = [...this.currentLocalNames].filter(name => !names.includes(name));
+                    const procedureLocals = this.currentLocalNames;
                     this.currentLocalNames = saved;this.currentCallableContext=savedContext;
                     // A procedure that returns a value (arcade_returnValue) is typed by
                     // what flows out of it; one that falls off its end returns undefined, as in PXT.
@@ -4669,7 +4684,7 @@ class ArcadeEmitter {
                     // A stop/clone guard exits with a bare \`return\`; in a function that
                     // returns a value PXT rejects that ("Not all code paths return a value").
                     const body = returns ? script.map(line => line.replace(/\breturn\s*$/, 'return undefined')) : script;
-                    const localLines=locals.map(name=>this.localDeclaration(name,key));
+                    const localLines=locals.map(name=>this.localDeclaration(name,key,procedureLocals));
                     const lines = [...localLines, ...body, ...tail];
                     const dormantTypes=this.inferUnreachableSpriteParameterTypes(t,b,proto,names,
                         `function ${fn} (${params.join(', ')})${returnType} {\n${lines.join('\n')}\n}`);
