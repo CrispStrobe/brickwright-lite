@@ -264,6 +264,14 @@ The at-rest sweep compared every shipped model with main, unpowered, at
 
 The full table is in
 [ROBOT-LAB-RESTING-CREEP-SWEEP.md](ROBOT-LAB-RESTING-CREEP-SWEEP.md).
+A driven variant, with every actuator at 3 rad/s for 2 s (not the models' own
+programs), is bit-identical for 165 entries. The rule fires in 26. The large
+differences there are in mechanisms that already travel or tumble on main:
+tipline, vector-delta and the two Sarrus models. The rule is therefore not
+limited to resting frames. It applies to any compound with an idle hover
+point. `bw-sim-qualification` (80/80) and the Robot Lab example gates for the
+affected models pass.
+
 Total CPU for the sweep is 22.37 s on main and 22.48 s with the fix (+0.5 %,
 within the noise on a shared machine).
 
