@@ -7,7 +7,7 @@ import {createHash} from 'node:crypto';
 import {fileURLToPath} from 'node:url';
 import {chromium} from 'playwright';
 import JSZip from 'jszip';
-import {openCodeActions} from './lib-code-actions.mjs';
+import {openCodeActions, closeCodeActions as closeSharedCodeActions} from './lib-code-actions.mjs';
 import {waitForArcadeStageFrame} from './lib/arcade-stage-frame.mjs';
 import {inspectGuiHarnessSource} from './lib/gui-harness-source.mjs';
 import {inspectGuiArtifactResponse} from './lib/gui-artifact-response.mjs';
@@ -208,17 +208,17 @@ const apply = async () => {
     await page.getByRole('tab', {name: 'Blocks', exact: true}).click();
     await page.waitForFunction(() => window.Blockly?.getMainWorkspace()?.getAllBlocks(false).some(block => block.type === 'arcade_clampNumber'));
 };
-// Downloads do not close a native details menu. Use the same summary a user
-// clicks before interacting with the report underneath the actions popover.
+// Downloads do not close the Code actions menu. Close it the way a user does
+// before interacting with the report underneath the actions popover.
 const closeCodeActions = async () => {
-    const menu = page.getByTestId('bw-code-actions');
-    await menu.waitFor({state: 'attached'});
-    if (await menu.evaluate(element => element.open)) await menu.locator('summary').click();
+    // The Code actions are a popup trigger since #1536; the shared helper closes either form.
+    await closeSharedCodeActions(page);
     await page.waitForFunction(() => {
+        const trigger = document.querySelector('[data-testid="bw-code-actions-trigger"]');
+        if (trigger) return trigger.getAttribute('aria-expanded') !== 'true';
         const menu = document.querySelector('[data-testid="bw-code-actions"]');
-        return Boolean(menu && !menu.open);
+        return !menu || !menu.open;
     });
-    assert.equal(await menu.evaluate(element => element.open), false, 'Code actions closed before report interaction');
 };
 const openFile = async file => {
     await codeTab(); await openCodeActions(page);
