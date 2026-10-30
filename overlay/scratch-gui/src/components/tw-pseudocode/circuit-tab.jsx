@@ -589,13 +589,19 @@ class CircuitTab extends React.Component {
             prevState.panel !== this.state.panel) notifyEditorMenuActions();
         if (prevProps.vm?.runtime !== this.props.vm?.runtime) this.subscribeCpxRuntime(this.props.vm?.runtime);
         if (this.props.isVisible && !prevProps.isVisible) activateUndoSurface('circuit');
-        // Hiding the tab can unmount the Designer (debugger docked right/solo) while
-        // its debounced autosave is pending. Keep the live circuit as the data it
-        // remounts from, or re-entering the tab restores an older circuit.
-        if (prevProps.isVisible && !this.props.isVisible && !this._boxRef.current) {
+        // Hiding the tab can unmount the Designer (debugger docked right/solo) and
+        // cancel its debounced autosave, so re-entering restored an older circuit.
+        // Flush that autosave instead: the same key and rule as bw-circuit-ui's
+        // (non-empty circuits only), from the Designer that was actually mounted.
+        // Host circuitData is untouched, so a bench delivered while hidden wins.
+        if (prevProps.isVisible && !this.props.isVisible && !this._boxRef.current && this._designerShown) {
             const circuit = this.state.circuit;
-            if (circuit && typeof circuit.toJSON === 'function') this.setState({circuitData: circuit.toJSON()});
+            const data = circuit && typeof circuit.toJSON === 'function' ? circuit.toJSON() : null;
+            if (data && Array.isArray(data.parts) && data.parts.length > 0) {
+                try { localStorage.setItem('bw-circuit-autosave', JSON.stringify(data)); } catch (e) { /* storage blocked */ }
+            }
         }
+        this._designerShown = Boolean(this.props.isVisible && this._boxRef.current);
         // The event that opens this lazily rendered bench can precede the
         // DebugPanel listener in the same React commit. Replay the retained
         // image after that commit; the transition guard prevents a loop when
