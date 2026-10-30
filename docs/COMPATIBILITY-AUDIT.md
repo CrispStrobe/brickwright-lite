@@ -81,6 +81,16 @@ Gap rankings count affected projects separately from diagnostic occurrences.
 - **`--limit N`:** gives a repeatable smoke run in sorted path order.
 - **Exit code:** nonzero for read, parse, missing-asset or missing-opcode rows.
 
+## Round-trip statuses
+
+`conversion-roundtrips.mjs` and `report-roundtrips.mjs` share one definition
+(`scripts/lib/roundtrip-status.mjs`). `loss` means a measured difference (missing target,
+opcode, asset, extension or artwork). The hop through a plain-text Brickwright file cannot
+carry binary artwork; a path that hits that limit but has no differences and no unsupported
+element is reported as `preserved-structure, binary assets not compared` (column "binary
+not compared" in the summary), not as `loss`. It is a limit of the measurement: artwork
+was not compared on that path.
+
 ## Browser checks
 
 The Arcade behaviour the audit cannot see (drawing, the controller, dialogs, scenes) has its

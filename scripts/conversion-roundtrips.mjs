@@ -14,6 +14,7 @@ import {exportToMakeCode} from '../overlay/scratch-gui/src/lib/bw-makecode/expor
 import {projectJsonToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
 import SB3Creator from '../overlay/scratch-gui/src/lib/sb3-creator.js';
 import {compile, hasRuntime} from './lib/pxt-node.mjs';
+import {pathOutcome, structuralOutcome} from './lib/roundtrip-status.mjs';
 
 
 // Report identity contains hashes and declared public identities, never host paths.
@@ -266,9 +267,7 @@ async function inspect (file) {
         }
     }
     for (const p of row.paths) {
-        const loss = p.binaryAssetsNotRepresented || Object.values(p.differences || {}).some(v => v.length);
-        const unsupported = row.importUnsupported?.length || p.exportUnsupported?.length || p.importUnsupported?.length;
-        p.qualification = {structuralRoundtrip: p.error ? 'failed' : loss ? 'loss' : unsupported ? 'partial' : 'preserved',
+        p.qualification = {structuralRoundtrip: structuralOutcome(p, row),
             exportedCompile: p.compile?.status === 'source-invalid' ? 'fail' : p.compile?.status || 'not-run',
             originalCompile: p.originalCompile?.status || 'not-run',
             runtime: 'not-measured', behavioralEquivalence: 'not-measured'};
@@ -286,13 +285,7 @@ for (const file of files) {
 const tally = {};
 for (const r of rows) {
     for (const p of r.paths || []) {
-        const hasLoss = p.binaryAssetsNotRepresented ||
-            p.differences && Object.values(p.differences).some(v => v.length);
-        const hasUnsupported = r.importUnsupported?.length || p.exportUnsupported?.length ||
-            p.importUnsupported?.length;
-        const key = p.error ? 'failed' : p.compile?.status === 'fail' ? 'compile-failed' :
-            p.compile?.status === 'source-invalid' ? 'source-invalid' :
-            hasLoss ? 'loss' : hasUnsupported ? 'partial' : 'preserved';
+        const key = pathOutcome(p, r);
         tally[`${p.label}: ${key}`] = (tally[`${p.label}: ${key}`] || 0) + 1;
     }
 }

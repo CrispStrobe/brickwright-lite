@@ -1410,9 +1410,14 @@ export function projectToMakeCodeTs (project, opts = {}) {
         // (a Scratch project must re-initialise on every run). Fold such leading
         // literal assignments back into the declaration, so the way back does
         // not add a line per round trip (the CLI's full-circle test found it).
+        // Only the importer's own assignment folds: a second leading assignment
+        // to the same variable is the author's statement and stays.
+        const folded = new Set();
         while (body.length) {
             const m = /^([A-Za-z_][A-Za-z0-9_]*) = (-?\d+(?:\.\d+)?|"[^"\\]*"|null)$/.exec(body[0]);
+            if (m && folded.has(m[1])) break;
             if (m && m[2] === 'null') {
+                folded.add(m[1]);
                 // A sprite or image variable's leading `= null` is its declaration already.
                 if (!lines.includes(`let ${m[1]}: game.LedSprite = null`) && !lines.includes(`let ${m[1]}: Image = null`)) break;
                 body.shift();
@@ -1420,6 +1425,7 @@ export function projectToMakeCodeTs (project, opts = {}) {
             }
             const decl = m && lines.findIndex(l => l === `let ${m[1]} = 0` || l === `let ${m[1]} = ""` || l === `let ${m[1]}: any = 0`);
             if (!m || decl < 0) break;
+            folded.add(m[1]);
             // A text-and-number variable keeps its `any` (E16), else `let g = "a"` makes it a string.
             lines[decl] = `let ${m[1]}${variables.mixed.has(m[1]) ? ': any' : ''} = ${m[2]}`;
             body.shift();

@@ -2022,7 +2022,8 @@ class ArcadeEmitter {
             }
             if (!this.sharedImageArrays.has(key)) {
                 const frames = Array.from({length: count}, (_,i) => this.frame(target, start + i));
-                let name = `__bwFrames_shared${this.sharedImageArrays.size+1}`;
+                // Named after the template so a re-import labels the artwork carrier as it was.
+                let name = `__bwFrames_${ident(template)}`;
                 const used = new Set([...this.globals.values(), ...[...this.frameArrays.values(), ...this.sharedImageArrays.values()].map(a=>a.name)]);
                 while (used.has(name)) name += '_';
                 this.sharedImageArrays.set(key, {name,frames});

@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /** Summarize the machine-readable conversion round-trip report. */
 import fs from 'node:fs';
+import {pathOutcome, BINARY_NOT_COMPARED} from './lib/roundtrip-status.mjs';
 
 const [input, output] = process.argv.slice(2);
 if (!input || !output) {
@@ -14,12 +15,9 @@ const paths = ['project -> bw -> project', 'makecode -> bw -> sb3 -> bw -> proje
 const tally = rows => Object.fromEntries(paths.map(label => [label, rows.reduce((acc, row) => {
     const p = row.paths?.find(x => x.label === label);
     if (!p) return acc;
-    const hasLoss = p.binaryAssetsNotRepresented || Object.values(p.differences || {}).some(x => x.length);
-    const hasUnsupported = row.importUnsupported?.length || p.exportUnsupported?.length ||
-        p.importUnsupported?.length;
-    const status = p.error ? 'error' : p.compile?.status === 'fail' ? 'compile fail' :
-        p.compile?.status === 'source-invalid' ? 'source invalid' :
-        hasLoss ? 'loss' : hasUnsupported ? 'partial' : 'preserved';
+    const outcome = pathOutcome(p, row);
+    const status = {failed: 'error', 'compile-failed': 'compile fail', 'source-invalid': 'source invalid',
+        [BINARY_NOT_COMPARED]: 'binary not compared'}[outcome] || outcome;
     acc[status] = (acc[status] || 0) + 1;
     return acc;
 }, {})]));
@@ -27,13 +25,13 @@ const escape = s => String(s).replace(/(?:https?:\/\/|data:)[^\s|]+/g, '[URL omi
     .replace(/(?:[A-Za-z]:[\\/]|\/(?:home|mnt|tmp|Users|var|root|opt)\/)[^\s|]+/g, '[path omitted]')
     .replace(/(?:gh[pousr]_|github_pat_)[A-Za-z0-9_]+/g, '[credential omitted]').replaceAll('|', '\\|').replaceAll('\n', ' ');
 const lines = ['# Conversion round trips', '',
-    `Generated ${report.generatedAt}; ${rows.length} inputs. “Preserved” means the measured structure and Arcade image pixels match and no converter reported an unsupported element. It does not prove program behavior. “Source invalid” is a re-export MakeCode rejects whose original MakeCode itself rejects too (a documentation snippet with an undeclared name or a missing package).`, '',
+    `Generated ${report.generatedAt}; ${rows.length} inputs. “Preserved” means the measured structure and Arcade image pixels match and no converter reported an unsupported element. It does not prove program behavior. “Structure preserved, binary assets not compared” is a plain-text hop that cannot carry binary artwork: its structure matched, but the artwork was not compared, so it is neither preserved nor a measured loss. “Source invalid” is a re-export MakeCode rejects whose original MakeCode itself rejects too (a documentation snippet with an undeclared name or a missing package).`, '',
     `Source commit: ${escape(report.provenance?.source?.commit || 'unrecorded')}; dirty: ${report.provenance?.source?.dirty ?? 'unrecorded'}. Corpus declared commit: ${escape(report.provenance?.corpus?.declaredCommit || 'not supplied')} (not independently verified).`, '',
     'Scratch-format SB3 checks do not establish TurboWarp-specific compatibility. No runtime or behavioral equivalence is measured here.', '',
     '## Gap ranking by affected projects', '', '| projects | occurrences | family |', '|---:|---:|---|',
     ...(report.gapRanking || []).map(g => `| ${g.affectedProjects} | ${g.occurrences} | ${escape(g.family)} |`), '',
-    '## Paths', '', '| corpus | permutation | preserved | partial | loss | compile fail | source invalid | error |',
-    '|---|---|---:|---:|---:|---:|---:|---:|'];
+    '## Paths', '', '| corpus | permutation | preserved | partial | loss | compile fail | source invalid | error | structure preserved, binary assets not compared |',
+    '|---|---|---:|---:|---:|---:|---:|---:|---:|'];
 for (const [name, chosen] of [
     ['Arcade TypeScript', rows.filter(r => r.target === 'arcade')],
     ['micro:bit TypeScript', rows.filter(r => r.target === 'microbit')],
@@ -41,7 +39,7 @@ for (const [name, chosen] of [
 ]) {
     for (const [label, counts] of Object.entries(tally(chosen))) {
         if (!Object.keys(counts).length) continue;
-        lines.push(`| ${name} | ${label} | ${counts.preserved || 0} | ${counts.partial || 0} | ${counts.loss || 0} | ${counts['compile fail'] || 0} | ${counts['source invalid'] || 0} | ${counts.error || 0} |`);
+        lines.push(`| ${name} | ${label} | ${counts.preserved || 0} | ${counts.partial || 0} | ${counts.loss || 0} | ${counts['compile fail'] || 0} | ${counts['source invalid'] || 0} | ${counts.error || 0} | ${counts['binary not compared'] || 0} |`);
     }
 }
 const lost = new Map();

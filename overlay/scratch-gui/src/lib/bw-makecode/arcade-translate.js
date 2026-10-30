@@ -4171,7 +4171,13 @@ const planImageValues = (t, ast, {creationApis, requiresSpriteRuntime, directIma
     const builtinImageResources = new Map();
     const sharedFrameResources = new Map();
     const stagedImageGroups = new Map(), stagedImageAliases = new Map(), artworkNames = {};
+    // `shared<N>` is the exporter's older anonymous bank name, not a carrier name.
+    const frameBankLabel = name => {
+        const label = /^__bwFrames_([A-Za-z]\w*?)_*$/.exec(String(name))?.[1];
+        return label && !/^shared\d+$/.test(label) ? label : undefined;
+    };
     const artworkUserName = name => /^__bwNamespace_[A-Za-z0-9]+_([A-Za-z_]\w*)$/.exec(name || '')?.[1] ||
+        frameBankLabel(name) ||
         (typeof name==='string' && !/^__/.test(name)?name:null);
     const visitArtworkSource = (node, visit, seen = new Set()) => {
         if (!node || typeof node !== 'object' || seen.has(node)) return;
@@ -4228,6 +4234,28 @@ const planImageValues = (t, ast, {creationApis, requiresSpriteRuntime, directIma
             if(group.label)artworkNames[name]=group.label;
         }
     }
+    // The exporter names a frame bank after its artwork template
+    // (`__bwFrames_<template>`, `_` appended on a clash). That is the carrier's
+    // own name, so a bank that no user-facing name reaches keeps it on re-import.
+    const bankItemLabels = new Map(), bankOfTemporary = new Map();
+    visitArtworkSource(ast, node => {
+        if (node.type !== 'Declaration') return;
+        for (const d of node.decls) if (frameBankLabel(d.name)) {
+            if (d.init?.type === 'Array') for (const item of d.init.items || []) bankItemLabels.set(item, d.name);
+            // Value staging builds the array in a temporary and aliases the bank to it.
+            else if (d.init?.type === 'Identifier') bankOfTemporary.set(d.init.name, d.name);
+        }
+    });
+    visitArtworkSource(ast, node => {
+        if (node.type === 'Call' && node.callee?.type === 'Member' && node.callee.name === 'push' &&
+            bankOfTemporary.has(node.callee.object?.name) && node.args?.[0]?.type === 'Template') {
+            bankItemLabels.set(node.args[0], bankOfTemporary.get(node.callee.object.name));
+        }
+    });
+    const labelFrameBank = (carrier, bank) => {
+        const label = frameBankLabel(bank);
+        if (label && !artworkNames[carrier]) artworkNames[carrier] = label;
+    };
     const collectImageValues = (node, parent) => {
         if (!node || typeof node !== 'object') return;
         if (t.imageValueResources.has(node)) return;
@@ -4244,6 +4272,7 @@ const planImageValues = (t, ast, {creationApis, requiresSpriteRuntime, directIma
         if (node.type === 'Array' && node.items?.length >= 2 && node.items.every(item => item?.type === 'Template' && item.tag === 'img' && acceptImage(item) && t.imageOf(item))) {
             const name = resourceName(imageValueCostumes.length+1);
             const resource = {name, key:`${name}Image`, count:node.items.length, fresh:true};
+            labelFrameBank(name, bankItemLabels.get(node.items[0]));
             node.items.forEach((item, i) => {
                 imageValueCostumes.push({sprite:name, name:`${name}-frame-${i}`, svg:imageToSvg(t.imageOf(item)), mode:i ? 'add' : 'replace'});
                 t.imageValueResources.set(item, {...resource, value:{type:'Number', value:i}});
@@ -4256,6 +4285,7 @@ const planImageValues = (t, ast, {creationApis, requiresSpriteRuntime, directIma
             if (!resource) {
                 const name=resourceName(imageValueCostumes.length+1);
                 resource={name,key:selected.key,count:selected.images.length};
+                labelFrameBank(name,selected.key);
                 sharedFrameResources.set(selected.key,resource);
                 selected.images.forEach((image,i)=>imageValueCostumes.push({sprite:name,name:`${name}-frame-${i}`,svg:imageToSvg(image),mode:i?'add':'replace'}));
             }
@@ -4276,6 +4306,7 @@ const planImageValues = (t, ast, {creationApis, requiresSpriteRuntime, directIma
             if (!resource) {
                 const name = resourceName(imageValueCostumes.length+1);
                 resource = {name,key:`${name}Image`,fresh:!builtin};
+                labelFrameBank(name, bankItemLabels.get(node));
                 imageValueCostumes.push({sprite:name,name:`${name}-art`,svg:imageToSvg(image),mode:'replace'});
                 if (builtin) builtinImageResources.set(builtin,resource);
             }
@@ -4290,7 +4321,7 @@ const planImageValues = (t, ast, {creationApis, requiresSpriteRuntime, directIma
                 let resource=sharedFrameResources.get(arrayName);
                 if (!resource) {
                     const name=resourceName(imageValueCostumes.length+1);
-                    resource={name,key:arrayName,count:frames.length};sharedFrameResources.set(arrayName,resource);
+                    resource={name,key:arrayName,count:frames.length};labelFrameBank(name,arrayName);sharedFrameResources.set(arrayName,resource);
                     frames.forEach((image,i)=>imageValueCostumes.push({sprite:name,name:`${name}-frame-${i}`,svg:imageToSvg(image),mode:i?'add':'replace'}));
                 }
                 usedFrameArrays.add(arrayName);t.imageValueResources.set(node,{...resource,value});
