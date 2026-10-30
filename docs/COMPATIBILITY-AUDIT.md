@@ -91,6 +91,14 @@ element is reported as `preserved-structure, binary assets not compared` (column
 not compared" in the summary), not as `loss`. It is a limit of the measurement: artwork
 was not compared on that path.
 
+`normalized` is a third category on the MakeCode round trip: the structure is equal apart from
+importer scaffolding that the exporter deliberately does not write back, so nothing the author
+wrote is lost. Two kinds are recognised, and each is listed per path under `normalization`:
+the `hide` the importer writes as the first statement of a start script (on the Arcade host
+and on artwork carriers), and a carrier whose only artwork is a 1x1 fully transparent
+placeholder and which holds nothing else. A `hide` that is not that first statement, or a
+carrier with any pixel or script, is still a `loss`.
+
 ## Browser checks
 
 The Arcade behaviour the audit cannot see (drawing, the controller, dialogs, scenes) has its

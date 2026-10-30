@@ -188,12 +188,14 @@
       "test/bw-sim-watt-twin.test.mjs",
       "test/bw-sim-resting-creep.test.mjs",
       "test/bw-sim-resting-creep-contact.test.mjs",
+      "test/bw-sim-resting-creep-fix.test.mjs",
       "test/bw-sim-paired-door-program.test.mjs"
     ],
     "why": "the Sim Lab physics core (overlay/scratch-gui/src/lib/bw-sim/physics/jolt-core.js) runs a CompiledMechanism in Jolt, a GUI-package dependency; its own test and the S1 end-to-end driving-base test run it headless via the wasm-compat build"
   },
   "scratch-vm/src/util/bw-procedure-constraint-model.js": {
     "tests": [
+      "test/makecode-roundtrip-gap-fixes.test.mjs",
       "test/arcade-destroyed-callback-consumer.test.mjs",
       "test/arcade-primitive-array-callback-source.test.mjs",
       "test/arcade-extendable-constructor-scalar-source.test.mjs",
@@ -698,6 +700,7 @@
       "test/bw-sim-nine-intake-motion.test.mjs",
       "test/bw-sim-resting-creep.test.mjs",
       "test/bw-sim-resting-creep-contact.test.mjs",
+      "test/bw-sim-resting-creep-fix.test.mjs",
       "test/bw-sim-stock-axle-envelope.test.mjs",
       "test/bw-sim-paired-door-program.test.mjs"
     ],
