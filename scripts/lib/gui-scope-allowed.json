@@ -52,6 +52,7 @@
   },
   "jolt-physics/wasm-compat": {
     "tests": [
+      "test/bw-sim-rotor-model.test.mjs",
       "test/bw-sim-motor-direction-compat.test.mjs",
       "test/bw-sim-teaching-presets.test.mjs",
       "test/bw-sim-arm-lift.test.mjs",
@@ -557,6 +558,7 @@
   },
   "jolt-physics/wasm-simd-compat": {
     "tests": [
+      "test/bw-sim-rotor-model.test.mjs",
       "test/bw-sim-motor-direction-compat.test.mjs",
       "test/bw-sim-native-rotor-state-effort.test.mjs",
       "test/bw-sim-rotor-inertia.test.mjs",

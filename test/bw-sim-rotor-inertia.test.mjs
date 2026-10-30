@@ -30,7 +30,7 @@ const T = 0.003, C = 1e-4;
 const run = ({housing, output, withRotor = true, steps = 100}) => {
     const device = SPIKE_MEDIUM_ANGULAR;
     const mechanism = {
-        version: 1, gravity: [0, 0, 0],
+        version: 1, rotor: 'native', gravity: [0, 0, 0],
         bodies: [disc('housing', 0, housing.massKg, housing.radius), disc('out', 0.05, output.massKg, output.radius)],
         joints: [{id: 'j', type: 'hinge', body1: 'housing', body2: 'out', point: [0, 0.025, 0], axis: [0, 1, 0],
             motor: {port: 'A', maxTorqueNm: device.motor.stallTorqueNm, maxSpeedRadPerSec: device.motor.noLoadRadPerSec, deviceId: 48}}],

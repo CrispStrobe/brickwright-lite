@@ -7,7 +7,7 @@ const DT=0.005,Jr=0.0003;
 const body=(id,y)=>({id,motion:'dynamic',massKg:0.5,position:[0,y,0],rotation:[0,0,0,1],
     colliders:[{shape:'cylinder',radius:0.1,halfHeight:0.002}],parts:[],linearDamping:0,angularDamping:0});
 const motor={port:'A',maxTorqueNm:0.003,maxSpeedRadPerSec:20};
-const scene=()=>({version:1,gravity:[0,0,0],bodies:[body('a',0),body('b',0.05)],
+const scene=()=>({version:1,rotor:'native',gravity:[0,0,0],bodies:[body('a',0),body('b',0.05)],
     joints:[{id:'j',type:'hinge',body1:'a',body2:'b',point:[0,0.025,0],axis:[0,1,0],motor}],gears:[],diagnostics:[]});
 const create=async()=>createPhysicsCore(await loadJolt(),scene(),{stepHz:200});
 const bare=core=>['a','b'].map(id=>{const p=core.bodyDynamics(id);return {mass:p.solverMassKg,com:p.centerOfMassWorld,inertia:p.inertiaKgM2};});

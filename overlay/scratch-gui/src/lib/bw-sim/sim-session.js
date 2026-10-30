@@ -403,7 +403,7 @@ export const prepareModel = (text, catalog, {mat = null, autoPorts: plugIn = !OW
     for (const issue of unknownOf.values()) {
         if (issue.count > 1) issue.message = `${issue.message} (and ${issue.count - 1} more)`;
     }
-    if (refusals.some(r => r.code === 'bad-motor-direction')) {
+    if (refusals.some(r => r.code === 'bad-motor-direction' || r.code === 'bad-rotor-model')) {
         return {model: parsedModel, runModel: parsedModel, mechanism: null, issues};
     }
     if (parsedModel.parts.length === 0) {
