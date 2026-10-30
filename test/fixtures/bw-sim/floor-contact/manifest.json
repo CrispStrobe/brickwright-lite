@@ -7,8 +7,8 @@
   },
   "engine": {
     "pinSource": "scripts/integrate.mjs",
-    "version": "1.1.0-bw.7",
-    "integrity": "sha512-shojIKWdaQJrb4IcKwonFCl3585GCn2KqS3HKbpe4bEWfN2DqNNOXf0UElM+sQ+as7HOL4SyocQbs8HrB+5o9A=="
+    "version": "1.1.0-bw.9",
+    "integrity": "sha512-H+Q8jQqKxdnDuM0a7sb66ZHz5tPBaZPSkPXU6wufo1UrDzVseyudgCNKWuA1kV3Ii/Ci6at/+zFVcMQm2yWY6w=="
   },
   "inputs": [
     {
