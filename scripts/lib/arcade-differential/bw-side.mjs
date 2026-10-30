@@ -37,6 +37,9 @@ export function snapshotBrickwright(vm, globalsOf = []) {
     if (frame) {
         let s = ''; for (let i = 0; i < frame.length; i++) s += (frame[i] & 15).toString(16);
         out.pix = s; out.palette = paletteHex(state.palette);
+    } else if (state.palette) {
+        // Nothing has been composed yet (the first update handler is still running): the display is blank, as the original's is.
+        out.pix = '0'.repeat(160 * 120); out.palette = paletteHex(state.palette);
     }
     for (const sprite of Object.values(state.sprites || {})) {
         if (!sprite || sprite._destroyed) continue;
