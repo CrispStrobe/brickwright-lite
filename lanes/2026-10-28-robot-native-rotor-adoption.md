@@ -76,3 +76,49 @@ of its qualification. Its content-hash classification, scanner, exclusions,
 assertions and all other rows remain unchanged. The first bw.9 CI build refused
 the stale bw.7 census; the original failure is retained. A direct source-policy
 check reproduced that undeclared URL before the metadata correction.
+
+## Findings on main + #1553 at bw.9 (2026-10-30, fix/rotor-1494-20261030)
+
+Status: BLOCKED ON A SOLVER DECISION. On this Mac, clean main (`e4fe7f8bc`, bw.7) passes all 271
+`bw-sim-*`, `robot-lab-*` and `*qualification*` files.
+
+The #1494 law holds with the native rotor. Afterturn's actual program reorients the
+platform 0.02606 to 0.02608 platform degrees per wheel degree at B ≈ 0. The bare-tensor
+prediction at the saved pose is Iw/J = 6.044e-5 / 2.318e-3 = 0.02608, against 0.1239 for
+the old (Iw+Jr)/(J+2Jr). The focused tests in `test/bw-sim-rotor-inertia.test.mjs` pass.
+
+Control: bw.9 with the old body-inertia code (diagnostic only, never committed) passes
+every listed consumer. The other bw.9 engine changes are therefore inert, and every
+consumer change comes from the rotor treatment.
+
+Two changes were mechanical:
+- (a) Counterturn `reflectedVerticalLeakageFraction` measured the hack's body-tensor
+  increment. Under the native rotor it is 0/0. Fixed in `test/helpers/counterturn-inertia.mjs`:
+  bare tensors must be unchanged, and the leakage is (a·ŷ)² per motor axis. Both runs pass.
+- Engine-pin bookkeeping: `test/fixtures/bw-sim/floor-contact/manifest.json` and
+  `test/fixtures/resting-creep-1435/manifest.json` pin bw.7.
+
+In the remaining failures, the housing is clamped or does not turn about the motor axis.
+In that case ½·Jr·(ω2 − ω1)² equals ½·Jr·ω2², so putting Jr on body2 only is the same
+physics. Even so, the native rotor row differs from that equivalent body2-only form:
+
+| test | native | body2-only Jr | 255 vel. steps | 4 substeps | static-housing hybrid |
+|---|---|---|---|---|---|
+| validation stall (arm into block) | fail: residual 88 °/s at a still arm | pass | fail | pass | pass |
+| validation-2 tilting table | fail: 6.19° vs 6.98 ± 0.5 | pass | fail | fail | pass |
+| differential-car rack stall | fail | pass | pass | pass | fail |
+| qualification carry-ratio | fail: ball 2/7 | pass | fail | fail | fail |
+| brick-buttons-guest FDK turn 50 | fail: 2° vs > 10° | pass | fail | fail | fail |
+| seven-machines butterfly | fail | pass | pass | pass | fail |
+| crane reverse-only | fail: crane launched 17 cm / 54° | pass | pass | pass | fail |
+| watt backstops | fail: −45.8° through ±26° stops | pass | fail | fail | fail |
+
+Cause: the rotor is a separate scalar DOF (Jr ≈ 3e-4 to 2.5e-3 kg·m²). It is coupled
+to a light output body (gear, arm, wheel; axial inertia about 1e-6 to 3e-5) by a hard row
+that the sequential-impulse solver solves separately from the contact, gear-mesh and
+friction rows on that body. Those rows act on the bare light body, and the rotor row then
+restores most of its velocity. Each iteration therefore moves the rotor's momentum by only
+about I_light/Jr, roughly 1 %. This is the same failure the old setRotorInertia comment
+recorded for a motor-term rotor: a gear slipped and an arm went through a block. Iteration
+count and substeps fix only some cases, and the stall, FDK and Watt fixed points do not
+converge. Fixing this needs a solver decision (fork). It is not a test or tolerance change.
