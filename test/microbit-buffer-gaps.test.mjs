@@ -23,6 +23,7 @@ const SB3Creator = existsSync(COMPILER) ? (await import(COMPILER)).default : nul
 // The words come with the vendored sb3-creator: a Lite checkout still on the
 // pin before they were added has nothing to run them with.
 const hasWords = Boolean(SB3Creator) && JSON.stringify(new SB3Creator().parse('DEVICE MICROBIT\n\nWHEN flag clicked:\n  set b to create buffer 4\n')).includes('microbitplus_createbuffer');
+const translatorOnly = false;
 const skip = !makeCodeSimAvailable() ? 'MakeCode runtime not synced (npm run sync:makecode)' :
     !SB3Creator ? 'sb3-creator not integrated' :
         !hasWords ? 'the integrated sb3-creator predates the buffer words (waiting for the sb3-creator pin)' : false;
@@ -185,7 +186,7 @@ test('the radio buffer blocks export as MakeCode\'s calls, and the export hears 
     await compileMakeCode(sender.ts);
 });
 
-test('a Buffer method with no block is named, not dropped', {skip}, () => {
+test('a Buffer method with no block is named, not dropped', {skip: translatorOnly}, () => {
     const imported = microbitToPseudocode('let b = control.createBuffer(4)\nb.rotate(1, 2)\nserial.writeLine("" + b.length)\n');
     assert.ok(imported.unsupported.some(u => /b\.rotate\(\).*Buffer method/.test(u)), imported.unsupported.join('\n'));
 });

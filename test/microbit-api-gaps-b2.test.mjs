@@ -22,6 +22,7 @@ import {runOnMicrobitFirmware} from '../scripts/lib/microbit-firmware.mjs';
 const COMPILER = join(SOURCE, 'src', 'lib', 'sb3-creator.js');
 const SB3Creator = existsSync(COMPILER) ? (await import(COMPILER)).default : null;
 const hasWords = Boolean(SB3Creator) && JSON.stringify(new SB3Creator().parse('DEVICE MICROBIT\n\nWHEN flag clicked:\n  raise event 1 2\n')).includes('microbitplus_raiseevent');
+const translatorOnly = false;
 const skip = !makeCodeSimAvailable() ? 'MakeCode runtime not synced (npm run sync:makecode)' :
     !SB3Creator ? 'sb3-creator not integrated' :
         !hasWords ? 'the integrated sb3-creator predates these words (waiting for the sb3-creator pin)' : false;
@@ -89,7 +90,7 @@ test('events (source and value, "any" as 0, newest handler first), led.displayMo
     assert.deepEqual(back.serial.map(l => l.text.trim()).filter(Boolean), want);
 });
 
-test('built-in event ids (EventBusSource, EventBusValue) are their numbers', {skip}, () => {
+test('built-in event ids (EventBusSource, EventBusValue) are their numbers', {skip: translatorOnly}, () => {
     const imported = microbitToPseudocode([
         'control.onEvent(EventBusSource.MICROBIT_ID_BUTTON_A, EventBusValue.MICROBIT_EVT_ANY, function () {',
         '    basic.showString("a")',
@@ -126,7 +127,7 @@ test('datalogger.log with createCV pairs imports as a block, runs on the log mod
     await compileMakeCode(ex.ts, {dependencies: JSON.parse(ex.files['pxt.json']).dependencies});
 });
 
-test('datalogger.log with something that is not createCV pairs is named, not dropped', {skip}, () => {
+test('datalogger.log with something that is not createCV pairs is named, not dropped', {skip: translatorOnly}, () => {
     const imported = microbitToPseudocode('let cv = datalogger.createCV("a", 1)\ndatalogger.log(cv)\n');
     assert.ok(imported.unsupported.some(u => /datalogger/.test(u)), imported.unsupported.join('\n'));
 });
