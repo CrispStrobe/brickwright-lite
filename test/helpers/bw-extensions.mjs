@@ -49,6 +49,7 @@ const SUPPORT = {
     'bw-source-condition-waits': 'util/bw-source-condition-waits',
     'bw-procedure-entry': 'util/bw-procedure-entry',
     'bw-procedure-constraint-model': 'util/bw-procedure-constraint-model',
+    'bw-graph-version': 'util/bw-graph-version',
     'bw-arcade-exceptions': 'util/bw-arcade-exceptions',
     'bw-null-sprite-getter': 'util/bw-null-sprite-getter',
     'bw-scene-clock-number': 'util/bw-scene-clock-number',
@@ -58,7 +59,7 @@ const SUPPORT = {
     'bw-animation-resource-menu': 'util/bw-animation-resource-menu'
 };
 // Overlay-owned support modules: same installed instance, but only when its bytes are the overlay's.
-const OVERLAY_SUPPORT = new Set(['bw-frame-delta-number', 'bw-scene-clock-number', 'bw-null-sprite-getter', 'bw-procedure-entry', 'bw-procedure-constraint-model', 'bw-values', 'bw-array-operations', 'bw-array-source-values', 'bw-extension-result-factory', 'bw-animation-resource-menu', 'bw-primitive-owner', 'bw-current-number-input', 'bw-cached-primitive-owner', 'bw-arcade-exceptions', 'bw-source-condition-waits']);
+const OVERLAY_SUPPORT = new Set(['bw-frame-delta-number', 'bw-scene-clock-number', 'bw-null-sprite-getter', 'bw-procedure-entry', 'bw-procedure-constraint-model', 'bw-graph-version', 'bw-values', 'bw-array-operations', 'bw-array-source-values', 'bw-extension-result-factory', 'bw-animation-resource-menu', 'bw-primitive-owner', 'bw-current-number-input', 'bw-cached-primitive-owner', 'bw-arcade-exceptions', 'bw-source-condition-waits']);
 function installedOverlaySupport (base) {
     const installed = path.join(VM_SRC, `${SUPPORT[base]}.js`);
     const overlay = path.join(REPO, 'overlay', 'scratch-vm', 'src', `${SUPPORT[base]}.js`);

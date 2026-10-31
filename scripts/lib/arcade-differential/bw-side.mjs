@@ -101,7 +101,12 @@ export async function recordBrickwright(source, {schedule, seconds, fps = 30, se
         let error = null;
         for (let k = 0; k < times.length; k++) {
             for (const edge of schedule.edgesAt(k)) vm.postIOData('keyboard', {key: BW_KEY[edge.button], isDown: edge.down});
+            // A real press is dispatched at its own program time. Let the edge's continuation turns run
+            // before the clock moves, as they would between a keypress and the next timer in a browser.
+            if (schedule.edgesAt(k).length) for (let turn = 0; turn < 4; turn++) await new Promise(resolve => setImmediate(resolve));
             await clock.advanceTo(times[k]);
+            // Continuations queued by the last frame (a resumed pause) complete before the observation.
+            for (let turn = 0; turn < 4; turn++) await new Promise(resolve => setImmediate(resolve));
             if (run.errors.length) { error = run.errors[0]; }
             samples.push({k, t: times[k], ...snapshotBrickwright(vm, globalsOf)});
             if (error) break;

@@ -30,6 +30,8 @@ test('installed Procedure exporter uses the real node_modules VM model without o
    'sdk-font-value-descriptors.js','sdk-font-export-types.js','sdk-sprite-class-descriptors.js','sdk-dialog-class-descriptors.js'];
   for(const name of modules)copyFileSync(path.join(root,'overlay/scratch-gui/src/lib/bw-makecode',name),path.join(path.dirname(source),name));
   copyFileSync(path.join(root,'overlay/scratch-vm/src/util/bw-procedure-constraint-model.js'),model);
+  // The model's own local dependency travels with it in the installed tree.
+  copyFileSync(path.join(root,'overlay/scratch-vm/src/util/bw-graph-version.js'),path.join(path.dirname(model),'bw-graph-version.js'));
   assert.deepEqual(readFileSync(model),readFileSync(path.join(root,'overlay/scratch-vm/src/util/bw-procedure-constraint-model.js')));
   const result=run(source,gui);assert.equal(result.status,0,result.stdout+result.stderr);assert.match(result.stdout,/resolved/);
   // A tracked packages/scratch-vm sibling is not the installed overlay. Its
