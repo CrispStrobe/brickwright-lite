@@ -79,9 +79,9 @@ export class ValueTypeGraph {
             visiting.delete(node);
             return `${value}[]`;
         }
-        let types = [...node.types].filter(t => ['Buffer','Image', 'Sprite', 'TileLocation','LegacyTile', 'Animation','SevenSegDigit','DigitCounter','Dart','Corgio','TextSprite','Scene','PhysicsEngine','Player', 'number', 'string', 'boolean'].includes(t));
+        let types = [...node.types].filter(t => ['Buffer','Image', 'Sprite', 'TileLocation','TileMapData','LegacyTile', 'Animation','SevenSegDigit','DigitCounter','Dart','Corgio','TextSprite','Scene','PhysicsEngine','Player', 'number', 'string', 'boolean'].includes(t));
         // A sprite extension's class is a Sprite subclass: it names the type.
         for (const subclass of ['Dart', 'Corgio','TextSprite']) if (types.includes(subclass) && types.every(t => t === subclass || t === 'Sprite')) types = [subclass];
-        return types.length === 1 ? types[0] === 'Player' ? 'mp.Player' : types[0] === 'TileLocation' ? 'tiles.Location' : types[0] === 'LegacyTile' ? 'tiles.Tile' : types[0] === 'Animation' ? 'animation.Animation' : types[0] === 'Scene' ? 'scene.Scene' : types[0] === 'PhysicsEngine' ? 'ArcadePhysicsEngine' : types[0] : 'any';
+        return types.length === 1 ? types[0] === 'Player' ? 'mp.Player' : types[0] === 'TileLocation' ? 'tiles.Location' : types[0] === 'TileMapData' ? 'tiles.TileMapData' : types[0] === 'LegacyTile' ? 'tiles.Tile' : types[0] === 'Animation' ? 'animation.Animation' : types[0] === 'Scene' ? 'scene.Scene' : types[0] === 'PhysicsEngine' ? 'ArcadePhysicsEngine' : types[0] : 'any';
     }
 }

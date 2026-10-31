@@ -217,6 +217,7 @@ module.exports = makeExt(`// Name: Arcade
       this._animationUpdateOrder = [];
       this._tileLocations = new Map();
       this._nextTileLocationId = 0;
+      this._tilemapData = new Map();this._nextTilemapData = 0;this._tilemapHandlers = [];
       this._imageIds = new WeakMap();
       this._frameImages = new Map();
       this._animationAssetCache = new Map();
@@ -311,6 +312,7 @@ module.exports = makeExt(`// Name: Arcade
           this._animationUpdateOrder = [];
           this._tileLocations.clear();
           this._nextTileLocationId = 0;
+          this._tilemapData.clear();this._nextTilemapData = 0;this._tilemapHandlers = [];
           this._clearTilemap();
           this._imageIds = new WeakMap();
           this._frameImages.clear();
@@ -1000,6 +1002,36 @@ module.exports = makeExt(`// Name: Arcade
             text: 'place Arcade sprite [ID] on tile [LOCATION]', arguments: {...str('ID', ''), ...str('LOCATION', '')} },
           { opcode: 'placeOnRandomTile', blockType: Scratch.BlockType.COMMAND,
             text: 'place Arcade sprite [ID] on random tile image [IMAGE]', arguments: {...str('ID', ''), ...str('IMAGE', '')} },
+          { opcode: 'tileNeighbor', blockType: Scratch.BlockType.REPORTER,
+            text: 'Arcade tile [DIRECTION] neighbor of [LOCATION]', arguments: {...str('LOCATION', ''), DIRECTION: {type: Scratch.ArgumentType.STRING, menu: 'collisionDirections', defaultValue: '0'}} },
+          { opcode: 'spriteTileLocation', blockType: Scratch.BlockType.REPORTER,
+            text: 'Arcade tile location of sprite [ID]', arguments: str('ID', '') },
+          { opcode: 'randomTileOfType', blockType: Scratch.BlockType.REPORTER,
+            text: 'Arcade random tile location of image [IMAGE]', arguments: str('IMAGE', '') },
+          { opcode: 'registerTilemapEvent', blockType: Scratch.BlockType.COMMAND,
+            text: 'Arcade register tilemap event [EVENT] as [TOKEN] capturing [CAPTURES]',
+            arguments: {EVENT: {type: Scratch.ArgumentType.STRING, menu: 'tilemapEvents', defaultValue: 'Loaded'}, ...str('TOKEN', 'tilemap'), ...str('CAPTURES', '')} },
+          { opcode: 'unregisterTilemapEvent', blockType: Scratch.BlockType.COMMAND,
+            text: 'Arcade unregister tilemap event [EVENT] as [TOKEN]',
+            arguments: {EVENT: {type: Scratch.ArgumentType.STRING, menu: 'tilemapEvents', defaultValue: 'Loaded'}, ...str('TOKEN', 'tilemap')} },
+          { opcode: 'whenRegisteredTilemapEvent', blockType: Scratch.BlockType.HAT, isEdgeActivated: false,
+            text: 'when Arcade tilemap event handler [TOKEN] runs', arguments: str('TOKEN', 'tilemap') },
+          { opcode: 'eventTilemapData', blockType: Scratch.BlockType.REPORTER,
+            text: 'Arcade event tilemap data' },
+          { opcode: 'tilemapValue', blockType: Scratch.BlockType.REPORTER,
+            text: 'Arcade tilemap value [DATA]', arguments: str('DATA', '') },
+          { opcode: 'tilemapProperty', blockType: Scratch.BlockType.REPORTER,
+            text: 'Arcade tilemap [PROPERTY] of [DATA]', arguments: {...str('DATA', ''), PROPERTY: {type: Scratch.ArgumentType.STRING, menu: 'tilemapProperties', defaultValue: 'width'}} },
+          { opcode: 'tilemapTile', blockType: Scratch.BlockType.REPORTER,
+            text: 'Arcade tilemap [DATA] tile index at column [COLUMN] row [ROW]', arguments: {...str('DATA', ''), ...n('COLUMN', 0), ...n('ROW', 0)} },
+          { opcode: 'tilemapIsWall', blockType: Scratch.BlockType.BOOLEAN,
+            text: 'Arcade tilemap [DATA] wall at column [COLUMN] row [ROW]', arguments: {...str('DATA', ''), ...n('COLUMN', 0), ...n('ROW', 0)} },
+          { opcode: 'tilemapTileImage', blockType: Scratch.BlockType.REPORTER,
+            text: 'Arcade tilemap [DATA] image of tile index [INDEX]', arguments: {...str('DATA', ''), ...n('INDEX', 0)} },
+          { opcode: 'setTilemapTile', blockType: Scratch.BlockType.COMMAND,
+            text: 'set Arcade tilemap [DATA] tile index at column [COLUMN] row [ROW] to [INDEX]', arguments: {...str('DATA', ''), ...n('COLUMN', 0), ...n('ROW', 0), ...n('INDEX', 0)} },
+          { opcode: 'setTilemapWall', blockType: Scratch.BlockType.COMMAND,
+            text: 'set Arcade tilemap [DATA] wall at column [COLUMN] row [ROW] to [WALL]', arguments: {...str('DATA', ''), ...n('COLUMN', 0), ...n('ROW', 0), WALL: {type: Scratch.ArgumentType.BOOLEAN}} },
           {opcode:'createSpriteKind',blockType:Scratch.BlockType.REPORTER,text:'Arcade create sprite kind'},
           {opcode:'spriteKindValue',blockType:Scratch.BlockType.REPORTER,text:'Arcade sprite kind value [NAME]',arguments:str('NAME','Player')},
           {opcode:'bindSpriteKind',blockType:Scratch.BlockType.COMMAND,text:'Arcade bind sprite kind name [NAME] to [KIND]',arguments:{...str('NAME','Custom'),...n('KIND',1003)}},
@@ -1130,6 +1162,8 @@ module.exports = makeExt(`// Name: Arcade
           ,eventSprites: {acceptReporters: false, items: ['first', 'second']}
           ,cameraAxes:{acceptReporters:false,items:['x','y']}
           ,cameraProperties: {acceptReporters: true, items: [{text:'x',value:'0'}, {text:'y',value:'1'}, {text:'left',value:'2'}, {text:'right',value:'3'}, {text:'top',value:'4'}, {text:'bottom',value:'5'}]}
+          ,tilemapEvents: {acceptReporters: false, items: [{text:'Loaded',value:'Loaded'}, {text:'Unloaded',value:'Unloaded'}]}
+          ,tilemapProperties: {acceptReporters: false, items: [{text:'width',value:'width'}, {text:'height',value:'height'}, {text:'scale',value:'scale'}]}
           ,collisionDirections: {acceptReporters: true, items: [{text:'left',value:'0'}, {text:'top',value:'1'}, {text:'right',value:'2'}, {text:'bottom',value:'3'}]}
           ,controllerNumbers: {acceptReporters:false,items:['1','2','3','4']}
           ,playerReadModes: {acceptReporters:false,items:['safe','member']}
@@ -6123,18 +6157,48 @@ module.exports = makeExt(`// Name: Arcade
       return this.setSpritePosition({ID:args.ID, X:this.tileLocationProperty({...args,PROPERTY:'x'}),
         Y:this.tileLocationProperty({...args,PROPERTY:'y'})},util);
     }
-    placeOnRandomTile(args, util) {
-      if (this._missingOperand(util,args,'ID')) return;
-      const map = this._state().tilemap, index = this._tileImageIndex(map,this._image(args.IMAGE));
-      if (index < 0) return;
-      // PXT uses reservoir sampling with size one, visiting columns first.
+    // PXT samples one location by reservoir sampling, visiting columns first;
+    // the first match consumes no randomness (sampleTilesByType).
+    _sampleTile(map, index) {
       let chosen = null, count = 0;
       for (let column = 0; column < map.columns; column++) for (let row = 0; row < map.rows; row++)
         if (map.indices[row*map.columns+column] === index) {
           if (count === 0 || Math.floor(Math.random()*(count+1)) === 0) chosen = {COLUMN:column,ROW:row};
           count++;
         }
+      return chosen;
+    }
+    placeOnRandomTile(args, util) {
+      if (this._missingOperand(util,args,'ID')) return;
+      const map = this._state().tilemap, index = this._tileImageIndex(map,this._image(args.IMAGE));
+      if (index < 0) return;
+      const chosen = this._sampleTile(map, index);
       if (chosen) return this.placeOnTile({ID:args.ID,LOCATION:this.tileLocation(chosen)},util);
+    }
+    randomTileOfType(args) {
+      const map = this._state().tilemap, image = this._image(args.IMAGE);
+      if (!image || !this._state().tilemapInitialized) return Scratch.BWValues.encode(undefined);
+      if (!map) return Scratch.BWValues.encode(undefined);
+      const index = this._tileImageIndex(map, image);
+      if (index < 0) return Scratch.BWValues.encode(undefined);
+      const chosen = this._sampleTile(map, index);
+      return chosen ? this.tileLocation(chosen) : Scratch.BWValues.encode(undefined);
+    }
+    tileNeighbor(args) {
+      const location = this._tileLocation(args.LOCATION);
+      if (!location) throw new TypeError("Cannot read properties of null (reading 'tileMap')");
+      const direction = Number(args.DIRECTION);
+      let {column, row} = location;
+      if (direction === 0) column--; else if (direction === 1) row--;
+      else if (direction === 2) column++; else if (direction === 3) row++;
+      else return Scratch.BWValues.encode(undefined);
+      return this.tileLocation({COLUMN: column, ROW: row});
+    }
+    spriteTileLocation(args) {
+      const sprite = this._sprite(args.ID), map = this._state().tilemap;
+      if (!sprite || !this._state().tilemapInitialized || !map) return Scratch.BWValues.encode(undefined);
+      const scale = Math.log2(map.tileSize);
+      return this.tileLocation({COLUMN: (sprite._fx/256) >> scale, ROW: (sprite._fy/256) >> scale});
     }
     // Legacy Tile retains its creating map; modern Location resolves the
     // current scene. Keep separate reference kinds even though both use cells.
@@ -6220,37 +6284,159 @@ module.exports = makeExt(`// Name: Arcade
       map.definitions[index]={image,wall:!!Scratch.BWValues.decode(args.WALL)};map.images[index]=image;
       this._syncLegacyMap(map);this._renderTilemap();this._changed();
     }
-    setTilemap(args) {
+    // Validates one serialized map (the shape arcade-translate writes). Returns
+    // the live data object, or throws for malformed input.
+    _parseTilemapData(decoded) {
+      const data = JSON.parse(String(decoded));
+      if (data === null) return null;
+      if (!Number.isInteger(data.columns) || !Number.isInteger(data.rows) || data.columns < 0 || data.rows < 0 ||
+        data.columns > 65535 || data.rows > 65535 || ![4,8,16,32].includes(data.tileSize) ||
+        !Array.isArray(data.indices) || data.indices.length !== data.columns*data.rows ||
+        !Array.isArray(data.walls) || data.walls.length !== data.indices.length ||
+        !Array.isArray(data.images) || data.images.length > 256) throw Error('Invalid tilemap data');
+      for (const index of data.indices) if (!Number.isInteger(index) || index < 0 || index > 255) throw Error('Invalid tile index');
+      data.images = data.images.map(image => {
+        if (!Number.isInteger(image.width) || !Number.isInteger(image.height) || image.width < 0 || image.height < 0 ||
+          !Array.isArray(image.pixels) || image.pixels.length !== image.width*image.height ||
+          image.pixels.some(pixel => !Number.isInteger(pixel) || pixel < 0 || pixel > 15)) throw Error('Invalid tile image');
+        return {width:image.width,height:image.height,pixels:Uint8Array.from(image.pixels)};
+      });
+      data.indices = Uint8Array.from(data.indices);
+      data.walls = Uint8Array.from(data.walls,wall => wall ? 1 : 0);
+      data.views = [];
+      return data;
+    }
+    // A TileMapData value is one mutable object shared by every holder, so edits
+    // survive switching away from the level and back.
+    _tilemapDataOf(value) {
+      const id = Scratch.BWValues.referenceId(this._runtime, value, 'tilemap');
+      return id === null ? undefined : this._tilemapData.get(id);
+    }
+    tilemapValue(args) {
       const decoded = Scratch.BWValues.decode(args.DATA);
-      if (decoded === null || decoded === '') {this._ensureTilemapRenderable('modern');this._state().tilemapInitialized=true;delete this._state().tilemap;this._clearTilemap();this._changed();return;}
+      if (decoded === null || decoded === '') return Scratch.BWValues.encode(null);
       let data;
-      try {
-        data = JSON.parse(String(decoded));
-        if (data === null) {this._ensureTilemapRenderable('modern');this._state().tilemapInitialized=true;delete this._state().tilemap;this._clearTilemap();this._changed();return;}
-        if (!Number.isInteger(data.columns) || !Number.isInteger(data.rows) || data.columns < 0 || data.rows < 0 ||
-          data.columns > 65535 || data.rows > 65535 || ![4,8,16,32].includes(data.tileSize) ||
-          !Array.isArray(data.indices) || data.indices.length !== data.columns*data.rows ||
-          !Array.isArray(data.walls) || data.walls.length !== data.indices.length ||
-          !Array.isArray(data.images) || data.images.length > 256) throw Error('Invalid tilemap data');
-        for (const index of data.indices) if (!Number.isInteger(index) || index < 0 || index > 255) throw Error('Invalid tile index');
-        data.images = data.images.map(image => {
-          if (!Number.isInteger(image.width) || !Number.isInteger(image.height) || image.width < 0 || image.height < 0 ||
-            !Array.isArray(image.pixels) || image.pixels.length !== image.width*image.height ||
-            image.pixels.some(pixel => !Number.isInteger(pixel) || pixel < 0 || pixel > 15)) throw Error('Invalid tile image');
-          return {width:image.width,height:image.height,pixels:Uint8Array.from(image.pixels)};
-        });
-        data.indices = Uint8Array.from(data.indices);
-        data.walls = Uint8Array.from(data.walls,wall => wall ? 1 : 0);
-        data.views = [];
-      } catch (error) {
-        this._runtime?.emit?.('BLOCKS_ERROR',{message:error.message,extensionId:'arcade',opcode:'setTilemap'});return;
+      try {data = this._parseTilemapData(decoded);} catch (error) {
+        this._runtime?.emit?.('BLOCKS_ERROR',{message:error.message,extensionId:'arcade',opcode:'tilemapValue'});return Scratch.BWValues.encode(null);
       }
+      if (data === null) return Scratch.BWValues.encode(null);
+      const id = 'arcade-tilemap:' + (++this._nextTilemapData);
+      this._tilemapData.set(id, data);
+      return Scratch.BWValues.reference(this._runtime, 'tilemap', id);
+    }
+    _requireTilemapData(value) {
+      const data = this._tilemapDataOf(value);
+      if (!data) throw new TypeError('Expected type TileMapData but received type null. Did you forget to assign a variable?');
+      return data;
+    }
+    tilemapProperty(args) {
+      const data = this._requireTilemapData(args.DATA);
+      switch (String(args.PROPERTY)) {
+      case 'width': return data.columns;
+      case 'height': return data.rows;
+      case 'scale': return Math.log2(data.tileSize);
+      default: return 0;
+      }
+    }
+    tilemapTile(args) {
+      const data = this._requireTilemapData(args.DATA), column = Number(Scratch.BWValues.decode(args.COLUMN)), row = Number(Scratch.BWValues.decode(args.ROW));
+      return this._tileIndex({column, row}, data);
+    }
+    tilemapIsWall(args) {
+      const data = this._requireTilemapData(args.DATA), offset = this._tileOffset({column: Number(Scratch.BWValues.decode(args.COLUMN)), row: Number(Scratch.BWValues.decode(args.ROW))}, data);
+      return offset >= 0 && Boolean(data.walls[offset]);
+    }
+    tilemapTileImage(args) {
+      const data = this._requireTilemapData(args.DATA), view = this._tileImage(data, Number(Scratch.BWValues.decode(args.INDEX)));
+      return view ? this._imageHandle(view) : Scratch.BWValues.encode(undefined);
+    }
+    setTilemapTile(args) {
+      const data = this._requireTilemapData(args.DATA), column = Number(Scratch.BWValues.decode(args.COLUMN)) | 0, row = Number(Scratch.BWValues.decode(args.ROW)) | 0;
+      const offset = this._tileOffset({column, row}, data);
+      if (offset < 0) return;
+      data.indices[offset] = Number(Scratch.BWValues.decode(args.INDEX));
+      if (data === this._state().tilemap) {this._renderTilemap();this._changed();}
+    }
+    setTilemapWall(args) {
+      const data = this._requireTilemapData(args.DATA), offset = this._tileOffset({column: Number(Scratch.BWValues.decode(args.COLUMN)) | 0, row: Number(Scratch.BWValues.decode(args.ROW)) | 0}, data);
+      if (offset >= 0) {data.walls[offset] = Scratch.BWValues.decode(args.WALL) ? 1 : 0;this._changed();}
+    }
+    _applyTilemap(data) {
       this._ensureTilemapRenderable('modern');
+      if (data === null) {this._state().tilemapInitialized=true;delete this._state().tilemap;this._clearTilemap();this._changed();return;}
       this._state().tilemap = data;
       this._state().tilemapInitialized = true;
       this._state().tilemapScale = data.tileSize;
       if (!this._background && this._runtime?.renderer) this.setBackgroundColor({COLOR:this.backgroundColor()});
       this._renderTilemap();this._changed();
+    }
+    _tilemapReference(data) {
+      if (!data.referenceId) {
+        data.referenceId = 'arcade-tilemap:' + (++this._nextTilemapData);
+        this._tilemapData.set(data.referenceId, data);
+      }
+      return Scratch.BWValues.reference(this._runtime, 'tilemap', data.referenceId);
+    }
+    // PXT's TileMap.setData runs each Unloaded handler for the outgoing map and
+    // each Loaded handler for the incoming one, synchronously on the caller's fiber.
+    *_tilemapEventSteps(event, data, util) {
+      const runtime = this._runtime, epoch = this._terrainEpoch;
+      if (!data || !runtime?.allScriptsByOpcodeDo || !runtime?._pushThread) return;
+      const reference = this._tilemapReference(data);
+      for (const registration of this._tilemapHandlers.filter(handler => handler.event === event)) {
+        const scripts = [];
+        runtime.allScriptsByOpcodeDo('arcade_whenRegisteredTilemapEvent', (script, target) => {
+          const hat = target.blocks.getBlock(script.blockId), token = target.blocks.getBlock(hat.inputs?.TOKEN?.block);
+          if (token?.fields?.TEXT?.value === registration.token) scripts.push({script, target});
+        });
+        for (const {script, target} of scripts) {
+          const thread = runtime._pushThread(script.blockId, target);
+          thread.bwArcadeEvent = {TOKEN: registration.token, data: reference};
+          thread.bwArcadeCaptures = registration.captures;
+          const caller = util?.thread, active = runtime.sequencer.activeThread;
+          try {runtime.sequencer.activeThread = thread;runtime.sequencer.stepThread(thread);}
+          finally {if (util) {util.thread = caller;util.sequencer = runtime.sequencer;}runtime.sequencer.activeThread = active;}
+          if (epoch !== this._terrainEpoch) return;
+          if (thread.status !== thread.constructor.STATUS_DONE && !thread.isKilled && runtime.threads.includes(thread))
+            yield new Promise(resolve => this._terrainWaits.add({thread, resolve}));
+          if (epoch !== this._terrainEpoch) return;
+        }
+      }
+    }
+    registerTilemapEvent(args, util) {
+      const event = String(args.EVENT), token = String(args.TOKEN);
+      if (!['Loaded', 'Unloaded'].includes(event)) return;
+      if (this._tilemapHandlers.some(handler => handler.event === event && handler.token === token)) return;
+      const captures = new Map(util?.thread?.bwArcadeCaptures || []), values = this._localParams(util);
+      for (const key of String(args.CAPTURES || '').split(/\\s+/).filter(Boolean)) if (values) captures.set(key, {values, key});
+      this._tilemapHandlers.push({event, token, captures});
+    }
+    unregisterTilemapEvent(args) {
+      const index = this._tilemapHandlers.findIndex(handler => handler.event === String(args.EVENT) && handler.token === String(args.TOKEN));
+      if (index >= 0) this._tilemapHandlers.splice(index, 1);
+    }
+    whenRegisteredTilemapEvent(args, util) {return util?.thread?.bwArcadeEvent?.TOKEN === String(args.TOKEN);}
+    eventTilemapData(args, util) {return util?.thread?.bwArcadeEvent?.data || Scratch.BWValues.encode(undefined);}
+    setTilemap(args, util) {
+      const decoded = Scratch.BWValues.decode(args.DATA);
+      const shared = this._tilemapDataOf(args.DATA);
+      let data;
+      if (shared !== undefined) data = shared;
+      else if (decoded === null || decoded === '') data = null;
+      else try {
+        data = this._parseTilemapData(decoded);
+      } catch (error) {
+        this._runtime?.emit?.('BLOCKS_ERROR',{message:error.message,extensionId:'arcade',opcode:'setTilemap'});return;
+      }
+      const previous = this._state().tilemap;
+      const outgoing = previous && !previous.legacy && previous !== data;
+      if (!this._tilemapHandlers.length || (!outgoing && !data) || (data && data.legacy)) return this._applyTilemap(data);
+      const steps = function* () {
+        if (outgoing) yield* this._tilemapEventSteps('Unloaded', previous, util);
+        this._applyTilemap(data);
+        if (data && previous !== data) yield* this._tilemapEventSteps('Loaded', data, util);
+      }.call(this);
+      return this._runTerrainGenerator(steps);
     }
     _tilemapRaster(map,state=this._state()) {
       this._syncLegacyMap(map);
