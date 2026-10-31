@@ -58,12 +58,14 @@ async function pxt () {
  * MakeCode TypeScript -> the simulator's JavaScript, by pxt itself.
  *
  * @param {string} ts main.ts
+ * @param {object} [opts]
+ * @param {object} [opts.dependencies] pxt.json dependencies (bluetooth and radio cannot be used together)
  * @returns {Promise<string>} binary.js; throws with pxt's first diagnostics when it does not compile
  */
-export async function compileMakeCode (ts) {
+export async function compileMakeCode (ts, {dependencies = {core: '*', radio: '*', microphone: '*'}} = {}) {
     const sb = await pxt();
     const files = {
-        'pxt.json': JSON.stringify({name: 'sim', dependencies: {core: '*', radio: '*', microphone: '*'}, files: ['main.ts']}),
+        'pxt.json': JSON.stringify({name: 'sim', dependencies, files: ['main.ts']}),
         'main.ts': ts
     };
     const r = JSON.parse(JSON.stringify(await sb.bwMakeCode.compile(files, {})));

@@ -83,8 +83,16 @@ const PLAYBACK = {'until done': 'UntilDone', 'in background': 'InBackground', 'l
 /** The radio hats, and the parameter MakeCode names their packet. */
 const RADIO_HATS = {
     microbitplus_whenradionum: {call: 'radio.onReceivedNumber', param: 'receivedNumber'},
-    microbitplus_whenradiostr: {call: 'radio.onReceivedString', param: 'receivedString'}
+    microbitplus_whenradiostr: {call: 'radio.onReceivedString', param: 'receivedString'},
+    microbitplus_whenradiokv: {call: 'radio.onReceivedValue', params: ['name', 'value']}
 };
+
+/** The bluetooth uart blocks' delimiter menu word -> MakeCode's Delimiters member. */
+const DELIMITER = {newline: 'NewLine', comma: 'Comma', dollar: 'Dollar', colon: 'Colon', fullstop: 'Fullstop', hash: 'Hash',
+    'carriage return': 'CarriageReturn', space: 'Space', tab: 'Tab', pipe: 'Pipe', semicolon: 'SemiColon'};
+
+/** bluetooth.* parameters that are booleans (the dialect's truth is 1 and 0). */
+const BLUETOOTH_BOOLEAN_ARGS = {advertiseUrl: [2], advertiseUid: [3]};
 
 /**
  * Names MakeCode already declares at the top level. A program variable with
@@ -429,6 +437,9 @@ export class Emitter {
         // Inside its hat the packet is the handler's parameter; anywhere else
         // it is the last packet, which MakeCode still reads with these calls.
         case 'microbitplus_radiolastnum': return this.radioHat === 'microbitplus_whenradionum' ? 'receivedNumber' : 'radio.receivedNumber()';
+        case 'microbitplus_radiolastname': return this.radioHat === 'microbitplus_whenradiokv' ? 'name' : '""';
+        case 'microbitplus_radiolastvalue': return this.radioHat === 'microbitplus_whenradiokv' ? 'value' : '0';
+        case 'microbitplus_btuartread': return `bluetooth.uartReadUntil(serial.delimiters(Delimiters.${DELIMITER[f('DELIM')] || 'NewLine'}))`;
         case 'microbitplus_radiolaststr': return this.radioHat === 'microbitplus_whenradiostr' ? 'receivedString' : 'radio.receivedString()';
         case 'microbitplus_beat': return `music.beat(BeatFraction.${BEAT_FRACTION[f('FRACTION')] || 'Whole'})`;
         case 'microbitplus_notefreq': return `music.noteFrequency(Note.${f('NOTE') || 'C'})`;
@@ -442,6 +453,9 @@ export class Emitter {
         case 'microbitplus_createimage': return `images.createImage(\`\n${ledsOf(f('MATRIX'))}\n    \`)`;
         case 'microbitplus_imagepixel': return `${v('IMAGE')}.pixel(${v('X')}, ${v('Y')})`;
         case 'microbitplus_point': return `led.point(${v('X')}, ${v('Y')})`;
+        case 'microbitplus_pointbrightness': return `led.pointBrightness(${v('X')}, ${v('Y')})`;
+        case 'microbitplus_displaybrightness': return 'led.brightness()';
+        case 'microbitplus_imagebrightness': return `${v('IMAGE')}.pixelBrightness(${v('X')}, ${v('Y')})`;
         case 'microbitplus_parsenumber': return `parseFloat(${this.textOperand(b, 'TEXT')})`;
         case 'planetemaths_pow': return `Math.pow(${v('NUM1')}, ${v('NUM2')})`;
         case 'sensing_timer': return '(input.runningTime() / 1000)';
@@ -762,6 +776,16 @@ export class Emitter {
             push(`${v('IMAGE')}.setPixel(${v('X')}, ${v('Y')}, ${truth})`);
             return;
         }
+        case 'microbitplus_imagesetbrightness':
+            push(`${v('IMAGE')}.setPixelBrightness(${v('X')}, ${v('Y')}, ${v('BRIGHTNESS')})`);
+            return;
+        // led.setDisplayMode(DisplayMode.BlackAndWhite | Greyscale)
+        case 'microbitplus_setdisplaymode':
+            push(`led.setDisplayMode(DisplayMode.${f('MODE') === 'black and white' ? 'BlackAndWhite' : 'Greyscale'})`);
+            return;
+        case 'microbitplus_ledenable':
+            push(`led.enable(${f('STATE') === 'off' ? 'false' : 'true'})`);
+            return;
         case 'microbitplus_showimage':
             push(`${v('IMAGE')}.showImage(${v('OFFSET')})`);
             return;
@@ -890,6 +914,27 @@ export class Emitter {
             push(`radio.setGroup(${v('GROUP', '1')})`);
             push(`radio.setTransmitPower(${v('POWER', '6')})`);
             return;
+        case 'microbitplus_radiosendkv':
+            push(`radio.sendValue(${this.textOperand(b, 'KEY')}, ${v('VALUE')})`);
+            return;
+        // bluetooth.<name>(args): trailing empty slots are the block's unused ones.
+        case 'microbitplus_bluetooth': {
+            const nameInput = b.inputs && b.inputs.NAME && b.inputs.NAME[1];
+            const call = String(Array.isArray(nameInput) ? nameInput[1] : '').replace(/[^\w]/g, '');
+            const slots = ['A1', 'A2', 'A3', 'A4'].map(k => {
+                const slot = b.inputs && b.inputs[k] && b.inputs[k][1];
+                return Array.isArray(slot) && (slot[0] === 10 || slot[0] === 11) && slot[1] === '' ? null : (b.inputs && b.inputs[k] ? k : null);
+            });
+            while (slots.length && slots[slots.length - 1] === null) slots.pop();
+            const bools = BLUETOOTH_BOOLEAN_ARGS[call] || [];
+            const args = slots.map((k, i) => {
+                const text = k ? v(k) : '""';
+                if (!bools.includes(i)) return text;
+                return text === '1' || text === '"true"' ? 'true' : text === '0' || text === '"false"' ? 'false' : `${text} != 0`;
+            });
+            push(`bluetooth.${call}(${args.join(', ')})`);
+            return;
+        }
         case 'microbitplus_radiosendnum':
             push(`radio.sendNumber(${v('NUM')})`);
             return;
@@ -905,7 +950,7 @@ export class Emitter {
 }
 
 /** Reporters whose value is text. */
-const TEXT_REPORTERS = new Set(['operator_join', 'operator_letter_of', 'microbitplus_radiolaststr']);
+const TEXT_REPORTERS = new Set(['operator_join', 'operator_letter_of', 'microbitplus_radiolaststr', 'microbitplus_radiolastname']);
 
 /**
  * What each variable of this target holds, for its `let` (tasks E13, E16):
@@ -1016,7 +1061,7 @@ const NUMBER_SLOTS = {
 const COMPARED_SLOTS = {operator_lt: ['OPERAND1', 'OPERAND2'], operator_gt: ['OPERAND1', 'OPERAND2'], operator_equals: ['OPERAND1', 'OPERAND2']};
 /** Inputs emitted as they are into a MakeCode `string` parameter: a number there does not compile. */
 const TEXT_SLOTS = {
-    microbitplus_showtext: ['TEXT'], microbitplus_scrolltext: ['TEXT'], microbitplus_radiosendstr: ['TEXT']
+    microbitplus_showtext: ['TEXT'], microbitplus_scrolltext: ['TEXT'], microbitplus_radiosendstr: ['TEXT'], microbitplus_radiosendkv: ['KEY']
 };
 /**
  * Inputs read as text that a number also satisfies (textOperand writes
@@ -1252,7 +1297,8 @@ function spriteNames (blocks, emitter) {
 function imageNames (blocks, emitter) {
     const vars = new Set();
     const arrays = new Set();
-    const IMAGE_SLOTS = ['microbitplus_imagepixel', 'microbitplus_imagesetpixel', 'microbitplus_showimage', 'microbitplus_plotimage'];
+    const IMAGE_SLOTS = ['microbitplus_imagepixel', 'microbitplus_imagesetpixel', 'microbitplus_showimage', 'microbitplus_plotimage',
+        'microbitplus_imagebrightness', 'microbitplus_imagesetbrightness'];
     const slot = (b, name) => {
         const input = b.inputs && b.inputs[name];
         return input ? input[1] : null;
@@ -1401,11 +1447,31 @@ export function projectToMakeCodeTs (project, opts = {}) {
                 emitter.inFunction = false;
                 continue;
             }
+            // loops.everyInterval and the bluetooth handlers, where they stand.
+            if (block.opcode === 'microbitplus_everyinterval') {
+                emitter.inFunction = true;
+                body.push(`loops.everyInterval(${emitter.value(block, 'MS', '500')}, function () {`, ...emitter.stack(block.next, 1), '})');
+                emitter.inFunction = false;
+                continue;
+            }
+            if (block.opcode === 'microbitplus_whenconn') {
+                emitter.inFunction = true;
+                body.push(`bluetooth.onBluetooth${emitter.field(block, 'CONNSTATE') === 'disconnected' ? 'Disconnected' : 'Connected'}(function () {`,
+                    ...emitter.stack(block.next, 1), '})');
+                emitter.inFunction = false;
+                continue;
+            }
+            if (block.opcode === 'microbitplus_whenuart') {
+                emitter.inFunction = true;
+                body.push(`bluetooth.onUartDataReceived(serial.delimiters(Delimiters.${DELIMITER[emitter.field(block, 'DELIM')] || 'NewLine'}), function () {`, ...emitter.stack(block.next, 1), '})');
+                emitter.inFunction = false;
+                continue;
+            }
             if (RADIO_HATS[block.opcode]) {
-                const {call, param} = RADIO_HATS[block.opcode];
+                const {call, param, params} = RADIO_HATS[block.opcode];
                 emitter.radioHat = block.opcode;
                 emitter.inFunction = true;
-                body.push(`${call}(function (${param}) {`, ...emitter.stack(block.next, 1), '})');
+                body.push(`${call}(function (${params ? params.join(', ') : param}) {`, ...emitter.stack(block.next, 1), '})');
                 emitter.inFunction = false;
                 emitter.radioHat = null;
                 continue;
