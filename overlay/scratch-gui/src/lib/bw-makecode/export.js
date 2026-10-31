@@ -84,7 +84,20 @@ const PLAYBACK = {'until done': 'UntilDone', 'in background': 'InBackground', 'l
 const RADIO_HATS = {
     microbitplus_whenradionum: {call: 'radio.onReceivedNumber', param: 'receivedNumber'},
     microbitplus_whenradiostr: {call: 'radio.onReceivedString', param: 'receivedString'},
-    microbitplus_whenradiokv: {call: 'radio.onReceivedValue', params: ['name', 'value']}
+    microbitplus_whenradiokv: {call: 'radio.onReceivedValue', params: ['name', 'value']},
+    microbitplus_whenradiobuf: {call: 'radio.onReceivedBuffer', param: 'receivedBuffer'}
+};
+
+/** The Buffer blocks: what makes one, and which inputs take one. */
+const BUFFER_MAKERS = new Set(['microbitplus_createbuffer', 'microbitplus_bufferslice', 'microbitplus_radiolastbuf']);
+const BUFFER_SLOTS = {
+    microbitplus_bufferlength: ['BUF'], microbitplus_buffernum: ['BUF'], microbitplus_buffersetnum: ['BUF'], microbitplus_bufferfill: ['BUF'],
+    microbitplus_bufferslice: ['BUF'], microbitplus_bufferhex: ['BUF'], microbitplus_radiosendbuf: ['BUF']
+};
+/** The block menu's number format -> MakeCode's NumberFormat member (`uint16be` -> UInt16BE). */
+const numberFormat = word => {
+    const m = /^(u?int|float)(\d+)(le|be)$/.exec(String(word));
+    return `NumberFormat.${m ? `${{int: 'Int', uint: 'UInt', float: 'Float'}[m[1]]}${m[2]}${m[3].toUpperCase()}` : 'Int32LE'}`;
 };
 
 /** The bluetooth uart blocks' delimiter menu word -> MakeCode's Delimiters member. */
@@ -441,11 +454,25 @@ export class Emitter {
         case 'microbitplus_analogread': return `pins.analogReadPin(AnalogPin.${PIN(f('PIN'))})`;
         // Inside its hat the packet is the handler's parameter; anywhere else
         // it is the last packet, which MakeCode still reads with these calls.
-        case 'microbitplus_radiolastnum': return this.radioHat === 'microbitplus_whenradionum' ? 'receivedNumber' : 'radio.receivedNumber()';
+        case 'microbitplus_radiolastnum':
+            return this.radioHat === 'microbitplus_whenradionum' ? 'receivedNumber' : 'radio.receivedNumber()';
+        case 'microbitplus_createbuffer': return `control.createBuffer(${v('SIZE')})`;
+        case 'microbitplus_bufferlength': return `${v('BUF')}.length`;
+        case 'microbitplus_buffernum': return `${v('BUF')}.getNumber(${numberFormat(f('FMT'))}, ${v('OFFSET')})`;
+        case 'microbitplus_bufferslice': return `${v('BUF')}.slice(${v('OFFSET')}, ${v('LENGTH')})`;
+        case 'microbitplus_bufferhex': return `${v('BUF')}.toHex()`;
+        case 'microbitplus_radiolastbuf':
+            return this.radioHat === 'microbitplus_whenradiobuf' ? 'receivedBuffer' : 'radio.receivedBuffer()';
+        case 'microbitplus_radiolasttime': return 'radio.receivedPacket(RadioPacketProperty.Time)';
+        case 'microbitplus_displaymode': return 'led.displayMode()';
+        case 'microbitplus_charcode': return `${this.textOperand(b, 'TEXT')}.charCodeAt(${v('INDEX')})`;
+        case 'microbitplus_fromcharcode': return `String.fromCharCode(${v('CODE')})`;
+        case 'microbitplus_eventvalue': return 'control.eventValue()';
         case 'microbitplus_radiolastname': return this.radioHat === 'microbitplus_whenradiokv' ? 'name' : '""';
         case 'microbitplus_radiolastvalue': return this.radioHat === 'microbitplus_whenradiokv' ? 'value' : '0';
         case 'microbitplus_btuartread': return `bluetooth.uartReadUntil(serial.delimiters(Delimiters.${DELIMITER[f('DELIM')] || 'NewLine'}))`;
-        case 'microbitplus_radiolaststr': return this.radioHat === 'microbitplus_whenradiostr' ? 'receivedString' : 'radio.receivedString()';
+        case 'microbitplus_radiolaststr':
+            return this.radioHat === 'microbitplus_whenradiostr' ? 'receivedString' : 'radio.receivedString()';
         case 'microbitplus_beat': return `music.beat(BeatFraction.${BEAT_FRACTION[f('FRACTION')] || 'Whole'})`;
         case 'microbitplus_notefreq': return `music.noteFrequency(Note.${f('NOTE') || 'C'})`;
         case 'microbitplus_tempo': return 'music.tempo()';
@@ -920,6 +947,31 @@ export class Emitter {
             push(`radio.setGroup(${v('GROUP', '1')})`);
             push(`radio.setTransmitPower(${v('POWER', '6')})`);
             return;
+        case 'microbitplus_buffersetnum':
+            push(`${v('BUF')}.setNumber(${numberFormat(f('FMT'))}, ${v('OFFSET')}, ${v('VALUE')})`);
+            return;
+        case 'microbitplus_bufferfill':
+            push(`${v('BUF')}.fill(${v('VALUE')})`);
+            return;
+        case 'microbitplus_radiosendbuf':
+            push(`radio.sendBuffer(${v('BUF')})`);
+            return;
+        case 'microbitplus_radiowritepkt':
+            push('radio.writeReceivedPacketToSerial()');
+            return;
+        case 'microbitplus_showscore':
+            push('game.showScore()');
+            return;
+        case 'microbitplus_raiseevent':
+            push(`control.raiseEvent(${v('SOURCE')}, ${v('VALUE')})`);
+            return;
+        case 'microbitplus_datalog1': case 'microbitplus_datalog2': case 'microbitplus_datalog3': {
+            const n = Number(b.opcode.slice(-1));
+            const pairs = [];
+            for (let i = 1; i <= n; i++) pairs.push(`datalogger.createCV(${this.textOperand(b, `K${i}`)}, ${v(`V${i}`)})`);
+            push(`datalogger.log(${pairs.join(', ')})`);
+            return;
+        }
         case 'microbitplus_radiosendkv':
             push(`radio.sendValue(${this.textOperand(b, 'KEY')}, ${v('VALUE')})`);
             return;
@@ -1067,7 +1119,8 @@ const NUMBER_SLOTS = {
 const COMPARED_SLOTS = {operator_lt: ['OPERAND1', 'OPERAND2'], operator_gt: ['OPERAND1', 'OPERAND2'], operator_equals: ['OPERAND1', 'OPERAND2']};
 /** Inputs emitted as they are into a MakeCode `string` parameter: a number there does not compile. */
 const TEXT_SLOTS = {
-    microbitplus_showtext: ['TEXT'], microbitplus_scrolltext: ['TEXT'], microbitplus_radiosendstr: ['TEXT'], microbitplus_radiosendkv: ['KEY']
+    microbitplus_showtext: ['TEXT'], microbitplus_scrolltext: ['TEXT'], microbitplus_radiosendstr: ['TEXT'], microbitplus_radiosendkv: ['KEY'],
+    microbitplus_datalog1: ['K1'], microbitplus_datalog2: ['K1', 'K2'], microbitplus_datalog3: ['K1', 'K2', 'K3']
 };
 /**
  * Inputs read as text that a number also satisfies (textOperand writes
@@ -1109,7 +1162,7 @@ const TEXT_HINT_SLOTS = {operator_length: ['STRING'], operator_letter_of: ['STRI
  *   types by proccode, in argument order; parameterType(reporterId) for an
  *   `argument_reporter_string_number` block
  */
-export function procedureParameterTypes (blocks, emitter, textVars = new Set(), textArrays = new Set(), mixedVars = new Set()) {
+export function procedureParameterTypes (blocks, emitter, textVars = new Set(), textArrays = new Set(), mixedVars = new Set(), buffers = {vars: new Set(), arrays: new Set()}) {
     const defs = new Map();                      // proccode -> {names, tokens}
     const definitionOf = new Map();              // definition block id -> proccode
     for (const [id, b] of Object.entries(blocks)) {
@@ -1152,7 +1205,7 @@ export function procedureParameterTypes (blocks, emitter, textVars = new Set(), 
         return i < 0 ? null : `${scope}\0${i}`;
     };
     // What a variable passed in a call holds: text, `any` (both), or a number.
-    const variableKind = name => (textVars.has(name) ? 'text' : mixedVars.has(name) ? 'any' : 'number');
+    const variableKind = name => (buffers.vars.has(name) ? 'buffer' : textVars.has(name) ? 'text' : mixedVars.has(name) ? 'any' : 'number');
     // What a value passed in a call is.
     const kindOf = slot => {
         if (Array.isArray(slot)) {
@@ -1167,6 +1220,8 @@ export function procedureParameterTypes (blocks, emitter, textVars = new Set(), 
         const r = typeof slot === 'string' ? blocks[slot] : null;
         if (!r) return null;
         if (TEXT_REPORTERS.has(r.opcode)) return 'text';
+        if (BUFFER_MAKERS.has(r.opcode)) return 'buffer';
+        if (r.opcode === 'arrays_get' && buffers.arrays.has(arrayNameOf(r, blocks, emitter))) return 'buffer';
         if (r.opcode === 'data_variable') return variableKind(emitter.variableName(r.fields.VARIABLE[0]));
         if (r.opcode === 'arrays_get') return textArrays.has(arrayNameOf(r, blocks, emitter)) ? 'text' : 'number';
         if (r.opcode === 'argument_reporter_string_number') return null;    // a flow, below
@@ -1205,11 +1260,12 @@ export function procedureParameterTypes (blocks, emitter, textVars = new Set(), 
         if (scope === null) continue;
         const i = indexIn(scope, emitter.field(b, 'VALUE'));
         const display = parent.opcode === 'microbit_display' && name === 'VALUE' && emitter.field(parent, 'MODE') === 'text';
-        if ((NUMBER_SLOTS[parent.opcode] || []).includes(name)) note(scope, i, 'number');
+        if ((BUFFER_SLOTS[parent.opcode] || []).includes(name)) note(scope, i, 'buffer');
+        else if ((NUMBER_SLOTS[parent.opcode] || []).includes(name)) note(scope, i, 'number');
         else if ((TEXT_SLOTS[parent.opcode] || []).includes(name) || display) note(scope, i, 'needs-text');
         else if ((TEXT_HINT_SLOTS[parent.opcode] || []).includes(name)) note(scope, i, 'text-hint');
     }
-    const CARRIED = ['text', 'number', 'numeric-text'];
+    const CARRIED = ['text', 'number', 'numeric-text', 'buffer'];
     const TEXTUAL = ['text', 'needs-text', 'text-hint'];
     for (let changed = true; changed;) {
         changed = false;
@@ -1225,6 +1281,7 @@ export function procedureParameterTypes (blocks, emitter, textVars = new Set(), 
         types.set(proccode, tokens.map((token, i) => {
             if (token === '%b') return 'boolean';
             const k = evidence.get(`${proccode}\0${i}`) || new Set();
+            if (k.has('buffer')) return 'Buffer';
             const text = k.has('text');
             const number = k.has('number');
             if ((text || k.has('needs-text')) && number) return 'any';
@@ -1331,6 +1388,42 @@ function imageNames (blocks, emitter) {
     return {vars, arrays};
 }
 
+/**
+ * The variables and arrays that hold BUFFERS (MakeCode's Buffer): set from a
+ * new buffer, a slice or a received one, put into an array, or used where a
+ * buffer goes. Typed Buffer / Buffer[] on the way back, their "none" null.
+ */
+function bufferNames (blocks, emitter) {
+    const vars = new Set();
+    const arrays = new Set();
+    const slot = (b, name) => {
+        const input = b.inputs && b.inputs[name];
+        return input ? input[1] : null;
+    };
+    const block = x => (typeof x === 'string' ? blocks[x] : null);
+    for (let pass = 0; pass < 4; pass++) {
+        for (const b of Object.values(blocks)) {
+            if (!b) continue;
+            for (const name of BUFFER_SLOTS[b.opcode] || []) {
+                const s = slot(b, name);
+                if (Array.isArray(s) && s[0] === 12) vars.add(emitter.variableName(s[1]));
+                const r = block(s);
+                if (r && r.opcode === 'data_variable') vars.add(emitter.variableName(r.fields.VARIABLE[0]));
+                if (r && r.opcode === 'arrays_get') arrays.add(arrayNameOf(r, blocks, emitter));
+            }
+            const value = block(slot(b, 'VALUE'));
+            const rawValue = slot(b, 'VALUE');
+            const isBuffer = (Array.isArray(rawValue) && rawValue[0] === 12 && vars.has(emitter.variableName(rawValue[1]))) ||
+                value && (BUFFER_MAKERS.has(value.opcode) ||
+                (value.opcode === 'arrays_get' && arrays.has(arrayNameOf(value, blocks, emitter))) ||
+                (value.opcode === 'data_variable' && vars.has(emitter.variableName(value.fields.VARIABLE[0]))));
+            if (/^arrays_(push|set|insert)$/.test(b.opcode) && isBuffer) arrays.add(arrayNameOf(b, blocks, emitter));
+            if (b.opcode === 'data_setvariableto' && isBuffer) vars.add(emitter.variableName(b.fields.VARIABLE[0]));
+        }
+    }
+    return {vars, arrays};
+}
+
 /** Arrays that are only ever filled with TEXT: MakeCode types them string[]. */
 function textArrayNames (blocks, emitter) {
     const kinds = new Map();
@@ -1387,14 +1480,15 @@ export function projectToMakeCodeTs (project, opts = {}) {
         // variable that only ever holds text is declared as text: `let t = 0`
         // then `t = "COLD"` is a program MakeCode refuses (census 2026-09-27).
         const textArrays = textArrayNames(blocks, emitter);
+        const buffers = bufferNames(blocks, emitter);
         // A variable set from a text parameter is text, and a parameter given a
         // text variable is text: the two are settled together (E13, E16).
         let variables = variableTypes(blocks, emitter, textArrays);
-        let parameters = procedureParameterTypes(blocks, emitter, variables.text, textArrays, variables.mixed);
+        let parameters = procedureParameterTypes(blocks, emitter, variables.text, textArrays, variables.mixed, buffers);
         const sameSet = (a, b) => a.size === b.size && [...a].every(n => b.has(n));
         for (let round = 0; round < 16; round++) {
             const nextVariables = variableTypes(blocks, emitter, textArrays, parameters.parameterType);
-            const next = procedureParameterTypes(blocks, emitter, nextVariables.text, textArrays, nextVariables.mixed);
+            const next = procedureParameterTypes(blocks, emitter, nextVariables.text, textArrays, nextVariables.mixed, buffers);
             const same = sameSet(nextVariables.text, variables.text) && sameSet(nextVariables.mixed, variables.mixed) &&
                 JSON.stringify([...next.types]) === JSON.stringify([...parameters.types]);
             variables = nextVariables;
@@ -1406,8 +1500,8 @@ export function projectToMakeCodeTs (project, opts = {}) {
         const sprites = spriteNames(blocks, emitter);
         const images = imageNames(blocks, emitter);
         emitter.spriteVars = sprites.vars;
-        emitter.spriteArrays = new Set([...sprites.arrays, ...images.arrays]);
-        emitter.imageVars = images.vars;
+        emitter.spriteArrays = new Set([...sprites.arrays, ...images.arrays, ...buffers.arrays]);
+        emitter.imageVars = new Set([...images.vars, ...buffers.vars]);
         emitter.textVars = text;
         emitter.textArrays = textArrays;
         emitter.mixedVars = variables.mixed;
@@ -1417,6 +1511,7 @@ export function projectToMakeCodeTs (project, opts = {}) {
             declared.add(name);
             lines.push(sprites.vars.has(name) ? `let ${name}: game.LedSprite = null` :
                 images.vars.has(name) ? `let ${name}: Image = null` :
+                    buffers.vars.has(name) ? `let ${name}: Buffer = null` :
                     variables.mixed.has(name) ? `let ${name}: any = 0` :
                         `let ${name} = ${text.has(name) ? '""' : '0'}`);
         }
@@ -1430,6 +1525,11 @@ export function projectToMakeCodeTs (project, opts = {}) {
         const definitions = [];
         const body = [];
         let flagScripts = 0;
+        const packetFns = Object.values(blocks).filter(x => x && x.topLevel && x.opcode === 'microbitplus_whenradiopacket')
+            .map((x, i) => `onRadioPacket${i ? i + 1 : ''}`);
+        let packetSeq = 0;
+        const handled = new Set();
+        const early = [];
         for (const [id, block] of Object.entries(blocks)) {
             if (!block || !block.topLevel) continue;
             if (block.opcode === 'procedures_definition') {
@@ -1470,17 +1570,37 @@ export function projectToMakeCodeTs (project, opts = {}) {
                 emitter.inFunction = false;
                 continue;
             }
+            if (block.opcode === 'microbitplus_whenevent') {
+                emitter.inFunction = true;
+                // Registered up front: the flag script may wait long before the event is raised.
+                early.push(`control.onEvent(${emitter.value(block, 'SOURCE', '1')}, ${emitter.value(block, 'VALUE', '0')}, function () {`, ...emitter.stack(block.next, 1), '})');
+                emitter.inFunction = false;
+                continue;
+            }
             if (block.opcode === 'microbitplus_whenuart') {
                 emitter.inFunction = true;
                 body.push(`bluetooth.onUartDataReceived(serial.delimiters(Delimiters.${DELIMITER[emitter.field(block, 'DELIM')] || 'NewLine'}), function () {`, ...emitter.stack(block.next, 1), '})');
                 emitter.inFunction = false;
                 continue;
             }
+            // radio.onDataPacketReceived (every packet) is not in MakeCode's radio package any more:
+            // the body is a function of its own, called from a handler of each kind of packet
+            // (below, and at the top of the program's own handlers of a kind).
+            if (block.opcode === 'microbitplus_whenradiopacket') {
+                const fn = packetFns[packetSeq++];
+                emitter.radioHat = block.opcode;
+                emitter.inFunction = true;
+                definitions.push(`function ${fn}() {`, ...emitter.stack(block.next, 1), '}');
+                emitter.inFunction = false;
+                emitter.radioHat = null;
+                continue;
+            }
             if (RADIO_HATS[block.opcode]) {
                 const {call, param, params} = RADIO_HATS[block.opcode];
                 emitter.radioHat = block.opcode;
                 emitter.inFunction = true;
-                body.push(`${call}(function (${params ? params.join(', ') : param}) {`, ...emitter.stack(block.next, 1), '})');
+                handled.add(call);
+                (block.opcode === 'microbitplus_whenradiobuf' ? early : body).push(`${call}(function (${params ? params.join(', ') : param}) {`, ...packetFns.map(fn => `    ${fn}()`), ...emitter.stack(block.next, 1), '})');
                 emitter.inFunction = false;
                 emitter.radioHat = null;
                 continue;
@@ -1493,6 +1613,13 @@ export function projectToMakeCodeTs (project, opts = {}) {
             }
             body.push(...emitter.flagScript(block, flagScripts++));
             void id;
+        }
+        // Every kind of packet reaches a packet hat: the kinds the program has no handler of get one.
+        if (packetFns.length) {
+            for (const [call, param] of [['radio.onReceivedNumber', 'receivedNumber'], ['radio.onReceivedString', 'receivedString'],
+                ['radio.onReceivedValue', 'name, value'], ['radio.onReceivedBuffer', 'receivedBuffer']]) {
+                if (!handled.has(call)) early.push(`${call}(function (${param}) {`, ...packetFns.map(fn => `    ${fn}()`), '})');
+            }
         }
         // The importer turns MakeCode's `let x = 5` into a leading `set x to 5`
         // (a Scratch project must re-initialise on every run). Fold such leading
@@ -1507,7 +1634,7 @@ export function projectToMakeCodeTs (project, opts = {}) {
             if (m && m[2] === 'null') {
                 folded.add(m[1]);
                 // A sprite or image variable's leading `= null` is its declaration already.
-                if (!lines.includes(`let ${m[1]}: game.LedSprite = null`) && !lines.includes(`let ${m[1]}: Image = null`)) break;
+                if (!lines.includes(`let ${m[1]}: game.LedSprite = null`) && !lines.includes(`let ${m[1]}: Image = null`) && !lines.includes(`let ${m[1]}: Buffer = null`)) break;
                 body.shift();
                 continue;
             }
@@ -1518,11 +1645,12 @@ export function projectToMakeCodeTs (project, opts = {}) {
             lines[decl] = `let ${m[1]}${variables.mixed.has(m[1]) ? ': any' : ''} = ${m[2]}`;
             body.shift();
         }
+        body.unshift(...early);
         lines.push(...definitions);
         for (const name of emitter.arrays) {
             if (declared.has(name)) continue;
             declared.add(name);
-            lines.push(`let ${name}: ${sprites.arrays.has(name) ? 'game.LedSprite' : images.arrays.has(name) ? 'Image' :
+            lines.push(`let ${name}: ${sprites.arrays.has(name) ? 'game.LedSprite' : images.arrays.has(name) ? 'Image' : buffers.arrays.has(name) ? 'Buffer' :
                 textArrays.has(name) ? 'string' : 'number'}[] = []`);
         }
         lines.push(...body);
@@ -1607,8 +1735,9 @@ export function makeCodeSourceHex (files, opts = {}) {
 function dependenciesFor (ts) {
     const bluetooth = /\bbluetooth\./.test(ts);
     const radio = /\bradio\./.test(ts);
-    if (!bluetooth) return {core: '*', radio: '*', microphone: '*'};
-    return {core: '*', bluetooth: '*', ...(radio ? {radio: '*'} : {}), microphone: '*'};
+    const datalogger = /\bdatalogger\./.test(ts) ? {datalogger: '*'} : {};
+    if (!bluetooth) return {core: '*', radio: '*', microphone: '*', ...datalogger};
+    return {core: '*', bluetooth: '*', ...(radio ? {radio: '*'} : {}), microphone: '*', ...datalogger};
 }
 
 /**

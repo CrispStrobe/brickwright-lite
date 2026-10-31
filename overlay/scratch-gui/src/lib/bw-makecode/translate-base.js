@@ -449,6 +449,9 @@ export class BaseTranslator {
             return `${e(node.left)} ${op} ${e(node.right)}`;
         }
         case 'Member': {
+            // A word of the device's own (a buffer's length, a radio packet's property).
+            const own = this.memberValue ? this.memberValue(node) : null;
+            if (own !== null && own !== undefined) return own;
             // A record's field, and an entry of a constant table.
             const field = this.recordMember(node);
             if (field !== null) return field;
