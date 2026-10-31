@@ -154,9 +154,9 @@ const F5_SOURCES = {
     'interval hat of a cloned sprite': [
         'let iceSprite: Sprite = null',
         'game.onUpdateInterval(1000, function () {',
-        // Art from an extension package we do not carry keeps the older
-        // cloned-sprite translation (corpus arcade-a03d93d1…).
-        '    iceSprite = sprites.create(lab2imgs.icecube, SpriteKind.Enemy)',
+        // Art computed by a call keeps the older cloned-sprite translation. (A plain
+        // named image we do not carry is created natively with a stand-in instead.)
+        '    iceSprite = sprites.create(pickArt(2), SpriteKind.Enemy)',
         '    iceSprite.setPosition(randint(8, 152), 0)',
         '})'
     ].join('\n'),
