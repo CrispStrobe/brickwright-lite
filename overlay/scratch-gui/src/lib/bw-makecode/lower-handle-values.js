@@ -139,6 +139,23 @@ export function lowerHandleValues (ast, parse) {
         if (e && e.type === 'Call' && e.isNew && e.callee.type === 'Identifier' && globals.has(e.callee.name)) return e.callee.name;
         return guessType(e);
     };
+    // A function or method declared to return an array returns its handle.
+    const arrayReturns = new Map();
+    const BUILTIN_METHODS = /^(slice|concat|reverse|filter|map|push|pop|shift|unshift|indexOf|join|forEach|some|every|find|reduce|removeAt|insertAt)$/;
+    {
+        const drop = new Set();
+        const note = (fn) => {
+            const m = fn.returnType ? clean(fn.returnType).match(ARRAY_TYPE) : null;
+            if (!m || BUILTIN_METHODS.test(fn.name)) return;
+            const elem = m[1] || m[2];
+            if (arrayReturns.has(fn.name) && arrayReturns.get(fn.name) !== elem) drop.add(fn.name);
+            arrayReturns.set(fn.name, elem);
+            fn.returnType = 'number';
+        };
+        for (const cls of classes) for (const m of cls.methods || []) if (!m.isStatic) note(m);
+        for (const st of top) if (st.type === 'FunctionDeclaration') note(st);
+        for (const name of drop) arrayReturns.delete(name);
+    }
     const stringFields = new Set();
     for (const cls of classes) for (const f of cls.fields) if (clean(f.typeName) === 'string') stringFields.add(f.name);
     const guessType = (e) => {
@@ -171,6 +188,9 @@ export function lowerHandleValues (ast, parse) {
         if (node.type === 'Call' && node.callee.type === 'Member' &&
             /^(slice|concat|reverse|filter)$/.test(node.callee.name)) return elemOfHandle(node.callee.object);
         if (node.type === 'Call' && node.callee.type === 'Identifier' && node.__handleElem) return node.__handleElem;
+        if (node.type === 'Call' && node.callee.type === 'Identifier' && arrayReturns.has(node.callee.name) && !node.isNew) return arrayReturns.get(node.callee.name);
+        if (node.type === 'Call' && node.callee.type === 'Member' && arrayReturns.has(node.callee.name) && !node.isNew &&
+            elemOfHandle(node.callee.object) === null) return arrayReturns.get(node.callee.name);
         // x.map(fn): an array of what fn returns, when x is one.
         if (node.type === 'Call' && node.callee.type === 'Member' && node.callee.name === 'map' && node.args && node.args[0] &&
             node.args[0].type === 'FunctionExpression' && elemOfHandle(node.callee.object) !== null) {
@@ -254,12 +274,35 @@ export function lowerHandleValues (ast, parse) {
         });
         return free;
     };
-    const lift = (fnNode, hint) => {
+    // Locals (parameters and declarations) of the function being rewritten, with their types.
+    const fnStack = [];
+    const localTypes = () => {
+        const out = new Map();
+        const fn = fnStack[fnStack.length - 1];
+        if (!fn) return out;
+        for (const p of fn.params || []) out.set(p, (fn.paramTypes && fn.paramTypes[p] && fn.paramTypes[p].text) || 'number');
+        walk(fn.body, n => {
+            if (n.type === 'Declaration') for (const d of n.decls || []) out.set(d.name, clean(d.typeName) || guessType(d.init));
+            if (n.type === 'ForOf') out.set(n.name, 'number');
+        });
+        return out;
+    };
+    const lift = (fnNode, hint, captures = false) => {
         if (fnNode.__liftedId) return fnNode.__liftedId;
-        if (freeNames(fnNode).size) return 0;       // captures a local: not liftable
+        let caps = [];
+        const free = freeNames(fnNode);
+        if (free.size) {
+            // A callback run by the call it is an argument of may read its surroundings' locals: they are
+            // passed to it as extra arguments.
+            const known = captures ? localTypes() : new Map();
+            if ([...free].some(n => !known.has(n))) return 0;
+            caps = [...free].map(n => ({name: n, type: known.get(n)}));
+        }
         const index = lifted.length + 1;
-        const params = fnNode.params || [];
+        const params = [...(fnNode.params || []), ...caps.map(c => c.name)];
+        const nOrig = (fnNode.params || []).length;
         const paramTypes = {...(fnNode.paramTypes || {})};
+        for (const c of caps) paramTypes[c.name] = {text: c.type, isArray: false};
         params.forEach((p, i) => {
             const have = paramTypes[p] && paramTypes[p].text;
             const want = hint && hint.params[i];
@@ -268,7 +311,7 @@ export function lowerHandleValues (ast, parse) {
         const types = params.map(p => (paramTypes[p] && paramTypes[p].text) || 'number');
         const ret = returnTextOf(fnNode) || (hint && hint.ret) || 'void';
         const name = `__fv_${index}`;
-        lifted.push({id: index, name, sig: signatureOf(types, ret), params, types, ret,
+        lifted.push({id: index, name, sig: signatureOf(types, ret), params, types, ret, nOrig, caps,
             node: {type: 'FunctionDeclaration', name, params, paramTypes, returnType: ret === 'void' ? '' : ret, typeParameters: [],
                 optionalParams: fnNode.optionalParams || [], body: fnNode.body}});
         fnNode.__liftedId = index;
@@ -331,17 +374,18 @@ export function lowerHandleValues (ast, parse) {
             if (fnArg.type === 'FunctionExpression') {
                 const hint = {params: [elem, 'number'], ret: c.name === 'map' ? 'number' : c.name === 'forEach' ? 'void' : c.name === 'filter' || c.name === 'some' || c.name === 'every' ? 'boolean' : 'number'};
                 if (c.name === 'reduce') hint.params = ['number', elem];
-                fid = lift(fnArg, hint);
+                fid = lift(fnArg, hint, true);
             } else if (fnArg.type === 'Identifier' && declaredFns.has(fnArg.name)) {
                 fid = liftNamed(fnArg.name);
             }
             const lf = lifted.find(l => l.id === fid);
             if (!lf) return null;
-            const key = `${c.name}_${T}_${ident(lf.sig)}`;
+            const key = `${c.name}_${T}_${ident(lf.sig)}${lf.caps && lf.caps.length ? `_c${lf.id}` : ''}`;
             if (!need.callbacks.has(key)) need.callbacks.set(key, {op: c.name, elem, T, lf});
             const retElem = c.name === 'map' ? lf.ret : elem;
             if (c.name === 'map') reserve(retElem);
-            const args = c.name === 'reduce' ? [h, num(fid), a[1] || num(0)] : [h, num(fid)];
+            const capArgs = (lf.caps || []).map(cap => id(cap.name));
+            const args = c.name === 'reduce' ? [h, num(fid), a[1] || num(0), ...capArgs] : [h, num(fid), ...capArgs];
             return out(`__acb_${key}`, args, c.name === 'map' ? {__handleElem: lf.ret} : c.name === 'filter' ? {__handleElem: elem} : {});
         }
         default: return null;
@@ -358,6 +402,8 @@ export function lowerHandleValues (ast, parse) {
             }
             return node;
         }
+        const isFn = !!(node.params && node.body && node.type !== 'Class');
+        if (isFn) fnStack.push(node);
         // `a[i] = v` is a store: its target is not read first.
         const store = node.type === 'Assignment' && node.left.type === 'Index';
         for (const k of Object.keys(node)) {
@@ -370,6 +416,7 @@ export function lowerHandleValues (ast, parse) {
             }
             if (v && typeof v === 'object') node[k] = rewrite(v);
         }
+        if (isFn) fnStack.pop();
         switch (node.type) {
         case 'Class':
             for (const f of node.fields || []) {
@@ -609,6 +656,49 @@ export function lowerHandleValues (ast, parse) {
         }
     }
 
+    // A method or function that declares no return type but returns a record (`lastBlock() { return this.chain[…] }`)
+    // is typed as that record, so a call on its result (`this.lastBlock().next(1)`) is still a record call.
+    const recordNames = new Set(classes.map(c => c.name));
+    const inferred = new Map();
+    const returnRecord = (e, locals) => {
+        if (!e) return null;
+        if (e.type === 'Call' && e.isNew && e.callee.type === 'Identifier' && recordNames.has(e.callee.name)) return e.callee.name;
+        if (e.type === 'Call' && e.callee.type === 'Identifier') {
+            const m = e.callee.name.match(/^__a(?:get|pop|shift|remove)_(\w+)$/);
+            if (m && recordNames.has(m[1])) return m[1];
+        }
+        if (e.type === 'Call' && e.callee.type === 'Member' && e.callee.object.type === 'Identifier' && e.callee.object.name === 'this') {
+            return inferred.get(e.callee.name) || null;
+        }
+        if (e.type === 'Identifier') return locals.get(e.name) || null;
+        return null;
+    };
+    const functionsToType = [];
+    for (const cls of classes) for (const m of cls.methods || []) if (!m.returnType && !m.isStatic) functionsToType.push(m);
+    for (const st of top) if (st.type === 'FunctionDeclaration' && !st.returnType) functionsToType.push(st);
+    for (let pass = 0; pass < 4; pass++) {
+        for (const fn of functionsToType) {
+            if (fn.returnType) continue;
+            const locals = new Map();
+            const found = new Set();
+            let bare = false;
+            walk(fn.body, n => {
+                if (n.type === 'Declaration') for (const d of n.decls || []) {
+                    const t = returnRecord(d.init, locals);
+                    if (t) locals.set(d.name, t);
+                }
+                if (n.type === 'Return') {
+                    if (n.value) found.add(returnRecord(n.value, locals));
+                    else bare = true;
+                }
+            });
+            if (found.size === 1 && !bare && !found.has(null)) {
+                fn.returnType = [...found][0];
+                inferred.set(fn.name, fn.returnType);
+            }
+        }
+    }
+
     // ── the generated procedures ──────────────────────────────────────────
     const src = [];
     const pools = [...need.pools];
@@ -707,23 +797,26 @@ export function lowerHandleValues (ast, parse) {
         const call1 = `${sigName}(f, __aget_${T}(h, i), i)`;
         const head = `function __acb_${key}`;
         const loop = body => ['    let len = __alen_' + k + '(h)', '    for (let i = 0; i < len; i++) {', ...body, '    }'];
-        const takesIndex = lf.params.length > 1;
-        const callText = takesIndex ? call1 : `${sigName}(f, __aget_${T}(h, i))`;
+        const takesIndex = (lf.nOrig === undefined ? lf.params.length : lf.nOrig) > 1;
+        const capNames = (lf.caps || []).map((cap, n) => `c${n}`);
+        const capDecl = (lf.caps || []).map((cap, n) => `, c${n}: ${cap.type}`).join('');
+        const capPass = capNames.map(n => `, ${n}`).join('');
+        const callText = (takesIndex ? call1 : `${sigName}(f, __aget_${T}(h, i))`).replace(/\)$/, `${capPass})`);
         if (op === 'map') {
             const rt = ident(lf.ret);
-            src.push(`${head}(h: number, f: number): number {`, '    let nh = __anew()', ...loop([`        __apush_${fam(lf.ret)}(nh, ${callText})`]), '    return nh', '}');
+            src.push(`${head}(h: number, f: number${capDecl}): number {`, '    let nh = __anew()', ...loop([`        __apush_${fam(lf.ret)}(nh, ${callText})`]), '    return nh', '}');
         } else if (op === 'filter') {
-            src.push(`${head}(h: number, f: number): number {`, '    let nh = __anew()', ...loop([`        if (${callText}) {`, `            __apush_${fam(elem)}(nh, __aget_${T}(h, i))`, '        }']), '    return nh', '}');
+            src.push(`${head}(h: number, f: number${capDecl}): number {`, '    let nh = __anew()', ...loop([`        if (${callText}) {`, `            __apush_${fam(elem)}(nh, __aget_${T}(h, i))`, '        }']), '    return nh', '}');
         } else if (op === 'forEach') {
-            src.push(`${head}(h: number, f: number) {`, ...loop([`        ${callText}`]), '}');
+            src.push(`${head}(h: number, f: number${capDecl}) {`, ...loop([`        ${callText}`]), '}');
         } else if (op === 'some') {
-            src.push(`${head}(h: number, f: number): boolean {`, ...loop([`        if (${callText}) {`, '            return true', '        }']), '    return false', '}');
+            src.push(`${head}(h: number, f: number${capDecl}): boolean {`, ...loop([`        if (${callText}) {`, '            return true', '        }']), '    return false', '}');
         } else if (op === 'every') {
-            src.push(`${head}(h: number, f: number): boolean {`, ...loop([`        if (!(${callText})) {`, '            return false', '        }']), '    return true', '}');
+            src.push(`${head}(h: number, f: number${capDecl}): boolean {`, ...loop([`        if (!(${callText})) {`, '            return false', '        }']), '    return true', '}');
         } else if (op === 'find') {
-            src.push(`${head}(h: number, f: number): ${vt === 'string' ? 'string' : vt} {`, ...loop([`        if (${callText}) {`, `            return __aget_${T}(h, i)`, '        }']), `    return ${zeroOf(elem)}`, '}');
+            src.push(`${head}(h: number, f: number${capDecl}): ${vt === 'string' ? 'string' : vt} {`, ...loop([`        if (${callText}) {`, `            return __aget_${T}(h, i)`, '        }']), `    return ${zeroOf(elem)}`, '}');
         } else if (op === 'reduce') {
-            src.push(`${head}(h: number, f: number, init: number): number {`, '    let acc = init', ...loop([`        acc = ${sigName}(f, acc, __aget_${T}(h, i))`]), '    return acc', '}');
+            src.push(`${head}(h: number, f: number, init: number${capDecl}): number {`, '    let acc = init', ...loop([`        acc = ${sigName}(f, acc, __aget_${T}(h, i)${capPass})`]), '    return acc', '}');
         }
     }
     // The dialect's variables are global: a helper's counters must not be the program's `i`, nor another
