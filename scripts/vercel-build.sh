@@ -17,6 +17,14 @@ node scripts/integrate.mjs
 # Non-fatal: a network hiccup here must not take the whole site down; the
 # engine simply is not offered, which lib/labwired-engine.js already handles.
 node scripts/sync-labwired-wasm.mjs || echo "labwired-wasm unavailable — the heavy tier will not be offered"
+# The pinned MakeCode runtimes (static/makecode/<target>/target.json, pxtworker.js,
+# firmware bases; ~55 MB), which the MakeCode import/compile worker fetches
+# same-origin. build.yml's Pages build syncs them; without this step Vercel served
+# no static/makecode/ and every MakeCode share link failed with
+# "target.json: HTTP 404". After integrate.mjs, which clears the synced runtime.
+# One retry for a registry hiccup; then non-fatal like labwired-wasm: MakeCode is
+# simply not offered rather than the whole site failing to deploy.
+node scripts/sync-makecode-runtime.mjs || node scripts/sync-makecode-runtime.mjs || echo "MakeCode runtime unavailable — MakeCode import and compile will not be offered"
 cd packages/scratch-gui
 npm install --ignore-scripts --legacy-peer-deps --no-audit --no-fund
 # The deployable build is FLAG-ON (matches .github/workflows/build.yml): the FPGA
