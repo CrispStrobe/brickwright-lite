@@ -286,3 +286,116 @@ game.onPaint(function () {
         assert.equal(image.pixels[0], 9, 'the capture is the screen before this frame\'s paint, not the last finished frame');
     } finally { run.vm.stopAll(); run.vm.quit(); clearStrayTimers(); }
 });
+
+const LATE_OVERLAP = `let lifeSeen = -99
+let ticks = 0
+let done = false
+let hero = sprites.create(img\`
+    2 2 2
+    2 2 2
+\`, SpriteKind.Player)
+hero.setPosition(80, 60)
+info.setLife(1)
+let first = sprites.create(img\`
+    5 5
+    5 5
+\`, SpriteKind.Food)
+first.setPosition(80, 60)
+sprites.onOverlap(SpriteKind.Player, SpriteKind.Food, function (sprite, other) {
+    other.destroy()
+    info.changeLifeBy(-1)
+    sprite.say("ow", 500)
+    lifeSeen = info.life()
+})
+game.onUpdate(function () {
+    ticks += 1
+    if (ticks == 2) {
+        let second = sprites.create(img\`
+            5 5
+            5 5
+        \`, SpriteKind.Food)
+        second.setPosition(80, 60)
+    }
+})
+control.runInParallel(function () {
+    pause(700)
+    done = true
+    done = true
+})`;
+
+test('an overlap callback queued in the frame that raises life zero runs in the game-over scene', async () => {
+    // The default life-zero game over pushes its scene inside the frame's HUD draw; the callback
+    // fiber that frame's physics queued resumes afterwards and acts on the NEW scene (a fresh
+    // life counter, and a speech bubble sprite created there for the old scene's player).
+    const original = await runPxtArcade(LATE_OVERLAP, {waitForGlobals: {done: true}, fakeClock: true});
+    assert.equal(original.lifeSeen, 2);
+    const {run, clock, start} = await timedRun(LATE_OVERLAP);
+    try {
+        await start();
+        for (let t = 20; t <= 800; t += 20) {
+            await clock.advanceTo(t);
+            for (let turn = 0; turn < 4; turn++) await new Promise(resolve => setImmediate(resolve));
+        }
+        assert.deepEqual(run.errors, []);
+        const variables = Object.fromEntries(run.vm.runtime.targets.flatMap(target => Object.values(target.variables)).map(variable => [variable.name, variable.value]));
+        assert.equal(Number(variables.lifeSeen), original.lifeSeen);
+        assert.equal(Object.keys(run.vm.runtime.bwArcadeDeviceState.sprites).length, 1, 'only the bubble sprite exists in the game-over scene');
+    } finally { run.vm.stopAll(); run.vm.quit(); clearStrayTimers(); }
+});
+
+const QUEUED_FIBER = `let order = ""
+let ticks = 0
+let done = false
+let fired = false
+sprites.onCreated(SpriteKind.Enemy, function (sprite) {
+    order = order + "c"
+})
+let hero = sprites.create(img\`
+    2 2 2
+    2 2 2
+\`, SpriteKind.Player)
+hero.setPosition(80, 60)
+sprites.onOverlap(SpriteKind.Player, SpriteKind.Food, function (sprite, other) {
+    order = order + "o"
+    other.destroy()
+})
+game.onUpdate(function () {
+    ticks += 1
+    if (ticks == 5) {
+        let food = sprites.create(img\`
+            5 5
+            5 5
+        \`, SpriteKind.Food)
+        food.setPosition(80, 60)
+    }
+})
+game.onUpdateInterval(100, function () {
+    if (!fired) {
+        fired = true
+        sprites.create(img\`
+            4 4
+            4 4
+        \`, SpriteKind.Enemy)
+        order = order + "u"
+    }
+})
+control.runInParallel(function () {
+    pause(400)
+    done = true
+    done = true
+})`;
+test('an overlap fiber queued by a frame runs after the frame, not during its inline creation callback',async()=>{
+    // The frame that detects the overlap also creates a sprite whose creation callback the
+    // caller runs inline. The queued overlap fiber only runs once the frame fiber blocks.
+    const original=await runPxtArcade(QUEUED_FIBER,{waitForGlobals:{done:true},fakeClock:true});
+    assert.equal(original.order,'cuo');
+    const {run,clock,start}=await timedRun(QUEUED_FIBER);
+    try {
+        await start();
+        await clock.advanceTo(500);
+        for(let turn=0;turn<4;turn++)await new Promise(resolve=>setImmediate(resolve));
+        assert.deepEqual(run.errors,[]);
+        const order=run.vm.runtime.targets.flatMap(t=>Object.values(t.variables)).find(v=>v.name==='order')?.value;
+        assert.equal(String(order),original.order);
+    } finally {run.vm.stopAll();run.vm.quit();clearStrayTimers();}
+});

@@ -142,6 +142,26 @@ test('sprite and screen effects follow source lifespans, end and clear', async (
     assert.equal(f.errors.length, 2, 'not a screen effect / unknown effect');
 });
 
+test('a scene with renderables draws every particle source exactly once per frame', () => {
+    // Drawing a source advances its factory's generator (star twinkles), so a source
+    // drawn once per other source would diverge from the original scene.render.
+    const f = fixture(), hero = f.sprite(2, 80, 60), state = f.state();
+    f.arcade.startScreenEffect({EFFECT: 'starField', DURATION: 0});
+    f.arcade.startSpriteEffect({ID: hero, EFFECT: 'fire', DURATION: 0});
+    f.arcade.startSpriteEffect({ID: hero, EFFECT: 'trail', DURATION: 0});
+    const renderable = {z: -20, id: 900, draw() {}};
+    f.arcade._inst._renderables.set(state, [renderable]);
+    f.arcade._inst._sceneFlags.register(state, renderable);
+    assert.equal(f.sources().length, 3);
+    const drawn = new Map();
+    for (const source of f.sources()) {
+        const original = source.__draw.bind(source);
+        source.__draw = camera => { drawn.set(source, (drawn.get(source) || 0) + 1); return original(camera); };
+    }
+    for (const step of f.arcade._inst._composeSceneSteps()) assert.fail('non-yielding renderer unexpectedly yielded');
+    assert.deepEqual(f.sources().map(source => drawn.get(source)), [1, 1, 1]);
+});
+
 test('particle overlays share the sprite z then id order and are removed on reset', async () => {
     const f = fixture(), low = f.sprite(2, 80, 60);
     f.arcade.startSpriteEffect({ID: low, EFFECT: 'fire', DURATION: 0});

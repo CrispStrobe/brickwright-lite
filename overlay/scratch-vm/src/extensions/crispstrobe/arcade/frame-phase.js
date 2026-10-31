@@ -151,7 +151,11 @@ class ArcadeFramePhase {
                     this.phaseContext={deadline,held,exhausted:false};
                     const ready=await this._work(held,deadline,generation);
                     if(generation!==this.generation || this.disposed)return {cancelled:true};
-                    if(ready && !started && frame){started=true;completion=frame();continue;}
+                    if(ready && !started && frame){
+                        started=true;completion=frame();this.frameInFlight=true;
+                        const done=()=>{this.frameInFlight=false;};
+                        Promise.resolve(completion).then(done,done);continue;
+                    }
                     if(ready)return {cancelled:false,completion};
                     await browserTurn();
                 }
@@ -230,6 +234,11 @@ class ArcadeFramePhase {
         const call=this._callOf(t);
         return !!call?.caller && this._eligible(call.caller,seen);
     }
+    _frameHasRunnableWork(except,held) {
+        return this.runtime.threads.some(o=>o!==except && !o.bwArcadeEvent?.deferredFiber && this._live(o) && !held.has(o) && this._eligible(o) &&
+            !this.conditionWaits.parked(o) && !this._waitingTimer(o) && !(this.waitTimers.has(o)&&!this.waitTimers.get(o).ready) &&
+            o.status===o.constructor.STATUS_RUNNING);
+    }
     _pump() {this._wakeSourceWaits();this.ext._pumpFunctionCalls();this.ext._pumpCreationWaits();this.ext._pumpTerrainWaits();}
     // Scratch drops finished threads only inside Sequencer.stepThreads. Source
     // turns (timed scene frames, continuations) step threads directly and never
@@ -249,6 +258,10 @@ class ArcadeFramePhase {
                 if(this.workNow()>=deadline)return false;
                 if(!this._live(t)||held.has(t)||!this._eligible(t))continue;
                 if(this.conditionWaits.parked(t))continue;
+                // PXT starts an overlap callback with control.runInParallel: the fiber first runs when the
+                // frame fiber blocks. The native frame also awaits internal work (a creation callback its
+                // caller calls inline), which must not hand the frame's time to fibers queued by its physics.
+                if(this.frameInFlight && t.bwArcadeEvent?.deferredFiber && this._frameHasRunnableWork(t,held))continue;
                 this.conditionWaits.beforeStep(t);
                 if(this._waitingTimer(t)||(this.waitTimers.has(t)&&!this.waitTimers.get(t).ready)){this._armSourceWait(t);held.add(t);continue;}
                 if(t.status!==t.constructor.STATUS_RUNNING)continue;
