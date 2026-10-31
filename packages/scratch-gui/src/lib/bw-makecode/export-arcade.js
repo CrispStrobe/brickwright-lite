@@ -1703,6 +1703,7 @@ class ArcadeEmitter {
             const name=this.externalName(b);
             return name || this.na();
         }
+        case 'arcade_externalImageCall':
         case 'arcade_externalCall': {
             const call=this.externalCallText(b);
             return call===null?this.na():call;
@@ -2611,6 +2612,16 @@ class ArcadeEmitter {
             option('HAS_SOUND', hasSound => option('HAS_SCORE', hasScore => {
                 push(`carnival.customGameOverExpanded(${v('MESSAGE')}, ${effect==='unset'?'undefined':`effects.${effect}`}, ${hasSound?v('SOUND'):'undefined'}, ${scoring==='unset'?'undefined':`carnival.ScoreTypes.${scoring}`}, ${hasScore?v('SCORE'):'undefined'})`);
             }));return;
+        }
+        case 'arcade_carnivalAddLabel': {
+            const area=this.field(b,'AREA');
+            if(!['Top','Mid','Bottom'].includes(area)){push(`// ${this.note('Carnival label needs a Top, Mid or Bottom location')}`);return;}
+            this.requiresCarnivalPackage=true;
+            // The colour is optional in MakeCode: the flag says whether it was written.
+            const flag=this.boolValue(b,'HAS_COLOR'),call=color=>`carnival.addLabelTo(${v('LABEL')}, carnival.Areas.${area}${color?`, ${v('COLOR')}`:''})`;
+            if(flag==='true'||flag==='false')push(call(flag==='true'));
+            else {push(`if (${flag}) {`);push(call(true));push('} else {');push(call(false));push('}');}
+            return;
         }
         case 'arcade_carnivalCountdown':
         case 'arcade_carnivalGameOver': {
@@ -3775,7 +3786,7 @@ class ArcadeEmitter {
                 if(value.opcode==='arcade_spriteProperty' && value.fields?.PROPERTY?.[0]==='data'){
                     const id=Symbol('sprite data');dataProperties.push([ref(inputBlock(blocks,value,'ID')),id]);return id;
                 }
-                if(value.opcode==='arcade_spriteProperty' && ['fx','fy','sx','sy','scale','rotation','rotationDegrees'].includes(value.fields?.PROPERTY?.[0])){const id=Symbol('sprite numeric property');numbers.add(id);return id;}
+                if(value.opcode==='arcade_spriteProperty' && ['x','y','vx','vy','ax','ay','left','right','top','bottom','width','height','fx','fy','sx','sy','scale','rotation','rotationDegrees'].includes(value.fields?.PROPERTY?.[0])){const id=Symbol('sprite numeric property');numbers.add(id);return id;}
                 if(value.opcode==='arcade_tileHitFrom'){const id=Symbol('hit tile index');numbers.add(id);return id;}
                 if(['arcade_cameraProperty','arcade_cameraDrawOffset'].includes(value.opcode)){const id=Symbol('camera numeric property');numbers.add(id);return id;}
                 if(['arcade_tileLocationProperty','arcade_legacyTileProperty'].includes(value.opcode)){const id=Symbol('tile numeric property');numbers.add(id);return id;}

@@ -511,6 +511,8 @@ class Parser {
             this.skipBalanced();
             return null;
         }
+        // `abstract class` (the keyword has no runtime effect), read as the class.
+        if (this.lowerHeritage && this.at('ident', 'abstract') && this.peek(1).type === 'class') this.next();
         if (this.at('class')) return this.parseClass();
         if (this.at('switch')) return this.parseSwitch();
         if (this.at('throw')) return this.parseThrow();
@@ -658,7 +660,7 @@ class Parser {
         this.expect('class');
         const name = this.at('ident') ? this.next().value : '';
         const node = {type: 'Class', name, fields: [], methods: [], ctor: null, unsupported: []};
-        if (this.retainClassHeritage && this.eat('ident','extends')) {
+        if ((this.retainClassHeritage || this.lowerHeritage) && this.eat('ident','extends')) {
             if (!this.at('ident')) throw new Error('MakeCode TS: class parent requires a name');
             node.base=this.next().value;
             while(this.eat('punct','.'))node.base+='.'+this.expect('ident').value;
@@ -671,7 +673,7 @@ class Parser {
             return node;
         }
         this.next();
-        const MODIFIERS = new Set(['public', 'private', 'protected', 'readonly']);
+        const MODIFIERS = new Set(['public', 'private', 'protected', 'readonly', ...(this.lowerHeritage ? ['abstract', 'override'] : [])]);
         while (!this.at('punct', '}') && !this.at('eof')) {
             if (this.eat('punct', ';')) continue;
             let isStatic = false;
@@ -711,7 +713,8 @@ class Parser {
                 const paramTypes = this.lastParamTypes;
                 this.skipTypeAnnotation();
                 const returnType = this.lastType;
-                const body = this.parseBlock();
+                // `abstract area(): number;`: a declaration, its body is the subclass's.
+                const body = this.lowerHeritage && modifiers.includes('abstract') && !this.at('punct', '{') ? (this.eat('punct', ';'), []) : this.parseBlock();
                 if (member === 'constructor') {
                     if (isStatic) node.unsupported.push('static constructor-named methods');
                     if (typeParameters.length) node.unsupported.push('generic class constructors');
@@ -1448,6 +1451,7 @@ export function parseMakeCodeTs (source, opts = {}) {
     parser.retainParentheses = Boolean(opts.retainParentheses);
     parser.retainWhenUsed = Boolean(opts.retainWhenUsed);
     parser.retainClassHeritage = Boolean(opts.retainClassHeritage);
+    parser.lowerHeritage = Boolean(opts.lowerHeritage);
     parser.retainCallableMetadata = Boolean(opts.retainCallableMetadata);
     parser.retainPrimitiveProcedureDefaults = Boolean(opts.retainPrimitiveProcedureDefaults);
     parser.retainOrdinaryDefaultProvenance = Boolean(opts.retainOrdinaryDefaultProvenance);

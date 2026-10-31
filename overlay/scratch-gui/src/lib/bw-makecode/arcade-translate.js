@@ -450,6 +450,11 @@ class ArcadeTranslator extends BaseTranslator {
             return background.fresh ? `arcade copy image (${resource})` : resource;
         }
         if (node?.type === 'Call' && this.path(node.callee) === 'scene.backgroundImage' && !node.args?.length) return 'arcade background image';
+        // A call on a name whose source is not in the project, where an Image is expected: kept by name with real argument blocks.
+        if (allowValueCall && node?.type === 'Call' && node.callee?.type === 'Member' && !(node.args || []).some(arg => arg?.type === 'FunctionExpression')) {
+            const external = this.externalName(node.callee);
+            if (external) return `(arcade external image call ${JSON.stringify(external)} arguments (${this.externalArguments(node.args || [])}))`;
+        }
         if (node?.type === 'Member') {const external = this.externalName(node);if (external && (!node.bwExternalAsset || /^assets\.(?:image|tile)`/.test(external))) return `(arcade external image ${JSON.stringify(external)})`;}
         // PXT's global screen image, unless the program binds its own \`screen\`.
         if (node?.type === 'Identifier' && node.name === 'screen' && !(this.boundSourceGlobals?.has('screen') || this.sourceFunctions?.has('screen') ||
@@ -1489,7 +1494,7 @@ class ArcadeTranslator extends BaseTranslator {
         if (node?.type === 'Identifier' && this.handleAliases.has(node.name)) {
             return this.handleAliases.get(node.name);
         }
-        const image = node?.type === 'Member' && this.imageRef(node.object);
+        const image = node?.type === 'Member' && this.imageRef(node.object, false);
         // PXT's screen is always 160x120: its size folds to constants below.
         if (image && image !== 'arcade screen image' && ['width', 'height'].includes(node.name)) return `arcade image ${node.name} of (${image})`;
         const handle = node?.type === 'Member' && this.handleRef(node.object);
@@ -2735,6 +2740,15 @@ class ArcadeTranslator extends BaseTranslator {
             push(`arcade carnival custom game over message (${this.expr(a[0])}) effect ${effect} sound (${missing(a[2])?'""':this.expr(a[2])}) use sound ${missing(a[2])?'0':'1'} scoring ${scoring} score (${missing(a[4])?'0':this.expr(a[4])}) use score ${missing(a[4])?'0':'1'}`);
             return true;
         }
+        if(this.handleTemplates && !this.bindsName('carnival') && name==='carnival.addLabelTo') {
+            const missing = node => !node || node.type==='Undefined';
+            const area = /^carnival\.Areas\.(Top|Mid|Bottom)$/.exec(this.path(a[1]) || '')?.[1];
+            if(a.length<2 || a.length>3 || !area) {
+                push(this.note(name+'() needs a label, a fixed carnival.Areas location and an optional colour'));return true;
+            }
+            push(`arcade carnival add label (${this.expr(a[0])}) position ${area} color (${missing(a[2])?'0':this.expr(a[2])}) use color ${missing(a[2])?'0':'1'}`);
+            return true;
+        }
         if(!this.handleTemplates || this.bindsName('carnival') || !['carnival.startCountdownGame','carnival.onGameOverExpanded','carnival.customGameOverExpanded'].includes(name))return false;
         const countdown=name==='carnival.startCountdownGame',offset=countdown?1:0;
         const match=/^carnival\.WinTypes\.(Win|Lose|Score|Timed|Multi|Custom)$/.exec(this.path(a[offset]) || '');
@@ -3967,8 +3981,11 @@ const discoverRuntimeRegistrations = (ast, translator) => {
         const names = new Set();
         const visit = statements => { for (const st of statements || []) {
             if (st.type === 'Declaration') for (const decl of st.decls) names.add(decl.name);
+            // A `for (let i …)` counter is block-scoped to its loop: it belongs to this run of the
+            // callback, not to a program variable of the same name that other scripts share.
+            if (st.type === 'For' && st.init?.type === 'Declaration') for (const decl of st.init.decls) names.add(decl.name);
             if (st.type === 'If') { visit(st.consequent);visit(st.alternate); }
-            if (['For','While','Block'].includes(st.type)) visit(st.body);
+            if (['For','ForOf','While','Block'].includes(st.type)) visit(st.body);
         }};
         visit(body);return names;
     };
@@ -4493,7 +4510,7 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRunti
         if(node.type==='Call' && /^mp\./.test(t.path(node.callee)||''))return true;
         if(node.type==='Call' && /^effects\.(?:\w+\.(?:startScreenEffect|endScreenEffect)|clearParticles)$/.test(t.path(node.callee)||''))return true;
         if(node.type==='Call' && /^music\./.test(t.path(node.callee)||''))return true;
-        if(node.type==='Call' && /^carnival\.(?:startCountdownGame|onGameOverExpanded|customGameOverExpanded)$/.test(t.path(node.callee)||''))return true;
+        if(node.type==='Call' && /^carnival\.(?:startCountdownGame|onGameOverExpanded|customGameOverExpanded|addLabelTo)$/.test(t.path(node.callee)||''))return true;
         if(node.type==='Call' && /^game\.(?:gameOver|over|setGameOver\w+)$/.test(t.path(node.callee)||''))return true;
         if(node.type==='Call' && node.callee?.type==='Member' && (node.callee.name==='startEffect' || node.callee.name==='destroy' && node.args?.length))return true;
         if(node.type==='Call' && (['controller.setRepeatDefault','controller._setUserEventsEnabled','game.splash','game.showLongText','game.currentScene','ArcadePhysicsEngine','sprites.allOfKind','scene.onHitTile','scene.tileHitFrom','scene.onHitWall','scene.onOverlapTile','scene.centerCameraAt','scene.cameraShake','scene.cameraFollowSprite','scene.cameraProperty','scene.cameraLeft','scene.cameraTop','game.pushScene','game.popScene','game.addScenePushHandler','game.addScenePopHandler','game.removeScenePushHandler','game.removeScenePopHandler'].includes(t.path(node.callee)) || /^tiles\./.test(t.path(node.callee)||'')))return true;
@@ -4634,7 +4651,7 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRunti
     const allowedCalls = new Set(['sprites.onCreated', 'sprites.onDestroyed', 'sprites.onOverlap', 'sprites.destroy',
         ...creationApis, 'game.onUpdateInterval', 'game.onUpdate', 'control.runInParallel', 'forever', 'game.forever', 'basic.forever',
         'controller.A.onEvent', 'controller.moveSprite', 'info.setLife', 'info.setScore',
-        'carnival.startCountdownGame', 'carnival.onGameOverExpanded', 'carnival.customGameOverExpanded', 'info.startCountdown', 'info.stopCountdown', 'info.onCountdownEnd', 'info.onLifeZero', 'info.onScore', 'console.log',
+        'carnival.startCountdownGame', 'carnival.onGameOverExpanded', 'carnival.customGameOverExpanded', 'carnival.addLabelTo', 'info.startCountdown', 'info.stopCountdown', 'info.onCountdownEnd', 'info.onLifeZero', 'info.onScore', 'console.log',
         'pause', 'game.splash', 'game.showLongText', 'image.setPalette', 'scene.setBackgroundColor', 'scene.setBackgroundImage']);
     for (const [index, st] of ast.body.entries()) {
         if (st.type === 'Namespace' && st.name === 'SpriteKind') continue;

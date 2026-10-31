@@ -18,7 +18,8 @@ if (sha !== '6530f15cbddbc41419a59a41e8c13276eb6ac65645c04d02e899826c08e3f765') 
 const parsed = ts.createSourceFile('carnival.ts', source, ts.ScriptTarget.Latest, true);
 const namespace = parsed.statements.find(node => ts.isModuleDeclaration(node) && node.name.text === 'carnival');
 const names = new Set(['WinTypes', 'ScoreTypes', 'countdownInitialized', 'startCountdownGame',
-    'saveLowScore', 'newGameOver', 'init', 'GameOverDialog', 'onGameOverExpanded', 'customGameOverExpanded']);
+    'saveLowScore', 'newGameOver', 'init', 'GameOverDialog', 'onGameOverExpanded', 'customGameOverExpanded',
+    'textSprite', 'Areas', 'addLabelTo']);
 const selected = namespace.body.statements.filter(node => {
     const name = node.name?.text || (ts.isVariableStatement(node) ? node.declarationList.declarations[0].name.text : null);
     return names.delete(name);
@@ -57,7 +58,7 @@ const content = `// Generated from microsoft/arcade-carnival v0.0.7, commit 915c
 // Source sha256 ${sha}. Regenerate: node scripts/generate-arcade-carnival.mjs
 // Host blocking operations return Promises; one factory instance owns one program's initialization.
 module.exports = function initializePxtCarnival(host) {
-const {game, info, effects, settings, control, scene, music, screen, image, img, pause} = host;
+const {game, info, effects, settings, control, scene, music, screen, image, img, pause, textsprite} = host;
 ${compiled.outputText}
 return {carnival};
 };
