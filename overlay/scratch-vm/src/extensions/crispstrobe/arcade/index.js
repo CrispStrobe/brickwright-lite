@@ -3628,7 +3628,6 @@ module.exports = makeExt(`// Name: Arcade
       sprite._destroyedRegistration=state.spriteDestroyedHandlers[id];
     }
     destroySprite(args,util) {
-      if(this._missingOperand(util,args,'ID'))return this._primitiveFault('destroySprite',args,util);
       const id = String(args.ID);
       const state = this._state();
       const sprite = this._spriteValues.get(id) || state.sprites[id];

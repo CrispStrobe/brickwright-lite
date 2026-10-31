@@ -170,7 +170,6 @@ const spriteSetter = makeKind({method: 'setSpriteProperty', label: 'Missing Spri
     if (!property || !spriteSetterProperties.includes(property.value)) throw Error('Missing Sprite setter fault requires a supported current property');
     return missingArguments(['ID'], 'Sprite')(args);
 }});
-const spriteDestroy = makeKind({method: 'destroySprite', label: 'Missing Sprite destroy', read: missingArguments(['ID'], 'Sprite')});
 const spritePosition = makeKind({method: 'setSpritePosition', label: 'Missing Sprite setPosition', read: missingArguments(['ID'], 'Sprite')});
 // Image reads and scroll on a missing receiver: width, height, getPixel and scroll all throw.
 const imageProperty = makeKind({method: 'imageProperty', label: 'Missing Image property', read(args) {
@@ -191,7 +190,7 @@ const imageKinds = Object.freeze([
 // Every kind in install order: the first is the original null Sprite getter.
 const kinds = Object.freeze([Object.freeze({method: 'spriteProperty', kind: spriteGetter}),
     Object.freeze({method: 'setSpriteImage', kind: spriteImageSetter}), ...imageKinds,
-    ...[['setSpriteProperty', spriteSetter], ['destroySprite', spriteDestroy], ['setSpritePosition', spritePosition],
+    ...[['setSpriteProperty', spriteSetter], ['setSpritePosition', spritePosition],
         ['imageProperty', imageProperty], ['imagePixel', imagePixel], ['scrollImage', imageScroll]].map(([method, kind]) => Object.freeze({method, kind}))]);
 // One owner implementation check per kind lets the Arcade constructor create each service.
 const bindAll = (info, adapter, instance) => {for (const {kind} of kinds) kind.bindAdapterInfo(info, adapter, instance);};

@@ -88,8 +88,7 @@ simulator through the differential harness.
 Measured against the original simulator, every property setter (`x`, `y`, `vx`, `z`, `lifespan`, `left`, `scale`, `data`, ...),
 `destroy` and `setPosition` on a null or undefined Sprite throws, and so do `width`, `height`, `getPixel`, `scroll`, `print`, `clone`
 and `equals` (as receiver) on a null or undefined Image. A null Image or Sprite passed as an *argument* (`image.equals(null)`,
-`setImage(undefined)` on a real Sprite) does not throw. Six more sealed kinds cover `setSpriteProperty`, `destroySprite`,
-`setSpritePosition`, `imageProperty`, `imagePixel` and `scrollImage`, each with its own declaration, registration and receipt.
+`setImage(undefined)` on a real Sprite) does not throw. Five more sealed kinds cover `setSpriteProperty`, `setSpritePosition`, `imageProperty`, `imagePixel` and `scrollImage`, each with its own declaration, registration and receipt.
 
 * A life-zero or countdown-end callback runs inside the HUD renderable, so a fault ends the scene's frame fiber exactly like a
   faulting `onPaint`.
@@ -98,7 +97,7 @@ and `equals` (as receiver) on a null or undefined Image. A null Image or Sprite 
 * The 200 ms fallback screen refresh clears its flag at each tick before a frame at the same instant updates it, so a frame fault at
   a tick instant is refreshed two ticks later.
 
-Still open: reads of other Sprite properties (`vx`, `left`, `kind`, ...), `say`, `setKind`, `overlapsWith`, `drawRect`, `print`,
+Still open: `destroy` (its synchronous destroyed-callbacks step nested threads inside the primitive loan, which the loan forbids), reads of other Sprite properties (`vx`, `left`, `kind`, ...), `say`, `setKind`, `overlapsWith`, `drawRect`, `print`,
 `clone` and `equals` on a missing receiver do not yet fault.
 
 ## The cooperative yield

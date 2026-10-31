@@ -38,7 +38,7 @@ const roles=Object.freeze(Object.fromEntries(Object.entries({
     arcade_spriteProperty:[],arcade_sceneMillis:[],arcade_frameDeltaTime:[],
     arcade_setSpriteImage:[],arcade_blitImage:[],arcade_drawImage:[],arcade_drawImageCircle:[],
     arcade_setImagePixel:[],arcade_mutateImage:[],
-    arcade_setSpriteProperty:[],arcade_destroySprite:[],arcade_setSpritePosition:[],
+    arcade_setSpriteProperty:[],arcade_setSpritePosition:[],
     arcade_imageProperty:[],arcade_imagePixel:[],arcade_scrollImage:[],
     arcade_throwValue:['VALUE'],arcade_createOwnedImageSprite:['KIND'],
     arcade_returnValue:['VALUE'],arcade_functionArgument:['VALUE'],

@@ -204,7 +204,9 @@ class ArcadeFramePhase {
         if(record.checked || ++record.steps<YIELD_AFTER_STEPS)return false;
         record.checked=true;
         const epoch=this.ext._programClockEpoch;
-        if(!epoch?.timerAuthority || !epoch.rawSetTimeout || !this.ext._sourceSceneTimers())return false;
+        // PXT's frame loop wakes every 20 ms for as long as the game runs; without a frame host here there is no
+        // evidence of a quiet interval, only of a scene this driver never ticked.
+        if(!epoch?.timerAuthority || !epoch.rawSetTimeout || !this.ext._sourceSceneTimers() || !this.ext._sceneFrameHost)return false;
         const now=this.ext._programMillis();
         if(now-epoch.lastWake<YIELD_QUIET_MS)return false;
         epoch.lastWake=now;

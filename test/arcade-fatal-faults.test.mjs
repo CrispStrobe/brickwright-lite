@@ -158,7 +158,6 @@ for (const [name, faulty, healthy] of [
     ['a Sprite property setter on a null Sprite', 'missing.x = 5', 'mover.x = 5'],
     ['a Sprite velocity setter on a null Sprite', 'missing.vy = 5', 'mover.vy = 5'],
     ['setPosition on a null Sprite', 'missing.setPosition(5, 5)', 'mover.setPosition(5, 5)'],
-    ['destroy on a null Sprite', 'missing.destroy()', 'other.destroy()'],
     ['getPixel on a null Image', 'hits += nul.getPixel(0, 0)', 'hits += list.length'],
     ['an Image width read on a null Image', 'hits += nul.width', 'hits += list.length'],
     ['an Image height read on an undefined Image', 'hits += list[-2].height', 'hits += list.length'],
