@@ -409,6 +409,11 @@ export class Emitter {
             const [left, right] = [v('OPERAND1'), v('OPERAND2')];
             if (handles(left) && right === '0') return `(${left} == null)`;
             if (handles(right) && left === '0') return `(${right} == null)`;
+            // Two number literals ('0 == 2', the value of a call that has no block
+            // against a constant) have the literal types 0 and 2, which Static
+            // TypeScript will not compare: one side is widened to number.
+            const NUMBER = /^-?\d+(\.\d+)?$/;
+            if (NUMBER.test(left) && NUMBER.test(right)) return `((${left} + 0) == ${right})`;
             return this.booleanCompare(b, '==') || `(${left} == ${right})`;
         }
         case 'operator_and': return `(${this.condition(b, 'OPERAND1')} && ${this.condition(b, 'OPERAND2')})`;
@@ -1590,6 +1595,19 @@ export function makeCodeSourceHex (files, opts = {}) {
 }
 
 /**
+ * The pxt.json dependencies for a program. MakeCode's radio and bluetooth
+ * packages cannot be used together, so a program that calls bluetooth.* gets
+ * the bluetooth package instead of radio (and both only when it calls both,
+ * which MakeCode then reports itself).
+ */
+function dependenciesFor (ts) {
+    const bluetooth = /\bbluetooth\./.test(ts);
+    const radio = /\bradio\./.test(ts);
+    if (!bluetooth) return {core: '*', radio: '*', microphone: '*'};
+    return {core: '*', bluetooth: '*', ...(radio ? {radio: '*'} : {}), microphone: '*'};
+}
+
+/**
  * A whole project, ready to hand to the browser as a download.
  *
  * @param {object} project an sb3 project
@@ -1609,7 +1627,7 @@ export function exportToMakeCode (project, opts = {}) {
             // MakeCode's own new-project set (its blocksprj template). It is also
             // the set pxt-microbit ships a precompiled firmware base for, so the
             // same files build a real .hex here (pxt-runtime.js) with no cloud.
-            dependencies: {core: '*', radio: '*', microphone: '*'},
+            dependencies: dependenciesFor(ts),
             files: ['main.ts', 'main.blocks', 'pxt.json'],
             preferredEditor: 'tsprj'
         }, null, 4)}\n`,

@@ -127,3 +127,30 @@ test('inheritance stays refused by name, and nothing is said to be converted', {
     const imported = microbitToPseudocode('class A {\n    x = 1\n}\nclass B extends A {\n    y = 2\n}\nlet b = new B()\nserial.writeLine("" + b.y)\n');
     assert.ok(imported.unsupported.some(u => /^class B .*heritage/.test(u)), imported.unsupported.join('\n'));
 });
+
+test('a constructor\'s omitted optional parameter takes its default, so `new X()` calls the constructor with all its arguments', {skip}, async () => {
+    const r = await both([
+        'class Box {',
+        '    n: number',
+        '    constructor(start?: number, step: number = 2) {',
+        '        this.n = start ? start : 7',
+        '        this.n += step',
+        '    }',
+        '    get value(): number {',
+        '        return this.n',
+        '    }',
+        '}',
+        'let a = new Box()',
+        'let b = new Box(10)',
+        'let c = new Box(10, 5)',
+        'serial.writeLine("" + a.value + " " + b.value + " " + c.value)'
+    ].join('\n'), {ms: 500});
+    assert.deepEqual(r.mc.lines, ['9 12 15']);
+    assert.deepEqual(r.lite.lines, r.mc.lines);
+});
+
+test('a comparison of two number literals (a call with no block, against a constant) still compiles in MakeCode', {skip}, async () => {
+    const ex = exportToMakeCode(new SB3Creator().parse('DEVICE MICROBIT\n\nWHEN flag clicked:\n  IF (0 = 2) THEN:\n    print "never"\n'), {name: 'literals'});
+    assert.match(ex.ts, /\(\(0 \+ 0\) == 2\)/);
+    await compileMakeCode(ex.ts);
+});

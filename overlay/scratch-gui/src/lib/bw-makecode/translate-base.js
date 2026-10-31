@@ -1637,7 +1637,9 @@ export class BaseTranslator {
         this.declared.add(handle);
         this.pre.push(`set ${handle} to (length of ${this.arrayRef(rt.arrays.get(rt.fields[0].name))}) - 1`);
         if (rt.ctorFn) {
-            const args = (ctorArgs || []).map(a => this.single(a, this.pre, ''));
+            // An omitted optional constructor parameter takes its default (or 0), as a function call's does.
+            const given = rt.ctor && rt.ctor.params ? this.withDefaultArgs({params: rt.ctor.params}, ctorArgs || []) : (ctorArgs || []);
+            const args = given.map(a => this.single(a, this.pre, ''));
             this.pre.push([rt.ctorFn.name, handle, ...args].join(' '));
         }
         return handle;

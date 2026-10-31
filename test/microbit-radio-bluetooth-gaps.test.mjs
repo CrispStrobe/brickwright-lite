@@ -143,3 +143,12 @@ test('everyInterval and radio values export as MakeCode\'s own calls, and MakeCo
     }
     await compileMakeCode(ex.ts);
 });
+
+test('a project that calls bluetooth depends on the bluetooth package (not radio, which MakeCode will not mix with it)', {skip}, () => {
+    const {code} = lite('bluetooth.startUartService()\nbluetooth.uartWriteString("hi")\n');
+    const ex = exportToMakeCode(new SB3Creator().parse(code), {name: 'btdeps'});
+    const deps = JSON.parse(ex.files['pxt.json']).dependencies;
+    assert.deepEqual(Object.keys(deps).sort(), ['bluetooth', 'core', 'microphone']);
+    const plain = exportToMakeCode(new SB3Creator().parse(lite('radio.sendNumber(1)\n').code), {name: 'plain'});
+    assert.deepEqual(Object.keys(JSON.parse(plain.files['pxt.json']).dependencies).sort(), ['core', 'microphone', 'radio']);
+});
