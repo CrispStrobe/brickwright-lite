@@ -1391,6 +1391,40 @@ const HANDLERS = {
 const UNPOLLABLE_HANDLERS = {};
 
 /**
+ * The shape the export writes for a radio packet hat (export.js): a function
+ * `onRadioPacket` and, for each kind of packet, a handler that calls it first.
+ * It is read back as the packet hat it came from.
+ */
+function liftPacketHandlers (ast) {
+    const KINDS = /^radio\.onReceived(Number|String|Value|Buffer)$/;
+    const calls = name => st => st && st.type === 'ExpressionStatement' && st.expr && st.expr.type === 'Call' &&
+        st.expr.callee && st.expr.callee.type === 'Identifier' && st.expr.callee.name === name && !(st.expr.args || []).length;
+    const handlerOf = st => {
+        if (!st || st.type !== 'ExpressionStatement' || !st.expr || st.expr.type !== 'Call' || !st.expr.callee || st.expr.callee.type !== 'Member') return null;
+        const c = st.expr.callee;
+        return c.object && c.object.name === 'radio' && KINDS.test(`radio.${c.name}`) ? st.expr : null;
+    };
+    for (const fn of ast.body.filter(st => st.type === 'FunctionDeclaration' && /^onRadioPacket\d*$/.test(st.name))) {
+        const handlers = ast.body.map(handlerOf).filter(Boolean);
+        const mine = handlers.filter(h => {
+            const body = h.args[h.args.length - 1].body || [];
+            return body.length && calls(fn.name)(body[0]);
+        });
+        // All four kinds must call it, or it is the author's own function.
+        if (mine.length < 4) continue;
+        for (const h of mine) h.args[h.args.length - 1].body.shift();
+        ast.body = ast.body.filter(st => {
+            const h = handlerOf(st);
+            return !(h && mine.includes(h) && !(h.args[h.args.length - 1].body || []).length);
+        });
+        const at = ast.body.indexOf(fn);
+        ast.body[at] = {type: 'ExpressionStatement', expr: {type: 'Call',
+            callee: {type: 'Member', object: {type: 'Identifier', name: 'radio'}, name: 'onDataPacketReceived'},
+            args: [{type: 'FunctionExpression', params: [], paramTypes: {}, optionalParams: [], body: fn.body}]}};
+    }
+}
+
+/**
  * Translate a MakeCode micro:bit project.
  *
  * @param {string} source the project's main.ts
@@ -1410,6 +1444,7 @@ export function microbitToPseudocode (source, opts = {}) {
         if (lowered.program) ast = lowered.program;
         else extensionDiagnostics.push(...lowered.unsupported.map(e => `extension source: ${e}`));
     }
+    liftPacketHandlers(ast);
     const t = new MicrobitTranslator();
     t.board = opts.board || null;
     t.aliases = new Map();

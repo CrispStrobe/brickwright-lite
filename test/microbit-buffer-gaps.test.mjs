@@ -189,3 +189,25 @@ test('a Buffer method with no block is named, not dropped', {skip}, () => {
     const imported = microbitToPseudocode('let b = control.createBuffer(4)\nb.rotate(1, 2)\nserial.writeLine("" + b.length)\n');
     assert.ok(imported.unsupported.some(u => /b\.rotate\(\).*Buffer method/.test(u)), imported.unsupported.join('\n'));
 });
+
+test('`given || control.createBuffer(4)` keeps the buffer (not a 1), and a buffer parameter left out is null', {skip}, async () => {
+    const r = await all([
+        'class Holder {',
+        '    _data: Buffer',
+        '    constructor(input?: Buffer) {',
+        '        this._data = input || control.createBuffer(4)',
+        '    }',
+        '    size(): number {',
+        '        return this._data.length',
+        '    }',
+        '}',
+        'let h = new Holder()',
+        'serial.writeLine("" + h.size())',
+        'let src = control.createBuffer(7)',
+        'let h2 = new Holder(src)',
+        'serial.writeLine("" + h2.size())'
+    ].join('\n'));
+    assert.deepEqual(r.mc, ['4', '7']);
+    assert.deepEqual(r.lite, r.mc);
+    assert.deepEqual(r.back, r.mc);
+});

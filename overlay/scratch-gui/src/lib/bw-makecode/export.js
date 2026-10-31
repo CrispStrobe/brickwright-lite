@@ -335,7 +335,12 @@ export class Emitter {
     argument (b, id, type) {
         const input = b.inputs && b.inputs[id];
         const slot = input && input[1];
-        if (!input) return type === 'string' ? '""' : '0';
+        if (!input) return type === 'string' ? '""' : type === 'Buffer' ? 'null' : '0';
+        if (type === 'Buffer') {
+            // A buffer parameter's "none" is 0 in the dialect and null in MakeCode.
+            const value = this.value(b, id, '0');
+            return value === '0' ? 'null' : value;
+        }
         if (type === 'number' && Array.isArray(slot) && (slot[0] === 10 || slot[0] === 11) &&
             NUMERIC_TEXT.test(String(slot[1]).trim())) return String(Number(String(slot[1]).trim()));
         return this.value(b, id, '0');
@@ -418,7 +423,9 @@ export class Emitter {
             // A sprite or Image variable's "none" is 0 in the dialect and null in
             // MakeCode (an extension's `if (!_img)` guard); MakeCode will not
             // compare an Image to a number.
-            const handles = name => (this.spriteVars && this.spriteVars.has(name)) || (this.imageVars && this.imageVars.has(name));
+            const handles = name => (this.spriteVars && this.spriteVars.has(name)) || (this.imageVars && this.imageVars.has(name)) ||
+                (this.bufferParams && this.bufferParams.has(name)) || /^control\.createBuffer\(/.test(name) ||
+                (this.spriteArrays && this.spriteArrays.has((/^(\w+)\[/.exec(name) || [])[1]));
             const [left, right] = [v('OPERAND1'), v('OPERAND2')];
             if (handles(left) && right === '0') return `(${left} == null)`;
             if (handles(right) && left === '0') return `(${right} == null)`;
@@ -1497,6 +1504,14 @@ export function projectToMakeCodeTs (project, opts = {}) {
         }
         const text = variables.text;
         emitter.parameterTypes = parameters.types;
+        // The parameters that hold Buffers: "none" is null for them, as for sprites.
+        emitter.bufferParams = new Set();
+        for (const b of Object.values(blocks)) {
+            if (!b || b.opcode !== 'procedures_definition') continue;
+            const proto = emitter.prototypeOf(b);
+            const types = proto && parameters.types.get(String((proto.mutation || {}).proccode || ''));
+            if (types) emitter.parameterNames(proto).forEach((n, i) => { if (types[i] === 'Buffer') emitter.bufferParams.add(n); });
+        }
         const sprites = spriteNames(blocks, emitter);
         const images = imageNames(blocks, emitter);
         emitter.spriteVars = sprites.vars;

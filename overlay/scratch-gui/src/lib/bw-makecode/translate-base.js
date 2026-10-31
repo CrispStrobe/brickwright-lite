@@ -609,6 +609,16 @@ export class BaseTranslator {
             this.assign(target, node.alternate, indent + 1, out);
             return;
         }
+        // `buffer = given || control.createBuffer(4)`: JavaScript's `||` and `&&` give back an
+        // operand, which a 1 or 0 is not when the operands are buffers.
+        if (node && node.type === 'Binary' && (node.op === '||' || node.op === '&&') && this.isBuffer &&
+            (this.isBuffer(node.left) || this.isBuffer(node.right))) {
+            out.push(`${pad}IF ${this.condition(node.left)} THEN:`);
+            this.assign(target, node.op === '||' ? node.left : node.right, indent + 1, out);
+            out.push(`${pad}ELSE:`);
+            this.assign(target, node.op === '||' ? node.right : node.left, indent + 1, out);
+            return;
+        }
         if (node && isTruthValue(node)) {
             out.push(`${pad}IF ${this.condition(node)} THEN:`, `${pad}  ${set('1')}`,
                 `${pad}ELSE:`, `${pad}  ${set('0')}`);

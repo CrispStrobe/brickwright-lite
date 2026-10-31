@@ -201,3 +201,13 @@ test('radio.onDataPacketReceived runs for every packet; MakeCode\'s radio no lon
     const heard = back.serial.map(l => l.text.trim());
     assert.ok(heard.includes('num 5') && heard.includes('got 5 [] 0') && heard.some(l => /^got .* \[k\] 0$/.test(l)), heard.join('\n'));
 });
+
+test('the export of a packet hat reads back as the packet hat it came from', {skip}, () => {
+    const ex = exported(lite(LEGACY).code, 'legacy');
+    const again = microbitToPseudocode(ex.ts);
+    assert.deepEqual(again.unsupported, []);
+    assert.match(again.code, /WHEN radio receives packet:/);
+    assert.match(again.code, /WHEN radio receives number:/);
+    assert.doesNotMatch(again.code, /onRadioPacket/);
+    assert.equal((again.code.match(/WHEN radio receives/g) || []).length, 2, again.code);
+});
