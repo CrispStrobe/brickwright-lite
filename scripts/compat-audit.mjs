@@ -8,7 +8,7 @@
  * TurboWarp is clean-room only: the .sb3 mode is a Scratch-format check, with no
  * TurboWarp-specific cases and no TurboWarp-sourced inputs.
  * Usage: node scripts/compat-audit.mjs [--target microbit|arcade] [--out report.json]
- *        [--corpus-commit SHA] [--compile] [--prepare-extensions] [--fetch-extensions] [--execute] [--execute-timeout-ms N] [--journey] [--context-catalogue FILE] [--context-root ID=directory] [--progress-jsonl FILE | --stdio-transcript] [--limit N] file-or-directory [...]
+ *        [--corpus-commit SHA] [--compile] [--prepare-extensions] [--fetch-extensions [--extension-cache DIR]] [--execute] [--execute-timeout-ms N] [--journey] [--context-catalogue FILE] [--context-root ID=directory] [--progress-jsonl FILE | --stdio-transcript] [--limit N] file-or-directory [...]
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -120,6 +120,7 @@ let markdown = null;
 let doCompile = false;
 let fetchExtensions = false;
 let prepareExtensions = false;
+let extensionCacheDir = null;
 let execute = false;
 let executeTimeoutMs = 120000;
 let journey = false;
@@ -154,6 +155,7 @@ for (let i = 0; i < args.length; i++) {
     else if (a === '--compile') doCompile = true;
     else if (a === '--fetch-extensions') fetchExtensions = true;
     else if (a === '--prepare-extensions') prepareExtensions = true;
+    else if (a === '--extension-cache') extensionCacheDir = args[++i];
     else if (a === '--execute') execute = true;
     else if (a === '--execute-timeout-ms') {
         executeTimeoutMs = Number(args[++i]);
@@ -184,6 +186,11 @@ let progressSubject = null;
 const mark = phase => {if (progress) progress.mark(phase, progressSubject);};
 mark('CLI_PROGRESS_BEGIN');
 const compiler = doCompile || prepareExtensions || execute ? await import('./lib/pxt-node.mjs') : null;
+// An extension cache also switches fetching to its pinned, licence-checked mode:
+// every file is taken at a commit sha, verified against the commit's tree, and
+// refused unless its licence is on the allow-list.
+if (extensionCacheDir && compiler) compiler.setDefaultFetchOptions({pin: true, licencePolicy: 'allow-list',
+    cache: (await import('./lib/extension-file-cache.mjs')).fileExtensionCache(path.resolve(extensionCacheDir))});
 const {compile, hasRuntime} = compiler || {};
 mark('PROVENANCE_BEGIN');
 invocationAt = new Date().toISOString();
@@ -191,7 +198,7 @@ invocationIdentity = snapshotIdentity();
 mark('PROVENANCE_END');
 if ((!inputs.length && !contextCatalogue) || !['microbit', 'arcade', 'calliopemini', 'ev3', 'adafruit'].includes(target) ||
     !Number.isFinite(limit) && limit !== Infinity || limit < 0) {
-    console.error('usage: node scripts/compat-audit.mjs [--target microbit|arcade] [--out report.json] [--markdown report.md] [--corpus-commit SHA] [--compile] [--prepare-extensions] [--fetch-extensions] [--execute] [--execute-timeout-ms N] [--journey] [--context-catalogue FILE] [--context-root ID=directory] [--progress-jsonl FILE | --stdio-transcript] [--limit N] file-or-directory [...]');
+    console.error('usage: node scripts/compat-audit.mjs [--target microbit|arcade] [--out report.json] [--markdown report.md] [--corpus-commit SHA] [--compile] [--prepare-extensions] [--fetch-extensions [--extension-cache DIR]] [--execute] [--execute-timeout-ms N] [--journey] [--context-catalogue FILE] [--context-root ID=directory] [--progress-jsonl FILE | --stdio-transcript] [--limit N] file-or-directory [...]');
     process.exit(2);
 }
 
@@ -202,6 +209,7 @@ function collect (name) {
         (inputs.includes(name) && path.extname(name).toLowerCase() === '.png') ? [name] : [];
 }
 
+if (extensionCacheDir && !fetchExtensions) throw new Error('--extension-cache requires --fetch-extensions');
 if (fetchExtensions && !doCompile && !prepareExtensions) throw new Error('--fetch-extensions requires --compile or --prepare-extensions');
 
 if (corpusCommit !== null && !/^[a-f0-9]{40}$/i.test(corpusCommit)) throw new Error('--corpus-commit requires a full immutable commit SHA');

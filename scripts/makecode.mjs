@@ -64,7 +64,7 @@ const USAGE = `usage:
   node scripts/makecode.mjs to-project <in.sb3|in.bw> [-o out.mkcd] [--target TARGET]
   node scripts/makecode.mjs to-hex <in.sb3|in.bw> [-o out.hex|out.uf2] [--target TARGET] [--board variant] [--source]
   node scripts/makecode.mjs to-ts  <in.sb3|in.bw> [-o out.ts]  [--target TARGET]
-  node scripts/makecode.mjs to-sb3 <in.ts|in.hex|in.uf2|in.png|in.mkcd|share-url> [-o out.sb3] [--bw out.bw] [--target TARGET] [--fetch-extensions]
+  node scripts/makecode.mjs to-sb3 <in.ts|in.hex|in.uf2|in.png|in.mkcd|share-url> [-o out.sb3] [--bw out.bw] [--target TARGET] [--fetch-extensions [--extension-cache DIR]]
   node scripts/makecode.mjs run <in.hex|in.ts|in.sb3|in.bw> [--target microbit|calliopemini] [--board v1|v2] [--seconds N] [--json]
   node scripts/makecode.mjs run <boards.bw|boards.sb3> [--press <Board>:<A|B>@<from>-<to>]... [--seconds N] [--json]
 TARGET: microbit (default), arcade, calliopemini (or calliope), ev3`;
@@ -94,6 +94,7 @@ function args (argv) {
         else if (a === '--json') out.json = true;
         else if (a === '--press') out.press.push(argv[++i]);
         else if (a === '--fetch-extensions') out.fetchExtensions = true;
+        else if (a === '--extension-cache') out.extensionCache = argv[++i];
         else if (!out.input) out.input = a;
         else throw Object.assign(new Error(`unexpected argument ${a}`), {usage: true});
     }
@@ -107,6 +108,7 @@ function args (argv) {
     } else if (out.board && out.target !== 'arcade') throw Object.assign(new Error('--board is for Arcade only'), {usage: true});
     if (!(out.seconds > 0 && out.seconds <= 600)) throw Object.assign(new Error('--seconds must be between 0 and 600'), {usage: true});
     if (out.press.length && out.cmd !== 'run') throw Object.assign(new Error('--press is for run'), {usage: true});
+    if (out.extensionCache && !out.fetchExtensions) throw Object.assign(new Error('--extension-cache needs --fetch-extensions'), {usage: true});
     if (out.fetchExtensions && out.cmd !== 'to-sb3') throw Object.assign(new Error('--fetch-extensions is for to-sb3'), {usage: true});
     return out;
 }
@@ -294,7 +296,9 @@ async function main () {
     }
     if (a.cmd === 'to-sb3') {
         const mc = await lib('bw-makecode/index.js');
+        const extensionCache = a.extensionCache ? (await import('./lib/extension-file-cache.mjs')).fileExtensionCache(path.resolve(a.extensionCache)) : null;
         const dependencyOptions = a.fetchExtensions ? {prepareDependencies:true,fetchExtensions:true,
+            ...(extensionCache ? {extensionCache} : {}),
             resolveProjectInputs:async (...args) => (await import('./lib/pxt-node.mjs')).resolveProjectInputs(...args)} : {};
         let res;
         if (/\.ts$/i.test(a.input)) {
@@ -310,7 +314,7 @@ async function main () {
                 await mc.importShareLink(a.input,{animationResources:true,...dependencyOptions}) :
                 await mc.importArtefact(new Uint8Array(fs.readFileSync(a.input)),{name:path.basename(a.input),animationResources:true,...dependencyOptions});
         }
-        if (a.fetchExtensions && res.project?.target !== 'arcade') throw new Error('Native dependency preparation is currently for Arcade projects');
+        for (const e of res.extensions || []) console.error(`  extension: ${e.id} (${e.via}${e.commit ? ` ${e.commit.slice(0, 12)}` : ''}) — ${e.licence || 'unidentified licence'}`);
         for (const e of res.dependencyInputs?.fetchedExtensions || []) console.error(`  dependency: ${e.id} (${e.repo}#${e.ref}) — ${e.licence || 'unidentified licence'}`);
         if (res.lang !== 'pseudocode') {
             console.error(`this is a ${res.project && res.project.target} project in ${res.lang}; only translated projects become .sb3`);

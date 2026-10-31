@@ -45,8 +45,10 @@ test('the shipped map is a complete immutable snapshot, not a token allow-list',
     // 2026-09-21: six arrivals less the delisted `sound`, and TurboHook
     // replaced by Webhooks. 129 since 2026-10-06: CrispStrobe/circuitcubes
     // (deferred — Web Bluetooth). 130 since 2026-10-14:
-    // CrispStrobe/circuitplayground (deferred — VM runtime).
-    assert.equal(Object.keys(pins.extensions).length, 130);
+    // CrispStrobe/circuitplayground (deferred — VM runtime).  135 since 2026-10-31
+    // (extensions#69): spriteutils, statusbars, carnival, settingsblocks, neopixel
+    // (all deferred).
+    assert.equal(Object.keys(pins.extensions).length, 135);
     for (const [slug, pin] of Object.entries(pins.extensions)) {
         assert.match(slug, /^[A-Za-z0-9._/-]+$/);
         assert.match(pin.served, /^[0-9a-f]{64}$/);

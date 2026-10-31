@@ -15,10 +15,21 @@
  * are skipped, as the vendoring sync does. Dependency editor history is not
  * compiler input; its omission is reported without rewriting pxt.json. This
  * loader is for compilation, not a lossless package/project archive.
+ *
+ * PINNED MODE (`pin: true`, used by the namespace-driven import). The ref is
+ * resolved to a full commit sha through the GitHub API before anything is read,
+ * every file is taken at that sha, and each file's git blob sha is checked
+ * against the commit's tree, so a CDN serving other bytes fails closed. With
+ * `licencePolicy: 'allow-list'` an extension whose LICENSE (read together with
+ * its pxt.json `license`) is not on the allow-list is REFUSED by name. A
+ * `cache` ({get, set}) keyed `repo@commit` keeps the full provenance record
+ * (repo, commit, file blobs, licence text, holder) so a second import is offline.
  */
-import {licenceOf, REDISTRIBUTABLE} from './extension-licence.js';
+import {licenceOf, REDISTRIBUTABLE, decideLicence} from './extension-licence.js';
 
 export const RAW_BASE = 'https://raw.githubusercontent.com/';
+export const API_BASE = 'https://api.github.com/';
+const FULL_SHA = /^[0-9a-f]{40}$/;
 
 /** Bounds on what one compile may fetch. */
 // Authentic Arcade projects in the compatibility corpus need ten packages.
@@ -37,6 +48,18 @@ export function parseGithubSpec (spec) {
     const ref = m[2] || '';
     if (ref && ref.split('/').some(part => !part || part === '.' || part === '..')) return null;
     return {repo: m[1].toLowerCase(), ref};
+}
+
+/** Rebuild an extension entry from a cached provenance record (no network). */
+function entryFromCache (dep, target, record) {
+    const {provenance, files} = record;
+    const decision = decideLicence({licenceText: provenance.licenceText, pxtLicense: JSON.parse(files['pxt.json']).license});
+    return {id: dep.id, repo: dep.repo, refs: [dep.ref], targets: [target], files,
+        fetched: {base: null, licence: provenance.licence, licenceFile: provenance.licenceFile, licenceUrl: null,
+            licenceText: provenance.licenceText, redistributable: REDISTRIBUTABLE.includes(provenance.licence),
+            sha256: Object.fromEntries(Object.entries(provenance.files).map(([name, row]) => [name, row.sha256])),
+            sourceBytes: 0, excludedFiles: record.excludedFiles || [], commit: provenance.commit, holder: provenance.holder,
+            provenance, cached: true, licenceDecision: decision}};
 }
 
 /** A path a pxt.json may list: relative, no `..`, no backslashes. */
@@ -61,6 +84,15 @@ export function unresolvedGithubDependencies (dependencies, target, table) {
     return out;
 }
 
+/** git's blob object id of a text's UTF-8 bytes: sha1("blob <len>\0" + bytes). */
+export async function gitBlobSha1 (text) {
+    const body = new TextEncoder().encode(text), head = new TextEncoder().encode(`blob ${body.byteLength}\0`);
+    const bytes = new Uint8Array(head.byteLength + body.byteLength);
+    bytes.set(head, 0); bytes.set(body, head.byteLength);
+    const digest = await globalThis.crypto.subtle.digest('SHA-1', bytes);
+    return Array.from(new Uint8Array(digest), b => b.toString(16).padStart(2, '0')).join('');
+}
+
 async function sha256Hex (text) {
     const digest = await globalThis.crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
     return Array.from(new Uint8Array(digest), b => b.toString(16).padStart(2, '0')).join('');
@@ -78,7 +110,8 @@ async function sha256Hex (text) {
  *   `extensions` in the EXTENSION_TABLE shape, plus `fetched: {base, licence, redistributable,
  *   licenceFile, sha256}` describing what was taken.
  */
-export async function fetchMakeCodeExtensions ({dependencies, target, table, fetch = url => globalThis.fetch(url), limits = FETCH_LIMITS}) {
+export async function fetchMakeCodeExtensions ({dependencies, target, table, fetch = url => globalThis.fetch(url), limits = FETCH_LIMITS,
+    pin = false, licencePolicy = null, cache = null, now = () => new Date().toISOString()}) {
     limits = {...FETCH_LIMITS, ...limits};
     for (const [name, value] of Object.entries(limits)) {
         if (!Number.isSafeInteger(value) || value <= 0) throw new Error(`invalid extension fetch limit: ${name}`);
@@ -142,14 +175,43 @@ export async function fetchMakeCodeExtensions ({dependencies, target, table, fet
         // A package subfolder follows the ref in GitHub raw URLs, but remains
         // part of the package identity used by PXT's dependency resolver.
         const parts = dep.repo.split('/');
-        const repositoryBase = `${RAW_BASE}${parts.slice(0, 2).join('/')}/${dep.ref || 'HEAD'}/`;
-        const base = repositoryBase + (parts.length > 2 ? parts.slice(2).join('/') + '/' : '');
+        const subfolder = parts.length > 2 ? parts.slice(2).join('/') + '/' : '';
+        let repositoryBase, base, commit = null, blobs = null;
         try {
+            if (pin) {
+                commit = FULL_SHA.test(dep.ref) ? dep.ref : JSON.parse((await text(
+                    `${API_BASE}repos/${parts.slice(0, 2).join('/')}/commits/${encodeURIComponent(dep.ref || 'HEAD')}`,
+                    limits.bytesPerManifest, 'its commit lookup is too large')).content).sha;
+                if (!FULL_SHA.test(String(commit))) throw new Error(`${dep.ref || 'HEAD'} did not resolve to a commit sha`);
+                const cached = cache && await cache.get(`${dep.repo}@${commit}`);
+                if (cached) {
+                    extensions.push(entryFromCache(dep, target, cached));
+                    for (const next of unresolvedGithubDependencies(JSON.parse(cached.files['pxt.json']).dependencies, target, [...table, ...extensions])) queue.push(next);
+                    continue;
+                }
+                // The commit's tree: the git blob sha of every file at this commit.
+                const tree = JSON.parse((await text(`${API_BASE}repos/${parts.slice(0, 2).join('/')}/git/trees/${commit}?recursive=1`,
+                    limits.bytesPerExtension, 'its commit tree is too large')).content);
+                if (tree.truncated || !Array.isArray(tree.tree)) throw new Error('its commit tree is incomplete, so its files cannot be verified');
+                blobs = new Map(tree.tree.filter(e => e.type === 'blob').map(e => [e.path, e.sha]));
+            }
+            repositoryBase = `${RAW_BASE}${parts.slice(0, 2).join('/')}/${commit || dep.ref || 'HEAD'}/`;
+            base = repositoryBase + subfolder;
+            const verified = {};
+            // Pinned mode: the bytes must be the commit's blob, or the file is refused.
+            const verify = async (url, content) => {
+                if (!blobs) return;
+                const file = url.slice(RAW_BASE.length + parts.slice(0, 2).join('/').length + 1 + commit.length + 1);
+                const blob = await gitBlobSha1(content);
+                if (blobs.get(file) !== blob) throw new Error(`${file} arrived as blob ${blob}, the commit's tree says ${blobs.get(file)}`);
+                verified[file] = blob;
+            };
             const sourceLimitReason = `its sources exceed ${limits.bytesPerExtension} bytes`;
             const manifest = await text(`${base}pxt.json`, Math.min(limits.bytesPerManifest, limits.bytesPerExtension),
                 limits.bytesPerManifest < limits.bytesPerExtension ?
                     `its pxt.json exceeds ${limits.bytesPerManifest} bytes` : sourceLimitReason);
             const pxtJson = manifest.content;
+            await verify(`${base}pxt.json`, pxtJson);
             const cfg = JSON.parse(pxtJson);
             const supported = Array.isArray(cfg.supportedTargets) ? cfg.supportedTargets : null;
             if (supported && supported.length && !supported.includes(target)) {
@@ -168,6 +230,7 @@ export async function fetchMakeCodeExtensions ({dependencies, target, table, fet
                     continue;
                 }
                 const source = await text(base + f, limits.bytesPerExtension - bytes, sourceLimitReason);
+                await verify(base + f, source.content);
                 files[f] = source.content;
                 bytes += source.bytes;
             }
@@ -181,6 +244,7 @@ export async function fetchMakeCodeExtensions ({dependencies, target, table, fet
                         const notice = await readText(res, limits.bytesPerLicence,
                             `its licence notice exceeds ${limits.bytesPerLicence} bytes`);
                         licenceText = notice.content;
+                        await verify(licenceBase + name, licenceText);
                         licence = licenceOf(licenceText); break;
                     }
                 }
@@ -188,9 +252,17 @@ export async function fetchMakeCodeExtensions ({dependencies, target, table, fet
             }
             const sha256 = {};
             for (const [name, content] of Object.entries(files)) sha256[name] = await sha256Hex(content);
+            const decision = decideLicence({licenceText, pxtLicense: cfg.license});
+            if (licencePolicy === 'allow-list' && !decision.allowed) throw new Error(`licence refused: ${decision.reason}`);
+            const provenance = commit ? {repo: dep.repo, ref: dep.ref || 'HEAD', commit, fetchedAt: now(), holder: decision.holder,
+                licence: decision.licence, licenceFile, licenceText, files: Object.fromEntries(Object.keys(files).map(name =>
+                    [name, {blob: verified[subfolder + name], sha256: sha256[name]}])),
+                licenceBlob: licenceFile ? verified[licenceUrl.slice(RAW_BASE.length + parts.slice(0, 2).join('/').length + 1 + commit.length + 1)] : null} : null;
             extensions.push({id: dep.id, repo: dep.repo, refs: [dep.ref], targets: [target], files,
                 fetched: {base, licence, licenceFile, licenceUrl, licenceText, redistributable: REDISTRIBUTABLE.includes(licence),
-                    sha256, sourceBytes: bytes, excludedFiles}});
+                    sha256, sourceBytes: bytes, excludedFiles, ...(provenance ? {commit, holder: decision.holder, provenance} : {}),
+                    licenceDecision: decision}});
+            if (cache && provenance) await cache.set(`${dep.repo}@${commit}`, {provenance, files, excludedFiles});
             // Its own github: dependencies, unless already available.
             for (const next of unresolvedGithubDependencies(cfg.dependencies, target, [...table, ...extensions])) queue.push(next);
         } catch (err) {
