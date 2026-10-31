@@ -2668,14 +2668,16 @@ module.exports = makeExt(`// Name: Arcade
     }
     _questionButtonEdge(button,held) {
       const dialog=this._dialogs?.[0];
-      if(dialog?.type!=='ask' || !['a','b'].includes(button))return;
+      if(dialog?.type!=='ask' || dialog.fiber || !['a','b'].includes(button))return;
       dialog.held[button]=!!held;
       if(dialog.elapsed>=500 && !held)dialog.armed[button]=true;
     }
     _pumpQuestion(milliseconds) {
-      const dialog=this._dialogs?.[0];if(dialog?.type!=='ask')return;
+      const dialog=this._dialogs?.[0];if(dialog?.type!=='ask' || dialog.fiber)return;
       const wasReady=dialog.elapsed>=500;
-      dialog.elapsed+=milliseconds;if(dialog.elapsed<500)return;
+      dialog.elapsed+=milliseconds;
+      if(dialog.screen && dialog.elapsed>=dialog.refreshIn-1e-6)this._showAskScreen(dialog);
+      if(dialog.elapsed<500)return;
       if(!wasReady)this._showNextDialog();
       for(const button of ['a','b'])if(!dialog.held[button])dialog.armed[button]=true;
       if(dialog.armed.a && dialog.held.a)dialog.dismiss(true);
@@ -2810,6 +2812,8 @@ module.exports = makeExt(`// Name: Arcade
         if(dialog?.type==='ask' && !dialog.started){
           dialog.started=true;
           for(const button of ['a','b'])dialog.held[button]=this._heldButton(1,button);
+          this._drawAskDialog(dialog);
+          this._startAskFiber(dialog);
         }
         this._runtime.bwArcadeDialogOpen = Boolean(dialog);
         this._runtime.bwArcadeDialogType = dialog?.type || null;
@@ -4637,6 +4641,7 @@ module.exports = makeExt(`// Name: Arcade
         getPixel(x,y){return imageEngine.getPixel(this.raw,x,y);}
         setPixel(x,y,c){imageEngine.draw(this.raw,'setPixel',x,y,c);}
         fillRect(x,y,w,h,c){imageEngine.draw(this.raw,'fillRect',x,y,w,h,c);}
+        drawLine(x0,y0,x1,y1,c){imageEngine.draw(this.raw,'drawLine',x0,y0,x1,y1,c);}
         drawTransparentImage(source,x,y){imageEngine.blit(this.raw,source.raw,'drawTransparentImage',x,y);}
         // The simulator image helpers address a buffer through this shape.
         drawIcon(icon,x,y,color){text.drawIcon({_width:this.raw.width,_height:this.raw.height,data:this.raw.pixels,makeWritable(){},color:c=>Number(c)&15},{data:icon},x,y,color);}
@@ -4658,7 +4663,8 @@ module.exports = makeExt(`// Name: Arcade
       this._dialogHost={wrap:raw=>new DialogImage(raw),img,image:{create:(width,height)=>{width=Number(width)|0;height=Number(height)|0;if(width<0||height<0||width>2000||height>2000)return undefined;return new DialogImage({width,height,pixels:new Uint8Array(width*height)});},
           font5:text.image.font5,font8:text.image.font8,font12:text.image.font12,getFontForText:value=>text.image.getFontForText(value)}};
       this._gameOverPxt=dependencies.initializeGameOver({
-        image:this._dialogHost.image,img,screen:{width:160,height:120,isMono:false},effects,music,
+        image:this._dialogHost.image,img,screen:this._dialogScreen={width:160,height:120,isMono:false,target:null,
+          fillRect(...a){this.target.fillRect(...a);},drawLine(...a){this.target.drawLine(...a);},print(...a){this.target.print(...a);}},effects,music,
         info:{isBetterScore:(next,previous)=>ext._isBetterScore(next,previous)},
         control:{},controller:{},scene:{}
       });
@@ -4780,6 +4786,60 @@ module.exports = makeExt(`// Name: Arcade
       if(this._runtime?.bwArcadeHoldControlReset){this._runtime.bwArcadeControlResets=(this._runtime.bwArcadeControlResets || 0)+1;return;}
       this._runtime?.stopAll?.();
       this._runtime?.greenFlag?.();
+    }
+    // game.ask: game.showDialog (gameover-pxt.js) draws over the screen as the last
+    // frame left it, and nothing repaints it until the question is answered. The
+    // simulator's display shows that screen only at its fallback refresh
+    // (screen/frame.ts: a loop that pauses 200 ms and refreshes when no frame
+    // updated the display meanwhile), so the dialog appears at the first such
+    // check at least 200 ms after the last frame.
+    _screenClock() {return this._sourceSceneTimers()?this._programMillis():this._globalElapsedMs;}
+    _drawAskDialog(dialog) {
+      const {game}=this._gameOverModule(),state=this._state();
+      // A question raised from inside the frame's draw (a HUD-pass event) is
+      // asked once that draw is over: the screen as drawn so far.
+      const pass=(state._hudPass?.epoch===this._terrainEpoch && state._hudPass) || (state._renderPass?.epoch===this._terrainEpoch && state._renderPass);
+      const base=pass?.screen?.pixels || state.sceneFrame?.pixels || this._screenRaw().pixels;
+      // PXT shows that frame before the question starts; the frame's own tail must not repaint over it.
+      if(pass)state._askPaintDone=true;
+      const raw={width:160,height:120,pixels:base.slice()};
+      this._dialogScreen.target=this._dialogHost.wrap(raw);
+      try {game.showDialog(dialog.title,dialog.subtitle,'A = OK, B = CANCEL');}
+      finally {this._dialogScreen.target=null;}
+      const now=this._screenClock(),last=this._lastScreenUpdateMs ?? now;
+      const refreshAt=200*(Math.ceil(last/200-1e-9)+1);
+      dialog.screen=raw.pixels;dialog.refreshIn=Math.max(0,refreshAt-now);
+    }
+    // On the program clock game.ask runs as PXT's ask.ts does, in a fiber of its
+    // own: pause(500), then pauseUntil over the live A/B state (an immediate
+    // check, then base/poll.ts's 50 ms polling), independently of the frame
+    // that raised it (a HUD-pass event handler may still be waiting for it).
+    _startAskFiber(dialog) {
+      const epoch=this._programClockEpoch;
+      if(!this._sourceSceneTimers() || !epoch?.setTimeout)return;
+      dialog.fiber=true;
+      const live=()=>this._dialogs?.[0]===dialog && this._programClockEpoch===epoch && epoch.active;
+      const continuation=()=>this._runtime._arcadeFramePhase?.requestContinuation?.()?.catch?.(error=>this._runtime?.emit?.('BLOCKS_ERROR',String(error?.message || error)));
+      if(dialog.screen)epoch.setTimeout(()=>{if(live() && dialog.screen)this._showAskScreen(dialog);},dialog.refreshIn)?.unref?.();
+      let aNotHeld=false,bNotHeld=false,answer=null;
+      const condition=()=>{
+        const a=this._heldButton(1,'a'),b=this._heldButton(1,'b');
+        aNotHeld=aNotHeld || !a;bNotHeld=bNotHeld || !b;
+        if(aNotHeld && a)answer=true;else if(bNotHeld && b)answer=false;
+        return answer!==null;
+      };
+      const finish=()=>{if(live()){dialog.elapsed=500;dialog.dismiss(answer);}};
+      epoch.setTimeout(()=>{
+        if(!live())return;
+        if(condition()){finish();continuation();}
+        else this._nativePollEvents().enqueue(condition,finish);
+      },500)?.unref?.();
+    }
+    _showAskScreen(dialog) {
+      const pixels=dialog.screen;dialog.screen=null;
+      const state=this._state(),frame=state.sceneFrame || (state.sceneFrame={width:160,height:120,pixels:new Uint8Array(160*120)});
+      frame.pixels.set(pixels);this._screenRaw().pixels.set(pixels);frame.sequence=(frame.sequence || 0)+1;
+      this._changed();
     }
     screenImage() {return this._imageHandle(this._screenRaw());}
     // ---- music: PXT's mixer runs as fibers on the Arcade clock (music.js) ----
@@ -5565,6 +5625,7 @@ module.exports = makeExt(`// Name: Arcade
     }
     *_composeSceneSteps() {
       const epoch=this._terrainEpoch,state=this._state(),renderables=this._renderables.get(state);
+      this._lastScreenUpdateMs=this._screenClock();
       if(state.flags & 4)return state.sceneFrame;
       if(!renderables?.length && !state.seeThrough){
         const frame=this._composeSceneFrame();
@@ -5574,6 +5635,7 @@ module.exports = makeExt(`// Name: Arcade
       const screen=this._screenRaw(),output={layers:[],missingSpriteImages:[]};
       yield* this._drawSceneOwnerSteps(state,screen,state,epoch,output);
       if(this._state()!==state || epoch!==this._terrainEpoch)return;
+      if(state._askPaintDone){state._askPaintDone=false;return state.sceneFrame;}
       const frame=state.sceneFrame || (state.sceneFrame={width:160,height:120,pixels:new Uint8Array(160*120)});
       frame.pixels.set(screen.pixels);
       frame.coverage=['background','tilemap','sprites','modernSpeech','particles','renderables'];

@@ -131,6 +131,26 @@ WHEN arcade source starts:
  await run.vm.loadProject(archive);assert.equal(run.vm.runtime._arcadeFramePhase,driver);run.clock=createArcadeDiscreteTimers();run.vm.runtime.bwArcadeProgramClock=run.clock;run.vm.runtime.updateCurrentMSecs=()=>{run.vm.runtime.currentMSecs=run.clock.now();};run.vm.greenFlag();await stepFrames(run.vm,1,0);await run.clock.advanceTo(30);assert.equal(values(run).resumed,1);assert.equal(driver.waitTimers.size,0);assert.deepEqual(run.errors,[]);
  }finally{close(run);}
 });
+test('a timed-scene question draws game.showDialog into the frame at the simulator\'s fallback screen refresh',async()=>{
+ let run;try{run=await setup(`SPRITE Game:
+WHEN arcade source starts:
+  arcade set background color to 0
+  set ready to 0
+  set reply to (arcade ask yes "Continue?" subtitle "Cost")
+  set ready to 1`);await stepFrames(run.vm,1,0);await run.clock.advanceTo(0);
+ const frame=()=>Array.from(run.vm.runtime.bwArcadeDeviceState.sceneFrame?.pixels || []);
+ const row=(pixels,y)=>pixels.slice(y*160,y*160+160);
+ // Dialog height 8+8+2+8+8=34 -> top (120-34)>>1=43; the footer strip starts at 120-8-4=108.
+ await run.clock.advanceTo(100);assert.equal(row(frame(),43).every(c=>c===0),true,'the display still shows the last frame');
+ await run.clock.advanceTo(200);
+ const shown=frame();
+ assert.equal(row(shown,43).every(c=>c===1),true,'top border line drawn by showDialog');
+ assert.equal(row(shown,76).every(c=>c===1),true,'bottom border line');
+ assert.equal(row(shown,108).every(c=>c===1),true,'footer rule');
+ assert.equal(shown.some((c,i)=>c===7 && i>=44*160 && i<76*160),true,'title in colour 7');
+ assert.equal(values(run).ready,0);
+ }finally{close(run);}
+});
 test('production timed-scene questions retain the500ms guard and genuine release/press input',async()=>{
  let run;try{run=await setup(`SPRITE Game:
 WHEN arcade source starts:
@@ -139,6 +159,8 @@ WHEN arcade source starts:
   set reply to (arcade ask yes "Continue?" subtitle "")
   set ready to 1`);await stepFrames(run.vm,1,0);await run.clock.advanceTo(0);assert.equal(run.vm.runtime.bwArcadeDialogOpen,true);
  run.vm.postIOData('keyboard',{key:' ',isDown:true});await run.clock.advanceTo(500);assert.equal(values(run).ready,0,'held A cannot bypass the guard');assert.equal(run.vm.runtime.bwArcadeDialogOpen,true);
- run.vm.postIOData('keyboard',{key:' ',isDown:false});await run.clock.advanceTo(520);run.vm.postIOData('keyboard',{key:' ',isDown:true});await run.clock.advanceTo(540);assert.equal(values(run).ready,1);assert.equal(values(run).reply,1);assert.equal(run.vm.runtime.bwArcadeDialogOpen,false);assert.deepEqual(run.errors,[]);
+ // ask.ts pauses 500 ms, then pauseUntil samples A and B at base/poll.ts's 50 ms polls: a release-and-press inside one poll is not seen.
+ run.vm.postIOData('keyboard',{key:' ',isDown:false});await run.clock.advanceTo(520);run.vm.postIOData('keyboard',{key:' ',isDown:true});await run.clock.advanceTo(540);assert.equal(values(run).ready,0,'a release between two polls is not sampled');
+ run.vm.postIOData('keyboard',{key:' ',isDown:false});await run.clock.advanceTo(600);run.vm.postIOData('keyboard',{key:' ',isDown:true});await run.clock.advanceTo(700);assert.equal(values(run).ready,1);assert.equal(values(run).reply,1);assert.equal(run.vm.runtime.bwArcadeDialogOpen,false);assert.deepEqual(run.errors,[]);
  }finally{close(run);}
 });

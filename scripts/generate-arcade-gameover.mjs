@@ -27,18 +27,20 @@ const block = (text, marker) => {
     }
     throw new Error(`unclosed ${marker}`);
 };
-const config = `namespace game {\n${block(gameTs, 'export enum ScoringType')}\n${block(gameTs, 'export class GameOverConfig')}\n}`;
+// game.showDialog (the ask dialog's frame) with its background helper: they draw into `screen`.
+const config = `namespace game {\n${block(gameTs, 'export enum ScoringType')}\n${block(gameTs, 'export class GameOverConfig')}\n${block(gameTs, 'function showDialogBackground')}\n${block(gameTs, 'export function showDialog')}\n}`;
 const compile = code => ts.transpileModule(code, {compilerOptions: {target: ts.ScriptTarget.ES2018, removeComments: false}}).outputText;
 // PXT strings have replaceAll; String.prototype.replaceAll matches it for plain text.
 const compiled = compile(`${dialogs}\n${config}`);
 const hashes = [`textDialogs.ts: ${createHash('sha256').update(dialogs).digest('hex')}`,
-    `game.ts GameOverConfig and ScoringType: ${createHash('sha256').update(config).digest('hex')}`];
+    `game.ts GameOverConfig, ScoringType and showDialog: ${createHash('sha256').update(config).digest('hex')}`];
 const content = `// Generated from PXT Arcade ${bundle.versions.target}, pxt-common-packages (MIT).
 // Copyright (c) Microsoft Corporation. See static/licenses/pxt-common-packages.MIT.txt.
 // ${hashes.join('\n// ')}
 // Regenerate: node scripts/generate-arcade-gameover.mjs
 module.exports = function initializePxtGameOver(host) {
 const {image, img, screen, info, effects, music, control, controller, scene} = host;
+const init = () => {};
 const Math = Object.create(globalThis.Math);
 Math.idiv = (a, b) => (a / b) | 0;
 ${compiled}
