@@ -1888,6 +1888,18 @@ module.exports = makeExt(`// Name: Arcade
     }
     _controllerButtonEdge(number,button,isDown) {
       if(!Number.isInteger(number) || number<1 || number>4)return;
+      // The text-entry screen owns player 1's buttons. The system keyboard
+      // disables button events altogether; the on-screen keyboard reads
+      // key-down edges.
+      const prompting=this._textPromptUi;
+      if(prompting && number===1 && prompting.owner===this._state()){
+        if(!prompting.prompt.useSystemKeyboard){
+          const current=this._buttonStates['1:'+button] || (this._buttonStates['1:'+button]={held:false,elapsed:0,count:0});
+          this._state().buttons[button]=!!isDown;
+          if(!!isDown!==current.held){current.held=!!isDown;current.elapsed=0;current.count=0;if(isDown)prompting.onButton(button);}
+        }
+        return;
+      }
       const state=this._state(),buttons=number===1?state.buttons:state.controllerButtons[number] || (state.controllerButtons[number]={});buttons[button]=!!isDown;
       this._observeControllerInput(number,button,isDown);
       const key=number+':'+button,current=this._buttonStates[key] || (this._buttonStates[key]={held:false,elapsed:0,count:0});
@@ -1968,7 +1980,8 @@ module.exports = makeExt(`// Name: Arcade
       const axis = String(args.AXIS).toLowerCase();
       const negative = axis === 'y' ? 'up' : 'left';
       const positive = axis === 'y' ? 'down' : 'right';
-      return (Number(held(positive)) - Number(held(negative))) * (Number(args.STEP) || 0) / 30;
+      // PXT controller.dx/dy: direction * step * the frame's actual delta time (seconds).
+      return (Number(held(positive)) - Number(held(negative))) * (Number(args.STEP) || 0) * (Number(this._state().frameDeltaTime) || 0);
     }
     _mathArgument(args,key,util,errorMessage='Arcade math needs a primitive value') {
       const value=Scratch.BWValues.decode(args[key]);
@@ -2532,7 +2545,24 @@ module.exports = makeExt(`// Name: Arcade
         cell.values[cell.key]=value;
       }
     }
-    _askForString(args, util, answerLength=12, numbersOnly=false) {
+    // game.Prompt and game.NumberPrompt (prompt-pxt.js): the original text-entry
+    // screen is a renderable of a pushed scene. By default the text comes from the
+    // system keyboard: here the stage's Question box (QUESTION/ANSWER) stands in for
+    // the simulator's hidden text field, and ARCADE_PROMPT_INPUT reports each edit so
+    // the scene shows the typed characters live. ARCADE_PROMPT_CANCEL is the
+    // simulator's cancelSystemKeyboard: the prompt then runs the on-screen keyboard
+    // (arrows move, A types, B deletes), as it does when useOnScreenKeyboard is set.
+    _textPromptModule() {
+      if(this._promptPxt)return this._promptPxt;
+      this._gameOverModule();
+      const text=this._pxtText(),image=this._dialogHost.image;
+      const speech=dependencies.initializeSpeech(image,{millis:()=>0},
+        {runtime:()=>0,currentScene:()=>({camera:{},eventContext:{deltaTimeMillis:0}}),eventContext:()=>({deltaTime:0})},
+        {width:160,height:120},{Ghost:4,RelativeToCamera:2},{toInt:value=>value|0},value=>String(value));
+      this._promptPxt=dependencies.initializePrompt({font8:text.image.font8,RenderText:speech.RenderText,screenWidth:160,screenHeight:120});
+      return this._promptPxt;
+    }
+    _askForString(args, util, answerLength=12, numbersOnly=false, useOnScreenKeyboard=false) {
       const ask = this._runtime && this._runtime.getOpcodeFunction &&
         this._runtime.getOpcodeFunction('sensing_askandwait');
       const answer = this._runtime && this._runtime.getOpcodeFunction &&
@@ -2544,19 +2574,51 @@ module.exports = makeExt(`// Name: Arcade
         await this.pushScene({},util);
         if(epoch!==this._terrainEpoch)return '';
         let cancel, restored=false;
-        const cancelled=new Promise(resolve=>{cancel=()=>resolve(false);this._textPromptWaits.add(cancel);});
-        this._runtime.bwArcadeTextPrompt={answerLength,numbersOnly};
+        const cancelled=new Promise(resolve=>{cancel=()=>resolve('stopped');this._textPromptWaits.add(cancel);});
+        const runtime=this._runtime,module=this._textPromptModule(),owner=this._state();
+        const prompt=new (numbersOnly?module.NumberPrompt:module.Prompt)(()=>owner.elapsedMs || 0);
+        const message=String(Scratch.BWValues.decode(args.QUESTION));
+        prompt.begin(message,answerLength,!useOnScreenKeyboard);
+        const raw=this._dialogHost.wrap;
+        this._addSceneRenderable(owner,{z:-1,id:owner.nextSpriteId++,draw:screen=>prompt.draw(raw(screen))});
+        let switched,screenDone;
+        const switchedToScreen=new Promise(resolve=>{switched=()=>resolve('switched');});
+        const confirmed=new Promise(resolve=>{screenDone=()=>resolve('confirmed');});
+        const ui=this._textPromptUi={prompt,owner,onButton:button=>{
+          if(prompt.onButton(button) && prompt.confirmPressed)screenDone();
+        }};
+        const edit=value=>{
+          if(!prompt.useSystemKeyboard)return;
+          const cleaned=numbersOnly?module.cleanNumberInput(value):String(value);
+          prompt.keyboardChange(cleaned,cleaned.length,cleaned.length);
+        };
+        const cancelKeyboard=()=>{if(prompt.useSystemKeyboard){prompt.keyboardCancel();switched();}};
+        runtime.on('ARCADE_PROMPT_INPUT',edit);runtime.on('ARCADE_PROMPT_CANCEL',cancelKeyboard);
+        runtime.bwArcadeTextPrompt={answerLength,numbersOnly};
         try {
-          const completed=await Promise.race([Promise.resolve(ask({QUESTION:String(Scratch.BWValues.decode(args.QUESTION))},util)).then(()=>true),cancelled]);
-          if(!completed || epoch!==this._terrainEpoch)return '';
-          const reply=String(answer()).substr(0,answerLength);
+          let outcome=useOnScreenKeyboard?'switched':await Promise.race([
+            Promise.resolve(ask({QUESTION:message},util)).then(()=>'answered'),cancelled,switchedToScreen]);
+          if(outcome==='stopped' || epoch!==this._terrainEpoch)return '';
+          let reply;
+          if(outcome==='answered'){
+            reply=String(answer()).substr(0,answerLength);
+            if(numbersOnly)reply=module.cleanNumberInput(reply);
+          } else {
+            // The system keyboard was cancelled: the Question box gives way to the on-screen keyboard.
+            if(!useOnScreenKeyboard){runtime.emit('ANSWER',prompt.result);runtime.emit('QUESTION',null);}
+            outcome=await Promise.race([confirmed,cancelled]);
+            if(outcome==='stopped' || epoch!==this._terrainEpoch)return '';
+            reply=prompt.result;
+          }
           restored=true;
           await this.popScene({},util);
           return reply;
         }finally{
+          runtime.removeListener('ARCADE_PROMPT_INPUT',edit);runtime.removeListener('ARCADE_PROMPT_CANCEL',cancelKeyboard);
+          if(this._textPromptUi===ui)this._textPromptUi=null;
           this._textPromptWaits.delete(cancel);
           if(epoch===this._terrainEpoch){
-            this._runtime.bwArcadeTextPrompt=null;
+            runtime.bwArcadeTextPrompt=null;
             if(!restored)await this.popScene({},util);
           }
         }
@@ -6258,5 +6320,6 @@ module.exports = makeExt(`// Name: Arcade
   helpers: require('./helpers-pxt'),
   createCarnivalHost: require('./carnival-host'),
   initializeGameOver: require('./gameover-pxt'),
-  initializeHud: require('./hud-pxt')
+  initializeHud: require('./hud-pxt'),
+  initializePrompt: require('./prompt-pxt')
 });

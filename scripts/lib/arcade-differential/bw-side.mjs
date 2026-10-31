@@ -37,6 +37,9 @@ export function snapshotBrickwright(vm, globalsOf = []) {
     if (frame) {
         let s = ''; for (let i = 0; i < frame.length; i++) s += (frame[i] & 15).toString(16);
         out.pix = s; out.palette = paletteHex(state.palette);
+    } else if (state.palette) {
+        // Nothing has been composed yet (the first update handler is still running): the display is blank, as the original's is.
+        out.pix = '0'.repeat(160 * 120); out.palette = paletteHex(state.palette);
     }
     for (const sprite of Object.values(state.sprites || {})) {
         if (!sprite || sprite._destroyed) continue;
@@ -46,7 +49,7 @@ export function snapshotBrickwright(vm, globalsOf = []) {
     out.sprites.sort((a, b) => a.id - b.id);
     const p1 = state.players?.[0];
     out.score = typeof p1?.score === 'number' ? p1.score : (typeof state.score === 'number' ? state.score : 0);
-    // Text entry (askForString/askForNumber) is a Scratch ask prompt here, not drawn in the 160x120 frame.
+    // Text entry (askForString/askForNumber) draws the original's prompt screen into the frame; the flag attributes frames shown while it is open.
     out.textPrompt = !!vm.runtime.bwArcadeTextPrompt;
     out.life = typeof p1?.life === 'number' ? p1.life : null;
     if (globalsOf.length) {

@@ -32,6 +32,8 @@ export const PXT_SNAPSHOT_SOURCE = `(globalsOf) => {
     out.sprites.push({id: f.id, kind: f._kind, kindName: kindNames[f._kind], x: (f._x + f._width / 2) / 256, y: (f._y + f._height / 2) / 256, z: f._z,
       image: im ? im._width + 'x' + im._height + ':' + h.toString(16) : null, visible: (f.flags & 128) === 0, flags: f.flags});
   }
+  // allSprites is kept in z order; Brickwright's list is by id, so compare by id.
+  out.sprites.sort((a, b) => a.id - b.id);
   const info = find('infoState');
   const ps = info && info.fields && info.fields.playerStates && info.fields.playerStates.data;
   const p1 = ps && ps[0] && ps[0].fields;
