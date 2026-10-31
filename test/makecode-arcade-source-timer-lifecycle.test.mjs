@@ -164,3 +164,18 @@ WHEN arcade source starts:
  run.vm.postIOData('keyboard',{key:' ',isDown:false});await run.clock.advanceTo(600);run.vm.postIOData('keyboard',{key:' ',isDown:true});await run.clock.advanceTo(700);assert.equal(values(run).ready,1);assert.equal(values(run).reply,1);assert.equal(run.vm.runtime.bwArcadeDialogOpen,false);assert.deepEqual(run.errors,[]);
  }finally{close(run);}
 });
+
+// The GUI's Yes/No controls stay disabled until a published dialog snapshot
+// reports the 500 ms guard as passed. On the program clock the question runs in
+// its own fiber, which must publish that readiness, not only the frame pump.
+test('a timed-scene question publishes guard readiness to the dialog UI',async()=>{
+ let run;try{run=await setup(`SPRITE Game:
+WHEN arcade source starts:
+  arcade set background color to 0
+  set reply to (arcade ask yes "Continue?" subtitle "")`);
+ const snapshots=[];run.vm.runtime.on('ARCADE_DIALOG',dialog=>{if(dialog)snapshots.push(dialog);});
+ await stepFrames(run.vm,1,0);await run.clock.advanceTo(0);assert.equal(run.vm.runtime.bwArcadeDialogOpen,true);
+ await run.clock.advanceTo(480);assert.ok(snapshots.length && snapshots.every(dialog=>!(dialog.elapsed>=500)),'controls stay disabled inside the guard');
+ await run.clock.advanceTo(520);assert.ok(snapshots.at(-1).elapsed>=500,'readiness reaches the UI once the guard has passed');
+ }finally{close(run);}
+});
