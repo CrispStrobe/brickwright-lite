@@ -135,6 +135,10 @@ export function lowerHandleValues (ast, parse) {
         return k;
     };
 
+    const literalElem = (e) => {
+        if (e && e.type === 'Call' && e.isNew && e.callee.type === 'Identifier' && globals.has(e.callee.name)) return e.callee.name;
+        return guessType(e);
+    };
     const stringFields = new Set();
     for (const cls of classes) for (const f of cls.fields) if (clean(f.typeName) === 'string') stringFields.add(f.name);
     const guessType = (e) => {
@@ -162,6 +166,8 @@ export function lowerHandleValues (ast, parse) {
         if (!node) return null;
         if (node.type === 'Member' && arrayFields.has(node.name)) return arrayFields.get(node.name);
         if (node.type === 'Identifier' && handleVars.has(node.name)) return handleVars.get(node.name);
+        // [1, 2, 3].map(fn): a literal receiving a callback method is held as a handle for the call.
+        if (node.type === 'Array' && node.__receiver) return node.items.length ? literalElem(node.items[0]) : 'number';
         if (node.type === 'Call' && node.callee.type === 'Member' &&
             /^(slice|concat|reverse|filter)$/.test(node.callee.name)) return elemOfHandle(node.callee.object);
         if (node.type === 'Call' && node.callee.type === 'Identifier' && node.__handleElem) return node.__handleElem;
@@ -186,6 +192,11 @@ export function lowerHandleValues (ast, parse) {
         }
     };
 
+    walk(ast, node => {
+        if (node.type === 'Call' && node.callee && node.callee.type === 'Member' && node.callee.object.type === 'Array' &&
+            /^(map|filter|forEach|some|every|find|reduce)$/.test(node.callee.name) && node.args && node.args[0] &&
+            (node.args[0].type === 'FunctionExpression' || node.args[0].type === 'Identifier')) node.callee.object.__receiver = true;
+    });
     for (let pass = 0; pass < 4; pass++) {
         walk(ast, node => {
             if (node.type === 'Declaration') {
@@ -298,7 +309,7 @@ export function lowerHandleValues (ast, parse) {
         if (elem === null || elem === undefined) return null;
         const T = ident(elem);
         reserve(elem);
-        const h = c.object;
+        const h = c.object.type === 'Array' ? arrayLiteral(c.object, elem) : c.object;
         const a = node.args || [];
         const out = (name, args, extra = {}) => Object.assign(call(name, args), extra);
         switch (c.name) {
@@ -400,6 +411,14 @@ export function lowerHandleValues (ast, parse) {
             return node;
         }
         case 'Call': {
+            // Array.isArray(x): known statically for the arrays this pass knows.
+            if (node.callee.type === 'Member' && node.callee.object.type === 'Identifier' && node.callee.object.name === 'Array' &&
+                node.callee.name === 'isArray' && node.args && node.args.length === 1) {
+                const x = node.args[0];
+                const isArr = x.type === 'Array' || handleLike(x) || (x.type === 'Identifier' && arrayDecls.has(x.name));
+                const notArr = ['Number', 'String', 'Boolean', 'Template'].includes(x.type);
+                if (isArr || notArr) return {type: 'Boolean', value: isArr};
+            }
             const sig = signatureForCallee(node.callee);
             if (sig && !(node.callee.type === 'Member' && handleLike(node.callee.object))) {
                 return dispatch(sig, node.callee, node.args || []);
@@ -445,6 +464,10 @@ export function lowerHandleValues (ast, parse) {
     let counterId = 0;
     const hasLowered = test => /"callee":\{"type":"Identifier","name":"__(a|fcall|acb)/.test(JSON.stringify(test));
     const exitUnless = test => ({type: 'If', test: {type: 'Unary', op: '!', argument: test}, consequent: [{type: 'Break'}], alternate: null});
+    const arrayDecls = new Set();
+    walk(ast, n => {
+        if (n.type === 'Declaration') for (const d of n.decls || []) if (d.isArray || (d.init && d.init.type === 'Array') || /(\[\]|^Array<)/.test(clean(d.typeName))) arrayDecls.add(d.name);
+    });
     const handleLike = n => elemOfHandle(n) !== null && elemOfHandle(n) !== undefined;
     const arrayLiteral = (lit, elem) => {
         reserve(elem);

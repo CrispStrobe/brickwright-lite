@@ -44,6 +44,20 @@ async function three (ts, {ms = 1500} = {}) {
     return {mc: text(mc), lite: lines(run.out), back: text(back)};
 }
 
+const LITERALS = `
+let a = [1,2,3].map((x) => x * 2)
+serial.writeLine("" + a.length + " " + a[2])
+let b = [3,1,2].filter((x) => x > 1)
+serial.writeLine("" + b.length)
+let n = [1]
+if (Array.isArray(n)) {
+ serial.writeLine("y")
+}
+if (Array.isArray(a)) {
+ serial.writeLine("z")
+}
+`;
+
 const CHAIN = `
 class Block {
     constructor(public index: number, public data: string, public prev: number) {
@@ -333,4 +347,11 @@ test('each new in an array literal constructs once', {skip}, async () => {
 test('a function that captures a local stays refused by name', {skip}, () => {
     const imported = microbitToPseudocode('function run(f: () => number) {\n    serial.writeNumber(f())\n}\nlet k = 3\nfunction go() {\n    let local = 5\n    run(() => local + k)\n}\ngo()\n');
     assert.ok(imported.unsupported.length > 0, imported.code);
+});
+
+test('callbacks on array literals, and Array as a value (Array.isArray)', {skip}, async () => {
+    const r = await three(LITERALS);
+    assert.deepEqual(r.mc, ['3 6', '2', 'y', 'z']);
+    assert.deepEqual(r.lite, r.mc);
+    assert.deepEqual(r.back, r.mc);
 });
