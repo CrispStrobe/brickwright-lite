@@ -1183,7 +1183,7 @@ const UNPOLLABLE_HANDLERS = {};
  * @returns {{code: string, unsupported: Array<string>, scripts: number}}
  */
 export function microbitToPseudocode (source, opts = {}) {
-    let ast = parseMakeCodeTs(source);
+    let ast = parseMakeCodeTs(source, {lowerHeritage: true});
     // Extension sources (vendored or fetched) the program uses are translated
     // with it: their namespaces become procedures, so `turtle.forward(1)` is a
     // call to one rather than an unsupported line.

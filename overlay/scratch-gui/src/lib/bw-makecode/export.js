@@ -655,6 +655,7 @@ export class Emitter {
             if (this.spriteArrays && this.spriteArrays.has(this.arrayName(b)) && /^\[\s*0(\s*,\s*0)*\s*\]$/.test(json)) {
                 json = json.replace(/0/g, 'null');
             }
+            if (this.textArrays && this.textArrays.has(this.arrayName(b)) && /^\[\s*0\s*\]$/.test(json)) json = '[""]';
             push(`${this.arrayName(b)} = ${json}`);
             return;
         }
@@ -1341,7 +1342,9 @@ function textArrayNames (blocks, emitter) {
             const slot = b.inputs && b.inputs.JSON && b.inputs.JSON[1];
             let items = [];
             try { items = JSON.parse(Array.isArray(slot) ? String(slot[1]) : '[]'); } catch (e) { items = []; }
-            for (const item of items) k.add(typeof item === 'string' ? 'text' : 'number');
+            // A record array's placeholder `[0]` (the row "no record") takes the
+            // type of what is pushed after it.
+            if (!(items.length === 1 && items[0] === 0)) for (const item of items) k.add(typeof item === 'string' ? 'text' : 'number');
         } else {
             const slot = b.inputs && b.inputs.VALUE && b.inputs.VALUE[1];
             k.add(Array.isArray(slot) && (slot[0] === 10 || slot[0] === 11) &&
@@ -1406,6 +1409,7 @@ export function projectToMakeCodeTs (project, opts = {}) {
         emitter.spriteArrays = new Set([...sprites.arrays, ...images.arrays]);
         emitter.imageVars = images.vars;
         emitter.textVars = text;
+        emitter.textArrays = textArrays;
         emitter.mixedVars = variables.mixed;
         for (const entry of Object.values(target.variables || {})) {
             const name = emitter.variableName(Array.isArray(entry) ? entry[0] : entry);
