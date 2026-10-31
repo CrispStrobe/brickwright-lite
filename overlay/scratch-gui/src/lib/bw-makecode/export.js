@@ -1447,8 +1447,13 @@ function textArrayNames (blocks, emitter) {
             if (!(items.length === 1 && items[0] === 0)) for (const item of items) k.add(typeof item === 'string' ? 'text' : 'number');
         } else {
             const slot = b.inputs && b.inputs.VALUE && b.inputs.VALUE[1];
-            k.add(Array.isArray(slot) && (slot[0] === 10 || slot[0] === 11) &&
-                !/^-?\d+(\.\d+)?$/.test(String(slot[1])) ? 'text' : 'number');
+            const literal = Array.isArray(slot) && (slot[0] === 10 || slot[0] === 11 || slot[0] === 4);
+            // A value held in a variable or a parameter (a record's text field set
+            // from its constructor) abstains; only literals vote on the array's type.
+            if (literal || !/^arrays_(set|insert|push)$/.test(b.opcode)) {
+                k.add(Array.isArray(slot) && (slot[0] === 10 || slot[0] === 11) &&
+                    !/^-?\d+(\.\d+)?$/.test(String(slot[1])) ? 'text' : 'number');
+            }
         }
         kinds.set(name, k);
     }

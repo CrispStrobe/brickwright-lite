@@ -29,6 +29,7 @@ import {parseMakeCodeTs} from './ts-import.js';
 import {BaseTranslator, bodyOf, num} from './translate-base.js';
 import {MICROBIT_ICONS, MICROBIT_ARROWS} from './microbit-icons.js';
 import {lowerNamespaceBindings} from './namespace-bindings.js';
+import {lowerHandleValues} from './lower-handle-values.js';
 
 /** MakeCode enum member → the token our vocabulary uses. */
 const ENUM_VALUES = {
@@ -459,6 +460,11 @@ class MicrobitTranslator extends BaseTranslator {
                     this.bufferNames.add(node.name);
                 }
                 for (const [p, t] of Object.entries(node.paramTypes || {})) if (t && /^(Buffer\[\]|Array<Buffer>)$/.test((t.text || '').replace(/\s+/g, ''))) this.bufferArrays.add(p);
+                // The destructured legacy packet handler: its `receivedBuffer` is a buffer.
+                if (node.type === 'Call' && this.path(node.callee) === 'radio.onDataPacketReceived') {
+                    const fn = node.args[node.args.length - 1];
+                    if (fn && fn.params && fn.params.includes('receivedBuffer')) this.bufferNames.add('receivedBuffer');
+                }
                 if (node.type === 'Call' && this.path(node.callee) === 'radio.onReceivedBuffer') {
                     const fn = node.args[node.args.length - 1];
                     if (fn && fn.params && fn.params[0]) this.bufferNames.add(fn.params[0]);
@@ -579,7 +585,14 @@ class MicrobitTranslator extends BaseTranslator {
         case 'input.lightLevel': return 'read light';
         case 'input.temperature': return 'read temperature';
         case 'input.soundLevel': return 'read sound';
-        case 'input.runningTime': return 'timer * 1000';
+        case 'input.runningTime': case 'control.millis': return 'timer * 1000';
+        case 'input.runningTimeMicros': case 'control.micros': return 'timer * 1000000';
+        // The older radio reporters are the same packet properties as radio.receivedPacket(...).
+        case 'radio.receivedSerial': return 'last radio serial number';
+        case 'radio.receivedTime': return 'read last radio time';
+        case 'radio.receivedSignalStrength': return 'last radio signal strength';
+        case 'radio.receiveNumber': return 'read last radio number';
+        case 'radio.receiveString': return 'read last radio text';
         // Readable since sb3-creator b4a8129 closed the round trip: these
         // two spellings came out of the decompiler and had no rule going
         // back in, so writing them used to compile to silence.
@@ -1131,8 +1144,27 @@ class MicrobitTranslator extends BaseTranslator {
             push('FOREVER:');
             this.block(bodyOf(a[0]), indent + 1, out);
             return;
-        case 'control.inBackground':
+        case 'control.inBackground': case 'control.runInBackground': case 'control.runInParallel':
             this.block(bodyOf(a[0]), indent, out);
+            return;
+        // radio.on(): the radio at the group and power the program set (MakeCode's defaults: group 0).
+        case 'radio.on': {
+            const line = `${pad}radio on group ${this.radioGroup || '0'} power ${this.radioPower || '6'}`;
+            const last = this.radioLine;
+            if (last && last.out === out && last.index === out.length - 1 && last.pad === pad) out[last.index] = line;
+            else out.push(line);
+            this.radioLine = {out, index: out.length - 1, pad};
+            return;
+        }
+        // MicroPython's serial console is the USB port at its fixed rate with its own buffers: these have
+        // nothing to set, and are said so in a comment rather than refused.
+        case 'serial.setBaudRate': case 'serial.redirectToUSB': case 'serial.setRxBufferSize': case 'serial.setTxBufferSize':
+        case 'serial.setWriteLinePadding':
+            push(`# ${name} — MicroPython's serial console is the USB port; nothing to set`);
+            return;
+        // plotAll lights all 25: the same as showing a full grid.
+        case 'led.plotAll':
+            push('show leds 99999:99999:99999:99999:99999');
             return;
 
         case 'motors.dualMotorPower': {
@@ -1189,6 +1221,7 @@ const EVENT_BUS_SOURCE = {
 };
 const EVENT_BUS_VALUE = {
     MICROBIT_EVT_ANY: 0, MICROBIT_BUTTON_EVT_DOWN: 1, MICROBIT_BUTTON_EVT_UP: 2, MICROBIT_BUTTON_EVT_CLICK: 3,
+    MICROBIT_BUTTON_EVT_LONG_CLICK: 4,
     MICROBIT_RADIO_EVT_DATAGRAM: 1, MICROBIT_ACCELEROMETER_EVT_DATA_UPDATE: 1, MICROBIT_PIN_EVT_RISE: 2, MICROBIT_PIN_EVT_FALL: 3,
     MICROBIT_PIN_EVT_PULSE_HI: 4, MICROBIT_PIN_EVT_PULSE_LO: 5, MES_ALERT_EVT_ALARM1: 6, MES_ALERT_EVT_ALARM2: 7,
     MES_ALERT_EVT_ALARM3: 8, MES_ALERT_EVT_ALARM4: 9, MES_ALERT_EVT_ALARM5: 10, MES_ALERT_EVT_ALARM6: 11,
@@ -1337,6 +1370,11 @@ const HANDLERS = {
         const button = translator.enumToken(a[0]) || 'a';
         return {test: `read button_${button}`, release: `read button_${button}`};
     },
+    'input.onShake': () => () => ({test: 'shake happening', release: null}),
+    'input.onScreenUp': () => () => ({test: 'face up happening', release: null}),
+    'input.onScreenDown': () => () => ({test: 'face down happening', release: null}),
+    'input.onLogoUp': () => () => ({test: 'tilt up happening', release: null}),
+    'input.onLogoDown': () => () => ({test: 'tilt down happening', release: null}),
     'input.onGesture': translator => a => {
         const gesture = translator.enumToken(a[0]) || 'shake';
         // A gesture is momentary; waiting for it to stop would hang.
@@ -1349,6 +1387,44 @@ const HANDLERS = {
     'input.onPinReleased': translator => a => {
         const pin = translator.pin(a[0]) || 'P0';
         return {test: `not (pin ${pin} touched)`, release: null};
+    },
+    // control.onEvent(source, value, body) for the sources the board itself raises (CODAL's ids and
+    // values, pxt-microbit enums.d.ts): the buttons (1 A, 2 B, 3 A+B: DOWN 1 at the press, UP 2 and
+    // CLICK 3 at the release, LONG_CLICK 4 when held over a second), gestures (13: the value is the
+    // gesture), and pins (100+n: touch events on P0-P2, RISE 2 / FALL 3 elsewhere). The event bus is
+    // POLLED here, like the other handlers. Any other source is a user's own, a hat for control.raiseEvent.
+    'control.onEvent': translator => a => {
+        const source = Number(translator.eventNumber(a[0]));
+        // A gesture's value is the Gesture member itself (Gesture.Shake is 11).
+        const gestureMember = a[1] && a[1].type === 'Member' && a[1].object && a[1].object.name === 'Gesture' ? ENUM_VALUES.Gesture[a[1].name] : null;
+        const value = gestureMember ? {'shake': 11, 'tilt up': 1, 'tilt down': 2, 'face up': 5, 'face down': 6, 'tilt left': 3,
+            'tilt right': 4, 'freefall': 7, '3g': 8, '6g': 9, '8g': 10}[gestureMember] : Number(translator.eventNumber(a[1]));
+        if (!Number.isFinite(source) || !Number.isFinite(value)) return {fallthrough: true};
+        if (source >= 1 && source <= 3) {
+            const held = source === 3 ? '(read button_a) and (read button_b)' : `read button_${source === 1 ? 'a' : 'b'}`;
+            if (value === 1) return {test: held, release: held};
+            if (value === 2) return {test: held, wait: `not (${held})`};
+            if (value === 3 || value === 4) {
+                const at = translator.freshName('_held');
+                return {test: held, start: `set ${at} to timer`, wait: `not (${held})`,
+                    guard: value === 3 ? `(timer - ${at}) < 1` : `not ((timer - ${at}) < 1)`};
+            }
+            return {fallthrough: true};
+        }
+        if (source === 13) {
+            const gesture = {11: 'shake', 1: 'tilt up', 2: 'tilt down', 5: 'face up', 6: 'face down', 3: 'tilt left', 4: 'tilt right',
+                7: 'freefall', 8: '3g', 9: '6g', 10: '8g'}[value];
+            return gesture ? {test: `${gesture} happening`, release: null} : {fallthrough: true};
+        }
+        if (source >= 100 && source <= 120) {
+            const pin = `P${source - 100}`;
+            const touch = source <= 102;
+            if (touch && value === 1) return {test: `pin ${pin} touched`, release: `pin ${pin} touched`};
+            if (touch && (value === 2 || value === 3)) return {test: `pin ${pin} touched`, wait: `not (pin ${pin} touched)`};
+            if (value === 2) return {test: `pin ${pin} digital = 1`, release: `pin ${pin} digital = 1`};
+            if (value === 3) return {test: `pin ${pin} digital = 1`, wait: `pin ${pin} digital = 0`};
+        }
+        return {fallthrough: true};
     },
     // The V2 touch logo. Pressed and Touched both fire as the logo is
     // touched, which polling can say; Released and LongPressed need the timing
@@ -1445,6 +1521,8 @@ export function microbitToPseudocode (source, opts = {}) {
         else extensionDiagnostics.push(...lowered.unsupported.map(e => `extension source: ${e}`));
     }
     liftPacketHandlers(ast);
+    // Arrays held in class fields and functions held as values (lower-handle-values.js).
+    lowerHandleValues(ast, parseMakeCodeTs);
     const t = new MicrobitTranslator();
     t.board = opts.board || null;
     t.aliases = new Map();
@@ -1453,6 +1531,37 @@ export function microbitToPseudocode (source, opts = {}) {
     t.claimNames(ast);
     t.claimSprites(ast);
     t.claimBuffers(ast);
+    // buf[i] reads and buf[i] = v writes are getUint8 / setUint8 (a buffer is bytes).
+    {
+        const rewrite = node => {
+            if (!node || typeof node !== 'object') return node;
+            if (Array.isArray(node)) {
+                for (let i = 0; i < node.length; i++) node[i] = rewrite(node[i]);
+                return node;
+            }
+            const store = node.type === 'Assignment' && node.left.type === 'Index' && t.isBuffer(node.left.object);
+            for (const key of Object.keys(node)) {
+                const v = node[key];
+                if (store && key === 'left') {
+                    v.object = rewrite(v.object);
+                    v.index = rewrite(v.index);
+                } else if (v && typeof v === 'object') node[key] = rewrite(v);
+            }
+            if (store && node.op === '=') {
+                return {type: 'Call', callee: {type: 'Member', object: node.left.object, name: 'setUint8'}, args: [node.left.index, node.right]};
+            }
+            if (store) {
+                const read = {type: 'Call', callee: {type: 'Member', object: node.left.object, name: 'getUint8'}, args: [node.left.index]};
+                return {type: 'Call', callee: {type: 'Member', object: node.left.object, name: 'setUint8'},
+                    args: [node.left.index, {type: 'Binary', op: node.op.slice(0, -1), left: read, right: node.right}]};
+            }
+            if (node.type === 'Index' && t.isBuffer(node.object)) {
+                return {type: 'Call', callee: {type: 'Member', object: node.object, name: 'getUint8'}, args: [node.index]};
+            }
+            return node;
+        };
+        if (t.bufferNames.size || t.bufferArrays.size) rewrite(ast.body);
+    }
     // Classes, interfaces and object literals, lowered to parallel arrays
     // (translate-base.js, records). Before the functions are listed: a
     // class's methods become procedures of their own.
@@ -1505,8 +1614,9 @@ export function microbitToPseudocode (source, opts = {}) {
             continue;
         }
 
-        if (callName && HANDLERS[callName]) {
-            const shape = HANDLERS[callName](t)(call.args);
+        const polled = callName && HANDLERS[callName] ? HANDLERS[callName](t)(call.args) : null;
+        if (polled && !polled.fallthrough) {
+            const shape = polled;
             if (shape.refuse) {
                 t.unsupported.push(shape.refuse);
                 scripts.push([`# unsupported: ${shape.refuse}`]);

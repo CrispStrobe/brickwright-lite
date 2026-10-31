@@ -1822,7 +1822,8 @@ export class BaseTranslator {
         }
         for (const f of rt.fields) {
             const v = values.has(f.name) ? values.get(f.name) : rt.inits ? rt.inits.get(f.name) : f.init;
-            this.pre.push(`push ${v ? this.expr(v) : '0'} to ${this.arrayRef(rt.arrays.get(f.name))}`);
+            // A string field with no initialiser starts as empty text (so its array is a text array on export).
+            this.pre.push(`push ${v ? this.expr(v) : (String(f.typeName || '').replace(/\s+/g, '') === 'string' ? '""' : '0')} to ${this.arrayRef(rt.arrays.get(f.name))}`);
         }
         const handle = `_mc${++this.temps}`;
         this.declared.add(handle);
@@ -2023,7 +2024,9 @@ export class BaseTranslator {
             return;
         }
         push(`new ${this.arrayRef(name)}`);
-        for (const item of items) push(`push ${this.expr(item)} to ${this.arrayRef(name)}`);
+        // The values were evaluated once above: a `new X()` item's allocation is emitted by that
+        // evaluation, so evaluating again would construct each item twice.
+        for (const value of literals) push(`push ${value} to ${this.arrayRef(name)}`);
     }
 
     /** An array method used as a value, or null if it is not one. */
