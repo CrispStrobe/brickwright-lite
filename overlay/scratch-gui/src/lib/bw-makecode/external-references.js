@@ -16,8 +16,9 @@ let externalRoots = new Set();
 
 const SOURCE_FILE = /\.ts$/;
 
-/** SDK namespaces user code commonly extends from another file. */
-const SDK_EXTENSIBLE = new Set(['sprites', 'game', 'scene', 'info', 'tiles', 'controller', 'effects']);
+/** Globals the Arcade runtime provides that the generated namespace table does not list as namespaces. */
+const RUNTIME_GLOBALS = new Set(['screen', 'image', 'img', 'mp', 'settings', 'blockSettings', 'textsprite', 'bwStringArraySettings',
+    'characterAnimations', 'MultiplayerState', 'ArcadePhysicsEngine', 'pxt', 'power', 'helpers']);
 
 /** Compute and install the roots for one translation. Synchronous, set per call. */
 export function setExternalRoots (files, source) {
@@ -25,7 +26,7 @@ export function setExternalRoots (files, source) {
         .filter(([name, text]) => SOURCE_FILE.test(name) && typeof text === 'string').map(([, text]) => text)));
     const roots = new Set();
     for (const name of usedNames(source).keys()) {
-        if (CORE_SYMBOLS.has(name) || declared.has(name) || Object.hasOwn(ARCADE_NAMESPACE_MEMBERS, name) ||
+        if (CORE_SYMBOLS.has(name) || RUNTIME_GLOBALS.has(name) || declared.has(name) || Object.hasOwn(ARCADE_NAMESPACE_MEMBERS, name) ||
             Object.hasOwn(NAMESPACE_ALIASES, name)) continue;
         roots.add(name);
     }
@@ -57,13 +58,9 @@ export function externalPath (node) {
         parts.unshift(current.name);
         current = current.object;
     }
-    if (current?.type !== 'Identifier' || !parts.length) return null;
-    if (!externalRoots.has(current.name)) {
-        // A member a missing file added to an SDK namespace (`namespace sprites { export function f() }`): the SDK
-        // does not declare it, and nothing in the program does either.
-        const members = Object.hasOwn(ARCADE_NAMESPACE_MEMBERS, current.name) ? ARCADE_NAMESPACE_MEMBERS[current.name] : null;
-        if (!members || parts.length !== 1 || !SDK_EXTENSIBLE.has(current.name) || members.some(([name]) => name === parts[0])) return null;
-    }
+    // Only roots the program uses without any SDK, extension or own declaration are external: an unknown member of
+    // a known SDK namespace stays an explicit gap.
+    if (current?.type !== 'Identifier' || !parts.length || !externalRoots.has(current.name)) return null;
     return [current.name, ...parts].join('.');
 }
 

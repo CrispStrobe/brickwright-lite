@@ -72,14 +72,16 @@ animation.runImageAnimation(hero, assets.animation\`walk\`, 100, false)
 hero.setImage(assets.image\`other\`)
 `;
     const imported = arcadeToPseudocode(source);
-    assert.deepEqual(imported.unsupported, []);
+    // The reference is kept AND the absent song and animation stay diagnosed; a missing image is only kept.
+    assert.deepEqual(imported.unsupported, ['Missing song asset reference: "tune"', 'Missing animation asset reference: "walk"',
+        'assets.image`hero` — sprite artwork is unavailable in this project']);
     const exported = exportOf(imported);
     assert.deepEqual(exported.unsupported, []);
     const text = exported.files['main.ts'];
     for (const name of ['assets.image`hero`', 'assets.image`sky`', 'assets.song`tune`', 'assets.animation`walk`', 'assets.image`other`']) {
         assert.ok(text.includes(name), name);
     }
-    assert.deepEqual(arcadeToPseudocode(exported.files).unsupported, []);
+    assert.deepEqual(arcadeToPseudocode(exported.files).unsupported, imported.unsupported);
 });
 
 test('an asset a present gallery lacks keeps its PXT meaning (undefined), as a named diagnostic', () => {
@@ -99,7 +101,7 @@ let bg = 1
 scene.setBackgroundImage(acme.picture)
 `;
     const imported = arcadeToPseudocode(source);
-    assert.deepEqual(imported.unsupported, []);
+    assert.deepEqual(imported.unsupported, ['assets.image`hero` — sprite artwork is unavailable in this project']);
     try {
         const run = await runProgram(imported.code, {frames: 6, uploads: imported.costumes, storage: true});
         assert.deepEqual(run.errors, []);

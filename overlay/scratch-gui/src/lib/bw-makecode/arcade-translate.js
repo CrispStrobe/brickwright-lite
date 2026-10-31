@@ -4720,6 +4720,10 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRunti
     for (const [index, call] of creates.entries()) {
         const api = nameOf(call), projectile = api !== 'sprites.create';
         const dynamicImage = t.imageRef(call.args[0]);
+        // The reference is kept by name; the absent artwork is still said once.
+        const absentArt = !dynamicImage ? null : call.args[0]?.type === 'Member' ? t.externalName(call.args[0]) :
+            call.args[0]?.type === 'Template' ? externalAssetText(call.args[0].tag, call.args[0].value) : null;
+        if (absentArt) t.unsupported.push(`${absentArt} — sprite artwork is unavailable in this project`);
         let image = dynamicImage ? {width: 1, height: 1, pixels: new Uint8Array(1)} : t.imageOf(call.args[0]);
         if (!image) {
             // A named image the project does not supply (its asset file is not part of the source we
@@ -5256,8 +5260,12 @@ export function arcadeToPseudocode (files, opts = {}) {
             const alias = node.value.trim(), song = songAliases.get(alias);
             if (!song) {
                 // An asset the project does not carry is kept by name; only a collision is a diagnostic.
+                // Kept by name so export writes it back, and still diagnosed: the asset is absent from the project.
                 const external = hasGallery || songAliases.has(alias) ? null : externalAssetNode('assets.song', alias);
-                if (external) return external;
+                if (external) {
+                    animationDiagnostics.push(`Missing song asset reference: ${JSON.stringify(alias)}`);
+                    return external;
+                }
                 animationDiagnostics.push(`${songAliases.has(alias) ? 'Ambiguous' : 'Missing'} song asset reference: ${JSON.stringify(alias)}`);
                 return {type: 'Undefined'};
             }
@@ -5266,8 +5274,12 @@ export function arcadeToPseudocode (files, opts = {}) {
         if (node.type === 'Template' && node.tag === 'assets.animation') {
             const alias = node.value.trim(), animation = animationAliases.get(alias);
             if (!animation) {
+                // Kept by name so export writes it back, and still diagnosed: the asset is absent from the project.
                 const external = hasGallery || animationAliases.has(alias) ? null : externalAssetNode('assets.animation', alias);
-                if (external) return external;
+                if (external) {
+                    animationDiagnostics.push(`Missing animation asset reference: ${JSON.stringify(alias)}`);
+                    return external;
+                }
                 animationDiagnostics.push(`${animationAliases.has(alias) ? 'Ambiguous' : 'Missing'} animation asset reference: ${JSON.stringify(alias)}`);
                 return {type: 'Undefined'};
             }

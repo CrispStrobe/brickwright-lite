@@ -960,10 +960,10 @@ test('a genuinely unclaimed asset tag remains an exact named generic refusal', a
     assert.doesNotMatch(out.code, /frames \("missing"\)/);
 });
 
-test('an animation the project carries no gallery for is kept by name, with no frames fabricated', async () => {
+test('a claimed native animation with no resource has a precise missing-reference diagnostic and keeps the reference by name', async () => {
     const {arcadeToPseudocode} = await import('../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js');
     const out = arcadeToPseudocode('let hero = sprites.create(img`1`, SpriteKind.Player)\nanimation.runImageAnimation(hero, assets.animation`missing`, 75, false)');
-    assert.deepEqual(out.unsupported, []);
+    assert.deepEqual(out.unsupported, ['Missing animation asset reference: "missing"']);
     assert.match(out.code, /arcade animate sprite \(hero\) frames \(\(?arcade external value "assets\.animation`missing`"\)?\) interval \(75\)/);
     assert.doesNotMatch(out.code, /frames \("(?:missing|\(image\))"\)/);
     assert.doesNotMatch(out.code, /arcade animation frames resource|arcade frame image array/);
