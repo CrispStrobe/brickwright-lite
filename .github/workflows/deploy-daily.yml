@@ -114,13 +114,17 @@ jobs:
             | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const c=JSON.parse(s).commit||"";if(!/^[a-f0-9]{40}$/.test(c))process.exit(1);console.log(c)})')
           git fetch --quiet --depth=200 origin main
           target_sha=""
-          for candidate in $(git rev-list --first-parent --max-count=60 FETCH_HEAD); do
+          # Read the window once: piping rev-list into `grep -q` under pipefail
+          # fails nondeterministically (grep exits on the match, rev-list gets
+          # SIGPIPE while still flushing later commits, status 141).
+          recent_main=$(git rev-list --first-parent --max-count=60 FETCH_HEAD)
+          for candidate in $recent_main; do
             if [ "$candidate" = "$live_sha" ]; then break; fi
             if node scripts/verify-vercel-main-checks.mjs "$candidate" > /dev/null 2>&1; then target_sha=$candidate; break; fi
           done
           if [ -z "$target_sha" ]; then
             if git merge-base --is-ancestor "$live_sha" FETCH_HEAD 2>/dev/null && \
-               git rev-list --first-parent --max-count=60 FETCH_HEAD | grep -qx "$live_sha"; then
+               grep -qx "$live_sha" <<< "$recent_main"; then
               echo "::notice::production already serves $live_sha, the newest validated main commit; nothing newer to publish"
               exit 0
             fi

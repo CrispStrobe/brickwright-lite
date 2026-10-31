@@ -62,7 +62,10 @@ if (process.argv[2] === 'deploy') fs.writeFileSync(process.env.BW_TEST_LIVE, sha
             {name: 'unknown production lineage', live: 'f'.repeat(40), eligible: green, publish: null, status: 128},
             {name: 'newer production during build', live: old, eligible: green, move: tip, publish: null, status: 1},
             {name: 'ancestor production during build', live: old, eligible: tip, move: green, publish: tip, status: 0},
-            {name: 'malformed production identity', live: 'bad', eligible: tip, publish: null, status: 1}
+            {name: 'malformed production identity', live: 'bad', eligible: tip, publish: null, status: 1},
+            // The membership check once piped rev-list into `grep -q` under pipefail, which
+            // failed at random on SIGPIPE; repeat the scenario so a reintroduced race shows up.
+            ...Array.from({length: 25}, (_, n) => ({name: `already current, repeat ${n}`, live: green, eligible: green, publish: null, status: 0}))
         ];
         for (const [i, scenario] of cases.entries()) {
             const checkout = join(root, `checkout-${i}`), live = join(root, `live-${i}`), calls = join(root, `calls-${i}`);
@@ -108,6 +111,8 @@ test('every Vercel production run publishes the newest validated main, never an 
     assert.match(workflow, /^\s{10}ref: main\s*$/m);
     assert.match(workflow, /vercel build --prod/);
     assert.match(workflow, /vercel deploy --prebuilt --prod/);
+    assert.doesNotMatch(workflow, /git rev-list[^\n]*\|\s*grep -q/,
+        'grep -q closes the pipe early, so under pipefail the check fails nondeterministically (SIGPIPE)');
     // Candidates come only from main's own first-parent history, newest first.
     assert.match(workflow, /git rev-list --first-parent --max-count=\d+ FETCH_HEAD/);
     // Production must never move backwards: what it serves must be an ancestor
