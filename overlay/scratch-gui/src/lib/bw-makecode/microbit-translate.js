@@ -29,6 +29,7 @@ import {parseMakeCodeTs} from './ts-import.js';
 import {BaseTranslator, bodyOf, num} from './translate-base.js';
 import {MICROBIT_ICONS, MICROBIT_ARROWS} from './microbit-icons.js';
 import {lowerNamespaceBindings} from './namespace-bindings.js';
+import {lowerHandleValues} from './lower-handle-values.js';
 
 /** MakeCode enum member → the token our vocabulary uses. */
 const ENUM_VALUES = {
@@ -1445,6 +1446,8 @@ export function microbitToPseudocode (source, opts = {}) {
         else extensionDiagnostics.push(...lowered.unsupported.map(e => `extension source: ${e}`));
     }
     liftPacketHandlers(ast);
+    // Arrays held in class fields and functions held as values (lower-handle-values.js).
+    lowerHandleValues(ast, parseMakeCodeTs);
     const t = new MicrobitTranslator();
     t.board = opts.board || null;
     t.aliases = new Map();
