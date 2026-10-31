@@ -83,6 +83,10 @@ const SPRITE_METHODS = new Set([
     'ifOnEdgeBounce', 'delete'
 ]);
 
+/** MakeCode's Delimiters member -> the bluetooth uart blocks' menu word. */
+const DELIMITERS = {NewLine: 'newline', Comma: 'comma', Dollar: 'dollar', Colon: 'colon', Fullstop: 'fullstop', Hash: 'hash',
+    CarriageReturn: 'carriage return', Space: 'space', Tab: 'tab', Pipe: 'pipe', SemiColon: 'semicolon'};
+
 const isPinEnum = name => /^(DigitalPin|AnalogPin|TouchPin|PwmPin)$/.test(name);
 
 class MicrobitTranslator extends BaseTranslator {
@@ -384,8 +388,20 @@ class MicrobitTranslator extends BaseTranslator {
             push(`set pixel x ${this.operand(a[0])} y ${this.operand(a[1])} of image ${this.operand(c.object)} to ${this.single(v, out, pad)}`);
             return true;
         }
+        if (c.name === 'setPixelBrightness') {
+            push(`set pixel x ${this.operand(a[0])} y ${this.operand(a[1])} of image ${this.operand(c.object)} brightness ${this.operand(a[2])}`);
+            return true;
+        }
         push(this.note(`${this.path(c) || c.name}() — an image method with no block here`));
         return true;
+    }
+
+    /** `serial.delimiters(Delimiters.NewLine)`'s word (a bluetooth uart delimiter), else a note and 'newline'. */
+    delimiterWord (node) {
+        const arg = node && node.type === 'Call' && this.path(node.callee) === 'serial.delimiters' ? node.args[0] : null;
+        const word = arg && arg.type === 'Member' && arg.object && arg.object.name === 'Delimiters' ? DELIMITERS[arg.name] : null;
+        if (!word) this.unsupported.push('bluetooth delimiter — the block takes serial.delimiters(Delimiters.X) from its menu');
+        return word || 'newline';
     }
 
     /** Reporter calls: MakeCode's sensors and maths in our spelling. */
@@ -395,6 +411,7 @@ class MicrobitTranslator extends BaseTranslator {
         if (this.imageMethod(node)) {
             const c = node.callee;
             const a = node.args || [];
+            if (c.name === 'pixelBrightness') return `pixel brightness x ${this.operand(a[0])} y ${this.operand(a[1])} of image ${this.operand(c.object)}`;
             if (c.name === 'pixel') return `pixel x ${this.operand(a[0])} y ${this.operand(a[1])} of image ${this.operand(c.object)}`;
             this.unsupported.push(`${this.path(c) || c.name}() — an image method with no block here`);
             return '0';
@@ -443,6 +460,10 @@ class MicrobitTranslator extends BaseTranslator {
         case 'control.deviceSerialNumber': return 'device serial number';
         // MakeCode's "parse to number": the number a text spells.
         case 'parseFloat': return `number from text ${this.operand(a[0])}`;
+        // 0..255, as MakeCode's; the display itself holds ten levels.
+        case 'bluetooth.uartReadUntil': return `bluetooth uart read until ${this.delimiterWord(a[0])}`;
+        case 'led.pointBrightness': return `point brightness x ${this.operand(a[0])} y ${this.operand(a[1])}`;
+        case 'led.brightness': return 'display brightness';
         case 'led.point': return `point x ${this.operand(a[0])} y ${this.operand(a[1])}`;
         // The time of the event the handler runs for, in µs. The handler is
         // POLLED here, so it is the time the poll saw the event, read into a
@@ -667,6 +688,29 @@ class MicrobitTranslator extends BaseTranslator {
         case 'led.setBrightness':
             push(`set display brightness to ${this.operand(a[0])}`);
             return;
+        // DisplayMode.BlackAndWhite (BackAndWhite is its old, hidden spelling)
+        // or Greyscale; a mode held in a variable has no word here.
+        case 'led.setDisplayMode': {
+            const mode = a[0] && a[0].type === 'Member' && a[0].object && a[0].object.name === 'DisplayMode' ? a[0].name : null;
+            if (mode !== 'BlackAndWhite' && mode !== 'BackAndWhite' && mode !== 'Greyscale') {
+                push(this.note('led.setDisplayMode(<expression>) — the block takes the mode from its menu'));
+                return;
+            }
+            push(`set display mode to ${mode === 'Greyscale' ? 'greyscale' : 'black and white'}`);
+            return;
+        }
+        case 'led.enable': {
+            const on = a[0] && a[0].type === 'Boolean' ? a[0].value : null;
+            if (on !== null) {
+                push(`led enable ${on ? 'on' : 'off'}`);
+                return;
+            }
+            push(`IF ${this.condition(a[0])} THEN:`);
+            out.push(`${pad}  led enable on`);
+            push('ELSE:');
+            out.push(`${pad}  led enable off`);
+            return;
+        }
         case 'led.stopAnimation':
             push('stop animation');
             return;
@@ -872,10 +916,26 @@ class MicrobitTranslator extends BaseTranslator {
         // The number goes; the NAME cannot — the radio blocks send a number or
         // a text, not a pair. Said, rather than sending the bare number as if
         // that were the same packet.
+        // radio.sendValue(name, value): the pair goes out together; the name is
+        // cut to 8 characters when it is sent (MakeCode's packet has 8 bytes of it).
         case 'radio.sendValue':
-            this.unsupported.push('radio.sendValue() — the name is not sent; the radio block sends the number alone');
-            push(`radio send number ${this.single(a[a.length - 1], out, pad)}`);
+            push(`radio send value ${this.operand(a[0])} = ${this.single(a[1], out, pad)}`);
             return;
+        // bluetooth.*: kept as a call with its name and up to four arguments.
+        // Calls with a function (the connected/disconnected/uart handlers) are
+        // hats, below.
+        case 'bluetooth.startUartService': case 'bluetooth.startAccelerometerService': case 'bluetooth.startButtonService':
+        case 'bluetooth.startIOPinService': case 'bluetooth.startLEDService': case 'bluetooth.startTemperatureService':
+        case 'bluetooth.startMagnetometerService': case 'bluetooth.uartWriteString': case 'bluetooth.uartWriteLine':
+        case 'bluetooth.uartWriteNumber': case 'bluetooth.uartWriteValue': case 'bluetooth.advertiseUrl':
+        case 'bluetooth.advertiseUid': case 'bluetooth.setTransmitPower': case 'bluetooth.stopAdvertising': {
+            if (a.length > 4) {
+                push(this.note(`${name}() — the bluetooth block takes up to four arguments`));
+                return;
+            }
+            push(`bluetooth call ${name.slice('bluetooth.'.length)}${a.map(x => ' ' + this.operand(x)).join('')}`);
+            return;
+        }
         case 'radio.sendString': {
             const literal = this.literalString(a[0]);
             if (literal === null) {
@@ -1220,6 +1280,47 @@ export function microbitToPseudocode (source, opts = {}) {
             } else t.block(handlerBody, 3, lines);
             if (shape.release) lines.push(`      wait until not (${shape.release})`);
             t.eventTime = null;
+            scripts.push(lines);
+            continue;
+        }
+
+        // loops.everyInterval(ms, body): a timed hat; the body runs, then the
+        // rest of the interval is waited.
+        if (callName === 'loops.everyInterval') {
+            const body = t.leavable(bodyOf(call.args[call.args.length - 1]), 'everyInterval');
+            const lines = [`WHEN every ${t.operand(call.args[0])} ms:`];
+            t.block(body, 1, lines);
+            scripts.push(lines);
+            continue;
+        }
+
+        // bluetooth.onBluetoothConnected / onBluetoothDisconnected / onUartDataReceived:
+        // hats that never fire in the simulator, as in MakeCode's own.
+        if (callName === 'bluetooth.onBluetoothConnected' || callName === 'bluetooth.onBluetoothDisconnected' ||
+            callName === 'bluetooth.onUartDataReceived') {
+            const uart = callName === 'bluetooth.onUartDataReceived';
+            const body = t.leavable(bodyOf(call.args[call.args.length - 1]), callName.split('.').pop());
+            const lines = [uart ? `WHEN bluetooth uart receives ${t.delimiterWord(call.args[0])}:` :
+                `WHEN micro:bit ${callName.endsWith('Connected') ? 'connected' : 'disconnected'}:`];
+            t.block(body, 1, lines);
+            scripts.push(lines);
+            continue;
+        }
+
+        // radio.onReceivedValue((name, value) => ...): a hat, as the other radio handlers.
+        if (callName === 'radio.onReceivedValue') {
+            const fn = call.args[call.args.length - 1];
+            const params = (fn && fn.params) || [];
+            const lines = ['WHEN radio receives name and value:'];
+            const aliasOf = ['read last radio name', 'read last radio value'];
+            params.slice(0, 2).forEach((param, i) => {
+                if (writes(bodyOf(fn), param)) lines.push(`  set ${t.varName(param)} to ${aliasOf[i]}`);
+                else t.aliases.set(param, aliasOf[i]);
+            });
+            t.returnable = {result: null};
+            t.block(bodyOf(fn), 1, lines);
+            t.returnable = null;
+            params.slice(0, 2).forEach(param => t.aliases.delete(param));
             scripts.push(lines);
             continue;
         }

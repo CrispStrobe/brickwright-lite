@@ -2424,6 +2424,20 @@ https://github.com/CrispStrobe/extensions/blob/035ab22a4d946fe5b8e367013caf898cd
 and content hash. This scopes the adoption to Arrays; it does not advance other
 extension sources. MPL-2.0 text: https://www.mozilla.org/en-US/MPL/2.0/.
 
+## microbitplus — MPL-2.0
+
+The scoped `microbitplus` pin selects the micro:bit+ extension authored by
+CrispStrobe from https://github.com/CrispStrobe/extensions. Its declared
+license is MPL-2.0. The complete source, including its original author/license
+header, is retained in `overlay/scratch-vm/src/extensions/crispstrobe/microbitplus/index.js`
+as a JSON source string; the host adapter is separate.
+
+The exact selected source is
+https://github.com/CrispStrobe/extensions/blob/3361acc06ddb425c396c2e16c780e3d5e1622582/extensions/CrispStrobe/microbitplus.js.
+`vendor-pins.json` and the generated per-file bundle receipt record the commit
+and content hash. This scopes the adoption to micro:bit+; it does not advance
+other extension sources. MPL-2.0 text: https://www.mozilla.org/en-US/MPL/2.0/.
+
 ## circuitplayground — MPL-2.0 (incorporating MIT-licensed pxt-adafruit code)
 
 The scoped `circuitplayground` pin selects the Circuit Playground extension
