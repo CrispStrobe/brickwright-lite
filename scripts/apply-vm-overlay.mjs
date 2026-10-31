@@ -19,6 +19,7 @@ import {patchArcadeManagedThread} from './lib/arcade-managed-thread-hooks.mjs';
 import {patchSavedProjectDeviceReset} from './lib/saved-project-device-vm-hooks.mjs';
 import {patchExtensionPrimitiveCaches} from './lib/extension-primitive-cache-hooks.mjs';
 import {patchNestedExecuteContext} from './lib/nested-execute-context-hooks.mjs';
+import {patchPaletteStructure} from './lib/palette-hooks.mjs';
 
 const ROOT = process.cwd();
 const SRC = path.join(ROOT, 'overlay', 'scratch-vm');
@@ -93,6 +94,7 @@ module.exports = Runtime;`);
 let rt = readFileSync(runtimePath, 'utf8');
 rt = patchExtensionResultOrigins(rt);
 rt = patchExtensionPrimitiveCaches(rt);
+rt = patchPaletteStructure(rt);
 writeFileSync(runtimePath, rt);
 // Arcade sprites need one deterministic physics tick per Scratch VM frame.
 // Extensions subscribe to this event; the project stores ordinary extension
