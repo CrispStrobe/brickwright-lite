@@ -4750,7 +4750,8 @@ module.exports = makeExt(`// Name: Arcade
       const mode=goc.getSoundLooping(win)?this._music().pxt.music.PlaybackMode.LoopingInBackground:this._music().pxt.music.PlaybackMode.InBackground;
       // Explicit game over captures the last frame; default info loss captures
       // the partial HUD pass at the original terminal draw boundary.
-      const shown=capturedFrame || (state._hudPass?.epoch===this._terrainEpoch && state._hudPass.screen.pixels.slice()) || state.sceneFrame?.pixels?.slice() || new Uint8Array(160*120);
+      const shown=capturedFrame || (state._hudPass?.epoch===this._terrainEpoch && state._hudPass.screen.pixels.slice()) ||
+        (this._state()._renderPass?.epoch===this._terrainEpoch && this._state()._renderPass.screen.pixels.slice()) || state.sceneFrame?.pixels?.slice() || new Uint8Array(160*120);
       while(this._sceneStack.length){const pending=this.popScene({},util);if(pending?.then)await pending;}
       const pushed=this.pushScene({},util);if(pushed?.then)await pushed;
       const scene=this._state();
@@ -5546,9 +5547,13 @@ module.exports = makeExt(`// Name: Arcade
             layers=this._drawParticleSources(owner).filter(layer=>layer.source===object);
           } else {
             const before=screen.pixels.slice();
-            if(object.drawSteps)yield* object.drawSteps(screen);
-            else if(object.draw)object.draw(screen);
-            else yield* this._registeredCallbackSteps([object],object.z===-20?'arcade_whenRegisteredPaint':'arcade_whenRegisteredShade',{});
+            // A game over started from a renderable keeps the screen as drawn so far (game.ts: screen.clone()).
+            owner._renderPass={screen,epoch:this._terrainEpoch};
+            try {
+              if(object.drawSteps)yield* object.drawSteps(screen);
+              else if(object.draw)object.draw(screen);
+              else yield* this._registeredCallbackSteps([object],object.z===-20?'arcade_whenRegisteredPaint':'arcade_whenRegisteredShade',{});
+            } finally {delete owner._renderPass;}
             if(this._state()!==active || epoch!==this._terrainEpoch)return;
             const writes=new Uint8Array(screen.pixels.length);for(let i=0;i<writes.length;i++)if(screen.pixels[i]!==before[i])writes[i]=1;
             output.layers.push({image:{width:160,height:120,pixels:screen.pixels.slice()},writes,x:0,y:0,z:object.z,id:object.id,source:object});

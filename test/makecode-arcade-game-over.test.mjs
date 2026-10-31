@@ -262,3 +262,27 @@ sprites.onOverlap(SpriteKind.Player, SpriteKind.Enemy, function (sprite, otherSp
         assert.ok(melt.seen.slice(first).some((sample, i) => sample.pixels.join() !== plain.seen[first + i].pixels.join()), 'the melt runs afterwards');
     } finally { for (const {run} of [melt, plain]) { run.vm.stopAll(); run.vm.quit(); } clearStrayTimers(); }
 });
+
+test('game over from a paint handler keeps the screen as drawn so far', async () => {
+    // The paint handler draws a marker after the background; game over runs before it draws, so
+    // the captured background holds the plain background colour, not the previous frame's marker.
+    const source = `scene.setBackgroundColor(9)
+let frames = 0
+game.onPaint(function () {
+    frames += 1
+    if (frames == 5) {
+        game.setGameOverEffect(false, effects.none)
+        game.gameOver(false)
+        return
+    }
+    screen.fillRect(0, 0, 160, 120, 4)
+})`;
+    const {run, clock, start} = await timedRun(source);
+    try {
+        await start(); await clock.advanceTo(300);
+        assert.deepEqual(run.errors, []);
+        const image = run.vm.runtime.bwArcadeDeviceState.backgroundImage;
+        assert.ok(image, 'game over opened');
+        assert.equal(image.pixels[0], 9, 'the capture is the screen before this frame\'s paint, not the last finished frame');
+    } finally { run.vm.stopAll(); run.vm.quit(); clearStrayTimers(); }
+});
