@@ -1,10 +1,12 @@
 #!/usr/bin/env node
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {chromium} from 'playwright';
+import {chromium, webkit} from 'playwright';
 
 const source = readFileSync(new URL('../overlay/scratch-gui/src/lib/bw-arcade-device-frame.js', import.meta.url), 'utf8');
-const browser = await chromium.launch(process.env.BW_BROWSER ? {executablePath: process.env.BW_BROWSER} : {});
+const engines = process.env.BW_FRAME_ENGINES ? process.env.BW_FRAME_ENGINES.split(',') : ['chromium'];
+for (const engine of engines) {
+const browser = await (engine === 'webkit' ? webkit : chromium).launch(process.env.BW_BROWSER && engine === 'chromium' ? {executablePath: process.env.BW_BROWSER} : {});
 try {
     const page = await browser.newPage();
     const errors = [];
@@ -49,7 +51,51 @@ try {
     }
     assert.deepEqual(observations.restored, [0, 255, 0, 255]);
     assert.deepEqual(errors, []);
-    console.log('Arcade display: zero-width, zero-height and detached stage clear; restored stage draws again');
+    console.log(`Arcade display (${engine}): zero-width, zero-height and detached stage clear; restored stage draws again`);
+    // Flicker: a real WebGL canvas like the renderer's (no preserveDrawingBuffer, drawn from a
+    // timer at 30 Hz while the display runs at its own rate). WebKit clears such a buffer once
+    // composited, so an independent per-display-frame copy shows black frames; the pane's
+    // draw-synchronous mirror must show none.
+    const flicker = await page.evaluate(async moduleSource => {
+        const {mirrorArcadeDeviceFrame, paintArcadeDeviceFrame} = await import(`data:text/javascript;base64,${btoa(moduleSource)}`);
+        const measure = async mirrored => {
+            const stage = document.createElement('canvas');
+            stage.width = 480;
+            stage.height = 360;
+            const gl = stage.getContext('webgl', {alpha: false, antialias: false});
+            const renderer = {canvas: stage, draw () {
+                gl.clearColor(1, 0, 0, 1);
+                gl.clear(gl.COLOR_BUFFER_BIT);
+            }};
+            const destination = document.createElement('canvas');
+            destination.width = 160;
+            destination.height = 128;
+            document.body.append(stage, destination);
+            const timer = setInterval(() => renderer.draw(), 33);
+            const release = mirrored ? mirrorArcadeDeviceFrame(renderer, () => destination) : () => {};
+            let frames = 0;
+            let blank = 0;
+            await new Promise(resolve => {
+                const stop = performance.now() + 2500;
+                const tick = now => {
+                    if (!mirrored) paintArcadeDeviceFrame(destination, stage);
+                    const [r, g, b] = destination.getContext('2d').getImageData(80, 64, 1, 1).data;
+                    frames++;
+                    if (!(r > 200 && g < 50 && b < 50)) blank++;
+                    if (now < stop) requestAnimationFrame(tick); else resolve();
+                };
+                requestAnimationFrame(tick);
+            });
+            clearInterval(timer);
+            release();
+            return {frames, blank};
+        };
+        return {mirrored: await measure(true), independent: await measure(false)};
+    }, source);
+    assert.ok(flicker.mirrored.frames > 30, `${engine} sampled ${flicker.mirrored.frames} frames`);
+    assert.equal(flicker.mirrored.blank, 0, `${engine}: console shows a cleared frame (${JSON.stringify(flicker)})`);
+    console.log(`Arcade display (${engine}) flicker: mirrored ${JSON.stringify(flicker.mirrored)}; independent copy ${JSON.stringify(flicker.independent)}`);
 } finally {
     await browser.close();
+}
 }
