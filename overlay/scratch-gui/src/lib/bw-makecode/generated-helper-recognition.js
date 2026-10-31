@@ -165,7 +165,10 @@ function buildGeneratedHelperBindings(program,profile,fastAmbient){
     }
     // Tagged callees are scalar AST spellings, not Identifier references.
     // Only the actual unshadowed literal tags have a closed effect here.
-    for(const n of nodes)if(n.type==='Template'&&(typeof n.value!=='string'||n.value.includes('${')||!['img','hex'].includes(n.tag)))valid=false;
+    // An `assets.image`, `assets.tile`, `assets.animation` or `assets.song` tag whose asset the project does not carry
+    // stays a named reference at export. It is an inert Image, Image[] or song literal like an img tag; the addition
+    // helper still decides each operand at run time. (`assets` itself is checked against lexical shadows below.)
+    for(const n of nodes)if(n.type==='Template'&&(typeof n.value!=='string'||n.value.includes('${')||!['img','hex','assets.image','assets.tile','assets.animation','assets.song'].includes(n.tag)))valid=false;
     // Default initializers are executable in these actual parser profiles.
     // Join retained metadata to the complete actual body prologue before a
     // lexical normalizer can hide it. Pure/nonliteral defaults remain valid;
@@ -193,9 +196,10 @@ function buildGeneratedHelperBindings(program,profile,fastAmbient){
     // while unrelated method/formal names cannot shadow a root literal.
     if(valid)for(const n of nodes)if(n.type==='Template'){
         let shadow=false;
+        const root=n.tag.split('.')[0];
         for(let owner=lexical.scopes.get(n);owner;owner=owner.parent)
-            if(owner.names.has(n.tag)){shadow=true;break;}
-        if(shadow||nodes.some(other=>other.type==='Identifier'&&other.name===n.tag&&!lexical.references.get(other)))valid=false;
+            if(owner.names.has(root)){shadow=true;break;}
+        if(shadow||nodes.some(other=>other.type==='Identifier'&&other.name===root&&!lexical.references.get(other)))valid=false;
     }
     const rootBinding=fn=>fn?.type==='FunctionDeclaration'&&program.body.includes(fn)&&counts.get(fn.name)===1&&
         lexical.global.names.get(fn.name)?.node===fn&&!lexical.global.names.get(fn.name).written;
