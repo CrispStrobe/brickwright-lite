@@ -147,6 +147,37 @@ import {LEGACY_PARSE_SOURCE, LEGACY_JSON_SOURCE, ARRAY_ACCESS_SOURCE} from './le
 import {createAnimationFrameArrayProducers} from './animation-frame-array-producers.js';
 import {encodeAnimationJres, decodeAnimationJres, nativeAnimationNameBase, isNativeAnimationName} from './animation-jres.js';
 
+const ADDITION_VIEW_METADATA=new Set(['originalBody','parameterDefaults','paramTypes','typeParameters','returnType',
+    'assertedType','ordinaryParameterDefaultNames','bwProcedureConstraintSource']);
+// Whether anything in the program binds or reads the name `assets` other than as the root of an asset tag.
+function programShadowsAssets(program) {
+    let shadowed=false;
+    const scan=node=>{
+        if(!node||typeof node!=='object')return;
+        if(Array.isArray(node)){for(const child of node)scan(child);return;}
+        if(node.type==='Identifier'&&node.name==='assets'||
+            ['FunctionDeclaration','FunctionExpression','Class','Enum','Namespace','ForOf','ForIn'].includes(node.type)&&node.name==='assets'||
+            node.params?.includes('assets')||node.type==='Declaration'&&node.decls.some(decl=>decl.name==='assets'))shadowed=true;
+        for(const [key,value]of Object.entries(node))if(!ADDITION_VIEW_METADATA.has(key))scan(value);
+    };
+    scan(program);
+    return shadowed;
+}
+// The export proof's view of the asset references THIS emitter wrote by name because the project does not carry the
+// asset. Only a Template whose exact text the emitter recorded as such, in a program where `assets` is not otherwise
+// bound or read, is read as an inert literal (like an img tag); every other assets.* spelling stays unproved.
+function nativeAdditionNamedAssetView(program, emitted) {
+    if(!emitted.size||programShadowsAssets(program))return program;
+    const rewrite=node=>{
+        if(!node||typeof node!=='object')return node;
+        if(Array.isArray(node))return mapGeneratedSourceArray(node,rewrite);
+        if(node.type==='Template'&&typeof node.value==='string'&&!node.value.includes('${')&&
+            ['assets.image','assets.tile','assets.animation','assets.song'].includes(node.tag)&&emitted.has(`${node.tag}\`${node.value}\``))
+            return Object.fromEntries(Object.entries(node).map(([key,value])=>[key,key==='tag'?'img':value]));
+        return Object.fromEntries(Object.entries(node).map(([key,value])=>[key,ADDITION_VIEW_METADATA.has(key)?value:rewrite(value)]));
+    };
+    return rewrite(program);
+}
 // This view is used only for the fresh parse of this emitter's complete,
 // immutable assembled source. It never accepts a caller's AST/proof flag and
 // never replaces emitted text. Only this emitter's actual encoded resources
@@ -567,6 +598,8 @@ class ArcadeEmitter {
         this.handleTemplateVars = new Map();
         this.frameArrays = new Map();
         this.authoredAnimationArrays = new Map();
+        // Qualified asset spellings written by name because the project does not carry the asset.
+        this.namedMissingAssets = new Set();
         this.usesAnimationResources = false;
         this.sharedImageArrays = new Map();
         this.imageVars = new Set();
@@ -1701,6 +1734,7 @@ class ArcadeEmitter {
         case 'arcade_externalValue':
         case 'arcade_externalImage': {
             const name=this.externalName(b);
+            if(name)this.namedMissingAssets.add(name);
             return name || this.na();
         }
         case 'arcade_externalImageCall':
@@ -3786,7 +3820,12 @@ class ArcadeEmitter {
                 if(value.opcode==='arcade_spriteProperty' && value.fields?.PROPERTY?.[0]==='data'){
                     const id=Symbol('sprite data');dataProperties.push([ref(inputBlock(blocks,value,'ID')),id]);return id;
                 }
-                if(value.opcode==='arcade_spriteProperty' && ['x','y','vx','vy','ax','ay','left','right','top','bottom','width','height','fx','fy','sx','sy','scale','rotation','rotationDegrees'].includes(value.fields?.PROPERTY?.[0])){const id=Symbol('sprite numeric property');numbers.add(id);return id;}
+                // The plain geometry accessors are Numbers only for a receiver that is not a procedure parameter: a parameter's Sprite
+        // type is itself an unproven obligation here (a malformed flags receiver must keep its visible refusal).
+        const geometryReceiverOk=!/^argument_reporter/.test(inputBlock(blocks,value,'ID')?.opcode||'argument_reporter');
+                if(value.opcode==='arcade_spriteProperty' && ['fx','fy','sx','sy','scale','rotation','rotationDegrees'].includes(value.fields?.PROPERTY?.[0])||
+                    value.opcode==='arcade_spriteProperty' && geometryReceiverOk && value.mutation==null && Object.keys(value.fields||{}).join(',')==='PROPERTY' &&
+                    ['x','y','vx','vy','ax','ay','left','right','top','bottom','width','height'].includes(value.fields?.PROPERTY?.[0])){const id=Symbol('sprite numeric property');numbers.add(id);return id;}
                 if(value.opcode==='arcade_tileHitFrom'){const id=Symbol('hit tile index');numbers.add(id);return id;}
                 if(['arcade_cameraProperty','arcade_cameraDrawOffset'].includes(value.opcode)){const id=Symbol('camera numeric property');numbers.add(id);return id;}
                 if(['arcade_tileLocationProperty','arcade_legacyTileProperty'].includes(value.opcode)){const id=Symbol('tile numeric property');numbers.add(id);return id;}
@@ -5017,8 +5056,8 @@ class ArcadeEmitter {
             const candidate=nativeArrayAddHelperSource(addition.name,true,true);
             const draft=assemble(definitions.map(helper=>helper===addition?candidate:helper.source));
             const additionProfile=this.callableExports.size?GENERATED_HELPER_PROFILES.metadata:GENERATED_HELPER_PROFILES.ordinary;
-            const proof=inspectNativeAdditionExportDomains(nativeAdditionAnimationView(
-                parseMakeCodeTs(draft,additionProfile),this.authoredAnimationArrays.values()),additionProfile);
+            const proof=inspectNativeAdditionExportDomains(nativeAdditionNamedAssetView(nativeAdditionAnimationView(
+                parseMakeCodeTs(draft,additionProfile),this.authoredAnimationArrays.values()),this.namedMissingAssets),additionProfile);
             // Array-free program with primitive/Opaque operands only: the
             // ordinary helper below is main's pre-join export (operator
             // decision 2026-10-27). Every other refusal is retained unchanged.

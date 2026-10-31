@@ -436,7 +436,7 @@ class ArcadeTranslator extends BaseTranslator {
 
     }
 
-    imageRef(node, allowValueCall = true) {
+    imageRef(node, allowValueCall = true, namedCalls = true) {
         if(node?.type==='Index' && this.planImageValue)this.planImageValue(node);
         if (node?.type === 'Template' && this.assetKindLookup &&
             lookupAssetTemplate(this.assetKindLookup,node.tag,node.value) === null) return 'null value';
@@ -451,7 +451,7 @@ class ArcadeTranslator extends BaseTranslator {
         }
         if (node?.type === 'Call' && this.path(node.callee) === 'scene.backgroundImage' && !node.args?.length) return 'arcade background image';
         // A call on a name whose source is not in the project, where an Image is expected: kept by name with real argument blocks.
-        if (allowValueCall && node?.type === 'Call' && node.callee?.type === 'Member' && !(node.args || []).some(arg => arg?.type === 'FunctionExpression')) {
+        if (allowValueCall && namedCalls && node?.type === 'Call' && node.callee?.type === 'Member' && !(node.args || []).some(arg => arg?.type === 'FunctionExpression')) {
             const external = this.externalName(node.callee);
             if (external) return `(arcade external image call ${JSON.stringify(external)} arguments (${this.externalArguments(node.args || [])}))`;
         }
@@ -1494,7 +1494,7 @@ class ArcadeTranslator extends BaseTranslator {
         if (node?.type === 'Identifier' && this.handleAliases.has(node.name)) {
             return this.handleAliases.get(node.name);
         }
-        const image = node?.type === 'Member' && this.imageRef(node.object, false);
+        const image = node?.type === 'Member' && this.imageRef(node.object, true, false);
         // PXT's screen is always 160x120: its size folds to constants below.
         if (image && image !== 'arcade screen image' && ['width', 'height'].includes(node.name)) return `arcade image ${node.name} of (${image})`;
         const handle = node?.type === 'Member' && this.handleRef(node.object);
