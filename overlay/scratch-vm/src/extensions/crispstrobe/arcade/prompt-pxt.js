@@ -199,7 +199,7 @@ module.exports = function initializePxtPrompt(host) {
             case 'down': this.moveVertical(false); return true;
             case 'right': this.moveHorizontal(true); return true;
             case 'left': this.moveHorizontal(false); return true;
-            case 'a': this.confirm(); return true;
+            case 'a': this.confirmSelection(); return true;
             case 'b': this.delete(); return true;
             default: return false;
             }
@@ -221,7 +221,7 @@ module.exports = function initializePxtPrompt(host) {
             if (right) this.cursorColumn = (this.cursorColumn + 1) % this.keyboardColumns;
             else this.cursorColumn = (this.cursorColumn + (this.keyboardColumns - 1)) % this.keyboardColumns;
         }
-        confirm() {
+        confirmSelection() {
             if (this.cursorRow === 3) {
                 if (this.cursorColumn % 2) this.confirmPressed = true;
                 else this.upper = !this.upper;
@@ -257,7 +257,7 @@ module.exports = function initializePxtPrompt(host) {
             this.drawBottomBarBackground(screen);
             this.drawConfirm(screen, this.cursorRow === 4);
         }
-        confirm() {
+        confirmSelection() {
             if (this.cursorRow === 4) {
                 this.confirmPressed = true;
             } else {
