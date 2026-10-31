@@ -140,8 +140,13 @@ test('lookup aliases and whitespace match compiled original PXT factories, not c
 });
 
 test('malformed native assets, missing galleries and ambiguous aliases remain named import diagnostics',()=>{
+    // No gallery at all: the animation lives in a file we were not given, so it is kept by name, not fabricated.
     const missing=arcadeToPseudocode('let frames=assets.animation`Walk`');
-    assert.ok(missing.unsupported.some(message=>message.includes('Missing animation asset reference: "Walk"')));
+    assert.deepEqual(missing.unsupported,[]);
+    assert.match(missing.code,/arcade external value "assets\.animation`Walk`"/);
+    // A gallery that lacks the name is PXT's undefined: still a named diagnostic.
+    const absent=arcadeToPseudocode(files('let frames=assets.animation`Walk`',{'myAnimations.other':entry('other','Other')}));
+    assert.ok(absent.unsupported.some(message=>message.includes('Missing animation asset reference: "Walk"')));
     const malformed=entry();malformed.data='!!!!';
     const bad=arcadeToPseudocode(files('let n=1',{'myAnimations.bad':malformed}));
     assert.ok(bad.unsupported.some(message=>message.includes('ENCODING')),'unused malformed resources still diagnosed');
