@@ -21,7 +21,13 @@ import {runOnMicrobitFirmware} from '../scripts/lib/microbit-firmware.mjs';
 
 const COMPILER = join(SOURCE, 'src', 'lib', 'sb3-creator.js');
 const SB3Creator = existsSync(COMPILER) ? (await import(COMPILER)).default : null;
-const hasWords = Boolean(SB3Creator) && JSON.stringify(new SB3Creator().parse('DEVICE MICROBIT\n\nWHEN flag clicked:\n  raise event 1 2\n')).includes('microbitplus_raiseevent');
+const hasWords = (() => {
+    try {
+        return Boolean(SB3Creator) && JSON.stringify(new SB3Creator().parse('DEVICE MICROBIT\n\nWHEN flag clicked:\n  raise event 1 2\n')).includes('microbitplus_raiseevent');
+    } catch (e) {
+        return false;
+    }
+})();
 const translatorOnly = false;
 const skip = !makeCodeSimAvailable() ? 'MakeCode runtime not synced (npm run sync:makecode)' :
     !SB3Creator ? 'sb3-creator not integrated' :

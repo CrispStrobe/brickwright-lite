@@ -22,7 +22,13 @@ const COMPILER = join(SOURCE, 'src', 'lib', 'sb3-creator.js');
 const SB3Creator = existsSync(COMPILER) ? (await import(COMPILER)).default : null;
 // The words come with the vendored sb3-creator: a Lite checkout still on the
 // pin before they were added has nothing to run them with.
-const hasWords = Boolean(SB3Creator) && JSON.stringify(new SB3Creator().parse('DEVICE MICROBIT\n\nWHEN flag clicked:\n  set b to create buffer 4\n')).includes('microbitplus_createbuffer');
+const hasWords = (() => {
+    try {
+        return Boolean(SB3Creator) && JSON.stringify(new SB3Creator().parse('DEVICE MICROBIT\n\nWHEN flag clicked:\n  set b to create buffer 4\n')).includes('microbitplus_createbuffer');
+    } catch (e) {
+        return false;
+    }
+})();
 const translatorOnly = false;
 const skip = !makeCodeSimAvailable() ? 'MakeCode runtime not synced (npm run sync:makecode)' :
     !SB3Creator ? 'sb3-creator not integrated' :
