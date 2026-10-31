@@ -21,6 +21,7 @@ function fixture(integrated=false) {
     const pkg=stock();put('package.json',JSON.stringify(integrated?withVmPackageExports(pkg):pkg));
     for(const name of ['src/index.js','dist/node/scratch-vm.js','dist/web/scratch-vm.js'])put(name,'throw Error("root entry must only be resolved, never executed");\n');
     put(MODEL,readFileSync(path.join(ROOT,'overlay/scratch-vm',MODEL)));
+    put('./src/util/bw-graph-version.js',readFileSync(path.join(ROOT,'overlay/scratch-vm/src/util/bw-graph-version.js')));
     const nativeFile=path.join(vm,'src/extensions/crispstrobe/arcade/procedure-parameter-constraints.js');
     put('src/extensions/crispstrobe/arcade/procedure-parameter-constraints.js',nativeSource);
     return {root,vm,consumer,pkg,put,require:createRequire(path.join(consumer,'consumer.cjs')),nativeRequire:createRequire(nativeFile),close:()=>rmSync(root,{recursive:true,force:true})};
