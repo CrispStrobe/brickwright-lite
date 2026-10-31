@@ -173,3 +173,116 @@ test('game-over diagnostics stay explicit', () => {
         'let t = game.ScoringType.None\ngame.setGameOverScoringType(t)', 'game.gameOver()'])
         assert.ok(arcadeToPseudocode(source).unsupported.length, source);
 });
+
+// Differential follow-ups: the original simulator keeps the program on the game-over screen
+// after control.reset (it only posts a restart message), and runs an image effect's first step
+// (a control.runInParallel fiber) after the game-over scene's first frame.
+async function timedRun(source) {
+    const imported = arcadeToPseudocode(source);
+    const run = await runProgram(imported.code, {frames: 0, storage: true, uploads: imported.costumes, frameAuthority: 'timed'});
+    const clock = createArcadeDiscreteTimers();
+    run.vm.stopAll(); run.vm.runtime.bwArcadeProgramClock = clock;
+    run.vm.runtime.updateCurrentMSecs = () => { run.vm.runtime.currentMSecs = clock.now(); };
+    return {run, clock, start: async () => { run.vm.greenFlag(); await stepFrames(run.vm, 1, 0); }};
+}
+const framePixels = run => Array.from(run.vm.runtime.bwArcadeDeviceState.sceneFrame?.pixels || []);
+// One observation per 20 ms tick: [state, background present, frame pixels].
+async function observe(source, ticks, {hold = false} = {}) {
+    const {run, clock, start} = await timedRun(source);
+    run.vm.runtime.bwArcadeHoldControlReset = hold;
+    const seen = [];
+    try {
+        await start();
+        for (let i = 1; i <= ticks; i++) {
+            await clock.advanceTo(i * 20);
+            for (let turn = 0; turn < 4; turn++) await new Promise(resolve => setImmediate(resolve));
+            seen.push({background: !!run.vm.runtime.bwArcadeDeviceState.backgroundImage, pixels: framePixels(run)});
+        }
+        assert.deepEqual(run.errors, []);
+        return {seen, run, clock};
+    } finally { /* the caller stops the VM */ }
+}
+const OVERLAP_BODY = `scene.setBackgroundColor(9)
+info.setScore(3)
+info.setLife(2)
+let mover = sprites.create(img\`
+    2 2 2 2 2 2 2 2
+    2 2 2 2 2 2 2 2
+    2 2 2 2 2 2 2 2
+    2 2 2 2 2 2 2 2
+\`, SpriteKind.Player)
+let wall = sprites.create(img\`
+    5 5 5 5 5 5 5 5
+    5 5 5 5 5 5 5 5
+    5 5 5 5 5 5 5 5
+    5 5 5 5 5 5 5 5
+\`, SpriteKind.Enemy)
+mover.setPosition(20, 60)
+wall.setPosition(70, 60)
+mover.vx = 100
+`;
+
+test('a control.reset held by the host leaves the game-over screen up and is counted', async () => {
+    const source = `scene.setBackgroundColor(9)
+let ended = false
+game.onUpdateInterval(100, function () {
+    if (!ended) {
+        ended = true
+        game.gameOver(false)
+    }
+})`;
+    const {run, clock, start} = await timedRun(source);
+    try {
+        run.vm.runtime.bwArcadeHoldControlReset = true;
+        await start(); await clock.advanceTo(1200);
+        const restarts = [];
+        run.vm.runtime.on('PROJECT_START', () => restarts.push(clock.now()));
+        run.vm.postIOData('keyboard', {key: ' ', isDown: true});
+        await clock.advanceTo(1300);
+        run.vm.postIOData('keyboard', {key: ' ', isDown: false});
+        await clock.advanceTo(1400);
+        assert.deepEqual(run.errors, []);
+        assert.deepEqual(restarts, [], 'a held reset does not restart the program');
+        assert.equal(run.vm.runtime.bwArcadeControlResets, 1);
+        assert.ok(run.vm.runtime.bwArcadeDeviceState.backgroundImage, 'the game-over screen stays up');
+    } finally { run.vm.stopAll(); run.vm.quit(); clearStrayTimers(); }
+});
+
+test('the default image effect starts after the game-over scene\'s first frame', async () => {
+    const withEffect = `${OVERLAP_BODY}game.setGameOverEffect(false, effects.melt)
+sprites.onOverlap(SpriteKind.Player, SpriteKind.Enemy, function (sprite, otherSprite) {
+    game.gameOver(false)
+})`;
+    const noEffect = withEffect.replace('effects.melt', 'effects.none');
+    const melt = await observe(withEffect, 60), plain = await observe(noEffect, 60);
+    try {
+        const first = melt.seen.findIndex(sample => sample.background);
+        assert.ok(first > 0);
+        assert.equal(melt.seen[first].pixels.join(), plain.seen[first].pixels.join(), 'no melt step is visible on the first frame');
+        assert.ok(melt.seen.slice(first).some((sample, i) => sample.pixels.join() !== plain.seen[first + i].pixels.join()), 'the melt runs afterwards');
+    } finally { for (const {run} of [melt, plain]) { run.vm.stopAll(); run.vm.quit(); } clearStrayTimers(); }
+});
+
+test('game over from a paint handler keeps the screen as drawn so far', async () => {
+    // The paint handler draws a marker after the background; game over runs before it draws, so
+    // the captured background holds the plain background colour, not the previous frame's marker.
+    const source = `scene.setBackgroundColor(9)
+let frames = 0
+game.onPaint(function () {
+    frames += 1
+    if (frames == 5) {
+        game.setGameOverEffect(false, effects.none)
+        game.gameOver(false)
+        return
+    }
+    screen.fillRect(0, 0, 160, 120, 4)
+})`;
+    const {run, clock, start} = await timedRun(source);
+    try {
+        await start(); await clock.advanceTo(300);
+        assert.deepEqual(run.errors, []);
+        const image = run.vm.runtime.bwArcadeDeviceState.backgroundImage;
+        assert.ok(image, 'game over opened');
+        assert.equal(image.pixels[0], 9, 'the capture is the screen before this frame\'s paint, not the last finished frame');
+    } finally { run.vm.stopAll(); run.vm.quit(); clearStrayTimers(); }
+});

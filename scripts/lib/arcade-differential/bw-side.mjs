@@ -93,6 +93,8 @@ export async function recordBrickwright(source, {schedule, seconds, fps = 30, se
         const {vm} = run, clock = createArcadeDiscreteTimers();
         vm.stopAll();
         vm.runtime.bwArcadeProgramClock = clock;
+        // The original simulator only posts a restart message on control.reset (nothing here restarts it), so the program stays on the game-over screen.
+        vm.runtime.bwArcadeHoldControlReset = true;
         vm.runtime.updateCurrentMSecs = () => { vm.runtime.currentMSecs = clock.now(); };
         vm.greenFlag();
         await stepFrames(vm, 1, 0);
