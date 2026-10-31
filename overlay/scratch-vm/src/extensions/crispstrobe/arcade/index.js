@@ -2996,7 +2996,15 @@ module.exports = makeExt(`// Name: Arcade
       const self = String(args.ID) === 'self';
       const id = self ? 'target:' + util?.target?.id : String(args.ID);
       const target = self ? util?.target : state.spriteTargets[id];
-      const owner = this._speechOwner(id, target);
+      let owner = this._speechOwner(id, target), detached = false;
+      if (!owner && !self) {
+        // PXT keeps a sprite object usable after its scene is suspended: a handler that was
+        // already running when a game over replaced the scene can still make it say something.
+        // The legacy renderer draws one bubble sprite into the CURRENT scene and, as the owner
+        // is not updated there, never moves or expires it.
+        const stale = this._spriteValues.get(id);
+        if (stale && !stale._destroyed && stale.image && !state.sprites[id]) { owner = stale; detached = true; }
+      }
       if (!owner) return;
       const rawText = Scratch.BWValues.decode(args.TEXT), rawDuration = Scratch.BWValues.decode(args.DURATION);
       const text = rawText == null ? '' : String(rawText);
@@ -3016,6 +3024,7 @@ module.exports = makeExt(`// Name: Arcade
       const finish = renderer => this._withSpeechCaller(util,caller,()=>{
         if(!renderer || epoch!==this._terrainEpoch)return;
         entry.renderer = renderer;
+        if (detached) { this._renderSpeech(id, entry, owner, 0); this._changed(); return; }
         speech.set(id, entry);
         if (!state.speech) state.speech = {};
         state.speech[id] = {text, duration, animated: entry.animated, foreground, background,
@@ -3835,7 +3844,7 @@ module.exports = makeExt(`// Name: Arcade
           const thread=this._runtime._pushThread(h.script.blockId,h.target);
           thread.bwArcadeEvent={A:h.kind,B:h.otherKind,first:a.id,second:b.id};
           work=new Promise(resolve=>this._terrainWaits.add({thread,resolve}));
-        }else work=this._runTerrainGenerator(this._registeredCallbackSteps([h],'arcade_whenRegisteredOverlap',{first:a.id,second:b.id},undefined,true));
+        }else work=this._runTerrainGenerator(this._registeredCallbackSteps([h],'arcade_whenRegisteredOverlap',{first:a.id,second:b.id,deferredFiber:true},undefined,true));
         if(work?.then)work.finally(finish);else finish();
       }
     }
@@ -4567,13 +4576,14 @@ module.exports = makeExt(`// Name: Arcade
       if(sprite)this._particles().effects.clearParticles(this._particleAnchor(sprite));
       this._changed();
     }
-    _drawParticleSources(state=this._state()) {
+    _drawParticleSources(state=this._state(),only=null) {
       const scene=this._particleScenes.get(state);
       const layers=[];
       if(scene?.allSprites.length){
         const screen=this._particleScreen,camera=this._camera(state);
         // scene.render draws allSprites by z then id.
         for(const source of scene.allSprites.slice().sort((a,b)=>a.z-b.z || a.id-b.id)){
+          if(only && source!==only)continue;
           screen.layer={width:160,height:120,pixels:new Uint8Array(160*120),writes:new Uint8Array(160*120)};
           source.__draw(camera);
           layers.push({image:screen.layer,writes:screen.layer.writes,x:0,y:0,z:source.z,id:source.id,source});
@@ -5604,7 +5614,7 @@ module.exports = makeExt(`// Name: Arcade
           } else if(object===owner.tilemapRenderable){
             layers=this._sceneLayers(owner).layers.filter(layer=>layer.bwSceneSprite===object);
           } else if((this._particleScenes.get(owner)?.allSprites || []).includes(object)){
-            layers=this._drawParticleSources(owner).filter(layer=>layer.source===object);
+            layers=this._drawParticleSources(owner,object);
           } else {
             const before=screen.pixels.slice();
             // A game over started from a renderable keeps the screen as drawn so far (game.ts: screen.clone()).
@@ -6335,15 +6345,12 @@ module.exports = makeExt(`// Name: Arcade
       const config=this._gameOverState().config;
       config.setEffect(false,null,false);
       config.setSound(false,null,false,false);
-      const epoch=this._terrainEpoch;
-      // The current native frame must release its terrain transaction before
-      // game over pushes a new scene. Awaiting the scene transition inside that
-      // transaction would wait on itself. Run the original terminal operation
-      // in the same continuation queue once the frame has yielded/completed.
-      Promise.resolve().then(()=>{
-        if(epoch!==this._terrainEpoch || this._state()!==owner)return;
-        return this._runGameOver(false,undefined,capturedFrame);
-      }).catch(error=>this._runtime?.emit?.('BLOCKS_ERROR',String(error)));
+      // PXT raises this from the HUD draw, inside the frame fiber: scene.push and the first
+      // pause happen right there, and fibers queued earlier in the frame (overlap callbacks
+      // started by this frame's physics) resume afterwards, in the NEW scene. Start the
+      // terminal operation synchronously so the scene switch precedes those callbacks; its
+      // later awaits (scene handlers, pauses) do not block the frame.
+      Promise.resolve(this._runGameOver(false,undefined,capturedFrame)).catch(error=>this._runtime?.emit?.('BLOCKS_ERROR',String(error)));
     }
     gameover() {
       this._state().gameOver = true; this._changed();
