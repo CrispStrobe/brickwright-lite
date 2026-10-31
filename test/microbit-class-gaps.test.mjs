@@ -3,8 +3,8 @@
  * fields and get/set accessors, joining the fields, constructor and methods
  * the importer already lowers to parallel arrays and procedures
  * (translate-base.js, "records"). Each program runs in MakeCode's simulator
- * and as lite imports it; the printed lines must agree. Inheritance
- * (\`extends\`) stays refused by name, said in the result.
+ * and as lite imports it; the printed lines must agree. Inheritance is in
+ * microbit-class-heritage.test.mjs.
  */
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
@@ -123,9 +123,9 @@ test('get and set accessors call the getter and the setter, as MakeCode\'s do', 
     assert.deepEqual(r.lite.lines, r.mc.lines);
 });
 
-test('inheritance stays refused by name, and nothing is said to be converted', {skip}, () => {
-    const imported = microbitToPseudocode('class A {\n    x = 1\n}\nclass B extends A {\n    y = 2\n}\nlet b = new B()\nserial.writeLine("" + b.y)\n');
-    assert.ok(imported.unsupported.some(u => /^class B .*heritage/.test(u)), imported.unsupported.join('\n'));
+test('a class that extends something this program does not define stays refused by name', {skip}, () => {
+    const imported = microbitToPseudocode('class A {\n    x = 1\n}\nclass B extends Elsewhere {\n    y = 2\n}\nlet b = new B()\nserial.writeLine("" + b.y)\n');
+    assert.ok(imported.unsupported.some(u => /^class B .*extends Elsewhere/.test(u)), imported.unsupported.join('\n'));
 });
 
 test('a constructor\'s omitted optional parameter takes its default, so `new X()` calls the constructor with all its arguments', {skip}, async () => {
