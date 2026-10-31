@@ -3967,8 +3967,11 @@ const discoverRuntimeRegistrations = (ast, translator) => {
         const names = new Set();
         const visit = statements => { for (const st of statements || []) {
             if (st.type === 'Declaration') for (const decl of st.decls) names.add(decl.name);
+            // A `for (let i …)` counter is block-scoped to its loop: it belongs to this run of the
+            // callback, not to a program variable of the same name that other scripts share.
+            if (st.type === 'For' && st.init?.type === 'Declaration') for (const decl of st.init.decls) names.add(decl.name);
             if (st.type === 'If') { visit(st.consequent);visit(st.alternate); }
-            if (['For','While','Block'].includes(st.type)) visit(st.body);
+            if (['For','ForOf','While','Block'].includes(st.type)) visit(st.body);
         }};
         visit(body);return names;
     };
