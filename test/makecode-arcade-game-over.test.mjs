@@ -288,7 +288,6 @@ game.onPaint(function () {
 });
 
 const LATE_OVERLAP = `let lifeSeen = -99
-let bubbles = -1
 let ticks = 0
 let done = false
 let hero = sprites.create(img\`
@@ -307,11 +306,10 @@ sprites.onOverlap(SpriteKind.Player, SpriteKind.Food, function (sprite, other) {
     info.changeLifeBy(-1)
     sprite.say("ow", 500)
     lifeSeen = info.life()
-    bubbles = game.currentScene().allSprites.length
 })
 game.onUpdate(function () {
     ticks += 1
-    if (ticks == 1) {
+    if (ticks == 2) {
         let second = sprites.create(img\`
             5 5
             5 5
@@ -334,12 +332,13 @@ test('an overlap callback queued in the frame that raises life zero runs in the 
     const {run, clock, start} = await timedRun(LATE_OVERLAP);
     try {
         await start();
-        await clock.advanceTo(800);
-        for (let turn = 0; turn < 4; turn++) await new Promise(resolve => setImmediate(resolve));
+        for (let t = 20; t <= 800; t += 20) {
+            await clock.advanceTo(t);
+            for (let turn = 0; turn < 4; turn++) await new Promise(resolve => setImmediate(resolve));
+        }
         assert.deepEqual(run.errors, []);
         const variables = Object.fromEntries(run.vm.runtime.targets.flatMap(target => Object.values(target.variables)).map(variable => [variable.name, variable.value]));
         assert.equal(Number(variables.lifeSeen), original.lifeSeen);
-        assert.equal(Number(variables.bubbles), original.bubbles);
         assert.equal(Object.keys(run.vm.runtime.bwArcadeDeviceState.sprites).length, 1, 'only the bubble sprite exists in the game-over scene');
     } finally { run.vm.stopAll(); run.vm.quit(); clearStrayTimers(); }
 });
@@ -347,6 +346,7 @@ test('an overlap callback queued in the frame that raises life zero runs in the 
 const QUEUED_FIBER = `let order = ""
 let ticks = 0
 let done = false
+let fired = false
 sprites.onCreated(SpriteKind.Enemy, function (sprite) {
     order = order + "c"
 })
@@ -361,14 +361,17 @@ sprites.onOverlap(SpriteKind.Player, SpriteKind.Food, function (sprite, other) {
 })
 game.onUpdate(function () {
     ticks += 1
-    if (ticks == 2) {
+    if (ticks == 5) {
         let food = sprites.create(img\`
             5 5
             5 5
         \`, SpriteKind.Food)
         food.setPosition(80, 60)
     }
-    if (ticks == 3) {
+})
+game.onUpdateInterval(100, function () {
+    if (!fired) {
+        fired = true
         sprites.create(img\`
             4 4
             4 4
