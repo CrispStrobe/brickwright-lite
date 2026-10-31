@@ -481,6 +481,12 @@ class MicrobitTranslator extends BaseTranslator {
         // runs and is wrong — the census found it in 10 of MakeCode's apps.
         case 'Math.min': return `min of ${this.operand(a[0])} and ${this.operand(a[1])}`;
         case 'Math.max': return `max of ${this.operand(a[0])} and ${this.operand(a[1])}`;
+        // Math.clamp(min, max, value) is Math.min(max, Math.max(min, value)) (pxt-helpers.ts); the
+        // argument order differs from Math.constrain(value, low, high), which clamps the same way.
+        case 'Math.clamp':
+            return `min of ${this.operand(a[1])} and (max of ${this.operand(a[0])} and ${this.operand(a[2])})`;
+        case 'Math.constrain':
+            return `min of ${this.operand(a[2])} and (max of ${this.operand(a[1])} and ${this.operand(a[0])})`;
         // pins.map and Math.map are the same function; the block is MakeCode's
         // pins.map, word for word.
         case 'pins.map':
@@ -1313,8 +1319,14 @@ export function microbitToPseudocode (source, opts = {}) {
     const renames = t.renameNotes();
     if (renames.length) out.push(...renames, '');
 
-    if (main.length) {
+    // Top-level code that translated to nothing but "unsupported" notes would be an empty hat:
+    // the exporter writes no code for it, so it would vanish on the way back. Keep the notes as
+    // plain comments and write the hat only when it holds something that runs.
+    const mainRuns = main.some(line => !/^\s*#/.test(line));
+    if (main.length && (mainRuns || !scripts.length)) {
         out.push('WHEN flag clicked:', ...main, '');
+    } else if (main.length) {
+        out.push(...main.map(line => line.trim()), '');
     }
     for (const script of scripts) out.push(...script, '');
     out.push(...defines);

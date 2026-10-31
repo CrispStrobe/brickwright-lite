@@ -125,3 +125,46 @@ test('a named sprite kind that no code defines is exported as a declared member,
     assert.match(ts, /namespace SpriteKind \{\s*export let Pickup: number/);
     assert.match(ts, /sprites\.onOverlap\(SpriteKind\.Player, SpriteKind\.Pickup,/);
 });
+
+test('micro:bit: top-level calls that translate to nothing do not leave an empty flag script that the export drops', () => {
+    const files = {'main.ts': 'zzz.start()\nzzz.step(1)\nbasic.forever(function () {\n    basic.showNumber(1)\n})\n',
+        'pxt.json': JSON.stringify({name: 'rt', dependencies: {core: '*'}, files: ['main.ts']})};
+    const imported = importProjectFiles(files, {target: 'microbit', name: 'rt'});
+    assert.ok(imported.unsupported.some(note => /zzz\.start\(\)/.test(note)), 'the note is still reported');
+    assert.equal((imported.code.match(/^WHEN flag clicked:/gm) || []).length, 1, imported.code);
+    const creator = new SB3Creator();
+    creator.parse(imported.code);
+    const ts = exportToMakeCode(creator.project, {name: 'roundtrip'}).files['main.ts'];
+    const back = new SB3Creator();
+    back.parse(importProjectFiles({'main.ts': ts, 'pxt.json': files['pxt.json']}, {target: 'microbit', name: 'rt'}).code);
+    const hats = project => project.targets.flatMap(t => Object.values(t.blocks)).filter(b => b.opcode === 'event_whenflagclicked').length;
+    assert.equal(hats(back.project), hats(creator.project));
+});
+
+test('micro:bit: a program whose only top-level code is unsupported keeps its single flag script', () => {
+    const files = {'main.ts': 'zzz.start()\n', 'pxt.json': JSON.stringify({name: 'rt', dependencies: {core: '*'}, files: ['main.ts']})};
+    const imported = importProjectFiles(files, {target: 'microbit', name: 'rt'});
+    assert.equal((imported.code.match(/^WHEN flag clicked:/gm) || []).length, 1, imported.code);
+});
+
+test('micro:bit: Math.clamp(min, max, value) and Math.constrain(value, low, high) translate to min/max blocks', () => {
+    const files = {'main.ts': 'let v = 0\nbasic.forever(function () {\n    v = Math.clamp(0, 9, input.acceleration(Dimension.X))\n    v = Math.constrain(v, 1, 5)\n})\n',
+        'pxt.json': JSON.stringify({name: 'rt', dependencies: {core: '*'}, files: ['main.ts']})};
+    const imported = importProjectFiles(files, {target: 'microbit', name: 'rt'});
+    assert.deepEqual(imported.unsupported, []);
+    assert.match(imported.code, /set v to min of 9 and \(max of 0 and \(read accel x\)\)/);
+    assert.match(imported.code, /set v to min of 5 and \(max of 1 and v\)/);
+});
+
+test('Arcade: a sprite whose named image the project does not supply is still created natively, with the missing art reported', () => {
+    const files = {'main.ts': 'let hero = sprites.create(someimages.walker, SpriteKind.Player)\nlet coin = sprites.create(img`\n    . 2 2 .\n    2 2 2 2\n    2 2 2 2\n    . 2 2 .\n`, SpriteKind.Food)\nhero.setPosition(20, 30)\ncontroller.moveSprite(hero)\ngame.onUpdate(function () {\n    coin.x += 1\n})\n',
+        'pxt.json': JSON.stringify({name: 'rt', dependencies: {device: '*'}, files: ['main.ts']})};
+    const imported = importProjectFiles(files, {target: 'arcade', name: 'rt'});
+    assert.match(imported.code, /set hero to \(arcade create template "hero"/);
+    assert.deepEqual(imported.unsupported, ['someimages.walker — sprite artwork is unavailable in this project']);
+    const creator = new SB3Creator();
+    creator.parse(imported.code);
+    const opcodes = new Set(creator.project.targets.flatMap(t => Object.values(t.blocks)).map(b => b.opcode));
+    assert.ok(!opcodes.has('control_forever'), [...opcodes].join());
+    assert.ok(!opcodes.has('motion_gotoxy'));
+});

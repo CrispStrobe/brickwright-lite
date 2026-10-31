@@ -4336,6 +4336,14 @@ const planImageValues = (t, ast, {creationApis, requiresSpriteRuntime, directIma
     return {imageValueCostumes, artworkNames, collectImageValue: node => collectImageValues(node)};
 };
 
+/** `ns.name` or `name` as the image argument of a creation call, when nothing in the program
+ * defines it: the path to report, else null. */
+const unreadableArtPath = (t, node) => {
+    if (!node || !['Member', 'Identifier'].includes(node.type)) return null;
+    if (t.imageRef(node) || t.imageOf(node)) return null;
+    return t.path(node);
+};
+
 /** Handle-valued globals plus onCreated/onOverlap callbacks. Kept separate
  * from the fixed-target path until its other sprite APIs can use handles. */
 const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRuntime = false, assetKindLookup = null, scrollerVersion = 'v0.1.2', characterVersion = 'v0.1.0') => {
@@ -4645,8 +4653,16 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRunti
     for (const [index, call] of creates.entries()) {
         const api = nameOf(call), projectile = api !== 'sprites.create';
         const dynamicImage = t.imageRef(call.args[0]);
-        const image = dynamicImage ? {width: 1, height: 1, pixels: new Uint8Array(1)} : t.imageOf(call.args[0]);
-        if (!image) return null;
+        let image = dynamicImage ? {width: 1, height: 1, pixels: new Uint8Array(1)} : t.imageOf(call.args[0]);
+        if (!image) {
+            // A named image the project does not supply (its asset file is not part of the source we
+            // were given) is art we cannot read, not a different program: the sprite is still created
+            // natively, with a transparent stand-in, and the missing art is said once.
+            const source = projectile ? null : unreadableArtPath(t, call.args[0]);
+            if (!source) return null;
+            t.unsupported.push(`${source} — sprite artwork is unavailable in this project`);
+            image = {width: 1, height: 1, pixels: new Uint8Array(1)};
+        }
         const kindArgument = projectile ? api === 'sprites.createProjectile' ? call.args[3] : null : call.args[1];
         const kind = kindArgument?.type==='Member' && t.path(kindArgument.object)==='SpriteKind'?kindArgument.name:projectile?'Projectile':'Player';
         const template = {name: `__arcadeTemplate${index + 1}`, dynamicImage: !!dynamicImage, kind,
