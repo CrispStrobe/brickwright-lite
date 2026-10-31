@@ -593,12 +593,6 @@ class MicrobitTranslator extends BaseTranslator {
         case 'radio.receivedSignalStrength': return 'last radio signal strength';
         case 'radio.receiveNumber': return 'read last radio number';
         case 'radio.receiveString': return 'read last radio text';
-        // pins.map is Math.map: the formula, as Math.map is written out.
-        case 'pins.map': {
-            this.unsupported.push('pins.map() — written out as its formula; it goes back to MakeCode as arithmetic');
-            const [v, a0, b0, c0, d0] = [0, 1, 2, 3, 4].map(i => this.operand(a[i]));
-            return `((${v} - ${a0}) * (${d0} - ${c0}) / (${b0} - ${a0}) + ${c0})`;
-        }
         // Readable since sb3-creator b4a8129 closed the round trip: these
         // two spellings came out of the decompiler and had no rule going
         // back in, so writing them used to compile to silence.

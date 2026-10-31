@@ -75,8 +75,7 @@ test('control.millis, micros, pins.map, radio.on, runInParallel and the USB seri
     const mc = await runMakeCodeSim(await compileMakeCode(ALIASES), {ms: 1500, at: []});
     assert.equal(mc.error, null);
     const imported = microbitToPseudocode(ALIASES);
-    // pins.map is written out as its formula and said so; nothing else is refused.
-    assert.deepEqual(imported.unsupported, ['pins.map() — written out as its formula; it goes back to MakeCode as arithmetic']);
+    assert.deepEqual(imported.unsupported, []);
     const creator = new SB3Creator();
     creator.parse(imported.code);
     const gen = creator.generateMicroPython();
