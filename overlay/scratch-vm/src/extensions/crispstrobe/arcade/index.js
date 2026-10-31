@@ -4891,6 +4891,9 @@ module.exports = makeExt(`// Name: Arcade
       const finish=()=>{if(live()){dialog.elapsed=500;dialog.dismiss(answer);}};
       epoch.setTimeout(()=>{
         if(!live())return;
+        // The 500 ms guard has passed: publish readiness the way _pumpQuestion
+        // does on the frame path, so the dialog's Yes/No controls enable.
+        dialog.elapsed=500;this._showNextDialog();
         if(condition()){finish();continuation();}
         else this._nativePollEvents().enqueue(condition,finish);
       },500)?.unref?.();
