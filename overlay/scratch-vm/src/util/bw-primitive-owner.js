@@ -104,6 +104,15 @@ function stepNested(util,args,child) {
     try {sequencer.activeThread=child;return sequencer.stepThread(child);}
     finally {util.thread=previousThread;util.sequencer=previousSequencer;sequencer.activeThread=previousActive;callSet(active,runtime,record);}
 }
+// A source turn that steps another VM thread from inside an owned primitive (moving a Sprite runs its overlap
+// callbacks synchronously within setPosition/setProperty) suspends that primitive's loan for the child only.
+function stepChild(runtime,child,step) {
+    const record=runtime&&callGet(active,runtime);
+    if(!record||!child||child===record.thread||!runtime.threads.includes(child))return step();
+    callDelete(active,runtime);
+    try {return step();}
+    finally {callSet(active,runtime,record);}
+}
 function current(util,args) {
     const record=util?.runtime && callGet(active,util.runtime);
     return record && record.util===util && record.args===args && owned(record) ? record.block : null;
@@ -164,7 +173,7 @@ function beforeInputs(runtime,thread,container,blockCached) {
     sceneClockNumber.beforeInputs(runtime,thread,container,blockCached,ready);
     frameDeltaNumber.beforeInputs(runtime,thread,container,blockCached,ready);return ready;
 }
-module.exports=Object.freeze({__proto__:null,installFrameDeltaNumber,beforeInputs,invoke,current,stepNested,handles,permitsNumberInput,captureActiveCall,captureFailureCall,isFailureActive,dispatchArrayFailure,isActiveCall});
+module.exports=Object.freeze({__proto__:null,installFrameDeltaNumber,beforeInputs,invoke,current,stepNested,stepChild,handles,permitsNumberInput,captureActiveCall,captureFailureCall,isFailureActive,dispatchArrayFailure,isActiveCall});
 
 // Exceptions publishes one stable frozen function object at module entry;
 // no late Module._load call receives a private current-call context.

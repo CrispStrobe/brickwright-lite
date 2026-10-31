@@ -2,6 +2,7 @@
 // deadline. Plain Scratch projects retain the synchronous kernel path.
 // Program and scene clocks remain owned by their existing runtime services.
 const conditionWaits = require('../../../util/bw-source-condition-waits');
+const primitiveOwner = require('../../../util/bw-primitive-owner');
 function browserTurn() {
     return new Promise(resolve => {
         if(typeof MessageChannel !== 'function') {setTimeout(resolve,0);return;}
@@ -351,7 +352,7 @@ class ArcadeFramePhase {
             return;
         }
         if(sourceBefore && this._yieldCheck(t)){held.add(t);park();return;}
-        actualStepThread.call(rt.sequencer,t);this._rememberGraphics(t);if(this._eligible(t)){this._armSourceWait(t);
+        primitiveOwner.stepChild(rt,t,()=>actualStepThread.call(rt.sequencer,t));this._rememberGraphics(t);if(this._eligible(t)){this._armSourceWait(t);
             if(!this._waitingTimer(t)&&(t.status===t.constructor.STATUS_YIELD_TICK||this._loopTickYield(t)))this.tickYields.set(t,{time:this.ext._programMillis(),block:t.peekStack()});}
         if((sourceBefore||this._eligible(t)) && (t.status===t.constructor.STATUS_YIELD_TICK||this._waitingTimer(t)||(this.waitTimers.has(t)&&!this.waitTimers.get(t).ready)||this._loopTickYield(t))){held.add(t);park();}
         };
