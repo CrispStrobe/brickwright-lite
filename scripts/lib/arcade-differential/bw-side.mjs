@@ -13,6 +13,11 @@ import {createArcadeDiscreteTimers} from '../../../test/helpers/arcade-discrete-
 import {BW_KEY, sampleTimes} from './script.mjs';
 import {PRNG_SOURCE} from './entropy.mjs';
 import {packSamples} from './compare.mjs';
+import {createRequire} from 'node:module';
+import {VM_SRC} from '../../../test/helpers/bw-extensions.mjs';
+// A privately issued Arcade exception signal is a program fault (PXT: an uncaught
+// exception that ends one fiber). It is data for the comparison, not a harness error.
+const exceptions = createRequire(import.meta.url)(VM_SRC + '/util/bw-arcade-exceptions.js');
 
 const hex = n => (n & 0xffffff).toString(16).padStart(6, '0');
 
@@ -108,12 +113,16 @@ export async function recordBrickwright(source, {schedule, seconds, fps = 30, se
             if (schedule.edgesAt(k).length) for (let turn = 0; turn < 4; turn++) await new Promise(resolve => setImmediate(resolve));
             await clock.advanceTo(times[k]);
             // Continuations queued by the last frame (a resumed pause) complete before the observation.
-            for (let turn = 0; turn < 4; turn++) await new Promise(resolve => setImmediate(resolve));
-            if (run.errors.length) { error = run.errors[0]; }
+            // Work a resumed callback still owes (a long post-pause body is spread over cooperative turns) completes too.
+            const phase = vm.runtime._arcadeFramePhase;
+            for (let turn = 0; turn < 4 || (turn < 400 && (phase?.continuation || phase?.request || vm.runtime.threads.some(t => !t.isKilled && t.status === t.constructor.STATUS_RUNNING))); turn++) await new Promise(resolve => setImmediate(resolve));
+            const hard = run.errors.findIndex((_, i) => !exceptions.reported(vm.runtime, run.errorEvents[i]?.message));
+            if (hard >= 0) { error = run.errors[hard]; }
             samples.push({k, t: times[k], ...snapshotBrickwright(vm, globalsOf)});
             if (error) break;
         }
-        return {status: error ? 'error' : 'ok', error, ...packSamples(samples), unsupported: translation.unsupported, errors: run.errors.slice(0, 5)};
+        return {status: error ? 'error' : 'ok', error, ...packSamples(samples), unsupported: translation.unsupported, errors: run.errors.slice(0, 5),
+            faults: run.errors.filter((_, i) => exceptions.reported(vm.runtime, run.errorEvents[i]?.message)).length};
     } catch (e) {
         return {status: 'error', error: String(e?.message || e).slice(0, 500), samples: [], unsupported: translation.unsupported};
     } finally {

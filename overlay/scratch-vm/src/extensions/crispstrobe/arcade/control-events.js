@@ -2,7 +2,10 @@
 // Microsoft source is MIT; see control-event-source/LICENSE and INTEGRATION.md.
 // Callback execution is injected: this module never retains a registration
 // thread, synthesizes input, advances time, or runs a Scratch sequencer itself.
-module.exports = function createControlEvents({dispatch, enqueue, paused = () => false, onError = error => {throw error;}}) {
+// `died(result)` marks a handler fiber that ended with an uncaught exception. The
+// selected simulator EventQueue awaits each handler's fiber under `lock`; a dead
+// fiber never settles, so that queue keeps its lock and delivers nothing again.
+module.exports = function createControlEvents({dispatch, enqueue, paused = () => false, onError = error => {throw error;}, died = () => false}) {
     if (typeof dispatch !== 'function' || typeof enqueue !== 'function')throw new TypeError('Events require dispatch and continuation scheduling');
     let generation = 0, nextNotifyEvent = 1024;
     const queues = new Map();
@@ -22,21 +25,22 @@ module.exports = function createControlEvents({dispatch, enqueue, paused = () =>
         // Context replacement changes the wrapper's field. Once a dispatch
         // starts, its actual callable/registration is held for that invocation.
         const handler = wrapper.handler;
-        if (handler != null && epoch === generation)await dispatch(handler, payload);
+        return handler != null && epoch === generation && died(await dispatch(handler, payload));
     };
     const drain = async (q, epoch) => {
         q.busy = true;
+        let locked = false;
         try {
             while (q.pending.length && epoch === generation) {
                 const events = q.pending;
                 q.pending = [];
                 for (const payload of events)for (const handler of q.handlers) {
                     if (epoch !== generation)return;
-                    await invoke(handler, payload, epoch);
+                    if (await invoke(handler, payload, epoch)) {locked = true;return;}
                 }
             }
         } finally {
-            if (epoch === generation) {
+            if (epoch === generation && !locked) {
                 q.busy = false;
                 for (const handlers of q.changes)q.handlers = handlers;
                 q.changes = [];
