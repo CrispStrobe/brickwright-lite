@@ -57,3 +57,28 @@ counts, saved/current graph and actual error attribution. Editing each physical
 getter and reopening in the GUI remain separate gates. No original replay,
 SDK execution, full compatibility or corpus-count reduction follows from adding
 this implementation or its authored controls.
+
+## Missing Sprite and Image operands, and what a fault ends
+
+The same sealed machinery now covers five more physical primitives, each with its
+own declaration, adapter binding, registration and receipt (`kinds` in
+`bw-null-sprite-getter.js`): `setSpriteImage` (missing Sprite receiver) and the
+Image operations `blitImage`, `drawImage` (fillRect/drawLine), `drawImageCircle`,
+`setImagePixel` and `mutateImage` (missing receiver, and for `blitImage` a missing
+source). Only an actual null or Undefined operand issues a receipt; numbers, text,
+other references and a missing argument never do (original: they do not throw).
+`setImage(undefined)` on a real Sprite is a no-op in the original and stays one.
+Each opcode is in the primitive-owner role table so the engine loan reaches it.
+
+An uncaught exception ends exactly one original fiber. Brickwright now matches:
+
+| context | original fiber | after the fault |
+| --- | --- | --- |
+| controller, update intervals, `onUpdate`, `onPaint`/`onShade`, screen update | the scene's single frame fiber | the scene's frame loop never runs again, even when the scene is restored; the display keeps its last frame until the 200 ms fallback refresh shows the partly drawn screen (paint) |
+| button event handler | the event fiber under the queue lock | that (event, button) queue stays locked, later events are never delivered |
+| `forever` handler | the handler fiber holding `lock` | that handler never runs again, siblings do |
+| overlap handler | a fiber started with `runInParallel` | the pair stays marked overlapping and never fires again |
+| other parallel, timer and interval fibers | the fiber itself | only that fiber ends |
+
+`test/arcade-fatal-faults.test.mjs` compares each row against the original
+simulator through the differential harness.

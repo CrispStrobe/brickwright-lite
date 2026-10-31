@@ -40,8 +40,17 @@ module.exports = function createSceneFrameContexts({now,setTimeout:delay,clearTi
         register(owner) {
             let context=contexts.get(owner);
             if(!context){context={owner,worker:0,running:false,registered:false,timers:new Set()};contexts.set(owner,context);}
-            if(context.registered)return;
+            if(context.registered||context.dead)return;
             context.registered=true;start(context,context.worker,generation);
+        },
+        // The frame fiber died with an uncaught exception. PXT leaves
+        // runningCallbacks set, so a restored context never starts again.
+        kill(owner) {
+            let context=contexts.get(owner);
+            if(!context){context={owner,worker:0,running:false,registered:false,timers:new Set()};contexts.set(owner,context);}
+            context.dead=true;context.running=false;
+            if(context.registered){context.registered=false;context.worker++;}
+            for(const timer of context.timers)clear(timer);context.timers.clear();
         },
         unregister(owner) {const context=contexts.get(owner);if(context?.registered){context.registered=false;context.worker++;}},
         cancel() {generation++;for(const context of contexts.values()){for(const timer of context.timers)clear(timer);context.timers.clear();context.registered=false;context.running=false;}contexts.clear();},

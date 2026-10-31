@@ -3,54 +3,64 @@ const cachedOwner = require('./bw-cached-primitive-owner');
 
 // Neither Error properties nor a null-looking serialized value confer fault
 // ownership. Metadata issuances and fault receipts never leave these WeakMaps.
-const rows = new WeakMap(), adapters = new WeakMap(), issues = new WeakMap();
+// Receipts are shared: consume() accepts a lease only from the kind that issued it.
 const receipts = new WeakMap();
-const rowOwner = Symbol('actual Sprite getter declaration');
-const rowIssue = Symbol('actual Sprite getter registration issuance');
 const properties = new Set(['x', 'y', 'width', 'height']);
-const opcode = 'arcade_spriteProperty';
+const BWValues = require('./bw-values');
+// Each faulting primitive is one sealed kind with its own declaration, adapter
+// and registration state. A kind names its single method and the exact current
+// arguments that may fault; the machinery below is identical for every kind.
+function ownDataValue(args, name) {
+    const descriptor = Object.getOwnPropertyDescriptor(args, name);
+    return descriptor && Object.hasOwn(descriptor, 'value') ? descriptor : null;
+}
+function makeKind({method, label, read}) {
+const opcode = 'arcade_' + method;
+const rows = new WeakMap(), adapters = new WeakMap(), issues = new WeakMap();
+const rowOwner = Symbol('actual ' + label + ' declaration');
+const rowIssue = Symbol('actual ' + label + ' registration issuance');
 
 function adapterCurrent(owner, record) {
     return !!record && owner.isCurrent() && owner.isInstance(record.instance) &&
         Object.getOwnPropertyDescriptor(record.adapter, '_inst')?.value === record.instance &&
-        Object.getOwnPropertyDescriptor(record.adapter, 'spriteProperty')?.value === record.delegate &&
+        Object.getOwnPropertyDescriptor(record.adapter, method)?.value === record.delegate &&
         Object.getPrototypeOf(record.adapter) === record.prototype &&
         !Object.hasOwn(record.adapter, 'getInfo') &&
         Object.getOwnPropertyDescriptor(record.prototype, 'getInfo')?.value === record.getInfo;
 }
 
 function declaration(info, owner) {
-    const entries = info?.id === 'arcade' && info.blocks?.filter(block => block.opcode === 'spriteProperty');
-    if (entries?.length !== 1 || !owner) throw Error('Sprite getter declaration owner is missing');
+    const entries = info?.id === 'arcade' && info.blocks?.filter(block => block.opcode === method);
+    if (entries?.length !== 1 || !owner) throw Error(label + ' declaration owner is missing');
     rows.set(entries[0], owner);
     Object.defineProperty(entries[0], rowOwner, {value: owner, enumerable: true});
     return info;
 }
 
 function bindAdapterInfo(info, adapter, instance) {
-    const entry = info?.id === 'arcade' && info.blocks?.find(block => block.opcode === 'spriteProperty');
+    const entry = info?.id === 'arcade' && info.blocks?.find(block => block.opcode === method);
     const owner = entry && Object.getOwnPropertyDescriptor(entry, rowOwner)?.value;
     if (rows.get(entry) !== owner || !owner?.isInstance(instance) || !owner.isCurrent())
-        throw Error('Sprite getter adapter source owner differs');
-    const delegate = Object.getOwnPropertyDescriptor(adapter, 'spriteProperty')?.value;
+        throw Error(label + ' adapter source owner differs');
+    const delegate = Object.getOwnPropertyDescriptor(adapter, method)?.value;
     const prototype = Object.getPrototypeOf(adapter), getInfo = Object.getOwnPropertyDescriptor(prototype, 'getInfo')?.value;
     if (typeof delegate !== 'function' || typeof getInfo !== 'function' || Object.hasOwn(adapter, 'getInfo') ||
         Object.getOwnPropertyDescriptor(adapter, '_inst')?.value !== instance)
-        throw Error('Sprite getter adapter delegate differs');
+        throw Error(label + ' adapter delegate differs');
     let record = adapters.get(owner);
     if (!record) {
         record = {adapter, instance, delegate, prototype, getInfo};
         adapters.set(owner, record);
     }
     if (record.adapter !== adapter || record.instance !== instance || record.delegate !== delegate || !adapterCurrent(owner, record))
-        throw Error('Sprite getter adapter identity changed');
+        throw Error(label + ' adapter identity changed');
     const issue = Object.freeze({});
     issues.set(issue, {owner, adapter: record, arguments: entry.arguments, consumed: false});
     Object.defineProperty(entry, rowIssue, {value: issue, enumerable: true});
 }
 
 function create(runtime, owner) {
-    if (!runtime || typeof runtime.on !== 'function') return Object.freeze({fault() {throw Error('Sprite getter requires a bound runtime');}});
+    if (!runtime || typeof runtime.on !== 'function') return Object.freeze({fault() {throw Error(label + ' requires a bound runtime');}});
     const getter = runtime.getOpcodeFunction;
     let registration = null, valid = !(runtime._blockInfo || []).some(category => category.id === 'arcade');
     let active = false, disposed = false, generation = 0;
@@ -80,16 +90,12 @@ function create(runtime, owner) {
         registration.entry.info?.[rowOwner] === owner;
     const physical = (args, util) => {
         if (!current() || util?.runtime !== runtime || primitiveOwner.current(util, args)?.opcode !== opcode)
-            throw Error('Null Sprite getter requires its original current primitive');
+            throw Error(label + ' requires its original current primitive');
         const block = cachedOwner(runtime, util, args, opcode, []);
         // Read only own data slots from the already-evaluated engine arguments.
         // No getter, coercion, BWValues decode, missing argument or public tag.
-        const receiver = Object.getOwnPropertyDescriptor(args, 'ID');
-        const property = Object.getOwnPropertyDescriptor(args, 'PROPERTY');
-        if (!receiver || !Object.hasOwn(receiver, 'value') || receiver.value !== null ||
-            !property || !Object.hasOwn(property, 'value') || !properties.has(property.value))
-            throw Error('Null Sprite getter requires actual null and a supported current property');
-        return {block: block.id, property: property.value};
+        const {property} = read(args);
+        return {block: block.id, property};
     };
     runtime.on('EXTENSION_ADDED', capture);
     runtime.on('BLOCKSINFO_UPDATE', category => capture(category, true));
@@ -106,13 +112,15 @@ function create(runtime, owner) {
     return Object.freeze({fault(args, util) {
         const witness = physical(args, util);
         const call = primitiveOwner.captureActiveCall(util, args);
-        if (!call) throw Error('Null Sprite getter requires its actual invocation');
-        const error = new TypeError('Expected type Sprite but received type null. Did you forget to assign a variable?');
+        if (!call) throw Error(label + ' requires its actual invocation');
+        const error = new TypeError(read(args).message);
         const lease = Object.freeze({});
         receipts.set(lease, {runtime, args, util, thread: util.thread, generation, error, witness, call,
             current: () => generation, physical});
         return {error, lease};
     }});
+}
+return Object.freeze({create, declaration, bindAdapterInfo});
 }
 
 function consume(runtime, args, util, error, lease) {
@@ -125,4 +133,48 @@ function consume(runtime, args, util, error, lease) {
     return witness.block === saved.witness.block && witness.property === saved.witness.property ? witness : null;
 }
 
-module.exports = Object.freeze({create, declaration, bindAdapterInfo, consume});
+// Exact current-argument readers: own data slots only, no getter, coercion or tag.
+const nullSprite = 'Expected type Sprite but received type null. Did you forget to assign a variable?';
+const isUndefinedValue = value => value === BWValues.UNDEFINED ||
+    (value !== null && typeof value === 'object' && Object.keys(value).length === 1 &&
+     Object.getOwnPropertyDescriptor(value, 'bwUndefined')?.value === true);
+// PXT: a missing Sprite or Image receiver or source throws; other values never do.
+const missingOf = (value, type) => value === null ? 'Expected type ' + type + ' but received type null. Did you forget to assign a variable?' :
+    isUndefinedValue(value) ? 'Expected type ' + type + ' but received type undefined. Did you forget to assign a variable?' : null;
+const missingArguments = (names, type, operations) => args => {
+    const operation = operations && ownDataValue(args, 'OP');
+    if (operations && (!operation || !operations.includes(operation.value)))
+        throw Error('Missing ' + type + ' fault requires a supported current operation');
+    for (const name of names) {
+        const slot = ownDataValue(args, name), message = slot && missingOf(slot.value, type);
+        if (message) return {property: name, message};
+    }
+    throw Error('Missing ' + type + ' fault requires an actual null or Undefined ' + type + ' argument');
+};
+
+const spriteGetter = makeKind({method: 'spriteProperty', label: 'Null Sprite getter', read(args) {
+    const receiver = Object.getOwnPropertyDescriptor(args, 'ID');
+    const property = Object.getOwnPropertyDescriptor(args, 'PROPERTY');
+    if (!receiver || !Object.hasOwn(receiver, 'value') || receiver.value !== null ||
+        !property || !Object.hasOwn(property, 'value') || !properties.has(property.value))
+        throw Error('Null Sprite getter requires actual null and a supported current property');
+    return {property: property.value, message: nullSprite};
+}});
+// Sprite.setImage on a missing receiver; the image argument never faults it.
+const spriteImageSetter = makeKind({method: 'setSpriteImage', label: 'Missing Sprite setter', read: missingArguments(['ID'], 'Sprite')});
+// Image drawing: a missing receiver or source image. Operation menus are exact.
+const imageKinds = Object.freeze([
+    ['blitImage', ['IMAGE', 'SOURCE'], ['drawImage', 'drawTransparentImage']],
+    ['drawImage', ['IMAGE'], ['fillRect', 'drawLine']],
+    ['drawImageCircle', ['IMAGE'], ['drawCircle', 'fillCircle']],
+    ['setImagePixel', ['IMAGE'], null],
+    ['mutateImage', ['IMAGE'], ['fill', 'replace', 'flipX', 'flipY']]
+].map(([method, names, operations]) => Object.freeze({method, kind: makeKind({method, label: 'Missing Image operation', read: missingArguments(names, 'Image', operations)})})));
+// Every kind in install order: the first is the original null Sprite getter.
+const kinds = Object.freeze([Object.freeze({method: 'spriteProperty', kind: spriteGetter}),
+    Object.freeze({method: 'setSpriteImage', kind: spriteImageSetter}), ...imageKinds]);
+// One owner implementation check per kind lets the Arcade constructor create each service.
+const bindAll = (info, adapter, instance) => {for (const {kind} of kinds) kind.bindAdapterInfo(info, adapter, instance);};
+const declareAll = (info, ownerOf) => {for (const {method, kind} of kinds) kind.declaration(info, ownerOf(method));return info;};
+
+module.exports = Object.freeze({...spriteGetter, consume, kinds, bindAll, declareAll, isMissing: value => missingOf(value, 'Sprite') !== null});

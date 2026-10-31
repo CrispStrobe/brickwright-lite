@@ -25,6 +25,8 @@ module.exports = makeExt(`// Name: Arcade
   const ownedSpriteOwners = new WeakMap();
   const ownedSpriteBridges = new WeakMap();
   const exceptionOwners = new WeakMap();
+  // Result of a dispatched user handler whose fiber ended with an uncaught exception.
+  const fiberDied = Object.freeze({});
   const procedureOwners = new WeakMap();
   const scoreNumberOwners = new WeakMap();
   const scoreThresholdRegistrations = new WeakMap();
@@ -86,14 +88,19 @@ module.exports = makeExt(`// Name: Arcade
           return true;
         }});
       scoreNumberOwners.set(this,scoreNumberOwner);
-      const getterPrototype=Object.getPrototypeOf(this),getterMethods=new Map(
-        ['getInfo','spriteProperty'].map(name=>[name,Object.getOwnPropertyDescriptor(getterPrototype,name)?.value]));
-      const getterOwner=Object.freeze({isInstance:value=>value===this,isCurrent:()=>Object.getPrototypeOf(this)===getterPrototype &&
-        Object.getOwnPropertyDescriptor(this,'_runtime')?.value===runtime && [...getterMethods].every(([name,method])=>
-          typeof method==='function' && !Object.prototype.hasOwnProperty.call(this,name) &&
-          Object.getOwnPropertyDescriptor(getterPrototype,name)?.value===method)});
-      nullSpriteOwners.set(this,getterOwner);
-      nullSpriteFaults.set(this,dependencies.nullSpriteGetter.create(runtime,getterOwner));
+      // One sealed owner and fault service per faulting primitive (null Sprite
+      // getter, missing Sprite setter, missing Image operations).
+      const getterPrototype=Object.getPrototypeOf(this),getterOwners=new Map(),getterFaults=new Map();
+      for(const {method,kind} of dependencies.nullSpriteGetter.kinds){
+        const getterMethods=new Map(['getInfo',method].map(name=>[name,Object.getOwnPropertyDescriptor(getterPrototype,name)?.value]));
+        const getterOwner=Object.freeze({isInstance:value=>value===this,isCurrent:()=>Object.getPrototypeOf(this)===getterPrototype &&
+          Object.getOwnPropertyDescriptor(this,'_runtime')?.value===runtime && [...getterMethods].every(([name,method])=>
+            typeof method==='function' && !Object.prototype.hasOwnProperty.call(this,name) &&
+            Object.getOwnPropertyDescriptor(getterPrototype,name)?.value===method)});
+        getterOwners.set(method,getterOwner);getterFaults.set(method,kind.create(runtime,getterOwner));
+      }
+      nullSpriteOwners.set(this,getterOwners);
+      nullSpriteFaults.set(this,getterFaults);
       let clockScenes;
       const clockPrototype=Object.getPrototypeOf(this),clockMethods=new Map(
         ['getInfo','sceneMillis','_state','_ensureSceneEngine','_activateScene','pushScene','popScene'].map(name=>
@@ -132,7 +139,7 @@ module.exports = makeExt(`// Name: Arcade
       this._fallbackState = null;
       // Palette is display state shared by every scene, never an image mutation.
       this._projectPalette = null;
-      this._sceneStack = [];this._sceneParents=new WeakMap();this._seeThroughSources=new WeakMap();this._renderingScenes=new WeakSet();this._sceneFrames=new WeakMap();this._pendingSceneSeconds=new WeakMap();
+      this._sceneStack = [];this._sceneParents=new WeakMap();this._seeThroughSources=new WeakMap();this._renderingScenes=new WeakSet();this._sceneFrames=new WeakMap();this._pendingSceneSeconds=new WeakMap();this._frameFaults=new WeakSet();
       this._sceneBundles = new Set();
       this._sceneFlags=dependencies.sceneFlags.create();
       this._particleScenes=new WeakMap();this._particleOverlays=new Map();this._particleAnchors=new WeakMap();
@@ -276,7 +283,7 @@ module.exports = makeExt(`// Name: Arcade
               runtime.renderer?.destroyDrawable(bundle[key].drawable,'background');runtime.renderer?.destroySkin(bundle[key].skin);
             }
           }
-          this._sceneBundles.clear();this._sceneStack=[];this._sceneParents=new WeakMap();this._seeThroughSources=new WeakMap();this._renderingScenes=new WeakSet();this._sceneFrames=new WeakMap();this._pendingSceneSeconds=new WeakMap();
+          this._sceneBundles.clear();this._sceneStack=[];this._sceneParents=new WeakMap();this._seeThroughSources=new WeakMap();this._renderingScenes=new WeakSet();this._sceneFrames=new WeakMap();this._pendingSceneSeconds=new WeakMap();this._frameFaults=new WeakSet();
           this._scenePushHandlers=[];this._scenePopHandlers=[];this._globalElapsedMs=0;this._nextMultiplayerState=2;this._buttonStates={};this._repeatDefaults={delay:500,interval:30};this._controllerConnections={};this._controllerInputs={};this._userControllerEvents=true;this._cancelNativeTextDialogs();
           this._activeLegacyAnimations=new Set();this._updateHandlers=[];this._intervalHandlers=[];this._buttonHandlers=[];
           this._destroyedHandlers=[];this._overlapHandlers=[];this._foreverHandlers=[];this._countdownHandlers=[];
@@ -344,7 +351,7 @@ module.exports = makeExt(`// Name: Arcade
     getInfo() {
       const str = (name, def) => ({ [name]: { type: Scratch.ArgumentType.STRING, defaultValue: def || '' } });
       const n = (name, def) => ({ [name]: { type: Scratch.ArgumentType.NUMBER, defaultValue: def == null ? 0 : def } });
-      return dependencies.frameDeltaNumber.declaration(dependencies.sceneClockNumber.declaration(dependencies.nullSpriteGetter.declaration(dependencies.createConsoleInspectValues.scoreInfo({
+      return dependencies.frameDeltaNumber.declaration(dependencies.sceneClockNumber.declaration(dependencies.nullSpriteGetter.declareAll(dependencies.createConsoleInspectValues.scoreInfo({
         id: 'arcade',
         name: 'Arcade',
         color1: '#E64980',
@@ -1132,7 +1139,7 @@ module.exports = makeExt(`// Name: Arcade
           spriteFlags: {acceptReporters: false, items: Object.keys(spriteFlags)}
           ,speechModes: {acceptReporters: false, items: ['text', 'legacy']}
         }
-      },scoreNumberOwners.get(this)),nullSpriteOwners.get(this)),sceneClockOwners.get(this)),frameDeltaOwners.get(this));
+      },scoreNumberOwners.get(this)),method=>nullSpriteOwners.get(this).get(method)),sceneClockOwners.get(this)),frameDeltaOwners.get(this));
     }
 
     // An owned runtime may inject {now:()=>milliseconds} for deterministic
@@ -1540,8 +1547,9 @@ module.exports = makeExt(`// Name: Arcade
           if(typeof registration==='function')return registration();
           const pending=this._runTerrainGenerator(this._registeredCallbackSteps([registration],'arcade_whenRegisteredControlEvent',{},undefined,true));
           if(pending?.then)this._runtime?._arcadeFramePhase?.requestContinuation().catch(error=>this._runtime.emit('BLOCKS_ERROR',error.message));
-          return pending;
+          return pending?.then?pending.then(faulted=>faulted===true?fiberDied:faulted):pending===true?fiberDied:pending;
         },
+        died:result=>result===fiberDied,
         onError:error=>this._runtime?.emit?.('BLOCKS_ERROR',error.message)
       });
       if(!this._controllerEventIds){
@@ -1665,7 +1673,9 @@ module.exports = makeExt(`// Name: Arcade
       const handlers=this._buttonHandlers.filter(h=>h.player===number && h.button===button && h.event===event);
       for(const handler of handlers){
         if(handler.host){handler.host();continue;}
-        yield* this._registeredCallbackSteps([handler.mp?handler.mp.registration:handler],handler.mp?'arcade_whenRegisteredMultiplayerButton':'arcade_whenRegisteredButton',handler.mp?{player:handler.playerValue}:{},undefined,deferred);
+        // A handler fiber that died keeps its event queue locked: later events of this button never run it.
+        if(handler.fiberDied)continue;
+        if(yield* this._registeredCallbackSteps([handler.mp?handler.mp.registration:handler],handler.mp?'arcade_whenRegisteredMultiplayerButton':'arcade_whenRegisteredButton',handler.mp?{player:handler.playerValue}:{},undefined,deferred))handler.fiberDied=true;
       }
     }
     registerDestroyedHandler(args,util) {if(this._kindValue(args.KIND)==null)return;this._destroyedHandlers.push(this._handlerRegistration(args,util));}
@@ -1699,7 +1709,8 @@ module.exports = makeExt(`// Name: Arcade
       for(const h of this._foreverHandlers.slice())if(!h.lock){
         h.lock=true;
         const work=this._runTerrainGenerator(this._registeredCallbackSteps([h],'arcade_whenRegisteredForever',{}));
-        if(work?.then)work.finally(()=>{h.lock=false;});else h.lock=false;
+        // PXT's h.lock = false follows h.handler() in the same fiber, so a handler that dies stays locked.
+        if(work?.then)work.then(faulted=>{if(faulted!==true)h.lock=false;},error=>{h.lock=false;throw error;});else if(work!==true)h.lock=false;
       }
       this._scheduleForever(20);
       // A handler that waits continues in source turns, which arm its timers.
@@ -1868,11 +1879,14 @@ module.exports = makeExt(`// Name: Arcade
     }
     whenRegisteredScenePush(args,util) {return this.whenRegisteredWall(args,util);}
     whenRegisteredScenePop(args,util) {return this.whenRegisteredWall(args,util);}
+    // Returns true when a callback fiber died with an uncaught exception (PXT:
+    // the fiber ends and whatever waited on its completion never resumes).
     *_registeredCallbackSteps(registrations,opcode,event,util,deferred=false) {
-      const runtime=this._runtime;if(!runtime?.allScriptsByOpcodeDo || !runtime?._pushThread)return;
+      const runtime=this._runtime;if(!runtime?.allScriptsByOpcodeDo || !runtime?._pushThread)return false;
+      let faulted=false;
       // Scene transitions do not cancel callback fibers already running.
       for(const registration of registrations){
-        if(registration.host){yield registration.host();if(this._terrainStopped)return;continue;}
+        if(registration.host){yield registration.host();if(this._terrainStopped)return faulted;continue;}
         const scripts=[];
         runtime.allScriptsByOpcodeDo(opcode,(script,target)=>{
           const hat=target.blocks.getBlock(script.blockId),token=target.blocks.getBlock(hat.inputs?.TOKEN?.block);
@@ -1886,9 +1900,11 @@ module.exports = makeExt(`// Name: Arcade
           finally{if(util){util.thread=caller;util.sequencer=runtime.sequencer;}runtime.sequencer.activeThread=active;}
           if(thread.status!==thread.constructor.STATUS_DONE && !thread.isKilled && runtime.threads.includes(thread))
             yield new Promise(resolve=>this._terrainWaits.add({thread,resolve}));
-          if(this._terrainStopped)return;
+          if(this._terrainStopped)return faulted;
+          if(exceptionOwners.get(this).failure(thread))faulted=true;
         }
       }
+      return faulted;
     }
     _keyboardButtonEdge(key,isDown) {
       const button={'space':'a','Z':'b','enter':'start','M':'select','left arrow':'left','up arrow':'up','right arrow':'right','down arrow':'down'}[String(key)];
@@ -1964,10 +1980,21 @@ module.exports = makeExt(`// Name: Arcade
         if(this._state()!==state)return;
       }
     }
+    // PXT runs every frame callback of a scene's event context in one fiber
+    // (control.EventContext.registerFrameCallbacks). An uncaught exception in
+    // any of them (controller, intervals, updates, paint, shade) ends that
+    // fiber: the scene's physics, timers and screen stop for good, even when
+    // the scene is later restored. Button, forever and overlap fibers are other
+    // fibers and keep running. Returns true so callers end the frame.
+    _faultFrameLoop(state) {
+      this._frameFaults.add(state);this._sceneFrameHost?.kill(state);return true;
+    }
     *_sceneUpdates() {
       const state=this._state();
       for(const h of this._intervalHandlers.slice())if(h.timer<=(state.elapsedMs || 0)){
-        h.timer=(state.elapsedMs || 0)+h.interval;yield* this._registeredCallbackSteps([h],'arcade_whenRegisteredInterval',{});if(this._state()!==state)return;
+        h.timer=(state.elapsedMs || 0)+h.interval;
+        if(yield* this._registeredCallbackSteps([h],'arcade_whenRegisteredInterval',{}))return this._faultFrameLoop(state);
+        if(this._state()!==state)return;
       }
       // PXT iterates its frame callbacks live: a handler registered during
       // this frame's updates runs later in the same frame. Extension
@@ -1975,7 +2002,7 @@ module.exports = makeExt(`// Name: Arcade
       const updates=this._updateHandlers;
       for(let i=0;i<updates.length;i++){
         if(updates[i].host)updates[i].host();
-        else yield* this._registeredCallbackSteps([updates[i]],'arcade_whenRegisteredUpdate',{});
+        else if(yield* this._registeredCallbackSteps([updates[i]],'arcade_whenRegisteredUpdate',{}))return this._faultFrameLoop(state);
         if(this._state()!==state)return;
       }
       // PXT particles.init registers game.onUpdate and onUpdateInterval(250)
@@ -3845,7 +3872,8 @@ module.exports = makeExt(`// Name: Arcade
           thread.bwArcadeEvent={A:h.kind,B:h.otherKind,first:a.id,second:b.id};
           work=new Promise(resolve=>this._terrainWaits.add({thread,resolve}));
         }else work=this._runTerrainGenerator(this._registeredCallbackSteps([h],'arcade_whenRegisteredOverlap',{first:a.id,second:b.id,deferredFiber:true},undefined,true));
-        if(work?.then)work.finally(finish);else finish();
+        // PXT removes the pair from _overlappers after the handler returns; a dead fiber leaves it overlapping.
+        if(work?.then)work.then(faulted=>{if(faulted!==true)finish();},error=>{finish();throw error;});else if(work!==true)finish();
       }
     }
     _physicsOverlapRounds(grid,handlers,owner) {
@@ -4067,11 +4095,13 @@ module.exports = makeExt(`// Name: Arcade
       const image=this._image(args.IMAGE);
       if(image){imageEngine.scroll(image,args.X,args.Y);this._refreshImage(image);}
     }
-    mutateImage(args) {
+    mutateImage(args,util) {
+      if(this._missingOperand(util,args,'IMAGE')&&['fill','replace','flipX','flipY'].includes(args.OP))return this._primitiveFault('mutateImage',args,util);
       const image = this._image(args.IMAGE);
       if (image && imageEngine.mutate(image, String(args.OP), args.COLOR, args.TO)) this._refreshImage(image);
     }
-    setImagePixel(args) {
+    setImagePixel(args,util) {
+      if(this._missingOperand(util,args,'IMAGE'))return this._primitiveFault('setImagePixel',args,util);
       const image = this._image(args.IMAGE);
       if (image) { imageEngine.draw(image, 'setPixel', args.X, args.Y, args.COLOR); this._refreshImage(image); }
     }
@@ -4079,20 +4109,23 @@ module.exports = makeExt(`// Name: Arcade
       const image = this._image(args.IMAGE);
       return image ? imageEngine.getPixel(image, args.X, args.Y) : 0;
     }
-    drawImageCircle(args) {
+    drawImageCircle(args,util) {
+      if(this._missingOperand(util,args,'IMAGE')&&['drawCircle','fillCircle'].includes(args.OP))return this._primitiveFault('drawImageCircle',args,util);
       const image = this._image(args.IMAGE);
       if(image && ['drawCircle','fillCircle'].includes(String(args.OP))) {
         imageEngine.draw(image,String(args.OP),args.X,args.Y,args.RADIUS,args.COLOR);
         this._refreshImage(image);
       }
     }
-    drawImage(args) {
+    drawImage(args,util) {
+      if(this._missingOperand(util,args,'IMAGE')&&['fillRect','drawLine'].includes(args.OP))return this._primitiveFault('drawImage',args,util);
       const image = this._image(args.IMAGE);
       if (image && ['fillRect', 'drawLine'].includes(String(args.OP))) {
         imageEngine.draw(image, String(args.OP), args.X, args.Y, args.W, args.H, args.COLOR); this._refreshImage(image);
       }
     }
-    blitImage(args) {
+    blitImage(args,util) {
+      if(this._missingOperand(util,args,'IMAGE','SOURCE')&&['drawImage','drawTransparentImage'].includes(args.OP))return this._primitiveFault('blitImage',args,util);
       const image = this._image(args.IMAGE), source = this._image(args.SOURCE);
       if (image && source && ['drawImage', 'drawTransparentImage'].includes(String(args.OP))) {
         imageEngine.blit(image, source, String(args.OP), args.X, args.Y);this._refreshImage(image);
@@ -4306,7 +4339,8 @@ module.exports = makeExt(`// Name: Arcade
         }
       }
     }
-    setSpriteImage(args) {
+    setSpriteImage(args,util) {
+      if(this._missingOperand(util,args,'ID'))return this._primitiveFault('setSpriteImage',args,util);
       const sprite = this._spriteValues.get(String(args.ID)) || this._sprite(args.ID), image = this._image(args.IMAGE);
       if (!sprite || !image) return;
       // Keep the same private skin while image frames change. Restoring the
@@ -5622,8 +5656,9 @@ module.exports = makeExt(`// Name: Arcade
             try {
               if(object.drawSteps)yield* object.drawSteps(screen);
               else if(object.draw)object.draw(screen);
-              else yield* this._registeredCallbackSteps([object],object.z===-20?'arcade_whenRegisteredPaint':'arcade_whenRegisteredShade',{});
+              else if(yield* this._registeredCallbackSteps([object],object.z===-20?'arcade_whenRegisteredPaint':'arcade_whenRegisteredShade',{}))this._faultFrameLoop(active);
             } finally {delete owner._renderPass;}
+            if(this._frameFaults.has(active))return;
             if(this._state()!==active || epoch!==this._terrainEpoch)return;
             const writes=new Uint8Array(screen.pixels.length);for(let i=0;i<writes.length;i++)if(screen.pixels[i]!==before[i])writes[i]=1;
             output.layers.push({image:{width:160,height:120,pixels:screen.pixels.slice()},writes,x:0,y:0,z:object.z,id:object.id,source:object});
@@ -5635,6 +5670,7 @@ module.exports = makeExt(`// Name: Arcade
     }
     *_composeSceneSteps() {
       const epoch=this._terrainEpoch,state=this._state(),renderables=this._renderables.get(state);
+      const previousUpdateMs=this._lastScreenUpdateMs;
       this._lastScreenUpdateMs=this._screenClock();
       if(state.flags & 4)return state.sceneFrame;
       if(!renderables?.length && !state.seeThrough){
@@ -5644,16 +5680,34 @@ module.exports = makeExt(`// Name: Arcade
       }
       const screen=this._screenRaw(),output={layers:[],missingSpriteImages:[]};
       yield* this._drawSceneOwnerSteps(state,screen,state,epoch,output);
+      // A renderable that died mid-frame leaves the screen as drawn so far (PXT shows its shared screen buffer).
       if(this._state()!==state || epoch!==this._terrainEpoch)return;
       if(state._askPaintDone){state._askPaintDone=false;return state.sceneFrame;}
-      const frame=state.sceneFrame || (state.sceneFrame={width:160,height:120,pixels:new Uint8Array(160*120)});
-      frame.pixels.set(screen.pixels);
-      frame.coverage=['background','tilemap','sprites','modernSpeech','particles','renderables'];
-      frame.remaining=['hud','legacySpeech','effects'];
-      frame.missingSpriteImages=output.missingSpriteImages;
-      frame.sequence=(frame.sequence || 0)+1;
-      this._renderOverlayLayers(output.layers);
-      return frame;
+      const publish=pixels=>{
+        const frame=state.sceneFrame || (state.sceneFrame={width:160,height:120,pixels:new Uint8Array(160*120)});
+        frame.pixels.set(pixels);
+        frame.coverage=['background','tilemap','sprites','modernSpeech','particles','renderables'];
+        frame.remaining=['hud','legacySpeech','effects'];
+        frame.missingSpriteImages=output.missingSpriteImages;
+        frame.sequence=(frame.sequence || 0)+1;
+        this._renderOverlayLayers(output.layers);
+        return frame;
+      };
+      if(this._frameFaults.has(state)){
+        // The frame fiber died mid-render, so no screen update ran. The display keeps the
+        // last frame until PXT's 200 ms fallback refresh (screen/frame.ts) copies the
+        // shared screen buffer as drawn so far.
+        this._lastScreenUpdateMs=previousUpdateMs;
+        const partial=screen.pixels.slice(),now=this._screenClock(),last=previousUpdateMs ?? now;
+        const refreshIn=Math.max(0,200*(Math.ceil(last/200-1e-9)+1)-now),clock=this._programClockEpoch;
+        if(this._sourceSceneTimers() && clock?.setTimeout)clock.setTimeout(()=>{
+          if(epoch!==this._terrainEpoch || !clock.active)return;
+          publish(partial);this._changed();
+        },refreshIn)?.unref?.();
+        else {publish(partial);}
+        return state.sceneFrame;
+      }
+      return publish(screen.pixels);
     }
     _scalePixelTarget(target) {
       target.setSize?.(75);
@@ -5801,13 +5855,19 @@ module.exports = makeExt(`// Name: Arcade
       }
       return sprite.pxtId + '(' + sprite.x + ',' + sprite.y + ')->(' + sprite.vx + ',' + sprite.vy + ')';
     }
+    // A missing Sprite or Image is an uncaught PXT exception at the call. Only a
+    // physical primitive invocation may raise it, through its sealed fault kind.
+    _missingOperand(util,args,...names) {return !!util && names.some(name=>dependencies.nullSpriteGetter.isMissing(args[name]));}
+    _primitiveFault(method,args,util) {
+      const fault=nullSpriteFaults.get(this).get(method).fault(args,util);
+      return exceptionOwners.get(this).rejectPrimitiveFault(args,util,fault.error,fault.lease);
+    }
     spriteProperty(args, util) {
       // The VM already evaluated this receiver. Actual null is distinct from
       // missing IDs, tagged objects, Undefined and the ordinary text "null".
       const receiver=args.ID;
       if(receiver===null && util && ['x','y','width','height'].includes(args.PROPERTY)) {
-        const fault=nullSpriteFaults.get(this).fault(args,util);
-        return exceptionOwners.get(this).rejectPrimitiveFault(args,util,fault.error,fault.lease);
+        return this._primitiveFault('spriteProperty',args,util);
       }
       const event = util?.thread?.bwArcadeEvent;
       const sprite = this._spriteValues.get(String(receiver)) || this._sprite(receiver) ||
@@ -6253,7 +6313,7 @@ module.exports = makeExt(`// Name: Arcade
       this._runtime.startHats('arcade_whenUpdate');
     }
     _advance(dt) {
-      if(this._terrainStopped || this._dialogs?.[0]?.type==='ask')return;
+      if(this._terrainStopped || this._dialogs?.[0]?.type==='ask' || this._frameFaults.has(this._state()))return;
       const owner=this._state();
       const elapsed=(this._pendingSceneSeconds.get(owner) || 0)+dt;
       this._pendingSceneSeconds.set(owner,elapsed);
@@ -6287,13 +6347,14 @@ module.exports = makeExt(`// Name: Arcade
       const live = Object.values(state.sprites).filter(s => s.id);
       this._moveControlledSprites(live);yield* this._moveFollowingSpriteSteps();
       if(epoch!==this._terrainEpoch || this._state()!==state)return;
-      if (!live.length && !state.physicsEngine.members.length) {this._runFrameHandlers(state,0,19);yield* this._sceneUpdates();if(this._state()!==state)return;this._advanceAnimations(dt);this._updateCamera();this._runFrameHandlers(state);if(state.tilemap?.legacy)this._renderTilemap(true);yield* this._advanceSpeechSteps(dt);if(this._state()!==state)return;yield* this._composeSceneSteps();if(this._state()!==state || epoch!==this._terrainEpoch || state._defaultGameOverPending)return;this._startFrameHats();return;}
+      if (!live.length && !state.physicsEngine.members.length) {this._runFrameHandlers(state,0,19);if(yield* this._sceneUpdates())return;if(this._state()!==state)return;this._advanceAnimations(dt);this._updateCamera();this._runFrameHandlers(state);if(state.tilemap?.legacy)this._renderTilemap(true);yield* this._advanceSpeechSteps(dt);if(this._state()!==state)return;yield* this._composeSceneSteps();if(this._state()!==state || epoch!==this._terrainEpoch || state._defaultGameOverPending)return;if(!this._frameFaults.has(state))this._startFrameHats();return;}
       yield* this._advancePhysicsSteps(state.physicsEngine.members.slice(),dt,state.tilemap);
       if(epoch!==this._terrainEpoch || this._state()!==state)return;
       for(const sprite of live)if(state.sprites[sprite.id])this._positionSprite(sprite.id);
       // Extension handlers at ANIMATION_UPDATE_PRIORITY (15) follow physics.
       this._runFrameHandlers(state,0,19);
-      yield* this._sceneUpdates();if(this._state()!==state)return;
+      if(yield* this._sceneUpdates())return;
+      if(this._state()!==state)return;
       this._advanceAnimations(dt);
       this._updateCamera();
       // Extension frame handlers at PXT's pre-render priority (after the camera).
@@ -6308,7 +6369,7 @@ module.exports = makeExt(`// Name: Arcade
       yield* this._composeSceneSteps();
       if(this._state()!==state || epoch!==this._terrainEpoch || state._defaultGameOverPending)return;
       this._changed();
-      this._startFrameHats();
+      if(!this._frameFaults.has(state))this._startFrameHats();
     }
     *_sdkSpriteBaseUpdateSteps(sprite,dt,camera) {
       // Selected Sprite.__update orders lifespan, AutoDestroy, then speech.
@@ -6412,7 +6473,7 @@ module.exports = makeExt(`// Name: Arcade
   frameDeltaNumber,
   bindFrameDeltaAdapterInfo: frameDeltaNumber.bindAdapterInfo,
   nullSpriteGetter,
-  bindNullSpriteAdapterInfo: nullSpriteGetter.bindAdapterInfo,
+  bindNullSpriteAdapterInfo: nullSpriteGetter.bindAll,
   createProcedureConstraints: require('./procedure-parameter-constraints'),
   procedureEntry: require('../../../util/bw-procedure-entry'),
   createManagedReturnValues: require('./managed-return-values'),
