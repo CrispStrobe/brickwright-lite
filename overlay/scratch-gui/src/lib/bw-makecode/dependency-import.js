@@ -31,7 +31,7 @@ export async function importDependencyProjectFiles(files, options, importFiles) 
     const dependencyInputs = {target:opts.target, declaredDependencies,
         diagnostics:{resolution:{status:'unavailable'},preparation:{status:'unavailable'},translation:{status:'unavailable'}}};
     const resolverFiles = {...snapshot}, resolverOptions = {};
-    for (const key of ['fetchExtensions','fetch','baseUrl']) if (Object.prototype.hasOwnProperty.call(opts,key)) resolverOptions[key] = opts[key];
+    for (const key of ['fetchExtensions','fetch','baseUrl','fetchOptions']) if (Object.prototype.hasOwnProperty.call(opts,key)) resolverOptions[key] = opts[key];
     let resolved;
     try {
         const resolve = opts.resolveProjectInputs || (async (target,current,settings) => {
