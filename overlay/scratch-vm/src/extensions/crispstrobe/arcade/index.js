@@ -4736,7 +4736,7 @@ module.exports = makeExt(`// Name: Arcade
       const go=this._gameOverState();
       if(go.over)return;
       go.over=true;
-      const {game}=this._gameOverModule(),goc=go.config,state=this._infoState();
+      const ext=this,{game}=this._gameOverModule(),goc=go.config,state=this._infoState();
       const judged=goc.scoringType!==game.ScoringType.None;
       const players=(state.players || []).map((player,index)=>({number:index+1,score:player?.score})).filter(player=>player.score!==undefined);
       const best=this._highScore===undefined?null:this._highScore;
@@ -4757,7 +4757,12 @@ module.exports = makeExt(`// Name: Arcade
       scene.backgroundImage={width:160,height:120,pixels:shown};this._renderBackgroundImage();
       if(sound)this._music().spawn(this._music().pxt.music.play(sound,mode));
       if(effect?.kind==='particle')this.startScreenEffect({EFFECT:effect.name,DURATION:0});
-      else if(effect?.kind==='image')this._particles().effects[effect.name].startScreenEffect();
+      else if(effect?.kind==='image') {
+        // An image effect runs in control.runInParallel: its first step comes after
+        // the fiber that started it yields, i.e. after the new scene's first frame.
+        const imageEffect=this._particles().effects[effect.name],start=()=>{if(ext._state()===scene)imageEffect.startScreenEffect();};
+        if(scene._framesDone)start();else (scene._afterFrame || (scene._afterFrame=[])).push(start);
+      }
       await this._arcadePause(400);
       if(this._state()!==scene)return;
       const dialog=new game.GameOverDialog(win,message,judged,scores,previousBest,undefined);
@@ -4768,7 +4773,10 @@ module.exports = makeExt(`// Name: Arcade
       await this._arcadePause(500);
       dialog.displayCursor();
       await this._nextButtonPress();
-      // control.reset restarts the program.
+      // control.reset restarts the program. A host that owns restarts (the
+      // differential harness: the original simulator only posts a restart
+      // message to its parent) holds it and counts the request instead.
+      if(this._runtime?.bwArcadeHoldControlReset){this._runtime.bwArcadeControlResets=(this._runtime.bwArcadeControlResets || 0)+1;return;}
       this._runtime?.stopAll?.();
       this._runtime?.greenFlag?.();
     }
@@ -6182,6 +6190,15 @@ module.exports = makeExt(`// Name: Arcade
       return result;
     }
     *_advanceFrameSteps(dt) {
+      const epoch=this._terrainEpoch,owner=this._state();
+      try {yield* this._advanceFrameBody(dt);}
+      finally {
+        owner._framesDone=(owner._framesDone || 0)+1;
+        const queued=owner._afterFrame;owner._afterFrame=undefined;
+        if(queued && epoch===this._terrainEpoch)for(const start of queued)start();
+      }
+    }
+    *_advanceFrameBody(dt) {
       const epoch=this._terrainEpoch;
       const state = this._state();
       state.frameDeltaTime=dt;
