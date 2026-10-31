@@ -159,6 +159,22 @@ test('platform draws are served from a separate stream, so program draw k is the
     assert.equal((0, eval)(PRNG_SOURCE)(1, true)(), 0.5);
 });
 
+test('library generator seeds get one fixed value, independent of platform draws and construction order', () => {
+    const make = () => (0, eval)(PRNG_SOURCE)(5, false, 'platformCode', 'seedCode');
+    const a = make(), b = make();
+    const platformCode = d => d(), seedCode = d => d();
+    // Side A has platform bookkeeping and seeds twice before the program; side B seeds once, later.
+    platformCode(a); platformCode(a);
+    const seedsA = [seedCode(a), seedCode(a)];
+    const programA = a(), programB = b();
+    const seedB = seedCode(b);
+    assert.equal(seedsA[0], seedsA[1]);
+    assert.equal(seedB, seedsA[0]);
+    assert.equal(programA, programB, 'seeds are not program draws');
+    assert.equal(a.count, 1);
+    assert.equal(b.count, 1);
+});
+
 test('a difference while the Brickwright text prompt is up is attributed to the prompt, and diverging random draws are located', () => {
     const a = recording(4, k => ({draws: k < 2 ? 3 : 5}));
     const b = recording(4, k => ({draws: k < 2 ? 3 : 7, textPrompt: true, pix: withPixel(80, 60)}));

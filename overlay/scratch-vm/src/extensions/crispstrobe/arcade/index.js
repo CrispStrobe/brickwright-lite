@@ -33,6 +33,18 @@ module.exports = makeExt(`// Name: Arcade
   const nullSpriteOwners = new WeakMap();
   const nullSpriteFaults = new WeakMap();
   const procedureEntryDisposers = new WeakMap();
+  // An image sprite's opacity mask is derived from its pixels when it is read.
+  // Drawing into the image (often many draws per frame) only marks it stale.
+  // Assigning a mask (costume artwork) turns it back into plain data.
+  const imageMasks = new WeakMap();
+  function markImageMask(sprite) {
+    const entry=imageMasks.get(sprite);
+    if(entry && Object.getOwnPropertyDescriptor(sprite,'mask')?.get){entry.stale=true;return;}
+    imageMasks.set(sprite,{stale:true,mask:null});
+    Object.defineProperty(sprite,'mask',{configurable:true,enumerable:true,
+      get(){const own=imageMasks.get(sprite);if(own.stale){const pixels=sprite.image?.pixels;if(pixels)own.mask=pixels.map(color=>color?1:0);own.stale=false;}return own.mask;},
+      set(value){imageMasks.delete(sprite);Object.defineProperty(sprite,'mask',{configurable:true,enumerable:true,writable:true,value});}});
+  }
   const speechPalette = ['#000000', '#ffffff', '#ff2121', '#ff93c4', '#ff8135', '#fff609',
     '#249ca3', '#78dc52', '#003fad', '#87f2ff', '#8e2ec4', '#a4839f', '#5c406c', '#e5cdc4', '#91463d', '#000000'];
 
@@ -238,7 +250,7 @@ module.exports = makeExt(`// Name: Arcade
           this._terrainEpoch++;this._terrainFrame = null;this._terrainStopped = true;
           for (const pending of this._terrainWaits) {runtime.sequencer?.retireThread(pending.thread);pending.resolve();}
           this._terrainWaits.clear();
-          if(this._foreverTimer!==undefined)clearTimeout(this._foreverTimer);this._foreverTimer=undefined;
+          if(this._foreverTimer!==undefined)this._foreverTimer.clear(this._foreverTimer.handle);this._foreverTimer=undefined;
         };
         runtime.on('PROJECT_STOP_ALL', () => {procedureOwners.get(this).invalidate();this._sourceScalarCells.invalidate();this._sourceTypeOf.invalidateInputs();this._consoleInspectValues.invalidate();managedReturnHosts.get(this).invalidate();});
         runtime.on('RUNTIME_DISPOSED', () => {procedureEntryDisposers.get(this)?.();procedureOwners.get(this).dispose();spriteOwner.dispose();imageOwner.dispose();this._sourceScalarCells.dispose();this._sourceTypeOf.invalidateInputs();this._consoleInspectValues.invalidate();managedReturnHosts.get(this).invalidate();this._sourceTypeOfDisposed=true;this._consoleInspectValues.dispose();managedReturnHosts.get(this).dispose();});
@@ -1667,16 +1679,32 @@ module.exports = makeExt(`// Name: Arcade
     whenParallelHandler(args,util) {return this.whenRegisteredWall(args,util);}
     registerForeverHandler(args,util) {
       this._foreverHandlers.push({...this._handlerRegistration(args,util),lock:false});
-      if(this._foreverTimer===undefined){this._foreverTimer=setTimeout(()=>this._pumpForever(),0);this._foreverTimer?.unref?.();}
+      if(this._foreverTimer===undefined)this._scheduleForever(0);
     }
-    _pumpForever() {
-      if(this._terrainStopped){this._foreverTimer=undefined;return;}
+    // PXT game.forever: one fiber that starts each unlocked handler of the
+    // current scene, then pause(20). The pause is on the program clock when
+    // source timers own time; a host timer would follow wall time instead.
+    _scheduleForever(delay) {
+      const source=this._sourceSceneTimers(),clock=source?this._programClockEpoch:null,epoch=this._terrainEpoch;
+      const timer={clear:source?clock.clearTimeout:clearTimeout};
+      timer.handle=(source?clock.setTimeout:setTimeout)(()=>{
+        if(this._foreverTimer!==timer)return;
+        this._foreverTimer=undefined;
+        if(epoch===this._terrainEpoch)this._pumpForever(source);
+      },delay);
+      timer.handle?.unref?.();this._foreverTimer=timer;
+    }
+    _pumpForever(source) {
+      if(this._terrainStopped)return;
       for(const h of this._foreverHandlers.slice())if(!h.lock){
         h.lock=true;
         const work=this._runTerrainGenerator(this._registeredCallbackSteps([h],'arcade_whenRegisteredForever',{}));
         if(work?.then)work.finally(()=>{h.lock=false;});else h.lock=false;
       }
-      this._foreverTimer=setTimeout(()=>this._pumpForever(),20);this._foreverTimer?.unref?.();
+      this._scheduleForever(20);
+      // A handler that waits continues in source turns, which arm its timers.
+      if(source && this._sourceSceneTimers())this._runtime._arcadeFramePhase.requestContinuation()
+        .catch(error=>this._runtime?.emit?.('BLOCKS_ERROR',String(error?.message || error)));
     }
     setHudVisibility(args) {
       const methods={score:'showScore',life:'showLife',countdown:'showCountdown'};
@@ -2077,7 +2105,8 @@ module.exports = makeExt(`// Name: Arcade
       }
       if(self===target)return;
       const state=this._state();
-      if(!state.followingSprites){state.followingSprites=[];state.followLastTime=this._globalElapsedMs;}
+      // PXT follow times its turn-rate clamp with game.runtime(): the scene's own clock.
+      if(!state.followingSprites){state.followingSprites=[];state.followLastTime=state.elapsedMs || 0;}
       const speed=Scratch.BWValues.decode(args.SPEED),turn=Scratch.BWValues.decode(args.TURN);
       const rate=Number(speed===undefined?100:speed),turnRate=Number(turn===undefined?400:turn);
       const binding=state.followingSprites.find(entry=>entry.self===self);
@@ -2094,7 +2123,7 @@ module.exports = makeExt(`// Name: Arcade
     unfollowSprite(args) {this.followSprite({ID:args.ID,TARGET:Scratch.BWValues.encode(null),SPEED:0,TURN:400});}
     _moveFollowingSprites() {return this._runTerrainGenerator(this._moveFollowingSpriteSteps());}
     *_moveFollowingSpriteSteps() {
-      const state=this._state(),epoch=this._terrainEpoch,now=this._globalElapsedMs;
+      const state=this._state(),epoch=this._terrainEpoch,now=state.elapsedMs || 0;
       if(!state.followingSprites)return;
       const dt=(now-state.followLastTime)/1000;
       for(const {self,target,rate,turnRate} of state.followingSprites){
@@ -4746,8 +4775,18 @@ module.exports = makeExt(`// Name: Arcade
     screenImage() {return this._imageHandle(this._screenRaw());}
     // ---- music: PXT's mixer runs as fibers on the Arcade clock (music.js) ----
     _music() {
+      // Source timers: PXT fibers run on the program clock and resume from their
+      // own pause deadline (a timer), not at the next scene frame's pump.
       if(!this._musicHost)this._musicHost=dependencies.createMusic({initializePxtMusic:dependencies.initializeMusic,
-        clock:()=>this._globalElapsedMs,audioContext:()=>this._runtime?.audioEngine?.audioContext || null,
+        clock:()=>this._sourceSceneTimers()?this._programMillis():this._globalElapsedMs,
+        wake:delay=>{
+          if(!this._sourceSceneTimers())return;
+          const epoch=this._programClockEpoch;
+          const handle=epoch.setTimeout(()=>{
+            if(this._programClockEpoch!==epoch || !epoch.active || !this._sourceSceneTimers())return;
+            this._musicHost?.pump();this._runtime._arcadeFramePhase.requestContinuation().catch(error=>this._runtime?.emit?.('BLOCKS_ERROR',String(error?.message || error)));
+          },delay);handle?.unref?.();
+        },audioContext:()=>this._runtime?.audioEngine?.audioContext || null,
         onError:error=>this._runtime?.emit?.('BLOCKS_ERROR',String(error?.message || error))});
       // The queued play instructions, for observation (newest last, bounded).
       if(this._runtime)this._runtime.bwArcadeMusicLog=this._musicHost.log;
@@ -5621,7 +5660,7 @@ module.exports = makeExt(`// Name: Arcade
     }
     _renderSpriteImage(id,window) {
       const sprite = this._sprite(id), target = this._state().spriteTargets[id];
-      sprite.mask = sprite.image.pixels.map(color => color ? 1 : 0);
+      markImageMask(sprite);
       const renderer = this._runtime?.renderer;
       if (renderer) {
         if(target?.drawableID!=null)this._scalePixelTarget(target);

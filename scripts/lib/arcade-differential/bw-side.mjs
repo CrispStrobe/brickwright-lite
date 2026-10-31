@@ -74,7 +74,7 @@ export function translateForBrickwright(source, name = 'differential') {
  * a program runs (clones, new blocks); they are served from a separate stream and are not counted.
  */
 export function installProgramEntropy(seed, constant) {
-    const draw = (0, eval)(PRNG_SOURCE)(seed, constant, 'util/uid\\.js|sb3-creator|new FastRandom');
+    const draw = (0, eval)(PRNG_SOURCE)(seed, constant, 'util/uid\\.js|sb3-creator', 'new FastRandom');
     globalThis.__bwDraw = draw; Math.random = draw;
 }
 
