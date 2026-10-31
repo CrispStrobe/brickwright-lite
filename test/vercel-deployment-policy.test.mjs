@@ -160,3 +160,11 @@ test('the Vercel production build is FLAG-ON, like the deployable GH Pages build
     assert.match(script, /@yowasp\/yosys/,
         'the in-browser local synthesis tier needs the real yosys package, not the absent-stub');
 });
+
+test('the Vercel production build ships the pinned MakeCode runtime, like the Pages build', () => {
+    const script = fs.readFileSync('scripts/vercel-build.sh', 'utf8');
+    const sync = script.indexOf('node scripts/sync-makecode-runtime.mjs');
+    assert.ok(sync >= 0, 'without static/makecode/ every MakeCode share link fails with target.json: HTTP 404');
+    assert.ok(script.indexOf('node scripts/integrate.mjs') < sync, 'integrate.mjs clears the synced runtime, so sync after it');
+    assert.ok(sync < script.indexOf('npm run build'), 'webpack copies static/ into the build, so sync before it');
+});
