@@ -585,7 +585,20 @@ class MicrobitTranslator extends BaseTranslator {
         case 'input.lightLevel': return 'read light';
         case 'input.temperature': return 'read temperature';
         case 'input.soundLevel': return 'read sound';
-        case 'input.runningTime': return 'timer * 1000';
+        case 'input.runningTime': case 'control.millis': return 'timer * 1000';
+        case 'input.runningTimeMicros': case 'control.micros': return 'timer * 1000000';
+        // The older radio reporters are the same packet properties as radio.receivedPacket(...).
+        case 'radio.receivedSerial': return 'last radio serial number';
+        case 'radio.receivedTime': return 'read last radio time';
+        case 'radio.receivedSignalStrength': return 'last radio signal strength';
+        case 'radio.receiveNumber': return 'read last radio number';
+        case 'radio.receiveString': return 'read last radio text';
+        // pins.map is Math.map: the formula, as Math.map is written out.
+        case 'pins.map': {
+            this.unsupported.push('pins.map() — written out as its formula; it goes back to MakeCode as arithmetic');
+            const [v, a0, b0, c0, d0] = [0, 1, 2, 3, 4].map(i => this.operand(a[i]));
+            return `((${v} - ${a0}) * (${d0} - ${c0}) / (${b0} - ${a0}) + ${c0})`;
+        }
         // Readable since sb3-creator b4a8129 closed the round trip: these
         // two spellings came out of the decompiler and had no rule going
         // back in, so writing them used to compile to silence.
@@ -1137,8 +1150,27 @@ class MicrobitTranslator extends BaseTranslator {
             push('FOREVER:');
             this.block(bodyOf(a[0]), indent + 1, out);
             return;
-        case 'control.inBackground':
+        case 'control.inBackground': case 'control.runInBackground': case 'control.runInParallel':
             this.block(bodyOf(a[0]), indent, out);
+            return;
+        // radio.on(): the radio at the group and power the program set (MakeCode's defaults: group 0).
+        case 'radio.on': {
+            const line = `${pad}radio on group ${this.radioGroup || '0'} power ${this.radioPower || '6'}`;
+            const last = this.radioLine;
+            if (last && last.out === out && last.index === out.length - 1 && last.pad === pad) out[last.index] = line;
+            else out.push(line);
+            this.radioLine = {out, index: out.length - 1, pad};
+            return;
+        }
+        // MicroPython's serial console is the USB port at its fixed rate with its own buffers: these have
+        // nothing to set, and are said so in a comment rather than refused.
+        case 'serial.setBaudRate': case 'serial.redirectToUSB': case 'serial.setRxBufferSize': case 'serial.setTxBufferSize':
+        case 'serial.setWriteLinePadding':
+            push(`# ${name} — MicroPython's serial console is the USB port; nothing to set`);
+            return;
+        // plotAll lights all 25: the same as showing a full grid.
+        case 'led.plotAll':
+            push('show leds 99999:99999:99999:99999:99999');
             return;
 
         case 'motors.dualMotorPower': {
@@ -1344,6 +1376,11 @@ const HANDLERS = {
         const button = translator.enumToken(a[0]) || 'a';
         return {test: `read button_${button}`, release: `read button_${button}`};
     },
+    'input.onShake': () => () => ({test: 'shake happening', release: null}),
+    'input.onScreenUp': () => () => ({test: 'face up happening', release: null}),
+    'input.onScreenDown': () => () => ({test: 'face down happening', release: null}),
+    'input.onLogoUp': () => () => ({test: 'tilt up happening', release: null}),
+    'input.onLogoDown': () => () => ({test: 'tilt down happening', release: null}),
     'input.onGesture': translator => a => {
         const gesture = translator.enumToken(a[0]) || 'shake';
         // A gesture is momentary; waiting for it to stop would hang.
