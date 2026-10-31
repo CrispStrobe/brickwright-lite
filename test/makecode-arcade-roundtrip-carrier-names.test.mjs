@@ -42,3 +42,20 @@ test('two sprites sharing artwork keep both carrier names', () => {
         'let two = sprites.create(sprites.food.smallBurger, SpriteKind.Enemy)\n');
     assert.deepEqual(before.filter(name => !after.includes(name)), []);
 });
+
+test('a sprite stored in a host-local variable keeps its carrier names (the exporter prefixes the variable)', () => {
+    const {before, after} = roundTrip(
+        'for (let i = 0; i < 3; i++) {\n    let boss: Sprite = sprites.create(sprites.castle.skellyFront, SpriteKind.Enemy)\n' +
+        '    boss.x = randint(0, 100)\n}\n');
+    assert.ok(before.includes('bossSprite'), 'the plain sprite is named after the variable');
+    assert.deepEqual(before.filter(name => !after.includes(name)), []);
+});
+
+test('two creations from the same built-in image share one bank and every sprite carrier stays', () => {
+    const {before, after, exported} = roundTrip(
+        'sprites.create(sprites.food.smallTaco, SpriteKind.Enemy)\n' +
+        'game.onUpdateInterval(500, function () {\n    sprites.create(sprites.food.smallTaco, SpriteKind.Enemy)\n})\n');
+    assert.equal((exported.files['main.ts'].match(/let __bwFrames_\w+: Image\[\]/g) || []).length, 1);
+    const missing = before.filter(name => !after.includes(name));
+    assert.deepEqual(missing.filter(name => !/^spriteArt\d*$/.test(name)), []);
+});
