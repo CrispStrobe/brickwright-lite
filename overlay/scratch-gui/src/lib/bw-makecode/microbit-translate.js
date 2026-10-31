@@ -28,6 +28,7 @@
 import {parseMakeCodeTs} from './ts-import.js';
 import {BaseTranslator, bodyOf, num} from './translate-base.js';
 import {MICROBIT_ICONS, MICROBIT_ARROWS} from './microbit-icons.js';
+import {lowerNamespaceBindings} from './namespace-bindings.js';
 
 /** MakeCode enum member → the token our vocabulary uses. */
 const ENUM_VALUES = {
@@ -918,7 +919,7 @@ class MicrobitTranslator extends BaseTranslator {
 }
 
 /** MakeCode's namespaces: `led.clear` is not an image's clear(). */
-const MAKECODE_NAMESPACES = new Set(['basic', 'input', 'led', 'music', 'radio', 'pins', 'game', 'images', 'serial',
+export const MAKECODE_NAMESPACES = new Set(['basic', 'input', 'led', 'music', 'radio', 'pins', 'game', 'images', 'serial',
     'control', 'Math', 'bluetooth', 'datalogger', 'servos', 'power', 'loops', 'logic', 'text', 'console']);
 
 /** MakeCode's Image methods (pxt-microbit 9.1.1 libs/core/images.cpp). */
@@ -1116,7 +1117,17 @@ const UNPOLLABLE_HANDLERS = {};
  * @returns {{code: string, unsupported: Array<string>, scripts: number}}
  */
 export function microbitToPseudocode (source, opts = {}) {
-    const ast = parseMakeCodeTs(source);
+    let ast = parseMakeCodeTs(source);
+    // Extension sources (vendored or fetched) the program uses are translated
+    // with it: their namespaces become procedures, so `turtle.forward(1)` is a
+    // call to one rather than an unsupported line.
+    const extensionDiagnostics = [];
+    if (Array.isArray(opts.extensionSources) && opts.extensionSources.length) {
+        const merged = {...ast, body: [...opts.extensionSources.flatMap(e => parseMakeCodeTs(e.source).body), ...ast.body]};
+        const lowered = lowerNamespaceBindings(merged);
+        if (lowered.program) ast = lowered.program;
+        else extensionDiagnostics.push(...lowered.unsupported.map(e => `extension source: ${e}`));
+    }
     const t = new MicrobitTranslator();
     t.board = opts.board || null;
     t.aliases = new Map();
@@ -1313,7 +1324,7 @@ export function microbitToPseudocode (source, opts = {}) {
 
     return {
         code: `${out.join('\n').replace(/\n{3,}/g, '\n\n').trimEnd()}\n`,
-        unsupported: [...new Set(t.unsupported)],
+        unsupported: [...new Set([...extensionDiagnostics, ...t.unsupported])],
         scripts: scripts.length + (main.length ? 1 : 0)
     };
 }

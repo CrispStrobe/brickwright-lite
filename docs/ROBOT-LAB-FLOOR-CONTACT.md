@@ -93,6 +93,8 @@ not establish physics acceptance.
 
 Finite footprint and linear-risk-trigger limits remain explicit. No general
 solver-stability, hardware, calibration, performance or physical-accuracy claim
-is made. Issue #1435's separate resting-frame creep remains outside this lane.
+is made. Issue #1435's separate resting-frame creep is fixed outside this lane
+([ROBOT-LAB-RESTING-CREEP.md](ROBOT-LAB-RESTING-CREEP.md#fix-2026-10-30)): the
+core drops idle speculative floor hits of compound bodies; this floor sweep is unchanged.
 A red actual case keeps the source unmerged and must be diagnosed without
 changing its acceptance thresholds.

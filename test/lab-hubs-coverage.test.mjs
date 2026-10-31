@@ -64,11 +64,16 @@ if (!existsSync(missing)) {
     });
 
     // A City Hub on the floor with a Technic large motor on its port A (cable only, nothing pinned), the gear on its axle.
+    // The motor sits 80 LDU below the hub's origin, below every hub's base (the City Hub's is 4 mm above
+    // the floor), so it rests on the floor whichever hub is placed and every run starts the same. At y -20
+    // the model rested on the hub instead: the motor started 0 mm (Essential), 7.25 mm (Technic) or 25.65 mm
+    // (City) up, so the cross-hub check compared different falls and landings. The hubs agreed within 0.5°
+    // only under Jolt's previous 4-point floor pruning (#1435, docs/ROBOT-LAB-RESTING-CREEP.md).
     const cityBench = transportHub => [
         '0 City hub motor bench', '0 !BW ID hub', `1 71 0 0 0 1 0 0 0 1 0 0 0 1 ${transportHub}`,
-        '0 !BW ID motor', '0 !BW PORT A', '1 72 300 -20 0 1 0 0 0 1 0 0 0 1 22169.dat',
-        '0 !BW ID axle', '1 0 300 -20 -50 0 0 1 0 1 0 -1 0 0 3706.dat',
-        '0 !BW ID gear', '1 4 300 -20 -90 1 0 0 0 1 0 0 0 1 3648.dat', ''].join('\n');
+        '0 !BW ID motor', '0 !BW PORT A', '1 72 300 80 0 1 0 0 0 1 0 0 0 1 22169.dat',
+        '0 !BW ID axle', '1 0 300 80 -50 0 0 1 0 1 0 -1 0 0 3706.dat',
+        '0 !BW ID gear', '1 4 300 80 -90 1 0 0 0 1 0 0 0 1 3648.dat', ''].join('\n');
     // The same free motor on a Technic Hub is the reference: the unpinned motor overshoots the
     // pinned bench's 360 ± 2° by a few degrees on either hub (no load on its body), so the City Hub
     // is judged against one full turn ± 5° AND against the Technic Hub's own result within 0.5°.

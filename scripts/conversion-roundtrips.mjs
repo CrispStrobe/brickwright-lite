@@ -10,11 +10,12 @@ import {fileURLToPath} from 'node:url';
 import JSZip from 'jszip';
 import {svgToPixels} from '../overlay/scratch-gui/src/lib/bw-makecode/pixel-image.js';
 import {importProjectFiles} from '../overlay/scratch-gui/src/lib/bw-makecode/index.js';
+import {resolveExtensionNamespaces} from '../overlay/scratch-gui/src/lib/bw-makecode/extension-namespaces.js';
 import {exportToMakeCode} from '../overlay/scratch-gui/src/lib/bw-makecode/export.js';
 import {projectJsonToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
 import SB3Creator from '../overlay/scratch-gui/src/lib/sb3-creator.js';
 import {compile, hasRuntime} from './lib/pxt-node.mjs';
-import {pathOutcome, structuralOutcome} from './lib/roundtrip-status.mjs';
+import {pathOutcome, structuralOutcome, classifyNormalization} from './lib/roundtrip-status.mjs';
 
 
 // Report identity contains hashes and declared public identities, never host paths.
@@ -165,8 +166,14 @@ async function inspect (file) {
     if (isTs) {
         const dependencies = target === 'arcade' ? {device: '*'} :
             {core: '*', radio: '*', microphone: '*'};
-        const files = {'main.ts': fs.readFileSync(file, 'utf8'),
-            'pxt.json': JSON.stringify({name: path.basename(file, '.ts'), dependencies, files: ['main.ts']})};
+        const main = fs.readFileSync(file, 'utf8');
+        // A bare .ts lists no extensions; the ones its namespaces name are added
+        // (vendored first), so the original compiles and the import translates them.
+        const detected = resolveExtensionNamespaces({files: {'main.ts': main}, target});
+        row.extensions = detected.extensions.map(e => e.id);
+        row.unavailableExtensionNamespaces = detected.unresolved.map(u => u.namespace);
+        const files = {'main.ts': main,
+            'pxt.json': JSON.stringify({name: path.basename(file, '.ts'), dependencies: {...dependencies, ...detected.dependencies}, files: ['main.ts']})};
         row.sourceFiles = files;
         const imported = importProjectFiles(files, {target, name: path.basename(file, '.ts')});
         originalCode = imported.code;
@@ -242,7 +249,8 @@ async function inspect (file) {
                     return false;
                 });
             }
-            return {status: 'converted', differences: loss,
+            const split = classifyNormalization(loss, {before: project, after: converted});
+            return {status: 'converted', differences: split.differences, normalization: split.normalization,
                 exportUnsupported: exported.unsupported || [], importUnsupported: back.unsupported || [],
                 exportedFiles: exported.files};
         }));
