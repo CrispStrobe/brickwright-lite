@@ -82,3 +82,29 @@ An uncaught exception ends exactly one original fiber. Brickwright now matches:
 
 `test/arcade-fatal-faults.test.mjs` compares each row against the original
 simulator through the differential harness.
+
+## Further missing-receiver primitives, HUD callbacks and hat overlaps
+
+Measured against the original simulator, every property setter (`x`, `y`, `vx`, `z`, `lifespan`, `left`, `scale`, `data`, ...),
+`destroy` and `setPosition` on a null or undefined Sprite throws, and so do `width`, `height`, `getPixel`, `scroll`, `print`, `clone`
+and `equals` (as receiver) on a null or undefined Image. A null Image or Sprite passed as an *argument* (`image.equals(null)`,
+`setImage(undefined)` on a real Sprite) does not throw. Six more sealed kinds cover `setSpriteProperty`, `destroySprite`,
+`setSpritePosition`, `imageProperty`, `imagePixel` and `scrollImage`, each with its own declaration, registration and receipt.
+
+* A life-zero or countdown-end callback runs inside the HUD renderable, so a fault ends the scene's frame fiber exactly like a
+  faulting `onPaint`.
+* A hat-based (legacy) overlap handler reports a dead fiber: its pair stays marked overlapping.
+* An extension frame callback (host) that throws ends the frame fiber and is reported.
+* The 200 ms fallback screen refresh clears its flag at each tick before a frame at the same instant updates it, so a frame fault at
+  a tick instant is refreshed two ticks later.
+
+Still open: reads of other Sprite properties (`vx`, `left`, `kind`, ...), `say`, `setKind`, `overlapsWith`, `drawRect`, `print`,
+`clone` and `equals` on a missing receiver do not yet fault.
+
+## The cooperative yield
+
+pxtsim counts compiled steps and, every 100, asks whether 20 ms have passed since the last yield or since any fiber resumed from a wait
+over 3 ms. If so the running fiber sleeps 5 ms. Brickwright stamps every program-clock timer wake (over 3 ms) and, on the 34th source step
+of a fiber (about 100 compiled steps), puts the fiber to sleep for 5 ms when 20 ms have passed. With a live frame loop that never
+happens; a button handler started after the frame loop died reaches its first `pause` 5 ms late. `game.ask` pushes an event context:
+the scene's frame worker is unregistered while the prompt is open and a new worker waits on the condition-poll queue when it pops.

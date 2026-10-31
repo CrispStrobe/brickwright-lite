@@ -14,7 +14,13 @@ const KINDS = {
     drawImage:{args:{IMAGE:'arcade-image:1', OP:'fillRect'}, missing:['IMAGE']},
     drawImageCircle:{args:{IMAGE:'arcade-image:1', OP:'fillCircle'}, missing:['IMAGE']},
     setImagePixel:{args:{IMAGE:'arcade-image:1'}, missing:['IMAGE']},
-    mutateImage:{args:{IMAGE:'arcade-image:1', OP:'fill'}, missing:['IMAGE']}
+    mutateImage:{args:{IMAGE:'arcade-image:1', OP:'fill'}, missing:['IMAGE']},
+    setSpriteProperty:{args:{ID:'arcade-sprite:1', PROPERTY:'vx', VALUE:5}, missing:['ID']},
+    destroySprite:{args:{ID:'arcade-sprite:1'}, missing:['ID']},
+    setSpritePosition:{args:{ID:'arcade-sprite:1', X:1, Y:2}, missing:['ID']},
+    imageProperty:{args:{IMAGE:'arcade-image:1', PROPERTY:'width'}, missing:['IMAGE']},
+    imagePixel:{args:{IMAGE:'arcade-image:1', X:0, Y:0}, missing:['IMAGE']},
+    scrollImage:{args:{IMAGE:'arcade-image:1', X:1, Y:1}, missing:['IMAGE']}
 };
 function fixture(method, args) {
     const runtime = new EventEmitter();

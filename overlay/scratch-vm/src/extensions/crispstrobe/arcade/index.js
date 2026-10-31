@@ -1160,8 +1160,13 @@ module.exports = makeExt(`// Name: Arcade
         supplied && typeof supplied.now==='function' ? supplied.now.bind(supplied) : null;
       const suppliedTimers=supplied && (supplied.setTimeout!==undefined || supplied.clearTimeout!==undefined);
       if(suppliedTimers && (typeof supplied.setTimeout!=='function' || typeof supplied.clearTimeout!=='function'))throw new Error('Arcade program timer source needs setTimeout and clearTimeout');
-      const epoch={now,start:undefined,last:0,active:true,timerAuthority:supplied===undefined || suppliedTimers,
-        setTimeout:suppliedTimers?supplied.setTimeout.bind(supplied):supplied===undefined?globalThis.setTimeout.bind(globalThis):undefined,
+      const rawSetTimeout=suppliedTimers?supplied.setTimeout.bind(supplied):supplied===undefined?globalThis.setTimeout.bind(globalThis):undefined;
+      const epoch={now,start:undefined,last:0,active:true,timerAuthority:supplied===undefined || suppliedTimers,rawSetTimeout,lastWake:0,
+        // Every timer is a PXT fiber wake. pxtsim stamps a wake that waited over 3 ms as the last yield (see frame-phase.js).
+        setTimeout:rawSetTimeout&&((callback,delay,...rest)=>rawSetTimeout(function(...fired){
+          if(epoch.active && delay>3 && Number.isFinite(epoch.start))epoch.lastWake=Math.max(epoch.lastWake,Math.floor(epoch.now()-epoch.start));
+          return callback.apply(this,fired);
+        },delay,...rest)),
         clearTimeout:suppliedTimers?supplied.clearTimeout.bind(supplied):supplied===undefined?globalThis.clearTimeout.bind(globalThis):undefined};this._programClockEpoch=epoch;
       if(!now)throw new Error('Arcade program clock source needs a now function');
       const start=now();
@@ -1456,7 +1461,7 @@ module.exports = makeExt(`// Name: Arcade
       }
       if(this._sceneValues.get(state._sceneValueId)!==state){state._sceneValueId='arcade-scene:'+(++this._nextSceneValue);this._sceneValues.set(state._sceneValueId,state);}
       if(this._physicsEngines.get(state.physicsEngine?.id)!==state.physicsEngine || !state.physicsEngine)state.physicsEngine=this._newPhysicsEngine();
-      if(this._sourceSceneTimers())this._sceneFrameContexts().register(state);
+      if(this._sourceSceneTimers() && !this._askHeldScenes?.has(state))this._sceneFrameContexts().register(state);
     }
     _sceneValue(value) {return this._sceneValues.get(Scratch.BWValues.referenceId(this._runtime,value,'scene'));}
     _engineValue(value) {return this._physicsEngines.get(Scratch.BWValues.referenceId(this._runtime,value,'physics-engine'));}
@@ -1798,6 +1803,7 @@ module.exports = makeExt(`// Name: Arcade
         // info.ts raises life events after drawing lives and before the timer.
         // Registered callbacks can wait or change scenes; preserve that boundary.
         yield* this._lifeZeroSteps(screen);
+        if(this._frameFaults.has(state))return;
         if(this._state()!==state || pass.epoch!==this._terrainEpoch || state._defaultGameOverPending)return;
         // A callback can push and restore scenes. Resume with this HUD's state.
         info._setInfoState(hud);this._hudScreen=screen;
@@ -1866,7 +1872,8 @@ module.exports = makeExt(`// Name: Arcade
       const owner=this._state(),epoch=this._terrainEpoch;
       for(const state of owner.players || [])if(state && state.life!==undefined && state.life!==null && state.life<=0){
         state.life=null;
-        if(state.lifeZero)yield* this._registeredCallbackSteps([state.lifeZero],'arcade_whenRegisteredLifeZero',{});
+        // The callback runs inside the HUD renderable, so an uncaught exception ends the frame fiber (PXT info.ts).
+        if(state.lifeZero){if(yield* this._registeredCallbackSteps([state.lifeZero],'arcade_whenRegisteredLifeZero',{}))return this._faultFrameLoop(owner);}
         else if(!owner.multiplayerInfo)this._defaultInfoGameOver(owner,screen.pixels.slice());
         if(this._state()!==owner || epoch!==this._terrainEpoch || owner._defaultGameOverPending)return;
       }
@@ -2010,7 +2017,7 @@ module.exports = makeExt(`// Name: Arcade
       // game.onUpdate callbacks keep their registration order among them.
       const updates=this._updateHandlers;
       for(let i=0;i<updates.length;i++){
-        if(updates[i].host)updates[i].host();
+        if(updates[i].host){if(this._runHost(state,updates[i].host))return true;}
         else if(yield* this._registeredCallbackSteps([updates[i]],'arcade_whenRegisteredUpdate',{}))return this._faultFrameLoop(state);
         if(this._state()!==state)return;
       }
@@ -3505,6 +3512,7 @@ module.exports = makeExt(`// Name: Arcade
       if(sprite.image)this._renderSpriteImage(sprite.id);
     }
     setSpritePosition(args, util) {
+      if(this._missingOperand(util,args,'ID'))return this._primitiveFault('setSpritePosition',args,util);
       const sprite = this._spriteValues.get(String(args.ID)) || this._sprite(args.ID);
       if (!sprite) return;
       // Sprite.setPosition converts the displacement, not the absolute edge.
@@ -3620,6 +3628,7 @@ module.exports = makeExt(`// Name: Arcade
       sprite._destroyedRegistration=state.spriteDestroyedHandlers[id];
     }
     destroySprite(args,util) {
+      if(this._missingOperand(util,args,'ID'))return this._primitiveFault('destroySprite',args,util);
       const id = String(args.ID);
       const state = this._state();
       const sprite = this._spriteValues.get(id) || state.sprites[id];
@@ -3651,6 +3660,7 @@ module.exports = makeExt(`// Name: Arcade
       return this._runTerrainGenerator(this._instanceDestroyedSteps(token,sprite.kind,id,util));
     }
     setSpriteProperty(args, util) {
+      if(this._missingOperand(util,args,'ID') && ['x','y','left','right','top','bottom','vx','vy','ax','ay','fx','fy','sx','sy','scale','width','height','z','lifespan','rotation','rotationDegrees','data','flags'].includes(String(args.PROPERTY)))return this._primitiveFault('setSpriteProperty',args,util);
       const sprite = this._spriteValues.get(String(args.ID)) || this._sprite(args.ID);
       const name = String(args.PROPERTY);
       if (!sprite || !['x', 'y', 'left', 'right', 'top', 'bottom',
@@ -3879,7 +3889,8 @@ module.exports = makeExt(`// Name: Arcade
         if(h.legacy){
           const thread=this._runtime._pushThread(h.script.blockId,h.target);
           thread.bwArcadeEvent={A:h.kind,B:h.otherKind,first:a.id,second:b.id};
-          work=new Promise(resolve=>this._terrainWaits.add({thread,resolve}));
+          // A hat-based handler that ends in an uncaught exception keeps its pair overlapping, like a dead fiber.
+          work=new Promise(resolve=>this._terrainWaits.add({thread,resolve})).then(()=>!!exceptionOwners.get(this).failure(thread));
         }else work=this._runTerrainGenerator(this._registeredCallbackSteps([h],'arcade_whenRegisteredOverlap',{first:a.id,second:b.id,deferredFiber:true},undefined,true));
         // PXT removes the pair from _overlappers after the handler returns; a dead fiber leaves it overlapping.
         if(work?.then)work.then(faulted=>{if(faulted!==true)finish();},error=>{finish();throw error;});else if(work!==true)finish();
@@ -4092,7 +4103,8 @@ module.exports = makeExt(`// Name: Arcade
       const image = this._image(args.IMAGE);
       return image ? this._imageHandle({width: image.width, height: image.height, pixels: image.pixels.slice(), ...(image.palette ? {palette: image.palette.slice()} : {})}) : '';
     }
-    imageProperty(args) {
+    imageProperty(args,util) {
+      if(this._missingOperand(util,args,'IMAGE'))return this._primitiveFault('imageProperty',args,util);
       const image = this._image(args.IMAGE);
       return image && ['width', 'height'].includes(String(args.PROPERTY)) ? image[args.PROPERTY] : 0;
     }
@@ -4100,7 +4112,8 @@ module.exports = makeExt(`// Name: Arcade
       const image=this._image(args.IMAGE),source=this._image(args.SOURCE);
       if(image && source && imageEngine.copyFrom(image,source))this._refreshImage(image);
     }
-    scrollImage(args) {
+    scrollImage(args,util) {
+      if(this._missingOperand(util,args,'IMAGE'))return this._primitiveFault('scrollImage',args,util);
       const image=this._image(args.IMAGE);
       if(image){imageEngine.scroll(image,args.X,args.Y);this._refreshImage(image);}
     }
@@ -4114,7 +4127,8 @@ module.exports = makeExt(`// Name: Arcade
       const image = this._image(args.IMAGE);
       if (image) { imageEngine.draw(image, 'setPixel', args.X, args.Y, args.COLOR); this._refreshImage(image); }
     }
-    imagePixel(args) {
+    imagePixel(args,util) {
+      if(this._missingOperand(util,args,'IMAGE'))return this._primitiveFault('imagePixel',args,util);
       const image = this._image(args.IMAGE);
       return image ? imageEngine.getPixel(image, args.X, args.Y) : 0;
     }
@@ -4871,6 +4885,15 @@ module.exports = makeExt(`// Name: Arcade
       const epoch=this._programClockEpoch;
       if(!this._sourceSceneTimers() || !epoch?.setTimeout)return;
       dialog.fiber=true;
+      // game.ask pushes an event context: the scene's frame worker is unregistered for as long as the
+      // prompt is up, and popping registers a fresh worker that waits (on the poll queue) for the old one to exit.
+      const owner=this._state(),held=this._askHeldScenes || (this._askHeldScenes=new WeakSet()),frames=this._sceneFrameContexts();
+      held.add(owner);frames.unregister(owner);
+      const dismiss=dialog.dismiss;
+      dialog.dismiss=answer=>{
+        const open=this._dialogs?.[0]===dialog;dismiss(answer);
+        if(open && this._dialogs?.[0]!==dialog && held.delete(owner) && this._sourceSceneTimers())this._sceneFrameContexts().register(owner);
+      };
       const live=()=>this._dialogs?.[0]===dialog && this._programClockEpoch===epoch && epoch.active;
       const continuation=()=>this._runtime._arcadeFramePhase?.requestContinuation?.()?.catch?.(error=>this._runtime?.emit?.('BLOCKS_ERROR',String(error?.message || error)));
       if(dialog.screen)epoch.setTimeout(()=>{if(live() && dialog.screen)this._showAskScreen(dialog);},dialog.refreshIn)?.unref?.();
@@ -5082,9 +5105,16 @@ module.exports = makeExt(`// Name: Arcade
     }
     // PXT frame handlers by priority: below UPDATE_INTERVAL_PRIORITY (19) they
     // run after physics and before the update handlers, the rest after the camera.
+    // An extension frame callback that throws is an uncaught PXT exception in the scene's frame fiber:
+    // the error is reported and the frame loop ends (returns true so the caller ends the frame).
+    _runHost(state,host) {
+      try {host();return false;}
+      catch(error) {this._runtime?.emit?.('BLOCKS_ERROR',String(error?.message || error));return this._faultFrameLoop(state);}
+    }
     _runFrameHandlers(state,low=19,high=Infinity) {
       const list=this._frameHandlers.get(state);
-      if(list)for(let i=0;i<list.length;i++)if(list[i].order>=low && list[i].order<high)list[i].handler();
+      if(list)for(let i=0;i<list.length;i++)if(list[i].order>=low && list[i].order<high && this._runHost(state,list[i].handler))return true;
+      return false;
     }
     _scrollerLayer(value) {
       const layer=Math.floor(Scratch.Cast.toNumber(value));
@@ -5716,8 +5746,10 @@ module.exports = makeExt(`// Name: Arcade
         // last frame until PXT's 200 ms fallback refresh (screen/frame.ts) copies the
         // shared screen buffer as drawn so far.
         this._lastScreenUpdateMs=previousUpdateMs;
+        // The fallback fiber clears __updated every 200 ms from program start and refreshes at the first tick after a
+        // quiet interval; an update at a tick instant follows that tick's clear, so it counts for the interval it starts.
         const partial=screen.pixels.slice(),now=this._screenClock(),last=previousUpdateMs ?? now;
-        const refreshIn=Math.max(0,200*(Math.ceil(last/200-1e-9)+1)-now),clock=this._programClockEpoch;
+        const refreshIn=Math.max(0,200*(Math.floor(last/200+1e-9)+2)-now),clock=this._programClockEpoch;
         if(this._sourceSceneTimers() && clock?.setTimeout)clock.setTimeout(()=>{
           if(epoch!==this._terrainEpoch || !clock.active)return;
           publish(partial);this._changed();
@@ -6365,22 +6397,22 @@ module.exports = makeExt(`// Name: Arcade
       const live = Object.values(state.sprites).filter(s => s.id);
       this._moveControlledSprites(live);yield* this._moveFollowingSpriteSteps();
       if(epoch!==this._terrainEpoch || this._state()!==state)return;
-      if (!live.length && !state.physicsEngine.members.length) {this._runFrameHandlers(state,0,19);if(yield* this._sceneUpdates())return;if(this._state()!==state)return;this._advanceAnimations(dt);this._updateCamera();this._runFrameHandlers(state);if(state.tilemap?.legacy)this._renderTilemap(true);yield* this._advanceSpeechSteps(dt);if(this._state()!==state)return;yield* this._composeSceneSteps();if(this._state()!==state || epoch!==this._terrainEpoch || state._defaultGameOverPending)return;if(!this._frameFaults.has(state))this._startFrameHats();return;}
+      if (!live.length && !state.physicsEngine.members.length) {if(this._runFrameHandlers(state,0,19))return;if(yield* this._sceneUpdates())return;if(this._state()!==state)return;this._advanceAnimations(dt);this._updateCamera();if(this._runFrameHandlers(state))return;if(state.tilemap?.legacy)this._renderTilemap(true);yield* this._advanceSpeechSteps(dt);if(this._state()!==state)return;yield* this._composeSceneSteps();if(this._state()!==state || epoch!==this._terrainEpoch || state._defaultGameOverPending)return;if(!this._frameFaults.has(state))this._startFrameHats();return;}
       yield* this._advancePhysicsSteps(state.physicsEngine.members.slice(),dt,state.tilemap);
       if(epoch!==this._terrainEpoch || this._state()!==state)return;
       for(const sprite of live)if(state.sprites[sprite.id])this._positionSprite(sprite.id);
       // Extension handlers at ANIMATION_UPDATE_PRIORITY (15) follow physics.
-      this._runFrameHandlers(state,0,19);
+      if(this._runFrameHandlers(state,0,19))return;
       if(yield* this._sceneUpdates())return;
       if(this._state()!==state)return;
       this._advanceAnimations(dt);
       this._updateCamera();
       // Extension frame handlers at PXT's pre-render priority (after the camera).
-      this._runFrameHandlers(state,19,55);
+      if(this._runFrameHandlers(state,19,55))return;
       const updateCamera=this._camera();
       yield* spriteUpdateHosts.get(this).steps(state,sprite=>this._sdkSpriteBaseUpdateSteps(sprite,dt,updateCamera));
       if(this._state()!==state || epoch!==this._terrainEpoch)return;
-      this._runFrameHandlers(state,55);
+      if(this._runFrameHandlers(state,55))return;
       if(state.tilemap?.legacy)this._renderTilemap(true);
       yield* this._advanceSpeechSteps(dt);
       if(this._state()!==state)return;
@@ -6410,7 +6442,7 @@ module.exports = makeExt(`// Name: Arcade
       state.countdownActive=false;
       state.countdown = 0;
       this._changed();
-      if(this._countdownHandlers.length)yield* this._registeredCallbackSteps(this._countdownHandlers.slice(),'arcade_whenRegisteredCountdown',{});
+      if(this._countdownHandlers.length){if(yield* this._registeredCallbackSteps(this._countdownHandlers.slice(),'arcade_whenRegisteredCountdown',{}))return this._faultFrameLoop(state);}
       else {
         const threads=this._runtime?.startHats?.('arcade_whenCountdownEnds') || [];
         if(!threads.length)this._defaultInfoGameOver(state,screen.pixels.slice());
