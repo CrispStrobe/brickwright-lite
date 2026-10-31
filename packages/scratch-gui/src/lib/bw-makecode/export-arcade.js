@@ -3775,7 +3775,7 @@ class ArcadeEmitter {
                 if(value.opcode==='arcade_spriteProperty' && value.fields?.PROPERTY?.[0]==='data'){
                     const id=Symbol('sprite data');dataProperties.push([ref(inputBlock(blocks,value,'ID')),id]);return id;
                 }
-                if(value.opcode==='arcade_spriteProperty' && ['fx','fy','sx','sy','scale','rotation','rotationDegrees'].includes(value.fields?.PROPERTY?.[0])){const id=Symbol('sprite numeric property');numbers.add(id);return id;}
+                if(value.opcode==='arcade_spriteProperty' && ['x','y','vx','vy','ax','ay','left','right','top','bottom','width','height','fx','fy','sx','sy','scale','rotation','rotationDegrees'].includes(value.fields?.PROPERTY?.[0])){const id=Symbol('sprite numeric property');numbers.add(id);return id;}
                 if(value.opcode==='arcade_tileHitFrom'){const id=Symbol('hit tile index');numbers.add(id);return id;}
                 if(['arcade_cameraProperty','arcade_cameraDrawOffset'].includes(value.opcode)){const id=Symbol('camera numeric property');numbers.add(id);return id;}
                 if(['arcade_tileLocationProperty','arcade_legacyTileProperty'].includes(value.opcode)){const id=Symbol('tile numeric property');numbers.add(id);return id;}
