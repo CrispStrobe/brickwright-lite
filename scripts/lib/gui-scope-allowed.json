@@ -196,6 +196,8 @@
   "scratch-vm/src/util/bw-procedure-constraint-model.js": {
     "tests": [
       "test/arcade-block-scoped-loop-locals.test.mjs",
+      "test/arcade-carnival-add-label.test.mjs",
+      "test/arcade-external-image-call.test.mjs",
       "test/arcade-font-text-concatenation.test.mjs",
       "test/arcade-missing-animation-addition-export.test.mjs",
       "test/arcade-repeated-sprite-kind.test.mjs",
