@@ -1,4 +1,5 @@
 import {lowerSourceValueOperatorHelpers} from './source-value-operator-helpers.js';
+import {setExternalRoots,externalPath,externalAssetNode,externalAssetText} from './external-references.js';
 import {lowerNativeArrayBinaryHelpers} from './native-array-binary-domain.js';
 import {lowerRuntimeDispatchAddHelpers} from './native-array-binary-helper-source.js';
 import {capturePreparedSharedImageSources,parseSharedImageSourceBoundary,parseSharedImageSourceProgram,bindPreparedSharedImageSource,sharedImageSourceContextCurrent} from './shared-image-array-source-effects.js';
@@ -439,12 +440,17 @@ class ArcadeTranslator extends BaseTranslator {
         if(node?.type==='Index' && this.planImageValue)this.planImageValue(node);
         if (node?.type === 'Template' && this.assetKindLookup &&
             lookupAssetTemplate(this.assetKindLookup,node.tag,node.value) === null) return 'null value';
+        if (node?.type === 'Template' && /^assets\.(?:image|tile)$/.test(node.tag || '') && !this.imageOf(node)) {
+            const text = externalAssetText(node.tag, node.value);
+            if (text) return `(arcade external image ${JSON.stringify(text)})`;
+        }
         const background = this.imageValueResources.get(node);
         if (background) {
             const resource = `arcade frame image array "${background.key}" index (${background.value ? this.expr(background.value) : 0}) template "${background.name}" start 0 count ${background.count || 1}`;
             return background.fresh ? `arcade copy image (${resource})` : resource;
         }
         if (node?.type === 'Call' && this.path(node.callee) === 'scene.backgroundImage' && !node.args?.length) return 'arcade background image';
+        if (node?.type === 'Member') {const external = this.externalName(node);if (external && (!node.bwExternalAsset || /^assets\.(?:image|tile)`/.test(external))) return `(arcade external image ${JSON.stringify(external)})`;}
         // PXT's global screen image, unless the program binds its own \`screen\`.
         if (node?.type === 'Identifier' && node.name === 'screen' && !(this.boundSourceGlobals?.has('screen') || this.sourceFunctions?.has('screen') ||
             this.localVars?.has('screen') || this.currentParameters?.has('screen') || this.capturedBindings?.has('screen'))) return 'arcade screen image';
@@ -2354,6 +2360,61 @@ class ArcadeTranslator extends BaseTranslator {
         out.push(`${'  '.repeat(indent)}${code}`);return true;
     }
 
+    /** The ordered arguments of an external call as the function-argument chain `arcade call function` uses. */
+    externalArguments (args) {
+        let chain = '"[]"';
+        for (let index = args.length - 1; index >= 0; index--) chain = `arcade function argument (${this.arrayElementValue(args[index])}) rest (${chain})`;
+        return chain;
+    }
+
+    /** A name whose source is not in the project and that nothing in the program binds. */
+    externalName (node) {
+        const name = externalPath(node);
+        return name && (node.bwExternalAsset || !this.bindsName(name.split('.')[0])) ? name : null;
+    }
+
+    /** `ns.member(args)` as a statement: kept by name, with an optional trailing inline callback. */
+    externalStatement (node, indent, out) {
+        const name = node.callee?.type === 'Member' && this.externalName(node.callee);
+        if (!name) return false;
+        const pad = '  '.repeat(indent), args = node.args || [];
+        const registration = this.sceneRegistrations?.get(node);
+        if (registration) {
+            out.push(`${pad}arcade register external ${JSON.stringify(name)} arguments (${this.externalArguments(args.slice(0, -1))}) as "${registration.token}" capturing ${JSON.stringify([...registration.ownCaptures].join(' '))}`);
+            return true;
+        }
+        if (args.some(arg => arg?.type === 'FunctionExpression')) {
+            out.push(pad + this.note(`${name}() takes a callback that must be the last argument and have no parameters`));
+            return true;
+        }
+        out.push(`${pad}arcade external command ${JSON.stringify(name)} arguments (${this.externalArguments(args)})`);
+        return true;
+    }
+
+    /** `ns.member(args)` as a value. */
+    externalCallValue (node) {
+        const name = node.callee?.type === 'Member' && this.externalName(node.callee);
+        if (!name) return null;
+        const args = node.args || [];
+        if (args.some(arg => arg?.type === 'FunctionExpression')) {
+            this.unsupported.push(`${name}() takes a callback; only a statement can attach one`);
+            return '0';
+        }
+        return `(arcade external call ${JSON.stringify(name)} arguments (${this.externalArguments(args)}))`;
+    }
+
+    /** An asset literal no other rule claimed, kept by its spelling. */
+    externalTemplate (node) {
+        const text = externalAssetText(node.tag, node.value);
+        return text ? `(arcade external value ${JSON.stringify(text)})` : null;
+    }
+
+    /** `ns.member` read as a value. */
+    externalReference (node) {
+        const name = this.externalName(node);
+        return name ? `(arcade external value ${JSON.stringify(name)})` : null;
+    }
+
     bindsName (name) {
         return Boolean(this.boundSourceGlobals?.has(name) || this.sourceFunctions?.has(name) || this.localVars?.has(name) ||
             this.currentParameters?.has(name) || this.capturedBindings?.has(name));
@@ -3919,7 +3980,11 @@ const discoverRuntimeRegistrations = (ast, translator) => {
             for (const local of localNames(node.body)) bindings.set(local, {key:local,owner});
         }
         const instance=node.type==='Call' && node.callee?.type==='Member' && node.callee.name==='onDestroyed' && translator.spriteReferences.has(node.callee.object);
-        const spec=instance?{kind:'instanceDestroyed',handlerIndex:0,arity:1,prefix:'__bwInstanceDestroyed',maxParams:0}:node.type==='Call' && (specs[translator.path(node.callee)] || (translator.sceneStackProgram || isIndependentRegistration(translator.path(node.callee))) && sceneRegistrationSpec(translator.path(node.callee)));
+        const externalName=node.type==='Call' && node.callee?.type==='Member' && translator.externalName(node.callee);
+        const externalHandler=externalName && node.args?.length && node.args[node.args.length-1]?.type==='FunctionExpression'?
+            {kind:'external',handlerIndex:node.args.length-1,arity:node.args.length,prefix:'__bwExternal',maxParams:0}:null;
+        const baseSpec=instance?{kind:'instanceDestroyed',handlerIndex:0,arity:1,prefix:'__bwInstanceDestroyed',maxParams:0}:node.type==='Call' && (specs[translator.path(node.callee)] || (translator.sceneStackProgram || isIndependentRegistration(translator.path(node.callee))) && sceneRegistrationSpec(translator.path(node.callee)));
+        const spec=externalHandler||baseSpec;
         if (spec && (spec.kind!=='score'||translator.scoreRegistrationProof.has(node))) {
             const handler=node.args?.[spec.handlerIndex];
             const kind=node.args?.[0];
@@ -4417,6 +4482,8 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRunti
         if(node.type==='Unary' && node.op==='-' && constantNumber(node.argument)===0)return true;
         if(node.type==='Unary' && ['+','-'].includes(node.op))return true;
         if(node.type==='Call' && (isIndependentRegistration(t.path(node.callee)) || ['control.allocateNotifyEvent','control.raiseEvent','control.waitForEvent','game.ask','game.askForString','game.askForNumber','controller.pauseUntilAnyButtonIsPressed'].includes(t.path(node.callee))))return true;
+        // A name whose source is not in the project is kept by name only on the native route.
+        if(node.type==='Member' && t.externalName(node))return true;
         if(node.type==='Call' && /^bwStringArraySettings\.(?:read|write)$/.test(t.path(node.callee)||''))return true;
         if(node.type==='Call' && /^(?:settings|blockSettings)\.(?:(?:write|read)(?:Number|String|NumberArray|StringArray|Buffer)|exists|list|remove|clear)$/.test(t.path(node.callee)||''))return true;
         if(t.textSpriteReferences?.has(node) || node.type==='Call' && t.path(node.callee)==='textsprite.create')return true;
@@ -4653,6 +4720,10 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRunti
     for (const [index, call] of creates.entries()) {
         const api = nameOf(call), projectile = api !== 'sprites.create';
         const dynamicImage = t.imageRef(call.args[0]);
+        // The reference is kept by name; the absent artwork is still said once.
+        const absentArt = !dynamicImage ? null : call.args[0]?.type === 'Member' ? t.externalName(call.args[0]) :
+            call.args[0]?.type === 'Template' ? externalAssetText(call.args[0].tag, call.args[0].value) : null;
+        if (absentArt) t.unsupported.push(`${absentArt} — sprite artwork is unavailable in this project`);
         let image = dynamicImage ? {width: 1, height: 1, pixels: new Uint8Array(1)} : t.imageOf(call.args[0]);
         if (!image) {
             // A named image the project does not supply (its asset file is not part of the source we
@@ -5081,6 +5152,7 @@ export function arcadeToPseudocode (files, opts = {}) {
     const map = typeof files === 'string' ? {'main.ts': files} : (files || {});
     const selectedSource = arcadeProjectSource(map);
     const source = selectedSource.source;
+    setExternalRoots(map, source);
     const sharedSourcePreparation = capturePreparedSharedImageSources(map,selectedSource);
     let sharedSourceConsumed=false;
     const projectInputDiagnostics = [...selectedSource.diagnostics];
@@ -5179,11 +5251,21 @@ export function arcadeToPseudocode (files, opts = {}) {
     // the existing typed image-array machinery, preserving ordinary variable
     // aliases/mutation. Resource mode annotates the same typed array AST so
     // inference stays intact while emission uses the fresh resource reporter.
+    // With no gallery at all the asset simply lives in a file we were not given: kept by name. With a gallery that
+    // lacks it, PXT yields undefined, which stays a named diagnostic.
+    const hasGallery = Object.keys(map).some(filename => /\.jres$/.test(filename));
     const lowerAnimationAssets = node => {
         if (!node || typeof node !== 'object') return node;
         if (node.type === 'Template' && node.tag === 'assets.song') {
             const alias = node.value.trim(), song = songAliases.get(alias);
             if (!song) {
+                // An asset the project does not carry is kept by name; only a collision is a diagnostic.
+                // Kept by name so export writes it back, and still diagnosed: the asset is absent from the project.
+                const external = hasGallery || songAliases.has(alias) ? null : externalAssetNode('assets.song', alias);
+                if (external) {
+                    animationDiagnostics.push(`Missing song asset reference: ${JSON.stringify(alias)}`);
+                    return external;
+                }
                 animationDiagnostics.push(`${songAliases.has(alias) ? 'Ambiguous' : 'Missing'} song asset reference: ${JSON.stringify(alias)}`);
                 return {type: 'Undefined'};
             }
@@ -5192,6 +5274,12 @@ export function arcadeToPseudocode (files, opts = {}) {
         if (node.type === 'Template' && node.tag === 'assets.animation') {
             const alias = node.value.trim(), animation = animationAliases.get(alias);
             if (!animation) {
+                // Kept by name so export writes it back, and still diagnosed: the asset is absent from the project.
+                const external = hasGallery || animationAliases.has(alias) ? null : externalAssetNode('assets.animation', alias);
+                if (external) {
+                    animationDiagnostics.push(`Missing animation asset reference: ${JSON.stringify(alias)}`);
+                    return external;
+                }
                 animationDiagnostics.push(`${animationAliases.has(alias) ? 'Ambiguous' : 'Missing'} animation asset reference: ${JSON.stringify(alias)}`);
                 return {type: 'Undefined'};
             }

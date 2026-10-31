@@ -322,8 +322,12 @@ test('vendored SPIKE compiler emits a canonical executable round-trip artifact',
     // preserve and re-run all executable SPIKE artifact checks below.
     // -> c10bc94c (2026-10-25): qualified atan2 selector only; SPIKE
     // emitter source is unchanged. Re-run every complete artifact assertion.
+    // -> cdb48273 (2026-11-01): micro:bit LED, radio value, bluetooth and class
+    // words (sb3-creator #168); SPIKE emitter unchanged. Re-run every assertion.
+    // -> 11b019c5 (2026-11-01): #168 micro:bit words and #169 Arcade external-
+    // reference words; neither touches the SPIKE emitter. Re-run every assertion.
     assert.equal(JSON.parse(readFileSync(new URL('../vendor-pins.json', import.meta.url)))['sb3-creator'],
-        'c10bc94c38a279196441540e7f8309169c85d311');
+        '11b019c5d51484725de4da8bbcda80ed64b1a123');
 
     const creator = new SB3Creator();
     creator.parse(PROGRAM);

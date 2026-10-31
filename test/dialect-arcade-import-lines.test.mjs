@@ -118,12 +118,19 @@ test('the corpus is what the importer was given by its tests', () => {
     }
 });
 
-test('the pinned parser retains the reviewed Arcade word table (406 opcodes)', () => {
+test('the pinned parser retains the reviewed Arcade word table (412 opcodes)', () => {
     // Binary/unary source reporters extended the earlier 402 words to 404.
     // Reviewed supplier #160 adds the two explicit Score registration words.
     // Retain every prior word assertion and check both exact canonical additions.
-    assert.equal(ARCADE_DIALECT_OPS.length, 406);
+    // The six external-name words keep a call, value, image or callback whose source is not in the project.
+    assert.equal(ARCADE_DIALECT_OPS.length, 412);
     const qualifiedWords = [
+        {op: 'arcade_externalValue', kind: 'reporter', words: 'arcade external value {NAME}'},
+        {op: 'arcade_externalImage', kind: 'reporter', words: 'arcade external image {NAME}'},
+        {op: 'arcade_externalCall', kind: 'reporter', words: 'arcade external call {NAME} arguments {ARGS}'},
+        {op: 'arcade_externalCommand', kind: 'command', words: 'arcade external command {NAME} arguments {ARGS}'},
+        {op: 'arcade_registerExternalHandler', kind: 'command', words: 'arcade register external {NAME} arguments {ARGS} as {TOKEN} capturing {CAPTURES}'},
+        {op: 'arcade_whenRegisteredExternal', kind: 'hat', words: 'when arcade external handler {TOKEN} runs'},
         {op: 'arcade_whenRegisteredScore', kind: 'hat', words: 'when arcade score handler {TOKEN} runs'},
         {op: 'arcade_registerScoreHandler', kind: 'command', words: 'arcade register score player {PLAYER} threshold {SCORE} as {TOKEN} capturing {CAPTURES}'},
         {op: 'arcade_sourceValueBinary', kind: 'reporter', words: 'arcade source value {LEFT} op {OP:"+"|"-"|"*"|"/"|"%"|"**"|"&"|"|"|"^"|"<<"|">>"|">>>"} with {RIGHT}'},

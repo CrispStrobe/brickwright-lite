@@ -9,7 +9,7 @@ import {spawnSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 import JSZip from 'jszip';
 import {svgToPixels} from '../overlay/scratch-gui/src/lib/bw-makecode/pixel-image.js';
-import {importProjectFiles} from '../overlay/scratch-gui/src/lib/bw-makecode/index.js';
+import {importProjectFiles, unpackMakeCodeSource} from '../overlay/scratch-gui/src/lib/bw-makecode/index.js';
 import {resolveExtensionNamespaces} from '../overlay/scratch-gui/src/lib/bw-makecode/extension-namespaces.js';
 import {exportToMakeCode} from '../overlay/scratch-gui/src/lib/bw-makecode/export.js';
 import {projectJsonToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
@@ -107,7 +107,7 @@ if (!out || !inputs.length || !Number.isInteger(limit) && limit !== Infinity || 
 }
 const collect = name => fs.statSync(name).isDirectory() ?
     fs.readdirSync(name).sort().flatMap(child => collect(path.join(name, child))) :
-    /\.(ts|sb3)$/i.test(name) ? [name] : [];
+    /\.(ts|sb3|mkcd)$/i.test(name) ? [name] : [];
 if (corpusCommit !== null && !/^[a-f0-9]{40}$/i.test(corpusCommit)) throw new Error('--corpus-commit requires a full immutable commit SHA');
 const files = [...new Set(inputs.flatMap(collect))].slice(0, limit);
 const provenance = auditProvenance(files, corpusCommit);
@@ -158,9 +158,14 @@ const stage = (label, fn) => {
 };
 
 async function inspect (file) {
-    const isTs = file.endsWith('.ts');
-    const target = isTs && file.split(path.sep).includes('arcade') ? 'arcade' : 'microbit';
-    const row = {file, format: isTs ? 'makecode-ts' : 'sb3', target: isTs ? target : 'scratch', paths: []};
+    // A .mkcd is a complete project (several source files plus assets); a bare .ts is one file.
+    const isMkcd = file.endsWith('.mkcd');
+    const isTs = file.endsWith('.ts') || isMkcd;
+    const unpacked = isMkcd ? await unpackMakeCodeSource(fs.readFileSync(file), {name: file}) : null;
+    const mkcdTarget = unpacked && (/arcade/.test(String(unpacked.meta?.cloudId || '')) ||
+        /arcade/.test(String(unpacked.files?.['pxt.json'] || '')) || file.split(path.sep).some(p => /^arcade-/.test(p))) ? 'arcade' : 'microbit';
+    const target = isMkcd ? mkcdTarget : isTs && file.split(path.sep).includes('arcade') ? 'arcade' : 'microbit';
+    const row = {file, format: isMkcd ? 'makecode-mkcd' : isTs ? 'makecode-ts' : 'sb3', target: isTs ? target : 'scratch', paths: []};
     let project;
     let projectCreator;
     let originalCode;
@@ -168,16 +173,20 @@ async function inspect (file) {
     if (isTs) {
         const dependencies = target === 'arcade' ? {device: '*'} :
             {core: '*', radio: '*', microphone: '*'};
-        const main = fs.readFileSync(file, 'utf8');
+        const base = isMkcd ? {...unpacked.files} : {'main.ts': fs.readFileSync(file, 'utf8')};
+        const main = base['main.ts'] || '';
         // A bare .ts lists no extensions; the ones its namespaces name are added
         // (vendored first), so the original compiles and the import translates them.
-        const detected = resolveExtensionNamespaces({files: {'main.ts': main}, target});
+        const detected = resolveExtensionNamespaces({files: base, target});
         row.extensions = detected.extensions.map(e => e.id);
         row.unavailableExtensionNamespaces = detected.unresolved.map(u => u.namespace);
-        const files = {'main.ts': main,
-            'pxt.json': JSON.stringify({name: path.basename(file, '.ts'), dependencies: {...dependencies, ...detected.dependencies}, files: ['main.ts']})};
+        const manifest = isMkcd ? (() => { try { return JSON.parse(base['pxt.json']); } catch { return {}; } })() : {};
+        const files = {...base,
+            'pxt.json': JSON.stringify(isMkcd ?
+                {...manifest, dependencies: {...dependencies, ...(manifest.dependencies || {}), ...detected.dependencies}} :
+                {name: path.basename(file, '.ts'), dependencies: {...dependencies, ...detected.dependencies}, files: ['main.ts']})};
         row.sourceFiles = files;
-        const imported = importProjectFiles(files, {target, name: path.basename(file, '.ts')});
+        const imported = importProjectFiles(files, {target, name: path.basename(file).replace(/\.(ts|mkcd)$/, '')});
         originalCode = imported.code;
         originalAssets = imported.costumes || [];
         row.importUnsupported = imported.unsupported || [];

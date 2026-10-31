@@ -511,25 +511,28 @@ test('`+` on text is join; a variable that holds text joins too (it was operator
     assert.ok(!opcodesOf(code).has('operator_add'), 'a text + was still an addition');
 });
 
-test('radio.sendValue says the name is not sent (it sent the bare number as if that were the same packet)', () => {
+test('radio.sendValue keeps its name: the pair is one block, the name is not dropped', () => {
     const {code, unsupported} = microbitToPseudocode('radio.sendValue("x", 5)\n');
-    assert.match(code, /radio send number 5/);
-    assert.ok(unsupported.some(u => /radio\.sendValue\(\) — the name is not sent/.test(u)), unsupported.join('\n'));
+    assert.match(code, /radio send value "x" = 5/);
+    assert.deepEqual(unsupported, []);
 });
 
 test('a class that cannot be lowered, and an untyped object literal, are refused by name, with the calls inside them', () => {
-    // An accessor (`get kind()`) has no lowering to arrays and procedures, so
+    // A heritage clause (`extends`) has no lowering to arrays and procedures, so
     // this class is refused whole, saying why and naming what it calls.
     const {unsupported} = microbitToPseudocode([
-        'class Message {',
+        'class Base {',
+        '    x = 1',
+        '}',
+        'class Message extends Base {',
         '    private d: Buffer',
-        '    constructor() { this.d = control.createBuffer(13) }',
-        '    get kind(): number { return this.d.getNumber(NumberFormat.Int8LE, 0) }',
+        '    constructor() { super(); this.d = control.createBuffer(13) }',
+        '    kind(): number { return this.d.getNumber(NumberFormat.Int8LE, 0) }',
         '    send() { radio.sendBuffer(this.d) }',
         '}',
         'let c = { sprite: game.createSprite(0, 0) }'
     ].join('\n'));
-    assert.ok(unsupported.some(u => /class Message \(a get accessor \(kind\)\).*control\.createBuffer\(\).*radio\.sendBuffer\(\)/.test(u)),
+    assert.ok(unsupported.some(u => /class Message \(class Message with a heritage clause\).*control\.createBuffer\(\).*radio\.sendBuffer\(\)/.test(u)),
         unsupported.join('\n'));
     assert.ok(!unsupported.some(u => /constructor\(\)|send\(\),/.test(u)), 'a method definition was read as a call');
     assert.ok(unsupported.some(u => /object literal.*game\.createSprite\(\)/.test(u)), unsupported.join('\n'));
@@ -960,11 +963,11 @@ test('a genuinely unclaimed asset tag remains an exact named generic refusal', a
     assert.doesNotMatch(out.code, /frames \("missing"\)/);
 });
 
-test('a claimed native animation with no resource has a precise missing-reference diagnostic and undefined frames', async () => {
+test('a claimed native animation with no resource has a precise missing-reference diagnostic and keeps the reference by name', async () => {
     const {arcadeToPseudocode} = await import('../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js');
     const out = arcadeToPseudocode('let hero = sprites.create(img`1`, SpriteKind.Player)\nanimation.runImageAnimation(hero, assets.animation`missing`, 75, false)');
     assert.deepEqual(out.unsupported, ['Missing animation asset reference: "missing"']);
-    assert.match(out.code, /arcade animate sprite \(hero\) frames \(undefined value\) interval \(75\)/);
+    assert.match(out.code, /arcade animate sprite \(hero\) frames \(\(?arcade external value "assets\.animation`missing`"\)?\) interval \(75\)/);
     assert.doesNotMatch(out.code, /frames \("(?:missing|\(image\))"\)/);
     assert.doesNotMatch(out.code, /arcade animation frames resource|arcade frame image array/);
     assert.deepEqual(out.animationResources || [], [], 'no animation resource is fabricated for the missing gallery');

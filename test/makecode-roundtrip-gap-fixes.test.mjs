@@ -160,7 +160,9 @@ test('Arcade: a sprite whose named image the project does not supply is still cr
     const files = {'main.ts': 'let hero = sprites.create(someimages.walker, SpriteKind.Player)\nlet coin = sprites.create(img`\n    . 2 2 .\n    2 2 2 2\n    2 2 2 2\n    . 2 2 .\n`, SpriteKind.Food)\nhero.setPosition(20, 30)\ncontroller.moveSprite(hero)\ngame.onUpdate(function () {\n    coin.x += 1\n})\n',
         'pxt.json': JSON.stringify({name: 'rt', dependencies: {device: '*'}, files: ['main.ts']})};
     const imported = importProjectFiles(files, {target: 'arcade', name: 'rt'});
-    assert.match(imported.code, /set hero to \(arcade create template "hero"/);
+    // The named image stays a preserved reference (it exports back by name); the
+    // sprite is still created natively and the missing art is still reported.
+    assert.match(imported.code, /set hero to \(arcade create image \(\(arcade external image "someimages\.walker"\)\) template "heroSprite"/);
     assert.deepEqual(imported.unsupported, ['someimages.walker — sprite artwork is unavailable in this project']);
     const creator = new SB3Creator();
     creator.parse(imported.code);

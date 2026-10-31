@@ -46,9 +46,22 @@ test('Number, String and nested Array values retain ownership and forward defaul
 });
 
 
-test('opaque alternatives and reference bitwise operands stay refused in the artwork fallback',()=>{
+test('opaque alternatives and reference bitwise operands stay refused in the artwork fallback',async()=>{
     const mixed=arcadeToPseudocode('function choose(flag:boolean):any{if(flag)return[1];return sprites.create(assets.image`missing`,SpriteKind.Player)}let values=choose(true);values.push(2)');
-    assert.ok(mixed.unsupported.includes('values.push()'));
+    // The absent artwork is a preserved reference now, so this program imports on the native route (as it does with
+    // real artwork) and the opaque receiver is refused where that route refuses it: at export.
+    if (!mixed.unsupported.includes('values.push()')) {
+        const {default: SB3Creator} = await import('../overlay/scratch-gui/src/lib/sb3-creator.js');
+        const {projectToArcade} = await import('../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js');
+        const creator = new SB3Creator();
+        creator.parse(mixed.code);
+        for (const costume of mixed.costumes || []) {
+            if (costume.mode === 'add') creator.addCustomSVGCostume(costume.sprite, costume.svg, costume.name);
+            else creator.applyCustomSVG(costume.sprite, costume.svg);
+        }
+        const exported = projectToArcade(creator.project, {costumeSvg: (target, costume) => creator.assets.get(costume.assetId)?.data});
+        assert.ok(exported.unsupported.some(message => /Array reference arrays_mutateReference/.test(message)), exported.unsupported.join('\n'));
+    }
     // An actual Array operand of source bitwise is admitted (#1128); its
     // result is checked against original PXT in makecode-arcade-typed-bitwise.
     const bitwise=arcadeToPseudocode('let values=[1];let result=values&1;let actor=sprites.create(assets.image`missing`,SpriteKind.Player)');
