@@ -511,25 +511,28 @@ test('`+` on text is join; a variable that holds text joins too (it was operator
     assert.ok(!opcodesOf(code).has('operator_add'), 'a text + was still an addition');
 });
 
-test('radio.sendValue says the name is not sent (it sent the bare number as if that were the same packet)', () => {
+test('radio.sendValue keeps its name: the pair is one block, the name is not dropped', () => {
     const {code, unsupported} = microbitToPseudocode('radio.sendValue("x", 5)\n');
-    assert.match(code, /radio send number 5/);
-    assert.ok(unsupported.some(u => /radio\.sendValue\(\) — the name is not sent/.test(u)), unsupported.join('\n'));
+    assert.match(code, /radio send value "x" = 5/);
+    assert.deepEqual(unsupported, []);
 });
 
 test('a class that cannot be lowered, and an untyped object literal, are refused by name, with the calls inside them', () => {
-    // An accessor (`get kind()`) has no lowering to arrays and procedures, so
+    // A heritage clause (`extends`) has no lowering to arrays and procedures, so
     // this class is refused whole, saying why and naming what it calls.
     const {unsupported} = microbitToPseudocode([
-        'class Message {',
+        'class Base {',
+        '    x = 1',
+        '}',
+        'class Message extends Base {',
         '    private d: Buffer',
-        '    constructor() { this.d = control.createBuffer(13) }',
-        '    get kind(): number { return this.d.getNumber(NumberFormat.Int8LE, 0) }',
+        '    constructor() { super(); this.d = control.createBuffer(13) }',
+        '    kind(): number { return this.d.getNumber(NumberFormat.Int8LE, 0) }',
         '    send() { radio.sendBuffer(this.d) }',
         '}',
         'let c = { sprite: game.createSprite(0, 0) }'
     ].join('\n'));
-    assert.ok(unsupported.some(u => /class Message \(a get accessor \(kind\)\).*control\.createBuffer\(\).*radio\.sendBuffer\(\)/.test(u)),
+    assert.ok(unsupported.some(u => /class Message \(class Message with a heritage clause\).*control\.createBuffer\(\).*radio\.sendBuffer\(\)/.test(u)),
         unsupported.join('\n'));
     assert.ok(!unsupported.some(u => /constructor\(\)|send\(\),/.test(u)), 'a method definition was read as a call');
     assert.ok(unsupported.some(u => /object literal.*game\.createSprite\(\)/.test(u)), unsupported.join('\n'));

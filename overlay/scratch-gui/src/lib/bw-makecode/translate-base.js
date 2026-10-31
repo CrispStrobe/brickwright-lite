@@ -1171,6 +1171,7 @@ export class BaseTranslator {
             push(this.note(DELETE_MUTATION_UNSUPPORTED + callList(this.callsIn(expr.argument))));
             return;
         }
+        if (this.accessorWrite(expr, indent, out)) return;
         if (expr.type === 'Assignment' && this.recordField(expr.left)) {
             const f = this.recordField(expr.left);
             const handle = this.single(f.handle, out, pad);
@@ -1307,10 +1308,19 @@ export class BaseTranslator {
             if (st.type === 'Class' && st.fields) {
                 const reasons = [...(st.unsupported || [])];
                 for (const m of st.methods) {
-                    if (m.kind !== 'method') reasons.push(`a ${m.kind} accessor (${m.name})`);
-                    if (m.isStatic) reasons.push(`a static method (${m.name})`);
+                    // get/set accessors are methods `get:name` / `set:name`, called where the property is read or assigned.
+                    if (m.kind !== 'method' && m.kind !== 'get' && m.kind !== 'set') reasons.push(`a ${m.kind} accessor (${m.name})`);
+                    // A static method is a plain function called `Class.method(…)`.
+                    if (m.isStatic && (m.kind !== 'method' || /\bthis\b/.test(JSON.stringify(m.body)))) {
+                        reasons.push(`a static method (${m.name})`);
+                    }
                 }
-                for (const f of st.fields) if (f.isStatic) reasons.push(`a static field (${f.name})`);
+                // A static field is a global variable `Class_field`: every
+                // `Class.field` in the program is rewritten to it, and it is
+                // declared (with its initialiser) before anything runs.
+                const statics = st.fields.filter(f => f.isStatic);
+                if (statics.length && !reasons.length) this.lowerStaticFields(ast, st, statics);
+                else for (const f of statics) reasons.push(`a static field (${f.name})`);
                 this.recordTypes.set(st.name, {name: st.name, kind: 'class', fields: st.fields.map(f => ({...f})),
                     methods: new Map(), ctor: st.ctor, spriteFields: new Set(), reasons, node: st});
             }
@@ -1466,9 +1476,16 @@ export class BaseTranslator {
                 return n;
             };
             for (const m of rt.node.methods) {
-                const entry = {name: fnName(m.name), params: ['self', ...m.params], paramTypes: m.paramTypes,
-                    returnType: m.returnType, body: m.body, record: rt.name, scope: `${rt.name}.${m.name}`};
-                rt.methods.set(m.name, entry);
+                if (m.isStatic) {
+                    const entry = {name: fnName(m.name), source: `${rt.name}.${m.name}`, params: m.params,
+                        paramTypes: m.paramTypes, returnType: m.returnType, body: m.body, scope: `${rt.name}.${m.name}`};
+                    this.functions.push(entry);
+                    continue;
+                }
+                const key = m.kind === 'get' || m.kind === 'set' ? `${m.kind}:${m.name}` : m.name;
+                const entry = {name: fnName(key.replace(':', '_')), params: ['self', ...m.params], paramTypes: m.paramTypes,
+                    returnType: m.returnType, body: m.body, record: rt.name, scope: `${rt.name}.${key}`};
+                rt.methods.set(key, entry);
                 this.functions.push(entry);
             }
             if (rt.ctor) {
@@ -1477,6 +1494,29 @@ export class BaseTranslator {
                 this.functions.push(rt.ctorFn);
             }
         }
+    }
+
+    /** Turn a class's static fields into globals (see claimRecords). */
+    lowerStaticFields (ast, cls, statics) {
+        const names = new Map(statics.map(f => [f.name, `${cls.name}_${f.name}`]));
+        const walk = node => {
+            if (!node || typeof node !== 'object') return;
+            if (Array.isArray(node)) { node.forEach(walk); return; }
+            if (node.type === 'Member' && node.object && node.object.type === 'Identifier' &&
+                node.object.name === cls.name && names.has(node.name)) {
+                node.name = names.get(node.name);
+                node.type = 'Identifier';
+                delete node.object;
+                return;
+            }
+            for (const v of Object.values(node)) if (v && typeof v === 'object') walk(v);
+        };
+        walk(ast.body);
+        const decls = statics.map(f => ({name: names.get(f.name), init: f.init || {type: 'Number', value: '0'},
+            typeName: f.typeName || (f.init && (f.init.type === 'String' || f.init.type === 'Template') ? 'string' : '')}));
+        for (const d of decls) if (d.typeName === 'string' || this.isText(d.init)) this.textVars.add(d.name);
+        ast.body.unshift({type: 'Declaration', kind: 'let', decls});
+        for (const f of statics) cls.fields.splice(cls.fields.indexOf(f), 1);
     }
 
     /** The key a name's record type is kept under: `scope:name` for a parameter or local of the function in scope. */
@@ -1545,8 +1585,25 @@ export class BaseTranslator {
     /** `item h of array "R_f"` for a field read, or null when it is not one. */
     recordMember (node) {
         const f = this.recordField(node);
-        if (!f) return null;
+        if (!f) return this.accessorRead(node);
         return `item ${this.expr(f.handle)} of ${this.arrayRef(f.array)}`;
+    }
+
+    /** `x.area` where the class has `get area()`: the getter's call, as a value; else null. */
+    accessorRead (node) {
+        if (!node || node.type !== 'Member' || !this.recordTypes || !this.recordTypes.size) return null;
+        const type = this.recordTypeOfNode(node.object);
+        if (!type || !this.recordLowerable(type) || !this.recordTypes.get(type).methods.has(`get:${node.name}`)) return null;
+        return this.recordCall({type: 'Call', callee: {type: 'Member', object: node.object, name: `get:${node.name}`}, args: []}, null);
+    }
+
+    /** `x.kind = v` where the class has `set kind(v)`: the setter's call; true when it was one. */
+    accessorWrite (expr, indent, out) {
+        const left = expr.left;
+        if (expr.type !== 'Assignment' || expr.op !== '=' || !left || left.type !== 'Member' || !this.recordTypes || !this.recordTypes.size) return false;
+        const type = this.recordTypeOfNode(left.object);
+        if (!type || !this.recordLowerable(type) || !this.recordTypes.get(type).methods.has(`set:${left.name}`)) return false;
+        return this.recordCall({type: 'Call', callee: {type: 'Member', object: left.object, name: `set:${left.name}`}, args: [expr.right]}, {indent, out});
     }
 
     /** A `const` table's entry (`GameIcons.Dead` → `IconNames.Skull`), or the node itself. */
