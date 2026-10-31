@@ -1,4 +1,5 @@
 import {createProjectFrameDeltaNumber,currentFrameDeltaReporter} from './project-frame-delta-number.js';
+import {EXTERNAL_NAME} from './external-references.js';
 import {createProjectMathNormalResults} from './project-math-normal-results.js';
 import {arrayMenuLiteral,isArrayMenuSelector,isKnownArrayMenuOperation} from './array-menu-literal.js';
 import {createProjectJsonSnapshot,isProjectJsonSnapshot} from './project-json-snapshot.js';
@@ -229,12 +230,13 @@ const REGISTERED_HAT_KINDS = {
     arcade_whenRegisteredPaint:'paint', arcade_whenRegisteredShade:'shade',
     arcade_whenRegisteredKindDestroyed:'destroyed', arcade_whenRegisteredOverlap:'overlap',
     arcade_whenRegisteredScenePush:'scenePush', arcade_whenRegisteredScenePop:'scenePop',
-    arcade_whenRegisteredForever:'forever', arcade_whenRegisteredLifeZero:'lifeZero', arcade_whenRegisteredScore:'score', arcade_whenRegisteredCountdown:'countdown'
+    arcade_whenRegisteredForever:'forever', arcade_whenRegisteredLifeZero:'lifeZero', arcade_whenRegisteredScore:'score', arcade_whenRegisteredCountdown:'countdown',
+    arcade_whenRegisteredExternal:'external'
 };
 const REGISTERED_COMMANDS = new Set(['arcade_registerMultiplayerConnection','arcade_registerControlEvent','arcade_startParallelHandler','arcade_registerLegacyWallHandler','arcade_registerMultiplayerButtonHandler','arcade_registerSpriteCreated','arcade_registerWallHandler','arcade_registerTileHandler',
     'arcade_registerUpdateHandler','arcade_registerIntervalHandler','arcade_registerButtonHandler','arcade_registerPaintHandler','arcade_registerShadeHandler',
     'arcade_registerInstanceDestroyedHandler','arcade_registerDestroyedHandler','arcade_registerOverlapHandler','arcade_registerScenePushHandler','arcade_registerScenePopHandler',
-    'arcade_registerForeverHandler','arcade_registerLifeZeroHandler','arcade_registerScoreHandler','arcade_registerCountdownHandler']);
+    'arcade_registerForeverHandler','arcade_registerLifeZeroHandler','arcade_registerScoreHandler','arcade_registerCountdownHandler','arcade_registerExternalHandler']);
 
 const KEY_BUTTON = {
     'left arrow': 'controller.left', 'right arrow': 'controller.right',
@@ -1135,6 +1137,28 @@ class ArcadeEmitter {
         return this.spriteVar.get(this.target.name) || null;
     }
 
+    /** The fixed qualified name of a block that keeps a name whose source is not in the project, else null. */
+    externalName (b) {
+        const name=this.literalInput(b,'NAME');
+        return typeof name==='string' && EXTERNAL_NAME.test(name)?name:null;
+    }
+
+    /** The exported argument expressions of an external call's `arcade function argument` chain, or null. */
+    externalArgumentValues (b) {
+        const values=[],seen=new Set();let tail=b.inputs?.ARGS,block=this.block(tail?.[1]);
+        while(block?.opcode==='arcade_functionArgument'){
+            if(seen.has(block))return null;seen.add(block);
+            values.push(this.arrayValue(block,'VALUE'));tail=block.inputs?.REST;block=this.block(tail?.[1]);
+        }
+        const empty=Array.isArray(tail?.[1])?String(tail[1][1])==='[]':block?.fields?.TEXT?.[0]==='[]';
+        return empty?values:null;
+    }
+
+    externalCallText (b) {
+        const name=this.externalName(b),values=name&&this.externalArgumentValues(b);
+        return name&&values?`${name}(${values.join(', ')})`:null;
+    }
+
     literalInput (b, name) {
         if(isArrayMenuSelector(b,name))return arrayMenuLiteral(this.target,b,name);
         const slot = b.inputs?.[name]?.[1];
@@ -1673,6 +1697,15 @@ class ArcadeEmitter {
             if (this.tokened()) args.unshift('_t');
             if (this.isClonable()) args.unshift('self');
             return `${fn}(${args.join(', ')})`;
+        }
+        case 'arcade_externalValue':
+        case 'arcade_externalImage': {
+            const name=this.externalName(b);
+            return name || this.na();
+        }
+        case 'arcade_externalCall': {
+            const call=this.externalCallText(b);
+            return call===null?this.na():call;
         }
         case 'arcade_createSpriteKind':return 'SpriteKind.create()';
         case 'arcade_spriteKindValue': {
@@ -2839,6 +2872,12 @@ class ArcadeEmitter {
         case 'arcade_changePlayerScore': {const api=this.infoPlayerApi(b);if(api)push(`${api}.${b.opcode==='arcade_setPlayerScore'?'setScore':'changeScoreBy'}(${this.arrayValue(b,'VALUE')})`);return;}
         case 'arcade_setLife':
         case 'arcade_changeLife': {const api=this.infoPlayerApi(b);if(api)push(`${api}.${b.opcode==='arcade_setLife'?'setLife':'changeLifeBy'}(${this.arrayValue(b,'VALUE')})`);return;}
+        case 'arcade_externalCommand': {
+            const call=this.externalCallText(b);
+            if(call===null)push(`// ${this.note('Arcade external command needs a qualified name and a fixed argument chain')}`);
+            else push(call);
+            return;
+        }
         case 'arcade_pushScene': push('game.pushScene()');return;
         case 'arcade_popScene': push('game.popScene()');return;
         case 'arcade_setButtonRepeatProperty': {const receiver=this.controllerRepeatReceiver(b);if(receiver)push(`${receiver}.${b.fields.PROPERTY[0]} = (${this.arrayValue(b,'VALUE')} as any)`);return;}
@@ -2863,8 +2902,9 @@ class ArcadeEmitter {
         case 'arcade_registerForeverHandler':
         case 'arcade_registerLifeZeroHandler':
         case 'arcade_registerScoreHandler':
-        case 'arcade_registerCountdownHandler': {
-            const kinds={arcade_registerMultiplayerConnection:'multiplayerConnection',arcade_registerControlEvent:'controlEvent',arcade_startParallelHandler:'parallel',arcade_registerMultiplayerButtonHandler:'multiplayerButton',arcade_registerUpdateHandler:'update',arcade_registerPaintHandler:'paint',arcade_registerShadeHandler:'shade',arcade_registerIntervalHandler:'interval',
+        case 'arcade_registerCountdownHandler':
+        case 'arcade_registerExternalHandler': {
+            const kinds={arcade_registerExternalHandler:'external',arcade_registerMultiplayerConnection:'multiplayerConnection',arcade_registerControlEvent:'controlEvent',arcade_startParallelHandler:'parallel',arcade_registerMultiplayerButtonHandler:'multiplayerButton',arcade_registerUpdateHandler:'update',arcade_registerPaintHandler:'paint',arcade_registerShadeHandler:'shade',arcade_registerIntervalHandler:'interval',
                 arcade_registerInstanceDestroyedHandler:'instanceDestroyed',arcade_registerButtonHandler:'button',arcade_registerDestroyedHandler:'destroyed',arcade_registerOverlapHandler:'overlap',
                 arcade_registerScenePushHandler:'scenePush',arcade_registerScenePopHandler:'scenePop',
                 arcade_registerForeverHandler:'forever',arcade_registerLifeZeroHandler:'lifeZero',arcade_registerScoreHandler:'score',arcade_registerCountdownHandler:'countdown'};
@@ -2876,6 +2916,11 @@ class ArcadeEmitter {
                 scenePush:'game.addScenePushHandler',scenePop:'game.addScenePopHandler',forever:'game.forever',
                 lifeZero:'info.onLifeZero',countdown:'info.onCountdownEnd'};
             const args=[];let api=apis[kind];
+            if(kind==='external'){
+                const name=this.externalName(b),values=this.externalArgumentValues(b);
+                if(!name || values===null){push(`// ${this.note('Arcade external callback registration needs a qualified name and a fixed argument chain')}`);return;}
+                this.usedRegisteredCallbacks.add(token);push(`${name}(${[...values,body].join(', ')})`);return;
+            }
             if(kind==='instanceDestroyed')api=`${this.arrayValue(b,'ID')}.onDestroyed`;
             if(kind==='lifeZero'){const playerApi=this.infoPlayerApi(b);if(!playerApi)return;api=playerApi+'.onLifeZero';}
             if(kind==='score'){

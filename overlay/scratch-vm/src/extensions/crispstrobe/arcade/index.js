@@ -401,6 +401,15 @@ module.exports = makeExt(`// Name: Arcade
           {opcode:'registerShadeHandler',blockType:Scratch.BlockType.COMMAND,text:'Arcade register shade as [TOKEN] capturing [CAPTURES]',arguments:{...str('TOKEN','handler'),...str('CAPTURES','')}},
           {opcode:'whenRegisteredShade',blockType:Scratch.BlockType.HAT,isEdgeActivated:false,text:'when Arcade shade handler [TOKEN] runs',arguments:str('TOKEN','handler')},
           {opcode:'screenImage',blockType:Scratch.BlockType.REPORTER,text:'Arcade screen image'},
+          // A name the program uses but whose source is not part of it (a missing user namespace or asset): kept by name so
+          // export writes it back. Run here it is inert, as PXT would refuse to compile it: a call is a no-op that
+          // reports 0, a value reads 0, an image is a 1x1 transparent stand-in, and its callback never fires.
+          {opcode:'externalValue',blockType:Scratch.BlockType.REPORTER,text:'Arcade external value [NAME]',arguments:str('NAME','')},
+          {opcode:'externalImage',blockType:Scratch.BlockType.REPORTER,text:'Arcade external image [NAME]',arguments:str('NAME','')},
+          {opcode:'externalCall',blockType:Scratch.BlockType.REPORTER,text:'Arcade external call [NAME] arguments [ARGS]',arguments:{...str('NAME',''),...str('ARGS','[]')}},
+          {opcode:'externalCommand',blockType:Scratch.BlockType.COMMAND,text:'Arcade external command [NAME] arguments [ARGS]',arguments:{...str('NAME',''),...str('ARGS','[]')}},
+          {opcode:'registerExternalHandler',blockType:Scratch.BlockType.COMMAND,text:'Arcade register external [NAME] arguments [ARGS] as [TOKEN] capturing [CAPTURES]',arguments:{...str('NAME',''),...str('ARGS','[]'),...str('TOKEN','handler'),...str('CAPTURES','')}},
+          {opcode:'whenRegisteredExternal',blockType:Scratch.BlockType.HAT,isEdgeActivated:false,text:'when Arcade external handler [TOKEN] runs',arguments:str('TOKEN','handler')},
           {opcode:'sourceValueBinary',blockType:Scratch.BlockType.REPORTER,text:'Arcade source value [LEFT] [OP] with [RIGHT]',arguments:{...str('LEFT',''),OP:{type:Scratch.ArgumentType.STRING,menu:'sourceBinaryOperations',defaultValue:'+'},...str('RIGHT','')}},
           {opcode:'sourceValueUnary',blockType:Scratch.BlockType.REPORTER,text:'Arcade source unary [OP] of [VALUE]',arguments:{OP:{type:Scratch.ArgumentType.STRING,menu:'sourceUnaryOperations',defaultValue:'~'},...str('VALUE','')}},
           {opcode:'sourceTypeOf',blockType:Scratch.BlockType.REPORTER,text:'Arcade source type of [VALUE]',arguments:{VALUE:{type:Scratch.ArgumentType.STRING}}},
@@ -4842,6 +4851,12 @@ module.exports = makeExt(`// Name: Arcade
       this._changed();
     }
     screenImage() {return this._imageHandle(this._screenRaw());}
+    externalValue() {return 0;}
+    externalImage() {return this._imageHandle({width: 1, height: 1, pixels: new Uint8Array(1)});}
+    externalCall() {return 0;}
+    externalCommand() {}
+    registerExternalHandler() {}
+    whenRegisteredExternal(args,util) {return this.whenRegisteredWall(args,util);}
     // ---- music: PXT's mixer runs as fibers on the Arcade clock (music.js) ----
     _music() {
       // Source timers: PXT fibers run on the program clock and resume from their

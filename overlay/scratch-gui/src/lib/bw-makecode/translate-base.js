@@ -476,6 +476,9 @@ export class BaseTranslator {
             // class that is not translated the variable of that name — all of
             // which hold 0 and read as a working program (task E14). It is
             // refused by name instead: never resolved as a variable.
+            // A name whose source is not in the project is kept by name when the target can (Arcade).
+            const external = this.externalReference?.(node);
+            if (external) return external;
             this.unsupported.push(this.unknownMember(node));
             return '0';
         }
@@ -534,6 +537,7 @@ export class BaseTranslator {
         case 'Template':
             // Untagged and unclaimed (\`serial.writeLine(\`plain\`)\`): its text.
             if (!node.tag) return tsTextLiteral({type: 'String', value: node.value});
+            {const external = this.externalTemplate?.(node);if (external) return external;}
             this.unsupported.push(`${node.tag || 'template'}\`…\` — image or asset literal not translated here`);
             return '"(image)"';
         // An object literal is opaque here; say so, with the calls it made.
@@ -1990,9 +1994,12 @@ export class BaseTranslator {
             const [v, a0, b0, c0, d0] = [0, 1, 2, 3, 4].map(i => this.operand(a[i]));
             return `((${v} - ${a0}) * (${d0} - ${c0}) / (${b0} - ${a0}) + ${c0})`;
         }
-        default:
+        default: {
+            const external = this.externalCallValue?.(node);
+            if (external !== null && external !== undefined) return external;
             this.unsupported.push(`${name || 'call'}() as a value`);
             return '0';
+        }
         }
     }
 
@@ -2043,6 +2050,7 @@ export class BaseTranslator {
             out.push(`${pad}${[fn.name, ...args].join(' ')}`);
             return;
         }
+        if (this.externalStatement?.(node, indent, out)) return;
         out.push(`${'  '.repeat(indent)}${this.note(`${name || 'call'}()`)}`);
     }
 }
