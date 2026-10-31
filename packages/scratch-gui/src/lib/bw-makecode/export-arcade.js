@@ -571,6 +571,7 @@ class ArcadeEmitter {
         this.handleVars = new Set();
         this.customSpriteKinds = new Set();
         this.boundSpriteKinds = new Set();
+        this.sdkKindNames = new Set(['Player', 'Projectile', 'Food', 'Enemy', 'Text']);
         this.hasTextKindLibrary = false;
         this.eventLocationName = null;
         this.eventHandles = null;
@@ -1341,6 +1342,14 @@ class ArcadeEmitter {
         if (['Player','Projectile','Food','Enemy'].includes(name)) return `SpriteKind.${name}`;
         if (name==='Text' && this.hasTextKindLibrary) {this.requiresTextSpritePackage=true;return 'SpriteKind.Text';}
         if (this.boundSpriteKinds.has(name)) return `SpriteKind.${name}`;
+        // A kind the source names but never defines (a package's kind, or a snippet's context) keeps
+        // its name: it is declared like an unassigned bound kind, so SpriteKind.<name> still reads
+        // undefined, as in the source, and a re-import still sees the same named kind.
+        if (/^[A-Za-z_]\w*$/.test(name) && !this.sdkKindNames.has(name)) {
+            this.boundSpriteKinds.add(name);
+            this.note(`Arcade sprite kind name ${JSON.stringify(name)} has no binding in the project; exported as an undefined SpriteKind member`);
+            return `SpriteKind.${name}`;
+        }
         this.note(`Arcade sprite kind name ${JSON.stringify(name)} needs an explicit numeric binding`);
         return this.na();
     }

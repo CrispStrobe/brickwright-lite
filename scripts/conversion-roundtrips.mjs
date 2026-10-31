@@ -144,7 +144,9 @@ const artworkSignatures = assets => assets.map(asset => {
     // and expression order in exported TypeScript. Compare their exact pixels
     // as a multiset within each template family; named sprites retain identity.
     const generated = /^(__(?:arcadeTemplate|arcadeBackground))\d+$/.exec(asset.sprite);
-    const owner = generated ? generated[1] : asset.sprite;
+    // The exporter keeps each sprite in a global `<name>Sprite`, so a re-import names that
+    // sprite's artwork carrier `<name>Sprite`; `<name>` and `<name>Sprite` are one owner.
+    const owner = generated ? generated[1] : asset.sprite.replace(/(?<=.)Sprite$/, '');
     const pixels = svgToPixels(asset.svg);
     return pixels ? `${owner}:${pixels.width}x${pixels.height}:` +
         Buffer.from(pixels.pixels).toString('hex') : `${owner}:unreadable:${asset.svg}`;

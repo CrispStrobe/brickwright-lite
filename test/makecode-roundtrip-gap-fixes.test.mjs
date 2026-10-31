@@ -80,3 +80,48 @@ test('a hide that is not importer scaffolding stays a loss', () => {
     assert.equal(split.differences.lostOpcodes.length, 1);
     assert.equal(structuralOutcome({differences: split.differences, normalization: split.normalization}), 'loss');
 });
+
+const frameBlock = (key, template = 'tpl', start = '0', count = '1') => ({opcode: 'arcade_frameImage', inputs: {
+    KEY: [1, [10, key]], TEMPLATE: [1, [10, template]], START: [1, [4, start]], COUNT: [1, [4, count]]}});
+const projectOf = (...blocks) => ({targets: [{name: 'Game', blocks: Object.fromEntries(blocks.map((b, i) => [`b${i}`, b]))}]});
+const lostFrames = (before, after) => ({missingTargets: [], missingAssets: [], missingArtwork: [],
+    lostOpcodes: [{name: 'arcade_frameImage', before, after}]});
+
+test('identical frame image uses that share one bank are a normalization', () => {
+    const before = projectOf(frameBlock('a'), frameBlock('a'), frameBlock('b'));
+    const split = classifyNormalization(lostFrames(3, 2), {before, after: projectOf(frameBlock('a'), frameBlock('b'))});
+    assert.deepEqual(split.differences.lostOpcodes, []);
+    assert.equal(split.normalization.find(n => n.name === 'arcade_frameImage').count, 1);
+});
+
+test('frame image uses with different ranges stay a loss', () => {
+    const before = projectOf(frameBlock('a', 'tpl', '0', '1'), frameBlock('a', 'tpl', '0', '2'));
+    const split = classifyNormalization(lostFrames(2, 1), {before, after: projectOf(frameBlock('a'))});
+    assert.equal(split.differences.lostOpcodes.length, 1);
+});
+
+test('a missing sprite whose Sprite-suffixed handle carrier came back is a normalization; otherwise a loss', () => {
+    const before = {targets: [{name: 'Game', blocks: {}}, {name: 'frog', blocks: {}}]};
+    const diff = {missingTargets: ['frog'], lostOpcodes: [], missingAssets: [], missingArtwork: []};
+    const kept = classifyNormalization(diff, {before, after: {targets: [{name: 'Game'}, {name: 'frogSprite'}]}});
+    assert.deepEqual(kept.differences.missingTargets, []);
+    const gone = classifyNormalization(diff, {before, after: {targets: [{name: 'Game'}]}});
+    assert.deepEqual(gone.differences.missingTargets, ['frog']);
+});
+
+test('a Scratch-model opcode counts as normalized only when its native counterpart appeared', () => {
+    const op = opcode => ({opcode, inputs: {}});
+    const before = projectOf(op('control_forever'), op('motion_gotoxy'));
+    const diff = {missingTargets: [], missingAssets: [], missingArtwork: [], lostOpcodes: [
+        {name: 'control_forever', before: 1, after: 0}, {name: 'motion_gotoxy', before: 1, after: 0}]};
+    const split = classifyNormalization(diff, {before, after: projectOf(op('arcade_sourceWhile'))});
+    assert.deepEqual(split.differences.lostOpcodes.map(x => x.name), ['motion_gotoxy']);
+    assert.equal(split.normalization.filter(n => n.name === 'control_forever').length, 1);
+});
+
+test('a named sprite kind that no code defines is exported as a declared member, not as a placeholder', () => {
+    const {exported} = arcadeExport('sprites.onOverlap(SpriteKind.Player, SpriteKind.Pickup, function (sprite, other) {\n    other.destroy()\n})\n');
+    const ts = exported.files['main.ts'];
+    assert.match(ts, /namespace SpriteKind \{\s*export let Pickup: number/);
+    assert.match(ts, /sprites\.onOverlap\(SpriteKind\.Player, SpriteKind\.Pickup,/);
+});

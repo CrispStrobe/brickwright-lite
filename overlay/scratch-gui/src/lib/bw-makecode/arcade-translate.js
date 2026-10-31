@@ -4982,9 +4982,12 @@ export function nameArtworkSprites (result) {
     // A user-facing variable name: namespace constants keep their own name
     // (`spritesheet.player` → player); the translator's own temporaries have none.
     const userName = variable => {
-        const namespaced = /^__bwNamespace_[A-Za-z0-9]+_([A-Za-z_]\w*)$/.exec(variable);
+        // The exporter writes a host-local variable as `Game_<name>`; label the art after
+        // the name the author gave it, so a re-import names carriers as the first import did.
+        const name = variable.replace(/^Game_(?=[A-Za-z_])/, '');
+        const namespaced = /^__bwNamespace_[A-Za-z0-9]+_([A-Za-z_]\w*)$/.exec(name);
         if (namespaced) return namespaced[1];
-        return /^__/.test(variable) ? null : variable;
+        return /^__/.test(name) ? null : name;
     };
     const labelOf = name => {
         if(result.artworkNames?.[name])return userName(result.artworkNames[name]) || result.artworkNames[name];
