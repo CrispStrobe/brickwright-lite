@@ -162,6 +162,7 @@ class MicrobitTranslator extends BaseTranslator {
     isBooleanValue (value) {
         return super.isBooleanValue(value) ||
             value === 'logo touched' ||
+            value === 'sound is playing' ||
             /^read button_/.test(value) ||
             / happening$/.test(value) ||
             / touched$/.test(value) ||
@@ -602,6 +603,18 @@ class MicrobitTranslator extends BaseTranslator {
         case 'pins.analogReadPin': return `analog value of pin ${this.pin(a[0]) || 'P0'}`;
         case 'radio.receivedNumber': return 'read last radio number';
         case 'String.fromCharCode': return `char from code ${this.operand(a[0])}`;
+        case 'control.createBufferFromUTF8': return `buffer from text ${this.operand(a[0])}`;
+        // The USB serial console's reads (a MicroPython uart).
+        case 'serial.readBuffer': return `serial read buffer ${this.operand(a[0])}`;
+        case 'serial.readString': return 'serial read string';
+        case 'serial.readLine': return 'serial read until newline';
+        case 'serial.readUntil': return `serial read until ${this.delimiterWord(a[0])}`;
+        case 'pins.i2cReadBuffer': return `i2c read buffer at ${this.operand(a[0])} size ${this.operand(a[1])}`;
+        case 'pins.i2cReadNumber': return `i2c read ${this.numberFormat(a[1])} at ${this.operand(a[0])}`;
+        case 'pins.sizeOf': return `size of ${this.numberFormat(a[0])}`;
+        case 'pins.spiWrite': return `spi transfer ${this.operand(a[0])}`;
+        case 'music.volume': return 'speaker volume';
+        case 'music.isSoundPlaying': return 'sound is playing';
         case 'control.createBuffer': case 'pins.createBuffer': return `create buffer ${this.operand(a[0])}`;
         case 'led.displayMode': return 'display mode';
         case 'control.eventValue': return 'event value';
@@ -1074,6 +1087,67 @@ class MicrobitTranslator extends BaseTranslator {
         case 'input.setSoundThreshold': {
             const level = a[0] && a[0].type === 'Member' && a[0].name === 'Quiet' ? 'quiet' : 'loud';
             push(`set ${level} sound threshold to ${this.operand(a[1])}`);
+            return;
+        }
+        // The serial console beyond writeLine: text and numbers without a newline, raw buffers.
+        case 'serial.writeString': push(`serial write text ${this.single(a[0], out, pad)}`); return;
+        case 'serial.writeNumber': push(`serial write number ${this.single(a[0], out, pad)}`); return;
+        case 'serial.writeBuffer': push(`serial write buffer ${this.single(a[0], out, pad)}`); return;
+        // I2C and SPI: MicroPython's i2c and spi modules.
+        case 'pins.i2cWriteBuffer': push(`i2c write buffer ${this.single(a[1], out, pad)} to ${this.single(a[0], out, pad)}`); return;
+        case 'pins.i2cWriteNumber':
+            push(`i2c write ${this.numberFormat(a[2])} ${this.single(a[1], out, pad)} to ${this.single(a[0], out, pad)}`);
+            return;
+        case 'pins.spiWrite': {
+            const sink = this.freshName('_spi');
+            push(`set ${sink} to spi transfer ${this.operand(a[0])}`);
+            return;
+        }
+        case 'pins.spiTransfer': push(`spi transfer buffer ${this.single(a[0], out, pad)} into ${this.single(a[1], out, pad)}`); return;
+        case 'pins.spiFrequency': push(`spi frequency ${this.single(a[0], out, pad)}`); return;
+        case 'pins.spiFormat': push(`spi format ${this.single(a[0], out, pad)} mode ${this.single(a[1], out, pad)}`); return;
+        case 'pins.spiPins': push(`spi pins mosi ${this.pin(a[0]) || 'P15'} miso ${this.pin(a[1]) || 'P14'} sck ${this.pin(a[2]) || 'P13'}`); return;
+        // The V2 log beyond log data.
+        case 'datalogger.setColumnTitles': {
+            const titles = a.slice(0, 3);
+            if (!titles.length || a.length > 3) {
+                push(this.note('datalogger.setColumnTitles() — the block names one to three columns'));
+                return;
+            }
+            push(`set log columns ${titles.map(t => this.operand(t)).join(' and ')}`);
+            return;
+        }
+        case 'datalogger.deleteLog': {
+            const full = a[0] && a[0].type === 'Member' && a[0].name === 'Full';
+            push(full ? 'delete log fully' : 'delete log');
+            return;
+        }
+        case 'datalogger.mirrorToSerial': {
+            const on = a[0] && a[0].type === 'Boolean' ? a[0].value : null;
+            if (on === null) {
+                push(this.note('datalogger.mirrorToSerial(<expression>) — the block takes on or off'));
+                return;
+            }
+            push(`log mirror ${on ? 'on' : 'off'}`);
+            return;
+        }
+        case 'datalogger.includeTimestamp': {
+            const unit = a[0] && a[0].type === 'Member' ? a[0].name.toLowerCase() : '';
+            if (!/^(none|milliseconds|seconds|minutes|hours|days)$/.test(unit)) {
+                push(this.note('datalogger.includeTimestamp(<format>) — the block takes none, milliseconds, seconds, minutes, hours or days'));
+                return;
+            }
+            push(`log timestamp ${unit}`);
+            return;
+        }
+        case 'music.setVolume': push(`set speaker volume to ${this.operand(a[0])}`); return;
+        case 'music.setBuiltInSpeakerEnabled': {
+            const on = a[0] && a[0].type === 'Boolean' ? a[0].value : null;
+            if (on === null) {
+                push(this.note('music.setBuiltInSpeakerEnabled(<expression>) — the block takes on or off'));
+                return;
+            }
+            push(`speaker ${on ? 'on' : 'off'}`);
             return;
         }
         case 'radio.sendNumber':
@@ -1566,6 +1640,14 @@ export function microbitToPseudocode (source, opts = {}) {
     // (translate-base.js, records). Before the functions are listed: a
     // class's methods become procedures of their own.
     t.claimRecords(ast);
+    // A hat that comes BEFORE a top-level array's declaration reads it all the same (a library's handler written
+    // above the arrays it uses, which is also the order the export writes them in): the arrays are known up front.
+    for (const st of ast.body) {
+        if (st.type !== 'Declaration') continue;
+        for (const d of st.decls || []) {
+            if (d.isArray || (d.init && d.init.type === 'Array') || /\[\]$|^Array</.test(String(d.typeName || '').replace(/\s+/g, ''))) t.arrays.add(d.name);
+        }
+    }
     // A long-press handler on the logo makes its Pressed handler a timed one.
     t.logoTimed = JSON.stringify(ast).includes('"object":{"type":"Identifier","name":"TouchButtonEvent"},"name":"LongPressed"');
 

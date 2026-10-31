@@ -457,7 +457,15 @@ export function lowerHandleValues (ast, parse) {
             }
             return node;
         }
+        case 'ExpressionStatement':
+            if (dynamicEvents && isCall(node.expr, 'control.raiseEvent') && node.expr.args.length >= 2) {
+                return {type: '__Splice', body: [node, {type: 'ExpressionStatement', expr: call('__evfire', [node.expr.args[0], node.expr.args[1]])}]};
+            }
+            return node;
         case 'Call': {
+            if (dynamicEvents && isCall(node, 'control.onEvent') && node.args.length >= 3 && node.args[2].type === 'Identifier') {
+                return call('__evreg', [node.args[0], node.args[1], node.args[2]]);
+            }
             // Array.isArray(x): known statically for the arrays this pass knows.
             if (node.callee.type === 'Member' && node.callee.object.type === 'Identifier' && node.callee.object.name === 'Array' &&
                 node.callee.name === 'isArray' && node.args && node.args.length === 1) {
@@ -526,6 +534,21 @@ export function lowerHandleValues (ast, parse) {
         need.froms.add(items.length);
         return call(`__afrom${items.length}_${ident(elem)}`, items);
     };
+
+    // control.onEvent(source, value, handler) with a handler that is a VALUE (a parameter or a variable, as in a
+    // library's `onEvent(event, handler)`) is a registration made at run time: the handler's id, with its source
+    // and value, goes into a table, and control.raiseEvent(source, value) calls the registered handlers (the newest match, which is the one MakeCode's simulator runs) after raising the event as before. Handlers of the program's own events only:
+    // the board's own sources are raised by the hardware, not by a call.
+    const isCall = (n, path) => n && n.type === 'Call' && n.callee && n.callee.type === 'Member' && n.callee.object.type === 'Identifier' &&
+        `${n.callee.object.name}.${n.callee.name}` === path;
+    let dynamicEvents = false;
+    walk(ast, n => {
+        if (isCall(n, 'control.onEvent') && n.args && n.args.length >= 3 && n.args[2].type === 'Identifier') dynamicEvents = true;
+    });
+    if (dynamicEvents) {
+        need.sigs.set('__fcall____void', {sig: '()=>void', params: [], ret: 'void'});
+        need.events = true;
+    }
 
     // Function values: in a declaration / assignment / argument / return / array item, a function expression
     // or a named function becomes its id.
@@ -755,6 +778,12 @@ export function lowerHandleValues (ast, parse) {
             for (let i = 0; i < n; i++) src.push(`    __apush_${F}(nh, v${i})`);
             src.push('    return nh', '}');
         }
+    }
+    if (need.events) {
+        src.push('let __evs: number[] = [0]', 'let __evv: number[] = [0]', 'let __evf: number[] = [0]',
+            'function __evreg(s: number, v: number, f: number) {', '    __evs.push(s)', '    __evv.push(v)', '    __evf.push(f)', '}',
+            'function __evfire(s: number, v: number) {', '    for (let i = __evs.length - 1; i >= 1; i--) {',
+            '        if (__evs[i] == s && (__evv[i] == v || __evv[i] == 0)) {', '            __fcall____void(__evf[i])', '            return', '        }', '    }', '}');
     }
     // Function values: the lifted procedures, and a dispatcher per signature.
     const sigs = new Map(need.sigs);

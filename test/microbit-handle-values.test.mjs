@@ -44,6 +44,31 @@ async function three (ts, {ms = 1500} = {}) {
     return {mc: text(mc), lite: lines(run.out), back: text(back)};
 }
 
+const HANDLER_VALUES = `
+const MY_EVENT = 4000
+enum Ev {
+    Updated = 1,
+    Broadcast = 2
+}
+function onEv(event: Ev, handler: () => void) {
+    control.onEvent(MY_EVENT, event, handler)
+}
+onEv(Ev.Updated, function () {
+    serial.writeLine("updated")
+})
+onEv(Ev.Broadcast, function () {
+    serial.writeLine("broadcast")
+})
+onEv(Ev.Updated, function () {
+    serial.writeLine("updated again")
+})
+control.raiseEvent(MY_EVENT, Ev.Updated)
+basic.pause(100)
+control.raiseEvent(MY_EVENT, Ev.Broadcast)
+basic.pause(100)
+serial.writeLine("end")
+`;
+
 const LITERALS = `
 let a = [1,2,3].map((x) => x * 2)
 serial.writeLine("" + a.length + " " + a[2])
@@ -354,4 +379,23 @@ test('callbacks on array literals, and Array as a value (Array.isArray)', {skip}
     assert.deepEqual(r.mc, ['3 6', '2', 'y', 'z']);
     assert.deepEqual(r.lite, r.mc);
     assert.deepEqual(r.back, r.mc);
+});
+
+test('control.onEvent with a handler that is a value (a library\'s onEvent(event, handler)): registered at run time, run by raiseEvent', {skip}, async () => {
+    const r = await three(HANDLER_VALUES, {ms: 3000});
+    assert.deepEqual(r.mc, ['updated again', 'broadcast', 'end']);
+    assert.deepEqual(r.lite, r.mc);
+    assert.deepEqual(r.back, r.mc);
+});
+
+test('a handler written above the top-level array it reads still reads an array (the order the export writes them in)', {skip}, () => {
+    const imported = microbitToPseudocode([
+        'input.onButtonPressed(Button.A, function () {',
+        '    serial.writeLine("" + nums[0])',
+        '})',
+        'let nums: number[] = []',
+        'nums = [5, 6]'
+    ].join('\n'));
+    assert.deepEqual(imported.unsupported, []);
+    assert.match(imported.code, /item 0 of array "nums"/);
 });

@@ -56,32 +56,104 @@ test('loops.everyInterval repeats on a timer: the same ticks as MakeCode\'s, non
     assert.ok(sim.includes('tick 4'), `ticks seen: ${sim}`);
 });
 
-test('radio.sendValue sends the pair, the name cut to 8 characters; onReceivedValue splits it again', {skip}, async () => {
-    const tx = lite('radio.setGroup(4)\nradio.sendValue("temperature", 21)\nradio.sendValue("x", -3.5)\n');
-    const sent = await runOnMicrobitFirmware(tx.py, {ms: 500});
-    assert.equal(sent.traceback, null, sent.traceback);
-    assert.deepEqual(sent.sent.map(p => p.slice(3)), ['\u0000Vtemperat\u000021', '\u0000Vx\u0000-3.5']);
-    const rx = lite([
-        'radio.onReceivedValue(function (name, value) {',
-        '    serial.writeLine(name + "=" + value)',
-        '})',
-        'radio.onReceivedNumber(function (receivedNumber) {',
-        '    serial.writeLine("num " + receivedNumber)',
-        '})'].join('\n'));
-    const got = await runOnMicrobitFirmware(rx.py, {ms: 1000, radio: [[100, '\u0000Vtemperat\u000021'], [200, '7'], [300, '\u0000Vx\u0000-3.5']]});
+// MakeCode's radio packet (pxt-microbit libs/radio/radio.ts): 32 bytes, | type | time | serial | payload |,
+// behind the 3-byte header every MicroPython frame carries. The two boards must read each other's packets.
+const SENDER = [
+    'radio.setGroup(4)',
+    'radio.setTransmitSerialNumber(true)',
+    'radio.sendNumber(42)',
+    'radio.sendNumber(1.5)',
+    'radio.sendString("hi")',
+    'radio.sendValue("temperature", 21)',
+    'radio.sendValue("pi", 3.5)',
+    'let b = control.createBuffer(3)',
+    'b.setUint8(0, 7)',
+    'b.setUint8(1, 8)',
+    'b.setUint8(2, 9)',
+    'radio.sendBuffer(b)'
+].join('\n');
+const RECEIVER = [
+    'radio.setGroup(4)',
+    'radio.onReceivedNumber(function (receivedNumber) {',
+    '    serial.writeLine("num " + receivedNumber)',
+    '})',
+    'radio.onReceivedString(function (receivedString) {',
+    '    serial.writeLine("str " + receivedString)',
+    '})',
+    'radio.onReceivedValue(function (name, value) {',
+    '    serial.writeLine("val " + name + "=" + value)',
+    '})',
+    'radio.onReceivedBuffer(function (receivedBuffer) {',
+    '    let second = receivedBuffer.getUint8(1)',
+    '    serial.writeLine("buf " + second)',
+    '})'
+].join('\n');
+const WANT = ['num 42', 'num 1.5', 'str hi', 'val temperat=21', 'val pi=3.5', 'buf 8'];
+const toFrame = bytes => Buffer.from(bytes.slice(0, 32)).toString('latin1');
+const toMessage = (bytes, serial = 0) => ({type: 'radiopacket', broadcast: true, rssi: -60, serial, time: 0,
+    payload: {type: 0, groupId: 4, bufferData: [...bytes.slice(0, 32), 0, 0, 0, 0]}});
+
+test('packets from MakeCode\'s own simulator are read by lite: number, double, string, value, double value, buffer', {skip}, async () => {
+    const tx = await runMakeCodeSim(await compileMakeCode(SENDER), {ms: 600, at: []});
+    assert.equal(tx.error, null);
+    assert.equal(tx.sent.length, 6);
+    const rx = lite(RECEIVER);
+    const got = await runOnMicrobitFirmware(rx.py, {ms: 2000, radio: tx.sent.map((m, i) => [100 + i * 100, toFrame(m.payload.bufferData)])});
     assert.equal(got.traceback, null, got.traceback);
-    assert.deepEqual(lines(got.out), ['temperat=21', 'num 7', 'x=-3.5']);
+    assert.deepEqual(lines(got.out), WANT);
+    // and MakeCode itself reads the same packets the same way
+    const back = await runMakeCodeSim(await compileMakeCode(RECEIVER), {ms: 2000, at: [], radio: tx.sent.map((m, i) => [100 + i * 100, m])});
+    assert.deepEqual(back.serial.map(l => l.text.trim()), WANT);
 });
 
-test('radio.sendValue with a serial number in front still arrives as a value', {skip}, async () => {
-    const rx = lite([
-        'radio.setTransmitSerialNumber(true)',
-        'radio.onReceivedValue(function (name, value) {',
-        '    serial.writeLine(name + ":" + value + ":" + radio.receivedPacket(RadioPacketProperty.SerialNumber))',
-        '})'].join('\n'));
-    const got = await runOnMicrobitFirmware(rx.py, {ms: 500, radio: [[100, '\u0000S9\u0000\u0000Vk\u00005']]});
+test('packets lite sends are read by MakeCode\'s simulator, and match its own byte for byte (the time stamp aside)', {skip}, async () => {
+    const tx = lite(SENDER);
+    const sent = await runOnMicrobitFirmware(tx.py, {ms: 600});
+    assert.equal(sent.traceback, null, sent.traceback);
+    assert.equal(sent.sent.length, 6);
+    const frames = sent.sent.map(f => [...Buffer.from(f, 'latin1')]);
+    for (const f of frames) {
+        assert.deepEqual(f.slice(0, 3), [1, 0, 1], 'MicroPython frame header');
+        assert.equal(f.length, 35);
+    }
+    const mc = await runMakeCodeSim(await compileMakeCode(SENDER), {ms: 600, at: []});
+    mc.sent.forEach((m, i) => {
+        const theirs = m.payload.bufferData.slice(0, 32);
+        const ours = frames[i].slice(3);
+        // type, then (time 1..4 aside) serial and payload
+        assert.deepEqual([ours[0], ...ours.slice(9)], [theirs[0], ...theirs.slice(9)], `packet ${i}`);
+        // the serial number: both transmit one, non-zero
+        assert.notEqual(Buffer.from(ours.slice(5, 9)).readInt32LE(0), 0);
+    });
+    const back = await runMakeCodeSim(await compileMakeCode(RECEIVER), {ms: 2000, at: [], radio: frames.map((f, i) => [100 + i * 100, toMessage(f.slice(3))])});
+    assert.equal(back.error, null);
+    assert.deepEqual(back.serial.map(l => l.text.trim()), WANT);
+});
+
+test('a plain MicroPython radio.send(text) from another board still arrives as text or a number', {skip}, async () => {
+    const rx = lite(RECEIVER);
+    const got = await runOnMicrobitFirmware(rx.py, {ms: 1000, radio: [[100, 'hello'], [200, '7']]});
     assert.equal(got.traceback, null, got.traceback);
-    assert.deepEqual(lines(got.out), ['k:5:9']);
+    assert.deepEqual(lines(got.out), ['str hello', 'num 7']);
+});
+
+test('the sender\'s serial number and time ride in the packet, as MakeCode reads them', {skip}, async () => {
+    const rx = lite([
+        'radio.setGroup(4)',
+        'radio.onReceivedNumber(function (receivedNumber) {',
+        '    let s = radio.receivedPacket(RadioPacketProperty.SerialNumber)',
+        '    let t = radio.receivedPacket(RadioPacketProperty.Time)',
+        '    serial.writeLine("n " + receivedNumber + " " + s + " " + t)',
+        '})'].join('\n'));
+    // type 0, time 1234, serial 9, number 5
+    const packet = Buffer.alloc(32);
+    packet[0] = 0;
+    packet.writeUInt32LE(1234, 1);
+    packet.writeInt32LE(9, 5);
+    packet.writeInt32LE(5, 9);
+    const got = await runOnMicrobitFirmware(rx.py, {ms: 500, radio: [[100, packet.toString('latin1')]]});
+    assert.equal(got.traceback, null, got.traceback);
+    assert.deepEqual(lines(got.out), ['n 5 9 1234']);
 });
 
 const BLUETOOTH = [
