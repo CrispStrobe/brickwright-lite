@@ -4,8 +4,8 @@ import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arc
 import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
 import SB3Creator from '../overlay/scratch-gui/src/lib/sb3-creator.js';
 
-// An animation the project does not carry stays a named assets.animation reference. It is an inert Array-valued tag like an img
-// literal, so it must not make the export's addition helper proof "not current" and refuse the program's ordinary `+`.
+// An asset the project does not carry (animation, image, tile, song) stays a named assets.* reference. It is an inert literal like an
+// img tag, so it must not make the export's addition helper proof "not current" and refuse the program's ordinary `+`.
 const exportOf = source => {
     const imported = arcadeToPseudocode(source);
     const creator = new SB3Creator();
@@ -38,4 +38,17 @@ test('the same program without the missing animation exports the same addition',
     const {exported} = exportOf(source(''));
     assert.ok(!exported.unsupported.some(note => NOTE.test(note)), exported.unsupported.join('|'));
     assert.match(exported.files['main.ts'], /total = __bwBinaryAdd\(total, /);
+});
+
+test('missing image, tile and song references do not refuse the addition helper either', () => {
+    const tails = [
+        'let shot = sprites.createProjectileFromSide(assets.image`Absent`, -90, 0)',
+        'let floor = assets.tile`Absent`',
+        'music.play(music.createSong(assets.song`Absent`), music.PlaybackMode.UntilDone)'
+    ];
+    for (const tail of tails) {
+        const {exported} = exportOf(source(tail));
+        assert.ok(!exported.unsupported.some(note => NOTE.test(note)), `${tail}: ${exported.unsupported.join('|')}`);
+        assert.match(exported.files['main.ts'], /total = __bwBinaryAdd\(total, /, tail);
+    }
 });

@@ -165,9 +165,10 @@ function buildGeneratedHelperBindings(program,profile,fastAmbient){
     }
     // Tagged callees are scalar AST spellings, not Identifier references.
     // Only the actual unshadowed literal tags have a closed effect here.
-    // An `assets.animation` tag whose animation the project does not carry stays a named reference at export. It is
-    // an inert Array-valued literal like an img tag; the addition helper still decides each operand at run time.
-    for(const n of nodes)if(n.type==='Template'&&(typeof n.value!=='string'||n.value.includes('${')||!['img','hex','assets.animation'].includes(n.tag)))valid=false;
+    // An `assets.image`, `assets.tile`, `assets.animation` or `assets.song` tag whose asset the project does not carry
+    // stays a named reference at export. It is an inert Image, Image[] or song literal like an img tag; the addition
+    // helper still decides each operand at run time. (`assets` itself is checked against lexical shadows below.)
+    for(const n of nodes)if(n.type==='Template'&&(typeof n.value!=='string'||n.value.includes('${')||!['img','hex','assets.image','assets.tile','assets.animation','assets.song'].includes(n.tag)))valid=false;
     // Default initializers are executable in these actual parser profiles.
     // Join retained metadata to the complete actual body prologue before a
     // lexical normalizer can hide it. Pure/nonliteral defaults remain valid;
