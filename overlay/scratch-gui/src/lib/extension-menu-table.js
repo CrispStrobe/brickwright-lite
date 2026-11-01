@@ -396,6 +396,7 @@ export default {
     "microbitplus_pulsein": {"PIN":"spiPin","LEVEL":"pulseLevel"},
     "microbitplus_radioserial": {"STATE":"+onoff"},
     "microbitplus_serialreaduntil": {"DELIM":"delimiter"},
+    "microbitplus_serialredirect": {"TX":"spiPin","RX":"spiPin"},
     "microbitplus_servo": {"PIN":"+gpio"},
     "microbitplus_servocont": {"PIN":"+gpio"},
     "microbitplus_servopulse": {"PIN":"spiPin"},

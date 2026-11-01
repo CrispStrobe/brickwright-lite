@@ -336,8 +336,11 @@ test('vendored SPIKE compiler emits a canonical executable round-trip artifact',
     // -> 2aeff387 (2026-11-01): the tilemap words (sb3-creator #173). `git diff 69aaba2b 2aeff387 -- src/`
     // is arcadeDialect.js only (15 added words); the SPIKE emitter is unchanged, so no SPIKE artifact assertion changes.
     // -> 17d06522 (2026-11-01): the micro:bit pin PWM, servo, pulse, touch-mode and game level words (#174) and the sibling refresh (#175); the SPIKE emitter is unchanged (no line of spikeprimeDialect.js or spike3Python.js moved). Re-run every assertion.
+    // -> ab47b412 (2026-11-01): the micro:bit radio off/band, serial redirect/baud, reset, panic, compass and
+    // accelerometer words (#176); the SPIKE emitter is unchanged (no line of spikeprimeDialect.js or spike3Python.js moved).
+    // Re-run every assertion.
     assert.equal(JSON.parse(readFileSync(new URL('../vendor-pins.json', import.meta.url)))['sb3-creator'],
-        '17d06522ed71aac05364b80b075372acf3947d92');
+        'ab47b412f4e0379f1feec47531e7e12e74e1cbf9');
 
     const creator = new SB3Creator();
     creator.parse(PROGRAM);

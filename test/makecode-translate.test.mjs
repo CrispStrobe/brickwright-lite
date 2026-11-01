@@ -149,9 +149,9 @@ test('event handlers become polling scripts of their own', () => {
 test('a call with no mapping is reported, not swallowed', () => {
     // (serial.writeLine, then serial.writeValue, was the example here until
     // each got a mapping — `print`.)
-    const out = microbitToPseudocode('serial.redirect(SerialPin.P0, SerialPin.P1, BaudRate.BaudRate9600)\nbasic.clearScreen()');
-    assert.match(out.code, /# unsupported: serial\.redirect\(\)/);
-    assert.ok(out.unsupported.some(u => /serial\.redirect/.test(u)));
+    const out = microbitToPseudocode('pins.analogSetPitchPin(AnalogPin.P0)\nbasic.clearScreen()');
+    assert.match(out.code, /# unsupported: pins\.analogSetPitchPin\(\)/);
+    assert.ok(out.unsupported.some(u => /pins\.analogSetPitchPin/.test(u)));
     assert.match(out.code, /clear display/, 'the rest of the program still translates');
 });
 

@@ -45,3 +45,15 @@ requires the narrow live F10 repair described above and exact body-hash
 rebinding; historical fields and measured evidence remain unchanged.
 Qualification of the integrated head is recorded separately from the first
 published candidate `73ee01ec874e2a0e66bf5b2b258ace4cce628447`.
+
+Second main integration (2026-11-01): compose
+`2909b165b6d26888e85f228664e3e06c3302989c` and its micro:bit radio, serial,
+board-control and data-logger work. Preserve its sb3-creator
+`ab47b412f4e0379f1feec47531e7e12e74e1cbf9` and microbitplus
+`6385f0a7f93c30897b2cd8c3cff2f0348b08eb1f` pins alongside the adopted Board/CUI
+pins and six current CUI witness updates. F10's live SB3 entry follows main;
+only the corresponding producer/reader source profiles and admission hash pairs
+are rebound. Historical fields, validators, workflow bytes, activation flags and
+npm locks remain unchanged. Run the existing 82 manufactured controls and the
+complete-history pin audit on the combined source; no earlier qualification is
+transferred to it.
