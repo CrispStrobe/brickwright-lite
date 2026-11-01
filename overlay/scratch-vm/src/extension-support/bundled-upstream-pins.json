@@ -131,10 +131,10 @@
         },
         "microbitplus": {
             "path": "extensions/CrispStrobe/microbitplus.js",
-            "sha256": "fa55fd0726293f1bee2a4900e495dcf0f0abe07257e3ad456abdcccff572d9dc",
-            "bytes": 84507,
+            "sha256": "55adf7a0a52e12f63d2c7d9c8a7c864f38f970054a6812838a3564bbec731d42",
+            "bytes": 86811,
             "repo": "CrispStrobe/extensions",
-            "commit": "80092dbf4fb29b86dd0a312ae138ff24495ae8d7"
+            "commit": "6385f0a7f93c30897b2cd8c3cff2f0348b08eb1f"
         },
         "text2speech": {
             "path": "extensions/CrispStrobe/brickwright_tts.js",
