@@ -61,6 +61,16 @@ const messages = defineMessages({
         description: 'Label for button that converts the paint editor to vector mode',
         id: 'paint.paintEditor.vector'
     },
+    bitmapShort: {
+        defaultMessage: 'Bitmap',
+        description: 'Short label of the button that converts the paint editor to bitmap mode, used when space is tight',
+        id: 'paint.paintEditor.bitmapShort'
+    },
+    vectorShort: {
+        defaultMessage: 'Vector',
+        description: 'Short label of the button that converts the paint editor to vector mode, used when space is tight',
+        id: 'paint.paintEditor.vectorShort'
+    },
     canvasOnly: {
         defaultMessage: 'Focus on canvas',
         description: 'Hide paint editor tools and panels to focus on the canvas',
@@ -80,6 +90,12 @@ const messages = defineMessages({
 
 const PaintEditorComponent = props => {
     const [canvasOnly, setCanvasOnly] = React.useState(false);
+    // The tool's own options (brush size, presets) are the first thing in the scrolling strip.
+    // Choosing a tool brings them back into view instead of leaving them scrolled off to the left.
+    const commandStrip = React.useRef(null);
+    React.useEffect(() => {
+        if (commandStrip.current) commandStrip.current.scrollLeft = 0;
+    }, [props.mode, props.format]);
     React.useEffect(() => {
         const frame = requestAnimationFrame(() => window.dispatchEvent(new Event('resize')));
         return () => cancelAnimationFrame(frame);
@@ -129,7 +145,7 @@ const PaintEditorComponent = props => {
                                 <StrokeWidthIndicatorComponent onUpdateImage={props.onUpdateImage} />
                             </React.Fragment> : null}
                         </InputGroup>
-                    <div className={styles.commandStrip} role="toolbar" data-testid="bw-paint-command-strip">
+                    <div className={styles.commandStrip} ref={commandStrip} role="toolbar" data-testid="bw-paint-command-strip">
 
                         <FixedToolsContainer
                             canRedo={props.canRedo} canUndo={props.canUndo} name={props.name}
@@ -145,6 +161,72 @@ const PaintEditorComponent = props => {
                             <BitmapLayersControls onUpdateImage={props.onUpdateImage} />
                         </React.Fragment> : null}
                         <div className={styles.fileActions}>{props.editorTools}</div>
+                    </div>
+                    {/* Zoom and canvas focus stay pinned at the end of the bar while the rest of it scrolls. */}
+                    <div className={styles.viewActions} data-testid="bw-paint-view-actions">
+                        {isVector(props.format) || isBitmap(props.format) ?
+                            <Button
+                                aria-label={props.intl.formatMessage(isVector(props.format) ? messages.bitmap : messages.vector)}
+                                className={styles.bitmapButton}
+                                data-testid="bw-paint-convert"
+                                title={props.intl.formatMessage(isVector(props.format) ? messages.bitmap : messages.vector)}
+                                onClick={isVector(props.format) ? props.onSwitchToBitmap : props.onSwitchToVector}
+                            >
+                                <img
+                                    className={styles.bitmapButtonIcon}
+                                    draggable={false}
+                                    src={bitmapIcon}
+                                />
+                                <span className={classNames(styles.buttonText, styles.convertLong)}>
+                                    {props.intl.formatMessage(isVector(props.format) ? messages.bitmap : messages.vector)}
+                                </span>
+                                <span aria-hidden="true" className={classNames(styles.buttonText, styles.convertShort)}>
+                                    {props.intl.formatMessage(isVector(props.format) ? messages.bitmapShort : messages.vectorShort)}
+                                </span>
+                            </Button> : null
+                        }
+                    {/* Zoom controls */}
+                    <InputGroup className={styles.zoomControls}>
+                        <ButtonGroup>
+                            <Button
+                                className={styles.buttonGroupButton}
+                                onClick={props.onZoomOut}
+                                title="Zoom Out"
+                            >
+                                <img
+                                    alt="Zoom Out"
+                                    className={styles.buttonGroupButtonIcon}
+                                    draggable={false}
+                                    src={zoomOutIcon}
+                                />
+                            </Button>
+                            <Button
+                                className={styles.buttonGroupButton}
+                                onClick={props.onZoomReset}
+                                title="Zoom Reset"
+                            >
+                                <img
+                                    alt="Zoom Reset"
+                                    className={styles.buttonGroupButtonIcon}
+                                    draggable={false}
+                                    src={zoomResetIcon}
+                                />
+                            </Button>
+                            <Button
+                                className={styles.buttonGroupButton}
+                                onClick={props.onZoomIn}
+                                title="Zoom In"
+                            >
+                                <img
+                                    alt="Zoom In"
+                                    className={styles.buttonGroupButtonIcon}
+                                    draggable={false}
+                                    src={zoomInIcon}
+                                />
+                            </Button>
+                        </ButtonGroup>
+                    </InputGroup>
+                        {!canvasOnly ? focusButton : null}
                     </div>
                 </div>
             </div>
@@ -277,76 +359,6 @@ const PaintEditorComponent = props => {
                         ) : null
                     }
                 </ScrollableCanvas>
-                <div className={styles.canvasControls}>
-                    {isVector(props.format) ?
-                        <Button
-                            className={styles.bitmapButton}
-                            onClick={props.onSwitchToBitmap}
-                        >
-                            <img
-                                className={styles.bitmapButtonIcon}
-                                draggable={false}
-                                src={bitmapIcon}
-                            />
-                            <span className={styles.buttonText}>
-                                {props.intl.formatMessage(messages.bitmap)}
-                            </span>
-                        </Button> :
-                        isBitmap(props.format) ?
-                            <Button
-                                className={styles.bitmapButton}
-                                onClick={props.onSwitchToVector}
-                            >
-                                <img
-                                    className={styles.bitmapButtonIcon}
-                                    draggable={false}
-                                    src={bitmapIcon}
-                                />
-                                <span className={styles.buttonText}>
-                                    {props.intl.formatMessage(messages.vector)}
-                                </span>
-                            </Button> : null
-                    }
-                    {/* Zoom controls */}
-                    <InputGroup className={styles.zoomControls}>
-                        <ButtonGroup>
-                            <Button
-                                className={styles.buttonGroupButton}
-                                onClick={props.onZoomOut}
-                            >
-                                <img
-                                    alt="Zoom Out"
-                                    className={styles.buttonGroupButtonIcon}
-                                    draggable={false}
-                                    src={zoomOutIcon}
-                                />
-                            </Button>
-                            <Button
-                                className={styles.buttonGroupButton}
-                                onClick={props.onZoomReset}
-                            >
-                                <img
-                                    alt="Zoom Reset"
-                                    className={styles.buttonGroupButtonIcon}
-                                    draggable={false}
-                                    src={zoomResetIcon}
-                                />
-                            </Button>
-                            <Button
-                                className={styles.buttonGroupButton}
-                                onClick={props.onZoomIn}
-                            >
-                                <img
-                                    alt="Zoom In"
-                                    className={styles.buttonGroupButtonIcon}
-                                    draggable={false}
-                                    src={zoomInIcon}
-                                />
-                            </Button>
-                        </ButtonGroup>
-                    </InputGroup>
-                    {!canvasOnly ? focusButton : null}
-                </div>
             </div>
 
             {/* Brickwright: the properties rail (numeric transform, align/distribute, shape
