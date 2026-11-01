@@ -22,11 +22,20 @@
     flex: 0 0 auto;
     min-width: 0;
     overflow: hidden;
+    /* Clip, never scroll: overflow:hidden is still a programmatic scroll container, so a
+       scrollIntoView() on a control at the far end of the scrolling command strip (Playwright's
+       click does this) slid the whole bar sideways under the pinned zoom/convert group instead
+       of only scrolling the strip. */
+    overflow: clip;
     padding-bottom: $grid-unit;
 }
 
 .command-row {
     display: flex;
+    /* The pinned convert/zoom/focus group wraps to a second line of the TOP bar when the strip
+       would otherwise be squeezed out of existence (a narrow editor beside an open right pane
+       left the strip 0 px wide and every tool in it unreachable). */
+    flex-wrap: wrap;
     align-items: center;
     min-width: 0;
     gap: $grid-unit;
@@ -40,8 +49,8 @@
     flex-wrap: nowrap;
     align-items: center;
     gap: $grid-unit;
-    flex: 1 1 auto;
-    min-width: 0;
+    flex: 1 1 200px;
+    min-width: 200px;
     overflow-x: auto;
     overflow-y: hidden;
     overscroll-behavior-x: contain;
@@ -251,6 +260,7 @@ $border-radius: 0.25rem;
 
 .view-actions {
     display: flex;
+    margin-inline-start: auto;
     flex: 0 0 auto;
     align-items: center;
     gap: $grid-unit;
