@@ -351,7 +351,7 @@ module.exports = makeExt(`// Name: Arcade
     getInfo() {
       const str = (name, def) => ({ [name]: { type: Scratch.ArgumentType.STRING, defaultValue: def || '' } });
       const n = (name, def) => ({ [name]: { type: Scratch.ArgumentType.NUMBER, defaultValue: def == null ? 0 : def } });
-      return dependencies.frameDeltaNumber.declaration(dependencies.sceneClockNumber.declaration(dependencies.nullSpriteGetter.declareAll(dependencies.createConsoleInspectValues.scoreInfo({
+      return dependencies.palette.arrange(this,dependencies.frameDeltaNumber.declaration(dependencies.sceneClockNumber.declaration(dependencies.nullSpriteGetter.declareAll(dependencies.createConsoleInspectValues.scoreInfo({
         id: 'arcade',
         name: 'Arcade',
         color1: '#E64980',
@@ -1151,7 +1151,7 @@ module.exports = makeExt(`// Name: Arcade
           spriteFlags: {acceptReporters: false, items: Object.keys(spriteFlags)}
           ,speechModes: {acceptReporters: false, items: ['text', 'legacy']}
         }
-      },scoreNumberOwners.get(this)),method=>nullSpriteOwners.get(this).get(method)),sceneClockOwners.get(this)),frameDeltaOwners.get(this));
+      },scoreNumberOwners.get(this)),method=>nullSpriteOwners.get(this).get(method)),sceneClockOwners.get(this)),frameDeltaOwners.get(this)));
     }
 
     // An owned runtime may inject {now:()=>milliseconds} for deterministic
@@ -6562,5 +6562,6 @@ module.exports = makeExt(`// Name: Arcade
   createCarnivalHost: require('./carnival-host'),
   initializeGameOver: require('./gameover-pxt'),
   initializeHud: require('./hud-pxt'),
-  initializePrompt: require('./prompt-pxt')
+  initializePrompt: require('./prompt-pxt'),
+  palette: require('./palette')
 });
