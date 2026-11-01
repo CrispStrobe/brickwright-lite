@@ -110,7 +110,8 @@ test('actual Code provider invokes its original chooser and bound save handler w
             assert.equal(actions.call(host), null);
         }
     } finally { unregister(); }
-    assert.match(importer, /<input ref=\{this\._codeFileInput\} type="file"[^>]*[\s\S]*?onChange=\{this\.openCodeFile\}/);
+    // The input's change handler may close the actions menu first; it must still open the chosen file.
+    assert.match(importer, /<input ref=\{this\._codeFileInput\} type="file"[^>]*[\s\S]*?onChange=\{(?:this\.openCodeFile\}|event => \{[^\n]*?\bthis\.openCodeFile\(event\);[^\n]*?\}\})/);
 });
 
 test('Code menu provider registers and cleans up at actual component lifecycle boundaries', () => {
