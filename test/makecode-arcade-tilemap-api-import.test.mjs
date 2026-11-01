@@ -69,3 +69,10 @@ test('a tilemap argument that is not a TileMapData stays named as unsupported', 
     const result = arcadeToPseudocode('let map:any=null\ntiles.setTilemap(map)\n');
     assert.ok(result.unsupported.some(reason => /tilemap/i.test(reason)));
 });
+
+test('a literal map passed straight to setTilemap stays an inline, editor-discoverable literal', () => {
+    const result = arcadeToPseudocode(MAP + 'tiles.setTilemap(tiles.createTilemap(hex`0100010000`, img`\n.\n`, [img`0`], TileScale.Eight))\n');
+    assert.deepEqual(result.unsupported || [], []);
+    assert.match(result.code, /arcade set tilemap data "\{/);
+    assert.doesNotMatch(result.code, /arcade set tilemap data \(arcade tilemap value/);
+});

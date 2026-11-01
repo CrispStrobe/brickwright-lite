@@ -15,7 +15,7 @@ async function lite(source, entropy) {
     const translated = arcadeToPseudocode(source);
     assert.deepEqual(translated.unsupported, []);
     const real = Math.random;
-    Math.random = () => /crispstrobe\/arcade/.test(new Error().stack) ? entropy : real();
+    Math.random = () => /crispstrobe\/arcade|CrispStrobeExtension/.test(new Error().stack) ? entropy : real();
     let run;
     try {
         run = await runProgram(translated.code, {frames: 6, uploads: translated.costumes || [], storage: true});

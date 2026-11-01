@@ -1892,7 +1892,7 @@ class ArcadeTranslator extends BaseTranslator {
                 if(resolved.unsupported.length){push(this.note(`${name}(): ${resolved.unsupported.join('; ')}`));return;}
                 data=resolved.value;
                 if(data===null){push('arcade set tilemap data \"null\"');return;}
-            } else if(a.length===1 && value && this.tilemapDataReferences?.has(value)) {
+            } else if(a.length===1 && value && !(value.type==='Call' && this.path(value.callee)==='tiles.createTilemap') && this.tilemapDataReferences?.has(value)) {
                 push(`arcade set tilemap data (${this.expr(value)})`);return;
             } else data=decodeTilemap(value,node=>this.imageOf(node),node=>this.path(node));
             if(a.length!==1 || !data){this.unsupported.push(`${name}() requires a readable literal tile map with wall layer and tile scale`);return;}
