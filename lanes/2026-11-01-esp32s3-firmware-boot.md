@@ -33,3 +33,11 @@ controls keep retained firmware/ROM source independent of the current engine
 release identity. Post-commit history and fresh built-application qualification
 remain required. No historical browser receipt or frozen x86 execution evidence
 was rewritten as a new pass.
+
+Main integration (2026-11-01): preserve the subsequently landed tilemap and
+micro:bit work from `ef32d9aba3665db3f261c5ab44c8620aa644d635`, including
+sb3-creator `17d06522ed71aac05364b80b075372acf3947d92` and microbitplus
+`80092dbf4fb29b86dd0a312ae138ff24495ae8d7`, while retaining this lane's landed
+Board/CUI pins. Both npm locks are unchanged. Main's frozen source and admission
+inventory remain byte-identical; qualification of the integrated head is recorded
+separately from the first published candidate `73ee01ec874e2a0e66bf5b2b258ace4cce628447`.
