@@ -27,7 +27,7 @@ const PLUMBING = new Set(words(`
   registerScoreHandler whenRegisteredScore registerUpdateHandler whenRegisteredUpdate
   registerPaintHandler whenRegisteredPaint registerShadeHandler whenRegisteredShade
   registerIntervalHandler whenRegisteredInterval
-  externalValue externalImage externalCall externalCommand registerExternalHandler whenRegisteredExternal
+  externalValue externalImage externalImageCall externalCall externalCommand registerExternalHandler whenRegisteredExternal
   allocateControlEventSource controllerEventSource registerMultiplayerConnection
   whenRegisteredMultiplayerConnection registerControlEvent whenRegisteredControlEvent
   registerMultiplayerButtonHandler whenRegisteredMultiplayerButton registerButtonHandler whenRegisteredButton
@@ -65,7 +65,7 @@ const SECTIONS = [
   ['game', 'Game', 'Spiel',
     words('whenUpdate whenInterval gameOver splash ask askForNumber askForString programMillis'),
     words(`setGameOverEffect setGameOverMessage setGameOverPlayable setGameOverScoringType legacyGameOver ---
-      showLongText --- sceneMillis frameDeltaTime --- carnivalCountdown carnivalGameOver carnivalCustomGameOver`)],
+      showLongText --- sceneMillis frameDeltaTime --- carnivalCountdown carnivalGameOver carnivalCustomGameOver carnivalAddLabel`)],
   ['music', 'Music', 'Musik',
     words('playMusic playTone ringTone rest setMusicVolume setTempo changeTempo stopAllSounds'),
     words(`playMelody playSoundEffect playSound --- melodyPlayable stringPlayable tonePlayable songPlayable
