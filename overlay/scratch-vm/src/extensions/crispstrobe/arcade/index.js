@@ -1912,7 +1912,7 @@ module.exports = makeExt(`// Name: Arcade
           if(this._terrainStopped)return;
           const thread=runtime._pushThread(script.blockId,target);thread.bwArcadeEvent={...event,TOKEN:registration.token};thread.bwArcadeCaptures=registration.captures;
           const caller=util?.thread,active=runtime.sequencer.activeThread;
-          try{if(!deferred){runtime.sequencer.activeThread=thread;runtime.sequencer.stepThread(thread);}}
+          try{if(!deferred){runtime.sequencer.activeThread=thread;dependencies.primitiveOwner.stepChild(runtime,thread,()=>runtime.sequencer.stepThread(thread));}}
           finally{if(util){util.thread=caller;util.sequencer=runtime.sequencer;}runtime.sequencer.activeThread=active;}
           if(thread.status!==thread.constructor.STATUS_DONE && !thread.isKilled && runtime.threads.includes(thread))
             yield new Promise(resolve=>this._terrainWaits.add({thread,resolve}));
@@ -2017,7 +2017,7 @@ module.exports = makeExt(`// Name: Arcade
       // game.onUpdate callbacks keep their registration order among them.
       const updates=this._updateHandlers;
       for(let i=0;i<updates.length;i++){
-        if(updates[i].host){if(this._runHost(state,updates[i].host))return true;}
+        if(updates[i].host)updates[i].host();
         else if(yield* this._registeredCallbackSteps([updates[i]],'arcade_whenRegisteredUpdate',{}))return this._faultFrameLoop(state);
         if(this._state()!==state)return;
       }
@@ -2574,7 +2574,7 @@ module.exports = makeExt(`// Name: Arcade
           thread.bwArcadeEvent = {TOKEN:registration.token, first:sprite.id, location};
           thread.bwArcadeCaptures = registration.captures;
           const caller = util?.thread, active = runtime.sequencer.activeThread;
-          try {runtime.sequencer.activeThread = thread;runtime.sequencer.stepThread(thread);}
+          try {runtime.sequencer.activeThread = thread;dependencies.primitiveOwner.stepChild(runtime,thread,()=>runtime.sequencer.stepThread(thread));}
           finally {if (util) {util.thread = caller;util.sequencer = runtime.sequencer;}runtime.sequencer.activeThread = active;}
           if(epoch!==this._terrainEpoch)return;
           if (thread.status !== thread.constructor.STATUS_DONE && !thread.isKilled && runtime.threads.includes(thread))
@@ -5104,16 +5104,9 @@ module.exports = makeExt(`// Name: Arcade
     }
     // PXT frame handlers by priority: below UPDATE_INTERVAL_PRIORITY (19) they
     // run after physics and before the update handlers, the rest after the camera.
-    // An extension frame callback that throws is an uncaught PXT exception in the scene's frame fiber:
-    // the error is reported and the frame loop ends (returns true so the caller ends the frame).
-    _runHost(state,host) {
-      try {host();return false;}
-      catch(error) {this._runtime?.emit?.('BLOCKS_ERROR',String(error?.message || error));return this._faultFrameLoop(state);}
-    }
     _runFrameHandlers(state,low=19,high=Infinity) {
       const list=this._frameHandlers.get(state);
-      if(list)for(let i=0;i<list.length;i++)if(list[i].order>=low && list[i].order<high && this._runHost(state,list[i].handler))return true;
-      return false;
+      if(list)for(let i=0;i<list.length;i++)if(list[i].order>=low && list[i].order<high)list[i].handler();
     }
     _scrollerLayer(value) {
       const layer=Math.floor(Scratch.Cast.toNumber(value));
@@ -6396,22 +6389,22 @@ module.exports = makeExt(`// Name: Arcade
       const live = Object.values(state.sprites).filter(s => s.id);
       this._moveControlledSprites(live);yield* this._moveFollowingSpriteSteps();
       if(epoch!==this._terrainEpoch || this._state()!==state)return;
-      if (!live.length && !state.physicsEngine.members.length) {if(this._runFrameHandlers(state,0,19))return;if(yield* this._sceneUpdates())return;if(this._state()!==state)return;this._advanceAnimations(dt);this._updateCamera();if(this._runFrameHandlers(state))return;if(state.tilemap?.legacy)this._renderTilemap(true);yield* this._advanceSpeechSteps(dt);if(this._state()!==state)return;yield* this._composeSceneSteps();if(this._state()!==state || epoch!==this._terrainEpoch || state._defaultGameOverPending)return;if(!this._frameFaults.has(state))this._startFrameHats();return;}
+      if (!live.length && !state.physicsEngine.members.length) {this._runFrameHandlers(state,0,19);if(yield* this._sceneUpdates())return;if(this._state()!==state)return;this._advanceAnimations(dt);this._updateCamera();this._runFrameHandlers(state);if(state.tilemap?.legacy)this._renderTilemap(true);yield* this._advanceSpeechSteps(dt);if(this._state()!==state)return;yield* this._composeSceneSteps();if(this._state()!==state || epoch!==this._terrainEpoch || state._defaultGameOverPending)return;if(!this._frameFaults.has(state))this._startFrameHats();return;}
       yield* this._advancePhysicsSteps(state.physicsEngine.members.slice(),dt,state.tilemap);
       if(epoch!==this._terrainEpoch || this._state()!==state)return;
       for(const sprite of live)if(state.sprites[sprite.id])this._positionSprite(sprite.id);
       // Extension handlers at ANIMATION_UPDATE_PRIORITY (15) follow physics.
-      if(this._runFrameHandlers(state,0,19))return;
+      this._runFrameHandlers(state,0,19);
       if(yield* this._sceneUpdates())return;
       if(this._state()!==state)return;
       this._advanceAnimations(dt);
       this._updateCamera();
       // Extension frame handlers at PXT's pre-render priority (after the camera).
-      if(this._runFrameHandlers(state,19,55))return;
+      this._runFrameHandlers(state,19,55);
       const updateCamera=this._camera();
       yield* spriteUpdateHosts.get(this).steps(state,sprite=>this._sdkSpriteBaseUpdateSteps(sprite,dt,updateCamera));
       if(this._state()!==state || epoch!==this._terrainEpoch)return;
-      if(this._runFrameHandlers(state,55))return;
+      this._runFrameHandlers(state,55);
       if(state.tilemap?.legacy)this._renderTilemap(true);
       yield* this._advanceSpeechSteps(dt);
       if(this._state()!==state)return;

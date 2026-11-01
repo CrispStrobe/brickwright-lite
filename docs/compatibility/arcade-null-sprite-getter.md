@@ -93,7 +93,8 @@ and `equals` (as receiver) on a null or undefined Image. A null Image or Sprite 
 * A life-zero or countdown-end callback runs inside the HUD renderable, so a fault ends the scene's frame fiber exactly like a
   faulting `onPaint`.
 * A hat-based (legacy) overlap handler reports a dead fiber: its pair stays marked overlapping.
-* An extension frame callback (host) that throws ends the frame fiber and is reported.
+* An extension frame callback (host) that throws is left alone: such errors are Brickwright refusals, not PXT exceptions, and ending the
+  frame loop for them changed refusal behaviour.
 * The 200 ms fallback screen refresh clears its flag at each tick before a frame at the same instant updates it, so a frame fault at
   a tick instant is refreshed two ticks later.
 

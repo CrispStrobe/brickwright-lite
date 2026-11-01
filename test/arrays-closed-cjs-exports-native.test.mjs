@@ -7,7 +7,7 @@ import {INTEGRATED} from './helpers/bw-integrated.mjs';
 const require=createRequire(import.meta.url),Module=require('node:module');
 const root=INTEGRATED+'/node_modules/scratch-vm/src/util/';
 const keys={
- 'bw-primitive-owner':['installFrameDeltaNumber','beforeInputs','invoke','current','stepNested','handles','permitsNumberInput','captureActiveCall','captureFailureCall','isFailureActive','dispatchArrayFailure','isActiveCall'],
+ 'bw-primitive-owner':['installFrameDeltaNumber','beforeInputs','invoke','current','stepNested','stepChild','handles','permitsNumberInput','captureActiveCall','captureFailureCall','isFailureActive','dispatchArrayFailure','isActiveCall'],
  // Arcade-only source value operations moved to bw-array-source-values (lazy
  // Arcade chunk), which takes this module's private support exactly once.
  'bw-array-operations':['registerSource','bind','consumeFailureLease','sourceValueSupport'],
