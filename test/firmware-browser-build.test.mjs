@@ -250,9 +250,139 @@ for (const verifier of ['esp32s3', 'esp32s040']) {
     });
 }
 
+
+// This is the complete shipped worker-loader InlineWorker module captured from
+// the admitted production carrier, not a callback or response hash allowlist.
+const workerModule = './node_modules/worker-loader/dist/workers/InlineWorker.js';
+const shippedWorkerFactory = 'function(e,t,r){"use strict";var n=window.URL||window.webkitURL;' +
+    'e.exports=function(e,t){try{try{var r;try{(r=new(window.BlobBuilder||window.WebKitBlobBuilder||' +
+    'window.MozBlobBuilder||window.MSBlobBuilder)).append(e),r=r.getBlob()}catch(t){r=new Blob([e])}' +
+    'return new Worker(n.createObjectURL(r))}catch(t){return new Worker("data:application/javascript,"+' +
+    'encodeURIComponent(e))}}catch(e){if(!t)throw Error("Inline worker is not supported");return new Worker(t)}}}';
+const workerBody = 'self.postMessage("complete worker ☃\\n bytes");\n';
+function workerCarrier ({factory = shippedWorkerFactory, body = workerBody, call} = {}) {
+    const invoke = call || `r(${JSON.stringify(workerModule)})(${JSON.stringify(body)},r.p+"f6240eab828e6d415177.worker.js")`;
+    return `({${JSON.stringify(workerModule)}:${factory},worker:function(e,t,r){e.exports=function(){return ${invoke}}}});`;
+}
+async function addWorker (f, options = {}) {
+    const file = 'chunks/inline-worker.js', code = workerCarrier(options);
+    await writeFile(join(f.build, file), code);
+    const carrier = observed(new URL(file, f.appUrl).href, Buffer.from(code), 'script');
+    const blob = observed('blob:https://proof.invalid/01234567-89ab-4cde-8123-456789abcdef', Buffer.from(workerBody), 'script');
+    f.assets.push(carrier, blob);
+    return {file, code, carrier, blob};
+}
+
+test('an executable blob binds its complete decoded worker bytes to an observed build generator', async t => {
+    const f = await fixture(t), worker = await addWorker(f);
+    const result = await verifyFirmwareBrowserBuild(f), response = result.responses.at(-1);
+    assert.equal(response.url, worker.blob.url);
+    assert.equal(response.bytes, Buffer.byteLength(workerBody));
+    assert.equal(response.sha256, sha256(Buffer.from(workerBody)));
+    assert.equal(response.derivedFrom.length, 1);
+    const derivation = response.derivedFrom[0];
+    assert.equal(derivation.file, worker.file);
+    assert.equal(derivation.sha256, worker.carrier.sha256);
+    assert.equal(derivation.bytes, Buffer.byteLength(worker.code));
+    assert.equal(derivation.module, workerModule);
+    assert.equal(derivation.sourceSpan.unit, 'UTF-16 code units');
+    assert.equal(worker.code.slice(derivation.sourceSpan.start, derivation.sourceSpan.end), JSON.stringify(workerBody));
+    assert.equal(worker.code.slice(derivation.factorySpan.start, derivation.factorySpan.end), shippedWorkerFactory);
+    assert.match(derivation.transform, /complete decoded string literal/);
+});
+
+test('every repeated blob is checked, including a later same-size substitution at the same URL', async t => {
+    const f = await fixture(t), worker = await addWorker(f);
+    f.assets.push({...worker.blob});
+    let result = await verifyFirmwareBrowserBuild(f);
+    assert.equal(result.responses.filter(row => row.url === worker.blob.url).length, 2);
+    f.assets[f.assets.length - 1] = observed(worker.blob.url, Buffer.from(workerBody.replace('complete', 'tampered')), 'script');
+    await assert.rejects(verifyFirmwareBrowserBuild(f), /Executable blob does not match a reviewed generator/);
+});
+
+test('missing, pending, failed or incomplete blob responses cannot be derived', async t => {
+    const f = await fixture(t), worker = await addWorker(f);
+    for (const change of [{error: 'body evicted'}, {pending: true}, {status: 404}, {sha256: undefined}, {bytes: undefined}]) {
+        const assets = f.assets.map(asset => asset === worker.blob ? {...asset, ...change} : asset);
+        await assert.rejects(verifyFirmwareBrowserBuild({...f, assets}), /Observed response (body is unavailable|did not succeed|lacks a complete byte identity)/);
+    }
+});
+
+test('foreign-origin or opaque blobs, blob documents and opaque script schemes are refused', async t => {
+    const f = await fixture(t), worker = await addWorker(f);
+    for (const change of [
+        {url: 'blob:https://other.invalid/01234567-89ab-4cde-8123-456789abcdef'},
+        {url: 'blob:null/01234567-89ab-4cde-8123-456789abcdef'},
+        {resourceType: 'document'}, {mainDocument: true},
+        {url: 'data:application/javascript,self.postMessage(1)'}
+    ]) {
+        const assets = f.assets.map(asset => asset === worker.blob ? {...asset, ...change} : asset);
+        await assert.rejects(verifyFirmwareBrowserBuild({...f, assets}),
+            /Executable blob must retain|Blob documents cannot|Blob scripts cannot|Unsupported executable response scheme/);
+    }
+});
+
+test('a local generator that was not observed as a matching script cannot bind a blob', async t => {
+    const f = await fixture(t), worker = await addWorker(f);
+    await assert.rejects(verifyFirmwareBrowserBuild({...f, assets: f.assets.filter(asset => asset !== worker.carrier)}),
+        /Executable blob does not match a reviewed generator/);
+    const assets = f.assets.map(asset => asset === worker.carrier ? {...asset, sha256: '0'.repeat(64)} : asset);
+    await assert.rejects(verifyFirmwareBrowserBuild({...f, assets}), /Served response SHA-256 differs from local build/);
+});
+
+test('changed factory behavior and changed decoded worker bytes refuse instead of matching a nearby literal', async t => {
+    for (const options of [
+        {factory: shippedWorkerFactory.replace('.append(e)', '.append(e+"changed")')},
+        {body: workerBody.replace('complete', 'tampered')}
+    ]) {
+        const f = await fixture(t); await addWorker(f, options);
+        await assert.rejects(verifyFirmwareBrowserBuild(f), /Executable blob does not match a reviewed generator/);
+    }
+});
+
+test('a worker string passed through another function or transform is not the reviewed unchanged Blob input', async t => {
+    for (const call of [
+        `r("unreviewed-factory")(${JSON.stringify(workerBody)},r.p+"f6240eab828e6d415177.worker.js")`,
+        `r(${JSON.stringify(workerModule)})(${JSON.stringify(workerBody)}+"extra",r.p+"f6240eab828e6d415177.worker.js")`,
+        `other(${JSON.stringify(workerBody)})`
+    ]) {
+        const f = await fixture(t); await addWorker(f, {call});
+        await assert.rejects(verifyFirmwareBrowserBuild(f), /Executable blob does not match a reviewed generator/);
+    }
+});
+
+test('a loose decoded string literal cannot authorize an executable blob', async t => {
+    const f = await fixture(t), worker = await addWorker(f);
+    const code = `const decoy=${JSON.stringify(workerBody)};const moduleName=${JSON.stringify(workerModule)};`;
+    await writeFile(join(f.build, worker.file), code);
+    const assets = f.assets.map(asset => asset === worker.carrier ? observed(asset.url, Buffer.from(code), 'script') : asset);
+    await assert.rejects(verifyFirmwareBrowserBuild({...f, assets}), /Executable blob does not match a reviewed generator/);
+});
+
+
+test('computed, spread, duplicate or nonordinary module keys cannot shadow the reviewed factory', async t => {
+    for (const extra of [
+        `[${JSON.stringify(workerModule)}]:function(){throw new Error("changed")}`,
+        `...{${JSON.stringify(workerModule)}:function(){throw new Error("changed")}}`,
+        `${JSON.stringify(workerModule)}:function(){throw new Error("changed")}`,
+        `get ${JSON.stringify(workerModule)}(){return function(){}}`,
+        '__proto__:null'
+    ]) {
+        const f = await fixture(t), worker = await addWorker(f);
+        const code = worker.code.slice(0, -3) + ',' + extra + worker.code.slice(-3);
+        await writeFile(join(f.build, worker.file), code);
+        const assets = f.assets.map(asset => asset === worker.carrier ? observed(asset.url, Buffer.from(code), 'script') : asset);
+        await assert.rejects(verifyFirmwareBrowserBuild({...f, assets}), /Executable blob does not match a reviewed generator/);
+    }
+});
+
 test('rehashing rejects source edits and checkout changes made during the proof', async t => {
     const root = await mkdtemp(join(tmpdir(), 'bw-firmware-browser-source-'));
     t.after(() => rm(root, {recursive: true, force: true}));
+    // Git creates and inspects the checkout under test; it is not a substitute
+    // compiler or assembler whose output could stand in for the shipped code.
+    // Missing and failing Git must refuse both capture and the final check below.
+    // gate-shapes-allow
     const git = args => execFileSync('git', ['-c', 'user.name=Firmware proof test',
         '-c', 'user.email=firmware-proof@example.invalid', '-c', 'commit.gpgsign=false',
         '-c', 'core.hooksPath=/dev/null', ...args], {cwd: root, encoding: 'utf8', stdio: 'pipe'});
@@ -261,6 +391,25 @@ test('rehashing rejects source edits and checkout changes made during the proof'
     git(['add', 'runner.js']); git(['commit', '-qm', 'proof fixture']);
     const source = await captureFirmwareBrowserSource({root, paths: ['runner.js']});
     assert.equal(source.dirty, '');
+    assert.equal((await verifyFirmwareBrowserSourceUnchanged({root, source})).unchanged, true);
+    const tools = await mkdtemp(join(tmpdir(), 'bw-firmware-git-path-'));
+    t.after(() => rm(tools, {recursive: true, force: true}));
+    const emptyPath = join(tools, 'empty'), brokenPath = join(tools, 'broken');
+    await mkdir(emptyPath);
+    await mkdir(brokenPath);
+    await writeFile(join(brokenPath, 'git'), '#!/bin/sh\nexit 87\n', {mode: 0o755});
+    const originalPath = process.env.PATH;
+    try {
+        process.env.PATH = emptyPath;
+        await assert.rejects(captureFirmwareBrowserSource({root, paths: ['runner.js']}), {code: 'ENOENT'});
+        await assert.rejects(verifyFirmwareBrowserSourceUnchanged({root, source}), {code: 'ENOENT'});
+        process.env.PATH = brokenPath;
+        await assert.rejects(captureFirmwareBrowserSource({root, paths: ['runner.js']}), {status: 87, signal: null});
+        await assert.rejects(verifyFirmwareBrowserSourceUnchanged({root, source}), {status: 87, signal: null});
+    } finally {
+        if (originalPath === undefined) delete process.env.PATH;
+        else process.env.PATH = originalPath;
+    }
     assert.equal((await verifyFirmwareBrowserSourceUnchanged({root, source})).unchanged, true);
     await writeFile(join(root, 'runner.js'), 'changed source');
     await assert.rejects(verifyFirmwareBrowserSourceUnchanged({root, source}), /source changed during the run: runner.js/);

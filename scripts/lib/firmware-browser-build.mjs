@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import {parse} from 'acorn';
 import {createHash} from 'node:crypto';
 import {execFileSync} from 'node:child_process';
 import {readFile, realpath} from 'node:fs/promises';
@@ -7,6 +8,89 @@ import {isAbsolute, join, relative, resolve, sep} from 'node:path';
 const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
 const fullSha = value => /^[0-9a-f]{40}$/.test(value || '');
 const contained = (root, file) => file.startsWith(root + sep);
+
+
+// The shipped scratch-storage FetchWorkerTool uses worker-loader's old inline
+// factory. Its complete worker source is a string argument, handed unchanged
+// to Blob. Match this reviewed factory and its closed module-export call shape;
+// an arbitrary literal, function substring, URL origin or verifier allowlist
+// is not executable-source evidence. The carrier must already have matched an
+// observed HTTP script response before any of these candidates can be used.
+const inlineWorkerModule = './node_modules/worker-loader/dist/workers/InlineWorker.js';
+const inlineWorkerFactory = 'function(e,t,r){"use strict";var n=window.URL||window.webkitURL;' +
+    'e.exports=function(e,t){try{try{var r;try{(r=new(window.BlobBuilder||window.WebKitBlobBuilder||' +
+    'window.MozBlobBuilder||window.MSBlobBuilder)).append(e),r=r.getBlob()}catch(t){r=new Blob([e])}' +
+    'return new Worker(n.createObjectURL(r))}catch(t){return new Worker("data:application/javascript,"+' +
+    'encodeURIComponent(e))}}catch(e){if(!t)throw Error("Inline worker is not supported");return new Worker(t)}}}';
+const memberOf = (node, object, property) => node?.type === 'MemberExpression' && !node.computed &&
+    node.object?.type === 'Identifier' && node.object.name === object &&
+    node.property?.type === 'Identifier' && node.property.name === property;
+const literalIs = (node, value) => node?.type === 'Literal' && node.value === value;
+
+function inlineWorkerCandidates (code, carrier) {
+    if (!code.includes(inlineWorkerModule)) return [];
+    const candidates = [], pending = [parse(code, {ecmaVersion: 'latest', sourceType: 'script'})];
+    while (pending.length) {
+        const node = pending.pop();
+        if (node.type === 'ObjectExpression') {
+            // A later computed key, spread, accessor or duplicate could replace
+            // the reviewed factory. Admit only closed ordinary module tables.
+            const names = node.properties.map(property => {
+                if (property.type !== 'Property' || property.computed || property.kind !== 'init' ||
+                    property.method || property.shorthand) return null;
+                if (property.key.type === 'Identifier') return property.key.name;
+                if (property.key.type === 'Literal' && ['string', 'number'].includes(typeof property.key.value)) {
+                    return String(property.key.value);
+                }
+                return null;
+            });
+            const closed = names.every(name => name !== null && name !== '__proto__') && new Set(names).size === names.length;
+            const factories = closed ? node.properties.filter(property => literalIs(property.key, inlineWorkerModule)) : [];
+            if (factories.length === 1 && code.slice(factories[0].value.start, factories[0].value.end) === inlineWorkerFactory) {
+                const factory = factories[0].value;
+                for (const property of node.properties) {
+                    if (property.type !== 'Property' || property.computed || property.kind !== 'init') continue;
+                    const module = property.value;
+                    if (module.type !== 'FunctionExpression' || module.async || module.generator ||
+                        module.params.length !== 3 || module.params.some(param => param.type !== 'Identifier') ||
+                        new Set(module.params.map(param => param.name)).size !== 3 || module.body.body.length !== 1) continue;
+                    const [exportsName, , requireName] = module.params.map(param => param.name);
+                    const statement = module.body.body[0], assignment = statement.expression;
+                    if (statement.type !== 'ExpressionStatement' || assignment?.type !== 'AssignmentExpression' ||
+                        assignment.operator !== '=' || !memberOf(assignment.left, exportsName, 'exports')) continue;
+                    const wrapper = assignment.right;
+                    if (wrapper.type !== 'FunctionExpression' || wrapper.async || wrapper.generator ||
+                        wrapper.params.length || wrapper.body.body.length !== 1 ||
+                        wrapper.body.body[0].type !== 'ReturnStatement') continue;
+                    const call = wrapper.body.body[0].argument, requireCall = call?.callee;
+                    if (call?.type !== 'CallExpression' || call.arguments.length !== 2 ||
+                        requireCall?.type !== 'CallExpression' || requireCall.arguments.length !== 1 ||
+                        requireCall.callee?.type !== 'Identifier' || requireCall.callee.name !== requireName ||
+                        !literalIs(requireCall.arguments[0], inlineWorkerModule)) continue;
+                    const [body, fallback] = call.arguments;
+                    if (body.type !== 'Literal' || typeof body.value !== 'string' || !body.value.length ||
+                        fallback.type !== 'BinaryExpression' || fallback.operator !== '+' ||
+                        !memberOf(fallback.left, requireName, 'p') || fallback.right.type !== 'Literal' ||
+                        !/^[0-9a-f]{20}\.worker\.js$/.test(fallback.right.value || '')) continue;
+                    const bytes = Buffer.from(body.value, 'utf8');
+                    candidates.push({bytes: bytes.length, sha256: sha256(bytes), derivedFrom: {
+                        ...carrier, module: inlineWorkerModule,
+                        sourceSpan: {start: body.start, end: body.end, unit: 'UTF-16 code units'},
+                        factorySpan: {start: factory.start, end: factory.end, unit: 'UTF-16 code units'},
+                        factorySha256: sha256(Buffer.from(inlineWorkerFactory)),
+                        transform: 'UTF-8 of the complete decoded string literal passed unchanged to the reviewed InlineWorker Blob factory'
+                    }});
+                }
+            }
+        }
+        for (const value of Object.values(node)) {
+            if (Array.isArray(value)) {
+                for (const child of value) if (child && typeof child.type === 'string') pending.push(child);
+            } else if (value && typeof value.type === 'string') pending.push(value);
+        }
+    }
+    return candidates;
+}
 
 /** Snapshot the explicit proof inputs, including local edits, without treating
  * HEAD as a claim that a dirty working tree was built from that commit. */
@@ -56,7 +140,8 @@ export async function fetchFirmwareBrowserProducer ({request, documentUrl}) {
 }
 
 /** Bind every observed executable/document response to the corresponding local
- * build file. ROM controls deliberately substitute bytes; their separate
+ * build file or its reviewed inline-worker string derivation. ROM controls
+ * deliberately substitute bytes; their separate
  * positive/negative admission checks remain authoritative for those assets. */
 export async function verifyFirmwareBrowserBuild ({build, appUrl, assets, source,
     producer, browserOverride = false}) {
@@ -74,6 +159,14 @@ export async function verifyFirmwareBrowserBuild ({build, appUrl, assets, source
     const origin = new URL(appUrl).origin;
     const relevant = assets.filter(asset => {
         const url = new URL(asset.url);
+        if (url.protocol === 'blob:' && ['document', 'script'].includes(asset.resourceType)) {
+            assert.equal(asset.resourceType, 'script', 'Blob documents cannot qualify as build files');
+            assert.equal(asset.mainDocument, false, 'Blob scripts cannot be the main document');
+            assert.equal(url.origin, origin, 'Executable blob must retain the application origin');
+            return true;
+        }
+        if (['document', 'script'].includes(asset.resourceType)) assert.ok(
+            ['http:', 'https:'].includes(url.protocol), 'Unsupported executable response scheme');
         if (url.origin !== origin) return false;
         // A ROM directory is never an exemption for executable or document
         // responses. Only its data reads belong to the separate ROM controls.
@@ -95,7 +188,7 @@ export async function verifyFirmwareBrowserBuild ({build, appUrl, assets, source
         assert.ok(contained(directory, file), `Observed response escapes the local build: ${url.href}`);
         return relative(directory, file).split(sep).join('/');
     };
-    const local = new Map();
+    const local = new Map(), localContents = new Map();
     const readLocal = async name => {
         if (!local.has(name)) {
             let file, bytes;
@@ -107,10 +200,11 @@ export async function verifyFirmwareBrowserBuild ({build, appUrl, assets, source
                 throw new Error(`Local build cannot supply observed response: ${name}`, {cause});
             }
             local.set(name, {bytes: bytes.length, sha256: sha256(bytes)});
+            localContents.set(name, bytes);
         }
         return local.get(name);
     };
-    const responses = [];
+    const responses = [], blobs = [];
     for (const asset of relevant) {
         assert.ok(!asset.error && !asset.pending, `Observed response body is unavailable: ${asset.url}`);
         assert.ok(Number.isInteger(asset.status) && asset.status >= 200 && asset.status < 300,
@@ -118,6 +212,7 @@ export async function verifyFirmwareBrowserBuild ({build, appUrl, assets, source
         assert.ok(Number.isSafeInteger(asset.bytes) && asset.bytes >= 0 && /^[0-9a-f]{64}$/.test(asset.sha256 || ''),
             `Observed response lacks a complete byte identity: ${asset.url}`);
         const url = new URL(asset.url);
+        if (url.protocol === 'blob:') { blobs.push(asset); continue; }
         if (asset.mainDocument) assert.equal(new URL('.', url).pathname, mount.pathname,
             'Browser journeys changed their application mount');
         const file = localName(url, asset.mainDocument === true);
@@ -126,6 +221,18 @@ export async function verifyFirmwareBrowserBuild ({build, appUrl, assets, source
         assert.equal(asset.sha256, expected.sha256, `Served response SHA-256 differs from local build: ${asset.url}`);
         responses.push({url: asset.url, file, resourceType: asset.resourceType,
             ...(asset.journey ? {journey: asset.journey} : {}), ...expected});
+    }
+    if (blobs.length) {
+        const carriers = [...new Set(responses.filter(row => row.resourceType === 'script').map(row => row.file))];
+        const candidates = carriers.flatMap(file => inlineWorkerCandidates(localContents.get(file).toString('utf8'),
+            {file, ...local.get(file)}));
+        for (const asset of blobs) {
+            const matches = candidates.filter(candidate => candidate.bytes === asset.bytes && candidate.sha256 === asset.sha256);
+            assert.ok(matches.length, `Executable blob does not match a reviewed generator in an observed build script: ${asset.url}`);
+            responses.push({url: asset.url, resourceType: asset.resourceType,
+                ...(asset.journey ? {journey: asset.journey} : {}), bytes: asset.bytes, sha256: asset.sha256,
+                derivedFrom: matches.map(match => match.derivedFrom)});
+        }
     }
     // The index's own entry scripts must be observed, so engine glue or an
     // unrelated script cannot stand in for the application bundle.

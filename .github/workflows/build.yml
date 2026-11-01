@@ -3349,7 +3349,7 @@ jobs:
 
       - name: Browser gate — ESP32-S3 firmware boots through the empty-project picker
         id: esp32s3_firmware_browser
-        timeout-minutes: 8
+        timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}
         run: |
           node node_modules/bw-board/scripts/fetch-esp32s3-firmware-fixtures.mjs --out artifacts/esp32s3/m1-inputs
@@ -3365,7 +3365,7 @@ jobs:
 
       - name: Browser gate — S040 firmware drives its placed display and touch face
         id: esp32s040_firmware_browser
-        timeout-minutes: 8
+        timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}
         run: |
           node node_modules/bw-board/scripts/fetch-esp32s040-fixtures.mjs --out artifacts/esp32s040/inputs
