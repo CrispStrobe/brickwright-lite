@@ -352,7 +352,7 @@ class ArcadeTranslator extends BaseTranslator {
         const references = inferImageReferences(node, value => this.path(value), value => this.imageOf(value), value => !!this.assetKindLookup && value?.type === 'Template' && ['assets.image', 'assets.tile'].includes(value.tag));
         this.objectReferences = references.objects;this.fontReferences=references.fonts;
         this.bufferReferences = references.buffers;this.imageReferences = references.images;this.spriteReferences = references.sprites;this.dataReferences = references.data;
-        this.textSpriteReferences=references.textSprites;this.playerReferences=references.players;this.sceneReferences=references.scenes;this.physicsEngineReferences=references.physicsEngines;this.tileReferences = references.tiles;this.legacyTileReferences=references.legacyTiles;this.animationReferences = references.animations;this.sevensegDigitReferences=references.sevensegDigits;this.sevensegCounterReferences=references.sevensegCounters;this.dartReferences=references.darts;this.corgiReferences=references.corgis;this.nullReferences=references.nulls;this.arrayReferences = references.arrays;this.numberReferences=references.numbers;this.stringReferences=references.strings;this.booleanReferences=references.booleans;
+        this.textSpriteReferences=references.textSprites;this.playerReferences=references.players;this.sceneReferences=references.scenes;this.physicsEngineReferences=references.physicsEngines;this.tileReferences = references.tiles;this.tilemapDataReferences = references.tilemapData;this.legacyTileReferences=references.legacyTiles;this.animationReferences = references.animations;this.sevensegDigitReferences=references.sevensegDigits;this.sevensegCounterReferences=references.sevensegCounters;this.dartReferences=references.darts;this.corgiReferences=references.corgis;this.nullReferences=references.nulls;this.arrayReferences = references.arrays;this.numberReferences=references.numbers;this.stringReferences=references.strings;this.booleanReferences=references.booleans;
         this.referenceArrayProgram=containsAst(node,value=>value.type==='Array' || references.arrays.has(value));
         this.fontValueProgram=containsAst(node,value=>!!value.bwFontIntrinsic);
         this.throwValueProgram=hasThrowEmission(node);this.throwSourceProgram=node;
@@ -417,8 +417,8 @@ class ArcadeTranslator extends BaseTranslator {
         this.scoreRegistrationProof=scoreRegistrationProof(node);
         const registrations=discoverRuntimeRegistrations(node,this);
         this.createdRegistrations=new Map([...registrations].filter(([,record])=>record.kind==='creation'));
-        this.terrainRegistrations=new Map([...registrations].filter(([,record])=>['wall','tile','legacyWall'].includes(record.kind)));
-        this.sceneRegistrations=new Map([...registrations].filter(([,record])=>!['creation','wall','tile','legacyWall'].includes(record.kind)));
+        this.terrainRegistrations=new Map([...registrations].filter(([,record])=>['wall','tile','legacyWall','tilemapEvent'].includes(record.kind)));
+        this.sceneRegistrations=new Map([...registrations].filter(([,record])=>!['creation','wall','tile','legacyWall','tilemapEvent'].includes(record.kind)));
         this.returnFunctions = new Map();
         this.classCallableFactoryFunctions=new Set(node.bwCallableLexicalPlan?.version===2?node.bwCallableLexicalPlan.owners.filter(owner=>owner.kind==='declaration').map(owner=>owner.sourceName):[]);
         const hasReturn = value => value && typeof value === 'object' &&
@@ -1133,7 +1133,29 @@ class ArcadeTranslator extends BaseTranslator {
      * `!` are already value words (compare value, truthiness of value).
      * The condition() a node is being written for is not a value slot.
      */
+    // A tilemap literal, asset or factory call as a value (not as the direct
+    // argument of tiles.setTilemap, which keeps its inline form).
+    tilemapValueData (node) {
+        if(node?.type==='Template' && /^(tilemap|assets\.tilemap)$/.test(node.tag||'')) {
+            if(node.value.includes('${')){this.unsupported.push('tilemap`…` requires a literal tilemap name');return undefined;}
+            const resolved=resolveNativeTilemap(this.tilemaps,node.value);
+            if(resolved.unsupported.length){this.unsupported.push(`tilemap\`${node.value}\`: ${resolved.unsupported.join('; ')}`);return undefined;}
+            if(resolved.value===undefined){this.unsupported.push(`tilemap\`${node.value}\` — no such tilemap in this project`);return undefined;}
+            return resolved.value;
+        }
+        if(node?.type==='Call' && this.path(node.callee)==='tiles.createTilemap') {
+            const data=decodeTilemap(node,item=>this.imageOf(item),item=>this.path(item));
+            if(!data)this.unsupported.push('tiles.createTilemap() requires a readable literal tile map with wall layer and tile scale');
+            return data||undefined;
+        }
+        return undefined;
+    }
     expr (node) {
+        if(this.handleTemplates && ((node?.type==='Template' && /^(tilemap|assets\.tilemap)$/.test(node.tag||'')) || (node?.type==='Call' && this.path(node.callee)==='tiles.createTilemap'))) {
+            const data=this.tilemapValueData(node);
+            if(data===undefined)return 'undefined value';
+            return `arcade tilemap value ${JSON.stringify(JSON.stringify(data))}`;
+        }
         // Deletion is an unsupported mutation, never a numeric operand/fold.
         if(node?.type==='Unary'&&node.op==='delete')return super.expr(node);
         if(node?.type==='Unary'&&containsNonFiniteNumberLiteral(node.argument)){this.unsupported.push('Non-finite source Number literals lack a qualified Code carrier');return 'undefined value';}
@@ -1439,6 +1461,10 @@ class ArcadeTranslator extends BaseTranslator {
             if(['x','y','tileSet'].includes(node.name))return `arcade color tile ${node.name} of (${this.expr(node.object)})`;
             this.unsupported.push(`tiles.Tile.${node.name} is not a supported legacy Tile property`);return '0';
         }
+        if(this.handleTemplates && node?.type==='Member' && this.tilemapDataReferences?.has(node.object)) {
+            if(['width','height','scale'].includes(node.name))return `arcade tilemap ${node.name} of (${this.expr(node.object)})`;
+            this.unsupported.push(`tiles.TileMapData.${node.name} is not a supported TileMapData property`);return '0';
+        }
         if(this.handleTemplates && node?.type==='Member' && this.tileReferences?.has(node.object)) {
             const property=node.name==='col'?'column':node.name;
             if(['column','row','x','y','left','right','top','bottom','tileSet'].includes(property))return `arcade tile ${property} of (${this.expr(node.object)})`;
@@ -1457,9 +1483,24 @@ class ArcadeTranslator extends BaseTranslator {
             if(api==='scene.tileHitFrom' && args.length===2)return `arcade sprite (${this.expr(args[0])}) wall hit index (${this.expr(args[1])})`;
             if(node.callee?.type==='Member' && node.callee.name==='tileHitFrom' && this.spriteReferences?.has(node.callee.object) && args.length===1)return `arcade sprite (${this.expr(node.callee.object)}) wall hit index (${this.expr(args[0])})`;
             if(api==='tiles.getTileLocation' && args.length===2)return `arcade tile location column (${this.expr(args[0])}) row (${this.expr(args[1])})`;
+            if(api==='tiles.getRandomTileByType' && args.length===1)return `arcade random tile location of image (${this.expr(args[0])})`;
+            if(node.callee?.type==='Member' && node.callee.name==='tilemapLocation' && args.length===0 && this.spriteReferences?.has(node.callee.object))return `arcade tile location of sprite (${this.expr(node.callee.object)})`;
+            if(node.callee?.type==='Member' && node.callee.name==='getNeighboringLocation' && args.length===1 && this.tileReferences?.has(node.callee.object))return `arcade tile neighbor (${this.expr(args[0])}) of (${this.expr(node.callee.object)})`;
             if(api==='tiles.getTilesByType' && args.length===1){this.usesArrays=true;return `arcade tile array image (${this.expr(args[0])})`;}
             if(api==='tiles.tileAtLocationEquals' && args.length===2)return `arcade tile (${this.expr(args[0])}) equals image (${this.expr(args[1])})`;
             if(api==='tiles.tileAtLocationIsWall' && args.length===1)return `arcade tile (${this.expr(args[0])}) is wall`;
+            if(['tiles.getTileImage','tiles.tileImageAtLocation'].includes(api) && args.length===1)return `arcade tile image at (${this.expr(args[0])})`;
+            if(api==='tiles.getTileAt' && args.length===2)return `arcade tile image at (arcade tile location column (${this.expr(args[0])}) row (${this.expr(args[1])}))`;
+            if(node.callee?.type==='Member' && this.tilemapDataReferences?.has(node.callee.object)) {
+                const data=this.expr(node.callee.object);
+                if(node.callee.name==='getTile' && args.length===2)return `arcade tilemap (${data}) tile index at column (${this.expr(args[0])}) row (${this.expr(args[1])})`;
+                if(node.callee.name==='isWall' && args.length===2)return `arcade tilemap (${data}) wall at column (${this.expr(args[0])}) row (${this.expr(args[1])})`;
+                if(node.callee.name==='getTileImage' && args.length===1)return `arcade tilemap (${data}) image of tile index (${this.expr(args[0])})`;
+            }
+            if(node.callee?.type==='Member' && this.tileReferences?.has(node.callee.object) && args.length===0){
+                if(node.callee.name==='getImage')return `arcade tile image at (${this.expr(node.callee.object)})`;
+                if(node.callee.name==='isWall')return `arcade tile (${this.expr(node.callee.object)}) is wall`;
+            }
         }
         if (node?.type==='Call' && this.handleTemplates && this.path(node.callee)==='sprites.allOfKind') {
             this.usesArrays=true;
@@ -1675,6 +1716,11 @@ class ArcadeTranslator extends BaseTranslator {
             else push(`arcade register tile kind ${this.kindSlot(a[0])} image (${this.expr(a[1])}) as "${registration.token}" capturing ${captures}`);
             return;
         }
+        if(this.handleTemplates && name==='tiles.addEventListener') {
+            const registration=this.terrainRegistrations.get(node),event=/^(?:tiles\.)?TileMapEvent\.(Loaded|Unloaded)$/.exec(this.path(a[0])||'')?.[1];
+            if(!registration || !event){push(this.note('tiles.addEventListener requires tiles.TileMapEvent.Loaded or Unloaded and an inline callback with at most one parameter'));return;}
+            push(`arcade register tilemap event ${event} as "${registration.token}" capturing ${JSON.stringify([...registration.ownCaptures].join(' '))}`);return;
+        }
         if(this.handleTemplates && ['game.pushScene','game.popScene'].includes(name)) {
             if(a.length){push(this.note(`${name} requires no arguments`));return;}
             push(name==='game.pushScene'?'arcade push scene':'arcade pop scene');return;
@@ -1846,6 +1892,8 @@ class ArcadeTranslator extends BaseTranslator {
                 if(resolved.unsupported.length){push(this.note(`${name}(): ${resolved.unsupported.join('; ')}`));return;}
                 data=resolved.value;
                 if(data===null){push('arcade set tilemap data \"null\"');return;}
+            } else if(a.length===1 && value && !(value.type==='Call' && this.path(value.callee)==='tiles.createTilemap') && this.tilemapDataReferences?.has(value)) {
+                push(`arcade set tilemap data (${this.expr(value)})`);return;
             } else data=decodeTilemap(value,node=>this.imageOf(node),node=>this.path(node));
             if(a.length!==1 || !data){this.unsupported.push(`${name}() requires a readable literal tile map with wall layer and tile scale`);return;}
             // Terrain physics is measured frame by frame against the original
@@ -1853,6 +1901,12 @@ class ArcadeTranslator extends BaseTranslator {
             push(`arcade set tilemap data ${JSON.stringify(JSON.stringify(data))}`);
             return;
         }
+        if(this.handleTemplates && node.callee?.type==='Member' && this.tilemapDataReferences?.has(node.callee.object) && ['setTile','setWall'].includes(node.callee.name) && a.length===3){
+            const data=this.expr(node.callee.object);
+            push(node.callee.name==='setTile'?`arcade set tilemap (${data}) tile index at column (${this.expr(a[0])}) row (${this.expr(a[1])}) to (${this.expr(a[2])})`:
+                `arcade set tilemap (${data}) wall at column (${this.expr(a[0])}) row (${this.expr(a[1])}) to (${this.expr(a[2])})`);return;
+        }
+        if(this.handleTemplates && node.callee?.type==='Member' && node.callee.name==='place' && a.length===1 && this.tileReferences?.has(node.callee.object)){push(`arcade place sprite (${this.expr(a[0])}) on tile (${this.expr(node.callee.object)})`);return;}
         if(this.handleTemplates && name==='tiles.setTileAt' && a.length===2){push(`arcade set tile (${this.expr(a[0])}) image (${this.expr(a[1])})`);return;}
         if(this.handleTemplates && name==='tiles.setWallAt' && a.length===2){push(`arcade set tile wall (${this.expr(a[0])}) to (${this.expr(a[1])})`);return;}
         if(this.handleTemplates && name==='tiles.placeOnTile' && a.length===2){push(`arcade place sprite (${this.expr(a[0])}) on tile (${this.expr(a[1])})`);return;}
@@ -3498,7 +3552,7 @@ const inferProcedureHandleParameters = (ast, functions, globalHandles, pathOf) =
             });
             const event = pathOf(node.callee);
             const eventArgs = event === 'sprites.onOverlap' ? 2 :
-                ['sprites.onCreated', 'sprites.onDestroyed','scene.onHitTile','scene.onHitWall','scene.onOverlapTile'].includes(event) ? 1 : 0;
+                ['sprites.onCreated', 'sprites.onDestroyed','scene.onHitTile','scene.onHitWall','scene.onOverlapTile','tiles.addEventListener'].includes(event) ? 1 : 0;
             for (const arg of node.args || []) {
                 if (arg?.type === 'FunctionExpression' && eventArgs) {
                     const eventScope = new Set([...scope, ...arg.params.slice(0, eventArgs)]);
@@ -3528,7 +3582,7 @@ const inferProcedureHandleParameters = (ast, functions, globalHandles, pathOf) =
 const inferImageReferences = (ast, pathOf, imageOf, isScopedAssetFactory = () => false) => {
     const sdkNumericCalls=staticSdkNamespaceReceivers(ast,{builtinIdentifiers:['randint']});
     const textSprites=new WeakSet(), objects=new WeakSet();
-    const buffers = new WeakSet(), players = new WeakSet(), references = new WeakSet(), tiles = new WeakSet(), legacyTiles = new WeakSet(), sprites = new WeakSet(), animations = new WeakSet(), sevensegDigits = new WeakSet(), sevensegCounters = new WeakSet(), darts = new WeakSet(), corgis = new WeakSet(), scenes = new WeakSet(), physicsEngines = new WeakSet(), nulls = new WeakSet(), arrays = new WeakSet(), numbers = new WeakSet(), strings = new WeakSet(), booleans = new WeakSet();
+    const buffers = new WeakSet(), players = new WeakSet(), references = new WeakSet(), tiles = new WeakSet(), tilemapData = new WeakSet(), legacyTiles = new WeakSet(), sprites = new WeakSet(), animations = new WeakSet(), sevensegDigits = new WeakSet(), sevensegCounters = new WeakSet(), darts = new WeakSet(), corgis = new WeakSet(), scenes = new WeakSet(), physicsEngines = new WeakSet(), nulls = new WeakSet(), arrays = new WeakSet(), numbers = new WeakSet(), strings = new WeakSet(), booleans = new WeakSet();
     const entries = [];
     const functions = new Map();
     const scope = parent => ({parent, bindings: new Map()});
@@ -3577,7 +3631,7 @@ const inferImageReferences = (ast, pathOf, imageOf, isScopedAssetFactory = () =>
         if (node.type === 'Call') {
             const api = pathOf(node.callee);
             const types = ['mp.onButtonEvent','mp.onControllerEvent'].includes(api)?['player']:api==='sprites.onOverlap'?['sprite','sprite']:
-                api==='scene.onHitTile'?['sprite']:['scene.onHitWall','scene.onOverlapTile'].includes(api)?['sprite','tile']:
+                api==='scene.onHitTile'?['sprite']:api==='tiles.addEventListener'?['tilemap']:['scene.onHitWall','scene.onOverlapTile'].includes(api)?['sprite','tile']:
                 ['sprites.onCreated','sprites.onDestroyed'].includes(api)?['sprite']:[];
             visit(node.callee, owner);
             for (const arg of node.args || []) visit(arg, owner, types);
@@ -3602,6 +3656,7 @@ const inferImageReferences = (ast, pathOf, imageOf, isScopedAssetFactory = () =>
         if(node?.bwFontIntrinsic==='field' && node.bwFontType==='number')return new Set(['number']);
         if(node?.bwFontIntrinsic==='field' && node.bwFontType==='Buffer')return new Set(['buffer']);
         if(node?.bwObjectTypes?.length)return new Set(node.bwObjectTypes);
+        if(node?.type==='Template' && /^(tilemap|assets\.tilemap)$/.test(node.tag||''))return new Set(['tilemap']);
         if (imageOf(node) || isScreen(node) || isScopedAssetFactory(node)) return new Set(['image']);
         if(node?.type==='Number')return new Set(['number']);
         if(node?.type==='FontMetric')return new Set(['number']);
@@ -3629,8 +3684,8 @@ const inferImageReferences = (ast, pathOf, imageOf, isScopedAssetFactory = () =>
         if(node?.type==='NativeNamedArrayDelete')return new Set(['null']);
         if(node?.type==='LegacyJsonValue')return new Set(['string']);
         if(node?.type==='LegacyParsedValue')return new Set(['any']);
-        if (node?.type === 'Array') return new Set(['array',...node.items.flatMap(item=>[...typeOf(item,owner)].filter(t=>['image','sprite','tile','number','string','scene','physics-engine'].includes(t)).map(t=>`${t}-array`))]);
-        if (node?.type === 'Index') return new Set([...typeOf(node.object,owner)].filter(t=>['image-array','sprite-array','tile-array','legacy-tile-array','number-array','string-array','scene-array','physics-engine-array'].includes(t)).map(t=>t.slice(0,-6)));
+        if (node?.type === 'Array') return new Set(['array',...node.items.flatMap(item=>[...typeOf(item,owner)].filter(t=>['image','sprite','tile','tilemap','number','string','scene','physics-engine'].includes(t)).map(t=>`${t}-array`))]);
+        if (node?.type === 'Index') return new Set([...typeOf(node.object,owner)].filter(t=>['image-array','sprite-array','tile-array','tilemap-array','legacy-tile-array','number-array','string-array','scene-array','physics-engine-array'].includes(t)).map(t=>t.slice(0,-6)));
         if (node?.type === 'Identifier') return binding(owner, node.name);
         if(node?.type==='Member' && node.name==='length' && node.object?.type==='Index' && typeOf(node.object,owner).has('string'))return new Set(['number']);
         if(node?.type==='Call' && node.callee?.type==='Member') {
@@ -3702,15 +3757,27 @@ const inferImageReferences = (ast, pathOf, imageOf, isScopedAssetFactory = () =>
             }
             if(api==='sprites.allOfKind')return new Set(['array','sprite-array']);
             if(api==='tiles.getTilesByType')return new Set(['array','tile-array']);
-            if(api==='tiles.getTileLocation')return new Set(['tile']);
+            if(['tiles.getTileLocation','tiles.getRandomTileByType'].includes(api))return new Set(['tile']);
+            if(api==='tiles.createTilemap' && node.args.length===4)return new Set(['tilemap']);
+            if(node.callee?.type==='Member' && typeOf(node.callee.object,owner).has('tilemap')){
+                if(node.callee.name==='getTileImage' && node.args.length===1)return new Set(['image']);
+                if(node.callee.name==='getTile' && node.args.length===2)return new Set(['number']);
+                if(node.callee.name==='isWall' && node.args.length===2)return new Set(['boolean']);
+            }
+            if(node.callee?.type==='Member' && ((node.callee.name==='tilemapLocation' && node.args.length===0 && typeOf(node.callee.object,owner).has('sprite')) || (node.callee.name==='getNeighboringLocation' && node.args.length===1 && typeOf(node.callee.object,owner).has('tile'))))return new Set(['tile']);
+            if(['tiles.getTileImage','tiles.tileImageAtLocation','tiles.getTileAt'].includes(api))return new Set(['image']);
+            if(node.callee?.type==='Member' && node.args.length===0 && typeOf(node.callee.object,owner).has('tile')){
+                if(node.callee.name==='getImage')return new Set(['image']);
+                if(node.callee.name==='isWall')return new Set(['boolean']);
+            }
             if(api==='scene.getTile')return new Set(['legacy-tile']);
             if(api==='scene.getTilesByType')return new Set(['array','legacy-tile-array']);
             if(['tiles.tileAtLocationEquals','tiles.tileAtLocationIsWall'].includes(api))return new Set(['boolean']);
             if(node.callee?.type==='Member' && node.callee.name==='isHittingTile' && node.args.length===1 && typeOf(node.callee.object,owner).has('sprite'))return new Set(['boolean']);
             if(node.callee?.type==='Member' && node.callee.name==='toString' && !node.args.length && typeOf(node.callee.object,owner).has('sprite'))return new Set(['string']);
             if (api === 'image.create' && node.args.length === 2 || api === 'scene.backgroundImage' && !node.args.length) return new Set(['image']);
-            if (node.callee?.type === 'Member' && (['pop','shift','removeAt','get'].includes(node.callee.name) || node.callee.name==='_pickRandom' && !node.args.length) && typeOf(node.callee.object,owner).has('array')) return new Set([...typeOf(node.callee.object,owner)].filter(t=>['image-array','sprite-array','tile-array','legacy-tile-array','number-array','string-array','scene-array','physics-engine-array'].includes(t)).map(t=>t.slice(0,-6)));
-            if (api==='Math.pickRandom' && node.args.length===1) return new Set([...typeOf(node.args[0],owner)].filter(t=>['image-array','sprite-array','tile-array','legacy-tile-array','number-array','string-array','scene-array','physics-engine-array'].includes(t)).map(t=>t.slice(0,-6)));
+            if (node.callee?.type === 'Member' && (['pop','shift','removeAt','get'].includes(node.callee.name) || node.callee.name==='_pickRandom' && !node.args.length) && typeOf(node.callee.object,owner).has('array')) return new Set([...typeOf(node.callee.object,owner)].filter(t=>['image-array','sprite-array','tile-array','tilemap-array','legacy-tile-array','number-array','string-array','scene-array','physics-engine-array'].includes(t)).map(t=>t.slice(0,-6)));
+            if (api==='Math.pickRandom' && node.args.length===1) return new Set([...typeOf(node.args[0],owner)].filter(t=>['image-array','sprite-array','tile-array','tilemap-array','legacy-tile-array','number-array','string-array','scene-array','physics-engine-array'].includes(t)).map(t=>t.slice(0,-6)));
             if (node.callee?.type === 'Identifier' && functions.has(node.callee.name)) return functions.get(node.callee.name).returns || new Set();
             if (['sprites.create', 'sprites.createProjectile', 'sprites.createProjectileFromSide',
                 'sprites.createProjectileFromSprite'].includes(api)) return new Set(['sprite']);
@@ -3732,11 +3799,11 @@ const inferImageReferences = (ast, pathOf, imageOf, isScopedAssetFactory = () =>
             if (node.type === 'Declaration') for (const decl of node.decls) merge(binding(owner, decl.name), typeOf(decl.init, owner));
             if (node.type === 'Assignment' && node.op === '=' && node.left?.type === 'Identifier') merge(binding(owner, node.left.name), typeOf(node.right, owner));
             if (node.type==='Assignment' && node.left?.type==='Index' && node.left.object?.type==='Identifier') {
-                merge(binding(owner,node.left.object.name),new Set([...typeOf(node.right,owner)].filter(t=>['image','sprite','tile','number','string','scene','physics-engine'].includes(t)).map(t=>`${t}-array`)));
+                merge(binding(owner,node.left.object.name),new Set([...typeOf(node.right,owner)].filter(t=>['image','sprite','tile','tilemap','number','string','scene','physics-engine'].includes(t)).map(t=>`${t}-array`)));
             }
             if (node.type==='Call' && node.callee?.type==='Member' && ['push','unshift','insertAt','set'].includes(node.callee.name) && node.callee.object?.type==='Identifier') {
                 const value=node.args[['insertAt','set'].includes(node.callee.name)?1:0];
-                merge(binding(owner,node.callee.object.name),new Set([...typeOf(value,owner)].filter(t=>['image','sprite','tile','number','string','scene','physics-engine'].includes(t)).map(t=>`${t}-array`)));
+                merge(binding(owner,node.callee.object.name),new Set([...typeOf(value,owner)].filter(t=>['image','sprite','tile','tilemap','number','string','scene','physics-engine'].includes(t)).map(t=>`${t}-array`)));
             }
             if (node.type === 'Call' && node.callee?.type === 'Identifier') {
                 const fn = functions.get(node.callee.name);
@@ -3784,7 +3851,7 @@ const inferImageReferences = (ast, pathOf, imageOf, isScopedAssetFactory = () =>
         const value=cell(node,owner);
         applyPrimitiveAnnotation(value,node.assertedType);
         for (const type of typeOf(node,owner)) {
-            const name={font:'Font',buffer:'Buffer',image:'Image',sprite:'Sprite',tile:'TileLocation','legacy-tile':'LegacyTile',animation:'Animation','sevenseg-digit':'SevenSegDigit','sevenseg-counter':'DigitCounter',dart:'Dart',corgio:'Corgio','text-sprite':'TextSprite',scene:'Scene','physics-engine':'PhysicsEngine',player:'Player',number:'number',string:'string',boolean:'boolean',null:'null',undefined:'undefined',object:'object',any:'unknown',array:'array'}[type];
+            const name={font:'Font',buffer:'Buffer',image:'Image',sprite:'Sprite',tile:'TileLocation',tilemap:'TileMapData','legacy-tile':'LegacyTile',animation:'Animation','sevenseg-digit':'SevenSegDigit','sevenseg-counter':'DigitCounter',dart:'Dart',corgio:'Corgio','text-sprite':'TextSprite',scene:'Scene','physics-engine':'PhysicsEngine',player:'Player',number:'number',string:'string',boolean:'boolean',null:'null',undefined:'undefined',object:'object',any:'unknown',array:'array'}[type];
             if(name)graph.add(value,name);
         }
         if(node.bwConsoleInspectIntrinsic===true && node.callee?.name==='__bwConsoleInspectValue')graph.add(value,'string');
@@ -3876,6 +3943,7 @@ const inferImageReferences = (ast, pathOf, imageOf, isScopedAssetFactory = () =>
         if (graph.has(value,'Sprite')) sprites.add(node);
         if (graph.has(value,'Player')) players.add(node);
         if (graph.has(value,'TileLocation')) tiles.add(node);
+        if (graph.has(value,'TileMapData')) tilemapData.add(node);
         if (graph.has(value,'LegacyTile')) legacyTiles.add(node);
         if (graph.has(value,'Animation')) animations.add(node);
         if (graph.has(value,'SevenSegDigit')) sevensegDigits.add(node);
@@ -3888,7 +3956,7 @@ const inferImageReferences = (ast, pathOf, imageOf, isScopedAssetFactory = () =>
         if(types.has('physics-engine') || graph.has(value,'PhysicsEngine') && !['number','string','boolean','Image','Sprite','Scene'].some(type=>graph.has(value,type)))physicsEngines.add(node);
         if(types.has('null') && [...types].every(type=>type==='null'||type==='sprite'))nulls.add(node);
     }
-    return {fonts,objects,primitives,strictStrings,sourceTypeOfOperands,provenArrays,sourceArrayArithmeticOperands,textSprites, buffers, players, images: references, tiles, legacyTiles, sprites, animations, sevensegDigits, sevensegCounters, darts, corgis, scenes, physicsEngines, nulls, arrays, numbers, strings, booleans, data,
+    return {fonts,objects,primitives,strictStrings,sourceTypeOfOperands,provenArrays,sourceArrayArithmeticOperands,textSprites, buffers, players, images: references, tiles, tilemapData, legacyTiles, sprites, animations, sevensegDigits, sevensegCounters, darts, corgis, scenes, physicsEngines, nulls, arrays, numbers, strings, booleans, data,
         spriteFunctions:new Set([...functions].filter(([,fn])=>graph.has(fn.resultCell,'Sprite')).map(([name])=>name)),
         parameters:new Map([...functions].map(([name,fn])=>[name,new Set(fn.node.params.filter(param=>graph.has(binding(fn.owner,param),'Sprite')))]))};
 };
@@ -3973,7 +4041,8 @@ const discoverRuntimeRegistrations = (ast, translator) => {
         'sprites.onCreated':{kind:'creation',handlerIndex:1,arity:2,prefix:'__bwCreated'},
         'scene.onHitTile':{kind:'legacyWall',handlerIndex:2,arity:3,prefix:'__bwColorWall',maxParams:1,kinds:[0]},
         'scene.onHitWall':{kind:'wall',handlerIndex:1,arity:2,prefix:'__bwWall'},
-        'scene.onOverlapTile':{kind:'tile',handlerIndex:2,arity:3,prefix:'__bwTile'}
+        'scene.onOverlapTile':{kind:'tile',handlerIndex:2,arity:3,prefix:'__bwTile'},
+        'tiles.addEventListener':{kind:'tilemapEvent',handlerIndex:1,arity:2,prefix:'__bwTilemapEvent',maxParams:1,kinds:[]}
     };
     const counts=new Map();
     const registrations = new Map();
@@ -4052,10 +4121,10 @@ const emitTerrainRegistrations = (translator,out,localHandles=new Map(),callback
         translator.capturedBindings=captures;
         translator.localVars=new Set([...locals,...handler.params]);
         translator.currentParameters=new Set(handler.params);
-        translator.localHandleVars=new Set([...(localHandles.get(callbackLocals.get(handler)) || []),...(handler.params[0]?[handler.params[0]]:[])]);
+        translator.localHandleVars=new Set([...(localHandles.get(callbackLocals.get(handler)) || []),...(handler.params[0] && kind!=='tilemapEvent'?[handler.params[0]]:[])]);
         translator.handleAliases=new Map();
-        out.push(`WHEN arcade ${kind==='legacyWall'?'color wall':kind} handler "${token}" runs:`);
-        for(const [index,param] of handler.params.entries())out.push(`  arcade set local ${translator.varName(param)} to ${index===0?'arcade event first':'arcade event location'}`);
+        out.push(`WHEN arcade ${kind==='legacyWall'?'color wall':kind==='tilemapEvent'?'tilemap event':kind} handler "${token}" runs:`);
+        for(const [index,param] of handler.params.entries())out.push(`  arcade set local ${translator.varName(param)} to ${kind==='tilemapEvent'?'arcade event tilemap data':index===0?'arcade event first':'arcade event location'}`);
         translator.block(handler.body,1,out);out.push('');
         translator.capturedBindings=previous.captures;translator.localVars=previous.locals;translator.currentParameters=previous.parameters;translator.localHandleVars=previous.handles;translator.handleAliases=previous.aliases;
     }

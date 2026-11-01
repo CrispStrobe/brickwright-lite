@@ -193,15 +193,25 @@ try {
         entry.sprite === old.sprite && entry.column === old.column && entry.row === old.row)));
 
     // The running game starts the sprite on the tile: its x is the tile centre
-    // (gravity may move it down at once, so only the column is fixed).
+    // (gravity may move it down at once, so only the column is fixed). The
+    // sprite is identified specifically: it is the one the variable the user
+    // chose holds, never merely whichever sprite happens to have a matching x
+    // (a placement on a null sprite must fail, not pass on another sprite).
     await page.evaluate(() => window.__brickwrightStore.getState().scratchGui.vm.greenFlag());
     const centreX = (column + 0.5) * data.tileSize;
-    const xs = await waitFor(() => page.evaluate(() => {
-        const state = window.__brickwrightStore.getState().scratchGui.vm.runtime.bwArcadeDeviceState;
-        return Object.values(state?.sprites || {}).filter(sprite => sprite.id).map(sprite => sprite.x);
-    }), values => values.some(x => Math.abs(x - centreX) <= 0.5), 30000, 100);
-    check('the running game starts a sprite on the placed tile', xs.some(x => Math.abs(x - centreX) <= 0.5),
-        `centre x ${centreX}; sprite x ${xs.slice(0, 8).join(', ')}`);
+    const readPlaced = name => page.evaluate(wanted => {
+        const vm = window.__brickwrightStore.getState().scratchGui.vm;
+        const variable = vm.runtime.targets.flatMap(target => Object.values(target.variables))
+            .find(entry => entry.name === wanted || entry.name.replace(/^Game_/, '') === wanted);
+        const id = variable ? variable.value : undefined;
+        const sprites = Object.values(vm.runtime.bwArcadeDeviceState?.sprites || {});
+        const sprite = typeof id === 'string' ? sprites.find(entry => entry.id === id) : null;
+        return {variable: Boolean(variable), id: typeof id === 'string' ? id : String(id), found: Boolean(sprite && sprite.id), x: sprite?.x ?? null};
+    }, name);
+    const placed = await waitFor(() => readPlaced(chosen), value => value.found && Math.abs(value.x - centreX) <= 0.5, 30000, 100);
+    check('the sprite variable the placement names holds a live sprite', placed.variable && placed.found, JSON.stringify(placed));
+    check('the running game starts that sprite on the placed tile', placed.found && Math.abs(placed.x - centreX) <= 0.5,
+        `centre x ${centreX}; ${chosen} x ${placed.x}`);
     await page.evaluate(() => window.__brickwrightStore.getState().scratchGui.vm.stopAll());
     const dialog = page.locator('[role="dialog"][aria-label^="Arcade"]');
     for (let i = 0; i < 10 && await dialog.count(); i++) {

@@ -36,7 +36,8 @@ const PLUMBING = new Set(words(`
   registerScenePushHandler whenRegisteredScenePush registerScenePopHandler whenRegisteredScenePop
   registerSpriteCreated registerSpriteDestroyed whenRegisteredCreated whenRegisteredDestroyed
   registerLegacyWallHandler whenRegisteredLegacyWall registerWallHandler registerTileHandler
-  whenRegisteredWall whenRegisteredTile
+  whenRegisteredWall whenRegisteredTile registerTilemapEvent unregisterTilemapEvent whenRegisteredTilemapEvent
+  eventTilemapData
   createPlayerState bindSpriteKind initializeSpriteKindLibrary
   declareSubclass declareClass createObject objectField setObjectField callObjectMethod
   functionArgument callFunction declareSourceCallable declareCallable createCallable callCallable
@@ -79,7 +80,9 @@ const SECTIONS = [
   ['tiles', 'Tilemap', 'Kacheln',
     words(`setTilemap placeOnTile placeOnRandomTile setTileAt setWallAt tileLocation tileIs tileIsWall isHittingTile
       spriteTileKindAt`),
-    words(`tilesOfType tileLocationProperty tileAtLocation eventLocation --- setLegacyTilemap setLegacyTile
+    words(`tilesOfType tileLocationProperty tileAtLocation tileNeighbor spriteTileLocation randomTileOfType eventLocation ---
+      tilemapValue tilemapProperty tilemapTile tilemapIsWall tilemapTileImage setTilemapTile setTilemapWall ---
+      setLegacyTilemap setLegacyTile
       legacyTileLocation legacyTilesOfType legacyTileProperty setLegacyTileAt placeOnLegacyTile
       placeOnRandomLegacyTile tileHitFrom`)],
   ['info', 'Info', 'Info',

@@ -256,7 +256,7 @@ const REGISTERED_HAT_KINDS = {
     arcade_whenRegisteredInstanceDestroyed:'instanceDestroyed',
     arcade_whenRegisteredLegacyWall:'legacyWall',
     arcade_whenRegisteredMultiplayerButton:'multiplayerButton',
-    arcade_whenRegisteredCreated:'created', arcade_whenRegisteredWall:'wall', arcade_whenRegisteredTile:'tile',
+    arcade_whenRegisteredCreated:'created', arcade_whenRegisteredWall:'wall', arcade_whenRegisteredTile:'tile', arcade_whenRegisteredTilemapEvent:'tilemapEvent',
     arcade_whenRegisteredUpdate:'update', arcade_whenRegisteredInterval:'interval', arcade_whenRegisteredButton:'button',
     arcade_whenRegisteredPaint:'paint', arcade_whenRegisteredShade:'shade',
     arcade_whenRegisteredKindDestroyed:'destroyed', arcade_whenRegisteredOverlap:'overlap',
@@ -264,7 +264,7 @@ const REGISTERED_HAT_KINDS = {
     arcade_whenRegisteredForever:'forever', arcade_whenRegisteredLifeZero:'lifeZero', arcade_whenRegisteredScore:'score', arcade_whenRegisteredCountdown:'countdown',
     arcade_whenRegisteredExternal:'external'
 };
-const REGISTERED_COMMANDS = new Set(['arcade_registerMultiplayerConnection','arcade_registerControlEvent','arcade_startParallelHandler','arcade_registerLegacyWallHandler','arcade_registerMultiplayerButtonHandler','arcade_registerSpriteCreated','arcade_registerWallHandler','arcade_registerTileHandler',
+const REGISTERED_COMMANDS = new Set(['arcade_registerMultiplayerConnection','arcade_registerControlEvent','arcade_startParallelHandler','arcade_registerLegacyWallHandler','arcade_registerMultiplayerButtonHandler','arcade_registerSpriteCreated','arcade_registerWallHandler','arcade_registerTilemapEvent','arcade_registerTileHandler',
     'arcade_registerUpdateHandler','arcade_registerIntervalHandler','arcade_registerButtonHandler','arcade_registerPaintHandler','arcade_registerShadeHandler',
     'arcade_registerInstanceDestroyedHandler','arcade_registerDestroyedHandler','arcade_registerOverlapHandler','arcade_registerScenePushHandler','arcade_registerScenePopHandler',
     'arcade_registerForeverHandler','arcade_registerLifeZeroHandler','arcade_registerScoreHandler','arcade_registerCountdownHandler','arcade_registerExternalHandler']);
@@ -609,6 +609,7 @@ class ArcadeEmitter {
         this.sdkKindNames = new Set(['Player', 'Projectile', 'Food', 'Enemy', 'Text']);
         this.hasTextKindLibrary = false;
         this.eventLocationName = null;
+        this.eventTilemapName = null;
         this.eventHandles = null;
         this.eventKind = null;
         this.destroyedCallbacks = new Map();
@@ -1589,7 +1590,7 @@ class ArcadeEmitter {
     isBoolean (b) {
         return !!b && ['arrays_valueTruthy','arrays_valueCompare','arrays_referenceRemove','arrays_referenceTruthy', 'arrays_contains', 'operator_and', 'operator_or', 'operator_not', 'operator_gt', 'operator_lt', 'operator_equals',
             'sensing_touchingobject', 'sensing_keypressed', 'sensing_mousedown', 'data_listcontainsitem',
-            'arcade_percentChance','arcade_settingsExists', 'arcade_spriteDataReadBoolean', 'arcade_bufferIsReadOnly', 'arcade_bufferEquals', 'arcade_spriteOverlaps', 'arcade_imagesOverlap', 'arcade_tileIs', 'arcade_spriteTileKindAt', 'arcade_imageEquals', 'arcade_tileIsWall', 'arcade_isHittingTile', 'arcade_hasLife', 'arcade_hasPlayerScore', 'arcade_characterMatchesRule'].includes(b.opcode);
+            'arcade_percentChance','arcade_settingsExists', 'arcade_spriteDataReadBoolean', 'arcade_bufferIsReadOnly', 'arcade_bufferEquals', 'arcade_spriteOverlaps', 'arcade_imagesOverlap', 'arcade_tileIs', 'arcade_tilemapIsWall', 'arcade_spriteTileKindAt', 'arcade_imageEquals', 'arcade_tileIsWall', 'arcade_isHittingTile', 'arcade_hasLife', 'arcade_hasPlayerScore', 'arcade_characterMatchesRule'].includes(b.opcode);
     }
 
     menuField (b, input, field) {
@@ -2190,6 +2191,24 @@ class ArcadeEmitter {
         case 'arcade_spriteTileKindAt': return `${v('ID')}.tileKindAt(${this.arrayValue(b,'DIRECTION')}, ${v('IMAGE')})`;
         case 'arcade_isHittingTile': return `${v('ID')}.isHittingTile(${this.arrayValue(b,'DIRECTION')})`;
         case 'arcade_tileIsWall': return `tiles.tileAtLocationIsWall(${v('LOCATION')})`;
+        case 'arcade_tileAtLocation': return `tiles.tileImageAtLocation(${v('LOCATION')})`;
+        case 'arcade_tileNeighbor': return `${v('LOCATION')}.getNeighboringLocation(${this.arrayValue(b,'DIRECTION')})`;
+        case 'arcade_spriteTileLocation': return `${v('ID')}.tilemapLocation()`;
+        case 'arcade_tilemapValue': {
+            const raw=this.literalInput(b,'DATA');let data=null;
+            try{data=JSON.parse(raw);}catch(e){/* named below */}
+            const source=tilemapSource(data, (image, index) => this.tileAssets.register(image, index));
+            if(!source){this.note('Arcade tilemap value export requires valid fixed tile data, wall layer and scale');return 'null';}
+            return source;
+        }
+        case 'arcade_tilemapProperty': return `${v('DATA')}.${this.field(b,'PROPERTY')}`;
+        case 'arcade_tilemapTile': return `${v('DATA')}.getTile(${v('COLUMN')}, ${v('ROW')})`;
+        case 'arcade_tilemapIsWall': return `${v('DATA')}.isWall(${v('COLUMN')}, ${v('ROW')})`;
+        case 'arcade_tilemapTileImage': return `${v('DATA')}.getTileImage(${v('INDEX')})`;
+        case 'arcade_eventTilemapData':
+            if(this.eventTilemapName)return this.eventTilemapName;
+            this.note('Arcade event tilemap data outside a tilemap event callback');return this.na();
+        case 'arcade_randomTileOfType': return `tiles.getRandomTileByType(${v('IMAGE')})`;
         case 'arcade_spritesOfKind': return `sprites.allOfKind(${this.kindExpr(b, 'KIND')})`;
         case 'arcade_spriteCount': return `sprites.allOfKind(${this.kindExpr(b, 'KIND')}).length`;
         case 'arcade_ask': return `game.ask(${this.arrayValue(b,'TITLE')}, ${this.arrayValue(b,'SUBTITLE')})`;
@@ -2446,6 +2465,7 @@ class ArcadeEmitter {
         case 'arcade_placeOnLegacyTile':this.requiresLegacyTilemapPackage=true;push(`scene.place(${v('TILE')}, ${v('ID')})`);return;
         case 'arcade_placeOnRandomLegacyTile':this.requiresLegacyTilemapPackage=true;push(`scene.placeOnRandomTile(${v('ID')}, ${v('INDEX')})`);return;
         case 'arcade_setTilemap': {
+            if(!Array.isArray(b.inputs?.DATA?.[1])){push(`tiles.setTilemap(${v('DATA')})`);return;}
             const raw=this.literalInput(b,'DATA');let data=null;
             if(raw==='null' || raw===''){push('tiles.setTilemap(null)');return;}
             try{data=JSON.parse(raw);}catch(e){/* named below */}
@@ -2453,6 +2473,18 @@ class ArcadeEmitter {
             if(!source){this.note('Arcade tile map export requires valid fixed tile data, wall layer and scale');return;}
             push(`tiles.setTilemap(${source})`);return;
         }
+        case 'arcade_setTilemapTile': push(`${v('DATA')}.setTile(${v('COLUMN')}, ${v('ROW')}, ${v('INDEX')})`);return;
+        case 'arcade_setTilemapWall': push(`${v('DATA')}.setWall(${v('COLUMN')}, ${v('ROW')}, ${this.condition(b,'WALL')})`);return;
+        case 'arcade_registerTilemapEvent': {
+            const token=this.literalInput(b,'TOKEN'),event=this.field(b,'EVENT');
+            const callback=token && this.registeredCallback(token);
+            if(!callback || callback.kind!=='tilemapEvent' || !['Loaded','Unloaded'].includes(event))push(`// ${this.note('Arcade tilemap event registration has no matching callback')}`);
+            else {
+                this.usedRegisteredCallbacks.add(token);
+                push(`tiles.addEventListener(tiles.TileMapEvent.${event}, function (${callback.parameter}: tiles.TileMapData) {\n${callback.script.join('\n')}\n})`);
+            }return;
+        }
+        case 'arcade_unregisterTilemapEvent': push(`// ${this.note('tiles.removeEventListener has no inline callback to remove')}`);return;
         case 'arcade_setTileAt': push(`tiles.setTileAt(${v('LOCATION')}, ${v('IMAGE')})`);return;
         case 'arcade_setWallAt': push(`tiles.setWallAt(${v('LOCATION')}, ${this.condition(b,'WALL')})`);return;
         case 'arcade_placeOnTile': push(`tiles.placeOnTile(${v('ID')}, ${v('LOCATION')})`);return;
@@ -2495,7 +2527,7 @@ class ArcadeEmitter {
                 this.handleVars.add(name);
             } else {
                 const arrayType=this.arrayVariableTypes.get(b.fields?.VARIABLE?.[1] || b.fields?.VARIABLE?.[0]);
-                const image = ['arcade_spriteImage', 'arcade_frameImage', 'arcade_backgroundImage', 'arcade_createImage', 'arcade_cloneImage'].includes(valueBlock?.opcode) || this.imageVars.has(val) ||
+                const image = ['arcade_spriteImage', 'arcade_frameImage', 'arcade_backgroundImage', 'arcade_createImage', 'arcade_cloneImage', 'arcade_tileAtLocation', 'arcade_tilemapTileImage'].includes(valueBlock?.opcode) || this.imageVars.has(val) ||
                     this.imageVariableIds.has(b.fields?.VARIABLE?.[1] || b.fields?.VARIABLE?.[0]) ||
                     (valueBlock?.opcode === 'arcade_callFunction' && this.imageReturnFunctions.has(`${this.target.isStage?'':this.target.name}:${this.literalInput(valueBlock,'NAME')}`));
                 if (image) this.imageVars.add(name);
@@ -3578,7 +3610,7 @@ class ArcadeEmitter {
         let type=classType??this.localValueTypes.get(key)?.get(name)??'any';
         // Only a local written solely from a sprite producer in this procedure and used as a sprite receiver.
         if (classType === undefined && type === 'number' && procedureLocals?.localWrites?.get(name) === 'sprite' && this.localUsedAsSprite(name)) type = 'Sprite';
-        const initial=this.objectClassExport?.hasType?.(type)||type==='mp.Player' || type==='Image' || type==='Sprite' || type==='tiles.Location' || type==='tiles.Tile' || type==='animation.Animation' || type==='SevenSegDigit' || type==='DigitCounter' || type==='Dart' || type==='Corgio' || type==='TextSprite' || type==='scene.Scene' || type==='ArcadePhysicsEngine' || type.endsWith('[]') ? 'null' : type==='string' ? '""' : type==='boolean' ? 'false' : '0';
+        const initial=this.objectClassExport?.hasType?.(type)||type==='mp.Player' || type==='Image' || type==='Sprite' || type==='tiles.Location' || type==='tiles.TileMapData' || type==='tiles.Tile' || type==='animation.Animation' || type==='SevenSegDigit' || type==='DigitCounter' || type==='Dart' || type==='Corgio' || type==='TextSprite' || type==='scene.Scene' || type==='ArcadePhysicsEngine' || type.endsWith('[]') ? 'null' : type==='string' ? '""' : type==='boolean' ? 'false' : '0';
         return `    let ${name}: ${type} = ${initial}`;
     }
 
@@ -3592,16 +3624,17 @@ class ArcadeEmitter {
         if (this.registeredCallbacks.has(token)) return this.registeredCallbacks.get(token);
         const entry = this.registeredCallbackBlocks.get(token);
         if (!entry || this.compilingRegisteredCallbacks.has(token)) return null;
-        const saved = {target:this.target,blocks:this.blocks,eventHandles:this.eventHandles,eventLocationName:this.eventLocationName,eventKind:this.eventKind,eventPlayerName:this.eventPlayerName,currentLocalNames:this.currentLocalNames,implicitLoopYield:this.implicitLoopYield};
+        const saved = {target:this.target,blocks:this.blocks,eventHandles:this.eventHandles,eventLocationName:this.eventLocationName,eventKind:this.eventKind,eventTilemapName:this.eventTilemapName,eventPlayerName:this.eventPlayerName,currentLocalNames:this.currentLocalNames,implicitLoopYield:this.implicitLoopYield};
         this.compilingRegisteredCallbacks.add(token);
         this.target = entry.target;this.blocks = entry.target.blocks;
-        let parameter = `${entry.kind==='created'?'__bwCreatedSprite':['wall','tile'].includes(entry.kind)?'__bwTerrainSprite':'__bwEventSprite'}_${ident(token)}`;
+        let parameter = `${entry.kind==='tilemapEvent'?'__bwEventTilemap':entry.kind==='created'?'__bwCreatedSprite':['wall','tile'].includes(entry.kind)?'__bwTerrainSprite':'__bwEventSprite'}_${ident(token)}`;
         const text = JSON.stringify(entry.target.blocks);
         while (text.includes(parameter)) parameter += '_';
         let location=`__bwEventLocation_${ident(token)}`;while(text.includes(location))location+='_';
         let second=`__bwOtherSprite_${ident(token)}`;while(text.includes(second))second+='_';
         this.eventPlayerName=['multiplayerButton','multiplayerConnection'].includes(entry.kind)?parameter:null;
         this.eventLocationName=['wall','tile'].includes(entry.kind)?location:null;
+        this.eventTilemapName=entry.kind==='tilemapEvent'?parameter:null;
         this.eventHandles = entry.kind==='overlap'?[parameter,second]:['created','wall','tile','legacyWall','destroyed'].includes(entry.kind)?[parameter]:[];this.eventKind = this.registeredCallbackKinds.get(token);
         this.currentLocalNames = new Set();
         this.implicitLoopYield=true;
@@ -3617,7 +3650,7 @@ class ArcadeEmitter {
      * resource aliases. Constraint edges carry types through forwarded calls. */
     imageProcedureParameters () {
         const graphTextSpriteValues=new Set(),graphBufferValues=new Set(),graphPlayerValues=new Set(),graphAnimationValues=new Set(),graphSevensegDigitValues=new Set(),graphSevensegCounterValues=new Set(),graphDartValues=new Set(),graphCorgiValues=new Set(),graphSceneValues=new Set(),graphPhysicsEngineValues=new Set();
-        const dataProperties=[], parameters = new Map(), edges = [], images = new Set(), sprites = new Set(), tiles = new Set(), legacyTiles = new Set(), arrays = new Set(), numbers = new Set(), booleans=new Set(), strings=new Set(), anys=new Set(), specialTypes=[],valueOperations=[], elements=[],arrayCopies=[];
+        const dataProperties=[], parameters = new Map(), edges = [], images = new Set(), sprites = new Set(), tiles = new Set(), tilemaps = new Set(), legacyTiles = new Set(), arrays = new Set(), numbers = new Set(), booleans=new Set(), strings=new Set(), anys=new Set(), specialTypes=[],valueOperations=[], elements=[],arrayCopies=[];
         const definitions = [],captureLinks=[],callbackScopes=new Map(),callbackCaptureNames=new Map();
         const nativeBitwisePrimitiveResults=new Set();
         const inspectionOperatorProofs=new Map(),inspectionLeaves=new Map(),inspectionProducers=new Map(),inspectionOpaqueCells=new Set(),inspectionOperators=[],spriteFlagResults=new Map(),spriteFlagWriterInputs=new Map(),inspectionGlobalReaders=new Map(),inspectionVisited=new Set();
@@ -3807,8 +3840,10 @@ class ArcadeEmitter {
                 }
                 if (value.opcode === 'data_variable'){const id=`variable:${value.fields.VARIABLE[1] || value.fields.VARIABLE[0]}`;if(!inspectionGlobalReaders.has(id))inspectionGlobalReaders.set(id,new Set());inspectionGlobalReaders.get(id).add(target);return id;}
                 if(value.opcode==='arcade_eventLocation'){const id=Symbol('event tile location');tiles.add(id);return id;}
+                if(['arcade_tilemapValue','arcade_eventTilemapData'].includes(value.opcode)){const id=`${key}:tilemap:${Object.keys(blocks).find(id=>blocks[id]===value)}`;tilemaps.add(id);return id;}
                 if(value.opcode==='arcade_legacyTileLocation'){const id=Symbol('legacy tile');legacyTiles.add(id);return id;}
                 if(value.opcode==='arcade_legacyTilesOfType'){const id=Symbol('legacy tiles');arrays.add(id);return id;}
+                if(['arcade_tileNeighbor','arcade_spriteTileLocation','arcade_randomTileOfType'].includes(value.opcode)){const id=`${key}:tile:${Object.keys(blocks).find(id=>blocks[id]===value)}`;tiles.add(id);return id;}
                 if(value.opcode==='arcade_tileLocation'){const id=`${key}:tile:${Object.keys(blocks).find(id=>blocks[id]===value)}`;tiles.add(id);return id;}
                 if(value.opcode==='arcade_tilesOfType'){const id=`${key}:tile-array:${Object.keys(blocks).find(id=>blocks[id]===value)}`;arrays.add(id);return id;}
                 if(['arcade_getLife','arcade_getPlayerScore'].includes(value.opcode)){const id=Symbol('player life');numbers.add(id);return id;}
@@ -3870,7 +3905,7 @@ class ArcadeEmitter {
                     const id = `${key}:sprite:${Object.keys(blocks).find(id => blocks[id] === value)}`;
                     sprites.add(id);return id;
                 }
-                if (['arcade_createImage','arcade_cloneImage','arcade_spriteImage','arcade_frameImage','arcade_backgroundImage'].includes(value.opcode)) {
+                if (['arcade_createImage','arcade_cloneImage','arcade_spriteImage','arcade_frameImage','arcade_backgroundImage','arcade_tileAtLocation','arcade_tilemapTileImage'].includes(value.opcode)) {
                     const id = `${key}:image:${Object.keys(blocks).find(id => blocks[id] === value)}`;
                     images.add(id);return id;
                 }
@@ -3940,6 +3975,7 @@ class ArcadeEmitter {
                 if(block.opcode.startsWith('arrays_') && block.inputs?.NAME){const id='named-array:'+literal(blocks,block,'NAME');arrays.add(id);const value=Symbol('named array element');anys.add(value);elements.push([id,value]);}
                 if(block.inputs?.TILE){const tile=ref(inputBlock(blocks,block,'TILE'));if(tile)legacyTiles.add(tile);}
                 if(block.inputs?.LOCATION){const location=ref(inputBlock(blocks,block,'LOCATION'));if(location)tiles.add(location);}
+                if(block.inputs?.DATA && /^arcade_(tilemap(Property|Tile|IsWall|TileImage)|setTilemap(Tile|Wall))$/.test(block.opcode)){const data=ref(inputBlock(blocks,block,'DATA'));if(data)tilemaps.add(data);}
                 if(['arcade_tileLocation','arcade_legacyTileLocation'].includes(block.opcode))for(const name of ['COLUMN','ROW']){const number=ref(inputBlock(blocks,block,name));if(number)numbers.add(number);}
                 if(block.opcode==='arcade_legacyTilesOfType'){const array=ref(block),item=Symbol('legacy tile element');legacyTiles.add(item);elements.push([array,item]);}
                 if(block.opcode==='arcade_tilesOfType'){const array=ref(block),item=Symbol('tile collection element');tiles.add(item);elements.push([array,item]);}
@@ -4006,7 +4042,7 @@ class ArcadeEmitter {
         }
         edges.push(...captureLinks);
         const graph=new ValueTypeGraph();
-        for(const [values,type] of [[graphTextSpriteValues,'TextSprite'],[graphBufferValues,'Buffer'],[graphPlayerValues,'Player'],[graphSceneValues,'Scene'],[graphPhysicsEngineValues,'PhysicsEngine'],[graphAnimationValues,'Animation'],[graphSevensegDigitValues,'SevenSegDigit'],[graphSevensegCounterValues,'DigitCounter'],[graphDartValues,'Dart'],[graphCorgiValues,'Corgio'],[images,'Image'],[sprites,'Sprite'],[tiles,'TileLocation'],[legacyTiles,'LegacyTile'],[arrays,'array'],[numbers,'number'],[booleans,'boolean'],[strings,'string'],[anys,'any']])for(const value of values)graph.add(value,type);
+        for(const [values,type] of [[graphTextSpriteValues,'TextSprite'],[graphBufferValues,'Buffer'],[graphPlayerValues,'Player'],[graphSceneValues,'Scene'],[graphPhysicsEngineValues,'PhysicsEngine'],[graphAnimationValues,'Animation'],[graphSevensegDigitValues,'SevenSegDigit'],[graphSevensegCounterValues,'DigitCounter'],[graphDartValues,'Dart'],[graphCorgiValues,'Corgio'],[images,'Image'],[sprites,'Sprite'],[tiles,'TileLocation'],[tilemaps,'TileMapData'],[legacyTiles,'LegacyTile'],[arrays,'array'],[numbers,'number'],[booleans,'boolean'],[strings,'string'],[anys,'any']])for(const value of values)graph.add(value,type);
         for(const [value,types] of sourceTypeOfClasses)for(const type of types)graph.add(value,this.objectClassExport.classes.has(type)?`class:${type}`:type);
         for(const cell of this.sourceScalarCells.values())graph.add(`variable:${cell.id}`,cell.type.toLowerCase());
         for(const cell of this.sourceReferenceCells.values()){
@@ -4151,7 +4187,7 @@ class ArcadeEmitter {
         // type is determined by declarations, writes, copies and aliases.
         // Element and alias joins can make a nested array visible to reads or
         // procedure results that had no annotation of their own.
-        const inferred=new Map([[graphTextSpriteValues,'TextSprite'],[graphBufferValues,'Buffer'],[graphPlayerValues,'Player'],[graphSceneValues,'Scene'],[graphPhysicsEngineValues,'PhysicsEngine'],[graphAnimationValues,'Animation'],[graphSevensegDigitValues,'SevenSegDigit'],[graphSevensegCounterValues,'DigitCounter'],[graphDartValues,'Dart'],[graphCorgiValues,'Corgio'],[images,'Image'],[sprites,'Sprite'],[tiles,'TileLocation'],[legacyTiles,'LegacyTile'],[arrays,'array'],[numbers,'number'],[booleans,'boolean'],[strings,'string'],[anys,'any']]);
+        const inferred=new Map([[graphTextSpriteValues,'TextSprite'],[graphBufferValues,'Buffer'],[graphPlayerValues,'Player'],[graphSceneValues,'Scene'],[graphPhysicsEngineValues,'PhysicsEngine'],[graphAnimationValues,'Animation'],[graphSevensegDigitValues,'SevenSegDigit'],[graphSevensegCounterValues,'DigitCounter'],[graphDartValues,'Dart'],[graphCorgiValues,'Corgio'],[images,'Image'],[sprites,'Sprite'],[tiles,'TileLocation'],[tilemaps,'TileMapData'],[legacyTiles,'LegacyTile'],[arrays,'array'],[numbers,'number'],[booleans,'boolean'],[strings,'string'],[anys,'any']]);
         for(const [key] of graph.nodes)for(const [values,type] of inferred)if(graph.has(key,type))values.add(key);
         this.spriteReturnFunctions = new Set([...parameters.keys()].filter(key=>graph.arrayType(`${key}:result`)==='Sprite'));
         this.spriteVariableIds = new Set([...sprites].filter(key=>typeof key==='string' && key.startsWith('variable:') && graph.arrayType(key)==='Sprite').map(key=>key.slice(9)));
@@ -4161,7 +4197,7 @@ class ArcadeEmitter {
         this.mixedValueArrayLocalBlocks=new Set([...arrayLocalReaders].filter(([,cell])=>graph.has(cell,'array') && graph.arrayType(cell)==='any').map(([block])=>block));
         this.mixedValueVariableIds=new Set([...graph.nodes.keys()].filter(key=>typeof key==='string' && key.startsWith('variable:') && (graph.node(key).types.size>1 || graph.has(key,'any')) && graph.arrayType(key)==='any').map(key=>key.slice(9)));
         this.booleanVariableIds=new Set([...booleans].filter(key=>typeof key==='string' && key.startsWith('variable:') && graph.arrayType(key)==='boolean').map(key=>key.slice(9)));
-        this.primitiveVariableTypes=new Map([...graph.nodes.keys()].filter(key=>typeof key==='string' && key.startsWith('variable:') && ['Buffer','mp.Player','string','tiles.Location','tiles.Tile','animation.Animation','SevenSegDigit','DigitCounter','Dart','Corgio','TextSprite','scene.Scene','ArcadePhysicsEngine'].includes(graph.arrayType(key))).map(key=>[key.slice(9),graph.arrayType(key)]));
+        this.primitiveVariableTypes=new Map([...graph.nodes.keys()].filter(key=>typeof key==='string' && key.startsWith('variable:') && ['Buffer','mp.Player','string','tiles.Location','tiles.TileMapData','tiles.Tile','animation.Animation','SevenSegDigit','DigitCounter','Dart','Corgio','TextSprite','scene.Scene','ArcadePhysicsEngine'].includes(graph.arrayType(key))).map(key=>[key.slice(9),graph.arrayType(key)]));
         this.valueReturnTypes=new Map([...parameters.keys()].map(key=>[key,graph.arrayType(`${key}:result`)]));
         this.localValueTypes=new Map();
         for(const key of graph.nodes.keys()){
@@ -4872,7 +4908,7 @@ class ArcadeEmitter {
             const mixedInitialScalar = this.initialGlobals.has(n) &&
                 ['string', 'boolean', 'number'].some(kind => kinds.has(kind) && kind !== initialScalarType);
             out.push(arrayKind?`let ${n}: ${arrayKind} = null`:this.handleVars.has(n) ? `let ${n}: Sprite = null` :
-                kinds.size > 1 || kinds.has('any') || mixedInitialScalar ? `let ${n}: any = ${initial}` : kinds.has('string') ? `let ${n} = ${this.initialGlobals.has(n) ? initial : '""'}` : kinds.has('boolean') ? `let ${n} = ${this.initialGlobals.has(n) ? initial : 'false'}` : kinds.has('Buffer') ? `let ${n}: Buffer = null` : kinds.has('mp.Player') ? `let ${n}: mp.Player = null` : kinds.has('scene.Scene') ? `let ${n}: scene.Scene = null` : kinds.has('ArcadePhysicsEngine') ? `let ${n}: ArcadePhysicsEngine = null` : kinds.has('animation.Animation') ? `let ${n}: animation.Animation = null` : kinds.has('SevenSegDigit') ? `let ${n}: SevenSegDigit = null` : kinds.has('DigitCounter') ? `let ${n}: DigitCounter = null` : kinds.has('TextSprite') ? `let ${n}: TextSprite = null` : kinds.has('Dart') ? `let ${n}: Dart = null` : kinds.has('Corgio') ? `let ${n}: Corgio = null` : kinds.has('tiles.Tile') ? `let ${n}: tiles.Tile = null` : kinds.has('tiles.Location') ? `let ${n}: tiles.Location = null` : kinds.has('image') ? `let ${n}: Image = null` : `let ${n} = ${initial}`);
+                kinds.size > 1 || kinds.has('any') || mixedInitialScalar ? `let ${n}: any = ${initial}` : kinds.has('string') ? `let ${n} = ${this.initialGlobals.has(n) ? initial : '""'}` : kinds.has('boolean') ? `let ${n} = ${this.initialGlobals.has(n) ? initial : 'false'}` : kinds.has('Buffer') ? `let ${n}: Buffer = null` : kinds.has('mp.Player') ? `let ${n}: mp.Player = null` : kinds.has('scene.Scene') ? `let ${n}: scene.Scene = null` : kinds.has('ArcadePhysicsEngine') ? `let ${n}: ArcadePhysicsEngine = null` : kinds.has('animation.Animation') ? `let ${n}: animation.Animation = null` : kinds.has('SevenSegDigit') ? `let ${n}: SevenSegDigit = null` : kinds.has('DigitCounter') ? `let ${n}: DigitCounter = null` : kinds.has('TextSprite') ? `let ${n}: TextSprite = null` : kinds.has('Dart') ? `let ${n}: Dart = null` : kinds.has('Corgio') ? `let ${n}: Corgio = null` : kinds.has('tiles.Tile') ? `let ${n}: tiles.Tile = null` : kinds.has('tiles.Location') ? `let ${n}: tiles.Location = null` : kinds.has('tiles.TileMapData') ? `let ${n}: tiles.TileMapData = null` : kinds.has('image') ? `let ${n}: Image = null` : `let ${n} = ${initial}`);
         }
         const animationLookupDefinitions=new Map();
         if (this.usesAnimationResources) {
