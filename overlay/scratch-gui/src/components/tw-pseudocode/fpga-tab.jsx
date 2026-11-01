@@ -1,6 +1,6 @@
 import React from 'react';
 import {connect} from 'react-redux';
-import {Popup, Icon, toolStyles} from './sim-lab-toolbar.jsx';
+import {Popup, toolStyles} from './sim-lab-toolbar.jsx';
 import TANG_NANO_20K from 'bw-circuit-ui/parts-data/tang_nano_20k.json';
 import {parseCst, emitCst} from '../../lib/bw-fpga/cst.js';
 import {bridge, constraintsFromBindings} from '../../lib/bw-fpga/port-bridge.js';
@@ -14,6 +14,7 @@ import {buildLogicIcGate} from '../../lib/bw-fpga/logic-ic-board.js';
 import {LOGIC_IC_GATES, gateToLogicIc} from '../../lib/bw-fpga/logic-ic.js';
 import {buildLogicIcCircuit, IC_CIRCUITS, circuitLabel, circuitHint} from '../../lib/bw-fpga/logic-ic-circuit.js';
 import {t as tr, tn} from '../../lib/bw-fpga/l10n.js';
+import {deriveView, viewStyles} from '../../lib/bw-fpga/tab-view.js';
 import {readPorts, checkWidths, detectClockPort} from '../../lib/bw-fpga/yosys.js';
 // Small and dependency-free, so these stay static: the licence screen is useful
 // on its own, and the synthesis client's only job today is to refuse honestly.
@@ -183,7 +184,30 @@ const L10N = {
         constraintsTitle: 'Constraints for the Gowin toolchain',
         constraintsDesc1: 'Canonical .cst covering only the ports that reach a header pin. ',
         constraintsDesc2: 'This is what leaves for real silicon.',
-        plannedNext: 'Planned next: flashing a produced bitstream from the native app.'
+        plannedNext: 'Planned next: flashing a produced bitstream from the native app.',
+        help: 'Help',
+        buildingOn: 'Synthesising on ',
+        mayTakeAMinute: ' … this can take up to a minute.',
+        workingInBrowser: 'Synthesising in this browser …',
+        needsAttention: 'Needs attention',
+        synthFailedNext: 'Next step: fix the design in Design (or switch the build target in Build), then synthesise again.',
+        headsUp: 'Heads-up',
+        notes: 'Notes',
+        bitstreamReady: 'Bitstream ready',
+        netlistReady: 'Netlist ready',
+        modules: 'modules',
+        howToFlash: 'How to flash',
+        flashing: 'Flashing…',
+        flashFailed: 'Flash failed: ',
+        nextSimulate: 'Next: Simulate ▸',
+        nextBuild: 'Next: Build ▸',
+        goBuild: 'Go to Build',
+        designHint: 'Pick an example or draw gates, or write Verilog.',
+        buildHint: 'Turn the design into something that runs: a bitstream for the board, or a netlist to simulate.',
+        simulateHint: 'Step the clock, flip the inputs and watch the outputs.',
+        synthesising: 'Synthesising…',
+        needDesignFirst: 'Load an example or write a design in Design first.',
+        boardOptional: 'Optional: try it on a breadboard.'
     },
     de: {
         workspace: 'Arbeitsbereich',
@@ -342,7 +366,30 @@ const L10N = {
         constraintsTitle: 'Constraints für die Gowin-Toolchain',
         constraintsDesc1: 'Kanonisches .cst, das nur die Ports abdeckt, die einen Header-Pin erreichen. ',
         constraintsDesc2: 'Das ist es, was für echtes Silizium abgeht.',
-        plannedNext: 'Als nächstes geplant: Flashen eines produzierten Bitstreams aus der nativen App.'
+        plannedNext: 'Als nächstes geplant: Flashen eines produzierten Bitstreams aus der nativen App.',
+        help: 'Hilfe',
+        buildingOn: 'Synthese läuft auf ',
+        mayTakeAMinute: ' … das kann bis zu einer Minute dauern.',
+        workingInBrowser: 'Synthese in diesem Browser …',
+        needsAttention: 'Braucht Aufmerksamkeit',
+        synthFailedNext: 'Nächster Schritt: Design unter Entwerfen korrigieren (oder unter Erstellen das Ziel wechseln) und erneut synthetisieren.',
+        headsUp: 'Achtung',
+        notes: 'Hinweise',
+        bitstreamReady: 'Bitstream fertig',
+        netlistReady: 'Netzliste fertig',
+        modules: 'Module',
+        howToFlash: 'So flashen',
+        flashing: 'Flashe…',
+        flashFailed: 'Flashen fehlgeschlagen: ',
+        nextSimulate: 'Weiter: Simulieren ▸',
+        nextBuild: 'Weiter: Erstellen ▸',
+        goBuild: 'Zu Erstellen',
+        designHint: 'Beispiel wählen oder Gatter zeichnen, oder Verilog schreiben.',
+        buildHint: 'Das Design in etwas Lauffähiges verwandeln: einen Bitstream für das Board oder eine Netzliste zum Simulieren.',
+        simulateHint: 'Uhr takten, Eingänge schalten und die Ausgänge beobachten.',
+        synthesising: 'Synthetisiere…',
+        needDesignFirst: 'Laden Sie zuerst unter Entwerfen ein Beispiel oder schreiben Sie ein Design.',
+        boardOptional: 'Optional: auf einem Breadboard ausprobieren.'
     }
 };
 const pickLocale = loc => (loc && L10N[String(loc).slice(0, 2)] ? String(loc).slice(0, 2) : 'en');
@@ -550,6 +597,9 @@ const FpgaTab = (props) => {
     // consents to 78 MB, which is an honest state and not a failure.
     const [local, setLocal] = React.useState(null);
     const [localBusy, setLocalBusy] = React.useState(false);
+    // The hosted build is a network round trip of seconds to a minute; without
+    // this the button looked dead and a failure was silent.
+    const [building, setBuilding] = React.useState(false);
 
     // THE CODE TAB HANDS A CIRCUIT OVER HERE. A pseudocode line that is a
     // boolean over 1-bit inputs can be lowered to a gate model
@@ -1016,574 +1066,560 @@ const FpgaTab = (props) => {
     const realizeIcCircuit = React.useCallback(key => onLiveCircuit(c => buildIcCircuitOnCircuit(c, key)),
         [onLiveCircuit, buildIcCircuitOnCircuit]);
 
+    const ui = viewStyles(tools);
+    const view = deriveView({T, building, selection, localBusy, local, hdlScreen, refusals, warnings,
+        synth, hdl, clockCycles});
+
     return (
         <div data-testid="bw-fpga-workspace" style={{position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, overflowY: 'auto',
             padding: '0.75rem', lineHeight: 1.5, boxSizing: 'border-box'}}>
             <div style={{...toolbar, position: 'sticky', top: 0, zIndex: 5}}>
-                <strong style={{fontSize: 14, marginRight: '0.5rem'}}>{T.fpgaTitle}</strong>
-                <nav aria-label={T.workspace} style={{display: 'flex', gap: 4}}>
-                    {['design', 'build', 'simulate'].map(mode => (
+                <strong style={{fontSize: 14, marginRight: '0.25rem'}}>{T.fpgaTitle}</strong>
+                <nav aria-label={T.workspace} style={{display: 'flex', gap: 4, flexWrap: 'wrap'}}>
+                    {['design', 'build', 'simulate'].map((mode, index) => (
                         <button key={mode} type="button" data-testid={`bw-fpga-workspace-${mode}`}
                             aria-pressed={workspace === mode} aria-controls={`bw-fpga-panel-${mode}`}
-                            onClick={() => setWorkspace(mode)} style={workspace === mode ? tools.pressed : tools.button}>
-                            <Icon name={mode === 'design' ? 'instructions' : mode} />{T[`${mode}Workspace`]}
+                            onClick={() => setWorkspace(mode)} style={workspace === mode ? tools.pressed : ui.secondary}>
+                            <span aria-hidden="true" style={ui.stepBadge(view.stepDone[mode])}>{view.stepDone[mode] ? '✓' : index + 1}</span>
+                            {T[`${mode}Workspace`]}
                         </button>
                     ))}
                 </nav>
-                <FpgaInfo id="about" label={T.labInfo}>
-            <p style={{marginTop: 0}}>
-                {L10N[pickLocale(props.locale)].fpgaDesc1}
-                {L10N[pickLocale(props.locale)].fpgaDesc2}
-                {L10N[pickLocale(props.locale)].fpgaDesc3}
-                {L10N[pickLocale(props.locale)].fpgaDesc4}
-            </p>
-                </FpgaInfo>
-                <FpgaInfo id="guide" label={T.gettingStarted}>
-            {guideDismissed ? (
-                <button type="button" style={tools.button} onClick={() => {
-                    try { localStorage.removeItem('bw-fpga-guide-done'); } catch (e) { /* private mode */ }
-                    setGuideDismissed(false);
-                }}>{T.showGuide}</button>
-            ) : (() => {
-                // Progress is READ from the tab's real state, so a step ticks when
-                // the user actually does it — not a scripted tour that lies.
-                const steps = [
-                    {done: Boolean(demoMsg && demoMsg.ok),
-                        label: L10N[pickLocale(props.locale)].wireDemoBoard,
-                        hint: L10N[pickLocale(props.locale)].wireDemoBoardHint},
-                    {done: Boolean((synth && synth.ok) || netlistText.trim()),
-                        label: L10N[pickLocale(props.locale)].loadDesign,
-                        hint: L10N[pickLocale(props.locale)].loadDesignHint},
-                    {done: clockCycles > 0,
-                        label: L10N[pickLocale(props.locale)].stepClock,
-                        hint: L10N[pickLocale(props.locale)].stepClockHint},
-                    {done: mirrored,
-                        label: L10N[pickLocale(props.locale)].seeInController,
-                        hint: L10N[pickLocale(props.locale)].seeInControllerHint}
-                ];
-                const allDone = steps.every(s => s.done);
-                const hide = () => {
-                    try { localStorage.setItem('bw-fpga-guide-done', '1'); } catch (e) { /* private mode */ }
-                    setGuideDismissed(true);
-                };
-                return (
-                    <div>
-                        <strong>{allDone
-                            ? L10N[pickLocale(props.locale)].allDone
-                            : L10N[pickLocale(props.locale)].newToFpga}</strong>
-                        <ol style={{margin: '0.5rem 0 0.25rem', paddingLeft: '1.4rem'}}>
-                            {steps.map((s, i) => (
-                                <li key={i} style={{opacity: s.done ? 0.55 : 1, margin: '0.15rem 0'}}>
-                                    {s.done ? '✓ ' : ''}{s.label}
-                                    <span style={{opacity: 0.7}}>{` — ${s.hint}`}</span>
-                                </li>
-                            ))}
-                        </ol>
-                        {netlistText.trim() ? (
-                            <p style={{margin: '0.35rem 0 0.15rem', fontSize: '0.85rem'}}>
-                                <strong>{L10N[pickLocale(props.locale)].threeWaysToSee}</strong>
-                                {L10N[pickLocale(props.locale)].designDrawnAs}<em>{L10N[pickLocale(props.locale)].gateSchematic}</em>
-                                {L10N[pickLocale(props.locale)].andAs}<em>{L10N[pickLocale(props.locale)].waveforms}</em>{L10N[pickLocale(props.locale)].belowAndYouCan}
-                                <em>{L10N[pickLocale(props.locale)].buildYourOwnLogic}</em>{L10N[pickLocale(props.locale)].byPlacingGates}
-                                {L10N[pickLocale(props.locale)].noHdlTyped}
-                            </p>
-                        ) : (
-                            <p style={{margin: '0.35rem 0 0.15rem', fontSize: '0.85rem', opacity: 0.85}}>
-                                {L10N[pickLocale(props.locale)].preferNoTyping}<em>{L10N[pickLocale(props.locale)].buildItVisuallyQuote}</em>
-                                {L10N[pickLocale(props.locale)].underVerilog}
-                            </p>
-                        )}
-                        <button type="button" onClick={hide}
-                            style={{marginTop: '0.35rem', padding: '0.15rem 0.6rem', cursor: 'pointer'}}
-                        >{allDone ? L10N[pickLocale(props.locale)].done : L10N[pickLocale(props.locale)].hideThis}</button>
-                    </div>
-                );
-            })()}
-
+                <span style={{flex: '1 1 0'}} />
+                <FpgaInfo id="help" label={T.help}>
+                    <strong>{T.labInfo}</strong>
+                    <p style={{margin: '0.25rem 0 0.6rem'}}>
+                        {T.fpgaDesc1}{T.fpgaDesc2}{T.fpgaDesc3}{T.fpgaDesc4}
+                    </p>
+                    <strong>{T.gettingStarted}</strong>
+                    {guideDismissed ? (
+                        <div style={{marginTop: '0.25rem'}}>
+                            <button type="button" style={ui.secondary} onClick={() => {
+                                try { localStorage.removeItem('bw-fpga-guide-done'); } catch (e) { /* private mode */ }
+                                setGuideDismissed(false);
+                            }}>{T.showGuide}</button>
+                        </div>
+                    ) : (() => {
+                        // Progress is READ from the tab's real state, so a step ticks when
+                        // the user actually does it — not a scripted tour that lies.
+                        const steps = [
+                            {done: Boolean(demoMsg && demoMsg.ok), label: T.wireDemoBoard, hint: T.wireDemoBoardHint},
+                            {done: Boolean((synth && synth.ok) || netlistText.trim()), label: T.loadDesign, hint: T.loadDesignHint},
+                            {done: clockCycles > 0, label: T.stepClock, hint: T.stepClockHint},
+                            {done: mirrored, label: T.seeInController, hint: T.seeInControllerHint}
+                        ];
+                        const allDone = steps.every(s => s.done);
+                        const hide = () => {
+                            try { localStorage.setItem('bw-fpga-guide-done', '1'); } catch (e) { /* private mode */ }
+                            setGuideDismissed(true);
+                        };
+                        return (
+                            <div>
+                                <p style={{margin: '0.25rem 0 0'}}>{allDone ? T.allDone : T.newToFpga}</p>
+                                <ol style={{margin: '0.4rem 0 0.25rem', paddingLeft: '1.4rem'}}>
+                                    {steps.map((s, i) => (
+                                        <li key={i} style={{opacity: s.done ? 0.55 : 1, margin: '0.15rem 0'}}>
+                                            {s.done ? '✓ ' : ''}{s.label}
+                                            <span style={{opacity: 0.7}}>{` — ${s.hint}`}</span>
+                                        </li>
+                                    ))}
+                                </ol>
+                                <p style={{margin: '0.35rem 0 0.15rem', fontSize: '0.85rem', opacity: 0.85}}>
+                                    {netlistText.trim() ? (
+                                        <>
+                                            <strong>{T.threeWaysToSee}</strong>
+                                            {T.designDrawnAs}<em>{T.gateSchematic}</em>
+                                            {T.andAs}<em>{T.waveforms}</em>{T.belowAndYouCan}
+                                            <em>{T.buildYourOwnLogic}</em>{T.byPlacingGates}
+                                            {T.noHdlTyped}
+                                        </>
+                                    ) : (
+                                        <>
+                                            {T.preferNoTyping}<em>{T.buildItVisuallyQuote}</em>
+                                            {T.underVerilog}
+                                        </>
+                                    )}
+                                </p>
+                                <button type="button" onClick={hide} style={{...ui.secondary, marginTop: '0.35rem'}}>
+                                    {allDone ? T.done : T.hideThis}
+                                </button>
+                            </div>
+                        );
+                    })()}
                 </FpgaInfo>
             </div>
 
-            {/* Diagnostics and completed results are never folded into help or
-                hidden by workspace/view selectors. */}
+            {/* One status area for every workspace: what is running, what went
+                wrong and the next step, then the finished result. Blockers are
+                always open; heads-ups are one click away so they cannot bury the
+                controls (they used to stack above every workspace). */}
             <div aria-live="polite" data-testid="bw-fpga-status" style={{maxWidth: '64rem'}}>
-                {demoMsg ? <p style={{color: demoMsg.ok ? '#2e7d32' : (demoMsg.pending ? '#555' : '#b34747')}}>{demoMsg.text}</p> : null}
-            {hdl.trim() ? (
-                <ul style={{listStyle: 'none', padding: 0, margin: '0.5rem 0 0'}}>
-                    {hdlScreen.refusals.map((r, i) => (
-                        <Row key={`sr${i}`} tone="#b34747">
-                            <strong>{r.spdx || 'copyleft'}</strong>{`: ${r.reason}`}
-                        </Row>
-                    ))}
-                    {hdlScreen.warnings.map((w, i) => (
-                        <Row key={`sw${i}`} tone="#b8860b">{w.reason}</Row>
-                    ))}
-                </ul>
-            ) : null}
-                {warnings.length ? (
-                    <>
-                        <h3>{`${L10N[pickLocale(props.locale)].usableWithCaveat}${warnings.length})`}</h3>
-                        <ul style={{listStyle: 'none', padding: 0, margin: 0}}>
-                            {warnings.map((w, i) => (
-                                <Row key={i} tone="#b8860b"><strong>{w.port}</strong>{`: ${w.reason}`}</Row>
-                            ))}
-                        </ul>
-                    </>
+                {view.busyText ? (
+                    <div role="status" data-testid="bw-fpga-busy" style={{...ui.card, borderColor: '#6366f1', background: '#eef2ff'}}>
+                        <div style={ui.row}><span aria-hidden="true">⏳</span><strong>{view.busyText}</strong></div>
+                        <progress aria-label={view.busyText} style={{width: '100%', marginTop: '0.35rem'}} />
+                    </div>
                 ) : null}
-
-                {refusals.length ? (
-                    <>
-                        <h3>{`${L10N[pickLocale(props.locale)].cannotReachBoard}${refusals.length})`}</h3>
-                        <ul style={{listStyle: 'none', padding: 0, margin: 0}}>
-                            {refusals.map((r, i) => (
-                                <Row key={i} tone="#b34747">
-                                    <strong>{r.port || `line ${r.lineNumber}`}</strong>{`: ${r.reason}`}
+                {demoMsg ? (
+                    <p style={{...ui.card, margin: '0 0 0.6rem', borderColor: demoMsg.ok ? '#86efac' : (demoMsg.pending ? '#cbd5e1' : '#fca5a5'),
+                        color: demoMsg.ok ? '#166534' : (demoMsg.pending ? '#475569' : '#991b1b')}}>{demoMsg.text}</p>
+                ) : null}
+                {view.hasBlockers ? (
+                    <div role="alert" data-testid="bw-fpga-problems" style={{...ui.card, borderColor: '#fca5a5', background: '#fef2f2'}}>
+                        <strong>{T.needsAttention}</strong>
+                        <ul style={{listStyle: 'none', padding: 0, margin: '0.35rem 0 0'}}>
+                            {hdlScreen.refusals.map((r, i) => (
+                                <Row key={`sr${i}`} tone="#b34747">
+                                    <strong>{r.spdx || 'copyleft'}</strong>{`: ${r.reason}`}
                                 </Row>
                             ))}
+                            {view.localFailed ? (
+                                <Row tone="#b34747"><strong>{local.code || local.state}</strong>{`: ${local.reason}`}</Row>
+                            ) : null}
+                            {synth && !synth.ok ? (
+                                <Row tone="#b34747">
+                                    <strong>{synth.code}</strong>{`: ${synth.reason}`}
+                                    <div style={ui.hint}>{T.synthFailedNext}</div>
+                                </Row>
+                            ) : null}
                         </ul>
-                    </>
+                    </div>
                 ) : null}
-
-
-                {local && local.ok === false && local.code !== 'not-downloaded' ? (
-                    <p><strong>{local.code || local.state}</strong>{`: ${local.reason}`}</p>
-                ) : null}
-                {synth && !synth.ok ? (
-                    <span style={{marginLeft: '0.6rem', opacity: 0.85}}>
-                        <strong>{synth.code}</strong>{`: ${synth.reason}`}
-                    </span>
+                {view.notesCount ? (
+                    <details data-testid="bw-fpga-headsup" style={{...ui.card, borderColor: '#fcd34d', background: '#fffbeb', padding: '0.35rem 0.75rem'}}>
+                        <summary style={{cursor: 'pointer', fontWeight: 600, fontSize: 13}}>{`${T.notes} (${view.notesCount})`}</summary>
+                        {view.headsUp.length ? (
+                            <>
+                                <strong style={{fontSize: 13}}>{`${T.headsUp} (${view.headsUp.length})`}</strong>
+                                <ul style={{listStyle: 'none', padding: 0, margin: '0.25rem 0 0.5rem'}}>
+                                    {view.headsUp.map((w, i) => (
+                                        <Row key={`${w.key}${i}`} tone="#b8860b">
+                                            {w.who ? <strong>{w.who}</strong> : null}{w.who ? `: ${w.reason}` : w.reason}
+                                        </Row>
+                                    ))}
+                                </ul>
+                            </>
+                        ) : null}
+                        {refusals.length ? (
+                            <>
+                                <strong style={{fontSize: 13}}>{`${T.cannotReachBoard}${refusals.length})`}</strong>
+                                <ul style={{listStyle: 'none', padding: 0, margin: '0.25rem 0 0.25rem'}}>
+                                    {refusals.map((r, i) => (
+                                        <Row key={i} tone="#7a7a7a">
+                                            <strong>{r.port || `line ${r.lineNumber}`}</strong>{`: ${r.reason}`}
+                                        </Row>
+                                    ))}
+                                </ul>
+                            </>
+                        ) : null}
+                    </details>
                 ) : null}
                 {synth && synth.ok && artefacts ? (
-                    <span style={{marginLeft: '0.6rem'}}>
+                    <div data-testid="bw-fpga-result" style={{...ui.card, borderColor: '#86efac', background: '#f0fdf4'}}>
                         {artefacts.bitstream ? (
                             <>
-                                {`✓ Built a ${artefacts.bitstream.bytes.toLocaleString()}-byte bitstream. `}
-                                <a href={artefacts.bitstream.url} download="design.fs">{L10N[pickLocale(props.locale)].downloadFs}</a>
-                                {flash.available ? (
-                                    <button
-                                        type="button"
-                                        style={{marginLeft: '0.5rem', padding: '0.15rem 0.5rem', cursor: 'pointer'}}
-                                        onClick={() => {
-                                            setFlashMsg('Flashing…');
+                                <div style={ui.row}>
+                                    <strong>{`✓ ${T.bitstreamReady} (${artefacts.bitstream.bytes.toLocaleString()} bytes)`}</strong>
+                                    <a href={artefacts.bitstream.url} download="design.fs" style={{...ui.secondary, textDecoration: 'none'}}>{T.downloadFs}</a>
+                                    {flash.available ? (
+                                        <button type="button" style={tools.primary} onClick={() => {
+                                            setFlashMsg(T.flashing);
                                             flashBitstream(synth.bitstream)
                                                 .then(r => setFlashMsg(`✓ ${r}`))
-                                                .catch(e => setFlashMsg(`Flash failed: ${e.message}`));
-                                        }}
-                                    >{L10N[pickLocale(props.locale)].flashToBoard}</button>
-                                ) : null}
-                                {flashMsg ? <span style={{marginLeft: '0.5rem', opacity: 0.85}}>{flashMsg}</span> : null}
-                                <div style={{opacity: 0.7, fontSize: '0.85em', marginTop: '0.25rem'}}>
-                                    {flash.available ? (
-                                        L10N[pickLocale(props.locale)].flashingRuns
-                                    ) : (
-                                        <>
-                                            {L10N[pickLocale(props.locale)].browserCannotFlash1}
-                                            <code>{'bw-fpga flash ./design.fs'}</code>{L10N[pickLocale(props.locale)].browserCannotFlash2}
-                                            <code>{'openFPGALoader -b tangnano20k design.fs'}</code>{L10N[pickLocale(props.locale)].browserCannotFlash3}
-                                            {webUsbSupported() ? (
-                                                <div style={{marginTop: '0.15rem'}}>
-                                                    {L10N[pickLocale(props.locale)].browserHasWebUsb
-                                                        }
-                                                </div>
-                                            ) : null}
-                                        </>
-                                    )}
+                                                .catch(e => setFlashMsg(`${T.flashFailed}${e.message}`));
+                                        }}>{T.flashToBoard}</button>
+                                    ) : null}
+                                    {flashMsg ? <span style={{opacity: 0.85}}>{flashMsg}</span> : null}
+                                    <FpgaInfo id="flash" label={T.howToFlash}>
+                                        {flash.available ? (
+                                            <p style={{margin: 0}}>{T.flashingRuns}</p>
+                                        ) : (
+                                            <>
+                                                <p style={{margin: 0}}>
+                                                    {T.browserCannotFlash1}
+                                                    <code>{'bw-fpga flash ./design.fs'}</code>{T.browserCannotFlash2}
+                                                    <code>{'openFPGALoader -b tangnano20k design.fs'}</code>{T.browserCannotFlash3}
+                                                </p>
+                                                {webUsbSupported() ? <p style={{marginBottom: 0}}>{T.browserHasWebUsb}</p> : null}
+                                            </>
+                                        )}
+                                    </FpgaInfo>
                                 </div>
                             </>
                         ) : artefacts.netlist ? (
-                            <>
-                                {`✓ Synthesised a netlist (${artefacts.netlist.modules} modules). `}
-                                <a href={artefacts.netlist.url} download="design.json">{L10N[pickLocale(props.locale)].downloadNetlist}</a>
-                            </>
-                        ) : L10N[pickLocale(props.locale)].doneFeedback}
-                    </span>
+                            <div style={ui.row}>
+                                <strong>{`✓ ${T.netlistReady} (${artefacts.netlist.modules} ${T.modules})`}</strong>
+                                <a href={artefacts.netlist.url} download="design.json" style={{...ui.secondary, textDecoration: 'none'}}>{T.downloadNetlist}</a>
+                            </div>
+                        ) : <strong>{T.doneFeedback}</strong>}
+                        {workspace !== 'simulate' ? (
+                            <div style={{...ui.row, marginTop: '0.4rem'}}>
+                                <button type="button" data-testid="bw-fpga-next-simulate" style={tools.primary}
+                                    onClick={() => setWorkspace('simulate')}>{T.nextSimulate}</button>
+                            </div>
+                        ) : null}
+                    </div>
                 ) : null}
-
             </div>
 
             <section id="bw-fpga-panel-design" data-testid="bw-fpga-panel-design" hidden={workspace !== 'design'} aria-label={T.designWorkspace}>
-                <div style={toolbar}>
-                    <label style={field}>{T.exampleLabel}
-                        <select data-testid="bw-fpga-example" value={exampleId} style={selector}
-                            onChange={event => setExampleId(event.target.value)}>
-                            {EXAMPLES.map(ex => <option key={ex.id} value={ex.id}>{ex.label}</option>)}
-                        </select>
-                    </label>
-                    <button type="button" data-testid="bw-fpga-load-example" style={tools.button}
-                        onClick={() => { const ex = selectedExample; setHdl(ex.verilog); setText(ex.cst); setSynth(null); setSeed(ex.model); }}>
-                        {T.loadExample}
-                    </button>
-                    <label style={field}>{T.editorLabel}
-                        <select data-testid="bw-fpga-editor" value={editor} style={selector}
-                            onChange={event => setEditor(event.target.value)}>
-                            <option value="canvas">{T.canvasEditor}</option>
-                            <option value="verilog">{T.verilogEditor}</option>
-                        </select>
-                    </label>
-                    <FpgaInfo id="example" label={T.exampleInfo}><p>{selectedExample.blurb}</p></FpgaInfo>
+                <div style={ui.card}>
+                    <h2 style={ui.stepTitle}>{`1 · ${T.designWorkspace}`}</h2>
+                    <p style={{...ui.hint, margin: '0 0 0.5rem'}}>{T.designHint}</p>
+                    <div style={ui.row}>
+                        <label style={field}>{T.exampleLabel}
+                            <select data-testid="bw-fpga-example" value={exampleId} style={selector}
+                                onChange={event => setExampleId(event.target.value)}>
+                                {EXAMPLES.map(ex => <option key={ex.id} value={ex.id}>{ex.label}</option>)}
+                            </select>
+                        </label>
+                        <button type="button" data-testid="bw-fpga-load-example" style={ui.secondary}
+                            onClick={() => { const ex = selectedExample; setHdl(ex.verilog); setText(ex.cst); setSynth(null); setSeed(ex.model); }}>
+                            {T.loadExample}
+                        </button>
+                        <FpgaInfo id="example" label={T.exampleInfo}><p>{selectedExample.blurb}</p></FpgaInfo>
+                        <span style={{flex: '1 1 0'}} />
+                        <label style={field}>{T.editorLabel}
+                            <select data-testid="bw-fpga-editor" value={editor} style={selector}
+                                onChange={event => setEditor(event.target.value)}>
+                                <option value="canvas">{T.canvasEditor}</option>
+                                <option value="verilog">{T.verilogEditor}</option>
+                            </select>
+                        </label>
+                    </div>
                 </div>
-            <div style={toolbar}>
-                <label style={field}>{T.circuitModel}
-                    <select data-testid="bw-fpga-realization" style={selector} value={realization}
-                        onChange={event => setRealization(event.target.value)}>
-                        <option value="demo">{T.demoModel}</option>
-                        <option value="transistors">{T.transistorModel}</option>
-                        <option value="ic">{T.chipModel}</option>
-                        <option value="circuit">{T.circuitModelOption}</option>
-                    </select>
-                </label>
-                {realization === 'demo' ? (
-                <button
-                    type="button"
-                    onClick={() => wireDemoBoard()}
-                    style={tools.button}
-                >{L10N[pickLocale(props.locale)].wireDemoBoardBtn}</button>
-                ) : null}
-                {realization === 'transistors' ? (
-                <span style={field}>
-                    <select aria-label={T.gateLabel} value={cmosGate} onChange={e => setCmosGate(e.target.value)}
-                        data-testid="bw-fpga-cmos-gate" style={selector}>
-                        {['not', 'buffer', 'nand', 'nor', 'and', 'or'].map(g =>
-                            <option key={g} value={g}>{g.toUpperCase()}</option>)}
-                    </select>
-                    <button type="button" data-testid="bw-fpga-build-transistors"
-                        onClick={() => realizeGate(cmosGate)}
-                        title={tr(props.locale, 'tip.buildTransistors')}
-                        style={tools.button}
-                    >{L10N[pickLocale(props.locale)].buildTransistorsBtn}</button>
-                </span>
-                ) : null}
-                {realization === 'ic' ? (
-                <span style={field}>
-                    <select aria-label={T.gateLabel} value={icGate} onChange={e => setIcGate(e.target.value)}
-                        data-testid="bw-fpga-ic-gate" style={selector}>
-                        {LOGIC_IC_GATES.map(g =>
-                            <option key={g} value={g}>{g.toUpperCase()}</option>)}
-                    </select>
-                    <button type="button" data-testid="bw-fpga-build-ic"
-                        onClick={() => realizeIcGate(icGate)}
-                        title={tr(props.locale, 'tip.buildIc')}
-                        style={tools.button}
-                    >{L10N[pickLocale(props.locale)].buildIcBtn}</button>
-                </span>
-                ) : null}
-                {realization === 'circuit' ? (
-                <span style={field}>
-                    <select aria-label={T.circuitLabel} value={icCircuit} onChange={e => setIcCircuit(e.target.value)}
-                        data-testid="bw-fpga-ic-circuit" style={selector}>
-                        {Object.entries(IC_CIRCUITS).map(([k, spec]) =>
-                            <option key={k} value={k}>{circuitLabel(spec, props.locale)}</option>)}
-                    </select>
-                    <button type="button" data-testid="bw-fpga-build-circuit"
-                        onClick={() => realizeIcCircuit(icCircuit)}
-                        title={tr(props.locale, 'tip.buildCircuit')}
-                        style={tools.button}
-                    >{L10N[pickLocale(props.locale)].buildCircuitBtn}</button>
-                </span>
-                ) : null}
-                <span style={{fontSize: 12, color: '#92400e'}}>{T.replacesCircuit}</span>
-                <FpgaInfo id="circuits" label={T.circuitInfo}><p>{T.circuitHelp}</p></FpgaInfo>
-            </div>
 
                 <div hidden={editor !== 'canvas'} data-testid="bw-fpga-canvas-editor">
-<div style={{marginTop: '0.6rem'}}>
-                    <React.Suspense fallback={<p style={{opacity: 0.7}}>{L10N[pickLocale(props.locale)].loadingCanvas}</p>}>
+                    <React.Suspense fallback={<p style={{opacity: 0.7}}>{T.loadingCanvas}</p>}>
                         <FpgaGateBuilderRf seed={seed} locale={props.locale} onUseVerilog={(v, cst) => { setHdl(v); if (cst) setText(cst); setSynth(null); }} />
                     </React.Suspense>
                 </div>
-                </div>
                 <div hidden={editor !== 'verilog'} data-testid="bw-fpga-verilog-editor" style={{maxWidth: '64rem'}}>
-                    <h3>{L10N[pickLocale(props.locale)].verilogTitle}</h3>
-            <textarea
-                aria-label={T.verilogTitle}
-                data-testid="bw-fpga-verilog"
-                value={hdl}
-                onChange={e => setHdl(e.target.value)}
-                spellCheck={false}
-                placeholder={'// SPDX-License-Identifier: MIT\nmodule blink(output led);\n  assign led = 1\'b1;\nendmodule'}
-                style={{width: '100%', minHeight: '9rem', fontFamily: 'monospace',
-                    fontSize: '0.85rem', padding: '0.6rem'}}
-            />
-            <div style={{textAlign: 'right', marginTop: '-1.5rem', marginRight: '0.5rem', pointerEvents: 'none'}}>
-                <button
-                    type="button"
-                    style={{pointerEvents: 'auto', fontSize: '0.75rem', padding: '0.1rem 0.4rem', cursor: 'pointer',
-                        background: 'rgba(255,255,255,0.85)', border: '1px solid #ccc', borderRadius: '4px'}}
-                    onClick={() => {
-                        const {model} = verilogToModel(hdl);
-                        if (model) setSeed(model);
-                    }}
-                >
-                    {L10N[pickLocale(props.locale)].parseToCanvas}
-                </button>
-            </div>
-
+                    <div style={{...ui.row, justifyContent: 'space-between', marginBottom: '0.25rem'}}>
+                        <h3 style={{margin: 0}}>{T.verilogTitle}</h3>
+                        <button type="button" style={ui.secondary}
+                            onClick={() => {
+                                const {model} = verilogToModel(hdl);
+                                if (model) setSeed(model);
+                            }}>{T.parseToCanvas}</button>
+                    </div>
+                    <textarea
+                        aria-label={T.verilogTitle}
+                        data-testid="bw-fpga-verilog"
+                        value={hdl}
+                        onChange={e => setHdl(e.target.value)}
+                        spellCheck={false}
+                        placeholder={'// SPDX-License-Identifier: MIT\nmodule blink(output led);\n  assign led = 1\'b1;\nendmodule'}
+                        style={{width: '100%', minHeight: '9rem', fontFamily: 'monospace',
+                            fontSize: '0.85rem', padding: '0.6rem', boxSizing: 'border-box'}}
+                    />
                 </div>
-                <details style={{maxWidth: '64rem', marginTop: '0.75rem'}}>
+
+                <div style={{...ui.card, marginTop: '0.6rem'}}>
+                    <div style={ui.row}>
+                        <label style={field}>{T.circuitModel}
+                            <select data-testid="bw-fpga-realization" style={selector} value={realization}
+                                onChange={event => setRealization(event.target.value)}>
+                                <option value="demo">{T.demoModel}</option>
+                                <option value="transistors">{T.transistorModel}</option>
+                                <option value="ic">{T.chipModel}</option>
+                                <option value="circuit">{T.circuitModelOption}</option>
+                            </select>
+                        </label>
+                        {realization === 'demo' ? (
+                            <button type="button" onClick={() => wireDemoBoard()} style={ui.secondary}>{T.wireDemoBoardBtn}</button>
+                        ) : null}
+                        {realization === 'transistors' ? (
+                            <span style={field}>
+                                <select aria-label={T.gateLabel} value={cmosGate} onChange={e => setCmosGate(e.target.value)}
+                                    data-testid="bw-fpga-cmos-gate" style={selector}>
+                                    {['not', 'buffer', 'nand', 'nor', 'and', 'or'].map(g =>
+                                        <option key={g} value={g}>{g.toUpperCase()}</option>)}
+                                </select>
+                                <button type="button" data-testid="bw-fpga-build-transistors"
+                                    onClick={() => realizeGate(cmosGate)}
+                                    title={tr(props.locale, 'tip.buildTransistors')}
+                                    style={ui.secondary}>{T.buildTransistorsBtn}</button>
+                            </span>
+                        ) : null}
+                        {realization === 'ic' ? (
+                            <span style={field}>
+                                <select aria-label={T.gateLabel} value={icGate} onChange={e => setIcGate(e.target.value)}
+                                    data-testid="bw-fpga-ic-gate" style={selector}>
+                                    {LOGIC_IC_GATES.map(g =>
+                                        <option key={g} value={g}>{g.toUpperCase()}</option>)}
+                                </select>
+                                <button type="button" data-testid="bw-fpga-build-ic"
+                                    onClick={() => realizeIcGate(icGate)}
+                                    title={tr(props.locale, 'tip.buildIc')}
+                                    style={ui.secondary}>{T.buildIcBtn}</button>
+                            </span>
+                        ) : null}
+                        {realization === 'circuit' ? (
+                            <span style={field}>
+                                <select aria-label={T.circuitLabel} value={icCircuit} onChange={e => setIcCircuit(e.target.value)}
+                                    data-testid="bw-fpga-ic-circuit" style={selector}>
+                                    {Object.entries(IC_CIRCUITS).map(([k, spec]) =>
+                                        <option key={k} value={k}>{circuitLabel(spec, props.locale)}</option>)}
+                                </select>
+                                <button type="button" data-testid="bw-fpga-build-circuit"
+                                    onClick={() => realizeIcCircuit(icCircuit)}
+                                    title={tr(props.locale, 'tip.buildCircuit')}
+                                    style={ui.secondary}>{T.buildCircuitBtn}</button>
+                            </span>
+                        ) : null}
+                        <FpgaInfo id="circuits" label={T.circuitInfo}><p>{T.circuitHelp}</p></FpgaInfo>
+                    </div>
+                    <p style={ui.hint}>{`${T.boardOptional} ${T.replacesCircuit}`}</p>
+                </div>
+
+                <details style={{maxWidth: '64rem', marginTop: '0.25rem'}}>
                     <summary style={{cursor: 'pointer'}}>{T.constraintsEditor}</summary>
-                <textarea
-                    aria-label={T.constraintsEditor}
-                    data-testid="bw-fpga-constraints"
-                    value={text}
-                    onChange={e => setText(e.target.value)}
-                    spellCheck={false}
-                    style={{width: '100%', minHeight: '9rem', fontFamily: 'monospace',
-                        fontSize: '0.85rem', padding: '0.6rem'}}
-                />
-
-                {canonical ? (
-                    <>
-                        <h3>{L10N[pickLocale(props.locale)].constraintsTitle}</h3>
-                        <p style={{marginTop: 0, opacity: 0.8}}>
-                            {L10N[pickLocale(props.locale)].constraintsDesc1}
-                            {L10N[pickLocale(props.locale)].constraintsDesc2}
-                        </p>
-                        <pre style={{background: 'rgba(127,127,127,0.1)', padding: '0.7rem',
-                            borderRadius: 4, overflowX: 'auto', fontSize: '0.82rem'}}>{canonical}</pre>
-                    </>
-                ) : null}
-
+                    <textarea
+                        aria-label={T.constraintsEditor}
+                        data-testid="bw-fpga-constraints"
+                        value={text}
+                        onChange={e => setText(e.target.value)}
+                        spellCheck={false}
+                        style={{width: '100%', minHeight: '9rem', fontFamily: 'monospace',
+                            fontSize: '0.85rem', padding: '0.6rem', boxSizing: 'border-box'}}
+                    />
+                    {canonical ? (
+                        <details style={{marginTop: '0.4rem'}}>
+                            <summary style={{cursor: 'pointer'}}>{T.constraintsTitle}</summary>
+                            <p style={ui.hint}>{T.constraintsDesc1}{T.constraintsDesc2}</p>
+                            <pre style={{background: 'rgba(127,127,127,0.1)', padding: '0.7rem',
+                                borderRadius: 4, overflowX: 'auto', fontSize: '0.82rem'}}>{canonical}</pre>
+                        </details>
+                    ) : null}
                 </details>
+
+                <div style={{...ui.row, maxWidth: '64rem', marginTop: '0.6rem'}}>
+                    <button type="button" data-testid="bw-fpga-next-build" style={ui.next}
+                        onClick={() => setWorkspace('build')}>{T.nextBuild}</button>
+                </div>
             </section>
 
             <section id="bw-fpga-panel-build" data-testid="bw-fpga-panel-build" hidden={workspace !== 'build'}
                 aria-label={T.buildWorkspace} style={{maxWidth: '64rem'}}>
-                <div style={toolbar}>
-                    <label style={field}>{T.buildTarget}
-                        <select data-testid="bw-fpga-build-target" value={buildTarget} style={selector}
-                            onChange={event => setBuildTarget(event.target.value)}>
-                            <option value="service">{T.serviceBuild}</option>
-                            <option value="browser">{T.browserBuild}</option>
-                        </select>
-                    </label>
-                    <FpgaInfo id="synthesis" label={T.buildInfo}><p>{T.yosysRunsHere1}{T.yosysRunsHere2}{T.yosysRunsHere3}</p></FpgaInfo>
-                    <FpgaInfo id="backends" label={T.backendInfo}>
-                        {catalog.map(entry => <p key={entry.id}><strong>{entry.label}</strong><br />{entry.description}</p>)}
-                    </FpgaInfo>
+                <div style={ui.card}>
+                    <h2 style={ui.stepTitle}>{`2 · ${T.buildWorkspace}`}</h2>
+                    <p style={{...ui.hint, margin: '0 0 0.5rem'}}>{T.buildHint}</p>
+                    <div style={ui.row}>
+                        <label style={field}>{T.buildTarget}
+                            <select data-testid="bw-fpga-build-target" value={buildTarget} style={selector}
+                                onChange={event => setBuildTarget(event.target.value)}>
+                                <option value="service">{T.serviceBuild}</option>
+                                <option value="browser">{T.browserBuild}</option>
+                            </select>
+                        </label>
+                        <FpgaInfo id="synthesis" label={T.buildInfo}><p>{T.yosysRunsHere1}{T.yosysRunsHere2}{T.yosysRunsHere3}</p></FpgaInfo>
+                        <FpgaInfo id="backends" label={T.backendInfo}>
+                            {catalog.map(entry => <p key={entry.id}><strong>{entry.label}</strong><br />{entry.description}</p>)}
+                        </FpgaInfo>
+                    </div>
                 </div>
-                <div hidden={buildTarget !== 'service'} data-testid="bw-fpga-service-build">
-            <h3>{L10N[pickLocale(props.locale)].whereBuiltTitle}</h3>
-            <ul style={{listStyle: 'none', padding: 0, margin: '0 0 0.5rem'}}>
-                {catalog.map(entry => {
-                    const pr = probe.probes.find(x => x.id === entry.id);
-                    const isAvailable = probe.available.includes(entry.id);
-                    return (
-                        <Row key={entry.id} tone={isAvailable ? '#3a8a3a' : '#7a7a7a'}>
-                            <strong>{entry.label}</strong>
-                            {isAvailable ? ` — ${T.available}` : ` — ${T.unavailable}: ${pr ? pr.reason : T.notProbed}`}
 
-                        </Row>
-                    );
-                })}
-            </ul>
-            {offerable(catalog, probe.available).length > 1 ? (
-                <p>
-                    <label>
-                        {L10N[pickLocale(props.locale)].backendLabel}
-                        <select data-testid="bw-fpga-backend" style={selector} value={backend} onChange={ev => setBackend(ev.target.value)}>
-                            <option value="auto">{L10N[pickLocale(props.locale)].autoOption}</option>
-                            {offerable(catalog, probe.available).map(en => (
-                                <option key={en.id} value={en.id}>{en.label}</option>
-                            ))}
-                        </select>
-                    </label>
-                </p>
-            ) : null}
-            <p style={{opacity: 0.85}}>
-                {selection.accepted
-                    ? <>{L10N[pickLocale(props.locale)].buildsOn}<strong>{selection.selected.label}</strong>{` — ${selection.reason}`}</>
-                    : <><strong>{selection.code}</strong>{`: ${selection.reason}`}</>}
-            </p>
-
-            <p>
-                <button
-                    type="button"
-                    style={{...tools.primary, opacity: !hdl.trim() || !selection.accepted ? 0.45 : 1}}
-                    onClick={() => synthesise({
-                        files: [{name: 'design.v', source: hdl}],
-                        constraints: text,
-                        endpoint: selection.accepted ? selection.selected.endpoint : null
-                    }).then(r => {
-                        setSynth(r);
-                        // Drive the board from the design: feed the GENERIC sim
-                        // netlist (not the Gowin-mapped `netlist`, which the sim
-                        // cannot read) into the simulator's input.
-                        if (r && r.ok && r.simNetlist) {
-                            setNetlistText(JSON.stringify(r.simNetlist, null, 2));
-                        }
-                    })}
-                    disabled={!hdl.trim() || !selection.accepted}
-                >{L10N[pickLocale(props.locale)].synthesiseBtn}</button>
-
-            </p>
-
+                <div hidden={buildTarget !== 'service'} data-testid="bw-fpga-service-build" style={ui.card}>
+                    <div style={ui.row}>
+                        <strong>{T.whereBuiltTitle}</strong>
+                        {offerable(catalog, probe.available).length > 1 ? (
+                            <label style={field}>
+                                {T.backendLabel}
+                                <select data-testid="bw-fpga-backend" style={selector} value={backend} onChange={ev => setBackend(ev.target.value)}>
+                                    <option value="auto">{T.autoOption}</option>
+                                    {offerable(catalog, probe.available).map(en => (
+                                        <option key={en.id} value={en.id}>{en.label}</option>
+                                    ))}
+                                </select>
+                            </label>
+                        ) : null}
+                    </div>
+                    <ul style={{listStyle: 'none', padding: 0, margin: '0.35rem 0'}}>
+                        {catalog.map(entry => {
+                            const pr = probe.probes.find(x => x.id === entry.id);
+                            const isAvailable = probe.available.includes(entry.id);
+                            return (
+                                <Row key={entry.id} tone={isAvailable ? '#3a8a3a' : '#7a7a7a'}>
+                                    <strong>{entry.label}</strong>
+                                    {isAvailable ? ` — ${T.available}` : ` — ${T.unavailable}: ${pr ? pr.reason : T.notProbed}`}
+                                </Row>
+                            );
+                        })}
+                    </ul>
+                    <p style={ui.hint}>
+                        {selection.accepted
+                            ? <>{T.buildsOn}<strong>{selection.selected.label}</strong>{` — ${selection.reason}`}</>
+                            : <><strong>{selection.code}</strong>{`: ${selection.reason}`}</>}
+                    </p>
+                    <div style={{...ui.row, marginTop: '0.5rem'}}>
+                        <button
+                            type="button"
+                            style={{...tools.primary, opacity: !hdl.trim() || !selection.accepted || building ? 0.45 : 1}}
+                            onClick={() => {
+                                setBuilding(true);
+                                setSynth(null);
+                                return synthesise({
+                                    files: [{name: 'design.v', source: hdl}],
+                                    constraints: text,
+                                    endpoint: selection.accepted ? selection.selected.endpoint : null
+                                }).then(r => {
+                                    setSynth(r);
+                                    // Drive the board from the design: feed the GENERIC sim
+                                    // netlist (not the Gowin-mapped `netlist`, which the sim
+                                    // cannot read) into the simulator's input.
+                                    if (r && r.ok && r.simNetlist) {
+                                        setNetlistText(JSON.stringify(r.simNetlist, null, 2));
+                                    }
+                                }).catch(e => setSynth({ok: false, code: 'synthesis-failed', reason: e && e.message ? e.message : String(e)}))
+                                    .finally(() => setBuilding(false));
+                            }}
+                            disabled={!hdl.trim() || !selection.accepted || building}
+                        >{building ? T.synthesising : T.synthesiseBtn}</button>
+                        {!hdl.trim() ? <span style={ui.hint}>{T.needDesignFirst}</span> : null}
+                    </div>
                 </div>
-                <div hidden={buildTarget !== 'browser'} data-testid="bw-fpga-browser-build">
-                    <p><strong>{T.browserLimit}</strong></p>
-            <p>
-                <strong>{local ? local.code || local.state : L10N[pickLocale(props.locale)].starting}</strong>
-                {local ? `: ${local.reason}` : ''}
-            </p>
-            <p>
-                <button
-                    type="button"
-                    onClick={() => {
-                        setLocalBusy(true);
-                        localClient.download({consent: true})
-                            .then(r => setLocal(r.result && r.result.ok
-                                ? {state: 'ready', available: true, ok: true,
-                                    reason: 'The toolchain is downloaded.'}
-                                : r.result))
-                            .finally(() => setLocalBusy(false));
-                    }}
-                    disabled={localBusy || !local || local.code !== 'not-downloaded'}
-                >{localBusy ? L10N[pickLocale(props.locale)].downloading : L10N[pickLocale(props.locale)].downloadToolchain}</button>
-            </p>
-            <p>
-                <button
-                    type="button"
-                    style={{...tools.primary, opacity: localBusy || !hdl.trim() || !local || !local.available ? 0.45 : 1}}
-                    onClick={() => {
-                        setLocalBusy(true);
-                        localClient.synthesise({files: [{name: 'design.v', source: hdl}]})
-                            .then(r => {
-                                setSynth(r.result);
-                                // Feed the GENERIC sim netlist into the pin panel's
-                                // simulator, which is what the blurb above promises
-                                // ("a netlist you can ... check in the pin panel
-                                // below"). It must be simNetlist, not netlist: the
-                                // synth_gowin `netlist` is Gowin-mapped and the sim
-                                // cannot read it. The textarea drives the sim, so
-                                // setting it is all it takes.
-                                if (r.result && r.result.ok && r.result.simNetlist) {
-                                    setNetlistText(JSON.stringify(r.result.simNetlist, null, 2));
-                                }
-                            })
-                            .finally(() => setLocalBusy(false));
-                    }}
-                    disabled={localBusy || !hdl.trim() || !local || !local.available}
-                >{L10N[pickLocale(props.locale)].synthesiseHereBtn}</button>
-            </p>
 
-
+                <div hidden={buildTarget !== 'browser'} data-testid="bw-fpga-browser-build" style={ui.card}>
+                    <p style={{margin: '0 0 0.35rem'}}><strong>{T.browserLimit}</strong></p>
+                    <p style={{margin: '0 0 0.5rem'}}>
+                        <strong>{local ? local.code || local.state : T.starting}</strong>
+                        {local ? `: ${local.reason}` : ''}
+                    </p>
+                    <div style={ui.row}>
+                        <button
+                            type="button"
+                            style={ui.secondary}
+                            onClick={() => {
+                                setLocalBusy(true);
+                                localClient.download({consent: true})
+                                    .then(r => setLocal(r.result && r.result.ok
+                                        ? {state: 'ready', available: true, ok: true,
+                                            reason: 'The toolchain is downloaded.'}
+                                        : r.result))
+                                    .finally(() => setLocalBusy(false));
+                            }}
+                            disabled={localBusy || !local || local.code !== 'not-downloaded'}
+                        >{localBusy ? T.downloading : T.downloadToolchain}</button>
+                        <button
+                            type="button"
+                            style={{...tools.primary, opacity: localBusy || !hdl.trim() || !local || !local.available ? 0.45 : 1}}
+                            onClick={() => {
+                                setLocalBusy(true);
+                                return localClient.synthesise({files: [{name: 'design.v', source: hdl}]})
+                                    .then(r => {
+                                        setSynth(r.result);
+                                        // Feed the GENERIC sim netlist into the simulator. It must
+                                        // be simNetlist, not netlist: the synth_gowin `netlist` is
+                                        // Gowin-mapped and the sim cannot read it. The textarea
+                                        // drives the sim, so setting it is all it takes.
+                                        if (r.result && r.result.ok && r.result.simNetlist) {
+                                            setNetlistText(JSON.stringify(r.result.simNetlist, null, 2));
+                                        }
+                                    })
+                                    .finally(() => setLocalBusy(false));
+                            }}
+                            disabled={localBusy || !hdl.trim() || !local || !local.available}
+                        >{T.synthesiseHereBtn}</button>
+                    </div>
                 </div>
             </section>
 
             <section id="bw-fpga-panel-simulate" data-testid="bw-fpga-panel-simulate" hidden={workspace !== 'simulate'}
                 aria-label={T.simulateWorkspace}>
-                <div style={toolbar}>
-                    <label style={field}>{T.simulationView}
-                        <select data-testid="bw-fpga-simulation-view" value={simulationView} style={selector}
-                            onChange={event => setSimulationView(event.target.value)}>
-                            <option value="schematic">{T.schematicView}</option>
-                            <option value="waveforms">{T.waveformView}</option>
-                            <option value="pins">{T.pinsView}</option>
-                        </select>
-                    </label>
-                    <FpgaInfo id="simulation" label={T.simulateInfo}>
-                        <p style={{marginTop: 0, opacity: 0.8}}>
-                            {L10N[pickLocale(props.locale)].schematicDesc1}
-                            {L10N[pickLocale(props.locale)].schematicDesc2}
-                            {L10N[pickLocale(props.locale)].schematicDesc3}
-                        </p>
-                        <p style={{marginTop: 0, opacity: 0.8}}>
-                            {L10N[pickLocale(props.locale)].waveformsDesc1}
-                            {L10N[pickLocale(props.locale)].waveformsDesc2}
-                            {L10N[pickLocale(props.locale)].waveformsDesc3}
-                        </p>
-                        <p style={{marginTop: 0, opacity: 0.8}}>
-                            {L10N[pickLocale(props.locale)].clockDesc1}<code>{clockPort}</code>
-                            {L10N[pickLocale(props.locale)].clockDesc2
-                                }
-                        </p>
-                        <p>{T.checkPinsDesc1}{T.checkPinsDesc2}{T.checkPinsDesc3}</p>
-                    </FpgaInfo>
+                <div style={ui.card}>
+                    <h2 style={ui.stepTitle}>{`3 · ${T.simulateWorkspace}`}</h2>
+                    <p style={{...ui.hint, margin: '0 0 0.5rem'}}>{T.simulateHint}</p>
+                    <div style={ui.row}>
+                        <label style={field}>{T.simulationView}
+                            <select data-testid="bw-fpga-simulation-view" value={simulationView} style={selector}
+                                onChange={event => setSimulationView(event.target.value)}>
+                                <option value="schematic">{T.schematicView}</option>
+                                <option value="waveforms">{T.waveformView}</option>
+                                <option value="pins">{T.pinsView}</option>
+                            </select>
+                        </label>
+                        <FpgaInfo id="simulation" label={T.simulateInfo}>
+                            <p style={{marginTop: 0, opacity: 0.8}}>
+                                {T.schematicDesc1}{T.schematicDesc2}{T.schematicDesc3}
+                            </p>
+                            <p style={{marginTop: 0, opacity: 0.8}}>
+                                {T.waveformsDesc1}{T.waveformsDesc2}{T.waveformsDesc3}
+                            </p>
+                            <p style={{marginTop: 0, opacity: 0.8}}>
+                                {T.clockDesc1}<code>{clockPort}</code>{T.clockDesc2}
+                            </p>
+                            <p>{T.checkPinsDesc1}{T.checkPinsDesc2}{T.checkPinsDesc3}</p>
+                        </FpgaInfo>
+                    </div>
                 </div>
-                {netlistText.trim() ? null : <p>{T.emptySimulation}</p>}
+                {netlistText.trim() ? null : (
+                    <div style={{...ui.card, background: '#f8fafc'}}>
+                        <p style={{margin: '0 0 0.5rem'}}>{T.emptySimulation}</p>
+                        <button type="button" data-testid="bw-fpga-goto-build" style={tools.primary}
+                            onClick={() => setWorkspace('build')}>{T.goBuild}</button>
+                    </div>
+                )}
                 {clockPort ? (
-                    <>
-                        <h3>{L10N[pickLocale(props.locale)].clockTitle}</h3>
-                        <p><code>{clockPort}</code></p>
-                        <div style={{display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap'}}>
-                            <button
-                                type="button"
-                                onClick={() => setClockCycles(c => c + 1)}
-                                style={{padding: '0.35rem 0.8rem', cursor: 'pointer'}}
-                            >{L10N[pickLocale(props.locale)].stepClockBtn}</button>
-                            <button
-                                type="button"
-                                onClick={() => setClockCycles(c => c + 8)}
-                                style={{padding: '0.35rem 0.8rem', cursor: 'pointer'}}
-                            >{'+8'}</button>
-                            <button
-                                type="button"
-                                disabled={clockCycles === 0}
-                                onClick={() => setClockCycles(0)}
-                                style={{padding: '0.35rem 0.8rem', cursor: clockCycles === 0 ? 'default' : 'pointer'}}
-                            >{L10N[pickLocale(props.locale)].resetBtn}</button>
-                            <button
-                                type="button"
-                                onClick={() => setAutoRun(v => !v)}
-                                style={autoRun ? tools.stop : tools.primary}
-                                aria-pressed={autoRun}
-                            >{autoRun ? L10N[pickLocale(props.locale)].stopAutoRun : L10N[pickLocale(props.locale)].autoRun}</button>
+                    <div style={ui.card}>
+                        <div style={ui.row}>
+                            <strong>{T.clockTitle}</strong>
+                            <code>{clockPort}</code>
+                            <button type="button" onClick={() => setClockCycles(c => c + 1)} style={tools.primary}>{T.stepClockBtn}</button>
+                            <button type="button" onClick={() => setClockCycles(c => c + 8)} style={ui.secondary}>{'+8'}</button>
+                            <button type="button" disabled={clockCycles === 0} onClick={() => setClockCycles(0)}
+                                style={{...ui.secondary, opacity: clockCycles === 0 ? 0.45 : 1}}>{T.resetBtn}</button>
+                            <button type="button" onClick={() => setAutoRun(v => !v)}
+                                style={autoRun ? tools.stop : ui.secondary} aria-pressed={autoRun}>
+                                {autoRun ? T.stopAutoRun : T.autoRun}
+                            </button>
                             <span style={{opacity: 0.8}}>
-                                {clockCycles}{clockCycles === 1 ? L10N[pickLocale(props.locale)].cycle : L10N[pickLocale(props.locale)].cycles}
+                                {clockCycles}{clockCycles === 1 ? T.cycle : T.cycles}
                             </span>
                         </div>
                         {/* Mirror the output pins into the Controller/Widgets view, so the
                             synthesised design's LEDs are visible there too — not only on
                             the placed board. gui.jsx owns the panel; we hand it the pins. */}
                         {outputPins.length ? (
-                            <div style={{...toolbar, marginTop: '0.75rem'}}>
-                                <label style={field}>{T.controllerDisplay}
-                                    <select data-testid="bw-fpga-controller-display" value={controllerDisplay} style={selector}
+                            <details style={{marginTop: '0.5rem'}}>
+                                <summary style={{cursor: 'pointer', fontSize: 13}}>{T.controllerDisplay}</summary>
+                                <div style={{...ui.row, marginTop: '0.4rem'}}>
+                                    <select aria-label={T.controllerDisplay} data-testid="bw-fpga-controller-display" value={controllerDisplay} style={selector}
                                         onChange={event => setControllerDisplay(event.target.value)}>
                                         <option value="leds">{T.ledsDisplay}</option>
                                         <option value="seg7">{T.sevenSegmentDisplay}</option>
                                     </select>
-                                </label>
-                                {controllerDisplay === 'leds' ? (
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        window.dispatchEvent(new CustomEvent('bw-fpga-leds',
-                                            {detail: {pins: outputPins}}));
-                                        setAutoRun(true);
-                                        setMirrored(true);
-                                    }}
-                                    style={{padding: '0.35rem 0.8rem', cursor: 'pointer'}}
-                                >{L10N[pickLocale(props.locale)].showLeds}</button>
-                                ) : (
-                                <button
-                                    type="button"
-                                    data-testid="bw-fpga-show-seg7"
-                                    onClick={() => {
-                                        // Mirror the SAME outputs, folded into one number on a
-                                        // seven-segment widget (a counter then reads 0,1,2,3…).
-                                        window.dispatchEvent(new CustomEvent('bw-fpga-leds',
-                                            {detail: {pins: outputPins}}));
-                                        window.dispatchEvent(new CustomEvent('bw-fpga-seg7',
-                                            {detail: {pins: outputPins}}));
-                                        setAutoRun(true);
-                                        setMirrored(true);
-                                    }}
-                                    style={{marginLeft: '0.4rem', padding: '0.35rem 0.8rem', cursor: 'pointer'}}
-                                >{L10N[pickLocale(props.locale)].showSeg7}</button>
-                                )}
-                                <span style={{marginLeft: '0.5rem', opacity: 0.75}}>
-                                    {`${L10N[pickLocale(props.locale)].mirrorsPins}${outputPins.join(', ')}${L10N[pickLocale(props.locale)].asIndicators}`}
-                                </span>
-                            </div>
+                                    {controllerDisplay === 'leds' ? (
+                                        <button type="button" style={ui.secondary}
+                                            onClick={() => {
+                                                window.dispatchEvent(new CustomEvent('bw-fpga-leds',
+                                                    {detail: {pins: outputPins}}));
+                                                setAutoRun(true);
+                                                setMirrored(true);
+                                            }}>{T.showLeds}</button>
+                                    ) : (
+                                        <button type="button" data-testid="bw-fpga-show-seg7" style={ui.secondary}
+                                            onClick={() => {
+                                                // Mirror the SAME outputs, folded into one number on a
+                                                // seven-segment widget (a counter then reads 0,1,2,3…).
+                                                window.dispatchEvent(new CustomEvent('bw-fpga-leds',
+                                                    {detail: {pins: outputPins}}));
+                                                window.dispatchEvent(new CustomEvent('bw-fpga-seg7',
+                                                    {detail: {pins: outputPins}}));
+                                                setAutoRun(true);
+                                                setMirrored(true);
+                                            }}>{T.showSeg7}</button>
+                                    )}
+                                    <span style={ui.hint}>{`${T.mirrorsPins}${outputPins.join(', ')}${T.asIndicators}`}</span>
+                                </div>
+                            </details>
                         ) : null}
-                    </>
+                    </div>
                 ) : null}
 
                 {inputPorts.length ? (
-                    <>
-                        <h3>{L10N[pickLocale(props.locale)].designInputsTitle}</h3>
-                        <p style={{marginTop: 0, opacity: 0.8}}>
-                            {L10N[pickLocale(props.locale)].nothingDrivesThese}
-                        </p>
+                    <div style={ui.card}>
+                        <h3 style={{margin: '0 0 0.25rem', fontSize: 14}}>{T.designInputsTitle}</h3>
                         <div style={{display: 'flex', gap: '0.75rem', flexWrap: 'wrap'}}>
                             {inputPorts.map(name => (
                                 <label key={name} style={{display: 'flex', alignItems: 'center', gap: '0.35rem'}}>
@@ -1596,13 +1632,72 @@ const FpgaTab = (props) => {
                                 </label>
                             ))}
                         </div>
-                    </>
+                        <p style={ui.hint}>{T.nothingDrivesThese}</p>
+                    </div>
                 ) : null}
 
-                <details style={{margin: '0.75rem 0'}}>
+                {netlistText.trim() ? (
+                    <div hidden={simulationView !== 'schematic'} data-testid="bw-fpga-schematic-view">
+                        <h3>{T.schematicTitle}</h3>
+                        <React.Suspense fallback={<p style={{opacity: 0.7}}>{T.loadingSchematic}</p>}>
+                            <FpgaSchematic netlistText={netlistText} netValues={netValues} inputs={inputs} clockCycles={clockCycles} />
+                        </React.Suspense>
+                    </div>
+                ) : null}
+
+                {netlistText.trim() ? (
+                    <div hidden={simulationView !== 'waveforms'} data-testid="bw-fpga-waveform-view">
+                        <h3>{T.waveformsTitle}</h3>
+                        <React.Suspense fallback={<p style={{opacity: 0.7}}>{T.loadingWaveform}</p>}>
+                            <FpgaWaveform netlistText={netlistText} inputs={inputs} />
+                        </React.Suspense>
+                    </div>
+                ) : null}
+
+                <div hidden={simulationView !== 'pins'} data-testid="bw-fpga-pins-view" style={{maxWidth: '64rem'}}>
+                    <details>
+                        <summary style={{cursor: 'pointer', fontWeight: 'bold'}}>
+                            {`${T.checkPinsTitle}${bindings.length}${T.placed}`}
+                            {refusals.length ? `, ${refusals.length}${T.cannot}` : ''}{')'}
+                        </summary>
+                        <h3>{`${T.reachesBoard}${bindings.length})`}</h3>
+                        <ul style={{listStyle: 'none', padding: 0, margin: 0}}>
+                            {bindings.map(b => (
+                                <Row key={`${b.port}-${b.pin}`} tone="#3a8a3a">
+                                    <code>{b.port}</code>{T.pinArrow}<code>{b.pin}</code>
+                                    {T.terminalArrow}<code>{b.terminal}</code>
+                                    {b.sharedWith ? <em style={{opacity: 0.8}}>{T.sharesHardware}</em> : null}
+                                </Row>
+                            ))}
+                            {bindings.length ? null : <li style={{opacity: 0.7}}>{T.nothingPlacedYet}</li>}
+                        </ul>
+                        <h3>
+                            {T.whatCircuitEngine}
+                            {simNote ? <span style={{opacity: 0.7, fontWeight: 'normal'}}>{` — ${simNote}`}</span> : null}
+                        </h3>
+                        <ul style={{listStyle: 'none', padding: 0, margin: 0}}>
+                            {plan.ops.map(([terminal, mode, driveHigh], i) => (
+                                <Row key={i} tone="#4a6fa5">
+                                    <code>{terminal}</code>{` → ${mode}`}
+                                    {mode === 'pushpull' ? <strong>{driveHigh ? T.high : T.low}</strong> : null}
+                                    {mode === 'input' ? <em style={{opacity: 0.8}}>{T.highZ}</em> : null}
+                                </Row>
+                            ))}
+                            {plan.unset.map((u, i) => (
+                                <Row key={`u${i}`} tone="#7a7a7a">
+                                    <code>{u.terminal}</code>
+                                    {T.undriven}
+                                </Row>
+                            ))}
+                            {plan.ops.length || plan.unset.length ? null : <li style={{opacity: 0.7}}>{T.nothingToDrive}</li>}
+                        </ul>
+                    </details>
+                </div>
+
+                <details style={{margin: '0.75rem 0', maxWidth: '64rem'}}>
                     <summary style={{cursor: 'pointer'}}>
                         {T.importNetlist}
-                        {top ? <strong>{`${L10N[pickLocale(props.locale)].topModule}${top}`}</strong> : null}
+                        {top ? <strong>{`${T.topModule}${top}`}</strong> : null}
                     </summary>
                     <textarea
                         aria-label={T.importNetlist}
@@ -1612,13 +1707,10 @@ const FpgaTab = (props) => {
                         spellCheck={false}
                         placeholder={'yosys -p \'synth_gowin -json out.json\' design.v'}
                         style={{width: '100%', minHeight: '7rem', fontFamily: 'monospace',
-                            fontSize: '0.8rem', padding: '0.6rem', marginTop: '0.4rem'}}
+                            fontSize: '0.8rem', padding: '0.6rem', marginTop: '0.4rem', boxSizing: 'border-box'}}
                     />
                     <div style={{textAlign: 'right', marginTop: '0.2rem'}}>
-                        <button
-                            type="button"
-                            style={{fontSize: '0.75rem', padding: '0.1rem 0.4rem', cursor: 'pointer',
-                                background: 'rgba(255,255,255,0.85)', border: '1px solid #ccc', borderRadius: '4px'}}
+                        <button type="button" style={ui.secondary}
                             onClick={() => {
                                 try {
                                     const {model} = yosysToModel(netlistText);
@@ -1626,76 +1718,9 @@ const FpgaTab = (props) => {
                                 } catch (e) {
                                     console.error('Failed to parse yosys JSON', e);
                                 }
-                            }}
-                        >
-                            {L10N[pickLocale(props.locale)].importYosysToCanvas}
-                        </button>
+                            }}>{T.importYosysToCanvas}</button>
                     </div>
                 </details>
-
-                {netlistText.trim() ? (
-                    <div hidden={simulationView !== 'schematic'} data-testid="bw-fpga-schematic-view">
-                        <h3>{L10N[pickLocale(props.locale)].schematicTitle}</h3>
-
-                        <React.Suspense fallback={<p style={{opacity: 0.7}}>{L10N[pickLocale(props.locale)].loadingSchematic}</p>}>
-                            <FpgaSchematic netlistText={netlistText} netValues={netValues} inputs={inputs} clockCycles={clockCycles} />
-                        </React.Suspense>
-                    </div>
-                ) : null}
-
-                {netlistText.trim() ? (
-                    <div hidden={simulationView !== 'waveforms'} data-testid="bw-fpga-waveform-view">
-                        <h3>{L10N[pickLocale(props.locale)].waveformsTitle}</h3>
-
-                        <React.Suspense fallback={<p style={{opacity: 0.7}}>{L10N[pickLocale(props.locale)].loadingWaveform}</p>}>
-                            <FpgaWaveform netlistText={netlistText} inputs={inputs} />
-                        </React.Suspense>
-                    </div>
-                ) : null}
-
-
-                <div hidden={simulationView !== 'pins'} data-testid="bw-fpga-pins-view" style={{maxWidth: '64rem'}}>
-                    <details>
-                        <summary style={{cursor: 'pointer', fontWeight: 'bold'}}>
-                            {`${L10N[pickLocale(props.locale)].checkPinsTitle}${bindings.length}${L10N[pickLocale(props.locale)].placed}`}
-                            {refusals.length ? `, ${refusals.length}${L10N[pickLocale(props.locale)].cannot}` : ''}{')'}
-                        </summary>
-                <h3>{`${L10N[pickLocale(props.locale)].reachesBoard}${bindings.length})`}</h3>
-                <ul style={{listStyle: 'none', padding: 0, margin: 0}}>
-                    {bindings.map(b => (
-                        <Row key={`${b.port}-${b.pin}`} tone="#3a8a3a">
-                            <code>{b.port}</code>{L10N[pickLocale(props.locale)].pinArrow}<code>{b.pin}</code>
-                            {L10N[pickLocale(props.locale)].terminalArrow}<code>{b.terminal}</code>
-                            {b.sharedWith ? <em style={{opacity: 0.8}}>{L10N[pickLocale(props.locale)].sharesHardware}</em> : null}
-                        </Row>
-                    ))}
-                    {bindings.length ? null : <li style={{opacity: 0.7}}>{L10N[pickLocale(props.locale)].nothingPlacedYet}</li>}
-                </ul>
-
-                <h3>
-                    {L10N[pickLocale(props.locale)].whatCircuitEngine}
-                    {simNote ? <span style={{opacity: 0.7, fontWeight: 'normal'}}>{` — ${simNote}`}</span> : null}
-                </h3>
-                <ul style={{listStyle: 'none', padding: 0, margin: 0}}>
-                    {plan.ops.map(([terminal, mode, driveHigh], i) => (
-                        <Row key={i} tone="#4a6fa5">
-                            <code>{terminal}</code>{` → ${mode}`}
-                            {mode === 'pushpull' ? <strong>{driveHigh ? L10N[pickLocale(props.locale)].high : L10N[pickLocale(props.locale)].low}</strong> : null}
-                            {mode === 'input' ? <em style={{opacity: 0.8}}>{L10N[pickLocale(props.locale)].highZ}</em> : null}
-                        </Row>
-                    ))}
-                    {plan.unset.map((u, i) => (
-                        <Row key={`u${i}`} tone="#7a7a7a">
-                            <code>{u.terminal}</code>
-                            {L10N[pickLocale(props.locale)].undriven}
-                        </Row>
-                    ))}
-                    {plan.ops.length || plan.unset.length ? null : <li style={{opacity: 0.7}}>{L10N[pickLocale(props.locale)].nothingToDrive}</li>}
-                </ul>
-
-
-                    </details>
-                </div>
             </section>
         </div>
     );
