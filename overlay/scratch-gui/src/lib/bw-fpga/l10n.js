@@ -222,7 +222,20 @@ const TABLE = {
         'build.circuit': 'Built a {label}: {gates} gates in {chips} — {bill} — sharing {switches}, with an LED for {outputs}. Run the circuit and toggle them: {hint} The Circuit tab’s ☷ Parts list has the whole shopping list, CSV included.',
         'list.and': 'and',
         'build.circuitFailed': 'Could not build the circuit: {message}',
-        'build.gradeFailed': 'The board could not be graded: {message}'
+        'build.gradeFailed': 'The board could not be graded: {message}',
+        'count.pins.one': 'pin {list}', 'count.pins.other': 'pins {list}',
+        'count.transistors.one': '1 transistor', 'count.transistors.other': '{n} transistors',
+        'demo.wired': 'Wired a Tang Nano 20K with {leds} on {pins}.',
+        'demo.switches': ' It also has {switches} on {pins}: toggle one on the board and the design responds, so the loop runs both ways.',
+        'demo.nextDesign': ' Synthesise and step the clock: the LEDs follow the design.',
+        'demo.nextLoad': ' Load “Counting sequence”, synthesise, then step the clock: the LEDs count up in binary.',
+        'demo.failed': 'Could not wire the demo board: {message}',
+        'gate.cmos': 'Built a CMOS {gate} from {transistors} (nmos/pmos) with a switch per input and an output LED. Run the circuit and toggle the switches: the LED follows the gate. This is the silicon under the logic; an FPGA itself uses LUTs.',
+        'gate.ic': 'Built a {gate} from a {label} ({desc}) with a switch per input and an output LED. Run the circuit and toggle the switches: the LED follows the gate. The ⚛ button shows the transistors inside one of its gates.',
+        'gate.failed': 'Could not build the gate: {message}',
+        'circuit.pending': 'Setting up the circuit…',
+        'circuit.open': 'Open the Circuit tab once so the circuit exists, then try again.',
+        'toolchain.downloaded': 'The toolchain is downloaded.'
     },
 
     de: {
@@ -417,7 +430,20 @@ const TABLE = {
         'build.circuit': '{label} gebaut: {gates} Gatter in {chips} — {bill} — an {switches}, mit einer LED für {outputs}. Starte die Schaltung und leg die Schalter um: {hint} Die ☷ Stückliste im Schaltungs-Tab enthält die ganze Einkaufsliste, samt CSV.',
         'list.and': 'und',
         'build.circuitFailed': 'Die Schaltung konnte nicht gebaut werden: {message}',
-        'build.gradeFailed': 'Die Platine konnte nicht bewertet werden: {message}'
+        'build.gradeFailed': 'Die Platine konnte nicht bewertet werden: {message}',
+        'count.pins.one': 'Pin {list}', 'count.pins.other': 'Pins {list}',
+        'count.transistors.one': '1 Transistor', 'count.transistors.other': '{n} Transistoren',
+        'demo.wired': 'Tang Nano 20K mit {leds} an {pins} verdrahtet.',
+        'demo.switches': ' Dazu {switches} an {pins}: Leg einen Schalter auf dem Board um, und das Design reagiert, die Schleife läuft also in beide Richtungen.',
+        'demo.nextDesign': ' Synthetisiere und takte die Uhr: die LEDs folgen dem Design.',
+        'demo.nextLoad': ' Lade „Counting sequence“, synthetisiere und takte dann die Uhr: die LEDs zählen binär hoch.',
+        'demo.failed': 'Das Demoboard konnte nicht verdrahtet werden: {message}',
+        'gate.cmos': 'Ein CMOS-{gate} aus {transistors} (nmos/pmos) gebaut, mit einem Schalter pro Eingang und einer Ausgangs-LED. Starte die Schaltung und leg die Schalter um: die LED folgt dem Gatter. Das ist das Silizium unter der Logik; ein FPGA selbst nutzt LUTs.',
+        'gate.ic': 'Ein {gate} aus einem {label} ({desc}) gebaut, mit einem Schalter pro Eingang und einer Ausgangs-LED. Starte die Schaltung und leg die Schalter um: die LED folgt dem Gatter. Der ⚛-Knopf zeigt die Transistoren in einem seiner Gatter.',
+        'gate.failed': 'Das Gatter konnte nicht gebaut werden: {message}',
+        'circuit.pending': 'Schaltung wird vorbereitet…',
+        'circuit.open': 'Öffne einmal den Schaltungs-Tab, damit die Schaltung existiert, und versuche es dann erneut.',
+        'toolchain.downloaded': 'Die Toolchain ist heruntergeladen.'
     }
 };
 

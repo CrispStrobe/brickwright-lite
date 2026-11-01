@@ -101,7 +101,7 @@ const L10N = {
         fpgaDesc3: 'board. Copyleft sources are refused on the shared server and must be built ',
         fpgaDesc4: 'locally — the licence check below decides.',
         verilogTitle: 'Verilog',
-        parseToCanvas: '⤵ Use as Canvas',
+        parseToCanvas: '⤵ Show on canvas',
         newHere: 'New here? Load a starter design, then Synthesise:',
         orBuildItVisually: 'Or build it visually — place gates and wire them, no Verilog typed',
         loadingGateBuilder: 'Loading the gate builder…',
@@ -123,7 +123,7 @@ const L10N = {
         browserCannotFlash1: 'A browser cannot flash yet. With the board on USB, use the CLI ',
         browserCannotFlash2: ' or ',
         browserCannotFlash3: '.',
-        browserHasWebUsb: 'Your browser has WebUSB; direct in-browser flashing is planned (TANG-NANO §TN4) but not built yet.',
+        browserHasWebUsb: 'Your browser has WebUSB; direct in-browser flashing is planned but not built yet.',
         downloadNetlist: 'Download netlist',
         doneFeedback: '✓ Done.',
         synthesiseHereTitle: 'Synthesise in this browser (TN6a)',
@@ -141,7 +141,7 @@ const L10N = {
         checkPinsDesc2: 'Gowin constraints against the real board part, and the same constraints ',
         checkPinsDesc3: 'are sent with a hosted build.',
         optionalPasteNetlist: 'Optional: paste a Yosys JSON netlist to also check the ports exist',
-        importYosysToCanvas: '⤵ Import prep netlist to Canvas',
+        importYosysToCanvas: '⤵ Import netlist to canvas',
         topModule: ' — top module: ',
         schematicTitle: 'Schematic — your design as gates',
         schematicDesc1: 'This is the Verilog above, synthesised to logic gates. Inputs sit on ',
@@ -193,6 +193,14 @@ const L10N = {
         synthFailedNext: 'Next step: fix the design in Design (or switch the build target in Build), then synthesise again.',
         headsUp: 'Heads-up',
         notes: 'Notes',
+        glossaryTitle: 'Words used here',
+        glossary: [
+            ['Synthesis', 'turns your design into the gates and wires an FPGA can hold.'],
+            ['Netlist', 'the synthesised design as a list of gates and wires. You can simulate it and download it.'],
+            ['Bitstream (.fs)', 'the file that configures the real board. Only the hosted service makes one.'],
+            ['Pin constraints (.cst)', 'which FPGA pin each port of your design uses.']
+        ],
+        pinsHint: 'Which FPGA pin each port of the design uses. The defaults match the examples.',
         bitstreamReady: 'Bitstream ready',
         netlistReady: 'Netlist ready',
         modules: 'modules',
@@ -283,7 +291,7 @@ const L10N = {
         fpgaDesc3: 'Board erreichen. Copyleft-Quellen werden auf dem geteilten Server abgelehnt und müssen ',
         fpgaDesc4: 'lokal gebaut werden — die Lizenzprüfung unten entscheidet.',
         verilogTitle: 'Verilog',
-        parseToCanvas: '⤵ Use as Canvas',
+        parseToCanvas: '⤵ Auf Leinwand zeigen',
         newHere: 'Neu hier? Laden Sie ein Starter-Design, dann Synthetisieren:',
         orBuildItVisually: 'Oder visuell bauen — Gatter platzieren und verdrahten, ohne Verilog zu tippen',
         loadingGateBuilder: 'Lade den Gatter-Builder…',
@@ -305,7 +313,7 @@ const L10N = {
         browserCannotFlash1: 'Ein Browser kann noch nicht flashen. Mit dem Board am USB, nutzen Sie die CLI ',
         browserCannotFlash2: ' oder ',
         browserCannotFlash3: '.',
-        browserHasWebUsb: 'Ihr Browser hat WebUSB; direktes Flashen im Browser ist geplant (TANG-NANO §TN4) aber noch nicht eingebaut.',
+        browserHasWebUsb: 'Ihr Browser hat WebUSB; direktes Flashen im Browser ist geplant, aber noch nicht eingebaut.',
         downloadNetlist: 'Netzliste herunterladen',
         doneFeedback: '✓ Fertig.',
         synthesiseHereTitle: 'In diesem Browser synthetisieren (TN6a)',
@@ -323,7 +331,7 @@ const L10N = {
         checkPinsDesc2: 'Gowin-Constraints gegen das echte Board-Teil, und die gleichen Constraints ',
         checkPinsDesc3: 'werden bei einem gehosteten Build gesendet.',
         optionalPasteNetlist: 'Optional: Fügen Sie eine Yosys JSON-Netzliste ein, um auch zu prüfen, ob die Ports existieren',
-        importYosysToCanvas: '⤵ Import prep netlist to Canvas',
+        importYosysToCanvas: '⤵ Netzliste auf Leinwand importieren',
         topModule: ' — Top-Modul: ',
         schematicTitle: 'Schaltplan — Ihr Design als Gatter',
         schematicDesc1: 'Dies ist das obige Verilog, synthetisiert zu Logikgattern. Eingänge sitzen auf ',
@@ -375,6 +383,14 @@ const L10N = {
         synthFailedNext: 'Nächster Schritt: Design unter Entwerfen korrigieren (oder unter Erstellen das Ziel wechseln) und erneut synthetisieren.',
         headsUp: 'Achtung',
         notes: 'Hinweise',
+        glossaryTitle: 'Begriffe',
+        glossary: [
+            ['Synthese', 'verwandelt Ihr Design in die Gatter und Leitungen, die ein FPGA aufnehmen kann.'],
+            ['Netzliste', 'das synthetisierte Design als Liste von Gattern und Leitungen. Sie kann simuliert und heruntergeladen werden.'],
+            ['Bitstream (.fs)', 'die Datei, die das echte Board konfiguriert. Nur der gehostete Dienst erzeugt eine.'],
+            ['Pin-Zuordnungen (.cst)', 'welchen FPGA-Pin jeder Port Ihres Designs nutzt.']
+        ],
+        pinsHint: 'Welchen FPGA-Pin jeder Port des Designs nutzt. Die Voreinstellungen passen zu den Beispielen.',
         bitstreamReady: 'Bitstream fertig',
         netlistReady: 'Netzliste fertig',
         modules: 'Module',
@@ -951,22 +967,20 @@ const FpgaTab = (props) => {
             if (typeof c.toJSON === 'function' && typeof window !== 'undefined') {
                 window.dispatchEvent(new CustomEvent('bw-load-circuit-data', {detail: {data: c.toJSON()}}));
             }
+            const loc = props.locale;
             const litPins = result.leds.map(l => l.pin);
             const nSw = (result.switches || []).length;
-            setDemoMsg({ok: true, text: `Wired a Tang Nano 20K with ${litPins.length} `
-                + `LED${litPins.length === 1 ? '' : 's'} on pin${litPins.length === 1 ? '' : 's'} `
-                + `${litPins.join(', ')}`
-                + (nSw ? `, and ${nSw} input switch${nSw === 1 ? '' : 'es'} on pin${nSw === 1 ? '' : 's'} `
-                    + `${inPins.join(', ')}. Toggle a switch on the board and the design responds — the loop runs both ways. `
-                    : '. ')
-                + (pins.length
-                    ? 'Synthesise and Step the clock — they follow the design on the board.'
-                    : 'Load “Counting sequence”, Synthesise, then Step the clock — '
-                        + 'they count up in binary on the board.')});
+            setDemoMsg({ok: true, text: tr(loc, 'demo.wired', {
+                leds: tn(loc, 'count.leds', litPins.length),
+                pins: tn(loc, 'count.pins', litPins.length, {list: litPins.join(', ')})
+            }) + (nSw ? tr(loc, 'demo.switches', {
+                switches: tn(loc, 'count.switches', nSw),
+                pins: tn(loc, 'count.pins', nSw, {list: inPins.join(', ')})
+            }) : '') + tr(loc, pins.length ? 'demo.nextDesign' : 'demo.nextLoad')});
         } catch (e) {
-            setDemoMsg({ok: false, text: `Could not wire the demo board: ${e.message}`});
+            setDemoMsg({ok: false, text: tr(props.locale, 'demo.failed', {message: e.message})});
         }
-    }, []);
+    }, [props.locale]);
     // Realise a single gate as its CMOS transistor circuit — the same "show it in
     // Circuits" path, but building nmos/pmos instead of a driven-LED demo board.
     const buildGateOnCircuit = React.useCallback((c, gateType) => {
@@ -975,35 +989,34 @@ const FpgaTab = (props) => {
             if (typeof c.toJSON === 'function' && typeof window !== 'undefined') {
                 window.dispatchEvent(new CustomEvent('bw-load-circuit-data', {detail: {data: c.toJSON()}}));
             }
-            const nT = r.transistors.length;
-            setDemoMsg({ok: true, text: `Built a CMOS ${gateType.toUpperCase()} from ${nT} transistor`
-                + `${nT === 1 ? '' : 's'} (nmos/pmos) with a switch per input and an output LED. `
-                + 'Run the circuit and toggle the input switches — the LED follows the gate. '
-                + '(This is the silicon underneath the logic; an FPGA itself uses LUTs.)'});
+            setDemoMsg({ok: true, text: tr(props.locale, 'gate.cmos', {
+                gate: gateType.toUpperCase(),
+                transistors: tn(props.locale, 'count.transistors', r.transistors.length)
+            })});
         } catch (e) {
-            setDemoMsg({ok: false, text: `Could not build the gate: ${e.message}`});
+            setDemoMsg({ok: false, text: tr(props.locale, 'gate.failed', {message: e.message})});
         }
-    }, []);
+    }, [props.locale]);
     // Shared "reach the live circuit (showing the Circuit tab if needed), then run
     // fn(circuit)" — used by both the demo board and the transistor realisation.
     const onLiveCircuit = React.useCallback(fn => {
         const now = liveCircuit();
         if (now) { fn(now); return; }
         if (typeof window === 'undefined') return;
-        setDemoMsg({pending: true, text: 'Setting up the circuit…'});
+        setDemoMsg({pending: true, text: tr(props.locale, 'circuit.pending')});
         window.dispatchEvent(new CustomEvent('bw-activate-tab', {detail: {index: CIRCUIT_TAB_INDEX}}));
         const deadline = Date.now() + 8000;
         const tick = () => {
             const c = liveCircuit();
             if (c) { fn(c); return; }
             if (Date.now() > deadline) {
-                setDemoMsg({ok: false, text: 'Open the 🔌 Circuit tab once so the circuit exists, then try again.'});
+                setDemoMsg({ok: false, text: tr(props.locale, 'circuit.open')});
                 return;
             }
             setTimeout(tick, 150);
         };
         setTimeout(tick, 150);
-    }, []);
+    }, [props.locale]);
     const wireDemoBoard = React.useCallback(() => onLiveCircuit(buildOnCircuit), [onLiveCircuit, buildOnCircuit]);
     const realizeGate = React.useCallback(gateType => onLiveCircuit(c => buildGateOnCircuit(c, gateType)),
         [onLiveCircuit, buildGateOnCircuit]);
@@ -1016,14 +1029,13 @@ const FpgaTab = (props) => {
                 window.dispatchEvent(new CustomEvent('bw-load-circuit-data', {detail: {data: c.toJSON()}}));
             }
             const spec = gateToLogicIc(gateType);
-            setDemoMsg({ok: true, text: `Built a ${gateType.toUpperCase()} from a ${spec.label} `
-                + `(${spec.desc}) with a switch per input and an output LED. `
-                + 'Run the circuit and toggle the input switches — the LED follows the gate. '
-                + '(This is the gate as a real chip; ⚛ shows the transistors inside one of its gates.)'});
+            setDemoMsg({ok: true, text: tr(props.locale, 'gate.ic', {
+                gate: gateType.toUpperCase(), label: spec.label, desc: spec.desc
+            })});
         } catch (e) {
-            setDemoMsg({ok: false, text: `Could not build the gate: ${e.message}`});
+            setDemoMsg({ok: false, text: tr(props.locale, 'gate.failed', {message: e.message})});
         }
-    }, []);
+    }, [props.locale]);
     const realizeIcGate = React.useCallback(gateType => onLiveCircuit(c => buildIcGateOnCircuit(c, gateType)),
         [onLiveCircuit, buildIcGateOnCircuit]);
     // A MULTI-gate circuit: several chips sharing the input switches, an LED per
@@ -1062,7 +1074,7 @@ const FpgaTab = (props) => {
         } catch (e) {
             setDemoMsg({ok: false, text: tr(props.locale, 'build.circuitFailed', {message: e.message})});
         }
-    }, []);
+    }, [props.locale]);
     const realizeIcCircuit = React.useCallback(key => onLiveCircuit(c => buildIcCircuitOnCircuit(c, key)),
         [onLiveCircuit, buildIcCircuitOnCircuit]);
 
@@ -1091,6 +1103,15 @@ const FpgaTab = (props) => {
                     <p style={{margin: '0.25rem 0 0.6rem'}}>
                         {T.fpgaDesc1}{T.fpgaDesc2}{T.fpgaDesc3}{T.fpgaDesc4}
                     </p>
+                    <strong>{T.glossaryTitle}</strong>
+                    <dl style={{margin: '0.25rem 0 0.6rem'}}>
+                        {T.glossary.map(([term, meaning]) => (
+                            <React.Fragment key={term}>
+                                <dt style={{fontWeight: 600, marginTop: '0.2rem'}}>{term}</dt>
+                                <dd style={{margin: 0}}>{meaning}</dd>
+                            </React.Fragment>
+                        ))}
+                    </dl>
                     <strong>{T.gettingStarted}</strong>
                     {guideDismissed ? (
                         <div style={{marginTop: '0.25rem'}}>
@@ -1375,6 +1396,7 @@ const FpgaTab = (props) => {
 
                 <details style={{maxWidth: '64rem', marginTop: '0.25rem'}}>
                     <summary style={{cursor: 'pointer'}}>{T.constraintsEditor}</summary>
+                    <p style={ui.hint}>{T.pinsHint}</p>
                     <textarea
                         aria-label={T.constraintsEditor}
                         data-testid="bw-fpga-constraints"
@@ -1449,7 +1471,7 @@ const FpgaTab = (props) => {
                     </ul>
                     <p style={ui.hint}>
                         {selection.accepted
-                            ? <>{T.buildsOn}<strong>{selection.selected.label}</strong>{` — ${selection.reason}`}</>
+                            ? <span title={selection.reason}>{T.buildsOn}<strong>{selection.selected.label}</strong></span>
                             : <><strong>{selection.code}</strong>{`: ${selection.reason}`}</>}
                     </p>
                     <div style={{...ui.row, marginTop: '0.5rem'}}>
@@ -1483,8 +1505,8 @@ const FpgaTab = (props) => {
                 <div hidden={buildTarget !== 'browser'} data-testid="bw-fpga-browser-build" style={ui.card}>
                     <p style={{margin: '0 0 0.35rem'}}><strong>{T.browserLimit}</strong></p>
                     <p style={{margin: '0 0 0.5rem'}}>
-                        <strong>{local ? local.code || local.state : T.starting}</strong>
-                        {local ? `: ${local.reason}` : ''}
+                        {local && local.code !== 'not-downloaded' ? <strong>{`${local.code || local.state}: `}</strong> : null}
+                        {local ? local.reason : T.starting}
                     </p>
                     <div style={ui.row}>
                         <button
@@ -1495,7 +1517,7 @@ const FpgaTab = (props) => {
                                 localClient.download({consent: true})
                                     .then(r => setLocal(r.result && r.result.ok
                                         ? {state: 'ready', available: true, ok: true,
-                                            reason: 'The toolchain is downloaded.'}
+                                            reason: tr(props.locale, 'toolchain.downloaded')}
                                         : r.result))
                                     .finally(() => setLocalBusy(false));
                             }}

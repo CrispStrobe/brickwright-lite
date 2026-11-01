@@ -1111,7 +1111,10 @@ test('the FPGA tab can build a gate from transistors in the Circuit tab', () => 
     assert.match(tab, /data-testid="bw-fpga-cmos-gate"/, 'with a gate selector (more of the editor)');
     assert.match(tab, /realizeGate\(cmosGate\)/, 'it realises the chosen gate on the live circuit');
     // honesty: the UI must say this is the silicon underneath, not the FPGA's fabric
-    assert.match(tab, /silicon underneath the logic|an FPGA itself uses LUTs/, 'the LUT-vs-transistor honesty is stated');
+    assert.match(tab, /tr\(props\.locale, 'gate\.cmos'/, 'the message comes from the string table');
+    const strings = read('overlay/scratch-gui/src/lib/bw-fpga/l10n.js');
+    assert.match(strings, /'gate\.cmos': '[^']*an FPGA itself uses LUTs/, 'the LUT-vs-transistor honesty is stated (English)');
+    assert.match(strings, /'gate\.cmos': '[^']*ein FPGA selbst nutzt LUTs/, 'and in German');
 });
 
 // ── bidirectional FPGA↔Circuits: a board switch drives an FPGA input ──
