@@ -30,6 +30,9 @@
     align-items: center;
     min-width: 0;
     gap: $grid-unit;
+    /* The floating "Show right panel" button is laid over this corner; keep the pinned
+       zoom / focus controls out from under it so they stay tappable. */
+    padding-inline-end: 48px;
 }
 
 .command-strip {
@@ -246,11 +249,9 @@ $border-radius: 0.25rem;
     pointer-events: none;
 }
 
-.canvas-controls {
+.view-actions {
     display: flex;
-    height: 44px;
-    margin-top: $grid-unit;
-    justify-content: space-between;
+    flex: 0 0 auto;
     align-items: center;
     gap: $grid-unit;
 }
@@ -294,8 +295,7 @@ $border-radius: 0.25rem;
 }
 
 .canvas-only .editor-container-top,
-.canvas-only .mode-selector,
-.canvas-only .canvas-controls {
+.canvas-only .mode-selector {
     display: none;
 }
 
@@ -313,6 +313,9 @@ $border-radius: 0.25rem;
 
 .bitmap-button {
     display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    white-space: nowrap;
     border-radius: 5px;
     background-color: $looks-secondary;
     padding: calc(2 * $grid-unit);
@@ -423,4 +426,21 @@ $border-radius: 0.25rem;
 /* Keep colour popovers outside the scrolling/clipping strip. */
 .command-row > :first-child {
     flex: 0 0 auto;
+}
+
+/* The Bitmap/Vector toggle is pinned beside zoom and focus. The full "Convert to ..." wording shows
+   while there is room; a narrow pane shows the target ("Bitmap" / "Vector"), the full wording stays
+   as its accessible name and tooltip. */
+.convert-short {
+    display: none;
+}
+
+@media only screen and (max-width: 1100px) {
+    .convert-long {
+        display: none;
+    }
+
+    .convert-short {
+        display: inline;
+    }
 }

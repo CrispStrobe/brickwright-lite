@@ -145,6 +145,9 @@ try {
             'the bitmap workspace must fit the tablet viewport');
         await page.locator('[class*="paint-editor_mode-selector"] [role="button"][title="Brush"]').tap();
         const preset = page.getByTestId('bw-bitmap-brush-preset');
+        // The command bar is one scrolling row (zoom and focus pinned at its end): a control is
+        // reachable when it can be scrolled into the row's visible part, as the file buttons above are.
+        await preset.scrollIntoViewIfNeeded();
         const presetBox = await preset.boundingBox();
         assert.ok(presetBox.width >= 44 && presetBox.height >= 44 &&
             presetBox.x >= 0 && presetBox.x + presetBox.width <= viewport.width,

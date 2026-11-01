@@ -166,15 +166,23 @@ export const Popup = ({id, open, onToggle, onClose, button, children, align = 'l
             if (!rect) return;
             if (!rect.width && !rect.height) { onClose('hidden'); return; }
             const w = Math.min(width, window.innerWidth - 16);
-            setPosition({left: Math.max(8, Math.min(window.innerWidth - w - 8, align === 'right' ? rect.right - w : rect.left)),
-                top: Math.min(rect.bottom + 4, Math.max(8, window.innerHeight - 220))});
+            const left = Math.max(8, Math.min(window.innerWidth - w - 8, align === 'right' ? rect.right - w : rect.left));
+            const top = Math.min(rect.bottom + 4, Math.max(8, window.innerHeight - 220));
+            // Same spot: no state change, so no re-render and no layout for the observer to see again.
+            setPosition(prev => (prev.left === left && prev.top === top ? prev : {left, top}));
         };
         place();
-        const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(place);
+        // The observer callback only SCHEDULES the placement for the next frame. Doing it inside
+        // the callback (a state update, and `onClose` when the anchor is hidden) re-rendered, and so
+        // re-laid-out, the very toolbar being observed within the same delivery: the shape that can end
+        // in "ResizeObserver loop completed with undelivered notifications".
+        let frame = 0;
+        const schedule = () => { if (!frame) frame = requestAnimationFrame(() => { frame = 0; place(); }); };
+        const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(schedule);
         if (anchor.current) observer?.observe(anchor.current);
         window.addEventListener('resize', place);
         window.addEventListener('scroll', place, true);
-        return () => { observer?.disconnect(); window.removeEventListener('resize', place); window.removeEventListener('scroll', place, true); };
+        return () => { cancelAnimationFrame(frame); observer?.disconnect(); window.removeEventListener('resize', place); window.removeEventListener('scroll', place, true); };
     }, [open, width, align]);
     React.useEffect(() => {
         if (!open) return undefined;
@@ -185,7 +193,31 @@ export const Popup = ({id, open, onToggle, onClose, button, children, align = 'l
         return () => document.removeEventListener('pointerdown', outside, true);
     }, [open, onClose]);
     return <div ref={anchor} data-testid={anchorTestId} data-sim-lab-popup={id} style={{position: 'relative', flex: '0 0 auto'}}
-        onKeyDown={e => { if (open && e.key === 'Escape') { e.stopPropagation(); onClose('escape'); anchor.current?.querySelector('button')?.focus(); } }}>
+        onKeyDown={e => {
+            const trigger = anchor.current?.querySelector('button');
+            if (open && e.key === 'Escape') { e.stopPropagation(); onClose('escape'); trigger?.focus(); return; }
+            // The panel is portalled to <body>, so Tab would leave it for the end of the page: arrows move
+            // between its controls, ArrowDown on the button opens it onto the first, and Tab off either
+            // end returns to the button.
+            const items = Array.from(panel.current?.querySelectorAll('button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), [role="menuitem"]:not([aria-disabled="true"]), [tabindex="0"]') || []);
+            if (e.target === trigger && e.key === 'ArrowDown' && role !== 'dialog') {
+                e.preventDefault();
+                if (!open) onToggle();
+                requestAnimationFrame(() => (Array.from(panel.current?.querySelectorAll('button:not([disabled]), [role="menuitem"]:not([aria-disabled="true"])') || [])[0])?.focus());
+                return;
+            }
+            if (!open || !panel.current || !panel.current.contains(e.target) || !items.length) return;
+            const at = items.indexOf(e.target.closest('button, a[href], input, select, [role="menuitem"], [tabindex="0"]'));
+            const field = e.target.matches && e.target.matches('input, select, textarea');
+            if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && !field && role !== 'dialog') {
+                e.preventDefault();
+                items[(Math.max(at, 0) + (e.key === 'ArrowDown' ? 1 : items.length - 1)) % items.length].focus();
+            } else if (e.key === 'Tab' && ((!e.shiftKey && at === items.length - 1) || (e.shiftKey && at === 0))) {
+                e.preventDefault();
+                onClose('tab');
+                trigger?.focus();
+            }
+        }}>
         {React.cloneElement(button, {'aria-haspopup': role === 'dialog' ? 'dialog' : 'true', 'aria-expanded': open, ...trigger.current})}
         {open || keepMounted ? createPortal(
             <div ref={panel} role={role} data-sim-lab-popup={id} aria-label={label} data-testid={testId || `bw-sim-lab-${id}-menu`}
