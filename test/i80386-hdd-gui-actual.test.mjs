@@ -6806,7 +6806,7 @@ class ProducerV10(unittest.TestCase):
         with patch.object(c,'CUI','0'*40),patch.object(c,'CURRENT_BOARD','1'*40),patch.object(c,'CURRENT_SB3','2'*40):
             self.assertEqual(c.FINITE_V9_PINS,old)
             self.assertEqual(c.FINITE_V9_CUI_WITNESSES,witness)
-            self.assertEqual(c.FINITE_V10_PINS['bw-board'],'c87cfa325a7b599846c1c4088a408eeabb83daaa')
+            self.assertEqual(c.FINITE_V10_PINS['bw-board'],'cf42ddbd5a98acac64973e972024376dd72cb80b')
         for mode in ('actual-v9-guard','actual-v9-ack','actual-v9','finite-inventory-v10'):
             with self.assertRaisesRegex(ValueError,'disabled'):
                 with patch.object(c,'ACTUAL_V9_ENABLED',False):c.main([mode])

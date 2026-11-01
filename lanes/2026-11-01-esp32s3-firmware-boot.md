@@ -15,7 +15,7 @@ Use an isolated implementation branch. Recheck current remote ownership before o
 
 Scope extension (2026-11-01): own only the empty-project firmware-entry guards in `overlay/scratch-gui/src/components/tw-pseudocode/circuit-tab.jsx` and its normal mirror so opening the debugger exposes its real file picker without PIN/PART declarations. Preserve the persistent portal, lazy-loading and CPX input ownership. Include target-control wrapping, truthful loaded/running wording, the real file-picker browser qualification, and its narrow CI registration. This extension is merged before those edits.
 
-Adoption-scope extension (2026-11-01): the complete-history pin audit at the M1 review pin reports 35 passing and two failing cases because its F10 historical-role policy requires the previous bw-board pin to remain current. Own only the necessary occurrence-level historical-role handling and focused negative controls in `test/pin-move-chain.test.mjs`, plus an exact admission-inventory rebind only if required by its existing byte/mode/blob validator. Preserve the frozen x86 producer, reader, workflow, controls, measured receipts and original supplier identities byte-for-byte. Do not relabel old measurements as current qualification or admit a whole file by role. Prove that copied, extra, moved, encoded and never-shipped pin occurrences still fail. This policy extension requires its canonical merged claim before implementation; it does not authorize an x86 execution event, a new qualification result, or any gate waiver.
+Adoption-scope extension and correction (2026-11-01): the original extension classified the F10 Board/CUI bindings as historical and promised unchanged producer/reader/control bytes. The hosted canonical-input control disproved that classification: F10 maps and selected CUI witnesses bind current suppliers, while F7/F8/F9 constants and measurements retain their historical meanings. The authorized pin-adoption repair owns only the live F10 Board/CUI map entries and changed CUI witness rows in the producer and reader, the dependent current-pin assertion, strict current-input enforcement and focused refusal controls in `test/pin-move-chain.test.mjs`, and exact source-profile/admission-inventory hash rebinding. Preserve all historical constants, witness maps, receipts, validators, workflow bytes and activation flags. Never admit a whole file by role or relabel old measurements as current qualification. Prove that stale current bindings and copied, extra, moved, encoded, never-shipped and wrong-supplier historical occurrences fail. This correction narrows the current-input repair within the merged pin-adoption claim; it authorizes no x86 execution event, new qualification result or gate waiver.
 
 Recovery (2026-11-01): the archived implementation tree `26e4ea0be1b6d74b048a94308e7b695047d90e86` was verified against its complete binary patch, then applied to the current main while preserving the merged scope extensions. The archived browser run remains historical evidence. M1 supplier PR722 has landed at `cf42ddbd5a98acac64973e972024376dd72cb80b`; its full CI run `41321569528` and dedicated firmware run `41321569555` pass at that exact head. Current continuation will qualify the empty-project entry, consumer binding and historical-pin handling before promotion from draft review.
 
@@ -25,8 +25,9 @@ repair of the independent host check. The empty-project guard is removed while
 preserving the persistent debugger portal. The M1 browser verifier now opens the
 picker without authoring a program, and both firmware browser gates are assigned
 to the heavy shard with retained evidence and exact terminal-audit bindings.
-The 18 workflow-partition/scope controls pass. The narrow frozen historical-pin
-role policy and deterministic provenance updates are implemented. Both real
+The 18 workflow-partition/scope controls pass. The historical-pin occurrence
+protections, strict live F10 adoption and deterministic provenance updates are
+implemented. Both real
 package installations now pass exact Git/npm-pack content and single-engine
 resolution verification; notices, reports and mirrors pass. Seven provenance
 controls keep retained firmware/ROM source independent of the current engine
@@ -38,6 +39,9 @@ Main integration (2026-11-01): preserve the subsequently landed tilemap and
 micro:bit work from `ef32d9aba3665db3f261c5ab44c8620aa644d635`, including
 sb3-creator `17d06522ed71aac05364b80b075372acf3947d92` and microbitplus
 `80092dbf4fb29b86dd0a312ae138ff24495ae8d7`, while retaining this lane's landed
-Board/CUI pins. Both npm locks are unchanged. Main's frozen source and admission
-inventory remain byte-identical; qualification of the integrated head is recorded
-separately from the first published candidate `73ee01ec874e2a0e66bf5b2b258ace4cce628447`.
+Board/CUI pins. Both npm locks are unchanged. That merge preserved main's source
+and admission inventory bytes. The subsequent hosted current-input failure
+requires the narrow live F10 repair described above and exact body-hash
+rebinding; historical fields and measured evidence remain unchanged.
+Qualification of the integrated head is recorded separately from the first
+published candidate `73ee01ec874e2a0e66bf5b2b258ace4cce628447`.

@@ -104,10 +104,9 @@ const HISTORICAL_X86_CUI_V5_V7 = '91d8434a79d373cef2837c137ab356356f1a3b44';
 // (historicalV8CuiSpans) and this declaration may carry.
 const HISTORICAL_X86_V8_CUI = '1bc233c9297e03abb9b7eb603e045b4e92b0bb40';
 const CURRENT_X86_CUI = 'a5860b9cf6cb0e7f652130ce987d51dc42651b8b';
-// These names retain the F10 epoch meaning. Later package adoption leaves the
-// frozen F10 contracts at these exact shipped identities, not today's pins.
-const LIVE_X86_CUI = '4b65f15485abbc039958d8e1a8a29ac3459b75f9';
-const LIVE_X86_BOARD = 'c87cfa325a7b599846c1c4088a408eeabb83daaa';
+// CURRENT_X86_CUI retains the F9 epoch meaning; only these F10 values are live.
+const LIVE_X86_CUI = '380dc8b7b51e10726035b77f775d753152f9a885';
+const LIVE_X86_BOARD = 'cf42ddbd5a98acac64973e972024376dd72cb80b';
 const HISTORICAL_X86_BOARD = '761153ff92d521c01107ee7b32922ba7adc10ee2';
 const HISTORICAL_X86_CURRENT_BOARD = '836867513c3e7fac420ddaa32c17e1c7b6d3e513';
 // The sb3-creator pin every reviewed F7/F8/F9 x86 epoch was executed at. It
@@ -127,9 +126,9 @@ const CURRENT_X86_FINITE_V9_READER = "FINITE_V9_PINS = {'bw-board':CURRENT_BOARD
 // including clock and core/full-runtime parity. Any later source edit revokes
 // their occurrence roles until another explicit review; never auto-restamp.
 const HISTORICAL_X86_SOURCE_PROFILES = Object.freeze({
-    'scripts/run-i80386-hdd-gui-actual.py': Object.freeze({bytes: 344630, sha256: 'f415e5fed2b59e6000db314d58beff45008ca1dddc94b8bcf5ba2afdba01c05e'}),
-    'scripts/read-i80386-hdd-gui-originals.py': Object.freeze({bytes: 460207, sha256: '86f8cabef90c13d7f0ade0d495ed9cbb49e3707056322eae5f9de25d2b86a0e2'}),
-    'test/i80386-hdd-gui-actual.test.mjs': Object.freeze({bytes: 637722, sha256: '0bb6e8bba3a3860ceeac56e74f10a1d30372bea557368dc737dd489fe4addf82'}),
+    'scripts/run-i80386-hdd-gui-actual.py': Object.freeze({bytes: 344630, sha256: 'd638c4444d189ec30e7a5c2c881f8b6780045725c3fbb8ea52b48bd7ddeea86b'}),
+    'scripts/read-i80386-hdd-gui-originals.py': Object.freeze({bytes: 460207, sha256: 'b92457993ca097d28a740c958588794c8b7142a3f861411ec9b610af72c0d141'}),
+    'test/i80386-hdd-gui-actual.test.mjs': Object.freeze({bytes: 637722, sha256: '723d17371dc01e6b59b09e04bb7db4dd76f189c31b6b3bbd4cc21d08fa01b4ed'}),
 });
 
 import {explainGitFailure} from './helpers/git-absence.mjs';
@@ -473,16 +472,11 @@ const F10_CURRENT_MAP = "FINITE_V10_PINS = {'bw-board':'" + LIVE_X86_BOARD +
 // epochs above. A never-shipped value or any other occurrence stays red.
 const sb3Moved = known => known.current.has(LIVE_X86_SB3) && !known.current.has(HISTORICAL_X86_SB3) &&
     known.previous.get(HISTORICAL_X86_SB3)?.repo === 'sb3-creator';
-const epochPinShipped = (known, pin, repo) =>
-    known.current.has(pin) || known.previous.get(pin)?.repo === repo;
 const historicalV10SpansForProfile = (file, text, known, profiles) => {
-    if (!epochPinShipped(known, LIVE_X86_CUI, 'bw-circuit-ui') ||
-        !epochPinShipped(known, LIVE_X86_BOARD, 'bw-board') ||
+    if (!known.current.has(LIVE_X86_CUI) || !known.current.has(LIVE_X86_BOARD) ||
         known.current.has(CURRENT_X86_CUI) || known.current.has(HISTORICAL_X86_CURRENT_BOARD) ||
         known.previous.get(CURRENT_X86_CUI)?.repo !== 'bw-circuit-ui' ||
         known.previous.get(HISTORICAL_X86_CURRENT_BOARD)?.repo !== 'bw-board') return [];
-    const historicalF10 = [['LIVE_X86_BOARD', LIVE_X86_BOARD], ['LIVE_X86_CUI', LIVE_X86_CUI]]
-        .filter(([, pin]) => !known.current.has(pin));
     const moved = sb3Moved(known);
     const legacy = {...known, current: new Set([...known.current, CURRENT_X86_CUI, HISTORICAL_X86_CURRENT_BOARD,
         ...(moved ? [HISTORICAL_X86_SB3] : [])])};
@@ -500,8 +494,7 @@ const historicalV10SpansForProfile = (file, text, known, profiles) => {
     if (policy) {
         for (const [name, pin] of [['CURRENT_X86_CUI', CURRENT_X86_CUI],
             ['HISTORICAL_X86_CURRENT_BOARD', HISTORICAL_X86_CURRENT_BOARD],
-            ...(moved ? [['HISTORICAL_X86_SB3', HISTORICAL_X86_SB3]] : []),
-            ...historicalF10]) {
+            ...(moved ? [['HISTORICAL_X86_SB3', HISTORICAL_X86_SB3]] : [])]) {
             const line = `const ${name} = '${pin}';`;
             const rows = [...text.matchAll(new RegExp('^const ' + name + ' = .*$', 'gm'))];
             if (rows.length !== 1 || rows[0][0] !== line) return [];
@@ -546,37 +539,6 @@ const historicalV10SpansForProfile = (file, text, known, profiles) => {
                 slots.push(positions.get(name) + line.indexOf(`'${HISTORICAL_X86_SB3}'`) + 1);
             }
         }
-        for (const [, pin] of historicalF10) {
-            // The frozen F10 map is a contract for its original candidate.
-            // Admit its one literal token, never another use of that old pin.
-            if ([...text.matchAll(HEX40)].filter(match => match[0] === pin).length !== 1) return [];
-            slots.push(positions.get('FINITE_V10_PINS') + F10_CURRENT_MAP.indexOf(`'${pin}'`) + 1);
-        }
-    } else if (control && historicalF10.some(([name]) => name === 'LIVE_X86_BOARD')) {
-        const opening = 'const producerV10Controls = String.raw`\n', begin = text.indexOf(opening);
-        if (begin < 0 || begin !== text.lastIndexOf(opening)) return [];
-        const prefix = historicalTokens(text.slice(0, begin + opening.length - 2));
-        if (!prefix || prefix.slice(-6).map(token => token.text).join(' ') !==
-            'const producerV10Controls = String . raw' || prefix.at(-6).column !== 0 ||
-            prefix.at(-6).depth !== 0) return [];
-        const start = begin + opening.length, end = text.indexOf('\n`;\n', start);
-        if (end < 0) return [];
-        const python = text.slice(start, end); if (python.includes('${')) return [];
-        const tokens = historicalTokens(python, true); if (!tokens) return [];
-        const method = 'test_current_and_historical_supplier_roles_are_independent';
-        const range = historicalFunction(tokens, method, 4, python);
-        const classes = tokens.filter((token, i) => token.text === 'class' && token.column === 0 &&
-            tokens[i + 1]?.text === 'ProducerV10');
-        const classEnd = classes.length === 1 ? (tokens.find(token => token.start > classes[0].start &&
-            ['class', 'def'].includes(token.text) && token.depth === 0 && token.column === 0)?.start ?? python.length) : 0;
-        const literals = tokens.filter(token => token.kind === 'string' && token.text === `'${LIVE_X86_BOARD}'`);
-        if (!range || classes.length !== 1 || range.start < classes[0].start || range.end > classEnd ||
-            historicalLine(python, tokens.find(token => token.start === range.start)) !== `    def ${method}(self):` ||
-            literals.length !== 1 || literals[0].start < range.start || literals[0].start >= range.end ||
-            historicalLine(python, literals[0]) !==
-                `            self.assertEqual(c.FINITE_V10_PINS['bw-board'],'${LIVE_X86_BOARD}')` ||
-            [...text.matchAll(HEX40)].filter(match => match[0] === LIVE_X86_BOARD).length !== 1) return [];
-        slots.push(start + literals[0].start + 1);
     }
     return [...new Set([...slots,
         ...historicalCuiSpansForProfile(file, text, legacy, profiles),
@@ -1067,8 +1029,7 @@ const historicalV8Known = () => ({current: new Set([CURRENT_X86_CUI]),
 test('the previous F7/F8 CUI pin is admitted only in the exact literal F7/F8 maps', () => {
     const f = historicalV8Fixtures(), k = historicalV8Known();
     assert.equal(previous.get(HISTORICAL_X86_V8_CUI)?.repo, 'bw-circuit-ui', 'the F7/F8 CUI was actually shipped');
-    assert.ok(epochPinShipped(known, LIVE_X86_CUI, 'bw-circuit-ui') && !current.has(HISTORICAL_X86_V8_CUI),
-        'CUI moved past the F7/F8 pin and the exact F10 identity was shipped');
+    assert.ok(current.has(LIVE_X86_CUI) && !current.has(HISTORICAL_X86_V8_CUI), 'CUI moved past the F7/F8 pin');
     for (const [file, text] of [[f.producerPath, f.producer], [f.readerPath, f.reader]]) {
         const recognize = (fl, t, kn) => historicalV8CuiSpansForProfile(fl, t, kn, coherent(file, text));
         const judge = historicalJudgeWith(() => [], () => [], recognize);
@@ -1522,6 +1483,7 @@ test('F10 keeps every consumed supplier position historical and every new input 
     }
 });
 
+
 const afterF10Known = (boardMoved = true, cuiMoved = true) => ({
     current: new Set([boardMoved ? 'b'.repeat(40) : LIVE_X86_BOARD,
         cuiMoved ? 'c'.repeat(40) : LIVE_X86_CUI, LIVE_X86_SB3]),
@@ -1536,98 +1498,77 @@ const afterF10Known = (boardMoved = true, cuiMoved = true) => ({
     history: new Map()
 });
 
-test('later Board and CUI adoption preserves only exact frozen F10 occurrences', () => {
+test('later Board or CUI adoption refuses stale F10 bindings even when those pins previously shipped', () => {
     const paths = ['scripts/run-i80386-hdd-gui-actual.py', 'scripts/read-i80386-hdd-gui-originals.py',
         'test/i80386-hdd-gui-actual.test.mjs', 'test/pin-move-chain.test.mjs'];
-    for (const [boardMoved, cuiMoved] of [[true, false], [false, true], [true, true]]) {
-        const k = afterF10Known(boardMoved, cuiMoved);
-        const movedCount = Number(boardMoved) + Number(cuiMoved);
-        const counts = [12 + movedCount, 11 + movedCount, 1 + Number(boardMoved), 6 + movedCount];
-        for (const [index, file] of paths.entries()) {
-            const text = readFileSync(path.join(ROOT, file), 'utf8');
-            const slots = historicalV10Spans(file, text, k);
-            assert.equal(slots.length, counts[index], `${file}: Board moved=${boardMoved}, CUI moved=${cuiMoved}`);
-            assert.equal(new Set(slots).size, slots.length, 'each role is one occurrence');
-            for (const at of slots) assert.ok(k.previous.has(text.slice(at, at + 40)), 'only actual previous identities');
-            assert.deepEqual(judgeFile(file, text, k), []);
-            assert.ok(judgeFile('scripts/copied-f10-input.mjs', text, k).length > 0, 'copied bodies have no role');
-        }
-        for (const [pin, moved] of [[LIVE_X86_BOARD, boardMoved], [LIVE_X86_CUI, cuiMoved]]) {
-            if (!moved) continue;
-            for (const file of ['vendor-pins.json', 'package-lock.json', 'scripts/current-input.py',
-                '.github/workflows/i80386-hdd-gui-actual.yml', 'test/current-input.test.mjs']) {
-                assert.equal(judgeFile(file, `CURRENT = '${pin}'\n`, k).length, 1,
-                    'historical F10 identity is still forbidden in a current input');
+    const counts = [12, 11, 1, 6];
+    const live = afterF10Known(false, false);
+    for (const [index, file] of paths.entries()) {
+        const text = readFileSync(path.join(ROOT, file), 'utf8');
+        const slots = historicalV10Spans(file, text, live);
+        assert.equal(slots.length, counts[index], `${file}: reviewed historical positions only`);
+        for (const at of slots) assert.ok(live.previous.has(text.slice(at, at + 40)));
+        assert.deepEqual(judgeFile(file, text, live), []);
+        assert.ok(judgeFile('scripts/copied-f10-input.mjs', text, live).length > 0);
+        for (const [boardMoved, cuiMoved] of [[true, false], [false, true], [true, true]]) {
+            const k = afterF10Known(boardMoved, cuiMoved);
+            assert.equal(historicalV10Spans(file, text, k).length, 0,
+                `${file}: F10 declarations must follow the current supplier pins`);
+            for (const [pin, moved] of [[LIVE_X86_BOARD, boardMoved], [LIVE_X86_CUI, cuiMoved]]) {
+                if (!moved || !text.includes(pin)) continue;
+                assert.ok(judgeFile(file, text, k).some(finding => finding.sha === pin),
+                    `${file}: an old F10 pin has no historical occurrence role`);
             }
         }
     }
 });
 
-test('F10 historical maps reject copied, extra, moved, encoded and unshipped occurrences', () => {
-    const k = afterF10Known();
+test('current F10 maps and historical roles reject copied, extra, moved and encoded declarations', () => {
+    const k = afterF10Known(false, false);
     for (const file of ['scripts/run-i80386-hdd-gui-actual.py', 'scripts/read-i80386-hdd-gui-originals.py']) {
         const source = readFileSync(path.join(ROOT, file), 'utf8');
         const profile = text => ({[file]: {bytes:Buffer.byteLength(text), sha256:createHash('sha256').update(text).digest('hex')}});
         for (const changed of [
-            source + `EXTRA = '${LIVE_X86_BOARD}'\n`,
-            source + `EXTRA = "${LIVE_X86_CUI}"\n`,
+            source + `EXTRA = '${HISTORICAL_X86_CURRENT_BOARD}'\n`,
+            source + `EXTRA = '${CURRENT_X86_CUI}'\n`,
             source + F10_CURRENT_MAP + '\n',
             source.replace(F10_CURRENT_MAP, '    ' + F10_CURRENT_MAP),
             source.replace(F10_CURRENT_MAP, F10_CURRENT_MAP.replace('FINITE_V10_PINS', 'CURRENT_PINS')),
-            source.replace(F10_CURRENT_MAP, F10_CURRENT_MAP.replace(LIVE_X86_BOARD, '\\x63' + LIVE_X86_BOARD.slice(1))),
+            source.replace(F10_CURRENT_MAP, F10_CURRENT_MAP.replace(LIVE_X86_BOARD, HISTORICAL_X86_CURRENT_BOARD)),
+            source.replace(F10_CURRENT_MAP, F10_CURRENT_MAP.replace(LIVE_X86_CUI, CURRENT_X86_CUI)),
+            source.replace(F10_CURRENT_MAP, F10_CURRENT_MAP.replace(LIVE_X86_BOARD,
+                '\\x' + LIVE_X86_BOARD.charCodeAt(0).toString(16) + LIVE_X86_BOARD.slice(1))),
             source.replace(F10_CURRENT_MAP, F10_CURRENT_MAP.replace(`'${LIVE_X86_CUI}'`, `bytes.fromhex('${LIVE_X86_CUI}')`)),
         ]) {
             assert.notEqual(changed, source);
             assert.equal(historicalV10SpansForProfile(file, changed, k, profile(changed)).length, 0,
-                'coherently hashed changes still do not occupy the exact roles');
-            assert.equal(historicalV10Spans(file, changed, k).length, 0, 'public policy keeps the reviewed whole-body binding');
+                'coherently hashed changes still do not occupy the exact reviewed roles');
+            assert.equal(historicalV10Spans(file, changed, k).length, 0,
+                'public policy retains the reviewed whole-body binding');
             assert.ok(judgeFile(file, changed, k).length > 0);
         }
         assert.equal(historicalV10SpansForProfile('scripts/copied-f10.py', source, k,
             {'scripts/copied-f10.py': profile(source)[file]}).length, 0);
-        for (const [pin, repo] of [[LIVE_X86_BOARD, 'bw-board'], [LIVE_X86_CUI, 'bw-circuit-ui']]) {
+    }
+});
+
+test('historical Board and CUI roles still require actual previous pins from their exact suppliers', () => {
+    const k = afterF10Known(false, false);
+    for (const file of ['scripts/run-i80386-hdd-gui-actual.py', 'scripts/read-i80386-hdd-gui-originals.py']) {
+        const source = readFileSync(path.join(ROOT, file), 'utf8');
+        for (const [pin, repo] of [[HISTORICAL_X86_CURRENT_BOARD, 'bw-board'], [CURRENT_X86_CUI, 'bw-circuit-ui']]) {
             const unshipped = {...k, previous:new Map(k.previous), history:new Map([[pin, repo]])};
             unshipped.previous.delete(pin);
-            assert.equal(historicalV10Spans(file, source, unshipped).length, 0, 'a known commit is not evidence it shipped');
+            assert.equal(historicalV10Spans(file, source, unshipped).length, 0,
+                'a known supplier commit is not evidence it shipped');
             assert.ok(judgeFile(file, source, unshipped).some(finding => finding.sha === pin && /never a pin/.test(finding.was)));
             const wrongSupplier = {...k, previous:new Map(k.previous)};
             wrongSupplier.previous.set(pin, {repo:'sb3-creator'});
-            assert.equal(historicalV10Spans(file, source, wrongSupplier).length, 0, 'previous pin must belong to its exact supplier');
+            assert.equal(historicalV10Spans(file, source, wrongSupplier).length, 0,
+                'each historical pin belongs to its exact supplier');
         }
     }
 });
-
-test('the frozen F10 Board assertion and visible policy declarations have exact historical slots', () => {
-    const k = afterF10Known(), file = 'test/i80386-hdd-gui-actual.test.mjs';
-    const source = readFileSync(path.join(ROOT, file), 'utf8');
-    const profile = text => ({[file]: {bytes:Buffer.byteLength(text), sha256:createHash('sha256').update(text).digest('hex')}});
-    const line = `            self.assertEqual(c.FINITE_V10_PINS['bw-board'],'${LIVE_X86_BOARD}')`;
-    for (const changed of [
-        source.replace(line, line.replace('FINITE_V10_PINS', 'CURRENT_PINS')),
-        source.replace('class ProducerV10(unittest.TestCase):', 'class Other(unittest.TestCase):'),
-        source.replace('def test_current_and_historical_supplier_roles_are_independent(self):', 'def test_other(self):'),
-        source.replace('const producerV10Controls = String.raw`', 'const otherControls = String.raw`'),
-        source.replace(line, line.replace(LIVE_X86_BOARD, '\\x63' + LIVE_X86_BOARD.slice(1))),
-        source + `\nconst currentBoard = '${LIVE_X86_BOARD}';\n`,
-    ]) {
-        assert.notEqual(changed, source);
-        assert.equal(historicalV10SpansForProfile(file, changed, k, profile(changed)).length, 0,
-            'an assertion in another class, method, template or pin role is refused even with a coherent profile');
-        assert.equal(historicalV10Spans(file, changed, k).length, 0);
-        assert.ok(judgeFile(file, changed, k).length > 0);
-    }
-    const policy = 'test/pin-move-chain.test.mjs', text = readFileSync(path.join(ROOT, policy), 'utf8');
-    const declaration = `const LIVE_X86_BOARD = '${LIVE_X86_BOARD}';`;
-    for (const changed of [text.replace(declaration, declaration.replace('LIVE_X86_BOARD', 'OTHER_BOARD')),
-        text.replace(declaration, '    ' + declaration), text + '\n' + declaration,
-        text.replace(declaration, declaration.replace(LIVE_X86_BOARD, '\\x63' + LIVE_X86_BOARD.slice(1)))]) {
-        assert.equal(historicalV10Spans(policy, changed, k).length, 0);
-        assert.ok(judgeFile(policy, changed, k).length > 0);
-    }
-    const extra = text + `\nconst activeBoard = '${LIVE_X86_BOARD}';\n`;
-    assert.equal(judgeFile(policy, extra, k).length, 1, 'a second old pin is not covered by the declaration role');
-});
-
 
 test('a real merge replacement remains previous-pin evidence instead of a never-pinned finding', () => {
     const directory=mkdtempSync(path.join(tmpdir(),'bw-pin-merge-history-'));
