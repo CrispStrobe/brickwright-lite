@@ -518,13 +518,10 @@ test('radio.sendValue keeps its name: the pair is one block, the name is not dro
 });
 
 test('a class that cannot be lowered, and an untyped object literal, are refused by name, with the calls inside them', () => {
-    // A heritage clause (`extends`) has no lowering to arrays and procedures, so
-    // this class is refused whole, saying why and naming what it calls.
+    // A heritage clause naming a base the program does not define has no lowering to arrays and
+    // procedures, so this class is refused whole, saying why and naming what it calls.
     const {unsupported} = microbitToPseudocode([
-        'class Base {',
-        '    x = 1',
-        '}',
-        'class Message extends Base {',
+        'class Message extends Elsewhere {',
         '    private d: Buffer',
         '    constructor() { super(); this.d = control.createBuffer(13) }',
         '    kind(): number { return this.d.getNumber(NumberFormat.Int8LE, 0) }',
@@ -532,7 +529,7 @@ test('a class that cannot be lowered, and an untyped object literal, are refused
         '}',
         'let c = { sprite: game.createSprite(0, 0) }'
     ].join('\n'));
-    assert.ok(unsupported.some(u => /class Message \(class Message with a heritage clause\).*control\.createBuffer\(\).*radio\.sendBuffer\(\)/.test(u)),
+    assert.ok(unsupported.some(u => /class Message \(extends Elsewhere\).*control\.createBuffer\(\).*radio\.sendBuffer\(\)/.test(u)),
         unsupported.join('\n'));
     assert.ok(!unsupported.some(u => /constructor\(\)|send\(\),/.test(u)), 'a method definition was read as a call');
     assert.ok(unsupported.some(u => /object literal.*game\.createSprite\(\)/.test(u)), unsupported.join('\n'));
@@ -601,15 +598,13 @@ test('the logo handler is polled like the buttons; a long press and a release ar
     assert.match(code, /IF logo touched THEN:\n {6}wait until not \(logo touched\)\n {6}show number 3/);
 });
 
-test('what MicroPython\'s radio does not have is refused with the reason; serial numbers are carried now', () => {
-    // A packet's send time is not in a MicroPython packet: the time and the
-    // packet dump that prints it stay refused, by name.
-    const {unsupported} = microbitToPseudocode([
+test('a radio packet\'s send time and the packet dump are carried; serial numbers are carried too', () => {
+    const times = microbitToPseudocode([
         'let t = radio.receivedPacket(RadioPacketProperty.Time)',
         'radio.writeReceivedPacketToSerial()'
     ].join('\n'));
-    assert.ok(unsupported.some(u => /Time\) — a MicroPython radio packet carries no send time/.test(u)), unsupported.join('\n'));
-    assert.ok(unsupported.some(u => /writeReceivedPacketToSerial\(\) — the dump prints each packet's send time/.test(u)), unsupported.join('\n'));
+    assert.deepEqual(times.unsupported, []);
+    assert.match(times.code, /set t to read last radio time\n {2}radio write received packet to serial/);
     // Serial numbers ride in the packet (sb3-creator: `radio transmit serial number on`).
     const serial = microbitToPseudocode([
         'radio.setTransmitSerialNumber(true)',

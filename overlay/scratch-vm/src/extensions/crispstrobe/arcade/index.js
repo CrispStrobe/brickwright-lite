@@ -413,6 +413,7 @@ module.exports = makeExt(`// Name: Arcade
           // reports 0, a value reads 0, an image is a 1x1 transparent stand-in, and its callback never fires.
           {opcode:'externalValue',blockType:Scratch.BlockType.REPORTER,text:'Arcade external value [NAME]',arguments:str('NAME','')},
           {opcode:'externalImage',blockType:Scratch.BlockType.REPORTER,text:'Arcade external image [NAME]',arguments:str('NAME','')},
+          {opcode:'externalImageCall',blockType:Scratch.BlockType.REPORTER,text:'Arcade external image call [NAME] arguments [ARGS]',arguments:{...str('NAME',''),...str('ARGS','[]')}},
           {opcode:'externalCall',blockType:Scratch.BlockType.REPORTER,text:'Arcade external call [NAME] arguments [ARGS]',arguments:{...str('NAME',''),...str('ARGS','[]')}},
           {opcode:'externalCommand',blockType:Scratch.BlockType.COMMAND,text:'Arcade external command [NAME] arguments [ARGS]',arguments:{...str('NAME',''),...str('ARGS','[]')}},
           {opcode:'registerExternalHandler',blockType:Scratch.BlockType.COMMAND,text:'Arcade register external [NAME] arguments [ARGS] as [TOKEN] capturing [CAPTURES]',arguments:{...str('NAME',''),...str('ARGS','[]'),...str('TOKEN','handler'),...str('CAPTURES','')}},
@@ -438,6 +439,7 @@ module.exports = makeExt(`// Name: Arcade
           {opcode:'setGameOverPlayable',blockType:Scratch.BlockType.COMMAND,text:'Arcade set game over sound [PLAYABLE] looping [LOOPING] for win [WIN]',arguments:{...str('PLAYABLE',''),LOOPING:{type:Scratch.ArgumentType.BOOLEAN},WIN:{type:Scratch.ArgumentType.BOOLEAN}}},
           {opcode:'setGameOverScoringType',blockType:Scratch.BlockType.COMMAND,text:'Arcade set game over scoring [TYPE]',arguments:{TYPE:{type:Scratch.ArgumentType.STRING,menu:'scoringTypes',defaultValue:'HighScore'}}},
           {opcode:'carnivalCountdown',blockType:Scratch.BlockType.COMMAND,text:'Arcade carnival countdown [SECONDS] seconds style [STYLE] effect [EFFECT]',arguments:{...n('SECONDS',15),STYLE:{type:Scratch.ArgumentType.STRING,menu:'carnivalStyles',defaultValue:'Score'},EFFECT:{type:Scratch.ArgumentType.STRING,menu:'carnivalEffects',defaultValue:'unset'}}},
+          {opcode:'carnivalAddLabel',blockType:Scratch.BlockType.COMMAND,text:'Arcade carnival add label [LABEL] position [AREA] color [COLOR] use color [HAS_COLOR]',arguments:{...str('LABEL','Whack-the-Mole'),AREA:{type:Scratch.ArgumentType.STRING,menu:'carnivalAreas',defaultValue:'Bottom'},...n('COLOR',4),HAS_COLOR:{type:Scratch.ArgumentType.BOOLEAN}}},
           {opcode:'carnivalGameOver',blockType:Scratch.BlockType.COMMAND,text:'Arcade carnival game over style [STYLE] effect [EFFECT]',arguments:{STYLE:{type:Scratch.ArgumentType.STRING,menu:'carnivalStyles',defaultValue:'Win'},EFFECT:{type:Scratch.ArgumentType.STRING,menu:'carnivalEffects',defaultValue:'unset'}}},
           {opcode:'carnivalCustomGameOver',blockType:Scratch.BlockType.COMMAND,text:'Arcade carnival custom game over message [MESSAGE] effect [EFFECT] sound [SOUND] use sound [HAS_SOUND] scoring [SCORING] score [SCORE] use score [HAS_SCORE]',arguments:{...str('MESSAGE','Great Job!'),EFFECT:{type:Scratch.ArgumentType.STRING,menu:'carnivalEffects',defaultValue:'unset'},...str('SOUND',''),HAS_SOUND:{type:Scratch.ArgumentType.BOOLEAN},SCORING:{type:Scratch.ArgumentType.STRING,menu:'carnivalScoring',defaultValue:'HScore'},...n('SCORE',0),HAS_SCORE:{type:Scratch.ArgumentType.BOOLEAN}}},
           {opcode:'startImageEffect',blockType:Scratch.BlockType.COMMAND,text:'Arcade start image effect [EFFECT] times [TIMES] delay [DELAY] ms',arguments:{EFFECT:{type:Scratch.ArgumentType.STRING,menu:'imageEffects',defaultValue:'dissolve'},...n('TIMES',0),...n('DELAY',0)}},
@@ -1101,6 +1103,7 @@ module.exports = makeExt(`// Name: Arcade
           ,scoringTypes: {acceptReporters: false, items: ['HighScore', 'LowScore', 'None']}
           ,playbackModes: {acceptReporters: false, items: ['UntilDone', 'InBackground', 'LoopingInBackground']}
           ,carnivalScoring:{acceptReporters:false,items:['unset','None','HScore','LScore','HTime','LTime']}
+          ,carnivalAreas:{acceptReporters:false,items:['Top','Mid','Bottom']}
           ,carnivalStyles:{acceptReporters:false,items:['Win','Lose','Score','Timed','Multi','Custom']}
           ,carnivalEffects:{acceptReporters:false,items:['unset','confetti','hearts','smiles','blizzard','bubbles','starField','clouds','none','dissolve','melt','slash','splatter']}
           ,melodyModes: {acceptReporters: false, items: ['play', 'playUntilDone', 'loop']}
@@ -4770,6 +4773,10 @@ module.exports = makeExt(`// Name: Arcade
       }catch(error){if(error.code!=='CARNIVAL_CANCELLED')throw error;}
     }
     carnivalCountdown(args) {return this._carnivalCall('countdown',args);}
+    carnivalAddLabel(args) {
+      return this._carnivalCall('addLabel',{...args,LABEL:String(Scratch.BWValues.decode(args.LABEL) ?? ''),
+        COLOR:Number(Scratch.BWValues.decode(args.COLOR)),HAS_COLOR:Scratch.Cast.toBoolean(args.HAS_COLOR)});
+    }
     carnivalGameOver(args) {return this._carnivalCall('gameOver',args);}
     carnivalCustomGameOver(args) {
       return this._carnivalCall('customGameOver',{...args,
@@ -4900,6 +4907,7 @@ module.exports = makeExt(`// Name: Arcade
     screenImage() {return this._imageHandle(this._screenRaw());}
     externalValue() {return 0;}
     externalImage() {return this._imageHandle({width: 1, height: 1, pixels: new Uint8Array(1)});}
+    externalImageCall() {return this.externalImage();}
     externalCall() {return 0;}
     externalCommand() {}
     registerExternalHandler() {}
