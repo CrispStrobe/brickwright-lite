@@ -47,7 +47,7 @@ const BUTTON = {a: 'Button.A', b: 'Button.B', ab: 'Button.AB'};
 /** Reporters that already ARE a boolean, so comparing them to "true" is noise. */
 const BOOLEAN_REPORTERS = new Set([
     'microbitplus_isgesture', 'microbitplus_istouch', 'microbitplus_isbutton',
-    'microbitplus_ispinhigh', 'microbitplus_islogo', 'operator_and', 'operator_or', 'operator_not',
+    'microbitplus_ispinhigh', 'microbitplus_islogo', 'microbitplus_soundplaying', 'operator_and', 'operator_or', 'operator_not',
     'operator_gt', 'operator_lt', 'operator_equals', 'operator_contains',
     'sensing_keypressed', 'sensing_touchingobject',
     'microbitplus_spritetouching', 'microbitplus_spritetouchingedge', 'microbitplus_spritedeleted',
@@ -89,11 +89,16 @@ const RADIO_HATS = {
 };
 
 /** The Buffer blocks: what makes one, and which inputs take one. */
-const BUFFER_MAKERS = new Set(['microbitplus_createbuffer', 'microbitplus_bufferslice', 'microbitplus_radiolastbuf']);
+const BUFFER_MAKERS = new Set(['microbitplus_createbuffer', 'microbitplus_bufferslice', 'microbitplus_radiolastbuf', 'microbitplus_bufferfromtext',
+    'microbitplus_serialreadbuf', 'microbitplus_i2creadbuf']);
 const BUFFER_SLOTS = {
     microbitplus_bufferlength: ['BUF'], microbitplus_buffernum: ['BUF'], microbitplus_buffersetnum: ['BUF'], microbitplus_bufferfill: ['BUF'],
-    microbitplus_bufferslice: ['BUF'], microbitplus_bufferhex: ['BUF'], microbitplus_radiosendbuf: ['BUF']
+    microbitplus_bufferslice: ['BUF'], microbitplus_bufferhex: ['BUF'], microbitplus_radiosendbuf: ['BUF'],
+    microbitplus_serialwritebuf: ['BUF'], microbitplus_i2cwritebuf: ['BUF'], microbitplus_spixferbuf: ['BUF', 'INTO']
 };
+/** The serial delimiters' menu words -> MakeCode's Delimiters members. */
+const DELIMITER_MEMBER = {newline: 'NewLine', comma: 'Comma', dollar: 'Dollar', colon: 'Colon', fullstop: 'Fullstop', hash: 'Hash',
+    'carriage return': 'CarriageReturn', space: 'Space', tab: 'Tab', pipe: 'Pipe', semicolon: 'SemiColon'};
 /** The block menu's number format -> MakeCode's NumberFormat member (`uint16be` -> UInt16BE). */
 const numberFormat = word => {
     const m = /^(u?int|float)(\d+)(le|be)$/.exec(String(word));
@@ -466,6 +471,16 @@ export class Emitter {
         case 'microbitplus_createbuffer': return `control.createBuffer(${v('SIZE')})`;
         case 'microbitplus_bufferlength': return `${v('BUF')}.length`;
         case 'microbitplus_buffernum': return `${v('BUF')}.getNumber(${numberFormat(f('FMT'))}, ${v('OFFSET')})`;
+        case 'microbitplus_serialreadbuf': return `serial.readBuffer(${v('SIZE')})`;
+        case 'microbitplus_serialreadstr': return 'serial.readString()';
+        case 'microbitplus_serialreaduntil': return `serial.readUntil(serial.delimiters(Delimiters.${DELIMITER_MEMBER[f('DELIM')] || 'NewLine'}))`;
+        case 'microbitplus_i2creadbuf': return `pins.i2cReadBuffer(${v('ADDR')}, ${v('SIZE')})`;
+        case 'microbitplus_i2creadnum': return `pins.i2cReadNumber(${v('ADDR')}, ${numberFormat(f('FMT'))})`;
+        case 'microbitplus_sizeofformat': return `pins.sizeOf(${numberFormat(f('FMT'))})`;
+        case 'microbitplus_spixfer': return `pins.spiWrite(${v('VALUE')})`;
+        case 'microbitplus_bufferfromtext': return `control.createBufferFromUTF8(${v('TEXT', '""')})`;
+        case 'microbitplus_getvolume': return 'music.volume()';
+        case 'microbitplus_soundplaying': return 'music.isSoundPlaying()';
         case 'microbitplus_bufferslice': return `${v('BUF')}.slice(${v('OFFSET')}, ${v('LENGTH')})`;
         case 'microbitplus_bufferhex': return `${v('BUF')}.toHex()`;
         case 'microbitplus_radiolastbuf':
@@ -960,6 +975,28 @@ export class Emitter {
         case 'microbitplus_bufferfill':
             push(`${v('BUF')}.fill(${v('VALUE')})`);
             return;
+        case 'microbitplus_serialwritetext': push(`serial.writeString(${v('TEXT', '""')})`); return;
+        case 'microbitplus_serialwritenum': push(`serial.writeNumber(${v('NUM')})`); return;
+        case 'microbitplus_serialwritebuf': push(`serial.writeBuffer(${v('BUF')})`); return;
+        case 'microbitplus_i2cwritebuf': push(`pins.i2cWriteBuffer(${v('ADDR')}, ${v('BUF')})`); return;
+        case 'microbitplus_i2cwritenum': push(`pins.i2cWriteNumber(${v('ADDR')}, ${v('VALUE')}, ${numberFormat(f('FMT'))})`); return;
+        case 'microbitplus_spixferbuf': push(`pins.spiTransfer(${v('BUF')}, ${v('INTO')})`); return;
+        case 'microbitplus_spifreq': push(`pins.spiFrequency(${v('HZ')})`); return;
+        case 'microbitplus_spiformat': push(`pins.spiFormat(${v('BITS')}, ${v('MODE')})`); return;
+        case 'microbitplus_spipins': push(`pins.spiPins(DigitalPin.${String(f('MOSI')).toUpperCase()}, DigitalPin.${String(f('MISO')).toUpperCase()}, DigitalPin.${String(f('SCK')).toUpperCase()})`); return;
+        case 'microbitplus_logcols1': case 'microbitplus_logcols2': case 'microbitplus_logcols3': {
+            const n = Number(b.opcode.slice(-1));
+            const titles = [];
+            for (let i = 1; i <= n; i++) titles.push(this.textOperand(b, `C${i}`));
+            push(`datalogger.setColumnTitles(${titles.join(', ')})`);
+            return;
+        }
+        case 'microbitplus_logdelete': push('datalogger.deleteLog()'); return;
+        case 'microbitplus_logdeletefull': push('datalogger.deleteLog(datalogger.DeleteType.Full)'); return;
+        case 'microbitplus_logmirror': push(`datalogger.mirrorToSerial(${f('MODE') === 'off' ? 'false' : 'true'})`); return;
+        case 'microbitplus_logstamp': push(`datalogger.includeTimestamp(FlashLogTimeStampFormat.${String(f('UNIT')).replace(/^./, c => c.toUpperCase())})`); return;
+        case 'microbitplus_setvolume': push(`music.setVolume(${v('VOL')})`); return;
+        case 'microbitplus_speaker': push(`music.setBuiltInSpeakerEnabled(${f('MODE') === 'off' ? 'false' : 'true'})`); return;
         case 'microbitplus_radiosendbuf':
             push(`radio.sendBuffer(${v('BUF')})`);
             return;
@@ -1015,7 +1052,8 @@ export class Emitter {
 }
 
 /** Reporters whose value is text. */
-const TEXT_REPORTERS = new Set(['operator_join', 'operator_letter_of', 'microbitplus_radiolaststr', 'microbitplus_radiolastname']);
+const TEXT_REPORTERS = new Set(['operator_join', 'operator_letter_of', 'microbitplus_radiolaststr', 'microbitplus_radiolastname',
+    'microbitplus_serialreadstr', 'microbitplus_serialreaduntil']);
 
 /**
  * What each variable of this target holds, for its `let` (tasks E13, E16):
@@ -1447,8 +1485,13 @@ function textArrayNames (blocks, emitter) {
             if (!(items.length === 1 && items[0] === 0)) for (const item of items) k.add(typeof item === 'string' ? 'text' : 'number');
         } else {
             const slot = b.inputs && b.inputs.VALUE && b.inputs.VALUE[1];
-            k.add(Array.isArray(slot) && (slot[0] === 10 || slot[0] === 11) &&
-                !/^-?\d+(\.\d+)?$/.test(String(slot[1])) ? 'text' : 'number');
+            const literal = Array.isArray(slot) && (slot[0] === 10 || slot[0] === 11 || slot[0] === 4);
+            // A value held in a variable or a parameter (a record's text field set
+            // from its constructor) abstains; only literals vote on the array's type.
+            if (literal || !/^arrays_(set|insert|push)$/.test(b.opcode)) {
+                k.add(Array.isArray(slot) && (slot[0] === 10 || slot[0] === 11) &&
+                    !/^-?\d+(\.\d+)?$/.test(String(slot[1])) ? 'text' : 'number');
+            }
         }
         kinds.set(name, k);
     }
