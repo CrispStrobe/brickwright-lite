@@ -615,11 +615,24 @@ export class Emitter {
         const f = name => this.field(b, name);
 
         switch (b.opcode) {
-        case 'control_forever':
+        case 'control_forever': {
+            // The polled form of serial.onDataReceived (microbit-translate: FOREVER, IF serial has data until X) is
+            // MakeCode's handler again, so the program round-trips as it came.
+            const first = this.block(b.inputs && b.inputs.SUBSTACK && typeof b.inputs.SUBSTACK[1] === 'string' ? b.inputs.SUBSTACK[1] : null);
+            let test = first && first.opcode === 'control_if' && !first.next ? this.inputBlock(first, 'CONDITION') : null;
+            // (a reporter that is not known as a truth value is read as `reporter = true`)
+            if (test && test.opcode === 'operator_equals') test = this.inputBlock(test, 'OPERAND1');
+            if (test && test.opcode === 'microbitplus_serialhas') {
+                push(`serial.onDataReceived(serial.delimiters(Delimiters.${DELIMITER_MEMBER[this.field(test, 'DELIM')] || 'NewLine'}), function () {`);
+                out.push(...this.substack(first, 'SUBSTACK', indent + 1));
+                push('})');
+                return;
+            }
             push('basic.forever(function () {');
             out.push(...this.substack(b, 'SUBSTACK', indent + 1));
             push('})');
             return;
+        }
         case 'control_repeat':
             push(`for (let i = 0; i < ${v('TIMES')}; i++) {`);
             out.push(...this.substack(b, 'SUBSTACK', indent + 1));

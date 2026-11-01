@@ -115,3 +115,44 @@ test('startMelody of a built-in melody, once or in the background, and stopMelod
     const refused = microbitToPseudocode('music.startMelody(music.builtInMelody(Melodies.Dadadadum), MelodyOptions.Forever)');
     assert.ok(refused.unsupported.length > 0);
 });
+
+test('serial.onDataReceived round-trips: the polled hat exports as the handler again, and reimports as the same blocks', {skip}, async () => {
+    const ts = [
+        'serial.onDataReceived(serial.delimiters(Delimiters.Comma), function () {',
+        '    serial.writeLine("got")',
+        '})'
+    ].join('\n');
+    const {imported} = lite(ts);
+    const ex = exportToMakeCode(new SB3Creator().parse(imported.code), {name: 'x'});
+    assert.deepEqual(ex.unsupported, []);
+    assert.ok(ex.ts.includes('serial.onDataReceived(serial.delimiters(Delimiters.Comma), function () {'), ex.ts);
+    assert.ok(!ex.ts.includes('basic.forever'), ex.ts);
+    await compileMakeCode(ex.ts);
+    const again = microbitToPseudocode(ex.ts);
+    assert.deepEqual(again.unsupported, []);
+    assert.equal(again.code, imported.code, 'import, export, import: the same blocks');
+});
+
+test('pins.unpackBuffer with a literal format gives an array of numbers: length, index, for-of, aliasing', {skip}, async () => {
+    const ts = [
+        'let p = pins.packBuffer("<hBi", [-2, 7, 100000])',
+        'let u = pins.unpackBuffer("<hBi", p)',
+        'serial.writeLine("n " + u.length + " " + u[0] + " " + u[1] + " " + u[2])',
+        'let sum = 0',
+        'for (let x of u) {',
+        '    sum += x',
+        '}',
+        'let v = pins.unpackBuffer("<B", p, 2)',
+        'serial.writeLine("sum " + sum + " " + v[0])'
+    ].join('\n');
+    const mc = await runMakeCodeSim(await compileMakeCode(ts), {ms: 800, at: []});
+    assert.equal(mc.error, null);
+    const {imported, py} = lite(ts);
+    const run = await runOnMicrobitFirmware(py, {ms: 20000});
+    assert.equal(run.traceback, null, run.traceback);
+    const want = mc.serial.map(l => l.text.trim()).filter(Boolean);
+    assert.deepEqual(want, ['n 3 -2 7 100000', 'sum 100005 7']);
+    assert.deepEqual(lines(run.out), want);
+    const back = await runMakeCodeSim(await compileMakeCode(await exported(imported)), {ms: 800, at: []});
+    assert.deepEqual(back.serial.map(l => l.text.trim()).filter(Boolean), want);
+});

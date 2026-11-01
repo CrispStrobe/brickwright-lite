@@ -121,7 +121,7 @@ export function lowerHandleValues (ast, parse) {
         if (st.type === 'Declaration') for (const d of st.decls) globals.add(d.name);
         if (st.type === 'Class' || st.type === 'Enum' || st.type === 'Interface' || st.type === 'Namespace') globals.add(st.name);
     }
-    const anyWork = arrayFields.size || fnFields.size || JSON.stringify(ast).includes('"=>') || JSON.stringify(ast).includes('FunctionExpression');
+    const anyWork = arrayFields.size || fnFields.size || JSON.stringify(ast).includes('"=>') || JSON.stringify(ast).includes('FunctionExpression') || JSON.stringify(ast).includes('"unpackBuffer"');
     if (!anyWork) return {changed: false};
 
     const need = {pools: new Set(), elems: new Map(), sigs: new Map(), anew: false, froms: new Set(), callbacks: new Map()};
@@ -188,6 +188,9 @@ export function lowerHandleValues (ast, parse) {
         if (node.type === 'Call' && node.callee.type === 'Member' &&
             /^(slice|concat|reverse|filter)$/.test(node.callee.name)) return elemOfHandle(node.callee.object);
         if (node.type === 'Call' && node.callee.type === 'Identifier' && node.__handleElem) return node.__handleElem;
+        // pins.unpackBuffer("<hBi", buf[, offset]): the numbers of a packed buffer, as an array of numbers.
+        if (node.type === 'Call' && node.callee.type === 'Member' && node.callee.object.type === 'Identifier' &&
+            node.callee.object.name === 'pins' && node.callee.name === 'unpackBuffer' && unpackLayout(node.args && node.args[0])) return 'number';
         if (node.type === 'Call' && node.callee.type === 'Identifier' && arrayReturns.has(node.callee.name) && !node.isNew) return arrayReturns.get(node.callee.name);
         if (node.type === 'Call' && node.callee.type === 'Member' && arrayReturns.has(node.callee.name) && !node.isNew &&
             elemOfHandle(node.callee.object) === null) return arrayReturns.get(node.callee.name);
@@ -198,6 +201,21 @@ export function lowerHandleValues (ast, parse) {
         }
         return null;
     };
+
+    // A pack format literal (b B h H i I f d, optional < > prefix) as its fields: [{format, at}], or null.
+    const unpackLayout = (node) => {
+        const m = node && node.type === 'String' ? /^([<>]?)([bBhHiIfd]+)$/.exec(String(node.value)) : null;
+        if (!m) return null;
+        const table = {b: ['Int8', 1], B: ['UInt8', 1], h: ['Int16', 2], H: ['UInt16', 2], i: ['Int32', 4], I: ['UInt32', 4], f: ['Float32', 4], d: ['Float64', 8]};
+        const fields = [];
+        let at = 0;
+        for (const ch of m[2]) {
+            fields.push({format: `NumberFormat.${table[ch][0]}${m[1] === '>' ? 'BE' : 'LE'}`, at});
+            at += table[ch][1];
+        }
+        return fields;
+    };
+    const unpackers = [];
 
     const walk = (node, fn, parent, key) => {
         if (!node || typeof node !== 'object') return;
@@ -463,6 +481,13 @@ export function lowerHandleValues (ast, parse) {
             }
             return node;
         case 'Call': {
+            if (isCall(node, 'pins.unpackBuffer') && unpackLayout(node.args && node.args[0])) {
+                const fields = unpackLayout(node.args[0]);
+                const index = unpackers.length + 1;
+                unpackers.push({index, fields});
+                reserve('number');
+                return Object.assign(call(`__unpack${index}`, [node.args[1], node.args[2] || num(0)]), {__handleElem: 'number'});
+            }
             if (dynamicEvents && isCall(node, 'control.onEvent') && node.args.length >= 3 && node.args[2].type === 'Identifier') {
                 return call('__evreg', [node.args[0], node.args[1], node.args[2]]);
             }
@@ -778,6 +803,11 @@ export function lowerHandleValues (ast, parse) {
             for (let i = 0; i < n; i++) src.push(`    __apush_${F}(nh, v${i})`);
             src.push('    return nh', '}');
         }
+    }
+    for (const {index, fields} of unpackers) {
+        src.push(`function __unpack${index}(b: Buffer, off: number): number {`, '    let nh = __anew()');
+        for (const f of fields) src.push(`    __apush_N(nh, b.getNumber(${f.format}, off + ${f.at}))`);
+        src.push('    return nh', '}');
     }
     if (need.events) {
         src.push('let __evs: number[] = [0]', 'let __evv: number[] = [0]', 'let __evf: number[] = [0]',
