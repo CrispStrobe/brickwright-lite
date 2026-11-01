@@ -12,17 +12,12 @@ const replaceOnce = (source, before, after, what) => {
 export function patchPaletteStructure (source) {
     if (source.includes(MARKER)) return source;
 
-    // 1) `label` blocks. A label with `subcategory` also closes the running <category> and opens a
-    //    sibling one, so the category rail shows it as its own entry (getBlocksXML splits on the marker).
+    // 1) `label` blocks carry their own flyout XML (arcade/palette.js): a <label>, optionally preceded by
+    //    `</category><!--s--><category ...>` so the category rail shows a sub-category entry (getBlocksXML splits on the marker).
     source = replaceOnce(source,
         '        if (blockInfo.blockType === BlockType.BUTTON) {\n            return this._convertButtonForScratchBlocks(blockInfo);\n        }\n',
         `        ${MARKER}
-        if (blockInfo.blockType === 'label') {
-            const text = xmlEscape(maybeFormatMessage(blockInfo.text, this.makeMessageContextForTarget()));
-            return {info: blockInfo, xml: (blockInfo.subcategory ?
-                \`</category><!--s--><category name="\${text}" id="\${categoryInfo.id}_\${blockInfo.subcategory}" colour="\${categoryInfo.color1}" secondaryColour="\${categoryInfo.color2}">\` : '') +
-                \`<label text="\${text}"></label>\`};
-        }
+        if (blockInfo.blockType === 'label') return {info: blockInfo, xml: blockInfo.xml};
 
         if (blockInfo.blockType === BlockType.BUTTON) {
             return this._convertButtonForScratchBlocks(blockInfo);
@@ -40,8 +35,7 @@ export function patchPaletteStructure (source) {
     source = replaceOnce(source,
         '    getBlocksXML (target) {\n',
         `    getBlocksXML (target) {
-        return [].concat(...this._bwBlocksXML(target).map(c => c.xml.split('<!--s-->').map((xml, i) =>
-            (i ? {id: /id="([^"]*)"/.exec(xml)[1], xml} : c))));
+        return this._bwBlocksXML(target).flatMap(c => c.xml.split('<!--s-->').map((xml, i) => ({id: c.id + (i || ''), xml})));
     }
 
     _bwBlocksXML (target) {

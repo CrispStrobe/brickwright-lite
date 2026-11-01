@@ -77,7 +77,8 @@ test('the runtime emits one rail category per section; hidden blocks stay regist
     palette.resetForTests();
     const {vm, extension} = makeVm();
     const xml = vm.runtime.getBlocksXML();
-    assert.deepEqual(xml.map(entry => entry.id), ['arcade', ...palette.SECTIONS.slice(1).map(section => `arcade_${section[0]}`)]);
+    assert.deepEqual(xml.map(entry => /^<category [^>]*?id="([^"]*)"/.exec(entry.xml)[1]),
+        ['arcade', ...palette.SECTIONS.slice(1).map(section => `arcade_${section[0]}`)]);
     for (const entry of xml) assert.match(entry.xml, /^<category [^>]*>[\s\S]*<\/category>$/);
     assert.ok(!xml.some(entry => entry.xml.includes('arcade_followSprite')));
     assert.equal(typeof vm.runtime._primitives.arcade_followSprite, 'function');

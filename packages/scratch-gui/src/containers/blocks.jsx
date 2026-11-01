@@ -208,7 +208,7 @@ class Blocks extends React.Component {
         // Extension buttons with their own callback (Arcade's "show more") register on the runtime.
         const flyoutCallback = toolboxWorkspace.getButtonCallback;
         toolboxWorkspace.getButtonCallback = key =>
-            flyoutCallback.call(toolboxWorkspace, key) || (this.props.vm.runtime.bwButtonCallbacks || {})[key] || null;
+            flyoutCallback.call(toolboxWorkspace, key) || this.props.vm.runtime.bwButtonCallbacks?.[key];
 
         // Store the xml of the toolbox that is actually rendered.
         // This is used in componentDidUpdate instead of prevProps, because

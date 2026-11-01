@@ -125,6 +125,15 @@ const LABELS = {
   de: {more: (name, count) => `Mehr Blöcke zeigen: ${name} (${count})`, fewer: name => `Weniger Blöcke zeigen: ${name}`}
 };
 
+const escapeXml = text => String(text).replace(/[&<>"']/g, ch => `&#${ch.charCodeAt(0)};`);
+// A flyout label; a `subcategory` one first closes the running <category> and opens a sibling, which the
+// category rail shows as its own entry (the runtime splits on the marker, see scripts/lib/palette-hooks.mjs).
+const labelBlock = (info, title, subcategory) => {
+  const text = escapeXml(title);
+  const open = subcategory ? `</category><!--s--><category name="${text}" id="${info.id}_${subcategory}" colour="${info.color1}" secondaryColour="${info.color2}">` : '';
+  // The flyout already prints a sub-category's own name as its header; only the first section needs a label.
+  return {blockType: 'label', text: title, xml: `${open}${subcategory ? '' : `<label text="${text}"></label>`}`};
+};
 const readStorage = storage => {
   try {
     const parsed = JSON.parse(storage.getItem(STORAGE_KEY));
@@ -183,7 +192,7 @@ function arrange (host, info, storage = defaultStorage()) {
     const title = locale === 'de' ? german : name;
     const extra = index === SECTIONS.length - 1 ? [...more, ...unlisted] : more;
     const count = extra.filter(opcode => opcode !== '---' && byOpcode.has(opcode)).length;
-    out.push(index === 0 ? {blockType: 'label', text: title} : {blockType: 'label', text: title, subcategory: id});
+    out.push(labelBlock(info, title, index === 0 ? null : id));
     take(basic, true, out);
     if (!count) return;
     const isOpen = open.has(id);
