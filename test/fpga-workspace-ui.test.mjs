@@ -8,6 +8,7 @@ import {createRequire} from 'node:module';
 import {resolve} from 'node:path';
 import vm from 'node:vm';
 import {EXAMPLES} from '../overlay/scratch-gui/src/lib/bw-fpga/examples.js';
+import {deriveView, viewStyles} from '../overlay/scratch-gui/src/lib/bw-fpga/tab-view.js';
 
 // Hosted jobs resolve the GUI's installed dependencies. A bounded local check
 // may explicitly point at an already cached GUI package without installing it.
@@ -40,6 +41,8 @@ const text = node => typeof node === 'string' || typeof node === 'number' ? Stri
 const visibleText = tree => nodes(tree, true).filter(node => node.type !== 'FpgaInfo')
     .flatMap(node => node.props.children.filter(child => typeof child !== 'object')).join(' ');
 
+const button = (tree, label) => nodes(tree).find(node => node.type === 'button' && text(node).trim() === label);
+
 function fixture (overrides = {}) {
     const state = {
         React: {createElement: element, Fragment: 'Fragment', Suspense: 'Suspense'},
@@ -56,7 +59,7 @@ function fixture (overrides = {}) {
         hdlScreen: {refusals: [], warnings: []}, warnings: [], refusals: [], bindings: [],
         netlistText: '{}', top: 'top', netValues: {}, inputs: {}, inputPorts: ['a'],
         clockPort: 'clk', clockCycles: 3, autoRun: false, mirrored: false, outputPins: [15, 16],
-        guideDismissed: false, demoMsg: null, synth: null, artefacts: null, local: {ok: true, available: true}, localBusy: false,
+        guideDismissed: false, demoMsg: null, synth: null, artefacts: null, local: {ok: true, available: true}, localBusy: false, building: false,
         flash: {available: false}, flashMsg: null, backend: 'auto',
         catalog: [{id: 'hosted', label: 'Hosted'}], probe: {available: [], probes: []},
         selection: {accepted: false, code: 'no-backend', reason: 'No backend'},
@@ -67,13 +70,16 @@ function fixture (overrides = {}) {
     };
     for (const name of ['Workspace', 'Editor', 'ExampleId', 'Realization', 'BuildTarget', 'SimulationView',
         'GuideDismissed', 'ControllerDisplay', 'CmosGate', 'IcGate', 'IcCircuit', 'Hdl', 'Text', 'Synth', 'Seed', 'ClockCycles',
-        'AutoRun', 'Mirrored', 'Inputs', 'NetlistText', 'Local', 'LocalBusy', 'FlashMsg', 'Backend']) {
+        'AutoRun', 'Mirrored', 'Inputs', 'NetlistText', 'Local', 'LocalBusy', 'Building', 'FlashMsg', 'Backend']) {
         const key = name[0].toLowerCase() + name.slice(1);
         state[`set${name}`] = value => { state[key] = typeof value === 'function' ? value(state[key]) : value; };
     }
     state.render = () => {
         state.T = locales[state.props.locale];
         state.selectedExample = EXAMPLES.find(example => example.id === state.exampleId);
+        // The REAL derivation and tokens, exactly as the tab computes them.
+        state.ui = viewStyles(state.tools);
+        state.view = deriveView(state);
         return vm.runInNewContext(renderCode, state);
     };
     return state;
@@ -197,4 +203,55 @@ test('new selectors and information controls have English and German labels', ()
         for (const node of nodes(tree).filter(node => node.type === 'FpgaInfo')) assert.ok(node.props.label);
         assert.deepEqual(Object.keys(locales.en).sort(), Object.keys(locales.de).sort());
     }
+});
+
+test('steps show their completion and the next-step buttons move through the flow', () => {
+    const state = fixture({hdl: 'module t; endmodule', synth: {ok: true}, artefacts: {netlist: {modules: 1, url: 'blob:n'}}, clockCycles: 0});
+    let tree = state.render();
+    assert.ok(text(find(tree, 'bw-fpga-workspace-design')).includes('✓'));
+    assert.ok(text(find(tree, 'bw-fpga-workspace-build')).includes('✓'));
+    assert.ok(!text(find(tree, 'bw-fpga-workspace-simulate')).includes('✓'), 'stepping the clock is what completes Simulate');
+    find(tree, 'bw-fpga-next-build').props.onClick();
+    assert.equal(state.workspace, 'build');
+    // A finished build offers the way on from every other workspace, and not on Simulate itself.
+    tree = state.render();
+    find(tree, 'bw-fpga-next-simulate').props.onClick();
+    assert.equal(state.workspace, 'simulate');
+    assert.equal(find(state.render(), 'bw-fpga-next-simulate'), undefined);
+});
+
+test('a running build is announced and a failure carries its next step', () => {
+    const state = fixture({building: true,
+        selection: {accepted: true, selected: {label: 'Hosted', endpoint: 'e'}, reason: 'ok'}});
+    let tree = state.render();
+    const busy = find(tree, 'bw-fpga-busy');
+    assert.ok(busy, 'a hosted build in flight shows a busy status');
+    assert.ok(text(busy).includes('Hosted'));
+    assert.equal(button(tree, locales.en.synthesising).props.disabled, true, 'the button cannot be pressed twice');
+    state.building = false;
+    state.synth = {ok: false, code: 'unreachable', reason: 'no route'};
+    tree = state.render();
+    assert.equal(find(tree, 'bw-fpga-busy'), undefined);
+    const problems = text(find(tree, 'bw-fpga-problems'));
+    assert.ok(problems.includes('no route') && problems.includes(locales.en.synthFailedNext));
+});
+
+test('heads-ups are collapsed behind one count while blockers stay open', () => {
+    const state = fixture({warnings: [{port: 'a', reason: 'w1'}, {port: 'b', reason: 'w2'}],
+        refusals: [{port: 'clk', reason: 'r1'}]});
+    let tree = state.render();
+    assert.equal(find(tree, 'bw-fpga-headsup').type, 'details');
+    assert.ok(text(find(tree, 'bw-fpga-headsup')).includes('Notes (3)'));
+    assert.equal(find(tree, 'bw-fpga-problems'), undefined, 'a pin that cannot reach the board is a note, not an alarm');
+    state.synth = {ok: false, code: 'synthesis-failed', reason: 'bad'};
+    tree = state.render();
+    assert.equal(find(tree, 'bw-fpga-problems').type, 'div', 'blockers are not inside a closed disclosure');
+});
+
+test('an empty Simulate step says what to do and offers the way', () => {
+    const state = fixture({workspace: 'simulate', netlistText: ''});
+    const go = find(state.render(), 'bw-fpga-goto-build');
+    assert.ok(go);
+    go.props.onClick();
+    assert.equal(state.workspace, 'build');
 });
