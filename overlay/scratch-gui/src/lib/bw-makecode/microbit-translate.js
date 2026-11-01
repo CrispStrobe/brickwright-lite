@@ -1190,6 +1190,9 @@ class MicrobitTranslator extends BaseTranslator {
             push(`set accelerometer range ${g}`);
             return;
         }
+        // Events over the radio: the event frame (sb3-creator `radio raise event`); sendMessage is raiseEvent(2000, msg + 1).
+        case 'radio.raiseEvent': push(`radio raise event ${this.single(a[0], out, pad)} ${this.single(a[1], out, pad)}`); return;
+        case 'radio.sendMessage': push(`radio raise event 2000 ${this.single({type: 'Binary', op: '+', left: a[0], right: {type: 'Number', value: '1'}}, out, pad)}`); return;
         case 'radio.sendRawPacket': push(`radio send raw packet ${this.single(a[0], out, pad)}`); return;
         case 'serial.writeNumbers': {
             const list = a[0] && a[0].type === 'Array' ? a[0].items : null;
@@ -1927,6 +1930,25 @@ export function microbitToPseudocode (source, opts = {}) {
             bound.forEach(([param]) => t.aliases.delete(param));
             t.packetParams = null;
             scripts.push(lines);
+            continue;
+        }
+
+        // radio.onReceivedMessage(msg, body) is control.onEvent(2000, msg + 1, body), fed by the radio's event frames.
+        if (callName === 'radio.onReceivedMessage') {
+            const fn = call.args[call.args.length - 1];
+            const message = call.args[0] && call.args[0].type === 'Number' ? Number(call.args[0].value) + 1 : null;
+            if (message === null) {
+                t.unsupported.push('radio.onReceivedMessage(<expression>) — the message must be a number');
+                scripts.push(['# unsupported: radio.onReceivedMessage(<expression>)']);
+                continue;
+            }
+            const lines = [`WHEN event 2000 ${message}:`];
+            t.returnable = {result: null};
+            t.block(bodyOf(fn), 1, lines);
+            t.returnable = null;
+            scripts.push(lines);
+            // the event frames arrive only while the radio listens
+            scripts.push(['WHEN flag clicked:', '  radio listen for events']);
             continue;
         }
 

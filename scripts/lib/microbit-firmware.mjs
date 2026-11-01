@@ -87,6 +87,7 @@ class FileSystem {
  * @param {object} [opts]
  * @param {number} [opts.ms] virtual milliseconds to run for
  * @param {Array<[number, string]>} [opts.radio] packets: [arrival ms, text]
+ * @param {Array<[number, string, string?]>} [opts.radio] ... a third element 'event' frames the packet as the radio event protocol (01 00 02)
  * @param {Array<[number, string, number]>} [opts.presses] button presses: [ms, 'a' | 'b' | 'logo', hold ms]
  * @param {object} [opts.buttons] {a: true, b: true} held down throughout
  * @returns {Promise<{out: string, traceback: ?string, panic: ?number, pixels: number[][], sent: string[], ended: string}>}
@@ -171,7 +172,8 @@ export async function runOnMicrobitFirmware (py, {ms = 5000, radio = [], buttons
                 // A due packet, framed as the simulator's radio frames it; the
                 // 01 00 01 header is MicroPython's for a radio.send(str).
                 while (rxQueue && inbox.length && inbox[0][0] <= clock) {
-                    const payload = Buffer.concat([Buffer.from([1, 0, 1]), Buffer.from(inbox.shift()[1], 'latin1')]);
+                    const entry = inbox.shift();
+                    const payload = Buffer.concat([Buffer.from(entry[2] === 'event' ? [1, 0, 2] : [1, 0, 1]), Buffer.from(entry[1], 'latin1')]);
                     const packet = new Uint8Array(payload.length + 6);
                     packet[0] = payload.length;
                     packet.set(payload, 1);

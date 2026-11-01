@@ -1010,6 +1010,8 @@ export class Emitter {
         case 'microbitplus_calibratecompass': push('input.calibrateCompass()'); return;
         case 'microbitplus_accelrange': push(`input.setAccelerometerRange(AcceleratorRange.${{1: 'OneG', 2: 'TwoG', 4: 'FourG', 8: 'EightG'}[Number(v('G'))] || 'OneG'})`); return;
         case 'microbitplus_radiosendraw': push(`radio.sendRawPacket(${v('BUF')})`); return;
+        case 'microbitplus_radioraise': push(`radio.raiseEvent(${v('SOURCE')}, ${v('VALUE')})`); return;
+        case 'microbitplus_radiolisten': return;
         case 'microbitplus_serialwritetext': push(`serial.writeString(${v('TEXT', '""')})`); return;
         case 'microbitplus_serialwritenum': push(`serial.writeNumber(${v('NUM')})`); return;
         case 'microbitplus_serialwritebuf': push(`serial.writeBuffer(${v('BUF')})`); return;

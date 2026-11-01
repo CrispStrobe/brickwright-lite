@@ -156,3 +156,33 @@ test('pins.unpackBuffer with a literal format gives an array of numbers: length,
     const back = await runMakeCodeSim(await compileMakeCode(await exported(imported)), {ms: 800, at: []});
     assert.deepEqual(back.serial.map(l => l.text.trim()).filter(Boolean), want);
 });
+
+// pxsim's radio.raiseEvent posts {type: 'eventbus', id, eventid, group} between simulators: there is no byte
+// layout to copy. sendMessage(m) is raiseEvent(2000, m + 1) (radio-broadcast.ts). lite sends CODAL's event frame
+// (header 01 00 02, uint16 source, uint16 value, uint32 time; as recalled from CODAL, unmeasured here).
+test('radio.raiseEvent and sendMessage: pxsim\'s events, lite\'s event frames, and a lite receiver that raises what it hears', {skip}, async () => {
+    const sender = 'radio.setGroup(4)\nradio.raiseEvent(4321, 77)\nradio.sendMessage(12)\n';
+    const mc = await runMakeCodeSim(await compileMakeCode(sender, {dependencies: {core: '*', radio: '*', 'radio-broadcast': '*', microphone: '*'}}), {ms: 500, at: []});
+    assert.deepEqual(mc.events.map(e => [e.id, e.eventid, e.group]), [[4321, 77, 4], [2000, 13, 4]]);
+    const tx = lite(sender);
+    const sent = await runOnMicrobitFirmware(tx.py, {ms: 500});
+    assert.equal(sent.traceback, null, sent.traceback);
+    const frames = sent.sent.map(f => Buffer.from(f, 'latin1'));
+    assert.deepEqual(frames.map(f => [f.length, f[0], f[1], f[2], f.readUInt16LE(3), f.readUInt16LE(5)]), [[11, 1, 0, 2, 4321, 77], [11, 1, 0, 2, 2000, 13]]);
+    const rx = lite([
+        'radio.setGroup(4)',
+        'control.onEvent(4321, 77, function () {',
+        '    serial.writeLine("event")',
+        '})',
+        'radio.onReceivedMessage(12, function () {',
+        '    serial.writeLine("message")',
+        '})'
+    ].join('\n'));
+    const got = await runOnMicrobitFirmware(rx.py, {ms: 1000, radio: frames.map((f, i) => [100 + i * 100, f.subarray(3).toString('latin1'), 'event'])});
+    assert.equal(got.traceback, null, got.traceback);
+    assert.deepEqual(lines(got.out), ['event', 'message']);
+    const ex = exportToMakeCode(new SB3Creator().parse(tx.imported.code), {name: 'x'});
+    assert.deepEqual(ex.unsupported, []);
+    assert.ok(ex.ts.includes('radio.raiseEvent(4321, 77)') && ex.ts.includes('_mc1 = (12 + 1)') && ex.ts.includes('radio.raiseEvent(2000, _mc1)'), ex.ts);
+    await compileMakeCode(ex.ts);
+});
