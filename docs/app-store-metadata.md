@@ -205,6 +205,21 @@ macOS-Version melden.
 
 ## What to Test — 0.1.28 en-US
 
+New in this build: MakeCode and the game console.
+
+- Import a MakeCode Arcade or micro:bit project from a share link or file. Run
+  it, edit it in Code and Blocks, and export it back to MakeCode. Arcade games
+  now run much closer to MakeCode itself: dialogs, game over, particles and
+  button timing.
+- On iPad and in Safari, the Game Console screen no longer flickers.
+- The Arcade blocks are now in sections (Sprites, Controller, Game, Tilemap, …)
+  in the category list. Each section shows its main blocks; use "Show more" for
+  the rest. Older projects keep working.
+- The Code tab shows only the buttons that fit the chosen device. All actions
+  sit in one row, and the File menu closes after you pick something.
+- In the costume editor, Convert, zoom and Focus are now in the top bar.
+- The FPGA tab is reorganised into three steps: Design, Build, Simulate.
+
 Explore the expanded Robot Lab with programs, English/German lessons and build
 instructions loaded from Examples.
 
@@ -229,6 +244,23 @@ instructions loaded from Examples.
   Report any editor that stops with an error.
 
 ## What to Test — 0.1.28 de-DE
+
+Neu in diesem Build: MakeCode und die Spielkonsole.
+
+- Importiere ein MakeCode-Arcade- oder micro:bit-Projekt per Freigabelink oder
+  Datei. Führe es aus, bearbeite es in Code und Blöcken und exportiere es zurück
+  zu MakeCode. Arcade-Spiele laufen jetzt viel näher am Original: Dialoge,
+  Spielende, Partikel und Tastenzeiten.
+- Auf dem iPad und in Safari flackert der Bildschirm der Spielkonsole nicht mehr.
+- Die Arcade-Blöcke sind jetzt in Abschnitte gegliedert (Sprites, Steuerung,
+  Spiel, Kacheln, …), jeweils mit eigenem Eintrag in der Kategorienliste. Jeder
+  Abschnitt zeigt seine wichtigsten Blöcke, „Mehr anzeigen“ blendet den Rest
+  ein. Ältere Projekte funktionieren weiter.
+- Der Code-Tab zeigt nur die Schaltflächen, die zum gewählten Gerät passen. Alle
+  Aktionen stehen in einer Zeile, und das Datei-Menü schließt sich nach der
+  Auswahl.
+- Im Kostüm-Editor liegen Umwandeln, Zoom und Fokus jetzt in der oberen Leiste.
+- Der FPGA-Tab ist in drei Schritte gegliedert: Entwerfen, Bauen, Simulieren.
 
 Erkunde das erweiterte Robot Lab mit Programmen, deutschen und englischen
 Lektionen und Bauanleitungen aus der Beispielauswahl.
