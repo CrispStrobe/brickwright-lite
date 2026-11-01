@@ -603,6 +603,12 @@ class MicrobitTranslator extends BaseTranslator {
         case 'pins.analogReadPin': return `analog value of pin ${this.pin(a[0]) || 'P0'}`;
         case 'radio.receivedNumber': return 'read last radio number';
         case 'String.fromCharCode': return `char from code ${this.operand(a[0])}`;
+        case 'game.level': return 'game level';
+        case 'game.currentTime': return 'game time';
+        case 'pins.pulseIn': {
+            const level = a[1] && a[1].type === 'Member' && a[1].name === 'Low' ? 'low' : 'high';
+            return `pulse in pin ${this.pin(a[0]) || 'P0'} ${level} timeout ${a[2] ? this.operand(a[2]) : '2000000'}`;
+        }
         case 'control.createBufferFromUTF8': return `buffer from text ${this.operand(a[0])}`;
         // The USB serial console's reads (a MicroPython uart).
         case 'serial.readBuffer': return `serial read buffer ${this.operand(a[0])}`;
@@ -1090,6 +1096,22 @@ class MicrobitTranslator extends BaseTranslator {
             return;
         }
         // The serial console beyond writeLine: text and numbers without a newline, raw buffers.
+        case 'pins.analogSetPeriod': push(`set analog period of pin ${this.pin(a[0]) || 'P0'} to ${this.operand(a[1])} us`); return;
+        case 'pins.servoSetPulse': push(`servo pulse of pin ${this.pin(a[0]) || 'P0'} ${this.operand(a[1])} us`); return;
+        case 'pins.touchSetMode': {
+            const mode = a[1] && a[1].type === 'Member' && a[1].name === 'Resistive' ? 'resistive' : 'capacitive';
+            push(`touch mode of pin ${a[0] && a[0].type === 'Member' && /^P\d+$/.test(a[0].name) ? a[0].name : 'P0'} ${mode}`);
+            return;
+        }
+        case 'game.levelUp': push('game level up'); return;
+        case 'game.startStopwatch': push('game start stopwatch'); return;
+        // Nothing to do on MicroPython: the runtime has no garbage-collector flags, heap dumps, debug
+        // output or performance counters of MakeCode's to switch, and the pin event mode is implicit.
+        case 'control.gc': case 'control.heapDump': case 'control.heapSnapshot': case 'control.setDebugFlags': case 'control.dmesg':
+        case 'control.dmesgPtr': case 'control.enablePerfCounter': case 'control.dmesgPerfCounters': case 'control.runtimeWarning':
+        case 'serial.writeDmesg': case 'pins.setEvents': case 'pins.setAudioPin': case 'pins.setAudioPinEnabled':
+            push(`# ${name} — MicroPython has nothing to set`);
+            return;
         case 'serial.writeString': push(`serial write text ${this.single(a[0], out, pad)}`); return;
         case 'serial.writeNumber': push(`serial write number ${this.single(a[0], out, pad)}`); return;
         case 'serial.writeBuffer': push(`serial write buffer ${this.single(a[0], out, pad)}`); return;

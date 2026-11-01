@@ -471,6 +471,9 @@ export class Emitter {
         case 'microbitplus_createbuffer': return `control.createBuffer(${v('SIZE')})`;
         case 'microbitplus_bufferlength': return `${v('BUF')}.length`;
         case 'microbitplus_buffernum': return `${v('BUF')}.getNumber(${numberFormat(f('FMT'))}, ${v('OFFSET')})`;
+        case 'microbitplus_pulsein': return `pins.pulseIn(DigitalPin.${String(f('PIN')).toUpperCase()}, PulseValue.${f('LEVEL') === 'low' ? 'Low' : 'High'}, ${v('US')})`;
+        case 'microbitplus_gamelevel': return 'game.level()';
+        case 'microbitplus_gametime': return 'game.currentTime()';
         case 'microbitplus_serialreadbuf': return `serial.readBuffer(${v('SIZE')})`;
         case 'microbitplus_serialreadstr': return 'serial.readString()';
         case 'microbitplus_serialreaduntil': return `serial.readUntil(serial.delimiters(Delimiters.${DELIMITER_MEMBER[f('DELIM')] || 'NewLine'}))`;
@@ -975,6 +978,11 @@ export class Emitter {
         case 'microbitplus_bufferfill':
             push(`${v('BUF')}.fill(${v('VALUE')})`);
             return;
+        case 'microbitplus_analogperiod': push(`pins.analogSetPeriod(AnalogPin.${String(f('PIN')).toUpperCase()}, ${v('US')})`); return;
+        case 'microbitplus_servopulse': push(`pins.servoSetPulse(AnalogPin.${String(f('PIN')).toUpperCase()}, ${v('US')})`); return;
+        case 'microbitplus_touchmode': push(`pins.touchSetMode(TouchTarget.${String(f('PIN')).toUpperCase()}, TouchTargetMode.${f('MODE') === 'resistive' ? 'Resistive' : 'Capacitive'})`); return;
+        case 'microbitplus_gamelevelup': push('game.levelUp()'); return;
+        case 'microbitplus_gamestopwatch': push('game.startStopwatch()'); return;
         case 'microbitplus_serialwritetext': push(`serial.writeString(${v('TEXT', '""')})`); return;
         case 'microbitplus_serialwritenum': push(`serial.writeNumber(${v('NUM')})`); return;
         case 'microbitplus_serialwritebuf': push(`serial.writeBuffer(${v('BUF')})`); return;

@@ -1,10 +1,10 @@
 {
   "bw-circuit-ui": "4b65f15485abbc039958d8e1a8a29ac3459b75f9",
   "bw-board": "c87cfa325a7b599846c1c4088a408eeabb83daaa",
-  "sb3-creator": "2aeff387c25704d276516c66c73291472726cd6b",
+  "sb3-creator": "17d06522ed71aac05364b80b075372acf3947d92",
   "stc-compiler-flasher": "30f43384a9f226de3c3cb753e119dd93ca2e81ff",
   "arrays-values": "035ab22a4d946fe5b8e367013caf898cd763e5f4",
-  "microbitplus": "d497a63513b5097072ae2678212e40d5d0317782",
+  "microbitplus": "80092dbf4fb29b86dd0a312ae138ff24495ae8d7",
   "circuitplayground": "0c4e3b4a0cee57d65474082938c352818426eebb",
   "wedo2unified": "a6950fac246c28c6299b31a708f6071fd7b8e388",
   "spikeprime": "ff74f1309b8807713508884048292182a369f8f5",
