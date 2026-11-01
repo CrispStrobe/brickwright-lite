@@ -171,7 +171,8 @@ try {
     const spriteSelect = page.locator('[data-testid="bw-tilemap-place-sprite"]');
     const spriteNames = await spriteSelect.locator('option').allTextContents();
     check('the painter offers the game\'s sprite variables', spriteNames.length > 0, spriteNames.join(', '));
-    const chosen = spriteNames[0];
+    // A sprite the game already holds when the level script runs (see the run check below).
+    const chosen = spriteNames.includes('hero') ? 'hero' : spriteNames[0];
     await spriteSelect.selectOption({label: chosen});
     check('the free cell shows no marker before placing', !isMarker(await centrePixel(column, row)));
     let p = await cellPoint(column, row);
@@ -192,26 +193,37 @@ try {
     check('placements already in the script are kept', before.every(old => saved.some(entry =>
         entry.sprite === old.sprite && entry.column === old.column && entry.row === old.row)));
 
-    // The running game starts the sprite on the tile: its x is the tile centre
-    // (gravity may move it down at once, so only the column is fixed). The
-    // sprite is identified specifically: it is the one the variable the user
-    // chose holds, never merely whichever sprite happens to have a matching x
-    // (a placement on a null sprite must fail, not pass on another sprite).
+    // The running game executes the saved block. The platformer keeps a sprite in
+    // each variable only from the moment it creates one: `hero` exists before the
+    // level script runs, while `bumper`, `coin` and `flier` hold nothing until the
+    // level's own enemy and goal loops create them, and a placement on a missing
+    // sprite is a no-op in PXT (and here). So the check observes the block itself:
+    // the first `place on tile` the game executes after the Save is the saved one,
+    // and it must receive the live sprite its variable named at that moment and
+    // leave that sprite on the tile. (Reading the variable after the fact, or any
+    // sprite with a matching x, proves nothing: the variable has moved on by then.)
+    await page.evaluate(() => {
+        const runtime = window.__brickwrightStore.getState().scratchGui.vm.runtime;
+        const original = runtime._primitives.arcade_placeOnTile;
+        window.__bwPlaceCalls = [];
+        runtime._primitives.arcade_placeOnTile = function (args, ...rest) {
+            const state = () => Object.values(runtime.bwArcadeDeviceState?.sprites || {});
+            const id = typeof args.ID === 'string' ? args.ID : null;
+            const record = {id, liveBefore: Boolean(id && state().find(entry => entry.id === id)), x: null};
+            window.__bwPlaceCalls.push(record);
+            const result = original.call(this, args, ...rest);
+            const after = () => { record.x = state().find(entry => entry.id === id)?.x ?? null; record.done = true; };
+            if (result && typeof result.then === 'function') result.then(after, () => { record.done = true; }); else after();
+            return result;
+        };
+    });
     await page.evaluate(() => window.__brickwrightStore.getState().scratchGui.vm.greenFlag());
     const centreX = (column + 0.5) * data.tileSize;
-    const readPlaced = name => page.evaluate(wanted => {
-        const vm = window.__brickwrightStore.getState().scratchGui.vm;
-        const variable = vm.runtime.targets.flatMap(target => Object.values(target.variables))
-            .find(entry => entry.name === wanted || entry.name.replace(/^Game_/, '') === wanted);
-        const id = variable ? variable.value : undefined;
-        const sprites = Object.values(vm.runtime.bwArcadeDeviceState?.sprites || {});
-        const sprite = typeof id === 'string' ? sprites.find(entry => entry.id === id) : null;
-        return {variable: Boolean(variable), id: typeof id === 'string' ? id : String(id), found: Boolean(sprite && sprite.id), x: sprite?.x ?? null};
-    }, name);
-    const placed = await waitFor(() => readPlaced(chosen), value => value.found && Math.abs(value.x - centreX) <= 0.5, 30000, 100);
-    check('the sprite variable the placement names holds a live sprite', placed.variable && placed.found, JSON.stringify(placed));
-    check('the running game starts that sprite on the placed tile', placed.found && Math.abs(placed.x - centreX) <= 0.5,
-        `centre x ${centreX}; ${chosen} x ${placed.x}`);
+    const firstCall = await waitFor(() => page.evaluate(() => window.__bwPlaceCalls[0] || null), value => value && value.done, 30000, 100);
+    console.log('     placements executed so far (first six):', JSON.stringify(await page.evaluate(() => window.__bwPlaceCalls.slice(0, 6))));
+    check('the game executes the saved placement on a live sprite', Boolean(firstCall) && firstCall.liveBefore, JSON.stringify(firstCall));
+    check('that sprite is left on the placed tile', Boolean(firstCall) && firstCall.x !== null && Math.abs(firstCall.x - centreX) <= 0.5,
+        `centre x ${centreX}; ${chosen} x ${firstCall && firstCall.x}`);
     await page.evaluate(() => window.__brickwrightStore.getState().scratchGui.vm.stopAll());
     const dialog = page.locator('[role="dialog"][aria-label^="Arcade"]');
     for (let i = 0; i < 10 && await dialog.count(); i++) {
