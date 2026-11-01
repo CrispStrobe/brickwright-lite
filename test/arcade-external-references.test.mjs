@@ -96,15 +96,18 @@ test('an unknown asset tag is still refused, never kept as an asset', () => {
 });
 
 test('external stand-ins run inert in the Arcade VM: calls report 0, values read 0, images are transparent, callbacks never fire', async () => {
-    const source = `${SOURCE}let hero = sprites.create(assets.image\`hero\`, SpriteKind.Player)
-let bg = 1
+    // The faulting creation comes last: it ends the fiber, as in PXT, so everything before it must already have run.
+    const source = `${SOURCE}let bg = 1
 scene.setBackgroundImage(acme.picture)
+let hero = sprites.create(assets.image\`hero\`, SpriteKind.Player)
 `;
     const imported = arcadeToPseudocode(source);
     assert.deepEqual(imported.unsupported, ['assets.image`hero` — sprite artwork is unavailable in this project']);
     try {
         const run = await runProgram(imported.code, {frames: 6, uploads: imported.costumes, storage: true});
-        assert.deepEqual(run.errors, []);
+        // The absent assets.image literal is undefined, as in PXT, so the sprite made from it faults there; every other
+        // external stand-in below stays inert.
+        assert.deepEqual([...new Set(run.errors)], ['TypeError: Expected type Image but received type undefined. Did you forget to assign a variable?']);
         for (const opcode of ['externalValue', 'externalImage', 'externalCall', 'externalCommand', 'registerExternalHandler', 'whenRegisteredExternal']) {
             assert.equal(typeof run.vm.runtime._primitives[`arcade_${opcode}`], 'function', `the VM implements arcade_${opcode}`);
         }

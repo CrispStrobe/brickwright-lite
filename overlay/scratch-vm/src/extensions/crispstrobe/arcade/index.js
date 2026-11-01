@@ -3365,7 +3365,7 @@ module.exports = makeExt(`// Name: Arcade
           thread = runtime._pushThread(next.script.blockId, next.target);
           thread.bwArcadeEvent = {...event, TOKEN: next.token};thread.bwArcadeCaptures = next.captures;
           const activeThread = sequencer.activeThread;
-          try { if(creationContext?.stepNested)creationContext.stepNested(thread);else {sequencer.activeThread = thread;sequencer.stepThread(thread);} }
+          try { if(creationContext?.stepNested)creationContext.stepNested(thread);else {sequencer.activeThread = thread;dependencies.primitiveOwner.stepChild(runtime,thread,()=>sequencer.stepThread(thread));} }
           finally { util.thread = caller;util.sequencer = sequencer;sequencer.activeThread = activeThread; }
           const failure=creationContext?.failure?.(thread);if(failure)throw failure;
           if (!runtime.threads.includes(caller)) { sequencer.retireThread(caller);return ''; }
@@ -3385,6 +3385,7 @@ module.exports = makeExt(`// Name: Arcade
         Y: ((120-height) >> 1) + height/2}), util);
     }
     createImageSprite(args, util) {
+      if(this._missingOperand(util,args,'IMAGE'))return this._primitiveFault('createImageSprite',args,util);
       const image = this._image(args.IMAGE);
       if(!image){this._runtime?.emit?.('BLOCKS_ERROR','Sprite image cannot be undefined or null');return ''; }
       // Image dimensions are constructor data: zero is a genuine empty image.
@@ -4161,10 +4162,12 @@ module.exports = makeExt(`// Name: Arcade
       return !!(image && source && imageEngine.blit(image, source, 'overlapsWith', args.X, args.Y));
     }
     spawnImageProjectile(args, util) {
+      if(this._missingOperand(util,args,'IMAGE'))return this._primitiveFault('spawnImageProjectile',args,util);
       const image = this._image(args.IMAGE);
       return image ? this.spawnProjectile({...args, WIDTH: image.width, HEIGHT: image.height}, util) : '';
     }
     spawnImageSprite(args, util) {
+      if(this._missingOperand(util,args,'IMAGE'))return this._primitiveFault('spawnImageSprite',args,util);
       const image = this._image(args.IMAGE);
       return image ? this.spawnSprite({...args, WIDTH: image.width, HEIGHT: image.height}, util) : '';
     }
@@ -4312,6 +4315,8 @@ module.exports = makeExt(`// Name: Arcade
     runImageAnimation(args) {
       const sprite = this._spriteValues.get(String(args.ID));
       const frames = Scratch.BWValues.arrayValue(this._runtime, args.FRAMES);
+      // PXT: an undefined frame list (an absent animation asset) starts nothing and is not an error.
+      if (sprite && !frames && Scratch.BWValues.decode(args.FRAMES) === undefined) return;
       if (!sprite || !frames) {
         this._runtime?.emit?.('BLOCKS_ERROR', 'Arcade image animation requires a sprite and an image array reference.');
         return;
@@ -4927,8 +4932,11 @@ module.exports = makeExt(`// Name: Arcade
       this._changed();
     }
     screenImage() {return this._imageHandle(this._screenRaw());}
-    externalValue() {return 0;}
-    externalImage() {return this._imageHandle({width: 1, height: 1, pixels: new Uint8Array(1)});}
+    // An asset literal the project does not carry compiles in PXT and evaluates to undefined (an animation made from it
+    // is a no-op). Any other absent name stays the inert stand-in.
+    _absentAsset(args) {return /^assets\./.test(String(args?.NAME ?? ''));}
+    externalValue(args) {return this._absentAsset(args) ? Scratch.BWValues.encode(undefined) : 0;}
+    externalImage(args) {return this._absentAsset(args) ? Scratch.BWValues.encode(undefined) : this._imageHandle({width: 1, height: 1, pixels: new Uint8Array(1)});}
     externalImageCall() {return this.externalImage();}
     externalCall() {return 0;}
     externalCommand() {}

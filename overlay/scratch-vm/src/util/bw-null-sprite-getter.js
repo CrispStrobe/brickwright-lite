@@ -185,7 +185,10 @@ const imageKinds = Object.freeze([
     ['drawImage', ['IMAGE'], ['fillRect', 'drawLine']],
     ['drawImageCircle', ['IMAGE'], ['drawCircle', 'fillCircle']],
     ['setImagePixel', ['IMAGE'], null],
-    ['mutateImage', ['IMAGE'], ['fill', 'replace', 'flipX', 'flipY']]
+    ['mutateImage', ['IMAGE'], ['fill', 'replace', 'flipX', 'flipY']],
+    ['createImageSprite', ['IMAGE'], null],
+    ['spawnImageProjectile', ['IMAGE'], null],
+    ['spawnImageSprite', ['IMAGE'], null]
 ].map(([method, names, operations]) => Object.freeze({method, kind: makeKind({method, label: 'Missing Image operation', read: missingArguments(names, 'Image', operations)})})));
 // Every kind in install order: the first is the original null Sprite getter.
 const kinds = Object.freeze([Object.freeze({method: 'spriteProperty', kind: spriteGetter}),

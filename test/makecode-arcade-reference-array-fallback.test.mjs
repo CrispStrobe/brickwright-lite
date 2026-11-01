@@ -34,7 +34,8 @@ test('Number, String and nested Array values retain ownership and forward defaul
     assert.equal(new Set([...fallback.code.matchAll(/^GLOBAL (.+)$/gm)].map(m=>m[1])).size,[...fallback.code.matchAll(/^GLOBAL (.+)$/gm)].length);
     const run=await runProgram(fallback.code,{frames:40,storage:true});
     try{
-        assert.deepEqual(run.errors,[]);
+        // The trailing creation from the absent artwork faults as in PXT, after everything the program does before it.
+        assert.deepEqual([...new Set(run.errors)],['TypeError: Expected type Image but received type undefined. Did you forget to assign a variable?']);
         const state=new Map(run.vm.runtime.targets.flatMap(t=>Object.values(t.variables)).map(v=>[v.name,BW.decode(v.value)]));
         for(const name of ['beforeTextMissing','beforeArrayMissing','same','different','sameLabels','sameNested'])assert.equal(state.get(name),true,name);
         assert.equal(state.get('beforeText'),undefined);assert.equal(state.get('beforeArray'),undefined);
