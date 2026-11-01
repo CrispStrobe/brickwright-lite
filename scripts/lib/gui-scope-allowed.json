@@ -234,6 +234,7 @@
       "test/arcade-native-scalar-add-export.test.mjs",
       "test/arcade-null-sprite-getter-native.test.mjs",
       "test/arcade-owned-text-game-original.test.mjs",
+      "test/arcade-place-on-missing-sprite.test.mjs",
       "test/arcade-project-palette-authoring.test.mjs",
       "test/arcade-scene-clock-number-native.test.mjs",
       "test/arcade-source-bitwise-export.test.mjs",
