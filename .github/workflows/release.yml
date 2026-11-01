@@ -74,7 +74,9 @@ jobs:
   # Multi-file SPIKE Renode for macOS (separate signable files, shipped tlib,
   # .NET notices, no Packet.Net/pip), built from the exact Runtime commit.
   spike-renode-macos:
-    uses: CrispStrobe/renode-spike-prime/.github/workflows/macos-spike-renode.yml@961a01f5c0fa9dd7f004df03dfbb37e1a5c55a67
+    # Workflow file pinned separately from the Runtime source (runtime_ref): 86a58f1b
+    # only moves its osx-arm64 leg from the retired macos-14 image to macos-15.
+    uses: CrispStrobe/renode-spike-prime/.github/workflows/macos-spike-renode.yml@86a58f1bb4640bfd0bd987395a684a6a2c69a04c
     permissions:
       contents: read
     with:
