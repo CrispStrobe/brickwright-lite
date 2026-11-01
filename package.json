@@ -50,6 +50,8 @@
         "sync:flasher:check": "node scripts/sync-flasher.mjs --check",
         "sync:labwiredwasm": "node scripts/sync-labwired-wasm.mjs",
         "sync:labwiredwasm:check": "node scripts/sync-labwired-wasm.mjs --check",
+        "sync:esp32s3roms": "node scripts/sync-esp32s3-roms.mjs",
+        "sync:esp32s3roms:check": "node scripts/sync-esp32s3-roms.mjs --check",
         "sync:gallery-pins": "node scripts/sync-gallery-pins.mjs",
         "sync:gallery-pins:check": "node scripts/sync-gallery-pins.mjs --check",
         "package:broker-proof-pins": "node scripts/package-native-broker-proof-pins.mjs",
@@ -144,15 +146,16 @@
         "check:setup": "node scripts/check-test-setup.mjs",
         "test:source": "node scripts/test-source.mjs",
         "audit:clean": "node scripts/audit-clean-checkout.mjs --integrate",
-        "test:fast:shard": "node scripts/check-node.mjs && files=$(node scripts/list-tests.mjs fast --shard \"$BW_TEST_SHARD\") && BW_GUI_SCOPE_LOG=test-results/fast.gui-scope.tsv node --test --import ./scripts/lib/register-gui-scope.mjs --test-reporter=tap --test-reporter-destination=stdout --test-reporter=./scripts/lib/test-census-reporter.mjs --test-reporter-destination=test-results/fast.census.json $files"
+        "test:fast:shard": "node scripts/check-node.mjs && files=$(node scripts/list-tests.mjs fast --shard \"$BW_TEST_SHARD\") && BW_GUI_SCOPE_LOG=test-results/fast.gui-scope.tsv node --test --import ./scripts/lib/register-gui-scope.mjs --test-reporter=tap --test-reporter-destination=stdout --test-reporter=./scripts/lib/test-census-reporter.mjs --test-reporter-destination=test-results/fast.census.json $files",
+        "verify:esp32s3-firmware": "node scripts/verify-esp32s3-firmware-browser.mjs"
     },
     "engines": {
         "node": ">=22"
     },
     "devDependencies": {
         "acorn": "8.14.0",
-        "bw-board": "github:CrispStrobe/bw-board#c87cfa325a7b599846c1c4088a408eeabb83daaa",
-        "bw-circuit-ui": "github:CrispStrobe/bw-circuit-ui#4b65f15485abbc039958d8e1a8a29ac3459b75f9",
+        "bw-board": "github:CrispStrobe/bw-board#cf42ddbd5a98acac64973e972024376dd72cb80b",
+        "bw-circuit-ui": "github:CrispStrobe/bw-circuit-ui#380dc8b7b51e10726035b77f775d753152f9a885",
         "digitaljs": "^0.14.2",
         "jszip": "3.10.1",
         "playwright": "^1.62.1",

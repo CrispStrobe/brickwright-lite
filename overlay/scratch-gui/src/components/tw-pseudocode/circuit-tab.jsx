@@ -126,11 +126,6 @@ const HostMount = ({host, style}) => (
 const stcDrives = stc => !!(stc && ((stc.pins && stc.pins.length) ||
     (stc.parts && stc.parts.length)));
 
-const SOLO_L10N = {
-    en: {noCode: 'The debugger needs a program and a chip to drive. Declare pins in the Code tab, e.g. PIN led1 IS P1.0 OUTPUT ACTIVE LOW — or switch back to the circuit view in the header above.'},
-    de: {noCode: 'Der Debugger braucht ein Programm und einen Chip. Deklariere Pins im Code-Tab, z. B. PIN led1 IS P1.0 OUTPUT ACTIVE LOW — oder wechsle oben zurück zur Schaltungsansicht.'}
-};
-
 // Progress-only debugger refresh. Pauses, errors and phase transitions arrive
 // through separate content changes immediately; live counters/partial serial
 // text are human-facing and do not justify rebuilding this React subtree at
@@ -699,6 +694,7 @@ class CircuitTab extends React.Component {
     }
 
     componentWillUnmount () {
+        this.releaseEsp32S040Input();
         this._menuMounted = false;
         this._designerMenuActions = [];
         if (this.unregisterMenu) this.unregisterMenu();
@@ -1801,6 +1797,9 @@ class CircuitTab extends React.Component {
      * freezes coherently and no pause() is needed (DEBUG-CONTROL-MODEL §3.1).
      */
     handleRunnerChange (runner, ui) {
+        // An accepted touch-up emits inside release(). It must not recreate
+        // the owner being released, including during this component's unmount.
+        if (this._releasingEsp32S040Input) return;
         const board = runner.board();
         // The runner builds its own board for a run; it sits on the same bench.
         applyBenchTemperature(board, this.state.benchC);
@@ -1809,6 +1808,15 @@ class CircuitTab extends React.Component {
         // null, and passing the last debugState through kept the designer's
         // status panel glowing green RUNNING forever. No session — no panel.
         const phase = ui && ui.phase;
+        const previousS040 = this._esp32S040InputOwner;
+        const ownerId = runner.esp32S040PartId || null;
+        if (previousS040 && (previousS040.runner !== runner || previousS040.partId !== ownerId ||
+            phase === 'idle' || phase === 'error')) this.releaseEsp32S040Input();
+        if (ownerId && phase !== 'idle' && phase !== 'error' && !this._esp32S040InputOwner) {
+            this._esp32S040InputOwner = this.createEsp32S040InputOwner(runner, ownerId);
+        }
+        const s040 = this._esp32S040InputOwner || null;
+        const s040Changed = s040 !== (previousS040 || null);
         // A runner update already carries a complete snapshot. Live progress
         // arrives periodically, but an unchanged phase is not another phase
         // transition: dispatching it again wakes every guided-lesson observer
@@ -1902,7 +1910,7 @@ class CircuitTab extends React.Component {
         // do not wake a hidden consumer for progress it cannot display.
         if (shouldRefreshDesignerDebugState({
             dock: this.state.debugDock,
-            boardChanged: board !== this.state.board,
+            boardChanged: board !== this.state.board || s040Changed,
             haltedChanged: halted !== prev.halted,
             haltReasonChanged: haltReason !== prev.haltReason,
             tasksChanged: tasksStamp !== (prev._tasksStamp ?? null),
@@ -1916,6 +1924,9 @@ class CircuitTab extends React.Component {
             this.setState({
                 board,
                 debugState: {
+                    esp32S040PartId: s040?.partId || null,
+                    onEsp32S040Input: s040?.input || null,
+                    video: s040?.video,
                     halted,
                     skewNs: why ? why.skewNs : 0n,
                     haltReason,
@@ -1961,9 +1972,46 @@ class CircuitTab extends React.Component {
      *  reboot, unmount): its board is no longer anything's, so the designer
      *  takes its own back (task B8). */
     handleRunnerGone () {
+        this.releaseEsp32S040Input();
         if (this.state.board === null && this.state.debugState === null) return;
         this._markReactUpdate('host:runner-state');
         this.setState({board: null, debugState: null});
+    }
+
+    createEsp32S040InputOwner (runner, partId) {
+        let active = true;
+        let pressed = false;
+        return {
+            runner, partId,
+            video: () => active && typeof runner.video === 'function' ? runner.video() : null,
+            input: changes => {
+                if (!active) return {accepted: false, reason: 'This S040 input owner has been released'};
+                const result = runner.setInputs(changes);
+                if (result?.accepted) {
+                    for (const change of changes) {
+                        if (change.component === 'touch' && change.channel === 'pressed') pressed = change.value === 1;
+                    }
+                }
+                return result;
+            },
+            release: () => {
+                if (!active) return;
+                active = false;
+                if (pressed) {
+                    pressed = false;
+                    runner.setInputs([{component: 'touch', channel: 'pressed', value: 0}]);
+                }
+            }
+        };
+    }
+
+    releaseEsp32S040Input () {
+        const owner = this._esp32S040InputOwner;
+        this._esp32S040InputOwner = null;
+        if (!owner) return;
+        this._releasingEsp32S040Input = true;
+        try { owner.release(); }
+        finally { this._releasingEsp32S040Input = false; }
     }
 
     /** Resolve a Scratch block id to something a person can read: the
@@ -2086,12 +2134,7 @@ class CircuitTab extends React.Component {
                 // read as misplaced (owner report, 2026-08-17 — and 7 hours
                 // before that).
                 <div style={{...box, overflow: 'auto', paddingTop: 48}} data-debugger-solo-pane>
-                    {stcDrives(stc) || this.state.machineBooted ? <HostMount host={this._ensureDebugHost()} /> : (
-                        <div style={{color: '#64748b', fontSize: 12.5, padding: 8, marginTop: 6}} data-no-code-indicator>
-                            {(SOLO_L10N[String(this.props.locale || 'en').slice(0, 2)]
-                                || SOLO_L10N.en).noCode}
-                        </div>
-                    )}
+                    <HostMount host={this._ensureDebugHost()} />
                 </div>
             );
             this._portalRendered = true;
@@ -2106,7 +2149,7 @@ class CircuitTab extends React.Component {
             // unmounting DebugPanel destroys its runner and replays the media.
             return [
                 <div key="designer-loading" style={{...box, color: '#64748b'}}>{'Loading the circuit designer…'}</div>,
-                (this.state.machineBooted || stcDrives(stc)) &&
+                (this.state.machineBooted || stcDrives(stc) || !this.state.rightPaneHidden) &&
                     ReactDOM.createPortal(this.renderDebugPanel(), this._ensureDebugHost(), 'debug-panel')
             ];
         }
@@ -2144,6 +2187,8 @@ class CircuitTab extends React.Component {
                     {profileReactSubtree(React, 'CircuitDesigner', (<Designer
                         cpxState={this.state.cpxState}
                         onCpxInput={this.state.handleCpxInput}
+                        esp32S040PartId={this.state.debugState?.esp32S040PartId || null}
+                        onEsp32S040Input={this.state.debugState?.onEsp32S040Input || null}
                     performanceProbe={this._performanceProbe}
                     stc={stc}
                     examples={this.state.examples || undefined}
@@ -2246,14 +2291,7 @@ class CircuitTab extends React.Component {
                     <div style={{height: '100%', width: '100%', boxSizing: 'border-box',
                         overflow: 'auto', padding: 8, paddingTop: 48,
                         display: 'flex', flexDirection: 'column'}} data-debugger-solo-pane>
-                        {stcDrives(stc) || this.state.machineBooted
-                            ? <HostMount host={this._ensureDebugHost()} />
-                            : (
-                                <div style={{color: '#64748b', fontSize: 12.5, padding: 8, marginTop: 6}} data-no-code-indicator>
-                                    {(SOLO_L10N[String(this.props.locale || 'en').slice(0, 2)]
-                                        || SOLO_L10N.en).noCode}
-                                </div>
-                            )}
+                        <HostMount host={this._ensureDebugHost()} />
                     </div>, host);
             }
         }

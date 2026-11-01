@@ -371,6 +371,9 @@ jobs:
       # and the gate covers that degraded path too.
       - name: Fetch the heavy simulation engine (labwired-wasm)
         run: node scripts/sync-labwired-wasm.mjs || echo "labwired-wasm unavailable — the heavy tier will not be offered"
+      - name: Fetch pinned ESP32-S3 ROM assets
+        id: esp32s3_rom_assets
+        run: node scripts/sync-esp32s3-roms.mjs || echo "ESP32-S3 ROM assets unavailable — merged-flash boot will report the missing assets"
       - name: Install
         run: |
           set -euo pipefail
@@ -951,6 +954,9 @@ jobs:
       # and the gate covers that degraded path too.
       - name: Fetch the heavy simulation engine (labwired-wasm)
         run: node scripts/sync-labwired-wasm.mjs || echo "labwired-wasm unavailable — the heavy tier will not be offered"
+      - name: Fetch pinned ESP32-S3 ROM assets
+        id: esp32s3_rom_assets
+        run: node scripts/sync-esp32s3-roms.mjs || echo "ESP32-S3 ROM assets unavailable — merged-flash boot will report the missing assets"
       - name: Install
         run: |
           set -euo pipefail
@@ -1683,6 +1689,9 @@ jobs:
       - name: Fetch the heavy simulation engine (labwired-wasm)
         id: bw_browser_audit_0007
         run: node scripts/sync-labwired-wasm.mjs || echo "labwired-wasm unavailable — the heavy tier will not be offered"
+      - name: Fetch pinned ESP32-S3 ROM assets
+        id: esp32s3_rom_assets
+        run: node scripts/sync-esp32s3-roms.mjs || echo "ESP32-S3 ROM assets unavailable — merged-flash boot will report the missing assets"
       - name: Install
         id: bw_browser_audit_0008
         run: cd packages/scratch-gui && npm install --ignore-scripts --legacy-peer-deps --no-audit --no-fund
@@ -3338,6 +3347,38 @@ jobs:
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}
         run: BW_STEP_BUDGET_MIN=5 node scripts/verify-labwired-engine.mjs
 
+      - name: Browser gate — ESP32-S3 firmware boots through the empty-project picker
+        id: esp32s3_firmware_browser
+        timeout-minutes: 8
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}
+        run: |
+          node node_modules/bw-board/scripts/fetch-esp32s3-firmware-fixtures.mjs --out artifacts/esp32s3/m1-inputs
+          PROOF_URL=http://localhost:8617/ node scripts/verify-esp32s3-firmware-browser.mjs
+      - name: Retain ESP32-S3 firmware browser evidence
+        id: esp32s3_firmware_evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always() && matrix.shard == 'heavy'
+        with:
+          name: esp32s3-firmware-browser
+          path: artifacts/esp32s3-firmware-browser/**
+          if-no-files-found: error
+
+      - name: Browser gate — S040 firmware drives its placed display and touch face
+        id: esp32s040_firmware_browser
+        timeout-minutes: 8
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}
+        run: |
+          node node_modules/bw-board/scripts/fetch-esp32s040-fixtures.mjs --out artifacts/esp32s040/inputs
+          PROOF_URL=http://localhost:8617/ node scripts/verify-esp32s040-firmware-browser.mjs
+      - name: Retain S040 placed-face browser evidence
+        id: esp32s040_firmware_evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always() && matrix.shard == 'heavy'
+        with:
+          name: esp32s040-firmware-browser
+          path: artifacts/esp32s040-firmware-browser/**
+          if-no-files-found: error
+
       # The OTHER branch of the same honesty rule, and the one production
       # actually ships when the release fetch above fails: the engine is absent,
       # so the picker must not offer it and the failed probe must stay a caught
@@ -3797,6 +3838,7 @@ jobs:
             bw_browser_audit_0005	${{ steps['bw_browser_audit_0005'].outcome }}	${{ steps['bw_browser_audit_0005'].conclusion }}
             bw_browser_audit_0006	${{ steps['bw_browser_audit_0006'].outcome }}	${{ steps['bw_browser_audit_0006'].conclusion }}
             bw_browser_audit_0007	${{ steps['bw_browser_audit_0007'].outcome }}	${{ steps['bw_browser_audit_0007'].conclusion }}
+            esp32s3_rom_assets	${{ steps['esp32s3_rom_assets'].outcome }}	${{ steps['esp32s3_rom_assets'].conclusion }}
             bw_browser_audit_0008	${{ steps['bw_browser_audit_0008'].outcome }}	${{ steps['bw_browser_audit_0008'].conclusion }}
             bw_browser_audit_0009	${{ steps['bw_browser_audit_0009'].outcome }}	${{ steps['bw_browser_audit_0009'].conclusion }}
             bw_browser_audit_0010	${{ steps['bw_browser_audit_0010'].outcome }}	${{ steps['bw_browser_audit_0010'].conclusion }}
@@ -3889,8 +3931,8 @@ jobs:
             bw_browser_audit_0076	${{ steps['bw_browser_audit_0076'].outcome }}	${{ steps['bw_browser_audit_0076'].conclusion }}
             bw_browser_audit_0077	${{ steps['bw_browser_audit_0077'].outcome }}	${{ steps['bw_browser_audit_0077'].conclusion }}
             bw_browser_audit_0078	${{ steps['bw_browser_audit_0078'].outcome }}	${{ steps['bw_browser_audit_0078'].conclusion }}
-            bw_browser_audit_0079	${{ steps['bw_browser_audit_0079'].outcome }}	${{ steps['bw_browser_audit_0079'].conclusion }}
           BW_BROWSER_RUNNER_TERMINALS_V1_2: |
+            bw_browser_audit_0079	${{ steps['bw_browser_audit_0079'].outcome }}	${{ steps['bw_browser_audit_0079'].conclusion }}
             bw_browser_audit_0080	${{ steps['bw_browser_audit_0080'].outcome }}	${{ steps['bw_browser_audit_0080'].conclusion }}
             measurement_success	${{ steps['measurement_success'].outcome }}	${{ steps['measurement_success'].conclusion }}
             bw_browser_audit_0081	${{ steps['bw_browser_audit_0081'].outcome }}	${{ steps['bw_browser_audit_0081'].conclusion }}
@@ -3990,8 +4032,8 @@ jobs:
             bw_browser_audit_0175	${{ steps['bw_browser_audit_0175'].outcome }}	${{ steps['bw_browser_audit_0175'].conclusion }}
             bw_browser_audit_0176	${{ steps['bw_browser_audit_0176'].outcome }}	${{ steps['bw_browser_audit_0176'].conclusion }}
             bw_browser_audit_0177	${{ steps['bw_browser_audit_0177'].outcome }}	${{ steps['bw_browser_audit_0177'].conclusion }}
-            bw_browser_audit_0178	${{ steps['bw_browser_audit_0178'].outcome }}	${{ steps['bw_browser_audit_0178'].conclusion }}
           BW_BROWSER_RUNNER_TERMINALS_V1_3: |
+            bw_browser_audit_0178	${{ steps['bw_browser_audit_0178'].outcome }}	${{ steps['bw_browser_audit_0178'].conclusion }}
             bw_browser_audit_0179	${{ steps['bw_browser_audit_0179'].outcome }}	${{ steps['bw_browser_audit_0179'].conclusion }}
             bw_browser_audit_0180	${{ steps['bw_browser_audit_0180'].outcome }}	${{ steps['bw_browser_audit_0180'].conclusion }}
             bw_browser_audit_0181	${{ steps['bw_browser_audit_0181'].outcome }}	${{ steps['bw_browser_audit_0181'].conclusion }}
@@ -4007,6 +4049,10 @@ jobs:
             bw_browser_audit_0191	${{ steps['bw_browser_audit_0191'].outcome }}	${{ steps['bw_browser_audit_0191'].conclusion }}
             bw_browser_audit_0192	${{ steps['bw_browser_audit_0192'].outcome }}	${{ steps['bw_browser_audit_0192'].conclusion }}
             bw_browser_audit_0193	${{ steps['bw_browser_audit_0193'].outcome }}	${{ steps['bw_browser_audit_0193'].conclusion }}
+            esp32s3_firmware_browser	${{ steps['esp32s3_firmware_browser'].outcome }}	${{ steps['esp32s3_firmware_browser'].conclusion }}
+            esp32s3_firmware_evidence	${{ steps['esp32s3_firmware_evidence'].outcome }}	${{ steps['esp32s3_firmware_evidence'].conclusion }}
+            esp32s040_firmware_browser	${{ steps['esp32s040_firmware_browser'].outcome }}	${{ steps['esp32s040_firmware_browser'].conclusion }}
+            esp32s040_firmware_evidence	${{ steps['esp32s040_firmware_evidence'].outcome }}	${{ steps['esp32s040_firmware_evidence'].conclusion }}
             bw_browser_audit_0194	${{ steps['bw_browser_audit_0194'].outcome }}	${{ steps['bw_browser_audit_0194'].conclusion }}
             bw_browser_audit_0195	${{ steps['bw_browser_audit_0195'].outcome }}	${{ steps['bw_browser_audit_0195'].conclusion }}
             bw_browser_audit_0196	${{ steps['bw_browser_audit_0196'].outcome }}	${{ steps['bw_browser_audit_0196'].conclusion }}
