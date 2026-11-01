@@ -116,7 +116,7 @@ test('the primary flow is NOT gated on entering pin constraints first', () => {
     // saw no design input and no button. The Verilog input must come BEFORE, and
     // outside of, any `canonical` gate.
     const panel = read('overlay/scratch-gui/src/components/tw-pseudocode/fpga-tab.jsx');
-    const verilog = panel.indexOf("<h3>{L10N[pickLocale(props.locale)].verilogTitle}");
+    const verilog = panel.indexOf('<h3 style={{margin: 0}}>{T.verilogTitle}');
     const canonicalGate = panel.indexOf('{canonical ?');
     assert.ok(verilog > 0, 'the Verilog input heading must exist');
     assert.ok(canonicalGate === -1 || verilog < canonicalGate,
@@ -128,8 +128,8 @@ test('the pin checker is a collapsed panel, not the first thing shown', () => {
     assert.match(panel, /<summary[^>]*>[\s\S]*?checkPinsTitle/,
         'the pin checker must live under a <details> summary, demoted below the synth flow');
     // and it must come AFTER the Synthesise button, not before it
-    const synth = panel.indexOf(">{L10N[pickLocale(props.locale)].synthesiseBtn}</button>");
-    const checker = panel.indexOf('L10N[pickLocale(props.locale)].checkPinsTitle');
+    const synth = panel.indexOf('{building ? T.synthesising : T.synthesiseBtn}</button>');
+    const checker = panel.indexOf('T.checkPinsTitle');
     assert.ok(synth > 0 && checker > synth, 'the pin checker must appear after the synth flow');
 });
 
@@ -190,7 +190,7 @@ test('the Synthesise call is aimed at the SELECTED backend', () => {
 
 test('the button is disabled when no backend was selected', () => {
     const tab = read(TAB);
-    assert.match(tab, /disabled=\{!hdl\.trim\(\) \|\| !selection\.accepted\}/,
+    assert.match(tab, /disabled=\{!hdl\.trim\(\) \|\| !selection\.accepted \|\| building\}/,
         'an enabled button that can only refuse teaches the user the tool is broken '
         + 'rather than that nothing is configured; the reason is already on screen');
 });
@@ -1111,7 +1111,10 @@ test('the FPGA tab can build a gate from transistors in the Circuit tab', () => 
     assert.match(tab, /data-testid="bw-fpga-cmos-gate"/, 'with a gate selector (more of the editor)');
     assert.match(tab, /realizeGate\(cmosGate\)/, 'it realises the chosen gate on the live circuit');
     // honesty: the UI must say this is the silicon underneath, not the FPGA's fabric
-    assert.match(tab, /silicon underneath the logic|an FPGA itself uses LUTs/, 'the LUT-vs-transistor honesty is stated');
+    assert.match(tab, /tr\(props\.locale, 'gate\.cmos'/, 'the message comes from the string table');
+    const strings = read('overlay/scratch-gui/src/lib/bw-fpga/l10n.js');
+    assert.match(strings, /'gate\.cmos': '[^']*an FPGA itself uses LUTs/, 'the LUT-vs-transistor honesty is stated (English)');
+    assert.match(strings, /'gate\.cmos': '[^']*ein FPGA selbst nutzt LUTs/, 'and in German');
 });
 
 // ── bidirectional FPGA↔Circuits: a board switch drives an FPGA input ──

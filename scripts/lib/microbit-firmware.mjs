@@ -87,10 +87,11 @@ class FileSystem {
  * @param {object} [opts]
  * @param {number} [opts.ms] virtual milliseconds to run for
  * @param {Array<[number, string]>} [opts.radio] packets: [arrival ms, text]
+ * @param {Array<[number, string, number]>} [opts.presses] button presses: [ms, 'a' | 'b' | 'logo', hold ms]
  * @param {object} [opts.buttons] {a: true, b: true} held down throughout
  * @returns {Promise<{out: string, traceback: ?string, panic: ?number, pixels: number[][], sent: string[], ended: string}>}
  */
-export async function runOnMicrobitFirmware (py, {ms = 5000, radio = [], buttons = {}} = {}) {
+export async function runOnMicrobitFirmware (py, {ms = 5000, radio = [], buttons = {}, presses = []} = {}) {
     const {js, wasm} = load();
     let clock = 0;
     let module = null;
@@ -114,7 +115,9 @@ export async function runOnMicrobitFirmware (py, {ms = 5000, radio = [], buttons
 
     // Every other peripheral: present, quiet, reading 0.
     const quiet = () => new Proxy(function () {}, {get: (t, k) => (k === 'value' ? 0 : quiet()), apply: () => 0});
-    const button = key => ({isPressed: () => !!buttons[key], getAndClearPresses: () => 0});
+    // A button is held when `buttons` says so, or while a scheduled press ([at ms, 'a'|'b'|'logo', hold ms]) is on.
+    const held = key => !!buttons[key] || presses.some(([at, which, hold]) => which === key && clock >= at && clock < at + hold);
+    const button = key => ({isPressed: () => held(key), getAndClearPresses: () => 0});
     const board = new Proxy({
         initialize () {},
         stopComponents () {},

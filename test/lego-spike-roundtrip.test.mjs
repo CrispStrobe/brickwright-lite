@@ -326,8 +326,15 @@ test('vendored SPIKE compiler emits a canonical executable round-trip artifact',
     // words (sb3-creator #168); SPIKE emitter unchanged. Re-run every assertion.
     // -> 11b019c5 (2026-11-01): #168 micro:bit words and #169 Arcade external-
     // reference words; neither touches the SPIKE emitter. Re-run every assertion.
+    // -> 04fc423e (2026-11-01): #170 micro:bit API words and #171 external image
+    // call and carnival label words. `git diff 11b019c5 04fc423e -- src/` is only
+    // arcadeDialect.js and sb3Creator.js (the SPIKE emitter, spike3Python.js, is
+    // untouched), so no SPIKE artifact assertion changes.
+    // -> 69aaba2b (2026-11-01): radio in MakeCode's packet format and the serial, I2C, SPI,
+    // buffer, sound and log words (sb3-creator #172); the SPIKE emitter is unchanged (no line
+    // of spikeprimeDialect.js, spike3Python.js or the SPIKE generator moved). Re-run every assertion.
     assert.equal(JSON.parse(readFileSync(new URL('../vendor-pins.json', import.meta.url)))['sb3-creator'],
-        '11b019c5d51484725de4da8bbcda80ed64b1a123');
+        '69aaba2bb8c34e274c77599cf48be5e5110b440b');
 
     const creator = new SB3Creator();
     creator.parse(PROGRAM);

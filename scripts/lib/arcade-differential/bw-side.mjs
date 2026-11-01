@@ -83,6 +83,15 @@ export function installProgramEntropy(seed, constant) {
     globalThis.__bwDraw = draw; Math.random = draw;
 }
 
+/**
+ * Let every cooperative turn the VM owes at the current program time complete: queued continuations and
+ * the remaining work of a callback that was spread over turns. The clock does not move meanwhile.
+ */
+async function settle(vm) {
+    const phase = vm.runtime._arcadeFramePhase;
+    for (let turn = 0; turn < 4 || (turn < 400 && (phase?.continuation || phase?.request || vm.runtime.threads.some(t => !t.isKilled && t.status === t.constructor.STATUS_RUNNING))); turn++) await new Promise(resolve => setImmediate(resolve));
+}
+
 /** Run `source` and return {status, samples, translation}. Guest errors are data. */
 export async function recordBrickwright(source, {schedule, seconds, fps = 30, seed = 1, entropy = 'sequence', globalsOf = [], translated = null}) {
     let translation;
@@ -110,12 +119,12 @@ export async function recordBrickwright(source, {schedule, seconds, fps = 30, se
             for (const edge of schedule.edgesAt(k)) vm.postIOData('keyboard', {key: BW_KEY[edge.button], isDown: edge.down});
             // A real press is dispatched at its own program time. Let the edge's continuation turns run
             // before the clock moves, as they would between a keypress and the next timer in a browser.
-            if (schedule.edgesAt(k).length) for (let turn = 0; turn < 4; turn++) await new Promise(resolve => setImmediate(resolve));
+            // A handler body is spread over one cooperative turn per loop iteration, all at the program time of the
+            // press; PXT runs it to its first pause within the press itself, so its pause is armed at that time.
+            if (schedule.edgesAt(k).length) await settle(vm);
             await clock.advanceTo(times[k]);
             // Continuations queued by the last frame (a resumed pause) complete before the observation.
-            // Work a resumed callback still owes (a long post-pause body is spread over cooperative turns) completes too.
-            const phase = vm.runtime._arcadeFramePhase;
-            for (let turn = 0; turn < 4 || (turn < 400 && (phase?.continuation || phase?.request || vm.runtime.threads.some(t => !t.isKilled && t.status === t.constructor.STATUS_RUNNING))); turn++) await new Promise(resolve => setImmediate(resolve));
+            await settle(vm);
             const hard = run.errors.findIndex((_, i) => !exceptions.reported(vm.runtime, run.errorEvents[i]?.message));
             if (hard >= 0) { error = run.errors[hard]; }
             samples.push({k, t: times[k], ...snapshotBrickwright(vm, globalsOf)});

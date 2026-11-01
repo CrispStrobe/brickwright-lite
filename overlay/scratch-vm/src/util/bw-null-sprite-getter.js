@@ -162,17 +162,39 @@ const spriteGetter = makeKind({method: 'spriteProperty', label: 'Null Sprite get
 }});
 // Sprite.setImage on a missing receiver; the image argument never faults it.
 const spriteImageSetter = makeKind({method: 'setSpriteImage', label: 'Missing Sprite setter', read: missingArguments(['ID'], 'Sprite')});
+// Sprite property setters, destroy and setPosition on a missing receiver (any property of a null Sprite throws).
+const spriteSetterProperties = ['x', 'y', 'left', 'right', 'top', 'bottom', 'vx', 'vy', 'ax', 'ay', 'fx', 'fy', 'sx', 'sy', 'scale',
+    'width', 'height', 'z', 'lifespan', 'rotation', 'rotationDegrees', 'data', 'flags'];
+const spriteSetter = makeKind({method: 'setSpriteProperty', label: 'Missing Sprite property setter', read(args) {
+    const property = ownDataValue(args, 'PROPERTY');
+    if (!property || !spriteSetterProperties.includes(property.value)) throw Error('Missing Sprite setter fault requires a supported current property');
+    return missingArguments(['ID'], 'Sprite')(args);
+}});
+const spritePosition = makeKind({method: 'setSpritePosition', label: 'Missing Sprite setPosition', read: missingArguments(['ID'], 'Sprite')});
+// Image reads and scroll on a missing receiver: width, height, getPixel and scroll all throw.
+const imageProperty = makeKind({method: 'imageProperty', label: 'Missing Image property', read(args) {
+    const property = ownDataValue(args, 'PROPERTY');
+    if (!property || !['width', 'height'].includes(property.value)) throw Error('Missing Image property fault requires width or height');
+    return missingArguments(['IMAGE'], 'Image')(args);
+}});
+const imagePixel = makeKind({method: 'imagePixel', label: 'Missing Image getPixel', read: missingArguments(['IMAGE'], 'Image')});
+const imageScroll = makeKind({method: 'scrollImage', label: 'Missing Image scroll', read: missingArguments(['IMAGE'], 'Image')});
 // Image drawing: a missing receiver or source image. Operation menus are exact.
 const imageKinds = Object.freeze([
     ['blitImage', ['IMAGE', 'SOURCE'], ['drawImage', 'drawTransparentImage']],
     ['drawImage', ['IMAGE'], ['fillRect', 'drawLine']],
     ['drawImageCircle', ['IMAGE'], ['drawCircle', 'fillCircle']],
     ['setImagePixel', ['IMAGE'], null],
-    ['mutateImage', ['IMAGE'], ['fill', 'replace', 'flipX', 'flipY']]
+    ['mutateImage', ['IMAGE'], ['fill', 'replace', 'flipX', 'flipY']],
+    ['createImageSprite', ['IMAGE'], null],
+    ['spawnImageProjectile', ['IMAGE'], null],
+    ['spawnImageSprite', ['IMAGE'], null]
 ].map(([method, names, operations]) => Object.freeze({method, kind: makeKind({method, label: 'Missing Image operation', read: missingArguments(names, 'Image', operations)})})));
 // Every kind in install order: the first is the original null Sprite getter.
 const kinds = Object.freeze([Object.freeze({method: 'spriteProperty', kind: spriteGetter}),
-    Object.freeze({method: 'setSpriteImage', kind: spriteImageSetter}), ...imageKinds]);
+    Object.freeze({method: 'setSpriteImage', kind: spriteImageSetter}), ...imageKinds,
+    ...[['setSpriteProperty', spriteSetter], ['setSpritePosition', spritePosition],
+        ['imageProperty', imageProperty], ['imagePixel', imagePixel], ['scrollImage', imageScroll]].map(([method, kind]) => Object.freeze({method, kind}))]);
 // One owner implementation check per kind lets the Arcade constructor create each service.
 const bindAll = (info, adapter, instance) => {for (const {kind} of kinds) kind.bindAdapterInfo(info, adapter, instance);};
 const declareAll = (info, ownerOf) => {for (const {method, kind} of kinds) kind.declaration(info, ownerOf(method));return info;};

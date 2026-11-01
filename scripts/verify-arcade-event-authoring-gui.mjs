@@ -170,6 +170,7 @@ const cycle = async (label, options, files) => {
     report.samples.push({label, initial, pressed, initialFrame, pressedFrame}); await page.getByTitle('Stop', {exact: true}).first().click();
 };
 const paletteCreate = async () => {
+    await page.evaluate(() => window.__brickwrightStore.getState().scratchGui.vm.runtime.bwButtonCallbacks.ARCADE_PALETTE_advanced()); // raiseControlEvent is a hidden "show more" block
     await page.locator('.scratchCategoryId-arcade').click();
     let point;
     for (let attempt = 0; attempt < 80; attempt++) {

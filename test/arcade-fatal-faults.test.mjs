@@ -136,6 +136,64 @@ sprites.onOverlap(SpriteKind.Player, SpriteKind.Enemy, function (sprite, otherSp
 game.onUpdate(function () { ticks += 1 })
 `);
 
+// Every property, method and read of a missing Sprite or Image throws in PXT; each fiber ends at the call.
+const handlerPair = (faulty, healthy) => [`${HEAD}
+controller.A.onEvent(ControllerButtonEvent.Pressed, function () {
+    taps += 1
+    ${faulty}
+    taps += 100
+})
+controller.B.onEvent(ControllerButtonEvent.Pressed, function () { others += 1 })
+game.onUpdate(function () { ticks += 1 })
+`, `${HEAD}
+controller.A.onEvent(ControllerButtonEvent.Pressed, function () {
+    taps += 1
+    ${healthy}
+    taps += 100
+})
+controller.B.onEvent(ControllerButtonEvent.Pressed, function () { others += 1 })
+game.onUpdate(function () { ticks += 1 })
+`];
+for (const [name, faulty, healthy] of [
+    ['a Sprite property setter on a null Sprite', 'missing.x = 5', 'mover.x = 5'],
+    ['a Sprite velocity setter on a null Sprite', 'missing.vy = 5', 'mover.vy = 5'],
+    ['setPosition on a null Sprite', 'missing.setPosition(5, 5)', 'mover.setPosition(5, 5)'],
+    ['getPixel on a null Image', 'hits += nul.getPixel(0, 0)', 'hits += list.length'],
+    ['an Image width read on a null Image', 'hits += nul.width', 'hits += list.length'],
+    ['an Image height read on an undefined Image', 'hits += list[-2].height', 'hits += list.length'],
+    ['scroll on a null Image', 'nul.scroll(1, 1)', 'hits += 0']
+]) scenario(name + ' ends the button fiber and locks that button', ...handlerPair(faulty, healthy).map(text => text.replace('let mover =', 'let other = sprites.create(' + OTHER + ', SpriteKind.Enemy)\nlet mover =')));
+
+scenario('a life-zero callback that dies ends the frame fiber: sprites, timers and screen stop', `${HEAD}
+info.setLife(2)
+controller.B.onEvent(ControllerButtonEvent.Pressed, function () { info.changeLifeBy(-1) })
+info.onLifeZero(function () {
+    nul.setPixel(0, 0, 1)
+})
+game.onUpdateInterval(100, function () { ticks += 1 })
+`, `${HEAD}
+info.setLife(2)
+controller.B.onEvent(ControllerButtonEvent.Pressed, function () { info.changeLifeBy(-1) })
+info.onLifeZero(function () {
+    others += 1
+})
+game.onUpdateInterval(100, function () { ticks += 1 })
+`);
+
+scenario('a countdown-end callback that dies ends the frame fiber', `${HEAD}
+info.startCountdown(1)
+info.onCountdownEnd(function () {
+    nul.setPixel(0, 0, 1)
+})
+game.onUpdateInterval(100, function () { ticks += 1 })
+`, `${HEAD}
+info.startCountdown(1)
+info.onCountdownEnd(function () {
+    others += 1
+})
+game.onUpdateInterval(100, function () { ticks += 1 })
+`);
+
 test('non-image values and an undefined image on a real sprite are not faults', {timeout: 400000}, async () => {
     const result = await compare(`${HEAD}
 let anything: any = 5

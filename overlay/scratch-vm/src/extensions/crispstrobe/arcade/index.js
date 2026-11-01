@@ -344,14 +344,14 @@ module.exports = makeExt(`// Name: Arcade
           for (const [id, entry] of this._imageSkins) if (entry.target === target) this._clearImage(id);
           for (const [id, entry] of this._speech) if (entry.target === target) this._clearSpeech(id);
         });
-        runtime._attachArcadeFramePhase?.(this);
+        runtime._attachArcadeFramePhase?.(this,dependencies.framePhase);
       }
     }
 
     getInfo() {
       const str = (name, def) => ({ [name]: { type: Scratch.ArgumentType.STRING, defaultValue: def || '' } });
       const n = (name, def) => ({ [name]: { type: Scratch.ArgumentType.NUMBER, defaultValue: def == null ? 0 : def } });
-      return dependencies.frameDeltaNumber.declaration(dependencies.sceneClockNumber.declaration(dependencies.nullSpriteGetter.declareAll(dependencies.createConsoleInspectValues.scoreInfo({
+      return dependencies.palette.arrange(this,dependencies.frameDeltaNumber.declaration(dependencies.sceneClockNumber.declaration(dependencies.nullSpriteGetter.declareAll(dependencies.createConsoleInspectValues.scoreInfo({
         id: 'arcade',
         name: 'Arcade',
         color1: '#E64980',
@@ -413,6 +413,7 @@ module.exports = makeExt(`// Name: Arcade
           // reports 0, a value reads 0, an image is a 1x1 transparent stand-in, and its callback never fires.
           {opcode:'externalValue',blockType:Scratch.BlockType.REPORTER,text:'Arcade external value [NAME]',arguments:str('NAME','')},
           {opcode:'externalImage',blockType:Scratch.BlockType.REPORTER,text:'Arcade external image [NAME]',arguments:str('NAME','')},
+          {opcode:'externalImageCall',blockType:Scratch.BlockType.REPORTER,text:'Arcade external image call [NAME] arguments [ARGS]',arguments:{...str('NAME',''),...str('ARGS','[]')}},
           {opcode:'externalCall',blockType:Scratch.BlockType.REPORTER,text:'Arcade external call [NAME] arguments [ARGS]',arguments:{...str('NAME',''),...str('ARGS','[]')}},
           {opcode:'externalCommand',blockType:Scratch.BlockType.COMMAND,text:'Arcade external command [NAME] arguments [ARGS]',arguments:{...str('NAME',''),...str('ARGS','[]')}},
           {opcode:'registerExternalHandler',blockType:Scratch.BlockType.COMMAND,text:'Arcade register external [NAME] arguments [ARGS] as [TOKEN] capturing [CAPTURES]',arguments:{...str('NAME',''),...str('ARGS','[]'),...str('TOKEN','handler'),...str('CAPTURES','')}},
@@ -438,6 +439,7 @@ module.exports = makeExt(`// Name: Arcade
           {opcode:'setGameOverPlayable',blockType:Scratch.BlockType.COMMAND,text:'Arcade set game over sound [PLAYABLE] looping [LOOPING] for win [WIN]',arguments:{...str('PLAYABLE',''),LOOPING:{type:Scratch.ArgumentType.BOOLEAN},WIN:{type:Scratch.ArgumentType.BOOLEAN}}},
           {opcode:'setGameOverScoringType',blockType:Scratch.BlockType.COMMAND,text:'Arcade set game over scoring [TYPE]',arguments:{TYPE:{type:Scratch.ArgumentType.STRING,menu:'scoringTypes',defaultValue:'HighScore'}}},
           {opcode:'carnivalCountdown',blockType:Scratch.BlockType.COMMAND,text:'Arcade carnival countdown [SECONDS] seconds style [STYLE] effect [EFFECT]',arguments:{...n('SECONDS',15),STYLE:{type:Scratch.ArgumentType.STRING,menu:'carnivalStyles',defaultValue:'Score'},EFFECT:{type:Scratch.ArgumentType.STRING,menu:'carnivalEffects',defaultValue:'unset'}}},
+          {opcode:'carnivalAddLabel',blockType:Scratch.BlockType.COMMAND,text:'Arcade carnival add label [LABEL] position [AREA] color [COLOR] use color [HAS_COLOR]',arguments:{...str('LABEL','Whack-the-Mole'),AREA:{type:Scratch.ArgumentType.STRING,menu:'carnivalAreas',defaultValue:'Bottom'},...n('COLOR',4),HAS_COLOR:{type:Scratch.ArgumentType.BOOLEAN}}},
           {opcode:'carnivalGameOver',blockType:Scratch.BlockType.COMMAND,text:'Arcade carnival game over style [STYLE] effect [EFFECT]',arguments:{STYLE:{type:Scratch.ArgumentType.STRING,menu:'carnivalStyles',defaultValue:'Win'},EFFECT:{type:Scratch.ArgumentType.STRING,menu:'carnivalEffects',defaultValue:'unset'}}},
           {opcode:'carnivalCustomGameOver',blockType:Scratch.BlockType.COMMAND,text:'Arcade carnival custom game over message [MESSAGE] effect [EFFECT] sound [SOUND] use sound [HAS_SOUND] scoring [SCORING] score [SCORE] use score [HAS_SCORE]',arguments:{...str('MESSAGE','Great Job!'),EFFECT:{type:Scratch.ArgumentType.STRING,menu:'carnivalEffects',defaultValue:'unset'},...str('SOUND',''),HAS_SOUND:{type:Scratch.ArgumentType.BOOLEAN},SCORING:{type:Scratch.ArgumentType.STRING,menu:'carnivalScoring',defaultValue:'HScore'},...n('SCORE',0),HAS_SCORE:{type:Scratch.ArgumentType.BOOLEAN}}},
           {opcode:'startImageEffect',blockType:Scratch.BlockType.COMMAND,text:'Arcade start image effect [EFFECT] times [TIMES] delay [DELAY] ms',arguments:{EFFECT:{type:Scratch.ArgumentType.STRING,menu:'imageEffects',defaultValue:'dissolve'},...n('TIMES',0),...n('DELAY',0)}},
@@ -1101,6 +1103,7 @@ module.exports = makeExt(`// Name: Arcade
           ,scoringTypes: {acceptReporters: false, items: ['HighScore', 'LowScore', 'None']}
           ,playbackModes: {acceptReporters: false, items: ['UntilDone', 'InBackground', 'LoopingInBackground']}
           ,carnivalScoring:{acceptReporters:false,items:['unset','None','HScore','LScore','HTime','LTime']}
+          ,carnivalAreas:{acceptReporters:false,items:['Top','Mid','Bottom']}
           ,carnivalStyles:{acceptReporters:false,items:['Win','Lose','Score','Timed','Multi','Custom']}
           ,carnivalEffects:{acceptReporters:false,items:['unset','confetti','hearts','smiles','blizzard','bubbles','starField','clouds','none','dissolve','melt','slash','splatter']}
           ,melodyModes: {acceptReporters: false, items: ['play', 'playUntilDone', 'loop']}
@@ -1148,7 +1151,7 @@ module.exports = makeExt(`// Name: Arcade
           spriteFlags: {acceptReporters: false, items: Object.keys(spriteFlags)}
           ,speechModes: {acceptReporters: false, items: ['text', 'legacy']}
         }
-      },scoreNumberOwners.get(this)),method=>nullSpriteOwners.get(this).get(method)),sceneClockOwners.get(this)),frameDeltaOwners.get(this));
+      },scoreNumberOwners.get(this)),method=>nullSpriteOwners.get(this).get(method)),sceneClockOwners.get(this)),frameDeltaOwners.get(this)));
     }
 
     // An owned runtime may inject {now:()=>milliseconds} for deterministic
@@ -1160,8 +1163,13 @@ module.exports = makeExt(`// Name: Arcade
         supplied && typeof supplied.now==='function' ? supplied.now.bind(supplied) : null;
       const suppliedTimers=supplied && (supplied.setTimeout!==undefined || supplied.clearTimeout!==undefined);
       if(suppliedTimers && (typeof supplied.setTimeout!=='function' || typeof supplied.clearTimeout!=='function'))throw new Error('Arcade program timer source needs setTimeout and clearTimeout');
-      const epoch={now,start:undefined,last:0,active:true,timerAuthority:supplied===undefined || suppliedTimers,
-        setTimeout:suppliedTimers?supplied.setTimeout.bind(supplied):supplied===undefined?globalThis.setTimeout.bind(globalThis):undefined,
+      const rawSetTimeout=suppliedTimers?supplied.setTimeout.bind(supplied):supplied===undefined?globalThis.setTimeout.bind(globalThis):undefined;
+      const epoch={now,start:undefined,last:0,active:true,timerAuthority:supplied===undefined || suppliedTimers,rawSetTimeout,lastWake:0,
+        // Every timer is a PXT fiber wake. pxtsim stamps a wake that waited over 3 ms as the last yield (see frame-phase.js).
+        setTimeout:rawSetTimeout&&((callback,delay,...rest)=>rawSetTimeout(function(...fired){
+          if(epoch.active && delay>3 && Number.isFinite(epoch.start))epoch.lastWake=Math.max(epoch.lastWake,Math.floor(epoch.now()-epoch.start));
+          return callback.apply(this,fired);
+        },delay,...rest)),
         clearTimeout:suppliedTimers?supplied.clearTimeout.bind(supplied):supplied===undefined?globalThis.clearTimeout.bind(globalThis):undefined};this._programClockEpoch=epoch;
       if(!now)throw new Error('Arcade program clock source needs a now function');
       const start=now();
@@ -1456,7 +1464,7 @@ module.exports = makeExt(`// Name: Arcade
       }
       if(this._sceneValues.get(state._sceneValueId)!==state){state._sceneValueId='arcade-scene:'+(++this._nextSceneValue);this._sceneValues.set(state._sceneValueId,state);}
       if(this._physicsEngines.get(state.physicsEngine?.id)!==state.physicsEngine || !state.physicsEngine)state.physicsEngine=this._newPhysicsEngine();
-      if(this._sourceSceneTimers())this._sceneFrameContexts().register(state);
+      if(this._sourceSceneTimers() && !this._askHeldScenes?.has(state))this._sceneFrameContexts().register(state);
     }
     _sceneValue(value) {return this._sceneValues.get(Scratch.BWValues.referenceId(this._runtime,value,'scene'));}
     _engineValue(value) {return this._physicsEngines.get(Scratch.BWValues.referenceId(this._runtime,value,'physics-engine'));}
@@ -1798,6 +1806,7 @@ module.exports = makeExt(`// Name: Arcade
         // info.ts raises life events after drawing lives and before the timer.
         // Registered callbacks can wait or change scenes; preserve that boundary.
         yield* this._lifeZeroSteps(screen);
+        if(this._frameFaults.has(state))return;
         if(this._state()!==state || pass.epoch!==this._terrainEpoch || state._defaultGameOverPending)return;
         // A callback can push and restore scenes. Resume with this HUD's state.
         info._setInfoState(hud);this._hudScreen=screen;
@@ -1866,7 +1875,8 @@ module.exports = makeExt(`// Name: Arcade
       const owner=this._state(),epoch=this._terrainEpoch;
       for(const state of owner.players || [])if(state && state.life!==undefined && state.life!==null && state.life<=0){
         state.life=null;
-        if(state.lifeZero)yield* this._registeredCallbackSteps([state.lifeZero],'arcade_whenRegisteredLifeZero',{});
+        // The callback runs inside the HUD renderable, so an uncaught exception ends the frame fiber (PXT info.ts).
+        if(state.lifeZero){if(yield* this._registeredCallbackSteps([state.lifeZero],'arcade_whenRegisteredLifeZero',{}))return this._faultFrameLoop(owner);}
         else if(!owner.multiplayerInfo)this._defaultInfoGameOver(owner,screen.pixels.slice());
         if(this._state()!==owner || epoch!==this._terrainEpoch || owner._defaultGameOverPending)return;
       }
@@ -1905,7 +1915,7 @@ module.exports = makeExt(`// Name: Arcade
           if(this._terrainStopped)return;
           const thread=runtime._pushThread(script.blockId,target);thread.bwArcadeEvent={...event,TOKEN:registration.token};thread.bwArcadeCaptures=registration.captures;
           const caller=util?.thread,active=runtime.sequencer.activeThread;
-          try{if(!deferred){runtime.sequencer.activeThread=thread;runtime.sequencer.stepThread(thread);}}
+          try{if(!deferred){runtime.sequencer.activeThread=thread;dependencies.primitiveOwner.stepChild(runtime,thread,()=>runtime.sequencer.stepThread(thread));}}
           finally{if(util){util.thread=caller;util.sequencer=runtime.sequencer;}runtime.sequencer.activeThread=active;}
           if(thread.status!==thread.constructor.STATUS_DONE && !thread.isKilled && runtime.threads.includes(thread))
             yield new Promise(resolve=>this._terrainWaits.add({thread,resolve}));
@@ -2567,7 +2577,7 @@ module.exports = makeExt(`// Name: Arcade
           thread.bwArcadeEvent = {TOKEN:registration.token, first:sprite.id, location};
           thread.bwArcadeCaptures = registration.captures;
           const caller = util?.thread, active = runtime.sequencer.activeThread;
-          try {runtime.sequencer.activeThread = thread;runtime.sequencer.stepThread(thread);}
+          try {runtime.sequencer.activeThread = thread;dependencies.primitiveOwner.stepChild(runtime,thread,()=>runtime.sequencer.stepThread(thread));}
           finally {if (util) {util.thread = caller;util.sequencer = runtime.sequencer;}runtime.sequencer.activeThread = active;}
           if(epoch!==this._terrainEpoch)return;
           if (thread.status !== thread.constructor.STATUS_DONE && !thread.isKilled && runtime.threads.includes(thread))
@@ -3355,7 +3365,7 @@ module.exports = makeExt(`// Name: Arcade
           thread = runtime._pushThread(next.script.blockId, next.target);
           thread.bwArcadeEvent = {...event, TOKEN: next.token};thread.bwArcadeCaptures = next.captures;
           const activeThread = sequencer.activeThread;
-          try { if(creationContext?.stepNested)creationContext.stepNested(thread);else {sequencer.activeThread = thread;sequencer.stepThread(thread);} }
+          try { if(creationContext?.stepNested)creationContext.stepNested(thread);else {sequencer.activeThread = thread;dependencies.primitiveOwner.stepChild(runtime,thread,()=>sequencer.stepThread(thread));} }
           finally { util.thread = caller;util.sequencer = sequencer;sequencer.activeThread = activeThread; }
           const failure=creationContext?.failure?.(thread);if(failure)throw failure;
           if (!runtime.threads.includes(caller)) { sequencer.retireThread(caller);return ''; }
@@ -3375,6 +3385,7 @@ module.exports = makeExt(`// Name: Arcade
         Y: ((120-height) >> 1) + height/2}), util);
     }
     createImageSprite(args, util) {
+      if(this._missingOperand(util,args,'IMAGE'))return this._primitiveFault('createImageSprite',args,util);
       const image = this._image(args.IMAGE);
       if(!image){this._runtime?.emit?.('BLOCKS_ERROR','Sprite image cannot be undefined or null');return ''; }
       // Image dimensions are constructor data: zero is a genuine empty image.
@@ -3505,6 +3516,7 @@ module.exports = makeExt(`// Name: Arcade
       if(sprite.image)this._renderSpriteImage(sprite.id);
     }
     setSpritePosition(args, util) {
+      if(this._missingOperand(util,args,'ID'))return this._primitiveFault('setSpritePosition',args,util);
       const sprite = this._spriteValues.get(String(args.ID)) || this._sprite(args.ID);
       if (!sprite) return;
       // Sprite.setPosition converts the displacement, not the absolute edge.
@@ -3651,6 +3663,7 @@ module.exports = makeExt(`// Name: Arcade
       return this._runTerrainGenerator(this._instanceDestroyedSteps(token,sprite.kind,id,util));
     }
     setSpriteProperty(args, util) {
+      if(this._missingOperand(util,args,'ID') && ['x','y','left','right','top','bottom','vx','vy','ax','ay','fx','fy','sx','sy','scale','width','height','z','lifespan','rotation','rotationDegrees','data','flags'].includes(String(args.PROPERTY)))return this._primitiveFault('setSpriteProperty',args,util);
       const sprite = this._spriteValues.get(String(args.ID)) || this._sprite(args.ID);
       const name = String(args.PROPERTY);
       if (!sprite || !['x', 'y', 'left', 'right', 'top', 'bottom',
@@ -3879,7 +3892,8 @@ module.exports = makeExt(`// Name: Arcade
         if(h.legacy){
           const thread=this._runtime._pushThread(h.script.blockId,h.target);
           thread.bwArcadeEvent={A:h.kind,B:h.otherKind,first:a.id,second:b.id};
-          work=new Promise(resolve=>this._terrainWaits.add({thread,resolve}));
+          // A hat-based handler that ends in an uncaught exception keeps its pair overlapping, like a dead fiber.
+          work=new Promise(resolve=>this._terrainWaits.add({thread,resolve})).then(()=>!!exceptionOwners.get(this).failure(thread));
         }else work=this._runTerrainGenerator(this._registeredCallbackSteps([h],'arcade_whenRegisteredOverlap',{first:a.id,second:b.id,deferredFiber:true},undefined,true));
         // PXT removes the pair from _overlappers after the handler returns; a dead fiber leaves it overlapping.
         if(work?.then)work.then(faulted=>{if(faulted!==true)finish();},error=>{finish();throw error;});else if(work!==true)finish();
@@ -4092,7 +4106,8 @@ module.exports = makeExt(`// Name: Arcade
       const image = this._image(args.IMAGE);
       return image ? this._imageHandle({width: image.width, height: image.height, pixels: image.pixels.slice(), ...(image.palette ? {palette: image.palette.slice()} : {})}) : '';
     }
-    imageProperty(args) {
+    imageProperty(args,util) {
+      if(this._missingOperand(util,args,'IMAGE'))return this._primitiveFault('imageProperty',args,util);
       const image = this._image(args.IMAGE);
       return image && ['width', 'height'].includes(String(args.PROPERTY)) ? image[args.PROPERTY] : 0;
     }
@@ -4100,7 +4115,8 @@ module.exports = makeExt(`// Name: Arcade
       const image=this._image(args.IMAGE),source=this._image(args.SOURCE);
       if(image && source && imageEngine.copyFrom(image,source))this._refreshImage(image);
     }
-    scrollImage(args) {
+    scrollImage(args,util) {
+      if(this._missingOperand(util,args,'IMAGE'))return this._primitiveFault('scrollImage',args,util);
       const image=this._image(args.IMAGE);
       if(image){imageEngine.scroll(image,args.X,args.Y);this._refreshImage(image);}
     }
@@ -4114,7 +4130,8 @@ module.exports = makeExt(`// Name: Arcade
       const image = this._image(args.IMAGE);
       if (image) { imageEngine.draw(image, 'setPixel', args.X, args.Y, args.COLOR); this._refreshImage(image); }
     }
-    imagePixel(args) {
+    imagePixel(args,util) {
+      if(this._missingOperand(util,args,'IMAGE'))return this._primitiveFault('imagePixel',args,util);
       const image = this._image(args.IMAGE);
       return image ? imageEngine.getPixel(image, args.X, args.Y) : 0;
     }
@@ -4145,10 +4162,12 @@ module.exports = makeExt(`// Name: Arcade
       return !!(image && source && imageEngine.blit(image, source, 'overlapsWith', args.X, args.Y));
     }
     spawnImageProjectile(args, util) {
+      if(this._missingOperand(util,args,'IMAGE'))return this._primitiveFault('spawnImageProjectile',args,util);
       const image = this._image(args.IMAGE);
       return image ? this.spawnProjectile({...args, WIDTH: image.width, HEIGHT: image.height}, util) : '';
     }
     spawnImageSprite(args, util) {
+      if(this._missingOperand(util,args,'IMAGE'))return this._primitiveFault('spawnImageSprite',args,util);
       const image = this._image(args.IMAGE);
       return image ? this.spawnSprite({...args, WIDTH: image.width, HEIGHT: image.height}, util) : '';
     }
@@ -4296,6 +4315,8 @@ module.exports = makeExt(`// Name: Arcade
     runImageAnimation(args) {
       const sprite = this._spriteValues.get(String(args.ID));
       const frames = Scratch.BWValues.arrayValue(this._runtime, args.FRAMES);
+      // PXT: an undefined frame list (an absent animation asset) starts nothing and is not an error.
+      if (sprite && !frames && Scratch.BWValues.decode(args.FRAMES) === undefined) return;
       if (!sprite || !frames) {
         this._runtime?.emit?.('BLOCKS_ERROR', 'Arcade image animation requires a sprite and an image array reference.');
         return;
@@ -4770,6 +4791,10 @@ module.exports = makeExt(`// Name: Arcade
       }catch(error){if(error.code!=='CARNIVAL_CANCELLED')throw error;}
     }
     carnivalCountdown(args) {return this._carnivalCall('countdown',args);}
+    carnivalAddLabel(args) {
+      return this._carnivalCall('addLabel',{...args,LABEL:String(Scratch.BWValues.decode(args.LABEL) ?? ''),
+        COLOR:Number(Scratch.BWValues.decode(args.COLOR)),HAS_COLOR:Scratch.Cast.toBoolean(args.HAS_COLOR)});
+    }
     carnivalGameOver(args) {return this._carnivalCall('gameOver',args);}
     carnivalCustomGameOver(args) {
       return this._carnivalCall('customGameOver',{...args,
@@ -4871,6 +4896,15 @@ module.exports = makeExt(`// Name: Arcade
       const epoch=this._programClockEpoch;
       if(!this._sourceSceneTimers() || !epoch?.setTimeout)return;
       dialog.fiber=true;
+      // game.ask pushes an event context: the scene's frame worker is unregistered for as long as the
+      // prompt is up, and popping registers a fresh worker that waits (on the poll queue) for the old one to exit.
+      const owner=this._state(),held=this._askHeldScenes || (this._askHeldScenes=new WeakSet()),frames=this._sceneFrameContexts();
+      held.add(owner);frames.unregister(owner);
+      const dismiss=dialog.dismiss;
+      dialog.dismiss=answer=>{
+        const open=this._dialogs?.[0]===dialog;dismiss(answer);
+        if(open && this._dialogs?.[0]!==dialog && held.delete(owner) && this._sourceSceneTimers())this._sceneFrameContexts().register(owner);
+      };
       const live=()=>this._dialogs?.[0]===dialog && this._programClockEpoch===epoch && epoch.active;
       const continuation=()=>this._runtime._arcadeFramePhase?.requestContinuation?.()?.catch?.(error=>this._runtime?.emit?.('BLOCKS_ERROR',String(error?.message || error)));
       if(dialog.screen)epoch.setTimeout(()=>{if(live() && dialog.screen)this._showAskScreen(dialog);},dialog.refreshIn)?.unref?.();
@@ -4884,6 +4918,9 @@ module.exports = makeExt(`// Name: Arcade
       const finish=()=>{if(live()){dialog.elapsed=500;dialog.dismiss(answer);}};
       epoch.setTimeout(()=>{
         if(!live())return;
+        // The 500 ms guard has passed: publish readiness the way _pumpQuestion
+        // does on the frame path, so the dialog's Yes/No controls enable.
+        dialog.elapsed=500;this._showNextDialog();
         if(condition()){finish();continuation();}
         else this._nativePollEvents().enqueue(condition,finish);
       },500)?.unref?.();
@@ -4895,8 +4932,12 @@ module.exports = makeExt(`// Name: Arcade
       this._changed();
     }
     screenImage() {return this._imageHandle(this._screenRaw());}
-    externalValue() {return 0;}
-    externalImage() {return this._imageHandle({width: 1, height: 1, pixels: new Uint8Array(1)});}
+    // An asset literal the project does not carry compiles in PXT and evaluates to undefined (an animation made from it
+    // is a no-op). Any other absent name stays the inert stand-in.
+    _absentAsset(args) {return /^assets\./.test(String(args?.NAME ?? ''));}
+    externalValue(args) {return this._absentAsset(args) ? Scratch.BWValues.encode(undefined) : 0;}
+    externalImage(args) {return this._absentAsset(args) ? Scratch.BWValues.encode(undefined) : this._imageHandle({width: 1, height: 1, pixels: new Uint8Array(1)});}
+    externalImageCall() {return this.externalImage();}
     externalCall() {return 0;}
     externalCommand() {}
     registerExternalHandler() {}
@@ -5713,8 +5754,10 @@ module.exports = makeExt(`// Name: Arcade
         // last frame until PXT's 200 ms fallback refresh (screen/frame.ts) copies the
         // shared screen buffer as drawn so far.
         this._lastScreenUpdateMs=previousUpdateMs;
+        // The fallback fiber clears __updated every 200 ms from program start and refreshes at the first tick after a
+        // quiet interval; an update at a tick instant follows that tick's clear, so it counts for the interval it starts.
         const partial=screen.pixels.slice(),now=this._screenClock(),last=previousUpdateMs ?? now;
-        const refreshIn=Math.max(0,200*(Math.ceil(last/200-1e-9)+1)-now),clock=this._programClockEpoch;
+        const refreshIn=Math.max(0,200*(Math.floor(last/200+1e-9)+2)-now),clock=this._programClockEpoch;
         if(this._sourceSceneTimers() && clock?.setTimeout)clock.setTimeout(()=>{
           if(epoch!==this._terrainEpoch || !clock.active)return;
           publish(partial);this._changed();
@@ -6075,11 +6118,13 @@ module.exports = makeExt(`// Name: Arcade
       if (offset >= 0) {map.walls[offset] = Boolean(Scratch.BWValues.decode(args.WALL));this._changed();}
     }
     placeOnTile(args, util) {
-      if (!this._tileLocation(args.LOCATION)) return;
+      // PXT returns for a missing sprite; only Sprite.setPosition itself throws.
+      if (this._missingOperand(util,args,'ID') || !this._tileLocation(args.LOCATION)) return;
       return this.setSpritePosition({ID:args.ID, X:this.tileLocationProperty({...args,PROPERTY:'x'}),
         Y:this.tileLocationProperty({...args,PROPERTY:'y'})},util);
     }
     placeOnRandomTile(args, util) {
+      if (this._missingOperand(util,args,'ID')) return;
       const map = this._state().tilemap, index = this._tileImageIndex(map,this._image(args.IMAGE));
       if (index < 0) return;
       // PXT uses reservoir sampling with size one, visiting columns first.
@@ -6130,7 +6175,7 @@ module.exports = makeExt(`// Name: Arcade
       imageEngine.draw(map.mapImage,'setPixel',column,row,index);this._refreshImage(map.mapImage);
     }
     placeOnLegacyTile(args,util) {
-      if(!this._legacyTile(args.TILE))return;
+      if(this._missingOperand(util,args,'ID') || !this._legacyTile(args.TILE))return;
       return this.setSpritePosition({ID:args.ID,X:this.legacyTileProperty({...args,PROPERTY:'x'}),Y:this.legacyTileProperty({...args,PROPERTY:'y'})},util);
     }
     placeOnRandomLegacyTile(args,util) {
@@ -6407,7 +6452,7 @@ module.exports = makeExt(`// Name: Arcade
       state.countdownActive=false;
       state.countdown = 0;
       this._changed();
-      if(this._countdownHandlers.length)yield* this._registeredCallbackSteps(this._countdownHandlers.slice(),'arcade_whenRegisteredCountdown',{});
+      if(this._countdownHandlers.length){if(yield* this._registeredCallbackSteps(this._countdownHandlers.slice(),'arcade_whenRegisteredCountdown',{}))return this._faultFrameLoop(state);}
       else {
         const threads=this._runtime?.startHats?.('arcade_whenCountdownEnds') || [];
         if(!threads.length)this._defaultInfoGameOver(state,screen.pixels.slice());
@@ -6527,5 +6572,7 @@ module.exports = makeExt(`// Name: Arcade
   createCarnivalHost: require('./carnival-host'),
   initializeGameOver: require('./gameover-pxt'),
   initializeHud: require('./hud-pxt'),
-  initializePrompt: require('./prompt-pxt')
+  initializePrompt: require('./prompt-pxt'),
+  palette: require('./palette'),
+  framePhase: require('./frame-phase')
 });

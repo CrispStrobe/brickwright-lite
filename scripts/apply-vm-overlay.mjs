@@ -19,6 +19,7 @@ import {patchArcadeManagedThread} from './lib/arcade-managed-thread-hooks.mjs';
 import {patchSavedProjectDeviceReset} from './lib/saved-project-device-vm-hooks.mjs';
 import {patchExtensionPrimitiveCaches} from './lib/extension-primitive-cache-hooks.mjs';
 import {patchNestedExecuteContext} from './lib/nested-execute-context-hooks.mjs';
+import {patchPaletteStructure} from './lib/palette-hooks.mjs';
 
 const ROOT = process.cwd();
 const SRC = path.join(ROOT, 'overlay', 'scratch-vm');
@@ -93,6 +94,7 @@ module.exports = Runtime;`);
 let rt = readFileSync(runtimePath, 'utf8');
 rt = patchExtensionResultOrigins(rt);
 rt = patchExtensionPrimitiveCaches(rt);
+rt = patchPaletteStructure(rt);
 writeFileSync(runtimePath, rt);
 // Arcade sprites need one deterministic physics tick per Scratch VM frame.
 // Extensions subscribe to this event; the project stores ordinary extension
@@ -118,18 +120,24 @@ if (!rt.includes(arcadeFramePatched) && !rt.includes(arcadePhaseKernel)) {
 }
 // Delegate only projects with explicit source entry/loops or native callback
 // hats. Other projects retain the original synchronous sequencer entry.
+// The frame-phase class (~26 KiB) is NOT required here: runtime.js is in the first load and
+// P17 caps it. The lazy Arcade extension passes the class in when it attaches.
 const arcadePhaseImport = "const ArcadeFramePhase = require('../extensions/crispstrobe/arcade/frame-phase');\n";
-if (!rt.includes(arcadePhaseImport)) {
-    const importAnchor = "const Thread = require('./thread');\n";
-    if (!rt.includes(importAnchor)) throw new Error('runtime.js Arcade phase import anchor not found');
-    rt = rt.replace(importAnchor, importAnchor + arcadePhaseImport);
-}
-const arcadePhaseEntry = `    _attachArcadeFramePhase (extension) {
+if (rt.includes(arcadePhaseImport)) rt = rt.replace(arcadePhaseImport, '');
+const arcadePhaseOldEntry = `    _attachArcadeFramePhase (extension) {
         if (this._arcadeFramePhase?.ext === extension) return;
         this._arcadeFramePhase?.detach();
         this._arcadeFramePhase = new ArcadeFramePhase(this, extension);
     }
-
+`;
+const arcadePhaseNewEntry = `    _attachArcadeFramePhase (extension, ArcadeFramePhase) {
+        if (this._arcadeFramePhase?.ext === extension) return;
+        this._arcadeFramePhase?.detach();
+        this._arcadeFramePhase = new ArcadeFramePhase(this, extension);
+    }
+`;
+if (rt.includes(arcadePhaseOldEntry)) rt = rt.replace(arcadePhaseOldEntry, arcadePhaseNewEntry);
+const arcadePhaseEntry = `${arcadePhaseNewEntry}
     _step (arcadeDeltaMs) {
         const phase = this._arcadeFramePhase;
         if (phase?.hasSourceProject()) return phase.requestStep(arcadeDeltaMs);

@@ -20,7 +20,7 @@ test('boot payload accepts shared lazy engine bytes but rejects eager, absent an
         for (const [name, bytes] of Object.entries({
             'ext-music': "'drums/1-snare.mp3'", 'render-fonts': 'x-font-ttf',
             'ext-legonxt': 'ID: legonxt', 'ext-spikeprime': 'ID: spikeprime\n',
-            'ext-arcade': 'font12: Adobe SIL OFL 1.1',
+            'ext-arcade': 'font12: Adobe SIL OFL 1.1 Arcade phase work budget must be finite and positive',
             'ext-circuitplayground': 'ID: circuitplayground',
             'ext-robotlab': 'when part [PART] touches [OTHER]',
             'bw-robotlab-tab': 'Open the Robot Lab here',

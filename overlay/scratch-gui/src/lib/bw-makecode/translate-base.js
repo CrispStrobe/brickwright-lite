@@ -372,6 +372,9 @@ export class BaseTranslator {
             return numberLiteralCode(v);
         }
         case 'String': return tsTextLiteral(node);
+        // The class id of a record (a dispatch procedure's test; see buildDispatchers).
+        case 'RecordClass':
+            return `item ${this.operand(node.handle)} of ${this.arrayRef(this.recordTypes.get(node.root).arrays.get('__cls'))}`;
         // A VALUE: the dialect's truth is 1 and 0 (its conditions read a
         // variable as `not (v = 0)`), so `let A = false` is `set A to 0`.
         // The word `false` here became the string "false" on the way back out,
@@ -407,6 +410,8 @@ export class BaseTranslator {
         case 'Binary': {
             const op = node.op;
             if (op === 'instanceof') {
+                const test = this.instanceOfRecord(node);
+                if (test !== null) return test;
                 this.unsupported.push(`instanceof requires runtime class identity${callList(this.callsIn(node))}`);
                 return '0';
             }
@@ -444,6 +449,9 @@ export class BaseTranslator {
             return `${e(node.left)} ${op} ${e(node.right)}`;
         }
         case 'Member': {
+            // A word of the device's own (a buffer's length, a radio packet's property).
+            const own = this.memberValue ? this.memberValue(node) : null;
+            if (own !== null && own !== undefined) return own;
             // A record's field, and an entry of a constant table.
             const field = this.recordMember(node);
             if (field !== null) return field;
@@ -599,6 +607,16 @@ export class BaseTranslator {
             this.assign(target, node.consequent, indent + 1, out);
             out.push(`${pad}ELSE:`);
             this.assign(target, node.alternate, indent + 1, out);
+            return;
+        }
+        // `buffer = given || control.createBuffer(4)`: JavaScript's `||` and `&&` give back an
+        // operand, which a 1 or 0 is not when the operands are buffers.
+        if (node && node.type === 'Binary' && (node.op === '||' || node.op === '&&') && this.isBuffer &&
+            (this.isBuffer(node.left) || this.isBuffer(node.right))) {
+            out.push(`${pad}IF ${this.condition(node.left)} THEN:`);
+            this.assign(target, node.op === '||' ? node.left : node.right, indent + 1, out);
+            out.push(`${pad}ELSE:`);
+            this.assign(target, node.op === '||' ? node.right : node.left, indent + 1, out);
             return;
         }
         if (node && isTruthValue(node)) {
@@ -1286,10 +1304,171 @@ export class BaseTranslator {
             return true;
         }
         if (map.get(name) !== type && map.get(name) !== null) {
-            map.set(name, null);
+            // Two classes of one family (a Circle and a Square pushed into one
+            // array) are held as their nearest common ancestor.
+            map.set(name, this.commonRecord(map.get(name), type));
             return true;
         }
         return false;
+    }
+
+    // ── inheritance ─────────────────────────────────────────────────────
+    //
+    // A class family (a root and everything that extends it) shares ONE set
+    // of parallel arrays — the union of every member's fields, plus a class-id
+    // array — so an instance's handle means the same row whatever class it
+    // is held as. A call to a method some subclass overrides goes through a
+    // dispatch procedure that reads the instance's class id; super(...) and
+    // super.m(...) call the base class's procedure directly.
+
+    /** [name, parent, grandparent, …] for a record type. */
+    recordChain (name) {
+        const chain = [];
+        for (let rt = this.recordTypes.get(name); rt && chain.length < 32; rt = rt.base ? this.recordTypes.get(rt.base) : null) chain.push(rt.name);
+        return chain;
+    }
+
+    /** The nearest class both types descend from, or null. */
+    commonRecord (a, b) {
+        const up = new Set(this.recordChain(a));
+        return this.recordChain(b).find(n => up.has(n)) || null;
+    }
+
+    /** Is `name` the record type `ancestor` or one of its subclasses? */
+    recordIsA (name, ancestor) {
+        return this.recordChain(name).includes(ancestor);
+    }
+
+    /**
+     * Link each class to its base, give a family its shared fields and ids.
+     * A class whose base is not a class of this program is refused by name.
+     */
+    resolveHeritage () {
+        const classes = [...this.recordTypes.values()].filter(rt => rt.kind === 'class');
+        for (const rt of classes) {
+            if (!rt.node.base) continue;
+            const base = this.recordTypes.get(rt.node.base);
+            if (!base || base.kind !== 'class') rt.reasons.push(`extends ${rt.node.base}`);
+            else rt.base = base.name;
+        }
+        // A cycle, or a base that cannot be lowered, takes the subclass with it.
+        for (let again = true; again;) {
+            again = false;
+            for (const rt of classes) {
+                if (!rt.base || rt.reasons.length) continue;
+                const chain = this.recordChain(rt.name);
+                const bad = chain.slice(1).find(n => this.recordTypes.get(n).reasons.length) ||
+                    (chain.length >= 32 || new Set(chain).size !== chain.length ? rt.base : null);
+                if (bad) {
+                    rt.reasons.push(`extends ${bad}, which cannot be lowered`);
+                    again = true;
+                }
+            }
+        }
+        const families = new Map();
+        for (const rt of classes) {
+            if (rt.reasons.length) continue;
+            const chain = this.recordChain(rt.name);
+            const root = chain[chain.length - 1];
+            rt.root = root;
+            if (!families.has(root)) families.set(root, []);
+            families.get(root).push(rt);
+        }
+        for (const [root, members] of families) {
+            if (members.length < 2) continue;
+            // Parents first, in the order the program declares them.
+            members.sort((x, y) => this.recordChain(x.name).length - this.recordChain(y.name).length);
+            const union = [];
+            for (const rt of members) {
+                rt.classId = members.indexOf(rt) + 1;
+                rt.inits = new Map();
+                for (const name of this.recordChain(rt.name).reverse()) {
+                    for (const f of this.recordTypes.get(name).fields) {
+                        if (!union.some(u => u.name === f.name)) union.push({...f, init: null});
+                        // A subclass's redeclaration wins; a field is initialised once.
+                        if (f.init || !rt.inits.has(f.name)) rt.inits.set(f.name, f.init);
+                    }
+                }
+            }
+            union.push({name: '__cls', init: null, typeName: 'number'});
+            const family = {root, members};
+            for (const rt of members) {
+                rt.family = family;
+                rt.inits.set('__cls', {type: 'Number', value: String(rt.classId)});
+                rt.fields = union.map(f => ({...f}));
+            }
+            // A sprite held in a field of any member is a sprite field of all.
+            const sprites = new Set(members.flatMap(m => [...m.spriteFields]));
+            for (const rt of members) rt.spriteFields = sprites;
+        }
+    }
+
+    /** `x instanceof C`: x's class id is C's or one of its subclasses'. Null when it cannot be said. */
+    instanceOfRecord (node) {
+        if (!this.recordTypes || !this.recordTypes.size || !node.right || node.right.type !== 'Identifier') return null;
+        const rt = this.recordTypes.get(node.right.name);
+        const leftType = this.recordTypeOfNode(node.left);
+        if (!rt || !this.recordLowerable(rt.name) || !leftType || !this.recordLowerable(leftType)) return null;
+        const left = this.recordTypes.get(leftType);
+        if (!left.family || left.family !== rt.family) return rt.family || left.family ? '0' : null;
+        const ids = rt.family.members.filter(m => this.recordIsA(m.name, rt.name)).map(m => m.classId);
+        this.usedRecords.add(rt.name);
+        const cls = ofGuard(`item ${this.operand(node.left)} of ${this.arrayRef(rt.arrays.get('__cls'))}`);
+        return ids.map(id => `(${cls} = ${id})`).join(' or ');
+    }
+
+    /** The dispatch procedures: one per (class, method) some subclass overrides. */
+    buildDispatchers () {
+        const families = new Set([...this.recordTypes.values()].filter(rt => rt.family).map(rt => rt.family));
+        for (const fam of families) {
+            // Methods inherit down the chain, parents first.
+            for (const rt of fam.members) {
+                rt.methods = new Map(rt.base ? this.recordTypes.get(rt.base).methods : []);
+                for (const m of rt.node.methods) {
+                    if (m.isStatic) continue;
+                    const key = m.kind === 'get' || m.kind === 'set' ? `${m.kind}:${m.name}` : m.name;
+                    rt.methods.set(key, rt.ownMethods.get(key));
+                }
+                if (!rt.ctorFn && rt.base) {
+                    rt.ctorFn = this.recordTypes.get(rt.base).ctorFn;
+                    rt.ctor = rt.ctor || this.recordTypes.get(rt.base).ctor;
+                }
+            }
+            for (const rt of fam.members) {
+                rt.dispatch = new Map();
+                const subs = fam.members.filter(m => m !== rt && this.recordIsA(m.name, rt.name));
+                for (const [key, base] of rt.methods) {
+                    const impls = new Map();
+                    for (const m of [rt, ...subs]) {
+                        const impl = m.methods.get(key);
+                        if (!impls.has(impl)) impls.set(impl, []);
+                        impls.get(impl).push(m.classId);
+                    }
+                    if (impls.size < 2) continue;
+                    const params = base.params.slice(1);
+                    const call = impl => ({type: 'Call', callee: {type: 'Identifier', name: impl.name},
+                        args: [{type: 'Identifier', name: base.params[0]}, ...params.map(name => ({type: 'Identifier', name}))]});
+                    const returns = [...impls.keys()].some(impl => /"type":"Return","value":\{/.test(JSON.stringify(impl.body)));
+                    const run = impl => returns ? {type: 'Return', value: call(impl)} : {type: 'ExpressionStatement', expr: call(impl)};
+                    const cls = {type: 'RecordClass', handle: {type: 'Identifier', name: base.params[0]}, root: fam.root};
+                    const body = [];
+                    for (const [impl, ids] of impls) {
+                        if (impl === base) continue;
+                        const test = ids.map(id => ({type: 'Binary', op: '==', left: cls, right: {type: 'Number', value: String(id)}}))
+                            .reduce((l, r) => ({type: 'Binary', op: '||', left: l, right: r}));
+                        body.push({type: 'If', test, consequent: [run(impl)], alternate: null});
+                    }
+                    body.push(run(base));
+                    let name = `${rt.name}_${key.replace(':', '_')}_v`;
+                    while (this.taken && this.taken.has(name)) name += '_';
+                    if (this.taken) this.taken.add(name);
+                    const entry = {name, params: base.params, paramTypes: base.paramTypes, returnType: base.returnType, body,
+                        record: rt.name, scope: `${rt.name}.${key}`, dispatcher: true};
+                    this.functions.push(entry);
+                    rt.dispatch.set(key, entry);
+                }
+            }
+        }
     }
 
     /**
@@ -1329,6 +1508,7 @@ export class BaseTranslator {
                     methods: new Map(), ctor: st.ctor, spriteFields: new Set(), reasons, node: st});
             }
         }
+        this.resolveHeritage();
         // Constant tables: `const GameIcons = {Pairing: IconNames.Ghost, …}`,
         // never written, every value a literal or an enum member. A read is
         // the value itself.
@@ -1463,14 +1643,19 @@ export class BaseTranslator {
         for (let i = 0; i < 6 && learn(); i++) { /* until nothing new */ }
         // Each lowerable class's methods and constructor are procedures.
         for (const rt of this.recordTypes.values()) {
-            rt.arrays = new Map();
-            const fields = rt.fields.length ? rt.fields.map(f => f.name) : ['_n'];
-            if (!rt.fields.length) rt.fields.push({name: '_n', init: null});
-            for (const f of fields) {
-                let a = `${rt.name}_${f}`;
-                while (this.taken && this.taken.has(a)) a += '_';
-                if (this.taken) this.taken.add(a);
-                rt.arrays.set(f, a);
+            // A family names its arrays once, after its root, for all its members.
+            const mate = rt.family && [...this.recordTypes.values()].find(o => o !== rt && o.family === rt.family && o.arrays);
+            if (mate) rt.arrays = mate.arrays;
+            else {
+                rt.arrays = new Map();
+                const fields = rt.fields.length ? rt.fields.map(f => f.name) : ['_n'];
+                if (!rt.fields.length) rt.fields.push({name: '_n', init: null});
+                for (const f of fields) {
+                    let a = `${rt.family ? rt.family.root : rt.name}_${f}`;
+                    while (this.taken && this.taken.has(a)) a += '_';
+                    if (this.taken) this.taken.add(a);
+                    rt.arrays.set(f, a);
+                }
             }
             if (rt.kind !== 'class' || rt.reasons.length) continue;
             const fnName = m => {
@@ -1490,6 +1675,7 @@ export class BaseTranslator {
                 const entry = {name: fnName(key.replace(':', '_')), params: ['self', ...m.params], paramTypes: m.paramTypes,
                     returnType: m.returnType, body: m.body, record: rt.name, scope: `${rt.name}.${key}`};
                 rt.methods.set(key, entry);
+                (rt.ownMethods || (rt.ownMethods = new Map())).set(key, entry);
                 this.functions.push(entry);
             }
             if (rt.ctor) {
@@ -1498,6 +1684,7 @@ export class BaseTranslator {
                 this.functions.push(rt.ctorFn);
             }
         }
+        this.buildDispatchers();
     }
 
     /** Turn a class's static fields into globals (see claimRecords). */
@@ -1634,8 +1821,9 @@ export class BaseTranslator {
             return '0';
         }
         for (const f of rt.fields) {
-            const v = values.has(f.name) ? values.get(f.name) : f.init;
-            this.pre.push(`push ${v ? this.expr(v) : '0'} to ${this.arrayRef(rt.arrays.get(f.name))}`);
+            const v = values.has(f.name) ? values.get(f.name) : rt.inits ? rt.inits.get(f.name) : f.init;
+            // A string field with no initialiser starts as empty text (so its array is a text array on export).
+            this.pre.push(`push ${v ? this.expr(v) : (String(f.typeName || '').replace(/\s+/g, '') === 'string' ? '""' : '0')} to ${this.arrayRef(rt.arrays.get(f.name))}`);
         }
         const handle = `_mc${++this.temps}`;
         this.declared.add(handle);
@@ -1663,13 +1851,28 @@ export class BaseTranslator {
             const value = this.allocRecord(type, new Map(), node.args);
             return statement ? true : value;
         }
+        // super(...) in a constructor: the base class's constructor, on this instance.
+        const own = this.selfRecord && this.recordTypes.get(this.selfRecord);
+        if (node.type === 'Call' && node.callee && node.callee.type === 'Identifier' && node.callee.name === 'super' && own && own.base) {
+            const base = this.recordTypes.get(own.base);
+            if (!base.ctorFn) return statement ? true : '0';
+            const given = base.ctor && base.ctor.params ? this.withDefaultArgs({params: base.ctor.params}, node.args || []) : (node.args || []);
+            if (!statement) return '0';
+            this.command({type: 'Call', callee: {type: 'Identifier', name: base.ctorFn.name},
+                args: [{type: 'Identifier', name: 'this'}, ...given]}, statement.indent, statement.out);
+            return true;
+        }
         if (node.type !== 'Call' || !node.callee || node.callee.type !== 'Member') return null;
-        const type = this.recordTypeOfNode(node.callee.object);
+        // super.m(...): the base class's own method, not the dispatched one.
+        const viaSuper = node.callee.object && node.callee.object.type === 'Identifier' && node.callee.object.name === 'super' && own && own.base;
+        const type = viaSuper ? own.base : this.recordTypeOfNode(node.callee.object);
         if (!type || !this.recordLowerable(type)) return null;
-        const method = this.recordTypes.get(type).methods.get(node.callee.name);
+        const rtype = this.recordTypes.get(type);
+        const method = (!viaSuper && rtype.dispatch && rtype.dispatch.get(node.callee.name)) || rtype.methods.get(node.callee.name);
         if (!method) return null;
         this.usedRecords.add(type);
-        const call = {type: 'Call', callee: {type: 'Identifier', name: method.name}, args: [node.callee.object, ...(node.args || [])]};
+        const self = viaSuper ? {type: 'Identifier', name: 'this'} : node.callee.object;
+        const call = {type: 'Call', callee: {type: 'Identifier', name: method.name}, args: [self, ...(node.args || [])]};
         if (statement) {
             this.command(call, statement.indent, statement.out);
             return true;
@@ -1697,7 +1900,11 @@ export class BaseTranslator {
         const lines = [];
         for (const type of this.usedRecords || []) {
             const rt = this.recordTypes.get(type);
-            for (const f of rt.fields) lines.push(`new ${this.arrayRef(rt.arrays.get(f.name))} = [0]`);
+            // A family's members share their arrays: each is made once.
+            for (const f of rt.fields) {
+                const line = `new ${this.arrayRef(rt.arrays.get(f.name))} = [0]`;
+                if (!lines.includes(line)) lines.push(line);
+            }
         }
         return lines;
     }
@@ -1817,7 +2024,9 @@ export class BaseTranslator {
             return;
         }
         push(`new ${this.arrayRef(name)}`);
-        for (const item of items) push(`push ${this.expr(item)} to ${this.arrayRef(name)}`);
+        // The values were evaluated once above: a `new X()` item's allocation is emitted by that
+        // evaluation, so evaluating again would construct each item twice.
+        for (const value of literals) push(`push ${value} to ${this.arrayRef(name)}`);
     }
 
     /** An array method used as a value, or null if it is not one. */

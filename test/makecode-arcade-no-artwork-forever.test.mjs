@@ -21,19 +21,22 @@ WHEN arcade source starts:
     assert.ok(Number(n.value) >= 1 && Number(n.value) <= 8, `one iteration per frame, got ${n.value}`);
 });
 
-test('imported moveSprite on a sprite with missing artwork runs', async () => {
+// PXT compiles an absent asset literal to undefined and a Sprite made from undefined art throws at the call; the import
+// keeps the reference by name and the VM raises the same TypeError rather than inventing a stand-in sprite.
+const FAULT = ['TypeError: Expected type Image but received type undefined. Did you forget to assign a variable?'];
+test('imported moveSprite on a sprite with missing artwork faults at the creation and still returns', async () => {
     const source = 'let s = sprites.create(assets.image`Absent`, SpriteKind.Player)\ncontroller.moveSprite(s)\n' +
         'info.startCountdown(30)\nscene.cameraFollowSprite(s)';
     const imported = arcadeToPseudocode({'main.ts': source});
     const run = await bound(runProgram(imported.code, {frames: 24}), 20000);
-    assert.deepEqual(run.errors, []);
+    assert.deepEqual([...new Set(run.errors)], FAULT);
 });
 
-test('a forever callback that spawns a projectile from missing artwork runs', async () => {
+test('a forever callback that spawns a projectile from missing artwork faults at the creation and still returns', async () => {
     const source = 'forever(function () {\n let p = sprites.createProjectileFromSide(assets.image`Absent`, -90, 0)\n p.y = randint(0, 10)\n})';
     const imported = arcadeToPseudocode({'main.ts': source});
     const run = await bound(runProgram(imported.code, {frames: 24}), 20000);
-    assert.deepEqual(run.errors, []);
+    assert.deepEqual([...new Set(run.errors)], FAULT);
 });
 
 test('an array length passed to a recursive helper has primitive domain evidence', async () => {

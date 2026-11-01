@@ -210,6 +210,7 @@ try{
         await page.getByRole('tab',{name:'Blocks',exact:true}).click();
         await page.getByTitle('Add Extension',{exact:true}).click();await page.getByText('Arcade',{exact:true}).click();
         await page.waitForFunction(()=>window.__brickwrightStore.getState().scratchGui.vm.extensionManager.isExtensionLoaded('arcade'));
+        await page.evaluate(()=>window.__brickwrightStore.getState().scratchGui.vm.runtime.bwButtonCallbacks.ARCADE_PALETTE_animation()); // the asset readers are hidden "show more" blocks
         for(const opcode of ['arcade_animationAssetFrames','arcade_animationAssetFreshFrames','arcade_animationAssetInterval']){
             let fieldRect=null;
             for(let attempt=0;attempt<24;attempt++){

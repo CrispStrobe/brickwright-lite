@@ -29,6 +29,7 @@ import {parseMakeCodeTs} from './ts-import.js';
 import {BaseTranslator, bodyOf, num} from './translate-base.js';
 import {MICROBIT_ICONS, MICROBIT_ARROWS} from './microbit-icons.js';
 import {lowerNamespaceBindings} from './namespace-bindings.js';
+import {lowerHandleValues} from './lower-handle-values.js';
 
 /** MakeCode enum member → the token our vocabulary uses. */
 const ENUM_VALUES = {
@@ -161,6 +162,7 @@ class MicrobitTranslator extends BaseTranslator {
     isBooleanValue (value) {
         return super.isBooleanValue(value) ||
             value === 'logo touched' ||
+            value === 'sound is playing' ||
             /^read button_/.test(value) ||
             / happening$/.test(value) ||
             / touched$/.test(value) ||
@@ -404,10 +406,160 @@ class MicrobitTranslator extends BaseTranslator {
         return word || 'newline';
     }
 
+    // ── buffers ─────────────────────────────────────────────────────
+    //
+    // A Buffer is a byte array (`create buffer`, a bytearray on the device).
+    // Its methods share names with arrays' and strings' (`slice`, `length`),
+    // so which names hold a buffer is found before the walk (claimBuffers):
+    // by what was assigned to them, by `: Buffer`, or by the handler that
+    // receives one. A name that is ALSO given something else is not guessed at.
+
+    /** Is this expression a Buffer (by what the program says about it)? */
+    isBuffer (node) {
+        if (!node || !this.bufferNames) return false;
+        if (node.type === 'Identifier') return this.bufferNames.has(node.name);
+        if (node.type === 'Member') return this.bufferNames.has(node.name) && node.name !== 'length';
+        // An item of an array of buffers.
+        if (node.type === 'Index') return !!node.object && node.object.type === 'Identifier' && this.bufferArrays.has(node.object.name);
+        if (node.type === 'Call') {
+            const name = this.path(node.callee);
+            if (BUFFER_MAKERS.has(name)) return true;
+            const c = node.callee;
+            return !!c && c.type === 'Member' && c.name === 'slice' && this.isBuffer(c.object);
+        }
+        return false;
+    }
+
+    /** Find the names that hold Buffers (and drop the ones that also hold something else). */
+    claimBuffers (ast) {
+        this.bufferNames = new Set();
+        this.bufferArrays = new Set();
+        const other = new Set();
+        const nameOf = n => (n && (n.type === 'Identifier' || n.type === 'Member') ? n.name : null);
+        const note = (name, value, typeName) => {
+            if (!name) return;
+            if (/^(Buffer\[\]|Array<Buffer>)$/.test(String(typeName || '').replace(/\s+/g, ''))) this.bufferArrays.add(name);
+            else if (/^Buffer$/.test(String(typeName || '').trim()) || (value && this.isBuffer(value))) this.bufferNames.add(name);
+            else if (value && ['Array', 'String', 'Number', 'Template', 'Boolean'].includes(value.type)) other.add(name);
+        };
+        for (let pass = 0; pass < 3; pass++) {
+            const walk = node => {
+                if (!node || typeof node !== 'object') return;
+                if (Array.isArray(node)) { node.forEach(walk); return; }
+                if (node.type === 'Declaration') for (const d of node.decls || []) note(d.name, d.init, d.typeName);
+                if (node.type === 'Assignment' && node.op === '=') note(nameOf(node.left), node.right, '');
+                for (const key of ['paramTypes']) {
+                    for (const [p, t] of Object.entries(node[key] || {})) if (t && /^Buffer$/.test(t.text || '')) this.bufferNames.add(p);
+                }
+                if (node.type === 'Class') for (const f of node.fields || []) note(f.name, f.init, f.typeName);
+                // `bufs.push(buffer)` makes bufs an array of buffers; `for (const b of bufs)` makes b a buffer.
+                if (node.type === 'Call' && node.callee && node.callee.type === 'Member' && node.callee.name === 'push' &&
+                    node.callee.object.type === 'Identifier' && node.args && node.args[0] && this.isBuffer(node.args[0])) {
+                    this.bufferArrays.add(node.callee.object.name);
+                }
+                if (node.type === 'ForOf' && node.iterable && node.iterable.type === 'Identifier' && this.bufferArrays.has(node.iterable.name)) {
+                    this.bufferNames.add(node.name);
+                }
+                for (const [p, t] of Object.entries(node.paramTypes || {})) if (t && /^(Buffer\[\]|Array<Buffer>)$/.test((t.text || '').replace(/\s+/g, ''))) this.bufferArrays.add(p);
+                // The destructured legacy packet handler: its `receivedBuffer` is a buffer.
+                if (node.type === 'Call' && this.path(node.callee) === 'radio.onDataPacketReceived') {
+                    const fn = node.args[node.args.length - 1];
+                    if (fn && fn.params && fn.params.includes('receivedBuffer')) this.bufferNames.add('receivedBuffer');
+                }
+                if (node.type === 'Call' && this.path(node.callee) === 'radio.onReceivedBuffer') {
+                    const fn = node.args[node.args.length - 1];
+                    if (fn && fn.params && fn.params[0]) this.bufferNames.add(fn.params[0]);
+                }
+                for (const v of Object.values(node)) if (v && typeof v === 'object') walk(v);
+            };
+            walk(ast);
+        }
+        for (const name of other) this.bufferNames.delete(name);
+    }
+
+    /** `NumberFormat.Int32LE` → `int32le`; null when it is not a member of NumberFormat. */
+    numberFormat (node) {
+        if (node && node.type === 'Member' && node.object && node.object.name === 'NumberFormat') return node.name.toLowerCase();
+        this.unsupported.push('a Buffer number format that is not NumberFormat.<member> — the block takes it from its menu');
+        return 'int32le';
+    }
+
+    /** A Buffer method as a value, or null when the call is not one. */
+    bufferValue (node) {
+        const c = node.callee;
+        if (!c || c.type !== 'Member' || !this.isBuffer(c.object) || (c.object.type === 'Identifier' && MAKECODE_NAMESPACES.has(c.object.name))) return null;
+        const a = node.args || [];
+        const b = this.operand(c.object);
+        switch (c.name) {
+        case 'getNumber': return `buffer ${b} get ${this.numberFormat(a[0])} at ${this.operand(a[1])}`;
+        case 'getUint8': return `buffer ${b} get uint8le at ${this.operand(a[0])}`;
+        case 'toHex': return `hex of buffer ${b}`;
+        case 'slice': return `slice of buffer ${b} from ${a[0] ? this.operand(a[0]) : '0'} length ${a[1] ? this.operand(a[1]) : '(-1)'}`;
+        default:
+            this.unsupported.push(`${this.path(c) || c.name}() — a Buffer method with no block`);
+            return '0';
+        }
+    }
+
+    /** A Buffer method as a statement, or false. */
+    bufferStatement (node, push, out, pad) {
+        const c = node.callee;
+        if (!c || c.type !== 'Member' || !this.isBuffer(c.object) || (c.object.type === 'Identifier' && MAKECODE_NAMESPACES.has(c.object.name))) return false;
+        const a = node.args || [];
+        const b = this.operand(c.object);
+        switch (c.name) {
+        case 'setNumber':
+            push(`set buffer ${b} ${this.numberFormat(a[0])} at ${this.single(a[1], out, pad)} to ${this.single(a[2], out, pad)}`);
+            return true;
+        case 'setUint8':
+            push(`set buffer ${b} uint8le at ${this.single(a[0], out, pad)} to ${this.single(a[1], out, pad)}`);
+            return true;
+        case 'fill':
+            if (a.length > 1) this.unsupported.push('Buffer.fill() with an offset or length — the block fills the whole buffer');
+            push(`fill buffer ${b} with ${this.single(a[0], out, pad)}`);
+            return true;
+        default:
+            push(this.note(`${this.path(c) || c.name}() — a Buffer method with no block`));
+            return true;
+        }
+    }
+
+    /** Members with a word of their own: a buffer's length, a legacy radio packet's properties. */
+    memberValue (node) {
+        if (!node || node.type !== 'Member') return null;
+        if (node.name === 'length' && this.isBuffer(node.object)) return `length of buffer ${this.operand(node.object)}`;
+        if (node.object && node.object.type === 'Identifier' && this.packetParams && this.packetParams.has(node.object.name)) {
+            const word = PACKET_PROPERTIES[node.name];
+            if (word) return word;
+            this.unsupported.push(`${node.object.name}.${node.name} — a radio packet has no such property`);
+            return '0';
+        }
+        return null;
+    }
+
+    /** An event-bus id or value: a number, an EventBusSource / EventBusValue member (control.eventSourceId(X) too), or a number expression. */
+    eventNumber (node) {
+        let member = node;
+        if (node && node.type === 'Call' && /^control\.event(Source|Value)Id$/.test(this.path(node.callee) || '')) member = node.args[0];
+        if (member && member.type === 'Member' && member.object && /^EventBus(Source|Value)$/.test(member.object.name)) {
+            const table = member.object.name === 'EventBusSource' ? EVENT_BUS_SOURCE : EVENT_BUS_VALUE;
+            if (table[member.name] !== undefined) return String(table[member.name]);
+            this.unsupported.push(`${member.object.name}.${member.name} — not a member MakeCode defines`);
+            return '0';
+        }
+        return this.operand(node);
+    }
+
     /** Reporter calls: MakeCode's sensors and maths in our spelling. */
     callExpression (node) {
         const sprite = this.spriteCall(node, null);
         if (sprite) return sprite;
+        const buffer = this.bufferValue(node);
+        if (buffer !== null) return buffer;
+        // `s.charCodeAt(i)`: only a string has one.
+        if (node.callee && node.callee.type === 'Member' && node.callee.name === 'charCodeAt' && !this.isBuffer(node.callee.object)) {
+            return `char code of ${this.operand(node.callee.object)} at ${node.args && node.args[0] ? this.operand(node.args[0]) : '0'}`;
+        }
         if (this.imageMethod(node)) {
             const c = node.callee;
             const a = node.args || [];
@@ -434,7 +586,14 @@ class MicrobitTranslator extends BaseTranslator {
         case 'input.lightLevel': return 'read light';
         case 'input.temperature': return 'read temperature';
         case 'input.soundLevel': return 'read sound';
-        case 'input.runningTime': return 'timer * 1000';
+        case 'input.runningTime': case 'control.millis': return 'timer * 1000';
+        case 'input.runningTimeMicros': case 'control.micros': return 'timer * 1000000';
+        // The older radio reporters are the same packet properties as radio.receivedPacket(...).
+        case 'radio.receivedSerial': return 'last radio serial number';
+        case 'radio.receivedTime': return 'read last radio time';
+        case 'radio.receivedSignalStrength': return 'last radio signal strength';
+        case 'radio.receiveNumber': return 'read last radio number';
+        case 'radio.receiveString': return 'read last radio text';
         // Readable since sb3-creator b4a8129 closed the round trip: these
         // two spellings came out of the decompiler and had no rule going
         // back in, so writing them used to compile to silence.
@@ -443,6 +602,24 @@ class MicrobitTranslator extends BaseTranslator {
         case 'pins.digitalReadPin': return `pin ${this.pin(a[0]) || 'P0'} digital`;
         case 'pins.analogReadPin': return `analog value of pin ${this.pin(a[0]) || 'P0'}`;
         case 'radio.receivedNumber': return 'read last radio number';
+        case 'String.fromCharCode': return `char from code ${this.operand(a[0])}`;
+        case 'control.createBufferFromUTF8': return `buffer from text ${this.operand(a[0])}`;
+        // The USB serial console's reads (a MicroPython uart).
+        case 'serial.readBuffer': return `serial read buffer ${this.operand(a[0])}`;
+        case 'serial.readString': return 'serial read string';
+        case 'serial.readLine': return 'serial read until newline';
+        case 'serial.readUntil': return `serial read until ${this.delimiterWord(a[0])}`;
+        case 'pins.i2cReadBuffer': return `i2c read buffer at ${this.operand(a[0])} size ${this.operand(a[1])}`;
+        case 'pins.i2cReadNumber': return `i2c read ${this.numberFormat(a[1])} at ${this.operand(a[0])}`;
+        case 'pins.sizeOf': return `size of ${this.numberFormat(a[0])}`;
+        case 'pins.spiWrite': return `spi transfer ${this.operand(a[0])}`;
+        case 'music.volume': return 'speaker volume';
+        case 'music.isSoundPlaying': return 'sound is playing';
+        case 'control.createBuffer': case 'pins.createBuffer': return `create buffer ${this.operand(a[0])}`;
+        case 'led.displayMode': return 'display mode';
+        case 'control.eventValue': return 'event value';
+        case 'radio.receivedBuffer': return 'read last radio buffer';
+        case 'radio.receivedString': return 'read last radio text';
         case 'input.logoIsPressed': return 'logo touched';
         // Of a packet's properties, MicroPython's radio reports the signal
         // strength (receive_full); the sender's serial number and send time
@@ -453,8 +630,9 @@ class MicrobitTranslator extends BaseTranslator {
             // The sender's serial number rides in the packet when the sender
             // turned it on (`radio transmit serial number on`); else 0, as in MakeCode.
             if (prop === 'SerialNumber') return 'last radio serial number';
-            this.unsupported.push(`radio.receivedPacket(RadioPacketProperty.${prop || '…'}) — ` +
-                'a MicroPython radio packet carries no send time');
+            // The receive stamp stands for the send time: a MicroPython packet carries none.
+            if (prop === 'Time') return 'read last radio time';
+            this.unsupported.push(`radio.receivedPacket(RadioPacketProperty.${prop || '…'}) — not a property of a packet`);
             return '0';
         }
         case 'control.deviceSerialNumber': return 'device serial number';
@@ -573,6 +751,7 @@ class MicrobitTranslator extends BaseTranslator {
         const pad = '  '.repeat(indent);
         const push = line => out.push(pad + line);
         if (this.spriteCall(node, push)) return;
+        if (this.bufferStatement(node, push, out, pad)) return;
         const name = this.path(node.callee);
         const a = node.args || [];
         const arg = i => this.expr(a[i]);
@@ -910,9 +1089,97 @@ class MicrobitTranslator extends BaseTranslator {
             push(`set ${level} sound threshold to ${this.operand(a[1])}`);
             return;
         }
+        // The serial console beyond writeLine: text and numbers without a newline, raw buffers.
+        case 'serial.writeString': push(`serial write text ${this.single(a[0], out, pad)}`); return;
+        case 'serial.writeNumber': push(`serial write number ${this.single(a[0], out, pad)}`); return;
+        case 'serial.writeBuffer': push(`serial write buffer ${this.single(a[0], out, pad)}`); return;
+        // I2C and SPI: MicroPython's i2c and spi modules.
+        case 'pins.i2cWriteBuffer': push(`i2c write buffer ${this.single(a[1], out, pad)} to ${this.single(a[0], out, pad)}`); return;
+        case 'pins.i2cWriteNumber':
+            push(`i2c write ${this.numberFormat(a[2])} ${this.single(a[1], out, pad)} to ${this.single(a[0], out, pad)}`);
+            return;
+        case 'pins.spiWrite': {
+            const sink = this.freshName('_spi');
+            push(`set ${sink} to spi transfer ${this.operand(a[0])}`);
+            return;
+        }
+        case 'pins.spiTransfer': push(`spi transfer buffer ${this.single(a[0], out, pad)} into ${this.single(a[1], out, pad)}`); return;
+        case 'pins.spiFrequency': push(`spi frequency ${this.single(a[0], out, pad)}`); return;
+        case 'pins.spiFormat': push(`spi format ${this.single(a[0], out, pad)} mode ${this.single(a[1], out, pad)}`); return;
+        case 'pins.spiPins': push(`spi pins mosi ${this.pin(a[0]) || 'P15'} miso ${this.pin(a[1]) || 'P14'} sck ${this.pin(a[2]) || 'P13'}`); return;
+        // The V2 log beyond log data.
+        case 'datalogger.setColumnTitles': {
+            const titles = a.slice(0, 3);
+            if (!titles.length || a.length > 3) {
+                push(this.note('datalogger.setColumnTitles() — the block names one to three columns'));
+                return;
+            }
+            push(`set log columns ${titles.map(t => this.operand(t)).join(' and ')}`);
+            return;
+        }
+        case 'datalogger.deleteLog': {
+            const full = a[0] && a[0].type === 'Member' && a[0].name === 'Full';
+            push(full ? 'delete log fully' : 'delete log');
+            return;
+        }
+        case 'datalogger.mirrorToSerial': {
+            const on = a[0] && a[0].type === 'Boolean' ? a[0].value : null;
+            if (on === null) {
+                push(this.note('datalogger.mirrorToSerial(<expression>) — the block takes on or off'));
+                return;
+            }
+            push(`log mirror ${on ? 'on' : 'off'}`);
+            return;
+        }
+        case 'datalogger.includeTimestamp': {
+            const unit = a[0] && a[0].type === 'Member' ? a[0].name.toLowerCase() : '';
+            if (!/^(none|milliseconds|seconds|minutes|hours|days)$/.test(unit)) {
+                push(this.note('datalogger.includeTimestamp(<format>) — the block takes none, milliseconds, seconds, minutes, hours or days'));
+                return;
+            }
+            push(`log timestamp ${unit}`);
+            return;
+        }
+        case 'music.setVolume': push(`set speaker volume to ${this.operand(a[0])}`); return;
+        case 'music.setBuiltInSpeakerEnabled': {
+            const on = a[0] && a[0].type === 'Boolean' ? a[0].value : null;
+            if (on === null) {
+                push(this.note('music.setBuiltInSpeakerEnabled(<expression>) — the block takes on or off'));
+                return;
+            }
+            push(`speaker ${on ? 'on' : 'off'}`);
+            return;
+        }
         case 'radio.sendNumber':
             push(`radio send number ${this.single(a[0], out, pad)}`);
             return;
+        case 'radio.sendBuffer':
+            push(`radio send buffer ${this.single(a[0], out, pad)}`);
+            return;
+        // The packet's JSON on the serial port. Its "t" is the packet's send
+        // time in MakeCode; a MicroPython packet carries none, so the stamp is
+        // the time it was RECEIVED.
+        case 'radio.writeReceivedPacketToSerial':
+            push('radio write received packet to serial');
+            return;
+        case 'game.showScore':
+            push('show game score');
+            return;
+        // control.raiseEvent(source, value[, mode]): the mode is how MakeCode
+        // queues it; the event is raised either way.
+        case 'control.raiseEvent':
+            push(`raise event ${this.eventNumber(a[0])} ${this.eventNumber(a[1])}`);
+            return;
+        // datalogger.log(createCV("a", 1), …): up to three name/value pairs.
+        case 'datalogger.log': {
+            const pairs = a.filter(x => x && x.type === 'Call' && this.path(x.callee) === 'datalogger.createCV');
+            if (!a.length || pairs.length !== a.length || pairs.length > 3) {
+                push(this.note('datalogger.log() — the block logs one to three datalogger.createCV("name", value) pairs'));
+                return;
+            }
+            push(`log data ${pairs.map(p => `${this.operand(p.args[0])} = ${this.single(p.args[1], out, pad)}`).join(' and ')}`);
+            return;
+        }
         // The number goes; the NAME cannot — the radio blocks send a number or
         // a text, not a pair. Said, rather than sending the bare number as if
         // that were the same packet.
@@ -951,8 +1218,27 @@ class MicrobitTranslator extends BaseTranslator {
             push('FOREVER:');
             this.block(bodyOf(a[0]), indent + 1, out);
             return;
-        case 'control.inBackground':
+        case 'control.inBackground': case 'control.runInBackground': case 'control.runInParallel':
             this.block(bodyOf(a[0]), indent, out);
+            return;
+        // radio.on(): the radio at the group and power the program set (MakeCode's defaults: group 0).
+        case 'radio.on': {
+            const line = `${pad}radio on group ${this.radioGroup || '0'} power ${this.radioPower || '6'}`;
+            const last = this.radioLine;
+            if (last && last.out === out && last.index === out.length - 1 && last.pad === pad) out[last.index] = line;
+            else out.push(line);
+            this.radioLine = {out, index: out.length - 1, pad};
+            return;
+        }
+        // MicroPython's serial console is the USB port at its fixed rate with its own buffers: these have
+        // nothing to set, and are said so in a comment rather than refused.
+        case 'serial.setBaudRate': case 'serial.redirectToUSB': case 'serial.setRxBufferSize': case 'serial.setTxBufferSize':
+        case 'serial.setWriteLinePadding':
+            push(`# ${name} — MicroPython's serial console is the USB port; nothing to set`);
+            return;
+        // plotAll lights all 25: the same as showing a full grid.
+        case 'led.plotAll':
+            push('show leds 99999:99999:99999:99999:99999');
             return;
 
         case 'motors.dualMotorPower': {
@@ -996,8 +1282,45 @@ const IMAGE_METHODS = new Set(['setPixel', 'pixel', 'showImage', 'plotImage', 's
  * MakeCode calls with NO MicroPython counterpart at all — refused with the
  * reason, because "unsupported" alone reads like a gap someone forgot.
  */
-const NO_MICROPYTHON = {
-    'radio.writeReceivedPacketToSerial': 'the dump prints each packet\'s send time, and a MicroPython radio packet carries none'
+const NO_MICROPYTHON = {};
+
+/** MakeCode's EventBusSource and EventBusValue members and their numbers (pxt-microbit 9.1.1 enums.d.ts). */
+const EVENT_BUS_SOURCE = {
+    MICROBIT_ID_BUTTON_A: 1, MICROBIT_ID_BUTTON_B: 2, MICROBIT_ID_BUTTON_AB: 3, MICROBIT_ID_RADIO: 9, MICROBIT_ID_GESTURE: 13,
+    MICROBIT_ID_ACCELEROMETER: 5, MICROBIT_ID_IO_P0: 100, MICROBIT_ID_IO_P1: 101, MICROBIT_ID_IO_P2: 102, MICROBIT_ID_IO_P3: 103,
+    MICROBIT_ID_IO_P4: 104, MICROBIT_ID_IO_P5: 105, MICROBIT_ID_IO_P6: 106, MICROBIT_ID_IO_P7: 107, MICROBIT_ID_IO_P8: 108,
+    MICROBIT_ID_IO_P9: 109, MICROBIT_ID_IO_P10: 110, MICROBIT_ID_IO_P11: 111, MICROBIT_ID_IO_P12: 112, MICROBIT_ID_IO_P13: 113,
+    MICROBIT_ID_IO_P14: 114, MICROBIT_ID_IO_P15: 115, MICROBIT_ID_IO_P16: 116, MICROBIT_ID_IO_P19: 119, MICROBIT_ID_IO_P20: 120,
+    MES_DEVICE_INFO_ID: 1103, MES_SIGNAL_STRENGTH_ID: 1101, MES_DPAD_CONTROLLER_ID: 1104, MES_BROADCAST_GENERAL_ID: 2000
+};
+const EVENT_BUS_VALUE = {
+    MICROBIT_EVT_ANY: 0, MICROBIT_BUTTON_EVT_DOWN: 1, MICROBIT_BUTTON_EVT_UP: 2, MICROBIT_BUTTON_EVT_CLICK: 3,
+    MICROBIT_BUTTON_EVT_LONG_CLICK: 4,
+    MICROBIT_RADIO_EVT_DATAGRAM: 1, MICROBIT_ACCELEROMETER_EVT_DATA_UPDATE: 1, MICROBIT_PIN_EVT_RISE: 2, MICROBIT_PIN_EVT_FALL: 3,
+    MICROBIT_PIN_EVT_PULSE_HI: 4, MICROBIT_PIN_EVT_PULSE_LO: 5, MES_ALERT_EVT_ALARM1: 6, MES_ALERT_EVT_ALARM2: 7,
+    MES_ALERT_EVT_ALARM3: 8, MES_ALERT_EVT_ALARM4: 9, MES_ALERT_EVT_ALARM5: 10, MES_ALERT_EVT_ALARM6: 11,
+    MES_ALERT_EVT_DISPLAY_TOAST: 1, MES_ALERT_EVT_FIND_MY_PHONE: 5, MES_ALERT_EVT_PLAY_RINGTONE: 4, MES_ALERT_EVT_PLAY_SOUND: 3,
+    MES_ALERT_EVT_VIBRATE: 2, MES_CAMERA_EVT_LAUNCH_PHOTO_MODE: 1, MES_CAMERA_EVT_LAUNCH_VIDEO_MODE: 2,
+    MES_CAMERA_EVT_START_VIDEO_CAPTURE: 4, MES_CAMERA_EVT_STOP_PHOTO_MODE: 6, MES_CAMERA_EVT_STOP_VIDEO_CAPTURE: 5,
+    MES_CAMERA_EVT_STOP_VIDEO_MODE: 7, MES_CAMERA_EVT_TAKE_PHOTO: 3, MES_CAMERA_EVT_TOGGLE_FRONT_REAR: 8, MES_DEVICE_DISPLAY_OFF: 5,
+    MES_DEVICE_DISPLAY_ON: 6, MES_DEVICE_GESTURE_DEVICE_SHAKEN: 4, MES_DEVICE_INCOMING_CALL: 7, MES_DEVICE_INCOMING_MESSAGE: 8,
+    MES_DEVICE_ORIENTATION_LANDSCAPE: 1, MES_DEVICE_ORIENTATION_PORTRAIT: 2, MES_DPAD_BUTTON_1_DOWN: 9, MES_DPAD_BUTTON_1_UP: 10,
+    MES_DPAD_BUTTON_2_DOWN: 11, MES_DPAD_BUTTON_2_UP: 12, MES_DPAD_BUTTON_3_DOWN: 13, MES_DPAD_BUTTON_3_UP: 14,
+    MES_DPAD_BUTTON_4_DOWN: 15, MES_DPAD_BUTTON_4_UP: 16, MES_DPAD_BUTTON_A_DOWN: 1, MES_DPAD_BUTTON_A_UP: 2,
+    MES_DPAD_BUTTON_B_DOWN: 3, MES_DPAD_BUTTON_B_UP: 4, MES_DPAD_BUTTON_C_DOWN: 5, MES_DPAD_BUTTON_C_UP: 6,
+    MES_DPAD_BUTTON_D_DOWN: 7, MES_DPAD_BUTTON_D_UP: 8, MES_REMOTE_CONTROL_EVT_FORWARD: 6, MES_REMOTE_CONTROL_EVT_NEXTTRACK: 4,
+    MES_REMOTE_CONTROL_EVT_PAUSE: 2, MES_REMOTE_CONTROL_EVT_PLAY: 1, MES_REMOTE_CONTROL_EVT_PREVTRACK: 5,
+    MES_REMOTE_CONTROL_EVT_REWIND: 7, MES_REMOTE_CONTROL_EVT_STOP: 3, MES_REMOTE_CONTROL_EVT_VOLUMEDOWN: 9,
+    MES_REMOTE_CONTROL_EVT_VOLUMEUP: 8
+};
+
+/** Buffer-making calls (their results are Buffers). */
+const BUFFER_MAKERS = new Set(['control.createBuffer', 'pins.createBuffer', 'control.createBufferFromUTF8', 'radio.receivedBuffer']);
+
+/** A legacy radio Packet's properties (radio.onDataPacketReceived) in our spelling. */
+const PACKET_PROPERTIES = {
+    receivedNumber: 'read last radio number', receivedString: 'read last radio text', receivedBuffer: 'read last radio buffer',
+    signal: 'last radio signal strength', serial: 'last radio serial number', time: 'read last radio time'
 };
 
 /**
@@ -1121,6 +1444,11 @@ const HANDLERS = {
         const button = translator.enumToken(a[0]) || 'a';
         return {test: `read button_${button}`, release: `read button_${button}`};
     },
+    'input.onShake': () => () => ({test: 'shake happening', release: null}),
+    'input.onScreenUp': () => () => ({test: 'face up happening', release: null}),
+    'input.onScreenDown': () => () => ({test: 'face down happening', release: null}),
+    'input.onLogoUp': () => () => ({test: 'tilt up happening', release: null}),
+    'input.onLogoDown': () => () => ({test: 'tilt down happening', release: null}),
     'input.onGesture': translator => a => {
         const gesture = translator.enumToken(a[0]) || 'shake';
         // A gesture is momentary; waiting for it to stop would hang.
@@ -1133,6 +1461,44 @@ const HANDLERS = {
     'input.onPinReleased': translator => a => {
         const pin = translator.pin(a[0]) || 'P0';
         return {test: `not (pin ${pin} touched)`, release: null};
+    },
+    // control.onEvent(source, value, body) for the sources the board itself raises (CODAL's ids and
+    // values, pxt-microbit enums.d.ts): the buttons (1 A, 2 B, 3 A+B: DOWN 1 at the press, UP 2 and
+    // CLICK 3 at the release, LONG_CLICK 4 when held over a second), gestures (13: the value is the
+    // gesture), and pins (100+n: touch events on P0-P2, RISE 2 / FALL 3 elsewhere). The event bus is
+    // POLLED here, like the other handlers. Any other source is a user's own, a hat for control.raiseEvent.
+    'control.onEvent': translator => a => {
+        const source = Number(translator.eventNumber(a[0]));
+        // A gesture's value is the Gesture member itself (Gesture.Shake is 11).
+        const gestureMember = a[1] && a[1].type === 'Member' && a[1].object && a[1].object.name === 'Gesture' ? ENUM_VALUES.Gesture[a[1].name] : null;
+        const value = gestureMember ? {'shake': 11, 'tilt up': 1, 'tilt down': 2, 'face up': 5, 'face down': 6, 'tilt left': 3,
+            'tilt right': 4, 'freefall': 7, '3g': 8, '6g': 9, '8g': 10}[gestureMember] : Number(translator.eventNumber(a[1]));
+        if (!Number.isFinite(source) || !Number.isFinite(value)) return {fallthrough: true};
+        if (source >= 1 && source <= 3) {
+            const held = source === 3 ? '(read button_a) and (read button_b)' : `read button_${source === 1 ? 'a' : 'b'}`;
+            if (value === 1) return {test: held, release: held};
+            if (value === 2) return {test: held, wait: `not (${held})`};
+            if (value === 3 || value === 4) {
+                const at = translator.freshName('_held');
+                return {test: held, start: `set ${at} to timer`, wait: `not (${held})`,
+                    guard: value === 3 ? `(timer - ${at}) < 1` : `not ((timer - ${at}) < 1)`};
+            }
+            return {fallthrough: true};
+        }
+        if (source === 13) {
+            const gesture = {11: 'shake', 1: 'tilt up', 2: 'tilt down', 5: 'face up', 6: 'face down', 3: 'tilt left', 4: 'tilt right',
+                7: 'freefall', 8: '3g', 9: '6g', 10: '8g'}[value];
+            return gesture ? {test: `${gesture} happening`, release: null} : {fallthrough: true};
+        }
+        if (source >= 100 && source <= 120) {
+            const pin = `P${source - 100}`;
+            const touch = source <= 102;
+            if (touch && value === 1) return {test: `pin ${pin} touched`, release: `pin ${pin} touched`};
+            if (touch && (value === 2 || value === 3)) return {test: `pin ${pin} touched`, wait: `not (pin ${pin} touched)`};
+            if (value === 2) return {test: `pin ${pin} digital = 1`, release: `pin ${pin} digital = 1`};
+            if (value === 3) return {test: `pin ${pin} digital = 1`, wait: `pin ${pin} digital = 0`};
+        }
+        return {fallthrough: true};
     },
     // The V2 touch logo. Pressed and Touched both fire as the logo is
     // touched, which polling can say; Released and LongPressed need the timing
@@ -1175,6 +1541,40 @@ const HANDLERS = {
 const UNPOLLABLE_HANDLERS = {};
 
 /**
+ * The shape the export writes for a radio packet hat (export.js): a function
+ * `onRadioPacket` and, for each kind of packet, a handler that calls it first.
+ * It is read back as the packet hat it came from.
+ */
+function liftPacketHandlers (ast) {
+    const KINDS = /^radio\.onReceived(Number|String|Value|Buffer)$/;
+    const calls = name => st => st && st.type === 'ExpressionStatement' && st.expr && st.expr.type === 'Call' &&
+        st.expr.callee && st.expr.callee.type === 'Identifier' && st.expr.callee.name === name && !(st.expr.args || []).length;
+    const handlerOf = st => {
+        if (!st || st.type !== 'ExpressionStatement' || !st.expr || st.expr.type !== 'Call' || !st.expr.callee || st.expr.callee.type !== 'Member') return null;
+        const c = st.expr.callee;
+        return c.object && c.object.name === 'radio' && KINDS.test(`radio.${c.name}`) ? st.expr : null;
+    };
+    for (const fn of ast.body.filter(st => st.type === 'FunctionDeclaration' && /^onRadioPacket\d*$/.test(st.name))) {
+        const handlers = ast.body.map(handlerOf).filter(Boolean);
+        const mine = handlers.filter(h => {
+            const body = h.args[h.args.length - 1].body || [];
+            return body.length && calls(fn.name)(body[0]);
+        });
+        // All four kinds must call it, or it is the author's own function.
+        if (mine.length < 4) continue;
+        for (const h of mine) h.args[h.args.length - 1].body.shift();
+        ast.body = ast.body.filter(st => {
+            const h = handlerOf(st);
+            return !(h && mine.includes(h) && !(h.args[h.args.length - 1].body || []).length);
+        });
+        const at = ast.body.indexOf(fn);
+        ast.body[at] = {type: 'ExpressionStatement', expr: {type: 'Call',
+            callee: {type: 'Member', object: {type: 'Identifier', name: 'radio'}, name: 'onDataPacketReceived'},
+            args: [{type: 'FunctionExpression', params: [], paramTypes: {}, optionalParams: [], body: fn.body}]}};
+    }
+}
+
+/**
  * Translate a MakeCode micro:bit project.
  *
  * @param {string} source the project's main.ts
@@ -1183,7 +1583,7 @@ const UNPOLLABLE_HANDLERS = {};
  * @returns {{code: string, unsupported: Array<string>, scripts: number}}
  */
 export function microbitToPseudocode (source, opts = {}) {
-    let ast = parseMakeCodeTs(source);
+    let ast = parseMakeCodeTs(source, {lowerHeritage: true});
     // Extension sources (vendored or fetched) the program uses are translated
     // with it: their namespaces become procedures, so `turtle.forward(1)` is a
     // call to one rather than an unsupported line.
@@ -1194,6 +1594,9 @@ export function microbitToPseudocode (source, opts = {}) {
         if (lowered.program) ast = lowered.program;
         else extensionDiagnostics.push(...lowered.unsupported.map(e => `extension source: ${e}`));
     }
+    liftPacketHandlers(ast);
+    // Arrays held in class fields and functions held as values (lower-handle-values.js).
+    lowerHandleValues(ast, parseMakeCodeTs);
     const t = new MicrobitTranslator();
     t.board = opts.board || null;
     t.aliases = new Map();
@@ -1201,10 +1604,50 @@ export function microbitToPseudocode (source, opts = {}) {
     // renamed must not land on a name the program already uses.
     t.claimNames(ast);
     t.claimSprites(ast);
+    t.claimBuffers(ast);
+    // buf[i] reads and buf[i] = v writes are getUint8 / setUint8 (a buffer is bytes).
+    {
+        const rewrite = node => {
+            if (!node || typeof node !== 'object') return node;
+            if (Array.isArray(node)) {
+                for (let i = 0; i < node.length; i++) node[i] = rewrite(node[i]);
+                return node;
+            }
+            const store = node.type === 'Assignment' && node.left.type === 'Index' && t.isBuffer(node.left.object);
+            for (const key of Object.keys(node)) {
+                const v = node[key];
+                if (store && key === 'left') {
+                    v.object = rewrite(v.object);
+                    v.index = rewrite(v.index);
+                } else if (v && typeof v === 'object') node[key] = rewrite(v);
+            }
+            if (store && node.op === '=') {
+                return {type: 'Call', callee: {type: 'Member', object: node.left.object, name: 'setUint8'}, args: [node.left.index, node.right]};
+            }
+            if (store) {
+                const read = {type: 'Call', callee: {type: 'Member', object: node.left.object, name: 'getUint8'}, args: [node.left.index]};
+                return {type: 'Call', callee: {type: 'Member', object: node.left.object, name: 'setUint8'},
+                    args: [node.left.index, {type: 'Binary', op: node.op.slice(0, -1), left: read, right: node.right}]};
+            }
+            if (node.type === 'Index' && t.isBuffer(node.object)) {
+                return {type: 'Call', callee: {type: 'Member', object: node.object, name: 'getUint8'}, args: [node.index]};
+            }
+            return node;
+        };
+        if (t.bufferNames.size || t.bufferArrays.size) rewrite(ast.body);
+    }
     // Classes, interfaces and object literals, lowered to parallel arrays
     // (translate-base.js, records). Before the functions are listed: a
     // class's methods become procedures of their own.
     t.claimRecords(ast);
+    // A hat that comes BEFORE a top-level array's declaration reads it all the same (a library's handler written
+    // above the arrays it uses, which is also the order the export writes them in): the arrays are known up front.
+    for (const st of ast.body) {
+        if (st.type !== 'Declaration') continue;
+        for (const d of st.decls || []) {
+            if (d.isArray || (d.init && d.init.type === 'Array') || /\[\]$|^Array</.test(String(d.typeName || '').replace(/\s+/g, ''))) t.arrays.add(d.name);
+        }
+    }
     // A long-press handler on the logo makes its Pressed handler a timed one.
     t.logoTimed = JSON.stringify(ast).includes('"object":{"type":"Identifier","name":"TouchButtonEvent"},"name":"LongPressed"');
 
@@ -1253,8 +1696,9 @@ export function microbitToPseudocode (source, opts = {}) {
             continue;
         }
 
-        if (callName && HANDLERS[callName]) {
-            const shape = HANDLERS[callName](t)(call.args);
+        const polled = callName && HANDLERS[callName] ? HANDLERS[callName](t)(call.args) : null;
+        if (polled && !polled.fallthrough) {
+            const shape = polled;
             if (shape.refuse) {
                 t.unsupported.push(shape.refuse);
                 scripts.push([`# unsupported: ${shape.refuse}`]);
@@ -1303,6 +1747,50 @@ export function microbitToPseudocode (source, opts = {}) {
             const lines = [uart ? `WHEN bluetooth uart receives ${t.delimiterWord(call.args[0])}:` :
                 `WHEN micro:bit ${callName.endsWith('Connected') ? 'connected' : 'disconnected'}:`];
             t.block(body, 1, lines);
+            scripts.push(lines);
+            continue;
+        }
+
+        // radio.onReceivedBuffer((buffer) => ...) and the legacy
+        // radio.onDataPacketReceived((packet) => ...) (or its destructured form):
+        // hats, as the other radio handlers.
+        if (callName === 'radio.onReceivedBuffer' || callName === 'radio.onDataPacketReceived') {
+            const fn = call.args[call.args.length - 1];
+            const params = (fn && fn.params) || [];
+            const buffer = callName === 'radio.onReceivedBuffer';
+            const lines = [buffer ? 'WHEN radio receives buffer:' : 'WHEN radio receives packet:'];
+            const bound = [];
+            if (buffer && params[0]) {
+                bound.push([params[0], 'read last radio buffer']);
+            } else if (!buffer && params.length && (params.length > 1 || PACKET_PROPERTIES[params[0]])) {
+                // `({receivedNumber, signal}) => …`: each name is that property.
+                for (const p of params) {
+                    if (PACKET_PROPERTIES[p]) bound.push([p, PACKET_PROPERTIES[p]]);
+                }
+            } else if (!buffer && params[0]) {
+                t.packetParams = new Set([params[0]]);
+            }
+            for (const [param, reporter] of bound) {
+                if (writes(bodyOf(fn), param)) lines.push(`  set ${t.varName(param)} to ${reporter}`);
+                else t.aliases.set(param, reporter);
+            }
+            t.returnable = {result: null};
+            t.block(bodyOf(fn), 1, lines);
+            t.returnable = null;
+            bound.forEach(([param]) => t.aliases.delete(param));
+            t.packetParams = null;
+            scripts.push(lines);
+            continue;
+        }
+
+        // control.onEvent(source, value, body): a hat on the event bus. The
+        // body reads the event's value as control.eventValue().
+        if (callName === 'control.onEvent') {
+            const fn = call.args[call.args.length - 1];
+            const lines = [`WHEN event ${t.eventNumber(call.args[0])} ${t.eventNumber(call.args[1])}:`];
+            t.returnable = {result: null};
+            t.block(bodyOf(fn), 1, lines);
+            t.returnable = null;
             scripts.push(lines);
             continue;
         }
