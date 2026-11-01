@@ -190,3 +190,19 @@ test('the stage header uses react-intl, and is not this module\'s business', () 
     const raw = header.match(/(?:title|alt|aria-label)="[A-Z][^"]{2,}"/g) || [];
     assert.deepEqual(raw, ['alt="Scratch"'], 'only the product name is a literal');
 });
+
+test('the circuit-building feedback is translated and fully interpolated', () => {
+    const vars = {leds: '4 LEDs', pins: 'pins 15', switches: '2 switches', transistors: '6 transistors',
+        gate: 'AND', label: '74HC08', desc: 'quad AND', message: 'boom'};
+    for (const key of ['demo.wired', 'demo.switches', 'demo.nextDesign', 'demo.nextLoad', 'demo.failed',
+        'gate.cmos', 'gate.ic', 'gate.failed', 'circuit.pending', 'circuit.open', 'toolchain.downloaded']) {
+        for (const loc of LOCALES) {
+            const out = t(loc, key, vars);
+            assert.ok(out && out !== key, `${key} has a ${loc} string`);
+            assert.ok(!/[{}]/.test(out), `${key} (${loc}) leaves no placeholder: ${out}`);
+        }
+    }
+    // The browser gate finds the German confirmation by this shape.
+    assert.match(t('de', 'demo.wired', vars), /Tang Nano 20K.*verdrahtet/);
+    assert.match(t('en', 'demo.wired', vars), /Wired a Tang Nano 20K/);
+});
