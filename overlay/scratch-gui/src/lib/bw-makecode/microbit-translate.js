@@ -399,6 +399,37 @@ class MicrobitTranslator extends BaseTranslator {
     }
 
     /** `serial.delimiters(Delimiters.NewLine)`'s word (a bluetooth uart delimiter), else a note and 'newline'. */
+    /** A pack format (b B h H i I f d, optional < > prefix) as its fields, or null. */
+    packSizes (fmt) {
+        const m = /^([<>]?)([bBhHiIfd]+)$/.exec(String(fmt));
+        if (!m) return null;
+        const table = {b: ['int8', 1], B: ['uint8', 1], h: ['int16', 2], H: ['uint16', 2], i: ['int32', 4], I: ['uint32', 4], f: ['float32', 4], d: ['float64', 8]};
+        const fields = [];
+        let at = 0;
+        for (const ch of m[2]) {
+            fields.push({format: `${table[ch][0]}${m[1] === '>' ? 'be' : 'le'}`, at});
+            at += table[ch][1];
+        }
+        return {fields, total: at};
+    }
+
+    /** pins.createBufferFromArray([..]) and pins.packBuffer("fmt", [..]) with literals: a buffer made and filled ahead of the statement. */
+    packedBuffer (name, a) {
+        const packing = name === 'pins.packBuffer';
+        const list = (packing ? a[1] : a[0]) && (packing ? a[1] : a[0]).type === 'Array' ? (packing ? a[1] : a[0]).items : null;
+        const layout = packing ? (this.literalString(a[0]) === null ? null : this.packSizes(this.literalString(a[0]))) :
+            list ? {fields: list.map((_, i) => ({format: 'uint8le', at: i})), total: list.length} : null;
+        if (!list || !layout || layout.fields.length !== list.length || !this.pre) {
+            this.unsupported.push(`${name}() — the block needs a literal format and a literal array of the same length`);
+            return '0';
+        }
+        const buffer = `_mc${++this.temps}`;
+        this.declared.add(buffer);
+        this.pre.push(`set ${buffer} to create buffer ${layout.total}`);
+        list.forEach((item, i) => this.pre.push(`set buffer ${buffer} ${layout.fields[i].format} at ${layout.fields[i].at} to ${this.single(item, this.pre, '')}`));
+        return buffer;
+    }
+
     /** A pin named by its enum member (SerialPin.P0), or the default. */
     memberPin (node, fallback) {
         return node && node.type === 'Member' && /^P\d+$/.test(node.name) ? node.name : fallback;
@@ -620,6 +651,26 @@ class MicrobitTranslator extends BaseTranslator {
             const level = a[1] && a[1].type === 'Member' && a[1].name === 'Low' ? 'low' : 'high';
             return `pulse in pin ${this.pin(a[0]) || 'P0'} ${level} timeout ${a[2] ? this.operand(a[2]) : '2000000'}`;
         }
+        case 'radio.readRawPacket': return 'read raw radio packet';
+        case 'bluetooth.uartReadBuffer': return 'bluetooth uart read buffer';
+        case 'pins.packedSize': {
+            const fmt = this.literalString(a[0]);
+            const size = fmt === null ? null : this.packSizes(fmt);
+            if (size === null) {
+                this.unsupported.push('pins.packedSize(<expression>) — the format must be a literal of b B h H i I f d letters');
+                return '0';
+            }
+            return String(size.total);
+        }
+        case 'pins.concatBuffers': {
+            const list = a[0] && a[0].type === 'Array' ? a[0].items : null;
+            if (!list || list.length !== 2) {
+                this.unsupported.push('pins.concatBuffers() — the block joins two buffers given as an array literal');
+                return '0';
+            }
+            return `concat buffers ${this.operand(list[0])} and ${this.operand(list[1])}`;
+        }
+        case 'pins.createBufferFromArray': case 'pins.packBuffer': return this.packedBuffer(name, a);
         case 'control.createBufferFromUTF8': return `buffer from text ${this.operand(a[0])}`;
         // The USB serial console's reads (a MicroPython uart).
         case 'serial.readBuffer': return `serial read buffer ${this.operand(a[0])}`;
@@ -1139,6 +1190,30 @@ class MicrobitTranslator extends BaseTranslator {
             push(`set accelerometer range ${g}`);
             return;
         }
+        case 'radio.sendRawPacket': push(`radio send raw packet ${this.single(a[0], out, pad)}`); return;
+        case 'serial.writeNumbers': {
+            const list = a[0] && a[0].type === 'Array' ? a[0].items : null;
+            if (!list || !list.length) {
+                push(this.note('serial.writeNumbers() — the numbers must be an array literal'));
+                return;
+            }
+            let text = this.joinOperand(list[0]);
+            for (const item of list.slice(1)) text = `(${text} join ",") join ${this.joinOperand(item)}`;
+            push(`print (${text})`);
+            return;
+        }
+        // Melodies: the built-in ones play as the play-melody block does.
+        case 'music.startMelody': case 'music.beginMelody': {
+            const tune = this.melody(a[0]);
+            const option = a[1] && a[1].type === 'Member' ? a[1].name : 'Once';
+            if (!tune || !/^(Once|OnceInBackground)$/.test(option)) {
+                push(this.note(`${name}() — only a built-in melody played once has a block here`));
+                return;
+            }
+            push(`play melody ${tune} ${option === 'Once' ? 'until done' : 'in background'}`);
+            return;
+        }
+        case 'music.stopMelody': push('stop buzzer'); return;
         case 'serial.writeString': push(`serial write text ${this.single(a[0], out, pad)}`); return;
         case 'serial.writeNumber': push(`serial write number ${this.single(a[0], out, pad)}`); return;
         case 'serial.writeBuffer': push(`serial write buffer ${this.single(a[0], out, pad)}`); return;
@@ -1264,7 +1339,7 @@ class MicrobitTranslator extends BaseTranslator {
         case 'bluetooth.startIOPinService': case 'bluetooth.startLEDService': case 'bluetooth.startTemperatureService':
         case 'bluetooth.startMagnetometerService': case 'bluetooth.uartWriteString': case 'bluetooth.uartWriteLine':
         case 'bluetooth.uartWriteNumber': case 'bluetooth.uartWriteValue': case 'bluetooth.advertiseUrl':
-        case 'bluetooth.advertiseUid': case 'bluetooth.setTransmitPower': case 'bluetooth.stopAdvertising': {
+        case 'bluetooth.advertiseUid': case 'bluetooth.uartWriteBuffer': case 'bluetooth.advertiseUidBuffer': case 'bluetooth.setTransmitPower': case 'bluetooth.stopAdvertising': {
             if (a.length > 4) {
                 push(this.note(`${name}() — the bluetooth block takes up to four arguments`));
                 return;
@@ -1384,7 +1459,8 @@ const EVENT_BUS_VALUE = {
 };
 
 /** Buffer-making calls (their results are Buffers). */
-const BUFFER_MAKERS = new Set(['control.createBuffer', 'pins.createBuffer', 'control.createBufferFromUTF8', 'radio.receivedBuffer']);
+const BUFFER_MAKERS = new Set(['control.createBuffer', 'pins.createBuffer', 'control.createBufferFromUTF8', 'radio.receivedBuffer',
+    'pins.createBufferFromArray', 'pins.packBuffer', 'pins.concatBuffers', 'radio.readRawPacket', 'bluetooth.uartReadBuffer', 'serial.readBuffer', 'pins.i2cReadBuffer']);
 
 /** A legacy radio Packet's properties (radio.onDataPacketReceived) in our spelling. */
 const PACKET_PROPERTIES = {
@@ -1513,6 +1589,8 @@ const HANDLERS = {
         const button = translator.enumToken(a[0]) || 'a';
         return {test: `read button_${button}`, release: `read button_${button}`};
     },
+    // serial.onDataReceived(delimiter, body): polled; the body reads the data, which takes it from the buffer.
+    'serial.onDataReceived': translator => a => ({test: `serial has data until ${translator.delimiterWord(a[0])}`, release: null}),
     'input.onShake': () => () => ({test: 'shake happening', release: null}),
     'input.onScreenUp': () => () => ({test: 'face up happening', release: null}),
     'input.onScreenDown': () => () => ({test: 'face down happening', release: null}),
@@ -1823,7 +1901,7 @@ export function microbitToPseudocode (source, opts = {}) {
         // radio.onReceivedBuffer((buffer) => ...) and the legacy
         // radio.onDataPacketReceived((packet) => ...) (or its destructured form):
         // hats, as the other radio handlers.
-        if (callName === 'radio.onReceivedBuffer' || callName === 'radio.onDataPacketReceived') {
+        if (callName === 'radio.onReceivedBuffer' || callName === 'radio.onDataPacketReceived' || callName === 'radio.onDataReceived') {
             const fn = call.args[call.args.length - 1];
             const params = (fn && fn.params) || [];
             const buffer = callName === 'radio.onReceivedBuffer';

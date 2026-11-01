@@ -90,11 +90,11 @@ const RADIO_HATS = {
 
 /** The Buffer blocks: what makes one, and which inputs take one. */
 const BUFFER_MAKERS = new Set(['microbitplus_createbuffer', 'microbitplus_bufferslice', 'microbitplus_radiolastbuf', 'microbitplus_bufferfromtext',
-    'microbitplus_serialreadbuf', 'microbitplus_i2creadbuf']);
+    'microbitplus_serialreadbuf', 'microbitplus_i2creadbuf', 'microbitplus_bufferconcat', 'microbitplus_radiolastraw', 'microbitplus_btuartreadbuf']);
 const BUFFER_SLOTS = {
     microbitplus_bufferlength: ['BUF'], microbitplus_buffernum: ['BUF'], microbitplus_buffersetnum: ['BUF'], microbitplus_bufferfill: ['BUF'],
     microbitplus_bufferslice: ['BUF'], microbitplus_bufferhex: ['BUF'], microbitplus_radiosendbuf: ['BUF'],
-    microbitplus_serialwritebuf: ['BUF'], microbitplus_i2cwritebuf: ['BUF'], microbitplus_spixferbuf: ['BUF', 'INTO']
+    microbitplus_serialwritebuf: ['BUF'], microbitplus_radiosendraw: ['BUF'], microbitplus_bufferconcat: ['A', 'B'], microbitplus_i2cwritebuf: ['BUF'], microbitplus_spixferbuf: ['BUF', 'INTO']
 };
 /** The serial delimiters' menu words -> MakeCode's Delimiters members. */
 const DELIMITER_MEMBER = {newline: 'NewLine', comma: 'Comma', dollar: 'Dollar', colon: 'Colon', fullstop: 'Fullstop', hash: 'Hash',
@@ -476,6 +476,9 @@ export class Emitter {
         case 'microbitplus_pulsein': return `pins.pulseIn(DigitalPin.${String(f('PIN')).toUpperCase()}, PulseValue.${f('LEVEL') === 'low' ? 'Low' : 'High'}, ${v('US')})`;
         case 'microbitplus_gamelevel': return 'game.level()';
         case 'microbitplus_gametime': return 'game.currentTime()';
+        case 'microbitplus_bufferconcat': return `pins.concatBuffers([${v('A')}, ${v('B')}])`;
+        case 'microbitplus_radiolastraw': return 'radio.readRawPacket()';
+        case 'microbitplus_btuartreadbuf': return 'bluetooth.uartReadBuffer()';
         case 'microbitplus_serialreadbuf': return `serial.readBuffer(${v('SIZE')})`;
         case 'microbitplus_serialreadstr': return 'serial.readString()';
         case 'microbitplus_serialreaduntil': return `serial.readUntil(serial.delimiters(Delimiters.${DELIMITER_MEMBER[f('DELIM')] || 'NewLine'}))`;
@@ -993,6 +996,7 @@ export class Emitter {
         case 'microbitplus_panicboard': push(`control.panic(${v('CODE')})`); return;
         case 'microbitplus_calibratecompass': push('input.calibrateCompass()'); return;
         case 'microbitplus_accelrange': push(`input.setAccelerometerRange(AcceleratorRange.${{1: 'OneG', 2: 'TwoG', 4: 'FourG', 8: 'EightG'}[Number(v('G'))] || 'OneG'})`); return;
+        case 'microbitplus_radiosendraw': push(`radio.sendRawPacket(${v('BUF')})`); return;
         case 'microbitplus_serialwritetext': push(`serial.writeString(${v('TEXT', '""')})`); return;
         case 'microbitplus_serialwritenum': push(`serial.writeNumber(${v('NUM')})`); return;
         case 'microbitplus_serialwritebuf': push(`serial.writeBuffer(${v('BUF')})`); return;
