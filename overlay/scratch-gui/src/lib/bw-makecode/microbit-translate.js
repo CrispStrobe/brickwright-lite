@@ -430,6 +430,13 @@ class MicrobitTranslator extends BaseTranslator {
         return buffer;
     }
 
+    /** A literal note string as one token: spaces ride as `_` (a note string has none of its own); null when not literal. */
+    noteString (node) {
+        const text = this.literalString(node);
+        if (text === null || /_/.test(text)) return null;
+        return text.trim().split(/\s+/).filter(Boolean).join('_');
+    }
+
     /** A pin named by its enum member (SerialPin.P0), or the default. */
     memberPin (node, fallback) {
         return node && node.type === 'Member' && /^P\d+$/.test(node.name) ? node.name : fallback;
@@ -645,6 +652,8 @@ class MicrobitTranslator extends BaseTranslator {
         case 'pins.analogReadPin': return `analog value of pin ${this.pin(a[0]) || 'P0'}`;
         case 'radio.receivedNumber': return 'read last radio number';
         case 'String.fromCharCode': return `char from code ${this.operand(a[0])}`;
+        case 'datalogger.getRows': return `log rows from ${this.operand(a[0])} count ${this.operand(a[1])}`;
+        case 'datalogger.getNumberOfRows': return `log row count from ${a[0] ? this.operand(a[0]) : '0'}`;
         case 'game.level': return 'game level';
         case 'game.currentTime': return 'game time';
         case 'pins.pulseIn': {
@@ -1074,6 +1083,15 @@ class MicrobitTranslator extends BaseTranslator {
             }
             const inner = a[0] && a[0].type === 'Call' ? this.path(a[0].callee) : null;
             const args = inner ? a[0].args || [] : [];
+            if (inner === 'music.stringPlayable') {
+                const text = this.noteString(args[0]);
+                if (text === null || !mode) {
+                    push(this.note(`${name}(music.stringPlayable(<expression>)) — the notes must be a literal string`));
+                    return;
+                }
+                push(`play notes ${JSON.stringify(text)} tempo ${this.operand(args[1])} ${mode}`);
+                return;
+            }
             if (mode === 'looping in background' && inner !== null) {
                 push(this.note(`${name}(${inner}(), LoopingInBackground) — a looping sound has no block here`));
                 return;
@@ -1100,6 +1118,18 @@ class MicrobitTranslator extends BaseTranslator {
                 }
             }
             push(this.note(`${name}() — only MakeCode's built-in melodies, tones, built-in sounds and sound effects have blocks here`));
+            return;
+        }
+        // soundExpression.giggle.play() / playUntilDone(): the built-in sounds, in the background or until done.
+        case 'soundExpression.giggle.play': case 'soundExpression.happy.play': case 'soundExpression.hello.play':
+        case 'soundExpression.mysterious.play': case 'soundExpression.sad.play': case 'soundExpression.slide.play':
+        case 'soundExpression.soaring.play': case 'soundExpression.spring.play': case 'soundExpression.twinkle.play':
+        case 'soundExpression.yawn.play': case 'soundExpression.giggle.playUntilDone': case 'soundExpression.happy.playUntilDone':
+        case 'soundExpression.hello.playUntilDone': case 'soundExpression.mysterious.playUntilDone': case 'soundExpression.sad.playUntilDone':
+        case 'soundExpression.slide.playUntilDone': case 'soundExpression.soaring.playUntilDone': case 'soundExpression.spring.playUntilDone':
+        case 'soundExpression.twinkle.playUntilDone': case 'soundExpression.yawn.playUntilDone': {
+            const [, sound, how] = name.split('.');
+            push(`play sound ${sound} ${how === 'play' ? 'in background' : 'until done'}`);
             return;
         }
         case 'music.playSoundEffect': {
@@ -1207,13 +1237,34 @@ class MicrobitTranslator extends BaseTranslator {
         }
         // Melodies: the built-in ones play as the play-melody block does.
         case 'music.startMelody': case 'music.beginMelody': {
-            const tune = this.melody(a[0]);
             const option = a[1] && a[1].type === 'Member' ? a[1].name : 'Once';
-            if (!tune || !/^(Once|OnceInBackground)$/.test(option)) {
-                push(this.note(`${name}() — only a built-in melody played once has a block here`));
+            const mode = {Once: 'until done', OnceInBackground: 'in background', Forever: 'forever', ForeverInBackground: 'looping in background'}[option];
+            const tune = this.melody(a[0]);
+            if (tune && mode) {
+                // a built-in melody: the play-melody block; its foreground "forever" is the looping play and a script that never goes on
+                push(`play melody ${tune} ${mode === 'forever' ? 'looping in background' : mode}`);
+                if (mode === 'forever') {
+                    push('FOREVER:');
+                    out.push(`${pad}  wait 1 seconds`);
+                }
                 return;
             }
-            push(`play melody ${tune} ${option === 'Once' ? 'until done' : 'in background'}`);
+            const notes = a[0] && a[0].type === 'Array' ? a[0].items.map(x => this.literalString(x)) : null;
+            if (notes && mode && notes.every(n => n !== null && !/[\s_]/.test(n))) {
+                push(`play notes ${JSON.stringify(notes.join('_'))} tempo 120 ${mode}`);
+                return;
+            }
+            push(this.note(`${name}() — a built-in melody or an array of literal notes in a known mode has a block here`));
+            return;
+        }
+        // Note-string melodies (MakeCode's NOTE[octave][:duration] strings are MicroPython's notation).
+        case 'music.playMelody': {
+            const text = this.noteString(a[0]);
+            if (text === null) {
+                push(this.note('music.playMelody(<expression>) — the notes must be a literal string'));
+                return;
+            }
+            push(`play notes ${JSON.stringify(text)} tempo ${this.operand(a[1])} until done`);
             return;
         }
         case 'music.stopMelody': push('stop buzzer'); return;
@@ -1930,6 +1981,19 @@ export function microbitToPseudocode (source, opts = {}) {
             bound.forEach(([param]) => t.aliases.delete(param));
             t.packetParams = null;
             scripts.push(lines);
+            continue;
+        }
+
+        // datalogger.onLogFull(body): PXT's init registers control.onEvent(MICROBIT_ID_LOG 44, LOG_FULL 1); the log stops and the event is
+        // raised once when log.add fails.
+        if (callName === 'datalogger.onLogFull') {
+            const fn = call.args[call.args.length - 1];
+            const lines = ['WHEN event 44 1:'];
+            t.returnable = {result: null};
+            t.block(bodyOf(fn), 1, lines);
+            t.returnable = null;
+            scripts.push(lines);
+            scripts.unshift(['WHEN flag clicked:', '  log raise event when full']); // before any script that logs
             continue;
         }
 

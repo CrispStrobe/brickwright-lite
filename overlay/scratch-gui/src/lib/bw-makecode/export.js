@@ -479,6 +479,8 @@ export class Emitter {
         case 'microbitplus_bufferconcat': return `pins.concatBuffers([${v('A')}, ${v('B')}])`;
         case 'microbitplus_radiolastraw': return 'radio.readRawPacket()';
         case 'microbitplus_btuartreadbuf': return 'bluetooth.uartReadBuffer()';
+        case 'microbitplus_logrows': return `datalogger.getRows(${v('FROM')}, ${v('N')})`;
+        case 'microbitplus_lograwcount': return `datalogger.getNumberOfRows(${v('FROM')})`;
         case 'microbitplus_serialreadbuf': return `serial.readBuffer(${v('SIZE')})`;
         case 'microbitplus_serialreadstr': return 'serial.readString()';
         case 'microbitplus_serialreaduntil': return `serial.readUntil(serial.delimiters(Delimiters.${DELIMITER_MEMBER[f('DELIM')] || 'NewLine'}))`;
@@ -1012,6 +1014,18 @@ export class Emitter {
         case 'microbitplus_radiosendraw': push(`radio.sendRawPacket(${v('BUF')})`); return;
         case 'microbitplus_radioraise': push(`radio.raiseEvent(${v('SOURCE')}, ${v('VALUE')})`); return;
         case 'microbitplus_radiolisten': return;
+        case 'microbitplus_logwatchfull': return;
+        case 'microbitplus_playnotes': {
+            const notes = String(this.textOperand(b, 'TEXT')).replace(/^"|"$/g, '').split('_').filter(Boolean);
+            const mode = f('MODE');
+            if (mode === 'forever') {
+                push(`music.startMelody([${notes.map(n => JSON.stringify(n)).join(', ')}], MelodyOptions.Forever)`);
+                return;
+            }
+            const playback = {'until done': 'UntilDone', 'in background': 'InBackground', 'looping in background': 'LoopingInBackground'}[mode] || 'UntilDone';
+            push(`music.play(music.stringPlayable(${JSON.stringify(notes.join(' '))}, ${v('BPM')}), music.PlaybackMode.${playback})`);
+            return;
+        }
         case 'microbitplus_serialwritetext': push(`serial.writeString(${v('TEXT', '""')})`); return;
         case 'microbitplus_serialwritenum': push(`serial.writeNumber(${v('NUM')})`); return;
         case 'microbitplus_serialwritebuf': push(`serial.writeBuffer(${v('BUF')})`); return;
@@ -1668,7 +1682,11 @@ export function projectToMakeCodeTs (project, opts = {}) {
             if (block.opcode === 'microbitplus_whenevent') {
                 emitter.inFunction = true;
                 // Registered up front: the flag script may wait long before the event is raised.
-                early.push(`control.onEvent(${emitter.value(block, 'SOURCE', '1')}, ${emitter.value(block, 'VALUE', '0')}, function () {`, ...emitter.stack(block.next, 1), '})');
+                const source = emitter.value(block, 'SOURCE', '1');
+                const value = emitter.value(block, 'VALUE', '0');
+                // MICROBIT_ID_LOG 44 / MICROBIT_LOG_EVT_LOG_FULL 1 is datalogger.onLogFull (pxt datalogger.ts init)
+                early.push(source === '44' && value === '1' ? 'datalogger.onLogFull(function () {' : `control.onEvent(${source}, ${value}, function () {`,
+                    ...emitter.stack(block.next, 1), '})');
                 emitter.inFunction = false;
                 continue;
             }
