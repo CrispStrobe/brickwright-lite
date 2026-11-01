@@ -46,3 +46,13 @@ test('the toolbar is one non-wrapping row with Maximize pinned, and measures not
     assert.match(scrollRow, /overflowX: 'auto'/);
     assert.doesNotMatch(scrollRow, /ResizeObserver|getBoundingClientRect\(\)\.width/);
 });
+
+test('the Code actions menu closes on pick, on a file or example choice, and Popup closes on focus leaving', () => {
+    const menu = importer.slice(importer.indexOf('    renderActionMenu (csel) {'), importer.indexOf('    renderActionMenu (csel) {') + 900);
+    assert.doesNotMatch(menu, /closeOnPick=\{false\}/);
+    assert.match(importer, /onChange=\{event => \{ this\.setState\(\{actionsOpen: false\}\); this\.openCodeFile\(event\); \}\}/);
+    assert.match(importer, /onChange=\{e => \{ this\.setState\(\{actionsOpen: false\}\); this\.loadExample\(e\.target\.value\); \}\}/);
+    const popup = readFileSync(new URL('../overlay/scratch-gui/src/components/tw-pseudocode/sim-lab-toolbar.jsx', import.meta.url), 'utf8');
+    assert.match(popup, /onClose\('blur'\)/);
+    assert.match(popup, /\[aria-expanded\], \[data-keep-open\]/);
+});

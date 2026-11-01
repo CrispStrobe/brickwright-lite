@@ -5669,7 +5669,7 @@ class PseudocodeImporter extends React.Component {
             minHeight: 32, padding: '6px 8px', whiteSpace: 'normal', fontSize: 12};
         return (
             <Popup id="code-actions" anchorTestId="bw-code-actions" testId="bw-code-actions-menu"
-                open={this.props.isVisible !== false && this.state.actionsOpen} align="right" width={260} closeOnPick={false} keepMounted
+                open={this.props.isVisible !== false && this.state.actionsOpen} align="right" width={260} keepMounted
                 label={L10N[pickLocale(this.props.locale)].fileMenuTitle}
                 onToggle={() => this.setState(state => ({actionsOpen: !state.actionsOpen}))}
                 onClose={() => this.setState({actionsOpen: false})}
@@ -5687,7 +5687,8 @@ class PseudocodeImporter extends React.Component {
                         }}>
                         {this.L.openFile}
                         <input ref={this._codeFileInput} type="file" accept={`${CODE_ACCEPT},${IMPORT_ACCEPT}`} style={{display: 'none'}}
-                            disabled={this.state.busy} onChange={this.openCodeFile} />
+                            disabled={this.state.busy}
+                            onChange={event => { this.setState({actionsOpen: false}); this.openCodeFile(event); }} />
                     </label>
                     <button type="button" onClick={this.saveCodeFile} style={item}
                         title={this.L.saveFileTitle(this.saveFileName())} data-testid="bw-save-file">
@@ -5770,7 +5771,7 @@ class PseudocodeImporter extends React.Component {
                             <span style={{...item, cursor: 'wait', color: '#64748b'}} aria-live="polite"
                                 data-testid="bw-load-example-loading">{this.L.examplesLoading}</span>
                         ) : (
-                        <select defaultValue="" onChange={e => this.loadExample(e.target.value)}
+                        <select defaultValue="" onChange={e => { this.setState({actionsOpen: false}); this.loadExample(e.target.value); }}
                             style={{...item, border: 'none'}} title={this.L.loadExampleTitle}
                             data-testid="bw-load-example">
                             <option value="" disabled>{this.L.loadExample}</option>
