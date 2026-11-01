@@ -2,6 +2,7 @@
 // deadline. Plain Scratch projects retain the synchronous kernel path.
 // Program and scene clocks remain owned by their existing runtime services.
 const conditionWaits = require('../../../util/bw-source-condition-waits');
+const primitiveOwner = require('../../../util/bw-primitive-owner');
 function browserTurn() {
     return new Promise(resolve => {
         if(typeof MessageChannel !== 'function') {setTimeout(resolve,0);return;}
@@ -11,17 +12,19 @@ function browserTurn() {
     });
 }
 const spriteUpdateLoans=new WeakMap();
+const YIELD_AFTER_STEPS=34,YIELD_QUIET_MS=20,YIELD_SLEEP_MS=5;
 class ArcadeFramePhase {
     constructor(runtime,ext,{workNow=()=>performance.now(),budgetMs}={}) {
         this.runtime=runtime;this.ext=ext;this.workNow=workNow;this.budgetMs=budgetMs;
         this.generation=0;this.disposed=false;this.active=false;this.notes=[];this.pending=null;
-        this.waitTimers=new Map();this.tickYields=new WeakMap();
+        this.waitTimers=new Map();this.tickYields=new WeakMap();this.yieldSteps=new WeakMap();this.yieldHolds=new Map();
         this.sourceAuthority=new WeakMap();this.managedLinks=new WeakMap();this.phaseContext=null;
         this.sourceProjectWitness=null;
         this.conditionWaits=conditionWaits.bind(this);
         this.nativeCallbackOpcodes=new Set(ext.getInfo().blocks.filter(b=>b.blockType==='hat').map(b=>'arcade_'+b.opcode));
         this.cancel=()=>{this.conditionWaits.cancel();this.sourceProjectWitness=null;this.generation++;this.pending=null;this.queuedDelta=null;
-            for(const wait of this.waitTimers.values())wait.epoch.clearTimeout(wait.handle);this.waitTimers.clear();};
+            for(const wait of this.waitTimers.values())wait.epoch.clearTimeout(wait.handle);this.waitTimers.clear();
+            for(const hold of this.yieldHolds.values())hold.epoch.clearTimeout(hold.handle);this.yieldHolds.clear();};
         this.dispose=()=>{this.disposed=true;this.cancel();};
         // Runtime.dispose clears a project during loadProject as well as on
         // teardown. A successful load reuses this runtime and cached extension;
@@ -190,8 +193,37 @@ class ArcadeFramePhase {
             }
         }
     }
+    // pxtsim's cooperative yield (Runtime.maybeYield). Compiled code counts its steps and, every 100, asks
+    // whether 20 ms have passed since the last yield or the last fiber resumption (a wait over 3 ms); if so
+    // the running fiber sleeps 5 ms. A fiber started after a quiet 20 ms (a button handler once the frame
+    // loop is idle) therefore reaches its first pause or poll 5 ms late. One source step stands for about
+    // three compiled steps, so the first check falls at the YIELD_AFTER_STEPS-th source step of a fiber.
+    // Returns true when the fiber was put to sleep before taking this step.
+    _yieldCheck(thread) {
+        let record=this.yieldSteps.get(thread);
+        if(!record)this.yieldSteps.set(thread,record={steps:0,checked:false});
+        if(record.checked || ++record.steps<YIELD_AFTER_STEPS)return false;
+        record.checked=true;
+        const epoch=this.ext._programClockEpoch;
+        // PXT's frame loop wakes every 20 ms for as long as the game runs; without a frame host here there is no
+        // evidence of a quiet interval, only of a scene this driver never ticked.
+        if(!epoch?.timerAuthority || !epoch.rawSetTimeout || !this.ext._sourceSceneTimers() || !this.ext._sceneFrameHost)return false;
+        const now=this.ext._programMillis();
+        if(now-epoch.lastWake<YIELD_QUIET_MS)return false;
+        epoch.lastWake=now;
+        const generation=this.generation,hold={epoch};
+        hold.handle=epoch.rawSetTimeout(()=>{
+            if(this.yieldHolds.get(thread)!==hold)return;
+            this.yieldHolds.delete(thread);
+            if(generation!==this.generation || this.disposed)return;
+            return this.requestContinuation();
+        },YIELD_SLEEP_MS);
+        hold.handle?.unref?.();this.yieldHolds.set(thread,hold);
+        return true;
+    }
     _live(t) {return !t.isKilled&&t.status!==t.constructor.STATUS_DONE&&t.stack.length>0;}
     _waitingTimer(t) {
+        if(this.yieldHolds.has(t))return true;
         const frame=t.peekStackFrame()?.executionContext;
         return frame?.timer && frame.timer.timeElapsed()<frame.duration;
     }
@@ -265,6 +297,7 @@ class ArcadeFramePhase {
                 this.conditionWaits.beforeStep(t);
                 if(this._waitingTimer(t)||(this.waitTimers.has(t)&&!this.waitTimers.get(t).ready)){this._armSourceWait(t);held.add(t);continue;}
                 if(t.status!==t.constructor.STATUS_RUNNING)continue;
+                if(this._yieldCheck(t)){held.add(t);continue;}
                 rt.redrawRequested=false;
                 rt.sequencer.activeThread=t;rt.sequencer.stepThread(t);rt.sequencer.activeThread=null;this._rememberGraphics(t);
                 this._armSourceWait(t);
@@ -318,7 +351,8 @@ class ArcadeFramePhase {
             if(this._live(t)&&t.status!==t.constructor.STATUS_PROMISE_WAIT){parked.set(t,t.status);t.status=t.constructor.STATUS_PROMISE_WAIT;}
             return;
         }
-        actualStepThread.call(rt.sequencer,t);this._rememberGraphics(t);if(this._eligible(t)){this._armSourceWait(t);
+        if(sourceBefore && this._yieldCheck(t)){held.add(t);park();return;}
+        primitiveOwner.stepChild(rt,t,()=>actualStepThread.call(rt.sequencer,t));this._rememberGraphics(t);if(this._eligible(t)){this._armSourceWait(t);
             if(!this._waitingTimer(t)&&(t.status===t.constructor.STATUS_YIELD_TICK||this._loopTickYield(t)))this.tickYields.set(t,{time:this.ext._programMillis(),block:t.peekStack()});}
         if((sourceBefore||this._eligible(t)) && (t.status===t.constructor.STATUS_YIELD_TICK||this._waitingTimer(t)||(this.waitTimers.has(t)&&!this.waitTimers.get(t).ready)||this._loopTickYield(t))){held.add(t);park();}
         };
