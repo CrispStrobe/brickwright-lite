@@ -173,3 +173,17 @@ test('music.setVolume, volume, isSoundPlaying and the built-in speaker switch be
     assert.deepEqual(lines(run.out).filter(l => l.startsWith('v ')), ['v 100']);
     await exportCompiles(imported);
 });
+
+test('datalogger.logData and setColumns with array literals are the log and column words', {skip}, async () => {
+    const ts = [
+        'datalogger.setColumns(["a", "b"])',
+        'datalogger.logData([datalogger.createCV("a", 1), datalogger.createCV("b", 2)])'
+    ].join('\n');
+    await compileMakeCode(ts, {dependencies: DEPENDENCIES});
+    const {imported, py} = lite(ts);
+    for (const w of ['_bw_log_cfg(["a", "b"])', '_bw_log({"a": 1, "b": 2})']) assert.ok(py.includes(w), w);
+    const run = await runOnMicrobitFirmware(py, {ms: 500});
+    assert.equal(run.traceback, null, run.traceback);
+    const exported = await exportCompiles(imported);
+    assert.ok(exported.includes('datalogger.setColumnTitles("a", "b")') && exported.includes('datalogger.log('));
+});

@@ -1157,6 +1157,26 @@ class MicrobitTranslator extends BaseTranslator {
         case 'pins.spiFormat': push(`spi format ${this.single(a[0], out, pad)} mode ${this.single(a[1], out, pad)}`); return;
         case 'pins.spiPins': push(`spi pins mosi ${this.pin(a[0]) || 'P15'} miso ${this.pin(a[1]) || 'P14'} sck ${this.pin(a[2]) || 'P13'}`); return;
         // The V2 log beyond log data.
+        // logData([createCV(..), ..]) and setColumns(["a", ..]) take an array literal: the same words as log and setColumnTitles.
+        case 'datalogger.logData': {
+            const list = a[0] && a[0].type === 'Array' ? a[0].items : null;
+            const pairs = list ? list.filter(x => x && x.type === 'Call' && this.path(x.callee) === 'datalogger.createCV') : [];
+            if (!list || !list.length || pairs.length !== list.length || pairs.length > 3) {
+                push(this.note('datalogger.logData() — the block logs one to three datalogger.createCV("name", value) pairs in an array literal'));
+                return;
+            }
+            push(`log data ${pairs.map(p => `${this.operand(p.args[0])} = ${this.single(p.args[1], out, pad)}`).join(' and ')}`);
+            return;
+        }
+        case 'datalogger.setColumns': {
+            const list = a[0] && a[0].type === 'Array' ? a[0].items : null;
+            if (!list || !list.length || list.length > 3) {
+                push(this.note('datalogger.setColumns() — the block names one to three columns in an array literal'));
+                return;
+            }
+            push(`set log columns ${list.map(t => this.operand(t)).join(' and ')}`);
+            return;
+        }
         case 'datalogger.setColumnTitles': {
             const titles = a.slice(0, 3);
             if (!titles.length || a.length > 3) {
