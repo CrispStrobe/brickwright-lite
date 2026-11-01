@@ -90,11 +90,11 @@ const RADIO_HATS = {
 
 /** The Buffer blocks: what makes one, and which inputs take one. */
 const BUFFER_MAKERS = new Set(['microbitplus_createbuffer', 'microbitplus_bufferslice', 'microbitplus_radiolastbuf', 'microbitplus_bufferfromtext',
-    'microbitplus_serialreadbuf', 'microbitplus_i2creadbuf']);
+    'microbitplus_serialreadbuf', 'microbitplus_i2creadbuf', 'microbitplus_bufferconcat', 'microbitplus_radiolastraw', 'microbitplus_btuartreadbuf']);
 const BUFFER_SLOTS = {
     microbitplus_bufferlength: ['BUF'], microbitplus_buffernum: ['BUF'], microbitplus_buffersetnum: ['BUF'], microbitplus_bufferfill: ['BUF'],
     microbitplus_bufferslice: ['BUF'], microbitplus_bufferhex: ['BUF'], microbitplus_radiosendbuf: ['BUF'],
-    microbitplus_serialwritebuf: ['BUF'], microbitplus_i2cwritebuf: ['BUF'], microbitplus_spixferbuf: ['BUF', 'INTO']
+    microbitplus_serialwritebuf: ['BUF'], microbitplus_radiosendraw: ['BUF'], microbitplus_bufferconcat: ['A', 'B'], microbitplus_i2cwritebuf: ['BUF'], microbitplus_spixferbuf: ['BUF', 'INTO']
 };
 /** The serial delimiters' menu words -> MakeCode's Delimiters members. */
 const DELIMITER_MEMBER = {newline: 'NewLine', comma: 'Comma', dollar: 'Dollar', colon: 'Colon', fullstop: 'Fullstop', hash: 'Hash',
@@ -476,6 +476,11 @@ export class Emitter {
         case 'microbitplus_pulsein': return `pins.pulseIn(DigitalPin.${String(f('PIN')).toUpperCase()}, PulseValue.${f('LEVEL') === 'low' ? 'Low' : 'High'}, ${v('US')})`;
         case 'microbitplus_gamelevel': return 'game.level()';
         case 'microbitplus_gametime': return 'game.currentTime()';
+        case 'microbitplus_bufferconcat': return `pins.concatBuffers([${v('A')}, ${v('B')}])`;
+        case 'microbitplus_radiolastraw': return 'radio.readRawPacket()';
+        case 'microbitplus_btuartreadbuf': return 'bluetooth.uartReadBuffer()';
+        case 'microbitplus_logrows': return `datalogger.getRows(${v('FROM')}, ${v('N')})`;
+        case 'microbitplus_lograwcount': return `datalogger.getNumberOfRows(${v('FROM')})`;
         case 'microbitplus_serialreadbuf': return `serial.readBuffer(${v('SIZE')})`;
         case 'microbitplus_serialreadstr': return 'serial.readString()';
         case 'microbitplus_serialreaduntil': return `serial.readUntil(serial.delimiters(Delimiters.${DELIMITER_MEMBER[f('DELIM')] || 'NewLine'}))`;
@@ -612,11 +617,24 @@ export class Emitter {
         const f = name => this.field(b, name);
 
         switch (b.opcode) {
-        case 'control_forever':
+        case 'control_forever': {
+            // The polled form of serial.onDataReceived (microbit-translate: FOREVER, IF serial has data until X) is
+            // MakeCode's handler again, so the program round-trips as it came.
+            const first = this.block(b.inputs && b.inputs.SUBSTACK && typeof b.inputs.SUBSTACK[1] === 'string' ? b.inputs.SUBSTACK[1] : null);
+            let test = first && first.opcode === 'control_if' && !first.next ? this.inputBlock(first, 'CONDITION') : null;
+            // (a reporter that is not known as a truth value is read as `reporter = true`)
+            if (test && test.opcode === 'operator_equals') test = this.inputBlock(test, 'OPERAND1');
+            if (test && test.opcode === 'microbitplus_serialhas') {
+                push(`serial.onDataReceived(serial.delimiters(Delimiters.${DELIMITER_MEMBER[this.field(test, 'DELIM')] || 'NewLine'}), function () {`);
+                out.push(...this.substack(first, 'SUBSTACK', indent + 1));
+                push('})');
+                return;
+            }
             push('basic.forever(function () {');
             out.push(...this.substack(b, 'SUBSTACK', indent + 1));
             push('})');
             return;
+        }
         case 'control_repeat':
             push(`for (let i = 0; i < ${v('TIMES')}; i++) {`);
             out.push(...this.substack(b, 'SUBSTACK', indent + 1));
@@ -993,6 +1011,21 @@ export class Emitter {
         case 'microbitplus_panicboard': push(`control.panic(${v('CODE')})`); return;
         case 'microbitplus_calibratecompass': push('input.calibrateCompass()'); return;
         case 'microbitplus_accelrange': push(`input.setAccelerometerRange(AcceleratorRange.${{1: 'OneG', 2: 'TwoG', 4: 'FourG', 8: 'EightG'}[Number(v('G'))] || 'OneG'})`); return;
+        case 'microbitplus_radiosendraw': push(`radio.sendRawPacket(${v('BUF')})`); return;
+        case 'microbitplus_radioraise': push(`radio.raiseEvent(${v('SOURCE')}, ${v('VALUE')})`); return;
+        case 'microbitplus_radiolisten': return;
+        case 'microbitplus_logwatchfull': return;
+        case 'microbitplus_playnotes': {
+            const notes = String(this.textOperand(b, 'TEXT')).replace(/^"|"$/g, '').split('_').filter(Boolean);
+            const mode = f('MODE');
+            if (mode === 'forever') {
+                push(`music.startMelody([${notes.map(n => JSON.stringify(n)).join(', ')}], MelodyOptions.Forever)`);
+                return;
+            }
+            const playback = {'until done': 'UntilDone', 'in background': 'InBackground', 'looping in background': 'LoopingInBackground'}[mode] || 'UntilDone';
+            push(`music.play(music.stringPlayable(${JSON.stringify(notes.join(' '))}, ${v('BPM')}), music.PlaybackMode.${playback})`);
+            return;
+        }
         case 'microbitplus_serialwritetext': push(`serial.writeString(${v('TEXT', '""')})`); return;
         case 'microbitplus_serialwritenum': push(`serial.writeNumber(${v('NUM')})`); return;
         case 'microbitplus_serialwritebuf': push(`serial.writeBuffer(${v('BUF')})`); return;
@@ -1649,7 +1682,11 @@ export function projectToMakeCodeTs (project, opts = {}) {
             if (block.opcode === 'microbitplus_whenevent') {
                 emitter.inFunction = true;
                 // Registered up front: the flag script may wait long before the event is raised.
-                early.push(`control.onEvent(${emitter.value(block, 'SOURCE', '1')}, ${emitter.value(block, 'VALUE', '0')}, function () {`, ...emitter.stack(block.next, 1), '})');
+                const source = emitter.value(block, 'SOURCE', '1');
+                const value = emitter.value(block, 'VALUE', '0');
+                // MICROBIT_ID_LOG 44 / MICROBIT_LOG_EVT_LOG_FULL 1 is datalogger.onLogFull (pxt datalogger.ts init)
+                early.push(source === '44' && value === '1' ? 'datalogger.onLogFull(function () {' : `control.onEvent(${source}, ${value}, function () {`,
+                    ...emitter.stack(block.next, 1), '})');
                 emitter.inFunction = false;
                 continue;
             }

@@ -399,6 +399,44 @@ class MicrobitTranslator extends BaseTranslator {
     }
 
     /** `serial.delimiters(Delimiters.NewLine)`'s word (a bluetooth uart delimiter), else a note and 'newline'. */
+    /** A pack format (b B h H i I f d, optional < > prefix) as its fields, or null. */
+    packSizes (fmt) {
+        const m = /^([<>]?)([bBhHiIfd]+)$/.exec(String(fmt));
+        if (!m) return null;
+        const table = {b: ['int8', 1], B: ['uint8', 1], h: ['int16', 2], H: ['uint16', 2], i: ['int32', 4], I: ['uint32', 4], f: ['float32', 4], d: ['float64', 8]};
+        const fields = [];
+        let at = 0;
+        for (const ch of m[2]) {
+            fields.push({format: `${table[ch][0]}${m[1] === '>' ? 'be' : 'le'}`, at});
+            at += table[ch][1];
+        }
+        return {fields, total: at};
+    }
+
+    /** pins.createBufferFromArray([..]) and pins.packBuffer("fmt", [..]) with literals: a buffer made and filled ahead of the statement. */
+    packedBuffer (name, a) {
+        const packing = name === 'pins.packBuffer';
+        const list = (packing ? a[1] : a[0]) && (packing ? a[1] : a[0]).type === 'Array' ? (packing ? a[1] : a[0]).items : null;
+        const layout = packing ? (this.literalString(a[0]) === null ? null : this.packSizes(this.literalString(a[0]))) :
+            list ? {fields: list.map((_, i) => ({format: 'uint8le', at: i})), total: list.length} : null;
+        if (!list || !layout || layout.fields.length !== list.length || !this.pre) {
+            this.unsupported.push(`${name}() — the block needs a literal format and a literal array of the same length`);
+            return '0';
+        }
+        const buffer = `_mc${++this.temps}`;
+        this.declared.add(buffer);
+        this.pre.push(`set ${buffer} to create buffer ${layout.total}`);
+        list.forEach((item, i) => this.pre.push(`set buffer ${buffer} ${layout.fields[i].format} at ${layout.fields[i].at} to ${this.single(item, this.pre, '')}`));
+        return buffer;
+    }
+
+    /** A literal note string as one token: spaces ride as `_` (a note string has none of its own); null when not literal. */
+    noteString (node) {
+        const text = this.literalString(node);
+        if (text === null || /_/.test(text)) return null;
+        return text.trim().split(/\s+/).filter(Boolean).join('_');
+    }
+
     /** A pin named by its enum member (SerialPin.P0), or the default. */
     memberPin (node, fallback) {
         return node && node.type === 'Member' && /^P\d+$/.test(node.name) ? node.name : fallback;
@@ -614,12 +652,34 @@ class MicrobitTranslator extends BaseTranslator {
         case 'pins.analogReadPin': return `analog value of pin ${this.pin(a[0]) || 'P0'}`;
         case 'radio.receivedNumber': return 'read last radio number';
         case 'String.fromCharCode': return `char from code ${this.operand(a[0])}`;
+        case 'datalogger.getRows': return `log rows from ${this.operand(a[0])} count ${this.operand(a[1])}`;
+        case 'datalogger.getNumberOfRows': return `log row count from ${a[0] ? this.operand(a[0]) : '0'}`;
         case 'game.level': return 'game level';
         case 'game.currentTime': return 'game time';
         case 'pins.pulseIn': {
             const level = a[1] && a[1].type === 'Member' && a[1].name === 'Low' ? 'low' : 'high';
             return `pulse in pin ${this.pin(a[0]) || 'P0'} ${level} timeout ${a[2] ? this.operand(a[2]) : '2000000'}`;
         }
+        case 'radio.readRawPacket': return 'read raw radio packet';
+        case 'bluetooth.uartReadBuffer': return 'bluetooth uart read buffer';
+        case 'pins.packedSize': {
+            const fmt = this.literalString(a[0]);
+            const size = fmt === null ? null : this.packSizes(fmt);
+            if (size === null) {
+                this.unsupported.push('pins.packedSize(<expression>) — the format must be a literal of b B h H i I f d letters');
+                return '0';
+            }
+            return String(size.total);
+        }
+        case 'pins.concatBuffers': {
+            const list = a[0] && a[0].type === 'Array' ? a[0].items : null;
+            if (!list || list.length !== 2) {
+                this.unsupported.push('pins.concatBuffers() — the block joins two buffers given as an array literal');
+                return '0';
+            }
+            return `concat buffers ${this.operand(list[0])} and ${this.operand(list[1])}`;
+        }
+        case 'pins.createBufferFromArray': case 'pins.packBuffer': return this.packedBuffer(name, a);
         case 'control.createBufferFromUTF8': return `buffer from text ${this.operand(a[0])}`;
         // The USB serial console's reads (a MicroPython uart).
         case 'serial.readBuffer': return `serial read buffer ${this.operand(a[0])}`;
@@ -1023,6 +1083,15 @@ class MicrobitTranslator extends BaseTranslator {
             }
             const inner = a[0] && a[0].type === 'Call' ? this.path(a[0].callee) : null;
             const args = inner ? a[0].args || [] : [];
+            if (inner === 'music.stringPlayable') {
+                const text = this.noteString(args[0]);
+                if (text === null || !mode) {
+                    push(this.note(`${name}(music.stringPlayable(<expression>)) — the notes must be a literal string`));
+                    return;
+                }
+                push(`play notes ${JSON.stringify(text)} tempo ${this.operand(args[1])} ${mode}`);
+                return;
+            }
             if (mode === 'looping in background' && inner !== null) {
                 push(this.note(`${name}(${inner}(), LoopingInBackground) — a looping sound has no block here`));
                 return;
@@ -1049,6 +1118,18 @@ class MicrobitTranslator extends BaseTranslator {
                 }
             }
             push(this.note(`${name}() — only MakeCode's built-in melodies, tones, built-in sounds and sound effects have blocks here`));
+            return;
+        }
+        // soundExpression.giggle.play() / playUntilDone(): the built-in sounds, in the background or until done.
+        case 'soundExpression.giggle.play': case 'soundExpression.happy.play': case 'soundExpression.hello.play':
+        case 'soundExpression.mysterious.play': case 'soundExpression.sad.play': case 'soundExpression.slide.play':
+        case 'soundExpression.soaring.play': case 'soundExpression.spring.play': case 'soundExpression.twinkle.play':
+        case 'soundExpression.yawn.play': case 'soundExpression.giggle.playUntilDone': case 'soundExpression.happy.playUntilDone':
+        case 'soundExpression.hello.playUntilDone': case 'soundExpression.mysterious.playUntilDone': case 'soundExpression.sad.playUntilDone':
+        case 'soundExpression.slide.playUntilDone': case 'soundExpression.soaring.playUntilDone': case 'soundExpression.spring.playUntilDone':
+        case 'soundExpression.twinkle.playUntilDone': case 'soundExpression.yawn.playUntilDone': {
+            const [, sound, how] = name.split('.');
+            push(`play sound ${sound} ${how === 'play' ? 'in background' : 'until done'}`);
             return;
         }
         case 'music.playSoundEffect': {
@@ -1139,6 +1220,54 @@ class MicrobitTranslator extends BaseTranslator {
             push(`set accelerometer range ${g}`);
             return;
         }
+        // Events over the radio: the event frame (sb3-creator `radio raise event`); sendMessage is raiseEvent(2000, msg + 1).
+        case 'radio.raiseEvent': push(`radio raise event ${this.single(a[0], out, pad)} ${this.single(a[1], out, pad)}`); return;
+        case 'radio.sendMessage': push(`radio raise event 2000 ${this.single({type: 'Binary', op: '+', left: a[0], right: {type: 'Number', value: '1'}}, out, pad)}`); return;
+        case 'radio.sendRawPacket': push(`radio send raw packet ${this.single(a[0], out, pad)}`); return;
+        case 'serial.writeNumbers': {
+            const list = a[0] && a[0].type === 'Array' ? a[0].items : null;
+            if (!list || !list.length) {
+                push(this.note('serial.writeNumbers() — the numbers must be an array literal'));
+                return;
+            }
+            let text = this.joinOperand(list[0]);
+            for (const item of list.slice(1)) text = `(${text} join ",") join ${this.joinOperand(item)}`;
+            push(`print (${text})`);
+            return;
+        }
+        // Melodies: the built-in ones play as the play-melody block does.
+        case 'music.startMelody': case 'music.beginMelody': {
+            const option = a[1] && a[1].type === 'Member' ? a[1].name : 'Once';
+            const mode = {Once: 'until done', OnceInBackground: 'in background', Forever: 'forever', ForeverInBackground: 'looping in background'}[option];
+            const tune = this.melody(a[0]);
+            if (tune && mode) {
+                // a built-in melody: the play-melody block; its foreground "forever" is the looping play and a script that never goes on
+                push(`play melody ${tune} ${mode === 'forever' ? 'looping in background' : mode}`);
+                if (mode === 'forever') {
+                    push('FOREVER:');
+                    out.push(`${pad}  wait 1 seconds`);
+                }
+                return;
+            }
+            const notes = a[0] && a[0].type === 'Array' ? a[0].items.map(x => this.literalString(x)) : null;
+            if (notes && mode && notes.every(n => n !== null && !/[\s_]/.test(n))) {
+                push(`play notes ${JSON.stringify(notes.join('_'))} tempo 120 ${mode}`);
+                return;
+            }
+            push(this.note(`${name}() — a built-in melody or an array of literal notes in a known mode has a block here`));
+            return;
+        }
+        // Note-string melodies (MakeCode's NOTE[octave][:duration] strings are MicroPython's notation).
+        case 'music.playMelody': {
+            const text = this.noteString(a[0]);
+            if (text === null) {
+                push(this.note('music.playMelody(<expression>) — the notes must be a literal string'));
+                return;
+            }
+            push(`play notes ${JSON.stringify(text)} tempo ${this.operand(a[1])} until done`);
+            return;
+        }
+        case 'music.stopMelody': push('stop buzzer'); return;
         case 'serial.writeString': push(`serial write text ${this.single(a[0], out, pad)}`); return;
         case 'serial.writeNumber': push(`serial write number ${this.single(a[0], out, pad)}`); return;
         case 'serial.writeBuffer': push(`serial write buffer ${this.single(a[0], out, pad)}`); return;
@@ -1264,7 +1393,7 @@ class MicrobitTranslator extends BaseTranslator {
         case 'bluetooth.startIOPinService': case 'bluetooth.startLEDService': case 'bluetooth.startTemperatureService':
         case 'bluetooth.startMagnetometerService': case 'bluetooth.uartWriteString': case 'bluetooth.uartWriteLine':
         case 'bluetooth.uartWriteNumber': case 'bluetooth.uartWriteValue': case 'bluetooth.advertiseUrl':
-        case 'bluetooth.advertiseUid': case 'bluetooth.setTransmitPower': case 'bluetooth.stopAdvertising': {
+        case 'bluetooth.advertiseUid': case 'bluetooth.uartWriteBuffer': case 'bluetooth.advertiseUidBuffer': case 'bluetooth.setTransmitPower': case 'bluetooth.stopAdvertising': {
             if (a.length > 4) {
                 push(this.note(`${name}() — the bluetooth block takes up to four arguments`));
                 return;
@@ -1384,7 +1513,8 @@ const EVENT_BUS_VALUE = {
 };
 
 /** Buffer-making calls (their results are Buffers). */
-const BUFFER_MAKERS = new Set(['control.createBuffer', 'pins.createBuffer', 'control.createBufferFromUTF8', 'radio.receivedBuffer']);
+const BUFFER_MAKERS = new Set(['control.createBuffer', 'pins.createBuffer', 'control.createBufferFromUTF8', 'radio.receivedBuffer',
+    'pins.createBufferFromArray', 'pins.packBuffer', 'pins.concatBuffers', 'radio.readRawPacket', 'bluetooth.uartReadBuffer', 'serial.readBuffer', 'pins.i2cReadBuffer']);
 
 /** A legacy radio Packet's properties (radio.onDataPacketReceived) in our spelling. */
 const PACKET_PROPERTIES = {
@@ -1513,6 +1643,8 @@ const HANDLERS = {
         const button = translator.enumToken(a[0]) || 'a';
         return {test: `read button_${button}`, release: `read button_${button}`};
     },
+    // serial.onDataReceived(delimiter, body): polled; the body reads the data, which takes it from the buffer.
+    'serial.onDataReceived': translator => a => ({test: `serial has data until ${translator.delimiterWord(a[0])}`, release: null}),
     'input.onShake': () => () => ({test: 'shake happening', release: null}),
     'input.onScreenUp': () => () => ({test: 'face up happening', release: null}),
     'input.onScreenDown': () => () => ({test: 'face down happening', release: null}),
@@ -1823,7 +1955,7 @@ export function microbitToPseudocode (source, opts = {}) {
         // radio.onReceivedBuffer((buffer) => ...) and the legacy
         // radio.onDataPacketReceived((packet) => ...) (or its destructured form):
         // hats, as the other radio handlers.
-        if (callName === 'radio.onReceivedBuffer' || callName === 'radio.onDataPacketReceived') {
+        if (callName === 'radio.onReceivedBuffer' || callName === 'radio.onDataPacketReceived' || callName === 'radio.onDataReceived') {
             const fn = call.args[call.args.length - 1];
             const params = (fn && fn.params) || [];
             const buffer = callName === 'radio.onReceivedBuffer';
@@ -1849,6 +1981,38 @@ export function microbitToPseudocode (source, opts = {}) {
             bound.forEach(([param]) => t.aliases.delete(param));
             t.packetParams = null;
             scripts.push(lines);
+            continue;
+        }
+
+        // datalogger.onLogFull(body): PXT's init registers control.onEvent(MICROBIT_ID_LOG 44, LOG_FULL 1); the log stops and the event is
+        // raised once when log.add fails.
+        if (callName === 'datalogger.onLogFull') {
+            const fn = call.args[call.args.length - 1];
+            const lines = ['WHEN event 44 1:'];
+            t.returnable = {result: null};
+            t.block(bodyOf(fn), 1, lines);
+            t.returnable = null;
+            scripts.push(lines);
+            scripts.unshift(['WHEN flag clicked:', '  log raise event when full']); // before any script that logs
+            continue;
+        }
+
+        // radio.onReceivedMessage(msg, body) is control.onEvent(2000, msg + 1, body), fed by the radio's event frames.
+        if (callName === 'radio.onReceivedMessage') {
+            const fn = call.args[call.args.length - 1];
+            const message = call.args[0] && call.args[0].type === 'Number' ? Number(call.args[0].value) + 1 : null;
+            if (message === null) {
+                t.unsupported.push('radio.onReceivedMessage(<expression>) — the message must be a number');
+                scripts.push(['# unsupported: radio.onReceivedMessage(<expression>)']);
+                continue;
+            }
+            const lines = [`WHEN event 2000 ${message}:`];
+            t.returnable = {result: null};
+            t.block(bodyOf(fn), 1, lines);
+            t.returnable = null;
+            scripts.push(lines);
+            // the event frames arrive only while the radio listens
+            scripts.push(['WHEN flag clicked:', '  radio listen for events']);
             continue;
         }
 
