@@ -6308,8 +6308,10 @@ module.exports = makeExt(`// Name: Arcade
     }
     // A TileMapData value is one mutable object shared by every holder, so edits
     // survive switching away from the level and back.
+    // It travels as a 'tile' reference whose id ('arcade-tilemap:N') is never a location id:
+    // the shared BWValues reference kinds (and their pinned canonical supplier) stay unchanged.
     _tilemapDataOf(value) {
-      const id = Scratch.BWValues.referenceId(this._runtime, value, 'tilemap');
+      const id = Scratch.BWValues.referenceId(this._runtime, value, 'tile');
       return id === null ? undefined : this._tilemapData.get(id);
     }
     tilemapValue(args) {
@@ -6322,7 +6324,7 @@ module.exports = makeExt(`// Name: Arcade
       if (data === null) return Scratch.BWValues.encode(null);
       const id = 'arcade-tilemap:' + (++this._nextTilemapData);
       this._tilemapData.set(id, data);
-      return Scratch.BWValues.reference(this._runtime, 'tilemap', id);
+      return Scratch.BWValues.reference(this._runtime, 'tile', id);
     }
     _requireTilemapData(value) {
       const data = this._tilemapDataOf(value);
@@ -6375,7 +6377,7 @@ module.exports = makeExt(`// Name: Arcade
         data.referenceId = 'arcade-tilemap:' + (++this._nextTilemapData);
         this._tilemapData.set(data.referenceId, data);
       }
-      return Scratch.BWValues.reference(this._runtime, 'tilemap', data.referenceId);
+      return Scratch.BWValues.reference(this._runtime, 'tile', data.referenceId);
     }
     // PXT's TileMap.setData runs each Unloaded handler for the outgoing map and
     // each Loaded handler for the incoming one, synchronously on the caller's fiber.
