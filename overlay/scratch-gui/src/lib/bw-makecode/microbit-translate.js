@@ -399,6 +399,17 @@ class MicrobitTranslator extends BaseTranslator {
     }
 
     /** `serial.delimiters(Delimiters.NewLine)`'s word (a bluetooth uart delimiter), else a note and 'newline'. */
+    /** A pin named by its enum member (SerialPin.P0), or the default. */
+    memberPin (node, fallback) {
+        return node && node.type === 'Member' && /^P\d+$/.test(node.name) ? node.name : fallback;
+    }
+
+    /** A BaudRate member (BaudRate.BaudRate115200) as its number; a number as itself. */
+    baudRate (node) {
+        if (node && node.type === 'Member' && /^BaudRate\d+$/.test(node.name)) return node.name.slice('BaudRate'.length);
+        return node ? this.operand(node) : '115200';
+    }
+
     delimiterWord (node) {
         const arg = node && node.type === 'Call' && this.path(node.callee) === 'serial.delimiters' ? node.args[0] : null;
         const word = arg && arg.type === 'Member' && arg.object && arg.object.name === 'Delimiters' ? DELIMITERS[arg.name] : null;
@@ -1112,6 +1123,22 @@ class MicrobitTranslator extends BaseTranslator {
         case 'serial.writeDmesg': case 'pins.setEvents': case 'pins.setAudioPin': case 'pins.setAudioPinEnabled':
             push(`# ${name} — MicroPython has nothing to set`);
             return;
+        case 'radio.off': push('radio off'); return;
+        case 'radio.setFrequencyBand': push(`radio frequency band ${this.operand(a[0])}`); return;
+        case 'serial.redirect': push(`serial redirect tx ${this.memberPin(a[0], 'P0')} rx ${this.memberPin(a[1], 'P1')} baud ${this.baudRate(a[2])}`); return;
+        case 'serial.setBaudRate': push(`serial baud rate ${this.baudRate(a[0])}`); return;
+        case 'control.reset': push('reset micro:bit'); return;
+        case 'control.panic': push(`panic with code ${this.operand(a[0])}`); return;
+        case 'input.calibrateCompass': push('calibrate compass'); return;
+        case 'input.setAccelerometerRange': {
+            const g = a[0] && a[0].type === 'Member' ? {OneG: 1, TwoG: 2, FourG: 4, EightG: 8}[a[0].name] : null;
+            if (!g) {
+                push(this.note('input.setAccelerometerRange(<expression>) — the block takes 1, 2, 4 or 8 g'));
+                return;
+            }
+            push(`set accelerometer range ${g}`);
+            return;
+        }
         case 'serial.writeString': push(`serial write text ${this.single(a[0], out, pad)}`); return;
         case 'serial.writeNumber': push(`serial write number ${this.single(a[0], out, pad)}`); return;
         case 'serial.writeBuffer': push(`serial write buffer ${this.single(a[0], out, pad)}`); return;
@@ -1130,6 +1157,26 @@ class MicrobitTranslator extends BaseTranslator {
         case 'pins.spiFormat': push(`spi format ${this.single(a[0], out, pad)} mode ${this.single(a[1], out, pad)}`); return;
         case 'pins.spiPins': push(`spi pins mosi ${this.pin(a[0]) || 'P15'} miso ${this.pin(a[1]) || 'P14'} sck ${this.pin(a[2]) || 'P13'}`); return;
         // The V2 log beyond log data.
+        // logData([createCV(..), ..]) and setColumns(["a", ..]) take an array literal: the same words as log and setColumnTitles.
+        case 'datalogger.logData': {
+            const list = a[0] && a[0].type === 'Array' ? a[0].items : null;
+            const pairs = list ? list.filter(x => x && x.type === 'Call' && this.path(x.callee) === 'datalogger.createCV') : [];
+            if (!list || !list.length || pairs.length !== list.length || pairs.length > 3) {
+                push(this.note('datalogger.logData() — the block logs one to three datalogger.createCV("name", value) pairs in an array literal'));
+                return;
+            }
+            push(`log data ${pairs.map(p => `${this.operand(p.args[0])} = ${this.single(p.args[1], out, pad)}`).join(' and ')}`);
+            return;
+        }
+        case 'datalogger.setColumns': {
+            const list = a[0] && a[0].type === 'Array' ? a[0].items : null;
+            if (!list || !list.length || list.length > 3) {
+                push(this.note('datalogger.setColumns() — the block names one to three columns in an array literal'));
+                return;
+            }
+            push(`set log columns ${list.map(t => this.operand(t)).join(' and ')}`);
+            return;
+        }
         case 'datalogger.setColumnTitles': {
             const titles = a.slice(0, 3);
             if (!titles.length || a.length > 3) {
@@ -1254,7 +1301,7 @@ class MicrobitTranslator extends BaseTranslator {
         }
         // MicroPython's serial console is the USB port at its fixed rate with its own buffers: these have
         // nothing to set, and are said so in a comment rather than refused.
-        case 'serial.setBaudRate': case 'serial.redirectToUSB': case 'serial.setRxBufferSize': case 'serial.setTxBufferSize':
+        case 'serial.redirectToUSB': case 'serial.setRxBufferSize': case 'serial.setTxBufferSize':
         case 'serial.setWriteLinePadding':
             push(`# ${name} — MicroPython's serial console is the USB port; nothing to set`);
             return;

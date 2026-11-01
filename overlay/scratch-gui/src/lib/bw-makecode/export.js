@@ -99,6 +99,8 @@ const BUFFER_SLOTS = {
 /** The serial delimiters' menu words -> MakeCode's Delimiters members. */
 const DELIMITER_MEMBER = {newline: 'NewLine', comma: 'Comma', dollar: 'Dollar', colon: 'Colon', fullstop: 'Fullstop', hash: 'Hash',
     'carriage return': 'CarriageReturn', space: 'Space', tab: 'Tab', pipe: 'Pipe', semicolon: 'SemiColon'};
+/** A baud rate number as MakeCode's BaudRate member. */
+const baudMember = n => (/^\d+$/.test(String(n)) ? `BaudRate.BaudRate${n}` : 'BaudRate.BaudRate115200');
 /** The block menu's number format -> MakeCode's NumberFormat member (`uint16be` -> UInt16BE). */
 const numberFormat = word => {
     const m = /^(u?int|float)(\d+)(le|be)$/.exec(String(word));
@@ -983,6 +985,14 @@ export class Emitter {
         case 'microbitplus_touchmode': push(`pins.touchSetMode(TouchTarget.${String(f('PIN')).toUpperCase()}, TouchTargetMode.${f('MODE') === 'resistive' ? 'Resistive' : 'Capacitive'})`); return;
         case 'microbitplus_gamelevelup': push('game.levelUp()'); return;
         case 'microbitplus_gamestopwatch': push('game.startStopwatch()'); return;
+        case 'microbitplus_radiooff': push('radio.off()'); return;
+        case 'microbitplus_radioband': push(`radio.setFrequencyBand(${v('BAND')})`); return;
+        case 'microbitplus_serialredirect': push(`serial.redirect(SerialPin.${String(f('TX')).toUpperCase()}, SerialPin.${String(f('RX')).toUpperCase()}, ${baudMember(v('BAUD'))})`); return;
+        case 'microbitplus_serialbaud': push(`serial.setBaudRate(${baudMember(v('BAUD'))})`); return;
+        case 'microbitplus_resetboard': push('control.reset()'); return;
+        case 'microbitplus_panicboard': push(`control.panic(${v('CODE')})`); return;
+        case 'microbitplus_calibratecompass': push('input.calibrateCompass()'); return;
+        case 'microbitplus_accelrange': push(`input.setAccelerometerRange(AcceleratorRange.${{1: 'OneG', 2: 'TwoG', 4: 'FourG', 8: 'EightG'}[Number(v('G'))] || 'OneG'})`); return;
         case 'microbitplus_serialwritetext': push(`serial.writeString(${v('TEXT', '""')})`); return;
         case 'microbitplus_serialwritenum': push(`serial.writeNumber(${v('NUM')})`); return;
         case 'microbitplus_serialwritebuf': push(`serial.writeBuffer(${v('BUF')})`); return;
