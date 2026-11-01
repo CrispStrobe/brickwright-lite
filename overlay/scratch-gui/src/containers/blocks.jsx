@@ -205,6 +205,10 @@ class Blocks extends React.Component {
         toolboxWorkspace.registerButtonCallback('MAKE_A_VARIABLE', varListButtonCallback(''));
         toolboxWorkspace.registerButtonCallback('MAKE_A_LIST', varListButtonCallback('list'));
         toolboxWorkspace.registerButtonCallback('MAKE_A_PROCEDURE', procButtonCallback);
+        // Extension buttons with their own callback (Arcade's "show more") register on the runtime.
+        const flyoutCallback = toolboxWorkspace.getButtonCallback;
+        toolboxWorkspace.getButtonCallback = key =>
+            flyoutCallback.call(toolboxWorkspace, key) || this.props.vm.runtime.bwButtonCallbacks?.[key];
 
         // Store the xml of the toolbox that is actually rendered.
         // This is used in componentDidUpdate instead of prevProps, because

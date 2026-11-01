@@ -344,14 +344,14 @@ module.exports = makeExt(`// Name: Arcade
           for (const [id, entry] of this._imageSkins) if (entry.target === target) this._clearImage(id);
           for (const [id, entry] of this._speech) if (entry.target === target) this._clearSpeech(id);
         });
-        runtime._attachArcadeFramePhase?.(this);
+        runtime._attachArcadeFramePhase?.(this,dependencies.framePhase);
       }
     }
 
     getInfo() {
       const str = (name, def) => ({ [name]: { type: Scratch.ArgumentType.STRING, defaultValue: def || '' } });
       const n = (name, def) => ({ [name]: { type: Scratch.ArgumentType.NUMBER, defaultValue: def == null ? 0 : def } });
-      return dependencies.frameDeltaNumber.declaration(dependencies.sceneClockNumber.declaration(dependencies.nullSpriteGetter.declareAll(dependencies.createConsoleInspectValues.scoreInfo({
+      return dependencies.palette.arrange(this,dependencies.frameDeltaNumber.declaration(dependencies.sceneClockNumber.declaration(dependencies.nullSpriteGetter.declareAll(dependencies.createConsoleInspectValues.scoreInfo({
         id: 'arcade',
         name: 'Arcade',
         color1: '#E64980',
@@ -1151,7 +1151,7 @@ module.exports = makeExt(`// Name: Arcade
           spriteFlags: {acceptReporters: false, items: Object.keys(spriteFlags)}
           ,speechModes: {acceptReporters: false, items: ['text', 'legacy']}
         }
-      },scoreNumberOwners.get(this)),method=>nullSpriteOwners.get(this).get(method)),sceneClockOwners.get(this)),frameDeltaOwners.get(this));
+      },scoreNumberOwners.get(this)),method=>nullSpriteOwners.get(this).get(method)),sceneClockOwners.get(this)),frameDeltaOwners.get(this)));
     }
 
     // An owned runtime may inject {now:()=>milliseconds} for deterministic
@@ -6118,11 +6118,13 @@ module.exports = makeExt(`// Name: Arcade
       if (offset >= 0) {map.walls[offset] = Boolean(Scratch.BWValues.decode(args.WALL));this._changed();}
     }
     placeOnTile(args, util) {
-      if (!this._tileLocation(args.LOCATION)) return;
+      // PXT returns for a missing sprite; only Sprite.setPosition itself throws.
+      if (this._missingOperand(util,args,'ID') || !this._tileLocation(args.LOCATION)) return;
       return this.setSpritePosition({ID:args.ID, X:this.tileLocationProperty({...args,PROPERTY:'x'}),
         Y:this.tileLocationProperty({...args,PROPERTY:'y'})},util);
     }
     placeOnRandomTile(args, util) {
+      if (this._missingOperand(util,args,'ID')) return;
       const map = this._state().tilemap, index = this._tileImageIndex(map,this._image(args.IMAGE));
       if (index < 0) return;
       // PXT uses reservoir sampling with size one, visiting columns first.
@@ -6173,7 +6175,7 @@ module.exports = makeExt(`// Name: Arcade
       imageEngine.draw(map.mapImage,'setPixel',column,row,index);this._refreshImage(map.mapImage);
     }
     placeOnLegacyTile(args,util) {
-      if(!this._legacyTile(args.TILE))return;
+      if(this._missingOperand(util,args,'ID') || !this._legacyTile(args.TILE))return;
       return this.setSpritePosition({ID:args.ID,X:this.legacyTileProperty({...args,PROPERTY:'x'}),Y:this.legacyTileProperty({...args,PROPERTY:'y'})},util);
     }
     placeOnRandomLegacyTile(args,util) {
@@ -6570,5 +6572,7 @@ module.exports = makeExt(`// Name: Arcade
   createCarnivalHost: require('./carnival-host'),
   initializeGameOver: require('./gameover-pxt'),
   initializeHud: require('./hud-pxt'),
-  initializePrompt: require('./prompt-pxt')
+  initializePrompt: require('./prompt-pxt'),
+  palette: require('./palette'),
+  framePhase: require('./frame-phase')
 });

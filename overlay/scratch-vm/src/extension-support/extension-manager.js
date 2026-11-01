@@ -895,6 +895,7 @@ class ExtensionManager {
                 log.warn(`Ignoring function "${blockInfo.func}" for event block ${blockInfo.opcode}`);
             }
             break;
+        case 'label': // palette section header (see runtime patchPaletteStructure)
         case BlockType.BUTTON:
             if (blockInfo.opcode) {
                 log.warn(`Ignoring opcode "${blockInfo.opcode}" for button with text: ${blockInfo.text}`);

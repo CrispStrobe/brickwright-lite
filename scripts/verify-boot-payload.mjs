@@ -52,6 +52,9 @@ const LAZY = [
         why: 'lazyBuiltinExtensions.legonxt in extension-manager.js'},
     {what: 'Arcade runtime (its speech fonts)', marker: 'font12: Adobe SIL OFL 1.1', chunk: 'ext-arcade',
         why: 'lazyBuiltinExtensions.arcade in extension-manager.js'},
+    // The Arcade frame phase (~26 KiB) is handed to the runtime by the lazy extension, not required by runtime.js.
+    {what: 'Arcade frame phase', marker: 'Arcade phase work budget must be finite and positive', chunk: 'ext-arcade',
+        why: 'dependencies.framePhase in arcade/index.js (runtime._attachArcadeFramePhase receives the class)'},
     {what: 'Robot Lab blocks', marker: 'when part [PART] touches [OTHER]', chunk: 'ext-robotlab',
         why: 'lazyBuiltinExtensions.robotlab in extension-manager.js'},
     // The extension menu-shape table (~35 KB): read by the Code tab's compiler and by the
