@@ -344,6 +344,28 @@ jobs:
             --api-key ${{ secrets.APPSTORE_API_KEY_ID }} \
             --api-issuer ${{ secrets.APPSTORE_API_ISSUER_ID }}
 
+      # The macOS build shares the iOS app record, but mobile.yml's tester-notes
+      # and distribution steps finish before this upload exists, so until
+      # 0.1.29 the macOS build was uploaded to nobody. Same scripts, named
+      # platform: both wait for the macOS build to be VALID and are idempotent.
+      - name: Send macOS tester notes to App Store Connect
+        if: github.event_name == 'push' && matrix.os == 'macos-latest' && startsWith(github.ref, 'refs/tags/')
+        env:
+          APPSTORE_API_KEY_ID: ${{ secrets.APPSTORE_API_KEY_ID }}
+          APPSTORE_API_ISSUER_ID: ${{ secrets.APPSTORE_API_ISSUER_ID }}
+          APPSTORE_API_KEY_P8: ${{ secrets.APPSTORE_API_KEY_P8 }}
+          APPSTORE_APP_ID: ${{ vars.APPSTORE_APP_ID }}
+        run: node scripts/push-tester-notes.mjs --platform MAC_OS
+
+      - name: Distribute the macOS build to TestFlight (internal + external)
+        if: github.event_name == 'push' && matrix.os == 'macos-latest' && startsWith(github.ref, 'refs/tags/')
+        env:
+          APPSTORE_API_KEY_ID: ${{ secrets.APPSTORE_API_KEY_ID }}
+          APPSTORE_API_ISSUER_ID: ${{ secrets.APPSTORE_API_ISSUER_ID }}
+          APPSTORE_API_KEY_P8: ${{ secrets.APPSTORE_API_KEY_P8 }}
+          APPSTORE_APP_ID: ${{ vars.APPSTORE_APP_ID }}
+        run: node scripts/testflight-submit.mjs --platform MAC_OS
+
       # Also expose the bundles as workflow artifacts (useful for manual runs).
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
