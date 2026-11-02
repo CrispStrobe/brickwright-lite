@@ -725,9 +725,9 @@ class ArcadeEmitter {
         // gate also excludes inherited slots/getters on otherwise frozen data.
         if(this.snapshotCallbacks&&isProjectJsonSnapshot(this.project)&&!this.currentCallableContext&&!this.currentClassConstructor&&
             this.functionSymbols?.current()&&!this.functionNames().includes('assets')&&ownedAnimationLiteral(this.project,this.target,b)){
-            const allocation=this.animationFrameProducers.resolve(this.target,b);
+            const allocation=this.animationFrameProducers.resolve(this.target,b,{targets:this.project.targets,monitors:this.project.monitors});
             const resource=allocation&&!allocation.shared&&ownedAnimationLiteral(this.project,this.target,b)?
-                this.animationFrameProducers.freshResource(this.target,b):null;
+                this.animationFrameProducers.freshResource(this.target,b,{targets:this.project.targets,monitors:this.project.monitors}):null;
             const emitted=resource&&this.authoredAnimationArrays.get(resource.id);
             if(emitted?.sourceResource===resource&&this.animationFrameProducers.isCurrent()&&
                 ownedAnimationLiteral(this.project,this.target,b))

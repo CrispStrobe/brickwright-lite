@@ -1307,7 +1307,7 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         if(node.opcode==='arcade_spritesOfKind')return exactKeys(node,['KIND'])&&numericKind(input(node,'KIND',target))?new Set([token(node,target,[{raw:[10,'SDK Sprite element not an Array']}],0)]):new Set([bad]);
         if(Object.hasOwn(FRESH_SDK_ARRAYS,node.opcode))return exactKeys(node,FRESH_SDK_ARRAYS[node.opcode])?new Set([token(node,target,[{raw:[10,'SDK element not an Array']}],0)]):new Set([bad]);
         if(['arcade_animationAssetFrames','arcade_animationAssetFreshFrames'].includes(node.opcode)){
-            const producer=animationProducers.resolve(target,node);
+            const producer=animationProducers.resolve(target,node,{targets,monitors:project.monitors});
             return producer?new Set([token(producer.allocation,producer.shared?null:target,
                 Array.from({length:producer.length},()=>({raw:[10,'SDK Image element not an Array']})),producer.length)]):new Set([bad]);
         }
@@ -1986,7 +1986,7 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         if(!value.node)return false;const {target,node}=value;if(path.has(node))return false;const next=new Set([...path,node]),c=binding(target,node);
         if(c)return initializedCell(c,owners.get(node),node);
         if(node.opcode==='arrays_createReference')return true;
-        if(['arcade_animationAssetFrames','arcade_animationAssetFreshFrames'].includes(node.opcode))return !!animationProducers.resolve(target,node);
+        if(['arcade_animationAssetFrames','arcade_animationAssetFreshFrames'].includes(node.opcode))return !!animationProducers.resolve(target,node,{targets,monitors:project.monitors});
         if(node.opcode==='arrays_namedReference')return singleArray(namedBinding(target,node)||new Set());
         if(node.opcode==='arcade_callFunction'){
             // A closed parameterless getter whose only statement returns a
