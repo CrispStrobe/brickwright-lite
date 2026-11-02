@@ -129,7 +129,7 @@ Triage of batches B and A, 2026-10-28:
 | pan-shift | runs past the 180 s contract maximum | Investigate the program length; keep experimental if it can't be fixed honestly |
 | vector-delta | blocked by a missing part | Keep blocked |
 | obliquity-orrery | blocked by issue #1460 (the compiler ignores motor orientation) | Wait for #1460 |
-| afterturn | its result is dominated by the rotor-inertia defect | Re-run after #1494 lands (section 3) |
+| afterturn | Re-run 2026-11-02 with the #1573 native rotor opt-in: strokes 0.02749 (masses out) and 0.02606 (saved radii, law 0.02608); first cycle −1.275°, inverse −0.043°; control −0.009°. The supplier claim (4.6625°) and lessons describe the old double-count artefact, and no Afterturn judge is registered | Needs a new independently reviewed judge (independent J at B=70) plus corrected claims and lessons; stays experimental |
 | impulse-line | the unpowered pusher droops about 4°/s during the cold settle, against a 2° guard; its law is only qualitative | Needs a pose fix and a quantitative law |
 | quiet-partner | compiler warns of locked hinges, and the elastic bands become spring couplings | Needs harness support for spring couplings, or stays experimental |
 

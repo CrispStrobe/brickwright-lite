@@ -2885,6 +2885,13 @@
         "date": "2026-10-27",
         "decision": "STAYS_EXPERIMENTAL",
         "reason": "The physical prediction dpsi = -Iw*dalpha/Jlocked from compiled colliders gives Iw/J = 0.026 per wheel degree at the saved pose. The recorded 0.124-0.129 equals (Iw+Jr)/(J+2Jr) with the SPIKE medium motor's reflected rotor inertia Jr = 3.0e-4 kg m2, which the engine adds to both hinge bodies (jolt-core setRotorInertia documents this as wrong when both turn about the axis, as platform and wheel do here). The observed reorientation is dominated by that engine model, so no honest physical judge passes it."
+      },
+      "nativeRotorReview": {
+        "date": "2026-11-02",
+        "decision": "STAYS_EXPERIMENTAL",
+        "rotor": "native (0 !BW ROTOR_INERTIA native, #1573)",
+        "measured": "headless direct VM: stroke at B=70 0.02749 platform/wheel, stroke at saved radii 0.02606 (law Iw/J 0.02608); first cycle -1.275 deg, after inverse -0.043 deg; control afterturn-fixed-masses strokes 0.02573/0.02573, cycle -0.009 deg",
+        "reason": "The native rotor removes the #1494 double count; the cycle now gives 1.28 deg, consistent with 900 x (0.02749-0.02606) = 1.29 deg. The supplier claims (4.6625 deg) and lessons describe the old engine artefact and no longer agree. No afterturn judge is registered in QUALIFICATION_JUDGES; promotion needs a new independently reviewed judge with an independent J(B=70) prediction and corrected supplier claims and lessons."
       }
     },
     {
