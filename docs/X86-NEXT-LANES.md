@@ -40,6 +40,19 @@ only open x86 lane, and three optional follow-ups are scoped after it.
 
 ### Lane 1: close current GUI qualification first (PR1540)
 
+**Status 2026-11-02.** PR1540 merged into main as
+`86f95bbd4833f877363488ad2bf122c592256fff` with its source-arming flags; no
+Actual-V9 event, ACK or guest acceptance has occurred, so the GUI HDD and
+forward-debug result remains unqualified. Since that merge, pin moves on main
+re-stamp `FINITE_V10_PINS` in the producer and reader, so their bytes now differ
+from the PR1540 head; every external admission and private controller must bind
+the reader, producer and pins of the selected event head, not of PR1540.
+The prelude guard requires an *open, ready* pull request whose head equals the
+dispatched lane branch head, so the merged PR1540 can no longer carry an event.
+A successor pull request on a `lane/` branch carries the event; it must pass
+every enabled exact-head check (with `ci:full`) and bind its own successful
+Build artifact before selection. Steps 1-5 below otherwise apply unchanged.
+
 **Scope:** [PR1540](https://github.com/CrispStrobe/brickwright-lite/pull/1540),
 the successor to the now-closed PR1318. Start with
 [`lanes/2026-10-28-x86-finite-v10-resolver-kind.md`](../lanes/2026-10-28-x86-finite-v10-resolver-kind.md),
