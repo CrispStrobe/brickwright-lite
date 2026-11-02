@@ -193,8 +193,35 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
             (value.length!==3||!agrees(target,value[1],value[2])))invalidGlobalBinding=true;
     }
     for(const scope of scopes)for(const name of scope.params||[]){const value=localCell(scope,name);if(value)value.formal=scope;}
+    // A statement in the untaken branch of an if/else (or if) whose condition
+    // is a comparison of two literal Numbers never runs: both PXT and Lite
+    // evaluate the same constant (the `true ? a : b` lowering emits 0 < 1).
+    const literalOperand=(node,name)=>{const raw=node.inputs?.[name]?.[1];
+        return Array.isArray(raw)&&raw.length===2&&[4,5,6,7,8].includes(raw[0])&&String(raw[1]).trim()!==''&&Number.isFinite(Number(raw[1]))?Number(raw[1]):null;};
+    const staticCondition=(target,parent)=>{
+        const cond=block(target,parent.inputs?.CONDITION?.[1]);
+        if(cond?.opcode!=='arrays_valueCompare'||cond.mutation!=null||!exactKeys(cond,['LEFT','RIGHT'],['OP']))return null;
+        const l=literalOperand(cond,'LEFT'),r=literalOperand(cond,'RIGHT'),op=literal(cond,'OP',target);
+        if(l===null||r===null)return null;
+        return {'<':l<r,'>':l>r,'<=':l<=r,'>=':l>=r,'===':l===r,'!==':l!==r}[op]??null;
+    };
+    const staticallyUntaken=(target,node)=>{
+        const seen=new Set();let current=node;
+        while(current&&!seen.has(current)){seen.add(current);
+            const parent=block(target,current.parent);if(!parent)return false;
+            const id=Object.keys(target.blocks).find(key=>target.blocks[key]===current);
+            if(parent.mutation==null&&(parent.opcode==='control_if_else'&&exactKeys(parent,['CONDITION','SUBSTACK','SUBSTACK2'])||
+                parent.opcode==='control_if'&&exactKeys(parent,['CONDITION','SUBSTACK']))){
+                const taken=staticCondition(target,parent);
+                if(taken===false&&parent.inputs.SUBSTACK?.[1]===id)return true;
+                if(taken===true&&parent.opcode==='control_if_else'&&parent.inputs.SUBSTACK2?.[1]===id)return true;
+            }
+            current=parent;
+        }
+        return false;
+    };
     for(const {target,node,scope}of records){
-        if(ordinaryEntry.isUnreachable(target,node))continue;
+        if(ordinaryEntry.isUnreachable(target,node)||staticallyUntaken(target,node))continue;
         let destination=null;
         if(node.opcode==='data_setvariableto'||node.opcode==='data_changevariableby')destination=globalCell(target,node.fields?.VARIABLE?.[1]);
         else if(node.opcode==='arcade_setLocal')destination=localCell(scope,literal(node,'NAME',target));
@@ -1030,7 +1057,10 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
             return false;}return false;};
         const condition=next.inputs?.CONDITION?.[1],literalCondition=Array.isArray(condition)&&condition.length===2&&
             ([4,5,6,7,8].includes(condition[0])&&['string','number'].includes(typeof condition[1])&&watcherFinite(watcherNumber(condition[1]))||condition[0]===10&&typeof condition[1]==='string');
-        const result=next.opcode==='control_if_else'&&!invalid.has(next)&&literalCondition&&branchAssigns(next.inputs?.SUBSTACK?.[1])&&branchAssigns(next.inputs?.SUBSTACK2?.[1]);
+        const taken=next.opcode==='control_if_else'&&next.mutation==null&&exactKeys(next,['CONDITION','SUBSTACK','SUBSTACK2'])?staticCondition(w.target,next):null;
+        const result=next.opcode==='control_if_else'&&!invalid.has(next)&&(literalCondition&&branchAssigns(next.inputs?.SUBSTACK?.[1])&&branchAssigns(next.inputs?.SUBSTACK2?.[1])||
+            // A constant comparison runs exactly one branch; that branch's first statement must write.
+            taken===true&&branchAssigns(next.inputs?.SUBSTACK?.[1])||taken===false&&branchAssigns(next.inputs?.SUBSTACK2?.[1]));
         if(result)consume();
         return result;
     };

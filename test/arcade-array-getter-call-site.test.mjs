@@ -11,7 +11,8 @@ const exported = source => {
     const imported = arcadeToPseudocode(source);
     assert.deepEqual(imported.unsupported, [], source);
     const creator = new Creator(); creator.parse(imported.code);
-    return projectToArcade(creator.project, {}).unsupported;
+    for (const costume of imported.costumes || []) costume.mode === 'add' ? creator.addCustomSVGCostume(costume.sprite, costume.svg, costume.name) : creator.applyCustomSVG(costume.sprite, costume.svg);
+    return projectToArcade(creator.project, {costumeSvg: (target, costume) => creator.assets.get(costume.assetId)?.data}).unsupported;
 };
 
 test('a getter call after the global Array writer is an initialized receiver', () => {
@@ -26,4 +27,14 @@ test('a getter call before the writer, a writing getter or a later reset keeps t
         'function read(n:number){return numbers}let numbers=[1,2];numbers=null;let alias=read(1);alias[0]=7;']) {
         assert.ok(exported(source).some(row => /Array reference/.test(row)), source);
     }
+});
+
+// `cond ? a : b` lowers to an if/else on a literal comparison; with a constant
+// condition only the taken branch runs, in PXT and in Lite.
+test('a constant conditional selects only its taken Array branch', () => {
+    assert.deepEqual(exported('let pictures=[img`3`];let selected=true?pictures:null;let picture=selected[0];picture.fill(6);'), []);
+    for (const source of [
+        'let pictures=[img`3`];let selected=false?pictures:null;let picture=selected[0];picture.fill(6);',
+        'let pictures=[img`3`];let flag=true;let selected=flag?pictures:null;let picture=selected[0];picture.fill(6);'])
+        assert.ok(exported(source).some(row => /Array reference/.test(row)), source);
 });
