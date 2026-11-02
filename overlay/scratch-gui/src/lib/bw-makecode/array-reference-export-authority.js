@@ -1156,6 +1156,23 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         }
         return false;
     };
+    // An occurrence inside a procedure that no block can enter never runs, in
+    // PXT or in Lite: no static caller, no unknown/implicit (managed or
+    // object-dispatch) entry, and no other block names the procedure in any
+    // literal (which rules out dispatch by a constructed name).
+    const uncalledProcedureOccurrence=node=>{
+        const scope=owners.get(node);
+        if(!scope?.proc||scope.invalid||scope.unknownEntry||implicitEntries.has(scope)||scope.callers.length)return false;
+        const name=scope.proc,head=name.split(' ')[0];
+        for(const t of targets)for(const other of Object.values(t.blocks||{})){
+            if(other===scope.root)continue;
+            if(other.mutation&&typeof other.mutation.proccode==='string'&&other.opcode!=='procedures_prototype'&&other.mutation.proccode===name)return false;
+            for(const field of Object.values(other.fields||{}))if(Array.isArray(field)&&typeof field[0]==='string'&&(field[0]===name||field[0]===head||field[0].includes(head)))return false;
+            for(const slot of Object.values(other.inputs||{}))for(const raw of [slot?.[1],slot?.[2]])
+                if(Array.isArray(raw)&&typeof raw[1]==='string'&&(raw[1]===name||raw[1].includes(head)))return false;
+        }
+        return true;
+    };
     const concatLengths=new Set();
     const readInput=value=>{
         if(!value)return new Set([bad]);if(value.cell)return cellTypesAt(value.cell,value.at);if(value.jsonArray)return new Set([jsonArray(value.jsonArray,value.identity,null,value.origin)]);if(value.node)return readNode(value.target,value.node);return new Set([bad]);
@@ -2096,6 +2113,7 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
             {ok:false,reason:'requires the current inert event-copy prefix for a discounted Array reset'}:result.ok&&!inertStorePrefixCurrent()?
             {ok:false,reason:'requires the current inert global-store prefix for a discounted Array reset'}:result;
         if(deadOccurrence(target,node))return publish({ok:true});
+        if(uncalledProcedureOccurrence(node))return publish({ok:true});
         if(ordinaryEntry.isUnreachable(target,node))return publish({ok:true});
         if(occurrence?.candidate(target,node,name))return publish(occurrence.validateInput(target,node,name)?{ok:true}:{ok:false,reason:'requires the current closed occurrence Array producer and complete writer proof'});
         const value=input(node,name,target),types=readInput(value);return publish(singleArray(types)&&initialized(value)?{ok:true}:{ok:false,reason:'requires an actual initialized Array producer and compatible all writers'});

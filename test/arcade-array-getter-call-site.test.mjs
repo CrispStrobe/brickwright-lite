@@ -38,3 +38,15 @@ test('a constant conditional selects only its taken Array branch', () => {
         'let pictures=[img`3`];let flag=true;let selected=flag?pictures:null;let picture=selected[0];picture.fill(6);'])
         assert.ok(exported(source).some(row => /Array reference/.test(row)), source);
 });
+
+// A procedure no block can enter never runs; reads inside it are not
+// receivers in PXT or in Lite. Calls, escapes or names in literals keep them.
+test('reads inside an unenterable procedure need no Array proof', () => {
+    assert.deepEqual(exported('function unused(pictures:Image[]){let p=pictures[0];p.fill(2)}\nlet ready=1\n'), []);
+    for (const source of [
+        'function first(pictures:Image[]){let p=pictures[0];p.fill(2)}\nlet none:Image[]=null\nfirst(none)\n',
+        'function first(pictures:Image[]){let p=pictures[0];p.fill(2)}\nlet held:any=first\n']) {
+        const imported = arcadeToPseudocode(source);
+        assert.ok(imported.unsupported.length > 0 || exported(source).some(row => /Array reference/.test(row)), source);
+    }
+});
