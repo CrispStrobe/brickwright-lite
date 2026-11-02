@@ -146,9 +146,11 @@ test('the CSV export is real CSV a supplier could take', () => {
 });
 
 test('the parts list panel offers that CSV', () => {
-    const tab = readFileSync(new URL('../overlay/scratch-gui/src/components/tw-pseudocode/circuit-tab.jsx', import.meta.url), 'utf8');
+    // The Circuit tab's panels live in circuit-panels.jsx (drawn) and circuit-panels-model.js (decided).
+    const tab = readFileSync(new URL('../overlay/scratch-gui/src/components/tw-pseudocode/circuit-panels.jsx', import.meta.url), 'utf8');
+    const model = readFileSync(new URL('../overlay/scratch-gui/src/lib/circuit-panels-model.js', import.meta.url), 'utf8');
     assert.match(tab, /data-testid="bw-bom-csv"/, 'there is a CSV block');
-    assert.match(tab, /ui\.bomToCsv\(/, 'using the vendor exporter, not a second one');
+    assert.match(model, /ui\.bomToCsv\(/, 'using the vendor exporter, not a second one');
     assert.match(tab, /onFocus=\{e => e\.target\.select\(\)\}/, 'and it is selectable in one click');
 });
 
