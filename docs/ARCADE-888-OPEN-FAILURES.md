@@ -5,6 +5,37 @@ documented-TODO mechanism. Each failing unit test below originally carried
 `{todo: '<reason> — see docs/ARCADE-888-OPEN-FAILURES.md'}`; no assertion was
 changed. Source of the list: hosted Build run 39297263647 (head f2ecafef1).
 
+## Current status — 2026-11-02
+
+Arcade documented TODO tests: 37 on main `bc39104b`; 33 after #1629 and #1631.
+
+| Group | Before | After | Change |
+|---|---|---|---|
+| A Array receiver | 15 | 14 | update-values prefix row already passed on main (stale marker removed) |
+| B primitive producer | 10 | 9 | `scene.backgroundColor()` proven Number (source rule + native reporter) |
+| C named-array re-import | 3 | 3 | unchanged |
+| F image-mutation probe | 1 | 1 | same cause as G |
+| G exception owner reuse | 1 | 1 | kept: original PXT has one runtime per simulator frame |
+| H Math.idiv nested capture | 1 | 0 | nested parameter captures lifted (#1629) |
+| I liftExporterStops | 1 | 0 | exporter stop machinery lifted (#1629) |
+| timing phase / tile order / do-while | 5 | 5 | intentionally kept |
+
+**Group A decision (operator, 2026-11-02): keep the remaining rows as TODO.**
+A runtime guard that behaves exactly like original PXT for an unproven Array
+receiver is the identity: PXT already faults on a null or non-Array receiver,
+so the guard changes nothing at run time. Emitted wherever the receiver proof
+fails, it would admit every unproven receiver (a blanket allow) and overturn
+nine test files that assert the refusal. The follow-up instead adds per-slot
+proofs for the three or four most tractable rows; each needs flow-sensitive,
+interprocedural initialization (for example `alias=read()` is an Array only
+because the global was initialized before that call).
+
+The remaining B rows are not SDK producers: class constructor/method formals
+(two), possibly absent indexed reads (numeric constants, map results), a
+flow-sensitive string producer, a native bitwise operand (randint; no bitwise
+dispatch helper), a physically edited text leaf, consumed prefix/postfix
+updates and the exporter's nested parallel-handler stop tokens.
+
 ## Qualified follow-up: metadata-only construction — 2026-10-20
 
 The complete three-test `arcade-callable-metadata-construction.test.mjs` now

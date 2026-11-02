@@ -1,5 +1,26 @@
 # Arcade compatibility: fresh-agent handoff and methodology
 
+
+## 2 November: TODO closure status and decisions
+
+Merged or in flight: #1629 (nested parameter captures, H; exporter stop lift,
+I) and #1631 (the prepared created-field receiver branch composed onto main,
+plus a `scene.backgroundColor()` Number proof). Counts and reasons are in
+[ARCADE-888-OPEN-FAILURES.md](ARCADE-888-OPEN-FAILURES.md#current-status--2026-11-02).
+
+- G/F stay open: the pinned PXT simulator keeps exactly one runtime per
+  simulator frame, so two Arcade owners in one runtime have no original
+  behaviour to match. The duplicate-owner refusal stays.
+- Group A stays open (operator decision): a PXT-faithful guard for an
+  unproven Array receiver is the identity and would allow everything. Next:
+  per-slot proofs for the three or four most tractable rows.
+- Composing the prepared branch: where the branch's refusal tests met main's
+  later nullable-Array and inert-store proofs, each case was checked against
+  original PXT; main's admission was kept where sound, with the reason in the
+  test, and `test/arcade-reset-prefix-store-pxt.test.mjs` compares the shape.
+- Programs without a sprite still use the older ordinary path, where
+  `set color to 2` stores text; a Number formal then refuses at run time.
+
 ## 30 October: unproven native-addition operands use runtime dispatch (owner decision)
 
 Owner decision 2026-10-30: when the native-addition proof cannot establish
