@@ -1159,10 +1159,14 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
     // An occurrence inside a procedure that no block can enter never runs, in
     // PXT or in Lite: no static caller, no unknown/implicit (managed or
     // object-dispatch) entry, and no other block names the procedure in any
-    // literal (which rules out dispatch by a constructed name).
+    // literal (which rules out dispatch by a constructed name), and every call
+    // in the project resolves to a known procedure.
     const uncalledProcedureOccurrence=node=>{
         const scope=owners.get(node);
         if(!scope?.proc||scope.invalid||scope.unknownEntry||implicitEntries.has(scope)||scope.callers.length)return false;
+        // Every call in the project must resolve; an unresolved callee means the
+        // procedure graph is not closed, so no procedure is proved unenterable.
+        if(calls.some(call=>!call.fn))return false;
         const name=scope.proc,head=name.split(' ')[0];
         for(const t of targets)for(const other of Object.values(t.blocks||{})){
             if(other===scope.root)continue;
@@ -1211,6 +1215,8 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
             const n=value?.node;if(!n||invalid.has(n))return null;
             if(n.shadow&&n.opcode==='math_number'&&!Object.keys(n.inputs||{}).length)return !Number.isNaN(Number(n.fields?.NUM?.[0]))?'number':null;
             if(n.opcode==='arcade_createSpriteKind'&&exactKeys(n,[]))return 'number';
+            // A registered kind name reads the registry's kind Number (or throws).
+            if(n.opcode==='arcade_spriteKindValue'&&exactKeys(n,['NAME'])&&typeof literal(n,'NAME',target)==='string')return 'number';
             if(fixedUndefined(n))return 'undefined';
             return null;
         };
@@ -1222,6 +1228,9 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
                 if(!c||declaration?.[0]!==name?.[0]||!kind)return false;
                 if(c===destination)return kind==='number';
                 if(kind==='number')knownNumbers.add(c);else knownNumbers.delete(c);
+            }else if(next.opcode==='arcade_initializeSpriteKindLibrary'&&exactKeys(next,['LIBRARY','VERSION'])&&next.mutation==null&&
+                typeof literal(next,'LIBRARY',target)==='string'&&typeof literal(next,'VERSION',target)==='string'){
+                // Registers the library's kinds only; it writes no Scratch variable.
             }else if(next.opcode==='arcade_bindSpriteKind'&&exactKeys(next,['NAME','KIND'])&&typeof literal(next,'NAME',target)==='string'){
                 const value=input(next,'KIND',target),c=value.cell||(value.node&&binding(target,value.node));
                 if(!c||c===destination||!knownNumbers.has(c))return false;
