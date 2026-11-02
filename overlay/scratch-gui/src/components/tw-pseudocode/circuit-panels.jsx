@@ -161,8 +161,11 @@ WarningsBody.propTypes = {drc: PropTypes.object, locale: PropTypes.string, onSel
 const BomBody = ({ui, circuit, locale, onSelect}) => {
     const view = bomView(locale, ui, circuit);
     if (view.kind === 'empty') return <EmptyState view={view} locale={locale} onSelect={onSelect} />;
+    // ONE CSV control. The vendor's BomPanel carries its own CSV export (a bom.csv download,
+    // through the same bomToCsv), so the host's copyable CSV is only the fallback for a build
+    // without that panel; both at once showed two CSV buttons for one list.
+    if (ui.BomPanel) return <ui.BomPanel parts={circuit.parts} />;
     const csv = view.csv === null ? null : <BomCsv csv={view.csv} locale={locale} />;
-    if (ui.BomPanel) return (<div><ui.BomPanel parts={circuit.parts} />{csv}</div>);
     return (
         <div>
             <table style={{fontSize: 13, borderCollapse: 'collapse'}}>
