@@ -82,6 +82,36 @@ Editing `scripts/lib/robot-lab-qualification.mjs`:
   (`lanes/2026-10-27-robot-lab-hubless-harness.md`).
 - When merging main, keep every side's entries.
 
+## 0. Status refresh, 2026-11-02
+
+Done on main since this handoff was written:
+
+- **#1435 (resting-frame creep)** fixed by #1577 (idle speculative floor hits
+  no longer displace resting supports); the issue is closed. Section 4 is
+  history.
+- **#1494 (rotor inertia)** fixed for opted-in models by #1573 (native relative
+  rotor via `0 !BW ROTOR_INERTIA native`; supersedes #1505 and #1553); the issue
+  is closed. Models that do not opt in keep the old behaviour. Section 3 is
+  history; Afterturn needs the opt-in plus its own judge.
+- **CRLF disconnection parsing** fixed by #1549. The seven CRLF models in
+  section 2 are no longer blocked by the parser; each still needs its own judge.
+- **Paired Door Sync**: construction repair (from #1514) and programme-outcome
+  contract merged in #1551. It is still on the experimental list: promotion
+  (registry move, qualification contract) has not happened.
+- **Promoted**: Final Squeeze and High Select (#1555, superseding #1508),
+  Phasor Twin (#1510), Tipline, TwistSpan and Swayshift (#1555/#1566).
+- **Closed/superseded**: #1505, #1508, #1512, #1514.
+
+In progress by other agents (do not touch these branches):
+`lane/robot-batchab-promotions-20261102` (batch A/B judges: poise, the A1 set,
+equal-share/stroke-shift/triad-table), `lane/robot-afterturn-rotor-20261102`
+(Afterturn with the native rotor opt-in) and
+`lane/robot-collider-catalogue-20261102` (the mesh-collider work #1512 left
+open).
+
+The experimental list on main has 66 entries. Section 2b triages the ones the
+2026-10-28 table did not cover.
+
 ## 1. Promoted so far, and work in flight
 
 Merged on main:
@@ -138,7 +168,63 @@ buildable while keeping its principle. Record before and after for each edit. If
 the model came from an addon archive, update the archive hash, canonical copy and
 checkpoint consistently, as #1510 did.
 
-## 3. Rotor inertia (#1494), PR #1505
+## 2b. Triage of the remaining experimental entries, 2026-11-02
+
+Read-only triage; nothing was compiled or run (host load was about 8).
+
+**Nine Technic intakes** (added by `ddb5a6c1d`; record
+`docs/data/robot-lab-nine-intakes-20261026.json`, handoff
+`docs/ROBOT-LAB-NINE-MODELS-HANDOFF.md`). Each has a native passive-law judge in
+`scripts/lib/sim-lab-nine-intake-judge.mjs` (gate
+`sim-lab-nine-intake-gate.mjs`, test `test/bw-sim-nine-intake-motion.test.mjs`)
+that passes both cadences, the part-removal control and the terminal hold. None
+has a contract in `docs/data/robot-lab-qualification.json` or an entry in
+`QUALIFICATION_JUDGES`, and the browser journeys (shards `robotaddon10..12`) are
+incomplete. Shared next step: register the existing judge as a
+`QUALIFICATION_JUDGES` entry, add the contract, run
+`scripts/qualify-robot-lab-models.mjs` on the single model (cold repeat, two
+cadences, frozen output, translated foundation, disconnection), then the hosted
+browser journey, then promote as #1555 did.
+
+| Model | Mechanism / law | Blockers and notes |
+|---|---|---|
+| helixgate | 24:1 worm drive; gate turns 30° per two motor turns, worm holds when coasting | 20 pieces, under the generic builder's >50-piece rule: decide if the rule applies to intakes or keep experimental with that reason |
+| looprelay | chain drive 16→24, then 8→24 reversal: ratio −2:9 | Partial browser journey passed (lessons included) |
+| paritydial | one 8T drives two 24T hands; the idler path reverses sign, same 1/3 speed | 31 pieces (same piece-count question); browser journey cut off at lessons |
+| counterslide | one pinion, two opposed racks: equal and opposite jaw travel, fixed centre | Depends on the 3L shaft envelope fix (in main); two archives are one model |
+| toggle-press | toggle (knee) linkage approaching dead centre: ram force/displacement ratio | Program must not cross dead centre; judge checks the approach only |
+| footfall | twelve-link (Jansen-type) leg, closed foot path per crank turn | None known beyond browser journey |
+| phasekeeper | double Cardan at equal angles: ripple of joint 1 cancelled by joint 2 | Needs the two inferred real Cardan crosses (83 physical pieces); keep the loose-part recognition test |
+| vectorsum | open differential: carrier = mean of the two side-shaft angles | Two motors (A, B); check shaft-tip clearance stays clean |
+| pointweaver | two-motor five-bar, endpoint reaches four corner poses | Chromium full journey already passed once (preliminary) |
+
+**Batch E remainders** (added in #1499):
+
+| Model | Mechanism / law | Contract / judge | Blockers and next step |
+|---|---|---|---|
+| rimrun, rimrun-swapped | rolling bodies of equal mass, different moment of inertia: inner ballast rolls faster | Package runner only; no contract | Hub stands free, `prepareModel(...).issues` reports `loose-part`. Mount the hub to the frame with real pins, then repair the author-declared failing finish/catch and watchdog-hold gates, then write a judge with the swapped scene as the causal control |
+| evenhand, evenhand-control | counterbalanced two-joint arm: near-zero holding torque | None | Law is visible only in `jointDynamics(id).motorTorqueNm`. Write a torque judge (balanced: shoulder 0.33–0.36 mN·m, elbow < 0.01; control: elbow 0.61·cos(A+B) mN·m) with the control as the causal pair |
+
+**Swayshift on the experimental list is not a bug.** The entry is id
+`swayshift-in-phase`: the same `swayshift.ldr` with a second program,
+`swayshift-in-phase.bw` (full-period timing). #1555 moved the plain
+`swayshift.ldr` entry out of the list and kept this comparison, exactly as for
+`tipline-swapped` and `twistspan-inner`. No duplicate entries exist in the list
+(checked by file and id).
+
+**Controls and comparisons of promoted or triaged models.** These stay
+experimental by design; they are the causal controls of their parent's judge and
+are not promotion candidates themselves: poise-mass-control,
+equal-share-even-springs, impulse-line-missing-middle, travel-dial-wheel-raised,
+ghost-pivot-unequal-link, afterturn-fixed-masses, quiet-partner-control,
+high-select-mirror, obliquity-orrery-turned-axis, pivot-exchange-wide,
+air-budget-two-tanks, foldback-open, thirdline-control, samebeat-conjugate,
+samebeat-control, carry-ratio-control, sarrus-lift-single-chain,
+phasor-twin-control, swayshift-in-phase, tipline-swapped, twistspan-inner,
+rimrun-swapped, evenhand-control. Next step for each: none, unless its parent's
+judge needs it as its disconnection or causal control.
+
+## 3. Rotor inertia (#1494), PR #1505 (history: fixed by #1573)
 
 The defect: `setRotorInertia` in `overlay/scratch-gui/src/lib/bw-sim/physics/jolt-core.js`
 adds the motor's reflected rotor inertia to **both** hinge bodies. Afterturn's
@@ -193,7 +279,7 @@ infrastructure failures. Preserve every failure and original assertion. Scope
 
 Lane file: `lanes/2026-10-28-rotor-inertia-relative-1494.md`.
 
-## 4. Resting-frame creep (#1435): cause located
+## 4. Resting-frame creep (#1435): history, fixed by #1577
 
 Both stages of the diagnosis are merged:
 - #1472: the baseline, its reader `scripts/verify-sim-resting-creep.mjs`, and
