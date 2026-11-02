@@ -203,6 +203,55 @@ Bitte Abstürze, falsche Simulationen oder Messwerte, unzugängliche Bedieneleme
 Übersetzungsfehler, verlorenen Fortschritt, Layoutprobleme sowie Hub- und
 macOS-Version melden.
 
+## What to Test — 0.1.31 en-US
+
+This build brings the Mac app back to TestFlight, with everything from 0.1.29:
+MakeCode tile maps and a much more complete micro:bit.
+
+- Arcade tile maps: import a MakeCode Arcade game with a tile map, play it,
+  edit it in Code and Blocks and export it back. Try walls, tile overlap and
+  wall-hit events, placing sprites on tiles, reading and changing tiles while
+  the game runs, and switching levels.
+- micro:bit: classes with inheritance, buffers, serial read and write, data
+  logging, melodies and sound effects, pins (PWM, servo, pulse, touch) and
+  radio should now import, run and export back. Radio messages use the same
+  packet format as MakeCode, so try talking to another micro:bit.
+- Arcade games that use art missing from the project now behave like MakeCode:
+  the missing picture stays named in the code, and the game reacts to it as
+  MakeCode does.
+- Code tab: the File menu closes after you pick a file or an example, and it
+  no longer covers the device on the right.
+- Costume editor: with the right pane open, all tools stay visible; the
+  convert, zoom and focus controls move to a second line when space is short.
+- Mac: check that the app installs from TestFlight and that the SPIKE
+  simulator starts.
+
+## What to Test — 0.1.31 de-DE
+
+Dieser Build bringt die Mac-App zurück zu TestFlight, mit allem aus 0.1.29:
+MakeCode-Kachelkarten und einem deutlich vollständigeren micro:bit.
+
+- Arcade-Kachelkarten: Importiere ein MakeCode-Arcade-Spiel mit Kachelkarte,
+  spiele es, bearbeite es in Code und Blöcken und exportiere es zurück.
+  Probiere Wände, Kachel-Überlappung und Wandtreffer-Ereignisse, Sprites auf
+  Kacheln platzieren, Kacheln während des Spiels lesen und ändern und den
+  Levelwechsel.
+- micro:bit: Klassen mit Vererbung, Puffer, serielles Lesen und Schreiben,
+  Datenlogger, Melodien und Klangeffekte, Pins (PWM, Servo, Puls, Berührung)
+  und Funk sollten sich jetzt importieren, ausführen und zurück exportieren
+  lassen. Funknachrichten verwenden dasselbe Paketformat wie MakeCode – probiere
+  die Verbindung mit einem anderen micro:bit.
+- Arcade-Spiele mit fehlenden Grafiken verhalten sich jetzt wie in MakeCode:
+  Die fehlende Grafik bleibt im Code benannt, und das Spiel reagiert darauf
+  wie MakeCode.
+- Code-Tab: Das Datei-Menü schließt sich nach der Auswahl einer Datei oder
+  eines Beispiels und verdeckt das Gerät rechts nicht mehr.
+- Kostüm-Editor: Bei geöffnetem rechten Bereich bleiben alle Werkzeuge
+  sichtbar; Umwandeln, Zoom und Fokus rücken bei wenig Platz in eine zweite
+  Zeile.
+- Mac: Prüfe, ob sich die App über TestFlight installieren lässt und der
+  SPIKE-Simulator startet.
+
 ## What to Test — 0.1.30 en-US
 
 This build brings the Mac app back to TestFlight, with everything from 0.1.29:
