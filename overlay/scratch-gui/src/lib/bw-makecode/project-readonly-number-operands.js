@@ -83,7 +83,7 @@ const schemas={
     arcade_drawImage:[['IMAGE','X','Y','W','H','COLOR'],['OP'],'command'],
     arcade_printImageText:[['IMAGE','TEXT','X','Y','COLOR'],['FONT'],'command'],
     arcade_controllerStep:[['AXIS','STEP'],[],'value'],arcade_menu_axes:[[],['axes'],'shadow'],
-    arcade_frameDeltaTime:[[],[],'value'],arcade_signNumber:[['NUM'],[],'value'],
+    arcade_frameDeltaTime:[[],[],'value'],arcade_signNumber:[['NUM'],[],'value'],arcade_mathUnary:[['NUM'],['OP'],'value'],
     arcade_mathBinary:[['A','B'],['OP'],'value'],
     arrays_valueBinary:[['LEFT','RIGHT'],['OP'],'value'],arrays_valueCompare:[['LEFT','RIGHT'],['OP'],'value'],
     arrays_valueUnary:[['VALUE'],['OP'],'value'],arrays_valueTruthy:[['VALUE'],[],'value'],
@@ -217,6 +217,7 @@ export function createProjectReadonlyNumberOperands(project){
             if(node.opcode==='arrays_valueUnary')require(['+','-','~','!','typeof','void'].includes(field(node,'OP')));
             if(node.opcode==='arrays_specialValue')require(['undefined','null','NaN','Infinity','-Infinity'].includes(field(node,'KIND')));
             if(node.opcode==='arcade_mathBinary')require(['min','max','atan2','randomRange'].includes(field(node,'OP')));
+            if(node.opcode==='arcade_mathUnary')require(['truncate','sign'].includes(field(node,'OP')));
             if(node.opcode==='arcade_menu_axes')require(['x','y'].includes(field(node,'axes')));
             if(node.opcode==='arcade_soundMelody')require(['PowerUp','BaDing','Buzzer','JumpUp','JumpDown','PowerDown','MagicWand','Siren','Wawawawaa','Dadadadum','PewPew','Knock','Enter','Exit','Spooky','Beam','Footstep','Rustle','Click'].includes(field(node,'SOUND')));
             if(node.opcode==='arcade_mutateImage'||node.opcode==='arcade_drawImage'||node.opcode==='arcade_printImageText'){

@@ -18,8 +18,8 @@
     {
       "file": "scripts/read-i80386-hdd-gui-originals.py",
       "mode": "100644",
-      "sha256": "0c3c3ffd2c28757a3ab858e21dea7b568bbad70a8e7be1992ed6e4de5ebd711d",
-      "gitBlob": "cb7d94a8184ece2c5010f93163206c936bb560bf",
+      "sha256": "0428555e5e84c31f2ffd798f22e28245fd5c060e99e7f8a833a0dc62ae5cee69",
+      "gitBlob": "e33e803aaa9e26dcf31fbc304e182f7f6a802b48",
       "field": "SB3",
       "repo": "sb3-creator",
       "value": "1cbaeed325f5a890e43b78a4211acae8f801f2d2",
@@ -31,8 +31,8 @@
     {
       "file": "scripts/run-i80386-hdd-gui-actual.py",
       "mode": "100644",
-      "sha256": "9d01751ed2a6ced60ce9ea6f680154a2e3b7f6e8a48a615dc5bcb79e00999767",
-      "gitBlob": "60abc9fb5e3a94c93a851d69a8b141bbfd88f66f",
+      "sha256": "306ae0c8c38beff74e7b4e165739c3c84a619c0a3085a0725cdd3e405b91f097",
+      "gitBlob": "7ba5541eb0937f199922646f6c4c203a6c7295f4",
       "field": "SB3",
       "repo": "sb3-creator",
       "value": "1cbaeed325f5a890e43b78a4211acae8f801f2d2",

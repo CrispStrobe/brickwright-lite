@@ -52,9 +52,13 @@ const PLUMBING = new Set(words(`
 //   setSpriteStayInScreen/AutoDestroy/BounceOnWall/GhostThroughSprites -> setSpriteFlag [FLAG] [ON]
 //   setscore/changescore/getscore -> setPlayerScore/changePlayerScore/getPlayerScore (player 1)
 //   gameover -> gameOver; countdown -> startCountdown
+//   truncateNumber/signNumber -> mathUnary [OP] (truncate|sign), the unary twin of mathBinary
+//   playMusic -> play [PLAYABLE] [MODE]; playSoundEffect -> play with the sound-effect playable (same modes);
+//   playMelody/playSound (the deprecated Melody and note-string forms) -> play with melodyPlayable/stringPlayable
 const HIDDEN_ALIASES = new Set(words(`
   setSpriteStayInScreen setSpriteAutoDestroy setSpriteBounceOnWall setSpriteGhostThroughSprites
   setscore changescore getscore gameover countdown
+  truncateNumber signNumber playMusic playMelody playSoundEffect playSound
 `));
 
 // id, English name, German name, basic blocks, more blocks.
@@ -81,8 +85,8 @@ const SECTIONS = [
     words(`setGameOverEffect setGameOverMessage setGameOverPlayable setGameOverScoringType legacyGameOver ---
       showLongText --- sceneMillis frameDeltaTime --- carnivalCountdown carnivalGameOver carnivalCustomGameOver carnivalAddLabel`)],
   ['music', 'Music', 'Musik',
-    words('playMusic playTone ringTone rest setMusicVolume setTempo changeTempo stopAllSounds'),
-    words(`playMelody playSoundEffect playSound --- melodyPlayable stringPlayable tonePlayable songPlayable
+    words('play playTone ringTone rest setMusicVolume setTempo changeTempo stopAllSounds'),
+    words(`melodyPlayable stringPlayable tonePlayable songPlayable
       songFromBuffer namedSongPlayable soundEffect namedMelody soundMelody beat --- musicVolume musicTempo`)],
   ['scene', 'Scene', 'Szene',
     words(`setBackgroundColor setBackgroundImage backgroundColor backgroundImage cameraFollowSprite centerCameraAt
@@ -123,7 +127,7 @@ const SECTIONS = [
       sevensegSetCharacter sevensegSetColor sevensegSetRadix sevensegSetScale sevensegSetProperty
       sevensegAddDigit sevensegProperty`)],
   ['advanced', 'Advanced', 'Erweitert',
-    words('randomNumber percentChance clampNumber mathBinary signNumber truncateNumber settingsWrite settingsRead'),
+    words('randomNumber percentChance clampNumber mathBinary mathUnary settingsWrite settingsRead'),
     words(`parseInteger parseIntegerRadix --- settingsExists settingsRemove settingsClear ---
       spriteDataSet spriteDataRead spriteDataReadBoolean spriteDataChange --- raiseControlEvent waitControlEvent ---
       createBuffer bufferFromHex bufferFromUTF8 bufferLiteral bufferFromBase64 bufferFromArray bufferLength
