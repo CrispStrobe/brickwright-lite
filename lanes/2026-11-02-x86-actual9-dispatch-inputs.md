@@ -20,3 +20,11 @@ refuses. No other gate, cap, reader role or protocol step changes.
 Qualification: every enabled exact-head check with `ci:full`, a fresh
 successful Build bound to the new head, then one new Actual-V9 event with
 independent audit before a matched-head merge.
+
+Amendment: the second selected event reached the V10 installed inventory and
+refused `node_modules/bw-circuit-ui/LANES.md` as a reviewed identity witness.
+Main's pin moves had re-stamped `FINITE_V10_PINS` to Circuit UI
+`4b65f15485abbc039958d8e1a8a29ac3459b75f9` without updating
+`FINITE_V10_CUI_WITNESSES`. This PR re-measures all 18 V10 witnesses at that
+exact Circuit UI commit (6 changed) in the producer and reader. Historical
+V7-V9 witness tables are unchanged. That event slot is spent.
