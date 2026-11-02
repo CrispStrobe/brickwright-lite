@@ -246,11 +246,11 @@ try {
     check('debugger button remains selected', await debuggerButton.getAttribute('aria-pressed') === 'true');
     check('debugger switch keeps the right pane present', await page.locator('div[class*="stage-and-target-wrapper"]').count() > 0);
     check('debugger view mounts the solo pane', await page.locator('[data-debugger-solo-pane]').count() === 1);
-    check('debugger view shows the panel or explains missing code',
-        (await page.locator('[data-debugger-solo-pane] [data-debugger-panel]').count())
-        + (await page.locator('[data-debugger-solo-pane] [data-no-code-indicator]').count()) >= 1);
-    check('fresh debugger honestly identifies that no program is loaded',
-        await page.locator('[data-debugger-solo-pane] [data-no-code-indicator]').count() === 1);
+    check('debugger view exposes the production panel and firmware picker',
+        (await page.locator('[data-debugger-solo-pane] [data-debug-panel]:visible').count()) === 1 &&
+        (await page.locator('[data-debugger-solo-pane] input[type="file"][accept*=".bin"]').count()) === 1);
+    check('fresh debugger honestly identifies that no image is loaded',
+        await page.locator('[data-debugger-solo-pane] [data-debug-no-image]:visible').count() === 1);
     await stageButton.click({force: true});
     check('Scratch Stage becomes selected again', await stageButton.getAttribute('aria-pressed') === 'true');
     await stageButton.click({force: true});

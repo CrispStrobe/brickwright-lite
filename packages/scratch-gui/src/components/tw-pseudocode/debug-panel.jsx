@@ -80,6 +80,7 @@ const L10N = {
         modemSent: 'transmitted',
         firmwareRunning: 'running',
         firmwareLoaded: 'loaded',
+        noImageLoaded: 'No program or firmware loaded in the debugger.',
         savePoint: 'Save point',
         engineReverse: 'Reverse (slower)',
         engineReverseTitle: 'Record every instruction so Reverse Step / Reverse Continue work here — the run is much slower while this is on',
@@ -144,6 +145,7 @@ const L10N = {
         modemSent: 'gesendet',
         firmwareRunning: 'läuft',
         firmwareLoaded: 'geladen',
+        noImageLoaded: 'Im Debugger ist noch kein Programm oder Firmware-Abbild geladen.',
         savePoint: 'Speicherpunkt',
         engineReverse: 'Rückwärts (langsamer)',
         engineReverseTitle: 'Jeden Befehl aufzeichnen, damit Rückwärts-Schritt / -Fortsetzen hier gehen — der Lauf ist dabei deutlich langsamer',
@@ -1343,6 +1345,8 @@ class DebugPanel extends React.Component {
         const paused = phase === 'paused';
         const canDownloadHdd = this._supportsHddDownload(this.state.runner);
         const busy = phase === 'building' || phase === 'attaching';
+        const noImageLoaded = phase === 'idle' && !this.state.runner &&
+            !this._userFirmware && !this._bootMedia;
         const s040Selected = this.state.kind === 'labwired' &&
             ['board:esp32-4848s040', 'firmware:esp32-4848s040-merged-flash'].includes(this.state.labwiredChip);
         const s040Parts = (this.props.vm?.runtime?.circuitBoard?.parts || [])
@@ -2008,6 +2012,9 @@ class DebugPanel extends React.Component {
                         {this.tx(phase) || phase}
                     </strong>
                     {message ? <span style={{color: '#7f8c8d'}}>{message}</span> : null}
+                    {noImageLoaded ? <span data-debug-no-image style={{color: '#7f8c8d'}}>
+                        {this.tx('noImageLoaded')}
+                    </span> : null}
                 </div>
 
                 {/* What the user has marked, and what this build can actually do

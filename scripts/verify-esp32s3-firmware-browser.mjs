@@ -222,6 +222,8 @@ async function openApp (journey, fault) {
     check(`${journey.id}: one visible production debugger`, await panel.count() === 1);
     check(`${journey.id}: firmware entry requires no program declaration`,
         await page.locator('[data-no-code-indicator]:visible').count() === 0);
+    check(`${journey.id}: empty debugger reports that no image is loaded`,
+        await panel.locator('[data-debug-no-image]:visible').count() === 1);
     const engine = panel.locator('select').filter({has: page.locator('option[value="labwired"]')});
     await engine.waitFor({state: 'visible', timeout: 30_000});
     await engine.selectOption('labwired');
@@ -252,6 +254,8 @@ async function chooseFile (panel, file) {
     await page.waitForFunction(name => document.querySelector('[data-firmware-chip]')?.textContent.includes(name), file.name);
     check(`${file.name}: picker reaches idle with no stale UART text`,
         await panel.getAttribute('data-debug-phase') === 'idle' && await serialText(panel) === '');
+    check(`${file.name}: loaded firmware clears the empty-image status`,
+        await panel.locator('[data-debug-no-image]').count() === 0);
 }
 
 async function serialText (panel) {

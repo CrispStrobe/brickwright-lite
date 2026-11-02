@@ -132,6 +132,12 @@ const stcDrives = stc => !!(stc && ((stc.pins && stc.pins.length) ||
 // animation speed (or at the old 10 Hz floor).
 const DEBUG_LIVE_REFRESH_MS = 250;
 
+// These modes share the right column with panes owned by gui.jsx. Remember
+// their selection too, so a controller/device face never covers a stale
+// debugger portal that still thinks the column belongs to it.
+const CIRCUIT_DOCKS = new Set(['top', 'right', 'off', 'solo']);
+const DEVICE_DOCKS = new Set(['controller', 'microbit', 'arcade', 'cpx', 'arduboy', 'makecode', 'spikearena']);
+
 class CircuitTab extends React.Component {
     constructor (props) {
         super(props);
@@ -160,7 +166,7 @@ class CircuitTab extends React.Component {
         try {
             hideStage = localStorage.getItem('bw-hide-stage') === '1';
             const d = localStorage.getItem('bw-debug-dock');
-            if (d === 'top' || d === 'right' || d === 'off' || d === 'solo') debugDock = d;
+            if (CIRCUIT_DOCKS.has(d) || DEVICE_DOCKS.has(d)) debugDock = d;
         } catch { /* private mode: defaults */ }
         this.state = {Designer: null, ui: null, error: null, reloading: false, stc: null,
             board: null, debugState: null, panel: 'designer', circuit: null, hintDismissed,
@@ -448,7 +454,7 @@ class CircuitTab extends React.Component {
                 // dock — debugger, serial console, input line — was
                 // display:none while every existence probe still passed
                 // (the browser gate's :visible click caught it).
-                if (value === 'right' || value === 'controller') {
+                if (value === 'right' || DEVICE_DOCKS.has(value)) {
                     try { localStorage.setItem('bw-right-pane-hidden', '0'); } catch { /* private mode */ }
                     this.setState({rightPaneHidden: false});
                 }
@@ -800,7 +806,7 @@ class CircuitTab extends React.Component {
     }
 
     setDock (d) {
-        if (d !== 'top' && d !== 'right' && d !== 'off' && d !== 'solo') return;
+        if (!CIRCUIT_DOCKS.has(d) && !DEVICE_DOCKS.has(d)) return;
         this.setState({debugDock: d});
         try { localStorage.setItem('bw-debug-dock', d); } catch { /* private mode */ }
     }
@@ -958,6 +964,9 @@ class CircuitTab extends React.Component {
      *  empty Scratch stage. Only when there is circuit content to show. */
     _stagePortalOn () {
         if (this.props.isVisible || !this.state.showInStage) return false;
+        // gui.jsx owns controller and device panes. Leave their column clear
+        // while retaining the same debugger portal and runner off screen.
+        if (!CIRCUIT_DOCKS.has(this.state.debugDock)) return false;
         // This is a presentation choice, not a capability check. Debugger
         // mode must still show the designer for an empty project so the user
         // can build the circuit before adding MCU code.
@@ -2156,7 +2165,8 @@ class CircuitTab extends React.Component {
         this._portalOn = this._stagePortalOn();
         // On the dedicated Circuit tab 'solo' behaves as 'top': the designer
         // with the compact debugger in its Instruments column.
-        const dock = this.state.debugDock === 'solo' ? 'top' : this.state.debugDock;
+        const dock = this.state.debugDock === 'solo' ? 'top'
+            : CIRCUIT_DOCKS.has(this.state.debugDock) ? this.state.debugDock : 'off';
         const content = (
             <div ref={this._boxRef} style={box} onPointerDown={() => activateUndoSurface('circuit')}>
                 {/* The standalone-circuit invitation and the debugger hint used to render here

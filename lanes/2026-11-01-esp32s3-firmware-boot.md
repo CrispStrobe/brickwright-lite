@@ -57,3 +57,22 @@ are rebound. Historical fields, validators, workflow bytes, activation flags and
 npm locks remain unchanged. Run the existing 82 manufactured controls and the
 complete-history pin audit on the combined source; no earlier qualification is
 transferred to it.
+
+Browser follow-up (2026-11-01): the original full CI on `fc5dd80a` passed the
+actual M1 journey and exposed five light-shard failures. Three legacy Code Open
+probes now scope their existing `.hex` input to the public Open control, keeping
+strict uniqueness. CircuitTab now remembers controller/device pane selections
+and leaves their stage column clear while retaining the same keyed debugger
+portal and runner. A nonblocking, localized empty-image status reports the idle
+debugger's actual input state and disappears when firmware or boot media exists;
+the Circuit UX and M1 journeys assert that behavior. The firmware picker remains
+available without a program declaration.
+
+Qualification of these narrow follow-ups: 36 existing lifecycle/ownership/S040
+cases, 14 actual-component cases and 11 gate-shape controls pass without skips.
+Five executable negative cuts fail their corresponding pane/status contracts.
+The pinned Chromium observer also passes 13 isolated Code Open selector cases
+and 32 dock/viewport/loading observations with unchanged runner ownership. Those
+targeted diagnostics are separate from a fresh full-application run, which is
+required after the qualified supplier adoption. The original CI failures and
+the earlier 108-check M1 report retain their original source/engine identities.
