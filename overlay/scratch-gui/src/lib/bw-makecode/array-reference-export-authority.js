@@ -1899,6 +1899,14 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
             (w.scope!==scope||!!scope.executedBefore?.get(statementOf(node))?.has(w.node)));
     };
     const checkingWriterInitialization=new Set();
+    const globalGetterCell=callNode=>{
+        const call=calls.find(c=>c.node===callNode),fn=call?.fn;
+        if(!fn||fn.invalid||fn.unknownEntry||implicitEntries.has(fn)||fn.params.length||fn.returns.length!==1||!call.args||call.args.length)return null;
+        const only=block(fn.target,fn.root.next);
+        if(only?.opcode!=='arcade_returnValue'||only.next!=null||only.mutation!=null||!exactKeys(only,['VALUE']))return null;
+        const c=fn.returns[0]?.cell;
+        return c?.global&&!c.directBad?c:null;
+    };
     const initialized=(value,path=new Set())=>{
         // A literal value (JSON item or literal input) is initialized; it is an
         // Array only through jsonArray, which singleArray still checks.
@@ -1911,6 +1919,12 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         if(['arcade_animationAssetFrames','arcade_animationAssetFreshFrames'].includes(node.opcode))return !!animationProducers.resolve(target,node);
         if(node.opcode==='arrays_namedReference')return singleArray(namedBinding(target,node)||new Set());
         if(node.opcode==='arcade_callFunction'){
+            // A closed parameterless getter whose only statement returns a
+            // global evaluates nothing else: its result IS that global at this
+            // call. Judge the global's initialization at the call site, so an
+            // earlier call (before the global's writer) does not taint a later one.
+            const getter=globalGetterCell(node);
+            if(getter)return initializedCell(getter,owners.get(node),node);
             const passing=calls.find(c=>c.node===node);if(passing?.fn&&!passing.fn.invalid&&passing.args&&passthroughIndex(passing.fn)>=0)return initialized(passing.args[passthroughIndex(passing.fn)],next);
             const call=calls.find(c=>c.node===node);return !!call?.fn&&!call.fn.invalid&&!!call.args&&call.args.every(arg=>singleArray(readInput(arg))?initialized(arg,next):true)&&call.fn.returns.every(result=>initialized(result,next));
         }

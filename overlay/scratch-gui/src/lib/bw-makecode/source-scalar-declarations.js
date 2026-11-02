@@ -1,4 +1,11 @@
 import {staticSdkNamespaceReceivers} from './static-sdk-namespaces.js';
+// Typed SDK calls whose pinned typings return `number` and whose Lite
+// reporter returns a Number on every normal completion: the background colour
+// state is only ever written as Number(COLOR)||0, and these Math calls lower
+// to Scratch math reporters, which always return Numbers. Name -> arity.
+const TYPED_SDK_NUMBER_CALLS=Object.freeze({__proto__:null,
+    scene:Object.freeze({__proto__:null,backgroundColor:0}),
+    Math:Object.freeze({__proto__:null,floor:1,ceil:1,round:1,abs:1,sqrt:1})});
 /** Directed scalar source flow. This inventory does not admit reference APIs. */
 export function sourceScalarDeclarations(program) {
     const sdkNumericCalls=staticSdkNamespaceReceivers(program,{builtinIdentifiers:['randint']});
@@ -87,6 +94,8 @@ export function sourceScalarDeclarations(program) {
                 arguments_.forEach((argument, index) => edge(argument, `${inner.key}:${fn.params[index]}`));
                 edge(`${inner.key}:result`, cell);
             } else if(node.callee?.type==='Identifier' && node.callee.name==='randint' && node.args?.length===2 && !node.isNew && sdkNumericCalls.has(node.callee))add(cell,'Number');
+            else if(node.callee?.type==='Member' && node.callee.object?.type==='Identifier' && !node.isNew && sdkNumericCalls.has(node.callee.object) &&
+                (TYPED_SDK_NUMBER_CALLS[node.callee.object.name]?.[node.callee.name] ?? -1)===(node.args?.length ?? 0))add(cell,'Number');
             else if(node.callee?.type==='Member' && node.callee.object?.type==='Identifier' && node.callee.object.name==='game' && node.callee.name==='askForString' && node.args?.length>=1 && node.args.length<=3 && !node.isNew && sdkNumericCalls.has(node.callee.object))add(cell,'String');
             else add(cell, 'Unknown');
         } else if (node.type === 'Binary' || node.type === 'Logical') {
