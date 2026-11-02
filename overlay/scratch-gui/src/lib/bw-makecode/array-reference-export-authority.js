@@ -712,6 +712,13 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
                 if(typeof raw==='string'&&readsCell(target,block(target,raw),c,seen))return true;}}
         return false;
     };
+    // Any procedure, method, object or callable invocation (or a malformed
+    // shadow) inside a reporter tree.
+    const conditionCalls=(target,node,seen=new Set())=>{if(!node||seen.has(node))return false;seen.add(node);
+        if(['arcade_callFunction','procedures_call','arcade_callObjectMethod','arcade_createObject','arcade_callCallable'].includes(node.opcode))return true;
+        // A malformed shadow (non-primitive field value) is not a certified reporter.
+        if(node.shadow&&Object.values(node.fields||{}).some(field=>!Array.isArray(field)||!['string','number'].includes(typeof field[0])))return true;
+        return Object.entries(node.inputs||{}).some(([name,slot])=>!name.startsWith('SUBSTACK')&&typeof slot?.[1]==='string'&&conditionCalls(target,block(target,slot[1]),seen));};
     const topChain=(scope,node)=>{const seen=new Set();let id=scope.root?.next;while(id&&!seen.has(id)){seen.add(id);const n=block(scope.target,id);if(n===node)return true;id=n?.next;}return false;};
     let resetFlowReady=false,spriteDataReady=false,sourceDependency=null;
     const observeSourceDependency=c=>{
@@ -1030,7 +1037,12 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
             return false;}return false;};
         const condition=next.inputs?.CONDITION?.[1],literalCondition=Array.isArray(condition)&&condition.length===2&&
             ([4,5,6,7,8].includes(condition[0])&&['string','number'].includes(typeof condition[1])&&watcherFinite(watcherNumber(condition[1]))||condition[0]===10&&typeof condition[1]==='string');
-        const result=next.opcode==='control_if_else'&&!invalid.has(next)&&literalCondition&&branchAssigns(next.inputs?.SUBSTACK?.[1])&&branchAssigns(next.inputs?.SUBSTACK2?.[1]);
+        // A non-literal condition qualifies when it is a reporter tree that
+        // neither reads the reset cell nor calls anything: it cannot observe
+        // or change the reset before exactly one branch writes it first.
+        const conditionNode=typeof condition==='string'?block(w.target,condition):null;
+        const inertCondition=!!conditionNode&&!invalid.has(conditionNode)&&!readsCell(w.target,conditionNode,c)&&!conditionCalls(w.target,conditionNode);
+        const result=next.opcode==='control_if_else'&&!invalid.has(next)&&(literalCondition||inertCondition)&&branchAssigns(next.inputs?.SUBSTACK?.[1])&&branchAssigns(next.inputs?.SUBSTACK2?.[1]);
         if(result)consume();
         return result;
     };
