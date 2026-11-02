@@ -127,6 +127,13 @@ test('arrays: _pickRandom() and unshift(v) are the arrays words', () => {
     }
 });
 
+// A Buffer's `.length` is its own word on micro:bit, not a refusal.
+test('micro:bit Buffer length reads as the buffer-length word', () => {
+    const {code, unsupported} = microbitToPseudocode('let b = serial.readBuffer(0)\nlet r = b.length\n');
+    assert.deepEqual(unsupported, []);
+    assert.match(code, /set r to length of buffer b$/m);
+});
+
 // ── everything else: refused by name, never a variable ─────────────────
 const REFUSED = [
     // [source, the refusal names this, a member name that must not be a variable]
@@ -134,8 +141,8 @@ const REFUSED = [
         'toLowerCase()', 'trim()', 'isEmpty()', 'compare("b")', 'replace("a", "b")', 'charCodeAt(1)']
         .map(call => [inFunction(`s.${call}`), `s.${call.replace(/\(.*/, '')}()`, call.replace(/\(.*/, '')]),
     [inFunction('String.fromCharCode(65)'), 'String.fromCharCode()', 'fromCharCode'],
-    // `.length` of a value no rule knows the type of: a Buffer, an untyped parameter.
-    ['let b = serial.readBuffer(0)\nlet r = b.length\n', 'b.length — not known to be a text or an array', 'length'],
+    // `.length` of a value no rule knows the type of: an untyped parameter. (A Buffer's
+    // length is a word now — `length of buffer` — so it is no longer refused.)
     ['let r = 0\nfunction d(v: any) {\n    r = v.length\n}\nd(1)\n', 'v.length — not known to be a text or an array', 'length'],
     // Any other property of a value of no known type.
     ['let r = 0\nfunction d(v: any) {\n    r = v.size + v.width\n}\nd(1)\n', 'v.size — a property this importer has no word for', 'size'],

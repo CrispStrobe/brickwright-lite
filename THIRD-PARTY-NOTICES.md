@@ -2450,7 +2450,7 @@ header, is retained in `overlay/scratch-vm/src/extensions/crispstrobe/microbitpl
 as a JSON source string; the host adapter is separate.
 
 The exact selected source is
-https://github.com/CrispStrobe/extensions/blob/6385f0a7f93c30897b2cd8c3cff2f0348b08eb1f/extensions/CrispStrobe/microbitplus.js.
+https://github.com/CrispStrobe/extensions/blob/d8827ea07bd4f3f6c28a588d7b03942488363f24/extensions/CrispStrobe/microbitplus.js.
 `vendor-pins.json` and the generated per-file bundle receipt record the commit
 and content hash. This scopes the adoption to micro:bit+; it does not advance
 other extension sources. MPL-2.0 text: https://www.mozilla.org/en-US/MPL/2.0/.

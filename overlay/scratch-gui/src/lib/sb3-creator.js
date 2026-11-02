@@ -1117,14 +1117,37 @@ const MB_API = [
     { k: 'c', op: 'panicboard', t: 'panic with code <CODE>', py: (a) => [`panic(int(${a.CODE}))`] },
     { k: 'c', op: 'calibratecompass', t: 'calibrate compass', py: () => ['compass.calibrate()'] },
     { k: 'c', op: 'accelrange', t: 'set accelerometer range <G>', py: (a) => [`accelerometer.set_range(int(${a.G}))`] },
+    // ── Serial polling, buffer concat, raw radio packets, the bluetooth uart's buffer ──
+    { k: 'r', op: 'serialhas', t: `serial has data until ${MB_DELIM}`,
+        py: (a, f, u) => { u.serread = true; return `_bw_ser_has(${JSON.stringify(MB_DELIM_CHARS[f.DELIM] || '\n')})`; } },
+    { k: 'r', op: 'bufferconcat', t: 'concat buffers <A> and <B>', py: (a) => `(bytearray(${a.A}) + bytearray(${a.B}))` },
+    { k: 'c', op: 'radiosendraw', t: 'radio send raw packet <BUF>',
+        py: (a, f, u) => { u.radio = true; return [`radio.send_bytes(b'\\x01\\x00\\x01' + bytes(${a.BUF})[:32])`]; } },
+    { k: 'r', op: 'radiolastraw', t: 'read raw radio packet', py: (a, f, u) => { u.radio = true; u.radioraw = true; u.radiopkt = true; return '_radio_last_raw'; } },
+    { k: 'r', op: 'btuartreadbuf', t: 'bluetooth uart read buffer', py: () => 'bytearray(0)' },
+    // ── Radio events (radio.raiseEvent, radio.sendMessage, onReceivedMessage) ──
+    { k: 'c', op: 'radioraise', t: 'radio raise event <SOURCE> <VALUE>',
+        py: (a, f, u) => { u.radio = true; u.radiosend = true; u.events = true; u.radioevent = true; u.radiopkt = true;
+            return [`radio.send_bytes(b'\\x01\\x00\\x02' + struct.pack('<HHI', int(${a.SOURCE}), int(${a.VALUE}), (running_time() * 1000) & 0xffffffff))`]; } },
+    { k: 'c', op: 'radiolisten', t: 'radio listen for events',
+        py: (a, f, u) => { u.radio = true; u.events = true; u.radioevent = true; u.radiopkt = true; return ['pass']; } },
+    // ── Note strings (music.playMelody / stringPlayable / startMelody): MakeCode's NOTE[octave][:duration] strings ARE
+    //    MicroPython's music notation ("-" is a rest). A string melody's spaces ride as "_" so it is one token. ──
+    { k: 'c', op: 'playnotes', t: 'play notes <TEXT> tempo <BPM> {MODE:until done|in background|looping in background|forever}',
+        py: (a, f, u, ctx) => { u.notes = true; if (ctx) ctx.music = true; u.music = true;
+            return [`_bw_play_notes(${a.TEXT}, ${a.BPM}, ${f.MODE === 'in background' || f.MODE === 'looping in background' ? 'False' : 'True'}, ${f.MODE === 'looping in background' || f.MODE === 'forever' ? 'True' : 'False'})`]; } },
+    // ── The log's rows and its log-full event ──
+    { k: 'r', op: 'logrows', t: 'log rows from <FROM> count <N>', py: (a, f, u) => { u.datalog = true; return `_bw_lg_rows(${a.FROM}, ${a.N})`; } },
+    { k: 'r', op: 'lograwcount', t: 'log row count from <FROM>', py: (a, f, u) => { u.datalog = true; return `_bw_lg_count(${a.FROM})`; } },
+    { k: 'c', op: 'logwatchfull', t: 'log raise event when full', py: (a, f, u) => { u.datalog = true; u.events = true; u.logwatch = true; return ["_bw_lg['ev'] = True"]; } },
     // ── Data logging beyond log data (micro:bit V2 log module) ──
     // set_labels takes the timestamp unit with the labels, so the two are kept and sent together.
     { k: 'c', op: 'logcols1', t: 'set log columns <C1>', py: (a, f, u) => { u.datalog = true; u.logcfg = true; return [`_bw_log_cfg([${a.C1}])`]; } },
     { k: 'c', op: 'logcols2', t: 'set log columns <C1> and <C2>', py: (a, f, u) => { u.datalog = true; u.logcfg = true; return [`_bw_log_cfg([${a.C1}, ${a.C2}])`]; } },
     { k: 'c', op: 'logcols3', t: 'set log columns <C1> and <C2> and <C3>',
         py: (a, f, u) => { u.datalog = true; u.logcfg = true; return [`_bw_log_cfg([${a.C1}, ${a.C2}, ${a.C3}])`]; } },
-    { k: 'c', op: 'logdelete', t: 'delete log', py: (a, f, u) => { u.datalog = true; return ['log.delete()']; } },
-    { k: 'c', op: 'logdeletefull', t: 'delete log fully', py: (a, f, u) => { u.datalog = true; return ['log.delete(full=True)']; } },
+    { k: 'c', op: 'logdelete', t: 'delete log', py: (a, f, u) => { u.datalog = true; return ['log.delete()', '_bw_lg_clear()']; } },
+    { k: 'c', op: 'logdeletefull', t: 'delete log fully', py: (a, f, u) => { u.datalog = true; return ['log.delete(full=True)', '_bw_lg_clear()']; } },
     { k: 'c', op: 'logmirror', t: 'log mirror {MODE:on|off}', py: (a, f, u) => { u.datalog = true; return [`log.set_mirroring(${f.MODE === 'off' ? 'False' : 'True'})`]; } },
     { k: 'c', op: 'logstamp', t: 'log timestamp {UNIT:none|milliseconds|seconds|minutes|hours|days}',
         py: (a, f, u) => { u.datalog = true; u.logcfg = true; return [`_bw_log_cfg(None, ${f.UNIT === 'none' ? 'None' : `log.${String(f.UNIT).toUpperCase()}`})`]; } },
@@ -1232,29 +1255,40 @@ function microbitApiHelpersPy(pyUses) {
             '    _bw_ev_val = v');
     }
     if (pyUses.serread) {
-        // Reads from the console: wait (a millisecond at a time) for what was asked.
-        out.push('', 'def _bw_ser_buf(n):',
+        // Reads from the console share one input buffer, so a read and a "has data until" poll see the same bytes.
+        // A read waits (a millisecond at a time) for what it asks, as MakeCode's fiber does.
+        out.push('', '_bw_sbuf = [b\'\']',
+            'def _bw_ser_pump():',
+            '    c = uart.read()',
+            '    if c:',
+            '        _bw_sbuf[0] += c',
+            'def _bw_ser_buf(n):',
             '    n = int(n)',
-            '    d = b\'\'',
-            '    while len(d) < n:',
-            '        c = uart.read(n - len(d))',
-            '        if c:',
-            '            d += c',
-            '        else:',
-            '            sleep(1)',
+            '    _bw_ser_pump()',
+            '    while len(_bw_sbuf[0]) < n:',
+            '        sleep(1)',
+            '        _bw_ser_pump()',
+            '    d = _bw_sbuf[0][:n]',
+            '    _bw_sbuf[0] = _bw_sbuf[0][n:]',
             '    return bytearray(d)',
             'def _bw_ser_all():',
-            "    return str(uart.read() or b'', 'utf8')",
+            '    _bw_ser_pump()',
+            '    d = _bw_sbuf[0]',
+            "    _bw_sbuf[0] = b''",
+            "    return str(d, 'utf8')",
+            'def _bw_ser_has(delim):',
+            '    _bw_ser_pump()',
+            '    return _bw_sbuf[0].find(delim.encode()) >= 0',
             'def _bw_ser_until(delim):',
-            "    d = b''",
             '    t = delim.encode()',
-            '    while not d.endswith(t):',
-            '        c = uart.read(1)',
-            '        if c:',
-            '            d += c',
-            '        else:',
-            '            sleep(1)',
-            "    return str(d[:len(d) - len(t)], 'utf8')");
+            '    _bw_ser_pump()',
+            '    while _bw_sbuf[0].find(t) < 0:',
+            '        sleep(1)',
+            '        _bw_ser_pump()',
+            '    i = _bw_sbuf[0].find(t)',
+            '    d = _bw_sbuf[0][:i]',
+            '    _bw_sbuf[0] = _bw_sbuf[0][i + len(t):]',
+            "    return str(d, 'utf8')");
     }
     if (pyUses.i2cnum) {
         out.push('', 'def _bw_i2c_wn(a, fmt, v, n):',
@@ -1281,19 +1315,111 @@ function microbitApiHelpersPy(pyUses) {
             '    return r if r > 0 else 0');
     }
     if (pyUses.gamelevel) out.push('', '_bw_game = [1, 0]');
+    if (pyUses.notes) {
+        out.push('', 'import music',
+            'def _bw_play_notes(t, bpm, wait, loop):',
+            '    music.set_tempo(ticks=4, bpm=int(bpm))',
+            "    music.play([('R' if x == '-' else x) for x in t.replace('_', ' ').split(' ') if x], wait=wait, loop=loop)");
+    }
     if (pyUses.datalog) {
+        // log.add is MicroPython's log; a parallel CSV on the board's filesystem answers getRows / getNumberOfRows in
+        // PXT's format (codal-microbit-v2 MicroBitLog.cpp: the header is row 0, rows end in a newline, the stamp is
+        // "Time (units)" first, two decimals except in milliseconds). When log.add fails (the log is full) logging stops
+        // until deleteLog, and PXT's log-full event (MICROBIT_ID_LOG 44, MICROBIT_LOG_EVT_LOG_FULL 1) is raised once.
         out.push('', 'import log',
+            "_bw_lg = {'c': [], 'u': 'seconds', 'off': False, 'ev': False}",
+            "_bw_lgf = 'bwlog.csv'",
+            ...(pyUses.logwatch ? ["_bw_lg['ev'] = True"] : []),
+            'def _bw_lg_lines():',
+            '    try:',
+            '        f = open(_bw_lgf)',
+            '        t = f.read()',
+            '        f.close()',
+            "        return t.split('\\n')[:-1] if t else []",
+            '    except OSError:',
+            '        return []',
+            'def _bw_lg_save(l):',
+            "    f = open(_bw_lgf, 'w')",
+            '    for x in l:',
+            "        f.write(x + '\\n')",
+            '    f.close()',
+            'def _bw_lg_head():',
+            "    h = list(_bw_lg['c'])",
+            "    if _bw_lg['u'] != 'none':",
+            "        h.insert(0, 'Time (' + _bw_lg['u'] + ')')",
+            "    return ','.join(h)",
+            'def _bw_lg_stamp():',
+            '    us = running_time() * 1000',
+            "    u = _bw_lg['u']",
+            "    if u == 'milliseconds':",
+            '        return str(us // 1000)',
+            "    t = us // {'seconds': 10000, 'minutes': 600000, 'hours': 36000000, 'days': 864000000}[u]",
+            "    return '%d.%02d' % (t // 100, t % 100)",
+            'def _bw_lg_header():',
+            '    l = _bw_lg_lines()',
+            '    h = _bw_lg_head()',
+            '    if l:',
+            '        l[0] = h',
+            '    else:',
+            '        l = [h]',
+            '    _bw_lg_save(l)',
+            'def _bw_lg_clear():',
+            '    _bw_lg_save([])',
+            "    _bw_lg['off'] = False",
+            'def _bw_lg_rows(a, n):',
+            '    l = _bw_lg_lines()',
+            '    a = int(a)',
+            '    n = int(n)',
+            '    if n <= 0 or a >= len(l):',
+            "        return ''",
+            "    s = '\\n'.join(l[a:a + n])",
+            '    if a + n > len(l):',
+            "        s += '\\n'",
+            '    return s',
+            'def _bw_lg_count(a):',
+            '    return max(0, len(_bw_lg_lines()) - int(a))',
             'def _bw_log(row):',
-            '    log.add(row)');
+            "    if _bw_lg['off']:",
+            '        return',
+            '    try:',
+            '        log.add(row)',
+            '    except OSError:',
+            "        _bw_lg['off'] = True",
+            "        if _bw_lg['ev']:",
+            '            _bw_raise(44, 1)',
+            '        else:',
+            '            display.show(Image("90009:99099:00000:09990:90009"))',
+            '            sleep(1000)',
+            '            display.clear()',
+            "            display.scroll('928')",
+            '        return',
+            "    c = _bw_lg['c']",
+            '    new = False',
+            '    for k in row:',
+            '        if k not in c:',
+            '            c.append(k)',
+            '            new = True',
+            '    if new:',
+            '        _bw_lg_header()',
+            '    v = [str(row.get(k, "")) for k in c]',
+            "    if _bw_lg['u'] != 'none':",
+            '        v.insert(0, _bw_lg_stamp())',
+            '    l = _bw_lg_lines() or [_bw_lg_head()]',
+            "    l.append(','.join(v))",
+            '    _bw_lg_save(l)');
         if (pyUses.logcfg) {
             // MicroPython sets the column names and the timestamp unit in one call.
             out.push('_bw_log_c = [[], None]',
+                "_bw_lgu = {log.MILLISECONDS: 'milliseconds', log.SECONDS: 'seconds', log.MINUTES: 'minutes', log.HOURS: 'hours', log.DAYS: 'days'}",
                 'def _bw_log_cfg(cols=None, ts=0):',
                 '    if cols is not None:',
                 '        _bw_log_c[0] = cols',
+                "        _bw_lg['c'] = list(cols)",
                 '    if ts != 0:',
                 '        _bw_log_c[1] = ts',
-                '    log.set_labels(*_bw_log_c[0], timestamp=_bw_log_c[1])');
+                "        _bw_lg['u'] = _bw_lgu.get(ts, 'none')",
+                '    log.set_labels(*_bw_log_c[0], timestamp=_bw_log_c[1])',
+                '    _bw_lg_header()');
         }
     }
     if (pyUses.writepkt) {
@@ -15427,13 +15553,17 @@ class SB3Creator {
             const ind = (n, lines) => lines.map((l) => ' '.repeat(n) + l);
             taskDefs.push([
                 'def _bw_radio_rx():',
-                '    global _radio_last_num, _radio_last_str, _radio_last_buf, _radio_last_name, _radio_last_value, _radio_last_rssi, _radio_last_serial, _radio_last_time, _radio_last_kind',
+                '    global _radio_last_num, _radio_last_str, _radio_last_buf, _radio_last_name, _radio_last_value, _radio_last_rssi, _radio_last_serial, _radio_last_time, _radio_last_kind' + (this._pyUses.radioraw ? ', _radio_last_raw' : ''),
                 '    radio.config(length=35)',
                 '    radio.on()',
                 '    while True:',
                 '        f = radio.receive_full()',
+                // A frame of the event protocol (header 01 00 02, CODAL's MicroBitRadioEvent: uint16 source, uint16
+                // value, uint32 time) raises that event here, as the radio event bus does on a MakeCode board.
+                ...(this._pyUses.radioevent ? ['        if f and f[0][2] == 2 and len(f[0]) >= 7:', "            _bw_raise(*struct.unpack('<HH', f[0][3:7]))", '            f = None'] : []),
                 '        if f:',
                 '            p = f[0][3:]',
+                ...(this._pyUses.radioraw ? ["            _radio_last_raw = bytearray(p) + struct.pack('<i', f[1])"] : []),
                 '            _radio_last_rssi = f[1]',
                 '            _radio_last_time = f[2]',
                 '            _radio_last_serial = 0',
@@ -15548,6 +15678,7 @@ class SB3Creator {
             header.push('_radio_last_buf = bytearray(0)', '_radio_last_time = 0', '_radio_last_kind = 0');
         }
         if (this._pyUses.rssi) header.push('_radio_last_rssi = 0');
+        if (this._pyUses.radioraw) header.push('_radio_last_raw = bytearray(36)');
         if (this._pyUses.rserial) header.push('_radio_last_serial = 0');
         if (!isPico) header.push(...microbitRadioSerialPy(this._pyUses, radioSerial));
         // The reporters emit `_arrays.<method>(…)` whether or not anything

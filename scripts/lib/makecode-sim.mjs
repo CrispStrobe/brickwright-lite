@@ -89,6 +89,7 @@ export async function compileMakeCode (ts, {dependencies = {core: '*', radio: '*
 export async function runMakeCodeSim (code, {ms = 5000, at = [], radio = [], presses = []} = {}) {
     const START = 1000000;                        // the sim's clock starts somewhere; only differences count
     const sent = [];
+    const events = [];                            // radio.raiseEvent: pxsim's 'eventbus' messages (no byte layout)
     let now = START;
     const timers = [];
     let seq = 0;
@@ -139,6 +140,7 @@ export async function runMakeCodeSim (code, {ms = 5000, at = [], radio = [], pre
         addEventListener () {},
         // What the board broadcasts: the radio packets are kept (see `sent`).
         postMessage: msg => {
+            if (msg && msg.type === 'eventbus') events.push({id: msg.id, eventid: msg.eventid, group: msg.group});
             if (msg && msg.type === 'radiopacket') {
                 const payload = msg.payload || {};
                 sent.push({...msg, payload: {...payload, bufferData: Array.from(payload.bufferData || [])}});
@@ -223,5 +225,5 @@ export async function runMakeCodeSim (code, {ms = 5000, at = [], radio = [], pre
     }
     for (const t of snaps) if (t <= ms) frames[t] = snap();
     runtime.kill();
-    return {serial, frames, error, sent};
+    return {serial, frames, error, sent, events};
 }
