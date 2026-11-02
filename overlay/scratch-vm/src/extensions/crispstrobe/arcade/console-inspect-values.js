@@ -539,6 +539,10 @@ function create(runtime, cells, scoreOwner=null, sceneClock=null, frameDelta=nul
                     // block cannot convert throws, which supplies no value.
                     origins?.add(node);domains.add('number');return true;
                 }
+                if(!player&&domains&&op==='arcade_mathUnary'&&['truncate','sign'].includes(literal(node,'OP'))){
+                    // The same Number-valued reporters as arcade_truncateNumber and arcade_signNumber.
+                    origins?.add(node);domains.add('number');return true;
+                }
                 if(!player&&op==='arcade_getPlayerScore'){
                     if(!scoreNumber(node))return false;
                     origins?.add(node);domains?.add('number');return true;

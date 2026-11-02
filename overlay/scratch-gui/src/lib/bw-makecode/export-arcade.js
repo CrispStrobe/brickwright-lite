@@ -1477,7 +1477,7 @@ class ArcadeEmitter {
         const input = b.inputs && b.inputs[name];
         if (!input) return fallback;
         const slot = input[1];
-        const numeric = ['operator_equals','operator_gt','operator_lt','operator_add','operator_subtract','operator_multiply','operator_divide','operator_mod','operator_round','arcade_truncateNumber','arcade_signNumber','arcade_randomNumber','arcade_mathBinary','operator_mathop','operator_random','planetemaths_min','planetemaths_max'].includes(b.opcode);
+        const numeric = ['operator_equals','operator_gt','operator_lt','operator_add','operator_subtract','operator_multiply','operator_divide','operator_mod','operator_round','arcade_truncateNumber','arcade_signNumber','arcade_mathUnary','arcade_randomNumber','arcade_mathBinary','operator_mathop','operator_random','planetemaths_min','planetemaths_max'].includes(b.opcode);
         if (Array.isArray(slot)) {
             const [type, text] = slot;
             if (type === 12 || type === 13) {
@@ -2170,6 +2170,11 @@ class ArcadeEmitter {
         case 'arcade_backgroundColor': return 'scene.backgroundColor()';
         case 'arcade_truncateNumber': return `Math.trunc(${v('NUM')})`;
         case 'arcade_signNumber': return `Math.sign(${v('NUM')})`;
+        case 'arcade_mathUnary': {
+            const operation = String(directMenuValue(b, 'OP', this.blocks));
+            if (operation !== 'truncate' && operation !== 'sign') { this.note('Arcade math requires a fixed supported operation'); return 'undefined'; }
+            return `Math.${operation === 'truncate' ? 'trunc' : 'sign'}(${v('NUM')})`;
+        }
         case 'arcade_createAnimation': this.requiresAnimationPackage=true;return `animation.createAnimation(${this.arrayValue(b,'ACTION')}, ${this.arrayValue(b,'INTERVAL')})`;
         case 'arcade_animationProperty': {
             this.requiresAnimationPackage=true;
@@ -2732,8 +2737,8 @@ class ArcadeEmitter {
             push(`effects.${effect}.startScreenEffect(${args.join(', ')})`);
             return;
         }
-        case 'arcade_playMusic': case 'arcade_playSoundEffect': {
-            const music = b.opcode === 'arcade_playMusic';
+        case 'arcade_play': case 'arcade_playMusic': case 'arcade_playSoundEffect': {
+            const music = b.opcode !== 'arcade_playSoundEffect';
             const mode = this.musicField(b, 'MODE', music ? 'music.PlaybackMode' : 'SoundExpressionPlayMode');
             if (!mode) { push(`// ${this.note(`Unsupported Arcade play mode ${this.field(b, 'MODE')}`)}`); return; }
             push(music ? `music.play(${v('PLAYABLE')}, ${mode})` : `music.playSoundEffect(${v('EFFECT')}, ${mode})`);
