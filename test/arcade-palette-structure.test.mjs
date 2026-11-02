@@ -29,14 +29,15 @@ const sections = blocks => {
     return result;
 };
 
-test('every Arcade opcode is placed in a section or is plumbing, exactly once', () => {
+test('every Arcade opcode is placed in a section or is plumbing or a hidden alias, exactly once', () => {
     const {extension} = makeVm();
     const listed = palette.SECTIONS.flatMap(section => [...section[3], ...section[4]]).filter(name => name !== '---');
     assert.equal(new Set(listed).size, listed.length, 'an opcode is listed twice');
     const opcodes = extension.getInfo().blocks.filter(block => block && block.opcode).map(block => block.opcode);
-    const unplaced = opcodes.filter(name => !listed.includes(name) && !palette.PLUMBING.has(name));
-    assert.deepEqual(unplaced, [], 'new Arcade blocks need a section in arcade/palette.js (or PLUMBING if the importer alone emits them)');
-    assert.deepEqual([...listed, ...palette.PLUMBING].filter(name => !opcodes.includes(name)), []);
+    const unplaced = opcodes.filter(name => !listed.includes(name) && !palette.PLUMBING.has(name) && !palette.HIDDEN_ALIASES.has(name));
+    assert.deepEqual(unplaced, [], 'new Arcade blocks need a section in arcade/palette.js (or PLUMBING if the importer alone emits them, or HIDDEN_ALIASES for a pure duplicate)');
+    assert.deepEqual([...listed, ...palette.PLUMBING, ...palette.HIDDEN_ALIASES].filter(name => !opcodes.includes(name)), []);
+    assert.deepEqual([...palette.HIDDEN_ALIASES].filter(name => listed.includes(name) || palette.PLUMBING.has(name)), [], 'a hidden alias is listed in a section or in PLUMBING');
 });
 
 test('sections show 5 to 10 basic blocks, hide the rest, and keep plumbing out of the palette', () => {
@@ -50,7 +51,7 @@ test('sections show 5 to 10 basic blocks, hide the rest, and keep plumbing out o
         assert.ok(section.button, `${name} has a show-more button`);
         assert.ok(section.blocks.some(block => block.hideFromPalette));
     }
-    for (const name of palette.PLUMBING) assert.equal(info.blocks.find(block => block && block.opcode === name).hideFromPalette, true, name);
+    for (const name of [...palette.PLUMBING, ...palette.HIDDEN_ALIASES]) assert.equal(info.blocks.find(block => block && block.opcode === name).hideFromPalette, true, name);
     assert.equal(info.id, 'arcade');
 });
 

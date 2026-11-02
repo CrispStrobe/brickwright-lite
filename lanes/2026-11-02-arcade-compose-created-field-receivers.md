@@ -1,6 +1,8 @@
 # Compose the prepared Arcade created-field receiver branch onto main
 
-Status: IN PROGRESS in the implementing PR (claim and change together).
+Status: DONE in the implementing PR (claim and change together); also
+`scene.backgroundColor()` Number proof (group B). Group A kept as TODO by
+operator decision; per-slot proofs follow separately.
 Owner: Arcade lane (operator-approved TODO closure, 2026-11-02).
 Base: main `bc39104bd536c0eafb410a6d520f0be3d450fcc6`; merged branch
 `lane/arcade-created-field-receivers-20261029` at `648f1f78110b`.
