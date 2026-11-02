@@ -301,10 +301,23 @@ jobs:
       - name: SPIKE installed-app test (macOS)
         if: matrix.os == 'macos-latest'
         run: |
+          # macOS Installer relocates a bundle onto an existing copy with the same
+          # bundle id that LaunchServices knows -- here the freshly built .app in
+          # bundle/macos -- so /Applications stayed empty and this step exited 1
+          # with no output on v0.1.30. The .pkg is built; move the source aside.
+          BUILT=apps/tauri/src-tauri/target/release/bundle/macos/Brickwright.app
+          if [ -d "$BUILT" ]; then mv "$BUILT" "$RUNNER_TEMP/Brickwright.app.built"; fi
           sudo installer -pkg apps/tauri/src-tauri/target/release/bundle/macos/Brickwright.pkg -target /
           APP=$(find /Applications -maxdepth 1 -name 'Brickwright*.app' | head -1)
-          test -n "$APP"
+          if [ -z "$APP" ]; then
+            echo "::error::Brickwright.app not found in /Applications after install"
+            pkgutil --pkgs | grep -i brickwright || true
+            for p in $(pkgutil --pkgs | grep -i brickwright); do pkgutil --pkg-info "$p"; pkgutil --files "$p" | head -5; done
+            exit 1
+          fi
           bash scripts/macos/spike-installed-test.sh "$APP" "${{ secrets.MACOS_SIGNING_IDENTITY }}" "$RUNNER_TEMP/spike-installed"
+          # Restore the built bundle for the bundle/** workflow artifact.
+          if [ -d "$RUNNER_TEMP/Brickwright.app.built" ]; then mv "$RUNNER_TEMP/Brickwright.app.built" "$BUILT"; fi
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: always() && matrix.os == 'macos-latest'
         with:
