@@ -7,11 +7,11 @@ changed. Source of the list: hosted Build run 39297263647 (head f2ecafef1).
 
 ## Current status — 2026-11-02
 
-Arcade documented TODO tests: 37 on main `bc39104b`; 33 after #1629 and #1631.
+Arcade documented TODO tests: 37 on main `bc39104b`; 33 after #1629 and #1631; 25 after the group A follow-up.
 
 | Group | Before | After | Change |
 |---|---|---|---|
-| A Array receiver | 15 | 14 | update-values prefix row already passed on main (stale marker removed) |
+| A Array receiver | 15 | 6 | stale update-values marker; follow-up per-slot proofs cleared 8 rows |
 | B primitive producer | 10 | 9 | `scene.backgroundColor()` proven Number (source rule + native reporter) |
 | C named-array re-import | 3 | 3 | unchanged |
 | F image-mutation probe | 1 | 1 | same cause as G |
@@ -20,7 +20,7 @@ Arcade documented TODO tests: 37 on main `bc39104b`; 33 after #1629 and #1631.
 | I liftExporterStops | 1 | 0 | exporter stop machinery lifted (#1629) |
 | timing phase / tile order / do-while | 5 | 5 | intentionally kept |
 
-**Group A decision (operator, 2026-11-02): keep the remaining rows as TODO.**
+**Group A decision (operator, 2026-11-02): no runtime guard; per-slot proofs only.** The follow-up cleared eight rows; the remaining six (fresh animation re-export, two array-copy rows, class accessor aliases, allOfKind second export, computed index sums) stay TODO.
 A runtime guard that behaves exactly like original PXT for an unproven Array
 receiver is the identity: PXT already faults on a null or non-Array receiver,
 so the guard changes nothing at run time. Emitted wherever the receiver proof
@@ -116,19 +116,19 @@ hosted checks remain required.
 | Group | File | Test | Error |
 |---|---|---|---|
 | A | `test/makecode-arcade-animation-resources-export.test.mjs` | fresh resource export preserves native factory allocation and isolates array/image mutations in original PXT | +   'Array reference arrays_referenceItem ARRAY: requires an actual initialized Array producer and compatible all writers', +   'Array reference arrays_referenc |
-| A | `test/makecode-arcade-animation-resources-export.test.mjs` | literal and computed resource IDs export shared typed images and original Arcade playback | +   'Array reference arrays_referenceItem ARRAY: requires an actual initialized Array producer and compatible all writers |
+| A | `test/makecode-arcade-animation-resources-export.test.mjs` | literal and computed resource IDs export shared typed images and original Arcade playback | Fixed 2026-11-02: a RESOURCE that reads a global whose stored value is a string, which no block writes and no slider can change, names that resource (shared project context for producer, authority and exporter). |
 | A | `test/makecode-arcade-array-copies.test.mjs` | pxt-array-copy-effects-primary preserves original values and editable reference identity | +   'Array reference arrays_mutateReference ARRAY: requires an actual initialized Array producer and compatible all writers', +   'Array reference arrays_refere |
 | A | `test/makecode-arcade-array-copies.test.mjs` | pxt-array-copy-primary preserves original values and editable reference identity | +   'Array reference arrays_mutateReference ARRAY: requires an actual initialized Array producer and compatible all writers |
-| A | `test/makecode-arcade-array-reference-flow.test.mjs` | typed array reference authoring and original export: image-element | +   'Array reference arrays_referenceItem ARRAY: requires an actual initialized Array producer and compatible all writers |
-| A | `test/makecode-arcade-array-reference-flow.test.mjs` | typed array reference authoring and original export: nullable | +   'Array reference arrays_referenceItem ARRAY: requires an actual initialized Array producer and compatible all writers |
-| A | `test/makecode-arcade-array-reference-flow.test.mjs` | typed array reference authoring and original export: numeric-literal | +   'Array reference arrays_mutateReference ARRAY: requires an actual initialized Array producer and compatible all writers |
+| A | `test/makecode-arcade-array-reference-flow.test.mjs` | typed array reference authoring and original export: image-element | Fixed 2026-11-02: a closed parameterless getter that only returns a global is judged at its call site. |
+| A | `test/makecode-arcade-array-reference-flow.test.mjs` | typed array reference authoring and original export: nullable | Fixed 2026-11-02: statements in the untaken branch of a literal-comparison if/else never run; the taken branch's first write ends the reset. |
+| A | `test/makecode-arcade-array-reference-flow.test.mjs` | typed array reference authoring and original export: numeric-literal | Fixed 2026-11-02: call-site getter rule (see image-element). |
 | A | `test/makecode-arcade-class-accessors.test.mjs` | ordinary accessor resource-aliases retains managed effects and all authoring routes | +   'Array reference arrays_referenceItem ARRAY: requires an actual initialized Array producer and compatible all writers |
-| A | `test/makecode-arcade-declared-references.test.mjs` | uncalled typed resource helpers preserve executable array operations through original PXT and roundtrips | +   'Array reference arrays_referenceItem ARRAY: requires an actual initialized Array producer and compatible all writers |
-| A | `test/makecode-arcade-math.test.mjs` | Arcade math calls preserve every operand and run | +   'Array.map: receiver requires actual initialized Array allocations and compatible all writers', 'Math.map() — written out as its formula; it goes back to Ma |
-| A | `test/makecode-arcade-multiplayer-players.test.mjs` | scene-local player identities, properties, sprite references and arrays agree with original PXT across roundtrips | +   'Array reference arrays_referenceLength ARRAY: requires an actual initialized Array producer and compatible all writers', +   'Array reference arrays_refere |
+| A | `test/makecode-arcade-declared-references.test.mjs` | uncalled typed resource helpers preserve executable array operations through original PXT and roundtrips | Fixed 2026-11-02: reads inside a procedure no block can enter (closed call graph, no other block names it) need no Array proof. |
+| A | `test/makecode-arcade-math.test.mjs` | Arcade math calls preserve every operand and run | Fixed 2026-11-02: SDK `Math.map` on the unshadowed namespace is no longer collected as an Array map site. |
+| A | `test/makecode-arcade-multiplayer-players.test.mjs` | scene-local player identities, properties, sprite references and arrays agree with original PXT across roundtrips | Fixed 2026-11-02: `mp.allPlayers()` is a fresh SDK Array producer. |
 | A | `test/makecode-arcade-source-typeof-export.test.mjs` | mixed local Array receivers keep array dispatch without changing an independently typed local | Fixed in d865fc9d1: a local first written with an inert primitive literal and immediately overwritten by an Array is discounted like a reset (globals, cell-reading and calling writers unchanged). |
 | A | `test/makecode-arcade-sprite-collections.test.mjs` | allOfKind snapshots preserve sprite identity, kind changes and destroyed references through executable roundtrips | Kept TODO: fails at the second export. The reimported `__bwStartup` declares its locals `null` and assigns them only after `sprites.create(...)` calls, and the start script resets `actors = null` before calling `__bwStartup`. Discounting those resets was tried; it makes 17 refusal tests of `makecode-array-local-reset-proof` fail (e.g. 'managed call, yield and lifecycle commands retain the reset': their wrong inputs get accepted), so it was dropped. Needs the exporter to stop emitting the null prologue, not a wider reset rule. |
-| A | `test/makecode-arcade-text-sprite-converter.test.mjs` | TextSprite source preserves original pixels, aliases, deferred property redraw and membership through editable roundtrips | +   'Array reference arrays_referenceLength ARRAY: requires an actual initialized Array producer and compatible all writers |
+| A | `test/makecode-arcade-text-sprite-converter.test.mjs` | TextSprite source preserves original pixels, aliases, deferred property redraw and membership through editable roundtrips | Fixed 2026-11-02: the kind reset admits the kind-library initializer and a registered kind-name write. |
 | A | `test/makecode-arcade-update-values.test.mjs` | prefix update in a condition performs required array initialization | Passes on main (stale marker removed 2026-11-02). |
 | A | `test/makecode-arcade-value-arithmetic.test.mjs` | numeric sums retain their type through index variables and procedure returns | Kept TODO, unsound to accept as is: `rows[shift(0)-1]` is a computed index, so the row may be absent. With `return index+5` PXT faults on `undefined[column]` while the VM continues. Accepting needs interprocedural constant evaluation of the index. |
 | B | `test/makecode-arcade-accessor-pxt-staging.test.mjs` | selected PXT accessor receivers, setters and compound reads keep actual side-effect order across authoring routes | Kept TODO, unsound to accept as is: `pair(receiver().value, ...)` reads a getter returning the constructor formal `n` (`constructor(public n:number)`). Class formals have no call-site obligation, so `new Box(<any>"x")` would make `pair.a` a String. Same gap as the pxt-staging row. |
