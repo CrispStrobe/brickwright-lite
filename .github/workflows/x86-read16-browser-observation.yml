@@ -1,0 +1,122 @@
+name: x86 read16 browser observation (one-shot, label-gated)
+
+# Observation only (lanes/2026-11-02-x86-read16-browser-observation.md).
+# Builds the Lite app at the PR1503 first parent (board c7bcbe4b) and at the
+# PR1503 merge (board 8785e468) on ONE runner, then runs the same FreeDOS 1.4
+# Widgets boot-to-C: scenario alternately A,B,A,B,... and records wall time.
+# Not physical 386 timing. Never gates anything.
+
+on:
+  pull_request:
+    types: [labeled]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: x86-read16-observation-${{ github.event.pull_request.head.sha }}
+  cancel-in-progress: false
+
+jobs:
+  observe:
+    if: >-
+      github.event.label.name == 'x86-read16-observation' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: 170
+    env:
+      APP_A: 0e6112ed9378cb371522f0c143e08d719d943c85
+      APP_B: e6fa377008c677b6dcd24f177453d4118955666d
+      BOARD_A: c7bcbe4bcd583d2215372dd4ee1e65002e249a04
+      BOARD_B: 8785e4688cc308b34fea434c1734523caa621f74
+      PAIRS: '5'
+      NODE_OPTIONS: ''
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: {ref: 0e6112ed9378cb371522f0c143e08d719d943c85, path: a, persist-credentials: false}
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: {ref: e6fa377008c677b6dcd24f177453d4118955666d, path: b, persist-credentials: false}
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: {repository: CrispStrobe/bw-board, ref: 8785e4688cc308b34fea434c1734523caa621f74, path: board, persist-credentials: false}
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 22.23.3
+      - name: Host facts
+        shell: bash
+        run: |
+          set -euo pipefail
+          ev="$RUNNER_TEMP/ev"; mkdir "$ev"
+          { echo "runner_os=$RUNNER_OS"; echo "image=${ImageOS:-}-${ImageVersion:-}"; nproc; uname -srm;
+            grep -m1 'model name' /proc/cpuinfo; grep MemTotal /proc/meminfo; node --version; } > "$ev/host.txt"
+          cat "$ev/host.txt"
+      - name: Build both apps (same steps)
+        timeout-minutes: 80
+        shell: bash
+        run: |
+          set -euo pipefail
+          ev="$RUNNER_TEMP/ev"
+          for side in a b; do
+            cd "$GITHUB_WORKSPACE/$side"
+            npm ci --ignore-scripts --no-audit --no-fund
+            npm run vendor
+            node scripts/integrate.mjs
+            (cd packages/scratch-gui && npm install --ignore-scripts --legacy-peer-deps --no-audit --no-fund)
+            node scripts/apply-vm-overlay.mjs
+            node scripts/apply-paint-overlay.mjs
+            node scripts/apply-render-overlay.mjs
+            head=$(git rev-parse HEAD)
+            (cd packages/scratch-gui && GITHUB_SHA="$head" NODE_ENV=production NODE_OPTIONS=--max-old-space-size=2560 npm run build)
+            { echo "side=$side head=$head"; grep '"bw-board"' vendor-pins.json;
+              node -e "const l=require('./package-lock.json');console.log('lock',l.packages['node_modules/bw-board'].resolved)";
+              for r in node_modules packages/scratch-gui/node_modules; do
+                test -f "$r/bw-board/src/experimental/i80386.js" && sha256sum "$r/bw-board/src/experimental/i80386.js"; done
+              cat packages/scratch-gui/build/brickwright-build.json; echo;
+              sha256sum packages/scratch-gui/build/index.html; } >> "$ev/identity.txt"
+            rm -rf packages/scratch-gui/node_modules/.cache
+          done
+          diff "$GITHUB_WORKSPACE/a/node_modules/bw-board/src/experimental/i80386.js" \
+               "$GITHUB_WORKSPACE/b/node_modules/bw-board/src/experimental/i80386.js" > "$ev/i80386-a-vs-b.diff" || true
+          cat "$ev/identity.txt" "$ev/i80386-a-vs-b.diff"
+      - name: Free media
+        timeout-minutes: 8
+        shell: bash
+        run: |
+          set -euo pipefail
+          m="$RUNNER_TEMP/media"; mkdir "$m"
+          timeout 180s curl --fail --location --silent --show-error --retry 2 \
+            https://download.freedos.org/1.4/FD14-FloppyEdition.zip -o "$m/fd.zip"
+          echo "45b1fa7c52dd996c3bfa5e352ffcd410781b952a6ad629f15a4c9ec4bbaefc5a  $m/fd.zip" | sha256sum --check
+          unzip -p "$m/fd.zip" 120m/x86BOOT.img > "$m/floppy.img"
+          echo "03df6088be016e57a6c44275f5bb9ab0244db71de1360957fd76ba83243b6a77  $m/floppy.img" | sha256sum --check
+          node b/scripts/prepare-i80386-freedos-interaction.mjs "$GITHUB_WORKSPACE/board" "$m/hdd.img"
+          sha256sum "$m/floppy.img" "$m/hdd.img" | tee "$RUNNER_TEMP/ev/media-sha256.txt"
+      - name: Alternating runs (same probe script for both builds)
+        timeout-minutes: 75
+        shell: bash
+        run: |
+          set -uo pipefail
+          cd b
+          for attempt in 1 2 3; do timeout 300s npx playwright install --with-deps chromium && break; done
+          ev="$RUNNER_TEMP/ev"; m="$RUNNER_TEMP/media"
+          echo "run order side exit wall_s" > "$ev/runs.tsv"
+          n=0
+          for pair in $(seq 1 "$PAIRS"); do
+            for side in a b; do
+              n=$((n+1)); out="$ev/run-$(printf %02d $n)-$side"; mkdir "$out"
+              t0=$(date +%s.%N)
+              FREEDOS_GUI_BUILD="$GITHUB_WORKSPACE/$side/packages/scratch-gui/build" \
+              FREEDOS_IMAGE="$m/floppy.img" FREEDOS_HDD="$m/hdd.img" \
+              FREEDOS_PROBE_OUTPUT="$out" FREEDOS_MAX_MS=600000 \
+                timeout 660s node scripts/verify-i80386-freedos-real-browser.mjs > "$out/stdout" 2> "$out/stderr"
+              rc=$?
+              t1=$(date +%s.%N)
+              echo "$n $pair $side $rc $(echo "$t1 - $t0" | bc)" | tee -a "$ev/runs.tsv"
+            done
+          done
+          cat "$ev/runs.tsv"
+      - name: Retain observations (no media, no builds)
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: x86-read16-browser-observation-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/ev
