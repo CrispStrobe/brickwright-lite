@@ -1,4 +1,71 @@
-# SAMD engine adoption handoff — updated 2026-10-29
+# SAMD engine adoption handoff — updated 2026-11-02
+
+## Current 9c release and consumer boundary
+
+**Supplier qualification is complete; fresh Lite consumer qualification remains
+pending.** Immutable [release `labwired-wasm-9c420649`](https://github.com/CrispStrobe/bw-board/releases/tag/labwired-wasm-9c420649),
+ID `430923343`, binds Core
+`9c4206499a39a04f56cd11c0b8c9b4cb94a06e62` (tree
+`c1afbd283c510b755129a1fa38b45b497d6204ca`) to producer
+`1c9ed301819f21bdab9fc5c0fb35e82d858e821d`.
+[Campaign 41359378516](https://github.com/CrispStrobe/bw-board/actions/runs/41359378516),
+attempt 1, passed two fresh hosted builds, comparison of eight deterministic
+executable/configuration/license files, 127 engine cases without failures/skips,
+six SAMD profile controls and three actual producer game samples. BUILD-INFO
+differs only by build time. All nine published assets were verified against the
+admitted originals; the fresh SAMD audit joined 565 source-fixture files and
+51 independently decoded frames.
+
+| Current released asset | Bytes | SHA-256 |
+| --- | ---: | --- |
+| Web glue | 154,119 | `d464625236ee199651679c5bb9148b2cd6f2e8bc25726cc2cbd4a22d1272127d` |
+| Node glue | 151,452 | `b79c99c23545af5c173b63f5403f99cf3003cc7c57b8cce74bfb47d5f5f80674` |
+| Web/Node WASM | 29,165,165 | `41c31ae388ce4389794eb9c6ee1f602bf361d792928dfabf2a1ef917d0796264` |
+| SAMD profile | 17,838 | `37d146fbb2c590fa2655a2a4630025049ed824867544aa967a412926ba218b0a` |
+
+[bw-board PR723](https://github.com/CrispStrobe/bw-board/pull/723) merged at
+`cda9d13b3e5b4a3e40854f45e04d110ab2a57ef3`, tree
+`043d1da0232bbc9c78195b2fe85c24d89e22c181`. Its build PIN, generated catalog
+and fixture engines use the same Core release.
+[Default CI 41374193811](https://github.com/CrispStrobe/bw-board/actions/runs/41374193811)
+passed `test`, `vectors`, `corpus` and `vectors186` with all required named
+steps in one exact-head run, admitted by Lite's unchanged `verifyBwBoardCi`.
+The dedicated [S040 run 41374193796](https://github.com/CrispStrobe/bw-board/actions/runs/41374193796)
+executed 31 passing cases; [S3 run 41374193817](https://github.com/CrispStrobe/bw-board/actions/runs/41374193817)
+executed 23 passing retained-flash cases plus the original ELF case, all with
+zero failures/skips. M1 firmware and ROM source remain
+`3b655aef4085082152129c84849d4e2ad5004a7f`.
+
+The independently retained unchanged Core S040 checker passed on the identical
+released source, engine and guest. Its verified stdout is 4,876 bytes, SHA-256
+`a4738f7874699a995c25658ffcaa32ae9ab31bd2246a4fd5bf53ded4df39462a`.
+The supplier manifest separately declares a 4,869-byte result, SHA-256
+`3b24d6c506a1ebb050f964bef02d6da58657449beb3b5734169a4a94d5a423ec`;
+those original output bytes are unavailable in this review and that digest is
+not independently verified. The report includes variable elapsed wall time.
+The separate declaration is unchanged; the independently verified pass and
+landed firmware gates satisfy the supplier prerequisite. Neither report is
+relabeled as the other. See the [S040 plan](ESP32-S3-4848S040-PLAN.md#qualified-release-and-landed-supplier--2026-11-02)
+for the full scope.
+
+Both genuine package installations pass the unchanged exact-content verifier:
+13,448 Board cda9 files and 1,367 CUI 380dc8b7 files match in each tree, with
+single-engine resolution. Fresh Lite source/build and emitted bytes, native
+executable/source/frontend admission, and both actual game realms remain to
+qualify on the final consumer. The earlier consumer runs below retain their
+own 3b engine and original source/executable identities; other historical
+consumer receipts likewise remain attached to their recorded inputs. Their
+successful frames, timings, RSS and failures are not transferred to 9c.
+The producer's fresh game run is independent evidence for the release and
+does not qualify Lite's browser or installed application. Selected-motion,
+physical capture, general SDK/LVGL/radio/native-USB support and a normal native
+SAMD compile/import/export GUI route remain outside this adoption.
+
+## Historical 3b consumer evidence — recorded 2026-10-29
+
+The following source, supplier, runtime measurements and failure records retain
+their original scope. Statements of completed or pending work in this ledger
+describe that earlier adoption; current 9c consumer status is stated above.
 
 **Source landed; enabled-check closure remains open.**
 [PR1533](https://github.com/CrispStrobe/brickwright-lite/pull/1533) merged as
@@ -85,7 +152,7 @@ unchanged CPU/memory/network bounds across all 13 cases. See
 redistribution false marker remains; it is separate from official SAMD input
 admission and makes no external MicroPython or physical-silicon claim.
 
-## Completed supplier work
+## Historical completed supplier work
 
 Core [PR262](https://github.com/CrispStrobe/labwired-core/pull/262) merged as
 `3b655aef4085082152129c84849d4e2ad5004a7f` after fleet, selected guest and CLI
@@ -106,7 +173,7 @@ merged as `dea504b32a9a4bd43a2a9d25b587590a0ac9763f`. The package owner released
 the former PR1318-first hold for this exact adoption and its claimed repairs;
 no general package boundary is open.
 
-## Retained prerequisite identity evidence
+## Historical prerequisite identity evidence
 
 PR1533 updates web engine/glue/profile identity in `scripts/sync-labwired-wasm.mjs`
 and matching Node identity in `.github/workflows/target-performance.yml`.
@@ -147,7 +214,7 @@ passed its unchanged floor at source `317c069003803f9e8bfbe570ca7c371da6e52c10`.
 Its inputs are unchanged; do not repeat it. Core-loop ceilings do not qualify
 active-game or hardware speed.
 
-## Preserved failures and bounded repairs
+## Historical failures and bounded repairs
 
 Original [Build40734487998](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40734487998)
 failed historical-study controls. Its successful producing job also minified the
@@ -188,7 +255,12 @@ MicroPython manifest hunks and old dirty worktrees.
 
 ## Continuation boundaries
 
-The source landing and the software acceptance results recorded above remain
+For the current 9c adoption, complete fresh final-consumer qualification using
+the existing source, artifact and actual-game gates. Review the older receipts
+with their original identities; a current supplier pass does not promote an
+older frontend or native executable into a new qualified consumer.
+
+The earlier source landing and software acceptance results recorded above remain
 separate from closure of the failed enabled check. The selected-tier policy
 repair is owned by [PR1536](https://github.com/CrispStrobe/brickwright-lite/pull/1536).
 Its final source and artifact-event admission must qualify before a preserving

@@ -105,8 +105,8 @@ const HISTORICAL_X86_CUI_V5_V7 = '91d8434a79d373cef2837c137ab356356f1a3b44';
 const HISTORICAL_X86_V8_CUI = '1bc233c9297e03abb9b7eb603e045b4e92b0bb40';
 const CURRENT_X86_CUI = 'a5860b9cf6cb0e7f652130ce987d51dc42651b8b';
 // CURRENT_X86_CUI retains the F9 epoch meaning; only these F10 values are live.
-const LIVE_X86_CUI = '4b65f15485abbc039958d8e1a8a29ac3459b75f9';
-const LIVE_X86_BOARD = 'c87cfa325a7b599846c1c4088a408eeabb83daaa';
+const LIVE_X86_CUI = '380dc8b7b51e10726035b77f775d753152f9a885';
+const LIVE_X86_BOARD = 'cda9d13b3e5b4a3e40854f45e04d110ab2a57ef3';
 const HISTORICAL_X86_BOARD = '761153ff92d521c01107ee7b32922ba7adc10ee2';
 const HISTORICAL_X86_CURRENT_BOARD = '836867513c3e7fac420ddaa32c17e1c7b6d3e513';
 // The sb3-creator pin every reviewed F7/F8/F9 x86 epoch was executed at. It
@@ -126,9 +126,9 @@ const CURRENT_X86_FINITE_V9_READER = "FINITE_V9_PINS = {'bw-board':CURRENT_BOARD
 // including clock and core/full-runtime parity. Any later source edit revokes
 // their occurrence roles until another explicit review; never auto-restamp.
 const HISTORICAL_X86_SOURCE_PROFILES = Object.freeze({
-    'scripts/run-i80386-hdd-gui-actual.py': Object.freeze({bytes: 344630, sha256: '9d01751ed2a6ced60ce9ea6f680154a2e3b7f6e8a48a615dc5bcb79e00999767'}),
-    'scripts/read-i80386-hdd-gui-originals.py': Object.freeze({bytes: 460207, sha256: '0c3c3ffd2c28757a3ab858e21dea7b568bbad70a8e7be1992ed6e4de5ebd711d'}),
-    'test/i80386-hdd-gui-actual.test.mjs': Object.freeze({bytes: 637722, sha256: '0bb6e8bba3a3860ceeac56e74f10a1d30372bea557368dc737dd489fe4addf82'}),
+    'scripts/run-i80386-hdd-gui-actual.py': Object.freeze({bytes: 344630, sha256: 'ea02db0d29bd0d40d1203179ccdb094018da835add62dc75af574f5ff98f3c71'}),
+    'scripts/read-i80386-hdd-gui-originals.py': Object.freeze({bytes: 460207, sha256: '4959cca39bcee56ce04ff9d6ddc82e372d89244b57fa96ff1886b926d92c7ba3'}),
+    'test/i80386-hdd-gui-actual.test.mjs': Object.freeze({bytes: 637722, sha256: '5f64afc0e4b4f4ec7f5a4b639f8a79233851a6323ccb12f9a6c1bdf47b9bacb1'}),
 });
 
 import {explainGitFailure} from './helpers/git-absence.mjs';
@@ -1483,6 +1483,92 @@ test('F10 keeps every consumed supplier position historical and every new input 
     }
 });
 
+
+const afterF10Known = (boardMoved = true, cuiMoved = true) => ({
+    current: new Set([boardMoved ? 'b'.repeat(40) : LIVE_X86_BOARD,
+        cuiMoved ? 'c'.repeat(40) : LIVE_X86_CUI, LIVE_X86_SB3]),
+    previous: new Map([[CURRENT_X86_CUI, {repo:'bw-circuit-ui'}],
+        [HISTORICAL_X86_SB3, {repo:'sb3-creator'}],
+        [HISTORICAL_X86_CURRENT_BOARD, {repo:'bw-board'}],
+        [HISTORICAL_X86_BOARD, {repo:'bw-board'}],
+        [HISTORICAL_X86_CUI_V5_V7, {repo:'bw-circuit-ui'}],
+        [HISTORICAL_X86_V8_CUI, {repo:'bw-circuit-ui'}],
+        ...(boardMoved ? [[LIVE_X86_BOARD, {repo:'bw-board'}]] : []),
+        ...(cuiMoved ? [[LIVE_X86_CUI, {repo:'bw-circuit-ui'}]] : [])]),
+    history: new Map()
+});
+
+test('later Board or CUI adoption refuses stale F10 bindings even when those pins previously shipped', () => {
+    const paths = ['scripts/run-i80386-hdd-gui-actual.py', 'scripts/read-i80386-hdd-gui-originals.py',
+        'test/i80386-hdd-gui-actual.test.mjs', 'test/pin-move-chain.test.mjs'];
+    const counts = [12, 11, 1, 6];
+    const live = afterF10Known(false, false);
+    for (const [index, file] of paths.entries()) {
+        const text = readFileSync(path.join(ROOT, file), 'utf8');
+        const slots = historicalV10Spans(file, text, live);
+        assert.equal(slots.length, counts[index], `${file}: reviewed historical positions only`);
+        for (const at of slots) assert.ok(live.previous.has(text.slice(at, at + 40)));
+        assert.deepEqual(judgeFile(file, text, live), []);
+        assert.ok(judgeFile('scripts/copied-f10-input.mjs', text, live).length > 0);
+        for (const [boardMoved, cuiMoved] of [[true, false], [false, true], [true, true]]) {
+            const k = afterF10Known(boardMoved, cuiMoved);
+            assert.equal(historicalV10Spans(file, text, k).length, 0,
+                `${file}: F10 declarations must follow the current supplier pins`);
+            for (const [pin, moved] of [[LIVE_X86_BOARD, boardMoved], [LIVE_X86_CUI, cuiMoved]]) {
+                if (!moved || !text.includes(pin)) continue;
+                assert.ok(judgeFile(file, text, k).some(finding => finding.sha === pin),
+                    `${file}: an old F10 pin has no historical occurrence role`);
+            }
+        }
+    }
+});
+
+test('current F10 maps and historical roles reject copied, extra, moved and encoded declarations', () => {
+    const k = afterF10Known(false, false);
+    for (const file of ['scripts/run-i80386-hdd-gui-actual.py', 'scripts/read-i80386-hdd-gui-originals.py']) {
+        const source = readFileSync(path.join(ROOT, file), 'utf8');
+        const profile = text => ({[file]: {bytes:Buffer.byteLength(text), sha256:createHash('sha256').update(text).digest('hex')}});
+        for (const changed of [
+            source + `EXTRA = '${HISTORICAL_X86_CURRENT_BOARD}'\n`,
+            source + `EXTRA = '${CURRENT_X86_CUI}'\n`,
+            source + F10_CURRENT_MAP + '\n',
+            source.replace(F10_CURRENT_MAP, '    ' + F10_CURRENT_MAP),
+            source.replace(F10_CURRENT_MAP, F10_CURRENT_MAP.replace('FINITE_V10_PINS', 'CURRENT_PINS')),
+            source.replace(F10_CURRENT_MAP, F10_CURRENT_MAP.replace(LIVE_X86_BOARD, HISTORICAL_X86_CURRENT_BOARD)),
+            source.replace(F10_CURRENT_MAP, F10_CURRENT_MAP.replace(LIVE_X86_CUI, CURRENT_X86_CUI)),
+            source.replace(F10_CURRENT_MAP, F10_CURRENT_MAP.replace(LIVE_X86_BOARD,
+                '\\x' + LIVE_X86_BOARD.charCodeAt(0).toString(16) + LIVE_X86_BOARD.slice(1))),
+            source.replace(F10_CURRENT_MAP, F10_CURRENT_MAP.replace(`'${LIVE_X86_CUI}'`, `bytes.fromhex('${LIVE_X86_CUI}')`)),
+        ]) {
+            assert.notEqual(changed, source);
+            assert.equal(historicalV10SpansForProfile(file, changed, k, profile(changed)).length, 0,
+                'coherently hashed changes still do not occupy the exact reviewed roles');
+            assert.equal(historicalV10Spans(file, changed, k).length, 0,
+                'public policy retains the reviewed whole-body binding');
+            assert.ok(judgeFile(file, changed, k).length > 0);
+        }
+        assert.equal(historicalV10SpansForProfile('scripts/copied-f10.py', source, k,
+            {'scripts/copied-f10.py': profile(source)[file]}).length, 0);
+    }
+});
+
+test('historical Board and CUI roles still require actual previous pins from their exact suppliers', () => {
+    const k = afterF10Known(false, false);
+    for (const file of ['scripts/run-i80386-hdd-gui-actual.py', 'scripts/read-i80386-hdd-gui-originals.py']) {
+        const source = readFileSync(path.join(ROOT, file), 'utf8');
+        for (const [pin, repo] of [[HISTORICAL_X86_CURRENT_BOARD, 'bw-board'], [CURRENT_X86_CUI, 'bw-circuit-ui']]) {
+            const unshipped = {...k, previous:new Map(k.previous), history:new Map([[pin, repo]])};
+            unshipped.previous.delete(pin);
+            assert.equal(historicalV10Spans(file, source, unshipped).length, 0,
+                'a known supplier commit is not evidence it shipped');
+            assert.ok(judgeFile(file, source, unshipped).some(finding => finding.sha === pin && /never a pin/.test(finding.was)));
+            const wrongSupplier = {...k, previous:new Map(k.previous)};
+            wrongSupplier.previous.set(pin, {repo:'sb3-creator'});
+            assert.equal(historicalV10Spans(file, source, wrongSupplier).length, 0,
+                'each historical pin belongs to its exact supplier');
+        }
+    }
+});
 
 test('a real merge replacement remains previous-pin evidence instead of a never-pinned finding', () => {
     const directory=mkdtempSync(path.join(tmpdir(),'bw-pin-merge-history-'));

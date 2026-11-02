@@ -2,8 +2,8 @@
   "schema": 1,
   "source": {
     "repo": "https://github.com/CrispStrobe/bw-board",
-    "sha": "c87cfa325a7b599846c1c4088a408eeabb83daaa",
-    "read": "2026-10-28"
+    "sha": "cda9d13b3e5b4a3e40854f45e04d110ab2a57ef3",
+    "read": "2026-11-02"
   },
   "rows": [
     {
@@ -57,10 +57,10 @@
     {
       "id": "i80386-win16-qemu",
       "kind": "oracle",
-      "present": true,
+      "present": false,
       "ciAvailable": false,
       "ci": "no — ordinary CI does not install the pinned QEMU executable; the test skips there",
-      "via": "[local path omitted]",
+      "via": "tried [local path omitted]",
       "gates": [
         "test/i80386-win16-io-boundary-oracle.test.mjs"
       ],
@@ -69,10 +69,10 @@
     {
       "id": "386-es-cache-qemu",
       "kind": "oracle",
-      "present": true,
+      "present": false,
       "ciAvailable": false,
       "ci": "no — ordinary CI does not install the pinned QEMU executable; the external comparison skips there",
-      "via": "[local path omitted]",
+      "via": "tried [local path omitted]",
       "gates": [
         "test/i80386-es-cache-witness.test.mjs"
       ],
@@ -120,10 +120,10 @@
     {
       "id": "8086-vectors",
       "kind": "oracle",
-      "present": true,
+      "present": false,
       "ciAvailable": true,
       "ci": "yes — the `vectors` job checks out v1_binary and grinds all 646,000 nightly, on master pushes and on PRs labelled ci:full",
-      "via": "[local path omitted]",
+      "via": "tried $I8086_VECTORS, [local path omitted], [local path omitted]",
       "gates": [
         "test/i8086.test.mjs",
         "test/i8086-disasm.test.mjs",
@@ -162,10 +162,10 @@
     {
       "id": "8088-vectors",
       "kind": "oracle",
-      "present": true,
+      "present": false,
       "ciAvailable": true,
       "ci": "yes — the `vectors186` job checks out SingleStepTests/v20 at a pinned ref. This row said \"not yet\" while that job already existed; the claim was about the SCORES still moving, which is a different question from whether CI has the input. The job runs nightly, on master pushes and on PRs labelled ci:full",
-      "via": "[local path omitted]",
+      "via": "tried $I8088_VECTORS, [local path omitted]",
       "gates": [
         "scripts/grind-i8088-cycles.mjs"
       ],
@@ -174,10 +174,10 @@
     {
       "id": "z80-vectors",
       "kind": "oracle",
-      "present": true,
+      "present": false,
       "ciAvailable": true,
       "ci": "yes — the `vectors-full` job, nightly, on demand and on PRs labelled ci:full rather than per push (1.6 GB unpacked)",
-      "via": "[local path omitted]",
+      "via": "tried $Z80_VECTORS, [local path omitted]",
       "gates": [
         "test/z80-disasm.test.mjs",
         "scripts/grind-z80.mjs"
@@ -187,10 +187,10 @@
     {
       "id": "65c02-vectors",
       "kind": "oracle",
-      "present": true,
+      "present": false,
       "ciAvailable": true,
       "ci": "yes — the `vectors-full` job, nightly, on demand and on PRs labelled ci:full rather than per push",
-      "via": "[local path omitted]",
+      "via": "tried $VECTORS_DIR, [local path omitted]",
       "gates": [
         "test/w65c02.test.mjs",
         "test/w65c02-disasm.test.mjs",
@@ -225,10 +225,10 @@
     {
       "id": "ngspice",
       "kind": "oracle",
-      "present": true,
+      "present": false,
       "ciAvailable": true,
       "ci": "yes — installed by apt in the `test` job and asserted by `--require ngspice`, so the live solver comparison is a standing claim rather than a recorded one",
-      "via": "ngspice on $PATH at [local path omitted]",
+      "via": "tried $NGSPICE, ngspice on $PATH",
       "gates": [
         "test/ngspice-neutral-oracle.test.mjs",
         "test/nonuic-transient.test.mjs",
@@ -263,10 +263,10 @@
     {
       "id": "emu8051",
       "kind": "oracle",
-      "present": true,
+      "present": false,
       "ciAvailable": true,
       "ci": "yes — checked out at a pinned ref by the `test` job",
-      "via": "[local path omitted]",
+      "via": "tried $EMU8051_JS, [local path omitted], [local path omitted], [local path omitted]",
       "gates": [
         "test/emu8051-idle-fastforward.test.mjs",
         "test/brightness-emu8051.test.js",
@@ -285,10 +285,10 @@
     {
       "id": "stc-examples",
       "kind": "fixture",
-      "present": true,
+      "present": false,
       "ciAvailable": false,
       "ci": "no — the `test` job checks out emu8051-stc only",
-      "via": "[local path omitted]",
+      "via": "tried [local path omitted], [local path omitted], [local path omitted]",
       "gates": [
         "test/example-manifest.test.js"
       ],
@@ -315,6 +315,30 @@
         "test/labwired-radio-pair.test.mjs"
       ],
       "what": "The labwired engine as WASM — the differential oracle for the labwired bridge."
+    },
+    {
+      "id": "labwired-esp32s3-flash-fixtures",
+      "kind": "fixture",
+      "present": false,
+      "ciAvailable": false,
+      "ci": "no — ordinary ci.yml does not fetch these inputs. The separate esp32s3-firmware-boot.yml workflow fetches and admits them, sets LABWIRED_REQUIRE_ESP32S3=1, and requires all real cases with zero skips. Its result is a separate exact-head qualification.",
+      "via": "tried $LABWIRED_ESP32S3_INPUTS",
+      "gates": [
+        "test/labwired-esp32s3-flash.test.mjs"
+      ],
+      "what": "The exact retained Node engine, ESP32-S3 mask ROMs and merged Rust/Arduino firmware used by the public-factory boot/reset and console-selection proof. Directory presence does not admit bytes: the test checks every size and SHA-256 before importing executable glue. The structural source controls always run; the real-engine cases require this input directory."
+    },
+    {
+      "id": "labwired-esp32s040-fixtures",
+      "kind": "fixture",
+      "present": false,
+      "ciAvailable": false,
+      "ci": "no — ordinary CI has no S040 engine/guest inputs. The separate esp32s040-public-factory.yml workflow requires a qualified release, LABWIRED_REQUIRE_ESP32S040=1, actual execution and zero skips; the current candidate manifest deliberately cannot pass that gate.",
+      "via": "tried $LABWIRED_ESP32S040_INPUTS",
+      "gates": [
+        "test/labwired-esp32s040-engine.test.mjs"
+      ],
+      "what": "Exact S040 engine glue/WASM, source-owned Xtensa panel/touch guest, and unchanged M1 ROMs/retained Arduino smoke image for public-factory display, typed input, reset, five-pin H1 and composed merged-flash proof. The retained manifest is currently candidate evidence, not a qualified release or physical capture. Directory presence does not admit bytes; the test checks length/SHA-256 before importing executable glue and checks the exact producer system/chip catalog."
     },
     {
       "id": "labwired-warmed-window-profile",
@@ -355,10 +379,10 @@
     {
       "id": "elks-image",
       "kind": "fixture",
-      "present": true,
+      "present": false,
       "ciAvailable": false,
       "ci": "no — GPL-2, run as a workload but never vendored, so the OS acceptance test skips in CI and its claim is recorded rather than standing",
-      "via": "[local path omitted]",
+      "via": "tried $ELKS_IMAGE, [local path omitted]",
       "gates": [
         "test/i8086-elks-boot.test.mjs"
       ],
@@ -379,10 +403,10 @@
     {
       "id": "retro-corpus-8086",
       "kind": "fixture",
-      "present": true,
+      "present": false,
       "ciAvailable": false,
       "ci": "no — 191 MB of third-party game sources, not vendored. nasm itself IS installed in CI (0d9f984), so the liveness probe and the encoder comparisons run there; the corpus comparisons skip and say so.",
-      "via": "[local path omitted]",
+      "via": "tried $RETRO_CORPUS_8086, [local path omitted]",
       "gates": [
         "test/oracle-nasm.test.mjs"
       ],
@@ -418,10 +442,10 @@
     {
       "id": "ucsim-stc12-trace",
       "kind": "oracle",
-      "present": true,
+      "present": false,
       "ciAvailable": false,
       "ci": "no — ci.yml does not check this out; serial-debug-e2e skips its ucsim half there",
-      "via": "[local path omitted]",
+      "via": "tried $UCSIM_STC12_TRACE, [local path omitted], [local path omitted]",
       "gates": [
         "test/serial-debug-e2e.test.js"
       ],
@@ -430,10 +454,10 @@
     {
       "id": "blinkenrocket-fw",
       "kind": "fixture",
-      "present": true,
+      "present": false,
       "ciAvailable": true,
       "ci": "yes — checked out at a pinned ref by the `test` job since 2026-09-10, which is what makes the modem end-to-end run there rather than skip",
-      "via": "[local path omitted]",
+      "via": "tried $BLINKENROCKET_HEX, [local path omitted], [local path omitted], [local path omitted]",
       "gates": [
         "test/blinkenrocket-modem-e2e.test.mjs",
         "test/sibling-checkout-lookup.test.mjs"
@@ -482,7 +506,7 @@
       "present": false,
       "ciAvailable": false,
       "ci": "no — the binaries live at an absolute /tmp path, the same blind spot as the ehBASIC ROM: audit-clean-checkout strips untracked REPO files by archiving HEAD and cannot reach /tmp, so their absence in a fresh checkout is invisible to it. Can only stand in CI if the job fetches them explicitly.",
-      "via": "$MSDOS_BIN_DIR=[local path omitted] (set, but does not exist)",
+      "via": "tried $MSDOS_BIN_DIR, [local path omitted]",
       "gates": [
         "test/oracle-masm.test.mjs",
         "scripts/oracle-masm.mjs",

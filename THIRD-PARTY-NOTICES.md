@@ -89,6 +89,23 @@ BUNDLED in the mobile app, because the mobile build runs `vercel-build.sh`.
   release `labwired-wasm-41119903-r2` with both artefacts' sha256 pinned in the
   sync script and gated by `test/fetch-pinning.test.mjs`.
 
+### esp32s3-rom -- Apache-2.0
+
+The explicit ESP32-S3 merged-flash target loads the chip's IROM and DROM
+windows, extracted from Espressif's published `esp32s3_rev0_rom.elf`.
+Copyright Espressif Systems (Shanghai) Co., Ltd. These ROM objects are
+licensed separately from the LabWired emulator.
+
+- Upstream distribution and terms: https://github.com/espressif/esp-rom-elfs
+- The pinned bw-board firmware-boot manifest records the exact LabWired
+  extraction commit, byte counts and SHA-256 digests. `scripts/sync-esp32s3-roms.mjs`
+  verifies these identities before writing `static/esp32s3/esp32s3_rom.bin`
+  and `static/esp32s3/esp32s3_drom.bin`. The browser verifies the same digests.
+- The flat files change the object container from ELF to its two addressed
+  ROM windows; their payload is the upstream ROM. No ROM source is claimed.
+- Full Apache License 2.0 and attribution accompany the app at
+  `static/licenses/esp32s3-rom.Apache-2.0.txt`.
+
 ### 8086 example programs (Amey Thakur / Mega Satish) -- MIT
 
 The six 8086 starter programs the ASM tab offers are FILES FROM ANOTHER

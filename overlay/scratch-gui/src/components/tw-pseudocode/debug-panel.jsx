@@ -79,6 +79,8 @@ const L10N = {
         modemSend: 'Encode and transmit this message on PA0/ADC6',
         modemSent: 'transmitted',
         firmwareRunning: 'running',
+        firmwareLoaded: 'loaded',
+        noImageLoaded: 'No program or firmware loaded in the debugger.',
         savePoint: 'Save point',
         engineReverse: 'Reverse (slower)',
         engineReverseTitle: 'Record every instruction so Reverse Step / Reverse Continue work here — the run is much slower while this is on',
@@ -87,7 +89,11 @@ const L10N = {
         engineFault: 'Firmware fault',
         engineFidelity: 'The engine skipped something here — the run may not match the chip',
         labwiredChipProject: 'project board',
-        labwiredChipTitle: 'Run your own firmware (.elf or .uf2) on this chip, with no circuit — or the project\'s board',
+        labwiredChipTitle: 'Choose the project board, an addressed ELF, a supported Cortex-M UF2, or explicit ESP32-S3 merged-flash boot',
+        esp32s3Flash: 'ESP32-S3 ROM boot (merged .bin)',
+        esp32s3Console: 'Console output',
+        esp32s3Both: 'Both (diagnostics)',
+        esp32s3FlashHint: 'Merged ESP32-S3 .bin at flash offset zero: bootloader, partition table and application. App-only images are refused.',
         firmwareBack: 'Blocks',
         firmwareBackTitle: 'Stop running this image and go back to debugging the blocks program',
         firmwareBareChip: 'No circuit is drawn, so this image runs on the bare chip: pins, serial and stepping all work. Draw a circuit in the Circuit tab to wire parts to its pins.',
@@ -138,6 +144,8 @@ const L10N = {
         modemSend: 'Diese Nachricht kodieren und an PA0/ADC6 senden',
         modemSent: 'gesendet',
         firmwareRunning: 'läuft',
+        firmwareLoaded: 'geladen',
+        noImageLoaded: 'Im Debugger ist noch kein Programm oder Firmware-Abbild geladen.',
         savePoint: 'Speicherpunkt',
         engineReverse: 'Rückwärts (langsamer)',
         engineReverseTitle: 'Jeden Befehl aufzeichnen, damit Rückwärts-Schritt / -Fortsetzen hier gehen — der Lauf ist dabei deutlich langsamer',
@@ -146,7 +154,11 @@ const L10N = {
         engineFault: 'Firmware-Fehler',
         engineFidelity: 'Die Engine hat hier etwas übersprungen — der Lauf entspricht evtl. nicht dem Chip',
         labwiredChipProject: 'Projekt-Board',
-        labwiredChipTitle: 'Eigene Firmware (.elf oder .uf2) auf diesem Chip ausführen, ohne Schaltung — oder das Board des Projekts',
+        labwiredChipTitle: 'Projekt-Board, adressiertes ELF, unterstütztes Cortex-M-UF2 oder ESP32-S3-ROM-Start mit zusammengeführtem Flash-Abbild wählen',
+        esp32s3Flash: 'ESP32-S3-ROM-Start (zusammengeführte .bin)',
+        esp32s3Console: 'Konsolenausgabe',
+        esp32s3Both: 'Beide (Diagnose)',
+        esp32s3FlashHint: 'Zusammengeführte ESP32-S3-.bin ab Flash-Adresse null: Bootloader, Partitionstabelle und Anwendung. Reine App-Abbilder werden abgelehnt.',
         firmwareBack: 'Blöcke',
         firmwareBackTitle: 'Dieses Abbild beenden und wieder das Blockprogramm debuggen',
         firmwareBareChip: 'Es ist keine Schaltung gezeichnet, daher läuft dieses Abbild auf dem nackten Chip: Pins, Seriell und Einzelschritte funktionieren. Zeichne im Circuit-Tab eine Schaltung, um Bauteile an seine Pins anzuschließen.',
@@ -198,7 +210,7 @@ class DebugPanel extends React.Component {
         // than in the runner: picking "Live board" and then pressing Run is the
         // order a user works in.
         this.state = {runner: null, ui: {phase: 'idle', message: ''}, kind: 'emulator', kinds: null,
-            labwiredChip: '', labwiredChips: null, samdInputError: null,
+            labwiredChip: '', labwiredChips: null, esp32S040McuId: '', esp32s3Console: 'uart0', samdInputError: null,
             machineConfig: null, serialInput: '', modemInput: '', modemStatus: null,
             firmwareName: null,
             recordingStatus: null, reverseStatus: null, timelineStatus: null,
@@ -688,6 +700,10 @@ class DebugPanel extends React.Component {
             .then(m => {
                 const chips = [
                     {value: 'software:samd51-no-asf-simulation', label: 'SAMD51 software simulation (ELF / UF2)'},
+                    {value: 'firmware:esp32s3-merged-flash', labelKey: 'esp32s3Flash'},
+                    ...((m.LABWIRED_BOARDS || {})['esp32-4848s040'] ? [
+                        {value: 'firmware:esp32-4848s040-merged-flash', label: 'ESP32-4848S040 ROM boot (merged .bin)'}
+                    ] : []),
                     ...Object.values(m.LABWIRED_CATALOG || {}).map(c => ({value: c.name, label: `${c.name} (${c.arch})`})),
                     // Boards: the chip plus the devices its manifest wires, a
                     // display among them — what the firmware draws reaches Widgets.
@@ -862,6 +878,11 @@ class DebugPanel extends React.Component {
      *  creation is async (a chunk import), so a plain state check races —
      *  two concurrent runner() calls once produced two live machines. */
     _teardownRunner () {
+        const p = this._runnerPromise;
+        this._runnerPromise = null;
+        this._runnerOwnership.release();
+        // Accepted release writes publish synchronously. Silence the old
+        // runner first, while its target is still alive to receive touch-up.
         this.releaseSamdButtons();
         this._invalidateHddDownload();
         this._hddDownloadRunner = null;
@@ -881,9 +902,6 @@ class DebugPanel extends React.Component {
         if (typeof window !== 'undefined' && typeof window.bwStopMachineAudio === 'function') {
             window.bwStopMachineAudio();
         }
-        const p = this._runnerPromise;
-        this._runnerPromise = null;
-        this._runnerOwnership.release();
         if (p) {
             p.then(r => { if (r) r.destroy(); }).catch(() => {});
         } else if (this.state.runner) {
@@ -906,6 +924,8 @@ class DebugPanel extends React.Component {
             machineConfig: this.state.machineConfig,
             bootMedia: this._bootMedia,
             labwiredChip: this.state.kind === 'labwired' ? (this.state.labwiredChip || null) : null,
+            esp32s3Console: this.state.esp32s3Console,
+            esp32S040McuId: this.state.esp32S040McuId || null,
             // A replaced runner still inside its attach await publishes
             // attaching/ready when that await resolves; dropped, not applied
             // over its replacement's phase.
@@ -944,11 +964,17 @@ class DebugPanel extends React.Component {
         // The runner is no longer a stopped image once a new start begins.
         // `ui.phase` may still read idle while attach() is awaiting chunks.
         this._runnerStoppedExplicitly = false;
-        const runner = await this.runner();
+        const pending = this.runner();
+        const owner = this._runnerPromise;
+        const runner = await pending;
+        if (this._runnerPromise !== owner) return;
         const phase = this.state.ui.phase;
         if (phase === 'paused') runner.resume();
         else {
             await runner.start();
+            // Loading and attaching can outlive this panel's ownership. Its
+            // replacement alone may publish a Widgets display.
+            if (this._runnerPromise !== owner) return;
             this.mirrorLabwiredDisplay(runner);
         }
     }
@@ -958,14 +984,16 @@ class DebugPanel extends React.Component {
     mirrorLabwiredDisplay (runner) {
         const selected = String(this.state.labwiredChip || '');
         if (this.state.kind !== 'labwired' || !(selected.startsWith('board:') ||
+            selected === 'firmware:esp32-4848s040-merged-flash' ||
             selected === 'software:samd51-no-asf-simulation')) return;
         if (typeof runner.video !== 'function' || typeof window === 'undefined' ||
             typeof window.bwMirrorMachineVideo !== 'function') return;
         const first = runner.video();
         window.bwMirrorMachineVideo({videoFn: () => runner.video(), widget: {
             name: 'LabWired display', type: 'simplevga', source: 'video',
-            config: {width: (first && first.width) || 128,
-                height: (first && first.height) || (selected.startsWith('software:') ? 160 : 64)}
+            config: {width: (first && first.width) || (selected.includes('esp32-4848s040') ? 480 : 128),
+                height: (first && first.height) || (selected.includes('esp32-4848s040') ? 480 :
+                    selected.startsWith('software:') ? 160 : 64)}
         }});
     }
 
@@ -1317,6 +1345,12 @@ class DebugPanel extends React.Component {
         const paused = phase === 'paused';
         const canDownloadHdd = this._supportsHddDownload(this.state.runner);
         const busy = phase === 'building' || phase === 'attaching';
+        const noImageLoaded = phase === 'idle' && !this.state.runner &&
+            !this._userFirmware && !this._bootMedia;
+        const s040Selected = this.state.kind === 'labwired' &&
+            ['board:esp32-4848s040', 'firmware:esp32-4848s040-merged-flash'].includes(this.state.labwiredChip);
+        const s040Parts = (this.props.vm?.runtime?.circuitBoard?.parts || [])
+            .filter(part => part.kind === 'esp32_4848s040');
         const why = ui.session && ui.session.why;
 
         // Capabilities decide what is offered — never an assumption about which
@@ -1539,12 +1573,12 @@ class DebugPanel extends React.Component {
                     <span style={{display: 'inline-flex', alignItems: 'center', gap: 4}}>
                         <label style={{...BTN, padding: '3px 6px', cursor: 'pointer'}}
                             title={'Load a firmware file (.bin for Pico/STM32, .hex/.ihx for 8051/AVR' +
-                                (this.state.kind === 'labwired' ? ', .elf/.uf2 for a chip picked on LabWired' : '') +
+                                (this.state.kind === 'labwired' ? ', .elf or supported Cortex-M .uf2; ESP32-S3 merged .bin with the explicit ROM-boot target' : '') +
                                 ') and run it instead of the blocks'}>
                             {'📂'}
                             <input
                                 type="file"
-                                accept={this.state.kind === 'labwired'
+                                accept={s040Selected ? '.elf,.bin' : this.state.kind === 'labwired'
                                     ? '.elf,.uf2,.bin,.hex,.ihx' : '.bin,.hex,.ihx'}
                                 style={{display: 'none'}}
                                 disabled={running || paused || busy}
@@ -1553,7 +1587,7 @@ class DebugPanel extends React.Component {
                         </label>
                         {this.state.firmwareName ? (
                             <span data-firmware-chip style={{fontSize: 11, opacity: 0.9}}>
-                                {this.state.firmwareName}{' '}{this.tx('firmwareRunning')}
+                                {this.state.firmwareName}{' '}{this.tx(running ? 'firmwareRunning' : 'firmwareLoaded')}
                                 <button
                                     data-firmware-back
                                     style={{...BTN, padding: '0 6px', marginLeft: 6}}
@@ -1565,7 +1599,7 @@ class DebugPanel extends React.Component {
                         ) : null}
                     </span>
                     {this.state.kinds && this.state.kinds.length > 1 ? (
-                        <span style={{display: 'flex', alignItems: 'center', gap: 6}}>
+                        <span style={{display: 'flex', flexWrap: 'wrap', minWidth: 0, alignItems: 'center', gap: 6}}>
                             <select
                                 value={this.state.kind}
                                 disabled={running || paused || busy}
@@ -1604,9 +1638,44 @@ class DebugPanel extends React.Component {
                                 >
                                     <option value="">{this.tx('labwiredChipProject')}</option>
                                     {this.state.labwiredChips.map(c => (
-                                        <option key={c.value} value={c.value}>{c.label}</option>
+                                        <option key={c.value} value={c.value}>{c.labelKey ? this.tx(c.labelKey) : c.label}</option>
                                     ))}
                                 </select>
+                            ) : null}
+                            {s040Selected ? (
+                                <label style={{display: 'flex', alignItems: 'center', gap: 4}}>
+                                    {String(this.props.locale || 'en').startsWith('de') ? 'Platine' : 'Circuit board'}
+                                    <select data-esp32s040-part value={this.state.esp32S040McuId}
+                                        disabled={running || paused || busy}
+                                        onChange={e => {
+                                            this._teardownRunner();
+                                            this.setState({esp32S040McuId: e.target.value, runner: null,
+                                                ui: {phase: 'idle', message: ''}});
+                                        }} style={{...BTN, padding: '3px 6px'}}>
+                                        <option value="">{String(this.props.locale || 'en').startsWith('de')
+                                            ? 'Automatisch (eine Platine)' : 'Automatic (one board)'}</option>
+                                        {s040Parts.map(part => <option key={part.id} value={part.id}>{part.id}</option>)}
+                                    </select>
+                                </label>
+                            ) : null}
+                            {this.state.kind === 'labwired' &&
+                                ['firmware:esp32s3-merged-flash', 'firmware:esp32-4848s040-merged-flash'].includes(this.state.labwiredChip) ? (
+                                <label title={this.tx('esp32s3FlashHint')} style={{display: 'flex', alignItems: 'center', gap: 4}}>
+                                    {this.tx('esp32s3Console')}
+                                    <select data-esp32s3-console value={this.state.esp32s3Console}
+                                        disabled={running || paused || busy}
+                                        onChange={e => {
+                                            this._teardownRunner();
+                                            this.setState({esp32s3Console: e.target.value, runner: null,
+                                                ui: {phase: 'idle', message: ''}});
+                                        }}
+                                        style={{...BTN, padding: '3px 6px'}}
+                                    >
+                                        <option value="uart0">{'UART0'}</option>
+                                        <option value="usb_serial_jtag">{'USB Serial/JTAG'}</option>
+                                        <option value="both">{this.tx('esp32s3Both')}</option>
+                                    </select>
+                                </label>
                             ) : null}
                         </span>
                     ) : null}
@@ -1943,6 +2012,9 @@ class DebugPanel extends React.Component {
                         {this.tx(phase) || phase}
                     </strong>
                     {message ? <span style={{color: '#7f8c8d'}}>{message}</span> : null}
+                    {noImageLoaded ? <span data-debug-no-image style={{color: '#7f8c8d'}}>
+                        {this.tx('noImageLoaded')}
+                    </span> : null}
                 </div>
 
                 {/* What the user has marked, and what this build can actually do

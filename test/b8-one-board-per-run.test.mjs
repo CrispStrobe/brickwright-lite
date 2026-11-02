@@ -120,6 +120,7 @@ test('the circuit tab shows a runner\'s board only while its run lives', () => {
     const runnerBoard = {id: 'runner'};
     const host = (state) => {
         const self = {state: {...state}, _markReactUpdate () {}, labelForBlock: () => 'x',
+            releaseEsp32S040Input () {}, // This fixture owns an ordinary board with no touch input.
             setState (patch) { Object.assign(self.state, typeof patch === 'function' ? patch(self.state) : patch); }};
         return self;
     };

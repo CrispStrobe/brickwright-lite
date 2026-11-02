@@ -108,7 +108,7 @@ try {
     await openCodeActions(page);
     await page.waitForSelector('[data-testid="bw-open-file"]', {timeout: 30000});
 
-    const input = page.locator('input[type="file"][accept*=".hex"]');
+    const input = page.getByTestId('bw-open-file').locator('input[type="file"][accept*=".hex"]');
     check('the Open button offers .hex', await input.count() > 0);
 
     // ── the whole point: a compiled game, opened, running ──

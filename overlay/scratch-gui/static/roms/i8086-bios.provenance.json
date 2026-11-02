@@ -10,19 +10,19 @@
     "vendoredAs": "i8086-bios.asm",
     "license": "MIT",
     "sha256": "c9cbc1fb86c24d97d7f5c679c85b03df6024d62c33ae6931c2df3ce69fd02a35",
-    "sha": "639d9f0996351b0addb6ee5d7049ca7e8b7be957",
-    "date": "2026-10-19",
+    "sha": "cda9d13b3e5b4a3e40854f45e04d110ab2a57ef3",
+    "date": "2026-11-02",
     "lastTouchedBy": {
-      "sha": "639d9f0996351b0addb6ee5d7049ca7e8b7be957",
-      "subject": "Restore base files omitted by sparse-index initialization",
-      "date": "2026-10-19"
+      "sha": "de39245b0f74ade850e05efb93867c700646b57b",
+      "subject": "Add explicit unbuffered BIOS build and reproducible wired POST diagnostics",
+      "date": "2026-09-08"
     }
   },
   "assembler": {
     "path": "node_modules/bw-board/src/i8086-asm.js",
     "sha256": "3270c33885fbb6524ceaa727a1600570fe974e0bb4bc3488d1ecda894fdb0841"
   },
-  "pinAtBuild": "c87cfa325a7b599846c1c4088a408eeabb83daaa",
+  "pinAtBuild": "cda9d13b3e5b4a3e40854f45e04d110ab2a57ef3",
   "ancestorOfPinAtBuild": true,
   "behindPinBy": 0
 }

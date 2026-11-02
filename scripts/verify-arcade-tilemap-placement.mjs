@@ -118,7 +118,7 @@ try {
     await page.waitForSelector('[role="tab"]', {timeout: 60000});
     await page.locator('[role="tab"]', {hasText: 'Code'}).first().click();
     await openCodeActions(page);
-    await page.locator('input[type="file"][accept*=".hex"]').setInputFiles(fixture);
+    await page.getByTestId('bw-open-file').locator('input[type="file"][accept*=".hex"]').setInputFiles(fixture);
     const text = await waitFor(() => page.evaluate(() => document.body.innerText || ''), t => /sprite\(s\)/i.test(t), 60000);
     check('the platformer imports', /sprite\(s\)/i.test(text));
     await page.getByRole('button', {name: /To blocks|Zu Blöcken/i}).first().click({force: true});
