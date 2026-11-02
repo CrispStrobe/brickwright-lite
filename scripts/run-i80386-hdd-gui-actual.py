@@ -4209,9 +4209,12 @@ def actual_v9_dispatch_policy(selected,source):
 def bind_actual_v9_event(raw,prelude,expected,env):
     need(type(raw) is bytes and 0<len(raw)<=INVENTORY_FAILURE_EVENT_CAP,'bounded actual9 dispatch event')
     event=decode(raw);inputs=event.get('inputs')
-    need(inputs=={'protocol':'actual-v9','pull_request':str(prelude['pullRequest']),
-         'source_head':prelude['source']['head'],'source_ref':prelude['dispatch']['ref'],
-         'prelude_sha256':expected,'request_sha256':'','tag_name':''},'closed exact actual9 dispatch inputs')
+    selected={'protocol':'actual-v9','pull_request':str(prelude['pullRequest']),
+         'source_head':prelude['source']['head'],'source_ref':prelude['dispatch']['ref'],'prelude_sha256':expected}
+    # GitHub omits empty-string workflow_dispatch inputs from the event payload
+    # (observed for both gh -f k= and REST "" dispatches). Only the two V9-empty
+    # historical inputs may be omitted; present they must still be ''.
+    need(inputs in (selected,dict(selected,request_sha256='',tag_name='')),'closed exact actual9 dispatch inputs')
     need(event.get('ref')==prelude['dispatch']['ref'] and
          event.get('repository',{}).get('full_name')==REPOSITORY and
          event.get('sender',{}).get('login')=='CrispStrobe','owned actual9 dispatch event')

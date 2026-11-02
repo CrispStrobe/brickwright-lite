@@ -53,6 +53,13 @@ A successor pull request on a `lane/` branch carries the event; it must pass
 every enabled exact-head check (with `ci:full`) and bind its own successful
 Build artifact before selection. Steps 1-5 below otherwise apply unchanged.
 
+The first successor event (run 41449169306) failed its source guard before any
+setup, inventory or ACK: GitHub omits empty-string dispatch inputs, so the
+event lacked `request_sha256` and `tag_name`. That slot is spent. PR1627 now
+admits exactly the omitted form as well (see
+[the claim](../lanes/2026-11-02-x86-actual9-dispatch-inputs.md)); a new event
+needs its own selection, Build and audit.
+
 **Scope:** [PR1540](https://github.com/CrispStrobe/brickwright-lite/pull/1540),
 the successor to the now-closed PR1318. Start with
 [`lanes/2026-10-28-x86-finite-v10-resolver-kind.md`](../lanes/2026-10-28-x86-finite-v10-resolver-kind.md),

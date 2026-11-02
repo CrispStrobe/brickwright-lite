@@ -1251,7 +1251,9 @@ def bind_finite_v10_event(raw,head,expected,env):
     need(prelude['source']['head']==head,'F10 prelude source identity')
     event=decode(raw)
     need(event.get('repository',{}).get('full_name')==REPOSITORY and event.get('sender',{}).get('login')=='CrispStrobe' and event.get('ref')==prelude['dispatch']['ref'],'owned exact V9 dispatch event')
-    need(event.get('inputs')=={'pull_request':str(prelude['pullRequest']),'source_head':head,'request_sha256':'','tag_name':'','protocol':'actual-v9','source_ref':prelude['dispatch']['ref'],'prelude_sha256':env['BW_GUI_HDD_ACTUAL_V9_PRELUDE_SHA256']},'closed V9 prelude-only workflow inputs')
+    selected={'pull_request':str(prelude['pullRequest']),'source_head':head,'protocol':'actual-v9','source_ref':prelude['dispatch']['ref'],'prelude_sha256':env['BW_GUI_HDD_ACTUAL_V9_PRELUDE_SHA256']}
+    # GitHub omits empty-string dispatch inputs; only the two V9-empty inputs may be absent.
+    need(event.get('inputs') in (selected,dict(selected,request_sha256='',tag_name='')),'closed V9 prelude-only workflow inputs')
     need(env.get('GITHUB_REPOSITORY')==REPOSITORY and env.get('GITHUB_EVENT_NAME')=='workflow_dispatch' and env.get('GITHUB_ACTOR')=='CrispStrobe' and env.get('GITHUB_RUN_ATTEMPT')=='1' and env.get('GITHUB_JOB')=='actual-v9' and env.get('BW_EXPECTED_HEAD')==head and re.fullmatch('[1-9][0-9]{0,19}',env.get('GITHUB_RUN_ID','')),'first owned same-job V9 phase')
     need(env.get('GITHUB_WORKFLOW_SHA')==head and env.get('GITHUB_WORKFLOW_REF')==REPOSITORY+'/.github/workflows/i80386-hdd-gui-actual.yml@'+prelude['dispatch']['ref'],'exact source branch executing workflow')
     return template

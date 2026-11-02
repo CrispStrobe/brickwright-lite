@@ -6678,6 +6678,22 @@ test('GUI consumer explicitly matches current canonical Board and CUI declaratio
 });
 const producerV10Controls = String.raw`
 class ProducerV10(unittest.TestCase):
+    def test_actual9_dispatch_inputs_admit_only_omitted_empty_historical_inputs(self):
+        head='a'*40;ref='refs/heads/lane/manufactured-inputs'
+        prelude={'pullRequest':123,'source':{'head':head},'dispatch':{'ref':ref}}
+        env={'GITHUB_REPOSITORY':c.REPOSITORY,'GITHUB_EVENT_NAME':'workflow_dispatch','GITHUB_ACTOR':'CrispStrobe','GITHUB_RUN_ATTEMPT':'1',
+             'GITHUB_RUN_ID':'7','GITHUB_JOB':'actual-v9','GITHUB_REF':ref,'GITHUB_REF_TYPE':'branch','GITHUB_REF_NAME':ref[len('refs/heads/'):],
+             'GITHUB_SHA':head,'GITHUB_WORKFLOW_SHA':head,'BW_EXPECTED_HEAD':head,'GITHUB_WORKFLOW_REF':c.REPOSITORY+'/'+c.ACTUAL_V8_WORKFLOW+'@'+ref}
+        base={'protocol':'actual-v9','pull_request':'123','source_head':head,'source_ref':ref,'prelude_sha256':'b'*64}
+        def event(inputs):return E({'ref':ref,'repository':{'full_name':c.REPOSITORY},'sender':{'login':'CrispStrobe'},'inputs':inputs})
+        for inputs in (base,dict(base,request_sha256='',tag_name='')):
+            c.bind_actual_v9_event(event(inputs),prelude,'b'*64,env)
+        bad=[dict(base,request_sha256=''),dict(base,tag_name=''),dict(base,request_sha256='c'*64,tag_name=''),
+             dict(base,request_sha256='',tag_name='x'),{k:v for k,v in base.items() if k!='prelude_sha256'},dict(base,extra=''),
+             dict(base,pull_request='124'),dict(base,protocol='actual-v8'),dict(base,pull_request=123),None]
+        for inputs in bad:
+            with self.subTest(inputs=repr(inputs)):
+                with self.assertRaisesRegex(ValueError,'closed exact actual9 dispatch inputs'):c.bind_actual_v9_event(event(inputs),prelude,'b'*64,env)
     def role(self):
         return {'path':'/etc/resolv.conf','allowedKinds':['regular','symlink'],'symlinkAlternatives':[{'linkText':'../run/systemd/resolve/stub-resolv.conf','target':'/run/systemd/resolve/stub-resolv.conf'}]}
     def template(self):
