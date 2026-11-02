@@ -1,0 +1,10 @@
+{
+ "author": "CrispStrobe",
+ "license": "BSD-3-Clause",
+ "files": {
+  "models/remote-pivot.ldr": "5ae709b12107c6759420ba74c8e4554e1ec337deb7bff37ca0e5150dbd0f43a4",
+  "programs/remote-pivot.bw": "26565cd4225d3b40f60a17bfb3430a089977fcd77d80c8d856228949e0d8607e",
+  "LICENSE.txt": "a096c77ac7c151875cdcfcc89285d7372701076a3e53e29b3ee8abcd4e71ec9e",
+  "SOURCES.md": "33fb930c4acb72286be1875811c5c8a3f3d59135c0cb27985afaaa9d504e7118"
+ }
+}
