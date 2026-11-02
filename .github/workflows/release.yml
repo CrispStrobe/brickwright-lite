@@ -259,10 +259,20 @@ jobs:
           # (without --deep, so the child keeps its own entitlements).
           RENODE_DIR="$APP_PATH/Contents/Resources/renode"
           test -x "$RENODE_DIR/renode"
+          # Mac App Store validation requires app-sandbox on EVERY executable
+          # (90296; 0.1.29's .NET `createdump` helper failed it), so helper
+          # executables get the same sandbox + inherit child entitlements as the
+          # host; libraries are signed without entitlements, as before.
           find "$RENODE_DIR" -type f ! -path "$RENODE_DIR/renode" -print0 | while IFS= read -r -d '' f; do
-            if file -b "$f" | grep -q '^Mach-O'; then
-              codesign --force --timestamp --options runtime --sign "${{ secrets.MACOS_SIGNING_IDENTITY }}" "$f"
-            fi
+            kind=$(file -b "$f")
+            case "$kind" in
+              Mach-O*executable*)
+                codesign --force --timestamp --options runtime \
+                  --entitlements apps/tauri/src-tauri/entitlements-renode-child.plist \
+                  --sign "${{ secrets.MACOS_SIGNING_IDENTITY }}" "$f" ;;
+              Mach-O*)
+                codesign --force --timestamp --options runtime --sign "${{ secrets.MACOS_SIGNING_IDENTITY }}" "$f" ;;
+            esac
           done
           codesign --force --timestamp --options runtime \
             --entitlements apps/tauri/src-tauri/entitlements-renode-child.plist \
