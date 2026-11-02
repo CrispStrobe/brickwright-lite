@@ -18,7 +18,7 @@ import {multiplayerPlayerSourceCalls} from './multiplayer-player-source.js';
 import {staticSdkNamespaceReceivers} from './static-sdk-namespaces.js';
 import {consoleInspectSourceCalls} from './console-inspect-source.js';
 import {SDK_FONT_FIELDS} from './sdk-font-value-descriptors.js';
-import {ordinaryPlayerScoreNumberCalls,ordinaryCameraPropertyNumberLeaves,ordinaryMathNumberCalls} from './ordinary-primitive-sdk-number-source.js';
+import {ordinaryPlayerScoreNumberCalls,ordinaryCameraPropertyNumberLeaves,ordinaryMathNumberCalls,ordinarySceneBackgroundNumberCalls} from './ordinary-primitive-sdk-number-source.js';
 import {ordinarySceneClockNumberCalls} from './ordinary-scene-clock-number-source.js';
 import {createOrdinaryMusicNumberSource} from './ordinary-music-number-source.js';
 import {createDestroyedSpriteCallbackNumberSource} from './destroyed-sprite-callback-number-source.js';
@@ -194,6 +194,7 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
         return initialized(node.index);
     };
     const ordinaryNumbers=ordinaryPrimitiveSdkNumbers?ordinaryPlayerScoreNumberCalls(program,safeClockIndex):null;
+    const sceneBackgroundNumbers=ordinaryPrimitiveSdkNumbers?ordinarySceneBackgroundNumberCalls(program):null;
     const parseIntegerNumbers=ordinaryPrimitiveSdkNumbers&&ordinaryParseIntegerNumbers?createOrdinaryParseIntegerNumberSource(program):null;
     let parseIntegerNumberUsed=false;
     let stringCharCodeNumbers=null,stringCharCodeNumberUsed=false;
@@ -318,7 +319,7 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
         else if(['Undefined','Null','String','Number','Boolean'].includes(node.type))add(current,node.type);
         else if(node.type==='Member'&&frameDeltaNumbers?.isNumberRead(node)){frameDeltaNumberUsed=true;add(current,'Number');}
         else if(musicNumbers?.has(node)){musicNumberUsed=true;add(current,'Number');}
-        else if(ordinaryNumbers?.has(node)||cameraPropertyNumbers?.has(node)||mathNumbers?.has(node)||sceneNumbers?.has(node)||buttonEventNumbers?.has(node)||spriteAyNumbers?.has(node)||cameraNumberInput?.has(node))add(current,'Number');
+        else if(ordinaryNumbers?.has(node)||sceneBackgroundNumbers?.has(node)||cameraPropertyNumbers?.has(node)||mathNumbers?.has(node)||sceneNumbers?.has(node)||buttonEventNumbers?.has(node)||spriteAyNumbers?.has(node)||cameraNumberInput?.has(node))add(current,'Number');
         else if(destroyedNumbers?.has(node)){destroyedNumberUsed=true;add(current,'Number');}
         else if(spriteAyNumbers?.primitiveHas?.(node)){for(const type of ['Number','String','Boolean','Null','Undefined'])add(current,type);}
         else if(node.type==='Call'&&sdk.has(node.callee)&&path(node.callee)==='game.askForString')add(current,'String');

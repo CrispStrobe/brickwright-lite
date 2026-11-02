@@ -534,9 +534,11 @@ function create(runtime, cells, scoreOwner=null, sceneClock=null, frameDelta=nul
                     if(!SPRITE_NUMBER_PROPERTIES.has(property))return false;
                     origins?.add(node);domains?.add('number');if(property==='lifespan')domains?.add('undefined');return true;
                 }
-                if(!player&&domains&&['arcade_signNumber','arcade_truncateNumber','arcade_controllerStep','arcade_randomNumber'].includes(op)){
+                if(!player&&domains&&['arcade_signNumber','arcade_truncateNumber','arcade_controllerStep','arcade_randomNumber','arcade_backgroundColor'].includes(op)){
                     // These reporters return a Number on every normal completion; an operand the
-                    // block cannot convert throws, which supplies no value.
+                    // block cannot convert throws, which supplies no value. The input-free
+                    // background color reads state its only writer stores as Number(COLOR)||0
+                    // (scene.backgroundColor(): number in the pinned SDK).
                     origins?.add(node);domains.add('number');return true;
                 }
                 if(!player&&op==='arcade_getPlayerScore'){
