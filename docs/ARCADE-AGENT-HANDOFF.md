@@ -25,6 +25,319 @@ Arcade typings) so more operands get an exact static proof instead of the
 runtime dispatch. `scripts/verify-arcade-numeric-authoring-gui.mjs` now
 asserts that the unproven `music tempo + 1` exports through that helper with
 no refusal details; the panel's collapse and dismiss controls stay covered.
+## Fresh-agent checkpoint — 2026-10-29
+
+Start with [the lane protocol](../lanes/PROTOCOL.md), the active
+[Arcade integration claim](../lanes/2026-10-26-arcade-forward-integration.md),
+and this section. Refresh main, branch ownership, pull request heads and checks
+before changing anything. The prepared work is on
+[`lane/arcade-created-field-receivers-20261029`](https://github.com/CrispStrobe/brickwright-lite/tree/lane/arcade-created-field-receivers-20261029),
+not yet on [PR #1554](https://github.com/CrispStrobe/brickwright-lite/pull/1554)
+or main. The live PR's last observed head was `6b811d1d`; its build and numeric
+authoring job passed, but all six unit shards and the full-CI request gate
+failed. The 32 distinct failing test identities in those shards are not corpus
+rows. Preserve the original failures and do not report this PR as ready to land.
+
+The latest historical raw census is **184 inputs: 147 translated, 36 partial,
+one parse failure**. It predates the prepared candidate. No application has
+been promoted by the source-only work below, and the count is not a guarantee
+that all 147 run correctly on every route.
+
+The prepared branch includes creation-event and callback Array-effect proofs,
+SDK name inspection that avoids unrelated getters, a classless export crash
+repair, a narrow `charCodeAt` numeric normal-result proof, and a pointwise proof
+for an initialized startup Array self-update. The latter makes the maintained
+compound-arithmetic fixture pass a source-only importer, Creator and exporter
+check. Its three focused modules are
+`test/native-array-startup-indexed-primitive.test.mjs`,
+`test/native-array-startup-issuer-boundaries.test.mjs` and
+`test/native-array-startup-indexed-export.test.mjs`. Their last local runs
+passed 6, 3 and 1 tests respectively; they do not qualify VM, SB3, PXT or browser
+behavior. Other source controls and their restrictions are described below.
+
+Work in this order:
+
+1. **Compose and qualify the prepared branch.** Refresh the live PR and main;
+   preserve concurrent owners' changes and merge normally. Check the prepared
+   candidate's tree and existing claim, then publish one successor only when
+   the existing CI queue and owners allow it. Use the automatic checks for that
+   exact head; do not dispatch duplicate runs or add `ci:full` casually. Every
+   enabled final-head check must succeed before merging, including the request
+   gate if it remains enabled. Run affected original-PXT, native and browser
+   checks when the actual changes require them. Verify the reviewed and merged
+   trees and parents; predecessor results do not qualify a successor.
+2. **Diagnose actual export failures.** Preserve each first official log and
+   artifact once. The reference Array test can retain its project and result
+   through `ARRAY_ALIAS_EVIDENCE`; the callback test has the optional
+   `BW_ARRAY_CALLBACK_EVIDENCE_DIR` hook. Coordinate their upload with the
+   workflow owner rather than changing another lane's workflow. The compound
+   arithmetic test emits its structured post-VM refusal and generated draft as a
+   TAP diagnostic on failure. Use the actual failing operand, writer and source
+   order to select a repair; leave assertions and uncertainty intact. In
+   particular, source-only success for `rows[0]` does not identify the official
+   post-VM operand. The SDK Sprite collection callback index and indexed Image
+   pixel result are distinct unconfirmed candidates, not blanket type rules.
+3. **Recover and rerun the corpus on an appropriate external worker.** Freeze
+   the same 184 inputs, hashes, candidate and observer; retain every first
+   outcome and compare import, export/reimport, original MakeCode execution,
+   Lite execution and controller/editor behavior separately. The historical
+   partials include missing art and dependency contexts; use authentic lawful
+   project resources and report unavailable context rather than inventing it.
+   Prepare an offline dependency closure for the worker before scheduling a
+   run. Do not run large suites, browser builds or corpus jobs on a shared
+   resource-constrained host. Promote a row only after its complete program and
+   required routes pass; report old and new denominators and regressions.
+4. **Close authoring gaps alongside conversion.** For each implemented
+   operation, verify Blocks and pseudocode editing, graphic or tile editing when
+   applicable, save/reopen, export to MakeCode and reimport, with actual runtime
+   behavior. Record unsupported operations explicitly and retain failing cases;
+   converter acceptance alone is not GUI or game parity.
+
+## Current qualification and next failure families
+
+[PR #1554](https://github.com/CrispStrobe/brickwright-lite/pull/1554) remains
+unmerged at `6b811d1df941815a54a7409d603d56318e12dbee`. Its six failed unit
+jobs contain **32 distinct blocking tests**, compared with 33 at the preceding
+checkpoint: the gate-shape control is repaired and no new failing test appeared.
+The [Tauri run](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40830556918)
+passed; its actual checkout tree equals the reviewed tree and contains the
+unchanged submitted Rust fixture repair. This does not erase earlier failures.
+The [Build run](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40830557085)
+has successful build output but failed unit checks and a failed full-CI request
+gate; its official numeric job passed. Its original log and proof artifact were retained and independently checked, including all five authoring records and the clean export capture. Do not duplicate running qualifications or
+apply a full-CI label for this continuation.
+
+The raw application census remains **184 inputs: 147 translated, 36 partial,
+1 parse failure**. Unit-test counts are not application completion counts.
+
+The retained historical 36-partial import report also gives a useful starting
+point for the next corpus triage: ten partial inputs report unreadable background
+artwork; three report a projectile factory used as a value; and three each report
+`setVelocity` or `setStayInScreen` through the legacy stage fallback. Some inputs
+also lack referenced song or animation resources and package functions. These
+counts overlap and describe that historical report, not a current candidate
+measurement. Inspect each original project and its available package/assets
+before deciding whether to fix resolution, preserve an explicit missing-input
+report, or implement a runtime operation. Do not fabricate absent artwork or
+count a source-only fix as a completed game. The retained method cases also
+report unresolved creation artwork: the current modern Sprite route already
+implements velocity and stay-on-screen, but declines the whole route if a
+creation image cannot be resolved. Its legacy fallback then emits the method
+warnings. Diagnose the original file-map, generated resources and dependency
+context before changing that dispatch; duplicating legacy motion support would
+not establish the missing Sprite or image behavior.
+
+One concrete context example is the [pinned upstream free-throw tutorial](https://github.com/microsoft/pxt-arcade/blob/8ae4f42df2b2f4a0472b0da04c3cdcd3438dbb02/docs/tutorials/free-throw.md#L625),
+which declares an unpinned external artwork package. Its
+[manifest](https://github.com/kiki-lee/throw_imgs/blob/master/pxt.json) lists
+[image resources](https://github.com/kiki-lee/throw_imgs/blob/master/images.g.jres).
+The tutorial and package are separate sources: the tutorial's license does not
+establish the artwork package's license, and the manifest version does not
+identify an immutable dependency revision. Verify both provenance and applicable
+license before retaining or redistributing those assets. Where a user supplies
+an actual project and lawful resources, pass the original file map to the
+importer and preserve their bytes; leave missing assets explicit otherwise.
+
+A focused synthetic control in `test/arcade-supplied-gallery-context.test.mjs`
+now exercises the existing dependency-preparation path with genuine annotated
+fixed-instance declarations and supplied JRES bytes. Its imported project has
+no unsupported entries and retains background, velocity and stay-on-screen
+blocks; a missing resource is refused. This is a source-level control, not a
+complete game or license determination. JRES namespace metadata by itself does
+not declare a TypeScript member; require the real configured source binding.
+
+Continue in this order:
+
+1. The terminal numeric evidence for the current live PR has been retained and
+   independently checked. Qualify the prepared receiver repairs on the final
+   composed head without removing assertions or borrowing predecessor results.
+2. Qualify the creation-callback Array reset repair. Its real reimported
+   callback resets `refs`, copies the creation-event Sprite, writes a primitive
+   trace, reads a declared instance field, then overwrites `refs` with
+   `sprites.allOfKind`. The new effect proof accepts that retained block graph;
+   the unchanged full export/reimport and original PXT/native controls still
+   need external execution. Preserve negatives for accessors, inheritance,
+   arbitrary property access, coercion, authored calls, captures and yields.
+3. Continue native-addition receiver/result/initialization work from the actual
+   failing operands. In the reference-Array fixture, preserve the early
+   `readText()`/`readArray()` startup calls, aliases and mutations. Inspect each
+   leaf of the update-handler witness, then its concatenations. Native result
+   domains and occurrence initialization remain separate obligations.
+   The reference-Array fixture itself passes a bounded source-domain probe; its
+   retained failure is in the exported program. On a failure the test writes
+   structured refusal and generated source as a TAP diagnostic for the standard
+   unit log, unless it contains a local path. The test also saves
+   `export-project.json` and `export-observation.json` before the unchanged
+   assertion when `ARRAY_ALIAS_EVIDENCE` is set. In the next authorized hosted
+   run, set that variable to an artifact directory and upload it even on
+   failure. Inspect `refusalEvidence.nativeAdditionDraft` and the operand details
+   to bind the failure to its real producer before changing the domain proof.
+   Run the full original PXT path; do not set `ARRAY_ALIAS_NATIVE_ONLY`.
+4. Main now contains the reference-instrument owner's historical-study repair.
+   The prepared integration preserves both its exact-byte sealed-study checks
+   and the Arcade branch's separate frozen-controller checks. The prior live PR
+   reported a stale-pin guard and two collector failures; run the combined head
+   to establish whether those failures are resolved. Do not substitute a new SHA
+   into historical fingerprints or weaken collector counts. Final landing still
+   requires every enabled exact-head gate and applicable runtime qualification.
+
+The callback prefix proof now also admits a strict comparison between the
+fixed first creation-event Sprite's plain declared data field and a primitive
+literal expression. It inventories physical classes and inheritance, refuses
+accessors and SDK collisions, and expires if the underlying SDK descriptor
+suppliers or their prototypes change. The retained full reimport graph's
+previously refused Array input now passes this component proof. Full export,
+PXT, native, Code/Blocks and saved-project checks remain pending; this does not
+promote a corpus app. The separate ordinary symbol-hygiene path now reads SDK names from own data
+slots without materializing unrelated class metadata. Its closed-entry receipt
+also expires when those name suppliers change. Other SDK consumers need their
+own getter-safety assessment; this change does not certify them.
+
+The callback prefix proof now also admits an exact non-cloud global write when its initial value and all physical writers preserve a closed primitive domain. Unknown effects, calls, monitors and incompatible writers refuse; this is only a frame-effect fact. The following class-field read uses the separate bounded proof above.
+
+The local reset proof can cross an inline or physical shadow primitive literal written to a different private local, with the same frame and prototype safeguards as the event copy. The actual trace and instance-field effects still need separate proof.
+
+The local reset proof also refuses conditional overwrites when their condition can read the reset cell, or when either branch executes an unproved statement before overwriting it. Inline primitive conditions and immediate overwrites retain the bounded path; physical shadow conditions remain conservatively refused. The focused regression is in `test/project-event-copy-reset-prefix.test.mjs`.
+
+The class-receiver validation is now also available on the empty-class export
+model. A project without class declarations previously threw during export
+when the new final validation was called; a focused import-to-export regression
+now covers both classless and creation-handler cases. The prompt fixture no
+longer throws in source-only export, but still reports a native-addition refusal
+for the actual `result` producer; its full saved-project runtime and PXT paths
+remain pending.
+
+## Prepared repair: hoisted private Array resets
+
+`local-array-declaration-reset-source.js` can now discount an uncaptured local
+Null/Undefined declaration reset followed by a fresh empty Array overwrite
+across unrelated literal declarations and literal assignments to other locals
+in the same function body. It does not grant an initialized read or index fact.
+Calls, pauses, properties, indices, captures, dynamic scope and control-flow
+statements still refuse. Unindexed candidate identifiers also refuse; unrelated
+object shorthand no longer invalidates the entire program. The focused and
+existing controls pass, including the unchanged pause negative; five guard cuts
+were detected.
+
+A separate private synchronous-prefix evaluator now handles a bounded actual
+single startup entry, ordinary called helper bodies, primitive operations,
+fresh Array identities and alias mutations, and both branches of a proved strict
+comparison. It refuses unknown calls, pauses, recursion, dynamic scope, unsafe
+coercion, prototype changes, candidate exposure and unproved control flow. It
+supplies only reset non-exposure, never an Array, result or initialization fact.
+The supported profile requires an actually interpreted ordinary call; this is a
+conservative limit, not a claim about call-free prefixes. Existing pause and
+general-branch negatives remain unchanged.
+
+The retained source-only emitted reference-Array draft now passes its complete
+native-addition domain check. This draft came from the imported project before
+VM save/reload, so the unchanged hosted post-load fixture still needs its own
+capture and full original/native/export/reimport result. The original source-only
+full-export CPU-limit failure remains a separate result; no corpus app is
+promoted by this proof.
+
+## Prepared repair: normal mutation effects on nullable Array alternatives
+
+`source-value-producers.js` now has an internal mutation-only view of actual
+Array allocation tokens plus Null/Undefined. For example,
+`let empty=[]; let nested=[empty]; nested[0].push(9)` must retain the Number
+writer into `empty`, even though indexing `nested` also has an Undefined
+alternative. On an absent receiver the operation faults; on the actual Array
+alternative it still mutates that allocation.
+
+This view propagates indexed/update/push/unshift writes and method/prototype
+poisoning. It grants no strict Array receiver, initialization, callback entry or
+push/read result. The existing nullable-length theorem retains its own closed
+source requirements. Unknown and non-Array alternatives cannot use this new
+view: mutating mixed receivers instead conservatively poison their possible real
+allocation tokens with an unsafe-method marker and Opaque elements. Incompatible
+and reference element writers remain in their real domains.
+
+The first three focused controls failed on the predecessor. Five groups now
+pass, covering nested pushes, Null bindings, poisoning, declared-type conflicts,
+reference elements and unknown receiver alternatives. Four deliberate cuts check
+mutation propagation, strict result separation and both poisoning paths. Existing nullable-length
+and native-domain regression groups remain required. These source facts alone
+close no complete application or native-addition refusal.
+
+```sh
+node --test test/source-nullish-array-mutation-effects.test.mjs
+node --test test/arcade-nullable-array-length.test.mjs
+node --test test/native-array-binary-domain.test.mjs
+```
+
+## Prepared follow-up: creation-handler class field receivers
+
+The `lane/arcade-created-field-receivers-20261029` branch prepares the next
+exporter repair. The existing full control is the post-`setKind` case in
+`test/arcade-extendable-constructor-scalar-source.test.mjs`: the creation handler
+writes 9 into the real instance after its virtual override suffix writes a
+String. A cast or retained class declaration alone is insufficient.
+
+Implemented source boundaries:
+
+- `sdk-sprite-constructor-scalar-effects.js` exposes
+  `fieldReceiverClassesAt(assignment)` for the exact observed assignment. It
+  retains every constructed class observed after complete SDK kind/notification
+  dispatch. Missing fields, unsupported effects or invocations, and partial
+  instance escape deny the whole receipt. Copied/lookalike nodes receive none.
+- `export-arcade.js` records each actual non-class-body field-write emission
+  with its physical target and block. `created-field-export-receivers.js` joins
+  its parsed assignment to a unique occurrence in each complete newly parsed
+  output: plain TypeScript and the ordered executable companion files. Duplicate
+  emissions, ambiguous source occurrences, differing receiver sets, unknown
+  effects or a stale project refuse the receipt. Syntax locates an occurrence;
+  the constructor interpreter establishes the receiver.
+- `object-class-export.js` runs the complete primitive validator after source
+  assembly, including native-helper selection paths. No diagnostic is removed
+  afterward. The receiver obligation applies only to that field writer's
+  `OBJECT` input; RHS production, declared field/type, visibility and readonly
+  checks still run. Private, protected, readonly, accessor and callable fields
+  cannot consume this new receipt. Multiple distinct receiver classes remain
+  refused until their MakeCode field layouts are independently qualified; the
+  source observer deliberately preserves all of them rather than picking one.
+- Receipts supply no general input type, receiver initialization, scalar result,
+  Array fact or writable-field authority. Observed source/project expiry is
+  permanent. Class-body receiver rewriting retains its existing validation.
+
+Focused source controls cover actual override/handler order, class unions,
+lookalikes, partial escape and namespace effects; emission controls cover unique
+physical/source matching, all output variants, expiry and field restrictions.
+Seven deliberate source cuts exercise observation, universal class accumulation,
+source expiry, unique joins, companion validation, readonly enforcement and the
+actual exporter-to-validator connection.
+The minimal real import → blocks → export control returns empty unsupported and
+warnings lists without modifying the project. These are bounded source controls,
+not original-PXT/native/browser or whole-application completion evidence.
+
+```sh
+node --test test/sdk-created-field-receiver-observations.test.mjs
+node --test test/created-field-export-receivers.test.mjs
+node --test test/arcade-created-field-export.test.mjs
+```
+
+Complete the remaining qualification in this order:
+
+1. Finish read-only source review and retain the focused controls and mutation
+   results. Keep the live PR head unchanged until its pending terminal numeric
+   original has been admitted, retained once and independently read.
+2. Compose this follow-up normally into the owned integration branch. Preserve
+   supplier pins, assertions, old failures and other owners' source. Qualify the
+   exact final head through its enabled hosted checks; do not duplicate live
+   runs or infer success from a predecessor.
+3. Run the unchanged original-PXT/native post-`setKind` control and editable
+   Code/Blocks, saved/fresh SB3, export and reimport paths externally. Confirm the
+   final reconstructed output retains creation ordering and final Number result.
+   Exercise incompatible/readonly/private fields, changed receivers, unknown
+   callbacks, source edits and namespace replacement without weakening negatives.
+4. After whole-case evidence, reassess the immutable corpus and update genuine
+   application statuses. No corpus row is promoted by the source controls alone.
+5. A separate continuation may prove compatible inherited field layouts for
+   multiple observed classes; keep this refusal until that exact evidence exists.
+
+The source claim remains the existing Arcade completion campaign. The live PR's
+terminal-original intake and publication remain with its source owner; this
+follow-up stays separate while the live head qualifies.
 
 ## Prepared follow-up: creation callback local Array overwrite
 
@@ -5893,6 +6206,18 @@ or a GUI/SDK/corpus result. See [the exact boundary and remaining acceptance](AR
 
 ## Ordered continuation after the dormant-declaration checkpoint
 
+The string character-code candidate proves only a numeric normal result for a
+direct, current `charCodeAt` call with independently proved primitive receiver
+and index writers. An indexed receiver can still be absent; this proof does not
+establish array element presence, initialization, or successful execution.
+The source-only prompt example now passes its native-addition analysis while
+retaining its String-or-undefined receiver. Ten focused controls and seven
+mutation cuts passed; the affected arithmetic groups passed separately. The
+aggregate local run exceeded its existing CPU limit and is not a passing suite.
+The selected SDK declaration and simulator bytes have focused identity controls;
+the saved-project round trip, original MakeCode execution, browser and native
+behavior still need their own qualification. This result changes no corpus row.
+
 1. Qualify the final narrow stacked candidate once through automatic CI. Run
    the enabled original-PXT/native declaration case, preserve its first result,
    and fix actual failures before any readiness/landing claim. Do not substitute
@@ -5908,6 +6233,33 @@ or a GUI/SDK/corpus result. See [the exact boundary and remaining acceptance](AR
    reads and superclass results. Claim the exact family and ownership boundary
    before edits. A familiar API/property name or desired annotation cannot
    replace the actual initialized receiver, call result and all-writer proof.
+   For the Array callback round-trip failure, first capture the actual exported
+   project, native-addition draft and structured refusal using the existing
+   `BW_ARRAY_CALLBACK_EVIDENCE_DIR` test hook. A reduced source probe suggests
+   an SDK Sprite collection callback index and indexed Image pixel results are
+   separate proof candidates, but it does not identify the failing operand in
+   the executed project. The existing flat-Array callback proof deliberately
+   excludes SDK `allOfKind` results; do not generalize it without independently
+   proving the SDK collection, callback, writer and currentness boundaries.
+   The compound-value arithmetic round trip now emits the actual post-VM
+   addition refusal and generated draft as a TAP diagnostic on failure, before
+   its unchanged assertion. A separate source-only export of the checked-in
+   fixture refuses the indexed left operand of a startup array update. Its
+   producer graph retains the global array's initial null alongside its fresh
+   allocation. The local reset proof does not establish when that global is
+   assigned: a future pointwise proof must close the startup entry and call
+   order, allocation and alias lineage, all writers, intervening effects and
+   source/prototype currentness. Do not discard nullable alternatives globally.
+   Confirm the actual post-VM refusal first; this source-only result does not
+   prove it is the same operand or establish an application completion.
+   A subsequent narrow candidate proves the primitive normal result of that
+   particular startup indexed read when a verified sole entry assigns a fresh,
+   privately populated Array immediately before its self-update. It checks the
+   actual bindings, writers, effects and source/prototype currentness; it does
+   not issue a general Array or element-presence fact. Focused source controls,
+   direct issuer rejection cases and the maintained fixture's importer-to-exporter
+   path pass. The official post-VM diagnostic and full PXT, SB3, browser and
+   corpus qualification remain pending; no partial has been promoted.
 4. Run the immutable corpus and complete original project contexts on a qualified
    external worker, retaining source hashes and the first results. Separate
    import, export/reimport, original PXT execution, Lite execution and controller/
