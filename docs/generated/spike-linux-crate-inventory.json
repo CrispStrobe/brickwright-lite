@@ -6,7 +6,7 @@
  "features": [
   "custom-protocol"
  ],
- "cargoLockSha256": "7a9692b960539df3e8bb8f90f13ffc7d5e5f00ef39063fa285ab6c440ef4f8cd",
+ "cargoLockSha256": "df0a05d081d703aeab3b9fadfee3a342fb9e078c4e568d11915c66b289d2e7b4",
  "counts": {
   "linked": 365,
   "buildTimeOnly": 92,
