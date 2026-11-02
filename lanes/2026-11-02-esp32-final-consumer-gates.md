@@ -6,7 +6,7 @@ The official Build run41390865042 at d2b083e4e877b6be24c08a4847d41fca4f94321a pa
 
 Continue the existing firmware and consumer claims by adopting landed bw-circuit-ui eaa424d7f3214c9aed00af2cd7f47019256a15c2 through vendor-pins.json, the existing pin writer, both normal package installations and locks, generated notices and source evidence. Preserve bw-board cda9d13b3e5b4a3e40854f45e04d110ab2a57ef3 and incoming SB3/micro:bit work. Update only current live supplier declarations and exactly affected source witnesses/admission hashes; historical epochs, measured receipts, validators and activation flags keep their identities and behavior.
 
-Own the missing ESP32-4848S040 classification in overlay/scratch-gui/src/lib/bw-parts/profiles.js, its normal mirror and generated docs/PART-PROFILES.md. Register the truthful existing firmware-only/refusal semantics; this does not implement or advertise blocks compilation. Keep the conformance test's complete registry coverage.
+Own the missing ESP32-4848S040 classification in overlay/scratch-gui/src/lib/bw-parts/profiles.js, its normal mirror and generated docs/generated/PART-PROFILES.md. Register the truthful existing firmware-only/refusal semantics; this does not implement or advertise blocks compilation. Keep the conformance test's complete registry coverage.
 
 Own the already-claimed CircuitTab host lifetime and normal mirror, with focused debugger-pane and circuit-designer contract controls. Retain an existing debugger host through the actual hidden-pane/device-dock transition while preserving lazy cold starts, controller ownership and the persistent runner. Replace the obsolete source-shape assertion with checks of the guarded semantics; retain the solo-to-top and instruments contracts.
 
