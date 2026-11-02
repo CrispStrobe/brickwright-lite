@@ -5,7 +5,7 @@ export const SCHEMA_VERSION = 1;
 // Admission for a new campaign follows the reviewed current packages. Existing
 // run receipts retain the source contracts and observations they actually used.
 export const CONTRACT_SOURCES = Object.freeze({
-    'bw-board': 'cf42ddbd5a98acac64973e972024376dd72cb80b',
+    'bw-board': 'cda9d13b3e5b4a3e40854f45e04d110ab2a57ef3',
     'bw-circuit-ui': '380dc8b7b51e10726035b77f775d753152f9a885'
 });
 export const THERMAL_PROFILE = Object.freeze({volts: .02585, celsius: 26.826793442075882});

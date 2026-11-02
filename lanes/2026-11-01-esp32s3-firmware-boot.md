@@ -76,3 +76,20 @@ and 32 dock/viewport/loading observations with unchanged runner ownership. Those
 targeted diagnostics are separate from a fresh full-application run, which is
 required after the qualified supplier adoption. The original CI failures and
 the earlier 108-check M1 report retain their original source/engine identities.
+
+Qualified supplier adoption (2026-11-02): the immutable
+`labwired-wasm-9c420649` release passed run `41359378516` at producer
+`1c9ed301819f21bdab9fc5c0fb35e82d858e821d`. Board PR723 is merged at
+`cda9d13b3e5b4a3e40854f45e04d110ab2a57ef3`; landed ordinary CI `41374193811`,
+S040 `41374193796` and M1 `41374193817` pass. The consumer adopts those exact
+qualified inputs through its normal package installation, generators and
+provenance checks. Retained S3 firmware and ROM sources remain separately
+identified. CUI remains `380dc8b7b51e10726035b77f775d753152f9a885`.
+
+The current performance workflow's Core checkout, release tag and two Node
+asset hashes follow this qualified engine. Its triggers, budgets, benchmark
+source and pass criteria are preserved. Only the corresponding reviewed
+current-workflow body digest and dependent source profile are rebound; previous
+performance measurements and historical workflow identities keep their original
+meaning. The combined application still requires fresh official build, browser,
+SAMD installed-native and applicable hosted qualification before promotion.
