@@ -548,6 +548,7 @@
       "test/project-conditional-array-entry.test.mjs",
       "test/project-event-copy-reset-prefix.test.mjs",
       "test/arcade-reset-prefix-store-pxt.test.mjs",
+      "test/native-array-startup-indexed-export.test.mjs",
       "test/arcade-scene-background-number.test.mjs",
       "test/arcade-conditional-reset-condition.test.mjs",
       "test/project-conditional-array-value-calls.test.mjs",
