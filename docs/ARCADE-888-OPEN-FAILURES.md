@@ -5,6 +5,37 @@ documented-TODO mechanism. Each failing unit test below originally carried
 `{todo: '<reason> — see docs/ARCADE-888-OPEN-FAILURES.md'}`; no assertion was
 changed. Source of the list: hosted Build run 39297263647 (head f2ecafef1).
 
+## Current status — 2026-11-02
+
+Arcade documented TODO tests: 37 on main `bc39104b`; 33 after #1629 and #1631.
+
+| Group | Before | After | Change |
+|---|---|---|---|
+| A Array receiver | 15 | 14 | update-values prefix row already passed on main (stale marker removed) |
+| B primitive producer | 10 | 9 | `scene.backgroundColor()` proven Number (source rule + native reporter) |
+| C named-array re-import | 3 | 3 | unchanged |
+| F image-mutation probe | 1 | 1 | same cause as G |
+| G exception owner reuse | 1 | 1 | kept: original PXT has one runtime per simulator frame |
+| H Math.idiv nested capture | 1 | 0 | nested parameter captures lifted (#1629) |
+| I liftExporterStops | 1 | 0 | exporter stop machinery lifted (#1629) |
+| timing phase / tile order / do-while | 5 | 5 | intentionally kept |
+
+**Group A decision (operator, 2026-11-02): keep the remaining rows as TODO.**
+A runtime guard that behaves exactly like original PXT for an unproven Array
+receiver is the identity: PXT already faults on a null or non-Array receiver,
+so the guard changes nothing at run time. Emitted wherever the receiver proof
+fails, it would admit every unproven receiver (a blanket allow) and overturn
+nine test files that assert the refusal. The follow-up instead adds per-slot
+proofs for the three or four most tractable rows; each needs flow-sensitive,
+interprocedural initialization (for example `alias=read()` is an Array only
+because the global was initialized before that call).
+
+The remaining B rows are not SDK producers: class constructor/method formals
+(two), possibly absent indexed reads (numeric constants, map results), a
+flow-sensitive string producer, a native bitwise operand (randint; no bitwise
+dispatch helper), a physically edited text leaf, consumed prefix/postfix
+updates and the exporter's nested parallel-handler stop tokens.
+
 ## Qualified follow-up: metadata-only construction — 2026-10-20
 
 The complete three-test `arcade-callable-metadata-construction.test.mjs` now
@@ -98,10 +129,10 @@ hosted checks remain required.
 | A | `test/makecode-arcade-source-typeof-export.test.mjs` | mixed local Array receivers keep array dispatch without changing an independently typed local | Fixed in d865fc9d1: a local first written with an inert primitive literal and immediately overwritten by an Array is discounted like a reset (globals, cell-reading and calling writers unchanged). |
 | A | `test/makecode-arcade-sprite-collections.test.mjs` | allOfKind snapshots preserve sprite identity, kind changes and destroyed references through executable roundtrips | Kept TODO: fails at the second export. The reimported `__bwStartup` declares its locals `null` and assigns them only after `sprites.create(...)` calls, and the start script resets `actors = null` before calling `__bwStartup`. Discounting those resets was tried; it makes 17 refusal tests of `makecode-array-local-reset-proof` fail (e.g. 'managed call, yield and lifecycle commands retain the reset': their wrong inputs get accepted), so it was dropped. Needs the exporter to stop emitting the null prologue, not a wider reset rule. |
 | A | `test/makecode-arcade-text-sprite-converter.test.mjs` | TextSprite source preserves original pixels, aliases, deferred property redraw and membership through editable roundtrips | +   'Array reference arrays_referenceLength ARRAY: requires an actual initialized Array producer and compatible all writers |
-| A | `test/makecode-arcade-update-values.test.mjs` | prefix update in a condition performs required array initialization | Kept TODO, unsound to accept as is: the only writer of `entries` is conditional (`if(++attempts>=5)`). With `let attempts=0` PXT faults at `entries.indexOf(23)` while the VM logs `Array reference is null or expired` and continues (found -1, length 0). Accepting needs a proof that the condition holds (constant evaluation through the `prepare()` call). |
+| A | `test/makecode-arcade-update-values.test.mjs` | prefix update in a condition performs required array initialization | Passes on main (stale marker removed 2026-11-02). |
 | A | `test/makecode-arcade-value-arithmetic.test.mjs` | numeric sums retain their type through index variables and procedure returns | Kept TODO, unsound to accept as is: `rows[shift(0)-1]` is a computed index, so the row may be absent. With `return index+5` PXT faults on `undefined[column]` while the VM continues. Accepting needs interprocedural constant evaluation of the index. |
 | B | `test/makecode-arcade-accessor-pxt-staging.test.mjs` | selected PXT accessor receivers, setters and compound reads keep actual side-effect order across authoring routes | Kept TODO, unsound to accept as is: `pair(receiver().value, ...)` reads a getter returning the constructor formal `n` (`constructor(public n:number)`). Class formals have no call-site obligation, so `new Box(<any>"x")` would make `pair.a` a String. Same gap as the pxt-staging row. |
-| B | `test/makecode-arcade-background.test.mjs` | background color changes in procedures and controller handlers survive all conversion layers | Kept TODO: the producer `scene.backgroundColor()` has no Number rule. It needs a closed-surface source rule (like `ordinaryPrimitiveSdkNumberCalls` for `info.score`) and a matching native producer owner (like the scene clock Number); the source side alone would not discharge the VM constraint. |
+| B | `test/makecode-arcade-background.test.mjs` | background color changes in procedures and controller handlers survive all conversion layers | Fixed 2026-11-02: closed `scene` namespace source rule (`ordinarySceneBackgroundNumberCalls`) plus the native background colour reporter in the Number-on-normal-completion list; `test/arcade-scene-background-number.test.mjs` compares original PXT, Lite and the export. |
 | B | `test/makecode-arcade-managed-number-boundaries.test.mjs` | ordinary-argument physical text across current graph, Code, SB3 and export/reimport | {"fixture":"ordinary-argument","physical":"text","observations":[{"route":"native-current-leaf","calls":0,"errors":["Error: Procedure parameter constraint: valu |
 | B | `test/makecode-arcade-numeric-constant-values.test.mjs` | numeric source constants keep their type in arrays while numeric strings stay strings | Kept TODO: `numbers[0]` may be the out-of-bounds Undefined. A source rule (a literal in-bounds index into unescaped, never popped/shifted/length-written literal Arrays, plus `NumberFormat.<member>` as Number) was prototyped and discharges the source constraint, but the VM inspection then refuses `item of array reference` at runtime (`connected input lacks complete primitive domain evidence`). It needs a matching native producer rule in `console-inspect-values.js`; the source half alone would turn an import refusal into a runtime error, so it was not landed. |
 | B | `test/makecode-arcade-pxt-staging.test.mjs` | selected PXT staging survives actual native, Code, fresh SB3, export and reimport | Kept TODO, unsound to accept as is: `pair(a,b)` is called with class constructor/method formals (`class Box{constructor(a:number,b:number){this.value=pair(a,b)}}`), whose own call sites are outside the ordinary constraint protocol (`constraints()` skips class members). `new Box(<any>"x",0)` would deliver a String to `pair.a`. Needs call-site obligations for class constructors and methods first. |
@@ -121,8 +152,8 @@ hosted checks remain required.
 | E | `test/arcade-native-animation-staging.test.mjs` | edited native resource pixels replace original payload without stale appended frames through fresh SB3 and export | Fixed in 681b3a281: the frame Array producer rejected costume records with no timeline; a malformed animation is still reported. |
 | F | `test/makecode-arcade-generated-images.test.mjs` | generated-image projectiles share live artwork and preserve all four creation modes | Fixed in 681b3a281: the probe constructs without a runtime, which crashed before the fix (same cause as D). |
 | F | `test/makecode-arcade-generated-images.test.mjs` | image.create follows pinned PXT bounds and integer conversion; clones copy pixels independently | Fixed in 681b3a281: the probe constructs without a runtime, which crashed before the fix (same cause as D). |
-| F | `test/makecode-arcade-image-mutation.test.mjs` | VM mutations isolate clones, update transparent collisions, and release renderer skins | Kept TODO: `probeExtension(Arcade, rt)` builds a second Arcade on the test's runtime, so this is group G (see its counter-example). |
-| G | `test/makecode-arcade-buffer-lifetime.test.mjs` | independent Buffer owners in one runtime cannot resolve each other's issued IDs | Kept TODO, unsound to accept as is: `capture`, `arrayCoordinatorReady`, `rejectArrayOperation` and `rejectConditionWait` in `bw-arcade-exceptions.js` resolve ONE owner per runtime. With a second live owner, instance B's array or condition rejection on a thread would be issued through A's signal registry and checked against A's generation. Needs signal and lease routing per owner, not per runtime. |
+| F | `test/makecode-arcade-image-mutation.test.mjs` | VM mutations isolate clones, update transparent collisions, and release renderer skins | Kept TODO (2026-11-02): same root cause as G (the probe builds a second Arcade on the test's runtime). See G for why this stays open. |
+| G | `test/makecode-arcade-buffer-lifetime.test.mjs` | independent Buffer owners in one runtime cannot resolve each other's issued IDs | Kept TODO (2026-11-02, checked against original PXT): the pinned simulator keeps exactly one program runtime per simulator frame. Starting a run kills the previous runtime and board first, `pxsim.runtime` is a single module-level value and `board()` reads `pxsim.runtime.board`; several simulators are separate frames (separate JavaScript realms) and `game.pushScene` is a scene stack inside one game. PXT has no two coexisting game runtimes in one realm, so two live Arcade owners on one Lite runtime have no original behavior to match; the duplicate-owner refusal (`test/arrays-only-coordinator-native.test.mjs`) stays. Lite's replacement path (dispose, then a new claim on PROJECT_LOADED) is the counterpart of PXT's kill-and-restart and is already covered. |
 | H | `test/makecode-arcade-idiv-source.test.mjs` | idiv actual mutable Number aliases ordinary helpers and captured entry dominance qualify | Fixed 2026-11-02: nested function declarations that capture only never-written parameters of their root function are lifted with those parameters passed at each direct call (`liftNestedParameterCaptures`). Original PXT, Lite VM and export agree; written captures, enclosing locals and escapes are still refused. |
 | I | `test/makecode-arcade-loop-control.test.mjs` | condition and update side effects agrees with original PXT and complete roundtrips | Fixed in 63894a733: the inspection domain proof now computes a least fixpoint over flow cycles (`i=advance(i)`). |
 | I | `test/makecode-arcade-loop-control.test.mjs` | for continue and update agrees with original PXT and complete roundtrips | Fixed in 63894a733: the inspection domain proof now computes a least fixpoint over flow cycles (`i=advance(i)`). |
