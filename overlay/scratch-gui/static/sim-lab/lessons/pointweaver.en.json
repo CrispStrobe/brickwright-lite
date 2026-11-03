@@ -1,8 +1,5 @@
 {
-  "version": 1,
-  "id": "pointweaver",
-  "language": "en",
-  "what": "five-bar parallel linkage. Reload the saved lower-left pose. Motor A drives the yellow left input arm and Motor B drives the red right input arm. The blue and orange forearms meet at the retained orange endpoint marker. All five intended joint axes are parallel. Two angular motors drive the base links of a planar five-bar mechanism. The blue and orange forearms meet at an orange endpoint marker. A finite program reaches four rectangular corner poses while exposing the curved endpoint edges produced by synchronized linear motor-angle interpolation.",
+  "what": "Reload the saved lower-left pose. Motor A drives the yellow left input arm and Motor B drives the red right input arm. The blue and orange forearms meet at the retained orange endpoint marker. All five intended joint axes are parallel.",
   "try": [
     "Run the finite program once. Both axes move together to the lower-right, upper-right and upper-left corners, then return to the saved lower-left datum. Use manual jog only within A = −34°…2° and B = −11°…26°. These limits are guidance, not physical stops.",
     "Before opening the analytical preview, predict which edge has the largest departure from its dashed straight command: the lower horizontal edge, either vertical edge, or the upper horizontal edge. Also predict whether the midpoint bows toward larger or smaller Z.",
@@ -16,6 +13,9 @@
     "Vary the input speed and repeat from the saved datum. Does the geometric law change?",
     "Find the passive output and its real bearings. Which physical connection transmits the drive?"
   ],
+  "version": 1,
+  "id": "pointweaver",
+  "language": "en",
   "formula": "|P − E_left| = |P − E_right| = 64 mm; elbow orbit radius = 32 mm",
   "related": [
     "gearbox.ldr",

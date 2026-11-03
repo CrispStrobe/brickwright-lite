@@ -1052,6 +1052,133 @@ export const EXPERIMENTAL_MODELS = Object.freeze([
         "blocked": false
     },
     {
+        "file": "toggle-press.ldr",
+        "title": {
+            "en": "Toggle Press — near-dead-centre ram",
+            "de": "Kniehebelpresse — Schlitten nahe dem Totpunkt"
+        },
+        "example": "toggle-press.bw",
+        "mat": "plain",
+        "manualJog": {
+            "A": {
+                "minDeg": -82,
+                "maxDeg": 0,
+                "stepDeg": 2,
+                "speedDps": 8
+            }
+        },
+        "intro": {
+            "en": "One motor turns a yellow crank. A blue coupler folds the red and orange knee links, pushing an orange ram along two guide rails. The program approaches—but does not cross—dead centre, then returns to the saved datum.",
+            "de": "Ein Motor dreht eine gelbe Kurbel. Eine blaue Koppel knickt die roten und orangefarbenen Kniehebel und schiebt einen orangefarbenen Schlitten auf zwei Führungen. Das Programm nähert sich dem Totpunkt, überschreitet ihn aber nicht, und kehrt zur gespeicherten Nullstellung zurück."
+        },
+        "experimental": true,
+        "blocked": false
+    },
+    {
+        "file": "footfall.ldr",
+        "title": {
+            "en": "Footfall — twelve-link leg-path tracer",
+            "de": "Schrittspur — zwölfgliedrige Beinmechanik"
+        },
+        "example": "footfall.bw",
+        "mat": "plain",
+        "manualJog": {
+            "A": {
+                "minDeg": -5,
+                "maxDeg": 365,
+                "stepDeg": 5,
+                "speedDps": 12
+            }
+        },
+        "intro": {
+            "en": "One motor turns a yellow crank through a full revolution. Blue couplers drive a red upper triangle and an orange lower triangle so the orange foot link traces a closed, walking-like path before returning to the saved datum.",
+            "de": "Ein Motor dreht eine gelbe Kurbel um eine volle Umdrehung. Blaue Koppeln treiben ein rotes oberes und ein orangefarbenes unteres Dreieck an, sodass der orange Fußhebel eine geschlossene, schrittähnliche Bahn zeichnet und zur gespeicherten Nullstellung zurückkehrt."
+        },
+        "experimental": true,
+        "blocked": false
+    },
+    {
+        "file": "phasekeeper.ldr",
+        "title": {
+            "en": "Phasekeeper — equal-angle double-Cardan transmission",
+            "de": "Phasenhalter — gleichwinklige Doppel-Kardankupplung"
+        },
+        "example": "phasekeeper.bw",
+        "mat": "plain",
+        "manualJog": {
+            "A": {
+                "minDeg": -5,
+                "maxDeg": 365,
+                "stepDeg": 5,
+                "speedDps": 18
+            }
+        },
+        "intro": {
+            "en": "One motor drives a yellow input yoke, a blue diagonal shaft and an orange output yoke. Each universal joint bends by the same angle, and the two blue intermediate forks are parallel, so ideal Cardan speed ripple from the first joint is cancelled by the second.",
+            "de": "Ein Motor treibt eine gelbe Eingangsgabel, eine blaue Diagonalwelle und eine orange Ausgangsgabel an. Beide Kardangelenke knicken um denselben Winkel ab, und die beiden blauen Zwischengabeln sind parallel; dadurch wird die ideale Drehzahlschwankung des ersten Gelenks vom zweiten aufgehoben."
+        },
+        "experimental": true,
+        "blocked": false
+    },
+    {
+        "file": "vectorsum.ldr",
+        "title": {
+            "en": "VectorSum — two-input differential mixer",
+            "de": "Vektorsumme — Differentialmischer mit zwei Eingängen"
+        },
+        "example": "vectorsum.bw",
+        "mat": "plain",
+        "manualJog": {
+            "A": {
+                "minDeg": -190,
+                "maxDeg": 190,
+                "stepDeg": 10,
+                "speedDps": 24
+            },
+            "B": {
+                "minDeg": -190,
+                "maxDeg": 190,
+                "stepDeg": 10,
+                "speedDps": 24
+            }
+        },
+        "intro": {
+            "en": "Two opposed angular motors drive the side gears of an open Technic differential. The red carrier represents the average of the two side-shaft angles in a shared axis convention, and a yellow 12-tooth bevel gear drives an orange output pointer from the carrier's red 28-tooth cover.",
+            "de": "Zwei gegenüberliegende Winkelmotoren treiben die Seitenräder eines offenen Technic-Differentials an. Der rote Träger entspricht im gemeinsamen Achsbezug dem Mittelwert der beiden Seitenwellenwinkel; ein gelbes 12-Zahn-Kegelrad treibt den orangefarbenen Ausgangszeiger über den roten 28-Zahn-Deckel des Trägers an."
+        },
+        "experimental": true,
+        "blocked": false
+    },
+    {
+        "file": "pointweaver.ldr",
+        "title": {
+            "en": "PointWeaver — two-motor five-bar path tracer",
+            "de": "Punktweber — Fünfgelenk-Bahnzeichner mit zwei Motoren"
+        },
+        "example": "pointweaver.bw",
+        "mat": "plain",
+        "manualJog": {
+            "A": {
+                "minDeg": -34,
+                "maxDeg": 2,
+                "stepDeg": 1,
+                "speedDps": 8
+            },
+            "B": {
+                "minDeg": -11,
+                "maxDeg": 26,
+                "stepDeg": 1,
+                "speedDps": 8
+            }
+        },
+        "intro": {
+            "en": "Two angular motors drive the base links of a planar five-bar mechanism. The blue and orange forearms meet at an orange endpoint marker. A finite program reaches four rectangular corner poses while exposing the curved endpoint edges produced by synchronized linear motor-angle interpolation.",
+            "de": "Zwei Winkelmotoren treiben die Grundglieder eines ebenen Fünfgelenkgetriebes an. Der blaue und der orange Unterarm treffen sich an einer orangefarbenen Endpunktmarke. Ein endliches Programm fährt vier rechteckige Ecklagen an und macht die gekrümmten Endpunktkanten sichtbar, die durch synchron linear interpolierte Motorwinkel entstehen."
+        },
+        "experimental": true,
+        "blocked": false
+    },
+    {
         "file": "rimrun.ldr",
         "title": {
             "en": "RimRun — equal weight, different roll",
@@ -2889,6 +3016,148 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
             "symmetric gripper",
             "Zahnstange",
             "selbstzentrierend",
+            "experimental",
+            "experimentell"
+        ],
+        "experimental": true
+    },
+    "toggle-press.ldr": {
+        "pieces": 142,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "linkages",
+        "description": {
+            "en": "One motor turns a yellow crank. A blue coupler folds the red and orange knee links, pushing an orange ram along two guide rails. The program approaches—but does not cross—dead centre, then returns to the saved datum.",
+            "de": "Ein Motor dreht eine gelbe Kurbel. Eine blaue Koppel knickt die roten und orangefarbenen Kniehebel und schiebt einen orangefarbenen Schlitten auf zwei Führungen. Das Programm nähert sich dem Totpunkt, überschreitet ihn aber nicht, und kehrt zur gespeicherten Nullstellung zurück."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "toggle linkage",
+            "de": "Kniehebelgetriebe"
+        },
+        "keywords": [
+            "toggle linkage",
+            "dead centre",
+            "toggle press",
+            "Kniehebel",
+            "Totpunkt",
+            "experimental",
+            "experimentell"
+        ],
+        "experimental": true
+    },
+    "footfall.ldr": {
+        "pieces": 120,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "linkages",
+        "description": {
+            "en": "One motor turns a yellow crank through a full revolution. Blue couplers drive a red upper triangle and an orange lower triangle so the orange foot link traces a closed, walking-like path before returning to the saved datum.",
+            "de": "Ein Motor dreht eine gelbe Kurbel um eine volle Umdrehung. Blaue Koppeln treiben ein rotes oberes und ein orangefarbenes unteres Dreieck an, sodass der orange Fußhebel eine geschlossene, schrittähnliche Bahn zeichnet und zur gespeicherten Nullstellung zurückkehrt."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Jansen linkage",
+            "de": "Jansen-Beinmechanismus"
+        },
+        "keywords": [
+            "Jansen linkage",
+            "walking linkage",
+            "foot trajectory",
+            "Strandbeest",
+            "Jansen-Mechanismus",
+            "experimental",
+            "experimentell"
+        ],
+        "experimental": true
+    },
+    "phasekeeper.ldr": {
+        "pieces": 81,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "gears",
+        "description": {
+            "en": "One motor drives a yellow input yoke, a blue diagonal shaft and an orange output yoke. Each universal joint bends by the same angle, and the two blue intermediate forks are parallel, so ideal Cardan speed ripple from the first joint is cancelled by the second. The placement list has 81 entries; add two real universal-joint crosses for 83 physical pieces.",
+            "de": "Ein Motor treibt eine gelbe Eingangsgabel, eine blaue Diagonalwelle und eine orange Ausgangsgabel an. Beide Kardangelenke knicken um denselben Winkel ab, und die beiden blauen Zwischengabeln sind parallel; dadurch wird die ideale Drehzahlschwankung des ersten Gelenks vom zweiten aufgehoben. Die Teileliste enthält 81 Platzierungen; mit zwei echten Kardankreuzen sind es 83 Bauteile."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "double Cardan joint",
+            "de": "Doppelkardangelenk"
+        },
+        "keywords": [
+            "double Cardan",
+            "universal joint",
+            "Hooke joint",
+            "constant velocity",
+            "Kardangelenk",
+            "Gleichlauf",
+            "experimental",
+            "experimentell"
+        ],
+        "experimental": true
+    },
+    "vectorsum.ldr": {
+        "pieces": 122,
+        "motors": 2,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "gears",
+        "description": {
+            "en": "Two opposed angular motors drive the side gears of an open Technic differential. The red carrier represents the average of the two side-shaft angles in a shared axis convention, and a yellow 12-tooth bevel gear drives an orange output pointer from the carrier's red 28-tooth cover.",
+            "de": "Zwei gegenüberliegende Winkelmotoren treiben die Seitenräder eines offenen Technic-Differentials an. Der rote Träger entspricht im gemeinsamen Achsbezug dem Mittelwert der beiden Seitenwellenwinkel; ein gelbes 12-Zahn-Kegelrad treibt den orangefarbenen Ausgangszeiger über den roten 28-Zahn-Deckel des Trägers an."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "differential angle averaging",
+            "de": "Winkelmittelwert im Differential"
+        },
+        "keywords": [
+            "open differential",
+            "angle averaging",
+            "mechanical adder",
+            "Differenzial",
+            "Differential",
+            "experimental",
+            "experimentell"
+        ],
+        "experimental": true,
+        "formula": "C = (B − A)/2; pointer = −(28/12) C (common positive axis of motor B)"
+    },
+    "pointweaver.ldr": {
+        "pieces": 128,
+        "motors": 2,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "linkages",
+        "description": {
+            "en": "Two angular motors drive the base links of a planar five-bar mechanism. The blue and orange forearms meet at an orange endpoint marker. A finite program reaches four rectangular corner poses while exposing the curved endpoint edges produced by synchronized linear motor-angle interpolation.",
+            "de": "Zwei Winkelmotoren treiben die Grundglieder eines ebenen Fünfgelenkgetriebes an. Der blaue und der orange Unterarm treffen sich an einer orangefarbenen Endpunktmarke. Ein endliches Programm fährt vier rechteckige Ecklagen an und macht die gekrümmten Endpunktkanten sichtbar, die durch synchron linear interpolierte Motorwinkel entstehen."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "five-bar parallel linkage",
+            "de": "Fünfgelenk-Parallelmechanismus"
+        },
+        "keywords": [
+            "five-bar linkage",
+            "parallel robot",
+            "Cartesian interpolation",
+            "Fünfgelenk",
+            "Bahnplanung",
             "experimental",
             "experimentell"
         ],

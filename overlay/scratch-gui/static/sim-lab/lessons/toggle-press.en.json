@@ -1,8 +1,5 @@
 {
-  "version": 1,
-  "id": "toggle-press",
-  "language": "en",
-  "what": "toggle linkage. Reload the model at A = 0°. Identify the yellow crank, blue coupler, red upper toggle, orange lower toggle, and orange ram. Watch the ram marker relative to the dark-gray support rail while the program runs once. One motor turns a yellow crank. A blue coupler folds the red and orange knee links, pushing an orange ram along two guide rails. The program approaches—but does not cross—dead centre, then returns to the saved datum.",
+  "what": "Reload the model at A = 0°. Identify the yellow crank, blue coupler, red upper toggle, orange lower toggle, and orange ram. Watch the ram marker relative to the dark-gray support rail while the program runs once.",
   "try": [
     "Use manual jog within −82° to 0°. Compare ram motion over the first 10° of motor travel with ram motion over the final 10° before the −80° target. Never command below −82°.",
     "Before moving, predict whether changing the target from −70° to −80° will add more or less ram travel than changing it from −10° to −20°. Also predict what risk grows as the command approaches −85.46°.",
@@ -16,6 +13,9 @@
     "Vary the input speed and repeat from the saved datum. Does the geometric law change?",
     "Find the passive output and its real bearings. Which physical connection transmits the drive?"
   ],
+  "version": 1,
+  "id": "toggle-press",
+  "language": "en",
   "formula": "Two equal toggle links constrain the guided ram; compare stroke per equal crank increment.",
   "related": [
     "gearbox.ldr",

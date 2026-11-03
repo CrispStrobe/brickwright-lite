@@ -15,17 +15,11 @@ extension model lists, catalogue/lesson generator entries and regenerated
 outputs, mechanism search entries, registration tests that enumerate MODELS);
 review records in `docs/data/robot-lab-experimental-checkpoint.json`.
 
-Promoted: Toggle Press, Footfall, Phasekeeper, Vector Sum, Point Weaver
-(hosted native ordinary, strict and disconnected runs pass). Phasekeeper's
-disconnection (one Cardan yoke removed) breaks its phase law, so the law
-depends on the two inferred Cardan crosses.
-
-Kept experimental, with reasons in the checkpoint: Loop Relay (the shared
-disconnection run cannot find the hub observation base once the chain wheel is
-removed; no harness change made); Helixgate (20 pieces), Parity Dial (31) and
-Counter Slide (44): the qualification contract validator requires more than
-50 pieces, and the intakes keep honest counts. Whether that rule should apply
-to these intakes is an operator decision.
+Contracts: Loop Relay, Toggle Press, Footfall, Phasekeeper, Vector Sum,
+Point Weaver. Helixgate (20 pieces), Parity Dial (31) and Counter Slide (44)
+get no contract: the qualification contract validator requires more than 50
+pieces, and the intake record keeps honest counts rather than padding. Whether
+that rule should apply to these intakes is an operator decision.
 
 Model and program bytes are unchanged. Qualification: hosted unit/build
 checks, `ci:full` once on the final head.

@@ -1,8 +1,5 @@
 {
-  "version": 1,
-  "id": "toggle-press",
-  "language": "de",
-  "what": "Kniehebelgetriebe. Lade das Modell bei A = 0° neu. Suche die gelbe Kurbel, die blaue Koppel, den roten oberen Kniehebel, den orangefarbenen unteren Kniehebel und den orangefarbenen Schlitten. Beobachte beim einmaligen Programmlauf den Schlitten relativ zur dunkelgrauen Tragschiene. Ein Motor dreht eine gelbe Kurbel. Eine blaue Koppel knickt die roten und orangefarbenen Kniehebel und schiebt einen orangefarbenen Schlitten auf zwei Führungen. Das Programm nähert sich dem Totpunkt, überschreitet ihn aber nicht, und kehrt zur gespeicherten Nullstellung zurück.",
+  "what": "Lade das Modell bei A = 0° neu. Suche die gelbe Kurbel, die blaue Koppel, den roten oberen Kniehebel, den orangefarbenen unteren Kniehebel und den orangefarbenen Schlitten. Beobachte beim einmaligen Programmlauf den Schlitten relativ zur dunkelgrauen Tragschiene.",
   "try": [
     "Nutze die manuelle Bewegung nur zwischen −82° und 0°. Vergleiche den Schlittenweg in den ersten 10° Motorbewegung mit dem Weg in den letzten 10° vor dem Ziel −80°. Gib niemals einen Wert unter −82° vor.",
     "Sage vor der Bewegung voraus, ob die Änderung von −70° auf −80° mehr oder weniger zusätzlichen Schlittenweg erzeugt als die Änderung von −10° auf −20°. Sage außerdem voraus, welches Risiko beim Annähern an −85,46° wächst.",
@@ -16,6 +13,9 @@
     "Ändere die Eingangsgeschwindigkeit und starte erneut vom gespeicherten Nullpunkt. Ändert sich das geometrische Gesetz?",
     "Finde den passiven Abtrieb und seine Lager. Welche mechanische Verbindung überträgt den Antrieb?"
   ],
+  "version": 1,
+  "id": "toggle-press",
+  "language": "de",
   "formula": "Two equal toggle links constrain the guided ram; compare stroke per equal crank increment.",
   "related": [
     "gearbox.ldr",

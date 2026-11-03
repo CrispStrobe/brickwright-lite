@@ -198,13 +198,6 @@ browser journey, then promote as #1555 did.
 | vectorsum | open differential: carrier = mean of the two side-shaft angles | Two motors (A, B); check shaft-tip clearance stays clean |
 | pointweaver | two-motor five-bar, endpoint reaches four corner poses | Chromium full journey already passed once (preliminary) |
 
-**Update 2026-11-03 (nine intakes):** judges registered per family in
-`QUALIFICATION_JUDGES`; Toggle Press, Footfall, Phasekeeper, Vector Sum and Point
-Weaver qualified and promoted. Loop Relay stays experimental (shared disconnection
-run loses the hub observation base). Helixgate, Parity Dial and Counter Slide stay
-experimental under the validator's >50-piece rule pending an operator decision.
-Reasons are in `docs/data/robot-lab-experimental-checkpoint.json`.
-
 **Batch E remainders** (added in #1499):
 
 | Model | Mechanism / law | Contract / judge | Blockers and next step |

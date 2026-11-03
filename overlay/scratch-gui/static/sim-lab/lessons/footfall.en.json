@@ -1,8 +1,5 @@
 {
-  "version": 1,
-  "id": "footfall",
-  "language": "en",
-  "what": "Jansen linkage. Reload the saved A = 0° pose. Identify the yellow crank, the two blue crank couplers, the red upper triangle, the white rocker, the blue transfer link, and the orange lower triangle. The foot marker G is the far end of the long orange link. One motor turns a yellow crank through a full revolution. Blue couplers drive a red upper triangle and an orange lower triangle so the orange foot link traces a closed, walking-like path before returning to the saved datum.",
+  "what": "Reload the saved A = 0° pose. Identify the yellow crank, the two blue crank couplers, the red upper triangle, the white rocker, the blue transfer link, and the orange lower triangle. The foot marker G is the far end of the long orange link.",
   "try": [
     "Run the finite program once. It pauses at 90°, 180°, 270°, and 360°, then reverses to 0°. Use manual jog only between −5° and 365°. Compare the foot motion from about 8.2° to 92.8° with the higher return portion of the path.",
     "Before checking the record, predict where the orange foot will move mostly sideways with little Z change. Also predict whether the return path will lie on top of that segment or rise away from it.",
@@ -16,6 +13,9 @@
     "Vary the input speed and repeat from the saved datum. Does the geometric law change?",
     "Find the passive output and its real bearings. Which physical connection transmits the drive?"
   ],
+  "version": 1,
+  "id": "footfall",
+  "language": "en",
   "formula": "Each linkage endpoint is the intersection of two fixed-length circles.",
   "related": [
     "gearbox.ldr",

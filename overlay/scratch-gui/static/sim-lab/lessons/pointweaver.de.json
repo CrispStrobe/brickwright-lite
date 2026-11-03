@@ -1,8 +1,5 @@
 {
-  "version": 1,
-  "id": "pointweaver",
-  "language": "de",
-  "what": "Fünfgelenk-Parallelmechanismus. Lade die gespeicherte untere linke Lage neu. Motor A treibt den gelben linken Eingangsarm an, Motor B den roten rechten Eingangsarm. Der blaue und der orange Unterarm treffen sich an der gehaltenen orangefarbenen Endpunktmarke. Alle fünf vorgesehenen Gelenkachsen sind parallel. Zwei Winkelmotoren treiben die Grundglieder eines ebenen Fünfgelenkgetriebes an. Der blaue und der orange Unterarm treffen sich an einer orangefarbenen Endpunktmarke. Ein endliches Programm fährt vier rechteckige Ecklagen an und macht die gekrümmten Endpunktkanten sichtbar, die durch synchron linear interpolierte Motorwinkel entstehen.",
+  "what": "Lade die gespeicherte untere linke Lage neu. Motor A treibt den gelben linken Eingangsarm an, Motor B den roten rechten Eingangsarm. Der blaue und der orange Unterarm treffen sich an der gehaltenen orangefarbenen Endpunktmarke. Alle fünf vorgesehenen Gelenkachsen sind parallel.",
   "try": [
     "Starte das endliche Programm einmal. Beide Achsen bewegen sich gemeinsam zur unteren rechten, oberen rechten und oberen linken Ecke und kehren danach zur gespeicherten unteren linken Nullage zurück. Verwende den Handbetrieb nur in A = −34°…2° und B = −11°…26°. Diese Grenzen sind Hinweise und keine mechanischen Anschläge.",
     "Sage vor dem Öffnen der analytischen Vorschau voraus, welche Kante am stärksten von der gestrichelten Geraden abweicht: die untere waagerechte Kante, eine senkrechte Kante oder die obere waagerechte Kante. Sage außerdem voraus, ob sich der Mittelpunkt zu größerem oder kleinerem Z wölbt.",
@@ -16,6 +13,9 @@
     "Ändere die Eingangsgeschwindigkeit und starte erneut vom gespeicherten Nullpunkt. Ändert sich das geometrische Gesetz?",
     "Finde den passiven Abtrieb und seine Lager. Welche mechanische Verbindung überträgt den Antrieb?"
   ],
+  "version": 1,
+  "id": "pointweaver",
+  "language": "de",
   "formula": "|P − E_left| = |P − E_right| = 64 mm; elbow orbit radius = 32 mm",
   "related": [
     "gearbox.ldr",
