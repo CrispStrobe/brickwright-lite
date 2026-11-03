@@ -70,6 +70,12 @@ How to land it:
    Never hand-edit conflict markers in those files.
 4. Stage before running `test/pin-move-chain.test.mjs`; it compares against staged blobs.
 
+CI risk: on head `ce2eb896`, `unit (3/6)` and `unit (6/6)` were cancelled at the 30-minute job
+limit. No test failed. Main's `unit (3/6)` already takes about 27 minutes, and #1646 adds slow
+original-PXT comparison tests, while that run's runners were also slow. A rerun was started. If
+the shards time out again, do not keep rerunning. Rebalance the unit shards in the workflow (or
+move the new PXT-comparison files to a lighter shard) in their own small PR, then rerun.
+
 Overlap: #1643 (another session) edits `arcade-translate.js` and
 `array-reference-export-authority.js` in different hunks. Whichever lands second rebases.
 
