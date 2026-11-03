@@ -1,0 +1,10 @@
+{
+ "author": "CrispStrobe",
+ "license": "BSD-3-Clause",
+ "files": {
+  "models/footfall.ldr": "415bb0c7d31425f9e52c8602048e210eae197a6bd9d98f9e9af0182526119907",
+  "programs/footfall.bw": "6bcd7c554a8e184987aeab059381c99e41e5f6887d918c556d060e18335fd24a",
+  "LICENSE.txt": "ed24a200606b724010d837027511981f9e3c5ed05f81d01a1f12dffb8b5d5c86",
+  "SOURCES.md": "017679b66eb76d1970fd77ff4e69032e0ab9c101b089b30698a53adf51dbf1cf"
+ }
+}

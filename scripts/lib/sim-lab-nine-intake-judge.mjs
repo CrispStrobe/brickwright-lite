@@ -128,3 +128,24 @@ export function evaluateNineIntake(id,r,{requireObservations=true}={}){
  }
  return{ok:errors.length===0,errors,metrics,law,scope:'Reviewed simulation contract; no physical LEGO build acceptance.'};
 }
+
+/** Reviewed principle family of each nine-intake law, as registered in QUALIFICATION_JUDGES. */
+export const NINE_INTAKE_FAMILIES=Object.freeze({helixgate:'worm-reduction-v1',looprelay:'chain-reversal-v1',paritydial:'parity-dials-v1',counterslide:'opposed-racks-v1','toggle-press':'toggle-ram-v1',footfall:'twelve-link-leg-v1',phasekeeper:'double-cardan-v1',vectorsum:'open-differential-v1',pointweaver:'five-bar-v1'});
+/**
+ * Qualification-runner form of the same judge: throws on any error. Ground-contact and per-port hold
+ * observations are recorded only by the native nine-intake suite (which also runs), so the shared runner's
+ * records are judged without them, exactly as the browser journey does; its own hold check still applies.
+ */
+export function judgeNineIntakeQualification(id,r){
+ const result=evaluateNineIntake(id,r,{requireObservations:false});
+ if(!result.ok){
+  const world=result.errors.some(e=>/^world-foundation-/.test(e.code));
+  throw Error((world?'upright stationary chassis in world coordinates refused: ':id+' refused: ')+JSON.stringify(result.errors));
+ }
+ return result;
+}
+/** Measured loss after the reviewed part removal: the passive law breaks while the powered route completes. */
+export function nineIntakeDisconnectionLoss(id,r){
+ const result=evaluateNineIntake(id,r,{requireObservations:false}),law=result.errors.filter(e=>e.code==='passive-law'),route=result.errors.filter(e=>/^route-error-/.test(e.code));
+ return{metric:'passiveLawErrors',value:law.length?Math.max(...law.map(e=>e.value)):0,laws:law.map(e=>e.name),routeErrors:route,lost:law.length>0&&route.length===0};
+}

@@ -1,0 +1,10 @@
+{
+ "author": "CrispStrobe",
+ "license": "BSD-3-Clause",
+ "files": {
+  "models/vectorsum.ldr": "d24808a2347593f3a4ecd725b9736872f75acb5858cce72a854977ce1855f556",
+  "programs/vectorsum.bw": "a08a1462f1f85dcf554a23d3326455b33f920c293aa2698a41d05508613101dc",
+  "LICENSE.txt": "22cf7f4548436a9cab0867671a24b55f299e6adf48b42fd6fc3ccf6873635006",
+  "SOURCES.md": "b82bb18d1f93e9dc0152317068f5a10b885788ee3d888c3e542fce17b99be2d4"
+ }
+}
