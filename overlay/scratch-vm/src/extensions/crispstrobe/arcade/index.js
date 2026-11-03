@@ -6108,12 +6108,19 @@ module.exports = makeExt(`// Name: Arcade
       }
       return map.views[index];
     }
-    tilesOfType(args) {
+    // PXT distinguishes an absent scene TileMap from a TileMap whose data was
+    // cleared (setTilemap(null/undefined)). TileMap.getImageType dereferences
+    // the cleared data, so every image lookup faults the calling fiber then.
+    // Under the engine the fault ends only the calling fiber, as in PXT; a direct
+    // (engine-less) call throws the same TypeError.
+    _clearedTileImageLookup(state,image,util) {
+      if (!image || state.tilemap || !state.tilemapInitialized) return false;
+      if (!util) throw new TypeError("Cannot read properties of null (reading 'fields')");
+      return true;
+    }
+    tilesOfType(args,util) {
       const state=this._state(),map=state.tilemap,image=this._image(args.IMAGE);
-      // PXT distinguishes an absent scene TileMap from a TileMap whose data
-      // was cleared. Its image lookup dereferences null data in the latter.
-      if (image && !map && state.tilemapInitialized)
-        throw new TypeError("Cannot read properties of null (reading 'fields')");
+      if (this._clearedTileImageLookup(state,image,util)) return this._primitiveFault('tilesOfType',args,util);
       const index=this._tileImageIndex(map,image),locations = [];
       if (index >= 0) for (let column = 0; column < map.columns; column++)
         for (let row = 0; row < map.rows; row++) if (map.indices[row*map.columns+column] === index)
@@ -6182,15 +6189,18 @@ module.exports = makeExt(`// Name: Arcade
     }
     placeOnRandomTile(args, util) {
       if (this._missingOperand(util,args,'ID')) return;
-      const map = this._state().tilemap, index = this._tileImageIndex(map,this._image(args.IMAGE));
+      const state = this._state(), map = state.tilemap, image = this._image(args.IMAGE);
+      // A destroyed sprite is still a truthy Sprite in PXT: only a missing one returns early.
+      if (this._clearedTileImageLookup(state,image,util)) return this._primitiveFault('placeOnRandomTile',args,util);
+      const index = this._tileImageIndex(map,image);
       if (index < 0) return;
       const chosen = this._sampleTile(map, index);
       if (chosen) return this.placeOnTile({ID:args.ID,LOCATION:this.tileLocation(chosen)},util);
     }
-    randomTileOfType(args) {
+    randomTileOfType(args,util) {
       const map = this._state().tilemap, image = this._image(args.IMAGE);
       if (!image || !this._state().tilemapInitialized) return Scratch.BWValues.encode(undefined);
-      if (!map) return Scratch.BWValues.encode(undefined);
+      if (this._clearedTileImageLookup(this._state(),image,util)) return this._primitiveFault('randomTileOfType',args,util);
       const index = this._tileImageIndex(map, image);
       if (index < 0) return Scratch.BWValues.encode(undefined);
       const chosen = this._sampleTile(map, index);

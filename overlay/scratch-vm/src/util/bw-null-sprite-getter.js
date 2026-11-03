@@ -190,11 +190,24 @@ const imageKinds = Object.freeze([
     ['spawnImageProjectile', ['IMAGE'], null],
     ['spawnImageSprite', ['IMAGE'], null]
 ].map(([method, names, operations]) => Object.freeze({method, kind: makeKind({method, label: 'Missing Image operation', read: missingArguments(names, 'Image', operations)})})));
+// TileMap.getImageType on a scene TileMap whose data was cleared
+// (setTilemap(null)) dereferences the null data: getTilesByType,
+// getRandomTileByType and placeOnRandomTile fault their fiber when given an
+// image. The caller decides the scene state; the receipt names the image operand.
+const clearedTilemapLookup = "Cannot read properties of null (reading 'fields')";
+const tileLookupKinds = Object.freeze(['tilesOfType', 'randomTileOfType', 'placeOnRandomTile'].map(method => Object.freeze({method,
+    kind: makeKind({method, label: 'Cleared tilemap image lookup', read(args) {
+        const image = ownDataValue(args, 'IMAGE');
+        if (!image || image.value === null || image.value === undefined || missingOf(image.value, 'Image') !== null)
+            throw Error('Cleared tilemap lookup fault requires an actual current image operand');
+        return {property: 'IMAGE', message: clearedTilemapLookup};
+    }})})));
 // Every kind in install order: the first is the original null Sprite getter.
 const kinds = Object.freeze([Object.freeze({method: 'spriteProperty', kind: spriteGetter}),
     Object.freeze({method: 'setSpriteImage', kind: spriteImageSetter}), ...imageKinds,
     ...[['setSpriteProperty', spriteSetter], ['setSpritePosition', spritePosition],
-        ['imageProperty', imageProperty], ['imagePixel', imagePixel], ['scrollImage', imageScroll]].map(([method, kind]) => Object.freeze({method, kind}))]);
+        ['imageProperty', imageProperty], ['imagePixel', imagePixel], ['scrollImage', imageScroll]].map(([method, kind]) => Object.freeze({method, kind})),
+    ...tileLookupKinds]);
 // One owner implementation check per kind lets the Arcade constructor create each service.
 const bindAll = (info, adapter, instance) => {for (const {kind} of kinds) kind.bindAdapterInfo(info, adapter, instance);};
 const declareAll = (info, ownerOf) => {for (const {method, kind} of kinds) kind.declaration(info, ownerOf(method));return info;};

@@ -24,6 +24,9 @@ const KINDS = {
     imagePixel:{args:{IMAGE:'arcade-image:1', X:0, Y:0}, missing:['IMAGE']},
     scrollImage:{args:{IMAGE:'arcade-image:1', X:1, Y:1}, missing:['IMAGE']}
 };
+// PXT TileMap.getImageType on cleared scene data: the caller decides the scene
+// state; the kind only receipts an actual image operand.
+const TILE_LOOKUPS = ['tilesOfType', 'randomTileOfType', 'placeOnRandomTile'];
 function fixture(method, args) {
     const runtime = new EventEmitter();
     const opcode = 'arcade_' + method;
@@ -53,9 +56,9 @@ function fixture(method, args) {
 }
 
 test('the null Sprite getter keeps its own opcode and the new kinds are the exact census', () => {
-    assert.deepEqual(getter.kinds.map(entry => entry.method), ['spriteProperty', ...Object.keys(KINDS)]);
+    assert.deepEqual(getter.kinds.map(entry => entry.method), ['spriteProperty', ...Object.keys(KINDS), ...TILE_LOOKUPS]);
     assert.equal(typeof getter.create, 'function');
-    for (const method of Object.keys(KINDS)) assert.equal(primitive.handles('arcade_' + method), true);
+    for (const method of [...Object.keys(KINDS), ...TILE_LOOKUPS]) assert.equal(primitive.handles('arcade_' + method), true);
 });
 
 test('only an actual null or Undefined operand is missing', () => {
@@ -116,3 +119,27 @@ test('a receipt from one kind cannot be consumed as another kind', () => {
     let fault;b.invoke(() => {fault = b.faults.fault(b.args, b.util);});
     a.invoke(() => assert.equal(getter.consume(a.runtime, a.args, a.util, fault.error, fault.lease), null));
 });
+
+for (const method of TILE_LOOKUPS) {
+    test(method + ': a cleared-tilemap image lookup issues one receipt naming the image and retires the caller', () => {
+        const f = fixture(method, {ID:'arcade-sprite:1', IMAGE:'arcade-image:1'});
+        let actual;
+        assert.throws(() => f.invoke(() => {
+            const fault = f.faults.fault(f.args, f.util);actual = fault.error;
+            assert.ok(fault.error instanceof TypeError);
+            assert.equal(fault.error.message, "Cannot read properties of null (reading 'fields')");
+            f.exception.rejectPrimitiveFault(f.args, f.util, fault.error, fault.lease);
+            assert.fail('no successful primitive completion');
+        }), error => error === actual);
+        assert.equal(f.thread.status, 4);
+        assert.deepEqual(exceptions.diagnostic(f.runtime, actual), {kind:'primitive-fault', message:actual.message, block:'op', target:'target'});
+    });
+    test(method + ': a missing image or a call outside the primitive loan cannot issue a receipt', () => {
+        for (const value of [null, values.UNDEFINED]) {
+            const f = fixture(method, {IMAGE:value});
+            f.invoke(() => assert.throws(() => f.faults.fault(f.args, f.util), /actual current image operand/));
+        }
+        const f = fixture(method, {IMAGE:'arcade-image:1'});
+        assert.throws(() => f.faults.fault(f.args, f.util), /original current primitive/);
+    });
+}
