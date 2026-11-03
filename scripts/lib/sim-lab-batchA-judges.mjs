@@ -2,7 +2,7 @@
 // Copyright (c) 2026 CrispStrobe
 // Predictions judge observed, passive bodies; they never drive their poses.
 // Batch A (2026-10-28, landed 2026-11-02): Bend Ripple, Offset Relay, Rack Decoder, Remote Pivot and Schmidt Shift are
-// promoted. Kestrel, Meridian, Lumen and Tangent Table judges are registered; those models stay experimental (see the checkpoint).
+// promoted. Kestrel, Meridian, Lumen and Tangent Table received reviewed disconnection measures on 2026-11-03.
 // Each law is derived from the model's documented mechanism and the compiled joints and gears, never fitted
 // to the recorded motion. Failing assertions carry their measured values.
 import assert from 'node:assert/strict';
@@ -88,18 +88,24 @@ export function judgeRemotePivot(r,{native=false}={}){
 // (side s) make O, P and Q collinear with OP·OQ = l² − s². The crank turns P on a circle through O (radius ρ about
 // its bearing), so Q is driven along the straight line at distance (l² − s²)/(2ρ) from O. All lengths come from the
 // compiled hinges; P is observed on the crank and Q on the passive output.
-export function judgeMeridian(r,{native=false}={}){
- healthy(r,native);assert.equal(r.mechanism.actuators.length,1);done(r,7);
+// The inversion rows shared by the judge and its disconnection measure: lengths from the compiled hinges, P observed on
+// the crank, Q observed on the passive output.
+function meridianLaw(r){
  const m=r.mechanism,o=observeAddon(r,'hub'),crank=o.body('crank'),base=o.base,out=o.body('marker_output');
  const jM=m.joints.find(j=>j.motor?.port==='A'),longs=['long_OB','long_OD'].map(id=>o.body(id)),jO=longs.map(b=>hingeBetween(m,base.id,b.id));assert.ok(jO.every(Boolean),'long links pivot on the base');
  const a=unit(jM.axis),O=jO[0].point;check(norm(inPlane(sub(jO[1].point,O),a))<1e-6,'both long links share O',{});
  const cellP=m.joints.find(j=>j.type==='hinge'&&ids(j).includes(crank.id)&&!j.motor),pBody=ids(cellP).find(id=>id!==crank.id);
  const jLB=m.joints.find(j=>j.type==='hinge'&&ids(j).includes(longs[0].id)&&!ids(j).includes(base.id)),Bbody=ids(jLB).find(id=>id!==longs[0].id);
  const l=norm(inPlane(sub(jLB.point,O),a)),sJ=hingeBetween(m,Bbody,pBody),s=norm(inPlane(sub(jLB.point,cellP.point),a));void sJ;
- const rho=norm(inPlane(sub(cellP.point,jM.point),a)),through=norm(inPlane(sub(O,jM.point),a));check(Math.abs(rho-through)<1e-6,'the crank circle passes through O',{rho,through});
+ const rho=norm(inPlane(sub(cellP.point,jM.point),a)),through=norm(inPlane(sub(O,jM.point),a));
  const kk=l*l-s*s,d=kk/(2*rho),jQ=m.joints.find(j=>j.type==='hinge'&&ids(j).includes(out.id)&&!ids(j).includes(Bbody)),Q0=jQ.point;
  const nrm=unit(inPlane(sub(jM.point,O),a));
  const rows=r.track.map(f=>{const Pp=carried(r,o,f,crank.id,cellP.point),v=inPlane(sub(Pp,O),a),Qp=add(O,scale(v,kk/dot(v,v))),Qo=carried(r,o,f,out.id,Q0);return{err:norm(inPlane(sub(Qo,Qp),a))*1000,line:Math.abs(dot(inPlane(sub(Qo,O),a),nrm)-d)*1000,along:dot(inPlane(sub(Qo,O),a),unit(cross(a,nrm)))*1000};});
+ return{o,l,s,rho,through,d,rows};
+}
+export function judgeMeridian(r,{native=false}={}){
+ healthy(r,native);assert.equal(r.mechanism.actuators.length,1);done(r,7);
+ const {o,l,s,rho,through,d,rows}=meridianLaw(r);check(Math.abs(rho-through)<1e-6,'the crank circle passes through O',{rho,through});
  const err=max(rows,x=>x.err),line=max(rows,x=>x.line),travel=span(rows.map(x=>x.along));
  check(err<=.3,'output is the inversion of the crank pin, OP·OQ = l² − s²',{err});
  check(line<=.3,'output stays on the straight line at distance (l² − s²)/(2ρ)',{line,dMm:d*1000});
@@ -226,7 +232,12 @@ export function batchADisconnectionLoss(id,r){
  if(id==='rack-decoder'){// passive_pinion removed: nothing makes the carrier average the racks
   const m=r.mechanism,o=observeAddon(r,'hub'),g=m.joints.find(j=>j.type==='slider'&&ids(j).includes(o.body('rack_A').id)&&ids(j).includes(o.base.id)),u=unit(g.axis),d0=['rack_A','rack_B','carrier_bearing'].map(p=>o.initial(p));
   const v=max(r.track,f=>{const [a,b,c]=['rack_A','rack_B','carrier_bearing'].map((p,i)=>dot(sub(o.point(f,p),d0[i]),u)*1000);return Math.abs(c-(a+b)/2);});return{metric:'meanLawErrorMm',value:v,lost:v>2};}
- if(id==='tangent-table'){// follower_axle removed: the output pin no longer rides the guide
+ // radial_sleeve removed. The follower is one rigid body (sleeve, two runners, key, axle) that slides on the radial guide
+ // and carries the output pin. The sleeve is the follower's only sliding bearing on that guide: without it the runners
+ // fall apart into separate sliders and nothing holds the output pin on the line at angle θ. Removing follower_axle
+ // instead (the earlier choice) leaves the sleeve coaxial inside the output bearings, so their contact still drags the
+ // output along the guide (measured 0.25 mm) and it strands both follower captures as loose parts.
+ if(id==='tangent-table'){
   const m=r.mechanism,o=observeAddon(r,'hub'),jA=m.joints.find(j=>j.motor?.port==='A'),a=unit(jA.axis),O=jA.point,reachJ=m.joints.find(j=>j.type==='slider'&&ids(j).includes(o.body('la_piston').id)&&ids(j).includes(o.base.id)),along=unit(inPlane(reachJ.axis,a)),side=unit(cross(a,along));
   const P0=o.initial('output_carriage'),hz=heading(r,o,'angle_hub',a),th0=Math.atan2(dot(sub(P0,O),side),dot(sub(P0,O),along));
   const v=max(r.track.map((f,i)=>i),i=>{const P=o.point(r.track[i],'output_carriage'),d=dot(inPlane(sub(P,O),a),along),y=dot(inPlane(sub(P,O),a),side);return Math.abs(y-d*Math.tan(th0+(hz[i]-hz[0])*Math.PI/180))*1000;});return{metric:'lawErrorMm',value:v,lost:v>2};}
@@ -237,5 +248,21 @@ export function batchADisconnectionLoss(id,r){
   const psi=unwrap(r.track.map(f=>{const qrel=qmul(conj(qmul(f.bodies[car.id].rotation,conj(cb.rotation))),qmul(f.bodies[outB.id].rotation,conj(outB.rotation)));return 2*Math.atan2(dot(qrel.slice(0,3),s2),qrel[3]);})).map(deg);
   const v=max(r.track.map((f,i)=>i),i=>{const th=(hin[i]-hin[0])*Math.PI/180,be=beta0+(hcar[i]-hcar[0])*Math.PI/180;let p=Math.atan2(Math.sin(th),Math.cos(be)*Math.cos(th));p+=2*Math.PI*Math.round((th-p)/(2*Math.PI));return Math.abs(psi[i]-psi[0]-deg(p));});
   return{metric:'cardanLawErrorDeg',value:v,lost:v>5};}
+ if(id==='kestrel-flapper'){// coupler removed: the only link that ties the crank pin A to the rocker pin B
+  // The four-bar closure |B−A| = c is the coupler itself. Pins A and B stay on crank and rocker; c is the saved |B−A|.
+  const m=r.mechanism,o=observeAddon(r,'column_-60_40'),crank=o.body('crank'),rocker=o.body('rocker'),base=o.base;
+  const jO=m.joints.find(j=>j.motor?.port==='A'),jC=hingeBetween(m,base.id,rocker.id),jA=m.joints.find(j=>j.type==='hinge'&&j!==jO&&ids(j).includes(crank.id)),jB=m.joints.find(j=>j.type==='hinge'&&j!==jC&&ids(j).includes(rocker.id));
+  const a=unit(jO.axis),e1=unit(inPlane([0,0,1],a)),e2=cross(a,e1),P=v=>{const w=inPlane(v,a);return[dot(w,e1),dot(w,e2)];};
+  const C=P(jC.point),A0=P(jA.point),B0=P(jB.point),c=Math.hypot(B0[0]-A0[0],B0[1]-A0[1]),k=Math.hypot(B0[0]-C[0],B0[1]-C[1]);
+  const side=(A,B)=>Math.sign((C[0]-A[0])*(B[1]-A[1])-(C[1]-A[1])*(B[0]-A[0])),s0=side(A0,B0);
+  const v=max(r.track,f=>{const A=P(carried(r,o,f,crank.id,jA.point)),d=Math.hypot(C[0]-A[0],C[1]-A[1]),x=(c*c-k*k+d*d)/(2*d),h=Math.sqrt(Math.max(0,c*c-x*x)),ux=(C[0]-A[0])/d,uy=(C[1]-A[1])/d;
+   const cands=[[A[0]+x*ux-h*uy,A[1]+x*uy+h*ux],[A[0]+x*ux+h*uy,A[1]+x*uy-h*ux]],pred=cands.find(B=>side(A,B)===s0)||cands[0],Bo=P(carried(r,o,f,rocker.id,jB.point));return Math.hypot(pred[0]-Bo[0],pred[1]-Bo[1])*1000;});
+  return{metric:'closureErrorMm',value:v,lost:v>2};}
+ if(id==='meridian-linkage'){// cell_BQ removed: the rhombus opens, so nothing forces OP·OQ = l² − s² on the output pin Q
+  const v=max(meridianLaw(r).rows,x=>x.err);return{metric:'inversionErrorMm',value:v,lost:v>2};}
+ if(id==='lumen-iris'){// ring_top removed: the input gear still drives leaf 0, but only the ring meshes leaves 1–5
+  const m=r.mechanism,o=observeAddon(r,'hex_edge_0'),jIn=m.joints.find(j=>j.motor?.port==='A'),a=unit(jIn.axis),g0=m.couplings.find(c=>[c.joint1,c.joint2].includes(jIn.id)),kLeaf=g0.joint1===jIn.id?g0.ratio:1/g0.ratio;
+  const hin=heading(r,o,'input_gear',a),leaves=[1,2,3,4,5].map(i=>heading(r,o,'leaf_plate_'+i,a));
+  const v=max(r.track.map((f,i)=>i),i=>Math.max(...leaves.map(l=>Math.abs((l[i]-l[0])-kLeaf*(hin[i]-hin[0])))));return{metric:'leafErrorDeg',value:v,lost:v>5};}
  assert.fail('no batch-A disconnection measure for '+id);
 }

@@ -130,52 +130,6 @@ export const EXPERIMENTAL_MODELS = Object.freeze([
         }
     },
     {
-        "file": "kestrel-flapper.ldr",
-        "title": {
-            "en": "Kestrel — flapping linkage",
-            "de": "Kestrel — Schlagflügel-Gestänge"
-        },
-        "example": "kestrel-flapper.bw",
-        "mat": "plain",
-        "experimental": true,
-        "blocked": false,
-        "intro": {
-            "en": "A Grashof crank-rocker turns motor A’s full crank rotation into a rocking wing: one stroke each way per turn, with slightly unequal stroke times.",
-            "de": "Eine Kurbelschwinge nach Grashof macht aus der vollen Kurbeldrehung von Motor A einen schwingenden Flügel: ein Schlag in jede Richtung je Umdrehung, mit leicht ungleichen Schlagzeiten."
-        },
-        "manualJog": {
-            "A": {
-                "minDeg": 0,
-                "maxDeg": 720,
-                "stepDeg": 30,
-                "speedDps": 45
-            }
-        }
-    },
-    {
-        "file": "lumen-iris.ldr",
-        "title": {
-            "en": "Lumen — six-leaf iris",
-            "de": "Lumen — sechsblättrige Iris"
-        },
-        "example": "lumen-iris.bw",
-        "mat": "plain",
-        "experimental": true,
-        "blocked": false,
-        "intro": {
-            "en": "One motor turns a 12-tooth pinion, a 60-tooth ring and six 20-tooth leaf gears together, so six overlapping plates open a centred iris aperture.",
-            "de": "Ein Motor dreht über ein 12er-Ritzel einen 60er-Drehkranz und sechs 20er-Lamellenräder gemeinsam; sechs überlappende Platten öffnen so eine mittige Irisblende."
-        },
-        "manualJog": {
-            "A": {
-                "minDeg": -55.2168,
-                "maxDeg": 0,
-                "stepDeg": 13.8042,
-                "speedDps": 15
-            }
-        }
-    },
-    {
         "file": "helios-transmission.ldr",
         "title": {
             "en": "Helios — epicyclic transmission",
@@ -218,29 +172,6 @@ export const EXPERIMENTAL_MODELS = Object.freeze([
         "intro": {
             "en": "Two equally bent, correctly phased Cardan joints: the middle shaft speeds up and slows down twice per turn, while the output follows the input evenly.",
             "de": "Zwei gleich abgewinkelte, richtig ausgerichtete Kardangelenke: Die Zwischenwelle wird zweimal je Umdrehung schneller und langsamer, der Abtrieb folgt dem Eingang gleichförmig."
-        }
-    },
-    {
-        "file": "meridian-linkage.ldr",
-        "title": {
-            "en": "Meridian — straight-line linkage",
-            "de": "Meridian — Geradführungs-Gestänge"
-        },
-        "example": "meridian-linkage.bw",
-        "mat": "plain",
-        "experimental": true,
-        "blocked": false,
-        "intro": {
-            "en": "A Peaucellier–Lipkin cell inverts a crank circle through its pivot into an exact straight line: the passive output point moves straight with no guide at all.",
-            "de": "Eine Peaucellier-Lipkin-Zelle bildet einen Kurbelkreis durch ihren Drehpunkt auf eine exakte Gerade ab: Der passive Abtriebspunkt läuft ganz ohne Führung geradeaus."
-        },
-        "manualJog": {
-            "A": {
-                "minDeg": -60,
-                "maxDeg": 60,
-                "stepDeg": 10,
-                "speedDps": 15
-            }
         }
     },
     {
@@ -292,35 +223,6 @@ export const EXPERIMENTAL_MODELS = Object.freeze([
                 "maxDeg": 9.5,
                 "stepDeg": 76.4,
                 "speedDps": 90
-            }
-        }
-    },
-    {
-        "file": "tangent-table.ldr",
-        "title": {
-            "en": "Tangent Table — mechanical angle mapping",
-            "de": "Tangent Table — mechanische Winkelabbildung"
-        },
-        "example": "tangent-table.bw",
-        "mat": "plain",
-        "experimental": true,
-        "blocked": false,
-        "intro": {
-            "en": "One motor tilts a guide, the other sets a reach; where the guides cross, a free slider shows y = x·tan θ – a variable-gain mechanical multiplier. Experimental: not yet independently measured.",
-            "de": "Ein Motor neigt eine Kulisse, der andere stellt eine Reichweite ein; wo sich die Führungen kreuzen, zeigt ein freier Schieber y = x·tan θ – ein mechanischer Multiplizierer mit veränderlicher Verstärkung. Experimentell: noch nicht unabhängig gemessen."
-        },
-        "manualJog": {
-            "A": {
-                "minDeg": -16,
-                "maxDeg": 16,
-                "stepDeg": 1,
-                "speedDps": 8
-            },
-            "B": {
-                "minDeg": -2627,
-                "maxDeg": 2627,
-                "stepDeg": 597,
-                "speedDps": 300
             }
         }
     },
@@ -1496,82 +1398,6 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
         ],
         "experimental": true
     },
-    "kestrel-flapper.ldr": {
-        "pieces": 61,
-        "motors": 1,
-        "hubs": [
-            "spike-prime"
-        ],
-        "topic": "linkages",
-        "description": {
-            "en": "A Grashof crank-rocker turns motor A’s full crank rotation into a rocking wing: one stroke each way per turn, with slightly unequal stroke times.",
-            "de": "Eine Kurbelschwinge nach Grashof macht aus der vollen Kurbeldrehung von Motor A einen schwingenden Flügel: ein Schlag in jede Richtung je Umdrehung, mit leicht ungleichen Schlagzeiten."
-        },
-        "author": "CrispStrobe",
-        "license": "BSD-3-Clause",
-        "mechanism": {
-            "en": "flapping linkage",
-            "de": "Schlagflügel-Gestänge"
-        },
-        "keywords": [
-            "crank-rocker",
-            "four-bar linkage",
-            "Grashof",
-            "flapping wing",
-            "ornithopter",
-            "quick return",
-            "dead centre",
-            "Kurbelschwinge",
-            "Viergelenk",
-            "Schlagflügel",
-            "Totlage",
-            "Schnellrücklauf",
-            "crank rocker",
-            "flapping linkage",
-            "experimental",
-            "prototype",
-            "unverified",
-            "experimentell"
-        ],
-        "experimental": true
-    },
-    "lumen-iris.ldr": {
-        "pieces": 146,
-        "motors": 1,
-        "hubs": [
-            "spike-prime"
-        ],
-        "topic": "linkages",
-        "description": {
-            "en": "One motor turns a 12-tooth pinion, a 60-tooth ring and six 20-tooth leaf gears together, so six overlapping plates open a centred iris aperture.",
-            "de": "Ein Motor dreht über ein 12er-Ritzel einen 60er-Drehkranz und sechs 20er-Lamellenräder gemeinsam; sechs überlappende Platten öffnen so eine mittige Irisblende."
-        },
-        "author": "CrispStrobe",
-        "license": "BSD-3-Clause",
-        "mechanism": {
-            "en": "six-leaf iris",
-            "de": "sechsblättrige Iris"
-        },
-        "keywords": [
-            "iris diaphragm",
-            "aperture",
-            "iris",
-            "turntable",
-            "gear ring",
-            "synchronised leaves",
-            "Irisblende",
-            "Blende",
-            "Lamellen",
-            "Drehkranz",
-            "Zahnkranz",
-            "radial linkage",
-            "experimental",
-            "prototype",
-            "unverified",
-            "experimentell"
-        ],
-        "experimental": true
-    },
     "helios-transmission.ldr": {
         "pieces": 156,
         "motors": 2,
@@ -1683,43 +1509,6 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
         ],
         "experimental": true
     },
-    "meridian-linkage.ldr": {
-        "pieces": 91,
-        "motors": 1,
-        "hubs": [
-            "spike-prime"
-        ],
-        "topic": "linkages",
-        "description": {
-            "en": "A Peaucellier–Lipkin cell inverts a crank circle through its pivot into an exact straight line: the passive output point moves straight with no guide at all.",
-            "de": "Eine Peaucellier-Lipkin-Zelle bildet einen Kurbelkreis durch ihren Drehpunkt auf eine exakte Gerade ab: Der passive Abtriebspunkt läuft ganz ohne Führung geradeaus."
-        },
-        "author": "CrispStrobe",
-        "license": "BSD-3-Clause",
-        "mechanism": {
-            "en": "straight-line linkage",
-            "de": "Geradführungs-Gestänge"
-        },
-        "keywords": [
-            "Peaucellier–Lipkin",
-            "Peaucellier linkage",
-            "inversor",
-            "exact straight-line linkage",
-            "circle inversion",
-            "straight-line mechanism",
-            "Peaucellier-Lipkin",
-            "Inversor",
-            "Geradführung",
-            "Kreisinversion",
-            "straight-line linkage",
-            "geometric closure",
-            "experimental",
-            "prototype",
-            "unverified",
-            "experimentell"
-        ],
-        "experimental": true
-    },
     "solstice-pumpjack.ldr": {
         "pieces": 93,
         "motors": 1,
@@ -1790,45 +1579,6 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
             "geometrische Phase",
             "Katzenreflex",
             "shape cycle",
-            "experimental",
-            "prototype",
-            "unverified",
-            "experimentell"
-        ],
-        "experimental": true
-    },
-    "tangent-table.ldr": {
-        "pieces": 297,
-        "motors": 2,
-        "hubs": [
-            "spike-prime"
-        ],
-        "topic": "linkages",
-        "description": {
-            "en": "One motor tilts a guide, the other sets a reach; where the guides cross, a free slider shows y = x·tan θ – a variable-gain mechanical multiplier. Experimental: not yet independently measured.",
-            "de": "Ein Motor neigt eine Kulisse, der andere stellt eine Reichweite ein; wo sich die Führungen kreuzen, zeigt ein freier Schieber y = x·tan θ – ein mechanischer Multiplizierer mit veränderlicher Verstärkung. Experimentell: noch nicht unabhängig gemessen."
-        },
-        "author": "CrispStrobe",
-        "license": "BSD-3-Clause",
-        "mechanism": {
-            "en": "mechanical angle mapping",
-            "de": "mechanische Winkelabbildung"
-        },
-        "keywords": [
-            "tangent mechanism",
-            "mechanical multiplier",
-            "variable gain",
-            "slotted guide",
-            "analog computer",
-            "y = x tan θ",
-            "Tangens",
-            "Kulisse",
-            "mechanischer Multiplizierer",
-            "Analogrechner",
-            "veränderliche Verstärkung",
-            "tangent",
-            "analog computation",
-            "line intersection",
             "experimental",
             "prototype",
             "unverified",

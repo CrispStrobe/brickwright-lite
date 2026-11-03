@@ -1614,6 +1614,144 @@ export const MODEL_LESSONS = Object.freeze({
             "Linearaktuator"
         ]
     },
+    "kestrel-flapper.ldr": {
+        "pieces": 61,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "linkages",
+        "description": {
+            "en": "A Grashof crank-rocker turns motor A’s full crank rotation into a rocking wing: one stroke each way per turn, with slightly unequal stroke times.",
+            "de": "Eine Kurbelschwinge nach Grashof macht aus der vollen Kurbeldrehung von Motor A einen schwingenden Flügel: ein Schlag in jede Richtung je Umdrehung, mit leicht ungleichen Schlagzeiten."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Flapping linkage",
+            "de": "Schlagflügel-Gestänge"
+        },
+        "keywords": [
+            "Flapping linkage",
+            "Schlagflügel-Gestänge",
+            "crank-rocker",
+            "four-bar linkage",
+            "Grashof",
+            "flapping wing",
+            "ornithopter",
+            "quick return",
+            "dead centre",
+            "Kurbelschwinge",
+            "Viergelenk",
+            "Schlagflügel",
+            "Totlage",
+            "Schnellrücklauf",
+            "crank rocker"
+        ]
+    },
+    "meridian-linkage.ldr": {
+        "pieces": 91,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "linkages",
+        "description": {
+            "en": "A Peaucellier–Lipkin cell inverts a crank circle through its pivot into an exact straight line: the passive output point moves straight with no guide at all.",
+            "de": "Eine Peaucellier-Lipkin-Zelle bildet einen Kurbelkreis durch ihren Drehpunkt auf eine exakte Gerade ab: Der passive Abtriebspunkt läuft ganz ohne Führung geradeaus."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Straight-line linkage",
+            "de": "Geradführungs-Gestänge"
+        },
+        "keywords": [
+            "Straight-line linkage",
+            "Geradführungs-Gestänge",
+            "Peaucellier–Lipkin",
+            "Peaucellier linkage",
+            "inversor",
+            "exact straight-line linkage",
+            "circle inversion",
+            "straight-line mechanism",
+            "Peaucellier-Lipkin",
+            "Inversor",
+            "Geradführung",
+            "Kreisinversion",
+            "geometric closure"
+        ]
+    },
+    "lumen-iris.ldr": {
+        "pieces": 146,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "linkages",
+        "description": {
+            "en": "One motor turns a 12-tooth pinion, a 60-tooth ring and six 20-tooth leaf gears together, so six overlapping plates open a centred iris aperture.",
+            "de": "Ein Motor dreht über ein 12er-Ritzel einen 60er-Drehkranz und sechs 20er-Lamellenräder gemeinsam; sechs überlappende Platten öffnen so eine mittige Irisblende."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Six-leaf iris",
+            "de": "Sechsblättrige Iris"
+        },
+        "keywords": [
+            "Six-leaf iris",
+            "Sechsblättrige Iris",
+            "iris diaphragm",
+            "aperture",
+            "iris",
+            "turntable",
+            "gear ring",
+            "synchronised leaves",
+            "Irisblende",
+            "Blende",
+            "Lamellen",
+            "Drehkranz",
+            "Zahnkranz",
+            "radial linkage"
+        ]
+    },
+    "tangent-table.ldr": {
+        "pieces": 297,
+        "motors": 2,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "linkages",
+        "description": {
+            "en": "One motor tilts a guide, the other sets a reach; where the guides cross, a free slider shows y = x·tan θ – a variable-gain mechanical multiplier. Experimental: not yet independently measured.",
+            "de": "Ein Motor neigt eine Kulisse, der andere stellt eine Reichweite ein; wo sich die Führungen kreuzen, zeigt ein freier Schieber y = x·tan θ – ein mechanischer Multiplizierer mit veränderlicher Verstärkung. Experimentell: noch nicht unabhängig gemessen."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Mechanical angle mapping",
+            "de": "Mechanische Winkelabbildung"
+        },
+        "keywords": [
+            "Mechanical angle mapping",
+            "Mechanische Winkelabbildung",
+            "tangent mechanism",
+            "mechanical multiplier",
+            "variable gain",
+            "slotted guide",
+            "analog computer",
+            "y = x tan θ",
+            "Tangens",
+            "Kulisse",
+            "mechanischer Multiplizierer",
+            "Analogrechner",
+            "veränderliche Verstärkung",
+            "tangent",
+            "analog computation",
+            "line intersection"
+        ]
+    },
     "watt-line.ldr": {
         "pieces": 148,
         "motors": 1,
