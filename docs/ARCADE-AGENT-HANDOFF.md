@@ -21,7 +21,7 @@ plus a `scene.backgroundColor()` Number proof). Counts and reasons are in
 - Fixed in the group A follow-up: a global written from a typed SDK Number
   call (scene.backgroundColor, Math.floor/ceil/round/abs/sqrt) keeps its
   Number declaration, so `set color to 2` no longer stores text without sprites.
-- Group A follow-up: eight rows cleared by per-slot proofs; six remain TODO.
+- Group A follow-up: nine rows cleared by per-slot proofs; five remain TODO.
 
 ## 30 October: unproven native-addition operands use runtime dispatch (owner decision)
 

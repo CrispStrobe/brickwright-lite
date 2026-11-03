@@ -7,11 +7,11 @@ changed. Source of the list: hosted Build run 39297263647 (head f2ecafef1).
 
 ## Current status — 2026-11-02
 
-Arcade documented TODO tests: 37 on main `bc39104b`; 33 after #1629 and #1631; 25 after the group A follow-up.
+Arcade documented TODO tests: 37 on main `bc39104b`; 33 after #1629 and #1631; 24 after the group A follow-up.
 
 | Group | Before | After | Change |
 |---|---|---|---|
-| A Array receiver | 15 | 6 | stale update-values marker; follow-up per-slot proofs cleared 8 rows |
+| A Array receiver | 15 | 5 | stale update-values marker; follow-up per-slot proofs cleared 9 rows |
 | B primitive producer | 10 | 9 | `scene.backgroundColor()` proven Number (source rule + native reporter) |
 | C named-array re-import | 3 | 3 | unchanged |
 | F image-mutation probe | 1 | 1 | same cause as G |
@@ -20,7 +20,7 @@ Arcade documented TODO tests: 37 on main `bc39104b`; 33 after #1629 and #1631; 2
 | I liftExporterStops | 1 | 0 | exporter stop machinery lifted (#1629) |
 | timing phase / tile order / do-while | 5 | 5 | intentionally kept |
 
-**Group A decision (operator, 2026-11-02): no runtime guard; per-slot proofs only.** The follow-up cleared eight rows; the remaining six (fresh animation re-export, two array-copy rows, class accessor aliases, allOfKind second export, computed index sums) stay TODO.
+**Group A decision (operator, 2026-11-02): no runtime guard; per-slot proofs only.** The follow-up cleared nine rows; the remaining five (fresh animation re-export, array-copy effects, class accessor aliases, allOfKind second export, computed index sums) stay TODO.
 A runtime guard that behaves exactly like original PXT for an unproven Array
 receiver is the identity: PXT already faults on a null or non-Array receiver,
 so the guard changes nothing at run time. Emitted wherever the receiver proof
@@ -118,7 +118,7 @@ hosted checks remain required.
 | A | `test/makecode-arcade-animation-resources-export.test.mjs` | fresh resource export preserves native factory allocation and isolates array/image mutations in original PXT | +   'Array reference arrays_referenceItem ARRAY: requires an actual initialized Array producer and compatible all writers', +   'Array reference arrays_referenc |
 | A | `test/makecode-arcade-animation-resources-export.test.mjs` | literal and computed resource IDs export shared typed images and original Arcade playback | Fixed 2026-11-02: a RESOURCE that reads a global whose stored value is a string, which no block writes and no slider can change, names that resource (shared project context for producer, authority and exporter). |
 | A | `test/makecode-arcade-array-copies.test.mjs` | pxt-array-copy-effects-primary preserves original values and editable reference identity | +   'Array reference arrays_mutateReference ARRAY: requires an actual initialized Array producer and compatible all writers', +   'Array reference arrays_refere |
-| A | `test/makecode-arcade-array-copies.test.mjs` | pxt-array-copy-primary preserves original values and editable reference identity | +   'Array reference arrays_mutateReference ARRAY: requires an actual initialized Array producer and compatible all writers |
+| A | `test/makecode-arcade-array-copies.test.mjs` | pxt-array-copy-primary preserves original values and editable reference identity | Fixed 2026-11-02: an exact undefined slice START/END is the default bound (0 / length) in PXT and the Arrays extension, so element presence follows the proven source length. |
 | A | `test/makecode-arcade-array-reference-flow.test.mjs` | typed array reference authoring and original export: image-element | Fixed 2026-11-02: a closed parameterless getter that only returns a global is judged at its call site. |
 | A | `test/makecode-arcade-array-reference-flow.test.mjs` | typed array reference authoring and original export: nullable | Fixed 2026-11-02: statements in the untaken branch of a literal-comparison if/else never run; the taken branch's first write ends the reset. |
 | A | `test/makecode-arcade-array-reference-flow.test.mjs` | typed array reference authoring and original export: numeric-literal | Fixed 2026-11-02: call-site getter rule (see image-element). |
