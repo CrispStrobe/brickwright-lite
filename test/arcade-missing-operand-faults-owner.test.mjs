@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {EventEmitter} from 'node:events';
 import getter from '../overlay/scratch-vm/src/util/bw-null-sprite-getter.js';
+import tileLookups from '../overlay/scratch-vm/src/util/bw-tile-lookup-faults.js';
 import primitive from '../overlay/scratch-vm/src/util/bw-primitive-owner.js';
 import exceptions from '../overlay/scratch-vm/src/util/bw-arcade-exceptions.js';
 import values from '../overlay/scratch-vm/src/util/bw-values.js';
@@ -45,7 +46,7 @@ function fixture(method, args) {
     const util = {runtime, thread, target};
     const instance = {}, owner = {isInstance:value=>value===instance, isCurrent:()=>true};
     const adapter = Object.assign(Object.create({getInfo(){}}), {_inst:instance, [method]:func});
-    const kind = getter.kinds.find(entry => entry.method === method).kind;
+    const kind = [...getter.kinds, ...tileLookups.kinds].find(entry => entry.method === method).kind;
     const faults = kind.create(runtime, owner), exception = exceptions.create(runtime, () => null);
     const info = kind.declaration({id:'arcade', blocks:[{opcode:method, arguments:{}}]}, owner);
     kind.bindAdapterInfo(info, adapter, instance);
@@ -56,7 +57,9 @@ function fixture(method, args) {
 }
 
 test('the null Sprite getter keeps its own opcode and the new kinds are the exact census', () => {
-    assert.deepEqual(getter.kinds.map(entry => entry.method), ['spriteProperty', ...Object.keys(KINDS), ...TILE_LOOKUPS]);
+    assert.deepEqual(getter.kinds.map(entry => entry.method), ['spriteProperty', ...Object.keys(KINDS)]);
+    // The cleared-tilemap lookups live in a module only the (lazy) Arcade extension loads.
+    assert.deepEqual(tileLookups.kinds.map(entry => entry.method), TILE_LOOKUPS);
     assert.equal(typeof getter.create, 'function');
     for (const method of [...Object.keys(KINDS), ...TILE_LOOKUPS]) assert.equal(primitive.handles('arcade_' + method), true);
 });
