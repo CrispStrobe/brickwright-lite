@@ -569,7 +569,13 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
         const k=Number(op.index.value),site=tokens[0].site;
         if(!Number.isInteger(k)||k<0||site?.type!=='Array'||!Array.isArray(site.items)||k>=site.items.length||
             site.items.some(item=>item?.type==='Spread')||!pristine(tokens[0]))return null;
-        return site.items[k];
+        // Only a syntactically primitive element (literal, member constant or
+        // arithmetic) is read positionally; reference-valued elements keep the
+        // general element domain and its alternative-aware effect rules.
+        const primitiveSyntax=n=>['Number','String','Boolean','Member'].includes(n?.type)||n?.type==='Parenthesized'&&primitiveSyntax(n.expression)||
+            n?.type==='Unary'&&['-','+','!'].includes(n.op)&&primitiveSyntax(n.argument)||
+            n?.type==='Binary'&&['+','-','*','/','%'].includes(n.op)&&primitiveSyntax(n.left)&&primitiveSyntax(n.right);
+        return primitiveSyntax(site.items[k])?site.items[k]:null;
     };
     const propagateArrays=()=>{let changed=false;
         for(const op of arrayOperations){const strictTokens=arrayTypes(op.receiver),tokens=strictTokens||arrayMutationTypes(op.receiver);if(!strictTokens){
