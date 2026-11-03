@@ -26,10 +26,11 @@
  */
 
 import {parseMakeCodeTs} from './ts-import.js';
-import {BaseTranslator, bodyOf, num} from './translate-base.js';
+import {BaseTranslator, bodyOf, num, tsText} from './translate-base.js';
 import {MICROBIT_ICONS, MICROBIT_ARROWS} from './microbit-icons.js';
 import {lowerNamespaceBindings} from './namespace-bindings.js';
 import {lowerHandleValues} from './lower-handle-values.js';
+import {lowerLibraryCalls} from './microbit-library.js';
 
 /** MakeCode enum member → the token our vocabulary uses. */
 const ENUM_VALUES = {
@@ -87,6 +88,9 @@ const SPRITE_METHODS = new Set([
 /** MakeCode's Delimiters member -> the bluetooth uart blocks' menu word. */
 const DELIMITERS = {NewLine: 'newline', Comma: 'comma', Dollar: 'dollar', Colon: 'colon', Fullstop: 'fullstop', Hash: 'hash',
     CarriageReturn: 'carriage return', Space: 'space', Tab: 'tab', Pipe: 'pipe', SemiColon: 'semicolon'};
+// serial.delimiters(Delimiters.X): the character itself (libs/core/serial.ts).
+const DELIMITER_CHARS = {NewLine: '\n', Comma: ',', Dollar: '$', Colon: ':', Fullstop: '.', Hash: '#', CarriageReturn: '\r',
+    Space: ' ', Tab: '\t', Pipe: '|', SemiColon: ';'};
 
 const isPinEnum = name => /^(DigitalPin|AnalogPin|TouchPin|PwmPin)$/.test(name);
 
@@ -450,9 +454,25 @@ class MicrobitTranslator extends BaseTranslator {
 
     delimiterWord (node) {
         const arg = node && node.type === 'Call' && this.path(node.callee) === 'serial.delimiters' ? node.args[0] : null;
-        const word = arg && arg.type === 'Member' && arg.object && arg.object.name === 'Delimiters' ? DELIMITERS[arg.name] : null;
+        // A literal text of one delimiter's character is that delimiter (serial.delimiters() returns the character).
+        const text = this.delimiterText(node);
+        const member = text === null ? null : Object.keys(DELIMITER_CHARS).find(k => DELIMITER_CHARS[k] === text);
+        const word = arg && arg.type === 'Member' && arg.object && arg.object.name === 'Delimiters' ? DELIMITERS[arg.name] :
+            member ? DELIMITERS[member] : null;
         if (!word) this.unsupported.push('bluetooth delimiter — the block takes serial.delimiters(Delimiters.X) from its menu');
         return word || 'newline';
+    }
+
+    /** Is this delimiter one of the menu's (serial.delimiters(Delimiters.X), or its character as literal text)? */
+    menuDelimiter (node) {
+        if (node && node.type === 'Call' && this.path(node.callee) === 'serial.delimiters') return true;
+        const text = this.delimiterText(node);
+        return text !== null && Object.values(DELIMITER_CHARS).includes(text);
+    }
+
+    /** A delimiter given as literal text (any of its characters ends the data, as CODAL's readUntil reads it), or null. */
+    delimiterText (node) {
+        return node && node.type === 'String' ? tsText(node.value) : null;
     }
 
     // ── buffers ─────────────────────────────────────────────────────
@@ -673,11 +693,14 @@ class MicrobitTranslator extends BaseTranslator {
         }
         case 'pins.concatBuffers': {
             const list = a[0] && a[0].type === 'Array' ? a[0].items : null;
-            if (!list || list.length !== 2) {
-                this.unsupported.push('pins.concatBuffers() — the block joins two buffers given as an array literal');
+            if (!list || !list.length || list.some(x => !this.isBuffer(x) && !(x.type === 'Call' && /Buffer|buffer/.test(this.path(x.callee) || '')))) {
+                this.unsupported.push('pins.concatBuffers() — the block joins buffers given as an array literal');
                 return '0';
             }
-            return `concat buffers ${this.operand(list[0])} and ${this.operand(list[1])}`;
+            // Joined two at a time, left to right (one buffer is a copy of itself).
+            let joined = list.length === 1 ? `slice of buffer ${this.operand(list[0])} from 0 length (length of buffer ${this.operand(list[0])})` : this.operand(list[0]);
+            for (const item of list.slice(1)) joined = `concat buffers ${joined.includes(' ') ? `(${joined})` : joined} and ${this.operand(item)}`;
+            return joined;
         }
         case 'pins.createBufferFromArray': case 'pins.packBuffer': return this.packedBuffer(name, a);
         case 'control.createBufferFromUTF8': return `buffer from text ${this.operand(a[0])}`;
@@ -685,7 +708,31 @@ class MicrobitTranslator extends BaseTranslator {
         case 'serial.readBuffer': return `serial read buffer ${this.operand(a[0])}`;
         case 'serial.readString': return 'serial read string';
         case 'serial.readLine': return 'serial read until newline';
-        case 'serial.readUntil': return `serial read until ${this.delimiterWord(a[0])}`;
+        // A delimiter that is not one of the menu's: any of its characters ends the text (CODAL's readUntil).
+        case 'serial.readUntil':
+            return this.menuDelimiter(a[0]) ? `serial read until ${this.delimiterWord(a[0])}` : `serial read until any of ${this.operand(a[0])}`;
+        // serial.delimiters(Delimiters.X) is the delimiter's character.
+        case 'serial.delimiters': {
+            const ch = a[0] && a[0].type === 'Member' && a[0].object && a[0].object.name === 'Delimiters' ? DELIMITER_CHARS[a[0].name] : null;
+            if (ch) return `char from code ${ch.charCodeAt(0)}`;
+            this.unsupported.push('serial.delimiters(<expression>) — the delimiter must be a Delimiters member');
+            return '0';
+        }
+        case 'control.eventSourceId': case 'control.eventValueId': return this.eventNumber(node);
+        case 'control.deviceName': return 'device name';
+        case 'control.deviceLongSerialNumber': return 'device long serial number';
+        case 'control.compareVersion': return `compare version ${this.operand(a[0])} with ${this.operand(a[1])}`;
+        case 'led.screenshot': return 'screenshot';
+        case 'pins.analogPitchVolume': return 'analog pitch volume';
+        // An I2C write as a value: 0, or CODAL's error code when the device does not answer.
+        case 'pins.i2cWriteBuffer': return `i2c write buffer ${this.operand(a[1])} to ${this.operand(a[0])} status`;
+        // A big image (images.createBigImage): ten columns, as MicroPython's Image takes any width.
+        case 'images.createBigImage': return `(create big image ${JSON.stringify(ledPattern(a[0], 10))})`;
+        // The length of the pulse an onPulsed handler runs for (CODAL's event timestamp there).
+        case 'pins.pulseDuration':
+            if (this.pulseTime) return this.pulseTime;
+            this.unsupported.push('pins.pulseDuration() outside a pins.onPulsed handler');
+            return '0';
         case 'pins.i2cReadBuffer': return `i2c read buffer at ${this.operand(a[0])} size ${this.operand(a[1])}`;
         case 'pins.i2cReadNumber': return `i2c read ${this.numberFormat(a[1])} at ${this.operand(a[0])}`;
         case 'pins.sizeOf': return `size of ${this.numberFormat(a[0])}`;
@@ -716,7 +763,8 @@ class MicrobitTranslator extends BaseTranslator {
         // MakeCode's "parse to number": the number a text spells.
         case 'parseFloat': return `number from text ${this.operand(a[0])}`;
         // 0..255, as MakeCode's; the display itself holds ten levels.
-        case 'bluetooth.uartReadUntil': return `bluetooth uart read until ${this.delimiterWord(a[0])}`;
+        case 'bluetooth.uartReadUntil':
+            return this.menuDelimiter(a[0]) ? `bluetooth uart read until ${this.delimiterWord(a[0])}` : `bluetooth uart read until any of ${this.operand(a[0])}`;
         case 'led.pointBrightness': return `point brightness x ${this.operand(a[0])} y ${this.operand(a[1])}`;
         case 'led.brightness': return 'display brightness';
         case 'led.point': return `point x ${this.operand(a[0])} y ${this.operand(a[1])}`;
@@ -818,6 +866,10 @@ class MicrobitTranslator extends BaseTranslator {
                 this.unsupported.push(`${name}() — ${CALLIOPE_ONLY[name]}`);
                 return '0';
             }
+            if (NO_MICROPYTHON[name]) {
+                this.unsupported.push(`${name}() — ${NO_MICROPYTHON[name]}`);
+                return '0';
+            }
             return super.callExpression(node);
         }
     }
@@ -879,12 +931,33 @@ class MicrobitTranslator extends BaseTranslator {
             }
             // `show icon`, not `show pattern`: showIcon pauses 600 ms after
             // drawing and showLeds 400, and the way back has to know which.
+            // showArrow(direction, interval) holds it for the interval instead (icons.ts: showImage(0, interval)).
+            if (name === 'basic.showArrow' && a[1] && this.literalNumber(a[1]) !== '600') {
+                push(`plot image (create image ${pattern}) offset 0`);
+                push(`wait ${seconds(a[1], this)} seconds`);
+                return;
+            }
             push(`show icon ${pattern}`);
             return;
         }
         case 'basic.showLeds':
             push(`show leds ${ledPattern(a[0])}`);
             return;
+        // plotLeds draws and does not wait (basic.cpp: display.print(image, 0, 0, 0, 0)).
+        case 'basic.plotLeds':
+            push(`plot image (create image ${ledPattern(a[0])}) offset 0`);
+            return;
+        // showAnimation: the literal's frames five columns at a time, each held for the interval (basic.cpp
+        // display.animate(image, interval, 5, 0, 0); pxsim scrollImage(leds, 5, interval)).
+        case 'basic.showAnimation': {
+            const frames = ledFrames(a[0]);
+            const wait = a[1] ? seconds(a[1], this) : '0.4';
+            for (const frame of frames) {
+                push(`plot image (create image ${frame}) offset 0`);
+                push(`wait ${wait} seconds`);
+            }
+            return;
+        }
         case 'basic.clearScreen':
             push('clear display');
             return;
@@ -918,6 +991,8 @@ class MicrobitTranslator extends BaseTranslator {
             push(`print (${JSON.stringify(`${label}:`)} join ${this.joinOperand(a[1])})`);
             return;
         }
+        // console.log goes to the serial console as a line (libs/core/console.ts, control.__log).
+        case 'console.log':
         case 'serial.writeLine': {
             const literal = a[0] && a[0].type === 'String' ? this.literalString(a[0]) : null;
             push(literal !== null ? `print ${JSON.stringify(literal)}` : `print ${this.expr(a[0])}`);
@@ -1048,6 +1123,63 @@ class MicrobitTranslator extends BaseTranslator {
         case 'pins.setPull':
             push(`set pin ${this.pin(a[0]) || 'P0'} pull ${this.enumToken(a[1]) || 'none'}`);
             return;
+        // pushButton mounts a button on the pin: pulled up, pressed when it reads 0 (pins.cpp). Its
+        // events (control.onEvent on the pin's id) are the button's, read below.
+        case 'pins.pushButton':
+            push(`set pin ${this.pin(a[0]) || 'P0'} pull up`);
+            return;
+        // The pitch pin (pins.cpp analogSetPitchPin / analogPitch / analogSetPitchVolume).
+        case 'pins.analogSetPitchPin': push(`set analog pitch pin ${this.pin(a[0]) || 'P0'}`); return;
+        case 'pins.analogPitch': push(`analog pitch ${this.operand(a[0])} hz for ${this.operand(a[1])} ms`); return;
+        case 'pins.analogSetPitchVolume': push(`set analog pitch volume to ${this.operand(a[0])}`); return;
+        // waitForEvent: the next event of that source and value. The board's buttons and a button mounted on a pin
+        // are polled (as their handlers are), so their next press or release is waited for by its level; any other
+        // source is the event bus control.raiseEvent raises on.
+        case 'control.waitForEvent': {
+            const source = Number(this.eventNumber(a[0]));
+            const value = Number(this.eventNumber(a[1]));
+            const mounted = source >= 100 && source <= 120 && this.buttonPins && this.buttonPins.has(`P${source - 100}`);
+            const held = mounted ? `pin P${source - 100} digital = 0` : source === 3 ? '(read button_a) and (read button_b)' :
+                source === 1 || source === 2 ? `read button_${source === 1 ? 'a' : 'b'}` : null;
+            if (held && (value === 1 || value === 2)) {
+                // DOWN: the next press (a button held now is let go first); UP: the next release.
+                push(`wait until ${value === 1 ? `not (${held})` : held}`);
+                push(`wait until ${value === 1 ? held : `not (${held})`}`);
+                return;
+            }
+            if (held && (value === 3 || value === 4)) {
+                // CLICK / LONG_CLICK: the next release after a press shorter / not shorter than a second (CODAL's 1000 ms).
+                const done = this.freshName('_clicked');
+                const at = this.freshName('_held');
+                push(`set ${done} to 0`);
+                push(`REPEAT UNTIL ${done} = 1:`);
+                out.push(`${pad}  wait until ${held}`, `${pad}  set ${at} to timer`, `${pad}  wait until not (${held})`,
+                    `${pad}  IF ${value === 3 ? `(timer - ${at}) < 1` : `not ((timer - ${at}) < 1)`} THEN:`, `${pad}    set ${done} to 1`);
+                return;
+            }
+            push(`wait for event ${this.eventNumber(a[0])} ${this.eventNumber(a[1])}`);
+            return;
+        }
+        // Nothing on the board to set: pxt-microbit's C++ for these is empty or the simulator's drawing only
+        // (servoSetContinuous, setMatrixWidth, singleSimulator), and the V2 mixer's silence level is the
+        // speaker's DC level when nothing plays (pxsim ignores it too).
+        case 'control.singleSimulator': case 'pins.servoSetContinuous': case 'pins.setMatrixWidth': case 'music.setSilenceLevel':
+            push(`# ${name} — nothing to set on the board here`);
+            return;
+        // packIntoBuffer(format, buffer, offset, values): each value set at its place in the buffer.
+        case 'pins.packIntoBuffer': {
+            const fmt = this.literalString(a[0]);
+            const layout = fmt === null ? null : this.packSizes(fmt);
+            const list = a[3] && a[3].type === 'Array' ? a[3].items : null;
+            if (!layout || !list || list.length !== layout.fields.length) {
+                push(this.note('pins.packIntoBuffer() — the block needs a literal format and a literal array of the same length'));
+                return;
+            }
+            const buf = this.single(a[1], out, pad);
+            const at = this.operand(a[2]);
+            list.forEach((item, i) => push(`set buffer ${buf} ${layout.fields[i].format} at ${layout.fields[i].at ? `((${at}) + ${layout.fields[i].at})` : at} to ${this.single(item, out, pad)}`));
+            return;
+        }
 
         // ── sound ──────────────────────────────────────────────────
         // Both slots of `play tone` take an expression, so the frequency and
@@ -1480,7 +1612,16 @@ const IMAGE_METHODS = new Set(['setPixel', 'pixel', 'showImage', 'plotImage', 's
  * MakeCode calls with NO MicroPython counterpart at all — refused with the
  * reason, because "unsupported" alone reads like a gap someone forgot.
  */
-const NO_MICROPYTHON = {};
+const NO_MICROPYTHON = {
+    'control.programHash': 'a hash MakeCode\'s compiler writes into the program binary it builds; lite does not build that binary',
+    'control.programName': 'the project name MakeCode\'s compiler writes into the program binary it builds; lite does not build that binary',
+    'control.gcStats': 'the CODAL garbage collector\'s counters; MicroPython\'s heap is a different allocator',
+    'control.setInterval': 'starts a fiber from a function value at run time and returns its id; lite\'s scripts all start with the program',
+    'control.clearInterval': 'cancels a fiber control.setInterval started at run time; lite\'s scripts all start with the program',
+    'music.onEvent': 'MakeCode\'s melody player raises an event per note, start and end; MicroPython\'s music module plays a melody without them',
+    'music.waitForMelodyEnd': 'waits for the melody player\'s internal melody-ended event, which MicroPython\'s music module does not raise',
+    'music.setPlayTone': 'replaces the function MakeCode\'s melody player plays each note with; MicroPython\'s music module plays the notes itself'
+};
 
 /** MakeCode's EventBusSource and EventBusValue members and their numbers (pxt-microbit 9.1.1 enums.d.ts). */
 const EVENT_BUS_SOURCE = {
@@ -1514,7 +1655,8 @@ const EVENT_BUS_VALUE = {
 
 /** Buffer-making calls (their results are Buffers). */
 const BUFFER_MAKERS = new Set(['control.createBuffer', 'pins.createBuffer', 'control.createBufferFromUTF8', 'radio.receivedBuffer',
-    'pins.createBufferFromArray', 'pins.packBuffer', 'pins.concatBuffers', 'radio.readRawPacket', 'bluetooth.uartReadBuffer', 'serial.readBuffer', 'pins.i2cReadBuffer']);
+    'pins.createBufferFromArray', 'pins.packBuffer', 'pins.concatBuffers', 'radio.readRawPacket', 'bluetooth.uartReadBuffer', 'serial.readBuffer', 'pins.i2cReadBuffer',
+    'control.deviceLongSerialNumber']);
 
 /** A legacy radio Packet's properties (radio.onDataPacketReceived) in our spelling. */
 const PACKET_PROPERTIES = {
@@ -1584,14 +1726,25 @@ function percentSlot (node, translator, out, pad) {
  * a lit pixel becomes 9. Anything that is not a 5x5 grid falls back to a
  * blank one rather than emitting a pattern the parser would reject.
  */
-export function ledPattern (node) {
-    const blank = '00000:00000:00000:00000:00000';
+export function ledPattern (node, width = 5) {
+    const blank = Array(5).fill('0'.repeat(width)).join(':');
     if (!node || node.type !== 'Template') return blank;
     const rows = node.value.split('\n')
         .map(row => row.replace(/[^#.]/g, ''))
         .filter(row => row.length);
-    if (rows.length !== 5 || rows.some(r => r.length !== 5)) return blank;
+    if (rows.length !== 5 || rows.some(r => r.length !== width)) return blank;
     return rows.map(r => [...r].map(c => (c === '#' ? '9' : '0')).join('')).join(':');
+}
+
+/** An animation literal (5 rows, any width) as its 5x5 frames; a short last frame is padded dark. */
+function ledFrames (node) {
+    const rows = node && node.type === 'Template' ? node.value.split('\n').map(row => row.replace(/[^#.]/g, '')).filter(row => row.length) : [];
+    if (rows.length !== 5 || rows.some(r => r.length !== rows[0].length) || !rows[0].length) return [ledPattern(null)];
+    const frames = [];
+    for (let x = 0; x < rows[0].length; x += 5) {
+        frames.push(rows.map(r => [...r.slice(x, x + 5).padEnd(5, '.')].map(c => (c === '#' ? '9' : '0')).join('')).join(':'));
+    }
+    return frames;
 }
 
 /** Does this function body `return` a VALUE (not counting functions nested in it)? */
@@ -1610,6 +1763,9 @@ function returnsValue (body) {
     walk(body);
     return found;
 }
+
+/** Does this body read pins.pulseDuration()? */
+const usesPulseDuration = body => JSON.stringify(body).includes('"object":{"type":"Identifier","name":"pins"},"name":"pulseDuration"');
 
 /** Does this body read control.eventTimestamp()? */
 const usesEventTime = body => JSON.stringify(body).includes('"object":{"type":"Identifier","name":"control"},"name":"eventTimestamp"');
@@ -1644,7 +1800,8 @@ const HANDLERS = {
         return {test: `read button_${button}`, release: `read button_${button}`};
     },
     // serial.onDataReceived(delimiter, body): polled; the body reads the data, which takes it from the buffer.
-    'serial.onDataReceived': translator => a => ({test: `serial has data until ${translator.delimiterWord(a[0])}`, release: null}),
+    'serial.onDataReceived': translator => a => ({test: translator.menuDelimiter(a[0]) ? `serial has data until ${translator.delimiterWord(a[0])}` :
+        `serial has data until any of ${translator.operand(a[0])}`, release: null}),
     'input.onShake': () => () => ({test: 'shake happening', release: null}),
     'input.onScreenUp': () => () => ({test: 'face up happening', release: null}),
     'input.onScreenDown': () => () => ({test: 'face down happening', release: null}),
@@ -1675,8 +1832,10 @@ const HANDLERS = {
         const value = gestureMember ? {'shake': 11, 'tilt up': 1, 'tilt down': 2, 'face up': 5, 'face down': 6, 'tilt left': 3,
             'tilt right': 4, 'freefall': 7, '3g': 8, '6g': 9, '8g': 10}[gestureMember] : Number(translator.eventNumber(a[1]));
         if (!Number.isFinite(source) || !Number.isFinite(value)) return {fallthrough: true};
-        if (source >= 1 && source <= 3) {
-            const held = source === 3 ? '(read button_a) and (read button_b)' : `read button_${source === 1 ? 'a' : 'b'}`;
+        // A button mounted on a pin (pins.pushButton) raises a button's events on the pin's id, pressed at 0.
+        const mounted = source >= 100 && source <= 120 && translator.buttonPins && translator.buttonPins.has(`P${source - 100}`);
+        if ((source >= 1 && source <= 3) || mounted) {
+            const held = mounted ? `pin P${source - 100} digital = 0` : source === 3 ? '(read button_a) and (read button_b)' : `read button_${source === 1 ? 'a' : 'b'}`;
             if (value === 1) return {test: held, release: held};
             if (value === 2) return {test: held, wait: `not (${held})`};
             if (value === 3 || value === 4) {
@@ -1795,6 +1954,8 @@ export function microbitToPseudocode (source, opts = {}) {
         if (lowered.program) ast = lowered.program;
         else extensionDiagnostics.push(...lowered.unsupported.map(e => `extension source: ${e}`));
     }
+    // Library members that are TypeScript in pxt-microbit, constants or other members (microbit-library.js).
+    lowerLibraryCalls(ast, parseMakeCodeTs);
     liftPacketHandlers(ast);
     // Arrays held in class fields and functions held as values (lower-handle-values.js).
     lowerHandleValues(ast, parseMakeCodeTs);
@@ -1849,6 +2010,13 @@ export function microbitToPseudocode (source, opts = {}) {
             if (d.isArray || (d.init && d.init.type === 'Array') || /\[\]$|^Array</.test(String(d.typeName || '').replace(/\s+/g, ''))) t.arrays.add(d.name);
         }
     }
+    // Pins with a button mounted on them (pins.pushButton): their events are a button's.
+    t.buttonPins = new Set();
+    JSON.stringify(ast, (k, v) => {
+        if (v && v.type === 'Call' && v.callee && v.callee.type === 'Member' && v.callee.name === 'pushButton' && v.callee.object &&
+            v.callee.object.name === 'pins' && v.args && v.args[0] && v.args[0].type === 'Member') t.buttonPins.add(v.args[0].name);
+        return v;
+    });
     // A long-press handler on the logo makes its Pressed handler a timed one.
     t.logoTimed = JSON.stringify(ast).includes('"object":{"type":"Identifier","name":"TouchButtonEvent"},"name":"LongPressed"');
 
@@ -1915,16 +2083,22 @@ export function microbitToPseudocode (source, opts = {}) {
             // control.eventTimestamp(): the time the poll saw the event.
             t.eventTime = usesEventTime(handlerBody) ? t.freshName('_evt') : null;
             if (t.eventTime) lines.push(`      set ${t.eventTime} to round (timer * 1000000)`);
+            // pins.pulseDuration(): the pulse's length, from the poll seeing its level to its end.
+            const pulseStart = callName === 'pins.onPulsed' && usesPulseDuration(handlerBody) ? t.freshName('_pulse') : null;
+            t.pulseTime = pulseStart ? t.freshName('_pulse_us') : null;
+            if (pulseStart) lines.push(`      set ${pulseStart} to timer`);
             // Timed shapes (a release, a long press, a pulse): wait for the
             // event's end first, and run the body only if its guard holds.
             if (shape.start) lines.push(`      ${shape.start}`);
             if (shape.wait) lines.push(`      wait until ${shape.wait}`);
+            if (pulseStart) lines.push(`      set ${t.pulseTime} to round ((timer - ${pulseStart}) * 1000000)`);
             if (shape.guard) {
                 lines.push(`      IF ${shape.guard} THEN:`);
                 t.block(handlerBody, 4, lines);
             } else t.block(handlerBody, 3, lines);
             if (shape.release) lines.push(`      wait until not (${shape.release})`);
             t.eventTime = null;
+            t.pulseTime = null;
             scripts.push(lines);
             continue;
         }
@@ -1945,7 +2119,8 @@ export function microbitToPseudocode (source, opts = {}) {
             callName === 'bluetooth.onUartDataReceived') {
             const uart = callName === 'bluetooth.onUartDataReceived';
             const body = t.leavable(bodyOf(call.args[call.args.length - 1]), callName.split('.').pop());
-            const lines = [uart ? `WHEN bluetooth uart receives ${t.delimiterWord(call.args[0])}:` :
+            const lines = [uart ? (t.menuDelimiter(call.args[0]) ? `WHEN bluetooth uart receives ${t.delimiterWord(call.args[0])}:` :
+                `WHEN bluetooth uart receives any of ${t.operand(call.args[0])}:`) :
                 `WHEN micro:bit ${callName.endsWith('Connected') ? 'connected' : 'disconnected'}:`];
             t.block(body, 1, lines);
             scripts.push(lines);
