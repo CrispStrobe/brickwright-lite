@@ -33,7 +33,7 @@ CURRENT_SB3 = '1cbaeed325f5a890e43b78a4211acae8f801f2d2'
 FINITE_V7_PINS = {'bw-board':'836867513c3e7fac420ddaa32c17e1c7b6d3e513','bw-circuit-ui':'1bc233c9297e03abb9b7eb603e045b4e92b0bb40','sb3-creator':'1cbaeed325f5a890e43b78a4211acae8f801f2d2'}
 FINITE_V8_PINS = {'bw-board':'836867513c3e7fac420ddaa32c17e1c7b6d3e513','bw-circuit-ui':'1bc233c9297e03abb9b7eb603e045b4e92b0bb40','sb3-creator':'1cbaeed325f5a890e43b78a4211acae8f801f2d2'}
 FINITE_V9_PINS = {'bw-board':CURRENT_BOARD,'bw-circuit-ui':CUI_V8,'sb3-creator':CURRENT_SB3}
-FINITE_V10_PINS = {'bw-board':'c87cfa325a7b599846c1c4088a408eeabb83daaa','bw-circuit-ui':'4b65f15485abbc039958d8e1a8a29ac3459b75f9','sb3-creator':'bc9070f9ea19d4431508408dcc28a9d3b25473ec'}
+FINITE_V10_PINS = {'bw-board':'c87cfa325a7b599846c1c4088a408eeabb83daaa','bw-circuit-ui':'64351efcf2e1b0c93a9778814646bd55fe6b628a','sb3-creator':'1424ec3fef9f392e8d799339b520244cfd97f891'}
 JSON_CAP = 4 << 20
 STREAM_CAP = 1 << 20
 FILE_CAP = 32 << 20
@@ -200,13 +200,13 @@ FINITE_V9_CUI_WITNESSES = {
 }
 
 FINITE_V10_CUI_WITNESSES = {
- 'node_modules/bw-circuit-ui/LANES.md':(276760,'bc0e8d90c1a18c75c13d5da7e4aadb21d9a218f0cd53d806e28e5479eb649ad4'),
+ 'node_modules/bw-circuit-ui/LANES.md':(277861,'27b464615d1d7ab2f7c2554b13ab92f14013937121faa6fa8e39354b0e7d9f6a'),
  'node_modules/bw-circuit-ui/bin/bwc.mjs':(73062,'e1c7c86d8e66927e30da8c8079c804f3774b8613b49b42d4118516d4e3c02d9d'),
  'node_modules/bw-circuit-ui/docs/CLI-INSTRUMENTS.md':(56813,'2777a5fb5f4ca06c51d484300314fe71df87a27c8e076a3d53c0ba86f5bca9b5'),
- 'node_modules/bw-circuit-ui/package.json':(11520,'ed65e0f676c3112949a3aab44ed3d670a0e01993d2271c0e88d787545d0bf476'),
+ 'node_modules/bw-circuit-ui/package.json':(11550,'5c080301bb523b213de76cc78949d06acadc1098f9828a7934f00ac4517d761b'),
  'node_modules/bw-circuit-ui/scripts/verify-interaction.mjs':(158564,'63b4782258f1ef832567fa68b6e5bd74d42afb547b8a3a7c48c4fa03a2c86616'),
  'node_modules/bw-circuit-ui/src/components/ScopePanel.jsx':(59219,'0fe079a01dee0879dcf7f55f46bbcaab39b4173a74da4a5a6c264744d333dd9b'),
- 'node_modules/bw-circuit-ui/src/i18n/strings.js':(25719,'60fe3dd9febaee4baf2ef82d855de6e054e68b842ee4b209854ffa58b9170230'),
+ 'node_modules/bw-circuit-ui/src/i18n/strings.js':(26198,'b64a47fc416b8beb81d08e2fb0a34447ad20a4aca219ba61dd31ac41a156b350'),
  'node_modules/bw-circuit-ui/src/importers/spice.js':(85910,'3d93812a665b443ac3a7c41197772d06a0dbfa7101670d7db0a74bdbc44c3c41'),
  'node_modules/bw-circuit-ui/src/model/instrument-report.js':(34538,'b209720f09a5c2626b39c2271a0c3453a851019d9504a5cedfe9a7dd3c500084'),
  'node_modules/bw-circuit-ui/src/model/measurement-receipt.js':(10950,'a37085c806a4f8c1293f8d62cc4004ccf800e18c1d11c7fedd53b32e05e9a3b8'),

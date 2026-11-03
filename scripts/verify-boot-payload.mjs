@@ -88,6 +88,11 @@ const LAZY = [
         why: 'the guarded load in overlay/scratch-gui/src/components/tw-pseudocode/circuit-tab.jsx (webpackChunkName "bw-circuit-ui")'},
     {what: 'board canvas', marker: 'Could not recognise this file', chunk: 'bw-circuit-ui',
         why: 'the guarded load in circuit-tab.jsx (webpackChunkName "bw-circuit-ui")'},
+    // The Circuit tab's panel switch and panel views (Robot Lab conventions): loaded with the
+    // designer, never at boot (the tab is mounted from the start). The marker is the panel
+    // header's test id, which only circuit-panels.jsx carries.
+    {what: 'the Circuit tab panels', marker: 'bw-circuit-panel-header', chunk: 'bw-circuit-panels',
+        why: 'the guarded load in circuit-tab.jsx (webpackChunkName "bw-circuit-panels")'},
     {what: '6502 bus extractor (bw-board)', marker: 'no RAM, ROM, VIA or ACIA on the board', chunk: 'bw-board',
         // npm package modules shared by multiple lazy consumers may be extracted
         // into an anonymous split chunk. Keep the named entry requirement and

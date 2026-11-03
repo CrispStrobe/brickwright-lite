@@ -68,6 +68,7 @@ import {scalarExportFlow,closedRemovalScalarAddition} from './scalar-export-flow
 import {sourceScalarProject} from './source-scalar-project.js';
 import {createImageConsumerAbiExport} from './image-consumer-abi-export.js';
 import {prepareObjectClassExport} from './object-class-export.js';
+import {createCreatedFieldExportReceivers} from './created-field-export-receivers.js';
 import {STRING_ARRAY_SETTINGS_PATH,STRING_ARRAY_SETTINGS_SOURCE} from './string-array-settings.generated.js';
 import {LEGACY_CHARACTER_NATIVE_IDENTITY} from './legacy-character-source-admission.generated.js';
 const LEGACY_CHARACTER_REVISION=LEGACY_CHARACTER_NATIVE_IDENTITY.revision;
@@ -490,6 +491,7 @@ class ArcadeEmitter {
         this.arrayReceiverAuthority = createArrayReferenceExportAuthority(project, opts, this.animationFrameProducers);
         this.arrayOwnedSource=isProjectJsonSnapshot(project)?null:arrayExportSource(project);
         this.arrayOwnedSnapshot=null;this.arrayOwnedSourceUsed=false;
+        this.createdFieldWriteSites=[];
         this.arrayProofChecks=arraySourceCreate(null);this.arrayProofCheckCount=0;this.arrayProofInputs=new WeakMap();
         this.unsupported = [];
         // Diagnose each physical current clock reporter without rendering its
@@ -723,9 +725,9 @@ class ArcadeEmitter {
         // gate also excludes inherited slots/getters on otherwise frozen data.
         if(this.snapshotCallbacks&&isProjectJsonSnapshot(this.project)&&!this.currentCallableContext&&!this.currentClassConstructor&&
             this.functionSymbols?.current()&&!this.functionNames().includes('assets')&&ownedAnimationLiteral(this.project,this.target,b)){
-            const allocation=this.animationFrameProducers.resolve(this.target,b);
+            const allocation=this.animationFrameProducers.resolve(this.target,b,{targets:this.project.targets,monitors:this.project.monitors});
             const resource=allocation&&!allocation.shared&&ownedAnimationLiteral(this.project,this.target,b)?
-                this.animationFrameProducers.freshResource(this.target,b):null;
+                this.animationFrameProducers.freshResource(this.target,b,{targets:this.project.targets,monitors:this.project.monitors}):null;
             const emitted=resource&&this.authoredAnimationArrays.get(resource.id);
             if(emitted?.sourceResource===resource&&this.animationFrameProducers.isCurrent()&&
                 ownedAnimationLiteral(this.project,this.target,b))
@@ -1477,7 +1479,7 @@ class ArcadeEmitter {
         const input = b.inputs && b.inputs[name];
         if (!input) return fallback;
         const slot = input[1];
-        const numeric = ['operator_equals','operator_gt','operator_lt','operator_add','operator_subtract','operator_multiply','operator_divide','operator_mod','operator_round','arcade_truncateNumber','arcade_signNumber','arcade_randomNumber','arcade_mathBinary','operator_mathop','operator_random','planetemaths_min','planetemaths_max'].includes(b.opcode);
+        const numeric = ['operator_equals','operator_gt','operator_lt','operator_add','operator_subtract','operator_multiply','operator_divide','operator_mod','operator_round','arcade_truncateNumber','arcade_signNumber','arcade_mathUnary','arcade_randomNumber','arcade_mathBinary','operator_mathop','operator_random','planetemaths_min','planetemaths_max'].includes(b.opcode);
         if (Array.isArray(slot)) {
             const [type, text] = slot;
             if (type === 12 || type === 13) {
@@ -2170,6 +2172,11 @@ class ArcadeEmitter {
         case 'arcade_backgroundColor': return 'scene.backgroundColor()';
         case 'arcade_truncateNumber': return `Math.trunc(${v('NUM')})`;
         case 'arcade_signNumber': return `Math.sign(${v('NUM')})`;
+        case 'arcade_mathUnary': {
+            const operation = String(directMenuValue(b, 'OP', this.blocks));
+            if (operation !== 'truncate' && operation !== 'sign') { this.note('Arcade math requires a fixed supported operation'); return 'undefined'; }
+            return `Math.${operation === 'truncate' ? 'trunc' : 'sign'}(${v('NUM')})`;
+        }
         case 'arcade_createAnimation': this.requiresAnimationPackage=true;return `animation.createAnimation(${this.arrayValue(b,'ACTION')}, ${this.arrayValue(b,'INTERVAL')})`;
         case 'arcade_animationProperty': {
             this.requiresAnimationPackage=true;
@@ -2499,7 +2506,13 @@ class ArcadeEmitter {
         case 'arcade_declareSourceScalar':case 'arcade_declareSourceReference':return;
         case 'arcade_setObjectField':{
             if(this.objectClassExport.inputTypes(this.target,b,'OBJECT').has('__bwSDK_Font'))this.note('SDK Font field mutation is not qualified by the read slice');
-        }if(this.currentClassConstructor&&this.objectClassExport?.parameterPropertyBlocks.has(b))return;push(`;${this.objectClassExport.receiver(b,true)}.${this.objectFieldName(b)} = ${this.arrayValue(b,'VALUE')}`);return;
+        }if(this.currentClassConstructor&&this.objectClassExport?.parameterPropertyBlocks.has(b))return;{
+            const statement=`;${this.objectClassExport.receiver(b,true)}.${this.objectFieldName(b)} = ${this.arrayValue(b,'VALUE')}`;
+            // Class bodies subsequently rewrite their lexical receiver to this.
+            // They keep their existing validator; do not join pre-rewrite text.
+            if(!this.currentClassName)this.createdFieldWriteSites.push({target:this.target,block:b,statement});
+            push(statement);return;
+        }
         case 'data_setvariableto': {
             const scratchName = this.field(b, 'VARIABLE');
             const info = this.infoVariable(scratchName);
@@ -2732,8 +2745,8 @@ class ArcadeEmitter {
             push(`effects.${effect}.startScreenEffect(${args.join(', ')})`);
             return;
         }
-        case 'arcade_playMusic': case 'arcade_playSoundEffect': {
-            const music = b.opcode === 'arcade_playMusic';
+        case 'arcade_play': case 'arcade_playMusic': case 'arcade_playSoundEffect': {
+            const music = b.opcode !== 'arcade_playSoundEffect';
             const mode = this.musicField(b, 'MODE', music ? 'music.PlaybackMode' : 'SoundExpressionPlayMode');
             if (!mode) { push(`// ${this.note(`Unsupported Arcade play mode ${this.field(b, 'MODE')}`)}`); return; }
             push(music ? `music.play(${v('PLAYABLE')}, ${mode})` : `music.playSoundEffect(${v('EFFECT')}, ${mode})`);
@@ -5219,6 +5232,13 @@ function emitProjectToArcade (project, opts, snapshotCallbacks) {
         const selected=new Set(e.procedureConstraints.procedures().map(({target,code})=>e.functionName(target,code)));
         try{for(const diagnostic of validateProcedureConstraintSource(parseMakeCodeTs(projectTs,{parameterDefaults:true,retainParentheses:true}),{onlyFunctions:selected,ordinaryPrimitiveSdkNumbers:true,sceneClockNumbers:true,closedOrdinaryEntries:true}))e.note(diagnostic);}catch(error){e.note(error.message);}
     }
+    const createdFieldReceivers=e.createdFieldWriteSites.length&&[...e.objectClassExport.classes.values()].some(cls=>!cls.intrinsic)?createCreatedFieldExportReceivers({
+        sources:[ts,JSON.parse(files['pxt.json']).files.filter(name=>name.endsWith('.ts')).map(name=>files[name]).join('\n')],
+        sites:e.createdFieldWriteSites,current:()=>isProjectJsonSnapshot(e.project)||!!e.arrayOwnedSource?.current()
+    }):()=>null;
+    // Validate only after the complete class/handler program exists. Every
+    // existing producer/RHS/declaration equation still runs, even on refusal.
+    e.objectClassExport.validatePrimitiveExport(createdFieldReceivers);
     if(!e.frameDeltaNumbersCurrent())e.note('Frame delta Number: current saved reporter proof environment changed during export');
     if(!e.closedOrdinaryEntryCurrent())e.note('Arcade ordinary entry: current execution roots changed during export');
     // Host artwork callbacks can edit current project objects during rendering.

@@ -117,8 +117,13 @@ test('missing duplicate invalid and dynamic resource selections never supply Arr
     for (const documents of [[], [document(), document()], [{...document(), animation: {resource: {id, name: 'Walk'}, frames: []}}]]) {
         check(c.project, {animationDocuments: documents}, false);
     }
-    const dynamic = parsed(program().replace(`resource "${id}"`, 'resource (key)'));
+    // A key that some block writes is a dynamic selection and never supplies facts.
+    const dynamic = parsed(program('frames', '  set key to "other"\n').replace(`resource "${id}"`, 'resource (key)'));
     check(dynamic.project, {animationDocuments: [document()]}, false);
+    // A key declared once and never written (no slider) names one resource for
+    // the whole run, as the same constant does in original PXT.
+    const constant = parsed(program().replace(`resource "${id}"`, 'resource (key)'));
+    check(constant.project, {animationDocuments: [document()]}, true);
     for (const mutate of [
         d => {d.animation.resource.id = 'normalized-external-name';},
         d => {d.animation.activeFrameId = 'missing';},

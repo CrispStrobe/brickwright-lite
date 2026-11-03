@@ -1030,7 +1030,7 @@ class ArcadeTranslator extends BaseTranslator {
                 this.unsupported.push(`${name} refers to a shadowed Math binding`);return 'undefined value';
             }
             if(a.length!==1){this.unsupported.push(`${name}() requires exactly one number`);return 'undefined value';}
-            return `arcade ${name==='Math.sign'?'sign of':'truncate'} (${this.expr(a[0])})`;
+            return `arcade math ${name==='Math.sign'?'sign':'truncate'} of (${this.expr(a[0])})`;
         case 'randint':
             if(a.length!==2){this.note('randint() requires exactly two arguments');return 'undefined value';}
             return `arcade math randomRange first (${this.arrayElementValue(a[0])}) second (${this.arrayElementValue(a[1])})`;
@@ -2874,7 +2874,7 @@ class ArcadeTranslator extends BaseTranslator {
         switch (name) {
         case 'music.play': {
             const mode = a.length === 2 && this.musicEnum(a[1], 'music.PlaybackMode');
-            if (mode) push(`arcade play music ${value(0)} mode ${mode}`);
+            if (mode) push(`arcade play playable ${value(0)} mode ${mode}`);
             else push(this.note('music.play() requires a playable and a fixed music.PlaybackMode'));
             return true;
         }
@@ -3353,6 +3353,26 @@ const liftExporterStops = (program,profile) => {
     if(!tokens||!mark||tokens.kind!=='let'||mark.kind!=='let'||!proof.unique('_tokens')||!proof.unique('_stopMark'))return program;
     const storage=(n,d)=>n?.type==='Identifier'&&proof.declarationAt(n)===d.decls[0];
     const path=n=>n?.type==='Identifier'?n.name:n?.type==='Member'?path(n.object)+'.'+n.name:null;
+    // The exporter's own sprite prologue, exactly: a root
+    // `let <X>Sprite = sprites.create(img`...`, SpriteKind.<K>)` and its
+    // literal-arithmetic `<X>Sprite.setPosition(a, b)`. These run no source
+    // callback and cannot read or write the stop storage; any other use of
+    // the Sprite binding remains subject to the ordinary ambient proof.
+    const literalArithmetic=n=>n?.type==='Number'||n?.type==='Binary'&&['+','-','*','/'].includes(n.op)&&literalArithmetic(n.left)&&literalArithmetic(n.right);
+    const spritePrologue=new Set(),prologueSprites=new Set();
+    for(const n of program.body){
+        const d=n.type==='Declaration'&&n.kind==='let'&&n.decls.length===1?n.decls[0]:null,init=d?.init;
+        if(!d||!/^\w+Sprite$/.test(d.name)||init?.type!=='Call'||init.isNew||path(init.callee)!=='sprites.create'||init.args?.length!==2||
+            init.args[0]?.type!=='Template'||init.args[0].tag!=='img'||init.args[1]?.type!=='Member'||init.args[1].object?.type!=='Identifier'||
+            init.args[1].object.name!=='SpriteKind'||!proof.unbound(init.args[1].object)||!proof.unbound(init.callee.object)||!proof.unique(d.name))continue;
+        spritePrologue.add(n);prologueSprites.add(d);
+    }
+    for(const n of program.body){
+        const c=n.type==='ExpressionStatement'?n.expr:null;
+        if(c?.type==='Call'&&!c.isNew&&c.callee?.type==='Member'&&c.callee.name==='setPosition'&&c.callee.object?.type==='Identifier'&&
+            prologueSprites.has(proof.declarationAt(c.callee.object))&&c.args?.length===2&&c.args.every(literalArithmetic))spritePrologue.add(n);
+    }
+    const inPrologue=n=>{for(let p=n;p;p=proof.parentOf(p))if(spritePrologue.has(p))return true;return false;};
     const activation=node=>{
         let owner=node;while(owner&&!['FunctionDeclaration','FunctionExpression'].includes(owner.type))owner=proof.parentOf(owner);
         if(owner?.type!=='FunctionExpression')return null;
@@ -3390,10 +3410,10 @@ const liftExporterStops = (program,profile) => {
         // Game. A source Sprite/scene/class route needs its own target recipe;
         // marker spellings do not prove the receiver of stop-other scripts.
         const roots=new Set(['game','control','controller','music','basic','pause','console','Math','Array','Object','JSON','String','Number','isNaN','undefined','Infinity','NaN']);
-        if(proof.nodes.some(n=>['Class','ClassDeclaration','Method'].includes(n.type)||
+        if(proof.nodes.some(n=>!inPrologue(n)&&['Class','ClassDeclaration','Method'].includes(n.type)||!inPrologue(n)&&(
             n.type==='Identifier'&&(['sprites','SpriteKind','scene','mp','self','this'].includes(n.name)||
                 !proof.declarationAt(n)&&!roots.has(n.name))||
-            n.type==='Call'&&(n.isNew||n.constructorCall||n.callee?.type==='Index')))return program;
+            n.type==='Call'&&(n.isNew||n.constructorCall||n.callee?.type==='Index'))))return program;
     }
     const bareReturn=n=>Array.isArray(n)?n.length===1&&bareReturn(n[0]):n?.type==='Return'&&!n.value||n?.type==='Block'&&bareReturn(n.body);
     const terms=n=>n?.type==='Binary'&&n.op==='||'?[...terms(n.left),...terms(n.right)]:[n];
@@ -3401,8 +3421,10 @@ const liftExporterStops = (program,profile) => {
         if(call(n,dead,1)&&token(n.args[0])&&activation(n)===tokenOwners.get(proof.declarationAt(n.args[0])))return true;
         if(n?.type!=='Binary'||n.op!=='&&')return false;
         const a=n.left,b=n.right;if(a?.type!=='Binary'||a.op!=='<='||b?.type!=='Binary'||b.op!='!=')return false;
+        // Every Game script guards with its OWN run token against the pair
+        // recorded by whichever script stopped the others.
         return token(a.left)&&token(b.left)&&activation(n)===tokenOwners.get(proof.declarationAt(a.left))&&proof.declarationAt(a.left)===proof.declarationAt(b.left)&&
-            pairs.some(p=>p.token===proof.declarationAt(a.left)&&proof.declarationAt(a.right)===p.md&&proof.declarationAt(b.right)===p.kd);
+            pairs.some(p=>proof.declarationAt(a.right)===p.md&&proof.declarationAt(b.right)===p.kd);
     };
     for(const n of proof.nodes){
         if(n.type==='If'&&!n.alternate&&bareReturn(n.consequent)){
@@ -3424,7 +3446,7 @@ const liftExporterStops = (program,profile) => {
         if(protectedDeclarations.has(proof.declarationAt(n))&&!allowed.has(n))return program;
         if(n.name==='music'&&(!allowed.has(n)||!proof.unbound(n)))return program;
     }
-    if(!proof.ambient(helpers)||!proof.calls(tok,[0],helpers)||!proof.calls(dead,[1],helpers)||!proof.calls(stop,[0],helpers)||!proof.isCurrent())return program;
+    if(!proof.ambient(new Set([...helpers,...spritePrologue]))||!proof.calls(tok,[0],helpers)||!proof.calls(dead,[1],helpers)||!proof.calls(stop,[0],helpers)||!proof.isCurrent())return program;
     const rewrite=n=>{
         if(!n||typeof n!=='object')return n;
         if(Array.isArray(n)){
@@ -3436,6 +3458,76 @@ const liftExporterStops = (program,profile) => {
         return Object.fromEntries(Object.entries(n).map(([k,v])=>[k,rewrite(v)]));
     };
     return rewrite(program);
+};
+
+// A nested function declaration whose only free references to its enclosing
+// root function are that function's never-written parameters is lifted to the
+// root with those parameters appended, and each direct call passes them. A
+// read-only parameter has one value for the whole activation, so the lifted
+// call reads exactly what the closure read in original PXT. Anything else
+// (writes, enclosing locals, escapes, defaults, deeper nesting, name
+// collisions) keeps the original program and its existing diagnostics.
+const liftNestedParameterCaptures = program => {
+    if(!program||!Array.isArray(program.body))return program;
+    const walk=(node,visit,parent=null)=>{if(!node||typeof node!=='object')return;if(Array.isArray(node)){for(const x of node)walk(x,visit,parent);return;}
+        visit(node,parent);for(const v of Object.values(node))if(v&&typeof v==='object')walk(v,visit,node);};
+    const topNames=new Set();
+    for(const n of program.body){if(n.type==='FunctionDeclaration')topNames.add(n.name);if(n.type==='Declaration')for(const d of n.decls||[])topNames.add(d.name);}
+    const plain=fn=>Array.isArray(fn.params)&&fn.params.every(p=>typeof p==='string')&&!(fn.optionalParams||[]).length&&!(fn.parameterDefaults||[]).length&&!(fn.typeParameters||[]).length;
+    let changed=false;const body=[];
+    for(const root of program.body){
+        if(root.type!=='FunctionDeclaration'||!plain(root)||!Array.isArray(root.body)){body.push(root);continue;}
+        const params=new Set(root.params);
+        const rootLocals=new Set();walk(root.body,n=>{if(n.type==='Declaration')for(const d of n.decls||[])rootLocals.add(d.name);});
+        const written=new Set();
+        walk(root.body,n=>{const t=n.type==='Assignment'?n.left:n.type==='Update'?n.argument:null;if(t?.type==='Identifier')written.add(t.name);});
+        const lifted=[],rewrites=new Map();
+        for(const nested of root.body){
+            if(nested.type!=='FunctionDeclaration'||!plain(nested)||!Array.isArray(nested.body))continue;
+            let ok=!topNames.has(nested.name)&&!params.has(nested.name)&&!rootLocals.has(nested.name);
+            const own=new Set(nested.params),captured=[];
+            walk(nested.body,n=>{
+                if(['FunctionDeclaration','FunctionExpression','Class','ClassDeclaration','Method'].includes(n.type))ok=false;
+                if(n.type==='Declaration')for(const d of n.decls||[])own.add(d.name);
+            });
+            walk(nested.body,(n,parent)=>{
+                if(n.type!=='Identifier'||parent?.type==='Member'&&parent.object!==n&&parent.name===n.name)return;
+                if(own.has(n.name))return;
+                if(params.has(n.name)){if(written.has(n.name)||rootLocals.has(n.name))ok=false;else if(!captured.includes(n.name))captured.push(n.name);}
+                else if(rootLocals.has(n.name)||root.body.some(x=>x!==nested&&x.type==='FunctionDeclaration'&&x.name===n.name))ok=false;
+            });
+            for(const name of captured)if(own.has(name))ok=false;
+            if(!ok)continue;
+            // Every reference to the nested name in the root is its direct call
+            // with exactly its declared arity; nothing outside the root names it.
+            const calls=[];
+            walk(root.body,(n,parent)=>{
+                if(n.type!=='Identifier'||n.name!==nested.name)return;
+                if(parent?.type==='Call'&&parent.callee===n&&!parent.isNew&&(parent.args||[]).length===nested.params.length&&
+                    !(parent.args||[]).some(a=>a?.type==='Spread'))calls.push(parent);
+                else ok=false;
+            });
+            let outside=false;
+            for(const other of program.body)if(other!==root)walk(other,n=>{if(n.type==='Identifier'&&n.name===nested.name)outside=true;});
+            if(!ok||outside)continue;
+            const paramTypes={...(nested.paramTypes||{})};for(const name of captured)if(root.paramTypes?.[name])paramTypes[name]=root.paramTypes[name];
+            lifted.push({...nested,params:[...nested.params,...captured],paramTypes});
+            for(const call of calls)rewrites.set(call,captured);
+            topNames.add(nested.name);
+        }
+        if(!lifted.length){body.push(root);continue;}
+        changed=true;
+        const liftedNames=new Set(lifted.map(fn=>fn.name));
+        const rewrite=node=>{
+            if(!node||typeof node!=='object')return node;
+            if(Array.isArray(node))return node.filter(x=>!(x?.type==='FunctionDeclaration'&&liftedNames.has(x.name)&&root.body.includes(x))).map(rewrite);
+            const out=Object.fromEntries(Object.entries(node).map(([k,v])=>[k,rewrite(v)]));
+            if(rewrites.has(node))out.args=[...out.args,...rewrites.get(node).map(name=>({type:'Identifier',name}))];
+            return out;
+        };
+        body.push({...root,body:rewrite(root.body)},...lifted.map(fn=>({...fn,body:rewrite(fn.body)})));
+    }
+    return changed?{...program,body}:program;
 };
 
 // PXT library calls that are, by their own definition, expressions the
@@ -5400,7 +5492,7 @@ export function arcadeToPseudocode (files, opts = {}) {
     const namedArrayInputs=lowerNamedArrayItemHelpers(inlineValueHelpers(nativeBinaryInputs.program,true),{profile:generatedProfile});
     // Recognition consumes the selected parse context before clone-heavy
     // lowerings erase its parameter descriptors or alter canonical bodies.
-    const generatedSource=normalizeCompilerOwnedLegacyArrayHelpers(liftExporterStops(namedArrayInputs.program,generatedProfile),generatedProfile);
+    const generatedSource=liftNestedParameterCaptures(normalizeCompilerOwnedLegacyArrayHelpers(liftExporterStops(namedArrayInputs.program,generatedProfile),generatedProfile));
     const parsed = lowerSourceLoopControl(inlineValueHelpers(desugarForOf(lowerArrayCallbacks(lowerIifes(lowerDestroyAllSprites(lowerLibraryCalls(
         lowerAnimationAssets(generatedSource)), source), source), source), source)));
     const containsPaletteCall = node => {

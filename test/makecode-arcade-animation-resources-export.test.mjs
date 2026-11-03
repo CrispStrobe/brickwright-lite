@@ -42,7 +42,7 @@ WHEN flag clicked:
   arcade animate sprite (actor) frames (frames) interval (interval) loop (1 = 1)
 `;
 
-test('literal and computed resource IDs export shared typed images and original Arcade playback', {todo:"Array export authority cannot yet prove the Array receiver \u2014 see docs/ARCADE-888-OPEN-FAILURES.md"}, async () => {
+test('literal and computed resource IDs export shared typed images and original Arcade playback', async () => {
     for (const resource of [`"${id}"`, '(key)']) {
         const creator = new Creator(); creator.parse(program(resource));
         assert.deepEqual(creator.warnings, []);
@@ -70,6 +70,20 @@ test('literal and computed resource IDs export shared typed images and original 
         const second = new Creator(); second.parse(imported.code);
         assert.deepEqual(second.warnings, []);
     }
+});
+
+// A computed resource ID resolves only from a global no block writes and no
+// slider can change; otherwise the frames receiver keeps its refusal.
+test('a written or slider-controlled resource key keeps the frames refusal', () => {
+    const written = program('(key)').replace('WHEN flag clicked:\n', 'WHEN flag clicked:\n  set key to "other"\n');
+    const variants = [written];
+    for (const text of variants) {
+        const creator = new Creator(); creator.parse(text);
+        assert.ok(projectToArcade(creator.project, {animationDocuments: [sourceDocument()]}).unsupported.some(row => /Array reference/.test(row)));
+    }
+    const creator = new Creator(); creator.parse(program('(key)'));
+    creator.project.monitors = [...(creator.project.monitors || []), {id: 'keySlider', mode: 'slider', opcode: 'data_variable', params: {VARIABLE: 'key'}, spriteName: null, value: 0, visible: true}];
+    assert.ok(projectToArcade(creator.project, {animationDocuments: [sourceDocument()]}).unsupported.some(row => /Array reference/.test(row)));
 });
 
 test('missing and duplicate resources remain named export refusals', () => {

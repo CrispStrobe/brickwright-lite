@@ -11,7 +11,7 @@ const primitive=new Set(['Number','String','Boolean','Null','Undefined']);
 // The default-on identity control binds this constructor frontier to the
 // selected original SDK source; it is not an entry or producer certificate.
 export const EXTENDABLE_SPRITE_SOURCE_SHA256='5deac86004236ed206f821987efe310e8217e6e581e446e23bfe70ca2b95931b';
-const denied=Object.freeze({current:()=>true,typesAt:()=>null,initialized:()=>false});
+const denied=Object.freeze({current:()=>true,typesAt:()=>null,initialized:()=>false,fieldReceiverClassesAt:()=>null});
 const isArray=Array.isArray,own=Object.hasOwn,keys=Reflect.ownKeys,descriptor=Object.getOwnPropertyDescriptor,prototype=Object.getPrototypeOf,same=Object.is;
 const safe=name=>typeof name==='string'&&/^[A-Za-z_$][\w$]*$/.test(name)&&!['constructor','prototype','__proto__','toString','valueOf'].includes(name);
 // Denial only, never an issuer or enrollment API. Names come from selected
@@ -79,7 +79,7 @@ export function sdkSpriteConstructorScalarEffects(program,profile=GENERATED_HELP
     let live=true;
     const current=()=>{if(!live)return false;try{const valid=syntax.isCurrent()&&helperSyntax.current()&&sdk.current()&&unchanged();if(!valid)live=false;return valid;}catch(error){live=false;throw error;}};
     const failure=Object.freeze({}),fail=()=>{throw failure;};
-    const result=new WeakMap(),actualNodes=new WeakSet(nodes),called=new Set(),active=new Set(),classes=new Map(),globals=new Map(),registrations=new Set(),handlers=[],writers=new Map(),primitiveReads=new Set();
+    const result=new WeakMap(),fieldReceivers=new WeakMap(),actualNodes=new WeakSet(nodes),called=new Set(),active=new Set(),classes=new Map(),globals=new Map(),registrations=new Set(),handlers=[],writers=new Map(),primitiveReads=new Set();
     const scalar=(type,value)=>({type,value}),undefinedValue=scalar('Undefined'),nullValue=scalar('Null');
     const namedKinds=new Map(['Player','Projectile','Food','Enemy'].map(name=>[name,Symbol(name)]));
     let kindDomain=null,namedKind=null;
@@ -285,7 +285,13 @@ export function sdkSpriteConstructorScalarEffects(program,profile=GENERATED_HELP
             const old=node.op==='='?null:node.left.type==='Identifier'?lookup(node.left,frame):fieldRead(object,node.left.name);
             const right=expression(node.right,frame);value=node.op==='='?right:binary(node.op.slice(0,-1),old,right);
             if(node.left.type==='Identifier')store(node.left,value,frame);
-            else{const member=object?.cls?.members.get(node.left.name);if(object?.type!=='instance'||!member?.field||!isPrimitive(value))fail();object.fields.set(node.left.name,value);}break;
+            else{const member=object?.cls?.members.get(node.left.name);if(object?.type!=='instance'||!member?.field||!isPrimitive(value))fail();
+                // This exact write observed an actual constructed instance and
+                // its declared field. Retain EVERY concrete class observed at
+                // the occurrence; no cast, initialized receiver or RHS type
+                // fact is published through this independent obligation.
+                let receivers=fieldReceivers.get(node);if(!receivers){receivers=new Set();fieldReceivers.set(node,receivers);}
+                receivers.add(object.cls.node);object.fields.set(node.left.name,value);}break;
         }
         case 'Call':{
             const callee=node.callee;
@@ -351,5 +357,6 @@ export function sdkSpriteConstructorScalarEffects(program,profile=GENERATED_HELP
         for(const b of primitiveReads)if([...writers.get(b)||[]].some(type=>!primitive.has(type)))fail();
         if(!current())fail();
     }catch(error){if(error!==failure)throw error;return denied;}
-    return Object.freeze({current,typesAt(node){if(!current()||!result.has(node))return null;return [...result.get(node)];},initialized(node){if(!current()||!result.has(node))return false;return true;}});
+    return Object.freeze({current,typesAt(node){if(!current()||!result.has(node))return null;return [...result.get(node)];},initialized(node){if(!current()||!result.has(node))return false;return true;},
+        fieldReceiverClassesAt(node){if(!current()||!actualNodes.has(node)||!fieldReceivers.has(node))return null;return [...fieldReceivers.get(node)];}});
 }

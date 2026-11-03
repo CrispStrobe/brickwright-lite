@@ -1,0 +1,10 @@
+{
+ "author": "CrispStrobe",
+ "license": "BSD-3-Clause",
+ "files": {
+  "models/stroke-shift.ldr": "bc3857651b1d588517c61fd81ce2ea08c0df7227c35dedc9b1a8e992c2367ec0",
+  "programs/stroke-shift.bw": "5d4fc358feb5ac8a33bf2f70149a78a9fecab475c442c5574fe7810be7203077",
+  "LICENSE.txt": "51a92a9f89fb2dbaf7afa88fa75b54c7fc11b635afacf35bd63a495ac1c4ff33",
+  "SOURCES.md": "a7519f178273d4fca9dd63ec1cfeb9958d7ffabc712385e0fc10bf3d3e0a506e"
+ }
+}

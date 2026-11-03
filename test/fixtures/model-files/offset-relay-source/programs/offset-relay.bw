@@ -1,0 +1,477 @@
+DEVICE SPIKE
+# OFFSET RELAY — equal shaft angles while their offset changes.
+# Copyright (c) 2026 CrispStrobe. SPDX-License-Identifier: BSD-3-Clause.
+# Import the matching offset-relay.ldr, choose Mat > Plain, Reset, then Run.
+# A rotates the input. B moves the output-bearing carriage. Output and middle-disc rotation stay passive.
+# The exact source-bound evidence determines qualification; this header is not a PASS claim.
+# Each move uses target minus a fresh unwrapped encoder reading and a positive speed magnitude.
+# Both same-message receivers run concurrently and join before each teaching dwell.
+WHEN flag clicked:
+  set directionA to 1
+  set directionB to -1
+  set targetA to 0
+  set targetB to 0
+  set speedA to 90
+  set speedB to 15
+  set inputTargetDeg to 0
+  set offsetTargetMm to 32
+  set stage to 0
+  set caseId to 0
+  set movingMask to 0
+  set arrived to 0
+  set arrivedA to 0
+  set arrivedB to 0
+  set correctionsA to 0
+  set correctionsB to 0
+  set completed to 0
+  set failed to 0
+  lab stop motor A hold
+  lab stop motor B hold
+  if (lab status) = "no-model" or (lab status) = "not-open" then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "Open the matching Offset Relay model and Reset before Run."
+    stop all
+  if (abs of (lab motor A angle)) > 1 or (abs of (lab motor B angle)) > 1 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "Fresh datum guard: Reset the matching model before retrying."
+    stop all
+  reset timer
+  broadcast "Offset Relay watchdog"
+  # Stage 0: datum.
+  set arrived to 0
+  set stage to 0
+  set caseId to 0
+  set movingMask to 0
+  set targetA to 0
+  set targetB to 0
+  set speedA to 90
+  set speedB to 15
+  set inputTargetDeg to 0
+  set offsetTargetMm to 32
+  set arrivedA to 0
+  set arrivedB to 0
+  broadcast "Offset Relay move" and wait
+  if failed = 1 or arrivedA = 0 or arrivedB = 0 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "A joined move did not establish both measured arrivals. Reset."
+    stop all
+  if (abs of ((lab motor A angle) - targetA)) > 0.5 or (abs of (lab motor A speed)) > 0.5 or (abs of ((lab motor B angle) - targetB)) > 0.5 or (abs of (lab motor B speed)) > 0.5 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "The actual motor angle or speed is outside the arrival guard. Reset."
+    stop all
+  set movingMask to 0
+  set arrived to 1
+  wait 1 seconds
+  if (abs of ((lab motor A angle) - targetA)) > 0.5 or (abs of (lab motor A speed)) > 0.5 or (abs of ((lab motor B angle) - targetB)) > 0.5 or (abs of (lab motor B speed)) > 0.5 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "An input moved outside its measured comparison window. Reset."
+    stop all
+  set arrived to 0
+  # Stage 1: fixed-offset-forward.
+  set arrived to 0
+  set stage to 1
+  set caseId to 1
+  set movingMask to 1
+  set targetA to 720
+  set targetB to 0
+  set speedA to 90
+  set speedB to 15
+  set inputTargetDeg to 720
+  set offsetTargetMm to 32
+  set arrivedA to 0
+  set arrivedB to 0
+  broadcast "Offset Relay move" and wait
+  if failed = 1 or arrivedA = 0 or arrivedB = 0 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "A joined move did not establish both measured arrivals. Reset."
+    stop all
+  if (abs of ((lab motor A angle) - targetA)) > 0.5 or (abs of (lab motor A speed)) > 0.5 or (abs of ((lab motor B angle) - targetB)) > 0.5 or (abs of (lab motor B speed)) > 0.5 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "The actual motor angle or speed is outside the arrival guard. Reset."
+    stop all
+  set movingMask to 0
+  set arrived to 1
+  wait 1 seconds
+  if (abs of ((lab motor A angle) - targetA)) > 0.5 or (abs of (lab motor A speed)) > 0.5 or (abs of ((lab motor B angle) - targetB)) > 0.5 or (abs of (lab motor B speed)) > 0.5 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "An input moved outside its measured comparison window. Reset."
+    stop all
+  set arrived to 0
+  # Stage 2: increase-offset-forward.
+  set arrived to 0
+  set stage to 2
+  set caseId to 2
+  set movingMask to 3
+  set targetA to 1440
+  set targetB to -152.78874536821954
+  set speedA to 90
+  set speedB to 19.098593171027442
+  set inputTargetDeg to 1440
+  set offsetTargetMm to 48
+  set arrivedA to 0
+  set arrivedB to 0
+  broadcast "Offset Relay move" and wait
+  if failed = 1 or arrivedA = 0 or arrivedB = 0 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "A joined move did not establish both measured arrivals. Reset."
+    stop all
+  if (abs of ((lab motor A angle) - targetA)) > 0.5 or (abs of (lab motor A speed)) > 0.5 or (abs of ((lab motor B angle) - targetB)) > 0.5 or (abs of (lab motor B speed)) > 0.5 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "The actual motor angle or speed is outside the arrival guard. Reset."
+    stop all
+  set movingMask to 0
+  set arrived to 1
+  wait 1 seconds
+  if (abs of ((lab motor A angle) - targetA)) > 0.5 or (abs of (lab motor A speed)) > 0.5 or (abs of ((lab motor B angle) - targetB)) > 0.5 or (abs of (lab motor B speed)) > 0.5 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "An input moved outside its measured comparison window. Reset."
+    stop all
+  set arrived to 0
+  # Stage 3: decrease-offset-forward.
+  set arrived to 0
+  set stage to 3
+  set caseId to 2
+  set movingMask to 3
+  set targetA to 2160
+  set targetB to 76.39437268410977
+  set speedA to 90
+  set speedB to 28.64788975654116
+  set inputTargetDeg to 2160
+  set offsetTargetMm to 24
+  set arrivedA to 0
+  set arrivedB to 0
+  broadcast "Offset Relay move" and wait
+  if failed = 1 or arrivedA = 0 or arrivedB = 0 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "A joined move did not establish both measured arrivals. Reset."
+    stop all
+  if (abs of ((lab motor A angle) - targetA)) > 0.5 or (abs of (lab motor A speed)) > 0.5 or (abs of ((lab motor B angle) - targetB)) > 0.5 or (abs of (lab motor B speed)) > 0.5 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "The actual motor angle or speed is outside the arrival guard. Reset."
+    stop all
+  set movingMask to 0
+  set arrived to 1
+  wait 1 seconds
+  if (abs of ((lab motor A angle) - targetA)) > 0.5 or (abs of (lab motor A speed)) > 0.5 or (abs of ((lab motor B angle) - targetB)) > 0.5 or (abs of (lab motor B speed)) > 0.5 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "An input moved outside its measured comparison window. Reset."
+    stop all
+  set arrived to 0
+  # Stage 4: restore-offset-forward.
+  set arrived to 0
+  set stage to 4
+  set caseId to 2
+  set movingMask to 3
+  set targetA to 2880
+  set targetB to 0
+  set speedA to 90
+  set speedB to 9.549296585513721
+  set inputTargetDeg to 2880
+  set offsetTargetMm to 32
+  set arrivedA to 0
+  set arrivedB to 0
+  broadcast "Offset Relay move" and wait
+  if failed = 1 or arrivedA = 0 or arrivedB = 0 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "A joined move did not establish both measured arrivals. Reset."
+    stop all
+  if (abs of ((lab motor A angle) - targetA)) > 0.5 or (abs of (lab motor A speed)) > 0.5 or (abs of ((lab motor B angle) - targetB)) > 0.5 or (abs of (lab motor B speed)) > 0.5 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "The actual motor angle or speed is outside the arrival guard. Reset."
+    stop all
+  set movingMask to 0
+  set arrived to 1
+  wait 1 seconds
+  if (abs of ((lab motor A angle) - targetA)) > 0.5 or (abs of (lab motor A speed)) > 0.5 or (abs of ((lab motor B angle) - targetB)) > 0.5 or (abs of (lab motor B speed)) > 0.5 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "An input moved outside its measured comparison window. Reset."
+    stop all
+  set arrived to 0
+  # Stage 5: decrease-offset-reverse.
+  set arrived to 0
+  set stage to 5
+  set caseId to 3
+  set movingMask to 3
+  set targetA to 2160
+  set targetB to 76.39437268410977
+  set speedA to 90
+  set speedB to 9.549296585513721
+  set inputTargetDeg to 2160
+  set offsetTargetMm to 24
+  set arrivedA to 0
+  set arrivedB to 0
+  broadcast "Offset Relay move" and wait
+  if failed = 1 or arrivedA = 0 or arrivedB = 0 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "A joined move did not establish both measured arrivals. Reset."
+    stop all
+  if (abs of ((lab motor A angle) - targetA)) > 0.5 or (abs of (lab motor A speed)) > 0.5 or (abs of ((lab motor B angle) - targetB)) > 0.5 or (abs of (lab motor B speed)) > 0.5 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "The actual motor angle or speed is outside the arrival guard. Reset."
+    stop all
+  set movingMask to 0
+  set arrived to 1
+  wait 1 seconds
+  if (abs of ((lab motor A angle) - targetA)) > 0.5 or (abs of (lab motor A speed)) > 0.5 or (abs of ((lab motor B angle) - targetB)) > 0.5 or (abs of (lab motor B speed)) > 0.5 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "An input moved outside its measured comparison window. Reset."
+    stop all
+  set arrived to 0
+  # Stage 6: increase-offset-reverse.
+  set arrived to 0
+  set stage to 6
+  set caseId to 3
+  set movingMask to 3
+  set targetA to 1440
+  set targetB to -152.78874536821954
+  set speedA to 90
+  set speedB to 28.64788975654116
+  set inputTargetDeg to 1440
+  set offsetTargetMm to 48
+  set arrivedA to 0
+  set arrivedB to 0
+  broadcast "Offset Relay move" and wait
+  if failed = 1 or arrivedA = 0 or arrivedB = 0 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "A joined move did not establish both measured arrivals. Reset."
+    stop all
+  if (abs of ((lab motor A angle) - targetA)) > 0.5 or (abs of (lab motor A speed)) > 0.5 or (abs of ((lab motor B angle) - targetB)) > 0.5 or (abs of (lab motor B speed)) > 0.5 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "The actual motor angle or speed is outside the arrival guard. Reset."
+    stop all
+  set movingMask to 0
+  set arrived to 1
+  wait 1 seconds
+  if (abs of ((lab motor A angle) - targetA)) > 0.5 or (abs of (lab motor A speed)) > 0.5 or (abs of ((lab motor B angle) - targetB)) > 0.5 or (abs of (lab motor B speed)) > 0.5 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "An input moved outside its measured comparison window. Reset."
+    stop all
+  set arrived to 0
+  # Stage 7: restore-offset-reverse.
+  set arrived to 0
+  set stage to 7
+  set caseId to 3
+  set movingMask to 3
+  set targetA to 720
+  set targetB to 0
+  set speedA to 90
+  set speedB to 19.098593171027442
+  set inputTargetDeg to 720
+  set offsetTargetMm to 32
+  set arrivedA to 0
+  set arrivedB to 0
+  broadcast "Offset Relay move" and wait
+  if failed = 1 or arrivedA = 0 or arrivedB = 0 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "A joined move did not establish both measured arrivals. Reset."
+    stop all
+  if (abs of ((lab motor A angle) - targetA)) > 0.5 or (abs of (lab motor A speed)) > 0.5 or (abs of ((lab motor B angle) - targetB)) > 0.5 or (abs of (lab motor B speed)) > 0.5 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "The actual motor angle or speed is outside the arrival guard. Reset."
+    stop all
+  set movingMask to 0
+  set arrived to 1
+  wait 1 seconds
+  if (abs of ((lab motor A angle) - targetA)) > 0.5 or (abs of (lab motor A speed)) > 0.5 or (abs of ((lab motor B angle) - targetB)) > 0.5 or (abs of (lab motor B speed)) > 0.5 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "An input moved outside its measured comparison window. Reset."
+    stop all
+  set arrived to 0
+  # Stage 8: fixed-offset-return.
+  set arrived to 0
+  set stage to 8
+  set caseId to 4
+  set movingMask to 1
+  set targetA to 0
+  set targetB to 0
+  set speedA to 90
+  set speedB to 15
+  set inputTargetDeg to 0
+  set offsetTargetMm to 32
+  set arrivedA to 0
+  set arrivedB to 0
+  broadcast "Offset Relay move" and wait
+  if failed = 1 or arrivedA = 0 or arrivedB = 0 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "A joined move did not establish both measured arrivals. Reset."
+    stop all
+  if (abs of ((lab motor A angle) - targetA)) > 0.5 or (abs of (lab motor A speed)) > 0.5 or (abs of ((lab motor B angle) - targetB)) > 0.5 or (abs of (lab motor B speed)) > 0.5 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "The actual motor angle or speed is outside the arrival guard. Reset."
+    stop all
+  set movingMask to 0
+  set arrived to 1
+  wait 1 seconds
+  if (abs of ((lab motor A angle) - targetA)) > 0.5 or (abs of (lab motor A speed)) > 0.5 or (abs of ((lab motor B angle) - targetB)) > 0.5 or (abs of (lab motor B speed)) > 0.5 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "An input moved outside its measured comparison window. Reset."
+    stop all
+  set arrived to 0
+  set stage to 9
+  set movingMask to 0
+  set completed to 1
+  say "Complete: compare actual input, middle and output angles throughout the changing offset. Both inputs hold."
+
+WHEN I receive "Offset Relay move":
+  set arrivedA to 0
+  set correctionsA to 0
+  if (abs of (targetA - (lab motor A angle))) > 0.15 then:
+    lab run motor A for (targetA - (lab motor A angle)) degrees at speedA degrees per second
+    lab stop motor A hold
+  wait 1 seconds
+  repeat 3:
+    if (abs of (targetA - (lab motor A angle))) > 0.2 then:
+      change correctionsA by 1
+      lab run motor A for (targetA - (lab motor A angle)) degrees at 15 degrees per second
+      lab stop motor A hold
+      wait 1 seconds
+  if (abs of ((lab motor A angle) - targetA)) > 0.5 or (abs of (lab motor A speed)) > 0.5 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "Motor A failed its bounded measured arrival guard. Reset."
+    stop all
+  set arrivedA to 1
+
+WHEN I receive "Offset Relay move":
+  set arrivedB to 0
+  set correctionsB to 0
+  if (abs of (targetB - (lab motor B angle))) > 0.15 then:
+    lab run motor B for (targetB - (lab motor B angle)) degrees at speedB degrees per second
+    lab stop motor B hold
+  wait 1 seconds
+  repeat 3:
+    if (abs of (targetB - (lab motor B angle))) > 0.2 then:
+      change correctionsB by 1
+      lab run motor B for (targetB - (lab motor B angle)) degrees at 15 degrees per second
+      lab stop motor B hold
+      wait 1 seconds
+  if (abs of ((lab motor B angle) - targetB)) > 0.5 or (abs of (lab motor B speed)) > 0.5 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "Motor B failed its bounded measured arrival guard. Reset."
+    stop all
+  set arrivedB to 1
+
+WHEN I receive "Offset Relay watchdog":
+  repeat until completed = 1 or failed = 1:
+    if timer > 150 then:
+      set failed to 1
+      set arrived to 0
+      lab stop motor A hold
+      lab stop motor B hold
+      say "150 second watchdog: both inputs held. Reset before retrying."
+      stop all
+    if ((lab motor A angle) * directionA * 1) < -3 or ((lab motor A angle) * directionA * 1) > 2883 then:
+      set failed to 1
+      set arrived to 0
+      lab stop motor A hold
+      lab stop motor B hold
+      say "Input rotation exceeded the declared software envelope. Reset."
+      stop all
+    if (32 + ((lab motor B angle) * directionB * 0.10471975511965978)) < 23.2 or (32 + ((lab motor B angle) * directionB * 0.10471975511965978)) > 48.8 then:
+      set failed to 1
+      set arrived to 0
+      lab stop motor A hold
+      lab stop motor B hold
+      say "Bearing offset exceeded the declared software envelope. Reset."
+      stop all
+    if arrived = 1 then:
+      if (abs of ((lab motor A angle) - targetA)) > 0.5 or (abs of (lab motor A speed)) > 0.5 or (abs of ((lab motor B angle) - targetB)) > 0.5 or (abs of (lab motor B speed)) > 0.5 then:
+        set failed to 1
+        set arrived to 0
+        lab stop motor A hold
+        lab stop motor B hold
+        say "A comparison-window input guard failed. Both inputs held. Reset."
+        stop all
+    wait 0.05 seconds

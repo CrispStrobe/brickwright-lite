@@ -24,6 +24,30 @@ export function ordinaryPrimitiveSdkNumberCalls(program) {
     return new WeakSet(unsafe?[]:candidates);
 }
 
+// scene.backgroundColor() is typed `number` in the pinned Arcade SDK, and
+// Lite's native reporter always returns a Number (its setter stores
+// Number(COLOR) || 0). Only an unshadowed builtin `scene` whose every use is a
+// direct, non-constructed member call qualifies; any extraction, alias, write
+// or computed access of the namespace makes the whole program refuse.
+export function ordinarySceneBackgroundNumberCalls(program) {
+    const sdk=staticSdkNamespaceReceivers(program),candidates=[];
+    let unsafe=false;
+    const visit=(node,parent=null,grandparent=null)=>{
+        if(!node||typeof node!=='object')return;
+        if(Array.isArray(node)){for(const value of node)visit(value,parent,grandparent);return;}
+        if(node.type==='Identifier'&&node.name==='scene'&&sdk.has(node)){
+            const member=parent?.type==='Member'&&parent.object===node&&!parent.optional?parent:null;
+            const call=grandparent?.type==='Call'&&grandparent.callee===member?grandparent:null;
+            if(!call||call.isNew||call.constructorCall||call.optional||call.typeArguments?.length||
+                !Array.isArray(call.args)||call.args.some(arg=>arg?.type==='Spread'))unsafe=true;
+            else if(member.name==='backgroundColor'&&call.args.length===0)candidates.push(call);
+        }
+        for(const value of Object.values(node))if(value&&typeof value==='object')visit(value,node,parent);
+    };
+    visit(program);
+    return new WeakSet(unsafe?[]:candidates);
+}
+
 // The original seven-call census remains independent. This additional profile
 // is selected only by the ordinary primitive constraint consumer whose native
 // score implementation and fixed-player result ownership are checked separately.

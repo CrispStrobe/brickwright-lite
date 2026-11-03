@@ -272,7 +272,7 @@ test('Arcade maths keeps every argument both ways (min/max/pow kept only the fir
 });
 
 // ── What Lite's own export carries comes back as itself (task F8) ───────────
-test('stop blocks and not survive export and re-import, without the run-token machinery', {todo:"other export/roundtrip regression \u2014 see docs/ARCADE-888-OPEN-FAILURES.md"}, () => {
+test('stop blocks and not survive export and re-import, without the run-token machinery', () => {
     const src = [
         'DEVICE ARCADE',
         'SPRITE Game:',
@@ -296,6 +296,24 @@ test('stop blocks and not survive export and re-import, without the run-token ma
     assert.match(back.code, /^\s*stop other scripts in sprite$/m);
     assert.match(back.code, /arcade repeat while compare value \(Game_n\) op "<" with \(\(0 \+ \(10\)\)\)/);
     assert.doesNotMatch(back.code, /op "===" with \(\(compare value \(1\) op "<" with \(0\)\)\)/, 'a condition came back as a value comparison');
+});
+
+// The lift accepts only the exporter's own sprite prologue. Any other Sprite
+// route or a prologue that can observe the stop storage keeps the helpers.
+test('stop machinery stays unlifted when the sprite prologue is not the exporter recipe', () => {
+    const src = ['DEVICE ARCADE', 'SPRITE Game:', 'WHEN flag clicked:', '  set n to 0', '  REPEAT UNTIL not (n < 10):',
+        '    change n by 1', '  stop other scripts in sprite', 'WHEN flag clicked:', '  FOREVER:', '    change m by 1', ''].join('\n');
+    const {files} = exportOf(src);
+    const position = /GameSprite\.setPosition\([^\n]*\)/;
+    assert.match(files['main.ts'], position);
+    for (const edit of [
+        ts => ts.replace(position, 'GameSprite.setPosition(_tokens, 0)'),
+        ts => ts.replace(position, 'GameSprite.setPosition(info.life(), 0)'),
+        ts => ts.replace(position, m => m + '\nlet Foe = sprites.create(img`\n    5\n`, SpriteKind.Enemy)'),
+        ts => ts.replace(position, m => m + '\nGameSprite.x = _stopMark')]) {
+        const back = importProjectFiles({...files, 'main.ts': edit(files['main.ts'])}, {target: 'arcade', name: 'rt'});
+        assert.match(back.code, /_tok|_stopMark|_som_/, 'a foreign prologue must not lift the stop machinery');
+    }
 });
 
 // These authored controls use actual PXT input, not the unresolved lab2imgs

@@ -5,6 +5,7 @@ import {createArraySourceStartResetEffects} from './array-source-start-reset-eff
 import {createProjectConditionalArrayEntry,createProjectArrayPublicationFrontier} from './project-conditional-array-entry.js';
 import {isProjectJsonSnapshot} from './project-json-snapshot.js';
 import {createClosedOrdinaryProjectEntry} from './closed-ordinary-project-entry.js';
+import {SDK_CLASS_NODES,SDK_SPRITE_CLASS_NODES,SDK_DIALOG_CLASS_NODES} from './sdk-class-descriptors.js';
 const watcherOwnDescriptor=Object.getOwnPropertyDescriptor,watcherOwnKeys=Reflect.ownKeys,watcherIsArray=Array.isArray,watcherFinite=Number.isFinite,watcherCreate=Object.create,watcherNumber=Number;
 const prefixGetPrototype=Object.getPrototypeOf,prefixHasOwn=Object.hasOwn,prefixSameValue=Object.is;
 const prefixAmbient=[Object.prototype,Array.prototype].map(object=>({object,parent:prefixGetPrototype(object),
@@ -23,6 +24,54 @@ const privatePrefixAmbientCurrent=()=>{
     }
     return true;
 };
+// Read only own data slots: a changed descriptor cannot run an SDK metadata
+// getter while checking this private dependency. The profile is solely a
+// refusal inventory of intrinsic class/member names, never a receiver fact.
+const privatePrefixSdkProfile=()=>{
+    const slots=[],prototypes=new Map();let valid=true;
+    const own=(object,key)=>{
+        if(!object||typeof object!=='object')return undefined;
+        const parent=prefixGetPrototype(object),expected=watcherIsArray(object)?Array.prototype:Object.prototype;
+        if(parent!==expected){valid=false;return undefined;}
+        prototypes.set(object,parent);
+        const descriptor=watcherOwnDescriptor(object,key);
+        slots.push({object,key,descriptor});
+        if(!descriptor||!prefixHasOwn(descriptor,'value'))return undefined;
+        return descriptor.value;
+    };
+    const list=value=>watcherIsArray(value)&&Number.isSafeInteger(own(value,'length'))&&own(value,'length')<=256;
+    if(!list(SDK_CLASS_NODES))return null;
+    // The aggregate is a spread snapshot. Source exporters reread the two
+    // supplier arrays, so their exact lengths, slots and composition are also
+    // required; neither replacement nor an appended class can hide behind it.
+    let offset=0;
+    for(const supplier of [SDK_SPRITE_CLASS_NODES,SDK_DIALOG_CLASS_NODES]){
+        if(!list(supplier))return null;
+        for(let i=0;i<own(supplier,'length');i++)if(own(supplier,i+'')!==own(SDK_CLASS_NODES,offset++ +''))return null;
+    }
+    if(offset!==own(SDK_CLASS_NODES,'length'))return null;
+    const names=new Set(),members=new Set();
+    for(let i=0;i<own(SDK_CLASS_NODES,'length');i++){
+        const cls=own(SDK_CLASS_NODES,i+''),name=own(cls,'name'),base=own(cls,'base');
+        if(typeof name!=='string'||names.has(name)||base!==undefined&&typeof base!=='string')return null;
+        names.add(name);
+        for(const slot of ['fields','methods']){
+            const rows=own(cls,slot);if(!list(rows))return null;
+            for(let j=0;j<own(rows,'length');j++){
+                const name=own(own(rows,j+''),'name');if(typeof name!=='string')return null;members.add(name);
+            }
+        }
+    }
+    if(!valid)return null;
+    const current=()=>[...prototypes].every(([object,parent])=>prefixGetPrototype(object)===parent)&&slots.every(({object,key,descriptor:d})=>{
+        const now=watcherOwnDescriptor(object,key);
+        if(!d)return !now;
+        return !!now&&prefixHasOwn(now,'value')&&prefixSameValue(now.value,d.value)&&now.writable===d.writable&&
+            now.enumerable===d.enumerable&&now.configurable===d.configurable;
+    });
+    return {names,members,current};
+};
+const privatePrefixParse=JSON.parse;
 import {sourceValueOperation} from './source-value-operator-helpers.js';
 import {createArrayOccurrenceExportAuthority} from './array-occurrence-export-authority.js';
 import {analyseConsoleCaptures} from './console-capture-provenance.js';
@@ -32,7 +81,9 @@ import {createAnimationFrameArrayProducers, isAnimationFrameArrayProducer} from 
 // (or reports an error), keyed to their exact input schema.
 const FRESH_SDK_ARRAYS=Object.freeze({arcade_tilesOfType:Object.freeze(['IMAGE']),arcade_legacyTilesOfType:Object.freeze(['INDEX']),
     arcade_bufferChunked:Object.freeze(['BUFFER','SIZE']),arcade_bufferChunkedFromUTF8:Object.freeze(['TEXT','SIZE']),
-    arcade_bufferUnpack:Object.freeze(['BUFFER','FORMAT','OFFSET']),arcade_bufferToArray:Object.freeze(['BUFFER','FORMAT'])});
+    arcade_bufferUnpack:Object.freeze(['BUFFER','FORMAT','OFFSET']),arcade_bufferToArray:Object.freeze(['BUFFER','FORMAT']),
+    // mp.allPlayers() returns a fresh Player[] in PXT; Lite issues a fresh reference per call.
+    arcade_allPlayers:Object.freeze([])});
 
 // Producer facts are deliberately separate from the exporter's annotation graph.
 // Merely being plugged into an ARRAY input never creates an Array fact.
@@ -144,8 +195,35 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
             (value.length!==3||!agrees(target,value[1],value[2])))invalidGlobalBinding=true;
     }
     for(const scope of scopes)for(const name of scope.params||[]){const value=localCell(scope,name);if(value)value.formal=scope;}
+    // A statement in the untaken branch of an if/else (or if) whose condition
+    // is a comparison of two literal Numbers never runs: both PXT and Lite
+    // evaluate the same constant (the `true ? a : b` lowering emits 0 < 1).
+    const literalOperand=(node,name)=>{const raw=node.inputs?.[name]?.[1];
+        return Array.isArray(raw)&&raw.length===2&&[4,5,6,7,8].includes(raw[0])&&String(raw[1]).trim()!==''&&Number.isFinite(Number(raw[1]))?Number(raw[1]):null;};
+    const staticCondition=(target,parent)=>{
+        const cond=block(target,parent.inputs?.CONDITION?.[1]);
+        if(cond?.opcode!=='arrays_valueCompare'||cond.mutation!=null||!exactKeys(cond,['LEFT','RIGHT'],['OP']))return null;
+        const l=literalOperand(cond,'LEFT'),r=literalOperand(cond,'RIGHT'),op=literal(cond,'OP',target);
+        if(l===null||r===null)return null;
+        return {'<':l<r,'>':l>r,'<=':l<=r,'>=':l>=r,'===':l===r,'!==':l!==r}[op]??null;
+    };
+    const staticallyUntaken=(target,node)=>{
+        const seen=new Set();let current=node;
+        while(current&&!seen.has(current)){seen.add(current);
+            const parent=block(target,current.parent);if(!parent)return false;
+            const id=Object.keys(target.blocks).find(key=>target.blocks[key]===current);
+            if(parent.mutation==null&&(parent.opcode==='control_if_else'&&exactKeys(parent,['CONDITION','SUBSTACK','SUBSTACK2'])||
+                parent.opcode==='control_if'&&exactKeys(parent,['CONDITION','SUBSTACK']))){
+                const taken=staticCondition(target,parent);
+                if(taken===false&&parent.inputs.SUBSTACK?.[1]===id)return true;
+                if(taken===true&&parent.opcode==='control_if_else'&&parent.inputs.SUBSTACK2?.[1]===id)return true;
+            }
+            current=parent;
+        }
+        return false;
+    };
     for(const {target,node,scope}of records){
-        if(ordinaryEntry.isUnreachable(target,node))continue;
+        if(ordinaryEntry.isUnreachable(target,node)||staticallyUntaken(target,node))continue;
         let destination=null;
         if(node.opcode==='data_setvariableto'||node.opcode==='data_changevariableby')destination=globalCell(target,node.fields?.VARIABLE?.[1]);
         else if(node.opcode==='arcade_setLocal')destination=localCell(scope,literal(node,'NAME',target));
@@ -179,10 +257,12 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
             else for(const owner of owners){const fn=functions.get(owner?.procedure);if(fn)fn.unknownEntry=true;}
         }
     }
-    let eventCopyPrefixUsed=false,eventCopyPrefixExpired=false;
+    const fieldSdkOriginal=privatePrefixSdkProfile();
+    let eventCopyPrefixUsed=false,eventCopyPrefixExpired=false,fieldPrefixUsed=false;
     const eventCopyPrefixCurrent=()=>{
         if(!eventCopyPrefixUsed)return true;
-        if(!eventCopyPrefixExpired)try{if(!privatePrefixAmbientCurrent())eventCopyPrefixExpired=true;}
+        if(!eventCopyPrefixExpired)try{if(!privatePrefixAmbientCurrent()||fieldPrefixUsed&&
+            (!fieldSdkOriginal||!fieldSdkOriginal.current()))eventCopyPrefixExpired=true;}
         catch(_){eventCopyPrefixExpired=true;}
         return !eventCopyPrefixExpired;
     };
@@ -661,6 +741,13 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
                 if(typeof raw==='string'&&readsCell(target,block(target,raw),c,seen))return true;}}
         return false;
     };
+    // Any procedure, method, object or callable invocation (or a malformed
+    // shadow) inside a reporter tree.
+    const conditionCalls=(target,node,seen=new Set())=>{if(!node||seen.has(node))return false;seen.add(node);
+        if(['arcade_callFunction','procedures_call','arcade_callObjectMethod','arcade_createObject','arcade_callCallable'].includes(node.opcode))return true;
+        // A malformed shadow (non-primitive field value) is not a certified reporter.
+        if(node.shadow&&Object.values(node.fields||{}).some(field=>!Array.isArray(field)||!['string','number'].includes(typeof field[0])))return true;
+        return Object.entries(node.inputs||{}).some(([name,slot])=>!name.startsWith('SUBSTACK')&&typeof slot?.[1]==='string'&&conditionCalls(target,block(target,slot[1]),seen));};
     const topChain=(scope,node)=>{const seen=new Set();let id=scope.root?.next;while(id&&!seen.has(id)){seen.add(id);const n=block(scope.target,id);if(n===node)return true;id=n?.next;}return false;};
     let resetFlowReady=false,spriteDataReady=false,sourceDependency=null;
     const observeSourceDependency=c=>{
@@ -698,12 +785,34 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         const inherited=watcherOwnDescriptor(Object.prototype,name);
         if(inherited&&(!prefixHasOwn(inherited,'value')||inherited.writable!==true))return false;
         const valueSlot=node.inputs.VALUE;
-        if(!watcherIsArray(valueSlot)||![2,3].includes(valueSlot[0])||valueSlot.length!==valueSlot[0]||
+        // A primitive literal stored into the same private frame has no cell
+        // reads, coercion or calls. It cannot expose the reset destination.
+        if(watcherIsArray(valueSlot)&&valueSlot.length===2&&valueSlot[0]===1&&watcherIsArray(valueSlot[1])&&
+            valueSlot[1].length===2&&([4,5,6,7,8].includes(valueSlot[1][0])&&
+                ['string','number'].includes(typeof valueSlot[1][1])&&watcherFinite(watcherNumber(valueSlot[1][1]))||
+                valueSlot[1][0]===10&&typeof valueSlot[1][1]==='string')){
+            if(records.some(r=>(r.scope===scope&&r.node.opcode==='arcade_setLocal'||r.target===scope.target&&r.node.opcode==='arcade_setCaptured')&&
+                (typeof literal(r.node,'NAME',r.target)!=='string'||literal(r.node,'NAME',r.target)==='__proto__')))return false;
+            return true;
+        }
+        if(!watcherIsArray(valueSlot)||![1,2,3].includes(valueSlot[0])||valueSlot.length!==(valueSlot[0]===3?3:2)||
             typeof valueSlot[1]!=='string'||valueSlot[0]===3&&!watcherIsArray(valueSlot[2]))return false;
         if(records.some(r=>(r.scope===scope&&r.node.opcode==='arcade_setLocal'||r.target===scope.target&&r.node.opcode==='arcade_setCaptured')&&
             (typeof literal(r.node,'NAME',r.target)!=='string'||literal(r.node,'NAME',r.target)==='__proto__')))return false;
         const value=child(node,'VALUE',scope.target),which=value?.fields?.WHICH;
-        return !!value&&!invalid.has(value)&&owners.get(value)===scope&&value.opcode==='arcade_eventSprite'&&
+        // Blockly also encodes an inline literal as a physical shadow block.
+        // Require the exact leaf shape and primitive payload, not its label.
+        if(value&&!invalid.has(value)&&owners.get(value)===scope&&value.shadow===true&&
+            value.topLevel===false&&value.next==null&&value.mutation==null){
+            const field=value.opcode==='text'?'TEXT':value.opcode==='math_number'?'NUM':null;
+            if(field&&exactKeys(value,[],[field])){
+                const item=value.fields[field];
+                if(watcherIsArray(item)&&item.length===2&&item[1]===null&&
+                    (field==='TEXT'?typeof item[0]==='string':
+                        ['string','number'].includes(typeof item[0])&&watcherFinite(watcherNumber(item[0]))))return true;
+            }
+        }
+        return valueSlot[0]!==1&&!!value&&!invalid.has(value)&&owners.get(value)===scope&&value.opcode==='arcade_eventSprite'&&
             value.shadow===false&&value.topLevel===false&&value.next==null&&value.mutation==null&&exactKeys(value,[],['WHICH'])&&
             watcherIsArray(which)&&which.length===2&&which[1]===null&&['first','second'].includes(which[0]);
     };
@@ -756,6 +865,172 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         if(!g||g===c||targets.find(t=>Object.hasOwn(t.variables||{},variable[1]))?.variables[variable[1]]?.[0]!==variable[0])return false;
         return inertStoreSlot(node.inputs.VALUE,c,scope,new Set([node]));
     };
+    // A closed primitive global write cannot call a coercion hook or publish
+    // this invocation's params object. Prove a preservation invariant over
+    // initial storage and EVERY physical writer, never the Array/type solver's
+    // discounted writers. Cyclic global reads are safe only because every
+    // initial value is primitive and every write preserves that invariant.
+    // This private effect check supplies no value or initialization facts.
+    const privatePrefixProject=scope=>{
+        if(!isProjectJsonSnapshot(project)||!eventCopyPrefixCurrent()||!privatePrefixAmbientCurrent()||invalidGlobalBinding||
+            !scope||scope.invalid||scope.unknownEntry)return false;
+        if(!watcherIsArray(project.extensions)||project.extensions.some(id=>!['arcade','arrays'].includes(id))||
+            new Set(project.extensions).size!==project.extensions.length)return false;
+        if(prefixHasOwn(project,'extensionURLs')?project.extensionURLs!=null&&Object.entries(project.extensionURLs).some(([id,url])=>
+            id!=='arrays'||url!=='https://crispstrobe.github.io/extensions/CrispStrobe/arrays.js'):'extensionURLs' in project)return false;
+        if(prefixHasOwn(project,'monitors')?!flagsReadOnlyMonitors():'monitors' in project)return false;
+        const core=new Set(['argument','colour','control','data','event','looks','math','motion','operator','procedures','sensing','sound']);
+        for(const target of targets)for(const n of Object.values(target.blocks||{})){
+            if(typeof n.opcode!=='string')return false;
+            const at=n.opcode.indexOf('_');if(at<0){if(n.opcode!=='text')return false;continue;}
+            const owner=n.opcode.substring(0,at).replace(/[^\w-]/g,'-');
+            if(!core.has(owner)&&!['arcade','arrays'].includes(owner))return false;
+        }
+        if(records.some(r=>(r.scope===scope&&r.node.opcode==='arcade_setLocal'||r.target===scope.target&&r.node.opcode==='arcade_setCaptured')&&
+            (typeof literal(r.node,'NAME',r.target)!=='string'||literal(r.node,'NAME',r.target)==='__proto__')))return false;
+        return true;
+    };
+    const inertPrimitiveGlobalWrite=(node,c,scope)=>{
+        if(!privatePrefixProject(scope)||!node||invalid.has(node)||owners.get(node)!==scope||
+            node.opcode!=='data_setvariableto'||node.shadow!==false||node.topLevel!==false||node.mutation!=null||
+            !exactKeys(node,['VALUE'],['VARIABLE'])||watcherOwnKeys(node.fields||{}).length!==1)return false;
+        let budget=1024;const checking=new Set(),complete=new Set();
+        const primitive=value=>value===null||['string','boolean'].includes(typeof value)||typeof value==='number'&&watcherFinite(value);
+        const shape=(n,s,inputs,fields=[])=>!!n&&!invalid.has(n)&&owners.get(n)===s&&!s.invalid&&!s.unknownEntry&&
+            n.next==null&&n.mutation==null&&exactKeys(n,inputs,fields)&&watcherOwnKeys(n.fields||{}).length===fields.length;
+        const scalar=(value,s,path=new Set())=>{
+            if(--budget<0||!value)return false;
+            if(value.cell)return value.cell!==c&&primitiveGlobal(value.cell);
+            if(value.raw){const r=value.raw;return watcherIsArray(r)&&r.length===2&&
+                (r[0]===10&&typeof r[1]==='string'||[4,5,6,7,8].includes(r[0])&&
+                    ['string','number'].includes(typeof r[1])&&watcherFinite(watcherNumber(r[1])));}
+            const n=value.node;if(!n||path.has(n)||invalid.has(n)||owners.get(n)!==s)return false;
+            const next=new Set([...path,n]);
+            if(n.opcode==='data_variable'&&shape(n,s,[],['VARIABLE']))return primitiveGlobal(binding(s.target,n));
+            if(['text','math_number','math_whole_number','math_integer','math_positive_number'].includes(n.opcode)){
+                const field=n.opcode==='text'?'TEXT':'NUM',row=n.fields?.[field];
+                return n.shadow===true&&shape(n,s,[],[field])&&watcherIsArray(row)&&row.length===2&&row[1]===null&&
+                    (field==='TEXT'?typeof row[0]==='string':['string','number'].includes(typeof row[0])&&watcherFinite(watcherNumber(row[0])));
+            }
+            const source=sourceValueOperation(n),inputs=n.opcode==='operator_add'?['NUM1','NUM2']:
+                (n.opcode==='arrays_valueBinary'&&literal(n,'OP',s.target)==='+'||source?.op==='+')?['LEFT','RIGHT']:null;
+            return !!inputs&&shape(n,s,inputs,n.opcode==='operator_add'?[]:['OP'])&&
+                inputs.every(name=>scalar(input(n,name,s.target),s,next));
+        };
+        const primitiveGlobal=cell=>{
+            if(--budget<0||!cell||cell===c||!ordinarySummaryGlobal(cell)||cell.directBad)return false;
+            if(complete.has(cell)||checking.has(cell))return true;
+            let declaration=null;
+            for(const [target,map]of globalCell.maps)for(const [id,key]of map)if(cells.get(key)===cell)declaration=target.variables[id];
+            if(!declaration||!primitive(declaration[1]))return false;
+            checking.add(cell);
+            // Include orphan, unreachable and alternate-entry writers. A
+            // missing indexed owner or a non-assignment writer refuses.
+            for(const target of targets)for(const n of Object.values(target.blocks||{})){
+                if(!['data_setvariableto','data_changevariableby'].includes(n.opcode)||globalCell(target,n.fields?.VARIABLE?.[1])!==cell)continue;
+                const s=owners.get(n);
+                if(--budget<0||n.opcode!=='data_setvariableto'||!s||s.invalid||s.unknownEntry||invalid.has(n)||
+                    n.shadow!==false||n.topLevel!==false||n.mutation!=null||!exactKeys(n,['VALUE'],['VARIABLE'])||watcherOwnKeys(n.fields||{}).length!==1||
+                    !scalar(input(n,'VALUE',target),s))return false;
+            }
+            checking.delete(cell);complete.add(cell);return true;
+        };
+        return primitiveGlobal(globalCell(scope.target,node.fields?.VARIABLE?.[1]));
+    };
+    // A fixed event receiver's plain declared data slot, compared strictly to
+    // a literal, cannot invoke a getter/coercion or expose the private frame.
+    // Inventory every physical class, including unrelated classes and bases:
+    // metadata or a cast alone never identifies the event's concrete class.
+    const inertEventFieldComparison=(node,c,scope,prefix)=>{
+        if(!privatePrefixProject(scope)||!fieldSdkOriginal||!fieldSdkOriginal.current()||
+            !node||invalid.has(node)||owners.get(node)!==scope||node.opcode!=='data_setvariableto'||
+            node.shadow!==false||node.topLevel!==false||node.mutation!=null||!exactKeys(node,['VALUE'],['VARIABLE'])||
+            watcherOwnKeys(node.fields||{}).length!==1||!ordinarySummaryGlobal(globalCell(scope.target,node.fields.VARIABLE?.[1])))return false;
+        const shape=(n,inputs,fields=[])=>!!n&&!invalid.has(n)&&owners.get(n)===scope&&n.next==null&&
+            n.mutation==null&&exactKeys(n,inputs,fields)&&watcherOwnKeys(n.fields||{}).length===fields.length;
+        const fixed=(n,name)=>{
+            const slot=n.inputs?.[name];return watcherIsArray(slot)&&slot.length===2&&slot[0]===1&&watcherIsArray(slot[1])&&
+                slot[1].length===2&&slot[1][0]===10&&typeof slot[1][1]==='string'?slot[1][1]:null;
+        };
+        const root=scope.root;
+        if(root.opcode!=='arcade_whenRegisteredCreated'||root.mutation!=null||!exactKeys(root,['TOKEN'])||
+            watcherOwnKeys(root.fields||{}).length||fixed(root,'TOKEN')===null)return false;
+        const comparison=child(node,'VALUE',scope.target),op=comparison?.fields?.OP;
+        if(!shape(comparison,['LEFT','RIGHT'],['OP'])||comparison.opcode!=='arrays_valueCompare'||
+            !watcherIsArray(op)||op.length!==2||op[1]!==null||!['===','!=='].includes(op[0]))return false;
+        const field=child(comparison,'LEFT',scope.target),name=field&&fixed(field,'FIELD');
+        if(!shape(field,['OBJECT','FIELD'])||field.opcode!=='arcade_objectField'||typeof name!=='string'||
+            !/^[A-Za-z_]\w*$/.test(name)||prefixHasOwn(Object.prototype,name)||fieldSdkOriginal.members.has(name))return false;
+        const event=n=>shape(n,[],['WHICH'])&&n.opcode==='arcade_eventSprite'&&n.shadow===false&&
+            watcherIsArray(n.fields.WHICH)&&n.fields.WHICH.length===2&&n.fields.WHICH[1]===null&&n.fields.WHICH[0]==='first';
+        const receiver=child(field,'OBJECT',scope.target);
+        if(!event(receiver)){
+            if(!shape(receiver,['NAME'])||receiver.opcode!=='arcade_getLocal')return false;
+            const local=localCell(scope,fixed(receiver,'NAME'));if(!local||local===c)return false;
+            let last=null;
+            for(const prior of prefix)if(prior.opcode==='arcade_setLocal'&&localCell(scope,fixed(prior,'NAME'))===local)last=prior;
+            if(!last||!inertEventCopy(last,c,scope)||!event(child(last,'VALUE',scope.target)))return false;
+        }
+        let budget=128;
+        const primitive=(value,path=new Set())=>{
+            if(--budget<0||!value)return false;
+            if(value.raw){const raw=value.raw;return watcherIsArray(raw)&&raw.length===2&&
+                (raw[0]===10&&typeof raw[1]==='string'||[4,5,6,7,8].includes(raw[0])&&
+                    ['number','string'].includes(typeof raw[1])&&watcherFinite(watcherNumber(raw[1])));}
+            const n=value.node;if(!n||path.has(n))return false;
+            if(['text','math_number'].includes(n.opcode)){
+                const key=n.opcode==='text'?'TEXT':'NUM',row=n.fields?.[key];
+                return shape(n,[],[key])&&n.shadow===true&&watcherIsArray(row)&&row.length===2&&row[1]===null&&
+                    (key==='TEXT'?typeof row[0]==='string':['string','number'].includes(typeof row[0])&&watcherFinite(watcherNumber(row[0])));
+            }
+            const next=new Set([...path,n]);return n.opcode==='operator_add'&&shape(n,['NUM1','NUM2'])&&
+                ['NUM1','NUM2'].every(key=>primitive(input(n,key,scope.target),next));
+        };
+        if(!primitive(input(comparison,'RIGHT',scope.target)))return false;
+        const classes=new Map();let found=false;
+        const identifier=value=>typeof value==='string'&&/^[A-Za-z_]\w*$/.test(value)&&!prefixHasOwn(Object.prototype,value);
+        const parse=(n,key)=>{const text=fixed(n,key);if(text===null)return null;try{const rows=privatePrefixParse(text);return watcherIsArray(rows)?rows:null;}catch{return null;}};
+        for(const target of targets)for(const declaration of Object.values(target.blocks||{})){
+            if(!['arcade_declareClass','arcade_declareSubclass'].includes(declaration.opcode))continue;
+            const owner=owners.get(declaration),subclass=declaration.opcode==='arcade_declareSubclass';
+            const inputs=['NAME','FIELDS','INITIALIZER','CONSTRUCTOR','PARAMETERS','METHODS',...(subclass?['BASE']:[])];
+            if(--budget<0||!owner||owner.invalid||owner.unknownEntry||invalid.has(declaration)||
+                owner.root.opcode!=='arcade_whenSourceStarts'||declaration.shadow!==false||declaration.topLevel!==false||
+                declaration.mutation!=null||!exactKeys(declaration,inputs)||watcherOwnKeys(declaration.fields||{}).length||
+                inputs.some(key=>fixed(declaration,key)===null))return false;
+            const className=fixed(declaration,'NAME'),base=subclass?fixed(declaration,'BASE'):null;
+            const fields=parse(declaration,'FIELDS'),methods=parse(declaration,'METHODS'),parameters=parse(declaration,'PARAMETERS');
+            if(!identifier(className)||classes.has(className)||fieldSdkOriginal.names.has(className)||className==='__bwOwnedSDKSprite'||
+                subclass&&!identifier(base)||!fields||!methods||!parameters)return false;
+            const memberNames=new Set();
+            for(const row of fields){
+                if(--budget<0||!row||typeof row!=='object'||watcherIsArray(row)||!prefixHasOwn(row,'name')||!identifier(row.name)||
+                    memberNames.has(row.name)||!prefixHasOwn(row,'type')||typeof row.type!=='string'||
+                    !prefixHasOwn(row,'readonly')||typeof row.readonly!=='boolean'||
+                    watcherOwnKeys(row).some(key=>!['name','type','readonly','visibility','initializer','parameterProperty','getter','setter','valueKind','callableSignature','sdkType'].includes(key)))return false;
+                memberNames.add(row.name);
+                if(row.name===name){
+                    if(['getter','setter','valueKind','callableSignature','sdkType'].some(key=>prefixHasOwn(row,key))||
+                        prefixHasOwn(row,'visibility')&&row.visibility!=='public')return false;
+                    found=true;
+                }
+            }
+            for(const row of methods){
+                if(--budget<0||!row||typeof row!=='object'||watcherIsArray(row)||!prefixHasOwn(row,'name')||
+                    !identifier(row.name)||memberNames.has(row.name)||row.name===name)return false;
+                memberNames.add(row.name);
+            }
+            classes.set(className,{base,memberNames});
+        }
+        if(!found)return false;
+        for(const [className,cls]of classes){
+            const seen=new Set([className]);let base=cls.base;
+            while(base&&!fieldSdkOriginal.names.has(base)){
+                if(seen.has(base)||!classes.has(base))return false;seen.add(base);base=classes.get(base).base;
+            }
+        }
+        return true;
+    };
     const killedReset=(c,w,at)=>{
         if(!resetFlowReady||!(resetValue(w.value?.node)||!c.global&&w.value?.node&&inertLiteral(w.target,w.value.node))||invalid.has(w.node)||w.scope.invalid)return false;
         const scope=owners.get(at);if(!scope||w.scope!==scope||!scope.executedBefore)return false;
@@ -768,21 +1043,38 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         }
         // A local reset must reach its definite overwrite without exposure:
         // a direct writer, or an if/else whose both branches write the cell
-        // before any exit. Only a fixed event copy to another local or an inert
-        // global store may cross this frontier; procedure calls, captures,
+        // before any exit. Only a fixed event copy to another local, an inert
+        // global store, a closed primitive global write or an inert event
+        // field comparison may cross this frontier; procedure calls, captures,
         // control flow and reads of the reset cell retain the reset.
-        let next=block(w.target,w.node.next);const skipped=new Set();let copied=false,stored=false;
+        let next=block(w.target,w.node.next),fieldUsed=false;const skipped=new Set();let copied=false,stored=false;
         while(next&&before.has(next)&&!skipped.has(next)){
-            if(inertEventCopy(next,c,scope))copied=true;else if(inertGlobalStore(next,c,scope))stored=true;else break;
+            // The closed private rules are tried first so their admissions
+            // carry their own permanent expiry facts; the general inert
+            // global store remains the fallback for other exact stores.
+            if(inertEventCopy(next,c,scope))copied=true;
+            else if(inertPrimitiveGlobalWrite(next,c,scope))copied=true;
+            else if(inertEventFieldComparison(next,c,scope,skipped))fieldUsed=true;
+            else if(inertGlobalStore(next,c,scope))stored=true;else break;
             skipped.add(next);next=block(w.target,next.next);
         }
-        const consume=()=>{if(copied)eventCopyPrefixUsed=true;if(stored)inertStorePrefixUsed=true;};
         if(!next||!before.has(next))return false;
+        const consume=()=>{if(copied||fieldUsed)eventCopyPrefixUsed=true;if(stored)inertStorePrefixUsed=true;if(fieldUsed)fieldPrefixUsed=true;};
         if(c.writers.some(o=>valid(o)&&o.node===next)){consume();return true;}
         const branchAssigns=id=>{const seen=new Set();for(let n=block(w.target,id);n&&!seen.has(n);n=block(w.target,n.next)){seen.add(n);
             if(c.writers.some(o=>o.node===n&&o.scope===scope&&o.value&&!resetValue(o.value.node)&&!invalid.has(n)&&!(o.value.cell===c)&&!(o.value.node&&readsCell(o.target,o.value.node,c))))return true;
-            if(/return|stop|break|continue|throw/i.test(n.opcode))return false;}return false;};
-        const result=next.opcode==='control_if_else'&&!invalid.has(next)&&branchAssigns(next.inputs?.SUBSTACK?.[1])&&branchAssigns(next.inputs?.SUBSTACK2?.[1]);
+            return false;}return false;};
+        const condition=next.inputs?.CONDITION?.[1],literalCondition=Array.isArray(condition)&&condition.length===2&&
+            ([4,5,6,7,8].includes(condition[0])&&['string','number'].includes(typeof condition[1])&&watcherFinite(watcherNumber(condition[1]))||condition[0]===10&&typeof condition[1]==='string');
+        // A non-literal condition qualifies when it is a reporter tree that
+        // neither reads the reset cell nor calls anything: it cannot observe
+        // or change the reset before exactly one branch writes it first.
+        const conditionNode=typeof condition==='string'?block(w.target,condition):null;
+        const inertCondition=!!conditionNode&&!invalid.has(conditionNode)&&!readsCell(w.target,conditionNode,c)&&!conditionCalls(w.target,conditionNode);
+        const taken=next.opcode==='control_if_else'&&next.mutation==null&&exactKeys(next,['CONDITION','SUBSTACK','SUBSTACK2'])?staticCondition(w.target,next):null;
+        const result=next.opcode==='control_if_else'&&!invalid.has(next)&&((literalCondition||inertCondition)&&branchAssigns(next.inputs?.SUBSTACK?.[1])&&branchAssigns(next.inputs?.SUBSTACK2?.[1])||
+            // A constant comparison runs exactly one branch; that branch's first statement must write.
+            taken===true&&branchAssigns(next.inputs?.SUBSTACK?.[1])||taken===false&&branchAssigns(next.inputs?.SUBSTACK2?.[1]));
         if(result)consume();
         return result;
     };
@@ -866,6 +1158,27 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         }
         return false;
     };
+    // An occurrence inside a procedure that no block can enter never runs, in
+    // PXT or in Lite: no static caller, no unknown/implicit (managed or
+    // object-dispatch) entry, and no other block names the procedure in any
+    // literal (which rules out dispatch by a constructed name), and every call
+    // in the project resolves to a known procedure.
+    const uncalledProcedureOccurrence=node=>{
+        const scope=owners.get(node);
+        if(!scope?.proc||scope.invalid||scope.unknownEntry||implicitEntries.has(scope)||scope.callers.length)return false;
+        // Every call in the project must resolve; an unresolved callee means the
+        // procedure graph is not closed, so no procedure is proved unenterable.
+        if(calls.some(call=>!call.fn))return false;
+        const name=scope.proc,head=name.split(' ')[0];
+        for(const t of targets)for(const other of Object.values(t.blocks||{})){
+            if(other===scope.root)continue;
+            if(other.mutation&&typeof other.mutation.proccode==='string'&&other.opcode!=='procedures_prototype'&&other.mutation.proccode===name)return false;
+            for(const field of Object.values(other.fields||{}))if(Array.isArray(field)&&typeof field[0]==='string'&&(field[0]===name||field[0]===head||field[0].includes(head)))return false;
+            for(const slot of Object.values(other.inputs||{}))for(const raw of [slot?.[1],slot?.[2]])
+                if(Array.isArray(raw)&&typeof raw[1]==='string'&&(raw[1]===name||raw[1].includes(head)))return false;
+        }
+        return true;
+    };
     const concatLengths=new Set();
     const readInput=value=>{
         if(!value)return new Set([bad]);if(value.cell)return cellTypesAt(value.cell,value.at);if(value.jsonArray)return new Set([jsonArray(value.jsonArray,value.identity,null,value.origin)]);if(value.node)return readNode(value.target,value.node);return new Set([bad]);
@@ -904,6 +1217,8 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
             const n=value?.node;if(!n||invalid.has(n))return null;
             if(n.shadow&&n.opcode==='math_number'&&!Object.keys(n.inputs||{}).length)return !Number.isNaN(Number(n.fields?.NUM?.[0]))?'number':null;
             if(n.opcode==='arcade_createSpriteKind'&&exactKeys(n,[]))return 'number';
+            // A registered kind name reads the registry's kind Number (or throws).
+            if(n.opcode==='arcade_spriteKindValue'&&exactKeys(n,['NAME'])&&typeof literal(n,'NAME',target)==='string')return 'number';
             if(fixedUndefined(n))return 'undefined';
             return null;
         };
@@ -915,6 +1230,9 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
                 if(!c||declaration?.[0]!==name?.[0]||!kind)return false;
                 if(c===destination)return kind==='number';
                 if(kind==='number')knownNumbers.add(c);else knownNumbers.delete(c);
+            }else if(next.opcode==='arcade_initializeSpriteKindLibrary'&&exactKeys(next,['LIBRARY','VERSION'])&&next.mutation==null&&
+                typeof literal(next,'LIBRARY',target)==='string'&&typeof literal(next,'VERSION',target)==='string'){
+                // Registers the library's kinds only; it writes no Scratch variable.
             }else if(next.opcode==='arcade_bindSpriteKind'&&exactKeys(next,['NAME','KIND'])&&typeof literal(next,'NAME',target)==='string'){
                 const value=input(next,'KIND',target),c=value.cell||(value.node&&binding(target,value.node));
                 if(!c||c===destination||!knownNumbers.has(c))return false;
@@ -989,7 +1307,7 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         if(node.opcode==='arcade_spritesOfKind')return exactKeys(node,['KIND'])&&numericKind(input(node,'KIND',target))?new Set([token(node,target,[{raw:[10,'SDK Sprite element not an Array']}],0)]):new Set([bad]);
         if(Object.hasOwn(FRESH_SDK_ARRAYS,node.opcode))return exactKeys(node,FRESH_SDK_ARRAYS[node.opcode])?new Set([token(node,target,[{raw:[10,'SDK element not an Array']}],0)]):new Set([bad]);
         if(['arcade_animationAssetFrames','arcade_animationAssetFreshFrames'].includes(node.opcode)){
-            const producer=animationProducers.resolve(target,node);
+            const producer=animationProducers.resolve(target,node,{targets,monitors:project.monitors});
             return producer?new Set([token(producer.allocation,producer.shared?null:target,
                 Array.from({length:producer.length},()=>({raw:[10,'SDK Image element not an Array']})),producer.length)]):new Set([bad]);
         }
@@ -1012,7 +1330,11 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
                 Object.defineProperty(t,'minLength',{configurable:true,enumerable:true,get(){
                     if(concatLengths.has(t))return 0;concatLengths.add(t);
                     try{
-                        const start=sliceBound(target,node,'START'),end=sliceBound(target,node,'END');
+                        // An exact undefined bound is the default in PXT and in
+                        // the Arrays extension: START 0, END the current length.
+                        const omitted=name=>{const v=input(node,name,target);return !!v?.node&&fixedUndefined(v.node);};
+                        const startOmitted=omitted('START'),endOmitted=omitted('END');
+                        const start=startOmitted?0:sliceBound(target,node,'START'),end=endOmitted?Infinity:sliceBound(target,node,'END');
                         // With nonnegative START, slice length is monotone in
                         // source length for either sign of END. A lower length
                         // alone cannot prove negative-START/nonnegative-END.
@@ -1651,6 +1973,14 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
             (w.scope!==scope||!!scope.executedBefore?.get(statementOf(node))?.has(w.node)));
     };
     const checkingWriterInitialization=new Set();
+    const globalGetterCell=callNode=>{
+        const call=calls.find(c=>c.node===callNode),fn=call?.fn;
+        if(!fn||fn.invalid||fn.unknownEntry||implicitEntries.has(fn)||fn.params.length||fn.returns.length!==1||!call.args||call.args.length)return null;
+        const only=block(fn.target,fn.root.next);
+        if(only?.opcode!=='arcade_returnValue'||only.next!=null||only.mutation!=null||!exactKeys(only,['VALUE']))return null;
+        const c=fn.returns[0]?.cell;
+        return c?.global&&!c.directBad?c:null;
+    };
     const initialized=(value,path=new Set())=>{
         // A literal value (JSON item or literal input) is initialized; it is an
         // Array only through jsonArray, which singleArray still checks.
@@ -1660,9 +1990,15 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         if(!value.node)return false;const {target,node}=value;if(path.has(node))return false;const next=new Set([...path,node]),c=binding(target,node);
         if(c)return initializedCell(c,owners.get(node),node);
         if(node.opcode==='arrays_createReference')return true;
-        if(['arcade_animationAssetFrames','arcade_animationAssetFreshFrames'].includes(node.opcode))return !!animationProducers.resolve(target,node);
+        if(['arcade_animationAssetFrames','arcade_animationAssetFreshFrames'].includes(node.opcode))return !!animationProducers.resolve(target,node,{targets,monitors:project.monitors});
         if(node.opcode==='arrays_namedReference')return singleArray(namedBinding(target,node)||new Set());
         if(node.opcode==='arcade_callFunction'){
+            // A closed parameterless getter whose only statement returns a
+            // global evaluates nothing else: its result IS that global at this
+            // call. Judge the global's initialization at the call site, so an
+            // earlier call (before the global's writer) does not taint a later one.
+            const getter=globalGetterCell(node);
+            if(getter)return initializedCell(getter,owners.get(node),node);
             const passing=calls.find(c=>c.node===node);if(passing?.fn&&!passing.fn.invalid&&passing.args&&passthroughIndex(passing.fn)>=0)return initialized(passing.args[passthroughIndex(passing.fn)],next);
             const call=calls.find(c=>c.node===node);return !!call?.fn&&!call.fn.invalid&&!!call.args&&call.args.every(arg=>singleArray(readInput(arg))?initialized(arg,next):true)&&call.fn.returns.every(result=>initialized(result,next));
         }
@@ -1792,6 +2128,7 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
             {ok:false,reason:'requires the current inert event-copy prefix for a discounted Array reset'}:result.ok&&!inertStorePrefixCurrent()?
             {ok:false,reason:'requires the current inert global-store prefix for a discounted Array reset'}:result;
         if(deadOccurrence(target,node))return publish({ok:true});
+        if(uncalledProcedureOccurrence(node))return publish({ok:true});
         if(ordinaryEntry.isUnreachable(target,node))return publish({ok:true});
         if(occurrence?.candidate(target,node,name))return publish(occurrence.validateInput(target,node,name)?{ok:true}:{ok:false,reason:'requires the current closed occurrence Array producer and complete writer proof'});
         const value=input(node,name,target),types=readInput(value);return publish(singleArray(types)&&initialized(value)?{ok:true}:{ok:false,reason:'requires an actual initialized Array producer and compatible all writers'});

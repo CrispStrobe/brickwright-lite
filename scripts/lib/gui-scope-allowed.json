@@ -207,6 +207,8 @@
       "test/makecode-arcade-reference-array-fallback.test.mjs",
       "test/arcade-destroyed-callback-consumer.test.mjs",
       "test/arcade-primitive-array-callback-source.test.mjs",
+      "test/arcade-created-field-export.test.mjs",
+      "test/arcade-supplied-gallery-context.test.mjs",
       "test/arcade-extendable-constructor-scalar-source.test.mjs",
       "test/arcade-event-sprite-field-writer.test.mjs",
       "test/arcade-runtime-dispatch-addition.test.mjs",
@@ -545,6 +547,12 @@
       "test/makecode-startup-number-roundtrip.test.mjs",
       "test/project-conditional-array-entry.test.mjs",
       "test/project-event-copy-reset-prefix.test.mjs",
+      "test/arcade-reset-prefix-store-pxt.test.mjs",
+      "test/native-array-startup-indexed-export.test.mjs",
+      "test/arcade-scene-background-number.test.mjs",
+      "test/arcade-array-getter-call-site.test.mjs",
+      "test/arcade-math-map-namespace.test.mjs",
+      "test/arcade-conditional-reset-condition.test.mjs",
       "test/project-conditional-array-value-calls.test.mjs",
       "test/project-array-publication-frontier.test.mjs",
       "test/arcade-frame-delta-array-reads.test.mjs",
@@ -555,7 +563,9 @@
       "test/makecode-conditional-array-roundtrip.test.mjs",
       "test/makecode-arcade-roundtrip-carrier-names.test.mjs",
       "test/arcade-external-references.test.mjs",
-      "test/makecode-arcade-tilemap-api-roundtrip.test.mjs"
+      "test/makecode-arcade-tilemap-api-roundtrip.test.mjs",
+      "test/arcade-palette-hidden-aliases.test.mjs",
+      "test/arcade-math-unary-play.test.mjs"
     ],
     "why": "the owned MakeCode procedure-constraint exporter imports the canonical VM procedure-constraint model through the integrated GUI package (scratch-vm 4.8.115 export ./src/util/bw-procedure-constraint-model.js), so every root test that exports or imports Arcade projects resolves it from packages/scratch-gui"
   },
