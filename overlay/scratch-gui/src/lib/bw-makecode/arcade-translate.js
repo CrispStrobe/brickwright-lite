@@ -1030,7 +1030,7 @@ class ArcadeTranslator extends BaseTranslator {
                 this.unsupported.push(`${name} refers to a shadowed Math binding`);return 'undefined value';
             }
             if(a.length!==1){this.unsupported.push(`${name}() requires exactly one number`);return 'undefined value';}
-            return `arcade ${name==='Math.sign'?'sign of':'truncate'} (${this.expr(a[0])})`;
+            return `arcade math ${name==='Math.sign'?'sign':'truncate'} of (${this.expr(a[0])})`;
         case 'randint':
             if(a.length!==2){this.note('randint() requires exactly two arguments');return 'undefined value';}
             return `arcade math randomRange first (${this.arrayElementValue(a[0])}) second (${this.arrayElementValue(a[1])})`;
@@ -2874,7 +2874,7 @@ class ArcadeTranslator extends BaseTranslator {
         switch (name) {
         case 'music.play': {
             const mode = a.length === 2 && this.musicEnum(a[1], 'music.PlaybackMode');
-            if (mode) push(`arcade play music ${value(0)} mode ${mode}`);
+            if (mode) push(`arcade play playable ${value(0)} mode ${mode}`);
             else push(this.note('music.play() requires a playable and a fixed music.PlaybackMode'));
             return true;
         }

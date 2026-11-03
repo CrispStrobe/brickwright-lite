@@ -31,7 +31,7 @@ test('original PXT numbers and one-time arguments survive Code, Blocks, export, 
  const expected=await runPxtArcade(source);assert.equal(expected.calls,1);assert.equal(expected.negative,-3);assert.equal(expected.large,4294967296);assert.equal(expected.negativeReciprocal,-Infinity);assert.equal(expected.positiveReciprocal,Infinity);assert.equal(expected.notANumber,true);
  const exercise=run=>{assert.deepEqual(run.errors,[]);assert.deepEqual(run.creator.warnings,[]);const values=variables(run);for(const name of names)assert.ok(Object.is(values[name],expected[name]),`${name}: ${values[name]} != ${expected[name]}`);assert.ok(Number.isNaN(values.invalid));};
  const execute=async imported=>{assert.deepEqual(imported.unsupported,[]);const run=await runProgram(imported.code,{frames:8,storage:true});exercise(run);return run;};
- const imported=arcadeToPseudocode(source),run=await execute(imported);assert.match(imported.code,/arcade truncate/);
+ const imported=arcadeToPseudocode(source),run=await execute(imported);assert.match(imported.code,/arcade math truncate of/);
  await execute({...imported,code:run.creator.decompile()});
  const exported=projectToArcade(run.creator.project);assert.deepEqual(exported.unsupported,[]);assert.match(exported.ts,/Math\.trunc\(/);
  const original=await runPxtArcade(exported.files);for(const name of names)assert.ok(Object.is(original[name],expected[name]),name);

@@ -2,7 +2,7 @@
   "version": 1,
   "id": "bend-ripple",
   "language": "en",
-  "what": "Single Cardan (universal) joint with an adjustable bend. Motor A turns the input shaft 1:1. Motor B swings the bearing carrier of the output shaft about the joint centre and so sets the bend angle β between 10° and 30°. The output shaft has no motor; it is driven only through the stock Technic universal joint. The program compares one full input turn at β = 10° with one at β = 30°, and in between holds the input still at a 45° phase while only the bend changes.",
+  "what": "Variable-bend Cardan joint. Single Cardan (universal) joint with an adjustable bend. Motor A turns the input shaft 1:1. Motor B swings the bearing carrier of the output shaft about the joint centre and so sets the bend angle β between 10° and 30°. The output shaft has no motor; it is driven only through the stock Technic universal joint. The program compares one full input turn at β = 10° with one at β = 30°, and in between holds the input still at a 45° phase while only the bend changes. A single Cardan joint whose bend is a second motor input: compare the output’s lead and lag at 10° and 30° bend, and watch the output turn while the input is held.",
   "try": [
     "Open Bend Ripple with its program, press Reset, then Run. Encoder A = 0° is input phase 0°, and the bend is β = 10° + encoder B. Each held stage lasts 2 s; the whole run takes about two minutes.",
     "Stage 1 turns the input 360° at β = 10°, stage 2 a further 45° to the diagonal phase (405°). Compare the output marker with the input during the turn: at 10° the output leads and lags by less than half a degree, which is hard to see.",

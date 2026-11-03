@@ -1,0 +1,10 @@
+{
+ "author": "CrispStrobe",
+ "license": "BSD-3-Clause",
+ "files": {
+  "models/rack-decoder.ldr": "482d814c67ef84c8084db07b5d781926b6f5493330b4e7d655f01332488c9fa4",
+  "programs/rack-decoder.bw": "b6247884f620858ed872f88414aaeec924357312f0f47fe964e91d28a933e53f",
+  "LICENSE.txt": "a096c77ac7c151875cdcfcc89285d7372701076a3e53e29b3ee8abcd4e71ec9e",
+  "SOURCES.md": "dda09d2a9000cddbd13a44b9666c4c3ed195d3c6f8c102313a901249afd48006"
+ }
+}

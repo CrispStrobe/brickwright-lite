@@ -2,7 +2,7 @@
   "version": 1,
   "id": "schmidt-shift",
   "language": "en",
-  "what": "A Schmidt coupling connects parallel shafts whose axes are 48 mm apart. One motor turns the input carrier. Six connecting rods link it to a floating middle carrier and a passive output carrier. Four rectangular frames form the three carriers: the middle carrier uses two joined yellow frames. The mechanism uses only rotating joints, with no gears or sliding guides. Experimental model: the supplier reports a native simulation pass; a physical causal control and a real brick build have not been established.",
+  "what": "Schmidt coupling. A Schmidt coupling connects parallel shafts whose axes are 48 mm apart. One motor turns the input carrier. Six connecting rods link it to a floating middle carrier and a passive output carrier. Four rectangular frames form the three carriers: the middle carrier uses two joined yellow frames. The mechanism uses only rotating joints, with no gears or sliding guides. Experimental model: the supplier reports a native simulation pass; a physical causal control and a real brick build have not been established. One motor drives a coupling of three carriers and six connecting rods between parallel, offset shafts. Compare the input, floating middle and passive output angles through full turns and reversal.",
   "try": [
     "Load the model and matching program, reset to the saved pose, and run the finite forward-and-return experiment. Watch all three carriers, including the output that has no motor.",
     "Choose a matching corner on each carrier. Compare their directions at quarter turns and during reversal. Do the carriers keep the same orientation between those positions?",
