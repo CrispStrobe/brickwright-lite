@@ -15,11 +15,11 @@ extension model lists, catalogue/lesson generator entries and regenerated
 outputs, mechanism search entries, registration tests that enumerate MODELS);
 review records in `docs/data/robot-lab-experimental-checkpoint.json`.
 
-Contracts: Loop Relay, Toggle Press, Footfall, Phasekeeper, Vector Sum,
-Point Weaver. Helixgate (20 pieces), Parity Dial (31) and Counter Slide (44)
-get no contract: the qualification contract validator requires more than 50
-pieces, and the intake record keeps honest counts rather than padding. Whether
-that rule should apply to these intakes is an operator decision.
-
-Model and program bytes are unchanged. Qualification: hosted unit/build
-checks, `ci:full` once on the final head.
+Outcome: no model promoted. The judge is registered per principle family with a
+disconnection-loss measure. Toggle Press, Footfall, Phasekeeper, Vector Sum and
+Point Weaver passed hosted native ordinary, strict and disconnected runs but fail
+the established construction gate (solid-part penetration and double-filled
+holes); they need geometry repair and requalification. Loop Relay's shared
+disconnection run loses its hub observation base. Helixgate, Parity Dial and
+Counter Slide are under the validator's 50-piece minimum (operator decision).
+Reasons are in the checkpoint. Model and program bytes are unchanged.
