@@ -217,7 +217,7 @@ module.exports = makeExt(`// Name: Arcade
       this._animationUpdateOrder = [];
       this._tileLocations = new Map();
       this._nextTileLocationId = 0;
-      this._tilemapData = new Map();this._nextTilemapData = 0;this._tilemapHandlers = [];
+      this._tilemapData = new Map();this._nextTilemapData = 0;this._tilemapHandlers = [];this._sceneTilemaps = new Map();
       this._imageIds = new WeakMap();
       this._frameImages = new Map();
       this._animationAssetCache = new Map();
@@ -312,7 +312,7 @@ module.exports = makeExt(`// Name: Arcade
           this._animationUpdateOrder = [];
           this._tileLocations.clear();
           this._nextTileLocationId = 0;
-          this._tilemapData.clear();this._nextTilemapData = 0;this._tilemapHandlers = [];
+          this._tilemapData.clear();this._nextTilemapData = 0;this._tilemapHandlers = [];this._sceneTilemaps.clear();
           this._clearTilemap();
           this._imageIds = new WeakMap();
           this._frameImages.clear();
@@ -1033,6 +1033,14 @@ module.exports = makeExt(`// Name: Arcade
             text: 'set Arcade tilemap [DATA] tile index at column [COLUMN] row [ROW] to [INDEX]', arguments: {...str('DATA', ''), ...n('COLUMN', 0), ...n('ROW', 0), ...n('INDEX', 0)} },
           { opcode: 'setTilemapWall', blockType: Scratch.BlockType.COMMAND,
             text: 'set Arcade tilemap [DATA] wall at column [COLUMN] row [ROW] to [WALL]', arguments: {...str('DATA', ''), ...n('COLUMN', 0), ...n('ROW', 0), WALL: {type: Scratch.ArgumentType.BOOLEAN}} },
+          { opcode: 'setTilemapScale', blockType: Scratch.BlockType.COMMAND,
+            text: 'set Arcade tilemap [DATA] scale to [VALUE]', arguments: {...str('DATA', ''), ...n('VALUE', 4)} },
+          { opcode: 'tilemapTileset', blockType: Scratch.BlockType.REPORTER,
+            text: 'Arcade tilemap [DATA] tileset', arguments: str('DATA', '') },
+          { opcode: 'tileLocationTilemap', blockType: Scratch.BlockType.REPORTER,
+            text: 'Arcade scene tilemap of tile [LOCATION]', arguments: str('LOCATION', '') },
+          { opcode: 'sceneTilemapProperty', blockType: Scratch.BlockType.REPORTER,
+            text: 'Arcade scene tilemap [PROPERTY] of [MAP]', arguments: {...str('MAP', ''), PROPERTY: {type: Scratch.ArgumentType.STRING, menu: 'sceneTilemapProperties', defaultValue: 'data'}} },
           {opcode:'createSpriteKind',blockType:Scratch.BlockType.REPORTER,text:'Arcade create sprite kind'},
           {opcode:'spriteKindValue',blockType:Scratch.BlockType.REPORTER,text:'Arcade sprite kind value [NAME]',arguments:str('NAME','Player')},
           {opcode:'bindSpriteKind',blockType:Scratch.BlockType.COMMAND,text:'Arcade bind sprite kind name [NAME] to [KIND]',arguments:{...str('NAME','Custom'),...n('KIND',1003)}},
@@ -1167,6 +1175,7 @@ module.exports = makeExt(`// Name: Arcade
           ,cameraProperties: {acceptReporters: true, items: [{text:'x',value:'0'}, {text:'y',value:'1'}, {text:'left',value:'2'}, {text:'right',value:'3'}, {text:'top',value:'4'}, {text:'bottom',value:'5'}]}
           ,tilemapEvents: {acceptReporters: false, items: [{text:'Loaded',value:'Loaded'}, {text:'Unloaded',value:'Unloaded'}]}
           ,tilemapProperties: {acceptReporters: false, items: [{text:'width',value:'width'}, {text:'height',value:'height'}, {text:'scale',value:'scale'}]}
+          ,sceneTilemapProperties: {acceptReporters: false, items: ['data','scale','enabled','areaWidth','areaHeight']}
           ,collisionDirections: {acceptReporters: true, items: [{text:'left',value:'0'}, {text:'top',value:'1'}, {text:'right',value:'2'}, {text:'bottom',value:'3'}]}
           ,controllerNumbers: {acceptReporters:false,items:['1','2','3','4']}
           ,playerReadModes: {acceptReporters:false,items:['safe','member']}
@@ -6345,6 +6354,8 @@ module.exports = makeExt(`// Name: Arcade
       }
       if (data === null) return Scratch.BWValues.encode(null);
       const id = 'arcade-tilemap:' + (++this._nextTilemapData);
+      // One identity per map: events and Location.tileMap.data report this same reference.
+      data.referenceId = id;
       this._tilemapData.set(id, data);
       return Scratch.BWValues.reference(this._runtime, 'tile', id);
     }
@@ -6358,7 +6369,59 @@ module.exports = makeExt(`// Name: Arcade
       switch (String(args.PROPERTY)) {
       case 'width': return data.columns;
       case 'height': return data.rows;
-      case 'scale': return Math.log2(data.tileSize);
+      case 'scale': return data.dataScale ?? Math.log2(data.tileSize);
+      default: return 0;
+      }
+    }
+    _tilemapLoaded(data) {
+      return this._state().tilemap === data || this._sceneStack.some(bundle => bundle?.state?.tilemap === data);
+    }
+    // PXT TileMapData.scale setter: the map's own scale (getTileImage crops to it)
+    // changes now; a scene TileMap copies the scale only when it loads the map
+    // (TileMap.setData), so a loaded map keeps its grid until it is set again.
+    setTilemapScale(args) {
+      const data = this._requireTilemapData(args.DATA), value = Number(Scratch.BWValues.decode(args.VALUE));
+      const shift = (value | 0) & 31;
+      // The renderer admits the tile sizes a tilemap literal can carry (4 to 32 pixels).
+      if (!Number.isFinite(value) || shift < 2 || shift > 5) {
+        this._runtime?.emit?.('BLOCKS_ERROR',{message:'Arcade tilemap scale must be a tile scale from 2 to 5',extensionId:'arcade',opcode:'setTilemapScale'});return;
+      }
+      data.dataScale = value;data.views = [];
+      if (!this._tilemapLoaded(data)) data.tileSize = 1 << shift;
+    }
+    // PXT TileMapData.getTileset returns the map's own tileset Array: one Array per
+    // map, holding the same Image objects the map draws (setPixel on one shows on
+    // every tile of that index; images added by setTileAt appear in it).
+    tilemapTileset(args) {
+      const data = this._requireTilemapData(args.DATA);
+      if (!data.tilesetArray) data.tilesetArray = [];
+      const array = data.tilesetArray;
+      array.length = 0;
+      for (const image of data.images) array.push(this._imageHandle(image));
+      return Scratch.BWValues.arrayReference(this._runtime, array);
+    }
+    // PXT Location.tileMap is game.currentScene().tileMap: one TileMap per scene,
+    // created by the scene's first setTilemap, and undefined before that.
+    tileLocationTilemap(args) {
+      if (!this._tileLocation(args.LOCATION)) throw new TypeError("Cannot read properties of null (reading 'tileMap')");
+      const state = this._state();
+      if (!state.tilemapInitialized) return Scratch.BWValues.encode(undefined);
+      if (!state.sceneTilemapId) {
+        state.sceneTilemapId = 'arcade-scene-tilemap:' + (++this._nextTilemapData);
+        this._sceneTilemaps.set(state.sceneTilemapId, state);
+      }
+      return Scratch.BWValues.reference(this._runtime, 'tile', state.sceneTilemapId);
+    }
+    sceneTilemapProperty(args) {
+      const id = Scratch.BWValues.referenceId(this._runtime, args.MAP, 'tile'), state = id === null ? undefined : this._sceneTilemaps.get(id);
+      if (!state) throw new TypeError('Expected type TileMap but received type ' + (Scratch.BWValues.decode(args.MAP) === null ? 'null' : 'undefined') + '. Did you forget to assign a variable?');
+      const map = state.tilemap && !state.tilemap.legacy ? state.tilemap : null, scale = Math.log2(state.tilemapScale || 16);
+      switch (String(args.PROPERTY)) {
+      case 'data': return map ? this._tilemapReference(map) : Scratch.BWValues.encode(null);
+      case 'scale': return scale;
+      case 'enabled': return !!map;
+      case 'areaWidth': return map ? map.columns << scale : 0;
+      case 'areaHeight': return map ? map.rows << scale : 0;
       default: return 0;
       }
     }
@@ -6388,6 +6451,8 @@ module.exports = makeExt(`// Name: Arcade
     _applyTilemap(data) {
       this._ensureTilemapRenderable('modern');
       if (data === null) {this._state().tilemapInitialized=true;delete this._state().tilemap;this._clearTilemap();this._changed();return;}
+      // TileMap.setData copies the map's own scale (see setTilemapScale).
+      if (data.dataScale !== undefined && !data.legacy) {data.tileSize = 1 << ((data.dataScale | 0) & 31);data.views = [];}
       this._state().tilemap = data;
       this._state().tilemapInitialized = true;
       this._state().tilemapScale = data.tileSize;

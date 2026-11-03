@@ -2212,6 +2212,13 @@ class ArcadeEmitter {
         case 'arcade_tilemapTile': return `${v('DATA')}.getTile(${v('COLUMN')}, ${v('ROW')})`;
         case 'arcade_tilemapIsWall': return `${v('DATA')}.isWall(${v('COLUMN')}, ${v('ROW')})`;
         case 'arcade_tilemapTileImage': return `${v('DATA')}.getTileImage(${v('INDEX')})`;
+        case 'arcade_tilemapTileset': return `${v('DATA')}.getTileset()`;
+        case 'arcade_tileLocationTilemap': return `${v('LOCATION')}.tileMap`;
+        case 'arcade_sceneTilemapProperty': {
+            const property=this.field(b,'PROPERTY');
+            if(!['data','scale','enabled','areaWidth','areaHeight'].includes(property)){this.note(`Arcade scene tilemap property ${property} is unsupported`);return 'null';}
+            return `${v('MAP')}.${property}${['areaWidth','areaHeight'].includes(property)?'()':''}`;
+        }
         case 'arcade_eventTilemapData':
             if(this.eventTilemapName)return this.eventTilemapName;
             this.note('Arcade event tilemap data outside a tilemap event callback');return this.na();
@@ -2472,7 +2479,8 @@ class ArcadeEmitter {
         case 'arcade_placeOnLegacyTile':this.requiresLegacyTilemapPackage=true;push(`scene.place(${v('TILE')}, ${v('ID')})`);return;
         case 'arcade_placeOnRandomLegacyTile':this.requiresLegacyTilemapPackage=true;push(`scene.placeOnRandomTile(${v('ID')}, ${v('INDEX')})`);return;
         case 'arcade_setTilemap': {
-            if(!Array.isArray(b.inputs?.DATA?.[1])){push(`tiles.setTilemap(${v('DATA')})`);return;}
+            // A variable (or list) primitive is a TileMapData value, not literal map text.
+            if(!Array.isArray(b.inputs?.DATA?.[1]) || [12,13].includes(b.inputs.DATA[1][0])){push(`tiles.setTilemap(${v('DATA')})`);return;}
             const raw=this.literalInput(b,'DATA');let data=null;
             if(raw==='null' || raw===''){push('tiles.setTilemap(null)');return;}
             try{data=JSON.parse(raw);}catch(e){/* named below */}
@@ -2482,16 +2490,31 @@ class ArcadeEmitter {
         }
         case 'arcade_setTilemapTile': push(`${v('DATA')}.setTile(${v('COLUMN')}, ${v('ROW')}, ${v('INDEX')})`);return;
         case 'arcade_setTilemapWall': push(`${v('DATA')}.setWall(${v('COLUMN')}, ${v('ROW')}, ${this.condition(b,'WALL')})`);return;
+        case 'arcade_setTilemapScale': push(`${v('DATA')}.scale = ${v('VALUE')}`);return;
         case 'arcade_registerTilemapEvent': {
             const token=this.literalInput(b,'TOKEN'),event=this.field(b,'EVENT');
             const callback=token && this.registeredCallback(token);
             if(!callback || callback.kind!=='tilemapEvent' || !['Loaded','Unloaded'].includes(event))push(`// ${this.note('Arcade tilemap event registration has no matching callback')}`);
-            else {
+            else if(this.tilemapListenerUse(token).named) {
+                const name=this.tilemapListenerFunction(token,callback);
+                if(name){this.usedRegisteredCallbacks.add(token);push(`tiles.addEventListener(tiles.TileMapEvent.${event}, ${name})`);}
+                else push(`// ${this.note('A removable tilemap listener must not capture locals; it exports as a named function')}`);
+            } else {
                 this.usedRegisteredCallbacks.add(token);
                 push(`tiles.addEventListener(tiles.TileMapEvent.${event}, function (${callback.parameter}: tiles.TileMapData) {\n${callback.script.join('\n')}\n})`);
             }return;
         }
-        case 'arcade_unregisterTilemapEvent': push(`// ${this.note('tiles.removeEventListener has no inline callback to remove')}`);return;
+        case 'arcade_unregisterTilemapEvent': {
+            const token=this.literalInput(b,'TOKEN'),event=this.field(b,'EVENT');
+            if(!token || !['Loaded','Unloaded'].includes(event)){push(`// ${this.note('tiles.removeEventListener requires a fixed event and handler')}`);return;}
+            const callback=this.registeredCallback(token);
+            // No handler script: nothing can have registered this token, so PXT removes nothing.
+            if(!callback || callback.kind!=='tilemapEvent'){push('// tiles.removeEventListener: no listener is registered under this handler');return;}
+            const name=this.tilemapListenerFunction(token,callback);
+            if(name){this.usedRegisteredCallbacks.add(token);push(`tiles.removeEventListener(tiles.TileMapEvent.${event}, ${name})`);}
+            else push(`// ${this.note('A removable tilemap listener must not capture locals; it exports as a named function')}`);
+            return;
+        }
         case 'arcade_setTileAt': push(`tiles.setTileAt(${v('LOCATION')}, ${v('IMAGE')})`);return;
         case 'arcade_setWallAt': push(`tiles.setWallAt(${v('LOCATION')}, ${this.condition(b,'WALL')})`);return;
         case 'arcade_placeOnTile': push(`tiles.placeOnTile(${v('ID')}, ${v('LOCATION')})`);return;
@@ -3633,6 +3656,41 @@ class ArcadeEmitter {
         return player===1?'info':`info.player${player}`;
     }
 
+    /** How a tilemap handler token is registered and removed across the project. PXT
+     * compares listeners by function identity, so a token that is removed, registered
+     * twice, or imported from a named procedure exports as one named function. */
+    tilemapListenerUse(token) {
+        if(!this.tilemapListenerUses){
+            this.tilemapListenerUses=new Map();
+            for(const target of this.project.targets || [])for(const block of Object.values(target.blocks || {})){
+                if(!['arcade_registerTilemapEvent','arcade_unregisterTilemapEvent'].includes(block?.opcode))continue;
+                const blocks=this.blocks,saved=this.target;this.blocks=target.blocks;this.target=target;
+                let key,captures;try{key=this.literalInput(block,'TOKEN');captures=block.opcode==='arcade_registerTilemapEvent'?this.literalInput(block,'CAPTURES'):'';}finally{this.blocks=blocks;this.target=saved;}
+                if(key===null)continue;
+                const use=this.tilemapListenerUses.get(key)||{registers:0,removes:0,captures:false};
+                if(block.opcode==='arcade_registerTilemapEvent')use.registers++;else use.removes++;
+                if(captures===null || String(captures||'').trim())use.captures=true;
+                this.tilemapListenerUses.set(key,use);
+            }
+            for(const [key,use] of this.tilemapListenerUses)use.named=key.startsWith('__bwTilemapFn_') || use.removes>0 || use.registers>1;
+        }
+        return this.tilemapListenerUses.get(token)||{registers:0,removes:0,captures:false,named:false};
+    }
+
+    tilemapListenerFunction(token,callback) {
+        this.tilemapListenerFunctions??=new Map();
+        if(this.tilemapListenerFunctions.has(token))return this.tilemapListenerFunctions.get(token);
+        let name=null;
+        if(!this.tilemapListenerUse(token).captures){
+            name=token.startsWith('__bwTilemapFn_')?ident(token):'__bwTilemapFn_'+ident(token);
+            const occupied=new Set([...this.globals.values(),...this.functionNames(),...this.spriteVar.values(),...[...this.tilemapListenerFunctions.values()].filter(Boolean)]);
+            while(occupied.has(name))name+='_';
+            this.generated.push(`function ${name}(${callback.parameter}: tiles.TileMapData) {\n${callback.script.join('\n')}\n}`);
+        }
+        this.tilemapListenerFunctions.set(token,name);
+        return name;
+    }
+
     registeredCallback(token) {
         if (this.registeredCallbacks.has(token)) return this.registeredCallbacks.get(token);
         const entry = this.registeredCallbackBlocks.get(token);
@@ -3853,7 +3911,11 @@ class ArcadeEmitter {
                 }
                 if (value.opcode === 'data_variable'){const id=`variable:${value.fields.VARIABLE[1] || value.fields.VARIABLE[0]}`;if(!inspectionGlobalReaders.has(id))inspectionGlobalReaders.set(id,new Set());inspectionGlobalReaders.get(id).add(target);return id;}
                 if(value.opcode==='arcade_eventLocation'){const id=Symbol('event tile location');tiles.add(id);return id;}
-                if(['arcade_tilemapValue','arcade_eventTilemapData'].includes(value.opcode)){const id=`${key}:tilemap:${Object.keys(blocks).find(id=>blocks[id]===value)}`;tilemaps.add(id);return id;}
+                if(['arcade_tilemapValue','arcade_eventTilemapData'].includes(value.opcode) || value.opcode==='arcade_sceneTilemapProperty' && value.fields?.PROPERTY?.[0]==='data'){const id=`${key}:tilemap:${Object.keys(blocks).find(id=>blocks[id]===value)}`;tilemaps.add(id);return id;}
+                // The scene's tiles.TileMap: an SDK object exported untyped.
+                if(value.opcode==='arcade_tileLocationTilemap'){const id=Symbol('scene TileMap');anys.add(id);return id;}
+                if(value.opcode==='arcade_sceneTilemapProperty'){const id=Symbol('scene TileMap property');(value.fields?.PROPERTY?.[0]==='enabled'?booleans:numbers).add(id);return id;}
+                if(value.opcode==='arcade_tilemapTileset'){const id=`${key}:image-array:${Object.keys(blocks).find(id=>blocks[id]===value)}`;arrays.add(id);return id;}
                 if(value.opcode==='arcade_legacyTileLocation'){const id=Symbol('legacy tile');legacyTiles.add(id);return id;}
                 if(value.opcode==='arcade_legacyTilesOfType'){const id=Symbol('legacy tiles');arrays.add(id);return id;}
                 if(['arcade_tileNeighbor','arcade_spriteTileLocation','arcade_randomTileOfType'].includes(value.opcode)){const id=`${key}:tile:${Object.keys(blocks).find(id=>blocks[id]===value)}`;tiles.add(id);return id;}
@@ -3988,10 +4050,11 @@ class ArcadeEmitter {
                 if(block.opcode.startsWith('arrays_') && block.inputs?.NAME){const id='named-array:'+literal(blocks,block,'NAME');arrays.add(id);const value=Symbol('named array element');anys.add(value);elements.push([id,value]);}
                 if(block.inputs?.TILE){const tile=ref(inputBlock(blocks,block,'TILE'));if(tile)legacyTiles.add(tile);}
                 if(block.inputs?.LOCATION){const location=ref(inputBlock(blocks,block,'LOCATION'));if(location)tiles.add(location);}
-                if(block.inputs?.DATA && /^arcade_(tilemap(Property|Tile|IsWall|TileImage)|setTilemap(Tile|Wall))$/.test(block.opcode)){const data=ref(inputBlock(blocks,block,'DATA'));if(data)tilemaps.add(data);}
+                if(block.inputs?.DATA && /^arcade_(tilemap(Property|Tile|IsWall|TileImage|Tileset)|setTilemap(Tile|Wall|Scale))$/.test(block.opcode)){const data=ref(inputBlock(blocks,block,'DATA'));if(data)tilemaps.add(data);}
                 if(['arcade_tileLocation','arcade_legacyTileLocation'].includes(block.opcode))for(const name of ['COLUMN','ROW']){const number=ref(inputBlock(blocks,block,name));if(number)numbers.add(number);}
                 if(block.opcode==='arcade_legacyTilesOfType'){const array=ref(block),item=Symbol('legacy tile element');legacyTiles.add(item);elements.push([array,item]);}
                 if(block.opcode==='arcade_tilesOfType'){const array=ref(block),item=Symbol('tile collection element');tiles.add(item);elements.push([array,item]);}
+                if(block.opcode==='arcade_tilemapTileset'){const array=ref(block),item=Symbol('tileset element');images.add(item);elements.push([array,item]);}
                 if(block.opcode==='arcade_spritesOfKind'){const array=ref(block),item=Symbol('sprite collection element');sprites.add(item);elements.push([array,item]);}
                 if(block.opcode==='arrays_createReference'){
                     const array=ref(block);let current=inputBlock(blocks,block,'VALUES');

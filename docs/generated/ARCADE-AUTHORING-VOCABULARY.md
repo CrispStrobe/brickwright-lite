@@ -149,6 +149,7 @@ qualification. Track those separately in the [GUI closure ledger](../CONVERSION-
 | `arcade_unregisterTilemapEvent` | command | `arcade unregister tilemap event {EVENT:Loaded\|Unloaded} as {TOKEN}` |  |
 | `arcade_setTilemapTile` | command | `arcade set tilemap {DATA} tile index at column {COLUMN} row {ROW} to {INDEX}` |  |
 | `arcade_setTilemapWall` | command | `arcade set tilemap {DATA} wall at column {COLUMN} row {ROW} to {WALL}` |  |
+| `arcade_setTilemapScale` | command | `arcade set tilemap {DATA} scale to {VALUE}` |  |
 | `arcade_registerTileHandler` | command | `arcade register tile kind {KIND} image {IMAGE} as {TOKEN} capturing {CAPTURES}` |  |
 | `arcade_registerSpriteCreated` | command | `arcade register creation kind {KIND} as {TOKEN} capturing {CAPTURES}` |  |
 | `arcade_registerSpriteCreated` | command | `arcade register creation kind {KIND} as {TOKEN}` | yes |
@@ -387,6 +388,9 @@ qualification. Track those separately in the [GUI closure ledger](../CONVERSION-
 | `arcade_tilemapTile` | reporter | `arcade tilemap {DATA} tile index at column {COLUMN} row {ROW}` |  |
 | `arcade_tilemapIsWall` | boolean | `arcade tilemap {DATA} wall at column {COLUMN} row {ROW}` |  |
 | `arcade_tilemapTileImage` | reporter | `arcade tilemap {DATA} image of tile index {INDEX}` |  |
+| `arcade_tilemapTileset` | reporter | `arcade tilemap {DATA} tileset` |  |
+| `arcade_tileLocationTilemap` | reporter | `arcade scene tilemap of tile {LOCATION}` |  |
+| `arcade_sceneTilemapProperty` | reporter | `arcade scene tilemap {PROPERTY:data\|scale\|enabled\|areaWidth\|areaHeight} of {MAP}` |  |
 | `arcade_eventTilemapData` | reporter | `arcade event tilemap data` |  |
 | `arcade_isHittingTile` | boolean | `arcade sprite {ID} hitting wall {DIRECTION}` |  |
 | `arcade_parseIntegerRadix` | reporter | `arcade parse integer {TEXT} radix {RADIX}` |  |
