@@ -70,11 +70,14 @@ How to land it:
    Never hand-edit conflict markers in those files.
 4. Stage before running `test/pin-move-chain.test.mjs`; it compares against staged blobs.
 
-CI risk: on head `ce2eb896`, `unit (3/6)` and `unit (6/6)` were cancelled at the 30-minute job
-limit. No test failed. Main's `unit (3/6)` already takes about 27 minutes, and #1646 adds slow
-original-PXT comparison tests, while that run's runners were also slow. A rerun was started. If
-the shards time out again, do not keep rerunning. Rebalance the unit shards in the workflow (or
-move the new PXT-comparison files to a lighter shard) in their own small PR, then rerun.
+CI: on head `ce2eb896`, `unit (3/6)` and `unit (6/6)` hit the 30-minute job limit (6/6 twice;
+no test failed). The cause was a stale shard-timings table (2026-10-28): files added since were
+placed by name hash. The fix is commit `524b736c` on #1646, which regenerates
+`scripts/data/unit-test-timings.json` with `scripts/gen-unit-test-timings.mjs` from main run
+41586247225. The estimated per-shard load goes from 26–60 to 38 summed test-minutes on every
+shard. If shards drift again later, repeat that step from the latest full green main run:
+`gh run download <id> -p 'unit-shard-*' -D <dir>`, then
+`node scripts/gen-unit-test-timings.mjs <dir> <id>`.
 
 Overlap: #1643 (another session) edits `arcade-translate.js` and
 `array-reference-export-authority.js` in different hunks. Whichever lands second rebases.
