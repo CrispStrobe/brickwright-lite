@@ -20,6 +20,11 @@ Arcade documented TODO tests: 37 on main `bc39104b`; 33 after #1629 and #1631; 2
 | I liftExporterStops | 1 | 0 | exporter stop machinery lifted (#1629) |
 | timing phase / tile order / do-while | 5 | 5 | intentionally kept |
 
+Corpus census (raw 184 importer/Creator source census, unchanged observer core
+and inputs) on main `5956c6ab` (after #1629 and #1631): **156 translated, 27
+partial, 1 parse failure**, up from 147/36/1; nine partials became translated
+and none regressed. Source import only: no export, VM, PXT or browser claim.
+
 **Group A decision (operator, 2026-11-02): no runtime guard; per-slot proofs only.** The follow-up cleared nine rows; the remaining five (fresh animation re-export, array-copy effects, class accessor aliases, allOfKind second export, computed index sums) stay TODO.
 A runtime guard that behaves exactly like original PXT for an unproven Array
 receiver is the identity: PXT already faults on a null or non-Array receiver,

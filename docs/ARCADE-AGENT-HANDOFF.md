@@ -3,6 +3,10 @@
 
 ## 2 November: TODO closure status and decisions
 
+Raw corpus census on main `5956c6ab`: 156 translated / 27 partial / 1 parse
+failure out of 184 (was 147/36/1; nine partial -> translated, no regressions).
+Source import and Creator only.
+
 Merged or in flight: #1629 (nested parameter captures, H; exporter stop lift,
 I) and #1631 (the prepared created-field receiver branch composed onto main,
 plus a `scene.backgroundColor()` Number proof). Counts and reasons are in
