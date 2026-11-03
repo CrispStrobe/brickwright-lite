@@ -734,6 +734,33 @@
           ]
         }
       ]
+    },
+    {
+      "id": "afterturn",
+      "judge": "afterturn-shape-cycle-v1",
+      "parts": 296,
+      "ports": [
+        "A",
+        "B"
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 70000,
+      "afterMs": 500,
+      "frameMs": 20,
+      "withSpike": true,
+      "frozenOutput": "hub",
+      "disconnect": [
+        "rod_left",
+        "rod_right"
+      ],
+      "disconnectInputDeg": 800,
+      "disconnectLaw": true,
+      "notRun": [
+        "per-model browser run (qualify-robot-lab-models --mode=full, chromium and webkit)",
+        "saved-project replay",
+        "export",
+        "manual controls"
+      ]
     }
   ]
 }

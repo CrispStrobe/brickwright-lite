@@ -590,35 +590,6 @@ export const EXPERIMENTAL_MODELS = Object.freeze([
         }
     },
     {
-        "file": "afterturn.ldr",
-        "title": {
-            "en": "Afterturn — a closed shape cycle",
-            "de": "Afterturn — ein geschlossener Formzyklus"
-        },
-        "example": "afterturn.bw",
-        "mat": "plain",
-        "experimental": true,
-        "blocked": false,
-        "intro": {
-            "en": "Two motors turn a reaction wheel and reposition balanced masses on a freely rotating platform. Compare the remaining platform heading after both internal motions return home, then reverse the cycle and test physically fixed masses.",
-            "de": "Zwei Motoren drehen ein Reaktionsrad und versetzen ausgewuchtete Massen auf einer frei drehbaren Plattform. Vergleiche die verbleibende Plattformdrehung nach der Rückkehr beider innerer Bewegungen, kehre den Zyklus um und prüfe physisch festgesetzte Massen."
-        },
-        "manualJog": {
-            "A": {
-                "minDeg": 0,
-                "maxDeg": 900,
-                "stepDeg": 90,
-                "speedDps": 90
-            },
-            "B": {
-                "minDeg": 0,
-                "maxDeg": 70,
-                "stepDeg": 10,
-                "speedDps": 10
-            }
-        }
-    },
-    {
         "file": "afterturn-fixed-masses.ldr",
         "title": {
             "en": "Afterturn Control — masses fixed",
@@ -2220,42 +2191,6 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
             "Drehpunkt",
             "Doppelparallelogramm",
             "Koppelgetriebe",
-            "experimental",
-            "prototype",
-            "unverified",
-            "experimentell"
-        ],
-        "experimental": true
-    },
-    "afterturn.ldr": {
-        "pieces": 296,
-        "motors": 2,
-        "hubs": [
-            "spike-prime"
-        ],
-        "topic": "inertia",
-        "description": {
-            "en": "Two motors turn a reaction wheel and reposition balanced masses on a freely rotating platform. Compare the remaining platform heading after both internal motions return home, then reverse the cycle and test physically fixed masses.",
-            "de": "Zwei Motoren drehen ein Reaktionsrad und versetzen ausgewuchtete Massen auf einer frei drehbaren Plattform. Vergleiche die verbleibende Plattformdrehung nach der Rückkehr beider innerer Bewegungen, kehre den Zyklus um und prüfe physisch festgesetzte Massen."
-        },
-        "author": "CrispStrobe",
-        "license": "BSD-3-Clause",
-        "mechanism": {
-            "en": "Geometric-phase reorientation through a closed internal shape cycle",
-            "de": "Umorientierung durch einen geschlossenen inneren Formzyklus"
-        },
-        "keywords": [
-            "geometric phase",
-            "shape cycle",
-            "reaction wheel",
-            "variable inertia",
-            "angular momentum",
-            "free yaw",
-            "geometrische Phase",
-            "Formzyklus",
-            "Reaktionsrad",
-            "veränderliches Trägheitsmoment",
-            "Drehimpuls",
             "experimental",
             "prototype",
             "unverified",
