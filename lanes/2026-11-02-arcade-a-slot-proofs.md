@@ -8,7 +8,8 @@ Base: main after the composed created-field receiver PR.
 
 - `overlay/scratch-gui/src/lib/bw-makecode/array-reference-export-authority.js`:
   call-site getter results, constant-condition branches, unenterable
-  procedures (closed call graph), text-sprite kind resets, `mp.allPlayers()`
+  procedures (closed call graph), text-sprite kind resets, omitted slice
+  bounds, `mp.allPlayers()`
   as a fresh SDK Array, and the shared project context for animation
   resources named by a never-written global.
 - `animation-frame-array-producers.js` and `export-arcade.js`: that context.
