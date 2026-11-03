@@ -474,6 +474,7 @@ module.exports = makeExt(`// Name: Arcade
           {opcode:'sevensegSetProperty',blockType:Scratch.BlockType.COMMAND,text:'Arcade set seven segment [DISPLAY] property [PROPERTY] to [VALUE]',arguments:{...str('DISPLAY',''),PROPERTY:{type:Scratch.ArgumentType.STRING,menu:'sevensegWritable',defaultValue:'value'},...n('VALUE',0)}},
           {opcode:'sevensegAddDigit',blockType:Scratch.BlockType.COMMAND,text:'Arcade add seven segment digit to [DISPLAY]',arguments:str('DISPLAY','')},
           {opcode:'playMusic',blockType:Scratch.BlockType.COMMAND,text:'Arcade play music [PLAYABLE] mode [MODE]',arguments:{...str('PLAYABLE',''),MODE:{type:Scratch.ArgumentType.STRING,menu:'playbackModes',defaultValue:'UntilDone'}}},
+          {opcode:'play',blockType:Scratch.BlockType.COMMAND,text:'Arcade play [PLAYABLE] mode [MODE]',arguments:{...str('PLAYABLE',''),MODE:{type:Scratch.ArgumentType.STRING,menu:'playbackModes',defaultValue:'UntilDone'}}},
           {opcode:'playMelody',blockType:Scratch.BlockType.COMMAND,text:'Arcade play melody [MELODY] mode [MODE]',arguments:{...str('MELODY',''),MODE:{type:Scratch.ArgumentType.STRING,menu:'melodyModes',defaultValue:'play'}}},
           {opcode:'playSoundEffect',blockType:Scratch.BlockType.COMMAND,text:'Arcade play sound effect [EFFECT] mode [MODE]',arguments:{...str('EFFECT',''),MODE:{type:Scratch.ArgumentType.STRING,menu:'soundPlayModes',defaultValue:'UntilDone'}}},
           {opcode:'playSound',blockType:Scratch.BlockType.COMMAND,text:'Arcade play sound [SOUND] until done [UNTIL_DONE]',arguments:{...str('SOUND','c d e'),UNTIL_DONE:{type:Scratch.ArgumentType.BOOLEAN}}},
@@ -1058,6 +1059,7 @@ module.exports = makeExt(`// Name: Arcade
             text: 'Arcade event sprite [WHICH]',
             arguments: { WHICH: {type: Scratch.ArgumentType.STRING, menu: 'eventSprites', defaultValue: 'first'} } },
 
+          {opcode:'mathUnary',blockType:Scratch.BlockType.REPORTER,text:'Arcade math [OP] of [NUM]',arguments:{OP:{type:Scratch.ArgumentType.STRING,menu:'mathUnaryOperations',defaultValue:'truncate'},...n('NUM',0)}},
           {opcode:'truncateNumber',blockType:Scratch.BlockType.REPORTER,text:'Arcade truncate [NUM] toward zero',arguments:n('NUM',0)},
           {opcode:'signNumber',blockType:Scratch.BlockType.REPORTER,text:'Arcade sign of [NUM]',arguments:n('NUM',0)},
           {opcode:'randomNumber',blockType:Scratch.BlockType.REPORTER,text:'Arcade random fraction'},
@@ -1095,6 +1097,7 @@ module.exports = makeExt(`// Name: Arcade
           sourceUnaryOperations:{acceptReporters:false,items:['~']},
           sourceScalarTypes:{acceptReporters:false,items:['Number','Boolean','String','Any']},
           mathOperations:{acceptReporters:false,items:['min','max','randomRange','atan2']},
+          mathUnaryOperations:{acceptReporters:false,items:['truncate','sign']},
           hudElements:{acceptReporters:false,items:['score','life','countdown']},
           buttons: {acceptReporters: true, items: [
             {text: 'A', value: 'a'}, {text: 'B', value: 'b'},
@@ -2141,6 +2144,13 @@ module.exports = makeExt(`// Name: Arcade
       return this._randomRange(0,99)<percentage;
     }
     truncateNumber(args) {return Math.trunc(Number(Scratch.BWValues.decode(args.NUM)));}
+    // truncate and sign of a number: the two former single-purpose reporters, run unchanged.
+    mathUnary(args) {
+      const operation=String(args.OP);
+      if(operation==='truncate')return this.truncateNumber(args);
+      if(operation==='sign')return this.signNumber(args);
+      throw new TypeError('Arcade math operation is not implemented: '+operation);
+    }
     signNumber(args) {
       const value=Number(Scratch.BWValues.decode(args.NUM));
       // PXT Math.sign deliberately returns +0 for -0 and -1 for NaN.
@@ -5454,6 +5464,8 @@ module.exports = makeExt(`// Name: Arcade
       if(!playable || mode===null)return;
       return music.run(music.pxt.music.play(playable,mode));
     }
+    // The general form of playMusic: music.play(playable, mode). The playable comes from a playable reporter.
+    play(args) {return this.playMusic(args);}
     playMelody(args) {
       const music=this._music(),melody=this._musicValue(args.MELODY,'Melody'),mode=String(args.MODE);
       if(!melody)return;

@@ -340,8 +340,9 @@ test('vendored SPIKE compiler emits a canonical executable round-trip artifact',
     // accelerometer words (#176); the SPIKE emitter is unchanged (no line of spikeprimeDialect.js or spike3Python.js moved).
     // Re-run every assertion.
     // -> bc9070f9 (2026-11-01): serial polling and raw radio packet words (#177), the radio event frame, log rows and note-string melodies (#178, #179); the SPIKE emitter is unchanged (no line of spikeprimeDialect.js or spike3Python.js moved). Re-run every assertion.
+    // -> 1424ec3f (2026-11-02): the arcade_mathUnary and arcade_play words (#180); `git diff bc9070f9 1424ec3f -- src/` is arcadeDialect.js only (two added words), so the SPIKE emitter is unchanged.
     assert.equal(JSON.parse(readFileSync(new URL('../vendor-pins.json', import.meta.url)))['sb3-creator'],
-        'bc9070f9ea19d4431508408dcc28a9d3b25473ec');
+        '1424ec3fef9f392e8d799339b520244cfd97f891');
 
     const creator = new SB3Creator();
     creator.parse(PROGRAM);

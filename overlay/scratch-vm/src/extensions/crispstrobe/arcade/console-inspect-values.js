@@ -541,6 +541,10 @@ function create(runtime, cells, scoreOwner=null, sceneClock=null, frameDelta=nul
                     // (scene.backgroundColor(): number in the pinned SDK).
                     origins?.add(node);domains.add('number');return true;
                 }
+                if(!player&&domains&&op==='arcade_mathUnary'&&['truncate','sign'].includes(literal(node,'OP'))){
+                    // The same Number-valued reporters as arcade_truncateNumber and arcade_signNumber.
+                    origins?.add(node);domains.add('number');return true;
+                }
                 if(!player&&op==='arcade_getPlayerScore'){
                     if(!scoreNumber(node))return false;
                     origins?.add(node);domains?.add('number');return true;

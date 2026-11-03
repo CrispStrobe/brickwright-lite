@@ -5413,6 +5413,435 @@
         "samebeat.ldr",
         "cascade.ldr"
       ]
+    },
+    "poise": {
+      "en": {
+        "what": "Roberval balance. Two equal horizontal blue bars pivot at their centres. Upright end links keep two weighing pans level. A motor on each pan moves an eccentric weight horizontally; neither motor drives the balance beam. An orange ballast frame below the upper pivot gives the otherwise balanced linkage a definite resting position.",
+        "try": [
+          "Load Poise and its matching program, reset, and run. During each pause compare the positions of both weights with the angle of the passive blue balance bar.",
+          "Watch the first pause: the left weight has moved from its outer position to its inner position while the right weight stays outside. Predict whether the balance should tilt after the movement settles.",
+          "After the main run, load the supplied added-mass control model and run the same program. It adds one small beam and two mounting pins to the left pan. Compare the weighing result, and check that both weight drives still complete their movements."
+        ],
+        "why": "The two end uprights form a parallelogram with equal horizontal bars. When one pan rises, the other falls by the same amount, while both remain level. Moving a weight horizontally on a level pan does not change the height through which that weight moves when the balance rocks. Its horizontal offset changes internal forces in the linkage, but does not change its contribution to the weighing result. Added mass does change that contribution.",
+        "matters": "A scale should measure how much load a pan carries without making the user place every object on one exact point. Roberval geometry achieves this through its linkage. The same orientation-preserving idea also appears in level trays, but a weighing instrument must remain free to respond to a mass difference. In a headless run of the Brickwright simulator, each weight assembly’s centre of mass moved about 20 mm along the beam while the passive balance stayed within 0.046° of level (held means within 0.033° of each other); with the 1.5 g added-mass control it settled at −2.91° after 120 s, against a predicted −2.94°. These are simulation observations; no physical LEGO build has been tested.",
+        "question": "Both pans carry the same total mass. One weight moves close to its pan's upright and the other stays farther out. After the motion settles, should the balance lean toward the farther-out weight? What should happen if a small extra mass is attached to the left pan?",
+        "answer": "In the ideal Roberval geometry, changing only horizontal position does not change the settled balance. A small extra mass does: the left pan becomes heavier and the passive beam moves until restoring gravity torque balances the mass difference. Temporary motion during acceleration is different from the settled weighing result.",
+        "further": [
+          "The supplied program moves the two arms to (180°,0°), (180°,90°), (90°,90°), (90°,180°), then (0°,0°). Compare the actual held weight positions across all five arrangements.",
+          "The added-mass comparison checks that the mechanism is responsive. A balance that stays still because it is clamped or jammed would not be a successful demonstration.",
+          "Hardware friction, flexible motor leads, tolerances and load capacity are not part of this simulation and need separate verification."
+        ]
+      },
+      "de": {
+        "what": "Roberval-Waage. Zwei gleich lange, waagerechte blaue Balken drehen sich um ihre Mittelpunkte. Senkrechte Endglieder halten zwei Waagschalen waagerecht. Auf jeder Schale bewegt ein Motor ein außermittiges Gewicht in einer horizontalen Ebene; keiner der Motoren treibt den Waagebalken an. Ein orangefarbener Ballastrahmen unter dem oberen Drehpunkt gibt dem sonst ausgeglichenen Mechanismus eine eindeutige Ruhelage.",
+        "try": [
+          "Lade Poise und das zugehörige Programm, setze das Modell zurück und starte. Vergleiche in jeder Pause die Positionen beider Gewichte mit dem Winkel des passiven blauen Waagebalkens.",
+          "Beobachte die erste Pause: Das linke Gewicht ist von außen nach innen gewandert, während das rechte außen bleibt. Sage voraus, ob sich die Waage nach dem Abklingen der Bewegung neigen sollte.",
+          "Lade nach dem Hauptversuch das mitgelieferte Kontrollmodell mit Zusatzmasse und starte dasselbe Programm. Es ergänzt links einen kleinen Balken und zwei Befestigungspins. Vergleiche das Wägeergebnis und prüfe, ob beide Gewichtsantriebe ihre Bewegungen weiterhin abschließen."
+        ],
+        "why": "Die beiden Endglieder bilden mit den gleich langen horizontalen Balken ein Parallelogramm. Steigt eine Schale, sinkt die andere um denselben Betrag, während beide waagerecht bleiben. Eine horizontale Verschiebung auf einer waagerechten Schale verändert nicht den Höhenweg des Gewichts beim Kippen der Waage. Ihr Abstand ändert innere Kräfte im Gestänge, aber nicht ihren Beitrag zum Wägeergebnis. Eine zusätzliche Masse verändert diesen Beitrag dagegen.",
+        "matters": "Eine Waage soll die Last einer Schale bestimmen, ohne dass jeder Gegenstand genau auf einen einzigen Punkt gesetzt werden muss. Die Roberval-Geometrie erreicht dies durch ihr Gestänge. Dasselbe Prinzip der erhaltenen Ausrichtung findet sich bei waagerechten Plattformen; eine Waage muss dabei frei auf einen Massenunterschied reagieren können. In einem Lauf des Brickwright-Simulators ohne Oberfläche wanderte der Schwerpunkt jeder Gewichtsbaugruppe um etwa 20 mm entlang des Balkens, während die passive Waage auf 0,046° waagerecht blieb (die gehaltenen Mittelwerte lagen höchstens 0,033° auseinander); mit 1,5 g Zusatzmasse kam sie nach 120 s bei −2,91° zur Ruhe, vorhergesagt waren −2,94°. Das sind Simulationsbeobachtungen; ein realer LEGO-Aufbau wurde nicht geprüft.",
+        "question": "Beide Schalen tragen dieselbe Gesamtmasse. Ein Gewicht rückt nahe an das senkrechte Endglied, das andere bleibt weiter außen. Sollte sich die Waage nach dem Abklingen der Bewegung zur weiter außen liegenden Last neigen? Was geschieht bei einer kleinen Zusatzmasse auf der linken Schale?",
+        "answer": "In der idealen Roberval-Geometrie verändert allein die horizontale Position die Ruhelage nicht. Eine kleine Zusatzmasse verändert sie: Die linke Schale wird schwerer, und der passive Balken bewegt sich, bis das rückstellende Schwerkraftmoment den Massenunterschied ausgleicht. Eine vorübergehende Bewegung beim Beschleunigen ist vom ruhenden Wägeergebnis zu unterscheiden.",
+        "further": [
+          "Das Programm fährt die beiden Arme auf (180°,0°), (180°,90°), (90°,90°), (90°,180°) und anschließend (0°,0°). Vergleiche die tatsächlich gehaltenen Gewichtspositionen in allen fünf Anordnungen.",
+          "Der Versuch mit Zusatzmasse prüft, ob der Mechanismus reagiert. Eine festgeklemmte oder blockierte Waage wäre keine erfolgreiche Vorführung.",
+          "Reibung realer Bauteile, flexible Motorkabel, Toleranzen und Tragfähigkeit sind nicht Teil dieser Simulation und müssen gesondert geprüft werden."
+        ]
+      },
+      "formula": {
+        "en": "Half-span a = 56 mm; θ positive when the left pan rises: Δh_left = a·sin θ, Δh_right = −a·sin θ. A weight’s horizontal position on its level pan does not enter these height changes. Added mass Δm on the left pan: settled θ ≈ −Δm·g·a/κ, where κ is the restoring stiffness of the ballast frame (about 0.016 N·m/rad from the simulator’s part masses); Δm = 1.5 g gives θ ≈ −2.9°.",
+        "de": "Halbe Balkenlänge a = 56 mm; θ positiv, wenn die linke Schale steigt: Δh_links = a·sin θ, Δh_rechts = −a·sin θ. Die horizontale Lage eines Gewichts auf seiner waagerechten Schale kommt in diesen Höhenänderungen nicht vor. Zusatzmasse Δm auf der linken Schale: Ruhelage θ ≈ −Δm·g·a/κ, wobei κ die Rückstellsteifigkeit des Ballastrahmens ist (etwa 0,016 N·m/rad aus den Teilemassen des Simulators); Δm = 1,5 g ergibt θ ≈ −2,9°."
+      },
+      "related": [
+        "parallel-lift.ldr",
+        "balance-engine.ldr",
+        "momentum-twins.ldr"
+      ]
+    },
+    "bend-ripple": {
+      "en": {
+        "what": "Single Cardan (universal) joint with an adjustable bend. Motor A turns the input shaft 1:1. Motor B swings the bearing carrier of the output shaft about the joint centre and so sets the bend angle β between 10° and 30°. The output shaft has no motor; it is driven only through the stock Technic universal joint. The program compares one full input turn at β = 10° with one at β = 30°, and in between holds the input still at a 45° phase while only the bend changes.",
+        "try": [
+          "Open Bend Ripple with its program, press Reset, then Run. Encoder A = 0° is input phase 0°, and the bend is β = 10° + encoder B. Each held stage lasts 2 s; the whole run takes about two minutes.",
+          "Stage 1 turns the input 360° at β = 10°, stage 2 a further 45° to the diagonal phase (405°). Compare the output marker with the input during the turn: at 10° the output leads and lags by less than half a degree, which is hard to see.",
+          "Stage 3 holds the input at 405° while motor B raises the bend to 30°. Watch the output shaft relative to its carrier: although the input does not move, the output should turn by about 3.7°. Stage 6 lowers the bend again, and the output should turn back.",
+          "Stage 4 turns the input a full 360° at β = 30° (405° → 765°), stage 5 reverses it, stage 7 returns to the saved datum. Now the lead and lag reach about ±4.1°, twice per revolution, while input and output still agree after each full turn."
+        ],
+        "why": "The cross of the joint keeps the input fork and the output fork perpendicular. With the shafts in line, that forces the output to follow the input exactly. With the output shaft bent by β, the condition becomes tan ψ = tan θ / cos β (input angle θ, output angle ψ, counted from the position where the input fork lies in the bend plane). Both shafts still make one turn per turn, but within the turn the output alternately runs ahead and falls behind, twice per revolution. Its instantaneous speed ratio swings between cos β and 1/cos β: 0.985–1.015 at 10°, 0.866–1.155 at 30°. Because β appears in the same equation, changing the bend while θ is held also moves ψ, except at the phases θ = 0°, 90°, 180° and 270°.",
+        "matters": "Single universal joints sit in steering columns, drive shafts and tool drives. Their speed ripple causes vibration and torque pulsation, which is why vehicle drive shafts use two joints phased so that the second cancels the first (see Phase Bridge), or constant-velocity joints. Bend Ripple adds a second input, the bend itself, as when a suspension moves while the shaft turns. In a headless run of the Brickwright simulator, the measured output, taken relative to its carrier, followed tan ψ = tan θ / cos β to within 0.007°: ripple 0.88° peak to peak at 10° and 8.20° at the reached 29.94° bend, and 3.64° of output rotation in the bend-only stage. That is a simulation observation; no physical LEGO build has been tested.",
+        "question": "Motor A holds the input at exactly 405° while motor B raises the bend from 10° to 30°. Does the output shaft stay still? What would happen if the input were held at 360° instead?",
+        "answer": "At 405° (a 45° phase) the output turns, ideally by about 3.67°: ψ = atan(1/cos β) goes from 45.44° at 10° to 49.11° at 30°, and it turns back when the bend returns to 10°. At 360° (phase 0°) tan θ = 0, so ψ stays at 0° whatever the bend; the same holds at 90°, 180° and 270°. The bend-only effect therefore depends on the input phase.",
+        "further": [
+          "Phase ripple ψ − θ: ideally about 0.88° peak to peak at β = 10° and 8.23° at β = 30°, roughly nine times larger for three times the bend, because at small angles it grows with β². Compare samples inside the turn, not only the end poses.",
+          "The output is fastest (ratio 1/cos β) when the input fork lies in the bend plane (θ = 0°, 180°) and slowest (cos β) a quarter turn later. Find these phases during the 30° turn.",
+          "The commanded speed caps (24°/s for A, 4°/s for B) are not measured speeds; compute ratios from measured angle changes, and measure the output relative to the moving carrier, not the room.",
+          "Limits: play and friction in the stock joint and the real clearance of its cross are not represented. The supplier itself reports its fork clearance checks as inconclusive."
+        ]
+      },
+      "de": {
+        "what": "Einzelnes Kardangelenk mit verstellbarem Knickwinkel. Motor A dreht die Eingangswelle im Verhältnis 1:1. Motor B schwenkt den Lagerträger der Ausgangswelle um den Gelenkmittelpunkt und stellt so den Knickwinkel β zwischen 10° und 30° ein. Die Ausgangswelle hat keinen Motor; sie wird nur über das Technic-Kardangelenk angetrieben. Das Programm vergleicht eine volle Eingangsumdrehung bei β = 10° mit einer bei β = 30° und hält dazwischen den Eingang bei 45° Phase fest, während sich nur der Knickwinkel ändert.",
+        "try": [
+          "Öffne Bend Ripple mit Programm, drücke Zurücksetzen und dann Start. Encoder A = 0° entspricht der Eingangsphase 0°, der Knickwinkel ist β = 10° + Encoder B. Jede Haltephase dauert 2 s; der ganze Lauf etwa zwei Minuten.",
+          "Stufe 1 dreht den Eingang bei β = 10° um 360°, Stufe 2 weitere 45° in die Diagonalstellung (405°). Vergleiche während der Umdrehung die Markierung am Ausgang mit dem Eingang: Bei 10° eilt der Ausgang um weniger als ein halbes Grad vor und nach – kaum zu sehen.",
+          "In Stufe 3 hält Motor A den Eingang bei 405°, während Motor B den Knickwinkel auf 30° erhöht. Beobachte die Ausgangswelle relativ zu ihrem Träger: Obwohl der Eingang stillsteht, sollte sich der Ausgang um etwa 3,7° drehen. Stufe 6 verkleinert den Knickwinkel wieder, und der Ausgang sollte zurückdrehen.",
+          "Stufe 4 dreht den Eingang bei β = 30° eine volle Umdrehung weiter (405° → 765°), Stufe 5 zurück, Stufe 7 auf den gespeicherten Nullpunkt. Jetzt erreicht das Vor- und Nacheilen etwa ±4,1°, zweimal pro Umdrehung, und trotzdem stimmen Ein- und Ausgang nach jeder vollen Umdrehung wieder überein."
+        ],
+        "why": "Das Kreuz des Gelenks hält Eingangs- und Ausgangsgabel rechtwinklig zueinander. Fluchten die Wellen, folgt der Ausgang daher exakt dem Eingang. Ist die Ausgangswelle um β abgeknickt, lautet die Bedingung tan ψ = tan θ / cos β (Eingangswinkel θ, Ausgangswinkel ψ, gezählt ab der Stellung, in der die Eingangsgabel in der Knickebene liegt). Beide Wellen machen weiterhin Umdrehung für Umdrehung, doch innerhalb einer Umdrehung eilt der Ausgang abwechselnd vor und nach, zweimal pro Umdrehung. Das momentane Drehzahlverhältnis pendelt zwischen cos β und 1/cos β: 0,985–1,015 bei 10°, 0,866–1,155 bei 30°. Weil β in derselben Gleichung steht, bewegt auch eine Änderung des Knickwinkels bei festem θ den Ausgang – außer bei den Phasen θ = 0°, 90°, 180° und 270°.",
+        "matters": "Einzelne Kardangelenke stecken in Lenksäulen, Gelenkwellen und Werkzeugantrieben. Ihre Drehzahlschwankung erzeugt Schwingungen und Drehmomentstöße. Deshalb haben Gelenkwellen in Fahrzeugen zwei Gelenke, die so ausgerichtet sind, dass das zweite die Schwankung des ersten aufhebt (siehe Phase Bridge), oder Gleichlaufgelenke. Bend Ripple macht den Knickwinkel selbst zu einer zweiten Eingabe – so wie beim Einfedern einer Radaufhängung, während die Welle dreht. In einem Lauf des Brickwright-Simulators ohne Oberfläche folgte der gemessene Ausgang, relativ zu seinem Träger, tan ψ = tan θ / cos β auf 0,007° genau: 0,88° Schwankung von Spitze zu Spitze bei 10° und 8,20° beim erreichten Knickwinkel von 29,94°, dazu 3,64° Ausgangsdrehung in der Stufe, in der sich nur der Knickwinkel änderte. Das ist eine Simulationsbeobachtung; ein realer LEGO-Aufbau wurde nicht geprüft.",
+        "question": "Motor A hält den Eingang genau bei 405°, während Motor B den Knickwinkel von 10° auf 30° erhöht. Bleibt die Ausgangswelle stehen? Was würde passieren, wenn der Eingang stattdessen bei 360° stünde?",
+        "answer": "Bei 405° (45° Phase) dreht sich der Ausgang, im Ideal um etwa 3,67°: ψ = arctan(1/cos β) wächst von 45,44° bei 10° auf 49,11° bei 30° und dreht zurück, wenn der Knickwinkel wieder 10° beträgt. Bei 360° (Phase 0°) ist tan θ = 0, also bleibt ψ bei jedem Knickwinkel 0°; ebenso bei 90°, 180° und 270°. Die Wirkung des Knickwinkels allein hängt also von der Eingangsphase ab.",
+        "further": [
+          "Phasenschwankung ψ − θ: im Ideal etwa 0,88° von Spitze zu Spitze bei β = 10° und 8,23° bei β = 30° – rund neunmal so viel bei dreifachem Knickwinkel, weil sie bei kleinen Winkeln etwa mit β² wächst. Vergleiche Messwerte innerhalb der Umdrehung, nicht nur die Endstellungen.",
+          "Am schnellsten (Verhältnis 1/cos β) läuft der Ausgang, wenn die Eingangsgabel in der Knickebene liegt (θ = 0°, 180°), am langsamsten (cos β) eine Vierteldrehung später. Suche diese Phasen während der 30°-Umdrehung.",
+          "Die befohlenen Geschwindigkeitsgrenzen (24°/s für A, 4°/s für B) sind keine gemessenen Geschwindigkeiten. Berechne Verhältnisse aus gemessenen Winkeländerungen und miss den Ausgang relativ zum bewegten Träger, nicht zum Raum.",
+          "Grenzen: Spiel und Reibung im Kardangelenk und der tatsächliche Freiraum seines Kreuzes werden nicht abgebildet. Der Lieferant selbst bezeichnet seine Freiraumprüfung der Gabeln als nicht eindeutig."
+        ]
+      },
+      "formula": {
+        "en": "tan ψ = tan θ / cos β; ψ = atan2(sin θ, cos β·cos θ), counted continuously. dψ/dθ = cos β / (1 − sin²β·cos²θ), between cos β (θ = 90°, 270°) and 1/cos β (θ = 0°, 180°). Largest phase error: tan(ψ − θ) = (1 − cos β)/(2√cos β) → ±0.44° at 10°, ±4.12° at 30°. θ = encoder A, β = 10° + encoder B, ψ relative to the moving carrier.",
+        "de": "tan ψ = tan θ / cos β; ψ = atan2(sin θ, cos β·cos θ), fortlaufend gezählt. dψ/dθ = cos β / (1 − sin²β·cos²θ), zwischen cos β (θ = 90°, 270°) und 1/cos β (θ = 0°, 180°). Größter Phasenfehler: tan(ψ − θ) = (1 − cos β)/(2·√cos β) → ±0,44° bei 10°, ±4,12° bei 30°. θ = Encoder A, β = 10° + Encoder B, ψ relativ zum bewegten Träger."
+      },
+      "related": [
+        "ripple-relay.ldr",
+        "phase-bridge.ldr",
+        "phase-bridge-misphased.ldr",
+        "wavemaker.ldr"
+      ]
+    },
+    "offset-relay": {
+      "en": {
+        "what": "A Schmidt offset coupling with three discs on parallel shafts. Motor A turns the input shaft directly (1:1). A floating middle disc sits between input and output. The output shaft runs in a bearing carriage that motor B slides sideways through a rack, changing the offset between the input and output axes. Each neighbouring pair of discs is joined by four equal 32 mm links that all stay parallel to each other. Only the input angle and the carriage position are commanded; the middle disc and the output turn passively. The program turns the input two revolutions at a fixed 32 mm offset, then two revolutions each while the offset changes 32 → 48, 48 → 24 and 24 → 32 mm, runs the same three changes backwards, and finishes with two revolutions back at 32 mm.",
+        "try": [
+          "Reset, then Run. In stage 1 (fixed 32 mm offset) put a mark on the input, middle and output discs in your mind and compare their angles at the end of each revolution.",
+          "Stages 2–4 move the output shaft while the input turns. Predict: does the output lag behind, run ahead, or stay exactly in step with the input?",
+          "Watch the middle disc’s centre rather than its angle. Where does it go when the offset grows to 48 mm, and where when it shrinks to 24 mm?",
+          "Stages 5–7 repeat the offset changes with the input turning backwards; stage 8 returns at fixed offset. Compare the matching stages forward and back."
+        ],
+        "why": "In each link set, every link joins a peg on one disc to the matching peg on the next disc, and all four links have the same length and stay parallel. A quadrilateral with two equal and parallel opposite sides is a parallelogram, so the second disc keeps exactly the orientation of the first: it may shift sideways but cannot turn relative to it. Applied twice, this gives output angle = middle angle = input angle at every instant, for any offset within the limits and even while the offset is changing. What the offset does change is where the middle disc sits. Its centre must be one link length L from both shaft axes, so it lies halfway between them, at a distance h = √(L² − (e/2)²) from the line joining the axes.",
+        "matters": "Schmidt couplings join shafts whose spacing changes in service, for example rollers in printing presses and paper machines, while keeping exactly constant speed with only pin joints. Compare Crossglide and Offset Orbit: an Oldham coupling also gives 1:1, but through sliding faces. A Cardan joint (Phase Bridge) handles an angle between shafts rather than a parallel offset, and adds speed ripple.",
+        "question": "While motor B moves the output shaft from 32 mm to 48 mm offset during a two-turn input move, does the output fall behind or run ahead of the input? Where does the middle disc’s centre go?",
+        "answer": "Neither. The parallelograms force output angle = input angle at every moment, so the output completes exactly two turns in step with the input. The middle disc’s centre moves instead: with L = 32 mm it sits √(32² − 16²) ≈ 27.7 mm from the line joining the axes at 32 mm offset and √(32² − 24²) ≈ 21.2 mm at 48 mm offset, always halfway between the axes. It would reach that line only at e = 2L = 64 mm, the stretched dead position that the program avoids.",
+        "further": [
+          "Calculate h for the 24 mm stages (≈ 29.7 mm) and compare with where the middle disc’s centre actually settles.",
+          "Why four links per stage? Two parallel links alone can flip into a crossed branch when they line up with the line between the centres. With pegs at 90° spacing, at least two links are always well away from that. The classic coupling uses three at 120°. In a rigid-body simulator the extra links are redundant constraints, so small geometry errors can turn into forces fighting each other.",
+          "The working range has two ends: at zero offset the middle disc could swing freely around the common axis, and at 2L = 64 mm the links lock straight. The program stays between 24 and 48 mm; its software envelope stops at 23.2 and 48.8 mm.",
+          "In a headless Robot Lab simulation of the shipped program, measured from the disc poses relative to the frame: output and middle disc stayed within 0.1° of the input over all 2,880° and every offset change, and the middle disc’s centre sat within 0.04 mm of the predicted h. That is a simulation observation, not a physical test."
+        ]
+      },
+      "de": {
+        "what": "Eine Schmidt-Kupplung mit drei Scheiben auf parallelen Wellen. Motor A dreht die Eingangswelle direkt (1:1). Zwischen Eingang und Ausgang liegt eine schwimmende Mittelscheibe. Die Ausgangswelle sitzt in einem Lagerschlitten, den Motor B über eine Zahnstange seitlich verschiebt; so ändert sich der Achsversatz. Benachbarte Scheiben sind jeweils durch vier gleich lange Lenker von 32 mm verbunden, die stets parallel zueinander bleiben. Gesteuert werden nur Eingangswinkel und Schlittenlage; Mittelscheibe und Ausgang drehen sich passiv mit. Das Programm dreht den Eingang zwei Umdrehungen bei festem Versatz von 32 mm, dann je zwei Umdrehungen, während sich der Versatz von 32 auf 48, von 48 auf 24 und von 24 auf 32 mm ändert, fährt diese drei Änderungen rückwärts und endet mit zwei Umdrehungen zurück bei 32 mm.",
+        "try": [
+          "Setze zurück und starte. Präge dir in Stufe 1 (fester Versatz 32 mm) je eine Markierung auf Eingangs-, Mittel- und Ausgangsscheibe ein und vergleiche ihre Winkel nach jeder Umdrehung.",
+          "In den Stufen 2–4 wandert die Ausgangswelle, während der Eingang dreht. Sage voraus: Bleibt der Ausgang zurück, eilt er vor oder läuft er genau mit?",
+          "Beobachte die Mitte der Mittelscheibe statt ihres Winkels. Wohin wandert sie, wenn der Versatz auf 48 mm wächst, und wohin bei 24 mm?",
+          "Die Stufen 5–7 wiederholen die Versatzänderungen mit rückwärts drehendem Eingang; Stufe 8 kehrt bei festem Versatz zurück. Vergleiche die zusammengehörigen Stufen auf Hin- und Rückweg."
+        ],
+        "why": "In jedem Lenkersatz verbindet jeder Lenker einen Zapfen der einen Scheibe mit dem entsprechenden Zapfen der nächsten; alle vier sind gleich lang und bleiben parallel. Ein Viereck mit zwei gleich langen, parallelen Gegenseiten ist ein Parallelogramm. Deshalb behält die zweite Scheibe genau die Drehlage der ersten: Sie kann sich seitlich verschieben, aber nicht gegen sie verdrehen. Zweimal angewendet gilt Ausgangswinkel = Mittelwinkel = Eingangswinkel, in jedem Augenblick, für jeden zulässigen Versatz und auch während sich der Versatz ändert. Der Versatz bestimmt nur, wo die Mittelscheibe liegt. Ihr Mittelpunkt muss von beiden Wellenachsen genau eine Lenkerlänge L entfernt sein. Er liegt also mittig zwischen ihnen, im Abstand h = √(L² − (e/2)²) von der Verbindungslinie der Achsen.",
+        "matters": "Schmidt-Kupplungen verbinden Wellen, deren Abstand sich im Betrieb ändert, etwa Walzen in Druck- und Papiermaschinen, und übertragen dabei die Drehzahl exakt gleichförmig, nur mit Gelenken. Zum Vergleich: Eine Kreuzscheibenkupplung (Oldham, siehe Crossglide und Offset Orbit) erreicht ebenfalls 1:1, aber über Gleitflächen. Ein Kardangelenk (Phase Bridge) gleicht einen Winkel zwischen Wellen aus, keinen parallelen Versatz, und erzeugt Drehzahlschwankungen.",
+        "question": "Motor B verschiebt die Ausgangswelle während zweier Eingangsumdrehungen von 32 auf 48 mm Versatz. Bleibt der Ausgang dabei hinter dem Eingang zurück oder eilt er vor? Wohin wandert der Mittelpunkt der Mittelscheibe?",
+        "answer": "Weder noch. Die Parallelogramme erzwingen in jedem Augenblick Ausgangswinkel = Eingangswinkel; der Ausgang macht genau zwei Umdrehungen im Gleichschritt. Stattdessen wandert der Mittelpunkt der Mittelscheibe: Mit L = 32 mm liegt er bei 32 mm Versatz √(32² − 16²) ≈ 27,7 mm von der Verbindungslinie der Achsen entfernt, bei 48 mm Versatz nur noch √(32² − 24²) ≈ 21,2 mm, immer mittig zwischen den Achsen. Auf die Verbindungslinie käme er erst bei e = 2L = 64 mm, in der gestreckten Totlage, die das Programm vermeidet.",
+        "further": [
+          "Berechne h für die Stufen mit 24 mm Versatz (≈ 29,7 mm) und vergleiche mit der Lage, in der sich der Mittelpunkt der Mittelscheibe tatsächlich einstellt.",
+          "Warum vier Lenker je Stufe? Zwei parallele Lenker allein können in eine gekreuzte Lage umschlagen, wenn sie sich mit der Verbindungslinie der Mittelpunkte ausrichten. Bei Zapfen im 90°-Abstand sind immer mindestens zwei Lenker weit davon entfernt. Die klassische Kupplung verwendet drei Lenker im 120°-Abstand. In einer Starrkörpersimulation sind die zusätzlichen Lenker überzählige Bindungen; kleine Geometriefehler können dann zu gegeneinander arbeitenden Kräften führen.",
+          "Der Arbeitsbereich hat zwei Grenzen: Ohne Versatz könnte die Mittelscheibe frei um die gemeinsame Achse schwenken, bei 2L = 64 mm liegen die Lenker gestreckt. Das Programm bleibt zwischen 24 und 48 mm; die Softwaregrenze greift bei 23,2 und 48,8 mm.",
+          "In einer Robot-Lab-Simulation des mitgelieferten Programms ohne Bedienoberfläche, gemessen an den Scheibenlagen relativ zum Rahmen: Ausgangs- und Mittelscheibe blieben über alle 2.880° und jede Versatzänderung innerhalb von 0,1° beim Eingang, und der Mittelpunkt der Mittelscheibe lag höchstens 0,04 mm neben dem vorhergesagten h. Das ist eine Simulationsbeobachtung, kein Versuch am echten Modell."
+        ]
+      },
+      "formula": {
+        "en": "θ_out = θ_mid = θ_in for every offset 0 < e < 2L. Middle-disc centre: halfway between the axes (e/2 from each), at h = √(L² − e²/4) from the line joining them, L = 32 mm. e = 24 mm → h ≈ 29.66 mm; e = 32 mm → h ≈ 27.71 mm; e = 48 mm → h ≈ 21.17 mm. Offset e = 32 mm − (π/30 mm per degree) × motor B angle (B = −152.8° → 48 mm, B = +76.4° → 24 mm). Input angle = motor A angle.",
+        "de": "θ_aus = θ_mitte = θ_ein für jeden Versatz 0 < e < 2L. Mittelpunkt der Mittelscheibe: mittig zwischen den Achsen (je e/2), im Abstand h = √(L² − e²/4) von ihrer Verbindungslinie, L = 32 mm. e = 24 mm → h ≈ 29,66 mm; e = 32 mm → h ≈ 27,71 mm; e = 48 mm → h ≈ 21,17 mm. Versatz e = 32 mm − (π/30 mm pro Grad) × Winkel von Motor B (B = −152,8° → 48 mm, B = +76,4° → 24 mm). Eingangswinkel = Winkel von Motor A."
+      },
+      "related": [
+        "crossglide.ldr",
+        "offset-orbit.ldr",
+        "phase-bridge.ldr"
+      ]
+    },
+    "rack-decoder": {
+      "en": {
+        "what": "A rack differential: two parallel racks with one free pinion between them. Motor A drives rack A and motor B drives rack B, each through its own pinion of 6 mm pitch radius, along the same direction. The free pinion meshes with both racks. Its shaft sits on a carriage that can slide along the racks, and it carries a pointer. So the passive output has two parts: where the carriage is and which way the pointer faces. The program visits nine rack positions (a, b) in mm from the start: (0, 0), (12, 12), (−12, −12), (12, −12), (−12, 12), (12, 0), (0, 12), (−6, −6) and (0, 0).",
+        "try": [
+          "Reset, then Run. Stages 1–2 move both racks equally, +12 mm and then −12 mm. Watch the carriage follow while the pointer keeps its direction.",
+          "Stages 3–4 put the racks at opposite positions, (+12, −12) and then (−12, +12). Predict before watching: where should the carriage be, and how far should the pointer turn?",
+          "Stage 3 changes only rack A, because rack B is already at −12 mm; the program runs it more slowly so the held rack is disturbed less.",
+          "Stages 5 and 6 compare (12, 0) with (0, 12): the same average, opposite differences. Compare carriage position and pointer angle. Stages 7–8 move the carriage alone and return home."
+        ],
+        "why": "The pinion touches rack A on one side and rack B on the other. Teeth cannot slip, so each rack moves exactly as far as the pinion surface touching it. That surface moves with the pinion centre c plus a rolling part r·θ, and the rolling part has opposite signs on the two sides: a = c + r·θ and b = c − r·θ. Adding the two equations cancels rotation; subtracting them cancels translation: c = (a + b)/2 and θ = (a − b)/(2r). Common motion of the racks becomes carriage travel, differential motion becomes pointer rotation, and any mixture splits cleanly into both.",
+        "matters": "This is the linear twin of the car differential and of Mean Machine: one output reports the average of two inputs, the other their difference. A moving pulley in a block and tackle averages in the same way. Mechanical analogue computers added and subtracted with differentials, and a rack differential is the version for straight-line quantities.",
+        "question": "Rack A stands at +12 mm and rack B at −12 mm. Where is the carriage, and how far has the 6 mm pinion turned?",
+        "answer": "The carriage is back at 0, because (12 + (−12))/2 = 0. The pinion has turned (12 − (−12))/(2 × 6) = 2 rad ≈ 114.6°. Swapping the racks reverses the turn and leaves the carriage at 0. Over the whole program the pointer should span 4 rad ≈ 229.2° and the carriage 24 mm.",
+        "further": [
+          "Check stages 5 and 6: the carriage should be at +6 mm both times, the pointer at +1 rad and −1 rad (±57.3°).",
+          "A frozen carriage would look correct in stages 3–4, and a frozen pointer would look correct in stages 1–2. Only a run in which both outputs move when they should, and stay still when they should, tests the law.",
+          "Construction limits reported by the supplier: the LDraw tooth shapes of all four rack/pinion pairs intersect, so the simulator’s ideal rack coupling stands in for real tooth rolling. Real LEGO racks would add backlash, which shows up as a lag whenever a rack reverses.",
+          "In a headless Robot Lab simulation of the program, measured from the body poses over all nine stages: the carriage matched (a + b)/2 within 0.002 mm and the pointer matched (a − b)/(2r) within 0.12°, reaching ±114.6° at the opposite-rack stages and ±57.2–57.3° at stages 5–6. That is a simulation observation, not a physical test."
+        ]
+      },
+      "de": {
+        "what": "Ein Zahnstangen-Differenzial: zwei parallele Zahnstangen mit einem frei laufenden Ritzel dazwischen. Motor A treibt Zahnstange A, Motor B Zahnstange B, jeweils über ein eigenes Ritzel mit 6 mm Teilkreisradius und in derselben Richtung. Das freie Ritzel greift in beide Zahnstangen. Seine Welle sitzt auf einem Schlitten, der längs der Zahnstangen gleiten kann, und trägt einen Zeiger. Der passive Abtrieb hat also zwei Teile: die Lage des Schlittens und die Richtung des Zeigers. Das Programm fährt neun Zahnstangenlagen (a, b) in mm ab Start an: (0, 0), (12, 12), (−12, −12), (12, −12), (−12, 12), (12, 0), (0, 12), (−6, −6) und (0, 0).",
+        "try": [
+          "Setze zurück und starte. In den Stufen 1–2 bewegen sich beide Zahnstangen gleich, erst +12 mm, dann −12 mm. Beobachte, wie der Schlitten folgt, während der Zeiger seine Richtung behält.",
+          "Die Stufen 3–4 stellen die Zahnstangen gegensinnig, (+12, −12) und dann (−12, +12). Sage vorher voraus: Wo steht der Schlitten, und wie weit dreht sich der Zeiger?",
+          "In Stufe 3 ändert sich nur Zahnstange A, denn B steht schon bei −12 mm. Das Programm fährt diese Stufe langsamer, damit die gehaltene Zahnstange weniger gestört wird.",
+          "Die Stufen 5 und 6 vergleichen (12, 0) mit (0, 12): gleicher Mittelwert, entgegengesetzte Differenz. Vergleiche Schlittenlage und Zeigerwinkel. Die Stufen 7–8 bewegen nur den Schlitten und kehren zum Start zurück."
+        ],
+        "why": "Das Ritzel berührt Zahnstange A auf der einen und Zahnstange B auf der anderen Seite. Zähne können nicht rutschen, also bewegt sich jede Zahnstange genau so weit wie die Ritzeloberfläche an ihrer Seite. Diese Oberfläche bewegt sich mit dem Ritzelmittelpunkt c plus einem Abrollanteil r·θ, und der Abrollanteil hat auf beiden Seiten entgegengesetztes Vorzeichen: a = c + r·θ und b = c − r·θ. Addiert man beide Gleichungen, fällt die Drehung heraus; subtrahiert man sie, fällt die Verschiebung heraus: c = (a + b)/2 und θ = (a − b)/(2r). Gleichlauf der Zahnstangen wird zu Schlittenweg, Gegenlauf zu Zeigerdrehung, und jede Mischung teilt sich sauber in beides auf.",
+        "matters": "Das ist der geradlinige Zwilling des Achsdifferenzials und von Mean Machine: Ein Abtrieb zeigt den Mittelwert zweier Eingänge, der andere ihre Differenz. Eine lose Rolle im Flaschenzug mittelt auf dieselbe Weise. Mechanische Analogrechner addierten und subtrahierten mit Differenzialen; das Zahnstangen-Differenzial ist die Form für geradlinige Größen.",
+        "question": "Zahnstange A steht bei +12 mm, Zahnstange B bei −12 mm. Wo steht der Schlitten, und wie weit hat sich das Ritzel mit 6 mm Radius gedreht?",
+        "answer": "Der Schlitten steht wieder bei 0, denn (12 + (−12))/2 = 0. Das Ritzel hat sich um (12 − (−12))/(2 × 6) = 2 rad ≈ 114,6° gedreht. Vertauscht man die Zahnstangen, kehrt sich die Drehung um, und der Schlitten bleibt bei 0. Über das ganze Programm sollte der Zeiger 4 rad ≈ 229,2° überstreichen und der Schlitten 24 mm.",
+        "further": [
+          "Prüfe die Stufen 5 und 6: Der Schlitten sollte beide Male bei +6 mm stehen, der Zeiger bei +1 rad bzw. −1 rad (±57,3°).",
+          "Ein festsitzender Schlitten sähe in den Stufen 3–4 richtig aus, ein festsitzender Zeiger in den Stufen 1–2. Nur ein Lauf, in dem sich beide Abtriebe bewegen, wenn sie sollen, und stillstehen, wenn sie sollen, prüft das Gesetz.",
+          "Vom Lieferanten gemeldete Konstruktionsgrenzen: Die LDraw-Zahnformen aller vier Zahnstangen-Ritzel-Paare durchdringen sich. Die ideale Zahnstangenkopplung des Simulators ersetzt hier echtes Abwälzen. Echte LEGO-Zahnstangen hätten Flankenspiel, das sich bei jeder Richtungsumkehr als Nachlauf zeigt.",
+          "In einer Robot-Lab-Simulation des Programms ohne Bedienoberfläche, gemessen an den Körperlagen über alle neun Stufen, folgte der Schlitten (a + b)/2 auf 0,002 mm und der Zeiger (a − b)/(2r) auf 0,12° genau; bei gegensinnigen Zahnstangen erreichte der Zeiger ±114,6°, in den Stufen 5–6 ±57,2–57,3°. Das ist eine Simulationsbeobachtung, kein Versuch am echten Modell."
+        ]
+      },
+      "formula": {
+        "en": "a = c + r·θ, b = c − r·θ ⇒ c = (a + b)/2, θ = (a − b)/(2r), r = 6 mm, θ in radians (sign set by the pointer’s axis convention). Rack travel = (π/30 mm per degree) × motor angle; motor B is mounted mirrored, so +12 mm is +114.6° on A but −114.6° on B. Working range ±12 mm; software envelope ±12.8 mm.",
+        "de": "a = c + r·θ, b = c − r·θ ⇒ c = (a + b)/2, θ = (a − b)/(2r), r = 6 mm, θ in Radiant (Vorzeichen nach der Achsrichtung des Zeigers). Zahnstangenweg = (π/30 mm pro Grad) × Motorwinkel; Motor B ist gespiegelt eingebaut, +12 mm sind an A +114,6°, an B aber −114,6°. Arbeitsbereich ±12 mm; Softwaregrenze ±12,8 mm."
+      },
+      "related": [
+        "mean-machine.ldr",
+        "differential.ldr",
+        "rack-shuttle.ldr"
+      ]
+    },
+    "remote-pivot": {
+      "en": {
+        "what": "A double-parallelogram linkage with a remote centre of motion. Motor A turns a 32 mm input link about a fixed bearing. A follower link on a second fixed bearing, 32 mm away, completes the first parallelogram, so its L-shaped coupler only translates and never turns. A second parallelogram, built on the input link and that coupler, carries the output link. The output link always stays parallel to the input link, and its line always passes through one fixed point C, 16 mm beyond the follower’s bearing, where there is no bearing, axle or part at all. The program swings the input from its 90° start to 60°, 75°, 90°, 105°, 120°, then straight back to 60°, and finally to 90°, holding 2.5 s at each position.",
+        "try": [
+          "Reset, then Run. At each 2.5-second hold, extend the output link’s line in your mind: it should cross the same empty spot C every time.",
+          "Compare 60° and 120°. The output’s outer pivot, 64 mm from C, should swing through a 60° arc; its inner pivot, 32 mm from C, half as far.",
+          "Watch the follower link and the L-shaped coupler: the follower stays parallel to the input link, and the coupler moves without turning.",
+          "Stage 6 swings directly from 120° to 60°. Does C stay fixed during the motion as well, not only at the holds?"
+        ],
+        "why": "In a parallelogram opposite sides stay parallel and equal. The first parallelogram (ground link, input, follower, coupler) makes the coupler translate without turning, so every point on it copies the input crank’s circle, shifted by a fixed vector. The output’s inner pivot Q is such a point, so Q moves on a 32 mm circle around a fixed point C, the input bearing shifted by that same vector. The second parallelogram keeps the output link parallel to the input link, which is the radius direction of Q’s circle. A line through Q along that radius always passes through the circle’s centre. So the output line always passes through C and turns about it by exactly the input angle. C is a virtual pivot: geometry holds it in place, not a bearing.",
+        "matters": "Surgical robots use this arrangement so that an instrument pivots about the small incision in the body wall, where no bearing can be placed. Camera and telescope mounts use it to turn about an optical centre. Parallel Lift uses the same parallelogram rule to keep a tray level.",
+        "question": "Nothing is mounted at C. When the input turns from 60° to 120°, how far does the output’s outer pivot (64 mm from C) move, and does C move?",
+        "answer": "C does not move; the geometry fixes it. The outer pivot travels on a 64 mm circle about C through 60°: an arc of 64·π/3 ≈ 67.0 mm, or a straight-line distance of 2·64·sin 30° = 64 mm. The inner pivot moves half as far. The output link turns by exactly the same 60° as the input.",
+        "further": [
+          "Parallelograms have change points where all links line up with the ground link (input at 0° or 180°); there the follower could flip into the crossed branch. The route of ±30° around 90° stays far from them, and the software envelope stops the motor beyond ±31°.",
+          "Real remote-centre devices must be stiff. Play at any of the moving pivots shifts the virtual centre, because nothing physical holds it. For the same reason C may wander slightly in the simulation.",
+          "In a headless Robot Lab simulation of the shipped program, a least-squares fit of the output link’s fixed point put C 16.00 mm from the follower’s bearing; C wandered by at most 0.1 mm, and the output turned within 0.04° of the input. That is a simulation observation, not a physical test."
+        ]
+      },
+      "de": {
+        "what": "Ein Doppelparallelogramm mit entferntem Drehzentrum (Remote Center of Motion). Motor A dreht einen 32 mm langen Eingangslenker um ein festes Lager. Ein Folgelenker an einem zweiten festen Lager, 32 mm daneben, ergänzt das erste Parallelogramm; seine L-förmige Koppel verschiebt sich deshalb nur und dreht sich nie. Ein zweites Parallelogramm aus Eingangslenker und dieser Koppel trägt den Ausgangslenker. Er bleibt stets parallel zum Eingangslenker, und seine Verlängerung geht immer durch einen festen Punkt C, 16 mm jenseits des Folgelagers. Dort gibt es kein Lager, keine Achse und überhaupt kein Bauteil. Das Programm schwenkt den Eingang aus der Startlage 90° nach 60°, 75°, 90°, 105°, 120°, dann direkt zurück nach 60° und schließlich nach 90° und hält jeweils 2,5 s.",
+        "try": [
+          "Setze zurück und starte. Verlängere bei jedem Halt in Gedanken die Linie des Ausgangslenkers: Sie sollte jedes Mal dieselbe leere Stelle C treffen.",
+          "Vergleiche 60° und 120°. Das äußere Gelenk des Ausgangs, 64 mm von C entfernt, sollte einen Bogen von 60° beschreiben, das innere Gelenk, 32 mm von C, einen halb so langen.",
+          "Beobachte Folgelenker und L-Koppel: Der Folgelenker bleibt parallel zum Eingangslenker, die Koppel bewegt sich, ohne sich zu drehen.",
+          "Stufe 6 schwenkt direkt von 120° nach 60°. Bleibt C auch während der Bewegung fest, nicht nur in den Haltepunkten?"
+        ],
+        "why": "Im Parallelogramm bleiben gegenüberliegende Seiten parallel und gleich lang. Das erste Parallelogramm (Gestell, Eingang, Folgelenker, Koppel) lässt die Koppel ohne Drehung verschieben. Jeder ihrer Punkte beschreibt deshalb den Kreis der Eingangskurbel, um einen festen Vektor verschoben. Das innere Ausgangsgelenk Q ist ein solcher Punkt: Q läuft auf einem 32-mm-Kreis um einen festen Punkt C, nämlich das Eingangslager, um denselben Vektor verschoben. Das zweite Parallelogramm hält den Ausgangslenker parallel zum Eingangslenker, also in Richtung des Radius von Q. Eine Gerade durch Q in Radiusrichtung geht immer durch den Kreismittelpunkt. Die Ausgangslinie geht also stets durch C und dreht sich um genau den Eingangswinkel. C ist ein virtueller Drehpunkt, gehalten von der Geometrie und nicht von einem Lager.",
+        "matters": "Chirurgieroboter nutzen diese Anordnung, damit ein Instrument um den kleinen Schnitt in der Bauchdecke schwenkt, wo kein Lager sitzen kann. Kamera- und Teleskophalterungen drehen so um einen optischen Mittelpunkt. Parallel Lift nutzt dieselbe Parallelogrammregel, um ein Tablett waagerecht zu halten.",
+        "question": "In C ist nichts befestigt. Wie weit bewegt sich das äußere Ausgangsgelenk (64 mm von C), wenn der Eingang von 60° auf 120° schwenkt, und bewegt sich C dabei?",
+        "answer": "C bewegt sich nicht; die Geometrie legt den Punkt fest. Das äußere Gelenk läuft auf einem 64-mm-Kreis um C über 60°: ein Bogen von 64·π/3 ≈ 67,0 mm, in gerader Linie 2·64·sin 30° = 64 mm. Das innere Gelenk legt den halben Weg zurück. Der Ausgangslenker dreht sich um genau dieselben 60° wie der Eingang.",
+        "further": [
+          "Parallelogramme haben Verzweigungslagen, in denen alle Lenker mit dem Gestell fluchten (Eingang bei 0° oder 180°); dort könnte der Folgelenker in die gekreuzte Lage umschlagen. Die Bahn von ±30° um 90° bleibt weit davon entfernt, und die Softwaregrenze stoppt den Motor jenseits von ±31°.",
+          "Echte Geräte mit entferntem Drehzentrum müssen steif sein: Spiel in einem der beweglichen Gelenke verschiebt das virtuelle Zentrum, weil nichts Körperliches es hält. Aus demselben Grund kann C auch in der Simulation leicht wandern.",
+          "In einer Robot-Lab-Simulation des mitgelieferten Programms ohne Bedienoberfläche ergab eine Ausgleichsrechnung für den festen Punkt des Ausgangslenkers C im Abstand 16,00 mm vom Folgelager; C wanderte höchstens 0,1 mm, und der Ausgang drehte sich auf 0,04° genau wie der Eingang. Das ist eine Simulationsbeobachtung, kein Versuch am echten Modell."
+        ]
+      },
+      "formula": {
+        "en": "Input angle θ = 90° + motor A angle (1:1). Output angle = θ. Q = C + 32 mm·(cos θ, sin θ); E = C + 64 mm·(cos θ, sin θ). Ground bearings 32 mm apart; C lies 16 mm beyond the follower bearing on the side away from the links. Arc of the outer pivot for a swing Δθ: s = 64 mm·Δθ (radians); chord = 2·64 mm·sin(Δθ/2). Software envelope: motor A within ±31°.",
+        "de": "Eingangswinkel θ = 90° + Winkel von Motor A (1:1). Ausgangswinkel = θ. Q = C + 32 mm·(cos θ, sin θ); E = C + 64 mm·(cos θ, sin θ). Gestelllager 32 mm voneinander entfernt; C liegt 16 mm jenseits des Folgelagers, auf der den Lenkern abgewandten Seite. Bogen des äußeren Gelenks bei Schwenkwinkel Δθ: s = 64 mm·Δθ (im Bogenmaß); Sehne = 2·64 mm·sin(Δθ/2). Softwaregrenze: Motor A innerhalb ±31°."
+      },
+      "related": [
+        "parallel-lift.ldr",
+        "crank-rocker.ldr",
+        "pantograph-doubler.ldr"
+      ]
+    },
+    "schmidt-shift": {
+      "en": {
+        "what": "A Schmidt coupling connects parallel shafts whose axes are 48 mm apart. One motor turns the input carrier. Six connecting rods link it to a floating middle carrier and a passive output carrier. Four rectangular frames form the three carriers: the middle carrier uses two joined yellow frames. The mechanism uses only rotating joints, with no gears or sliding guides. Experimental model: the supplier reports a native simulation pass; a physical causal control and a real brick build have not been established.",
+        "try": [
+          "Load the model and matching program, reset to the saved pose, and run the finite forward-and-return experiment. Watch all three carriers, including the output that has no motor.",
+          "Choose a matching corner on each carrier. Compare their directions at quarter turns and during reversal. Do the carriers keep the same orientation between those positions?",
+          "Watch the middle carrier’s center separately from its corners. In the ideal fixed-offset motion, the center stays in one place while the corners rotate around it."
+        ],
+        "why": "Each neighboring pair of carriers has three matching pivot locations connected by equal 40 mm rods. The rods form parallel-link constraints that preserve the carriers’ relative orientation. The second set carries the same orientation to the output. The two 40 mm center distances span a 48 mm shaft offset, placing the middle center 24 mm across and 32 mm above the input axis.",
+        "matters": "Parallel shafts can transmit equal angular motion through pivoted links. Oldham couplings achieve offset transmission with perpendicular sliding guides. Cardan joints connect shafts at an angle and can introduce speed ripple. Comparing these mechanisms shows how different joint arrangements solve different alignment problems.",
+        "question": "If the input turns 90° from the saved pose and then returns, what should the output and middle carrier do? Should the middle center make an orbit?",
+        "answer": "Ideally, both other carriers turn through the same signed 90° and return with the input. Their centers stay at the fixed triangle’s vertices; the middle carrier’s corners rotate, but its center does not orbit. Equal angles at the endpoints alone are insufficient: compare the motion between them too.",
+        "further": [
+          "Compare this model with Offset Orbit. Both connect parallel offset shafts, but the Oldham cross slides and its center follows a different path.",
+          "This assembly has fixed shaft mounts. It does not demonstrate changing the offset while running. Measured motion also does not establish torque capacity, service life or balance.",
+          "Compare it with the experimental Offset Relay, which changes the shaft offset while it runs; Schmidt Shift keeps one fixed offset."
+        ]
+      },
+      "de": {
+        "what": "Eine Schmidt-Kupplung verbindet parallele Wellen mit 48 mm Achsabstand. Ein Motor dreht den Antriebsträger. Sechs Koppelstangen verbinden ihn mit einem frei getragenen Mittelträger und einem passiven Abtriebsträger. Vier rechteckige Rahmen bilden die drei Drehträger: Der Mittelträger besteht aus zwei verbundenen gelben Rahmen. Die Mechanik benötigt nur Drehgelenke, weder Zahnräder noch Schiebeführungen. Experimentelles Modell: Der Lieferant meldet einen bestandenen nativen Simulationstest; eine physische Kausalkontrolle und ein echter Aufbau stehen noch aus.",
+        "try": [
+          "Lade das Modell und das passende Programm, setze auf die gespeicherte Lage zurück und starte den endlichen Hin- und Rücklauf. Beobachte alle drei Träger, auch den Abtrieb ohne eigenen Motor.",
+          "Wähle an jedem Träger dieselbe Ecke. Vergleiche ihre Ausrichtung bei Vierteldrehungen und beim Richtungswechsel. Bleiben die Träger auch zwischen diesen Positionen gleich ausgerichtet?",
+          "Beobachte den Mittelpunkt des Mittelträgers getrennt von seinen Ecken. Bei der idealen Bewegung mit festem Achsversatz bleibt der Mittelpunkt stehen, während die Ecken um ihn kreisen."
+        ],
+        "why": "Je zwei benachbarte Träger haben drei entsprechende Gelenkstellen, die durch gleich lange Koppelstangen von 40 mm verbunden sind. Diese parallelen Verbindungen erhalten die relative Ausrichtung der Träger. Die zweite Stangengruppe überträgt dieselbe Ausrichtung auf den Abtrieb. Die beiden Mittelpunktabstände von 40 mm überbrücken den Wellenversatz von 48 mm. Der mittlere Mittelpunkt liegt dadurch 24 mm seitlich und 32 mm oberhalb der Antriebsachse.",
+        "matters": "Parallele Wellen können über gelenkige Stangen die gleiche Drehbewegung übertragen. Oldham-Kupplungen gleichen einen Versatz mit rechtwinkligen Schiebeführungen aus. Kardangelenke verbinden dagegen abgewinkelte Wellen und können eine ungleichförmige Drehbewegung erzeugen. Der Vergleich zeigt, wie unterschiedliche Gelenkanordnungen verschiedene Ausrichtungsprobleme lösen.",
+        "question": "Der Antrieb dreht sich aus der gespeicherten Lage um 90° und kehrt danach zurück. Was sollten Abtrieb und Mittelträger tun? Sollte der mittlere Mittelpunkt eine Umlaufbahn beschreiben?",
+        "answer": "Im Idealfall drehen sich beide anderen Träger um dieselben vorzeichenbehafteten 90° und kehren mit dem Antrieb zurück. Ihre Mittelpunkte bleiben an den Ecken des festen Dreiecks. Die Ecken des Mittelträgers kreisen, sein Mittelpunkt jedoch nicht. Gleiche Winkel nur an den Endpunkten reichen als Beobachtung nicht aus: Vergleiche auch die Bewegung dazwischen.",
+        "further": [
+          "Vergleiche dieses Modell mit Offset Orbit. Beide verbinden parallel versetzte Wellen, doch das Oldham-Kreuz gleitet und sein Mittelpunkt folgt einer anderen Bahn.",
+          "Die Wellenlager dieses Aufbaus sind fest montiert. Er demonstriert keinen veränderlichen Versatz im laufenden Betrieb. Aus der beobachteten Bewegung folgen auch keine Aussagen zu Drehmomentbelastbarkeit, Lebensdauer oder Auswuchtung.",
+          "Vergleiche mit dem experimentellen Offset Relay, das den Wellenversatz während des Laufs verändert; Schmidt Shift behält einen festen Versatz."
+        ]
+      },
+      "formula": {
+        "en": "Ideal, with all carrier angles viewed in the same axial direction: Δθinput = Δθmiddle = Δθoutput. Center triangle: 24² + 32² = 40² mm²; input–output offset = 48 mm.",
+        "de": "Ideal, wenn alle Trägerwinkel aus derselben Achsrichtung betrachtet werden: ΔθAntrieb = ΔθMitte = ΔθAbtrieb. Mittelpunktsdreieck: 24² + 32² = 40² mm²; Abstand zwischen Antrieb und Abtrieb = 48 mm."
+      },
+      "related": [
+        "offset-orbit.ldr",
+        "crossglide.ldr",
+        "phase-bridge.ldr"
+      ]
+    },
+    "equal-share": {
+      "en": {
+        "what": "Whippletree (balance-beam force equalizer). A short red motor crank moves the centre of a blue equal-arm beam. The beam can turn freely at that centre. Its left end compresses one stock shock absorber; its right end compresses two matching shocks in parallel. The beam and all three shocks remain passive. Their motion takes place in a horizontal plane.",
+        "try": [
+          "Load Equal Share and its matching program, reset, and press Robot Lab’s Run button (the program needs the SPIKE connection that Run sets up). Watch the red input and blue beam separately. During each loaded pause compare the compression on the one-shock side with the compression of each shock on the two-shock side.",
+          "Predict which side should move farther before comparing the measured positions. Compare held intervals after the initial motion has subsided; a moment during acceleration does not show a settled force balance.",
+          "Load the supplied equal-spring control model and use Robot Lab's Run button to start the same program from its saved pose. It replaces the right pair with one matching shock. Compare the blue beam angle and the two compressions while the centre joint remains free."
+        ],
+        "why": "A free equal-arm beam turns when its two load moments differ. That lets the softer side move farther until the moments approach balance. With parallel forces and equal moment arms, the two total forces are equal. Two identical springs in parallel provide twice the stiffness of one spring, so the ideal one-spring side compresses twice as far. The actual shocks swivel as the beam moves, so their changing directions slightly modify this simple comparison.",
+        "matters": "An equalizer shares a load between supports that sit at different positions. Whippletrees spread the pull of a plough between two horses, and the yokes of a windshield-wiper blade spread its pressure along the glass. Equal force and equal movement are different design goals. In a headless run of the Brickwright simulator, started with the SPIKE connection that the Run button provides, the single shock compressed 2.000 times as far as each shock of the pair at 15°, 25° and 35° (12.67 mm against 6.34 mm at 35°) and the beam turned 3.77°; in the equal-spring control the ratio was 1.000 and the beam stayed square. These are simulation observations based on the simulator’s spring law; no physical LEGO build has been tested.",
+        "question": "The right side has two matching springs and the left side has one. Must the right side carry twice the total force? What should change when the right pair is replaced by one matching spring?",
+        "answer": "No. A freely turning equal-arm beam settles where the two total forces are about equal, so the right pair carries the same total force as the single left spring. Each spring of the pair carries half of it and compresses half as far; the single spring compresses about twice as far and the beam turns. With one matching spring on each side, both compress equally and the beam stays square. Neither conclusion follows from the motor angle alone; observe the passive beam and the shocks.",
+        "further": [
+          "The force derived from a shock's compression is its axial spring force, F = kδ. With stiffness k in N/m and compression δ from full extension in metres, F is in newtons. This uses the selected native spring law; it is not a direct force measurement or a calibration of a physical LEGO shock.",
+          "For an exact settled moment comparison, use the actual force directions and perpendicular distances to the centre pivot. The mounting eyes are offset from the shock's sliding axis, so axial spring force and complete-shock end force are not identical.",
+          "The comparison model changes the number of right-hand springs while leaving the blue beam free. It tests whether the difference in output movement comes from the stiffness difference.",
+          "Avoid force ratios at full extension, where both spring forces approach zero. Real spring stiffness, friction, tolerances and flexible motor leads need separate physical measurements."
+        ]
+      },
+      "de": {
+        "what": "Ausgleichsbalken (Waagscheit). Eine kurze rote Motorkurbel bewegt den Mittelpunkt eines blauen, gleicharmigen Balkens. Um diesen Mittelpunkt kann sich der Balken frei drehen. Sein linkes Ende drückt einen LEGO-Stoßdämpfer zusammen; rechts wirken zwei gleiche Stoßdämpfer parallel. Der Balken und alle drei Stoßdämpfer bleiben passiv. Die Bewegung liegt in einer horizontalen Ebene.",
+        "try": [
+          "Lade Equal Share und das zugehörige Programm, setze das Modell zurück und drücke in Robot Lab auf Start (das Programm braucht die SPIKE-Verbindung, die Start herstellt). Beobachte den roten Antrieb und den blauen Balken getrennt. Vergleiche in jeder belasteten Pause den Federweg links mit dem Federweg jedes der beiden rechten Stoßdämpfer.",
+          "Sage vor dem Vergleich der gemessenen Positionen voraus, welche Seite weiter nachgeben sollte. Vergleiche gehaltene Zeitabschnitte nach dem Abklingen der ersten Bewegung; ein Augenblick während der Beschleunigung zeigt noch kein ruhendes Kräftegleichgewicht.",
+          "Lade das mitgelieferte Kontrollmodell mit gleich vielen Federn auf beiden Seiten und starte dasselbe Programm aus seiner gespeicherten Lage über Start in Robot Lab. Rechts ersetzt ein gleicher Stoßdämpfer das Paar. Vergleiche den Winkel des blauen Balkens und die beiden Federwege bei weiterhin freiem Mittelgelenk."
+        ],
+        "why": "Ein freier gleicharmiger Balken dreht sich, wenn sich die beiden Lastmomente unterscheiden. Dadurch gibt die weichere Seite weiter nach, bis sich die Momente annähernd ausgleichen. Bei parallelen Kräften und gleichen Hebelarmen sind die beiden Gesamtkräfte gleich. Zwei gleiche parallele Federn haben die doppelte Steifigkeit einer einzelnen Feder. Im Idealfall wird die einzelne Feder deshalb doppelt so weit zusammengedrückt. Die Stoßdämpfer schwenken während der Bewegung; ihre veränderten Richtungen beeinflussen diesen einfachen Vergleich etwas.",
+        "matters": "Ein Ausgleichsbalken verteilt eine Last auf Auflagepunkte, die an unterschiedlichen Stellen sitzen. Ein Waagscheit verteilt den Zug eines Pflugs gleichmäßig auf zwei Pferde, und die Bügel eines Scheibenwischerblatts verteilen dessen Anpressdruck über die Scheibe. Gleiche Kraft und gleicher Weg sind unterschiedliche Konstruktionsziele. In einem Lauf des Brickwright-Simulators ohne Oberfläche, gestartet mit der SPIKE-Verbindung, die die Start-Schaltfläche herstellt, wurde der einzelne Stoßdämpfer bei 15°, 25° und 35° 2,000-mal so weit zusammengedrückt wie jeder des Paars (12,67 mm gegenüber 6,34 mm bei 35°), und der Balken drehte sich um 3,77°; im Kontrollmodell mit gleichen Federn betrug das Verhältnis 1,000, und der Balken blieb gerade. Das sind Simulationsbeobachtungen auf Grundlage des Federmodells im Simulator; ein realer LEGO-Aufbau wurde nicht geprüft.",
+        "question": "Rechts wirken zwei gleiche Federn und links eine. Muss die rechte Seite deshalb die doppelte Gesamtkraft tragen? Was sollte sich ändern, wenn eine einzelne gleiche Feder das rechte Paar ersetzt?",
+        "answer": "Nein. Ein frei drehbarer gleicharmiger Balken kommt dort zur Ruhe, wo beide Gesamtkräfte etwa gleich sind; das rechte Paar trägt also dieselbe Gesamtkraft wie die einzelne linke Feder. Jede Feder des Paars trägt die Hälfte und wird halb so weit zusammengedrückt; die einzelne Feder gibt etwa doppelt so weit nach, und der Balken dreht sich. Mit je einer gleichen Feder auf beiden Seiten werden beide gleich weit zusammengedrückt, und der Balken bleibt gerade. Der Motorwinkel allein belegt beides nicht; beobachte den passiven Balken und die Stoßdämpfer.",
+        "further": [
+          "Die aus dem Federweg bestimmte Kraft ist die axiale Federkraft F = kδ. Mit der Steifigkeit k in N/m und der Verkürzung δ gegenüber voller Ausfederung in Metern ergibt sich F in Newton. Diese Berechnung verwendet das gewählte native Federmodell. Sie ist weder eine direkte Kraftmessung noch eine Kalibrierung eines realen LEGO-Stoßdämpfers.",
+          "Verwende für einen genauen ruhenden Momentenvergleich die tatsächlichen Kraftrichtungen und die senkrechten Abstände zum Mittelgelenk. Die Befestigungsaugen sind gegenüber der Schubachse versetzt; axiale Federkraft und äußere Kraft des vollständigen Stoßdämpfers sind deshalb nicht identisch.",
+          "Das Kontrollmodell ändert die Zahl der rechten Federn, während der blaue Balken frei bleibt. Es prüft, ob der Unterschied der Ausgangswege von der unterschiedlichen Steifigkeit stammt.",
+          "Vermeide Kraftverhältnisse bei voller Ausfederung, wenn beide Federkräfte gegen null gehen. Reale Federsteifigkeit, Reibung, Toleranzen und flexible Motorleitungen müssen separat gemessen werden."
+        ]
+      },
+      "formula": {
+        "en": "Ideal settled, parallel forces with equal moment arms: F_L = F_R. For identical springs, F_L = kδ_L and F_R = kδ_R1 + kδ_R2. If δ_R1 = δ_R2 = δ_R, then δ_L = 2δ_R. More generally the opposing load moments satisfy T_L d_L = T_R d_R, where T is the complete-shock resultant and d its actual perpendicular moment arm. For one offset-eye shock at rest, T = kδ L/D, with eye distance L, axial eye separation D and L² = D² + e².",
+        "de": "Idealer Ruhezustand mit parallelen Kräften und gleichen Hebelarmen: F_L = F_R. Für gleiche Federn gilt F_L = kδ_L und F_R = kδ_R1 + kδ_R2. Bei δ_R1 = δ_R2 = δ_R folgt δ_L = 2δ_R. Allgemeiner gleichen sich die Lastmomente gemäß T_L d_L = T_R d_R aus. T bezeichnet die äußere Stoßdämpferkraft und d ihren tatsächlichen senkrechten Hebelarm. Für einen ruhenden Stoßdämpfer mit versetzten Augen gilt T = kδ L/D mit Augenabstand L, axialem Augenabstand D und L² = D² + e²."
+      },
+      "related": [
+        "snapgate.ldr",
+        "mean-machine.ldr",
+        "resonance-lab.ldr"
+      ]
+    },
+    "stroke-shift": {
+      "en": {
+        "what": "Two motors have different jobs. Motor B uses a small linear actuator carried by the crank to set its pin radius to 16, 22 or 28 mm. Motor A then turns that crank. The same connecting rod drives a separately guided piston with no motor of its own. Its projected hinge-axis distance is 176 mm. The ideal full strokes are 32, 44 and 56 mm. Changing radius changes how far the piston travels; changing only cycle speed does not change the geometric stroke.",
+        "try": [
+          "Open Stroke Shift with its program, reset to the saved pose and press Run. The single SPIKE Prime hub uses A for carrier rotation and B for radius adjustment. The program checks that both starting encoder magnitudes are within 1° of zero; it does not reset the scene or redefine encoder zero. Reload the saved model before a new experiment after manual movement or an interrupted run.",
+          "Watch the three trials. A holds while B selects the radius; B holds while A moves 0 → 1080 → 0 motor degrees. The 20T:60T gears make that one carrier turn and a reverse turn. A runs at 180°/s and B at 360°/s; small arrival errors are corrected slowly. Positive B extends the radius; its targets are 0°, 1791.223007° and 3582.446015°.",
+          "Measure the actual crank-pin distance from the main axis and the full piston excursion for each held setting. Predict 32, 44 and 56 mm from the nominal radii. Experimental model: measured only in the simulator (one headless run, from the piston pose rather than the encoders), the strokes were 32.004, 44.007 and 56.003 mm, each turn took the same 6.4 s at every radius, and nothing has been tested on real LEGO parts.",
+          "Compare piston positions at matching carrier angles and compare the two endpoints. At completion, both inputs return and hold: completed = 1, failed = 0, trial = 3, stage = 6. The final radius is 16 mm. The program has a 180-second watchdog and checks arrival within 1.5°. Use only the declared finite route; the actuator and guide limits extend beyond its qualified settings."
+        ],
+        "why": "The piston guide passes through the crank axis in horizontal projection. Let r be the held radius, L = 176 mm the projected distance between rod hinge axes, and θ the crank angle from full extension. The crank pin is at (r cos θ, r sin θ). The rod bridges the remaining horizontal distance, so on the open assembly branch x = r cos θ + √(L² − r² sin²θ). Since L exceeds every selected radius, the inline endpoints are x = L + r and x = L - r. Their separation is exactly 2r in the ideal geometry. The two overlapping rod beams place the selected endpoint markers in planes 8 mm apart; their 3D separation is about 176.182 mm, while 176 mm is the length used in this planar equation. Both hinge axes are parallel and the axial offset is fixed.",
+        "matters": "Adjustable throw separates movement range from cycle rate. One connecting rod and piston can deliver different strokes because the setting motor changes a real geometric parameter. The repeating motor supplies phase. This is useful for understanding variable feed, pumping and reciprocating motion without pretending that motor speed alone sets stroke. The piston remains passive throughout the experiment.",
+        "question": "When the crank radius changes from 16 to 28 mm, by how much should the ideal complete piston stroke increase? Must the cycle time increase by the same proportion?",
+        "answer": "The ideal stroke changes from 2 × 16 = 32 mm to 2 × 28 = 56 mm: an increase of 24 mm, or 75%. The ideal period can remain the same because one carrier turn takes the same time at the same angular speed. Actual arrival time and load effects must still be measured. The stroke result assumes an inline guide, a fixed held radius and the same assembly branch.",
+        "further": [
+          "Use actual observed carrier angle and crank radius in the equation, then compare its prediction with the separately observed piston position. In the ideal geometry the difference is zero; a remaining difference shows joint compliance or solver error. Rigid-body simulation does not establish real stiffness, friction or manufacturing accuracy.",
+          "Compare with Rod Ratio. It keeps r = 24 mm and changes rod length from 40 to 80 mm; both ideal full strokes stay 48 mm. Stroke Shift keeps one rod and changes radius. Explain why these experiments alter different properties of the displacement curve.",
+          "Compare with Quickstroke, whose offset guide changes forward and return timing. Also distinguish the experimental Spiral Scribe: its radius advances while the carrier rotates, whereas Stroke Shift sets a radius while parked and holds it during each periodic cycle.",
+          "Inspect the two separated overlap pins that make the rod rigid, both retained radial guides, the two piston guides and the moving B-motor cable route. The supplier’s construction report covers the part geometry at the saved pose and along a sampled sweep. Physical assembly, cable routing and loaded operation remain untested; a different radius range or rod length needs new closure, clearance and simulation checks."
+        ]
+      },
+      "de": {
+        "what": "Zwei Motoren übernehmen unterschiedliche Aufgaben. Motor B stellt den Kurbelzapfen über einen mitrotierenden kleinen Linearaktuator auf 16, 22 oder 28 mm Radius. Anschließend dreht Motor A die Kurbel. Dasselbe Pleuel bewegt einen separat geführten Schlitten ohne eigenen Motor. Der projizierte Abstand der Pleuelgelenkachsen beträgt 176 mm. Die idealen vollen Hübe betragen 32, 44 und 56 mm. Ein geänderter Radius verändert den Bewegungsweg; eine andere Taktgeschwindigkeit allein verändert den geometrischen Hub nicht.",
+        "try": [
+          "Öffne Stroke Shift mit seinem Programm, setze auf die gespeicherte Ausgangslage zurück und drücke Start. Am einzigen SPIKE Prime Hub treibt A den Träger und B die Radiusverstellung an. Das Programm verlangt zu Beginn für beide Drehgeber einen Betrag von höchstens 1°. Es setzt weder die Szene noch die Drehgebernullpunkte zurück. Lade nach einer manuellen Bewegung oder einem abgebrochenen Lauf vor einem neuen Versuch erneut die Ausgangslage.",
+          "Beobachte die drei Versuche. A hält, während B den Radius einstellt; B hält, während A 0 → 1080 → 0 Motorgrad fährt. Das Zahnradpaar 20T:60T setzt dies in eine volle Trägerumdrehung und eine rückwärtige Umdrehung um. A fährt mit 180°/s und B mit 360°/s; kleine Abweichungen beim Anfahren werden langsam nachkorrigiert. Positives B vergrößert den Radius. Die B-Ziele sind 0°, 1791,223007° und 3582,446015°.",
+          "Miss für jede gehaltene Einstellung den wirklichen Abstand des Kurbelzapfens von der Hauptachse und den gesamten Schlittenhub. Sage aus den Nennradien 32, 44 und 56 mm voraus. Experimentelles Modell: Nur im Simulator gemessen (ein Lauf ohne Bildschirm, an der Lage des Schlittens statt an den Drehgebern) betrugen die Hübe 32,004, 44,007 und 56,003 mm, jede Umdrehung dauerte bei allen Radien gleich lang (6,4 s), und an echten LEGO-Teilen wurde nichts geprüft.",
+          "Vergleiche Schlittenpositionen bei gleichen Trägerwinkeln und vergleiche die beiden Endlagen. Am Ende kehren beide Antriebe zurück und halten: completed = 1, failed = 0, trial = 3, stage = 6. Der Radius beträgt wieder 16 mm. Das Programm bricht nach höchstens 180 Sekunden ab und prüft, ob jedes Ziel auf 1,5° genau erreicht wird. Verwende den festgelegten endlichen Ablauf; die mechanischen Aktuator- und Führungsgrenzen liegen außerhalb seiner geprüften Einstellungen."
+        ],
+        "why": "Die Schlittenführung verläuft in der horizontalen Projektion durch die Kurbelachse. r ist der gehaltene Radius, L = 176 mm der projizierte Abstand der Pleuelgelenkachsen und θ der Kurbelwinkel ab der ganz ausgefahrenen Stellung. Der Kurbelzapfen liegt bei (r cos θ, r sin θ). Das Pleuel überbrückt den verbleibenden waagerechten Abstand. Auf dem offenen Montagezweig gilt deshalb x = r cos θ + √(L² − r² sin²θ). Da L größer als jeder gewählte Radius ist, liegen die fluchtenden Endlagen bei x = L + r und x = L - r. Ihr Abstand beträgt in der idealen Geometrie genau 2r. Die beiden überlappenden Pleuelbalken legen die gewählten Endpunktmarken in Ebenen mit 8 mm Abstand. Ihr räumlicher Abstand beträgt ungefähr 176,182 mm; in die ebene Gleichung gehen dagegen 176 mm ein. Beide Gelenkachsen sind parallel, und der axiale Versatz bleibt fest.",
+        "matters": "Ein verstellbarer Kurbelradius trennt Bewegungsweite und Taktgeschwindigkeit. Ein und dasselbe Pleuel mit demselben Schlitten liefert verschiedene Hübe, weil der Einstellmotor eine wirkliche geometrische Größe verändert. Der Umlaufmotor bestimmt die Phase. So lassen sich verstellbarer Vorschub, Pumpbewegungen und andere hin- und hergehende Bewegungen verstehen, ohne den Hub fälschlich allein auf die Motorgeschwindigkeit zurückzuführen. Der Schlitten bleibt im gesamten Versuch passiv.",
+        "question": "Um wie viel sollte der ideale volle Schlittenhub zunehmen, wenn der Kurbelradius von 16 auf 28 mm wächst? Muss die Zyklusdauer im gleichen Verhältnis zunehmen?",
+        "answer": "Der ideale Hub wächst von 2 × 16 = 32 mm auf 2 × 28 = 56 mm: um 24 mm beziehungsweise 75 %. Die ideale Zyklusdauer kann gleich bleiben, denn bei gleicher Winkelgeschwindigkeit dauert eine Trägerumdrehung gleich lang. Tatsächliche Anfahrzeiten und Lasteinflüsse müssen dennoch gemessen werden. Die Hubaussage setzt eine fluchtende Führung, einen fest gehaltenen Radius und denselben Montagezweig voraus.",
+        "further": [
+          "Setze den tatsächlich beobachteten Trägerwinkel und Kurbelradius in die Gleichung ein und vergleiche ihre Vorhersage mit der separat beobachteten Schlittenposition. In der idealen Geometrie ist der Unterschied null; ein verbleibender Unterschied zeigt Nachgiebigkeit in den Gelenken oder Rechenfehler. Eine Starrkörpersimulation belegt keine reale Steifigkeit, Reibung oder Fertigungsgenauigkeit.",
+          "Vergleiche Rod Ratio. Dort bleibt r = 24 mm fest, während die Pleuellänge von 40 auf 80 mm wechselt; beide idealen vollen Hübe bleiben 48 mm. Stroke Shift behält ein Pleuel bei und verändert den Radius. Erkläre, warum diese Versuche unterschiedliche Eigenschaften der Wegkurve verändern.",
+          "Vergleiche Quickstroke, dessen versetzte Führung die Zeiten für Hin- und Rückhub verändert. Unterscheide auch das experimentelle Modell Spiral Scribe: Dort wächst der Radius während der Trägerdrehung. Stroke Shift stellt den Radius bei angehaltenem Träger ein und hält ihn während jedes periodischen Zyklus fest.",
+          "Prüfe die zwei getrennten Überlappungsstifte, die das Pleuel starr verbinden, beide gesicherten Radialführungen, die beiden Schlittenführungen und die bewegte Kabelführung von Motor B. Für die Teilegeometrie in Ausgangslage und entlang der abgetasteten Bewegung gibt es einen eigenen Konstruktionsbericht des Lieferanten. Physischer Aufbau, Kabelführung und Betrieb unter Last sind noch nicht erprobt. Ein anderer Radiusbereich oder eine andere Pleuellänge braucht neue Prüfungen von Schließbedingung, Freiraum und simulierter Bewegung."
+        ]
+      },
+      "formula": {
+        "en": "L = 176 mm in horizontal projection; fixed endpoint-plane offset = 8 mm; r = 16, 22 or 28 mm. x(θ, r) = r cos θ + √(L² − r² sin²θ); x_max = L + r; x_min = L - r; full stroke S = 2r = 32, 44 or 56 mm. The simulator’s actuator lead is 1.20588 mm per spindle turn, so each 6 mm radius step needs (6 / 1.20588) × 360 ≈ 1791.22 motor degrees; this lead is catalogue data, not a hardware measurement.",
+        "de": "L = 176 mm in horizontaler Projektion; fester Abstand der Endpunktebenen = 8 mm; r = 16, 22 oder 28 mm. x(θ, r) = r cos θ + √(L² − r² sin²θ); x_max = L + r; x_min = L - r; voller Hub S = 2r = 32, 44 oder 56 mm. Die Spindelsteigung des Aktuators beträgt im Simulator 1,20588 mm je Umdrehung; jeder Radiusschritt von 6 mm erfordert daher (6 / 1,20588) × 360 ≈ 1791,22 Motorgrad. Diese Steigung stammt aus Katalogdaten, nicht aus einer Hardwaremessung."
+      },
+      "related": [
+        "rod-ratio.ldr",
+        "quickstroke.ldr",
+        "sine-shuttle.ldr",
+        "oblique.ldr"
+      ]
+    },
+    "triad-table": {
+      "en": {
+        "what": "Planar 3-RPR parallel positioning table. Three motor-driven small linear actuators, legs A, B and C, each join a fixed base hinge to a hinge on one passive triangular platform: revolute–prismatic–revolute. Together the three leg lengths set the platform’s two translations in the horizontal plane (x = LDraw X, y = LDraw Z) and its heading (yaw); a long red pointer, whose tip sits 16 mm to the side of and 80 mm ahead of the platform reference point, makes the yaw visible: during a turn the tip sweeps an arc, so tip motion alone does not show translation. At home every leg is 56 mm (140 LDU) between hinge axes: legs A and C lie along x facing each other, leg B lies along y. Each motor turns its actuator spindle, about 1.21 mm of length per turn. The program converts each target pose into three leg lengths and motor angles and visits 15 poses: ±4.8 mm in x, ±4.8 mm in y, ±10° yaw, four combined poses (±3.2 mm, ±3.2 mm, ±7°) and home between the groups.",
+        "try": [
+          "Reset to the saved pose and press Run. The program refuses to start if any of the three motors is more than 1° away from its saved angle.",
+          "During the +x move, watch leg B. Legs A and C change by 4.8 mm in opposite directions; how much does B change?",
+          "During the +10° yaw, compare the three legs: all of them lengthen (A and B by about 3.1 mm, C by about 2.8 mm), yet the platform only turns about its reference point. Why does a pure rotation need all three legs to grow?",
+          "In the combined poses all three motors move at once with matched travel times. Compare the platform only at the pauses: the path between two poses is not a straight line, because the program interpolates motor angles, not positions."
+        ],
+        "why": "Let a_i be the fixed base hinges, b_i the platform hinges in platform coordinates, t = (x, y) the position of the platform reference point and R(ψ) the rotation by the yaw ψ. The moving hinge is then q_i = t + R(ψ) b_i, and leg i must have the length ρ_i = |q_i − a_i|. This inverse kinematics is direct: choose a pose and compute three distances. The reverse direction is harder: three given lengths can allow more than one assembly of the platform, so the machine must stay on its starting branch and away from singular poses, where the leg directions stop constraining one of the three coordinates and small length changes can cause large platform motion. Because every leg sees every coordinate, no single motor is an x, y or yaw axis. Experimental model: measured only in the simulator (one headless run, from three platform hinge points rather than the encoders), every settled pose was within 0.005 mm and 0.012° of its target and the measured leg lengths matched |q_i − a_i| within 0.002 mm; nothing has been tested on real LEGO parts.",
+        "matters": "Parallel stages like this position wafers, microscope samples and optics in XY-yaw and, as hexapods, in six axes: the closed chains share the load and are stiff, but the controller must solve the coupled geometry for every move. Triad Table makes that coupling visible with three legs. Its limits are honest ones: there are no physical stops for yaw, the supplier qualified only the programmed route, and the real actuators’ clutches, play and cable routing have not been tested.",
+        "question": "During the +4.8 mm move in x, leg A grows by 4.8 mm and leg C shrinks by 4.8 mm. How much must leg B change, and could motor B simply stay still?",
+        "answer": "Leg B is perpendicular to the motion, so its length changes only to second order: √(56² + 4.8²) − 56 ≈ 0.205 mm, about 61° of its motor. It still has to move: if B stayed fixed, the platform could not reach the pure translation and would be pulled sideways or turned. That is why no single motor acts as an independent x axis.",
+        "further": [
+          "Predict the leg lengths for a pure +10° yaw from the anchors in the formula; compare with A = B ≈ 59.08 mm and C ≈ 58.78 mm.",
+          "Compare Twinpoint, which positions a single point with two motors in a five-bar loop; Atlas Six, which adds height, pitch and roll with six legs; and Axis Plotter, a serial Cartesian stage where each motor really is one axis.",
+          "Find the singular configurations on paper: when the three leg lines meet in one point, the platform can turn about that point without any leg changing length to first order; when all three are parallel, it can shift sideways in the same way."
+        ]
+      },
+      "de": {
+        "what": "Ebener 3-RPR-Parallelpositioniertisch. Drei motorgetriebene kleine Linearaktuatoren – die Beine A, B und C – verbinden je ein festes Basisgelenk mit einem Gelenk an einer passiven dreieckigen Plattform: Drehgelenk–Schubgelenk–Drehgelenk. Zusammen legen die drei Beinlängen die beiden Verschiebungen der Plattform in der waagerechten Ebene (x = LDraw X, y = LDraw Z) und ihre Ausrichtung (Gierwinkel) fest; ein langer roter Zeiger, dessen Spitze 16 mm seitlich und 80 mm vor dem Plattform-Bezugspunkt liegt, macht den Gierwinkel sichtbar: Bei einer Drehung beschreibt die Spitze einen Bogen, ihre Bewegung allein zeigt also keine Verschiebung. In der Ausgangslage misst jedes Bein 56 mm (140 LDU) zwischen den Gelenkachsen: Die Beine A und C liegen einander gegenüber entlang x, Bein B entlang y. Jeder Motor dreht die Spindel seines Aktuators, etwa 1,21 mm Längenänderung je Umdrehung. Das Programm rechnet jede Zielpose in drei Beinlängen und Motorwinkel um und fährt 15 Posen an: ±4,8 mm in x, ±4,8 mm in y, ±10° Gierwinkel, vier kombinierte Posen (±3,2 mm, ±3,2 mm, ±7°) und zwischen den Gruppen die Ausgangslage.",
+        "try": [
+          "Setze auf die gespeicherte Ausgangslage zurück und drücke Start. Das Programm startet nicht, wenn einer der drei Motoren mehr als 1° von seinem gespeicherten Winkel abweicht.",
+          "Beobachte bei der Verschiebung in +x das Bein B. Die Beine A und C ändern sich gegenläufig um 4,8 mm – wie stark ändert sich B?",
+          "Vergleiche bei der Drehung um +10° die drei Beine: Alle werden länger (A und B um etwa 3,1 mm, C um etwa 2,8 mm), und doch dreht sich die Plattform nur um ihren Bezugspunkt. Warum braucht eine reine Drehung drei längere Beine?",
+          "In den kombinierten Posen fahren alle drei Motoren gleichzeitig mit abgestimmten Fahrzeiten. Vergleiche die Plattform nur in den Haltepausen: Der Weg zwischen zwei Posen ist keine Gerade, weil das Programm Motorwinkel interpoliert, nicht Positionen."
+        ],
+        "why": "a_i seien die festen Basisgelenke, b_i die Plattformgelenke in Plattformkoordinaten, t = (x, y) die Lage des Plattform-Bezugspunkts und R(ψ) die Drehung um den Gierwinkel ψ. Das bewegte Gelenk liegt dann bei q_i = t + R(ψ) b_i, und Bein i muss die Länge ρ_i = |q_i − a_i| haben. Diese inverse Kinematik ist direkt: Pose wählen, drei Abstände berechnen. Die Gegenrichtung ist schwieriger: Zu drei gegebenen Längen kann es mehrere Montagestellungen der Plattform geben. Die Maschine muss daher auf ihrem Ausgangszweig bleiben und singuläre Stellungen meiden, in denen die Beinrichtungen eine der drei Koordinaten nicht mehr festlegen und kleine Längenänderungen große Plattformbewegungen erlauben. Weil jedes Bein auf jede Koordinate wirkt, ist kein einzelner Motor eine x-, y- oder Drehachse. Experimentelles Modell: Nur im Simulator gemessen (ein Lauf ohne Bildschirm, an drei Plattformgelenkpunkten statt an den Drehgebern) lag jede ausgeregelte Pose auf 0,005 mm und 0,012° genau am Ziel, und die gemessenen Beinlängen stimmten auf 0,002 mm mit |q_i − a_i| überein; an echten LEGO-Teilen wurde nichts geprüft.",
+        "matters": "Solche Parallelstufen positionieren Wafer, Mikroskopproben und Optiken in X, Y und Drehung und – als Hexapoden – in sechs Achsen: Die geschlossenen Ketten teilen sich die Last und sind steif, doch die Steuerung muss für jede Bewegung die gekoppelte Geometrie lösen. Triad Table macht diese Kopplung mit drei Beinen sichtbar. Die Grenzen sind klar: Es gibt keine mechanischen Anschläge für die Drehung, der Lieferant hat nur den programmierten Ablauf geprüft, und Rutschkupplungen, Spiel und Kabelführung der echten Aktuatoren sind ungeprüft.",
+        "question": "Bei der Verschiebung um +4,8 mm in x wird Bein A 4,8 mm länger und Bein C 4,8 mm kürzer. Um wie viel muss sich Bein B ändern, und könnte Motor B einfach stehen bleiben?",
+        "answer": "Bein B steht senkrecht zur Bewegung, seine Länge ändert sich daher nur in zweiter Ordnung: √(56² + 4,8²) − 56 ≈ 0,205 mm, etwa 61° an seinem Motor. Bewegen muss es sich trotzdem: Bliebe B stehen, könnte die Plattform die reine Verschiebung nicht erreichen und würde seitlich gezogen oder verdreht. Deshalb ist kein einzelner Motor eine unabhängige x-Achse.",
+        "further": [
+          "Sage mit den Ankerpunkten aus der Formel die Beinlängen für eine reine Drehung um +10° voraus und vergleiche mit A = B ≈ 59,08 mm und C ≈ 58,78 mm.",
+          "Vergleiche Twinpoint, das mit zwei Motoren in einem Fünfgelenk einen einzelnen Punkt positioniert, Atlas Six, das mit sechs Beinen Höhe, Nicken und Rollen ergänzt, und Axis Plotter, eine serielle kartesische Stufe, bei der jeder Motor tatsächlich eine Achse ist.",
+          "Finde auf dem Papier die singulären Stellungen: Schneiden sich die drei Beingeraden in einem Punkt, kann sich die Plattform um diesen Punkt drehen, ohne dass sich in erster Ordnung eine Beinlänge ändert; sind alle drei parallel, kann sie sich ebenso seitlich verschieben."
+        ]
+      },
+      "formula": {
+        "en": "q_i = t + R(ψ) b_i; ρ_i = |q_i − a_i|. Base anchors a_A = (−180, −40), a_B = (40, −180), a_C = (140, 40) LDU; platform anchors b_A = (−40, −40), b_B = (40, −40), b_C = (0, 40) LDU; home ρ = 140 LDU = 56 mm (1 LDU = 0.4 mm). Motor angle_i = 360° × (ρ_i − 140 LDU) / 3.0147 LDU per spindle turn; e.g. +12 LDU (4.8 mm) → 1433°. Positive yaw turns +x towards +y.",
+        "de": "q_i = t + R(ψ) b_i; ρ_i = |q_i − a_i|. Basisanker a_A = (−180, −40), a_B = (40, −180), a_C = (140, 40) LDU; Plattformanker b_A = (−40, −40), b_B = (40, −40), b_C = (0, 40) LDU; Ausgangslänge ρ = 140 LDU = 56 mm (1 LDU = 0,4 mm). Motorwinkel_i = 360° × (ρ_i − 140 LDU) / 3,0147 LDU je Spindelumdrehung; z. B. +12 LDU (4,8 mm) → 1433°. Positiver Gierwinkel dreht +x in Richtung +y."
+      },
+      "related": [
+        "twinpoint.ldr",
+        "atlas-six.ldr",
+        "axis-plotter.ldr"
+      ]
     }
   }
 }

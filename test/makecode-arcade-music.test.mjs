@@ -106,7 +106,7 @@ test('music is editable through Code and Blocks, saved SB3 and original MakeCode
         assert.deepEqual(run.errors, []);
         assert.deepEqual(run.creator.warnings, []);
         const opcodes = projectOpcodes(run.creator.project);
-        for (const op of ['arcade_playMusic', 'arcade_melodyPlayable', 'arcade_namedMelody', 'arcade_playSound', 'arcade_soundMelody',
+        for (const op of ['arcade_play', 'arcade_melodyPlayable', 'arcade_namedMelody', 'arcade_playSound', 'arcade_soundMelody',
             'arcade_playMelody', 'arcade_playTone', 'arcade_beat', 'arcade_ringTone', 'arcade_rest', 'arcade_setTempo', 'arcade_musicTempo',
             'arcade_changeTempo', 'arcade_setMusicVolume', 'arcade_musicVolume', 'arcade_tonePlayable', 'arcade_stopAllSounds'])
             assert.ok(opcodes.has(op), op);

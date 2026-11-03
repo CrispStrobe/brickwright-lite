@@ -1,0 +1,10 @@
+{
+ "author": "CrispStrobe",
+ "license": "BSD-3-Clause",
+ "files": {
+  "models/poise.ldr": "b1d42ec1761bd45408de23c502dda2069ebc7f755ef14e877aa4dfa5e2fdfe63",
+  "programs/poise.bw": "1d1578098fb79b7fcf6c47ce8199c53c8676151d147c9d5b72e62cbe3b95f084",
+  "LICENSE.txt": "6680a543445e87e855296712b7c71c85feb40693d3ffa23d25b430da3af0662e",
+  "SOURCES.md": "a33cfffda980c6db4404c95515d07aee3c13c2d2cdeb6e6dcf54aaa36d90e111"
+ }
+}

@@ -1,0 +1,342 @@
+# Triad Table — one hub, three spindle motors, one passive planar platform.
+# Copyright (c) 2026 CrispStrobe. SPDX-License-Identifier: BSD-3-Clause.
+# Robot Lab simulation program; physical construction and hardware execution are untested.
+# Load the matching saved LDR before every new run. No encoder/scene reset is performed.
+# Targets are inverse-kinematic inputs. The platform pose is observed independently.
+# Authored X,Z plane; positive yaw maps +X toward +Z. Speeds are degrees/second.
+# Three actual VM receivers move concurrently, with matched initial travel times.
+# Each receiver holds its own spindle, uses fresh encoder error, and permits at most two trims.
+# Interpolation is in spindle space; no straight Cartesian path is claimed.
+# Watchdog: 240 s. Stage 0 startup, 1–15 waypoints, 16 completed, -1 fault.
+DEVICE SPIKE
+GLOBAL stage = 0
+GLOBAL settled = 0
+GLOBAL completed = 0
+GLOBAL failed = 0
+GLOBAL travelBound = 0.2
+GLOBAL targetA = 0
+GLOBAL speedA = 0
+GLOBAL trimsA = 0
+GLOBAL targetB = 0
+GLOBAL speedB = 0
+GLOBAL trimsB = 0
+GLOBAL targetC = 0
+GLOBAL speedC = 0
+GLOBAL trimsC = 0
+
+WHEN flag clicked:
+  set stage to 0
+  set settled to 0
+  set completed to 0
+  set failed to 0
+  reset timer
+  lab start
+  lab stop motor A hold
+  lab stop motor B hold
+  lab stop motor C hold
+  IF (abs of (lab motor A angle)) > 1 THEN:
+    broadcast "Triad fail all" and wait
+    say "Load Triad Table at its saved pose before running."
+    stop all
+  IF (abs of (lab motor B angle)) > 1 THEN:
+    broadcast "Triad fail all" and wait
+    say "Load Triad Table at its saved pose before running."
+    stop all
+  IF (abs of (lab motor C angle)) > 1 THEN:
+    broadcast "Triad fail all" and wait
+    say "Load Triad Table at its saved pose before running."
+    stop all
+  broadcast "Triad watchdog"
+  # Stage 1: saved datum
+  set settled to 0
+  set stage to 1
+  set targetA to 0
+  set targetB to 0
+  set targetC to 0
+  broadcast "Triad prepare" and wait
+  broadcast "Triad move all" and wait
+  wait 0.2 seconds
+  broadcast "Triad arrival" and wait
+  set settled to 1
+  wait 0.5 seconds
+  # Stage 2: positive X
+  set settled to 0
+  set stage to 2
+  set targetA to 1432.978405812
+  set targetB to 61.300972674
+  set targetC to -1432.978405812
+  broadcast "Triad prepare" and wait
+  broadcast "Triad move all" and wait
+  wait 0.2 seconds
+  broadcast "Triad arrival" and wait
+  set settled to 1
+  wait 0.5 seconds
+  # Stage 3: negative X
+  set settled to 0
+  set stage to 3
+  set targetA to -1432.978405812
+  set targetB to 61.300972674
+  set targetC to 1432.978405812
+  broadcast "Triad prepare" and wait
+  broadcast "Triad move all" and wait
+  wait 0.2 seconds
+  broadcast "Triad arrival" and wait
+  set settled to 1
+  wait 0.5 seconds
+  # Stage 4: home after X
+  set settled to 0
+  set stage to 4
+  set targetA to 0
+  set targetB to 0
+  set targetC to 0
+  broadcast "Triad prepare" and wait
+  broadcast "Triad move all" and wait
+  wait 0.2 seconds
+  broadcast "Triad arrival" and wait
+  set settled to 1
+  wait 0.5 seconds
+  # Stage 5: positive Z
+  set settled to 0
+  set stage to 5
+  set targetA to 61.300972674
+  set targetB to 1432.978405812
+  set targetC to 61.300972674
+  broadcast "Triad prepare" and wait
+  broadcast "Triad move all" and wait
+  wait 0.2 seconds
+  broadcast "Triad arrival" and wait
+  set settled to 1
+  wait 0.5 seconds
+  # Stage 6: negative Z
+  set settled to 0
+  set stage to 6
+  set targetA to 61.300972674
+  set targetB to -1432.978405812
+  set targetC to 61.300972674
+  broadcast "Triad prepare" and wait
+  broadcast "Triad move all" and wait
+  wait 0.2 seconds
+  broadcast "Triad arrival" and wait
+  set settled to 1
+  wait 0.5 seconds
+  # Stage 7: home after Z
+  set settled to 0
+  set stage to 7
+  set targetA to 0
+  set targetB to 0
+  set targetC to 0
+  broadcast "Triad prepare" and wait
+  broadcast "Triad move all" and wait
+  wait 0.2 seconds
+  broadcast "Triad arrival" and wait
+  set settled to 1
+  wait 0.5 seconds
+  # Stage 8: positive yaw
+  set settled to 0
+  set stage to 8
+  set targetA to 918.262745638
+  set targetB to 918.262745638
+  set targetC to 829.597011648
+  broadcast "Triad prepare" and wait
+  broadcast "Triad move all" and wait
+  wait 0.2 seconds
+  broadcast "Triad arrival" and wait
+  set settled to 1
+  wait 0.5 seconds
+  # Stage 9: negative yaw
+  set settled to 0
+  set stage to 9
+  set targetA to -731.412345227
+  set targetB to -731.412345227
+  set targetC to -829.281247626
+  broadcast "Triad prepare" and wait
+  broadcast "Triad move all" and wait
+  wait 0.2 seconds
+  broadcast "Triad arrival" and wait
+  set settled to 1
+  wait 0.5 seconds
+  # Stage 10: home after yaw
+  set settled to 0
+  set stage to 10
+  set targetA to 0
+  set targetB to 0
+  set targetC to 0
+  broadcast "Triad prepare" and wait
+  broadcast "Triad move all" and wait
+  wait 0.2 seconds
+  broadcast "Triad arrival" and wait
+  set settled to 1
+  wait 0.5 seconds
+  # Stage 11: compound northeast
+  set settled to 0
+  set stage to 11
+  set targetA to 1577.611158918
+  set targetB to 1634.595686746
+  set targetC to -347.343076991
+  broadcast "Triad prepare" and wait
+  broadcast "Triad move all" and wait
+  wait 0.2 seconds
+  broadcast "Triad arrival" and wait
+  set settled to 1
+  wait 0.5 seconds
+  # Stage 12: compound northwest
+  set settled to 0
+  set stage to 12
+  set targetA to -1420.741486895
+  set targetB to 480.890005227
+  set targetC to 397.926412826
+  broadcast "Triad prepare" and wait
+  broadcast "Triad move all" and wait
+  wait 0.2 seconds
+  broadcast "Triad arrival" and wait
+  set settled to 1
+  wait 0.5 seconds
+  # Stage 13: compound southwest
+  set settled to 0
+  set stage to 13
+  set targetA to -268.89109498
+  set targetB to -332.494085203
+  set targetC to 1564.313623629
+  broadcast "Triad prepare" and wait
+  broadcast "Triad move all" and wait
+  wait 0.2 seconds
+  broadcast "Triad arrival" and wait
+  set settled to 1
+  wait 0.5 seconds
+  # Stage 14: compound southeast
+  set settled to 0
+  set stage to 14
+  set targetA to 412.129394359
+  set targetB to -1498.090832381
+  set targetC to -1505.132311584
+  broadcast "Triad prepare" and wait
+  broadcast "Triad move all" and wait
+  wait 0.2 seconds
+  broadcast "Triad arrival" and wait
+  set settled to 1
+  wait 0.5 seconds
+  # Stage 15: final home
+  set settled to 0
+  set stage to 15
+  set targetA to 0
+  set targetB to 0
+  set targetC to 0
+  broadcast "Triad prepare" and wait
+  broadcast "Triad move all" and wait
+  wait 0.2 seconds
+  broadcast "Triad arrival" and wait
+  set settled to 1
+  wait 0.5 seconds
+  lab stop motor A hold
+  lab stop motor B hold
+  lab stop motor C hold
+  wait 1 seconds
+  broadcast "Triad arrival" and wait
+  set stage to 16
+  set completed to 1
+  say "Triad Table complete: translation and yaw compared; all three spindles home and held."
+
+WHEN I receive "Triad prepare":
+  set travelBound to 0.2
+  IF (abs of (targetA - (lab motor A angle))) > (travelBound) THEN:
+    set travelBound to (abs of (targetA - (lab motor A angle)))
+  IF (abs of (targetB - (lab motor B angle))) > (travelBound) THEN:
+    set travelBound to (abs of (targetB - (lab motor B angle)))
+  IF (abs of (targetC - (lab motor C angle))) > (travelBound) THEN:
+    set travelBound to (abs of (targetC - (lab motor C angle)))
+
+WHEN I receive "Triad move all":
+  set trimsA to 0
+  set speedA to ((180 * (abs of (targetA - (lab motor A angle)))) / travelBound)
+  IF (speedA) > 180 THEN:
+    set speedA to 180
+  IF (speedA) < 1 THEN:
+    set speedA to 1
+  IF (abs of (targetA - (lab motor A angle))) > 0.2 THEN:
+    lab run motor A for (targetA - (lab motor A angle)) degrees at speedA degrees per second
+  lab stop motor A hold
+  REPEAT 2:
+    IF (abs of (targetA - (lab motor A angle))) > 0.5 THEN:
+      change trimsA by 1
+      lab run motor A for (targetA - (lab motor A angle)) degrees at 12 degrees per second
+      lab stop motor A hold
+      wait 0.1 seconds
+  IF (abs of (targetA - (lab motor A angle))) > 1.5 THEN:
+    broadcast "Triad fail all" and wait
+    say "Spindle A missed its target. Inspect and reload the saved model."
+    stop all
+  lab stop motor A hold
+
+WHEN I receive "Triad move all":
+  set trimsB to 0
+  set speedB to ((180 * (abs of (targetB - (lab motor B angle)))) / travelBound)
+  IF (speedB) > 180 THEN:
+    set speedB to 180
+  IF (speedB) < 1 THEN:
+    set speedB to 1
+  IF (abs of (targetB - (lab motor B angle))) > 0.2 THEN:
+    lab run motor B for (targetB - (lab motor B angle)) degrees at speedB degrees per second
+  lab stop motor B hold
+  REPEAT 2:
+    IF (abs of (targetB - (lab motor B angle))) > 0.5 THEN:
+      change trimsB by 1
+      lab run motor B for (targetB - (lab motor B angle)) degrees at 12 degrees per second
+      lab stop motor B hold
+      wait 0.1 seconds
+  IF (abs of (targetB - (lab motor B angle))) > 1.5 THEN:
+    broadcast "Triad fail all" and wait
+    say "Spindle B missed its target. Inspect and reload the saved model."
+    stop all
+  lab stop motor B hold
+
+WHEN I receive "Triad move all":
+  set trimsC to 0
+  set speedC to ((180 * (abs of (targetC - (lab motor C angle)))) / travelBound)
+  IF (speedC) > 180 THEN:
+    set speedC to 180
+  IF (speedC) < 1 THEN:
+    set speedC to 1
+  IF (abs of (targetC - (lab motor C angle))) > 0.2 THEN:
+    lab run motor C for (targetC - (lab motor C angle)) degrees at speedC degrees per second
+  lab stop motor C hold
+  REPEAT 2:
+    IF (abs of (targetC - (lab motor C angle))) > 0.5 THEN:
+      change trimsC by 1
+      lab run motor C for (targetC - (lab motor C angle)) degrees at 12 degrees per second
+      lab stop motor C hold
+      wait 0.1 seconds
+  IF (abs of (targetC - (lab motor C angle))) > 1.5 THEN:
+    broadcast "Triad fail all" and wait
+    say "Spindle C missed its target. Inspect and reload the saved model."
+    stop all
+  lab stop motor C hold
+
+WHEN I receive "Triad arrival":
+  IF (abs of (targetA - (lab motor A angle))) > 1.5 THEN:
+    broadcast "Triad fail all" and wait
+    say "Spindle A drifted from its held target. Reload the saved model."
+    stop all
+  IF (abs of (targetB - (lab motor B angle))) > 1.5 THEN:
+    broadcast "Triad fail all" and wait
+    say "Spindle B drifted from its held target. Reload the saved model."
+    stop all
+  IF (abs of (targetC - (lab motor C angle))) > 1.5 THEN:
+    broadcast "Triad fail all" and wait
+    say "Spindle C drifted from its held target. Reload the saved model."
+    stop all
+
+WHEN I receive "Triad fail all":
+  set failed to 1
+  set settled to 0
+  set stage to -1
+  lab stop motor A hold
+  lab stop motor B hold
+  lab stop motor C hold
+
+WHEN I receive "Triad watchdog":
+  REPEAT UNTIL (completed = 1):
+    IF (timer) > 240 THEN:
+      broadcast "Triad fail all" and wait
+      say "Triad Table timed out. Inspect and reload the saved model."
+      stop all
+    wait 0.1 seconds

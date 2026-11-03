@@ -29,32 +29,20 @@ import {applyBenchTemperature, clampBenchTemperature, loadBenchTemperature, save
  */
 const PANEL_L10N = {
     en: {
-        'drc.noExport': 'This build of the circuit designer does not export runDrc yet.',
-        'drc.noCircuit': 'The designer has not handed over its circuit yet (onCircuitReady has not fired), so the design-rule check cannot run. Open the Designer once and come back.',
-        'drc.clean': 'No design-rule warnings for this circuit.',
-        'bom.noExport': 'This build of the circuit designer does not export generateBom yet.',
-        'bom.noCircuit': 'The designer has not handed over its circuit yet (onCircuitReady has not fired), so the parts list cannot be built. Open the Designer once and come back.',
-        'bom.empty': 'No parts on the board yet.',
-        'bom.exportCsv': 'Export as CSV',
-        'examples.noBrowser': 'This build of the circuit designer does not include the examples browser yet.',
-        'examples.notVendored': 'The example gallery is not part of this build yet (examples/index.json: {message}). The examples exist — they are published by bw-cfront and need vendoring into the app.',
+        'designer.loading': 'Loading the circuit designer…',
+        'designer.failed': 'The circuit designer failed to load: {error}',
+        'designer.reload': 'Reload the editor',
+        'examples.notVendored': 'The example gallery is not part of this build (examples/index.json: {message}).',
         'examples.indexFailed': 'The starter project index could not be loaded.',
-        'app.republished': 'A new version was published while this tab was open. Reloading…',
-        'a11y.dismiss': 'Dismiss'
+        'app.republished': 'A new version was published while this tab was open. Reloading…'
     },
     de: {
-        'drc.noExport': 'Dieser Build des Schaltungs-Designers exportiert runDrc noch nicht.',
-        'drc.noCircuit': 'Der Designer hat seine Schaltung noch nicht übergeben (onCircuitReady wurde nicht ausgelöst), daher kann die Entwurfsregelprüfung nicht laufen. Öffne einmal den Designer und komm zurück.',
-        'drc.clean': 'Keine Entwurfsregel-Warnungen für diese Schaltung.',
-        'bom.noExport': 'Dieser Build des Schaltungs-Designers exportiert generateBom noch nicht.',
-        'bom.noCircuit': 'Der Designer hat seine Schaltung noch nicht übergeben (onCircuitReady wurde nicht ausgelöst), daher kann die Stückliste nicht erstellt werden. Öffne einmal den Designer und komm zurück.',
-        'bom.empty': 'Noch keine Bauteile auf der Platine.',
-        'bom.exportCsv': 'Als CSV exportieren',
-        'examples.noBrowser': 'Dieser Build des Schaltungs-Designers enthält den Beispiel-Browser noch nicht.',
-        'examples.notVendored': 'Die Beispielgalerie gehört noch nicht zu diesem Build (examples/index.json: {message}). Die Beispiele existieren — sie werden von bw-cfront veröffentlicht und müssen in die App übernommen werden.',
+        'designer.loading': 'Schaltungs-Designer wird geladen…',
+        'designer.failed': 'Der Schaltungs-Designer konnte nicht geladen werden: {error}',
+        'designer.reload': 'Editor neu laden',
+        'examples.notVendored': 'Die Beispielgalerie gehört nicht zu diesem Build (examples/index.json: {message}).',
         'examples.indexFailed': 'Der Index der Startprojekte konnte nicht geladen werden.',
-        'app.republished': 'Eine neue Version wurde veröffentlicht, während dieser Tab offen war. Wird neu geladen…',
-        'a11y.dismiss': 'Schließen'
+        'app.republished': 'Eine neue Version wurde veröffentlicht, während dieser Tab offen war. Wird neu geladen…'
     }
 };
 const pt = makeT(PANEL_L10N);
@@ -167,7 +155,7 @@ class CircuitTab extends React.Component {
             const d = localStorage.getItem('bw-debug-dock');
             if (d === 'top' || d === 'right' || d === 'off' || d === 'solo') debugDock = d;
         } catch { /* private mode: defaults */ }
-        this.state = {Designer: null, ui: null, error: null, reloading: false, stc: null,
+        this.state = {Designer: null, ui: null, panels: null, error: null, reloading: false, stc: null,
             board: null, debugState: null, panel: 'designer', circuit: null, hintDismissed,
             debugHintDismissed, hideStage, debugDock, showInStage, rightPaneHidden,
             examples: null, examplesError: null, curriculum: null,
@@ -182,6 +170,7 @@ class CircuitTab extends React.Component {
         this.handleCircuitReady = this.handleCircuitReady.bind(this);
         this.handleDesignerMenuActions = this.handleDesignerMenuActions.bind(this);
         this.loadExample = this.loadExample.bind(this);
+        this.selectPanel = this.selectPanel.bind(this);
         this._boxRef = React.createRef();
         this._measureBox = this._measureBox.bind(this);
         this.handleDeclarationChange = this.handleDeclarationChange.bind(this);
@@ -1031,7 +1020,12 @@ class CircuitTab extends React.Component {
             // own tests — servo/555/h-bridge netlists failed as "unknown kind"
             // with their drivers sitting right there. Register at injection.
             if (typeof engine.registerAllDevices === 'function') engine.registerAllDevices();
-            const ui = await import(/* webpackChunkName: "bw-circuit-ui" */ 'bw-circuit-ui');
+            // The host's panel switch and panel views (Robot Lab conventions) come with
+            // the designer, never on first load: this tab is mounted from the start.
+            const [ui, panels] = await Promise.all([
+                import(/* webpackChunkName: "bw-circuit-ui" */ 'bw-circuit-ui'),
+                import(/* webpackChunkName: "bw-circuit-panels" */ './circuit-panels.jsx')
+            ]);
             // Inject only once the designer is genuinely needed. Keeping the
             // DRC and retro extractors at module scope made webpack promote the
             // board/Circuit UI graph into the cold Code-tab journey even though
@@ -1112,7 +1106,7 @@ class CircuitTab extends React.Component {
             // legitimately not have them yet — which the panel strip reports
             // rather than hides.
             this._markReactUpdate('host:designer-load');
-            this.setState({Designer: ui.CircuitDesigner, ui});
+            this.setState({Designer: ui.CircuitDesigner, ui, panels});
         } catch (e) {
             // A chunk that 404s because the deploy moved on is not an error the
             // user can act on, and catching it here made it INVISIBLE to the
@@ -1778,16 +1772,17 @@ class CircuitTab extends React.Component {
     drcWarnings () {
         const {ui, circuit, board} = this.state;
         if (!ui || typeof ui.runDrc !== 'function') {
-            return {error: pt(this.props.locale, 'drc.noExport')};
+            return {error: 'noExport'};
         }
         if (!circuit) {
-            return {error: pt(this.props.locale, 'drc.noCircuit')};
+            return {error: 'noCircuit'};
         }
         try {
             return {warnings: ui.runDrc(circuit, board || circuit.board) || []};
         } catch (e) {
             // A checker that throws must not read as a clean circuit.
-            return {error: `The design-rule check failed: ${e.message}`};
+            // (Codes, not sentences: circuit-panels-model.js words them per locale.)
+            return {error: 'failed', message: e.message};
         }
     }
 
@@ -2039,7 +2034,7 @@ class CircuitTab extends React.Component {
         this._portalRendered = false;
         if (reloading) {
             return (
-                <div style={{...box, color: '#64748b'}}>
+                <div role="status" style={{...box, padding: 24, color: '#64748b'}}>
                     {pt(this.props.locale, 'app.republished')}
                 </div>
             );
@@ -2050,11 +2045,16 @@ class CircuitTab extends React.Component {
             // race, and looping the reload would hide it). Offer the manual
             // action rather than leaving a dead panel — the user's tab may have
             // been open across two deploys, which is not their fault.
+            // Laid out as the Robot Lab tab's states: a centred message, one action.
             return (
-                <div style={{...box, color: '#b91c1c'}}>
-                    <div>{`The circuit designer failed to load: ${error}`}</div>
+                <div style={{...box, alignItems: 'center', justifyContent: 'center', gap: 12, padding: 24}}>
+                    <p role="alert" style={{maxWidth: 460, margin: 0, textAlign: 'center', color: '#b91c1c', fontSize: 14}}>
+                        {pt(this.props.locale, 'designer.failed', {error})}
+                    </p>
                     <button
-                        style={{marginTop: 10, padding: '6px 12px', borderRadius: 6, cursor: 'pointer'}}
+                        type="button"
+                        style={{padding: '8px 16px', borderRadius: 8, border: '1px solid #4338ca', background: '#4f46e5',
+                            color: '#fff', fontWeight: 600, cursor: 'pointer'}}
                         onClick={() => {
                             try {
                                 sessionStorage.removeItem('bw-chunk-recovery');
@@ -2062,7 +2062,7 @@ class CircuitTab extends React.Component {
                             location.reload();
                         }}
                     >
-                        {'Reload the editor'}
+                        {pt(this.props.locale, 'designer.reload')}
                     </button>
                 </div>
             );
@@ -2105,7 +2105,9 @@ class CircuitTab extends React.Component {
             // already-running debugger portal mounted while that chunk loads;
             // unmounting DebugPanel destroys its runner and replays the media.
             return [
-                <div key="designer-loading" style={{...box, color: '#64748b'}}>{'Loading the circuit designer…'}</div>,
+                <div key="designer-loading" role="status" style={{...box, padding: 24, color: '#64748b'}}>
+                    {pt(this.props.locale, 'designer.loading')}
+                </div>,
                 (this.state.machineBooted || stcDrives(stc)) &&
                     ReactDOM.createPortal(this.renderDebugPanel(), this._ensureDebugHost(), 'debug-panel')
             ];
@@ -2121,7 +2123,6 @@ class CircuitTab extends React.Component {
                     pushed the board down and duplicated the top-bar Warnings selector, which
                     (with its count) is now the single home for anything the user needs flagged.
                     The guidance they carried lives in the Examples/docs, not a persistent banner. */}
-                {this.state.panel === 'designer' ? null : this.renderPanelStrip()}
                 <div style={{display: 'flex', flex: '1 1 auto', minHeight: 0, gap: 8}}>
                 <div style={{flex: '1 1 auto', minWidth: 0, display: 'flex', flexDirection: 'column'}}>
                 {/* The tab container is `overflow: clip` so a deep sidebar scroll cannot
@@ -2186,6 +2187,7 @@ class CircuitTab extends React.Component {
                         onCircuitEdit={this.handleCircuitEdit}
                         onDeclarationChange={this.handleDeclarationChange}
                         panelNav={this.renderPanelStrip()}
+                        lang={String(this.props.locale || 'en').slice(0, 2) === 'de' ? 'de' : 'en'}
                         // The control is the designer's (its "More circuit controls"
                         // menu, bw-circuit-ui BenchTemperature.jsx); the value is ours.
                         benchTemperature={this.state.benchC}
@@ -2319,7 +2321,7 @@ class CircuitTab extends React.Component {
         const panels = de ? [['designer', 'Designer'], ['warnings', 'Warnungen'], ['bom', 'Stückliste'], ['examples', 'Beispiele']] :
             [['designer', 'Designer'], ['warnings', 'Warnings'], ['bom', 'Parts list'], ['examples', 'Examples']];
         for (const [panel, label] of panels) {
-            entries[`host-panel-${panel}`] = {label, location: 'edit', submenu: de ? 'Ansichten' : 'Panels',
+            entries[`host-panel-${panel}`] = {label, location: 'edit', submenu: de ? 'Bereiche' : 'Panels',
                 enabled: true, checked: this.state.panel === panel, radio: true, run: () => this.setState({panel})};
         }
         return entries;
@@ -2336,185 +2338,43 @@ class CircuitTab extends React.Component {
         for (const board of boards) applyBenchTemperature(board, c);
     }
 
-    /** Designer | Warnings | Parts list | Examples. */
+    /** Show one of the tab's panels; Examples fetches its gallery (and the Codex) on the way. */
+    selectPanel (panel) {
+        this.setState({panel});
+        if (panel === 'examples') { this.loadExamples(); this.loadCurriculum(); }
+    }
+
+    /**
+     * Designer | Warnings | Parts list | Examples (circuit-panels.jsx, loaded with the
+     * designer). In the designer's toolbar this is its panel navigation; the other panels
+     * carry it in their own header row.
+     */
     renderPanelStrip () {
-        const {panel} = this.state;
-        const drc = this.drcWarnings();
-        // Only a real count earns a badge. "0" when the check could not run would
-        // say "this circuit is clean", which is the opposite of what we know.
-        const count = drc.warnings ? drc.warnings.length : null;
-        const danger = drc.warnings ? drc.warnings.filter(w => w.severity === 'danger').length : 0;
-        const tabs = [
-            ['designer', 'Designer', null],
-            ['warnings', 'Warnings', count],
-            ['bom', 'Parts list', null],
-            ['examples', 'Examples', null]
-        ];
-        const tabIcons = {designer: '▦', warnings: '⚠', bom: '☷', examples: '▤'};
-        const tabTitles = {designer: 'Designer', warnings: 'Warnings', bom: 'Parts list', examples: 'Examples'};
-        return (
-            <div data-panel-navigation style={{display: 'flex', alignItems: 'center', gap: 6, marginBottom: 0, flex: '0 0 auto',
-                fontSize: 11.5, lineHeight: 1.6}}>
-            <div style={{display: 'inline-flex', gap: 1, padding: 1,
-                borderRadius: 5, background: '#f1f5f9'}}>
-                {tabs.map(([id, label, badge]) => (
-                    <button
-                        key={id}
-                        onClick={() => {
-                            // The Designer button is a no-op when the designer is already the
-                            // current panel — this strip only exists inside the Circuit tab, so
-                            // "select Designer" from here is redundant. Grey it and swallow the
-                            // click so it reads as the current view, not a live selector.
-                            if (panel === id && id === 'designer') return;
-                            this.setState({panel: id});
-                            if (id === 'examples') { this.loadExamples(); this.loadCurriculum(); }
-                        }}
-                        title={tabTitles[id]}
-                        aria-label={tabTitles[id]}
-                        aria-pressed={panel === id}
-                        aria-disabled={panel === id && id === 'designer'}
-                        style={{
-                            width: 34, minWidth: 34, height: 34, padding: 0, border: 'none', borderRadius: 4,
-                            cursor: panel === id && id === 'designer' ? 'default' : 'pointer',
-                            fontSize: 17, lineHeight: 1, position: 'relative', fontWeight: 600,
-                            background: panel === id ? (id === 'designer' ? '#e2e8f0' : '#1d4ed8') : 'transparent',
-                            boxShadow: panel === id && id !== 'designer' ? '0 1px 2px rgba(15,23,42,.25)' : 'none',
-                            color: panel === id ? (id === 'designer' ? '#94a3b8' : '#fff') : '#64748b'
-                        }}
-                    >
-                        <span aria-hidden="true">{tabIcons[id]}</span>
-                        {badge ? (
-                            <span style={{position: 'absolute', top: 1, right: 1, minWidth: 13, padding: '0 2px', borderRadius: 8, fontSize: 9,
-                                background: danger ? '#fecaca' : '#fef3c7',
-                                color: danger ? '#991b1b' : '#92400e'}}
-                            >{badge}</span>
-                        ) : null}
-                    </button>
-                ))}
-            </div>
-            <span style={{flex: 1}} />
-            </div>
-        );
+        const {panels, panel} = this.state;
+        if (!panels) return null;
+        return (<panels.PanelSwitch panel={panel} drc={this.drcWarnings()} locale={this.props.locale}
+            onSelect={this.selectPanel} />);
     }
 
     renderPanel () {
-        const {panel, ui, circuit} = this.state;
-        const note = (text) => (
-            <div style={{padding: '10px 12px', borderRadius: 6, background: '#f8fafc',
-                border: '1px solid #e2e8f0', fontSize: 13, color: '#475569'}}
-            >{text}</div>
+        const {panels, panel, ui, circuit, examples, examplesError} = this.state;
+        if (!panels || panel === 'designer') return null;
+        const stc = this.readStc();
+        return (
+            <panels.PanelView
+                panel={panel}
+                locale={this.props.locale}
+                onSelect={this.selectPanel}
+                drc={this.drcWarnings()}
+                ui={ui}
+                circuit={circuit}
+                examples={examples}
+                examplesError={examplesError}
+                currentDevice={stc && stc.device ? String(stc.device).toLowerCase() : null}
+                onLoadExample={this.loadExample}
+                onDismissError={() => this.setState({examplesError: null})}
+            />
         );
-
-        if (panel === 'warnings') {
-            const drc = this.drcWarnings();
-            if (drc.error) return note(drc.error);
-            if (!drc.warnings.length) return note(pt(this.props.locale, 'drc.clean'));
-            if (ui && ui.DrcPanel) return <ui.DrcPanel warnings={drc.warnings} />;
-            // The data is real even when their panel is not in the build; render it
-            // plainly rather than withhold it.
-            return (
-                <ul style={{margin: 0, paddingLeft: 18, fontSize: 13}}>
-                    {drc.warnings.map((w, i) => (
-                        <li key={i} style={{marginBottom: 6,
-                            color: w.severity === 'danger' ? '#991b1b' : '#92400e'}}
-                        >{`${w.rule}: ${w.message || ''} (${w.partId || 'circuit'})`}</li>
-                    ))}
-                </ul>
-            );
-        }
-
-        if (panel === 'bom') {
-            if (!ui || typeof ui.generateBom !== 'function') {
-                return note(pt(this.props.locale, 'bom.noExport'));
-            }
-            if (!circuit) {
-                return note(pt(this.props.locale, 'bom.noCircuit'));
-            }
-            // The vendor exports bomToCsv and nothing ever surfaced it, so a
-            // parts list you could read was not a parts list you could take to
-            // a supplier. Offer the CSV next to the table; a <details> keeps it
-            // out of the way until wanted, and a textarea is selectable in every
-            // browser without asking for clipboard permission.
-            const csvBlock = typeof ui.bomToCsv === 'function' ? (
-                <details style={{marginTop: 10}} data-testid="bw-bom-csv">
-                    <summary style={{cursor: 'pointer', fontSize: 13}}>{pt(this.props.locale, 'bom.exportCsv')}</summary>
-                    <textarea
-                        readOnly
-                        onFocus={e => e.target.select()}
-                        value={ui.bomToCsv(ui.generateBom(circuit.parts) || [])}
-                        style={{width: '100%', minHeight: 140, marginTop: 6, fontFamily: 'monospace', fontSize: 12}}
-                    />
-                </details>
-            ) : null;
-            if (ui.BomPanel) {
-                return (<div><ui.BomPanel parts={circuit.parts} />{csvBlock}</div>);
-            }
-            const bom = ui.generateBom(circuit.parts) || [];
-            const table = bom.length ? (
-                <table style={{fontSize: 13, borderCollapse: 'collapse'}}>
-                    <tbody>
-                        {bom.map((row, i) => (
-                            <tr key={i}>
-                                <td style={{padding: '2px 10px 2px 0'}}>{row.qty || row.quantity}</td>
-                                <td style={{padding: '2px 10px 2px 0'}}>{row.kind || row.name}</td>
-                                <td style={{padding: '2px 0'}}>{row.value || ''}</td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            ) : note(pt(this.props.locale, 'bom.empty'));
-            return bom.length ? (<div>{table}{csvBlock}</div>) : table;
-        }
-
-        if (panel === 'examples') {
-            if (!ui || !ui.ExamplesBrowser) {
-                return note(pt(this.props.locale, 'examples.noBrowser'));
-            }
-            // An empty array here used to read as "there are no examples", which
-            // is a different and much worse statement than "this build does not
-            // ship them". bw-cfront publishes examples/index.json — 53 entries,
-            // bilingual titles, and a `kind` of "circuit" or "program" — so the
-            // browser is fed from that or says why it is not.
-            const {examples, examplesError} = this.state;
-            if (!examples) return note(examplesError || 'Loading examples…');
-            const stc = this.readStc();
-            const currentDevice = stc && stc.device ? String(stc.device).toLowerCase() : null;
-            // An advisory renders as a DISMISSIBLE STRIP above the list —
-            // it used to replace the entire browser, so one sticky message
-            // rendered "where the actual examples list should have been"
-            // (owner report, with screenshot).
-            return (
-                <div style={{display: 'flex', flexDirection: 'column', minHeight: 0, height: '100%'}}>
-                    {examplesError ? (
-                        <div style={{
-                            display: 'flex', alignItems: 'center', gap: '8px',
-                            padding: '6px 10px', fontSize: '12px',
-                            background: 'rgba(230, 126, 34, 0.12)',
-                            borderBottom: '1px solid rgba(230, 126, 34, 0.4)',
-                            flexShrink: 0
-                        }}>
-                            <span style={{flex: 1}}>{examplesError}</span>
-                            <button
-                                type="button"
-                                onClick={() => this.setState({examplesError: null})}
-                                style={{border: 'none', background: 'none', cursor: 'pointer', fontSize: '14px', lineHeight: 1}}
-                                aria-label={pt(this.props.locale, 'a11y.dismiss')}
-                            >{'×'}</button>
-                        </div>
-                    ) : null}
-                    <div style={{flex: 1, minHeight: 0, overflow: 'auto'}}>
-                        <ui.ExamplesBrowser
-                            examples={examples}
-                            onLoadExample={this.loadExample}
-                            currentDevice={currentDevice}
-                            lang={(typeof navigator !== 'undefined' && navigator.language || 'en')
-                                .slice(0, 2) === 'de' ? 'de' : 'en'}
-                        />
-                    </div>
-                </div>
-            );
-        }
-        return null;
     }
 }
 

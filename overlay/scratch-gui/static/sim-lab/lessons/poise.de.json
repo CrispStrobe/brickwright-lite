@@ -2,7 +2,7 @@
   "version": 1,
   "id": "poise",
   "language": "de",
-  "what": "Roberval-Waage. Zwei gleich lange, waagerechte blaue Balken drehen sich um ihre Mittelpunkte. Senkrechte Endglieder halten zwei Waagschalen waagerecht. Auf jeder Schale bewegt ein Motor ein außermittiges Gewicht in einer horizontalen Ebene; keiner der Motoren treibt den Waagebalken an. Ein orangefarbener Ballastrahmen unter dem oberen Drehpunkt gibt dem sonst ausgeglichenen Mechanismus eine eindeutige Ruhelage.",
+  "what": "Roberval-Waage. Roberval-Waage. Zwei gleich lange, waagerechte blaue Balken drehen sich um ihre Mittelpunkte. Senkrechte Endglieder halten zwei Waagschalen waagerecht. Auf jeder Schale bewegt ein Motor ein außermittiges Gewicht in einer horizontalen Ebene; keiner der Motoren treibt den Waagebalken an. Ein orangefarbener Ballastrahmen unter dem oberen Drehpunkt gibt dem sonst ausgeglichenen Mechanismus eine eindeutige Ruhelage. Eine Roberval-Waage: Zwei Motoren verschieben gleiche Gewichte auf waagerechten Schalen, und die passive Waage sollte waagerecht bleiben, gleich wo die Gewichte auf der Schale liegen.",
   "try": [
     "Lade Poise und das zugehörige Programm, setze das Modell zurück und starte. Vergleiche in jeder Pause die Positionen beider Gewichte mit dem Winkel des passiven blauen Waagebalkens.",
     "Beobachte die erste Pause: Das linke Gewicht ist von außen nach innen gewandert, während das rechte außen bleibt. Sage voraus, ob sich die Waage nach dem Abklingen der Bewegung neigen sollte.",

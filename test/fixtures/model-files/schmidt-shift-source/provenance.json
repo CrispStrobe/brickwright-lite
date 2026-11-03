@@ -1,0 +1,10 @@
+{
+ "author": "CrispStrobe",
+ "license": "BSD-3-Clause",
+ "files": {
+  "models/schmidt-shift.ldr": "2fd6d4c2746cd59be306dac049b446e6d3913293071d76165344c878998e63c5",
+  "programs/schmidt-shift.bw": "bb757ed3b4c19f10d1f18e7927d583aaa5bccfb3dede27a768dc08c3499c6dab",
+  "LICENSE.txt": "6680a543445e87e855296712b7c71c85feb40693d3ffa23d25b430da3af0662e",
+  "SOURCES.md": "cbf15787d2fa1173106e2737d46b5bbe03a225c1c075c39f8affaefb05c110f5"
+ }
+}

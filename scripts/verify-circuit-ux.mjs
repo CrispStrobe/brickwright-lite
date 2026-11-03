@@ -400,7 +400,15 @@ try {
     check('overflow slot exposes Save, Open, and Zoom', menuN >= 1 && saveN >= 1 && openN >= 1 && zoomN >= 1, `menu=${menuN} save=${saveN} open=${openN} zoom=${zoomN}`);
     check('zoom indicator has readable contrast styling', await moreMenu.locator('[data-zoom-indicator]').evaluate(el => getComputedStyle(el).color !== getComputedStyle(el.parentElement).backgroundColor));
     await moreControls.click({force: true});
-    check('toolbar explicitly wraps when space is constrained', await designer.locator('[data-circuit-toolbar]').evaluate(el => getComputedStyle(el).flexWrap === 'wrap'));
+    // One row that scrolls sideways (owner decision 2026-11-02, the Robot Lab / Code-tab
+    // pattern), not a toolbar that wraps onto more rows: the controls scroll inside
+    // [data-circuit-toolbar-scroll] and the ⋯ trigger is pinned outside it.
+    check('toolbar is one non-wrapping row whose controls scroll sideways', await designer.locator('[data-circuit-toolbar]').evaluate(el => {
+        const scroller = el.querySelector('[data-circuit-toolbar-scroll]');
+        const more = el.querySelector('[aria-label="More circuit controls"]');
+        return getComputedStyle(el).flexWrap === 'nowrap' && !!scroller && getComputedStyle(scroller).flexWrap === 'nowrap' &&
+            getComputedStyle(scroller).overflowX === 'auto' && !!more && !scroller.contains(more);
+    }));
 
     // The dedicated Circuit tab is the full designer. The Blocks tab embeds a
     // compact circuit preview, where editor chrome starts collapsed.
@@ -529,8 +537,16 @@ try {
         const oldWidth = toolbar.style.width;
         toolbar.style.width = '320px';
         toolbar.style.maxWidth = '320px';
-        toolbar.style.flex = '0 0 320px';
+        // flex-basis is along the MAIN axis, and the toolbar's parent is a COLUMN: the old
+        // `flex: 0 0 320px` made the toolbar 320px TALL, which is why the wrap-era check
+        // (height > 44) passed whatever the row did. Keep the basis at the content height.
+        toolbar.style.flex = '0 0 auto';
+        const scroller = toolbar.querySelector('[data-circuit-toolbar-scroll]');
+        const more = toolbar.querySelector('[aria-label="More circuit controls"]');
+        const tr = toolbar.getBoundingClientRect(), mr = more?.getBoundingClientRect();
         const result = {toolbarHeight: toolbar?.getBoundingClientRect().height || 0, mainWidth: main?.clientWidth || 0,
+            scrollerScrollWidth: scroller?.scrollWidth || 0, scrollerClientWidth: scroller?.clientWidth || 0,
+            moreInside: !!mr && mr.width > 0 && mr.left >= tr.left - 1 && mr.right <= tr.right + 1,
             mainScrollWidth: main?.scrollWidth || 0, mainScrollHeight: main?.scrollHeight || 0,
             canvasWidth: canvas?.getBoundingClientRect().width || 0};
         toolbar.style.width = oldWidth;
@@ -538,8 +554,10 @@ try {
         toolbar.style.flex = '';
         return result;
     });
-    check('narrow toolbar grows to multiple rows', narrowLayout.toolbarHeight > 44, JSON.stringify(narrowLayout));
-    check('wrapped toolbar is not vertically cropped', await embedded.evaluate(root => {
+    check('narrow toolbar stays one row and scrolls instead of wrapping',
+        narrowLayout.toolbarHeight >= 40 && narrowLayout.toolbarHeight <= 52 &&
+        narrowLayout.scrollerScrollWidth > narrowLayout.scrollerClientWidth && narrowLayout.moreInside, JSON.stringify(narrowLayout));
+    check('toolbar row is not vertically cropped', await embedded.evaluate(root => {
         const toolbar = root.querySelector('[data-circuit-toolbar]');
         const canvas = root.querySelector('[data-canvas]');
         const tr = toolbar?.getBoundingClientRect();
