@@ -552,6 +552,7 @@
       "test/arcade-scene-background-number.test.mjs",
       "test/arcade-array-getter-call-site.test.mjs",
       "test/arcade-math-map-namespace.test.mjs",
+      "test/arcade-positional-array-elements.test.mjs",
       "test/arcade-conditional-reset-condition.test.mjs",
       "test/project-conditional-array-value-calls.test.mjs",
       "test/project-array-publication-frontier.test.mjs",
