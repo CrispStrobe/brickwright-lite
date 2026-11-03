@@ -1,0 +1,92 @@
+# Schmidt Shift - one input, three synchronized offset carriers.
+# Copyright (c) 2026 CrispStrobe. SPDX-License-Identifier: BSD-3-Clause.
+# Load the matching LDR at its saved zero datum before running.
+# Motor A alone drives the coupling. The middle and output are passive.
+# Native Robot Lab speeds are degrees per second, not percent.
+# Absolute unwrapped targets: +720, -360, then 0 degrees. Final mode: hold.
+# Each command uses target minus the FRESH encoder; two slow corrections max.
+# A separate 100-second watchdog bounds a stalled command.
+# Robot Lab experiment, not downloadable physical-hub firmware.
+DEVICE SPIKE
+GLOBAL targetA = 0
+GLOBAL stage = 0
+GLOBAL completed = 0
+GLOBAL failed = 0
+
+WHEN flag clicked:
+  set stage to 0
+  set completed to 0
+  set failed to 0
+  set targetA to 0
+  IF (lab status) = "no-model" THEN:
+    set failed to 1
+    say "Import Schmidt Shift in Robot Lab before running."
+    stop all
+  reset timer
+  lab start
+  lab stop motor A hold
+  wait 0.25 seconds
+  IF (abs of (lab motor A angle)) > 2 THEN:
+    set failed to 1
+    say "Reload the saved Schmidt Shift pose before running."
+    stop all
+  broadcast "Schmidt watchdog"
+  set stage to 1
+  set targetA to 720
+  broadcast "Schmidt move" and wait
+  set stage to 2
+  set targetA to -360
+  broadcast "Schmidt move" and wait
+  set stage to 3
+  set targetA to 0
+  broadcast "Schmidt move" and wait
+  lab stop motor A hold
+  wait 0.5 seconds
+  IF (abs of (lab motor A angle)) > 2 THEN:
+    set failed to 1
+    say "Return check failed. Inspect the coupling and reload."
+    stop all
+  set stage to 4
+  set completed to 1
+  say "Complete: offset output followed both directions and returned home."
+
+WHEN I receive "Schmidt move":
+  IF (abs of (targetA - (lab motor A angle))) > 1100 THEN:
+    set failed to 1
+    lab stop motor A hold
+    stop all
+  lab run motor A for (targetA - (lab motor A angle)) degrees at 30 degrees per second
+  REPEAT 2:
+    IF (abs of (targetA - (lab motor A angle))) > 0.5 THEN:
+      lab run motor A for (targetA - (lab motor A angle)) degrees at 5 degrees per second
+      wait 0.05 seconds
+  IF (abs of (targetA - (lab motor A angle))) > 2 THEN:
+    set failed to 1
+    lab stop motor A hold
+    say "Target was not reached. Inspect the pins and reset."
+    stop all
+  wait 0.75 seconds
+  IF (abs of (targetA - (lab motor A angle))) > 2 THEN:
+    set failed to 1
+    lab stop motor A hold
+    say "Target drifted. Inspect the supports and reset."
+    stop all
+
+WHEN I receive "Schmidt watchdog":
+  REPEAT UNTIL (completed = 1):
+    IF (timer) > 100 THEN:
+      set failed to 1
+      lab stop motor A hold
+      say "100 second watchdog: stopped and holding. Reload before retrying."
+      stop all
+    IF (lab motor A angle) > 724 THEN:
+      set failed to 1
+      lab stop motor A hold
+      say "Experiment angle bound exceeded. Reload before retrying."
+      stop all
+    IF (lab motor A angle) < -364 THEN:
+      set failed to 1
+      lab stop motor A hold
+      say "Experiment angle bound exceeded. Reload before retrying."
+      stop all
+    wait 0.05 seconds

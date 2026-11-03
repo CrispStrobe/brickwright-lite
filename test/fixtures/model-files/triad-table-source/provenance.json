@@ -1,0 +1,10 @@
+{
+ "author": "CrispStrobe",
+ "license": "BSD-3-Clause",
+ "files": {
+  "models/triad-table.ldr": "c15ac7cf3c3bb9bab2ccf19d930094f89ec3c4c330a291bd7f6316da07a015fd",
+  "programs/triad-table.bw": "d76ead5a6ea5daab919192374938987585c0ee6c3a01e81ff35a9e1601c9997c",
+  "LICENSE.txt": "392e505128bfa4ee2f995aca453b2a4d29a20913fdfc17aa5d2771ca8f651d8b",
+  "SOURCES.md": "b3e414b10049f25273c62d9a762caaa0d06f222ad96b04c428716df2d30d78e6"
+ }
+}
