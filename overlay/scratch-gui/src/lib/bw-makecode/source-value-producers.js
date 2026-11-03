@@ -276,7 +276,9 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
         if(arrayValues&&node.type==='Index'){arrayOperations.push({kind:'read',receiver:cell(node.object),result:current});return;}
         if(provenArrayLengthAt(node)){add(current,'Number');return;}
         if(arrayValues&&node.type==='Member'&&node.name==='length'){arrayOperations.push({kind:'length',node,receiver:cell(node.object),result:current});return;}
-        if(arrayValues&&node.type==='Call'&&!node.isNew&&node.callee?.type==='Member'&&(['map','push','pop','shift','unshift'].includes(node.callee.name)||['forEach','filter'].includes(node.callee.name)&&(arrayCallbackBootstrap||callbackEntry?.calls.has(node)))){
+        // Math.map is the SDK range-mapping function on the unshadowed Math
+        // namespace, never an Array method; it keeps ordinary call handling.
+        if(arrayValues&&node.type==='Call'&&!node.isNew&&node.callee?.type==='Member'&&!(node.callee.object?.type==='Identifier'&&node.callee.object.name==='Math'&&sdk.has(node.callee.object))&&(['map','push','pop','shift','unshift'].includes(node.callee.name)||['forEach','filter'].includes(node.callee.name)&&(arrayCallbackBootstrap||callbackEntry?.calls.has(node)))){
             const operation={kind:node.callee.name,node,receiver:cell(node.callee.object),result:current};arrayOperations.push(operation);
             if(['map','filter'].includes(operation.kind)){operation.token=arrayToken(node);add(current,operation.token);}
             if(operation.kind==='map')arrayMaps.push(operation);

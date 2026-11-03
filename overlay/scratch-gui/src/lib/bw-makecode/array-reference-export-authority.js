@@ -81,7 +81,9 @@ import {createAnimationFrameArrayProducers, isAnimationFrameArrayProducer} from 
 // (or reports an error), keyed to their exact input schema.
 const FRESH_SDK_ARRAYS=Object.freeze({arcade_tilesOfType:Object.freeze(['IMAGE']),arcade_legacyTilesOfType:Object.freeze(['INDEX']),
     arcade_bufferChunked:Object.freeze(['BUFFER','SIZE']),arcade_bufferChunkedFromUTF8:Object.freeze(['TEXT','SIZE']),
-    arcade_bufferUnpack:Object.freeze(['BUFFER','FORMAT','OFFSET']),arcade_bufferToArray:Object.freeze(['BUFFER','FORMAT'])});
+    arcade_bufferUnpack:Object.freeze(['BUFFER','FORMAT','OFFSET']),arcade_bufferToArray:Object.freeze(['BUFFER','FORMAT']),
+    // mp.allPlayers() returns a fresh Player[] in PXT; Lite issues a fresh reference per call.
+    arcade_allPlayers:Object.freeze([])});
 
 // Producer facts are deliberately separate from the exporter's annotation graph.
 // Merely being plugged into an ARRAY input never creates an Array fact.
@@ -193,8 +195,35 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
             (value.length!==3||!agrees(target,value[1],value[2])))invalidGlobalBinding=true;
     }
     for(const scope of scopes)for(const name of scope.params||[]){const value=localCell(scope,name);if(value)value.formal=scope;}
+    // A statement in the untaken branch of an if/else (or if) whose condition
+    // is a comparison of two literal Numbers never runs: both PXT and Lite
+    // evaluate the same constant (the `true ? a : b` lowering emits 0 < 1).
+    const literalOperand=(node,name)=>{const raw=node.inputs?.[name]?.[1];
+        return Array.isArray(raw)&&raw.length===2&&[4,5,6,7,8].includes(raw[0])&&String(raw[1]).trim()!==''&&Number.isFinite(Number(raw[1]))?Number(raw[1]):null;};
+    const staticCondition=(target,parent)=>{
+        const cond=block(target,parent.inputs?.CONDITION?.[1]);
+        if(cond?.opcode!=='arrays_valueCompare'||cond.mutation!=null||!exactKeys(cond,['LEFT','RIGHT'],['OP']))return null;
+        const l=literalOperand(cond,'LEFT'),r=literalOperand(cond,'RIGHT'),op=literal(cond,'OP',target);
+        if(l===null||r===null)return null;
+        return {'<':l<r,'>':l>r,'<=':l<=r,'>=':l>=r,'===':l===r,'!==':l!==r}[op]??null;
+    };
+    const staticallyUntaken=(target,node)=>{
+        const seen=new Set();let current=node;
+        while(current&&!seen.has(current)){seen.add(current);
+            const parent=block(target,current.parent);if(!parent)return false;
+            const id=Object.keys(target.blocks).find(key=>target.blocks[key]===current);
+            if(parent.mutation==null&&(parent.opcode==='control_if_else'&&exactKeys(parent,['CONDITION','SUBSTACK','SUBSTACK2'])||
+                parent.opcode==='control_if'&&exactKeys(parent,['CONDITION','SUBSTACK']))){
+                const taken=staticCondition(target,parent);
+                if(taken===false&&parent.inputs.SUBSTACK?.[1]===id)return true;
+                if(taken===true&&parent.opcode==='control_if_else'&&parent.inputs.SUBSTACK2?.[1]===id)return true;
+            }
+            current=parent;
+        }
+        return false;
+    };
     for(const {target,node,scope}of records){
-        if(ordinaryEntry.isUnreachable(target,node))continue;
+        if(ordinaryEntry.isUnreachable(target,node)||staticallyUntaken(target,node))continue;
         let destination=null;
         if(node.opcode==='data_setvariableto'||node.opcode==='data_changevariableby')destination=globalCell(target,node.fields?.VARIABLE?.[1]);
         else if(node.opcode==='arcade_setLocal')destination=localCell(scope,literal(node,'NAME',target));
@@ -1042,7 +1071,10 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         // or change the reset before exactly one branch writes it first.
         const conditionNode=typeof condition==='string'?block(w.target,condition):null;
         const inertCondition=!!conditionNode&&!invalid.has(conditionNode)&&!readsCell(w.target,conditionNode,c)&&!conditionCalls(w.target,conditionNode);
-        const result=next.opcode==='control_if_else'&&!invalid.has(next)&&(literalCondition||inertCondition)&&branchAssigns(next.inputs?.SUBSTACK?.[1])&&branchAssigns(next.inputs?.SUBSTACK2?.[1]);
+        const taken=next.opcode==='control_if_else'&&next.mutation==null&&exactKeys(next,['CONDITION','SUBSTACK','SUBSTACK2'])?staticCondition(w.target,next):null;
+        const result=next.opcode==='control_if_else'&&!invalid.has(next)&&((literalCondition||inertCondition)&&branchAssigns(next.inputs?.SUBSTACK?.[1])&&branchAssigns(next.inputs?.SUBSTACK2?.[1])||
+            // A constant comparison runs exactly one branch; that branch's first statement must write.
+            taken===true&&branchAssigns(next.inputs?.SUBSTACK?.[1])||taken===false&&branchAssigns(next.inputs?.SUBSTACK2?.[1]));
         if(result)consume();
         return result;
     };
@@ -1126,6 +1158,27 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         }
         return false;
     };
+    // An occurrence inside a procedure that no block can enter never runs, in
+    // PXT or in Lite: no static caller, no unknown/implicit (managed or
+    // object-dispatch) entry, and no other block names the procedure in any
+    // literal (which rules out dispatch by a constructed name), and every call
+    // in the project resolves to a known procedure.
+    const uncalledProcedureOccurrence=node=>{
+        const scope=owners.get(node);
+        if(!scope?.proc||scope.invalid||scope.unknownEntry||implicitEntries.has(scope)||scope.callers.length)return false;
+        // Every call in the project must resolve; an unresolved callee means the
+        // procedure graph is not closed, so no procedure is proved unenterable.
+        if(calls.some(call=>!call.fn))return false;
+        const name=scope.proc,head=name.split(' ')[0];
+        for(const t of targets)for(const other of Object.values(t.blocks||{})){
+            if(other===scope.root)continue;
+            if(other.mutation&&typeof other.mutation.proccode==='string'&&other.opcode!=='procedures_prototype'&&other.mutation.proccode===name)return false;
+            for(const field of Object.values(other.fields||{}))if(Array.isArray(field)&&typeof field[0]==='string'&&(field[0]===name||field[0]===head||field[0].includes(head)))return false;
+            for(const slot of Object.values(other.inputs||{}))for(const raw of [slot?.[1],slot?.[2]])
+                if(Array.isArray(raw)&&typeof raw[1]==='string'&&(raw[1]===name||raw[1].includes(head)))return false;
+        }
+        return true;
+    };
     const concatLengths=new Set();
     const readInput=value=>{
         if(!value)return new Set([bad]);if(value.cell)return cellTypesAt(value.cell,value.at);if(value.jsonArray)return new Set([jsonArray(value.jsonArray,value.identity,null,value.origin)]);if(value.node)return readNode(value.target,value.node);return new Set([bad]);
@@ -1164,6 +1217,8 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
             const n=value?.node;if(!n||invalid.has(n))return null;
             if(n.shadow&&n.opcode==='math_number'&&!Object.keys(n.inputs||{}).length)return !Number.isNaN(Number(n.fields?.NUM?.[0]))?'number':null;
             if(n.opcode==='arcade_createSpriteKind'&&exactKeys(n,[]))return 'number';
+            // A registered kind name reads the registry's kind Number (or throws).
+            if(n.opcode==='arcade_spriteKindValue'&&exactKeys(n,['NAME'])&&typeof literal(n,'NAME',target)==='string')return 'number';
             if(fixedUndefined(n))return 'undefined';
             return null;
         };
@@ -1175,6 +1230,9 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
                 if(!c||declaration?.[0]!==name?.[0]||!kind)return false;
                 if(c===destination)return kind==='number';
                 if(kind==='number')knownNumbers.add(c);else knownNumbers.delete(c);
+            }else if(next.opcode==='arcade_initializeSpriteKindLibrary'&&exactKeys(next,['LIBRARY','VERSION'])&&next.mutation==null&&
+                typeof literal(next,'LIBRARY',target)==='string'&&typeof literal(next,'VERSION',target)==='string'){
+                // Registers the library's kinds only; it writes no Scratch variable.
             }else if(next.opcode==='arcade_bindSpriteKind'&&exactKeys(next,['NAME','KIND'])&&typeof literal(next,'NAME',target)==='string'){
                 const value=input(next,'KIND',target),c=value.cell||(value.node&&binding(target,value.node));
                 if(!c||c===destination||!knownNumbers.has(c))return false;
@@ -1249,7 +1307,7 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         if(node.opcode==='arcade_spritesOfKind')return exactKeys(node,['KIND'])&&numericKind(input(node,'KIND',target))?new Set([token(node,target,[{raw:[10,'SDK Sprite element not an Array']}],0)]):new Set([bad]);
         if(Object.hasOwn(FRESH_SDK_ARRAYS,node.opcode))return exactKeys(node,FRESH_SDK_ARRAYS[node.opcode])?new Set([token(node,target,[{raw:[10,'SDK element not an Array']}],0)]):new Set([bad]);
         if(['arcade_animationAssetFrames','arcade_animationAssetFreshFrames'].includes(node.opcode)){
-            const producer=animationProducers.resolve(target,node);
+            const producer=animationProducers.resolve(target,node,{targets,monitors:project.monitors});
             return producer?new Set([token(producer.allocation,producer.shared?null:target,
                 Array.from({length:producer.length},()=>({raw:[10,'SDK Image element not an Array']})),producer.length)]):new Set([bad]);
         }
@@ -1272,7 +1330,11 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
                 Object.defineProperty(t,'minLength',{configurable:true,enumerable:true,get(){
                     if(concatLengths.has(t))return 0;concatLengths.add(t);
                     try{
-                        const start=sliceBound(target,node,'START'),end=sliceBound(target,node,'END');
+                        // An exact undefined bound is the default in PXT and in
+                        // the Arrays extension: START 0, END the current length.
+                        const omitted=name=>{const v=input(node,name,target);return !!v?.node&&fixedUndefined(v.node);};
+                        const startOmitted=omitted('START'),endOmitted=omitted('END');
+                        const start=startOmitted?0:sliceBound(target,node,'START'),end=endOmitted?Infinity:sliceBound(target,node,'END');
                         // With nonnegative START, slice length is monotone in
                         // source length for either sign of END. A lower length
                         // alone cannot prove negative-START/nonnegative-END.
@@ -1911,6 +1973,14 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
             (w.scope!==scope||!!scope.executedBefore?.get(statementOf(node))?.has(w.node)));
     };
     const checkingWriterInitialization=new Set();
+    const globalGetterCell=callNode=>{
+        const call=calls.find(c=>c.node===callNode),fn=call?.fn;
+        if(!fn||fn.invalid||fn.unknownEntry||implicitEntries.has(fn)||fn.params.length||fn.returns.length!==1||!call.args||call.args.length)return null;
+        const only=block(fn.target,fn.root.next);
+        if(only?.opcode!=='arcade_returnValue'||only.next!=null||only.mutation!=null||!exactKeys(only,['VALUE']))return null;
+        const c=fn.returns[0]?.cell;
+        return c?.global&&!c.directBad?c:null;
+    };
     const initialized=(value,path=new Set())=>{
         // A literal value (JSON item or literal input) is initialized; it is an
         // Array only through jsonArray, which singleArray still checks.
@@ -1920,9 +1990,15 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         if(!value.node)return false;const {target,node}=value;if(path.has(node))return false;const next=new Set([...path,node]),c=binding(target,node);
         if(c)return initializedCell(c,owners.get(node),node);
         if(node.opcode==='arrays_createReference')return true;
-        if(['arcade_animationAssetFrames','arcade_animationAssetFreshFrames'].includes(node.opcode))return !!animationProducers.resolve(target,node);
+        if(['arcade_animationAssetFrames','arcade_animationAssetFreshFrames'].includes(node.opcode))return !!animationProducers.resolve(target,node,{targets,monitors:project.monitors});
         if(node.opcode==='arrays_namedReference')return singleArray(namedBinding(target,node)||new Set());
         if(node.opcode==='arcade_callFunction'){
+            // A closed parameterless getter whose only statement returns a
+            // global evaluates nothing else: its result IS that global at this
+            // call. Judge the global's initialization at the call site, so an
+            // earlier call (before the global's writer) does not taint a later one.
+            const getter=globalGetterCell(node);
+            if(getter)return initializedCell(getter,owners.get(node),node);
             const passing=calls.find(c=>c.node===node);if(passing?.fn&&!passing.fn.invalid&&passing.args&&passthroughIndex(passing.fn)>=0)return initialized(passing.args[passthroughIndex(passing.fn)],next);
             const call=calls.find(c=>c.node===node);return !!call?.fn&&!call.fn.invalid&&!!call.args&&call.args.every(arg=>singleArray(readInput(arg))?initialized(arg,next):true)&&call.fn.returns.every(result=>initialized(result,next));
         }
@@ -2052,6 +2128,7 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
             {ok:false,reason:'requires the current inert event-copy prefix for a discounted Array reset'}:result.ok&&!inertStorePrefixCurrent()?
             {ok:false,reason:'requires the current inert global-store prefix for a discounted Array reset'}:result;
         if(deadOccurrence(target,node))return publish({ok:true});
+        if(uncalledProcedureOccurrence(node))return publish({ok:true});
         if(ordinaryEntry.isUnreachable(target,node))return publish({ok:true});
         if(occurrence?.candidate(target,node,name))return publish(occurrence.validateInput(target,node,name)?{ok:true}:{ok:false,reason:'requires the current closed occurrence Array producer and complete writer proof'});
         const value=input(node,name,target),types=readInput(value);return publish(singleArray(types)&&initialized(value)?{ok:true}:{ok:false,reason:'requires an actual initialized Array producer and compatible all writers'});

@@ -3,6 +3,10 @@
 
 ## 2 November: TODO closure status and decisions
 
+Raw corpus census on main `5956c6ab`: 156 translated / 27 partial / 1 parse
+failure out of 184 (was 147/36/1; nine partial -> translated, no regressions).
+Source import and Creator only.
+
 Merged or in flight: #1629 (nested parameter captures, H; exporter stop lift,
 I) and #1631 (the prepared created-field receiver branch composed onto main,
 plus a `scene.backgroundColor()` Number proof). Counts and reasons are in
@@ -18,8 +22,10 @@ plus a `scene.backgroundColor()` Number proof). Counts and reasons are in
   later nullable-Array and inert-store proofs, each case was checked against
   original PXT; main's admission was kept where sound, with the reason in the
   test, and `test/arcade-reset-prefix-store-pxt.test.mjs` compares the shape.
-- Programs without a sprite still use the older ordinary path, where
-  `set color to 2` stores text; a Number formal then refuses at run time.
+- Fixed in the group A follow-up: a global written from a typed SDK Number
+  call (scene.backgroundColor, Math.floor/ceil/round/abs/sqrt) keeps its
+  Number declaration, so `set color to 2` no longer stores text without sprites.
+- Group A follow-up: nine rows cleared by per-slot proofs; five remain TODO.
 
 ## 30 October: unproven native-addition operands use runtime dispatch (owner decision)
 
