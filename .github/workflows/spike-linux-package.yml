@@ -45,9 +45,13 @@ on:
 permissions:
   contents: read
 
+# PR runs: a new push cancels the PR's superseded run. Every other event
+# (main push, dispatch) gets its own run_id group, so it is never cancelled and
+# never replaces a pending verdict (the vendor-freshness / ROADMAP 2.1 rule;
+# 2026-11-03 CI trim).
 concurrency:
-  group: spike-linux-package-${{ github.ref }}
-  cancel-in-progress: true
+  group: spike-linux-package-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   package:
