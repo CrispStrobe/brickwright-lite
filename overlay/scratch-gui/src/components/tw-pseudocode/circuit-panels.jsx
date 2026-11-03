@@ -142,10 +142,14 @@ const BomCsv = ({csv, locale}) => (
 );
 BomCsv.propTypes = {csv: PropTypes.string.isRequired, locale: PropTypes.string};
 
+/** The designer speaks 'de' or 'en'; every other locale gets English. */
+const designerLang = locale => (String(locale || 'en').slice(0, 2) === 'de' ? 'de' : 'en');
+
 const WarningsBody = ({drc, ui, locale, onSelect}) => {
     const view = warningsView(locale, drc);
     if (view.kind === 'empty') return <EmptyState view={view} locale={locale} onSelect={onSelect} />;
-    if (ui && ui.DrcPanel) return <ui.DrcPanel warnings={view.warnings} />;
+    // The vendor panel words each finding for the language (bw-circuit-ui src/i18n/drc-de.js).
+    if (ui && ui.DrcPanel) return <ui.DrcPanel warnings={view.warnings} lang={designerLang(locale)} />;
     // The data is real even when the vendor panel is not in the build; show it plainly.
     return (
         <ul style={{margin: 0, paddingLeft: 18, fontSize: 13}}>
@@ -164,7 +168,7 @@ const BomBody = ({ui, circuit, locale, onSelect}) => {
     // ONE CSV control. The vendor's BomPanel carries its own CSV export (a bom.csv download,
     // through the same bomToCsv), so the host's copyable CSV is only the fallback for a build
     // without that panel; both at once showed two CSV buttons for one list.
-    if (ui.BomPanel) return <ui.BomPanel parts={circuit.parts} />;
+    if (ui.BomPanel) return <ui.BomPanel parts={circuit.parts} lang={designerLang(locale)} />;
     const csv = view.csv === null ? null : <BomCsv csv={view.csv} locale={locale} />;
     return (
         <div>
@@ -208,7 +212,7 @@ const ExamplesBody = ({ui, examples, examplesError, currentDevice, locale, onLoa
             ) : null}
             <div style={{flex: 1, minHeight: 0, overflow: 'auto'}}>
                 <ui.ExamplesBrowser examples={examples} onLoadExample={onLoadExample} currentDevice={currentDevice}
-                    lang={String(locale || 'en').slice(0, 2) === 'de' ? 'de' : 'en'} />
+                    lang={designerLang(locale)} />
             </div>
         </div>
     );
