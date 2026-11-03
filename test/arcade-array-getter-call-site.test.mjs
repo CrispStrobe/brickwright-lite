@@ -50,3 +50,13 @@ test('reads inside an unenterable procedure need no Array proof', () => {
         assert.ok(imported.unsupported.length > 0 || exported(source).some(row => /Array reference/.test(row)), source);
     }
 });
+
+// An omitted slice bound is START 0 / END length in PXT and in the Arrays
+// extension; element presence then follows the source's proven length.
+test('omitted slice bounds keep element presence only within the proven length', () => {
+    assert.deepEqual(exported('let nested=[[1],[2]]\nlet copy=nested.slice(1)\ncopy[0][0]=8\nlet v=nested[1][0]\n'), []);
+    for (const source of [
+        'let nested=[[1],[2]]\nlet copy=nested.slice(2)\ncopy[0][0]=8\n',
+        'let nested=[[1],[2]]\nlet copy=nested.slice(5)\ncopy[0][0]=8\n'])
+        assert.ok(exported(source).some(row => /Array reference/.test(row)), source);
+});

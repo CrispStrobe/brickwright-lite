@@ -1330,7 +1330,11 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
                 Object.defineProperty(t,'minLength',{configurable:true,enumerable:true,get(){
                     if(concatLengths.has(t))return 0;concatLengths.add(t);
                     try{
-                        const start=sliceBound(target,node,'START'),end=sliceBound(target,node,'END');
+                        // An exact undefined bound is the default in PXT and in
+                        // the Arrays extension: START 0, END the current length.
+                        const omitted=name=>{const v=input(node,name,target);return !!v?.node&&fixedUndefined(v.node);};
+                        const startOmitted=omitted('START'),endOmitted=omitted('END');
+                        const start=startOmitted?0:sliceBound(target,node,'START'),end=endOmitted?Infinity:sliceBound(target,node,'END');
                         // With nonnegative START, slice length is monotone in
                         // source length for either sign of END. A lower length
                         // alone cannot prove negative-START/nonnegative-END.
