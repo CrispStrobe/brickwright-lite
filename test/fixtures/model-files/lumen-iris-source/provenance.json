@@ -1,0 +1,10 @@
+{
+ "author": "CrispStrobe",
+ "license": "BSD-3-Clause",
+ "files": {
+  "models/lumen-iris.ldr": "7153ebc0689e537f64a932c52781383ad978c5e0ec10a7c243b626e020719d01",
+  "programs/lumen-iris.bw": "ea74d96cba8a8a01cd727d307fd9149e2cede38224768798535ba3dfa9e8d9ff",
+  "LICENSE.txt": "a096c77ac7c151875cdcfcc89285d7372701076a3e53e29b3ee8abcd4e71ec9e",
+  "SOURCES.md": "8dcc26741eb4fa0d9495f5587486573b2735dc94f4a8030095f680a9c224dfba"
+ }
+}
