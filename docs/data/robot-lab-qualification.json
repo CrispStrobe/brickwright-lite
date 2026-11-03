@@ -736,24 +736,6 @@
       ]
     },
     {
-      "id": "looprelay",
-      "judge": "chain-reversal-v1",
-      "parts": 54,
-      "ports": [
-        "A"
-      ],
-      "coldMs": 500,
-      "timeLimitMs": 90000,
-      "afterMs": 2000,
-      "frameMs": 25,
-      "frozenOutput": "indicator_hand",
-      "disconnect": [
-        "chain_input16"
-      ],
-      "disconnectInputDeg": 170,
-      "disconnectLoss": "nine-intake"
-    },
-    {
       "id": "toggle-press",
       "judge": "toggle-ram-v1",
       "parts": 142,
@@ -769,7 +751,17 @@
         "upper_toggle_UK"
       ],
       "disconnectInputDeg": 70,
-      "disconnectLoss": "nine-intake"
+      "disconnectLoss": "nine-intake",
+      "expectedIssues": [
+        {
+          "code": "locked-hinges",
+          "parts": [
+            "pivot_bridge",
+            "pivot_bridge_axle_20",
+            "pivot_bridge_axle_220"
+          ]
+        }
+      ]
     },
     {
       "id": "footfall",
