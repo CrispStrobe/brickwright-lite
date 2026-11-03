@@ -115,7 +115,7 @@ const HISTORICAL_X86_CURRENT_BOARD = '836867513c3e7fac420ddaa32c17e1c7b6d3e513';
 // the reviewed bodies (historicalSb3Spans) and this declaration may carry.
 const HISTORICAL_X86_SB3 = '1cbaeed325f5a890e43b78a4211acae8f801f2d2';
 // The live F10 sb3-creator identity; it follows the current pin.
-const LIVE_X86_SB3 = 'a7b8c39483581642ca6ee64656279c283fa928f9';
+const LIVE_X86_SB3 = '8e53c1621a1b9eeb42e0565f987c4c47ab598961';
 const HISTORICAL_X86_FINITE_V7_PINS = "FINITE_V7_PINS = {'bw-board':'" + HISTORICAL_X86_CURRENT_BOARD + "','bw-circuit-ui':'" + HISTORICAL_X86_V8_CUI + "','sb3-creator':'" + HISTORICAL_X86_SB3 + "'}";
 const HISTORICAL_X86_FINITE_V8_PINS = "FINITE_V8_PINS = {'bw-board':'" + HISTORICAL_X86_CURRENT_BOARD + "','bw-circuit-ui':'" + HISTORICAL_X86_V8_CUI + "','sb3-creator':'" + HISTORICAL_X86_SB3 + "'}";
 const CURRENT_X86_FINITE_V9_PRODUCER = "FINITE_V9_PINS = {'bw-board':CURRENT_BOARD,'bw-circuit-ui':CUI,'sb3-creator':CURRENT_SB3}";
@@ -126,8 +126,8 @@ const CURRENT_X86_FINITE_V9_READER = "FINITE_V9_PINS = {'bw-board':CURRENT_BOARD
 // including clock and core/full-runtime parity. Any later source edit revokes
 // their occurrence roles until another explicit review; never auto-restamp.
 const HISTORICAL_X86_SOURCE_PROFILES = Object.freeze({
-    'scripts/run-i80386-hdd-gui-actual.py': Object.freeze({bytes: 344630, sha256: 'a974265bd690e094bbda5df5272164ddbea4a2dc4fcab0d8ee19fb0941746d5b'}),
-    'scripts/read-i80386-hdd-gui-originals.py': Object.freeze({bytes: 460207, sha256: '5408d02e0eb55afe959e50cf1fc478b1f0242ba302ed31c168c34bb5b4dc1b50'}),
+    'scripts/run-i80386-hdd-gui-actual.py': Object.freeze({bytes: 344630, sha256: 'be93751611a1da8ede6eb9e11e454c46b5991927b9ca8a16e35da4dfe5a10f4a'}),
+    'scripts/read-i80386-hdd-gui-originals.py': Object.freeze({bytes: 460207, sha256: '4de14906f7b2ec0cb01d9ecf833fe2f4f44b99670e6492f36a7f08dc71fb31c5'}),
     'test/i80386-hdd-gui-actual.test.mjs': Object.freeze({bytes: 637722, sha256: '0bb6e8bba3a3860ceeac56e74f10a1d30372bea557368dc737dd489fe4addf82'}),
 });
 

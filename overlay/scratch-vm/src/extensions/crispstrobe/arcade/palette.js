@@ -98,7 +98,8 @@ const SECTIONS = [
     words(`setTilemap placeOnTile placeOnRandomTile setTileAt setWallAt tileLocation tileIs tileIsWall isHittingTile
       spriteTileKindAt`),
     words(`tilesOfType tileLocationProperty tileAtLocation tileNeighbor spriteTileLocation randomTileOfType eventLocation ---
-      tilemapValue tilemapProperty tilemapTile tilemapIsWall tilemapTileImage setTilemapTile setTilemapWall ---
+      tilemapValue tilemapProperty tilemapTile tilemapIsWall tilemapTileImage tilemapTileset setTilemapTile setTilemapWall setTilemapScale ---
+      tileLocationTilemap sceneTilemapProperty ---
       setLegacyTilemap setLegacyTile
       legacyTileLocation legacyTilesOfType legacyTileProperty setLegacyTileAt placeOnLegacyTile
       placeOnRandomLegacyTile tileHitFrom`)],
