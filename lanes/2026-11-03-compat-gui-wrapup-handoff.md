@@ -6,11 +6,13 @@ below is unclaimed unless a newer lane file claims it, so check `lanes/` and the
 
 ## State at hand-off
 
-Main is green through `8e2ea48c` (#1637, all browser shards). Later merges, oldest first: #1642
-(Circuit German, `003289f7`) and #1644 (micro:bit gaps, `b12ebc27`). Their main Build was still
-queued at write time, and #1642's own browser shards were superseded by #1644's run.
-**First pending step: confirm main's Build for `b12ebc27` (or later) is green, including
-`browser (light)` and `browser (heavy)`.**
+Main's latest merges, oldest first:
+- #1642 (Circuit German, `003289f7`)
+- #1644 (micro:bit gaps, `b12ebc27`). Its main Build passed `browser (light)` and `browser (heavy)`; `unit (6/6)` hit the 30-minute limit.
+- #1651 (CI: eight unit shards, `adee1aa3`)
+- #1646 (Arcade, `f17192e8`)
+
+**First pending step:** confirm main's Build for `f17192e8` (or later) is green, including all eight `unit (n/8)` legs, `browser (light)` and `browser (heavy)`.
 
 Merged in this delivery (Lite):
 - **Arcade:** #1590, #1593, #1595, #1597, #1601, #1604, #1605, #1608 (MakeCode-ordered palette),
@@ -43,7 +45,7 @@ Lite pins on main:
 
 Results (anonymous counts; the corpora stay private):
 - **Arcade differential:** 139/139 of the corpus programs that compile in original PXT behave
-  identically, once #1646 lands (138/139 on main before it). 45 corpus programs do not compile
+  identically (#1646). 45 corpus programs do not compile
   in original PXT and are out of scope.
 - **micro:bit corpus:** 215 preserved / 0 partial / 0 loss, in both round-trip directions.
 - **micro:bit namespace probe:** 264/291 on main; 281/291 with arguments MakeCode itself
@@ -51,38 +53,29 @@ Results (anonymous counts; the corpora stay private):
 
 ## Pending, in recommended order
 
-### P1. Land #1646 (Arcade: last divergence, tilemap APIs, flaky test) — ready
+### P1. #1646 landed — verify main only
 
-What it contains:
-- The last differential divergence: cleared-tilemap lookups now fault like PXT.
-- `tiles.removeEventListener`, TileMapData `scale` setter, `getTileset()`, `Location.tileMap`.
-- The `update(dt)` roundtrip tests no longer depend on a 40 ms pause.
-- sb3-creator pin `a7b8c394` → `8e53c162` (contains #181 and #182), with the approved x86
-  re-stamp.
+#1646 merged as `f17192e8`. It contains:
+- the last differential divergence, now fixed: cleared-tilemap lookups fault like PXT
+- `tiles.removeEventListener`, the TileMapData `scale` setter, `getTileset()` and `Location.tileMap`
+- `update(dt)` roundtrip tests that no longer depend on a fixed pause
+- sb3-creator pin `8e53c162`, with the approved x86 re-stamp
 
-How to land it:
-1. When its PR CI is green and main's Build for the commit before it is green, merge with a
-   merge commit and `--match-head-commit`.
-2. Watch main's `browser (light)`/`browser (heavy)`.
-3. If another PR moves a pin first, rebase: take main's versions of
-   `docs/receipts/frozen-control-pin-admissions.json`, the two `scripts/*i80386-hdd-gui*.py`
-   files and `test/pin-move-chain.test.mjs`, then re-run the pin-move re-stamp tooling on top.
-   Never hand-edit conflict markers in those files.
-4. Stage before running `test/pin-move-chain.test.mjs`; it compares against staged blobs.
+While #1646 was in CI, the six 30-minute unit shards ran out of room (no test failed). #1651 moved
+CI to eight shards and regenerated `scripts/data/unit-test-timings.json`. If the shards drift
+again, regenerate the timings from the latest full green main run:
+1. `gh run download <id> -p 'unit-shard-*' -D <dir>`
+2. `node scripts/gen-unit-test-timings.mjs <dir> <id>`
 
-CI: on head `ce2eb896`, `unit (3/6)` and `unit (6/6)` hit the 30-minute job limit (6/6 twice;
-no test failed). The cause was a stale shard-timings table (2026-10-28): files added since were
-placed by name hash. The fix is commit `524b736c` on #1646, which regenerates
-`scripts/data/unit-test-timings.json` with `scripts/gen-unit-test-timings.mjs` from main run
-41586247225. The estimated per-shard load goes from 26–60 to 38 summed test-minutes on every
-shard. If shards drift again later, repeat that step from the latest full green main run:
-`gh run download <id> -p 'unit-shard-*' -D <dir>`, then
-`node scripts/gen-unit-test-timings.mjs <dir> <id>`.
+If main's Build for `f17192e8` is red, fix it first. For any later pin move: take main's versions of
+the receipt JSON, the two `scripts/*i80386-hdd-gui*.py` files and `test/pin-move-chain.test.mjs`,
+then re-run the re-stamp tooling on top. Never hand-edit conflict markers. Stage before running
+`test/pin-move-chain.test.mjs`.
 
-Overlap: #1643 (another session) edits `arcade-translate.js` and
-`array-reference-export-authority.js` in different hunks. Whichever lands second rebases.
+#1643 (another session) overlaps `arcade-translate.js` and `array-reference-export-authority.js`,
+so it needs a rebase onto `f17192e8`.
 
-### P2. TestFlight 0.1.32 (iOS + macOS) — ready after P1
+### P2. TestFlight 0.1.32 (iOS + macOS) — ready once main is green
 
 v0.1.31 predates the Arcade dedupe, the Circuit tab, Circuit German, the micro:bit gaps and #1646.
 
