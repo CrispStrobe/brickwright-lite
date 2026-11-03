@@ -389,6 +389,7 @@ export default {
     "microbitplus_magforce": {"AXIS":"axis"},
     "microbitplus_motorpower": {"MOTOR":"motorAB"},
     "microbitplus_notefreq": {"NOTE":"makecodeNote"},
+    "microbitplus_pitchpin": {"PIN":"spiPin"},
     "microbitplus_playmelody": {"MELODY":"melody","MODE":"playMode"},
     "microbitplus_playnote": {"NOTE":"note"},
     "microbitplus_playnotes": {"MODE":"noteMode"},

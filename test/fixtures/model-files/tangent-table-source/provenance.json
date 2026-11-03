@@ -1,0 +1,10 @@
+{
+ "author": "CrispStrobe",
+ "license": "BSD-3-Clause",
+ "files": {
+  "models/tangent-table.ldr": "857c6d4c61c12c8860b0baac23375fd11ce0dc68b99ea5fb0d7c22f59adf1f05",
+  "programs/tangent-table.bw": "ffa877576b230c01deb66af6c8d5f173a5e57107129626161d31e907b1c6d1ed",
+  "LICENSE.txt": "a096c77ac7c151875cdcfcc89285d7372701076a3e53e29b3ee8abcd4e71ec9e",
+  "SOURCES.md": "1d18dce8ee0a09c15e16234f62f8ac8f75c5bb2d93f6964e24b174bfc2385bca"
+ }
+}

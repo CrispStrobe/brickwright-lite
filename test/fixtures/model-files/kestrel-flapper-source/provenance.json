@@ -1,0 +1,10 @@
+{
+ "author": "CrispStrobe",
+ "license": "BSD-3-Clause",
+ "files": {
+  "models/kestrel-flapper.ldr": "767c84e57bbd91ee5f7c9f55e6b7467a6dde7e5266e259b0a0dd3499b05fed32",
+  "programs/kestrel-flapper.bw": "0912ffaa0c3a62f672b719214b76a0f0afd451d848297d89b19df0e9ab24d421",
+  "LICENSE.txt": "a096c77ac7c151875cdcfcc89285d7372701076a3e53e29b3ee8abcd4e71ec9e",
+  "SOURCES.md": "a95ba1c99a4dab20cb9a9d5c0f55c00580f021056d8efa7c77dfc873e7882adf"
+ }
+}

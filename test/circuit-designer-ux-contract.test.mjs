@@ -5,6 +5,7 @@ import {resolve} from 'node:path';
 
 const root = resolve(new URL('..', import.meta.url).pathname);
 const read = file => readFileSync(resolve(root, file), 'utf8');
+const {t: designerText} = await import(new URL('../node_modules/bw-circuit-ui/src/i18n/strings.js', import.meta.url));
 
 test('Circuit Designer has a view toggle (realistic / schematic) and a mode attribute', () => {
     const source = read('node_modules/bw-circuit-ui/src/components/CircuitDesigner.jsx');
@@ -57,9 +58,17 @@ test('Circuit Designer keeps simulation and debugger controls in the instruments
     assert.match(source, /data-simulation-controls/);
     assert.match(source, /data-scope-module/);
     assert.match(source, /data-no-code-indicator/);
-    assert.match(source, /title="Move debugger back to instruments"/);
+    // The two dock buttons' tooltips follow the designer's language. verify-circuit-ux.mjs
+    // finds them by their ENGLISH title, so the English must stay exactly this.
+    const dockTitles = {
+        debuggerToInstrumentsTitle: {en: 'Move debugger back to instruments', de: 'Debugger zurück zu den Messgeräten verschieben'},
+        debuggerToRightTitle: {en: 'Move debugger to full-size right pane', de: 'Debugger in den großen rechten Bereich verschieben'}
+    };
+    for (const [key, byLang] of Object.entries(dockTitles)) {
+        for (const [lang, text] of Object.entries(byLang)) assert.equal(designerText(key, lang), text, `${key} in ${lang}`);
+        assert.ok(source.includes(`title={t('${key}', lang)}`), `${key} is looked up per language`);
+    }
     assert.match(source, /onDebugDockChange\('top'\)/);
-    assert.match(source, /title="Move debugger to full-size right pane"/);
     assert.match(source, /onDebugDockChange\('right'\)/);
     assert.match(source, /useState\(!!debuggerOn \|\| !!benchOpen\)/,
         'fresh workspaces preserve bench space; debugger and lesson demand open instruments');

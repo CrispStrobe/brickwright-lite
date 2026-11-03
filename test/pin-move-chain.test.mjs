@@ -105,7 +105,7 @@ const HISTORICAL_X86_CUI_V5_V7 = '91d8434a79d373cef2837c137ab356356f1a3b44';
 const HISTORICAL_X86_V8_CUI = '1bc233c9297e03abb9b7eb603e045b4e92b0bb40';
 const CURRENT_X86_CUI = 'a5860b9cf6cb0e7f652130ce987d51dc42651b8b';
 // CURRENT_X86_CUI retains the F9 epoch meaning; only these F10 values are live.
-const LIVE_X86_CUI = '64351efcf2e1b0c93a9778814646bd55fe6b628a';
+const LIVE_X86_CUI = '15416c7e11efaa52c68244fcf36ee31f1f6e99e4';
 const LIVE_X86_BOARD = 'c87cfa325a7b599846c1c4088a408eeabb83daaa';
 const HISTORICAL_X86_BOARD = '761153ff92d521c01107ee7b32922ba7adc10ee2';
 const HISTORICAL_X86_CURRENT_BOARD = '836867513c3e7fac420ddaa32c17e1c7b6d3e513';
@@ -115,7 +115,7 @@ const HISTORICAL_X86_CURRENT_BOARD = '836867513c3e7fac420ddaa32c17e1c7b6d3e513';
 // the reviewed bodies (historicalSb3Spans) and this declaration may carry.
 const HISTORICAL_X86_SB3 = '1cbaeed325f5a890e43b78a4211acae8f801f2d2';
 // The live F10 sb3-creator identity; it follows the current pin.
-const LIVE_X86_SB3 = '1424ec3fef9f392e8d799339b520244cfd97f891';
+const LIVE_X86_SB3 = 'a7b8c39483581642ca6ee64656279c283fa928f9';
 const HISTORICAL_X86_FINITE_V7_PINS = "FINITE_V7_PINS = {'bw-board':'" + HISTORICAL_X86_CURRENT_BOARD + "','bw-circuit-ui':'" + HISTORICAL_X86_V8_CUI + "','sb3-creator':'" + HISTORICAL_X86_SB3 + "'}";
 const HISTORICAL_X86_FINITE_V8_PINS = "FINITE_V8_PINS = {'bw-board':'" + HISTORICAL_X86_CURRENT_BOARD + "','bw-circuit-ui':'" + HISTORICAL_X86_V8_CUI + "','sb3-creator':'" + HISTORICAL_X86_SB3 + "'}";
 const CURRENT_X86_FINITE_V9_PRODUCER = "FINITE_V9_PINS = {'bw-board':CURRENT_BOARD,'bw-circuit-ui':CUI,'sb3-creator':CURRENT_SB3}";
@@ -126,8 +126,8 @@ const CURRENT_X86_FINITE_V9_READER = "FINITE_V9_PINS = {'bw-board':CURRENT_BOARD
 // including clock and core/full-runtime parity. Any later source edit revokes
 // their occurrence roles until another explicit review; never auto-restamp.
 const HISTORICAL_X86_SOURCE_PROFILES = Object.freeze({
-    'scripts/run-i80386-hdd-gui-actual.py': Object.freeze({bytes: 344630, sha256: '194545a69e8a65969c979b0768f7ab2ba4d85a84c7f2cb74166eea7959d8a719'}),
-    'scripts/read-i80386-hdd-gui-originals.py': Object.freeze({bytes: 460207, sha256: '0513464cb17533c4c32708f242ee8142dd8c9953e2a279e2941ebf28a63f1281'}),
+    'scripts/run-i80386-hdd-gui-actual.py': Object.freeze({bytes: 344630, sha256: 'a974265bd690e094bbda5df5272164ddbea4a2dc4fcab0d8ee19fb0941746d5b'}),
+    'scripts/read-i80386-hdd-gui-originals.py': Object.freeze({bytes: 460207, sha256: '5408d02e0eb55afe959e50cf1fc478b1f0242ba302ed31c168c34bb5b4dc1b50'}),
     'test/i80386-hdd-gui-actual.test.mjs': Object.freeze({bytes: 637722, sha256: '0bb6e8bba3a3860ceeac56e74f10a1d30372bea557368dc737dd489fe4addf82'}),
 });
 

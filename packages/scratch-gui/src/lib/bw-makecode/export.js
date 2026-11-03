@@ -90,11 +90,13 @@ const RADIO_HATS = {
 
 /** The Buffer blocks: what makes one, and which inputs take one. */
 const BUFFER_MAKERS = new Set(['microbitplus_createbuffer', 'microbitplus_bufferslice', 'microbitplus_radiolastbuf', 'microbitplus_bufferfromtext',
-    'microbitplus_serialreadbuf', 'microbitplus_i2creadbuf', 'microbitplus_bufferconcat', 'microbitplus_radiolastraw', 'microbitplus_btuartreadbuf']);
+    'microbitplus_serialreadbuf', 'microbitplus_i2creadbuf', 'microbitplus_bufferconcat', 'microbitplus_radiolastraw', 'microbitplus_btuartreadbuf',
+    'microbitplus_devicelongserial']);
 const BUFFER_SLOTS = {
     microbitplus_bufferlength: ['BUF'], microbitplus_buffernum: ['BUF'], microbitplus_buffersetnum: ['BUF'], microbitplus_bufferfill: ['BUF'],
     microbitplus_bufferslice: ['BUF'], microbitplus_bufferhex: ['BUF'], microbitplus_radiosendbuf: ['BUF'],
-    microbitplus_serialwritebuf: ['BUF'], microbitplus_radiosendraw: ['BUF'], microbitplus_bufferconcat: ['A', 'B'], microbitplus_i2cwritebuf: ['BUF'], microbitplus_spixferbuf: ['BUF', 'INTO']
+    microbitplus_serialwritebuf: ['BUF'], microbitplus_radiosendraw: ['BUF'], microbitplus_bufferconcat: ['A', 'B'], microbitplus_i2cwritebuf: ['BUF'], microbitplus_spixferbuf: ['BUF', 'INTO'],
+    microbitplus_i2cwritestatus: ['BUF']
 };
 /** The serial delimiters' menu words -> MakeCode's Delimiters members. */
 const DELIMITER_MEMBER = {newline: 'NewLine', comma: 'Comma', dollar: 'Dollar', colon: 'Colon', fullstop: 'Fullstop', hash: 'Hash',
@@ -512,6 +514,23 @@ export class Emitter {
         case 'microbitplus_radiorssi': return 'radio.receivedPacket(RadioPacketProperty.SignalStrength)';
         case 'microbitplus_radiolastserial': return 'radio.receivedPacket(RadioPacketProperty.SerialNumber)';
         case 'microbitplus_deviceserial': return 'control.deviceSerialNumber()';
+        case 'microbitplus_devicename': return 'control.deviceName()';
+        case 'microbitplus_devicelongserial': return 'control.deviceLongSerialNumber()';
+        case 'microbitplus_compareversion': return `control.compareVersion(${v('A')}, ${v('B')})`;
+        case 'microbitplus_screenshot': return 'led.screenshot()';
+        case 'microbitplus_getpitchvolume': return 'pins.analogPitchVolume()';
+        case 'microbitplus_i2cwritestatus': return `pins.i2cWriteBuffer(${v('ADDR')}, ${v('BUF')})`;
+        case 'microbitplus_serialreadany': return `serial.readUntil(${v('CHARS')})`;
+        case 'microbitplus_btuartreadany': return `bluetooth.uartReadUntil(${v('CHARS')})`;
+        // A big image's literal: five rows of its columns.
+        case 'microbitplus_createbigimage': {
+            const rows = /^"?([0-9]+(?::[0-9]+){4})"?$/.exec(String(v('LEDS')));
+            if (!rows) {
+                this.unsupported.push('create big image of a computed pattern — MakeCode\'s big image is a literal');
+                return 'images.createBigImage("")';
+            }
+            return `images.createBigImage(\`\n${rows[1].split(':').map(r => `    ${[...r].map(d => (d === '0' ? '.' : '#')).join(' ')}`).join('\n')}\n    \`)`;
+        }
         // An image is MakeCode's Image; its variables and arrays are typed so
         // (imageNames).
         case 'microbitplus_createimage': return `images.createImage(\`\n${ledsOf(f('MATRIX'))}\n    \`)`;
@@ -624,6 +643,12 @@ export class Emitter {
             let test = first && first.opcode === 'control_if' && !first.next ? this.inputBlock(first, 'CONDITION') : null;
             // (a reporter that is not known as a truth value is read as `reporter = true`)
             if (test && test.opcode === 'operator_equals') test = this.inputBlock(test, 'OPERAND1');
+            if (test && test.opcode === 'microbitplus_serialhasany') {
+                push(`serial.onDataReceived(${this.value(test, 'CHARS')}, function () {`);
+                out.push(...this.substack(first, 'SUBSTACK', indent + 1));
+                push('})');
+                return;
+            }
             if (test && test.opcode === 'microbitplus_serialhas') {
                 push(`serial.onDataReceived(serial.delimiters(Delimiters.${DELIMITER_MEMBER[this.field(test, 'DELIM')] || 'NewLine'}), function () {`);
                 out.push(...this.substack(first, 'SUBSTACK', indent + 1));
@@ -1008,6 +1033,10 @@ export class Emitter {
         case 'microbitplus_serialredirect': push(`serial.redirect(SerialPin.${String(f('TX')).toUpperCase()}, SerialPin.${String(f('RX')).toUpperCase()}, ${baudMember(v('BAUD'))})`); return;
         case 'microbitplus_serialbaud': push(`serial.setBaudRate(${baudMember(v('BAUD'))})`); return;
         case 'microbitplus_resetboard': push('control.reset()'); return;
+        case 'microbitplus_waitevent': push(`control.waitForEvent(${v('SOURCE')}, ${v('VALUE')})`); return;
+        case 'microbitplus_pitchpin': push(`pins.analogSetPitchPin(AnalogPin.${String(f('PIN')).toUpperCase()})`); return;
+        case 'microbitplus_pitchvolume': push(`pins.analogSetPitchVolume(${v('VOL')})`); return;
+        case 'microbitplus_analogpitch': push(`pins.analogPitch(${v('FREQ')}, ${v('MS')})`); return;
         case 'microbitplus_panicboard': push(`control.panic(${v('CODE')})`); return;
         case 'microbitplus_calibratecompass': push('input.calibrateCompass()'); return;
         case 'microbitplus_accelrange': push(`input.setAccelerometerRange(AcceleratorRange.${{1: 'OneG', 2: 'TwoG', 4: 'FourG', 8: 'EightG'}[Number(v('G'))] || 'OneG'})`); return;
@@ -1104,7 +1133,7 @@ export class Emitter {
 
 /** Reporters whose value is text. */
 const TEXT_REPORTERS = new Set(['operator_join', 'operator_letter_of', 'microbitplus_radiolaststr', 'microbitplus_radiolastname',
-    'microbitplus_serialreadstr', 'microbitplus_serialreaduntil']);
+    'microbitplus_serialreadstr', 'microbitplus_serialreaduntil', 'microbitplus_serialreadany', 'microbitplus_devicename', 'microbitplus_btuartreadany']);
 
 /**
  * What each variable of this target holds, for its `let` (tasks E13, E16):
@@ -1474,7 +1503,8 @@ function imageNames (blocks, emitter) {
                 if (r && r.opcode === 'arrays_get') arrays.add(arrayNameOf(r, blocks, emitter));
             }
             const value = block(slot(b, 'VALUE'));
-            const isImage = value && (value.opcode === 'microbitplus_createimage' ||
+            const isImage = value && (value.opcode === 'microbitplus_createimage' || value.opcode === 'microbitplus_createbigimage' ||
+                value.opcode === 'microbitplus_screenshot' ||
                 (value.opcode === 'arrays_get' && arrays.has(arrayNameOf(value, blocks, emitter))) ||
                 (value.opcode === 'data_variable' && vars.has(emitter.variableName(value.fields.VARIABLE[0]))));
             if (/^arrays_(push|set|insert)$/.test(b.opcode) && isImage) arrays.add(arrayNameOf(b, blocks, emitter));
@@ -1687,6 +1717,12 @@ export function projectToMakeCodeTs (project, opts = {}) {
                 // MICROBIT_ID_LOG 44 / MICROBIT_LOG_EVT_LOG_FULL 1 is datalogger.onLogFull (pxt datalogger.ts init)
                 early.push(source === '44' && value === '1' ? 'datalogger.onLogFull(function () {' : `control.onEvent(${source}, ${value}, function () {`,
                     ...emitter.stack(block.next, 1), '})');
+                emitter.inFunction = false;
+                continue;
+            }
+            if (block.opcode === 'microbitplus_whenuartany') {
+                emitter.inFunction = true;
+                body.push(`bluetooth.onUartDataReceived(${emitter.value(block, 'CHARS', '";"')}, function () {`, ...emitter.stack(block.next, 1), '})');
                 emitter.inFunction = false;
                 continue;
             }
