@@ -32,9 +32,11 @@ before S040 adoption; do not silently advance either package pin.
 
 Next: (1) use the already retained failed-job originals and frozen diagnostic summary;
 do not download them again or rerun the consumed study. Identify any unresolved
-cause without guessing from a later passing run; (2) review the
-complete supplier ranges and active S040 ownership, then qualify one coordinated
-package/lock update, installed identity and affected actual GUI journeys;
+cause without guessing from a later passing run; (2) coordinate with existing
+[Lite PR1622](https://github.com/CrispStrobe/brickwright-lite/pull/1622), whose
+S040 binding lane already owns supplier pins and the firmware-to-screen journey.
+Review the complete supplier ranges, then qualify one package/lock update,
+installed identity and affected actual GUI journeys;
 (3) choose representative project-authored analogue circuits and explicit
 voltage/current/time measurement points, declare model domains, tolerances and
 analytical or comparable SPICE references before running a bounded hosted study;
