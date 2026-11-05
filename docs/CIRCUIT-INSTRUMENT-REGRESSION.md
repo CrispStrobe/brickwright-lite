@@ -19,16 +19,16 @@ of the remaining failed gates. The originals were acquired once and preserved.
 This is later-head evidence, not proof of the original causes or a physical
 hardware, synthesis, calibration or broad model-accuracy qualification.
 
-Lite main `656f4da49aaaf92960040f5ca3f459d250f6b32c` pins Board `c87cfa32`
-and CUI `15416c7e`; the live version endpoint returned that Lite commit on
-2026-11-05. A version response alone does not qualify a live GUI journey.
-Board `a4762210` and CUI `ebe6b551` are descendant supplier heads. The CUI
-S040 Stop/restart fix [PR135](https://github.com/CrispStrobe/bw-circuit-ui/pull/135)
-had green checks on its original head, which conflicted with current master in
-the lane ledger. Continuation `3f154d684506ec53d0d4e7afc5d661638576dee3`
-preserves the original source and browser fixture and resolves that conflict;
-fresh current-head checks are pending. Qualify supplier and consumer journeys
-before S040 adoption; do not silently advance either package pin.
+Lite main `e1f3d152b912db90baf917227a3b46a111b2dac3` pins Board `c87cfa32`
+and CUI `15416c7e`; the live version endpoint earlier returned Lite `656f4da`
+on 2026-11-05. A version response does not qualify a live GUI journey or prove
+deployment of the later test-only merge. The CUI S040 Stop/restart fix
+[PR135](https://github.com/CrispStrobe/bw-circuit-ui/pull/135) merged as
+`9d7a9a260d00d3c26a77e749aec55ceddbe29a52`. All three hosted checks passed
+on continuation `3f154d684506ec53d0d4e7afc5d661638576dee3`, and post-merge
+CI also passed. The original face source and browser fixture were preserved.
+Lite S040 package adoption and the actual consumer firmware journey remain open;
+do not silently advance either package pin.
 
 Next: (1) use the already retained failed-job originals and frozen diagnostic summary;
 do not download them again or rerun the consumed study. Identify any unresolved
@@ -46,17 +46,22 @@ noncomparable cases rather than treating them as passes. Keep physical-device
 calibration, probe-loading claims, LM741 instant-settling TODO, long-capture
 current-polarity limits and the untested output-size boundary explicit.
 
-A concrete next measurement gap is signed terminal current in the 5 ms passive
-batch: `test/circuit-passive-batch-5ms.test.mjs` compares all 5,000 voltage
-points but applies absolute value to the meter-current comparison. Design a new
-project-authored RC fixture distinct from the completed study; predeclare source
-polarities, resistor terminals, clock, whole-capture budgets and tolerances.
-Derive signed meter-window integrals independently, confirm the CLI route's
-native terminal convention against its existing signed short-capture control,
-and include a reversed-current negative that must fail. Compare time-aligned
-voltage traces with analytic and, where equations match, ngspice expectations.
-Run against the qualified installed package in hosted CI; do not call the older
-magnitude-only test signed-current evidence or rerun its consumed inputs.
+The earlier `test/circuit-passive-batch-5ms.test.mjs` compares all 5,000
+voltage points but checks meter-current magnitude only. The new
+`test/circuit-signed-current-5ms.test.mjs`, merged in
+[PR1656](https://github.com/CrispStrobe/brickwright-lite/pull/1656), checks two
+newly authored positive/negative RC cases through the installed CLI. Each checks
+5,000 voltage points, both signed resistor-terminal meter means and a single
+whole-capture work budget. The comparator rejects reversed nonzero current and
+nonfinite values. The independently authored analytic reference was checked
+against ngspice 42; worst voltage and instantaneous source-current errors were
+8.54 nV and 10.2 pA, and the 5 ms integral differed by at most 41.1 pA. The
+[hosted Build42120820267](https://github.com/CrispStrobe/brickwright-lite/actions/runs/42120820267)
+passed both installed CLI cases and the comparator control. The retained log
+records assertion outcomes, not exact observed numeric readings. This covers
+two authored cases and the pinned model, not physical calibration or general
+corpus accuracy. Do not call the older magnitude-only test signed-current
+evidence or rerun its consumed inputs.
 
 The dated material below is historical unless a later section expressly says
 otherwise. Refresh heads, current claims, CI and deployment before acting.

@@ -1,6 +1,6 @@
 # Signed current in a 5 ms passive capture
 
-Owner: Circuit/instrument integration maintainer. Status: DONE in this source candidate, 2026-11-05; hosted qualification pending.
+Owner: Circuit/instrument integration maintainer. Status: DONE, 2026-11-05; PR1656 merged as `e1f3d152b912db90baf917227a3b46a111b2dac3`.
 Base: `5922efcb237223f1a8ef9eb935eb7397a71e7aec`.
 
 Own one new `test/circuit-signed-current-5ms.test.mjs` and this claim leaf.
@@ -24,6 +24,8 @@ Reference preparation: analytic signed current and a separate trapezoidal
 integral agree for both polarities. Frozen newly authored ngspice 42 inputs agree
 with analytic voltage and source current over 5,001 points per polarity; worst
 errors are 8.54 nV and 10.2 pA, and integrated current differs by 41.1 pA.
-These are independent reference observations, not installed CLI results. The
-source comparator rejects reversed nonzero current and nonfinite readings; the
-two actual CLI cases must still pass on the qualified installed pin.
+These are independent reference observations. On the installed Lite pins,
+[Build42120820267](https://github.com/CrispStrobe/brickwright-lite/actions/runs/42120820267)
+passed both actual CLI cases and the comparator's reversed-current and nonfinite
+controls. The original log retains assertions, not exact observed values. This
+is no physical calibration or broad corpus claim.
