@@ -11,8 +11,12 @@ Code chrome/Controller/Instruments and CPX circuit gates failed. Preserve that
 failure; the cause has not been established from retained original diagnostics.
 A later main [Build41735633603](https://github.com/CrispStrobe/brickwright-lite/actions/runs/41735633603)
 at `f17192e868049eff3487377a996fc3ffa03f76ac` succeeded: those four named
-browser gates and the FPGA surface job succeeded according to job metadata. This
-is later-head evidence, not a diagnosis of the earlier failure or a physical
+browser gates and the FPGA surface job succeeded according to job metadata. The
+original heavy log reports a 30-second file-chooser timeout; the light log
+reports a 30-second locator timeout. The bounded diagnostic reader did not retain
+the light locator target, and job metadata alone does not establish the causes
+of the remaining failed gates. The originals were acquired once and preserved.
+This is later-head evidence, not proof of the original causes or a physical
 hardware, synthesis, calibration or broad model-accuracy qualification.
 
 Lite main `656f4da49aaaf92960040f5ca3f459d250f6b32c` pins Board `c87cfa32`
@@ -24,8 +28,9 @@ has green checks on its old head but conflicts with current master in its lane
 ledger. Coordinate its owner and qualify a current-head resolution before any
 S040 consumer adoption; do not silently advance either package pin.
 
-Next: (1) locate the original failed-job evidence before acquiring anything;
-classify any actual error without rerunning the consumed study; (2) review the
+Next: (1) use the already retained failed-job originals and frozen diagnostic summary;
+do not download them again or rerun the consumed study. Identify any unresolved
+cause without guessing from a later passing run; (2) review the
 complete supplier ranges and active S040 ownership, then qualify one coordinated
 package/lock update, installed identity and affected actual GUI journeys;
 (3) choose representative project-authored analogue circuits and explicit
