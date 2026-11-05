@@ -1,6 +1,6 @@
 # Circuit/editor evidence reconciliation
 
-Owner: Circuit integration maintainer. Status: CLAIMED, 2026-11-05.
+Owner: Circuit integration maintainer. Status: DONE in this change, 2026-11-05; hosted documentation qualification pending.
 Base: `656f4da49aaaf92960040f5ca3f459d250f6b32c`.
 
 Reconcile stale current-status and next-action prose in `PLAN.md`, `ROADMAP.md`,
