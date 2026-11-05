@@ -36,7 +36,15 @@ cause without guessing from a later passing run; (2) coordinate with existing
 [Lite PR1622](https://github.com/CrispStrobe/brickwright-lite/pull/1622), whose
 S040 binding lane already owns supplier pins and the firmware-to-screen journey.
 Review the complete supplier ranges, then qualify one package/lock update,
-installed identity and affected actual GUI journeys;
+installed identity and affected actual GUI journeys. A read-only preview of
+PR1622 head `d2b083e4` against Lite `e1f3d152` found 26 content conflicts:
+package manifests/locks and pins, mirrored Circuit and notice files, adoption
+tests, live instrument contracts and historical x86 evidence. Preserve main's
+newer micro:bit and SB3 pins; regenerate derived package evidence. CUI `9d7a9a2`
+descends from both the current Lite pin and the draft's S040 source. The draft
+Board `cda9d13b` descends from Lite's current Board pin; review its complete
+range before choosing it or a newer qualified descendant. Preserve historical
+study and x86 identities separately from live supplier authorities;
 (3) choose representative project-authored analogue circuits and explicit
 voltage/current/time measurement points, declare model domains, tolerances and
 analytical or comparable SPICE references before running a bounded hosted study;
