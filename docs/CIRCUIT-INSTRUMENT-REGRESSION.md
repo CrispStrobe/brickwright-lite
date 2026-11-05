@@ -42,6 +42,18 @@ noncomparable cases rather than treating them as passes. Keep physical-device
 calibration, probe-loading claims, LM741 instant-settling TODO, long-capture
 current-polarity limits and the untested output-size boundary explicit.
 
+A concrete next measurement gap is signed terminal current in the 5 ms passive
+batch: `test/circuit-passive-batch-5ms.test.mjs` compares all 5,000 voltage
+points but applies absolute value to the meter-current comparison. Design a new
+project-authored RC fixture distinct from the completed study; predeclare source
+polarities, resistor terminals, clock, whole-capture budgets and tolerances.
+Derive signed meter-window integrals independently, confirm the CLI route's
+native terminal convention against its existing signed short-capture control,
+and include a reversed-current negative that must fail. Compare time-aligned
+voltage traces with analytic and, where equations match, ngspice expectations.
+Run against the qualified installed package in hosted CI; do not call the older
+magnitude-only test signed-current evidence or rerun its consumed inputs.
+
 The dated material below is historical unless a later section expressly says
 otherwise. Refresh heads, current claims, CI and deployment before acting.
 
