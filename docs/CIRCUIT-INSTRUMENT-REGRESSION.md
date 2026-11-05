@@ -1,5 +1,46 @@
 # CLI instrument regression
 
+## Current circuit/editor status — 2026-11-05
+
+Circuit/editor integration [PR1536](https://github.com/CrispStrobe/brickwright-lite/pull/1536)
+merged as `81d8f4929a17e1d0c645c07b99eda0dd818d9642`; the circuit handoff
+[PR1542](https://github.com/CrispStrobe/brickwright-lite/pull/1542) also merged.
+The original fast Build `40869114327` succeeded. The separately dispatched full
+Build `40869128682` failed: its heavy Machine Loader gate and light Circuit UX,
+Code chrome/Controller/Instruments and CPX circuit gates failed. Preserve that
+failure; the cause has not been established from retained original diagnostics.
+A later main [Build41735633603](https://github.com/CrispStrobe/brickwright-lite/actions/runs/41735633603)
+at `f17192e868049eff3487377a996fc3ffa03f76ac` succeeded: those four named
+browser gates and the FPGA surface job succeeded according to job metadata. This
+is later-head evidence, not a diagnosis of the earlier failure or a physical
+hardware, synthesis, calibration or broad model-accuracy qualification.
+
+Lite main `656f4da49aaaf92960040f5ca3f459d250f6b32c` pins Board `c87cfa32`
+and CUI `15416c7e`; the live version endpoint returned that Lite commit on
+2026-11-05. A version response alone does not qualify a live GUI journey.
+Board `a4762210` and CUI `ebe6b551` are descendant supplier heads. The CUI
+S040 Stop/restart fix [PR135](https://github.com/CrispStrobe/bw-circuit-ui/pull/135)
+has green checks on its old head but conflicts with current master in its lane
+ledger. Coordinate its owner and qualify a current-head resolution before any
+S040 consumer adoption; do not silently advance either package pin.
+
+Next: (1) locate the original failed-job evidence before acquiring anything;
+classify any actual error without rerunning the consumed study; (2) review the
+complete supplier ranges and active S040 ownership, then qualify one coordinated
+package/lock update, installed identity and affected actual GUI journeys;
+(3) choose representative project-authored analogue circuits and explicit
+voltage/current/time measurement points, declare model domains, tolerances and
+analytical or comparable SPICE references before running a bounded hosted study;
+(4) fix only demonstrated importer, solver, instrument or oracle defects in the
+owning repository, with a meaningful failing control. Report refusals and
+noncomparable cases rather than treating them as passes. Keep physical-device
+calibration, probe-loading claims, LM741 instant-settling TODO, long-capture
+current-polarity limits and the untested output-size boundary explicit.
+
+The dated material below is historical unless a later section expressly says
+otherwise. Refresh heads, current claims, CI and deployment before acting.
+
+
 ## Current handoff — 2026-10-29
 
 The remaining delivery is owned by the Circuit/editor integration maintainer.

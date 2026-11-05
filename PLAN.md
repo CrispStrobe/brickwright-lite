@@ -1,5 +1,12 @@
 # Brickwright Lite improvement plan
 
+## Current status — 2026-11-05
+
+The integration has merged, and later browser gates passed after an earlier full
+run failed. The dated material below is historical. See the [current circuit/editor
+handoff](docs/CIRCUIT-INSTRUMENT-REGRESSION.md#current-circuiteditor-status--2026-11-05) for exact evidence, open work and acceptance boundaries.
+
+
 Status: active execution plan  
 Started: 2026-08-21  
 Product promise: **Build circuits. Program machines. See how they work.**
