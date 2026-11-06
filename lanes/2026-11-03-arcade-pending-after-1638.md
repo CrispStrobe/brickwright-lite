@@ -1,8 +1,8 @@
 # Arcade: pending work after #1638 (open, unclaimed unless marked)
 
 Status: OPEN task list, written 2026-11-03 at main `003289f7`. Each item is a
-separate future claim: add your own `lanes/<date>-<slug>.md` (claim and change
-in one PR) and mark the item here as taken in that PR.
+separate future claim: merge your own `lanes/<date>-<slug>.md` before
+implementation and mark the item here when taking it.
 Refresh PR and main state before acting; another agent may have finished it.
 
 ## Ownership right now
@@ -55,22 +55,16 @@ Do:
 - Also verify (and test if true) that info countdown/life state is reset on
   greenFlag; it was not traced.
 
-## 3. Importer: `sprite.onOverlap(handler)` (after #1643; up to +4 corpus)
+## 3. Corpus input: `sprite.onOverlap(handler)`
 
-Corpus census at main `cb878669`: 156 translated / 27 partial / 1
-parse-failed of 184. In four partial programs the sole blocker is the Sprite
-instance handler `x.onOverlap(function (other: Sprite) {...})`, refused as
-"unsupported Arcade handle method": pxt-arcade docs examples jumper, runner,
-asteroids and car-race. First confirm the method exists in the pinned Arcade
-typings (search the shipped PXT Arcade libs for `onOverlap` on `Sprite`). If
-it does not, close this item: the docs are stale. If it does, add the
-lowering with original-PXT equality and refusal controls.
+The #1643 review found the Sprite instance method absent from the pinned SDK.
+The four snippets are input-limited unless the exact pinned source establishes
+supported behavior; do not infer a +4 importer gain.
 
-## 4. Importer: `sprites.createProjectileFromSprite` source (+1 corpus)
+## 4. Corpus input: `sprites.createProjectileFromSprite` source
 
-Sole blocker in pxt-arcade `courses/csintro/blocks/unit-3/lab0301-part1.md`
-snippet 5: "source must be a sprite handle or null". Prove the source is a
-Sprite where it provably is; keep the refusal otherwise.
+The cited snippet uses an undeclared source sprite. Keep the refusal until the
+original input supplies a valid source; do not infer a +1 importer gain.
 
 ## 5. Corpus: every other partial is input-limited (operator decision)
 
