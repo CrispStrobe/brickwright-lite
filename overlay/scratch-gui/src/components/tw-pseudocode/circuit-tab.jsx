@@ -382,6 +382,9 @@ class CircuitTab extends React.Component {
             }
         };
         this._onBundleLoaded = event => {
+            // A refused future or invalid sidecar leaves the current project
+            // untouched. Its announcement is for the refusal notice only.
+            if (['future', 'invalid', 'storage-failed'].includes(event?.detail?.outcome)) return;
             try {
                 const raw = localStorage.getItem('bw-circuit-autosave');
                 if (raw) {

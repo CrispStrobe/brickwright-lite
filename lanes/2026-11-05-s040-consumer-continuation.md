@@ -64,3 +64,11 @@ failure diagnostics while retaining their original acceptance criteria. These
 reports identify the observed dock/stop state, changed storage keys by digest,
 and hidden debugger phases respectively; they do not make a failed journey
 pass or establish a root cause on their own.
+
+The candidate also corrects the Circuit tab's response to refused project
+sidecars. A refusal announcement must not reload or republish the current
+circuit; successful project loads continue to do so. This is a coupled Circuit
+consumer repair for the exact project-bundle failure observed during this
+supplier refresh. Focused tests exercise the actual listener for future,
+invalid and storage-failed outcomes and prove the guard is load-bearing; the
+full saved-project browser journey remains pending.
