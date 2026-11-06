@@ -72,3 +72,11 @@ consumer repair for the exact project-bundle failure observed during this
 supplier refresh. Focused tests exercise the actual listener for future,
 invalid and storage-failed outcomes and prove the guard is load-bearing; the
 full saved-project browser journey remains pending.
+
+Debugger teardown now stops machine video, keyboard and audio only when the
+panel owns an active or pending runner. The previous unconditional calls could
+stop an independently started machine mirror even when the debugger owned no
+runner. A focused test exercises the actual teardown method for idle, active
+and pending owners and rejects restoration of the unconditional video stop.
+The hosted machine-console journey remains necessary to determine whether this
+also resolves its observed timeout.

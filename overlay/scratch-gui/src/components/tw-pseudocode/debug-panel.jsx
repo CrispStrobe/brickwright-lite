@@ -894,13 +894,14 @@ class DebugPanel extends React.Component {
         if (this.props.onRunnerGone) this.props.onRunnerGone();
         // Stop mirroring the old machine's video / draining its keyboard into the
         // Widgets pane before it is destroyed; the next boot starts its own.
-        if (typeof window !== 'undefined' && typeof window.bwStopMachineVideo === 'function') {
+        // An idle debugger owns no machine outputs and must not stop an external mirror.
+        if ((p || this.state.runner) && typeof window !== 'undefined' && typeof window.bwStopMachineVideo === 'function') {
             window.bwStopMachineVideo();
         }
-        if (typeof window !== 'undefined' && typeof window.bwStopMachineKeyboard === 'function') {
+        if ((p || this.state.runner) && typeof window !== 'undefined' && typeof window.bwStopMachineKeyboard === 'function') {
             window.bwStopMachineKeyboard();
         }
-        if (typeof window !== 'undefined' && typeof window.bwStopMachineAudio === 'function') {
+        if ((p || this.state.runner) && typeof window !== 'undefined' && typeof window.bwStopMachineAudio === 'function') {
             window.bwStopMachineAudio();
         }
         if (p) {
