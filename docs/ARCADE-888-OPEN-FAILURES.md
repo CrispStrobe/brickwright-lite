@@ -1,7 +1,5 @@
 # PR #888: open Arcade test failures
 
-The same-input source import and Creator census on merged main `8a969d7d` reports 156 translated / 27 partial / 1 parse failure; all 184 input hashes match the prior `cb878669` census and no input changed stage. This is not an export or execution qualification.
-
 Status of the Arcade foundation branch (PR #888) when it was landed on main's
 documented-TODO mechanism. Each failing unit test below originally carried
 `{todo: '<reason> — see docs/ARCADE-888-OPEN-FAILURES.md'}`; no assertion was
