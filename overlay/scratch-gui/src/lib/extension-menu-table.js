@@ -64,6 +64,7 @@ export default {
     "arcade_registerButtonHandler": {"BUTTON":"+buttons","EVENT":"+buttonEvents"},
     "arcade_registerMultiplayerButtonHandler": {"EVENT":"+buttonEvents"},
     "arcade_registerTilemapEvent": {"EVENT":"tilemapEvents"},
+    "arcade_sceneTilemapProperty": {"PROPERTY":"sceneTilemapProperties"},
     "arcade_scrollBackgroundWithCamera": {"MODE":"cameraScrollModes"},
     "arcade_setBackgroundScrollVersion": {"VERSION":"backgroundScrollVersions"},
     "arcade_setButtonRepeatProperty": {"PLAYER":"controlPlayers","BUTTON":"repeatButtons","PROPERTY":"repeatProperties"},
