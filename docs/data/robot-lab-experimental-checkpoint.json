@@ -697,9 +697,16 @@
         "scope": "one headless run on the app branch engine; not a physical build"
       },
       "promotionReview": {
-        "date": "2026-11-02",
-        "decision": "STAYS_EXPERIMENTAL",
-        "reason": "crank-rocker-v1 judge is registered, but no reviewed disconnection-loss measure exists yet; not run in this batch."
+        "date": "2026-11-03",
+        "decision": "PROMOTED",
+        "reason": "Reviewed disconnection added: removing coupler (the only link joining crank pin A to rocker pin B) breaks the four-bar closure by 64 mm (> 2 mm)."
+      },
+      "promoted": {
+        "to": "established library (MODELS)",
+        "date": "2026-11-03",
+        "judge": "crank-rocker-v1",
+        "harness": "disconnection removes coupler",
+        "verified": "local native ordinary/strict/disconnected PASS (2026-11-03); hosted CI pending"
       }
     },
     {
@@ -790,9 +797,16 @@
         "scope": "one headless run on the app branch engine; not a physical build"
       },
       "promotionReview": {
-        "date": "2026-11-02",
-        "decision": "STAYS_EXPERIMENTAL",
-        "reason": "geared-iris-v1 judge is registered, but no reviewed disconnection-loss measure exists yet; not run in this batch."
+        "date": "2026-11-03",
+        "decision": "PROMOTED",
+        "reason": "Reviewed disconnection added: removing ring_top (the ring meshing all six leaves) leaves leaves 1–5 off the gear law by 181° (> 5°) while the input still drives leaf 0."
+      },
+      "promoted": {
+        "to": "established library (MODELS)",
+        "date": "2026-11-03",
+        "judge": "geared-iris-v1",
+        "harness": "disconnection removes ring_top",
+        "verified": "local native ordinary/strict/disconnected PASS (2026-11-03); hosted CI pending"
       }
     },
     {
@@ -1201,9 +1215,16 @@
         "scope": "one headless run on the app branch engine; not a physical build"
       },
       "promotionReview": {
-        "date": "2026-11-02",
-        "decision": "STAYS_EXPERIMENTAL",
-        "reason": "peaucellier-inversor-v1 judge is registered, but no reviewed disconnection-loss measure exists yet; not run in this batch."
+        "date": "2026-11-03",
+        "decision": "PROMOTED",
+        "reason": "Reviewed disconnection added: removing rhombus side cell_BQ opens the cell; the output leaves OP·OQ = l² − s² by 21.7 mm (> 2 mm)."
+      },
+      "promoted": {
+        "to": "established library (MODELS)",
+        "date": "2026-11-03",
+        "judge": "peaucellier-inversor-v1",
+        "harness": "disconnection removes cell_BQ",
+        "verified": "local native ordinary/strict/disconnected PASS (2026-11-03); hosted CI pending"
       }
     },
     {
@@ -1758,9 +1779,16 @@
         "scope": "one headless run on the app branch engine; not a physical build"
       },
       "promotionReview": {
-        "date": "2026-11-02",
-        "decision": "STAYS_EXPERIMENTAL",
-        "reason": "tangent-table-v1 passes in the real VM (ordinary and strict), but removing follower_axle leaves the y = d·tan θ law within 0.25 mm (lost needs > 2 mm), so the disconnection does not prove the follower causes the law. Needs a reviewed causal disconnection before promotion."
+        "date": "2026-11-03",
+        "decision": "PROMOTED",
+        "reason": "Earlier follower_axle removal kept the law within 0.25 mm because the follower sleeve stays nested in the output bearings and their contact still drags the output along the guide. radial_sleeve is the follower’s only sliding bearing on the radial guide; removing it loses y = d·tan θ by 13.4 mm (> 2 mm)."
+      },
+      "promoted": {
+        "to": "established library (MODELS)",
+        "date": "2026-11-03",
+        "judge": "tangent-table-v1",
+        "harness": "disconnection removes radial_sleeve",
+        "verified": "local native ordinary/strict/disconnected PASS (2026-11-03); hosted CI pending"
       }
     },
     {

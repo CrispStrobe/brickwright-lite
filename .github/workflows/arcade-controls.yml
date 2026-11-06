@@ -22,6 +22,13 @@ on:
       - 'overlay/scratch-gui/src/lib/bw-makecode/pxt-runtime.js'
       - 'test/makecode-arcade-controls.test.mjs'
       - '.github/workflows/arcade-controls.yml'
+# PR runs: a new push cancels the PR's superseded run. Every other event
+# (main push, dispatch) gets its own run_id group, so it is never cancelled and
+# never replaces a pending verdict (the vendor-freshness / ROADMAP 2.1 rule;
+# 2026-11-03 CI trim).
+concurrency:
+  group: arcade-controls-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 permissions:
   contents: read
 jobs:

@@ -56,6 +56,9 @@ values.push(total)
 let count = values.length`, ['total', 'moved', 'count']);
 });
 
+// update(dt) runs on the frame fiber. A fixed wall-clock pause can end before
+// the first frame on a loaded host, so main waits until update has run: a side
+// whose update never runs never completes, and same() fails on it.
 test('ExtendableSprite subclass: a global read in its update method matches original PXT', async () => {
     await same(`let updates = 0
 class Actor extends sprites.ExtendableSprite {
@@ -63,7 +66,9 @@ class Actor extends sprites.ExtendableSprite {
     update(dt: number) { updates += 1 }
 }
 let actor = new Actor()
-pause(40)
+while (updates <= 0) {
+    pause(1)
+}
 let seen = updates > 0`, ['seen']);
 });
 
@@ -133,7 +138,9 @@ class Actor extends sprites.ExtendableSprite {
     update(dt: number) { elapsed = elapsed + dt }
 }
 let actor = new Actor()
-pause(40)
+while (elapsed <= 0) {
+    pause(1)
+}
 let moved = elapsed > 0
 values.push(1)
 let count = values.length`, ['moved', 'count']);

@@ -1,0 +1,201 @@
+DEVICE SPIKE
+# TANGENT TABLE — one input chooses the signed gain applied to another.
+# Copyright (c) 2026 CrispStrobe. SPDX-License-Identifier: BSD-3-Clause.
+# Import the matching tangent-table.ldr, choose Mat > Plain, Reset, then Run.
+# A sets the guide angle. B turns the real small-actuator spindle to set reach.
+# The transverse output is passive. Separate source-bound receipts determine qualification.
+# The two equal-output points compare settled endpoints; their connecting motion can curve.
+GLOBAL LIST motorATargets = [0, 15, 15, -15, -15, 14.036243467926477, 9.462322208025617, 0]
+GLOBAL LIST motorBTargets = [0, 2388.297343019206, -2388.297343019206, -2388.297343019206, 2388.297343019206, 2388.297343019206, -2388.297343019206, 0]
+GLOBAL LIST motorASpeeds = [0, 1.8841875, 0, 8, 0, 8, 0.2872708421296484, 1.1885859483556176]
+GLOBAL LIST motorBSpeeds = [0, 300, 300, 0, 300, 0, 300, 300]
+GLOBAL LIST angleTargets = [0, 15, 15, -15, -15, 14.036243467926477, 9.462322208025617, 0]
+GLOBAL LIST reachTargetsMm = [40, 32, 48, 48, 32, 32, 48, 40]
+GLOBAL LIST movingMasks = [0, 3, 2, 1, 2, 1, 3, 3]
+WHEN flag clicked:
+  set directionA to 1
+  set directionB to -1
+  set targetA to 0
+  set targetB to 0
+  set speedA to 0
+  set speedB to 0
+  set thetaTargetDeg to 0
+  set xTargetMm to 40
+  set routeIndex to 1
+  set stage to 0
+  set movingMask to 0
+  set arrived to 0
+  set arrivedA to 0
+  set arrivedB to 0
+  set correctionsA to 0
+  set correctionsB to 0
+  set trimDirectionA to 1
+  set trimDirectionB to 1
+  set trimStartedA to 0
+  set trimStartedB to 0
+  set completed to 0
+  set failed to 0
+  lab stop motor A hold
+  lab stop motor B hold
+  if (lab status) = "no-model" or (lab status) = "not-open" then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "Open the matching Tangent Table model and Reset before Run."
+    stop all
+  if (abs of (lab motor A angle)) > 1 or (abs of (lab motor B angle)) > 1 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "Fresh datum guard: Reset the matching model before retrying."
+    stop all
+  if not (length of motorATargets) = 8 or not (length of motorBTargets) = 8 or not (length of motorASpeeds) = 8 or not (length of motorBSpeeds) = 8 or not (length of angleTargets) = 8 or not (length of reachTargetsMm) = 8 or not (length of movingMasks) = 8 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "The finite route lists must each contain eight values. Reload the matching program."
+    stop all
+  reset timer
+  broadcast "Tangent Table watchdog"
+  repeat 8:
+    set arrived to 0
+    set arrivedA to 0
+    set arrivedB to 0
+    set stage to (routeIndex - 1)
+    set targetA to (item routeIndex of motorATargets)
+    set targetB to (item routeIndex of motorBTargets)
+    set speedA to (item routeIndex of motorASpeeds)
+    set speedB to (item routeIndex of motorBSpeeds)
+    set thetaTargetDeg to (item routeIndex of angleTargets)
+    set xTargetMm to (item routeIndex of reachTargetsMm)
+    set movingMask to (item routeIndex of movingMasks)
+    broadcast "Tangent Table move" and wait
+    if failed = 1 or arrivedA = 0 or arrivedB = 0 then:
+      set failed to 1
+      set arrived to 0
+      lab stop motor A hold
+      lab stop motor B hold
+      say "A joined move did not establish both measured input arrivals. Reset."
+      stop all
+    if (abs of ((lab motor A angle) - targetA)) > 0.5 or (abs of (lab motor A speed)) > 0.5 or (abs of ((lab motor B angle) - targetB)) > 0.5 or (abs of (lab motor B speed)) > 0.5 then:
+      set failed to 1
+      set arrived to 0
+      lab stop motor A hold
+      lab stop motor B hold
+      say "An input is outside the measured angle or speed arrival guard. Reset."
+      stop all
+    set movingMask to 0
+    set arrived to 1
+    wait 1 seconds
+    if (abs of ((lab motor A angle) - targetA)) > 0.5 or (abs of (lab motor A speed)) > 0.5 or (abs of ((lab motor B angle) - targetB)) > 0.5 or (abs of (lab motor B speed)) > 0.5 then:
+      set failed to 1
+      set arrived to 0
+      lab stop motor A hold
+      lab stop motor B hold
+      say "An input moved outside its measured comparison window. Reset."
+      stop all
+    set arrived to 0
+    change routeIndex by 1
+  set stage to 8
+  set movingMask to 0
+  set completed to 1
+  say "Complete: compare signed gain and the two equal-output endpoints. Both inputs hold."
+
+WHEN I receive "Tangent Table move":
+  set arrivedA to 0
+  set correctionsA to 0
+  if speedA > 0 and (abs of (targetA - (lab motor A angle))) > 0.15 then:
+    lab run motor A for (targetA - (lab motor A angle)) degrees at speedA degrees per second
+    lab stop motor A hold
+  wait 1 seconds
+  repeat 3:
+    if (abs of (targetA - (lab motor A angle))) > 0.2 then:
+      change correctionsA by 1
+      set trimDirectionA to 1
+      if targetA < (lab motor A angle) then:
+        set trimDirectionA to -1
+      set trimStartedA to timer
+      lab run motor A at (trimDirectionA * 3) degrees per second
+      repeat until ((targetA - (lab motor A angle)) * trimDirectionA) <= 0.15 or (timer - trimStartedA) >= 2:
+        wait 0.05 seconds
+      lab stop motor A hold
+      if (timer - trimStartedA) >= 2 and ((targetA - (lab motor A angle)) * trimDirectionA) > 0.15 then:
+        set failed to 1
+        set arrived to 0
+        lab stop motor A hold
+        lab stop motor B hold
+        say "Motor A exceeded its bounded feedback-trim time. Reset."
+        stop all
+      wait 1 seconds
+  if (abs of ((lab motor A angle) - targetA)) > 0.5 or (abs of (lab motor A speed)) > 0.5 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "Motor A failed the measured arrival guard. Reset."
+    stop all
+  set arrivedA to 1
+
+WHEN I receive "Tangent Table move":
+  set arrivedB to 0
+  set correctionsB to 0
+  if speedB > 0 and (abs of (targetB - (lab motor B angle))) > 0.15 then:
+    lab run motor B for (targetB - (lab motor B angle)) degrees at speedB degrees per second
+    lab stop motor B hold
+  wait 1 seconds
+  repeat 3:
+    if (abs of (targetB - (lab motor B angle))) > 0.2 then:
+      change correctionsB by 1
+      set trimDirectionB to 1
+      if targetB < (lab motor B angle) then:
+        set trimDirectionB to -1
+      set trimStartedB to timer
+      lab run motor B at (trimDirectionB * 3) degrees per second
+      repeat until ((targetB - (lab motor B angle)) * trimDirectionB) <= 0.15 or (timer - trimStartedB) >= 2:
+        wait 0.05 seconds
+      lab stop motor B hold
+      if (timer - trimStartedB) >= 2 and ((targetB - (lab motor B angle)) * trimDirectionB) > 0.15 then:
+        set failed to 1
+        set arrived to 0
+        lab stop motor A hold
+        lab stop motor B hold
+        say "Motor B exceeded its bounded feedback-trim time. Reset."
+        stop all
+      wait 1 seconds
+  if (abs of ((lab motor B angle) - targetB)) > 0.5 or (abs of (lab motor B speed)) > 0.5 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "Motor B failed the measured arrival guard. Reset."
+    stop all
+  set arrivedB to 1
+
+WHEN I receive "Tangent Table watchdog":
+  repeat until completed = 1 or failed = 1:
+    if timer > 180 then:
+      set failed to 1
+      set arrived to 0
+      lab stop motor A hold
+      lab stop motor B hold
+      say "180 second watchdog: both inputs held. Reset before retrying."
+      stop all
+    if (0 + ((lab motor A angle) * directionA * 1)) < -16 or (0 + ((lab motor A angle) * directionA * 1)) > 16 or (100 + ((lab motor B angle) * directionB * 0.008374166666666667)) < 78 or (100 + ((lab motor B angle) * directionB * 0.008374166666666667)) > 122 then:
+      set failed to 1
+      set arrived to 0
+      lab stop motor A hold
+      lab stop motor B hold
+      say "An input exceeded its declared software envelope. Reset."
+      stop all
+    if arrived = 1 then:
+      if (abs of ((lab motor A angle) - targetA)) > 0.5 or (abs of (lab motor A speed)) > 0.5 or (abs of ((lab motor B angle) - targetB)) > 0.5 or (abs of (lab motor B speed)) > 0.5 then:
+        set failed to 1
+        set arrived to 0
+        lab stop motor A hold
+        lab stop motor B hold
+        say "A comparison-window input guard failed. Reset."
+        stop all
+    wait 0.05 seconds

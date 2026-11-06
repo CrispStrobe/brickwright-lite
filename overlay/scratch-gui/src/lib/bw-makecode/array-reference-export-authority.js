@@ -83,7 +83,10 @@ const FRESH_SDK_ARRAYS=Object.freeze({arcade_tilesOfType:Object.freeze(['IMAGE']
     arcade_bufferChunked:Object.freeze(['BUFFER','SIZE']),arcade_bufferChunkedFromUTF8:Object.freeze(['TEXT','SIZE']),
     arcade_bufferUnpack:Object.freeze(['BUFFER','FORMAT','OFFSET']),arcade_bufferToArray:Object.freeze(['BUFFER','FORMAT']),
     // mp.allPlayers() returns a fresh Player[] in PXT; Lite issues a fresh reference per call.
-    arcade_allPlayers:Object.freeze([])});
+    arcade_allPlayers:Object.freeze([]),
+    // TileMapData.getTileset() returns the map's own Image[] (an actual Array, never
+    // null: a map without a tileset holds an empty one). Its elements are Images.
+    arcade_tilemapTileset:Object.freeze(['DATA'])});
 
 // Producer facts are deliberately separate from the exporter's annotation graph.
 // Merely being plugged into an ARRAY input never creates an Array fact.
