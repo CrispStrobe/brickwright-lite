@@ -125,3 +125,21 @@ test('a logging error releases the participant', {timeout: 10000}, async t => {
     assert.equal(await withExclusiveBoot(async () => 'ran', {lock, log: null}), 'ran');
     assert.deepEqual(fs.readdirSync(`${lock}.participants-v1`), []);
 });
+
+test('a live participant choosing a ticket blocks admission', {timeout: 10000}, async t => {
+    const {lock} = scratch(t);
+    const root = `${lock}.participants-v1`;
+    fs.mkdirSync(root);
+    const choosing = path.join(root, `${process.pid}-00000000-0000-4000-8000-000000000004`);
+    fs.mkdirSync(choosing);
+    let entered = false;
+    const waiter = withExclusiveBoot(async () => {entered = true;}, {lock, log: null});
+    await new Promise(done => setTimeout(done, 200));
+    assert.equal(entered, false);
+    fs.writeFileSync(path.join(choosing, 'ticket-1'), '');
+    await new Promise(done => setTimeout(done, 200));
+    assert.equal(entered, false);
+    fs.rmSync(choosing, {recursive: true, force: true});
+    await waiter;
+    assert.equal(entered, true);
+});
