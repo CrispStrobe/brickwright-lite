@@ -994,7 +994,10 @@ class DebugPanel extends React.Component {
         if (typeof runner.video !== 'function' || typeof window === 'undefined' ||
             typeof window.bwMirrorMachineVideo !== 'function') return;
         const first = runner.video();
-        window.bwMirrorMachineVideo({videoFn: () => runner.video(), widget: {
+        // The micro:bit console must remain visible for run state and serial;
+        // Widgets still receives its live display and can be opened on demand.
+        window.bwMirrorMachineVideo({videoFn: () => runner.video(),
+            ...(selected === 'board:microbit-v2' ? {focusController: false} : {}), widget: {
             name: 'LabWired display', type: 'simplevga', source: 'video',
             config: {width: (first && first.width) || (selected.includes('esp32-4848s040') ? 480 : 128),
                 height: (first && first.height) || (selected.includes('esp32-4848s040') ? 480 :

@@ -609,9 +609,13 @@ const GUIComponent = props => {
             // mode, and surface the code tab where the dock renders — exactly as
             // the FPGA mirror does for its LEDs.
             controllerPanel.setMode('play');
-            window.dispatchEvent(new CustomEvent('bw-settings-change',
-                {detail: {key: 'bw-debug-dock', value: 'controller'}}));
-            if (props.onActivateTab) props.onActivateTab(CODE_TAB_INDEX);
+            // A caller may populate Widgets while keeping its debugger visible.
+            // Existing machine callers still focus the controller by default.
+            if (p.focusController !== false) {
+                window.dispatchEvent(new CustomEvent('bw-settings-change',
+                    {detail: {key: 'bw-debug-dock', value: 'controller'}}));
+                if (props.onActivateTab) props.onActivateTab(CODE_TAB_INDEX);
+            }
         };
         const onStart = e => start(e && e.detail);
         const onStop = () => stop();

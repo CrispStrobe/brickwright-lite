@@ -24,3 +24,10 @@ complete serial line; also retain the machine Widgets browser check and the
 S040 display/touch journey. Do not claim physical-device fidelity or a passing
 guest from mocked tests. Coordinate this work with the S040 continuation, and
 merge this claim before implementation.
+
+The forward candidate keeps the machine mirror's existing controller-focus
+default, while permitting the micro:bit V2 debugger to populate a live Widgets
+display without switching away from the debugger. The actual-method source
+controls cover default and background presentation, video access, and the
+placed-S040 exception; removing either focus guard is detected. Fresh hosted
+micro:bit guest/serial, machine Widgets and S040 journeys remain required.
