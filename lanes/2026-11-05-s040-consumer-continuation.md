@@ -80,3 +80,11 @@ runner. A focused test exercises the actual teardown method for idle, active
 and pending owners and rejects restoration of the unconditional video stop.
 The hosted machine-console journey remains necessary to determine whether this
 also resolves its observed timeout.
+
+At the next tested head, a placed S040 keeps its circuit-owned display rather
+than invoking the generic controller mirror, which otherwise changes the dock
+and hides the debugger. Standalone S040 and other LabWired boards retain the
+generic mirror. This is covered by the actual mirror method and a guard-removal
+negative control; the full firmware, touch and restart journey remains pending.
+Invalid-sidecar failures also report the changed storage keys by digest while
+retaining the same strict preservation assertion.

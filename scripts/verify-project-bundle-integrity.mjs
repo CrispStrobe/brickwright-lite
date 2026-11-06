@@ -146,8 +146,15 @@ try {
         .waitFor({state: 'visible', timeout: 15000});
     await page.getByRole('tab', {name: 'Code', exact: true}).click();
     await page.getByText(/Brickwright state was not applied: invalid JSON/).waitFor({timeout: 15000});
-    if (JSON.stringify(await projectKeys(page)) !== JSON.stringify(beforeRefusal)) {
-        throw new Error('invalid sidecar partially replaced known project state');
+    const afterInvalid = await projectKeys(page);
+    if (JSON.stringify(afterInvalid) !== JSON.stringify(beforeRefusal)) {
+        const changed = Object.keys(beforeRefusal).filter(key => beforeRefusal[key] !== afterInvalid[key]);
+        const evidence = Object.fromEntries(changed.map(key => [key, ['before', 'after'].map(which => {
+            const value = (which === 'before' ? beforeRefusal : afterInvalid)[key];
+            return value === null ? null : {bytes: Buffer.byteLength(value),
+                sha256: createHash('sha256').update(value).digest('hex')};
+        })]));
+        throw new Error(`invalid sidecar partially replaced known project state: ${JSON.stringify(evidence)}`);
     }
 
     await openProject(page, vanillaPath);

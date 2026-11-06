@@ -984,6 +984,9 @@ class DebugPanel extends React.Component {
     // A LabWired board with a display: its screen is a widget (the same mirror
     // a machine's VGA uses), sized from the first frame the engine reports.
     mirrorLabwiredDisplay (runner) {
+        // A placed S040 already owns its display and touch face in the circuit.
+        // Do not replace that view with the generic controller mirror.
+        if (runner?.esp32S040PartId) return;
         const selected = String(this.state.labwiredChip || '');
         if (this.state.kind !== 'labwired' || !(selected.startsWith('board:') ||
             selected === 'firmware:esp32-4848s040-merged-flash' ||
