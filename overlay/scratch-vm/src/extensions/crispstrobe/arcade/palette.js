@@ -10,6 +10,7 @@
 //   - shows the basic blocks of a section and hides the rest behind a per-section
 //     "show more" button (hideFromPalette: the blocks stay registered, so scripts, import,
 //     the Code tab and saved projects still load and run);
+//   - hides pure duplicates of a generic block (HIDDEN_ALIASES) the same way;
 //   - hides importer plumbing (source-start hats, declarations, registered-handler pairs,
 //     externals, callables and classes) from the palette for good.
 // Which blocks are basic mirrors MakeCode's non-advanced, high-`weight` blocks per namespace.
@@ -44,6 +45,22 @@ const PLUMBING = new Set(words(`
   whenCallableDispatched runCallableDispatch returnValue throwValue setLocal getLocal getCaptured setCaptured
 `));
 
+// Pure duplicates: each is a fixed-argument form of a block that stays in the palette, and runs
+// through it (or, for the legacy micro:bit blocks, through the player-1 form). They stay registered
+// so saved projects, the Code tab and the MakeCode importer/exporter keep using them, but they are
+// not offered. Covered by:
+//   setSpriteStayInScreen/AutoDestroy/BounceOnWall/GhostThroughSprites -> setSpriteFlag [FLAG] [ON]
+//   setscore/changescore/getscore -> setPlayerScore/changePlayerScore/getPlayerScore (player 1)
+//   gameover -> gameOver; countdown -> startCountdown
+//   truncateNumber/signNumber -> mathUnary [OP] (truncate|sign), the unary twin of mathBinary
+//   playMusic -> play [PLAYABLE] [MODE]; playSoundEffect -> play with the sound-effect playable (same modes);
+//   playMelody/playSound (the deprecated Melody and note-string forms) -> play with melodyPlayable/stringPlayable
+const HIDDEN_ALIASES = new Set(words(`
+  setSpriteStayInScreen setSpriteAutoDestroy setSpriteBounceOnWall setSpriteGhostThroughSprites
+  setscore changescore getscore gameover countdown
+  truncateNumber signNumber playMusic playMelody playSoundEffect playSound
+`));
+
 // id, English name, German name, basic blocks, more blocks.
 const SECTIONS = [
   ['sprites', 'Sprites', 'Figuren',
@@ -68,8 +85,8 @@ const SECTIONS = [
     words(`setGameOverEffect setGameOverMessage setGameOverPlayable setGameOverScoringType legacyGameOver ---
       showLongText --- sceneMillis frameDeltaTime --- carnivalCountdown carnivalGameOver carnivalCustomGameOver carnivalAddLabel`)],
   ['music', 'Music', 'Musik',
-    words('playMusic playTone ringTone rest setMusicVolume setTempo changeTempo stopAllSounds'),
-    words(`playMelody playSoundEffect playSound --- melodyPlayable stringPlayable tonePlayable songPlayable
+    words('play playTone ringTone rest setMusicVolume setTempo changeTempo stopAllSounds'),
+    words(`melodyPlayable stringPlayable tonePlayable songPlayable
       songFromBuffer namedSongPlayable soundEffect namedMelody soundMelody beat --- musicVolume musicTempo`)],
   ['scene', 'Scene', 'Szene',
     words(`setBackgroundColor setBackgroundImage backgroundColor backgroundImage cameraFollowSprite centerCameraAt
@@ -81,7 +98,8 @@ const SECTIONS = [
     words(`setTilemap placeOnTile placeOnRandomTile setTileAt setWallAt tileLocation tileIs tileIsWall isHittingTile
       spriteTileKindAt`),
     words(`tilesOfType tileLocationProperty tileAtLocation tileNeighbor spriteTileLocation randomTileOfType eventLocation ---
-      tilemapValue tilemapProperty tilemapTile tilemapIsWall tilemapTileImage setTilemapTile setTilemapWall ---
+      tilemapValue tilemapProperty tilemapTile tilemapIsWall tilemapTileImage tilemapTileset setTilemapTile setTilemapWall setTilemapScale ---
+      tileLocationTilemap sceneTilemapProperty ---
       setLegacyTilemap setLegacyTile
       legacyTileLocation legacyTilesOfType legacyTileProperty setLegacyTileAt placeOnLegacyTile
       placeOnRandomLegacyTile tileHitFrom`)],
@@ -102,16 +120,15 @@ const SECTIONS = [
       printImageText printImageFont printImageFontCenter fontValue fontForText scaleFont fontMetric ---
       setPalette startImageEffect`)],
   ['physics', 'Physics', 'Physik',
-    words('setSpriteStayInScreen setSpriteAutoDestroy setSpriteBounceOnWall setSpriteGhostThroughSprites setSpriteFlag'),
-    words(`currentScene scenePhysicsEngine createPhysicsEngine physicsEngineProperty setPhysicsEngineProperty
-      setScenePhysicsEngine sceneFlags setSceneFlags`)],
+    words('setSpriteFlag physicsEngineProperty setPhysicsEngineProperty sceneFlags setSceneFlags'),
+    words(`currentScene scenePhysicsEngine createPhysicsEngine setScenePhysicsEngine`)],
   ['extensions', 'Extensions', 'Erweiterungen',
     words('createCorgi corgiControl corgiBark createDart dartAction sevensegCounter sevensegDigit'),
     words(`corgiAddPhrase setCorgiProperty corgiProperty --- dartSwitch setDartProperty dartProperty ---
       sevensegSetCharacter sevensegSetColor sevensegSetRadix sevensegSetScale sevensegSetProperty
       sevensegAddDigit sevensegProperty`)],
   ['advanced', 'Advanced', 'Erweitert',
-    words('randomNumber percentChance clampNumber mathBinary signNumber truncateNumber settingsWrite settingsRead'),
+    words('randomNumber percentChance clampNumber mathBinary mathUnary settingsWrite settingsRead'),
     words(`parseInteger parseIntegerRadix --- settingsExists settingsRemove settingsClear ---
       spriteDataSet spriteDataRead spriteDataReadBoolean spriteDataChange --- raiseControlEvent waitControlEvent ---
       createBuffer bufferFromHex bufferFromUTF8 bufferLiteral bufferFromBase64 bufferFromArray bufferLength
@@ -119,8 +136,8 @@ const SECTIONS = [
       bufferChunked bufferChunkedFromUTF8 bufferPackedSize bufferPack bufferUnpack bufferPackAt bufferToArray
       bufferConcatArray bufferFormatSize bufferGetNumber bufferSetNumber bufferSlice bufferWrite bufferFill
       bufferShift bufferRotate bufferToBase64 bufferToHex bufferToText ---
-      createsprite deletesprite movesprite setspritepos spritex spritey touching touchingedge setscore
-      changescore getscore showscore countdown gameover log drawsprites clearscreen setbrightness`)]
+      createsprite deletesprite movesprite setspritepos spritex spritey touching touchingedge
+      showscore log drawsprites clearscreen setbrightness`)]
 ];
 
 const LABELS = {
@@ -189,7 +206,7 @@ function arrange (host, info, storage = defaultStorage()) {
     }
   };
   // Blocks the table does not know yet (a newer opcode) land in the last section's "more".
-  const unlisted = [...byOpcode.keys()].filter(name => !PLUMBING.has(name) &&
+  const unlisted = [...byOpcode.keys()].filter(name => !PLUMBING.has(name) && !HIDDEN_ALIASES.has(name) &&
     !SECTIONS.some(section => section[3].includes(name) || section[4].includes(name)));
   SECTIONS.forEach(([id, name, german, basic, more], index) => {
     const title = locale === 'de' ? german : name;
@@ -210,8 +227,8 @@ function arrange (host, info, storage = defaultStorage()) {
     });
     take(extra, isOpen, out);
   });
-  // The plumbing stays registered (the importer and saved projects use it) but never shows.
-  for (const name of PLUMBING) {
+  // The plumbing and the hidden aliases stay registered (the importer and saved projects use them) but never show.
+  for (const name of [...PLUMBING, ...HIDDEN_ALIASES]) {
     const block = byOpcode.get(name);
     if (block && !placed.has(name)) { block.hideFromPalette = true; hidden.push(block); }
   }
@@ -219,4 +236,4 @@ function arrange (host, info, storage = defaultStorage()) {
   return info;
 }
 
-module.exports = {arrange, PLUMBING, SECTIONS, STORAGE_KEY, resetForTests: () => { expanded = null; }};
+module.exports = {arrange, PLUMBING, HIDDEN_ALIASES, SECTIONS, STORAGE_KEY, resetForTests: () => { expanded = null; }};

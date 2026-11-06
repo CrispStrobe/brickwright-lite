@@ -530,6 +530,283 @@
       "disconnectLaw": true,
       "withSpike": true,
       "secondFrameMs": 10
+    },
+    {
+      "id": "poise",
+      "judge": "roberval-balance-v1",
+      "parts": 159,
+      "ports": [
+        "A",
+        "B"
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 70000,
+      "afterMs": 500,
+      "frameMs": 25,
+      "frozenOutput": "left_weight",
+      "disconnect": [
+        "lower_bar"
+      ],
+      "disconnectInputDeg": 150,
+      "disconnectLoss": "batch-b"
+    },
+    {
+      "id": "bend-ripple",
+      "judge": "cardan-bend-v1",
+      "parts": 156,
+      "ports": [
+        "A",
+        "B"
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 125000,
+      "afterMs": 500,
+      "frameMs": 25,
+      "frozenOutput": "output_fork",
+      "disconnect": [
+        "output_fork"
+      ],
+      "disconnectInputDeg": 700,
+      "disconnectLoss": "batch-a"
+    },
+    {
+      "id": "offset-relay",
+      "judge": "variable-offset-relay-v1",
+      "parts": 456,
+      "ports": [
+        "A",
+        "B"
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 110000,
+      "afterMs": 500,
+      "frameMs": 25,
+      "frozenOutput": "output_beam_x",
+      "disconnect": [
+        "stage1_link_x_-1",
+        "stage1_link_x_1",
+        "stage1_link_y_-1",
+        "stage1_link_y_1"
+      ],
+      "disconnectInputDeg": 2500,
+      "disconnectLoss": "batch-a"
+    },
+    {
+      "id": "rack-decoder",
+      "judge": "rack-pinion-differential-v1",
+      "parts": 245,
+      "ports": [
+        "A",
+        "B"
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 125000,
+      "afterMs": 500,
+      "frameMs": 25,
+      "frozenOutput": "carrier_bearing",
+      "disconnect": [
+        "passive_pinion"
+      ],
+      "disconnectInputDeg": 100,
+      "disconnectLoss": "batch-a"
+    },
+    {
+      "id": "remote-pivot",
+      "judge": "double-parallelogram-remote-centre-v1",
+      "parts": 153,
+      "ports": [
+        "A"
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 75000,
+      "afterMs": 500,
+      "frameMs": 25,
+      "frozenOutput": "output_beam",
+      "disconnect": [
+        "distal_L"
+      ],
+      "disconnectInputDeg": 25,
+      "disconnectLoss": "batch-a"
+    },
+    {
+      "id": "schmidt-shift",
+      "judge": "schmidt-coupling-v1",
+      "parts": 170,
+      "ports": [
+        "A"
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 90000,
+      "afterMs": 500,
+      "frameMs": 25,
+      "frozenOutput": "output_frame",
+      "disconnect": [
+        "link_1_0",
+        "link_1_1",
+        "link_1_2"
+      ],
+      "disconnectInputDeg": 650,
+      "disconnectLoss": "batch-a"
+    },
+    {
+      "id": "equal-share",
+      "judge": "whippletree-share-v1",
+      "parts": 148,
+      "ports": [
+        "A"
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 40000,
+      "afterMs": 500,
+      "frameMs": 10,
+      "withSpike": true,
+      "frozenOutput": "equalizer",
+      "disconnect": [
+        "right_back_rod"
+      ],
+      "disconnectInputDeg": 30,
+      "disconnectLoss": "batch-b"
+    },
+    {
+      "id": "stroke-shift",
+      "judge": "variable-crank-v1",
+      "parts": 295,
+      "ports": [
+        "A",
+        "B"
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 90000,
+      "afterMs": 500,
+      "frameMs": 25,
+      "frozenOutput": "output_marker",
+      "disconnect": [
+        "rod_near",
+        "rod_far"
+      ],
+      "disconnectInputDeg": 1000,
+      "disconnectLoss": "batch-b"
+    },
+    {
+      "id": "triad-table",
+      "judge": "planar-3rpr-v1",
+      "parts": 258,
+      "ports": [
+        "A",
+        "B",
+        "C"
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 180000,
+      "afterMs": 500,
+      "frameMs": 25,
+      "frozenOutput": "platform_frame",
+      "disconnect": [
+        "platform_axle_C"
+      ],
+      "disconnectInputDeg": 700,
+      "disconnectLoss": "batch-b",
+      "expectedIssues": [
+        {
+          "code": "locked-hinges",
+          "parts": [
+            "leg_body_cross_0_A",
+            "leg_body_cross_20_A",
+            "leg_body_pin_0_A",
+            "leg_body_pin_20_A"
+          ]
+        },
+        {
+          "code": "locked-hinges",
+          "parts": [
+            "leg_body_cross_0_B",
+            "leg_body_cross_20_B",
+            "leg_body_pin_0_B",
+            "leg_body_pin_20_B"
+          ]
+        },
+        {
+          "code": "locked-hinges",
+          "parts": [
+            "actuator_body_C",
+            "leg_body_pin_0_C",
+            "leg_body_pin_20_C"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "kestrel-flapper",
+      "judge": "crank-rocker-v1",
+      "parts": 61,
+      "ports": [
+        "A"
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 50000,
+      "afterMs": 500,
+      "frameMs": 25,
+      "frozenOutput": "rocker",
+      "disconnect": [
+        "coupler"
+      ],
+      "disconnectInputDeg": 700,
+      "disconnectLoss": "batch-a"
+    },
+    {
+      "id": "meridian-linkage",
+      "judge": "peaucellier-inversor-v1",
+      "parts": 91,
+      "ports": [
+        "A"
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 70000,
+      "afterMs": 500,
+      "frameMs": 25,
+      "frozenOutput": "marker_output",
+      "disconnect": [
+        "cell_BQ"
+      ],
+      "disconnectInputDeg": 55,
+      "disconnectLoss": "batch-a"
+    },
+    {
+      "id": "lumen-iris",
+      "judge": "geared-iris-v1",
+      "parts": 146,
+      "ports": [
+        "A"
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 30000,
+      "afterMs": 500,
+      "frameMs": 10,
+      "frozenOutput": "leaf_plate_3",
+      "disconnect": [
+        "ring_top"
+      ],
+      "disconnectInputDeg": 50,
+      "disconnectLoss": "batch-a"
+    },
+    {
+      "id": "tangent-table",
+      "judge": "tangent-table-v1",
+      "parts": 297,
+      "ports": [
+        "A",
+        "B"
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 125000,
+      "afterMs": 500,
+      "frameMs": 25,
+      "frozenOutput": "output_carriage",
+      "disconnect": [
+        "radial_sleeve"
+      ],
+      "disconnectInputDeg": 12,
+      "disconnectLoss": "batch-a"
     }
   ]
 }

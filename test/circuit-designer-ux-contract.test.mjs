@@ -5,6 +5,7 @@ import {resolve} from 'node:path';
 
 const root = resolve(new URL('..', import.meta.url).pathname);
 const read = file => readFileSync(resolve(root, file), 'utf8');
+const {t: designerText} = await import(new URL('../node_modules/bw-circuit-ui/src/i18n/strings.js', import.meta.url));
 
 test('Circuit Designer has a view toggle (realistic / schematic) and a mode attribute', () => {
     const source = read('node_modules/bw-circuit-ui/src/components/CircuitDesigner.jsx');
@@ -57,9 +58,17 @@ test('Circuit Designer keeps simulation and debugger controls in the instruments
     assert.match(source, /data-simulation-controls/);
     assert.match(source, /data-scope-module/);
     assert.match(source, /data-no-code-indicator/);
-    assert.match(source, /title="Move debugger back to instruments"/);
+    // The two dock buttons' tooltips follow the designer's language. verify-circuit-ux.mjs
+    // finds them by their ENGLISH title, so the English must stay exactly this.
+    const dockTitles = {
+        debuggerToInstrumentsTitle: {en: 'Move debugger back to instruments', de: 'Debugger zurück zu den Messgeräten verschieben'},
+        debuggerToRightTitle: {en: 'Move debugger to full-size right pane', de: 'Debugger in den großen rechten Bereich verschieben'}
+    };
+    for (const [key, byLang] of Object.entries(dockTitles)) {
+        for (const [lang, text] of Object.entries(byLang)) assert.equal(designerText(key, lang), text, `${key} in ${lang}`);
+        assert.ok(source.includes(`title={t('${key}', lang)}`), `${key} is looked up per language`);
+    }
     assert.match(source, /onDebugDockChange\('top'\)/);
-    assert.match(source, /title="Move debugger to full-size right pane"/);
     assert.match(source, /onDebugDockChange\('right'\)/);
     assert.match(source, /useState\(!!debuggerOn \|\| !!benchOpen\)/,
         'fresh workspaces preserve bench space; debugger and lesson demand open instruments');
@@ -92,7 +101,17 @@ test('debugger selection is not disabled merely because the Circuit tab is activ
     const source = read('overlay/scratch-gui/src/components/tw-pseudocode/circuit-tab.jsx');
     // `dock` is debugDock with 'solo' folded back to 'top' on the dedicated
     // Circuit tab — the designer keeps its instruments-column debugger there.
-    assert.match(source, /const dock = this\.state\.debugDock === 'solo' \? 'top' : this\.state\.debugDock;/);
+    assert.match(source, /const dock = this\.state\.debugDock === 'solo' \? 'top'\s*:\s*CIRCUIT_DOCKS\.has\(this\.state\.debugDock\) \? this\.state\.debugDock : 'off';/);
+    // All circuit docks retain their prior behaviour; a device-owned dock must
+    // not leave the instruments-column debugger covering the device pane.
+    const dockExpression = source.match(/const dock = (this\.state\.debugDock === 'solo'[\s\S]*?);/);
+    assert.ok(dockExpression, 'actual Circuit tab dock selection');
+    const chooseDock = new Function('CIRCUIT_DOCKS', `return function () { return ${dockExpression[1]}; };`)(
+        new Set(['top', 'right', 'off', 'solo']));
+    for (const [input, expected] of [['solo', 'top'], ['top', 'top'], ['right', 'right'],
+        ['off', 'off'], ['controller', 'off'], ['microbit', 'off']]) {
+        assert.equal(chooseDock.call({state: {debugDock: input}}), expected, input);
+    }
     assert.match(source, /debuggerOn=\{dock === 'top'\}/);
     // The panel now renders through ONE portal into a persistent host node;
     // the instruments slot ADOPTS that node when dock is 'top' (HostMount).

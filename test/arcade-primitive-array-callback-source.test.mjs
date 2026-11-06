@@ -115,9 +115,16 @@ test('construction authorization excludes callback/later pushes, intervening pub
   builder.replace('tmp.push(0+10)','tmp.push(sideEffect())'),
   builder.replace('tmp.push(0+10)','tmp.push(tmp.length)'),
   builder.replace('tmp.push(0+10)','tmp.push(1,2)'),
-  builder.replace('tmp=[];','let intervening=0;tmp=[];'),
   builder.replace('sum+=x+i','let inside=[];inside.push(1);sum+=x+i')
  ]){const {graph,callbacks}=inspect(text);for(const fn of callbacks)assert.deepEqual(sorted(graph.functionParameterTypes(fn,1)),[],text);}
+});
+
+// A literal local declared between the null reset and the allocation cannot
+// read or write the reset local; the composed hoisted-reset proof admits it.
+// In original PXT the filter/forEach index is a Number on every call.
+test('a literal local between the reset and the allocation keeps the builder entry facts',()=>{
+ const {graph,callbacks}=inspect(builder.replace('tmp=[];','let intervening=0;tmp=[];'));assert.equal(callbacks.length,2);
+ for(const fn of callbacks)assert.deepEqual(sorted(graph.functionParameterTypes(fn,1)),['Number']);
 });
 
 test('sparse parser input and sparse AST origins cannot manufacture callback entry',()=>{

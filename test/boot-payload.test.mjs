@@ -27,7 +27,8 @@ test('boot payload accepts shared lazy engine bytes but rejects eager, absent an
             'about-apps': 'about-app-showcase', 'bw-project-safety': 'data-bw-error-notes', 'bw-history-panel': 'bw-autosave-confirm-restore',
             'bw-extension-menus': '"spikeprime_motorRunFor": {"PORT":"+MULTIPLE_PORT"}',
             'asset-library-index': '"name":"Abby"',
-            'bw-circuit-ui': 'Check the address decode wiring on the breadboard. Could not recognise this file',
+            'bw-circuit-ui': 'Check the address decode wiring on the breadboard. Bus-Extraktor fehlgeschlagen:  Could not recognise this file',
+            'bw-circuit-panels': 'bw-circuit-panel-header',
             'bw-board': 'entry', 'guided-lessons': 'optional', '8933.hash': marker,
             // The arena's 3D view: its own chunk, three in a shared lazy chunk, and the arena pane's chunk without either.
             'bw-arena-3d': 'bw-spike-arena-3d-canvas', '1380.hash': three, 'bw-spike-simulator': 'the 2D arena pane',
@@ -47,6 +48,10 @@ test('boot payload accepts shared lazy engine bytes but rejects eager, absent an
         put('gui.js', '_bwFontWait ID: circuitplayground');
         result=run();assert.equal(result.status,1);
         assert.match(result.stdout,/FAIL Circuit Playground runtime .*not in the first load/);
+        put('gui.js', '_bwFontWait Bus-Extraktor fehlgeschlagen: x');
+        result = run();
+        assert.equal(result.status, 1);
+        assert.match(result.stdout, /FAIL German DRC texts .*not in the first load/);
         put('gui.js', `_bwFontWait ${marker}`);
         result = run();
         assert.equal(result.status, 1);

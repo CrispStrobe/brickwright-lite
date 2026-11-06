@@ -86,8 +86,18 @@ const LAZY = [
     // these chunks at first paint, so "not preloaded" is the eager-script check.
     {what: 'circuit DRC rules', marker: 'Check the address decode wiring on the breadboard.', chunk: 'bw-circuit-ui',
         why: 'the guarded load in overlay/scratch-gui/src/components/tw-pseudocode/circuit-tab.jsx (webpackChunkName "bw-circuit-ui")'},
+    // The German words for those findings (bw-circuit-ui src/i18n/drc-de.js) come with the
+    // designer as well; the first-load budget has no room for a translation table. ASCII-only
+    // marker, so minification cannot escape it into a different spelling.
+    {what: 'German DRC texts', marker: 'Bus-Extraktor fehlgeschlagen: ', chunk: 'bw-circuit-ui',
+        why: 'the guarded load in circuit-tab.jsx (webpackChunkName "bw-circuit-ui"); drc-de.js is imported only by designer components'},
     {what: 'board canvas', marker: 'Could not recognise this file', chunk: 'bw-circuit-ui',
         why: 'the guarded load in circuit-tab.jsx (webpackChunkName "bw-circuit-ui")'},
+    // The Circuit tab's panel switch and panel views (Robot Lab conventions): loaded with the
+    // designer, never at boot (the tab is mounted from the start). The marker is the panel
+    // header's test id, which only circuit-panels.jsx carries.
+    {what: 'the Circuit tab panels', marker: 'bw-circuit-panel-header', chunk: 'bw-circuit-panels',
+        why: 'the guarded load in circuit-tab.jsx (webpackChunkName "bw-circuit-panels")'},
     {what: '6502 bus extractor (bw-board)', marker: 'no RAM, ROM, VIA or ACIA on the board', chunk: 'bw-board',
         // npm package modules shared by multiple lazy consumers may be extracted
         // into an anonymous split chunk. Keep the named entry requirement and

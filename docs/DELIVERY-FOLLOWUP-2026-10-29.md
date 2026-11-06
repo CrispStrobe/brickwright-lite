@@ -1,5 +1,12 @@
 # Delivery follow-up — 2026-10-29
 
+## Current status — 2026-11-05
+
+The integration has merged, and later browser gates passed after an earlier full
+run failed. The dated material below is historical. See the [current circuit/editor
+handoff](CIRCUIT-INSTRUMENT-REGRESSION.md#current-circuiteditor-status--2026-11-05) for exact evidence, open work and acceptance boundaries.
+
+
 This is a snapshot. Refresh main, PR heads, enabled checks and ownership claims
 before acting. Preserve original failures, pins, assertions and thresholds; use
 normal pushes. A component success does not establish final application acceptance.

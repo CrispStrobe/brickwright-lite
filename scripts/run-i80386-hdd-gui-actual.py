@@ -57,7 +57,7 @@ CURRENT_SB3 = '1cbaeed325f5a890e43b78a4211acae8f801f2d2'
 FINITE_V7_PINS = {'bw-board':'836867513c3e7fac420ddaa32c17e1c7b6d3e513','bw-circuit-ui':'1bc233c9297e03abb9b7eb603e045b4e92b0bb40','sb3-creator':'1cbaeed325f5a890e43b78a4211acae8f801f2d2'}
 FINITE_V8_PINS = {'bw-board':'836867513c3e7fac420ddaa32c17e1c7b6d3e513','bw-circuit-ui':'1bc233c9297e03abb9b7eb603e045b4e92b0bb40','sb3-creator':'1cbaeed325f5a890e43b78a4211acae8f801f2d2'}
 FINITE_V9_PINS = {'bw-board':CURRENT_BOARD,'bw-circuit-ui':CUI,'sb3-creator':CURRENT_SB3}
-FINITE_V10_PINS = {'bw-board':'cda9d13b3e5b4a3e40854f45e04d110ab2a57ef3','bw-circuit-ui':'380dc8b7b51e10726035b77f775d753152f9a885','sb3-creator':'bc9070f9ea19d4431508408dcc28a9d3b25473ec'}
+FINITE_V10_PINS = {'bw-board':'cda9d13b3e5b4a3e40854f45e04d110ab2a57ef3','bw-circuit-ui':'9d7a9a260d00d3c26a77e749aec55ceddbe29a52','sb3-creator':'8e53c1621a1b9eeb42e0565f987c4c47ab598961'}
 JSON_CAP = 4 << 20
 STREAM_CAP = 1 << 20
 FILE_CAP = 32 << 20
@@ -1359,24 +1359,24 @@ FINITE_V9_CUI_WITNESSES = {
 }
 
 FINITE_V10_CUI_WITNESSES = {
- 'node_modules/bw-circuit-ui/LANES.md':(280461, '7450d03ffe10693632891ce9466d12885caa75f2762b15aaf9f3896f007a029c'),
- 'node_modules/bw-circuit-ui/bin/bwc.mjs':(73062, 'e1c7c86d8e66927e30da8c8079c804f3774b8613b49b42d4118516d4e3c02d9d'),
- 'node_modules/bw-circuit-ui/docs/CLI-INSTRUMENTS.md':(56813, '2777a5fb5f4ca06c51d484300314fe71df87a27c8e076a3d53c0ba86f5bca9b5'),
- 'node_modules/bw-circuit-ui/package.json':(11632, '811a929cf61e7e199cbfbf5d889ddf81b345ee9d2a0d026eeed12abb3e34eb5b'),
- 'node_modules/bw-circuit-ui/scripts/verify-interaction.mjs':(158564, '63b4782258f1ef832567fa68b6e5bd74d42afb547b8a3a7c48c4fa03a2c86616'),
- 'node_modules/bw-circuit-ui/src/components/ScopePanel.jsx':(59219, '0fe079a01dee0879dcf7f55f46bbcaab39b4173a74da4a5a6c264744d333dd9b'),
- 'node_modules/bw-circuit-ui/src/i18n/strings.js':(25719, '60fe3dd9febaee4baf2ef82d855de6e054e68b842ee4b209854ffa58b9170230'),
- 'node_modules/bw-circuit-ui/src/importers/spice.js':(85910, '3d93812a665b443ac3a7c41197772d06a0dbfa7101670d7db0a74bdbc44c3c41'),
- 'node_modules/bw-circuit-ui/src/model/instrument-report.js':(34538, 'b209720f09a5c2626b39c2271a0c3453a851019d9504a5cedfe9a7dd3c500084'),
- 'node_modules/bw-circuit-ui/src/model/measurement-receipt.js':(10950, 'a37085c806a4f8c1293f8d62cc4004ccf800e18c1d11c7fedd53b32e05e9a3b8'),
- 'node_modules/bw-circuit-ui/src/model/operating-point-kcl.js':(7695, '547351bd0372d6d0090deb7ee9893adad769e4367635aea9611c406861cf69a7'),
- 'node_modules/bw-circuit-ui/src/model/scope-csv.js':(4276, 'e1eadc8667813ccbf35b0a8612f8dec36c8d6fa25ac6a1ff44946f12394eb5b6'),
- 'node_modules/bw-circuit-ui/src/model/scope-digitizer.js':(7699, '5f7915e5445b71d7b6f8899594b10e75edcd8fa7140437c2c50b330b26cd1444'),
- 'node_modules/bw-circuit-ui/test/cli-measure.test.js':(194959, '540e81409a2de8c2953e650da993ffcb33e8115b5f234d33a18f7dca314d5688'),
- 'node_modules/bw-circuit-ui/test/operating-point-kcl.test.js':(11320, 'deafeb1df57ae1729f5ea77ca795b8f888f619f8ce336d7115cab717eda5c9b5'),
- 'node_modules/bw-circuit-ui/test/scope-digitizer.test.js':(9815, '998cf426cc76cfcc12623bb368c5aaa73db6be6d31fc245a8a79c1b53000b629'),
- 'node_modules/bw-circuit-ui/test/scope-timebase.test.js':(10545, '1dca476e2e94a0e115134d745520beb14686a97f174f902eb43bf7e4de0e910f'),
- 'node_modules/bw-circuit-ui/test/spice-nmos-operating-point.test.js':(23891, '7ae3b65b0f775dcb2b7ee8a5ea589d004838c71b815bfeb65a37b8b461c8215f'),
+ 'node_modules/bw-circuit-ui/LANES.md':(286575,'467bd42f30ad2e6cef90e72c9b0410bd0f019e3e1678120dcf175ce12cf565da'),
+ 'node_modules/bw-circuit-ui/bin/bwc.mjs':(73062,'e1c7c86d8e66927e30da8c8079c804f3774b8613b49b42d4118516d4e3c02d9d'),
+ 'node_modules/bw-circuit-ui/docs/CLI-INSTRUMENTS.md':(56813,'2777a5fb5f4ca06c51d484300314fe71df87a27c8e076a3d53c0ba86f5bca9b5'),
+ 'node_modules/bw-circuit-ui/package.json':(11684,'69b5631a7469a4605ad57a5f33dbd866a533f5852cd0af267761acc093a72192'),
+ 'node_modules/bw-circuit-ui/scripts/verify-interaction.mjs':(159173,'7104b32ffd1ca7187ecdc22e5ab85ea2d3004cc7e02649728d5d93123fbea4af'),
+ 'node_modules/bw-circuit-ui/src/components/ScopePanel.jsx':(59219,'0fe079a01dee0879dcf7f55f46bbcaab39b4173a74da4a5a6c264744d333dd9b'),
+ 'node_modules/bw-circuit-ui/src/i18n/strings.js':(33321,'204a4a205eb8c63bf7c29700452d4d93ed66cdbec6dbe788f474672c2c9a2846'),
+ 'node_modules/bw-circuit-ui/src/importers/spice.js':(85910,'3d93812a665b443ac3a7c41197772d06a0dbfa7101670d7db0a74bdbc44c3c41'),
+ 'node_modules/bw-circuit-ui/src/model/instrument-report.js':(34538,'b209720f09a5c2626b39c2271a0c3453a851019d9504a5cedfe9a7dd3c500084'),
+ 'node_modules/bw-circuit-ui/src/model/measurement-receipt.js':(10950,'a37085c806a4f8c1293f8d62cc4004ccf800e18c1d11c7fedd53b32e05e9a3b8'),
+ 'node_modules/bw-circuit-ui/src/model/operating-point-kcl.js':(7695,'547351bd0372d6d0090deb7ee9893adad769e4367635aea9611c406861cf69a7'),
+ 'node_modules/bw-circuit-ui/src/model/scope-csv.js':(4276,'e1eadc8667813ccbf35b0a8612f8dec36c8d6fa25ac6a1ff44946f12394eb5b6'),
+ 'node_modules/bw-circuit-ui/src/model/scope-digitizer.js':(7699,'5f7915e5445b71d7b6f8899594b10e75edcd8fa7140437c2c50b330b26cd1444'),
+ 'node_modules/bw-circuit-ui/test/cli-measure.test.js':(194959,'540e81409a2de8c2953e650da993ffcb33e8115b5f234d33a18f7dca314d5688'),
+ 'node_modules/bw-circuit-ui/test/operating-point-kcl.test.js':(11320,'deafeb1df57ae1729f5ea77ca795b8f888f619f8ce336d7115cab717eda5c9b5'),
+ 'node_modules/bw-circuit-ui/test/scope-digitizer.test.js':(9815,'998cf426cc76cfcc12623bb368c5aaa73db6be6d31fc245a8a79c1b53000b629'),
+ 'node_modules/bw-circuit-ui/test/scope-timebase.test.js':(10545,'1dca476e2e94a0e115134d745520beb14686a97f174f902eb43bf7e4de0e910f'),
+ 'node_modules/bw-circuit-ui/test/spice-nmos-operating-point.test.js':(23891,'7ae3b65b0f775dcb2b7ee8a5ea589d004838c71b815bfeb65a37b8b461c8215f'),
 }
 
 def installed_rows_v5(value, critical=INSTALLED_V5_CRITICAL):

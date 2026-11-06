@@ -6,7 +6,7 @@ import {tmpdir} from 'node:os';
 import path from 'node:path';
 
 const root = path.resolve(import.meta.dirname, '..');
-const cuiPin = '380dc8b7b51e10726035b77f775d753152f9a885';
+const cuiPin = '9d7a9a260d00d3c26a77e749aec55ceddbe29a52';
 const boardPin = 'cda9d13b3e5b4a3e40854f45e04d110ab2a57ef3';
 const cli = path.join(root, 'node_modules/bw-circuit-ui/bin/bwc.mjs');
 const env = {...process.env}; delete env.BW_BOARD;

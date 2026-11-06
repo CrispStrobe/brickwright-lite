@@ -28,7 +28,7 @@ async function compareRoundtrips(source,names) {
     run.vm.greenFlag();await stepFrames(run.vm,30);check(run);
 }
 
-test('prefix update in a condition performs required array initialization', {todo:"Array export authority cannot yet prove the Array receiver \u2014 see docs/ARCADE-888-OPEN-FAILURES.md"},async()=>{
+test('prefix update in a condition performs required array initialization',async()=>{
     await compareRoundtrips(`let attempts=4
 let entries:number[]
 function prepare(){if(++attempts>=5){entries=[17,23]}}

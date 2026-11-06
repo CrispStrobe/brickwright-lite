@@ -171,6 +171,13 @@
           "notes": "Bend reached 29.94° not 30° (B within its 0.5° arrival guard), hence 8.20° vs ideal 8.234° ripple. Identity (no ripple) model is rejected: rms 2.21° vs 0.004°."
         },
         "scope": "one headless run on the app branch engine; not a physical build"
+      },
+      "promoted": {
+        "to": "established library (MODELS)",
+        "date": "2026-11-02",
+        "judge": "cardan-bend-v1",
+        "harness": "disconnection removes output_fork",
+        "verified": "local native ordinary/strict/disconnected PASS (2026-11-02); hosted CI pending"
       }
     },
     {
@@ -688,6 +695,18 @@
           "residual": "swing <0.01°, reversal angles within 0.4° (frame resolution 1.5°)"
         },
         "scope": "one headless run on the app branch engine; not a physical build"
+      },
+      "promotionReview": {
+        "date": "2026-11-03",
+        "decision": "PROMOTED",
+        "reason": "Reviewed disconnection added: removing coupler (the only link joining crank pin A to rocker pin B) breaks the four-bar closure by 64 mm (> 2 mm)."
+      },
+      "promoted": {
+        "to": "established library (MODELS)",
+        "date": "2026-11-03",
+        "judge": "crank-rocker-v1",
+        "harness": "disconnection removes coupler",
+        "verified": "local native ordinary/strict/disconnected PASS (2026-11-03); hosted CI pending"
       }
     },
     {
@@ -776,6 +795,18 @@
           "surprise": "full-travel inscribed opening 27.2 mm vs supplier's 24 mm; lesson now quotes the simulator value and notes the difference"
         },
         "scope": "one headless run on the app branch engine; not a physical build"
+      },
+      "promotionReview": {
+        "date": "2026-11-03",
+        "decision": "PROMOTED",
+        "reason": "Reviewed disconnection added: removing ring_top (the ring meshing all six leaves) leaves leaves 1–5 off the gear law by 181° (> 5°) while the input still drives leaf 0."
+      },
+      "promoted": {
+        "to": "established library (MODELS)",
+        "date": "2026-11-03",
+        "judge": "geared-iris-v1",
+        "harness": "disconnection removes ring_top",
+        "verified": "local native ordinary/strict/disconnected PASS (2026-11-03); hosted CI pending"
       }
     },
     {
@@ -1182,6 +1213,18 @@
           "residual": "straight within 0.16 mm; position law within 0.24 mm; steady offset ~0.15 mm from joint compliance"
         },
         "scope": "one headless run on the app branch engine; not a physical build"
+      },
+      "promotionReview": {
+        "date": "2026-11-03",
+        "decision": "PROMOTED",
+        "reason": "Reviewed disconnection added: removing rhombus side cell_BQ opens the cell; the output leaves OP·OQ = l² − s² by 21.7 mm (> 2 mm)."
+      },
+      "promoted": {
+        "to": "established library (MODELS)",
+        "date": "2026-11-03",
+        "judge": "peaucellier-inversor-v1",
+        "harness": "disconnection removes cell_BQ",
+        "verified": "local native ordinary/strict/disconnected PASS (2026-11-03); hosted CI pending"
       }
     },
     {
@@ -1490,6 +1533,13 @@
           "residual": "angle ≤0.1°, h ≤0.04 mm"
         },
         "scope": "one headless run on the app branch engine; not a physical build"
+      },
+      "promoted": {
+        "to": "established library (MODELS)",
+        "date": "2026-11-02",
+        "judge": "variable-offset-relay-v1",
+        "harness": "disconnection removes stage1_link_x_-1, stage1_link_x_1, stage1_link_y_-1, stage1_link_y_1",
+        "verified": "local native ordinary/strict/disconnected PASS (2026-11-02); hosted CI pending"
       }
     },
     {
@@ -1619,6 +1669,13 @@
           "residual": "carriage ≤0.0012 mm, pointer ≤0.12° over all stages (signs are the measurement axis convention; lesson magnitudes match)"
         },
         "scope": "one headless run on the app branch engine; not a physical build"
+      },
+      "promoted": {
+        "to": "established library (MODELS)",
+        "date": "2026-11-02",
+        "judge": "rack-pinion-differential-v1",
+        "harness": "disconnection removes passive_pinion",
+        "verified": "local native ordinary/strict/disconnected PASS (2026-11-02); hosted CI pending"
       }
     },
     {
@@ -1720,6 +1777,18 @@
           "residual": "law exact to 0.001 mm; but guide/motor hinge settles up to 0.17° off its target (within the 0.5° arrival guard), so the 'equal 8 mm' endpoints are 8.092 and 8.149 mm (gap 0.057 mm, matching the supplier's 0.0577)"
         },
         "scope": "one headless run on the app branch engine; not a physical build"
+      },
+      "promotionReview": {
+        "date": "2026-11-03",
+        "decision": "PROMOTED",
+        "reason": "Earlier follower_axle removal kept the law within 0.25 mm because the follower sleeve stays nested in the output bearings and their contact still drags the output along the guide. radial_sleeve is the follower’s only sliding bearing on the radial guide; removing it loses y = d·tan θ by 13.4 mm (> 2 mm)."
+      },
+      "promoted": {
+        "to": "established library (MODELS)",
+        "date": "2026-11-03",
+        "judge": "tangent-table-v1",
+        "harness": "disconnection removes radial_sleeve",
+        "verified": "local native ordinary/strict/disconnected PASS (2026-11-03); hosted CI pending"
       }
     },
     {
@@ -1874,6 +1943,13 @@
           "residual": "C within 0.003 mm of predicted distance, wander ≤0.1 mm"
         },
         "scope": "one headless run on the app branch engine; not a physical build"
+      },
+      "promoted": {
+        "to": "established library (MODELS)",
+        "date": "2026-11-02",
+        "judge": "double-parallelogram-remote-centre-v1",
+        "harness": "disconnection removes distal_L",
+        "verified": "local native ordinary/strict/disconnected PASS (2026-11-02); hosted CI pending"
       }
     },
     {
@@ -2088,6 +2164,13 @@
           "summary": "All 14 hinges track -360..+720 deg together; program completes with COLD=1000."
         },
         "scope": "one headless run on the app branch engine; not a physical build"
+      },
+      "promoted": {
+        "to": "established library (MODELS)",
+        "date": "2026-11-02",
+        "judge": "schmidt-coupling-v1",
+        "harness": "disconnection removes link_1_0, link_1_1, link_1_2",
+        "verified": "local native ordinary/strict/disconnected PASS (2026-11-02); hosted CI pending"
       }
     },
     {
@@ -2146,7 +2229,14 @@
       "mechanicalLaw": "SIMULATOR_AGREES",
       "causalControl": "NOT_RUN_ON_REAL_PARTS",
       "browserLoad": "PROGRAM_COMPLETE_SYSTEM_CHROME",
-      "savedProjectReplay": "NOT_RUN"
+      "savedProjectReplay": "NOT_RUN",
+      "promoted": {
+        "to": "established library (MODELS)",
+        "date": "2026-11-02",
+        "judge": "roberval-balance-v1",
+        "harness": "disconnection removes lower_bar",
+        "verified": "local native ordinary/strict/disconnected PASS (2026-11-02); hosted CI pending"
+      }
     },
     {
       "id": "poise-mass-control",
@@ -2260,7 +2350,14 @@
       "mechanicalLaw": "SIMULATOR_AGREES",
       "causalControl": "NOT_RUN_ON_REAL_PARTS",
       "browserLoad": "PROGRAM_COMPLETE_SYSTEM_CHROME",
-      "savedProjectReplay": "NOT_RUN"
+      "savedProjectReplay": "NOT_RUN",
+      "promoted": {
+        "to": "established library (MODELS)",
+        "date": "2026-11-02",
+        "judge": "whippletree-share-v1",
+        "harness": "disconnection removes right_back_rod",
+        "verified": "local native ordinary/strict/disconnected PASS (2026-11-02); hosted CI pending"
+      }
     },
     {
       "id": "equal-share-even-springs",
@@ -2425,7 +2522,14 @@
       "mechanicalLaw": "SIMULATOR_AGREES",
       "causalControl": "NOT_RUN_ON_REAL_PARTS",
       "browserLoad": "PROGRAM_COMPLETE_SYSTEM_CHROME",
-      "savedProjectReplay": "NOT_RUN"
+      "savedProjectReplay": "NOT_RUN",
+      "promoted": {
+        "to": "established library (MODELS)",
+        "date": "2026-11-02",
+        "judge": "variable-crank-v1",
+        "harness": "disconnection removes rod_near, rod_far",
+        "verified": "local native ordinary/strict/disconnected PASS (2026-11-02); hosted CI pending"
+      }
     },
     {
       "id": "triad-table",
@@ -2515,7 +2619,14 @@
       "mechanicalLaw": "SIMULATOR_AGREES",
       "causalControl": "NOT_RUN_ON_REAL_PARTS",
       "browserLoad": "PROGRAM_COMPLETE_SYSTEM_CHROME",
-      "savedProjectReplay": "NOT_RUN"
+      "savedProjectReplay": "NOT_RUN",
+      "promoted": {
+        "to": "established library (MODELS)",
+        "date": "2026-11-02",
+        "judge": "planar-3rpr-v1",
+        "harness": "disconnection removes platform_axle_C",
+        "verified": "local native ordinary/strict/disconnected PASS (2026-11-02); hosted CI pending"
+      }
     },
     {
       "id": "paired-door-sync",
@@ -2885,6 +2996,13 @@
         "date": "2026-10-27",
         "decision": "STAYS_EXPERIMENTAL",
         "reason": "The physical prediction dpsi = -Iw*dalpha/Jlocked from compiled colliders gives Iw/J = 0.026 per wheel degree at the saved pose. The recorded 0.124-0.129 equals (Iw+Jr)/(J+2Jr) with the SPIKE medium motor's reflected rotor inertia Jr = 3.0e-4 kg m2, which the engine adds to both hinge bodies (jolt-core setRotorInertia documents this as wrong when both turn about the axis, as platform and wheel do here). The observed reorientation is dominated by that engine model, so no honest physical judge passes it."
+      },
+      "nativeRotorReview": {
+        "date": "2026-11-02",
+        "decision": "STAYS_EXPERIMENTAL",
+        "rotor": "native (0 !BW ROTOR_INERTIA native, #1573)",
+        "measured": "headless direct VM: stroke at B=70 0.02749 platform/wheel, stroke at saved radii 0.02606 (law Iw/J 0.02608); first cycle -1.275 deg, after inverse -0.043 deg; control afterturn-fixed-masses strokes 0.02573/0.02573, cycle -0.009 deg",
+        "reason": "The native rotor removes the #1494 double count; the cycle now gives 1.28 deg, consistent with 900 x (0.02749-0.02606) = 1.29 deg. The supplier claims (4.6625 deg) and lessons describe the old engine artefact and no longer agree. No afterturn judge is registered in QUALIFICATION_JUDGES; promotion needs a new independently reviewed judge with an independent J(B=70) prediction and corrected supplier claims and lessons."
       }
     },
     {

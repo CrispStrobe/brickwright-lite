@@ -333,13 +333,13 @@ jobs:
   # Each shard retains identical integrated prerequisites and its own audited
   # file/skip/GUI-resolution census. No Pages artifact is produced here.
   unit:
-    name: unit (${{ matrix.shard }}/6)
+    name: unit (${{ matrix.shard }}/8)
     needs: scope
     if: needs.scope.outputs.fast == 'true'
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4, 5, 6]
+        shard: [1, 2, 3, 4, 5, 6, 7, 8]
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -834,7 +834,7 @@ jobs:
         env:
           # Fixtures create and remove unique children; never fall back to a host temp root.
           TMPDIR: ${{ runner.temp }}
-          BW_TEST_SHARD: ${{ matrix.shard }}/6
+          BW_TEST_SHARD: ${{ matrix.shard }}/8
           BW_ARRAY_MENU_FAILURE_ROOT: ${{ github.workspace }}/test-results
           BW_ARRAY_NUMBER_VALUE_SOURCE: ${{ github.workspace }}/test-results/arrays-number-value-input/arrays.js
           BW_ARRAY_NAMED_JSON_SOURCE: ${{ github.workspace }}/test-results/arrays-number-value-input/arrays.js

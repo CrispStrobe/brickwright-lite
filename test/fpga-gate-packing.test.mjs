@@ -146,9 +146,17 @@ test('the CSV export is real CSV a supplier could take', () => {
 });
 
 test('the parts list panel offers that CSV', () => {
-    const tab = readFileSync(new URL('../overlay/scratch-gui/src/components/tw-pseudocode/circuit-tab.jsx', import.meta.url), 'utf8');
-    assert.match(tab, /data-testid="bw-bom-csv"/, 'there is a CSV block');
-    assert.match(tab, /ui\.bomToCsv\(/, 'using the vendor exporter, not a second one');
+    // The Circuit tab's panels live in circuit-panels.jsx (drawn) and circuit-panels-model.js (decided).
+    const tab = readFileSync(new URL('../overlay/scratch-gui/src/components/tw-pseudocode/circuit-panels.jsx', import.meta.url), 'utf8');
+    const model = readFileSync(new URL('../overlay/scratch-gui/src/lib/circuit-panels-model.js', import.meta.url), 'utf8');
+    const vendor = readFileSync(new URL('../node_modules/bw-circuit-ui/src/components/BomPanel.jsx', import.meta.url), 'utf8');
+    // One CSV control per list: the vendor panel's own export when the build has that panel...
+    assert.match(vendor, /bomToCsv\(bom\)/, 'the vendor panel exports with the vendor exporter');
+    assert.match(vendor, /'bom\.csv'/, 'as a bom.csv file');
+    assert.match(tab, /if \(ui\.BomPanel\) return <ui\.BomPanel parts=\{circuit\.parts\} lang=\{designerLang\(locale\)\} \/>;/, 'and the host adds no second CSV beside it');
+    // ...and the host's copyable CSV only as the fallback for a build without it.
+    assert.match(tab, /data-testid="bw-bom-csv"/, 'there is a fallback CSV block');
+    assert.match(model, /ui\.bomToCsv\(/, 'using the vendor exporter, not a second one');
     assert.match(tab, /onFocus=\{e => e\.target\.select\(\)\}/, 'and it is selectable in one click');
 });
 

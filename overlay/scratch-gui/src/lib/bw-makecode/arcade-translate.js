@@ -352,7 +352,7 @@ class ArcadeTranslator extends BaseTranslator {
         const references = inferImageReferences(node, value => this.path(value), value => this.imageOf(value), value => !!this.assetKindLookup && value?.type === 'Template' && ['assets.image', 'assets.tile'].includes(value.tag));
         this.objectReferences = references.objects;this.fontReferences=references.fonts;
         this.bufferReferences = references.buffers;this.imageReferences = references.images;this.spriteReferences = references.sprites;this.dataReferences = references.data;
-        this.textSpriteReferences=references.textSprites;this.playerReferences=references.players;this.sceneReferences=references.scenes;this.physicsEngineReferences=references.physicsEngines;this.tileReferences = references.tiles;this.tilemapDataReferences = references.tilemapData;this.legacyTileReferences=references.legacyTiles;this.animationReferences = references.animations;this.sevensegDigitReferences=references.sevensegDigits;this.sevensegCounterReferences=references.sevensegCounters;this.dartReferences=references.darts;this.corgiReferences=references.corgis;this.nullReferences=references.nulls;this.arrayReferences = references.arrays;this.numberReferences=references.numbers;this.stringReferences=references.strings;this.booleanReferences=references.booleans;
+        this.textSpriteReferences=references.textSprites;this.playerReferences=references.players;this.sceneReferences=references.scenes;this.physicsEngineReferences=references.physicsEngines;this.tileReferences = references.tiles;this.tilemapDataReferences = references.tilemapData;this.sceneTilemapReferences = references.sceneTilemaps;this.legacyTileReferences=references.legacyTiles;this.animationReferences = references.animations;this.sevensegDigitReferences=references.sevensegDigits;this.sevensegCounterReferences=references.sevensegCounters;this.dartReferences=references.darts;this.corgiReferences=references.corgis;this.nullReferences=references.nulls;this.arrayReferences = references.arrays;this.numberReferences=references.numbers;this.stringReferences=references.strings;this.booleanReferences=references.booleans;
         this.referenceArrayProgram=containsAst(node,value=>value.type==='Array' || references.arrays.has(value));
         this.fontValueProgram=containsAst(node,value=>!!value.bwFontIntrinsic);
         this.throwValueProgram=hasThrowEmission(node);this.throwSourceProgram=node;
@@ -1030,7 +1030,7 @@ class ArcadeTranslator extends BaseTranslator {
                 this.unsupported.push(`${name} refers to a shadowed Math binding`);return 'undefined value';
             }
             if(a.length!==1){this.unsupported.push(`${name}() requires exactly one number`);return 'undefined value';}
-            return `arcade ${name==='Math.sign'?'sign of':'truncate'} (${this.expr(a[0])})`;
+            return `arcade math ${name==='Math.sign'?'sign':'truncate'} of (${this.expr(a[0])})`;
         case 'randint':
             if(a.length!==2){this.note('randint() requires exactly two arguments');return 'undefined value';}
             return `arcade math randomRange first (${this.arrayElementValue(a[0])}) second (${this.arrayElementValue(a[1])})`;
@@ -1461,6 +1461,12 @@ class ArcadeTranslator extends BaseTranslator {
             if(['x','y','tileSet'].includes(node.name))return `arcade color tile ${node.name} of (${this.expr(node.object)})`;
             this.unsupported.push(`tiles.Tile.${node.name} is not a supported legacy Tile property`);return '0';
         }
+        if(this.handleTemplates && node?.type==='Member' && this.sceneTilemapReferences?.has(node.object)) {
+            if(['data','scale','enabled'].includes(node.name))return `arcade scene tilemap ${node.name} of (${this.expr(node.object)})`;
+            this.unsupported.push(`tiles.TileMap.${node.name} is not a supported scene TileMap property`);return '0';
+        }
+        if(this.handleTemplates && node?.type==='Member' && node.name==='tileMap' && this.tileReferences?.has(node.object))
+            return `arcade scene tilemap of tile (${this.expr(node.object)})`;
         if(this.handleTemplates && node?.type==='Member' && this.tilemapDataReferences?.has(node.object)) {
             if(['width','height','scale'].includes(node.name))return `arcade tilemap ${node.name} of (${this.expr(node.object)})`;
             this.unsupported.push(`tiles.TileMapData.${node.name} is not a supported TileMapData property`);return '0';
@@ -1496,6 +1502,14 @@ class ArcadeTranslator extends BaseTranslator {
                 if(node.callee.name==='getTile' && args.length===2)return `arcade tilemap (${data}) tile index at column (${this.expr(args[0])}) row (${this.expr(args[1])})`;
                 if(node.callee.name==='isWall' && args.length===2)return `arcade tilemap (${data}) wall at column (${this.expr(args[0])}) row (${this.expr(args[1])})`;
                 if(node.callee.name==='getTileImage' && args.length===1)return `arcade tilemap (${data}) image of tile index (${this.expr(args[0])})`;
+                if(node.callee.name==='getTileset' && args.length===0){this.usesArrays=true;return `arcade tilemap (${data}) tileset`;}
+            }
+            if(node.callee?.type==='Member' && this.sceneTilemapReferences?.has(node.callee.object)) {
+                const map=this.expr(node.callee.object);
+                if(['areaWidth','areaHeight'].includes(node.callee.name) && args.length===0)return `arcade scene tilemap ${node.callee.name} of (${map})`;
+                // PXT TileMap.getTileIndex(col, row) is this.data.getTile(col, row).
+                if(node.callee.name==='getTileIndex' && args.length===2)return `arcade tilemap (arcade scene tilemap data of (${map})) tile index at column (${this.expr(args[0])}) row (${this.expr(args[1])})`;
+                this.unsupported.push(`tiles.TileMap.${node.callee.name}() is not a supported scene TileMap method`);return '0';
             }
             if(node.callee?.type==='Member' && this.tileReferences?.has(node.callee.object) && args.length===0){
                 if(node.callee.name==='getImage')return `arcade tile image at (${this.expr(node.callee.object)})`;
@@ -1720,6 +1734,13 @@ class ArcadeTranslator extends BaseTranslator {
             const registration=this.terrainRegistrations.get(node),event=/^(?:tiles\.)?TileMapEvent\.(Loaded|Unloaded)$/.exec(this.path(a[0])||'')?.[1];
             if(!registration || !event){push(this.note('tiles.addEventListener requires tiles.TileMapEvent.Loaded or Unloaded and an inline callback with at most one parameter'));return;}
             push(`arcade register tilemap event ${event} as "${registration.token}" capturing ${JSON.stringify([...registration.ownCaptures].join(' '))}`);return;
+        }
+        if(this.handleTemplates && name==='tiles.removeEventListener') {
+            const event=/^(?:tiles\.)?TileMapEvent\.(Loaded|Unloaded)$/.exec(this.path(a[0])||'')?.[1],named=a[1]?.bwNamedCallback;
+            if(a.length!==2 || !event || !(named || a[1]?.type==='FunctionExpression')){push(this.note('tiles.removeEventListener requires tiles.TileMapEvent.Loaded or Unloaded and a named function'));return;}
+            // An inline function is a new callback value that no listener holds: PXT removes nothing.
+            if(named)push(`arcade unregister tilemap event ${event} as "${tilemapFunctionToken(named)}"`);
+            return;
         }
         if(this.handleTemplates && ['game.pushScene','game.popScene'].includes(name)) {
             if(a.length){push(this.note(`${name} requires no arguments`));return;}
@@ -2874,7 +2895,7 @@ class ArcadeTranslator extends BaseTranslator {
         switch (name) {
         case 'music.play': {
             const mode = a.length === 2 && this.musicEnum(a[1], 'music.PlaybackMode');
-            if (mode) push(`arcade play music ${value(0)} mode ${mode}`);
+            if (mode) push(`arcade play playable ${value(0)} mode ${mode}`);
             else push(this.note('music.play() requires a playable and a fixed music.PlaybackMode'));
             return true;
         }
@@ -2990,6 +3011,15 @@ class ArcadeTranslator extends BaseTranslator {
             return;
         }
 
+        // PXT TileMapData.scale setter (the map's own TileScale).
+        if (this.handleTemplates && expr.type === 'Assignment' && expr.left?.type === 'Member' && expr.left.name === 'scale' &&
+            this.tilemapDataReferences?.has(expr.left.object)) {
+            const result = expr.op === '=' ? this.expr(expr.right) :
+                ['+=','-=','*=','/=','%=','|=','&=','^=','<<=','>>=','>>>='].includes(expr.op) ? this.expr({type:'Binary',op:expr.op.slice(0,-1),left:expr.left,right:expr.right}) : null;
+            if (result === null) push(this.note(`${this.path(expr.left)} ${expr.op} — unsupported assignment`));
+            else push(`arcade set tilemap (${this.expr(expr.left.object)}) scale to (${result})`);
+            return;
+        }
         const handle = expr.type === 'Assignment' && expr.left?.type === 'Member' &&
             this.handleRef(expr.left.object);
         if (handle) {
@@ -3353,6 +3383,26 @@ const liftExporterStops = (program,profile) => {
     if(!tokens||!mark||tokens.kind!=='let'||mark.kind!=='let'||!proof.unique('_tokens')||!proof.unique('_stopMark'))return program;
     const storage=(n,d)=>n?.type==='Identifier'&&proof.declarationAt(n)===d.decls[0];
     const path=n=>n?.type==='Identifier'?n.name:n?.type==='Member'?path(n.object)+'.'+n.name:null;
+    // The exporter's own sprite prologue, exactly: a root
+    // `let <X>Sprite = sprites.create(img`...`, SpriteKind.<K>)` and its
+    // literal-arithmetic `<X>Sprite.setPosition(a, b)`. These run no source
+    // callback and cannot read or write the stop storage; any other use of
+    // the Sprite binding remains subject to the ordinary ambient proof.
+    const literalArithmetic=n=>n?.type==='Number'||n?.type==='Binary'&&['+','-','*','/'].includes(n.op)&&literalArithmetic(n.left)&&literalArithmetic(n.right);
+    const spritePrologue=new Set(),prologueSprites=new Set();
+    for(const n of program.body){
+        const d=n.type==='Declaration'&&n.kind==='let'&&n.decls.length===1?n.decls[0]:null,init=d?.init;
+        if(!d||!/^\w+Sprite$/.test(d.name)||init?.type!=='Call'||init.isNew||path(init.callee)!=='sprites.create'||init.args?.length!==2||
+            init.args[0]?.type!=='Template'||init.args[0].tag!=='img'||init.args[1]?.type!=='Member'||init.args[1].object?.type!=='Identifier'||
+            init.args[1].object.name!=='SpriteKind'||!proof.unbound(init.args[1].object)||!proof.unbound(init.callee.object)||!proof.unique(d.name))continue;
+        spritePrologue.add(n);prologueSprites.add(d);
+    }
+    for(const n of program.body){
+        const c=n.type==='ExpressionStatement'?n.expr:null;
+        if(c?.type==='Call'&&!c.isNew&&c.callee?.type==='Member'&&c.callee.name==='setPosition'&&c.callee.object?.type==='Identifier'&&
+            prologueSprites.has(proof.declarationAt(c.callee.object))&&c.args?.length===2&&c.args.every(literalArithmetic))spritePrologue.add(n);
+    }
+    const inPrologue=n=>{for(let p=n;p;p=proof.parentOf(p))if(spritePrologue.has(p))return true;return false;};
     const activation=node=>{
         let owner=node;while(owner&&!['FunctionDeclaration','FunctionExpression'].includes(owner.type))owner=proof.parentOf(owner);
         if(owner?.type!=='FunctionExpression')return null;
@@ -3390,10 +3440,10 @@ const liftExporterStops = (program,profile) => {
         // Game. A source Sprite/scene/class route needs its own target recipe;
         // marker spellings do not prove the receiver of stop-other scripts.
         const roots=new Set(['game','control','controller','music','basic','pause','console','Math','Array','Object','JSON','String','Number','isNaN','undefined','Infinity','NaN']);
-        if(proof.nodes.some(n=>['Class','ClassDeclaration','Method'].includes(n.type)||
+        if(proof.nodes.some(n=>!inPrologue(n)&&['Class','ClassDeclaration','Method'].includes(n.type)||!inPrologue(n)&&(
             n.type==='Identifier'&&(['sprites','SpriteKind','scene','mp','self','this'].includes(n.name)||
                 !proof.declarationAt(n)&&!roots.has(n.name))||
-            n.type==='Call'&&(n.isNew||n.constructorCall||n.callee?.type==='Index')))return program;
+            n.type==='Call'&&(n.isNew||n.constructorCall||n.callee?.type==='Index'))))return program;
     }
     const bareReturn=n=>Array.isArray(n)?n.length===1&&bareReturn(n[0]):n?.type==='Return'&&!n.value||n?.type==='Block'&&bareReturn(n.body);
     const terms=n=>n?.type==='Binary'&&n.op==='||'?[...terms(n.left),...terms(n.right)]:[n];
@@ -3401,8 +3451,10 @@ const liftExporterStops = (program,profile) => {
         if(call(n,dead,1)&&token(n.args[0])&&activation(n)===tokenOwners.get(proof.declarationAt(n.args[0])))return true;
         if(n?.type!=='Binary'||n.op!=='&&')return false;
         const a=n.left,b=n.right;if(a?.type!=='Binary'||a.op!=='<='||b?.type!=='Binary'||b.op!='!=')return false;
+        // Every Game script guards with its OWN run token against the pair
+        // recorded by whichever script stopped the others.
         return token(a.left)&&token(b.left)&&activation(n)===tokenOwners.get(proof.declarationAt(a.left))&&proof.declarationAt(a.left)===proof.declarationAt(b.left)&&
-            pairs.some(p=>p.token===proof.declarationAt(a.left)&&proof.declarationAt(a.right)===p.md&&proof.declarationAt(b.right)===p.kd);
+            pairs.some(p=>proof.declarationAt(a.right)===p.md&&proof.declarationAt(b.right)===p.kd);
     };
     for(const n of proof.nodes){
         if(n.type==='If'&&!n.alternate&&bareReturn(n.consequent)){
@@ -3424,7 +3476,7 @@ const liftExporterStops = (program,profile) => {
         if(protectedDeclarations.has(proof.declarationAt(n))&&!allowed.has(n))return program;
         if(n.name==='music'&&(!allowed.has(n)||!proof.unbound(n)))return program;
     }
-    if(!proof.ambient(helpers)||!proof.calls(tok,[0],helpers)||!proof.calls(dead,[1],helpers)||!proof.calls(stop,[0],helpers)||!proof.isCurrent())return program;
+    if(!proof.ambient(new Set([...helpers,...spritePrologue]))||!proof.calls(tok,[0],helpers)||!proof.calls(dead,[1],helpers)||!proof.calls(stop,[0],helpers)||!proof.isCurrent())return program;
     const rewrite=n=>{
         if(!n||typeof n!=='object')return n;
         if(Array.isArray(n)){
@@ -3436,6 +3488,76 @@ const liftExporterStops = (program,profile) => {
         return Object.fromEntries(Object.entries(n).map(([k,v])=>[k,rewrite(v)]));
     };
     return rewrite(program);
+};
+
+// A nested function declaration whose only free references to its enclosing
+// root function are that function's never-written parameters is lifted to the
+// root with those parameters appended, and each direct call passes them. A
+// read-only parameter has one value for the whole activation, so the lifted
+// call reads exactly what the closure read in original PXT. Anything else
+// (writes, enclosing locals, escapes, defaults, deeper nesting, name
+// collisions) keeps the original program and its existing diagnostics.
+const liftNestedParameterCaptures = program => {
+    if(!program||!Array.isArray(program.body))return program;
+    const walk=(node,visit,parent=null)=>{if(!node||typeof node!=='object')return;if(Array.isArray(node)){for(const x of node)walk(x,visit,parent);return;}
+        visit(node,parent);for(const v of Object.values(node))if(v&&typeof v==='object')walk(v,visit,node);};
+    const topNames=new Set();
+    for(const n of program.body){if(n.type==='FunctionDeclaration')topNames.add(n.name);if(n.type==='Declaration')for(const d of n.decls||[])topNames.add(d.name);}
+    const plain=fn=>Array.isArray(fn.params)&&fn.params.every(p=>typeof p==='string')&&!(fn.optionalParams||[]).length&&!(fn.parameterDefaults||[]).length&&!(fn.typeParameters||[]).length;
+    let changed=false;const body=[];
+    for(const root of program.body){
+        if(root.type!=='FunctionDeclaration'||!plain(root)||!Array.isArray(root.body)){body.push(root);continue;}
+        const params=new Set(root.params);
+        const rootLocals=new Set();walk(root.body,n=>{if(n.type==='Declaration')for(const d of n.decls||[])rootLocals.add(d.name);});
+        const written=new Set();
+        walk(root.body,n=>{const t=n.type==='Assignment'?n.left:n.type==='Update'?n.argument:null;if(t?.type==='Identifier')written.add(t.name);});
+        const lifted=[],rewrites=new Map();
+        for(const nested of root.body){
+            if(nested.type!=='FunctionDeclaration'||!plain(nested)||!Array.isArray(nested.body))continue;
+            let ok=!topNames.has(nested.name)&&!params.has(nested.name)&&!rootLocals.has(nested.name);
+            const own=new Set(nested.params),captured=[];
+            walk(nested.body,n=>{
+                if(['FunctionDeclaration','FunctionExpression','Class','ClassDeclaration','Method'].includes(n.type))ok=false;
+                if(n.type==='Declaration')for(const d of n.decls||[])own.add(d.name);
+            });
+            walk(nested.body,(n,parent)=>{
+                if(n.type!=='Identifier'||parent?.type==='Member'&&parent.object!==n&&parent.name===n.name)return;
+                if(own.has(n.name))return;
+                if(params.has(n.name)){if(written.has(n.name)||rootLocals.has(n.name))ok=false;else if(!captured.includes(n.name))captured.push(n.name);}
+                else if(rootLocals.has(n.name)||root.body.some(x=>x!==nested&&x.type==='FunctionDeclaration'&&x.name===n.name))ok=false;
+            });
+            for(const name of captured)if(own.has(name))ok=false;
+            if(!ok)continue;
+            // Every reference to the nested name in the root is its direct call
+            // with exactly its declared arity; nothing outside the root names it.
+            const calls=[];
+            walk(root.body,(n,parent)=>{
+                if(n.type!=='Identifier'||n.name!==nested.name)return;
+                if(parent?.type==='Call'&&parent.callee===n&&!parent.isNew&&(parent.args||[]).length===nested.params.length&&
+                    !(parent.args||[]).some(a=>a?.type==='Spread'))calls.push(parent);
+                else ok=false;
+            });
+            let outside=false;
+            for(const other of program.body)if(other!==root)walk(other,n=>{if(n.type==='Identifier'&&n.name===nested.name)outside=true;});
+            if(!ok||outside)continue;
+            const paramTypes={...(nested.paramTypes||{})};for(const name of captured)if(root.paramTypes?.[name])paramTypes[name]=root.paramTypes[name];
+            lifted.push({...nested,params:[...nested.params,...captured],paramTypes});
+            for(const call of calls)rewrites.set(call,captured);
+            topNames.add(nested.name);
+        }
+        if(!lifted.length){body.push(root);continue;}
+        changed=true;
+        const liftedNames=new Set(lifted.map(fn=>fn.name));
+        const rewrite=node=>{
+            if(!node||typeof node!=='object')return node;
+            if(Array.isArray(node))return node.filter(x=>!(x?.type==='FunctionDeclaration'&&liftedNames.has(x.name)&&root.body.includes(x))).map(rewrite);
+            const out=Object.fromEntries(Object.entries(node).map(([k,v])=>[k,rewrite(v)]));
+            if(rewrites.has(node))out.args=[...out.args,...rewrites.get(node).map(name=>({type:'Identifier',name}))];
+            return out;
+        };
+        body.push({...root,body:rewrite(root.body)},...lifted.map(fn=>({...fn,body:rewrite(fn.body)})));
+    }
+    return changed?{...program,body}:program;
 };
 
 // PXT library calls that are, by their own definition, expressions the
@@ -3582,7 +3704,7 @@ const inferProcedureHandleParameters = (ast, functions, globalHandles, pathOf) =
 const inferImageReferences = (ast, pathOf, imageOf, isScopedAssetFactory = () => false) => {
     const sdkNumericCalls=staticSdkNamespaceReceivers(ast,{builtinIdentifiers:['randint']});
     const textSprites=new WeakSet(), objects=new WeakSet();
-    const buffers = new WeakSet(), players = new WeakSet(), references = new WeakSet(), tiles = new WeakSet(), tilemapData = new WeakSet(), legacyTiles = new WeakSet(), sprites = new WeakSet(), animations = new WeakSet(), sevensegDigits = new WeakSet(), sevensegCounters = new WeakSet(), darts = new WeakSet(), corgis = new WeakSet(), scenes = new WeakSet(), physicsEngines = new WeakSet(), nulls = new WeakSet(), arrays = new WeakSet(), numbers = new WeakSet(), strings = new WeakSet(), booleans = new WeakSet();
+    const buffers = new WeakSet(), players = new WeakSet(), references = new WeakSet(), tiles = new WeakSet(), tilemapData = new WeakSet(), sceneTilemaps = new WeakSet(), legacyTiles = new WeakSet(), sprites = new WeakSet(), animations = new WeakSet(), sevensegDigits = new WeakSet(), sevensegCounters = new WeakSet(), darts = new WeakSet(), corgis = new WeakSet(), scenes = new WeakSet(), physicsEngines = new WeakSet(), nulls = new WeakSet(), arrays = new WeakSet(), numbers = new WeakSet(), strings = new WeakSet(), booleans = new WeakSet();
     const entries = [];
     const functions = new Map();
     const scope = parent => ({parent, bindings: new Map()});
@@ -3699,6 +3821,13 @@ const inferImageReferences = (ast, pathOf, imageOf, isScopedAssetFactory = () =>
             }
         }
         if(node?.type==='Member' && ['index','number'].includes(node.name) && typeOf(node.object,owner).has('player'))return new Set(['number']);
+        // Location.tileMap is the scene's TileMap; its data is a TileMapData.
+        if(node?.type==='Member' && node.name==='tileMap' && typeOf(node.object,owner).has('tile'))return new Set(['scene-tilemap']);
+        if(node?.type==='Member' && typeOf(node.object,owner).has('scene-tilemap')){
+            if(node.name==='data')return new Set(['tilemap']);
+            if(node.name==='scale')return new Set(['number']);
+            if(node.name==='enabled')return new Set(['boolean']);
+        }
         if(node?.type==='Member' && ['maxSpeed','minStep','maxStep'].includes(node.name) && typeOf(node.object,owner).has('physics-engine'))return new Set(['number']);
         if(node?.type==='Member' && node.name==='physicsEngine' && typeOf(node.object,owner).has('scene'))return new Set(['physics-engine']);
         if(node?.type==='Member' && node.name==='flags' && typeOf(node.object,owner).has('scene'))return new Set(['number']);
@@ -3759,7 +3888,11 @@ const inferImageReferences = (ast, pathOf, imageOf, isScopedAssetFactory = () =>
             if(api==='tiles.getTilesByType')return new Set(['array','tile-array']);
             if(['tiles.getTileLocation','tiles.getRandomTileByType'].includes(api))return new Set(['tile']);
             if(api==='tiles.createTilemap' && node.args.length===4)return new Set(['tilemap']);
+            if(node.callee?.type==='Member' && typeOf(node.callee.object,owner).has('scene-tilemap')){
+                if(['areaWidth','areaHeight','getTileIndex'].includes(node.callee.name))return new Set(['number']);
+            }
             if(node.callee?.type==='Member' && typeOf(node.callee.object,owner).has('tilemap')){
+                if(node.callee.name==='getTileset' && node.args.length===0)return new Set(['array','image-array']);
                 if(node.callee.name==='getTileImage' && node.args.length===1)return new Set(['image']);
                 if(node.callee.name==='getTile' && node.args.length===2)return new Set(['number']);
                 if(node.callee.name==='isWall' && node.args.length===2)return new Set(['boolean']);
@@ -3851,7 +3984,7 @@ const inferImageReferences = (ast, pathOf, imageOf, isScopedAssetFactory = () =>
         const value=cell(node,owner);
         applyPrimitiveAnnotation(value,node.assertedType);
         for (const type of typeOf(node,owner)) {
-            const name={font:'Font',buffer:'Buffer',image:'Image',sprite:'Sprite',tile:'TileLocation',tilemap:'TileMapData','legacy-tile':'LegacyTile',animation:'Animation','sevenseg-digit':'SevenSegDigit','sevenseg-counter':'DigitCounter',dart:'Dart',corgio:'Corgio','text-sprite':'TextSprite',scene:'Scene','physics-engine':'PhysicsEngine',player:'Player',number:'number',string:'string',boolean:'boolean',null:'null',undefined:'undefined',object:'object',any:'unknown',array:'array'}[type];
+            const name={font:'Font',buffer:'Buffer',image:'Image',sprite:'Sprite',tile:'TileLocation',tilemap:'TileMapData','scene-tilemap':'SceneTileMap','legacy-tile':'LegacyTile',animation:'Animation','sevenseg-digit':'SevenSegDigit','sevenseg-counter':'DigitCounter',dart:'Dart',corgio:'Corgio','text-sprite':'TextSprite',scene:'Scene','physics-engine':'PhysicsEngine',player:'Player',number:'number',string:'string',boolean:'boolean',null:'null',undefined:'undefined',object:'object',any:'unknown',array:'array'}[type];
             if(name)graph.add(value,name);
         }
         if(node.bwConsoleInspectIntrinsic===true && node.callee?.name==='__bwConsoleInspectValue')graph.add(value,'string');
@@ -3944,6 +4077,7 @@ const inferImageReferences = (ast, pathOf, imageOf, isScopedAssetFactory = () =>
         if (graph.has(value,'Player')) players.add(node);
         if (graph.has(value,'TileLocation')) tiles.add(node);
         if (graph.has(value,'TileMapData')) tilemapData.add(node);
+        if (graph.has(value,'SceneTileMap')) sceneTilemaps.add(node);
         if (graph.has(value,'LegacyTile')) legacyTiles.add(node);
         if (graph.has(value,'Animation')) animations.add(node);
         if (graph.has(value,'SevenSegDigit')) sevensegDigits.add(node);
@@ -3956,7 +4090,7 @@ const inferImageReferences = (ast, pathOf, imageOf, isScopedAssetFactory = () =>
         if(types.has('physics-engine') || graph.has(value,'PhysicsEngine') && !['number','string','boolean','Image','Sprite','Scene'].some(type=>graph.has(value,type)))physicsEngines.add(node);
         if(types.has('null') && [...types].every(type=>type==='null'||type==='sprite'))nulls.add(node);
     }
-    return {fonts,objects,primitives,strictStrings,sourceTypeOfOperands,provenArrays,sourceArrayArithmeticOperands,textSprites, buffers, players, images: references, tiles, tilemapData, legacyTiles, sprites, animations, sevensegDigits, sevensegCounters, darts, corgis, scenes, physicsEngines, nulls, arrays, numbers, strings, booleans, data,
+    return {fonts,objects,primitives,strictStrings,sourceTypeOfOperands,provenArrays,sourceArrayArithmeticOperands,textSprites, buffers, players, images: references, tiles, tilemapData, sceneTilemaps, legacyTiles, sprites, animations, sevensegDigits, sevensegCounters, darts, corgis, scenes, physicsEngines, nulls, arrays, numbers, strings, booleans, data,
         spriteFunctions:new Set([...functions].filter(([,fn])=>graph.has(fn.resultCell,'Sprite')).map(([name])=>name)),
         parameters:new Map([...functions].map(([name,fn])=>[name,new Set(fn.node.params.filter(param=>graph.has(binding(fn.owner,param),'Sprite')))]))};
 };
@@ -4036,6 +4170,15 @@ const sceneRegistrationSpec = name => {
     return specs[name] || (/^info\.player[1-4]\.onLifeZero$/.test(name||'')?{kind:'lifeZero',handlerIndex:0,arity:1,prefix:'__bwLifeZero',maxParams:0}:null) || (/^controller\.(A|B|up|down|left|right)\.onEvent$/.test(name||'')?{kind:'button',handlerIndex:1,arity:2,prefix:'__bwButton',maxParams:0}:null);
 };
 
+// PXT keeps tilemap listeners by callback identity: removeEventListener drops
+// the one addEventListener entry with the same event and the same function.
+// A named global procedure is that identity, so both calls take it through the
+// static callback route, and its registration token is derived from its name.
+const tilemapListenerSpec = name => ['tiles.addEventListener','tiles.removeEventListener'].includes(name) ? {kind:'tilemapListener',handlerIndex:1,arity:2} : null;
+const callbackRegistrationSpec = (name, node) => sceneRegistrationSpec(name, node) || tilemapListenerSpec(name);
+const TILEMAP_FUNCTION_TOKEN = '__bwTilemapFn_';
+const tilemapFunctionToken = name => name.startsWith(TILEMAP_FUNCTION_TOKEN) ? name : TILEMAP_FUNCTION_TOKEN + name;
+
 const discoverRuntimeRegistrations = (ast, translator) => {
     const specs={
         'sprites.onCreated':{kind:'creation',handlerIndex:1,arity:2,prefix:'__bwCreated'},
@@ -4082,8 +4225,9 @@ const discoverRuntimeRegistrations = (ast, translator) => {
                 (nativeScene?validScene:spec.kind==='creation' || handler.params.length<=2 && fixedKind(kind))) {
                 const captures = new Map(bindings);
                 for (const name of [...(handler.params || []), ...localNames(handler.body)]) captures.delete(name);
-                const index=(counts.get(spec.kind)||0)+1;counts.set(spec.kind,index);
-                registrations.set(node, {kind:spec.kind, token:`${spec.prefix}${index}`, handler,
+                const named=spec.kind==='tilemapEvent' && handler.bwNamedCallback;
+                const index=named?0:(counts.get(spec.kind)||0)+1;if(!named)counts.set(spec.kind,index);
+                registrations.set(node, {kind:spec.kind, token:named?tilemapFunctionToken(named):`${spec.prefix}${index}`, handler,
                     captures:new Map([...captures].map(([name,value])=>[name,value.key])),
                     ownCaptures:new Set([...captures.values()].filter(value=>value.owner===owner).map(value=>value.key)),
                     locals: localNames(handler.body)});
@@ -4116,7 +4260,10 @@ const emitCreatedRegistrations = (translator, out, localHandles = new Map(), cal
 };
 
 const emitTerrainRegistrations = (translator,out,localHandles=new Map(),callbackLocals=new Map()) => {
+    const emitted=new Set();
     for(const {kind,token,handler,captures,locals} of translator.terrainRegistrations.values()) {
+        // Every registration of one named procedure shares its token and handler.
+        if(emitted.has(token))continue;emitted.add(token);
         const previous={captures:translator.capturedBindings,locals:translator.localVars,parameters:translator.currentParameters,handles:translator.localHandleVars,aliases:translator.handleAliases};
         translator.capturedBindings=captures;
         translator.localVars=new Set([...locals,...handler.params]);
@@ -5378,7 +5525,7 @@ export function arcadeToPseudocode (files, opts = {}) {
     const callableParseOptions={parameterDefaults:true,retainParentheses:true,retainWhenUsed:true,retainClassHeritage:true,retainOrdinaryDefaultProvenance:true};
     const ordinarySource=parseSharedImageSourceProgram(sharedSourcePreparation,source,opts.procedureConstraintsPrototype===true,opts.procedureConstraintsPrototype!==true);
     const callableSourceParsed=parseMakeCodeTs(source,{...callableParseOptions,retainCallableMetadata:true});
-    const namedEligibility=selectNamedFunctionSourceProof(callableSourceParsed,{ordinaryProgram:ordinarySource,registrationSpec:sceneRegistrationSpec});
+    const namedEligibility=selectNamedFunctionSourceProof(callableSourceParsed,{ordinaryProgram:ordinarySource,registrationSpec:callbackRegistrationSpec});
     const namedEnabled=namedEligibility.eligible;
     const namedLowering=namedEnabled?lowerNamedFunctionValues(callableSourceParsed):null;
     const callableEligibility=callableSourceGate(callableSourceParsed,{normalize:true});
@@ -5400,7 +5547,7 @@ export function arcadeToPseudocode (files, opts = {}) {
     const namedArrayInputs=lowerNamedArrayItemHelpers(inlineValueHelpers(nativeBinaryInputs.program,true),{profile:generatedProfile});
     // Recognition consumes the selected parse context before clone-heavy
     // lowerings erase its parameter descriptors or alter canonical bodies.
-    const generatedSource=normalizeCompilerOwnedLegacyArrayHelpers(liftExporterStops(namedArrayInputs.program,generatedProfile),generatedProfile);
+    const generatedSource=liftNestedParameterCaptures(normalizeCompilerOwnedLegacyArrayHelpers(liftExporterStops(namedArrayInputs.program,generatedProfile),generatedProfile));
     const parsed = lowerSourceLoopControl(inlineValueHelpers(desugarForOf(lowerArrayCallbacks(lowerIifes(lowerDestroyAllSprites(lowerLibraryCalls(
         lowerAnimationAssets(generatedSource)), source), source), source), source)));
     const containsPaletteCall = node => {
@@ -5537,7 +5684,7 @@ export function arcadeToPseudocode (files, opts = {}) {
             catch(error){objectClasses.unsupported.push(String(error.message));}
         }
         diagnostics.push(...objectClasses.unsupported);
-        const callbacks = lowerStaticCallbackHelpers(objectClasses.program, {registrationSpec:sceneRegistrationSpec});
+        const callbacks = lowerStaticCallbackHelpers(objectClasses.program, {registrationSpec:callbackRegistrationSpec});
         diagnostics.push(...callbacks.unsupported);
         const ast = lowerLazyValues(callbacks.program);
         return {ast:transport ? projectSharedImageArrayTransport(ast,transport.plan) : ast,diagnostics,stagedThrow,physicalUpdateLowering:objectClasses.physicalUpdateLowering};

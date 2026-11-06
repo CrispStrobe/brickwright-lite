@@ -2,7 +2,7 @@
   "version": 1,
   "id": "equal-share",
   "language": "de",
-  "what": "Ausgleichsbalken (Waagscheit). Eine kurze rote Motorkurbel bewegt den Mittelpunkt eines blauen, gleicharmigen Balkens. Um diesen Mittelpunkt kann sich der Balken frei drehen. Sein linkes Ende drückt einen LEGO-Stoßdämpfer zusammen; rechts wirken zwei gleiche Stoßdämpfer parallel. Der Balken und alle drei Stoßdämpfer bleiben passiv. Die Bewegung liegt in einer horizontalen Ebene.",
+  "what": "Kraftausgleich mit Ausgleichsbalken. Ausgleichsbalken (Waagscheit). Eine kurze rote Motorkurbel bewegt den Mittelpunkt eines blauen, gleicharmigen Balkens. Um diesen Mittelpunkt kann sich der Balken frei drehen. Sein linkes Ende drückt einen LEGO-Stoßdämpfer zusammen; rechts wirken zwei gleiche Stoßdämpfer parallel. Der Balken und alle drei Stoßdämpfer bleiben passiv. Die Bewegung liegt in einer horizontalen Ebene. Ein Ausgleichsbalken: Ein Motor schiebt die frei drehbare Mitte eines Balkens gegen eine Feder links und zwei parallele rechts; die einzelne Feder gibt doppelt so weit nach, während beide Seiten gleich viel Kraft tragen.",
   "try": [
     "Lade Equal Share und das zugehörige Programm, setze das Modell zurück und drücke in Robot Lab auf Start (das Programm braucht die SPIKE-Verbindung, die Start herstellt). Beobachte den roten Antrieb und den blauen Balken getrennt. Vergleiche in jeder belasteten Pause den Federweg links mit dem Federweg jedes der beiden rechten Stoßdämpfer.",
     "Sage vor dem Vergleich der gemessenen Positionen voraus, welche Seite weiter nachgeben sollte. Vergleiche gehaltene Zeitabschnitte nach dem Abklingen der ersten Bewegung; ein Augenblick während der Beschleunigung zeigt noch kein ruhendes Kräftegleichgewicht.",

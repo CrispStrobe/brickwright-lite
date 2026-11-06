@@ -2,7 +2,7 @@
   "version": 1,
   "id": "equal-share",
   "language": "en",
-  "what": "Whippletree (balance-beam force equalizer). A short red motor crank moves the centre of a blue equal-arm beam. The beam can turn freely at that centre. Its left end compresses one stock shock absorber; its right end compresses two matching shocks in parallel. The beam and all three shocks remain passive. Their motion takes place in a horizontal plane.",
+  "what": "Whippletree force equalizer. Whippletree (balance-beam force equalizer). A short red motor crank moves the centre of a blue equal-arm beam. The beam can turn freely at that centre. Its left end compresses one stock shock absorber; its right end compresses two matching shocks in parallel. The beam and all three shocks remain passive. Their motion takes place in a horizontal plane. A whippletree: one motor pushes the free centre of a balance beam against one spring on the left and two in parallel on the right, so the single spring gives way twice as far while both sides carry equal force.",
   "try": [
     "Load Equal Share and its matching program, reset, and press Robot Lab’s Run button (the program needs the SPIKE connection that Run sets up). Watch the red input and blue beam separately. During each loaded pause compare the compression on the one-shock side with the compression of each shock on the two-shock side.",
     "Predict which side should move farther before comparing the measured positions. Compare held intervals after the initial motion has subsided; a moment during acceleration does not show a settled force balance.",

@@ -728,6 +728,302 @@
         "Zahnstangenschlitten",
         "halbe Periode"
       ]
+    },
+    {
+      "models": [
+        "poise"
+      ],
+      "name": {
+        "en": "Roberval balance",
+        "de": "Roberval-Waage"
+      },
+      "aliases": [
+        "Roberval balance",
+        "Roberval-Waage",
+        "equal-arm balance",
+        "parallelogram",
+        "load position",
+        "weighing",
+        "Waage",
+        "Lastposition",
+        "Parallelogramm"
+      ]
+    },
+    {
+      "models": [
+        "bend-ripple"
+      ],
+      "name": {
+        "en": "Variable-bend Cardan joint",
+        "de": "Kardan mit veränderlichem Winkel"
+      },
+      "aliases": [
+        "Cardan joint",
+        "universal joint",
+        "Hooke joint",
+        "speed ripple",
+        "bend angle",
+        "Kardangelenk",
+        "Kreuzgelenk",
+        "Knickwinkel",
+        "Drehzahlschwankung",
+        "Cardan",
+        "angular velocity ripple"
+      ]
+    },
+    {
+      "models": [
+        "offset-relay"
+      ],
+      "name": {
+        "en": "Variable-offset coupling",
+        "de": "Kupplung mit variablem Versatz"
+      },
+      "aliases": [
+        "Schmidt coupling",
+        "offset coupling",
+        "parallel offset coupling",
+        "parallelogram linkage",
+        "constant velocity",
+        "shaft misalignment",
+        "Schmidt-Kupplung",
+        "Parallelversatz",
+        "Wellenversatz",
+        "Parallelogramm",
+        "Gleichlauf",
+        "parallel shafts",
+        "phase transmission"
+      ]
+    },
+    {
+      "models": [
+        "rack-decoder"
+      ],
+      "name": {
+        "en": "Mechanical selection",
+        "de": "Mechanische Auswahl"
+      },
+      "aliases": [
+        "rack differential",
+        "linear differential",
+        "rack and pinion",
+        "sum and difference",
+        "average",
+        "Zahnstangen-Differenzial",
+        "Zahnstange",
+        "Ritzel",
+        "Mittelwert",
+        "Differenz",
+        "mechanical decoder",
+        "position logic"
+      ]
+    },
+    {
+      "models": [
+        "remote-pivot"
+      ],
+      "name": {
+        "en": "Empty-centre rotation",
+        "de": "Drehung um ein freies Zentrum"
+      },
+      "aliases": [
+        "remote centre of motion",
+        "remote center of motion",
+        "RCM",
+        "double parallelogram",
+        "virtual pivot",
+        "surgical robot",
+        "parallelogram linkage",
+        "entferntes Drehzentrum",
+        "Doppelparallelogramm",
+        "virtueller Drehpunkt",
+        "Chirurgieroboter",
+        "remote center",
+        "parallelogram"
+      ]
+    },
+    {
+      "models": [
+        "schmidt-shift"
+      ],
+      "name": {
+        "en": "Schmidt coupling",
+        "de": "Schmidt-Kupplung"
+      },
+      "aliases": [
+        "Schmidt coupling",
+        "Schmidt-Kupplung",
+        "parallel offset shafts",
+        "parallel versetzte Wellen",
+        "constant velocity coupling",
+        "Gleichlaufkupplung",
+        "connecting rods",
+        "Koppelstangen"
+      ]
+    },
+    {
+      "models": [
+        "equal-share"
+      ],
+      "name": {
+        "en": "Whippletree force equalizer",
+        "de": "Kraftausgleich mit Ausgleichsbalken"
+      },
+      "aliases": [
+        "whippletree",
+        "whiffletree",
+        "force equalizer",
+        "parallel springs",
+        "stiffness",
+        "Ausgleichsbalken",
+        "Waagscheit",
+        "parallele Federn",
+        "Kraftverteilung"
+      ]
+    },
+    {
+      "models": [
+        "stroke-shift"
+      ],
+      "name": {
+        "en": "Adjustable crank throw",
+        "de": "Verstellbarer Kurbelradius"
+      },
+      "aliases": [
+        "adjustable crank throw",
+        "variable stroke",
+        "slider-crank",
+        "connecting rod",
+        "linear actuator",
+        "passive piston",
+        "crank radius",
+        "verstellbarer Kurbelradius",
+        "verstellbarer Hub",
+        "Schubkurbel",
+        "Pleuel",
+        "Linearaktuator"
+      ]
+    },
+    {
+      "models": [
+        "triad-table"
+      ],
+      "name": {
+        "en": "Three lengths, one pose",
+        "de": "Drei Längen, eine Pose"
+      },
+      "aliases": [
+        "parallel robot",
+        "3-RPR",
+        "planar parallel platform",
+        "XY-theta stage",
+        "positioning table",
+        "inverse kinematics",
+        "pose",
+        "yaw",
+        "linear actuator",
+        "singularity",
+        "Parallelroboter",
+        "Positioniertisch",
+        "ebene Parallelplattform",
+        "inverse Kinematik",
+        "Gierwinkel",
+        "Linearaktuator"
+      ]
+    },
+    {
+      "models": [
+        "kestrel-flapper"
+      ],
+      "name": {
+        "en": "Flapping linkage",
+        "de": "Schlagflügel-Gestänge"
+      },
+      "aliases": [
+        "crank-rocker",
+        "four-bar linkage",
+        "Grashof",
+        "flapping wing",
+        "ornithopter",
+        "quick return",
+        "dead centre",
+        "Kurbelschwinge",
+        "Viergelenk",
+        "Schlagflügel",
+        "Totlage",
+        "Schnellrücklauf",
+        "crank rocker"
+      ]
+    },
+    {
+      "models": [
+        "meridian-linkage"
+      ],
+      "name": {
+        "en": "Straight-line linkage",
+        "de": "Geradführungs-Gestänge"
+      },
+      "aliases": [
+        "Peaucellier–Lipkin",
+        "Peaucellier linkage",
+        "inversor",
+        "exact straight-line linkage",
+        "circle inversion",
+        "straight-line mechanism",
+        "Peaucellier-Lipkin",
+        "Inversor",
+        "Geradführung",
+        "Kreisinversion",
+        "geometric closure"
+      ]
+    },
+    {
+      "models": [
+        "lumen-iris"
+      ],
+      "name": {
+        "en": "Six-leaf iris",
+        "de": "Sechsblättrige Iris"
+      },
+      "aliases": [
+        "iris diaphragm",
+        "aperture",
+        "iris",
+        "turntable",
+        "gear ring",
+        "synchronised leaves",
+        "Irisblende",
+        "Blende",
+        "Lamellen",
+        "Drehkranz",
+        "Zahnkranz",
+        "radial linkage"
+      ]
+    },
+    {
+      "models": [
+        "tangent-table"
+      ],
+      "name": {
+        "en": "Mechanical angle mapping",
+        "de": "Mechanische Winkelabbildung"
+      },
+      "aliases": [
+        "tangent mechanism",
+        "mechanical multiplier",
+        "variable gain",
+        "slotted guide",
+        "analog computer",
+        "y = x tan θ",
+        "Tangens",
+        "Kulisse",
+        "mechanischer Multiplizierer",
+        "Analogrechner",
+        "veränderliche Verstärkung",
+        "tangent",
+        "analog computation",
+        "line intersection"
+      ]
     }
   ]
 }

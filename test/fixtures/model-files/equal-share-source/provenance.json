@@ -1,0 +1,10 @@
+{
+ "author": "CrispStrobe",
+ "license": "BSD-3-Clause",
+ "files": {
+  "models/equal-share.ldr": "dab7916b2d6cb95c8073596a529b2e80afd67bc33c3ae560e015ff9c32bcb778",
+  "programs/equal-share.bw": "86e288aeb92541e241c3a729ff20002d1f652a6d2f39369f20f33a24746db260",
+  "LICENSE.txt": "6680a543445e87e855296712b7c71c85feb40693d3ffa23d25b430da3af0662e",
+  "SOURCES.md": "208f3bb19b71559ece0ad2902b30abba2eaa9ddd81426d662e3a569b673548cb"
+ }
+}
