@@ -1,4 +1,5 @@
 import {lowerSourceValueOperatorHelpers} from './source-value-operator-helpers.js';
+import {NUMBER_FORMAT_MEMBERS} from './ordinary-primitive-sdk-number-source.js';
 import {setExternalRoots,externalPath,externalAssetNode,externalAssetText} from './external-references.js';
 import {lowerNativeArrayBinaryHelpers} from './native-array-binary-domain.js';
 import {lowerRuntimeDispatchAddHelpers} from './native-array-binary-helper-source.js';
@@ -158,7 +159,7 @@ const ARCADE_TRUE = '(compare value (0) op "<" with (1))';
 const ARCADE_FALSE = '(compare value (1) op "<" with (0))';
 const DELEGATE = Symbol('base statement');
 // NumberFormat ordinal order from retained pxt-core13.2.1 BufferMethods.
-const BUFFER_FORMATS=['Int8LE','UInt8LE','Int16LE','UInt16LE','Int32LE','Int8BE','UInt8BE','Int16BE','UInt16BE','Int32BE','UInt32LE','UInt32BE','Float32LE','Float64LE','Float32BE','Float64BE'];
+const BUFFER_FORMATS=NUMBER_FORMAT_MEMBERS;
 // MakeCode text as a dialect string literal, exactly. The dialect decodes
 // only \n \t \r \\ and \" inside quotes (it keeps \f, \b and \uXXXX as
 // literal text) and reads any other character as itself, so those five are

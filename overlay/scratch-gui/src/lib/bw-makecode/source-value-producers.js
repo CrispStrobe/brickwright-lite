@@ -18,7 +18,7 @@ import {multiplayerPlayerSourceCalls} from './multiplayer-player-source.js';
 import {staticSdkNamespaceReceivers} from './static-sdk-namespaces.js';
 import {consoleInspectSourceCalls} from './console-inspect-source.js';
 import {SDK_FONT_FIELDS} from './sdk-font-value-descriptors.js';
-import {ordinaryPlayerScoreNumberCalls,ordinaryCameraPropertyNumberLeaves,ordinaryMathNumberCalls,ordinarySceneBackgroundNumberCalls} from './ordinary-primitive-sdk-number-source.js';
+import {ordinaryPlayerScoreNumberCalls,ordinaryCameraPropertyNumberLeaves,ordinaryNumberFormatNumberLeaves,ordinaryMathNumberCalls,ordinarySceneBackgroundNumberCalls} from './ordinary-primitive-sdk-number-source.js';
 import {ordinarySceneClockNumberCalls} from './ordinary-scene-clock-number-source.js';
 import {createOrdinaryMusicNumberSource} from './ordinary-music-number-source.js';
 import {createDestroyedSpriteCallbackNumberSource} from './destroyed-sprite-callback-number-source.js';
@@ -111,6 +111,56 @@ function deadLocalResets(program) {
 
 // Analyze actual lexical producers and all writers without rewriting the AST.
 // Source annotations constrain consumers; they never seed producer authority.
+// The exporter's push-built Array: in one statement list `L = []`, then n
+// single-argument `L.push(e)` statements, then `G = L`. L has no other
+// reference except its own declaration; G has no other writer, and every other
+// use of G is a literal-index read or `.length`. A read `G[k]` (k < n) then
+// holds e_k on normal completion (before the write, PXT faults on the read).
+function builderPositionalReads(program,reads){
+    const out=new Map(),refs=new Map();
+    const walk=(node,parent)=>{if(!node||typeof node!=='object')return;if(Array.isArray(node)){for(const v of node)walk(v,parent);return;}
+        if(node.type==='Identifier'){if(!refs.has(node.name))refs.set(node.name,[]);refs.get(node.name).push({node,parent});}
+        for(const v of Object.values(node))if(v&&typeof v==='object')walk(v,node);};
+    walk(program,null);
+    const decls=new Map();const scanDecls=node=>{if(!node||typeof node!=='object')return;if(Array.isArray(node)){node.forEach(scanDecls);return;}
+        if(node.type==='Declaration')for(const d of node.decls||[]){if(!decls.has(d.name))decls.set(d.name,[]);decls.get(d.name).push(d);}
+        if(node.type==='FunctionDeclaration'&&Array.isArray(node.params))for(const name of node.params){if(!decls.has(name))decls.set(name,[]);decls.get(name).push(null);}
+        for(const v of Object.values(node))if(v&&typeof v==='object')scanDecls(v);};
+    scanDecls(program);
+    const lists=[];const scanLists=node=>{if(!node||typeof node!=='object')return;if(Array.isArray(node)){lists.push(node);node.forEach(scanLists);return;}for(const v of Object.values(node))if(v&&typeof v==='object')scanLists(v);};
+    scanLists(program);
+    const assign=(st,name)=>st?.type==='ExpressionStatement'&&st.expr?.type==='Assignment'&&st.expr.op==='='&&st.expr.left?.type==='Identifier'&&st.expr.left.name===name?st.expr:null;
+    const pushOf=(st,name)=>{const c=st?.type==='ExpressionStatement'&&st.expr;return c?.type==='Call'&&!c.isNew&&c.callee?.type==='Member'&&c.callee.name==='push'&&
+        c.callee.object?.type==='Identifier'&&c.callee.object.name===name&&c.args?.length===1&&c.args[0]?.type!=='Spread'?c.args[0]:null;};
+    const uniqueDecl=name=>(decls.get(name)||[]).length===1&&(decls.get(name)[0]?.init==null||['Null','Undefined'].includes(decls.get(name)[0].init.type));
+    for(const list of lists)for(let i=0;i<list.length;i++){
+        const st=list[i],first=st?.type==='ExpressionStatement'&&st.expr?.type==='Assignment'&&st.expr.op==='='&&st.expr.left?.type==='Identifier'&&st.expr.right?.type==='Array'&&!st.expr.right.items?.length?st.expr:null;
+        if(!first)continue;const L=first.left.name;if(!uniqueDecl(L))continue;
+        const items=[];let j=i+1;for(;j<list.length;j++){const e=pushOf(list[j],L);if(!e)break;items.push(e);}
+        const publish=list[j]?.type==='ExpressionStatement'&&list[j].expr?.type==='Assignment'&&list[j].expr.op==='='&&list[j].expr.left?.type==='Identifier'&&
+            list[j].expr.right?.type==='Identifier'&&list[j].expr.right.name===L?list[j].expr:null;
+        if(!publish||!items.length)continue;const G=publish.left.name;if(G===L||!uniqueDecl(G))continue;
+        // L: only the declaration, the empty allocation, the pushes and the publication.
+        const lRefs=refs.get(L)||[];const allowedL=new Set([first.left,publish.right,...items.map((_,k)=>pushOf(list[i+1+k],L)&&list[i+1+k].expr.callee.object)]);
+        if(lRefs.some(r=>!allowedL.has(r.node)))continue;
+        // G: the single publication; every other use a literal-index read or .length read.
+        let ok=true;const gReads=[];
+        for(const r of refs.get(G)||[]){if(r.node===publish.left)continue;
+            const p=r.parent;
+            if(p?.type==='Index'&&p.object===r.node&&p.index?.type==='Number'){gReads.push(p);continue;}
+            if(p?.type==='Member'&&p.object===r.node&&p.name==='length'){continue;}
+            ok=false;break;}
+        if(!ok)continue;
+        // No assignment through G[k] (an Index used as an assignment or update target).
+        let written=false;const scanW=node=>{if(!node||typeof node!=='object')return;if(Array.isArray(node)){node.forEach(scanW);return;}
+            const t=node.type==='Assignment'?node.left:node.type==='Update'?node.argument:null;if(t&&gReads.includes(t))written=true;
+            for(const v of Object.values(node))if(v&&typeof v==='object')scanW(v);};scanW(program);
+        if(written)continue;
+        for(const read of gReads){const k=Number(read.index.value);if(Number.isInteger(k)&&k>=0&&k<items.length&&reads.includes(read))out.set(read,items[k]);}
+    }
+    return out;
+}
+
 function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpers:provedHelpers=new Set(),parenthesized=false,unboundIsOpaque=false,opaqueDeclarationValues=false,uninitializedLocalsAreOpaque=false,declaredLocalUndefined=false,multiplayerPlayerProperties=false,consoleInspection=false,arrayValues=false,arrayEffectSites=false,arrayCallbackParameters=false,arrayLoopEntries=false,provenArrayLength=false,ordinaryPrimitiveSdkNumbers=false,ordinaryMusicNumbers=true,ordinaryDestroyedNumbers=true,ordinaryParseIntegerNumbers=true,ordinaryParseIntegerEffects=true,sceneClockNumbers=false,initializationEntries=false,primitiveComparisons=false,closureEntries=false,normalCompletion=null,closedOrdinaryEntries=false,physicalUpdateSource=null}={},privateSpriteAyProof=null,identityInput=null,cameraNumberInput=null,controlEntry=null,arrayCallbackBootstrap=false) {
     const ordinaryEntry=closedOrdinaryEntries?createClosedOrdinarySourceEntry(program):null;
     const nullableLengthSource=arrayValues?nullableArrayLengthSource(program):null;
@@ -119,6 +169,19 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
     const physicalEntry=physicalUpdateSource?physicalUpdateSourceRecord(program,physicalUpdateSource):null;
     if(physicalUpdateSource&&!physicalEntry)throw new Error('Physical update source proof must belong to the actual current Program');
     const loopEntry=arrayLoopEntries?proveDenseArrayLoopEntries(program,()=>analyseGraph(program,{parenthesized:true,unboundIsOpaque:true})):null;
+    // Literal in-bounds index reads of never-mutated Array literals: the
+    // Array-aware graph types them positionally (see positionalSlot); only a
+    // purely primitive result without Undefined is carried into this graph.
+    const positionalEntry=arrayLoopEntries&&!arrayValues?(()=>{
+        const reads=[];const find=node=>{if(!node||typeof node!=='object')return;if(Array.isArray(node)){node.forEach(find);return;}
+            if(node.type==='Index'&&node.index?.type==='Number')reads.push(node);for(const v of Object.values(node))if(v&&typeof v==='object')find(v);};
+        find(program);if(!reads.length)return null;
+        const graph=analyseGraph(program,{parenthesized:true,unboundIsOpaque:true,arrayValues:true});
+        const entries=new Map();
+        for(const node of reads){const slot=graph.positionalSlotAt(node);if(slot)entries.set(node,slot);}
+        for(const [node,slot] of builderPositionalReads(program,reads))if(!entries.has(node))entries.set(node,slot);
+        return entries.size?entries:null;
+    })():null;
     // Loan only a length result from the existing lexical/all-writer Array
     // graph. Enabling general Array values here would also authorize index
     // reads in primitive consumers. An unrelated same-named binding, an
@@ -199,6 +262,7 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
     let parseIntegerNumberUsed=false;
     let stringCharCodeNumbers=null,stringCharCodeNumberUsed=false;
     const cameraPropertyNumbers=ordinaryPrimitiveSdkNumbers?ordinaryCameraPropertyNumberLeaves(program):null;
+    const numberFormatNumbers=ordinaryPrimitiveSdkNumbers?ordinaryNumberFormatNumberLeaves(program):null;
     const mathNumbers=ordinaryPrimitiveSdkNumbers?ordinaryMathNumberCalls(program):null;
     const musicNumbers=ordinaryPrimitiveSdkNumbers&&ordinaryMusicNumbers?createOrdinaryMusicNumberSource(program,safeClockIndex):null;
     let musicNumberUsed=false;
@@ -273,7 +337,8 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
         if(node.type==='Call'&&node.isNew&&node.callee?.type==='Identifier'){classCalls.push({value:current,name:binding(owner,node.callee.name)});return;}
         if(arrayValues&&node.type==='Array'){const token=arrayToken(node);add(current,token);for(const item of node.items)edge(cell(item),token.element);return;}
         if(node.type==='Index'&&loopEntry?.entries.has(node)){for(const type of loopEntry.entries.get(node))add(current,type);return;}
-        if(arrayValues&&node.type==='Index'){arrayOperations.push({kind:'read',receiver:cell(node.object),result:current});return;}
+        if(node.type==='Index'&&positionalEntry?.has(node)){edge(cell(positionalEntry.get(node)),current);return;}
+        if(arrayValues&&node.type==='Index'){arrayOperations.push({kind:'read',receiver:cell(node.object),result:current,index:node.index,node});return;}
         if(provenArrayLengthAt(node)){add(current,'Number');return;}
         if(arrayValues&&node.type==='Member'&&node.name==='length'){arrayOperations.push({kind:'length',node,receiver:cell(node.object),result:current});return;}
         // Math.map is the SDK range-mapping function on the unshadowed Math
@@ -321,7 +386,7 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
         else if(['Undefined','Null','String','Number','Boolean'].includes(node.type))add(current,node.type);
         else if(node.type==='Member'&&frameDeltaNumbers?.isNumberRead(node)){frameDeltaNumberUsed=true;add(current,'Number');}
         else if(musicNumbers?.has(node)){musicNumberUsed=true;add(current,'Number');}
-        else if(ordinaryNumbers?.has(node)||sceneBackgroundNumbers?.has(node)||cameraPropertyNumbers?.has(node)||mathNumbers?.has(node)||sceneNumbers?.has(node)||buttonEventNumbers?.has(node)||spriteAyNumbers?.has(node)||cameraNumberInput?.has(node))add(current,'Number');
+        else if(ordinaryNumbers?.has(node)||sceneBackgroundNumbers?.has(node)||cameraPropertyNumbers?.has(node)||numberFormatNumbers?.has(node)||mathNumbers?.has(node)||sceneNumbers?.has(node)||buttonEventNumbers?.has(node)||spriteAyNumbers?.has(node)||cameraNumberInput?.has(node))add(current,'Number');
         else if(destroyedNumbers?.has(node)){destroyedNumberUsed=true;add(current,'Number');}
         else if(spriteAyNumbers?.primitiveHas?.(node)){for(const type of ['Number','String','Boolean','Null','Undefined'])add(current,type);}
         else if(node.type==='Call'&&sdk.has(node.callee)&&path(node.callee)==='game.askForString')add(current,'String');
@@ -491,6 +556,27 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
                 for(const type of [...(types.get(token.element)||[]),...(nullableWritten.get(token)||[])])changed=add(op.result,type)||changed;
             }}
         return changed;};
+    // A read with a literal in-bounds integer index of an Array literal that is
+    // never mutated, escaped or written anywhere holds exactly that literal's
+    // element (original PXT and Lite agree; the element is present). Reads are
+    // re-checked after the fixpoint: a later mutation widens them back.
+    const mutatingKinds=new Set(['write','update','push','unshift','pop','shift','methodWrite','escape']);
+    const positionalReads=new Set();
+    const pristine=token=>!unsafeArrayMethods.has(token)&&!arrayOperations.some(op=>mutatingKinds.has(op.kind)&&
+        (types.get(op.receiver)||new Set()).has(token));
+    const positionalSlot=(op,tokens)=>{
+        if(tokens.length!==1||op.index?.type!=='Number')return null;
+        const k=Number(op.index.value),site=tokens[0].site;
+        if(!Number.isInteger(k)||k<0||site?.type!=='Array'||!Array.isArray(site.items)||k>=site.items.length||
+            site.items.some(item=>item?.type==='Spread')||!pristine(tokens[0]))return null;
+        // Only a syntactically primitive element (literal, member constant or
+        // arithmetic) is read positionally; reference-valued elements keep the
+        // general element domain and its alternative-aware effect rules.
+        const primitiveSyntax=n=>['Number','String','Boolean','Member'].includes(n?.type)||n?.type==='Parenthesized'&&primitiveSyntax(n.expression)||
+            n?.type==='Unary'&&['-','+','!'].includes(n.op)&&primitiveSyntax(n.argument)||
+            n?.type==='Binary'&&['+','-','*','/','%'].includes(n.op)&&primitiveSyntax(n.left)&&primitiveSyntax(n.right);
+        return primitiveSyntax(site.items[k])?site.items[k]:null;
+    };
     const propagateArrays=()=>{let changed=false;
         for(const op of arrayOperations){const strictTokens=arrayTypes(op.receiver),tokens=strictTokens||arrayMutationTypes(op.receiver);if(!strictTokens){
                 // Separate nullable read channel (result domains only).
@@ -518,6 +604,7 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
             if(op.kind==='write'||['push','unshift'].includes(op.kind))for(const token of tokens)for(const value of op.kind==='write'?[op.value]:op.node.args.map(cell))for(const type of types.get(value)||[])changed=add(token.element,type)||changed;
             if(!strictTokens)continue;
             if(op.kind==='length'||['push','unshift'].includes(op.kind))changed=add(op.result,'Number')||changed;
+            if(op.kind==='read'&&!op.widened){const slot=positionalSlot(op,tokens);if(slot){op.slot=slot;positionalReads.add(op);for(const type of types.get(cell(slot))||[])changed=add(op.result,type)||changed;continue;}}
             if(['read','pop','shift'].includes(op.kind)){changed=add(op.result,'Undefined')||changed;for(const token of tokens)for(const type of types.get(token.element)||[])changed=add(op.result,type)||changed;}
             if(['map','forEach','filter'].includes(op.kind)){const fn=op.node.args[0],owner=functionScopes.get(fn);if(!owner)continue;
                 if(fn.params[0]&&(op.kind==='map'||callbackEntry?.entries.has(fn))){const target=owner.bindings.get(fn.params[0]);changed=add(target,'Undefined')||changed;for(const token of tokens)for(const type of types.get(token.element)||[])changed=add(target,type)||changed;}
@@ -543,6 +630,11 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
         for(const item of scales)if(isFont(item.receiver))changed=add(item.result,'Font')||changed;
         for(const item of texts)if(types.get(item.argument)?.size===1 && types.get(item.argument).has('String'))changed=add(item.result,'Font')||changed;
     }while(changed);};propagate();
+    for(let again=true;again;){again=false;
+        for(const op of positionalReads){if(op.widened)continue;const tokens=arrayTypes(op.receiver)||[];
+            if(tokens.length===1&&pristine(tokens[0]))continue;
+            op.widened=true;again=true;add(op.result,'Undefined');for(const token of tokens)for(const type of types.get(token.element)||[])add(op.result,type);}
+        if(again)propagate();}
     if(arrayValues)for(const operation of arrayOperations)if(['write','update'].includes(operation.kind)&&!types.get(operation.index)?.size){for(const token of arrayTypes(operation.receiver)||[])unsafeArrayMethods.add(token);for(const token of nullableArrayTypes(operation.receiver)||[])nullablePoison(token);for(const token of arrayMutationTypes(operation.receiver)||[])unsafeArrayMethods.add(token);}
     const playerWriteUnsafe=()=>!!multiplayer?.computedWrites.some(node=>{const keys=types.get(cell(node));return !keys?.size||[...keys].some(type=>!['Number','Boolean','Null','Undefined'].includes(type));});
     let invalidated;do{invalidated=false;for(const op of nullableLengthIssued)if(!nullableLengthEligible(op))invalidated=add(op.result,'Opaque')||invalidated;if(!unsafePlayerWrite&&playerWriteUnsafe()){unsafePlayerWrite=true;invalidated=true;}for(const item of derived)if(!derivedValid(item))invalidated=add(item.result,'Opaque')||invalidated;for(const item of numericCalls)if(item.node.args.length||!exactType(item.receiver,'NumericCallable'))invalidated=add(item.result,'Opaque')||invalidated;propagate();}while(invalidated);
@@ -568,6 +660,8 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
     return Object.freeze({
         ...(arrayEffectSites?{possibleArrayAllocationsAt:node=>Object.freeze([...currentTypes(cell(node))].filter(type=>type?.kind==='Array').map(type=>type.site))}:{}),
         typesAt:node=>owners.has(node)?currentTypes(cell(node)):new Set(),
+        // The literal element a positional read holds (null when not positional).
+        positionalSlotAt:node=>{for(const op of positionalReads)if(op.node===node&&!op.widened)return op.slot;return null;},
         bindingTypesAt:(node,name=node?.name)=>currentTypes(knownBinding(node,name)),
         destroyedNumberResultsUsed:()=>destroyedNumberUsed,
         destroyedNumbersCurrent:()=>!destroyedNumberUsed||destroyedNumbers.current(),

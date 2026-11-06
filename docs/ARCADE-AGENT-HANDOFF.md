@@ -26,6 +26,8 @@ plus a `scene.backgroundColor()` Number proof). Counts and reasons are in
   call (scene.backgroundColor, Math.floor/ceil/round/abs/sqrt) keeps its
   Number declaration, so `set color to 2` no longer stores text without sprites.
 - Group A follow-up: nine rows cleared by per-slot proofs; five remain TODO.
+- 2026-11-03: positional Array elements (B numeric constants) and constant computed indexes (A value arithmetic) cleared; 22 documented TODO rows remain, with reasons in ARCADE-888.
+- Corpus levers checked: the Sprite-instance `x.onOverlap(fn)` used by four corpus programs is not in the pinned SDK (only `sprites.onOverlap(kind, otherKind, handler)` exists), so original PXT cannot compile them; the `createProjectileFromSprite` program uses an undeclared `heroSprite` fragment. Both are input-limited, not importer gaps.
 
 ## 30 October: unproven native-addition operands use runtime dispatch (owner decision)
 
