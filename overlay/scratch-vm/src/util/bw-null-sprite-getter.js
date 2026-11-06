@@ -199,4 +199,7 @@ const kinds = Object.freeze([Object.freeze({method: 'spriteProperty', kind: spri
 const bindAll = (info, adapter, instance) => {for (const {kind} of kinds) kind.bindAdapterInfo(info, adapter, instance);};
 const declareAll = (info, ownerOf) => {for (const {method, kind} of kinds) kind.declaration(info, ownerOf(method));return info;};
 
-module.exports = Object.freeze({...spriteGetter, consume, kinds, bindAll, declareAll, isMissing: value => missingOf(value, 'Sprite') !== null});
+// makeKind/ownDataValue/missingOf: further kinds that live in lazily loaded modules
+// (bw-tile-lookup-faults.js) share these receipts and this consume().
+module.exports = Object.freeze({...spriteGetter, consume, kinds, bindAll, declareAll, isMissing: value => missingOf(value, 'Sprite') !== null,
+    makeKind, ownDataValue, missingOf});

@@ -930,6 +930,100 @@
         "Gierwinkel",
         "Linearaktuator"
       ]
+    },
+    {
+      "models": [
+        "kestrel-flapper"
+      ],
+      "name": {
+        "en": "Flapping linkage",
+        "de": "Schlagflügel-Gestänge"
+      },
+      "aliases": [
+        "crank-rocker",
+        "four-bar linkage",
+        "Grashof",
+        "flapping wing",
+        "ornithopter",
+        "quick return",
+        "dead centre",
+        "Kurbelschwinge",
+        "Viergelenk",
+        "Schlagflügel",
+        "Totlage",
+        "Schnellrücklauf",
+        "crank rocker"
+      ]
+    },
+    {
+      "models": [
+        "meridian-linkage"
+      ],
+      "name": {
+        "en": "Straight-line linkage",
+        "de": "Geradführungs-Gestänge"
+      },
+      "aliases": [
+        "Peaucellier–Lipkin",
+        "Peaucellier linkage",
+        "inversor",
+        "exact straight-line linkage",
+        "circle inversion",
+        "straight-line mechanism",
+        "Peaucellier-Lipkin",
+        "Inversor",
+        "Geradführung",
+        "Kreisinversion",
+        "geometric closure"
+      ]
+    },
+    {
+      "models": [
+        "lumen-iris"
+      ],
+      "name": {
+        "en": "Six-leaf iris",
+        "de": "Sechsblättrige Iris"
+      },
+      "aliases": [
+        "iris diaphragm",
+        "aperture",
+        "iris",
+        "turntable",
+        "gear ring",
+        "synchronised leaves",
+        "Irisblende",
+        "Blende",
+        "Lamellen",
+        "Drehkranz",
+        "Zahnkranz",
+        "radial linkage"
+      ]
+    },
+    {
+      "models": [
+        "tangent-table"
+      ],
+      "name": {
+        "en": "Mechanical angle mapping",
+        "de": "Mechanische Winkelabbildung"
+      },
+      "aliases": [
+        "tangent mechanism",
+        "mechanical multiplier",
+        "variable gain",
+        "slotted guide",
+        "analog computer",
+        "y = x tan θ",
+        "Tangens",
+        "Kulisse",
+        "mechanischer Multiplizierer",
+        "Analogrechner",
+        "veränderliche Verstärkung",
+        "tangent",
+        "analog computation",
+        "line intersection"
+      ]
     }
   ]
 }

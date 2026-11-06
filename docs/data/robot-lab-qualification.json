@@ -734,6 +734,79 @@
           ]
         }
       ]
+    },
+    {
+      "id": "kestrel-flapper",
+      "judge": "crank-rocker-v1",
+      "parts": 61,
+      "ports": [
+        "A"
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 50000,
+      "afterMs": 500,
+      "frameMs": 25,
+      "frozenOutput": "rocker",
+      "disconnect": [
+        "coupler"
+      ],
+      "disconnectInputDeg": 700,
+      "disconnectLoss": "batch-a"
+    },
+    {
+      "id": "meridian-linkage",
+      "judge": "peaucellier-inversor-v1",
+      "parts": 91,
+      "ports": [
+        "A"
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 70000,
+      "afterMs": 500,
+      "frameMs": 25,
+      "frozenOutput": "marker_output",
+      "disconnect": [
+        "cell_BQ"
+      ],
+      "disconnectInputDeg": 55,
+      "disconnectLoss": "batch-a"
+    },
+    {
+      "id": "lumen-iris",
+      "judge": "geared-iris-v1",
+      "parts": 146,
+      "ports": [
+        "A"
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 30000,
+      "afterMs": 500,
+      "frameMs": 10,
+      "frozenOutput": "leaf_plate_3",
+      "disconnect": [
+        "ring_top"
+      ],
+      "disconnectInputDeg": 50,
+      "disconnectLoss": "batch-a"
+    },
+    {
+      "id": "tangent-table",
+      "judge": "tangent-table-v1",
+      "parts": 297,
+      "ports": [
+        "A",
+        "B"
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 125000,
+      "afterMs": 500,
+      "frameMs": 25,
+      "frozenOutput": "output_carriage",
+      "disconnect": [
+        "radial_sleeve"
+      ],
+      "disconnectInputDeg": 12,
+      "disconnectLoss": "batch-a"
     }
   ]
 }

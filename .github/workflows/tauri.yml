@@ -126,9 +126,13 @@ on:
 # A PR branch is already tested by pull_request; running the same job again for
 # its push doubles the Rust queue without producing a second verdict. Keep the
 # post-merge main run, and cancel an obsolete run when that same PR is updated.
+# PR runs: a new push cancels the PR's superseded run. Every other event
+# (main push, dispatch) gets its own run_id group, so it is never cancelled and
+# never replaces a pending verdict (the vendor-freshness / ROADMAP 2.1 rule;
+# 2026-11-03 CI trim).
 concurrency:
-  group: tauri-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  group: tauri-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   test:

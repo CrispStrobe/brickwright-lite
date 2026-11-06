@@ -1,5 +1,12 @@
 # brickwright-lite — roadmap
 
+## Current status — 2026-11-05
+
+The integration has merged, and later browser gates passed after an earlier full
+run failed. The dated material below is historical. See the [current circuit/editor
+handoff](docs/CIRCUIT-INSTRUMENT-REGRESSION.md#current-circuiteditor-status--2026-11-05) for exact evidence, open work and acceptance boundaries.
+
+
 ## Circuit/instrument resume queue — 2026-10-29
 
 Use the [active handoff](docs/CIRCUIT-INSTRUMENT-REGRESSION.md#active-continuation--2026-10-28)

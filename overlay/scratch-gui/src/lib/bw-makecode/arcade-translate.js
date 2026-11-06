@@ -352,7 +352,7 @@ class ArcadeTranslator extends BaseTranslator {
         const references = inferImageReferences(node, value => this.path(value), value => this.imageOf(value), value => !!this.assetKindLookup && value?.type === 'Template' && ['assets.image', 'assets.tile'].includes(value.tag));
         this.objectReferences = references.objects;this.fontReferences=references.fonts;
         this.bufferReferences = references.buffers;this.imageReferences = references.images;this.spriteReferences = references.sprites;this.dataReferences = references.data;
-        this.textSpriteReferences=references.textSprites;this.playerReferences=references.players;this.sceneReferences=references.scenes;this.physicsEngineReferences=references.physicsEngines;this.tileReferences = references.tiles;this.tilemapDataReferences = references.tilemapData;this.legacyTileReferences=references.legacyTiles;this.animationReferences = references.animations;this.sevensegDigitReferences=references.sevensegDigits;this.sevensegCounterReferences=references.sevensegCounters;this.dartReferences=references.darts;this.corgiReferences=references.corgis;this.nullReferences=references.nulls;this.arrayReferences = references.arrays;this.numberReferences=references.numbers;this.stringReferences=references.strings;this.booleanReferences=references.booleans;
+        this.textSpriteReferences=references.textSprites;this.playerReferences=references.players;this.sceneReferences=references.scenes;this.physicsEngineReferences=references.physicsEngines;this.tileReferences = references.tiles;this.tilemapDataReferences = references.tilemapData;this.sceneTilemapReferences = references.sceneTilemaps;this.legacyTileReferences=references.legacyTiles;this.animationReferences = references.animations;this.sevensegDigitReferences=references.sevensegDigits;this.sevensegCounterReferences=references.sevensegCounters;this.dartReferences=references.darts;this.corgiReferences=references.corgis;this.nullReferences=references.nulls;this.arrayReferences = references.arrays;this.numberReferences=references.numbers;this.stringReferences=references.strings;this.booleanReferences=references.booleans;
         this.referenceArrayProgram=containsAst(node,value=>value.type==='Array' || references.arrays.has(value));
         this.fontValueProgram=containsAst(node,value=>!!value.bwFontIntrinsic);
         this.throwValueProgram=hasThrowEmission(node);this.throwSourceProgram=node;
@@ -1461,6 +1461,12 @@ class ArcadeTranslator extends BaseTranslator {
             if(['x','y','tileSet'].includes(node.name))return `arcade color tile ${node.name} of (${this.expr(node.object)})`;
             this.unsupported.push(`tiles.Tile.${node.name} is not a supported legacy Tile property`);return '0';
         }
+        if(this.handleTemplates && node?.type==='Member' && this.sceneTilemapReferences?.has(node.object)) {
+            if(['data','scale','enabled'].includes(node.name))return `arcade scene tilemap ${node.name} of (${this.expr(node.object)})`;
+            this.unsupported.push(`tiles.TileMap.${node.name} is not a supported scene TileMap property`);return '0';
+        }
+        if(this.handleTemplates && node?.type==='Member' && node.name==='tileMap' && this.tileReferences?.has(node.object))
+            return `arcade scene tilemap of tile (${this.expr(node.object)})`;
         if(this.handleTemplates && node?.type==='Member' && this.tilemapDataReferences?.has(node.object)) {
             if(['width','height','scale'].includes(node.name))return `arcade tilemap ${node.name} of (${this.expr(node.object)})`;
             this.unsupported.push(`tiles.TileMapData.${node.name} is not a supported TileMapData property`);return '0';
@@ -1496,6 +1502,14 @@ class ArcadeTranslator extends BaseTranslator {
                 if(node.callee.name==='getTile' && args.length===2)return `arcade tilemap (${data}) tile index at column (${this.expr(args[0])}) row (${this.expr(args[1])})`;
                 if(node.callee.name==='isWall' && args.length===2)return `arcade tilemap (${data}) wall at column (${this.expr(args[0])}) row (${this.expr(args[1])})`;
                 if(node.callee.name==='getTileImage' && args.length===1)return `arcade tilemap (${data}) image of tile index (${this.expr(args[0])})`;
+                if(node.callee.name==='getTileset' && args.length===0){this.usesArrays=true;return `arcade tilemap (${data}) tileset`;}
+            }
+            if(node.callee?.type==='Member' && this.sceneTilemapReferences?.has(node.callee.object)) {
+                const map=this.expr(node.callee.object);
+                if(['areaWidth','areaHeight'].includes(node.callee.name) && args.length===0)return `arcade scene tilemap ${node.callee.name} of (${map})`;
+                // PXT TileMap.getTileIndex(col, row) is this.data.getTile(col, row).
+                if(node.callee.name==='getTileIndex' && args.length===2)return `arcade tilemap (arcade scene tilemap data of (${map})) tile index at column (${this.expr(args[0])}) row (${this.expr(args[1])})`;
+                this.unsupported.push(`tiles.TileMap.${node.callee.name}() is not a supported scene TileMap method`);return '0';
             }
             if(node.callee?.type==='Member' && this.tileReferences?.has(node.callee.object) && args.length===0){
                 if(node.callee.name==='getImage')return `arcade tile image at (${this.expr(node.callee.object)})`;
@@ -1720,6 +1734,13 @@ class ArcadeTranslator extends BaseTranslator {
             const registration=this.terrainRegistrations.get(node),event=/^(?:tiles\.)?TileMapEvent\.(Loaded|Unloaded)$/.exec(this.path(a[0])||'')?.[1];
             if(!registration || !event){push(this.note('tiles.addEventListener requires tiles.TileMapEvent.Loaded or Unloaded and an inline callback with at most one parameter'));return;}
             push(`arcade register tilemap event ${event} as "${registration.token}" capturing ${JSON.stringify([...registration.ownCaptures].join(' '))}`);return;
+        }
+        if(this.handleTemplates && name==='tiles.removeEventListener') {
+            const event=/^(?:tiles\.)?TileMapEvent\.(Loaded|Unloaded)$/.exec(this.path(a[0])||'')?.[1],named=a[1]?.bwNamedCallback;
+            if(a.length!==2 || !event || !(named || a[1]?.type==='FunctionExpression')){push(this.note('tiles.removeEventListener requires tiles.TileMapEvent.Loaded or Unloaded and a named function'));return;}
+            // An inline function is a new callback value that no listener holds: PXT removes nothing.
+            if(named)push(`arcade unregister tilemap event ${event} as "${tilemapFunctionToken(named)}"`);
+            return;
         }
         if(this.handleTemplates && ['game.pushScene','game.popScene'].includes(name)) {
             if(a.length){push(this.note(`${name} requires no arguments`));return;}
@@ -2990,6 +3011,15 @@ class ArcadeTranslator extends BaseTranslator {
             return;
         }
 
+        // PXT TileMapData.scale setter (the map's own TileScale).
+        if (this.handleTemplates && expr.type === 'Assignment' && expr.left?.type === 'Member' && expr.left.name === 'scale' &&
+            this.tilemapDataReferences?.has(expr.left.object)) {
+            const result = expr.op === '=' ? this.expr(expr.right) :
+                ['+=','-=','*=','/=','%=','|=','&=','^=','<<=','>>=','>>>='].includes(expr.op) ? this.expr({type:'Binary',op:expr.op.slice(0,-1),left:expr.left,right:expr.right}) : null;
+            if (result === null) push(this.note(`${this.path(expr.left)} ${expr.op} — unsupported assignment`));
+            else push(`arcade set tilemap (${this.expr(expr.left.object)}) scale to (${result})`);
+            return;
+        }
         const handle = expr.type === 'Assignment' && expr.left?.type === 'Member' &&
             this.handleRef(expr.left.object);
         if (handle) {
@@ -3674,7 +3704,7 @@ const inferProcedureHandleParameters = (ast, functions, globalHandles, pathOf) =
 const inferImageReferences = (ast, pathOf, imageOf, isScopedAssetFactory = () => false) => {
     const sdkNumericCalls=staticSdkNamespaceReceivers(ast,{builtinIdentifiers:['randint']});
     const textSprites=new WeakSet(), objects=new WeakSet();
-    const buffers = new WeakSet(), players = new WeakSet(), references = new WeakSet(), tiles = new WeakSet(), tilemapData = new WeakSet(), legacyTiles = new WeakSet(), sprites = new WeakSet(), animations = new WeakSet(), sevensegDigits = new WeakSet(), sevensegCounters = new WeakSet(), darts = new WeakSet(), corgis = new WeakSet(), scenes = new WeakSet(), physicsEngines = new WeakSet(), nulls = new WeakSet(), arrays = new WeakSet(), numbers = new WeakSet(), strings = new WeakSet(), booleans = new WeakSet();
+    const buffers = new WeakSet(), players = new WeakSet(), references = new WeakSet(), tiles = new WeakSet(), tilemapData = new WeakSet(), sceneTilemaps = new WeakSet(), legacyTiles = new WeakSet(), sprites = new WeakSet(), animations = new WeakSet(), sevensegDigits = new WeakSet(), sevensegCounters = new WeakSet(), darts = new WeakSet(), corgis = new WeakSet(), scenes = new WeakSet(), physicsEngines = new WeakSet(), nulls = new WeakSet(), arrays = new WeakSet(), numbers = new WeakSet(), strings = new WeakSet(), booleans = new WeakSet();
     const entries = [];
     const functions = new Map();
     const scope = parent => ({parent, bindings: new Map()});
@@ -3791,6 +3821,13 @@ const inferImageReferences = (ast, pathOf, imageOf, isScopedAssetFactory = () =>
             }
         }
         if(node?.type==='Member' && ['index','number'].includes(node.name) && typeOf(node.object,owner).has('player'))return new Set(['number']);
+        // Location.tileMap is the scene's TileMap; its data is a TileMapData.
+        if(node?.type==='Member' && node.name==='tileMap' && typeOf(node.object,owner).has('tile'))return new Set(['scene-tilemap']);
+        if(node?.type==='Member' && typeOf(node.object,owner).has('scene-tilemap')){
+            if(node.name==='data')return new Set(['tilemap']);
+            if(node.name==='scale')return new Set(['number']);
+            if(node.name==='enabled')return new Set(['boolean']);
+        }
         if(node?.type==='Member' && ['maxSpeed','minStep','maxStep'].includes(node.name) && typeOf(node.object,owner).has('physics-engine'))return new Set(['number']);
         if(node?.type==='Member' && node.name==='physicsEngine' && typeOf(node.object,owner).has('scene'))return new Set(['physics-engine']);
         if(node?.type==='Member' && node.name==='flags' && typeOf(node.object,owner).has('scene'))return new Set(['number']);
@@ -3851,7 +3888,11 @@ const inferImageReferences = (ast, pathOf, imageOf, isScopedAssetFactory = () =>
             if(api==='tiles.getTilesByType')return new Set(['array','tile-array']);
             if(['tiles.getTileLocation','tiles.getRandomTileByType'].includes(api))return new Set(['tile']);
             if(api==='tiles.createTilemap' && node.args.length===4)return new Set(['tilemap']);
+            if(node.callee?.type==='Member' && typeOf(node.callee.object,owner).has('scene-tilemap')){
+                if(['areaWidth','areaHeight','getTileIndex'].includes(node.callee.name))return new Set(['number']);
+            }
             if(node.callee?.type==='Member' && typeOf(node.callee.object,owner).has('tilemap')){
+                if(node.callee.name==='getTileset' && node.args.length===0)return new Set(['array','image-array']);
                 if(node.callee.name==='getTileImage' && node.args.length===1)return new Set(['image']);
                 if(node.callee.name==='getTile' && node.args.length===2)return new Set(['number']);
                 if(node.callee.name==='isWall' && node.args.length===2)return new Set(['boolean']);
@@ -3943,7 +3984,7 @@ const inferImageReferences = (ast, pathOf, imageOf, isScopedAssetFactory = () =>
         const value=cell(node,owner);
         applyPrimitiveAnnotation(value,node.assertedType);
         for (const type of typeOf(node,owner)) {
-            const name={font:'Font',buffer:'Buffer',image:'Image',sprite:'Sprite',tile:'TileLocation',tilemap:'TileMapData','legacy-tile':'LegacyTile',animation:'Animation','sevenseg-digit':'SevenSegDigit','sevenseg-counter':'DigitCounter',dart:'Dart',corgio:'Corgio','text-sprite':'TextSprite',scene:'Scene','physics-engine':'PhysicsEngine',player:'Player',number:'number',string:'string',boolean:'boolean',null:'null',undefined:'undefined',object:'object',any:'unknown',array:'array'}[type];
+            const name={font:'Font',buffer:'Buffer',image:'Image',sprite:'Sprite',tile:'TileLocation',tilemap:'TileMapData','scene-tilemap':'SceneTileMap','legacy-tile':'LegacyTile',animation:'Animation','sevenseg-digit':'SevenSegDigit','sevenseg-counter':'DigitCounter',dart:'Dart',corgio:'Corgio','text-sprite':'TextSprite',scene:'Scene','physics-engine':'PhysicsEngine',player:'Player',number:'number',string:'string',boolean:'boolean',null:'null',undefined:'undefined',object:'object',any:'unknown',array:'array'}[type];
             if(name)graph.add(value,name);
         }
         if(node.bwConsoleInspectIntrinsic===true && node.callee?.name==='__bwConsoleInspectValue')graph.add(value,'string');
@@ -4036,6 +4077,7 @@ const inferImageReferences = (ast, pathOf, imageOf, isScopedAssetFactory = () =>
         if (graph.has(value,'Player')) players.add(node);
         if (graph.has(value,'TileLocation')) tiles.add(node);
         if (graph.has(value,'TileMapData')) tilemapData.add(node);
+        if (graph.has(value,'SceneTileMap')) sceneTilemaps.add(node);
         if (graph.has(value,'LegacyTile')) legacyTiles.add(node);
         if (graph.has(value,'Animation')) animations.add(node);
         if (graph.has(value,'SevenSegDigit')) sevensegDigits.add(node);
@@ -4048,7 +4090,7 @@ const inferImageReferences = (ast, pathOf, imageOf, isScopedAssetFactory = () =>
         if(types.has('physics-engine') || graph.has(value,'PhysicsEngine') && !['number','string','boolean','Image','Sprite','Scene'].some(type=>graph.has(value,type)))physicsEngines.add(node);
         if(types.has('null') && [...types].every(type=>type==='null'||type==='sprite'))nulls.add(node);
     }
-    return {fonts,objects,primitives,strictStrings,sourceTypeOfOperands,provenArrays,sourceArrayArithmeticOperands,textSprites, buffers, players, images: references, tiles, tilemapData, legacyTiles, sprites, animations, sevensegDigits, sevensegCounters, darts, corgis, scenes, physicsEngines, nulls, arrays, numbers, strings, booleans, data,
+    return {fonts,objects,primitives,strictStrings,sourceTypeOfOperands,provenArrays,sourceArrayArithmeticOperands,textSprites, buffers, players, images: references, tiles, tilemapData, sceneTilemaps, legacyTiles, sprites, animations, sevensegDigits, sevensegCounters, darts, corgis, scenes, physicsEngines, nulls, arrays, numbers, strings, booleans, data,
         spriteFunctions:new Set([...functions].filter(([,fn])=>graph.has(fn.resultCell,'Sprite')).map(([name])=>name)),
         parameters:new Map([...functions].map(([name,fn])=>[name,new Set(fn.node.params.filter(param=>graph.has(binding(fn.owner,param),'Sprite')))]))};
 };
@@ -4128,6 +4170,15 @@ const sceneRegistrationSpec = name => {
     return specs[name] || (/^info\.player[1-4]\.onLifeZero$/.test(name||'')?{kind:'lifeZero',handlerIndex:0,arity:1,prefix:'__bwLifeZero',maxParams:0}:null) || (/^controller\.(A|B|up|down|left|right)\.onEvent$/.test(name||'')?{kind:'button',handlerIndex:1,arity:2,prefix:'__bwButton',maxParams:0}:null);
 };
 
+// PXT keeps tilemap listeners by callback identity: removeEventListener drops
+// the one addEventListener entry with the same event and the same function.
+// A named global procedure is that identity, so both calls take it through the
+// static callback route, and its registration token is derived from its name.
+const tilemapListenerSpec = name => ['tiles.addEventListener','tiles.removeEventListener'].includes(name) ? {kind:'tilemapListener',handlerIndex:1,arity:2} : null;
+const callbackRegistrationSpec = (name, node) => sceneRegistrationSpec(name, node) || tilemapListenerSpec(name);
+const TILEMAP_FUNCTION_TOKEN = '__bwTilemapFn_';
+const tilemapFunctionToken = name => name.startsWith(TILEMAP_FUNCTION_TOKEN) ? name : TILEMAP_FUNCTION_TOKEN + name;
+
 const discoverRuntimeRegistrations = (ast, translator) => {
     const specs={
         'sprites.onCreated':{kind:'creation',handlerIndex:1,arity:2,prefix:'__bwCreated'},
@@ -4174,8 +4225,9 @@ const discoverRuntimeRegistrations = (ast, translator) => {
                 (nativeScene?validScene:spec.kind==='creation' || handler.params.length<=2 && fixedKind(kind))) {
                 const captures = new Map(bindings);
                 for (const name of [...(handler.params || []), ...localNames(handler.body)]) captures.delete(name);
-                const index=(counts.get(spec.kind)||0)+1;counts.set(spec.kind,index);
-                registrations.set(node, {kind:spec.kind, token:`${spec.prefix}${index}`, handler,
+                const named=spec.kind==='tilemapEvent' && handler.bwNamedCallback;
+                const index=named?0:(counts.get(spec.kind)||0)+1;if(!named)counts.set(spec.kind,index);
+                registrations.set(node, {kind:spec.kind, token:named?tilemapFunctionToken(named):`${spec.prefix}${index}`, handler,
                     captures:new Map([...captures].map(([name,value])=>[name,value.key])),
                     ownCaptures:new Set([...captures.values()].filter(value=>value.owner===owner).map(value=>value.key)),
                     locals: localNames(handler.body)});
@@ -4208,7 +4260,10 @@ const emitCreatedRegistrations = (translator, out, localHandles = new Map(), cal
 };
 
 const emitTerrainRegistrations = (translator,out,localHandles=new Map(),callbackLocals=new Map()) => {
+    const emitted=new Set();
     for(const {kind,token,handler,captures,locals} of translator.terrainRegistrations.values()) {
+        // Every registration of one named procedure shares its token and handler.
+        if(emitted.has(token))continue;emitted.add(token);
         const previous={captures:translator.capturedBindings,locals:translator.localVars,parameters:translator.currentParameters,handles:translator.localHandleVars,aliases:translator.handleAliases};
         translator.capturedBindings=captures;
         translator.localVars=new Set([...locals,...handler.params]);
@@ -5470,7 +5525,7 @@ export function arcadeToPseudocode (files, opts = {}) {
     const callableParseOptions={parameterDefaults:true,retainParentheses:true,retainWhenUsed:true,retainClassHeritage:true,retainOrdinaryDefaultProvenance:true};
     const ordinarySource=parseSharedImageSourceProgram(sharedSourcePreparation,source,opts.procedureConstraintsPrototype===true,opts.procedureConstraintsPrototype!==true);
     const callableSourceParsed=parseMakeCodeTs(source,{...callableParseOptions,retainCallableMetadata:true});
-    const namedEligibility=selectNamedFunctionSourceProof(callableSourceParsed,{ordinaryProgram:ordinarySource,registrationSpec:sceneRegistrationSpec});
+    const namedEligibility=selectNamedFunctionSourceProof(callableSourceParsed,{ordinaryProgram:ordinarySource,registrationSpec:callbackRegistrationSpec});
     const namedEnabled=namedEligibility.eligible;
     const namedLowering=namedEnabled?lowerNamedFunctionValues(callableSourceParsed):null;
     const callableEligibility=callableSourceGate(callableSourceParsed,{normalize:true});
@@ -5629,7 +5684,7 @@ export function arcadeToPseudocode (files, opts = {}) {
             catch(error){objectClasses.unsupported.push(String(error.message));}
         }
         diagnostics.push(...objectClasses.unsupported);
-        const callbacks = lowerStaticCallbackHelpers(objectClasses.program, {registrationSpec:sceneRegistrationSpec});
+        const callbacks = lowerStaticCallbackHelpers(objectClasses.program, {registrationSpec:callbackRegistrationSpec});
         diagnostics.push(...callbacks.unsupported);
         const ast = lowerLazyValues(callbacks.program);
         return {ast:transport ? projectSharedImageArrayTransport(ast,transport.plan) : ast,diagnostics,stagedThrow,physicalUpdateLowering:objectClasses.physicalUpdateLowering};

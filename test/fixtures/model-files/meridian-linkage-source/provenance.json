@@ -1,0 +1,10 @@
+{
+ "author": "CrispStrobe",
+ "license": "BSD-3-Clause",
+ "files": {
+  "models/meridian-linkage.ldr": "c807b8f9e3e11112026671ce37dc0e001c6603b703b8c0265befa99af2476cc7",
+  "programs/meridian-linkage.bw": "c86070968f4e5a095d78d186f4472926adeba8eab330519d128714bca3d17b48",
+  "LICENSE.txt": "a096c77ac7c151875cdcfcc89285d7372701076a3e53e29b3ee8abcd4e71ec9e",
+  "SOURCES.md": "8d9b7d5ce39219ebbce8ee703d3014520e1ff7de3e949ae21c975dd906effd66"
+ }
+}

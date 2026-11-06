@@ -5842,6 +5842,192 @@
         "atlas-six.ldr",
         "axis-plotter.ldr"
       ]
+    },
+    "kestrel-flapper": {
+      "en": {
+        "what": "Crank-rocker flapping linkage (a Grashof four-bar). Motor A turns a 16 mm crank. A 48 mm coupler (7-hole beam) links the crank pin to a 32 mm rocker on the wing shaft, whose bearings sit 48 mm from the motor axis. The wing spine and feathers are fixed to that rocker shaft, so the wing can only rock: every full crank turn gives one stroke each way. The program turns the crank two turns forward at 45°/s, holds for 0.75 s, then turns it two turns back to its starting angle. Experimental model: the law described here has so far been measured only in the simulator (one headless run), not on real LEGO parts.",
+        "try": [
+          "Reset, then Run. During the first forward crank turn, count the wing strokes: one complete crank revolution should give exactly one stroke each way, not two.",
+          "Watch the two moments when the wing stops and reverses. At each one the crank and coupler lie on one straight line (a dead centre). Compare the crank rotation between the two reversals: ideal geometry predicts about 192° for one stroke and 168° for the other.",
+          "In stage 3 the crank runs backwards. Check that the wing retraces the same arc, and notice which stroke direction is now the slower one.",
+          "When the program reports completion, compare inputTurns (back to 0) and the wing tilt with the starting pose."
+        ],
+        "why": "A four-bar linkage with shortest link s, longest link l and the other two p and q lets the shortest link turn fully when s + l ≤ p + q (Grashof condition). Here 16 + 48 ≤ 32 + 48 mm, and the shortest link is the driven crank, so the crank turns all the way round while the rocker can only swing. The rocker reaches its limits at the two dead centres, where crank and coupler are collinear and the crank axis is 48 − 16 = 32 mm or 48 + 16 = 64 mm from the rocker pin. The law of cosines at the rocker pivot then gives 41.4° and 104.5° from the frame line: an ideal swing of about 63°. The two dead-centre crank positions are not 180° apart but about 192.5° and 167.5°, so at constant motor speed one stroke lasts about 1.15 times as long as the other (a mild quick return). In the simulator, the measured wing swing was 63.07°, the reversals fell at crank angles 139° and 331° (sectors 192° and 168°), and the strokes took 4.26 s and 3.74 s.",
+        "matters": "Crank-rockers turn steady motor rotation into back-and-forth motion without reversing the motor: windscreen-wiper drives, sewing machines, toy ornithopters and pumps all use them. Four lengths are enough to predict whether the crank can turn fully, how far the output swings and how unequal the two strokes are. The program commands only the crank angle; the wing motion comes from the linkage. The simulator has no air, so there is no lift or drag on the wing, and real pin friction and wing loads are untested.",
+        "question": "The crank turns at a constant 45°/s. Do the two wing strokes take the same time? And when the program reverses the crank, which stroke direction becomes the slow one?",
+        "answer": "Not quite equal. The dead centres split the crank turn into about 192.5° and 167.5°, so at 45°/s one stroke takes about 4.3 s and the other about 3.7 s. Reversing the crank plays the motion backwards: the longer crank sector still contains the slower stroke, but the wing now moves through it in the opposite direction, so the stroke that was slow becomes the fast one and vice versa.",
+        "further": [
+          "Use the dead-centre construction for a 24 mm crank (3 holes). Grashof still holds (24 + 48 ≤ 32 + 48), and the swing grows to about 101°, but the smallest transmission angle between coupler and rocker drops from about 41° to about 26°, so the coupler pushes the rocker far less effectively.",
+          "Near a dead centre a large crank rotation produces almost no wing motion. Explain why a linkage can hold a large load there, and why that is also where it is slowest.",
+          "Compare Butterfly and the motorised Crank-Rocker, which use the same family of linkages with different proportions."
+        ]
+      },
+      "de": {
+        "what": "Schlagflügel-Gestänge als Kurbelschwinge (Grashof-Viergelenk). Motor A dreht eine 16 mm lange Kurbel. Eine 48 mm lange Koppel (7er-Lochbalken) verbindet den Kurbelzapfen mit einer 32 mm langen Schwinge auf der Flügelwelle, deren Lager 48 mm neben der Motorachse sitzen. Flügelholm und Federn sind fest mit dieser Schwingenwelle verbunden; der Flügel kann deshalb nur hin- und herschwingen, und jede volle Kurbelumdrehung ergibt genau einen Schlag in jede Richtung. Das Programm dreht die Kurbel mit 45°/s zwei Umdrehungen vorwärts, hält 0,75 s an und dreht sie dann zwei Umdrehungen zurück in die Ausgangslage. Experimentelles Modell: Das hier beschriebene Gesetz wurde bisher nur im Simulator gemessen (ein Lauf ohne Bildschirm), nicht an echten LEGO-Teilen.",
+        "try": [
+          "Setze zurück und drücke Start. Zähle während der ersten Kurbelumdrehung die Flügelschläge: Eine volle Umdrehung sollte genau einen Schlag nach oben und einen nach unten ergeben, nicht zwei.",
+          "Achte auf die beiden Augenblicke, in denen der Flügel stehen bleibt und umkehrt. Dann liegen Kurbel und Koppel auf einer Geraden (Totlage). Vergleiche die Kurbeldrehung zwischen den beiden Umkehrpunkten: Die ideale Geometrie sagt etwa 192° für den einen und 168° für den anderen Schlag voraus.",
+          "In Stufe 3 läuft die Kurbel rückwärts. Prüfe, ob der Flügel denselben Bogen zurückläuft, und beobachte, welche Schlagrichtung jetzt die langsamere ist.",
+          "Vergleiche nach Abschluss inputTurns (wieder 0) und die Flügelneigung mit der Ausgangslage."
+        ],
+        "why": "Bei einem Viergelenk mit kürzestem Glied s, längstem Glied l und den beiden übrigen Gliedern p und q kann das kürzeste Glied voll umlaufen, wenn s + l ≤ p + q gilt (Grashof-Bedingung). Hier ist 16 + 48 ≤ 32 + 48 mm, und das kürzeste Glied ist die angetriebene Kurbel: Sie läuft ganz um, während die Schwinge nur pendelt. Ihre Endlagen erreicht die Schwinge in den beiden Totlagen, in denen Kurbel und Koppel gestreckt oder überdeckt sind; der Abstand von der Kurbelachse zum Schwingenzapfen beträgt dann 48 − 16 = 32 mm bzw. 48 + 16 = 64 mm. Der Kosinussatz am Schwingenlager liefert daraus 41,4° und 104,5° zur Gestelllinie, also einen idealen Schwingwinkel von etwa 63°. Die beiden Totlagen der Kurbel liegen nicht 180° auseinander, sondern teilen die Umdrehung in etwa 192,5° und 167,5°. Bei konstanter Motordrehzahl dauert ein Schlag deshalb rund 1,15-mal so lang wie der andere – ein leichter Schnellrücklauf. Im Simulator wurden ein Schwingwinkel von 63,07°, Umkehrpunkte bei 139° und 331° Kurbelwinkel (Abschnitte 192° und 168°) und Schlagzeiten von 4,26 s und 3,74 s gemessen.",
+        "matters": "Kurbelschwingen machen aus gleichförmiger Motordrehung eine Hin- und Herbewegung, ohne dass der Motor die Richtung wechseln muss: Scheibenwischerantriebe, Nähmaschinen, Schlagflügelmodelle und Pumpen nutzen sie. Vier Längen genügen, um vorherzusagen, ob die Kurbel umlaufen kann, wie weit der Abtrieb schwingt und wie ungleich die beiden Schläge sind. Das Programm gibt nur den Kurbelwinkel vor; die Flügelbewegung entsteht im Gestänge. Der Simulator kennt keine Luft – Auftrieb und Luftwiderstand am Flügel fehlen, und reale Reibung in den Pins sowie Flügellasten sind ungeprüft.",
+        "question": "Die Kurbel dreht sich gleichmäßig mit 45°/s. Dauern beide Flügelschläge gleich lang? Und welche Schlagrichtung wird zur langsamen, wenn das Programm die Kurbel umkehrt?",
+        "answer": "Nicht ganz. Die Totlagen teilen die Kurbelumdrehung in etwa 192,5° und 167,5°; bei 45°/s dauert ein Schlag also etwa 4,3 s, der andere etwa 3,7 s. Läuft die Kurbel rückwärts, wird die Bewegung rückwärts abgespielt: Der längere Kurbelabschnitt enthält weiterhin den langsameren Schlag, doch der Flügel durchläuft ihn jetzt in der Gegenrichtung. Der vorher langsame Schlag wird schnell und umgekehrt.",
+        "further": [
+          "Wende die Totlagen-Konstruktion auf eine 24 mm lange Kurbel (3 Löcher) an. Die Grashof-Bedingung gilt weiterhin (24 + 48 ≤ 32 + 48), und der Schwingwinkel wächst auf etwa 101°; der kleinste Übertragungswinkel zwischen Koppel und Schwinge sinkt aber von etwa 41° auf etwa 26°, sodass die Koppel die Schwinge viel schlechter antreibt.",
+          "In der Nähe einer Totlage bewirkt eine große Kurbeldrehung fast keine Flügelbewegung. Erkläre, warum ein Gestänge dort große Kräfte halten kann und warum es dort zugleich am langsamsten ist.",
+          "Vergleiche Butterfly und die motorisierte Kurbelschwinge (Crank-Rocker), die dieselbe Gestängefamilie mit anderen Proportionen nutzen."
+        ]
+      },
+      "formula": {
+        "en": "Grashof: s + l ≤ p + q → 16 + 48 ≤ 32 + 48 mm (crank a = 16, coupler b = 48, rocker c = 32, frame d = 48). Dead centres: cos ψ = (c² + d² − (b ∓ a)²) / (2cd) → ψ = 41.4° and 104.5°, swing ≈ 63.1°. Crank sectors between reversals ≈ 192.5° and 167.5°: Q = (180° + α) / (180° − α) ≈ 1.15 with α ≈ 12.5°.",
+        "de": "Grashof: s + l ≤ p + q → 16 + 48 ≤ 32 + 48 mm (Kurbel a = 16, Koppel b = 48, Schwinge c = 32, Gestell d = 48). Totlagen: cos ψ = (c² + d² − (b ∓ a)²) / (2cd) → ψ = 41,4° und 104,5°, Schwingwinkel ≈ 63,1°. Kurbelabschnitte zwischen den Umkehrpunkten ≈ 192,5° und 167,5°: Q = (180° + α) / (180° − α) ≈ 1,15 mit α ≈ 12,5°."
+      },
+      "related": [
+        "crank-rocker.ldr",
+        "butterfly.ldr"
+      ]
+    },
+    "meridian-linkage": {
+      "en": {
+        "what": "Peaucellier–Lipkin inversor: an exact straight-line linkage. From a fixed pivot O two 64 mm arms run to the side corners B and D of a rhombus of four 48 mm beams; its other corners are P and the output point Q. Motor A turns a 16 mm crank about an axis 16 mm from O, so P moves on a circle that passes through O. The red output marker at Q has no guide; the white rail 16 mm beside its path is only a visual reference and is not connected to it. The program sweeps the crank slowly to +60°, home, −60° and home (15°/s with 3 s pauses), repeats the sweep at 30°/s, and ends at home. Experimental model: the law described here has so far been measured only in the simulator (one headless run), not on real LEGO parts.",
+        "try": [
+          "Reset. At home, note where the red output marker sits opposite the white reference rail.",
+          "During the slow sweep to +60°, watch the gap between the marker and the rail. In the ideal geometry it stays 16 mm all the way.",
+          "Compare how far the marker moves for the same crank rotation near home and near the ends of the sweep. Are the distances equal?",
+          "Compare the slow sweeps with the faster repetition: the marker should trace the same line at both speeds."
+        ],
+        "why": "The rhombus cell is a circle inverter. Because OB = OD and all four rhombus sides are equal, O, P and Q always lie on one line, and OP × OQ = OB² − BP² = 64² − 48² = 1792 mm², a constant. Inversion turns every circle through O into a straight line. P is held on such a circle (a 16 mm crank about a centre 16 mm from O), so Q must lie on the line perpendicular to the crank’s frame line at 1792 / (2 × 16) = 56 mm from O. With crank angle φ, Q moves along that line by y = 56 mm × tan(φ/2): ±32.3 mm at ±60°, a total stroke of about 64.7 mm. In the simulator, the measured output point stayed within 0.16 mm of a straight line (56.0–56.3 mm from O) over the whole run and within 0.24 mm of 56 mm × tan(φ/2).",
+        "matters": "Before precise slideways could be machined, engineers needed straight motion from pivots alone. Watt’s linkage gives only an approximate line; Peaucellier’s inversor (1864, found independently by Lipkin) was the first planar linkage to give an exact one. It also shows that a mechanism can compute a geometric transformation. Exactness belongs to the ideal geometry: real pins with clearance and flexing beams deviate slightly, and the simulator has small solver errors of its own.",
+        "question": "The crank turns in equal steps at constant speed. Does the output marker move in equal steps along its line? And why does the program stop at ±60° instead of turning the crank all the way round?",
+        "answer": "No: y = 56 mm × tan(φ/2) grows faster towards the ends. The first 15° from home moves Q about 7.4 mm, the step from 45° to 60° about 9.1 mm. A full turn is impossible: the cell is fully stretched when OQ = 64 + 48 = 112 mm, which happens at φ = ±120°. Beyond that no position of the links exists, so the program stays well inside at ±60°.",
+        "further": [
+          "Calculate y at each 15° step from 0° to 60° and compare it with the marker. The gap to the rail should stay 16 mm.",
+          "On paper, make all four rhombus sides 40 mm: the constant becomes 64² − 40² = 2496 mm² and the line moves to 78 mm from O – still exactly straight.",
+          "Compare Watt’s Line (approximate straight line) and Straight Eight, an established Peaucellier–Lipkin model. Here straightness comes only from geometry: there is no slider or software constraint on Q."
+        ]
+      },
+      "de": {
+        "what": "Peaucellier-Lipkin-Inversor: eine exakte Geradführung. Von einem festen Drehpunkt O führen zwei 64 mm lange Arme zu den seitlichen Ecken B und D einer Raute aus vier 48 mm langen Balken; ihre beiden anderen Ecken sind P und der Abtriebspunkt Q. Motor A dreht eine 16 mm lange Kurbel um eine Achse 16 mm neben O, sodass P sich auf einem Kreis durch O bewegt. Die rote Markierung bei Q hat keine Führung; die weiße Schiene 16 mm neben ihrer Bahn dient nur als Sichtreferenz und ist nicht mit ihr verbunden. Das Programm schwenkt die Kurbel langsam auf +60°, zurück, auf −60° und zurück (15°/s mit 3 s Pause), wiederholt das mit 30°/s und endet in der Ausgangslage. Experimentelles Modell: Das hier beschriebene Gesetz wurde bisher nur im Simulator gemessen (ein Lauf ohne Bildschirm), nicht an echten LEGO-Teilen.",
+        "try": [
+          "Setze zurück. Merke dir in der Ausgangslage, wo die rote Markierung gegenüber der weißen Referenzschiene steht.",
+          "Beobachte beim langsamen Schwenk auf +60° den Abstand zwischen Markierung und Schiene. In der idealen Geometrie bleibt er auf dem ganzen Weg 16 mm.",
+          "Vergleiche, wie weit sich die Markierung bei gleicher Kurbeldrehung nahe der Ausgangslage und nahe den Enden bewegt. Sind die Wege gleich?",
+          "Vergleiche die langsamen Schwenks mit der schnelleren Wiederholung: Die Markierung sollte bei beiden Geschwindigkeiten dieselbe Gerade zeichnen."
+        ],
+        "why": "Die Rautenzelle ist ein Kreisinverter. Weil OB = OD und alle vier Rautenseiten gleich lang sind, liegen O, P und Q stets auf einer Geraden, und es gilt OP × OQ = OB² − BP² = 64² − 48² = 1792 mm² – eine Konstante. Die Inversion bildet jeden Kreis durch O auf eine Gerade ab. P wird auf einem solchen Kreis geführt (16 mm lange Kurbel um einen Mittelpunkt 16 mm neben O), also muss Q auf der Geraden liegen, die senkrecht zur Verbindung O–Kurbelachse im Abstand 1792 / (2 × 16) = 56 mm von O verläuft. Beim Kurbelwinkel φ bewegt sich Q auf dieser Geraden um y = 56 mm × tan(φ/2): ±32,3 mm bei ±60°, insgesamt ein Hub von etwa 64,7 mm. Im Simulator blieb der gemessene Abtriebspunkt während des ganzen Laufs auf 0,16 mm genau auf einer Geraden (56,0–56,3 mm von O) und auf 0,24 mm genau bei 56 mm × tan(φ/2).",
+        "matters": "Bevor sich präzise Gleitführungen fertigen ließen, brauchte man gerade Bewegungen, die allein aus Drehgelenken entstehen. Das Watt-Gestänge liefert nur eine angenäherte Gerade; Peaucelliers Inversor (1864, unabhängig davon auch von Lipkin gefunden) war das erste ebene Gestänge mit exakter Geradführung. Er zeigt zugleich, dass ein Mechanismus eine geometrische Abbildung berechnen kann. Exakt ist dabei die ideale Geometrie: Echte Pins mit Spiel und sich biegende Balken weichen etwas ab, und auch der Simulator hat kleine eigene Rechenfehler.",
+        "question": "Die Kurbel dreht sich in gleichen Schritten mit konstanter Geschwindigkeit. Bewegt sich die Markierung in gleichen Schritten auf ihrer Geraden? Und warum hält das Programm bei ±60° an, statt die Kurbel ganz herumzudrehen?",
+        "answer": "Nein: y = 56 mm × tan(φ/2) wächst zu den Enden hin schneller. Die ersten 15° aus der Ausgangslage verschieben Q um etwa 7,4 mm, der Schritt von 45° auf 60° um etwa 9,1 mm. Eine volle Umdrehung ist unmöglich: Die Zelle ist ganz gestreckt, wenn OQ = 64 + 48 = 112 mm beträgt, und das ist bei φ = ±120° der Fall. Darüber hinaus gibt es keine mögliche Stellung der Glieder; das Programm bleibt mit ±60° deutlich darunter.",
+        "further": [
+          "Berechne y für jeden 15°-Schritt von 0° bis 60° und vergleiche mit der Markierung. Der Abstand zur Schiene sollte 16 mm bleiben.",
+          "Mache auf dem Papier alle vier Rautenseiten 40 mm lang: Die Konstante wird 64² − 40² = 2496 mm², und die Gerade rückt auf 78 mm Abstand von O – weiterhin exakt gerade.",
+          "Vergleiche Watt’s Line (angenäherte Geradführung) und Straight Eight, ein etabliertes Peaucellier-Lipkin-Modell. Hier entsteht die Geradheit allein aus der Geometrie: Q hat weder Schlitten noch eine Software-Zwangsbedingung."
+        ]
+      },
+      "formula": {
+        "en": "OP × OQ = OB² − BP² = 64² − 48² = 1792 mm². P on a circle of radius r = 16 mm through O → Q on the line x = (OB² − BP²) / (2r) = 56 mm. y_Q = 56 mm × tan(φ/2): ±32.3 mm at φ = ±60°. Full stretch at OQ = 112 mm ↔ φ = ±120°.",
+        "de": "OP × OQ = OB² − BP² = 64² − 48² = 1792 mm². P auf einem Kreis mit r = 16 mm durch O → Q auf der Geraden x = (OB² − BP²) / (2r) = 56 mm. y_Q = 56 mm × tan(φ/2): ±32,3 mm bei φ = ±60°. Voll gestreckt bei OQ = 112 mm ↔ φ = ±120°."
+      },
+      "related": [
+        "straight-eight.ldr",
+        "watt-line.ldr",
+        "line-turner.ldr"
+      ]
+    },
+    "lumen-iris": {
+      "en": {
+        "what": "Geared six-leaf iris aperture. Motor A turns a 12-tooth pinion that meshes with one of six 20-tooth leaf gears. That leaf gear also meshes with the outer teeth of a 60-tooth hollow turntable, and the turntable ring drives the other five leaf gears. Each leaf gear carries a 6 × 6 plate as its leaf; the six plates sit at staggered heights so they can overlap like the blades of a camera iris. Turning the leaves swings the plates outward about their own axles and opens a six-fold symmetric hole in the middle. The program opens in four equal input steps of 13.8° to −55.2°, closes through the same checkpoints, then opens and closes once more at double speed. Experimental model: the law described here has so far been measured only in the simulator (one headless run), not on real LEGO parts.",
+        "try": [
+          "Reset, then Run. At each 13.8° pause of cycle 1, look straight at the centre and estimate the width of the opening. In the simulator the inscribed opening measured about 8.8, 16.3, 22.5 and 27.2 mm at the four checkpoints (the supplier quotes about 24 mm, apparently measured differently).",
+          "Compare the four opening steps. The input steps are equal; do the increases in opening look equal too?",
+          "Follow the turntable and one leaf gear. The leaf should turn three times as far as the ring, in the opposite direction, and all six leaves should move together.",
+          "Compare the opening at the same checkpoint while opening and while closing, and in the faster cycle 2. A pure gear train gives the same opening at the same input angle; a difference points to lag or backlash."
+        ],
+        "why": "Gears couple all six leaves to the single input: leaf angle = (12/20) × input = 0.6 × input, ring angle = (12/60) × input = 0.2 × input. At full travel (55.2° at the motor) every leaf has turned about 33.1° and the ring about 11.0°. Every 20-tooth gear meshes the same ring from outside, so all six turn by the same angle in the same direction and the opening stays centred. The opening is not proportional to the leaf angle, however. Each leaf pivots about its own axle, so the distance of its inner edge from the centre changes roughly like a cosine of the pivot angle. In the ideal plate geometry the first degrees clear the centre fastest and every later quarter step adds less width than the one before. In the simulator, the measured ratios were leaf/input = −0.600 and ring/input = +0.200 for all six leaves, and the four opening steps added about 8.8, 7.5, 6.2 and 4.7 mm.",
+        "matters": "Iris diaphragms control light in cameras and microscopes and are also used as adjustable valves. The essential idea is one input moving many identical parts through a symmetric coupling, so the opening stays centred; synchronised clamps and centring grippers use the same idea. A classic camera iris uses one actuating ring with pins and slots; Lumen instead gears every leaf directly to the ring. The simulator models no light and no light-tight seal; the supplier notes that the closed leaves leave a tiny gap.",
+        "question": "The program opens the iris in four equal 13.8° input steps. Will each step widen the opening by the same amount?",
+        "answer": "No, not in the ideal geometry. The gearing is linear – each step turns every leaf by the same 8.3° – but the opening depends on where each leaf edge ends up, and that follows a cosine-like relation to the leaf angle. Near the closed position a few degrees clear the centre quickly; towards full travel the edges move increasingly sideways rather than outward, so the later steps add less.",
+        "further": [
+          "Check the 3:1 ratio between leaf gear and ring at full travel: about 33.1° at a leaf against about 11.0° at the ring.",
+          "In a physical build all six meshes must be in phase. If one leaf gear were fitted one tooth off, that leaf would be out by 360°/20 = 18°. What would that do to the opening?",
+          "Sketch one leaf as a square plate pivoting about an axle 40 mm from the centre and measure how its nearest edge moves for 0°, 8°, 17°, 25° and 33°."
+        ]
+      },
+      "de": {
+        "what": "Irisblende mit sechs zahnradgetriebenen Lamellen. Motor A dreht ein Ritzel mit 12 Zähnen, das in eines von sechs Lamellenzahnrädern mit 20 Zähnen greift. Dieses Rad kämmt zugleich mit der Außenverzahnung eines hohlen Drehkranzes mit 60 Zähnen, und der Drehkranz treibt die übrigen fünf Lamellenräder. Jedes Lamellenrad trägt eine 6 × 6-Platte als Lamelle; die sechs Platten liegen in gestaffelten Höhen und können sich deshalb überlappen wie die Lamellen einer Kamerablende. Drehen sich die Räder, schwenken die Platten um ihre eigenen Achsen nach außen und geben in der Mitte eine sechszählig symmetrische Öffnung frei. Das Programm öffnet in vier gleichen Eingangsschritten von 13,8° bis −55,2°, schließt über dieselben Haltepunkte und öffnet und schließt danach noch einmal mit doppelter Geschwindigkeit. Experimentelles Modell: Das hier beschriebene Gesetz wurde bisher nur im Simulator gemessen (ein Lauf ohne Bildschirm), nicht an echten LEGO-Teilen.",
+        "try": [
+          "Setze zurück und drücke Start. Schau bei jedem 13,8°-Halt im ersten Durchgang genau auf die Mitte und schätze die Breite der Öffnung. Im Simulator maß der größte einbeschriebene Kreis an den vier Haltepunkten etwa 8,8, 16,3, 22,5 und 27,2 mm (der Lieferant nennt etwa 24 mm, offenbar anders gemessen).",
+          "Vergleiche die vier Öffnungsschritte. Die Eingangsschritte sind gleich groß – wächst auch die Öffnung in gleichen Schritten?",
+          "Verfolge den Drehkranz und ein Lamellenrad. Die Lamelle sollte sich dreimal so weit drehen wie der Kranz, in Gegenrichtung, und alle sechs Lamellen sollten sich gemeinsam bewegen.",
+          "Vergleiche die Öffnung am selben Haltepunkt beim Öffnen und beim Schließen sowie im schnelleren zweiten Durchgang. Ein reines Zahnradgetriebe ergibt beim selben Eingangswinkel dieselbe Öffnung; ein Unterschied deutet auf Nachlauf oder Zahnspiel hin."
+        ],
+        "why": "Die Zahnräder koppeln alle sechs Lamellen an den einen Eingang: Lamellenwinkel = (12/20) × Eingang = 0,6 × Eingang, Kranzwinkel = (12/60) × Eingang = 0,2 × Eingang. Bei vollem Weg (55,2° am Motor) hat sich jede Lamelle um etwa 33,1° gedreht, der Kranz um etwa 11,0°. Alle 20er-Räder greifen von außen in denselben Kranz, drehen sich daher um denselben Winkel in dieselbe Richtung, und die Öffnung bleibt mittig. Proportional zum Lamellenwinkel ist die Öffnung trotzdem nicht: Jede Lamelle schwenkt um ihre eigene Achse, und der Abstand ihrer Innenkante von der Mitte ändert sich ungefähr wie ein Kosinus des Schwenkwinkels. In der idealen Plattengeometrie geben die ersten Grade die Mitte am schnellsten frei, und jeder weitere Viertelschritt bringt weniger Breite als der vorige. Im Simulator wurden für alle sechs Lamellen die Verhältnisse Lamelle/Eingang = −0,600 und Kranz/Eingang = +0,200 gemessen; die vier Öffnungsschritte brachten etwa 8,8, 7,5, 6,2 und 4,7 mm.",
+        "matters": "Irisblenden regeln das Licht in Kameras und Mikroskopen und dienen auch als verstellbare Ventile. Der Kern ist ein einziger Eingang, der viele gleiche Teile über eine symmetrische Kopplung bewegt, sodass die Öffnung zentriert bleibt; synchronisierte Spanner und Zentriergreifer nutzen dieselbe Idee. Eine klassische Kamerablende bewegt ihre Lamellen über einen Stellring mit Stiften und Schlitzen; Lumen treibt stattdessen jede Lamelle direkt über Zahnräder vom Kranz an. Der Simulator modelliert weder Licht noch eine lichtdichte Abdichtung; laut Lieferant bleibt bei geschlossenen Lamellen ein winziger Spalt.",
+        "question": "Das Programm öffnet die Blende in vier gleichen Eingangsschritten von 13,8°. Wird die Öffnung bei jedem Schritt um gleich viel breiter?",
+        "answer": "Nein, jedenfalls nicht in der idealen Geometrie. Die Übersetzung ist linear – jeder Schritt dreht jede Lamelle um dieselben 8,3° –, aber die Öffnung hängt davon ab, wo die Lamellenkanten landen, und das folgt einem kosinusähnlichen Zusammenhang mit dem Lamellenwinkel. Nahe der geschlossenen Stellung geben wenige Grad die Mitte schnell frei; gegen Ende bewegen sich die Kanten zunehmend seitlich statt nach außen, und die späteren Schritte bringen weniger.",
+        "further": [
+          "Prüfe bei vollem Weg die Übersetzung 3:1 zwischen Lamellenrad und Kranz: etwa 33,1° an einer Lamelle gegenüber etwa 11,0° am Kranz.",
+          "Beim echten Nachbau müssen alle sechs Eingriffe in Phase sein. Säße ein Lamellenrad um einen Zahn versetzt, stünde diese Lamelle um 360°/20 = 18° falsch. Was würde das mit der Öffnung machen?",
+          "Zeichne eine Lamelle als quadratische Platte, die um eine Achse 40 mm neben der Mitte schwenkt, und miss, wie sich ihre nächstgelegene Kante bei 0°, 8°, 17°, 25° und 33° verschiebt."
+        ]
+      },
+      "formula": {
+        "en": "Leaf angle = (12/20) × θ_A = 0.6 θ_A; ring angle = (12/60) × θ_A = 0.2 θ_A. Full travel |θ_A| = 55.2168° → leaves ≈ 33.1°, ring ≈ 11.0°; quarter step 13.8042° → 8.28° per leaf. One tooth on a leaf gear = 360°/20 = 18° of leaf rotation. Signs depend on the axis convention.",
+        "de": "Lamellenwinkel = (12/20) × θ_A = 0,6 θ_A; Kranzwinkel = (12/60) × θ_A = 0,2 θ_A. Voller Weg |θ_A| = 55,2168° → Lamellen ≈ 33,1°, Kranz ≈ 11,0°; Viertelschritt 13,8042° → 8,28° je Lamelle. Ein Zahn am Lamellenrad = 360°/20 = 18° Lamellendrehung. Die Vorzeichen hängen von der Achsenkonvention ab."
+      },
+      "related": [
+        "ratio-workbench.ldr",
+        "vernier-drive.ldr"
+      ]
+    },
+    "tangent-table": {
+      "en": {
+        "what": "A mechanical multiplier by tan θ. Motor A turns a straight radial guide about a fixed pivot (1:1), setting the angle θ. Motor B turns the spindle of a small linear actuator that sets the reach x of a carriage; one spindle turn is only about 1.2 mm, so 2,388° of motor B moves it 8 mm. A captured pivot slides in a sleeve on the angled guide and in a transverse slider at reach x. That slider’s position y has no motor: it is simply where the two guides cross. The program visits eight (θ, x) pairs: (0°, 40 mm), (15°, 32), (15°, 48), (−15°, 48), (−15°, 32), (atan ¼ ≈ 14.04°, 32), (atan ⅙ ≈ 9.46°, 48) and (0°, 40).",
+        "try": [
+          "Reset, then Run. Stages 1–2: at +15° the reach goes from 32 to 48 mm. Predict y first: 8.57 mm, then 12.86 mm, so 16 mm of reach gives 4.29 mm of output (gain tan 15° ≈ 0.268).",
+          "Stages 3–4 use the same reaches at −15°. The output goes negative: the slope of the guide sets the sign of the gain.",
+          "Stages 5–6 end at (32 mm, 14.04°) and (48 mm, 9.46°). Both give y = 8 mm. Watch y during the move between them: does it stay at 8 mm?",
+          "Stage 7 returns to (40 mm, 0°). At zero angle y = 0 whatever the reach."
+        ],
+        "why": "Every point on a straight line through the origin at angle θ satisfies y/x = tan θ. The transverse slider holds the pivot at reach x and the sleeve keeps it on the angled line, so y = x·tan θ. At a fixed angle the output is proportional to the reach: the angle sets the gain, including its sign. Because the sleeve slides, there is no fixed link length to bend the relationship, as a connecting rod would. The relation is exact geometry, not an approximation, but tan θ grows quickly towards 90°, so a small angle error at a large angle gives a large output error. The ±15° range keeps the gain between −0.268 and +0.268.",
+        "matters": "Analogue computers and naval fire-control equipment multiplied in this way: a slotted guide turned to an angle scales a linear input. A pantograph copies motion at a fixed scale; here the scale itself is an input, which makes this a variable-gain stage. Product Plotter uses the same crossing-guides idea to multiply two lengths.",
+        "question": "Stages 5 and 6 both end at y = 8 mm. Does y stay at 8 mm while both motors move between them?",
+        "answer": "No. The endpoints match because 32 × ¼ = 8 and 48 × ⅙ = 8. Between them the program changes angle and reach in step with time, not along the curve x·tan θ = 8. Halfway, at x ≈ 40 mm and θ ≈ 11.75°, y ≈ 40 × tan 11.75° ≈ 8.32 mm, so the output rises slightly above 8 mm and comes back.",
+        "further": [
+          "Why are the motor speeds so different? Motor B needs about 299° per millimetre of reach, while motor A turns the guide directly. The program scales each speed so that both inputs finish a stage together.",
+          "Construction limits reported by the supplier: in the source meshes one actuator mounting pin intersects the actuator’s lug, and the simulator’s screw primitive does not model thread contact. A real build would need a fitting check.",
+          "In a headless Robot Lab simulation of the shipped program, the slider matched x·tan θ within 0.001 mm at every frame, using the guide angle measured from its pose. The guide itself stopped up to 0.17° past its motor targets (inside the program’s 0.5° arrival tolerance), so the two equal-output endpoints came out at 8.09 and 8.15 mm and the transit peaked at about 8.41 mm. That is a simulation observation, not a physical test."
+        ]
+      },
+      "de": {
+        "what": "Ein mechanischer Multiplizierer mit tan θ. Motor A dreht eine gerade, radiale Kulisse um einen festen Drehpunkt (1:1) und stellt so den Winkel θ ein. Motor B dreht die Spindel eines kleinen Linearaktuators, der die Reichweite x eines Schlittens einstellt; eine Spindelumdrehung bringt nur etwa 1,2 mm, 2.388° an Motor B also 8 mm. Ein gefangener Gelenkzapfen gleitet in einer Hülse auf der schrägen Kulisse und in einem Querschieber bei der Reichweite x. Die Lage y dieses Schiebers hat keinen Motor: Sie ergibt sich dort, wo sich beide Führungen kreuzen. Das Programm fährt acht Paare (θ, x) an: (0°, 40 mm), (15°, 32), (15°, 48), (−15°, 48), (−15°, 32), (arctan ¼ ≈ 14,04°, 32), (arctan ⅙ ≈ 9,46°, 48) und (0°, 40).",
+        "try": [
+          "Setze zurück und starte. Stufen 1–2: Bei +15° wächst die Reichweite von 32 auf 48 mm. Sage y vorher voraus: 8,57 mm, dann 12,86 mm. 16 mm Reichweite ergeben also 4,29 mm Ausgang (Verstärkung tan 15° ≈ 0,268).",
+          "Die Stufen 3–4 verwenden dieselben Reichweiten bei −15°. Der Ausgang wird negativ: Die Neigung der Kulisse bestimmt das Vorzeichen der Verstärkung.",
+          "Die Stufen 5–6 enden bei (32 mm; 14,04°) und (48 mm; 9,46°). Beide ergeben y = 8 mm. Beobachte y während der Fahrt dazwischen: Bleibt es bei 8 mm?",
+          "Stufe 7 kehrt zu (40 mm; 0°) zurück. Bei null Grad ist y = 0, ganz gleich, wie groß die Reichweite ist."
+        ],
+        "why": "Für jeden Punkt auf einer Geraden durch den Ursprung unter dem Winkel θ gilt y/x = tan θ. Der Querschieber hält den Zapfen bei der Reichweite x, die Hülse hält ihn auf der schrägen Geraden, also y = x·tan θ. Bei festem Winkel ist der Ausgang proportional zur Reichweite: Der Winkel legt die Verstärkung fest, samt Vorzeichen. Weil die Hülse gleitet, gibt es keine feste Lenkerlänge, die den Zusammenhang verbiegen würde wie bei einer Pleuelstange. Die Beziehung ist exakte Geometrie und keine Näherung. Allerdings wächst tan θ gegen 90° sehr schnell, sodass ein kleiner Winkelfehler bei großem Winkel einen großen Ausgangsfehler erzeugt. Der Bereich ±15° hält die Verstärkung zwischen −0,268 und +0,268.",
+        "matters": "Analogrechner und Feuerleitgeräte auf Schiffen multiplizierten auf diese Weise: Eine auf einen Winkel gedrehte Kulisse skaliert eine lineare Eingabe. Ein Storchschnabel überträgt Bewegung mit festem Maßstab; hier ist der Maßstab selbst eine Eingabe, also eine Stufe mit veränderlicher Verstärkung. Product Plotter multipliziert mit derselben Idee sich kreuzender Führungen zwei Längen.",
+        "question": "Die Stufen 5 und 6 enden beide bei y = 8 mm. Bleibt y bei 8 mm, während sich beide Motoren dazwischen bewegen?",
+        "answer": "Nein. Die Endpunkte stimmen überein, weil 32 × ¼ = 8 und 48 × ⅙ = 8. Dazwischen ändert das Programm Winkel und Reichweite gleichmäßig mit der Zeit und nicht entlang der Kurve x·tan θ = 8. Auf halbem Weg, bei x ≈ 40 mm und θ ≈ 11,75°, ist y ≈ 40 × tan 11,75° ≈ 8,32 mm. Der Ausgang steigt also kurz etwas über 8 mm und kehrt dann zurück.",
+        "further": [
+          "Warum sind die Motordrehzahlen so verschieden? Motor B braucht etwa 299° pro Millimeter Reichweite, Motor A dreht die Kulisse direkt. Das Programm passt beide Geschwindigkeiten so an, dass beide Eingänge eine Stufe gleichzeitig beenden.",
+          "Vom Lieferanten gemeldete Konstruktionsgrenzen: In den Quellgeometrien durchdringt ein Befestigungspin des Aktuators dessen Lasche, und das Schraubenelement des Simulators bildet keinen Gewindekontakt ab. Ein echter Aufbau bräuchte eine Passungsprüfung.",
+          "In einer Robot-Lab-Simulation des mitgelieferten Programms ohne Bedienoberfläche stimmte der Schieber in jedem Bild auf 0,001 mm mit x·tan θ überein, gerechnet mit dem an der Kulisse gemessenen Winkel. Die Kulisse selbst blieb bis zu 0,17° neben den Motorzielen stehen (innerhalb der Ankunftstoleranz von 0,5°). Die beiden Endpunkte mit gleichem Ausgang lagen deshalb bei 8,09 und 8,15 mm, und dazwischen erreichte y etwa 8,41 mm. Das ist eine Simulationsbeobachtung, kein Versuch am echten Modell."
+        ]
+      },
+      "formula": {
+        "en": "y = x·tan θ; sleeve position along the guide s = x / cos θ; at fixed θ, Δy = tan θ·Δx. (15°, 32 mm) → 8.574 mm; (15°, 48 mm) → 12.862 mm; full span ±12.862 mm. θ = motor A angle (1:1). x = 40 mm − 0.00335 mm per degree × motor B angle (1.206 mm per spindle turn). Software envelopes: θ within ±16°, x within 31.2–48.8 mm.",
+        "de": "y = x·tan θ; Lage der Hülse auf der Kulisse s = x / cos θ; bei festem θ gilt Δy = tan θ·Δx. (15°; 32 mm) → 8,574 mm; (15°; 48 mm) → 12,862 mm; gesamter Bereich ±12,862 mm. θ = Winkel von Motor A (1:1). x = 40 mm − 0,00335 mm pro Grad × Winkel von Motor B (1,206 mm pro Spindelumdrehung). Softwaregrenzen: θ innerhalb ±16°, x zwischen 31,2 und 48,8 mm."
+      },
+      "related": [
+        "product-plotter.ldr",
+        "scale-echo.ldr",
+        "screw-crane.ldr"
+      ]
     }
   }
 }

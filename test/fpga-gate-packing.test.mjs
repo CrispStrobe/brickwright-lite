@@ -153,7 +153,7 @@ test('the parts list panel offers that CSV', () => {
     // One CSV control per list: the vendor panel's own export when the build has that panel...
     assert.match(vendor, /bomToCsv\(bom\)/, 'the vendor panel exports with the vendor exporter');
     assert.match(vendor, /'bom\.csv'/, 'as a bom.csv file');
-    assert.match(tab, /if \(ui\.BomPanel\) return <ui\.BomPanel parts=\{circuit\.parts\} \/>;/, 'and the host adds no second CSV beside it');
+    assert.match(tab, /if \(ui\.BomPanel\) return <ui\.BomPanel parts=\{circuit\.parts\} lang=\{designerLang\(locale\)\} \/>;/, 'and the host adds no second CSV beside it');
     // ...and the host's copyable CSV only as the fallback for a build without it.
     assert.match(tab, /data-testid="bw-bom-csv"/, 'there is a fallback CSV block');
     assert.match(model, /ui\.bomToCsv\(/, 'using the vendor exporter, not a second one');
