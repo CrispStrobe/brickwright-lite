@@ -9,6 +9,7 @@ import {advanceDebugPhase} from '../../lib/bw-debug/debug-phase-transition.js';
 import {shouldLoadCircuitDesigner} from '../../lib/bw-debug/circuit-designer-load-policy.js';
 import {getReactPerformanceProbe, profileReactSubtree} from '../../lib/bw-debug/react-perf-profiler.js';
 import {shouldRefreshDesignerDebugState} from '../../lib/bw-debug/debug-ui-refresh.js';
+import {s040PartIds, sameS040PartIds} from '../../lib/bw-debug/s040-part-ids.js';
 import {setProjectTitle} from '../../reducers/project-title';
 import {activateTab} from '../../reducers/editor-tab';
 import {noCircuitMessage} from '../../lib/example-device-only.js';
@@ -157,7 +158,7 @@ class CircuitTab extends React.Component {
             if (CIRCUIT_DOCKS.has(d) || DEVICE_DOCKS.has(d)) debugDock = d;
         } catch { /* private mode: defaults */ }
         this.state = {Designer: null, ui: null, panels: null, error: null, reloading: false, stc: null,
-            board: null, debugState: null, panel: 'designer', circuit: null, hintDismissed,
+            board: null, debugState: null, s040PartIds: [], panel: 'designer', circuit: null, hintDismissed,
             debugHintDismissed, hideStage, debugDock, showInStage, rightPaneHidden,
             examples: null, examplesError: null, curriculum: null,
             circuitData: null, loadingExample: null,
@@ -2220,6 +2221,12 @@ class CircuitTab extends React.Component {
                         const vm = this.props.vm;
                         if (vm && vm.runtime) {
                             vm.runtime.circuitBoard = board;
+                            // A published board mutates independently of debugger props.
+                            // Publish only changes to the S040 selection to avoid render loops.
+                            const ids = s040PartIds(board);
+                            if (!sameS040PartIds(ids, this.state.s040PartIds)) {
+                                this.setState({s040PartIds: ids});
+                            }
                             // Producer-asserts-the-consumer: verify the circuit extension
                             // can read it (it uses a lazy getter on this.runtime.circuitBoard).
                             console.assert(vm.runtime.circuitBoard === board,
@@ -2324,6 +2331,7 @@ class CircuitTab extends React.Component {
                         clockHz={(stc && Number(stc.clock)) || 11059200}
                         runToken={this.state.runToken}
                         stopToken={this.state.stopToken}
+                        s040PartIds={this.state.s040PartIds}
                         onRunnerChange={this.handleRunnerChange}
                         onRunnerGone={this.handleRunnerGone}
                     />))}

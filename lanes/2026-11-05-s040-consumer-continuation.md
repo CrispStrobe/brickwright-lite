@@ -51,3 +51,10 @@ dock contract with explicit circuit/device selection controls. All these
 behaviors still require fresh exact-head hosted verification. The shared
 LabWired engine change also requires its own fresh SAMD browser and installed
 native acceptance; the supplier result does not establish that acceptance.
+
+The next forward candidate publishes the S040 IDs from each newly published
+simulation board to the persistent debugger panel, updating only when those
+IDs change. This addresses the observed selector missing the board after a
+successful file load. The focused source test covers add, remove, same-count
+replacement and repeated publication; the actual firmware journey and all
+other failed browser gates remain pending fresh hosted qualification.

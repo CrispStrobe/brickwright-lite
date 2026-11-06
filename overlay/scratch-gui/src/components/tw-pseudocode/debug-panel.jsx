@@ -1,4 +1,5 @@
 import React from 'react';
+import {s040PartIds} from '../../lib/bw-debug/s040-part-ids.js';
 import ReactDOM from 'react-dom';
 import PropTypes from 'prop-types';
 import {connect} from 'react-redux';
@@ -1349,8 +1350,7 @@ class DebugPanel extends React.Component {
             !this._userFirmware && !this._bootMedia;
         const s040Selected = this.state.kind === 'labwired' &&
             ['board:esp32-4848s040', 'firmware:esp32-4848s040-merged-flash'].includes(this.state.labwiredChip);
-        const s040Parts = (this.props.vm?.runtime?.circuitBoard?.parts || [])
-            .filter(part => part.kind === 'esp32_4848s040');
+        const s040Parts = this.props.s040PartIds || s040PartIds(this.props.vm?.runtime?.circuitBoard);
         const why = ui.session && ui.session.why;
 
         // Capabilities decide what is offered — never an assumption about which
@@ -1654,7 +1654,7 @@ class DebugPanel extends React.Component {
                                         }} style={{...BTN, padding: '3px 6px'}}>
                                         <option value="">{String(this.props.locale || 'en').startsWith('de')
                                             ? 'Automatisch (eine Platine)' : 'Automatic (one board)'}</option>
-                                        {s040Parts.map(part => <option key={part.id} value={part.id}>{part.id}</option>)}
+                                        {s040Parts.map(id => <option key={id} value={id}>{id}</option>)}
                                     </select>
                                 </label>
                             ) : null}
