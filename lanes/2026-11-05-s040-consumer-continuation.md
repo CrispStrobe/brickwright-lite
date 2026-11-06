@@ -58,3 +58,9 @@ IDs change. This addresses the observed selector missing the board after a
 successful file load. The focused source test covers add, remove, same-count
 replacement and repeated publication; the actual firmware journey and all
 other failed browser gates remain pending fresh hosted qualification.
+
+The machine-console, future-sidecar and MakeCode checks now report bounded
+failure diagnostics while retaining their original acceptance criteria. These
+reports identify the observed dock/stop state, changed storage keys by digest,
+and hidden debugger phases respectively; they do not make a failed journey
+pass or establish a root cause on their own.
