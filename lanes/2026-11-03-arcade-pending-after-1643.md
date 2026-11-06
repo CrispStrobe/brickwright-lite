@@ -1,8 +1,8 @@
 # Arcade: pending work after the 2026-11-03 rows PR (#1643)
 
-Status: OPEN task list (docs only). Written 2026-11-03 for a fresh agent.
-Owner: unclaimed. Claim an item by adding your name next to it in this file
-(claim and change in the same PR is fine for the Arcade lane).
+Status: OPEN task list, refreshed 2026-11-06. Claim each implementation scope
+in a separate file and merge that claim before implementation; follow
+[the lane protocol](PROTOCOL.md).
 
 Read first: `docs/ARCADE-AGENT-HANDOFF.md` (methodology) and
 `docs/ARCADE-888-OPEN-FAILURES.md` (one row per open test, each with the
@@ -22,25 +22,18 @@ reason it is still open). PXT is the reference for every behaviour question.
   enabled exact-head check is SUCCESS. Normal pushes only, no force-push.
 - If main is red because of another lane, wait for that lane's fix.
 
-## 1. Land #1643 (first; nothing else in the importer/exporter before it)
+## 1. Qualify and land #1643 first
 
-#1643 "positional Array elements and constant computed indexes" is complete.
-Head `7a0894fd`, `ci:full` already set; at hand-off its normal checks were
-green and the thorough tier was still running. Steps:
+#1643 was composed with current main at head `4fda5d2b`; its prior head's
+successes do not qualify that combined tree. Check the current head, main and
+all enabled checks before a matched-head merge. Verify the reviewed and landed
+trees and parents. If main changes in overlapping executable paths, review and
+qualify the new combination. After landing, repeat the same 184-input source
+and Creator census and record the results and their scope. The last recorded
+result is 156 translated / 27 partial / 1 parse failure on `cb878669`.
 
-1. `gh pr checks 1643`; if all enabled checks pass, merge with
-   `--match-head-commit 7a0894fd`. Verify the merge parents (main + that
-   head) and that only the PR's files changed.
-2. If a check failed: read the job log. If it is a known flake listed in
-   ARCADE-888 ("Not marked known-open"), rerun only that job. If it is a real
-   failure, fix it on the PR branch (normal push) and run CI again.
-3. After merge, rerun the 184-input corpus census as described in the
-   handoff doc (same audit code, same inputs, same limits) and record the
-   result in the handoff doc. Last results: 156 translated / 27 partial /
-   1 parse failure on `cb878669`.
-
-Documented Arcade TODO count: 37 (2 Nov) -> 24 (after #1638) -> 22 after
-#1643.
+The prepared candidate clears two documented TODO rows, from 24 to 22; that
+count describes the candidate until it lands.
 
 ## 2. Remaining documented TODO rows: what each one needs
 
@@ -67,10 +60,11 @@ callback order and do-while rows (kept by operator decision).
 From the 27 partial corpus programs, 20 are input-limited (missing tutorial
 asset packs or helper libraries) and cannot be fixed in the importer.
 
-- 3a. Sprite-instance `x.onOverlap(fn)`: the only blocker in 4 programs
-  (jumper, runner, asteroids, car-race). Check the pinned PXT typings ship
-  it; translate it the way PXT defines it. Expected +4 translated.
-- 3b. `createProjectileFromSprite` with an unproven source sprite: +1.
+- 3a. Four snippets use Sprite-instance `x.onOverlap(fn)`, which the #1643
+  review reports is absent from the pinned SDK. Treat these as input-limited
+  unless the exact pinned source establishes supported behavior.
+- 3b. The projectile snippet uses an undeclared source sprite; preserve the
+  refusal until the original input supplies a valid source.
 
 These two are also listed in the pending list added with #1645; mark them
 there as well when you take them.
