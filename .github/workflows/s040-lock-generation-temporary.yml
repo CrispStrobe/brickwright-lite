@@ -23,7 +23,7 @@ jobs:
           set -euo pipefail
           git config --global url.https://github.com/.insteadOf ssh://git@github.com/
           npm install --package-lock-only --ignore-scripts --no-audit --no-fund
-          (cd packages/scratch-gui && npm install --package-lock-only --ignore-scripts --no-audit --no-fund)
+          (cd packages/scratch-gui && npm install --package-lock-only --ignore-scripts --legacy-peer-deps --no-audit --no-fund)
           mkdir -p s040-lock-output/packages/scratch-gui
           cp package-lock.json s040-lock-output/package-lock.json
           cp packages/scratch-gui/package-lock.json s040-lock-output/packages/scratch-gui/package-lock.json
