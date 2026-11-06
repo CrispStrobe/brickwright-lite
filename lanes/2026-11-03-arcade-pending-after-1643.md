@@ -22,18 +22,16 @@ reason it is still open). PXT is the reference for every behaviour question.
   enabled exact-head check is SUCCESS. Normal pushes only, no force-push.
 - If main is red because of another lane, wait for that lane's fix.
 
-## 1. Qualify and land #1643 first
+## 1. #1643 landed; corpus checked
 
-#1643 was composed with current main at head `4fda5d2b`; its prior head's
-successes do not qualify that combined tree. Check the current head, main and
-all enabled checks before a matched-head merge. Verify the reviewed and landed
-trees and parents. If main changes in overlapping executable paths, review and
-qualify the new combination. After landing, repeat the same 184-input source
-and Creator census and record the results and their scope. The last recorded
-result is 156 translated / 27 partial / 1 parse failure on `cb878669`.
+#1643 landed as `8a969d7d` after all enabled exact-head checks passed. The
+184-input source import and Creator census on that merge reports 156
+translated / 27 partial / 1 parse failure. All 184 input hashes match the
+previous census on `cb878669`, and no input changed stage. This does not
+measure export, original PXT, VM, browser or full application execution.
 
-The prepared candidate clears two documented TODO rows, from 24 to 22; that
-count describes the candidate until it lands.
+The documented Arcade TODO count is 22 after #1643. Check the current main
+and active claims before taking any remaining row.
 
 ## 2. Remaining documented TODO rows: what each one needs
 
