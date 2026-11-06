@@ -399,6 +399,72 @@ function create(runtime, cells, scoreOwner=null, sceneClock=null, frameDelta=nul
             input:(node,name,owner)=>owner.blocks.getBlock(node?.inputs?.[name]?.block),
             literal:(node,name,owner)=>node?.fields?.[name]?.value??(owner.blocks.getBlock(node?.inputs?.[name]?.block)?.opcode==='text'?owner.blocks.getBlock(node.inputs[name].block).fields?.TEXT?.value:null)});
         const owners = new Map(), seen = new Map([[false,new Set()],[true,new Set()]]);
+        const positionalElement=node=>{
+            const index=input(node,'INDEX'),receiver=input(node,'ARRAY');
+            const k=index?.opcode==='math_number'&&index.shadow===true?Number(index.fields?.NUM?.value):NaN;
+            if(!Number.isInteger(k)||k<0||String(index.fields?.NUM?.value).trim()===''||receiver?.opcode!=='data_variable')return null;
+            const vid=receiver.fields?.VARIABLE?.id;if(typeof vid!=='string')return null;
+            let writer=null,writerTarget=null;const globalResets=[];
+            for(const t of runtime.targets)for(const b of Object.values(t.blocks?._blocks||{})){
+                if(b.fields?.VARIABLE?.id!==vid&&b.fields?.LIST?.id!==vid)continue;
+                if(b.opcode==='data_variable'){const parent=t.blocks.getBlock(b.parent);
+                    // The source type declaration names the variable without writing it.
+                    if(parent?.opcode==='arcade_declareSourceReference'&&parent.inputs?.VARIABLE?.block===b.id)continue;
+                    if(!['arrays_referenceItem','arrays_referenceLength'].includes(parent?.opcode)||parent.inputs?.ARRAY?.block!==b.id)return null;continue;}
+                if(b.opcode!=='data_setvariableto')return null;
+                const resetValue=t.blocks.getBlock(b.inputs?.VALUE?.block);
+                if(resetValue?.opcode==='arrays_specialValue'&&!Object.keys(resetValue.inputs||{}).length&&['undefined','null'].includes(resetValue.fields?.KIND?.value)){globalResets.push({b,t});continue;}
+                if(writer)return null;writer=b;writerTarget=t;
+            }
+            if(!writer||writerTarget!==target)return null;
+            const local=input(writer,'VALUE');if(local?.opcode!=='arcade_getLocal')return null;const name=literal(local,'NAME');if(typeof name!=='string')return null;
+            // Walk the writer's script back to its hat.
+            let first=writer,guard=new Set();while(first.parent&&!guard.has(first)){guard.add(first);const up=read(first.parent);if(!up||up.next!==first.id)return null;first=up;}
+            // A source-start script or a procedure body: each run rebuilds and
+            // publishes before the reads that follow on the same chain.
+            if(!['arcade_whenSourceStarts','procedures_definition'].includes(first.opcode))return null;
+            const chain=[];guard=new Set();for(let n=read(first.next);n&&!guard.has(n);n=read(n.next)){guard.add(n);chain.push(n);}
+            const w=chain.indexOf(writer);if(w<0)return null;
+            // Each global reset either precedes the publication on this chain, or
+            // sits on a source-start script's top chain before the only call of
+            // the procedure that publishes (the exporter's startup prologue).
+            const topOf=(t,b0)=>{let n=b0,seen=new Set();while(n.parent&&!seen.has(n)){seen.add(n);const up=t.blocks.getBlock(n.parent);if(!up||up.next!==n.id)return null;n=up;}return n;};
+            const chainOf=(t,hat)=>{const out=[],seen=new Set();for(let n=t.blocks.getBlock(hat.next);n&&!seen.has(n);n=t.blocks.getBlock(n.next)){seen.add(n);out.push(n);}return out;};
+            for(const {b:reset,t:rt} of globalResets){
+                if(rt===target&&chain.includes(reset)){if(chain.indexOf(reset)>=w)return null;continue;}
+                if(first.opcode!=='procedures_definition')return null;
+                const proto=read(first.inputs?.custom_block?.block),proccode=proto?.mutation?.proccode;if(typeof proccode!=='string')return null;
+                const hat=topOf(rt,reset);if(hat?.opcode!=='arcade_whenSourceStarts')return null;
+                const sChain=chainOf(rt,hat),at=sChain.indexOf(reset);if(at<0)return null;
+                const callers=[];
+                for(const t of runtime.targets)for(const c of Object.values(t.blocks?._blocks||{})){
+                    if(c.opcode==='procedures_call'&&c.mutation?.proccode===proccode)callers.push({c,t});
+                    else if(c.opcode==='arcade_callFunction'){const nameBlock=t.blocks.getBlock(c.inputs?.NAME?.block);const callName=nameBlock?.opcode==='text'?nameBlock.fields?.TEXT?.value:null;
+                        if(callName===null||callName===proccode||String(callName).split(' ')[0]===proccode.split(' ')[0])callers.push({c,t});}}
+                if(callers.length!==1||callers[0].t!==rt)return null;
+                let callStmt=callers[0].c,climb=new Set();while(callStmt&&!sChain.includes(callStmt)&&!climb.has(callStmt)){climb.add(callStmt);callStmt=rt.blocks.getBlock(callStmt.parent);}
+                if(!callStmt||sChain.indexOf(callStmt)<=at)return null;
+            }
+            // The read must follow the writer on the same chain.
+            let stmt=node;guard=new Set();while(stmt&&!chain.includes(stmt)&&!guard.has(stmt)){guard.add(stmt);stmt=read(stmt.parent);}
+            if(!stmt||chain.indexOf(stmt)<=w)return null;
+            const sameLocal=b=>['arcade_setLocal','arcade_getLocal'].includes(b?.opcode)&&literal(b,'NAME')===name;
+            const pushes=[],resets=[];let alloc=-1;
+            for(const b of Object.values(all)){if(!sameLocal(b))continue;
+                if(b===local)continue;
+                if(b.opcode==='arcade_setLocal'){const value=input(b,'VALUE');
+                    // A declaration reset (null/undefined) on the chain before the allocation.
+                    if(fixedReset(value)){const at=chain.indexOf(b);if(at<0)return null;resets.push(at);continue;}
+                    if(alloc>=0)return null;alloc=chain.indexOf(b);
+                    if(alloc<0||alloc>=w||value?.opcode!=='arrays_createReference'||text(input(value,'VALUES'))!=='[]')return null;continue;}
+                const parent=read(b.parent);
+                if(parent?.opcode!=='arrays_mutateReference'||parent.inputs?.ARRAY?.block!==b.id||literal(parent,'OP')!=='push')return null;
+                const at=chain.indexOf(parent);if(at<0)return null;pushes.push({at,parent});
+            }
+            if(alloc<0||resets.some(at=>at>=alloc)||pushes.some(p=>p.at<=alloc||p.at>=w))return null;
+            pushes.sort((x,y)=>x.at-y.at);
+            return k<pushes.length?input(pushes[k].parent,'VALUE'):null;
+        };
         const mark = (node,owner,path=new Set()) => {
             if (!node || path.has(node)) return;
             path.add(node);
@@ -544,6 +610,14 @@ function create(runtime, cells, scoreOwner=null, sceneClock=null, frameDelta=nul
                 if(!player&&domains&&op==='arcade_mathUnary'&&['truncate','sign'].includes(literal(node,'OP'))){
                     // The same Number-valued reporters as arcade_truncateNumber and arcade_signNumber.
                     origins?.add(node);domains.add('number');return true;
+                }
+                if(!player&&op==='arrays_referenceItem'){
+                    // A literal-index read of a global that holds a start-script
+                    // Array built as empty + primitive pushes and is otherwise
+                    // only read: the element is the k-th pushed value (PXT and
+                    // Lite agree). Its own domain is then proved as usual.
+                    const slot=positionalElement(node);
+                    if(slot){const valid=safe(slot,false,origins,domains);if(valid)origins?.add(node);return valid;}
                 }
                 if(!player&&op==='arcade_getPlayerScore'){
                     if(!scoreNumber(node))return false;

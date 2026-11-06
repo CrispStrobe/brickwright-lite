@@ -7,12 +7,12 @@ changed. Source of the list: hosted Build run 39297263647 (head f2ecafef1).
 
 ## Current status — 2026-11-02
 
-Arcade documented TODO tests: 37 on main `bc39104b`; 33 after #1629 and #1631; 24 after the group A follow-up.
+Arcade documented TODO tests: 37 on main `bc39104b`; 33 after #1629 and #1631; 24 after the group A follow-up; 22 after the 2026-11-03 rows PR.
 
 | Group | Before | After | Change |
 |---|---|---|---|
-| A Array receiver | 15 | 5 | stale update-values marker; follow-up per-slot proofs cleared 9 rows |
-| B primitive producer | 10 | 9 | `scene.backgroundColor()` proven Number (source rule + native reporter) |
+| A Array receiver | 15 | 4 | stale marker; per-slot proofs cleared 10 rows |
+| B primitive producer | 10 | 8 | `scene.backgroundColor()`; positional numeric constants |
 | C named-array re-import | 3 | 3 | unchanged |
 | F image-mutation probe | 1 | 1 | same cause as G |
 | G exception owner reuse | 1 | 1 | kept: original PXT has one runtime per simulator frame |
@@ -24,6 +24,16 @@ Corpus census (raw 184 importer/Creator source census, unchanged observer core
 and inputs) on main `5956c6ab` (after #1629 and #1631): **156 translated, 27
 partial, 1 parse failure**, up from 147/36/1; nine partials became translated
 and none regressed. Source import only: no export, VM, PXT or browser claim.
+
+**Remaining rows after 2026-11-03 (why each is still open).**
+- A allOfKind second export: needs a cross-procedure reset proof for the exporter's `__bwStartup` prologue or an exporter change. A general frame-local/global reset rule was tried and is sound by the PXT argument, but it contradicts about 46 deliberate refusal controls (calls, yields, constructors between reset and overwrite), so it was not landed; an exporter change ripples through the startup proofs.
+- A fresh animation re-export: the reimported frame helper procedures are not restored to animation blocks.
+- A array-copy effects: needs a per-position proof over a mixed literal Array (`[undefined, NaN, [5]]`).
+- A class accessor aliases: a setter-written field needs a field-writer proof.
+- B map results (`[2].map(f)[0]`): the source half was built and works, but the VM lowers map to an index loop, so the native inspection would refuse at run time; it was not landed (an import refusal must not become a runtime error).
+- B class constructor/method formals (2): need call-site obligations for class members in the source protocol and the VM.
+- B flow-sensitive string, consumed prefix/postfix, physical text leaf, exporter nested stop tokens: unchanged; randint stays out of scope (bitwise).
+- C named arrays (3): the recognizer lifts only get/set; push/insert with call-result arguments and the passive helpers (indexOf, contains, remove, pop) plus the parse/JSON value helpers stay, and their bodies are not importable.
 
 **Group A decision (operator, 2026-11-02): no runtime guard; per-slot proofs only.** The follow-up cleared nine rows; the remaining five (fresh animation re-export, array-copy effects, class accessor aliases, allOfKind second export, computed index sums) stay TODO.
 A runtime guard that behaves exactly like original PXT for an unproven Array
@@ -135,11 +145,11 @@ hosted checks remain required.
 | A | `test/makecode-arcade-sprite-collections.test.mjs` | allOfKind snapshots preserve sprite identity, kind changes and destroyed references through executable roundtrips | Kept TODO: fails at the second export. The reimported `__bwStartup` declares its locals `null` and assigns them only after `sprites.create(...)` calls, and the start script resets `actors = null` before calling `__bwStartup`. Discounting those resets was tried; it makes 17 refusal tests of `makecode-array-local-reset-proof` fail (e.g. 'managed call, yield and lifecycle commands retain the reset': their wrong inputs get accepted), so it was dropped. Needs the exporter to stop emitting the null prologue, not a wider reset rule. |
 | A | `test/makecode-arcade-text-sprite-converter.test.mjs` | TextSprite source preserves original pixels, aliases, deferred property redraw and membership through editable roundtrips | Fixed 2026-11-02: the kind reset admits the kind-library initializer and a registered kind-name write. |
 | A | `test/makecode-arcade-update-values.test.mjs` | prefix update in a condition performs required array initialization | Passes on main (stale marker removed 2026-11-02). |
-| A | `test/makecode-arcade-value-arithmetic.test.mjs` | numeric sums retain their type through index variables and procedure returns | Kept TODO, unsound to accept as is: `rows[shift(0)-1]` is a computed index, so the row may be absent. With `return index+5` PXT faults on `undefined[column]` while the VM continues. Accepting needs interprocedural constant evaluation of the index. |
+| A | `test/makecode-arcade-value-arithmetic.test.mjs` | numeric sums retain their type through index variables and procedure returns | Fixed 2026-11-03: a constant computed index (literal arithmetic and a closed single-return procedure with constant arguments) proves element presence. |
 | B | `test/makecode-arcade-accessor-pxt-staging.test.mjs` | selected PXT accessor receivers, setters and compound reads keep actual side-effect order across authoring routes | Kept TODO, unsound to accept as is: `pair(receiver().value, ...)` reads a getter returning the constructor formal `n` (`constructor(public n:number)`). Class formals have no call-site obligation, so `new Box(<any>"x")` would make `pair.a` a String. Same gap as the pxt-staging row. |
 | B | `test/makecode-arcade-background.test.mjs` | background color changes in procedures and controller handlers survive all conversion layers | Fixed 2026-11-02: closed `scene` namespace source rule (`ordinarySceneBackgroundNumberCalls`) plus the native background colour reporter in the Number-on-normal-completion list; `test/arcade-scene-background-number.test.mjs` compares original PXT, Lite and the export. |
 | B | `test/makecode-arcade-managed-number-boundaries.test.mjs` | ordinary-argument physical text across current graph, Code, SB3 and export/reimport | {"fixture":"ordinary-argument","physical":"text","observations":[{"route":"native-current-leaf","calls":0,"errors":["Error: Procedure parameter constraint: valu |
-| B | `test/makecode-arcade-numeric-constant-values.test.mjs` | numeric source constants keep their type in arrays while numeric strings stay strings | Kept TODO: `numbers[0]` may be the out-of-bounds Undefined. A source rule (a literal in-bounds index into unescaped, never popped/shifted/length-written literal Arrays, plus `NumberFormat.<member>` as Number) was prototyped and discharges the source constraint, but the VM inspection then refuses `item of array reference` at runtime (`connected input lacks complete primitive domain evidence`). It needs a matching native producer rule in `console-inspect-values.js`; the source half alone would turn an import refusal into a runtime error, so it was not landed. |
+| B | `test/makecode-arcade-numeric-constant-values.test.mjs` | numeric source constants keep their type in arrays while numeric strings stay strings | Fixed 2026-11-03: positional elements of never-mutated literal (and exporter push-built) Arrays, NumberFormat members as Number enum leaves, and the matching native inspection proof. |
 | B | `test/makecode-arcade-pxt-staging.test.mjs` | selected PXT staging survives actual native, Code, fresh SB3, export and reimport | Kept TODO, unsound to accept as is: `pair(a,b)` is called with class constructor/method formals (`class Box{constructor(a:number,b:number){this.value=pair(a,b)}}`), whose own call sites are outside the ordinary constraint protocol (`constraints()` skips class members). `new Box(<any>"x",0)` would deliver a String to `pair.a`. Needs call-site obligations for class constructors and methods first. |
 | B | `test/makecode-arcade-randint-authoring.test.mjs` | selected randint numeric provenance authoring and original export: typed | +   'Error: Arcade inspection: connected input lacks complete primitive domain evidence |
 | B | `test/makecode-arcade-update-values.test.mjs` | consumed prefix/postfix updates preserve values, lazy choice and evaluated-once targets | +   'Procedure parameter constraint: actual current caller or writer requires Number', +   'Procedure parameter constraint: Game_pair.a requires Number from act |

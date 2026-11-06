@@ -1880,9 +1880,41 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         return inits.length===1&&inits[0].scope===scope&&zero(inits[0].value)&&steps.length>=1&&steps.every(w=>step(w.value))&&
             !!scope.executedBefore.get(loop)?.has(inits[0].node)&&!!scope.executedBefore.get(loop)?.has(a.writers[0].node);
     };
+    // A constant integer index: literals, + - * of constants (Scratch operators
+    // or the value binary block), and a call of a closed procedure whose only
+    // statement returns such an expression of its parameters, given constant
+    // arguments. PXT and Lite compute the same small integer.
+    const constIndex=(value,env=null,depth=0)=>{
+        if(!value||depth>16)return null;
+        if(value.raw)return [4,5,6,7,8].includes(value.raw[0])&&String(value.raw[1]).trim()!==''&&Number.isFinite(Number(value.raw[1]))?Number(value.raw[1]):null;
+        const {target,node}=value;if(!node||invalid.has(node))return null;
+        const num=n=>Number.isSafeInteger(n)&&Math.abs(n)<2**31?n:null;
+        if(node.shadow&&node.opcode==='math_number')return num(Number(node.fields?.NUM?.[0]));
+        if(['operator_add','operator_subtract','operator_multiply'].includes(node.opcode)&&exactKeys(node,['NUM1','NUM2'])){
+            const l=constIndex(input(node,'NUM1',target),env,depth+1),r=constIndex(input(node,'NUM2',target),env,depth+1);if(l===null||r===null)return null;
+            return num(node.opcode==='operator_add'?l+r:node.opcode==='operator_subtract'?l-r:l*r);}
+        if(node.opcode==='arrays_valueBinary'&&exactKeys(node,['LEFT','RIGHT'],['OP'])&&['+','-','*'].includes(literal(node,'OP',target))){
+            const l=constIndex(input(node,'LEFT',target),env,depth+1),r=constIndex(input(node,'RIGHT',target),env,depth+1),op=literal(node,'OP',target);if(l===null||r===null)return null;
+            return num(op==='+'?l+r:op==='-'?l-r:l*r);}
+        if(node.opcode==='arcade_getLocal'&&env&&owners.get(node)===env.fn){const name=literal(node,'NAME',target);return env.values.has(name)?env.values.get(name):null;}
+        if(node.opcode==='arcade_callFunction'){
+            const call=calls.find(c=>c.node===node),fn=call?.fn;
+            if(!fn||fn.invalid||fn.unknownEntry||implicitEntries.has(fn)||!call.args||call.args.length!==fn.params.length)return null;
+            // Parameter-constraint declarations only check arguments at entry
+            // (a mismatch faults, so no value is returned); then one return.
+            let only=block(fn.target,fn.root.next);const skipped=new Set();
+            while(only?.opcode==='arcade_declareParameterConstraint'&&!skipped.has(only)){skipped.add(only);only=block(fn.target,only.next);}
+            if(only?.opcode!=='arcade_returnValue'||only.next!=null||only.mutation!=null||!exactKeys(only,['VALUE']))return null;
+            const values=new Map();
+            for(let i=0;i<fn.params.length;i++){const v=constIndex(call.args[i],env,depth+1);if(v===null)return null;values.set(fn.params[i],v);}
+            return constIndex(input(only,'VALUE',fn.target),{fn,values},depth+1);
+        }
+        return null;
+    };
     const presentAt=(allocation,target,node,qualifies)=>{
         if(forOfPresent(allocation,target,node))return true;
-        const length=minimumAt(allocation,node,qualifies),index=literalNumber(target,node,'INDEX');
+        const literalIndex=literalNumber(target,node,'INDEX');
+        const length=minimumAt(allocation,node,qualifies),index=literalIndex!==null?literalIndex:node.opcode==='arrays_referenceItem'?constIndex(input(node,'INDEX',target)):null;
         return node.opcode==='arrays_referenceRandom'||node.opcode==='arrays_referenceTake'&&['pop','shift'].includes(literal(node,'OP',target))?length>0:index!==null&&Number.isInteger(index)&&index>=0&&index<length;
     };
     // Monotone producer flow handles genuine alias SCCs with an allocation;
