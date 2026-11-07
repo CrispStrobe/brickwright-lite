@@ -171,13 +171,28 @@ breaking the law, with a justification in the code comment, or fix the
 harness lookup in a separately reviewed change. Do not swap parts just to
 get green.
 
-### P5. Operator decision: the 50-piece minimum
+### P5. Remove the 50-piece minimum from qualification (operator decision, 2026-11-07)
 
-Helixgate (20 pieces), Parity Dial (31) and Counter Slide (44) are under the
-qualification contract validator's >50-piece minimum, and no documented
-exception covers promotion. Ask the operator whether the rule applies to
-these intakes. Do not pad the models or change the validator without that
-decision.
+Decision: the >50-piece minimum is dropped from qualification altogether.
+Qualification judges the simulated physics and its dependence on the
+mechanism; piece count is not part of that. The builder brief
+(`docs/ROBOT-LAB-MODEL-BUILDER.md`) keeps "models above 50 pieces are
+welcome" as a design preference, and the gallery's "More than 50 pieces"
+filter stays, both reading the honest count.
+
+To do:
+1. In `scripts/lib/robot-lab-qualification.mjs` (contract validator, the
+   `assert.ok(Number.isInteger(c.parts)&&c.parts>50)` line) keep the
+   integer/positive check on `parts` but drop the `>50` bound. The `>50`
+   instruction-step check in `scripts/lib/sim-lab-arm-lift-gate.mjs` is a
+   different rule; leave it.
+2. Add or adjust a validator test: a contract with an honest small count
+   (e.g. 20) is accepted, a missing or non-integer `parts` is still rejected.
+3. Note the change in this handoff and in the checkpoint reasons for
+   Helixgate (20 pieces), Parity Dial (31) and Counter Slide (44).
+4. Qualify those three through the normal pipeline (contract, ordinary,
+   strict, disconnected, construction gate `test/bw-sim-models-solid.test.mjs`)
+   and promote whichever pass. Never pad a model's count.
 
 ### P6. Other remaining experimental entries
 
