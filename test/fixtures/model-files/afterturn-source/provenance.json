@@ -1,0 +1,10 @@
+{
+ "author": "CrispStrobe",
+ "license": "BSD-3-Clause",
+ "files": {
+  "models/afterturn.ldr": "376c1879a8a0de34459cef654755ae1b0e5bd7f2ef236766431d34c3bdf3ced4",
+  "programs/afterturn.bw": "c057262bda6aef8ee3e8b89e395ff031b426206abb899e5e36b70e60e7bbcc6a",
+  "LICENSE.txt": "15e210ca14d578a87c6693496b7663c4343b4de56c3b8525761a258ac1568376",
+  "SOURCES.md": "2d0cc65ee3d4f0f679ffdb181f322663df7dbd0414342ce92058c1df4a13f875"
+ }
+}

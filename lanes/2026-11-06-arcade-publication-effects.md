@@ -1,6 +1,6 @@
 # Arcade publication frontier: effect framing controls
 
-Status: ACTIVE. Owner: Arcade integration. Base: main `daa01cceeac31c2490edfcf378c715910ddf60bc`.
+Status: DONE in the implementation PR. Owner: Arcade integration. Base: main `daa01cceeac31c2490edfcf378c715910ddf60bc`.
 
 Scope: clarify the effect model comment in
 `overlay/scratch-gui/src/lib/bw-makecode/project-conditional-array-entry.js`;
@@ -17,3 +17,9 @@ registration, game over and additional event entries. Verify meaningful cuts
 of the receiver, registration and game-over guards. Run affected focused
 controls and every enabled exact-head check; obtain affected original-PXT or
 VM qualification where behavior is exercised. Preserve failures and bounds.
+
+Focused source controls cover splash, wait, both sound modes, receiver reads,
+early registration, game over and another event entry. Independent receiver,
+registration and game-over guard cuts are detected. Existing frontier controls
+pass. The actual VM greenFlag life/countdown reset check is part of exact-head
+hosted qualification.

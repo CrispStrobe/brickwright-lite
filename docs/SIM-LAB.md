@@ -794,7 +794,10 @@ separate from `0 !BW ROTOR <degrees>`, which sets one motor output's initial ang
 save and reopen preserve the setting. Embedded submodels do not override the
 receiving model's choice. Invalid or duplicate declarations refuse simulation.
 Afterturn opts in. Its platform turns 0.0261 degrees per reaction-wheel degree,
-which matches Iw/J at the saved pose.
+which matches Iw/J at the saved pose, and 0.0275 with the masses in (B = 70°); its
+judge (`afterturn-shape-cycle-v1`) predicts both from the compiled masses and the
+net 1.25° cycle from their difference. The earlier 4.66° cycle was the legacy
+double count.
 
 Known limit: the engine solves the native rotor as its own constraint row
 alongside the output body's contact, end-stop, friction and gear-mesh rows, and

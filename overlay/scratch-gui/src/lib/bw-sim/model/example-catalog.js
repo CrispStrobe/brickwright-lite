@@ -1962,6 +1962,39 @@ export const MODEL_LESSONS = Object.freeze({
         "author": "CrispStrobe",
         "license": "BSD-3-Clause"
     },
+    "afterturn.ldr": {
+        "pieces": 296,
+        "motors": 2,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "inertia",
+        "description": {
+            "en": "Two motors turn a reaction wheel and reposition balanced masses on a freely rotating platform. Compare the remaining platform heading after both internal motions return home, then reverse the cycle and test physically fixed masses.",
+            "de": "Zwei Motoren drehen ein Reaktionsrad und versetzen ausgewuchtete Massen auf einer frei drehbaren Plattform. Vergleiche die verbleibende Plattformdrehung nach der Rückkehr beider innerer Bewegungen, kehre den Zyklus um und prüfe physisch festgesetzte Massen."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Geometric-phase reorientation through a closed internal shape cycle",
+            "de": "Umorientierung durch einen geschlossenen inneren Formzyklus"
+        },
+        "keywords": [
+            "Geometric-phase reorientation through a closed internal shape cycle",
+            "Umorientierung durch einen geschlossenen inneren Formzyklus",
+            "geometric phase",
+            "shape cycle",
+            "reaction wheel",
+            "variable inertia",
+            "angular momentum",
+            "free yaw",
+            "geometrische Phase",
+            "Formzyklus",
+            "Reaktionsrad",
+            "veränderliches Trägheitsmoment",
+            "Drehimpuls"
+        ]
+    },
     "product-plotter.ldr": {
         "pieces": 301,
         "motors": 2,
