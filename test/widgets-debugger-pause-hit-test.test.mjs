@@ -24,9 +24,14 @@ const dockMatch=gui.match(/<div style=\{dockFullScreenStyle \|\| (\{[^}]*\})\}>\
 assert.ok(dockMatch,'controller dock wrapper style found in gui.jsx');
 const dockCss=jsxStyleToCss(dockMatch[1]);
 const panelSrc=read('tw-pseudocode/controller-panel-view.jsx');
-const panelMatch=panelSrc.match(/return \(\s*<div style=\{\{\s*(position: 'absolute', inset: 0,[\s\S]*?)\}\} onPointerDown/);
-assert.ok(panelMatch,'Widgets root style found in controller-panel-view.jsx');
-const panelCss=jsxStyleToCss(panelMatch[1]).replaceAll('"',"'");
+// The Widgets root style object, bounded by the Widgets undo-surface handler
+// and the nearest opening double brace before it; it must contain no brace, so nothing nested can cut it.
+const panelEnd=panelSrc.indexOf("}} onPointerDown={() => activateUndoSurface('widgets')}");
+const panelStart=panelSrc.lastIndexOf('{{',panelEnd)+2;
+assert.ok(panelEnd>=0&&panelStart>1&&panelEnd>panelStart,'Widgets root style found in controller-panel-view.jsx');
+const panelStyle=panelSrc.slice(panelStart,panelEnd);
+assert.ok(!/[{}]/.test(panelStyle),'Widgets root style is one flat object');
+const panelCss=jsxStyleToCss(panelStyle).replaceAll('"',"'");
 assert.match(panelCss,/z-index:10/,'Widgets root keeps its own z-index');
 const hostMatch=read('tw-pseudocode/circuit-tab.jsx').match(/host\.style\.cssText = '([^']*)'/);
 assert.ok(hostMatch,'circuit stage host cssText found in circuit-tab.jsx');
