@@ -62,9 +62,7 @@ const SKIN = 0.5;
 const models = () => {
     const out = MODELS.map(m => [`models/${m.file}`,
         parseModel(readFileSync(path.join(GUI, MODELS_BASE, m.file), 'utf8'), {catalog: CATALOG}).model]);
-    // Reviewed experimental construction input; this does not promote MODELS.
-    out.push(['experimental/paired-door-sync.ldr', parseModel(readFileSync(
-        path.join(GUI, MODELS_BASE, 'paired-door-sync.ldr'), 'utf8'), {catalog: CATALOG}).model]);
+    // Paired Door Sync was a reviewed experimental input here; since its promotion it is checked as models/paired-door-sync.ldr.
     const walk = dir => readdirSync(dir, {withFileTypes: true}).flatMap(e =>
         (e.isDirectory() ? walk(path.join(dir, e.name)) : [path.join(dir, e.name)]));
     for (const file of walk(FIXTURES).sort()) {

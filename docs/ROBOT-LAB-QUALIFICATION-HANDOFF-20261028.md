@@ -203,6 +203,18 @@ contract and the registry move). Controls and comparison variants
 (`*-control`, `*-swapped`, `*-in-phase`, `afterturn-fixed-masses` and the
 like) stay experimental by design.
 
+
+Status 2026-11-07 (PR #1671): Paired Door Sync promoted (`opposed-rack-pinion-v1`; pinion
+disconnection loses the law by 24 mm). Still open:
+- **Evenhand**: a holding-torque judge passes its law (branch `lane/robot-evenhand-20261107`,
+  unregistered): the measured torque matches statics within 0.002 mN·m, elbow < 0.002 mN·m.
+  Next: pick a removal that does not trip the program's 3° start guard during the 500 ms cold
+  settle (removing the forearm counterweights droops the arm 9–17°), or justify a different
+  disconnection. Then register the judge and promote.
+- **RimRun**: mount the hub with real bridging parts (the hub is about 170 LDU from the nearest
+  frame member; the feet are separate bodies), repair the supplier's failing catch and
+  watchdog-hold checks, then write the judge with `rimrun-swapped` as the causal control.
+
 ## 0. Status refresh, 2026-11-02
 
 Done on main since this handoff was written:
