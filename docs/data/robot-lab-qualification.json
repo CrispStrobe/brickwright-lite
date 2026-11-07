@@ -868,7 +868,7 @@
       "disconnect": [
         "chain_input16"
       ],
-      "disconnectInputDeg": 170,
+      "disconnectInputDeg": 178,
       "disconnectLoss": "nine-intake"
     },
     {
