@@ -26,6 +26,7 @@ Qualification: native ordinary, strict and disconnected runs locally; hosted uni
 P6 remainder (checkpoint review records only, no promotion):
 - Evenhand: holding-torque judge passes its law (branch `lane/robot-evenhand-20261107`, unregistered),
   but the counterweight disconnection cannot run: the arm droops 9–17° during the 500 ms cold settle
-  and the authored datum guard faults. Stays experimental.
-- RimRun: hub mount needs a new real-part bridge (≈170 LDU to the frame), and the declared
-  catch/watchdog-hold failures remain. Not repaired; stays experimental.
+  and the authored datum guard faults. Next: a removal that does not trip the start guard, or a
+  justified different disconnection. Stays experimental.
+- RimRun: next — hub mount with real bridging parts (≈170 LDU to the frame) plus repair of the
+  supplier catch/watchdog-hold checks; then a judge. Stays experimental.
