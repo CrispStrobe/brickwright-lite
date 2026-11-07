@@ -1902,7 +1902,88 @@ def role_policy(names):
     need(all(allowed_role(name) for name in names),'fixed finite original role families')
 
 
-def read_frontend(raw):
+# V9 event frontend subset. Measured (2026-11-07) from the official Pages build of
+# the reviewed head by driving the same UI path as the persistence and
+# forward-debug probe scenarios (page load, Machine Manager, free386 run, local
+# run, pause, drawer/step/memory, HDD download) plus the step's own provenance
+# file. Each pattern is one exact path with only content-hash segments open and
+# must match exactly one archive member; every other member is neither read nor
+# installed nor served. The whole archive digest stays the authority.
+ACTUAL_V9_FRONTEND_ROSTER = (
+ r'brickwright\-build\.json',
+ r'chunks/1410\.[0-9a-f]{20}\.js',
+ r'chunks/1683\.[0-9a-f]{20}\.js',
+ r'chunks/2297\.[0-9a-f]{20}\.js',
+ r'chunks/2710\.[0-9a-f]{20}\.js',
+ r'chunks/322\.[0-9a-f]{20}\.js',
+ r'chunks/3474\.js',
+ r'chunks/3612\.[0-9a-f]{20}\.js',
+ r'chunks/3764\.[0-9a-f]{20}\.js',
+ r'chunks/3830\.[0-9a-f]{20}\.js',
+ r'chunks/4421\.[0-9a-f]{20}\.js',
+ r'chunks/4529\.[0-9a-f]{20}\.js',
+ r'chunks/4725\.[0-9a-f]{20}\.js',
+ r'chunks/5418\.[0-9a-f]{20}\.js',
+ r'chunks/7214\.js',
+ r'chunks/7493\.[0-9a-f]{20}\.js',
+ r'chunks/9022\.[0-9a-f]{20}\.js',
+ r'chunks/9079\.[0-9a-f]{20}\.js',
+ r'chunks/bw\-board\-i80386\.[0-9a-f]{20}\.js',
+ r'chunks/bw\-codemirror\.js',
+ r'chunks/bw\-controller\-panel\.js',
+ r'chunks/bw\-debug\-faces\.[0-9a-f]{20}\.js',
+ r'chunks/bw\-debug\-menu\.js',
+ r'chunks/bw\-debug\-panel\.js',
+ r'chunks/bw\-debug\-target\-kinds\.js',
+ r'chunks/bw\-debug\.js',
+ r'chunks/bw\-machine\-manager\.js',
+ r'chunks/bw\-project\-safety\.js',
+ r'chunks/labwired\-catalog\.[0-9a-f]{20}\.js',
+ r'chunks/labwired\-probe\.js',
+ r'chunks/pseudocode\-importer\.js',
+ r'chunks/sb\.[0-9a-f]{20}\.js',
+ r'chunks/sprite\-target\-pane\.js',
+ r'chunks/tab\-label\-fit\.js',
+ r'gui\.[0-9a-f]{8}\.js',
+ r'index\.html',
+ r'static/blocks\-media/default/dropdown\-arrow\.svg',
+ r'static/blocks\-media/default/green\-flag\.svg',
+ r'static/blocks\-media/default/repeat\.svg',
+ r'static/blocks\-media/default/rotate\-left\.svg',
+ r'static/blocks\-media/default/rotate\-right\.svg',
+ r'static/blocks\-media/default/zoom\-in\.svg',
+ r'static/blocks\-media/default/zoom\-out\.svg',
+ r'static/blocks\-media/default/zoom\-reset\.svg',
+ r'static/labwired/labwired_wasm_bg\.wasm',
+ r'static/roms/free\-386\-bochs\-bios\.rom',
+ r'static/roms/free\-386\-vgabios\-lgpl\.bin',
+)
+ACTUAL_V9_FRONTEND_COUNT = len(ACTUAL_V9_FRONTEND_ROSTER)
+# Reviewed subset was 37,838,437 bytes; the aggregate bound is the next power of
+# two MiB above it. Each member keeps the unchanged FILE_CAP.
+ACTUAL_V9_FRONTEND_AGGREGATE_CAP = 64 << 20
+
+
+def frontend_subset_v9(tar_raw):
+    """Select exactly the reviewed V9 roster from the authenticated Pages TAR."""
+    patterns=[re.compile(p) for p in ACTUAL_V9_FRONTEND_ROSTER];files={};hits=[0]*len(patterns);total=0;entries=0;seen=set()
+    with tarfile.open(fileobj=io.BytesIO(tar_raw),mode='r:') as source:
+        for member in source:
+            entries+=1;need(entries<=16384,'bounded Pages TAR census');name=member.name.removeprefix('./')
+            if member.isdir():
+                if name not in ('','.'):relative(name.rstrip('/'))
+                continue
+            relative(name);need(name not in seen,'unique Pages TAR path');seen.add(name)
+            matched=[i for i,p in enumerate(patterns) if p.fullmatch(name)]
+            if not matched:continue
+            need(len(matched)==1 and member.isfile() and 0<member.size<=FILE_CAP,'regular bounded unique V9 roster member')
+            hits[matched[0]]+=1;total+=member.size;need(total<=ACTUAL_V9_FRONTEND_AGGREGATE_CAP,'V9 roster aggregate bound')
+            files[name]=source.extractfile(member).read(FILE_CAP+1);need(len(files[name])==member.size,'exact V9 roster member bytes')
+    need(hits==[1]*len(patterns) and len(files)==ACTUAL_V9_FRONTEND_COUNT,'every V9 roster entry matches exactly one member')
+    return files
+
+
+def read_frontend(raw,roster=False):
     with zipfile.ZipFile(io.BytesIO(raw)) as archive:
         need(len(archive.infolist())<=16384,'frontend ZIP census cap');members={};total=0;names=set();selected=[]
         for item in archive.infolist():
@@ -1917,7 +1998,9 @@ def read_frontend(raw):
             total+=item.file_size;need(total<=BUILD_CAP,'frontend aggregate bound');selected.append((name,item))
         # The standalone reader also closes the entire header census first.
         for name,item in selected:members[name]=archive.read(item)
-    if set(members)=={'artifact.tar'}:
+    if roster:
+        need(set(members)=={'artifact.tar'},'V9 roster selects from the single Pages TAR');build=frontend_subset_v9(members['artifact.tar'])
+    elif set(members)=={'artifact.tar'}:
         build={};total=0;count=0
         with tarfile.open(fileobj=io.BytesIO(members['artifact.tar']),mode='r:') as archive:
             for item in archive:
@@ -4748,7 +4831,7 @@ def audit_v9(files, expected):
     need(0<acquisition['endedNs']-acquisition['startedNs']<=180000000000,'finite frontend acquisition interval')
     zip_ = files['frontend.original.zip'];need(len(zip_) == build['zipBytes'] and sha(zip_) == build['sha256'], 'retained exact frontend original')
     need(acquisition['streams']['stdout']=={'byteLength':len(zip_),'sha256':sha(zip_)} and acquisition['streams']['stderr']=={'byteLength':0,'sha256':sha(b'')},'acquisition raw stream original binding')
-    observed_members,observed_build=read_frontend(zip_)
+    observed_members,observed_build=read_frontend(zip_,version=='bw.gui-hdd.actual-request.v9')
     admission_raw=files['probe-admission.json'];admission=decode(admission_raw)
     selected_board = FINITE_V10_PINS['bw-board'] if version=='bw.gui-hdd.actual-request.v9' else BOARD
     fields(admission,'schema boardPin sourceHead criticalFiles buildRoot buildFiles inputPaths')

@@ -50,3 +50,16 @@ helper with plain `git ls-tree <head> -- <path>` (LF-terminated), while the
 phase reader expected `ls-tree -z` with a NUL terminator. The reader and its
 fixture now follow the producer. With both fixes the original phase ZIP is
 admitted; perturbed and over-roster copies are refused.
+
+Amendment (fourth event, run 42365788419): the phase was admitted and the ACK
+published, but the guest step refused the official Pages build because it now
+holds a 68.5 MB Yosys wasm and 8574 files, beyond the per-file and count
+limits. That slot is spent. On the operator's instruction the V9 event step now
+installs and serves only the reviewed frontend roster: 47 paths (37.8 MB of the
+306.6 MB build) measured by driving the same UI path as both probe scenarios on
+the official build, plus the step's provenance file. Each roster entry is an
+exact path with only content-hash segments open and must match exactly one
+member; other members are neither read nor installed. The count bound is the
+roster length, each member keeps the existing 32 MiB limit and the aggregate is
+bounded at 64 MiB. The whole-archive digest check is unchanged. Older protocol
+versions keep the full-build policy. Product loading is not changed here.

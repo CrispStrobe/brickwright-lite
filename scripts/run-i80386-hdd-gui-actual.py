@@ -1517,7 +1517,88 @@ def installed_inventory_v5(root, prefix, failure, checkout_root, critical=INSTAL
     return out
 
 
-def frontend_files(archive):
+# V9 event frontend subset. Measured (2026-11-07) from the official Pages build of
+# the reviewed head by driving the same UI path as the persistence and
+# forward-debug probe scenarios (page load, Machine Manager, free386 run, local
+# run, pause, drawer/step/memory, HDD download) plus the step's own provenance
+# file. Each pattern is one exact path with only content-hash segments open and
+# must match exactly one archive member; every other member is neither read nor
+# installed nor served. The whole archive digest stays the authority.
+ACTUAL_V9_FRONTEND_ROSTER = (
+ r'brickwright\-build\.json',
+ r'chunks/1410\.[0-9a-f]{20}\.js',
+ r'chunks/1683\.[0-9a-f]{20}\.js',
+ r'chunks/2297\.[0-9a-f]{20}\.js',
+ r'chunks/2710\.[0-9a-f]{20}\.js',
+ r'chunks/322\.[0-9a-f]{20}\.js',
+ r'chunks/3474\.js',
+ r'chunks/3612\.[0-9a-f]{20}\.js',
+ r'chunks/3764\.[0-9a-f]{20}\.js',
+ r'chunks/3830\.[0-9a-f]{20}\.js',
+ r'chunks/4421\.[0-9a-f]{20}\.js',
+ r'chunks/4529\.[0-9a-f]{20}\.js',
+ r'chunks/4725\.[0-9a-f]{20}\.js',
+ r'chunks/5418\.[0-9a-f]{20}\.js',
+ r'chunks/7214\.js',
+ r'chunks/7493\.[0-9a-f]{20}\.js',
+ r'chunks/9022\.[0-9a-f]{20}\.js',
+ r'chunks/9079\.[0-9a-f]{20}\.js',
+ r'chunks/bw\-board\-i80386\.[0-9a-f]{20}\.js',
+ r'chunks/bw\-codemirror\.js',
+ r'chunks/bw\-controller\-panel\.js',
+ r'chunks/bw\-debug\-faces\.[0-9a-f]{20}\.js',
+ r'chunks/bw\-debug\-menu\.js',
+ r'chunks/bw\-debug\-panel\.js',
+ r'chunks/bw\-debug\-target\-kinds\.js',
+ r'chunks/bw\-debug\.js',
+ r'chunks/bw\-machine\-manager\.js',
+ r'chunks/bw\-project\-safety\.js',
+ r'chunks/labwired\-catalog\.[0-9a-f]{20}\.js',
+ r'chunks/labwired\-probe\.js',
+ r'chunks/pseudocode\-importer\.js',
+ r'chunks/sb\.[0-9a-f]{20}\.js',
+ r'chunks/sprite\-target\-pane\.js',
+ r'chunks/tab\-label\-fit\.js',
+ r'gui\.[0-9a-f]{8}\.js',
+ r'index\.html',
+ r'static/blocks\-media/default/dropdown\-arrow\.svg',
+ r'static/blocks\-media/default/green\-flag\.svg',
+ r'static/blocks\-media/default/repeat\.svg',
+ r'static/blocks\-media/default/rotate\-left\.svg',
+ r'static/blocks\-media/default/rotate\-right\.svg',
+ r'static/blocks\-media/default/zoom\-in\.svg',
+ r'static/blocks\-media/default/zoom\-out\.svg',
+ r'static/blocks\-media/default/zoom\-reset\.svg',
+ r'static/labwired/labwired_wasm_bg\.wasm',
+ r'static/roms/free\-386\-bochs\-bios\.rom',
+ r'static/roms/free\-386\-vgabios\-lgpl\.bin',
+)
+ACTUAL_V9_FRONTEND_COUNT = len(ACTUAL_V9_FRONTEND_ROSTER)
+# Reviewed subset was 37,838,437 bytes; the aggregate bound is the next power of
+# two MiB above it. Each member keeps the unchanged FILE_CAP.
+ACTUAL_V9_FRONTEND_AGGREGATE_CAP = 64 << 20
+
+
+def frontend_subset_v9(tar_raw):
+    """Select exactly the reviewed V9 roster from the authenticated Pages TAR."""
+    patterns=[re.compile(p) for p in ACTUAL_V9_FRONTEND_ROSTER];files={};hits=[0]*len(patterns);total=0;entries=0;seen=set()
+    with tarfile.open(fileobj=io.BytesIO(tar_raw),mode='r:') as source:
+        for member in source:
+            entries+=1;need(entries<=16384,'bounded Pages TAR census');name=member.name.removeprefix('./')
+            if member.isdir():
+                if name not in ('','.'):relative(name.rstrip('/'))
+                continue
+            relative(name);need(name not in seen,'unique Pages TAR path');seen.add(name)
+            matched=[i for i,p in enumerate(patterns) if p.fullmatch(name)]
+            if not matched:continue
+            need(len(matched)==1 and member.isfile() and 0<member.size<=FILE_CAP,'regular bounded unique V9 roster member')
+            hits[matched[0]]+=1;total+=member.size;need(total<=ACTUAL_V9_FRONTEND_AGGREGATE_CAP,'V9 roster aggregate bound')
+            files[name]=source.extractfile(member).read(FILE_CAP+1);need(len(files[name])==member.size,'exact V9 roster member bytes')
+    need(hits==[1]*len(patterns) and len(files)==ACTUAL_V9_FRONTEND_COUNT,'every V9 roster entry matches exactly one member')
+    return files
+
+
+def frontend_files(archive,roster=False):
     """Derive observations only AFTER externally pinned whole-ZIP admission.
 
     The complete original digest is authority; producer-generated member hashes
@@ -1539,7 +1620,9 @@ def frontend_files(archive):
             selected.append((name,info))
         # Admit every header before inflating any selected member.
         for name,info in selected:members[name]=source.read(info)
-    if set(members)=={'artifact.tar'}:
+    if roster:
+        need(set(members)=={'artifact.tar'},'V9 roster selects from the single Pages TAR');files=frontend_subset_v9(members['artifact.tar'])
+    elif set(members)=={'artifact.tar'}:
         files={};total=0;entries=0
         with tarfile.open(fileobj=io.BytesIO(members['artifact.tar']),mode='r:') as source:
             for member in source:
@@ -1558,9 +1641,9 @@ def frontend_files(archive):
     return members_,files_,files
 
 
-def install_members(archive,target):
+def install_members(archive,target,roster=False):
     need(not Path(target).exists(),'fresh build extraction only')
-    members,inventory_,files=frontend_files(archive);Path(target).mkdir(mode=0o700)
+    members,inventory_,files=frontend_files(archive,roster);Path(target).mkdir(mode=0o700)
     for name,raw in files.items():
         path=Path(target)/name;path.parent.mkdir(parents=True,exist_ok=True,mode=0o700)
         with path.open('xb') as output:need(output.write(raw)==len(raw),'complete authenticated build installation')
@@ -2259,7 +2342,7 @@ def execute(request_raw, expected, root, output_path, env, factory=Hosted, prefl
             output.save('frontend.original.zip', archive)
             need(len(archive) == request['build']['zipBytes'] and sha(archive) == request['build']['sha256'], 'one official frontend archive digest')
             build_root = output.root.parent/(output.root.name+'-build')
-            members,build_files=install_members(archive,build_root)
+            members,build_files=install_members(archive,build_root,request['schema']=='bw.gui-hdd.actual-request.v9')
             output.save('frontend.members.json',encode(members));output.save('build.inventory.json', encode(inventory(build_root)))
             need(inventory(build_root)==build_files,'authenticated build installation readback')
             build_manifest = decode(regular(build_root/'brickwright-build.json', JSON_CAP))

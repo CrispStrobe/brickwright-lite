@@ -144,7 +144,7 @@ test('internal V8 tag is excluded from five isolated pushes and current main-onl
 // These are manufactured original-byte controls, never a browser/guest replay.
 // The independent reader is loaded directly; no producer grading helper is used.
 const controls = String.raw`
-import ast,base64,copy,hashlib,importlib.util,io,json,os,pathlib,stat,sys,tarfile,tempfile,unittest,zipfile
+import ast,base64,copy,hashlib,importlib.util,io,json,os,pathlib,re,stat,sys,tarfile,tempfile,unittest,zipfile
 from unittest.mock import patch
 import contextlib
 from types import SimpleNamespace
@@ -169,6 +169,20 @@ def zip_(files,compression=zipfile.ZIP_DEFLATED):
 def packet(files,compression=zipfile.ZIP_DEFLATED):
     files={k:v for k,v in files.items() if k!='inventory.json'}
     return zip_(dict(files,**{'inventory.json':E({'schema':'bw.gui-hdd.originals.v1','files':{k:ROW(v) for k,v in files.items()}})}),compression)
+def roster_name(pattern):
+    return re.sub(r'\[0-9a-f\]\{(\d+)\}',lambda m:'a'*int(m.group(1)),pattern).replace('\\','')
+def pages_tar(contents):
+    out=io.BytesIO()
+    with tarfile.open(fileobj=out,mode='w') as archive:
+        for name,raw in contents.items():
+            info=tarfile.TarInfo(name);info.size=len(raw);archive.addfile(info,io.BytesIO(raw))
+    return out.getvalue()
+def pages_contents():
+    # Synthetic Pages layout: one member per reviewed V9 roster entry plus one
+    # unrelated member that the V9 subset must neither read nor install.
+    contents={roster_name(p):('roster:'+roster_name(p)).encode() for p in r.ACTUAL_V9_FRONTEND_ROSTER}
+    contents.update({'index.html':b'<html>manufactured</html>','brickwright-build.json':E({'commit':'a'*7}),'static/assets/unrelated.wasm':b'not x86'})
+    return contents
 def image_():
     image=bytearray(r.INPUTS['hdd'][0]);image[510:512]=b'\x55\xaa';image[454:458]=(17).to_bytes(4,'little');p=17*512
     image[p+510:p+512]=b'\x55\xaa';image[p+11:p+13]=(512).to_bytes(2,'little');image[p+13]=2
@@ -201,7 +215,7 @@ def fixture():
         'base':{'ref':'main','repo':{'full_name':r.REPOSITORY}},'body':'<!-- BW_GUI_HDD_INVENTORY_SHA256='+'9'*64+' -->'}})
     prior['event']=dict(ROW(prior_event),base64=base64.b64encode(prior_event).decode())
     prior_raw=E(prior)
-    frontend=zip_({'index.html':b'<html>manufactured</html>','brickwright-build.json':E({'commit':'a'*7})})
+    frontend=zip_({'artifact.tar':pages_tar(pages_contents())})
     admission={'schema':'bw.gui-hdd.frontend-source-admission.v1','checkoutHead':'a'*40,'checkoutTree':'b'*40,
       'sourceFiles':source['files'],'checkoutLog':ROW(b'independently retained checkout original'),
       'workflow':{'commit':'a'*40,'path':'.github/workflows/build.yml','sha256':'8'*64}}
@@ -671,6 +685,34 @@ class Originals(unittest.TestCase):
             for name,raw in {'index.html':b'index','brickwright-build.json':b'{}'}.items():
                 info=tarfile.TarInfo(name);info.size=len(raw);archive.addfile(info,io.BytesIO(raw))
         raw=zip_({'artifact.tar':out.getvalue()});self.assertEqual(c.frontend_files(raw)[:2],r.read_frontend(raw))
+    def test_frontend_v9_roster_subset_admits_only_reviewed_members(self):
+        contents=pages_contents();contents['static/assets/yosys.core.big.wasm']=b'\0'*(r.FILE_CAP+1)
+        raw=zip_({'artifact.tar':pages_tar(contents)})
+        observed=c.frontend_files(raw,True);self.assertEqual(observed[:2],r.read_frontend(raw,True))
+        self.assertEqual(len(observed[2]),r.ACTUAL_V9_FRONTEND_COUNT);self.assertNotIn('static/assets/unrelated.wasm',observed[2])
+        self.assertNotIn('static/assets/yosys.core.big.wasm',observed[2]);self.assertIn('index.html',observed[2])
+        self.assertEqual(r.ACTUAL_V9_FRONTEND_ROSTER,c.ACTUAL_V9_FRONTEND_ROSTER);self.assertEqual(r.ACTUAL_V9_FRONTEND_AGGREGATE_CAP,c.ACTUAL_V9_FRONTEND_AGGREGATE_CAP)
+        with self.assertRaises(ValueError):c.frontend_files(raw)   # the full-build policy still refuses the oversize member
+        first=roster_name(r.ACTUAL_V9_FRONTEND_ROSTER[1])
+        for cut in ('missing','duplicate-match','oversize','aggregate','plain-zip','symlink'):
+            f=pages_contents()
+            if cut=='missing':f.pop(first)
+            elif cut=='duplicate-match':f[first.replace('aaaa','bbbb',1)]=b'second'
+            elif cut=='oversize':f[first]=b'\0'*(r.FILE_CAP+1)
+            elif cut=='aggregate':
+                for p in r.ACTUAL_V9_FRONTEND_ROSTER[1:4]:f[roster_name(p)]=b'\0'*(24<<20)
+            if cut=='plain-zip':raw=zip_(f)
+            elif cut=='symlink':
+                out=io.BytesIO()
+                with tarfile.open(fileobj=out,mode='w') as archive:
+                    for name,body in f.items():
+                        info=tarfile.TarInfo(name)
+                        if name==first:info.type=tarfile.SYMTYPE;info.linkname='index.html';archive.addfile(info)
+                        else:info.size=len(body);archive.addfile(info,io.BytesIO(body))
+                raw=zip_({'artifact.tar':out.getvalue()})
+            else:raw=zip_({'artifact.tar':pages_tar(f)})
+            for gate in (c.frontend_files,r.read_frontend):
+                with self.subTest(cut=cut,gate=gate.__name__),self.assertRaises(ValueError):gate(raw,True)
     def test_frontend_zip_all_headers_refuse_before_any_inflate(self):
         for cut in ('nul-name','fifo','late-fifo','socket','block','directory-file','file-directory','symlink-directory','directory-payload',
           'double-slash-directory','duplicate-directory','duplicate-file','path','encrypted','compression','extent'):
@@ -682,8 +724,7 @@ class Originals(unittest.TestCase):
     def test_frontend_zip_rehashed_actual_v4_packet_refuses_hidden_names_and_types(self):
         for cut in ('nul-name','fifo','directory-payload'):
             files,expected=fixture_v4()
-            with zipfile.ZipFile(io.BytesIO(files['frontend.original.zip'])) as source:contents={item.filename:source.read(item) for item in source.infolist()}
-            frontend=self.frontend_zip_profile(cut,contents);files['frontend.original.zip']=frontend
+            frontend=self.frontend_zip_profile(cut);files['frontend.original.zip']=frontend
             request=D(files['request.original.json']);request['build'].update(metadataBytes=len(frontend),zipBytes=len(frontend),sha256=H(frontend));refresh_v4_request(files,expected,request)
             artifact=D(files['build-artifact.original.json']);artifact.update(size_in_bytes=len(frontend),digest='sha256:'+H(frontend));files['build-artifact.original.json']=E(artifact)
             process=D(files['frontend-acquisition.process.json']);process['streams']['stdout']=ROW(frontend);files['frontend-acquisition.process.json']=E(process)
@@ -5652,7 +5693,8 @@ class Originals(unittest.TestCase):
         expected['job'].update(name='actual-v9',run_attempt=1,head_sha=head);expected['job']['steps']=[{'number':i,'name':name,'status':'completed','conclusion':'success'}for i,name in enumerate(r.STARTUP_STEPS_V9,1)];expected['artifact']['name']=expected['artifactName']
         result=D(files['result.json']);result.update(schema='bw.gui-hdd.result.v9',requestSha256=pin,dependencyPins=request['dependencyPins'],dispatchPlatform=platform);files['result.json']=E(result)
         stage=D(files['native-font.stage.json']);stage.update(requestSha256=pin,eventSha256=H(event),source=request['source']);stage['platform']['GITHUB_JOB']='actual-v9';files['native-font.stage.json']=E(stage)
-        proof_admission=D(files['probe-admission.json']);proof_admission.update(boardPin=r.FINITE_V10_PINS['bw-board'],criticalFiles=request['criticalFiles']);files['probe-admission.json']=E(proof_admission)
+        v9members,v9build=r.read_frontend(files['frontend.original.zip'],True);files['frontend.members.json']=E(v9members);files['build.inventory.json']=E(v9build)
+        proof_admission=D(files['probe-admission.json']);proof_admission.update(boardPin=r.FINITE_V10_PINS['bw-board'],criticalFiles=request['criticalFiles'],buildFiles=v9build);files['probe-admission.json']=E(proof_admission)
         for scenario in r.SCENARIOS:
             files[scenario+'/admission.json']=E(proof_admission);proof=D(files[scenario+'/proof.json']);proof.update(boardPin=r.FINITE_V10_PINS['bw-board'],admissionSha256=H(E(proof_admission)));files[scenario+'/proof.json']=E(proof)
             process=D(files[scenario+'.process.json']);process['environment']['PROOF_BROWSER_SHA256']=request['runtime']['files'][request['runtime']['chromium']]['sha256'];files[scenario+'.process.json']=E(process)
@@ -6253,8 +6295,9 @@ test('standalone original reader: complete manufactured packet and coherent nega
     const sameJobMethodCount=14; // Seven new reader and seven connected producer methods.
     const sameJobPartsMethodCount=4;
     const armedEntryMethodCount=2;
-    assert.equal(total,historicalMethodCount+sameJobMethodCount+sameJobPartsMethodCount+armedEntryMethodCount,
-        'all 167 historical plus 14 same-job plus 4 V9 parts plus 2 armed-entry methods remain covered exactly once');
+    const frontendRosterMethodCount=1; // V9 reviewed frontend subset.
+    assert.equal(total,historicalMethodCount+sameJobMethodCount+sameJobPartsMethodCount+armedEntryMethodCount+frontendRosterMethodCount,
+        'all 167 historical plus 14 same-job plus 4 V9 parts plus 2 armed-entry plus 1 frontend roster methods remain covered exactly once');
 });
 
 test('actual v6 parts: exact bounded transport and independent reader parity', () => {
