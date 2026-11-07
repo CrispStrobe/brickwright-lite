@@ -499,10 +499,12 @@ export function createProjectConditionalArrayEntry(context){
 // publishes a frame-local Array allocated earlier in its own straight chain, the
 // receiver binds an initialized Array from the first such write until the run
 // ends (Stop, or game over's stopAll/greenFlag, which pops every scene and its
-// paint renderables). Before that first write only the startup thread runs: no
-// other hats exist and this closed prefix registers nothing, so its suspending
-// splash/wait/sound effects cannot run user code or change a global. Any later
-// occurrence of the receiver, in any scope or callback, executes after it.
+// paint renderables). Before the first publication, this closed startup prefix
+// has no other event entry and registers no callbacks. Splash waits for the
+// dialog, wait suspends, and sound can suspend or report an error and continue;
+// none can schedule a project callback in that prefix. Every effect argument
+// is pure and cannot read this receiver. A new greenFlag starts a new epoch and
+// reruns the prefix. Any later receiver occurrence executes after publication.
 // The receiver's element presence, length and values remain unproved.
 const prefixEffects={arcade_playSound:['SOUND','UNTIL_DONE'],arcade_splash:['TITLE','SUBTITLE'],control_wait:['DURATION']};
 const pureValues=new Set([...numericShadows,...Object.keys(arithmetic),'text','data_variable','arcade_getLocal','arrays_valueBinary',
