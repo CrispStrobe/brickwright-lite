@@ -1027,6 +1027,28 @@
     },
     {
       "models": [
+        "afterturn"
+      ],
+      "name": {
+        "en": "Geometric-phase reorientation through a closed internal shape cycle",
+        "de": "Umorientierung durch einen geschlossenen inneren Formzyklus"
+      },
+      "aliases": [
+        "geometric phase",
+        "shape cycle",
+        "reaction wheel",
+        "variable inertia",
+        "angular momentum",
+        "free yaw",
+        "geometrische Phase",
+        "Formzyklus",
+        "Reaktionsrad",
+        "veränderliches Trägheitsmoment",
+        "Drehimpuls"
+      ]
+    },
+    {
+      "models": [
         "paired-door-sync"
       ],
       "name": {

@@ -276,6 +276,8 @@ export const MODELS = Object.freeze([
     {file: 'linger.ldr', title: {"en": "Linger — six-bar dwell machine", "de": "Linger — sechsgliedriges Rastgetriebe"}, example: 'linger.bw', mat: 'plain'},
     {file: 'crossline.ldr', title: {"en": "Crossline — geared straight-line pair", "de": "Crossline — Geradführung durch Gegenrotation"}, example: 'crossline.bw', mat: 'plain'},
     {file: 'counterturn.ldr', title: {en: 'Counterturn — a free carrier and flywheel', de: 'Counterturn — freier Träger und Schwungrad'}, example: 'counterturn.bw', mat: 'plain'},
+    {file: "afterturn.ldr", title: {en: "Afterturn — a closed shape cycle", de: "Afterturn — ein geschlossener Formzyklus"}, example: "afterturn.bw", mat: "plain",
+        manualJog: {A: {minDeg: 0, maxDeg: 900, stepDeg: 90, speedDps: 90}, B: {minDeg: 0, maxDeg: 70, stepDeg: 10, speedDps: 10}}},
     {file: 'product-plotter.ldr', title: {en: 'Product Plotter — a mechanical multiplier', de: 'Product Plotter — ein mechanischer Multiplizierer'},
         example: 'product-plotter.bw', mat: 'plain', manualJog: {A: {minDeg: -15, maxDeg: 15, stepDeg: 2, speedDps: 10}, B: {minDeg: -75, maxDeg: 75, stepDeg: 10, speedDps: 30}}, intro: {
             en: 'Motor A tilts a straight guide; motor B slides the green rail. Their intersection moves the passive orange carriage, so similar triangles make its displacement equal the product of both inputs divided by a fixed reference length.',

@@ -2983,14 +2983,14 @@
       "program": "afterturn.bw",
       "programSha256": "c057262bda6aef8ee3e8b89e395ff031b426206abb899e5e36b70e60e7bbcc6a",
       "adaptation": "Licence path only; geometry and program unchanged. Supplied licence scope line named Travel Dial; corrected here. Needs the virtual SPIKE hub.",
-      "supplierClaims": "First cycle 4.6625 deg, inverse 0.0261 deg; fixed masses 0.0037 deg.",
+      "supplierClaims": "Corrected 2026-11-03: about 1.25 deg after the first cycle, undone by the inverse; fixed masses about 0.01 deg. The supplied 4.6625 deg (inverse 0.0261 deg; fixed masses 0.0037 deg) was measured with the #1494 rotor double count and is not the physical value.",
       "simulatorLaw": {
         "verdict": "AGREES",
-        "scope": "headless SPIKE: 4.6605 deg after cycle, 0.0220 after inverse; 900 x (0.12905-0.12387) = 4.659 predicted"
+        "scope": "native rotor, headless SPIKE (2026-11-03): strokes 0.027478/0.026102/0.026057/0.027474 platform deg per wheel deg vs predicted Iw/J 0.027464 (B=70) and 0.026077 (B=0); cycle 1.239 deg vs predicted 1.248 (bound 0.482), inverse -1.278 vs -1.248; superseded legacy scope: 4.6605 deg"
       },
       "poweredMotion": "HEADLESS_COMPLETED (cold 0/1000)",
       "mechanicalLaw": "SIMULATOR_AGREES",
-      "causalControl": "PASS (afterturn-fixed-masses: 0.003 deg)",
+      "causalControl": "PASS (afterturn-fixed-masses: ratio 0.02571-0.02572 at both shapes, cycle 0.013 deg within 0.463 bound)",
       "browserLoad": "PASS",
       "savedProjectReplay": "NOT_RUN",
       "browserRun": {
@@ -3015,6 +3015,20 @@
         "rotor": "native (0 !BW ROTOR_INERTIA native, #1573)",
         "measured": "headless direct VM: stroke at B=70 0.02749 platform/wheel, stroke at saved radii 0.02606 (law Iw/J 0.02608); first cycle -1.275 deg, after inverse -0.043 deg; control afterturn-fixed-masses strokes 0.02573/0.02573, cycle -0.009 deg",
         "reason": "The native rotor removes the #1494 double count; the cycle now gives 1.28 deg, consistent with 900 x (0.02749-0.02606) = 1.29 deg. The supplier claims (4.6625 deg) and lessons describe the old engine artefact and no longer agree. No afterturn judge is registered in QUALIFICATION_JUDGES; promotion needs a new independently reviewed judge with an independent J(B=70) prediction and corrected supplier claims and lessons."
+      },
+      "judgeReview": {
+        "date": "2026-11-03",
+        "judge": "afterturn-shape-cycle-v1",
+        "prediction": "independent: compiled per-collider masses (massProperties) about the yaw line, carts and rods posed by slider-crank kinematics (16 mm crank, 48 mm rods; carts 64.0 -> 51.0568 mm along the slider), Iw/J(0)=0.026077, Iw/J(70)=0.027464; native rotor carries no yaw momentum",
+        "tolerances": "stroke ratio 1 % (analytic free-pair rotor control bound); net cycle sum of the two strokes' 1 % bounds about the prediction from measured wheel travel; shape effect must exceed twice its bound",
+        "disconnection": "rod_left and rod_right removed: stroke ratios leave the reviewed prediction (max error 126 %)"
+      },
+      "promoted": {
+        "to": "established library (MODELS)",
+        "date": "2026-11-03",
+        "judge": "afterturn-shape-cycle-v1",
+        "harness": "disconnection removes rod_left, rod_right; fixed-mass control run under the same judge",
+        "verified": "local native ordinary/strict/control/disconnected PASS (2026-11-03); hosted CI pending"
       }
     },
     {
@@ -3027,10 +3041,10 @@
       "program": "afterturn.bw",
       "programSha256": "c057262bda6aef8ee3e8b89e395ff031b426206abb899e5e36b70e60e7bbcc6a",
       "adaptation": "Supplied physical control (rods parked on 2780 pins, carts fixed; two intended locked-hinges notices). Licence path only. Lessons written for this catalogue.",
-      "supplierClaims": "0.0037 deg after the first cycle.",
+      "supplierClaims": "Corrected 2026-11-03: about 0.01 deg after the first cycle (supplied 0.0037 deg, measured with the #1494 rotor double count).",
       "simulatorLaw": {
         "verdict": "AGREES",
-        "scope": "-0.0027 / +0.0029 deg after first cycle; constant 0.1225 deg per wheel degree"
+        "scope": "native rotor (2026-11-03): constant 0.0257 platform deg per wheel deg at both shapes (predicted 0.025715/0.025719); cycle 0.013 deg; superseded legacy 0.1225 deg per wheel degree"
       },
       "poweredMotion": "HEADLESS_COMPLETED",
       "mechanicalLaw": "SIMULATOR_AGREES",
@@ -3047,6 +3061,11 @@
         "pageErrors": 0,
         "nan": false,
         "simMs": 56733
+      },
+      "controlReview": {
+        "date": "2026-11-03",
+        "decision": "STAYS_EXPERIMENTAL",
+        "reason": "Physical control for Afterturn: it passes the control branch of afterturn-shape-cycle-v1 (constant ratio, no net cycle) and is run beside Afterturn in qualification; it remains experimental as the control, not a separate principle."
       }
     },
     {
