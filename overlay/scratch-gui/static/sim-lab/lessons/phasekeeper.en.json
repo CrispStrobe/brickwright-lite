@@ -1,5 +1,5 @@
 {
-  "what": "Reload the saved A = 0° pose. Identify the yellow input yoke at J1, the two blue intermediate yokes and diagonal axle, and the orange output yoke and pointer at J2. The input and output shafts are parallel; the diagonal shaft joins centres 200 LDU apart. Build both joints with a real cross: 81 listed placements plus two crosses make 83 physical pieces.",
+  "what": "Reload the saved A = 0° pose. Identify the yellow input yoke at J1, the two blue intermediate yokes and diagonal axle, and the orange output yoke and pointer at J2. The input and output shafts are parallel; the diagonal shaft joins centres 200 LDU apart. Build both joints with a real cross: 79 listed placements plus two crosses make 81 physical pieces.",
   "try": [
     "Run the finite program once. It pauses at 90°, 180°, 270° and 360°, then reverses to 0°. Watch the blue intermediate shaft lead and lag between those stops while the orange pointer should ideally stay aligned with the input angle. Use manual jog only between −5° and 365°.",
     "Predict what would happen if one blue intermediate yoke were rotated by 90°, or if the two bend angles were unequal. Decide whether the orange output would still remain in phase after every small increment, even though it might return to the same angle after a full revolution.",

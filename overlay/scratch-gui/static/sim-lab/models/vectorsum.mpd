@@ -137,7 +137,7 @@
 0 !BW ID hub_clamp_pin_120_360
 1 0 130 180 360 1 0 0 0 1 0 0 0 1 2780.dat
 0 !BW ID output_axle
-1 4 100 -100 0 1 0 0 0 1 0 0 0 1 44294.dat
+1 4 102 -100 0 1 0 0 0 1 0 0 0 1 44294.dat
 0 !BW ID bench_ground_pin_-40_240
 1 0 -30 180 240 1 0 0 0 1 0 0 0 1 2780.dat
 0 !BW ID drive_clamp_pin_B_-1
