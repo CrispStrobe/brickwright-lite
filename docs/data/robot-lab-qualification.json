@@ -850,7 +850,7 @@
       "disconnect": [
         "worm_1start"
       ],
-      "disconnectInputDeg": 700,
+      "disconnectInputDeg": 717,
       "disconnectLoss": "nine-intake"
     },
     {
@@ -886,7 +886,7 @@
       "disconnect": [
         "gear_drive"
       ],
-      "disconnectInputDeg": 85,
+      "disconnectInputDeg": 88,
       "disconnectLoss": "nine-intake"
     },
     {
@@ -904,7 +904,7 @@
       "disconnect": [
         "drive_pinion_8t"
       ],
-      "disconnectInputDeg": 95,
+      "disconnectInputDeg": 98,
       "disconnectLoss": "nine-intake"
     }
   ]
