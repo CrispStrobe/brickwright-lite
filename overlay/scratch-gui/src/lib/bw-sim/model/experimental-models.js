@@ -2772,7 +2772,7 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
         "experimental": true
     },
     "toggle-press.ldr": {
-        "pieces": 142,
+        "pieces": 139,
         "motors": 1,
         "hubs": [
             "spike-prime"
@@ -2800,7 +2800,7 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
         "experimental": true
     },
     "footfall.ldr": {
-        "pieces": 120,
+        "pieces": 119,
         "motors": 1,
         "hubs": [
             "spike-prime"
@@ -2828,7 +2828,7 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
         "experimental": true
     },
     "phasekeeper.ldr": {
-        "pieces": 81,
+        "pieces": 79,
         "motors": 1,
         "hubs": [
             "spike-prime"
