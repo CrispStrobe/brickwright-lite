@@ -904,7 +904,9 @@ class CircuitTab extends React.Component {
         // Keep the stage header controls above the portal: the portal owns the
         // stage surface, but must never intercept the three view buttons.
         host.dataset.bwCircuitStageHost = 'true';
-        host.style.cssText = 'position:absolute;inset:0;z-index:0;background:#fff;display:none;overflow:auto;';
+        // z-index 1: above the docked controller pane (a z-index 0 stacking
+        // context in gui.jsx), still below the stage header (5/10).
+        host.style.cssText = 'position:absolute;inset:0;z-index:1;background:#fff;display:none;overflow:auto;';
         wrap.appendChild(host);
         this._stageHost = host;
         this._sizeStageHost();
