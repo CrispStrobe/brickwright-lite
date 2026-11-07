@@ -5,6 +5,9 @@ import {projectToArcade,projectJsonToArcade} from '../overlay/scratch-gui/src/li
 import {runPxtArcade} from './helpers/pxt-arcade-runtime.mjs';
 import {runProgram,stepFrames,clearStrayTimers} from './helpers/bw-vm.mjs';
 import {conditionalArraySource,conditionalArrayExpected as expected} from './fixtures/arcade-conditional-array-entry.mjs';
+import {importSource} from './helpers/bw-integrated.mjs';
+import {snakeSource, snakeExpected, frameSource, numberSource} from './fixtures/arcade-connected-authoring.mjs';
+const Creator = (await importSource('src/lib/sb3-creator.js')).default;
 // HOSTED ONLY: original pinned SDK/simulator and actual Lite VM. No renderer;
 // visible Blocks/Code/graphics/controller acceptance remains separate.
 const check=run=>{
@@ -42,4 +45,25 @@ test('conditional Array startup publication retains paint results through SDK, n
             }
         }finally{run.vm.stopAll();run.vm.quit();clearStrayTimers();}
     }
+});
+
+test('connected authoring fixtures translate into complete Creator programs', () => {
+    for (const source of [snakeSource(), snakeSource({item: 3}), frameSource(), frameSource({value: 9}), numberSource(), numberSource({question: 'Level?'})]) {
+        const imported = arcadeToPseudocode(source);
+        assert.deepEqual(imported.unsupported, []);
+        const creator = new Creator(); creator.parse(imported.code);
+        assert.deepEqual(creator.errors, []); assert.deepEqual(creator.warnings, []); assert.deepEqual(creator.unparsed, []);
+        const exported = projectToArcade(creator.project);
+        assert.deepEqual(exported.unsupported, []);
+        const reimported = arcadeToPseudocode(exported.files['main.ts']);
+        assert.deepEqual(reimported.unsupported, []);
+        const reopened = new Creator(); reopened.parse(reimported.code);
+        assert.deepEqual(reopened.errors, []); assert.deepEqual(reopened.warnings, []); assert.deepEqual(reopened.unparsed, []);
+    }
+});
+test('snake fixture distinguishes the edited array element from the original', () => {
+    assert.notEqual(snakeSource(), snakeSource({item: 3}));
+    assert.deepEqual(snakeExpected(), {counter: 10, result: 1, count: 2});
+    assert.deepEqual(snakeExpected({item: 3}), {counter: 10, result: -1, count: 2});
+    assert.throws(() => snakeSource({item: 4}));
 });

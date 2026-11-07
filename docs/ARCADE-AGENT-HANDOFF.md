@@ -2,6 +2,11 @@
 
 ## Current checkpoint — 2026-11-06
 
+Connected editor acceptance for published Array/snake, frame-delta and number
+entry is being added under its [bounded claim](../lanes/2026-11-07-arcade-connected-authoring.md).
+Qualification requires the exact-head official-build browser job and its original
+PXT comparisons; source-only fixture checks do not establish GUI or runtime parity.
+
 #1643 landed as `8a969d7d` after its enabled checks passed. Its two cleared
 rows leave 22 documented Arcade TODOs; see [ARCADE-888](ARCADE-888-OPEN-FAILURES.md)
 and the [pending task list](../lanes/2026-11-03-arcade-pending-after-1643.md).
