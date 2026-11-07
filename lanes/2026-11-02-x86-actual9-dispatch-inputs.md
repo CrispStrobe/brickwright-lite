@@ -28,3 +28,18 @@ Main's pin moves had re-stamped `FINITE_V10_PINS` to Circuit UI
 `FINITE_V10_CUI_WITNESSES`. This PR re-measures all 18 V10 witnesses at that
 exact Circuit UI commit (6 changed) in the producer and reader. Historical
 V7-V9 witness tables are unchanged. That event slot is spent.
+
+Amendment (third event, run 41628975547): the guard and witness fixes held on
+the hosted runner, but the standalone reader refused the uploaded phase ZIP
+before any ACK could be built. Its census cap `6*len(SOURCE)+35` (161) missed
+the two originals the V10 guard writes before any Git call
+(`guard-originals/template.original.json` and `event.original.json`); the real
+upload had 163 regular members. The reader now bounds the census by the size of
+the exact derived role roster, adds both members to that roster and requires
+them to equal the F10 phase template and event bytes. The producer is
+unchanged; it already writes them. The test fixture now mirrors the real
+163-member upload, and over-roster or perturbed archives are refused. Main's
+later pin move to Circuit UI `15416c7e11efaa52c68244fcf36ee31f1f6e99e4` is
+merged with all 18 V10 witnesses re-measured, and the witness gate from
+`lanes/2026-11-03-x86-v10-cui-witness-gate.md` now rides on this PR. That
+event slot is spent; one further event follows the exact-head checks.
