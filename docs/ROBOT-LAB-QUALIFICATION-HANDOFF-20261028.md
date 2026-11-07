@@ -280,7 +280,7 @@ Triage of batches B and A, 2026-10-28:
 | pan-shift | runs past the 180 s contract maximum | Investigate the program length; keep experimental if it can't be fixed honestly |
 | vector-delta | blocked by a missing part | Keep blocked |
 | obliquity-orrery | blocked by issue #1460 (the compiler ignores motor orientation) | Wait for #1460 |
-| afterturn | Re-run 2026-11-02 with the #1573 native rotor opt-in: strokes 0.02749 (masses out) and 0.02606 (saved radii, law 0.02608); first cycle −1.275°, inverse −0.043°; control −0.009°. The supplier claim (4.6625°) and lessons describe the old double-count artefact, and no Afterturn judge is registered | Needs a new independently reviewed judge (independent J at B=70) plus corrected claims and lessons; stays experimental |
+| afterturn | Promoted 2026-11-03 with the new `afterturn-shape-cycle-v1` judge: independent prediction from compiled masses and slider-crank poses, Iw/J = 0.02608 (masses out, B = 0) and 0.02746 (masses in, B = 70°); measured strokes 0.0261/0.0275 (within 1 %), cycle 1.24° vs predicted 1.25°, inverse back to 0.04°, fixed-mass control 0.01°. The earlier "0.02749 (masses out)" label was reversed: B = 70° moves the masses in. The supplier figure 4.6625° was the #1494 double count; claims and lessons now give the physical value | Done (control afterturn-fixed-masses stays experimental as the control) |
 | impulse-line | the unpowered pusher droops about 4°/s during the cold settle, against a 2° guard; its law is only qualitative | Needs a pose fix and a quantitative law |
 | quiet-partner | compiler warns of locked hinges, and the elastic bands become spring couplings | Needs harness support for spring couplings, or stays experimental |
 
@@ -404,7 +404,8 @@ infrastructure failures. Preserve every failure and original assertion. Scope
    verdict changes, investigate before merging.
 5. After merging, close #1494. Re-run Afterturn and promote it only if it
    passes honestly. Its recorded figures (a 4.66° cycle; the supplier's 4.6625°)
-   were measured with the old code.
+   were measured with the old code. (Done 2026-11-03: about 1.25° under the
+   native rotor, judged by `afterturn-shape-cycle-v1`, promoted.)
 
 Lane file: `lanes/2026-10-28-rotor-inertia-relative-1494.md`.
 
