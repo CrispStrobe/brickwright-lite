@@ -327,7 +327,7 @@ const connectedSnake = async () => {
         await page.locator('[class*="green-flag_green-flag"]:visible').first().click();
         await waitSample(expected); const actual = await observe(); assert.deepEqual(actual.errors, []);
         for (const [name, value] of Object.entries(expected)) assert.equal(actual.variables[name], value, `Lite snake ${name}`);
-        (report.connectedSnake ||= []).push({label, expected, actual});
+        (report.connectedSnake ||= []).push({label, expected, original: Object.fromEntries(Object.keys(names).map(name => [name, original[name]])), actual});
         await page.getByTitle('Stop', {exact: true}).first().click();
     };
     await sample('unchanged-import', snakeExpected(), files);
@@ -383,7 +383,7 @@ const connectedNumber = async () => {
         await input.fill(reply); await input.press('Enter');
         await waitSample({ready: 1, response: numericReply, done: 1});
         const actual = await observe(); assert.deepEqual(actual.errors, []);
-        (report.connectedNumber ||= []).push({label, question, response: actual.variables.response, done: actual.variables.done});
+        (report.connectedNumber ||= []).push({label, question, reply, original: Object.fromEntries(Object.keys(expected).map(name => [name, original[name]])), response: actual.variables.response, done: actual.variables.done});
         await page.getByTitle('Stop', {exact: true}).first().click();
     };
     await sample('unchanged-import', 'Difficulty?', files);
@@ -444,7 +444,7 @@ const connectedFrame = async () => {
         await waitSample({ticks: 3, seen: value}); const actual = await observe();
         assert.deepEqual(actual.errors, []);
         assert.ok(Number.isFinite(actual.variables.delta) && actual.variables.delta > 0, 'Lite observed a positive frame delta');
-        (report.connectedFrame ||= []).push({label, originalDelta: original[name('delta')], liteDelta: actual.variables.delta, ticks: actual.variables.ticks, seen: actual.variables.seen, clockAdvance: after - before});
+        (report.connectedFrame ||= []).push({label, original: Object.fromEntries(Object.keys(expected).map(name => [name, original[name]])), originalDelta: original[name('delta')], liteDelta: actual.variables.delta, ticks: actual.variables.ticks, seen: actual.variables.seen, clockAdvance: after - before});
         await page.getByTitle('Stop', {exact: true}).first().click();
     };
     await sample('unchanged-import', 7, files);
