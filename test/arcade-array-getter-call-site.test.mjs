@@ -60,3 +60,15 @@ test('omitted slice bounds keep element presence only within the proven length',
         'let nested=[[1],[2]]\nlet copy=nested.slice(5)\ncopy[0][0]=8\n'])
         assert.ok(exported(source).some(row => /Array reference/.test(row)), source);
 });
+
+// A constant computed index (literals, + - *, and a closed procedure whose
+// only statement returns such an expression of its parameters) proves element
+// presence like a literal index; anything else keeps the refusal.
+test('constant computed indexes prove presence only within the proven length', () => {
+    assert.deepEqual(exported('let rows=[[3,4]]\nfunction shift(index:number){return index+1}\nlet selected=rows[shift(0)-1][0]\n'), []);
+    for (const source of [
+        'let rows=[[3,4]]\nfunction shift(index:number){return index+1}\nlet selected=rows[shift(0)][0]\n',
+        'let rows=[[3,4]]\nfunction shift(index:number){let t=index;return t+1}\nlet selected=rows[shift(0)-1][0]\n',
+        'let rows=[[3,4]]\nlet k=0\nfunction shift(index:number){return index+k}\nk=1\nlet selected=rows[shift(0)][0]\n'])
+        assert.ok(exported(source).some(row => /Array reference/.test(row)), source);
+});

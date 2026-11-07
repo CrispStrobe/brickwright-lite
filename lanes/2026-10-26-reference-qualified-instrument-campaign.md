@@ -1,5 +1,12 @@
 # Reference-qualified circuit coverage and instrument follow-through
 
+## Current status — 2026-11-05
+
+The integration has merged, and later browser gates passed after an earlier full
+run failed. The dated material below is historical. See the [current circuit/editor
+handoff](../docs/CIRCUIT-INSTRUMENT-REGRESSION.md#current-circuiteditor-status--2026-11-05) for exact evidence, open work and acceptance boundaries.
+
+
 HANDOFF PREPARED — circuit/instrument campaign remains incomplete. Initial Lite base
 `5cd027707eceed3451bd62eaa21125a051650e59`; branch
 `claim/reference-instrument-campaign-20261026`.

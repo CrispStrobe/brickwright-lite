@@ -552,6 +552,8 @@
       "test/arcade-scene-background-number.test.mjs",
       "test/arcade-array-getter-call-site.test.mjs",
       "test/arcade-math-map-namespace.test.mjs",
+      "test/arcade-positional-array-elements.test.mjs",
+      "test/arcade-constant-index-pxt.test.mjs",
       "test/arcade-conditional-reset-condition.test.mjs",
       "test/project-conditional-array-value-calls.test.mjs",
       "test/project-array-publication-frontier.test.mjs",
@@ -564,6 +566,7 @@
       "test/makecode-arcade-roundtrip-carrier-names.test.mjs",
       "test/arcade-external-references.test.mjs",
       "test/makecode-arcade-tilemap-api-roundtrip.test.mjs",
+      "test/makecode-arcade-tilemap-remaining-api.test.mjs",
       "test/arcade-palette-hidden-aliases.test.mjs",
       "test/arcade-math-unary-play.test.mjs"
     ],

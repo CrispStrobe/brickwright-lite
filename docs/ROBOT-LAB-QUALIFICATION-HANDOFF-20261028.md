@@ -82,6 +82,127 @@ Editing `scripts/lib/robot-lab-qualification.mjs`:
   (`lanes/2026-10-27-robot-lab-hubless-harness.md`).
 - When merging main, keep every side's entries.
 
+## 00. Status and pending tasks, 2026-11-03 (read this first)
+
+The owning agents stopped on the weekly usage limit. Everything below is
+unowned and ready for a fresh agent. Refresh `origin/main`, PR heads and checks
+before acting; another agent may have finished an item. Claim each task with
+a `lanes/` file in the same PR as the change (see the existing
+`lanes/2026-11-0*-robot-*.md` files for the format).
+
+Merged since section 0: #1636 (batch A/B judges; promoted Poise, Bend Ripple,
+Offset Relay, Rack Decoder, Remote Pivot, Schmidt Shift, Equal Share, Stroke
+Shift, Triad Table), #1640 (disconnection checks; promoted Kestrel, Meridian,
+Lumen, Tangent Table), #1635 (Afterturn measured under the native rotor) and
+#1634 (this document's section 0/2b). #1512's collider changes landed via #1566.
+
+### P1. Finish PR #1641 — Afterturn judge, Afterturn promotion, Poise lesson
+
+Branch `lane/robot-afterturn-judge-20261103`, head `95e19460` (a merge of main
+into `5a203448`), `ci:full` already labelled. Content: judge
+`afterturn-shape-cycle-v1` from an independent prediction (Iw/J = 0.02608 at
+B = 0 and 0.02746 at B = 70°; each stroke within 1 %, whole and inverse cycle,
+fixed-mass control branch, removing both rods breaks the law); Afterturn
+promoted; supplier claims and en/de lessons corrected from the #1494 artefact
+4.66° to the physical value; Poise lesson no longer repeats "Roberval
+balance". Native runs passed locally (cycle 1.24° against 1.25° predicted).
+
+To do:
+1. Wait for every enabled check on the current head. The previous head
+   `5a203448` had one failure, `browser (light)`; its log was never read.
+2. If `browser (light)` fails again, read the failed log (`gh run view <run>
+   --job <job> --log-failed`). If it is a Robot Lab assertion, fix the cause;
+   if it is an unrelated flake, retry only that job once (`gh run rerun
+   <run> --job <job>` after the run finishes). Never weaken a check.
+3. Merge: `gh pr merge 1641 --merge --match-head-commit <head>`; verify the
+   merge parents and that the tree equals `git merge-tree --write-tree
+   <main-parent> <head>`.
+4. If main moved and conflicts, merge main into the branch (no rebase or
+   force-push), keep both sides' entries, and repeat steps 1–3. `ci:full`
+   must stay on the final head.
+
+### P2. Finish PR #1639 — register the nine-intake judge (no promotions)
+
+Branch `lane/robot-nine-intake-promotions-20261103`, head `e97ec9b4`, draft,
+no `ci:full`. Final content after a revert: registers the existing judge
+`scripts/lib/sim-lab-nine-intake-judge.mjs` in `QUALIFICATION_JUDGES` with a
+throwing wrapper and a disconnection-loss measure, and records in
+`docs/data/robot-lab-experimental-checkpoint.json` why each of the nine stays
+experimental (see P3–P5). No registry move, contract or model byte change.
+
+To do: mark ready (`gh pr ready 1639`), wait for the lite checks, add
+`ci:full` once on the final head, then merge and verify as in P1. If P1
+merges first, merge main into this branch and keep both sides' checkpoint
+and handoff entries.
+
+### P3. Geometry repairs for five passing intakes (after P2)
+
+Toggle Press, Footfall, Phasekeeper, Vector Sum and Point Weaver pass hosted
+native ordinary, strict and disconnected qualification runs, but fail the
+established construction gate `test/bw-sim-models-solid.test.mjs`:
+
+| Model | Gate finding |
+|---|---|
+| toggle-press | `fixed_pivot_U` penetrates `upper_toggle_UK` and `pivot_bridge`; three guide-post holes filled twice |
+| footfall | `base_cross_support_A` hole h4 filled by two pins |
+| phasekeeper | `base_rail_output` holes h1 and h13 each filled by a pin and an axle |
+| vectorsum | `output_axle` reaches 0.7 LDU into `diff_cover_28t` |
+| pointweaver | eight motor-foot pins penetrate their feet (1.3 LDU); `endpoint_marker_tip` penetrates `endpoint_marker`; six holes filled twice |
+
+For each model: move or remove the offending parts in the `.ldr` (smallest
+reviewed pose change, following how #1510 repaired Phasor Twin and #1551
+repaired Paired Door Sync), keep the BOM honest, rerun
+`test/bw-sim-models-solid.test.mjs` for that model, then requalify with
+`scripts/qualify-robot-lab-models.mjs` (ordinary, strict, disconnected). Only
+then do the promotion changes listed in
+`lanes/2026-11-02-robot-batchab-promotions.md` (contract, source fixture,
+registry move, generated catalogue/lessons, mechanism entry, checkpoint).
+Never loosen the gate. Phasekeeper's Cardan dependence is already shown
+(removing `joint_2_intermediate_yoke` gives about 321° phase error).
+
+### P4. Loop Relay disconnection run
+
+Ordinary and strict runs pass. The shared disconnection run removes
+`chain_input16` and then fails before measuring: the hub observation base is
+not found. Find out why the harness loses the hub (read
+`scripts/qualify-robot-lab-models.mjs` and the nine-intake disconnection
+measure) and either pick a removal that keeps the observation base while
+breaking the law, with a justification in the code comment, or fix the
+harness lookup in a separately reviewed change. Do not swap parts just to
+get green.
+
+### P5. Remove the 50-piece minimum from qualification (operator decision, 2026-11-07)
+
+Decision: the >50-piece minimum is dropped from qualification altogether.
+Qualification judges the simulated physics and its dependence on the
+mechanism; piece count is not part of that. The builder brief
+(`docs/ROBOT-LAB-MODEL-BUILDER.md`) keeps "models above 50 pieces are
+welcome" as a design preference, and the gallery's "More than 50 pieces"
+filter stays, both reading the honest count.
+
+To do:
+1. In `scripts/lib/robot-lab-qualification.mjs` (contract validator, the
+   `assert.ok(Number.isInteger(c.parts)&&c.parts>50)` line) keep the
+   integer/positive check on `parts` but drop the `>50` bound. The `>50`
+   instruction-step check in `scripts/lib/sim-lab-arm-lift-gate.mjs` is a
+   different rule; leave it.
+2. Add or adjust a validator test: a contract with an honest small count
+   (e.g. 20) is accepted, a missing or non-integer `parts` is still rejected.
+3. Note the change in this handoff and in the checkpoint reasons for
+   Helixgate (20 pieces), Parity Dial (31) and Counter Slide (44).
+4. Qualify those three through the normal pipeline (contract, ordinary,
+   strict, disconnected, construction gate `test/bw-sim-models-solid.test.mjs`)
+   and promote whichever pass. Never pad a model's count.
+
+### P6. Other remaining experimental entries
+
+From section 2b: RimRun (hub stands loose; mount it with real parts, then
+write a judge), Evenhand (needs a motor holding-torque judge; reference
+figures in 2b) and Paired Door Sync (repaired in #1551; needs a qualification
+contract and the registry move). Controls and comparison variants
+(`*-control`, `*-swapped`, `*-in-phase`, `afterturn-fixed-masses` and the
+like) stay experimental by design.
+
 ## 0. Status refresh, 2026-11-02
 
 Done on main since this handoff was written:

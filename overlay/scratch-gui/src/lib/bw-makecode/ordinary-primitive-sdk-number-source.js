@@ -124,6 +124,17 @@ export function ordinaryPlayerScoreNumberCalls(program, safeIndex = () => false)
 // root invalidates every leaf in the program.
 const CAMERA_PROPERTY_MEMBERS = Object.freeze(['X','Y','Left','Right','Top','Bottom']);
 export function ordinaryCameraPropertyNumberLeaves(program) {
+    return ordinaryEnumNumberLeaves(program,'CameraProperty',CAMERA_PROPERTY_MEMBERS);
+}
+
+// Buffer NumberFormat members are compile-time Number enum leaves in the pinned
+// SDK (Int8LE = 1 ...); the translator emits each as that numeric literal.
+export const NUMBER_FORMAT_MEMBERS=Object.freeze(['Int8LE','UInt8LE','Int16LE','UInt16LE','Int32LE','Int8BE','UInt8BE','Int16BE','UInt16BE','Int32BE','UInt32LE','UInt32BE','Float32LE','Float64LE','Float32BE','Float64BE']);
+export function ordinaryNumberFormatNumberLeaves(program) {
+    return ordinaryEnumNumberLeaves(program,'NumberFormat',NUMBER_FORMAT_MEMBERS);
+}
+
+function ordinaryEnumNumberLeaves(program,rootName,members) {
     const sdk=staticSdkNamespaceReceivers(program,{builtinIdentifiers:['eval','Function']}),candidates=[];
     // Recognize parser/normalizer syntax independently of particular SDK calls.
     // An unknown binding/effect form cannot establish the builtin enum root.
@@ -143,18 +154,18 @@ export function ordinaryCameraPropertyNumberLeaves(program) {
         if(typeof node.type==='string'&&!forms.has(node.type))unsafe=true;
         if(node.type==='Identifier'&&['eval','Function'].includes(node.name)&&sdk.has(node))unsafe=true;
         if(node.type==='Template'&&typeof node.tag==='string'&&
-            (node.tag==='CameraProperty'||node.tag.startsWith('CameraProperty.')))unsafe=true;
-        if(node.type==='Identifier'&&node.name==='CameraProperty'&&sdk.has(node)){
+            (node.tag===rootName||node.tag.startsWith(rootName+'.')))unsafe=true;
+        if(node.type==='Identifier'&&node.name===rootName&&sdk.has(node)){
             const member=parent?.type==='Member'&&parent.object===node?parent:null;
             if(!member||member.optional||member.computed||node.optional||
                 node.assertedType||node.typeAssertions?.length||member.assertedType||member.typeAssertions?.length||
                 asserted||
-                !CAMERA_PROPERTY_MEMBERS.includes(member.name))unsafe=true;
+                !members.includes(member.name))unsafe=true;
             else candidates.push(member);
         }
         if(node.type==='Assignment'||node.type==='Update'||node.type==='Unary'&&node.op==='delete'){
             const root=rootOf(node.type==='Assignment'?node.left:node.argument);
-            if(root?.type==='Identifier'&&root.name==='CameraProperty'&&sdk.has(root))unsafe=true;
+            if(root?.type==='Identifier'&&root.name===rootName&&sdk.has(root))unsafe=true;
         }
         for(const value of Object.values(node))if(value&&typeof value==='object')visit(value,node,asserted);
     };
