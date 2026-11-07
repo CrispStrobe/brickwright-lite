@@ -6,6 +6,10 @@ Connected editor acceptance for published Array/snake, frame-delta and number
 entry is being added under its [bounded claim](../lanes/2026-11-07-arcade-connected-authoring.md).
 Qualification requires the exact-head official-build browser job and its original
 PXT comparisons; source-only fixture checks do not establish GUI or runtime parity.
+The [first hosted run](https://github.com/CrispStrobe/brickwright-lite/actions/runs/42383883786)
+completed all five snake editor and original-simulator samples, then stopped at
+the number-entry readiness marker. Number-entry and frame-delta acceptance
+remain pending on the corrected candidate.
 
 #1643 landed as `8a969d7d` after its enabled checks passed. Its two cleared
 rows leave 22 documented Arcade TODOs; see [ARCADE-888](ARCADE-888-OPEN-FAILURES.md)

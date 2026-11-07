@@ -21,5 +21,5 @@ game.onPaint(function(){if(ticks<3){ticks+=1;if(ticks==3){delta=control.eventCon
 }
 export function numberSource({question = 'Difficulty?'} = {}) {
     if (!['Difficulty?', 'Level?'].includes(question)) throw new Error('Unknown number fixture variant');
-    return `let ready=1;let response=game.askForNumber("${question}");let done=1;response+=0;`;
+    return `let ready=1;ready+=0;let response=game.askForNumber("${question}");let done=1;done+=0;response+=0;`;
 }
