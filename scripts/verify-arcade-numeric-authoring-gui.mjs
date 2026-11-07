@@ -14,7 +14,7 @@ import {inspectGuiArtifactResponse} from './lib/gui-artifact-response.mjs';
 import {makeCodeProjectFile, readMakeCodeProjectText} from '../overlay/scratch-gui/src/lib/bw-makecode/project-file.js';
 import {runPxtArcade} from '../test/helpers/pxt-arcade-runtime.mjs';
 import {numericAuthoringFiles, numericSample} from '../test/fixtures/arcade-numeric-authoring-game.mjs';
-import {snakeSource, snakeExpected, numberSource, frameSource} from '../test/fixtures/arcade-connected-authoring.mjs';
+import {snakeSource, snakeExpected, numberSource, frameSource, connectedProject} from '../test/fixtures/arcade-connected-authoring.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
@@ -310,7 +310,7 @@ const cycle = async (label, options, files) => {
 // The original simulator receives exactly the same source or exported files.
 const connectedSnake = async () => {
     const fixture = path.join(out, 'connected-snake.mkcd');
-    const files = {'main.ts': snakeSource()};
+    const files = connectedProject(snakeSource());
     await writeFile(fixture, makeCodeProjectFile(files, {target: 'arcade'}));
     await page.context().close(); page = await fresh();
     await codeTab(); await page.getByTestId('bw-device-select').selectOption('arcade');
@@ -332,7 +332,7 @@ const connectedSnake = async () => {
     };
     await sample('unchanged-import', snakeExpected(), files);
     await editNumber({opcode: 'arrays_mutateReference', input: 'VALUE', value: '2'}, 3);
-    await sample('visible-block-edit', snakeExpected({item: 3}), {'main.ts': snakeSource({item: 3})});
+    await sample('visible-block-edit', snakeExpected({item: 3}), connectedProject(snakeSource({item: 3})));
     await codeTab(); await page.getByRole('button', {name: /From blocks/}).first().click();
     await page.waitForFunction(() => /mutate array reference[^\n]*value \(0 \+ 3\)/.test(document.querySelector('[data-testid="bw-code-editor"] .cm-content')?.cmTile.root.view.state.doc.toString() || ''));
     const edited = await readCode();
@@ -363,7 +363,7 @@ const connectedSnake = async () => {
 // Numeric replies pass through the actual visible question input in both apps.
 const connectedNumber = async () => {
     const fixture = path.join(out, 'connected-number.mkcd');
-    const files = {'main.ts': numberSource()};
+    const files = connectedProject(numberSource());
     await writeFile(fixture, makeCodeProjectFile(files, {target: 'arcade'}));
     await page.context().close(); page = await fresh();
     await codeTab(); await page.getByTestId('bw-device-select').selectOption('arcade');
@@ -388,7 +388,7 @@ const connectedNumber = async () => {
     };
     await sample('unchanged-import', 'Difficulty?', files);
     await editNumber({opcode: 'arcade_askForNumber', input: 'QUESTION', value: 'Difficulty?'}, 'Level?');
-    await sample('visible-block-edit', 'Level?', {'main.ts': numberSource({question: 'Level?'})});
+    await sample('visible-block-edit', 'Level?', connectedProject(numberSource({question: 'Level?'})));
     await codeTab(); await page.getByRole('button', {name: /From blocks/}).first().click();
     await page.waitForFunction(() => /arcade ask number "Level\?"/.test(document.querySelector('[data-testid="bw-code-editor"] .cm-content')?.cmTile.root.view.state.doc.toString() || ''));
     const edited = await readCode(), authored = edited.replace('arcade ask number "Level?"', 'arcade ask number "Difficulty?"');
@@ -418,7 +418,7 @@ const connectedNumber = async () => {
 // pretending independently scheduled simulators have identical frame lengths.
 const connectedFrame = async () => {
     const fixture = path.join(out, 'connected-frame.mkcd');
-    const files = {'main.ts': frameSource()};
+    const files = connectedProject(frameSource());
     await writeFile(fixture, makeCodeProjectFile(files, {target: 'arcade'}));
     await page.context().close(); page = await fresh({controlledClock: true});
     await codeTab(); await page.getByTestId('bw-device-select').selectOption('arcade');
@@ -449,7 +449,7 @@ const connectedFrame = async () => {
     };
     await sample('unchanged-import', 7, files);
     await editNumber({opcode: 'data_setvariableto', input: 'VALUE', value: '7'}, 9);
-    await sample('visible-block-edit', 9, {'main.ts': frameSource({value: 9})});
+    await sample('visible-block-edit', 9, connectedProject(frameSource({value: 9})));
     await codeTab(); await page.getByRole('button', {name: /From blocks/}).first().click();
     await page.waitForFunction(() => /set seen to \(0 \+ 9\)/.test(document.querySelector('[data-testid="bw-code-editor"] .cm-content')?.cmTile.root.view.state.doc.toString() || ''));
     const edited = await readCode(), authored = edited.replace('set seen to (0 + 9)', 'set seen to (0 + 7)');

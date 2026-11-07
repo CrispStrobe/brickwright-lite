@@ -1,5 +1,8 @@
 // Small owned programs for connected Arcade authoring acceptance.
 // Their expected observations deliberately change when the authored constants do.
+export function connectedProject(source) {
+    return {'main.ts': source, 'pxt.json': JSON.stringify({name: 'Owned connected Arcade authoring', dependencies: {device: '*'}, files: ['main.ts'], preferredEditor: 'tsprj'})};
+}
 export function snakeSource({item = 2} = {}) {
     if (![2, 3].includes(item)) throw new Error('Unknown snake fixture variant');
     return `let counter=9;let result=-99;let count=-99;let snake:number[];
