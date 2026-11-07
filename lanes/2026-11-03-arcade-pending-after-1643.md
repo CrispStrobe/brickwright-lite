@@ -39,7 +39,7 @@ Each row's full reason is in ARCADE-888. Ordered by expected tractability.
 
 | # | Group | Row (test file) | What it needs |
 |---|---|---|---|
-| 2a | B | stop-other / stop-all second export (`makecode-export-arcade`) | Exporter change: give each `arcade run parallel` handler its own run token instead of nesting it inside the start script's `control.runInParallel`. |
+| 2a | B | stop-other / stop-all second export (`makecode-export-arcade`) | PARTIAL ([claim](2026-11-07-arcade-second-export-run-tokens.md)): each parallel handler now takes its own run token. Still TODO: the reimport of the second export keeps the stop helpers as user code because the sprite prologue is `GameSprite = null` / `GameSprite = sprites.create(...)`, not the exporter's `let GameSprite = sprites.create(...)` recipe the lift requires. |
 | 2b | A | allOfKind second export (`makecode-arcade-sprite-collections`) | Exporter change: stop emitting the `null` prologue in `__bwStartup` and the `actors = null` reset before it. Widening the reset rule was tried and breaks 17 refusal tests; do not retry that. |
 | 2c | B | class formals (`makecode-arcade-pxt-staging`, `makecode-arcade-accessor-pxt-staging`) | Call-site obligations for class constructors and methods (today `constraints()` skips class members), so `new Box(<any>"x")` is refused. Then both rows can admit. |
 | 2d | C | named-array re-import (3 rows) | Importer recognition of the exporter's whole named-array helper library on reimport. |

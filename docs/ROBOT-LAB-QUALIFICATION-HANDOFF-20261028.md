@@ -171,6 +171,15 @@ breaking the law, with a justification in the code comment, or fix the
 harness lookup in a separately reviewed change. Do not swap parts just to
 get green.
 
+Diagnosis (2026-11-07): the removal is not the cause. Loop Relay's hub part is
+`spike_hub`, and the shared disconnection test looked up a body containing a part
+named `hub`, which no Loop Relay body has, with or without `chain_input16` (the
+compiled hub body is unchanged by the removal). Helixgate, Parity Dial and Counter
+Slide use `spike_hub` too. Fix on `lane/robot-looprelay-20261107`: the test takes
+the compiler's single registered hub part (`mechanism.hubs[0].id`), as the
+nine-intake judge already does; all 31 registered contracts resolve to `hub`, so
+their runs are unchanged. The removal of `chain_input16` stays as reviewed.
+
 ### P5. Remove the 50-piece minimum from qualification (operator decision, 2026-11-07)
 
 Decision: the >50-piece minimum is dropped from qualification altogether.
@@ -280,7 +289,7 @@ Triage of batches B and A, 2026-10-28:
 | pan-shift | runs past the 180 s contract maximum | Investigate the program length; keep experimental if it can't be fixed honestly |
 | vector-delta | blocked by a missing part | Keep blocked |
 | obliquity-orrery | blocked by issue #1460 (the compiler ignores motor orientation) | Wait for #1460 |
-| afterturn | Re-run 2026-11-02 with the #1573 native rotor opt-in: strokes 0.02749 (masses out) and 0.02606 (saved radii, law 0.02608); first cycle −1.275°, inverse −0.043°; control −0.009°. The supplier claim (4.6625°) and lessons describe the old double-count artefact, and no Afterturn judge is registered | Needs a new independently reviewed judge (independent J at B=70) plus corrected claims and lessons; stays experimental |
+| afterturn | Promoted 2026-11-03 with the new `afterturn-shape-cycle-v1` judge: independent prediction from compiled masses and slider-crank poses, Iw/J = 0.02608 (masses out, B = 0) and 0.02746 (masses in, B = 70°); measured strokes 0.0261/0.0275 (within 1 %), cycle 1.24° vs predicted 1.25°, inverse back to 0.04°, fixed-mass control 0.01°. The earlier "0.02749 (masses out)" label was reversed: B = 70° moves the masses in. The supplier figure 4.6625° was the #1494 double count; claims and lessons now give the physical value | Done (control afterturn-fixed-masses stays experimental as the control) |
 | impulse-line | the unpowered pusher droops about 4°/s during the cold settle, against a 2° guard; its law is only qualitative | Needs a pose fix and a quantitative law |
 | quiet-partner | compiler warns of locked hinges, and the elastic bands become spring couplings | Needs harness support for spring couplings, or stays experimental |
 
@@ -318,6 +327,14 @@ browser journey, then promote as #1555 did.
 | phasekeeper | double Cardan at equal angles: ripple of joint 1 cancelled by joint 2 | Needs the two inferred real Cardan crosses (83 physical pieces); keep the loose-part recognition test |
 | vectorsum | open differential: carrier = mean of the two side-shaft angles | Two motors (A, B); check shaft-tip clearance stays clean |
 | pointweaver | two-motor five-bar, endpoint reaches four corner poses | Chromium full journey already passed once (preliminary) |
+
+**Update 2026-11-03 (nine intakes):** judges registered per family in
+`QUALIFICATION_JUDGES` with a disconnection-loss measure. Toggle Press, Footfall,
+Phasekeeper, Vector Sum and Point Weaver pass the native qualification runs but fail
+the construction gate (`bw-sim-models-solid`), so they stay experimental pending
+geometry repair. Loop Relay's disconnection run loses the hub observation base.
+Helixgate, Parity Dial and Counter Slide stay under the >50-piece rule pending an
+operator decision. Reasons are in `docs/data/robot-lab-experimental-checkpoint.json`.
 
 **Batch E remainders** (added in #1499):
 
@@ -396,7 +413,8 @@ infrastructure failures. Preserve every failure and original assertion. Scope
    verdict changes, investigate before merging.
 5. After merging, close #1494. Re-run Afterturn and promote it only if it
    passes honestly. Its recorded figures (a 4.66° cycle; the supplier's 4.6625°)
-   were measured with the old code.
+   were measured with the old code. (Done 2026-11-03: about 1.25° under the
+   native rotor, judged by `afterturn-shape-cycle-v1`, promoted.)
 
 Lane file: `lanes/2026-10-28-rotor-inertia-relative-1494.md`.
 
