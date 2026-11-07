@@ -390,7 +390,8 @@ test('Door pin repair separates actual intact parent geometry from repaired seat
     const repaired=parseModel(readFileSync(path.join(GUI,MODELS_BASE,'paired-door-sync.ldr'),'utf8'),{catalog:CATALOG}).model;
     const parent=parseModel(readFileSync(path.join(ROOT,'test/fixtures/model-files/paired-door-sync-pre-repair.ldr'),'utf8'),{catalog:CATALOG}).model;
     assert.equal(repaired.parts.length,88);assert.equal(parent.parts.length,88);
-    const old=new Map(parent.parts.map(p=>[p.id,p])),now=new Map(repaired.parts.map(p=>[p.id,p]));assert.deepEqual([...old.keys()],[...now.keys()]);
+    // Promotion (2026-11-07) renamed only the hub's BW ID chassis_reference -> hub; every other field is still compared.
+    const renamed=id=>id==='chassis_reference'?'hub':id,old=new Map(parent.parts.map(p=>[renamed(p.id),{...p,id:renamed(p.id)}])),now=new Map(repaired.parts.map(p=>[p.id,p]));assert.deepEqual([...old.keys()],[...now.keys()]);
     const changed=['carriage_pin_0_-120','carriage_pin_0_120','carriage_pin_1_-120','carriage_pin_1_120'];
     for(const [id,p]of old){
         const q=now.get(id);assert.equal(q.part,p.part);assert.deepEqual(q.rotation,p.rotation);
