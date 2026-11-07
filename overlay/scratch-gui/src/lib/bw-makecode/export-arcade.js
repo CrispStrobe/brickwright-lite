@@ -906,8 +906,8 @@ class ArcadeEmitter {
         return guards;
     }
 
-    tokenLine () {
-        return this.tokened() ? ['    const _t = _tok()'] : [];
+    tokenLine (target = this.target) {
+        return this.tokened(target) ? ['    const _t = _tok()'] : [];
     }
 
     kindOf (name) { return `_kind_${ident(name)}`; }
@@ -3024,7 +3024,12 @@ class ArcadeEmitter {
             const kind=kinds[b.opcode],token=this.literalInput(b,'TOKEN'),callback=token && this.registeredCallback(token);
             if(!callback || callback.kind!==kind){push(`// ${this.note('Arcade registration has no matching callback')}`);return;}
             const signatures={multiplayerConnection:`${callback.parameter}: mp.Player`,multiplayerButton:`${callback.parameter}: mp.Player`,destroyed:`${callback.parameter}: Sprite`,overlap:`${callback.parameter}: Sprite, ${callback.second}: Sprite`};
-            const body=`function (${signatures[kind]||''}) {\n${callback.script.join('\n')}\n}`;
+            // A parallel handler is a separate run, as each flag script is in the
+            // first export: it takes its own run token, so `stop other scripts`
+            // keeps only the run that issued it and `stop all` ends each one.
+            const runToken=kind==='parallel'?this.tokenLine(this.registeredCallbackBlocks.get(token).target):[];
+            const body=`function (${signatures[kind]||''}) {\n${[...runToken,...callback.script].join('\n')}\n}`;
+            if(runToken.length)this.use('tok');
             const apis={parallel:'control.runInParallel',update:'game.onUpdate',paint:'game.onPaint',shade:'game.onShade',interval:'game.onUpdateInterval',destroyed:'sprites.onDestroyed',overlap:'sprites.onOverlap',
                 scenePush:'game.addScenePushHandler',scenePop:'game.addScenePopHandler',forever:'game.forever',
                 lifeZero:'info.onLifeZero',countdown:'info.onCountdownEnd'};

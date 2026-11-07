@@ -395,3 +395,67 @@ WHEN flag clicked:
     assert.deepEqual(exported.unsupported, []);
     await checkAuthoredRoutes(exported.files, {n: 10, after: 0}, {duration: 400, originalPrefix: 'Game_', requireStopped: true});
 });
+
+// Second export of a reimported program: the start script starts each former
+// flag script as an `arcade run parallel` handler. In original PXT (the first
+// export) every flag script takes its own run token, so `stop other scripts`
+// keeps only the run that issued it. A handler that borrowed the start script's
+// token would be kept as well and go on counting (original 5, borrowed 15/16).
+const STOP_OTHER_ONLY = `DEVICE ARCADE
+SPRITE Game:
+WHEN flag clicked:
+  set n to 0
+  REPEAT UNTIL not (n < 5):
+    change n by 1
+  stop other scripts in sprite
+  set atStop to m
+  REPEAT UNTIL not (n < 15):
+    change n by 1
+  IF n > 100 THEN:
+    stop all
+  set later to m
+WHEN flag clicked:
+  FOREVER:
+    change m by 1
+`;
+async function secondExportOf (src) {
+    const first = exportOf(src);
+    assert.deepEqual(first.unsupported, []);
+    const imported = importProjectFiles(first.files, {target: 'arcade'});
+    assert.deepEqual(imported.unsupported, []);
+    const run = await runProgram(imported.code, {frames: 0, frameAuthority: 'timed', uploads: imported.costumes, storage: true});
+    try {
+        return {first, imported, second: projectToArcade(run.creator.project, {costumeSvg: (_t, c) => run.creator.assets.get(c.assetId)?.data ?? null})};
+    } finally { run.vm.quit(); clearStrayTimers(); }
+}
+const parallelBodies = ts => ts.split('control.runInParallel(function () {\n').slice(1);
+
+test('second export gives each reimported parallel handler its own run token, as original PXT does', {skip, timeout: 300000}, async () => {
+    const {first, imported, second} = await secondExportOf(STOP_OTHER_ONLY);
+    assert.match(imported.code, /arcade run parallel as "__bwParallel1"/);
+    assert.deepEqual(second.unsupported, []);
+    const want = {Game_n: 15};
+    const original = await runPxtArcade(first.files, {fakeClock: true, waitForGlobals: want});
+    assert.deepEqual([original.Game_atStop, original.Game_later], [5, 5], 'original PXT: stop other scripts ends the counter');
+    const back = await runPxtArcade(second.files, {fakeClock: true, waitForGlobals: want});
+    for (const key of ['Game_n', 'Game_atStop', 'Game_later', 'Game_m']) assert.equal(back[key], original[key], key);
+    // Mutation control: the same second export with the handlers' own tokens
+    // removed (borrowing the start script's) keeps the counter running.
+    let seen = 0;
+    const borrowed = second.files['main.ts'].replace(/control\.runInParallel\(function \(\) \{\n    const _t = _tok\(\)\n/g,
+        whole => seen++ ? 'control.runInParallel(function () {\n' : whole);
+    assert.notEqual(borrowed, second.files['main.ts']);
+    const mutant = await runPxtArcade({...second.files, 'main.ts': borrowed}, {fakeClock: true, waitForGlobals: want});
+    assert.notEqual(mutant.Game_later, original.Game_later, 'a borrowed token is observable');
+});
+
+test('only stop-carrying parallel handlers take a run token on second export', {skip, timeout: 300000}, async () => {
+    // Refusal control: without stop machinery no handler takes a token.
+    const plain = await secondExportOf('DEVICE ARCADE\nSPRITE Game:\nWHEN flag clicked:\n  set n to 1\nWHEN flag clicked:\n  FOREVER:\n    change m by 1\n');
+    assert.deepEqual(plain.second.unsupported, []);
+    assert.doesNotMatch(plain.second.files['main.ts'], /_tok\(\)/);
+    const stopped = await secondExportOf(STOP_OTHER_ONLY);
+    const bodies = parallelBodies(stopped.second.files['main.ts']);
+    assert.equal(bodies.length, 3, 'start script plus two handlers');
+    for (const body of bodies) assert.match(body, /^    const _t = _tok\(\)\n/);
+});
