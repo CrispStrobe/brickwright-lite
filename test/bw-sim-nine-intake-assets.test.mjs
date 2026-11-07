@@ -5,19 +5,23 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {createHash} from 'node:crypto';
 import Creator from '../overlay/scratch-gui/src/lib/sb3-creator-register-art.js';
-import {catalogFrom, prepareModel} from '../overlay/scratch-gui/src/lib/bw-sim/sim-session.js';
+import {catalogFrom, prepareModel, MODELS} from '../overlay/scratch-gui/src/lib/bw-sim/sim-session.js';
 import {buildSteps, partAdjacency, partsList} from '../overlay/scratch-gui/src/lib/bw-sim/instructions/steps.js';
 import {EXPERIMENTAL_MODELS, EXPERIMENTAL_MODEL_DETAILS} from '../overlay/scratch-gui/src/lib/bw-sim/model/experimental-models.js';
+import {MODEL_LESSONS} from '../overlay/scratch-gui/src/lib/bw-sim/model/example-catalog.js';
 import {visibleExampleModels, filterModelExamples} from '../overlay/scratch-gui/src/lib/bw-sim/model/example-browser.js';
 const read = p => readFileSync(new URL('../' + p, import.meta.url), 'utf8');
 const hash = s => createHash('sha256').update(s).digest('hex');
 const catalog = catalogFrom(JSON.parse(read('overlay/scratch-gui/src/lib/bw-sim/part-meta/parts.json')));
 const counts = {helixgate: 20, looprelay: 54, paritydial: 31, counterslide: 44,
     'toggle-press': 139, footfall: 119, phasekeeper: 79, vectorsum: 122, pointweaver: 128};
+// Qualified and promoted to the established library (docs/data/robot-lab-qualification.json).
+const PROMOTED = new Set(['toggle-press', 'footfall', 'phasekeeper', 'vectorsum']);
 
 test('checkpoint candidates remain opt-in and carry no unearned simulation status', () => {
     const visible = visibleExampleModels(EXPERIMENTAL_MODELS);
-    for (const id of Object.keys(counts)) {
+    for (const id of Object.keys(counts).filter(id => !PROMOTED.has(id))) {
+        assert.ok(!MODELS.some(m => m.file === id + '.ldr'), id + ' stays out of the established library');
         const entry = EXPERIMENTAL_MODELS.find(m => m.file === id + '.ldr');
         assert.equal(entry.experimental, true);
         assert.notEqual(entry.simulationChecked, true);
@@ -55,10 +59,12 @@ for (const [id, count] of Object.entries(counts)) test(`${id}: coherent source, 
             issue.parts.every(part => root.parts.includes(part)),
         `${id}: only the deliberately fixed two-axis tower may carry an assembly advisory: ${JSON.stringify(issue)}`);
     }
-    const entries = EXPERIMENTAL_MODELS.filter(e => e.file === id + '.ldr');
+    const registry = PROMOTED.has(id) ? MODELS : EXPERIMENTAL_MODELS;
+    const entries = registry.filter(e => e.file === id + '.ldr');
     assert.equal(entries.length, 1);
     assert.equal(entries[0].example, id + '.bw');
-    assert.equal(EXPERIMENTAL_MODEL_DETAILS[id + '.ldr'].pieces, count);
+    assert.equal((PROMOTED.has(id) ? MODEL_LESSONS : EXPERIMENTAL_MODEL_DETAILS)[id + '.ldr'].pieces, count);
+    if (PROMOTED.has(id)) assert.ok(!EXPERIMENTAL_MODELS.some(e => e.file === id + '.ldr'));
     assert.match(read(base + `licenses/${id}.txt`), /CrispStrobe/);
 
     const plan = buildSteps(prepared.model, catalog);

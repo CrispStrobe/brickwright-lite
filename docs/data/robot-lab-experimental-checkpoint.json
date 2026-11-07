@@ -4093,35 +4093,35 @@
     },
     {
       "id": "toggle-press",
-      "placements": 142,
+      "placements": 139,
       "intakeRecord": "docs/data/robot-lab-nine-intakes-20261026.json",
       "judge": "toggle-ram-v1",
       "promotionReview": {
-        "date": "2026-11-03",
-        "decision": "STAYS_EXPERIMENTAL",
-        "reason": "Hosted native ordinary, strict and disconnected qualification runs PASS (PR 1639). Promotion refused by the established construction gate (test/bw-sim-models-solid.test.mjs): fixed_pivot_U penetrates upper_toggle_UK and pivot_bridge; three guide-post holes filled twice. Needs a geometry repair and requalification; the gate was not loosened."
+        "date": "2026-11-07",
+        "decision": "PROMOTED",
+        "reason": "Construction repair (PR 1672): each doubled guide-post hole takes one 3L pin; pivot_bridge lowered 10 LDU to meet upper_toggle_UK so the 2L fixed_pivot_U ends at both faces (bridge axles 4L to 5L, inner bushes follow). test/bw-sim-models-solid.test.mjs passes unchanged; contract added and qualified by the hosted ordinary, strict and disconnected runs on the final head. Browser, saved-project replay, export and manual controls NOT_RUN (contract notRun)."
       }
     },
     {
       "id": "footfall",
-      "placements": 120,
+      "placements": 119,
       "intakeRecord": "docs/data/robot-lab-nine-intakes-20261026.json",
       "judge": "twelve-link-leg-v1",
       "promotionReview": {
-        "date": "2026-11-03",
-        "decision": "STAYS_EXPERIMENTAL",
-        "reason": "Hosted native ordinary, strict and disconnected qualification runs PASS (PR 1639). Promotion refused by the established construction gate (test/bw-sim-models-solid.test.mjs): base_cross_support_A hole h4 filled by two pins. Needs a geometry repair and requalification; the gate was not loosened."
+        "date": "2026-11-07",
+        "decision": "PROMOTED",
+        "reason": "Construction repair (PR 1672): removed the redundant 2L base_pin_support_A_-120; the 3L support_A_foot_pin already spans foot, spacer and cross. test/bw-sim-models-solid.test.mjs passes unchanged; contract added and qualified by the hosted ordinary, strict and disconnected runs on the final head. Browser, saved-project replay, export and manual controls NOT_RUN (contract notRun)."
       }
     },
     {
       "id": "phasekeeper",
-      "placements": 81,
+      "placements": 79,
       "intakeRecord": "docs/data/robot-lab-nine-intakes-20261026.json",
       "judge": "double-cardan-v1",
       "promotionReview": {
-        "date": "2026-11-03",
-        "decision": "STAYS_EXPERIMENTAL",
-        "reason": "Hosted native ordinary, strict and disconnected qualification runs PASS (PR 1639). Promotion refused by the established construction gate (test/bw-sim-models-solid.test.mjs): base_rail_output holes h1 and h13 each filled by a pin and an axle. Needs a geometry repair and requalification; the gate was not loosened. Cardan evidence: removing joint_2_intermediate_yoke breaks the output phase law (about 321 degrees error over a 360 degree input) while the input completes, so the law depends on the two inferred Cardan crosses."
+        "date": "2026-11-07",
+        "decision": "PROMOTED",
+        "reason": "Construction repair (PR 1672): removed base_pin_120_-120 and base_pin_120_120; the tower axles already pass through base_rail_output and the base cross. test/bw-sim-models-solid.test.mjs passes unchanged; contract added and qualified by the hosted ordinary, strict and disconnected runs on the final head. Browser, saved-project replay, export and manual controls NOT_RUN (contract notRun)."
       }
     },
     {
@@ -4130,9 +4130,9 @@
       "intakeRecord": "docs/data/robot-lab-nine-intakes-20261026.json",
       "judge": "open-differential-v1",
       "promotionReview": {
-        "date": "2026-11-03",
-        "decision": "STAYS_EXPERIMENTAL",
-        "reason": "Hosted native ordinary, strict and disconnected qualification runs PASS (PR 1639). Promotion refused by the established construction gate (test/bw-sim-models-solid.test.mjs): output_axle reaches 0.7 LDU into diff_cover_28t. Needs a geometry repair and requalification; the gate was not loosened."
+        "date": "2026-11-07",
+        "decision": "PROMOTED",
+        "reason": "Construction repair (PR 1672): output_axle moved 2 LDU outward, clear of diff_cover_28t and still 8 of 10 LDU in the 12-tooth bevel. test/bw-sim-models-solid.test.mjs passes unchanged; contract added and qualified by the hosted ordinary, strict and disconnected runs on the final head. Browser, saved-project replay, export and manual controls NOT_RUN (contract notRun)."
       }
     },
     {
@@ -4141,9 +4141,9 @@
       "intakeRecord": "docs/data/robot-lab-nine-intakes-20261026.json",
       "judge": "five-bar-v1",
       "promotionReview": {
-        "date": "2026-11-03",
+        "date": "2026-11-07",
         "decision": "STAYS_EXPERIMENTAL",
-        "reason": "Hosted native ordinary, strict and disconnected qualification runs PASS (PR 1639). Promotion refused by the established construction gate (test/bw-sim-models-solid.test.mjs): eight motor-foot pins penetrate their feet (1.3 LDU), endpoint_marker_tip penetrates endpoint_marker; six holes filled twice. Needs a geometry repair and requalification; the gate was not loosened."
+        "reason": "Construction gate still refuses it and no clean repair exists (PR 1672 review). At each rear motor-foot hole (z = -180) the stack foot, pad, rail and base cross is 70 LDU deep: no single standard pin fills it, a foot pin and the rail-to-cross fastener must share the rail hole, and removing those fasteners disconnects the front base from the hub section (loose-part). Needs a reviewed base redesign; the gate was not loosened."
       }
     }
   ],

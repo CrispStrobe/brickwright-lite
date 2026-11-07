@@ -30,3 +30,10 @@ Geometry repairs (construction gate findings from the handoff, section 00 P3):
   stack foot, pad, rail and base cross is 70 LDU deep; no single standard pin
   fills it, two pins must share the rail hole, and dropping the rail-to-cross
   fasteners disconnects the front base from the hub section. Stays experimental.
+
+Promotion (after #1639 merged): contracts for `toggle-press`, `footfall`,
+`phasekeeper` and `vectorsum` (the nine-intake judges, honest part counts,
+browser/replay/export/manual gates recorded as `notRun`); source fixtures under
+`test/fixtures/model-files/<id>-source/`; registry move; mechanism, catalogue
+and lesson entries regenerated; checkpoint records. Pointweaver stays
+experimental with the reason above.
