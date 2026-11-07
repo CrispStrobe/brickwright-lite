@@ -55,11 +55,17 @@ Amendment (fourth event, run 42365788419): the phase was admitted and the ACK
 published, but the guest step refused the official Pages build because it now
 holds a 68.5 MB Yosys wasm and 8574 files, beyond the per-file and count
 limits. That slot is spent. On the operator's instruction the V9 event step now
-installs and serves only the reviewed frontend roster: 47 paths (37.8 MB of the
-306.6 MB build) measured by driving the same UI path as both probe scenarios on
-the official build, plus the step's provenance file. Each roster entry is an
+installs and serves only the reviewed frontend roster: 46 paths (8.7 MB of the
+306.6 MB build), the GET requests seen while driving the same UI path as both
+probe scenarios on the official build, plus the step's provenance file. A HEAD
+availability probe for the LabWired wasm fetches no body and is not admitted. Each roster entry is an
 exact path with only content-hash segments open and must match exactly one
 member; other members are neither read nor installed. The count bound is the
 roster length, each member keeps the existing 32 MiB limit and the aggregate is
-bounded at 64 MiB. The whole-archive digest check is unchanged. Older protocol
+bounded at 16 MiB. The whole-archive digest check is unchanged. Older protocol
 versions keep the full-build policy. Product loading is not changed here.
+
+The fifth event (run 42412052347) installed the subset, booted FreeDOS and
+wrote and read the HDD marker, then the probe's Pause click was blocked by an
+overlapping Widgets full-screen button. That slot is spent; the layout is fixed
+separately.

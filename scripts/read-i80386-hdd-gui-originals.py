@@ -1905,8 +1905,9 @@ def role_policy(names):
 # V9 event frontend subset. Measured (2026-11-07) from the official Pages build of
 # the reviewed head by driving the same UI path as the persistence and
 # forward-debug probe scenarios (page load, Machine Manager, free386 run, local
-# run, pause, drawer/step/memory, HDD download) plus the step's own provenance
-# file. Each pattern is one exact path with only content-hash segments open and
+# run, pause, drawer/step/memory, HDD download), counting only GET requests
+# (a HEAD availability probe for the LabWired wasm fetches no body), plus the
+# step's own provenance file. Each pattern is one exact path with only content-hash segments open and
 # must match exactly one archive member; every other member is neither read nor
 # installed nor served. The whole archive digest stays the authority.
 ACTUAL_V9_FRONTEND_ROSTER = (
@@ -1954,14 +1955,13 @@ ACTUAL_V9_FRONTEND_ROSTER = (
  r'static/blocks\-media/default/zoom\-in\.svg',
  r'static/blocks\-media/default/zoom\-out\.svg',
  r'static/blocks\-media/default/zoom\-reset\.svg',
- r'static/labwired/labwired_wasm_bg\.wasm',
  r'static/roms/free\-386\-bochs\-bios\.rom',
  r'static/roms/free\-386\-vgabios\-lgpl\.bin',
 )
 ACTUAL_V9_FRONTEND_COUNT = len(ACTUAL_V9_FRONTEND_ROSTER)
-# Reviewed subset was 37,838,437 bytes; the aggregate bound is the next power of
+# Reviewed subset was 8,674,638 bytes; the aggregate bound is the next power of
 # two MiB above it. Each member keeps the unchanged FILE_CAP.
-ACTUAL_V9_FRONTEND_AGGREGATE_CAP = 64 << 20
+ACTUAL_V9_FRONTEND_AGGREGATE_CAP = 16 << 20
 
 
 def frontend_subset_v9(tar_raw):
