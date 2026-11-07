@@ -194,6 +194,10 @@ To do:
    strict, disconnected, construction gate `test/bw-sim-models-solid.test.mjs`)
    and promote whichever pass. Never pad a model's count.
 
+Progress (2026-11-07): step 1–2 done on `lane/robot-piece-minimum-20261107`
+(`assertHonestPartCount`, `test/robot-lab-qualification-parts.test.mjs`).
+Steps 3–4 wait for PR #1639 (the three contracts and judges).
+
 ### P6. Other remaining experimental entries
 
 From section 2b: RimRun (hub stands loose; mount it with real parts, then
