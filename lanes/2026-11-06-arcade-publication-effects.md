@@ -6,7 +6,8 @@ Scope: clarify the effect model comment in
 `overlay/scratch-gui/src/lib/bw-makecode/project-conditional-array-entry.js`;
 add focused positive and negative controls for its existing publication
 frontier in `test/project-array-publication-frontier-effects.test.mjs`, and
-adjust the existing directly related test fixtures if required. Reconcile
+adjust the existing directly related test fixtures if required; add this new
+test to the existing matching `scripts/lib/gui-scope-allowed.json` entry. Reconcile
 `lanes/2026-11-03-arcade-pending-after-1638.md` and this claim. No change to
 admission rules, runtime semantics, dependency pins or workflows is implied.
 
