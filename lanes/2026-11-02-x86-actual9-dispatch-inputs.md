@@ -43,3 +43,10 @@ later pin move to Circuit UI `15416c7e11efaa52c68244fcf36ee31f1f6e99e4` is
 merged with all 18 V10 witnesses re-measured, and the witness gate from
 `lanes/2026-11-03-x86-v10-cui-witness-gate.md` now rides on this PR. That
 event slot is spent; one further event follows the exact-head checks.
+
+A read-only re-audit of that event's phase original with the census fix found
+one more reader/producer disagreement: the producer observes the bootstrap
+helper with plain `git ls-tree <head> -- <path>` (LF-terminated), while the
+phase reader expected `ls-tree -z` with a NUL terminator. The reader and its
+fixture now follow the producer. With both fixes the original phase ZIP is
+admitted; perturbed and over-roster copies are refused.

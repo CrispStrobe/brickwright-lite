@@ -5046,7 +5046,8 @@ def verify_phase_git_originals_v9(files,inventory,guard,source):
         args=list(arguments)
         if guard_stage:
             helper=BOOTSTRAP_SOURCE
-            args.extend((['ls-tree','-z',source['head'],'--',helper['path']],['cat-file','blob',source['head']+':'+helper['path']]))
+            # Producer observe_bootstrap_source runs plain ls-tree (LF-terminated, no -z).
+            args.extend((['ls-tree',source['head'],'--',helper['path']],['cat-file','blob',source['head']+':'+helper['path']]))
             need(logical.get('result.json')==encode(guard),'raw guard result exact independently validated guard')
             manifest=decode(logical.get('inventory.json',b''));fields(manifest,'schema files')
             need(manifest['schema']=='bw.gui-hdd.originals.v1' and type(manifest['files']) is dict and set(manifest['files'])==set(logical)-{'inventory.json'},'closed raw guard original inventory')
@@ -5059,7 +5060,7 @@ def verify_phase_git_originals_v9(files,inventory,guard,source):
             if i<2:need(raw==(source['head' if i==0 else 'tree']+'\n').encode(),'raw phase Git exact head/tree')
             elif i<2+len(SOURCE):
                 path=sorted(SOURCE)[i-2];need({'byteLength':len(raw),'sha256':sha(raw)}==source['files'][path],'raw phase source exact original bytes')
-            elif argv[0]=='ls-tree':need(raw==('100644 blob '+helper['gitBlob']+'\t'+helper['path']+'\0').encode(),'raw phase bootstrap mode/blob/path')
+            elif argv[0]=='ls-tree':need(raw==(helper['mode']+' blob '+helper['gitBlob']+'\t'+helper['path']+'\n').encode(),'raw phase bootstrap mode/blob/path')
             else:need(len(raw)==helper['byteLength'] and sha(raw)==helper['sha256'] and git_blob_sha_v9(raw)==helper['gitBlob'],'raw phase bootstrap exact Git blob')
             if not guard_stage:
                 command=inventory['commands'][i]

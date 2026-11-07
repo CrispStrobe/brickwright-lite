@@ -5519,11 +5519,11 @@ class Originals(unittest.TestCase):
         source_bytes={path:E(r.FINITE_V10_PINS) if path=='vendor-pins.json' else ('source:'+path).encode()for path in r.SOURCE}
         helper=r.BOOTSTRAP_SOURCE;helperraw=(root/helper['path']).read_bytes()
         for family,guard_stage in (('inventory-git-originals',False),('guard-originals',True)):
-            log={};selected=args+([['ls-tree','-z',source['head'],'--',helper['path']],['cat-file','blob',source['head']+':'+helper['path']]]if guard_stage else [])
+            log={};selected=args+([['ls-tree',source['head'],'--',helper['path']],['cat-file','blob',source['head']+':'+helper['path']]]if guard_stage else [])
             for i,arguments in enumerate(selected):
                 if i<2:body=(source['head' if i==0 else 'tree']+'\n').encode()
                 elif i<2+len(r.SOURCE):body=source_bytes[sorted(r.SOURCE)[i-2]]
-                elif arguments[0]=='ls-tree':body=('100644 blob '+helper['gitBlob']+'\t'+helper['path']+'\0').encode()
+                elif arguments[0]=='ls-tree':body=(helper['mode']+' blob '+helper['gitBlob']+'\t'+helper['path']+'\n').encode()
                 else:body=helperraw
                 role='git-'+str(i);log[role+'.stdout']=body;log[role+'.stderr']=b'';log[role+'.process.json']=E(proc(prefix+arguments,body))
             if guard_stage:

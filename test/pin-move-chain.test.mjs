@@ -127,8 +127,8 @@ const CURRENT_X86_FINITE_V9_READER = "FINITE_V9_PINS = {'bw-board':CURRENT_BOARD
 // their occurrence roles until another explicit review; never auto-restamp.
 const HISTORICAL_X86_SOURCE_PROFILES = Object.freeze({
     'scripts/run-i80386-hdd-gui-actual.py': Object.freeze({bytes: 344889, sha256: '953dbc51b3caba37e7913ecbdc6ce509de6ba9385426b48aada6d7fd50848453'}),
-    'scripts/read-i80386-hdd-gui-originals.py': Object.freeze({bytes: 460984, sha256: '6d07ad2fb836126bb3d2d145f8b2c19c7db91c0b76e98184f9316691690b7430'}),
-    'test/i80386-hdd-gui-actual.test.mjs': Object.freeze({bytes: 640746, sha256: '0a105d5f5cef223b941b7799fc5af95612e997b267e380e8c5ff24f3b89c50d5'}),
+    'scripts/read-i80386-hdd-gui-originals.py': Object.freeze({bytes: 461079, sha256: 'f4ae83901fb4cf196dbe1450ed4eeaceb277f7935b91494543f615c5ad48a6f9'}),
+    'test/i80386-hdd-gui-actual.test.mjs': Object.freeze({bytes: 640750, sha256: '75223908a95db8f361a8a54cdc6bd447a57971bb4502457968aaef3254b4c177'}),
 });
 
 import {explainGitFailure} from './helpers/git-absence.mjs';

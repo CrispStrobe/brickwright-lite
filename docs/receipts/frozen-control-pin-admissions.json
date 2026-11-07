@@ -18,8 +18,8 @@
     {
       "file": "scripts/read-i80386-hdd-gui-originals.py",
       "mode": "100644",
-      "sha256": "6d07ad2fb836126bb3d2d145f8b2c19c7db91c0b76e98184f9316691690b7430",
-      "gitBlob": "02947867b52709b2647e4e905e29eb77923296f7",
+      "sha256": "f4ae83901fb4cf196dbe1450ed4eeaceb277f7935b91494543f615c5ad48a6f9",
+      "gitBlob": "d5d027e46f6952537def0291daa19a1f83277004",
       "field": "SB3",
       "repo": "sb3-creator",
       "value": "1cbaeed325f5a890e43b78a4211acae8f801f2d2",
