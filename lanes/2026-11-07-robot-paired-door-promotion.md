@@ -22,3 +22,10 @@ parts and program unchanged) so the standard hub observation base applies.
 
 Qualification: native ordinary, strict and disconnected runs locally; hosted unit/build checks,
 `ci:full` once on the final head. Browser journey and saved-project replay stay NOT_RUN unless run.
+
+P6 remainder (checkpoint review records only, no promotion):
+- Evenhand: holding-torque judge passes its law (branch `lane/robot-evenhand-20261107`, unregistered),
+  but the counterweight disconnection cannot run: the arm droops 9–17° during the 500 ms cold settle
+  and the authored datum guard faults. Stays experimental.
+- RimRun: hub mount needs a new real-part bridge (≈170 LDU to the frame), and the declared
+  catch/watchdog-hold failures remain. Not repaired; stays experimental.

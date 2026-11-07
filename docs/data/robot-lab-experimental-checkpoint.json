@@ -3855,7 +3855,12 @@
       "causalControl": "PASS (rimrun-swapped)",
       "browserLoad": "NOT_RUN",
       "savedProjectReplay": "NOT_RUN",
-      "noveltyNote": "Importer warns loose-part for the frame because the hub stands free beside the ramp (declared in ASSEMBLY.md); blocks promotion until mounted."
+      "noveltyNote": "Importer warns loose-part for the frame because the hub stands free beside the ramp (declared in ASSEMBLY.md); blocks promotion until mounted.",
+      "promotionReview": {
+        "date": "2026-11-07",
+        "decision": "STAYS_EXPERIMENTAL",
+        "reason": "Not repaired in P6. The hub (45601) stands on the floor at x=-820 LDU; the nearest frame member is about 170 LDU away and the four foot assemblies compile as separate bodies, so mounting it needs a new real-part bridge, not a one-part shift. The supplier-declared failing post-finish catch and watchdog-hold gates also remain. No judge written."
+      }
     },
     {
       "id": "rimrun-swapped",
@@ -3875,7 +3880,12 @@
       "mechanicalLaw": "SIMULATOR_AGREES",
       "causalControl": "IS_CONTROL",
       "browserLoad": "NOT_RUN",
-      "savedProjectReplay": "NOT_RUN"
+      "savedProjectReplay": "NOT_RUN",
+      "promotionReview": {
+        "date": "2026-11-07",
+        "decision": "STAYS_EXPERIMENTAL",
+        "reason": "Comparison variant of rimrun; stays experimental by design."
+      }
     },
     {
       "id": "swayshift",
@@ -4037,7 +4047,12 @@
       "causalControl": "PASS (evenhand-control)",
       "browserLoad": "NOT_RUN",
       "savedProjectReplay": "NOT_RUN",
-      "noveltyNote": "Positions alone cannot show the balance: the engine's motors hold any load (self-locking), so the evidence is holding torque, not sag."
+      "noveltyNote": "Positions alone cannot show the balance: the engine's motors hold any load (self-locking), so the evidence is holding torque, not sag.",
+      "promotionReview": {
+        "date": "2026-11-07",
+        "decision": "STAYS_EXPERIMENTAL",
+        "reason": "Holding-torque judge written (branch lane/robot-evenhand-20261107, unregistered): static gravity moment from configured body masses and centres of mass at the observed pose matches the held motor torque within 0.002 mN m at all 11 holds; elbow < 0.002 mN m, shoulder 0.331-0.361 mN m; frozen-output and 1 cm shift refused. Disconnection FAILS: removing the outer or all forearm counterweights makes the shoulder droop 9-17 deg during the mandatory 500 ms cold settle, so the authored 3 deg datum guard faults at stage 0 and the input never turns; evenhand-control faults the same way (13.5 deg). No law-loss measurement exists under the qualification harness, so no promotion."
+      }
     },
     {
       "id": "evenhand-control",
@@ -4057,7 +4072,12 @@
       "mechanicalLaw": "SIMULATOR_AGREES",
       "causalControl": "IS_CONTROL",
       "browserLoad": "NOT_RUN",
-      "savedProjectReplay": "NOT_RUN"
+      "savedProjectReplay": "NOT_RUN",
+      "promotionReview": {
+        "date": "2026-11-07",
+        "decision": "STAYS_EXPERIMENTAL",
+        "reason": "Control of evenhand. In the qualification harness (500 ms cold settle) the unbalanced arm droops 13.5 deg before Run and the authored datum guard faults at stage 0."
+      }
     }
   ],
   "appVerification": {
