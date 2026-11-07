@@ -2,9 +2,11 @@
 import {createHash} from 'node:crypto';
 
 export const SCHEMA_VERSION = 1;
+// Admission for a new campaign follows the reviewed current packages. Existing
+// run receipts retain the source contracts and observations they actually used.
 export const CONTRACT_SOURCES = Object.freeze({
-    'bw-board': 'c87cfa325a7b599846c1c4088a408eeabb83daaa',
-    'bw-circuit-ui': '15416c7e11efaa52c68244fcf36ee31f1f6e99e4'
+    'bw-board': 'cda9d13b3e5b4a3e40854f45e04d110ab2a57ef3',
+    'bw-circuit-ui': '9d7a9a260d00d3c26a77e749aec55ceddbe29a52'
 });
 export const THERMAL_PROFILE = Object.freeze({volts: .02585, celsius: 26.826793442075882});
 const TEMPERATURE_TEXT = '26.826793442075882';

@@ -7886,6 +7886,18 @@
    "p95": null,
    "max": null,
    "readings": []
+  },
+  "Browser gate \u2014 ESP32-S3 firmware boots through the empty-project picker": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate \u2014 S040 firmware drives its placed display and touch face": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
   }
  }
 }

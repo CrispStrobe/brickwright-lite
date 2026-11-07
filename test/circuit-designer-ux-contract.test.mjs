@@ -101,7 +101,17 @@ test('debugger selection is not disabled merely because the Circuit tab is activ
     const source = read('overlay/scratch-gui/src/components/tw-pseudocode/circuit-tab.jsx');
     // `dock` is debugDock with 'solo' folded back to 'top' on the dedicated
     // Circuit tab — the designer keeps its instruments-column debugger there.
-    assert.match(source, /const dock = this\.state\.debugDock === 'solo' \? 'top' : this\.state\.debugDock;/);
+    assert.match(source, /const dock = this\.state\.debugDock === 'solo' \? 'top'\s*:\s*CIRCUIT_DOCKS\.has\(this\.state\.debugDock\) \? this\.state\.debugDock : 'off';/);
+    // All circuit docks retain their prior behaviour; a device-owned dock must
+    // not leave the instruments-column debugger covering the device pane.
+    const dockExpression = source.match(/const dock = (this\.state\.debugDock === 'solo'[\s\S]*?);/);
+    assert.ok(dockExpression, 'actual Circuit tab dock selection');
+    const chooseDock = new Function('CIRCUIT_DOCKS', `return function () { return ${dockExpression[1]}; };`)(
+        new Set(['top', 'right', 'off', 'solo']));
+    for (const [input, expected] of [['solo', 'top'], ['top', 'top'], ['right', 'right'],
+        ['off', 'off'], ['controller', 'off'], ['microbit', 'off']]) {
+        assert.equal(chooseDock.call({state: {debugDock: input}}), expected, input);
+    }
     assert.match(source, /debuggerOn=\{dock === 'top'\}/);
     // The panel now renders through ONE portal into a persistent host node;
     // the instruments slot ADOPTS that node when dock is 'top' (HostMount).

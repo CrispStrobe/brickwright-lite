@@ -598,11 +598,37 @@ export function toggleTargetCodeBreakpoint ({target, addrBps, addr}) {
  *   names the machine shape a preset image was built for; absent, the
  *   extracted config (or the target's default map) is used.
  */
-export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.vercel.app', targetKind = 'emulator', machineConfig = null, bootMedia = null, labwiredChip = null, labwiredBoardVariant = null, onChange = () => {} }) {
+export function isEsp32S040Target (selection) {
+    return selection === 'board:esp32-4848s040' || selection === 'firmware:esp32-4848s040-merged-flash';
+}
+
+/** Select an actual placed board without inferring a replacement circuit. */
+export function selectEsp32S040Circuit (sourceBoard, model, mcuId = null) {
+    if (mcuId !== null && (typeof mcuId !== 'string' || !mcuId)) {
+        throw new Error('ESP32-4848S040: select an existing circuit part');
+    }
+    const candidates = (sourceBoard?.parts || []).filter(part => part.kind === 'esp32_4848s040');
+    const drawn = (model?.parts || []).some(part => part.kind === 'esp32_4848s040');
+    if (!candidates.length && !drawn && mcuId === null) return null;
+    if (model?.netlistError) {
+        throw new Error(`ESP32-4848S040: the circuit was rejected: ${String(model.netlistError).split('\n')[0]}`);
+    }
+    if (typeof sourceBoard?.getNets !== 'function' || !candidates.length) {
+        throw new Error('ESP32-4848S040: the placed circuit board is not ready');
+    }
+    const selected = mcuId === null ? candidates : candidates.filter(part => part.id === mcuId);
+    if (selected.length !== 1) {
+        throw new Error('ESP32-4848S040: select exactly one existing S040 circuit part');
+    }
+    return {sourceBoard, mcuId: selected[0].id};
+}
+
+export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.vercel.app', targetKind = 'emulator', machineConfig = null, bootMedia = null, labwiredChip = null, labwiredBoardVariant = null, esp32S040McuId = null, esp32s3Console = 'uart0', onChange = () => {} }) {
     let session = null;
     // Invalidate stop/start even when target and session references are reused.
     let hddSnapshotOwner = {};
     let target = null;
+    let releaseEsp32S040Target = null;
     let i8086ExecutionResult = null;
     const i8086ExecutionLifetime = new AbortController();
     let runToTarget = null;
@@ -2150,22 +2176,40 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
      *     there are none in a .bin, so no source lines and no yield points.
      */
     async function attachLabwiredTarget (built) {
+        if (destroyed) return null;
         setStatus('attaching', S('attach.labwired'));
+        if (destroyed) return null;
         const { createDebugTarget, createDebugSession, BoardImpl, inferNetlist,
             STM32F0, LABWIRED_CHIPS, parseIntelHex } =
             await import(/* webpackChunkName: "bw-board" */ 'bw-board');
+        if (destroyed) return null;
         const { loadLabwired } = await import(
             /* webpackChunkName: "labwired-probe" */ '../labwired-engine.js');
+        if (destroyed) return null;
 
         const wasm = await loadLabwired();
+        if (destroyed) return null;
         if (!wasm) {
             throw new Error('the labwired engine is not available in this build' +
                 (loadLabwired.lastError ? ` (${loadLabwired.lastError})` : '') +
                 '. Run `npm run sync:labwiredwasm` and rebuild, or pick another engine.');
         }
 
+        if (isEsp32S040Target(labwiredChip)) {
+            if (labwiredBoardVariant !== null) {
+                throw new Error('ESP32-4848S040 uses its exact board profile, not a replacement circuit variant');
+            }
+            return attachEsp32S040(built, wasm, createDebugTarget, createDebugSession, BoardImpl);
+        }
+
         // A chip picked in the panel means "my firmware on that chip", with no
         // circuit — whatever the project's own device is.
+        if (labwiredChip === 'firmware:esp32s3-merged-flash') {
+            if (labwiredBoardVariant !== null) {
+                throw new Error('ESP32-S3 merged-flash boot cannot replace a selected circuit variant');
+            }
+            return attachEsp32S3MergedFlash(built, wasm, createDebugTarget, createDebugSession);
+        }
         if (labwiredChip === 'software:samd51-no-asf-simulation') {
             if (labwiredBoardVariant !== null) {
                 throw new Error('the SAMD software profile cannot replace a selected circuit variant');
@@ -2313,6 +2357,105 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         ];
         emit();
         return finishLabwiredAttach(lwTarget, lwAdapter, built.image.length, [], createDebugSession);
+    }
+
+    async function attachEsp32S3MergedFlash (built, wasm, createDebugTarget, createDebugSession) {
+        if (!built || built.format !== 'esp32s3-merged-flash' || !(built.image instanceof Uint8Array)) {
+            throw new Error('ESP32-S3 ROM boot needs a merged .bin at flash offset zero, including the ' +
+                'bootloader, partition table and application; load it with Firmware… first');
+        }
+        const {target: lwTarget, adapter: lwAdapter} = await createDebugTarget('labwired', {
+            wasm, firmware: built.image,
+            firmwareBoot: await esp32S3BootOptions()
+        });
+        board = null;
+        engineNotes = [
+            'ESP32-S3 ROM boot of your merged flash image. This firmware-only target has no circuit, ' +
+            '4848S040 display or touch panel.',
+            `Console output: ${esp32s3Console === 'uart0' ? 'UART0' :
+                esp32s3Console === 'usb_serial_jtag' ? 'USB Serial/JTAG' : 'both (messages can interleave)'}. ` +
+            'Console selection filters output; serial input is delivered to the engine’s serial receivers.'
+        ];
+        emit();
+        return finishLabwiredAttach(lwTarget, lwAdapter, built.image.length, [], createDebugSession);
+    }
+
+    async function esp32S3BootOptions (isCurrent = () => true) {
+        if (!isCurrent()) return null;
+        const {ESP32S3_FLASH_BOOT_KIND} = await import(
+            /* webpackChunkName: "labwired-firmware-boot" */ 'bw-board/labwired-firmware-boot.js');
+        if (!isCurrent()) return null;
+        const {loadEsp32S3Roms} = await import(
+            /* webpackChunkName: "esp32s3-firmware" */ './esp32s3-firmware.js');
+        if (!isCurrent()) return null;
+        const base = (typeof document !== 'undefined' && document.baseURI) || null;
+        const {irom, drom} = await loadEsp32S3Roms({base});
+        if (!isCurrent()) return null;
+        return {kind: ESP32S3_FLASH_BOOT_KIND, irom, drom, console: esp32s3Console};
+    }
+
+    async function attachEsp32S040 (built, wasm, createDebugTarget, createDebugSession, BoardImpl) {
+        if (destroyed) return null;
+        if (!built || !['elf', 'esp32s3-merged-flash'].includes(built.format) ||
+            !(built.image instanceof Uint8Array)) {
+            throw new Error('ESP32-4848S040 needs addressed Xtensa ELF or explicitly selected merged flash');
+        }
+        const binding = selectEsp32S040Circuit(vm?.runtime?.circuitBoard,
+            vm?.runtime?.circuitModel, esp32S040McuId);
+        // Keep this board private until its target is admitted. A teardown
+        // while ROMs or the factory are pending must leave the replacement's
+        // board and debugger callbacks untouched.
+        const attachedBoard = binding ? new BoardImpl(3.3) : null;
+        const circuitOptions = {};
+        if (binding) {
+            attachedBoard.setNetlist(binding.sourceBoard.parts, binding.sourceBoard.getNets());
+            attachedBoard.setPower(true);
+            circuitOptions.board = attachedBoard;
+            circuitOptions.mcuId = binding.mcuId;
+        }
+        const firmwareBoot = built.format === 'esp32s3-merged-flash'
+            ? await esp32S3BootOptions(() => !destroyed) : null;
+        if (destroyed) return null;
+        const {target: lwTarget, adapter: lwAdapter, refusals} = await createDebugTarget('labwired', {
+            wasm, firmware: built.image, labwiredBoardId: 'esp32-4848s040', ...circuitOptions,
+            ...(firmwareBoot ? {firmwareBoot} : {})
+        });
+        let released = false;
+        const release = () => {
+            if (released) return;
+            released = true;
+            try {
+                if (typeof lwTarget.destroy === 'function') lwTarget.destroy();
+            } finally {
+                // target.destroy releases pads/listeners, not the WASM machine.
+                // Reset replaces adapter.sim, so free its current instance.
+                if (typeof lwAdapter?.sim?.free === 'function') lwAdapter.sim.free();
+            }
+        };
+        if (destroyed) {
+            release();
+            return null;
+        }
+        releaseEsp32S040Target = release;
+        board = attachedBoard;
+        // Use the supplier's confirmed owner, never every matching circuit part.
+        runner.esp32S040PartId = lwAdapter.labwiredBoard.mcuId;
+        if (board && vm?.runtime) vm.runtime.bwRunBoard = board;
+        if (board && typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('bw-board-ready'));
+        // A board-ready listener can synchronously tear the runner down too;
+        // the target has not yet been transferred to finishLabwiredAttach.
+        if (destroyed) {
+            release();
+            return null;
+        }
+        engineNotes = [
+            'ESP32-4848S040 functional software model: firmware drives the RGB display and GT911 touch. ' +
+            (binding ? `Circuit owner: ${binding.mcuId}; only its external H1 GPIOs are connected.` :
+                'No S040 circuit part is attached; the screen is available in Widgets.'),
+            'Physical board timing, arbitrary Arduino/LVGL compatibility, radio and hardware upload are not qualified.',
+            ...(refusals || []).map(refusal => `${refusal.subject}: ${refusal.reason}`)
+        ];
+        return finishLabwiredAttach(lwTarget, lwAdapter, built.image.length, [], createDebugSession, true);
     }
 
     async function attachSamdSoftwareProfile (built, wasm, createDebugTarget, createDebugSession) {
@@ -3806,6 +3949,18 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
                 bytes: bytes.length, f_cpu: null, format: 'bin' };
         }
         if (kind === 'labwired') {
+            // Only this explicit selector admits a flash-at-zero .bin. The
+            // upstream validator reads chip identity and partition placement;
+            // ordinary catalog chips still require addressed ELF/UF2 images.
+            if (labwiredChip === 'firmware:esp32s3-merged-flash' ||
+                labwiredChip === 'firmware:esp32-4848s040-merged-flash') {
+                const {validateEsp32S3MergedFlash, ESP32S3_FLASH_BOOT_KIND} = await import(
+                    /* webpackChunkName: "labwired-firmware-boot" */ 'bw-board/labwired-firmware-boot.js');
+                const bytes = Uint8Array.from(fw.bytes || []);
+                validateEsp32S3MergedFlash(bytes);
+                return {hex: null, image: bytes, symbols: null, c: null,
+                    bytes: bytes.length, f_cpu: null, format: ESP32S3_FLASH_BOOT_KIND};
+            }
             // A chip or board picked in the Debug panel: the user's own image on a
             // catalog chip, no circuit (attachLabwiredFirmwareOnly).
             if (labwiredChip) {
@@ -3820,6 +3975,9 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
                 // address, so bw-board converts it without guessing an origin.
                 const isUf2 = bytes.length >= 8 && bytes[0] === 0x55 && bytes[1] === 0x46 &&
                     bytes[2] === 0x32 && bytes[3] === 0x0a;
+                if (isEsp32S040Target(labwiredChip) && !isElf) {
+                    throw new Error('ESP32-4848S040: load an addressed Xtensa .elf, or choose the S040 merged-flash target for a merged .bin; Cortex-M UF2 is not supported');
+                }
                 // A .hex is taken for an S110 board (micro:bit V1 / Calliope): bw-board
                 // keeps only its application window and the engine emulates the
                 // SoftDevice. For any other chip a .hex is refused as before.
@@ -3911,6 +4069,16 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
                     imageProvenance = null;
                     const device = String(projectStc(null)?.device || '').toLowerCase();
                     const selectedKind = selectDebugTargetKind(device, targetKind);
+                    // This selector consumes an existing merged flash image.
+                    // Refuse before build() so an empty picker cannot compile
+                    // or send an unrelated blocks program to the compiler.
+                    if (selectedKind === 'labwired' && (labwiredChip === 'firmware:esp32s3-merged-flash' ||
+                        isEsp32S040Target(labwiredChip)) &&
+                        !userFirmware) {
+                        throw new Error(isEsp32S040Target(labwiredChip)
+                            ? 'ESP32-4848S040: load firmware before starting; blocks compilation is not supported'
+                            : 'ESP32-S3: load a merged .bin firmware file before starting ROM boot');
+                    }
                     // Z80/6502 interactive interpreters: no compile step
                     // riscv32 never compiles the project: its program is the
                     // Code tab's assembled image, a shipped RTOS image, or a
@@ -3938,6 +4106,15 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
                 }
                 session.start();
                 boardBaseNs = boardTimeBase(board, target);
+                if (destroyed) return {accepted: false, code: 'destroyed'};
+                // Stop returns the board to the designer, but a restart reuses
+                // this session. Restore its publication for Widgets as well as
+                // the designer's direct runner.board() binding.
+                if (board && vm?.runtime && vm.runtime.bwRunBoard !== board) {
+                    vm.runtime.bwRunBoard = board;
+                    if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('bw-board-ready'));
+                }
+                if (destroyed) return {accepted: false, code: 'destroyed'};
                 setStatus('running');
                 schedule();
             } catch (e) {
@@ -5201,10 +5378,17 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             if (unsubscribeDebugInputs) { unsubscribeDebugInputs(); unsubscribeDebugInputs = null; }
             unsubscribeRecordingEvents();
             clearGlow();
-            if (session) session.destroy();
+            const cleanupErrors = [];
+            try { if (session) session.destroy(); }
+            catch (error) { cleanupErrors.push(error); }
             // Machine-bench targets carry no destroy (nothing to free — the
             // machine is plain JS); the 8051 target's tears down WASM state.
-            if (target && typeof target.destroy === 'function') target.destroy();
+            const releaseS040 = releaseEsp32S040Target;
+            releaseEsp32S040Target = null;
+            try {
+                if (releaseS040) releaseS040();
+                else if (target && typeof target.destroy === 'function') target.destroy();
+            } catch (error) { cleanupErrors.push(error); }
             // The run board dies with the runner too, as in stop(): a destroyed
             // runner's board left published was still what Widgets resolved.
             if (vm && vm.runtime && board && vm.runtime.bwRunBoard === board) {
@@ -5212,6 +5396,8 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
                 if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('bw-board-ready'));
             }
             session = target = board = symbols = null;
+            delete runner.esp32S040PartId;
+            delete runner.video;
             runToTarget = runToController = null;
             for (const branch of forkRecordingStore.summaries()) {
                 const payload = forkRecordingStore.recordingFor(branch.branchId).recording;
@@ -5221,6 +5407,8 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             }
             debugFoundation.clear();
             resetEventBreakpointRuntime();
+            if (cleanupErrors.length === 1) throw cleanupErrors[0];
+            if (cleanupErrors.length > 1) throw new AggregateError(cleanupErrors, 'Debugger cleanup failed');
         }
     };
 

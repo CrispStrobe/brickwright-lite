@@ -230,7 +230,14 @@ try {
             const word = panel && [...panel.querySelectorAll('strong')].find(n => n.parentElement.style.alignItems === 'baseline');
             return word ? word.parentElement.innerText.replace(/\s+/g, ' ') : '';
         });
-        const trail = `${seen.join('  ·  ')}${seen.includes('error') ? ` — ${await phaseLine()}` : ''}`.slice(0, 600);
+        const hiddenState = seen.length ? null : await page.evaluate(() => ({
+            dock: localStorage.getItem('bw-debug-dock'),
+            panels: [...document.querySelectorAll('[data-debug-panel]')].map(node => ({
+                phase: node.getAttribute('data-debug-phase'), visible: node.offsetParent !== null
+            })),
+            errorCount: document.querySelectorAll('[data-debug-panel][data-debug-phase="error"]').length,
+        }));
+        const trail = `${seen.join('  ·  ')}${seen.includes('error') ? ` — ${await phaseLine()}` : ''}${hiddenState ? ` — ${JSON.stringify(hiddenState)}` : ''}`.slice(0, 600);
         check('▶ Run on the emulated micro:bit V2 reaches a running LabWired session', seen.includes('running'), trail);
         check('and never the error phase', seen.length > 0 && !seen.includes('error'), trail);
         const body = await page.evaluate(() => document.body.innerText);
