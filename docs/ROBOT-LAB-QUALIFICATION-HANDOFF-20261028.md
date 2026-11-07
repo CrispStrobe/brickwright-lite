@@ -171,6 +171,15 @@ breaking the law, with a justification in the code comment, or fix the
 harness lookup in a separately reviewed change. Do not swap parts just to
 get green.
 
+Diagnosis (2026-11-07): the removal is not the cause. Loop Relay's hub part is
+`spike_hub`, and the shared disconnection test looked up a body containing a part
+named `hub`, which no Loop Relay body has, with or without `chain_input16` (the
+compiled hub body is unchanged by the removal). Helixgate, Parity Dial and Counter
+Slide use `spike_hub` too. Fix on `lane/robot-looprelay-20261107`: the test takes
+the compiler's single registered hub part (`mechanism.hubs[0].id`), as the
+nine-intake judge already does; all 31 registered contracts resolve to `hub`, so
+their runs are unchanged. The removal of `chain_input16` stays as reviewed.
+
 ### P5. Remove the 50-piece minimum from qualification (operator decision, 2026-11-07)
 
 Decision: the >50-piece minimum is dropped from qualification altogether.
