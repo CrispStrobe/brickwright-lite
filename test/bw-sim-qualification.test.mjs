@@ -6,6 +6,7 @@ import {HUBLESS_DISCONNECTION_LOSSES} from '../scripts/lib/sim-lab-hubless-judge
 import {toggleLeverLawErrorDeg} from '../scripts/lib/sim-lab-toggle-thirdline-judge.mjs';
 import {batch3DisconnectionLoss} from '../scripts/lib/sim-lab-batch3-judges.mjs';
 import {batch2DisconnectionLoss} from '../scripts/lib/sim-lab-batch2-judges.mjs';
+import {afterturnDisconnectionLoss,judgeAfterturn,judgeAfterturnControl} from '../scripts/lib/sim-lab-afterturn-judge.mjs';
 import {batchCDisconnectionLoss} from '../scripts/lib/sim-lab-batchC-judges.mjs';
 import {batchADisconnectionLoss} from '../scripts/lib/sim-lab-batchA-judges.mjs';
 import {batchBDisconnectionLoss} from '../scripts/lib/sim-lab-batchB-judges.mjs';
@@ -64,6 +65,12 @@ for(const c of qualificationContracts(selected).filter(c=>!c.nativeSuite)){
   if(process.env.BW_MODEL_QUALIFY_EVIDENCE_DIR){const dir=process.env.BW_MODEL_QUALIFY_EVIDENCE_DIR;mkdirSync(dir,{recursive:true});writeFileSync(dir+'/'+c.id+'-cold-comparison.json',JSON.stringify({main,comparison})+'\n');}
   t.diagnostic(JSON.stringify({id:c.id,coldMs:2500,frameMs:main.provenance.frameMs,comparison:'PASS'}));
  });
+ // Afterturn's physical control: the supplied fixed-mass model under the same program and judge keeps no net cycle,
+ // and the moving-mass judgement refuses it.
+ if(c.id==='afterturn')test('afterturn: fixed-mass control keeps the constant ratio and no net cycle',async t=>{
+  const r=await run({...c,id:'afterturn'},read(lab+'models/afterturn-fixed-masses.ldr'),false,'fixed-masses-control'),result=judgeAfterturnControl(r);
+  assert.throws(()=>judgeAfterturn(r));t.diagnostic(JSON.stringify({id:'afterturn-fixed-masses',cycle:result.cycle,inverse:result.inverse}));
+ });
  test(c.id+': physical disconnection destroys the intended output while the real input still completes',async t=>{
   const r=await run(c,disconnectedSource(source,c.disconnect),false,'disconnected'),o=observeAddon(r,c.observeBase??'hub'),input=c.motorless?null:r.mechanism.joints.find(j=>j.motor?.port===c.ports[0]),travel=input?Math.max(...r.track.map(f=>Math.abs(f.joints[input.id].angle)))*180/Math.PI:0;
   assert.ok(r.finishedAt>0);if(!c.motorless)assert.ok(travel>(c.disconnectInputDeg??(c.id==='sine-shuttle'?1070:1430)),'input genuinely still turns');
@@ -82,6 +89,8 @@ for(const c of qualificationContracts(selected).filter(c=>!c.nativeSuite)){
   else if(c.id==='toggle-lever'){motion=toggleLeverLawErrorDeg(r);assert.ok(motion>5,'without the crank pin the lever leaves the toggle closure law');}
   else if(c.id==='thirdline'){const un=a=>{let p=a[0],s=p;return a.map(v=>{s+=Math.atan2(Math.sin(v-p),Math.cos(v-p));p=v;return s;});},din=un(r.track.map(f=>o.angle(f,'input_arm',[0,1,0],[1,0,0]))),dru=un(r.track.map(f=>o.angle(f,c.frozenOutput,[0,1,0],[1,0,0])));motion=Math.max(...r.track.map((f,i)=>Math.abs((dru[i]-dru[0])-(din[i]-din[0])/3)))*180/Math.PI;assert.ok(motion>.5,'without the marked joint the ruler leaves the one-third law');}
   // Hubless and motorless models: the judge module measures each law's own loss (sim-lab-hubless-judges.mjs).
+  // Afterturn: without the rods every wheel stroke leaves the reviewed model's predicted Iw/J(B) (sim-lab-afterturn-judge.mjs).
+  else if(c.id==='afterturn'){const loss=afterturnDisconnectionLoss(r);motion=loss.value;assert.ok(loss.lost,'disconnection loses the law: '+JSON.stringify(loss));}
   else if(isBatchEPromotion(c.id)){const loss=batchEDisconnectionLoss(c.id,r);motion=loss.value;assert.ok(loss.lost,'disconnection loses the measured physical law: '+JSON.stringify(loss));}
   else if(c.disconnectLaw&&Object.hasOwn(HUBLESS_DISCONNECTION_LOSSES,c.id)){const loss=HUBLESS_DISCONNECTION_LOSSES[c.id](r);motion=loss.value;assert.ok(loss.lost,'disconnection loses the law: '+JSON.stringify(loss));}
   // Batches C and D: the judge module measures each law's own loss (sim-lab-batchC-judges.mjs).
