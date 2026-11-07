@@ -9,8 +9,8 @@ The full task list with exact steps is section 00 of
 - P1 finish PR #1641 (Afterturn judge and promotion, Poise lesson): checks, merge.
 - P2 finish PR #1639 (nine-intake judge registration, no promotions): ready, `ci:full`, merge.
 - P3 geometry repairs for Toggle Press, Footfall, Phasekeeper, Vector Sum, Point Weaver, then promote.
-- P4 Loop Relay disconnection run loses the hub observation base.
-- P5 decided (2026-11-07): drop the >50-piece bound from the qualification validator, then qualify Helixgate, Parity Dial, Counter Slide.
+- P4 (taken 2026-11-07, lanes/2026-11-07-robot-piece-minimum.md) Loop Relay disconnection run loses the hub observation base.
+- P5 (taken 2026-11-07, lanes/2026-11-07-robot-piece-minimum.md) decided (2026-11-07): drop the >50-piece bound from the qualification validator, then qualify Helixgate, Parity Dial, Counter Slide.
 - P6 RimRun, Evenhand and Paired Door Sync.
 
 Rules: iterate without `ci:full`, add it once on the final head; merge only
