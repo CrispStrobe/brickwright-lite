@@ -25,6 +25,10 @@ const selected=process.env.BW_MODEL_QUALIFY_MODELS?.split(',');
 test('qualification refuses unknown principles, missing models and incomplete disconnections',()=>{
  assert.throws(()=>qualificationContracts(['invented-pass']));assert.throws(()=>qualificationContracts([]));assert.throws(()=>disconnectedSource('0 model\n',['missing']));
 });
+// The observation base is the SPIKE hub part the compiler registered (mechanism.hubs[0].id is that part's
+// own !BW ID: 'hub' in most models, 'spike_hub' in Helixgate, Loop Relay, Parity Dial and Counter Slide),
+// the same lookup the nine-intake judge uses. A hard-coded 'hub' found no body for those four (handoff P4).
+const hubPartOf=r=>{const hubs=r.mechanism.hubs||[];assert.equal(hubs.length,1,'exactly one registered hub names the observation base');return hubs[0].id;};
 const run=async(c,modelText,autoPorts,label=autoPorts===false?'strict':'ordinary')=>{
  const errors=[];let hooked=false;const r=isBatchEPromotion(c.id)?await runBatchEPromotion(c,modelText,autoPorts):await runRobotLabProgram(read(lab+'programs/'+c.id+'.bw'),{...c,modelText,autoPorts,observeFrame:({session,vm,hub})=>{
   if(!hooked){vm.runtime.on('ERROR',e=>errors.push(String(e)));vm.runtime.on('BLOCKS_ERROR',e=>errors.push(String(e)));hooked=true;}
@@ -73,7 +77,7 @@ for(const c of qualificationContracts(selected).filter(c=>!c.nativeSuite)){
   assert.throws(()=>judgeAfterturn(r));t.diagnostic(JSON.stringify({id:'afterturn-fixed-masses',cycle:result.cycle,inverse:result.inverse}));
  });
  test(c.id+': physical disconnection destroys the intended output while the real input still completes',async t=>{
-  const r=await run(c,disconnectedSource(source,c.disconnect),false,'disconnected'),o=observeAddon(r,c.observeBase??'hub'),input=c.motorless?null:r.mechanism.joints.find(j=>j.motor?.port===c.ports[0]),travel=input?Math.max(...r.track.map(f=>Math.abs(f.joints[input.id].angle)))*180/Math.PI:0;
+  const r=await run(c,disconnectedSource(source,c.disconnect),false,'disconnected'),o=observeAddon(r,c.observeBase??hubPartOf(r)),input=c.motorless?null:r.mechanism.joints.find(j=>j.motor?.port===c.ports[0]),travel=input?Math.max(...r.track.map(f=>Math.abs(f.joints[input.id].angle)))*180/Math.PI:0;
   assert.ok(r.finishedAt>0);if(!c.motorless)assert.ok(travel>(c.disconnectInputDeg??(c.id==='sine-shuttle'?1070:1430)),'input genuinely still turns');
   let motion;
   if(c.id==='sine-shuttle'){
