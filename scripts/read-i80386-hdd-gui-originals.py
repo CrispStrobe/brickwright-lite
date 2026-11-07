@@ -5001,22 +5001,27 @@ def actual_v9_phase_roles():
     selected|={'gui-finite-inventory-v10/'+name for name in ('runtime-template.json','event.original.json','guard-admission.json','inventory.json','bootstrap.stdout','bootstrap.stderr')}
     for family,count in (('guard-originals',len(SOURCE)+4),('inventory-git-originals',len(SOURCE)+2)):
         selected|={f'gui-finite-inventory-v10/{family}/git-{i}.{suffix}'for i in range(count)for suffix in ('stdout','stderr','process.json')}
-    selected|={'gui-finite-inventory-v10/guard-originals/'+name for name in ('inventory.json','result.json')}
+    # The V10 guard captures its own template/event originals before any Git
+    # call (producer finite_v10 guard), so both belong to the exact roster.
+    selected|={'gui-finite-inventory-v10/guard-originals/'+name for name in ('inventory.json','result.json','template.original.json','event.original.json')}
     return frozenset(selected)
+
+
+ACTUAL_V9_PHASE_DIRECTORIES = frozenset(('gui-actual-v9','gui-finite-inventory-v10','gui-finite-inventory-v10/guard-originals','gui-finite-inventory-v10/inventory-git-originals','gui-actual-v9/guard-originals'))
 
 
 def phase_archive_v9(raw):
     need(type(raw) is bytes and 0<len(raw)<=ARCHIVE_CAP,'bounded early immutable phase ZIP')
     files={};total=0;selected=[];seen=set()
     with zipfile.ZipFile(io.BytesIO(raw)) as archive:
-        members=archive.infolist();need(1<=len(members)<=6*len(SOURCE)+40 and sum(not item.is_dir() for item in members)<=6*len(SOURCE)+35,'derived closed two-stage phase original census plus five empty directories')
+        members=archive.infolist();roster=len(actual_v9_phase_roles());need(1<=len(members)<=roster+len(ACTUAL_V9_PHASE_DIRECTORIES) and sum(not item.is_dir() for item in members)<=roster,'phase census bounded by the exact derived role roster plus five empty directories')
         for item in members:
             relative(item.filename.rstrip('/'));need(item.orig_filename==item.filename and '\x00' not in item.filename,'untruncated phase ZIP name')
             need(item.filename not in seen,'unique phase ZIP path');seen.add(item.filename)
             mode=stat.S_IFMT(item.external_attr>>16)
             need(mode in ((0,stat.S_IFDIR) if item.is_dir() else (0,stat.S_IFREG)),'ordinary phase ZIP file/directory types')
             if item.is_dir():
-                need(item.file_size==0 and item.filename.rstrip('/') in {'gui-actual-v9','gui-finite-inventory-v10','gui-finite-inventory-v10/guard-originals','gui-finite-inventory-v10/inventory-git-originals','gui-actual-v9/guard-originals'},'closed empty phase directories');continue
+                need(item.file_size==0 and item.filename.rstrip('/') in ACTUAL_V9_PHASE_DIRECTORIES,'closed empty phase directories');continue
             need(item.filename not in files and item.compress_type in (zipfile.ZIP_STORED,zipfile.ZIP_DEFLATED) and not item.flag_bits&1 and not stat.S_ISLNK(item.external_attr>>16),'unique ordinary unencrypted phase original')
             need(0<=item.file_size<=FILE_CAP,'phase per-file cap');total+=item.file_size;need(total<=384<<20,'phase aggregate original cap')
             if item.filename.startswith('gui-actual-v9/'):
@@ -5046,8 +5051,9 @@ def verify_phase_git_originals_v9(files,inventory,guard,source):
             manifest=decode(logical.get('inventory.json',b''));fields(manifest,'schema files')
             need(manifest['schema']=='bw.gui-hdd.originals.v1' and type(manifest['files']) is dict and set(manifest['files'])==set(logical)-{'inventory.json'},'closed raw guard original inventory')
             for name,row in manifest['files'].items():need(row=={'byteLength':len(logical[name]),'sha256':sha(logical[name])},'guard manifest each raw original custody')
-        required={f'git-{i}.{suffix}'for i in range(len(args))for suffix in ('stdout','stderr','process.json')}|({'inventory.json','result.json'}if guard_stage else set())
+        required={f'git-{i}.{suffix}'for i in range(len(args))for suffix in ('stdout','stderr','process.json')}|({'inventory.json','result.json','template.original.json','event.original.json'}if guard_stage else set())
         need(set(logical)==required,'complete exact early raw Git command roster')
+        if guard_stage:need(logical['template.original.json']==files['gui-finite-inventory-v10/runtime-template.json'] and logical['event.original.json']==files['gui-finite-inventory-v10/event.original.json'],'guard template/event originals equal the F10 phase originals')
         for i,argv in enumerate(args):
             role='git-'+str(i);process_original(logical,role,prefix+argv,15);raw=logical[role+'.stdout']
             if i<2:need(raw==(source['head' if i==0 else 'tree']+'\n').encode(),'raw phase Git exact head/tree')

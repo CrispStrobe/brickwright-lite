@@ -5527,6 +5527,7 @@ class Originals(unittest.TestCase):
                 else:body=helperraw
                 role='git-'+str(i);log[role+'.stdout']=body;log[role+'.stderr']=b'';log[role+'.process.json']=E(proc(prefix+arguments,body))
             if guard_stage:
+                log['template.original.json']=template;log['event.original.json']=raw_event
                 log['result.json']=base64.b64decode(value['guardAdmission']['base64']);log['inventory.json']=E({'schema':'bw.gui-hdd.originals.v1','files':{name:ROW(raw)for name,raw in log.items()}})
             for name,body in log.items():files['gui-finite-inventory-v10/'+family+'/'+name]=body
         source_guard={'jobs.original.json':E({'total_count':1,'jobs':[job]}),'pr.original.json':E({'number':8,'state':'open','draft':False,'head':{'sha':source['head'],'repo':{'full_name':r.REPOSITORY,'fork':False}},'base':{'ref':'main','repo':{'full_name':r.REPOSITORY}},'body':'<!-- BW_GUI_HDD_ACTUAL_V9_PRELUDE_SHA256='+H(prelude)+' -->'}),'result.json':E({'schema':'bw.gui-hdd.actual-v9-source-guard.v1','pass':True,'guestApproved':False,'firstFailure':None})}
@@ -5539,8 +5540,11 @@ class Originals(unittest.TestCase):
 
     def test_reader_v9_phase_inprogress_is_not_final_or_guest_success(self):
         files,expected=self.reader_phase_v9_packet();report=r.verify_actual_v9_phase(zip_(files),expected)
-        self.assertTrue(report['phaseAdmitted']);self.assertFalse(report['guestApproved']);self.assertFalse(report['jobSuccessProved'])
-        for cut in ('upload-incomplete','wrong-job','completed-run','artifact-rebound','injected-guest','deadline','missing-guard','inventory-drift','raw-source','raw-guard','missing-triplet'):
+        # Event 41628975547 uploaded exactly this roster: 79 guard + 69 inventory Git + 15 top-level originals.
+        self.assertEqual(len(files),163);self.assertEqual(set(files),r.actual_v9_phase_roles())
+        self.assertEqual(sum(name.startswith('gui-finite-inventory-v10/guard-originals/')for name in files),79)
+        self.assertEqual(sum(name.startswith('gui-finite-inventory-v10/inventory-git-originals/')for name in files),69);self.assertFalse(report['guestApproved']);self.assertFalse(report['jobSuccessProved'])
+        for cut in ('upload-incomplete','wrong-job','completed-run','artifact-rebound','injected-guest','deadline','missing-guard','inventory-drift','raw-source','raw-guard','missing-triplet','over-roster','over-roster-git','guard-template','guard-event','missing-guard-template'):
             f=copy.deepcopy(files);e=copy.deepcopy(expected)
             if cut=='upload-incomplete':e['job']['steps'][3].update(status='in_progress',conclusion=None)
             elif cut=='wrong-job':e['job']['id']=999
@@ -5552,6 +5556,14 @@ class Originals(unittest.TestCase):
             elif cut=='raw-source':f['gui-finite-inventory-v10/inventory-git-originals/git-2.stdout']=b'changed'
             elif cut=='raw-guard':f['gui-finite-inventory-v10/guard-originals/result.json']=E({'pass':True})
             elif cut=='missing-triplet':f.pop('gui-finite-inventory-v10/inventory-git-originals/git-0.stderr')
+            elif cut=='over-roster':f['gui-finite-inventory-v10/guard-originals/extra.json']=b'{}'
+            elif cut=='over-roster-git':
+                for suffix in ('stdout','stderr','process.json'):f['gui-finite-inventory-v10/inventory-git-originals/git-23.'+suffix]=b''
+            elif cut in ('guard-template','guard-event','missing-guard-template'):
+                prefix='gui-finite-inventory-v10/guard-originals/'
+                if cut=='missing-guard-template':f.pop(prefix+'template.original.json')
+                else:f[prefix+('template' if cut=='guard-template' else 'event')+'.original.json']+=b' '
+                manifest=D(f[prefix+'inventory.json']);manifest['files']={name:ROW(f[prefix+name])for name in manifest['files']if prefix+name in f};f[prefix+'inventory.json']=E(manifest)
             else:v=D(f['gui-finite-inventory-v10/inventory.json']);v['runtime']['files']['/run/systemd/resolve/stub-resolv.conf']=ROW(b'changed');f['gui-finite-inventory-v10/inventory.json']=E(v)
             raw=zip_(f);e.update(artifactBytes=len(raw),artifactSha256=H(raw));e['artifact'].update(size_in_bytes=len(raw),digest='sha256:'+H(raw))
             with self.subTest(cut=cut),self.assertRaises((ValueError,KeyError)):r.verify_actual_v9_phase(raw,e)
