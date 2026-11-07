@@ -375,7 +375,7 @@ test('interval sprite creation and named image arrays execute through actual aut
 });
 
 
-test('exported stock stop-other and stop-all retain actual native lifecycle behavior', {todo:"procedure constraint producer not yet proven \u2014 see docs/ARCADE-888-OPEN-FAILURES.md",skip, timeout: 300000}, async () => {
+test('exported stock stop-other and stop-all retain actual native lifecycle behavior', {skip, timeout: 300000}, async () => {
     const src = `DEVICE ARCADE
 SPRITE Game:
 WHEN flag clicked:
@@ -458,4 +458,44 @@ test('only stop-carrying parallel handlers take a run token on second export', {
     const bodies = parallelBodies(stopped.second.files['main.ts']);
     assert.equal(bodies.length, 3, 'start script plus two handlers');
     for (const body of bodies) assert.match(body, /^    const _t = _tok\(\)\n/);
+});
+
+// The second export writes the sprite prologue inside the start script as
+// `GameSprite = null` / `GameSprite = sprites.create(...)` after a root
+// `let GameSprite: Sprite`. The lift accepts exactly that recipe; every near
+// miss below keeps the run-token helpers as user code.
+test('stop machinery lifts from the exporter null prologue and only from that exact form', {timeout: 300000}, async () => {
+    const {second} = await secondExportOf(STOP_OTHER_ONLY);
+    const ts = second.files['main.ts'];
+    const pair = /( {4})GameSprite = null\n {4}(GameSprite = sprites\.create\(img`[^`]*`, SpriteKind\.Player\))\n( {4}GameSprite\.setPosition\([^\n]*\))\n/;
+    assert.match(ts, /^let GameSprite: Sprite$/m);
+    assert.match(ts, pair);
+    const lifted = importProjectFiles(second.files, {target: 'arcade', name: 'rt'});
+    assert.deepEqual(lifted.unsupported, []);
+    assert.doesNotMatch(lifted.code, /_tok|_dead|_stopAll|_stopMark|_som_|_sok_/, lifted.code);
+    assert.match(lifted.code, /^\s*stop all$/m);
+    assert.match(lifted.code, /^\s*stop other scripts in sprite$/m);
+    const nearMisses = {
+        'statement between null and create': s => s.replace(pair, (m, i, c, p) => `${i}GameSprite = null\n${i}info.setScore(1)\n${i}${c}\n${p}\n`),
+        'create without the null reset': s => s.replace(pair, (m, i, c, p) => `${i}${c}\n${p}\n`),
+        'reset to undefined instead of null': s => s.replace(pair, (m, i, c, p) => `${i}GameSprite = undefined\n${i}${c}\n${p}\n`),
+        'initialized root declaration': s => s.replace(/^let GameSprite: Sprite$/m, 'let GameSprite: Sprite = null'),
+        'root declaration of another type': s => s.replace(/^let GameSprite: Sprite$/m, 'let GameSprite: any'),
+        'pair in a nested block': s => s.replace(pair, (m, i, c, p) => `${i}if (Game_n == 0) {\n${i}GameSprite = null\n${i}${c}\n${i}}\n${p}\n`),
+        'unrelated assignment between null and create': s => s.replace(pair, (m, i, c, p) => `${i}GameSprite = null\n${i}Game_m = (0 + 0)\n${i}${c}\n${p}\n`),
+        'position reads a foreign value': s => s.replace(pair, (m, i, c) => `${i}GameSprite = null\n${i}${c}\n${i}GameSprite.setPosition(info.life(), 0)\n`),
+        'pair in a root update handler': s => s.replace(pair, '') + `game.onUpdate(function () {\n${ts.match(pair)[0]}})\n`,
+        'position reads the stop storage': s => s.replace(pair, (m, i, c) => `${i}GameSprite = null\n${i}${c}\n${i}GameSprite.setPosition(_tokens, 0)\n`),
+        'second creation outside the recipe': s => s.replace(pair, m => `${m}    GameSprite = sprites.create(img\`\n    5\n\`, SpriteKind.Enemy)\n`),
+        'receiver is not the declared prologue sprite': s => s.replace(/^let GameSprite: Sprite$/m, 'let GameSprite: Sprite\nlet OtherSprite: Sprite')
+            .replace(pair, (m, i, c, p) => `${i}OtherSprite = null\n${i}${c}\n${p}\n`),
+        'pair inside a nested parallel handler': s => s.replace(pair, '').replace(/(control\.runInParallel\(function \(\) \{\n {4}const _t = _tok\(\)\n)([\s\S]*?control\.runInParallel\(function \(\) \{\n {4}const _t = _tok\(\)\n)/,
+            (m, a, b) => a + b + ts.match(pair)[0])
+    };
+    for (const [name, edit] of Object.entries(nearMisses)) {
+        const edited = edit(ts);
+        assert.notEqual(edited, ts, name);
+        const back = importProjectFiles({...second.files, 'main.ts': edited}, {target: 'arcade', name: 'rt'});
+        assert.match(back.code, /_tok|_stopMark|_som_/, `${name}: a near-miss prologue must not lift the stop machinery`);
+    }
 });
