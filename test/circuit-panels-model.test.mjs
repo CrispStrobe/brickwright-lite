@@ -68,6 +68,12 @@ test('the panels arrive with the designer, never on first load', () => {
     assert.match(TAB, /panelNav=\{this\.renderPanelStrip\(\)\}/);
     // The designer speaks the app's language, as the Robot Lab does.
     assert.match(TAB, /lang=\{String\(this\.props\.locale \|\| 'en'\)\.slice\(0, 2\) === 'de' \? 'de' : 'en'\}/);
+    // So do the vendor panels the host draws: the Warnings list words each finding, the
+    // parts list its names, in the app's language.
+    assert.match(PANELS, /const designerLang = locale => \(String\(locale \|\| 'en'\)\.slice\(0, 2\) === 'de' \? 'de' : 'en'\);/);
+    assert.match(PANELS, /<ui\.DrcPanel warnings=\{view\.warnings\} lang=\{designerLang\(locale\)\} \/>/);
+    assert.match(PANELS, /<ui\.BomPanel parts=\{circuit\.parts\} lang=\{designerLang\(locale\)\} \/>/);
+    assert.match(PANELS, /<ui\.ExamplesBrowser[\s\S]*?lang=\{designerLang\(locale\)\} \/>/);
 });
 
 test('the panel header is one scrolling row, and the switch fits the designer toolbar slot', () => {

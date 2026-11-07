@@ -1,6 +1,7 @@
 const makeExt = require('../adapter');
 const createConsoleInspectValues = require('./console-inspect-values');
 const nullSpriteGetter = require('../../../util/bw-null-sprite-getter');
+const tileLookupFaults = require('../../../util/bw-tile-lookup-faults');
 const sceneClockNumber = require('./scene-clock-number');
 const frameDeltaNumber = require('./frame-delta-number');
 
@@ -91,7 +92,7 @@ module.exports = makeExt(`// Name: Arcade
       // One sealed owner and fault service per faulting primitive (null Sprite
       // getter, missing Sprite setter, missing Image operations).
       const getterPrototype=Object.getPrototypeOf(this),getterOwners=new Map(),getterFaults=new Map();
-      for(const {method,kind} of dependencies.nullSpriteGetter.kinds){
+      for(const {method,kind} of [...dependencies.nullSpriteGetter.kinds,...dependencies.tileLookupFaults.kinds]){
         const getterMethods=new Map(['getInfo',method].map(name=>[name,Object.getOwnPropertyDescriptor(getterPrototype,name)?.value]));
         const getterOwner=Object.freeze({isInstance:value=>value===this,isCurrent:()=>Object.getPrototypeOf(this)===getterPrototype &&
           Object.getOwnPropertyDescriptor(this,'_runtime')?.value===runtime && [...getterMethods].every(([name,method])=>
@@ -217,7 +218,7 @@ module.exports = makeExt(`// Name: Arcade
       this._animationUpdateOrder = [];
       this._tileLocations = new Map();
       this._nextTileLocationId = 0;
-      this._tilemapData = new Map();this._nextTilemapData = 0;this._tilemapHandlers = [];
+      this._tilemapData = new Map();this._nextTilemapData = 0;this._tilemapHandlers = [];this._sceneTilemaps = new Map();
       this._imageIds = new WeakMap();
       this._frameImages = new Map();
       this._animationAssetCache = new Map();
@@ -312,7 +313,7 @@ module.exports = makeExt(`// Name: Arcade
           this._animationUpdateOrder = [];
           this._tileLocations.clear();
           this._nextTileLocationId = 0;
-          this._tilemapData.clear();this._nextTilemapData = 0;this._tilemapHandlers = [];
+          this._tilemapData.clear();this._nextTilemapData = 0;this._tilemapHandlers = [];this._sceneTilemaps.clear();
           this._clearTilemap();
           this._imageIds = new WeakMap();
           this._frameImages.clear();
@@ -353,7 +354,7 @@ module.exports = makeExt(`// Name: Arcade
     getInfo() {
       const str = (name, def) => ({ [name]: { type: Scratch.ArgumentType.STRING, defaultValue: def || '' } });
       const n = (name, def) => ({ [name]: { type: Scratch.ArgumentType.NUMBER, defaultValue: def == null ? 0 : def } });
-      return dependencies.palette.arrange(this,dependencies.frameDeltaNumber.declaration(dependencies.sceneClockNumber.declaration(dependencies.nullSpriteGetter.declareAll(dependencies.createConsoleInspectValues.scoreInfo({
+      return dependencies.palette.arrange(this,dependencies.frameDeltaNumber.declaration(dependencies.sceneClockNumber.declaration(dependencies.tileLookupFaults.declareAll(dependencies.nullSpriteGetter.declareAll(dependencies.createConsoleInspectValues.scoreInfo({
         id: 'arcade',
         name: 'Arcade',
         color1: '#E64980',
@@ -1033,6 +1034,14 @@ module.exports = makeExt(`// Name: Arcade
             text: 'set Arcade tilemap [DATA] tile index at column [COLUMN] row [ROW] to [INDEX]', arguments: {...str('DATA', ''), ...n('COLUMN', 0), ...n('ROW', 0), ...n('INDEX', 0)} },
           { opcode: 'setTilemapWall', blockType: Scratch.BlockType.COMMAND,
             text: 'set Arcade tilemap [DATA] wall at column [COLUMN] row [ROW] to [WALL]', arguments: {...str('DATA', ''), ...n('COLUMN', 0), ...n('ROW', 0), WALL: {type: Scratch.ArgumentType.BOOLEAN}} },
+          { opcode: 'setTilemapScale', blockType: Scratch.BlockType.COMMAND,
+            text: 'set Arcade tilemap [DATA] scale to [VALUE]', arguments: {...str('DATA', ''), ...n('VALUE', 4)} },
+          { opcode: 'tilemapTileset', blockType: Scratch.BlockType.REPORTER,
+            text: 'Arcade tilemap [DATA] tileset', arguments: str('DATA', '') },
+          { opcode: 'tileLocationTilemap', blockType: Scratch.BlockType.REPORTER,
+            text: 'Arcade scene tilemap of tile [LOCATION]', arguments: str('LOCATION', '') },
+          { opcode: 'sceneTilemapProperty', blockType: Scratch.BlockType.REPORTER,
+            text: 'Arcade scene tilemap [PROPERTY] of [MAP]', arguments: {...str('MAP', ''), PROPERTY: {type: Scratch.ArgumentType.STRING, menu: 'sceneTilemapProperties', defaultValue: 'data'}} },
           {opcode:'createSpriteKind',blockType:Scratch.BlockType.REPORTER,text:'Arcade create sprite kind'},
           {opcode:'spriteKindValue',blockType:Scratch.BlockType.REPORTER,text:'Arcade sprite kind value [NAME]',arguments:str('NAME','Player')},
           {opcode:'bindSpriteKind',blockType:Scratch.BlockType.COMMAND,text:'Arcade bind sprite kind name [NAME] to [KIND]',arguments:{...str('NAME','Custom'),...n('KIND',1003)}},
@@ -1167,6 +1176,7 @@ module.exports = makeExt(`// Name: Arcade
           ,cameraProperties: {acceptReporters: true, items: [{text:'x',value:'0'}, {text:'y',value:'1'}, {text:'left',value:'2'}, {text:'right',value:'3'}, {text:'top',value:'4'}, {text:'bottom',value:'5'}]}
           ,tilemapEvents: {acceptReporters: false, items: [{text:'Loaded',value:'Loaded'}, {text:'Unloaded',value:'Unloaded'}]}
           ,tilemapProperties: {acceptReporters: false, items: [{text:'width',value:'width'}, {text:'height',value:'height'}, {text:'scale',value:'scale'}]}
+          ,sceneTilemapProperties: {acceptReporters: false, items: ['data','scale','enabled','areaWidth','areaHeight']}
           ,collisionDirections: {acceptReporters: true, items: [{text:'left',value:'0'}, {text:'top',value:'1'}, {text:'right',value:'2'}, {text:'bottom',value:'3'}]}
           ,controllerNumbers: {acceptReporters:false,items:['1','2','3','4']}
           ,playerReadModes: {acceptReporters:false,items:['safe','member']}
@@ -1188,7 +1198,7 @@ module.exports = makeExt(`// Name: Arcade
           spriteFlags: {acceptReporters: false, items: Object.keys(spriteFlags)}
           ,speechModes: {acceptReporters: false, items: ['text', 'legacy']}
         }
-      },scoreNumberOwners.get(this)),method=>nullSpriteOwners.get(this).get(method)),sceneClockOwners.get(this)),frameDeltaOwners.get(this)));
+      },scoreNumberOwners.get(this)),method=>nullSpriteOwners.get(this).get(method)),method=>nullSpriteOwners.get(this).get(method)),sceneClockOwners.get(this)),frameDeltaOwners.get(this)));
     }
 
     // An owned runtime may inject {now:()=>milliseconds} for deterministic
@@ -6108,12 +6118,19 @@ module.exports = makeExt(`// Name: Arcade
       }
       return map.views[index];
     }
-    tilesOfType(args) {
+    // PXT distinguishes an absent scene TileMap from a TileMap whose data was
+    // cleared (setTilemap(null/undefined)). TileMap.getImageType dereferences
+    // the cleared data, so every image lookup faults the calling fiber then.
+    // Under the engine the fault ends only the calling fiber, as in PXT; a direct
+    // (engine-less) call throws the same TypeError.
+    _clearedTileImageLookup(state,image,util) {
+      if (!image || state.tilemap || !state.tilemapInitialized) return false;
+      if (!util) throw new TypeError("Cannot read properties of null (reading 'fields')");
+      return true;
+    }
+    tilesOfType(args,util) {
       const state=this._state(),map=state.tilemap,image=this._image(args.IMAGE);
-      // PXT distinguishes an absent scene TileMap from a TileMap whose data
-      // was cleared. Its image lookup dereferences null data in the latter.
-      if (image && !map && state.tilemapInitialized)
-        throw new TypeError("Cannot read properties of null (reading 'fields')");
+      if (this._clearedTileImageLookup(state,image,util)) return this._primitiveFault('tilesOfType',args,util);
       const index=this._tileImageIndex(map,image),locations = [];
       if (index >= 0) for (let column = 0; column < map.columns; column++)
         for (let row = 0; row < map.rows; row++) if (map.indices[row*map.columns+column] === index)
@@ -6182,15 +6199,18 @@ module.exports = makeExt(`// Name: Arcade
     }
     placeOnRandomTile(args, util) {
       if (this._missingOperand(util,args,'ID')) return;
-      const map = this._state().tilemap, index = this._tileImageIndex(map,this._image(args.IMAGE));
+      const state = this._state(), map = state.tilemap, image = this._image(args.IMAGE);
+      // A destroyed sprite is still a truthy Sprite in PXT: only a missing one returns early.
+      if (this._clearedTileImageLookup(state,image,util)) return this._primitiveFault('placeOnRandomTile',args,util);
+      const index = this._tileImageIndex(map,image);
       if (index < 0) return;
       const chosen = this._sampleTile(map, index);
       if (chosen) return this.placeOnTile({ID:args.ID,LOCATION:this.tileLocation(chosen)},util);
     }
-    randomTileOfType(args) {
+    randomTileOfType(args,util) {
       const map = this._state().tilemap, image = this._image(args.IMAGE);
       if (!image || !this._state().tilemapInitialized) return Scratch.BWValues.encode(undefined);
-      if (!map) return Scratch.BWValues.encode(undefined);
+      if (this._clearedTileImageLookup(this._state(),image,util)) return this._primitiveFault('randomTileOfType',args,util);
       const index = this._tileImageIndex(map, image);
       if (index < 0) return Scratch.BWValues.encode(undefined);
       const chosen = this._sampleTile(map, index);
@@ -6335,6 +6355,8 @@ module.exports = makeExt(`// Name: Arcade
       }
       if (data === null) return Scratch.BWValues.encode(null);
       const id = 'arcade-tilemap:' + (++this._nextTilemapData);
+      // One identity per map: events and Location.tileMap.data report this same reference.
+      data.referenceId = id;
       this._tilemapData.set(id, data);
       return Scratch.BWValues.reference(this._runtime, 'tile', id);
     }
@@ -6348,7 +6370,59 @@ module.exports = makeExt(`// Name: Arcade
       switch (String(args.PROPERTY)) {
       case 'width': return data.columns;
       case 'height': return data.rows;
-      case 'scale': return Math.log2(data.tileSize);
+      case 'scale': return data.dataScale ?? Math.log2(data.tileSize);
+      default: return 0;
+      }
+    }
+    _tilemapLoaded(data) {
+      return this._state().tilemap === data || this._sceneStack.some(bundle => bundle?.state?.tilemap === data);
+    }
+    // PXT TileMapData.scale setter: the map's own scale (getTileImage crops to it)
+    // changes now; a scene TileMap copies the scale only when it loads the map
+    // (TileMap.setData), so a loaded map keeps its grid until it is set again.
+    setTilemapScale(args) {
+      const data = this._requireTilemapData(args.DATA), value = Number(Scratch.BWValues.decode(args.VALUE));
+      const shift = (value | 0) & 31;
+      // The renderer admits the tile sizes a tilemap literal can carry (4 to 32 pixels).
+      if (!Number.isFinite(value) || shift < 2 || shift > 5) {
+        this._runtime?.emit?.('BLOCKS_ERROR',{message:'Arcade tilemap scale must be a tile scale from 2 to 5',extensionId:'arcade',opcode:'setTilemapScale'});return;
+      }
+      data.dataScale = value;data.views = [];
+      if (!this._tilemapLoaded(data)) data.tileSize = 1 << shift;
+    }
+    // PXT TileMapData.getTileset returns the map's own tileset Array: one Array per
+    // map, holding the same Image objects the map draws (setPixel on one shows on
+    // every tile of that index; images added by setTileAt appear in it).
+    tilemapTileset(args) {
+      const data = this._requireTilemapData(args.DATA);
+      if (!data.tilesetArray) data.tilesetArray = [];
+      const array = data.tilesetArray;
+      array.length = 0;
+      for (const image of data.images) array.push(this._imageHandle(image));
+      return Scratch.BWValues.arrayReference(this._runtime, array);
+    }
+    // PXT Location.tileMap is game.currentScene().tileMap: one TileMap per scene,
+    // created by the scene's first setTilemap, and undefined before that.
+    tileLocationTilemap(args) {
+      if (!this._tileLocation(args.LOCATION)) throw new TypeError("Cannot read properties of null (reading 'tileMap')");
+      const state = this._state();
+      if (!state.tilemapInitialized) return Scratch.BWValues.encode(undefined);
+      if (!state.sceneTilemapId) {
+        state.sceneTilemapId = 'arcade-scene-tilemap:' + (++this._nextTilemapData);
+        this._sceneTilemaps.set(state.sceneTilemapId, state);
+      }
+      return Scratch.BWValues.reference(this._runtime, 'tile', state.sceneTilemapId);
+    }
+    sceneTilemapProperty(args) {
+      const id = Scratch.BWValues.referenceId(this._runtime, args.MAP, 'tile'), state = id === null ? undefined : this._sceneTilemaps.get(id);
+      if (!state) throw new TypeError('Expected type TileMap but received type ' + (Scratch.BWValues.decode(args.MAP) === null ? 'null' : 'undefined') + '. Did you forget to assign a variable?');
+      const map = state.tilemap && !state.tilemap.legacy ? state.tilemap : null, scale = Math.log2(state.tilemapScale || 16);
+      switch (String(args.PROPERTY)) {
+      case 'data': return map ? this._tilemapReference(map) : Scratch.BWValues.encode(null);
+      case 'scale': return scale;
+      case 'enabled': return !!map;
+      case 'areaWidth': return map ? map.columns << scale : 0;
+      case 'areaHeight': return map ? map.rows << scale : 0;
       default: return 0;
       }
     }
@@ -6378,6 +6452,8 @@ module.exports = makeExt(`// Name: Arcade
     _applyTilemap(data) {
       this._ensureTilemapRenderable('modern');
       if (data === null) {this._state().tilemapInitialized=true;delete this._state().tilemap;this._clearTilemap();this._changed();return;}
+      // TileMap.setData copies the map's own scale (see setTilemapScale).
+      if (data.dataScale !== undefined && !data.legacy) {data.tileSize = 1 << ((data.dataScale | 0) & 31);data.views = [];}
       this._state().tilemap = data;
       this._state().tilemapInitialized = true;
       this._state().tilemapScale = data.tileSize;
@@ -6733,7 +6809,8 @@ module.exports = makeExt(`// Name: Arcade
   frameDeltaNumber,
   bindFrameDeltaAdapterInfo: frameDeltaNumber.bindAdapterInfo,
   nullSpriteGetter,
-  bindNullSpriteAdapterInfo: nullSpriteGetter.bindAll,
+  tileLookupFaults,
+  bindNullSpriteAdapterInfo: (info, adapter, instance) => {nullSpriteGetter.bindAll(info, adapter, instance);tileLookupFaults.bindAll(info, adapter, instance);},
   createProcedureConstraints: require('./procedure-parameter-constraints'),
   procedureEntry: require('../../../util/bw-procedure-entry'),
   createManagedReturnValues: require('./managed-return-values'),

@@ -57,7 +57,7 @@ test('unit shards retain exact integrated build prerequisites and hard deploymen
     for(const key of ['build','unit','deploy'])assert.ok(jobs.has(key),key);
     const unit=jobs.get('unit'),build=jobs.get('build'),deploy=jobs.get('deploy');
     assert.match(unit,/timeout-minutes: 30/);
-    assert.match(unit,/fail-fast: false/);assert.match(unit,/shard: \[1, 2, 3, 4, 5, 6\]/);
+    assert.match(unit,/fail-fast: false/);assert.match(unit,/shard: \[1, 2, 3, 4, 5, 6, 7, 8\]/);
     const arraysAdmission='      - name: Admit the pinned Arrays source for native unit inputs\n'+
         '        id: arrays_number_value_source\n'+
         "        if: ${{ !cancelled() && steps.overlays.outcome == 'success' }}\n"+
@@ -70,7 +70,7 @@ test('unit shards retain exact integrated build prerequisites and hard deploymen
     const buildPrep=build.slice(build.indexOf('    runs-on:'),build.indexOf('      # A green suite says')).trimEnd();
     assert.equal(unitPrep,buildPrep,'unit preparation must not omit or drift from the integrated build prerequisites');
     assert.ok(unitPrep.includes('steps.stc_flasher_pin.outputs.sha'));
-    assert.match(unit,/BW_TEST_SHARD: \$\{\{ matrix.shard \}\}\/6/);
+    assert.match(unit,/BW_TEST_SHARD: \$\{\{ matrix.shard \}\}\/8/);
     assert.match(unit,/steps\.arrays_number_value_source\.outcome == 'success'/);
     assert.match(unit,/BW_ARRAY_NUMBER_VALUE_SOURCE: \$\{\{ github\.workspace \}\}\/test-results\/arrays-number-value-input\/arrays\.js/);
     assert.match(unit,/npm run test:fast:shard 2>&1 \| tee \/tmp\/unit.tap/);
@@ -80,7 +80,7 @@ test('unit shards retain exact integrated build prerequisites and hard deploymen
     assert.doesNotMatch(unit,/^    continue-on-error:|upload-pages-artifact/m);
     assert.doesNotMatch(unit.slice(unit.indexOf('      - name: Run unit tests\n')),/continue-on-error:/);
     const collector=readFileSync(path.join(root,'scripts/gen-ci-skips.mjs'),'utf8');
-    for(const name of ['unit (1/2)','unit (2/2)','unit (1/4)','unit (2/4)','unit (3/4)','unit (4/4)','unit (1/6)','unit (2/6)','unit (3/6)','unit (4/6)','unit (5/6)','unit (6/6)'])assert.ok(collector.includes(name),name);
+    for(const name of ['unit (1/2)','unit (2/2)','unit (1/4)','unit (2/4)','unit (3/4)','unit (4/4)','unit (1/6)','unit (2/6)','unit (3/6)','unit (4/6)','unit (5/6)','unit (6/6)','unit (1/8)','unit (2/8)','unit (3/8)','unit (4/8)','unit (5/8)','unit (6/8)','unit (7/8)','unit (8/8)'])assert.ok(collector.includes(name),name);
     assert.doesNotMatch(build,/- name: Run unit tests\n/);
     assert.match(deploy,/needs: \[build, unit, corpus, browser, fpga-surface, arcade-numeric-authoring, guard\]/);
     assert.doesNotMatch(deploy,/always\(\)/);

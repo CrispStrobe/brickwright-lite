@@ -1,5 +1,80 @@
 # CLI instrument regression
 
+## Current circuit/editor status — 2026-11-05
+
+Circuit/editor integration [PR1536](https://github.com/CrispStrobe/brickwright-lite/pull/1536)
+merged as `81d8f4929a17e1d0c645c07b99eda0dd818d9642`; the circuit handoff
+[PR1542](https://github.com/CrispStrobe/brickwright-lite/pull/1542) also merged.
+The original fast Build `40869114327` succeeded. The separately dispatched full
+Build `40869128682` failed: its heavy Machine Loader gate and light Circuit UX,
+Code chrome/Controller/Instruments and CPX circuit gates failed. Preserve that
+failure; the cause has not been established from retained original diagnostics.
+A later main [Build41735633603](https://github.com/CrispStrobe/brickwright-lite/actions/runs/41735633603)
+at `f17192e868049eff3487377a996fc3ffa03f76ac` succeeded: those four named
+browser gates and the FPGA surface job succeeded according to job metadata. The
+original heavy log reports a 30-second file-chooser timeout; the light log
+reports a 30-second locator timeout. The bounded diagnostic reader did not retain
+the light locator target, and job metadata alone does not establish the causes
+of the remaining failed gates. The originals were acquired once and preserved.
+This is later-head evidence, not proof of the original causes or a physical
+hardware, synthesis, calibration or broad model-accuracy qualification.
+
+Lite main `e1f3d152b912db90baf917227a3b46a111b2dac3` pins Board `c87cfa32`
+and CUI `15416c7e`; the live version endpoint earlier returned Lite `656f4da`
+on 2026-11-05. A version response does not qualify a live GUI journey or prove
+deployment of the later test-only merge. The CUI S040 Stop/restart fix
+[PR135](https://github.com/CrispStrobe/bw-circuit-ui/pull/135) merged as
+`9d7a9a260d00d3c26a77e749aec55ceddbe29a52`. All three hosted checks passed
+on continuation `3f154d684506ec53d0d4e7afc5d661638576dee3`, and post-merge
+CI also passed. The original face source and browser fixture were preserved.
+Lite S040 package adoption and the actual consumer firmware journey remain open;
+do not silently advance either package pin.
+
+Next: (1) use the already retained failed-job originals and frozen diagnostic summary;
+do not download them again or rerun the consumed study. Identify any unresolved
+cause without guessing from a later passing run; (2) coordinate with existing
+[Lite PR1622](https://github.com/CrispStrobe/brickwright-lite/pull/1622), whose
+S040 binding lane already owns supplier pins and the firmware-to-screen journey.
+Review the complete supplier ranges, then qualify one package/lock update,
+installed identity and affected actual GUI journeys. A read-only preview of
+PR1622 head `d2b083e4` against Lite `e1f3d152` found 26 content conflicts:
+package manifests/locks and pins, mirrored Circuit and notice files, adoption
+tests, live instrument contracts and historical x86 evidence. Preserve main's
+newer micro:bit and SB3 pins; regenerate derived package evidence. CUI `9d7a9a2`
+descends from both the current Lite pin and the draft's S040 source. The draft
+Board `cda9d13b` descends from Lite's current Board pin; review its complete
+range before choosing it or a newer qualified descendant. Preserve historical
+study and x86 identities separately from live supplier authorities;
+(3) choose representative project-authored analogue circuits and explicit
+voltage/current/time measurement points, declare model domains, tolerances and
+analytical or comparable SPICE references before running a bounded hosted study;
+(4) fix only demonstrated importer, solver, instrument or oracle defects in the
+owning repository, with a meaningful failing control. Report refusals and
+noncomparable cases rather than treating them as passes. Keep physical-device
+calibration, probe-loading claims, LM741 instant-settling TODO, long-capture
+current-polarity limits and the untested output-size boundary explicit.
+
+The earlier `test/circuit-passive-batch-5ms.test.mjs` compares all 5,000
+voltage points but checks meter-current magnitude only. The new
+`test/circuit-signed-current-5ms.test.mjs`, merged in
+[PR1656](https://github.com/CrispStrobe/brickwright-lite/pull/1656), checks two
+newly authored positive/negative RC cases through the installed CLI. Each checks
+5,000 voltage points, both signed resistor-terminal meter means and a single
+whole-capture work budget. The comparator rejects reversed nonzero current and
+nonfinite values. The independently authored analytic reference was checked
+against ngspice 42; worst voltage and instantaneous source-current errors were
+8.54 nV and 10.2 pA, and the 5 ms integral differed by at most 41.1 pA. The
+[hosted Build42120820267](https://github.com/CrispStrobe/brickwright-lite/actions/runs/42120820267)
+passed both installed CLI cases and the comparator control. The retained log
+records assertion outcomes, not exact observed numeric readings. This covers
+two authored cases and the pinned model, not physical calibration or general
+corpus accuracy. Do not call the older magnitude-only test signed-current
+evidence or rerun its consumed inputs.
+
+The dated material below is historical unless a later section expressly says
+otherwise. Refresh heads, current claims, CI and deployment before acting.
+
+
 ## Current handoff — 2026-10-29
 
 The remaining delivery is owned by the Circuit/editor integration maintainer.

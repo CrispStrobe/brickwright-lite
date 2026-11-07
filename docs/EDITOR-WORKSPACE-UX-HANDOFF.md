@@ -1,5 +1,12 @@
 # Editor workspace delivery handoff
 
+## Current status — 2026-11-05
+
+The integration has merged, and later browser gates passed after an earlier full
+run failed. The dated material below is historical. See the [current circuit/editor
+handoff](CIRCUIT-INSTRUMENT-REGRESSION.md#current-circuiteditor-status--2026-11-05) for exact evidence, open work and acceptance boundaries.
+
+
 Updated 2026-10-29. The supplier menu work is qualified and merged. The combined Lite editor delivery is **not merged, qualified or deployed**. The operator transferred remaining integration to the Circuit maintainer on 2026-10-29; the previous coordinator stopped writes and handed over original custody.
 
 ## Current identities

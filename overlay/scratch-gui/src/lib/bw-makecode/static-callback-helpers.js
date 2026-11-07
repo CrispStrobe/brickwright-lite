@@ -150,7 +150,9 @@ export function lowerStaticCallbackHelpers(program, {registrationSpec = () => nu
                     const params=fn.params.map(()=>fresh());
                     const wrapper={type:'FunctionExpression',params,
                         paramTypes:Object.fromEntries(fn.params.map((param,index)=>[params[index],fn.paramTypes?.[param]]).filter(([,type])=>type)),
-                        body:[{type:'ExpressionStatement',expr:{type:'Call',callee:{type:'Identifier',name},args:params.map(param=>({type:'Identifier',name:param}))}}]};
+                        body:[{type:'ExpressionStatement',expr:{type:'Call',callee:{type:'Identifier',name},args:params.map(param=>({type:'Identifier',name:param}))}}],
+                        // The procedure is the callback's identity (tiles listeners are removed by it).
+                        bwNamedCallback:name};
                     return {...node,callee:rewrite(node.callee,locals,bindings,'callee'),
                         args:node.args.map((arg,index)=>index===spec.handlerIndex?wrapper:rewrite(arg,locals,bindings))};
                 }
