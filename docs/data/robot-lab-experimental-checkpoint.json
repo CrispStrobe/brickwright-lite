@@ -4078,6 +4078,105 @@
         "decision": "STAYS_EXPERIMENTAL",
         "reason": "Control of evenhand. In the qualification harness (500 ms cold settle) the unbalanced arm droops 13.5 deg before Run and the authored datum guard faults at stage 0."
       }
+    },
+    {
+      "id": "helixgate",
+      "placements": 20,
+      "intakeRecord": "docs/data/robot-lab-nine-intakes-20261026.json",
+      "judge": "worm-reduction-v1",
+      "promotionReview": {
+        "date": "2026-11-03",
+        "decision": "STAYS_EXPERIMENTAL",
+        "reason": "The qualification contract validator requires more than 50 pieces; the intake keeps its honest count (20) and no documented exception covers promotion. Operator decision whether that rule applies."
+      }
+    },
+    {
+      "id": "looprelay",
+      "placements": 54,
+      "intakeRecord": "docs/data/robot-lab-nine-intakes-20261026.json",
+      "judge": "chain-reversal-v1",
+      "promotionReview": {
+        "date": "2026-11-03",
+        "decision": "STAYS_EXPERIMENTAL",
+        "reason": "Ordinary and strict runs pass, but the shared disconnection run fails before measuring the law: with chain_input16 removed the hub observation base is not found. No alternative removal or harness change was made."
+      }
+    },
+    {
+      "id": "paritydial",
+      "placements": 31,
+      "intakeRecord": "docs/data/robot-lab-nine-intakes-20261026.json",
+      "judge": "parity-dials-v1",
+      "promotionReview": {
+        "date": "2026-11-03",
+        "decision": "STAYS_EXPERIMENTAL",
+        "reason": "The qualification contract validator requires more than 50 pieces; the intake keeps its honest count (31) and no documented exception covers promotion. Operator decision whether that rule applies."
+      }
+    },
+    {
+      "id": "counterslide",
+      "placements": 44,
+      "intakeRecord": "docs/data/robot-lab-nine-intakes-20261026.json",
+      "judge": "opposed-racks-v1",
+      "promotionReview": {
+        "date": "2026-11-03",
+        "decision": "STAYS_EXPERIMENTAL",
+        "reason": "The qualification contract validator requires more than 50 pieces; the intake keeps its honest count (44) and no documented exception covers promotion. Operator decision whether that rule applies."
+      }
+    },
+    {
+      "id": "toggle-press",
+      "placements": 142,
+      "intakeRecord": "docs/data/robot-lab-nine-intakes-20261026.json",
+      "judge": "toggle-ram-v1",
+      "promotionReview": {
+        "date": "2026-11-03",
+        "decision": "STAYS_EXPERIMENTAL",
+        "reason": "Hosted native ordinary, strict and disconnected qualification runs PASS (PR 1639). Promotion refused by the established construction gate (test/bw-sim-models-solid.test.mjs): fixed_pivot_U penetrates upper_toggle_UK and pivot_bridge; three guide-post holes filled twice. Needs a geometry repair and requalification; the gate was not loosened."
+      }
+    },
+    {
+      "id": "footfall",
+      "placements": 120,
+      "intakeRecord": "docs/data/robot-lab-nine-intakes-20261026.json",
+      "judge": "twelve-link-leg-v1",
+      "promotionReview": {
+        "date": "2026-11-03",
+        "decision": "STAYS_EXPERIMENTAL",
+        "reason": "Hosted native ordinary, strict and disconnected qualification runs PASS (PR 1639). Promotion refused by the established construction gate (test/bw-sim-models-solid.test.mjs): base_cross_support_A hole h4 filled by two pins. Needs a geometry repair and requalification; the gate was not loosened."
+      }
+    },
+    {
+      "id": "phasekeeper",
+      "placements": 81,
+      "intakeRecord": "docs/data/robot-lab-nine-intakes-20261026.json",
+      "judge": "double-cardan-v1",
+      "promotionReview": {
+        "date": "2026-11-03",
+        "decision": "STAYS_EXPERIMENTAL",
+        "reason": "Hosted native ordinary, strict and disconnected qualification runs PASS (PR 1639). Promotion refused by the established construction gate (test/bw-sim-models-solid.test.mjs): base_rail_output holes h1 and h13 each filled by a pin and an axle. Needs a geometry repair and requalification; the gate was not loosened. Cardan evidence: removing joint_2_intermediate_yoke breaks the output phase law (about 321 degrees error over a 360 degree input) while the input completes, so the law depends on the two inferred Cardan crosses."
+      }
+    },
+    {
+      "id": "vectorsum",
+      "placements": 122,
+      "intakeRecord": "docs/data/robot-lab-nine-intakes-20261026.json",
+      "judge": "open-differential-v1",
+      "promotionReview": {
+        "date": "2026-11-03",
+        "decision": "STAYS_EXPERIMENTAL",
+        "reason": "Hosted native ordinary, strict and disconnected qualification runs PASS (PR 1639). Promotion refused by the established construction gate (test/bw-sim-models-solid.test.mjs): output_axle reaches 0.7 LDU into diff_cover_28t. Needs a geometry repair and requalification; the gate was not loosened."
+      }
+    },
+    {
+      "id": "pointweaver",
+      "placements": 128,
+      "intakeRecord": "docs/data/robot-lab-nine-intakes-20261026.json",
+      "judge": "five-bar-v1",
+      "promotionReview": {
+        "date": "2026-11-03",
+        "decision": "STAYS_EXPERIMENTAL",
+        "reason": "Hosted native ordinary, strict and disconnected qualification runs PASS (PR 1639). Promotion refused by the established construction gate (test/bw-sim-models-solid.test.mjs): eight motor-foot pins penetrate their feet (1.3 LDU), endpoint_marker_tip penetrates endpoint_marker; six holes filled twice. Needs a geometry repair and requalification; the gate was not loosened."
+      }
     }
   ],
   "appVerification": {
