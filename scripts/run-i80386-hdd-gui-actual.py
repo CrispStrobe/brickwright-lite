@@ -1359,18 +1359,18 @@ FINITE_V9_CUI_WITNESSES = {
 }
 
 FINITE_V10_CUI_WITNESSES = {
- 'node_modules/bw-circuit-ui/LANES.md':(273927, 'fe8d745415ef89bd3e32caefda4594c71f6b95d83291518db7d3103fa0f9c633'),
- 'node_modules/bw-circuit-ui/bin/bwc.mjs':(69755, '998b2389dc7bc910482c1115888be3d90c4e2c5193172e749944d25e5fe31533'),
- 'node_modules/bw-circuit-ui/docs/CLI-INSTRUMENTS.md':(55013, '7fb08214f9dc693c8339c418f0d8be8f6987beaee93f0d03c6de132ad9582eaa'),
- 'node_modules/bw-circuit-ui/package.json':(11458, 'aa2e7cdd01c31f9622339ebccf16fcd5c3728d497903b4230fbd1842fd1ddc16'),
- 'node_modules/bw-circuit-ui/scripts/verify-interaction.mjs':(158565, '650989a1238632e55634f097288ef2d81aae25311e087db39d36f87084483c3c'),
+ 'node_modules/bw-circuit-ui/LANES.md':(279301, '68483e37f34444e1356324ee8f47f25be305ff3fc3aa0b18bcdb1eda7b2cdf5c'),
+ 'node_modules/bw-circuit-ui/bin/bwc.mjs':(73062, 'e1c7c86d8e66927e30da8c8079c804f3774b8613b49b42d4118516d4e3c02d9d'),
+ 'node_modules/bw-circuit-ui/docs/CLI-INSTRUMENTS.md':(56813, '2777a5fb5f4ca06c51d484300314fe71df87a27c8e076a3d53c0ba86f5bca9b5'),
+ 'node_modules/bw-circuit-ui/package.json':(11572, '6b329242c2217727ed842ffad938bc08464efb41cea92a4f54ac72b6dd2fda85'),
+ 'node_modules/bw-circuit-ui/scripts/verify-interaction.mjs':(158564, '63b4782258f1ef832567fa68b6e5bd74d42afb547b8a3a7c48c4fa03a2c86616'),
  'node_modules/bw-circuit-ui/src/components/ScopePanel.jsx':(59219, '0fe079a01dee0879dcf7f55f46bbcaab39b4173a74da4a5a6c264744d333dd9b'),
- 'node_modules/bw-circuit-ui/src/i18n/strings.js':(25719, '60fe3dd9febaee4baf2ef82d855de6e054e68b842ee4b209854ffa58b9170230'),
+ 'node_modules/bw-circuit-ui/src/i18n/strings.js':(33321, '204a4a205eb8c63bf7c29700452d4d93ed66cdbec6dbe788f474672c2c9a2846'),
  'node_modules/bw-circuit-ui/src/importers/spice.js':(85910, '3d93812a665b443ac3a7c41197772d06a0dbfa7101670d7db0a74bdbc44c3c41'),
  'node_modules/bw-circuit-ui/src/model/instrument-report.js':(34538, 'b209720f09a5c2626b39c2271a0c3453a851019d9504a5cedfe9a7dd3c500084'),
  'node_modules/bw-circuit-ui/src/model/measurement-receipt.js':(10950, 'a37085c806a4f8c1293f8d62cc4004ccf800e18c1d11c7fedd53b32e05e9a3b8'),
  'node_modules/bw-circuit-ui/src/model/operating-point-kcl.js':(7695, '547351bd0372d6d0090deb7ee9893adad769e4367635aea9611c406861cf69a7'),
- 'node_modules/bw-circuit-ui/src/model/scope-csv.js':(3530, '6d026e6bb8c2c766ad910e92bd91c40c6ba205b021304e5610c7c1747b0d04f5'),
+ 'node_modules/bw-circuit-ui/src/model/scope-csv.js':(4276, 'e1eadc8667813ccbf35b0a8612f8dec36c8d6fa25ac6a1ff44946f12394eb5b6'),
  'node_modules/bw-circuit-ui/src/model/scope-digitizer.js':(7699, '5f7915e5445b71d7b6f8899594b10e75edcd8fa7140437c2c50b330b26cd1444'),
  'node_modules/bw-circuit-ui/test/cli-measure.test.js':(194959, '540e81409a2de8c2953e650da993ffcb33e8115b5f234d33a18f7dca314d5688'),
  'node_modules/bw-circuit-ui/test/operating-point-kcl.test.js':(11320, 'deafeb1df57ae1729f5ea77ca795b8f888f619f8ce336d7115cab717eda5c9b5'),
@@ -1517,7 +1517,88 @@ def installed_inventory_v5(root, prefix, failure, checkout_root, critical=INSTAL
     return out
 
 
-def frontend_files(archive):
+# V9 event frontend subset. Measured (2026-11-07) from the official Pages build of
+# the reviewed head by driving the same UI path as the persistence and
+# forward-debug probe scenarios (page load, Machine Manager, free386 run, local
+# run, pause, drawer/step/memory, HDD download) plus the step's own provenance
+# file. Each pattern is one exact path with only content-hash segments open and
+# must match exactly one archive member; every other member is neither read nor
+# installed nor served. The whole archive digest stays the authority.
+ACTUAL_V9_FRONTEND_ROSTER = (
+ r'brickwright\-build\.json',
+ r'chunks/1410\.[0-9a-f]{20}\.js',
+ r'chunks/1683\.[0-9a-f]{20}\.js',
+ r'chunks/2297\.[0-9a-f]{20}\.js',
+ r'chunks/2710\.[0-9a-f]{20}\.js',
+ r'chunks/322\.[0-9a-f]{20}\.js',
+ r'chunks/3474\.js',
+ r'chunks/3612\.[0-9a-f]{20}\.js',
+ r'chunks/3764\.[0-9a-f]{20}\.js',
+ r'chunks/3830\.[0-9a-f]{20}\.js',
+ r'chunks/4421\.[0-9a-f]{20}\.js',
+ r'chunks/4529\.[0-9a-f]{20}\.js',
+ r'chunks/4725\.[0-9a-f]{20}\.js',
+ r'chunks/5418\.[0-9a-f]{20}\.js',
+ r'chunks/7214\.js',
+ r'chunks/7493\.[0-9a-f]{20}\.js',
+ r'chunks/9022\.[0-9a-f]{20}\.js',
+ r'chunks/9079\.[0-9a-f]{20}\.js',
+ r'chunks/bw\-board\-i80386\.[0-9a-f]{20}\.js',
+ r'chunks/bw\-codemirror\.js',
+ r'chunks/bw\-controller\-panel\.js',
+ r'chunks/bw\-debug\-faces\.[0-9a-f]{20}\.js',
+ r'chunks/bw\-debug\-menu\.js',
+ r'chunks/bw\-debug\-panel\.js',
+ r'chunks/bw\-debug\-target\-kinds\.js',
+ r'chunks/bw\-debug\.js',
+ r'chunks/bw\-machine\-manager\.js',
+ r'chunks/bw\-project\-safety\.js',
+ r'chunks/labwired\-catalog\.[0-9a-f]{20}\.js',
+ r'chunks/labwired\-probe\.js',
+ r'chunks/pseudocode\-importer\.js',
+ r'chunks/sb\.[0-9a-f]{20}\.js',
+ r'chunks/sprite\-target\-pane\.js',
+ r'chunks/tab\-label\-fit\.js',
+ r'gui\.[0-9a-f]{8}\.js',
+ r'index\.html',
+ r'static/blocks\-media/default/dropdown\-arrow\.svg',
+ r'static/blocks\-media/default/green\-flag\.svg',
+ r'static/blocks\-media/default/repeat\.svg',
+ r'static/blocks\-media/default/rotate\-left\.svg',
+ r'static/blocks\-media/default/rotate\-right\.svg',
+ r'static/blocks\-media/default/zoom\-in\.svg',
+ r'static/blocks\-media/default/zoom\-out\.svg',
+ r'static/blocks\-media/default/zoom\-reset\.svg',
+ r'static/labwired/labwired_wasm_bg\.wasm',
+ r'static/roms/free\-386\-bochs\-bios\.rom',
+ r'static/roms/free\-386\-vgabios\-lgpl\.bin',
+)
+ACTUAL_V9_FRONTEND_COUNT = len(ACTUAL_V9_FRONTEND_ROSTER)
+# Reviewed subset was 37,838,437 bytes; the aggregate bound is the next power of
+# two MiB above it. Each member keeps the unchanged FILE_CAP.
+ACTUAL_V9_FRONTEND_AGGREGATE_CAP = 64 << 20
+
+
+def frontend_subset_v9(tar_raw):
+    """Select exactly the reviewed V9 roster from the authenticated Pages TAR."""
+    patterns=[re.compile(p) for p in ACTUAL_V9_FRONTEND_ROSTER];files={};hits=[0]*len(patterns);total=0;entries=0;seen=set()
+    with tarfile.open(fileobj=io.BytesIO(tar_raw),mode='r:') as source:
+        for member in source:
+            entries+=1;need(entries<=16384,'bounded Pages TAR census');name=member.name.removeprefix('./')
+            if member.isdir():
+                if name not in ('','.'):relative(name.rstrip('/'))
+                continue
+            relative(name);need(name not in seen,'unique Pages TAR path');seen.add(name)
+            matched=[i for i,p in enumerate(patterns) if p.fullmatch(name)]
+            if not matched:continue
+            need(len(matched)==1 and member.isfile() and 0<member.size<=FILE_CAP,'regular bounded unique V9 roster member')
+            hits[matched[0]]+=1;total+=member.size;need(total<=ACTUAL_V9_FRONTEND_AGGREGATE_CAP,'V9 roster aggregate bound')
+            files[name]=source.extractfile(member).read(FILE_CAP+1);need(len(files[name])==member.size,'exact V9 roster member bytes')
+    need(hits==[1]*len(patterns) and len(files)==ACTUAL_V9_FRONTEND_COUNT,'every V9 roster entry matches exactly one member')
+    return files
+
+
+def frontend_files(archive,roster=False):
     """Derive observations only AFTER externally pinned whole-ZIP admission.
 
     The complete original digest is authority; producer-generated member hashes
@@ -1539,7 +1620,9 @@ def frontend_files(archive):
             selected.append((name,info))
         # Admit every header before inflating any selected member.
         for name,info in selected:members[name]=source.read(info)
-    if set(members)=={'artifact.tar'}:
+    if roster:
+        need(set(members)=={'artifact.tar'},'V9 roster selects from the single Pages TAR');files=frontend_subset_v9(members['artifact.tar'])
+    elif set(members)=={'artifact.tar'}:
         files={};total=0;entries=0
         with tarfile.open(fileobj=io.BytesIO(members['artifact.tar']),mode='r:') as source:
             for member in source:
@@ -1558,9 +1641,9 @@ def frontend_files(archive):
     return members_,files_,files
 
 
-def install_members(archive,target):
+def install_members(archive,target,roster=False):
     need(not Path(target).exists(),'fresh build extraction only')
-    members,inventory_,files=frontend_files(archive);Path(target).mkdir(mode=0o700)
+    members,inventory_,files=frontend_files(archive,roster);Path(target).mkdir(mode=0o700)
     for name,raw in files.items():
         path=Path(target)/name;path.parent.mkdir(parents=True,exist_ok=True,mode=0o700)
         with path.open('xb') as output:need(output.write(raw)==len(raw),'complete authenticated build installation')
@@ -2259,7 +2342,7 @@ def execute(request_raw, expected, root, output_path, env, factory=Hosted, prefl
             output.save('frontend.original.zip', archive)
             need(len(archive) == request['build']['zipBytes'] and sha(archive) == request['build']['sha256'], 'one official frontend archive digest')
             build_root = output.root.parent/(output.root.name+'-build')
-            members,build_files=install_members(archive,build_root)
+            members,build_files=install_members(archive,build_root,request['schema']=='bw.gui-hdd.actual-request.v9')
             output.save('frontend.members.json',encode(members));output.save('build.inventory.json', encode(inventory(build_root)))
             need(inventory(build_root)==build_files,'authenticated build installation readback')
             build_manifest = decode(regular(build_root/'brickwright-build.json', JSON_CAP))
@@ -4209,9 +4292,12 @@ def actual_v9_dispatch_policy(selected,source):
 def bind_actual_v9_event(raw,prelude,expected,env):
     need(type(raw) is bytes and 0<len(raw)<=INVENTORY_FAILURE_EVENT_CAP,'bounded actual9 dispatch event')
     event=decode(raw);inputs=event.get('inputs')
-    need(inputs=={'protocol':'actual-v9','pull_request':str(prelude['pullRequest']),
-         'source_head':prelude['source']['head'],'source_ref':prelude['dispatch']['ref'],
-         'prelude_sha256':expected,'request_sha256':'','tag_name':''},'closed exact actual9 dispatch inputs')
+    selected={'protocol':'actual-v9','pull_request':str(prelude['pullRequest']),
+         'source_head':prelude['source']['head'],'source_ref':prelude['dispatch']['ref'],'prelude_sha256':expected}
+    # GitHub omits empty-string workflow_dispatch inputs from the event payload
+    # (observed for both gh -f k= and REST "" dispatches). Only the two V9-empty
+    # historical inputs may be omitted; present they must still be ''.
+    need(inputs in (selected,dict(selected,request_sha256='',tag_name='')),'closed exact actual9 dispatch inputs')
     need(event.get('ref')==prelude['dispatch']['ref'] and
          event.get('repository',{}).get('full_name')==REPOSITORY and
          event.get('sender',{}).get('login')=='CrispStrobe','owned actual9 dispatch event')

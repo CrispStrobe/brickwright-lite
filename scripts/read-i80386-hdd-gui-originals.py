@@ -200,18 +200,18 @@ FINITE_V9_CUI_WITNESSES = {
 }
 
 FINITE_V10_CUI_WITNESSES = {
- 'node_modules/bw-circuit-ui/LANES.md':(273927,'fe8d745415ef89bd3e32caefda4594c71f6b95d83291518db7d3103fa0f9c633'),
- 'node_modules/bw-circuit-ui/bin/bwc.mjs':(69755,'998b2389dc7bc910482c1115888be3d90c4e2c5193172e749944d25e5fe31533'),
- 'node_modules/bw-circuit-ui/docs/CLI-INSTRUMENTS.md':(55013,'7fb08214f9dc693c8339c418f0d8be8f6987beaee93f0d03c6de132ad9582eaa'),
- 'node_modules/bw-circuit-ui/package.json':(11458,'aa2e7cdd01c31f9622339ebccf16fcd5c3728d497903b4230fbd1842fd1ddc16'),
- 'node_modules/bw-circuit-ui/scripts/verify-interaction.mjs':(158565,'650989a1238632e55634f097288ef2d81aae25311e087db39d36f87084483c3c'),
+ 'node_modules/bw-circuit-ui/LANES.md':(279301,'68483e37f34444e1356324ee8f47f25be305ff3fc3aa0b18bcdb1eda7b2cdf5c'),
+ 'node_modules/bw-circuit-ui/bin/bwc.mjs':(73062,'e1c7c86d8e66927e30da8c8079c804f3774b8613b49b42d4118516d4e3c02d9d'),
+ 'node_modules/bw-circuit-ui/docs/CLI-INSTRUMENTS.md':(56813,'2777a5fb5f4ca06c51d484300314fe71df87a27c8e076a3d53c0ba86f5bca9b5'),
+ 'node_modules/bw-circuit-ui/package.json':(11572,'6b329242c2217727ed842ffad938bc08464efb41cea92a4f54ac72b6dd2fda85'),
+ 'node_modules/bw-circuit-ui/scripts/verify-interaction.mjs':(158564,'63b4782258f1ef832567fa68b6e5bd74d42afb547b8a3a7c48c4fa03a2c86616'),
  'node_modules/bw-circuit-ui/src/components/ScopePanel.jsx':(59219,'0fe079a01dee0879dcf7f55f46bbcaab39b4173a74da4a5a6c264744d333dd9b'),
- 'node_modules/bw-circuit-ui/src/i18n/strings.js':(25719,'60fe3dd9febaee4baf2ef82d855de6e054e68b842ee4b209854ffa58b9170230'),
+ 'node_modules/bw-circuit-ui/src/i18n/strings.js':(33321,'204a4a205eb8c63bf7c29700452d4d93ed66cdbec6dbe788f474672c2c9a2846'),
  'node_modules/bw-circuit-ui/src/importers/spice.js':(85910,'3d93812a665b443ac3a7c41197772d06a0dbfa7101670d7db0a74bdbc44c3c41'),
  'node_modules/bw-circuit-ui/src/model/instrument-report.js':(34538,'b209720f09a5c2626b39c2271a0c3453a851019d9504a5cedfe9a7dd3c500084'),
  'node_modules/bw-circuit-ui/src/model/measurement-receipt.js':(10950,'a37085c806a4f8c1293f8d62cc4004ccf800e18c1d11c7fedd53b32e05e9a3b8'),
  'node_modules/bw-circuit-ui/src/model/operating-point-kcl.js':(7695,'547351bd0372d6d0090deb7ee9893adad769e4367635aea9611c406861cf69a7'),
- 'node_modules/bw-circuit-ui/src/model/scope-csv.js':(3530,'6d026e6bb8c2c766ad910e92bd91c40c6ba205b021304e5610c7c1747b0d04f5'),
+ 'node_modules/bw-circuit-ui/src/model/scope-csv.js':(4276,'e1eadc8667813ccbf35b0a8612f8dec36c8d6fa25ac6a1ff44946f12394eb5b6'),
  'node_modules/bw-circuit-ui/src/model/scope-digitizer.js':(7699,'5f7915e5445b71d7b6f8899594b10e75edcd8fa7140437c2c50b330b26cd1444'),
  'node_modules/bw-circuit-ui/test/cli-measure.test.js':(194959,'540e81409a2de8c2953e650da993ffcb33e8115b5f234d33a18f7dca314d5688'),
  'node_modules/bw-circuit-ui/test/operating-point-kcl.test.js':(11320,'deafeb1df57ae1729f5ea77ca795b8f888f619f8ce336d7115cab717eda5c9b5'),
@@ -1251,7 +1251,9 @@ def bind_finite_v10_event(raw,head,expected,env):
     need(prelude['source']['head']==head,'F10 prelude source identity')
     event=decode(raw)
     need(event.get('repository',{}).get('full_name')==REPOSITORY and event.get('sender',{}).get('login')=='CrispStrobe' and event.get('ref')==prelude['dispatch']['ref'],'owned exact V9 dispatch event')
-    need(event.get('inputs')=={'pull_request':str(prelude['pullRequest']),'source_head':head,'request_sha256':'','tag_name':'','protocol':'actual-v9','source_ref':prelude['dispatch']['ref'],'prelude_sha256':env['BW_GUI_HDD_ACTUAL_V9_PRELUDE_SHA256']},'closed V9 prelude-only workflow inputs')
+    selected={'pull_request':str(prelude['pullRequest']),'source_head':head,'protocol':'actual-v9','source_ref':prelude['dispatch']['ref'],'prelude_sha256':env['BW_GUI_HDD_ACTUAL_V9_PRELUDE_SHA256']}
+    # GitHub omits empty-string dispatch inputs; only the two V9-empty inputs may be absent.
+    need(event.get('inputs') in (selected,dict(selected,request_sha256='',tag_name='')),'closed V9 prelude-only workflow inputs')
     need(env.get('GITHUB_REPOSITORY')==REPOSITORY and env.get('GITHUB_EVENT_NAME')=='workflow_dispatch' and env.get('GITHUB_ACTOR')=='CrispStrobe' and env.get('GITHUB_RUN_ATTEMPT')=='1' and env.get('GITHUB_JOB')=='actual-v9' and env.get('BW_EXPECTED_HEAD')==head and re.fullmatch('[1-9][0-9]{0,19}',env.get('GITHUB_RUN_ID','')),'first owned same-job V9 phase')
     need(env.get('GITHUB_WORKFLOW_SHA')==head and env.get('GITHUB_WORKFLOW_REF')==REPOSITORY+'/.github/workflows/i80386-hdd-gui-actual.yml@'+prelude['dispatch']['ref'],'exact source branch executing workflow')
     return template
@@ -1900,7 +1902,88 @@ def role_policy(names):
     need(all(allowed_role(name) for name in names),'fixed finite original role families')
 
 
-def read_frontend(raw):
+# V9 event frontend subset. Measured (2026-11-07) from the official Pages build of
+# the reviewed head by driving the same UI path as the persistence and
+# forward-debug probe scenarios (page load, Machine Manager, free386 run, local
+# run, pause, drawer/step/memory, HDD download) plus the step's own provenance
+# file. Each pattern is one exact path with only content-hash segments open and
+# must match exactly one archive member; every other member is neither read nor
+# installed nor served. The whole archive digest stays the authority.
+ACTUAL_V9_FRONTEND_ROSTER = (
+ r'brickwright\-build\.json',
+ r'chunks/1410\.[0-9a-f]{20}\.js',
+ r'chunks/1683\.[0-9a-f]{20}\.js',
+ r'chunks/2297\.[0-9a-f]{20}\.js',
+ r'chunks/2710\.[0-9a-f]{20}\.js',
+ r'chunks/322\.[0-9a-f]{20}\.js',
+ r'chunks/3474\.js',
+ r'chunks/3612\.[0-9a-f]{20}\.js',
+ r'chunks/3764\.[0-9a-f]{20}\.js',
+ r'chunks/3830\.[0-9a-f]{20}\.js',
+ r'chunks/4421\.[0-9a-f]{20}\.js',
+ r'chunks/4529\.[0-9a-f]{20}\.js',
+ r'chunks/4725\.[0-9a-f]{20}\.js',
+ r'chunks/5418\.[0-9a-f]{20}\.js',
+ r'chunks/7214\.js',
+ r'chunks/7493\.[0-9a-f]{20}\.js',
+ r'chunks/9022\.[0-9a-f]{20}\.js',
+ r'chunks/9079\.[0-9a-f]{20}\.js',
+ r'chunks/bw\-board\-i80386\.[0-9a-f]{20}\.js',
+ r'chunks/bw\-codemirror\.js',
+ r'chunks/bw\-controller\-panel\.js',
+ r'chunks/bw\-debug\-faces\.[0-9a-f]{20}\.js',
+ r'chunks/bw\-debug\-menu\.js',
+ r'chunks/bw\-debug\-panel\.js',
+ r'chunks/bw\-debug\-target\-kinds\.js',
+ r'chunks/bw\-debug\.js',
+ r'chunks/bw\-machine\-manager\.js',
+ r'chunks/bw\-project\-safety\.js',
+ r'chunks/labwired\-catalog\.[0-9a-f]{20}\.js',
+ r'chunks/labwired\-probe\.js',
+ r'chunks/pseudocode\-importer\.js',
+ r'chunks/sb\.[0-9a-f]{20}\.js',
+ r'chunks/sprite\-target\-pane\.js',
+ r'chunks/tab\-label\-fit\.js',
+ r'gui\.[0-9a-f]{8}\.js',
+ r'index\.html',
+ r'static/blocks\-media/default/dropdown\-arrow\.svg',
+ r'static/blocks\-media/default/green\-flag\.svg',
+ r'static/blocks\-media/default/repeat\.svg',
+ r'static/blocks\-media/default/rotate\-left\.svg',
+ r'static/blocks\-media/default/rotate\-right\.svg',
+ r'static/blocks\-media/default/zoom\-in\.svg',
+ r'static/blocks\-media/default/zoom\-out\.svg',
+ r'static/blocks\-media/default/zoom\-reset\.svg',
+ r'static/labwired/labwired_wasm_bg\.wasm',
+ r'static/roms/free\-386\-bochs\-bios\.rom',
+ r'static/roms/free\-386\-vgabios\-lgpl\.bin',
+)
+ACTUAL_V9_FRONTEND_COUNT = len(ACTUAL_V9_FRONTEND_ROSTER)
+# Reviewed subset was 37,838,437 bytes; the aggregate bound is the next power of
+# two MiB above it. Each member keeps the unchanged FILE_CAP.
+ACTUAL_V9_FRONTEND_AGGREGATE_CAP = 64 << 20
+
+
+def frontend_subset_v9(tar_raw):
+    """Select exactly the reviewed V9 roster from the authenticated Pages TAR."""
+    patterns=[re.compile(p) for p in ACTUAL_V9_FRONTEND_ROSTER];files={};hits=[0]*len(patterns);total=0;entries=0;seen=set()
+    with tarfile.open(fileobj=io.BytesIO(tar_raw),mode='r:') as source:
+        for member in source:
+            entries+=1;need(entries<=16384,'bounded Pages TAR census');name=member.name.removeprefix('./')
+            if member.isdir():
+                if name not in ('','.'):relative(name.rstrip('/'))
+                continue
+            relative(name);need(name not in seen,'unique Pages TAR path');seen.add(name)
+            matched=[i for i,p in enumerate(patterns) if p.fullmatch(name)]
+            if not matched:continue
+            need(len(matched)==1 and member.isfile() and 0<member.size<=FILE_CAP,'regular bounded unique V9 roster member')
+            hits[matched[0]]+=1;total+=member.size;need(total<=ACTUAL_V9_FRONTEND_AGGREGATE_CAP,'V9 roster aggregate bound')
+            files[name]=source.extractfile(member).read(FILE_CAP+1);need(len(files[name])==member.size,'exact V9 roster member bytes')
+    need(hits==[1]*len(patterns) and len(files)==ACTUAL_V9_FRONTEND_COUNT,'every V9 roster entry matches exactly one member')
+    return files
+
+
+def read_frontend(raw,roster=False):
     with zipfile.ZipFile(io.BytesIO(raw)) as archive:
         need(len(archive.infolist())<=16384,'frontend ZIP census cap');members={};total=0;names=set();selected=[]
         for item in archive.infolist():
@@ -1915,7 +1998,9 @@ def read_frontend(raw):
             total+=item.file_size;need(total<=BUILD_CAP,'frontend aggregate bound');selected.append((name,item))
         # The standalone reader also closes the entire header census first.
         for name,item in selected:members[name]=archive.read(item)
-    if set(members)=={'artifact.tar'}:
+    if roster:
+        need(set(members)=={'artifact.tar'},'V9 roster selects from the single Pages TAR');build=frontend_subset_v9(members['artifact.tar'])
+    elif set(members)=={'artifact.tar'}:
         build={};total=0;count=0
         with tarfile.open(fileobj=io.BytesIO(members['artifact.tar']),mode='r:') as archive:
             for item in archive:
@@ -4746,7 +4831,7 @@ def audit_v9(files, expected):
     need(0<acquisition['endedNs']-acquisition['startedNs']<=180000000000,'finite frontend acquisition interval')
     zip_ = files['frontend.original.zip'];need(len(zip_) == build['zipBytes'] and sha(zip_) == build['sha256'], 'retained exact frontend original')
     need(acquisition['streams']['stdout']=={'byteLength':len(zip_),'sha256':sha(zip_)} and acquisition['streams']['stderr']=={'byteLength':0,'sha256':sha(b'')},'acquisition raw stream original binding')
-    observed_members,observed_build=read_frontend(zip_)
+    observed_members,observed_build=read_frontend(zip_,version=='bw.gui-hdd.actual-request.v9')
     admission_raw=files['probe-admission.json'];admission=decode(admission_raw)
     selected_board = FINITE_V10_PINS['bw-board'] if version=='bw.gui-hdd.actual-request.v9' else BOARD
     fields(admission,'schema boardPin sourceHead criticalFiles buildRoot buildFiles inputPaths')
@@ -4999,22 +5084,27 @@ def actual_v9_phase_roles():
     selected|={'gui-finite-inventory-v10/'+name for name in ('runtime-template.json','event.original.json','guard-admission.json','inventory.json','bootstrap.stdout','bootstrap.stderr')}
     for family,count in (('guard-originals',len(SOURCE)+4),('inventory-git-originals',len(SOURCE)+2)):
         selected|={f'gui-finite-inventory-v10/{family}/git-{i}.{suffix}'for i in range(count)for suffix in ('stdout','stderr','process.json')}
-    selected|={'gui-finite-inventory-v10/guard-originals/'+name for name in ('inventory.json','result.json')}
+    # The V10 guard captures its own template/event originals before any Git
+    # call (producer finite_v10 guard), so both belong to the exact roster.
+    selected|={'gui-finite-inventory-v10/guard-originals/'+name for name in ('inventory.json','result.json','template.original.json','event.original.json')}
     return frozenset(selected)
+
+
+ACTUAL_V9_PHASE_DIRECTORIES = frozenset(('gui-actual-v9','gui-finite-inventory-v10','gui-finite-inventory-v10/guard-originals','gui-finite-inventory-v10/inventory-git-originals','gui-actual-v9/guard-originals'))
 
 
 def phase_archive_v9(raw):
     need(type(raw) is bytes and 0<len(raw)<=ARCHIVE_CAP,'bounded early immutable phase ZIP')
     files={};total=0;selected=[];seen=set()
     with zipfile.ZipFile(io.BytesIO(raw)) as archive:
-        members=archive.infolist();need(1<=len(members)<=6*len(SOURCE)+40 and sum(not item.is_dir() for item in members)<=6*len(SOURCE)+35,'derived closed two-stage phase original census plus five empty directories')
+        members=archive.infolist();roster=len(actual_v9_phase_roles());need(1<=len(members)<=roster+len(ACTUAL_V9_PHASE_DIRECTORIES) and sum(not item.is_dir() for item in members)<=roster,'phase census bounded by the exact derived role roster plus five empty directories')
         for item in members:
             relative(item.filename.rstrip('/'));need(item.orig_filename==item.filename and '\x00' not in item.filename,'untruncated phase ZIP name')
             need(item.filename not in seen,'unique phase ZIP path');seen.add(item.filename)
             mode=stat.S_IFMT(item.external_attr>>16)
             need(mode in ((0,stat.S_IFDIR) if item.is_dir() else (0,stat.S_IFREG)),'ordinary phase ZIP file/directory types')
             if item.is_dir():
-                need(item.file_size==0 and item.filename.rstrip('/') in {'gui-actual-v9','gui-finite-inventory-v10','gui-finite-inventory-v10/guard-originals','gui-finite-inventory-v10/inventory-git-originals','gui-actual-v9/guard-originals'},'closed empty phase directories');continue
+                need(item.file_size==0 and item.filename.rstrip('/') in ACTUAL_V9_PHASE_DIRECTORIES,'closed empty phase directories');continue
             need(item.filename not in files and item.compress_type in (zipfile.ZIP_STORED,zipfile.ZIP_DEFLATED) and not item.flag_bits&1 and not stat.S_ISLNK(item.external_attr>>16),'unique ordinary unencrypted phase original')
             need(0<=item.file_size<=FILE_CAP,'phase per-file cap');total+=item.file_size;need(total<=384<<20,'phase aggregate original cap')
             if item.filename.startswith('gui-actual-v9/'):
@@ -5039,19 +5129,21 @@ def verify_phase_git_originals_v9(files,inventory,guard,source):
         args=list(arguments)
         if guard_stage:
             helper=BOOTSTRAP_SOURCE
-            args.extend((['ls-tree','-z',source['head'],'--',helper['path']],['cat-file','blob',source['head']+':'+helper['path']]))
+            # Producer observe_bootstrap_source runs plain ls-tree (LF-terminated, no -z).
+            args.extend((['ls-tree',source['head'],'--',helper['path']],['cat-file','blob',source['head']+':'+helper['path']]))
             need(logical.get('result.json')==encode(guard),'raw guard result exact independently validated guard')
             manifest=decode(logical.get('inventory.json',b''));fields(manifest,'schema files')
             need(manifest['schema']=='bw.gui-hdd.originals.v1' and type(manifest['files']) is dict and set(manifest['files'])==set(logical)-{'inventory.json'},'closed raw guard original inventory')
             for name,row in manifest['files'].items():need(row=={'byteLength':len(logical[name]),'sha256':sha(logical[name])},'guard manifest each raw original custody')
-        required={f'git-{i}.{suffix}'for i in range(len(args))for suffix in ('stdout','stderr','process.json')}|({'inventory.json','result.json'}if guard_stage else set())
+        required={f'git-{i}.{suffix}'for i in range(len(args))for suffix in ('stdout','stderr','process.json')}|({'inventory.json','result.json','template.original.json','event.original.json'}if guard_stage else set())
         need(set(logical)==required,'complete exact early raw Git command roster')
+        if guard_stage:need(logical['template.original.json']==files['gui-finite-inventory-v10/runtime-template.json'] and logical['event.original.json']==files['gui-finite-inventory-v10/event.original.json'],'guard template/event originals equal the F10 phase originals')
         for i,argv in enumerate(args):
             role='git-'+str(i);process_original(logical,role,prefix+argv,15);raw=logical[role+'.stdout']
             if i<2:need(raw==(source['head' if i==0 else 'tree']+'\n').encode(),'raw phase Git exact head/tree')
             elif i<2+len(SOURCE):
                 path=sorted(SOURCE)[i-2];need({'byteLength':len(raw),'sha256':sha(raw)}==source['files'][path],'raw phase source exact original bytes')
-            elif argv[0]=='ls-tree':need(raw==('100644 blob '+helper['gitBlob']+'\t'+helper['path']+'\0').encode(),'raw phase bootstrap mode/blob/path')
+            elif argv[0]=='ls-tree':need(raw==(helper['mode']+' blob '+helper['gitBlob']+'\t'+helper['path']+'\n').encode(),'raw phase bootstrap mode/blob/path')
             else:need(len(raw)==helper['byteLength'] and sha(raw)==helper['sha256'] and git_blob_sha_v9(raw)==helper['gitBlob'],'raw phase bootstrap exact Git blob')
             if not guard_stage:
                 command=inventory['commands'][i]
