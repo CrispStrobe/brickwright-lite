@@ -1024,6 +1024,26 @@
         "analog computation",
         "line intersection"
       ]
+    },
+    {
+      "models": [
+        "paired-door-sync"
+      ],
+      "name": {
+        "en": "Opposed rack and pinion",
+        "de": "Gegenläufige Zahnstangen mit Ritzel"
+      },
+      "aliases": [
+        "paired doors",
+        "sliding doors",
+        "rack and pinion",
+        "opposed racks",
+        "synchronised doors",
+        "Schiebetür",
+        "Doppeltür",
+        "Zahnstange",
+        "Ritzel"
+      ]
     }
   ]
 }

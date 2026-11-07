@@ -246,6 +246,8 @@ export const MODELS = Object.freeze([
         manualJog: {A: {minDeg: -55.2168, maxDeg: 0, stepDeg: 13.8042, speedDps: 15}}},
     {file: 'tangent-table.ldr', title: {en: 'Tangent Table — mechanical angle mapping', de: 'Tangent Table — mechanische Winkelabbildung'}, example: 'tangent-table.bw', mat: 'plain',
         manualJog: {A: {minDeg: -16, maxDeg: 16, stepDeg: 1, speedDps: 8}, B: {minDeg: -2627, maxDeg: 2627, stepDeg: 597, speedDps: 300}}},
+    {file: 'paired-door-sync.ldr', title: {en: 'Paired Door Sync — one pinion, two opposed racks', de: 'Doppeltür-Synchron — ein Ritzel, zwei gegenläufige Zahnstangen'}, example: 'paired-door-sync.bw', mat: 'plain',
+        manualJog: {A: {minDeg: -150, maxDeg: 150, stepDeg: 15, speedDps: 15}}},
     {file: 'watt-line.ldr', title: {en: "Watt’s Line — approximate straight-line linkage", de: 'Watt’s Line — angenäherte Geradführung'}, example: 'watt-line.bw', mat: 'plain',
         manualJog: {A: {minDeg: -20, maxDeg: 20, stepDeg: 2, speedDps: 6}}},
     {file: 'twin-tempo.ldr', title: {en: 'TwinTempo — three-to-one hoist', de: 'TwinTempo — Seilzüge im Verhältnis drei zu eins'}, example: 'twin-tempo.bw', mat: 'plain',

@@ -1752,6 +1752,37 @@ export const MODEL_LESSONS = Object.freeze({
             "line intersection"
         ]
     },
+    "paired-door-sync.ldr": {
+        "pieces": 88,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "gears",
+        "description": {
+            "en": "One 16-tooth pinion drives two racks on opposite sides, so the two door leaves travel equally fast in opposite directions and the sum of their positions stays zero.",
+            "de": "Ein 16er-Ritzel treibt zwei Zahnstangen auf gegenüberliegenden Seiten: Beide Türblätter laufen gleich schnell gegenläufig, die Summe ihrer Positionen bleibt null."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Opposed rack and pinion",
+            "de": "Gegenläufige Zahnstangen mit Ritzel"
+        },
+        "keywords": [
+            "Opposed rack and pinion",
+            "Gegenläufige Zahnstangen mit Ritzel",
+            "paired doors",
+            "sliding doors",
+            "rack and pinion",
+            "opposed racks",
+            "synchronised doors",
+            "Schiebetür",
+            "Doppeltür",
+            "Zahnstange",
+            "Ritzel"
+        ]
+    },
     "watt-line.ldr": {
         "pieces": 148,
         "motors": 1,
