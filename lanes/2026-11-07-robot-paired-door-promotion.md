@@ -10,7 +10,7 @@ branch in `test/bw-sim-qualification.test.mjs`; the contract in `docs/data/robot
 source fixture `test/fixtures/model-files/paired-door-sync-source/`; the registry move (`sim-session.js`
 MODELS, `experimental-models.js`, dialect and extension model lists); catalogue/lesson/mechanism entries
 and regenerated outputs; registration tests that enumerate MODELS; the model hash pin in
-`test/helpers/paired-door-program-child.mjs`; the review record in the experimental checkpoint.
+`test/helpers/paired-door-program-child.mjs`; the now-redundant experimental input in `test/bw-sim-models-solid.test.mjs`; the review record in the experimental checkpoint.
 
 Law: one 16-tooth 94925 pinion (module 1 mm, pitch radius 8 mm) between two racks on opposite sides;
 each passive rack moves ±8 mm per radian of the observed pinion angle (signs from geometry, not from
