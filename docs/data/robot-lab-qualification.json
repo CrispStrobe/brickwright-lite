@@ -979,6 +979,27 @@
       ],
       "disconnectInputDeg": 717,
       "disconnectLoss": "nine-intake"
+    },
+    {
+      "id": "evenhand",
+      "judge": "counterbalance-holding-torque-v1",
+      "parts": 97,
+      "ports": [
+        "A",
+        "B"
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 60000,
+      "afterMs": 500,
+      "frameMs": 25,
+      "withSpike": true,
+      "observeDynamics": true,
+      "frozenOutput": "forearm",
+      "disconnect": [
+        "forearm_weight_pin_-1_-20"
+      ],
+      "disconnectInputDeg": 19,
+      "disconnectLoss": "p6"
     }
   ]
 }

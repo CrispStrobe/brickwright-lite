@@ -13,7 +13,7 @@ The full task list with exact steps is section 00 of
   - Q1 Loop Relay and Parity Dial: input axle 2.5 LDU into the motor (construction gate). Repair, re-add contract, promote.
   - Q2 Counter Slide: housing angles overlap racks 2.5 LDU, eight pins about 2 LDU into housings. Repair, re-add contract, promote.
   - Q3 Point Weaver: 70 LDU-deep rear holes; redesign the motor-foot mount.
-  - Q4 Evenhand: counterweight removal trips the 3° start guard; pick a non-tripping or justified disconnection, register judge from `lane/robot-evenhand-20261107`, promote.
+  - Q4 Evenhand: TAKEN (lanes/2026-11-08-robot-q4-evenhand.md). Disconnection removes one inner counterweight pin (`forearm_weight_pin_-1_-20`), which does not trip the start guard; judge registered, promoted.
   - Q5 RimRun: bridge the hub to the frame (about 170 LDU), repair catch/watchdog-hold checks, write a judge with `rimrun-swapped` as the causal control.
 
 Rules: iterate without `ci:full`, add it once on the final head; merge only

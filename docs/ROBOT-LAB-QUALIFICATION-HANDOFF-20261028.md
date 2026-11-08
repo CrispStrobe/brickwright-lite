@@ -103,10 +103,13 @@ doable as geometry or test-design work:
   racks by 2.5 LDU and eight pins reach about 2 LDU into the housings.
 - **Point Weaver**: rear motor-foot holes stack 70 LDU deep, which no single
   standard pin fills; needs a different mount, not two pins in one hole.
-- **Evenhand**: the holding-torque judge passes (branch
-  `lane/robot-evenhand-20261107`, no PR), but removing the counterweights
-  makes the arm droop past the program's 3° start guard. Needs a removal that
-  does not trip the guard, or a justified different disconnection.
+- **Evenhand**: DONE (Q4, lanes/2026-11-08-robot-q4-evenhand.md): judge
+  `counterbalance-holding-torque-v1` registered and Evenhand promoted. The
+  disconnection removes one inner counterweight pin (`forearm_weight_pin_-1_-20`,
+  120 LDU behind the elbow): the elbow loses its mirror balance by that pin's
+  moment (predicted 0.165, measured 0.166 mN·m) while the cold-settle sag
+  (1.4° / 1.0°) stays inside the unchanged 3° start guard. Whole weight beams
+  sag the arm 3.4–17° and fault the guard. `evenhand-control` stays a control.
 - **RimRun**: mount the hub with real bridging parts (about 170 LDU to the
   frame), repair the supplier's catch and watchdog-hold checks, then write a
   judge with `rimrun-swapped` as the causal control.

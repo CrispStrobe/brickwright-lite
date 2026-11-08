@@ -992,35 +992,6 @@ export const EXPERIMENTAL_MODELS = Object.freeze([
         }
     },
     {
-        "file": "evenhand.ldr",
-        "title": {
-            "en": "Evenhand — counterbalanced two-joint arm",
-            "de": "Evenhand — ausgewogener Zweigelenkarm"
-        },
-        "example": "evenhand.bw",
-        "mat": "plain",
-        "experimental": true,
-        "blocked": false,
-        "intro": {
-            "en": "Two motors move a shoulder and an elbow through nine poses. Counterweights behind each joint balance the links, so in the simulator both motors hold every pose with almost no torque. The comparison moves the same forearm weights inward and runs the same program.",
-            "de": "Zwei Motoren bewegen Schulter und Ellbogen durch neun Stellungen. Gegengewichte hinter jedem Gelenk gleichen die Glieder aus, sodass beide Motoren im Simulator jede Stellung fast ohne Drehmoment halten. Der Vergleich rückt dieselben Unterarmgewichte nach innen und nutzt dasselbe Programm."
-        },
-        "manualJog": {
-            "A": {
-                "minDeg": -20,
-                "maxDeg": 20,
-                "stepDeg": 5,
-                "speedDps": 20
-            },
-            "B": {
-                "minDeg": -30,
-                "maxDeg": 30,
-                "stepDeg": 5,
-                "speedDps": 25
-            }
-        }
-    },
-    {
         "file": "evenhand-control.ldr",
         "title": {
             "en": "Evenhand — weights moved inward (control)",
@@ -2768,44 +2739,6 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
             "unverified",
             "experimentell"
         ],
-        "experimental": true
-    },
-    "evenhand.ldr": {
-        "pieces": 97,
-        "motors": 2,
-        "hubs": [
-            "spike-prime"
-        ],
-        "topic": "forces",
-        "author": "CrispStrobe",
-        "license": "BSD-3-Clause",
-        "mechanism": {
-            "en": "Counterbalanced two-joint arm: gravity torque about each joint",
-            "de": "Ausgewogener Zweigelenkarm: Schweremoment um jedes Gelenk"
-        },
-        "keywords": [
-            "counterweight",
-            "counterbalance",
-            "gravity torque",
-            "two-joint arm",
-            "serial arm",
-            "holding torque",
-            "lever arm",
-            "Gegengewicht",
-            "Gewichtsausgleich",
-            "Schweremoment",
-            "Zweigelenkarm",
-            "Haltemoment",
-            "Hebelarm",
-            "experimental",
-            "prototype",
-            "unverified",
-            "experimentell"
-        ],
-        "description": {
-            "en": "Two motors move a shoulder and an elbow through nine poses. Counterweights behind each joint balance the links, so in the simulator both motors hold every pose with almost no torque. The comparison moves the same forearm weights inward and runs the same program.",
-            "de": "Zwei Motoren bewegen Schulter und Ellbogen durch neun Stellungen. Gegengewichte hinter jedem Gelenk gleichen die Glieder aus, sodass beide Motoren im Simulator jede Stellung fast ohne Drehmoment halten. Der Vergleich rückt dieselben Unterarmgewichte nach innen und nutzt dasselbe Programm."
-        },
         "experimental": true
     },
     "evenhand-control.ldr": {
