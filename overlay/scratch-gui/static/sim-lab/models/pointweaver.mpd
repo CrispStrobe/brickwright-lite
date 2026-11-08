@@ -17,6 +17,14 @@
 0 // External standard LDraw meshes are referenced, not embedded. Connect motors to hub ports A/B.
 0 !BW ID base_cross_-180
 1 72 0 240 -180 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID motor_A_foot_pin_-1_-180
+1 1 -140 220 -180 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID motor_B_foot_pin_-1_-180
+1 1 60 220 -180 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID motor_B_foot_pin_1_-180
+1 1 140 220 -180 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID motor_A_foot_pin_1_-180
+1 1 -60 220 -180 0 1 0 1 0 0 0 0 -1 6558.dat
 0 !BW ID rear_lap_pin_-20
 1 1 -20 220 -180 0 1 0 1 0 0 0 0 -1 6558.dat
 0 STEP
@@ -39,8 +47,6 @@
 1 72 20 200 -300 1 0 0 0 1 0 0 0 1 32278.dat
 0 !BW ID rear_lap_spacer_20
 1 72 20 220 -180 1 0 0 0 1 0 0 0 1 18654.dat
-0 !BW ID motor_A_foot_pin_-1_-180
-1 1 -140 220 -180 0 1 0 1 0 0 0 0 -1 6558.dat
 0 !BW ID base_fastener_-140_100
 1 1 -140 220 100 0 1 0 1 0 0 0 0 -1 6558.dat
 0 !BW ID base_fastener_-140_-40
@@ -48,16 +54,12 @@
 0 STEP
 0 !BW ID motor_A_foot_pin_-1_-20
 1 0 -140 210 -20 0 1 0 1 0 0 0 0 -1 2780.dat
-0 !BW ID motor_B_foot_pin_-1_-180
-1 1 60 220 -180 0 1 0 1 0 0 0 0 -1 6558.dat
 0 !BW ID base_fastener_60_100
 1 1 60 220 100 0 1 0 1 0 0 0 0 -1 6558.dat
 0 !BW ID base_fastener_60_-40
 1 0 60 230 -40 0 1 0 1 0 0 0 0 -1 2780.dat
 0 !BW ID motor_B_foot_pin_-1_-20
 1 0 60 210 -20 0 1 0 1 0 0 0 0 -1 2780.dat
-0 !BW ID motor_B_foot_pin_1_-180
-1 1 140 220 -180 0 1 0 1 0 0 0 0 -1 6558.dat
 0 STEP
 0 !BW ID base_fastener_140_100
 1 1 140 220 100 0 1 0 1 0 0 0 0 -1 6558.dat
@@ -65,8 +67,6 @@
 1 0 140 230 -40 0 1 0 1 0 0 0 0 -1 2780.dat
 0 !BW ID motor_B_foot_pin_1_-20
 1 0 140 210 -20 0 1 0 1 0 0 0 0 -1 2780.dat
-0 !BW ID motor_A_foot_pin_1_-180
-1 1 -60 220 -180 0 1 0 1 0 0 0 0 -1 6558.dat
 0 !BW ID base_fastener_-60_100
 1 1 -60 220 100 0 1 0 1 0 0 0 0 -1 6558.dat
 0 !BW ID base_fastener_-60_-40
