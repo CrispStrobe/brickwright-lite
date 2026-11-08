@@ -665,13 +665,18 @@ class CircuitTab extends React.Component {
                 this.state.debugDock === 'right' && this._stageRightRendered;
             this._stageHost.style.display =
                 (portalNow && this._portalRendered) || rightHere ? 'block' : 'none';
-            // The debugger docked right was explicitly chosen for this column,
-            // so it sits above a dock pane (z-index 2 over the Widgets wrapper's
-            // z-index 1 stacking context in gui.jsx, still below the stage
-            // header). Otherwise a real click on its Pause hit the Widgets
-            // "Full screen" button. The in-stage circuit portal keeps z-index 0
-            // so dock panes (Arcade, Widgets) still cover it as before.
-            this._stageHost.style.zIndex = rightHere ? '2' : '0';
+            // A debugger dock ('right' or 'solo') was explicitly chosen for this
+            // column, so the host sits above a dock pane while it shows the
+            // debugger: z-index 2 over the Widgets wrapper's z-index 1 stacking
+            // context in gui.jsx, still below the stage header. That covers the
+            // dedicated Circuit tab path (rightHere) AND the coding path, where
+            // render() portals the solo debugger pane into this host. Missing
+            // the coding path left a real click on Pause landing on the Widgets
+            // "Full screen" button. The in-stage circuit DESIGNER portal keeps
+            // z-index 0 so dock panes (Arcade, Widgets) still cover it.
+            const debuggerDock = this.state.debugDock === 'right' || this.state.debugDock === 'solo';
+            const debuggerHere = rightHere || (debuggerDock && portalNow && this._portalRendered);
+            this._stageHost.style.zIndex = debuggerHere ? '2' : '0';
         }
     }
 

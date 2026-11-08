@@ -7886,6 +7886,12 @@
    "p95": null,
    "max": null,
    "readings": []
+  },
+  "Browser gate \u2014 debugger Pause is clickable beside the x86 Widgets": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
   }
  }
 }
