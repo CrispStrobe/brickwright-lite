@@ -703,6 +703,7 @@ class CircuitTab extends React.Component {
         if (this._unregisterUndo) this._unregisterUndo();
         cancelAnimationFrame(this._hostResizeFrame);
         cancelAnimationFrame(this._circuitFileReplayFrame);
+        if (this._hostMO) this._hostMO.disconnect();
         this._circuitFileReplayFrame = null;
         this._circuitFilePending = null;
         if (this._hostRO) { this._hostRO.disconnect(); this._hostRO = null; }
@@ -909,6 +910,7 @@ class CircuitTab extends React.Component {
      *  stage header). Anything else keeps the full-column host at z-index
      *  0, under dock panes such as Arcade, exactly as before. */
     _layoutStageHost (debuggerLive) {
+        this._debuggerLive = !!debuggerLive;
         const host = this._stageHost;
         const dock = host.parentElement &&
             host.parentElement.querySelector(':scope > [data-bw-stage-dock]');
@@ -948,6 +950,15 @@ class CircuitTab extends React.Component {
                 this._hostResizeFrame = requestAnimationFrame(() => this._sizeStageHost());
             });
             this._hostRO.observe(wrap);
+        }
+        // The Widgets dock mounts lazily, after this tab's own update, so the
+        // split must also be re-applied when the column's children change.
+        if (typeof MutationObserver !== 'undefined') {
+            if (this._hostMO) this._hostMO.disconnect();
+            this._hostMO = new MutationObserver(() => {
+                if (this._stageHost && this._stageHost.style.display !== 'none') this._layoutStageHost(this._debuggerLive);
+            });
+            this._hostMO.observe(wrap, {childList: true});
         }
         return host;
     }
