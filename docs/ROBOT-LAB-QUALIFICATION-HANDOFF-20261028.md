@@ -137,6 +137,10 @@ and handoff entries.
 
 ### P3. Geometry repairs for five passing intakes (after P2)
 
+**Update 2026-11-07 (PR 1672):** Toggle Press, Footfall, Phasekeeper and Vector Sum
+repaired, given contracts and promoted. Point Weaver stays experimental: its rear
+motor-foot stack cannot be pinned cleanly (reason in the checkpoint).
+
 Toggle Press, Footfall, Phasekeeper, Vector Sum and Point Weaver pass hosted
 native ordinary, strict and disconnected qualification runs, but fail the
 established construction gate `test/bw-sim-models-solid.test.mjs`:

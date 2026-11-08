@@ -22,8 +22,6 @@
 1 0 -140 230 -120 0 1 0 1 0 0 0 0 -1 2780.dat
 0 !BW ID base_pin_40_-120
 1 0 40 230 -120 0 1 0 1 0 0 0 0 -1 2780.dat
-0 !BW ID base_pin_120_-120
-1 0 120 230 -120 0 1 0 1 0 0 0 0 -1 2780.dat
 0 !BW ID output_tower_axle_lower_-120
 1 4 120 120 -120 0 1 0 1 0 0 0 0 -1 3708.dat
 0 STEP
@@ -68,8 +66,6 @@
 0 STEP
 0 !BW ID motor_foot_pin_1_20
 1 1 40 200 20 0 1 0 -1 0 0 0 0 1 6558.dat
-0 !BW ID base_pin_120_120
-1 0 120 230 120 0 1 0 1 0 0 0 0 -1 2780.dat
 0 !BW ID output_tower_axle_lower_120
 1 4 120 120 120 0 1 0 1 0 0 0 0 -1 3708.dat
 0 !BW ID base_pin_120_0

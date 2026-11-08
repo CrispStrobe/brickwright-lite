@@ -93,8 +93,6 @@
 0 STEP
 0 !BW ID motor_foot_pad_-1_20
 1 72 -40 205 0 1 0 0 0 1 0 0 0 1 6632.dat
-0 !BW ID base_pin_support_A_-120
-1 0 -120 230 20 0 1 0 1 0 0 0 0 -1 2780.dat
 0 !BW ID support_A_foot_pin
 1 0 -120 220 20 0 1 0 1 0 0 0 0 -1 6558.dat
 0 !BW ID motor_post_1_-180
