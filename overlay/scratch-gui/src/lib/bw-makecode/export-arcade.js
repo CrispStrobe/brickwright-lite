@@ -38,6 +38,30 @@ const RUNTIME_DISPATCH_ADDITION_REASONS=new Set([
     'native addition cannot prove an updated Array slot',
     'native addition cannot prove a deleted Array property'
 ]);
+// A green-flag script declares its locals first, each `let x: T = null`.
+// When the script's first mention of x is a whole top-level statement
+// `x = e` (indent four, outside any template literal, e not mentioning x
+// and not ending open, so not starting a multi-line construct), nothing can observe the null:
+// declare x there instead, `let x: T = e`. Same PXT behaviour, and the
+// re-imported script then has no dead null reset for the Array export
+// authority to keep. Every other declaration stays where it was.
+export function sinkNullLocalDeclarations(locals,declarations,lines){
+    const body=[...lines],kept=[];
+    const escape=text=>text.replace(/[$]/g,'\\$&');
+    locals.forEach((name,index)=>{
+        const declaration=declarations[index];
+        if(typeof name!=='string'||!/^[A-Za-z_]\w*$/.test(name)||typeof declaration!=='string'){kept.push(declaration);return;}
+        const shape=new RegExp(`^    let ${escape(name)}: ([^=\`]+) = null$`).exec(declaration);
+        const mention=new RegExp(`(^|[^\\w$])${escape(name)}($|[^\\w$])`);
+        const first=shape?body.findIndex(line=>mention.test(line)):-1;
+        const assignment=first>=0?new RegExp(`^    ${escape(name)} = (.+)$`).exec(body[first]):null;
+        const value=assignment?.[1];
+        const ticks=body.slice(0,first).join('\n').split('`').length-1;
+        if(!assignment||mention.test(value)||/[({[,`]\s*$/.test(value)||ticks%2!==0){kept.push(declaration);return;}
+        body[first]=`    let ${name}: ${shape[1]} = ${value}`;
+    });
+    return [...kept,...body];
+}
 const runtimeDispatchAdditionReason=reason=>typeof reason==='string'&&RUNTIME_DISPATCH_ADDITION_REASONS.has(reason);
 import {inspectNativeAdditionExportDomains} from './native-array-binary-domain.js';
 import {GENERATED_HELPER_PROFILES,mapGeneratedSourceArray} from './generated-helper-recognition.js';
@@ -4759,7 +4783,7 @@ class ArcadeEmitter {
                 }
                 let script = [];
                 // An Arcade hat's locals (arcade_setLocal) are declared in that run, not as file globals.
-                const scoped = (emitBody, parameters = []) => {
+                const scoped = (emitBody, parameters = [], sinkNullLocals = false) => {
                     const saved = this.currentLocalNames,savedContext=this.currentCallableContext;
                     this.currentLocalNames = new Set();
                     const entry=this.callableExports?.get(t);
@@ -4773,7 +4797,8 @@ class ArcadeEmitter {
                     const procedureLocals = this.currentLocalNames;
                     this.currentLocalNames = saved;this.currentCallableContext=savedContext;
                     const scope = `${t.name}:script:${Object.keys(this.blocks).find(id => this.blocks[id] === b)}`;
-                    return [...locals.map(name => this.localDeclaration(name, scope, procedureLocals)), ...lines];
+                    const declarations=locals.map(name => this.localDeclaration(name, scope, procedureLocals));
+                    return sinkNullLocals?sinkNullLocalDeclarations(locals,declarations,lines):[...declarations, ...lines];
                 };
                 const plainBody = parameters => scoped(() => this.body(b.next, this.stopGuards(), this.tokenLine()), parameters);
                 // An Arcade event hat gets its event's sprites as parameters.
@@ -4788,7 +4813,7 @@ class ArcadeEmitter {
                 if (['event_whenflagclicked','arcade_whenSourceStarts'].includes(b.opcode)) {
                     // The green flag starts the ORIGINAL sprite's scripts; clones do not exist yet.
                     if (clonable) this.use('gone');
-                    script = scoped(() => this.body(b.next, [...this.stopGuards(), ...(clonable ? ['_gone(self)'] : [])]));
+                    script = scoped(() => this.body(b.next, [...this.stopGuards(), ...(clonable ? ['_gone(self)'] : [])]), [], true);
                     if (script.length) script.unshift(...this.tokenLine());
                     if (script.length) flagScripts.push({script, clonable, sv, plain: !clonable && !this.tokened()});
                 } else if (b.opcode === 'event_whenkeypressed') {
