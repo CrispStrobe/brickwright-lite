@@ -5,14 +5,10 @@ separate future claim: merge your own `lanes/<date>-<slug>.md` before
 implementation and mark the item here when taking it.
 Refresh PR and main state before acting; another agent may have finished it.
 
-## Ownership right now
+## Ownership and landed work
 
-- Remaining `docs/ARCADE-888-OPEN-FAILURES.md` TODO rows (A 5, C 3, B 9
-  triage) are owned by the open PR #1643 and its follow-ups. Do not edit the
-  Arcade exporter/importer (`overlay/scratch-gui/src/lib/bw-makecode/`) until
-  #1643 merges; then re-read ARCADE-888 for what is left.
-- #1645 (this lane file's PR): original-PXT session lock, see
-  `lanes/2026-11-03-arcade-pxt-session-lock.md`.
+#1643 and #1645 have landed; the session lock and remaining-row integrations
+are on main. Refresh current claims before starting any additional scope.
 
 ## Rules for every item
 
@@ -23,14 +19,13 @@ Refresh PR and main state before acting; another agent may have finished it.
   test fails; record that in the PR body.
 - Export claims need original-PXT equality (`test/helpers/pxt-arcade-runtime.mjs`).
 
-## 1. Land #1645 (session lock)
+## 1. #1645 landed
 
-Test-only. Waiting for hosted CI (queue stalled on 2026-11-03). When unit
-shards run, check that no Arcade oracle test got slower beyond its shard
-budget; the lock serializes browser sessions inside a shard. Then `ci:full`
-once and matched-head merge. No further code expected.
+The original-PXT session lock landed as `9b5205d6` after all enabled
+exact-head checks passed. Its earlier 30-minute unit timeout remains historical;
+no cause was established and no timing limit was weakened.
 
-## 2. SDK effect framing tests (after #1643 merges)
+## 2. SDK effect framing controls
 
 File: `overlay/scratch-gui/src/lib/bw-makecode/project-conditional-array-entry.js`.
 Read-only review found NO unsound admission: the startup prefix admits
@@ -41,19 +36,11 @@ game over is refused. Sound and splash do yield (splash blocks until
 dismissed), but no user code can be scheduled during the prefix, an effect
 error continues the thread, and a restart (`stopAll` + `greenFlag`) reruns
 the deterministic prefix.
-Do:
-- Rewrite the comment above `prefixEffects` to state that model exactly
-  (yield, blocking splash, error continues, no callback before publication,
-  epoch ends only at stopAll+greenFlag).
-- New `test/project-array-publication-frontier-effects.test.mjs`. Positive:
-  splash, playSound with UNTIL_DONE true and false, wait, then publication is
-  admitted. Negatives: an effect argument reading the receiver; a
-  registerPaintHandler before publication; game over in the prefix; an extra
-  event hat. Mutations that must each flip a negative: drop the receiver
-  check in the effect-argument loop; allow `arcade_registerPaintHandler` in
-  the prefix; add a game-over opcode to `prefixEffects`.
-- Also verify (and test if true) that info countdown/life state is reset on
-  greenFlag; it was not traced.
+The focused effect controls cover splash, wait, both sound modes and the
+receiver-read, early-registration, game-over and additional-event refusals.
+Independent cuts exercise the receiver, registration and game-over guards.
+An actual VM check covers life and countdown reset before restarted source
+executes; its exact-head hosted result is required for landing.
 
 ## 3. Corpus input: `sprite.onOverlap(handler)`
 

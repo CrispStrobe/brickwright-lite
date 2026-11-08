@@ -2634,10 +2634,10 @@
       "placements": 88,
       "archive": "brickwright-model-lab branch agent/bw-opencode-mech-r1-20261025/synchronized_paired_doors @ fc69ad75e950a37c032cf8 (review_ready)",
       "originalLdrawSha256": "9a9db4de7a34f374abba5183299024b5cebd3410dd13ea5ca32fa3bc5e22d6c3",
-      "canonicalLdrawSha256": "a1ecbb2c21dd0a39f88c67ac5f4ed229ee40d365820be9b27c47993fa1c6cef6",
+      "canonicalLdrawSha256": "00a31ccd7b3d4ed31452ef3e1821106bb12fb963e9d8e30db5b40ea9b0e47ae5",
       "program": "paired-door-sync.bw",
       "programSha256": "483ebd35317bbc9840a4a2dd285ee90d2cdd3fb3a124568a8221c3c0d9bab101",
-      "adaptation": "Built by the automated model-builder agent bw-opencode-mech-r1-20261025 (OpenCode, deepseek-v4.1-flash). !LICENSE path pointed at the packaged licence; lessons renamed to the model id; keywords flattened. Geometry and program bytes unchanged. Geometry repair 2026-10-28 (construction gate): carriage_pin_0_+-120 (6558, 3L) z 42->39 and carriage_pin_1_+-120 z -42->-45, each along its own axis. The collar had sat 2.5 LDU inside carriage_front (1.9 LDU deep, 116 points) and the 3L pin's ridge inside rack_back (2.0 LDU, 134 points); after the shift both pins pass through their holes with the collar outside, and the construction checks and compiler report nothing. Carriage, racks, doors, gears and program unchanged.",
+      "adaptation": "Built by the automated model-builder agent bw-opencode-mech-r1-20261025 (OpenCode, deepseek-v4.1-flash). !LICENSE path pointed at the packaged licence; lessons renamed to the model id; keywords flattened. Geometry and program bytes unchanged. Geometry repair 2026-10-28 (construction gate): carriage_pin_0_+-120 (6558, 3L) z 42->39 and carriage_pin_1_+-120 z -42->-45, each along its own axis. The collar had sat 2.5 LDU inside carriage_front (1.9 LDU deep, 116 points) and the 3L pin's ridge inside rack_back (2.0 LDU, 134 points); after the shift both pins pass through their holes with the collar outside, and the construction checks and compiler report nothing. Carriage, racks, doors, gears and program unchanged. Promotion 2026-11-07: the SPIKE hub's !BW ID chassis_reference renamed to hub (identifier only) so the standard hub observation base applies; geometry, parts and program unchanged.",
       "supplierClaims": "Hosted API (worker fa1bb8c, Jolt bw.6): racks follow +/-0.1396263 mm/deg within 4e-6 mm, sum within 2e-6 mm; control with the front chain removed keeps the rear law.",
       "simulatorLaw": {
         "verdict": "AGREES",
@@ -2645,7 +2645,7 @@
       },
       "poweredMotion": "HEADLESS_COMPLETED",
       "mechanicalLaw": "SIMULATOR_AGREES",
-      "causalControl": "WEAK: control deletes the whole front chain rather than disengaging the mesh",
+      "causalControl": "PASS: disconnection removes the pinion; motor A still turns its axle while the racks leave the +/-8 mm/rad law by 24 mm (> 2 mm)",
       "browserLoad": "PROGRAM_COMPLETE_SYSTEM_CHROME",
       "savedProjectReplay": "NOT_RUN",
       "basicChecks": {
@@ -2667,6 +2667,18 @@
         "issues": [],
         "programErrors": [],
         "blocked": false
+      },
+      "promotionReview": {
+        "date": "2026-11-07",
+        "decision": "PROMOTED",
+        "reason": "opposed-rack-pinion-v1: each passive rack follows +/-8 mm per radian of the observed pinion (16T 94925, module 1 mm), signs from geometry, within 6e-6 mm (bound 0.3 mm); sum within 4e-6 mm. Frozen-output and 1 cm shift controls refused; pinion disconnection loses the law by 24 mm."
+      },
+      "promoted": {
+        "to": "established library (MODELS)",
+        "date": "2026-11-07",
+        "judge": "opposed-rack-pinion-v1",
+        "harness": "disconnection removes pinion",
+        "verified": "local native ordinary/strict/disconnected PASS (2026-11-07); hosted CI pending"
       }
     },
     {
@@ -2971,14 +2983,14 @@
       "program": "afterturn.bw",
       "programSha256": "c057262bda6aef8ee3e8b89e395ff031b426206abb899e5e36b70e60e7bbcc6a",
       "adaptation": "Licence path only; geometry and program unchanged. Supplied licence scope line named Travel Dial; corrected here. Needs the virtual SPIKE hub.",
-      "supplierClaims": "First cycle 4.6625 deg, inverse 0.0261 deg; fixed masses 0.0037 deg.",
+      "supplierClaims": "Corrected 2026-11-03: about 1.25 deg after the first cycle, undone by the inverse; fixed masses about 0.01 deg. The supplied 4.6625 deg (inverse 0.0261 deg; fixed masses 0.0037 deg) was measured with the #1494 rotor double count and is not the physical value.",
       "simulatorLaw": {
         "verdict": "AGREES",
-        "scope": "headless SPIKE: 4.6605 deg after cycle, 0.0220 after inverse; 900 x (0.12905-0.12387) = 4.659 predicted"
+        "scope": "native rotor, headless SPIKE (2026-11-03): strokes 0.027478/0.026102/0.026057/0.027474 platform deg per wheel deg vs predicted Iw/J 0.027464 (B=70) and 0.026077 (B=0); cycle 1.239 deg vs predicted 1.248 (bound 0.482), inverse -1.278 vs -1.248; superseded legacy scope: 4.6605 deg"
       },
       "poweredMotion": "HEADLESS_COMPLETED (cold 0/1000)",
       "mechanicalLaw": "SIMULATOR_AGREES",
-      "causalControl": "PASS (afterturn-fixed-masses: 0.003 deg)",
+      "causalControl": "PASS (afterturn-fixed-masses: ratio 0.02571-0.02572 at both shapes, cycle 0.013 deg within 0.463 bound)",
       "browserLoad": "PASS",
       "savedProjectReplay": "NOT_RUN",
       "browserRun": {
@@ -3003,6 +3015,20 @@
         "rotor": "native (0 !BW ROTOR_INERTIA native, #1573)",
         "measured": "headless direct VM: stroke at B=70 0.02749 platform/wheel, stroke at saved radii 0.02606 (law Iw/J 0.02608); first cycle -1.275 deg, after inverse -0.043 deg; control afterturn-fixed-masses strokes 0.02573/0.02573, cycle -0.009 deg",
         "reason": "The native rotor removes the #1494 double count; the cycle now gives 1.28 deg, consistent with 900 x (0.02749-0.02606) = 1.29 deg. The supplier claims (4.6625 deg) and lessons describe the old engine artefact and no longer agree. No afterturn judge is registered in QUALIFICATION_JUDGES; promotion needs a new independently reviewed judge with an independent J(B=70) prediction and corrected supplier claims and lessons."
+      },
+      "judgeReview": {
+        "date": "2026-11-03",
+        "judge": "afterturn-shape-cycle-v1",
+        "prediction": "independent: compiled per-collider masses (massProperties) about the yaw line, carts and rods posed by slider-crank kinematics (16 mm crank, 48 mm rods; carts 64.0 -> 51.0568 mm along the slider), Iw/J(0)=0.026077, Iw/J(70)=0.027464; native rotor carries no yaw momentum",
+        "tolerances": "stroke ratio 1 % (analytic free-pair rotor control bound); net cycle sum of the two strokes' 1 % bounds about the prediction from measured wheel travel; shape effect must exceed twice its bound",
+        "disconnection": "rod_left and rod_right removed: stroke ratios leave the reviewed prediction (max error 126 %)"
+      },
+      "promoted": {
+        "to": "established library (MODELS)",
+        "date": "2026-11-03",
+        "judge": "afterturn-shape-cycle-v1",
+        "harness": "disconnection removes rod_left, rod_right; fixed-mass control run under the same judge",
+        "verified": "local native ordinary/strict/control/disconnected PASS (2026-11-03); hosted CI pending"
       }
     },
     {
@@ -3015,10 +3041,10 @@
       "program": "afterturn.bw",
       "programSha256": "c057262bda6aef8ee3e8b89e395ff031b426206abb899e5e36b70e60e7bbcc6a",
       "adaptation": "Supplied physical control (rods parked on 2780 pins, carts fixed; two intended locked-hinges notices). Licence path only. Lessons written for this catalogue.",
-      "supplierClaims": "0.0037 deg after the first cycle.",
+      "supplierClaims": "Corrected 2026-11-03: about 0.01 deg after the first cycle (supplied 0.0037 deg, measured with the #1494 rotor double count).",
       "simulatorLaw": {
         "verdict": "AGREES",
-        "scope": "-0.0027 / +0.0029 deg after first cycle; constant 0.1225 deg per wheel degree"
+        "scope": "native rotor (2026-11-03): constant 0.0257 platform deg per wheel deg at both shapes (predicted 0.025715/0.025719); cycle 0.013 deg; superseded legacy 0.1225 deg per wheel degree"
       },
       "poweredMotion": "HEADLESS_COMPLETED",
       "mechanicalLaw": "SIMULATOR_AGREES",
@@ -3035,6 +3061,11 @@
         "pageErrors": 0,
         "nan": false,
         "simMs": 56733
+      },
+      "controlReview": {
+        "date": "2026-11-03",
+        "decision": "STAYS_EXPERIMENTAL",
+        "reason": "Physical control for Afterturn: it passes the control branch of afterturn-shape-cycle-v1 (constant ratio, no net cycle) and is run beside Afterturn in qualification; it remains experimental as the control, not a separate principle."
       }
     },
     {
@@ -3824,7 +3855,12 @@
       "causalControl": "PASS (rimrun-swapped)",
       "browserLoad": "NOT_RUN",
       "savedProjectReplay": "NOT_RUN",
-      "noveltyNote": "Importer warns loose-part for the frame because the hub stands free beside the ramp (declared in ASSEMBLY.md); blocks promotion until mounted."
+      "noveltyNote": "Importer warns loose-part for the frame because the hub stands free beside the ramp (declared in ASSEMBLY.md); blocks promotion until mounted.",
+      "promotionReview": {
+        "date": "2026-11-07",
+        "decision": "STAYS_EXPERIMENTAL",
+        "reason": "Not repaired in P6. The hub (45601) stands on the floor at x=-820 LDU; the nearest frame member is about 170 LDU away and the four foot assemblies compile as separate bodies, so mounting it needs a new real-part bridge, not a one-part shift. The supplier-declared failing post-finish catch and watchdog-hold gates also remain. No judge written."
+      }
     },
     {
       "id": "rimrun-swapped",
@@ -3844,7 +3880,12 @@
       "mechanicalLaw": "SIMULATOR_AGREES",
       "causalControl": "IS_CONTROL",
       "browserLoad": "NOT_RUN",
-      "savedProjectReplay": "NOT_RUN"
+      "savedProjectReplay": "NOT_RUN",
+      "promotionReview": {
+        "date": "2026-11-07",
+        "decision": "STAYS_EXPERIMENTAL",
+        "reason": "Comparison variant of rimrun; stays experimental by design."
+      }
     },
     {
       "id": "swayshift",
@@ -4006,7 +4047,12 @@
       "causalControl": "PASS (evenhand-control)",
       "browserLoad": "NOT_RUN",
       "savedProjectReplay": "NOT_RUN",
-      "noveltyNote": "Positions alone cannot show the balance: the engine's motors hold any load (self-locking), so the evidence is holding torque, not sag."
+      "noveltyNote": "Positions alone cannot show the balance: the engine's motors hold any load (self-locking), so the evidence is holding torque, not sag.",
+      "promotionReview": {
+        "date": "2026-11-07",
+        "decision": "STAYS_EXPERIMENTAL",
+        "reason": "Holding-torque judge written (branch lane/robot-evenhand-20261107, unregistered): static gravity moment from configured body masses and centres of mass at the observed pose matches the held motor torque within 0.002 mN m at all 11 holds; elbow < 0.002 mN m, shoulder 0.331-0.361 mN m; frozen-output and 1 cm shift refused. Disconnection FAILS: removing the outer or all forearm counterweights makes the shoulder droop 9-17 deg during the mandatory 500 ms cold settle, so the authored 3 deg datum guard faults at stage 0 and the input never turns; evenhand-control faults the same way (13.5 deg). No law-loss measurement exists under the qualification harness, so no promotion."
+      }
     },
     {
       "id": "evenhand-control",
@@ -4026,7 +4072,111 @@
       "mechanicalLaw": "SIMULATOR_AGREES",
       "causalControl": "IS_CONTROL",
       "browserLoad": "NOT_RUN",
-      "savedProjectReplay": "NOT_RUN"
+      "savedProjectReplay": "NOT_RUN",
+      "promotionReview": {
+        "date": "2026-11-07",
+        "decision": "STAYS_EXPERIMENTAL",
+        "reason": "Control of evenhand. In the qualification harness (500 ms cold settle) the unbalanced arm droops 13.5 deg before Run and the authored datum guard faults at stage 0."
+      }
+    },
+    {
+      "id": "helixgate",
+      "placements": 20,
+      "intakeRecord": "docs/data/robot-lab-nine-intakes-20261026.json",
+      "judge": "worm-reduction-v1",
+      "promotionReview": {
+        "date": "2026-11-03",
+        "decision": "STAYS_EXPERIMENTAL",
+        "reason": "The qualification contract validator requires more than 50 pieces; the intake keeps its honest count (20) and no documented exception covers promotion. Operator decision whether that rule applies."
+      }
+    },
+    {
+      "id": "looprelay",
+      "placements": 54,
+      "intakeRecord": "docs/data/robot-lab-nine-intakes-20261026.json",
+      "judge": "chain-reversal-v1",
+      "promotionReview": {
+        "date": "2026-11-03",
+        "decision": "STAYS_EXPERIMENTAL",
+        "reason": "Ordinary and strict runs pass, but the shared disconnection run fails before measuring the law: with chain_input16 removed the hub observation base is not found. No alternative removal or harness change was made."
+      }
+    },
+    {
+      "id": "paritydial",
+      "placements": 31,
+      "intakeRecord": "docs/data/robot-lab-nine-intakes-20261026.json",
+      "judge": "parity-dials-v1",
+      "promotionReview": {
+        "date": "2026-11-03",
+        "decision": "STAYS_EXPERIMENTAL",
+        "reason": "The qualification contract validator requires more than 50 pieces; the intake keeps its honest count (31) and no documented exception covers promotion. Operator decision whether that rule applies."
+      }
+    },
+    {
+      "id": "counterslide",
+      "placements": 44,
+      "intakeRecord": "docs/data/robot-lab-nine-intakes-20261026.json",
+      "judge": "opposed-racks-v1",
+      "promotionReview": {
+        "date": "2026-11-03",
+        "decision": "STAYS_EXPERIMENTAL",
+        "reason": "The qualification contract validator requires more than 50 pieces; the intake keeps its honest count (44) and no documented exception covers promotion. Operator decision whether that rule applies."
+      }
+    },
+    {
+      "id": "toggle-press",
+      "placements": 139,
+      "intakeRecord": "docs/data/robot-lab-nine-intakes-20261026.json",
+      "judge": "toggle-ram-v1",
+      "promotionReview": {
+        "date": "2026-11-07",
+        "decision": "PROMOTED",
+        "reason": "Construction repair (PR 1672): each doubled guide-post hole takes one 3L pin; pivot_bridge lowered 10 LDU to meet upper_toggle_UK so the 2L fixed_pivot_U ends at both faces (bridge axles 4L to 5L, inner bushes follow). test/bw-sim-models-solid.test.mjs passes unchanged; contract added and qualified by the hosted ordinary, strict and disconnected runs on the final head. Browser, saved-project replay, export and manual controls NOT_RUN (contract notRun)."
+      }
+    },
+    {
+      "id": "footfall",
+      "placements": 119,
+      "intakeRecord": "docs/data/robot-lab-nine-intakes-20261026.json",
+      "judge": "twelve-link-leg-v1",
+      "promotionReview": {
+        "date": "2026-11-07",
+        "decision": "PROMOTED",
+        "reason": "Construction repair (PR 1672): removed the redundant 2L base_pin_support_A_-120; the 3L support_A_foot_pin already spans foot, spacer and cross. test/bw-sim-models-solid.test.mjs passes unchanged; contract added and qualified by the hosted ordinary, strict and disconnected runs on the final head. Browser, saved-project replay, export and manual controls NOT_RUN (contract notRun)."
+      }
+    },
+    {
+      "id": "phasekeeper",
+      "placements": 79,
+      "intakeRecord": "docs/data/robot-lab-nine-intakes-20261026.json",
+      "judge": "double-cardan-v1",
+      "promotionReview": {
+        "date": "2026-11-07",
+        "decision": "PROMOTED",
+        "reason": "Construction repair (PR 1672): removed base_pin_120_-120 and base_pin_120_120; the tower axles already pass through base_rail_output and the base cross. test/bw-sim-models-solid.test.mjs passes unchanged; contract added and qualified by the hosted ordinary, strict and disconnected runs on the final head. Browser, saved-project replay, export and manual controls NOT_RUN (contract notRun)."
+      }
+    },
+    {
+      "id": "vectorsum",
+      "placements": 122,
+      "intakeRecord": "docs/data/robot-lab-nine-intakes-20261026.json",
+      "judge": "open-differential-v1",
+      "promotionReview": {
+        "date": "2026-11-07",
+        "decision": "PROMOTED",
+        "reason": "Construction repair (PR 1672): output_axle moved 2 LDU outward, clear of diff_cover_28t and still 8 of 10 LDU in the 12-tooth bevel. test/bw-sim-models-solid.test.mjs passes unchanged; contract added and qualified by the hosted ordinary, strict and disconnected runs on the final head. Browser, saved-project replay, export and manual controls NOT_RUN (contract notRun)."
+      }
+    },
+    {
+      "id": "pointweaver",
+      "placements": 128,
+      "intakeRecord": "docs/data/robot-lab-nine-intakes-20261026.json",
+      "judge": "five-bar-v1",
+      "promotionReview": {
+        "date": "2026-11-07",
+        "decision": "STAYS_EXPERIMENTAL",
+        "reason": "Construction gate still refuses it and no clean repair exists (PR 1672 review). At each rear motor-foot hole (z = -180) the stack foot, pad, rail and base cross is 70 LDU deep: no single standard pin fills it, a foot pin and the rail-to-cross fastener must share the rail hole, and removing those fasteners disconnects the front base from the hub section (loose-part). Needs a reviewed base redesign; the gate was not loosened."
+      }
     }
   ],
   "appVerification": {

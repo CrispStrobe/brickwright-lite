@@ -1614,6 +1614,113 @@ export const MODEL_LESSONS = Object.freeze({
             "Linearaktuator"
         ]
     },
+    "toggle-press.ldr": {
+        "pieces": 139,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "linkages",
+        "description": {
+            "en": "One motor turns a yellow crank. A blue coupler folds the red and orange knee links, pushing an orange ram along two guide rails. The program approaches—but does not cross—dead centre, then returns to the saved datum.",
+            "de": "Ein Motor dreht eine gelbe Kurbel. Eine blaue Koppel knickt die roten und orangefarbenen Kniehebel und schiebt einen orangefarbenen Schlitten auf zwei Führungen. Das Programm nähert sich dem Totpunkt, überschreitet ihn aber nicht, und kehrt zur gespeicherten Nullstellung zurück."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "toggle linkage",
+            "de": "Kniehebelgetriebe"
+        },
+        "keywords": [
+            "toggle linkage",
+            "Kniehebelgetriebe",
+            "dead centre",
+            "toggle press",
+            "Kniehebel",
+            "Totpunkt"
+        ]
+    },
+    "footfall.ldr": {
+        "pieces": 119,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "linkages",
+        "description": {
+            "en": "One motor turns a yellow crank through a full revolution. Blue couplers drive a red upper triangle and an orange lower triangle so the orange foot link traces a closed, walking-like path before returning to the saved datum.",
+            "de": "Ein Motor dreht eine gelbe Kurbel um eine volle Umdrehung. Blaue Koppeln treiben ein rotes oberes und ein orangefarbenes unteres Dreieck an, sodass der orange Fußhebel eine geschlossene, schrittähnliche Bahn zeichnet und zur gespeicherten Nullstellung zurückkehrt."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Jansen linkage",
+            "de": "Jansen-Beinmechanismus"
+        },
+        "keywords": [
+            "Jansen linkage",
+            "Jansen-Beinmechanismus",
+            "walking linkage",
+            "foot trajectory",
+            "Strandbeest",
+            "Jansen-Mechanismus"
+        ]
+    },
+    "phasekeeper.ldr": {
+        "pieces": 79,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "gears",
+        "description": {
+            "en": "One motor drives a yellow input yoke, a blue diagonal shaft and an orange output yoke. Each universal joint bends by the same angle, and the two blue intermediate forks are parallel, so ideal Cardan speed ripple from the first joint is cancelled by the second. The placement list has 79 entries; add two real universal-joint crosses for 81 physical pieces.",
+            "de": "Ein Motor treibt eine gelbe Eingangsgabel, eine blaue Diagonalwelle und eine orange Ausgangsgabel an. Beide Kardangelenke knicken um denselben Winkel ab, und die beiden blauen Zwischengabeln sind parallel; dadurch wird die ideale Drehzahlschwankung des ersten Gelenks vom zweiten aufgehoben. Die Teileliste enthält 79 Platzierungen; mit zwei echten Kardankreuzen sind es 81 Bauteile."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "double Cardan joint",
+            "de": "Doppelkardangelenk"
+        },
+        "keywords": [
+            "double Cardan joint",
+            "Doppelkardangelenk",
+            "double Cardan",
+            "universal joint",
+            "Hooke joint",
+            "constant velocity",
+            "Kardangelenk",
+            "Gleichlauf"
+        ]
+    },
+    "vectorsum.ldr": {
+        "pieces": 122,
+        "motors": 2,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "gears",
+        "description": {
+            "en": "Two opposed angular motors drive the side gears of an open Technic differential. The red carrier represents the average of the two side-shaft angles in a shared axis convention, and a yellow 12-tooth bevel gear drives an orange output pointer from the carrier's red 28-tooth cover.",
+            "de": "Zwei gegenüberliegende Winkelmotoren treiben die Seitenräder eines offenen Technic-Differentials an. Der rote Träger entspricht im gemeinsamen Achsbezug dem Mittelwert der beiden Seitenwellenwinkel; ein gelbes 12-Zahn-Kegelrad treibt den orangefarbenen Ausgangszeiger über den roten 28-Zahn-Deckel des Trägers an."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "differential angle averaging",
+            "de": "Winkelmittelwert im Differential"
+        },
+        "keywords": [
+            "differential angle averaging",
+            "Winkelmittelwert im Differential",
+            "open differential",
+            "angle averaging",
+            "mechanical adder",
+            "Differenzial",
+            "Differential"
+        ]
+    },
     "kestrel-flapper.ldr": {
         "pieces": 61,
         "motors": 1,
@@ -1750,6 +1857,37 @@ export const MODEL_LESSONS = Object.freeze({
             "tangent",
             "analog computation",
             "line intersection"
+        ]
+    },
+    "paired-door-sync.ldr": {
+        "pieces": 88,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "gears",
+        "description": {
+            "en": "One 16-tooth pinion drives two racks on opposite sides, so the two door leaves travel equally fast in opposite directions and the sum of their positions stays zero.",
+            "de": "Ein 16er-Ritzel treibt zwei Zahnstangen auf gegenüberliegenden Seiten: Beide Türblätter laufen gleich schnell gegenläufig, die Summe ihrer Positionen bleibt null."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Opposed rack and pinion",
+            "de": "Gegenläufige Zahnstangen mit Ritzel"
+        },
+        "keywords": [
+            "Opposed rack and pinion",
+            "Gegenläufige Zahnstangen mit Ritzel",
+            "paired doors",
+            "sliding doors",
+            "rack and pinion",
+            "opposed racks",
+            "synchronised doors",
+            "Schiebetür",
+            "Doppeltür",
+            "Zahnstange",
+            "Ritzel"
         ]
     },
     "watt-line.ldr": {
@@ -1961,6 +2099,39 @@ export const MODEL_LESSONS = Object.freeze({
         },
         "author": "CrispStrobe",
         "license": "BSD-3-Clause"
+    },
+    "afterturn.ldr": {
+        "pieces": 296,
+        "motors": 2,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "inertia",
+        "description": {
+            "en": "Two motors turn a reaction wheel and reposition balanced masses on a freely rotating platform. Compare the remaining platform heading after both internal motions return home, then reverse the cycle and test physically fixed masses.",
+            "de": "Zwei Motoren drehen ein Reaktionsrad und versetzen ausgewuchtete Massen auf einer frei drehbaren Plattform. Vergleiche die verbleibende Plattformdrehung nach der Rückkehr beider innerer Bewegungen, kehre den Zyklus um und prüfe physisch festgesetzte Massen."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Geometric-phase reorientation through a closed internal shape cycle",
+            "de": "Umorientierung durch einen geschlossenen inneren Formzyklus"
+        },
+        "keywords": [
+            "Geometric-phase reorientation through a closed internal shape cycle",
+            "Umorientierung durch einen geschlossenen inneren Formzyklus",
+            "geometric phase",
+            "shape cycle",
+            "reaction wheel",
+            "variable inertia",
+            "angular momentum",
+            "free yaw",
+            "geometrische Phase",
+            "Formzyklus",
+            "Reaktionsrad",
+            "veränderliches Trägheitsmoment",
+            "Drehimpuls"
+        ]
     },
     "product-plotter.ldr": {
         "pieces": 301,

@@ -137,6 +137,10 @@ and handoff entries.
 
 ### P3. Geometry repairs for five passing intakes (after P2)
 
+**Update 2026-11-07 (PR 1672):** Toggle Press, Footfall, Phasekeeper and Vector Sum
+repaired, given contracts and promoted. Point Weaver stays experimental: its rear
+motor-foot stack cannot be pinned cleanly (reason in the checkpoint).
+
 Toggle Press, Footfall, Phasekeeper, Vector Sum and Point Weaver pass hosted
 native ordinary, strict and disconnected qualification runs, but fail the
 established construction gate `test/bw-sim-models-solid.test.mjs`:
@@ -171,13 +175,37 @@ breaking the law, with a justification in the code comment, or fix the
 harness lookup in a separately reviewed change. Do not swap parts just to
 get green.
 
-### P5. Operator decision: the 50-piece minimum
+Diagnosis (2026-11-07): the removal is not the cause. Loop Relay's hub part is
+`spike_hub`, and the shared disconnection test looked up a body containing a part
+named `hub`, which no Loop Relay body has, with or without `chain_input16` (the
+compiled hub body is unchanged by the removal). Helixgate, Parity Dial and Counter
+Slide use `spike_hub` too. Fix on `lane/robot-looprelay-20261107`: the test takes
+the compiler's single registered hub part (`mechanism.hubs[0].id`), as the
+nine-intake judge already does; all 31 registered contracts resolve to `hub`, so
+their runs are unchanged. The removal of `chain_input16` stays as reviewed.
 
-Helixgate (20 pieces), Parity Dial (31) and Counter Slide (44) are under the
-qualification contract validator's >50-piece minimum, and no documented
-exception covers promotion. Ask the operator whether the rule applies to
-these intakes. Do not pad the models or change the validator without that
-decision.
+### P5. Remove the 50-piece minimum from qualification (operator decision, 2026-11-07)
+
+Decision: the >50-piece minimum is dropped from qualification altogether.
+Qualification judges the simulated physics and its dependence on the
+mechanism; piece count is not part of that. The builder brief
+(`docs/ROBOT-LAB-MODEL-BUILDER.md`) keeps "models above 50 pieces are
+welcome" as a design preference, and the gallery's "More than 50 pieces"
+filter stays, both reading the honest count.
+
+To do:
+1. In `scripts/lib/robot-lab-qualification.mjs` (contract validator, the
+   `assert.ok(Number.isInteger(c.parts)&&c.parts>50)` line) keep the
+   integer/positive check on `parts` but drop the `>50` bound. The `>50`
+   instruction-step check in `scripts/lib/sim-lab-arm-lift-gate.mjs` is a
+   different rule; leave it.
+2. Add or adjust a validator test: a contract with an honest small count
+   (e.g. 20) is accepted, a missing or non-integer `parts` is still rejected.
+3. Note the change in this handoff and in the checkpoint reasons for
+   Helixgate (20 pieces), Parity Dial (31) and Counter Slide (44).
+4. Qualify those three through the normal pipeline (contract, ordinary,
+   strict, disconnected, construction gate `test/bw-sim-models-solid.test.mjs`)
+   and promote whichever pass. Never pad a model's count.
 
 ### P6. Other remaining experimental entries
 
@@ -187,6 +215,18 @@ figures in 2b) and Paired Door Sync (repaired in #1551; needs a qualification
 contract and the registry move). Controls and comparison variants
 (`*-control`, `*-swapped`, `*-in-phase`, `afterturn-fixed-masses` and the
 like) stay experimental by design.
+
+
+Status 2026-11-07 (PR #1671): Paired Door Sync promoted (`opposed-rack-pinion-v1`; pinion
+disconnection loses the law by 24 mm). Still open:
+- **Evenhand**: a holding-torque judge passes its law (branch `lane/robot-evenhand-20261107`,
+  unregistered): the measured torque matches statics within 0.002 mN·m, elbow < 0.002 mN·m.
+  Next: pick a removal that does not trip the program's 3° start guard during the 500 ms cold
+  settle (removing the forearm counterweights droops the arm 9–17°), or justify a different
+  disconnection. Then register the judge and promote.
+- **RimRun**: mount the hub with real bridging parts (the hub is about 170 LDU from the nearest
+  frame member; the feet are separate bodies), repair the supplier's failing catch and
+  watchdog-hold checks, then write the judge with `rimrun-swapped` as the causal control.
 
 ## 0. Status refresh, 2026-11-02
 
@@ -265,7 +305,7 @@ Triage of batches B and A, 2026-10-28:
 | pan-shift | runs past the 180 s contract maximum | Investigate the program length; keep experimental if it can't be fixed honestly |
 | vector-delta | blocked by a missing part | Keep blocked |
 | obliquity-orrery | blocked by issue #1460 (the compiler ignores motor orientation) | Wait for #1460 |
-| afterturn | Re-run 2026-11-02 with the #1573 native rotor opt-in: strokes 0.02749 (masses out) and 0.02606 (saved radii, law 0.02608); first cycle −1.275°, inverse −0.043°; control −0.009°. The supplier claim (4.6625°) and lessons describe the old double-count artefact, and no Afterturn judge is registered | Needs a new independently reviewed judge (independent J at B=70) plus corrected claims and lessons; stays experimental |
+| afterturn | Promoted 2026-11-03 with the new `afterturn-shape-cycle-v1` judge: independent prediction from compiled masses and slider-crank poses, Iw/J = 0.02608 (masses out, B = 0) and 0.02746 (masses in, B = 70°); measured strokes 0.0261/0.0275 (within 1 %), cycle 1.24° vs predicted 1.25°, inverse back to 0.04°, fixed-mass control 0.01°. The earlier "0.02749 (masses out)" label was reversed: B = 70° moves the masses in. The supplier figure 4.6625° was the #1494 double count; claims and lessons now give the physical value | Done (control afterturn-fixed-masses stays experimental as the control) |
 | impulse-line | the unpowered pusher droops about 4°/s during the cold settle, against a 2° guard; its law is only qualitative | Needs a pose fix and a quantitative law |
 | quiet-partner | compiler warns of locked hinges, and the elastic bands become spring couplings | Needs harness support for spring couplings, or stays experimental |
 
@@ -303,6 +343,14 @@ browser journey, then promote as #1555 did.
 | phasekeeper | double Cardan at equal angles: ripple of joint 1 cancelled by joint 2 | Needs the two inferred real Cardan crosses (83 physical pieces); keep the loose-part recognition test |
 | vectorsum | open differential: carrier = mean of the two side-shaft angles | Two motors (A, B); check shaft-tip clearance stays clean |
 | pointweaver | two-motor five-bar, endpoint reaches four corner poses | Chromium full journey already passed once (preliminary) |
+
+**Update 2026-11-03 (nine intakes):** judges registered per family in
+`QUALIFICATION_JUDGES` with a disconnection-loss measure. Toggle Press, Footfall,
+Phasekeeper, Vector Sum and Point Weaver pass the native qualification runs but fail
+the construction gate (`bw-sim-models-solid`), so they stay experimental pending
+geometry repair. Loop Relay's disconnection run loses the hub observation base.
+Helixgate, Parity Dial and Counter Slide stay under the >50-piece rule pending an
+operator decision. Reasons are in `docs/data/robot-lab-experimental-checkpoint.json`.
 
 **Batch E remainders** (added in #1499):
 
@@ -381,7 +429,8 @@ infrastructure failures. Preserve every failure and original assertion. Scope
    verdict changes, investigate before merging.
 5. After merging, close #1494. Re-run Afterturn and promote it only if it
    passes honestly. Its recorded figures (a 4.66° cycle; the supplier's 4.6625°)
-   were measured with the old code.
+   were measured with the old code. (Done 2026-11-03: about 1.25° under the
+   native rotor, judged by `afterturn-shape-cycle-v1`, promoted.)
 
 Lane file: `lanes/2026-10-28-rotor-inertia-relative-1494.md`.
 
