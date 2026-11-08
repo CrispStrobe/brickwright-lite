@@ -14,9 +14,9 @@ const read = p => readFileSync(new URL('../' + p, import.meta.url), 'utf8');
 const hash = s => createHash('sha256').update(s).digest('hex');
 const catalog = catalogFrom(JSON.parse(read('overlay/scratch-gui/src/lib/bw-sim/part-meta/parts.json')));
 const counts = {helixgate: 20, looprelay: 54, paritydial: 31, counterslide: 44,
-    'toggle-press': 142, footfall: 120, phasekeeper: 81, vectorsum: 122, pointweaver: 128};
+    'toggle-press': 139, footfall: 119, phasekeeper: 79, vectorsum: 122, pointweaver: 128};
 // Qualified and promoted to the established library (docs/data/robot-lab-qualification.json).
-const PROMOTED = new Set(['helixgate']);
+const PROMOTED = new Set(['helixgate', 'toggle-press', 'footfall', 'phasekeeper', 'vectorsum']);
 
 test('checkpoint candidates remain opt-in and carry no unearned simulation status', () => {
     const visible = visibleExampleModels(EXPERIMENTAL_MODELS);
@@ -95,6 +95,6 @@ for (const [id, count] of Object.entries(counts)) test(`${id}: coherent source, 
         const lesson = JSON.parse(read(base + `lessons/${id}.${language}.json`));
         assert.equal(lesson.id, id); assert.equal(lesson.language, language);
         assert.ok(lesson.try.length >= 3 && lesson.answer.length > 100);
-        if (id === 'phasekeeper') assert.match(lesson.what, /83/);
+        if (id === 'phasekeeper') assert.match(lesson.what, /81/);
     }
 });

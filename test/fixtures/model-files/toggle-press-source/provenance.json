@@ -1,0 +1,10 @@
+{
+ "author": "CrispStrobe",
+ "license": "BSD-3-Clause",
+ "files": {
+  "models/toggle-press.ldr": "699e150095dee717794502548fc64e5301ffb9acd331f1a8585ba207f3611a11",
+  "programs/toggle-press.bw": "92548b0b73121faa085b867e4bcbe7af31425f915762595a53d68af9d6e56282",
+  "LICENSE.txt": "0431b30b5399aa695bb37f120330a8d885db5b649731bad92a017cdac252f74e",
+  "SOURCES.md": "ef8322c3cb9a9463c0b7e52e728d35f1f1fb80b26ac9ae0de7504b7ca3ec05f3"
+ }
+}
