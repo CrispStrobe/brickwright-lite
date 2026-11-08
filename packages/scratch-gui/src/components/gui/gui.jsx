@@ -1235,7 +1235,13 @@ const GUIComponent = props => {
                                 <React.Suspense fallback={
                                     <div style={{padding: 24, color: '#64748b'}}>Loading controller…</div>
                                 }>
-                                    <div style={dockFullScreenStyle || {position: 'relative', flex: 1, minHeight: 0, borderTop: '1px solid #ffffff', background: '#f8fafc'}}>
+                                    {/* zIndex 1 makes this wrapper a stacking context: the panel's own
+                                        zIndex:10 stays inside it. That keeps the Widgets above the
+                                        in-stage circuit portal (z-index 0) but below the debugger
+                                        docked right (z-index 2, circuit-tab.jsx). Without it the
+                                        Widgets toolbar covered the docked debugger: a real click on
+                                        the debugger's Pause landed on Full screen. */}
+                                    <div style={dockFullScreenStyle || {position: 'relative', zIndex: 1, flex: 1, minHeight: 0, borderTop: '1px solid #ffffff', background: '#f8fafc'}}>
                                         <ControllerPanelView
                                             panel={controllerPanel}
                                             board={board}
