@@ -13,3 +13,9 @@ recorded in the checkpoint (input floors 178°, 88°, 98°; frozen outputs
 the promotion surfaces #1668 used (registry move, generated catalogue and
 lessons, mechanisms, source fixtures, enumerating tests) and checkpoint records.
 `test/bw-sim-models-solid.test.mjs`, judges and thresholds are not loosened.
+
+Historical control: `test/bw-sim-stock-axle-envelope.test.mjs` (old square
+4519 collider reproduces foundation drift while the route completes) now runs
+on the exact pre-repair geometry, `test/fixtures/model-files/counterslide-pre-repair.ldr`.
+On the repaired racks, the old collider also stalls the route. Both of its
+assertions are unchanged.
