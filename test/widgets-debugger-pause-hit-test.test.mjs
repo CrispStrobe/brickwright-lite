@@ -33,9 +33,13 @@ const panelStyle=panelSrc.slice(panelStart,panelEnd);
 assert.ok(!/[{}]/.test(panelStyle),'Widgets root style is one flat object');
 const panelCss=jsxStyleToCss(panelStyle).replaceAll('"',"'");
 assert.match(panelCss,/z-index:10/,'Widgets root keeps its own z-index');
-const hostMatch=read('tw-pseudocode/circuit-tab.jsx').match(/host\.style\.cssText = '([^']*)'/);
+const circuitSrc=read('tw-pseudocode/circuit-tab.jsx');
+const hostMatch=circuitSrc.match(/host\.style\.cssText = '([^']*)'/);
 assert.ok(hostMatch,'circuit stage host cssText found in circuit-tab.jsx');
-const hostCss=hostMatch[1].replace('display:none','display:block');
+// The z-index the host takes while it shows the debugger docked right, if
+// the source sets one; otherwise the cssText value stands.
+const rightZ=circuitSrc.match(/_stageHost\.style\.zIndex = rightHere \? '(-?\d+)'/);
+const hostCss=hostMatch[1].replace('display:none','display:block')+(rightZ?`;z-index:${rightZ[1]}`:'');
 
 const html=hostFirst=>{
     const host=`<div id="host" style="${hostCss}"><div style="padding:8px;padding-top:48px">
