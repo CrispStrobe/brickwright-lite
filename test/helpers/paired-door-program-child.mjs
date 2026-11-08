@@ -69,7 +69,7 @@ async function runCase(coldMs){
         const model=readFileSync(path.join(ROOT,'overlay/scratch-gui/static/sim-lab/models/paired-door-sync.ldr'));
         const programme=readFileSync(path.join(ROOT,'overlay/scratch-gui/static/sim-lab/programs/paired-door-sync.bw'));
         raw.modelSha256=sha(model);raw.programmeSha256=sha(programme);
-        assert.equal(raw.modelSha256,'a1ecbb2c21dd0a39f88c67ac5f4ed229ee40d365820be9b27c47993fa1c6cef6');
+        assert.equal(raw.modelSha256,'00a31ccd7b3d4ed31452ef3e1821106bb12fb963e9d8e30db5b40ea9b0e47ae5');
         assert.equal(raw.programmeSha256,'483ebd35317bbc9840a4a2dd285ee90d2cdd3fb3a124568a8221c3c0d9bab101');
         const catalog=catalogFrom(JSON.parse(readFileSync(path.join(ROOT,'overlay/scratch-gui/src/lib/bw-sim/part-meta/parts.json'))));
         let final={};fd=openSync(path.join(dir,'native.ndjson'),'wx');

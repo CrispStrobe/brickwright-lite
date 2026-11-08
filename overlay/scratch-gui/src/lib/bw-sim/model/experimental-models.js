@@ -377,29 +377,6 @@ export const EXPERIMENTAL_MODELS = Object.freeze([
         }
     },
     {
-        "file": "paired-door-sync.ldr",
-        "title": {
-            "en": "Paired Door Sync — one pinion, two opposed racks",
-            "de": "Doppeltür-Synchron — ein Ritzel, zwei gegenläufige Zahnstangen"
-        },
-        "example": "paired-door-sync.bw",
-        "mat": "plain",
-        "experimental": true,
-        "blocked": false,
-        "intro": {
-            "en": "One 16T pinion drives two 64781 racks placed on opposite sides, so the two door leaves travel with equal speed in opposite directions and their sum of positions stays constant. The measured rack markers show the declared equal-and-opposite law, and a control with the front chain removed shows that one rack alone cannot synchronize a pair.",
-            "de": "Ein 16-Zahn-Ritzel treibt zwei gegenüberliegende 64781-Zahnstangen, sodass sich beide Türblätter gleich schnell und gegenläufig bewegen und ihre Positionssumme konstant bleibt. Die gemessenen Zahnstangenmarker zeigen das erklärte gegenläufige Gesetz; eine Kontrolle ohne vordere Antriebskette zeigt, dass eine einzelne Zahnstange ein Paar nicht synchronisieren kann."
-        },
-        "manualJog": {
-            "A": {
-                "minDeg": -150,
-                "maxDeg": 150,
-                "stepDeg": 15,
-                "speedDps": 15
-            }
-        }
-    },
-    {
         "file": "impulse-line.ldr",
         "title": {
             "en": "Impulse Line — contact transfer",

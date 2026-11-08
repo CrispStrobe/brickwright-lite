@@ -11,7 +11,12 @@ The full task list with exact steps is section 00 of
 - P3 geometry repairs for Toggle Press, Footfall, Phasekeeper, Vector Sum, Point Weaver, then promote.
 - P4 (taken 2026-11-07, lanes/2026-11-07-robot-piece-minimum.md) Loop Relay disconnection run loses the hub observation base.
 - P5 (taken 2026-11-07, lanes/2026-11-07-robot-piece-minimum.md) decided (2026-11-07): drop the >50-piece bound from the qualification validator, then qualify Helixgate, Parity Dial, Counter Slide.
-- P6 RimRun, Evenhand and Paired Door Sync.
+- P6 Paired Door Sync DONE in PR #1671 (judge opposed-rack-pinion-v1, promoted). Still open:
+  - Evenhand: the holding-torque judge passes (branch `lane/robot-evenhand-20261107`, unregistered), but removing the
+    counterweights makes the arm droop 9–17° in the 500 ms cold settle, and the program's 3° start guard faults.
+    Next: a removal that does not trip the start guard, or a justified different disconnection; then register and promote.
+  - RimRun: next is to mount the hub with real bridging parts (about 170 LDU to the frame), repair the supplier's failing
+    catch and watchdog-hold checks, then write a judge with `rimrun-swapped` as the causal control.
 
 Rules: iterate without `ci:full`, add it once on the final head; merge only
 with `--match-head-commit` after every enabled check passes; never weaken a

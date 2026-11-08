@@ -945,6 +945,24 @@
       ]
     },
     {
+      "id": "paired-door-sync",
+      "judge": "opposed-rack-pinion-v1",
+      "parts": 88,
+      "ports": [
+        "A"
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 60000,
+      "afterMs": 500,
+      "frameMs": 20,
+      "frozenOutput": "rack_front",
+      "disconnect": [
+        "pinion"
+      ],
+      "disconnectInputDeg": 140,
+      "disconnectLoss": "p6"
+    },
+    {
       "id": "helixgate",
       "judge": "worm-reduction-v1",
       "parts": 20,
