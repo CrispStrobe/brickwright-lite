@@ -1112,6 +1112,22 @@
     },
     {
       "models": [
+        "helixgate"
+      ],
+      "name": {
+        "en": "worm gearing",
+        "de": "Schneckengetriebe"
+      },
+      "aliases": [
+        "worm gear",
+        "worm drive",
+        "24:1",
+        "right-angle transmission",
+        "Schneckengetriebe"
+      ]
+    },
+    {
+      "models": [
         "paired-door-sync"
       ],
       "name": {

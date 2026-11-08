@@ -21,3 +21,6 @@ the edit is two style values.
 
 Qualification: the hit-test fails on the old styles (mutation check) and passes
 with the fix; full exact-head CI including browser tiers before merge.
+
+Update 2026-11-08: the fix was incomplete on the real page and the fixture test
+proved nothing about it. Superseded by `2026-11-08-debugger-pause-stacking-real-page.md`.

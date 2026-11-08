@@ -810,29 +810,6 @@ export const EXPERIMENTAL_MODELS = Object.freeze([
         }
     },
     {
-        "file": "helixgate.ldr",
-        "title": {
-            "en": "HelixGate — a 24:1 worm gearbox",
-            "de": "HelixGate — ein Schneckengetriebe mit 24:1"
-        },
-        "example": "helixgate.bw",
-        "mat": "plain",
-        "manualJog": {
-            "A": {
-                "minDeg": 0,
-                "maxDeg": 720,
-                "stepDeg": 45,
-                "speedDps": 60
-            }
-        },
-        "intro": {
-            "en": "One right-hand single-start worm turns a 24-tooth gear on a perpendicular axle, moving a red L-shaped gate 30 degrees for two complete motor turns. Coast at the top to observe the virtual worm's hold.",
-            "de": "Eine rechtsgängige eingängige Schnecke dreht ein 24er-Zahnrad auf einer rechtwinkligen Welle. Zwei Motorumdrehungen bewegen den roten L-Hebel um 30 Grad. Beim Ausrollen kann die Haltewirkung beobachtet werden."
-        },
-        "experimental": true,
-        "blocked": false
-    },
-    {
         "file": "looprelay.ldr",
         "title": {
             "en": "LoopRelay — chain drive, gear reversal",
@@ -2470,34 +2447,6 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
             "experimental",
             "prototype",
             "unverified",
-            "experimentell"
-        ],
-        "experimental": true
-    },
-    "helixgate.ldr": {
-        "pieces": 20,
-        "motors": 1,
-        "hubs": [
-            "spike-prime"
-        ],
-        "topic": "gears",
-        "description": {
-            "en": "One right-hand single-start worm turns a 24-tooth gear on a perpendicular axle, moving a red L-shaped gate 30 degrees for two complete motor turns. Coast at the top to observe the virtual worm's hold.",
-            "de": "Eine rechtsgängige eingängige Schnecke dreht ein 24er-Zahnrad auf einer rechtwinkligen Welle. Zwei Motorumdrehungen bewegen den roten L-Hebel um 30 Grad. Beim Ausrollen kann die Haltewirkung beobachtet werden."
-        },
-        "author": "CrispStrobe",
-        "license": "BSD-3-Clause",
-        "mechanism": {
-            "en": "worm gearing",
-            "de": "Schneckengetriebe"
-        },
-        "keywords": [
-            "worm gear",
-            "worm drive",
-            "24:1",
-            "right-angle transmission",
-            "Schneckengetriebe",
-            "experimental",
             "experimentell"
         ],
         "experimental": true

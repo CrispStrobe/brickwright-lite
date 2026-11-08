@@ -82,6 +82,39 @@ Editing `scripts/lib/robot-lab-qualification.mjs`:
   (`lanes/2026-10-27-robot-lab-hubless-harness.md`).
 - When merging main, keep every side's entries.
 
+## 000. Status, 2026-11-08 (read this first; supersedes P1–P6 below)
+
+P1–P6 are all done. Merged: #1641 (Afterturn), #1639 (nine-intake judge,
+no promotions), #1669 (disconnection run uses the compiler's registered hub,
+so `spike_hub` models work), #1672 (geometry repairs; promoted Toggle Press,
+Footfall, Phasekeeper, Vector Sum), #1671 (promoted Paired Door Sync, judge
+`opposed-rack-pinion-v1`), #1668 (dropped the >50-piece bound; promoted
+Helixgate).
+
+Still experimental, each with its reason in
+`docs/data/robot-lab-experimental-checkpoint.json`. All are unowned and
+doable as geometry or test-design work:
+
+- **Loop Relay, Parity Dial**: pass ordinary, strict and disconnected runs at
+  178° / 88° input floors; fail the construction gate because the input axle
+  reaches 2.5 LDU into the motor. Fix the axle seat, then re-add the contract
+  (values in the checkpoint) and promote as #1668 did for Helixgate.
+- **Counter Slide**: same, at a 98° floor; both housing angles overlap their
+  racks by 2.5 LDU and eight pins reach about 2 LDU into the housings.
+- **Point Weaver**: rear motor-foot holes stack 70 LDU deep, which no single
+  standard pin fills; needs a different mount, not two pins in one hole.
+- **Evenhand**: the holding-torque judge passes (branch
+  `lane/robot-evenhand-20261107`, no PR), but removing the counterweights
+  makes the arm droop past the program's 3° start guard. Needs a removal that
+  does not trip the guard, or a justified different disconnection.
+- **RimRun**: mount the hub with real bridging parts (about 170 LDU to the
+  frame), repair the supplier's catch and watchdog-hold checks, then write a
+  judge with `rimrun-swapped` as the causal control.
+
+Not run for the newly promoted models: manual browser controls (recorded as
+not run in the checkpoint). Standing rules above still apply; never loosen the
+construction gate or a threshold to promote.
+
 ## 00. Status and pending tasks, 2026-11-03 (read this first)
 
 The owning agents stopped on the weekly usage limit. Everything below is
@@ -206,6 +239,18 @@ To do:
 4. Qualify those three through the normal pipeline (contract, ordinary,
    strict, disconnected, construction gate `test/bw-sim-models-solid.test.mjs`)
    and promote whichever pass. Never pad a model's count.
+
+Progress (2026-11-07): step 1–2 done on `lane/robot-piece-minimum-20261107`
+(`assertHonestPartCount`, `test/robot-lab-qualification-parts.test.mjs`).
+Outcome (2026-11-08): after #1639 (judges) and #1669 (P4 harness fix), hosted
+native ordinary, strict and disconnected runs pass for Helixgate, Loop Relay,
+Parity Dial and Counter Slide with strict disconnection input thresholds (each
+program's own completion tolerance: 717, 178, 88, 98). Only Helixgate also
+passes the construction gate and is promoted. Loop Relay and Parity Dial fail it
+(input axle reaches 2.5 LDU into motor_A); Counter Slide fails it (housing angle
+connectors interpenetrate the racks by 2.5 LDU, eight pins reach about 2 LDU into
+the housings). These three stay experimental pending geometry repair and
+requalification; their trial contract values are in the checkpoint reasons.
 
 ### P6. Other remaining experimental entries
 
@@ -348,9 +393,9 @@ browser journey, then promote as #1555 did.
 `QUALIFICATION_JUDGES` with a disconnection-loss measure. Toggle Press, Footfall,
 Phasekeeper, Vector Sum and Point Weaver pass the native qualification runs but fail
 the construction gate (`bw-sim-models-solid`), so they stay experimental pending
-geometry repair. Loop Relay's disconnection run loses the hub observation base.
-Helixgate, Parity Dial and Counter Slide stay under the >50-piece rule pending an
-operator decision. Reasons are in `docs/data/robot-lab-experimental-checkpoint.json`.
+geometry repair. Helixgate was promoted on 2026-11-08 (P5). Loop Relay, Parity
+Dial and Counter Slide pass the native runs but fail the construction gate (P5
+outcome). Reasons are in `docs/data/robot-lab-experimental-checkpoint.json`.
 
 **Batch E remainders** (added in #1499):
 
