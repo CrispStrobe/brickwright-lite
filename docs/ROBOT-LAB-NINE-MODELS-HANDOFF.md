@@ -19,9 +19,9 @@ Use a new isolated checkout and preserve other owners' worktrees and claims.
 | `looprelay` | 54 | Compound chain transmission, passive −2/9 output |
 | `paritydial` | 31 | Opposite dial phases, −1/3 and +1/3 ratios |
 | `counterslide` | 44 | Fully seated drive axle and opposed racks |
-| `toggle-press` | 142 | Retained shafts, tower clearance, sufficient guide travel |
-| `footfall` | 120 | Motor phasing, fixed pivot bearing, physically connected frame |
-| `phasekeeper` | 81 | Retained and correctly phased double Cardan transmission |
+| `toggle-press` | 139 | Retained shafts, tower clearance, sufficient guide travel |
+| `footfall` | 119 | Motor phasing, fixed pivot bearing, physically connected frame |
+| `phasekeeper` | 79 | Retained and correctly phased double Cardan transmission |
 | `vectorsum` | 122 | Differential geometry, connected frame, shaft-tip clearance |
 | `pointweaver` | 128 | Keyed input arms, corrected target signs, bounded precision controls |
 

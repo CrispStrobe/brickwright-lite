@@ -1049,6 +1049,69 @@
     },
     {
       "models": [
+        "toggle-press"
+      ],
+      "name": {
+        "en": "toggle linkage",
+        "de": "Kniehebelgetriebe"
+      },
+      "aliases": [
+        "dead centre",
+        "toggle press",
+        "Kniehebel",
+        "Totpunkt"
+      ]
+    },
+    {
+      "models": [
+        "footfall"
+      ],
+      "name": {
+        "en": "Jansen linkage",
+        "de": "Jansen-Beinmechanismus"
+      },
+      "aliases": [
+        "walking linkage",
+        "foot trajectory",
+        "Strandbeest",
+        "Jansen-Mechanismus"
+      ]
+    },
+    {
+      "models": [
+        "phasekeeper"
+      ],
+      "name": {
+        "en": "double Cardan joint",
+        "de": "Doppelkardangelenk"
+      },
+      "aliases": [
+        "double Cardan",
+        "universal joint",
+        "Hooke joint",
+        "constant velocity",
+        "Kardangelenk",
+        "Gleichlauf"
+      ]
+    },
+    {
+      "models": [
+        "vectorsum"
+      ],
+      "name": {
+        "en": "differential angle averaging",
+        "de": "Winkelmittelwert im Differential"
+      },
+      "aliases": [
+        "open differential",
+        "angle averaging",
+        "mechanical adder",
+        "Differenzial",
+        "Differential"
+      ]
+    },
+    {
+      "models": [
         "paired-door-sync"
       ],
       "name": {
