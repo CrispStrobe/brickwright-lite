@@ -1,7 +1,8 @@
 // Browser gate: on the REAL app page, the debugger docked beside a running
 // x86 machine (Widgets pane open) must own its own controls. A hosted 386
 // event's real click on Pause landed on the Widgets "Full screen" button, and
-// an earlier fix proved only a rebuilt fixture. This drives the served build:
+// an earlier fix proved only a rebuilt fixture. Neither surface may cover the
+// other: Pause, Full screen and the machine display are each hit-tested. This drives the served build:
 // Code tab, right pane, Machine Manager, a local x86 run from an authored
 // four-head disk, then hit-tests the centre of Pause and clicks it for real
 // (no force, no synthetic dispatch).
@@ -37,15 +38,23 @@ try {
     const pause = page.locator('[data-debug-panel]').getByRole('button', {name: /Pause|⏸/});
     await pause.waitFor({state: 'visible', timeout: 30000});
     ok('the Widgets pane is open beside the debugger', await page.getByTestId('bw-widgets-enter-fullscreen').count() > 0);
-    const hit = await pause.evaluate(b => {
-        const r = b.getBoundingClientRect();
+    // Each control must be the topmost element at its own centre: Pause in
+    // the debugger, and Full screen plus the machine display in the Widgets.
+    // Raising one surface over the other would pass one half and fail the other.
+    const topAt = async locator => locator.evaluate(el => {
+        const r = el.getBoundingClientRect();
         const top = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
-        const fs = document.querySelector('[data-testid="bw-widgets-enter-fullscreen"]')?.getBoundingClientRect();
-        const overlap = !!fs && !(fs.right <= r.left || fs.left >= r.right || fs.bottom <= r.top || fs.top >= r.bottom);
-        return {isPause: top === b || b.contains(top), top: top && (top.dataset?.testid || top.tagName), overlap};
+        return {own: !!top && (top === el || el.contains(top)), top: top && (top.dataset?.testid || top.tagName), rect: [r.x, r.y, r.width, r.height].map(Math.round)};
     });
-    ok('Full screen and Pause share screen area (the case under test)', hit.overlap, JSON.stringify(hit));
-    ok('the topmost element at the centre of Pause is Pause', hit.isPause, JSON.stringify(hit));
+    const pauseHit = await topAt(pause);
+    ok('the topmost element at the centre of Pause is Pause', pauseHit.own, JSON.stringify(pauseHit));
+    const fsHit = await topAt(page.getByTestId('bw-widgets-enter-fullscreen'));
+    ok('the topmost element at the centre of the Widgets Full screen button is that button', fsHit.own, JSON.stringify(fsHit));
+    const canvas = page.getByTestId('bw-machine-canvas');
+    if (await canvas.count()) {
+        const canvasHit = await topAt(canvas.first());
+        ok('the machine display is not covered at its centre', canvasHit.own, JSON.stringify(canvasHit));
+    }
     try {
         await pause.click({timeout: 10000});
         await page.locator('[data-debug-panel][data-debug-phase="paused"]').waitFor({timeout: 30000});

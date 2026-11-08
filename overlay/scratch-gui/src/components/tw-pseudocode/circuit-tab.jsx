@@ -665,18 +665,11 @@ class CircuitTab extends React.Component {
                 this.state.debugDock === 'right' && this._stageRightRendered;
             this._stageHost.style.display =
                 (portalNow && this._portalRendered) || rightHere ? 'block' : 'none';
-            // A debugger dock ('right' or 'solo') was explicitly chosen for this
-            // column, so the host sits above a dock pane while it shows the
-            // debugger: z-index 2 over the Widgets wrapper's z-index 1 stacking
-            // context in gui.jsx, still below the stage header. That covers the
-            // dedicated Circuit tab path (rightHere) AND the coding path, where
-            // render() portals the solo debugger pane into this host. Missing
-            // the coding path left a real click on Pause landing on the Widgets
-            // "Full screen" button. The in-stage circuit DESIGNER portal keeps
-            // z-index 0 so dock panes (Arcade, Widgets) still cover it.
+            // The host shows the debugger either on the dedicated Circuit tab
+            // (rightHere) or, while coding, through the solo debugger portal.
             const debuggerDock = this.state.debugDock === 'right' || this.state.debugDock === 'solo';
             const debuggerHere = rightHere || (debuggerDock && portalNow && this._portalRendered);
-            this._stageHost.style.zIndex = debuggerHere ? '2' : '0';
+            this._layoutStageHost(debuggerHere && (rightHere || !!this._soloDebuggerLive));
         }
     }
 
@@ -905,6 +898,28 @@ class CircuitTab extends React.Component {
             this._debugHost = el;
         }
         return this._debugHost;
+    }
+
+    /** A live debugger and the Widgets dock (data-bw-stage-dock, gui.jsx)
+     *  both claim the whole stage column. Stacked, one always covers the
+     *  other: the Widgets "Full screen" button sat exactly over the
+     *  debugger's Pause, and raising the debugger hid the machine display
+     *  instead. So split the column: the dock keeps the top half and the
+     *  host takes the bottom half (z-index 2 over the dock's 1, below the
+     *  stage header). Anything else keeps the full-column host at z-index
+     *  0, under dock panes such as Arcade, exactly as before. */
+    _layoutStageHost (debuggerLive) {
+        const host = this._stageHost;
+        const dock = host.parentElement &&
+            host.parentElement.querySelector(':scope > [data-bw-stage-dock]');
+        const split = !!(debuggerLive && dock);
+        if (this._splitDock && this._splitDock !== dock) this._splitDock.style.maxHeight = '';
+        this._splitDock = split ? dock : null;
+        if (dock) dock.style.maxHeight = split ? 'calc(50% - 44px)' : '';
+        host.style.top = split ? '50%' : '0';
+        host.style.zIndex = split ? '2' : '0';
+        if (split) host.dataset.bwDebuggerSplit = 'true';
+        else delete host.dataset.bwDebuggerSplit;
     }
 
     _ensureStageHost () {
@@ -2092,6 +2107,9 @@ class CircuitTab extends React.Component {
         // to the instruments-column dock, so the designer stays reachable.
         if ((this.state.debugDock === 'solo' || this.state.debugDock === 'right') && this._stagePortalOn()) {
             this._portalOn = true;
+            // Read by the host layout pass: only a debugger with a live machine
+            // or program shares the column with a dock pane (_layoutStageHost).
+            this._soloDebuggerLive = !!(stcDrives(stc) || this.state.machineBooted);
             const solo = (
                 // paddingTop clears the stage-header row: the panel (and the
                 // no-code warning) rendered flush against the tab strip and

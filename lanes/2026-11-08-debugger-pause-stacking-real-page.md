@@ -3,14 +3,18 @@
 Owner: x86 lane (Claude Code agent for the repository owner).
 
 Follow-up to the 2026-11-07 Widgets/debugger overlap claim. On the real page
-the debugger reaches the stage host through the coding-path solo portal, not
-the dedicated Circuit-tab "right" path, so the host stayed at z-index 0 under
-the Widgets wrapper (z-index 1). The host now takes z-index 2 whenever it shows
-the debugger for a 'right' or 'solo' dock; the circuit designer portal stays 0.
+the debugger reaches the stage host through the coding-path solo portal and
+fills the whole stage column, as does the Widgets dock, so one always covers
+the other: stacked as before, Full screen sat over Pause; raised (first head
+of this PR), the debugger hid the machine display, Arcade and controller panes.
+Layout change: while the debugger has a live machine or program and the
+Widgets dock is open, the column is split: Widgets on top (max half), the
+debugger host below (z-index 2). Everything else keeps the full-column host
+at z-index 0 under dock panes, as before.
 
 Paths: `overlay/` and `packages/` copies of
-`scratch-gui/src/components/tw-pseudocode/circuit-tab.jsx` (host z-index rule
-only); new `scripts/verify-debugger-pause-hit.mjs` and its light-shard step in
+`scratch-gui/src/components/tw-pseudocode/circuit-tab.jsx` (host split layout) and
+`scratch-gui/src/components/gui/gui.jsx` (dock marker attribute); new `scripts/verify-debugger-pause-hit.mjs` and its light-shard step in
 `.github/workflows/build.yml` with its budget/runner-audit rows; the fixture
 test `test/widgets-debugger-pause-hit-test.test.mjs` is removed (it did not
 load the real page).
