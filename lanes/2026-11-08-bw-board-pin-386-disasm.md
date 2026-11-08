@@ -12,7 +12,9 @@ engine catalog, paired-v3 harness, low-RAM read), already on bw-board master.
 Paths: exact SHA swap across the current pin surfaces (vendor-pins, package
 specs/lock, bundled pins, provenance/licence sources, workflows, x86 F10 pin
 literals, package-adoption tests, pin-move chain), regenerated census snapshot
-and language-device matrix, and a drawer-row assertion added to
+and language-device matrix, the new bw-board `esp32_4848s040` kind catalogued as a `host` refusal
+in `bw-parts/profiles.js` (its own firmware runs on it; PART-PROFILES
+regenerated), and a drawer-row assertion added to
 `scripts/verify-i80386-freedos-vga-browser.mjs` (light browser shard): pause,
 open the drawer, several "Click to pause here" rows, first row is the PC.
 Historical docs keep their recorded pin. No 386 timing, guest or physical claim.
