@@ -207,6 +207,18 @@ To do:
    strict, disconnected, construction gate `test/bw-sim-models-solid.test.mjs`)
    and promote whichever pass. Never pad a model's count.
 
+Progress (2026-11-07): step 1–2 done on `lane/robot-piece-minimum-20261107`
+(`assertHonestPartCount`, `test/robot-lab-qualification-parts.test.mjs`).
+Outcome (2026-11-08): after #1639 (judges) and #1669 (P4 harness fix), hosted
+native ordinary, strict and disconnected runs pass for Helixgate, Loop Relay,
+Parity Dial and Counter Slide with strict disconnection input thresholds (each
+program's own completion tolerance: 717, 178, 88, 98). Only Helixgate also
+passes the construction gate and is promoted. Loop Relay and Parity Dial fail it
+(input axle reaches 2.5 LDU into motor_A); Counter Slide fails it (housing angle
+connectors interpenetrate the racks by 2.5 LDU, eight pins reach about 2 LDU into
+the housings). These three stay experimental pending geometry repair and
+requalification; their trial contract values are in the checkpoint reasons.
+
 ### P6. Other remaining experimental entries
 
 From section 2b: RimRun (hub stands loose; mount it with real parts, then
@@ -348,9 +360,9 @@ browser journey, then promote as #1555 did.
 `QUALIFICATION_JUDGES` with a disconnection-loss measure. Toggle Press, Footfall,
 Phasekeeper, Vector Sum and Point Weaver pass the native qualification runs but fail
 the construction gate (`bw-sim-models-solid`), so they stay experimental pending
-geometry repair. Loop Relay's disconnection run loses the hub observation base.
-Helixgate, Parity Dial and Counter Slide stay under the >50-piece rule pending an
-operator decision. Reasons are in `docs/data/robot-lab-experimental-checkpoint.json`.
+geometry repair. Helixgate was promoted on 2026-11-08 (P5). Loop Relay, Parity
+Dial and Counter Slide pass the native runs but fail the construction gate (P5
+outcome). Reasons are in `docs/data/robot-lab-experimental-checkpoint.json`.
 
 **Batch E remainders** (added in #1499):
 

@@ -9,8 +9,8 @@ The full task list with exact steps is section 00 of
 - P1 DONE (2026-11-07): PR #1641 merged at e20f69f4 (Afterturn judge afterturn-shape-cycle-v1 and promotion; Poise lesson lead fixed).
 - P2 finish PR #1639 (nine-intake judge registration, no promotions): ready, `ci:full`, merge.
 - P3 geometry repairs for Toggle Press, Footfall, Phasekeeper, Vector Sum, Point Weaver, then promote.
-- P4 Loop Relay disconnection run loses the hub observation base.
-- P5 decided (2026-11-07): drop the >50-piece bound from the qualification validator, then qualify Helixgate, Parity Dial, Counter Slide.
+- P4 (taken 2026-11-07, lanes/2026-11-07-robot-piece-minimum.md) Loop Relay disconnection run loses the hub observation base.
+- P5 (taken 2026-11-07, lanes/2026-11-07-robot-piece-minimum.md) decided (2026-11-07): drop the >50-piece bound from the qualification validator, then qualify Helixgate, Parity Dial, Counter Slide.
 - P6 Paired Door Sync DONE in PR #1671 (judge opposed-rack-pinion-v1, promoted). Still open:
   - Evenhand: the holding-torque judge passes (branch `lane/robot-evenhand-20261107`, unregistered), but removing the
     counterweights makes the arm droop 9–17° in the 500 ms cold settle, and the program's 3° start guard faults.

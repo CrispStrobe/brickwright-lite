@@ -961,6 +961,24 @@
       ],
       "disconnectInputDeg": 140,
       "disconnectLoss": "p6"
+    },
+    {
+      "id": "helixgate",
+      "judge": "worm-reduction-v1",
+      "parts": 20,
+      "ports": [
+        "A"
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 90000,
+      "afterMs": 2000,
+      "frameMs": 25,
+      "frozenOutput": "gate_arm",
+      "disconnect": [
+        "worm_1start"
+      ],
+      "disconnectInputDeg": 717,
+      "disconnectLoss": "nine-intake"
     }
   ]
 }

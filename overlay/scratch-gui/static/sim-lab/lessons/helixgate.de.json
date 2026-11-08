@@ -1,5 +1,8 @@
 {
-  "what": "Ein SPIKE-Motor A dreht eine eingängige rechtsgängige Technic-Schnecke. Diese greift in ein 24er-Zahnrad auf einer rechtwinkligen 10L-Abtriebswelle ein. Zwei L-förmige Träger lagern die Welle; ein roter L-Hebel mit blauem Stift zeigt die Bewegung.",
+  "version": 1,
+  "id": "helixgate",
+  "language": "de",
+  "what": "Schneckengetriebe. Ein SPIKE-Motor A dreht eine eingängige rechtsgängige Technic-Schnecke. Diese greift in ein 24er-Zahnrad auf einer rechtwinkligen 10L-Abtriebswelle ein. Zwei L-förmige Träger lagern die Welle; ein roter L-Hebel mit blauem Stift zeigt die Bewegung. Eine rechtsgängige eingängige Schnecke dreht ein 24er-Zahnrad auf einer rechtwinkligen Welle. Zwei Motorumdrehungen bewegen den roten L-Hebel um 30 Grad. Beim Ausrollen kann die Haltewirkung beobachtet werden.",
   "try": [
     "Öffne HelixGate samt Programm, setze den gespeicherten Nullpunkt zurück und starte Motor A. Der Motor dreht +720 Grad, läuft zwei Sekunden frei und kehrt auf null zurück.",
     "Beobachte den roten L-Hebel und die blaue Markierung. Wie groß ist der Ausschlag nach zwei vollständigen Umdrehungen der Schnecke?",
@@ -14,9 +17,6 @@
     "Warum stehen die beiden Wellen senkrecht? Suche die zwei Lagerträger und die Achsbuchsen.",
     "Vergleiche HelixGate mit dem Ketten-Zahnrad-Modell LoopRelay, der ParityDial-Stirnradstufe und CounterSlide mit seinen Zahnstangen."
   ],
-  "version": 1,
-  "id": "helixgate",
-  "language": "de",
   "formula": "φ = θ / 24",
   "related": [
     "gearbox.ldr",

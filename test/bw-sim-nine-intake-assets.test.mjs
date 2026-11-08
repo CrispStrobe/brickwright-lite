@@ -16,7 +16,7 @@ const catalog = catalogFrom(JSON.parse(read('overlay/scratch-gui/src/lib/bw-sim/
 const counts = {helixgate: 20, looprelay: 54, paritydial: 31, counterslide: 44,
     'toggle-press': 139, footfall: 119, phasekeeper: 79, vectorsum: 122, pointweaver: 128};
 // Qualified and promoted to the established library (docs/data/robot-lab-qualification.json).
-const PROMOTED = new Set(['toggle-press', 'footfall', 'phasekeeper', 'vectorsum']);
+const PROMOTED = new Set(['helixgate', 'toggle-press', 'footfall', 'phasekeeper', 'vectorsum']);
 
 test('checkpoint candidates remain opt-in and carry no unearned simulation status', () => {
     const visible = visibleExampleModels(EXPERIMENTAL_MODELS);
