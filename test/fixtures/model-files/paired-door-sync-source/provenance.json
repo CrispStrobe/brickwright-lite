@@ -1,0 +1,10 @@
+{
+ "author": "CrispStrobe",
+ "license": "BSD-3-Clause",
+ "files": {
+  "models/paired-door-sync.ldr": "00a31ccd7b3d4ed31452ef3e1821106bb12fb963e9d8e30db5b40ea9b0e47ae5",
+  "programs/paired-door-sync.bw": "483ebd35317bbc9840a4a2dd285ee90d2cdd3fb3a124568a8221c3c0d9bab101",
+  "LICENSE.txt": "1fe37cdfea070276cafa630efa9713d78dd1e1158fa10dae95d92a14fcbc8274",
+  "SOURCES.md": "ee9fffcd3e8612eb850d6e06c57aa6e1cc3f2395702aff0264b0fc94384e9fcf"
+ }
+}
