@@ -5,8 +5,8 @@ Owner: x86 lane (Claude Code agent for the repository owner).
 Change: layout only. In dock mode "controller" with the debugger docked right,
 the Widgets pane (`zIndex: 10`) painted above the circuit stage host
 (`z-index: 0`), so a real click on the debugger's Pause hit the Widgets
-"Full screen" button. The controller dock wrapper becomes a `zIndex: 0`
-stacking context, and the stage host takes `z-index: 1` only while it shows
+"Full screen" button. The controller dock wrapper becomes a `zIndex: 1`
+stacking context, and the stage host takes `z-index: 2` only while it shows
 the debugger docked right (still below the stage header). The in-stage
 circuit portal keeps `z-index: 0`, so dock panes still cover it as before.
 No behaviour change.

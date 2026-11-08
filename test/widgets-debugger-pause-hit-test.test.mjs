@@ -40,9 +40,12 @@ assert.ok(hostMatch,'circuit stage host cssText found in circuit-tab.jsx');
 // the source sets one; otherwise the cssText value stands.
 const rightZ=circuitSrc.match(/_stageHost\.style\.zIndex = rightHere \? '(-?\d+)'/);
 const hostCss=hostMatch[1].replace('display:none','display:block')+(rightZ?`;z-index:${rightZ[1]}`:'');
+// The same host while it carries the in-stage circuit portal instead.
+const portalZ=circuitSrc.match(/_stageHost\.style\.zIndex = rightHere \? '-?\d+' : '(-?\d+)'/);
+const portalCss=hostMatch[1].replace('display:none','display:block')+(portalZ?`;z-index:${portalZ[1]}`:'');
 
-const html=hostFirst=>{
-    const host=`<div id="host" style="${hostCss}"><div style="padding:8px;padding-top:48px">
+const html=(hostFirst,css=hostCss)=>{
+    const host=`<div id="host" style="${css}"><div style="padding:8px;padding-top:48px">
         <div data-debug-panel style="padding:10px"><button id="pause" style="margin-left:100px">Pause</button></div></div></div>`;
     const dock=`<div id="dock" style="${dockCss}"><div style="${panelCss}">
         <div data-widgets-toolbar style="display:flex;gap:8px;padding:8px 12px"><span>Controller</span>
@@ -70,6 +73,25 @@ for(const hostFirst of [false,true]){
             assert.equal(r.overlap,true,'fixture must place Full screen over Pause, or the hit-test proves nothing');
             assert.equal(r.top,'pause');
             await page.locator('#pause').click({timeout:2000});
+        }finally{await browser.close();}
+    });
+}
+
+// The other direction: while the host carries the in-stage circuit portal,
+// the Widgets pane must stay on top of it, or its own controls (Full screen,
+// Add widget) become unclickable, as the phone controller-pane gate found.
+for(const hostFirst of [false,true]){
+    test(`Widgets Full screen stays topmost over the in-stage circuit portal (host ${hostFirst?'before':'after'} dock)`,async()=>{
+        const browser=await chromium.launch();
+        try {
+            const page=await browser.newPage({viewport:{width:800,height:1000}});
+            await page.setContent(html(hostFirst,portalCss));
+            const top=await page.evaluate(()=>{
+                const b=document.querySelector('[data-testid="bw-widgets-enter-fullscreen"]').getBoundingClientRect();
+                const t=document.elementFromPoint(b.x+b.width/2,b.y+b.height/2);
+                return t&&(t.id||t.dataset.testid||t.tagName);
+            });
+            assert.equal(top,'bw-widgets-enter-fullscreen');
         }finally{await browser.close();}
     });
 }

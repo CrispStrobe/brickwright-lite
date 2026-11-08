@@ -666,12 +666,12 @@ class CircuitTab extends React.Component {
             this._stageHost.style.display =
                 (portalNow && this._portalRendered) || rightHere ? 'block' : 'none';
             // The debugger docked right was explicitly chosen for this column,
-            // so it sits above a dock pane (z-index 1 over the Widgets wrapper's
-            // z-index 0 stacking context in gui.jsx, still below the stage
+            // so it sits above a dock pane (z-index 2 over the Widgets wrapper's
+            // z-index 1 stacking context in gui.jsx, still below the stage
             // header). Otherwise a real click on its Pause hit the Widgets
             // "Full screen" button. The in-stage circuit portal keeps z-index 0
             // so dock panes (Arcade, Widgets) still cover it as before.
-            this._stageHost.style.zIndex = rightHere ? '1' : '0';
+            this._stageHost.style.zIndex = rightHere ? '2' : '0';
         }
     }
 
