@@ -2160,6 +2160,86 @@ export const MODEL_LESSONS = Object.freeze({
             "Schneckengetriebe"
         ]
     },
+    "looprelay.ldr": {
+        "pieces": 54,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "gears",
+        "description": {
+            "en": "A 16-tooth wheel drives a remote 24-tooth wheel through a closed 25-link chain. An 8-tooth pinion on that shaft turns a final 24-tooth output gear the opposite way: a -2:9 angular ratio.",
+            "de": "Ein 16er-Kettenrad treibt über 25 geschlossene Kettenglieder ein entferntes 24er-Rad an. Ein 8er-Ritzel auf dessen Welle treibt ein letztes 24er-Zahnrad gegenläufig an: Winkelübersetzung -2:9."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "compound chain and gear drive",
+            "de": "Ketten- und Zahnradtrieb"
+        },
+        "keywords": [
+            "compound chain and gear drive",
+            "Ketten- und Zahnradtrieb",
+            "chain drive",
+            "sprocket",
+            "compound ratio",
+            "direction reversal",
+            "Kettenantrieb"
+        ]
+    },
+    "paritydial.ldr": {
+        "pieces": 31,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "gears",
+        "description": {
+            "en": "One 8-tooth gear drives two 24-tooth output hands. The left path meshes once; the right path adds a 24-tooth idler, reversing its rotation direction without changing its one-third speed.",
+            "de": "Ein Zahnrad mit acht Zähnen treibt zwei Zeiger mit je 24 Zähnen an. Links greift das Antriebsrad direkt ein, rechts über ein 24er-Zwischenrad. Dadurch dreht der rechte Zeiger andersherum, aber genauso schnell wie der linke."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "gear-train parity",
+            "de": "Drehsinn und Zwischenrad"
+        },
+        "keywords": [
+            "gear-train parity",
+            "Drehsinn und Zwischenrad",
+            "idler gear",
+            "gear parity",
+            "direction reversal",
+            "Zwischenrad"
+        ]
+    },
+    "counterslide.ldr": {
+        "pieces": 44,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "gears",
+        "description": {
+            "en": "A single 8-tooth gear meshes with two opposing racks. The orange jaws travel inward by equal distances and reopen together; the center between them stays put.",
+            "de": "Ein einziges Zahnrad mit acht Zähnen greift in zwei gegenüberliegende Zahnstangen. Die orangefarbenen Backen fahren gleich weit zur Mitte und wieder auseinander; ihre gemeinsame Mitte bleibt stehen."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "opposed rack and pinion",
+            "de": "gegenläufige Zahnstangen"
+        },
+        "keywords": [
+            "opposed rack and pinion",
+            "gegenläufige Zahnstangen",
+            "rack and pinion",
+            "self-centering jaws",
+            "symmetric gripper",
+            "Zahnstange",
+            "selbstzentrierend"
+        ]
+    },
     "product-plotter.ldr": {
         "pieces": 301,
         "motors": 2,

@@ -1128,6 +1128,53 @@
     },
     {
       "models": [
+        "looprelay"
+      ],
+      "name": {
+        "en": "compound chain and gear drive",
+        "de": "Ketten- und Zahnradtrieb"
+      },
+      "aliases": [
+        "chain drive",
+        "sprocket",
+        "compound ratio",
+        "direction reversal",
+        "Kettenantrieb"
+      ]
+    },
+    {
+      "models": [
+        "paritydial"
+      ],
+      "name": {
+        "en": "gear-train parity",
+        "de": "Drehsinn und Zwischenrad"
+      },
+      "aliases": [
+        "idler gear",
+        "gear parity",
+        "direction reversal",
+        "Zwischenrad"
+      ]
+    },
+    {
+      "models": [
+        "counterslide"
+      ],
+      "name": {
+        "en": "opposed rack and pinion",
+        "de": "gegenläufige Zahnstangen"
+      },
+      "aliases": [
+        "rack and pinion",
+        "self-centering jaws",
+        "symmetric gripper",
+        "Zahnstange",
+        "selbstzentrierend"
+      ]
+    },
+    {
+      "models": [
         "paired-door-sync"
       ],
       "name": {

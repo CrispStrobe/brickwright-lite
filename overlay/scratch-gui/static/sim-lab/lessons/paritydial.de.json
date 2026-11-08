@@ -1,5 +1,8 @@
 {
-  "what": "Ein SPIKE-Mittelmotor treibt ein Ritzel mit acht Zähnen. Der orangefarbene linke Zeiger ist mit einem direkt eingreifenden 24er-Zahnrad verbunden. Rechts liegt ein weiteres 24er-Zwischenrad zwischen Antrieb und dem roten 24er-Abtriebsrad. Beide Ausgangswellen drehen in Lagern, gleich schnell, aber in entgegengesetzten Richtungen.",
+  "version": 1,
+  "id": "paritydial",
+  "language": "de",
+  "what": "Drehsinn und Zwischenrad. Ein SPIKE-Mittelmotor treibt ein Ritzel mit acht Zähnen. Der orangefarbene linke Zeiger ist mit einem direkt eingreifenden 24er-Zahnrad verbunden. Rechts liegt ein weiteres 24er-Zwischenrad zwischen Antrieb und dem roten 24er-Abtriebsrad. Beide Ausgangswellen drehen in Lagern, gleich schnell, aber in entgegengesetzten Richtungen. Ein Zahnrad mit acht Zähnen treibt zwei Zeiger mit je 24 Zähnen an. Links greift das Antriebsrad direkt ein, rechts über ein 24er-Zwischenrad. Dadurch dreht der rechte Zeiger andersherum, aber genauso schnell wie der linke.",
   "try": [
     "Öffne ParityDial und sein Programm, setze es auf die gespeicherte Nullstellung zurück und starte. Der Motor fährt auf +90 Grad, -90 Grad und wieder auf null.",
     "Beobachte die orangefarbenen und roten Zeiger aus dünnen Technic-Liftarmen. In welche Richtung dreht sich jeder bei der ersten Haltephase?",
@@ -14,9 +17,6 @@
     "Zähle die Zahneingriffe in jedem Weg. Was passiert, wenn nur links ein zusätzliches 24er-Zwischenrad eingefügt wird?",
     "Vergleiche ParityDial mit CounterSlide: Beide haben einen Motor und mehrere Ausgänge, aber hier bleibt die Bewegung eine Drehung."
   ],
-  "version": 1,
-  "id": "paritydial",
-  "language": "de",
   "formula": "φ_left = −θ/3; φ_right = θ/3",
   "related": [
     "gearbox.ldr",

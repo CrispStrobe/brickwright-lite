@@ -36,7 +36,7 @@
 0 !BW ID side_stay_180
 1 72 180 -40 20 1 0 0 0 0 1 0 -1 0 32278.dat
 0 !BW ID axle_input
-1 4 -40 -100 0 0 1 0 1 0 0 0 0 -1 3707.dat
+1 4 -40 -110 0 0 1 0 1 0 0 0 0 -1 3707.dat
 0 !BW ID stay_pin_-100_front
 1 0 -100 -100 10 0 1 0 0 0 1 1 0 0 2780.dat
 0 !BW ID stay_pin_180_front

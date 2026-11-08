@@ -1,5 +1,8 @@
 {
-  "what": "Ein SPIKE-Motor treibt ein Zahnrad mit acht Zähnen. Dessen obere und untere Zähne verschieben zwei getrennt geführte Technic-Zahnstangen. Daran befestigte orangefarbene Winkelbacken fahren symmetrisch aufeinander zu und wieder auseinander.",
+  "version": 1,
+  "id": "counterslide",
+  "language": "de",
+  "what": "gegenläufige Zahnstangen. Ein SPIKE-Motor treibt ein Zahnrad mit acht Zähnen. Dessen obere und untere Zähne verschieben zwei getrennt geführte Technic-Zahnstangen. Daran befestigte orangefarbene Winkelbacken fahren symmetrisch aufeinander zu und wieder auseinander. Ein einziges Zahnrad mit acht Zähnen greift in zwei gegenüberliegende Zahnstangen. Die orangefarbenen Backen fahren gleich weit zur Mitte und wieder auseinander; ihre gemeinsame Mitte bleibt stehen.",
   "try": [
     "Importiere CounterSlide und sein Programm, setze das Modell auf die gespeicherte offene Stellung zurück und drücke Start. Motor A schließt bis -100 Grad, hält eine Sekunde und fährt wieder auf null.",
     "Wähle entsprechende Messpunkte an beiden orangefarbenen Backen. Bewegen sie sich gleich weit in entgegengesetzte X-Richtungen? Beobachte die Mitte zwischen ihnen, nicht nur den Motorwert.",
@@ -14,9 +17,6 @@
     "Denke die Führung einer Zahnstange weg: Weshalb verhindern die Zähne allein kein Verdrehen des freien Körpers?",
     "Vergleiche mit dem einseitigen Rack Shuttle: dort bewegt ein Ritzel nur eine geführte Zahnstange."
   ],
-  "version": 1,
-  "id": "counterslide",
-  "language": "de",
   "formula": "|Δx| = 4 mm × |θ| (θ in radians); midpoint remains fixed",
   "related": [
     "gearbox.ldr",

@@ -1,5 +1,8 @@
 {
-  "what": "Ein SPIKE-Mittelmotor dreht das erste Kettenrad mit 16 Zähnen. Eine geschlossene Kette aus 25 Gliedern überträgt die Drehung auf ein 24er-Kettenrad einer zweiten gelagerten Welle. Ein 8er-Ritzel auf derselben Welle treibt das 24er-Abtriebsrad mit rotem Zeiger an.",
+  "version": 1,
+  "id": "looprelay",
+  "language": "de",
+  "what": "Ketten- und Zahnradtrieb. Ein SPIKE-Mittelmotor dreht das erste Kettenrad mit 16 Zähnen. Eine geschlossene Kette aus 25 Gliedern überträgt die Drehung auf ein 24er-Kettenrad einer zweiten gelagerten Welle. Ein 8er-Ritzel auf derselben Welle treibt das 24er-Abtriebsrad mit rotem Zeiger an. Ein 16er-Kettenrad treibt über 25 geschlossene Kettenglieder ein entferntes 24er-Rad an. Ein 8er-Ritzel auf dessen Welle treibt ein letztes 24er-Zahnrad gegenläufig an: Winkelübersetzung -2:9.",
   "try": [
     "Öffne das LDraw-Modell und Programm von LoopRelay, setze den gespeicherten Encoder-Nullpunkt zurück und starte Motor A. Er fährt mit 12 Grad pro Sekunde auf +180 Grad und wieder zurück.",
     "Beobachte das mittlere 24er-Kettenrad und den roten Abtriebszeiger: Drehen sie gleichsinnig? Welche Winkel erreichen sie bei der Pause?",
@@ -14,9 +17,6 @@
     "Was ändert sich mit einem letzten Zahnrad mit 16 statt 24 Zähnen? Die Rechnung ergibt -A/3; der Achsabstand muss dann neu konstruiert werden.",
     "Vergleiche LoopRelay mit ParityDial (Zwischenrad) und CounterSlide (Zahnstangen). Wie übertragen sie Bewegung und ändern die Richtung?"
   ],
-  "version": 1,
-  "id": "looprelay",
-  "language": "de",
   "formula": "φ = (16/24) × (−8/24) θ = −2θ/9",
   "related": [
     "gearbox.ldr",
