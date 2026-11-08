@@ -1,6 +1,9 @@
 # Robot Lab P4/P5 — piece minimum removal, small-model qualification, Loop Relay disconnection
 
-Status: CLAIMED 2026-11-07. Branch `lane/robot-piece-minimum-20261107`
+Status: DONE 2026-11-08 — P4 harness fix landed in #1669; P5 validator change
+and Helixgate promotion in #1668. Loop Relay, Parity Dial and Counter Slide
+stay experimental: they fail the construction gate (see the checkpoint).
+Claimed 2026-11-07. Branch `lane/robot-piece-minimum-20261107`
 (P4 may land separately on `lane/robot-looprelay-20261107`).
 
 Scope (section 00 of `docs/ROBOT-LAB-QUALIFICATION-HANDOFF-20261028.md`):

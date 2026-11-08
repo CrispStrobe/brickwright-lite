@@ -4053,9 +4053,9 @@
       "intakeRecord": "docs/data/robot-lab-nine-intakes-20261026.json",
       "judge": "worm-reduction-v1",
       "promotionReview": {
-        "date": "2026-11-03",
-        "decision": "STAYS_EXPERIMENTAL",
-        "reason": "The qualification contract validator requires more than 50 pieces; the intake keeps its honest count (20) and no documented exception covers promotion. Operator decision whether that rule applies."
+        "date": "2026-11-08",
+        "decision": "PROMOTED",
+        "reason": "Operator decision 2026-11-07 removed the 50-piece qualification minimum; the honest count (20) stands. Hosted native ordinary, strict and disconnected qualification runs pass (worm-reduction-v1; disconnection removes worm_1start, disconnectInputDeg 717 = the program's own 3-degree completion tolerance on +720; frozenOutput gate_arm). The construction gate test/bw-sim-models-solid.test.mjs reports no findings. Promoted to the established library."
       }
     },
     {
@@ -4064,9 +4064,9 @@
       "intakeRecord": "docs/data/robot-lab-nine-intakes-20261026.json",
       "judge": "chain-reversal-v1",
       "promotionReview": {
-        "date": "2026-11-03",
+        "date": "2026-11-08",
         "decision": "STAYS_EXPERIMENTAL",
-        "reason": "Ordinary and strict runs pass, but the shared disconnection run fails before measuring the law: with chain_input16 removed the hub observation base is not found. No alternative removal or harness change was made."
+        "reason": "The disconnection base lookup is fixed (#1669: observation base from the registered hub part spike_hub). Hosted native ordinary, strict and disconnected runs pass with the trial contract (chain-reversal-v1, frozenOutput indicator_hand, disconnect chain_input16, disconnectInputDeg 178 = 180 minus the program's 2-degree tolerance). It fails the construction gate: axle_input (3707) reaches 2.5 LDU into motor_A (54696p01). Needs geometry repair and requalification; the contract was not landed."
       }
     },
     {
@@ -4075,9 +4075,9 @@
       "intakeRecord": "docs/data/robot-lab-nine-intakes-20261026.json",
       "judge": "parity-dials-v1",
       "promotionReview": {
-        "date": "2026-11-03",
+        "date": "2026-11-08",
         "decision": "STAYS_EXPERIMENTAL",
-        "reason": "The qualification contract validator requires more than 50 pieces; the intake keeps its honest count (31) and no documented exception covers promotion. Operator decision whether that rule applies."
+        "reason": "No piece minimum applies since 2026-11-07 (honest count 31). Hosted native ordinary, strict and disconnected runs pass with the trial contract (parity-dials-v1, frozenOutput dial_left, disconnect gear_drive, disconnectInputDeg 88 = 90 minus the program's 2-degree tolerance). It fails the construction gate: axle_drive (3707) reaches 2.5 LDU into motor_A (54696p01). Needs geometry repair and requalification; the contract was not landed."
       }
     },
     {
@@ -4086,9 +4086,9 @@
       "intakeRecord": "docs/data/robot-lab-nine-intakes-20261026.json",
       "judge": "opposed-racks-v1",
       "promotionReview": {
-        "date": "2026-11-03",
+        "date": "2026-11-08",
         "decision": "STAYS_EXPERIMENTAL",
-        "reason": "The qualification contract validator requires more than 50 pieces; the intake keeps its honest count (44) and no documented exception covers promotion. Operator decision whether that rule applies."
+        "reason": "No piece minimum applies since 2026-11-07 (honest count 44). Hosted native ordinary, strict and disconnected runs pass with the trial contract (opposed-racks-v1, frozenOutput rack_low, disconnect drive_pinion_8t, disconnectInputDeg 98 = 100 minus the program's 2-degree tolerance). It fails the construction gate: housing_angle_high/low (15100) interpenetrate rack_high/low (18942) by 2.5 LDU, and eight 6558 pins (guide_outboard_* and jaw_*_pin_*) reach about 2 LDU into housing_high/low (18940). Needs geometry repair and requalification; the contract was not landed."
       }
     },
     {

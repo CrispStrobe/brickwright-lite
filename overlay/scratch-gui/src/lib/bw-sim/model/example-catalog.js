@@ -1995,6 +1995,33 @@ export const MODEL_LESSONS = Object.freeze({
             "Drehimpuls"
         ]
     },
+    "helixgate.ldr": {
+        "pieces": 20,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "gears",
+        "description": {
+            "en": "One right-hand single-start worm turns a 24-tooth gear on a perpendicular axle, moving a red L-shaped gate 30 degrees for two complete motor turns. Coast at the top to observe the virtual worm's hold.",
+            "de": "Eine rechtsgängige eingängige Schnecke dreht ein 24er-Zahnrad auf einer rechtwinkligen Welle. Zwei Motorumdrehungen bewegen den roten L-Hebel um 30 Grad. Beim Ausrollen kann die Haltewirkung beobachtet werden."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "worm gearing",
+            "de": "Schneckengetriebe"
+        },
+        "keywords": [
+            "worm gearing",
+            "Schneckengetriebe",
+            "worm gear",
+            "worm drive",
+            "24:1",
+            "right-angle transmission",
+            "Schneckengetriebe"
+        ]
+    },
     "product-plotter.ldr": {
         "pieces": 301,
         "motors": 2,

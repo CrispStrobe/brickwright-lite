@@ -852,60 +852,6 @@
       ],
       "disconnectInputDeg": 717,
       "disconnectLoss": "nine-intake"
-    },
-    {
-      "id": "looprelay",
-      "judge": "chain-reversal-v1",
-      "parts": 54,
-      "ports": [
-        "A"
-      ],
-      "coldMs": 500,
-      "timeLimitMs": 90000,
-      "afterMs": 2000,
-      "frameMs": 25,
-      "frozenOutput": "indicator_hand",
-      "disconnect": [
-        "chain_input16"
-      ],
-      "disconnectInputDeg": 178,
-      "disconnectLoss": "nine-intake"
-    },
-    {
-      "id": "paritydial",
-      "judge": "parity-dials-v1",
-      "parts": 31,
-      "ports": [
-        "A"
-      ],
-      "coldMs": 500,
-      "timeLimitMs": 90000,
-      "afterMs": 2000,
-      "frameMs": 25,
-      "frozenOutput": "dial_left",
-      "disconnect": [
-        "gear_drive"
-      ],
-      "disconnectInputDeg": 88,
-      "disconnectLoss": "nine-intake"
-    },
-    {
-      "id": "counterslide",
-      "judge": "opposed-racks-v1",
-      "parts": 44,
-      "ports": [
-        "A"
-      ],
-      "coldMs": 500,
-      "timeLimitMs": 90000,
-      "afterMs": 2000,
-      "frameMs": 25,
-      "frozenOutput": "rack_low",
-      "disconnect": [
-        "drive_pinion_8t"
-      ],
-      "disconnectInputDeg": 98,
-      "disconnectLoss": "nine-intake"
     }
   ]
 }
