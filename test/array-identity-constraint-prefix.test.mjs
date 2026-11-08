@@ -115,7 +115,9 @@ test('actual no-prefix and reimported Any-prefix identities retain mixed Array r
     const stripped=fixture(),row=identity(stripped);row.def.next=row.node.next;row.returned.parent=row.node.parent;delete row.target.blocks[row.id];
     accepted(createProjectJsonSnapshot(JSON.stringify(stripped)));
     assert.equal(JSON.stringify(draft),before);assert.equal(isProjectJsonSnapshot(draft),false);
-    const raw=createArrayReferenceExportAuthority(draft),at=consumers(draft).find(r=>r.node.opcode==='arrays_mutateReference');
+    // The alias receiver is the consumer whose Array proof crosses a reset;
+    // the exported temporary's fresh allocation needs no reset discount.
+    const raw=createArrayReferenceExportAuthority(draft),at=aliasMutation(draft);
     assert.equal(raw.validateInput(at.target,at.node).ok,false,'new reset proof cannot enroll mutable caller objects');
 });
 
@@ -172,7 +174,7 @@ test('owned JSON prefix preflight refuses inherited selector data and accessors 
         try{
             Object.defineProperty(Object.prototype,'TYPE',getter?{configurable:true,get(){reads++;return ['Any',null];}}:
                 {configurable:true,value:['Any',null]});
-            const proof=createArrayReferenceExportAuthority(owned),at=consumers(owned).find(r=>r.node.opcode==='arrays_mutateReference');
+            const proof=createArrayReferenceExportAuthority(owned),at=aliasMutation(owned);
             result=proof.validateInput(at.target,at.node).ok;
         }finally{delete Object.prototype.TYPE;}
         assert.equal(reads,0,'the new effect gate cannot read a borrowed selector');assert.equal(result,false);
@@ -180,7 +182,7 @@ test('owned JSON prefix preflight refuses inherited selector data and accessors 
     const owned=createProjectJsonSnapshot(JSON.stringify(fixture()));accepted(owned);
     assert.equal(isProjectJsonSnapshot(new Proxy(owned,{})),false);
     const borrowed=createArrayReferenceExportAuthority(new Proxy(owned,{}));
-    const actual=consumers(owned).find(r=>r.node.opcode==='arrays_mutateReference');
+    const actual=aliasMutation(owned);
     assert.equal(borrowed.validateInput(actual.target,actual.node).ok,false,'a Proxy cannot reuse the snapshot brand');
 });
 

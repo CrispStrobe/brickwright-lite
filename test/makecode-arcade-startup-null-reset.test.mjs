@@ -75,3 +75,23 @@ test('only a whole top-level first assignment receives a green-flag null local d
     for(const decl of ['    let v: number = 0','    let v = null','        let v: Sprite[] = null'])
         assert.deepEqual(sink(['    v = c'],decl),[decl,'    v = c'],decl);
 });
+
+// The startup reset discount, like every other reset discount, needs an owned
+// project snapshot: a mutable project can change after the proof.
+test('a startup reset is discounted only for an owned project snapshot',async()=>{
+    const {default:Creator}=await import('../overlay/scratch-gui/src/lib/sb3-creator-register-art.js');
+    const {createProjectJsonSnapshot}=await import('../overlay/scratch-gui/src/lib/bw-makecode/project-json-snapshot.js');
+    const {createArrayReferenceExportAuthority}=await import('../overlay/scratch-gui/src/lib/bw-makecode/array-reference-export-authority.js');
+    const imported=arcadeToPseudocode(program({startup:write+'\n'+read}));assert.deepEqual(imported.unsupported,[]);
+    const creator=new Creator();creator.parse(imported.code);
+    const verdicts=project=>{
+        const proof=createArrayReferenceExportAuthority(project),out=[];
+        for(const target of project.targets)for(const node of Object.values(target.blocks))
+            if(node.opcode==='arrays_referenceIndexOf')out.push(proof.validateInput(target,node).ok);
+        return out;
+    };
+    const owned=verdicts(createProjectJsonSnapshot(JSON.stringify(creator.project)));
+    assert.ok(owned.length>0);assert.ok(owned.every(Boolean),'owned snapshot keeps the 2b discount');
+    const raw=verdicts(JSON.parse(JSON.stringify(creator.project)));
+    assert.equal(raw.length,owned.length);assert.ok(raw.every(ok=>ok===false),'a mutable project gets no startup reset discount');
+});
