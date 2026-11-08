@@ -63,6 +63,9 @@ const models = () => {
     const out = MODELS.map(m => [`models/${m.file}`,
         parseModel(readFileSync(path.join(GUI, MODELS_BASE, m.file), 'utf8'), {catalog: CATALOG}).model]);
     // Paired Door Sync was a reviewed experimental input here; since its promotion it is checked as models/paired-door-sync.ldr.
+    // Reviewed experimental construction inputs (Q5): RimRun's hub is now pinned to the motor posts.
+    for (const file of ['rimrun.ldr', 'rimrun-swapped.ldr']) out.push([`experimental/${file}`, parseModel(readFileSync(
+        path.join(GUI, MODELS_BASE, file), 'utf8'), {catalog: CATALOG}).model]);
     const walk = dir => readdirSync(dir, {withFileTypes: true}).flatMap(e =>
         (e.isDirectory() ? walk(path.join(dir, e.name)) : [path.join(dir, e.name)]));
     for (const file of walk(FIXTURES).sort()) {
