@@ -979,6 +979,31 @@
       ],
       "disconnectInputDeg": 717,
       "disconnectLoss": "nine-intake"
+    },
+    {
+      "id": "pointweaver",
+      "judge": "five-bar-v1",
+      "parts": 116,
+      "ports": [
+        "A",
+        "B"
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 90000,
+      "afterMs": 2000,
+      "frameMs": 25,
+      "frozenOutput": "endpoint_marker",
+      "disconnect": [
+        "left_forearm"
+      ],
+      "disconnectInputDeg": 30,
+      "disconnectLoss": "nine-intake",
+      "notRun": [
+        "per-model browser run (qualify-robot-lab-models --mode=full, chromium and webkit)",
+        "saved-project replay",
+        "export",
+        "manual controls"
+      ]
     }
   ]
 }

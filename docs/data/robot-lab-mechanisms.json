@@ -1145,6 +1145,22 @@
         "Zahnstange",
         "Ritzel"
       ]
+    },
+    {
+      "models": [
+        "pointweaver"
+      ],
+      "name": {
+        "en": "five-bar parallel linkage",
+        "de": "Fünfgelenk-Parallelmechanismus"
+      },
+      "aliases": [
+        "five-bar linkage",
+        "parallel robot",
+        "Cartesian interpolation",
+        "Fünfgelenk",
+        "Bahnplanung"
+      ]
     }
   ]
 }
