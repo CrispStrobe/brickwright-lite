@@ -577,6 +577,20 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
             n?.type==='Binary'&&['+','-','*','/','%'].includes(n.op)&&primitiveSyntax(n.left)&&primitiveSyntax(n.right);
         return primitiveSyntax(site.items[k])?site.items[k]:null;
     };
+    // map returns a fresh Array with exactly one callback result per receiver
+    // element. When that result and its receiver, a single literal without
+    // spread, are never mutated, a constant index below the literal's length
+    // reads a callback result, never a missing element.
+    const mappedSlot=(op,tokens)=>{
+        if(tokens.length!==1||op.index?.type!=='Number')return null;
+        const k=Number(op.index.value),token=tokens[0],map=arrayMaps.find(candidate=>candidate.token===token);
+        if(!map||!Number.isInteger(k)||k<0||!pristine(token))return null;
+        const sources=arrayTypes(map.receiver);
+        if(!sources||sources.length!==1)return null;
+        const site=sources[0].site;
+        if(site?.type!=='Array'||!Array.isArray(site.items)||site.items.some(item=>item?.type==='Spread')||k>=site.items.length||!pristine(sources[0]))return null;
+        return token;
+    };
     const propagateArrays=()=>{let changed=false;
         for(const op of arrayOperations){const strictTokens=arrayTypes(op.receiver),tokens=strictTokens||arrayMutationTypes(op.receiver);if(!strictTokens){
                 // Separate nullable read channel (result domains only).
@@ -605,6 +619,7 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
             if(!strictTokens)continue;
             if(op.kind==='length'||['push','unshift'].includes(op.kind))changed=add(op.result,'Number')||changed;
             if(op.kind==='read'&&!op.widened){const slot=positionalSlot(op,tokens);if(slot){op.slot=slot;positionalReads.add(op);for(const type of types.get(cell(slot))||[])changed=add(op.result,type)||changed;continue;}}
+            if(op.kind==='read'&&!op.widened){const mapped=mappedSlot(op,tokens);if(mapped){for(const type of types.get(mapped.element)||[])changed=add(op.result,type)||changed;continue;}}
             if(['read','pop','shift'].includes(op.kind)){changed=add(op.result,'Undefined')||changed;for(const token of tokens)for(const type of types.get(token.element)||[])changed=add(op.result,type)||changed;}
             if(['map','forEach','filter'].includes(op.kind)){const fn=op.node.args[0],owner=functionScopes.get(fn);if(!owner)continue;
                 if(fn.params[0]&&(op.kind==='map'||callbackEntry?.entries.has(fn))){const target=owner.bindings.get(fn.params[0]);changed=add(target,'Undefined')||changed;for(const token of tokens)for(const type of types.get(token.element)||[])changed=add(target,type)||changed;}
