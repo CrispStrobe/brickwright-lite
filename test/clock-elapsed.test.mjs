@@ -7,6 +7,7 @@ test('fractional controlled-clock readings one second apart match exactly 1000 m
     assert.notEqual(after - before, 1000, 'the float difference itself is not exact');
     assert.ok(elapsedMatches(before, after, 1000));
     assert.ok(elapsedMatches(1000, 2000, 1000));
+    assert.ok(elapsedMatches(0, 1000.0000000000364, 1000), 'value observed in CI for a correct advance');
 });
 
 test('a real clock error is still caught', () => {
