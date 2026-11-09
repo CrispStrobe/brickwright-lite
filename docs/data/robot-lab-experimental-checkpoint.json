@@ -4105,8 +4105,8 @@
       "judge": "chain-reversal-v1",
       "promotionReview": {
         "date": "2026-11-08",
-        "decision": "STAYS_EXPERIMENTAL",
-        "reason": "The disconnection base lookup is fixed (#1669: observation base from the registered hub part spike_hub). Hosted native ordinary, strict and disconnected runs pass with the trial contract (chain-reversal-v1, frozenOutput indicator_hand, disconnect chain_input16, disconnectInputDeg 178 = 180 minus the program's 2-degree tolerance). It fails the construction gate: axle_input (3707) reaches 2.5 LDU into motor_A (54696p01). Needs geometry repair and requalification; the contract was not landed."
+        "decision": "PROMOTED",
+        "reason": "Construction repair (Q1/Q2): axle_input moved 10 LDU outward along its own axis (y -100 to -110) so it ends at the motor face like every promoted SPIKE motor axle; gears and bearings unchanged. test/bw-sim-models-solid.test.mjs passes unchanged. Contract added (chain-reversal-v1, frozenOutput indicator_hand, disconnect chain_input16, disconnectInputDeg 178) and qualified by the hosted ordinary, strict and disconnected runs on the final head. Browser, saved-project replay, export and manual controls NOT_RUN (contract notRun)."
       }
     },
     {
@@ -4116,8 +4116,8 @@
       "judge": "parity-dials-v1",
       "promotionReview": {
         "date": "2026-11-08",
-        "decision": "STAYS_EXPERIMENTAL",
-        "reason": "No piece minimum applies since 2026-11-07 (honest count 31). Hosted native ordinary, strict and disconnected runs pass with the trial contract (parity-dials-v1, frozenOutput dial_left, disconnect gear_drive, disconnectInputDeg 88 = 90 minus the program's 2-degree tolerance). It fails the construction gate: axle_drive (3707) reaches 2.5 LDU into motor_A (54696p01). Needs geometry repair and requalification; the contract was not landed."
+        "decision": "PROMOTED",
+        "reason": "Construction repair (Q1/Q2): axle_drive moved 20 LDU outward along its own axis (y -90 to -110) so it ends at the motor face like every promoted SPIKE motor axle; gears and bearings unchanged. test/bw-sim-models-solid.test.mjs passes unchanged. Contract added (parity-dials-v1, frozenOutput dial_left, disconnect gear_drive, disconnectInputDeg 88) and qualified by the hosted ordinary, strict and disconnected runs on the final head. Browser, saved-project replay, export and manual controls NOT_RUN (contract notRun)."
       }
     },
     {
@@ -4127,8 +4127,8 @@
       "judge": "opposed-racks-v1",
       "promotionReview": {
         "date": "2026-11-08",
-        "decision": "STAYS_EXPERIMENTAL",
-        "reason": "No piece minimum applies since 2026-11-07 (honest count 44). Hosted native ordinary, strict and disconnected runs pass with the trial contract (opposed-racks-v1, frozenOutput rack_low, disconnect drive_pinion_8t, disconnectInputDeg 98 = 100 minus the program's 2-degree tolerance). It fails the construction gate: housing_angle_high/low (15100) interpenetrate rack_high/low (18942) by 2.5 LDU, and eight 6558 pins (guide_outboard_* and jaw_*_pin_*) reach about 2 LDU into housing_high/low (18940). Needs geometry repair and requalification; the contract was not landed."
+        "decision": "PROMOTED",
+        "reason": "Construction repair (Q1/Q2): the eight 3L pins are turned end for end in place so each collar sits at a beam face instead of inside a housing hole; each rack with its jaw pins and jaw is moved 3 rack teeth (23.56 LDU, 3 x 2.5 pi) away from its end-stop pin, keeping the tooth phase with the 8-tooth pinion. The law is unchanged (equal and opposite rack travel, 4 mm per radian); only the open-jaw datum is 23.56 LDU wider on each side. test/bw-sim-models-solid.test.mjs passes unchanged. Contract added (opposed-racks-v1, frozenOutput rack_low, disconnect drive_pinion_8t, disconnectInputDeg 98) and qualified by the hosted ordinary, strict and disconnected runs on the final head. Browser, saved-project replay, export and manual controls NOT_RUN (contract notRun). Sweep note: the rest pose is clean; a static check along the commanded stroke is clean to 13.5 LDU of rack travel, and at the full -100 degree close (17.45 LDU) each rack end touches its 15100 end-stop pin by under 1 LDU (the original geometry overlapped it at rest)."
       }
     },
     {

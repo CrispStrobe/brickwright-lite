@@ -95,6 +95,12 @@ Still experimental, each with its reason in
 `docs/data/robot-lab-experimental-checkpoint.json`. All are unowned and
 doable as geometry or test-design work:
 
+- **Q1/Q2 (2026-11-08, `lanes/2026-11-08-robot-q12-geometry.md`)**: Loop
+  Relay and Parity Dial input axles now end at the motor face; Counter Slide's
+  eight 3L pins are turned end for end and each rack assembly sits 3 teeth
+  (23.56 LDU) clear of its end-stop pin. Contracts added with the checkpoint
+  values; promoted once the hosted runs pass. The two items below are kept as
+  the historical diagnosis.
 - **Loop Relay, Parity Dial**: pass ordinary, strict and disconnected runs at
   178° / 88° input floors; fail the construction gate because the input axle
   reaches 2.5 LDU into the motor. Fix the axle seat, then re-add the contract

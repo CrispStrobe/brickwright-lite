@@ -6337,6 +6337,132 @@
         "rack-shuttle.ldr"
       ]
     },
+    "looprelay": {
+      "en": {
+        "what": "One SPIKE medium angular motor turns a 16-tooth input chain wheel. A 25-link closed loop carries rotation to a 24-tooth wheel on a second supported axle. An 8-tooth pinion keyed to that same axle drives a third shaft's 24-tooth gear and red indicator hand.",
+        "try": [
+          "Open the LoopRelay LDraw assembly and program, reset to the saved zero-encoder pose, then run port A. The motor advances to +180 degrees and returns to zero at 12 degrees per second.",
+          "Watch the blue 24-tooth chain wheel on the intermediate axle and the red reporter hand. Do they rotate in the same direction? How far does each travel at the pause?",
+          "With Manual override, advance motor A by +45 degrees at a time within 0 to +180. Observe the two reductions separately before predicting the final angle."
+        ],
+        "why": "The chain has no external gear-to-gear mesh and preserves rotation direction: intermediate angle = input × 16/24 = +2A/3. The 8-to-24 external gear mesh reverses direction and scales again by 8/24 = 1/3: reporter angle = -2A/9. At A = +180 degrees, the intermediate axle turns +120 degrees and the reporter -40 degrees, relative to each part's saved orientation.",
+        "matters": "A loop can transmit rotary motion between more distant parallel shafts, and a second gear stage can trade angular travel for torque while reversing direction. This is a virtual kinematics lesson, not a validated loaded drive, tensioner or physical transmission.",
+        "question": "At +90 degrees of input rotation, what angle has the intermediate chain wheel turned? What is the final red reporter angle? Why do their signs differ?",
+        "answer": "Intermediate: +60 degrees (= 90 × 16/24). Reporter: -20 degrees (= 60 × -8/24). The chain preserves direction; the one external spur-gear mesh reverses it. At +180 input, the corresponding values are +120 and -40 degrees.",
+        "further": [
+          "Predict the reporter after a +45 degree input command: -10 degrees.",
+          "What if the last output gear had 16 teeth instead of 24, keeping the intermediate pinion at 8 teeth? Predict -A/3, then redesign the gear-center spacing before attempting the swap.",
+          "Contrast the physical chain loop with ParityDial's idler and CounterSlide's racks. How does each move power or change direction?"
+        ]
+      },
+      "de": {
+        "what": "Ein SPIKE-Mittelmotor dreht das erste Kettenrad mit 16 Zähnen. Eine geschlossene Kette aus 25 Gliedern überträgt die Drehung auf ein 24er-Kettenrad einer zweiten gelagerten Welle. Ein 8er-Ritzel auf derselben Welle treibt das 24er-Abtriebsrad mit rotem Zeiger an.",
+        "try": [
+          "Öffne das LDraw-Modell und Programm von LoopRelay, setze den gespeicherten Encoder-Nullpunkt zurück und starte Motor A. Er fährt mit 12 Grad pro Sekunde auf +180 Grad und wieder zurück.",
+          "Beobachte das mittlere 24er-Kettenrad und den roten Abtriebszeiger: Drehen sie gleichsinnig? Welche Winkel erreichen sie bei der Pause?",
+          "Steuere Motor A von 0 bis +180 Grad schrittweise um je +45 Grad. Beobachte zunächst die Kettenstufe und sage erst dann den letzten Zeigerwinkel voraus."
+        ],
+        "why": "Eine Kette erhält die Drehrichtung: Der Winkel der Zwischenwelle beträgt A × 16/24 = +2A/3. Das äußere Zahnradpaar 8:24 kehrt die Richtung um und untersetzt nochmals auf ein Drittel: Abtriebswinkel = -2A/9. Bei A=+180 Grad dreht die Zwischenwelle +120 Grad und der rote Zeiger -40 Grad gegenüber ihrer gespeicherten Ausgangslage.",
+        "matters": "Eine Kette überträgt Drehbewegung zwischen weiter entfernten parallelen Wellen. Eine zusätzliche Zahnradstufe verringert den Winkel und kehrt die Drehrichtung um. Dies ist ein virtueller Kinematik-Versuch, kein geprüfter Lastantrieb mit verifizierter Kettenspannung.",
+        "question": "Motor A dreht +90 Grad: Wie weit dreht sich das mittlere Kettenrad? Welchen Winkel erreicht der rote Zeiger? Warum unterscheiden sich die Vorzeichen?",
+        "answer": "Zwischenwelle: +60 Grad (= 90 × 16/24). Roter Zeiger: -20 Grad (= 60 × -8/24). Die Kette erhält die Richtung; das äußere Zahnradpaar kehrt sie um. Bei +180 Grad Eingang sind es +120 und -40 Grad.",
+        "further": [
+          "Berechne den Abtriebswinkel bei +45 Grad Eingang: -10 Grad.",
+          "Was ändert sich mit einem letzten Zahnrad mit 16 statt 24 Zähnen? Die Rechnung ergibt -A/3; der Achsabstand muss dann neu konstruiert werden.",
+          "Vergleiche LoopRelay mit ParityDial (Zwischenrad) und CounterSlide (Zahnstangen). Wie übertragen sie Bewegung und ändern die Richtung?"
+        ]
+      },
+      "formula": "φ = (16/24) × (−8/24) θ = −2θ/9",
+      "related": [
+        "gearbox.ldr",
+        "crank-rocker.ldr",
+        "rack-shuttle.ldr"
+      ]
+    },
+    "paritydial": {
+      "en": {
+        "what": "A single SPIKE medium angular motor drives an 8-tooth pinion. The orange left hand is keyed to a 24-tooth gear directly meshed with that pinion. A 24-tooth idler sits between the pinion and the red right-hand 24-tooth gear. Both output shafts turn in real bearings and have equal reductions but opposite directions.",
+        "try": [
+          "Open the ParityDial model and program, reset to the saved 0-degree reference and run. The motor visits +90 degrees, -90 degrees and zero.",
+          "Watch the orange and red thin-liftarm hands, not only motor A's encoder. At the first hold, which way did each turn?",
+          "Manually jog A from 0 to +45 degrees and back at 15 degrees/second. Compare each hand with half the experiment's 90-degree command."
+        ],
+        "why": "An external 8T-to-24T gear mesh changes speed magnitude by 8/24 = 1/3 and reverses direction. The left path has one mesh, so theta_left = -A/3. The right path has two meshes (8T -> 24T idler -> 24T output), so theta_right = +A/3. The idler changes direction parity but does not change the overall ratio because its tooth count cancels.",
+        "matters": "An idler can relocate an output shaft or change its direction without changing its total speed ratio. This is useful in clockwork displays, synchronized indicators and gear-train routing. It is not a high-torque gearbox or a load-bearing machine.",
+        "question": "At A = +90 degrees, predict the angle of each clock hand from its starting orientation. What is their angular separation change?",
+        "answer": "The left hand turns -30 degrees and the right hand +30 degrees, so the relative angle between their directions changes by 60 degrees. At A = -90 degrees, the signs reverse. Both should return nearly to zero at the program's end.",
+        "further": [
+          "Predict both hands at A = +45 degrees: -15 degrees and +15 degrees.",
+          "Count the gear meshes in each path. What changes if you add another 24-tooth idler only to the left path?",
+          "Compare ParityDial with CounterSlide: both use one motor and multiple outputs, but this machine retains rotary motion."
+        ]
+      },
+      "de": {
+        "what": "Ein SPIKE-Mittelmotor treibt ein Ritzel mit acht Zähnen. Der orangefarbene linke Zeiger ist mit einem direkt eingreifenden 24er-Zahnrad verbunden. Rechts liegt ein weiteres 24er-Zwischenrad zwischen Antrieb und dem roten 24er-Abtriebsrad. Beide Ausgangswellen drehen in Lagern, gleich schnell, aber in entgegengesetzten Richtungen.",
+        "try": [
+          "Öffne ParityDial und sein Programm, setze es auf die gespeicherte Nullstellung zurück und starte. Der Motor fährt auf +90 Grad, -90 Grad und wieder auf null.",
+          "Beobachte die orangefarbenen und roten Zeiger aus dünnen Technic-Liftarmen. In welche Richtung dreht sich jeder bei der ersten Haltephase?",
+          "Steuere A manuell mit 15 Grad/Sekunde von 0 bis +45 Grad und zurück. Vergleiche die beiden Zeiger mit dem Versuch bei 90 Grad."
+        ],
+        "why": "Ein äußeres Zahnradpaar 8:24 untersetzt den Winkel um 8/24 = 1/3 und kehrt die Drehrichtung um. Links greift ein Zahnradpaar ein: theta_links = -A/3. Rechts sind es zwei Zahnradpaare (8er -> 24er Zwischenrad -> 24er Abtrieb): theta_rechts = +A/3. Das Zwischenrad ändert die Drehrichtung, nicht das Gesamtübersetzungsverhältnis, weil seine Zähnezahl herausfällt.",
+        "matters": "Ein Zwischenrad kann eine Abtriebswelle versetzen oder ihre Drehrichtung ändern, ohne die Gesamtübersetzung zu verändern. Nützlich ist das etwa bei Uhrwerken, Zeigeranzeigen oder mechanischer Signalführung. Das Modell ist kein geprüfter Hochlastantrieb.",
+        "question": "Bei A = +90 Grad: Welche Winkel erreichen die Zeiger von ihrer Startstellung aus? Um wie viel ändert sich ihre Winkeltrennung?",
+        "answer": "Der linke Zeiger dreht sich um -30 Grad, der rechte um +30 Grad. Die Winkeltrennung verändert sich also um 60 Grad. Bei A = -90 Grad tauschen die Vorzeichen. Am Ende sollten beide wieder nahezu auf null stehen.",
+        "further": [
+          "Berechne beide Zeiger bei A = +45 Grad: -15 Grad und +15 Grad.",
+          "Zähle die Zahneingriffe in jedem Weg. Was passiert, wenn nur links ein zusätzliches 24er-Zwischenrad eingefügt wird?",
+          "Vergleiche ParityDial mit CounterSlide: Beide haben einen Motor und mehrere Ausgänge, aber hier bleibt die Bewegung eine Drehung."
+        ]
+      },
+      "formula": "φ_left = −θ/3; φ_right = θ/3",
+      "related": [
+        "gearbox.ldr",
+        "crank-rocker.ldr",
+        "rack-shuttle.ldr"
+      ]
+    },
+    "counterslide": {
+      "en": {
+        "what": "One SPIKE motor turns a small 8-tooth pinion. Its top and bottom teeth drive two independent sliding Technic racks. Orange L-shaped jaws attached to the racks approach one another symmetrically, then retract.",
+        "try": [
+          "Import CounterSlide and its program, reset to the saved open pose, and press Run. Watch motor A close the jaws to -100 degrees, hold for one second and return to zero.",
+          "Pick matching reference points on the two orange jaw tips. Do they move equal distances in opposite X directions? Watch their midpoint, rather than just the motor encoder.",
+          "Use the manual control only between -100 and 0 degrees. Compare a -25-degree step and a -50-degree step without changing the pinion."
+        ],
+        "why": "For an 8-tooth pinion, the pitch radius is 10 LDraw units = 4 mm. Each rack translates 4 mm for every radian of pinion rotation; the upper rack moves left when the lower rack moves right. In this motor orientation, negative encoder A closes the jaws: each moves inward s = -4πA/180 mm and the tip-to-tip gap shrinks by 2s, as long as neither rack slips, bends or reaches contact.",
+        "matters": "The two guided racks are separate moving bodies driven by one gear, so matching jaw motion comes from the mechanism rather than two synchronized motors. This is useful for a self-centering gripper or symmetrical shutter. It is a small no-payload kinematics experiment, not a certified gripping-force machine.",
+        "question": "At the programmed -100-degree target, how far has each jaw moved, how much has the opening shrunk, and what should happen to the midpoint?",
+        "answer": "The ideal single-jaw travel is 6.981 mm. The two jaws jointly reduce the 24.000 mm starting center-to-center gap by 13.963 mm, leaving 10.037 mm. Their x positions remain opposite and their midpoint remains at x = 0. Verify these numbers against body positions, not encoder readings alone.",
+        "further": [
+          "Predict the movement for -50 degrees, then compare the observed halves; ideal travel is 3.491 mm per jaw.",
+          "Temporarily loosen or remove a rack guide only in an analytical model: explain why meshing teeth alone cannot stop the free rack body from twisting.",
+          "Compare this two-output mechanism with the single-output Rack Shuttle, where one rack follows the same pinion."
+        ]
+      },
+      "de": {
+        "what": "Ein SPIKE-Motor treibt ein Zahnrad mit acht Zähnen. Dessen obere und untere Zähne verschieben zwei getrennt geführte Technic-Zahnstangen. Daran befestigte orangefarbene Winkelbacken fahren symmetrisch aufeinander zu und wieder auseinander.",
+        "try": [
+          "Importiere CounterSlide und sein Programm, setze das Modell auf die gespeicherte offene Stellung zurück und drücke Start. Motor A schließt bis -100 Grad, hält eine Sekunde und fährt wieder auf null.",
+          "Wähle entsprechende Messpunkte an beiden orangefarbenen Backen. Bewegen sie sich gleich weit in entgegengesetzte X-Richtungen? Beobachte die Mitte zwischen ihnen, nicht nur den Motorwert.",
+          "Benutze die manuelle Steuerung nur zwischen -100 und 0 Grad. Vergleiche einen Schritt von -25 und einen von -50 Grad bei gleichem Ritzel."
+        ],
+        "why": "Das Ritzel mit acht Zähnen hat einen Teilkreisradius von 10 LDraw-Einheiten = 4 mm. Pro Radiant Ritzeldrehung legt jede Zahnstange 4 mm zurück; die obere bewegt sich nach links, während die untere nach rechts fährt. Bei dieser Motorlage schließen negative Encoderwinkel A die Backen: s = -4πA/180 mm Weg nach innen je Backe. Der Backenabstand nimmt um 2s ab, solange nichts rutscht, sich verbiegt oder anstößt.",
+        "matters": "Beide Schlitten sind getrennte bewegliche Körper, werden aber vom selben Zahnrad angetrieben. Der Gleichlauf kommt aus der Mechanik, nicht aus zwei synchronisierten Motoren. Das Prinzip eignet sich für einen Zentriergreifer oder eine symmetrische Blende. Das Modell ist ein unbelasteter Kinematikversuch ohne geprüfte Greifkraft.",
+        "question": "Wie weit wandert bei -100 Grad jede Backe, um wie viel verkleinert sich die Öffnung und was passiert mit dem Mittelpunkt?",
+        "answer": "Idealerweise wandert jede Backe 6,981 mm. Der anfängliche Mittelpunktabstand der Backen von 24,000 mm sinkt insgesamt um 13,963 mm auf 10,037 mm. Ihre X-Positionen bleiben entgegengesetzt, der Mittelpunkt liegt weiterhin bei x = 0. Vergleiche dies mit den tatsächlichen Körperpositionen und nicht nur mit dem Encoder.",
+        "further": [
+          "Berechne -50 Grad im Voraus: ideal sind 3,491 mm Weg je Backe. Prüfe das in der Bewegung.",
+          "Denke die Führung einer Zahnstange weg: Weshalb verhindern die Zähne allein kein Verdrehen des freien Körpers?",
+          "Vergleiche mit dem einseitigen Rack Shuttle: dort bewegt ein Ritzel nur eine geführte Zahnstange."
+        ]
+      },
+      "formula": "|Δx| = 4 mm × |θ| (θ in radians); midpoint remains fixed",
+      "related": [
+        "gearbox.ldr",
+        "crank-rocker.ldr",
+        "rack-shuttle.ldr"
+      ]
+    },
     "rimrun": {
       "en": {
         "what": "Two free rollers wait on the same fixed incline behind one common gate. Each roller has 39 placed parts and 73.28 g of canonical catalog mass, two identical outer wheels and a centered mass distribution. The fixed incline is 6.842773°. The green roller starts with its paired ballast close to the axis; the orange roller carries the same ballast farther out. Motor A lifts the gate, then holds it clear while gravity and contact move the rollers. Neither roller has a motor, axle bearing to the frame or imposed path. Compare their downhill travel before either touches a spring catch. The supplied comparison exchanges the ballast layouts between the lanes while keeping the green and orange lane colors.",

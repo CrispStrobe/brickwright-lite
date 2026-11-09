@@ -290,6 +290,12 @@ export const MODELS = Object.freeze([
         manualJog: {A: {minDeg: 0, maxDeg: 900, stepDeg: 90, speedDps: 90}, B: {minDeg: 0, maxDeg: 70, stepDeg: 10, speedDps: 10}}},
     {file: 'helixgate.ldr', title: {en: 'HelixGate — a 24:1 worm gearbox', de: 'HelixGate — ein Schneckengetriebe mit 24:1'}, example: 'helixgate.bw', mat: 'plain',
         manualJog: {A: {minDeg: 0, maxDeg: 720, stepDeg: 45, speedDps: 60}}},
+    {file: 'looprelay.ldr', title: {"en": "LoopRelay — chain drive, gear reversal", "de": "LoopRelay — Kettenantrieb mit Zahnradumkehr"}, example: 'looprelay.bw', mat: 'plain',
+        manualJog: {"A": {"minDeg": 0, "maxDeg": 180, "stepDeg": 5, "speedDps": 12}}},
+    {file: 'paritydial.ldr', title: {"en": "ParityDial — two outputs, one idler", "de": "ParityDial — zwei Abtriebe, ein Zwischenrad"}, example: 'paritydial.bw', mat: 'plain',
+        manualJog: {"A": {"minDeg": -90, "maxDeg": 90, "stepDeg": 5, "speedDps": 15}}},
+    {file: 'counterslide.ldr', title: {"en": "CounterSlide — twin-rack self-centering jaws", "de": "CounterSlide — selbstzentrierende Doppelzahnstangen"}, example: 'counterslide.bw', mat: 'plain',
+        manualJog: {"A": {"minDeg": -100, "maxDeg": 0, "stepDeg": 5, "speedDps": 15}}},
     {file: 'product-plotter.ldr', title: {en: 'Product Plotter — a mechanical multiplier', de: 'Product Plotter — ein mechanischer Multiplizierer'},
         example: 'product-plotter.bw', mat: 'plain', manualJog: {A: {minDeg: -15, maxDeg: 15, stepDeg: 2, speedDps: 10}, B: {minDeg: -75, maxDeg: 75, stepDeg: 10, speedDps: 30}}, intro: {
             en: 'Motor A tilts a straight guide; motor B slides the green rail. Their intersection moves the passive orange carriage, so similar triangles make its displacement equal the product of both inputs divided by a fixed reference length.',
