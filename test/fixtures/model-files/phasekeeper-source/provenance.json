@@ -1,0 +1,10 @@
+{
+ "author": "CrispStrobe",
+ "license": "BSD-3-Clause",
+ "files": {
+  "models/phasekeeper.ldr": "644e6911c49bdf2852c5b228e0a15fb651749ff6955b46895e0920f580d689bf",
+  "programs/phasekeeper.bw": "30febab7bfa69f81bbd5fd9166fbc0b32a97ed04732a9caea521ae487c35b2b1",
+  "LICENSE.txt": "ed24a200606b724010d837027511981f9e3c5ed05f81d01a1f12dffb8b5d5c86",
+  "SOURCES.md": "143aafc9a2df061a0365bcb38f3b0beca136dd1deeaa135e7d4338e5adeb0da9"
+ }
+}

@@ -40,7 +40,7 @@
 1 72 80 220 120 0 0 -1 0 1 0 1 0 0 15100.dat
 0 !BW ID foot_pin_right_rear
 1 0 80 230 120 0 0 1 1 0 0 0 1 0 2780.dat
-0 !BW ID chassis_reference
+0 !BW ID hub
 1 15 0 210 0 1 0 0 0 1 0 0 0 1 45601.dat
 0 !BW ID hub_pin_left_front
 1 0 -60 210 -100 0 0 1 1 0 0 0 1 0 2780.dat

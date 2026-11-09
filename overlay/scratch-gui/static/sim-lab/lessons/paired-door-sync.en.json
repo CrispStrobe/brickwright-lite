@@ -2,7 +2,7 @@
   "version": 1,
   "id": "paired-door-sync",
   "language": "en",
-  "what": "One 16T pinion drives two 64781 racks placed on opposite sides of the pinion. Each rack is bolted to a 13L carriage that rides a 48496 toggle on a horizontal 12L guide axle, and two 3L thin-liftarm door leaves hang on the same carriage pins. The program commands the motor to +150, 0, -150 and 0 degrees; both racks and both leaves are passive. In the hosted run the two rack markers read +20.956 mm and -20.956 mm at +150.09 degrees and -20.974 mm and +20.974 mm at -150.22 degrees, with a largest front-plus-back sum of 0.000002 mm.",
+  "what": "Opposed rack and pinion. One 16T pinion drives two 64781 racks placed on opposite sides of the pinion. Each rack is bolted to a 13L carriage that rides a 48496 toggle on a horizontal 12L guide axle, and two 3L thin-liftarm door leaves hang on the same carriage pins. The program commands the motor to +150, 0, -150 and 0 degrees; both racks and both leaves are passive. In the hosted run the two rack markers read +20.956 mm and -20.956 mm at +150.09 degrees and -20.974 mm and +20.974 mm at -150.22 degrees, with a largest front-plus-back sum of 0.000002 mm. One 16-tooth pinion drives two racks on opposite sides, so the two door leaves travel equally fast in opposite directions and the sum of their positions stays zero.",
   "try": [
     "Load the model and program, press Reset, then Run. The motor must start at its saved zero; the program refuses a datum larger than 2 degrees.",
     "During the +150 degree hold, compare the two rack markers. They should be equal in size and opposite in sign; the two door leaves on each side move together, and the two sides move apart or together in opposite directions.",

@@ -167,7 +167,7 @@ let ordinary="NaN"`),run=await execute(imported);
     const v=vars(run);assert.ok(Number.isNaN(v.nan));assert.equal(v.positive,Infinity);assert.equal(v.negative,-Infinity);assert.ok(Object.is(v.minusZero,0));assert.equal(v.ordinary,'NaN');
 });
 
-test('numeric sums retain their type through index variables and procedure returns', {todo:"Array export authority cannot yet prove the Array receiver \u2014 see docs/ARCADE-888-OPEN-FAILURES.md"},async()=>{
+test('numeric sums retain their type through index variables and procedure returns',async()=>{
     await roundtrip(`let rows=[[3,4]]
 function shift(index:number){return index+1}
 let column=0

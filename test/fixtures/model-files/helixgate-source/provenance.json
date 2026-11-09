@@ -1,0 +1,10 @@
+{
+ "author": "CrispStrobe",
+ "license": "BSD-3-Clause",
+ "files": {
+  "models/helixgate.ldr": "6208f9ee96f1da2d1947f0f2b92ea69706624bdfa0fa09a1aa812210b942a796",
+  "programs/helixgate.bw": "0fe7b0ef26bc214dd3f48ec0a11ab06bf345f1ff8b052ce47ccea42b0192871a",
+  "LICENSE.txt": "b29ef22ac91a3a59b07d648118bb24c04b0bf94329dd36986fafd6a8547f981f",
+  "SOURCES.md": "1c6cb5f1beaafffc16c43271bfc009bdab43872e5d3c323978a71e14c376c4e7"
+ }
+}

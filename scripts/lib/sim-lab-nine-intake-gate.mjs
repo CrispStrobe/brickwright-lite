@@ -8,7 +8,7 @@ import {intakeRoundtrip} from './sim-lab-intake-roundtrip.mjs';
 import {NINE_INTAKES, evaluateNineIntake} from './sim-lab-nine-intake-judge.mjs';
 
 const placements = {helixgate: 20, looprelay: 54, paritydial: 31, counterslide: 44,
-    'toggle-press': 142, footfall: 120, phasekeeper: 81, vectorsum: 122, pointweaver: 128};
+    'toggle-press': 139, footfall: 119, phasekeeper: 79, vectorsum: 122, pointweaver: 128};
 
 export function judgeNineBrowser(id, record) {
     // Worker snapshots expose body poses and controllers. Native contact

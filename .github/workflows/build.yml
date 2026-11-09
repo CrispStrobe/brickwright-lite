@@ -2982,6 +2982,14 @@ jobs:
         timeout-minutes: 3  # derived: p95 7 s × 3 → 3 min over 20 green runs to 36823340082; max 12 s in run 36544779088 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-i80386-local-hdd-gui.mjs
+      # The debugger docked beside a running x86 machine must own its controls:
+      # a hosted event's real click on Pause landed on the Widgets Full screen
+      # button. Real page, real (unforced) click, hit-test at Pause's centre.
+      - name: Browser gate — debugger Pause is clickable beside the x86 Widgets
+        id: bw_browser_audit_0264
+        timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
+        run: PROOF_URL=http://localhost:8617/ node scripts/verify-debugger-pause-hit.mjs
       - name: Browser gate — machine Widgets keyboard, mouse and fullscreen
         id: bw_browser_audit_0154
         timeout-minutes: 3  # derived: p95 2 s × 3 → 3 min over 20 green runs to 36823340082; max 3 s in run 36327909922 (gen-gate-budgets.mjs)
@@ -4008,6 +4016,7 @@ jobs:
             bw_browser_audit_0151	${{ steps['bw_browser_audit_0151'].outcome }}	${{ steps['bw_browser_audit_0151'].conclusion }}
             bw_browser_audit_0152	${{ steps['bw_browser_audit_0152'].outcome }}	${{ steps['bw_browser_audit_0152'].conclusion }}
             bw_browser_audit_0153	${{ steps['bw_browser_audit_0153'].outcome }}	${{ steps['bw_browser_audit_0153'].conclusion }}
+            bw_browser_audit_0264	${{ steps['bw_browser_audit_0264'].outcome }}	${{ steps['bw_browser_audit_0264'].conclusion }}
             bw_browser_audit_0154	${{ steps['bw_browser_audit_0154'].outcome }}	${{ steps['bw_browser_audit_0154'].conclusion }}
             bw_browser_audit_0155	${{ steps['bw_browser_audit_0155'].outcome }}	${{ steps['bw_browser_audit_0155'].conclusion }}
             bw_browser_audit_0156	${{ steps['bw_browser_audit_0156'].outcome }}	${{ steps['bw_browser_audit_0156'].conclusion }}

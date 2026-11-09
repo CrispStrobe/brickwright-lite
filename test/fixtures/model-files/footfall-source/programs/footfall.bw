@@ -1,0 +1,84 @@
+# Footfall — trace one closed twelve-link foot path and return
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright (c) 2026 CrispStrobe
+# Finite one-cycle experiment for models/footfall.ldr.
+# Reload/reset the model to its saved pose before Run. Motor A must begin within 3 degrees of zero.
+# A is the only powered input. Every linkage member and the foot marker are passive outputs.
+# Targets are absolute fresh unwrapped encoder angles. Speeds are degrees per second.
+# Programmed route: 0 -> 90 -> 180 -> 270 -> 360 -> 0 degrees.
+# Qualified analytical/manual envelope: -5 to 365 degrees. These software bounds are not physical stops.
+DEVICE SPIKE
+GLOBAL targetA = 0
+GLOBAL speedA = 18
+GLOBAL phase = 0
+GLOBAL done = 0
+GLOBAL fault = 0
+WHEN flag clicked:
+  set targetA to 0
+  set speedA to 18
+  set phase to 0
+  set done to 0
+  set fault to 0
+  IF (lab status) = "no-model" THEN:
+    set fault to 1
+    say "Load Footfall and reset its saved pose before running."
+    stop all
+  lab start
+  IF (abs of (lab motor A angle)) > 3 THEN:
+    set fault to 1
+    broadcast "Footfall fault" and wait
+    stop all
+  lab stop motor A hold
+  reset timer
+  broadcast "Footfall watchdog"
+  wait 0.25 seconds
+  set phase to 1
+  set targetA to 90
+  set speedA to 18
+  broadcast "Footfall move A" and wait
+  wait 0.5 seconds
+  set phase to 2
+  set targetA to 180
+  set speedA to 18
+  broadcast "Footfall move A" and wait
+  wait 0.5 seconds
+  set phase to 3
+  set targetA to 270
+  set speedA to 18
+  broadcast "Footfall move A" and wait
+  wait 0.5 seconds
+  set phase to 4
+  set targetA to 360
+  set speedA to 18
+  broadcast "Footfall move A" and wait
+  wait 0.75 seconds
+  set phase to 5
+  set targetA to 0
+  set speedA to 24
+  broadcast "Footfall move A" and wait
+  lab stop motor A hold
+  wait 0.25 seconds
+  IF (abs of (targetA - (lab motor A angle))) > 3 THEN:
+    set fault to 1
+    broadcast "Footfall fault" and wait
+    stop all
+  set phase to 99
+  set done to 1
+  say "Footfall cycle complete. Compare the traced path and reset before repeating."
+WHEN I receive "Footfall move A":
+  lab run motor A for (targetA - (lab motor A angle)) degrees at speedA degrees per second
+  lab stop motor A hold
+  IF (abs of (targetA - (lab motor A angle))) > 3 THEN:
+    set fault to 1
+    broadcast "Footfall fault" and wait
+    stop all
+WHEN I receive "Footfall fault":
+  lab stop motor A brake
+  say "Motor A missed its permitted pose or time. Inspect the layered linkage and reload the saved model."
+WHEN I receive "Footfall watchdog":
+  REPEAT UNTIL (done = 1):
+    IF (timer) > 50 THEN:
+      set fault to 1
+      broadcast "Footfall fault" and wait
+      stop all
+    wait 0.05 seconds

@@ -1,4 +1,5 @@
 import {lowerSourceValueOperatorHelpers} from './source-value-operator-helpers.js';
+import {NUMBER_FORMAT_MEMBERS} from './ordinary-primitive-sdk-number-source.js';
 import {setExternalRoots,externalPath,externalAssetNode,externalAssetText} from './external-references.js';
 import {lowerNativeArrayBinaryHelpers} from './native-array-binary-domain.js';
 import {lowerRuntimeDispatchAddHelpers} from './native-array-binary-helper-source.js';
@@ -158,7 +159,7 @@ const ARCADE_TRUE = '(compare value (0) op "<" with (1))';
 const ARCADE_FALSE = '(compare value (1) op "<" with (0))';
 const DELEGATE = Symbol('base statement');
 // NumberFormat ordinal order from retained pxt-core13.2.1 BufferMethods.
-const BUFFER_FORMATS=['Int8LE','UInt8LE','Int16LE','UInt16LE','Int32LE','Int8BE','UInt8BE','Int16BE','UInt16BE','Int32BE','UInt32LE','UInt32BE','Float32LE','Float64LE','Float32BE','Float64BE'];
+const BUFFER_FORMATS=NUMBER_FORMAT_MEMBERS;
 // MakeCode text as a dialect string literal, exactly. The dialect decodes
 // only \n \t \r \\ and \" inside quotes (it keeps \f, \b and \uXXXX as
 // literal text) and reads any other character as itself, so those five are
@@ -3413,6 +3414,33 @@ const liftExporterStops = (program,profile) => {
         let base=registration.callee;while(base?.type==='Member')base=base.object;
         return proof.unbound(base)?owner:null;
     };
+    // The exporter's second-export form of the same prologue, exactly: a root
+    // `let <X>Sprite: Sprite` with no initializer, and as consecutive
+    // statements directly in the body of a root `control.runInParallel` start
+    // function `<X>Sprite = null`, `<X>Sprite = sprites.create(img`...`,
+    // SpriteKind.<K>)` and, optionally next, its literal-arithmetic
+    // `<X>Sprite.setPosition(a, b)`. Nothing else (another statement between
+    // them, a nested block, another receiver or initializer) is the recipe.
+    const createCall=init=>init?.type==='Call'&&!init.isNew&&path(init.callee)==='sprites.create'&&init.args?.length===2&&
+        init.args[0]?.type==='Template'&&init.args[0].tag==='img'&&init.args[1]?.type==='Member'&&init.args[1].object?.type==='Identifier'&&
+        init.args[1].object.name==='SpriteKind'&&proof.unbound(init.args[1].object)&&proof.unbound(init.callee.object);
+    const assigned=(n,d)=>{const x=n?.type==='ExpressionStatement'?n.expr:null;
+        return x?.type==='Assignment'&&x.op==='='&&x.left?.type==='Identifier'&&proof.declarationAt(x.left)===d?x.right:undefined;};
+    const nullPrologue=new Set(program.body.filter(n=>n.type==='Declaration'&&n.kind==='let'&&n.decls.length===1&&n.decls[0].init==null&&
+        n.decls[0].typeName==='Sprite'&&!n.decls[0].isArray&&/^\w+Sprite$/.test(n.decls[0].name)&&proof.unique(n.decls[0].name)).map(n=>n.decls[0]));
+    for(const root of program.body){
+        const c=root.type==='ExpressionStatement'?root.expr:null,owner=c?.type==='Call'&&c.args?.length===1?c.args[0]:null;
+        if(path(c?.callee)!=='control.runInParallel'||owner?.type!=='FunctionExpression'||activation(owner.body?.[0])!==owner)continue;
+        const list=owner.body;
+        for(let i=0;i<list.length-1;i++){
+            const d=[...nullPrologue].find(x=>assigned(list[i],x)?.type==='Null');
+            if(!d||!createCall(assigned(list[i+1],d)))continue;
+            spritePrologue.add(list[i]);spritePrologue.add(list[i+1]);prologueSprites.add(d);nullPrologue.delete(d);
+            const p=list[i+2]?.type==='ExpressionStatement'?list[i+2].expr:null;
+            if(p?.type==='Call'&&!p.isNew&&p.callee?.type==='Member'&&p.callee.name==='setPosition'&&p.callee.object?.type==='Identifier'&&
+                proof.declarationAt(p.callee.object)===d&&p.args?.length===2&&p.args.every(literalArithmetic))spritePrologue.add(list[i+2]);
+        }
+    }
     const tokenDecls=new Map(),tokenOwners=new Map();
     for(const n of proof.nodes)if(n.type==='Declaration'&&n.kind==='const'&&n.decls.length===1&&call(n.decls[0].init,tok,0)){
         const owner=activation(n);if(!owner||owner.body?.[0]!==n)return program;

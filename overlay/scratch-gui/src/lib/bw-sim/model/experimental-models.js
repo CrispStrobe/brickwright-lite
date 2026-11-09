@@ -377,29 +377,6 @@ export const EXPERIMENTAL_MODELS = Object.freeze([
         }
     },
     {
-        "file": "paired-door-sync.ldr",
-        "title": {
-            "en": "Paired Door Sync — one pinion, two opposed racks",
-            "de": "Doppeltür-Synchron — ein Ritzel, zwei gegenläufige Zahnstangen"
-        },
-        "example": "paired-door-sync.bw",
-        "mat": "plain",
-        "experimental": true,
-        "blocked": false,
-        "intro": {
-            "en": "One 16T pinion drives two 64781 racks placed on opposite sides, so the two door leaves travel with equal speed in opposite directions and their sum of positions stays constant. The measured rack markers show the declared equal-and-opposite law, and a control with the front chain removed shows that one rack alone cannot synchronize a pair.",
-            "de": "Ein 16-Zahn-Ritzel treibt zwei gegenüberliegende 64781-Zahnstangen, sodass sich beide Türblätter gleich schnell und gegenläufig bewegen und ihre Positionssumme konstant bleibt. Die gemessenen Zahnstangenmarker zeigen das erklärte gegenläufige Gesetz; eine Kontrolle ohne vordere Antriebskette zeigt, dass eine einzelne Zahnstange ein Paar nicht synchronisieren kann."
-        },
-        "manualJog": {
-            "A": {
-                "minDeg": -150,
-                "maxDeg": 150,
-                "stepDeg": 15,
-                "speedDps": 15
-            }
-        }
-    },
-    {
         "file": "impulse-line.ldr",
         "title": {
             "en": "Impulse Line — contact transfer",
@@ -487,35 +464,6 @@ export const EXPERIMENTAL_MODELS = Object.freeze([
                 "minDeg": -35,
                 "maxDeg": 35,
                 "stepDeg": 5,
-                "speedDps": 10
-            }
-        }
-    },
-    {
-        "file": "afterturn.ldr",
-        "title": {
-            "en": "Afterturn — a closed shape cycle",
-            "de": "Afterturn — ein geschlossener Formzyklus"
-        },
-        "example": "afterturn.bw",
-        "mat": "plain",
-        "experimental": true,
-        "blocked": false,
-        "intro": {
-            "en": "Two motors turn a reaction wheel and reposition balanced masses on a freely rotating platform. Compare the remaining platform heading after both internal motions return home, then reverse the cycle and test physically fixed masses.",
-            "de": "Zwei Motoren drehen ein Reaktionsrad und versetzen ausgewuchtete Massen auf einer frei drehbaren Plattform. Vergleiche die verbleibende Plattformdrehung nach der Rückkehr beider innerer Bewegungen, kehre den Zyklus um und prüfe physisch festgesetzte Massen."
-        },
-        "manualJog": {
-            "A": {
-                "minDeg": 0,
-                "maxDeg": 900,
-                "stepDeg": 90,
-                "speedDps": 90
-            },
-            "B": {
-                "minDeg": 0,
-                "maxDeg": 70,
-                "stepDeg": 10,
                 "speedDps": 10
             }
         }
@@ -862,29 +810,6 @@ export const EXPERIMENTAL_MODELS = Object.freeze([
         }
     },
     {
-        "file": "helixgate.ldr",
-        "title": {
-            "en": "HelixGate — a 24:1 worm gearbox",
-            "de": "HelixGate — ein Schneckengetriebe mit 24:1"
-        },
-        "example": "helixgate.bw",
-        "mat": "plain",
-        "manualJog": {
-            "A": {
-                "minDeg": 0,
-                "maxDeg": 720,
-                "stepDeg": 45,
-                "speedDps": 60
-            }
-        },
-        "intro": {
-            "en": "One right-hand single-start worm turns a 24-tooth gear on a perpendicular axle, moving a red L-shaped gate 30 degrees for two complete motor turns. Coast at the top to observe the virtual worm's hold.",
-            "de": "Eine rechtsgängige eingängige Schnecke dreht ein 24er-Zahnrad auf einer rechtwinkligen Welle. Zwei Motorumdrehungen bewegen den roten L-Hebel um 30 Grad. Beim Ausrollen kann die Haltewirkung beobachtet werden."
-        },
-        "experimental": true,
-        "blocked": false
-    },
-    {
         "file": "looprelay.ldr",
         "title": {
             "en": "LoopRelay — chain drive, gear reversal",
@@ -949,104 +874,6 @@ export const EXPERIMENTAL_MODELS = Object.freeze([
         "intro": {
             "en": "A single 8-tooth gear meshes with two opposing racks. The orange jaws travel inward by equal distances and reopen together; the center between them stays put.",
             "de": "Ein einziges Zahnrad mit acht Zähnen greift in zwei gegenüberliegende Zahnstangen. Die orangefarbenen Backen fahren gleich weit zur Mitte und wieder auseinander; ihre gemeinsame Mitte bleibt stehen."
-        },
-        "experimental": true,
-        "blocked": false
-    },
-    {
-        "file": "toggle-press.ldr",
-        "title": {
-            "en": "Toggle Press — near-dead-centre ram",
-            "de": "Kniehebelpresse — Schlitten nahe dem Totpunkt"
-        },
-        "example": "toggle-press.bw",
-        "mat": "plain",
-        "manualJog": {
-            "A": {
-                "minDeg": -82,
-                "maxDeg": 0,
-                "stepDeg": 2,
-                "speedDps": 8
-            }
-        },
-        "intro": {
-            "en": "One motor turns a yellow crank. A blue coupler folds the red and orange knee links, pushing an orange ram along two guide rails. The program approaches—but does not cross—dead centre, then returns to the saved datum.",
-            "de": "Ein Motor dreht eine gelbe Kurbel. Eine blaue Koppel knickt die roten und orangefarbenen Kniehebel und schiebt einen orangefarbenen Schlitten auf zwei Führungen. Das Programm nähert sich dem Totpunkt, überschreitet ihn aber nicht, und kehrt zur gespeicherten Nullstellung zurück."
-        },
-        "experimental": true,
-        "blocked": false
-    },
-    {
-        "file": "footfall.ldr",
-        "title": {
-            "en": "Footfall — twelve-link leg-path tracer",
-            "de": "Schrittspur — zwölfgliedrige Beinmechanik"
-        },
-        "example": "footfall.bw",
-        "mat": "plain",
-        "manualJog": {
-            "A": {
-                "minDeg": -5,
-                "maxDeg": 365,
-                "stepDeg": 5,
-                "speedDps": 12
-            }
-        },
-        "intro": {
-            "en": "One motor turns a yellow crank through a full revolution. Blue couplers drive a red upper triangle and an orange lower triangle so the orange foot link traces a closed, walking-like path before returning to the saved datum.",
-            "de": "Ein Motor dreht eine gelbe Kurbel um eine volle Umdrehung. Blaue Koppeln treiben ein rotes oberes und ein orangefarbenes unteres Dreieck an, sodass der orange Fußhebel eine geschlossene, schrittähnliche Bahn zeichnet und zur gespeicherten Nullstellung zurückkehrt."
-        },
-        "experimental": true,
-        "blocked": false
-    },
-    {
-        "file": "phasekeeper.ldr",
-        "title": {
-            "en": "Phasekeeper — equal-angle double-Cardan transmission",
-            "de": "Phasenhalter — gleichwinklige Doppel-Kardankupplung"
-        },
-        "example": "phasekeeper.bw",
-        "mat": "plain",
-        "manualJog": {
-            "A": {
-                "minDeg": -5,
-                "maxDeg": 365,
-                "stepDeg": 5,
-                "speedDps": 18
-            }
-        },
-        "intro": {
-            "en": "One motor drives a yellow input yoke, a blue diagonal shaft and an orange output yoke. Each universal joint bends by the same angle, and the two blue intermediate forks are parallel, so ideal Cardan speed ripple from the first joint is cancelled by the second.",
-            "de": "Ein Motor treibt eine gelbe Eingangsgabel, eine blaue Diagonalwelle und eine orange Ausgangsgabel an. Beide Kardangelenke knicken um denselben Winkel ab, und die beiden blauen Zwischengabeln sind parallel; dadurch wird die ideale Drehzahlschwankung des ersten Gelenks vom zweiten aufgehoben."
-        },
-        "experimental": true,
-        "blocked": false
-    },
-    {
-        "file": "vectorsum.ldr",
-        "title": {
-            "en": "VectorSum — two-input differential mixer",
-            "de": "Vektorsumme — Differentialmischer mit zwei Eingängen"
-        },
-        "example": "vectorsum.bw",
-        "mat": "plain",
-        "manualJog": {
-            "A": {
-                "minDeg": -190,
-                "maxDeg": 190,
-                "stepDeg": 10,
-                "speedDps": 24
-            },
-            "B": {
-                "minDeg": -190,
-                "maxDeg": 190,
-                "stepDeg": 10,
-                "speedDps": 24
-            }
-        },
-        "intro": {
-            "en": "Two opposed angular motors drive the side gears of an open Technic differential. The red carrier represents the average of the two side-shaft angles in a shared axis convention, and a yellow 12-tooth bevel gear drives an orange output pointer from the carrier's red 28-tooth cover.",
-            "de": "Zwei gegenüberliegende Winkelmotoren treiben die Seitenräder eines offenen Technic-Differentials an. Der rote Träger entspricht im gemeinsamen Achsbezug dem Mittelwert der beiden Seitenwellenwinkel; ein gelbes 12-Zahn-Kegelrad treibt den orangefarbenen Ausgangszeiger über den roten 28-Zahn-Deckel des Trägers an."
         },
         "experimental": true,
         "blocked": false
@@ -1977,42 +1804,6 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
         ],
         "experimental": true
     },
-    "afterturn.ldr": {
-        "pieces": 296,
-        "motors": 2,
-        "hubs": [
-            "spike-prime"
-        ],
-        "topic": "inertia",
-        "description": {
-            "en": "Two motors turn a reaction wheel and reposition balanced masses on a freely rotating platform. Compare the remaining platform heading after both internal motions return home, then reverse the cycle and test physically fixed masses.",
-            "de": "Zwei Motoren drehen ein Reaktionsrad und versetzen ausgewuchtete Massen auf einer frei drehbaren Plattform. Vergleiche die verbleibende Plattformdrehung nach der Rückkehr beider innerer Bewegungen, kehre den Zyklus um und prüfe physisch festgesetzte Massen."
-        },
-        "author": "CrispStrobe",
-        "license": "BSD-3-Clause",
-        "mechanism": {
-            "en": "Geometric-phase reorientation through a closed internal shape cycle",
-            "de": "Umorientierung durch einen geschlossenen inneren Formzyklus"
-        },
-        "keywords": [
-            "geometric phase",
-            "shape cycle",
-            "reaction wheel",
-            "variable inertia",
-            "angular momentum",
-            "free yaw",
-            "geometrische Phase",
-            "Formzyklus",
-            "Reaktionsrad",
-            "veränderliches Trägheitsmoment",
-            "Drehimpuls",
-            "experimental",
-            "prototype",
-            "unverified",
-            "experimentell"
-        ],
-        "experimental": true
-    },
     "afterturn-fixed-masses.ldr": {
         "pieces": 296,
         "motors": 2,
@@ -2660,34 +2451,6 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
         ],
         "experimental": true
     },
-    "helixgate.ldr": {
-        "pieces": 20,
-        "motors": 1,
-        "hubs": [
-            "spike-prime"
-        ],
-        "topic": "gears",
-        "description": {
-            "en": "One right-hand single-start worm turns a 24-tooth gear on a perpendicular axle, moving a red L-shaped gate 30 degrees for two complete motor turns. Coast at the top to observe the virtual worm's hold.",
-            "de": "Eine rechtsgängige eingängige Schnecke dreht ein 24er-Zahnrad auf einer rechtwinkligen Welle. Zwei Motorumdrehungen bewegen den roten L-Hebel um 30 Grad. Beim Ausrollen kann die Haltewirkung beobachtet werden."
-        },
-        "author": "CrispStrobe",
-        "license": "BSD-3-Clause",
-        "mechanism": {
-            "en": "worm gearing",
-            "de": "Schneckengetriebe"
-        },
-        "keywords": [
-            "worm gear",
-            "worm drive",
-            "24:1",
-            "right-angle transmission",
-            "Schneckengetriebe",
-            "experimental",
-            "experimentell"
-        ],
-        "experimental": true
-    },
     "looprelay.ldr": {
         "pieces": 54,
         "motors": 1,
@@ -2770,120 +2533,6 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
             "experimentell"
         ],
         "experimental": true
-    },
-    "toggle-press.ldr": {
-        "pieces": 142,
-        "motors": 1,
-        "hubs": [
-            "spike-prime"
-        ],
-        "topic": "linkages",
-        "description": {
-            "en": "One motor turns a yellow crank. A blue coupler folds the red and orange knee links, pushing an orange ram along two guide rails. The program approaches—but does not cross—dead centre, then returns to the saved datum.",
-            "de": "Ein Motor dreht eine gelbe Kurbel. Eine blaue Koppel knickt die roten und orangefarbenen Kniehebel und schiebt einen orangefarbenen Schlitten auf zwei Führungen. Das Programm nähert sich dem Totpunkt, überschreitet ihn aber nicht, und kehrt zur gespeicherten Nullstellung zurück."
-        },
-        "author": "CrispStrobe",
-        "license": "BSD-3-Clause",
-        "mechanism": {
-            "en": "toggle linkage",
-            "de": "Kniehebelgetriebe"
-        },
-        "keywords": [
-            "toggle linkage",
-            "dead centre",
-            "toggle press",
-            "Kniehebel",
-            "Totpunkt",
-            "experimental",
-            "experimentell"
-        ],
-        "experimental": true
-    },
-    "footfall.ldr": {
-        "pieces": 120,
-        "motors": 1,
-        "hubs": [
-            "spike-prime"
-        ],
-        "topic": "linkages",
-        "description": {
-            "en": "One motor turns a yellow crank through a full revolution. Blue couplers drive a red upper triangle and an orange lower triangle so the orange foot link traces a closed, walking-like path before returning to the saved datum.",
-            "de": "Ein Motor dreht eine gelbe Kurbel um eine volle Umdrehung. Blaue Koppeln treiben ein rotes oberes und ein orangefarbenes unteres Dreieck an, sodass der orange Fußhebel eine geschlossene, schrittähnliche Bahn zeichnet und zur gespeicherten Nullstellung zurückkehrt."
-        },
-        "author": "CrispStrobe",
-        "license": "BSD-3-Clause",
-        "mechanism": {
-            "en": "Jansen linkage",
-            "de": "Jansen-Beinmechanismus"
-        },
-        "keywords": [
-            "Jansen linkage",
-            "walking linkage",
-            "foot trajectory",
-            "Strandbeest",
-            "Jansen-Mechanismus",
-            "experimental",
-            "experimentell"
-        ],
-        "experimental": true
-    },
-    "phasekeeper.ldr": {
-        "pieces": 81,
-        "motors": 1,
-        "hubs": [
-            "spike-prime"
-        ],
-        "topic": "gears",
-        "description": {
-            "en": "One motor drives a yellow input yoke, a blue diagonal shaft and an orange output yoke. Each universal joint bends by the same angle, and the two blue intermediate forks are parallel, so ideal Cardan speed ripple from the first joint is cancelled by the second. The placement list has 81 entries; add two real universal-joint crosses for 83 physical pieces.",
-            "de": "Ein Motor treibt eine gelbe Eingangsgabel, eine blaue Diagonalwelle und eine orange Ausgangsgabel an. Beide Kardangelenke knicken um denselben Winkel ab, und die beiden blauen Zwischengabeln sind parallel; dadurch wird die ideale Drehzahlschwankung des ersten Gelenks vom zweiten aufgehoben. Die Teileliste enthält 81 Platzierungen; mit zwei echten Kardankreuzen sind es 83 Bauteile."
-        },
-        "author": "CrispStrobe",
-        "license": "BSD-3-Clause",
-        "mechanism": {
-            "en": "double Cardan joint",
-            "de": "Doppelkardangelenk"
-        },
-        "keywords": [
-            "double Cardan",
-            "universal joint",
-            "Hooke joint",
-            "constant velocity",
-            "Kardangelenk",
-            "Gleichlauf",
-            "experimental",
-            "experimentell"
-        ],
-        "experimental": true
-    },
-    "vectorsum.ldr": {
-        "pieces": 122,
-        "motors": 2,
-        "hubs": [
-            "spike-prime"
-        ],
-        "topic": "gears",
-        "description": {
-            "en": "Two opposed angular motors drive the side gears of an open Technic differential. The red carrier represents the average of the two side-shaft angles in a shared axis convention, and a yellow 12-tooth bevel gear drives an orange output pointer from the carrier's red 28-tooth cover.",
-            "de": "Zwei gegenüberliegende Winkelmotoren treiben die Seitenräder eines offenen Technic-Differentials an. Der rote Träger entspricht im gemeinsamen Achsbezug dem Mittelwert der beiden Seitenwellenwinkel; ein gelbes 12-Zahn-Kegelrad treibt den orangefarbenen Ausgangszeiger über den roten 28-Zahn-Deckel des Trägers an."
-        },
-        "author": "CrispStrobe",
-        "license": "BSD-3-Clause",
-        "mechanism": {
-            "en": "differential angle averaging",
-            "de": "Winkelmittelwert im Differential"
-        },
-        "keywords": [
-            "open differential",
-            "angle averaging",
-            "mechanical adder",
-            "Differenzial",
-            "Differential",
-            "experimental",
-            "experimentell"
-        ],
-        "experimental": true,
-        "formula": "C = (B − A)/2; pointer = −(28/12) C (common positive axis of motor B)"
     },
     "pointweaver.ldr": {
         "pieces": 128,

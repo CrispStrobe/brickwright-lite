@@ -1024,6 +1024,127 @@
         "analog computation",
         "line intersection"
       ]
+    },
+    {
+      "models": [
+        "afterturn"
+      ],
+      "name": {
+        "en": "Geometric-phase reorientation through a closed internal shape cycle",
+        "de": "Umorientierung durch einen geschlossenen inneren Formzyklus"
+      },
+      "aliases": [
+        "geometric phase",
+        "shape cycle",
+        "reaction wheel",
+        "variable inertia",
+        "angular momentum",
+        "free yaw",
+        "geometrische Phase",
+        "Formzyklus",
+        "Reaktionsrad",
+        "veränderliches Trägheitsmoment",
+        "Drehimpuls"
+      ]
+    },
+    {
+      "models": [
+        "toggle-press"
+      ],
+      "name": {
+        "en": "toggle linkage",
+        "de": "Kniehebelgetriebe"
+      },
+      "aliases": [
+        "dead centre",
+        "toggle press",
+        "Kniehebel",
+        "Totpunkt"
+      ]
+    },
+    {
+      "models": [
+        "footfall"
+      ],
+      "name": {
+        "en": "Jansen linkage",
+        "de": "Jansen-Beinmechanismus"
+      },
+      "aliases": [
+        "walking linkage",
+        "foot trajectory",
+        "Strandbeest",
+        "Jansen-Mechanismus"
+      ]
+    },
+    {
+      "models": [
+        "phasekeeper"
+      ],
+      "name": {
+        "en": "double Cardan joint",
+        "de": "Doppelkardangelenk"
+      },
+      "aliases": [
+        "double Cardan",
+        "universal joint",
+        "Hooke joint",
+        "constant velocity",
+        "Kardangelenk",
+        "Gleichlauf"
+      ]
+    },
+    {
+      "models": [
+        "vectorsum"
+      ],
+      "name": {
+        "en": "differential angle averaging",
+        "de": "Winkelmittelwert im Differential"
+      },
+      "aliases": [
+        "open differential",
+        "angle averaging",
+        "mechanical adder",
+        "Differenzial",
+        "Differential"
+      ]
+    },
+    {
+      "models": [
+        "helixgate"
+      ],
+      "name": {
+        "en": "worm gearing",
+        "de": "Schneckengetriebe"
+      },
+      "aliases": [
+        "worm gear",
+        "worm drive",
+        "24:1",
+        "right-angle transmission",
+        "Schneckengetriebe"
+      ]
+    },
+    {
+      "models": [
+        "paired-door-sync"
+      ],
+      "name": {
+        "en": "Opposed rack and pinion",
+        "de": "Gegenläufige Zahnstangen mit Ritzel"
+      },
+      "aliases": [
+        "paired doors",
+        "sliding doors",
+        "rack and pinion",
+        "opposed racks",
+        "synchronised doors",
+        "Schiebetür",
+        "Doppeltür",
+        "Zahnstange",
+        "Ritzel"
+      ]
     }
   ]
 }

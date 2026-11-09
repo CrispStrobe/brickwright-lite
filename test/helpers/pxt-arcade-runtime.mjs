@@ -5,6 +5,7 @@ import path from 'node:path';
 import {createServer} from 'node:http';
 import {chromium} from 'playwright';
 import {compile,STATIC} from '../../scripts/lib/pxt-node.mjs';
+import {withExclusiveBoot} from './exclusive-boot-lock.mjs';
 import {preparePxtInitialClock,assertPxtInitialClock,bootstrapPxtProfilerClock} from './pxt-initial-clock.mjs';
 
 // Self-contained for browser serialization. Observe actual presentation, not
@@ -64,6 +65,8 @@ export async function runPxtArcade(source, {waitForGlobals = null, dependencies 
         await onCompilation(structuredClone({files,built}));
     }
     if(!built.success)throw new Error(JSON.stringify(built.diagnostics));
+    // One original browser session at a time across test processes.
+    return withExclusiveBoot(async () => {
     const root=path.join(STATIC,'arcade/sim');
     const server=createServer(async(req,res)=>{
         try {
@@ -261,4 +264,5 @@ export async function runPxtArcade(source, {waitForGlobals = null, dependencies 
         if(errors.length)throw new Error(JSON.stringify(errors));
         return values;
     } finally {await browser?.close();await new Promise(done=>server.close(done));}
+    });
 }

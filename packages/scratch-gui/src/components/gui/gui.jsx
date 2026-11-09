@@ -1239,7 +1239,12 @@ const GUIComponent = props => {
                                 <React.Suspense fallback={
                                     <div style={{padding: 24, color: '#64748b'}}>Loading controller…</div>
                                 }>
-                                    <div style={dockFullScreenStyle || {position: 'relative', flex: 1, minHeight: 0, borderTop: '1px solid #ffffff', background: '#f8fafc'}}>
+                                    {/* zIndex 1 makes this wrapper a stacking context: the panel's own
+                                        zIndex:10 stays inside it, above the in-stage circuit portal
+                                        (z-index 0). While the debugger has a live machine or program,
+                                        circuit-tab.jsx splits the column at data-bw-stage-dock: Widgets
+                                        on top, debugger below (z-index 2), so neither covers the other. */}
+                                    <div data-bw-stage-dock="controller" style={dockFullScreenStyle || {position: 'relative', zIndex: 1, flex: 1, minHeight: 0, borderTop: '1px solid #ffffff', background: '#f8fafc'}}>
                                         <ControllerPanelView
                                             panel={controllerPanel}
                                             board={board}
