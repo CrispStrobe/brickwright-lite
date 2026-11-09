@@ -28,9 +28,24 @@ misses) and new cases in `test/arcade-primitive-array-callback-source.test.mjs`.
 Mutations: removing the inline bridge, the taint, or the tainted-lineage check
 each fails a test.
 
+## VM side (`overlay/scratch-vm/src/extensions/crispstrobe/arcade/console-inspect-values.js`)
+
+A Number-constrained argument read from a push-only local Array family (one
+empty allocation; locals only aliased, pushed to, measured or item-read; no
+escape or capture) has the pushed values' domains when the read is in bounds:
+a constant below the straight-line pushes before it; the importer's canonical
+`repeat while I < LEN` map loop (LEN the family length set once before, I set
+to 0 before and advanced by exactly +1 as the body's last statement); or a
+constant index of that loop's single-push result below the receiver's
+straight-line pushes. New `test/arcade-lowered-map-loop-domain.test.mjs`:
+positive plus three refused edits (step of two, pop on the receiver, index past
+the pushes). Mutations: original VM, no step check, no constant bound, pops
+allowed each fail a test.
+
 ## Still open
 
-The 69-case matrix imports cleanly but the VM refuses at run time: the
-importer lowers `map` to a `repeat while` loop over locals, and the VM's
-positional element proof covers only published global Arrays. A VM domain
-proof for that lowered loop's in-bounds item reads is the next step.
+Import, run, Code, both SB3 routes and export of the 69-case matrix pass. The
+reimport of the exported lowered loop (`while` over hoisted locals with
+`push` and `[0]`) refuses because `dense-array-loop-entry.js` is closed over
+the whole program, and the matrix has callbacks, templates and loops
+elsewhere. A per-site version of that loop entry proof is the next step.
