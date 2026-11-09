@@ -1,0 +1,10 @@
+{
+ "author": "CrispStrobe",
+ "license": "BSD-3-Clause",
+ "files": {
+  "models/pointweaver.ldr": "9efb06f459cdfac0596023c71f9fd4481d6847dcc7784d95a47acc2112e9fd8b",
+  "programs/pointweaver.bw": "0a0f5638a16950c3221c13e1b71ee1db36dfc346563f7b94f16b26921a0a93bc",
+  "LICENSE.txt": "b29ef22ac91a3a59b07d648118bb24c04b0bf94329dd36986fafd6a8547f981f",
+  "SOURCES.md": "f4e70cd4c3c80fae1b8d12f88d73801b8658a0aac8b3b42b80abda3a603aaeed"
+ }
+}

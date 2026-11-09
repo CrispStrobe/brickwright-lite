@@ -540,6 +540,99 @@ function create(runtime, cells, scoreOwner=null, sceneClock=null, frameDelta=nul
             for(let node=at;node&&!climbed.has(node);node=read(node.parent)){climbed.add(node);const index=chain.indexOf(node);if(index>=0)return chain.slice(0,index).some(statement=>assigns(statement,cell));}
             return false;
         };
+        // A local Array family: locals rooted at one empty allocation and only
+        // aliased, pushed to, measured or read by item. Its elements are exactly
+        // the pushed values and it never shrinks, so an in-bounds item read
+        // yields one of them. In bounds: a constant below the straight-line
+        // pushes before the read, or the importer's lowered map loop
+        // `repeat while I < LEN` with LEN its length, I from 0 by +1 only.
+        const constNumber=node=>{
+            if(node?.opcode==='math_number'&&!Object.keys(node.inputs||{}).length){const v=Number(node.fields?.NUM?.value);return String(node.fields?.NUM?.value).trim()!==''&&Number.isFinite(v)?v:null;}
+            if(node?.opcode==='operator_add'){const a=constNumber(input(node,'NUM1')),b=constNumber(input(node,'NUM2'));return a===null||b===null?null:a+b;}
+            return null;
+        };
+        const localsOf=cell=>Object.values(all).filter(b=>localCellOf(b)===cell);
+        const pushFamily=(cell,family=new Map())=>{
+            if(!cell||family.has(cell))return family;
+            const proof=captureProof.proof(cell);if(!proof||proof.escaped||cell.scope.target!==target||proof.index>=0)return null;
+            family.set(cell,{pushes:[],resets:[]});
+            for(const b of localsOf(cell)){
+                if(b.opcode==='arcade_setLocal'){
+                    const value=input(b,'VALUE');
+                    if(value?.opcode==='arrays_createReference'&&text(input(value,'VALUES'))==='[]'&&!Object.keys(value.fields||{}).length)continue;
+                    if(fixedReset(value)){family.get(cell).resets.push(b);continue;}
+                    if(value?.opcode==='arcade_getLocal'){if(!pushFamily(localCellOf(value),family))return null;continue;}
+                    return null;
+                }
+                const parent=read(b.parent),slot=Object.entries(parent?.inputs||{}).find(([,v])=>v?.block===b.id)?.[0];
+                if(parent?.opcode==='arrays_mutateReference'&&slot==='ARRAY'&&literal(parent,'OP')==='push'){family.get(cell).pushes.push(parent);continue;}
+                if(['arrays_referenceLength','arrays_referenceItem'].includes(parent?.opcode)&&slot==='ARRAY')continue;
+                if(parent?.opcode==='arcade_setLocal'&&slot==='VALUE'){if(!pushFamily(localCellOf(parent),family))return null;continue;}
+                return null;
+            }
+            return family;
+        };
+        const rootCount=family=>{const roots=[];for(const cell of family.keys())for(const b of localsOf(cell))if(b.opcode==='arcade_setLocal'&&input(b,'VALUE')?.opcode==='arrays_createReference')roots.push(b);
+            if(roots.length!==1)return roots.length;
+            // A null/undefined reset of a member must precede the allocation on its own chain.
+            const chain=chainOf(roots[0]),resets=[...family.values()].flatMap(entry=>entry.resets);
+            return chain&&resets.every(reset=>chain.includes(reset)&&chain.indexOf(reset)<chain.indexOf(roots[0]))?1:0;};
+        // The statement holding a reporter: climb out of input slots, but a
+        // SUBSTACK reference is a statement boundary.
+        const statementOf=node=>{let n=node;const seen=new Set();while(n?.parent&&!seen.has(n)){seen.add(n);const up=read(n.parent);
+            const slot=Object.entries(up?.inputs||{}).find(([,v])=>v?.block===n.id)?.[0];if(!slot||/^SUBSTACK/.test(slot))break;n=up;}return n;};
+        const chainOf=node=>{let first=statementOf(node),guard=new Set();while(first?.parent&&!guard.has(first)){guard.add(first);const up=read(first.parent);if(!up)return null;if(up.next!==first.id)break;first=up;}
+            const out=[];guard=new Set();for(let n=first;n&&!guard.has(n);n=read(n.next)){guard.add(n);out.push(n);}return out;};
+        const statementIn=(node,chain)=>{const guard=new Set();for(let n=node;n&&!guard.has(n);n=read(n.parent)){guard.add(n);if(chain.includes(n))return n;}return null;};
+        // The canonical lowered map loop: `repeat while I < LEN`, LEN set once
+        // before the loop to the length of a push-only family, I set to 0
+        // before it and advanced by exactly +1 as the body's last statement.
+        const writersOf=cell=>localsOf(cell).filter(b=>b.opcode==='arcade_setLocal');
+        const loopFacts=loop=>{
+            if(loop?.opcode!=='arcade_sourceWhile')return null;
+            const body=chainOf(read(loop.inputs?.SUBSTACK?.block)),outer=chainOf(loop);if(!body?.length||!outer)return null;
+            const condition=input(loop,'CONDITION'),left=input(condition,'LEFT'),right=input(condition,'RIGHT');
+            if(condition?.opcode!=='arrays_valueCompare'||literal(condition,'OP')!=='<'||left?.opcode!=='arcade_getLocal'||right?.opcode!=='arcade_getLocal')return null;
+            const counter=localCellOf(left),limit=localCellOf(right);
+            const limitWriters=writersOf(limit),counterWriters=writersOf(counter);
+            if(!limitWriters.length||limitWriters.some(b=>!outer.includes(b)||outer.indexOf(b)>outer.indexOf(loop)))return null;
+            const lastLimit=limitWriters.reduce((a,b)=>outer.indexOf(b)>outer.indexOf(a)?b:a);
+            const length=input(lastLimit,'VALUE');if(length?.opcode!=='arrays_referenceLength'||input(length,'ARRAY')?.opcode!=='arcade_getLocal')return null;
+            const receiver=pushFamily(localCellOf(input(length,'ARRAY')));if(!receiver||rootCount(receiver)!==1)return null;
+            const step=body[body.length-1],inits=counterWriters.filter(b=>b!==step);
+            if(!counterWriters.includes(step)||!inits.length||inits.some(b=>!outer.includes(b)||outer.indexOf(b)>outer.indexOf(loop)||constNumber(input(b,'VALUE'))!==0))return null;
+            const plus=input(step,'VALUE'),unary=input(plus,'LEFT');
+            if(plus?.opcode!=='arrays_valueBinary'||literal(plus,'OP')!=='+'||constNumber(input(plus,'RIGHT'))!==1||unary?.opcode!=='arrays_valueUnary'||literal(unary,'OP')!=='+'||localCellOf(input(unary,'VALUE'))!==counter)return null;
+            return {body,outer,counter,receiver};
+        };
+        const straightPushesBefore=(family,chain,at)=>[...family.values()].flatMap(entry=>entry.pushes).filter(push=>chain.indexOf(push)>=0&&chain.indexOf(push)<chain.indexOf(at)).length;
+        const familyElement=node=>{
+            const array=input(node,'ARRAY');if(array?.opcode!=='arcade_getLocal')return null;
+            const family=pushFamily(localCellOf(array));if(!family||rootCount(family)!==1)return null;
+            const pushes=[...family.values()].flatMap(entry=>entry.pushes);if(!pushes.length)return null;
+            const values=pushes.map(push=>input(push,'VALUE'));
+            const index=input(node,'INDEX'),k=constNumber(index);
+            if(k!==null){
+                if(!Number.isInteger(k)||k<0)return null;
+                const chain=chainOf(node),at=chain&&statementIn(node,chain);if(!at)return null;
+                if(k<straightPushesBefore(family,chain,at))return values;
+                // Every push is the one unconditional push of a canonical map
+                // loop that finished before this read: one element per receiver
+                // element, and the receiver had at least its straight pushes.
+                if(pushes.length!==1)return null;
+                let loop=null;const climb=new Set();for(let n=read(pushes[0].parent);n&&!climb.has(n);n=read(n.parent)){climb.add(n);if(n.opcode==='arcade_sourceWhile'){loop=n;break;}}
+                const facts=loopFacts(loop);
+                if(!facts||!facts.body.includes(pushes[0])||!chain.includes(loop)||chain.indexOf(loop)>=chain.indexOf(at))return null;
+                const roots=[...family.keys()].flatMap(cell=>writersOf(cell)).filter(b=>input(b,'VALUE')?.opcode==='arrays_createReference');
+                if(roots.length!==1||!chain.includes(roots[0])||chain.indexOf(roots[0])>chain.indexOf(loop))return null;
+                return k<straightPushesBefore(facts.receiver,chain,loop)?values:null;
+            }
+            if(index?.opcode!=='arcade_getLocal')return null;
+            let loop=null,guard=new Set();for(let n=read(node.parent);n&&!guard.has(n);n=read(n.parent)){guard.add(n);if(n.opcode==='arcade_sourceWhile'){loop=n;break;}}
+            const facts=loopFacts(loop);
+            if(!facts||!statementIn(node,facts.body)||localCellOf(index)!==facts.counter||!facts.receiver.has(localCellOf(array)))return null;
+            return values;
+        };
         const safeCell = (cell,player=false,origins=null,domains=null,at=null) => {
             const proof=captureProof.proof(cell);
             if(!proof||cell.scope.target!==target)return false;
@@ -618,6 +711,8 @@ function create(runtime, cells, scoreOwner=null, sceneClock=null, frameDelta=nul
                     // Lite agree). Its own domain is then proved as usual.
                     const slot=positionalElement(node);
                     if(slot){const valid=safe(slot,false,origins,domains);if(valid)origins?.add(node);return valid;}
+                    const elements=familyElement(node);
+                    if(elements){const valid=elements.every(value=>safe(value,false,origins,domains));if(valid)origins?.add(node);return valid;}
                 }
                 if(!player&&op==='arcade_getPlayerScore'){
                     if(!scoreNumber(node))return false;

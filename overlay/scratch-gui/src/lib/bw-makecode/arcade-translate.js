@@ -353,7 +353,7 @@ class ArcadeTranslator extends BaseTranslator {
         const references = inferImageReferences(node, value => this.path(value), value => this.imageOf(value), value => !!this.assetKindLookup && value?.type === 'Template' && ['assets.image', 'assets.tile'].includes(value.tag));
         this.objectReferences = references.objects;this.fontReferences=references.fonts;
         this.bufferReferences = references.buffers;this.imageReferences = references.images;this.spriteReferences = references.sprites;this.dataReferences = references.data;
-        this.textSpriteReferences=references.textSprites;this.playerReferences=references.players;this.sceneReferences=references.scenes;this.physicsEngineReferences=references.physicsEngines;this.tileReferences = references.tiles;this.tilemapDataReferences = references.tilemapData;this.sceneTilemapReferences = references.sceneTilemaps;this.legacyTileReferences=references.legacyTiles;this.animationReferences = references.animations;this.sevensegDigitReferences=references.sevensegDigits;this.sevensegCounterReferences=references.sevensegCounters;this.dartReferences=references.darts;this.corgiReferences=references.corgis;this.nullReferences=references.nulls;this.arrayReferences = references.arrays;this.numberReferences=references.numbers;this.stringReferences=references.strings;this.booleanReferences=references.booleans;
+        this.exactStringReferences=references.exactStrings;this.textSpriteReferences=references.textSprites;this.playerReferences=references.players;this.sceneReferences=references.scenes;this.physicsEngineReferences=references.physicsEngines;this.tileReferences = references.tiles;this.tilemapDataReferences = references.tilemapData;this.sceneTilemapReferences = references.sceneTilemaps;this.legacyTileReferences=references.legacyTiles;this.animationReferences = references.animations;this.sevensegDigitReferences=references.sevensegDigits;this.sevensegCounterReferences=references.sevensegCounters;this.dartReferences=references.darts;this.corgiReferences=references.corgis;this.nullReferences=references.nulls;this.arrayReferences = references.arrays;this.numberReferences=references.numbers;this.stringReferences=references.strings;this.booleanReferences=references.booleans;
         this.referenceArrayProgram=containsAst(node,value=>value.type==='Array' || references.arrays.has(value));
         this.fontValueProgram=containsAst(node,value=>!!value.bwFontIntrinsic);
         this.throwValueProgram=hasThrowEmission(node);this.throwSourceProgram=node;
@@ -916,7 +916,8 @@ class ArcadeTranslator extends BaseTranslator {
         }
         if(node.callee?.type==='Member' && node.callee.name==='concat' && this.stringReferences?.has(node.callee.object)) {
             if(a.length!==1) {this.note('String.concat() requires exactly one argument');return 'undefined value';}
-            if(!this.strictStringReferences?.has(node.callee.object)) {this.note('String.concat() receiver must be a proven string value');return 'undefined value';}
+            // Every receiver producer must be a string: PXT faults on Number, null or undefined.
+            if(!this.exactStringReferences?.has(node.callee.object)) {this.note('String.concat() receiver must be a proven string value');return 'undefined value';}
             if(!this.primitiveReferences?.has(a[0])) {this.note('String.concat() requires a proven primitive argument; object, reference or unknown conversion is not implemented');return 'undefined value';}
             return `concatenate text (${this.arrayElementValue(node.callee.object)}) with (${this.arrayElementValue(a[0])})`;
         }
@@ -4081,7 +4082,7 @@ const inferImageReferences = (ast, pathOf, imageOf, isScopedAssetFactory = () =>
         const unknownMember=node.type==='Member' && !typeOf(node,owner).size;
         if(!primitiveAssertion && (unknownCall || unknownMember) || ['Identifier','Call','Member','Index','Object'].includes(node.type) && !graph.node(cell(node,owner)).types.size)graph.add(cell(node,owner),'unknown');
     }
-    const primitives=new WeakSet(),strictStrings=new WeakSet(),sourceTypeOfOperands=new WeakSet(),provenArrays=new WeakSet(),sourceArrayArithmeticOperands=new WeakSet();
+    const primitives=new WeakSet(),strictStrings=new WeakSet(),exactStrings=new WeakSet(),sourceTypeOfOperands=new WeakSet(),provenArrays=new WeakSet(),sourceArrayArithmeticOperands=new WeakSet();
     const sourceTypeOfOpaque=new Set(entries.filter(({node})=>node.bwSourceTypeOfOpaque).map(({node,owner})=>graph.node(cell(node,owner))));
     const sourceTypeOfKinds=new Set(['number','boolean','string','null','undefined','array','Image','Buffer','object']);
     for(const {node,owner} of entries){
@@ -4090,6 +4091,8 @@ const inferImageReferences = (ast, pathOf, imageOf, isScopedAssetFactory = () =>
         if(types.size && [...types].every(type=>type==='array'||primitiveTypes.has(type)))sourceArrayArithmeticOperands.add(node);
         if(types.size && [...types].every(type=>primitiveTypes.has(type)))primitives.add(node);
         if(types.has('string') && [...types].every(type=>primitiveTypes.has(type)))strictStrings.add(node);
+        // Every producer is a string: PXT String methods fault on any other receiver.
+        if(types.size && [...types].every(type=>type==='string'))exactStrings.add(node);
         if(!sourceTypeOfOpaque.has(graph.node(cell(node,owner))) && types.size && [...types].every(type=>sourceTypeOfKinds.has(type)) &&
             (!types.has('object') || node.bwObjectTypes?.includes('object')))sourceTypeOfOperands.add(node);
     }
@@ -4122,7 +4125,7 @@ const inferImageReferences = (ast, pathOf, imageOf, isScopedAssetFactory = () =>
         if(types.has('physics-engine') || graph.has(value,'PhysicsEngine') && !['number','string','boolean','Image','Sprite','Scene'].some(type=>graph.has(value,type)))physicsEngines.add(node);
         if(types.has('null') && [...types].every(type=>type==='null'||type==='sprite'))nulls.add(node);
     }
-    return {fonts,objects,primitives,strictStrings,sourceTypeOfOperands,provenArrays,sourceArrayArithmeticOperands,textSprites, buffers, players, images: references, tiles, tilemapData, sceneTilemaps, legacyTiles, sprites, animations, sevensegDigits, sevensegCounters, darts, corgis, scenes, physicsEngines, nulls, arrays, numbers, strings, booleans, data,
+    return {fonts,objects,primitives,strictStrings,exactStrings,sourceTypeOfOperands,provenArrays,sourceArrayArithmeticOperands,textSprites, buffers, players, images: references, tiles, tilemapData, sceneTilemaps, legacyTiles, sprites, animations, sevensegDigits, sevensegCounters, darts, corgis, scenes, physicsEngines, nulls, arrays, numbers, strings, booleans, data,
         spriteFunctions:new Set([...functions].filter(([,fn])=>graph.has(fn.resultCell,'Sprite')).map(([name])=>name)),
         parameters:new Map([...functions].map(([name,fn])=>[name,new Set(fn.node.params.filter(param=>graph.has(binding(fn.owner,param),'Sprite')))]))};
 };

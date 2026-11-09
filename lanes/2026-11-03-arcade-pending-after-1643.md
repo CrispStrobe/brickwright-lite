@@ -46,7 +46,8 @@ Each row's full reason is in ARCADE-888. Ordered by expected tractability.
 | 2e | B | order-dependent string (`makecode-string-conversion-roundtrip`) | A flow-sensitive source producer proof, and no receiver cast for statically String operands. |
 | 2f | B | map result index (`makecode-array-map-values`) | Per-site array-callback entry proof (today it is closed over the whole program) plus an in-bounds proof for the index read. |
 | 2g | A | fresh animation re-export, array-copy effects, class accessor aliases | Per-slot proofs, row by row (see ARCADE-888 "second pass" notes for each counter-example). |
-| 2h | B | other B rows (prefix/postfix value used; argument edited to text) | See ARCADE-888; each needs its own proof. |
+| 2h-1 | B | consumed prefix/postfix values (`makecode-arcade-update-values`) | DONE ([claim](2026-11-09-arcade-2h-consumed-update-values.md)): the exported unary-plus helper is proved per call site, and a native `+` is Number from two proved Number operands. TODO removed; PXT, mutation and refusal controls in the claim. |
+| 2h-2 | B | argument edited to text (`makecode-arcade-managed-number-boundaries`, ordinary-argument physical text) | Still TODO, waits for an operator decision: it conflicts with the deliberate control `registered stock/managed Number rejects text before body effects` (`test/arcade-procedure-constraints-native.test.mjs`), which must not be changed to close it. |
 
 Do not start: `randint` (needs bitwise support, out of scope); F and G
 (PXT has one runtime per simulator frame, so a second Arcade instance has no
