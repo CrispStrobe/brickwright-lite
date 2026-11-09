@@ -61,7 +61,11 @@ test('the corrected stock shaft still collides with an actual obstruction and wi
 test('restoring only the old square shaft reproduces CounterSlide foundation displacement', async t => {
     const old = structuredClone(metadata);
     old.parts.find(p => p.part === '4519.dat').colliders = [{shape: 'box', halfExtents: [30, 6, 6]}];
-    const record = await recordNineIntake('counterslide', {partMetadata: old,
+    // The square-shaft regression was found on the pre-repair geometry; Q1/Q2 (2026-11-08) moved
+    // the racks 3 teeth and turned the eight 3L pins. The control keeps running on that exact
+    // geometry (the shipped model at the time), so both assertions below stay unchanged.
+    const model = readFileSync(new URL('fixtures/model-files/counterslide-pre-repair.ldr', import.meta.url), 'utf8');
+    const record = await recordNineIntake('counterslide', {partMetadata: old, model,
         directory: process.env.BW_MODEL_QUALIFY_EVIDENCE_DIR ? process.env.BW_MODEL_QUALIFY_EVIDENCE_DIR + '/original-square' : undefined});
     const result = evaluateNineIntake('counterslide', record);
     t.diagnostic(JSON.stringify(result));

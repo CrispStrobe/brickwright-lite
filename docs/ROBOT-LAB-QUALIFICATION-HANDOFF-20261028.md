@@ -82,6 +82,41 @@ Editing `scripts/lib/robot-lab-qualification.mjs`:
   (`lanes/2026-10-27-robot-lab-hubless-harness.md`).
 - When merging main, keep every side's entries.
 
+## 0000. Status, 2026-11-09 (read this first; supersedes 000 below)
+
+Q1–Q5 are all done. They landed together as one integration, #1683
+(merge `98067ba8`), which merged #1684 (Q1/Q2), #1681 (Q3) and #1682 (Q4)
+into the Q5 branch. All four PRs show as merged.
+
+Promoted: Loop Relay, Parity Dial, Counter Slide (Q1/Q2), Point Weaver (Q3),
+Evenhand (Q4, `counterbalance-holding-torque-v1`) and RimRun (Q5,
+`rolling-inertia-v1`). Hosted unit shards on the merged head passed
+ordinary, strict and disconnected qualification for all six, and the
+construction gate. `rimrun-swapped` and `evenhand-control` stay experimental
+as controls.
+
+Open points, recorded rather than resolved:
+
+- **Manual browser controls not run** for any of the six. The checkpoint and
+  contracts record them as `notRun`, together with saved-project replay and
+  export. `ci:full` was added and then removed on operator decision, so no
+  hosted browser shards ran on the merged head either.
+- **RimRun residual.** Each roller accelerates about 4 % below its damped
+  prediction g·sinθ/(1+I/mr²) − 0.05·v̄. That is inside the judge's 5 % gate,
+  but it is not explained. The inner/outer ratio itself agrees to 0.4 %.
+  The constants and inertia sources are in `scripts/lib/sim-lab-rimrun-judge.mjs`.
+  Explain the residual before anyone tightens that gate. Never widen it.
+- **Arcade exception at merge.** On operator decision, "Arcade numeric
+  authoring (official build)" was an exception for #1683 only. Both failures
+  are kept on record:
+  - attempt 1: a strict clock assertion got 1000.0000000000091 ms against
+    1000;
+  - attempt 2 (a single-job rerun): the official GUI artifact admission
+    refused the rerun before the verifier ran.
+  #1683 touched no Arcade path. Main's #1694 since changed that millisecond
+  comparison. The rerun-admission behaviour is untouched and belongs to the
+  Arcade lane.
+
 ## 000. Status, 2026-11-08 (read this first; supersedes P1–P6 below)
 
 P1–P6 are all done. Merged: #1641 (Afterturn), #1639 (nine-intake judge,
@@ -95,21 +130,33 @@ Still experimental, each with its reason in
 `docs/data/robot-lab-experimental-checkpoint.json`. All are unowned and
 doable as geometry or test-design work:
 
+- **Q1/Q2 (2026-11-08, `lanes/2026-11-08-robot-q12-geometry.md`)**: Loop
+  Relay and Parity Dial input axles now end at the motor face; Counter Slide's
+  eight 3L pins are turned end for end and each rack assembly sits 3 teeth
+  (23.56 LDU) clear of its end-stop pin. Contracts added with the checkpoint
+  values; promoted once the hosted runs pass. The two items below are kept as
+  the historical diagnosis.
 - **Loop Relay, Parity Dial**: pass ordinary, strict and disconnected runs at
   178° / 88° input floors; fail the construction gate because the input axle
   reaches 2.5 LDU into the motor. Fix the axle seat, then re-add the contract
   (values in the checkpoint) and promote as #1668 did for Helixgate.
 - **Counter Slide**: same, at a 98° floor; both housing angles overlap their
   racks by 2.5 LDU and eight pins reach about 2 LDU into the housings.
-- **Point Weaver**: rear motor-foot holes stack 70 LDU deep, which no single
-  standard pin fills; needs a different mount, not two pins in one hole.
-- **Evenhand**: the holding-torque judge passes (branch
-  `lane/robot-evenhand-20261107`, no PR), but removing the counterweights
-  makes the arm droop past the program's 3° start guard. Needs a removal that
-  does not trip the guard, or a justified different disconnection.
-- **RimRun**: mount the hub with real bridging parts (about 170 LDU to the
-  frame), repair the supplier's catch and watchdog-hold checks, then write a
-  judge with `rimrun-swapped` as the causal control.
+- **Point Weaver**: DONE (Q3, 2026-11-08). Motor-foot mount redesigned: pads
+  removed and the motor assemblies lowered 10 LDU onto the rails, so one 3L pin
+  joins rear foot, rail and base cross; promoted (116 placements).
+- **Evenhand**: DONE (Q4, lanes/2026-11-08-robot-q4-evenhand.md): judge
+  `counterbalance-holding-torque-v1` registered and Evenhand promoted. The
+  disconnection removes one inner counterweight pin (`forearm_weight_pin_-1_-20`,
+  120 LDU behind the elbow): the elbow loses its mirror balance by that pin's
+  moment (predicted 0.165, measured 0.166 mN·m) while the cold-settle sag
+  (1.4° / 1.0°) stays inside the unchanged 3° start guard. Whole weight beams
+  sag the arm 3.4–17° and fault the guard. `evenhand-control` stays a control.
+- **RimRun**: done in Q5 (PR #1683, 2026-11-09) and promoted with judge `rolling-inertia-v1`.
+  The hub is pinned to the motor posts with four 2780 pins, and the wheel half bushes, which sat
+  7.5 LDU inside the wheels, are seated flush. The supplier's catch and fault-stop checks are not in
+  the repository; both behaviours were measured instead, and the values are in the checkpoint.
+  `rimrun-swapped` is the causal control. Disconnection removes all ballast.
 
 Not run for the newly promoted models: manual browser controls (recorded as
 not run in the checkpoint). Standing rules above still apply; never loosen the

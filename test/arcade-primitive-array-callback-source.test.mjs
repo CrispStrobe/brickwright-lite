@@ -115,8 +115,17 @@ test('construction authorization excludes callback/later pushes, intervening pub
   builder.replace('tmp.push(0+10)','tmp.push(sideEffect())'),
   builder.replace('tmp.push(0+10)','tmp.push(tmp.length)'),
   builder.replace('tmp.push(0+10)','tmp.push(1,2)'),
-  builder.replace('sum+=x+i','let inside=[];inside.push(1);sum+=x+i')
+  // An Array alias of the receiver pushed inside the callback still withholds.
+  builder.replace('sum+=x+i','let inside=xs;inside.push(1);sum+=x+i')
  ]){const {graph,callbacks}=inspect(text);for(const fn of callbacks)assert.deepEqual(sorted(graph.functionParameterTypes(fn,1)),[],text);}
+});
+
+// Operator decision 2026-11-09 (row 2f): a builtin push to a fresh Array that
+// the callback itself allocates touches only that Array, never the receiver,
+// so it no longer withholds the receiver's entry facts.
+test('a callback push to its own fresh Array keeps the receiver entry facts',()=>{
+ const {graph,callbacks}=inspect(builder.replace('sum+=x+i','let inside=[];inside.push(1);sum+=x+i'));assert.equal(callbacks.length,2);
+ for(const fn of callbacks)assert.deepEqual(sorted(graph.functionParameterTypes(fn,1)),['Number']);
 });
 
 // A literal local declared between the null reset and the allocation cannot
@@ -190,4 +199,21 @@ test('original PXT/native: filter predicate indexes and compressed forEach index
   const exported=projectToArcade(run.creator.project);assert.deepEqual(exported.unsupported,[]);
   checkOriginal(await runPxtArcade(exported.files,{fakeClock:true}));
  }finally{run?.vm.quit();clearStrayTimers();}
+});
+
+// Row 2f: a builtin mutation through a receiver with fully known allocations
+// withholds entry facts only from callbacks over those allocations.
+test('a mutation of one known Array withholds entry facts only from callbacks over that Array',()=>{
+ const text='let other=[1,2];let xs=[10,90];let sum=0;other.map(v=>{other.push(9);return v});xs.forEach((x,i)=>{sum+=x+i});';
+ const {graph,callbacks}=inspect(text);assert.equal(callbacks.length,2);
+ const [overOther,overXs]=callbacks;
+ assert.deepEqual(sorted(graph.functionParameterTypes(overOther,1)),[],'the mutated Array keeps no entry facts');
+ assert.deepEqual(sorted(graph.functionParameterTypes(overXs,1)),['Number'],'an unrelated Array keeps its entry facts');
+ const written=inspect(text.replace('other.push(9)','other[0]=9'));
+ assert.deepEqual(sorted(written.graph.functionParameterTypes(written.callbacks[0],1)),[]);
+ assert.deepEqual(sorted(written.graph.functionParameterTypes(written.callbacks[1],1)),['Number']);
+ // An alias of xs, an unknown callee and a non-builtin method still withhold every fact.
+ for(const variant of [text.replace('other.push(9)','let ys=xs;ys.push(9)'),text.replace('other.push(9)','foreign(other)'),text.replace('other.push(9)','other.add(9)')]){
+  const found=inspect(variant);for(const fn of found.callbacks)assert.deepEqual(sorted(found.graph.functionParameterTypes(fn,1)),[],variant);
+ }
 });

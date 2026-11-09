@@ -14,9 +14,9 @@ const read = p => readFileSync(new URL('../' + p, import.meta.url), 'utf8');
 const hash = s => createHash('sha256').update(s).digest('hex');
 const catalog = catalogFrom(JSON.parse(read('overlay/scratch-gui/src/lib/bw-sim/part-meta/parts.json')));
 const counts = {helixgate: 20, looprelay: 54, paritydial: 31, counterslide: 44,
-    'toggle-press': 139, footfall: 119, phasekeeper: 79, vectorsum: 122, pointweaver: 128};
+    'toggle-press': 139, footfall: 119, phasekeeper: 79, vectorsum: 122, pointweaver: 116};
 // Qualified and promoted to the established library (docs/data/robot-lab-qualification.json).
-const PROMOTED = new Set(['helixgate', 'toggle-press', 'footfall', 'phasekeeper', 'vectorsum']);
+const PROMOTED = new Set(['helixgate', 'looprelay', 'paritydial', 'counterslide', 'toggle-press', 'footfall', 'phasekeeper', 'vectorsum', 'pointweaver']);
 
 test('checkpoint candidates remain opt-in and carry no unearned simulation status', () => {
     const visible = visibleExampleModels(EXPERIMENTAL_MODELS);

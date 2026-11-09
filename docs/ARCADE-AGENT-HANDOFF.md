@@ -28,6 +28,14 @@ unmeasured importer gains. Refresh main and pull requests, and merge a scoped
 claim before implementation. Keep F/G and the timing, tile-callback and
 do-while limits as recorded in ARCADE-888.
 
+Refused by design (operator decision 2026-11-09): row 2h-2, a text-edited
+argument to a Number formal (`makecode-arcade-managed-number-boundaries`,
+ordinary-argument physical text). A registered stock or managed Number formal
+rejects text before any body effects; the deliberate control is `registered
+stock/managed Number rejects text before body effects` in
+`test/arcade-procedure-constraints-native.test.mjs`. Such an argument stays
+outside the roundtrip on purpose. Do not reopen it or change that control.
+
 
 
 ## 2 November: TODO closure status and decisions
