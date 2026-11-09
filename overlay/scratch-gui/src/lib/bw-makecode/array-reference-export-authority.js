@@ -1129,9 +1129,47 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
     // included, since receivers are typed by allocation) must come after it;
     // a push to a receiver that is not exactly this allocation refuses.
     const beforeAt=(node,at)=>afterAt(at,node);
-    // Slot pushes are only the importer's own literal expansion (its staged
-    // temporary local). A user push keeps the all-element-writer policy.
-    const literalPush=(target,node)=>{const r=input(node,'ARRAY',target)?.node;return r?.opcode==='arcade_getLocal'&&/^__bwPxtValue\d+$/.test(String(literal(r,'NAME',target)));};
+    // Slot pushes are only a staged literal list, proved structurally (never
+    // by its name): a non-global, non-formal local written once with a fresh
+    // empty list; every read of it anywhere (captures included) is either the
+    // receiver of a push of an inert constant or of another staged list, or
+    // its single store; it escapes nowhere else. A user push keeps the
+    // all-element-writer policy.
+    const INERT=new Set(['operator_add','arrays_valueBinary','arrays_valueUnary','arrays_valueCompare','arrays_specialValue']);
+    const stagedCells=new Map(),stagedPending=new Set();
+    const inertValue=(target,slot,path=new Set())=>{
+        if(!Array.isArray(slot))return false;const raw=slot[1];
+        if(Array.isArray(raw))return [4,10].includes(raw[0]);
+        const n=block(target,raw);if(!n||path.has(n)||invalid.has(n))return false;path.add(n);
+        if(n.opcode==='arcade_getLocal'){const c=binding(target,n);return !!c&&stagedCell(c);}
+        if(!INERT.has(n.opcode))return false;
+        return Object.values(n.inputs||{}).every(s=>inertValue(target,s,path));
+    };
+    const readsOf=c=>{const out=[];for(const t of targets)for(const [id,n] of Object.entries(t.blocks||{}))if(['arcade_getLocal','arcade_getCaptured'].includes(n?.opcode)&&binding(t,n)===c)out.push({target:t,id,node:n});return out;};
+    const stagedCell=c=>{
+        if(stagedCells.has(c))return stagedCells.get(c);if(stagedPending.has(c))return false;stagedPending.add(c);
+        let ok=false;
+        try{
+            const w=c.writers;
+            if(c.global||c.formal||c.directBad||w.length!==1||w[0].argument||w[0].node?.opcode!=='arcade_setLocal')return false;
+            const v=w[0].value?.node;
+            if(!v||v.opcode!=='arrays_createReference'||!exactKeys(v,['VALUES'])||!Array.isArray(v.inputs.VALUES?.[1])||literal(v,'VALUES',w[0].target)!=='[]')return false;
+            let stores=0;
+            for(const {target,id,node} of readsOf(c)){
+                if(node.opcode!=='arcade_getLocal')return false;
+                const parent=block(target,node.parent);if(!parent)return false;
+                const slotOf=name=>parent.inputs?.[name]?.[1]===id;
+                if(parent.opcode==='arrays_mutateReference'&&exactKeys(parent,['ARRAY','OP','INDEX','VALUE'])&&literal(parent,'OP',target)==='push'&&slotOf('ARRAY')){
+                    if(!inertValue(target,parent.inputs.VALUE))return false;continue;
+                }
+                const store=slotOf('VALUE')&&(['data_setvariableto','arcade_setLocal'].includes(parent.opcode)||
+                    parent.opcode==='arrays_mutateReference'&&literal(parent,'OP',target)==='push'&&!slotOf('ARRAY'));
+                if(!store||++stores>1)return false;
+            }
+            ok=stores===1;return ok;
+        }finally{stagedPending.delete(c);stagedCells.set(c,ok);}
+    };
+    const literalPush=(target,node)=>{const r=input(node,'ARRAY',target)?.node;if(r?.opcode!=='arcade_getLocal')return false;const c=binding(target,r);return !!c&&stagedCell(c);};
     const slotsAt=(a,at)=>{
         if(!a||a.array!==true||!at)return null;
         const base=typeof a.copySlots==='function'?a.copySlots():a.exactSlots===true&&Array.isArray(a.items)&&a.items.length===a.minLength?a.items:null;
@@ -1143,7 +1181,9 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         const pushes=[];
         for(const {target,node} of mutations){
             const receiver=readInput(input(node,'ARRAY',target));if(!receiver.has(a)||afterAt(node,at))continue;
-            if(node.opcode!=='arrays_mutateReference'||literal(node,'OP',target)!=='push'||!literalPush(target,node)||receiver.size!==1||!beforeAt(node,at)||!a.node||!afterAt(node,a.node))return null;
+            // literalPush implies a push: every read of a staged list is a push
+            // receiver or its store, so no other operation can name it.
+            if(!literalPush(target,node)||receiver.size!==1||!beforeAt(node,at)||!a.node||!afterAt(node,a.node))return null;
             pushes.push({target,node});
         }
         for(let i=0;i<pushes.length;i++)for(let j=i+1;j<pushes.length;j++)if(!beforeAt(pushes[i].node,pushes[j].node)&&!beforeAt(pushes[j].node,pushes[i].node))return null;
@@ -2102,6 +2142,7 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
                     const index=node.opcode==='arrays_referenceItem'?literalNumber(target,node,'INDEX'):null;
                     const slots=index!==null&&Number.isInteger(index)&&index>=0?slotsAt(allocation,node):null;
                     if(slots&&index<slots.length){if(!initialized(slots[index],next))return false;continue;}
+                    for(const source of allocation.sources||[])if(!initialized(source,next))return false;
 
                 }
             }
