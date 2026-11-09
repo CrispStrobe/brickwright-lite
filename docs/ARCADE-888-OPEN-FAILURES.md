@@ -91,7 +91,7 @@ hosted checks remain required.
 ### C. Named-array helper re-import (1 left: second export)
 
 - Tried: Export side fixed (34d5b2d0f). Reimport fixed (2d): typed Array receivers in the ambient helper proof (`generated-helper-recognition.js`); controls in `test/generated-helper-typed-array-receivers.test.mjs`.
-- Next: the full-path test's second export reports `Array reference arrays_referenceItem/mutateReference/referenceLength/referenceTake/referenceIndexOf ARRAY: requires an actual initialized Array producer and compatible all writers` and `native addition named-helper source proof refused: Named Array getter registry escapes to an unproved writer`. Export-side Array authority over the reimported references (the `row`/`alias` cells).
+- Next: reimport now lowers named pop/indexOf/remove helpers to native blocks and a live `X = registry` copy to `reference to named array` (2d follow-up), so the full-path test's second export is down to two refusals: `arrays_mutateReference` on `row` (its explicit global literal `0` writer from `let Game_row: any = 0`; covered by row 2e's exporter change, which drops a root default whose first use is a dominating assignment in the once-called `__bwStartup`) and `arrays_referenceLength` on `alias` after the registry is re-created. Both need export-side Array authority work.
 
 ### D. Runtime mock lacks `.on` (`Cannot read properties of undefined (reading 'on')`) (3)
 
