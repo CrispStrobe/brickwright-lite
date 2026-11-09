@@ -47,6 +47,37 @@ test('a global also read by a procedure keeps its saved default and the cast hel
     for(const name of ['p','h'])assert.equal(original[name]??original['Game_'+name],expected[name],name);
 });
 
+const nativeExport=async code=>{
+    const run=await runProgram(code,{frames:5,storage:true});
+    try{return projectToArcade(run.creator.project);}finally{run.vm.quit();clearStrayTimers();}
+};
+const mixedProgram=extra=>`DEVICE ARCADE
+GLOBAL row
+GLOBAL first
+SPRITE Game:
+WHEN flag clicked:
+  hide
+  set row to 1
+  set first to compare value (row) op "===" with (1)
+  set row to "a"
+${extra}`;
+
+test('a start-script mixed global first written before any read is declared without a default',async()=>{
+    const exported=await nativeExport(mixedProgram(''));
+    assert.deepEqual(exported.unsupported,[]);
+    assert.equal(declaration(exported.ts,'row'),'let row: any');
+    const original=await runPxtArcade(exported.ts);
+    assert.equal(original.first??original.Game_first,true);
+    assert.equal(original.row??original.Game_row,'a');
+    assert.deepEqual(arcadeToPseudocode(exported.ts).unsupported,[]);
+});
+
+test('a mixed global also read by another script keeps its saved default',async()=>{
+    const exported=await nativeExport(mixedProgram('WHEN space key pressed:\n  set first to compare value (row) op "===" with (1)'));
+    assert.deepEqual(exported.unsupported,[]);
+    assert.match(declaration(exported.ts,'row')||'',/^let row: any = /,'live default kept');
+});
+
 const project=(scripts,variables={v1:['f',0]})=>({targets:[{isStage:true,name:'Stage',variables,blocks:{}},{isStage:false,name:'Game',variables:{},blocks:scripts}]});
 const set=(id,next,value,variable=['f','v1'])=>({[id]:{opcode:'data_setvariableto',next,parent:null,topLevel:false,fields:{VARIABLE:variable},inputs:{VALUE:value[0]===3?value:[1,value]}}});
 const read=(id,next)=>({[id]:{opcode:'looks_say',next,topLevel:false,fields:{},inputs:{MESSAGE:[3,[12,'f','v1'],[10,'']]}}});

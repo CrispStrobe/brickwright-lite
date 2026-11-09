@@ -5014,6 +5014,9 @@ class ArcadeEmitter {
             const variableId=this.globalVariableIds.get(n);
             if(variableId&&this.deadSavedInitials.has(variableId)&&this.primitiveVariableTypes.get(variableId)==='string'){out.push(`let ${n} = ""`);continue;}
             const kinds = this.kinds.get(n) || new Set(['number']);
+            // A dead saved default of a mixed/any global is not a value either:
+            // declare it without an initializer (no root `= 0` producer).
+            const deadAny=!!variableId&&this.deadSavedInitials.has(variableId);
             // A variable given both text and numbers is `any` — Scratch's own
             // variables are untyped, and that is the honest translation.
             const arrayKind=[...kinds].find(kind=>kind.endsWith('[]'));
@@ -5024,7 +5027,7 @@ class ArcadeEmitter {
             const mixedInitialScalar = this.initialGlobals.has(n) &&
                 ['string', 'boolean', 'number'].some(kind => kinds.has(kind) && kind !== initialScalarType);
             out.push(arrayKind?`let ${n}: ${arrayKind} = null`:this.handleVars.has(n) ? `let ${n}: Sprite = null` :
-                kinds.size > 1 || kinds.has('any') || mixedInitialScalar ? `let ${n}: any = ${initial}` : kinds.has('string') ? `let ${n} = ${this.initialGlobals.has(n) ? initial : '""'}` : kinds.has('boolean') ? `let ${n} = ${this.initialGlobals.has(n) ? initial : 'false'}` : kinds.has('Buffer') ? `let ${n}: Buffer = null` : kinds.has('mp.Player') ? `let ${n}: mp.Player = null` : kinds.has('scene.Scene') ? `let ${n}: scene.Scene = null` : kinds.has('ArcadePhysicsEngine') ? `let ${n}: ArcadePhysicsEngine = null` : kinds.has('animation.Animation') ? `let ${n}: animation.Animation = null` : kinds.has('SevenSegDigit') ? `let ${n}: SevenSegDigit = null` : kinds.has('DigitCounter') ? `let ${n}: DigitCounter = null` : kinds.has('TextSprite') ? `let ${n}: TextSprite = null` : kinds.has('Dart') ? `let ${n}: Dart = null` : kinds.has('Corgio') ? `let ${n}: Corgio = null` : kinds.has('tiles.Tile') ? `let ${n}: tiles.Tile = null` : kinds.has('tiles.Location') ? `let ${n}: tiles.Location = null` : kinds.has('tiles.TileMapData') ? `let ${n}: tiles.TileMapData = null` : kinds.has('image') ? `let ${n}: Image = null` : `let ${n} = ${initial}`);
+                kinds.size > 1 || kinds.has('any') || mixedInitialScalar ? (deadAny ? `let ${n}: any` : `let ${n}: any = ${initial}`) : kinds.has('string') ? `let ${n} = ${this.initialGlobals.has(n) ? initial : '""'}` : kinds.has('boolean') ? `let ${n} = ${this.initialGlobals.has(n) ? initial : 'false'}` : kinds.has('Buffer') ? `let ${n}: Buffer = null` : kinds.has('mp.Player') ? `let ${n}: mp.Player = null` : kinds.has('scene.Scene') ? `let ${n}: scene.Scene = null` : kinds.has('ArcadePhysicsEngine') ? `let ${n}: ArcadePhysicsEngine = null` : kinds.has('animation.Animation') ? `let ${n}: animation.Animation = null` : kinds.has('SevenSegDigit') ? `let ${n}: SevenSegDigit = null` : kinds.has('DigitCounter') ? `let ${n}: DigitCounter = null` : kinds.has('TextSprite') ? `let ${n}: TextSprite = null` : kinds.has('Dart') ? `let ${n}: Dart = null` : kinds.has('Corgio') ? `let ${n}: Corgio = null` : kinds.has('tiles.Tile') ? `let ${n}: tiles.Tile = null` : kinds.has('tiles.Location') ? `let ${n}: tiles.Location = null` : kinds.has('tiles.TileMapData') ? `let ${n}: tiles.TileMapData = null` : kinds.has('image') ? `let ${n}: Image = null` : `let ${n} = ${initial}`);
         }
         const stringGlobals=new Set(out.map(line=>/^let ([A-Za-z_$][\w$]*)(?:: string(?: = .*)?| = "(?:[^"\\]|\\.)*")$/.exec(line)?.[1]).filter(Boolean));
         // A receiver whose final declaration is not string (for example a
