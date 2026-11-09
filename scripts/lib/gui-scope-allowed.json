@@ -257,6 +257,7 @@
       "test/makecode-arcade-array-callbacks.test.mjs",
       "test/makecode-arcade-array-coercion.test.mjs",
       "test/makecode-arcade-array-copies.test.mjs",
+      "test/makecode-arcade-array-copy-slots.test.mjs",
       "test/makecode-arcade-array-pick-random.test.mjs",
       "test/makecode-arcade-array-reference-flow.test.mjs",
       "test/makecode-arcade-array-search-export.test.mjs",
