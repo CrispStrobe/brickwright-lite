@@ -45,7 +45,7 @@ Each row's full reason is in ARCADE-888. Ordered by expected tractability.
 | 2d | C | named-array re-import (3 rows) | Importer recognition of the exporter's whole named-array helper library on reimport. |
 | 2e | B | order-dependent string (`makecode-string-conversion-roundtrip`) | A flow-sensitive source producer proof, and no receiver cast for statically String operands. |
 | 2f | B | map result index (`makecode-array-map-values`) | Per-site array-callback entry proof (today it is closed over the whole program) plus an in-bounds proof for the index read. |
-| 2g | A | fresh animation re-export, array-copy effects, class accessor aliases | Per-slot proofs, row by row (see ARCADE-888 "second pass" notes for each counter-example). |
+| 2g | A | fresh animation re-export, array-copy effects, class accessor aliases | Still TODO; diagnosed 2026-11-09 ([findings](2026-11-09-arcade-2g-findings.md)). Class accessors: blocked by two deliberate rules (implicit accessor entries; constructor-prefix field writers), left unchanged by operator decision. Array copies: needs per-slot types through `slice`/`concat`. Animation export: several missing proofs (frame globals and the generated lookup `id` String constraint). |
 | 2h | B | other B rows (prefix/postfix value used; argument edited to text) | See ARCADE-888; each needs its own proof. |
 
 Do not start: `randint` (needs bitwise support, out of scope); F and G
