@@ -17,3 +17,9 @@ Paths: `overlay/` and `packages/` copies of
 explicit pause, resume and a breakpoint hit that must publish "paused" with no
 other UI action, plus an executed mutant restoring the old wiring that must
 fail. Explicit pause/resume behaviour is unchanged.
+Also `test/debug-reverse-continue-runner-contract.test.mjs`: its source-shape
+assertion pinned the old (never called) `onHalt` wiring; it now pins the
+`onChange` transition that calls `recordNativeHaltOccurrence(st.why)`. That
+ledger call is therefore live for active i8086 recordings, as the contract
+intended; its gating (i8086, recording active, breakpoint-like causes) is
+unchanged.
