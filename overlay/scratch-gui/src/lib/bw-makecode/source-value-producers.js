@@ -1,3 +1,4 @@
+import {proveLocalArrayFamilyReads} from './local-array-family-entry.js';
 import {inspectNativeArrayAddHelpers} from './native-array-binary-helper-source.js';
 import {createOrdinaryFrameDeltaNumberSource} from './ordinary-frame-delta-number-source.js';
 import {createOrdinaryParseIntegerNumberSource} from './ordinary-parse-integer-number-source.js';
@@ -188,6 +189,7 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
             for(const v of Object.values(node))if(v&&typeof v==='object')find(v);};
         find(program);return entries.size?entries:null;
     })():null;
+    const familyEntry=arrayLoopEntries&&!arrayValues?proveLocalArrayFamilyReads(program,analyseGraph(program,{parenthesized:true,unboundIsOpaque:true})):null;
     const positionalEntry=arrayLoopEntries&&!arrayValues?(()=>{
         const reads=[];const find=node=>{if(!node||typeof node!=='object')return;if(Array.isArray(node)){node.forEach(find);return;}
             if(node.type==='Index'&&node.index?.type==='Number')reads.push(node);for(const v of Object.values(node))if(v&&typeof v==='object')find(v);};
@@ -354,6 +356,7 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
         if(arrayValues&&node.type==='Array'){const token=arrayToken(node);add(current,token);for(const item of node.items)edge(cell(item),token.element);return;}
         if(node.type==='Index'&&loopEntry?.entries.has(node)){for(const type of loopEntry.entries.get(node))add(current,type);return;}
         if(node.type==='Index'&&positionalEntry?.has(node)){edge(cell(positionalEntry.get(node)),current);return;}
+        if(node.type==='Index'&&familyEntry?.has(node)){for(const value of familyEntry.get(node))edge(cell(value),current);return;}
         if(node.type==='Index'&&mappedEntry?.has(node)){cell(node.object);const scope=functionScopes.get(mappedEntry.get(node));if(scope){edge(scope.result,current);return;}}
         if(arrayValues&&node.type==='Index'){arrayOperations.push({kind:'read',receiver:cell(node.object),result:current,index:node.index,node});return;}
         if(provenArrayLengthAt(node)){add(current,'Number');return;}

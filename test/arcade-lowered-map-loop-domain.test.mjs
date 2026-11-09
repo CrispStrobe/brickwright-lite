@@ -26,6 +26,8 @@ test('edits that break the loop or push-only evidence are refused',async()=>{
         'a step of two': c=>c.replace(/op "\+" with \(\(0 \+ \(1\)\)\)\)/,'op "+" with ((0 + (2))))'),
         'a pop from the receiver': c=>c.replace(/(\n(\s*)arcade set local (__bwMapValue\d+) to \(length of array reference \(arcade local (__bwMapValue\d+)\)\))/,'\n$2mutate array reference (arcade local $4) op "pop" index (0) value (0)$1'),
         'an index past the straight pushes': c=>c.replace(/item \(1\) of array reference/,'item (2) of array reference'),
+        'a reset after the allocation': c=>c.replace(/(\n(\s*)arcade set local (__bwMapValue\d+) to \(arcade local (__bwPxtValue\d+)\))/,'\n$2arcade set local $4 to (null value)$1'),
+        'a non-zero counter start': c=>c.replace(/(arcade set local __bwMapValue\d+ to \(\(0 \+ \()0(\)\)\)\n\s*arcade repeat while)/,'$11$2'),
     };
     for(const [name,edit] of Object.entries(edits)){
         const changed=edit(code);assert.notEqual(changed,code,name+' applies');

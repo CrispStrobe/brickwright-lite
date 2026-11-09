@@ -555,11 +555,12 @@ function create(runtime, cells, scoreOwner=null, sceneClock=null, frameDelta=nul
         const pushFamily=(cell,family=new Map())=>{
             if(!cell||family.has(cell))return family;
             const proof=captureProof.proof(cell);if(!proof||proof.escaped||cell.scope.target!==target||proof.index>=0)return null;
-            family.set(cell,{pushes:[]});
+            family.set(cell,{pushes:[],resets:[]});
             for(const b of localsOf(cell)){
                 if(b.opcode==='arcade_setLocal'){
                     const value=input(b,'VALUE');
                     if(value?.opcode==='arrays_createReference'&&text(input(value,'VALUES'))==='[]'&&!Object.keys(value.fields||{}).length)continue;
+                    if(fixedReset(value)){family.get(cell).resets.push(b);continue;}
                     if(value?.opcode==='arcade_getLocal'){if(!pushFamily(localCellOf(value),family))return null;continue;}
                     return null;
                 }
@@ -571,7 +572,11 @@ function create(runtime, cells, scoreOwner=null, sceneClock=null, frameDelta=nul
             }
             return family;
         };
-        const rootCount=family=>{let roots=0;for(const cell of family.keys())for(const b of localsOf(cell))if(b.opcode==='arcade_setLocal'&&input(b,'VALUE')?.opcode==='arrays_createReference')roots++;return roots;};
+        const rootCount=family=>{const roots=[];for(const cell of family.keys())for(const b of localsOf(cell))if(b.opcode==='arcade_setLocal'&&input(b,'VALUE')?.opcode==='arrays_createReference')roots.push(b);
+            if(roots.length!==1)return roots.length;
+            // A null/undefined reset of a member must precede the allocation on its own chain.
+            const chain=chainOf(roots[0]),resets=[...family.values()].flatMap(entry=>entry.resets);
+            return chain&&resets.every(reset=>chain.includes(reset)&&chain.indexOf(reset)<chain.indexOf(roots[0]))?1:0;};
         // The statement holding a reporter: climb out of input slots, but a
         // SUBSTACK reference is a statement boundary.
         const statementOf=node=>{let n=node;const seen=new Set();while(n?.parent&&!seen.has(n)){seen.add(n);const up=read(n.parent);
@@ -590,12 +595,12 @@ function create(runtime, cells, scoreOwner=null, sceneClock=null, frameDelta=nul
             if(condition?.opcode!=='arrays_valueCompare'||literal(condition,'OP')!=='<'||left?.opcode!=='arcade_getLocal'||right?.opcode!=='arcade_getLocal')return null;
             const counter=localCellOf(left),limit=localCellOf(right);
             const limitWriters=writersOf(limit),counterWriters=writersOf(counter);
-            if(limitWriters.length!==1||!outer.includes(limitWriters[0])||outer.indexOf(limitWriters[0])>outer.indexOf(loop))return null;
-            const length=input(limitWriters[0],'VALUE');if(length?.opcode!=='arrays_referenceLength'||input(length,'ARRAY')?.opcode!=='arcade_getLocal')return null;
+            if(!limitWriters.length||limitWriters.some(b=>!outer.includes(b)||outer.indexOf(b)>outer.indexOf(loop)))return null;
+            const lastLimit=limitWriters.reduce((a,b)=>outer.indexOf(b)>outer.indexOf(a)?b:a);
+            const length=input(lastLimit,'VALUE');if(length?.opcode!=='arrays_referenceLength'||input(length,'ARRAY')?.opcode!=='arcade_getLocal')return null;
             const receiver=pushFamily(localCellOf(input(length,'ARRAY')));if(!receiver||rootCount(receiver)!==1)return null;
-            if(counterWriters.length!==2)return null;
-            const init=counterWriters.find(b=>outer.includes(b)),step=counterWriters.find(b=>b!==init);
-            if(!init||outer.indexOf(init)>outer.indexOf(loop)||constNumber(input(init,'VALUE'))!==0||step!==body[body.length-1])return null;
+            const step=body[body.length-1],inits=counterWriters.filter(b=>b!==step);
+            if(!counterWriters.includes(step)||!inits.length||inits.some(b=>!outer.includes(b)||outer.indexOf(b)>outer.indexOf(loop)||constNumber(input(b,'VALUE'))!==0))return null;
             const plus=input(step,'VALUE'),unary=input(plus,'LEFT');
             if(plus?.opcode!=='arrays_valueBinary'||literal(plus,'OP')!=='+'||constNumber(input(plus,'RIGHT'))!==1||unary?.opcode!=='arrays_valueUnary'||literal(unary,'OP')!=='+'||localCellOf(input(unary,'VALUE'))!==counter)return null;
             return {body,outer,counter,receiver};

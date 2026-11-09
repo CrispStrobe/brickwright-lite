@@ -1,7 +1,7 @@
 # Arcade row 2f (import side): inline map index and per-Array callback facts
 
-Status: DONE in the implementing PR (claim and change together) for the import
-side. The `makecode-array-map-values` row stays TODO for a VM-side proof.
+Status: DONE in the implementing PR (claim and change together). The
+`makecode-array-map-values` row passes on every route; its TODO is removed.
 Owner: Arcade lane, row 2f of `lanes/2026-11-03-arcade-pending-after-1643.md`.
 Base: main `4b2f5047dde6a8609b5881c93b510028eb83fb07`.
 
@@ -42,10 +42,20 @@ positive plus three refused edits (step of two, pop on the receiver, index past
 the pushes). Mutations: original VM, no step check, no constant bound, pops
 allowed each fail a test.
 
-## Still open
+## Reimport of the exported loop
 
-Import, run, Code, both SB3 routes and export of the 69-case matrix pass. The
-reimport of the exported lowered loop (`while` over hoisted locals with
-`push` and `[0]`) refuses because `dense-array-loop-entry.js` is closed over
-the whole program, and the matrix has callbacks, templates and loops
-elsewhere. A per-site version of that loop entry proof is the next step.
+New `overlay/scratch-gui/src/lib/bw-makecode/local-array-family-entry.js`,
+bridged into the validator graph like the positional entry: a function-local
+push-only Array family (one empty allocation; locals only aliased, pushed to,
+measured or index-read; no capture, escape or other write) read in bounds
+carries its pushed values. In bounds: a constant below the straight-line
+pushes; the exporter's `while (I < LEN)` loop (directly or through an
+immutable `left < right` helper; LEN set once to the family length before; I
+at 0 before and advanced by exactly 1 last); or a constant index of that
+loop's single push target below the receiver's straight-line pushes. The VM
+rule also admits the reimport's hoisted null resets (before the allocation on
+its chain) and repeated constant-0 counter starts before the loop.
+New `test/makecode-local-array-family-producer.test.mjs` (positive cases and
+seven refusals). Mutations: no bridge, no step check, no constant bound, no VM
+reset order, any counter start each fail a test. Sweep of 103 related files:
+719 pass, 8 fail (all fail identically on unchanged main locally).
