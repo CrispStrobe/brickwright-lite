@@ -441,7 +441,12 @@ const connectedFrame = async () => {
         await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
         await page.clock.runFor(1000);
         const after = await page.evaluate(() => Date.now());
-        assert.equal(after - before, 1000, 'the admitted clock advanced exactly one second');
+        // `page.clock.runFor(1000)` can land a few ulps off in the page's own
+        // Date arithmetic (seen on a hosted run: 1000.0000000000009). The claim
+        // under test is "one second of admitted clock", not "exactly one float",
+        // so compare against a sub-microsecond tolerance instead of equality.
+        const advanced = after - before;
+        assert.ok(Math.abs(advanced - 1000) < 1e-6, `the admitted clock advanced one second (saw ${advanced})`);
         await page.clock.resume();
         await waitSample({ticks: 3, seen: value}); const actual = await observe();
         assert.deepEqual(actual.errors, []);
