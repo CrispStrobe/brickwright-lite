@@ -110,15 +110,20 @@ export function lowerNamedArrayItemHelpers(program,{profile=GENERATED_HELPER_PRO
     const passive=new Set(jsonHelpers.map(fn=>fn.name));
     for(const fn of functions)if(symbolCounts.get(fn.name)===1 &&
         exact(fn,arrayAccessTemplate,new Map([[fn.name,arrayAccessTemplate.name]]),proof))passive.add(fn.name);
-    for(const fn of functions)for(const parse of parseHelpers)for(const template of passiveTemplates)
-        if(symbolCounts.get(fn.name)===1 && exact(fn,template,new Map([[fn.name,template.name],[parse.name,parseTemplate.name]]),proof))passive.add(fn.name);
+    // Exact pop/indexOf/remove helpers are the exporter's spelling of the
+    // native named-array blocks; their direct registry calls lower back.
+    const passiveKinds=new Map(),nativePassive=new Set(['pop','indexOf','remove']);
+    for(const fn of functions)for(const parse of parseHelpers)for(const [index,template] of passiveTemplates.entries())
+        if(symbolCounts.get(fn.name)===1 && exact(fn,template,new Map([[fn.name,template.name],[parse.name,parseTemplate.name]]),proof)){
+            passive.add(fn.name);const kind=Object.keys(passiveSources)[index];if(nativePassive.has(kind))passiveKinds.set(fn.name,{fn,kind});
+        }
     const selected=new Set([...getters.values(),...jsonHelpers,...parseHelpers,...[...mutators.values()].map(x=>x.fn),...functions.filter(fn=>passive.has(fn.name))]);
     if([...selected].some(fn=>!proof.root(fn)))return {program,unsupported:['Named Array helper requires an unambiguous actual lexical binding']};
     if([...jsonHelpers,...parseHelpers].some(fn=>proof.calls(fn,[1],selected)===null)||[...getters.values()].some(fn=>proof.calls(fn,[2],selected)===null))
         return {program,unsupported:['Named Array helper escapes or has an unqualified actual caller']};
     const effectsClosed=[...selected].every(fn=>proof.closed(fn,selected));
     const globals=new Map(program.body.filter(node=>node.type==='Declaration').flatMap(node=>node.decls.map(decl=>[decl.name,decl])));
-    const calls=[],writes=new Map(),unsupported=[],possibleMutators=[],members=[],foreignCalls=[],indexWrites=[],nestedRootDeclarations=[],escapedMutators=new Set(),scopes=new WeakMap();
+    const calls=[],writes=new Map(),unsupported=[],possibleMutators=[],members=[],foreignCalls=[],indexWrites=[],nestedRootDeclarations=[],escapedMutators=new Set(),scopes=new WeakMap(),possiblePassive=[],escapedPassive=new Set();
     const visit=(node,shadow=new Set(),parent=null,key=null,depth=0)=>{
         if (!node || typeof node!=='object') return;
         if (Array.isArray(node)) {
@@ -139,6 +144,10 @@ export function lowerNamedArrayItemHelpers(program,{profile=GENERATED_HELPER_PRO
             !(parent?.type==='Call' && key==='callee')) unsupported.push('Named Array getter helper escapes its validated direct call');
         if(node.type==='Identifier' && mutators.has(node.name) && !shadow.has(node.name) &&
             !(parent?.type==='Call' && key==='callee'))escapedMutators.add(node.name);
+        if(node.type==='Identifier' && passiveKinds.has(node.name) && !shadow.has(node.name) &&
+            !(parent?.type==='Call' && key==='callee'))escapedPassive.add(node.name);
+        if(node.type==='Call' && node.callee?.type==='Identifier' && passiveKinds.has(node.callee.name) && !shadow.has(node.callee.name))
+            possiblePassive.push({node,shadow,spec:passiveKinds.get(node.callee.name),statement:parent?.type==='ExpressionStatement'&&key==='expr'});
         if (node.type==='Call' && node.callee?.type==='Identifier' && getters.has(node.callee.name) && !shadow.has(node.callee.name)) {
             const receiver=node.args[0];
             if (node.args.length!==2 || receiver?.type!=='Identifier' || shadow.has(receiver.name) || !globals.has(receiver.name))
@@ -213,6 +222,14 @@ export function lowerNamedArrayItemHelpers(program,{profile=GENERATED_HELPER_PRO
         }
         recognizedMutators.set(node,{registry:receiver.name,kind:spec.kind});
     }
+    const recognizedPassive=new Map();
+    for(const {node,shadow,spec,statement}of possiblePassive){
+        const receiver=node.args[0];
+        if(receiver?.type!=='Identifier' || shadow.has(receiver.name) || !registries.has(receiver.name))continue;
+        const expected=spec.kind==='pop'?1:2;
+        if(node.args.length!==expected || (spec.kind==='remove')!==statement || spec.kind!=='pop'&&!primitive(node.args[1]))continue;
+        recognizedPassive.set(node,{registry:receiver.name,kind:spec.kind});
+    }
     for(const {node,shadow}of members){
         // Parameter-owned helpers are validated separately at their call site.
         if(node.callee.object?.type==='Identifier' && shadow.has(node.callee.object.name))continue;
@@ -246,7 +263,9 @@ export function lowerNamedArrayItemHelpers(program,{profile=GENERATED_HELPER_PRO
     // bindings and defaults still belong to this same current source proof.
     const removedMutators=new Set([...mutators.keys()].filter(name=>!escapedMutators.has(name) &&
         possibleMutators.filter(use=>use.node.callee.name===name).every(use=>recognizedMutators.has(use.node))));
-    const removedNamed=new Set([...getters.values(),...[...removedMutators].map(name=>mutators.get(name).fn)]);
+    const removedPassive=new Set([...passiveKinds.keys()].filter(name=>!escapedPassive.has(name) &&
+        possiblePassive.filter(use=>use.node.callee.name===name).every(use=>recognizedPassive.has(use.node))));
+    const removedNamed=new Set([...getters.values(),...[...removedMutators].map(name=>mutators.get(name).fn),...[...removedPassive].map(name=>passiveKinds.get(name).fn)]);
     const legacyCandidates=new Map([...jsonHelpers.map(fn=>[fn,'LegacyJsonValue']),
         ...parseHelpers.map(fn=>[fn,'LegacyParsedValue'])]);
     for(const fn of functions)if(proof.root(fn) && exact(fn,arrayAccessTemplate,new Map([[fn.name,arrayAccessTemplate.name]]),proof))
@@ -264,12 +283,45 @@ export function lowerNamedArrayItemHelpers(program,{profile=GENERATED_HELPER_PRO
     const recognizedCalls=new Map(calls.map(call=>[call.node,call.name]));
     const value=(node,name)=>({type:node.type==='Null'?'NativeNamedArrayDelete':'NativeNamedArrayCreate',
         registry:name,json:node.type==='Array'?JSON.stringify(literal(node).value):null,bwObjectTypes:node.type==='Array'?['array']:['null']});
+    // A whole `X = registry` copy reads the registry's current Array exactly
+    // when its nearest earlier writer in the same straight statement list
+    // created it and nothing in between can replace it: no call other than a
+    // recognized named operation, and no write of that registry. Then the
+    // copy is the native named reference; anywhere else it stays a variable.
+    const liveReferences=new Set();
+    const namedCall=node=>recognizedCalls.has(node)||recognizedMutators.has(node)||recognizedPassive.has(node);
+    const unsafe=(node,name)=>{
+        if(!node||typeof node!=='object')return false;
+        if(Array.isArray(node))return node.some(child=>unsafe(child,name));
+        if(['FunctionDeclaration','FunctionExpression','Class'].includes(node.type))return true;
+        if(node.type==='Call'&&!namedCall(node))return true;
+        if((node.type==='Assignment'&&node.left?.type==='Identifier'&&node.left.name===name)||(node.type==='Update'&&node.argument?.name===name))return true;
+        return Object.values(node).some(child=>child&&typeof child==='object'&&unsafe(child,name));
+    };
+    const creates=(st,name)=>st?.type==='ExpressionStatement'&&st.expr?.type==='Assignment'&&st.expr.op==='='&&st.expr.left?.type==='Identifier'&&
+        st.expr.left.name===name&&st.expr.right?.type==='Array'&&literal(st.expr.right).ok;
+    const scanLists=(node,shadow=new Set())=>{
+        if(!node||typeof node!=='object')return;
+        if(Array.isArray(node)){
+            node.forEach((st,i)=>{
+                const copy=st?.type==='ExpressionStatement'&&st.expr?.type==='Assignment'&&st.expr.op==='='&&st.expr.left?.type==='Identifier'&&
+                    st.expr.right?.type==='Identifier'&&registries.has(st.expr.right.name)&&!(scopes.get(st.expr.right)||shadow).has(st.expr.right.name)?st.expr.right:null;
+                if(!copy)return;
+                for(let j=i-1;j>=0;j--){if(creates(node[j],copy.name)){liveReferences.add(copy);return;}if(unsafe(node[j],copy.name))return;}
+            });
+            node.forEach(child=>scanLists(child,shadow));return;
+        }
+        for(const child of Object.values(node))if(child&&typeof child==='object')scanLists(child,shadow);
+    };
+    scanLists(program.body);
     const rewrite=(node,shadow=new Set())=>{
         if (!node || typeof node!=='object') return node;
         if (Array.isArray(node)) return mapGeneratedSourceArray(node,child=>rewrite(child,shadow));
         if (recognizedCalls.has(node)) return {...node,bwNativeNamedArray:{kind:'get',registry:recognizedCalls.get(node)},args:node.args.map(arg=>rewrite(arg,shadow))};
         if(recognizedMutators.has(node))return {...node,bwNativeNamedArray:recognizedMutators.get(node),args:node.args.map(arg=>rewrite(arg,shadow))};
+        if(recognizedPassive.has(node)&&removedPassive.has(node.callee.name))return {...node,bwNativeNamedArray:recognizedPassive.get(node),args:node.args.map(arg=>rewrite(arg,shadow))};
         if(legacyCalls.has(node))return {type:legacyCalls.get(node),value:rewrite(node.args[0],shadow)};
+        if(liveReferences.has(node))return {type:'NativeNamedArrayReference',registry:node.name};
         if (node.type==='Block') shadow=new Set([...shadow,...bindings(node.body || [])]);
         shadow=new Set([...shadow,...loopBindings(node)]);
         if (Array.isArray(node.params)) shadow=new Set([...shadow,...node.params,...functionBindings(node.body || [])]);

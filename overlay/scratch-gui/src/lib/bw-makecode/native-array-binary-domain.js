@@ -216,7 +216,7 @@ function inspectDomains(program,profile,ordinaryExportSelection) {
     let recursiveLive=true;
     const syntax=inspectNativeArrayAddHelpers(program,profile),helpers=syntax.helpers;
     if(!helpers.size)return {helpers:new Map(),current:syntax.current,reason:null};
-    const suppliedTags=new Set(['NativeNamedArrayCreate','NativeNamedArrayDelete','LegacyParsedValue','LegacyJsonValue','NativeArrayAccess']);
+    const suppliedTags=new Set(['NativeNamedArrayCreate','NativeNamedArrayDelete','NativeNamedArrayReference','LegacyParsedValue','LegacyJsonValue','NativeArrayAccess']);
     const supplied=node=>node&&typeof node==='object'&&(Object.hasOwn(node,'bwNativeNamedArray')||Object.hasOwn(node,'nativeArrayDomainCall')||Object.hasOwn(node,'nativeArrayDomainNormalCall')||Object.hasOwn(node,'nativeDestroyedSourceProperty')||Object.hasOwn(node,'nativeDestroyedDomainNormalProperty')||Object.hasOwn(node,'nativeMutablePixelSourceCall')||Object.hasOwn(node,'nativeMutablePixelNormalCall')||Object.hasOwn(node,'nativeParseIntegerSourceCall')||Object.hasOwn(node,'nativeParseIntegerNormalCall')||Object.hasOwn(node,'nativePlayerNumberSourceCall')||Object.hasOwn(node,'nativePlayerNumberNormalCall')||Object.hasOwn(node,'nativeClosureDomainNormalCall')||Object.hasOwn(node,'nativeImageDomainNormalCall')||Object.hasOwn(node,'nativeRecursiveSourceCall')||Object.hasOwn(node,'nativeRecursiveDomainNormalCall')||
         suppliedTags.has(node.type)||Object.entries(node).some(([key,value])=>!metadata.has(key)&&(Array.isArray(value)?value.some(supplied):supplied(value))));
     if(supplied(program))return {helpers:new Map(),current:syntax.current,reason:'native addition requires original source, not supplied private named-helper tags'};
@@ -423,6 +423,8 @@ function inspectDomains(program,profile,ordinaryExportSelection) {
         let next;
         if(node.type==='NativeNamedArrayCreate')next=literal(JSON.parse(node.json));
         else if(node.type==='NativeNamedArrayDelete')next={type:'Null'};
+        // The live named reference reads exactly the registry binding it replaced.
+        else if(node.type==='NativeNamedArrayReference')next={type:'Identifier',name:node.registry};
         else if(node.type==='Call'&&node.bwNativeNamedArray){
             const args=node.args.map(rewrite),kind=node.bwNativeNamedArray.kind;
             if(kind==='get')next={type:'Index',object:args[0],index:{type:'Unary',op:'+',argument:args[1]}};
