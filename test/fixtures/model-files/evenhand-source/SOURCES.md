@@ -1,0 +1,7 @@
+# evenhand — source record
+
+- **Origin:** the Evenhand intake already in the Robot Lab experimental registry (CrispStrobe, BSD-3-Clause), supplied as bare files; model and program bytes are unchanged (checkpoint `docs/data/robot-lab-experimental-checkpoint.json`).
+- **Adaptations (made at intake, unchanged here):** MPD wrappers, licence, catalogue entry and EN/DE lessons. Shipped geometry and program are unchanged by promotion.
+- **Law (`counterbalance-holding-torque-v1`):** `judgeEvenhand` in `scripts/lib/sim-lab-p6-judges.mjs`. At each of the eleven settled holds, each motor's held torque equals the static gravity moment of its distal bodies (configured masses and centres of mass at the observed pose); the elbow holds no load at any pose.
+- **Disconnection** (`forearm_weight_pin_-1_-20` removed): the inner counterweight's outer 3L pin, 120 LDU behind the elbow axis. The forearm's mirror balance about the elbow is lost by that pin's moment (0.35 g × 48 mm × g ≈ 0.165 mN·m), the elbow holds that load at every pose, and the shoulder load rises only slightly, so the program's 3° start guard still admits the run and all eleven arrivals complete. Removing whole counterweight beams sags the arm 3.4–17° during the 500 ms cold settle and faults the guard, so it cannot measure the law.
+- **Piece count:** 97, honest; qualification has no piece minimum (operator decision 2026-11-07).
