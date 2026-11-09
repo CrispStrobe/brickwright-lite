@@ -128,7 +128,7 @@ const CURRENT_X86_FINITE_V9_READER = "FINITE_V9_PINS = {'bw-board':CURRENT_BOARD
 const HISTORICAL_X86_SOURCE_PROFILES = Object.freeze({
     'scripts/run-i80386-hdd-gui-actual.py': Object.freeze({bytes: 344630, sha256: '098407cfdd0a971474ca54be04db74b7825ce337a719f26725b36aa65c830a7f'}),
     'scripts/read-i80386-hdd-gui-originals.py': Object.freeze({bytes: 460207, sha256: 'd79c79edb05bf98c3d783bc06c1213966b21280cbf1ddc662c51279738e51d99'}),
-    'test/i80386-hdd-gui-actual.test.mjs': Object.freeze({bytes: 637722, sha256: '613de40fd8efa83164e582d6ef81b9d9e98a32d8170e6f18497d6172e8e4a8a7'}),
+    'test/i80386-hdd-gui-actual.test.mjs': Object.freeze({bytes: 637722, sha256: '58df3a62a57460dd842fb9ce8e708d456d827eda65341a4b265788e5fab75c1f'}),
 });
 
 import {explainGitFailure} from './helpers/git-absence.mjs';

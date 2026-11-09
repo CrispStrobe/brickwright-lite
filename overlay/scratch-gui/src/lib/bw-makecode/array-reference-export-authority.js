@@ -726,6 +726,7 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
     const jsonArray=(array,node,target,origin=null)=>{
         const allocation=token(node,target,array.map(value=>Array.isArray(value)?{jsonArray:value,identity:{}}:{raw:[typeof value==='string'?10:4,String(value)]}),array.length);
         if(origin)allocation.origin=origin;
+        allocation.exactSlots=true;
         for(const value of allocation.items)if(value.jsonArray)value.origin=allocation;
         return allocation;
     };
@@ -1119,6 +1120,76 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
     const afterInActivation=(node,at,creation)=>{const scope=owners.get(at),later=statementOf(node),statement=statementOf(at);
         return !!scope&&!!creation&&owners.get(node)===scope&&owners.get(creation)===scope&&!!later&&!!statement&&later!==statement&&
             !!scope.executedBefore.get(later)?.has(statement)&&!!scope.executedBefore.get(statement)?.has(creation);};
+    const copySlots=new Set();
+    // Exact slots of ONE allocation at an occurrence: its exact base slots
+    // (literal/JSON items, or a proved whole-copy) followed by the VALUE of
+    // each literal-expansion push that definitely executed before the
+    // occurrence, in order.
+    // Every other mutation whose receiver may be this allocation (aliases
+    // included, since receivers are typed by allocation) must come after it;
+    // a push to a receiver that is not exactly this allocation refuses.
+    const beforeAt=(node,at)=>afterAt(at,node);
+    // Slot pushes are only a staged literal list, proved structurally (never
+    // by its name): a non-global, non-formal local written once with a fresh
+    // empty list; every read of it anywhere (captures included) is either the
+    // receiver of a push of an inert constant or of another staged list, or
+    // its single store; it escapes nowhere else. A user push keeps the
+    // all-element-writer policy.
+    const INERT=new Set(['operator_add','arrays_valueBinary','arrays_valueUnary','arrays_valueCompare','arrays_specialValue']);
+    const stagedCells=new Map(),stagedPending=new Set();
+    const inertValue=(target,slot,path=new Set())=>{
+        if(!Array.isArray(slot))return false;const raw=slot[1];
+        if(Array.isArray(raw))return [4,10].includes(raw[0]);
+        const n=block(target,raw);if(!n||path.has(n)||invalid.has(n))return false;path.add(n);
+        if(n.opcode==='arcade_getLocal'){const c=binding(target,n);return !!c&&stagedCell(c);}
+        if(!INERT.has(n.opcode))return false;
+        return Object.values(n.inputs||{}).every(s=>inertValue(target,s,path));
+    };
+    const readsOf=c=>{const out=[];for(const t of targets)for(const [id,n] of Object.entries(t.blocks||{}))if(['arcade_getLocal','arcade_getCaptured'].includes(n?.opcode)&&binding(t,n)===c)out.push({target:t,id,node:n});return out;};
+    const stagedCell=c=>{
+        if(stagedCells.has(c))return stagedCells.get(c);if(stagedPending.has(c))return false;stagedPending.add(c);
+        let ok=false;
+        try{
+            const w=c.writers;
+            if(c.global||c.formal||c.directBad||w.length!==1||w[0].argument||w[0].node?.opcode!=='arcade_setLocal')return false;
+            const v=w[0].value?.node;
+            if(!v||v.opcode!=='arrays_createReference'||!exactKeys(v,['VALUES'])||!Array.isArray(v.inputs.VALUES?.[1])||literal(v,'VALUES',w[0].target)!=='[]')return false;
+            let stores=0;
+            for(const {target,id,node} of readsOf(c)){
+                if(node.opcode!=='arcade_getLocal')return false;
+                const parent=block(target,node.parent);if(!parent)return false;
+                const slotOf=name=>parent.inputs?.[name]?.[1]===id;
+                if(parent.opcode==='arrays_mutateReference'&&exactKeys(parent,['ARRAY','OP','INDEX','VALUE'])&&literal(parent,'OP',target)==='push'&&slotOf('ARRAY')){
+                    if(!inertValue(target,parent.inputs.VALUE))return false;continue;
+                }
+                const store=slotOf('VALUE')&&(['data_setvariableto','arcade_setLocal'].includes(parent.opcode)||
+                    parent.opcode==='arrays_mutateReference'&&literal(parent,'OP',target)==='push'&&!slotOf('ARRAY'));
+                if(!store||++stores>1)return false;
+            }
+            ok=stores===1;return ok;
+        }finally{stagedPending.delete(c);stagedCells.set(c,ok);}
+    };
+    const literalPush=(target,node)=>{const r=input(node,'ARRAY',target)?.node;if(r?.opcode!=='arcade_getLocal')return false;const c=binding(target,r);return !!c&&stagedCell(c);};
+    const slotsAt=(a,at)=>{
+        if(!a||a.array!==true||!at)return null;
+        const base=typeof a.copySlots==='function'?a.copySlots():a.exactSlots===true&&Array.isArray(a.items)&&a.items.length===a.minLength?a.items:null;
+        // Element types alone (bad = a possible non-Array value) say nothing
+        // about slots; unknown operations are census shrinks, and a named
+        // Array needs its recorded named writes, all after the occurrence.
+        if(!base||![...(a.shrinks||[])].every(node=>afterAt(node,at)))return null;
+        if(['arrays_createEmpty','arrays_create1D','arrays_create2D'].includes(a.node?.opcode)&&!(Array.isArray(a.namedMutations)&&a.namedMutations.every(r=>afterAt(r.node,at))))return null;
+        const pushes=[];
+        for(const {target,node} of mutations){
+            const receiver=readInput(input(node,'ARRAY',target));if(!receiver.has(a)||afterAt(node,at))continue;
+            // literalPush implies a push: every read of a staged list is a push
+            // receiver or its store, so no other operation can name it.
+            if(!literalPush(target,node)||receiver.size!==1||!beforeAt(node,at)||!a.node||!afterAt(node,a.node))return null;
+            pushes.push({target,node});
+        }
+        for(let i=0;i<pushes.length;i++)for(let j=i+1;j<pushes.length;j++)if(!beforeAt(pushes[i].node,pushes[j].node)&&!beforeAt(pushes[j].node,pushes[i].node))return null;
+        pushes.sort((x,y)=>beforeAt(x.node,y.node)?-1:1);
+        return [...base,...pushes.map(({target,node})=>input(node,'VALUE',target))];
+    };
     const positionalStable=(a,at)=>[...(a.shrinks||[])].every(node=>afterAt(node,at))&&
         (!a.elements.has(bad)||Array.isArray(a.namedMutations)&&a.namedMutations.every(r=>afterAt(r.node,at)||afterInActivation(r.node,at,a.node)))&&
         mutations.every(({target,node})=>!readInput(input(node,'ARRAY',target)).has(a)||node.opcode==='arrays_mutateReference'&&literal(node,'OP',target)==='push'||afterAt(node,at));
@@ -1291,7 +1362,8 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
             if(item.opcode!=='arrays_referenceValues'||!exactKeys(item,['VALUE','REST']))return new Set([bad]);items.push(input(item,'VALUE',target));edge=item.inputs.REST?.[1];
         }
         if(!Array.isArray(edge)||edge[0]!==10)return new Set([bad]);let tail;try{tail=JSON.parse(edge[1]);}catch{return new Set([bad]);}if(!Array.isArray(tail)||items.length&&tail.length)return new Set([bad]);
-        return new Set([items.length?token(node,target,items):jsonArray(tail,node,target)]);
+        if(items.length){const t=token(node,target,items);t.exactSlots=true;return new Set([t]);}
+        return new Set([jsonArray(tail,node,target)]);
     };
     const returnsAlways=(target,id,path=new Set())=>{
         if(!id||path.has(id))return false;const n=block(target,id);if(!n)return false;const next=new Set([...path,id]);if(n.opcode==='arcade_returnValue')return true;
@@ -1328,6 +1400,27 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
                     try{const l=operand('ARRAY'),r=operand('OTHER');if(!singleArray(new Set(l))||!singleArray(new Set(r)))return 0;
                         return Math.min(...l.map(a=>a===t?0:minimumAt(a,node)))+Math.min(...r.map(a=>a===t?0:minimumAt(a,node)));}
                     finally{concatLengths.delete(t);}}});
+            }
+            // Per-slot facts through a whole-copy: slice() with both bounds
+            // omitted copies every slot; a.concat(b) holds a's slots then b's.
+            // Each operand must be ONE allocation with exact literal slots
+            // (factory/JSON literal, or such a copy) that no mutation, named
+            // write or shrink can have touched before this copy executes; a
+            // push is not exempt because concat needs the exact left length.
+            if(!Object.getOwnPropertyDescriptor(t,'items').get){
+                t.copySlots=()=>{
+                    if(copySlots.has(t))return null;copySlots.add(t);
+                    try{
+                        if(node.opcode==='arrays_referenceSlice'){const omitted=name=>{const v=input(node,name,target);return !!v?.node&&fixedUndefined(v.node);};if(!omitted('START')||!omitted('END'))return null;}
+                        const out=[];
+                        for(const name of node.opcode==='arrays_referenceConcat'?['ARRAY','OTHER']:['ARRAY']){
+                            const source=[...readInput(input(node,name,target))];
+                            const slots=source.length===1?slotsAt(source[0],node):null;
+                            if(!slots)return null;out.push(...slots);
+                        }
+                        return out;
+                    }finally{copySlots.delete(t);}};
+                Object.defineProperty(t,'items',{configurable:true,enumerable:true,get(){return t.copySlots()||[];}});
             }
             if(node.opcode==='arrays_referenceSlice'&&!Object.getOwnPropertyDescriptor(t,'minLength').get){
                 Object.defineProperty(t,'minLength',{configurable:true,enumerable:true,get(){
@@ -1367,6 +1460,8 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
                 if(index!==null&&Number.isInteger(index)&&index>=0&&Array.isArray(a.items)&&index<a.items.length&&positionalStable(a,node)){
                     for(const item of readInput(a.items[index]))result.add(item);continue;
                 }
+                const slots=index!==null&&Number.isInteger(index)&&index>=0?slotsAt(a,node):null;
+                if(slots&&index<slots.length){for(const item of readInput(slots[index]))result.add(item);continue;}
                 for(const item of a.elements)result.add(item);
             }return result;
         }
@@ -2043,7 +2138,12 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
                 const receiver=readInput(input(node,'ARRAY',target));if(!singleArray(receiver))return false;
                 for(const allocation of receiver){
                     if(!presentAt(allocation,target,node,(t,mutation)=>initialized(input(mutation,'ARRAY',t),next)))return false;
+                    // A proved exact slot read needs only that slot's own value.
+                    const index=node.opcode==='arrays_referenceItem'?literalNumber(target,node,'INDEX'):null;
+                    const slots=index!==null&&Number.isInteger(index)&&index>=0?slotsAt(allocation,node):null;
+                    if(slots&&index<slots.length){if(!initialized(slots[index],next))return false;continue;}
                     for(const source of allocation.sources||[])if(!initialized(source,next))return false;
+
                 }
             }
             return true;
