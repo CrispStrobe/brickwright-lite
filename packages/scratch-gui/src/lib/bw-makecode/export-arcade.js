@@ -3898,7 +3898,8 @@ class ArcadeEmitter {
                     if(value.opcode==='arcade_sourceValueBinary'&&literal(blocks,value,'OP')==='+')anys.add(id);
                     else if(value.opcode==='arrays_valueBinary' && literal(blocks,value,'OP')==='+')valueOperations.push([id,...operands]);
                     else numbers.add(id);
-                    inspectionOperatorProofs.set(id,{type:literal(blocks,value,'OP')==='+'&&['arrays_valueBinary','arcade_sourceValueBinary'].includes(value.opcode)?null:'number',operands,numeric:literal(blocks,value,'OP')!=='+'||value.opcode==='arrays_valueUnary'});
+                    const dynamicPlus=literal(blocks,value,'OP')==='+'&&['arrays_valueBinary','arcade_sourceValueBinary'].includes(value.opcode);
+                    inspectionOperatorProofs.set(id,{type:dynamicPlus?null:'number',operands,numeric:literal(blocks,value,'OP')!=='+'||value.opcode==='arrays_valueUnary',numberPlus:dynamicPlus&&operands.length===2});
                     return id;
                 }
                 if(value.opcode==='arrays_specialValue'){const id=Symbol('special value');specialTypes.push([id,literal(blocks,value,'KIND')]);inspectionLeaves.set(id,literal(blocks,value,'KIND'));return id;}
@@ -4197,6 +4198,14 @@ class ArcadeEmitter {
             if(nativeBitwisePrimitiveResults.has(value)&&allowed.includes('number')&&allowed.includes('undefined'))return true;
             if(inspectionLeaves.has(value)){const type=inspectionLeaves.get(value);if(type==='Player'&&allowed.includes(type))origins?.add(value);return allowed.includes(type);}
             const operation=inspectionOperatorProofs.get(value);if(operation){
+                // A dynamic `+` whose own two operands are each proved Number
+                // adds (PXT and JS never concatenate two Numbers). This uses
+                // only its actual operands, not the flow-insensitive annotation
+                // node the result shares with other cells (an Any copy target).
+                if(operation.numberPlus&&allowed.includes('number')&&!seen.has(value)){
+                    const next=new Set([...seen,value]);
+                    if(operation.operands.every(operand=>inspectionTypes(operand,['number'],next,null,allowSpriteFlags)))return true;
+                }
                 const output=operation.type?[operation.type]:[...graph.node(value).types];
                 if(!output.length||!output.every(type=>allowed.includes(type)))return false;
                 if(seen.has(value))return true;const next=new Set([...seen,value]);

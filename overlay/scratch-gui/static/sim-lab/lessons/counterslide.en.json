@@ -1,5 +1,8 @@
 {
-  "what": "One SPIKE motor turns a small 8-tooth pinion. Its top and bottom teeth drive two independent sliding Technic racks. Orange L-shaped jaws attached to the racks approach one another symmetrically, then retract.",
+  "version": 1,
+  "id": "counterslide",
+  "language": "en",
+  "what": "opposed rack and pinion. One SPIKE motor turns a small 8-tooth pinion. Its top and bottom teeth drive two independent sliding Technic racks. Orange L-shaped jaws attached to the racks approach one another symmetrically, then retract. A single 8-tooth gear meshes with two opposing racks. The orange jaws travel inward by equal distances and reopen together; the center between them stays put.",
   "try": [
     "Import CounterSlide and its program, reset to the saved open pose, and press Run. Watch motor A close the jaws to -100 degrees, hold for one second and return to zero.",
     "Pick matching reference points on the two orange jaw tips. Do they move equal distances in opposite X directions? Watch their midpoint, rather than just the motor encoder.",
@@ -14,9 +17,6 @@
     "Temporarily loosen or remove a rack guide only in an analytical model: explain why meshing teeth alone cannot stop the free rack body from twisting.",
     "Compare this two-output mechanism with the single-output Rack Shuttle, where one rack follows the same pinion."
   ],
-  "version": 1,
-  "id": "counterslide",
-  "language": "en",
   "formula": "|Δx| = 4 mm × |θ| (θ in radians); midpoint remains fixed",
   "related": [
     "gearbox.ldr",

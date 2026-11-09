@@ -85,7 +85,7 @@ function fixture ({dock, storage = storageWith({'bw-debug-dock': dock}), visible
     // methods' setState writes synchronously, without replacing those methods.
     host.setState = change => Object.assign(host.state,
         typeof change === 'function' ? change(host.state, host.props) : change);
-    host._stageHost = {style: {}};
+    host._stageHost = {dataset: {}, style: {}};
     connected.add(host._stageHost);
     return {host, storage, connected, Panel};
 }

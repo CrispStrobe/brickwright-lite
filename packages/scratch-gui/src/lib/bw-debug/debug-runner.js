@@ -2822,16 +2822,29 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             });
         }
 
+        let benchHalted = false;
         session = createDebugSession(target, {
             // Bound the 8086's work inside one browser callback. The session
             // carries unspent PROGRAM time forward, so this protects input and
             // paint latency without changing timer/wait semantics.
             ...(targetKind === 'i8086' ? {wallBudgetMs: 8, maxQuantumNs: 1_000_000} : {}),
-            onHalt: (snapshot) => {
-                recordNativeHaltOccurrence(snapshot);
-                setStatus('paused', S('run.pc', {pc: snapshot.pc.toString(16).padStart(4, '0')}));
+            // createDebugSession reports through onChange ONLY. This bench
+            // once passed onHalt/onRun, which the session never calls: a
+            // breakpoint hit halted the target and stopped the pump, but no
+            // snapshot was published, so the panel kept saying "running" until
+            // some unrelated click re-rendered it. Publish on the transition.
+            onChange: (st) => {
+                if (st.halted && !benchHalted) {
+                    benchHalted = true;
+                    recordNativeHaltOccurrence(st.why);
+                    const pc = Number(target.regs?.()?.pc);
+                    setStatus('paused', Number.isSafeInteger(pc)
+                        ? S('run.pc', {pc: pc.toString(16).padStart(4, '0')}) : '');
+                } else if (!st.halted && benchHalted) {
+                    benchHalted = false;
+                    setStatus('running');
+                } else emit();
             },
-            onRun: () => setStatus('running'),
         });
 
         // RX into the machine. Accepts a STRING (a typed line) or a single
