@@ -61,17 +61,17 @@ function tar(entries) {
     }
     return Buffer.concat([...chunks, Buffer.alloc(1024)]);
 }
-async function packet(e = expected) {
+async function packet(e = expected, producerAttempt = 2) {
     const target = Buffer.from(JSON.stringify({versions: {target: '4.2.1', pxt: '13.2.1', commits: 'https://github.com/microsoft/pxt-arcade/commits/2d7d59b5226e8a1a1e05e8042dd9f5248ed68fea'}}));
     const worker = Buffer.from('authored inert worker bytes');
-    const manifest = {schema: 1, repository, runId: 12, attempt: 2, job: 'build', githubSha: e.checkoutSha,
+    const manifest = {schema: 1, repository, runId: 12, attempt: producerAttempt, job: 'build', githubSha: e.checkoutSha,
         sourceSha: e.checkoutSha, reviewedHeadSha: e.reviewedHeadSha, treeSha: e.treeSha,
         producerSha: e.producerSha, arraysValuesSha: e.arraysValuesSha,
         sdk: {version: '4.2.1', pxtVersion: '13.2.1', targetCommit: '2d7d59b5226e8a1a1e05e8042dd9f5248ed68fea', targetSha256: hash(target), workerSha256: hash(worker)}};
     const zip = new JSZip(); zip.file('artifact.tar', tar([[GUI_MANIFEST, Buffer.from(JSON.stringify(manifest))],
         ['static/makecode/arcade/target.json', target], ['static/makecode/arcade/pxtworker.js', worker], ['gui.js', Buffer.from('inert editor fixture')]]));
     const bytes = await zip.generateAsync({type: 'nodebuffer'}), meta = metadata();
-    meta.artifact.size_in_bytes = bytes.length; meta.artifact.digest = `sha256:${hash(bytes)}`;
+    meta.job.run_attempt = producerAttempt; meta.artifact.size_in_bytes = bytes.length; meta.artifact.digest = `sha256:${hash(bytes)}`;
     return {bytes, meta};
 }
 function transport(p) {
@@ -79,7 +79,7 @@ function transport(p) {
     return {calls, fetchImpl: async url => {
         calls.push(url);
         if (url === `${api}/runs/12`) return {status: 200, json: async () => p.meta.run};
-        if (url.startsWith(`${api}/runs/12/attempts/2/jobs?`)) return {status: 200, json: async () => ({total_count: 1, jobs: [p.meta.job]})};
+        if (url.startsWith(`${api}/runs/12/attempts/${p.meta.job.run_attempt}/jobs?`)) return {status: 200, json: async () => ({total_count: 1, jobs: [p.meta.job]})};
         if (url.startsWith(`${api}/runs/12/artifacts?`)) return {status: 200, json: async () => ({total_count: (p.artifactsOverride || [p.meta.artifact]).length, artifacts: p.artifactsOverride || [p.meta.artifact]})};
         if (url === `${api}/artifacts/56/zip`) return {status: 302, headers: new Headers({location: 'https://fixture.invalid/original'})};
         assert.equal(url, 'https://fixture.invalid/original'); return {status: 200, arrayBuffer: async () => p.bytes};
@@ -323,4 +323,46 @@ test('unsupported manual metadata still refuses before the sole archive GET', as
     /Only reviewed push\/PR build events/);
     assert.equal(fixture.calls.filter(url => url === `${api}/artifacts/56/zip` ||
         url === 'https://fixture.invalid/original').length, 0, 'no archive request before supported-event admission');
+}));
+
+// Issue #1700: a single-job rerun (consumer attempt 2) reuses the attempt-1
+// build job, whose outputs and embedded manifest name attempt 1.
+const rerunEvidence = (producerAttempt, changes = {}) => {
+    const wire = render(expected, {'github.run_attempt': String(producerAttempt), ...changes});
+    return {wire, source, env: {...environment(expected), [GUI_RUNNER_ENV]: wire}};
+};
+
+test('single-job rerun admits the earlier producer attempt and binds jobs census, job and manifest to it', async () => ownedTemporary(async dir => {
+    const receipt = guiRunnerProducerReceipt(rerunEvidence(1).wire, source, {expected, env: rerunEvidence(1).env});
+    assert.equal(receipt.attempt, 2); assert.equal(receipt.producerAttempt, 1);
+    const p = await packet(expected, 1), t = transport(p);
+    const result = await admitOfficialGui({expected, directory: path.join(dir, 'rerun'), fetchImpl: t.fetchImpl, runnerEvidence: rerunEvidence(1)});
+    assert.ok(t.calls.some(url => url.startsWith(`${api}/runs/12/attempts/1/jobs?`)));
+    assert.ok(!t.calls.some(url => url.includes('/attempts/2/')));
+    const build = JSON.parse(await readFile(result.receiptPath)).build;
+    assert.equal(build.attempt, 1); assert.equal(build.consumerAttempt, 2);
+}));
+
+test('rerun admission still rejects evidence from a different attempt or a different run', async () => ownedTemporary(async dir => {
+    // Scalar from a later attempt than the consumer, or not a positive integer.
+    for (const bad of ['3', '0', '01', '1.0', '']) assert.throws(
+        () => guiRunnerProducerReceipt(rerunEvidence(bad).wire, source, {expected, env: rerunEvidence(bad).env}), String(bad));
+    // Scalar from another run.
+    assert.throws(() => guiRunnerProducerReceipt(rerunEvidence(1, {'github.run_id': '13'}).wire, source,
+        {expected, env: rerunEvidence(1, {'github.run_id': '13'}).env}), /Producer scalar run/);
+    // Official API job, or embedded manifest, from an attempt other than the scalar's.
+    const cases = [
+        async () => { const p = await packet(expected, 1); p.meta.job.run_attempt = 2; return p; },
+        async () => { const p = await packet(expected, 1); p.meta.run.id = 13; return p; },
+        async () => { const p = await packet(expected, 1); p.meta.job.run_id = 13; return p; },
+        async () => { const p = await packet(expected, 1); p.meta.artifact.workflow_run.id = 13; return p; },
+    ];
+    for (const [i, make] of cases.entries()) {
+        const p = await make(), t = transport(p);
+        await assert.rejects(admitOfficialGui({expected, directory: path.join(dir, String(i)), fetchImpl: t.fetchImpl, runnerEvidence: rerunEvidence(1)}), String(i));
+        assert.ok(!t.calls.some(url => url.endsWith('/zip')), String(i));
+    }
+    // Manifest naming the consumer attempt while the producer job is attempt 1.
+    const p = await packet(expected, 2); p.meta.job.run_attempt = 1; const t = transport(p);
+    await assert.rejects(admitOfficialGui({expected, directory: path.join(dir, 'manifest'), fetchImpl: t.fetchImpl, runnerEvidence: rerunEvidence(1)}), /Manifest producer attempt/);
 }));
