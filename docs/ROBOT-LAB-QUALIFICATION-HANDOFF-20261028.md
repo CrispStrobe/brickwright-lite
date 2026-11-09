@@ -107,8 +107,9 @@ doable as geometry or test-design work:
   (values in the checkpoint) and promote as #1668 did for Helixgate.
 - **Counter Slide**: same, at a 98° floor; both housing angles overlap their
   racks by 2.5 LDU and eight pins reach about 2 LDU into the housings.
-- **Point Weaver**: rear motor-foot holes stack 70 LDU deep, which no single
-  standard pin fills; needs a different mount, not two pins in one hole.
+- **Point Weaver**: DONE (Q3, 2026-11-08). Motor-foot mount redesigned: pads
+  removed and the motor assemblies lowered 10 LDU onto the rails, so one 3L pin
+  joins rear foot, rail and base cross; promoted (116 placements).
 - **Evenhand**: the holding-torque judge passes (branch
   `lane/robot-evenhand-20261107`, no PR), but removing the counterweights
   makes the arm droop past the program's 3° start guard. Needs a removal that

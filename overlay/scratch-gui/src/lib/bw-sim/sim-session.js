@@ -246,6 +246,8 @@ export const MODELS = Object.freeze([
         manualJog: {A: {minDeg: -5, maxDeg: 365, stepDeg: 5, speedDps: 18}}},
     {file: 'vectorsum.ldr', title: {en: 'VectorSum — two-input differential mixer', de: 'Vektorsumme — Differentialmischer mit zwei Eingängen'}, example: 'vectorsum.bw', mat: 'plain',
         manualJog: {A: {minDeg: -190, maxDeg: 190, stepDeg: 10, speedDps: 24}, B: {minDeg: -190, maxDeg: 190, stepDeg: 10, speedDps: 24}}},
+    {file: 'pointweaver.ldr', title: {en: 'PointWeaver — two-motor five-bar path tracer', de: 'Punktweber — Fünfgelenk-Bahnzeichner mit zwei Motoren'}, example: 'pointweaver.bw', mat: 'plain',
+        manualJog: {A: {minDeg: -34, maxDeg: 2, stepDeg: 1, speedDps: 8}, B: {minDeg: -11, maxDeg: 26, stepDeg: 1, speedDps: 8}}},
     {file: 'kestrel-flapper.ldr', title: {en: 'Kestrel — flapping linkage', de: 'Kestrel — Schlagflügel-Gestänge'}, example: 'kestrel-flapper.bw', mat: 'plain',
         manualJog: {A: {minDeg: 0, maxDeg: 720, stepDeg: 30, speedDps: 45}}},
     {file: 'meridian-linkage.ldr', title: {en: 'Meridian — straight-line linkage', de: 'Meridian — Geradführungs-Gestänge'}, example: 'meridian-linkage.bw', mat: 'plain',

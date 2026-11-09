@@ -810,35 +810,6 @@ export const EXPERIMENTAL_MODELS = Object.freeze([
         }
     },
     {
-        "file": "pointweaver.ldr",
-        "title": {
-            "en": "PointWeaver — two-motor five-bar path tracer",
-            "de": "Punktweber — Fünfgelenk-Bahnzeichner mit zwei Motoren"
-        },
-        "example": "pointweaver.bw",
-        "mat": "plain",
-        "manualJog": {
-            "A": {
-                "minDeg": -34,
-                "maxDeg": 2,
-                "stepDeg": 1,
-                "speedDps": 8
-            },
-            "B": {
-                "minDeg": -11,
-                "maxDeg": 26,
-                "stepDeg": 1,
-                "speedDps": 8
-            }
-        },
-        "intro": {
-            "en": "Two angular motors drive the base links of a planar five-bar mechanism. The blue and orange forearms meet at an orange endpoint marker. A finite program reaches four rectangular corner poses while exposing the curved endpoint edges produced by synchronized linear motor-angle interpolation.",
-            "de": "Zwei Winkelmotoren treiben die Grundglieder eines ebenen Fünfgelenkgetriebes an. Der blaue und der orange Unterarm treffen sich an einer orangefarbenen Endpunktmarke. Ein endliches Programm fährt vier rechteckige Ecklagen an und macht die gekrümmten Endpunktkanten sichtbar, die durch synchron linear interpolierte Motorwinkel entstehen."
-        },
-        "experimental": true,
-        "blocked": false
-    },
-    {
         "file": "rimrun-swapped.ldr",
         "title": {
             "en": "RimRun — ballast layouts exchanged (comparison)",
@@ -2363,34 +2334,6 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
             "experimental",
             "prototype",
             "unverified",
-            "experimentell"
-        ],
-        "experimental": true
-    },
-    "pointweaver.ldr": {
-        "pieces": 128,
-        "motors": 2,
-        "hubs": [
-            "spike-prime"
-        ],
-        "topic": "linkages",
-        "description": {
-            "en": "Two angular motors drive the base links of a planar five-bar mechanism. The blue and orange forearms meet at an orange endpoint marker. A finite program reaches four rectangular corner poses while exposing the curved endpoint edges produced by synchronized linear motor-angle interpolation.",
-            "de": "Zwei Winkelmotoren treiben die Grundglieder eines ebenen Fünfgelenkgetriebes an. Der blaue und der orange Unterarm treffen sich an einer orangefarbenen Endpunktmarke. Ein endliches Programm fährt vier rechteckige Ecklagen an und macht die gekrümmten Endpunktkanten sichtbar, die durch synchron linear interpolierte Motorwinkel entstehen."
-        },
-        "author": "CrispStrobe",
-        "license": "BSD-3-Clause",
-        "mechanism": {
-            "en": "five-bar parallel linkage",
-            "de": "Fünfgelenk-Parallelmechanismus"
-        },
-        "keywords": [
-            "five-bar linkage",
-            "parallel robot",
-            "Cartesian interpolation",
-            "Fünfgelenk",
-            "Bahnplanung",
-            "experimental",
             "experimentell"
         ],
         "experimental": true

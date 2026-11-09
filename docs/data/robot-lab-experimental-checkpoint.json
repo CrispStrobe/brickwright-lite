@@ -4177,13 +4177,13 @@
     },
     {
       "id": "pointweaver",
-      "placements": 128,
+      "placements": 116,
       "intakeRecord": "docs/data/robot-lab-nine-intakes-20261026.json",
       "judge": "five-bar-v1",
       "promotionReview": {
-        "date": "2026-11-07",
-        "decision": "STAYS_EXPERIMENTAL",
-        "reason": "Construction gate still refuses it and no clean repair exists (PR 1672 review). At each rear motor-foot hole (z = -180) the stack foot, pad, rail and base cross is 70 LDU deep: no single standard pin fills it, a foot pin and the rail-to-cross fastener must share the rail hole, and removing those fasteners disconnects the front base from the hub section (loose-part). Needs a reviewed base redesign; the gate was not loosened."
+        "date": "2026-11-08",
+        "decision": "PROMOTED",
+        "reason": "Motor-foot mount redesign (Q3, lanes/2026-11-08-robot-q3-pointweaver.md): the eight thin foot pads and the four rear rail-to-cross 2L pins removed; the motor assemblies (motors, mounts, posts, feet and linkage) lowered 10 LDU onto the base rails, so each rear stack foot, rail and base cross is 60 LDU and one 3L pin fills it and still fastens rail to cross (base stays connected: no loose part), each front foot takes one 2L pin into its rail; the hub-section rear foot moved from z = -400 to -360 off the hub-mount hole; endpoint_marker_tip moved 10 LDU so its collar clears the thin marker. Planar x/z geometry, the law and the program are unchanged (128 to 116 placements). test/bw-sim-models-solid.test.mjs passes unchanged; contract added and qualified by the hosted ordinary, strict and disconnected runs on the final head. Browser, saved-project replay, export and manual controls NOT_RUN (contract notRun)."
       }
     }
   ],
