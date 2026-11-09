@@ -32,10 +32,12 @@ test('qualification refuses unknown principles, missing models and incomplete di
 // the same lookup the nine-intake judge uses. A hard-coded 'hub' found no body for those four (handoff P4).
 const hubPartOf=r=>{const hubs=r.mechanism.hubs||[];assert.equal(hubs.length,1,'exactly one registered hub names the observation base');return hubs[0].id;};
 const run=async(c,modelText,autoPorts,label=autoPorts===false?'strict':'ordinary')=>{
- const errors=[];let hooked=false;const r=isBatchEPromotion(c.id)?await runBatchEPromotion(c,modelText,autoPorts):await runRobotLabProgram(read(lab+'programs/'+c.id+'.bw'),{...c,modelText,autoPorts,observeFrame:({session,vm,hub})=>{
+ const errors=[];let hooked=false;const r=isBatchEPromotion(c.id)?await runBatchEPromotion(c,modelText,autoPorts):await runRobotLabProgram(read(lab+'programs/'+c.id+'.bw'),{...c,modelText,autoPorts,observeFrame:({session,vm,hub,prepared})=>{
   if(!hooked){vm.runtime.on('ERROR',e=>errors.push(String(e)));vm.runtime.on('BLOCKS_ERROR',e=>errors.push(String(e)));hooked=true;}
   for(const b of vm.runtime.targets.flatMap(t=>Object.values(t.blocks._blocks))){const literal=Object.keys(b.fields||{}).length===1&&Object.keys(b.inputs||{}).length===0;assert.ok(b.opcode in vm.runtime._primitives||b.opcode in vm.runtime._hats||literal,'actual registered opcode: '+b.opcode);}
-  return{variables:Object.fromEntries(vm.runtime.targets.flatMap(t=>Object.values(t.variables||{}).map(v=>[v.name,v.value]))),modes:hub.motors._controllers.map(c=>c.mode),actuators:actuatorState(session),sessionFailed:session.failed?String(session.failed):null,...(c.observeAir?{air:session.core.airState?session.core.airState():[]}:{})};
+  return{variables:Object.fromEntries(vm.runtime.targets.flatMap(t=>Object.values(t.variables||{}).map(v=>[v.name,v.value]))),modes:hub.motors._controllers.map(c=>c.mode),actuators:actuatorState(session),sessionFailed:session.failed?String(session.failed):null,...(c.observeAir?{air:session.core.airState?session.core.airState():[]}:{}),
+   // observeDynamics: each dynamic body's configured mass and world centre of mass, and each motor joint's held torque (N·m), for a holding-torque law.
+   ...(c.observeDynamics?{dynamics:{bodies:Object.fromEntries(prepared.mechanism.bodies.filter(b=>b.motion==='dynamic').map(b=>{const d=session.core.bodyDynamics(b.id);return[b.id,{com:d.centerOfMassWorld,massKg:d.configuredMassKg}];})),joints:Object.fromEntries(prepared.mechanism.joints.filter(j=>j.motor).map(j=>[j.id,session.core.jointDynamics(j.id)?.motorTorqueNm??0]))}}:{})};
  }});if(process.env.BW_MODEL_QUALIFY_EVIDENCE_DIR){const dir=process.env.BW_MODEL_QUALIFY_EVIDENCE_DIR;mkdirSync(dir,{recursive:true});writeFileSync(dir+'/'+c.id+'-'+label+'.json',JSON.stringify(r)+'\n');}assert.deepEqual(errors,[]);assert.ok(r.track.every(f=>!f.extra.sessionFailed));return r;
 };
 for(const c of qualificationContracts(selected).filter(c=>!c.nativeSuite)){

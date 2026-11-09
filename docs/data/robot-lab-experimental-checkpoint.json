@@ -4057,9 +4057,9 @@
       "savedProjectReplay": "NOT_RUN",
       "noveltyNote": "Positions alone cannot show the balance: the engine's motors hold any load (self-locking), so the evidence is holding torque, not sag.",
       "promotionReview": {
-        "date": "2026-11-07",
-        "decision": "STAYS_EXPERIMENTAL",
-        "reason": "Holding-torque judge written (branch lane/robot-evenhand-20261107, unregistered): static gravity moment from configured body masses and centres of mass at the observed pose matches the held motor torque within 0.002 mN m at all 11 holds; elbow < 0.002 mN m, shoulder 0.331-0.361 mN m; frozen-output and 1 cm shift refused. Disconnection FAILS: removing the outer or all forearm counterweights makes the shoulder droop 9-17 deg during the mandatory 500 ms cold settle, so the authored 3 deg datum guard faults at stage 0 and the input never turns; evenhand-control faults the same way (13.5 deg). No law-loss measurement exists under the qualification harness, so no promotion."
+        "date": "2026-11-08",
+        "decision": "PROMOTED",
+        "reason": "Registered judge counterbalance-holding-torque-v1 (judgeEvenhand): at all 11 holds the static gravity moment of the distal bodies matches the held motor torque within 0.002 mN m; elbow < 0.002 mN m, shoulder 0.331-0.361 mN m; frozen-output (forearm) and 1 cm shift refused. Disconnection: forearm_weight_pin_-1_-20 removed, the inner counterweight's outer 3L pin 120 LDU behind the elbow axis. The elbow balance is the mirror condition sum m_i d_i = 0 about the elbow; removing that pin unbalances it by 0.35 g x 48 mm x g = 0.165 mN m (statics prediction 0.165), measured 0.166 mN m held at the elbow (loss bar 0.1, unchanged). The cold-settle sag stays inside the program's unchanged 3 deg start guard (shoulder -1.4 deg, elbow +1.0 deg) and all 11 arrivals complete (input travel 20.3 deg, disconnectInputDeg 19). Removing whole counterweight beams adds 0.63 mN m or more per beam and the motors' holding compliance sags the arm 3.4-17 deg in the 500 ms cold settle, so the guard faults; guard, settle time, thresholds and judge are unchanged. Hosted qualification and the construction gate pass on the PR head. Promoted to the established library; evenhand-control stays experimental as a control."
       }
     },
     {

@@ -13,7 +13,7 @@ The full task list with exact steps is section 00 of
   - Q1 (taken 2026-11-08, lanes/2026-11-08-robot-q12-geometry.md) Loop Relay and Parity Dial: input axle 2.5 LDU into the motor (construction gate). Repair, re-add contract, promote.
   - Q2 (taken 2026-11-08, lanes/2026-11-08-robot-q12-geometry.md) Counter Slide: housing angles overlap racks 2.5 LDU, eight pins about 2 LDU into housings. Repair, re-add contract, promote.
   - Q3 Point Weaver: TAKEN (lanes/2026-11-08-robot-q3-pointweaver.md, branch `lane/robot-q3-pointweaver-20261108`).
-  - Q4 Evenhand: counterweight removal trips the 3° start guard; pick a non-tripping or justified disconnection, register judge from `lane/robot-evenhand-20261107`, promote.
+  - Q4 Evenhand: TAKEN (lanes/2026-11-08-robot-q4-evenhand.md). Disconnection removes one inner counterweight pin (`forearm_weight_pin_-1_-20`), which does not trip the start guard; judge registered, promoted.
   - Q5 RimRun (TAKEN, `lanes/2026-11-08-robot-q5-rimrun.md`, PR #1683): hub mounted, catch and fault-stop measured, judge `rolling-inertia-v1` with `rimrun-swapped` as the causal control; promoted once #1683 merges.
 
 Rules: iterate without `ci:full`, add it once on the final head; merge only

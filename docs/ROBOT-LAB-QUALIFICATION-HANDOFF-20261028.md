@@ -110,10 +110,13 @@ doable as geometry or test-design work:
 - **Point Weaver**: DONE (Q3, 2026-11-08). Motor-foot mount redesigned: pads
   removed and the motor assemblies lowered 10 LDU onto the rails, so one 3L pin
   joins rear foot, rail and base cross; promoted (116 placements).
-- **Evenhand**: the holding-torque judge passes (branch
-  `lane/robot-evenhand-20261107`, no PR), but removing the counterweights
-  makes the arm droop past the program's 3° start guard. Needs a removal that
-  does not trip the guard, or a justified different disconnection.
+- **Evenhand**: DONE (Q4, lanes/2026-11-08-robot-q4-evenhand.md): judge
+  `counterbalance-holding-torque-v1` registered and Evenhand promoted. The
+  disconnection removes one inner counterweight pin (`forearm_weight_pin_-1_-20`,
+  120 LDU behind the elbow): the elbow loses its mirror balance by that pin's
+  moment (predicted 0.165, measured 0.166 mN·m) while the cold-settle sag
+  (1.4° / 1.0°) stays inside the unchanged 3° start guard. Whole weight beams
+  sag the arm 3.4–17° and fault the guard. `evenhand-control` stays a control.
 - **RimRun**: done in Q5 (PR #1683, 2026-11-09) and promoted with judge `rolling-inertia-v1`.
   The hub is pinned to the motor posts with four 2780 pins, and the wheel half bushes, which sat
   7.5 LDU inside the wheels, are seated flush. The supplier's catch and fault-stop checks are not in

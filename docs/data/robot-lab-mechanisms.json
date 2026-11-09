@@ -1227,6 +1227,30 @@
         "Fünfgelenk",
         "Bahnplanung"
       ]
+    },
+    {
+      "models": [
+        "evenhand"
+      ],
+      "name": {
+        "en": "Counterbalanced two-joint arm: gravity torque about each joint",
+        "de": "Ausgewogener Zweigelenkarm: Schweremoment um jedes Gelenk"
+      },
+      "aliases": [
+        "counterweight",
+        "counterbalance",
+        "gravity torque",
+        "two-joint arm",
+        "serial arm",
+        "holding torque",
+        "lever arm",
+        "Gegengewicht",
+        "Gewichtsausgleich",
+        "Schweremoment",
+        "Zweigelenkarm",
+        "Haltemoment",
+        "Hebelarm"
+      ]
     }
   ]
 }

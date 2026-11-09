@@ -298,6 +298,8 @@ export const MODELS = Object.freeze([
         manualJog: {"A": {"minDeg": -90, "maxDeg": 90, "stepDeg": 5, "speedDps": 15}}},
     {file: 'counterslide.ldr', title: {"en": "CounterSlide — twin-rack self-centering jaws", "de": "CounterSlide — selbstzentrierende Doppelzahnstangen"}, example: 'counterslide.bw', mat: 'plain',
         manualJog: {"A": {"minDeg": -100, "maxDeg": 0, "stepDeg": 5, "speedDps": 15}}},
+    {file: 'evenhand.ldr', title: {en: 'Evenhand — counterbalanced two-joint arm', de: 'Evenhand — ausgewogener Zweigelenkarm'}, example: 'evenhand.bw', mat: 'plain',
+        manualJog: {A: {minDeg: -20, maxDeg: 20, stepDeg: 5, speedDps: 20}, B: {minDeg: -30, maxDeg: 30, stepDeg: 5, speedDps: 25}}},
     {file: 'product-plotter.ldr', title: {en: 'Product Plotter — a mechanical multiplier', de: 'Product Plotter — ein mechanischer Multiplizierer'},
         example: 'product-plotter.bw', mat: 'plain', manualJog: {A: {minDeg: -15, maxDeg: 15, stepDeg: 2, speedDps: 10}, B: {minDeg: -75, maxDeg: 75, stepDeg: 10, speedDps: 30}}, intro: {
             en: 'Motor A tilts a straight guide; motor B slides the green rail. Their intersection moves the passive orange carriage, so similar triangles make its displacement equal the product of both inputs divided by a fixed reference length.',
