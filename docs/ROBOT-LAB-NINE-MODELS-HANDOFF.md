@@ -23,7 +23,7 @@ Use a new isolated checkout and preserve other owners' worktrees and claims.
 | `footfall` | 119 | Motor phasing, fixed pivot bearing, physically connected frame |
 | `phasekeeper` | 79 | Retained and correctly phased double Cardan transmission |
 | `vectorsum` | 122 | Differential geometry, connected frame, shaft-tip clearance |
-| `pointweaver` | 128 | Keyed input arms, corrected target signs, bounded precision controls |
+| `pointweaver` | 116 | Keyed input arms, corrected target signs, bounded precision controls |
 
 Phasekeeper also requires two inferred real Cardan crosses: **83 physical
 pieces**, rather than 81 placements. Counts are deliberately not padded to meet

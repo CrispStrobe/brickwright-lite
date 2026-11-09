@@ -12,6 +12,9 @@ export async function admitOfficialGui({expected, directory, archivePath: retain
     try {
         const runnerReceipt = runnerEvidence ? guiRunnerProducerReceipt(runnerEvidence.wire, runnerEvidence.source, {expected, env: runnerEvidence.env}) : null;
         if (runnerReceipt) await writeFile(path.join(directory, 'runner-evidence.json'), JSON.stringify(runnerReceipt) + '\n', {flag: 'wx'});
+        // The producer attempt comes only from the checked runner scalar; it
+        // binds the jobs census, producer job and embedded manifest below.
+        if (runnerReceipt) expected = {...expected, producerAttempt: runnerReceipt.producerAttempt};
         const observations = path.join(directory, 'producer-observations');
         await mkdir(observations);
         let observed = 0;
