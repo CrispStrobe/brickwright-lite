@@ -13,7 +13,7 @@ Arcade documented TODO tests: 37 on main `bc39104b`; 33 after #1629 and #1631; 2
 |---|---|---|---|
 | A Array receiver | 15 | 4 | stale marker; per-slot proofs cleared 10 rows |
 | B primitive producer | 10 | 8 | `scene.backgroundColor()`; positional numeric constants |
-| C named-array re-import | 3 | 3 | unchanged |
+| C named-array re-import | 3 | 1 | reimport recognizes the whole helper library (2d); the full-path row now stops at the second export |
 | F image-mutation probe | 1 | 1 | same cause as G |
 | G exception owner reuse | 1 | 1 | kept: original PXT has one runtime per simulator frame |
 | H Math.idiv nested capture | 1 | 0 | nested parameter captures lifted (#1629) |
@@ -33,7 +33,7 @@ and none regressed. Source import only: no export, VM, PXT or browser claim.
 - B map results (`[2].map(f)[0]`): the source half was built and works, but the VM lowers map to an index loop, so the native inspection would refuse at run time; it was not landed (an import refusal must not become a runtime error).
 - B class constructor/method formals (2): need call-site obligations for class members in the source protocol and the VM.
 - B flow-sensitive string, consumed prefix/postfix, physical text leaf, exporter nested stop tokens: fixed 2026-11-07 (run tokens plus null sprite prologue lift); the others unchanged; randint stays out of scope (bitwise).
-- C named arrays (3): the recognizer lifts only get/set; push/insert with call-result arguments and the passive helpers (indexOf, contains, remove, pop) plus the parse/JSON value helpers stay, and their bodies are not importable.
+- C named arrays (3 -> 1): the ambient helper proof now admits Array methods on the canonical `__bwArrayAccess(x)` result and on formals declared `any[]` (PXT compiles both as builtin Array methods), so the whole helper library, including the passive helpers and parse/JSON value helpers, is recognized on reimport. The remaining row fails at the second export, which refuses the reimported Array references.
 
 **Group A decision (operator, 2026-11-02): no runtime guard; per-slot proofs only.** The follow-up cleared nine rows; the remaining five (fresh animation re-export, array-copy effects, class accessor aliases, allOfKind second export, computed index sums) stay TODO.
 A runtime guard that behaves exactly like original PXT for an unproven Array
@@ -88,10 +88,10 @@ hosted checks remain required.
 - Next: Identify each producer kind (exported helper results, SDK reporters, inspect/runtime domains) and add a sound producer rule for it; keep the default-on refusal tests red.
 - Second pass (2026-10-20): 1 fixed (stock call arguments reach formals; nullable formals export as `any`), 7 kept with counter-examples or a named missing half. Not re-examined: `managed-number-boundaries`, `randint-authoring`, `update-values` (consumed prefix/postfix).
 
-### C. Named-array helper re-import is not recognized (3)
+### C. Named-array helper re-import (1 left: second export)
 
-- Tried: Export side fixed (34d5b2d0f).
-- Next: Statement-order reasoning in `generated-helper-recognition.js` for `let X: any = 0` followed by a definite assignment before use; the `__bwNamedJsonValue` optional default (ordinary-call-omission).
+- Tried: Export side fixed (34d5b2d0f). Reimport fixed (2d): typed Array receivers in the ambient helper proof (`generated-helper-recognition.js`); controls in `test/generated-helper-typed-array-receivers.test.mjs`.
+- Next: the full-path test's second export reports `Array reference arrays_referenceItem/mutateReference/referenceLength/referenceTake/referenceIndexOf ARRAY: requires an actual initialized Array producer and compatible all writers` and `native addition named-helper source proof refused: Named Array getter registry escapes to an unproved writer`. Export-side Array authority over the reimported references (the `row`/`alias` cells).
 
 ### D. Runtime mock lacks `.on` (`Cannot read properties of undefined (reading 'on')`) (3)
 
@@ -158,8 +158,8 @@ hosted checks remain required.
 | B | `test/makecode-export-arcade.test.mjs` | exported stock stop-other and stop-all retain actual native lifecycle behavior | Fixed 2026-11-07: the second export gives each parallel handler its own run token, and the stop lift admits the second export's exact null sprite prologue (`let GameSprite: Sprite`, then `GameSprite = null` / `GameSprite = sprites.create(...)` in the start function). Near-miss prologues stay refused. |
 | B | `test/makecode-string-conversion-roundtrip.test.mjs` | original UTF-16 and nullable primitive strings survive source, Code, original export, reimport and fresh SB3 | Kept TODO, unsound to accept as is: the export declares `let f: any = 0` and assigns `f = Game_letter(...)` later, so on reimport `__bwSdkConcat(<any>f, g)`'s left has producers {Number 0, String} (and the `<any>` cast is Opaque). A flow-insensitive proof must refuse: if `h` were computed before `f`'s write, `left.concat` would run on the Number 0 and fault. Needs a flow-sensitive source producer proof and no receiver cast for statically String operands. |
 | C | `test/makecode-arcade-named-arrays.test.mjs` | named arrays retain scalar items, aggregate JSON, value parsing, nested aliases and replacement across all conversion paths | +   'Named Array helper requires closed current callee and builtin effects', +   'Ordinary call omission: __bwNamedJsonValue signature defaults require a separa |
-| C | `test/makecode-arcade-named-arrays.test.mjs` | named operations evaluate their arguments once and distinguish includes from indexOf for NaN | +   'Ordinary call omission: __bwNamedJsonValue signature defaults require a separately qualified default protocol', +   'isNaN() as a value', +   'JSON.parse() |
-| C | `test/makecode-arcade-source-typeof-roundtrip.test.mjs` | E15 text versus JSON aggregate helper retains typeof through Code, saved projects and strict original export | +   'Ordinary call omission: __bwNamedJsonValue signature defaults require a separately qualified default protocol', +   'isNaN() as a value', +   'String.charC |
+| C | `test/makecode-arcade-named-arrays.test.mjs` | named operations evaluate their arguments once and distinguish includes from indexOf for NaN | Fixed (2d): typed Array receivers in the ambient helper proof. |
+| C | `test/makecode-arcade-source-typeof-roundtrip.test.mjs` | E15 text versus JSON aggregate helper retains typeof through Code, saved projects and strict original export | Fixed (2d): typed Array receivers in the ambient helper proof. |
 | D | `test/arcade-callable-metadata-construction.test.mjs` | Arcade metadata-only construction exposes its actual blocks without granting callable resources | Fixed in 681b3a281: Sprite update activation registered runtime listeners without a runtime. |
 | D | `test/makecode-arcade-keyboard-edges.test.mjs` | all manually dispatched registered hats explicitly bypass Scratch edge caches | Fixed in 681b3a281: Sprite update activation registered runtime listeners without a runtime. |
 | D | `test/makecode-arcade-pixel-drawing.test.mjs` | sprite pixel reporters and drawing commands execute through Code, SB3, PXT export and reimport | Fixed in 681b3a281: Sprite update activation registered runtime listeners without a runtime. |
