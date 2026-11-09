@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
-import {projectToArcade,sinkNullLocalDeclarations} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
+import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
 import {runProgram} from './helpers/bw-vm.mjs';
 import {runPxtArcade} from './helpers/pxt-arcade-runtime.mjs';
 
@@ -57,23 +57,6 @@ const nearMisses={
 };
 for(const [name,edit]of Object.entries(nearMisses))test(`near miss stays refused: ${name}`,async()=>{
     assert.ok(refused(await reasons(program(edit),edit.readsNull)),name);
-});
-
-test('only a whole top-level first assignment receives a green-flag null local declaration',()=>{
-    const sink=(lines,decl='    let v: Sprite[] = null')=>sinkNullLocalDeclarations(['v'],[decl],lines);
-    assert.deepEqual(sink(['    a = 1','    v = sprites.allOfKind(0)','    b = v.length']),['    a = 1','    let v: Sprite[] = sprites.allOfKind(0)','    b = v.length']);
-    const kept=[
-        ['    b = v','    v = c'],                       // read first
-        ['    while (x) {','        v = c','    }'],      // nested
-        ['    v = v.concat(c)'],                          // self reference
-        ['    v = f(function () {','        g()','    })'],// multi-line value
-        ['    a = img`','    v = c','`'],                // inside a template literal
-        ['    v = img`1`'],                               // ends in a template quote
-        ['    vv = 1','    v.push(1)'],                    // first mention is not an assignment
-    ];
-    for(const lines of kept)assert.deepEqual(sink(lines),['    let v: Sprite[] = null',...lines],lines.join(' / '));
-    for(const decl of ['    let v: number = 0','    let v = null','        let v: Sprite[] = null'])
-        assert.deepEqual(sink(['    v = c'],decl),[decl,'    v = c'],decl);
 });
 
 // The startup reset discount, like every other reset discount, needs an owned

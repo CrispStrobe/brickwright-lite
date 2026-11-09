@@ -1048,16 +1048,40 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         if(['arcade_callFunction','procedures_call','arcade_callObjectMethod','arcade_createObject','arcade_callCallable'].includes(node.opcode))return true;
         return Object.values(node.inputs||{}).some(slot=>typeof slot?.[1]==='string'&&invokes(target,block(target,slot[1]),seen));
     };
-    const startupProcedureReset=(c,w,at,scope)=>{
-        if(!isProjectJsonSnapshot(project))return false;
-        const start=w.scope;
+    // The parameterless procedure the green-flag script alone calls, once.
+    const startupProcedure=(scope,start)=>{
         if(!start||start.proc||start.invalid||start.root.opcode!=='arcade_whenSourceStarts'||start.root.mutation!=null||!exactKeys(start.root,[]))return false;
-        if(!scope.proc||scope.invalid||scope.unknownEntry||implicitEntries.has(scope)||scope.params.length||scope.callers.length!==1)return false;
+        if(!scope?.proc||scope.invalid||scope.unknownEntry||implicitEntries.has(scope)||scope.params.length||scope.callers.length!==1)return false;
         const call=scope.callers[0];
-        if(call.scope!==start||call.fn!==scope||!call.args||call.args.length||call.node.opcode!=='procedures_call'||invalid.has(call.node))return false;
+        return call.scope===start&&call.fn===scope&&!!call.args&&!call.args.length&&call.node.opcode==='procedures_call'&&!invalid.has(call.node);
+    };
+    const startupProcedureReset=(c,w,at,scope)=>{
+        if(!isProjectJsonSnapshot(project)||!startupProcedure(scope,w.scope))return false;
         const st=statementOf(at),before=st&&scope.executedBefore.get(st);if(!before)return false;
         return c.writers.some(o=>o!==w&&o.scope===scope&&o.value&&!invalid.has(o.node)&&before.has(o.node)&&
             !(o.value.node&&invokes(o.target,o.value.node)));
+    };
+    // A local reset at the top of the startup procedure is dead at a read
+    // once a straight top-level overwrite has run. A local lives only in its
+    // own frame: with no capture or callable in the procedure, a call between
+    // the reset and the overwrite runs in another frame and cannot read it.
+    // No statement in between may read the local or nest a substack, and the
+    // overwrite's value may not read it or call anything.
+    const startupLocalReset=(c,w,at,scope)=>{
+        if(!isProjectJsonSnapshot(project)||c.global||w.scope!==scope||!scope.callers?.length||!startupProcedure(scope,scope.callers[0].scope))return false;
+        if(records.some(r=>r.scope===scope&&['arcade_createCallable','arcade_declareCallable','arcade_getCaptured','arcade_setCaptured','arcade_callCallable'].includes(r.node.opcode)))return false;
+        if(!topChain(scope,w.node))return false;
+        const st=statementOf(at),before=st&&scope.executedBefore.get(st);if(!before)return false;
+        const o=c.writers.find(o=>o!==w&&o.scope===scope&&o.value&&!resetValue(o.value.node)&&!invalid.has(o.node)&&before.has(o.node)&&
+            topChain(scope,o.node)&&!!scope.executedBefore.get(o.node)?.has(w.node)&&!(o.value.cell===c)&&
+            !(o.value.node&&(readsCell(o.target,o.value.node,c)||invokes(o.target,o.value.node))));
+        if(!o)return false;
+        const seen=new Set();
+        for(let n=block(w.target,w.node.next);n!==o.node;n=block(w.target,n.next)){
+            if(!n||seen.has(n)||invalid.has(n)||Object.keys(n.inputs||{}).some(name=>name.startsWith('SUBSTACK'))||readsCell(w.target,n,c))return false;
+            seen.add(n);
+        }
+        return true;
     };
     const killedReset=(c,w,at)=>{
         if(!resetFlowReady||!(resetValue(w.value?.node)||!c.global&&w.value?.node&&inertLiteral(w.target,w.value.node))||invalid.has(w.node)||w.scope.invalid)return false;
@@ -1076,6 +1100,7 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         // global store, a closed primitive global write or an inert event
         // field comparison may cross this frontier; procedure calls, captures,
         // control flow and reads of the reset cell retain the reset.
+        if(startupLocalReset(c,w,at,scope))return true;
         let next=block(w.target,w.node.next),fieldUsed=false;const skipped=new Set();let copied=false,stored=false;
         while(next&&before.has(next)&&!skipped.has(next)){
             // The closed private rules are tried first so their admissions
