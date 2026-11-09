@@ -1115,7 +1115,7 @@
       "disconnectLoss": "rimrun",
       "notRun": [
         "savedProjectReplay",
-        "browser journey",
+        "browser journey (scripts/verify-sim-lab-browser.mjs has no RimRun gate)",
         "export",
         "manual controls"
       ]
@@ -1164,7 +1164,13 @@
         "forearm_weight_pin_-1_-20"
       ],
       "disconnectInputDeg": 19,
-      "disconnectLoss": "p6"
+      "disconnectLoss": "p6",
+      "notRun": [
+        "browser journey (scripts/verify-sim-lab-browser.mjs has no Evenhand gate)",
+        "saved-project replay",
+        "export",
+        "manual controls"
+      ]
     }
   ]
 }
