@@ -203,6 +203,50 @@ Bitte Abstürze, falsche Simulationen oder Messwerte, unzugängliche Bedieneleme
 Übersetzungsfehler, verlorenen Fortschritt, Layoutprobleme sowie Hub- und
 macOS-Version melden.
 
+## What to Test — 0.1.32 en-US
+
+This build collects two weeks of work across Robot Lab, MakeCode and the
+editors.
+
+- Robot Lab: try the newly promoted models and the new force and effort
+  readings. Record an experiment, save it, and compare two models. Check that
+  models no longer fall through the floor.
+- MakeCode Arcade: import, play and export games with tile maps, dialogs
+  (`game.ask`) and sprite collections. Export a game, import the export and
+  export it again: it should behave the same each time.
+- micro:bit: radio, serial, buffers, pins, servo and data logging should
+  import, run and export back.
+- Editors: undo and redo, autosave and recovery after a crash. Projects with
+  FPGA designs should keep them after saving and reopening.
+- x86 machines: with the Widgets open and the debugger running, both should
+  be fully visible and Pause should be clickable.
+- Share links should open the shared project again.
+- Mac: check that the app installs from TestFlight and that the SPIKE
+  simulator starts quickly.
+
+## What to Test — 0.1.32 de-DE
+
+Dieser Build bündelt zwei Wochen Arbeit an Robot Lab, MakeCode und den
+Editoren.
+
+- Robot Lab: Probiere die neu aufgenommenen Modelle und die neuen Kraft- und
+  Aufwandsmessungen. Zeichne ein Experiment auf, speichere es und vergleiche
+  zwei Modelle. Prüfe, dass Modelle nicht mehr durch den Boden fallen.
+- MakeCode Arcade: Importiere, spiele und exportiere Spiele mit Kachelkarten,
+  Dialogen (`game.ask`) und Sprite-Sammlungen. Exportiere ein Spiel,
+  importiere den Export und exportiere ihn erneut: Es sollte sich jedes Mal
+  gleich verhalten.
+- micro:bit: Funk, serielle Schnittstelle, Puffer, Pins, Servo und Datenlogger
+  sollten sich importieren, ausführen und zurück exportieren lassen.
+- Editoren: Rückgängig und Wiederholen, automatisches Speichern und
+  Wiederherstellung nach einem Absturz. FPGA-Entwürfe sollten nach Speichern
+  und erneutem Öffnen erhalten bleiben.
+- x86-Rechner: Bei geöffneten Widgets und laufendem Debugger sollten beide
+  vollständig sichtbar sein und Pause sollte anklickbar sein.
+- Geteilte Links sollten das geteilte Projekt wieder öffnen.
+- Mac: Prüfe, ob sich die App über TestFlight installieren lässt und der
+  SPIKE-Simulator schnell startet.
+
 ## What to Test — 0.1.31 en-US
 
 This build brings the Mac app back to TestFlight, with everything from 0.1.29:
