@@ -161,7 +161,7 @@ function builderPositionalReads(program,reads){
     return out;
 }
 
-function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpers:provedHelpers=new Set(),parenthesized=false,unboundIsOpaque=false,opaqueDeclarationValues=false,uninitializedLocalsAreOpaque=false,declaredLocalUndefined=false,multiplayerPlayerProperties=false,consoleInspection=false,arrayValues=false,arrayEffectSites=false,arrayCallbackParameters=false,arrayLoopEntries=false,provenArrayLength=false,ordinaryPrimitiveSdkNumbers=false,ordinaryMusicNumbers=true,ordinaryDestroyedNumbers=true,ordinaryParseIntegerNumbers=true,ordinaryParseIntegerEffects=true,sceneClockNumbers=false,initializationEntries=false,primitiveComparisons=false,closureEntries=false,normalCompletion=null,closedOrdinaryEntries=false,physicalUpdateSource=null}={},privateSpriteAyProof=null,identityInput=null,cameraNumberInput=null,controlEntry=null,arrayCallbackBootstrap=false) {
+function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpers:provedHelpers=new Set(),parenthesized=false,unboundIsOpaque=false,opaqueDeclarationValues=false,uninitializedLocalsAreOpaque=false,declaredLocalUndefined=false,multiplayerPlayerProperties=false,consoleInspection=false,arrayValues=false,arrayEffectSites=false,arrayCallbackParameters=false,arrayLoopEntries=false,provenArrayLength=false,ordinaryPrimitiveSdkNumbers=false,ordinaryMusicNumbers=true,ordinaryDestroyedNumbers=true,ordinaryParseIntegerNumbers=true,ordinaryParseIntegerEffects=true,sceneClockNumbers=false,initializationEntries=false,primitiveComparisons=false,closureEntries=false,normalCompletion=null,closedOrdinaryEntries=false,physicalUpdateSource=null,classMembers=false}={},privateSpriteAyProof=null,identityInput=null,cameraNumberInput=null,controlEntry=null,arrayCallbackBootstrap=false) {
     const ordinaryEntry=closedOrdinaryEntries?createClosedOrdinarySourceEntry(program):null;
     const nullableLengthSource=arrayValues?nullableArrayLengthSource(program):null;
     const nullableLengthIssued=new Set();let nullableLengthUsed=false;
@@ -295,7 +295,82 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
     const vars=(node,owner)=>{if(!node||typeof node!=='object')return;if(Array.isArray(node)){node.forEach(value=>vars(value,owner));return;}if(['FunctionDeclaration','FunctionExpression','Class'].includes(node.type))return;if(node.type==='Declaration'&&node.kind==='var')node.decls.forEach(decl=>declare(owner,decl.name));Object.values(node).forEach(value=>{if(value&&typeof value==='object')vars(value,owner);});};
     const cell=node=>node?.type==='Identifier'&&writing.has(node)?binding(owners.get(node)||global,node.name):cells.get(node);
     const edge=(from,to)=>{if(from&&to)edges.push([from,to]);};
-    const body=(nodes,outer,fn=null)=>{const owner=scope(outer);predeclare(nodes,owner);if(fn){for(const param of fn.params||[]){declaration(owner,param,Symbol(param));const annotation=fn.paramTypes?.[param];if(arrayValues&&annotation?.isArray)arrayConstraints.push({cell:binding(owner,param),type:(annotation.text||'any[]').replace(/\[\]$/,'')});if(multiplayer&&annotation&&(annotation.isArray||annotation.text&&!['any','mp.Player'].includes(annotation.text)))playerConstraints.add(binding(owner,param));}vars(nodes,owner);owner.result=fn.result;}for(const node of nodes||[])visit(node,owner);return owner;};
+    const body=(nodes,outer,fn=null)=>{const owner=scope(outer);predeclare(nodes,owner);if(fn&&classModel&&(fn.classThis||fn.plainFunction)){declaration(owner,'this',Symbol('this'));add(binding(owner,'this'),fn.classThis?'ClassInstance':'Opaque');}if(fn){for(const param of fn.params||[]){declaration(owner,param,Symbol(param));const annotation=fn.paramTypes?.[param];if(arrayValues&&annotation?.isArray)arrayConstraints.push({cell:binding(owner,param),type:(annotation.text||'any[]').replace(/\[\]$/,'')});if(multiplayer&&annotation&&(annotation.isArray||annotation.text&&!['any','mp.Player'].includes(annotation.text)))playerConstraints.add(binding(owner,param));}vars(nodes,owner);owner.result=fn.result;}for(const node of nodes||[])visit(node,owner);return owner;};
+    // Class formals, results and fields (constraint consumer only): a single
+    // top-level class with no heritage, statics, generics or optional/rest
+    // formals, whose name is used only as a `new` callee. Its constructor
+    // formals receive every actual `new` argument; method/accessor/field cells
+    // follow member sites only through a receiver proved ClassInstance (any
+    // other receiver makes the member Opaque; a Null/Undefined alternative
+    // faults in PXT before entry or read, so it contributes nothing). Member escapes, computed access,
+    // deletes and unmodelled writes poison every member cell.
+    let classModel=null;
+    if(classMembers){
+        const classes=[],identifiers=[],callees=new Set(),targets=new Set();
+        const scan=(node,parent,slot)=>{if(!node||typeof node!=='object')return;if(Array.isArray(node)){node.forEach(child=>scan(child,parent,slot));return;}
+            if(node.type==='Class')classes.push(node);if(node.type==='Identifier')identifiers.push({node,parent,slot});
+            if(node.type==='Member'&&parent?.type==='Call'&&slot==='callee'&&!parent.isNew)callees.add(node);
+            if(node.type==='Member'&&parent?.type==='Assignment'&&parent.op==='='&&slot==='left')targets.add(node);
+            for(const [name,value]of Object.entries(node))if(name!=='originalBody'&&value&&typeof value==='object')scan(value,node,name);};
+        scan(program,null,null);
+        const node=classes.length===1&&(program.body||[]).includes(classes[0])?classes[0]:null;
+        const reserved=new Set([...Object.getOwnPropertyNames(Object.prototype),'constructor','prototype']);
+        const signatureOk=method=>!method.isStatic&&!method.optionalParams?.length&&!method.parameterDefaults?.length&&!method.restParam&&!method.typeParameters?.length&&new Set(method.params).size===method.params.length;
+        const fieldNames=new Set((node?.fields||[]).map(field=>field.name)),methodNames=new Map(),getters=new Map(),setters=new Map();
+        let admitted=!!node&&!node.base&&!node.heritage&&!node.unsupported?.length&&!node.typeParameters?.length&&(!node.ctor||signatureOk(node.ctor))&&(node.fields||[]).every(field=>!field.isStatic&&!reserved.has(field.name));
+        for(const method of node?.methods||[]){
+            const table=method.kind==='get'?getters:method.kind==='set'?setters:method.kind==='method'?methodNames:null;
+            if(!table||table.has(method.name)||!signatureOk(method)||reserved.has(method.name)||fieldNames.has(method.name)||method.kind==='method'&&(getters.has(method.name)||setters.has(method.name))||method.kind!=='method'&&methodNames.has(method.name))admitted=false;
+            else table.set(method.name,method);
+        }
+        if(admitted&&fieldNames.size!==(node.fields||[]).length)admitted=false;
+        if(admitted&&identifiers.some(({node:id,parent,slot})=>id.name===node.name&&!(parent?.type==='Call'&&parent.isNew&&slot==='callee')))admitted=false;
+        if(admitted){
+            const poison=key(),fields=new Map([...fieldNames].map(name=>[name,key()])),results=new Map(),params=new Map(),pending=[];
+            const resultOf=method=>{if(!results.has(method))results.set(method,key());return results.get(method);};
+            const bad=()=>add(poison,'Opaque');
+            const modelled=new WeakSet();
+            classModel={node,poison,modelled,field:name=>fields.get(name),result:resultOf,params:(method,cells)=>params.set(method,cells),
+                visit(site,current){
+                    // Modelled member reads and method calls take their value
+                    // only from the conditional member edges below.
+                    if(site.type==='Member'&&!targets.has(site)&&!callees.has(site)&&(getters.has(site.name)||fields.has(site.name))||
+                        site.type==='Call'&&!site.isNew&&site.callee?.type==='Member'&&methodNames.has(site.callee.name))modelled.add(site);
+                    if(['Call','Member','Assignment','Update','Index'].includes(site.type)||site.type==='Unary'&&site.op==='delete')pending.push({site,current});},
+                newCall(site){pending.push({site,construct:true});},
+                finish(){
+                    const member=(site,target,producer)=>edges.push([cell(site.object),target,'classMember',producer]);
+                    const writeTarget=name=>setters.has(name)?params.get(setters.get(name))?.[0]:fields.get(name);
+                    for(const {site,current,construct}of pending){
+                        if(construct){const formals=node.ctor?params.get(node.ctor)||[]:[];
+                            if(site.args.length>formals.length||site.args.some(arg=>arg?.type==='Spread')||site.typeArguments?.length)bad();
+                            formals.forEach((formal,index)=>{if(index<site.args.length)edge(cell(site.args[index]),formal);else add(formal,'Undefined');});continue;}
+                        if(site.type==='Index'){edges.push([cell(site.object),poison,'classIndex']);continue;}
+                        if(site.type==='Unary'){if(site.argument?.type==='Member'&&(fields.has(site.argument.name)||methodNames.has(site.argument.name)||getters.has(site.argument.name)||setters.has(site.argument.name)))bad();continue;}
+                        if(site.type==='Call'){const callee=site.callee;if(site.isNew||callee?.type!=='Member'||!methodNames.has(callee.name))continue;
+                            const method=methodNames.get(callee.name),formals=params.get(method)||[];
+                            if(site.args.length>formals.length||site.args.some(arg=>arg?.type==='Spread')||site.typeArguments?.length)bad();
+                            formals.forEach((formal,index)=>{if(index<site.args.length)member(callee,formal,cell(site.args[index]));else add(formal,'Undefined');});
+                            member(callee,current,resultOf(method));continue;}
+                        if(site.type==='Member'){if(callees.has(site)&&methodNames.has(site.name)||targets.has(site))continue;
+                            if(getters.has(site.name))member(site,current,resultOf(getters.get(site.name)));
+                            else if(fields.has(site.name))member(site,current,fields.get(site.name));
+                            else if(methodNames.has(site.name)||setters.has(site.name))bad();continue;}
+                        const target=site.type==='Assignment'?site.left:site.argument;
+                        if(target?.type!=='Member')continue;const name=target.name;
+                        if(!fields.has(name)&&!methodNames.has(name)&&!getters.has(name)&&!setters.has(name))continue;
+                        const into=writeTarget(name);if(!into){bad();continue;}
+                        if(site.type==='Assignment'&&site.op==='='){member(target,into,cell(site.right));continue;}
+                        const value=key();
+                        if(site.type==='Update')derived.push({result:value,type:'Number',operands:[cell(target)],signature:['++','--'].includes(site.op),domain:'Number'});
+                        else if(['+=','-=','*=','/=','%='].includes(site.op))derived.push({result:value,type:'Number',operands:[cell(target),cell(site.right)],signature:true,domain:'Number',stringConcat:site.op==='+=',primitiveNumeric:site.op!=='+='});
+                        else {bad();continue;}
+                        member(target,into,value);
+                    }
+                    for(const value of [...fields.values(),...results.values(),...[...params.values()].flat()])edge(poison,value);
+                }};
+        }
+    }
     const visit=(node,owner)=>{
         if(!node||typeof node!=='object')return;if(Array.isArray(node)){node.forEach(value=>visit(value,owner));return;}
         owners.set(node,owner);if(['FunctionDeclaration','Class'].includes(node.type) && (node.name?.startsWith('__bwSdkFont_') || node.name==='__bwSDK_Font'))fail('Internal Font descriptor and intrinsic names are not source bindings');
@@ -310,9 +385,17 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
             if(functions.has(functionBinding)){functions.set(functionBinding,null);fail('SDK Font procedure flow requires a unique lexical declaration');}else functions.set(functionBinding,entry);
             entry.owner=body(node.body,owner,{params:node.params,paramTypes:node.paramTypes,result});if(arrayValues&&new Set(node.params).size!==node.params.length)for(const param of node.params)add(entry.owner.bindings.get(param),'Opaque');if(completion?completion.functionFallsThrough(node):!complete(node.body))add(result,'Undefined');return;
         }
-        if(node.type==='FunctionExpression'){add(current,numericArrows.has(node)&&node.functionKind==='arrow'&&!node.params.length?'NumericCallable':'Opaque');functionScopes.set(node,body(node.body,owner,{params:node.params,paramTypes:node.paramTypes,result:key()}));const entry=callbackEntry?.entries.get(node);if(entry)for(let index=0;index<Math.min(2,node.params.length);index++)for(const type of entry[index])add(functionScopes.get(node).bindings.get(node.params[index]),type);if((arrayValues||completion)&&(completion?completion.functionFallsThrough(node):!complete(node.body)))add(functionScopes.get(node).result,'Undefined');return;}
+        if(node.type==='FunctionExpression'){add(current,numericArrows.has(node)&&node.functionKind==='arrow'&&!node.params.length?'NumericCallable':'Opaque');functionScopes.set(node,body(node.body,owner,{params:node.params,paramTypes:node.paramTypes,result:key(),plainFunction:node.functionKind!=='arrow'}));const entry=callbackEntry?.entries.get(node);if(entry)for(let index=0;index<Math.min(2,node.params.length);index++)for(const type of entry[index])add(functionScopes.get(node).bindings.get(node.params[index]),type);if((arrayValues||completion)&&(completion?completion.functionFallsThrough(node):!complete(node.body)))add(functionScopes.get(node).result,'Undefined');return;}
         if(node.type==='Class'){
             const name=binding(owner,node.name);classes.set(name,(classes.get(name)||0)+1);add(current,'Opaque');for(const field of node.fields||[])visit(field.init,owner);
+            if(classModel&&node===classModel.node){
+                for(const field of node.fields||[]){const value=classModel.field(field.name);if(field.init)edge(cell(field.init),value);else if(!field.parameterProperty)add(value,'Undefined');}
+                for(const method of [node.ctor,...(node.methods||[])].filter(Boolean)){
+                    const result=method===node.ctor?key():classModel.result(method),scope=body(method.body,owner,{params:method.params,paramTypes:method.paramTypes,result,classThis:true});
+                    if(method!==node.ctor&&!complete(method.body))add(result,'Undefined');
+                    classModel.params(method,method.params.map(name=>scope.bindings.get(name)));
+                }return;
+            }
             for(const method of [node.ctor,...(node.methods||[])].filter(Boolean))body(method.body,owner,{params:method.params,paramTypes:method.paramTypes,result:key()});return;
         }
         if(node.type==='If'){visit(node.test,owner);body(node.consequent,owner);body(node.alternate,owner);return;}
@@ -330,10 +413,14 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
         if(node.type==='ThrowStatement'){visit(node.argument,owner);return;}
         if(node.type==='Assignment'&&node.op==='='&&node.left?.type==='Identifier')writing.add(node.left);
         for(const value of Object.values(node))if(value&&typeof value==='object')visit(value,owner);
-        if(node.type==='Assignment'){if(arrayValues&&node.left?.type==='Member'&&node.left.name!=='length')arrayOperations.push({kind:'methodWrite',receiver:cell(node.left.object)});if(arrayValues&&node.left?.type==='Index')arrayOperations.push({kind:'write',receiver:cell(node.left.object),index:cell(node.left.index),value:cell(node.right)});if(node.left?.type==='Identifier')classWrites.add(binding(owners.get(node.left),node.left.name));if(node.op==='='){if(!deadResets.has(node))edge(cell(node.right),cell(node.left));}else if(node.left?.type==='Identifier')derived.push({result:binding(owners.get(node.left),node.left.name),type:'Number',operands:[cell(node.left),cell(node.right)],signature:['+=','-=','*=','/=','%=','&=','|=','^=','<<=','>>=','>>>='].includes(node.op),domain:'Number'});else add(cell(node.left),'Opaque');edge(cell(node.right),current);return;}
+        if(classModel)classModel.visit(node,current);
+        if(node.type==='Assignment'){if(arrayValues&&node.left?.type==='Member'&&node.left.name!=='length')arrayOperations.push({kind:'methodWrite',receiver:cell(node.left.object)});if(arrayValues&&node.left?.type==='Index')arrayOperations.push({kind:'write',receiver:cell(node.left.object),index:cell(node.left.index),value:cell(node.right)});if(node.left?.type==='Identifier')classWrites.add(binding(owners.get(node.left),node.left.name));if(node.op==='='){if(!deadResets.has(node))edge(cell(node.right),cell(node.left));}else if(node.left?.type==='Identifier')derived.push({result:binding(owners.get(node.left),node.left.name),type:'Number',operands:[cell(node.left),cell(node.right)],signature:['+=','-=','*=','/=','%=','&=','|=','^=','<<=','>>=','>>>='].includes(node.op),domain:'Number'});else if(!classModel?.modelled.has(node.left))add(cell(node.left),'Opaque');edge(cell(node.right),current);return;}
         if(arrayValues&&node.type==='Update'&&node.argument?.type==='Member'&&node.argument.name!=='length')arrayOperations.push({kind:'methodWrite',receiver:cell(node.argument.object)});
         if(arrayValues&&node.type==='Update'&&node.argument?.type==='Index')arrayOperations.push({kind:'update',receiver:cell(node.argument.object),index:cell(node.argument.index)});
         if(node.type==='Update'&&node.argument?.type==='Identifier'){classWrites.add(binding(owners.get(node.argument),node.argument.name));derived.push({result:binding(owners.get(node.argument),node.argument.name),type:'Number',operands:[cell(node.argument)],signature:['++','--'].includes(node.op),domain:'Number'});edge(cell(node.argument),current);return;}
+        if(classModel&&node.type==='Call'&&node.isNew&&node.callee?.type==='Identifier'&&node.callee.name===classModel.node.name){
+            classModel.newCall(node);
+        }
         if(node.type==='Call'&&node.isNew&&node.callee?.type==='Identifier'){classCalls.push({value:current,name:binding(owner,node.callee.name)});return;}
         if(arrayValues&&node.type==='Array'){const token=arrayToken(node);add(current,token);for(const item of node.items)edge(cell(item),token.element);return;}
         if(node.type==='Index'&&loopEntry?.entries.has(node)){for(const type of loopEntry.entries.get(node))add(current,type);return;}
@@ -390,7 +477,7 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
         else if(destroyedNumbers?.has(node)){destroyedNumberUsed=true;add(current,'Number');}
         else if(spriteAyNumbers?.primitiveHas?.(node)){for(const type of ['Number','String','Boolean','Null','Undefined'])add(current,type);}
         else if(node.type==='Call'&&sdk.has(node.callee)&&path(node.callee)==='game.askForString')add(current,'String');
-        else {add(current,'Opaque');if(arrayValues&&node.type==='Call'&&node.callee?.type==='Member')for(const value of [node.callee.object,...node.args])arrayOperations.push({kind:'escape',receiver:cell(value)});}
+        else {if(!classModel?.modelled.has(node))add(current,'Opaque');if(arrayValues&&node.type==='Call'&&node.callee?.type==='Member')for(const value of [node.callee.object,...node.args])arrayOperations.push({kind:'escape',receiver:cell(value)});}
     };
     const collectPrints=node=>{if(!node||typeof node!=='object')return;if(Array.isArray(node)){node.forEach(collectPrints);return;}if(node.type==='Call'&&node.callee?.type==='Member'&&['print','printCenter'].includes(node.callee.name)){const center=node.callee.name==='printCenter',fontIndex=center?3:4;if(node.args.length>fontIndex)prints.push({node,center,fontIndex});}Object.values(node).forEach(value=>{if(value&&typeof value==='object')collectPrints(value);});};
     visit(program,global);collectPrints(program);
@@ -615,8 +702,9 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
             }
         }return changed;
     };
+    classModel?.finish();
     const propagate=()=>{let changed;do{changed=propagateArrays();
-        for(const[from,to,mode,name]of edges){if(mode==='imageDimension'){if(exactType(from,'Image'))changed=add(to,'Number')||changed;else if(types.get(from)?.size)changed=add(to,'Opaque')||changed;}else if(mode==='field'){if(isFont(from)){changed=add(to,name==='data'?'GlyphBuffer':'Number')||changed;if(name==='multiplier')changed=add(to,'Undefined')||changed;}else if(types.get(from)?.size)changed=add(to,'Opaque')||changed;}else for(const type of types.get(from)||[])changed=add(to,type)||changed;}
+        for(const[from,to,mode,name]of edges){if(mode==='classMember'){const receiver=types.get(from);if(receiver?.size){if(receiver.has('ClassInstance')&&[...receiver].every(type=>['ClassInstance','Null','Undefined'].includes(type)))for(const type of types.get(name)||[])changed=add(to,type)||changed;else changed=add(to,'Opaque')||changed;}}else if(mode==='classIndex'){if(types.get(from)?.has('ClassInstance'))changed=add(to,'Opaque')||changed;}else if(mode==='imageDimension'){if(exactType(from,'Image'))changed=add(to,'Number')||changed;else if(types.get(from)?.size)changed=add(to,'Opaque')||changed;}else if(mode==='field'){if(isFont(from)){changed=add(to,name==='data'?'GlyphBuffer':'Number')||changed;if(name==='multiplier')changed=add(to,'Undefined')||changed;}else if(types.get(from)?.size)changed=add(to,'Opaque')||changed;}else for(const type of types.get(from)||[])changed=add(to,type)||changed;}
         for(const cell of playerConstraints)if(types.get(cell)?.has('Player'))changed=add(cell,'Opaque')||changed;
         for(const item of derived)if(derivedValid(item)){
             if(primitiveAddition(item)){
@@ -1766,7 +1854,7 @@ function primitiveConstraintGraphOptions(program,ordinaryPrimitiveSdkNumbers,sce
   for(const child of Object.values(node))if(child&&typeof child==='object')scanWrites(child);};
  scanWrites(program);
  const numericHelpers=new Set([...helperNames].filter(([name,fn])=>fn&&!written.has(name)).map(([,fn])=>fn));
- return {unboundIsOpaque:true,opaqueDeclarationValues:true,ordinaryPrimitiveSdkNumbers,sceneClockNumbers,arrayCallbackParameters:true,arrayLoopEntries:true,provenArrayLength:true,primitiveComparisons:true,closureEntries:true,numericHelpers,closedOrdinaryEntries};
+ return {unboundIsOpaque:true,opaqueDeclarationValues:true,ordinaryPrimitiveSdkNumbers,sceneClockNumbers,arrayCallbackParameters:true,arrayLoopEntries:true,provenArrayLength:true,primitiveComparisons:true,closureEntries:true,numericHelpers,closedOrdinaryEntries,classMembers:true};
 }
 export function validateProcedureConstraintSource(program,{onlyFunctions=null,ordinaryPrimitiveSdkNumbers=false,sceneClockNumbers=false,closedOrdinaryEntries=false}={}) {
  const graph=analyseSourceValues(program,primitiveConstraintGraphOptions(program,ordinaryPrimitiveSdkNumbers,sceneClockNumbers,closedOrdinaryEntries),null,null,true);
