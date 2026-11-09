@@ -280,14 +280,27 @@ function buildGeneratedHelperBindings(program,profile,fastAmbient){
                 return !!values?.length&&values.every(v=>v.items?.length&&v.items.every(item=>item.type==='Array'));
             }
             // Exact canonical ArrayAccess only transports its actual argument.
-            if(n?.type==='Call'&&n.args?.length===1){
-                const fn=binding(n.callee)?.node;
-                return (fastAmbient?member(fn):internal.has(fn))&&fn?.params?.length===1&&fn.body?.length===2&&fn.body[0].type==='Declaration'&&
-                    fn.body[0].decls.length===1&&fn.body[0].decls[0].init?.type==='Identifier'&&fn.body[0].decls[0].init.name===fn.params[0]&&
-                    fn.body[1].type==='Return'&&fn.body[1].value?.type==='Identifier'&&fn.body[1].value.name===fn.body[0].decls[0].name&&arrays(n.args[0],seen);
-            }
+            if(accessCall(n))return arrays(n.args[0],seen);
             return false;
         };
+        // A formal declared any[] likewise makes PXT compile its methods as the
+        // builtin Array methods; its values are never inferred from this.
+        function arrayParameter(n){
+            if(n?.type!=='Identifier')return false;
+            const b=binding(n);
+            return b?.kind==='parameter'&&Array.isArray(b.node?.params)&&b.node.params.includes(n.name)&&
+                b.node.paramTypes?.[n.name]?.text==='any[]'&&b.node.paramTypes[n.name].isArray===true;
+        }
+        // An internal canonical ArrayAccess call: its declared any[] result
+        // makes PXT compile a method on it as the builtin Array method, which
+        // faults on a non-Array argument rather than dispatching user code.
+        function accessCall(n){
+            if(n?.type!=='Call'||n.args?.length!==1||n.args[0]?.type==='Spread')return false;
+            const fn=binding(n.callee)?.node;
+            return (fastAmbient?member(fn):internal.has(fn))&&fn?.params?.length===1&&fn.returnType==='any[]'&&fn.body?.length===2&&fn.body[0].type==='Declaration'&&
+                fn.body[0].decls.length===1&&fn.body[0].decls[0].typeName==='any[]'&&fn.body[0].decls[0].init?.type==='Identifier'&&fn.body[0].decls[0].init.name===fn.params[0]&&
+                fn.body[1].type==='Return'&&fn.body[1].value?.type==='Identifier'&&fn.body[1].value.name===fn.body[0].decls[0].name;
+        }
         const path=n=>n?.type==='Identifier'?n.name:n?.type==='Member'?path(n.object)+'.'+n.name:null;
         for(const n of nodes){
             if(fastAmbient?ambientWithin(n):within(n,internal))continue;
@@ -300,7 +313,7 @@ function buildGeneratedHelperBindings(program,profile,fastAmbient){
                 }else if(n.callee?.type==='Member'){
                     let base=n.callee;while(base.type==='Member')base=base.object;
                     if(namespaceCalls.has(path(n.callee))){if(base.type!=='Identifier'||binding(base)||counts.has(base.name))return false;}
-                    else if(!methodCalls.has(n.callee.name)||!arrays(n.callee.object))return false;
+                    else if(!methodCalls.has(n.callee.name)||!(arrays(n.callee.object)||accessCall(n.callee.object)||arrayParameter(n.callee.object)))return false;
                 }else return false;
             }
             if(n.type==='Assignment'||n.type==='Update'||n.type==='Unary'&&n.op==='delete'){
