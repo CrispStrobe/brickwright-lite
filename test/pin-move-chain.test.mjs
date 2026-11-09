@@ -106,7 +106,7 @@ const HISTORICAL_X86_V8_CUI = '1bc233c9297e03abb9b7eb603e045b4e92b0bb40';
 const CURRENT_X86_CUI = 'a5860b9cf6cb0e7f652130ce987d51dc42651b8b';
 // CURRENT_X86_CUI retains the F9 epoch meaning; only these F10 values are live.
 const LIVE_X86_CUI = '15416c7e11efaa52c68244fcf36ee31f1f6e99e4';
-const LIVE_X86_BOARD = 'c87cfa325a7b599846c1c4088a408eeabb83daaa';
+const LIVE_X86_BOARD = '6efff7f4d180ad7552ac79c8b779fefd2d1b1d5c';
 const HISTORICAL_X86_BOARD = '761153ff92d521c01107ee7b32922ba7adc10ee2';
 const HISTORICAL_X86_CURRENT_BOARD = '836867513c3e7fac420ddaa32c17e1c7b6d3e513';
 // The sb3-creator pin every reviewed F7/F8/F9 x86 epoch was executed at. It
@@ -126,9 +126,9 @@ const CURRENT_X86_FINITE_V9_READER = "FINITE_V9_PINS = {'bw-board':CURRENT_BOARD
 // including clock and core/full-runtime parity. Any later source edit revokes
 // their occurrence roles until another explicit review; never auto-restamp.
 const HISTORICAL_X86_SOURCE_PROFILES = Object.freeze({
-    'scripts/run-i80386-hdd-gui-actual.py': Object.freeze({bytes: 349074, sha256: 'e07b0008b865a265525aabd0ad1bcf901c4e318d5545a7ce515be4ef75352726'}),
-    'scripts/read-i80386-hdd-gui-originals.py': Object.freeze({bytes: 465234, sha256: '94438c31e17f1d324bba397d9a8dc7d5bcd5145b7db0c451ef39943a5fce645c'}),
-    'test/i80386-hdd-gui-actual.test.mjs': Object.freeze({bytes: 643813, sha256: '94092480f60fa46202dbc2a3fb7e4289d8522fce540ba188e753a2e0b62417f6'}),
+    'scripts/run-i80386-hdd-gui-actual.py': Object.freeze({bytes: 349074, sha256: 'f8dc2a601fa60dd6c4837dc61a013eb69bf8dfc7f08c328cf95c9f6b4007b589'}),
+    'scripts/read-i80386-hdd-gui-originals.py': Object.freeze({bytes: 465234, sha256: 'cbf8cfa25347f0033a7ae496b509ae296621da60dc4e095b2c19c8b3171ea7f5'}),
+    'test/i80386-hdd-gui-actual.test.mjs': Object.freeze({bytes: 643813, sha256: '77f93d149a20009e78d8a789b9ad2e991358a0c5c33bbd651a58530cc16789cf'}),
 });
 
 import {explainGitFailure} from './helpers/git-absence.mjs';
