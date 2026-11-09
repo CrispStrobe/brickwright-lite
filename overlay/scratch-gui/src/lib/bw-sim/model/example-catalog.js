@@ -1890,6 +1890,36 @@ export const MODEL_LESSONS = Object.freeze({
             "Ritzel"
         ]
     },
+    "rimrun.ldr": {
+        "pieces": 510,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "inertia",
+        "description": {
+            "en": "One motor lifts a shared gate above two free rollers on a fixed incline. Both have the same mass and rolling radius; only the ballast sits nearer the axle or farther out, and the roller with the ballast near the axle rolls faster. The comparison scene swaps the ballast between lanes, and the lead swaps with it.",
+            "de": "Ein Motor hebt eine gemeinsame Schranke über zwei freien Rollkörpern auf einer festen schiefen Ebene. Beide haben dieselbe Masse und denselben Rollradius; nur der Ballast sitzt näher an der Achse oder weiter außen, und der Rollkörper mit achsnahem Ballast rollt schneller. Die Vergleichsszene tauscht den Ballast zwischen den Spuren, und der Vorsprung wechselt mit."
+        },
+        "author": "Brickwright contributors",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Rolling inertia race",
+            "de": "Trägheits-Rollrennen"
+        },
+        "keywords": [
+            "Rolling inertia race",
+            "Trägheits-Rollrennen",
+            "rolling inertia",
+            "moment of inertia",
+            "rolling race",
+            "inclined plane",
+            "radial ballast",
+            "Trägheitsmoment",
+            "Rollversuch",
+            "schiefe Ebene"
+        ]
+    },
     "watt-line.ldr": {
         "pieces": 148,
         "motors": 1,

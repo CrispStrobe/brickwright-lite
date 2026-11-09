@@ -1145,6 +1145,25 @@
         "Zahnstange",
         "Ritzel"
       ]
+    },
+    {
+      "models": [
+        "rimrun"
+      ],
+      "name": {
+        "en": "Rolling inertia race",
+        "de": "Trägheits-Rollrennen"
+      },
+      "aliases": [
+        "rolling inertia",
+        "moment of inertia",
+        "rolling race",
+        "inclined plane",
+        "radial ballast",
+        "Trägheitsmoment",
+        "Rollversuch",
+        "schiefe Ebene"
+      ]
     }
   ]
 }

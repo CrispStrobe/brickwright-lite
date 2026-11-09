@@ -13,3 +13,15 @@ regenerated catalogue/lesson outputs if promoted; RimRun entries in
 handoff section 000 and the Q5 line of `lanes/2026-11-03-robot-lab-pending.md`.
 
 Not in scope: other Q tasks, thresholds, gates, the harness's validation logic.
+
+Result (2026-11-09):
+- Construction: the hub is pinned to the motor posts (four 2780 pins). The hosted construction gate
+  also found the supplier's eight half bushes 7.5 LDU inside their wheels; they are seated flush now.
+- Supplier checks: the runner and judge are not in the repository. Post-finish catch and fault-stop
+  hold were measured on the real VM with the virtual SPIKE hub; both behave correctly (values in the
+  checkpoint). The likely cause of the declared catch failure is a check taken at the instant of
+  finish, while a late roller is still rebounding.
+- Judge `rolling-inertia-v1` (`scripts/lib/sim-lab-rimrun-judge.mjs`): a = g·sinθ/(1+I/mr²) less the
+  engine's default 0.05/s damping, with I from the compiled colliders. Measured ratio 1.0816 against
+  1.0778 predicted. `rimrun-swapped` moves the lead to the other lane. Removing the ballast gives
+  ratio 1.0006 (law lost).

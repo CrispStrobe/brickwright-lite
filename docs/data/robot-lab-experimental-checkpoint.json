@@ -3841,10 +3841,10 @@
       "title": "RimRun — equal weight, different roll",
       "placements": 506,
       "archive": "rimrun-addon.zip sha256 3d59bd7595790799bc4eefb0ac282ceafdcb4c8ad110869b15d453c5b5fa977f",
-      "canonicalLdrawSha256": "f09778a4a20fd4ab5bb72283a80c39152834f14a3fff3ba1037fdcf5ae8d426a",
+      "canonicalLdrawSha256": "c0a3a2e415c1d01c56a0fb50418f051102942b4ec9d8267a108437b000467434",
       "program": "rimrun.bw",
       "programSha256": "e260b0f1619ef8c5e352edf6d621d94e23386e73afa49a3615e0809f1af96532",
-      "adaptation": "Model, program and licence bytes unchanged from the package; the supplied lesson's links to the still-experimental afterturn and inertia-loop were dropped (lessons may link only established models); comparison lessons and the per-file comparison licence copies written here. Needs the virtual SPIKE hub (toolbar Run connects it).",
+      "adaptation": "Model, program and licence bytes unchanged from the package; the supplied lesson's links to the still-experimental afterturn and inertia-loop were dropped (lessons may link only established models); comparison lessons and the per-file comparison licence copies written here. Needs the virtual SPIKE hub (toolbar Run connects it). Q5 (2026-11-09): the loose SPIKE hub is pinned to the two motor posts with four 2780 friction pins, in the frame's incline orientation (the loose-part warning is gone), and the eight 32123b half bushes, which sat 7.5 LDU inside their 49295 wheels, now sit flush against the wheel faces. The program is unchanged.",
       "supplierClaims": "Rolling comparison PASS; complete native qualification FAIL (post-finish catch/settling, fault-stop hold speed) (supplier)",
       "simulatorLaw": {
         "verdict": "AGREES",
@@ -3852,14 +3852,22 @@
       },
       "poweredMotion": "HEADLESS_COMPLETED (SPIKE)",
       "mechanicalLaw": "SIMULATOR_AGREES",
-      "causalControl": "PASS (rimrun-swapped)",
+      "causalControl": "PASS: rimrun-swapped exchanges the ballast layouts, and the inner-ballast roller still leads, now in the right lane (ratio 1.0794, lead 20.8 mm). Disconnection removes all 44 ballast parts: the identical rollers' ratio falls to 1.0006 (< 1.039) and the judge refuses the run.",
       "browserLoad": "NOT_RUN",
       "savedProjectReplay": "NOT_RUN",
-      "noveltyNote": "Importer warns loose-part for the frame because the hub stands free beside the ramp (declared in ASSEMBLY.md); blocks promotion until mounted.",
+      "noveltyNote": "The hub is mounted (Q5); prepareModel reports no issues.",
       "promotionReview": {
-        "date": "2026-11-07",
-        "decision": "STAYS_EXPERIMENTAL",
-        "reason": "Not repaired in P6. The hub (45601) stands on the floor at x=-820 LDU; the nearest frame member is about 170 LDU away and the four foot assemblies compile as separate bodies, so mounting it needs a new real-part bridge, not a one-part shift. The supplier-declared failing post-finish catch and watchdog-hold gates also remain. No judge written."
+        "date": "2026-11-09",
+        "decision": "PROMOTED",
+        "reason": "Hub mounted and wheel collars seated (construction gate). Judge rolling-inertia-v1: a = g*sin(theta)/(1+I/(m r^2)) less the engine's default 0.05/s body damping, with I, m and r taken from the compiled colliders (I equals the engine's own tensor). Local native ordinary, strict, lane-swapped and disconnected qualification runs pass: inner/outer ratio 1.0816 against 1.0778 predicted (gate 2%), lead 21.2 mm, slip under 0.005%, incline 6.8428 deg, hub drift 0.02 mm. Each roller runs about 4% below its damped prediction (gate 5%); that residual is recorded, not explained. Manual browser controls, saved-project replay and export not run. Hosted results are recorded on the PR."
+      },
+      "judge": "rolling-inertia-v1",
+      "supplierChecksReview": {
+        "date": "2026-11-09",
+        "located": false,
+        "note": "The supplier's runner and judge, with their post-finish catch and fault-stop hold checks, are not in this repository and were not found elsewhere. Both behaviours were measured instead, on the real VM and engine with the virtual SPIKE hub the program needs (toolbar Run).",
+        "postFinishCatch": "PASS as measured: both rollers end in their catches about 318 mm down the track. The program ends 0.5 s after the gate returns, while a late roller can still be rebounding off its shoe (32 mm/s 40 ms after the finish, under 2 mm/s within 200 ms). Over the final second of a 3 s after-run: at most 3.6 mm/s frame to frame and at most 0.05 mm net movement, with the 150 N/m shoes slowly taking up the rollers' downhill weight (about 0.086 N). A check taken at the instant of finish would see the rebound; that is the likely cause of the supplier's declared failure, not confirmed without its check. The judge now checks rest over the final second (at most 10 mm/s and 1 mm net).",
+        "faultStopHold": "Behaves correctly as measured, but it is not a judged gate. In a test-only copy of the program with the upper watchdog limit lowered to 50 deg, the fault fired during the 400 deg/s release: the motor switched to hold within one 60 ms sample, the gate stopped at 63.4 deg (about 13 deg past the fault, consistent with 363 deg/s) and then held within 0.1 deg for 2 s. Without the virtual SPIKE hub (an unconnected direct run) the start-of-run hold is not applied, the gate drifts under gravity and the program faults during homing. That is not how the program is run."
       }
     },
     {
@@ -3867,10 +3875,10 @@
       "title": "RimRun — ballast layouts exchanged (comparison)",
       "placements": 506,
       "archive": "rimrun-addon.zip sha256 3d59bd7595790799bc4eefb0ac282ceafdcb4c8ad110869b15d453c5b5fa977f",
-      "canonicalLdrawSha256": "ec8760bfe2e870e3265b80569d085884054a3e567ccb490def72e969ffbdb498",
+      "canonicalLdrawSha256": "6febddbf521ae10eca34ca83978f041009863158513e977b8aaab1af57086d17",
       "program": "rimrun.bw",
       "programSha256": "e260b0f1619ef8c5e352edf6d621d94e23386e73afa49a3615e0809f1af96532",
-      "adaptation": "Model, program and licence bytes unchanged from the package; the supplied lesson's links to the still-experimental afterturn and inertia-loop were dropped (lessons may link only established models); comparison lessons and the per-file comparison licence copies written here. Needs the virtual SPIKE hub (toolbar Run connects it).",
+      "adaptation": "Model, program and licence bytes unchanged from the package; the supplied lesson's links to the still-experimental afterturn and inertia-loop were dropped (lessons may link only established models); comparison lessons and the per-file comparison licence copies written here. Needs the virtual SPIKE hub (toolbar Run connects it). Q5 (2026-11-09): same hub mount and collar seating as rimrun.",
       "supplierClaims": "as rimrun",
       "simulatorLaw": {
         "verdict": "AGREES",
@@ -3882,9 +3890,9 @@
       "browserLoad": "NOT_RUN",
       "savedProjectReplay": "NOT_RUN",
       "promotionReview": {
-        "date": "2026-11-07",
+        "date": "2026-11-09",
         "decision": "STAYS_EXPERIMENTAL",
-        "reason": "Comparison variant of rimrun; stays experimental by design."
+        "reason": "Comparison variant and causal control for rimrun (rolling-inertia-v1); stays experimental by design."
       }
     },
     {

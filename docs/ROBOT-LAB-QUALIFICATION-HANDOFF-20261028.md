@@ -107,9 +107,11 @@ doable as geometry or test-design work:
   `lane/robot-evenhand-20261107`, no PR), but removing the counterweights
   makes the arm droop past the program's 3° start guard. Needs a removal that
   does not trip the guard, or a justified different disconnection.
-- **RimRun**: mount the hub with real bridging parts (about 170 LDU to the
-  frame), repair the supplier's catch and watchdog-hold checks, then write a
-  judge with `rimrun-swapped` as the causal control.
+- **RimRun**: done in Q5 (PR #1683, 2026-11-09) and promoted with judge `rolling-inertia-v1`.
+  The hub is pinned to the motor posts with four 2780 pins, and the wheel half bushes, which sat
+  7.5 LDU inside the wheels, are seated flush. The supplier's catch and fault-stop checks are not in
+  the repository; both behaviours were measured instead, and the values are in the checkpoint.
+  `rimrun-swapped` is the causal control. Disconnection removes all ballast.
 
 Not run for the newly promoted models: manual browser controls (recorded as
 not run in the checkpoint). Standing rules above still apply; never loosen the

@@ -908,21 +908,6 @@ export const EXPERIMENTAL_MODELS = Object.freeze([
         "blocked": false
     },
     {
-        "file": "rimrun.ldr",
-        "title": {
-            "en": "RimRun — equal weight, different roll",
-            "de": "RimRun — gleiche Masse, anderes Rollverhalten"
-        },
-        "example": "rimrun.bw",
-        "mat": "plain",
-        "experimental": true,
-        "blocked": false,
-        "intro": {
-            "en": "One motor lifts a shared release gate above two free rollers on a fixed incline. Their parts, mass and rolling radius match; only the balanced ballast sits nearer the axis or farther out. Compare their free rolling before the four independent spring catches, then exchange the ballast layouts between lanes with the supplied comparison model and run the same program. The native rolling comparison passes; complete-run qualification and one watchdog holding limit fail.",
-            "de": "Ein Motor hebt eine gemeinsame Startschranke über zwei freien Rollkörpern auf einer festen schiefen Ebene. Teile, Masse und Rollradius stimmen überein; nur der symmetrische Ballast sitzt näher an der Achse oder weiter außen. Vergleiche das freie Rollen vor den vier unabhängigen Federfängern, vertausche dann die Ballastanordnungen mit dem Vergleichsmodell zwischen den Spuren und starte dasselbe Programm. Der native Rollvergleich besteht die Prüfungen; die Gesamtqualifikation und ein Haltegrenzwert des Zeitwächters bestehen sie nicht."
-        }
-    },
-    {
         "file": "rimrun-swapped.ldr",
         "title": {
             "en": "RimRun — ballast layouts exchanged (comparison)",
@@ -2558,49 +2543,6 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
             "Fünfgelenk",
             "Bahnplanung",
             "experimental",
-            "experimentell"
-        ],
-        "experimental": true
-    },
-    "rimrun.ldr": {
-        "pieces": 506,
-        "motors": 1,
-        "hubs": [
-            "spike-prime"
-        ],
-        "topic": "inertia",
-        "description": {
-            "en": "One motor lifts a shared release gate above two free rollers on a fixed incline. Their parts, mass and rolling radius match; only the balanced ballast sits nearer the axis or farther out. Compare their free rolling before the four independent spring catches, then exchange the ballast layouts between lanes with the supplied comparison model and run the same program. The native rolling comparison passes; complete-run qualification and one watchdog holding limit fail.",
-            "de": "Ein Motor hebt eine gemeinsame Startschranke über zwei freien Rollkörpern auf einer festen schiefen Ebene. Teile, Masse und Rollradius stimmen überein; nur der symmetrische Ballast sitzt näher an der Achse oder weiter außen. Vergleiche das freie Rollen vor den vier unabhängigen Federfängern, vertausche dann die Ballastanordnungen mit dem Vergleichsmodell zwischen den Spuren und starte dasselbe Programm. Der native Rollvergleich besteht die Prüfungen; die Gesamtqualifikation und ein Haltegrenzwert des Zeitwächters bestehen sie nicht."
-        },
-        "author": "CrispStrobe",
-        "license": "BSD-3-Clause",
-        "mechanism": {
-            "en": "gravity-driven rolling: matched mass and radius, different axial inertia, lane-swap control",
-            "de": "schwerkraftgetriebenes Rollen: gleiche Masse und gleicher Radius, anderes Trägheitsmoment, Spurtausch als Kontrolle"
-        },
-        "keywords": [
-            "RimRun",
-            "rolling inertia",
-            "moment of inertia",
-            "radial ballast",
-            "same mass",
-            "rolling race",
-            "inclined plane",
-            "no-slip rolling",
-            "energy partition",
-            "lane swap",
-            "shared release gate",
-            "Trägheitsmoment",
-            "Rollversuch",
-            "schiefe Ebene",
-            "Ballast",
-            "gleiche Masse",
-            "Spurtausch",
-            "Startschranke",
-            "experimental",
-            "prototype",
-            "unverified",
             "experimentell"
         ],
         "experimental": true
