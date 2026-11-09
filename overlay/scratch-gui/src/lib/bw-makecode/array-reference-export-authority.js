@@ -1375,6 +1375,34 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         if(reading.has(node))return new Set([bad]);
         reading.add(node);try{return computeNode(target,node);}finally{reading.delete(node);}
     }
+    // Call-site pruning of a generated lookup: when the argument for P is a
+    // constant string literal and the body is exactly (parameter declarations,
+    // then) `IF P ==/=== <same literal> THEN return X` and a fallback, with no
+    // writer of P but call arguments, the IF is taken and the call yields X.
+    // Any other shape (else branch, extra THEN statement, other writer,
+    // non-literal argument or comparison operand) returns null: no pruning.
+    const constantText=value=>{
+        if(!value)return null;if(Array.isArray(value.raw))return value.raw[0]===10&&typeof value.raw[1]==='string'?value.raw[1]:null;
+        const n=value.node;return n?.opcode==='text'&&n.shadow&&exactKeys(n,[],['TEXT'])&&typeof n.fields?.TEXT?.[0]==='string'?n.fields.TEXT[0]:null;
+    };
+    const prunedLookupReturn=callNode=>{
+        const call=calls.find(c=>c.node===callNode),fn=call?.fn;
+        if(!fn||fn.invalid||fn.unknownEntry||implicitEntries.has(fn)||!call.args||call.args.length!==fn.params.length)return null;
+        let first=block(fn.target,fn.root.next);const skipped=new Set();
+        while(first?.opcode==='arcade_declareParameterConstraint'&&!skipped.has(first)){skipped.add(first);first=block(fn.target,first.next);}
+        if(first?.opcode!=='control_if'||invalid.has(first)||!exactKeys(first,['CONDITION','SUBSTACK']))return null;
+        const condition=input(first,'CONDITION',fn.target).node;
+        if(condition?.opcode!=='arrays_valueCompare'||!exactKeys(condition,['LEFT','RIGHT'],['OP'])||!['==','==='].includes(literal(condition,'OP',fn.target)))return null;
+        const left=input(condition,'LEFT',fn.target).node,expected=constantText(input(condition,'RIGHT',fn.target));
+        if(left?.opcode!=='arcade_getLocal')return null;
+        const index=fn.params.indexOf(literal(left,'NAME',fn.target)),c=index>=0?binding(fn.target,left):null;
+        if(!c||c!==localCell(fn,fn.params[index])||c.directBad||!c.writers.every(w=>w.argument))return null;
+        // A non-literal comparison operand (null) never equals a literal argument.
+        const argument=constantText(call.args[index]);if(argument===null||argument!==expected)return null;
+        const only=block(fn.target,first.inputs.SUBSTACK?.[1]);
+        if(only?.opcode!=='arcade_returnValue'||only.next!=null||only.mutation!=null||invalid.has(only)||!exactKeys(only,['VALUE']))return null;
+        return input(only,'VALUE',fn.target);
+    };
     function computeNode(target,node){
         if(!node||invalid.has(node)||owners.get(node)?.invalid)return new Set([bad]);
         const c=binding(target,node);if(c)return cellTypesAt(c,node);
@@ -1479,6 +1507,7 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         if(node.opcode==='arcade_spriteProperty'){const w=spriteDataReady?spriteDataWriter(target,node):null;return w?readInput(w.value):new Set([bad]);}
         if(node.opcode==='arcade_objectField'){const f=literal(node,'FIELD',target);return !dynamicFields&&typeof f==='string'&&exactKeys(node,['OBJECT','FIELD'])&&cells.has('field:'+f)?new Set(fieldCell(f).types):new Set([bad]);}
         if(node.opcode==='arcade_callFunction'){
+            const pruned=prunedLookupReturn(node);if(pruned)return readInput(pruned);
             const call=calls.find(call=>call.node===node);if(!call?.fn||call.fn.invalid||!call.args||!returnsAlways(target,call.fn.root.next))return new Set([bad]);
             const through=passthroughIndex(call.fn);if(through>=0)return readInput(call.args[through]);
             const out=new Set();for(const value of call.fn.returns)for(const type of readInput(value))out.add(type);return out;
@@ -2130,6 +2159,7 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
             const getter=globalGetterCell(node);
             if(getter)return initializedCell(getter,owners.get(node),node);
             const passing=calls.find(c=>c.node===node);if(passing?.fn&&!passing.fn.invalid&&passing.args&&passthroughIndex(passing.fn)>=0)return initialized(passing.args[passthroughIndex(passing.fn)],next);
+            const pruned=prunedLookupReturn(node);if(pruned)return initialized(pruned,next);
             const call=calls.find(c=>c.node===node);return !!call?.fn&&!call.fn.invalid&&!!call.args&&call.args.every(arg=>singleArray(readInput(arg))?initialized(arg,next):true)&&call.fn.returns.every(result=>initialized(result,next));
         }
         if(['arrays_referenceSlice','arrays_referenceConcat','arrays_referenceItem','arrays_referenceTake','arrays_referenceRandom','arrays_mutateReference'].includes(node.opcode)){

@@ -252,6 +252,7 @@
       "test/makecode-arcade-accessor-pxt-staging.test.mjs",
       "test/makecode-arcade-animation-interchange-project.test.mjs",
       "test/makecode-arcade-animation-resources-export.test.mjs",
+      "test/makecode-arcade-animation-lookup-pruning.test.mjs",
       "test/makecode-arcade-animation.test.mjs",
       "test/makecode-accessor-export-refusal.test.mjs",
       "test/makecode-arcade-array-callbacks.test.mjs",
