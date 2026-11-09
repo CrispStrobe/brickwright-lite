@@ -106,6 +106,15 @@ Open points, recorded rather than resolved:
   but it is not explained. The inner/outer ratio itself agrees to 0.4 %.
   The constants and inertia sources are in `scripts/lib/sim-lab-rimrun-judge.mjs`.
   Explain the residual before anyone tightens that gate. Never widen it.
+  **Explained (2026-11-09):** each roller loses about 0.0085 m/s at each
+  track-segment seam (128 mm box colliders laid end to end, about 0.05 mm
+  out of plane, seams near 74 mm and 202 mm). The judge window
+  (2960–3240 ms) covers one crossing, which accounts for ~0.03 m/s² of the
+  0.0327/0.0331 m/s² shortfall. Between seams the prediction matches within
+  0.1 %. Ruled out: missing inertia, joint friction or damping, timestep
+  error, per-part mass. Judge and gate stay unchanged. Possible follow-ups,
+  not done: fit within a single segment, or merge abutting track colliders
+  (affects every model).
 - **Arcade exception at merge.** On operator decision, "Arcade numeric
   authoring (official build)" was an exception for #1683 only. Both failures
   are kept on record:
