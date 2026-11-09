@@ -378,7 +378,9 @@ const connectedNumber = async () => {
             buttonActions: {afterGlobals: {[name('ready')]: 1}, steps: [{delay: 500, text: reply}, {delay: 20, key: 'Enter'}]}, waitForGlobals: expected});
         for (const [key, value] of Object.entries(expected)) assert.equal(original[key], value, `original prompt ${key}`);
         await page.locator('[class*="green-flag_green-flag"]:visible').first().click();
-        await page.getByText(question, {exact: true}).waitFor();
+        // Wait for the visible prompt itself; the same text is also the
+        // question block's own label in the code area.
+        await page.locator('[class*="question_question-label"]').getByText(question, {exact: true}).waitFor();
         const input = page.locator('input[inputmode="decimal"]:visible');
         await input.fill(reply); await input.press('Enter');
         await waitSample({ready: 1, response: numericReply, done: 1});
