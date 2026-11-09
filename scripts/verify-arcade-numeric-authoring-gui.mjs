@@ -15,6 +15,7 @@ import {makeCodeProjectFile, readMakeCodeProjectText} from '../overlay/scratch-g
 import {runPxtArcade} from '../test/helpers/pxt-arcade-runtime.mjs';
 import {numericAuthoringFiles, numericSample} from '../test/fixtures/arcade-numeric-authoring-game.mjs';
 import {snakeSource, snakeExpected, numberSource, frameSource, connectedProject} from '../test/fixtures/arcade-connected-authoring.mjs';
+import {elapsedMatches} from './lib/clock-elapsed.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
@@ -441,7 +442,7 @@ const connectedFrame = async () => {
         await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
         await page.clock.runFor(1000);
         const after = await page.evaluate(() => Date.now());
-        assert.equal(after - before, 1000, 'the admitted clock advanced exactly one second');
+        assert.ok(elapsedMatches(before, after, 1000), `the admitted clock advanced exactly one second (${after - before} ms)`);
         await page.clock.resume();
         await waitSample({ticks: 3, seen: value}); const actual = await observe();
         assert.deepEqual(actual.errors, []);

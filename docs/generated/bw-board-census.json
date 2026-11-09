@@ -2,8 +2,8 @@
   "schema": 1,
   "source": {
     "repo": "https://github.com/CrispStrobe/bw-board",
-    "sha": "c87cfa325a7b599846c1c4088a408eeabb83daaa",
-    "read": "2026-10-28"
+    "sha": "6efff7f4d180ad7552ac79c8b779fefd2d1b1d5c",
+    "read": "2026-11-08"
   },
   "rows": [
     {
@@ -315,6 +315,30 @@
         "test/labwired-radio-pair.test.mjs"
       ],
       "what": "The labwired engine as WASM — the differential oracle for the labwired bridge."
+    },
+    {
+      "id": "labwired-esp32s3-flash-fixtures",
+      "kind": "fixture",
+      "present": false,
+      "ciAvailable": false,
+      "ci": "no — ordinary ci.yml does not fetch these inputs. The separate esp32s3-firmware-boot.yml workflow fetches and admits them, sets LABWIRED_REQUIRE_ESP32S3=1, and requires all real cases with zero skips. Its result is a separate exact-head qualification.",
+      "via": "tried $LABWIRED_ESP32S3_INPUTS",
+      "gates": [
+        "test/labwired-esp32s3-flash.test.mjs"
+      ],
+      "what": "The exact retained Node engine, ESP32-S3 mask ROMs and merged Rust/Arduino firmware used by the public-factory boot/reset and console-selection proof. Directory presence does not admit bytes: the test checks every size and SHA-256 before importing executable glue. The structural source controls always run; the real-engine cases require this input directory."
+    },
+    {
+      "id": "labwired-esp32s040-fixtures",
+      "kind": "fixture",
+      "present": false,
+      "ciAvailable": false,
+      "ci": "no — ordinary CI has no S040 engine/guest inputs. The separate esp32s040-public-factory.yml workflow requires a qualified release, LABWIRED_REQUIRE_ESP32S040=1, actual execution and zero skips; the current candidate manifest deliberately cannot pass that gate.",
+      "via": "tried $LABWIRED_ESP32S040_INPUTS",
+      "gates": [
+        "test/labwired-esp32s040-engine.test.mjs"
+      ],
+      "what": "Exact S040 engine glue/WASM, source-owned Xtensa panel/touch guest, and unchanged M1 ROMs/retained Arduino smoke image for public-factory display, typed input, reset, five-pin H1 and composed merged-flash proof. The retained manifest is currently candidate evidence, not a qualified release or physical capture. Directory presence does not admit bytes; the test checks length/SHA-256 before importing executable glue and checks the exact producer system/chip catalog."
     },
     {
       "id": "labwired-warmed-window-profile",
