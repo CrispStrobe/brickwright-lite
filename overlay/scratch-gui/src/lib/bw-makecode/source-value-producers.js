@@ -451,7 +451,7 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
         }if(numericHelpers.has(fn.node)) {
             // Structural numeric helpers are proved by the caller using actual
             // declaration/parameter identities; specialize each call's operands.
-            derived.push({result:call.result,type:'Number',operands:call.node.args.map(cell),signature:call.node.args.length===2,domain:'Number'});
+            derived.push({result:call.result,type:'Number',operands:call.node.args.map(cell),signature:call.node.args.length===fn.node.params.length,domain:'Number'});
             continue;
         }
         if(cyclic(call.callee))add(call.result,'Opaque');
@@ -1787,6 +1787,14 @@ function primitiveConstraintGraphOptions(program,ordinaryPrimitiveSdkNumbers,sce
   // The exported runtime-dispatch addition helper is `+` for non-Array
   // operands; Number operands are never Arrays, so the same rule holds.
   else if(isRuntimeDispatchAddDeclaration(fn))helperNames.set(fn.name,helperNames.has(fn.name)?null:fn);
+  // The exported unary-plus helper (`function h(a){return +a}`) is the same
+  // structural case with one operand: each call is Number only from its own
+  // Number operand, so another call site's operand cannot void this one.
+  else {
+   const unary=fn?.type==='FunctionDeclaration'&&fn.params?.length===1&&fn.body?.length===1&&fn.body[0].type==='Return'&&fn.body[0].value;
+   if(unary?.type==='Unary'&&unary.op==='+'&&unary.argument?.type==='Identifier'&&unary.argument.name===fn.params[0])
+    helperNames.set(fn.name,helperNames.has(fn.name)?null:fn);
+  }
  }
  const written=new Set();const scanWrites=node=>{if(!node||typeof node!=='object')return;if(Array.isArray(node)){node.forEach(scanWrites);return;}
   if(node.type==='Assignment'||node.type==='Update'){let target=node.type==='Assignment'?node.left:node.argument;while(['Member','Index'].includes(target?.type))target=target.object;if(target?.type==='Identifier')written.add(target.name);}
