@@ -82,6 +82,41 @@ Editing `scripts/lib/robot-lab-qualification.mjs`:
   (`lanes/2026-10-27-robot-lab-hubless-harness.md`).
 - When merging main, keep every side's entries.
 
+## 0000. Status, 2026-11-09 (read this first; supersedes 000 below)
+
+Q1–Q5 are all done. They landed together as one integration, #1683
+(merge `98067ba8`), which merged #1684 (Q1/Q2), #1681 (Q3) and #1682 (Q4)
+into the Q5 branch. All four PRs show as merged.
+
+Promoted: Loop Relay, Parity Dial, Counter Slide (Q1/Q2), Point Weaver (Q3),
+Evenhand (Q4, `counterbalance-holding-torque-v1`) and RimRun (Q5,
+`rolling-inertia-v1`). Hosted unit shards on the merged head passed
+ordinary, strict and disconnected qualification for all six, and the
+construction gate. `rimrun-swapped` and `evenhand-control` stay experimental
+as controls.
+
+Open points, recorded rather than resolved:
+
+- **Manual browser controls not run** for any of the six. The checkpoint and
+  contracts record them as `notRun`, together with saved-project replay and
+  export. `ci:full` was added and then removed on operator decision, so no
+  hosted browser shards ran on the merged head either.
+- **RimRun residual.** Each roller accelerates about 4 % below its damped
+  prediction g·sinθ/(1+I/mr²) − 0.05·v̄. That is inside the judge's 5 % gate,
+  but it is not explained. The inner/outer ratio itself agrees to 0.4 %.
+  The constants and inertia sources are in `scripts/lib/sim-lab-rimrun-judge.mjs`.
+  Explain the residual before anyone tightens that gate. Never widen it.
+- **Arcade exception at merge.** On operator decision, "Arcade numeric
+  authoring (official build)" was an exception for #1683 only. Both failures
+  are kept on record:
+  - attempt 1: a strict clock assertion got 1000.0000000000091 ms against
+    1000;
+  - attempt 2 (a single-job rerun): the official GUI artifact admission
+    refused the rerun before the verifier ran.
+  #1683 touched no Arcade path. Main's #1694 since changed that millisecond
+  comparison. The rerun-admission behaviour is untouched and belongs to the
+  Arcade lane.
+
 ## 000. Status, 2026-11-08 (read this first; supersedes P1–P6 below)
 
 P1–P6 are all done. Merged: #1641 (Afterturn), #1639 (nine-intake judge,
