@@ -14,6 +14,7 @@ import {inspectGuiArtifactResponse} from './lib/gui-artifact-response.mjs';
 import {makeCodeProjectFile, readMakeCodeProjectText} from '../overlay/scratch-gui/src/lib/bw-makecode/project-file.js';
 import {runPxtArcade} from '../test/helpers/pxt-arcade-runtime.mjs';
 import {numericAuthoringFiles, numericSample} from '../test/fixtures/arcade-numeric-authoring-game.mjs';
+import {snakeSource, snakeExpected, numberSource, frameSource, connectedProject} from '../test/fixtures/arcade-connected-authoring.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
@@ -49,7 +50,7 @@ for (const name of Object.keys(receipt.assets)) assert.ok(Number.isSafeInteger(r
 const out = path.resolve(process.env.BW_NUMERIC_GUI_REPORT_DIR || 'test-results/arcade-numeric-authoring-gui');
 await mkdir(out, {recursive: true});
 const report = {status: 'running', source, sourceTool: inspected.tool, receipt, journeys: [], samples: [], original: [], pageErrors: [], bundleObservations: [],
-    boundary: 'Owned numeric/settings/source-loop authoring only. Random values are bounded, not seeded or compared across independent runs. Script preparation is not GUI qualification.'};
+    boundary: 'Owned numeric/settings/source-loop and connected snake, number-entry and frame-delta authoring only. Random values are bounded, not seeded or compared across independent runs. Script preparation is not GUI qualification.'};
 const browser = await chromium.launch(process.env.BW_BROWSER ? {executablePath: process.env.BW_BROWSER} : {});
 let page;
 const bodyChecks = [];
@@ -151,8 +152,9 @@ const observeCleanExport = (element, {phase, held, visibleText}) => {
         return result;
     } catch (error) { return unavailable(error === nonData ? 'NON_DATA_STATE' : 'OBSERVER_ERROR'); }
 };
-const fresh = async () => {
+const fresh = async ({controlledClock = false} = {}) => {
     const context = await browser.newContext({viewport: {width: 1600, height: 1100}, acceptDownloads: true});
+    if (controlledClock) await context.clock.install({time: 0});
     const tab = await context.newPage();
     tab.on('dialog', dialog => dialog.accept());
     tab.on('pageerror', error => report.pageErrors.push(error.message));
@@ -200,13 +202,13 @@ const fresh = async () => {
     });
     return tab;
 };
-const apply = async () => {
+const apply = async (expectedOpcode = 'arcade_clampNumber') => {
     const prior = await page.evaluate(() => window.__brickwrightStore.getState().scratchGui.vm.runtime.getTargetForStage()?.id);
     await page.getByRole('button', {name: /To blocks/}).first().click();
     await page.waitForFunction(id => { const next = window.__brickwrightStore.getState().scratchGui.vm.runtime.getTargetForStage()?.id; return Boolean(next && next !== id); }, prior);
     await page.getByText('Blocks loaded.', {exact: true}).waitFor();
     await page.getByRole('tab', {name: 'Blocks', exact: true}).click();
-    await page.waitForFunction(() => window.Blockly?.getMainWorkspace()?.getAllBlocks(false).some(block => block.type === 'arcade_clampNumber'));
+    await page.waitForFunction(opcode => window.Blockly?.getMainWorkspace()?.getAllBlocks(false).some(block => block.type === opcode), expectedOpcode);
 };
 // Downloads do not close the Code actions menu. Close it the way a user does
 // before interacting with the report underneath the actions popover.
@@ -303,6 +305,177 @@ const cycle = async (label, options, files) => {
     const pressedFrame = await compareFrame(await original(files, options, true));
     const pressed = await observe(); assert.deepEqual(pressed.errors, []);
     report.samples.push({label, initial, pressed, initialFrame, pressedFrame}); await page.getByTitle('Stop', {exact: true}).first().click();
+};
+// The snake fixture changes its result when a real array element is edited.
+// The original simulator receives exactly the same source or exported files.
+const connectedSnake = async () => {
+    const fixture = path.join(out, 'connected-snake.mkcd');
+    const files = connectedProject(snakeSource());
+    await writeFile(fixture, makeCodeProjectFile(files, {target: 'arcade'}));
+    await page.context().close(); page = await fresh();
+    await codeTab(); await page.getByTestId('bw-device-select').selectOption('arcade');
+    await page.getByText('Blocks loaded.', {exact: true}).waitFor({timeout: 60000});
+    await page.waitForFunction(() => window.__brickwrightStore?.getState()?.scratchGui?.vm?.runtime?.bwDeviceId === 'arcade' && document.querySelector('[data-testid="bw-open-file"] input[type=file]')?.disabled === false);
+    await openFile(fixture); await apply('arrays_mutateReference');
+    const sample = async (label, expected, originalFiles) => {
+        const names = Object.fromEntries(Object.entries(expected).map(([key, value]) => {
+            const name = new RegExp(`\\b(?:let|var|const)\\s+((?:Game_)*${key})\\b`).exec(originalFiles['main.ts'])?.[1] || key;
+            return [name, value];
+        }));
+        const original = await runPxtArcade(originalFiles, {fakeClock: true, waitForGlobals: names});
+        for (const [name, value] of Object.entries(names)) assert.equal(original[name], value, `original snake ${name}`);
+        await page.locator('[class*="green-flag_green-flag"]:visible').first().click();
+        await waitSample(expected); const actual = await observe(); assert.deepEqual(actual.errors, []);
+        for (const [name, value] of Object.entries(expected)) assert.equal(actual.variables[name], value, `Lite snake ${name}`);
+        (report.connectedSnake ||= []).push({label, expected, original: Object.fromEntries(Object.keys(names).map(name => [name, original[name]])), actual});
+        await page.getByTitle('Stop', {exact: true}).first().click();
+    };
+    await sample('unchanged-import', snakeExpected(), files);
+    await editNumber({opcode: 'arrays_mutateReference', input: 'VALUE', value: '2'}, 3);
+    await sample('visible-block-edit', snakeExpected({item: 3}), connectedProject(snakeSource({item: 3})));
+    await codeTab(); await page.getByRole('button', {name: /From blocks/}).first().click();
+    await page.waitForFunction(() => /mutate array reference[^\n]*value \(0 \+ 3\)/.test(document.querySelector('[data-testid="bw-code-editor"] .cm-content')?.cmTile.root.view.state.doc.toString() || ''));
+    const edited = await readCode();
+    const authored = edited.replace(/(mutate array reference[^\n]*value \(0 \+ )3(\))/, (_match, before, after) => `${before}2${after}`);
+    assert.notEqual(authored, edited, 'A visible Code edit restores the published array element');
+    await editor().click(); await page.keyboard.press('Control+a'); await page.keyboard.insertText(authored);
+    assert.equal(await readCode(), authored); await apply('arrays_mutateReference');
+    await sample('visible-code-edit', snakeExpected(), files);
+    await page.getByText('File', {exact: true}).first().click();
+    const [download] = await Promise.all([page.waitForEvent('download'), page.getByText('Save to your computer', {exact: true}).click()]);
+    const archive = path.join(out, 'connected-snake.sb3'); await download.saveAs(archive);
+    const bytes = await readFile(archive); assert.ok((await JSZip.loadAsync(bytes)).file('project.json'));
+    report.connectedSnakeArchive = {sha256: digest(bytes), bytes: bytes.length};
+    await page.context().close(); page = await fresh(); await page.getByText('File', {exact: true}).first().click();
+    const chooser = page.waitForEvent('filechooser'); await page.getByText('Load from your computer', {exact: true}).click(); await (await chooser).setFiles(archive);
+    await page.waitForFunction(() => typeof window.__brickwrightStore.getState().scratchGui.vm.runtime._primitives.arrays_mutateReference === 'function');
+    await sample('fresh-sb3-reopen', snakeExpected(), files);
+    await codeTab(); await page.getByRole('button', {name: /From blocks/}).first().click();
+    await page.waitForFunction(() => /mutate array reference/.test(document.querySelector('[data-testid="bw-code-editor"] .cm-content')?.cmTile.root.view.state.doc.toString() || ''));
+    await openCodeActions(page);
+    const [exported] = await Promise.all([page.waitForEvent('download'), page.getByTestId('bw-makecode-arcade-export').click()]);
+    const exportedPath = path.join(out, 'connected-snake-export.mkcd'); await exported.saveAs(exportedPath); await closeCodeActions();
+    const exportedBytes = await readFile(exportedPath), embedded = await readMakeCodeProjectText(exportedBytes.toString('utf8'), 'mkcd');
+    report.connectedSnakeExport = {sha256: digest(exportedBytes), bytes: exportedBytes.length};
+    await openFile(exportedPath); await apply('arrays_mutateReference');
+    await sample('export-reimport', snakeExpected(), embedded.files);
+};
+// Numeric replies pass through the actual visible question input in both apps.
+const connectedNumber = async () => {
+    const fixture = path.join(out, 'connected-number.mkcd');
+    const files = connectedProject(numberSource());
+    await writeFile(fixture, makeCodeProjectFile(files, {target: 'arcade'}));
+    await page.context().close(); page = await fresh();
+    await codeTab(); await page.getByTestId('bw-device-select').selectOption('arcade');
+    await page.getByText('Blocks loaded.', {exact: true}).waitFor({timeout: 60000});
+    await page.waitForFunction(() => window.__brickwrightStore?.getState()?.scratchGui?.vm?.runtime?.bwDeviceId === 'arcade' && document.querySelector('[data-testid="bw-open-file"] input[type=file]')?.disabled === false);
+    await openFile(fixture); await apply('arcade_askForNumber');
+    const sample = async (label, question, originalFiles, reply = '1.5') => {
+        const numericReply = Number(reply);
+        const name = key => new RegExp(`\\b(?:let|var|const)\\s+((?:Game_)*${key})\\b`).exec(originalFiles['main.ts'])?.[1] || key;
+        const expected = {[name('response')]: numericReply, [name('done')]: 1};
+        const original = await runPxtArcade(originalFiles, {fakeClock: true,
+            buttonActions: {afterGlobals: {[name('ready')]: 1}, steps: [{delay: 500, text: reply}, {delay: 20, key: 'Enter'}]}, waitForGlobals: expected});
+        for (const [key, value] of Object.entries(expected)) assert.equal(original[key], value, `original prompt ${key}`);
+        await page.locator('[class*="green-flag_green-flag"]:visible').first().click();
+        // Wait for the visible prompt itself; the same text is also the
+        // question block's own label in the code area.
+        await page.locator('[class*="question_question-label"]').getByText(question, {exact: true}).waitFor();
+        const input = page.locator('input[inputmode="decimal"]:visible');
+        await input.fill(reply); await input.press('Enter');
+        await waitSample({ready: 1, response: numericReply, done: 1});
+        const actual = await observe(); assert.deepEqual(actual.errors, []);
+        (report.connectedNumber ||= []).push({label, question, reply, original: Object.fromEntries(Object.keys(expected).map(name => [name, original[name]])), response: actual.variables.response, done: actual.variables.done});
+        await page.getByTitle('Stop', {exact: true}).first().click();
+    };
+    await sample('unchanged-import', 'Difficulty?', files);
+    await editNumber({opcode: 'arcade_askForNumber', input: 'QUESTION', value: 'Difficulty?'}, 'Level?');
+    await sample('visible-block-edit', 'Level?', connectedProject(numberSource({question: 'Level?'})));
+    await codeTab(); await page.getByRole('button', {name: /From blocks/}).first().click();
+    await page.waitForFunction(() => /arcade ask number "Level\?"/.test(document.querySelector('[data-testid="bw-code-editor"] .cm-content')?.cmTile.root.view.state.doc.toString() || ''));
+    const edited = await readCode(), authored = edited.replace('arcade ask number "Level?"', 'arcade ask number "Difficulty?"');
+    assert.notEqual(authored, edited); await editor().click(); await page.keyboard.press('Control+a'); await page.keyboard.insertText(authored);
+    assert.equal(await readCode(), authored); await apply('arcade_askForNumber');
+    await sample('visible-code-edit', 'Difficulty?', files, '2.5');
+    await page.getByText('File', {exact: true}).first().click();
+    const [download] = await Promise.all([page.waitForEvent('download'), page.getByText('Save to your computer', {exact: true}).click()]);
+    const archive = path.join(out, 'connected-number.sb3'); await download.saveAs(archive);
+    const bytes = await readFile(archive); assert.ok((await JSZip.loadAsync(bytes)).file('project.json'));
+    report.connectedNumberArchive = {sha256: digest(bytes), bytes: bytes.length};
+    await page.context().close(); page = await fresh(); await page.getByText('File', {exact: true}).first().click();
+    const chooser = page.waitForEvent('filechooser'); await page.getByText('Load from your computer', {exact: true}).click(); await (await chooser).setFiles(archive);
+    await page.waitForFunction(() => typeof window.__brickwrightStore.getState().scratchGui.vm.runtime._primitives.arcade_askForNumber === 'function');
+    await sample('fresh-sb3-reopen', 'Difficulty?', files);
+    await codeTab(); await page.getByRole('button', {name: /From blocks/}).first().click();
+    await page.waitForFunction(() => /arcade ask number/.test(document.querySelector('[data-testid="bw-code-editor"] .cm-content')?.cmTile.root.view.state.doc.toString() || ''));
+    await openCodeActions(page);
+    const [exported] = await Promise.all([page.waitForEvent('download'), page.getByTestId('bw-makecode-arcade-export').click()]);
+    const exportedPath = path.join(out, 'connected-number-export.mkcd'); await exported.saveAs(exportedPath); await closeCodeActions();
+    const exportedBytes = await readFile(exportedPath), embedded = await readMakeCodeProjectText(exportedBytes.toString('utf8'), 'mkcd');
+    report.connectedNumberExport = {sha256: digest(exportedBytes), bytes: exportedBytes.length};
+    await openFile(exportedPath); await apply('arcade_askForNumber');
+    await sample('export-reimport', 'Difficulty?', embedded.files);
+};
+// Compare the stable branch selected by a positive frame delta, rather than
+// pretending independently scheduled simulators have identical frame lengths.
+const connectedFrame = async () => {
+    const fixture = path.join(out, 'connected-frame.mkcd');
+    const files = connectedProject(frameSource());
+    await writeFile(fixture, makeCodeProjectFile(files, {target: 'arcade'}));
+    await page.context().close(); page = await fresh({controlledClock: true});
+    await codeTab(); await page.getByTestId('bw-device-select').selectOption('arcade');
+    await page.getByText('Blocks loaded.', {exact: true}).waitFor({timeout: 60000});
+    await page.waitForFunction(() => window.__brickwrightStore?.getState()?.scratchGui?.vm?.runtime?.bwDeviceId === 'arcade' && document.querySelector('[data-testid="bw-open-file"] input[type=file]')?.disabled === false);
+    await openFile(fixture); await apply('arcade_frameDeltaTime');
+    const sample = async (label, value, originalFiles) => {
+        const name = key => new RegExp(`\\b(?:let|var|const)\\s+((?:Game_)*${key})\\b`).exec(originalFiles['main.ts'])?.[1] || key;
+        const expected = {[name('ticks')]: 3, [name('seen')]: value};
+        const original = await runPxtArcade(originalFiles, {fakeClock: true, waitForGlobals: expected});
+        for (const [key, wanted] of Object.entries(expected)) assert.equal(original[key], wanted, `original frame ${key}`);
+        assert.ok(Number.isFinite(original[name('delta')]) && original[name('delta')] > 0, 'original observed a positive frame delta');
+        const flag = page.locator('[class*="green-flag_green-flag"]:visible').first();
+        await flag.waitFor({state: 'visible'}); const box = await flag.boundingBox();
+        assert.ok(box && box.width > 0 && box.height > 0, 'the real green flag has visible bounds');
+        await page.clock.pauseAt(await page.evaluate(() => Date.now() + 50));
+        const before = await page.evaluate(() => Date.now());
+        await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+        await page.clock.runFor(1000);
+        const after = await page.evaluate(() => Date.now());
+        assert.equal(after - before, 1000, 'the admitted clock advanced exactly one second');
+        await page.clock.resume();
+        await waitSample({ticks: 3, seen: value}); const actual = await observe();
+        assert.deepEqual(actual.errors, []);
+        assert.ok(Number.isFinite(actual.variables.delta) && actual.variables.delta > 0, 'Lite observed a positive frame delta');
+        (report.connectedFrame ||= []).push({label, original: Object.fromEntries(Object.keys(expected).map(name => [name, original[name]])), originalDelta: original[name('delta')], liteDelta: actual.variables.delta, ticks: actual.variables.ticks, seen: actual.variables.seen, clockAdvance: after - before});
+        await page.getByTitle('Stop', {exact: true}).first().click();
+    };
+    await sample('unchanged-import', 7, files);
+    await editNumber({opcode: 'data_setvariableto', input: 'VALUE', value: '7'}, 9);
+    await sample('visible-block-edit', 9, connectedProject(frameSource({value: 9})));
+    await codeTab(); await page.getByRole('button', {name: /From blocks/}).first().click();
+    await page.waitForFunction(() => /set seen to \(0 \+ 9\)/.test(document.querySelector('[data-testid="bw-code-editor"] .cm-content')?.cmTile.root.view.state.doc.toString() || ''));
+    const edited = await readCode(), authored = edited.replace('set seen to (0 + 9)', 'set seen to (0 + 7)');
+    assert.notEqual(authored, edited); await editor().click(); await page.keyboard.press('Control+a'); await page.keyboard.insertText(authored);
+    assert.equal(await readCode(), authored); await apply('arcade_frameDeltaTime');
+    await sample('visible-code-edit', 7, files);
+    await page.getByText('File', {exact: true}).first().click();
+    const [download] = await Promise.all([page.waitForEvent('download'), page.getByText('Save to your computer', {exact: true}).click()]);
+    const archive = path.join(out, 'connected-frame.sb3'); await download.saveAs(archive);
+    const bytes = await readFile(archive); assert.ok((await JSZip.loadAsync(bytes)).file('project.json'));
+    report.connectedFrameArchive = {sha256: digest(bytes), bytes: bytes.length};
+    await page.context().close(); page = await fresh({controlledClock: true}); await page.getByText('File', {exact: true}).first().click();
+    const chooser = page.waitForEvent('filechooser'); await page.getByText('Load from your computer', {exact: true}).click(); await (await chooser).setFiles(archive);
+    await page.waitForFunction(() => typeof window.__brickwrightStore.getState().scratchGui.vm.runtime._primitives.arcade_frameDeltaTime === 'function');
+    await sample('fresh-sb3-reopen', 7, files);
+    await codeTab(); await page.getByRole('button', {name: /From blocks/}).first().click();
+    await page.waitForFunction(() => /arcade frame delta time/.test(document.querySelector('[data-testid="bw-code-editor"] .cm-content')?.cmTile.root.view.state.doc.toString() || ''));
+    await openCodeActions(page);
+    const [exported] = await Promise.all([page.waitForEvent('download'), page.getByTestId('bw-makecode-arcade-export').click()]);
+    const exportedPath = path.join(out, 'connected-frame-export.mkcd'); await exported.saveAs(exportedPath); await closeCodeActions();
+    const exportedBytes = await readFile(exportedPath), embedded = await readMakeCodeProjectText(exportedBytes.toString('utf8'), 'mkcd');
+    report.connectedFrameExport = {sha256: digest(exportedBytes), bytes: exportedBytes.length};
+    await openFile(exportedPath); await apply('arcade_frameDeltaTime');
+    await sample('export-reimport', 7, embedded.files);
 };
 const paletteCreate = async () => {
     await page.locator('.scratchCategoryId-arcade').click();
@@ -464,7 +637,12 @@ try {
     assert.match(cleanUnsupportedText, /nothing reported/);
     assert.deepEqual(await currentAssets(), assetsBeforeClean, 'later clean export also retains actual assets');
     await Promise.all(bodyChecks);assert.deepEqual(report.bundleFailures || [], []);assert.deepEqual(report.pageErrors, []);
-    await page.screenshot({path: path.join(out, 'numeric-authoring.png')}); report.status = 'passed';
+    await page.screenshot({path: path.join(out, 'numeric-authoring.png')});
+    await connectedSnake();
+    await connectedNumber();
+    await connectedFrame();
+    await Promise.all(bodyChecks); assert.deepEqual(report.bundleFailures || [], []); assert.deepEqual(report.pageErrors, []);
+    report.status = 'passed';
 } catch (error) {
     report.status = 'failed'; report.failure = String(error.stack || error);
     if (page) { report.failureSample = await observe().catch(e => ({error: String(e)})); report.importObservation = await page.evaluate(() => ({status: document.querySelector('[data-testid="bw-code-status"]')?.innerText ?? null, code: document.querySelector('[data-testid="bw-code-editor"] .cm-content')?.cmTile?.root?.view?.state?.doc?.toString() ?? null, stageId: window.__brickwrightStore?.getState()?.scratchGui?.vm?.runtime?.getTargetForStage()?.id ?? null})).catch(e => ({error: String(e)})); report.body = (await page.evaluate(() => document.body?.innerText || '').catch(e => `Body observation failed: ${String(e)}`)).slice(-14000); await page.screenshot({path: path.join(out, 'failure.png')}).catch(() => {}); }

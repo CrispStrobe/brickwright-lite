@@ -1,6 +1,6 @@
 # Arcade connected authoring acceptance
 
-Status: ACTIVE. Owner: Arcade integration. Base: main `7f753d25da4fc93ea02af31f83f78e9c8617b372`.
+Status: DONE in the implementation PR; hosted qualification remains required before merge. Owner: Arcade integration. Base: main `7f753d25da4fc93ea02af31f83f78e9c8617b372`.
 
 Extend the existing official-build numeric-authoring browser harness and an
 owned fixture to exercise representative published Array/snake, frame-delta
