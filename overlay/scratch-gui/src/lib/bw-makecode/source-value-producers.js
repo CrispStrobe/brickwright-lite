@@ -1,3 +1,4 @@
+import {proveLocalArrayFamilyReads} from './local-array-family-entry.js';
 import {inspectNativeArrayAddHelpers} from './native-array-binary-helper-source.js';
 import {createOrdinaryFrameDeltaNumberSource} from './ordinary-frame-delta-number-source.js';
 import {createOrdinaryParseIntegerNumberSource} from './ordinary-parse-integer-number-source.js';
@@ -172,6 +173,23 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
     // Literal in-bounds index reads of never-mutated Array literals: the
     // Array-aware graph types them positionally (see positionalSlot); only a
     // purely primitive result without Undefined is carried into this graph.
+    // A fully inline `[literal].map(callback)[k]`: neither Array has another
+    // reference (the callback takes at most value and index, never the
+    // Array), the literal has no spread, and a constant k below its length
+    // selects exactly one callback result. That read is the callback's result.
+    const mappedEntry=arrayLoopEntries&&!arrayValues?(()=>{
+        const entries=new Map();const find=node=>{if(!node||typeof node!=='object')return;if(Array.isArray(node)){node.forEach(find);return;}
+            if(node.type==='Index'&&node.index?.type==='Number'){
+                const call=node.object,receiver=call?.callee?.object,fn=call?.args?.[0],k=Number(node.index.value);
+                if(call?.type==='Call'&&!call.isNew&&!call.optional&&!call.callee.optional&&!call.typeArguments?.length&&call.callee.type==='Member'&&call.callee.name==='map'&&
+                    call.args.length===1&&receiver?.type==='Array'&&Array.isArray(receiver.items)&&receiver.items.every(item=>item&&item.type!=='Spread')&&
+                    fn?.type==='FunctionExpression'&&Array.isArray(fn.params)&&fn.params.length<=2&&!Object.hasOwn(fn,'restParam')&&
+                    Number.isInteger(k)&&k>=0&&k<receiver.items.length)entries.set(node,fn);
+            }
+            for(const v of Object.values(node))if(v&&typeof v==='object')find(v);};
+        find(program);return entries.size?entries:null;
+    })():null;
+    const familyEntry=arrayLoopEntries&&!arrayValues?proveLocalArrayFamilyReads(program,analyseGraph(program,{parenthesized:true,unboundIsOpaque:true})):null;
     const positionalEntry=arrayLoopEntries&&!arrayValues?(()=>{
         const reads=[];const find=node=>{if(!node||typeof node!=='object')return;if(Array.isArray(node)){node.forEach(find);return;}
             if(node.type==='Index'&&node.index?.type==='Number')reads.push(node);for(const v of Object.values(node))if(v&&typeof v==='object')find(v);};
@@ -338,6 +356,8 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
         if(arrayValues&&node.type==='Array'){const token=arrayToken(node);add(current,token);for(const item of node.items)edge(cell(item),token.element);return;}
         if(node.type==='Index'&&loopEntry?.entries.has(node)){for(const type of loopEntry.entries.get(node))add(current,type);return;}
         if(node.type==='Index'&&positionalEntry?.has(node)){edge(cell(positionalEntry.get(node)),current);return;}
+        if(node.type==='Index'&&familyEntry?.has(node)){for(const value of familyEntry.get(node))edge(cell(value),current);return;}
+        if(node.type==='Index'&&mappedEntry?.has(node)){cell(node.object);const scope=functionScopes.get(mappedEntry.get(node));if(scope){edge(scope.result,current);return;}}
         if(arrayValues&&node.type==='Index'){arrayOperations.push({kind:'read',receiver:cell(node.object),result:current,index:node.index,node});return;}
         if(provenArrayLengthAt(node)){add(current,'Number');return;}
         if(arrayValues&&node.type==='Member'&&node.name==='length'){arrayOperations.push({kind:'length',node,receiver:cell(node.object),result:current});return;}
@@ -812,17 +832,26 @@ function proveArrayCallbackPrimitiveEntries(program,normalCompletion){
     // callees can alter a visited element/presence behind this entry fact.
     // Actual whole bodies remain visible; failure issues no callback facts.
     const tagsUsed=new Set(nodes.filter(node=>node.type==='Template').map(node=>node.tag));
+    // A builtin Array mutation through a receiver whose allocations are all
+    // known touches only those allocations. It withholds entry facts from
+    // callbacks over them instead of from every callback in the program.
+    const mutatingMethods=new Set(['push','pop','shift','unshift','insertAt','removeAt','splice','reverse','sort','fill']),tainted=new Set();
+    const localMutation=node=>node?.type==='Call'&&!node.isNew&&!node.constructorCall&&!node.optional&&node.callee?.type==='Member'&&!node.callee.optional&&
+        mutatingMethods.has(node.callee.name)&&!node.typeArguments?.length&&graph.arrayMapReceiverSafeAt(node.callee.object)&&graph.arrayAllocationsAt(node.callee.object).length>0;
     for(const node of nodes){
         if(['Unknown','Object','Spread','Await','Yield','Class','Namespace'].includes(node.type)||node.optional||node.callee?.optional)return null;
         if(node.type==='Template'&&(!['img','hex'].includes(node.tag)||typeof node.value!=='string'||node.value.includes('${')))return null;
         if(node.params?.some(name=>tagsUsed.has(name))||node.decls?.some(decl=>tagsUsed.has(decl.name)))return null;
         if(node.type==='Identifier'&&!graph.bindingKindsAt(node).size&&!graph.isSdkNamespace(node))return null;
+        if(node.type==='Call'&&localMutation(node)&&!safeMaps.has(node)&&!constructionCalls.has(node)){for(const site of graph.arrayAllocationsAt(node.callee.object))tainted.add(site);continue;}
         if(node.type==='Call'&&!safeMaps.has(node)&&!constructionCalls.has(node)&&!graph.immutableFunctionAt(node))return null;
         const target=node.type==='Assignment'?node.left:node.type==='Update'?node.argument:node.type==='Unary'&&node.op==='delete'?node.argument:null;
+        if(target?.type==='Index'&&node.type!=='Unary'&&graph.arrayMapReceiverSafeAt(target.object)&&graph.arrayAllocationsAt(target.object).length>0){
+            for(const site of graph.arrayAllocationsAt(target.object))tainted.add(site);continue;}
         if(target&&target.type!=='Identifier')return null;
         if(node.type==='Member'){
             const parent=parents.get(node);
-            if(parent?.type==='Call'&&parent.callee===node&&(safeMaps.has(parent)||constructionCalls.has(parent)))continue;
+            if(parent?.type==='Call'&&parent.callee===node&&(safeMaps.has(parent)||constructionCalls.has(parent)||localMutation(parent)))continue;
             if(node.name==='length'&&graph.arrayMapReceiverSafeAt(node.object)&&graph.arrayAllocationsAt(node.object).length)continue;
             return null;
         }
@@ -837,7 +866,7 @@ function proveArrayCallbackPrimitiveEntries(program,normalCompletion){
         // complete receiver lineage to real literal entries; predicate results
         // never become elements and cannot authorize their own receiver.
         const literalLineage=(site,active=new Set())=>{
-            if(active.has(site))return false;const next=new Set(active);next.add(site);
+            if(active.has(site)||tainted.has(site))return false;const next=new Set(active);next.add(site);
             if(site.type==='Call'&&site.callee?.type==='Member'&&site.callee.name==='filter'&&safeMaps.has(site)){
                 const origins=graph.arrayAllocationsAt(site.callee.object);
                 return origins.length>0&&origins.every(origin=>literalLineage(origin,next));
