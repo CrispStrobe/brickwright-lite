@@ -72,7 +72,7 @@ test('internal V8 tag is excluded from five isolated pushes and current main-onl
         ['basic-oracle','88725722f8784da8b11e2c1ee7bacea11ba959df16666d93bdab9cdc9b8d1783'],
         ['makecode-arcade-bases','1b9f0bc31c91bd383967bf1ee50767e242457ff80463ddc6163a6aca2a11b8b4'],
         ['pascal-ack-image','4f652ee179626ea3a6d529ec9e394012da5f66f38c99f3b08658c9eff4ba601e'],
-        ['target-performance','38d80bdfd82a4577cb7e21d518e306520746db220314e6c10fda37f5d8c732b6'],
+        ['target-performance','df74ee077e75e82071bf69db3454dcf564fd48a8c263f8b2bd23f2cf379fce6c'],
     ]);
     const block="  push:\n    branches: ['**']\n    tags-ignore: ['bw-gui-hdd-actual-v8-*']\n";
     const source = new Map();
