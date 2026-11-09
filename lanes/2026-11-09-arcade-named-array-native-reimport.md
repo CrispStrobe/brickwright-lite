@@ -28,3 +28,9 @@ New `test/makecode-arcade-named-array-native-reimport.test.mjs`: native
 blocks and VM values after reimport; a copy after an intervening call stays
 the variable. Mutations: no passive recognition fails the first test; treating
 every copy as live fails the second.
+
+## Remaining refusals
+
+The `row` refusal (explicit `0` default writer) is covered by row 2e's exporter
+change for root defaults. The `alias` length refusal after the registry is
+re-created stays export-side Array authority work.
