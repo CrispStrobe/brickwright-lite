@@ -35,7 +35,8 @@ test('reverse continue exposes a readiness query and command over recorded halt 
 test('only active 8086 forward breakpoint halts enter the occurrence ledger', () => {
     assert.match(runner, /targetKind !== 'i8086' \|\| !recordingSession\.status\(\)\.active/);
     assert.match(runner, /\['breakpoint', 'watchpoint', 'port', 'interrupt'\]\.includes\(why\.cause\)/);
-    assert.match(runner, /onHalt: \(snapshot\) => \{\s*recordNativeHaltOccurrence\(snapshot\)/);
+    // The bench session reports through onChange (createDebugSession has no onHalt).
+    assert.match(runner, /if \(st\.halted && !benchHalted\) \{\s*benchHalted = true;\s*recordNativeHaltOccurrence\(st\.why\)/);
     assert.match(runner, /boundaryCursor: eventStream\.nextSequence\(\)/);
     assert.doesNotMatch(runner, /\['breakpoint', 'watchpoint', 'port', 'interrupt', 'step'\]/,
         'steps, user pauses, stops and replay orchestration are not historical breakpoint decisions');
