@@ -1,0 +1,10 @@
+{
+ "author": "CrispStrobe",
+ "license": "BSD-3-Clause",
+ "files": {
+  "models/rimrun.ldr": "c0a3a2e415c1d01c56a0fb50418f051102942b4ec9d8267a108437b000467434",
+  "programs/rimrun.bw": "e260b0f1619ef8c5e352edf6d621d94e23386e73afa49a3615e0809f1af96532",
+  "LICENSE.txt": "4b345db1e5260dce76a731425304606d2303cb6fc85216eab5176adc79acfb52",
+  "SOURCES.md": "b569e610435b32c06210c3a76764ecbddda5c11ceb7202039ded57149c695246"
+ }
+}

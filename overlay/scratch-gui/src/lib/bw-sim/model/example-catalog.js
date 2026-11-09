@@ -1721,6 +1721,33 @@ export const MODEL_LESSONS = Object.freeze({
             "Differential"
         ]
     },
+    "pointweaver.ldr": {
+        "pieces": 116,
+        "motors": 2,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "linkages",
+        "description": {
+            "en": "Two angular motors drive the base links of a planar five-bar mechanism. The blue and orange forearms meet at an orange endpoint marker. A finite program reaches four rectangular corner poses while exposing the curved endpoint edges produced by synchronized linear motor-angle interpolation.",
+            "de": "Zwei Winkelmotoren treiben die Grundglieder eines ebenen Fünfgelenkgetriebes an. Der blaue und der orange Unterarm treffen sich an einer orangefarbenen Endpunktmarke. Ein endliches Programm fährt vier rechteckige Ecklagen an und macht die gekrümmten Endpunktkanten sichtbar, die durch synchron linear interpolierte Motorwinkel entstehen."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "five-bar parallel linkage",
+            "de": "Fünfgelenk-Parallelmechanismus"
+        },
+        "keywords": [
+            "five-bar parallel linkage",
+            "Fünfgelenk-Parallelmechanismus",
+            "five-bar linkage",
+            "parallel robot",
+            "Cartesian interpolation",
+            "Fünfgelenk",
+            "Bahnplanung"
+        ]
+    },
     "kestrel-flapper.ldr": {
         "pieces": 61,
         "motors": 1,
@@ -1888,6 +1915,36 @@ export const MODEL_LESSONS = Object.freeze({
             "Doppeltür",
             "Zahnstange",
             "Ritzel"
+        ]
+    },
+    "rimrun.ldr": {
+        "pieces": 510,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "inertia",
+        "description": {
+            "en": "One motor lifts a shared gate above two free rollers on a fixed incline. Both have the same mass and rolling radius; only the ballast sits nearer the axle or farther out, and the roller with the ballast near the axle rolls faster. The comparison scene swaps the ballast between lanes, and the lead swaps with it.",
+            "de": "Ein Motor hebt eine gemeinsame Schranke über zwei freien Rollkörpern auf einer festen schiefen Ebene. Beide haben dieselbe Masse und denselben Rollradius; nur der Ballast sitzt näher an der Achse oder weiter außen, und der Rollkörper mit achsnahem Ballast rollt schneller. Die Vergleichsszene tauscht den Ballast zwischen den Spuren, und der Vorsprung wechselt mit."
+        },
+        "author": "Brickwright contributors",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Rolling inertia race",
+            "de": "Trägheits-Rollrennen"
+        },
+        "keywords": [
+            "Rolling inertia race",
+            "Trägheits-Rollrennen",
+            "rolling inertia",
+            "moment of inertia",
+            "rolling race",
+            "inclined plane",
+            "radial ballast",
+            "Trägheitsmoment",
+            "Rollversuch",
+            "schiefe Ebene"
         ]
     },
     "watt-line.ldr": {
@@ -2158,6 +2215,121 @@ export const MODEL_LESSONS = Object.freeze({
             "24:1",
             "right-angle transmission",
             "Schneckengetriebe"
+        ]
+    },
+    "looprelay.ldr": {
+        "pieces": 54,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "gears",
+        "description": {
+            "en": "A 16-tooth wheel drives a remote 24-tooth wheel through a closed 25-link chain. An 8-tooth pinion on that shaft turns a final 24-tooth output gear the opposite way: a -2:9 angular ratio.",
+            "de": "Ein 16er-Kettenrad treibt über 25 geschlossene Kettenglieder ein entferntes 24er-Rad an. Ein 8er-Ritzel auf dessen Welle treibt ein letztes 24er-Zahnrad gegenläufig an: Winkelübersetzung -2:9."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "compound chain and gear drive",
+            "de": "Ketten- und Zahnradtrieb"
+        },
+        "keywords": [
+            "compound chain and gear drive",
+            "Ketten- und Zahnradtrieb",
+            "chain drive",
+            "sprocket",
+            "compound ratio",
+            "direction reversal",
+            "Kettenantrieb"
+        ]
+    },
+    "paritydial.ldr": {
+        "pieces": 31,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "gears",
+        "description": {
+            "en": "One 8-tooth gear drives two 24-tooth output hands. The left path meshes once; the right path adds a 24-tooth idler, reversing its rotation direction without changing its one-third speed.",
+            "de": "Ein Zahnrad mit acht Zähnen treibt zwei Zeiger mit je 24 Zähnen an. Links greift das Antriebsrad direkt ein, rechts über ein 24er-Zwischenrad. Dadurch dreht der rechte Zeiger andersherum, aber genauso schnell wie der linke."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "gear-train parity",
+            "de": "Drehsinn und Zwischenrad"
+        },
+        "keywords": [
+            "gear-train parity",
+            "Drehsinn und Zwischenrad",
+            "idler gear",
+            "gear parity",
+            "direction reversal",
+            "Zwischenrad"
+        ]
+    },
+    "counterslide.ldr": {
+        "pieces": 44,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "gears",
+        "description": {
+            "en": "A single 8-tooth gear meshes with two opposing racks. The orange jaws travel inward by equal distances and reopen together; the center between them stays put.",
+            "de": "Ein einziges Zahnrad mit acht Zähnen greift in zwei gegenüberliegende Zahnstangen. Die orangefarbenen Backen fahren gleich weit zur Mitte und wieder auseinander; ihre gemeinsame Mitte bleibt stehen."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "opposed rack and pinion",
+            "de": "gegenläufige Zahnstangen"
+        },
+        "keywords": [
+            "opposed rack and pinion",
+            "gegenläufige Zahnstangen",
+            "rack and pinion",
+            "self-centering jaws",
+            "symmetric gripper",
+            "Zahnstange",
+            "selbstzentrierend"
+        ]
+    },
+    "evenhand.ldr": {
+        "pieces": 97,
+        "motors": 2,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "forces",
+        "description": {
+            "en": "Two motors move a shoulder and an elbow through nine poses. Counterweights behind each joint balance the links, so in the simulator both motors hold every pose with almost no torque. The comparison moves the same forearm weights inward and runs the same program.",
+            "de": "Zwei Motoren bewegen Schulter und Ellbogen durch neun Stellungen. Gegengewichte hinter jedem Gelenk gleichen die Glieder aus, sodass beide Motoren im Simulator jede Stellung fast ohne Drehmoment halten. Der Vergleich rückt dieselben Unterarmgewichte nach innen und nutzt dasselbe Programm."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Counterbalanced two-joint arm: gravity torque about each joint",
+            "de": "Ausgewogener Zweigelenkarm: Schweremoment um jedes Gelenk"
+        },
+        "keywords": [
+            "Counterbalanced two-joint arm: gravity torque about each joint",
+            "Ausgewogener Zweigelenkarm: Schweremoment um jedes Gelenk",
+            "counterweight",
+            "counterbalance",
+            "gravity torque",
+            "two-joint arm",
+            "serial arm",
+            "holding torque",
+            "lever arm",
+            "Gegengewicht",
+            "Gewichtsausgleich",
+            "Schweremoment",
+            "Zweigelenkarm",
+            "Haltemoment",
+            "Hebelarm"
         ]
     },
     "product-plotter.ldr": {

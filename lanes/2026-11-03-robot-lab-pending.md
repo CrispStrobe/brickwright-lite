@@ -1,7 +1,6 @@
 # Robot Lab — pending qualification tasks (unowned)
 
-Status: OPEN — no owner. Claim a task by adding your own `lanes/` file in the
-PR that does it, and mark the task here as taken in that same PR.
+Status: DONE — Q1–Q5 all landed (2026-11-09). Nothing open in this file.
 
 The full task list with exact steps is section 00 of
 `docs/ROBOT-LAB-QUALIFICATION-HANDOFF-20261028.md`:
@@ -9,12 +8,13 @@ The full task list with exact steps is section 00 of
 - P1–P6 all DONE (2026-11-08): #1641, #1639, #1669, #1672, #1671, #1668.
   Promoted this round: Afterturn, Toggle Press, Footfall, Phasekeeper,
   Vector Sum, Paired Door Sync, Helixgate.
-- Still open (unowned), details in handoff section 000 and the checkpoint:
-  - Q1 Loop Relay and Parity Dial: input axle 2.5 LDU into the motor (construction gate). Repair, re-add contract, promote.
-  - Q2 Counter Slide: housing angles overlap racks 2.5 LDU, eight pins about 2 LDU into housings. Repair, re-add contract, promote.
-  - Q3 Point Weaver: 70 LDU-deep rear holes; redesign the motor-foot mount.
-  - Q4 Evenhand: counterweight removal trips the 3° start guard; pick a non-tripping or justified disconnection, register judge from `lane/robot-evenhand-20261107`, promote.
-  - Q5 RimRun: bridge the hub to the frame (about 170 LDU), repair catch/watchdog-hold checks, write a judge with `rimrun-swapped` as the causal control.
+- Q1–Q5 all DONE (2026-11-09), landed together in #1683 (merge `98067ba8`),
+  which also merged #1684, #1681 and #1682. Promoted: Loop Relay, Parity
+  Dial, Counter Slide, Point Weaver, Evenhand, RimRun.
+  - Manual browser controls, saved-project replay and export not run.
+  - RimRun: about 4 % unexplained residual, inside the judge's 5 % gate.
+  - "Arcade numeric authoring (official build)" was an operator-declared
+    exception for that merge. Details are in handoff section 0000.
 
 Rules: iterate without `ci:full`, add it once on the final head; merge only
 with `--match-head-commit` after every enabled check passes; never weaken a

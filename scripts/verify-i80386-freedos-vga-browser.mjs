@@ -148,6 +148,27 @@ try {
     const acceptedPackets = pointerPackets.filter(e => e.result).length;
     assert.deepEqual(errors, [], 'browser must have no uncaught page errors');
     console.log(`ok named 386 attached both synthetic disks; Widgets canvas ${await canvas.getAttribute('width')}x${await canvas.getAttribute('height')}; keyboard and ${pointerPackets.length} bounded PS/2 packets forwarded (${acceptedPackets} accepted by uninitialized guest)`);
+
+    // The forward debugger drawer must list real, clickable 386 code rows that
+    // start at the paused PC (linear CS base + EIP). Before the Board 386
+    // disassembly the drawer said "no disassembly on this target".
+    const panel = page.locator('[data-debug-panel]');
+    await panel.getByRole('button', {name: /Pause|\u23f8/}).click();
+    await page.locator('[data-debug-panel][data-debug-phase="paused"]').waitFor({timeout: 30000});
+    await panel.getByRole('button', {name: /Under the hood/}).click();
+    await panel.getByRole('button', {name: 'Step instruction', exact: true}).waitFor({state: 'visible', timeout: 10000});
+    const pausedPc = await page.evaluate(() => window.__benchTarget?.regs?.().pc);
+    assert.ok(Number.isSafeInteger(pausedPc), 'paused 386 target exposes a linear PC');
+    const codeRows = panel.locator('[title="Click to pause here"]');
+    await codeRows.first().waitFor({state: 'visible', timeout: 10000});
+    const rowCount = await codeRows.count();
+    assert.ok(rowCount > 1, `386 drawer lists several code rows (saw ${rowCount})`);
+    const firstAddress = parseInt(await codeRows.first().locator('span').nth(1).innerText(), 16);
+    assert.equal(firstAddress, pausedPc, 'first 386 code row is the paused PC');
+    assert.equal(/no disassembly on this target/i.test(await panel.innerText()), false,
+        '386 drawer no longer reports a missing disassembly');
+    assert.deepEqual(errors, [], 'debugger drawer must have no uncaught page errors');
+    console.log(`ok 386 debugger drawer lists ${rowCount} code rows from PC ${pausedPc.toString(16)}`);
     await page.close();
 
     // The named GUI option must make the built browser fetch and instantiate

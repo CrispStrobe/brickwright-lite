@@ -979,6 +979,192 @@
       ],
       "disconnectInputDeg": 717,
       "disconnectLoss": "nine-intake"
+    },
+    {
+      "id": "looprelay",
+      "judge": "chain-reversal-v1",
+      "parts": 54,
+      "ports": [
+        "A"
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 90000,
+      "afterMs": 2000,
+      "frameMs": 25,
+      "frozenOutput": "indicator_hand",
+      "disconnect": [
+        "chain_input16"
+      ],
+      "disconnectInputDeg": 178,
+      "disconnectLoss": "nine-intake",
+      "notRun": [
+        "per-model browser run (qualify-robot-lab-models --mode=full, chromium and webkit)",
+        "saved-project replay",
+        "export",
+        "manual controls"
+      ]
+    },
+    {
+      "id": "paritydial",
+      "judge": "parity-dials-v1",
+      "parts": 31,
+      "ports": [
+        "A"
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 90000,
+      "afterMs": 2000,
+      "frameMs": 25,
+      "frozenOutput": "dial_left",
+      "disconnect": [
+        "gear_drive"
+      ],
+      "disconnectInputDeg": 88,
+      "disconnectLoss": "nine-intake",
+      "notRun": [
+        "per-model browser run (qualify-robot-lab-models --mode=full, chromium and webkit)",
+        "saved-project replay",
+        "export",
+        "manual controls"
+      ]
+    },
+    {
+      "id": "counterslide",
+      "judge": "opposed-racks-v1",
+      "parts": 44,
+      "ports": [
+        "A"
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 90000,
+      "afterMs": 2000,
+      "frameMs": 25,
+      "frozenOutput": "rack_low",
+      "disconnect": [
+        "drive_pinion_8t"
+      ],
+      "disconnectInputDeg": 98,
+      "disconnectLoss": "nine-intake",
+      "notRun": [
+        "per-model browser run (qualify-robot-lab-models --mode=full, chromium and webkit)",
+        "saved-project replay",
+        "export",
+        "manual controls"
+      ]
+    },
+    {
+      "id": "rimrun",
+      "judge": "rolling-inertia-v1",
+      "parts": 510,
+      "ports": [
+        "A"
+      ],
+      "withSpike": true,
+      "coldMs": 500,
+      "timeLimitMs": 16000,
+      "afterMs": 3000,
+      "frameMs": 20,
+      "frozenOutput": "left_shaft_-1",
+      "disconnect": [
+        "left_ballast_-1_shaft",
+        "left_ballast_-1_collar_-1",
+        "left_ballast_-1_key_-1",
+        "left_ballast_-1_pin_-1",
+        "left_ballast_-1_brick_-1",
+        "left_ballast_-1_collar_1",
+        "left_ballast_-1_key_1",
+        "left_ballast_-1_pin_1",
+        "left_ballast_-1_brick_1",
+        "left_ballast_-1_plate_0",
+        "left_ballast_-1_plate_1",
+        "left_ballast_1_shaft",
+        "left_ballast_1_collar_-1",
+        "left_ballast_1_key_-1",
+        "left_ballast_1_pin_-1",
+        "left_ballast_1_brick_-1",
+        "left_ballast_1_collar_1",
+        "left_ballast_1_key_1",
+        "left_ballast_1_pin_1",
+        "left_ballast_1_brick_1",
+        "left_ballast_1_plate_0",
+        "left_ballast_1_plate_1",
+        "right_ballast_-1_shaft",
+        "right_ballast_-1_collar_-1",
+        "right_ballast_-1_key_-1",
+        "right_ballast_-1_pin_-1",
+        "right_ballast_-1_brick_-1",
+        "right_ballast_-1_collar_1",
+        "right_ballast_-1_key_1",
+        "right_ballast_-1_pin_1",
+        "right_ballast_-1_brick_1",
+        "right_ballast_-1_plate_0",
+        "right_ballast_-1_plate_1",
+        "right_ballast_1_shaft",
+        "right_ballast_1_collar_-1",
+        "right_ballast_1_key_-1",
+        "right_ballast_1_pin_-1",
+        "right_ballast_1_brick_-1",
+        "right_ballast_1_collar_1",
+        "right_ballast_1_key_1",
+        "right_ballast_1_pin_1",
+        "right_ballast_1_brick_1",
+        "right_ballast_1_plate_0",
+        "right_ballast_1_plate_1"
+      ],
+      "disconnectInputDeg": 95,
+      "disconnectLoss": "rimrun",
+      "notRun": [
+        "savedProjectReplay",
+        "browser journey",
+        "export",
+        "manual controls"
+      ]
+    },
+    {
+      "id": "pointweaver",
+      "judge": "five-bar-v1",
+      "parts": 116,
+      "ports": [
+        "A",
+        "B"
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 90000,
+      "afterMs": 2000,
+      "frameMs": 25,
+      "frozenOutput": "endpoint_marker",
+      "disconnect": [
+        "left_forearm"
+      ],
+      "disconnectInputDeg": 30,
+      "disconnectLoss": "nine-intake",
+      "notRun": [
+        "per-model browser run (qualify-robot-lab-models --mode=full, chromium and webkit)",
+        "saved-project replay",
+        "export",
+        "manual controls"
+      ]
+    },
+    {
+      "id": "evenhand",
+      "judge": "counterbalance-holding-torque-v1",
+      "parts": 97,
+      "ports": [
+        "A",
+        "B"
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 60000,
+      "afterMs": 500,
+      "frameMs": 25,
+      "withSpike": true,
+      "observeDynamics": true,
+      "frozenOutput": "forearm",
+      "disconnect": [
+        "forearm_weight_pin_-1_-20"
+      ],
+      "disconnectInputDeg": 19,
+      "disconnectLoss": "p6"
     }
   ]
 }

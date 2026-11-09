@@ -37,7 +37,7 @@ let found=entries.indexOf(23)
 let length=entries.length`,['attempts','found','length']);
 });
 
-test('consumed prefix/postfix updates preserve values, lazy choice and evaluated-once targets', {todo:"procedure constraint producer not yet proven \u2014 see docs/ARCADE-888-OPEN-FAILURES.md"},async()=>{
+test('consumed prefix/postfix updates preserve values, lazy choice and evaluated-once targets',async()=>{
     await compareRoundtrips(`let counter=3
 let post=counter++
 let pre=++counter

@@ -26,3 +26,12 @@ test('original UTF-16 and nullable primitive strings survive source, Code, origi
 test('wrong string arity, shadowed String and known opaque arguments retain diagnostics',()=>{
     for(const source of ['String.fromCharCode()','String.fromCharCode(1,2)','let String=3;String.fromCharCode(65)','let s="a";s.concat()','let s="a";s.concat("b","c")','String.fromCharCode([65])','"a".concat(["b"])'])assert.ok(arcadeToPseudocode(source).unsupported.length,source);
 });
+
+// A concat receiver must be a string on every producer: PXT faults when a
+// Number or null receiver reaches .concat, even if a later write is a string.
+test('String.concat requires a receiver that is a string on every producer',()=>{
+    for(const source of ['let f:any=0; let h=f.concat("b"); f="x"','let f:any=null; let h=f.concat("b"); f="x"','let f:any="a"; let h=f.concat("b"); f=1'])
+        assert.ok(arcadeToPseudocode(source).unsupported.includes('String.concat() receiver must be a proven string value'),source);
+    for(const source of ['let f:any="a"; let h=f.concat("b")','let f:any="a"; let h=f.concat("b"); f="x"'])
+        assert.deepEqual(arcadeToPseudocode(source).unsupported,[],source);
+});

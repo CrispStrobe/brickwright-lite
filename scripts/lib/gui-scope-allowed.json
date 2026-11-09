@@ -197,6 +197,7 @@
     "tests": [
       "test/arcade-absent-asset-literals.test.mjs",
       "test/arcade-block-scoped-loop-locals.test.mjs",
+      "test/arcade-consumed-update-number-proofs.test.mjs",
       "test/arcade-startup-first-write-globals.test.mjs",
       "test/arcade-carnival-add-label.test.mjs",
       "test/arcade-external-image-call.test.mjs",

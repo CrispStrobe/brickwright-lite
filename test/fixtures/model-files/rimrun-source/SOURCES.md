@@ -1,0 +1,7 @@
+# RimRun — source record
+
+- **Origin:** the experimental intake from #1499 (CrispStrobe, BSD-3-Clause), supplied as a package with its own runner and judge. Those runner and judge files are not in this repository.
+- **Adaptation at promotion (Q5, 2026-11-09):** the SPIKE hub, which stood loose on the floor, is pinned to the two motor posts with four 2780 friction pins, in the frame's incline orientation. The eight 32123b half bushes sat 7.5 LDU inside their 49295 wheels; they now sit flush against the wheel faces on the same axles. The program is unchanged. The comparison scene `rimrun-swapped` got the same two changes.
+- **Law (`rolling-inertia-v1`):** two free rollers of equal mass (73.28 g) and equal rolling radius (43.904 mm) on the 6.842773° incline. Rolling without slip gives a = g·sinθ/(1+I/(m·r²)) less the engine's default body damping (0.05/s, so c·v̄ over the window). I comes from the compiled colliders and equals the engine's own tensor: inner ballast I = 4.341e-5 kg·m² (β 0.307), outer I = 5.778e-5 kg·m² (β 0.409). Measured inner/outer ratio 1.0816 against a predicted 1.0778 (gate 2 %). The inner roller leads by 21.2 mm before the catches. Each roller runs about 4 % below its damped prediction (gate 5 %).
+- **Causal control:** `rimrun-swapped` exchanges the ballast layouts. The inner roller then leads in the right lane (ratio 1.0794, lead 20.8 mm).
+- **Disconnection:** all 44 ballast parts removed from both rollers. The rollers become identical and the measured ratio falls to 1.0006, below the 1.039 midpoint. The judge refuses the run.

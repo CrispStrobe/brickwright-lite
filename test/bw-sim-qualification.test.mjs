@@ -11,6 +11,7 @@ import {batchCDisconnectionLoss} from '../scripts/lib/sim-lab-batchC-judges.mjs'
 import {batchADisconnectionLoss} from '../scripts/lib/sim-lab-batchA-judges.mjs';
 import {batchBDisconnectionLoss} from '../scripts/lib/sim-lab-batchB-judges.mjs';
 import {p6DisconnectionLoss} from '../scripts/lib/sim-lab-p6-judges.mjs';
+import {judgeRimRun,rimrunDisconnectionLoss} from '../scripts/lib/sim-lab-rimrun-judge.mjs';
 import {nineIntakeDisconnectionLoss} from '../scripts/lib/sim-lab-nine-intake-judge.mjs';
 import {catalogFrom,prepareModel,MODELS} from '../overlay/scratch-gui/src/lib/bw-sim/sim-session.js';
 import {runRobotLabProgram} from './helpers/robot-lab-direct-vm.mjs';import {observeAddon} from '../scripts/lib/sim-lab-addon-judge.mjs';
@@ -31,10 +32,12 @@ test('qualification refuses unknown principles, missing models and incomplete di
 // the same lookup the nine-intake judge uses. A hard-coded 'hub' found no body for those four (handoff P4).
 const hubPartOf=r=>{const hubs=r.mechanism.hubs||[];assert.equal(hubs.length,1,'exactly one registered hub names the observation base');return hubs[0].id;};
 const run=async(c,modelText,autoPorts,label=autoPorts===false?'strict':'ordinary')=>{
- const errors=[];let hooked=false;const r=isBatchEPromotion(c.id)?await runBatchEPromotion(c,modelText,autoPorts):await runRobotLabProgram(read(lab+'programs/'+c.id+'.bw'),{...c,modelText,autoPorts,observeFrame:({session,vm,hub})=>{
+ const errors=[];let hooked=false;const r=isBatchEPromotion(c.id)?await runBatchEPromotion(c,modelText,autoPorts):await runRobotLabProgram(read(lab+'programs/'+c.id+'.bw'),{...c,modelText,autoPorts,observeFrame:({session,vm,hub,prepared})=>{
   if(!hooked){vm.runtime.on('ERROR',e=>errors.push(String(e)));vm.runtime.on('BLOCKS_ERROR',e=>errors.push(String(e)));hooked=true;}
   for(const b of vm.runtime.targets.flatMap(t=>Object.values(t.blocks._blocks))){const literal=Object.keys(b.fields||{}).length===1&&Object.keys(b.inputs||{}).length===0;assert.ok(b.opcode in vm.runtime._primitives||b.opcode in vm.runtime._hats||literal,'actual registered opcode: '+b.opcode);}
-  return{variables:Object.fromEntries(vm.runtime.targets.flatMap(t=>Object.values(t.variables||{}).map(v=>[v.name,v.value]))),modes:hub.motors._controllers.map(c=>c.mode),actuators:actuatorState(session),sessionFailed:session.failed?String(session.failed):null,...(c.observeAir?{air:session.core.airState?session.core.airState():[]}:{})};
+  return{variables:Object.fromEntries(vm.runtime.targets.flatMap(t=>Object.values(t.variables||{}).map(v=>[v.name,v.value]))),modes:hub.motors._controllers.map(c=>c.mode),actuators:actuatorState(session),sessionFailed:session.failed?String(session.failed):null,...(c.observeAir?{air:session.core.airState?session.core.airState():[]}:{}),
+   // observeDynamics: each dynamic body's configured mass and world centre of mass, and each motor joint's held torque (N·m), for a holding-torque law.
+   ...(c.observeDynamics?{dynamics:{bodies:Object.fromEntries(prepared.mechanism.bodies.filter(b=>b.motion==='dynamic').map(b=>{const d=session.core.bodyDynamics(b.id);return[b.id,{com:d.centerOfMassWorld,massKg:d.configuredMassKg}];})),joints:Object.fromEntries(prepared.mechanism.joints.filter(j=>j.motor).map(j=>[j.id,session.core.jointDynamics(j.id)?.motorTorqueNm??0]))}}:{})};
  }});if(process.env.BW_MODEL_QUALIFY_EVIDENCE_DIR){const dir=process.env.BW_MODEL_QUALIFY_EVIDENCE_DIR;mkdirSync(dir,{recursive:true});writeFileSync(dir+'/'+c.id+'-'+label+'.json',JSON.stringify(r)+'\n');}assert.deepEqual(errors,[]);assert.ok(r.track.every(f=>!f.extra.sessionFailed));return r;
 };
 for(const c of qualificationContracts(selected).filter(c=>!c.nativeSuite)){
@@ -77,6 +80,13 @@ for(const c of qualificationContracts(selected).filter(c=>!c.nativeSuite)){
   const r=await run({...c,id:'afterturn'},read(lab+'models/afterturn-fixed-masses.ldr'),false,'fixed-masses-control'),result=judgeAfterturnControl(r);
   assert.throws(()=>judgeAfterturn(r));t.diagnostic(JSON.stringify({id:'afterturn-fixed-masses',cycle:result.cycle,inverse:result.inverse}));
  });
+ // RimRun's causal control: the supplied scene with the ballast layouts exchanged between the lanes. The same
+ // judge passes and the inner-ballast roller still leads, now in the other lane: the lead follows the ballast.
+ if(c.id==='rimrun')test('rimrun: lane-swapped control moves the lead with the ballast',async t=>{
+  const main=judgeRimRun(await run(c,source,false),{native:true}),swapped=judgeRimRun(await run(c,read(lab+'models/rimrun-swapped.ldr'),false,'swapped-control'),{native:true});
+  assert.equal(main.innerLane,'left');assert.equal(swapped.innerLane,'right','the inner ballast is in the other lane');
+  for(const x of [main,swapped])assert.ok(x.leadMm>=5);t.diagnostic(JSON.stringify({id:'rimrun-swapped',main:{innerLane:main.innerLane,ratio:main.ratio,leadMm:main.leadMm},swapped:{innerLane:swapped.innerLane,ratio:swapped.ratio,leadMm:swapped.leadMm}}));
+ });
  test(c.id+': physical disconnection destroys the intended output while the real input still completes',async t=>{
   const r=await run(c,disconnectedSource(source,c.disconnect),false,'disconnected'),o=observeAddon(r,c.observeBase??hubPartOf(r)),input=c.motorless?null:r.mechanism.joints.find(j=>j.motor?.port===c.ports[0]),travel=input?Math.max(...r.track.map(f=>Math.abs(f.joints[input.id].angle)))*180/Math.PI:0;
   assert.ok(r.finishedAt>0);if(!c.motorless)assert.ok(travel>(c.disconnectInputDeg??(c.id==='sine-shuttle'?1070:1430)),'input genuinely still turns');
@@ -103,6 +113,8 @@ for(const c of qualificationContracts(selected).filter(c=>!c.nativeSuite)){
   else if(c.disconnectLoss==='batch-c'){const loss=batchCDisconnectionLoss(c.id,r);motion=loss.value;assert.ok(loss.lost,'disconnection loses the law: '+JSON.stringify(loss));}
   // Batches A and B: the judge module measures each law's own loss (sim-lab-batchA-judges.mjs, sim-lab-batchB-judges.mjs).
   else if(c.disconnectLoss==='batch-a'){const loss=batchADisconnectionLoss(c.id,r);motion=loss.value;assert.ok(loss.lost,'disconnection loses the law: '+JSON.stringify(loss));}
+  // RimRun: all ballast removed, the identical rollers lose the inner-ballast lead (sim-lab-rimrun-judge.mjs).
+  else if(c.disconnectLoss==='rimrun'){const loss=rimrunDisconnectionLoss(c.id,r);motion=loss.value;assert.ok(loss.lost,'disconnection loses the law: '+JSON.stringify(loss));}
   else if(c.disconnectLoss==='p6'){const loss=p6DisconnectionLoss(c.id,r);motion=loss.value;assert.ok(loss.lost,'disconnection loses the law: '+JSON.stringify(loss));}
   // Nine Technic intakes: the reviewed part removal must break the passive law while the input route completes.
   else if(c.disconnectLoss==='nine-intake'){const loss=nineIntakeDisconnectionLoss(c.id,r);motion=loss.value;assert.ok(loss.lost,'disconnection loses the law: '+JSON.stringify(loss));}

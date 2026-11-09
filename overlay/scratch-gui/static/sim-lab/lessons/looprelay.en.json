@@ -1,5 +1,8 @@
 {
-  "what": "One SPIKE medium angular motor turns a 16-tooth input chain wheel. A 25-link closed loop carries rotation to a 24-tooth wheel on a second supported axle. An 8-tooth pinion keyed to that same axle drives a third shaft's 24-tooth gear and red indicator hand.",
+  "version": 1,
+  "id": "looprelay",
+  "language": "en",
+  "what": "compound chain and gear drive. One SPIKE medium angular motor turns a 16-tooth input chain wheel. A 25-link closed loop carries rotation to a 24-tooth wheel on a second supported axle. An 8-tooth pinion keyed to that same axle drives a third shaft's 24-tooth gear and red indicator hand. A 16-tooth wheel drives a remote 24-tooth wheel through a closed 25-link chain. An 8-tooth pinion on that shaft turns a final 24-tooth output gear the opposite way: a -2:9 angular ratio.",
   "try": [
     "Open the LoopRelay LDraw assembly and program, reset to the saved zero-encoder pose, then run port A. The motor advances to +180 degrees and returns to zero at 12 degrees per second.",
     "Watch the blue 24-tooth chain wheel on the intermediate axle and the red reporter hand. Do they rotate in the same direction? How far does each travel at the pause?",
@@ -14,9 +17,6 @@
     "What if the last output gear had 16 teeth instead of 24, keeping the intermediate pinion at 8 teeth? Predict -A/3, then redesign the gear-center spacing before attempting the swap.",
     "Contrast the physical chain loop with ParityDial's idler and CounterSlide's racks. How does each move power or change direction?"
   ],
-  "version": 1,
-  "id": "looprelay",
-  "language": "en",
   "formula": "φ = (16/24) × (−8/24) θ = −2θ/9",
   "related": [
     "gearbox.ldr",

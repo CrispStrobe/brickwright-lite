@@ -1,0 +1,10 @@
+{
+ "author": "CrispStrobe",
+ "license": "BSD-3-Clause",
+ "files": {
+  "models/paritydial.ldr": "01846312ba820eb1b21dd14dade9753b12e19e2dc29e643923237e437b1fc26e",
+  "programs/paritydial.bw": "a3e7b9830967ad98b466f111553475ad34f651969ac42f01665163f4559968a7",
+  "LICENSE.txt": "b29ef22ac91a3a59b07d648118bb24c04b0bf94329dd36986fafd6a8547f981f",
+  "SOURCES.md": "4aee8897833bd08c3a7b1d34d92cba0f6b912ce7a25442a88928b37e136ec7a4"
+ }
+}
