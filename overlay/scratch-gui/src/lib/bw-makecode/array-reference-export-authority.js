@@ -1034,9 +1034,38 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         }
         return true;
     };
+    // A global reset written by a green-flag script is dead at a read inside
+    // a parameterless procedure whose only call site is in that same script,
+    // once a non-reset writer of the procedure has executed on every path to
+    // the read (a null overwrite stays a live writer of its own). The script is one thread, and while that thread is inside the
+    // procedure it cannot run the reset; no other thread runs either the
+    // script or (single call site) the procedure. The overwrite's own value is
+    // still checked by the ordinary all-writer initialization proof.
+    // A call in the overwriting value runs another body before the read; only
+    // the separately proved identity-prefix discount may cross one.
+    const invokes=(target,node,seen=new Set())=>{
+        if(!node||seen.has(node))return false;seen.add(node);
+        if(['arcade_callFunction','procedures_call','arcade_callObjectMethod','arcade_createObject','arcade_callCallable'].includes(node.opcode))return true;
+        return Object.values(node.inputs||{}).some(slot=>typeof slot?.[1]==='string'&&invokes(target,block(target,slot[1]),seen));
+    };
+    const startupProcedureReset=(c,w,at,scope)=>{
+        if(!isProjectJsonSnapshot(project))return false;
+        const start=w.scope;
+        if(!start||start.proc||start.invalid||start.root.opcode!=='arcade_whenSourceStarts'||start.root.mutation!=null||!exactKeys(start.root,[]))return false;
+        if(!scope.proc||scope.invalid||scope.unknownEntry||implicitEntries.has(scope)||scope.params.length||scope.callers.length!==1)return false;
+        const call=scope.callers[0];
+        if(call.scope!==start||call.fn!==scope||!call.args||call.args.length||call.node.opcode!=='procedures_call'||invalid.has(call.node))return false;
+        const st=statementOf(at),before=st&&scope.executedBefore.get(st);if(!before)return false;
+        // No body other than this procedure's own may run before the read:
+        // calls, constructors and callbacks keep the reset (their effects
+        // need the separate effect proofs).
+        if(records.some(r=>r.scope===scope&&before.has(statementOf(r.node))&&invokes(r.target,r.node)))return false;
+        return c.writers.some(o=>o!==w&&o.scope===scope&&o.value&&!invalid.has(o.node)&&before.has(o.node));
+    };
     const killedReset=(c,w,at)=>{
         if(!resetFlowReady||!(resetValue(w.value?.node)||!c.global&&w.value?.node&&inertLiteral(w.target,w.value.node))||invalid.has(w.node)||w.scope.invalid)return false;
-        const scope=owners.get(at);if(!scope||w.scope!==scope||!scope.executedBefore)return false;
+        const scope=owners.get(at);if(!scope||!scope.executedBefore)return false;
+        if(w.scope!==scope)return c.global&&startupProcedureReset(c,w,at,scope);
         const st=statementOf(at),before=st&&scope.executedBefore.get(st);if(!before)return false;
         const valid=o=>o!==w&&o.scope===scope&&o.value&&!resetValue(o.value.node)&&!invalid.has(o.node)&&before.has(o.node)&&
             !(o.value.cell===c)&&!(o.value.node&&readsCell(o.target,o.value.node,c));
