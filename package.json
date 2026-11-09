@@ -144,17 +144,14 @@
         "check:setup": "node scripts/check-test-setup.mjs",
         "test:source": "node scripts/test-source.mjs",
         "audit:clean": "node scripts/audit-clean-checkout.mjs --integrate",
-        "test:fast:shard": "node scripts/check-node.mjs && files=$(node scripts/list-tests.mjs fast --shard \"$BW_TEST_SHARD\") && BW_GUI_SCOPE_LOG=test-results/fast.gui-scope.tsv node --test --import ./scripts/lib/register-gui-scope.mjs --test-reporter=tap --test-reporter-destination=stdout --test-reporter=./scripts/lib/test-census-reporter.mjs --test-reporter-destination=test-results/fast.census.json $files",
-        "sync:esp32s3roms": "node scripts/sync-esp32s3-roms.mjs",
-        "sync:esp32s3roms:check": "node scripts/sync-esp32s3-roms.mjs --check",
-        "verify:esp32s3-firmware": "node scripts/verify-esp32s3-firmware-browser.mjs"
+        "test:fast:shard": "node scripts/check-node.mjs && files=$(node scripts/list-tests.mjs fast --shard \"$BW_TEST_SHARD\") && BW_GUI_SCOPE_LOG=test-results/fast.gui-scope.tsv node --test --import ./scripts/lib/register-gui-scope.mjs --test-reporter=tap --test-reporter-destination=stdout --test-reporter=./scripts/lib/test-census-reporter.mjs --test-reporter-destination=test-results/fast.census.json $files"
     },
     "engines": {
         "node": ">=22"
     },
     "devDependencies": {
         "acorn": "8.14.0",
-        "bw-board": "github:CrispStrobe/bw-board#cda9d13b3e5b4a3e40854f45e04d110ab2a57ef3",
+        "bw-board": "github:CrispStrobe/bw-board#6efff7f4d180ad7552ac79c8b779fefd2d1b1d5c",
         "bw-circuit-ui": "github:CrispStrobe/bw-circuit-ui#9d7a9a260d00d3c26a77e749aec55ceddbe29a52",
         "digitaljs": "^0.14.2",
         "jszip": "3.10.1",

@@ -220,7 +220,7 @@ export const REFUSED = Object.freeze({
         'i8086', 'i8088', 'mcu',
         // The ESP8266 board (bw-board #580): its own DEVICE ESP8266 program runs on it.
         'esp8266',
-        // S040 runs selected ESP32-S3 firmware; Code-tab hardware verbs do not drive it.
+        // The ESP32-4848S040 board (bw-board #722): its own firmware runs on it.
         'esp32_4848s040',
         // The MakeCode boards (bw-board #44): a MakeCode program drives them
         // from the MakeCode pane's runtime bridge, not from the Code tab.
