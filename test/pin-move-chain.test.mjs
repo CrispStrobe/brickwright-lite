@@ -106,7 +106,7 @@ const HISTORICAL_X86_V8_CUI = '1bc233c9297e03abb9b7eb603e045b4e92b0bb40';
 const CURRENT_X86_CUI = 'a5860b9cf6cb0e7f652130ce987d51dc42651b8b';
 // CURRENT_X86_CUI retains the F9 epoch meaning; only these F10 values are live.
 const LIVE_X86_CUI = '9d7a9a260d00d3c26a77e749aec55ceddbe29a52';
-const LIVE_X86_BOARD = 'c840653f036805f5f96d0d523b908a6a0e021acd';
+const LIVE_X86_BOARD = '33d3ee399db9224105e70f34864f1af962ccdb41';
 const HISTORICAL_X86_BOARD = '761153ff92d521c01107ee7b32922ba7adc10ee2';
 const HISTORICAL_X86_CURRENT_BOARD = '836867513c3e7fac420ddaa32c17e1c7b6d3e513';
 // The sb3-creator pin every reviewed F7/F8/F9 x86 epoch was executed at. It
