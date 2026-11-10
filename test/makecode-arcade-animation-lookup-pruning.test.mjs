@@ -9,7 +9,11 @@ import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export
 // frames Array; every deviation keeps the Array refusal.
 const KEY = '12345678-1234-4234-8234-123456789abc';
 const ARRAY_REFUSAL = /^Array reference .*requires an actual initialized Array producer/;
-const program = ({returned = 'frames', arg = `("${KEY}")`, compare = KEY, fallback = '', op = '==', before = '', inThen = '', ifLine = null, elseBlock = '', writer = '', keyInit = ` = "${KEY}"`, keyPre = '', keyPost = '', extra = ''} = {}) => `DEVICE ARCADE
+const CALL = (arg, pad) => `${pad}set first to (arcade call function "lookup %s" arguments (arcade function argument ${arg} rest ("[]")))
+${pad}arcade log (item (0) of array reference (first))
+${pad}arcade log length of array reference (first)
+`;
+const program = ({returned = 'frames', arg = `("${KEY}")`, compare = KEY, fallback = '', op = '==', before = '', inThen = '', ifLine = null, elseBlock = '', writer = '', keyInit = ` = "${KEY}"`, keyPre = '', keyPost = '', extra = '', callHat = null, callIndent = '  ', mainCall = true} = {}) => `DEVICE ARCADE
 GLOBAL frames
 GLOBAL first
 GLOBAL key${keyInit}
@@ -21,10 +25,7 @@ WHEN arcade source starts:
   arcade set local __bwPxtValue1 to (new array reference from ("[]"))
   mutate array reference (arcade local __bwPxtValue1) op "push" index (0) value ((0 + (1)))
   set frames to (arcade local __bwPxtValue1)
-${keyPre}  set first to (arcade call function "lookup %s" arguments (arcade function argument ${arg} rest ("[]")))
-  arcade log (item (0) of array reference (first))
-  arcade log length of array reference (first)
-${keyPost}DEFINE lookup (id):
+${keyPre}${callHat || !mainCall ? '' : CALL(arg, '  ')}${keyPost}DEFINE lookup (id):
   declare arcade procedure "lookup %s" parameter "id" as String
 ${before}${writer}  ${ifLine || `IF compare value (arcade local id) op "${op}" with ("${compare}") THEN:`}
 ${inThen}    arcade return value (${returned})
@@ -32,7 +33,7 @@ ${elseBlock}${fallback}  arcade log calculate value ("Animation resource unavail
   arcade return value (undefined value)
 DEFINE helper:
   arcade return value ((0 + (1)))
-${extra}`;
+${extra}${callHat ? `${callHat}\n${CALL(arg, callIndent)}` : ''}`;
 const arrayRefusals = (source, monitorMode = null) => {
     const creator = new Creator(); creator.parse(source); assert.deepEqual(creator.warnings, []);
     if (monitorMode) {
@@ -106,6 +107,14 @@ const keyRefused = {
     'a change-by of the key': [{...KEYED, keyPre: KEYED.keyPre + '  change key by 1\n'}],
     'a non-writing block naming the key': [{...KEYED, keyPre: KEYED.keyPre + '  show variable key\n'}],
     'a slider monitor on the key': [KEYED, 'slider'],
+    // The single write is in the start script; a call in another script may
+    // run while key still holds its initial value. FRESH returns a list built
+    // in the lookup, so only the key proof decides.
+    'a call in a key-press event script': [{...KEYED, ...FRESH, callHat: 'WHEN space key pressed:'}],
+    'a call in an on-update script': [{...KEYED, ...FRESH, callHat: 'WHEN arcade updates:'}],
+    'a call in a forever loop of another script': [{...KEYED, ...FRESH, callHat: 'WHEN flag clicked:\n  FOREVER:', callIndent: '    '}],
+    // Currently refused (the call is in another scope); kept refused.
+    'a call inside a procedure called after the write': [{...KEYED, ...FRESH, mainCall: false, keyPre: KEYED.keyPre + '  CALL: (useKey)\n', extra: 'DEFINE useKey:\n' + CALL('(key)', '  ')}],
     'only the initial value, no writer': [{...KEYED, keyInit: ` = "${KEY}"`, keyPre: ''}]
 };
 for (const [name, [shape, monitor]] of Object.entries(keyRefused)) test('refuses ' + name, () => {
