@@ -1912,23 +1912,6 @@ def role_policy(names):
 # installed nor served. The whole archive digest stays the authority.
 ACTUAL_V9_FRONTEND_ROSTER = (
  r'brickwright\-build\.json',
- r'chunks/1410\.[0-9a-f]{20}\.js',
- r'chunks/1683\.[0-9a-f]{20}\.js',
- r'chunks/2297\.[0-9a-f]{20}\.js',
- r'chunks/2710\.[0-9a-f]{20}\.js',
- r'chunks/322\.[0-9a-f]{20}\.js',
- r'chunks/3474\.js',
- r'chunks/3612\.[0-9a-f]{20}\.js',
- r'chunks/3764\.[0-9a-f]{20}\.js',
- r'chunks/3830\.[0-9a-f]{20}\.js',
- r'chunks/4421\.[0-9a-f]{20}\.js',
- r'chunks/4529\.[0-9a-f]{20}\.js',
- r'chunks/4725\.[0-9a-f]{20}\.js',
- r'chunks/5418\.[0-9a-f]{20}\.js',
- r'chunks/7214\.js',
- r'chunks/7493\.[0-9a-f]{20}\.js',
- r'chunks/9022\.[0-9a-f]{20}\.js',
- r'chunks/9079\.[0-9a-f]{20}\.js',
  r'chunks/bw\-board\-i80386\.[0-9a-f]{20}\.js',
  r'chunks/bw\-codemirror\.js',
  r'chunks/bw\-controller\-panel\.js',
@@ -1958,15 +1941,46 @@ ACTUAL_V9_FRONTEND_ROSTER = (
  r'static/roms/free\-386\-bochs\-bios\.rom',
  r'static/roms/free\-386\-vgabios\-lgpl\.bin',
 )
-ACTUAL_V9_FRONTEND_COUNT = len(ACTUAL_V9_FRONTEND_ROSTER)
+ACTUAL_V9_FRONTEND_CHUNK_ROLES = (
+ ('codemirror-state', 'Applying change set to a document with the wrong length'),
+ ('spike-motion-transport', 'virtual SPIKE transport registration is invalid'),
+ ('intel-hex-device-access', 'Intel HEX: type 02 record must have 2 data bytes'),
+ ('board-chip-ledger', 'the write strobe timing a slow device needs is not reproduced'),
+ ('gui-vendor', 'https://crispstrobe.github.io/extensions/lab/video-sprites.js'),
+ ('i8086-debug-target', 'this target has no machine to load a ROM into'),
+ ('admission-verdict', 'admission verdict from '),
+ ('popover-frame', 'popoverCrossStart cannot reverse without exceeding frame.'),
+ ('device-matrix-census', 'Kaluma and Espruino need a Cortex-M with 64 KB RAM or more'),
+ ('ega-vga-modes', 'EGA 320x200x16 planar -- four bit planes behind the sequencer'),
+ ('ui-icon-paths', 'M2 6h20v12H2zM6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10'),
+ ('i80386-fault-kinds', 'UnsupportedProtectedMode'),
+ ('instruction-debug-events', 'aroundInstruction needs a function that runs one instruction'),
+ ('i80386-vga-frame', 'observed Doom unchained 320x200 VGA'),
+ ('sprite-reorder', 'That sprite is no longer in this project'),
+ ('spice-pwl-sources', 'spice-pwl: points must contain at least two authored pairs'),
+ ('i80386-debug-target', 'Pause the target before copying its master disk'),
+)
+# NUMERIC CHUNKS ARE SELECTED BY ROLE, NEVER BY ID. Webpack numbers chunks by
+# module graph position, so ordinary main merges renumber them (the 7th event
+# found chunks/3474.js and chunks/9079.*.js gone). A role is one reviewed,
+# complete JavaScript string literal (quotes included) that must occur in exactly
+# one numeric-chunk member; that member, and only it, is selected. A member
+# carrying two role markers, a role matching zero or two members, or any named
+# roster miss refuses. Measured 2026-11-10 on the official Pages build of the
+# PR1627 head; every marker also selects the same role's chunk in the build of
+# the 6th event (different ids), so the rule is stable under renumbering.
+ACTUAL_V9_NUMERIC_CHUNK = r'chunks/[0-9]+(?:\.[0-9a-f]{20})?\.js'
+ACTUAL_V9_FRONTEND_COUNT = len(ACTUAL_V9_FRONTEND_ROSTER) + len(ACTUAL_V9_FRONTEND_CHUNK_ROLES)
 # Reviewed subset was 8,674,638 bytes; the aggregate bound is the next power of
 # two MiB above it. Each member keeps the unchanged FILE_CAP.
 ACTUAL_V9_FRONTEND_AGGREGATE_CAP = 16 << 20
 
 
 def frontend_subset_v9(tar_raw):
-    """Select exactly the reviewed V9 roster from the authenticated Pages TAR."""
+    """Select exactly the reviewed V9 roster and chunk roles from the authenticated Pages TAR."""
     patterns=[re.compile(p) for p in ACTUAL_V9_FRONTEND_ROSTER];files={};hits=[0]*len(patterns);total=0;entries=0;seen=set()
+    numeric=re.compile(ACTUAL_V9_NUMERIC_CHUNK);markers=[('"'+m+'"').encode() for _,m in ACTUAL_V9_FRONTEND_CHUNK_ROLES]
+    role_hits=[0]*len(markers);scanned=0;candidates=0
     with tarfile.open(fileobj=io.BytesIO(tar_raw),mode='r:') as source:
         for member in source:
             entries+=1;need(entries<=16384,'bounded Pages TAR census');name=member.name.removeprefix('./')
@@ -1975,10 +1989,22 @@ def frontend_subset_v9(tar_raw):
                 continue
             relative(name);need(name not in seen,'unique Pages TAR path');seen.add(name)
             matched=[i for i,p in enumerate(patterns) if p.fullmatch(name)]
+            if numeric.fullmatch(name):
+                need(not matched,'named V9 roster never matches a numeric chunk')
+                candidates+=1;need(candidates<=4096,'bounded V9 numeric chunk census')
+                need(member.isfile() and 0<member.size<=FILE_CAP,'regular bounded V9 numeric chunk')
+                scanned+=member.size;need(scanned<=BUILD_CAP,'V9 numeric chunk scan bound')
+                body=source.extractfile(member).read(FILE_CAP+1);need(len(body)==member.size,'exact V9 numeric chunk bytes')
+                roles=[i for i,m in enumerate(markers) if m in body]
+                if not roles:continue
+                need(len(roles)==1,'one V9 chunk role per member')
+                role_hits[roles[0]]+=1;total+=member.size;need(total<=ACTUAL_V9_FRONTEND_AGGREGATE_CAP,'V9 roster aggregate bound')
+                files[name]=body;continue
             if not matched:continue
             need(len(matched)==1 and member.isfile() and 0<member.size<=FILE_CAP,'regular bounded unique V9 roster member')
             hits[matched[0]]+=1;total+=member.size;need(total<=ACTUAL_V9_FRONTEND_AGGREGATE_CAP,'V9 roster aggregate bound')
             files[name]=source.extractfile(member).read(FILE_CAP+1);need(len(files[name])==member.size,'exact V9 roster member bytes')
+    need(role_hits==[1]*len(markers),'every V9 chunk role matches exactly one member')
     need(hits==[1]*len(patterns) and len(files)==ACTUAL_V9_FRONTEND_COUNT,'every V9 roster entry matches exactly one member')
     return files
 

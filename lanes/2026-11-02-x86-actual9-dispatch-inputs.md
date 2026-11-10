@@ -69,3 +69,15 @@ The fifth event (run 42412052347) installed the subset, booted FreeDOS and
 wrote and read the HDD marker, then the probe's Pause click was blocked by an
 overlapping Widgets full-screen button. That slot is spent; the layout is fixed
 separately.
+
+Amendment 2026-11-10 (after the 7th event refused at the roster): numeric
+webpack chunks are selected by ROLE, never by id. Producer and reader carry the
+same 17 reviewed `ACTUAL_V9_FRONTEND_CHUNK_ROLES`, each one complete string
+literal that must occur in exactly one `chunks/<n>[.<hash>].js` member; a
+member with two role markers, a role matching zero or two members, or a named
+roster entry matching a numeric chunk refuses. Named entries keep their exact
+patterns, the 16 MiB aggregate and the per-file cap are unchanged. On the real
+frontend archives of the 6th and 7th events (different chunk ids) the rule
+selects exactly the measured UI-path set (46 files each). Tests add a
+renumbered-build case and zero/two/zero-and-two/both-roles/unquoted cuts; four
+executed mutants are killed.

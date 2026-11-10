@@ -177,10 +177,20 @@ def pages_tar(contents):
         for name,raw in contents.items():
             info=tarfile.TarInfo(name);info.size=len(raw);archive.addfile(info,io.BytesIO(raw))
     return out.getvalue()
+def role_chunks(start=100,hashed=True):
+    # One manufactured numeric chunk per reviewed role: its id is arbitrary and
+    # its body carries the role's exact string literal, as a real chunk does.
+    out={}
+    for n,(role,marker) in enumerate(r.ACTUAL_V9_FRONTEND_CHUNK_ROLES):
+        name='chunks/%d%s.js'%(start+n,'.'+'c'*20 if hashed and n%2 else '')
+        out[name]=('/*'+role+'*/var s="'+marker+'";').encode()
+    out['chunks/99.'+'d'*20+'.js']=b'var s="an unrelated numeric chunk";'
+    return out
 def pages_contents():
     # Synthetic Pages layout: one member per reviewed V9 roster entry plus one
     # unrelated member that the V9 subset must neither read nor install.
     contents={roster_name(p):('roster:'+roster_name(p)).encode() for p in r.ACTUAL_V9_FRONTEND_ROSTER}
+    contents.update(role_chunks())
     contents.update({'index.html':b'<html>manufactured</html>','brickwright-build.json':E({'commit':'a'*7}),'static/assets/unrelated.wasm':b'not x86'})
     return contents
 def image_():
@@ -694,6 +704,9 @@ class Originals(unittest.TestCase):
         self.assertEqual(r.ACTUAL_V9_FRONTEND_ROSTER,c.ACTUAL_V9_FRONTEND_ROSTER);self.assertEqual(r.ACTUAL_V9_FRONTEND_AGGREGATE_CAP,c.ACTUAL_V9_FRONTEND_AGGREGATE_CAP)
         with self.assertRaises(ValueError):c.frontend_files(raw)   # the full-build policy still refuses the oversize member
         first=roster_name(r.ACTUAL_V9_FRONTEND_ROSTER[1])
+        self.assertEqual(r.ACTUAL_V9_FRONTEND_CHUNK_ROLES,c.ACTUAL_V9_FRONTEND_CHUNK_ROLES);self.assertEqual(r.ACTUAL_V9_NUMERIC_CHUNK,c.ACTUAL_V9_NUMERIC_CHUNK)
+        self.assertNotIn('chunks/99.'+'d'*20+'.js',observed[2])
+        for p in r.ACTUAL_V9_FRONTEND_ROSTER:self.assertIsNone(re.fullmatch(r.ACTUAL_V9_NUMERIC_CHUNK,roster_name(p)),p)
         for cut in ('missing','duplicate-match','oversize','aggregate','plain-zip','symlink'):
             f=pages_contents()
             if cut=='missing':f.pop(first)
@@ -711,6 +724,30 @@ class Originals(unittest.TestCase):
                         else:info.size=len(body);archive.addfile(info,io.BytesIO(body))
                 raw=zip_({'artifact.tar':out.getvalue()})
             else:raw=zip_({'artifact.tar':pages_tar(f)})
+            for gate in (c.frontend_files,r.read_frontend):
+                with self.subTest(cut=cut,gate=gate.__name__),self.assertRaises(ValueError):gate(raw,True)
+    def test_frontend_v9_chunk_roles_survive_renumbering_and_refuse_zero_or_two(self):
+        # A renumbered build: every role chunk gets a new id (and some lose or gain
+        # a content hash). Selection follows the role marker, not the id.
+        base=pages_contents();renum={k:v for k,v in base.items() if not re.fullmatch(r.ACTUAL_V9_NUMERIC_CHUNK,k)}
+        renum.update(role_chunks(start=7000,hashed=False))
+        for contents in (base,renum):
+            raw=zip_({'artifact.tar':pages_tar(contents)});observed=c.frontend_files(raw,True)
+            self.assertEqual(observed[:2],r.read_frontend(raw,True));self.assertEqual(len(observed[2]),r.ACTUAL_V9_FRONTEND_COUNT)
+            selected=sorted(k for k in observed[2] if re.fullmatch(r.ACTUAL_V9_NUMERIC_CHUNK,k))
+            self.assertEqual(selected,sorted(k for k,v in contents.items() if re.fullmatch(r.ACTUAL_V9_NUMERIC_CHUNK,k) and k!='chunks/99.'+'d'*20+'.js'))
+        role,marker=r.ACTUAL_V9_FRONTEND_CHUNK_ROLES[0];target=('"'+marker+'"').encode()
+        name=[k for k,v in base.items() if target in v][0]
+        second=('"'+r.ACTUAL_V9_FRONTEND_CHUNK_ROLES[1][1]+'"').encode()
+        for cut in ('zero','two','zero-and-two','both-roles','marker-unquoted'):
+            f=dict(base)
+            if cut=='zero':f.pop(name)
+            elif cut=='zero-and-two':   # same member COUNT, wrong roles: only the per-role tally sees it
+                f.pop(name);f['chunks/8889.'+'e'*20+'.js']=b'var t='+second+b';'
+            elif cut=='two':f['chunks/8888.'+'e'*20+'.js']=b'var t='+target+b';'
+            elif cut=='both-roles':f[name]=f[name]+b'var u="'+r.ACTUAL_V9_FRONTEND_CHUNK_ROLES[1][1].encode()+b'";'
+            else:f[name]=marker.encode()
+            raw=zip_({'artifact.tar':pages_tar(f)})
             for gate in (c.frontend_files,r.read_frontend):
                 with self.subTest(cut=cut,gate=gate.__name__),self.assertRaises(ValueError):gate(raw,True)
     def test_frontend_zip_all_headers_refuse_before_any_inflate(self):
@@ -6295,9 +6332,9 @@ test('standalone original reader: complete manufactured packet and coherent nega
     const sameJobMethodCount=14; // Seven new reader and seven connected producer methods.
     const sameJobPartsMethodCount=4;
     const armedEntryMethodCount=2;
-    const frontendRosterMethodCount=1; // V9 reviewed frontend subset.
+    const frontendRosterMethodCount=2; // V9 reviewed frontend subset and numeric-chunk roles.
     assert.equal(total,historicalMethodCount+sameJobMethodCount+sameJobPartsMethodCount+armedEntryMethodCount+frontendRosterMethodCount,
-        'all 167 historical plus 14 same-job plus 4 V9 parts plus 2 armed-entry plus 1 frontend roster methods remain covered exactly once');
+        'all 167 historical plus 14 same-job plus 4 V9 parts plus 2 armed-entry plus 2 frontend roster methods remain covered exactly once');
 });
 
 test('actual v6 parts: exact bounded transport and independent reader parity', () => {
