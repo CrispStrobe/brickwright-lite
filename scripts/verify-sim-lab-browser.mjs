@@ -6,6 +6,7 @@ import {newModelsInteractions, newModelLesson, judgeNewModel} from './lib/sim-la
 import {replayIntakeProject} from './lib/sim-lab-intake-roundtrip.mjs';
 import {nineIntakeInteractions} from './lib/sim-lab-nine-intake-gate.mjs';
 import {NINE_INTAKES} from './lib/sim-lab-nine-intake-judge.mjs';
+import {q5BrowserInteractions,Q5_BROWSER_MODELS} from './lib/sim-lab-q5-browser-gate.mjs';
 import {scalingSteeringInteractions,scalingSteeringLesson} from './lib/sim-lab-scaling-steering-gate.mjs';
 import {ellipseEngineInteractions,ellipseEngineLesson} from './lib/sim-lab-ellipse-engine-gate.mjs';
 import {magneticChessInteractions,magneticChessLesson} from './lib/sim-lab-magnetic-chess-gate.mjs';
@@ -851,6 +852,24 @@ try {
             page.on('pageerror', error => errors.push(error.stack || error.message));
             page.on('dialog', dialog => dialog.accept());
             try { await nineIntakeInteractions(page, opts, id); }
+            finally { await page.close(); }
+            for (const language of ['en', 'de']) {
+                const lesson = await browser.newPage({viewport: {width: 1600, height: 1050},
+                    locale: language === 'de' ? 'de-DE' : 'en-US', serviceWorkers: 'block'});
+                lesson.on('pageerror', error => errors.push(error.stack || error.message));
+                lesson.on('dialog', dialog => dialog.accept());
+                try { await newModelLesson(lesson, opts, id, language); }
+                finally { await lesson.close(); }
+            }
+        }
+        // Q5 promotions (#1683) Evenhand and RimRun: the registry law and its causal control, then the
+        // nine-intake gate's checks (scripts/lib/sim-lab-q5-browser-gate.mjs).
+        for (const id of Q5_BROWSER_MODELS.filter(id => runExample(id + '.ldr'))) {
+            const opts = {openSimLab, buildDir: build, shotsDir: resolve(artifacts, 'q5-models'), timeout: wallBudget(240000)};
+            const page = await browser.newPage({viewport: {width: 1600, height: 1050}, serviceWorkers: 'block'});
+            page.on('pageerror', error => errors.push(error.stack || error.message));
+            page.on('dialog', dialog => dialog.accept());
+            try { await q5BrowserInteractions(page, opts, id); }
             finally { await page.close(); }
             for (const language of ['en', 'de']) {
                 const lesson = await browser.newPage({viewport: {width: 1600, height: 1050},
