@@ -221,4 +221,4 @@ WHEN flag clicked:
         assert.deepEqual(rerun.serial.map(row => String(row.text).trim()), ['false','false','2','2','2','true','1','2']);
 };
 test('fresh resource export preserves native factory allocation and isolates array/image mutations in original PXT', async () => { await freshResourceCase(`"${id}"`); });
-test('fresh resource export preserves native factory allocation and isolates array/image mutations in original PXT through a global key', {todo:"needs a global exact-value proof for the key argument \u2014 see docs/ARCADE-888-OPEN-FAILURES.md"}, async () => { await freshResourceCase('(key)'); });
+test('fresh resource export preserves native factory allocation and isolates array/image mutations in original PXT through a global key', async () => { await freshResourceCase('(key)'); });

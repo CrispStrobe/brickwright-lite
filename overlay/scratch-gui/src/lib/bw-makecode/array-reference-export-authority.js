@@ -1409,6 +1409,31 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         if(!value)return null;if(Array.isArray(value.raw))return value.raw[0]===10&&typeof value.raw[1]==='string'?value.raw[1]:null;
         const n=value.node;return n?.opcode==='text'&&n.shadow&&exactKeys(n,[],['TEXT'])&&typeof n.fields?.TEXT?.[0]==='string'?n.fields.TEXT[0]:null;
     };
+    // A global read at a lookup call is the constant S only when the whole
+    // project has exactly one write of that variable: one top-level-reachable
+    // `set G to "S"` (a literal) that definitely ran earlier in the same
+    // once-only script as the call. No other block may name the variable
+    // except plain reads, and no slider may control it.
+    const globalConstantText=(value,at)=>{
+        const c=value?.cell||(value?.node?.opcode==='data_variable'?binding(value.target,value.node):null);
+        // Every global writer (set/change) names the variable in its VARIABLE
+        // field, so the block scan below admits exactly one: this w.
+        if(!c?.global||c.directBad||!c.writers.length)return null;
+        const w=c.writers[0];
+        if(w.argument||!w.node||!exactKeys(w.node,['VALUE'],['VARIABLE'])||invalid.has(w.node)||w.scope?.invalid)return null;
+        // A change-by writer carries no value (null), so only a literal set passes.
+        const id=w.node.fields?.VARIABLE?.[1],text=constantText(w.value);
+        if(typeof id!=='string'||text===null||globalCell(w.target,id)!==c)return null;
+        // Read-only watchers (default/large) cannot write; any slider or other
+        // monitor mode for this variable, visible or not, refuses.
+        const name=w.node.fields.VARIABLE[0];
+        if(!Array.isArray(project.monitors??[])||(project.monitors||[]).some(m=>(m?.id===id||m?.params?.VARIABLE===name||String(m?.id||'').includes(id))&&!['default','large'].includes(m?.mode)))return null;
+        for(const t of targets)for(const b of Object.values(t.blocks||{})){
+            if(!b||b===w.node)continue;
+            if(b.fields?.VARIABLE?.[1]===id&&b.opcode!=='data_variable')return null;
+        }
+        return afterAt(at,w.node)?text:null;
+    };
     const prunedLookupReturn=callNode=>{
         const call=calls.find(c=>c.node===callNode),fn=call?.fn;
         if(!fn||fn.invalid||fn.unknownEntry||implicitEntries.has(fn)||!call.args||call.args.length!==fn.params.length)return null;
@@ -1422,7 +1447,7 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         const index=fn.params.indexOf(literal(left,'NAME',fn.target)),c=index>=0?binding(fn.target,left):null;
         if(!c||c!==localCell(fn,fn.params[index])||c.directBad||!c.writers.every(w=>w.argument))return null;
         // A non-literal comparison operand (null) never equals a literal argument.
-        const argument=constantText(call.args[index]);if(argument===null||argument!==expected)return null;
+        const argument=constantText(call.args[index])??globalConstantText(call.args[index],callNode);if(argument===null||argument!==expected)return null;
         // The THEN may first build a fresh local list, exactly as the re-imported
         // fresh-frames lookup does: `set local L to []`, then pushes onto such an
         // L of an inert value, a staged list, or a copy of a constant frame image.
