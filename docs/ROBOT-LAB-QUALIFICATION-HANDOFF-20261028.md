@@ -97,7 +97,14 @@ as controls.
 
 Open points, recorded rather than resolved:
 
-- **Manual browser controls not run** for any of the six. The checkpoint and
+- **Browser gates (2026-11-10):** Loop Relay, Parity Dial, Counter Slide and
+  Point Weaver passed in #1703 (shards robotaddon10–12). Evenhand has its gate
+  in #1714 (shard robotaddon13: counterbalance law, disconnected control,
+  manual control, instructions, LDR/MPD, saved-project replay, EN/DE
+  lessons); RimRun's gate is held, see the residual below. Evenhand and
+  RimRun's build steps were re-authored to at most six parts per step.
+- **Manual browser controls not run** for any of the six (superseded by the
+  entry above). The checkpoint and
   contracts record them as `notRun`, together with saved-project replay and
   export. `ci:full` was added and then removed on operator decision, so no
   hosted browser shards ran on the merged head either.
@@ -115,6 +122,24 @@ Open points, recorded rather than resolved:
   error, per-part mass. Judge and gate stay unchanged. Possible follow-ups,
   not done: fit within a single segment, or merge abutting track colliders
   (affects every model).
+  **Correction and browser findings (2026-11-10, #1714):** the compiled
+  track colliders are exactly coplanar (all 18 tile tops at 0.000000 mm along
+  the surface normal), so the bump is not a step between tiles: it is Jolt's
+  internal-edge contact where two abutting 320 LDU tiles meet. Tile geometry
+  cannot remove it with stock parts (no smooth tile is longer than 320 LDU).
+  Enabling Jolt's enhanced internal-edge removal is a possible engine
+  follow-up; it affects every model. Two browser measurement defects were
+  fixed on the way: (1) timestamp aliasing — the recorder stamped worker poses
+  with the session clock (33.3 ms ticks) while each batch runs whole 5 ms
+  steps (30 or 35 ms), so the fit read 16 % low; a gate that requests
+  per-step sampling now gets frames stamped with the physics time of their
+  poses (other gates keep the session clock their hold checks use); (2) coarse sampling — browser frames are whole batches,
+  8 in the window; the worker's fixed-step collector now also samples up to
+  four requested dynamic bodies, and the gate judges on the registry's 20 ms
+  grid. On that clean data the left roller still fits 5.7 % low (right
+  2.7 %): the one joint crossing falls mid-window, where natively it falls
+  elsewhere. RimRun's browser gate is therefore held (not in CI) pending a
+  judge change that fits within a single tile segment.
 - **Arcade exception at merge.** On operator decision, "Arcade numeric
   authoring (official build)" was an exception for #1683 only. Both failures
   are kept on record:

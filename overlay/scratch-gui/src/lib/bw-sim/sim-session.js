@@ -727,10 +727,11 @@ export class SimSession {
     }
 
     /** Reset analytical state on an explicit selection change; no physical state is changed. */
-    setMeasurementObservation ({joints = [], contacts = false, screws = false, mode = 'oscillation', thresholdDegrees = 0} = {}) {
-        const key = JSON.stringify({joints, contacts, screws, mode, thresholdDegrees});
+    setMeasurementObservation ({joints = [], contacts = false, screws = false, mode = 'oscillation', thresholdDegrees = 0, bodies = []} = {}) {
+        // bodies: optional per-step poses of requested dynamic bodies (observational; empty by default).
+        const key = JSON.stringify({joints, contacts, screws, mode, thresholdDegrees, ...(bodies.length ? {bodies} : {})});
         if (key === this._measurementObservationKey) return;
-        const selection = observationSelection({revision: ++this._observationRevision, joints, contacts, screws, mode, thresholdDegrees}, this.mechanism);
+        const selection = observationSelection({revision: ++this._observationRevision, joints, contacts, screws, mode, thresholdDegrees, ...(bodies.length ? {bodies} : {})}, this.mechanism);
         this._measurementCollector?.detach();
         this._measurementObservationKey = key;
         this._measurementObservation = selection;
