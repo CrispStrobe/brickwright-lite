@@ -196,6 +196,7 @@
   "scratch-vm/src/util/bw-procedure-constraint-model.js": {
     "tests": [
       "test/arcade-absent-asset-literals.test.mjs",
+      "test/arcade-truthy-guard-array-authority.test.mjs",
       "test/arcade-animation-lookup-id-literal.test.mjs",
       "test/arcade-block-scoped-loop-locals.test.mjs",
       "test/arcade-consumed-update-number-proofs.test.mjs",
