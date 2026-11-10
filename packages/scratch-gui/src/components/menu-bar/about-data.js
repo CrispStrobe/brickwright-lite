@@ -33,6 +33,13 @@ const ABOUT_GROUPS = [
                 note: 'Fork of emu8051 by Jari Komppa (MIT)'
             },
             {
+                name: 'Espressif ESP32-S3 ROM',
+                url: 'https://github.com/espressif/esp-rom-elfs',
+                license: 'Apache-2.0',
+                licenseUrl: 'static/licenses/esp32s3-rom.Apache-2.0.txt',
+                role: 'Mask ROM windows for ESP32-S3 firmware boot'
+            },
+            {
                 name: 'micropython-microbit-v2-simulator',
                 url: 'https://github.com/microbit-foundation/micropython-microbit-v2-simulator',
                 license: 'MIT',

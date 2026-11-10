@@ -1,7 +1,54 @@
 # SAMD software-profile engine adoption
 
-Status: supplier assembly/release and actual consumer game acceptance are
-complete. Build run40783464522 supplied the admitted frontend; actual game
+Status: the 9c engine release and landed Board supplier are qualified,
+2026-11-02. Fresh Lite Chromium and installed Tauri/WebKit game qualification
+on the final consumer remain pending. Earlier consumer receipts retain their
+original engine, source, frontend and executable identities.
+
+## Current 9c supplier admission
+
+Immutable [release `labwired-wasm-9c420649`](https://github.com/CrispStrobe/bw-board/releases/tag/labwired-wasm-9c420649),
+ID `430923343`, uses Core
+`9c4206499a39a04f56cd11c0b8c9b4cb94a06e62`.
+[Producer 41359378516](https://github.com/CrispStrobe/bw-board/actions/runs/41359378516)
+passed two fresh independent builds, deterministic executable/configuration/
+license comparison, 127 engine cases without failures/skips, six SAMD profile
+controls and three actual producer game samples. All nine published assets
+match the admitted originals; the fresh SAMD audit joined 565 source-fixture
+files and independently decoded 51 frames. These are producer results.
+
+[bw-board PR723](https://github.com/CrispStrobe/bw-board/pull/723) merged at
+`cda9d13b3e5b4a3e40854f45e04d110ab2a57ef3`, with build PIN, generated catalog
+and fixture engine identities aligned.
+[Run 41374193811](https://github.com/CrispStrobe/bw-board/actions/runs/41374193811)
+passed all four required supplier CI jobs and their named steps in one run;
+Lite's unchanged `verifyBwBoardCi` admitted that exact head.
+[S040 41374193796](https://github.com/CrispStrobe/bw-board/actions/runs/41374193796)
+passed 31 cases; [S3 41374193817](https://github.com/CrispStrobe/bw-board/actions/runs/41374193817)
+passed 23 retained-flash cases plus the original ELF case, all without skips.
+These S040/S3 results qualify the supplier routes and do not replace SAMD
+consumer acceptance.
+
+The new root and GUI installations pass exact Git/npm-pack content verification
+for Board cda9 (13,448 files each) and CUI 380dc8b7 (1,367 files each), including
+single-engine resolution in both trees. The final Lite adoption still needs
+emitted engine/glue/profile admission, source/frontend/native-executable joins,
+and fresh Chromium and installed Tauri/WebKit game results under the existing
+qualifier. Prior `3b655aef` and later historical consumer results, including
+their timing/RSS measurements and retained failures, are not reassigned to 9c.
+Selected-motion qualification remains deferred. An engine update does not add
+a normal native SAMD compile/import/export route or physical/SDK/LVGL/radio/
+native-USB support. See the [current handoff](SAMD-NATIVE-GAME-HANDOFF.md#current-9c-release-and-consumer-boundary)
+for released byte identities and the preserved evidence boundary.
+
+## Historical 3b adoption record
+
+The following supplier and consumer records describe the earlier
+`labwired-wasm-3b655aef-locked` adoption. Their status and measurements remain
+attached to those original inputs.
+
+For that earlier adoption, supplier assembly/release and actual consumer game
+acceptance completed. Build run40783464522 supplied the admitted frontend; actual game
 runs40826297334 (Chromium) and40828345515 (installed Tauri/WebKit) passed three
 fresh instances each. Independent audits decoded all 102 original RGB frames,
 verified press/release and sampled RSS, and joined source/frontend/executable/
@@ -34,7 +81,7 @@ calibration/serial packets; they are not hardware captures or physical page-size
 measurements. A colour is unknown until the actual guest uploads the complete
 RGBSET table. No host-installed default LUT is permitted.
 
-## Completed work and remaining acceptance
+## Historical completed work and recorded acceptance
 
 1. **Done — explicit Core assembly.**
    [Core PR262](https://github.com/CrispStrobe/labwired-core/pull/262) merged as

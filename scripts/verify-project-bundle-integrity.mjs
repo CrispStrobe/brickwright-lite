@@ -3,6 +3,7 @@
 import {mkdir, readFile, writeFile} from 'node:fs/promises';
 import {resolve} from 'node:path';
 import {createRequire} from 'node:module';
+import {createHash} from 'node:crypto';
 import {chromium} from 'playwright';
 
 const requireFromGui = createRequire(new URL('../packages/scratch-gui/package.json', import.meta.url));
@@ -130,16 +131,30 @@ try {
     await page.getByRole('tab', {name: 'Code', exact: true}).click();
     await page.getByText(/Brickwright state v7 was not applied: preserved-not-applied/)
         .waitFor({timeout: 15000});
-    if (JSON.stringify(await projectKeys(page)) !== JSON.stringify(beforeRefusal)) {
-        throw new Error('future sidecar partially replaced known project state');
+    const afterFuture = await projectKeys(page);
+    if (JSON.stringify(afterFuture) !== JSON.stringify(beforeRefusal)) {
+        const changed = Object.keys(beforeRefusal).filter(key => beforeRefusal[key] !== afterFuture[key]);
+        const evidence = Object.fromEntries(changed.map(key => [key, ['before', 'after'].map(which => {
+            const value = (which === 'before' ? beforeRefusal : afterFuture)[key];
+            return value === null ? null : {bytes: Buffer.byteLength(value),
+                sha256: createHash('sha256').update(value).digest('hex')};
+        })]));
+        throw new Error(`future sidecar partially replaced known project state: ${JSON.stringify(evidence)}`);
     }
     await openProject(page, invalidPath);
     await page.getByText(/Brickwright data could not be read/)
         .waitFor({state: 'visible', timeout: 15000});
     await page.getByRole('tab', {name: 'Code', exact: true}).click();
     await page.getByText(/Brickwright state was not applied: invalid JSON/).waitFor({timeout: 15000});
-    if (JSON.stringify(await projectKeys(page)) !== JSON.stringify(beforeRefusal)) {
-        throw new Error('invalid sidecar partially replaced known project state');
+    const afterInvalid = await projectKeys(page);
+    if (JSON.stringify(afterInvalid) !== JSON.stringify(beforeRefusal)) {
+        const changed = Object.keys(beforeRefusal).filter(key => beforeRefusal[key] !== afterInvalid[key]);
+        const evidence = Object.fromEntries(changed.map(key => [key, ['before', 'after'].map(which => {
+            const value = (which === 'before' ? beforeRefusal : afterInvalid)[key];
+            return value === null ? null : {bytes: Buffer.byteLength(value),
+                sha256: createHash('sha256').update(value).digest('hex')};
+        })]));
+        throw new Error(`invalid sidecar partially replaced known project state: ${JSON.stringify(evidence)}`);
     }
 
     await openProject(page, vanillaPath);
