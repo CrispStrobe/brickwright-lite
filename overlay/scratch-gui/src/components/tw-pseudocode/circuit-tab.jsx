@@ -437,7 +437,10 @@ class CircuitTab extends React.Component {
             const {key, value} = event.detail || {};
             if (key === 'about') return;
             if (key === 'debugDock' || key === 'bw-debug-dock') {
-                this.setDock(value);
+                // A run that opens Widgets on its own (a machine's video, FPGA
+                // LEDs) must not take away the debugger the user placed. Only
+                // the user's own choice of a device dock hides it.
+                if (!(event.detail.automatic && DEVICE_DOCKS.has(value))) this.setDock(value);
                 // A right-docked debugger (or a controller faceplate) is a
                 // request to USE the optional right pane. gui.jsx opens its
                 // column on this same event — but this tab keeps its own
