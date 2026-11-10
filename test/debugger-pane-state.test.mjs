@@ -225,6 +225,17 @@ test('real React reconciles the actual dock renders without remounting or destro
                 });
             }
         });
+        // It also predates the :scope pseudo-class that _layoutStageHost uses
+        // to find its sibling dock. Resolve exactly ':scope > X' as the direct
+        // children matching X; every other selector goes to jsdom unchanged.
+        for (const proto of [document.defaultView.Element.prototype, document.defaultView.Document.prototype]) {
+            const original = proto.querySelector;
+            proto.querySelector = function (selector) {
+                const scoped = /^:scope\\s*>\\s*(.+)$/.exec(selector);
+                if (!scoped) return original.call(this, selector);
+                return Array.from(this.querySelectorAll(scoped[1])).find(node => node.parentNode === this) || null;
+            };
+        }
         const React = require(${JSON.stringify(requireGui.resolve('react'))});
         const ReactDOM = require(${JSON.stringify(requireGui.resolve('react-dom'))});
         const makeCircuit = new Function('env', ${JSON.stringify(factoryCode)});
