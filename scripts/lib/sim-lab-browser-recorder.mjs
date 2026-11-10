@@ -27,7 +27,9 @@ export function installBrowserMechanicsRecorder({recordKey,captureKey,extended=f
  // derivative. The native runner stamps every frame at its exact step time; this matches it. Offset to the
  // session clock at install so phases and finishedAt (session time) stay comparable.
  const coreMs=()=>Number.isFinite(s.core?.time)?s.core.time*1000:null,core0=coreMs();
- const frameTime=()=>core0===null?s.time:r.start+(coreMs()-core0);
+ // Only gates that judge on these stamps ask for them (stepParts): other gates compare frame times with
+ // finishedAt and their hold intervals on the session clock, and keep exactly that clock.
+ const frameTime=()=>!stepParts||core0===null?s.time:r.start+(coreMs()-core0);
  if(extended){
   r.controlledMotors=api.motors();r.apiEvents=[];r.refusals=[];const originals={};
   for(const name of ['start','stopMotor','runMotorDegrees','setMotorPower','setMotorSpeed','motorAngle','motorSpeed']){
@@ -50,7 +52,7 @@ export function installBrowserMechanicsRecorder({recordKey,captureKey,extended=f
   if(observeProgram&&!r.finishedAt&&s.time-r.start>1000&&!vm.runtime.threads.some(t=>t.status!==4))r.finishedAt=s.time;
   const extra=observeProgram?{ropes:s.core.ropeState(),variables:variables()}:null;
   // Every frame carries the native rope states (the crane judge reads f.ropes).
-  const frame={t:frameTime(),sessionT:s.time,...(stepParts?{contacts:s.core.currentContactPairs()}:{}),ropes:s.core.ropeState(),bodies:Object.fromEntries(m.bodies.filter(b=>b.motion==='dynamic').map(b=>[b.id,s.core.bodyPose(b.id)])),
+  const frame={t:frameTime(),...(stepParts?{sessionT:s.time,contacts:s.core.currentContactPairs()}:{}),ropes:s.core.ropeState(),bodies:Object.fromEntries(m.bodies.filter(b=>b.motion==='dynamic').map(b=>[b.id,s.core.bodyPose(b.id)])),
    joints:Object.fromEntries(m.joints.filter(j=>['hinge','slider'].includes(j.type)).map(j=>[j.id,s.core.jointState(j.id)])),
    busy:Object.fromEntries(m.actuators.map(a=>[a.port,pane.hub.motors.busy(a.port)])),...(extra?{extra}:{})};
   if(extended){

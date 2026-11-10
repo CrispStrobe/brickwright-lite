@@ -132,8 +132,9 @@ Open points, recorded rather than resolved:
   follow-up; it affects every model. Two browser measurement defects were
   fixed on the way: (1) timestamp aliasing — the recorder stamped worker poses
   with the session clock (33.3 ms ticks) while each batch runs whole 5 ms
-  steps (30 or 35 ms), so the fit read 16 % low; frames now carry the physics
-  time of their poses; (2) coarse sampling — browser frames are whole batches,
+  steps (30 or 35 ms), so the fit read 16 % low; a gate that requests
+  per-step sampling now gets frames stamped with the physics time of their
+  poses (other gates keep the session clock their hold checks use); (2) coarse sampling — browser frames are whole batches,
   8 in the window; the worker's fixed-step collector now also samples up to
   four requested dynamic bodies, and the gate judges on the registry's 20 ms
   grid. On that clean data the left roller still fits 5.7 % low (right
@@ -146,6 +147,13 @@ Open points, recorded rather than resolved:
   both rollers match their predictions within 0.02 % (ratio 1.0783 vs
   1.0784); `rimrun-swapped` still moves the lead. RimRun's browser gate runs
   again (shard robotaddon14).
+- **Merge exception for #1714 and the RimRun judge PR (operator decision,
+  2026-11-10):** both may merge with browser (heavy) and browser (light)
+  failing exactly the six steps that also fail on main eb7e1c91 (run
+  42788806821: ESP32-S3 boot, S040 display/touch, 386 media in Widgets, x86
+  debugger Pause, four-surface save/reopen, MakeCode import), only when the
+  error signatures are identical and every other enabled check is green.
+  #1714 merged on that basis (comment on the PR); no other step was excepted.
 - **Arcade exception at merge.** On operator decision, "Arcade numeric
   authoring (official build)" was an exception for #1683 only. Both failures
   are kept on record:

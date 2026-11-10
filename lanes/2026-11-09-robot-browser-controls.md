@@ -21,8 +21,9 @@ Results:
   saved project replayed in a fresh context, EN/DE lessons. Its build steps
   were re-authored to at most six parts per step (geometry unchanged).
 - RimRun: PASS after its judge change (separate PR after #1714), shard
-  robotaddon14. Two browser measurement defects were fixed in #1714 (frame
-  timestamps carry the physics time of their poses; the worker samples
+  robotaddon14. Two browser measurement defects were fixed in #1714 (a gate that
+  requests per-step sampling gets frames stamped with the physics time of
+  their poses; the worker samples
   requested bodies at every physics step and the gate judges on the
   registry's 20 ms grid). The remaining 5.7 % came from one tile-joint bump
   (Jolt's internal-edge contact between exactly coplanar abutting tiles)
@@ -35,3 +36,10 @@ Results:
   project replayed in a fresh context, EN/DE lessons.
 
 No threshold or limit was changed; the judge's fit window changed, its 5 % gate did not.
+
+Merge exception (operator decision): #1714 merged with browser (heavy) and
+browser (light) failing exactly the six steps that also fail on main eb7e1c91
+(ESP32-S3 boot, S040 display/touch, 386 media in Widgets, x86 debugger Pause,
+four-surface save/reopen, MakeCode import), with identical error signatures;
+every other check was green. The same scoped exception applies to this RimRun
+PR under the same conditions.
