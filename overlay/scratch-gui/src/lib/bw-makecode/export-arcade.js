@@ -145,7 +145,7 @@ function currentSceneClockNumber(blocks,block) {
  * @module
  */
 import {LEGACY_PARSE_SOURCE, LEGACY_JSON_SOURCE, ARRAY_ACCESS_SOURCE} from './legacy-array-values.js';
-import {createAnimationFrameArrayProducers} from './animation-frame-array-producers.js';
+import {createAnimationFrameArrayProducers, constantStringVariable} from './animation-frame-array-producers.js';
 import {encodeAnimationJres, decodeAnimationJres, nativeAnimationNameBase, isNativeAnimationName} from './animation-jres.js';
 
 const ADDITION_VIEW_METADATA=new Set(['originalBody','parameterDefaults','paramTypes','typeParameters','returnType',
@@ -740,7 +740,23 @@ class ArcadeEmitter {
         if (id !== null && !this.authoredAnimationArrays.has(id)) this.note(`Animation resource unavailable: ${id}`);
         const method = b.opcode === 'arcade_animationAssetFrames' ? this.animationFunctionNames.frames :
             b.opcode === 'arcade_animationAssetFreshFrames' ? this.animationFunctionNames.fresh : this.animationFunctionNames.interval;
-        return `${method}("" + ${this.arrayValue(b, 'RESOURCE')})`;
+        // A string literal resource is already a String: pass it as is, so the
+        // lookup's `id: string` formal keeps a String producer on reimport
+        // (`"" + "<id>"` reimports as a generic addition typed any).
+        const resource = this.arrayValue(b, 'RESOURCE');
+        if (/^"(?:[^"\\\n]|\\.)*"$/.test(resource)) return `${method}(${resource})`;
+        // Likewise a global whose actual writers are all String, or a never-
+        // written global holding a saved string (the producers' own rule): its final
+        // declaration is checked after declarations, and a global not
+        // declared string goes back to the `"" + key` form.
+        const raw = b.inputs?.RESOURCE?.[1], variableId = Array.isArray(raw) && raw[0] === 12 ? raw[2] || raw[1] : null;
+        if (variableId && (this.primitiveVariableTypes.get(variableId) === 'string' ||
+            constantStringVariable(this.target, raw, {targets: this.project.targets, monitors: this.project.monitors}) !== null) &&
+            /^[A-Za-z_$][\w$]*$/.test(resource)) {
+            this.directStringArguments.add(`${method}(${resource})`);
+            return `${method}(${resource})`;
+        }
+        return `${method}("" + ${resource})`;
     }
 
     /** Record what kind of value a variable is given, for its declaration. */
@@ -4626,6 +4642,7 @@ class ArcadeEmitter {
         this.deadSavedInitials = this.arcadeValues ? startupFirstWriteVariables(this.project,
             (target, id, name) => target.isStage ? this.isGlobalVar(name) : !this.isGlobalVar(name) && !this.isClonable(target)) : new Set();
         this.directConcatGlobals = new Set();
+        this.directStringArguments = new Set();
         this.globalVariableIds = new Map();
         this.collectKindBindings();
         // Scratch's Stage composites transparent backdrop pixels over white.
@@ -5034,7 +5051,9 @@ class ArcadeEmitter {
         // live saved default) keeps the original cast helper form.
         const castConcat=[...this.directConcatGlobals].filter(name=>!stringGlobals.has(name));
         if(castConcat.length)this.use('sdkConcat');
-        const concatForm=chunk=>castConcat.reduce((text,name)=>text.split(`${name}.concat(<any>`).join(`__bwSdkConcat(<any>${name}, `),chunk);
+        const castArguments=[...this.directStringArguments].filter(call=>!stringGlobals.has(/\(([^)]*)\)$/.exec(call)[1]));
+        const concatForm=chunk=>castArguments.reduce((text,call)=>text.split(call).join(call.replace(/\(([^)]*)\)$/,'("" + $1)')),
+            castConcat.reduce((text,name)=>text.split(`${name}.concat(<any>`).join(`__bwSdkConcat(<any>${name}, `),chunk));
         const animationLookupDefinitions=new Map();
         if (this.usesAnimationResources) {
             const resources = [...this.authoredAnimationArrays.values()];
