@@ -1115,10 +1115,7 @@
       "disconnectInputDeg": 95,
       "disconnectLoss": "rimrun",
       "notRun": [
-        "savedProjectReplay",
-        "browser journey (held, not in CI: the gate exists, --examples=rimrun; on per-step 20 ms browser data the left roller fits 5.7 % below its prediction because one tile-joint bump falls mid-window; judge change to a single-tile fit window pending)",
-        "export",
-        "manual controls"
+        "webkit browser run (the browser gate, shard robotaddon14, runs chromium)"
       ]
     },
     {
