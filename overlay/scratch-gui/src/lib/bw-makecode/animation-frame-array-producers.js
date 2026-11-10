@@ -53,7 +53,7 @@ const dataSnapshot = root => {
 // A global variable read whose stored value is a string, which no block in
 // any target writes and no slider monitor can change, holds that string for
 // the whole run (in PXT the source declares it once and never assigns it).
-const constantStringVariable = (target, raw, context) => {
+export const constantStringVariable = (target, raw, context) => {
     if (!context || !Array.isArray(context.targets) || !Array.isArray(raw) || raw.length !== 3 || raw[0] !== 12 ||
         typeof raw[1] !== 'string' || typeof raw[2] !== 'string') return null;
     const [, name, id] = raw;
