@@ -46,7 +46,7 @@ WHEN flag clicked:
   set missing to item 0 of array "blank"`;
 const names=['identity','nested','numberText','wordText','count','last','content','located','oldCount','newCount','changed','deletedCount','oldContent','emptyPop'];
 const expected={identity:true,nested:'[2,3,4]',numberText:12,wordText:'word',count:9,last:'',content:'[12,"word",[2,3,4],null,true,7,"hello",null]',located:5,oldCount:8,newCount:0,changed:true,deletedCount:0,oldContent:'[12,"word",[2,3,4],null,true,7,"hello",null]',emptyPop:''};
-test('named arrays retain scalar items, aggregate JSON, value parsing, nested aliases and replacement across all conversion paths', {todo:"second export refuses the reimported Array references \u2014 see docs/ARCADE-888-OPEN-FAILURES.md"},async()=>{
+test('named arrays retain scalar items, aggregate JSON, value parsing, nested aliases and replacement across all conversion paths',async()=>{
     const check=run=>{const actual=vars(run);for(const name of names)assert.equal(actual[name],expected[name],name);assert.equal(BWValues.decode(actual.missing),undefined,'a missing item is MakeCode undefined (raw or BWValues.UNDEFINED), not text');assert.deepEqual(run.errors,[]);assert.deepEqual(run.creator.warnings,[]);};
     const run=await runProgram(code,{frames:50,storage:true});check(run);
     const again=await runProgram(run.creator.decompile(),{frames:50,storage:true});check(again);

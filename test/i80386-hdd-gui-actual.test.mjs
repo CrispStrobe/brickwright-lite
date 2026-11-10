@@ -72,7 +72,7 @@ test('internal V8 tag is excluded from five isolated pushes and current main-onl
         ['basic-oracle','88725722f8784da8b11e2c1ee7bacea11ba959df16666d93bdab9cdc9b8d1783'],
         ['makecode-arcade-bases','1b9f0bc31c91bd383967bf1ee50767e242457ff80463ddc6163a6aca2a11b8b4'],
         ['pascal-ack-image','4f652ee179626ea3a6d529ec9e394012da5f66f38c99f3b08658c9eff4ba601e'],
-        ['target-performance','df74ee077e75e82071bf69db3454dcf564fd48a8c263f8b2bd23f2cf379fce6c'],
+        ['target-performance','281cefd18f5a17c8d8ff6787b5f4a4e4b25934bda99fb1d62e3dc42715cdcb3d'],
     ]);
     const block="  push:\n    branches: ['**']\n    tags-ignore: ['bw-gui-hdd-actual-v8-*']\n";
     const source = new Map();
@@ -6806,7 +6806,7 @@ class ProducerV10(unittest.TestCase):
         with patch.object(c,'CUI','0'*40),patch.object(c,'CURRENT_BOARD','1'*40),patch.object(c,'CURRENT_SB3','2'*40):
             self.assertEqual(c.FINITE_V9_PINS,old)
             self.assertEqual(c.FINITE_V9_CUI_WITNESSES,witness)
-            self.assertEqual(c.FINITE_V10_PINS['bw-board'],'6efff7f4d180ad7552ac79c8b779fefd2d1b1d5c')
+            self.assertEqual(c.FINITE_V10_PINS['bw-board'],'c840653f036805f5f96d0d523b908a6a0e021acd')
         for mode in ('actual-v9-guard','actual-v9-ack','actual-v9','finite-inventory-v10'):
             with self.assertRaisesRegex(ValueError,'disabled'):
                 with patch.object(c,'ACTUAL_V9_ENABLED',False):c.main([mode])

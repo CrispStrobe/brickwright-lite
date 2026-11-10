@@ -27,7 +27,7 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: CrispStrobe/labwired-core
-          ref: 9c4206499a39a04f56cd11c0b8c9b4cb94a06e62
+          ref: fa992f357df88dbd50057a31f13dbcc0835a95cd
           path: .bench/labwired-core
       - name: Fetch the exact LabWired node artifact
         env:
@@ -35,10 +35,10 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p .bench/labwired-wasm
-          gh release download labwired-wasm-9c420649 --repo CrispStrobe/bw-board \
+          gh release download labwired-wasm-fa992f35 --repo CrispStrobe/bw-board \
             --pattern 'nodejs-*' --dir .bench/labwired-wasm
-          echo 'b79c99c23545af5c173b63f5403f99cf3003cc7c57b8cce74bfb47d5f5f80674  .bench/labwired-wasm/nodejs-labwired_wasm.js' | sha256sum --check --strict
-          echo '41c31ae388ce4389794eb9c6ee1f602bf361d792928dfabf2a1ef917d0796264  .bench/labwired-wasm/nodejs-labwired_wasm_bg.wasm' | sha256sum --check --strict
+          echo 'c5bc1317e84b672987a64db7ad96f75589e86ab8106df9ad2ef5676b59ba1c7a  .bench/labwired-wasm/nodejs-labwired_wasm.js' | sha256sum --check --strict
+          echo '0071c27197830e6d1fab2be32297c69ab450405cf893036f29977796aaa5648e  .bench/labwired-wasm/nodejs-labwired_wasm_bg.wasm' | sha256sum --check --strict
           mv .bench/labwired-wasm/nodejs-labwired_wasm.js .bench/labwired-wasm/labwired_wasm.js
           mv .bench/labwired-wasm/nodejs-labwired_wasm_bg.wasm .bench/labwired-wasm/labwired_wasm_bg.wasm
           printf '{"type":"commonjs"}\n' > .bench/labwired-wasm/package.json

@@ -145,7 +145,7 @@ function currentSceneClockNumber(blocks,block) {
  * @module
  */
 import {LEGACY_PARSE_SOURCE, LEGACY_JSON_SOURCE, ARRAY_ACCESS_SOURCE} from './legacy-array-values.js';
-import {createAnimationFrameArrayProducers} from './animation-frame-array-producers.js';
+import {createAnimationFrameArrayProducers, constantStringVariable} from './animation-frame-array-producers.js';
 import {encodeAnimationJres, decodeAnimationJres, nativeAnimationNameBase, isNativeAnimationName} from './animation-jres.js';
 
 const ADDITION_VIEW_METADATA=new Set(['originalBody','parameterDefaults','paramTypes','typeParameters','returnType',
@@ -236,6 +236,7 @@ const BUFFER_FORMAT_NAMES = ['Int8LE','UInt8LE','Int16LE','UInt16LE','Int32LE','
 const BACKGROUND_EFFECTS = ['confetti', 'hearts', 'smiles', 'blizzard', 'bubbles', 'starField', 'clouds', 'none', 'dissolve', 'melt', 'slash', 'splatter'];
 import {ARCADE_PALETTE, imageToSvg} from './arcade-assets.js';
 import {helperSource, analyseTone} from './arcade-runtime.js';
+import {startupFirstWriteVariables} from './startup-first-write-globals.js';
 
 /**
  * Why the mouse stays a refusal: Arcade hardware has a d-pad and A/B, no
@@ -739,7 +740,23 @@ class ArcadeEmitter {
         if (id !== null && !this.authoredAnimationArrays.has(id)) this.note(`Animation resource unavailable: ${id}`);
         const method = b.opcode === 'arcade_animationAssetFrames' ? this.animationFunctionNames.frames :
             b.opcode === 'arcade_animationAssetFreshFrames' ? this.animationFunctionNames.fresh : this.animationFunctionNames.interval;
-        return `${method}("" + ${this.arrayValue(b, 'RESOURCE')})`;
+        // A string literal resource is already a String: pass it as is, so the
+        // lookup's `id: string` formal keeps a String producer on reimport
+        // (`"" + "<id>"` reimports as a generic addition typed any).
+        const resource = this.arrayValue(b, 'RESOURCE');
+        if (/^"(?:[^"\\\n]|\\.)*"$/.test(resource)) return `${method}(${resource})`;
+        // Likewise a global whose actual writers are all String, or a never-
+        // written global holding a saved string (the producers' own rule): its final
+        // declaration is checked after declarations, and a global not
+        // declared string goes back to the `"" + key` form.
+        const raw = b.inputs?.RESOURCE?.[1], variableId = Array.isArray(raw) && raw[0] === 12 ? raw[2] || raw[1] : null;
+        if (variableId && (this.primitiveVariableTypes.get(variableId) === 'string' ||
+            constantStringVariable(this.target, raw, {targets: this.project.targets, monitors: this.project.monitors}) !== null) &&
+            /^[A-Za-z_$][\w$]*$/.test(resource)) {
+            this.directStringArguments.add(`${method}(${resource})`);
+            return `${method}(${resource})`;
+        }
+        return `${method}("" + ${resource})`;
     }
 
     /** Record what kind of value a variable is given, for its declaration. */
@@ -1048,6 +1065,7 @@ class ArcadeEmitter {
             this.editedSavedReferenceIds.set(entry[0], initial);
             this.note(`Source reference ${name}: saved resource tag differs from its standard variable value`);
         }
+        if (entry) this.globalVariableIds.set(ts, entry[0]);
         if (['string', 'number', 'boolean'].includes(typeof initial) &&
             (typeof initial !== 'number' || Number.isFinite(initial))) {
             this.initialGlobals.set(ts, initial);
@@ -1752,7 +1770,20 @@ class ArcadeEmitter {
             return this.namedKind(name);
         }
         case 'arrays_stringFromCharCode':return `${this.use('sdkStrings','__bwSdkCharCode')}(${this.arrayValue(b,'CODE')})`;
-        case 'arrays_stringConcat':return `${this.use('sdkStrings','__bwSdkConcat')}(<any>${this.arrayValue(b,'TEXT')}, ${this.arrayValue(b,'OTHER')})`;
+        case 'arrays_stringConcat':{
+            // `__bwSdkConcat(left, right)` is exactly `left.concat(right)`. A
+            // receiver that is a string literal, or a global whose actual
+            // writers are all String and whose final declaration is string
+            // (otherwise restored to the helper after declarations), is called directly: the helper's
+            // `<any>` cast would hide its String producer from a reimport. The
+            // argument keeps the helper's `any` parameter type.
+            const input=b.inputs?.TEXT?.[1],reporter=typeof input==='string'?this.blocks[input]:null;
+            const id=Array.isArray(input)&&input[0]===12?input[2]||input[1]:reporter?.opcode==='data_variable'?reporter.fields?.VARIABLE?.[1]||reporter.fields?.VARIABLE?.[0]:null;
+            const text=this.arrayValue(b,'TEXT');
+            if(/^"(?:[^"\\\n]|\\.)*"$/.test(text))return `${text}.concat(<any>${this.arrayValue(b,'OTHER')})`;
+            if(id&&this.primitiveVariableTypes.get(id)==='string'&&/^[A-Za-z_$][\w$]*$/.test(text)){this.directConcatGlobals.add(text);return `${text}.concat(<any>${this.arrayValue(b,'OTHER')})`;}
+            return `${this.use('sdkConcat','__bwSdkConcat')}(<any>${text}, ${this.arrayValue(b,'OTHER')})`;
+        }
         case 'arrays_stringCharCodeAt':return `(<string>${this.arrayValue(b,'TEXT')}).charCodeAt(<any>${this.arrayValue(b,'INDEX')})`;
         case 'arrays_namedReference': return this.namedArray(b);
         case 'arrays_parseLegacyValue': return this.legacyArrayInput(b);
@@ -4606,6 +4637,13 @@ class ArcadeEmitter {
     // ── the program ──────────────────────────────────────────────────────
     emit () {
         const out = [];
+        // Arcade values only: a saved default that no code can read before the
+        // start script's first assignment is not exported as a producer.
+        this.deadSavedInitials = this.arcadeValues ? startupFirstWriteVariables(this.project,
+            (target, id, name) => target.isStage ? this.isGlobalVar(name) : !this.isGlobalVar(name) && !this.isClonable(target)) : new Set();
+        this.directConcatGlobals = new Set();
+        this.directStringArguments = new Set();
+        this.globalVariableIds = new Map();
         this.collectKindBindings();
         // Scratch's Stage composites transparent backdrop pixels over white.
         // Native Arcade primitives own their scene defaults instead; do not
@@ -4987,7 +5025,15 @@ class ArcadeEmitter {
             const objectType=this.objectClassExport?.variableTypes.get(n);
             if(objectType && this.objectClassExport.hasType?.(objectType)){out.push(`let ${n}: ${objectType} = null`);continue;}
             if(['number','boolean','string'].includes(objectType)){out.push(`let ${n}: ${objectType} = ${objectType==='string'?'\"\"':objectType==='boolean'?'false':'0'}`);continue;}
+            // A dead saved default (see startup-first-write-globals.js) of a
+            // global whose actual writers the type graph proves String is not
+            // a producer: declare it string with the type's own default.
+            const variableId=this.globalVariableIds.get(n);
+            if(variableId&&this.deadSavedInitials.has(variableId)&&this.primitiveVariableTypes.get(variableId)==='string'){out.push(`let ${n} = ""`);continue;}
             const kinds = this.kinds.get(n) || new Set(['number']);
+            // A dead saved default of a mixed/any global is not a value either:
+            // declare it without an initializer (no root `= 0` producer).
+            const deadAny=!!variableId&&this.deadSavedInitials.has(variableId);
             // A variable given both text and numbers is `any` — Scratch's own
             // variables are untyped, and that is the honest translation.
             const arrayKind=[...kinds].find(kind=>kind.endsWith('[]'));
@@ -4998,8 +5044,16 @@ class ArcadeEmitter {
             const mixedInitialScalar = this.initialGlobals.has(n) &&
                 ['string', 'boolean', 'number'].some(kind => kinds.has(kind) && kind !== initialScalarType);
             out.push(arrayKind?`let ${n}: ${arrayKind} = null`:this.handleVars.has(n) ? `let ${n}: Sprite = null` :
-                kinds.size > 1 || kinds.has('any') || mixedInitialScalar ? `let ${n}: any = ${initial}` : kinds.has('string') ? `let ${n} = ${this.initialGlobals.has(n) ? initial : '""'}` : kinds.has('boolean') ? `let ${n} = ${this.initialGlobals.has(n) ? initial : 'false'}` : kinds.has('Buffer') ? `let ${n}: Buffer = null` : kinds.has('mp.Player') ? `let ${n}: mp.Player = null` : kinds.has('scene.Scene') ? `let ${n}: scene.Scene = null` : kinds.has('ArcadePhysicsEngine') ? `let ${n}: ArcadePhysicsEngine = null` : kinds.has('animation.Animation') ? `let ${n}: animation.Animation = null` : kinds.has('SevenSegDigit') ? `let ${n}: SevenSegDigit = null` : kinds.has('DigitCounter') ? `let ${n}: DigitCounter = null` : kinds.has('TextSprite') ? `let ${n}: TextSprite = null` : kinds.has('Dart') ? `let ${n}: Dart = null` : kinds.has('Corgio') ? `let ${n}: Corgio = null` : kinds.has('tiles.Tile') ? `let ${n}: tiles.Tile = null` : kinds.has('tiles.Location') ? `let ${n}: tiles.Location = null` : kinds.has('tiles.TileMapData') ? `let ${n}: tiles.TileMapData = null` : kinds.has('image') ? `let ${n}: Image = null` : `let ${n} = ${initial}`);
+                kinds.size > 1 || kinds.has('any') || mixedInitialScalar ? (deadAny ? `let ${n}: any` : `let ${n}: any = ${initial}`) : kinds.has('string') ? `let ${n} = ${this.initialGlobals.has(n) ? initial : '""'}` : kinds.has('boolean') ? `let ${n} = ${this.initialGlobals.has(n) ? initial : 'false'}` : kinds.has('Buffer') ? `let ${n}: Buffer = null` : kinds.has('mp.Player') ? `let ${n}: mp.Player = null` : kinds.has('scene.Scene') ? `let ${n}: scene.Scene = null` : kinds.has('ArcadePhysicsEngine') ? `let ${n}: ArcadePhysicsEngine = null` : kinds.has('animation.Animation') ? `let ${n}: animation.Animation = null` : kinds.has('SevenSegDigit') ? `let ${n}: SevenSegDigit = null` : kinds.has('DigitCounter') ? `let ${n}: DigitCounter = null` : kinds.has('TextSprite') ? `let ${n}: TextSprite = null` : kinds.has('Dart') ? `let ${n}: Dart = null` : kinds.has('Corgio') ? `let ${n}: Corgio = null` : kinds.has('tiles.Tile') ? `let ${n}: tiles.Tile = null` : kinds.has('tiles.Location') ? `let ${n}: tiles.Location = null` : kinds.has('tiles.TileMapData') ? `let ${n}: tiles.TileMapData = null` : kinds.has('image') ? `let ${n}: Image = null` : `let ${n} = ${initial}`);
         }
+        const stringGlobals=new Set(out.map(line=>/^let ([A-Za-z_$][\w$]*)(?:: string(?: = .*)?| = "(?:[^"\\]|\\.)*")$/.exec(line)?.[1]).filter(Boolean));
+        // A receiver whose final declaration is not string (for example a
+        // live saved default) keeps the original cast helper form.
+        const castConcat=[...this.directConcatGlobals].filter(name=>!stringGlobals.has(name));
+        if(castConcat.length)this.use('sdkConcat');
+        const castArguments=[...this.directStringArguments].filter(call=>!stringGlobals.has(/\(([^)]*)\)$/.exec(call)[1]));
+        const concatForm=chunk=>castArguments.reduce((text,call)=>text.split(call).join(call.replace(/\(([^)]*)\)$/,'("" + $1)')),
+            castConcat.reduce((text,name)=>text.split(`${name}.concat(<any>`).join(`__bwSdkConcat(<any>${name}, `),chunk));
         const animationLookupDefinitions=new Map();
         if (this.usesAnimationResources) {
             const resources = [...this.authoredAnimationArrays.values()];
@@ -5161,7 +5215,7 @@ class ArcadeEmitter {
         }
         const assemble=definitions=>{
             const chunks=[...helperSource(this.helpers),...definitions,
-                ...pre,...generated,...this.generated,...functions,...out,...handlers,...startup];
+                ...pre,...generated,...this.generated,...functions,...out,...handlers,...startup].map(concatForm);
             const source=chunks.join('\n')+'\n';
             // Final output may prepend these sources after emit(). Until they
             // are included in one reference graph, retain every lookup when
