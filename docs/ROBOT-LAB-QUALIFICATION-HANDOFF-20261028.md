@@ -101,7 +101,8 @@ Open points, recorded rather than resolved:
   Point Weaver passed in #1703 (shards robotaddon10–12). Evenhand has its gate
   in #1714 (shard robotaddon13: counterbalance law, disconnected control,
   manual control, instructions, LDR/MPD, saved-project replay, EN/DE
-  lessons); RimRun's gate is held, see the residual below. Evenhand and
+  lessons); RimRun has its gate (shard robotaddon14) since its judge change,
+  see the residual below. Evenhand and
   RimRun's build steps were re-authored to at most six parts per step.
 - **Manual browser controls not run** for any of the six (superseded by the
   entry above). The checkpoint and
@@ -138,8 +139,21 @@ Open points, recorded rather than resolved:
   four requested dynamic bodies, and the gate judges on the registry's 20 ms
   grid. On that clean data the left roller still fits 5.7 % low (right
   2.7 %): the one joint crossing falls mid-window, where natively it falls
-  elsewhere. RimRun's browser gate is therefore held (not in CI) pending a
-  judge change that fits within a single tile segment.
+  elsewhere. **Resolved (2026-11-10, judge change):** `rolling-inertia-v1`
+  now fits each lane from gate clearance (the first frame after the engine
+  last reports the gate in contact with either roller) to its first tile
+  joint (from the compiled tile colliders), at least 10 frames at 20 ms, the
+  same judge natively and in the browser, 5 % gate unchanged. On one tile
+  both rollers match their predictions within 0.02 % (ratio 1.0783 vs
+  1.0784); `rimrun-swapped` still moves the lead. RimRun's browser gate runs
+  again (shard robotaddon14).
+- **Merge exception for #1714 and the RimRun judge PR (operator decision,
+  2026-11-10):** both may merge with browser (heavy) and browser (light)
+  failing exactly the six steps that also fail on main eb7e1c91 (run
+  42788806821: ESP32-S3 boot, S040 display/touch, 386 media in Widgets, x86
+  debugger Pause, four-surface save/reopen, MakeCode import), only when the
+  error signatures are identical and every other enabled check is green.
+  #1714 merged on that basis (comment on the PR); no other step was excepted.
 - **Arcade exception at merge.** On operator decision, "Arcade numeric
   authoring (official build)" was an exception for #1683 only. Both failures
   are kept on record:

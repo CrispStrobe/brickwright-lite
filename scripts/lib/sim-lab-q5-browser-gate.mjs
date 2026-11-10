@@ -20,11 +20,8 @@ import {openFile} from './sim-lab-scale-gate.mjs';
 import {qualificationContracts, QUALIFICATION_JUDGES, disconnectedSource} from './robot-lab-qualification.mjs';
 import {p6DisconnectionLoss} from './sim-lab-p6-judges.mjs';
 
-// RimRun is held: its gate runs (--examples=rimrun) but is not wired into CI. On clean 20 ms per-step data the
-// left roller fits 5.7 % below its prediction because one tile-joint bump (Jolt's internal-edge contact between
-// abutting coplanar 320 LDU tiles) falls mid-window; the judge change to fit within a single tile follows.
-export const Q5_BROWSER_MODELS = Object.freeze(['evenhand']);
-export const Q5_HELD = Object.freeze({rimrun: 'rolling-inertia-v1 fit window spans a tile joint; judge change pending'});
+export const Q5_BROWSER_MODELS = Object.freeze(['evenhand', 'rimrun']);
+export const Q5_HELD = Object.freeze({});
 // One browser frame is one accepted worker batch. With the program clock installed, each VM step (1/30 s)
 // advances the world, so a frame spans 30 or 35 ms (whole 5 ms steps) at any speed setting; 1× is used.
 export const GATE_SPEED = 1;
@@ -48,7 +45,11 @@ export function onFrameGrid(record, frameMs) {
         const batch = record.track[x.phaseFrom];
         assert.ok(batch && batch.t >= x.tMs - 1e-6, 'each step sample lies inside its accepted batch');
         assert.ok(x.bodies.every(b => b.position && b.rotation) && x.joints.every(j => Number.isFinite(j.coordinate)), 'finite step sample');
-        track.push({...batch, t: x.tMs, bodies: Object.fromEntries(x.bodies.map(b => [b.id, {position: b.position, rotation: b.rotation}])),
+        // Contacts are known at batch ends only: a step sample counts a pair in contact if either bracketing
+        // batch end saw it, so a judge that waits for separation never admits a step early.
+        const before = record.track[x.phaseFrom - 1], pairs = new Map();
+        for (const pair of [...(before?.contacts || []), ...(batch.contacts || [])]) pairs.set(pair.join('|'), pair);
+        track.push({...batch, t: x.tMs, ...(batch.contacts ? {contacts: [...pairs.values()]} : {}), bodies: Object.fromEntries(x.bodies.map(b => [b.id, {position: b.position, rotation: b.rotation}])),
             joints: Object.fromEntries(x.joints.map(j => [j.id, {position: j.coordinate}]))});
     }
     assert.ok(track.length > 0.9 * (record.track.at(-1).t - t0) / frameMs, 'the grid covers the run');
