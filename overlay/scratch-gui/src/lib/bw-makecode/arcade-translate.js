@@ -601,10 +601,11 @@ class ArcadeTranslator extends BaseTranslator {
             if(!this.throwValueProgram||!hasThrowEmission(this.throwSourceProgram)){out.push(`${'  '.repeat(indent)}${this.note('Throw source requires qualified source context and canonical protocol')}`);return;}
             out.push(`${'  '.repeat(indent)}arcade throw (${this.arrayElementValue(st.argument)})`);return;
         }
-        if(st.type==='ExpressionStatement' && st.expr?.bwNativeNamedArray && st.expr.bwNativeNamedArray.kind!=='get') {
+        if(st.type==='ExpressionStatement' && st.expr?.bwNativeNamedArray && ['push','set','insert','remove'].includes(st.expr.bwNativeNamedArray.kind)) {
             this.usesArrays=true;
             const node=st.expr,{kind,registry}=node.bwNativeNamedArray,name=JSON.stringify(registry),args=node.args.slice(1).map(arg=>this.expr(arg));
-            const line=kind==='push'?`push (${args[0]}) to array ${name}`:kind==='set'?`set item (${args[0]}) of array ${name} to (${args[1]})`:`insert (${args[1]}) at (${args[0]}) of array ${name}`;
+            const line=kind==='push'?`push (${args[0]}) to array ${name}`:kind==='set'?`set item (${args[0]}) of array ${name} to (${args[1]})`:
+                kind==='remove'?`remove item (${args[0]}) of array ${name}`:`insert (${args[1]}) at (${args[0]}) of array ${name}`;
             out.push(`${'  '.repeat(indent)}${line}`);return;
         }
         if (st.type === 'Declaration') {
@@ -1328,6 +1329,9 @@ class ArcadeTranslator extends BaseTranslator {
             return node.type==='NativeNamedArrayCreate'?`reference to named array (${JSON.stringify(node.registry)})`:'null value';
         }
         if(node?.type==='Call' && node.bwNativeNamedArray?.kind==='get') {this.usesArrays=true;return `item (${this.expr(node.args[1])}) of array ${JSON.stringify(node.bwNativeNamedArray.registry)}`;}
+        if(node?.type==='NativeNamedArrayReference'){this.usesArrays=true;return `reference to named array (${JSON.stringify(node.registry)})`;}
+        if(node?.type==='Call' && node.bwNativeNamedArray?.kind==='pop') {this.usesArrays=true;return `pop from array ${JSON.stringify(node.bwNativeNamedArray.registry)}`;}
+        if(node?.type==='Call' && node.bwNativeNamedArray?.kind==='indexOf') {this.usesArrays=true;return `index of (${this.expr(node.args[1])}) in array ${JSON.stringify(node.bwNativeNamedArray.registry)}`;}
         if(node?.type==='LegacyParsedValue'){this.usesArrays=true;return `parse array input (${this.arrayElementValue(node.value)})`;}
         if(node?.type==='NativeArrayAccess')return this.expr(node.value);
         const importedBuffer=this.bufferExpression(node);
@@ -3831,7 +3835,7 @@ const inferImageReferences = (ast, pathOf, imageOf, isScopedAssetFactory = () =>
             if(left.has('number')&&right.has('number'))return new Set(['number']);
         }
         if(node?.type==='NativeArrayValueBinary')return new Set(['number','string']);
-        if(node?.type==='NativeArrayAccess' || node?.type==='NativeNamedArrayCreate')return new Set(['array']);
+        if(node?.type==='NativeArrayAccess' || node?.type==='NativeNamedArrayCreate' || node?.type==='NativeNamedArrayReference')return new Set(['array']);
         if(node?.type==='NativeNamedArrayDelete')return new Set(['null']);
         if(node?.type==='LegacyJsonValue')return new Set(['string']);
         if(node?.type==='LegacyParsedValue')return new Set(['any']);
