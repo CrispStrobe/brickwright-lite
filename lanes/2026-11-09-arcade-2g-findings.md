@@ -20,7 +20,8 @@ four matching rows of `docs/ARCADE-888-OPEN-FAILURES.md`, plus one paragraph in
 - Animation export (`fresh resource export ...`): the first export reports
   three Array-authority refusals on the frame globals plus the generated
   lookup functions' `id` String constraint. Several independent proofs are
-  missing. This row is now owned by the importer lane.
+  missing. Update: the literal variant is now fixed end to end (exporter lookup `id`
+  fix and the importer lane's lookup pruning); the `(key)` variant stays TODO.
 - 2h-2 (argument edited to text): refused by design (operator decision
   2026-11-09). A registered stock or managed Number formal rejects text before
   any body effects (control `registered stock/managed Number rejects text

@@ -1096,11 +1096,32 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         return c.writers.some(o=>o!==w&&o.node===first&&o.scope===scope&&o.value&&!resetValue(o.value.node)&&!invalid.has(o.node)&&
             !(o.value.cell===c)&&!(o.value.node&&readsCell(o.target,o.value.node,c)));
     };
+    // The occurrence is in the FIRST statement of the then-branch of
+    // `if truthy(x) then ... [else ...]` on
+    // this very cell, and that statement calls nothing: no code runs between
+    // the test and the read, so an absent (falsy) value of x cannot reach it.
+    // A null/undefined reset writer and the possibly-absent type drop out;
+    // every other writer still needs its own proof.
+    const truthyGuarded=(c,at)=>{
+        if(!resetFlowReady||!c||!at||c.directBad)return false;
+        const scope=owners.get(at);if(!scope||scope.invalid)return false;
+        const st=statementOf(at);if(!st||invalid.has(st))return false;
+        const target=scope.target,parent=block(target,st.parent);
+        if(!parent||!['control_if','control_if_else'].includes(parent.opcode)||parent.mutation!=null||invalid.has(parent)||owners.get(parent)!==scope||
+            !exactKeys(parent,parent.opcode==='control_if'?['CONDITION','SUBSTACK']:['CONDITION','SUBSTACK','SUBSTACK2']))return false;
+        if(target.blocks[parent.inputs.SUBSTACK?.[1]]!==st)return false;
+        const truthy=block(target,parent.inputs.CONDITION?.[1]);
+        if(truthy?.opcode!=='arrays_valueTruthy'||truthy.mutation!=null||invalid.has(truthy)||!exactKeys(truthy,['VALUE']))return false;
+        const read=input(truthy,'VALUE',target),cell=read?.cell||(read?.node&&binding(target,read.node));
+        if(cell!==c||conditionCalls(target,st))return false;
+        return true;
+    };
     const computingCells=new Set();
     const cellTypesAt=(c,at)=>{
         observeSourceDependency(c);
         if(!c||c.directBad||!at||computingCells.has(c))return new Set(c?c.types:[bad]);
-        const live=c.writers.filter(w=>!killedReset(c,w,at)),guarded=new Set(live.filter(w=>falsyGuarded(c,w,at)));
+        const truthy=truthyGuarded(c,at);
+        const live=c.writers.filter(w=>!killedReset(c,w,at)&&!(truthy&&resetValue(w.value?.node))),guarded=new Set(live.filter(w=>truthy||falsyGuarded(c,w,at)));
         if(live.length===c.writers.length&&!guarded.size)return new Set(c.types);
         computingCells.add(c);
         try{
@@ -1177,7 +1198,10 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         // about slots; unknown operations are census shrinks, and a named
         // Array needs its recorded named writes, all after the occurrence.
         if(!base||![...(a.shrinks||[])].every(node=>afterAt(node,at)))return null;
-        if(['arrays_createEmpty','arrays_create1D','arrays_create2D'].includes(a.node?.opcode)&&!(Array.isArray(a.namedMutations)&&a.namedMutations.every(r=>afterAt(r.node,at))))return null;
+        // A named write that runs once before this allocation is created (same
+        // once-only scope, e.g. the reset `delete` of the previous registry
+        // entry) cannot touch it.
+        if(['arrays_createEmpty','arrays_create1D','arrays_create2D'].includes(a.node?.opcode)&&!(Array.isArray(a.namedMutations)&&a.namedMutations.every(r=>afterAt(r.node,at)||afterAt(a.node,r.node))))return null;
         const pushes=[];
         for(const {target,node} of mutations){
             const receiver=readInput(input(node,'ARRAY',target));if(!receiver.has(a)||afterAt(node,at))continue;
@@ -1379,7 +1403,7 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
     // constant string literal and the body is exactly (parameter declarations,
     // then) `IF P ==/=== <same literal> THEN return X` and a fallback, with no
     // writer of P but call arguments, the IF is taken and the call yields X.
-    // Any other shape (else branch, extra THEN statement, other writer,
+    // Any other shape (else branch, THEN statement other than a local store or push, other writer,
     // non-literal argument or comparison operand) returns null: no pruning.
     const constantText=value=>{
         if(!value)return null;if(Array.isArray(value.raw))return value.raw[0]===10&&typeof value.raw[1]==='string'?value.raw[1]:null;
@@ -1399,7 +1423,31 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         if(!c||c!==localCell(fn,fn.params[index])||c.directBad||!c.writers.every(w=>w.argument))return null;
         // A non-literal comparison operand (null) never equals a literal argument.
         const argument=constantText(call.args[index]);if(argument===null||argument!==expected)return null;
-        const only=block(fn.target,first.inputs.SUBSTACK?.[1]);
+        // The THEN may first build a fresh local list, exactly as the re-imported
+        // fresh-frames lookup does: `set local L to []`, then pushes onto such an
+        // L of an inert value, a staged list, or a copy of a constant frame image.
+        // No global store, call, other target or nested control may precede the
+        // single return.
+        const literalSlot=slot=>Array.isArray(slot?.[1])&&[4,10].includes(slot[1][0]);
+        const builderValue=slot=>{
+            if(inertValue(fn.target,slot))return true;
+            const clone=typeof slot?.[1]==='string'?block(fn.target,slot[1]):null;
+            if(clone?.opcode!=='arcade_cloneImage'||!exactKeys(clone,['IMAGE']))return false;
+            const frame=input(clone,'IMAGE',fn.target).node;
+            return frame?.opcode==='arcade_frameImage'&&exactKeys(frame,['KEY','INDEX','TEMPLATE','START','COUNT'])&&Object.values(frame.inputs).every(literalSlot);
+        };
+        let only=block(fn.target,first.inputs.SUBSTACK?.[1]);const built=new Set(),fresh=new Set();
+        while(only&&!invalid.has(only)&&!built.has(only)){
+            if(only.opcode==='arcade_setLocal'&&exactKeys(only,['NAME','VALUE'])){
+                const name=literal(only,'NAME',fn.target),v=input(only,'VALUE',fn.target).node;
+                if(typeof name!=='string'||fn.params.includes(name)||v?.opcode!=='arrays_createReference'||!exactKeys(v,['VALUES'])||!Array.isArray(v.inputs.VALUES?.[1])||literal(v,'VALUES',fn.target)!=='[]')return null;
+                fresh.add(name);
+            }else if(only.opcode==='arrays_mutateReference'&&exactKeys(only,['ARRAY','OP','INDEX','VALUE'])&&literal(only,'OP',fn.target)==='push'){
+                const receiver=input(only,'ARRAY',fn.target).node;
+                if(receiver?.opcode!=='arcade_getLocal'||!fresh.has(literal(receiver,'NAME',fn.target))||!builderValue(only.inputs.VALUE))return null;
+            }else break;
+            built.add(only);only=block(fn.target,only.next);
+        }
         if(only?.opcode!=='arcade_returnValue'||only.next!=null||only.mutation!=null||invalid.has(only)||!exactKeys(only,['VALUE']))return null;
         return input(only,'VALUE',fn.target);
     };
@@ -2144,7 +2192,7 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         // A literal value (JSON item or literal input) is initialized; it is an
         // Array only through jsonArray, which singleArray still checks.
         if(!value)return false;if(value.jsonArray||value.raw)return true;
-        const initializedCell=(c,scope,at)=>{observeSourceDependency(c);if(!available(c,scope,at))return false;if(checkingWriterInitialization.has(c))return true;checkingWriterInitialization.add(c);try{const live=c.directBad?c.writers:c.writers.filter(w=>!killedReset(c,w,at));return live.length>0&&live.every(w=>w.value&&(initialized(w.value)||!c.directBad&&falsyGuarded(c,w,at)&&w.value.node?.opcode==='arrays_referenceItem'&&initialized(input(w.value.node,'ARRAY',w.target))));}finally{checkingWriterInitialization.delete(c);}};
+        const initializedCell=(c,scope,at)=>{observeSourceDependency(c);if(!available(c,scope,at))return false;if(checkingWriterInitialization.has(c))return true;checkingWriterInitialization.add(c);try{const truthy=truthyGuarded(c,at),live=c.directBad?c.writers:c.writers.filter(w=>!killedReset(c,w,at)&&!(truthy&&resetValue(w.value?.node)));return live.length>0&&live.every(w=>w.value&&(initialized(w.value)||!c.directBad&&falsyGuarded(c,w,at)&&w.value.node?.opcode==='arrays_referenceItem'&&initialized(input(w.value.node,'ARRAY',w.target))));}finally{checkingWriterInitialization.delete(c);}};
         if(value.cell)return initializedCell(value.cell,owners.get(value.at),value.at);
         if(!value.node)return false;const {target,node}=value;if(path.has(node))return false;const next=new Set([...path,node]),c=binding(target,node);
         if(c)return initializedCell(c,owners.get(node),node);
