@@ -1,6 +1,7 @@
 # Robot Lab — pending qualification tasks (unowned)
 
-Status: DONE — Q1–Q5 all landed (2026-11-09). Nothing open in this file.
+Status: Q1–Q5 DONE (2026-11-09). Next batch R1–R7 and engine task E1 are
+OPEN and unowned (2026-11-10); details in handoff section 00000.
 
 The full task list with exact steps is section 00 of
 `docs/ROBOT-LAB-QUALIFICATION-HANDOFF-20261028.md`:
@@ -22,6 +23,15 @@ The full task list with exact steps is section 00 of
     abutting track colliders (affects every model). Details in handoff 0000.
   - "Arcade numeric authoring (official build)" was an operator-declared
     exception for that merge. Details are in handoff section 0000.
+
+- R1–R7 (2026-11-10, open): R1 obliquity-orrery; R2 cadence-geneva,
+  equinox-differential, helios-transmission, orion-cardan (judge family);
+  R3 apex, aster-governor, vesper-quickreturn, bloom (geometry repairs);
+  R4 solstice-pumpjack, tempest-pendulum, impulse-line (start-guard poses);
+  R5 spiral-scribe, quiet-partner; R6 pan-shift, inertia-loop; R7
+  vector-delta (blocked by a missing part).
+- E1 (2026-11-10, open): Jolt enhanced internal-edge removal for tile-joint
+  bumps; diagnose pair order first, then opt-in per model.
 
 Rules: iterate without `ci:full`, add it once on the final head; merge only
 with `--match-head-commit` after every enabled check passes; never weaken a
