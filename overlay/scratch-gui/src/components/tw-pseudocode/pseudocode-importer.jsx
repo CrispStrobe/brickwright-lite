@@ -1,4 +1,5 @@
 import React from 'react';
+import {showDebuggerOnStage} from '../../lib/bw-debug/show-debugger-on-stage.js';
 import {Popup, toolStyles} from './sim-lab-toolbar.jsx';
 import ScrollRow from './toolbar-scroll-row.jsx';
 import {toolbarActionApplies} from '../../lib/code-toolbar-actions.js';
@@ -2420,15 +2421,10 @@ class PseudocodeImporter extends React.Component {
             const detail = {format: 'firmware', kind: 'labwired', labwiredChip: 'board:microbit-v2', target: 'microbit',
                 firmware: {name: `${slug}-microbit-v2-emu.elf`, bytes: elf, text: null, fCpu: null},
                 rom: null, image: null, listing: null};
-            try { localStorage.setItem('bw-right-pane-hidden', '0'); } catch { /* private mode */ }
-            window.dispatchEvent(new CustomEvent('bw-settings-change', {detail: {key: 'bw-right-pane-hidden', value: '0'}}));
-            // A simulator/console dock hides the Debug pane: show the debugger instead.
-            let dock = 'top';
-            try { dock = localStorage.getItem('bw-debug-dock') || 'top'; } catch { /* private mode */ }
-            if (!['top', 'right', 'solo'].includes(dock)) {
-                try { localStorage.setItem('bw-debug-dock', 'right'); } catch { /* private mode */ }
-                window.dispatchEvent(new CustomEvent('bw-settings-change', {detail: {key: 'bw-debug-dock', value: 'right'}}));
-            }
+            // The Debug pane must be on screen to receive the image: a 'top' or
+            // device dock, or a hidden stage circuit, leaves it in the Circuit tab.
+            showDebuggerOnStage({storage: localStorage, dispatch: (key, value) =>
+                window.dispatchEvent(new CustomEvent('bw-settings-change', {detail: {key, value}}))});
             window.__bwPendingMedia = {type: 'asm', detail};
             window.dispatchEvent(new CustomEvent('bw-asm-rom-ready', {detail}));
             this.setState({busy: false, status: this.L.mcEmulateStarted(subject.name) + this.fetchedNote(out)});
