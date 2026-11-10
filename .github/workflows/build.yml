@@ -2239,7 +2239,7 @@ jobs:
 
       - name: Browser gate — Robot Lab rimrun promotion
         id: bw_browser_audit_0266
-        timeout-minutes: 20  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotaddon14' }}
         run: npm run verify:sim-lab -- --part=examples --examples=rimrun
 
