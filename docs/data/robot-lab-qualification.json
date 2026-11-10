@@ -1055,6 +1055,7 @@
     {
       "id": "rimrun",
       "judge": "rolling-inertia-v1",
+      "observeContacts": true,
       "parts": 510,
       "ports": [
         "A"

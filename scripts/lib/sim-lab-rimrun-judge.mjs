@@ -22,7 +22,7 @@ export const RIMRUN_ENGINE_DAMPING_PER_S=.05;
 /** The authored incline: the frame's rotation in the supplied model (sin = 0.119145220618). */
 export const RIMRUN_INCLINE_DEG=deg(Math.asin(0.119145220618));
 /** Gates. The ratio bound is 2 % of the predicted ratio; the supplier measured 0.65 %. */
-export const RIMRUN_GATES=Object.freeze({ratioRel:.02,accelRel:.05,inclineDeg:.3,slipRel:.03,leadMm:5,settleMmPerS:10,settleNetMm:1,caughtMinMm:250,fitMinFrames:8});
+export const RIMRUN_GATES=Object.freeze({ratioRel:.02,accelRel:.05,inclineDeg:.3,slipRel:.03,leadMm:5,settleMmPerS:10,settleNetMm:1,caughtMinMm:250,fitMinFrames:10});
 const LANES=Object.freeze({left:{wheels:['left_wheel_-1','left_wheel_1'],axle:'left_shaft_-1',ballast:/^left_ballast_/},right:{wheels:['right_wheel_-1','right_wheel_1'],axle:'right_shaft_-1',ballast:/^right_ballast_/}});
 
 // Moment of inertia of one compiled collider about an axis through `c` (unit `a`), all in the body frame.
@@ -61,19 +61,64 @@ const fitQuadratic=(t,s)=>{ // least squares s = c0 + c1 t + c2 t²/2
  const c=[0,0,0];for(let i=2;i>=0;i--){c[i]=(bv[i]-[0,1,2].slice(i+1).reduce((q,k)=>q+A[i][k]*c[k],0))/A[i][i];}
  const res=Math.sqrt(s.reduce((q,v,k)=>q+(v-(c[0]+c[1]*t[k]+c[2]*t[k]*t[k]/2))**2,0)/n);const tm=t.reduce((a,b)=>a+b,0)/n;return{accel:c[2],meanSpeed:c[1]+c[2]*tm,resid:res,n};
 };
-/** Measure both lanes over the free-rolling window: gate fully open, before either roller meets a catch shoe. */
+// The fit window (2026-11-10). The rollers cross a joint between two abutting 320 LDU track tiles every 128 mm;
+// the tiles are exactly coplanar, but Jolt's internal-edge contact there costs each roller about 0.0085 m/s
+// (natively and in the browser alike). A quadratic fit over a window holding such a crossing reads several
+// percent low depending only on where the crossing falls, so each lane is fitted from gate clearance to its
+// first tile joint: one tile, no crossing.
+//  - Gate clearance: the first frame after the last frame in which the engine reports the gate body in contact
+//    with either roller (WereBodiesInContact, recorded per frame as `contacts`), and no such contact from there
+//    to the catches. Determined from the engine's contacts, never from a time or a program stage.
+//  - Tile segments: from the compiled colliders of the lane's track tiles (`track_<lane>_*`), projected on the
+//    lane's downhill path at the frame's initial pose. A window never crosses a tile end.
+//  - At least RIMRUN_GATES.fitMinFrames frames per lane (10: at the registry's 20 ms frameMs, 0.18 s, which
+//    at the window's 0.4–0.5 m/s is 80–90 mm of the 128 mm tile, enough for a three-term fit with seven spare
+//    degrees of freedom; fewer frames are refused, not fitted).
+const contactsOf=f=>f.contacts??f.extra?.contacts;
+export function rimrunGateClearance(r,endIndex){
+ const jG=r.mechanism.joints.find(j=>j.motor?.port==='A');assert.ok(jG,'the gate motor joint');
+ const o=observeAddon(r),gate=jG.body2===o.base.id?jG.body1:jG.body2,rollers=new Set(['left','right'].map(l=>o.body(LANES[l].wheels[0]).id));
+ check(!rollers.has(gate),'the gate is not a roller',{gate});
+ // A frame without contact pairs (the browser's paused first snapshot, taken before the observation starts)
+ // counts as touching: unknown never admits a window. At least one frame must show the gate holding a roller.
+ const touching=f=>{const c=contactsOf(f);if(c==null)return null;check(Array.isArray(c),'engine contact pairs',{t:f.t});return c.some(([a,b])=>(a===gate&&rollers.has(b))||(b===gate&&rollers.has(a)));};
+ let last=-1,seen=false,known=0;for(let i=0;i<endIndex;i++){const x=touching(r.track[i]);if(x!==null)known++;if(x===true)seen=true;if(x!==false)last=i;}
+ check(seen,'the engine reports the gate holding the rollers before it opens',{last});
+ check(known>=endIndex-1,'engine contact pairs recorded on every frame after the first',{known,endIndex});
+ const clear=last+1;check(clear<endIndex,'the gate clears both rollers before the catches',{clear,endIndex});
+ return{index:clear,gate,lastContactT:r.track[last].t,clearT:r.track[clear].t};
+}
+export function rimrunTileBounds(r,o,lane,u,origin){
+ const frame=o.base,b=r.mechanism.bodies.find(x=>x.id===frame.id),pose=r.track[0].bodies[frame.id];
+ const tiles=b.colliders.filter(c=>new RegExp('^track_'+lane+'_').test(c.part)&&c.shape==='box');
+ check(tiles.length>0,'the lane has compiled track tiles',{lane});
+ const inv=q=>[-q[0],-q[1],-q[2],q[3]],toWorld=v=>add(rotq(pose.rotation,rotq(inv(b.rotation),v)),[0,0,0]);
+ const ends=[];for(const c of tiles){const centre=add(toWorld(sub(c.position,b.position)),pose.position),q=c.rotation||[0,0,0,1];
+  const axes=[[1,0,0],[0,1,0],[0,0,1]].map(e=>toWorld(rotq(q,e))),reach=axes.reduce((s2,a,i)=>s2+c.halfExtents[i]*Math.abs(dot(a,u)),0),mid=dot(sub(centre,origin),u);ends.push(mid-reach,mid+reach);}
+ return [...ends].sort((a,b2)=>a-b2).filter((v,i,a)=>i===0||v-a[i-1]>1e-6);
+}
+/** Measure both lanes: each over its own tile from gate clearance, before either roller meets a catch shoe. */
 export function rimrunMeasure(r){
  const o=observeAddon(r),models=['left','right'].map(l=>rimrunRollerModel(r,l)),tracks=models.map(m=>laneTrack(r,o,m));
  const shoes=r.mechanism.joints.filter(j=>j.type==='slider'),contactAt=r.track.findIndex(f=>shoes.some(j=>Math.abs(f.joints[j.id].position??0)>2e-4));
  const opened=r.track.findIndex(f=>String(f.extra?.variables?.stage)==='2');
  check(opened>0,'the program reaches the open hold',{opened});check(contactAt>opened,'the rollers run free before any catch shoe moves',{opened,contactAt});
- const moved=(tr,i)=>norm(sub(tr.path[i],tr.path[0]))>.01,idx=[];for(let i=opened;i<contactAt-1;i++)if(tracks.every(t=>moved(t,i)))idx.push(i);
- check(idx.length>=RIMRUN_GATES.fitMinFrames,'enough free-rolling frames to fit',{frames:idx.length});
- const t=idx.map(i=>r.track[i].t/1000),lanes=models.map((m,k)=>{const tr={...tracks[k],...along(tracks[k],idx[0],idx.at(-1))},fit=fitQuadratic(t,idx.map(i=>tr.s[i]));
+ const clearance=rimrunGateClearance(r,contactAt);
+ const lanes=models.map((m,k)=>{
+  const tr0=tracks[k],dir=unit(sub(tr0.path[contactAt-1],tr0.path[clearance.index])),origin=tr0.path[0];
+  const bounds=rimrunTileBounds(r,o,m.lane,dir,origin),pos=i=>dot(sub(tr0.path[i],origin),dir);
+  const s0=pos(clearance.index),hi=bounds.find(b=>b>s0),lo=[...bounds].reverse().find(b=>b<=s0);
+  check(hi!==undefined&&lo!==undefined,'the roller is on a track tile at gate clearance',{lane:m.lane,s0,bounds});
+  const idx=[];for(let i=clearance.index;i<contactAt&&pos(i)<hi;i++)idx.push(i);
+  check(idx.every(i=>pos(i)>=lo&&pos(i)<hi),'the fit window stays on one tile',{lane:m.lane});
+  check(idx.length>=RIMRUN_GATES.fitMinFrames,'enough frames on one tile after gate clearance to fit',{lane:m.lane,frames:idx.length,min:RIMRUN_GATES.fitMinFrames});
+  const t=idx.map(i=>r.track[i].t/1000),tr={...tr0,...along(tr0,idx[0],idx.at(-1))},fit=fitQuadratic(t,idx.map(i=>tr.s[i]));
   const inclineDeg=deg(Math.asin(Math.max(-1,Math.min(1,-tr.u[1])))),g=norm(r.mechanism.gravity),predicted=g*Math.sin(inclineDeg*Math.PI/180)/(1+m.beta)-RIMRUN_ENGINE_DAMPING_PER_S*fit.meanSpeed;
   const last=idx.at(-1),slip=Math.abs(tr.s[last]-tr.s[idx[0]]-m.radius*Math.abs(tr.roll[last]-tr.roll[idx[0]]))/Math.abs(tr.s[last]-tr.s[idx[0]]);
-  return{lane:m.lane,massKg:m.massKg,inertia:m.inertia,radius:m.radius,beta:m.beta,ballastRadius:m.ballastRadius,inclineDeg,accel:fit.accel,predicted,meanSpeed:fit.meanSpeed,fitResidMm:fit.resid*1000,slip,sAtEndMm:tr.s[last]*1000};});
- return{lanes,window:{from:r.track[idx[0]].t,to:r.track[idx.at(-1)].t,frames:idx.length,contactAt:r.track[contactAt].t},o};
+  const leadAt=contactAt-2,sAtEnd=dot(sub(tr0.path[leadAt],tr0.path[0]),unit(sub(tr0.path[leadAt],tr0.path[clearance.index])));
+  return{lane:m.lane,massKg:m.massKg,inertia:m.inertia,radius:m.radius,beta:m.beta,ballastRadius:m.ballastRadius,inclineDeg,accel:fit.accel,predicted,meanSpeed:fit.meanSpeed,fitResidMm:fit.resid*1000,slip,sAtEndMm:sAtEnd*1000,
+   window:{from:r.track[idx[0]].t,to:r.track[last].t,frames:idx.length,tile:[lo,hi],fromS:pos(idx[0]),toS:pos(last)}};});
+ return{lanes,window:{clearance:clearance.clearT,lastGateContact:clearance.lastContactT,left:lanes[0].window,right:lanes[1].window,contactAt:r.track[contactAt].t},o};
 }
 function foundation(r,o){
  const frames=r.track.filter(f=>f.phase!=='cold'),f0=frames[0],b0=f0.bodies[o.base.id].position;

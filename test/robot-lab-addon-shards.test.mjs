@@ -37,7 +37,7 @@ test('the published addon gates remain unique with their exact commands and acce
     assert.equal(assigned.size,11,'No omitted or duplicated published gate');
 });
 test('additional addon shards use the existing Robot Lab scope predicate',()=>{
-    for(const shard of ['robotaddon5','robotaddon6','robotaddon7','robotaddon8','robotaddon9','robotaddon10','robotaddon11','robotaddon12','robotaddon13']){
+    for(const shard of ['robotaddon5','robotaddon6','robotaddon7','robotaddon8','robotaddon9','robotaddon10','robotaddon11','robotaddon12','robotaddon13','robotaddon14']){
         assert.equal(job.shards.filter(s=>s===shard).length,1,'Unique matrix registration');
         const exclusion="          - shard: ${{ needs.scope.outputs.robotlab != 'true' && '"+shard+"' || 'none' }}";
         assert.equal(lines.filter(line=>line===exclusion).length,1,'Same existing path-scope predicate');
@@ -59,10 +59,9 @@ test('all newly delivered primary experiments have one complete journey with unc
     }
 });
 
-test('the Q5 promotion Evenhand has one browser gate on its own shard; RimRun is held (no gate step)',()=>{
+test('the Q5 promotions Evenhand and RimRun each have one browser gate on their own shard',()=>{
     const selectors=[...workflow.matchAll(/--part=examples --examples=([^\s]+)/g)].flatMap(m=>m[1].split(','));
-    assert.equal(selectors.filter(value=>value==='rimrun').length,0,'RimRun browser gate held pending its judge change');
-    for(const [shard,id]of [['robotaddon13','evenhand']]){
+    for(const [shard,id]of [['robotaddon13','evenhand'],['robotaddon14','rimrun']]){
         assert.equal(selectors.filter(value=>value===id).length,1,'No omitted or duplicated selector: '+id);
         const steps=job.steps.filter(s=>s.name==='Browser gate — Robot Lab '+id+' promotion');assert.equal(steps.length,1,id);
         const step=steps[0];assert.deepEqual(shardsOf(step),[shard]);

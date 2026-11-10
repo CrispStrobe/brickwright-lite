@@ -17,7 +17,9 @@ export function installBrowserMechanicsRecorder({recordKey,captureKey,extended=f
   const bodies=[...new Set(stepParts.map(id=>m.bodies.find(b=>b.parts.includes(id))?.id))];
   const joints=m.joints.filter(j=>j.type==='slider').map(j=>j.id);
   if(bodies.some(b=>!b)||joints.length>4)throw new Error('step observation: unknown part or more than four sliders');
-  s.setMeasurementObservation({joints,bodies});r.stepObservation={bodies,joints,coreStartMs:null};r.stepSamples=[];
+  // contacts: the engine's own body contact pairs at each accepted batch (WereBodiesInContact), for judges that
+  // admit a window only once two bodies have separated.
+  s.setMeasurementObservation({joints,bodies,contacts:true});r.stepObservation={bodies,joints,coreStartMs:null};r.stepSamples=[];
  }
  // A frame's time is the physics time of the poses it holds. With the worker, session.time advances by the
  // wall-clock tick (e.g. 33.3 ms) while each batch runs whole 5 ms steps (30 or 35 ms), so stamping a pose with
@@ -48,7 +50,7 @@ export function installBrowserMechanicsRecorder({recordKey,captureKey,extended=f
   if(observeProgram&&!r.finishedAt&&s.time-r.start>1000&&!vm.runtime.threads.some(t=>t.status!==4))r.finishedAt=s.time;
   const extra=observeProgram?{ropes:s.core.ropeState(),variables:variables()}:null;
   // Every frame carries the native rope states (the crane judge reads f.ropes).
-  const frame={t:frameTime(),sessionT:s.time,ropes:s.core.ropeState(),bodies:Object.fromEntries(m.bodies.filter(b=>b.motion==='dynamic').map(b=>[b.id,s.core.bodyPose(b.id)])),
+  const frame={t:frameTime(),sessionT:s.time,...(stepParts?{contacts:s.core.currentContactPairs()}:{}),ropes:s.core.ropeState(),bodies:Object.fromEntries(m.bodies.filter(b=>b.motion==='dynamic').map(b=>[b.id,s.core.bodyPose(b.id)])),
    joints:Object.fromEntries(m.joints.filter(j=>['hinge','slider'].includes(j.type)).map(j=>[j.id,s.core.jointState(j.id)])),
    busy:Object.fromEntries(m.actuators.map(a=>[a.port,pane.hub.motors.busy(a.port)])),...(extra?{extra}:{})};
   if(extended){
