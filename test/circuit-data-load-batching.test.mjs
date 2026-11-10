@@ -15,8 +15,20 @@ const assertBatchedLoad = source => {
     assert.match(batch[1], /handleLoad\(circuitData\);[\s\S]*setAnnotations\(\[\]\);/);
     assert.ok(effect[1].indexOf('prevCircuitDataRef.current = circuitData;') <
         effect[1].indexOf('ReactDOM.unstable_batchedUpdates'));
-    assert.ok(effect[1].indexOf('ReactDOM.unstable_batchedUpdates') <
-        effect[1].indexOf('fileLoadedRef.current = true;'));
+    // The shared loader now owns file authority so a host echo cannot replace
+    // an opened file before the effect returns. Rejected data must not arm it.
+    assert.doesNotMatch(effect[1], /fileLoadedRef\.current\s*=\s*true/);
+    assert.match(effect[1], /if \(!loaded\) return;/);
+    const loader = /const handleLoad = useCallback\(\(data, \{ fileAuthority = true \} = \{\}\) => \{([\s\S]*?)\n  \}, \[circuit\]\);/.exec(source);
+    assert.ok(loader, 'shared file loader remains identifiable');
+    const body = loader[1];
+    const parse = body.indexOf('parsed = Circuit.fromJSON(data);');
+    const authority = body.indexOf('fileLoadedRef.current = true;');
+    const publish = body.indexOf('circuit.parts = parsed.parts;');
+    assert.ok(parse >= 0 && parse < authority && authority < publish,
+        'successful parsing establishes authority before publishing the circuit');
+    assert.match(body, /catch \(e\) \{[\s\S]*?return false;/);
+    assert.match(body, /if \(fileAuthority\) \{[\s\S]*?fileLoadedRef\.current = true;/);
 };
 
 test('the vendored circuitData path batches its atomic load transaction', () => {

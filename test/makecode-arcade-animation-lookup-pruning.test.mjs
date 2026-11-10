@@ -9,10 +9,14 @@ import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export
 // frames Array; every deviation keeps the Array refusal.
 const KEY = '12345678-1234-4234-8234-123456789abc';
 const ARRAY_REFUSAL = /^Array reference .*requires an actual initialized Array producer/;
-const program = ({returned = 'frames', arg = `("${KEY}")`, compare = KEY, fallback = '', op = '==', before = '', inThen = '', ifLine = null, elseBlock = '', writer = ''} = {}) => `DEVICE ARCADE
+const CALL = (arg, pad) => `${pad}set first to (arcade call function "lookup %s" arguments (arcade function argument ${arg} rest ("[]")))
+${pad}arcade log (item (0) of array reference (first))
+${pad}arcade log length of array reference (first)
+`;
+const program = ({returned = 'frames', arg = `("${KEY}")`, compare = KEY, fallback = '', op = '==', before = '', inThen = '', ifLine = null, elseBlock = '', writer = '', keyInit = ` = "${KEY}"`, keyPre = '', keyPost = '', extra = '', callHat = null, callIndent = '  ', mainCall = true} = {}) => `DEVICE ARCADE
 GLOBAL frames
 GLOBAL first
-GLOBAL key = "${KEY}"
+GLOBAL key${keyInit}
 SPRITE Game:
 WHEN arcade source starts:
   declare arcade source reference frames as "Image[]"
@@ -21,10 +25,7 @@ WHEN arcade source starts:
   arcade set local __bwPxtValue1 to (new array reference from ("[]"))
   mutate array reference (arcade local __bwPxtValue1) op "push" index (0) value ((0 + (1)))
   set frames to (arcade local __bwPxtValue1)
-  set first to (arcade call function "lookup %s" arguments (arcade function argument ${arg} rest ("[]")))
-  arcade log (item (0) of array reference (first))
-  arcade log length of array reference (first)
-DEFINE lookup (id):
+${keyPre}${callHat || !mainCall ? '' : CALL(arg, '  ')}${keyPost}DEFINE lookup (id):
   declare arcade procedure "lookup %s" parameter "id" as String
 ${before}${writer}  ${ifLine || `IF compare value (arcade local id) op "${op}" with ("${compare}") THEN:`}
 ${inThen}    arcade return value (${returned})
@@ -32,9 +33,15 @@ ${elseBlock}${fallback}  arcade log calculate value ("Animation resource unavail
   arcade return value (undefined value)
 DEFINE helper:
   arcade return value ((0 + (1)))
-`;
-const arrayRefusals = source => {
+${extra}${callHat ? `${callHat}\n${CALL(arg, callIndent)}` : ''}`;
+const arrayRefusals = (source, monitorMode = null) => {
     const creator = new Creator(); creator.parse(source); assert.deepEqual(creator.warnings, []);
+    if (monitorMode) {
+        const stage = creator.project.targets.find(t => t.isStage), id = Object.keys(stage.variables).find(k => stage.variables[k][0] === 'key');
+        const monitor = (creator.project.monitors ||= []).find(m => m.id === id);
+        if (monitor) Object.assign(monitor, {mode: monitorMode, visible: true});
+        else creator.project.monitors.push({id, mode: monitorMode, opcode: 'data_variable', params: {VARIABLE: 'key'}, spriteName: null, value: KEY, visible: true, sliderMin: 0, sliderMax: 100, isDiscrete: true});
+    }
     return projectToArcade(creator.project).unsupported.filter(reason => ARRAY_REFUSAL.test(reason));
 };
 
@@ -81,4 +88,35 @@ for (const [name, shape] of Object.entries(refused)) test('refuses ' + name, () 
 test('refuses pruning when the THEN builder pushes onto the parameter', () => {
     const reasons = arrayRefusals(program({...FRESH, inThen: FRESH.inThen + '    mutate array reference (arcade local id) op "push" index (0) value ((0 + (2)))\n'}));
     assert.ok(reasons.some(reason => /arrays_reference(Item|Length) ARRAY/.test(reason)), JSON.stringify(reasons));
+});
+
+// A global key: the real re-imported (key) shape is `GLOBAL key` (initial 0)
+// with one top-level `set key to ("<uuid>")` earlier in the same script.
+const KEYED = {arg: '(key)', keyInit: '', keyPre: `  set key to ("${KEY}")\n`};
+test('a global key with one earlier literal writer in the same script prunes', () => {
+    assert.deepEqual(arrayRefusals(program(KEYED)), []);
+    assert.deepEqual(arrayRefusals(program(KEYED), 'default'), []);
+});
+const keyRefused = {
+    'a second writer of the key in another event script': [{...KEYED, extra: `SPRITE Other:\nWHEN flag clicked:\n  set key to ("${KEY}")\n`}],
+    'a writer of a different string': [{...KEYED, compare: KEY, keyPre: '  set key to ("other")\n'}],
+    'a writer inside an IF before the call': [{...KEYED, keyPre: `  IF compare value (0) op "<" with (1) THEN:\n    set key to ("${KEY}")\n`}],
+    'a writer after the call': [{...KEYED, keyPre: '', keyPost: `  set key to ("${KEY}")\n`}],
+    'a non-literal (computed) writer': [{...KEYED, keyPre: `  set key to (calculate value ("") op "+" with ("${KEY}"))\n`}],
+    'a writer that is a procedure call': [{...KEYED, keyPre: '  set key to (arcade call function "helper" arguments ("[]"))\n'}],
+    'a change-by of the key': [{...KEYED, keyPre: KEYED.keyPre + '  change key by 1\n'}],
+    'a non-writing block naming the key': [{...KEYED, keyPre: KEYED.keyPre + '  show variable key\n'}],
+    'a slider monitor on the key': [KEYED, 'slider'],
+    // The single write is in the start script; a call in another script may
+    // run while key still holds its initial value. FRESH returns a list built
+    // in the lookup, so only the key proof decides.
+    'a call in a key-press event script': [{...KEYED, ...FRESH, callHat: 'WHEN space key pressed:'}],
+    'a call in an on-update script': [{...KEYED, ...FRESH, callHat: 'WHEN arcade updates:'}],
+    'a call in a forever loop of another script': [{...KEYED, ...FRESH, callHat: 'WHEN flag clicked:\n  FOREVER:', callIndent: '    '}],
+    // Currently refused (the call is in another scope); kept refused.
+    'a call inside a procedure called after the write': [{...KEYED, ...FRESH, mainCall: false, keyPre: KEYED.keyPre + '  CALL: (useKey)\n', extra: 'DEFINE useKey:\n' + CALL('(key)', '  ')}],
+    'only the initial value, no writer': [{...KEYED, keyInit: ` = "${KEY}"`, keyPre: ''}]
+};
+for (const [name, [shape, monitor]] of Object.entries(keyRefused)) test('refuses ' + name, () => {
+    assert.ok(arrayRefusals(program(shape), monitor).length > 0, name);
 });
