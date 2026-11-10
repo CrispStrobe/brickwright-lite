@@ -30,6 +30,8 @@ ${before}${writer}  ${ifLine || `IF compare value (arcade local id) op "${op}" w
 ${inThen}    arcade return value (${returned})
 ${elseBlock}${fallback}  arcade log calculate value ("Animation resource unavailable: ") op "+" with (arcade local id)
   arcade return value (undefined value)
+DEFINE helper:
+  arcade return value ((0 + (1)))
 `;
 const arrayRefusals = source => {
     const creator = new Creator(); creator.parse(source); assert.deepEqual(creator.warnings, []);
@@ -40,12 +42,23 @@ test('a matching constant lookup argument yields only the returned Array', () =>
     assert.deepEqual(arrayRefusals(program()), []);
     assert.deepEqual(arrayRefusals(program({op: '==='})), []);
 });
-// The real generated fresh lookup builds its returned list inside the THEN.
-const FRESH = {inThen: '    arcade set local fresh to (new array reference from ("[]"))\n    mutate array reference (arcade local fresh) op "push" index (0) value ((0 + (2)))\n', returned: 'arcade local fresh'};
+// The real re-imported __bwAnimationFreshFrames THEN (second-export input of
+// the animation-resources fixture): a fresh local list, pushes of copies of
+// constant frame images, then the return of that local.
+const FRESH_PUSH = '    mutate array reference (arcade local fresh) op "push" index (0) value (arcade copy image (arcade frame image array "imageImage" index (0) template "image" start 0 count 2))\n';
+const FRESH = {inThen: '    arcade set local fresh to (new array reference from ("[]"))\n' + FRESH_PUSH + FRESH_PUSH.replace('index (0)', 'index (1)'), returned: 'arcade local fresh'};
 test('a THEN that only builds the returned local list still prunes', () => {
     assert.deepEqual(arrayRefusals(program(FRESH)), []);
 });
 const refused = {
+    // Near-misses of the THEN builder walk.
+    'a THEN builder that stores a global': {...FRESH, inThen: FRESH.inThen + '    set frames to (arcade local fresh)\n'},
+    'a THEN builder pushing onto a global list': {...FRESH, inThen: FRESH.inThen + '    mutate array reference (frames) op "push" index (0) value ((0 + (2)))\n'},
+    'a THEN builder storing a non-fresh value': {...FRESH, inThen: '    arcade set local fresh to (frames)\n', returned: 'arcade local fresh'},
+    'a procedure call inside the THEN builder': {...FRESH, inThen: FRESH.inThen + '    CALL: (helper)\n'},
+    'a call nested in a pushed value': {...FRESH, inThen: FRESH.inThen + '    mutate array reference (arcade local fresh) op "push" index (0) value (arcade call function "helper" arguments ("[]"))\n'},
+    'a nested IF with its own return inside the THEN': {...FRESH, inThen: FRESH.inThen + '    IF compare value (arcade local id) op "==" with ("x") THEN:\n      arcade return value (undefined value)\n'},
+    'a return inside the builder before the final return': {...FRESH, inThen: '    arcade set local fresh to (new array reference from ("[]"))\n    arcade return value (frames)\n' + FRESH_PUSH},
     'a THEN builder followed by another statement': {...FRESH, inThen: FRESH.inThen + '    arcade log ("x")\n'},
     'a non-constant argument': {arg: '(key)'},
     'a computed string argument': {arg: `(calculate value ("") op "+" with ("${KEY}"))`},
@@ -62,4 +75,10 @@ const refused = {
 };
 for (const [name, shape] of Object.entries(refused)) test('refuses ' + name, () => {
     assert.ok(arrayRefusals(program(shape)).length > 0, name);
+});
+// The push onto the String parameter is refused on its own; the call result
+// read through `first` must still be refused because no pruning applies.
+test('refuses pruning when the THEN builder pushes onto the parameter', () => {
+    const reasons = arrayRefusals(program({...FRESH, inThen: FRESH.inThen + '    mutate array reference (arcade local id) op "push" index (0) value ((0 + (2)))\n'}));
+    assert.ok(reasons.some(reason => /arrays_reference(Item|Length) ARRAY/.test(reason)), JSON.stringify(reasons));
 });
