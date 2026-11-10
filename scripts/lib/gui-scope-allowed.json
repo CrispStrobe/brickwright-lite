@@ -196,6 +196,7 @@
   "scratch-vm/src/util/bw-procedure-constraint-model.js": {
     "tests": [
       "test/arcade-absent-asset-literals.test.mjs",
+      "test/arcade-animation-lookup-id-literal.test.mjs",
       "test/arcade-block-scoped-loop-locals.test.mjs",
       "test/arcade-consumed-update-number-proofs.test.mjs",
       "test/arcade-startup-first-write-globals.test.mjs",
@@ -253,6 +254,7 @@
       "test/makecode-arcade-accessor-pxt-staging.test.mjs",
       "test/makecode-arcade-animation-interchange-project.test.mjs",
       "test/makecode-arcade-animation-resources-export.test.mjs",
+      "test/makecode-arcade-animation-lookup-pruning.test.mjs",
       "test/makecode-arcade-animation.test.mjs",
       "test/makecode-accessor-export-refusal.test.mjs",
       "test/makecode-arcade-array-callbacks.test.mjs",
