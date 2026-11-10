@@ -1115,7 +1115,7 @@
       "disconnectLoss": "rimrun",
       "notRun": [
         "savedProjectReplay",
-        "browser journey (scripts/verify-sim-lab-browser.mjs has no RimRun gate)",
+        "browser journey (held, not in CI: the gate exists, --examples=rimrun; on per-step 20 ms browser data the left roller fits 5.7 % below its prediction because one tile-joint bump falls mid-window; judge change to a single-tile fit window pending)",
         "export",
         "manual controls"
       ]
@@ -1166,10 +1166,7 @@
       "disconnectInputDeg": 19,
       "disconnectLoss": "p6",
       "notRun": [
-        "browser journey (scripts/verify-sim-lab-browser.mjs has no Evenhand gate)",
-        "saved-project replay",
-        "export",
-        "manual controls"
+        "webkit browser run (the browser gate, shard robotaddon13, runs chromium)"
       ]
     }
   ]

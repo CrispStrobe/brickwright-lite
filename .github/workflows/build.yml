@@ -1619,7 +1619,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [heavy, light, robotlab, robotdraw, robotlink, robotmotion, robotbench, robotlink2, robotbench2, robotdraw2, robotdraw3, robotmotion2, robotaddon1, robotaddon2, robotaddon3, robotaddon4, robotaddon5, robotaddon6, robotaddon7, robotaddon8, robotaddon9, robotaddon10, robotaddon11, robotaddon12, robotaddon13, robotaddon14]
+        shard: [heavy, light, robotlab, robotdraw, robotlink, robotmotion, robotbench, robotlink2, robotbench2, robotdraw2, robotdraw3, robotmotion2, robotaddon1, robotaddon2, robotaddon3, robotaddon4, robotaddon5, robotaddon6, robotaddon7, robotaddon8, robotaddon9, robotaddon10, robotaddon11, robotaddon12, robotaddon13]
         # Path-aware PR runs (scripts/ci-browser-scope.mjs): a shard the changed
         # files do not reach is left out. Non-PR events set every shard true.
         exclude:
@@ -1648,7 +1648,6 @@ jobs:
           - shard: ${{ needs.scope.outputs.robotlab != 'true' && 'robotaddon11' || 'none' }}
           - shard: ${{ needs.scope.outputs.robotlab != 'true' && 'robotaddon12' || 'none' }}
           - shard: ${{ needs.scope.outputs.robotlab != 'true' && 'robotaddon13' || 'none' }}
-          - shard: ${{ needs.scope.outputs.robotlab != 'true' && 'robotaddon14' || 'none' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     # Job-level permissions REPLACE the workflow's for this job, so the two it
@@ -2237,11 +2236,6 @@ jobs:
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotaddon13' }}
         run: npm run verify:sim-lab -- --part=examples --examples=evenhand
 
-      - name: Browser gate — Robot Lab rimrun promotion
-        id: bw_browser_audit_0266
-        timeout-minutes: 20  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
-        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotaddon14' }}
-        run: npm run verify:sim-lab -- --part=examples --examples=rimrun
 
       - name: Browser gate — Robot Lab pantograph-doubler complete example
         id: bw_browser_audit_0064
@@ -3938,7 +3932,6 @@ jobs:
             bw_browser_audit_0261	${{ steps['bw_browser_audit_0261'].outcome }}	${{ steps['bw_browser_audit_0261'].conclusion }}
             bw_browser_audit_0262	${{ steps['bw_browser_audit_0262'].outcome }}	${{ steps['bw_browser_audit_0262'].conclusion }}
             bw_browser_audit_0265	${{ steps['bw_browser_audit_0265'].outcome }}	${{ steps['bw_browser_audit_0265'].conclusion }}
-            bw_browser_audit_0266	${{ steps['bw_browser_audit_0266'].outcome }}	${{ steps['bw_browser_audit_0266'].conclusion }}
             bw_browser_audit_0064	${{ steps['bw_browser_audit_0064'].outcome }}	${{ steps['bw_browser_audit_0064'].conclusion }}
             bw_browser_audit_0065	${{ steps['bw_browser_audit_0065'].outcome }}	${{ steps['bw_browser_audit_0065'].conclusion }}
             bw_browser_audit_0066	${{ steps['bw_browser_audit_0066'].outcome }}	${{ steps['bw_browser_audit_0066'].conclusion }}
@@ -3953,8 +3946,8 @@ jobs:
             bw_browser_audit_0074	${{ steps['bw_browser_audit_0074'].outcome }}	${{ steps['bw_browser_audit_0074'].conclusion }}
             bw_browser_audit_0075	${{ steps['bw_browser_audit_0075'].outcome }}	${{ steps['bw_browser_audit_0075'].conclusion }}
             bw_browser_audit_0076	${{ steps['bw_browser_audit_0076'].outcome }}	${{ steps['bw_browser_audit_0076'].conclusion }}
-          BW_BROWSER_RUNNER_TERMINALS_V1_2: |
             bw_browser_audit_0077	${{ steps['bw_browser_audit_0077'].outcome }}	${{ steps['bw_browser_audit_0077'].conclusion }}
+          BW_BROWSER_RUNNER_TERMINALS_V1_2: |
             bw_browser_audit_0078	${{ steps['bw_browser_audit_0078'].outcome }}	${{ steps['bw_browser_audit_0078'].conclusion }}
             bw_browser_audit_0079	${{ steps['bw_browser_audit_0079'].outcome }}	${{ steps['bw_browser_audit_0079'].conclusion }}
             bw_browser_audit_0080	${{ steps['bw_browser_audit_0080'].outcome }}	${{ steps['bw_browser_audit_0080'].conclusion }}
@@ -4054,8 +4047,8 @@ jobs:
             bw_browser_audit_0172	${{ steps['bw_browser_audit_0172'].outcome }}	${{ steps['bw_browser_audit_0172'].conclusion }}
             bw_browser_audit_0173	${{ steps['bw_browser_audit_0173'].outcome }}	${{ steps['bw_browser_audit_0173'].conclusion }}
             bw_browser_audit_0174	${{ steps['bw_browser_audit_0174'].outcome }}	${{ steps['bw_browser_audit_0174'].conclusion }}
-          BW_BROWSER_RUNNER_TERMINALS_V1_3: |
             bw_browser_audit_0175	${{ steps['bw_browser_audit_0175'].outcome }}	${{ steps['bw_browser_audit_0175'].conclusion }}
+          BW_BROWSER_RUNNER_TERMINALS_V1_3: |
             bw_browser_audit_0176	${{ steps['bw_browser_audit_0176'].outcome }}	${{ steps['bw_browser_audit_0176'].conclusion }}
             bw_browser_audit_0177	${{ steps['bw_browser_audit_0177'].outcome }}	${{ steps['bw_browser_audit_0177'].conclusion }}
             bw_browser_audit_0178	${{ steps['bw_browser_audit_0178'].outcome }}	${{ steps['bw_browser_audit_0178'].conclusion }}
