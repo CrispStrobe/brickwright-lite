@@ -22,8 +22,8 @@ Results:
   saved project replayed in a fresh context, EN/DE lessons. Its build steps
   were re-authored to at most six parts per step (geometry unchanged).
 - RimRun: HELD. The gate exists (`--examples=rimrun`) but is not wired into
-  CI. Two browser measurement defects were fixed in #1714 (frame timestamps
-  now carry the physics time of their poses; the worker samples requested
+  CI. Two browser measurement defects were fixed in #1714 (a gate that requests
+  per-step sampling gets frames stamped with the physics time of their poses; the worker samples requested
   bodies at every physics step and the gate judges on the registry's 20 ms
   grid). On that clean data the left roller fits 5.7 % below its prediction
   (limit 5 %, right lane 2.7 %): one tile-joint bump (Jolt's internal-edge

@@ -131,8 +131,9 @@ Open points, recorded rather than resolved:
   follow-up; it affects every model. Two browser measurement defects were
   fixed on the way: (1) timestamp aliasing — the recorder stamped worker poses
   with the session clock (33.3 ms ticks) while each batch runs whole 5 ms
-  steps (30 or 35 ms), so the fit read 16 % low; frames now carry the physics
-  time of their poses; (2) coarse sampling — browser frames are whole batches,
+  steps (30 or 35 ms), so the fit read 16 % low; a gate that requests
+  per-step sampling now gets frames stamped with the physics time of their
+  poses (other gates keep the session clock their hold checks use); (2) coarse sampling — browser frames are whole batches,
   8 in the window; the worker's fixed-step collector now also samples up to
   four requested dynamic bodies, and the gate judges on the registry's 20 ms
   grid. On that clean data the left roller still fits 5.7 % low (right

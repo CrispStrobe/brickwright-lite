@@ -2,6 +2,7 @@
 // Copyright (c) 2026 CrispStrobe
 import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';
 import {NINE_INTAKES} from '../scripts/lib/sim-lab-nine-intake-judge.mjs';
+import {Q5_BROWSER_MODELS} from '../scripts/lib/sim-lab-q5-browser-gate.mjs';
 const read=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8');
 const script=read('scripts/verify-sim-lab-browser.mjs');
 function checkExampleCoverage(workflow){
@@ -12,7 +13,8 @@ function checkExampleCoverage(workflow){
  // The new-model gate filters its own id list rather than a runExample loop.
  const newModels=[...script.matchAll(/const newModelIds = \[([^\]]+)\]/g)].flatMap(m=>[...m[1].matchAll(/'([^']+)'/g)].map(n=>n[1]));
  assert.match(script,/Object\.keys\(NINE_INTAKES\)\.filter\(id => runExample\(id \+ '\.ldr'\)\)/,'Every reviewed intake is an actual selectable browser journey');
- const expected=[...new Set([...named,...robots,...extras,...newModels,...Object.keys(NINE_INTAKES)])].sort();
+ assert.match(script,/for \(const id of \[\.\.\.Q5_BROWSER_MODELS,/,'Every Q5 promotion is an actual selectable browser journey');
+ const expected=[...new Set([...named,...robots,...extras,...newModels,...Object.keys(NINE_INTAKES),...Q5_BROWSER_MODELS])].sort();
  // Match the actual filter's primary -> automatically included control pairs.
  const automatic=[...script.matchAll(/\(id==='([^']+)' && runExample\('([^']+)\.ldr'\)\)/g)].map(m=>({control:m[1],primary:m[2]}));
  assert.deepEqual(automatic.map(p=>p.primary).sort(),['cable-compass','cascade','rise-ratio','wavemaker']);
