@@ -1379,7 +1379,7 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
     // constant string literal and the body is exactly (parameter declarations,
     // then) `IF P ==/=== <same literal> THEN return X` and a fallback, with no
     // writer of P but call arguments, the IF is taken and the call yields X.
-    // Any other shape (else branch, extra THEN statement, other writer,
+    // Any other shape (else branch, THEN statement other than a local store or push, other writer,
     // non-literal argument or comparison operand) returns null: no pruning.
     const constantText=value=>{
         if(!value)return null;if(Array.isArray(value.raw))return value.raw[0]===10&&typeof value.raw[1]==='string'?value.raw[1]:null;
@@ -1399,7 +1399,10 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         if(!c||c!==localCell(fn,fn.params[index])||c.directBad||!c.writers.every(w=>w.argument))return null;
         // A non-literal comparison operand (null) never equals a literal argument.
         const argument=constantText(call.args[index]);if(argument===null||argument!==expected)return null;
-        const only=block(fn.target,first.inputs.SUBSTACK?.[1]);
+        // The THEN may first build the returned list: plain local stores and
+        // pushes cannot transfer control, so entering the IF still returns X.
+        let only=block(fn.target,first.inputs.SUBSTACK?.[1]);const built=new Set();
+        while((only?.opcode==='arcade_setLocal'&&exactKeys(only,['NAME','VALUE'])||only?.opcode==='arrays_mutateReference'&&exactKeys(only,['ARRAY','OP','INDEX','VALUE'])&&literal(only,'OP',fn.target)==='push')&&!invalid.has(only)&&!built.has(only)){built.add(only);only=block(fn.target,only.next);}
         if(only?.opcode!=='arcade_returnValue'||only.next!=null||only.mutation!=null||invalid.has(only)||!exactKeys(only,['VALUE']))return null;
         return input(only,'VALUE',fn.target);
     };

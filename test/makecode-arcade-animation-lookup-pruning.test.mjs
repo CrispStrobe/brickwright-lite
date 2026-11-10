@@ -9,7 +9,7 @@ import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export
 // frames Array; every deviation keeps the Array refusal.
 const KEY = '12345678-1234-4234-8234-123456789abc';
 const ARRAY_REFUSAL = /^Array reference .*requires an actual initialized Array producer/;
-const program = ({arg = `("${KEY}")`, compare = KEY, fallback = '', op = '==', before = '', inThen = '', ifLine = null, elseBlock = '', writer = ''} = {}) => `DEVICE ARCADE
+const program = ({returned = 'frames', arg = `("${KEY}")`, compare = KEY, fallback = '', op = '==', before = '', inThen = '', ifLine = null, elseBlock = '', writer = ''} = {}) => `DEVICE ARCADE
 GLOBAL frames
 GLOBAL first
 GLOBAL key = "${KEY}"
@@ -27,7 +27,7 @@ WHEN arcade source starts:
 DEFINE lookup (id):
   declare arcade procedure "lookup %s" parameter "id" as String
 ${before}${writer}  ${ifLine || `IF compare value (arcade local id) op "${op}" with ("${compare}") THEN:`}
-${inThen}    arcade return value (frames)
+${inThen}    arcade return value (${returned})
 ${elseBlock}${fallback}  arcade log calculate value ("Animation resource unavailable: ") op "+" with (arcade local id)
   arcade return value (undefined value)
 `;
@@ -40,7 +40,13 @@ test('a matching constant lookup argument yields only the returned Array', () =>
     assert.deepEqual(arrayRefusals(program()), []);
     assert.deepEqual(arrayRefusals(program({op: '==='})), []);
 });
+// The real generated fresh lookup builds its returned list inside the THEN.
+const FRESH = {inThen: '    arcade set local fresh to (new array reference from ("[]"))\n    mutate array reference (arcade local fresh) op "push" index (0) value ((0 + (2)))\n', returned: 'arcade local fresh'};
+test('a THEN that only builds the returned local list still prunes', () => {
+    assert.deepEqual(arrayRefusals(program(FRESH)), []);
+});
 const refused = {
+    'a THEN builder followed by another statement': {...FRESH, inThen: FRESH.inThen + '    arcade log ("x")\n'},
     'a non-constant argument': {arg: '(key)'},
     'a computed string argument': {arg: `(calculate value ("") op "+" with ("${KEY}"))`},
     'a parameter with another writer in the body': {writer: '  arcade set local id to ("other")\n'},
