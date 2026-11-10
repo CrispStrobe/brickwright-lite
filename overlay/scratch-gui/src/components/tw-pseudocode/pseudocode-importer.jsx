@@ -2423,12 +2423,16 @@ class PseudocodeImporter extends React.Component {
             try { localStorage.setItem('bw-right-pane-hidden', '0'); } catch { /* private mode */ }
             window.dispatchEvent(new CustomEvent('bw-settings-change', {detail: {key: 'bw-right-pane-hidden', value: '0'}}));
             // A simulator/console dock hides the Debug pane: show the debugger instead.
+            // Always announce the chosen debugger dock. The panes keep their own
+            // dock in memory (a device dock such as 'makecode' included), and
+            // storage can disagree with it (private mode, another tab, a cleared
+            // origin). Deciding from storage alone left the panes on the
+            // MakeCode dock with no Debug pane mounted.
             let dock = 'top';
             try { dock = localStorage.getItem('bw-debug-dock') || 'top'; } catch { /* private mode */ }
-            if (!['top', 'right', 'solo'].includes(dock)) {
-                try { localStorage.setItem('bw-debug-dock', 'right'); } catch { /* private mode */ }
-                window.dispatchEvent(new CustomEvent('bw-settings-change', {detail: {key: 'bw-debug-dock', value: 'right'}}));
-            }
+            if (!['top', 'right', 'solo'].includes(dock)) dock = 'right';
+            try { localStorage.setItem('bw-debug-dock', dock); } catch { /* private mode */ }
+            window.dispatchEvent(new CustomEvent('bw-settings-change', {detail: {key: 'bw-debug-dock', value: dock}}));
             window.__bwPendingMedia = {type: 'asm', detail};
             window.dispatchEvent(new CustomEvent('bw-asm-rom-ready', {detail}));
             this.setState({busy: false, status: this.L.mcEmulateStarted(subject.name) + this.fetchedNote(out)});
