@@ -1379,7 +1379,7 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
     // constant string literal and the body is exactly (parameter declarations,
     // then) `IF P ==/=== <same literal> THEN return X` and a fallback, with no
     // writer of P but call arguments, the IF is taken and the call yields X.
-    // Any other shape (else branch, extra THEN statement, other writer,
+    // Any other shape (else branch, THEN statement other than a local store or push, other writer,
     // non-literal argument or comparison operand) returns null: no pruning.
     const constantText=value=>{
         if(!value)return null;if(Array.isArray(value.raw))return value.raw[0]===10&&typeof value.raw[1]==='string'?value.raw[1]:null;
@@ -1399,7 +1399,31 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         if(!c||c!==localCell(fn,fn.params[index])||c.directBad||!c.writers.every(w=>w.argument))return null;
         // A non-literal comparison operand (null) never equals a literal argument.
         const argument=constantText(call.args[index]);if(argument===null||argument!==expected)return null;
-        const only=block(fn.target,first.inputs.SUBSTACK?.[1]);
+        // The THEN may first build a fresh local list, exactly as the re-imported
+        // fresh-frames lookup does: `set local L to []`, then pushes onto such an
+        // L of an inert value, a staged list, or a copy of a constant frame image.
+        // No global store, call, other target or nested control may precede the
+        // single return.
+        const literalSlot=slot=>Array.isArray(slot?.[1])&&[4,10].includes(slot[1][0]);
+        const builderValue=slot=>{
+            if(inertValue(fn.target,slot))return true;
+            const clone=typeof slot?.[1]==='string'?block(fn.target,slot[1]):null;
+            if(clone?.opcode!=='arcade_cloneImage'||!exactKeys(clone,['IMAGE']))return false;
+            const frame=input(clone,'IMAGE',fn.target).node;
+            return frame?.opcode==='arcade_frameImage'&&exactKeys(frame,['KEY','INDEX','TEMPLATE','START','COUNT'])&&Object.values(frame.inputs).every(literalSlot);
+        };
+        let only=block(fn.target,first.inputs.SUBSTACK?.[1]);const built=new Set(),fresh=new Set();
+        while(only&&!invalid.has(only)&&!built.has(only)){
+            if(only.opcode==='arcade_setLocal'&&exactKeys(only,['NAME','VALUE'])){
+                const name=literal(only,'NAME',fn.target),v=input(only,'VALUE',fn.target).node;
+                if(typeof name!=='string'||fn.params.includes(name)||v?.opcode!=='arrays_createReference'||!exactKeys(v,['VALUES'])||!Array.isArray(v.inputs.VALUES?.[1])||literal(v,'VALUES',fn.target)!=='[]')return null;
+                fresh.add(name);
+            }else if(only.opcode==='arrays_mutateReference'&&exactKeys(only,['ARRAY','OP','INDEX','VALUE'])&&literal(only,'OP',fn.target)==='push'){
+                const receiver=input(only,'ARRAY',fn.target).node;
+                if(receiver?.opcode!=='arcade_getLocal'||!fresh.has(literal(receiver,'NAME',fn.target))||!builderValue(only.inputs.VALUE))return null;
+            }else break;
+            built.add(only);only=block(fn.target,only.next);
+        }
         if(only?.opcode!=='arcade_returnValue'||only.next!=null||only.mutation!=null||invalid.has(only)||!exactKeys(only,['VALUE']))return null;
         return input(only,'VALUE',fn.target);
     };
