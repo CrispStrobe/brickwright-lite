@@ -3961,8 +3961,8 @@ jobs:
             bw_browser_audit_0073	${{ steps['bw_browser_audit_0073'].outcome }}	${{ steps['bw_browser_audit_0073'].conclusion }}
             bw_browser_audit_0074	${{ steps['bw_browser_audit_0074'].outcome }}	${{ steps['bw_browser_audit_0074'].conclusion }}
             bw_browser_audit_0075	${{ steps['bw_browser_audit_0075'].outcome }}	${{ steps['bw_browser_audit_0075'].conclusion }}
-            bw_browser_audit_0076	${{ steps['bw_browser_audit_0076'].outcome }}	${{ steps['bw_browser_audit_0076'].conclusion }}
           BW_BROWSER_RUNNER_TERMINALS_V1_2: |
+            bw_browser_audit_0076	${{ steps['bw_browser_audit_0076'].outcome }}	${{ steps['bw_browser_audit_0076'].conclusion }}
             bw_browser_audit_0077	${{ steps['bw_browser_audit_0077'].outcome }}	${{ steps['bw_browser_audit_0077'].conclusion }}
             bw_browser_audit_0078	${{ steps['bw_browser_audit_0078'].outcome }}	${{ steps['bw_browser_audit_0078'].conclusion }}
             bw_browser_audit_0079	${{ steps['bw_browser_audit_0079'].outcome }}	${{ steps['bw_browser_audit_0079'].conclusion }}
@@ -4062,8 +4062,8 @@ jobs:
             bw_browser_audit_0171	${{ steps['bw_browser_audit_0171'].outcome }}	${{ steps['bw_browser_audit_0171'].conclusion }}
             bw_browser_audit_0172	${{ steps['bw_browser_audit_0172'].outcome }}	${{ steps['bw_browser_audit_0172'].conclusion }}
             bw_browser_audit_0173	${{ steps['bw_browser_audit_0173'].outcome }}	${{ steps['bw_browser_audit_0173'].conclusion }}
-            bw_browser_audit_0174	${{ steps['bw_browser_audit_0174'].outcome }}	${{ steps['bw_browser_audit_0174'].conclusion }}
           BW_BROWSER_RUNNER_TERMINALS_V1_3: |
+            bw_browser_audit_0174	${{ steps['bw_browser_audit_0174'].outcome }}	${{ steps['bw_browser_audit_0174'].conclusion }}
             bw_browser_audit_0175	${{ steps['bw_browser_audit_0175'].outcome }}	${{ steps['bw_browser_audit_0175'].conclusion }}
             bw_browser_audit_0176	${{ steps['bw_browser_audit_0176'].outcome }}	${{ steps['bw_browser_audit_0176'].conclusion }}
             bw_browser_audit_0177	${{ steps['bw_browser_audit_0177'].outcome }}	${{ steps['bw_browser_audit_0177'].conclusion }}

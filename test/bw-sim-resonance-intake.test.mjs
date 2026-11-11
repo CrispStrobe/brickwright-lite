@@ -60,7 +60,7 @@ test('three Resonance presets share one assembly; the original files and behavio
     // that the Resonance patch found must stay byte-for-byte the same.
     const structure = previous.map(({file, id, example, mat, manualJog}) => ({file, id, example, mat, manualJog}));
     assert.equal(hash(JSON.stringify(structure)), 'abcdfa1b102676bfb722410acad20e0a4f786103dde3c541a78c0a44f3f16cbe');
-    assert.equal(MODELS.length, 151);
+    assert.equal(MODELS.length, 152);
     assert.equal(new Set(MODELS.map(entry => entry.file)).size, 141);
     for (const file of newFiles) assert.ok(MODELS.some(entry => entry.file === file), file);
     const added = MODELS.filter(entry => entry.file === 'resonance-lab.ldr');

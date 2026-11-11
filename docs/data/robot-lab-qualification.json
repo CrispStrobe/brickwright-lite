@@ -1184,6 +1184,41 @@
       ],
       "disconnectInputDeg": 85,
       "disconnectLoss": "obliquity",
+      "expectedIssues": [
+        {
+          "code": "locked-hinges",
+          "parts": [
+            "beam_middle",
+            "post_mid_low_e",
+            "post_mid_low_w"
+          ]
+        },
+        {
+          "code": "locked-hinges",
+          "parts": [
+            "beam_top",
+            "bearing_upper",
+            "post_top_e",
+            "post_top_w"
+          ]
+        },
+        {
+          "code": "locked-hinges",
+          "parts": [
+            "hub",
+            "hub_pin_front",
+            "hub_pin_rear"
+          ]
+        },
+        {
+          "code": "locked-hinges",
+          "parts": [
+            "motor_top_beam",
+            "post_top_e",
+            "post_top_w"
+          ]
+        }
+      ],
       "notRun": [
         "webkit browser run (the browser gate, shard robotaddon15, runs chromium)"
       ]
