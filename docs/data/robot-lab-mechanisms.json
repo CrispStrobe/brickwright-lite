@@ -1251,6 +1251,31 @@
         "Haltemoment",
         "Hebelarm"
       ]
+    },
+    {
+      "models": [
+        "obliquity-orrery"
+      ],
+      "name": {
+        "en": "Parallel-crank orrery with a fixed tilted axis",
+        "de": "Parallelkurbel-Orrery mit fest geneigter Achse"
+      },
+      "aliases": [
+        "orrery",
+        "obliquity",
+        "axial tilt",
+        "solar declination",
+        "seasons",
+        "solstice",
+        "equinox",
+        "parallelogram linkage",
+        "Schiefe der Ekliptik",
+        "Achsneigung",
+        "Sonnendeklination",
+        "Jahreszeiten",
+        "Sonnenwende",
+        "Parallelogramm"
+      ]
     }
   ]
 }

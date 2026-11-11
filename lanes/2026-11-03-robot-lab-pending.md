@@ -24,7 +24,8 @@ The full task list with exact steps is section 00 of
   - "Arcade numeric authoring (official build)" was an operator-declared
     exception for that merge. Details are in handoff section 0000.
 
-- R1–R7 (2026-11-10, open): R1 obliquity-orrery; R2 cadence-geneva,
+- R1–R7 (2026-11-10, open): R1 obliquity-orrery (ACTIVE 2026-11-11,
+  `lanes/2026-11-11-robot-r1-obliquity.md`); R2 cadence-geneva,
   equinox-differential, helios-transmission, orion-cardan (judge family);
   R3 apex, aster-governor, vesper-quickreturn, bloom (geometry repairs);
   R4 solstice-pumpjack, tempest-pendulum, impulse-line (start-guard poses);

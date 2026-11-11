@@ -13,6 +13,7 @@ import {batchBDisconnectionLoss} from '../scripts/lib/sim-lab-batchB-judges.mjs'
 import {p6DisconnectionLoss} from '../scripts/lib/sim-lab-p6-judges.mjs';
 import {judgeRimRun,rimrunDisconnectionLoss,rimrunMeasure} from '../scripts/lib/sim-lab-rimrun-judge.mjs';
 import {nineIntakeDisconnectionLoss} from '../scripts/lib/sim-lab-nine-intake-judge.mjs';
+import {judgeObliquityTilt,obliquityDisconnectionLoss,orreryTrack,compiledOrrery} from '../scripts/lib/sim-lab-obliquity-judge.mjs';
 import {catalogFrom,prepareModel,MODELS} from '../overlay/scratch-gui/src/lib/bw-sim/sim-session.js';
 import {runRobotLabProgram} from './helpers/robot-lab-direct-vm.mjs';import {observeAddon} from '../scripts/lib/sim-lab-addon-judge.mjs';
 import Creator from '../overlay/scratch-gui/src/lib/sb3-creator-register-art.js';
@@ -110,6 +111,38 @@ for(const c of qualificationContracts(selected).filter(c=>!c.nativeSuite)){
    assert.throws(()=>judgeRimRun(late,{native:true}),/enough frames on one tile|clears both rollers/);}
   t.diagnostic(JSON.stringify({id:'rimrun-window',clearance:m.window.clearance,lanes:m.lanes.map(l=>({lane:l.lane,accel:l.accel,predicted:l.predicted,frames:l.window.frames,from:l.window.from,to:l.window.to})),ratio:ok.ratio,leadMm:ok.leadMm}));
  });
+ // Obliquity Orrery (R1): two wrong models built from the real run, each refused by the unchanged judge, and the
+ // handoff's crank-B cut recorded. (1) The Earth plate turned 90° about its spindle (the shipped control's pose,
+ // obliquity-orrery-turned-axis) on the same carried body: it obeys its own law sin δ = sin 22.5° · cos(λ − 135°),
+ // which shows the measurement is real, and is refused because the compiled solstice is not at 45°. (2) The Earth
+ // turned with its orbit, as a coupler without the parallelogram would: its axis no longer keeps one direction.
+ if(c.id==='obliquity-orrery')test('obliquity-orrery: turned-axis and turning-Earth mutants are refused; crank B cut recorded',async t=>{
+  const r=await run(c,source,false,'mutant-base'),ok=judgeObliquityTilt(r,{native:true,contract:c});
+  const law=(lam,lam0)=>Math.asin(Math.sin(22.5*Math.PI/180)*Math.cos((lam-lam0)*Math.PI/180))*180/Math.PI;
+  // (1) Turned connector: rotate the Earth plate's compiled pose -90° about the vertical through the spindle.
+  const turned=structuredClone(r),parts=new Map(turned.runModel.parts.map(p=>[p.id,p])),e=parts.get('earth'),sp=parts.get('earth_spindle').position;
+  const M=[0,0,-1,0,1,0,1,0,0],mv=(A,v)=>[0,1,2].map(i=>A[3*i]*v[0]+A[3*i+1]*v[1]+A[3*i+2]*v[2]),rel=e.position.map((x,i)=>x-sp[i]);
+  e.position=mv(M,rel).map((x,i)=>x+sp[i]);e.rotation=[0,1,2].flatMap(i=>[0,1,2].map(j=>M[3*i]*e.rotation[j]+M[3*i+1]*e.rotation[3+j]+M[3*i+2]*e.rotation[6+j]));
+  const g=compiledOrrery(turned);assert.ok(Math.abs(g.epsilonDeg-22.5)<=.01&&Math.abs(Math.abs(g.solsticeDeg-45)-90)<=.01,'the mutant keeps the tilt and moves the solstice a quarter orbit: '+JSON.stringify(g));
+  const rows=orreryTrack(turned),own=Math.max(...rows.map(x=>Math.abs(x.delta-law(x.lam,g.solsticeDeg))));
+  assert.ok(own<=.01,'the turned Earth follows its own law: '+own);
+  assert.throws(()=>judgeObliquityTilt(turned,{native:true,contract:c}),/leans at the Sun/);
+  // (2) Turning Earth: each frame, turn the Earth's body about the vertical through its reference point by the
+  // orbit's own turn, so the axis follows the Sun direction instead of keeping its direction.
+  const spun=structuredClone(r),o=observeAddon(spun),b=o.body('earth');
+  const qm=([x,y,z,w],[a,b2,c2,d])=>[w*a+x*d+y*c2-z*b2,w*b2-x*c2+y*d+z*a,w*c2+x*b2-y*a+z*d,w*d-x*a-y*b2-z*c2],qr=(q,v)=>qm(qm(q,[...v,0]),[-q[0],-q[1],-q[2],q[3]]).slice(0,3);
+  const ref=o.initial('earth',[0,2,0]),local=qr([-b.rotation[0],-b.rotation[1],-b.rotation[2],b.rotation[3]],ref.map((x,i)=>x-b.position[i]));
+  const az=f=>{const p=f.bodies[b.id],c0=qr(p.rotation,local).map((x,i)=>x+p.position[i]);return[c0,Math.atan2(c0[2],c0[0])];};
+  const sun=r.track.map(f=>o.point(f,'sun_marker')),a0=Math.atan2(o.point(r.track[0],'earth',[0,2,0])[2]-sun[0][2],o.point(r.track[0],'earth',[0,2,0])[0]-sun[0][0]);
+  spun.track.forEach((f,k)=>{const E=o.point(r.track[k],'earth',[0,2,0]),turn=Math.atan2(E[2]-sun[k][2],E[0]-sun[k][0])-a0,q=[0,Math.sin(-turn/2),0,Math.cos(-turn/2)],[c0]=az(f),p=f.bodies[b.id];
+   p.position=qr(q,p.position.map((x,i)=>x-c0[i])).map((x,i)=>x+c0[i]);p.rotation=qm(q,p.rotation);});
+  assert.throws(()=>judgeObliquityTilt(spun,{native:true,contract:c}),/declination follows/);
+  // The handoff's proposed cut (crank B's coupler pin). A frictionless coupler hanging from one vertical pin feels no
+  // gravity torque about it, so whether the law is lost is measured, not assumed.
+  const cutB=await run(c,disconnectedSource(source,['crank_pin_B']),false,'crank-B-cut'),lossB=obliquityDisconnectionLoss(cutB);
+  let judgedB;try{judgeObliquityTilt(cutB,{native:true,contract:c});judgedB='PASS';}catch(err){judgedB=String(err.message).slice(0,300);}
+  t.diagnostic(JSON.stringify({id:'obliquity-orrery-mutants',main:{lawErrorDeg:ok.lawErrorDeg,driveErrorDeg:ok.driveErrorDeg,radiusErrorMm:ok.radiusErrorMm,compiled:ok.compiled},turnedOwnLawDeg:own,turnedSolsticeDeg:g.solsticeDeg,crankBCut:{loss:lossB,judge:judgedB}}));
+ });
  test(c.id+': physical disconnection destroys the intended output while the real input still completes',async t=>{
   const r=await run(c,disconnectedSource(source,c.disconnect),false,'disconnected'),o=observeAddon(r,c.observeBase??hubPartOf(r)),input=c.motorless?null:r.mechanism.joints.find(j=>j.motor?.port===c.ports[0]),travel=input?Math.max(...r.track.map(f=>Math.abs(f.joints[input.id].angle)))*180/Math.PI:0;
   assert.ok(r.finishedAt>0);if(!c.motorless)assert.ok(travel>(c.disconnectInputDeg??(c.id==='sine-shuttle'?1070:1430)),'input genuinely still turns');
@@ -138,6 +171,8 @@ for(const c of qualificationContracts(selected).filter(c=>!c.nativeSuite)){
   else if(c.disconnectLoss==='batch-a'){const loss=batchADisconnectionLoss(c.id,r);motion=loss.value;assert.ok(loss.lost,'disconnection loses the law: '+JSON.stringify(loss));}
   // RimRun: all ballast removed, the identical rollers lose the inner-ballast lead (sim-lab-rimrun-judge.mjs).
   else if(c.disconnectLoss==='rimrun'){const loss=rimrunDisconnectionLoss(c.id,r);motion=loss.value;assert.ok(loss.lost,'disconnection loses the law: '+JSON.stringify(loss));}
+  // Obliquity Orrery: without crank A's coupler pin the Earth stays put while the encoder sweeps (sim-lab-obliquity-judge.mjs).
+  else if(c.disconnectLoss==='obliquity'){const loss=obliquityDisconnectionLoss(r);motion=loss.value;assert.ok(loss.lost,'disconnection loses the law: '+JSON.stringify(loss));}
   else if(c.disconnectLoss==='p6'){const loss=p6DisconnectionLoss(c.id,r);motion=loss.value;assert.ok(loss.lost,'disconnection loses the law: '+JSON.stringify(loss));}
   // Nine Technic intakes: the reviewed part removal must break the passive law while the input route completes.
   else if(c.disconnectLoss==='nine-intake'){const loss=nineIntakeDisconnectionLoss(c.id,r);motion=loss.value;assert.ok(loss.lost,'disconnection loses the law: '+JSON.stringify(loss));}

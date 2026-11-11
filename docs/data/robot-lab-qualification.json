@@ -1166,6 +1166,27 @@
       "notRun": [
         "webkit browser run (the browser gate, shard robotaddon13, runs chromium)"
       ]
+    },
+    {
+      "id": "obliquity-orrery",
+      "judge": "obliquity-tilt-v1",
+      "parts": 59,
+      "ports": [
+        "A"
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 90000,
+      "afterMs": 500,
+      "frameMs": 25,
+      "frozenOutput": "earth",
+      "disconnect": [
+        "crank_pin_A"
+      ],
+      "disconnectInputDeg": 85,
+      "disconnectLoss": "obliquity",
+      "notRun": [
+        "webkit browser run (the browser gate, shard robotaddon15, runs chromium)"
+      ]
     }
   ]
 }
