@@ -1,6 +1,6 @@
 # Robot Lab — R1 Obliquity Orrery: judge obliquity-tilt-v1, controls, browser gate and promotion
 
-Status: ACTIVE — claim and change in one PR.
+Status: DONE 2026-11-11 (#1725) — claim and change in one PR.
 Owner: Claude, Robot Lab promotion lane.
 Branch: `lane/robot-r1-obliquity-20261111`.
 

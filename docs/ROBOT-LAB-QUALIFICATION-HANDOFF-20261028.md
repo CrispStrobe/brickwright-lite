@@ -84,6 +84,18 @@ Editing `scripts/lib/robot-lab-qualification.mjs`:
 
 ## 00000. Next batch R1–R7 and engine task E1, 2026-11-10 (read this first)
 
+**R1 DONE 2026-11-11 (#1725).** Obliquity Orrery promoted with judge
+`obliquity-tilt-v1` (`scripts/lib/sim-lab-obliquity-judge.mjs`). The proposed
+law is the mechanism's physics: 1:1 drive, equal 16 mm cranks on axles 32 mm
+apart (the coupler-pin spacing) so the coupler translates without turning, a
+22.5° axis that keeps its direction, and the Sun at the orbit centre level with
+the Earth; the compiled geometry reproduces the law to 1.4e-5°. Hosted native
+run: declination error 0.0021° (gate 0.01°), drive 0.0071°, radius 0.00095 mm.
+Disconnection is crank A's coupler pin (law error 12.94°, refused). Crank B's
+pin, as proposed here, also loses the law (22.55°: the free coupler swings), but
+removing a driven-side pin is the cleaner causal cut. Mutants (tilt turned 90°;
+Earth turning with its orbit) are refused. Browser gate on shard robotaddon15.
+
 Read-only triage from code and data on main `d318ed6e`; nothing was compiled
 or run. The experimental set is every id in
 `docs/data/robot-lab-experimental-checkpoint.json` without a contract in
@@ -546,7 +558,7 @@ Triage of batches B and A, 2026-10-28:
 | cadence-geneva, equinox-differential, kestrel-flapper, lumen-iris, helios-transmission, orion-cardan, meridian-linkage | CRLF line endings break the physical-ID disconnection parser. The existing JavaScript multiline author assertion already accepts CRLF | A narrow harness candidate normalizes CRLF in the disconnection matching view, with LF/CRLF and strict-ID controls. Original model bytes and provenance checks stay unchanged. Hosted qualification and unchanged existing verdicts remain required; this parser repair does not promote these models. Kestrel, lumen-iris and meridian had earlier local judge passes |
 | pan-shift | runs past the 180 s contract maximum | Investigate the program length; keep experimental if it can't be fixed honestly |
 | vector-delta | blocked by a missing part | Keep blocked |
-| obliquity-orrery | blocked by issue #1460 (the compiler ignores motor orientation) | Wait for #1460 |
+| obliquity-orrery | #1460 closed | Done 2026-11-11 (R1, #1725): promoted with `obliquity-tilt-v1` |
 | afterturn | Promoted 2026-11-03 with the new `afterturn-shape-cycle-v1` judge: independent prediction from compiled masses and slider-crank poses, Iw/J = 0.02608 (masses out, B = 0) and 0.02746 (masses in, B = 70°); measured strokes 0.0261/0.0275 (within 1 %), cycle 1.24° vs predicted 1.25°, inverse back to 0.04°, fixed-mass control 0.01°. The earlier "0.02749 (masses out)" label was reversed: B = 70° moves the masses in. The supplier figure 4.6625° was the #1494 double count; claims and lessons now give the physical value | Done (control afterturn-fixed-masses stays experimental as the control) |
 | impulse-line | the unpowered pusher droops about 4°/s during the cold settle, against a 2° guard; its law is only qualitative | Needs a pose fix and a quantitative law |
 | quiet-partner | compiler warns of locked hinges, and the elastic bands become spring couplings | Needs harness support for spring couplings, or stays experimental |
