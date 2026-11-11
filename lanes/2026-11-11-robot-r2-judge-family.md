@@ -1,6 +1,6 @@
 # Robot Lab — R2 judge family: Cadence, Equinox, Helios, Orion (judges, controls, browser gates, promotion)
 
-Status: CLAIMED 2026-11-11 — claim and change in one PR.
+Status: DONE 2026-11-11 (#1729) — claim and change in one PR.
 Owner: Claude, Robot Lab promotion lane.
 Branch: `lane/robot-r2-judge-family-20261111`.
 

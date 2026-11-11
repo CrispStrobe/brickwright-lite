@@ -96,7 +96,7 @@ pin, as proposed here, also loses the law (22.55°: the free coupler swings), bu
 removing a driven-side pin is the cleaner causal cut. Mutants (tilt turned 90°;
 Earth turning with its orbit) are refused. Browser gate on shard robotaddon15.
 
-**R2 (2026-11-11, `lanes/2026-11-11-robot-r2-judge-family.md`).** One judge module,
+**R2 DONE 2026-11-11 (#1729, `lanes/2026-11-11-robot-r2-judge-family.md`).** One judge module,
 `scripts/lib/sim-lab-r2-judges.mjs`; every constant is read from the compiled parts and catalogue tooth counts.
 Native runs (COLD 500), measured / gate:
 
