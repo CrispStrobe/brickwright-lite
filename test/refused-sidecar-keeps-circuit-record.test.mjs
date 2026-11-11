@@ -12,7 +12,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import JSZip from 'jszip';
 import {extractBrickwrightState} from '../overlay/scratch-gui/src/lib/bw-project-bundle.js';
-import {circuitAutosaveRecord, readFileLoadedMarker} from '../overlay/scratch-gui/src/lib/circuit-autosave-record.js';
+import {circuitAutosaveRecord, readCircuitOwner} from '../overlay/scratch-gui/src/lib/circuit-autosave-record.js';
 
 const read = path => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 const tabPath = 'overlay/scratch-gui/src/components/tw-pseudocode/circuit-tab.jsx';
@@ -43,12 +43,14 @@ const designerCircuit = {
         wires: [{from: 'mcu1.P1.0', to: 'led1.A'}]}),
     resolvedNets: [['mcu1.P1.0', 'led1.A'], ['led1.K', 'gnd']]
 };
-// bw-circuit-ui 9d7a9a26 debounced autosave, for a file-owned canvas.
-const designerAutosave = circuit => {
-    const saved = circuit.toJSON();
-    saved.nets = circuit.resolvedNets;
-    return JSON.stringify(saved);
-};
+// The record a wire-based project file restores and bw-circuit-ui's load
+// writes: the circuit without engine nets. Measured in the browser gate on
+// head 00e6456f: the restored record was 2755 bytes with no nets, and the
+// refusal rewrote it to 5793 bytes WITH resolved nets.
+const restoredRecord = circuit => JSON.stringify(circuit.toJSON());
+// The rule at 00e6456f (and bw-circuit-ui 9d7a9a26's autosave): nets for every
+// file-owned circuit. Kept here as the counterexample the new rule must refuse.
+const netsForEveryFile = circuit => JSON.stringify({...circuit.toJSON(), nets: circuit.resolvedNets});
 
 const sb3With = async sidecar => {
     const zip = new JSZip();
@@ -63,19 +65,26 @@ const cases = {
 };
 
 test('host flush writes exactly bw-circuit-ui\'s autosave record', () => {
-    assert.equal(circuitAutosaveRecord(designerCircuit, true), designerAutosave(designerCircuit));
-    assert.equal(circuitAutosaveRecord(designerCircuit, false), JSON.stringify(designerCircuit.toJSON()));
+    const wired = {fileLoaded: true, fileNets: false};
+    assert.equal(circuitAutosaveRecord(designerCircuit, wired), restoredRecord(designerCircuit));
+    assert.notEqual(circuitAutosaveRecord(designerCircuit, wired), netsForEveryFile(designerCircuit));
+    assert.equal(circuitAutosaveRecord(designerCircuit, {fileLoaded: true, fileNets: true}),
+        netsForEveryFile(designerCircuit), 'a nets-described file keeps its nets');
+    assert.equal(circuitAutosaveRecord(designerCircuit, {}), restoredRecord(designerCircuit));
     const empty = {toJSON: () => ({parts: [], wires: []}), resolvedNets: []};
-    assert.equal(circuitAutosaveRecord(empty, false), null, 'inferred empty canvas is not written');
-    assert.equal(circuitAutosaveRecord(empty, true), JSON.stringify({parts: [], wires: [], nets: []}));
-    assert.equal(circuitAutosaveRecord(null, true), null);
+    assert.equal(circuitAutosaveRecord(empty, {}), null, 'inferred empty canvas is not written');
+    assert.equal(circuitAutosaveRecord(empty, {fileLoaded: true}), JSON.stringify({parts: [], wires: []}));
+    assert.equal(circuitAutosaveRecord(null, wired), null);
+    const owner = readCircuitOwner({getItem: key => ({'bw-circuit-file-loaded': '1',
+        'bw-circuit-autosave': JSON.stringify({parts: [], nets: [['a', 'b']]})})[key] ?? null});
+    assert.deepEqual(owner, {fileLoaded: true, fileNets: true});
 });
 
 for (const [outcome, sidecar] of Object.entries(cases)) {
     test(`${outcome} sidecar leaves every known project record byte-identical`, async () => {
         const storage = memoryStorage({
             'bw-code-autosave': JSON.stringify({lang: 'pseudocode', code: 'SPRITE Cat:'}),
-            'bw-circuit-autosave': designerAutosave(designerCircuit),
+            'bw-circuit-autosave': restoredRecord(designerCircuit),
             'bw-circuit-file-loaded': '1',
             'bw-ctl-widgets': JSON.stringify({version: 1, widgets: [{name: 'slider1', type: 'slider'}]})
         });
@@ -103,10 +112,10 @@ for (const [outcome, sidecar] of Object.entries(cases)) {
             // Circuit, with the Designer mounted before and unmounted now.
             const flushSrc = slice('        if (prevProps.isVisible && !this.props.isVisible && !this._boxRef.current',
                 '        this._designerShown =');
-            const flush = new Function('localStorage', 'circuitAutosaveRecord', 'readFileLoadedMarker',
+            const flush = new Function('localStorage', 'circuitAutosaveRecord', 'readCircuitOwner',
                 'prevProps', `${flushSrc}`);
             flush.call({props: {isVisible: false}, _boxRef: {current: null}, _designerShown: true,
-                state: {circuit: designerCircuit}}, storage, circuitAutosaveRecord, readFileLoadedMarker,
+                state: {circuit: designerCircuit}}, storage, circuitAutosaveRecord, readCircuitOwner,
             {isVisible: true});
             assert.deepEqual(storage.dump(), before,
                 `${outcome} sidecar partially replaced known project state`);

@@ -10,7 +10,7 @@ import {shouldLoadCircuitDesigner} from '../../lib/bw-debug/circuit-designer-loa
 import {getReactPerformanceProbe, profileReactSubtree} from '../../lib/bw-debug/react-perf-profiler.js';
 import {shouldRefreshDesignerDebugState} from '../../lib/bw-debug/debug-ui-refresh.js';
 import {s040PartIds, sameS040PartIds} from '../../lib/bw-debug/s040-part-ids.js';
-import {circuitAutosaveRecord, readFileLoadedMarker} from '../../lib/circuit-autosave-record.js';
+import {circuitAutosaveRecord, readCircuitOwner} from '../../lib/circuit-autosave-record.js';
 import {setProjectTitle} from '../../reducers/project-title';
 import {activateTab} from '../../reducers/editor-tab';
 import {noCircuitMessage} from '../../lib/example-device-only.js';
@@ -593,7 +593,7 @@ class CircuitTab extends React.Component {
         // a differently shaped record for the same circuit made opening a project
         // with a refused sidecar rewrite the known circuit (task I5).
         if (prevProps.isVisible && !this.props.isVisible && !this._boxRef.current && this._designerShown) {
-            const record = circuitAutosaveRecord(this.state.circuit, readFileLoadedMarker(localStorage));
+            const record = circuitAutosaveRecord(this.state.circuit, readCircuitOwner(localStorage));
             if (record !== null) {
                 try { localStorage.setItem('bw-circuit-autosave', record); } catch (e) { /* storage blocked */ }
             }
