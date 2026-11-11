@@ -25,7 +25,8 @@ The full task list with exact steps is section 00 of
     exception for that merge. Details are in handoff section 0000.
 
 - R1–R7 (2026-11-10, open): R1 obliquity-orrery (DONE 2026-11-11, #1725); R2 cadence-geneva,
-  equinox-differential, helios-transmission, orion-cardan (judge family);
+  equinox-differential, helios-transmission, orion-cardan (judge family; claimed 2026-11-11,
+  `lanes/2026-11-11-robot-r2-judge-family.md`);
   R3 apex, aster-governor, vesper-quickreturn, bloom (geometry repairs);
   R4 solstice-pumpjack, tempest-pendulum, impulse-line (start-guard poses);
   R5 spiral-scribe, quiet-partner; R6 pan-shift, inertia-loop; R7

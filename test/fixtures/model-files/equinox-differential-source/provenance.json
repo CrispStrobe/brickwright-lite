@@ -1,0 +1,10 @@
+{
+ "author": "CrispStrobe",
+ "license": "BSD-3-Clause",
+ "files": {
+  "models/equinox-differential.ldr": "239d26f56d494aa4e7a032fde72626dc4fc21a25a85aacab410d15330202f060",
+  "programs/equinox-differential.bw": "a94693e9807f3046cf5b20057f59bc5fcdd45fcd8eb0666fdf3efc2d14bb8884",
+  "LICENSE.txt": "a096c77ac7c151875cdcfcc89285d7372701076a3e53e29b3ee8abcd4e71ec9e",
+  "SOURCES.md": "5af54212eb203bbc968772defcb33d5cfb58b7e465942df318cc6debc4afa088"
+ }
+}

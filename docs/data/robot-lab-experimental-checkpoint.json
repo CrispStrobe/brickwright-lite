@@ -437,10 +437,10 @@
       "archiveSha256": "1bb7219d2e2c27a6f0ea9b98c6b8186c18d5c34278e2d7652fec2b5877f42678",
       "originalLdrawEntry": "07-cadence/cadence-geneva.ldr",
       "originalLdrawSha256": "048fd1abf79cec1e47cb3879253936797841b1cef87cb01d4a07c44cd28619d8",
-      "canonicalLdrawSha256": "7783a77d461b88cd5a4a7026a507eb24572328fd75b82e69ca1b9da8dae4b80f",
+      "canonicalLdrawSha256": "966e1d8c7c1341f8700994f30445f7fc39c806097e963519c3c9b7d848c3d4c8",
       "originalProgramEntry": "07-cadence/cadence-geneva.bw",
       "programSha256": "6ed053800f78526054be5732bebfd876f3cde711a5494889e964f8742a84546c",
-      "adaptation": "Author/license comments normalized to user-authorized CrispStrobe BSD-3-Clause; geometry unchanged; MPD wrapper generated from canonical LDR; program bytes unchanged.",
+      "adaptation": "Author/license comments normalized to user-authorized CrispStrobe BSD-3-Clause; geometry unchanged; MPD wrapper generated from canonical LDR; program bytes unchanged. Promotion (R2, 2026-11-11): Building steps only: the seven author STEP groups (up to 93 parts) are removed so the instructions derive 93 connected steps of at most six parts; placements, colours and IDs unchanged.",
       "basicChecks": {
         "id": "cadence-geneva",
         "checked": [
@@ -509,6 +509,11 @@
           "notes": "Dial opposite to star (3 external meshes) and positive in program convention; success check passes. Up to ~2° in-step lag vs the ideal curve and 1.4° short first step (datum). Friction clutch holds dwell perfectly in simulation."
         },
         "scope": "one headless run on the app branch engine; not a physical build"
+      },
+      "promotionReview": {
+        "date": "2026-11-11",
+        "decision": "PROMOTED",
+        "reason": "Registered judge geneva-index-v1 (judgeGenevaIndex, scripts/lib/sim-lab-r2-judges.mjs): crank 40.000 mm, centre distance 56.569 mm (radial entry 1.0000), entry phase -135 deg and dial ratio -1/3 from the compiled parts and catalogue tooth counts; native run (COLD 500): 12 crank turns, 12 steps, first step 88.63 deg, later steps within 0.114 deg of 90 (gate 0.25), dwell motion 0.00013 deg (gate 0.1), lag behind the ideal Geneva curve 4.11 deg (gate 4.5; roller clearance in the slot), dial = -star/3 within 0.095 deg (gate 0.25), dial end 359.45 deg; frozen-output and 1 cm shift refused. Disconnection driver_pin_axle: crank 12.0 turns, star span 0.0008 deg, star-law error 1080 deg (lost, bar 10), judge refuses. Wrong-model mutant (dial gear 24T -> 40T) refused."
       }
     },
     {
@@ -519,10 +524,10 @@
       "archiveSha256": "1bb7219d2e2c27a6f0ea9b98c6b8186c18d5c34278e2d7652fec2b5877f42678",
       "originalLdrawEntry": "08-equinox/equinox-differential.ldr",
       "originalLdrawSha256": "987090ff72755495e0f952f999f96d7beb4aa8b25aa53a7f50efaf9f74068406",
-      "canonicalLdrawSha256": "d67aee5320bd6bc3772fc4e546d96744600cfd4054608d5bb6c83498fd075448",
+      "canonicalLdrawSha256": "239d26f56d494aa4e7a032fde72626dc4fc21a25a85aacab410d15330202f060",
       "originalProgramEntry": "08-equinox/equinox-differential.bw",
       "programSha256": "a94693e9807f3046cf5b20057f59bc5fcdd45fcd8eb0666fdf3efc2d14bb8884",
-      "adaptation": "Author/license comments normalized to user-authorized CrispStrobe BSD-3-Clause; geometry unchanged; MPD wrapper generated from canonical LDR; program bytes unchanged.",
+      "adaptation": "Author/license comments normalized to user-authorized CrispStrobe BSD-3-Clause; geometry unchanged; MPD wrapper generated from canonical LDR; program bytes unchanged. Promotion (R2, 2026-11-11): Building steps only: the five author STEP groups (up to 62 parts) are removed so the instructions derive 47 connected steps of at most six parts; placements, colours and IDs unchanged.",
       "basicChecks": {
         "id": "equinox-differential",
         "checked": [
@@ -597,6 +602,11 @@
           "notes": "Held output creeps <0.4°. Free split depends on friction (0.6° fwd, 5.8° rev difference)."
         },
         "scope": "one headless run on the app branch engine; not a physical build"
+      },
+      "promotionReview": {
+        "date": "2026-11-11",
+        "decision": "PROMOTED",
+        "reason": "Registered judge differential-sum-v1 (judgeDifferentialSum): 12T:28T carrier drive, 12T:20T brakes and equal 12T side gears from the compiled parts; native run (COLD 500): L + R - 2K max 0.013 deg (gate 0.1), carrier vs (12/28)A 0.014 deg (gate 0.25), brakes vs (20/12) output 0.005/0.009 deg (gate 0.25), held outputs 0.25/0.20 deg (gate 1); frozen-output and 1 cm shift refused. Disconnection pinion (motor A's 12T bevel): input 2520 deg, carrier span 1.7 deg, carrier-law error 1078 deg (lost, bar 5), judge refuses. The handoff's carrier-gear cut (cover) also removes the planets' support: the model flies apart before the program's start check and the program refuses (stage 0), so it is not used. Wrong-model mutant (carrier ring 28T -> 24T) refused."
       }
     },
     {
@@ -817,10 +827,10 @@
       "archiveSha256": "1bb7219d2e2c27a6f0ea9b98c6b8186c18d5c34278e2d7652fec2b5877f42678",
       "originalLdrawEntry": "11-helios/helios-transmission.ldr",
       "originalLdrawSha256": "a6158b86ba3af7eccdf12652b943916d4327f48d91e9a0d1291c92f2710c520a",
-      "canonicalLdrawSha256": "8c91ef69f4e2f82a8b33b2bb84cecedcc831b1bfd5695c925fe688326fefd634",
+      "canonicalLdrawSha256": "092cf674775eaf332b0809fe75548cd306f59964191521959cedee46d85ef23d",
       "originalProgramEntry": "11-helios/helios-transmission.bw",
       "programSha256": "db14980328bd7438d906eb06d4fb1def93a19325ed83e584cd8a4a68651e787c",
-      "adaptation": "Author/license comments normalized to user-authorized CrispStrobe BSD-3-Clause; geometry unchanged; MPD wrapper generated from canonical LDR; program bytes unchanged.",
+      "adaptation": "Author/license comments normalized to user-authorized CrispStrobe BSD-3-Clause; geometry unchanged; MPD wrapper generated from canonical LDR; program bytes unchanged. Promotion (R2, 2026-11-11): Building steps only: the nine author STEP groups (up to 100 parts) are removed so the instructions derive 62 connected steps of at most six parts; placements, colours and IDs unchanged.",
       "basicChecks": {
         "id": "helios-transmission",
         "checked": [
@@ -903,6 +913,11 @@
           "surprise": "program waits stretch: 'wait 0.1 s' lasted ~0.17 s, so the sweep took ~10 s, not 6 s; lesson's 1.5 s / 3.0 s timing corrected (law unaffected: standstill exactly at w_B = -63°/s)"
         },
         "scope": "one headless run on the app branch engine; not a physical build"
+      },
+      "promotionReview": {
+        "date": "2026-11-11",
+        "decision": "PROMOTED",
+        "reason": "Registered judge willis-epicyclic-v1 (judgeWillisEpicyclic): Willis ratio (24/8)(16/16) = 3 for both planets and carrier drive -20/28 from catalogue tooth counts; native run (COLD 500): output vs 3A - 2C 0.048 deg (gate 0.25), carrier vs -(20/28)B 0.0072 deg (gate 0.25), stage speeds 90.0/60.0/30.0/0.0/-30.0 deg/s, standstill at B = -63 deg/s (output 0.000 deg/s, gate 0.5); frozen-output and 1 cm shift refused. Disconnection control_gear: input 829 deg, encoder-law error 415 deg (lost, bar 5), judge refuses. The handoff's 'stage 3' standstill is the program's stage 4 (the fourth speed step). Wrong-model mutant (input sun 24T -> 16T) refused."
       }
     },
     {
@@ -1025,10 +1040,10 @@
       "archiveSha256": "1bb7219d2e2c27a6f0ea9b98c6b8186c18d5c34278e2d7652fec2b5877f42678",
       "originalLdrawEntry": "13-orion/orion-cardan.ldr",
       "originalLdrawSha256": "654b56b60380fc3408349fa80374da088629451e8d29ac8060dc3ce77ee9dd89",
-      "canonicalLdrawSha256": "e526ea81c28c05e80bdddedbe110b2ae2b0bbbf36d023ace3a911f2e551fa23a",
+      "canonicalLdrawSha256": "2793c7d43f6949705d0b430181e0571f97b5268d4e600cd14069769a9e0236a8",
       "originalProgramEntry": "13-orion/orion-cardan.bw",
       "programSha256": "9023ebdc4a02a7f1002628cb825bd3fb95c5ef1814f103138415a31b606e41c0",
-      "adaptation": "Author/license comments normalized to user-authorized CrispStrobe BSD-3-Clause; geometry unchanged; MPD wrapper generated from canonical LDR; program bytes unchanged.",
+      "adaptation": "Author/license comments normalized to user-authorized CrispStrobe BSD-3-Clause; geometry unchanged; MPD wrapper generated from canonical LDR; program bytes unchanged. Promotion (R2, 2026-11-11): Building steps only: author STEP groups split into 27 steps of at most six parts in the original order (the derived plan would show the middle-shaft marker as loose, because the instruction planner's adjacency ignores universal joints); placements, colours and IDs unchanged. The compiler now reports no loose-part warning.",
       "basicChecks": {
         "id": "orion-cardan",
         "checked": [
@@ -1131,6 +1146,11 @@
           "residual": "lead amplitude within 0.02°; speed-ratio extremes slightly flattened by the 4-frame finite difference; output within 0.05° (0.09° at 300°/s)"
         },
         "scope": "one headless run on the app branch engine; not a physical build"
+      },
+      "promotionReview": {
+        "date": "2026-11-11",
+        "decision": "PROMOTED",
+        "reason": "Registered judge double-cardan-offset-v1 (judgeDoubleCardanOffset; not Phasekeeper's double-cardan-v1, whose judge names Phasekeeper's parts): equal bends 36.870 deg, output parallel to input, middle forks in phase and input fork in the bend plane from the compiled joints; native run (COLD 500): input span 6047 deg, output vs input 0.048 deg (gate 0.25), middle shaft vs tan(theta_m) = tan(theta)/cos(beta) 0.099 deg (gate 0.5), lead 12.84 deg peak to peak vs predicted 12.76 (gate 0.25); frozen-output and 1 cm shift refused. Disconnection fork_middle_far: input 7260 deg, output span 37 deg, output-law error 7245 deg (lost, bar 5), judge refuses. Wrong-model mutant (far middle fork turned 90 deg, misphased) refused."
       }
     },
     {

@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2026 CrispStrobe
-// Browser gates for the two Q5 promotions (#1683) that had none, Evenhand and RimRun, and for the R1 promotion
-// Obliquity Orrery (obliquity-tilt-v1, its crank-A disconnection as the control). Each runs the model's own
+// Browser gates for the two Q5 promotions (#1683) that had none, Evenhand and RimRun, for the R1 promotion
+// Obliquity Orrery (obliquity-tilt-v1, its crank-A disconnection as the control) and for the R2 judge family
+// (Cadence, Equinox, Helios, Orion; sim-lab-r2-judges.mjs, each with its registry disconnection). Each runs the model's own
 // law through the real GUI with the qualification registry's judge and thresholds
 // (scripts/lib/robot-lab-qualification.mjs, docs/data/robot-lab-qualification.json), its causal control, then the
 // checks the nine-intake gate runs: bounded manual control, connected instructions and placement BOM, LDR/MPD
@@ -21,8 +22,10 @@ import {openFile} from './sim-lab-scale-gate.mjs';
 import {qualificationContracts, QUALIFICATION_JUDGES, disconnectedSource} from './robot-lab-qualification.mjs';
 import {p6DisconnectionLoss} from './sim-lab-p6-judges.mjs';
 import {obliquityDisconnectionLoss} from './sim-lab-obliquity-judge.mjs';
+import {r2DisconnectionLoss} from './sim-lab-r2-judges.mjs';
 
-export const Q5_BROWSER_MODELS = Object.freeze(['evenhand', 'rimrun', 'obliquity-orrery']);
+export const R2_BROWSER_MODELS = Object.freeze(['cadence-geneva', 'equinox-differential', 'helios-transmission', 'orion-cardan']);
+export const Q5_BROWSER_MODELS = Object.freeze(['evenhand', 'rimrun', 'obliquity-orrery', ...R2_BROWSER_MODELS]);
 export const Q5_HELD = Object.freeze({});
 // One browser frame is one accepted worker batch. With the program clock installed, each VM step (1/30 s)
 // advances the world, so a frame spans 30 or 35 ms (whole 5 ms steps) at any speed setting; 1× is used.
@@ -173,6 +176,40 @@ async function orreryDisconnected(browser, opts, c) {
     } finally { await page.close(); }
 }
 
+// The R2 family's disconnected controls: the registry's own part removal (Cadence's drive pin axle, Equinox's carrier
+// drive bevel, Helios's control gear, Orion's far middle fork), loaded as an LDraw file under the same example
+// program. The input still completes its route, the model's law is lost (r2DisconnectionLoss), and the registry
+// judge refuses the run.
+async function r2Disconnected(browser, opts, c, id) {
+    const page = await browser.newPage({viewport: {width: 1600, height: 1050}, serviceWorkers: 'block'}), errors = [];
+    page.on('pageerror', e => errors.push(e.stack || e.message));
+    page.on('dialog', d => d.accept());
+    try {
+        await openExample(page, opts, id + '.ldr');
+        const program = await page.evaluate(projectProgramReady);
+        assert.ok(program.some(t => t.operations.length), 'the example program is loaded');
+        const source = readFileSync('overlay/scratch-gui/static/sim-lab/models/' + id + '.ldr', 'utf8');
+        const cut = disconnectedSource(source, c.disconnect);
+        await openFile(page, {name: id + '-disconnected.ldr', buffer: Buffer.from(cut)});
+        assert.equal(await page.evaluate(() => window.__bwSimLab.status), 'ready');
+        assert.deepEqual(await page.evaluate(projectProgramReady), program, 'the same program drives the disconnected model');
+        const parts = await page.evaluate(() => window.__bwSimLab._pane.session.model.parts.map(p => p.id));
+        for (const part of c.disconnect) assert.ok(!parts.includes(part), `${part} removed`);
+        const r = await runLoaded(page, {...opts, afterMs: c.afterMs, observeDynamics: false});
+        writeFileSync(resolve(opts.shotsDir, id + '-disconnected-track.json'), JSON.stringify(r));
+        const input = r.mechanism.joints.find(j => j.motor?.port === c.ports[0]);
+        const travel = Math.max(...r.track.map(f => Math.abs(f.joints[input.id].angle))) * 180 / Math.PI;
+        assert.ok(travel > c.disconnectInputDeg, `input genuinely still turns: ${travel}°`);
+        const loss = r2DisconnectionLoss(id, r);
+        assert.ok(loss.lost, 'disconnection loses the law: ' + JSON.stringify(loss));
+        assert.throws(() => judgeQ5Browser(id, r, c), `the registry judge refuses the disconnected ${id}`);
+        await captureRenderedModel(page, resolve(opts.shotsDir, id + '-disconnected.png'));
+        assert.deepEqual(errors, []);
+        console.log(`PASS ${id} disconnected control: ${c.disconnect.join(', ')} removed, input ${travel.toFixed(1)}°, ${JSON.stringify(loss)}, judge refuses`);
+        return {inputTravelDeg: travel, loss};
+    } finally { await page.close(); }
+}
+
 // RimRun's causal control: the shipped rimrun-swapped scene (ballast layouts exchanged between lanes) under the
 // same program and the same judge. The judge passes and the inner-ballast roller leads in the other lane.
 async function rimrunSwapped(browser, opts, c, main) {
@@ -203,6 +240,7 @@ export async function q5BrowserInteractions(page, opts, id) {
     }))[id];
     const control = id === 'evenhand' ? await evenhandDisconnected(page.context().browser(), opts, c)
         : id === 'obliquity-orrery' ? await orreryDisconnected(page.context().browser(), opts, c)
+        : R2_BROWSER_MODELS.includes(id) ? await r2Disconnected(page.context().browser(), opts, c, id)
         : await rimrunSwapped(page.context().browser(), opts, c, main);
     const manual = await manualMechanicsInteractions(page, {...opts, models: [id], captureModel: captureRenderedModel});
     await page.getByTestId('bw-sim-lab-instructions').click();

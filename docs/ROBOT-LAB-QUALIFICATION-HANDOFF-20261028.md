@@ -96,6 +96,28 @@ pin, as proposed here, also loses the law (22.55°: the free coupler swings), bu
 removing a driven-side pin is the cleaner causal cut. Mutants (tilt turned 90°;
 Earth turning with its orbit) are refused. Browser gate on shard robotaddon15.
 
+**R2 (2026-11-11, `lanes/2026-11-11-robot-r2-judge-family.md`).** One judge module,
+`scripts/lib/sim-lab-r2-judges.mjs`; every constant is read from the compiled parts and catalogue tooth counts.
+Native runs (COLD 500), measured / gate:
+
+| Model | Judge | Law error | Other measured | Disconnection (law error, lost) |
+|---|---|---|---|---|
+| cadence-geneva | `geneva-index-v1` | later steps 90° ± 0.114° / 0.25°; dial −star/3 0.095° / 0.25° | first step 88.63°; dwell 0.00013° / 0.1°; lag behind the ideal curve 4.11° / 4.5° | `driver_pin_axle`: star never moves, 1080° |
+| equinox-differential | `differential-sum-v1` | L + R − 2K 0.013° / 0.1° | K vs (12/28)A 0.014°; brakes 0.005/0.009°; held outputs 0.25/0.20° / 1° | `pinion`: carrier span 1.7°, 1078° |
+| helios-transmission | `willis-epicyclic-v1` | 3A − 2C 0.048° / 0.25° | carrier vs −(20/28)B 0.0072°; standstill at B = −63°/s, output 0.000°/s | `control_gear`: 415° |
+| orion-cardan | `double-cardan-offset-v1` | output − input 0.048° / 0.25° | ripple law 0.099° / 0.5°; lead 12.84° p-p vs 12.76° | `fork_middle_far`: 7245° |
+
+Corrections to the table below, by measurement: the Geneva star lags the ideal curve by up to 4.1° (the roller's
+clearance in the slot; the first step is 88.6°, every later step 90°), so the law gates step size, dwell and dial
+exactly and the in-step curve only within 4.5°. The differential's proposed "carrier gear" cut (`cover`) also
+removes the planets' support: the model flies apart before the program's start check, which refuses; motor A's
+12T bevel (`pinion`) is the clean cut. Helios's standstill is the program's stage 4 (the fourth speed step;
+"stage 3" counted from 0). Orion's id is `double-cardan-offset-v1` because `double-cardan-v1` is Phasekeeper's
+registered judge. The four shipped LDR files changed only in STEP markers (author steps of up to 100 parts):
+three now derive connected steps of at most six parts; Orion's author steps are split in order, because the
+instruction planner's adjacency ignores universal joints and would show a middle-shaft marker as loose.
+Browser gates on shards robotaddon16–19.
+
 Read-only triage from code and data on main `d318ed6e`; nothing was compiled
 or run. The experimental set is every id in
 `docs/data/robot-lab-experimental-checkpoint.json` without a contract in

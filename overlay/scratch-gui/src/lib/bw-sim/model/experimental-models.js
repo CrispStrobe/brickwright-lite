@@ -84,67 +84,6 @@ export const EXPERIMENTAL_MODELS = Object.freeze([
         }
     },
     {
-        "file": "cadence-geneva.ldr",
-        "title": {
-            "en": "Cadence — Geneva indexing",
-            "de": "Cadence — Malteserkreuz-Schaltung"
-        },
-        "example": "cadence-geneva.bw",
-        "mat": "plain",
-        "experimental": true,
-        "blocked": false,
-        "intro": {
-            "en": "A four-slot Geneva drive (Maltese cross) turns a steadily driven crank into twelve 30° dial steps with a dwell in between; a friction clutch holds the dial while it rests.",
-            "de": "Ein Malteserkreuzgetriebe mit vier Schlitzen macht aus einer gleichmäßig gedrehten Kurbel zwölf Zeigerschritte zu 30° mit Rast dazwischen; eine Rutschkupplung hält den Zeiger in der Ruhe."
-        },
-        "manualJog": {
-            "A": {
-                "minDeg": 0,
-                "maxDeg": 4320,
-                "stepDeg": 45,
-                "speedDps": 30
-            }
-        }
-    },
-    {
-        "file": "equinox-differential.ldr",
-        "title": {
-            "en": "Equinox — differential lab",
-            "de": "Equinox — Differenzial-Labor"
-        },
-        "example": "equinox-differential.bw",
-        "mat": "plain",
-        "experimental": true,
-        "blocked": false,
-        "intro": {
-            "en": "An open bevel differential on a bench: motor A drives the carrier, while motors B and C only coast or brake the outputs, so you can test ω_L + ω_R = 2·ω_carrier stage by stage.",
-            "de": "Ein offenes Kegelraddifferenzial auf dem Prüfstand: Motor A treibt den Träger, die Motoren B und C lassen die Abtriebe nur auslaufen oder bremsen sie – so lässt sich ω_L + ω_R = 2·ω_Träger Stufe für Stufe prüfen."
-        },
-        "manualJog": {
-            "A": {
-                "minDeg": 0,
-                "maxDeg": 2520,
-                "stepDeg": 210,
-                "speedDps": 105
-            }
-        }
-    },
-    {
-        "file": "helios-transmission.ldr",
-        "title": {
-            "en": "Helios — epicyclic transmission",
-            "de": "Helios — Planetengetriebe"
-        },
-        "example": "helios-transmission.bw",
-        "mat": "plain",
-        "experimental": true,
-        "blocked": false,
-        "intro": {
-            "en": "A stepped-planet epicyclic set adds two motor inputs: A turns the sun at constant speed while B’s carrier speed alone steps the output through ×3, ×2, ×1, standstill and reverse.",
-            "de": "Ein Umlaufgetriebe mit Stufenplaneten überlagert zwei Motoren: A dreht das Sonnenrad konstant, und allein die Trägerdrehzahl von B schaltet den Abtrieb durch ×3, ×2, ×1, Stillstand und Rückwärtslauf."
-        }
-    },
-    {
         "file": "aster-governor.ldr",
         "title": {
             "en": "Aster — centrifugal governor",
@@ -157,21 +96,6 @@ export const EXPERIMENTAL_MODELS = Object.freeze([
         "intro": {
             "en": "Passive flyweights on a hinged rhombus lift a sliding collar as motor A spins the spindle faster; it senses speed (ω²) but, with no throttle, does not regulate it.",
             "de": "Passive Fliehgewichte an einer Gelenkraute heben eine Gleitmuffe, wenn Motor A die Spindel schneller dreht; der Regler misst die Drehzahl (ω²), regelt sie aber mangels Drossel nicht."
-        }
-    },
-    {
-        "file": "orion-cardan.ldr",
-        "title": {
-            "en": "Orion — double Cardan drive",
-            "de": "Orion — Doppel-Kardanantrieb"
-        },
-        "example": "orion-cardan.bw",
-        "mat": "plain",
-        "experimental": true,
-        "blocked": false,
-        "intro": {
-            "en": "Two equally bent, correctly phased Cardan joints: the middle shaft speeds up and slows down twice per turn, while the output follows the input evenly.",
-            "de": "Zwei gleich abgewinkelte, richtig ausgerichtete Kardangelenke: Die Zwischenwelle wird zweimal je Umdrehung schneller und langsamer, der Abtrieb folgt dem Eingang gleichförmig."
         }
     },
     {
@@ -990,114 +914,6 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
         ],
         "experimental": true
     },
-    "cadence-geneva.ldr": {
-        "pieces": 200,
-        "motors": 1,
-        "hubs": [
-            "spike-prime"
-        ],
-        "topic": "linkages",
-        "description": {
-            "en": "A four-slot Geneva drive (Maltese cross) turns a steadily driven crank into twelve 30° dial steps with a dwell in between; a friction clutch holds the dial while it rests.",
-            "de": "Ein Malteserkreuzgetriebe mit vier Schlitzen macht aus einer gleichmäßig gedrehten Kurbel zwölf Zeigerschritte zu 30° mit Rast dazwischen; eine Rutschkupplung hält den Zeiger in der Ruhe."
-        },
-        "author": "CrispStrobe",
-        "license": "BSD-3-Clause",
-        "mechanism": {
-            "en": "Geneva indexing",
-            "de": "Malteserkreuz-Schaltung"
-        },
-        "keywords": [
-            "Geneva drive",
-            "Maltese cross",
-            "intermittent motion",
-            "indexing",
-            "dwell",
-            "Malteserkreuz",
-            "Schrittgetriebe",
-            "Rastgetriebe",
-            "Taktgetriebe",
-            "Geneva",
-            "experimental",
-            "prototype",
-            "unverified",
-            "experimentell"
-        ],
-        "experimental": true
-    },
-    "equinox-differential.ldr": {
-        "pieces": 98,
-        "motors": 3,
-        "hubs": [
-            "spike-prime"
-        ],
-        "topic": "gears",
-        "description": {
-            "en": "An open bevel differential on a bench: motor A drives the carrier, while motors B and C only coast or brake the outputs, so you can test ω_L + ω_R = 2·ω_carrier stage by stage.",
-            "de": "Ein offenes Kegelraddifferenzial auf dem Prüfstand: Motor A treibt den Träger, die Motoren B und C lassen die Abtriebe nur auslaufen oder bremsen sie – so lässt sich ω_L + ω_R = 2·ω_Träger Stufe für Stufe prüfen."
-        },
-        "author": "CrispStrobe",
-        "license": "BSD-3-Clause",
-        "mechanism": {
-            "en": "differential lab",
-            "de": "Differenzial-Labor"
-        },
-        "keywords": [
-            "differential",
-            "open differential",
-            "bevel gears",
-            "carrier",
-            "planetary bevel",
-            "Differenzial",
-            "Ausgleichsgetriebe",
-            "Kegelrad",
-            "Achswellenrad",
-            "angular velocity sum",
-            "experimental",
-            "prototype",
-            "unverified",
-            "experimentell"
-        ],
-        "experimental": true
-    },
-    "helios-transmission.ldr": {
-        "pieces": 156,
-        "motors": 2,
-        "hubs": [
-            "spike-prime"
-        ],
-        "topic": "gears",
-        "description": {
-            "en": "A stepped-planet epicyclic set adds two motor inputs: A turns the sun at constant speed while B’s carrier speed alone steps the output through ×3, ×2, ×1, standstill and reverse.",
-            "de": "Ein Umlaufgetriebe mit Stufenplaneten überlagert zwei Motoren: A dreht das Sonnenrad konstant, und allein die Trägerdrehzahl von B schaltet den Abtrieb durch ×3, ×2, ×1, Stillstand und Rückwärtslauf."
-        },
-        "author": "CrispStrobe",
-        "license": "BSD-3-Clause",
-        "mechanism": {
-            "en": "epicyclic transmission",
-            "de": "Planetengetriebe"
-        },
-        "keywords": [
-            "epicyclic gear",
-            "planetary gear",
-            "compound planet",
-            "stepped planet",
-            "power split",
-            "Willis equation",
-            "eCVT",
-            "Umlaufgetriebe",
-            "Planetengetriebe",
-            "Stufenplanet",
-            "Leistungsverzweigung",
-            "Willis-Gleichung",
-            "epicyclic",
-            "experimental",
-            "prototype",
-            "unverified",
-            "experimentell"
-        ],
-        "experimental": true
-    },
     "aster-governor.ldr": {
         "pieces": 144,
         "motors": 1,
@@ -1127,43 +943,6 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
             "Muffe",
             "Fliehgewichte",
             "Drehzahlregler",
-            "experimental",
-            "prototype",
-            "unverified",
-            "experimentell"
-        ],
-        "experimental": true
-    },
-    "orion-cardan.ldr": {
-        "pieces": 118,
-        "motors": 1,
-        "hubs": [
-            "spike-prime"
-        ],
-        "topic": "gears",
-        "description": {
-            "en": "Two equally bent, correctly phased Cardan joints: the middle shaft speeds up and slows down twice per turn, while the output follows the input evenly.",
-            "de": "Zwei gleich abgewinkelte, richtig ausgerichtete Kardangelenke: Die Zwischenwelle wird zweimal je Umdrehung schneller und langsamer, der Abtrieb folgt dem Eingang gleichförmig."
-        },
-        "author": "CrispStrobe",
-        "license": "BSD-3-Clause",
-        "mechanism": {
-            "en": "double Cardan drive",
-            "de": "Doppel-Kardanantrieb"
-        },
-        "keywords": [
-            "Cardan joint",
-            "universal joint",
-            "Hooke joint",
-            "double Cardan",
-            "drive shaft",
-            "constant velocity",
-            "phasing",
-            "Kardangelenk",
-            "Kreuzgelenk",
-            "Gelenkwelle",
-            "Doppelkardan",
-            "Gleichlauf",
             "experimental",
             "prototype",
             "unverified",
