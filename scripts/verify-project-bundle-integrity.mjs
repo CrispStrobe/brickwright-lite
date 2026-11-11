@@ -120,19 +120,6 @@ try {
     await page.getByTestId('bw-ctl-widget-slider1').waitFor({state: 'visible', timeout: 15000});
     await page.screenshot({path: resolve(artifacts, 'four-surface-restored.png'), fullPage: true});
 
-    // The circuit editor re-saves a just-loaded circuit in its own fuller form
-    // about a second after it mounts (2755 -> 5793 bytes for this bench). That
-    // write belongs to the successful open above; a snapshot taken before it
-    // lands blames the refusals below for it. Wait until the saved state stops
-    // changing, then require the refusals to leave it byte-identical.
-    let settled = null;
-    for (let stable = 0, waited = 0; stable < 2; waited += 1000) {
-        if (waited > 15000) throw new Error('project state kept changing after the successful open');
-        await page.waitForTimeout(1000);
-        const now = JSON.stringify(await projectKeys(page));
-        stable = now === settled ? stable + 1 : 0;
-        settled = now;
-    }
     const beforeRefusal = await projectKeys(page);
     await openProject(page, futurePath);
     // BEFORE any tab click. Opening a project changes the active tab, so a
