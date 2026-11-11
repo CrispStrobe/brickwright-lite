@@ -485,7 +485,7 @@ const GUIComponent = props => {
             // Dock the panel and show a tab where the dock renders, so the LEDs
             // are actually on screen rather than mounted into a collapsed pane.
             window.dispatchEvent(new CustomEvent('bw-settings-change',
-                {detail: {key: 'bw-debug-dock', value: 'controller', automatic: true}}));
+                {detail: {key: 'bw-debug-dock', value: 'controller'}}));
             if (props.onActivateTab) props.onActivateTab(CODE_TAB_INDEX);
         };
         const onOutput = e => {
@@ -516,7 +516,7 @@ const GUIComponent = props => {
             }
             controllerPanel.setMode('play');
             window.dispatchEvent(new CustomEvent('bw-settings-change',
-                {detail: {key: 'bw-debug-dock', value: 'controller', automatic: true}}));
+                {detail: {key: 'bw-debug-dock', value: 'controller'}}));
             if (props.onActivateTab) props.onActivateTab(CODE_TAB_INDEX);
         };
         window.addEventListener('bw-fpga-leds', onLeds);
@@ -613,7 +613,7 @@ const GUIComponent = props => {
             // Existing machine callers still focus the controller by default.
             if (p.focusController !== false) {
                 window.dispatchEvent(new CustomEvent('bw-settings-change',
-                    {detail: {key: 'bw-debug-dock', value: 'controller', automatic: true}}));
+                    {detail: {key: 'bw-debug-dock', value: 'controller'}}));
                 if (props.onActivateTab) props.onActivateTab(CODE_TAB_INDEX);
             }
         };
