@@ -1,0 +1,7 @@
+# obliquity-orrery — source record
+
+- **Origin:** the Obliquity Orrery intake already in the Robot Lab experimental registry (CrispStrobe, BSD-3-Clause), supplied as bare files; model and program bytes are unchanged (checkpoint `docs/data/robot-lab-experimental-checkpoint.json`).
+- **Adaptations (made at intake, unchanged here):** axle B moved to close the parallelogram, program signs fixed, three round feet under the rails (issue #1435), MPD wrapper, licence, catalogue entry and EN/DE lessons. Shipped geometry and program are unchanged by promotion.
+- **Law (`obliquity-tilt-v1`):** `judgeObliquityTilt` in `scripts/lib/sim-lab-obliquity-judge.mjs`. sin δ = sin 22.5° · cos(λ − 45°): motor A turns crank A 1:1; equal 16 mm cranks on frame axles 32 mm apart, the same spacing as the coupler pins, make a parallelogram, so the coupler translates without turning and the Earth's 22.5° axis (angle connector #3) keeps one direction in space; the Sun marker stands at the orbit centre, level with the Earth's reference point, and the axis leans at it at λ = 45°. ε, λ₀, the orbit radius and the parallelogram are read from the compiled parts and must equal those values.
+- **Disconnection** (`crank_pin_A` removed): the pin joining crank A to the coupler. Motor A still completes every station, but the Earth no longer orbits, so δ no longer follows the law at the encoder's orbit position.
+- **Piece count:** 59, honest; qualification has no piece minimum (operator decision 2026-11-07).

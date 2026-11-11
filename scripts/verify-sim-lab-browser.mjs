@@ -862,7 +862,7 @@ try {
                 finally { await lesson.close(); }
             }
         }
-        // Q5 promotions (#1683) Evenhand and RimRun: the registry law and its causal control, then the
+        // Q5 promotions (#1683) Evenhand and RimRun, and R1 Obliquity Orrery: the registry law and its causal control, then the
         // nine-intake gate's checks (scripts/lib/sim-lab-q5-browser-gate.mjs).
         for (const id of [...Q5_BROWSER_MODELS, ...Object.keys(Q5_HELD).filter(id => ONLY_EXAMPLES.includes(id))].filter(id => runExample(id + '.ldr'))) {
             const opts = {openSimLab, buildDir: build, shotsDir: resolve(artifacts, 'q5-models'), timeout: wallBudget(240000)};

@@ -2332,6 +2332,42 @@ export const MODEL_LESSONS = Object.freeze({
             "Hebelarm"
         ]
     },
+    "obliquity-orrery.ldr": {
+        "pieces": 59,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "linkages",
+        "description": {
+            "en": "A parallelogram carries a tilted Earth round the Sun without turning it. Watch the axis keep its direction while the Sun's declination falls from +22.5° at midsummer to 0° at the equinox.",
+            "de": "Ein Parallelogramm führt eine geneigte Erde um die Sonne, ohne sie zu drehen. Beobachte, wie die Achse ihre Richtung behält, während die Sonnendeklination vom Hochsommer (+22,5°) bis zur Tagundnachtgleiche (0°) fällt."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Parallel-crank orrery with a fixed tilted axis",
+            "de": "Parallelkurbel-Orrery mit fest geneigter Achse"
+        },
+        "keywords": [
+            "Parallel-crank orrery with a fixed tilted axis",
+            "Parallelkurbel-Orrery mit fest geneigter Achse",
+            "orrery",
+            "obliquity",
+            "axial tilt",
+            "solar declination",
+            "seasons",
+            "solstice",
+            "equinox",
+            "parallelogram linkage",
+            "Schiefe der Ekliptik",
+            "Achsneigung",
+            "Sonnendeklination",
+            "Jahreszeiten",
+            "Sonnenwende",
+            "Parallelogramm"
+        ]
+    },
     "product-plotter.ldr": {
         "pieces": 301,
         "motors": 2,

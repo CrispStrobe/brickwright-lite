@@ -1166,6 +1166,62 @@
       "notRun": [
         "webkit browser run (the browser gate, shard robotaddon13, runs chromium)"
       ]
+    },
+    {
+      "id": "obliquity-orrery",
+      "judge": "obliquity-tilt-v1",
+      "parts": 59,
+      "ports": [
+        "A"
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 90000,
+      "afterMs": 500,
+      "frameMs": 25,
+      "frozenOutput": "earth",
+      "disconnect": [
+        "crank_pin_A"
+      ],
+      "disconnectInputDeg": 85,
+      "disconnectLoss": "obliquity",
+      "expectedIssues": [
+        {
+          "code": "locked-hinges",
+          "parts": [
+            "beam_middle",
+            "post_mid_low_e",
+            "post_mid_low_w"
+          ]
+        },
+        {
+          "code": "locked-hinges",
+          "parts": [
+            "beam_top",
+            "bearing_upper",
+            "post_top_e",
+            "post_top_w"
+          ]
+        },
+        {
+          "code": "locked-hinges",
+          "parts": [
+            "hub",
+            "hub_pin_front",
+            "hub_pin_rear"
+          ]
+        },
+        {
+          "code": "locked-hinges",
+          "parts": [
+            "motor_top_beam",
+            "post_top_e",
+            "post_top_w"
+          ]
+        }
+      ],
+      "notRun": [
+        "webkit browser run (the browser gate, shard robotaddon15, runs chromium)"
+      ]
     }
   ]
 }
