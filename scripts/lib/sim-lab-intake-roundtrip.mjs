@@ -68,8 +68,8 @@ export async function replayIntakeProject(browser,opts,id,judge,receiptPath){
   await reopened.getByRole('tab',{name:/^(Robots|Robot Lab)$/}).click();
   await reopened.waitForFunction(count=>window.__bwSimLab?.status==='ready'&&window.__bwSimLab._pane.session.model.parts.length===count,expected.length);
   assert.deepEqual(await reopened.evaluate(()=>window.__bwSimLab.projectRecord),record);
-  await reopened.evaluate(installBrowserMechanicsRecorder,{recordKey:'__bwIntakeReopened',captureKey:'__bwCaptureIntakeReopened',extended:SIX_INTAKES.includes(id)||opts.extendedObservations===true,observeProgram:true});
-  await reopened.getByTestId('bw-sim-lab-speed').selectOption('4');await reopened.getByTestId('bw-sim-lab-run').click();
+  await reopened.evaluate(installBrowserMechanicsRecorder,{recordKey:'__bwIntakeReopened',captureKey:'__bwCaptureIntakeReopened',extended:SIX_INTAKES.includes(id)||opts.extendedObservations===true,observeProgram:true,observeDynamics:opts.observeDynamics===true,stepParts:opts.stepParts??null});
+  await reopened.getByTestId('bw-sim-lab-speed').selectOption(String(opts.replaySpeed??4));await reopened.getByTestId('bw-sim-lab-run').click();
   await reopened.waitForFunction(()=>{
    const p=window.__bwSimLab._pane;return p.session.time>1000&&!p.props.vm.runtime.threads.some(t=>t.status!==4);
   },null,{timeout:opts.timeout});

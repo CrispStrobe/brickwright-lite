@@ -2,6 +2,7 @@
 // Copyright (c) 2026 Brickwright contributors
 // Read-only, bounded completed-step transport and accepted-batch analysis.
 export const OBSERVATION_SAMPLE_LIMIT = 600;
+export const OBSERVATION_BODY_LIMIT = 4;
 export const observationSelection = (value, mechanism) => {
     if (value == null) return null;
     if (!Number.isSafeInteger(value.revision) || value.revision < 1 || !Array.isArray(value.joints) ||
@@ -9,8 +10,13 @@ export const observationSelection = (value, mechanism) => {
         value.joints.some(id => typeof id !== 'string' || !mechanism.joints.some(j => j.id === id && ['hinge', 'slider'].includes(j.type))) ||
         typeof value.contacts !== 'boolean' || typeof value.screws !== 'boolean' ||
         value.mode !== undefined && !['oscillation', 'rotation'].includes(value.mode) ||
-        value.thresholdDegrees !== undefined && (!Number.isFinite(value.thresholdDegrees) || Math.abs(value.thresholdDegrees) > 1e9)) throw new Error('invalid measurement observation selection');
-    return {revision: value.revision, joints: value.joints.slice(), contacts: value.contacts, screws: value.screws, mode: value.mode || 'oscillation', thresholdDegrees: value.thresholdDegrees || 0};
+        value.thresholdDegrees !== undefined && (!Number.isFinite(value.thresholdDegrees) || Math.abs(value.thresholdDegrees) > 1e9) ||
+        // Optional per-step poses of up to OBSERVATION_BODY_LIMIT requested dynamic bodies (read only).
+        value.bodies !== undefined && (!Array.isArray(value.bodies) || value.bodies.length > OBSERVATION_BODY_LIMIT ||
+            new Set(value.bodies).size !== value.bodies.length ||
+            value.bodies.some(id => typeof id !== 'string' || !mechanism.bodies.some(b => b.id === id && b.motion === 'dynamic')))) throw new Error('invalid measurement observation selection');
+    return {revision: value.revision, joints: value.joints.slice(), contacts: value.contacts, screws: value.screws, mode: value.mode || 'oscillation', thresholdDegrees: value.thresholdDegrees || 0,
+        ...(value.bodies?.length ? {bodies: value.bodies.slice()} : {})};
 };
 const finite = value => typeof value === 'number' && Number.isFinite(value);
 /** One collector per invocation; discarded worker attempts never reach analytical state. */
@@ -18,7 +24,8 @@ export const collectFixedObservations = (core, mechanism, selection) => {
     selection = observationSelection(selection, mechanism);
     let samples = [], overflow = false, attached = true;
     const types = new Map(mechanism.joints.map(j => [j.id, j.type]));
-    const detach = selection?.joints.length && typeof core.observeFixedSteps === 'function' ? core.observeFixedSteps(step => {
+    const bodies = selection?.bodies || [];
+    const detach = (selection?.joints.length || bodies.length) && typeof core.observeFixedSteps === 'function' ? core.observeFixedSteps(step => {
         if (!attached) return;
         if (samples.length >= OBSERVATION_SAMPLE_LIMIT) { overflow = true; return; }
         const joints = selection.joints.map(id => {
@@ -28,12 +35,17 @@ export const collectFixedObservations = (core, mechanism, selection) => {
                     powerW: dynamics && dynamics.t === step.t && dynamics.stepSeconds === step.stepSeconds ? dynamics.motorPowerW : null};
             } catch (_) { return {id, type: types.get(id), coordinate: null, powerW: null}; }
         });
-        samples.push({t: step.t, stepSeconds: step.stepSeconds, joints});
+        const sample = {t: step.t, stepSeconds: step.stepSeconds, joints};
+        if (bodies.length) sample.bodies = bodies.map(id => {
+            try { const {position, rotation} = core.bodyPose(id); return {id, position: [...position], rotation: [...rotation]}; }
+            catch (_) { return {id, position: null, rotation: null}; }
+        });
+        samples.push(sample);
     }) : null;
     return {
         take () {
             const out = selection ? {revision: selection.revision, samples, overflow,
-                unavailable: Boolean(selection.joints.length && !detach)} : null;
+                unavailable: Boolean((selection.joints.length || bodies.length) && !detach)} : null;
             samples = []; overflow = false;
             return out;
         },

@@ -11,7 +11,7 @@ import {batchCDisconnectionLoss} from '../scripts/lib/sim-lab-batchC-judges.mjs'
 import {batchADisconnectionLoss} from '../scripts/lib/sim-lab-batchA-judges.mjs';
 import {batchBDisconnectionLoss} from '../scripts/lib/sim-lab-batchB-judges.mjs';
 import {p6DisconnectionLoss} from '../scripts/lib/sim-lab-p6-judges.mjs';
-import {judgeRimRun,rimrunDisconnectionLoss} from '../scripts/lib/sim-lab-rimrun-judge.mjs';
+import {judgeRimRun,rimrunDisconnectionLoss,rimrunMeasure} from '../scripts/lib/sim-lab-rimrun-judge.mjs';
 import {nineIntakeDisconnectionLoss} from '../scripts/lib/sim-lab-nine-intake-judge.mjs';
 import {catalogFrom,prepareModel,MODELS} from '../overlay/scratch-gui/src/lib/bw-sim/sim-session.js';
 import {runRobotLabProgram} from './helpers/robot-lab-direct-vm.mjs';import {observeAddon} from '../scripts/lib/sim-lab-addon-judge.mjs';
@@ -36,6 +36,8 @@ const run=async(c,modelText,autoPorts,label=autoPorts===false?'strict':'ordinary
   if(!hooked){vm.runtime.on('ERROR',e=>errors.push(String(e)));vm.runtime.on('BLOCKS_ERROR',e=>errors.push(String(e)));hooked=true;}
   for(const b of vm.runtime.targets.flatMap(t=>Object.values(t.blocks._blocks))){const literal=Object.keys(b.fields||{}).length===1&&Object.keys(b.inputs||{}).length===0;assert.ok(b.opcode in vm.runtime._primitives||b.opcode in vm.runtime._hats||literal,'actual registered opcode: '+b.opcode);}
   return{variables:Object.fromEntries(vm.runtime.targets.flatMap(t=>Object.values(t.variables||{}).map(v=>[v.name,v.value]))),modes:hub.motors._controllers.map(c=>c.mode),actuators:actuatorState(session),sessionFailed:session.failed?String(session.failed):null,...(c.observeAir?{air:session.core.airState?session.core.airState():[]}:{}),
+   // observeContacts: the engine's body contact pairs at this frame (WereBodiesInContact), for a judge that admits a window only after two bodies separate.
+   ...(c.observeContacts?{contacts:session.core.currentContactPairs()}:{}),
    // observeDynamics: each dynamic body's configured mass and world centre of mass, and each motor joint's held torque (N·m), for a holding-torque law.
    ...(c.observeDynamics?{dynamics:{bodies:Object.fromEntries(prepared.mechanism.bodies.filter(b=>b.motion==='dynamic').map(b=>{const d=session.core.bodyDynamics(b.id);return[b.id,{com:d.centerOfMassWorld,massKg:d.configuredMassKg}];})),joints:Object.fromEntries(prepared.mechanism.joints.filter(j=>j.motor).map(j=>[j.id,session.core.jointDynamics(j.id)?.motorTorqueNm??0]))}}:{})};
  }});if(process.env.BW_MODEL_QUALIFY_EVIDENCE_DIR){const dir=process.env.BW_MODEL_QUALIFY_EVIDENCE_DIR;mkdirSync(dir,{recursive:true});writeFileSync(dir+'/'+c.id+'-'+label+'.json',JSON.stringify(r)+'\n');}assert.deepEqual(errors,[]);assert.ok(r.track.every(f=>!f.extra.sessionFailed));return r;
@@ -86,6 +88,27 @@ for(const c of qualificationContracts(selected).filter(c=>!c.nativeSuite)){
   const main=judgeRimRun(await run(c,source,false),{native:true}),swapped=judgeRimRun(await run(c,read(lab+'models/rimrun-swapped.ldr'),false,'swapped-control'),{native:true});
   assert.equal(main.innerLane,'left');assert.equal(swapped.innerLane,'right','the inner ballast is in the other lane');
   for(const x of [main,swapped])assert.ok(x.leadMm>=5);t.diagnostic(JSON.stringify({id:'rimrun-swapped',main:{innerLane:main.innerLane,ratio:main.ratio,leadMm:main.leadMm},swapped:{innerLane:swapped.innerLane,ratio:swapped.ratio,leadMm:swapped.leadMm}}));
+ });
+ // RimRun's fit window (2026-11-10): from gate clearance (engine contacts) to the lane's first tile joint (compiled
+ // tile colliders), at least ten frames. Mis-predicted inertia, a window cut short by a tile joint, and a gate
+ // that has not cleared are each refused by the unchanged 5 % judge.
+ if(c.id==='rimrun')test('rimrun: one-tile window after gate clearance; wrong inertia, crossing and uncleared windows are refused',async t=>{
+  const r=await run(c,source,false,'window-controls'),ok=judgeRimRun(r,{native:true}),m=rimrunMeasure(r);
+  for(const l of m.lanes){const w=l.window;assert.ok(w.frames>=10);assert.ok(w.tile[0]<=w.fromS&&w.fromS<w.toS&&w.toS<w.tile[1],'every fitted frame lies on one tile');assert.ok(w.from>=m.window.clearance);}
+  const rollers=['left_wheel_-1','right_wheel_-1'].map(p=>r.mechanism.bodies.find(b=>b.parts.includes(p)));
+  // Wrong inertia: each roller's ballast moved 40 % further from its axle (same masses), so the prediction is wrong.
+  const wrong=structuredClone(r);for(const b of wrong.mechanism.bodies.filter(b=>rollers.some(x=>x.id===b.id))){
+   const axle=b.colliders.find(x=>/_shaft_-1$/.test(x.part)).position;for(const col of b.colliders.filter(x=>/_ballast_/.test(x.part)))col.position=col.position.map((v,i)=>axle[i]+(v-axle[i])*1.4);}
+  assert.throws(()=>judgeRimRun(wrong,{native:true}),/accelerates at|ratio/);
+  // A window that would cross a tile joint: the lanes' tiles shortened to 40 % leave no ten frames on one tile.
+  const cut=structuredClone(r),frame=cut.mechanism.bodies.find(b=>b.colliders.some(x=>/^track_left_/.test(x.part)));
+  for(const col of frame.colliders.filter(x=>/^track_(left|right)_/.test(x.part))){const k=col.halfExtents.indexOf(Math.max(...col.halfExtents));col.halfExtents[k]*=.4;}
+  assert.throws(()=>judgeRimRun(cut,{native:true}),/one tile|on a track tile/);
+  // The gate not yet clear: an engine contact between the gate and a roller inside the window, or just before the catches.
+  const gate=r.mechanism.joints.find(j=>j.motor?.port==='A').body2;
+  for(const at of [m.lanes[0].window.from+100,m.window.contactAt-20]){const late=structuredClone(r),f=late.track.find(x=>x.t>=at);f.extra.contacts=[...f.extra.contacts,[gate,rollers[0].id].sort()];
+   assert.throws(()=>judgeRimRun(late,{native:true}),/enough frames on one tile|clears both rollers/);}
+  t.diagnostic(JSON.stringify({id:'rimrun-window',clearance:m.window.clearance,lanes:m.lanes.map(l=>({lane:l.lane,accel:l.accel,predicted:l.predicted,frames:l.window.frames,from:l.window.from,to:l.window.to})),ratio:ok.ratio,leadMm:ok.leadMm}));
  });
  test(c.id+': physical disconnection destroys the intended output while the real input still completes',async t=>{
   const r=await run(c,disconnectedSource(source,c.disconnect),false,'disconnected'),o=observeAddon(r,c.observeBase??hubPartOf(r)),input=c.motorless?null:r.mechanism.joints.find(j=>j.motor?.port===c.ports[0]),travel=input?Math.max(...r.track.map(f=>Math.abs(f.joints[input.id].angle)))*180/Math.PI:0;
