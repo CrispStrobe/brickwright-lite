@@ -524,10 +524,10 @@
       "archiveSha256": "1bb7219d2e2c27a6f0ea9b98c6b8186c18d5c34278e2d7652fec2b5877f42678",
       "originalLdrawEntry": "08-equinox/equinox-differential.ldr",
       "originalLdrawSha256": "987090ff72755495e0f952f999f96d7beb4aa8b25aa53a7f50efaf9f74068406",
-      "canonicalLdrawSha256": "239d26f56d494aa4e7a032fde72626dc4fc21a25a85aacab410d15330202f060",
+      "canonicalLdrawSha256": "c750c1235c5058752cfa5da7eb31cbab3261cf0e0ef1b9a5fbe67780582ff2c5",
       "originalProgramEntry": "08-equinox/equinox-differential.bw",
       "programSha256": "a94693e9807f3046cf5b20057f59bc5fcdd45fcd8eb0666fdf3efc2d14bb8884",
-      "adaptation": "Author/license comments normalized to user-authorized CrispStrobe BSD-3-Clause; geometry unchanged; MPD wrapper generated from canonical LDR; program bytes unchanged. Promotion (R2, 2026-11-11): Building steps only: the five author STEP groups (up to 62 parts) are removed so the instructions derive 47 connected steps of at most six parts; placements, colours and IDs unchanged.",
+      "adaptation": "Author/license comments normalized to user-authorized CrispStrobe BSD-3-Clause; geometry unchanged; MPD wrapper generated from canonical LDR; program bytes unchanged. Promotion (R2, 2026-11-11): Building steps only: the five author STEP groups (up to 62 parts) are split in order into 19 steps of at most six parts (a derived plan would show the casing floating: the planner's adjacency does not count gear meshes); placements, colours and IDs unchanged.",
       "basicChecks": {
         "id": "equinox-differential",
         "checked": [

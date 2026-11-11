@@ -114,8 +114,9 @@ removes the planets' support: the model flies apart before the program's start c
 12T bevel (`pinion`) is the clean cut. Helios's standstill is the program's stage 4 (the fourth speed step;
 "stage 3" counted from 0). Orion's id is `double-cardan-offset-v1` because `double-cardan-v1` is Phasekeeper's
 registered judge. The four shipped LDR files changed only in STEP markers (author steps of up to 100 parts):
-three now derive connected steps of at most six parts; Orion's author steps are split in order, because the
-instruction planner's adjacency ignores universal joints and would show a middle-shaft marker as loose.
+Cadence and Helios now derive connected steps of at most six parts; Equinox's and Orion's author steps are split in
+order, because the instruction planner's adjacency counts neither gear meshes nor universal joints and the derived
+plans would show the differential casing and a middle-shaft marker as floating.
 Browser gates on shards robotaddon16–19.
 
 Read-only triage from code and data on main `d318ed6e`; nothing was compiled

@@ -1,7 +1,7 @@
 # equinox-differential — source record
 
 - **Origin:** the Equinox differential lab intake already in the Robot Lab experimental registry (CrispStrobe, BSD-3-Clause), from the 04–15 model archive (checkpoint `docs/data/robot-lab-experimental-checkpoint.json`). Program bytes are unchanged.
-- **Adaptation at promotion (R2):** building steps only, its author STEP markers removed so the instructions derive connected steps of at most six parts. Part placements, colours and IDs are unchanged; the MPD wrapper is regenerated from the LDR.
+- **Adaptation at promotion (R2):** building steps only, its author STEP groups split into steps of at most six parts (the derived plan would show the casing as floating, because the planner's adjacency does not count gear meshes). Part placements, colours and IDs are unchanged; the MPD wrapper is regenerated from the LDR.
 - **Law (`differential-sum-v1`):** `judgeDifferentialSum` in `scripts/lib/sim-lab-r2-judges.mjs`. open bevel differential with equal 12T side gears: L + R = 2K in every stage; motor A's 12T bevel drives the 28T carrier, |K| = (12/28)|A|; each brake motor is geared 12T:20T to its output, |motor| = (20/12)|output|; a held output stays put while the other turns 2K. Tooth counts come from the part catalogue.
 - **Disconnection** (`pinion` removed: motor A's 12-tooth bevel that drives the 28-tooth carrier ring. Motor A still turns its 2520° route, but the carrier no longer follows K = (12/28)·A. (Removing the carrier ring itself, `cover`, also removes the planets' support and the program refuses at its start check, so it is not a clean causal cut.))
 - **Piece count:** 98, honest; qualification has no piece minimum (operator decision 2026-11-07).
