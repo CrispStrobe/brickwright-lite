@@ -119,10 +119,11 @@ for(const c of qualificationContracts(selected).filter(c=>!c.nativeSuite)){
  if(c.id==='obliquity-orrery')test('obliquity-orrery: turned-axis and turning-Earth mutants are refused; crank B cut recorded',async t=>{
   const r=await run(c,source,false,'mutant-base'),ok=judgeObliquityTilt(r,{native:true,contract:c});
   const law=(lam,lam0)=>Math.asin(Math.sin(22.5*Math.PI/180)*Math.cos((lam-lam0)*Math.PI/180))*180/Math.PI;
-  // (1) Turned connector: rotate the Earth plate's compiled pose -90° about the vertical through the spindle.
-  const turned=structuredClone(r),parts=new Map(turned.runModel.parts.map(p=>[p.id,p])),e=parts.get('earth'),sp=parts.get('earth_spindle').position;
-  const M=[0,0,-1,0,1,0,1,0,0],mv=(A,v)=>[0,1,2].map(i=>A[3*i]*v[0]+A[3*i+1]*v[1]+A[3*i+2]*v[2]),rel=e.position.map((x,i)=>x-sp[i]);
-  e.position=mv(M,rel).map((x,i)=>x+sp[i]);e.rotation=[0,1,2].flatMap(i=>[0,1,2].map(j=>M[3*i]*e.rotation[j]+M[3*i+1]*e.rotation[3+j]+M[3*i+2]*e.rotation[6+j]));
+  // (1) Turned connector: the Earth plate's compiled orientation turned -90° about the vertical (the control's pose),
+  // about its own reference point, so that point stays on the 16 mm orbit level with the Sun and only the tilt turns.
+  const turned=structuredClone(r),parts=new Map(turned.runModel.parts.map(p=>[p.id,p])),e=parts.get('earth');
+  const M=[0,0,-1,0,1,0,1,0,0],mv=(A,v)=>[0,1,2].map(i=>A[3*i]*v[0]+A[3*i+1]*v[1]+A[3*i+2]*v[2]),refPt=mv(e.rotation,[0,2,0]).map((x,i)=>x+e.position[i]);
+  e.rotation=[0,1,2].flatMap(i=>[0,1,2].map(j=>M[3*i]*e.rotation[j]+M[3*i+1]*e.rotation[3+j]+M[3*i+2]*e.rotation[6+j]));e.position=refPt.map((x,i)=>x-mv(e.rotation,[0,2,0])[i]);
   const g=compiledOrrery(turned);assert.ok(Math.abs(g.epsilonDeg-22.5)<=.01&&Math.abs(Math.abs(g.solsticeDeg-45)-90)<=.01,'the mutant keeps the tilt and moves the solstice a quarter orbit: '+JSON.stringify(g));
   const rows=orreryTrack(turned),own=Math.max(...rows.map(x=>Math.abs(x.delta-law(x.lam,g.solsticeDeg))));
   assert.ok(own<=.01,'the turned Earth follows its own law: '+own);
