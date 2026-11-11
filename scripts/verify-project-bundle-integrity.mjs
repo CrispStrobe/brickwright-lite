@@ -125,14 +125,14 @@ try {
     // write belongs to the successful open above; a snapshot taken before it
     // lands blames the refusals below for it. Wait until the saved state stops
     // changing, then require the refusals to leave it byte-identical.
-    let settled = null;
-    for (let stable = 0, waited = 0; stable < 2; waited += 1000) {
-        if (waited > 15000) throw new Error('project state kept changing after the successful open');
-        await page.waitForTimeout(1000);
-        const now = JSON.stringify(await projectKeys(page));
-        stable = now === settled ? stable + 1 : 0;
-        settled = now;
-    }
+    await page.waitForFunction(() => {
+        const now = ['bw-code-autosave', 'bw-circuit-autosave', 'bw-ctl-widgets']
+            .map(k => localStorage.getItem(k)).join('\u0000');
+        const w = window.__bwSettleProbe ||= {last: now, since: Date.now()};
+        if (now !== w.last) Object.assign(w, {last: now, since: Date.now()});
+        return Date.now() - w.since >= 2000;
+    }, null, {polling: 250, timeout: 15000})
+        .catch(() => { throw new Error('project state kept changing after the successful open'); });
     const beforeRefusal = await projectKeys(page);
     await openProject(page, futurePath);
     // BEFORE any tab click. Opening a project changes the active tab, so a
