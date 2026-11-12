@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {EventEmitter} from 'node:events';
 import {createRequire} from 'node:module';
-const require=createRequire(import.meta.url),create=require('../overlay/scratch-vm/src/extensions/crispstrobe/arcade/console-inspect-values'),loan=require('../overlay/scratch-vm/src/util/bw-primitive-owner');
+const require=createRequire(import.meta.url),ScratchOperators=require('../packages/scratch-vm/src/blocks/scratch3_operators'),create=require('../overlay/scratch-vm/src/extensions/crispstrobe/arcade/console-inspect-values'),loan=require('../overlay/scratch-vm/src/util/bw-primitive-owner');
 function fixture(initial=true,negated=false){
  const blocks={},add=(id,opcode,parent=null,inputs={},fields={})=>blocks[id]={id,opcode,parent,inputs,fields,shadow:false,topLevel:false,next:null};
  const number=(id,parent,value)=>{const b=add(id,'math_number',parent,{}, {NUM:{value:String(value)}});b.shadow=true;return b;};
@@ -22,7 +22,7 @@ function fixture(initial=true,negated=false){
  const thread={target,blockContainer:container,peekStack:()=> 'observe',isKilled:false};const runtime=new EventEmitter();Object.assign(runtime,{targets:[target],threads:[thread],sequencer:{activeThread:thread},isActiveThread:t=>t===thread});
  const util={runtime,thread,target},args={VALUE:7,LIMIT:20};let service;const method=()=>service.inspect(args,util);runtime.getOpcodeFunction=op=>op==='arcade_inspectValue'?method:null;
  const operation={id:'inspect',opcode:'arcade_inspectValue',_argValues:args,_blockFunction:method,fields:blocks.inspect.fields,inputs:blocks.inspect.inputs};container._cache._executeCached.observe={_ops:[operation]};service=create(runtime,{referenceTypeOf:()=>undefined,typeOf:()=>undefined});
- const invoke=()=>{service.snapshot();return loan.invoke(runtime,thread,container,operation,args,util,()=>service.inputDomains(args,util,['VALUE']));};return{blocks,add,text,number,invoke,runtime,target,variables};
+ const invokeCurrent=()=>loan.invoke(runtime,thread,container,operation,args,util,()=>service.inputDomains(args,util,['VALUE']));const invoke=()=>{service.snapshot();return invokeCurrent();};return{blocks,add,text,number,invoke,invokeCurrent,runtime,target,variables};
 }
 test('forced Boolean logical branches prove their overwritten numeric local at the following read',()=>{
  assert.deepEqual(fixture(true,false).invoke(),[['number']]);assert.deepEqual(fixture(false,true).invoke(),[['number']]);
@@ -30,6 +30,9 @@ test('forced Boolean logical branches prove their overwritten numeric local at t
 });
 test('uncertain logical paths and producers do not gain Number evidence',()=>{
  const cases={
+ cloud:f=>{f.variables.boolean.isCloud=true;},
+ unknownWriter:f=>{f.add('unknown','control_for_each',null,{}, {VARIABLE:{id:'boolean'}});},
+ interveningEffect:f=>{f.blocks.boolean.next='effect';f.add('effect','arcade_callFunction','boolean').next='initial';f.blocks.initial.parent='effect';},
  afterReadExposure:f=>{f.blocks.out.next='exposure';f.add('exposure','data_setvariableto','out',{VALUE:{block:'exposed'}}).next='observe';f.add('exposed','arcade_getLocal','exposure',{NAME:{block:'exposedName'}});f.text('exposedName','exposed','logical');f.blocks.observe.parent='exposure';},
  effectBeforeRead:f=>{f.blocks.branch.next='effect';f.add('effect','arcade_callFunction','branch').next='out';f.blocks.out.parent='effect';},
  knownNumberCall:f=>{f.blocks.value.opcode='arcade_callFunction';f.blocks.value.fields={};f.blocks.value.shadow=false;f.blocks.value.inputs={NAME:{block:'callName'},ARGS:{block:'callArgs'}};f.text('callName','value','effect');f.text('callArgs','value','[]');f.add('definition','procedures_definition',null,{custom_block:{block:'prototype'}}).topLevel=true;f.blocks.definition.next='return';f.add('prototype','procedures_prototype','definition').mutation={proccode:'effect',argumentnames:'[]'};f.add('return','arcade_returnValue','definition',{VALUE:{block:'returned'}});f.number('returned','return',7);},
@@ -49,4 +52,24 @@ test('uncertain logical paths and producers do not gain Number evidence',()=>{
  capture:f=>{f.add('captured','arcade_getCaptured',null,{NAME:{block:'capturedName'}});f.text('capturedName','captured','logical');},
  };
  for(const [name,change]of Object.entries(cases)){const f=fixture();change(f);let result;try{result=f.invoke();}catch(error){assert.match(error.message,/primitive domain evidence/,name);continue;}assert.notDeepEqual(result,[['number']],name);}
+});
+
+
+test('finite constant arithmetic agrees with actual Scratch operators',()=>{
+ const ops=new ScratchOperators({});
+ for(const [opcode,method]of [['operator_add','add'],['operator_subtract','subtract'],['operator_multiply','multiply']])for(const [x,y]of [[-3,2],[0,-0],[2.5,-0.5]]){
+  const f=fixture(),actual=ops[method]({NUM1:x,NUM2:y});
+  f.blocks.left.opcode=opcode;f.blocks.left.fields={};f.blocks.left.shadow=false;f.blocks.left.inputs={NUM1:{block:'x'},NUM2:{block:'y'}};f.number('x','left',x);f.number('y','left',y);f.blocks.right.fields.NUM.value=String(actual+1);assert.deepEqual(f.invoke(),[['number']]);
+ }
+});
+test('Scratch modulo and NaN cast counterexamples remain outside the constant proof',()=>{
+ const ops=new ScratchOperators({});assert.equal(ops.mod({NUM1:-1,NUM2:2}),1);assert.equal(-1%2,-1);
+ assert.equal(ops.add({NUM1:ops.divide({NUM1:0,NUM2:0}),NUM2:1}),1);
+ const refusal=f=>{let value;try{value=f.invoke();}catch(error){assert.match(error.message,/primitive domain evidence/);return;}assert.notDeepEqual(value,[['number']]);};
+ const mod=fixture();mod.blocks.left.opcode='operator_mod';mod.blocks.left.fields={};mod.blocks.left.shadow=false;mod.blocks.left.inputs={NUM1:{block:'negative'},NUM2:{block:'modulus'}};mod.number('negative','left',-1);mod.number('modulus','left',2);mod.blocks.right.fields.NUM.value='0';refusal(mod);
+ const cast=fixture(false,true);cast.blocks.left.opcode='operator_add';cast.blocks.left.fields={};cast.blocks.left.shadow=false;cast.blocks.left.inputs={NUM1:{block:'divide'},NUM2:{block:'one'}};cast.add('divide','operator_divide','left',{NUM1:{block:'zeroA'},NUM2:{block:'zeroB'}});cast.number('zeroA','divide',0);cast.number('zeroB','divide',0);cast.number('one','left',1);cast.blocks.right.fields.NUM.value='2';refusal(cast);
+ const overflow=fixture();overflow.blocks.left.opcode='operator_multiply';overflow.blocks.left.fields={};overflow.blocks.left.shadow=false;overflow.blocks.left.inputs={NUM1:{block:'largeA'},NUM2:{block:'largeB'}};overflow.number('largeA','left',1e308);overflow.number('largeB','left',1e308);refusal(overflow);
+});
+test('cloud-state changes invalidate an already cached native domain proof',()=>{
+ const f=fixture();assert.deepEqual(f.invoke(),[['number']]);f.variables.boolean.isCloud=true;assert.throws(f.invokeCurrent,/source graph changed/);
 });

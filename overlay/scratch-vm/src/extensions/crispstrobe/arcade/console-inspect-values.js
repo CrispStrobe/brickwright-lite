@@ -273,7 +273,7 @@ function create(runtime, cells, scoreOwner=null, sceneClock=null, frameDelta=nul
         if (originals.length !== snapshots.size || originals.some(target => {
             const saved = snapshots.get(target), blocks = Object.entries(target.blocks?._blocks || {}), variables=Object.entries(target.variables||{});
             return !saved || saved.container !== target.blocks || blocks.length !== saved.blocks.size ||
-                variables.length!==saved.variables.size || variables.some(([id,variable])=>saved.variables.get(id)?.variable!==variable || saved.variables.get(id)?.signature!==JSON.stringify([variable.id,variable.name,variable.type])) ||
+                variables.length!==saved.variables.size || variables.some(([id,variable])=>saved.variables.get(id)?.variable!==variable || saved.variables.get(id)?.signature!==JSON.stringify([variable.id,variable.name,variable.type,variable.isCloud])) ||
                 blocks.some(([id,block]) => saved.blocks.get(id)?.block !== block || saved.blocks.get(id)?.semantic !== semantic(block));
         })) fail('source graph changed; restart the project');
     };
@@ -283,7 +283,7 @@ function create(runtime, cells, scoreOwner=null, sceneClock=null, frameDelta=nul
         for (const target of runtime.targets) if (target.isOriginal !== false) graphVersion.track(target.blocks);
         if(score&&!score.disposed)score.targets=new Set(runtime.targets);
         for (const target of runtime.targets) if (target.isOriginal !== false)
-            snapshots.set(target,{container:target.blocks,variables:new Map(Object.entries(target.variables||{}).map(([id,variable])=>[id,{variable,signature:JSON.stringify([variable.id,variable.name,variable.type])}])),blocks:new Map(Object.entries(target.blocks._blocks).map(([id,block]) =>
+            snapshots.set(target,{container:target.blocks,variables:new Map(Object.entries(target.variables||{}).map(([id,variable])=>[id,{variable,signature:JSON.stringify([variable.id,variable.name,variable.type,variable.isCloud])}])),blocks:new Map(Object.entries(target.blocks._blocks).map(([id,block]) =>
                 [id,{block,semantic:semantic(block)}]))});
     };
     const prove = (target, block, requested=null, possible=null, util=null, args=null) => {
@@ -704,10 +704,10 @@ function create(runtime, cells, scoreOwner=null, sceneClock=null, frameDelta=nul
             const number=(b,path=new Set())=>{
                 if(!b||path.has(b)||b.next!=null)return null;const next=new Set([...path,b]);
                 if(b.opcode==='math_number'){if(Object.keys(b.inputs||{}).length)return null;const value=Number(b.fields?.NUM?.value);return String(b.fields?.NUM?.value).trim()!==''&&Number.isFinite(value)?value:null;}
-                if(!['operator_add','operator_subtract','operator_multiply','operator_divide','operator_mod'].includes(b.opcode)||!closed(b,['NUM1','NUM2']))return null;
+                if(!['operator_add','operator_subtract','operator_multiply'].includes(b.opcode)||!closed(b,['NUM1','NUM2']))return null;
                 const left=input(b,'NUM1'),right=input(b,'NUM2');if(left?.parent!==b.id||right?.parent!==b.id)return null;
                 const x=number(left,next),y=number(right,next);if(x===null||y===null)return null;
-                return b.opcode==='operator_add'?x+y:b.opcode==='operator_subtract'?x-y:b.opcode==='operator_multiply'?x*y:b.opcode==='operator_divide'?x/y:x%y;
+                const value=b.opcode==='operator_add'?x+y:b.opcode==='operator_subtract'?x-y:x*y;return Number.isFinite(value)?value:null;
             };
             const chain=[];let previous=scope.root;const walked=new Set();
             for(let b=read(previous.next);b;b=read(b.next)){if(walked.has(b)||b.parent!==previous.id)return false;walked.add(b);chain.push(b);previous=b;}
@@ -728,15 +728,25 @@ function create(runtime, cells, scoreOwner=null, sceneClock=null, frameDelta=nul
                 }
                 if(b.opcode==='data_variable'){
                     if(!closed(b,[])||b.next!=null)return null;
-                    const id=b.fields?.VARIABLE?.id,variable=target.lookupVariableById?.(id);if(!variable||cells.referenceTypeOf(target,id))return null;
+                    const id=b.fields?.VARIABLE?.id,variable=target.lookupVariableById?.(id);if(!variable||variable.type!==''||variable.isCloud||cells.referenceTypeOf(target,id))return null;
                     const writers=[];
                     for(const owner of runtime.targets.filter(value=>value.isOriginal!==false))for(const candidate of Object.values(owner.blocks?._blocks||{})){
-                        if(!['data_setvariableto','data_changevariableby'].includes(candidate.opcode)||owner.lookupVariableById?.(candidate.fields?.VARIABLE?.id)!==variable)continue;
+                        const selected=candidate.fields?.VARIABLE?.id??candidate.fields?.LIST?.id;
+                        if(owner.lookupVariableById?.(selected)!==variable)continue;
+                        if(candidate.opcode==='data_variable')continue;
                         if(owner!==target||candidate.opcode!=='data_setvariableto'||!closed(candidate,['VALUE'])||input(candidate,'VALUE')?.parent!==candidate.id||!chain.includes(candidate)||chain.indexOf(candidate)>=before)return null;
                         writers.push(candidate);
                     }
                     const real=writers.filter(candidate=>!fixedReset(input(candidate,'VALUE')));if(real.length!==1)return null;
                     const selected=real[0],position=chain.indexOf(selected);
+                    // No unknown call/effect may intervene after the fixed write.
+                    // Other literal global initializers are safe and commonly
+                    // separate the true/false staging guards.
+                    for(const between of chain.slice(position+1,before)){
+                        if(between.opcode!=='data_setvariableto'||!closed(between,['VALUE']))return null;
+                        const value=input(between,'VALUE');
+                        if(number(value)===null&&(value?.opcode!=='arrays_valueCompare'||bool(value,chain.indexOf(between),next)===null))return null;
+                    }
                     if(writers.some(candidate=>candidate!==selected&&chain.indexOf(candidate)>=position))return null;
                     return bool(input(selected,'VALUE'),position,next);
                 }
