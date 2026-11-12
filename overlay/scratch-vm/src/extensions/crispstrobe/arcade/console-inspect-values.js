@@ -399,6 +399,96 @@ function create(runtime, cells, scoreOwner=null, sceneClock=null, frameDelta=nul
             input:(node,name,owner)=>owner.blocks.getBlock(node?.inputs?.[name]?.block),
             literal:(node,name,owner)=>node?.fields?.[name]?.value??(owner.blocks.getBlock(node?.inputs?.[name]?.block)?.opcode==='text'?owner.blocks.getBlock(node.inputs[name].block).fields?.TEXT?.value:null)});
         const owners = new Map(), seen = new Map([[false,new Set()],[true,new Set()]]);
+        const localPositionalElement=node=>{
+            const index=input(node,'INDEX'),receiver=input(node,'ARRAY');
+            const k=index?.opcode==='math_number'&&index.shadow===true?Number(index.fields?.NUM?.value):NaN;
+            if(!Number.isSafeInteger(k)||k<0||String(index.fields?.NUM?.value).trim()===''||receiver?.opcode!=='arcade_getLocal'||
+                index.parent!==node.id||receiver.parent!==node.id||Object.keys(index.inputs||{}).length||index.next!=null||receiver.next!=null)return null;
+            const closedInputs=(b,names)=>Object.keys(b?.inputs||{}).sort().join(',')===names.slice().sort().join(',');
+            const primitiveLiteral=b=>{
+                if(!b||b.next!=null)return false;
+                const fields=b.fields||{},keys=Object.keys(fields);
+                // The importer wraps an ordinary Number literal as 0 + N.
+                // Admit only its exact closed two-shadow numeric shape.
+                if(b.opcode==='operator_add'){
+                    if(keys.length||!closedInputs(b,['NUM1','NUM2']))return false;
+                    const left=input(b,'NUM1'),right=input(b,'NUM2');
+                    const numeric=n=>n?.opcode==='math_number'&&n.shadow===true&&n.parent===b.id&&n.next==null&&
+                        !Object.keys(n.inputs||{}).length&&Object.keys(n.fields||{}).join(',')==='NUM'&&
+                        ['string','number'].includes(typeof n.fields.NUM?.value)&&String(n.fields.NUM.value).trim()!==''&&Number.isFinite(Number(n.fields.NUM.value));
+                    return numeric(left)&&numeric(right)&&Number(left.fields.NUM.value)===0;
+                }
+                if(Object.keys(b.inputs||{}).length)return false;
+                if(b.opcode==='text')return keys.length===1&&keys[0]==='TEXT'&&typeof fields.TEXT?.value==='string';
+                if(b.opcode==='math_number'){
+                    const raw=fields.NUM?.value;
+                    return keys.length===1&&keys[0]==='NUM'&&['string','number'].includes(typeof raw)&&
+                        String(raw).trim()!==''&&Number.isFinite(Number(raw));
+                }
+                return b.opcode==='arrays_specialValue'&&keys.length===1&&keys[0]==='KIND'&&
+                    ['null','undefined','NaN','Infinity','-Infinity','-0'].includes(fields.KIND?.value);
+            };
+            const localName=b=>closedInputs(b,['NAME'])&&input(b,'NAME')?.opcode==='text'&&input(b,'NAME').parent===b.id&&input(b,'NAME').next==null&&Object.keys(input(b,'NAME').inputs||{}).length===0?literal(b,'NAME'):null;
+            const name=localName(receiver),scope=captureProof.scopeOf(receiver);
+            if(typeof name!=='string'||!scope||scope.target!==target||captureProof.scopeOf(node)!==scope||
+                !['arcade_whenSourceStarts','procedures_definition'].includes(scope.root.opcode))return null;
+            const cell=captureProof.local(scope,name),proof=captureProof.proof(cell);
+            if(!proof||proof.escaped||proof.index!==-1)return null;
+            const chain=[],visited=new Set();let previous=scope.root;
+            for(let b=read(previous.next);b;b=read(b.next)){
+                if(visited.has(b)||b.parent!==previous.id)return null;
+                visited.add(b);chain.push(b);previous=b;
+            }
+            let statement=node;const climbed=new Set();
+            while(statement&&!chain.includes(statement)&&!climbed.has(statement)){climbed.add(statement);statement=read(statement.parent);}
+            const end=chain.indexOf(statement);if(end<0)return null;
+            // The endpoint's inputs execute too. Closing only the preceding
+            // statements would let an earlier sibling call run before this read.
+            // Admit a closed primitive expression tree, not an unknown effect.
+            const endpointSeen=new Set();
+            const endpoint=b=>{
+                if(!b||endpointSeen.has(b))return false;endpointSeen.add(b);
+                if(b===node)return closedInputs(b,['ARRAY','INDEX']);
+                if(['math_number','text','arrays_specialValue','operator_add'].includes(b.opcode))return primitiveLiteral(b);
+                let valid=b.opcode==='arcade_inspectValue'&&closedInputs(b,['VALUE','LIMIT'])||
+                    b.opcode==='arcade_functionArgument'&&closedInputs(b,['VALUE','REST']);
+                if(b===statement)valid=b.opcode==='data_setvariableto'&&closedInputs(b,['VALUE'])||
+                    b.opcode==='arcade_setLocal'&&closedInputs(b,['NAME','VALUE'])||b.opcode==='procedures_call';
+                return !!valid&&Object.values(b.inputs||{}).every(edge=>{const child=read(edge.block);return child?.parent===b.id&&endpoint(child);});
+            };
+            if(!endpoint(statement))return null;
+            let allocation=-1;const resets=[];
+            for(const {node:writer,scope:writerScope}of proof.writers){
+                if(writerScope!==scope||writer.opcode!=='arcade_setLocal')return null;
+                const at=chain.indexOf(writer),value=input(writer,'VALUE');if(at<0||at>=end||!closedInputs(writer,['NAME','VALUE'])||input(writer,'NAME')?.opcode!=='text'||input(writer,'NAME').parent!==writer.id||Object.keys(input(writer,'NAME').inputs||{}).length)return null;
+                if(fixedReset(value)){resets.push(at);continue;}
+                if(allocation>=0||value?.opcode!=='arrays_createReference'||value.parent!==writer.id||value.next!=null||!closedInputs(value,['VALUES'])||text(input(value,'VALUES'))!=='[]'||Object.keys(input(value,'VALUES').inputs||{}).length||input(value,'VALUES').parent!==value.id)return null;
+                allocation=at;
+            }
+            if(allocation<0||resets.some(at=>at>=allocation))return null;
+            const pushes=[];
+            for(const b of Object.values(all)){
+                if(['arcade_getCaptured','arcade_setCaptured'].includes(b.opcode)&&(typeof literal(b,'NAME')!=='string'||literal(b,'NAME')===name))return null;
+                if(captureProof.scopeOf(b)!==scope||b.opcode!=='arcade_getLocal')continue;
+                const found=localName(b);if(typeof found!=='string')return null;if(found!==name)continue;
+                if(b===receiver)continue;
+                const parent=read(b.parent),at=chain.indexOf(parent);
+                const ignoredIndex=input(parent,'INDEX'),indexValue=ignoredIndex?.fields?.NUM?.value;
+                if(parent?.opcode!=='arrays_mutateReference'||!closedInputs(parent,['ARRAY','OP','INDEX','VALUE'])||parent.inputs?.ARRAY?.block!==b.id||literal(parent,'OP')!=='push'||input(parent,'OP')?.opcode!=='text'||Object.keys(input(parent,'OP').inputs||{}).length||input(parent,'OP').parent!==parent.id||
+                    ignoredIndex?.opcode!=='math_number'||ignoredIndex.shadow!==true||ignoredIndex.parent!==parent.id||ignoredIndex.next!=null||
+                    Object.keys(ignoredIndex.inputs||{}).length||Object.keys(ignoredIndex.fields||{}).join(',')!=='NUM'||
+                    !['string','number'].includes(typeof indexValue)||String(indexValue).trim()===''||!Number.isFinite(Number(indexValue))||
+                    at<=allocation||at>=end)return null;
+                pushes.push(parent);
+            }
+            // No call, branch, yield or unrelated effect can occur between the
+            // fresh allocation and the read. Every element is a plain literal;
+            // calls returning primitives do not gain side-effect authority.
+            for(let at=allocation+1;at<end;at++)if(!pushes.includes(chain[at]))return null;
+            pushes.sort((a,b)=>chain.indexOf(a)-chain.indexOf(b));
+            if(pushes.some(push=>{const value=input(push,'VALUE');return !primitiveLiteral(value)||value.parent!==push.id;}))return null;
+            return k<pushes.length?input(pushes[k],'VALUE'):null;
+        };
         const positionalElement=node=>{
             const index=input(node,'INDEX'),receiver=input(node,'ARRAY');
             const k=index?.opcode==='math_number'&&index.shadow===true?Number(index.fields?.NUM?.value):NaN;
@@ -633,11 +723,62 @@ function create(runtime, cells, scoreOwner=null, sceneClock=null, frameDelta=nul
             if(!facts||!statementIn(node,facts.body)||localCellOf(index)!==facts.counter||!facts.receiver.has(localCellOf(array)))return null;
             return values;
         };
+        const constantLogicalOverwrite=(writer,cell,at)=>{
+            const proof=captureProof.proof(cell),scope=cell?.scope;
+            if(!at||!proof||proof.escaped||proof.index!==-1||scope?.target!==target||scope.root.opcode!=='arcade_whenSourceStarts'||captureProof.scopeOf(at)!==scope)return false;
+            const closed=(b,names)=>Object.keys(b?.inputs||{}).sort().join(',')===names.slice().sort().join(',');
+            const literalText=(b,parent)=>b?.opcode==='text'&&b.shadow===true&&b.parent===parent.id&&b.next==null&&!Object.keys(b.inputs||{}).length&&Object.keys(b.fields||{}).join(',')==='TEXT'&&typeof b.fields.TEXT?.value==='string';
+            const localRead=b=>b?.opcode==='arcade_getLocal'&&closed(b,['NAME'])&&literalText(input(b,'NAME'),b);
+            const number=(b,path=new Set())=>{
+                if(!b||path.has(b)||b.next!=null)return null;const next=new Set([...path,b]);
+                if(b.opcode==='math_number'){if(b.shadow!==true||Object.keys(b.inputs||{}).length||Object.keys(b.fields||{}).join(',')!=='NUM'||!['string','number'].includes(typeof b.fields.NUM?.value))return null;const value=Number(b.fields?.NUM?.value);return String(b.fields?.NUM?.value).trim()!==''&&Number.isFinite(value)?value:null;}
+                if(!['operator_add','operator_subtract','operator_multiply'].includes(b.opcode)||!closed(b,['NUM1','NUM2']))return null;
+                const left=input(b,'NUM1'),right=input(b,'NUM2');if(left?.parent!==b.id||right?.parent!==b.id)return null;
+                const x=number(left,next),y=number(right,next);if(x===null||y===null)return null;
+                const value=b.opcode==='operator_add'?x+y:b.opcode==='operator_subtract'?x-y:x*y;return Number.isFinite(value)?value:null;
+            };
+            const chain=[];let previous=scope.root;const walked=new Set();
+            for(let b=read(previous.next);b;b=read(b.next)){if(walked.has(b)||b.parent!==previous.id)return false;walked.add(b);chain.push(b);previous=b;}
+            if(!closed(scope.root,[])||!closed(writer,['NAME','VALUE'])||!literalText(input(writer,'NAME'),writer)||input(writer,'VALUE')?.parent!==writer.id||!localRead(at))return false;
+            const begin=chain.indexOf(writer),readStatement=read(at.parent),end=chain.indexOf(readStatement);
+            if(begin<0||end!==begin+2||readStatement?.opcode!=='data_setvariableto'||!closed(readStatement,['VALUE'])||readStatement.inputs.VALUE.block!==at.id)return false;
+            const branch=chain[begin+1],overwrite=input(branch,'SUBSTACK');
+            if(branch?.opcode!=='control_if'||!closed(branch,['CONDITION','SUBSTACK'])||overwrite?.parent!==branch.id||overwrite.next!=null||
+                overwrite.opcode!=='arcade_setLocal'||localCellOf(overwrite)!==cell||!closed(overwrite,['NAME','VALUE'])||!literalText(input(overwrite,'NAME'),overwrite)||number(input(overwrite,'VALUE'))===null)return false;
+            if(proof.writers.length!==2||!proof.writers.every(row=>row.scope===scope&&(row.node===writer||row.node===overwrite)))return false;
+            const literalBoolean=b=>{
+                if(!b)return null;
+                if(b.opcode==='arrays_valueCompare'){
+                    const opInput=input(b,'OP'),fields=Object.keys(b.fields||{});
+                    if(opInput?fields.length||!closed(b,['LEFT','OP','RIGHT'])||!literalText(opInput,b):fields.join(',')!=='OP'||!closed(b,['LEFT','RIGHT'])||typeof b.fields.OP?.value!=='string')return null;
+                    const op=literal(b,'OP'),leftInput=input(b,'LEFT'),rightInput=input(b,'RIGHT');
+                    if(leftInput?.parent!==b.id||rightInput?.parent!==b.id)return null;
+                    const left=number(leftInput),right=number(rightInput);if(left===null||right===null)return null;
+                    return op==='<'?left<right:op==='>'?left>right:op==='==='?left===right:op==='!=='?left!==right:null;
+                }
+                // Even ordinary globals can change through monitor/host paths.
+                // Block-writer enumeration is not closed-world authority here.
+                return null;
+            };
+            const initial=literalBoolean(input(writer,'VALUE'));if(typeof initial!=='boolean')return false;
+            let condition=input(branch,'CONDITION'),negated=false;
+            if(condition?.parent!==branch.id)return false;
+            if(condition?.opcode==='operator_not'&&closed(condition,['OPERAND'])){negated=true;const nested=input(condition,'OPERAND');if(nested?.parent!==condition.id)return false;condition=nested;}
+            if(condition?.opcode!=='arrays_valueTruthy'||!closed(condition,['VALUE']))return false;
+            const guard=input(condition,'VALUE');if(!localRead(guard)||guard.parent!==condition.id||localCellOf(guard)!==cell)return false;
+            if((negated?!initial:initial)!==true)return false;
+            for(const b of Object.values(all)){
+                if(['arcade_getCaptured','arcade_setCaptured'].includes(b.opcode)&&(typeof literal(b,'NAME')!=='string'||literal(b,'NAME')===cell.name))return false;
+                if(captureProof.scopeOf(b)===scope&&b.opcode==='arcade_getLocal'&&
+                    (typeof literal(b,'NAME')!=='string'||localCellOf(b)===cell&&b!==guard&&b!==at))return false;
+            }
+            return true;
+        };
         const safeCell = (cell,player=false,origins=null,domains=null,at=null) => {
             const proof=captureProof.proof(cell);
             if(!proof||cell.scope.target!==target)return false;
             const evidence=new Set();
-            if(!proof.writers.filter(({node:writer})=>!deadReset(writer,cell,at)).every(({node:writer})=>safe(input(writer,'VALUE'),player,evidence,domains)))return false;
+            if(!proof.writers.filter(({node:writer})=>!deadReset(writer,cell,at)&&!constantLogicalOverwrite(writer,cell,at)).every(({node:writer})=>safe(input(writer,'VALUE'),player,evidence,domains)))return false;
             let valid=proof.writers.length>0;
             if(proof.index>=0){
                 const procedure=cell.scope.procedure;if(typeof procedure!=='string')return false;
@@ -705,11 +846,10 @@ function create(runtime, cells, scoreOwner=null, sceneClock=null, frameDelta=nul
                     origins?.add(node);domains.add('number');return true;
                 }
                 if(!player&&op==='arrays_referenceItem'){
-                    // A literal-index read of a global that holds a start-script
-                    // Array built as empty + primitive pushes and is otherwise
-                    // only read: the element is the k-th pushed value (PXT and
-                    // Lite agree). Its own domain is then proved as usual.
-                    const slot=positionalElement(node);
+                    // Literal-index reads use the separately closed local prefix
+                    // or the existing global publication proof. The selected
+                    // pushed element still needs its own primitive domain proof.
+                    const slot=localPositionalElement(node)||positionalElement(node);
                     if(slot){const valid=safe(slot,false,origins,domains);if(valid)origins?.add(node);return valid;}
                     const elements=familyElement(node);
                     if(elements){const valid=elements.every(value=>safe(value,false,origins,domains));if(valid)origins?.add(node);return valid;}
