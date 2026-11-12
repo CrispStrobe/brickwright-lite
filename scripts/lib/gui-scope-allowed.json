@@ -389,6 +389,7 @@
       "test/makecode-arcade-player-connection.test.mjs",
       "test/makecode-arcade-player-number-producers.test.mjs",
       "test/makecode-arcade-primitive-compound.test.mjs",
+      "test/makecode-arcade-procedure-result-numbers.test.mjs",
       "test/makecode-arcade-projectile-finalization.test.mjs",
       "test/makecode-arcade-projectile-source.test.mjs",
       "test/makecode-arcade-prompt-string-authoring.test.mjs",
