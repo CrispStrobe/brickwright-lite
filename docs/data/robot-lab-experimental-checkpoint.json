@@ -437,10 +437,10 @@
       "archiveSha256": "1bb7219d2e2c27a6f0ea9b98c6b8186c18d5c34278e2d7652fec2b5877f42678",
       "originalLdrawEntry": "07-cadence/cadence-geneva.ldr",
       "originalLdrawSha256": "048fd1abf79cec1e47cb3879253936797841b1cef87cb01d4a07c44cd28619d8",
-      "canonicalLdrawSha256": "7783a77d461b88cd5a4a7026a507eb24572328fd75b82e69ca1b9da8dae4b80f",
+      "canonicalLdrawSha256": "966e1d8c7c1341f8700994f30445f7fc39c806097e963519c3c9b7d848c3d4c8",
       "originalProgramEntry": "07-cadence/cadence-geneva.bw",
       "programSha256": "6ed053800f78526054be5732bebfd876f3cde711a5494889e964f8742a84546c",
-      "adaptation": "Author/license comments normalized to user-authorized CrispStrobe BSD-3-Clause; geometry unchanged; MPD wrapper generated from canonical LDR; program bytes unchanged.",
+      "adaptation": "Author/license comments normalized to user-authorized CrispStrobe BSD-3-Clause; geometry unchanged; MPD wrapper generated from canonical LDR; program bytes unchanged. Promotion (R2, 2026-11-11): Building steps only: the seven author STEP groups (up to 93 parts) are removed so the instructions derive 93 connected steps of at most six parts; placements, colours and IDs unchanged.",
       "basicChecks": {
         "id": "cadence-geneva",
         "checked": [
@@ -509,6 +509,11 @@
           "notes": "Dial opposite to star (3 external meshes) and positive in program convention; success check passes. Up to ~2° in-step lag vs the ideal curve and 1.4° short first step (datum). Friction clutch holds dwell perfectly in simulation."
         },
         "scope": "one headless run on the app branch engine; not a physical build"
+      },
+      "promotionReview": {
+        "date": "2026-11-11",
+        "decision": "PROMOTED",
+        "reason": "Registered judge geneva-index-v1 (judgeGenevaIndex, scripts/lib/sim-lab-r2-judges.mjs): crank 40.000 mm, centre distance 56.569 mm (radial entry 1.0000), entry phase -135 deg and dial ratio -1/3 from the compiled parts and catalogue tooth counts; native run (COLD 500): 12 crank turns, 12 steps, first step 88.63 deg, later steps within 0.114 deg of 90 (gate 0.25), dwell motion 0.00013 deg (gate 0.1), lag behind the ideal Geneva curve 4.11 deg (gate 4.5; roller clearance in the slot), dial = -star/3 within 0.095 deg (gate 0.25), dial end 359.45 deg; frozen-output and 1 cm shift refused. Disconnection driver_pin_axle: crank 12.0 turns, star span 0.0008 deg, star-law error 1080 deg (lost, bar 10), judge refuses. Wrong-model mutant (dial gear 24T -> 40T) refused."
       }
     },
     {
@@ -519,10 +524,10 @@
       "archiveSha256": "1bb7219d2e2c27a6f0ea9b98c6b8186c18d5c34278e2d7652fec2b5877f42678",
       "originalLdrawEntry": "08-equinox/equinox-differential.ldr",
       "originalLdrawSha256": "987090ff72755495e0f952f999f96d7beb4aa8b25aa53a7f50efaf9f74068406",
-      "canonicalLdrawSha256": "d67aee5320bd6bc3772fc4e546d96744600cfd4054608d5bb6c83498fd075448",
+      "canonicalLdrawSha256": "c750c1235c5058752cfa5da7eb31cbab3261cf0e0ef1b9a5fbe67780582ff2c5",
       "originalProgramEntry": "08-equinox/equinox-differential.bw",
       "programSha256": "a94693e9807f3046cf5b20057f59bc5fcdd45fcd8eb0666fdf3efc2d14bb8884",
-      "adaptation": "Author/license comments normalized to user-authorized CrispStrobe BSD-3-Clause; geometry unchanged; MPD wrapper generated from canonical LDR; program bytes unchanged.",
+      "adaptation": "Author/license comments normalized to user-authorized CrispStrobe BSD-3-Clause; geometry unchanged; MPD wrapper generated from canonical LDR; program bytes unchanged. Promotion (R2, 2026-11-11): Building steps only: the five author STEP groups (up to 62 parts) are split in order into 19 steps of at most six parts (a derived plan would show the casing floating: the planner's adjacency does not count gear meshes); placements, colours and IDs unchanged.",
       "basicChecks": {
         "id": "equinox-differential",
         "checked": [
@@ -597,6 +602,11 @@
           "notes": "Held output creeps <0.4°. Free split depends on friction (0.6° fwd, 5.8° rev difference)."
         },
         "scope": "one headless run on the app branch engine; not a physical build"
+      },
+      "promotionReview": {
+        "date": "2026-11-12",
+        "decision": "BLOCKED",
+        "reason": "The native law and controls pass with the registered judge differential-sum-v1, but the browser gate's manual-control check cannot pass on this mechanism: it stops every motor (power 0 = hold) and then jogs each port alone, and a differential with both outputs held locks its carrier (K = (L + R)/2), so motor A cannot reach its jog target (hosted chromium, robotaddon17, twice: 210 deg and 30 deg steps). That is the mechanism's physics, not a model fault; promotion needs a manual-control rule for coupled multi-motor mechanisms, which belongs to the gate's owner. Native evidence kept: Registered judge differential-sum-v1 (judgeDifferentialSum): 12T:28T carrier drive, 12T:20T brakes and equal 12T side gears from the compiled parts; native run (COLD 500): L + R - 2K max 0.013 deg (gate 0.1), carrier vs (12/28)A 0.014 deg (gate 0.25), brakes vs (20/12) output 0.005/0.009 deg (gate 0.25), held outputs 0.25/0.20 deg (gate 1); frozen-output and 1 cm shift refused. Disconnection pinion (motor A's 12T bevel): input 2520 deg, carrier span 1.7 deg, carrier-law error 1078 deg (lost, bar 5), judge refuses. The handoff's carrier-gear cut (cover) also removes the planets' support: the model flies apart before the program's start check and the program refuses (stage 0), so it is not used. Wrong-model mutant (carrier ring 28T -> 24T) refused."
       }
     },
     {
@@ -817,10 +827,10 @@
       "archiveSha256": "1bb7219d2e2c27a6f0ea9b98c6b8186c18d5c34278e2d7652fec2b5877f42678",
       "originalLdrawEntry": "11-helios/helios-transmission.ldr",
       "originalLdrawSha256": "a6158b86ba3af7eccdf12652b943916d4327f48d91e9a0d1291c92f2710c520a",
-      "canonicalLdrawSha256": "8c91ef69f4e2f82a8b33b2bb84cecedcc831b1bfd5695c925fe688326fefd634",
+      "canonicalLdrawSha256": "092cf674775eaf332b0809fe75548cd306f59964191521959cedee46d85ef23d",
       "originalProgramEntry": "11-helios/helios-transmission.bw",
       "programSha256": "db14980328bd7438d906eb06d4fb1def93a19325ed83e584cd8a4a68651e787c",
-      "adaptation": "Author/license comments normalized to user-authorized CrispStrobe BSD-3-Clause; geometry unchanged; MPD wrapper generated from canonical LDR; program bytes unchanged.",
+      "adaptation": "Author/license comments normalized to user-authorized CrispStrobe BSD-3-Clause; geometry unchanged; MPD wrapper generated from canonical LDR; program bytes unchanged. Promotion (R2, 2026-11-11): Building steps only: the nine author STEP groups (up to 100 parts) are removed so the instructions derive 62 connected steps of at most six parts; placements, colours and IDs unchanged.",
       "basicChecks": {
         "id": "helios-transmission",
         "checked": [
@@ -903,6 +913,11 @@
           "surprise": "program waits stretch: 'wait 0.1 s' lasted ~0.17 s, so the sweep took ~10 s, not 6 s; lesson's 1.5 s / 3.0 s timing corrected (law unaffected: standstill exactly at w_B = -63°/s)"
         },
         "scope": "one headless run on the app branch engine; not a physical build"
+      },
+      "promotionReview": {
+        "date": "2026-11-11",
+        "decision": "PROMOTED",
+        "reason": "Registered judge willis-epicyclic-v1 (judgeWillisEpicyclic): Willis ratio (24/8)(16/16) = 3 for both planets and carrier drive -20/28 from catalogue tooth counts; native run (COLD 500): output vs 3A - 2C 0.048 deg (gate 0.25), carrier vs -(20/28)B 0.0072 deg (gate 0.25), stage speeds 90.0/60.0/30.0/0.0/-30.0 deg/s, standstill at B = -63 deg/s (output 0.000 deg/s, gate 0.5); frozen-output and 1 cm shift refused. Disconnection control_gear: input 829 deg, encoder-law error 415 deg (lost, bar 5), judge refuses. The handoff's 'stage 3' standstill is the program's stage 4 (the fourth speed step). Wrong-model mutant (input sun 24T -> 16T) refused."
       }
     },
     {
@@ -1025,10 +1040,10 @@
       "archiveSha256": "1bb7219d2e2c27a6f0ea9b98c6b8186c18d5c34278e2d7652fec2b5877f42678",
       "originalLdrawEntry": "13-orion/orion-cardan.ldr",
       "originalLdrawSha256": "654b56b60380fc3408349fa80374da088629451e8d29ac8060dc3ce77ee9dd89",
-      "canonicalLdrawSha256": "e526ea81c28c05e80bdddedbe110b2ae2b0bbbf36d023ace3a911f2e551fa23a",
+      "canonicalLdrawSha256": "2793c7d43f6949705d0b430181e0571f97b5268d4e600cd14069769a9e0236a8",
       "originalProgramEntry": "13-orion/orion-cardan.bw",
       "programSha256": "9023ebdc4a02a7f1002628cb825bd3fb95c5ef1814f103138415a31b606e41c0",
-      "adaptation": "Author/license comments normalized to user-authorized CrispStrobe BSD-3-Clause; geometry unchanged; MPD wrapper generated from canonical LDR; program bytes unchanged.",
+      "adaptation": "Author/license comments normalized to user-authorized CrispStrobe BSD-3-Clause; geometry unchanged; MPD wrapper generated from canonical LDR; program bytes unchanged. Promotion (R2, 2026-11-11): Building steps only: author STEP groups split into 27 steps of at most six parts in the original order (the derived plan would show the middle-shaft marker as loose, because the instruction planner's adjacency ignores universal joints); placements, colours and IDs unchanged. The compiler now reports no loose-part warning.",
       "basicChecks": {
         "id": "orion-cardan",
         "checked": [
@@ -1131,6 +1146,11 @@
           "residual": "lead amplitude within 0.02°; speed-ratio extremes slightly flattened by the 4-frame finite difference; output within 0.05° (0.09° at 300°/s)"
         },
         "scope": "one headless run on the app branch engine; not a physical build"
+      },
+      "promotionReview": {
+        "date": "2026-11-11",
+        "decision": "PROMOTED",
+        "reason": "Registered judge double-cardan-offset-v1 (judgeDoubleCardanOffset; not Phasekeeper's double-cardan-v1, whose judge names Phasekeeper's parts): equal bends 36.870 deg, output parallel to input, middle forks in phase and input fork in the bend plane from the compiled joints; native run (COLD 500): input span 6047 deg, output vs input 0.048 deg (gate 0.25), middle shaft vs tan(theta_m) = tan(theta)/cos(beta) 0.099 deg (gate 0.5), lead 12.84 deg peak to peak vs predicted 12.76 (gate 0.25); frozen-output and 1 cm shift refused. Disconnection fork_middle_far: input 7260 deg, output span 37 deg, output-law error 7245 deg (lost, bar 5), judge refuses. Wrong-model mutant (far middle fork turned 90 deg, misphased) refused."
       }
     },
     {
@@ -2634,10 +2654,10 @@
       "placements": 88,
       "archive": "brickwright-model-lab branch agent/bw-opencode-mech-r1-20261025/synchronized_paired_doors @ fc69ad75e950a37c032cf8 (review_ready)",
       "originalLdrawSha256": "9a9db4de7a34f374abba5183299024b5cebd3410dd13ea5ca32fa3bc5e22d6c3",
-      "canonicalLdrawSha256": "a1ecbb2c21dd0a39f88c67ac5f4ed229ee40d365820be9b27c47993fa1c6cef6",
+      "canonicalLdrawSha256": "00a31ccd7b3d4ed31452ef3e1821106bb12fb963e9d8e30db5b40ea9b0e47ae5",
       "program": "paired-door-sync.bw",
       "programSha256": "483ebd35317bbc9840a4a2dd285ee90d2cdd3fb3a124568a8221c3c0d9bab101",
-      "adaptation": "Built by the automated model-builder agent bw-opencode-mech-r1-20261025 (OpenCode, deepseek-v4.1-flash). !LICENSE path pointed at the packaged licence; lessons renamed to the model id; keywords flattened. Geometry and program bytes unchanged. Geometry repair 2026-10-28 (construction gate): carriage_pin_0_+-120 (6558, 3L) z 42->39 and carriage_pin_1_+-120 z -42->-45, each along its own axis. The collar had sat 2.5 LDU inside carriage_front (1.9 LDU deep, 116 points) and the 3L pin's ridge inside rack_back (2.0 LDU, 134 points); after the shift both pins pass through their holes with the collar outside, and the construction checks and compiler report nothing. Carriage, racks, doors, gears and program unchanged.",
+      "adaptation": "Built by the automated model-builder agent bw-opencode-mech-r1-20261025 (OpenCode, deepseek-v4.1-flash). !LICENSE path pointed at the packaged licence; lessons renamed to the model id; keywords flattened. Geometry and program bytes unchanged. Geometry repair 2026-10-28 (construction gate): carriage_pin_0_+-120 (6558, 3L) z 42->39 and carriage_pin_1_+-120 z -42->-45, each along its own axis. The collar had sat 2.5 LDU inside carriage_front (1.9 LDU deep, 116 points) and the 3L pin's ridge inside rack_back (2.0 LDU, 134 points); after the shift both pins pass through their holes with the collar outside, and the construction checks and compiler report nothing. Carriage, racks, doors, gears and program unchanged. Promotion 2026-11-07: the SPIKE hub's !BW ID chassis_reference renamed to hub (identifier only) so the standard hub observation base applies; geometry, parts and program unchanged.",
       "supplierClaims": "Hosted API (worker fa1bb8c, Jolt bw.6): racks follow +/-0.1396263 mm/deg within 4e-6 mm, sum within 2e-6 mm; control with the front chain removed keeps the rear law.",
       "simulatorLaw": {
         "verdict": "AGREES",
@@ -2645,7 +2665,7 @@
       },
       "poweredMotion": "HEADLESS_COMPLETED",
       "mechanicalLaw": "SIMULATOR_AGREES",
-      "causalControl": "WEAK: control deletes the whole front chain rather than disengaging the mesh",
+      "causalControl": "PASS: disconnection removes the pinion; motor A still turns its axle while the racks leave the +/-8 mm/rad law by 24 mm (> 2 mm)",
       "browserLoad": "PROGRAM_COMPLETE_SYSTEM_CHROME",
       "savedProjectReplay": "NOT_RUN",
       "basicChecks": {
@@ -2667,6 +2687,18 @@
         "issues": [],
         "programErrors": [],
         "blocked": false
+      },
+      "promotionReview": {
+        "date": "2026-11-07",
+        "decision": "PROMOTED",
+        "reason": "opposed-rack-pinion-v1: each passive rack follows +/-8 mm per radian of the observed pinion (16T 94925, module 1 mm), signs from geometry, within 6e-6 mm (bound 0.3 mm); sum within 4e-6 mm. Frozen-output and 1 cm shift controls refused; pinion disconnection loses the law by 24 mm."
+      },
+      "promoted": {
+        "to": "established library (MODELS)",
+        "date": "2026-11-07",
+        "judge": "opposed-rack-pinion-v1",
+        "harness": "disconnection removes pinion",
+        "verified": "local native ordinary/strict/disconnected PASS (2026-11-07); hosted CI pending"
       }
     },
     {
@@ -2971,14 +3003,14 @@
       "program": "afterturn.bw",
       "programSha256": "c057262bda6aef8ee3e8b89e395ff031b426206abb899e5e36b70e60e7bbcc6a",
       "adaptation": "Licence path only; geometry and program unchanged. Supplied licence scope line named Travel Dial; corrected here. Needs the virtual SPIKE hub.",
-      "supplierClaims": "First cycle 4.6625 deg, inverse 0.0261 deg; fixed masses 0.0037 deg.",
+      "supplierClaims": "Corrected 2026-11-03: about 1.25 deg after the first cycle, undone by the inverse; fixed masses about 0.01 deg. The supplied 4.6625 deg (inverse 0.0261 deg; fixed masses 0.0037 deg) was measured with the #1494 rotor double count and is not the physical value.",
       "simulatorLaw": {
         "verdict": "AGREES",
-        "scope": "headless SPIKE: 4.6605 deg after cycle, 0.0220 after inverse; 900 x (0.12905-0.12387) = 4.659 predicted"
+        "scope": "native rotor, headless SPIKE (2026-11-03): strokes 0.027478/0.026102/0.026057/0.027474 platform deg per wheel deg vs predicted Iw/J 0.027464 (B=70) and 0.026077 (B=0); cycle 1.239 deg vs predicted 1.248 (bound 0.482), inverse -1.278 vs -1.248; superseded legacy scope: 4.6605 deg"
       },
       "poweredMotion": "HEADLESS_COMPLETED (cold 0/1000)",
       "mechanicalLaw": "SIMULATOR_AGREES",
-      "causalControl": "PASS (afterturn-fixed-masses: 0.003 deg)",
+      "causalControl": "PASS (afterturn-fixed-masses: ratio 0.02571-0.02572 at both shapes, cycle 0.013 deg within 0.463 bound)",
       "browserLoad": "PASS",
       "savedProjectReplay": "NOT_RUN",
       "browserRun": {
@@ -3003,6 +3035,20 @@
         "rotor": "native (0 !BW ROTOR_INERTIA native, #1573)",
         "measured": "headless direct VM: stroke at B=70 0.02749 platform/wheel, stroke at saved radii 0.02606 (law Iw/J 0.02608); first cycle -1.275 deg, after inverse -0.043 deg; control afterturn-fixed-masses strokes 0.02573/0.02573, cycle -0.009 deg",
         "reason": "The native rotor removes the #1494 double count; the cycle now gives 1.28 deg, consistent with 900 x (0.02749-0.02606) = 1.29 deg. The supplier claims (4.6625 deg) and lessons describe the old engine artefact and no longer agree. No afterturn judge is registered in QUALIFICATION_JUDGES; promotion needs a new independently reviewed judge with an independent J(B=70) prediction and corrected supplier claims and lessons."
+      },
+      "judgeReview": {
+        "date": "2026-11-03",
+        "judge": "afterturn-shape-cycle-v1",
+        "prediction": "independent: compiled per-collider masses (massProperties) about the yaw line, carts and rods posed by slider-crank kinematics (16 mm crank, 48 mm rods; carts 64.0 -> 51.0568 mm along the slider), Iw/J(0)=0.026077, Iw/J(70)=0.027464; native rotor carries no yaw momentum",
+        "tolerances": "stroke ratio 1 % (analytic free-pair rotor control bound); net cycle sum of the two strokes' 1 % bounds about the prediction from measured wheel travel; shape effect must exceed twice its bound",
+        "disconnection": "rod_left and rod_right removed: stroke ratios leave the reviewed prediction (max error 126 %)"
+      },
+      "promoted": {
+        "to": "established library (MODELS)",
+        "date": "2026-11-03",
+        "judge": "afterturn-shape-cycle-v1",
+        "harness": "disconnection removes rod_left, rod_right; fixed-mass control run under the same judge",
+        "verified": "local native ordinary/strict/control/disconnected PASS (2026-11-03); hosted CI pending"
       }
     },
     {
@@ -3015,10 +3061,10 @@
       "program": "afterturn.bw",
       "programSha256": "c057262bda6aef8ee3e8b89e395ff031b426206abb899e5e36b70e60e7bbcc6a",
       "adaptation": "Supplied physical control (rods parked on 2780 pins, carts fixed; two intended locked-hinges notices). Licence path only. Lessons written for this catalogue.",
-      "supplierClaims": "0.0037 deg after the first cycle.",
+      "supplierClaims": "Corrected 2026-11-03: about 0.01 deg after the first cycle (supplied 0.0037 deg, measured with the #1494 rotor double count).",
       "simulatorLaw": {
         "verdict": "AGREES",
-        "scope": "-0.0027 / +0.0029 deg after first cycle; constant 0.1225 deg per wheel degree"
+        "scope": "native rotor (2026-11-03): constant 0.0257 platform deg per wheel deg at both shapes (predicted 0.025715/0.025719); cycle 0.013 deg; superseded legacy 0.1225 deg per wheel degree"
       },
       "poweredMotion": "HEADLESS_COMPLETED",
       "mechanicalLaw": "SIMULATOR_AGREES",
@@ -3035,6 +3081,11 @@
         "pageErrors": 0,
         "nan": false,
         "simMs": 56733
+      },
+      "controlReview": {
+        "date": "2026-11-03",
+        "decision": "STAYS_EXPERIMENTAL",
+        "reason": "Physical control for Afterturn: it passes the control branch of afterturn-shape-cycle-v1 (constant ratio, no net cycle) and is run beside Afterturn in qualification; it remains experimental as the control, not a separate principle."
       }
     },
     {
@@ -3190,13 +3241,13 @@
     {
       "id": "obliquity-orrery",
       "title": "Obliquity Orrery — the tilt behind the seasons",
-      "placements": 52,
+      "placements": 59,
       "archive": "model-lab agent branch agent/bw-opencode-nav-r3-20261025/earth_tilt_seasons_daylength (task dir model.ldr/program.bw)",
       "originalLdrawSha256": "e32e214f363c19ecc84ee2e7c4ce59e7b9f4c874113e173116472d668bd55b2a",
       "canonicalLdrawSha256": "3d5b09ddf62e4912c4b68eb337e4f7e2170d72eb8bc296f8e963adfb57f41e86",
       "program": "obliquity-orrery.bw",
       "programSha256": "b49a1380c5b294a39379307c2e6435a8942845b382eee1fa7a18006a0aef3ba5",
-      "adaptation": "Repaired: axle_B moved from x=40 to x=80 so crank B has its frame hinge (the agent's parallelogram was never closed); program signs fixed (lambda = 45 - motor angle); base_rail_0 raised 1 LDU so three rails carry the frame (four exactly coplanar flat rails made the frame creep ~5 mm/s unpowered).",
+      "adaptation": "Repaired: axle_B moved from x=40 to x=80 so crank B has its frame hinge (the agent's parallelogram was never closed); program signs fixed (lambda = 45 - motor angle); the frame stands on three round feet pinned under the rails (four exactly coplanar flat rails made the frame creep ~5 mm/s unpowered, issue #1435).",
       "supplierClaims": "Built by the OpenCode builder agent bw-opencode-nav-r3-20261025 (deepseek-v4.1-flash, handoff v3); the agent reported itself blocked.",
       "simulatorLaw": {
         "verdict": "AGREES",
@@ -3206,7 +3257,7 @@
       "mechanicalLaw": "SIMULATOR_AGREES",
       "causalControl": "PASS (obliquity-orrery-turned-axis)",
       "browserLoad": "PASS",
-      "savedProjectReplay": "NOT_RUN",
+      "savedProjectReplay": "PASS (browser robotaddon15, head d1338fa0, Build run 43011878952 job 130510141073: original post-run project exported and fresh-context replay passed)",
       "browserRun": {
         "build": "405b046 (checkpoint-build-229)",
         "browser": "system Chrome, Run button, timeScale 4",
@@ -3219,9 +3270,9 @@
         "simMs": 62700
       },
       "promotionReview": {
-        "date": "2026-10-27",
-        "decision": "BLOCKED",
-        "reason": "Open issue #1460: the compiler ignores motor orientation, so a real build of the repaired orrery would turn the other way, into the half of the orbit that collides. Its judge passes in the simulator (#1455), but promotion waits for #1460."
+        "date": "2026-11-11",
+        "decision": "PROMOTED",
+        "reason": "#1460 closed. Registered judge obliquity-tilt-v1 (judgeObliquityTilt, scripts/lib/sim-lab-obliquity-judge.mjs): epsilon 22.49999 deg, solstice 45.0000 deg, orbit radius 16.0000 mm, cranks 16/16 mm and spacings 32/32 mm read from the compiled parts; hosted native run (COLD 500): declination error 0.0021 deg (gate 0.01), 1:1 drive error 0.0071 deg (gate 0.25), orbit radius error 0.00095 mm, span 90.3 deg, frame drift 0.00003 mm; frozen-output and 1 cm shift refused. Disconnection crank_pin_A: input 90.1 deg, encoder-law error 12.94 deg (lost, bar 2), judge refuses. Mutants from the real run: Earth tilt turned 90 deg follows its own law within 0.0019 deg and is refused (solstice -45 deg); Earth turning with its orbit refused. Handoff's crank-B cut also loses the law (22.55 deg; the free coupler swings, Earth longitude span 130 deg for 90 deg of crank). Four locked-hinges issues are rigid frame loops, declared in the contract. obliquity-orrery-turned-axis stays experimental as the control."
       }
     },
     {
@@ -3810,10 +3861,10 @@
       "title": "RimRun — equal weight, different roll",
       "placements": 506,
       "archive": "rimrun-addon.zip sha256 3d59bd7595790799bc4eefb0ac282ceafdcb4c8ad110869b15d453c5b5fa977f",
-      "canonicalLdrawSha256": "f09778a4a20fd4ab5bb72283a80c39152834f14a3fff3ba1037fdcf5ae8d426a",
+      "canonicalLdrawSha256": "9dc5d3d02086996fbb01ff002c701d8aa1e832ea209d06ea0f502a56d2692d69",
       "program": "rimrun.bw",
       "programSha256": "e260b0f1619ef8c5e352edf6d621d94e23386e73afa49a3615e0809f1af96532",
-      "adaptation": "Model, program and licence bytes unchanged from the package; the supplied lesson's links to the still-experimental afterturn and inertia-loop were dropped (lessons may link only established models); comparison lessons and the per-file comparison licence copies written here. Needs the virtual SPIKE hub (toolbar Run connects it).",
+      "adaptation": "Model, program and licence bytes unchanged from the package; the supplied lesson's links to the still-experimental afterturn and inertia-loop were dropped (lessons may link only established models); comparison lessons and the per-file comparison licence copies written here. Needs the virtual SPIKE hub (toolbar Run connects it). Q5 (2026-11-09): the loose SPIKE hub is pinned to the two motor posts with four 2780 friction pins, in the frame's incline orientation (the loose-part warning is gone), and the eight 32123b half bushes, which sat 7.5 LDU inside their 49295 wheels, now sit flush against the wheel faces. The program is unchanged.",
       "supplierClaims": "Rolling comparison PASS; complete native qualification FAIL (post-finish catch/settling, fault-stop hold speed) (supplier)",
       "simulatorLaw": {
         "verdict": "AGREES",
@@ -3821,20 +3872,33 @@
       },
       "poweredMotion": "HEADLESS_COMPLETED (SPIKE)",
       "mechanicalLaw": "SIMULATOR_AGREES",
-      "causalControl": "PASS (rimrun-swapped)",
+      "causalControl": "PASS: rimrun-swapped exchanges the ballast layouts, and the inner-ballast roller still leads, now in the right lane (ratio 1.0794, lead 20.8 mm). Disconnection removes all 44 ballast parts: the identical rollers' ratio falls to 1.0006 (< 1.039) and the judge refuses the run.",
       "browserLoad": "NOT_RUN",
       "savedProjectReplay": "NOT_RUN",
-      "noveltyNote": "Importer warns loose-part for the frame because the hub stands free beside the ramp (declared in ASSEMBLY.md); blocks promotion until mounted."
+      "noveltyNote": "The hub is mounted (Q5); prepareModel reports no issues.",
+      "promotionReview": {
+        "date": "2026-11-09",
+        "decision": "PROMOTED",
+        "reason": "Hub mounted and wheel collars seated (construction gate). Judge rolling-inertia-v1: a = g*sin(theta)/(1+I/(m r^2)) less the engine's default 0.05/s body damping, with I, m and r taken from the compiled colliders (I equals the engine's own tensor). Local native ordinary, strict, lane-swapped and disconnected qualification runs pass: inner/outer ratio 1.0816 against 1.0778 predicted (gate 2%), lead 21.2 mm, slip under 0.005%, incline 6.8428 deg, hub drift 0.02 mm. Each roller runs about 4% below its damped prediction (gate 5%); that residual is recorded, not explained. Manual browser controls, saved-project replay and export not run. Hosted results are recorded on the PR."
+      },
+      "judge": "rolling-inertia-v1",
+      "supplierChecksReview": {
+        "date": "2026-11-09",
+        "located": false,
+        "note": "The supplier's runner and judge, with their post-finish catch and fault-stop hold checks, are not in this repository and were not found elsewhere. Both behaviours were measured instead, on the real VM and engine with the virtual SPIKE hub the program needs (toolbar Run).",
+        "postFinishCatch": "PASS as measured: both rollers end in their catches about 318 mm down the track. The program ends 0.5 s after the gate returns, while a late roller can still be rebounding off its shoe (32 mm/s 40 ms after the finish, under 2 mm/s within 200 ms). Over the final second of a 3 s after-run: at most 3.6 mm/s frame to frame and at most 0.05 mm net movement, with the 150 N/m shoes slowly taking up the rollers' downhill weight (about 0.086 N). A check taken at the instant of finish would see the rebound; that is the likely cause of the supplier's declared failure, not confirmed without its check. The judge now checks rest over the final second (at most 10 mm/s and 1 mm net).",
+        "faultStopHold": "Behaves correctly as measured, but it is not a judged gate. In a test-only copy of the program with the upper watchdog limit lowered to 50 deg, the fault fired during the 400 deg/s release: the motor switched to hold within one 60 ms sample, the gate stopped at 63.4 deg (about 13 deg past the fault, consistent with 363 deg/s) and then held within 0.1 deg for 2 s. Without the virtual SPIKE hub (an unconnected direct run) the start-of-run hold is not applied, the gate drifts under gravity and the program faults during homing. That is not how the program is run."
+      }
     },
     {
       "id": "rimrun-swapped",
       "title": "RimRun — ballast layouts exchanged (comparison)",
       "placements": 506,
       "archive": "rimrun-addon.zip sha256 3d59bd7595790799bc4eefb0ac282ceafdcb4c8ad110869b15d453c5b5fa977f",
-      "canonicalLdrawSha256": "ec8760bfe2e870e3265b80569d085884054a3e567ccb490def72e969ffbdb498",
+      "canonicalLdrawSha256": "6febddbf521ae10eca34ca83978f041009863158513e977b8aaab1af57086d17",
       "program": "rimrun.bw",
       "programSha256": "e260b0f1619ef8c5e352edf6d621d94e23386e73afa49a3615e0809f1af96532",
-      "adaptation": "Model, program and licence bytes unchanged from the package; the supplied lesson's links to the still-experimental afterturn and inertia-loop were dropped (lessons may link only established models); comparison lessons and the per-file comparison licence copies written here. Needs the virtual SPIKE hub (toolbar Run connects it).",
+      "adaptation": "Model, program and licence bytes unchanged from the package; the supplied lesson's links to the still-experimental afterturn and inertia-loop were dropped (lessons may link only established models); comparison lessons and the per-file comparison licence copies written here. Needs the virtual SPIKE hub (toolbar Run connects it). Q5 (2026-11-09): same hub mount and collar seating as rimrun.",
       "supplierClaims": "as rimrun",
       "simulatorLaw": {
         "verdict": "AGREES",
@@ -3844,7 +3908,12 @@
       "mechanicalLaw": "SIMULATOR_AGREES",
       "causalControl": "IS_CONTROL",
       "browserLoad": "NOT_RUN",
-      "savedProjectReplay": "NOT_RUN"
+      "savedProjectReplay": "NOT_RUN",
+      "promotionReview": {
+        "date": "2026-11-09",
+        "decision": "STAYS_EXPERIMENTAL",
+        "reason": "Comparison variant and causal control for rimrun (rolling-inertia-v1); stays experimental by design."
+      }
     },
     {
       "id": "swayshift",
@@ -3992,7 +4061,7 @@
       "title": "Evenhand — counterbalanced two-joint arm",
       "placements": 97,
       "archive": "evenhand.ldr / evenhand-control.ldr / evenhand.bw (bare files, evenhand.ldr sha256 2ec879e420ce19e5, evenhand-control.ldr sha256 564966b5b9da4213, evenhand.bw sha256 e48a31ec36709f50)",
-      "canonicalLdrawSha256": "2ec879e420ce19e5291ccfba2b45d7ffa11c2965cdc05ca8e93ad3f134db9129",
+      "canonicalLdrawSha256": "73b23359937976e2e3e1af7136ad9536d9e6b48837eb22eab83b1645e95f7f82",
       "program": "evenhand.bw",
       "programSha256": "e48a31ec36709f504012d5f5ecb8db22f994ff9450908483dfd5d3c52a268413",
       "adaptation": "Supplied as bare files: MPD wrappers, licence, catalog entry, details and EN/DE lessons written here; model and program bytes unchanged. Needs the virtual SPIKE hub (toolbar Run connects it).",
@@ -4006,7 +4075,12 @@
       "causalControl": "PASS (evenhand-control)",
       "browserLoad": "NOT_RUN",
       "savedProjectReplay": "NOT_RUN",
-      "noveltyNote": "Positions alone cannot show the balance: the engine's motors hold any load (self-locking), so the evidence is holding torque, not sag."
+      "noveltyNote": "Positions alone cannot show the balance: the engine's motors hold any load (self-locking), so the evidence is holding torque, not sag.",
+      "promotionReview": {
+        "date": "2026-11-08",
+        "decision": "PROMOTED",
+        "reason": "Registered judge counterbalance-holding-torque-v1 (judgeEvenhand): at all 11 holds the static gravity moment of the distal bodies matches the held motor torque within 0.002 mN m; elbow < 0.002 mN m, shoulder 0.331-0.361 mN m; frozen-output (forearm) and 1 cm shift refused. Disconnection: forearm_weight_pin_-1_-20 removed, the inner counterweight's outer 3L pin 120 LDU behind the elbow axis. The elbow balance is the mirror condition sum m_i d_i = 0 about the elbow; removing that pin unbalances it by 0.35 g x 48 mm x g = 0.165 mN m (statics prediction 0.165), measured 0.166 mN m held at the elbow (loss bar 0.1, unchanged). The cold-settle sag stays inside the program's unchanged 3 deg start guard (shoulder -1.4 deg, elbow +1.0 deg) and all 11 arrivals complete (input travel 20.3 deg, disconnectInputDeg 19). Removing whole counterweight beams adds 0.63 mN m or more per beam and the motors' holding compliance sags the arm 3.4-17 deg in the 500 ms cold settle, so the guard faults; guard, settle time, thresholds and judge are unchanged. Hosted qualification and the construction gate pass on the PR head. Promoted to the established library; evenhand-control stays experimental as a control."
+      }
     },
     {
       "id": "evenhand-control",
@@ -4026,7 +4100,111 @@
       "mechanicalLaw": "SIMULATOR_AGREES",
       "causalControl": "IS_CONTROL",
       "browserLoad": "NOT_RUN",
-      "savedProjectReplay": "NOT_RUN"
+      "savedProjectReplay": "NOT_RUN",
+      "promotionReview": {
+        "date": "2026-11-07",
+        "decision": "STAYS_EXPERIMENTAL",
+        "reason": "Control of evenhand. In the qualification harness (500 ms cold settle) the unbalanced arm droops 13.5 deg before Run and the authored datum guard faults at stage 0."
+      }
+    },
+    {
+      "id": "helixgate",
+      "placements": 20,
+      "intakeRecord": "docs/data/robot-lab-nine-intakes-20261026.json",
+      "judge": "worm-reduction-v1",
+      "promotionReview": {
+        "date": "2026-11-08",
+        "decision": "PROMOTED",
+        "reason": "Operator decision 2026-11-07 removed the 50-piece qualification minimum; the honest count (20) stands. Hosted native ordinary, strict and disconnected qualification runs pass (worm-reduction-v1; disconnection removes worm_1start, disconnectInputDeg 717 = the program's own 3-degree completion tolerance on +720; frozenOutput gate_arm). The construction gate test/bw-sim-models-solid.test.mjs reports no findings. Promoted to the established library."
+      }
+    },
+    {
+      "id": "looprelay",
+      "placements": 54,
+      "intakeRecord": "docs/data/robot-lab-nine-intakes-20261026.json",
+      "judge": "chain-reversal-v1",
+      "promotionReview": {
+        "date": "2026-11-08",
+        "decision": "PROMOTED",
+        "reason": "Construction repair (Q1/Q2): axle_input moved 10 LDU outward along its own axis (y -100 to -110) so it ends at the motor face like every promoted SPIKE motor axle; gears and bearings unchanged. test/bw-sim-models-solid.test.mjs passes unchanged. Contract added (chain-reversal-v1, frozenOutput indicator_hand, disconnect chain_input16, disconnectInputDeg 178) and qualified by the hosted ordinary, strict and disconnected runs on the final head. Browser, saved-project replay, export and manual controls NOT_RUN (contract notRun)."
+      }
+    },
+    {
+      "id": "paritydial",
+      "placements": 31,
+      "intakeRecord": "docs/data/robot-lab-nine-intakes-20261026.json",
+      "judge": "parity-dials-v1",
+      "promotionReview": {
+        "date": "2026-11-08",
+        "decision": "PROMOTED",
+        "reason": "Construction repair (Q1/Q2): axle_drive moved 20 LDU outward along its own axis (y -90 to -110) so it ends at the motor face like every promoted SPIKE motor axle; gears and bearings unchanged. test/bw-sim-models-solid.test.mjs passes unchanged. Contract added (parity-dials-v1, frozenOutput dial_left, disconnect gear_drive, disconnectInputDeg 88) and qualified by the hosted ordinary, strict and disconnected runs on the final head. Browser, saved-project replay, export and manual controls NOT_RUN (contract notRun)."
+      }
+    },
+    {
+      "id": "counterslide",
+      "placements": 44,
+      "intakeRecord": "docs/data/robot-lab-nine-intakes-20261026.json",
+      "judge": "opposed-racks-v1",
+      "promotionReview": {
+        "date": "2026-11-08",
+        "decision": "PROMOTED",
+        "reason": "Construction repair (Q1/Q2): the eight 3L pins are turned end for end in place so each collar sits at a beam face instead of inside a housing hole; each rack with its jaw pins and jaw is moved 3 rack teeth (23.56 LDU, 3 x 2.5 pi) away from its end-stop pin, keeping the tooth phase with the 8-tooth pinion. The law is unchanged (equal and opposite rack travel, 4 mm per radian); only the open-jaw datum is 23.56 LDU wider on each side. test/bw-sim-models-solid.test.mjs passes unchanged. Contract added (opposed-racks-v1, frozenOutput rack_low, disconnect drive_pinion_8t, disconnectInputDeg 98) and qualified by the hosted ordinary, strict and disconnected runs on the final head. Browser, saved-project replay, export and manual controls NOT_RUN (contract notRun). Sweep note: the rest pose is clean; a static check along the commanded stroke is clean to 13.5 LDU of rack travel, and at the full -100 degree close (17.45 LDU) each rack end touches its 15100 end-stop pin by under 1 LDU (the original geometry overlapped it at rest)."
+      }
+    },
+    {
+      "id": "toggle-press",
+      "placements": 139,
+      "intakeRecord": "docs/data/robot-lab-nine-intakes-20261026.json",
+      "judge": "toggle-ram-v1",
+      "promotionReview": {
+        "date": "2026-11-07",
+        "decision": "PROMOTED",
+        "reason": "Construction repair (PR 1672): each doubled guide-post hole takes one 3L pin; pivot_bridge lowered 10 LDU to meet upper_toggle_UK so the 2L fixed_pivot_U ends at both faces (bridge axles 4L to 5L, inner bushes follow). test/bw-sim-models-solid.test.mjs passes unchanged; contract added and qualified by the hosted ordinary, strict and disconnected runs on the final head. Browser, saved-project replay, export and manual controls NOT_RUN (contract notRun)."
+      }
+    },
+    {
+      "id": "footfall",
+      "placements": 119,
+      "intakeRecord": "docs/data/robot-lab-nine-intakes-20261026.json",
+      "judge": "twelve-link-leg-v1",
+      "promotionReview": {
+        "date": "2026-11-07",
+        "decision": "PROMOTED",
+        "reason": "Construction repair (PR 1672): removed the redundant 2L base_pin_support_A_-120; the 3L support_A_foot_pin already spans foot, spacer and cross. test/bw-sim-models-solid.test.mjs passes unchanged; contract added and qualified by the hosted ordinary, strict and disconnected runs on the final head. Browser, saved-project replay, export and manual controls NOT_RUN (contract notRun)."
+      }
+    },
+    {
+      "id": "phasekeeper",
+      "placements": 79,
+      "intakeRecord": "docs/data/robot-lab-nine-intakes-20261026.json",
+      "judge": "double-cardan-v1",
+      "promotionReview": {
+        "date": "2026-11-07",
+        "decision": "PROMOTED",
+        "reason": "Construction repair (PR 1672): removed base_pin_120_-120 and base_pin_120_120; the tower axles already pass through base_rail_output and the base cross. test/bw-sim-models-solid.test.mjs passes unchanged; contract added and qualified by the hosted ordinary, strict and disconnected runs on the final head. Browser, saved-project replay, export and manual controls NOT_RUN (contract notRun)."
+      }
+    },
+    {
+      "id": "vectorsum",
+      "placements": 122,
+      "intakeRecord": "docs/data/robot-lab-nine-intakes-20261026.json",
+      "judge": "open-differential-v1",
+      "promotionReview": {
+        "date": "2026-11-07",
+        "decision": "PROMOTED",
+        "reason": "Construction repair (PR 1672): output_axle moved 2 LDU outward, clear of diff_cover_28t and still 8 of 10 LDU in the 12-tooth bevel. test/bw-sim-models-solid.test.mjs passes unchanged; contract added and qualified by the hosted ordinary, strict and disconnected runs on the final head. Browser, saved-project replay, export and manual controls NOT_RUN (contract notRun)."
+      }
+    },
+    {
+      "id": "pointweaver",
+      "placements": 116,
+      "intakeRecord": "docs/data/robot-lab-nine-intakes-20261026.json",
+      "judge": "five-bar-v1",
+      "promotionReview": {
+        "date": "2026-11-08",
+        "decision": "PROMOTED",
+        "reason": "Motor-foot mount redesign (Q3, lanes/2026-11-08-robot-q3-pointweaver.md): the eight thin foot pads and the four rear rail-to-cross 2L pins removed; the motor assemblies (motors, mounts, posts, feet and linkage) lowered 10 LDU onto the base rails, so each rear stack foot, rail and base cross is 60 LDU and one 3L pin fills it and still fastens rail to cross (base stays connected: no loose part), each front foot takes one 2L pin into its rail; the hub-section rear foot moved from z = -400 to -360 off the hub-mount hole; endpoint_marker_tip moved 10 LDU so its collar clears the thin marker. Planar x/z geometry, the law and the program are unchanged (128 to 116 placements). test/bw-sim-models-solid.test.mjs passes unchanged; contract added and qualified by the hosted ordinary, strict and disconnected runs on the final head. Browser, saved-project replay, export and manual controls NOT_RUN (contract notRun)."
+      }
     }
   ],
   "appVerification": {

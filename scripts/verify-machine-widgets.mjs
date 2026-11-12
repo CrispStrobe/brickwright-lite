@@ -16,7 +16,14 @@ try {
     const dismiss = page.getByTestId('bw-starter-backdrop').getByRole('button', {name: 'Not now'});
     if (await dismiss.count()) await dismiss.click();
     await page.evaluate(() => {
-        window.__widgetProof = {keys: [], mouse: []};
+        window.__widgetProof = {keys: [], mouse: [], stopCalls: 0};
+        const originalStop = window.bwStopMachineVideo;
+        if (typeof originalStop === 'function') {
+            window.bwStopMachineVideo = (...args) => {
+                window.__widgetProof.stopCalls++;
+                return originalStop(...args);
+            };
+        }
         let frame = 0;
         window.bwMirrorMachineVideo({
             widget: {name: 'Proof VGA', type: 'simplevga', source: 'video',
@@ -33,7 +40,17 @@ try {
         });
     });
     const consoleFace = page.getByTestId('bw-machine-console');
-    await consoleFace.waitFor();
+    try {
+        await consoleFace.waitFor();
+    } catch (error) {
+        const evidence = await page.evaluate(() => ({
+            dock: localStorage.getItem('bw-debug-dock'),
+            consoleCount: document.querySelectorAll('[data-testid="bw-machine-console"]').length,
+            debugPanels: document.querySelectorAll('[data-debug-panel]').length,
+            stopCalls: window.__widgetProof?.stopCalls ?? null,
+        }));
+        throw new Error(`machine console did not become visible: ${JSON.stringify(evidence)}`, {cause: error});
+    }
     const canvas = page.getByTestId('bw-machine-canvas');
     const box = await canvas.boundingBox();
     assert.ok(box.width >= 300 && box.height >= 300, 'Widgets VGA fills the pane');

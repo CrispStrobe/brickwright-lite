@@ -726,6 +726,7 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
     const jsonArray=(array,node,target,origin=null)=>{
         const allocation=token(node,target,array.map(value=>Array.isArray(value)?{jsonArray:value,identity:{}}:{raw:[typeof value==='string'?10:4,String(value)]}),array.length);
         if(origin)allocation.origin=origin;
+        allocation.exactSlots=true;
         for(const value of allocation.items)if(value.jsonArray)value.origin=allocation;
         return allocation;
     };
@@ -1095,11 +1096,32 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         return c.writers.some(o=>o!==w&&o.node===first&&o.scope===scope&&o.value&&!resetValue(o.value.node)&&!invalid.has(o.node)&&
             !(o.value.cell===c)&&!(o.value.node&&readsCell(o.target,o.value.node,c)));
     };
+    // The occurrence is in the FIRST statement of the then-branch of
+    // `if truthy(x) then ... [else ...]` on
+    // this very cell, and that statement calls nothing: no code runs between
+    // the test and the read, so an absent (falsy) value of x cannot reach it.
+    // A null/undefined reset writer and the possibly-absent type drop out;
+    // every other writer still needs its own proof.
+    const truthyGuarded=(c,at)=>{
+        if(!resetFlowReady||!c||!at||c.directBad)return false;
+        const scope=owners.get(at);if(!scope||scope.invalid)return false;
+        const st=statementOf(at);if(!st||invalid.has(st))return false;
+        const target=scope.target,parent=block(target,st.parent);
+        if(!parent||!['control_if','control_if_else'].includes(parent.opcode)||parent.mutation!=null||invalid.has(parent)||owners.get(parent)!==scope||
+            !exactKeys(parent,parent.opcode==='control_if'?['CONDITION','SUBSTACK']:['CONDITION','SUBSTACK','SUBSTACK2']))return false;
+        if(target.blocks[parent.inputs.SUBSTACK?.[1]]!==st)return false;
+        const truthy=block(target,parent.inputs.CONDITION?.[1]);
+        if(truthy?.opcode!=='arrays_valueTruthy'||truthy.mutation!=null||invalid.has(truthy)||!exactKeys(truthy,['VALUE']))return false;
+        const read=input(truthy,'VALUE',target),cell=read?.cell||(read?.node&&binding(target,read.node));
+        if(cell!==c||conditionCalls(target,st))return false;
+        return true;
+    };
     const computingCells=new Set();
     const cellTypesAt=(c,at)=>{
         observeSourceDependency(c);
         if(!c||c.directBad||!at||computingCells.has(c))return new Set(c?c.types:[bad]);
-        const live=c.writers.filter(w=>!killedReset(c,w,at)),guarded=new Set(live.filter(w=>falsyGuarded(c,w,at)));
+        const truthy=truthyGuarded(c,at);
+        const live=c.writers.filter(w=>!killedReset(c,w,at)&&!(truthy&&resetValue(w.value?.node))),guarded=new Set(live.filter(w=>truthy||falsyGuarded(c,w,at)));
         if(live.length===c.writers.length&&!guarded.size)return new Set(c.types);
         computingCells.add(c);
         try{
@@ -1119,6 +1141,79 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
     const afterInActivation=(node,at,creation)=>{const scope=owners.get(at),later=statementOf(node),statement=statementOf(at);
         return !!scope&&!!creation&&owners.get(node)===scope&&owners.get(creation)===scope&&!!later&&!!statement&&later!==statement&&
             !!scope.executedBefore.get(later)?.has(statement)&&!!scope.executedBefore.get(statement)?.has(creation);};
+    const copySlots=new Set();
+    // Exact slots of ONE allocation at an occurrence: its exact base slots
+    // (literal/JSON items, or a proved whole-copy) followed by the VALUE of
+    // each literal-expansion push that definitely executed before the
+    // occurrence, in order.
+    // Every other mutation whose receiver may be this allocation (aliases
+    // included, since receivers are typed by allocation) must come after it;
+    // a push to a receiver that is not exactly this allocation refuses.
+    const beforeAt=(node,at)=>afterAt(at,node);
+    // Slot pushes are only a staged literal list, proved structurally (never
+    // by its name): a non-global, non-formal local written once with a fresh
+    // empty list; every read of it anywhere (captures included) is either the
+    // receiver of a push of an inert constant or of another staged list, or
+    // its single store; it escapes nowhere else. A user push keeps the
+    // all-element-writer policy.
+    const INERT=new Set(['operator_add','arrays_valueBinary','arrays_valueUnary','arrays_valueCompare','arrays_specialValue']);
+    const stagedCells=new Map(),stagedPending=new Set();
+    const inertValue=(target,slot,path=new Set())=>{
+        if(!Array.isArray(slot))return false;const raw=slot[1];
+        if(Array.isArray(raw))return [4,10].includes(raw[0]);
+        const n=block(target,raw);if(!n||path.has(n)||invalid.has(n))return false;path.add(n);
+        if(n.opcode==='arcade_getLocal'){const c=binding(target,n);return !!c&&stagedCell(c);}
+        if(!INERT.has(n.opcode))return false;
+        return Object.values(n.inputs||{}).every(s=>inertValue(target,s,path));
+    };
+    const readsOf=c=>{const out=[];for(const t of targets)for(const [id,n] of Object.entries(t.blocks||{}))if(['arcade_getLocal','arcade_getCaptured'].includes(n?.opcode)&&binding(t,n)===c)out.push({target:t,id,node:n});return out;};
+    const stagedCell=c=>{
+        if(stagedCells.has(c))return stagedCells.get(c);if(stagedPending.has(c))return false;stagedPending.add(c);
+        let ok=false;
+        try{
+            const w=c.writers;
+            if(c.global||c.formal||c.directBad||w.length!==1||w[0].argument||w[0].node?.opcode!=='arcade_setLocal')return false;
+            const v=w[0].value?.node;
+            if(!v||v.opcode!=='arrays_createReference'||!exactKeys(v,['VALUES'])||!Array.isArray(v.inputs.VALUES?.[1])||literal(v,'VALUES',w[0].target)!=='[]')return false;
+            let stores=0;
+            for(const {target,id,node} of readsOf(c)){
+                if(node.opcode!=='arcade_getLocal')return false;
+                const parent=block(target,node.parent);if(!parent)return false;
+                const slotOf=name=>parent.inputs?.[name]?.[1]===id;
+                if(parent.opcode==='arrays_mutateReference'&&exactKeys(parent,['ARRAY','OP','INDEX','VALUE'])&&literal(parent,'OP',target)==='push'&&slotOf('ARRAY')){
+                    if(!inertValue(target,parent.inputs.VALUE))return false;continue;
+                }
+                const store=slotOf('VALUE')&&(['data_setvariableto','arcade_setLocal'].includes(parent.opcode)||
+                    parent.opcode==='arrays_mutateReference'&&literal(parent,'OP',target)==='push'&&!slotOf('ARRAY'));
+                if(!store||++stores>1)return false;
+            }
+            ok=stores===1;return ok;
+        }finally{stagedPending.delete(c);stagedCells.set(c,ok);}
+    };
+    const literalPush=(target,node)=>{const r=input(node,'ARRAY',target)?.node;if(r?.opcode!=='arcade_getLocal')return false;const c=binding(target,r);return !!c&&stagedCell(c);};
+    const slotsAt=(a,at)=>{
+        if(!a||a.array!==true||!at)return null;
+        const base=typeof a.copySlots==='function'?a.copySlots():a.exactSlots===true&&Array.isArray(a.items)&&a.items.length===a.minLength?a.items:null;
+        // Element types alone (bad = a possible non-Array value) say nothing
+        // about slots; unknown operations are census shrinks, and a named
+        // Array needs its recorded named writes, all after the occurrence.
+        if(!base||![...(a.shrinks||[])].every(node=>afterAt(node,at)))return null;
+        // A named write that runs once before this allocation is created (same
+        // once-only scope, e.g. the reset `delete` of the previous registry
+        // entry) cannot touch it.
+        if(['arrays_createEmpty','arrays_create1D','arrays_create2D'].includes(a.node?.opcode)&&!(Array.isArray(a.namedMutations)&&a.namedMutations.every(r=>afterAt(r.node,at)||afterAt(a.node,r.node))))return null;
+        const pushes=[];
+        for(const {target,node} of mutations){
+            const receiver=readInput(input(node,'ARRAY',target));if(!receiver.has(a)||afterAt(node,at))continue;
+            // literalPush implies a push: every read of a staged list is a push
+            // receiver or its store, so no other operation can name it.
+            if(!literalPush(target,node)||receiver.size!==1||!beforeAt(node,at)||!a.node||!afterAt(node,a.node))return null;
+            pushes.push({target,node});
+        }
+        for(let i=0;i<pushes.length;i++)for(let j=i+1;j<pushes.length;j++)if(!beforeAt(pushes[i].node,pushes[j].node)&&!beforeAt(pushes[j].node,pushes[i].node))return null;
+        pushes.sort((x,y)=>beforeAt(x.node,y.node)?-1:1);
+        return [...base,...pushes.map(({target,node})=>input(node,'VALUE',target))];
+    };
     const positionalStable=(a,at)=>[...(a.shrinks||[])].every(node=>afterAt(node,at))&&
         (!a.elements.has(bad)||Array.isArray(a.namedMutations)&&a.namedMutations.every(r=>afterAt(r.node,at)||afterInActivation(r.node,at,a.node)))&&
         mutations.every(({target,node})=>!readInput(input(node,'ARRAY',target)).has(a)||node.opcode==='arrays_mutateReference'&&literal(node,'OP',target)==='push'||afterAt(node,at));
@@ -1291,7 +1386,8 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
             if(item.opcode!=='arrays_referenceValues'||!exactKeys(item,['VALUE','REST']))return new Set([bad]);items.push(input(item,'VALUE',target));edge=item.inputs.REST?.[1];
         }
         if(!Array.isArray(edge)||edge[0]!==10)return new Set([bad]);let tail;try{tail=JSON.parse(edge[1]);}catch{return new Set([bad]);}if(!Array.isArray(tail)||items.length&&tail.length)return new Set([bad]);
-        return new Set([items.length?token(node,target,items):jsonArray(tail,node,target)]);
+        if(items.length){const t=token(node,target,items);t.exactSlots=true;return new Set([t]);}
+        return new Set([jsonArray(tail,node,target)]);
     };
     const returnsAlways=(target,id,path=new Set())=>{
         if(!id||path.has(id))return false;const n=block(target,id);if(!n)return false;const next=new Set([...path,id]);if(n.opcode==='arcade_returnValue')return true;
@@ -1303,6 +1399,83 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         if(reading.has(node))return new Set([bad]);
         reading.add(node);try{return computeNode(target,node);}finally{reading.delete(node);}
     }
+    // Call-site pruning of a generated lookup: when the argument for P is a
+    // constant string literal and the body is exactly (parameter declarations,
+    // then) `IF P ==/=== <same literal> THEN return X` and a fallback, with no
+    // writer of P but call arguments, the IF is taken and the call yields X.
+    // Any other shape (else branch, THEN statement other than a local store or push, other writer,
+    // non-literal argument or comparison operand) returns null: no pruning.
+    const constantText=value=>{
+        if(!value)return null;if(Array.isArray(value.raw))return value.raw[0]===10&&typeof value.raw[1]==='string'?value.raw[1]:null;
+        const n=value.node;return n?.opcode==='text'&&n.shadow&&exactKeys(n,[],['TEXT'])&&typeof n.fields?.TEXT?.[0]==='string'?n.fields.TEXT[0]:null;
+    };
+    // A global read at a lookup call is the constant S only when the whole
+    // project has exactly one write of that variable: one top-level-reachable
+    // `set G to "S"` (a literal) that definitely ran earlier in the same
+    // once-only script as the call. No other block may name the variable
+    // except plain reads, and no slider may control it.
+    const globalConstantText=(value,at)=>{
+        const c=value?.cell||(value?.node?.opcode==='data_variable'?binding(value.target,value.node):null);
+        // Every global writer (set/change) names the variable in its VARIABLE
+        // field, so the block scan below admits exactly one: this w.
+        if(!c?.global||c.directBad||!c.writers.length)return null;
+        const w=c.writers[0];
+        if(w.argument||!w.node||!exactKeys(w.node,['VALUE'],['VARIABLE'])||invalid.has(w.node)||w.scope?.invalid)return null;
+        // A change-by writer carries no value (null), so only a literal set passes.
+        const id=w.node.fields?.VARIABLE?.[1],text=constantText(w.value);
+        if(typeof id!=='string'||text===null||globalCell(w.target,id)!==c)return null;
+        // Read-only watchers (default/large) cannot write; any slider or other
+        // monitor mode for this variable, visible or not, refuses.
+        const name=w.node.fields.VARIABLE[0];
+        if(!Array.isArray(project.monitors??[])||(project.monitors||[]).some(m=>(m?.id===id||m?.params?.VARIABLE===name||String(m?.id||'').includes(id))&&!['default','large'].includes(m?.mode)))return null;
+        for(const t of targets)for(const b of Object.values(t.blocks||{})){
+            if(!b||b===w.node)continue;
+            if(b.fields?.VARIABLE?.[1]===id&&b.opcode!=='data_variable')return null;
+        }
+        return afterAt(at,w.node)?text:null;
+    };
+    const prunedLookupReturn=callNode=>{
+        const call=calls.find(c=>c.node===callNode),fn=call?.fn;
+        if(!fn||fn.invalid||fn.unknownEntry||implicitEntries.has(fn)||!call.args||call.args.length!==fn.params.length)return null;
+        let first=block(fn.target,fn.root.next);const skipped=new Set();
+        while(first?.opcode==='arcade_declareParameterConstraint'&&!skipped.has(first)){skipped.add(first);first=block(fn.target,first.next);}
+        if(first?.opcode!=='control_if'||invalid.has(first)||!exactKeys(first,['CONDITION','SUBSTACK']))return null;
+        const condition=input(first,'CONDITION',fn.target).node;
+        if(condition?.opcode!=='arrays_valueCompare'||!exactKeys(condition,['LEFT','RIGHT'],['OP'])||!['==','==='].includes(literal(condition,'OP',fn.target)))return null;
+        const left=input(condition,'LEFT',fn.target).node,expected=constantText(input(condition,'RIGHT',fn.target));
+        if(left?.opcode!=='arcade_getLocal')return null;
+        const index=fn.params.indexOf(literal(left,'NAME',fn.target)),c=index>=0?binding(fn.target,left):null;
+        if(!c||c!==localCell(fn,fn.params[index])||c.directBad||!c.writers.every(w=>w.argument))return null;
+        // A non-literal comparison operand (null) never equals a literal argument.
+        const argument=constantText(call.args[index])??globalConstantText(call.args[index],callNode);if(argument===null||argument!==expected)return null;
+        // The THEN may first build a fresh local list, exactly as the re-imported
+        // fresh-frames lookup does: `set local L to []`, then pushes onto such an
+        // L of an inert value, a staged list, or a copy of a constant frame image.
+        // No global store, call, other target or nested control may precede the
+        // single return.
+        const literalSlot=slot=>Array.isArray(slot?.[1])&&[4,10].includes(slot[1][0]);
+        const builderValue=slot=>{
+            if(inertValue(fn.target,slot))return true;
+            const clone=typeof slot?.[1]==='string'?block(fn.target,slot[1]):null;
+            if(clone?.opcode!=='arcade_cloneImage'||!exactKeys(clone,['IMAGE']))return false;
+            const frame=input(clone,'IMAGE',fn.target).node;
+            return frame?.opcode==='arcade_frameImage'&&exactKeys(frame,['KEY','INDEX','TEMPLATE','START','COUNT'])&&Object.values(frame.inputs).every(literalSlot);
+        };
+        let only=block(fn.target,first.inputs.SUBSTACK?.[1]);const built=new Set(),fresh=new Set();
+        while(only&&!invalid.has(only)&&!built.has(only)){
+            if(only.opcode==='arcade_setLocal'&&exactKeys(only,['NAME','VALUE'])){
+                const name=literal(only,'NAME',fn.target),v=input(only,'VALUE',fn.target).node;
+                if(typeof name!=='string'||fn.params.includes(name)||v?.opcode!=='arrays_createReference'||!exactKeys(v,['VALUES'])||!Array.isArray(v.inputs.VALUES?.[1])||literal(v,'VALUES',fn.target)!=='[]')return null;
+                fresh.add(name);
+            }else if(only.opcode==='arrays_mutateReference'&&exactKeys(only,['ARRAY','OP','INDEX','VALUE'])&&literal(only,'OP',fn.target)==='push'){
+                const receiver=input(only,'ARRAY',fn.target).node;
+                if(receiver?.opcode!=='arcade_getLocal'||!fresh.has(literal(receiver,'NAME',fn.target))||!builderValue(only.inputs.VALUE))return null;
+            }else break;
+            built.add(only);only=block(fn.target,only.next);
+        }
+        if(only?.opcode!=='arcade_returnValue'||only.next!=null||only.mutation!=null||invalid.has(only)||!exactKeys(only,['VALUE']))return null;
+        return input(only,'VALUE',fn.target);
+    };
     function computeNode(target,node){
         if(!node||invalid.has(node)||owners.get(node)?.invalid)return new Set([bad]);
         const c=binding(target,node);if(c)return cellTypesAt(c,node);
@@ -1328,6 +1501,27 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
                     try{const l=operand('ARRAY'),r=operand('OTHER');if(!singleArray(new Set(l))||!singleArray(new Set(r)))return 0;
                         return Math.min(...l.map(a=>a===t?0:minimumAt(a,node)))+Math.min(...r.map(a=>a===t?0:minimumAt(a,node)));}
                     finally{concatLengths.delete(t);}}});
+            }
+            // Per-slot facts through a whole-copy: slice() with both bounds
+            // omitted copies every slot; a.concat(b) holds a's slots then b's.
+            // Each operand must be ONE allocation with exact literal slots
+            // (factory/JSON literal, or such a copy) that no mutation, named
+            // write or shrink can have touched before this copy executes; a
+            // push is not exempt because concat needs the exact left length.
+            if(!Object.getOwnPropertyDescriptor(t,'items').get){
+                t.copySlots=()=>{
+                    if(copySlots.has(t))return null;copySlots.add(t);
+                    try{
+                        if(node.opcode==='arrays_referenceSlice'){const omitted=name=>{const v=input(node,name,target);return !!v?.node&&fixedUndefined(v.node);};if(!omitted('START')||!omitted('END'))return null;}
+                        const out=[];
+                        for(const name of node.opcode==='arrays_referenceConcat'?['ARRAY','OTHER']:['ARRAY']){
+                            const source=[...readInput(input(node,name,target))];
+                            const slots=source.length===1?slotsAt(source[0],node):null;
+                            if(!slots)return null;out.push(...slots);
+                        }
+                        return out;
+                    }finally{copySlots.delete(t);}};
+                Object.defineProperty(t,'items',{configurable:true,enumerable:true,get(){return t.copySlots()||[];}});
             }
             if(node.opcode==='arrays_referenceSlice'&&!Object.getOwnPropertyDescriptor(t,'minLength').get){
                 Object.defineProperty(t,'minLength',{configurable:true,enumerable:true,get(){
@@ -1367,6 +1561,8 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
                 if(index!==null&&Number.isInteger(index)&&index>=0&&Array.isArray(a.items)&&index<a.items.length&&positionalStable(a,node)){
                     for(const item of readInput(a.items[index]))result.add(item);continue;
                 }
+                const slots=index!==null&&Number.isInteger(index)&&index>=0?slotsAt(a,node):null;
+                if(slots&&index<slots.length){for(const item of readInput(slots[index]))result.add(item);continue;}
                 for(const item of a.elements)result.add(item);
             }return result;
         }
@@ -1384,6 +1580,7 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         if(node.opcode==='arcade_spriteProperty'){const w=spriteDataReady?spriteDataWriter(target,node):null;return w?readInput(w.value):new Set([bad]);}
         if(node.opcode==='arcade_objectField'){const f=literal(node,'FIELD',target);return !dynamicFields&&typeof f==='string'&&exactKeys(node,['OBJECT','FIELD'])&&cells.has('field:'+f)?new Set(fieldCell(f).types):new Set([bad]);}
         if(node.opcode==='arcade_callFunction'){
+            const pruned=prunedLookupReturn(node);if(pruned)return readInput(pruned);
             const call=calls.find(call=>call.node===node);if(!call?.fn||call.fn.invalid||!call.args||!returnsAlways(target,call.fn.root.next))return new Set([bad]);
             const through=passthroughIndex(call.fn);if(through>=0)return readInput(call.args[through]);
             const out=new Set();for(const value of call.fn.returns)for(const type of readInput(value))out.add(type);return out;
@@ -1880,9 +2077,41 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         return inits.length===1&&inits[0].scope===scope&&zero(inits[0].value)&&steps.length>=1&&steps.every(w=>step(w.value))&&
             !!scope.executedBefore.get(loop)?.has(inits[0].node)&&!!scope.executedBefore.get(loop)?.has(a.writers[0].node);
     };
+    // A constant integer index: literals, + - * of constants (Scratch operators
+    // or the value binary block), and a call of a closed procedure whose only
+    // statement returns such an expression of its parameters, given constant
+    // arguments. PXT and Lite compute the same small integer.
+    const constIndex=(value,env=null,depth=0)=>{
+        if(!value||depth>16)return null;
+        if(value.raw)return [4,5,6,7,8].includes(value.raw[0])&&String(value.raw[1]).trim()!==''&&Number.isFinite(Number(value.raw[1]))?Number(value.raw[1]):null;
+        const {target,node}=value;if(!node||invalid.has(node))return null;
+        const num=n=>Number.isSafeInteger(n)&&Math.abs(n)<2**31?n:null;
+        if(node.shadow&&node.opcode==='math_number')return num(Number(node.fields?.NUM?.[0]));
+        if(['operator_add','operator_subtract','operator_multiply'].includes(node.opcode)&&exactKeys(node,['NUM1','NUM2'])){
+            const l=constIndex(input(node,'NUM1',target),env,depth+1),r=constIndex(input(node,'NUM2',target),env,depth+1);if(l===null||r===null)return null;
+            return num(node.opcode==='operator_add'?l+r:node.opcode==='operator_subtract'?l-r:l*r);}
+        if(node.opcode==='arrays_valueBinary'&&exactKeys(node,['LEFT','RIGHT'],['OP'])&&['+','-','*'].includes(literal(node,'OP',target))){
+            const l=constIndex(input(node,'LEFT',target),env,depth+1),r=constIndex(input(node,'RIGHT',target),env,depth+1),op=literal(node,'OP',target);if(l===null||r===null)return null;
+            return num(op==='+'?l+r:op==='-'?l-r:l*r);}
+        if(node.opcode==='arcade_getLocal'&&env&&owners.get(node)===env.fn){const name=literal(node,'NAME',target);return env.values.has(name)?env.values.get(name):null;}
+        if(node.opcode==='arcade_callFunction'){
+            const call=calls.find(c=>c.node===node),fn=call?.fn;
+            if(!fn||fn.invalid||fn.unknownEntry||implicitEntries.has(fn)||!call.args||call.args.length!==fn.params.length)return null;
+            // Parameter-constraint declarations only check arguments at entry
+            // (a mismatch faults, so no value is returned); then one return.
+            let only=block(fn.target,fn.root.next);const skipped=new Set();
+            while(only?.opcode==='arcade_declareParameterConstraint'&&!skipped.has(only)){skipped.add(only);only=block(fn.target,only.next);}
+            if(only?.opcode!=='arcade_returnValue'||only.next!=null||only.mutation!=null||!exactKeys(only,['VALUE']))return null;
+            const values=new Map();
+            for(let i=0;i<fn.params.length;i++){const v=constIndex(call.args[i],env,depth+1);if(v===null)return null;values.set(fn.params[i],v);}
+            return constIndex(input(only,'VALUE',fn.target),{fn,values},depth+1);
+        }
+        return null;
+    };
     const presentAt=(allocation,target,node,qualifies)=>{
         if(forOfPresent(allocation,target,node))return true;
-        const length=minimumAt(allocation,node,qualifies),index=literalNumber(target,node,'INDEX');
+        const literalIndex=literalNumber(target,node,'INDEX');
+        const length=minimumAt(allocation,node,qualifies),index=literalIndex!==null?literalIndex:node.opcode==='arrays_referenceItem'?constIndex(input(node,'INDEX',target)):null;
         return node.opcode==='arrays_referenceRandom'||node.opcode==='arrays_referenceTake'&&['pop','shift'].includes(literal(node,'OP',target))?length>0:index!==null&&Number.isInteger(index)&&index>=0&&index<length;
     };
     // Monotone producer flow handles genuine alias SCCs with an allocation;
@@ -1988,7 +2217,7 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         // A literal value (JSON item or literal input) is initialized; it is an
         // Array only through jsonArray, which singleArray still checks.
         if(!value)return false;if(value.jsonArray||value.raw)return true;
-        const initializedCell=(c,scope,at)=>{observeSourceDependency(c);if(!available(c,scope,at))return false;if(checkingWriterInitialization.has(c))return true;checkingWriterInitialization.add(c);try{const live=c.directBad?c.writers:c.writers.filter(w=>!killedReset(c,w,at));return live.length>0&&live.every(w=>w.value&&(initialized(w.value)||!c.directBad&&falsyGuarded(c,w,at)&&w.value.node?.opcode==='arrays_referenceItem'&&initialized(input(w.value.node,'ARRAY',w.target))));}finally{checkingWriterInitialization.delete(c);}};
+        const initializedCell=(c,scope,at)=>{observeSourceDependency(c);if(!available(c,scope,at))return false;if(checkingWriterInitialization.has(c))return true;checkingWriterInitialization.add(c);try{const truthy=truthyGuarded(c,at),live=c.directBad?c.writers:c.writers.filter(w=>!killedReset(c,w,at)&&!(truthy&&resetValue(w.value?.node)));return live.length>0&&live.every(w=>w.value&&(initialized(w.value)||!c.directBad&&falsyGuarded(c,w,at)&&w.value.node?.opcode==='arrays_referenceItem'&&initialized(input(w.value.node,'ARRAY',w.target))));}finally{checkingWriterInitialization.delete(c);}};
         if(value.cell)return initializedCell(value.cell,owners.get(value.at),value.at);
         if(!value.node)return false;const {target,node}=value;if(path.has(node))return false;const next=new Set([...path,node]),c=binding(target,node);
         if(c)return initializedCell(c,owners.get(node),node);
@@ -2003,6 +2232,7 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
             const getter=globalGetterCell(node);
             if(getter)return initializedCell(getter,owners.get(node),node);
             const passing=calls.find(c=>c.node===node);if(passing?.fn&&!passing.fn.invalid&&passing.args&&passthroughIndex(passing.fn)>=0)return initialized(passing.args[passthroughIndex(passing.fn)],next);
+            const pruned=prunedLookupReturn(node);if(pruned)return initialized(pruned,next);
             const call=calls.find(c=>c.node===node);return !!call?.fn&&!call.fn.invalid&&!!call.args&&call.args.every(arg=>singleArray(readInput(arg))?initialized(arg,next):true)&&call.fn.returns.every(result=>initialized(result,next));
         }
         if(['arrays_referenceSlice','arrays_referenceConcat','arrays_referenceItem','arrays_referenceTake','arrays_referenceRandom','arrays_mutateReference'].includes(node.opcode)){
@@ -2011,7 +2241,12 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
                 const receiver=readInput(input(node,'ARRAY',target));if(!singleArray(receiver))return false;
                 for(const allocation of receiver){
                     if(!presentAt(allocation,target,node,(t,mutation)=>initialized(input(mutation,'ARRAY',t),next)))return false;
+                    // A proved exact slot read needs only that slot's own value.
+                    const index=node.opcode==='arrays_referenceItem'?literalNumber(target,node,'INDEX'):null;
+                    const slots=index!==null&&Number.isInteger(index)&&index>=0?slotsAt(allocation,node):null;
+                    if(slots&&index<slots.length){if(!initialized(slots[index],next))return false;continue;}
                     for(const source of allocation.sources||[])if(!initialized(source,next))return false;
+
                 }
             }
             return true;

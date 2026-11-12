@@ -1,0 +1,69 @@
+# Toggle Press — approach dead centre, dwell, and return
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright (c) 2026 CrispStrobe
+# Finite one-cycle experiment for models/toggle-press.ldr.
+# Reload/reset the model to its saved pose before Run. Motor A must begin within 2 degrees of zero.
+# A is the only powered input. The guided ram and knee linkage are passive outputs.
+# Targets are absolute unwrapped encoder angles using a fresh encoder reading for every move.
+# Speeds are degrees per second. The permitted programmed envelope is -80 to 0 degrees.
+# Do not command beyond -82 degrees: dead centre is analytically near -85.46 degrees and is not a physical stop.
+DEVICE SPIKE
+GLOBAL targetA = 0
+GLOBAL speedA = 12
+GLOBAL phase = 0
+GLOBAL done = 0
+GLOBAL fault = 0
+WHEN flag clicked:
+  set targetA to 0
+  set speedA to 12
+  set phase to 0
+  set done to 0
+  set fault to 0
+  IF (lab status) = "no-model" THEN:
+    set fault to 1
+    say "Load Toggle Press and reset its saved pose before running."
+    stop all
+  lab start
+  IF (abs of (lab motor A angle)) > 2 THEN:
+    set fault to 1
+    broadcast "Toggle Press fault" and wait
+    stop all
+  lab stop motor A hold
+  reset timer
+  broadcast "Toggle Press watchdog"
+  wait 0.25 seconds
+  set phase to 1
+  set targetA to -80
+  set speedA to 12
+  broadcast "Toggle Press move A" and wait
+  wait 1 seconds
+  set phase to 2
+  set targetA to 0
+  set speedA to 18
+  broadcast "Toggle Press move A" and wait
+  lab stop motor A hold
+  wait 0.25 seconds
+  IF (abs of (targetA - (lab motor A angle))) > 2 THEN:
+    set fault to 1
+    broadcast "Toggle Press fault" and wait
+    stop all
+  set phase to 99
+  set done to 1
+  say "Toggle Press cycle complete. Compare ram travel and reset before repeating."
+WHEN I receive "Toggle Press move A":
+  lab run motor A for (targetA - (lab motor A angle)) degrees at speedA degrees per second
+  lab stop motor A hold
+  IF (abs of (targetA - (lab motor A angle))) > 2 THEN:
+    set fault to 1
+    broadcast "Toggle Press fault" and wait
+    stop all
+WHEN I receive "Toggle Press fault":
+  lab stop motor A brake
+  say "Motor A missed its permitted pose or time. Inspect the linkage and reload the saved model."
+WHEN I receive "Toggle Press watchdog":
+  REPEAT UNTIL (done = 1):
+    IF (timer) > 30 THEN:
+      set fault to 1
+      broadcast "Toggle Press fault" and wait
+      stop all
+    wait 0.05 seconds

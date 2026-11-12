@@ -171,24 +171,18 @@
 0 !BW ID crank_knee_axle_C
 1 4 0 -20 -60 0 1 0 1 0 0 0 0 -1 3706.dat
 0 !BW ID guide_post_pin_100_200
-1 0 100 120 190 0 0 -1 0 1 0 1 0 0 2780.dat
-0 !BW ID tower_join_100_220_120
-1 0 100 120 210 0 0 -1 0 1 0 1 0 0 2780.dat
+1 0 100 120 200 0 0 -1 0 1 0 1 0 0 6558.dat
 0 !BW ID tower_join_100_220_140
 1 0 100 140 210 0 0 -1 0 1 0 1 0 0 2780.dat
 0 !BW ID guide_post_pin_100_40
 1 0 100 120 50 0 0 -1 0 1 0 1 0 0 2780.dat
 0 !BW ID guide_post_pin_260_200
-1 0 260 120 190 0 0 -1 0 1 0 1 0 0 2780.dat
+1 0 260 120 200 0 0 -1 0 1 0 1 0 0 6558.dat
 0 STEP
-0 !BW ID tower_join_260_220_120
-1 0 260 120 210 0 0 -1 0 1 0 1 0 0 2780.dat
 0 !BW ID tower_join_260_220_140
 1 0 260 140 210 0 0 -1 0 1 0 1 0 0 2780.dat
 0 !BW ID guide_post_pin_260_40
-1 0 260 120 50 0 0 -1 0 1 0 1 0 0 2780.dat
-0 !BW ID tower_join_260_20_120
-1 0 260 120 30 0 0 -1 0 1 0 1 0 0 2780.dat
+1 0 260 120 40 0 0 -1 0 1 0 1 0 0 6558.dat
 0 !BW ID tower_join_260_20_140
 1 0 260 140 30 0 0 -1 0 1 0 1 0 0 2780.dat
 0 !BW ID coupler_CK
@@ -251,7 +245,7 @@
 0 !BW ID ram_pivot_axle_R
 1 4 213.973636 10 120 0 1 0 1 0 0 0 0 -1 3706.dat
 0 !BW ID fixed_pivot_U
-1 71 40 -75 120 0 1 0 1 0 0 0 0 -1 3673.dat
+1 71 40 -70 120 0 1 0 1 0 0 0 0 -1 3673.dat
 0 !BW ID guide_far
 1 4 200.0 100 160 1 0 0 0 1 0 0 0 1 50451.dat
 0 !BW ID pivot_adapter_pin_far_60
@@ -275,7 +269,7 @@
 0 !BW ID slider_keyed
 1 25 213.973636 20 120 1 0 0 0 1 0 0 0 1 7229.dat
 0 !BW ID pivot_bridge
-1 72 40 -90 120 1 0 0 0 1 0 0 0 1 32525.dat
+1 72 40 -80 120 1 0 0 0 1 0 0 0 1 32525.dat
 0 !BW ID guide_end_far_315
 1 71 355.0 100 160 0 0 1 0 1 0 -1 0 0 4265c.dat
 0 !BW ID guide_end_far_5
@@ -303,19 +297,19 @@
 0 !BW ID slider_cross_pin_far
 1 0 213.973636 50 160 0 1 0 1 0 0 0 0 -1 2780.dat
 0 !BW ID pivot_bridge_axle_20
-1 4 40 -105 20 0 1 0 1 0 0 0 0 -1 3705.dat
+1 4 40 -105 20 0 1 0 1 0 0 0 0 -1 32073.dat
 0 !BW ID pivot_bridge_axle_220
-1 4 40 -105 220 0 1 0 1 0 0 0 0 -1 3705.dat
+1 4 40 -105 220 0 1 0 1 0 0 0 0 -1 32073.dat
 0 !BW ID slider_long_far
 1 25 213.973636 60 160 0 0 1 0 1 0 -1 0 0 32316.dat
 0 !BW ID slider_long_near
 1 25 213.973636 60 80 0 0 1 0 1 0 -1 0 0 32316.dat
 0 STEP
 0 !BW ID pivot_bridge_bush_inner_20
-1 71 40 -70 20 1 0 0 0 0 1 0 -1 0 4265c.dat
+1 71 40 -60 20 1 0 0 0 0 1 0 -1 0 4265c.dat
 0 !BW ID pivot_bridge_bush_outer_20
 1 71 40 -140 20 1 0 0 0 0 1 0 -1 0 4265c.dat
 0 !BW ID pivot_bridge_bush_inner_220
-1 71 40 -70 220 1 0 0 0 0 1 0 -1 0 4265c.dat
+1 71 40 -60 220 1 0 0 0 0 1 0 -1 0 4265c.dat
 0 !BW ID pivot_bridge_bush_outer_220
 1 71 40 -140 220 1 0 0 0 0 1 0 -1 0 4265c.dat

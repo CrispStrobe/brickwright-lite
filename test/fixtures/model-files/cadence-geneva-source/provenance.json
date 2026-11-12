@@ -1,0 +1,10 @@
+{
+ "author": "CrispStrobe",
+ "license": "BSD-3-Clause",
+ "files": {
+  "models/cadence-geneva.ldr": "966e1d8c7c1341f8700994f30445f7fc39c806097e963519c3c9b7d848c3d4c8",
+  "programs/cadence-geneva.bw": "6ed053800f78526054be5732bebfd876f3cde711a5494889e964f8742a84546c",
+  "LICENSE.txt": "a096c77ac7c151875cdcfcc89285d7372701076a3e53e29b3ee8abcd4e71ec9e",
+  "SOURCES.md": "960a86ce144c888be6e0686597eaf4e4930ea0b1da9d646a3183b8a1e65f06ac"
+ }
+}

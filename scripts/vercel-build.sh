@@ -17,6 +17,7 @@ node scripts/integrate.mjs
 # Non-fatal: a network hiccup here must not take the whole site down; the
 # engine simply is not offered, which lib/labwired-engine.js already handles.
 node scripts/sync-labwired-wasm.mjs || echo "labwired-wasm unavailable — the heavy tier will not be offered"
+node scripts/sync-esp32s3-roms.mjs || echo "ESP32-S3 ROM assets unavailable — merged-flash boot will report the missing assets"
 # The pinned MakeCode runtimes (static/makecode/<target>/target.json, pxtworker.js,
 # firmware bases; ~55 MB), which the MakeCode import/compile worker fetches
 # same-origin. build.yml's Pages build syncs them; without this step Vercel served

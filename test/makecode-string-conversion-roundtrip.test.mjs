@@ -8,7 +8,7 @@ const source='function letter(code:number):string{return String.fromCharCode(cod
 const names=['a','b','c','d','e','f','g','h','cn','cu','an','au','as','cm','done'];
 const values=run=>Object.fromEntries(run.vm.runtime.targets.flatMap(t=>Object.values(t.variables)).map(v=>[v.name.replace(/^Game_/,''),v.value]));
 
-test('original UTF-16 and nullable primitive strings survive source, Code, original export, reimport and fresh SB3', {todo:"procedure constraint producer not yet proven \u2014 see docs/ARCADE-888-OPEN-FAILURES.md"},async()=>{
+test('original UTF-16 and nullable primitive strings survive source, Code, original export, reimport and fresh SB3',async()=>{
     const expected=await runPxtArcade(source);assert.equal(expected.h,'😀');assert.equal(expected.f.length,1);assert.equal(expected.cn,'anull');assert.equal(expected.cu,'aundefined');
     const imported=arcadeToPseudocode(source);assert.deepEqual(imported.unsupported,[]);
     const check=run=>{assert.deepEqual(run.errors,[]);assert.deepEqual(run.creator.warnings,[]);for(const name of names)assert.equal(values(run)[name],expected[name],name);};
@@ -25,4 +25,13 @@ test('original UTF-16 and nullable primitive strings survive source, Code, origi
 
 test('wrong string arity, shadowed String and known opaque arguments retain diagnostics',()=>{
     for(const source of ['String.fromCharCode()','String.fromCharCode(1,2)','let String=3;String.fromCharCode(65)','let s="a";s.concat()','let s="a";s.concat("b","c")','String.fromCharCode([65])','"a".concat(["b"])'])assert.ok(arcadeToPseudocode(source).unsupported.length,source);
+});
+
+// A concat receiver must be a string on every producer: PXT faults when a
+// Number or null receiver reaches .concat, even if a later write is a string.
+test('String.concat requires a receiver that is a string on every producer',()=>{
+    for(const source of ['let f:any=0; let h=f.concat("b"); f="x"','let f:any=null; let h=f.concat("b"); f="x"','let f:any="a"; let h=f.concat("b"); f=1'])
+        assert.ok(arcadeToPseudocode(source).unsupported.includes('String.concat() receiver must be a proven string value'),source);
+    for(const source of ['let f:any="a"; let h=f.concat("b")','let f:any="a"; let h=f.concat("b"); f="x"'])
+        assert.deepEqual(arcadeToPseudocode(source).unsupported,[],source);
 });

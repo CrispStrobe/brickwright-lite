@@ -6028,6 +6028,775 @@
         "scale-echo.ldr",
         "screw-crane.ldr"
       ]
+    },
+    "afterturn": {
+      "en": {
+        "what": "The hub and two motors ride on a platform with a free vertical bearing. Motor A turns a balanced reaction wheel. Motor B moves two balanced masses inward and outward. Watch the platform heading after the masses and both motor angles return to their starting values. The sequence of internal movements can matter even when the final internal shape looks the same.",
+        "try": [
+          "Load afterturn.ldr and afterturn.bw. Use Reset to restore the saved pose, then press Run in Robot Lab’s toolbar. Identify the free platform, the reaction wheel and the two movable masses.",
+          "Follow the first closed cycle: B moves to 70° to bring the masses inward, A turns to 900°, B returns the masses outward, then A returns to 0°. Compare the platform with the lower support during the first held checkpoint.",
+          "Watch the inverse sequence. Predict whether changing the order should add to or undo the first platform turn. Check the actual mass positions as well as the encoders.",
+          "Load afterturn-fixed-masses.ldr and run the same supplied program from Reset. Compare the net platform turn with the moving-mass model, while checking that the driven motions complete.",
+          "Reset before repeating after a manual move, interruption or completed experiment. The internal home is not automatically the platform’s original heading. Keep the supplied finite program and operating bounds."
+        ],
+        "why": "A motor exchanges angular momentum between its rotor and its support. At a fixed mass radius, the platform’s response to a wheel turn depends on the complete rotating assembly’s inertia. Moving the balanced masses changes that inertia. Turning the wheel one way with the masses inward and back with them outward therefore need not produce equal and opposite platform turns. Returning the internal configuration is different from returning the orientation of the whole assembly.",
+        "matters": "A mechanism can change its orientation through an ordered cycle of internal motions without a motor directly driving its support bearing. This is a simple setting for geometric phase: the path through internal configurations matters. It also shows why successful encoder homing alone cannot certify an object’s global pose.",
+        "question": "If both encoders read their starting values and the masses return to their outer positions, must the platform face its original direction? What should happen when the same wheel motion is performed with the masses fixed?",
+        "answer": "No. With moving masses, the wheel’s outward and return turns occur at different inertias, so their platform rotations need not cancel. If the masses stay fixed, that difference is removed and the ideal reciprocal wheel turns cancel. The useful comparison is the independently observed net heading with matched completed inputs; damping, initial motion and finite return errors must still be measured. From the compiled part masses, the platform turns 0.02746° per wheel degree with the masses in (B = 70°, 51.7 mm from the bearing) and 0.02608° with them out (64.5 mm), so one 900° cycle should leave 900 × (0.02746 − 0.02608) ≈ 1.25°. The simulator leaves about 1.24° after the first cycle and returns to within about 0.04° after the inverse; the fixed-mass control keeps about 0.01°. An earlier figure of about 4.66° came from an engine artefact that added the motor rotor’s inertia to both the platform and the wheel (#1494); it is not the physical value. These are simulator observations, not measured LEGO hardware accuracy.",
+        "further": [
+          "Sketch the actual reaction-wheel angle on one axis and the mean observed mass radius on the other. The selected nominal radii are 51.056819 mm inside and 64 mm outside. Reversing the order reverses the enclosed path. The supplied bounded shape stroke is 70°, not a full crank revolution.",
+          "Compare with Counterturn and Momentum Twins. Those examples exchange angular momentum at fixed inertia; Afterturn changes the internal configuration between the wheel’s forward and return strokes.",
+          "The motors supply energy. A final orientation change at small total angular momentum is not energy creation, friction-free perpetual motion or gyroscopic precession.",
+          "The prediction must include the real motor assemblies, hub, slider masses and shape-drive links. Bearing damping, support motion and cable forces can affect a finite experiment. Native results are not a hardware precision or load rating.",
+          "Keep the supplied hub shelf and balance trim in place. A tilted bearing and an off-centre carried mass can add a gravity torque, so a free bearing alone does not guarantee an isolated angular-momentum experiment."
+        ]
+      },
+      "de": {
+        "what": "Hub und zwei Motoren sitzen auf einer Plattform mit frei drehbarem senkrechtem Lager. Motor A dreht ein ausgewuchtetes Reaktionsrad. Motor B bewegt zwei ausgewuchtete Massen nach innen und außen. Beobachte die Plattformrichtung, nachdem Massen und beide Motorwinkel wieder ihre Ausgangswerte erreicht haben. Die Reihenfolge der inneren Bewegungen kann entscheidend sein, obwohl die innere Form am Ende gleich aussieht.",
+        "try": [
+          "Lade afterturn.ldr und afterturn.bw. Stelle mit Reset die gespeicherte Lage her und drücke Run in der Robot-Lab-Werkzeugleiste. Suche die freie Plattform, das Reaktionsrad und die beiden beweglichen Massen.",
+          "Verfolge den ersten geschlossenen Zyklus: B bewegt sich auf 70° und führt die Massen nach innen, A dreht bis 900°, B führt die Massen nach außen zurück, dann kehrt A zu 0° zurück. Vergleiche die Plattform beim ersten Haltepunkt mit dem Unterbau.",
+          "Beobachte die umgekehrte Reihenfolge. Sage voraus, ob sie die erste Plattformdrehung vergrößert oder rückgängig macht. Prüfe neben den Encodern auch die tatsächlichen Massenpositionen.",
+          "Lade afterturn-fixed-masses.ldr und starte nach Reset dasselbe mitgelieferte Programm. Vergleiche die verbleibende Plattformdrehung mit dem Modell mit beweglichen Massen und prüfe, ob die Antriebsbewegungen abgeschlossen werden.",
+          "Verwende vor einer Wiederholung nach Handbewegungen, Unterbrechung oder abgeschlossenem Versuch Reset. Die innere Ausgangsstellung ist nicht automatisch die ursprüngliche Plattformrichtung. Halte das mitgelieferte endliche Programm und seine Bewegungsgrenzen ein."
+        ],
+        "why": "Ein Motor tauscht Drehimpuls zwischen Rotor und Halterung aus. Bei festem Massenradius hängt die Plattformreaktion auf eine Radbewegung vom Trägheitsmoment des gesamten drehbaren Aufbaus ab. Werden die ausgewuchteten Massen versetzt, ändert sich dieses Trägheitsmoment. Ein Vorwärtsdrehen des Rads bei innenliegenden Massen und das Zurückdrehen bei außenliegenden Massen müssen deshalb keine gleich großen entgegengesetzten Plattformdrehungen ergeben. Die Rückkehr der inneren Form ist etwas anderes als die Rückkehr der Richtung des gesamten Aufbaus.",
+        "matters": "Ein Mechanismus kann seine Richtung durch einen geordneten Zyklus innerer Bewegungen ändern, ohne dass ein Motor sein Traglager direkt antreibt. Das veranschaulicht die geometrische Phase: Der Weg durch die inneren Konfigurationen zählt. Zugleich zeigt es, warum erfolgreiches Encoder-Homing allein keine globale Lage bestätigt.",
+        "question": "Muss die Plattform wieder in ihre ursprüngliche Richtung zeigen, wenn beide Encoder ihre Ausgangswerte anzeigen und die Massen außen stehen? Was sollte bei derselben Radbewegung mit festgesetzten Massen geschehen?",
+        "answer": "Nein. Mit beweglichen Massen erfolgen Vor- und Rücklauf des Rads bei verschiedenen Trägheitsmomenten; ihre Plattformdrehungen müssen sich deshalb nicht aufheben. Bleiben die Massen fest, entfällt dieser Unterschied und die idealen entgegengesetzten Radbewegungen gleichen sich aus. Aussagekräftig ist die unabhängig beobachtete verbleibende Plattformdrehung bei übereinstimmenden abgeschlossenen Eingangsbewegungen. Dämpfung, Anfangsbewegung und endliche Rückkehrfehler müssen trotzdem gemessen werden. Aus den kompilierten Teilmassen dreht sich die Plattform je Grad Raddrehung um 0,02746° bei innenliegenden Massen (B = 70°, 51,7 mm vom Lager) und um 0,02608° bei außenliegenden (64,5 mm); ein Zyklus mit 900° sollte daher 900 × (0,02746 − 0,02608) ≈ 1,25° hinterlassen. Die Simulation lässt nach dem ersten Zyklus etwa 1,24° übrig und kehrt nach dem Gegenzyklus bis auf etwa 0,04° zurück; die Kontrolle mit festen Massen behält etwa 0,01°. Ein früherer Wert von etwa 4,66° stammte von einem Fehler der Simulation, die das Trägheitsmoment des Motorrotors sowohl der Plattform als auch dem Rad zuschlug (#1494); er ist nicht der physikalische Wert. Das sind Beobachtungen der Simulation, keine gemessene Genauigkeit realer LEGO-Hardware.",
+        "further": [
+          "Zeichne den tatsächlichen Reaktionsradwinkel auf einer Achse und den mittleren beobachteten Massenradius auf der anderen. Die gewählten nominalen Radien betragen 51,056819 mm innen und 64 mm außen. Die umgekehrte Reihenfolge kehrt den Umlaufsinn um. Der mitgelieferte begrenzte Verstellhub beträgt 70°; die Kurbel dreht keine volle Umdrehung.",
+          "Vergleiche Counterturn und Momentum Twins. Dort wird Drehimpuls bei festem Trägheitsmoment ausgetauscht. Afterturn ändert die innere Konfiguration zwischen Vor- und Rücklauf des Rads.",
+          "Die Motoren liefern Energie. Eine bleibende Richtungsänderung bei kleinem Gesamtdrehimpuls bedeutet weder Energieerzeugung noch ein reibungsfreies Perpetuum mobile oder Kreiselpräzession.",
+          "Die Vorhersage muss die realen Motorbaugruppen, den Hub, die Schlittenmassen und die Glieder des Verstellantriebs berücksichtigen. Lagerdämpfung, Unterbaubewegung und Kabelkräfte können einen endlichen Versuch beeinflussen. Native Ergebnisse sind keine Zusicherung von Hardwaregenauigkeit oder Belastbarkeit.",
+          "Behalte die vorgesehene Hub-Ablage und den Ausgleichspin bei. Ein geneigtes Lager und eine seitlich versetzte mitbewegte Masse können ein Schwerkraftmoment erzeugen. Ein freies Lager allein garantiert daher noch keinen von äußeren Momenten isolierten Drehimpulsversuch."
+        ]
+      },
+      "formula": {
+        "en": "Ideal held-shape segment: Δψ ≈ −Iw·Δα/Jlocked(r). ψ is platform yaw relative to the base, α is wheel angle relative to the platform, Iw is wheel axial inertia, and Jlocked(r) is the complete yaw inertia with internal motions locked at radius r. For an inner-radius wheel turn +Δα and an outer-radius return −Δα, Δψcycle ≈ −Iw·Δα·[1/Jinner − 1/Jouter]. This simplified planning relation assumes negligible external yaw torque. The complete prediction also includes the angular momentum of the moving shape-drive parts; observed yaw is measured from body poses, not generated by the formula. The formula uses a common positive axis for α and ψ. In this model, the native A axis is opposite the reported positive platform-yaw axis, so α = −A for the plotted input.",
+        "de": "Idealisierter Abschnitt bei festgehaltener Form: Δψ ≈ −Iw·Δα/Jlocked(r). ψ ist die Plattformdrehung relativ zum Unterbau, α der Radwinkel relativ zur Plattform, Iw das axiale Radträgheitsmoment und Jlocked(r) das gesamte Gierträgheitsmoment bei blockierten inneren Bewegungen am Radius r. Für +Δα bei innenliegenden Massen und −Δα bei außenliegenden Massen gilt näherungsweise ΔψZyklus ≈ −Iw·Δα·[1/Jinnen − 1/Jaußen]. Diese vereinfachte Planungsbeziehung setzt ein vernachlässigbares äußeres Giermoment voraus. Die vollständige Vorhersage berücksichtigt auch den Drehimpuls der beweglichen Verstellglieder. Die beobachtete Plattformdrehung wird aus Körperlagen gemessen, nicht aus dieser Formel erzeugt. Die Formel verwendet für α und ψ dieselbe positive Achse. Im Modell ist die native A-Achse der angegebenen positiven Plattform-Gierachse entgegengesetzt; für den dargestellten Eingang gilt deshalb α = −A."
+      },
+      "related": [
+        "counterturn.ldr",
+        "momentum-twins.ldr",
+        "flywheel-differential.ldr"
+      ]
+    },
+    "toggle-press": {
+      "en": {
+        "what": "Reload the model at A = 0°. Identify the yellow crank, blue coupler, red upper toggle, orange lower toggle, and orange ram. Watch the ram marker relative to the dark-gray support rail while the program runs once.",
+        "try": [
+          "Use manual jog within −82° to 0°. Compare ram motion over the first 10° of motor travel with ram motion over the final 10° before the −80° target. Never command below −82°.",
+          "Before moving, predict whether changing the target from −70° to −80° will add more or less ram travel than changing it from −10° to −20°. Also predict what risk grows as the command approaches −85.46°.",
+          "Compare the actual output with your prediction before revealing the explanation."
+        ],
+        "why": "As the knee rises toward the ram line, the lower link becomes almost horizontal. More crank rotation is then spent changing link angle and less appears as ram displacement per degree. That geometric change is why a toggle press can develop high ideal mechanical advantage near dead centre; this model does not measure force.",
+        "question": "Before moving, predict whether changing the target from −70° to −80° will add more or less ram travel than changing it from −10° to −20°. Also predict what risk grows as the command approaches −85.46°.",
+        "answer": "The builder predicts 26.2853 mm total ram travel at −80°, with the lower link only 2.9268° from the ram line. The analytical dead-centre pose is near −85.46°, so −80° leaves about 5.46°. Native physics must still verify the actual trajectory and return.",
+        "matters": "One motor turns a yellow crank. A blue coupler folds the red and orange knee links, pushing an orange ram along two guide rails. The program approaches—but does not cross—dead centre, then returns to the saved datum.",
+        "further": [
+          "Vary the input speed and repeat from the saved datum. Does the geometric law change?",
+          "Find the passive output and its real bearings. Which physical connection transmits the drive?"
+        ]
+      },
+      "de": {
+        "what": "Lade das Modell bei A = 0° neu. Suche die gelbe Kurbel, die blaue Koppel, den roten oberen Kniehebel, den orangefarbenen unteren Kniehebel und den orangefarbenen Schlitten. Beobachte beim einmaligen Programmlauf den Schlitten relativ zur dunkelgrauen Tragschiene.",
+        "try": [
+          "Nutze die manuelle Bewegung nur zwischen −82° und 0°. Vergleiche den Schlittenweg in den ersten 10° Motorbewegung mit dem Weg in den letzten 10° vor dem Ziel −80°. Gib niemals einen Wert unter −82° vor.",
+          "Sage vor der Bewegung voraus, ob die Änderung von −70° auf −80° mehr oder weniger zusätzlichen Schlittenweg erzeugt als die Änderung von −10° auf −20°. Sage außerdem voraus, welches Risiko beim Annähern an −85,46° wächst.",
+          "Vergleiche die beobachtete Bewegung mit deiner Vorhersage, bevor du die Erklärung öffnest."
+        ],
+        "why": "Wenn sich das Knie der Schlittenlinie nähert, liegt der untere Hebel fast waagerecht. Mehr Kurbelwinkel ändert dann die Hebelwinkel, während pro Grad weniger Schlittenweg entsteht. Dadurch wächst bei einem idealen Kniehebel nahe dem Totpunkt die mechanische Übersetzung; dieses Modell misst jedoch keine Kraft.",
+        "question": "Sage vor der Bewegung voraus, ob die Änderung von −70° auf −80° mehr oder weniger zusätzlichen Schlittenweg erzeugt als die Änderung von −10° auf −20°. Sage außerdem voraus, welches Risiko beim Annähern an −85,46° wächst.",
+        "answer": "Der Builder sagt bei −80° insgesamt 26,2853 mm Schlittenweg voraus; der untere Hebel liegt dann nur 2,9268° neben der Schlittenlinie. Der analytische Totpunkt liegt nahe −85,46°, also bleiben bei −80° etwa 5,46°. Die native Physik muss Bahn und Rückkehr noch bestätigen.",
+        "matters": "Ein Motor dreht eine gelbe Kurbel. Eine blaue Koppel knickt die roten und orangefarbenen Kniehebel und schiebt einen orangefarbenen Schlitten auf zwei Führungen. Das Programm nähert sich dem Totpunkt, überschreitet ihn aber nicht, und kehrt zur gespeicherten Nullstellung zurück.",
+        "further": [
+          "Ändere die Eingangsgeschwindigkeit und starte erneut vom gespeicherten Nullpunkt. Ändert sich das geometrische Gesetz?",
+          "Finde den passiven Abtrieb und seine Lager. Welche mechanische Verbindung überträgt den Antrieb?"
+        ]
+      },
+      "formula": "Two equal toggle links constrain the guided ram; compare stroke per equal crank increment.",
+      "related": [
+        "gearbox.ldr",
+        "crank-rocker.ldr",
+        "rack-shuttle.ldr"
+      ]
+    },
+    "footfall": {
+      "en": {
+        "what": "Reload the saved A = 0° pose. Identify the yellow crank, the two blue crank couplers, the red upper triangle, the white rocker, the blue transfer link, and the orange lower triangle. The foot marker G is the far end of the long orange link.",
+        "try": [
+          "Run the finite program once. It pauses at 90°, 180°, 270°, and 360°, then reverses to 0°. Use manual jog only between −5° and 365°. Compare the foot motion from about 8.2° to 92.8° with the higher return portion of the path.",
+          "Before checking the record, predict where the orange foot will move mostly sideways with little Z change. Also predict whether the return path will lie on top of that segment or rise away from it.",
+          "Compare the actual output with your prediction before revealing the explanation."
+        ],
+        "why": "Each unknown joint is selected where two link-length circles intersect. The red and orange closed triangles preserve their side lengths, so the single crank angle fixes the rest of the planar mechanism. The four Y layers separate links that would otherwise cross in the same plane.",
+        "question": "Before checking the record, predict where the orange foot will move mostly sideways with little Z change. Also predict whether the return path will lie on top of that segment or rise away from it.",
+        "answer": "The analytical full-cycle path spans 100.6751 mm in X and 30.7632 mm in Z. From 8.2° to 92.8°, the foot spans 37.5996 mm in X while varying 3.9951 mm in Z. These are geometry results, not measured native-physics or hardware results.",
+        "matters": "One motor turns a yellow crank through a full revolution. Blue couplers drive a red upper triangle and an orange lower triangle so the orange foot link traces a closed, walking-like path before returning to the saved datum.",
+        "further": [
+          "Vary the input speed and repeat from the saved datum. Does the geometric law change?",
+          "Find the passive output and its real bearings. Which physical connection transmits the drive?"
+        ]
+      },
+      "de": {
+        "what": "Lade die gespeicherte Stellung A = 0° neu. Suche die gelbe Kurbel, die beiden blauen Kurbelkoppeln, das rote obere Dreieck, den weißen Schwinghebel, den blauen Übertragungshebel und das orange untere Dreieck. Der Fußpunkt G liegt am fernen Ende des langen orangefarbenen Hebels.",
+        "try": [
+          "Starte das endliche Programm einmal. Es hält bei 90°, 180°, 270° und 360° kurz an und fährt dann rückwärts auf 0°. Nutze die manuelle Bewegung nur zwischen −5° und 365°. Vergleiche die Fußbewegung von etwa 8,2° bis 92,8° mit dem höheren Rücklauf.",
+          "Sage vor dem Prüfen voraus, wo sich der orange Fuß überwiegend seitlich bewegt und sich in Z nur wenig ändert. Sage außerdem voraus, ob der Rücklauf auf diesem Abschnitt liegt oder sich davon abhebt.",
+          "Vergleiche die beobachtete Bewegung mit deiner Vorhersage, bevor du die Erklärung öffnest."
+        ],
+        "why": "Jedes unbekannte Gelenk wird als Schnittpunkt zweier Kreise mit den jeweiligen Hebellängen bestimmt. Die geschlossenen roten und orangefarbenen Dreiecke behalten ihre Seitenlängen; dadurch legt der eine Kurbelwinkel die restliche ebene Mechanik fest. Vier Y-Ebenen trennen Hebel, die sich sonst in derselben Ebene kreuzen würden.",
+        "question": "Sage vor dem Prüfen voraus, wo sich der orange Fuß überwiegend seitlich bewegt und sich in Z nur wenig ändert. Sage außerdem voraus, ob der Rücklauf auf diesem Abschnitt liegt oder sich davon abhebt.",
+        "answer": "Die analytische Bahn eines vollständigen Zyklus erstreckt sich über 100,6751 mm in X und 30,7632 mm in Z. Von 8,2° bis 92,8° überstreicht der Fuß 37,5996 mm in X bei 3,9951 mm Z-Änderung. Das sind Geometrieergebnisse, keine Messwerte aus nativer Physik oder Hardware.",
+        "matters": "Ein Motor dreht eine gelbe Kurbel um eine volle Umdrehung. Blaue Koppeln treiben ein rotes oberes und ein orangefarbenes unteres Dreieck an, sodass der orange Fußhebel eine geschlossene, schrittähnliche Bahn zeichnet und zur gespeicherten Nullstellung zurückkehrt.",
+        "further": [
+          "Ändere die Eingangsgeschwindigkeit und starte erneut vom gespeicherten Nullpunkt. Ändert sich das geometrische Gesetz?",
+          "Finde den passiven Abtrieb und seine Lager. Welche mechanische Verbindung überträgt den Antrieb?"
+        ]
+      },
+      "formula": "Each linkage endpoint is the intersection of two fixed-length circles.",
+      "related": [
+        "gearbox.ldr",
+        "crank-rocker.ldr",
+        "rack-shuttle.ldr"
+      ]
+    },
+    "phasekeeper": {
+      "en": {
+        "what": "Reload the saved A = 0° pose. Identify the yellow input yoke at J1, the two blue intermediate yokes and diagonal axle, and the orange output yoke and pointer at J2. The input and output shafts are parallel; the diagonal shaft joins centres 200 LDU apart. Build both joints with a real cross: 79 listed placements plus two crosses make 81 physical pieces.",
+        "try": [
+          "Run the finite program once. It pauses at 90°, 180°, 270° and 360°, then reverses to 0°. Watch the blue intermediate shaft lead and lag between those stops while the orange pointer should ideally stay aligned with the input angle. Use manual jog only between −5° and 365°.",
+          "Predict what would happen if one blue intermediate yoke were rotated by 90°, or if the two bend angles were unequal. Decide whether the orange output would still remain in phase after every small increment, even though it might return to the same angle after a full revolution.",
+          "Compare the actual output with your prediction before revealing the explanation."
+        ],
+        "why": "A single Cardan joint at 36.8699° does not turn its output at constant instantaneous speed: its ideal ratio varies from 0.8 to 1.25. The second joint has the same bend, and its intermediate fork is parallel to the first intermediate fork. That matching geometry applies the inverse angle relation and restores an ideal 1:1 final angle.",
+        "question": "Predict what would happen if one blue intermediate yoke were rotated by 90°, or if the two bend angles were unequal. Decide whether the orange output would still remain in phase after every small increment, even though it might return to the same angle after a full revolution.",
+        "answer": "Across −5° to 365° at 0.1° spacing, the ideal intermediate shaft differs from the input by as much as 6.3794°, while the computed equal-angle, in-phase output residual is below 0.000000000001°. These are analytical geometry results, not native Brickwright physics or hardware measurements.",
+        "matters": "One motor drives a yellow input yoke, a blue diagonal shaft and an orange output yoke. Each universal joint bends by the same angle, and the two blue intermediate forks are parallel, so ideal Cardan speed ripple from the first joint is cancelled by the second.",
+        "further": [
+          "Vary the input speed and repeat from the saved datum. Does the geometric law change?",
+          "Find the passive output and its real bearings. Which physical connection transmits the drive?"
+        ]
+      },
+      "de": {
+        "what": "Lade die gespeicherte Stellung A = 0° neu. Suche die gelbe Eingangsgabel bei J1, die beiden blauen Zwischengabeln mit der diagonalen Achse sowie die orange Ausgangsgabel mit Zeiger bei J2. Eingangs- und Ausgangswelle sind parallel; die Diagonalwelle verbindet zwei 200 LDU voneinander entfernte Gelenkzentren. Beide Gelenke benötigen ein echtes Kardankreuz: 79 aufgeführte Teile plus zwei Kreuze ergeben 81 Bauteile.",
+        "try": [
+          "Starte das endliche Programm einmal. Es hält bei 90°, 180°, 270° und 360° kurz an und fährt dann rückwärts auf 0°. Beobachte, wie die blaue Zwischenwelle zwischen diesen Stellungen vor- und nacheilt, während der orange Zeiger idealerweise mit dem Eingangswinkel ausgerichtet bleibt. Nutze die manuelle Bewegung nur zwischen −5° und 365°.",
+          "Sage voraus, was geschieht, wenn eine blaue Zwischengabel um 90° verdreht wird oder die beiden Knickwinkel ungleich sind. Entscheide, ob der orange Ausgang nach jedem kleinen Schritt noch phasengleich bleibt, auch wenn er nach einer ganzen Umdrehung wieder denselben Winkel erreichen könnte.",
+          "Vergleiche die beobachtete Bewegung mit deiner Vorhersage, bevor du die Erklärung öffnest."
+        ],
+        "why": "Ein einzelnes Kardangelenk mit 36,8699° Knickwinkel dreht seinen Ausgang nicht mit gleichförmiger Momentangeschwindigkeit: Das ideale Übersetzungsverhältnis schwankt zwischen 0,8 und 1,25. Das zweite Gelenk hat denselben Knickwinkel, und seine Zwischengabel ist parallel zur ersten. Diese passende Geometrie wendet die inverse Winkelbeziehung an und stellt am Ende ideal 1:1 wieder her.",
+        "question": "Sage voraus, was geschieht, wenn eine blaue Zwischengabel um 90° verdreht wird oder die beiden Knickwinkel ungleich sind. Entscheide, ob der orange Ausgang nach jedem kleinen Schritt noch phasengleich bleibt, auch wenn er nach einer ganzen Umdrehung wieder denselben Winkel erreichen könnte.",
+        "answer": "Zwischen −5° und 365° in 0,1°-Schritten weicht die ideale Zwischenwelle um bis zu 6,3794° vom Eingang ab, während der berechnete Restfehler des gleichwinkligen, phasengleichen Ausgangs unter 0,000000000001° liegt. Dies sind analytische Geometrieergebnisse, keine Messungen der Brickwright-Physik oder realer Hardware.",
+        "matters": "Ein Motor treibt eine gelbe Eingangsgabel, eine blaue Diagonalwelle und eine orange Ausgangsgabel an. Beide Kardangelenke knicken um denselben Winkel ab, und die beiden blauen Zwischengabeln sind parallel; dadurch wird die ideale Drehzahlschwankung des ersten Gelenks vom zweiten aufgehoben.",
+        "further": [
+          "Ändere die Eingangsgeschwindigkeit und starte erneut vom gespeicherten Nullpunkt. Ändert sich das geometrische Gesetz?",
+          "Finde den passiven Abtrieb und seine Lager. Welche mechanische Verbindung überträgt den Antrieb?"
+        ]
+      },
+      "formula": "Equal bend angles and correctly phased intermediate forks cancel the single-joint speed ripple.",
+      "related": [
+        "gearbox.ldr",
+        "crank-rocker.ldr",
+        "rack-shuttle.ldr"
+      ]
+    },
+    "vectorsum": {
+      "en": {
+        "what": "Reload the saved A = 0°, B = 0° pose. Motor A drives the red left-side axle and Motor B drives the blue right-side axle. The red 28-tooth cover is the differential carrier. It meshes with the yellow 12-tooth bevel gear on the orange output pointer.",
+        "try": [
+          "Run the finite program once. It visits (A,B) = (180°,0°), (180°,−180°), (180°,180°), (0°,180°), then returns to (0°,0°). The program moves one motor at a time so each checkpoint is easy to compare. Use manual jog only from −190° to 190° on each input.",
+          "Predict the carrier for A = B and for B = −A before looking at the record. Because the motors face each other, equal encoder readings produce opposite physical side rotations and cancel at the carrier. Opposite encoder readings produce the same physical side rotation and carry the housing with them.",
+          "Compare the actual output with your prediction before revealing the explanation."
+        ],
+        "why": "The motors face each other, so their positive encoder axes point in opposite world directions. In the saved-axis convention, side A = −A and side B = +B. An ideal open differential gives carrier = (side A + side B)/2 = (B − A)/2. The external 28:12 bevel pair then gives pointer = −(28/12) × carrier.",
+        "question": "Predict the carrier for A = B and for B = −A before looking at the record. Because the motors face each other, equal encoder readings produce opposite physical side rotations and cancel at the carrier. Opposite encoder readings produce the same physical side rotation and carry the housing with them.",
+        "answer": "The ideal carrier angles at the programmed comparison poses are −90°, −180°, 0°, +90°, and 0° on return. The corresponding ideal pointer angles are +210°, +420°, 0°, −210°, and 0°. These values come from equations and exported placement axes; they are not native Brickwright physics or physical-build measurements.",
+        "matters": "Two opposed angular motors drive the side gears of an open Technic differential. The red carrier represents the average of the two side-shaft angles in a shared axis convention, and a yellow 12-tooth bevel gear drives an orange output pointer from the carrier's red 28-tooth cover.",
+        "further": [
+          "Vary the input speed and repeat from the saved datum. Does the geometric law change?",
+          "Find the passive output and its real bearings. Which physical connection transmits the drive?"
+        ]
+      },
+      "de": {
+        "what": "Lade die gespeicherte Stellung A = 0°, B = 0° neu. Motor A treibt die rote linke Seitenachse, Motor B die blaue rechte Seitenachse. Der rote 28-Zahn-Deckel ist der Differentialträger. Er kämmt mit dem gelben 12-Zahn-Kegelrad am orangefarbenen Ausgangszeiger.",
+        "try": [
+          "Starte das endliche Programm einmal. Es fährt (A,B) = (180°,0°), (180°,−180°), (180°,180°), (0°,180°) an und kehrt dann zu (0°,0°) zurück. Das Programm bewegt jeweils nur einen Motor, damit jede Stellung leicht vergleichbar ist. Nutze die manuelle Bewegung je Eingang nur von −190° bis 190°.",
+          "Sage den Trägerwinkel für A = B und für B = −A voraus, bevor du in die Tabelle schaust. Weil die Motoren einander gegenüberstehen, erzeugen gleiche Encoderwerte entgegengesetzte physische Seitendrehungen und löschen sich am Träger aus. Entgegengesetzte Encoderwerte erzeugen dieselbe physische Seitendrehung und nehmen das Gehäuse mit.",
+          "Vergleiche die beobachtete Bewegung mit deiner Vorhersage, bevor du die Erklärung öffnest."
+        ],
+        "why": "Die Motoren stehen einander gegenüber; deshalb zeigen ihre positiven Encoderachsen in entgegengesetzte Weltrichtungen. Im gespeicherten Achsbezug gilt Seite A = −A und Seite B = +B. Für ein ideales offenes Differential gilt Träger = (Seite A + Seite B)/2 = (B − A)/2. Das äußere Kegelradpaar 28:12 ergibt danach Zeiger = −(28/12) × Träger.",
+        "question": "Sage den Trägerwinkel für A = B und für B = −A voraus, bevor du in die Tabelle schaust. Weil die Motoren einander gegenüberstehen, erzeugen gleiche Encoderwerte entgegengesetzte physische Seitendrehungen und löschen sich am Träger aus. Entgegengesetzte Encoderwerte erzeugen dieselbe physische Seitendrehung und nehmen das Gehäuse mit.",
+        "answer": "Die idealen Trägerwinkel in den programmierten Vergleichsstellungen sind −90°, −180°, 0°, +90° und bei der Rückkehr 0°. Die zugehörigen idealen Zeigerwinkel sind +210°, +420°, 0°, −210° und 0°. Diese Werte stammen aus Gleichungen und exportierten Platzierungsachsen; sie sind keine Messungen der Brickwright-Physik oder eines realen Modells.",
+        "matters": "Zwei gegenüberliegende Winkelmotoren treiben die Seitenräder eines offenen Technic-Differentials an. Der rote Träger entspricht im gemeinsamen Achsbezug dem Mittelwert der beiden Seitenwellenwinkel; ein gelbes 12-Zahn-Kegelrad treibt den orangefarbenen Ausgangszeiger über den roten 28-Zahn-Deckel des Trägers an.",
+        "further": [
+          "Ändere die Eingangsgeschwindigkeit und starte erneut vom gespeicherten Nullpunkt. Ändert sich das geometrische Gesetz?",
+          "Finde den passiven Abtrieb und seine Lager. Welche mechanische Verbindung überträgt den Antrieb?"
+        ]
+      },
+      "formula": {
+        "en": "C = (B − A)/2; pointer = −(28/12) C",
+        "de": "C = (B − A)/2; Zeiger = −(28/12) C"
+      },
+      "related": [
+        "gearbox.ldr",
+        "crank-rocker.ldr",
+        "rack-shuttle.ldr"
+      ]
+    },
+    "paired-door-sync": {
+      "en": {
+        "what": "One 16T pinion drives two 64781 racks placed on opposite sides of the pinion. Each rack is bolted to a 13L carriage that rides a 48496 toggle on a horizontal 12L guide axle, and two 3L thin-liftarm door leaves hang on the same carriage pins. The program commands the motor to +150, 0, -150 and 0 degrees; both racks and both leaves are passive. In the hosted run the two rack markers read +20.956 mm and -20.956 mm at +150.09 degrees and -20.974 mm and +20.974 mm at -150.22 degrees, with a largest front-plus-back sum of 0.000002 mm.",
+        "try": [
+          "Load the model and program, press Reset, then Run. The motor must start at its saved zero; the program refuses a datum larger than 2 degrees.",
+          "During the +150 degree hold, compare the two rack markers. They should be equal in size and opposite in sign; the two door leaves on each side move together, and the two sides move apart or together in opposite directions.",
+          "Watch the reversal through zero. The sum of the two rack positions should stay at zero; any bump is backlash or lost motion at the two meshes, not a change of the law.",
+          "Run the control with the front rack, carriage, toggle and leaves removed. The rear rack still follows its slope, but there is no second output; the pair law cannot be satisfied by a missing reading."
+        ],
+        "why": "A 16T pinion has a pitch radius of 20 LDU = 8 mm. One radian of pinion rotation unwinds 8 mm of rack, so one degree moves a rack by 8*pi/180 = 0.1396263 mm. The front rack touches the pinion on one side and the back rack on the other, so the same rotation drives them with opposite signs: x_front = +0.1396263*theta and x_back = -0.1396263*theta. Their sum is therefore zero at every angle, which is the synchronization condition: the two leaves cannot drift together. The equality is a rigid kinematic constraint of the two meshes; backlash can create a small lost motion when the direction reverses, but it cannot change the opposite signs or the equal pitch-radius scale.",
+        "matters": "Paired sliding doors in buildings, synchronized conveyor flights, opposed actuators and double-sided machine guards all need two outputs to move together without a separate motor on each leaf. A single pinion between two racks gives that pairing with fewer parts and a fixed, measurable relationship; the same constant-sum idea appears in differential mechanisms and in any machine where two carriages must not accumulate position error relative to each other.",
+        "question": "If the motor turns +150 degrees, where do the two passive rack markers go, and what is their sum?",
+        "answer": "The front rack goes to about +20.94 mm and the back rack to about -20.94 mm; the measured values were +20.956 mm and -20.956 mm at +150.09 degrees. Their sum is zero within the measurement resolution, so the two leaves have equal travel in opposite directions.",
+        "further": [
+          "Repeat the run with a small preload or a different guide friction and compare the reversal bump in the sum. Does the steady slope stay the same while only the lost motion changes?",
+          "Add a second pair of racks on a longer pinion, or change the pinion tooth count, and predict the new slope from its pitch radius before measuring it.",
+          "Use the door markers as a cross-check: they are mounted at x = +/-120 LDU, so door_front_x - rack_front_x must stay at +48 mm through the whole stroke."
+        ]
+      },
+      "de": {
+        "what": "Ein 16-Zahn-Ritzel treibt zwei 64781-Zahnstangen, die auf gegenüberliegenden Seiten des Ritzels liegen. Jede Zahnstange ist mit einem 13-Loch-Träger verschraubt, der über ein 48496-Gelenk auf einer waagerechten 12-Loch-Führungsachse gleitet; zwei 3-Loch-Dünnhebel-Türblätter hängen an denselben Trägerstiften. Das Programm fährt den Motor auf +150, 0, -150 und 0 Grad; beide Zahnstangen und beide Blätter sind passiv. Im gehosteten Lauf lasen die beiden Zahnstangenmarker +20,956 mm und -20,956 mm bei +150,09 Grad sowie -20,974 mm und +20,974 mm bei -150,22 Grad; die größte Summe aus vorderer und hinterer Position betrug 0,000002 mm.",
+        "try": [
+          "Lade Modell und Programm, drücke Zurücksetzen und dann Start. Der Motor muss in seiner gespeicherten Nulllage beginnen; das Programm bricht bei einer Abweichung über 2 Grad ab.",
+          "Vergleiche während der Haltephase bei +150 Grad die beiden Zahnstangenmarker. Sie müssen gleich groß und entgegengesetzt sein; die beiden Türblätter einer Seite bewegen sich gemeinsam, die beiden Seiten gegenläufig.",
+          "Beobachte die Umkehr durch die Null. Die Summe der beiden Zahnstangenpositionen soll null bleiben; ein Ausschlag ist Umkehrspiel an den beiden Verzahnungen und keine Änderung des Gesetzes.",
+          "Führe die Kontrolle ohne vordere Zahnstange, vorderen Träger, vorderes Gelenk und vordere Blätter aus. Die hintere Zahnstange folgt weiter ihrer Steigung, aber es gibt keinen zweiten Ausgang; die Paarregel lässt sich mit einer fehlenden Messung nicht erfüllen."
+        ],
+        "why": "Ein 16-Zahn-Ritzel hat einen Teilkreisradius von 20 LDU = 8 mm. Ein Bogenmaß Ritzeldrehung wickelt 8 mm Zahnstange ab, also bewegt ein Grad eine Zahnstange um 8*pi/180 = 0,1396263 mm. Die vordere Zahnstange berührt das Ritzel auf der einen Seite, die hintere auf der anderen; dieselbe Drehung treibt sie daher mit entgegengesetztem Vorzeichen: x_vorn = +0,1396263*theta und x_hinten = -0,1396263*theta. Ihre Summe ist bei jedem Winkel null. Das ist die Synchronbedingung: Die beiden Blätter können nicht gemeinsam in dieselbe Richtung wandern. Die Gleichheit folgt starr aus den beiden Verzahnungen; Umkehrspiel erzeugt beim Richtungswechsel einen kleinen Leerweg, ändert aber weder die entgegengesetzten Vorzeichen noch den Maßstab aus dem Teilkreisradius.",
+        "matters": "Gegenläufige Schiebetüren in Gebäuden, synchronisierte Förderflügel, gegenläufige Aktoren und doppelseitige Schutzhauben brauchen zwei Ausgänge, die ohne eigenen Motor pro Blatt zusammenarbeiten. Ein einzelnes Ritzel zwischen zwei Zahnstangen liefert diese Kopplung mit weniger Bauteilen und einem festen, messbaren Zusammenhang; dieselbe Summenbedingung erscheint bei Differenzialen und überall dort, wo zwei Schlitten keinen relativen Positionsfehler aufbauen dürfen.",
+        "question": "Wenn der Motor um +150 Grad dreht, wohin fahren die beiden passiven Zahnstangenmarker, und wie groß ist ihre Summe?",
+        "answer": "Die vordere Zahnstange fährt auf etwa +20,94 mm, die hintere auf etwa -20,94 mm; gemessen wurden +20,956 mm und -20,956 mm bei +150,09 Grad. Ihre Summe ist innerhalb der Messauflösung null, die beiden Blätter legen also gleichen Weg in entgegengesetzter Richtung zurück.",
+        "further": [
+          "Wiederhole den Lauf mit einer kleinen Vorspannung oder anderer Führungsreibung und vergleiche den Ausschlag der Summe bei der Umkehr. Bleibt die stationäre Steigung gleich, während sich nur der Leerweg ändert?",
+          "Setze ein zweites Zahnstangenpaar auf ein längeres Ritzel oder ändere die Zähnezahl und sage die neue Steigung aus dem Teilkreisradius voraus, bevor du sie misst.",
+          "Nutze die Türmarker als Gegenprobe: Sie sitzen bei x = +/-120 LDU, daher muss door_front_x - rack_front_x über den ganzen Hub +48 mm bleiben."
+        ]
+      },
+      "formula": {
+        "en": "x_front = +(8 mm)*theta_rad = +0.1396263 mm/deg * theta; x_back = -0.1396263 mm/deg * theta; x_front + x_back = 0; x_front - x_back = 0.2792527 mm/deg * theta.",
+        "de": "x_vorn = +(8 mm)*theta_rad = +0,1396263 mm/Grad * theta; x_hinten = -0,1396263 mm/Grad * theta; x_vorn + x_hinten = 0; x_vorn - x_hinten = 0,2792527 mm/Grad * theta."
+      },
+      "related": [
+        "rack-shuttle.ldr",
+        "forklift.ldr",
+        "rise-ratio.ldr"
+      ]
+    },
+    "helixgate": {
+      "en": {
+        "what": "One SPIKE motor A turns a right-hand single-start Technic worm. The worm meshes with a 24-tooth gear on a perpendicular 10L output axle, supported by two L-shaped bearing beams. A red keyed gate and blue reference pin travel with the wheel.",
+        "try": [
+          "Open HelixGate and its program, reset to the saved encoder zero and run motor A. The motor rotates +720 degrees, coasts for two seconds, and returns to zero.",
+          "Watch the red L-shaped arm and blue tip. Does its direction match the predicted sign? How many degrees does it move during two complete worm turns?",
+          "Observe the blue tip during the two-second coasting pause. Does it fall freely in the virtual model? Then predict its travel for a +90 degree input jog."
+        ],
+        "why": "The single-start worm advances the 24-tooth wheel one tooth per full input revolution: output angle = input angle / 24. The wheel axle is perpendicular to the worm. +720 degrees of motor motion therefore yields about +30 degrees of gate motion. The virtual worm coupling includes a holding torque which resists reverse driving; the coast test is a simulator observation, not a real-world locking guarantee.",
+        "matters": "A worm makes a compact right-angle low-speed output from a fast rotating input. Worm lifts, positioning gates, indexing arms and some steering systems use this principle, but losses and load limits matter in physical machinery.",
+        "question": "If port A turns +360 degrees, how many degrees does the red gate travel? How many input turns make it travel +45 degrees?",
+        "answer": "+360 degrees of worm rotation makes the gate turn +15 degrees (360/24). To move the gate +45 degrees, drive the worm +1080 degrees, or three complete turns. The included program stays within 0 to +720 degrees, producing a +30-degree gate excursion.",
+        "further": [
+          "Predict the gate angle at A = +90, +180, +360 and +720 degrees: +3.75, +7.5, +15 and +30 degrees.",
+          "Why do the worm and output shaft axes sit at right angles? Identify both real bearing beams and the axle keepers.",
+          "Compare this worm reduction with LoopRelay's 2:9 chain/gear stage, ParityDial's 1:3 spur reduction and CounterSlide's racks."
+        ]
+      },
+      "de": {
+        "what": "Ein SPIKE-Motor A dreht eine eingängige rechtsgängige Technic-Schnecke. Diese greift in ein 24er-Zahnrad auf einer rechtwinkligen 10L-Abtriebswelle ein. Zwei L-förmige Träger lagern die Welle; ein roter L-Hebel mit blauem Stift zeigt die Bewegung.",
+        "try": [
+          "Öffne HelixGate samt Programm, setze den gespeicherten Nullpunkt zurück und starte Motor A. Der Motor dreht +720 Grad, läuft zwei Sekunden frei und kehrt auf null zurück.",
+          "Beobachte den roten L-Hebel und die blaue Markierung. Wie groß ist der Ausschlag nach zwei vollständigen Umdrehungen der Schnecke?",
+          "Beobachte die blaue Spitze in der zweisekündigen Auslaufphase. Fällt sie im virtuellen Modell frei? Sage anschließend den Winkel bei +90 Grad Eingang voraus."
+        ],
+        "why": "Eine eingängige Schnecke schiebt das 24er-Rad bei einer vollständigen Eingangs-Umdrehung um einen Zahn weiter: Abtriebswinkel = Eingangswinkel / 24. Beide Achsen stehen senkrecht aufeinander. +720 Grad Motordrehung ergeben daher etwa +30 Grad am Torhebel. Die Simulation modelliert ein Haltemoment der Schnecke; dies garantiert keine reale Selbsthemmung unter Last.",
+        "matters": "Schneckengetriebe übersetzen eine schnelle Drehbewegung in eine langsamere Bewegung um eine rechtwinklige Achse. Das Prinzip eignet sich für Positionierer, Hebe- und Stellmechanismen, allerdings müssen Reibung, Wirkungsgrad und Lasten real geprüft werden.",
+        "question": "Motor A dreht +360 Grad: Um wie viel bewegt sich das rote Tor? Wie viele Motorumdrehungen ergeben +45 Grad am Tor?",
+        "answer": "+360 Grad an der Schnecke ergeben +15 Grad Abtrieb. Für +45 Grad braucht der Motor +1080 Grad, also drei volle Umdrehungen. Im enthaltenen Programm bleibt die Bewegung bei 0 bis +720 Grad und der Torhub bei +30 Grad.",
+        "further": [
+          "Berechne die Torwinkel für A=+90, +180, +360 und +720 Grad: +3,75; +7,5; +15 und +30 Grad.",
+          "Warum stehen die beiden Wellen senkrecht? Suche die zwei Lagerträger und die Achsbuchsen.",
+          "Vergleiche HelixGate mit dem Ketten-Zahnrad-Modell LoopRelay, der ParityDial-Stirnradstufe und CounterSlide mit seinen Zahnstangen."
+        ]
+      },
+      "formula": {
+        "en": "φ = θ / 24",
+        "de": "φ = θ / 24"
+      },
+      "related": [
+        "gearbox.ldr",
+        "crank-rocker.ldr",
+        "rack-shuttle.ldr"
+      ]
+    },
+    "looprelay": {
+      "en": {
+        "what": "One SPIKE medium angular motor turns a 16-tooth input chain wheel. A 25-link closed loop carries rotation to a 24-tooth wheel on a second supported axle. An 8-tooth pinion keyed to that same axle drives a third shaft's 24-tooth gear and red indicator hand.",
+        "try": [
+          "Open the LoopRelay LDraw assembly and program, reset to the saved zero-encoder pose, then run port A. The motor advances to +180 degrees and returns to zero at 12 degrees per second.",
+          "Watch the blue 24-tooth chain wheel on the intermediate axle and the red reporter hand. Do they rotate in the same direction? How far does each travel at the pause?",
+          "With Manual override, advance motor A by +45 degrees at a time within 0 to +180. Observe the two reductions separately before predicting the final angle."
+        ],
+        "why": "The chain has no external gear-to-gear mesh and preserves rotation direction: intermediate angle = input × 16/24 = +2A/3. The 8-to-24 external gear mesh reverses direction and scales again by 8/24 = 1/3: reporter angle = -2A/9. At A = +180 degrees, the intermediate axle turns +120 degrees and the reporter -40 degrees, relative to each part's saved orientation.",
+        "matters": "A loop can transmit rotary motion between more distant parallel shafts, and a second gear stage can trade angular travel for torque while reversing direction. This is a virtual kinematics lesson, not a validated loaded drive, tensioner or physical transmission.",
+        "question": "At +90 degrees of input rotation, what angle has the intermediate chain wheel turned? What is the final red reporter angle? Why do their signs differ?",
+        "answer": "Intermediate: +60 degrees (= 90 × 16/24). Reporter: -20 degrees (= 60 × -8/24). The chain preserves direction; the one external spur-gear mesh reverses it. At +180 input, the corresponding values are +120 and -40 degrees.",
+        "further": [
+          "Predict the reporter after a +45 degree input command: -10 degrees.",
+          "What if the last output gear had 16 teeth instead of 24, keeping the intermediate pinion at 8 teeth? Predict -A/3, then redesign the gear-center spacing before attempting the swap.",
+          "Contrast the physical chain loop with ParityDial's idler and CounterSlide's racks. How does each move power or change direction?"
+        ]
+      },
+      "de": {
+        "what": "Ein SPIKE-Mittelmotor dreht das erste Kettenrad mit 16 Zähnen. Eine geschlossene Kette aus 25 Gliedern überträgt die Drehung auf ein 24er-Kettenrad einer zweiten gelagerten Welle. Ein 8er-Ritzel auf derselben Welle treibt das 24er-Abtriebsrad mit rotem Zeiger an.",
+        "try": [
+          "Öffne das LDraw-Modell und Programm von LoopRelay, setze den gespeicherten Encoder-Nullpunkt zurück und starte Motor A. Er fährt mit 12 Grad pro Sekunde auf +180 Grad und wieder zurück.",
+          "Beobachte das mittlere 24er-Kettenrad und den roten Abtriebszeiger: Drehen sie gleichsinnig? Welche Winkel erreichen sie bei der Pause?",
+          "Steuere Motor A von 0 bis +180 Grad schrittweise um je +45 Grad. Beobachte zunächst die Kettenstufe und sage erst dann den letzten Zeigerwinkel voraus."
+        ],
+        "why": "Eine Kette erhält die Drehrichtung: Der Winkel der Zwischenwelle beträgt A × 16/24 = +2A/3. Das äußere Zahnradpaar 8:24 kehrt die Richtung um und untersetzt nochmals auf ein Drittel: Abtriebswinkel = -2A/9. Bei A=+180 Grad dreht die Zwischenwelle +120 Grad und der rote Zeiger -40 Grad gegenüber ihrer gespeicherten Ausgangslage.",
+        "matters": "Eine Kette überträgt Drehbewegung zwischen weiter entfernten parallelen Wellen. Eine zusätzliche Zahnradstufe verringert den Winkel und kehrt die Drehrichtung um. Dies ist ein virtueller Kinematik-Versuch, kein geprüfter Lastantrieb mit verifizierter Kettenspannung.",
+        "question": "Motor A dreht +90 Grad: Wie weit dreht sich das mittlere Kettenrad? Welchen Winkel erreicht der rote Zeiger? Warum unterscheiden sich die Vorzeichen?",
+        "answer": "Zwischenwelle: +60 Grad (= 90 × 16/24). Roter Zeiger: -20 Grad (= 60 × -8/24). Die Kette erhält die Richtung; das äußere Zahnradpaar kehrt sie um. Bei +180 Grad Eingang sind es +120 und -40 Grad.",
+        "further": [
+          "Berechne den Abtriebswinkel bei +45 Grad Eingang: -10 Grad.",
+          "Was ändert sich mit einem letzten Zahnrad mit 16 statt 24 Zähnen? Die Rechnung ergibt -A/3; der Achsabstand muss dann neu konstruiert werden.",
+          "Vergleiche LoopRelay mit ParityDial (Zwischenrad) und CounterSlide (Zahnstangen). Wie übertragen sie Bewegung und ändern die Richtung?"
+        ]
+      },
+      "formula": "φ = (16/24) × (−8/24) θ = −2θ/9",
+      "related": [
+        "gearbox.ldr",
+        "crank-rocker.ldr",
+        "rack-shuttle.ldr"
+      ]
+    },
+    "paritydial": {
+      "en": {
+        "what": "A single SPIKE medium angular motor drives an 8-tooth pinion. The orange left hand is keyed to a 24-tooth gear directly meshed with that pinion. A 24-tooth idler sits between the pinion and the red right-hand 24-tooth gear. Both output shafts turn in real bearings and have equal reductions but opposite directions.",
+        "try": [
+          "Open the ParityDial model and program, reset to the saved 0-degree reference and run. The motor visits +90 degrees, -90 degrees and zero.",
+          "Watch the orange and red thin-liftarm hands, not only motor A's encoder. At the first hold, which way did each turn?",
+          "Manually jog A from 0 to +45 degrees and back at 15 degrees/second. Compare each hand with half the experiment's 90-degree command."
+        ],
+        "why": "An external 8T-to-24T gear mesh changes speed magnitude by 8/24 = 1/3 and reverses direction. The left path has one mesh, so theta_left = -A/3. The right path has two meshes (8T -> 24T idler -> 24T output), so theta_right = +A/3. The idler changes direction parity but does not change the overall ratio because its tooth count cancels.",
+        "matters": "An idler can relocate an output shaft or change its direction without changing its total speed ratio. This is useful in clockwork displays, synchronized indicators and gear-train routing. It is not a high-torque gearbox or a load-bearing machine.",
+        "question": "At A = +90 degrees, predict the angle of each clock hand from its starting orientation. What is their angular separation change?",
+        "answer": "The left hand turns -30 degrees and the right hand +30 degrees, so the relative angle between their directions changes by 60 degrees. At A = -90 degrees, the signs reverse. Both should return nearly to zero at the program's end.",
+        "further": [
+          "Predict both hands at A = +45 degrees: -15 degrees and +15 degrees.",
+          "Count the gear meshes in each path. What changes if you add another 24-tooth idler only to the left path?",
+          "Compare ParityDial with CounterSlide: both use one motor and multiple outputs, but this machine retains rotary motion."
+        ]
+      },
+      "de": {
+        "what": "Ein SPIKE-Mittelmotor treibt ein Ritzel mit acht Zähnen. Der orangefarbene linke Zeiger ist mit einem direkt eingreifenden 24er-Zahnrad verbunden. Rechts liegt ein weiteres 24er-Zwischenrad zwischen Antrieb und dem roten 24er-Abtriebsrad. Beide Ausgangswellen drehen in Lagern, gleich schnell, aber in entgegengesetzten Richtungen.",
+        "try": [
+          "Öffne ParityDial und sein Programm, setze es auf die gespeicherte Nullstellung zurück und starte. Der Motor fährt auf +90 Grad, -90 Grad und wieder auf null.",
+          "Beobachte die orangefarbenen und roten Zeiger aus dünnen Technic-Liftarmen. In welche Richtung dreht sich jeder bei der ersten Haltephase?",
+          "Steuere A manuell mit 15 Grad/Sekunde von 0 bis +45 Grad und zurück. Vergleiche die beiden Zeiger mit dem Versuch bei 90 Grad."
+        ],
+        "why": "Ein äußeres Zahnradpaar 8:24 untersetzt den Winkel um 8/24 = 1/3 und kehrt die Drehrichtung um. Links greift ein Zahnradpaar ein: theta_links = -A/3. Rechts sind es zwei Zahnradpaare (8er -> 24er Zwischenrad -> 24er Abtrieb): theta_rechts = +A/3. Das Zwischenrad ändert die Drehrichtung, nicht das Gesamtübersetzungsverhältnis, weil seine Zähnezahl herausfällt.",
+        "matters": "Ein Zwischenrad kann eine Abtriebswelle versetzen oder ihre Drehrichtung ändern, ohne die Gesamtübersetzung zu verändern. Nützlich ist das etwa bei Uhrwerken, Zeigeranzeigen oder mechanischer Signalführung. Das Modell ist kein geprüfter Hochlastantrieb.",
+        "question": "Bei A = +90 Grad: Welche Winkel erreichen die Zeiger von ihrer Startstellung aus? Um wie viel ändert sich ihre Winkeltrennung?",
+        "answer": "Der linke Zeiger dreht sich um -30 Grad, der rechte um +30 Grad. Die Winkeltrennung verändert sich also um 60 Grad. Bei A = -90 Grad tauschen die Vorzeichen. Am Ende sollten beide wieder nahezu auf null stehen.",
+        "further": [
+          "Berechne beide Zeiger bei A = +45 Grad: -15 Grad und +15 Grad.",
+          "Zähle die Zahneingriffe in jedem Weg. Was passiert, wenn nur links ein zusätzliches 24er-Zwischenrad eingefügt wird?",
+          "Vergleiche ParityDial mit CounterSlide: Beide haben einen Motor und mehrere Ausgänge, aber hier bleibt die Bewegung eine Drehung."
+        ]
+      },
+      "formula": "φ_left = −θ/3; φ_right = θ/3",
+      "related": [
+        "gearbox.ldr",
+        "crank-rocker.ldr",
+        "rack-shuttle.ldr"
+      ]
+    },
+    "counterslide": {
+      "en": {
+        "what": "One SPIKE motor turns a small 8-tooth pinion. Its top and bottom teeth drive two independent sliding Technic racks. Orange L-shaped jaws attached to the racks approach one another symmetrically, then retract.",
+        "try": [
+          "Import CounterSlide and its program, reset to the saved open pose, and press Run. Watch motor A close the jaws to -100 degrees, hold for one second and return to zero.",
+          "Pick matching reference points on the two orange jaw tips. Do they move equal distances in opposite X directions? Watch their midpoint, rather than just the motor encoder.",
+          "Use the manual control only between -100 and 0 degrees. Compare a -25-degree step and a -50-degree step without changing the pinion."
+        ],
+        "why": "For an 8-tooth pinion, the pitch radius is 10 LDraw units = 4 mm. Each rack translates 4 mm for every radian of pinion rotation; the upper rack moves left when the lower rack moves right. In this motor orientation, negative encoder A closes the jaws: each moves inward s = -4πA/180 mm and the tip-to-tip gap shrinks by 2s, as long as neither rack slips, bends or reaches contact.",
+        "matters": "The two guided racks are separate moving bodies driven by one gear, so matching jaw motion comes from the mechanism rather than two synchronized motors. This is useful for a self-centering gripper or symmetrical shutter. It is a small no-payload kinematics experiment, not a certified gripping-force machine.",
+        "question": "At the programmed -100-degree target, how far has each jaw moved, how much has the opening shrunk, and what should happen to the midpoint?",
+        "answer": "The ideal single-jaw travel is 6.981 mm. The two jaws jointly reduce the 24.000 mm starting center-to-center gap by 13.963 mm, leaving 10.037 mm. Their x positions remain opposite and their midpoint remains at x = 0. Verify these numbers against body positions, not encoder readings alone.",
+        "further": [
+          "Predict the movement for -50 degrees, then compare the observed halves; ideal travel is 3.491 mm per jaw.",
+          "Temporarily loosen or remove a rack guide only in an analytical model: explain why meshing teeth alone cannot stop the free rack body from twisting.",
+          "Compare this two-output mechanism with the single-output Rack Shuttle, where one rack follows the same pinion."
+        ]
+      },
+      "de": {
+        "what": "Ein SPIKE-Motor treibt ein Zahnrad mit acht Zähnen. Dessen obere und untere Zähne verschieben zwei getrennt geführte Technic-Zahnstangen. Daran befestigte orangefarbene Winkelbacken fahren symmetrisch aufeinander zu und wieder auseinander.",
+        "try": [
+          "Importiere CounterSlide und sein Programm, setze das Modell auf die gespeicherte offene Stellung zurück und drücke Start. Motor A schließt bis -100 Grad, hält eine Sekunde und fährt wieder auf null.",
+          "Wähle entsprechende Messpunkte an beiden orangefarbenen Backen. Bewegen sie sich gleich weit in entgegengesetzte X-Richtungen? Beobachte die Mitte zwischen ihnen, nicht nur den Motorwert.",
+          "Benutze die manuelle Steuerung nur zwischen -100 und 0 Grad. Vergleiche einen Schritt von -25 und einen von -50 Grad bei gleichem Ritzel."
+        ],
+        "why": "Das Ritzel mit acht Zähnen hat einen Teilkreisradius von 10 LDraw-Einheiten = 4 mm. Pro Radiant Ritzeldrehung legt jede Zahnstange 4 mm zurück; die obere bewegt sich nach links, während die untere nach rechts fährt. Bei dieser Motorlage schließen negative Encoderwinkel A die Backen: s = -4πA/180 mm Weg nach innen je Backe. Der Backenabstand nimmt um 2s ab, solange nichts rutscht, sich verbiegt oder anstößt.",
+        "matters": "Beide Schlitten sind getrennte bewegliche Körper, werden aber vom selben Zahnrad angetrieben. Der Gleichlauf kommt aus der Mechanik, nicht aus zwei synchronisierten Motoren. Das Prinzip eignet sich für einen Zentriergreifer oder eine symmetrische Blende. Das Modell ist ein unbelasteter Kinematikversuch ohne geprüfte Greifkraft.",
+        "question": "Wie weit wandert bei -100 Grad jede Backe, um wie viel verkleinert sich die Öffnung und was passiert mit dem Mittelpunkt?",
+        "answer": "Idealerweise wandert jede Backe 6,981 mm. Der anfängliche Mittelpunktabstand der Backen von 24,000 mm sinkt insgesamt um 13,963 mm auf 10,037 mm. Ihre X-Positionen bleiben entgegengesetzt, der Mittelpunkt liegt weiterhin bei x = 0. Vergleiche dies mit den tatsächlichen Körperpositionen und nicht nur mit dem Encoder.",
+        "further": [
+          "Berechne -50 Grad im Voraus: ideal sind 3,491 mm Weg je Backe. Prüfe das in der Bewegung.",
+          "Denke die Führung einer Zahnstange weg: Weshalb verhindern die Zähne allein kein Verdrehen des freien Körpers?",
+          "Vergleiche mit dem einseitigen Rack Shuttle: dort bewegt ein Ritzel nur eine geführte Zahnstange."
+        ]
+      },
+      "formula": "|Δx| = 4 mm × |θ| (θ in radians); midpoint remains fixed",
+      "related": [
+        "gearbox.ldr",
+        "crank-rocker.ldr",
+        "rack-shuttle.ldr"
+      ]
+    },
+    "rimrun": {
+      "en": {
+        "what": "Two free rollers wait on the same fixed incline behind one common gate. Each roller has 39 placed parts and 73.28 g of canonical catalog mass, two identical outer wheels and a centered mass distribution. The fixed incline is 6.842773°. The green roller starts with its paired ballast close to the axis; the orange roller carries the same ballast farther out. Motor A lifts the gate, then holds it clear while gravity and contact move the rollers. Neither roller has a motor, axle bearing to the frame or imposed path. Compare their downhill travel before either touches a spring catch. The supplied comparison exchanges the ballast layouts between the lanes while keeping the green and orange lane colors.",
+        "try": [
+          "Load RimRun from the Robot Lab model list with its program rimrun.bw, then use the toolbar Run, which connects the program to the simulated SPIKE hub. Reload the model before every run: the rollers stay where the catches stopped them. Manual browser runs of this model have not been recorded.",
+          "Before running, predict whether equal weight and equal wheel size imply equal downhill motion. Inspect both opposed ballast packages. Color identifies the lane; distance of the ballast from the rolling axis is the quantity being changed.",
+          "The program homes motor A to 0° at 60°/s, holds for 1.5 seconds and checks the actual angle. It then requests +100° at 400°/s, holds open for three seconds and returns to 0° at 120°/s under a finite watchdog. These are command targets, not measured trajectories. Watch the actual release from the side. Compare the roller centers crossing the same downhill position, or compare their positions at the same time after release. End the rolling comparison before a wheel touches any spring shoe or backup wall.",
+          "Check that translation is accompanied by rolling. A spoke turning without the corresponding travel, or travel without enough turning, indicates slip. For rolling without slip, distance along the track is approximately the rolling radius times the rotation angle in radians. A convincing result needs this check as well as a finishing order.",
+          "Let the finite program finish. It holds the gate open, returns the gate to its saved angle and stops. Returning the gate does not restore the rollers' original positions, angular phases or velocities, or the passive catches' original state.",
+          "Predict which result should exchange lanes. Use File → Open to import the complete models/rimrun-swapped.ldr scene afresh, then run the same programs/rimrun.bw source. Green now carries the outer ballast and orange the inner ballast. The runway, starting wheel poses, part inventory, total masses and release commands are unchanged.",
+          "Compare both runs before spring-shoe or wall contact. Does the earlier arrival follow the inner ballast when it moves to the other lane? Reload the complete saved model before every repeat, including after an interruption. An encoder reset or another Run on the used scene is not a fresh trial."
+        ],
+        "why": "Gravity supplies both translational and rotational kinetic energy during rolling. The total mass sets the available gravitational energy, but it does not say how that energy is divided. Moving the same balanced ballast outward increases the axial moment of inertia while leaving mass, center of mass and outer rolling radius unchanged. For rolling without slip, the outer-ballast configuration therefore needs more rotational energy for a given center speed and has a smaller downhill acceleration. Static friction supplies the torque that starts the rotation; in the ideal no-slip model it does no work at the stationary contact point. If the wheels slip, the simple rolling relation is no longer sufficient.",
+        "matters": "Mass distribution matters even when a scale and the outside dimensions cannot distinguish two objects. In the fresh native pair, the inner-ballast configuration won in both lanes. The scoped rolling comparison passes all 109 retained original gates per run and all eight original comparison checks apart from the separate whole-run aggregate. Full native qualification remains FAIL: later settling and catch limits are not met. The watchdog diagnostic also fails its final angular-speed limit. These failures remain in their original reports; a successful rolling comparison does not qualify the complete machine. Browser integration, manual control and a physical build are untested.",
+        "question": "Both rollers contain the same parts and have the same total mass and wheel radius. Which ballast layout should reach a chosen downhill position first, and what should happen when the layouts exchange lanes?",
+        "answer": "The inner-ballast layout arrived first in both fresh native runs. At 200 mm of travel it arrived 25.930 ms earlier in the main scene and 25.387 ms earlier after the lane exchange. When the inner roller reached that position, the outer roller was still 14.424 mm and 14.141 mm behind, respectively. Bringing mass closer to the axis reduces the axial moment of inertia, so more of the same gravitational energy appears as translation. The observed advantage followed the inner ballast into the other lane, rather than following green or the left lane. These are results for the free-rolling comparison before catch contact; the complete-run verdict remains FAIL.",
+        "further": [
+          "Define kappa = I_cm/(M R²), with I_cm about the roller's central rolling axis. The recorded native values are approximately 0.307316 for inner ballast and 0.409080 for outer ballast. Their ideal acceleration ratio is 1.077842. At the same height drop, the ideal ratio of rotational to translational kinetic energy is kappa. Equal mass therefore does not imply equal speed, and equal wheel radius does not imply equal moment of inertia.",
+          "Multiplying every mass by the same factor without changing its position would leave kappa and the ideal rolling acceleration unchanged. Moving the ballast outward is different: it changes I_cm/(M R²). The opposed packages keep the center of mass centered; one unbalanced package would add a different experiment with orientation-dependent gravity torque.",
+          "The native solver uses canonical part masses and primitive collision shapes. Contact friction and ordinary damping remain active. Its additional tire rolling-resistance routine requires a coaxial hinge and does not apply to these entirely free rigid rollers. The measurements establish the comparison within this representation; they are not a calibration of real tire losses or a prediction of hardware finish times.",
+          "Carry Ratio already explains how rotational inertia affects a ball transported by a moving tray. Switchback Lift sends one ball down ramps, and Travel Dial checks rolling as an odometer. RimRun compares two fixed ballast layouts at matched mass and radius under gravity, then exchanges their lanes. Afterturn and Inertia Loop relocate masses during driven reaction-wheel cycles instead.",
+          "The recorded position fits use the unchanged native damping coefficient, 0.05 per second. They give driving accelerations of 0.884448 and 0.815241 m/s² for inner and outer ballast in the main scene, and 0.883437 and 0.817677 m/s² after the lane exchange. The corresponding ratios are 1.084891 and 1.080423, compared with the ideal 1.077842. Across both runs the largest mismatch between traveled distance and rolling arc in the declared interval was 0.005282 mm. These checks support an inertia comparison rather than an interpretation based only on finishing order.",
+          "Four independent spring shoes act after the free-rolling measurement region, with a fixed backup wall beyond them. They are passive catches, not finish-line sensors or reset devices. A physical assembly needs four intact spring-equipped 9L shock units; the simulator draws each cylinder and rod and supplies the spring through native parameters, without a separate coil mesh or mass. Full catch qualification fails: the largest transverse slider gap is 0.731458 mm against 0.5 mm, and the backup-wall penetration upper bound reaches 0.946783 mm against 0.35 mm. Final roller-rest limits also fail. Reload the complete scene before every trial.",
+          "A separate watchdog test shortened only the deadline from 12 seconds to 0.12 seconds and interrupted a real powered home after 1.6445° of gate motion. The failure flag, absence of late motion commands, finite exit and held-angle range all passed. Its maximum final angular speed was 3.159365°/s against a 2°/s limit, so the watchdog test remains FAIL. This diagnostic is not a physical jam test. The unchanged full reports and scoped result are packaged in evidence/qualification/, including rolling-comparison.json, main-observer.json, swapped-observer.json, pair-observer.json and watchdog/watchdog.json."
+        ]
+      },
+      "de": {
+        "what": "Zwei freie Rollkörper warten auf derselben festen schiefen Ebene hinter einer gemeinsamen Schranke. Jeder besteht aus 39 platzierten Teilen mit 73,28 g Katalogmasse, zwei gleichen äußeren Rädern und einem mittig liegenden Schwerpunkt. Die feste Bahnneigung beträgt 6,842773°. Beim grünen Rollkörper liegen die beiden gegenüberliegenden Ballastpakete zunächst nahe an der Achse; beim orangen sitzt derselbe Ballast weiter außen. Motor A hebt die Schranke und hält sie frei, während Schwerkraft und Kontakt die Rollkörper bewegen. Keiner der Rollkörper besitzt einen Motor, ein Achslager zum Gestell oder eine vorgegebene Bahn. Vergleiche ihre Bewegung hangabwärts, bevor einer einen Federfänger berührt. Das Vergleichsmodell vertauscht die Ballastanordnungen zwischen den Spuren; Grün und Orange bleiben als Spurfarben erhalten.",
+        "try": [
+          "Lade RimRun aus der Modellliste von Robot Lab mit seinem Programm rimrun.bw und verwende dann die Run-Schaltfläche der Werkzeugleiste; sie verbindet das Programm mit dem simulierten SPIKE-Hub. Lade das Modell vor jedem Lauf neu: Die Rollkörper bleiben dort, wo die Fänger sie angehalten haben. Manuelle Browserläufe dieses Modells sind nicht aufgezeichnet.",
+          "Sage vor dem Start voraus, ob gleiche Masse und gleiche Radgröße auch dieselbe Bewegung hangabwärts bedeuten. Betrachte beide gegenüberliegenden Ballastpakete. Die Farbe kennzeichnet die Spur; verändert wird der Abstand des Ballasts von der Rollachse.",
+          "Das Programm fährt Motor A mit 60°/s auf 0°, hält 1,5 Sekunden und prüft den tatsächlichen Winkel. Danach fordert es +100° mit 400°/s an, hält die Schranke drei Sekunden offen und fährt mit 120°/s auf 0° zurück; ein endlicher Zeitwächter überwacht den Ablauf. Dies sind Sollwerte, keine gemessenen Bahnen. Beobachte die tatsächliche Freigabe von der Seite. Vergleiche, wann die Mittelpunkte dieselbe Stelle hangabwärts passieren, oder ihre Positionen zur gleichen Zeit nach der Freigabe. Beende den Rollvergleich, bevor ein Rad einen Federschuh oder die feste Sicherungswand berührt.",
+          "Prüfe, ob Verschiebung und Drehung zusammenpassen. Dreht sich eine Speiche ohne den entsprechenden Weg, oder legt der Körper zu viel Weg für seine Drehung zurück, deutet das auf Schlupf hin. Beim Rollen ohne Gleiten entspricht der Weg entlang der Bahn ungefähr dem Rollradius mal dem Drehwinkel im Bogenmaß. Ein aussagekräftiger Vergleich braucht diese Prüfung zusätzlich zur Ankunftsreihenfolge.",
+          "Lass das endliche Programm zu Ende laufen. Es hält die Schranke offen, führt sie in ihren gespeicherten Winkel zurück und stoppt. Die Rückkehr der Schranke stellt weder die ursprünglichen Positionen, Drehstellungen und Geschwindigkeiten der Rollkörper noch den ursprünglichen Zustand der passiven Fänger wieder her.",
+          "Sage voraus, welches Ergebnis die Spur wechseln sollte. Importiere über File → Open die vollständige Szene models/rimrun-swapped.ldr frisch und starte denselben Text aus programs/rimrun.bw. Grün trägt jetzt den äußeren, Orange den inneren Ballast. Bahn, anfängliche Radpositionen, Teilebestand, Gesamtmassen und Startbefehle bleiben gleich.",
+          "Vergleiche beide Durchläufe vor dem ersten Kontakt mit einem Federschuh oder der Wand. Folgt die frühere Ankunft dem inneren Ballast, wenn dieser die Spur wechselt? Lade vor jeder Wiederholung das vollständige gespeicherte Modell neu, auch nach einer Unterbrechung. Ein Zurücksetzen des Encoders oder erneutes Run in der benutzten Szene ist kein frischer Versuch."
+        ],
+        "why": "Beim Rollen liefert die Schwerkraft sowohl Bewegungsenergie des Schwerpunkts als auch Rotationsenergie. Die Gesamtmasse bestimmt die verfügbare Lageenergie, aber nicht deren Aufteilung. Wird derselbe symmetrische Ballast weiter nach außen gesetzt, steigt das Trägheitsmoment um die Rollachse; Masse, Schwerpunkt und äußerer Rollradius bleiben gleich. Beim Rollen ohne Gleiten benötigt die äußere Anordnung deshalb mehr Rotationsenergie für dieselbe Geschwindigkeit des Mittelpunkts und beschleunigt langsamer hangabwärts. Die Haftreibung liefert das Drehmoment zum Anrollen. Im idealen Modell ohne Schlupf verrichtet sie am ruhenden Kontaktpunkt keine Arbeit. Gleiten die Räder, genügt die einfache Rollbeziehung nicht mehr.",
+        "matters": "Die Massenverteilung ist wichtig, auch wenn eine Waage und die Außenmaße zwei Gegenstände nicht unterscheiden können. Im frischen nativen Versuchspaar gewann die Anordnung mit innerem Ballast in beiden Spuren. Der auf den Rollvergleich begrenzte Nachweis besteht alle 109 beibehaltenen ursprünglichen Prüfungen pro Durchlauf sowie alle acht ursprünglichen Vergleichsprüfungen neben dem gesonderten Gesamturteil. Die vollständige native Qualifikation bleibt FAIL: Spätere Ruhe- und Fanggrenzwerte werden nicht eingehalten. Auch der Zeitwächtertest verfehlt seinen abschließenden Winkelgeschwindigkeitsgrenzwert. Diese Fehler bleiben in den Originalberichten erhalten; ein erfolgreicher Rollvergleich qualifiziert nicht die vollständige Maschine. Browser-Integration, manuelle Steuerung und ein physischer Aufbau sind ungetestet.",
+        "question": "Beide Rollkörper enthalten dieselben Teile und haben dieselbe Gesamtmasse und denselben Radaußenradius. Welche Ballastanordnung sollte eine gewählte Stelle hangabwärts zuerst erreichen, und was sollte beim Spurtausch passieren?",
+        "answer": "Die Anordnung mit innerem Ballast kam in beiden frischen nativen Durchläufen zuerst an. Bei 200 mm Weg lag sie im Hauptmodell um 25,930 ms und nach dem Spurtausch um 25,387 ms vorn. Als der innere Rollkörper diese Stelle erreichte, fehlten dem äußeren noch 14,424 mm beziehungsweise 14,141 mm. Masse näher an der Achse verringert das axiale Trägheitsmoment, sodass mehr derselben Lageenergie in die Bewegung des Schwerpunkts übergeht. Der beobachtete Vorteil folgte dem inneren Ballast in die andere Spur, statt nur Grün oder der linken Spur zu folgen. Das sind Ergebnisse des freien Rollvergleichs vor dem ersten Fängerkontakt; das Gesamturteil bleibt FAIL.",
+        "further": [
+          "Definiere kappa = I_cm/(M R²), wobei I_cm das Trägheitsmoment um die zentrale Rollachse ist. Die aufgezeichneten nativen Werte betragen ungefähr 0,307316 für inneren und 0,409080 für äußeren Ballast. Daraus folgt das ideale Beschleunigungsverhältnis 1,077842. Bei gleichem Höhenverlust entspricht das ideale Verhältnis von Rotationsenergie zu Bewegungsenergie des Schwerpunkts kappa. Gleiche Masse bedeutet deshalb nicht gleiche Geschwindigkeit, und gleicher Radaußenradius bedeutet nicht gleiches Trägheitsmoment.",
+          "Würden alle Massen bei unveränderten Positionen mit demselben Faktor multipliziert, blieben kappa und die ideale Rollbeschleunigung gleich. Das Verschieben des Ballasts nach außen ist anders: Es verändert I_cm/(M R²). Die gegenüberliegenden Pakete halten den Schwerpunkt in der Mitte. Ein einzelnes unausgewogenes Paket würde zusätzlich ein von der Drehstellung abhängiges Schwerkraftmoment erzeugen und wäre ein anderer Versuch.",
+          "Der native Solver verwendet Katalogmassen der Teile und vereinfachte Kollisionsformen. Kontaktreibung und gewöhnliche Dämpfung bleiben aktiv. Die zusätzliche Reifen-Rollwiderstandsroutine benötigt ein koaxiales Gelenk und greift bei diesen vollständig freien starren Rollkörpern nicht. Die Messungen belegen den Vergleich innerhalb dieser Darstellung; sie kalibrieren keine realen Reifenverluste und sagen keine Ankunftszeiten eines physischen Aufbaus voraus.",
+          "Carry Ratio erklärt bereits den Einfluss des Trägheitsmoments auf eine Kugel, die von einer bewegten Plattform transportiert wird. Switchback Lift schickt eine einzelne Kugel über Rampen; Travel Dial prüft Rollen als Wegmessung. RimRun vergleicht zwei feste Ballastanordnungen bei gleicher Masse und gleichem Radius unter Schwerkraft und vertauscht anschließend ihre Spuren. Afterturn und Inertia Loop versetzen Massen dagegen während angetriebener Reaktionsradzyklen.",
+          "Die Anpassung der aufgezeichneten Positionen verwendet den unveränderten nativen Dämpfungskoeffizienten von 0,05 pro Sekunde. Sie ergibt antreibende Beschleunigungen von 0,884448 und 0,815241 m/s² für inneren und äußeren Ballast im Hauptmodell sowie 0,883437 und 0,817677 m/s² nach dem Spurtausch. Die Verhältnisse betragen 1,084891 und 1,080423 gegenüber dem idealen Wert 1,077842. In beiden Durchläufen lag die größte Abweichung zwischen zurückgelegtem Weg und abgerollter Bogenlänge im festgelegten Messbereich bei 0,005282 mm. Diese Prüfungen stützen den Trägheitsvergleich zusätzlich zur Ankunftsreihenfolge.",
+          "Vier unabhängige Federschuhe wirken hinter dem Messbereich für das freie Rollen; dahinter steht eine feste Sicherungswand. Es sind passive Fänger, keine Zielsensoren oder Rücksetzvorrichtungen. Für einen physischen Aufbau werden vier vollständige 9L-Stoßdämpfer mit eingebauter Feder benötigt. Der Simulator zeichnet Zylinder und Kolbenstange und bildet die Feder durch native Parameter ab, ohne eigene Federgeometrie oder separat zugewiesene Federmasse. Die vollständige Fangqualifikation scheitert: Der größte seitliche Versatz der Schiebegelenkanker beträgt 0,731458 mm bei einem Grenzwert von 0,5 mm; die obere Schranke für die Durchdringung an der Sicherungswand erreicht 0,946783 mm bei einem Grenzwert von 0,35 mm. Auch die abschließenden Ruhegrenzwerte der Rollkörper werden verfehlt. Lade vor jedem Versuch die vollständige Szene neu.",
+          "Ein gesonderter Zeitwächtertest verkürzte nur die Frist von 12 Sekunden auf 0,12 Sekunden und unterbrach eine tatsächlich laufende Heimfahrt nach 1,6445° Schrankenbewegung. Fehlerflag, Ausbleiben später Bewegungsbefehle, endliches Programmende und Winkelbereich beim Halten bestanden ihre Prüfungen. Die größte abschließende Winkelgeschwindigkeit betrug jedoch 3,159365°/s bei einem Grenzwert von 2°/s; deshalb bleibt der Zeitwächtertest FAIL. Er simuliert kein physisches Verklemmen. Die unveränderten vollständigen Berichte und das begrenzte Vergleichsergebnis liegen unter evidence/qualification/, darunter rolling-comparison.json, main-observer.json, swapped-observer.json, pair-observer.json und watchdog/watchdog.json."
+        ]
+      },
+      "formula": {
+        "en": "Ideal rolling from rest without slip: kappa = I_cm/(M R²); a = g sin(alpha)/(1 + kappa); v² = 2gh/(1 + kappa); K_rot/K_trans = kappa; v = R omega. Alpha is the fixed incline, h the actual center-of-mass height lost, R the rolling radius, and omega the angular speed. These relations predict the effect of inertia; actual poses and velocities must establish the trajectory, release conditions and validity of rolling without slip.",
+        "de": "Ideales Rollen aus der Ruhe ohne Gleiten: kappa = I_cm/(M R²); a = g sin(alpha)/(1 + kappa); v² = 2gh/(1 + kappa); K_rot/K_trans = kappa; v = R omega. Alpha ist die feste Bahnneigung, h der tatsächliche Höhenverlust des Schwerpunkts, R der Rollradius und omega die Winkelgeschwindigkeit. Diese Beziehungen sagen den Einfluss des Trägheitsmoments voraus; die wirklichen Positionen, Orientierungen und Geschwindigkeiten müssen Bahn, Startbedingungen und Rollen ohne Gleiten belegen."
+      },
+      "related": [
+        "carry-ratio.ldr",
+        "switchback-lift.ldr",
+        "travel-dial.ldr"
+      ]
+    },
+    "pointweaver": {
+      "en": {
+        "what": "Reload the saved lower-left pose. Motor A drives the yellow left input arm and Motor B drives the red right input arm. The blue and orange forearms meet at the retained orange endpoint marker. All five intended joint axes are parallel.",
+        "try": [
+          "Run the finite program once. Both axes move together to the lower-right, upper-right and upper-left corners, then return to the saved lower-left datum. Use manual jog only within A = −34°…2° and B = −11°…26°. These limits are guidance, not physical stops.",
+          "Before opening the analytical preview, predict which edge has the largest departure from its dashed straight command: the lower horizontal edge, either vertical edge, or the upper horizontal edge. Also predict whether the midpoint bows toward larger or smaller Z.",
+          "Compare the actual output with your prediction before revealing the explanation."
+        ],
+        "why": "Each motor fixes an elbow on an 80 LDU circle. The endpoint is the high-Z intersection of two 160 LDU circles centred on those elbows. Because circle intersections depend nonlinearly on both angles, equal-time linear angle ramps do not generally produce a straight endpoint line.",
+        "question": "Before opening the analytical preview, predict which edge has the largest departure from its dashed straight command: the lower horizontal edge, either vertical edge, or the upper horizontal edge. Also predict whether the midpoint bows toward larger or smaller Z.",
+        "answer": "The ideal corner rectangle is 28 mm wide and 8 mm high. The upper horizontal edge bows the most: about 2.634 mm toward larger Z at its midpoint. The lower edge bows about 1.776 mm, and each vertical edge about 1.656 mm outward. These are analytical geometry results, not native physics or physical-build measurements.",
+        "matters": "Two angular motors drive the base links of a planar five-bar mechanism. The blue and orange forearms meet at an orange endpoint marker. A finite program reaches four rectangular corner poses while exposing the curved endpoint edges produced by synchronized linear motor-angle interpolation.",
+        "further": [
+          "Vary the input speed and repeat from the saved datum. Does the geometric law change?",
+          "Find the passive output and its real bearings. Which physical connection transmits the drive?"
+        ]
+      },
+      "formula": "|P − E_left| = |P − E_right| = 64 mm; elbow orbit radius = 32 mm",
+      "related": [
+        "gearbox.ldr",
+        "crank-rocker.ldr",
+        "rack-shuttle.ldr"
+      ],
+      "de": {
+        "what": "Lade die gespeicherte untere linke Lage neu. Motor A treibt den gelben linken Eingangsarm an, Motor B den roten rechten Eingangsarm. Der blaue und der orange Unterarm treffen sich an der gehaltenen orangefarbenen Endpunktmarke. Alle fünf vorgesehenen Gelenkachsen sind parallel.",
+        "try": [
+          "Starte das endliche Programm einmal. Beide Achsen bewegen sich gemeinsam zur unteren rechten, oberen rechten und oberen linken Ecke und kehren danach zur gespeicherten unteren linken Nullage zurück. Verwende den Handbetrieb nur in A = −34°…2° und B = −11°…26°. Diese Grenzen sind Hinweise und keine mechanischen Anschläge.",
+          "Sage vor dem Öffnen der analytischen Vorschau voraus, welche Kante am stärksten von der gestrichelten Geraden abweicht: die untere waagerechte Kante, eine senkrechte Kante oder die obere waagerechte Kante. Sage außerdem voraus, ob sich der Mittelpunkt zu größerem oder kleinerem Z wölbt.",
+          "Vergleiche die beobachtete Bewegung mit deiner Vorhersage, bevor du die Erklärung öffnest."
+        ],
+        "why": "Jeder Motor legt einen Ellbogen auf einem Kreis mit 80 LDU Radius fest. Der Endpunkt ist der Schnittpunkt mit größerem Z zweier Kreise mit 160 LDU Radius um diese Ellbogen. Da Kreisschnittpunkte nichtlinear von beiden Winkeln abhängen, erzeugen gleichzeitige lineare Winkelrampen im Allgemeinen keine gerade Endpunktlinie.",
+        "question": "Sage vor dem Öffnen der analytischen Vorschau voraus, welche Kante am stärksten von der gestrichelten Geraden abweicht: die untere waagerechte Kante, eine senkrechte Kante oder die obere waagerechte Kante. Sage außerdem voraus, ob sich der Mittelpunkt zu größerem oder kleinerem Z wölbt.",
+        "answer": "Das ideale Eckrechteck ist 28 mm breit und 8 mm hoch. Die obere waagerechte Kante wölbt sich am stärksten: etwa 2,634 mm zu größerem Z in ihrer Mitte. Die untere Kante wölbt sich um etwa 1,776 mm, jede senkrechte Kante um etwa 1,656 mm nach außen. Das sind analytische Geometrieergebnisse und keine Messungen der nativen Physik oder eines realen Aufbaus.",
+        "matters": "Zwei Winkelmotoren treiben die Grundglieder eines ebenen Fünfgelenkgetriebes an. Der blaue und der orange Unterarm treffen sich an einer orangefarbenen Endpunktmarke. Ein endliches Programm fährt vier rechteckige Ecklagen an und macht die gekrümmten Endpunktkanten sichtbar, die durch synchron linear interpolierte Motorwinkel entstehen.",
+        "further": [
+          "Ändere die Eingangsgeschwindigkeit und starte erneut vom gespeicherten Nullpunkt. Ändert sich das geometrische Gesetz?",
+          "Finde den passiven Abtrieb und seine Lager. Welche mechanische Verbindung überträgt den Antrieb?"
+        ]
+      }
+    },
+    "evenhand": {
+      "en": {
+        "what": "Evenhand is a two-joint arm in the vertical plane. Motor A turns the shoulder, motor B the elbow. Behind each joint, ordinary stock parts act as counterweights: they balance the upper arm about the shoulder and the forearm about the elbow. The program visits nine poses, every combination of shoulder −20°, 0°, +20° and elbow −30°, 0°, +30°, holds each for 1.2 s and returns home. In the simulator both motors hold every pose with almost no torque: the shoulder needs about 0.35 mN·m and the elbow less than 0.01 mN·m.",
+        "try": [
+          "In Robot Lab, choose File → Open a model… and open evenhand.ldr. Put programs/evenhand.bw in the Code tab, choose ⇦ To blocks and press Robot Lab's Run button, which connects the virtual SPIKE hub.",
+          "Watch the counterweights during the nine poses: as each link tips down on one side, its counterweight rises on the other.",
+          "Use the manual controls (shoulder ±20°, elbow ±30°) and let go at any pose: the balanced arm has no tendency to fall back.",
+          "Then open evenhand-control.ldr, where the forearm weights sit closer to the elbow, and run the same program. Reload the complete scene before each comparison."
+        ],
+        "why": "Gravity pulls on every part of a link. About its joint, the parts in front and behind produce opposite torques. When the counterweight's mass times its distance behind the joint equals the link's mass times the distance of its own centre of mass in front, the torques cancel at every angle, because both scale with the cosine of the same angle. A balanced arm therefore needs motor torque only to accelerate, not to hold still.",
+        "matters": "Desk lamps, robot arms, cranes, lift bridges and lift doors use counterweights or springs for the same reason: the motor or the person only has to move the load, not to carry it.",
+        "question": "Why does the balanced arm need almost no holding torque at every pose, not just when the arm is level?",
+        "answer": "Because the link's weight torque and the counterweight's torque both change with the cosine of the link's angle. If they cancel when level, they cancel at every angle. The small remaining shoulder torque, about 0.35 mN·m, shows the balance is not perfect but is more than ten times smaller than in the control.",
+        "further": [
+          "Use m₁·d₁ = m₂·d₂ to estimate how far behind the elbow the forearm weights must sit to balance the forearm.",
+          "Why must the shoulder counterweight balance the elbow motor and the forearm with its counterweights as well as the upper arm?",
+          "Look up how a balanced desk lamp uses springs instead of weights."
+        ]
+      },
+      "de": {
+        "what": "Evenhand ist ein Zweigelenkarm in der senkrechten Ebene. Motor A dreht die Schulter, Motor B den Ellbogen. Hinter jedem Gelenk wirken gewöhnliche Standardteile als Gegengewichte: Sie gleichen den Oberarm um die Schulter und den Unterarm um den Ellbogen aus. Das Programm fährt neun Stellungen an, jede Kombination aus Schulter −20°, 0°, +20° und Ellbogen −30°, 0°, +30°, hält jede 1,2 s und kehrt zurück. Im Simulator halten beide Motoren jede Stellung fast ohne Drehmoment: Die Schulter braucht etwa 0,35 mN·m, der Ellbogen weniger als 0,01 mN·m.",
+        "try": [
+          "Wähle im Roboter-Labor Datei → Ein Modell öffnen… und öffne evenhand.ldr. Setze programs/evenhand.bw in den Code-Tab, wähle ⇦ Zu Blöcken und drücke den Run-Knopf des Roboter-Labors; er verbindet den virtuellen SPIKE-Hub.",
+          "Beobachte die Gegengewichte während der neun Stellungen: Senkt sich ein Glied auf einer Seite, hebt sich sein Gegengewicht auf der anderen.",
+          "Nutze die Handsteuerung (Schulter ±20°, Ellbogen ±30°) und lass in jeder Stellung los: Der ausgewogene Arm hat keine Neigung zurückzufallen.",
+          "Öffne dann evenhand-control.ldr, in dem die Unterarmgewichte näher am Ellbogen sitzen, und starte dasselbe Programm. Lade vor jedem Vergleich die ganze Szene neu."
+        ],
+        "why": "Die Schwerkraft zieht an jedem Teil eines Glieds. Um sein Gelenk erzeugen die Teile davor und dahinter entgegengesetzte Drehmomente. Ist die Masse des Gegengewichts mal seinem Abstand hinter dem Gelenk gleich der Masse des Glieds mal dem Abstand seines Schwerpunkts davor, heben sich die Momente bei jedem Winkel auf, weil beide mit dem Kosinus desselben Winkels wachsen. Ein ausgewogener Arm braucht Motormoment nur zum Beschleunigen, nicht zum Halten.",
+        "matters": "Schreibtischlampen, Roboterarme, Kräne, Klappbrücken und Garagentore nutzen Gegengewichte oder Federn aus demselben Grund: Motor oder Mensch müssen die Last nur bewegen, nicht tragen.",
+        "question": "Warum braucht der ausgewogene Arm in jeder Stellung fast kein Haltemoment und nicht nur, wenn er waagerecht steht?",
+        "answer": "Weil das Moment des Glieds und das des Gegengewichts sich beide mit dem Kosinus des Gliedwinkels ändern. Heben sie sich waagerecht auf, heben sie sich bei jedem Winkel auf. Das kleine verbleibende Schultermoment von etwa 0,35 mN·m zeigt, dass der Ausgleich nicht perfekt ist; es ist aber mehr als zehnmal kleiner als in der Kontrolle.",
+        "further": [
+          "Schätze mit m₁·d₁ = m₂·d₂, wie weit hinter dem Ellbogen die Unterarmgewichte sitzen müssen, um den Unterarm auszugleichen.",
+          "Warum muss das Schultergegengewicht außer dem Oberarm auch den Ellbogenmotor und den Unterarm mit seinen Gegengewichten ausgleichen?",
+          "Finde heraus, wie eine ausgewogene Schreibtischlampe Federn statt Gewichten nutzt."
+        ]
+      },
+      "formula": {
+        "en": "Holding torque about a joint: τ = g·cos(φ)·Σ mᵢ·dᵢ (dᵢ signed distance along the link). Balanced when Σ mᵢ·dᵢ = 0, so τ = 0 for every φ.",
+        "de": "Haltemoment um ein Gelenk: τ = g·cos(φ)·Σ mᵢ·dᵢ (dᵢ vorzeichenbehafteter Abstand entlang des Glieds). Ausgewogen, wenn Σ mᵢ·dᵢ = 0; dann ist τ = 0 für jedes φ."
+      },
+      "related": [
+        "crane.ldr"
+      ]
+    },
+    "obliquity-orrery": {
+      "en": {
+        "what": "Motor A at the top turns crank A directly. Crank B, 32 mm away, is free. Both cranks are 16 mm long and carry the same coupler, so the four pivots form a parallelogram: the coupler travels round a 16 mm circle but never turns. The Earth, a round plate hanging below the coupler, is fixed to it through an angle connector that tilts its axis by ε = 22.5°. The Sun is a marker on the base at the orbit centre, level with the Earth. The program carries the Earth from orbit position λ = 45° to 135° in nine steps and back. In the simulator the measured solar declination δ follows sin δ = sin 22.5° · cos(λ − 45°) within 0.003°.",
+        "try": [
+          "Load the model, press Reset, then Run. Watch the Earth's tilted axis: it keeps pointing the same way the whole time, while the Earth moves round the Sun.",
+          "At the start (λ = 45°) the axis leans straight towards the Sun: this is midsummer for the Earth's top half, δ = +22.5°. At the end of the sweep (λ = 135°) the axis leans sideways along the orbit, and δ = 0°: an equinox.",
+          "Use the manual jog on port A. Jogging towards negative angles moves the Earth forward along the orbit (λ = 45° − motor angle). Stop every 15° and compare the lean of the axis towards the Sun with the formula.",
+          "Load the control 'Obliquity Orrery — turned axis'. The connector there is turned 90° about the spindle, so midsummer falls at λ = 135° instead of 45°."
+        ],
+        "why": "Because the parallelogram keeps the coupler parallel to the base, the Earth is carried round without turning: its spin axis n keeps one direction in space, just as the real Earth's axis keeps pointing at the Pole Star all year. What changes is the direction s from the Earth to the Sun, which turns once per orbit in the horizontal plane. The Sun's declination is the angle between s and the Earth's equator, so sin δ = n · s. n has a vertical part cos ε and a horizontal part sin ε pointing at orbit position λ₀ = 45°; s is horizontal. The dot product therefore keeps only the horizontal part: sin δ = sin ε · cos(λ − λ₀). With ε = 22.5° the Sun stands 22.5° above the equator at λ = 45°, 15.7° at 90° and on the equator at 135°. Nothing in the model is driven to these angles: the motor only turns crank A, and the Earth's orientation follows from the linkage alone.",
+        "matters": "This is the cause of the seasons. The real Earth's axis is tilted by 23.44°, so at the June solstice the Sun is overhead at 23.44° north (the Tropic of Cancer), at the equinoxes it is overhead at the equator, and in December at 23.44° south. A higher Sun gives each square metre more light and gives longer days, which is why it is warmer. Distance from the Sun barely matters: the Earth is actually closest to the Sun in early January. The same parallel-crank transport is used in drawing tables, parallel-arm lamps and tool-carrying gantries, wherever something must move without turning.",
+        "question": "At λ = 90°, a quarter of the way from midsummer to the equinox on this model, what declination does the formula predict, and why is it not simply half of 22.5°?",
+        "answer": "sin δ = sin 22.5° · cos 45° = 0.383 · 0.707 = 0.271, so δ = 15.7°, not 11.25°. The declination follows a cosine of the orbit position, not a straight line: it changes slowly near the solstice and fastest near the equinox, which is why the days lengthen fastest in March and September.",
+        "further": [
+          "Use the formula to predict δ at λ = 56.25°, 101.25° and 123.75° (22.0°, 12.2° and 4.2°), then jog there and compare the lean of the axis.",
+          "The real Earth's tilt is 23.44°. How far north is the Sun overhead at noon on 21 June, and how long after the solstice is it still above 20° north?",
+          "Why does the second crank matter? Imagine crank B removed: what would the coupler, and with it the Earth's axis, do while crank A turns?"
+        ]
+      },
+      "de": {
+        "what": "Motor A oben dreht Kurbel A direkt. Kurbel B sitzt 32 mm daneben und läuft frei mit. Beide Kurbeln sind 16 mm lang und tragen dieselbe Koppel, sodass die vier Drehpunkte ein Parallelogramm bilden: Die Koppel fährt auf einem 16-mm-Kreis, dreht sich aber nie. Die Erde, eine runde Platte unter der Koppel, ist über einen Winkelverbinder befestigt, der ihre Achse um ε = 22,5° neigt. Die Sonne ist eine Markierung auf der Grundplatte in der Bahnmitte, auf Höhe der Erde. Das Programm führt die Erde in neun Schritten von der Bahnposition λ = 45° bis 135° und zurück. Im Simulator folgt die gemessene Sonnendeklination δ der Formel sin δ = sin 22,5° · cos(λ − 45°) auf 0,003° genau.",
+        "try": [
+          "Lade das Modell, drücke Zurücksetzen und dann Start. Beobachte die geneigte Erdachse: Sie zeigt die ganze Zeit in dieselbe Richtung, während die Erde um die Sonne läuft.",
+          "Am Anfang (λ = 45°) neigt sich die Achse genau zur Sonne: Hochsommer auf der oberen Erdhälfte, δ = +22,5°. Am Ende der Fahrt (λ = 135°) neigt sie sich seitlich entlang der Bahn, und δ = 0°: Tagundnachtgleiche.",
+          "Nutze das manuelle Verfahren an Port A. Negative Winkel bewegen die Erde auf der Bahn vorwärts (λ = 45° − Motorwinkel). Halte alle 15° an und vergleiche die Neigung der Achse zur Sonne mit der Formel.",
+          "Lade die Kontrolle „Obliquity Orrery — gedrehte Achse“. Dort ist der Verbinder um 90° um die Spindel gedreht, und der Hochsommer liegt bei λ = 135° statt bei 45°."
+        ],
+        "why": "Weil das Parallelogramm die Koppel parallel zur Grundplatte hält, wird die Erde herumgeführt, ohne sich zu drehen: Ihre Achse n behält eine Richtung im Raum, so wie die echte Erdachse das ganze Jahr zum Polarstern zeigt. Es ändert sich nur die Richtung s von der Erde zur Sonne, die sich pro Umlauf einmal in der Waagerechten dreht. Die Deklination der Sonne ist der Winkel zwischen s und dem Erdäquator, also sin δ = n · s. n hat einen senkrechten Anteil cos ε und einen waagerechten Anteil sin ε, der zur Bahnposition λ₀ = 45° zeigt; s liegt waagerecht. Das Skalarprodukt behält daher nur den waagerechten Anteil: sin δ = sin ε · cos(λ − λ₀). Mit ε = 22,5° steht die Sonne bei λ = 45° 22,5° über dem Äquator, bei 90° 15,7° und bei 135° genau darauf. Nichts im Modell wird auf diese Winkel gefahren: Der Motor dreht nur Kurbel A, die Ausrichtung der Erde ergibt sich allein aus dem Gestänge.",
+        "matters": "Das ist die Ursache der Jahreszeiten. Die echte Erdachse ist um 23,44° geneigt: Zur Sommersonnenwende im Juni steht die Sonne mittags über 23,44° Nord senkrecht (dem nördlichen Wendekreis), zu den Tagundnachtgleichen über dem Äquator und im Dezember über 23,44° Süd. Eine höher stehende Sonne bringt jedem Quadratmeter mehr Licht und längere Tage, deshalb wird es wärmer. Der Abstand zur Sonne spielt kaum eine Rolle: Am nächsten ist die Erde der Sonne Anfang Januar. Dieselbe Parallelkurbel-Führung steckt in Zeichenmaschinen, Gelenkarmlampen und Portalen, überall dort, wo sich etwas bewegen soll, ohne sich zu drehen.",
+        "question": "Welche Deklination sagt die Formel bei λ = 90° voraus, also auf einem Viertel des Wegs vom Hochsommer zur Tagundnachtgleiche, und warum ist es nicht einfach die Hälfte von 22,5°?",
+        "answer": "sin δ = sin 22,5° · cos 45° = 0,383 · 0,707 = 0,271, also δ = 15,7° und nicht 11,25°. Die Deklination folgt einem Kosinus der Bahnposition, keiner Geraden: Nahe der Sonnenwende ändert sie sich langsam, nahe der Tagundnachtgleiche am schnellsten. Deshalb werden die Tage im März und September am schnellsten länger bzw. kürzer.",
+        "further": [
+          "Berechne δ bei λ = 56,25°, 101,25° und 123,75° (22,0°, 12,2° und 4,2°), verfahre dann dorthin und vergleiche die Neigung der Achse.",
+          "Die echte Erdachse ist um 23,44° geneigt. Wie weit nördlich steht die Sonne am 21. Juni mittags senkrecht, und wie lange nach der Sonnenwende steht sie noch über 20° Nord?",
+          "Wozu braucht es die zweite Kurbel? Stell dir vor, Kurbel B fehlt: Was würden die Koppel und mit ihr die Erdachse tun, während Kurbel A dreht?"
+        ]
+      },
+      "formula": {
+        "en": "sin δ = sin ε · cos(λ − 45°), ε = 22.5°. n = Earth axis unit vector, s = unit vector from the Earth to the Sun, sin δ = n · s; λ = 45° − motor angle A; orbit radius 16 mm.",
+        "de": "sin δ = sin ε · cos(λ − 45°), ε = 22,5°. n = Einheitsvektor der Erdachse, s = Einheitsvektor von der Erde zur Sonne, sin δ = n · s; λ = 45° − Motorwinkel A; Bahnradius 16 mm."
+      },
+      "related": [
+        "parallel-lift.ldr",
+        "offset-orbit.ldr",
+        "gimbal-lab.ldr"
+      ]
+    },
+    "cadence-geneva": {
+      "en": {
+        "what": "Geneva drive (Maltese cross) clockwork. Motor A turns a crank continuously; a roller on the crank, 40 mm from its axis, enters one of the four open slots of the star wheel, turns it a quarter turn and leaves again. Between engagements the star stands still. An 8-tooth gear on the star shaft drives the dial through 24-tooth gears (1:3 overall), so every quarter turn of the star moves the dial hand 30°: twelve positions per dial turn. Instead of a locking disc, a friction clutch gear on a fixed pin holds the dial during the dwell. The program turns the crank twelve times (4320°) at 30°/s and checks that the dial made one full turn.",
+        "try": [
+          "Open Cadence with its program, press Reset, then Run. The run takes 144 s: twelve crank turns of 12 s each.",
+          "Watch one crank turn: the dial should stand still for three quarters of it (about 9 s) and move during one quarter (about 3 s). Note where the roller is when the star starts and stops moving.",
+          "Compare the star’s speed during one step: it starts from rest, is fastest halfway, at about 2.4 times the crank speed, and slows to rest as the roller leaves the slot.",
+          "Read the variables: crankTurns counts motor turns, dialSweep adds up the measured heading changes of the dial hand, and ticks is that sweep divided by 30°. After 4320° the program expects dialSweep to be 360° ± 3°."
+        ],
+        "why": "For a Geneva wheel with n slots the crank radius must be r = C·sin(180°/n), where C is the distance between crank and wheel axes; then the roller enters and leaves each slot along the slot, so the wheel starts and stops at zero speed. Here n = 4, C ≈ 56.6 mm and r = 40 mm (r/C = 0.707 = sin 45°). The crank is engaged for 180° − 360°/n = 90° of each turn and the wheel turns 360°/n = 90°; the remaining 270° are dwell. During engagement tan β = λ·sin α / (1 − λ·cos α), with λ = r/C and α the crank angle from the line of centres. The peak wheel speed, at α = 0, is λ/(1 − λ) ≈ 2.41 times the crank speed.",
+        "matters": "Geneva drives turn continuous rotation into precise step-and-stop motion: film projectors, indexing tables in assembly machines, mechanical counters and some clocks. The step size is fixed by the geometry, not by a sensor. A classical Geneva drive also has a locking disc on the crank that holds the wheel during the dwell; this model replaces it with friction from a clutch gear, so the dial is held only while that friction exceeds any disturbance. Qualified in the simulator with the reviewed law geneva-index-v1 (crank 40 mm, centre distance 56.57 mm = 40 mm / sin 45°, read from the parts): every step after the first indexed the star 90° within 0.12°, the first step was 88.6°, the star moved less than 0.001° in every dwell, its lag behind the ideal curve tan β = sin φ / (√2 − cos φ) stayed below 4.2° (the roller's clearance in the slot), and the dial followed −star/3 within 0.1°, ending at 359.5°. Without the drive pin the crank still turns twelve times but the star never moves. That is a simulation result; no physical LEGO build has been tested.",
+        "question": "The crank turns at a steady 30°/s. During one crank turn, for how long does the dial move, and how fast does the star turn at its quickest moment?",
+        "answer": "The roller drives the star for 90° of crank rotation, which is 3 s; the dial dwells for the other 9 s. The star turns 90° in those 3 s, 30°/s on average, but its peak speed halfway through is about 2.41 × 30 ≈ 72°/s. Through the 1:3 gearing the dial hand moves 30° per step and peaks at about 24°/s.",
+        "further": [
+          "Change n on paper: for 6 slots, r = C·sin 30° = C/2, the crank is engaged for 120°, and the peak ratio λ/(1 − λ) is 1. More slots mean gentler motion, smaller steps and a shorter dwell.",
+          "The wheel starts at zero speed but not at zero acceleration: at entry the angular acceleration jumps to a finite value. That jerk is one reason fast indexing machines use cam-driven indexers instead.",
+          "The friction clutch slips the whole time the dial moves, so the crank also has to overcome that drag. Too little drag and the dial could coast past its position; too much and the drive stalls. The simulated friction is a model, not a measured LEGO clutch.",
+          "Compare Quartermaster, which steps with a contact and a latch, and Clutch Bench, which shows a slipping clutch under load."
+        ]
+      },
+      "de": {
+        "what": "Uhrwerk mit Malteserkreuzgetriebe. Motor A dreht eine Kurbel gleichmäßig; eine Rolle auf der Kurbel, 40 mm von deren Achse entfernt, fährt in einen der vier offenen Schlitze des Sternrads, dreht es um eine Vierteldrehung weiter und verlässt den Schlitz wieder. Zwischen den Eingriffen steht der Stern still. Ein 8er-Zahnrad auf der Sternwelle treibt über 24er-Zahnräder (insgesamt 1:3) das Zifferblatt an; jede Vierteldrehung des Sterns rückt den Zeiger um 30° weiter – zwölf Stellungen pro Umdrehung. Statt einer Sperrscheibe hält ein Rutschkupplungs-Zahnrad auf einem festen Pin das Zifferblatt während der Rast. Das Programm dreht die Kurbel zwölfmal (4320°) mit 30°/s und prüft, ob der Zeiger eine volle Umdrehung gemacht hat.",
+        "try": [
+          "Öffne Cadence mit Programm, drücke Zurücksetzen und dann Start. Der Lauf dauert 144 s: zwölf Kurbelumdrehungen zu je 12 s.",
+          "Beobachte eine Kurbelumdrehung: Der Zeiger sollte drei Viertel davon stillstehen (etwa 9 s) und sich während eines Viertels bewegen (etwa 3 s). Achte darauf, wo die Rolle steht, wenn der Stern anläuft und anhält.",
+          "Vergleiche die Geschwindigkeit des Sterns während eines Schritts: Er läuft aus der Ruhe an, ist auf halbem Weg am schnellsten, mit etwa dem 2,4-Fachen der Kurbeldrehzahl, und kommt zur Ruhe, wenn die Rolle den Schlitz verlässt.",
+          "Lies die Variablen: crankTurns zählt Motorumdrehungen, dialSweep summiert die gemessenen Richtungsänderungen des Zeigers, und ticks ist dieser Winkel geteilt durch 30°. Nach 4320° erwartet das Programm dialSweep = 360° ± 3°."
+        ],
+        "why": "Bei einem Malteserkreuz mit n Schlitzen muss der Kurbelradius r = C·sin(180°/n) betragen, wobei C der Abstand der Kurbel- von der Radachse ist. Dann fährt die Rolle in Schlitzrichtung ein und aus, und das Rad läuft aus dem Stillstand an und kommt im Stillstand an. Hier ist n = 4, C ≈ 56,6 mm und r = 40 mm (r/C = 0,707 = sin 45°). Die Kurbel greift während 180° − 360°/n = 90° jeder Umdrehung ein, und das Rad dreht sich um 360°/n = 90°; die übrigen 270° sind Rast. Während des Eingriffs gilt tan β = λ·sin α / (1 − λ·cos α) mit λ = r/C und dem Kurbelwinkel α, gemessen von der Verbindungslinie der Achsen. Die größte Radgeschwindigkeit bei α = 0 beträgt λ/(1 − λ) ≈ 2,41-mal die Kurbeldrehzahl.",
+        "matters": "Malteserkreuzgetriebe machen aus gleichmäßiger Drehung eine genaue Schritt-und-Halt-Bewegung: in Filmprojektoren, Rundschalttischen von Montageautomaten, mechanischen Zählwerken und manchen Uhren. Die Schrittweite legt die Geometrie fest, nicht ein Sensor. Ein klassisches Malteserkreuz hat außerdem eine Sperrscheibe an der Kurbel, die das Rad während der Rast festhält; dieses Modell ersetzt sie durch die Reibung einer Rutschkupplung, sodass der Zeiger nur gehalten wird, solange diese Reibung größer ist als jede Störung. Im Simulator mit dem geprüften Gesetz geneva-index-v1 qualifiziert (Kurbel 40 mm, Achsabstand 56,57 mm = 40 mm / sin 45°, aus den Teilen gelesen): Jeder Schritt nach dem ersten schaltete den Stern auf 0,12° genau um 90° weiter, der erste Schritt betrug 88,6°, in jeder Rast bewegte sich der Stern weniger als 0,001°, sein Nacheilen hinter der idealen Kurve tan β = sin φ / (√2 − cos φ) blieb unter 4,2° (das Spiel der Rolle im Schlitz), und der Zeiger folgte −Stern/3 auf 0,1° genau und endete bei 359,5°. Ohne den Antriebsstift dreht die Kurbel weiterhin zwölfmal, der Stern aber bewegt sich nie. Das ist ein Simulationsergebnis; ein realer LEGO-Aufbau wurde nicht getestet.",
+        "question": "Die Kurbel dreht gleichmäßig mit 30°/s. Wie lange bewegt sich der Zeiger während einer Kurbelumdrehung, und wie schnell dreht der Stern im schnellsten Moment?",
+        "answer": "Die Rolle treibt den Stern während 90° Kurbeldrehung an, also 3 s; die übrigen 9 s ruht der Zeiger. Der Stern dreht sich in diesen 3 s um 90°, im Mittel 30°/s, erreicht aber auf halbem Weg etwa 2,41 × 30 ≈ 72°/s. Über die Übersetzung 1:3 rückt der Zeiger 30° pro Schritt vor und erreicht dabei höchstens etwa 24°/s.",
+        "further": [
+          "Ändere n auf dem Papier: Bei 6 Schlitzen ist r = C·sin 30° = C/2, die Kurbel greift 120° lang ein, und das Spitzenverhältnis λ/(1 − λ) ist 1. Mehr Schlitze bedeuten sanftere Bewegung, kleinere Schritte und kürzere Rast.",
+          "Das Rad läuft mit der Geschwindigkeit null an, aber nicht mit der Beschleunigung null: Beim Einfahren springt die Winkelbeschleunigung auf einen endlichen Wert. Dieser Ruck ist ein Grund, weshalb schnelle Rundschalttische Kurvenschrittgetriebe verwenden.",
+          "Die Rutschkupplung rutscht während der ganzen Zeigerbewegung; die Kurbel muss also auch diese Reibung überwinden. Bei zu wenig Reibung könnte der Zeiger über seine Stellung hinauslaufen, bei zu viel bleibt der Antrieb stehen. Die simulierte Reibung ist ein Modell, keine gemessene LEGO-Kupplung.",
+          "Vergleiche Quartermaster, das mit Kontakt und Sperre weiterschaltet, und Clutch Bench, das eine rutschende Kupplung unter Last zeigt."
+        ]
+      },
+      "formula": {
+        "en": "λ = r/C = sin(180°/n); n = 4, r = 40 mm (100 LDU), C ≈ 56.6 mm (141.4 LDU). Engagement 180° − 360°/n = 90° of crank, wheel step 360°/n = 90°. tan β = λ·sin α / (1 − λ·cos α) for |α| ≤ 45°; dβ/dα at α = 0 is λ/(1 − λ) ≈ 2.414. Dial = star × 8/24: 30° per crank turn; 12 crank turns (4320°) → 360°.",
+        "de": "λ = r/C = sin(180°/n); n = 4, r = 40 mm (100 LDU), C ≈ 56,6 mm (141,4 LDU). Eingriff über 180° − 360°/n = 90° Kurbelwinkel, Radschritt 360°/n = 90°. tan β = λ·sin α / (1 − λ·cos α) für |α| ≤ 45°; dβ/dα bei α = 0 ist λ/(1 − λ) ≈ 2,414. Zeiger = Stern × 8/24: 30° pro Kurbelumdrehung; 12 Kurbelumdrehungen (4320°) → 360°."
+      },
+      "related": [
+        "quartermaster.ldr",
+        "clutch-bench.ldr"
+      ]
+    },
+    "helios-transmission": {
+      "en": {
+        "what": "Two-input epicyclic (planetary) transmission with stepped planets and no ring gear. Motor A turns a 24-tooth input sun. Motor B turns, through a 20-tooth gear, a 28-tooth turntable that serves as the planet carrier. Each of the two planets is a compound pair on one axle: an 8-tooth gear meshing with the input sun and a 16-tooth gear meshing with a 16-tooth output sun on the central output axle. A runs at a constant 30°/s for the whole demonstration while B steps through 0, −21, −42, −63 and −84°/s for 4 s each, then sweeps back to 0. The program names these stages high, reduced, unity, neutral and reverse output. Qualified in the simulator with the reviewed law willis-epicyclic-v1, whose ratios come from the tooth counts: the output followed ω_out = 3ω_A − 2ω_c within 0.05° over the whole run, the carrier followed −(20/28)·B within 0.01°, and the output stood still (0.00°/s) at ω_B = −63°/s. Without B's 20-tooth gear the carrier is no longer driven and the output misses the law by more than 400°. Not tested on real LEGO parts.",
+        "try": [
+          "Reset, then Run. In stage 1 (B held) compare the output marker with the input sun: the output should turn three times as fast in the same direction.",
+          "Before stage 3 (B at −42°/s), predict what the planets will do on their own axles. Then watch them.",
+          "In stage 4 (−63°/s) the output should stand still although both motors are turning; in stage 5 (−84°/s) it should run backwards at the input speed.",
+          "During the stage 6 sweep A never changes. Watch the output pass from reverse through standstill and 1:1 to fast forward, and note when each happens."
+        ],
+        "why": "Seen from the carrier, the gears form an ordinary fixed-axis train: input sun 24 → planet 8, then planet 16 → output sun 16. Two external meshes give a positive sign, so the train ratio is (24/8) × (16/16) = 3. Willis’ equation for epicyclic gears states (ω_out − ω_c) = 3 (ω_in − ω_c), i.e. ω_out = 3 ω_in − 2 ω_c. B drives the carrier through an external 20:28 mesh, so ω_c = −(20/28) ω_B. With ω_in = 30°/s: B = 0 gives ω_c = 0 and an output of 90°/s; B = −21 → ω_c = 15 → 60°/s; B = −42 → ω_c = 30 → 30°/s; B = −63 → ω_c = 45 → 0; B = −84 → ω_c = 60 → −30°/s. These are exactly the program’s stage names (×3, ×2, ×1, neutral, reverse) under the encoder signs it uses. In the simulator, the measured output speeds were 90.0, 60.0, 30.0, 0.0 and −30.0°/s, and the output angle stayed within 0.05° of the Willis prediction for the whole run.",
+        "matters": "A planetary set with two driven members is a power-split transmission: hybrid cars combine an engine and an electric motor this way, and the speed of the second input sets the overall ratio continuously without shifting gears. That ratio change is not free – whenever the output differs from what A alone would give, motor B must supply or absorb power. The simulation shows only the speed relationship; torque split, efficiency, tooth loads and the power B would need under load are not modelled.",
+        "question": "In stage 3 the carrier turns at exactly the input speed, 30°/s. What do the planet gears do on their own axles, and how fast does the output turn?",
+        "answer": "The planets stop spinning relative to the carrier. With ω_c = ω_in, Willis’ equation gives ω_out − ω_c = 3 × 0 = 0, so input sun, carrier, planets and output sun all rotate together as one rigid block at 30°/s. The gears stay meshed, but no tooth rolls on another: a 1:1 direct drive.",
+        "further": [
+          "Predict when the output stops during the stage 6 sweep. B starts at −84°/s and rises by 1.4°/s every 0.1 s, so on paper −63°/s (standstill) comes after 1.5 s and −42°/s (1:1) after 3.0 s. In the simulator each 0.1 s wait actually lasted about 0.17 s, so the sweep took about 10 s and standstill came at about 2.4 s – still exactly at ω_B = −63°/s.",
+          "If A were held and only B turned, the formula gives ω_out = −2 ω_c: the output runs backwards at twice the carrier speed. Check this with the gear counts.",
+          "Compare the Differential and Vernier Drive models. A bevel differential is the special epicyclic case with train ratio −1, which is why its carrier turns at the average of the two sides."
+        ]
+      },
+      "de": {
+        "what": "Umlaufgetriebe (Planetengetriebe) mit zwei Antrieben, Stufenplaneten und ohne Hohlrad. Motor A dreht ein Sonnenrad mit 24 Zähnen als Eingang. Motor B dreht über ein 20er-Zahnrad einen Drehkranz mit 28 Zähnen, der als Planetenträger dient. Jeder der beiden Planeten ist ein Stufenplanet auf einer Achse: ein 8er-Rad kämmt mit dem Eingangssonnenrad, ein 16er-Rad mit einem 16er-Abtriebssonnenrad auf der mittleren Abtriebsachse. A läuft während der ganzen Vorführung konstant mit 30°/s, während B nacheinander je 4 s lang mit 0, −21, −42, −63 und −84°/s dreht und danach stufenlos auf 0 zurückgeführt wird. Das Programm nennt diese Stufen hohe, reduzierte, gleiche, neutrale und umgekehrte Abtriebsdrehzahl. Im Simulator mit dem geprüften Gesetz willis-epicyclic-v1 qualifiziert, dessen Übersetzungen aus den Zähnezahlen stammen: Der Abtrieb folgte ω_ab = 3ω_A − 2ω_s über den ganzen Lauf auf 0,05° genau, der Träger folgte −(20/28)·B auf 0,01° genau, und bei ω_B = −63°/s stand der Abtrieb still (0,00°/s). Ohne das 20er-Rad an B wird der Träger nicht mehr angetrieben, und der Abtrieb verfehlt das Gesetz um mehr als 400°. Nicht an echten LEGO-Teilen getestet.",
+        "try": [
+          "Setze zurück und drücke Start. Vergleiche in Stufe 1 (B steht) die Markierung am Abtrieb mit dem Eingangssonnenrad: Der Abtrieb sollte sich dreimal so schnell in dieselbe Richtung drehen.",
+          "Sage vor Stufe 3 (B mit −42°/s) voraus, was die Planeten auf ihren eigenen Achsen tun. Beobachte sie dann.",
+          "In Stufe 4 (−63°/s) sollte der Abtrieb stillstehen, obwohl beide Motoren drehen; in Stufe 5 (−84°/s) sollte er mit Eingangsdrehzahl rückwärts laufen.",
+          "Beim Durchlauf in Stufe 6 ändert sich A nicht. Beobachte, wie der Abtrieb von Rückwärtslauf über Stillstand und 1:1 bis zum schnellen Vorwärtslauf übergeht, und merke dir, wann das jeweils geschieht."
+        ],
+        "why": "Vom Planetenträger aus gesehen bilden die Räder ein gewöhnliches Standgetriebe: Eingangssonne 24 → Planet 8, dann Planet 16 → Abtriebssonne 16. Zwei Außeneingriffe ergeben ein positives Vorzeichen, die Standübersetzung ist also (24/8) × (16/16) = 3. Die Willis-Gleichung für Umlaufgetriebe lautet (ω_ab − ω_s) = 3 (ω_an − ω_s), also ω_ab = 3 ω_an − 2 ω_s mit der Stegdrehzahl ω_s. B treibt den Träger über einen äußeren 20:28-Eingriff, daher ω_s = −(20/28) ω_B. Mit ω_an = 30°/s: B = 0 ergibt ω_s = 0 und 90°/s am Abtrieb; B = −21 → ω_s = 15 → 60°/s; B = −42 → ω_s = 30 → 30°/s; B = −63 → ω_s = 45 → 0; B = −84 → ω_s = 60 → −30°/s. Das sind genau die Stufennamen des Programms (×3, ×2, ×1, neutral, rückwärts) mit den dort verwendeten Drehgebervorzeichen. Im Simulator wurden am Abtrieb 90,0, 60,0, 30,0, 0,0 und −30,0°/s gemessen (Abweichung von der Willis-Gleichung unter 0,02°/s); in Stufe 3 drehten sich die Planeten mit 0,00°/s relativ zum Träger.",
+        "matters": "Ein Planetensatz mit zwei angetriebenen Gliedern ist ein leistungsverzweigtes Getriebe: Hybridautos verbinden so Verbrennungs- und Elektromotor, und die Drehzahl des zweiten Antriebs stellt die Gesamtübersetzung stufenlos ein, ohne zu schalten. Umsonst ist diese Verstellung nicht – sobald der Abtrieb anders läuft, als A allein ihn treiben würde, muss Motor B Leistung liefern oder aufnehmen. Die Simulation zeigt nur den Drehzahlzusammenhang; Momentenaufteilung, Wirkungsgrad, Zahnkräfte und die Leistung, die B unter Last bräuchte, werden nicht modelliert.",
+        "question": "In Stufe 3 dreht sich der Planetenträger genau mit Eingangsdrehzahl, 30°/s. Was tun die Planetenräder auf ihren eigenen Achsen, und wie schnell dreht sich der Abtrieb?",
+        "answer": "Die Planeten hören auf, sich relativ zum Träger zu drehen. Mit ω_s = ω_an liefert die Willis-Gleichung ω_ab − ω_s = 3 × 0 = 0: Eingangssonne, Träger, Planeten und Abtriebssonne drehen sich gemeinsam wie ein starrer Block mit 30°/s. Die Zähne bleiben im Eingriff, doch kein Zahn wälzt mehr auf einem anderen ab – ein direkter Durchtrieb 1:1.",
+        "further": [
+          "Sage voraus, wann der Abtrieb im Durchlauf von Stufe 6 stillsteht. B beginnt bei −84°/s und steigt alle 0,1 s um 1,4°/s; auf dem Papier ist −63°/s (Stillstand) nach 1,5 s erreicht, −42°/s (1:1) nach 3,0 s. Im Simulator dauerte jede 0,1-s-Wartezeit tatsächlich etwa 0,17 s; der Durchlauf brauchte rund 10 s, und der Stillstand kam nach etwa 2,4 s – weiterhin genau bei ω_B = −63°/s.",
+          "Würde A festgehalten und nur B gedreht, ergäbe die Formel ω_ab = −2 ω_s: Der Abtrieb liefe mit doppelter Trägerdrehzahl rückwärts. Prüfe das anhand der Zähnezahlen.",
+          "Vergleiche die Modelle Differential und Vernier Drive. Ein Kegelraddifferenzial ist der Sonderfall eines Umlaufgetriebes mit der Standübersetzung −1; deshalb dreht sich sein Korb mit dem Mittelwert der beiden Seiten."
+        ]
+      },
+      "formula": {
+        "en": "Willis: (ω_out − ω_c) / (ω_in − ω_c) = (24/8) × (16/16) = 3 → ω_out = 3 ω_A − 2 ω_c; ω_c = −(20/28) ω_B. With ω_A = 30°/s: ω_B = 0, −21, −42, −63, −84°/s → ω_c = 0, 15, 30, 45, 60°/s → ω_out = 90, 60, 30, 0, −30°/s (×3, ×2, ×1, 0, −1).",
+        "de": "Willis: (ω_ab − ω_s) / (ω_an − ω_s) = (24/8) × (16/16) = 3 → ω_ab = 3 ω_A − 2 ω_s; ω_s = −(20/28) ω_B. Mit ω_A = 30°/s: ω_B = 0, −21, −42, −63, −84°/s → ω_s = 0, 15, 30, 45, 60°/s → ω_ab = 90, 60, 30, 0, −30°/s (×3, ×2, ×1, 0, −1)."
+      },
+      "related": [
+        "differential.ldr",
+        "vernier-drive.ldr",
+        "mean-machine.ldr"
+      ]
+    },
+    "orion-cardan": {
+      "en": {
+        "what": "Two Cardan (universal) joints in series with an intermediate shaft: a Z-arranged drive shaft. Motor A turns the input shaft; a 9-long axle forms the intermediate shaft, and the parallel output shaft sits 48 mm to the side. Both joints bend by the same angle, β ≈ 36.9° (the middle shaft covers 48 mm sideways over 64 mm of length), and the two yokes on the middle shaft lie in one plane. Each shaft carries a marker. The program runs the input at 180°/s, 300°/s and 180°/s forward, then −180°/s in reverse, restarts at 180°/s, and finally returns the input to its starting angle. Qualified in the simulator with the reviewed law double-cardan-offset-v1 (β = 36.87°, equal bends and in-phase middle forks read from the compiled joints): over almost 17 input turns the output stayed within 0.05° of the input and the middle shaft within 0.1° of tan θ_m = tan θ / cos β. Without the far fork on the middle shaft the input still turns but the output stays almost still. Not tested on real LEGO parts.",
+        "try": [
+          "Reset, then Run. At rest compare the three shaft markers.",
+          "At 180°/s watch the middle marker against the input: it alternately runs ahead and falls behind, twice per revolution (about once per second at this speed), while the output marker stays in step with the input.",
+          "At 300°/s the pulsing is faster but has the same proportions: the speed ratio depends on shaft angle, not on speed.",
+          "In reverse and after the restart, check that the same lead and lag appear at the same input angles."
+        ],
+        "why": "A single bent Cardan joint does not pass on a constant speed. With bend angle β the driven yoke follows tan θ₂ = tan θ₁ / cos β (θ measured from a yoke reference position), so the speed ratio ω₂/ω₁ = cos β / (1 − sin²β cos²θ₁) swings between cos β and 1/cos β twice per revolution. For β ≈ 36.9° that is 0.80 to 1.25: at 180°/s input the middle shaft varies between about 144 and 225°/s and runs up to about 6.4° ahead of or behind the input. The second joint has the same bend, and its middle-shaft yoke lies in the same plane as the first; it applies exactly the inverse distortion, so ideally the output angle equals the input angle at every instant. In the simulator, the measured middle-shaft lead/lag was 12.76° peak to peak (ideal 12.76°) at every speed and in reverse, while the output stayed within 0.05° of the input.",
+        "matters": "Propeller shafts in rear-wheel-drive vehicles, tractor PTO shafts and steering columns use pairs of Cardan joints for this reason: a single bent joint would make the driven side surge twice per turn and shake the drive line. Cancellation needs both conditions, equal bend angles and correctly phased yokes. The simulator samples speeds at finite steps and does not model joint wear, friction or the vibration that a real ripple would cause.",
+        "question": "Suppose the middle shaft were reassembled with its far yoke turned by 90°, keeping both bends at 36.9°. Would the output still run smoothly?",
+        "answer": "No. Misphased, the second joint adds its fluctuation to that of the first instead of cancelling it. The output speed would swing between about cos²β = 0.64 and 1/cos²β ≈ 1.56 times the input speed, twice per revolution – a larger ripple than the middle shaft shows now. Equal angles alone are not enough; the yoke phase matters.",
+        "further": [
+          "Predict the middle-shaft speed range at 300°/s (about 240 to 375°/s) and compare it with what the marker shows.",
+          "Compare the established models Phase Bridge and Phase Bridge (misphased), which show a correctly phased and a 90°-misphased pair.",
+          "A physical build needs two universal-joint cross pieces besides the four fork ends shown; the simulator infers them. The building steps place the middle shaft with its forks; the compiler now reports no loose parts."
+        ]
+      },
+      "de": {
+        "what": "Gelenkwelle mit zwei Kardangelenken und Zwischenwelle in Z-Anordnung. Motor A dreht die Eingangswelle; eine Achse der Länge 9 bildet die Zwischenwelle, und die parallele Abtriebswelle liegt 48 mm seitlich versetzt. Beide Gelenke sind um denselben Beugewinkel β ≈ 36,9° abgewinkelt (die Zwischenwelle überbrückt 48 mm seitlich auf 64 mm Länge), und die beiden Gabeln an der Zwischenwelle liegen in einer Ebene. Jede Welle trägt eine Markierung. Das Programm dreht den Eingang vorwärts mit 180°/s, 300°/s und wieder 180°/s, dann rückwärts mit −180°/s, startet erneut mit 180°/s und bringt den Eingang zum Schluss in seine Ausgangslage zurück. Im Simulator mit dem geprüften Gesetz double-cardan-offset-v1 qualifiziert (β = 36,87°, gleiche Beugewinkel und gleich ausgerichtete Gabeln der Zwischenwelle aus den Gelenken gelesen): Über fast 17 Eingangsumdrehungen blieb der Abtrieb auf 0,05° beim Eingang und die Zwischenwelle auf 0,1° bei tan θ_m = tan θ / cos β. Ohne die hintere Gabel der Zwischenwelle dreht der Eingang weiter, der Abtrieb aber steht fast still. Nicht an echten LEGO-Teilen getestet.",
+        "try": [
+          "Setze zurück und drücke Start. Vergleiche im Stillstand die drei Wellenmarkierungen.",
+          "Beobachte bei 180°/s die mittlere Markierung im Vergleich zum Eingang: Sie eilt abwechselnd vor und bleibt zurück, zweimal je Umdrehung (bei dieser Drehzahl etwa einmal pro Sekunde), während die Abtriebsmarkierung mit dem Eingang gleichauf bleibt.",
+          "Bei 300°/s pulsiert es schneller, aber im selben Verhältnis: Die Übersetzung hängt vom Wellenwinkel ab, nicht von der Drehzahl.",
+          "Prüfe im Rückwärtslauf und nach dem Neustart, ob dasselbe Vor- und Nacheilen bei denselben Eingangswinkeln auftritt."
+        ],
+        "why": "Ein einzelnes abgewinkeltes Kardangelenk überträgt keine gleichförmige Drehzahl. Beim Beugewinkel β folgt die getriebene Gabel tan θ₂ = tan θ₁ / cos β (θ von einer Bezugsstellung der Gabel aus gemessen); das Drehzahlverhältnis ω₂/ω₁ = cos β / (1 − sin²β cos²θ₁) schwankt daher zweimal je Umdrehung zwischen cos β und 1/cos β. Für β ≈ 36,9° sind das 0,80 bis 1,25: Bei 180°/s am Eingang schwankt die Zwischenwelle zwischen etwa 144 und 225°/s und eilt dem Eingang bis zu etwa 6,4° vor oder nach. Das zweite Gelenk hat denselben Beugewinkel, und seine Gabel an der Zwischenwelle liegt in derselben Ebene wie die erste; es kehrt die Verzerrung genau um, sodass der Abtriebswinkel ideal in jedem Augenblick gleich dem Eingangswinkel ist. Im Simulator wurde an der Zwischenwelle ein Vor- und Nacheilen von 12,76° Spitze-Spitze gemessen (ideal 12,76°), bei jeder Drehzahl und im Rückwärtslauf, während der Abtrieb auf 0,05° beim Eingang blieb.",
+        "matters": "Gelenkwellen in Fahrzeugen mit Hinterradantrieb, Zapfwellen an Traktoren und Lenksäulen verwenden aus genau diesem Grund Paare von Kardangelenken: Ein einzelnes abgewinkeltes Gelenk ließe die getriebene Seite zweimal je Umdrehung ruckeln und den Antriebsstrang schwingen. Die Aufhebung verlangt beides – gleiche Beugewinkel und richtig ausgerichtete Gabeln. Der Simulator erfasst Drehzahlen in endlichen Zeitschritten und modelliert weder Gelenkverschleiß noch Reibung oder die Schwingungen, die eine echte Ungleichförmigkeit auslösen würde.",
+        "question": "Angenommen, die Zwischenwelle würde mit um 90° verdrehter hinterer Gabel neu montiert, beide Beugewinkel blieben bei 36,9°. Liefe der Abtrieb dann noch gleichförmig?",
+        "answer": "Nein. Falsch ausgerichtet addiert das zweite Gelenk seine Schwankung zu der des ersten, statt sie aufzuheben. Die Abtriebsdrehzahl schwankte dann zweimal je Umdrehung zwischen etwa cos²β = 0,64 und 1/cos²β ≈ 1,56 der Eingangsdrehzahl – stärker als jetzt an der Zwischenwelle. Gleiche Winkel allein genügen nicht; die Gabelstellung entscheidet mit.",
+        "further": [
+          "Sage den Drehzahlbereich der Zwischenwelle bei 300°/s voraus (etwa 240 bis 375°/s) und vergleiche ihn mit der Markierung.",
+          "Vergleiche die etablierten Modelle Phase Bridge und Phase Bridge (falsch ausgerichtet), die ein richtig und ein um 90° falsch ausgerichtetes Gelenkpaar zeigen.",
+          "Ein echter Nachbau braucht neben den vier gezeigten Gelenkgabeln zwei Kreuzstücke; der Simulator ergänzt sie selbst. Die Bauschritte setzen die Zwischenwelle mit ihren Gabeln ein; der Compiler meldet keine losen Teile mehr."
+        ]
+      },
+      "formula": {
+        "en": "Single joint: tan θ₂ = tan θ₁ / cos β; ω₂/ω₁ = cos β / (1 − sin²β cos²θ₁), range cos β … 1/cos β. Here tan β = 48/64 → β ≈ 36.9°, cos β = 0.8: middle shaft 0.80 … 1.25 × input, maximum phase offset ≈ 6.4°. Equal bends with in-phase middle yokes: θ_out = θ_in. Middle yokes 90° apart: cos²β … 1/cos²β = 0.64 … 1.56.",
+        "de": "Einzelgelenk: tan θ₂ = tan θ₁ / cos β; ω₂/ω₁ = cos β / (1 − sin²β cos²θ₁), Bereich cos β … 1/cos β. Hier tan β = 48/64 → β ≈ 36,9°, cos β = 0,8: Zwischenwelle 0,80 … 1,25 × Eingang, größter Phasenversatz ≈ 6,4°. Gleiche Beugewinkel, Gabeln der Zwischenwelle in einer Ebene: θ_ab = θ_an. Gabeln um 90° versetzt: cos²β … 1/cos²β = 0,64 … 1,56."
+      },
+      "related": [
+        "phase-bridge.ldr",
+        "phase-bridge-misphased.ldr",
+        "wavemaker.ldr"
+      ]
     }
   }
 }

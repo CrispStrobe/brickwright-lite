@@ -198,7 +198,6 @@
 1 1 -340 260 80 0 0 1 1 0 0 0 1 0 6558.dat
 0 !BW ID hub_to_frame_pin_80
 1 0 -260 270 80 0 0 1 1 0 0 0 1 0 2780.dat
-0 STEP
 0 !BW ID motor_A
 0 !BW PORT A
 1 15 100 140 100 1 0 0 0 1 0 0 0 1 54696p01.dat
@@ -218,7 +217,6 @@
 1 71 0 140 0 1 0 0 0 0 1 0 -1 0 3713.dat
 0 !BW ID star_shaft_bush_180
 1 71 0 180 0 1 0 0 0 0 1 0 -1 0 3713.dat
-0 STEP
 0 !BW ID star_x_minus
 1 14 0 0 -20 0 0 1 0 1 0 -1 0 0 32525.dat
 0 !BW ID star_z_minus
@@ -245,7 +243,6 @@
 1 1 20 20 -20 0 0 1 1 0 0 0 1 0 6558.dat
 0 !BW ID star_corner_plus_plus
 1 1 20 20 20 0 0 1 1 0 0 0 1 0 6558.dat
-0 STEP
 0 !BW ID driver_crank
 1 4 100 -30 150 1 0 0 0 1 0 0 0 1 32063.dat
 0 !BW ID driver_key
@@ -264,15 +261,12 @@
 1 72 100 -45 200 1 0 0 0 0 1 0 -1 0 3713.dat
 0 !BW ID driver_pin_spacer
 1 72 100 -20 200 1 0 0 0 0 1 0 -1 0 4265c.dat
-0 STEP
 0 !BW ID driver_roller_0
 1 71 100 -5 200 1 0 0 0 1 0 0 0 1 18654.dat
 0 !BW ID driver_roller_1
 1 71 100 15 200 1 0 0 0 1 0 0 0 1 18654.dat
-0 STEP
 0 !BW ID driver_pin_bottom
 1 72 100 35 200 1 0 0 0 0 1 0 -1 0 3713.dat
-0 STEP
 0 !BW ID dial_star_pinion
 1 14 0 120 0 1 0 0 0 0 1 0 -1 0 10928.dat
 0 !BW ID dial_idler_1_gear
@@ -419,6 +413,5 @@
 1 15 -240 -100 -140 1 0 0 0 1 0 0 0 1 18654.dat
 0 !BW ID dial_marker_pin_11
 1 0 -240 -90 -140 0 0 1 1 0 0 0 1 0 2780.dat
-0 STEP
 
 0 NOFILE

@@ -1,0 +1,10 @@
+{
+ "author": "CrispStrobe",
+ "license": "BSD-3-Clause",
+ "files": {
+  "models/looprelay.ldr": "ed9903b56947b382ab32a548b2e4610c3cc075df7a8f35e702967a8ebeea799d",
+  "programs/looprelay.bw": "a9c9c22cf021850821d59ccbd4e21f0edd3a9c37c1a8b7630a1ba0d5d81a9a62",
+  "LICENSE.txt": "b29ef22ac91a3a59b07d648118bb24c04b0bf94329dd36986fafd6a8547f981f",
+  "SOURCES.md": "ef0f691b3549e397b23b2235f3d08bffedd2b69ba0cac412edf9aa165a3a9f6a"
+ }
+}

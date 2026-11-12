@@ -20,6 +20,7 @@ import {SPIKE_MEDIUM_ANGULAR} from '../overlay/scratch-gui/src/lib/bw-sim/device
 import {runRobotLabProgram} from './helpers/robot-lab-direct-vm.mjs';
 // Extensions loaded before the run's fake clock install real timers; clear them so node:test exits.
 import {clearStrayTimers} from './helpers/bw-vm.mjs';
+import {afterturnPrediction} from '../scripts/lib/sim-lab-afterturn-judge.mjs';
 
 const PARTS = JSON.parse(readFileSync(new URL('../overlay/scratch-gui/src/lib/bw-sim/part-meta/parts.json', import.meta.url)));
 const CATALOG = new Map(PARTS.parts.map(p => [p.part, p]));
@@ -163,4 +164,22 @@ test('Afterturn (native): platform turn per reaction-wheel turn is -Iw/J at the 
         // The 1 % bound of the analytic free-pair control (bw-sim-rotor-inertia.test.mjs).
         assert.ok(Math.abs(ratio - law) <= 0.01 * law, `platform/wheel ${ratio} vs Iw/J ${law}`);
     }
+});
+
+test('Afterturn judge prediction: slider-crank radii and Iw/J(B) from compiled masses, independent of any run', () => {
+    // The judge's own prediction (scripts/lib/sim-lab-afterturn-judge.mjs) must reproduce the supplied geometry
+    // (16 mm crank, 48 mm rods: carts 64 mm out at B = 0, 51.0568 mm at B = 70°) and a shape-dependent ratio,
+    // while the fixed-mass control's ratio does not depend on B.
+    const mech = file => prepareModel(read(SIM + 'models/' + file), catalogFrom(PARTS), {mat: 'plain'}).mechanism;
+    const m = mech('afterturn.ldr'), c = mech('afterturn-fixed-masses.ldr');
+    const [p0, p70] = [0, 70].map(B => afterturnPrediction(m, B));
+    for (const s of p70.sides) {
+        assert.equal(s.crankMm, 16); assert.equal(s.rodMm, 48);
+        assert.ok(Math.abs(-Math.abs(s.cartTravelMm) + 64 - 51.056819) < 1e-4, `cart at ${64 - Math.abs(s.cartTravelMm)} mm`);
+    }
+    assert.ok(Math.abs(p0.ratio - 0.02608) < 5e-6 && Math.abs(p70.ratio - 0.02746) < 5e-6, JSON.stringify([p0.ratio, p70.ratio]));
+    assert.ok(p70.J < p0.J, 'masses in: smaller platform inertia');
+    const [c0, c70] = [0, 70].map(B => afterturnPrediction(c, B));
+    assert.deepEqual(c70.sides, []);
+    assert.ok(Math.abs(c70.ratio - c0.ratio) < 1e-3 * c0.ratio, 'control: J does not depend on B');
 });

@@ -25,6 +25,7 @@
 1 1 -40 20 -20 -1 0 0 0 0 1 0 1 0 6558.dat
 0 !BW ID left_tower_foot_-20
 1 72 -80 60 -20 1 0 0 0 1 0 0 0 1 15100.dat
+0 STEP
 0 !BW ID left_tower_foot_pin_-20
 1 1 -80 80 -20 0 0 1 1 0 0 0 1 0 6558.dat
 0 !BW ID left_tower_20
@@ -37,6 +38,7 @@
 1 1 -40 20 20 -1 0 0 0 0 1 0 1 0 6558.dat
 0 !BW ID left_tower_foot_20
 1 72 -80 60 20 1 0 0 0 1 0 0 0 1 15100.dat
+0 STEP
 0 !BW ID left_tower_foot_pin_20
 1 1 -80 80 20 0 0 1 1 0 0 0 1 0 6558.dat
 0 !BW ID right_bearing
@@ -49,6 +51,7 @@
 1 1 40 -20 -20 1 0 0 0 0 -1 0 1 0 6558.dat
 0 !BW ID right_motor_A_pin_20_-20
 1 1 40 20 -20 1 0 0 0 0 -1 0 1 0 6558.dat
+0 STEP
 0 !BW ID right_tower_foot_-20
 1 72 80 60 -20 -1 0 0 0 1 0 0 0 -1 15100.dat
 0 !BW ID right_tower_foot_pin_-20
@@ -61,6 +64,7 @@
 1 1 40 -20 20 1 0 0 0 0 -1 0 1 0 6558.dat
 0 !BW ID right_motor_A_pin_20_20
 1 1 40 20 20 1 0 0 0 0 -1 0 1 0 6558.dat
+0 STEP
 0 !BW ID right_tower_foot_20
 1 72 80 60 20 -1 0 0 0 1 0 0 0 -1 15100.dat
 0 !BW ID right_tower_foot_pin_20
@@ -73,6 +77,7 @@
 1 0 -60 100 120 1 0 0 0 1 0 0 0 1 32278.dat
 0 !BW ID base_runner_pin_-60_-20
 1 0 -60 90 -20 0 0 1 1 0 0 0 1 0 2780.dat
+0 STEP
 0 !BW ID base_runner_pin_-60_20
 1 0 -60 90 20 0 0 1 1 0 0 0 1 0 2780.dat
 0 !BW ID base_runner_60
@@ -85,6 +90,7 @@
 1 72 80 40 0 0 1 0 -1 0 0 0 0 1 15100.dat
 0 !BW ID motor_B_mount_120
 1 72 120 40 0 0 1 0 -1 0 0 0 0 1 15100.dat
+0 STEP
 0 !BW ID motor_B_pedestal
 1 72 100 60 0 0 1 0 0 0 1 1 0 0 32523.dat
 0 !BW ID motor_B_mount_tie
@@ -97,6 +103,7 @@
 1 0 80 100 0 1 0 0 0 1 0 0 0 1 32524.dat
 0 !BW ID motor_C_mount_-120
 1 72 -120 40 0 0 1 0 -1 0 0 0 0 1 15100.dat
+0 STEP
 0 !BW ID motor_C_mount_-80
 1 72 -80 40 0 0 1 0 -1 0 0 0 0 1 15100.dat
 0 !BW ID motor_C_pedestal
@@ -109,6 +116,7 @@
 1 0 -80 90 0 0 0 1 1 0 0 0 1 0 2780.dat
 0 !BW ID motor_C_floor
 1 0 -80 100 0 1 0 0 0 1 0 0 0 1 32524.dat
+0 STEP
 0 !BW ID hub
 1 71 0 70 280 1 0 0 0 1 0 0 0 1 45601.dat
 0 !BW ID hub_deck_-60
@@ -121,6 +129,7 @@
 1 0 -60 90 200 0 0 1 1 0 0 0 1 0 2780.dat
 0 !BW ID hub_deck_runner_pin_-60_240
 1 0 -60 90 240 0 0 1 1 0 0 0 1 0 2780.dat
+0 STEP
 0 !BW ID hub_rear_foot_pin_-60
 1 0 -60 90 360 0 0 1 1 0 0 0 1 0 2780.dat
 0 !BW ID hub_deck_60
@@ -133,6 +142,7 @@
 1 0 60 90 200 0 0 1 1 0 0 0 1 0 2780.dat
 0 !BW ID hub_deck_runner_pin_60_240
 1 0 60 90 240 0 0 1 1 0 0 0 1 0 2780.dat
+0 STEP
 0 !BW ID hub_rear_foot_pin_60
 1 0 60 90 360 0 0 1 1 0 0 0 1 0 2780.dat
 0 !BW ID hub_rear_foot
@@ -158,6 +168,7 @@
 1 19 -3 -117 0 -0.258819 0.965926 0 0 0 1 0.965926 0.258819 0 6589.dat
 0 !BW ID planet2
 1 19 -3 -91.5 -14.7224 -0.258819 0.965926 0 -0.836516 -0.224144 -0.5 -0.482963 -0.12941 0.866025 6589.dat
+0 STEP
 0 !BW ID planet3
 1 19 -3 -91.5 14.7224 -0.258819 0.965926 0 0.836516 0.224144 -0.5 -0.482963 -0.12941 -0.866025 6589.dat
 0 STEP
@@ -175,6 +186,7 @@
 1 71 -100 0 0 1 0 0 0 1 0 0 0 1 54696p01.dat
 0 !BW ID brakeLeftAxle
 1 4 -100 -60 0 0 1 0 1 0 0 0 0 -1 4519.dat
+0 STEP
 0 !BW ID brakeLeft12
 1 19 -100 -75 0 1 0 0 0 0 1 0 -1 0 6589.dat
 0 !BW ID brakeLeft20
@@ -192,6 +204,7 @@
 1 4 -155 -100 0 0 0 1 0 1 0 -1 0 0 39367p01.dat
 0 !BW ID leftOuterWheelBush
 1 72 -175 -100 0 0 0 1 0 1 0 -1 0 0 3713.dat
+0 STEP
 0 !BW ID leftKey
 1 4 -195 -100 0 0 1 0 -1 0 0 0 0 1 60483.dat
 0 !BW ID leftTip
@@ -204,6 +217,7 @@
 1 72 60 -100 0 0 0 1 0 1 0 -1 0 0 3713.dat
 0 !BW ID rightOuterBearingBush
 1 72 95 -100 0 0 0 1 0 1 0 -1 0 0 4265c.dat
+0 STEP
 0 !BW ID rightInnerWheelBush
 1 72 135 -100 0 0 0 1 0 1 0 -1 0 0 3713.dat
 0 !BW ID rightWheel

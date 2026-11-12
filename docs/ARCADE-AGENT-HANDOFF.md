@@ -1,5 +1,42 @@
 # Arcade compatibility: fresh-agent handoff and methodology
 
+## Current checkpoint — 2026-11-06
+
+Connected editor acceptance for published Array/snake, frame-delta and number
+entry is being added under its [bounded claim](../lanes/2026-11-07-arcade-connected-authoring.md).
+Qualification requires the exact-head official-build browser job and its original
+PXT comparisons; source-only fixture checks do not establish GUI or runtime parity.
+The [first hosted run](https://github.com/CrispStrobe/brickwright-lite/actions/runs/42383883786)
+completed all five snake editor and original-simulator samples, then stopped at
+the number-entry readiness marker. Number-entry and frame-delta acceptance
+remain pending on the corrected candidate.
+
+#1643 landed as `8a969d7d` after its enabled checks passed. Its two cleared
+rows leave 22 documented Arcade TODOs; see [ARCADE-888](ARCADE-888-OPEN-FAILURES.md)
+and the [pending task list](../lanes/2026-11-03-arcade-pending-after-1643.md).
+On that merge, the 184-input source import and Creator census reports **156
+translated, 27 partial and one parse failure**. The inputs match the prior
+`cb878669` census by hash, with no stage changes. This is not an export, VM,
+original-PXT, browser or full application execution result.
+
+The 29 October checkpoint below is historical: #1554 landed through #1572,
+and the prepared created-field receiver work landed through #1631. Subsequent
+Arcade changes include #1638 and #1646. The four Sprite-instance `onOverlap`
+examples use a method absent from the pinned SDK; the projectile example lacks
+a declared source sprite. Treat those inputs as limited rather than counting
+unmeasured importer gains. Refresh main and pull requests, and merge a scoped
+claim before implementation. Keep F/G and the timing, tile-callback and
+do-while limits as recorded in ARCADE-888.
+
+Refused by design (operator decision 2026-11-09): row 2h-2, a text-edited
+argument to a Number formal (`makecode-arcade-managed-number-boundaries`,
+ordinary-argument physical text). A registered stock or managed Number formal
+rejects text before any body effects; the deliberate control is `registered
+stock/managed Number rejects text before body effects` in
+`test/arcade-procedure-constraints-native.test.mjs`. Such an argument stays
+outside the roundtrip on purpose. Do not reopen it or change that control.
+
+
 
 ## 2 November: TODO closure status and decisions
 
@@ -26,6 +63,8 @@ plus a `scene.backgroundColor()` Number proof). Counts and reasons are in
   call (scene.backgroundColor, Math.floor/ceil/round/abs/sqrt) keeps its
   Number declaration, so `set color to 2` no longer stores text without sprites.
 - Group A follow-up: nine rows cleared by per-slot proofs; five remain TODO.
+- 2026-11-03: positional Array elements (B numeric constants) and constant computed indexes (A value arithmetic) cleared; 22 documented TODO rows remain, with reasons in ARCADE-888.
+- Corpus levers checked: the Sprite-instance `x.onOverlap(fn)` used by four corpus programs is not in the pinned SDK (only `sprites.onOverlap(kind, otherKind, handler)` exists), so original PXT cannot compile them; the `createProjectileFromSprite` program uses an undeclared `heroSprite` fragment. Both are input-limited, not importer gaps.
 
 ## 30 October: unproven native-addition operands use runtime dispatch (owner decision)
 
@@ -52,7 +91,7 @@ Arcade typings) so more operands get an exact static proof instead of the
 runtime dispatch. `scripts/verify-arcade-numeric-authoring-gui.mjs` now
 asserts that the unproven `music tempo + 1` exports through that helper with
 no refusal details; the panel's collapse and dismiss controls stay covered.
-## Fresh-agent checkpoint — 2026-10-29
+## Historical checkpoint — 2026-10-29
 
 Start with [the lane protocol](../lanes/PROTOCOL.md), the active
 [Arcade integration claim](../lanes/2026-10-26-arcade-forward-integration.md),

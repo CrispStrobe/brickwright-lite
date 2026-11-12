@@ -82,6 +82,279 @@ Editing `scripts/lib/robot-lab-qualification.mjs`:
   (`lanes/2026-10-27-robot-lab-hubless-harness.md`).
 - When merging main, keep every side's entries.
 
+## 00000. Next batch R1–R7 and engine task E1, 2026-11-10 (read this first)
+
+**R1 DONE 2026-11-11 (#1725).** Obliquity Orrery promoted with judge
+`obliquity-tilt-v1` (`scripts/lib/sim-lab-obliquity-judge.mjs`). The proposed
+law is the mechanism's physics: 1:1 drive, equal 16 mm cranks on axles 32 mm
+apart (the coupler-pin spacing) so the coupler translates without turning, a
+22.5° axis that keeps its direction, and the Sun at the orbit centre level with
+the Earth; the compiled geometry reproduces the law to 1.4e-5°. Hosted native
+run: declination error 0.0021° (gate 0.01°), drive 0.0071°, radius 0.00095 mm.
+Disconnection is crank A's coupler pin (law error 12.94°, refused). Crank B's
+pin, as proposed here, also loses the law (22.55°: the free coupler swings), but
+removing a driven-side pin is the cleaner causal cut. Mutants (tilt turned 90°;
+Earth turning with its orbit) are refused. Browser gate on shard robotaddon15.
+
+**R2 DONE 2026-11-12 (#1729, `lanes/2026-11-11-robot-r2-judge-family.md`) for Cadence, Helios and Orion;
+Equinox stays experimental (below).** One judge module,
+`scripts/lib/sim-lab-r2-judges.mjs`; every constant is read from the compiled parts and catalogue tooth counts.
+Native runs (COLD 500), measured / gate:
+
+| Model | Judge | Law error | Other measured | Disconnection (law error, lost) |
+|---|---|---|---|---|
+| cadence-geneva | `geneva-index-v1` | later steps 90° ± 0.114° / 0.25°; dial −star/3 0.095° / 0.25° | first step 88.63°; dwell 0.00013° / 0.1°; lag behind the ideal curve 4.11° / 4.5° | `driver_pin_axle`: star never moves, 1080° |
+| equinox-differential | `differential-sum-v1` | L + R − 2K 0.013° / 0.1° | K vs (12/28)A 0.014°; brakes 0.005/0.009°; held outputs 0.25/0.20° / 1° | `pinion`: carrier span 1.7°, 1078° |
+| helios-transmission | `willis-epicyclic-v1` | 3A − 2C 0.048° / 0.25° | carrier vs −(20/28)B 0.0072°; standstill at B = −63°/s, output 0.000°/s | `control_gear`: 415° |
+| orion-cardan | `double-cardan-offset-v1` | output − input 0.048° / 0.25° | ripple law 0.099° / 0.5°; lead 12.84° p-p vs 12.76° | `fork_middle_far`: 7245° |
+
+Corrections to the table below, by measurement: the Geneva star lags the ideal curve by up to 4.1° (the roller's
+clearance in the slot; the first step is 88.6°, every later step 90°), so the law gates step size, dwell and dial
+exactly and the in-step curve only within 4.5°. The differential's proposed "carrier gear" cut (`cover`) also
+removes the planets' support: the model flies apart before the program's start check, which refuses; motor A's
+12T bevel (`pinion`) is the clean cut. Helios's standstill is the program's stage 4 (the fourth speed step;
+"stage 3" counted from 0). Orion's id is `double-cardan-offset-v1` because `double-cardan-v1` is Phasekeeper's
+registered judge. The four shipped LDR files changed only in STEP markers (author steps of up to 100 parts):
+Cadence and Helios now derive connected steps of at most six parts; Equinox's and Orion's author steps are split in
+order, because the instruction planner's adjacency counts neither gear meshes nor universal joints and the derived
+plans would show the differential casing and a middle-shaft marker as floating.
+Browser gates on shards robotaddon16 (Cadence; its disconnected control is a second step because the law run,
+control run and replay of its 144 s program exceed the 8-minute step cap), robotaddon18 (Helios) and robotaddon19
+(Orion). **Equinox is not promoted:** its native law and controls pass (table above), but the browser gate's
+manual-control check stops every motor (power 0 = hold) and then jogs each port alone. With both outputs held the
+differential's carrier is locked (K = (L + R)/2), so motor A cannot reach its jog target (hosted chromium, twice,
+210° and 30° steps). That is the mechanism's physics; promotion needs a manual-control rule for coupled
+multi-motor mechanisms (the gate owner's decision). Its contract, registry move, fixture and shard were withdrawn;
+`differential-sum-v1` stays registered and its STEP split stays.
+
+Read-only triage from code and data on main `d318ed6e`; nothing was compiled
+or run. The experimental set is every id in
+`docs/data/robot-lab-experimental-checkpoint.json` without a contract in
+`docs/data/robot-lab-qualification.json` (54 contracts). Controls stay out
+(`rimrun-swapped`, `evenhand-control`, `sarrus-lift-single-chain` and the rest
+of the 2b controls list). That leaves 17 models. None of them has a judge in
+`QUALIFICATION_JUDGES`, a contract, a recorded construction-gate
+(`bw-sim-models-solid`) run, a disconnection run or a hosted browser gate
+(robotaddon shard). So every item below also needs, in order: the solid suite,
+the judge with frozen-output, 1 cm shift and disconnection controls, the
+contract, hosted native qualification, a browser gate shard, then the registry
+move and regenerated catalogue and lessons. The "blocker" column names only
+what comes before that. Sizes: S = one model, existing law, no geometry;
+M = a judge family or minimal real-part repairs; L = harness or engine
+support, or an open design question.
+
+| Batch | Model | Blocker before the shared steps | Proposed law / judge | Size |
+|---|---|---|---|---|
+| R1 | obliquity-orrery | #1460 is closed; headless agrees and the causal control `obliquity-orrery-turned-axis` passes; browser load passes | `obliquity-tilt-v1`: sin δ = sin 22.5° · cos(λ − 45°) from the compiled axle tilt, max error 0.01°; disconnect crank B's link | S |
+| R2 | cadence-geneva | CRLF disconnection parser fixed (`d175b2f9`); no judge | `geneva-index-v1`: n = 4, 90° step per crank turn, 90°/270° engage/dwell, dial = star/3; disconnect the drive pin | M (with R2 family) |
+| R2 | equinox-differential | as above | `differential-sum-v1`: L + R = 2K, K = (12/28)·A, brake motor = 20/12 · output; disconnect the carrier gear | M |
+| R2 | helios-transmission | as above | `willis-epicyclic-v1`: ω_out = 3ω_A − 2ω_c, ω_c = −(20/28)ω_B, standstill at stage 3; disconnect the control gear | M |
+| R2 | orion-cardan | as above | `double-cardan-v1`: output − input = 0 while the middle shaft ripples 12.76° p-p (β = 36.87°); disconnect one cross. Share helpers with Phasekeeper's judge | M |
+| R3 | apex | 2b: housing links overlap; minimal real-part repairs in #1510's style | `wankel-ratio-v1`: carrier = (5/7)A, rotor = carrier/3, eccentricity from compiled hinges | M |
+| R3 | aster-governor | 2b: flyweight overlaps its key | `governor-lift-v1`: ω² = g·k·tan a / (e + L sin a), k from compiled masses; disconnect the collar link | M |
+| R3 | vesper-quickreturn | 2b: motor overlaps the fixed bearing | `quick-return-v1`: time ratio 1.4589 and stroke 66.17 mm from compiled geometry; slow side swaps on reversal | M |
+| R3 | bloom | 2b: anchor pins reach into the elbows | `scissor-sphere-v1`: link rotation = Δmotor/72, r = a·cos(θ + 22.5°)/sin 22.5° | M |
+| R4 | solstice-pumpjack | start guard faults at stage 0 after the 500 ms cold settle | `walking-beam-v1`: stroke 40.58 mm, swing 42.4°, turning points 115.5°/283.1° crank; rest stops as High Select (`1b251e04`) | M |
+| R4 | tempest-pendulum | start guard: COLD 1000 sags 86° | `double-pendulum-mode-v1`: slow normal mode period and amplitude ratio (√2 point-mass ideal) predicted from compiled inertias, not the ideal | M |
+| R4 | impulse-line | unpowered pusher droops ~4°/s in the cold settle against a 2° guard; law only qualitative | quantitative contact-transfer law (last-bob displacement after pusher clearance against `impulse-line-missing-middle`, ratio ≥ a derived bound); pose fix first | M–L |
+| R5 | spiral-scribe | 64781 rack pitch 3.2 mm does not match the pinion law (37.7 vs 38.4 mm per turn); causal control not run on real parts | `radial-feed-v1`: carrier/motor = −1/3, planet/carrier = 2, feed = pitch·θ; first a correct real rack, else keep experimental with that reason | M |
+| R5 | quiet-partner | locked-hinge warnings; elastic bands become spring couplings | `tuned-absorber-v1`: gain with/without bands, coupled modes 0.815/2.135 Hz vs predicted, control `quiet-partner-control`; needs harness support for spring couplings | L |
+| R6 | pan-shift | run ~374 s against the 180 s contract maximum; whether ±14.2° is gravity rest or stop contact is undetermined | `roberval-v1`: load position changes beam angle ≤ 0.01°, trim ±60 gives symmetric ±tilt; shorten the program honestly or keep experimental | L |
+| R6 | inertia-loop | geometry, construction-steps rule, motor-model dominated (2b); do last | `shape-cycle-yaw-v1`: net yaw per loop = (k_wide − k_compact)·Φ, sign flips on inverse loop, control ≈ 0 (reuse Afterturn's method) | L |
+| R7 | vector-delta | blocked by a missing part | `delta-ik-v1`: tool head within 0.25 mm of 13 waypoints, shoulder angles vs IK; keep blocked | — |
+
+Order: R1 first (smallest, unblocks a precedent), R2 as one judge-family PR,
+R3 and R4 as geometry/pose PRs (one model per commit, before/after recorded),
+R5–R6 after their open questions are decided, R7 waits for the part. Never
+loosen the construction gate, a start guard or a threshold to promote.
+
+### E1. Engine follow-up: Jolt enhanced internal-edge removal (proposed, not started)
+
+Goal: remove the contact bump at abutting coplanar tile joints that RimRun
+shows (about 0.0085 m/s per roller per joint; see 0000), so judges need not
+avoid tile ends.
+
+Where the setting goes: `BodyCreationSettings.mEnhancedInternalEdgeRemoval`,
+set in the body loop of `overlay/scratch-gui/src/lib/bw-sim/physics/jolt-core.js`
+(where `bcs` is built, next to `mMotionQuality`). The Brickwright fork's
+binding (`jolt-physics` 1.1.0-bw.9) exposes the attribute and
+`Body.SetEnhancedInternalEdgeRemoval`, so no binding change is needed for the
+flag itself.
+
+Why the earlier diagnostic (flag on the moving bodies only) changed nothing:
+- Placement is not the cause. Jolt combines the flag per pair
+  (`Body::GetEnhancedInternalEdgeRemovalWithBody` ORs both bodies), so setting
+  it on the rollers is equivalent to setting it on the frame or a static
+  compound.
+- Removal only works within one body pair: `InternalEdgeRemovingCollector`
+  voids the edges of faces of shape 2 that the convex shape 1 already touches.
+  RimRun's tiles are sub-shapes of one body, so that part holds.
+- Likely cause (hypothesis, verify first): RimRun's track frame is dynamic
+  (the judge asserts only the floor is static). For two dynamic bodies
+  `PhysicsSystem::ProcessBodyPair` orders the pair by body ID, so if the frame
+  was created before the rollers, the frame compound is shape 1 and the roller
+  cylinder is shape 2. The collector then voids features of the roller, not
+  the tile joint, and the bump stays. Against a static frame or the ground the
+  static body is always shape 2 and the method would apply.
+- Also check: the tile boxes carry a convex radius (`boxConvexRadius`), which
+  rounds the joint edge; verify the supporting faces still share the joint
+  vertices exactly.
+
+Proposed steps:
+1. Read-only/instrumented diagnostic (no merge): record body IDs and the
+   pair order for each roller–frame contact, and the contact normals at a
+   joint with the flag on all bodies.
+2. If the order is the cause, fix it in the fork, not in Lite: a sim
+   collide callback (`PhysicsSystem::SetSimCollideBodyVsBody`) that, when
+   enhanced removal applies, collides the body with fewer sub-shapes as shape
+   1 and flips the results. It must keep `PartPairSimShapeFilter` working.
+   This is a new fork release and a Lite pin bump (all pin surfaces).
+3. Enable it opt-in, per model or per body (a compiled flag such as a
+   `!BW` meta line, like the per-model rotor opt-in of #1494), first for
+   RimRun only. Global enablement changes contacts in every model.
+
+Affected models and requalification cost:
+- Opt-in for RimRun only: RimRun and `rimrun-swapped`, native qualification
+  and browser shard robotaddon14; the judge may then fit across joints, but
+  its 5 % gate must not be widened (tighten only with evidence).
+- Global: every model with contact between multi-collider bodies (track,
+  ground, gear frames, stops), i.e. all 54 contracts natively, every
+  robotaddon browser shard, and the checkpoint values; plus the cost of the
+  extra contact pass. Not recommended without the opt-in step first.
+- Any fork change: new `jolt-physics` release, Lite pin bump, full unit
+  shards (pin bumps ripple), and determinism checks native vs browser.
+
+Size: S for step 1, M for the opt-in flag, L if the fork collide order must
+change.
+
+## 0000. Status, 2026-11-09 (supersedes 000 below)
+
+Q1–Q5 are all done. They landed together as one integration, #1683
+(merge `98067ba8`), which merged #1684 (Q1/Q2), #1681 (Q3) and #1682 (Q4)
+into the Q5 branch. All four PRs show as merged.
+
+Promoted: Loop Relay, Parity Dial, Counter Slide (Q1/Q2), Point Weaver (Q3),
+Evenhand (Q4, `counterbalance-holding-torque-v1`) and RimRun (Q5,
+`rolling-inertia-v1`). Hosted unit shards on the merged head passed
+ordinary, strict and disconnected qualification for all six, and the
+construction gate. `rimrun-swapped` and `evenhand-control` stay experimental
+as controls.
+
+Open points, recorded rather than resolved:
+
+- **Browser gates (2026-11-10):** Loop Relay, Parity Dial, Counter Slide and
+  Point Weaver passed in #1703 (shards robotaddon10–12). Evenhand has its gate
+  in #1714 (shard robotaddon13: counterbalance law, disconnected control,
+  manual control, instructions, LDR/MPD, saved-project replay, EN/DE
+  lessons); RimRun has its gate (shard robotaddon14) since its judge change,
+  see the residual below. Evenhand and
+  RimRun's build steps were re-authored to at most six parts per step.
+- **Manual browser controls not run** for any of the six (superseded by the
+  entry above). The checkpoint and
+  contracts record them as `notRun`, together with saved-project replay and
+  export. `ci:full` was added and then removed on operator decision, so no
+  hosted browser shards ran on the merged head either.
+- **RimRun residual.** Each roller accelerates about 4 % below its damped
+  prediction g·sinθ/(1+I/mr²) − 0.05·v̄. That is inside the judge's 5 % gate,
+  but it is not explained. The inner/outer ratio itself agrees to 0.4 %.
+  The constants and inertia sources are in `scripts/lib/sim-lab-rimrun-judge.mjs`.
+  Explain the residual before anyone tightens that gate. Never widen it.
+  **Explained (2026-11-09):** each roller loses about 0.0085 m/s at each
+  track-segment seam (128 mm box colliders laid end to end, about 0.05 mm
+  out of plane, seams near 74 mm and 202 mm). The judge window
+  (2960–3240 ms) covers one crossing, which accounts for ~0.03 m/s² of the
+  0.0327/0.0331 m/s² shortfall. Between seams the prediction matches within
+  0.1 %. Ruled out: missing inertia, joint friction or damping, timestep
+  error, per-part mass. Judge and gate stay unchanged. Possible follow-ups,
+  not done: fit within a single segment, or merge abutting track colliders
+  (affects every model).
+  **Correction and browser findings (2026-11-10, #1714):** the compiled
+  track colliders are exactly coplanar (all 18 tile tops at 0.000000 mm along
+  the surface normal), so the bump is not a step between tiles: it is Jolt's
+  internal-edge contact where two abutting 320 LDU tiles meet. Tile geometry
+  cannot remove it with stock parts (no smooth tile is longer than 320 LDU).
+  Enabling Jolt's enhanced internal-edge removal is a possible engine
+  follow-up; it affects every model. Two browser measurement defects were
+  fixed on the way: (1) timestamp aliasing — the recorder stamped worker poses
+  with the session clock (33.3 ms ticks) while each batch runs whole 5 ms
+  steps (30 or 35 ms), so the fit read 16 % low; a gate that requests
+  per-step sampling now gets frames stamped with the physics time of their
+  poses (other gates keep the session clock their hold checks use); (2) coarse sampling — browser frames are whole batches,
+  8 in the window; the worker's fixed-step collector now also samples up to
+  four requested dynamic bodies, and the gate judges on the registry's 20 ms
+  grid. On that clean data the left roller still fits 5.7 % low (right
+  2.7 %): the one joint crossing falls mid-window, where natively it falls
+  elsewhere. **Resolved (2026-11-10, judge change):** `rolling-inertia-v1`
+  now fits each lane from gate clearance (the first frame after the engine
+  last reports the gate in contact with either roller) to its first tile
+  joint (from the compiled tile colliders), at least 10 frames at 20 ms, the
+  same judge natively and in the browser, 5 % gate unchanged. On one tile
+  both rollers match their predictions within 0.02 % (ratio 1.0783 vs
+  1.0784); `rimrun-swapped` still moves the lead. RimRun's browser gate runs
+  again (shard robotaddon14).
+- **Merge exception for #1714 and the RimRun judge PR (operator decision,
+  2026-11-10):** both may merge with browser (heavy) and browser (light)
+  failing exactly the six steps that also fail on main eb7e1c91 (run
+  42788806821: ESP32-S3 boot, S040 display/touch, 386 media in Widgets, x86
+  debugger Pause, four-surface save/reopen, MakeCode import), only when the
+  error signatures are identical and every other enabled check is green.
+  #1714 merged on that basis (comment on the PR); no other step was excepted.
+- **Arcade exception at merge.** On operator decision, "Arcade numeric
+  authoring (official build)" was an exception for #1683 only. Both failures
+  are kept on record:
+  - attempt 1: a strict clock assertion got 1000.0000000000091 ms against
+    1000;
+  - attempt 2 (a single-job rerun): the official GUI artifact admission
+    refused the rerun before the verifier ran.
+  #1683 touched no Arcade path. Main's #1694 since changed that millisecond
+  comparison. The rerun-admission behaviour is untouched and belongs to the
+  Arcade lane.
+
+## 000. Status, 2026-11-08 (read this first; supersedes P1–P6 below)
+
+P1–P6 are all done. Merged: #1641 (Afterturn), #1639 (nine-intake judge,
+no promotions), #1669 (disconnection run uses the compiler's registered hub,
+so `spike_hub` models work), #1672 (geometry repairs; promoted Toggle Press,
+Footfall, Phasekeeper, Vector Sum), #1671 (promoted Paired Door Sync, judge
+`opposed-rack-pinion-v1`), #1668 (dropped the >50-piece bound; promoted
+Helixgate).
+
+Still experimental, each with its reason in
+`docs/data/robot-lab-experimental-checkpoint.json`. All are unowned and
+doable as geometry or test-design work:
+
+- **Q1/Q2 (2026-11-08, `lanes/2026-11-08-robot-q12-geometry.md`)**: Loop
+  Relay and Parity Dial input axles now end at the motor face; Counter Slide's
+  eight 3L pins are turned end for end and each rack assembly sits 3 teeth
+  (23.56 LDU) clear of its end-stop pin. Contracts added with the checkpoint
+  values; promoted once the hosted runs pass. The two items below are kept as
+  the historical diagnosis.
+- **Loop Relay, Parity Dial**: pass ordinary, strict and disconnected runs at
+  178° / 88° input floors; fail the construction gate because the input axle
+  reaches 2.5 LDU into the motor. Fix the axle seat, then re-add the contract
+  (values in the checkpoint) and promote as #1668 did for Helixgate.
+- **Counter Slide**: same, at a 98° floor; both housing angles overlap their
+  racks by 2.5 LDU and eight pins reach about 2 LDU into the housings.
+- **Point Weaver**: DONE (Q3, 2026-11-08). Motor-foot mount redesigned: pads
+  removed and the motor assemblies lowered 10 LDU onto the rails, so one 3L pin
+  joins rear foot, rail and base cross; promoted (116 placements).
+- **Evenhand**: DONE (Q4, lanes/2026-11-08-robot-q4-evenhand.md): judge
+  `counterbalance-holding-torque-v1` registered and Evenhand promoted. The
+  disconnection removes one inner counterweight pin (`forearm_weight_pin_-1_-20`,
+  120 LDU behind the elbow): the elbow loses its mirror balance by that pin's
+  moment (predicted 0.165, measured 0.166 mN·m) while the cold-settle sag
+  (1.4° / 1.0°) stays inside the unchanged 3° start guard. Whole weight beams
+  sag the arm 3.4–17° and fault the guard. `evenhand-control` stays a control.
+- **RimRun**: done in Q5 (PR #1683, 2026-11-09) and promoted with judge `rolling-inertia-v1`.
+  The hub is pinned to the motor posts with four 2780 pins, and the wheel half bushes, which sat
+  7.5 LDU inside the wheels, are seated flush. The supplier's catch and fault-stop checks are not in
+  the repository; both behaviours were measured instead, and the values are in the checkpoint.
+  `rimrun-swapped` is the causal control. Disconnection removes all ballast.
+
+Not run for the newly promoted models: manual browser controls (recorded as
+not run in the checkpoint). Standing rules above still apply; never loosen the
+construction gate or a threshold to promote.
+
 ## 00. Status and pending tasks, 2026-11-03 (read this first)
 
 The owning agents stopped on the weekly usage limit. Everything below is
@@ -137,6 +410,10 @@ and handoff entries.
 
 ### P3. Geometry repairs for five passing intakes (after P2)
 
+**Update 2026-11-07 (PR 1672):** Toggle Press, Footfall, Phasekeeper and Vector Sum
+repaired, given contracts and promoted. Point Weaver stays experimental: its rear
+motor-foot stack cannot be pinned cleanly (reason in the checkpoint).
+
 Toggle Press, Footfall, Phasekeeper, Vector Sum and Point Weaver pass hosted
 native ordinary, strict and disconnected qualification runs, but fail the
 established construction gate `test/bw-sim-models-solid.test.mjs`:
@@ -171,13 +448,49 @@ breaking the law, with a justification in the code comment, or fix the
 harness lookup in a separately reviewed change. Do not swap parts just to
 get green.
 
-### P5. Operator decision: the 50-piece minimum
+Diagnosis (2026-11-07): the removal is not the cause. Loop Relay's hub part is
+`spike_hub`, and the shared disconnection test looked up a body containing a part
+named `hub`, which no Loop Relay body has, with or without `chain_input16` (the
+compiled hub body is unchanged by the removal). Helixgate, Parity Dial and Counter
+Slide use `spike_hub` too. Fix on `lane/robot-looprelay-20261107`: the test takes
+the compiler's single registered hub part (`mechanism.hubs[0].id`), as the
+nine-intake judge already does; all 31 registered contracts resolve to `hub`, so
+their runs are unchanged. The removal of `chain_input16` stays as reviewed.
 
-Helixgate (20 pieces), Parity Dial (31) and Counter Slide (44) are under the
-qualification contract validator's >50-piece minimum, and no documented
-exception covers promotion. Ask the operator whether the rule applies to
-these intakes. Do not pad the models or change the validator without that
-decision.
+### P5. Remove the 50-piece minimum from qualification (operator decision, 2026-11-07)
+
+Decision: the >50-piece minimum is dropped from qualification altogether.
+Qualification judges the simulated physics and its dependence on the
+mechanism; piece count is not part of that. The builder brief
+(`docs/ROBOT-LAB-MODEL-BUILDER.md`) keeps "models above 50 pieces are
+welcome" as a design preference, and the gallery's "More than 50 pieces"
+filter stays, both reading the honest count.
+
+To do:
+1. In `scripts/lib/robot-lab-qualification.mjs` (contract validator, the
+   `assert.ok(Number.isInteger(c.parts)&&c.parts>50)` line) keep the
+   integer/positive check on `parts` but drop the `>50` bound. The `>50`
+   instruction-step check in `scripts/lib/sim-lab-arm-lift-gate.mjs` is a
+   different rule; leave it.
+2. Add or adjust a validator test: a contract with an honest small count
+   (e.g. 20) is accepted, a missing or non-integer `parts` is still rejected.
+3. Note the change in this handoff and in the checkpoint reasons for
+   Helixgate (20 pieces), Parity Dial (31) and Counter Slide (44).
+4. Qualify those three through the normal pipeline (contract, ordinary,
+   strict, disconnected, construction gate `test/bw-sim-models-solid.test.mjs`)
+   and promote whichever pass. Never pad a model's count.
+
+Progress (2026-11-07): step 1–2 done on `lane/robot-piece-minimum-20261107`
+(`assertHonestPartCount`, `test/robot-lab-qualification-parts.test.mjs`).
+Outcome (2026-11-08): after #1639 (judges) and #1669 (P4 harness fix), hosted
+native ordinary, strict and disconnected runs pass for Helixgate, Loop Relay,
+Parity Dial and Counter Slide with strict disconnection input thresholds (each
+program's own completion tolerance: 717, 178, 88, 98). Only Helixgate also
+passes the construction gate and is promoted. Loop Relay and Parity Dial fail it
+(input axle reaches 2.5 LDU into motor_A); Counter Slide fails it (housing angle
+connectors interpenetrate the racks by 2.5 LDU, eight pins reach about 2 LDU into
+the housings). These three stay experimental pending geometry repair and
+requalification; their trial contract values are in the checkpoint reasons.
 
 ### P6. Other remaining experimental entries
 
@@ -187,6 +500,18 @@ figures in 2b) and Paired Door Sync (repaired in #1551; needs a qualification
 contract and the registry move). Controls and comparison variants
 (`*-control`, `*-swapped`, `*-in-phase`, `afterturn-fixed-masses` and the
 like) stay experimental by design.
+
+
+Status 2026-11-07 (PR #1671): Paired Door Sync promoted (`opposed-rack-pinion-v1`; pinion
+disconnection loses the law by 24 mm). Still open:
+- **Evenhand**: a holding-torque judge passes its law (branch `lane/robot-evenhand-20261107`,
+  unregistered): the measured torque matches statics within 0.002 mN·m, elbow < 0.002 mN·m.
+  Next: pick a removal that does not trip the program's 3° start guard during the 500 ms cold
+  settle (removing the forearm counterweights droops the arm 9–17°), or justify a different
+  disconnection. Then register the judge and promote.
+- **RimRun**: mount the hub with real bridging parts (the hub is about 170 LDU from the nearest
+  frame member; the feet are separate bodies), repair the supplier's failing catch and
+  watchdog-hold checks, then write the judge with `rimrun-swapped` as the causal control.
 
 ## 0. Status refresh, 2026-11-02
 
@@ -264,8 +589,8 @@ Triage of batches B and A, 2026-10-28:
 | cadence-geneva, equinox-differential, kestrel-flapper, lumen-iris, helios-transmission, orion-cardan, meridian-linkage | CRLF line endings break the physical-ID disconnection parser. The existing JavaScript multiline author assertion already accepts CRLF | A narrow harness candidate normalizes CRLF in the disconnection matching view, with LF/CRLF and strict-ID controls. Original model bytes and provenance checks stay unchanged. Hosted qualification and unchanged existing verdicts remain required; this parser repair does not promote these models. Kestrel, lumen-iris and meridian had earlier local judge passes |
 | pan-shift | runs past the 180 s contract maximum | Investigate the program length; keep experimental if it can't be fixed honestly |
 | vector-delta | blocked by a missing part | Keep blocked |
-| obliquity-orrery | blocked by issue #1460 (the compiler ignores motor orientation) | Wait for #1460 |
-| afterturn | Re-run 2026-11-02 with the #1573 native rotor opt-in: strokes 0.02749 (masses out) and 0.02606 (saved radii, law 0.02608); first cycle −1.275°, inverse −0.043°; control −0.009°. The supplier claim (4.6625°) and lessons describe the old double-count artefact, and no Afterturn judge is registered | Needs a new independently reviewed judge (independent J at B=70) plus corrected claims and lessons; stays experimental |
+| obliquity-orrery | #1460 closed | Done 2026-11-11 (R1, #1725): promoted with `obliquity-tilt-v1` |
+| afterturn | Promoted 2026-11-03 with the new `afterturn-shape-cycle-v1` judge: independent prediction from compiled masses and slider-crank poses, Iw/J = 0.02608 (masses out, B = 0) and 0.02746 (masses in, B = 70°); measured strokes 0.0261/0.0275 (within 1 %), cycle 1.24° vs predicted 1.25°, inverse back to 0.04°, fixed-mass control 0.01°. The earlier "0.02749 (masses out)" label was reversed: B = 70° moves the masses in. The supplier figure 4.6625° was the #1494 double count; claims and lessons now give the physical value | Done (control afterturn-fixed-masses stays experimental as the control) |
 | impulse-line | the unpowered pusher droops about 4°/s during the cold settle, against a 2° guard; its law is only qualitative | Needs a pose fix and a quantitative law |
 | quiet-partner | compiler warns of locked hinges, and the elastic bands become spring couplings | Needs harness support for spring couplings, or stays experimental |
 
@@ -303,6 +628,14 @@ browser journey, then promote as #1555 did.
 | phasekeeper | double Cardan at equal angles: ripple of joint 1 cancelled by joint 2 | Needs the two inferred real Cardan crosses (83 physical pieces); keep the loose-part recognition test |
 | vectorsum | open differential: carrier = mean of the two side-shaft angles | Two motors (A, B); check shaft-tip clearance stays clean |
 | pointweaver | two-motor five-bar, endpoint reaches four corner poses | Chromium full journey already passed once (preliminary) |
+
+**Update 2026-11-03 (nine intakes):** judges registered per family in
+`QUALIFICATION_JUDGES` with a disconnection-loss measure. Toggle Press, Footfall,
+Phasekeeper, Vector Sum and Point Weaver pass the native qualification runs but fail
+the construction gate (`bw-sim-models-solid`), so they stay experimental pending
+geometry repair. Helixgate was promoted on 2026-11-08 (P5). Loop Relay, Parity
+Dial and Counter Slide pass the native runs but fail the construction gate (P5
+outcome). Reasons are in `docs/data/robot-lab-experimental-checkpoint.json`.
 
 **Batch E remainders** (added in #1499):
 
@@ -381,7 +714,8 @@ infrastructure failures. Preserve every failure and original assertion. Scope
    verdict changes, investigate before merging.
 5. After merging, close #1494. Re-run Afterturn and promote it only if it
    passes honestly. Its recorded figures (a 4.66° cycle; the supplier's 4.6625°)
-   were measured with the old code.
+   were measured with the old code. (Done 2026-11-03: about 1.25° under the
+   native rotor, judged by `afterturn-shape-cycle-v1`, promoted.)
 
 Lane file: `lanes/2026-10-28-rotor-inertia-relative-1494.md`.
 

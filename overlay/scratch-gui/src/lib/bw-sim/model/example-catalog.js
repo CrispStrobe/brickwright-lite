@@ -1614,6 +1614,140 @@ export const MODEL_LESSONS = Object.freeze({
             "Linearaktuator"
         ]
     },
+    "toggle-press.ldr": {
+        "pieces": 139,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "linkages",
+        "description": {
+            "en": "One motor turns a yellow crank. A blue coupler folds the red and orange knee links, pushing an orange ram along two guide rails. The program approaches—but does not cross—dead centre, then returns to the saved datum.",
+            "de": "Ein Motor dreht eine gelbe Kurbel. Eine blaue Koppel knickt die roten und orangefarbenen Kniehebel und schiebt einen orangefarbenen Schlitten auf zwei Führungen. Das Programm nähert sich dem Totpunkt, überschreitet ihn aber nicht, und kehrt zur gespeicherten Nullstellung zurück."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "toggle linkage",
+            "de": "Kniehebelgetriebe"
+        },
+        "keywords": [
+            "toggle linkage",
+            "Kniehebelgetriebe",
+            "dead centre",
+            "toggle press",
+            "Kniehebel",
+            "Totpunkt"
+        ]
+    },
+    "footfall.ldr": {
+        "pieces": 119,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "linkages",
+        "description": {
+            "en": "One motor turns a yellow crank through a full revolution. Blue couplers drive a red upper triangle and an orange lower triangle so the orange foot link traces a closed, walking-like path before returning to the saved datum.",
+            "de": "Ein Motor dreht eine gelbe Kurbel um eine volle Umdrehung. Blaue Koppeln treiben ein rotes oberes und ein orangefarbenes unteres Dreieck an, sodass der orange Fußhebel eine geschlossene, schrittähnliche Bahn zeichnet und zur gespeicherten Nullstellung zurückkehrt."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Jansen linkage",
+            "de": "Jansen-Beinmechanismus"
+        },
+        "keywords": [
+            "Jansen linkage",
+            "Jansen-Beinmechanismus",
+            "walking linkage",
+            "foot trajectory",
+            "Strandbeest",
+            "Jansen-Mechanismus"
+        ]
+    },
+    "phasekeeper.ldr": {
+        "pieces": 79,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "gears",
+        "description": {
+            "en": "One motor drives a yellow input yoke, a blue diagonal shaft and an orange output yoke. Each universal joint bends by the same angle, and the two blue intermediate forks are parallel, so ideal Cardan speed ripple from the first joint is cancelled by the second. The placement list has 79 entries; add two real universal-joint crosses for 81 physical pieces.",
+            "de": "Ein Motor treibt eine gelbe Eingangsgabel, eine blaue Diagonalwelle und eine orange Ausgangsgabel an. Beide Kardangelenke knicken um denselben Winkel ab, und die beiden blauen Zwischengabeln sind parallel; dadurch wird die ideale Drehzahlschwankung des ersten Gelenks vom zweiten aufgehoben. Die Teileliste enthält 79 Platzierungen; mit zwei echten Kardankreuzen sind es 81 Bauteile."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "double Cardan joint",
+            "de": "Doppelkardangelenk"
+        },
+        "keywords": [
+            "double Cardan joint",
+            "Doppelkardangelenk",
+            "double Cardan",
+            "universal joint",
+            "Hooke joint",
+            "constant velocity",
+            "Kardangelenk",
+            "Gleichlauf"
+        ]
+    },
+    "vectorsum.ldr": {
+        "pieces": 122,
+        "motors": 2,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "gears",
+        "description": {
+            "en": "Two opposed angular motors drive the side gears of an open Technic differential. The red carrier represents the average of the two side-shaft angles in a shared axis convention, and a yellow 12-tooth bevel gear drives an orange output pointer from the carrier's red 28-tooth cover.",
+            "de": "Zwei gegenüberliegende Winkelmotoren treiben die Seitenräder eines offenen Technic-Differentials an. Der rote Träger entspricht im gemeinsamen Achsbezug dem Mittelwert der beiden Seitenwellenwinkel; ein gelbes 12-Zahn-Kegelrad treibt den orangefarbenen Ausgangszeiger über den roten 28-Zahn-Deckel des Trägers an."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "differential angle averaging",
+            "de": "Winkelmittelwert im Differential"
+        },
+        "keywords": [
+            "differential angle averaging",
+            "Winkelmittelwert im Differential",
+            "open differential",
+            "angle averaging",
+            "mechanical adder",
+            "Differenzial",
+            "Differential"
+        ]
+    },
+    "pointweaver.ldr": {
+        "pieces": 116,
+        "motors": 2,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "linkages",
+        "description": {
+            "en": "Two angular motors drive the base links of a planar five-bar mechanism. The blue and orange forearms meet at an orange endpoint marker. A finite program reaches four rectangular corner poses while exposing the curved endpoint edges produced by synchronized linear motor-angle interpolation.",
+            "de": "Zwei Winkelmotoren treiben die Grundglieder eines ebenen Fünfgelenkgetriebes an. Der blaue und der orange Unterarm treffen sich an einer orangefarbenen Endpunktmarke. Ein endliches Programm fährt vier rechteckige Ecklagen an und macht die gekrümmten Endpunktkanten sichtbar, die durch synchron linear interpolierte Motorwinkel entstehen."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "five-bar parallel linkage",
+            "de": "Fünfgelenk-Parallelmechanismus"
+        },
+        "keywords": [
+            "five-bar parallel linkage",
+            "Fünfgelenk-Parallelmechanismus",
+            "five-bar linkage",
+            "parallel robot",
+            "Cartesian interpolation",
+            "Fünfgelenk",
+            "Bahnplanung"
+        ]
+    },
     "kestrel-flapper.ldr": {
         "pieces": 61,
         "motors": 1,
@@ -1750,6 +1884,67 @@ export const MODEL_LESSONS = Object.freeze({
             "tangent",
             "analog computation",
             "line intersection"
+        ]
+    },
+    "paired-door-sync.ldr": {
+        "pieces": 88,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "gears",
+        "description": {
+            "en": "One 16-tooth pinion drives two racks on opposite sides, so the two door leaves travel equally fast in opposite directions and the sum of their positions stays zero.",
+            "de": "Ein 16er-Ritzel treibt zwei Zahnstangen auf gegenüberliegenden Seiten: Beide Türblätter laufen gleich schnell gegenläufig, die Summe ihrer Positionen bleibt null."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Opposed rack and pinion",
+            "de": "Gegenläufige Zahnstangen mit Ritzel"
+        },
+        "keywords": [
+            "Opposed rack and pinion",
+            "Gegenläufige Zahnstangen mit Ritzel",
+            "paired doors",
+            "sliding doors",
+            "rack and pinion",
+            "opposed racks",
+            "synchronised doors",
+            "Schiebetür",
+            "Doppeltür",
+            "Zahnstange",
+            "Ritzel"
+        ]
+    },
+    "rimrun.ldr": {
+        "pieces": 510,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "inertia",
+        "description": {
+            "en": "One motor lifts a shared gate above two free rollers on a fixed incline. Both have the same mass and rolling radius; only the ballast sits nearer the axle or farther out, and the roller with the ballast near the axle rolls faster. The comparison scene swaps the ballast between lanes, and the lead swaps with it.",
+            "de": "Ein Motor hebt eine gemeinsame Schranke über zwei freien Rollkörpern auf einer festen schiefen Ebene. Beide haben dieselbe Masse und denselben Rollradius; nur der Ballast sitzt näher an der Achse oder weiter außen, und der Rollkörper mit achsnahem Ballast rollt schneller. Die Vergleichsszene tauscht den Ballast zwischen den Spuren, und der Vorsprung wechselt mit."
+        },
+        "author": "Brickwright contributors",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Rolling inertia race",
+            "de": "Trägheits-Rollrennen"
+        },
+        "keywords": [
+            "Rolling inertia race",
+            "Trägheits-Rollrennen",
+            "rolling inertia",
+            "moment of inertia",
+            "rolling race",
+            "inclined plane",
+            "radial ballast",
+            "Trägheitsmoment",
+            "Rollversuch",
+            "schiefe Ebene"
         ]
     },
     "watt-line.ldr": {
@@ -1961,6 +2156,318 @@ export const MODEL_LESSONS = Object.freeze({
         },
         "author": "CrispStrobe",
         "license": "BSD-3-Clause"
+    },
+    "afterturn.ldr": {
+        "pieces": 296,
+        "motors": 2,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "inertia",
+        "description": {
+            "en": "Two motors turn a reaction wheel and reposition balanced masses on a freely rotating platform. Compare the remaining platform heading after both internal motions return home, then reverse the cycle and test physically fixed masses.",
+            "de": "Zwei Motoren drehen ein Reaktionsrad und versetzen ausgewuchtete Massen auf einer frei drehbaren Plattform. Vergleiche die verbleibende Plattformdrehung nach der Rückkehr beider innerer Bewegungen, kehre den Zyklus um und prüfe physisch festgesetzte Massen."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Geometric-phase reorientation through a closed internal shape cycle",
+            "de": "Umorientierung durch einen geschlossenen inneren Formzyklus"
+        },
+        "keywords": [
+            "Geometric-phase reorientation through a closed internal shape cycle",
+            "Umorientierung durch einen geschlossenen inneren Formzyklus",
+            "geometric phase",
+            "shape cycle",
+            "reaction wheel",
+            "variable inertia",
+            "angular momentum",
+            "free yaw",
+            "geometrische Phase",
+            "Formzyklus",
+            "Reaktionsrad",
+            "veränderliches Trägheitsmoment",
+            "Drehimpuls"
+        ]
+    },
+    "helixgate.ldr": {
+        "pieces": 20,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "gears",
+        "description": {
+            "en": "One right-hand single-start worm turns a 24-tooth gear on a perpendicular axle, moving a red L-shaped gate 30 degrees for two complete motor turns. Coast at the top to observe the virtual worm's hold.",
+            "de": "Eine rechtsgängige eingängige Schnecke dreht ein 24er-Zahnrad auf einer rechtwinkligen Welle. Zwei Motorumdrehungen bewegen den roten L-Hebel um 30 Grad. Beim Ausrollen kann die Haltewirkung beobachtet werden."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "worm gearing",
+            "de": "Schneckengetriebe"
+        },
+        "keywords": [
+            "worm gearing",
+            "Schneckengetriebe",
+            "worm gear",
+            "worm drive",
+            "24:1",
+            "right-angle transmission",
+            "Schneckengetriebe"
+        ]
+    },
+    "looprelay.ldr": {
+        "pieces": 54,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "gears",
+        "description": {
+            "en": "A 16-tooth wheel drives a remote 24-tooth wheel through a closed 25-link chain. An 8-tooth pinion on that shaft turns a final 24-tooth output gear the opposite way: a -2:9 angular ratio.",
+            "de": "Ein 16er-Kettenrad treibt über 25 geschlossene Kettenglieder ein entferntes 24er-Rad an. Ein 8er-Ritzel auf dessen Welle treibt ein letztes 24er-Zahnrad gegenläufig an: Winkelübersetzung -2:9."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "compound chain and gear drive",
+            "de": "Ketten- und Zahnradtrieb"
+        },
+        "keywords": [
+            "compound chain and gear drive",
+            "Ketten- und Zahnradtrieb",
+            "chain drive",
+            "sprocket",
+            "compound ratio",
+            "direction reversal",
+            "Kettenantrieb"
+        ]
+    },
+    "paritydial.ldr": {
+        "pieces": 31,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "gears",
+        "description": {
+            "en": "One 8-tooth gear drives two 24-tooth output hands. The left path meshes once; the right path adds a 24-tooth idler, reversing its rotation direction without changing its one-third speed.",
+            "de": "Ein Zahnrad mit acht Zähnen treibt zwei Zeiger mit je 24 Zähnen an. Links greift das Antriebsrad direkt ein, rechts über ein 24er-Zwischenrad. Dadurch dreht der rechte Zeiger andersherum, aber genauso schnell wie der linke."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "gear-train parity",
+            "de": "Drehsinn und Zwischenrad"
+        },
+        "keywords": [
+            "gear-train parity",
+            "Drehsinn und Zwischenrad",
+            "idler gear",
+            "gear parity",
+            "direction reversal",
+            "Zwischenrad"
+        ]
+    },
+    "counterslide.ldr": {
+        "pieces": 44,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "gears",
+        "description": {
+            "en": "A single 8-tooth gear meshes with two opposing racks. The orange jaws travel inward by equal distances and reopen together; the center between them stays put.",
+            "de": "Ein einziges Zahnrad mit acht Zähnen greift in zwei gegenüberliegende Zahnstangen. Die orangefarbenen Backen fahren gleich weit zur Mitte und wieder auseinander; ihre gemeinsame Mitte bleibt stehen."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "opposed rack and pinion",
+            "de": "gegenläufige Zahnstangen"
+        },
+        "keywords": [
+            "opposed rack and pinion",
+            "gegenläufige Zahnstangen",
+            "rack and pinion",
+            "self-centering jaws",
+            "symmetric gripper",
+            "Zahnstange",
+            "selbstzentrierend"
+        ]
+    },
+    "evenhand.ldr": {
+        "pieces": 97,
+        "motors": 2,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "forces",
+        "description": {
+            "en": "Two motors move a shoulder and an elbow through nine poses. Counterweights behind each joint balance the links, so in the simulator both motors hold every pose with almost no torque. The comparison moves the same forearm weights inward and runs the same program.",
+            "de": "Zwei Motoren bewegen Schulter und Ellbogen durch neun Stellungen. Gegengewichte hinter jedem Gelenk gleichen die Glieder aus, sodass beide Motoren im Simulator jede Stellung fast ohne Drehmoment halten. Der Vergleich rückt dieselben Unterarmgewichte nach innen und nutzt dasselbe Programm."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Counterbalanced two-joint arm: gravity torque about each joint",
+            "de": "Ausgewogener Zweigelenkarm: Schweremoment um jedes Gelenk"
+        },
+        "keywords": [
+            "Counterbalanced two-joint arm: gravity torque about each joint",
+            "Ausgewogener Zweigelenkarm: Schweremoment um jedes Gelenk",
+            "counterweight",
+            "counterbalance",
+            "gravity torque",
+            "two-joint arm",
+            "serial arm",
+            "holding torque",
+            "lever arm",
+            "Gegengewicht",
+            "Gewichtsausgleich",
+            "Schweremoment",
+            "Zweigelenkarm",
+            "Haltemoment",
+            "Hebelarm"
+        ]
+    },
+    "obliquity-orrery.ldr": {
+        "pieces": 59,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "linkages",
+        "description": {
+            "en": "A parallelogram carries a tilted Earth round the Sun without turning it. Watch the axis keep its direction while the Sun's declination falls from +22.5° at midsummer to 0° at the equinox.",
+            "de": "Ein Parallelogramm führt eine geneigte Erde um die Sonne, ohne sie zu drehen. Beobachte, wie die Achse ihre Richtung behält, während die Sonnendeklination vom Hochsommer (+22,5°) bis zur Tagundnachtgleiche (0°) fällt."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Parallel-crank orrery with a fixed tilted axis",
+            "de": "Parallelkurbel-Orrery mit fest geneigter Achse"
+        },
+        "keywords": [
+            "Parallel-crank orrery with a fixed tilted axis",
+            "Parallelkurbel-Orrery mit fest geneigter Achse",
+            "orrery",
+            "obliquity",
+            "axial tilt",
+            "solar declination",
+            "seasons",
+            "solstice",
+            "equinox",
+            "parallelogram linkage",
+            "Schiefe der Ekliptik",
+            "Achsneigung",
+            "Sonnendeklination",
+            "Jahreszeiten",
+            "Sonnenwende",
+            "Parallelogramm"
+        ]
+    },
+    "cadence-geneva.ldr": {
+        "pieces": 200,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "linkages",
+        "description": {
+            "en": "A four-slot Geneva drive (Maltese cross) turns a steadily driven crank into twelve 30° dial steps with a dwell in between: the star turns 90° while the roller is in a slot (±45° of crank) and rests for the other 270°.",
+            "de": "Ein Malteserkreuzgetriebe mit vier Schlitzen macht aus einer gleichmäßig gedrehten Kurbel zwölf Zeigerschritte zu 30° mit Rast dazwischen: Das Kreuz dreht sich um 90°, solange die Rolle im Schlitz läuft (±45° Kurbelwinkel), und ruht die übrigen 270°."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Geneva indexing drive",
+            "de": "Malteserkreuz-Schaltung"
+        },
+        "keywords": [
+            "Geneva indexing drive",
+            "Malteserkreuz-Schaltung",
+            "Geneva drive",
+            "Maltese cross",
+            "intermittent motion",
+            "indexing",
+            "dwell",
+            "Malteserkreuz",
+            "Schrittgetriebe",
+            "Rastgetriebe",
+            "Taktgetriebe",
+            "Geneva"
+        ]
+    },
+    "helios-transmission.ldr": {
+        "pieces": 156,
+        "motors": 2,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "gears",
+        "description": {
+            "en": "A stepped-planet epicyclic set adds two motor inputs: A turns the sun at constant speed while B’s carrier speed alone steps the output through ×3, ×2, ×1, standstill and reverse, ω_out = 3·ω_A − 2·ω_carrier.",
+            "de": "Ein Umlaufgetriebe mit Stufenplaneten überlagert zwei Motoren: A dreht das Sonnenrad konstant, und allein die Trägerdrehzahl von B schaltet den Abtrieb durch ×3, ×2, ×1, Stillstand und Rückwärtslauf, ω_ab = 3·ω_A − 2·ω_Träger."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Stepped-planet epicyclic transmission",
+            "de": "Umlaufgetriebe mit Stufenplaneten"
+        },
+        "keywords": [
+            "Stepped-planet epicyclic transmission",
+            "Umlaufgetriebe mit Stufenplaneten",
+            "epicyclic gear",
+            "planetary gear",
+            "compound planet",
+            "stepped planet",
+            "power split",
+            "Willis equation",
+            "eCVT",
+            "Umlaufgetriebe",
+            "Planetengetriebe",
+            "Stufenplanet",
+            "Leistungsverzweigung",
+            "Willis-Gleichung",
+            "epicyclic"
+        ]
+    },
+    "orion-cardan.ldr": {
+        "pieces": 118,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "gears",
+        "description": {
+            "en": "Two equally bent, correctly phased Cardan joints: the middle shaft runs up to 6.4° ahead of and behind the input twice per turn, while the output follows the input evenly.",
+            "de": "Zwei gleich abgewinkelte, richtig ausgerichtete Kardangelenke: Die Zwischenwelle eilt dem Eingang zweimal je Umdrehung bis zu 6,4° vor und nach, der Abtrieb folgt dem Eingang gleichförmig."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Offset double Cardan drive",
+            "de": "Versetzter Doppel-Kardanantrieb"
+        },
+        "keywords": [
+            "Offset double Cardan drive",
+            "Versetzter Doppel-Kardanantrieb",
+            "Cardan joint",
+            "universal joint",
+            "Hooke joint",
+            "double Cardan",
+            "drive shaft",
+            "constant velocity",
+            "phasing",
+            "Kardangelenk",
+            "Kreuzgelenk",
+            "Gelenkwelle",
+            "Doppelkardan",
+            "Gleichlauf"
+        ]
     },
     "product-plotter.ldr": {
         "pieces": 301,

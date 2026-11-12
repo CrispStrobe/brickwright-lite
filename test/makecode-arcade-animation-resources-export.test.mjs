@@ -162,8 +162,7 @@ test('single-frame and endpoint native durations export as real assets and compi
     }
 });
 
-test('fresh resource export preserves native factory allocation and isolates array/image mutations in original PXT', {todo:"Array export authority cannot yet prove the Array receiver \u2014 see docs/ARCADE-888-OPEN-FAILURES.md"}, async () => {
-    for (const resource of [`"${id}"`, '(key)']) {
+const freshResourceCase = async resource => {
         const source = `DEVICE ARCADE
 GLOBAL key = "${id}"
 GLOBAL shared
@@ -220,5 +219,6 @@ WHEN flag clicked:
         const rerun = await runArcadeSim(rebuilt.outfiles['binary.js'], {ms: 100});
         assert.equal(rerun.error, null);
         assert.deepEqual(rerun.serial.map(row => String(row.text).trim()), ['false','false','2','2','2','true','1','2']);
-    }
-});
+};
+test('fresh resource export preserves native factory allocation and isolates array/image mutations in original PXT', async () => { await freshResourceCase(`"${id}"`); });
+test('fresh resource export preserves native factory allocation and isolates array/image mutations in original PXT through a global key', async () => { await freshResourceCase('(key)'); });

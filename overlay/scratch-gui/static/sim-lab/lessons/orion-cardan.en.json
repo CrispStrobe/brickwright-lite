@@ -2,7 +2,7 @@
   "version": 1,
   "id": "orion-cardan",
   "language": "en",
-  "what": "Two Cardan (universal) joints in series with an intermediate shaft: a Z-arranged drive shaft. Motor A turns the input shaft; a 9-long axle forms the intermediate shaft, and the parallel output shaft sits 48 mm to the side. Both joints bend by the same angle, β ≈ 36.9° (the middle shaft covers 48 mm sideways over 64 mm of length), and the two yokes on the middle shaft lie in one plane. Each shaft carries a marker. The program runs the input at 180°/s, 300°/s and 180°/s forward, then −180°/s in reverse, restarts at 180°/s, and finally returns the input to its starting angle. Experimental model: the law described here has so far been measured only in the simulator (one headless run), not on real LEGO parts.",
+  "what": "Offset double Cardan drive. Two Cardan (universal) joints in series with an intermediate shaft: a Z-arranged drive shaft. Motor A turns the input shaft; a 9-long axle forms the intermediate shaft, and the parallel output shaft sits 48 mm to the side. Both joints bend by the same angle, β ≈ 36.9° (the middle shaft covers 48 mm sideways over 64 mm of length), and the two yokes on the middle shaft lie in one plane. Each shaft carries a marker. The program runs the input at 180°/s, 300°/s and 180°/s forward, then −180°/s in reverse, restarts at 180°/s, and finally returns the input to its starting angle. Qualified in the simulator with the reviewed law double-cardan-offset-v1 (β = 36.87°, equal bends and in-phase middle forks read from the compiled joints): over almost 17 input turns the output stayed within 0.05° of the input and the middle shaft within 0.1° of tan θ_m = tan θ / cos β. Without the far fork on the middle shaft the input still turns but the output stays almost still. Not tested on real LEGO parts. Two equally bent, correctly phased Cardan joints: the middle shaft runs up to 6.4° ahead of and behind the input twice per turn, while the output follows the input evenly.",
   "try": [
     "Reset, then Run. At rest compare the three shaft markers.",
     "At 180°/s watch the middle marker against the input: it alternately runs ahead and falls behind, twice per revolution (about once per second at this speed), while the output marker stays in step with the input.",
@@ -16,7 +16,7 @@
   "further": [
     "Predict the middle-shaft speed range at 300°/s (about 240 to 375°/s) and compare it with what the marker shows.",
     "Compare the established models Phase Bridge and Phase Bridge (misphased), which show a correctly phased and a 90°-misphased pair.",
-    "A physical build needs two universal-joint cross pieces besides the four fork ends shown; the simulator infers them. A loose-part warning for the middle shaft comes from a connection check that ignores universal joints."
+    "A physical build needs two universal-joint cross pieces besides the four fork ends shown; the simulator infers them. The building steps place the middle shaft with its forks; the compiler now reports no loose parts."
   ],
   "formula": "Single joint: tan θ₂ = tan θ₁ / cos β; ω₂/ω₁ = cos β / (1 − sin²β cos²θ₁), range cos β … 1/cos β. Here tan β = 48/64 → β ≈ 36.9°, cos β = 0.8: middle shaft 0.80 … 1.25 × input, maximum phase offset ≈ 6.4°. Equal bends with in-phase middle yokes: θ_out = θ_in. Middle yokes 90° apart: cos²β … 1/cos²β = 0.64 … 1.56.",
   "related": [

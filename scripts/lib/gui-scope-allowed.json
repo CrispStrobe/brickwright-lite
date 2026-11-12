@@ -196,7 +196,11 @@
   "scratch-vm/src/util/bw-procedure-constraint-model.js": {
     "tests": [
       "test/arcade-absent-asset-literals.test.mjs",
+      "test/arcade-truthy-guard-array-authority.test.mjs",
+      "test/arcade-animation-lookup-id-literal.test.mjs",
       "test/arcade-block-scoped-loop-locals.test.mjs",
+      "test/arcade-consumed-update-number-proofs.test.mjs",
+      "test/arcade-startup-first-write-globals.test.mjs",
       "test/arcade-carnival-add-label.test.mjs",
       "test/arcade-external-image-call.test.mjs",
       "test/arcade-font-text-concatenation.test.mjs",
@@ -251,11 +255,13 @@
       "test/makecode-arcade-accessor-pxt-staging.test.mjs",
       "test/makecode-arcade-animation-interchange-project.test.mjs",
       "test/makecode-arcade-animation-resources-export.test.mjs",
+      "test/makecode-arcade-animation-lookup-pruning.test.mjs",
       "test/makecode-arcade-animation.test.mjs",
       "test/makecode-accessor-export-refusal.test.mjs",
       "test/makecode-arcade-array-callbacks.test.mjs",
       "test/makecode-arcade-array-coercion.test.mjs",
       "test/makecode-arcade-array-copies.test.mjs",
+      "test/makecode-arcade-array-copy-slots.test.mjs",
       "test/makecode-arcade-array-pick-random.test.mjs",
       "test/makecode-arcade-array-reference-flow.test.mjs",
       "test/makecode-arcade-array-search-export.test.mjs",
@@ -552,9 +558,12 @@
       "test/arcade-scene-background-number.test.mjs",
       "test/arcade-array-getter-call-site.test.mjs",
       "test/arcade-math-map-namespace.test.mjs",
+      "test/arcade-positional-array-elements.test.mjs",
+      "test/arcade-constant-index-pxt.test.mjs",
       "test/arcade-conditional-reset-condition.test.mjs",
       "test/project-conditional-array-value-calls.test.mjs",
       "test/project-array-publication-frontier.test.mjs",
+      "test/project-array-publication-frontier-effects.test.mjs",
       "test/arcade-frame-delta-array-reads.test.mjs",
       "test/arcade-ask-number-addition.test.mjs",
       "test/arcade-direct-entry-reachability.test.mjs",
@@ -566,7 +575,8 @@
       "test/makecode-arcade-tilemap-api-roundtrip.test.mjs",
       "test/makecode-arcade-tilemap-remaining-api.test.mjs",
       "test/arcade-palette-hidden-aliases.test.mjs",
-      "test/arcade-math-unary-play.test.mjs"
+      "test/arcade-math-unary-play.test.mjs",
+      "test/makecode-arcade-named-array-native-reimport.test.mjs"
     ],
     "why": "the owned MakeCode procedure-constraint exporter imports the canonical VM procedure-constraint model through the integrated GUI package (scratch-vm 4.8.115 export ./src/util/bw-procedure-constraint-model.js), so every root test that exports or imports Arcade projects resolves it from packages/scratch-gui"
   },

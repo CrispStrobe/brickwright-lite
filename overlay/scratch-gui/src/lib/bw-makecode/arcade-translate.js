@@ -1,4 +1,5 @@
 import {lowerSourceValueOperatorHelpers} from './source-value-operator-helpers.js';
+import {NUMBER_FORMAT_MEMBERS} from './ordinary-primitive-sdk-number-source.js';
 import {setExternalRoots,externalPath,externalAssetNode,externalAssetText} from './external-references.js';
 import {lowerNativeArrayBinaryHelpers} from './native-array-binary-domain.js';
 import {lowerRuntimeDispatchAddHelpers} from './native-array-binary-helper-source.js';
@@ -158,7 +159,7 @@ const ARCADE_TRUE = '(compare value (0) op "<" with (1))';
 const ARCADE_FALSE = '(compare value (1) op "<" with (0))';
 const DELEGATE = Symbol('base statement');
 // NumberFormat ordinal order from retained pxt-core13.2.1 BufferMethods.
-const BUFFER_FORMATS=['Int8LE','UInt8LE','Int16LE','UInt16LE','Int32LE','Int8BE','UInt8BE','Int16BE','UInt16BE','Int32BE','UInt32LE','UInt32BE','Float32LE','Float64LE','Float32BE','Float64BE'];
+const BUFFER_FORMATS=NUMBER_FORMAT_MEMBERS;
 // MakeCode text as a dialect string literal, exactly. The dialect decodes
 // only \n \t \r \\ and \" inside quotes (it keeps \f, \b and \uXXXX as
 // literal text) and reads any other character as itself, so those five are
@@ -352,7 +353,7 @@ class ArcadeTranslator extends BaseTranslator {
         const references = inferImageReferences(node, value => this.path(value), value => this.imageOf(value), value => !!this.assetKindLookup && value?.type === 'Template' && ['assets.image', 'assets.tile'].includes(value.tag));
         this.objectReferences = references.objects;this.fontReferences=references.fonts;
         this.bufferReferences = references.buffers;this.imageReferences = references.images;this.spriteReferences = references.sprites;this.dataReferences = references.data;
-        this.textSpriteReferences=references.textSprites;this.playerReferences=references.players;this.sceneReferences=references.scenes;this.physicsEngineReferences=references.physicsEngines;this.tileReferences = references.tiles;this.tilemapDataReferences = references.tilemapData;this.sceneTilemapReferences = references.sceneTilemaps;this.legacyTileReferences=references.legacyTiles;this.animationReferences = references.animations;this.sevensegDigitReferences=references.sevensegDigits;this.sevensegCounterReferences=references.sevensegCounters;this.dartReferences=references.darts;this.corgiReferences=references.corgis;this.nullReferences=references.nulls;this.arrayReferences = references.arrays;this.numberReferences=references.numbers;this.stringReferences=references.strings;this.booleanReferences=references.booleans;
+        this.exactStringReferences=references.exactStrings;this.textSpriteReferences=references.textSprites;this.playerReferences=references.players;this.sceneReferences=references.scenes;this.physicsEngineReferences=references.physicsEngines;this.tileReferences = references.tiles;this.tilemapDataReferences = references.tilemapData;this.sceneTilemapReferences = references.sceneTilemaps;this.legacyTileReferences=references.legacyTiles;this.animationReferences = references.animations;this.sevensegDigitReferences=references.sevensegDigits;this.sevensegCounterReferences=references.sevensegCounters;this.dartReferences=references.darts;this.corgiReferences=references.corgis;this.nullReferences=references.nulls;this.arrayReferences = references.arrays;this.numberReferences=references.numbers;this.stringReferences=references.strings;this.booleanReferences=references.booleans;
         this.referenceArrayProgram=containsAst(node,value=>value.type==='Array' || references.arrays.has(value));
         this.fontValueProgram=containsAst(node,value=>!!value.bwFontIntrinsic);
         this.throwValueProgram=hasThrowEmission(node);this.throwSourceProgram=node;
@@ -600,10 +601,11 @@ class ArcadeTranslator extends BaseTranslator {
             if(!this.throwValueProgram||!hasThrowEmission(this.throwSourceProgram)){out.push(`${'  '.repeat(indent)}${this.note('Throw source requires qualified source context and canonical protocol')}`);return;}
             out.push(`${'  '.repeat(indent)}arcade throw (${this.arrayElementValue(st.argument)})`);return;
         }
-        if(st.type==='ExpressionStatement' && st.expr?.bwNativeNamedArray && st.expr.bwNativeNamedArray.kind!=='get') {
+        if(st.type==='ExpressionStatement' && st.expr?.bwNativeNamedArray && ['push','set','insert','remove'].includes(st.expr.bwNativeNamedArray.kind)) {
             this.usesArrays=true;
             const node=st.expr,{kind,registry}=node.bwNativeNamedArray,name=JSON.stringify(registry),args=node.args.slice(1).map(arg=>this.expr(arg));
-            const line=kind==='push'?`push (${args[0]}) to array ${name}`:kind==='set'?`set item (${args[0]}) of array ${name} to (${args[1]})`:`insert (${args[1]}) at (${args[0]}) of array ${name}`;
+            const line=kind==='push'?`push (${args[0]}) to array ${name}`:kind==='set'?`set item (${args[0]}) of array ${name} to (${args[1]})`:
+                kind==='remove'?`remove item (${args[0]}) of array ${name}`:`insert (${args[1]}) at (${args[0]}) of array ${name}`;
             out.push(`${'  '.repeat(indent)}${line}`);return;
         }
         if (st.type === 'Declaration') {
@@ -914,7 +916,8 @@ class ArcadeTranslator extends BaseTranslator {
         }
         if(node.callee?.type==='Member' && node.callee.name==='concat' && this.stringReferences?.has(node.callee.object)) {
             if(a.length!==1) {this.note('String.concat() requires exactly one argument');return 'undefined value';}
-            if(!this.strictStringReferences?.has(node.callee.object)) {this.note('String.concat() receiver must be a proven string value');return 'undefined value';}
+            // Every receiver producer must be a string: PXT faults on Number, null or undefined.
+            if(!this.exactStringReferences?.has(node.callee.object)) {this.note('String.concat() receiver must be a proven string value');return 'undefined value';}
             if(!this.primitiveReferences?.has(a[0])) {this.note('String.concat() requires a proven primitive argument; object, reference or unknown conversion is not implemented');return 'undefined value';}
             return `concatenate text (${this.arrayElementValue(node.callee.object)}) with (${this.arrayElementValue(a[0])})`;
         }
@@ -1326,6 +1329,9 @@ class ArcadeTranslator extends BaseTranslator {
             return node.type==='NativeNamedArrayCreate'?`reference to named array (${JSON.stringify(node.registry)})`:'null value';
         }
         if(node?.type==='Call' && node.bwNativeNamedArray?.kind==='get') {this.usesArrays=true;return `item (${this.expr(node.args[1])}) of array ${JSON.stringify(node.bwNativeNamedArray.registry)}`;}
+        if(node?.type==='NativeNamedArrayReference'){this.usesArrays=true;return `reference to named array (${JSON.stringify(node.registry)})`;}
+        if(node?.type==='Call' && node.bwNativeNamedArray?.kind==='pop') {this.usesArrays=true;return `pop from array ${JSON.stringify(node.bwNativeNamedArray.registry)}`;}
+        if(node?.type==='Call' && node.bwNativeNamedArray?.kind==='indexOf') {this.usesArrays=true;return `index of (${this.expr(node.args[1])}) in array ${JSON.stringify(node.bwNativeNamedArray.registry)}`;}
         if(node?.type==='LegacyParsedValue'){this.usesArrays=true;return `parse array input (${this.arrayElementValue(node.value)})`;}
         if(node?.type==='NativeArrayAccess')return this.expr(node.value);
         const importedBuffer=this.bufferExpression(node);
@@ -3413,6 +3419,33 @@ const liftExporterStops = (program,profile) => {
         let base=registration.callee;while(base?.type==='Member')base=base.object;
         return proof.unbound(base)?owner:null;
     };
+    // The exporter's second-export form of the same prologue, exactly: a root
+    // `let <X>Sprite: Sprite` with no initializer, and as consecutive
+    // statements directly in the body of a root `control.runInParallel` start
+    // function `<X>Sprite = null`, `<X>Sprite = sprites.create(img`...`,
+    // SpriteKind.<K>)` and, optionally next, its literal-arithmetic
+    // `<X>Sprite.setPosition(a, b)`. Nothing else (another statement between
+    // them, a nested block, another receiver or initializer) is the recipe.
+    const createCall=init=>init?.type==='Call'&&!init.isNew&&path(init.callee)==='sprites.create'&&init.args?.length===2&&
+        init.args[0]?.type==='Template'&&init.args[0].tag==='img'&&init.args[1]?.type==='Member'&&init.args[1].object?.type==='Identifier'&&
+        init.args[1].object.name==='SpriteKind'&&proof.unbound(init.args[1].object)&&proof.unbound(init.callee.object);
+    const assigned=(n,d)=>{const x=n?.type==='ExpressionStatement'?n.expr:null;
+        return x?.type==='Assignment'&&x.op==='='&&x.left?.type==='Identifier'&&proof.declarationAt(x.left)===d?x.right:undefined;};
+    const nullPrologue=new Set(program.body.filter(n=>n.type==='Declaration'&&n.kind==='let'&&n.decls.length===1&&n.decls[0].init==null&&
+        n.decls[0].typeName==='Sprite'&&!n.decls[0].isArray&&/^\w+Sprite$/.test(n.decls[0].name)&&proof.unique(n.decls[0].name)).map(n=>n.decls[0]));
+    for(const root of program.body){
+        const c=root.type==='ExpressionStatement'?root.expr:null,owner=c?.type==='Call'&&c.args?.length===1?c.args[0]:null;
+        if(path(c?.callee)!=='control.runInParallel'||owner?.type!=='FunctionExpression'||activation(owner.body?.[0])!==owner)continue;
+        const list=owner.body;
+        for(let i=0;i<list.length-1;i++){
+            const d=[...nullPrologue].find(x=>assigned(list[i],x)?.type==='Null');
+            if(!d||!createCall(assigned(list[i+1],d)))continue;
+            spritePrologue.add(list[i]);spritePrologue.add(list[i+1]);prologueSprites.add(d);nullPrologue.delete(d);
+            const p=list[i+2]?.type==='ExpressionStatement'?list[i+2].expr:null;
+            if(p?.type==='Call'&&!p.isNew&&p.callee?.type==='Member'&&p.callee.name==='setPosition'&&p.callee.object?.type==='Identifier'&&
+                proof.declarationAt(p.callee.object)===d&&p.args?.length===2&&p.args.every(literalArithmetic))spritePrologue.add(list[i+2]);
+        }
+    }
     const tokenDecls=new Map(),tokenOwners=new Map();
     for(const n of proof.nodes)if(n.type==='Declaration'&&n.kind==='const'&&n.decls.length===1&&call(n.decls[0].init,tok,0)){
         const owner=activation(n);if(!owner||owner.body?.[0]!==n)return program;
@@ -3802,7 +3835,7 @@ const inferImageReferences = (ast, pathOf, imageOf, isScopedAssetFactory = () =>
             if(left.has('number')&&right.has('number'))return new Set(['number']);
         }
         if(node?.type==='NativeArrayValueBinary')return new Set(['number','string']);
-        if(node?.type==='NativeArrayAccess' || node?.type==='NativeNamedArrayCreate')return new Set(['array']);
+        if(node?.type==='NativeArrayAccess' || node?.type==='NativeNamedArrayCreate' || node?.type==='NativeNamedArrayReference')return new Set(['array']);
         if(node?.type==='NativeNamedArrayDelete')return new Set(['null']);
         if(node?.type==='LegacyJsonValue')return new Set(['string']);
         if(node?.type==='LegacyParsedValue')return new Set(['any']);
@@ -4049,7 +4082,7 @@ const inferImageReferences = (ast, pathOf, imageOf, isScopedAssetFactory = () =>
         const unknownMember=node.type==='Member' && !typeOf(node,owner).size;
         if(!primitiveAssertion && (unknownCall || unknownMember) || ['Identifier','Call','Member','Index','Object'].includes(node.type) && !graph.node(cell(node,owner)).types.size)graph.add(cell(node,owner),'unknown');
     }
-    const primitives=new WeakSet(),strictStrings=new WeakSet(),sourceTypeOfOperands=new WeakSet(),provenArrays=new WeakSet(),sourceArrayArithmeticOperands=new WeakSet();
+    const primitives=new WeakSet(),strictStrings=new WeakSet(),exactStrings=new WeakSet(),sourceTypeOfOperands=new WeakSet(),provenArrays=new WeakSet(),sourceArrayArithmeticOperands=new WeakSet();
     const sourceTypeOfOpaque=new Set(entries.filter(({node})=>node.bwSourceTypeOfOpaque).map(({node,owner})=>graph.node(cell(node,owner))));
     const sourceTypeOfKinds=new Set(['number','boolean','string','null','undefined','array','Image','Buffer','object']);
     for(const {node,owner} of entries){
@@ -4058,6 +4091,8 @@ const inferImageReferences = (ast, pathOf, imageOf, isScopedAssetFactory = () =>
         if(types.size && [...types].every(type=>type==='array'||primitiveTypes.has(type)))sourceArrayArithmeticOperands.add(node);
         if(types.size && [...types].every(type=>primitiveTypes.has(type)))primitives.add(node);
         if(types.has('string') && [...types].every(type=>primitiveTypes.has(type)))strictStrings.add(node);
+        // Every producer is a string: PXT String methods fault on any other receiver.
+        if(types.size && [...types].every(type=>type==='string'))exactStrings.add(node);
         if(!sourceTypeOfOpaque.has(graph.node(cell(node,owner))) && types.size && [...types].every(type=>sourceTypeOfKinds.has(type)) &&
             (!types.has('object') || node.bwObjectTypes?.includes('object')))sourceTypeOfOperands.add(node);
     }
@@ -4090,7 +4125,7 @@ const inferImageReferences = (ast, pathOf, imageOf, isScopedAssetFactory = () =>
         if(types.has('physics-engine') || graph.has(value,'PhysicsEngine') && !['number','string','boolean','Image','Sprite','Scene'].some(type=>graph.has(value,type)))physicsEngines.add(node);
         if(types.has('null') && [...types].every(type=>type==='null'||type==='sprite'))nulls.add(node);
     }
-    return {fonts,objects,primitives,strictStrings,sourceTypeOfOperands,provenArrays,sourceArrayArithmeticOperands,textSprites, buffers, players, images: references, tiles, tilemapData, sceneTilemaps, legacyTiles, sprites, animations, sevensegDigits, sevensegCounters, darts, corgis, scenes, physicsEngines, nulls, arrays, numbers, strings, booleans, data,
+    return {fonts,objects,primitives,strictStrings,exactStrings,sourceTypeOfOperands,provenArrays,sourceArrayArithmeticOperands,textSprites, buffers, players, images: references, tiles, tilemapData, sceneTilemaps, legacyTiles, sprites, animations, sevensegDigits, sevensegCounters, darts, corgis, scenes, physicsEngines, nulls, arrays, numbers, strings, booleans, data,
         spriteFunctions:new Set([...functions].filter(([,fn])=>graph.has(fn.resultCell,'Sprite')).map(([name])=>name)),
         parameters:new Map([...functions].map(([name,fn])=>[name,new Set(fn.node.params.filter(param=>graph.has(binding(fn.owner,param),'Sprite')))]))};
 };

@@ -1024,6 +1024,326 @@
         "analog computation",
         "line intersection"
       ]
+    },
+    {
+      "models": [
+        "afterturn"
+      ],
+      "name": {
+        "en": "Geometric-phase reorientation through a closed internal shape cycle",
+        "de": "Umorientierung durch einen geschlossenen inneren Formzyklus"
+      },
+      "aliases": [
+        "geometric phase",
+        "shape cycle",
+        "reaction wheel",
+        "variable inertia",
+        "angular momentum",
+        "free yaw",
+        "geometrische Phase",
+        "Formzyklus",
+        "Reaktionsrad",
+        "veränderliches Trägheitsmoment",
+        "Drehimpuls"
+      ]
+    },
+    {
+      "models": [
+        "toggle-press"
+      ],
+      "name": {
+        "en": "toggle linkage",
+        "de": "Kniehebelgetriebe"
+      },
+      "aliases": [
+        "dead centre",
+        "toggle press",
+        "Kniehebel",
+        "Totpunkt"
+      ]
+    },
+    {
+      "models": [
+        "footfall"
+      ],
+      "name": {
+        "en": "Jansen linkage",
+        "de": "Jansen-Beinmechanismus"
+      },
+      "aliases": [
+        "walking linkage",
+        "foot trajectory",
+        "Strandbeest",
+        "Jansen-Mechanismus"
+      ]
+    },
+    {
+      "models": [
+        "phasekeeper"
+      ],
+      "name": {
+        "en": "double Cardan joint",
+        "de": "Doppelkardangelenk"
+      },
+      "aliases": [
+        "double Cardan",
+        "universal joint",
+        "Hooke joint",
+        "constant velocity",
+        "Kardangelenk",
+        "Gleichlauf"
+      ]
+    },
+    {
+      "models": [
+        "vectorsum"
+      ],
+      "name": {
+        "en": "differential angle averaging",
+        "de": "Winkelmittelwert im Differential"
+      },
+      "aliases": [
+        "open differential",
+        "angle averaging",
+        "mechanical adder",
+        "Differenzial",
+        "Differential"
+      ]
+    },
+    {
+      "models": [
+        "helixgate"
+      ],
+      "name": {
+        "en": "worm gearing",
+        "de": "Schneckengetriebe"
+      },
+      "aliases": [
+        "worm gear",
+        "worm drive",
+        "24:1",
+        "right-angle transmission",
+        "Schneckengetriebe"
+      ]
+    },
+    {
+      "models": [
+        "looprelay"
+      ],
+      "name": {
+        "en": "compound chain and gear drive",
+        "de": "Ketten- und Zahnradtrieb"
+      },
+      "aliases": [
+        "chain drive",
+        "sprocket",
+        "compound ratio",
+        "direction reversal",
+        "Kettenantrieb"
+      ]
+    },
+    {
+      "models": [
+        "paritydial"
+      ],
+      "name": {
+        "en": "gear-train parity",
+        "de": "Drehsinn und Zwischenrad"
+      },
+      "aliases": [
+        "idler gear",
+        "gear parity",
+        "direction reversal",
+        "Zwischenrad"
+      ]
+    },
+    {
+      "models": [
+        "counterslide"
+      ],
+      "name": {
+        "en": "opposed rack and pinion",
+        "de": "gegenläufige Zahnstangen"
+      },
+      "aliases": [
+        "rack and pinion",
+        "self-centering jaws",
+        "symmetric gripper",
+        "Zahnstange",
+        "selbstzentrierend"
+      ]
+    },
+    {
+      "models": [
+        "paired-door-sync"
+      ],
+      "name": {
+        "en": "Opposed rack and pinion",
+        "de": "Gegenläufige Zahnstangen mit Ritzel"
+      },
+      "aliases": [
+        "paired doors",
+        "sliding doors",
+        "rack and pinion",
+        "opposed racks",
+        "synchronised doors",
+        "Schiebetür",
+        "Doppeltür",
+        "Zahnstange",
+        "Ritzel"
+      ]
+    },
+    {
+      "models": [
+        "rimrun"
+      ],
+      "name": {
+        "en": "Rolling inertia race",
+        "de": "Trägheits-Rollrennen"
+      },
+      "aliases": [
+        "rolling inertia",
+        "moment of inertia",
+        "rolling race",
+        "inclined plane",
+        "radial ballast",
+        "Trägheitsmoment",
+        "Rollversuch",
+        "schiefe Ebene"
+      ]
+    },
+    {
+      "models": [
+        "pointweaver"
+      ],
+      "name": {
+        "en": "five-bar parallel linkage",
+        "de": "Fünfgelenk-Parallelmechanismus"
+      },
+      "aliases": [
+        "five-bar linkage",
+        "parallel robot",
+        "Cartesian interpolation",
+        "Fünfgelenk",
+        "Bahnplanung"
+      ]
+    },
+    {
+      "models": [
+        "evenhand"
+      ],
+      "name": {
+        "en": "Counterbalanced two-joint arm: gravity torque about each joint",
+        "de": "Ausgewogener Zweigelenkarm: Schweremoment um jedes Gelenk"
+      },
+      "aliases": [
+        "counterweight",
+        "counterbalance",
+        "gravity torque",
+        "two-joint arm",
+        "serial arm",
+        "holding torque",
+        "lever arm",
+        "Gegengewicht",
+        "Gewichtsausgleich",
+        "Schweremoment",
+        "Zweigelenkarm",
+        "Haltemoment",
+        "Hebelarm"
+      ]
+    },
+    {
+      "models": [
+        "obliquity-orrery"
+      ],
+      "name": {
+        "en": "Parallel-crank orrery with a fixed tilted axis",
+        "de": "Parallelkurbel-Orrery mit fest geneigter Achse"
+      },
+      "aliases": [
+        "orrery",
+        "obliquity",
+        "axial tilt",
+        "solar declination",
+        "seasons",
+        "solstice",
+        "equinox",
+        "parallelogram linkage",
+        "Schiefe der Ekliptik",
+        "Achsneigung",
+        "Sonnendeklination",
+        "Jahreszeiten",
+        "Sonnenwende",
+        "Parallelogramm"
+      ]
+    },
+    {
+      "models": [
+        "cadence-geneva"
+      ],
+      "name": {
+        "en": "Geneva indexing drive",
+        "de": "Malteserkreuz-Schaltung"
+      },
+      "aliases": [
+        "Geneva drive",
+        "Maltese cross",
+        "intermittent motion",
+        "indexing",
+        "dwell",
+        "Malteserkreuz",
+        "Schrittgetriebe",
+        "Rastgetriebe",
+        "Taktgetriebe",
+        "Geneva"
+      ]
+    },
+    {
+      "models": [
+        "helios-transmission"
+      ],
+      "name": {
+        "en": "Stepped-planet epicyclic transmission",
+        "de": "Umlaufgetriebe mit Stufenplaneten"
+      },
+      "aliases": [
+        "epicyclic gear",
+        "planetary gear",
+        "compound planet",
+        "stepped planet",
+        "power split",
+        "Willis equation",
+        "eCVT",
+        "Umlaufgetriebe",
+        "Planetengetriebe",
+        "Stufenplanet",
+        "Leistungsverzweigung",
+        "Willis-Gleichung",
+        "epicyclic"
+      ]
+    },
+    {
+      "models": [
+        "orion-cardan"
+      ],
+      "name": {
+        "en": "Offset double Cardan drive",
+        "de": "Versetzter Doppel-Kardanantrieb"
+      },
+      "aliases": [
+        "Cardan joint",
+        "universal joint",
+        "Hooke joint",
+        "double Cardan",
+        "drive shaft",
+        "constant velocity",
+        "phasing",
+        "Kardangelenk",
+        "Kreuzgelenk",
+        "Gelenkwelle",
+        "Doppelkardan",
+        "Gleichlauf"
+      ]
     }
   ]
 }

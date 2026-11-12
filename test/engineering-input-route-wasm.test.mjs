@@ -55,7 +55,12 @@ board_io: []
 }
 const pose = (left, right) => [{component: 'left', channel: 'position', value: left},
     {component: 'right', channel: 'position', value: right}];
-const counts = adapter => plain(adapter.sim.get_peripheral_snapshot('adc')).channel_inputs.slice(0, 2);
+// Upstream made millivolts the source of truth for a held ADC level
+// (`channel_inputs_mv`), so the snapshot reports the injected level rather than
+// the 12-bit code it produces. These are 25 % and 75 % of a 3.3 V rail; the ADC
+// still converts them to 1023 / 3071 counts when it samples.
+const LEVELS_MV = [825, 2475];
+const levels = adapter => plain(adapter.sim.get_peripheral_snapshot('adc')).channel_inputs_mv.slice(0, 2);
 
 test('actual WASM: Lite route discovers component IDs and applies one recorded transaction', {skip}, () => {
     const {adapter, target, route} = setup();
@@ -65,7 +70,7 @@ test('actual WASM: Lite route discovers component IDs and applies one recorded t
         assert.deepEqual(route.discoverInputs().map(row => [row.peripheral, row.key]),
             [['left', 'position'], ['right', 'position']]);
         assert.equal(route.setInputs(pose(25, 75)).accepted, true);
-        assert.deepEqual(counts(adapter), [1023, 3071]);
+        assert.deepEqual(levels(adapter), LEVELS_MV);
         assert.equal(facts.length, 1);
         assert.equal(facts[0].producer, 'labwired.inputs');
         assert.deepEqual(facts[0].payload.sets, pose(25, 75));
@@ -79,7 +84,7 @@ test('actual WASM: a bad later channel range changes neither component and emits
     try {
         route.setInputs(pose(25, 75));
         assert.equal(route.setInputs(pose(50, 101)).accepted, false);
-        assert.deepEqual(counts(adapter), [1023, 3071]);
+        assert.deepEqual(levels(adapter), LEVELS_MV);
         assert.equal(route.setInputs([{channel: 'position', value: 50}]).accepted, false);
         assert.equal(facts.length, 1);
     } finally { target.detach(); adapter.sim.free(); }
@@ -93,7 +98,7 @@ test('actual WASM: recorded input replays through the target without duplicate l
         route.setInputs(pose(25, 75));
         adapter.setInputs(pose(50, 50));
         assert.equal(target.applyReplayInput(facts[0]).accepted, true);
-        assert.deepEqual(counts(adapter), [1023, 3071]);
+        assert.deepEqual(levels(adapter), LEVELS_MV);
         assert.equal(facts.length, 1);
     } finally { target.detach(); adapter.sim.free(); }
 });
