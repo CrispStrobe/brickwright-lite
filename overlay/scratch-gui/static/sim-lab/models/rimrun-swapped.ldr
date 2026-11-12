@@ -2,8 +2,10 @@
 0 Name: rimrun-swapped.ldr
 0 Author: CrispStrobe
 0 !LICENSE BSD-3-Clause : see ../licenses/rimrun.txt
+0 !BW INTERNAL_EDGE_PAIR left_wheel_-1 hub
+0 !BW INTERNAL_EDGE_PAIR right_wheel_-1 hub
 0 !LDRAW_ORG Unofficial_Model
-0 // Original isolated add-on. Native stock-part mechanics; no model physics overrides.
+0 // Original isolated add-on. Native stock-part mechanics; no mass or inertia overrides.
 0 // 01 — joined smooth tracks
 0 !BW ID track_left_0_0
 1 71 -420 -28.5948529484 -238.290441237 0 0 1 -0.119145220618 0.992876838487 0 -0.992876838487 -0.119145220618 0 48288.dat

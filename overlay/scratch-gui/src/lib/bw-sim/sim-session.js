@@ -463,7 +463,7 @@ export const prepareModel = (text, catalog, {mat = null, autoPorts: plugIn = !OW
     for (const issue of unknownOf.values()) {
         if (issue.count > 1) issue.message = `${issue.message} (and ${issue.count - 1} more)`;
     }
-    if (refusals.some(r => r.code === 'bad-motor-direction' || r.code === 'bad-rotor-model')) {
+    if (refusals.some(r => r.code === 'bad-motor-direction' || r.code === 'bad-rotor-model' || r.code === 'bad-internal-edge-pair')) {
         return {model: parsedModel, runModel: parsedModel, mechanism: null, issues};
     }
     if (parsedModel.parts.length === 0) {
@@ -485,8 +485,16 @@ export const prepareModel = (text, catalog, {mat = null, autoPorts: plugIn = !OW
     const runModel = start ? placeOnStart(wired, start, driveAnchor(wired, catalog)) : wired;
     // A mat's obstacles (a wall) are static bodies of the scene, compiled with the model.
     // ...and its loads (a pallet: world/objects.js) dynamic bodies the model moves by contact.
-    const mechanism = compile(runModel, catalog, {version: 2, rescueLoose: plugIn, breakLoops, ...(freeHingeFrictionNm !== undefined ? {freeHingeFrictionNm} : {}), ...(matDef ? {mat, ...(matDef.obstacles.length ? {obstacles: matDef.obstacles} : {}),
+    let mechanism;
+    try {
+        mechanism = compile(runModel, catalog, {version: 2, rescueLoose: plugIn, breakLoops, ...(freeHingeFrictionNm !== undefined ? {freeHingeFrictionNm} : {}), ...(matDef ? {mat, ...(matDef.obstacles.length ? {obstacles: matDef.obstacles} : {}),
         ...(matDef.loads.length ? {loads: matDef.loads} : {})} : {})});
+    } catch (error) {
+        if (!(error instanceof RangeError) || !error.message.startsWith('internalEdgeRemovalPairs')) throw error;
+        issues.push({severity: 'error', code: 'bad-internal-edge-pair', message: error.message, parts: []});
+        return {model, runModel, mechanism: null, issues};
+    }
+
     // An explicitly declared payload is free to roll or be carried by contact.
     // Admit only wholly free payload islands: marking one structural member as
     // LOAD must never hide an accidentally detached assembly.

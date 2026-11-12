@@ -49,6 +49,7 @@ const makeModel = (version, parts, groups, steps, belts = null, ropes = null, ho
     if (carried && carried.files) out.files = carried.files;
     if (carried && carried.motorDirection !== undefined) out.motorDirection = carried.motorDirection;
     if (carried && carried.rotor !== undefined) out.rotor = carried.rotor;
+    if (carried && carried.internalEdgeRemovalPairs !== undefined) out.internalEdgeRemovalPairs = carried.internalEdgeRemovalPairs;
     if (groups) out.groups = deepFreeze(groups);
     if (steps) out.steps = deepFreeze(steps);
     if (belts && belts.length) out.belts = deepFreeze(belts);
@@ -67,7 +68,8 @@ const importModel = model => {
     const carried = {decor: model.decor ? deepFreeze(model.decor.map(d => ({...d, position: d.position.slice(), matrix: d.matrix.slice()}))) : null,
         files: model.files ? Object.freeze({...model.files}) : null,
         ...(model.motorDirection !== undefined ? {motorDirection: model.motorDirection} : {}),
-        ...(model.rotor !== undefined ? {rotor: model.rotor} : {})};
+        ...(model.rotor !== undefined ? {rotor: model.rotor} : {}),
+        ...(model.internalEdgeRemovalPairs !== undefined ? {internalEdgeRemovalPairs: deepFreeze(model.internalEdgeRemovalPairs.map(pair => pair.slice()))} : {})};
     return makeModel(model.version, model.parts.map(frozenPart), groups, steps, belts, ropes, hoses, carried);
 };
 
@@ -247,10 +249,11 @@ export const createEditor = ({model, catalog}) => {
      * given. A rubber band or a rope goes with the parts it is round: one round a part that is gone goes too.
      */
     const derive = (parts, groups = current.groups || null, belts = current.belts || null, ropes = current.ropes || null, hoses = current.hoses || null) => {
-        const ids = parts !== current.parts && ((belts && belts.length) || (ropes && ropes.length) || (hoses && hoses.length)) ? new Set(parts.map(p => p.id)) : null;
+        const ids = parts !== current.parts && ((belts && belts.length) || (ropes && ropes.length) || (hoses && hoses.length) || current.internalEdgeRemovalPairs?.length) ? new Set(parts.map(p => p.id)) : null;
         const keep = list => (list && ids ? list.filter(b => b.around.every(id => ids.has(id))) : list);
         const keptHoses = hoses && ids ? hoses.filter(h => ids.has(h.a.part) && ids.has(h.b.part)) : hoses;
-        return makeModel(current.version, parts, groups, current.steps || null, keep(belts), keep(ropes), keptHoses, current);
+        const carried = current.internalEdgeRemovalPairs && ids ? {...current, internalEdgeRemovalPairs: deepFreeze(current.internalEdgeRemovalPairs.filter(pair => pair.every(id => ids.has(id))))} : current;
+        return makeModel(current.version, parts, groups, current.steps || null, keep(belts), keep(ropes), keptHoses, carried);
     };
     /** `parts` with the part at `idx` replaced by a frozen copy carrying `changes` (a field set to undefined is removed). */
     const withPart = (parts, idx, changes) => {
