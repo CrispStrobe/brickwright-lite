@@ -1,6 +1,6 @@
 # Arcade row 2c, part 3: procedure results into Number formals
 
-Status: claim and change in one PR. Owner: Arcade lane. Base: main `266c320d`.
+Status: DONE in the folded implementation PR; qualification and landing remain required. Owner: Arcade lane. Base: main `266c320d`.
 Part 1 is `2026-11-12-arcade-2c-class.md`.
 
 Scope: one new test, `test/makecode-arcade-procedure-result-numbers.test.mjs`,

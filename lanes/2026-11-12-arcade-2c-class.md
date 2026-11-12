@@ -1,6 +1,6 @@
 # Arcade row 2c, part 1: class formal refusal controls
 
-Status: claim and change in one PR. Owner: Arcade lane. Base: main `266c320d`.
+Status: DONE in the folded implementation PR; qualification and landing remain required. Owner: Arcade lane. Base: main `266c320d`.
 
 Row 2c was planned as separate PRs, each merged before the next starts:
 1. this part: class constructor/method formals;
