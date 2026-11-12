@@ -802,7 +802,7 @@ function create(runtime, cells, scoreOwner=null, sceneClock=null, frameDelta=nul
                 keys(p,['name','type','optional','default'])&&identifier(p.name)&&type(p.type)&&typeof p.optional==='boolean'&&
                 (!Object.hasOwn(p,'default')||p.optional&&(p.default===null||typeof p.default==='boolean'||typeof p.default==='number'&&Number.isFinite(p.default))));
             for(const row of rows){
-                if(!identifier(row.name)||['BaseSprite','Sprite','ExtendableSprite','BaseDialog','SplashDialog','Font'].includes(row.name)||row.name.startsWith('__bwSDK_')||
+                if(!identifier(row.name)||['BaseSprite','Sprite','ExtendableSprite','BaseDialog','SplashDialog','Font'].includes(row.name)||(row.name.startsWith('__bwSDK_')||row.name.startsWith('__bwOwned'))||
                     !parameters(row.parameters)||typeof row.initializer!=='string'||typeof row.constructor!=='string')return null;
                 for(const field of row.fields){
                     if(!keys(field,['name','type','readonly','visibility','initializer','parameterProperty','getter','setter'])||!identifier(field.name)||!type(field.type)||

@@ -67,6 +67,7 @@ test('unproven writers, read-before-construction and uncertain dispatch remain r
   invalidFieldType:f=>{f.fields[0].type='bad type';f.blocks.declFIELDS.fields.TEXT.value=JSON.stringify(f.fields);},
   missingReadonly:f=>{delete f.fields[0].readonly;f.blocks.declFIELDS.fields.TEXT.value=JSON.stringify(f.fields);},
   invalidClassName:f=>{f.blocks.declNAME.fields.TEXT.value='bad name';f.blocks.newCLASS.fields.TEXT.value='bad name';},
+  ownedBridgeClassCollision:f=>{f.blocks.declNAME.fields.TEXT.value='__bwOwnedSDKSprite';f.blocks.newCLASS.fields.TEXT.value='__bwOwnedSDKSprite';},
   intrinsicCollision:f=>{f.blocks.declNAME.fields.TEXT.value='Sprite';f.blocks.newCLASS.fields.TEXT.value='Sprite';},
   throwingConstructorLiteralGetter:f=>{f.blocks.init.opcode='arcade_throwValue';f.blocks.init.inputs={VALUE:{block:'thrown'}};f.text('thrown','init','construction failed');f.blocks.ret.inputs.VALUE={block:'literalGetter'};f.number('literalGetter','ret',9);},
   tooManyArguments:f=>{const rest=f.add('extraArg','arcade_functionArgument','arg',{VALUE:{block:'extraValue'}});f.value(rest,'REST','[]');f.number('extraValue','extraArg',2);f.blocks.arg.inputs.REST={block:'extraArg'};},
