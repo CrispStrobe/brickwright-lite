@@ -27,6 +27,7 @@
 1 1 -80 200 -100 0 1 0 1 0 0 0 0 -1 6558.dat
 0 !BW ID rail_splice_pin_-80_-80
 1 0 -80 210 -80 0 1 0 1 0 0 0 0 -1 2780.dat
+0 STEP
 0 !BW ID rail_splice_pin_-80_-60
 1 0 -80 210 -60 0 1 0 1 0 0 0 0 -1 2780.dat
 0 !BW ID rail_splice_pin_-80_-40
@@ -39,6 +40,7 @@
 1 1 -80 200 220 0 1 0 1 0 0 0 0 -1 6558.dat
 0 !BW ID rail_splice_pin_-80_240
 1 0 -80 210 240 0 1 0 1 0 0 0 0 -1 2780.dat
+0 STEP
 0 !BW ID rail_splice_pin_-80_260
 1 0 -80 210 260 0 1 0 1 0 0 0 0 -1 2780.dat
 0 !BW ID foot_-80_front
@@ -51,6 +53,7 @@
 1 0 -80 220 460 1 0 0 0 1 0 0 0 1 32523.dat
 0 !BW ID foot_pin_-80_460_-20
 1 0 -80 210 440 0 1 0 1 0 0 0 0 -1 2780.dat
+0 STEP
 0 !BW ID foot_pin_-80_460_20
 1 0 -80 210 480 0 1 0 1 0 0 0 0 -1 2780.dat
 0 !BW ID rail_200_front
@@ -63,6 +66,7 @@
 1 72 200 220 -60 1 0 0 0 1 0 0 0 1 32316.dat
 0 !BW ID rail_splice_pin_200_-100
 1 1 200 200 -100 0 1 0 1 0 0 0 0 -1 6558.dat
+0 STEP
 0 !BW ID rail_splice_pin_200_-80
 1 0 200 210 -80 0 1 0 1 0 0 0 0 -1 2780.dat
 0 !BW ID rail_splice_pin_200_-60
@@ -75,6 +79,7 @@
 1 0 200 210 200 0 1 0 1 0 0 0 0 -1 2780.dat
 0 !BW ID rail_splice_pin_200_220
 1 1 200 200 220 0 1 0 1 0 0 0 0 -1 6558.dat
+0 STEP
 0 !BW ID rail_splice_pin_200_240
 1 0 200 210 240 0 1 0 1 0 0 0 0 -1 2780.dat
 0 !BW ID rail_splice_pin_200_260
@@ -87,6 +92,7 @@
 1 0 200 210 -300 0 1 0 1 0 0 0 0 -1 2780.dat
 0 !BW ID foot_200_rear
 1 0 200 220 460 1 0 0 0 1 0 0 0 1 32523.dat
+0 STEP
 0 !BW ID foot_pin_200_460_-20
 1 0 200 210 440 0 1 0 1 0 0 0 0 -1 2780.dat
 0 !BW ID foot_pin_200_460_20
@@ -99,6 +105,7 @@
 1 72 60 180 -220 0 0 1 0 1 0 -1 0 0 32278.dat
 0 !BW ID deck_cross_pin_-80_-220
 1 0 -80 190 -220 0 1 0 1 0 0 0 0 -1 2780.dat
+0 STEP
 0 !BW ID deck_cross_pin_200_-220
 1 0 200 190 -220 0 1 0 1 0 0 0 0 -1 2780.dat
 0 !BW ID deck_cross_-100
@@ -111,6 +118,7 @@
 1 0 200 190 -20 0 1 0 1 0 0 0 0 -1 2780.dat
 0 !BW ID deck_cross_180
 1 72 60 180 180 0 0 1 0 1 0 -1 0 0 32278.dat
+0 STEP
 0 !BW ID deck_cross_pin_-80_180
 1 0 -80 190 180 0 1 0 1 0 0 0 0 -1 2780.dat
 0 !BW ID deck_cross_pin_200_180
@@ -123,6 +131,7 @@
 1 0 -80 190 340 0 1 0 1 0 0 0 0 -1 2780.dat
 0 !BW ID deck_cross_pin_200_340
 1 0 200 190 340 0 1 0 1 0 0 0 0 -1 2780.dat
+0 STEP
 0 !BW ID input_rear_bearing
 1 1 0 80 -200 -1 0 0 0 0 1 0 1 0 40490.dat
 0 !BW ID input_rear_foot_elbow_140
@@ -135,6 +144,7 @@
 1 1 0 80 -80 -1 0 0 0 0 1 0 1 0 40490.dat
 0 !BW ID input_front_foot_elbow_140
 1 72 0 140 -100 0 0 -1 0 1 0 1 0 0 15100.dat
+0 STEP
 0 !BW ID input_front_foot_elbow_160
 1 72 0 160 -100 0 0 -1 0 1 0 1 0 0 15100.dat
 0 !BW ID input_front_foot_pin
@@ -147,6 +157,7 @@
 1 72 120 160 220 0 0 -1 0 1 0 1 0 0 15100.dat
 0 !BW ID output_front_foot_pin
 1 1 120 160 220 0 1 0 1 0 0 0 0 -1 6558.dat
+0 STEP
 0 !BW ID output_rear_bearing
 1 1 120 80 360 -1 0 0 0 0 1 0 1 0 40490.dat
 0 !BW ID output_rear_foot_elbow_140
@@ -159,6 +170,7 @@
 1 0 -80 80 -340 -1 0 0 0 0 1 0 1 0 40490.dat
 0 !BW ID motor_wall_corner_-80_0
 1 0 -80 0 -330 0 1 0 0 0 1 1 0 0 2780.dat
+0 STEP
 0 !BW ID motor_wall_corner_-80_140
 1 0 -80 140 -330 0 1 0 0 0 1 1 0 0 2780.dat
 0 !BW ID motor_wall_foot_-80
@@ -171,6 +183,7 @@
 1 0 80 0 -330 0 1 0 0 0 1 1 0 0 2780.dat
 0 !BW ID motor_wall_corner_80_140
 1 0 80 140 -330 0 1 0 0 0 1 1 0 0 2780.dat
+0 STEP
 0 !BW ID motor_wall_foot_80
 1 72 80 160 -320 0 0 1 0 1 0 -1 0 0 15100.dat
 0 !BW ID motor_wall_floor_pin_80
@@ -185,6 +198,7 @@
 1 15 0 0 -280 1 0 0 0 0 1 0 -1 0 54696p01.dat
 0 !BW ID motor_front_pin_-20
 1 0 -20 0 -310 0 1 0 0 0 1 1 0 0 2780.dat
+0 STEP
 0 !BW ID motor_front_pin_20
 1 0 20 0 -310 0 1 0 0 0 1 1 0 0 2780.dat
 0 !BW ID motor_rear_pin
@@ -197,6 +211,7 @@
 1 0 0 170 180 0 1 0 1 0 0 0 0 -1 2780.dat
 0 !BW ID hub_pin_120_-20
 1 0 120 170 -20 0 1 0 1 0 0 0 0 -1 2780.dat
+0 STEP
 0 !BW ID hub_pin_120_180
 1 0 120 170 180 0 1 0 1 0 0 0 0 -1 2780.dat
 0 STEP

@@ -1276,6 +1276,74 @@
         "Sonnenwende",
         "Parallelogramm"
       ]
+    },
+    {
+      "models": [
+        "cadence-geneva"
+      ],
+      "name": {
+        "en": "Geneva indexing drive",
+        "de": "Malteserkreuz-Schaltung"
+      },
+      "aliases": [
+        "Geneva drive",
+        "Maltese cross",
+        "intermittent motion",
+        "indexing",
+        "dwell",
+        "Malteserkreuz",
+        "Schrittgetriebe",
+        "Rastgetriebe",
+        "Taktgetriebe",
+        "Geneva"
+      ]
+    },
+    {
+      "models": [
+        "helios-transmission"
+      ],
+      "name": {
+        "en": "Stepped-planet epicyclic transmission",
+        "de": "Umlaufgetriebe mit Stufenplaneten"
+      },
+      "aliases": [
+        "epicyclic gear",
+        "planetary gear",
+        "compound planet",
+        "stepped planet",
+        "power split",
+        "Willis equation",
+        "eCVT",
+        "Umlaufgetriebe",
+        "Planetengetriebe",
+        "Stufenplanet",
+        "Leistungsverzweigung",
+        "Willis-Gleichung",
+        "epicyclic"
+      ]
+    },
+    {
+      "models": [
+        "orion-cardan"
+      ],
+      "name": {
+        "en": "Offset double Cardan drive",
+        "de": "Versetzter Doppel-Kardanantrieb"
+      },
+      "aliases": [
+        "Cardan joint",
+        "universal joint",
+        "Hooke joint",
+        "double Cardan",
+        "drive shaft",
+        "constant velocity",
+        "phasing",
+        "Kardangelenk",
+        "Kreuzgelenk",
+        "Gelenkwelle",
+        "Doppelkardan",
+        "Gleichlauf"
+      ]
     }
   ]
 }

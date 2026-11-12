@@ -1222,6 +1222,70 @@
       "notRun": [
         "webkit browser run (the browser gate, shard robotaddon15, runs chromium)"
       ]
+    },
+    {
+      "id": "cadence-geneva",
+      "judge": "geneva-index-v1",
+      "parts": 200,
+      "ports": [
+        "A"
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 180000,
+      "afterMs": 500,
+      "frameMs": 25,
+      "frozenOutput": "star_center",
+      "disconnect": [
+        "driver_pin_axle"
+      ],
+      "disconnectInputDeg": 4000,
+      "disconnectLoss": "r2",
+      "notRun": [
+        "webkit browser run (the browser gate, shard robotaddon16, runs chromium)"
+      ]
+    },
+    {
+      "id": "helios-transmission",
+      "judge": "willis-epicyclic-v1",
+      "parts": 156,
+      "ports": [
+        "A",
+        "B"
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 90000,
+      "afterMs": 500,
+      "frameMs": 25,
+      "frozenOutput": "sun_output",
+      "disconnect": [
+        "control_gear"
+      ],
+      "disconnectInputDeg": 800,
+      "disconnectLoss": "r2",
+      "notRun": [
+        "webkit browser run (the browser gate, shard robotaddon18, runs chromium)"
+      ]
+    },
+    {
+      "id": "orion-cardan",
+      "judge": "double-cardan-offset-v1",
+      "parts": 118,
+      "ports": [
+        "A"
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 150000,
+      "afterMs": 500,
+      "frameMs": 25,
+      "frozenOutput": "shaft_output",
+      "disconnect": [
+        "fork_middle_far"
+      ],
+      "disconnectInputDeg": 3600,
+      "disconnectLoss": "r2",
+      "notRun": [
+        "webkit browser run (the browser gate, shard robotaddon19, runs chromium)"
+      ]
     }
   ]
 }

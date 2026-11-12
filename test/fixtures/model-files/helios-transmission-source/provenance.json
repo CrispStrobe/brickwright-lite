@@ -1,0 +1,10 @@
+{
+ "author": "CrispStrobe",
+ "license": "BSD-3-Clause",
+ "files": {
+  "models/helios-transmission.ldr": "092cf674775eaf332b0809fe75548cd306f59964191521959cedee46d85ef23d",
+  "programs/helios-transmission.bw": "db14980328bd7438d906eb06d4fb1def93a19325ed83e584cd8a4a68651e787c",
+  "LICENSE.txt": "a096c77ac7c151875cdcfcc89285d7372701076a3e53e29b3ee8abcd4e71ec9e",
+  "SOURCES.md": "4ce414970d5a5254787194c3a3a0740ce4e0922bbf02a861947343b3be9c1868"
+ }
+}

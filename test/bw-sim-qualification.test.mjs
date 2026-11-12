@@ -14,6 +14,7 @@ import {p6DisconnectionLoss} from '../scripts/lib/sim-lab-p6-judges.mjs';
 import {judgeRimRun,rimrunDisconnectionLoss,rimrunMeasure} from '../scripts/lib/sim-lab-rimrun-judge.mjs';
 import {nineIntakeDisconnectionLoss} from '../scripts/lib/sim-lab-nine-intake-judge.mjs';
 import {judgeObliquityTilt,obliquityDisconnectionLoss,orreryTrack,compiledOrrery} from '../scripts/lib/sim-lab-obliquity-judge.mjs';
+import {r2DisconnectionLoss} from '../scripts/lib/sim-lab-r2-judges.mjs';
 import {catalogFrom,prepareModel,MODELS} from '../overlay/scratch-gui/src/lib/bw-sim/sim-session.js';
 import {runRobotLabProgram} from './helpers/robot-lab-direct-vm.mjs';import {observeAddon} from '../scripts/lib/sim-lab-addon-judge.mjs';
 import Creator from '../overlay/scratch-gui/src/lib/sb3-creator-register-art.js';
@@ -25,6 +26,8 @@ import {evaluateTwistspanPair} from '../scripts/lib/sim-lab-twistspan-judge.mjs'
 import {judgeSwayShiftPair} from '../scripts/lib/sim-lab-swayshift-judge.mjs';
 const read=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8'),lab='overlay/scratch-gui/static/sim-lab/',catalog=catalogFrom(JSON.parse(read('overlay/scratch-gui/src/lib/bw-sim/part-meta/parts.json')));
 const selected=process.env.BW_MODEL_QUALIFY_MODELS?.split(',');
+const R2_MUTANTS=Object.freeze({'cadence-geneva':['dial_output_gear',{part:'3649.dat'},/dial = −star\/3/],
+ 'helios-transmission':['sun_input',{part:'94925.dat'},/compound planets/],'orion-cardan':['fork_middle_far',{turn:90},/middle forks in phase/]});
 test('qualification refuses unknown principles, missing models and incomplete disconnections',()=>{
  assert.throws(()=>qualificationContracts(['invented-pass']));assert.throws(()=>qualificationContracts([]));assert.throws(()=>disconnectedSource('0 model\n',['missing']));
 });
@@ -144,6 +147,17 @@ for(const c of qualificationContracts(selected).filter(c=>!c.nativeSuite)){
   let judgedB;try{judgeObliquityTilt(cutB,{native:true,contract:c});judgedB='PASS';}catch(err){judgedB=String(err.message).slice(0,300);}
   t.diagnostic(JSON.stringify({id:'obliquity-orrery-mutants',main:{lawErrorDeg:ok.lawErrorDeg,driveErrorDeg:ok.driveErrorDeg,radiusErrorMm:ok.radiusErrorMm,compiled:ok.compiled},turnedOwnLawDeg:own,turnedSolsticeDeg:g.solsticeDeg,crankBCut:{loss:lossB,judge:judgedB}}));
  });
+ // R2 judge family: a wrong-model mutant of each compiled model, built from the real run, must be refused by the
+ // unchanged judge. Each changes one part the law's constants are read from, keeping the recorded motion: the dial
+ // gear of the Geneva train (24T -> 40T), the carrier ring of the differential (28T -> 24T), the input sun of the
+ // epicyclic set (24T -> 16T), and the far fork of the Cardan middle shaft turned a quarter turn (misphased pair).
+ if(R2_MUTANTS[c.id])test(c.id+': wrong-model mutant is refused by the unchanged judge',async t=>{
+  const r=await run(c,source,false,'mutant-base'),ok=judge(r),bad=structuredClone(r),[part,change,pattern]=R2_MUTANTS[c.id];
+  if(change.part){const p=bad.runModel.parts.find(p=>p.id===part);assert.ok(p,part);p.part=change.part;}
+  else{const u=bad.mechanism.couplings.find(x=>x.kind==='universalJoint'&&x.parts.includes(part));assert.ok(u,part);const [x,y]=[u.shaft1,u.fork1];u.fork1=[x[1]*y[2]-x[2]*y[1],x[2]*y[0]-x[0]*y[2],x[0]*y[1]-x[1]*y[0]];}
+  assert.throws(()=>judge(bad),pattern);
+  t.diagnostic(JSON.stringify({id:c.id+'-mutant',part,change,main:Object.fromEntries(Object.entries(ok).filter(([k])=>!['foundation','compiled','speeds','stages'].includes(k)))}));
+ });
  test(c.id+': physical disconnection destroys the intended output while the real input still completes',async t=>{
   const r=await run(c,disconnectedSource(source,c.disconnect),false,'disconnected'),o=observeAddon(r,c.observeBase??hubPartOf(r)),input=c.motorless?null:r.mechanism.joints.find(j=>j.motor?.port===c.ports[0]),travel=input?Math.max(...r.track.map(f=>Math.abs(f.joints[input.id].angle)))*180/Math.PI:0;
   assert.ok(r.finishedAt>0);if(!c.motorless)assert.ok(travel>(c.disconnectInputDeg??(c.id==='sine-shuttle'?1070:1430)),'input genuinely still turns');
@@ -174,6 +188,8 @@ for(const c of qualificationContracts(selected).filter(c=>!c.nativeSuite)){
   else if(c.disconnectLoss==='rimrun'){const loss=rimrunDisconnectionLoss(c.id,r);motion=loss.value;assert.ok(loss.lost,'disconnection loses the law: '+JSON.stringify(loss));}
   // Obliquity Orrery: without crank A's coupler pin the Earth stays put while the encoder sweeps (sim-lab-obliquity-judge.mjs).
   else if(c.disconnectLoss==='obliquity'){const loss=obliquityDisconnectionLoss(r);motion=loss.value;assert.ok(loss.lost,'disconnection loses the law: '+JSON.stringify(loss));}
+  // R2 judge family (sim-lab-r2-judges.mjs): drive pin, carrier drive bevel, control gear or one Cardan fork removed.
+  else if(c.disconnectLoss==='r2'){const loss=r2DisconnectionLoss(c.id,r);motion=loss.value;assert.ok(loss.lost,'disconnection loses the law: '+JSON.stringify(loss));}
   else if(c.disconnectLoss==='p6'){const loss=p6DisconnectionLoss(c.id,r);motion=loss.value;assert.ok(loss.lost,'disconnection loses the law: '+JSON.stringify(loss));}
   // Nine Technic intakes: the reviewed part removal must break the passive law while the input route completes.
   else if(c.disconnectLoss==='nine-intake'){const loss=nineIntakeDisconnectionLoss(c.id,r);motion=loss.value;assert.ok(loss.lost,'disconnection loses the law: '+JSON.stringify(loss));}

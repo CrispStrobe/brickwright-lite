@@ -2368,6 +2368,107 @@ export const MODEL_LESSONS = Object.freeze({
             "Parallelogramm"
         ]
     },
+    "cadence-geneva.ldr": {
+        "pieces": 200,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "linkages",
+        "description": {
+            "en": "A four-slot Geneva drive (Maltese cross) turns a steadily driven crank into twelve 30° dial steps with a dwell in between: the star turns 90° while the roller is in a slot (±45° of crank) and rests for the other 270°.",
+            "de": "Ein Malteserkreuzgetriebe mit vier Schlitzen macht aus einer gleichmäßig gedrehten Kurbel zwölf Zeigerschritte zu 30° mit Rast dazwischen: Das Kreuz dreht sich um 90°, solange die Rolle im Schlitz läuft (±45° Kurbelwinkel), und ruht die übrigen 270°."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Geneva indexing drive",
+            "de": "Malteserkreuz-Schaltung"
+        },
+        "keywords": [
+            "Geneva indexing drive",
+            "Malteserkreuz-Schaltung",
+            "Geneva drive",
+            "Maltese cross",
+            "intermittent motion",
+            "indexing",
+            "dwell",
+            "Malteserkreuz",
+            "Schrittgetriebe",
+            "Rastgetriebe",
+            "Taktgetriebe",
+            "Geneva"
+        ]
+    },
+    "helios-transmission.ldr": {
+        "pieces": 156,
+        "motors": 2,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "gears",
+        "description": {
+            "en": "A stepped-planet epicyclic set adds two motor inputs: A turns the sun at constant speed while B’s carrier speed alone steps the output through ×3, ×2, ×1, standstill and reverse, ω_out = 3·ω_A − 2·ω_carrier.",
+            "de": "Ein Umlaufgetriebe mit Stufenplaneten überlagert zwei Motoren: A dreht das Sonnenrad konstant, und allein die Trägerdrehzahl von B schaltet den Abtrieb durch ×3, ×2, ×1, Stillstand und Rückwärtslauf, ω_ab = 3·ω_A − 2·ω_Träger."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Stepped-planet epicyclic transmission",
+            "de": "Umlaufgetriebe mit Stufenplaneten"
+        },
+        "keywords": [
+            "Stepped-planet epicyclic transmission",
+            "Umlaufgetriebe mit Stufenplaneten",
+            "epicyclic gear",
+            "planetary gear",
+            "compound planet",
+            "stepped planet",
+            "power split",
+            "Willis equation",
+            "eCVT",
+            "Umlaufgetriebe",
+            "Planetengetriebe",
+            "Stufenplanet",
+            "Leistungsverzweigung",
+            "Willis-Gleichung",
+            "epicyclic"
+        ]
+    },
+    "orion-cardan.ldr": {
+        "pieces": 118,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "gears",
+        "description": {
+            "en": "Two equally bent, correctly phased Cardan joints: the middle shaft runs up to 6.4° ahead of and behind the input twice per turn, while the output follows the input evenly.",
+            "de": "Zwei gleich abgewinkelte, richtig ausgerichtete Kardangelenke: Die Zwischenwelle eilt dem Eingang zweimal je Umdrehung bis zu 6,4° vor und nach, der Abtrieb folgt dem Eingang gleichförmig."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Offset double Cardan drive",
+            "de": "Versetzter Doppel-Kardanantrieb"
+        },
+        "keywords": [
+            "Offset double Cardan drive",
+            "Versetzter Doppel-Kardanantrieb",
+            "Cardan joint",
+            "universal joint",
+            "Hooke joint",
+            "double Cardan",
+            "drive shaft",
+            "constant velocity",
+            "phasing",
+            "Kardangelenk",
+            "Kreuzgelenk",
+            "Gelenkwelle",
+            "Doppelkardan",
+            "Gleichlauf"
+        ]
+    },
     "product-plotter.ldr": {
         "pieces": 301,
         "motors": 2,

@@ -1,0 +1,10 @@
+{
+ "author": "CrispStrobe",
+ "license": "BSD-3-Clause",
+ "files": {
+  "models/orion-cardan.ldr": "2793c7d43f6949705d0b430181e0571f97b5268d4e600cd14069769a9e0236a8",
+  "programs/orion-cardan.bw": "9023ebdc4a02a7f1002628cb825bd3fb95c5ef1814f103138415a31b606e41c0",
+  "LICENSE.txt": "a096c77ac7c151875cdcfcc89285d7372701076a3e53e29b3ee8abcd4e71ec9e",
+  "SOURCES.md": "c7da36c59d10c6f708c2b78dbd8b0209ad68a24fda1fbbe9b8f74eeb81f0ba9a"
+ }
+}
