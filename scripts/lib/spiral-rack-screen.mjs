@@ -63,7 +63,32 @@ export function screenMountRedesign(reference, candidate, attachmentIds) {
     .map(c => Math.hypot(...sub(add(apply(rotation, c.position), translation), want.position)));
    return {id: want.id, nearestLdu: choices.length ? Math.min(...choices) : null};
   });
-  results.push({rotation, translation, distances});
+  // Find one-to-one assignments, rather than counting the same candidate
+  // connector for multiple mounts. Minimize the largest mount displacement;
+  // this still does not establish clearance or a physically buildable mount.
+  const choices = mounts.map(want => candidate.connectors
+   .map((c, index) => ({c, index}))
+   .filter(({c}) => c.type === want.type && axisSame(apply(rotation, c.axis), want.axis))
+   .map(({c, index}) => ({index, connectorId: c.id,
+    distanceLdu: Math.hypot(...sub(add(apply(rotation, c.position), translation), want.position))})));
+  let best = null;
+  const visit = (i, used, assignment) => {
+   if (i === choices.length) {
+    const maxDistanceLdu = Math.max(0, ...assignment.map(x => x.distanceLdu));
+    if (!best || maxDistanceLdu < best.maxDistanceLdu) best = {maxDistanceLdu, assignment: [...assignment]};
+    return;
+   }
+   for (const choice of choices[i]) {
+    if (used.has(choice.index) || (best && choice.distanceLdu >= best.maxDistanceLdu)) continue;
+    used.add(choice.index);
+    assignment.push({mountId: mounts[i].id, connectorId: choice.connectorId, distanceLdu: choice.distanceLdu});
+    visit(i + 1, used, assignment);
+    assignment.pop();
+    used.delete(choice.index);
+   }
+  };
+  visit(0, new Set(), []);
+  results.push({rotation, translation, distances, bestDistinctAssignment: best});
  }
  return results;
 }

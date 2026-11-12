@@ -40,3 +40,18 @@ test('redesign distances retain tooth alignment and report missing connector typ
  const short = structuredClone(reference); short.connectors[2].length = 19;
  assert.equal(screenMountRedesign(reference, short, ['left']).length, 0);
 });
+
+
+test('redesign requires a distinct connector for every mount', () => {
+ const oneHole = structuredClone(reference);
+ oneHole.connectors = oneHole.connectors.filter(c => c.id !== 'right');
+ const options = screenMountRedesign(reference, oneHole, ['left','right']);
+ assert.ok(options.length > 0);
+ assert.ok(options.every(x => x.distances.every(d => d.nearestLdu !== null)));
+ assert.ok(options.every(x => x.bestDistinctAssignment === null));
+ const shifted = structuredClone(reference);
+ shifted.connectors[1].position[0] += 3;
+ assert.ok(screenMountRedesign(reference, shifted, ['left','right']).some(x =>
+  x.bestDistinctAssignment?.maxDistanceLdu === 3 &&
+  new Set(x.bestDistinctAssignment.assignment.map(a => a.connectorId)).size === 2));
+});

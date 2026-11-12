@@ -43,3 +43,11 @@ These are modeled placements, not calibrated physical measurements or proof of
 contact. A simple change to one of those rack parts therefore does not by
 itself establish a correction for the existing feed discrepancy. The model stays
 experimental while a buildable, independently justified design is sought.
+
+The redesign screen also searches one-to-one assignments of the four existing
+mount types and axes to candidate connectors, minimizing the largest movement
+for each allowed tooth alignment. In the present catalogue, 64781 has a zero
+displacement assignment; none of the other screened racks has an assignment
+covering all four mounts. This rules out reusing those four mount types in the
+screened orientations, not a redesign using different mounts. Even a positive
+assignment would not establish shared support, clearance or buildability.
