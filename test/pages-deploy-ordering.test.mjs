@@ -10,8 +10,9 @@
  * one tree beside chunks from another. That is what went out: an index naming
  * 404 chunks.
  *
- * The 2026-08-30 fix runs builds in PARALLEL (one concurrency group per commit,
- * so no push is cancelled while queued) and serializes only the deploy. That is
+ * The 2026-08-30 fix separated builds by run and serialized publication. The
+ * reviewed 2026-11-12 policy supersedes push/PR builds by workflow and ref,
+ * with separate label-event groups. Deployment serialization remains in place. That is
  * safe for one structural reason: separate RUNS cannot see each other's
  * artifacts. Each run's `github-pages` artifact is scoped to its own
  * GITHUB_RUN_ID and `deploy-pages` resolves it there.
@@ -22,13 +23,14 @@
  *
  *   - exactly one upload of the Pages artifact, in the job that builds it;
  *   - the deploy job never downloads an artifact by name;
- *   - pushes are grouped per COMMIT, so a queued run is never cancelled;
+ *   - push/PR supersession follows the reviewed policy with label-event isolation;
  *   - the deploy carries the one shared group, and an ordering guard.
  *
  * The parsing is deliberately structural rather than a set of greps over the
  * whole file: `grep -c upload-pages-artifact` cannot tell which job a step is
  * in, and "which job" is the entire hazard.
  */
+import {assertReviewedConcurrency} from './helpers/reviewed-concurrency-projections.mjs';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
@@ -106,15 +108,14 @@ test('the deploy job never resolves an artifact by name', () => {
         'the deploy job must depend on the build job that produced its artifact');
 });
 
-test('a push to main is never cancelled while queued', () => {
-    const top = src.slice(0, src.indexOf('\njobs:'));
-    const group = /^concurrency:\n\s+group:\s*(.+)$/m.exec(top);
-    assert.ok(group, 'build.yml has no top-level concurrency group');
-    assert.match(group[1], /github\.sha/,
-        'the push side of the concurrency group must be keyed on the COMMIT. Keyed on the ' +
-        'ref, all of main shares one group and GitHub holds exactly one pending entry: a ' +
-        'third push cancels the second while it is still queued. Measured over the 200 most ' +
-        'recent main runs, 62 were cancelled with ZERO JOBS — no runner, no verdict.');
+test('build supersession uses the reviewed workflow/ref policy and isolates label events', () => {
+    const top = src.slice(0, src.indexOf('\njobs:') + 1);
+    assertReviewedConcurrency(top, {labels: true});
+    for (const changed of [
+        top.replace("format('label-{0}', github.event.label.name)", "'code'"),
+        top.replace("github.event.action == 'unlabeled'", "github.event.action == 'synchronize'"),
+        top.replace("github.event_name == 'pull_request'", "github.event_name == 'workflow_dispatch'"),
+    ]) assert.throws(() => assertReviewedConcurrency(changed, {labels: true}));
 });
 
 test('the deploy is serialized and refuses to publish an older tree', () => {
