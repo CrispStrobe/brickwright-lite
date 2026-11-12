@@ -6344,7 +6344,10 @@ existing refusal controls. Refresh its head and exact enabled checks before
 acting. Focused source tests do not qualify the original program: require
 source-bound PXT and native execution, export/reimport, SB3 and browser results,
 including actual effect order and output for multiple call-valued Array items.
-Keep mixed, unknown and escaped values refused unless independently proved.
+One three-call middle-selection case has matching actual PXT and headless VM
+results, including VM export/reimport, Code reparse and fresh-SB3 reload. An
+actual editor journey and whole-project qualification remain pending. Keep
+mixed, unknown and escaped values refused unless independently proved.
 
 A prior nightly differential failed its rotating sample without retaining a
 case verdict in the public job output. The candidate reports only bounded case

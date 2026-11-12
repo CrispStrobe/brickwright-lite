@@ -50,9 +50,8 @@ permissions:
 # never replaces a pending verdict (the vendor-freshness / ROADMAP 2.1 rule;
 # 2026-11-03 CI trim).
 concurrency:
-  group: spike-linux-package-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || github.run_id }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
-
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref_type != 'tag' && (github.event_name == 'push' || github.event_name == 'pull_request') }}
 jobs:
   package:
     runs-on: ubuntu-24.04
