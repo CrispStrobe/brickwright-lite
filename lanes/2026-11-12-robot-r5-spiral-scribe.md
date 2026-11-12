@@ -24,3 +24,14 @@ buildable layout, solid/connected checks and real source-bound VM/Jolt and
 browser control/save-reopen observations before promotion. Retain failures and
 existing originals, use no invented physical accuracy or hardware claims, and
 complete all enabled checks before a normal matched-head merge.
+
+Static candidate checkpoint: `scripts/audit-spiral-racks.mjs` screens the
+catalogued rack-tooth connectors against the four existing attachment points,
+using all axis-aligned proper rotations and a rigid translation. In the current
+catalogue only the existing 64781 satisfies all fixed attachments and the
+reference tooth-contact geometry. When mount positions may change, 32132,
+32185 and 18942 retain the reference tooth span/contact in this screen but lack
+one or more compatible existing mount types or locations. Nearest connector
+distances are independent per mount and do not establish a jointly buildable
+assembly. This is not a tooth-pitch, real-geometry, collision, travel or
+physical-build result; promotion remains pending.
