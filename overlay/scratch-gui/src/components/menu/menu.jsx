@@ -3,7 +3,7 @@ import PropTypes from 'prop-types';
 import React from 'react';
 
 import styles from './menu.css';
-import {focusMenuEdge, handleMenuKeyDown} from '../../lib/menu-keyboard.js';
+import {focusSubmenuIfStillOnOpener, handleMenuKeyDown} from '../../lib/menu-keyboard.js';
 
 const MenuComponent = ({
     className = '',
@@ -108,7 +108,7 @@ const MenuItem = ({children, className, ariaLabel, expanded = false, disabled = 
                     event.stopPropagation();
                     setKeyboardClosed(false);
                     setKeyboardOpen(true);
-                    requestAnimationFrame(() => focusMenuEdge(ref.current?.querySelector('[role="menu"]')));
+                    requestAnimationFrame(() => focusSubmenuIfStillOnOpener(ref.current));
                 } else if (['Enter', ' '].includes(event.key)) {
                     event.preventDefault();
                     event.stopPropagation();
