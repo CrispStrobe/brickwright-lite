@@ -126,6 +126,8 @@ const CURRENT_X86_FINITE_V9_READER = "FINITE_V9_PINS = {'bw-board':CURRENT_BOARD
 // These profiles follow independent protocol/role review and connected controls,
 // including clock and core/full-runtime parity. Any later source edit revokes
 // their occurrence roles until another explicit review; never auto-restamp.
+// The prior profile stays binding through an exact reversible source-delta check below.
+const PRE_CONCURRENCY_X86_TEST_PROFILE = Object.freeze({bytes: 637722, sha256: '33181b4e00861a13c9a155296d14539771b07cc3dbb510d046bd0c55669bc1d2'});
 const HISTORICAL_X86_SOURCE_PROFILES = Object.freeze({
     'scripts/run-i80386-hdd-gui-actual.py': Object.freeze({bytes: 344630, sha256: 'e345b085be8fca6193d56b6c31640836dcf3cec31ae821bed688e77fd0688c8a'}),
     'scripts/read-i80386-hdd-gui-originals.py': Object.freeze({bytes: 460207, sha256: 'cd3eb6c76da6c9051ad4bb7a95a0b2956d10130ba5963f3baa4b8e864fcc8f07'}),
@@ -549,6 +551,25 @@ const historicalV10SpansForProfile = (file, text, known, profiles) => {
 export const historicalV10Spans = (file, text, known) =>
     historicalV10SpansForProfile(file, text, known, HISTORICAL_X86_SOURCE_PROFILES);
 
+// This completed-study workflow changed only scheduler policy. Project that
+// exact reviewed block back to its consumed predecessor; the original full-body
+// digest still rejects every other byte. No job, pin, trigger or cap is normalized.
+const REVIEWED_STUDY_CONCURRENCY = "concurrency:\n" +
+    "  group: ${{ github.workflow }}${{ !(github.ref_type != 'tag' && (github.event_name == 'push' || github.event_name == 'pull_request')) && format('-isolated-{0}', github.run_id) || '' }}-${{ github.ref }}\n" +
+    "  cancel-in-progress: ${{ github.ref_type != 'tag' && (github.event_name == 'push' || github.event_name == 'pull_request') }}\n";
+const PREVIOUS_STUDY_CONCURRENCY = "concurrency:\n" +
+    "  group: reference-qualified-instruments-${{ github.event_name }}-${{ github.sha }}\n" +
+    "  cancel-in-progress: false\n\n";
+const studyBeforeReviewedConcurrency = text => {
+    const error = 'sealed completed-study source changed: exact reviewed scheduler policy required';
+    assert.equal((text.match(/^concurrency:/gm) || []).length, 1, error);
+    assert.equal(text.split(REVIEWED_STUDY_CONCURRENCY).length, 2, error);
+    return text.replace(REVIEWED_STUDY_CONCURRENCY, PREVIOUS_STUDY_CONCURRENCY);
+};
+
+const sealedStudyBody = (file, text) => file === '.github/workflows/reference-qualified-instruments.yml' ?
+    studyBeforeReviewedConcurrency(text) : text;
+
 /**
  * Judge one file's text. Pure; the mutation tests plant shas through it.
  * @param {string} file - repo-relative path
@@ -560,7 +581,7 @@ export const judgeFile = (file, text, known, frozenAdmissions = new Map()) => {
     const role = roleOf(file);
     if (role !== 'code' && role !== 'receipt') return [];
     if (Object.hasOwn(SEALED_STUDY_FILES, file)) {
-        assert.equal(createHash('sha256').update(studyBeforeConcurrencyPolicy(file, text)).digest('hex'), SEALED_STUDY_FILES[file],
+        assert.equal(createHash('sha256').update(sealedStudyBody(file, text)).digest('hex'), SEALED_STUDY_FILES[file],
             `${file}: sealed completed-study source changed; preserve the consumed experiment`);
     }
     let body = text;
@@ -743,7 +764,7 @@ const historicalTestKnown = () => ({current: new Set([CURRENT_X86_CUI]),
 const historicalFixtureSpans = f => (file, text, known) =>
     historicalCuiSpansForProfile(file, text, known, f.profiles);
 const historicalJudgeWith = (recognize, recognizeBoard = () => [], recognizeV8 = () => [], recognizeV10 = () => []) => vm.runInNewContext(`(${judgeFile.toString()})`,
-    {roleOf, PROVENANCE, COMMENT, CODE_EXT, HEX40, SEALED_STUDY_FILES, assert, createHash, studyBeforeConcurrencyPolicy,
+    {roleOf, PROVENANCE, COMMENT, CODE_EXT, HEX40, SEALED_STUDY_FILES, assert, createHash, studyBeforeConcurrencyPolicy, sealedStudyBody,
         historicalCuiSpans: recognize,
         historicalBoardSpans: recognizeBoard, historicalV8CuiSpans: recognizeV8, historicalV10Spans: recognizeV10});
 
@@ -1065,6 +1086,46 @@ test('the previous F7/F8 CUI pin is admitted only in the exact literal F7/F8 map
     }
 });
 
+test('reviewed scheduler-test delta reconstructs the original historical test bytes', () => {
+    const file = 'test/i80386-hdd-gui-actual.test.mjs';
+    const source = readFileSync(path.join(ROOT, file), 'utf8');
+    const delta = JSON.parse(readFileSync(path.join(ROOT, 'test/fixtures/i80386-concurrency-test-review.json'), 'utf8'));
+    assert.equal(delta.length, 4, 'one helper and three caller changes, no producer or reader change');
+    let restored = source;
+    for (const {before, after} of delta) {
+        assert.equal(restored.split(after).length, 2, 'each exact reviewed source replacement occurs once');
+        restored = restored.replace(after, before);
+    }
+    assert.equal(Buffer.byteLength(restored), PRE_CONCURRENCY_X86_TEST_PROFILE.bytes);
+    assert.equal(createHash('sha256').update(restored).digest('hex'), PRE_CONCURRENCY_X86_TEST_PROFILE.sha256,
+        'the original complete source profile remains binding after reversing the reviewed delta');
+});
+
+test('completed study scheduler projection rejects policy drift and retains unrelated bytes', () => {
+    const file = '.github/workflows/reference-qualified-instruments.yml';
+    const text = readFileSync(path.join(ROOT, file), 'utf8');
+    const original = studyBeforeReviewedConcurrency(text);
+    assert.equal(createHash('sha256').update(original).digest('hex'), SEALED_STUDY_FILES[file]);
+    for (const mutation of [
+        text.replace(REVIEWED_STUDY_CONCURRENCY, ''),
+        text + REVIEWED_STUDY_CONCURRENCY,
+        text.replace(REVIEWED_STUDY_CONCURRENCY, PREVIOUS_STUDY_CONCURRENCY),
+        text.replace('${{ github.workflow }}', 'other-workflow'),
+        text.replace('${{ github.ref }}', '${{ github.sha }}'),
+        text.replace("github.ref_type != 'tag'", "github.ref_type == 'tag'"),
+        text.replace("github.event_name == 'push'", "github.event_name == 'workflow_dispatch'"),
+        text.replace("github.event_name == 'pull_request'", "github.event_name == 'pull_request_target'"),
+        text.replace('  contents: read', '  contents: write'),
+        text.replace('timeout-minutes: 75', 'timeout-minutes: 76'),
+        text.replace('if: github.repository', 'if: true || github.repository'),
+        text + '# unrelated drift\n',
+    ]) {
+        assert.notEqual(mutation, text);
+        assert.throws(() => judgeFile(file, mutation, known), /sealed completed-study source changed/);
+    }
+    assert.equal(studyBeforeReviewedConcurrency(text + '# unrelated drift\n'), original + '# unrelated drift\n');
+});
+
 test('reviewed current bodies preserve the four original historical source positions', () => {
     const files = [
         'scripts/run-i80386-hdd-gui-actual.py',
@@ -1097,6 +1158,13 @@ test('reviewed current bodies preserve the four original historical source posit
         admitted += cui.length + board.length;
         assert.deepEqual(judgeFile(file, body, knownRoles), [],
             'only exact reviewed historical positions are admitted');
+        if (file.endsWith('.test.mjs')) {
+            const changedHelper = body.replace('policy drift refuses', 'policy drift accepted');
+            assert.notEqual(changedHelper, body);
+            assert.deepEqual(historicalCuiSpans(file, changedHelper, knownRoles), [],
+                'even a change confined to the reviewed scheduler helper revokes historical occurrence roles');
+            assert.ok(judgeFile(file, changedHelper, knownRoles).length > 0);
+        }
         const alias = file.endsWith('.py') ? body + "\nglobals()['CURRENT_BOARD'] = BOARD\n" :
             body + '\nconst CURRENT_CUI = HISTORICAL_X86_CUI_V5_V7;\n';
         assert.ok(judgeFile(file, alias, knownRoles).length > 0, 'dynamic alias cannot gain a role');

@@ -43,7 +43,7 @@ const HELD_RUNTIME_SHA256 = '70f32835df8bc9a8fce512359a29796433a42e469549c96ab5c
 // Reverse only policy 4be93d2bfd422acdc3f776a73b72d099813538e1 after
 // admitting its exact bytes. Every earlier runtime byte stays hash-held.
 const REVIEWED_CONCURRENCY = 'concurrency:\n' +
-    '  group: ${{ github.workflow }}-${{ github.ref }}\n' +
+    "  group: ${{ github.workflow }}${{ !(github.ref_type != 'tag' && (github.event_name == 'push' || github.event_name == 'pull_request')) && format('-isolated-{0}', github.run_id) || '' }}-${{ github.ref }}\n" +
     "  cancel-in-progress: ${{ github.ref_type != 'tag' && (github.event_name == 'push' || github.event_name == 'pull_request') }}\n";
 const PREVIOUS_CONCURRENCY = 'concurrency:\n' +
     '  group: rust-notices-${{ github.head_ref || github.ref_name }}\n' +
