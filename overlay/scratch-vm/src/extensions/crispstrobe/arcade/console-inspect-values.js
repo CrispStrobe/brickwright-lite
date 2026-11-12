@@ -403,9 +403,9 @@ function create(runtime, cells, scoreOwner=null, sceneClock=null, frameDelta=nul
             const index=input(node,'INDEX'),receiver=input(node,'ARRAY');
             const k=index?.opcode==='math_number'&&index.shadow===true?Number(index.fields?.NUM?.value):NaN;
             if(!Number.isSafeInteger(k)||k<0||String(index.fields?.NUM?.value).trim()===''||receiver?.opcode!=='arcade_getLocal'||
-                index.parent!==node.id||receiver.parent!==node.id)return null;
+                index.parent!==node.id||receiver.parent!==node.id||Object.keys(index.inputs||{}).length||index.next!=null||receiver.next!=null)return null;
             const closedInputs=(b,names)=>Object.keys(b?.inputs||{}).sort().join(',')===names.slice().sort().join(',');
-            const localName=b=>closedInputs(b,['NAME'])&&input(b,'NAME')?.opcode==='text'&&Object.keys(input(b,'NAME').inputs||{}).length===0?literal(b,'NAME'):null;
+            const localName=b=>closedInputs(b,['NAME'])&&input(b,'NAME')?.opcode==='text'&&input(b,'NAME').parent===b.id&&input(b,'NAME').next==null&&Object.keys(input(b,'NAME').inputs||{}).length===0?literal(b,'NAME'):null;
             const name=localName(receiver),scope=captureProof.scopeOf(receiver);
             if(typeof name!=='string'||!scope||scope.target!==target||captureProof.scopeOf(node)!==scope||
                 !['arcade_whenSourceStarts','procedures_definition'].includes(scope.root.opcode))return null;
@@ -419,12 +419,27 @@ function create(runtime, cells, scoreOwner=null, sceneClock=null, frameDelta=nul
             let statement=node;const climbed=new Set();
             while(statement&&!chain.includes(statement)&&!climbed.has(statement)){climbed.add(statement);statement=read(statement.parent);}
             const end=chain.indexOf(statement);if(end<0)return null;
+            // The endpoint's inputs execute too. Closing only the preceding
+            // statements would let an earlier sibling call run before this read.
+            // Admit a closed primitive expression tree, not an unknown effect.
+            const endpointSeen=new Set();
+            const endpoint=b=>{
+                if(!b||endpointSeen.has(b))return false;endpointSeen.add(b);
+                if(b===node)return closedInputs(b,['ARRAY','INDEX']);
+                if(['math_number','bw_numberLiteral','text','bw_stringLiteral','arrays_specialValue'].includes(b.opcode))return !Object.keys(b.inputs||{}).length&&b.next==null;
+                let valid=b.opcode==='arcade_inspectValue'&&closedInputs(b,['VALUE','LIMIT'])||
+                    b.opcode==='arcade_functionArgument'&&closedInputs(b,['VALUE','REST']);
+                if(b===statement)valid=b.opcode==='data_setvariableto'&&closedInputs(b,['VALUE'])||
+                    b.opcode==='arcade_setLocal'&&closedInputs(b,['NAME','VALUE'])||b.opcode==='procedures_call';
+                return !!valid&&Object.values(b.inputs||{}).every(edge=>{const child=read(edge.block);return child?.parent===b.id&&endpoint(child);});
+            };
+            if(!endpoint(statement))return null;
             let allocation=-1;const resets=[];
             for(const {node:writer,scope:writerScope}of proof.writers){
                 if(writerScope!==scope||writer.opcode!=='arcade_setLocal')return null;
-                const at=chain.indexOf(writer),value=input(writer,'VALUE');if(at<0||at>=end||!closedInputs(writer,['NAME','VALUE'])||input(writer,'NAME')?.opcode!=='text')return null;
+                const at=chain.indexOf(writer),value=input(writer,'VALUE');if(at<0||at>=end||!closedInputs(writer,['NAME','VALUE'])||input(writer,'NAME')?.opcode!=='text'||input(writer,'NAME').parent!==writer.id||Object.keys(input(writer,'NAME').inputs||{}).length)return null;
                 if(fixedReset(value)){resets.push(at);continue;}
-                if(allocation>=0||value?.opcode!=='arrays_createReference'||!closedInputs(value,['VALUES'])||text(input(value,'VALUES'))!=='[]')return null;
+                if(allocation>=0||value?.opcode!=='arrays_createReference'||value.parent!==writer.id||value.next!=null||!closedInputs(value,['VALUES'])||text(input(value,'VALUES'))!=='[]'||Object.keys(input(value,'VALUES').inputs||{}).length||input(value,'VALUES').parent!==value.id)return null;
                 allocation=at;
             }
             if(allocation<0||resets.some(at=>at>=allocation))return null;
@@ -435,7 +450,7 @@ function create(runtime, cells, scoreOwner=null, sceneClock=null, frameDelta=nul
                 const found=localName(b);if(typeof found!=='string')return null;if(found!==name)continue;
                 if(b===receiver)continue;
                 const parent=read(b.parent),at=chain.indexOf(parent);
-                if(parent?.opcode!=='arrays_mutateReference'||!closedInputs(parent,['ARRAY','OP','VALUE'])||parent.inputs?.ARRAY?.block!==b.id||literal(parent,'OP')!=='push'||
+                if(parent?.opcode!=='arrays_mutateReference'||!closedInputs(parent,['ARRAY','OP','VALUE'])||parent.inputs?.ARRAY?.block!==b.id||literal(parent,'OP')!=='push'||input(parent,'OP')?.opcode!=='text'||Object.keys(input(parent,'OP').inputs||{}).length||input(parent,'OP').parent!==parent.id||
                     at<=allocation||at>=end)return null;
                 pushes.push(parent);
             }

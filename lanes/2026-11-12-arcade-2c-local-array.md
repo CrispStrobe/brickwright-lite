@@ -14,7 +14,10 @@ clean application qualification before source landing. No workflow, SDK/pin,
 threshold, original intake or guest event change is owned.
 
 The focused actual native query now selects one literal slot instead of merging
-all Array element domains. Three admitted slot cases and fifteen near misses
-pass; six source cuts are detected. The pre-change source fails the precision
+all Array element domains. Three admitted slot cases and twenty near misses
+pass; seven source cuts are detected. The pre-change source fails the precision
 control. Calls returning primitive values remain outside this proof. This does
 not complete the PXT staging fixture or authorize broader local Array effects.
+
+Endpoint expression inputs are closed too: sibling calls, aliases and extra
+inputs cannot run before the read under the new positional proof.
