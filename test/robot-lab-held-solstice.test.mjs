@@ -376,3 +376,39 @@ test('held output containment rejects dot-prefixed checkout descendants and acce
         rmSync(sibling, {recursive: true, force: true});
     }
 });
+test('held actual capture imports module-root LDR and MPD despite counterfeit cwd; unheld reads stay local', async () => {
+    const {captureIntakeProject} = await import('../scripts/lib/sim-lab-intake-roundtrip.mjs');
+    const cwd = process.cwd(), dir = mkdtempSync(join(tmpdir(), 'held-intake-other-cwd-'));
+    const expected = heldModelSource(id), imported = [], parts = ['actual-part'];
+    const stop = Error('unheld buffer captured');
+    let stopAtInput = false;
+    const page = {
+        getByTestId: () => ({click: async () => {}, setInputFiles: async file => { imported.push({name: file.name, text: file.buffer.toString('utf8')}); if (stopAtInput) throw stop; }}),
+        getByText: () => ({click: async () => {}}), keyboard: {press: async () => {}},
+        waitForEvent: async () => ({saveAs: async path => writeFileSync(path, 'source-control exported project')}),
+        waitForFunction: async fn => {
+            if (String(fn).includes('__bwProjectShareObservation')) return new Promise(() => {});
+        },
+        evaluate: async fn => {
+            const source = String(fn);
+            if (fn.name === 'projectProgramReady') return [{name: 'sprite', operations: [['move', 1]]}];
+            if (source.includes('projectRecord')) return {ldraw: '0 Author: CrispStrobe\n0 source-control record'};
+            if (source.includes('status:window.__bwSimLab.status')) return {status: 'ready', parts};
+            if (source.includes('session.model.parts')) return parts;
+        }
+    };
+    try {
+        mkdirSync(join(dir, 'overlay/scratch-gui/static/sim-lab/models'), {recursive: true});
+        writeFileSync(join(dir, `overlay/scratch-gui/static/sim-lab/models/${id}.ldr`), 'counterfeit alternate checkout bytes');
+        writeFileSync(join(dir, 'overlay/scratch-gui/static/sim-lab/models/ordinary-fixture.ldr'), 'unchanged ordinary cwd input');
+        writeFileSync(join(dir, 'brickwright-build.json'), '{}');
+        process.chdir(dir);
+        await captureIntakeProject(page, {shotsDir: dir, buildDir: dir, modelSourceFor: heldModelSource}, id);
+        assert.deepEqual(imported, [{name: `${id}.ldr`, text: expected}, {name: `${id}.mpd`, text: `0 FILE ${id}.ldr\n${expected}\n0 NOFILE\n`}]);
+        const gate = readFileSync(new URL('../scripts/lib/sim-lab-q5-browser-gate.mjs', import.meta.url), 'utf8');
+        assert.match(gate, /held \? \{retainPageErrors: true, modelSourceFor: heldModelSource\} : \{\}/, 'actual held caller supplies the fixed reader after opts spread');
+        imported.length = 0; stopAtInput = true;
+        await assert.rejects(captureIntakeProject(page, {shotsDir: dir, buildDir: dir}, 'ordinary-fixture'), error => error === stop);
+        assert.deepEqual(imported, [{name: 'ordinary-fixture.ldr', text: 'unchanged ordinary cwd input'}]);
+    } finally { process.chdir(cwd); rmSync(dir, {recursive: true, force: true}); }
+});
