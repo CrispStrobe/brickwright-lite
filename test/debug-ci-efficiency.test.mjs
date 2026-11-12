@@ -1,4 +1,5 @@
 import test from 'node:test';
+import {assertHeldLegacyConcurrency} from './helpers/held-legacy-concurrency.mjs';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 
@@ -6,6 +7,7 @@ const read = name => readFileSync(new URL(`../.github/workflows/${name}`, import
 
 test('cycle qualification gives a cheap verdict before heavy candidate and browser work', () => {
     const workflow = read('cycle-core-qualification.yml');
+    assertHeldLegacyConcurrency(workflow);
     const contracts = workflow.indexOf('  contracts:');
     const qualify = workflow.indexOf('  qualify:');
     assert.ok(contracts >= 0 && contracts < qualify);
