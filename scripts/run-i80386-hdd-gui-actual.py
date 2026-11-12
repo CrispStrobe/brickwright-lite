@@ -1578,7 +1578,7 @@ ACTUAL_V9_FRONTEND_CHUNK_ROLES = (
  ('i80386-debug-target', 'Pause the target before copying its master disk'),
  ('rp2040-watchdog', 'Watchdog count is decremented twice per tick.'),
  ('firmware-image-profile', 'image exceeds the 16 MiB profile'),
- ('z80-core-unimplemented', ' not yet implemented'),
+ ('z80-core-unimplemented', 'z80: opcode '),
  ('rp2040-gpio-unimplemented', ' is not implemented yet!'),
  ('basic-machine-runner', 'BasicMachineRunner: rom bytes required'),
  ('rp2040-usb-device', 'USB device connected (full-speed)'),
@@ -1595,7 +1595,7 @@ ACTUAL_V9_FRONTEND_CHUNK_ROLES = (
 # the 6th event (different ids), so the rule is stable under renumbering.
 # 2026-11-12: the Circuit panels integrated by #1726 are loaded on the same UI
 # path (two named chunks and seven role chunks above); re-measured on the official
-# Pages build of PR1627 52535a3a, selection equals the measured GET set (55).
+# Pages build of PR1627 52535a3a, selection equals the measured set: 54 GETs, one HEAD probe and the build json.
 ACTUAL_V9_NUMERIC_CHUNK = r'chunks/[0-9]+(?:\.[0-9a-f]{20})?\.js'
 ACTUAL_V9_FRONTEND_COUNT = len(ACTUAL_V9_FRONTEND_ROSTER) + len(ACTUAL_V9_FRONTEND_CHUNK_ROLES)
 # Reviewed subset was 8,674,638 bytes; the aggregate bound is the next power of
