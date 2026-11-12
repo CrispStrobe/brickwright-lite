@@ -304,8 +304,6 @@ export const MODELS = Object.freeze([
         manualJog: {A: {minDeg: -90, maxDeg: 0, stepDeg: 5, speedDps: 12}}},
     {file: 'cadence-geneva.ldr', title: {en: 'Cadence — Geneva indexing', de: 'Cadence — Malteserkreuz-Schaltung'}, example: 'cadence-geneva.bw', mat: 'plain',
         manualJog: {A: {minDeg: -45, maxDeg: 4365, stepDeg: 45, speedDps: 30}}},
-    {file: 'equinox-differential.ldr', title: {en: 'Equinox — differential lab', de: 'Equinox — Differenzial-Labor'}, example: 'equinox-differential.bw', mat: 'plain',
-        manualJog: {A: {minDeg: -30, maxDeg: 2550, stepDeg: 30, speedDps: 30}}},
     {file: 'helios-transmission.ldr', title: {en: 'Helios — epicyclic transmission', de: 'Helios — Planetengetriebe'}, example: 'helios-transmission.bw', mat: 'plain',
         manualJog: {A: {minDeg: 0, maxDeg: 360, stepDeg: 30, speedDps: 30}, B: {minDeg: -360, maxDeg: 0, stepDeg: 30, speedDps: 42}}},
     {file: 'orion-cardan.ldr', title: {en: 'Orion — double Cardan drive', de: 'Orion — Doppel-Kardanantrieb'}, example: 'orion-cardan.bw', mat: 'plain',

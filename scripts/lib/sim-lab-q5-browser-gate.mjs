@@ -24,7 +24,7 @@ import {p6DisconnectionLoss} from './sim-lab-p6-judges.mjs';
 import {obliquityDisconnectionLoss} from './sim-lab-obliquity-judge.mjs';
 import {r2DisconnectionLoss} from './sim-lab-r2-judges.mjs';
 
-export const R2_BROWSER_MODELS = Object.freeze(['cadence-geneva', 'equinox-differential', 'helios-transmission', 'orion-cardan']);
+export const R2_BROWSER_MODELS = Object.freeze(['cadence-geneva', 'helios-transmission', 'orion-cardan']);
 // Cadence's program sweeps 4320° at 30°/s (about 2.7 min per run); the law run, the disconnected run and the
 // fresh-context replay together exceed the 8-minute step cap, so its disconnected control is its own gate step
 // (`--examples=cadence-geneva-disconnected`, same shard), with the same assertions.
@@ -180,8 +180,8 @@ async function orreryDisconnected(browser, opts, c) {
     } finally { await page.close(); }
 }
 
-// The R2 family's disconnected controls: the registry's own part removal (Cadence's drive pin axle, Equinox's carrier
-// drive bevel, Helios's control gear, Orion's far middle fork), loaded as an LDraw file under the same example
+// The R2 family's disconnected controls: the registry's own part removal (Cadence's drive pin axle, Helios's control gear,
+// Orion's far middle fork), loaded as an LDraw file under the same example
 // program. The input still completes its route, the model's law is lost (r2DisconnectionLoss), and the registry
 // judge refuses the run.
 async function r2Disconnected(browser, opts, c, id) {

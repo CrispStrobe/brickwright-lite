@@ -1300,27 +1300,6 @@
     },
     {
       "models": [
-        "equinox-differential"
-      ],
-      "name": {
-        "en": "Open bevel differential bench",
-        "de": "Offenes Kegelraddifferenzial auf dem Prüfstand"
-      },
-      "aliases": [
-        "differential",
-        "open differential",
-        "bevel gears",
-        "carrier",
-        "planetary bevel",
-        "Differenzial",
-        "Ausgleichsgetriebe",
-        "Kegelrad",
-        "Achswellenrad",
-        "angular velocity sum"
-      ]
-    },
-    {
-      "models": [
         "helios-transmission"
       ],
       "name": {

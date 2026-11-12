@@ -26,7 +26,7 @@ import {evaluateTwistspanPair} from '../scripts/lib/sim-lab-twistspan-judge.mjs'
 import {judgeSwayShiftPair} from '../scripts/lib/sim-lab-swayshift-judge.mjs';
 const read=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8'),lab='overlay/scratch-gui/static/sim-lab/',catalog=catalogFrom(JSON.parse(read('overlay/scratch-gui/src/lib/bw-sim/part-meta/parts.json')));
 const selected=process.env.BW_MODEL_QUALIFY_MODELS?.split(',');
-const R2_MUTANTS=Object.freeze({'cadence-geneva':['dial_output_gear',{part:'3649.dat'},/dial = −star\/3/],'equinox-differential':['cover',{part:'3648.dat'},/12T:28T carrier drive/],
+const R2_MUTANTS=Object.freeze({'cadence-geneva':['dial_output_gear',{part:'3649.dat'},/dial = −star\/3/],
  'helios-transmission':['sun_input',{part:'94925.dat'},/compound planets/],'orion-cardan':['fork_middle_far',{turn:90},/middle forks in phase/]});
 test('qualification refuses unknown principles, missing models and incomplete disconnections',()=>{
  assert.throws(()=>qualificationContracts(['invented-pass']));assert.throws(()=>qualificationContracts([]));assert.throws(()=>disconnectedSource('0 model\n',['missing']));

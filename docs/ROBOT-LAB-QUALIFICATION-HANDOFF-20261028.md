@@ -96,7 +96,8 @@ pin, as proposed here, also loses the law (22.55°: the free coupler swings), bu
 removing a driven-side pin is the cleaner causal cut. Mutants (tilt turned 90°;
 Earth turning with its orbit) are refused. Browser gate on shard robotaddon15.
 
-**R2 DONE 2026-11-11 (#1729, `lanes/2026-11-11-robot-r2-judge-family.md`).** One judge module,
+**R2 DONE 2026-11-12 (#1729, `lanes/2026-11-11-robot-r2-judge-family.md`) for Cadence, Helios and Orion;
+Equinox stays experimental (below).** One judge module,
 `scripts/lib/sim-lab-r2-judges.mjs`; every constant is read from the compiled parts and catalogue tooth counts.
 Native runs (COLD 500), measured / gate:
 
@@ -117,7 +118,14 @@ registered judge. The four shipped LDR files changed only in STEP markers (autho
 Cadence and Helios now derive connected steps of at most six parts; Equinox's and Orion's author steps are split in
 order, because the instruction planner's adjacency counts neither gear meshes nor universal joints and the derived
 plans would show the differential casing and a middle-shaft marker as floating.
-Browser gates on shards robotaddon16–19.
+Browser gates on shards robotaddon16 (Cadence; its disconnected control is a second step because the law run,
+control run and replay of its 144 s program exceed the 8-minute step cap), robotaddon18 (Helios) and robotaddon19
+(Orion). **Equinox is not promoted:** its native law and controls pass (table above), but the browser gate's
+manual-control check stops every motor (power 0 = hold) and then jogs each port alone. With both outputs held the
+differential's carrier is locked (K = (L + R)/2), so motor A cannot reach its jog target (hosted chromium, twice,
+210° and 30° steps). That is the mechanism's physics; promotion needs a manual-control rule for coupled
+multi-motor mechanisms (the gate owner's decision). Its contract, registry move, fixture and shard were withdrawn;
+`differential-sum-v1` stays registered and its STEP split stays.
 
 Read-only triage from code and data on main `d318ed6e`; nothing was compiled
 or run. The experimental set is every id in

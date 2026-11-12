@@ -604,9 +604,9 @@
         "scope": "one headless run on the app branch engine; not a physical build"
       },
       "promotionReview": {
-        "date": "2026-11-11",
-        "decision": "PROMOTED",
-        "reason": "Registered judge differential-sum-v1 (judgeDifferentialSum): 12T:28T carrier drive, 12T:20T brakes and equal 12T side gears from the compiled parts; native run (COLD 500): L + R - 2K max 0.013 deg (gate 0.1), carrier vs (12/28)A 0.014 deg (gate 0.25), brakes vs (20/12) output 0.005/0.009 deg (gate 0.25), held outputs 0.25/0.20 deg (gate 1); frozen-output and 1 cm shift refused. Disconnection pinion (motor A's 12T bevel): input 2520 deg, carrier span 1.7 deg, carrier-law error 1078 deg (lost, bar 5), judge refuses. The handoff's carrier-gear cut (cover) also removes the planets' support: the model flies apart before the program's start check and the program refuses (stage 0), so it is not used. Wrong-model mutant (carrier ring 28T -> 24T) refused."
+        "date": "2026-11-12",
+        "decision": "BLOCKED",
+        "reason": "The native law and controls pass with the registered judge differential-sum-v1, but the browser gate's manual-control check cannot pass on this mechanism: it stops every motor (power 0 = hold) and then jogs each port alone, and a differential with both outputs held locks its carrier (K = (L + R)/2), so motor A cannot reach its jog target (hosted chromium, robotaddon17, twice: 210 deg and 30 deg steps). That is the mechanism's physics, not a model fault; promotion needs a manual-control rule for coupled multi-motor mechanisms, which belongs to the gate's owner. Native evidence kept: Registered judge differential-sum-v1 (judgeDifferentialSum): 12T:28T carrier drive, 12T:20T brakes and equal 12T side gears from the compiled parts; native run (COLD 500): L + R - 2K max 0.013 deg (gate 0.1), carrier vs (12/28)A 0.014 deg (gate 0.25), brakes vs (20/12) output 0.005/0.009 deg (gate 0.25), held outputs 0.25/0.20 deg (gate 1); frozen-output and 1 cm shift refused. Disconnection pinion (motor A's 12T bevel): input 2520 deg, carrier span 1.7 deg, carrier-law error 1078 deg (lost, bar 5), judge refuses. The handoff's carrier-gear cut (cover) also removes the planets' support: the model flies apart before the program's start check and the program refuses (stage 0), so it is not used. Wrong-model mutant (carrier ring 28T -> 24T) refused."
       }
     },
     {

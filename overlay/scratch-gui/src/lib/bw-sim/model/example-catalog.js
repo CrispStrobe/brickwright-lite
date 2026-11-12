@@ -2400,38 +2400,6 @@ export const MODEL_LESSONS = Object.freeze({
             "Geneva"
         ]
     },
-    "equinox-differential.ldr": {
-        "pieces": 98,
-        "motors": 3,
-        "hubs": [
-            "spike-prime"
-        ],
-        "topic": "gears",
-        "description": {
-            "en": "An open bevel differential on a bench: motor A drives the carrier, while motors B and C only coast or brake the outputs. In every stage the two outputs add up to twice the carrier, ω_L + ω_R = 2·ω_carrier.",
-            "de": "Ein offenes Kegelraddifferenzial auf dem Prüfstand: Motor A treibt den Träger, die Motoren B und C lassen die Abtriebe nur auslaufen oder bremsen sie. In jeder Stufe ergeben beide Abtriebe zusammen das Doppelte des Trägers, ω_L + ω_R = 2·ω_Träger."
-        },
-        "author": "CrispStrobe",
-        "license": "BSD-3-Clause",
-        "mechanism": {
-            "en": "Open bevel differential bench",
-            "de": "Offenes Kegelraddifferenzial auf dem Prüfstand"
-        },
-        "keywords": [
-            "Open bevel differential bench",
-            "Offenes Kegelraddifferenzial auf dem Prüfstand",
-            "differential",
-            "open differential",
-            "bevel gears",
-            "carrier",
-            "planetary bevel",
-            "Differenzial",
-            "Ausgleichsgetriebe",
-            "Kegelrad",
-            "Achswellenrad",
-            "angular velocity sum"
-        ]
-    },
     "helios-transmission.ldr": {
         "pieces": 156,
         "motors": 2,

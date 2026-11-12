@@ -1245,29 +1245,6 @@
       ]
     },
     {
-      "id": "equinox-differential",
-      "judge": "differential-sum-v1",
-      "parts": 98,
-      "ports": [
-        "A",
-        "B",
-        "C"
-      ],
-      "coldMs": 500,
-      "timeLimitMs": 90000,
-      "afterMs": 500,
-      "frameMs": 25,
-      "frozenOutput": "casing",
-      "disconnect": [
-        "pinion"
-      ],
-      "disconnectInputDeg": 2400,
-      "disconnectLoss": "r2",
-      "notRun": [
-        "webkit browser run (the browser gate, shard robotaddon17, runs chromium)"
-      ]
-    },
-    {
       "id": "helios-transmission",
       "judge": "willis-epicyclic-v1",
       "parts": 156,

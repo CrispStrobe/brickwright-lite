@@ -1,6 +1,9 @@
 # Robot Lab — R2 judge family: Cadence, Equinox, Helios, Orion (judges, controls, browser gates, promotion)
 
-Status: DONE 2026-11-11 (#1729) — claim and change in one PR.
+Status: DONE 2026-11-12 (#1729) for Cadence, Helios and Orion — claim and change in one PR. Equinox stays
+experimental: its native law and controls pass, but the browser gate's manual-control check stops every motor
+(hold) and jogs each port alone, and a differential with both outputs held locks its carrier, so motor A cannot
+reach a jog target. Its contract, registry move, fixture and shard were withdrawn; its judge stays registered.
 Owner: Claude, Robot Lab promotion lane.
 Branch: `lane/robot-r2-judge-family-20261111`.
 
