@@ -6,7 +6,7 @@ import {newModelsInteractions, newModelLesson, judgeNewModel} from './lib/sim-la
 import {replayIntakeProject} from './lib/sim-lab-intake-roundtrip.mjs';
 import {nineIntakeInteractions} from './lib/sim-lab-nine-intake-gate.mjs';
 import {NINE_INTAKES} from './lib/sim-lab-nine-intake-judge.mjs';
-import {q5BrowserInteractions,Q5_BROWSER_MODELS,Q5_HELD} from './lib/sim-lab-q5-browser-gate.mjs';
+import {q5BrowserInteractions,q5SeparateControl,Q5_BROWSER_MODELS,Q5_HELD,SEPARATE_CONTROL} from './lib/sim-lab-q5-browser-gate.mjs';
 import {scalingSteeringInteractions,scalingSteeringLesson} from './lib/sim-lab-scaling-steering-gate.mjs';
 import {ellipseEngineInteractions,ellipseEngineLesson} from './lib/sim-lab-ellipse-engine-gate.mjs';
 import {magneticChessInteractions,magneticChessLesson} from './lib/sim-lab-magnetic-chess-gate.mjs';
@@ -862,8 +862,16 @@ try {
                 finally { await lesson.close(); }
             }
         }
-        // Q5 promotions (#1683) Evenhand and RimRun, and R1 Obliquity Orrery: the registry law and its causal control, then the
+        // Q5 promotions (#1683) Evenhand and RimRun, R1 Obliquity Orrery and the R2 family: the registry law and its causal control, then the
         // nine-intake gate's checks (scripts/lib/sim-lab-q5-browser-gate.mjs).
+        // A promotion whose disconnected control runs as its own step (SEPARATE_CONTROL, sim-lab-q5-browser-gate.mjs).
+        for (const id of SEPARATE_CONTROL.filter(id => id === 'cadence-geneva' && runExample('cadence-geneva-disconnected.ldr'))) {
+            const page = await browser.newPage({viewport: {width: 1600, height: 1050}, serviceWorkers: 'block'});
+            page.on('pageerror', error => errors.push(error.stack || error.message));
+            page.on('dialog', dialog => dialog.accept());
+            try { await q5SeparateControl(page, {openSimLab, buildDir: build, shotsDir: resolve(artifacts, 'q5-models'), timeout: wallBudget(240000)}, id); }
+            finally { await page.close(); }
+        }
         for (const id of [...Q5_BROWSER_MODELS, ...Object.keys(Q5_HELD).filter(id => ONLY_EXAMPLES.includes(id))].filter(id => runExample(id + '.ldr'))) {
             const opts = {openSimLab, buildDir: build, shotsDir: resolve(artifacts, 'q5-models'), timeout: wallBudget(240000)};
             const page = await browser.newPage({viewport: {width: 1600, height: 1050}, serviceWorkers: 'block'});

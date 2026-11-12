@@ -1,0 +1,121 @@
+# HELIOS — Epicyclic transmission.
+# Open helios-transmission.ldr in Robot Lab, select Plain, Reset, then Run.
+# A supplies the main input. B supplies the rotating carrier control.
+# The output is passive: stock compound planetary gears determine its motion.
+# One unchanged A speed command covers all five plateaus and the control sweep.
+# This is an active two-input transmission, not a passive variable-radius belt.
+# Reset the complete model before every run. Use the supplied speeds.
+DEVICE SPIKE
+GLOBAL completed
+GLOBAL failed
+GLOBAL stage
+GLOBAL inputDegrees
+GLOBAL controlDegrees
+GLOBAL controlSpeed
+GLOBAL returnA
+GLOBAL returnB
+GLOBAL returnedA
+GLOBAL returnedB
+
+WHEN flag clicked:
+  set completed to 0
+  set failed to 0
+  set stage to 0
+  set inputDegrees to 0
+  set controlDegrees to 0
+  set controlSpeed to 0
+  set returnA to 0
+  set returnB to 0
+  set returnedA to 0
+  set returnedB to 0
+  IF ((lab status) = "no-model") or ((lab status) = "not-open") THEN:
+    set failed to 1
+    say "Open Helios in Robot Lab, select Plain, then Reset and Run."
+    stop all
+  lab start
+  lab stop motor A hold
+  lab stop motor B hold
+  wait 0.5 seconds
+  IF ((abs of (lab motor A angle)) > 3) or ((abs of (lab motor B angle)) > 3) THEN:
+    set failed to 1
+    say "Reset the complete Helios model before this demonstration."
+    stop all
+  reset timer
+  broadcast "Helios observe"
+  broadcast "Helios watchdog"
+  lab run motor A at 30 degrees per second
+  set stage to 1
+  set controlSpeed to -0
+  say "High output: main input speed stays unchanged."
+  lab stop motor B hold
+  wait 4 seconds
+  set stage to 2
+  set controlSpeed to -21
+  say "Reduced output: main input speed stays unchanged."
+  lab run motor B at controlSpeed degrees per second
+  wait 4 seconds
+  set stage to 3
+  set controlSpeed to -42
+  say "Unity output: main input speed stays unchanged."
+  lab run motor B at controlSpeed degrees per second
+  wait 4 seconds
+  set stage to 4
+  set controlSpeed to -63
+  say "Neutral output: main input speed stays unchanged."
+  lab run motor B at controlSpeed degrees per second
+  wait 4 seconds
+  set stage to 5
+  set controlSpeed to -84
+  say "Reverse output: main input speed stays unchanged."
+  lab run motor B at controlSpeed degrees per second
+  wait 4 seconds
+  set stage to 6
+  say "Sweep the carrier control: reverse through neutral to forward."
+  repeat 60:
+    change controlSpeed by 1.4
+    lab run motor B at controlSpeed degrees per second
+    wait 0.1 seconds
+  lab stop motor A hold
+  lab stop motor B hold
+  set stage to 7
+  wait 1 seconds
+  say "Return both powered members to their reset angles."
+  set returnA to (0 - (lab motor A angle))
+  set returnB to (0 - (lab motor B angle))
+  broadcast "Helios return A"
+  broadcast "Helios return B"
+  wait until (returnedA = 1) and (returnedB = 1)
+  wait 1 seconds
+  IF ((abs of (lab motor A angle)) > 2) or ((abs of (lab motor B angle)) > 2) THEN:
+    set failed to 1
+    say "An input missed its return. Inspect Helios and Reset."
+    stop all
+  set stage to 8
+  set completed to 1
+  say "Helios complete: forward, neutral, reverse and return. Reset to repeat."
+
+WHEN I receive "Helios return A":
+  lab run motor A for returnA degrees at 30 degrees per second
+  lab stop motor A hold
+  set returnedA to 1
+
+WHEN I receive "Helios return B":
+  lab run motor B for returnB degrees at 60 degrees per second
+  lab stop motor B hold
+  set returnedB to 1
+
+WHEN I receive "Helios observe":
+  repeat until completed = 1:
+    set inputDegrees to (lab motor A angle)
+    set controlDegrees to (lab motor B angle)
+    wait 0.05 seconds
+
+WHEN I receive "Helios watchdog":
+  repeat until completed = 1:
+    IF timer > 120 THEN:
+      set failed to 1
+      lab stop motor A hold
+      lab stop motor B hold
+      say "Helios stopped after its time limit. Inspect the model and Reset."
+      stop all
+    wait 0.05 seconds
