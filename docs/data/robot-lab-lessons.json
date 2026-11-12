@@ -6797,6 +6797,102 @@
         "phase-bridge-misphased.ldr",
         "wavemaker.ldr"
       ]
+    },
+    "solstice-pumpjack": {
+      "en": {
+        "what": "Walking-beam pump (pumpjack). Motor A turns a 16 mm crank. A 64 mm pitman joins the crank pin to one arm of a walking beam (48 mm from the beam pivot); the other arm (56 mm) carries a 64 mm pump rod that pushes a guided rack up and down like a pump plunger. Only the crank is driven; beam, rods and plunger are passive. No fluid is modelled.",
+        "try": [
+          "Open Solstice with its program, press Reset, then Run. The run takes about 55 s.",
+          "The first crank turn goes in four slow quarter-turn steps at 30°/s with a 3 s pause after each. At each pause, note the beam angle and the plunger height.",
+          "Then the crank turns back a full turn, forward a full turn and back again at 60°/s. Watch the beam reverse twice per crank turn and the plunger follow it.",
+          "Compare the two halves of the stroke: the beam does not swing up and down in equal crank angles, because the pitman is not perpendicular to the beam at both ends of its swing."
+        ],
+        "why": "Crank, pitman, beam arm and the fixed distance between the crank axis and the beam pivot form a four-bar linkage. The crank is the shortest bar and Grashof's condition holds, so the crank turns all the way round while the beam only rocks (a crank-rocker). For each crank angle φ the loop closes where the pitman length fits: |B(β) − P(φ)| = 64 mm fixes the beam angle β. The far arm then moves the pump rod, and the rod length fixes the plunger height on its guide.",
+        "matters": "Oil-field pumpjacks (nodding donkeys) and old mine pumps use exactly this layout: a fast, continuously turning crank becomes a slow, large up-and-down stroke at the well head. The same closed-loop calculation is used to size any four-bar linkage.",
+        "question": "From the built lengths alone, how far does the beam swing and how long is the plunger stroke for one crank turn?",
+        "answer": "Solving the loop over one crank turn gives a 42.40° beam swing and a 40.58 mm plunger stroke. The simulated beam follows the predicted angle within about 0.02° at every frame and the plunger within about 0.02 mm; the measured swing was 42.42° and the stroke 40.60 mm.",
+        "further": [
+          "Change the crank radius on paper: a longer crank gives a larger swing until the four-bar no longer satisfies Grashof's condition, and then the crank can no longer turn all the way.",
+          "The ratio of the beam arms (56/48) scales the plunger motion relative to the pitman end; a real pumpjack uses it to trade force for stroke.",
+          "Removing the crank pin disconnects the linkage: the motor still turns a full revolution but the beam no longer follows the law. That is the causal control used to qualify this model.",
+          "Compare Rod Ratio, which compares two connecting-rod lengths, and Cross Ratio, another four-bar with a closed-form law."
+        ]
+      },
+      "de": {
+        "what": "Schwengelpumpe (Pferdekopfpumpe). Motor A dreht eine Kurbel mit 16 mm Radius. Eine 64 mm lange Schubstange verbindet den Kurbelzapfen mit einem Arm des Schwengels (48 mm vom Drehpunkt); der andere Arm (56 mm) trägt eine 64 mm lange Pumpenstange, die eine geführte Zahnstange wie einen Pumpenkolben auf und ab bewegt. Nur die Kurbel ist angetrieben; Schwengel, Stangen und Kolben sind passiv. Flüssigkeit wird nicht modelliert.",
+        "try": [
+          "Öffne Solstice mit Programm, drücke Zurücksetzen und dann Start. Der Lauf dauert etwa 55 s.",
+          "Die erste Kurbelumdrehung erfolgt in vier langsamen Vierteldrehungen mit 30°/s und je 3 s Pause. Notiere in jeder Pause den Schwengelwinkel und die Kolbenhöhe.",
+          "Danach dreht die Kurbel mit 60°/s eine volle Umdrehung zurück, eine vor und wieder eine zurück. Beobachte, wie der Schwengel zweimal je Kurbelumdrehung umkehrt und der Kolben ihm folgt.",
+          "Vergleiche die beiden Hälften des Hubs: Der Schwengel schwingt nicht in gleichen Kurbelwinkeln auf und ab, weil die Schubstange nicht an beiden Enden des Ausschlags senkrecht zum Schwengel steht."
+        ],
+        "why": "Kurbel, Schubstange, Schwengelarm und der feste Abstand zwischen Kurbelachse und Schwengellager bilden ein Viergelenk. Die Kurbel ist das kürzeste Glied und die Grashof-Bedingung ist erfüllt, also läuft die Kurbel ganz herum, während der Schwengel nur schwingt (Kurbelschwinge). Für jeden Kurbelwinkel φ schließt sich die Kette dort, wo die Länge der Schubstange passt: |B(β) − P(φ)| = 64 mm legt den Schwengelwinkel β fest. Der andere Arm bewegt die Pumpenstange, und deren Länge legt die Kolbenhöhe an der Führung fest.",
+        "matters": "Pferdekopfpumpen auf Ölfeldern und alte Bergwerkspumpen nutzen genau diesen Aufbau: Eine schnelle, gleichmäßig drehende Kurbel wird zu einem langsamen, großen Auf und Ab am Bohrloch. Dieselbe Schließbedingung dient zur Auslegung jedes Viergelenks.",
+        "question": "Wie weit schwingt der Schwengel und wie lang ist der Kolbenhub bei einer Kurbelumdrehung, allein aus den gebauten Längen berechnet?",
+        "answer": "Die Lösung der Schließbedingung über eine Kurbelumdrehung ergibt 42,40° Schwenkwinkel und 40,58 mm Kolbenhub. Der simulierte Schwengel folgt dem vorhergesagten Winkel in jedem Bild auf etwa 0,02° genau, der Kolben auf etwa 0,02 mm; gemessen wurden 42,42° und 40,60 mm.",
+        "further": [
+          "Ändere den Kurbelradius auf dem Papier: Eine längere Kurbel vergrößert den Ausschlag, bis das Viergelenk die Grashof-Bedingung nicht mehr erfüllt; dann kann die Kurbel nicht mehr ganz herumlaufen.",
+          "Das Verhältnis der Schwengelarme (56/48) skaliert die Kolbenbewegung gegenüber dem Ende der Schubstange; eine echte Pumpe tauscht damit Kraft gegen Hub.",
+          "Ohne Kurbelzapfen ist die Kette getrennt: Der Motor dreht weiter eine volle Umdrehung, aber der Schwengel folgt dem Gesetz nicht mehr. Das ist die Kausalkontrolle, mit der dieses Modell geprüft wird.",
+          "Vergleiche Rod Ratio, das zwei Schubstangenlängen vergleicht, und Cross Ratio, ein weiteres Viergelenk mit geschlossenem Gesetz."
+        ]
+      },
+      "formula": {
+        "en": "Crank r = 16 mm, pitman Lp = 64 mm, beam arms 48 mm and 56 mm (opposite sides), pump rod Lr = 64 mm. For crank angle φ: |B(β) − P(φ)| = Lp gives the beam angle β; |S − D(β)| = Lr with S on the plunger guide gives the plunger position. Over one turn: swing 42.40°, stroke 40.58 mm.",
+        "de": "Kurbel r = 16 mm, Schubstange Lp = 64 mm, Schwengelarme 48 mm und 56 mm (gegenüberliegend), Pumpenstange Lr = 64 mm. Für den Kurbelwinkel φ: |B(β) − P(φ)| = Lp ergibt den Schwengelwinkel β; |S − D(β)| = Lr mit S auf der Kolbenführung ergibt die Kolbenlage. Über eine Umdrehung: Ausschlag 42,40°, Hub 40,58 mm."
+      },
+      "related": [
+        "rod-ratio.ldr",
+        "cross-ratio.ldr"
+      ]
+    },
+    "tempest-pendulum": {
+      "en": {
+        "what": "Serial double pendulum. Motor A turns a short carrier; from it hangs a 64 mm upper arm, and from the upper arm's end a second free arm. Each arm carries a SPIKE wheel as a bob. Both hinges are free: the motor only moves and then holds the carrier.",
+        "try": [
+          "Open Tempest with its program, press Reset, then Run. The run takes about 46 s.",
+          "The carrier swings quickly to −60°, then is held for 12 s. Watch the two arms: sometimes they swing together, sometimes against each other.",
+          "The carrier returns home and is held for 8 s, then pulses to +60° and holds again. Compare how the motion passes back and forth between the upper and lower arm.",
+          "Count swings: the slow, in-step motion takes about two thirds of a second per swing; the fast, opposed wobble is a bit over twice as quick."
+        ],
+        "why": "For small swings about the hanging rest, the two arm angles obey M·q̈ + K·q = 0. The mass matrix M comes from each arm's mass, centre of mass and moment of inertia; the stiffness K from gravity acting on the arms' centres of mass. Such a system has exactly two normal modes: a slow one (0.665 s) in which the lower arm swings 1.49 times as far as the upper arm in the same direction, and a fast one (0.299 s) in which it swings 1.44 times as far in the opposite direction. Every small swing is a sum of these two.",
+        "matters": "Normal modes describe any set of coupled oscillators: buildings in earthquakes, molecules, bridges and suspension systems. Engineers compute them from masses and stiffnesses before anything is built. For large swings the double pendulum becomes chaotic, which is why this law is only checked while the swings stay small.",
+        "question": "Why are the periods not those of two ideal point masses on massless 64 mm strings?",
+        "answer": "The real arms are beams with their own mass and inertia, and the bobs are wheels, not points. Using the engine's mass properties, the slow and fast periods are 0.6650 s and 0.2989 s with shape ratios +1.485 and −1.436, not the point-mass ratio of √2. The simulated arms show slow periods of 0.666 s in both held windows and a fast period of 0.299 s.",
+        "further": [
+          "Doubling both masses changes nothing: the modes depend on ratios of mass and inertia, and on lengths.",
+          "A larger pulse gives larger swings; beyond a few tens of degrees the linear model no longer holds and the motion stops being a clean sum of two modes.",
+          "If the motor's pins to the carrier are removed, the motor still turns but the carrier no longer follows it: that is the causal control used to qualify this model.",
+          "Compare Cascade, a two-link pendulum on a moving crank, and Pendulum Array, which shows period against length."
+        ]
+      },
+      "de": {
+        "what": "Serielles Doppelpendel. Motor A dreht einen kurzen Träger; daran hängt ein 64 mm langer Oberarm und an dessen Ende ein zweiter freier Arm. Jeder Arm trägt ein SPIKE-Rad als Pendelgewicht. Beide Gelenke sind frei: Der Motor bewegt den Träger nur und hält ihn dann fest.",
+        "try": [
+          "Öffne Tempest mit Programm, drücke Zurücksetzen und dann Start. Der Lauf dauert etwa 46 s.",
+          "Der Träger schwenkt schnell auf −60° und wird dann 12 s gehalten. Beobachte die beiden Arme: Mal schwingen sie gleichsinnig, mal gegeneinander.",
+          "Der Träger kehrt zurück und wird 8 s gehalten, dann schwenkt er auf +60° und hält wieder. Vergleiche, wie die Bewegung zwischen Ober- und Unterarm hin- und herwandert.",
+          "Zähle Schwingungen: Die langsame, gleichsinnige Bewegung braucht etwa zwei Drittel Sekunden je Schwingung; das schnelle Gegeneinander ist gut doppelt so schnell."
+        ],
+        "why": "Für kleine Ausschläge um die hängende Ruhelage gehorchen die beiden Armwinkel M·q̈ + K·q = 0. Die Massenmatrix M folgt aus Masse, Schwerpunkt und Trägheitsmoment jedes Arms, die Steifigkeit K aus der Schwerkraft an den Schwerpunkten. Ein solches System hat genau zwei Eigenschwingungen: eine langsame (0,665 s), bei der der Unterarm 1,49-mal so weit gleichsinnig schwingt wie der Oberarm, und eine schnelle (0,299 s), bei der er 1,44-mal so weit gegensinnig schwingt. Jeder kleine Ausschlag ist eine Summe dieser beiden.",
+        "matters": "Eigenschwingungen beschreiben jedes System gekoppelter Schwinger: Gebäude bei Erdbeben, Moleküle, Brücken und Fahrwerke. Ingenieure berechnen sie aus Massen und Steifigkeiten, bevor etwas gebaut wird. Bei großen Ausschlägen wird das Doppelpendel chaotisch; deshalb wird das Gesetz nur bei kleinen Ausschlägen geprüft.",
+        "question": "Warum sind die Perioden nicht die zweier idealer Punktmassen an masselosen 64-mm-Fäden?",
+        "answer": "Die echten Arme sind Balken mit eigener Masse und Trägheit, und die Gewichte sind Räder, keine Punkte. Mit den Masseneigenschaften der Simulation ergeben sich 0,6650 s und 0,2989 s mit Formverhältnissen +1,485 und −1,436 statt √2 für Punktmassen. Die simulierten Arme zeigen in beiden Haltefenstern langsame Perioden von 0,666 s und eine schnelle von 0,299 s.",
+        "further": [
+          "Verdoppelt man beide Massen, ändert sich nichts: Die Eigenschwingungen hängen von Verhältnissen der Massen und Trägheiten und von Längen ab.",
+          "Ein größerer Impuls gibt größere Ausschläge; jenseits einiger zehn Grad gilt das lineare Modell nicht mehr, und die Bewegung ist keine saubere Summe zweier Eigenschwingungen mehr.",
+          "Entfernt man die Stifte zwischen Motor und Träger, dreht der Motor weiter, aber der Träger folgt ihm nicht mehr: Das ist die Kausalkontrolle, mit der dieses Modell geprüft wird.",
+          "Vergleiche Cascade, ein Doppelpendel an einer bewegten Kurbel, und Pendulum Array, das die Periode über der Länge zeigt."
+        ]
+      },
+      "formula": {
+        "en": "M·q̈ + K·q = 0, M = [[I₁ + m₁|c₁−S|² + m₂|E−S|², m₂(E−S)·(c₂−E)], [·, I₂ + m₂|c₂−E|²]], K = g·diag(m₁h₁ + m₂h_E, m₂h₂). Compiled arms: slow mode 0.6650 s (lower/upper +1.485), fast mode 0.2989 s (−1.436).",
+        "de": "M·q̈ + K·q = 0, M = [[I₁ + m₁|c₁−S|² + m₂|E−S|², m₂(E−S)·(c₂−E)], [·, I₂ + m₂|c₂−E|²]], K = g·diag(m₁h₁ + m₂h_E, m₂h₂). Gebaute Arme: langsame Eigenschwingung 0,6650 s (unten/oben +1,485), schnelle 0,2989 s (−1,436)."
+      },
+      "related": [
+        "cascade.ldr",
+        "pendulum-array.ldr"
+      ]
     }
   }
 }

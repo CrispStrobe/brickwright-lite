@@ -122,29 +122,6 @@ export const EXPERIMENTAL_MODELS = Object.freeze([
         }
     },
     {
-        "file": "solstice-pumpjack.ldr",
-        "title": {
-            "en": "Solstice — walking-beam pumpjack",
-            "de": "Solstice — Schwingbalken-Pumpenantrieb"
-        },
-        "example": "solstice-pumpjack.bw",
-        "mat": "plain",
-        "experimental": true,
-        "blocked": false,
-        "intro": {
-            "en": "A Grashof crank-rocker nods a walking beam, and a hanging rod drives a guided rack up and down as a pump plunger; no fluid is modelled.",
-            "de": "Eine Kurbelschwinge nach Grashof lässt einen Schwengel nicken, und eine Hängestange bewegt eine geführte Zahnstange als Pumpenkolben auf und ab; Flüssigkeit wird nicht modelliert."
-        },
-        "manualJog": {
-            "A": {
-                "minDeg": 0,
-                "maxDeg": 360,
-                "stepDeg": 30,
-                "speedDps": 30
-            }
-        }
-    },
-    {
         "file": "inertia-loop.ldr",
         "title": {
             "en": "Inertia Loop — closed shape cycle",
@@ -222,29 +199,6 @@ export const EXPERIMENTAL_MODELS = Object.freeze([
                 "maxDeg": 1082,
                 "stepDeg": 15,
                 "speedDps": 30
-            }
-        }
-    },
-    {
-        "file": "tempest-pendulum.ldr",
-        "title": {
-            "en": "Tempest — serial double pendulum",
-            "de": "Tempest — serielles Doppelpendel"
-        },
-        "example": "tempest-pendulum.bw",
-        "mat": "plain",
-        "experimental": true,
-        "blocked": false,
-        "intro": {
-            "en": "A serial double pendulum: motor A pulses a short carrier, then two free 64mm arms swing under gravity alone. Small swings settle into normal modes with periods near 0.66s and 0.27s.",
-            "de": "Ein serielles Doppelpendel: Motor A gibt einem kurzen Träger einen Impuls, danach schwingen zwei freie, 64mm lange Arme allein unter der Schwerkraft. Kleine Ausschläge zerfallen in Eigenschwingungen mit Perioden um 0,66s und 0,27s."
-        },
-        "manualJog": {
-            "A": {
-                "minDeg": -60,
-                "maxDeg": 60,
-                "stepDeg": 15,
-                "speedDps": 90
             }
         }
     },
@@ -1008,43 +962,6 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
         ],
         "experimental": true
     },
-    "solstice-pumpjack.ldr": {
-        "pieces": 93,
-        "motors": 1,
-        "hubs": [
-            "spike-prime"
-        ],
-        "topic": "linkages",
-        "description": {
-            "en": "A Grashof crank-rocker nods a walking beam, and a hanging rod drives a guided rack up and down as a pump plunger; no fluid is modelled.",
-            "de": "Eine Kurbelschwinge nach Grashof lässt einen Schwengel nicken, und eine Hängestange bewegt eine geführte Zahnstange als Pumpenkolben auf und ab; Flüssigkeit wird nicht modelliert."
-        },
-        "author": "CrispStrobe",
-        "license": "BSD-3-Clause",
-        "mechanism": {
-            "en": "walking-beam pumpjack",
-            "de": "Schwingbalken-Pumpenantrieb"
-        },
-        "keywords": [
-            "pumpjack",
-            "beam pump",
-            "nodding donkey",
-            "walking beam",
-            "crank-rocker",
-            "Grashof",
-            "Pferdekopfpumpe",
-            "Tiefpumpe",
-            "Schwengel",
-            "Kurbelschwinge",
-            "Balancier",
-            "crank rocker",
-            "experimental",
-            "prototype",
-            "unverified",
-            "experimentell"
-        ],
-        "experimental": true
-    },
     "inertia-loop.ldr": {
         "pieces": 314,
         "motors": 2,
@@ -1157,38 +1074,6 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
             "Shapingmaschine",
             "Zeitverhältnis",
             "stroke timing",
-            "experimental",
-            "prototype",
-            "unverified",
-            "experimentell"
-        ],
-        "experimental": true
-    },
-    "tempest-pendulum.ldr": {
-        "pieces": 69,
-        "motors": 1,
-        "hubs": [
-            "spike-prime"
-        ],
-        "topic": "forces",
-        "description": {
-            "en": "A serial double pendulum: motor A pulses a short carrier, then two free 64mm arms swing under gravity alone. Small swings settle into normal modes with periods near 0.66s and 0.27s.",
-            "de": "Ein serielles Doppelpendel: Motor A gibt einem kurzen Träger einen Impuls, danach schwingen zwei freie, 64mm lange Arme allein unter der Schwerkraft. Kleine Ausschläge zerfallen in Eigenschwingungen mit Perioden um 0,66s und 0,27s."
-        },
-        "author": "CrispStrobe",
-        "license": "BSD-3-Clause",
-        "mechanism": {
-            "en": "serial double pendulum",
-            "de": "serielles Doppelpendel"
-        },
-        "keywords": [
-            "double pendulum",
-            "coupled oscillators",
-            "normal modes",
-            "chaos",
-            "Doppelpendel",
-            "Eigenschwingung",
-            "gekoppelte Pendel",
             "experimental",
             "prototype",
             "unverified",

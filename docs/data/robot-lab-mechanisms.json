@@ -1344,6 +1344,46 @@
         "Doppelkardan",
         "Gleichlauf"
       ]
+    },
+    {
+      "models": [
+        "solstice-pumpjack"
+      ],
+      "name": {
+        "en": "Walking-beam pumpjack",
+        "de": "Schwingbalken-Pumpenantrieb"
+      },
+      "aliases": [
+        "pumpjack",
+        "beam pump",
+        "nodding donkey",
+        "walking beam",
+        "crank-rocker",
+        "crank rocker",
+        "Grashof",
+        "Pferdekopfpumpe",
+        "Tiefpumpe",
+        "Schwengel",
+        "Kurbelschwinge",
+        "Balancier"
+      ]
+    },
+    {
+      "models": [
+        "tempest-pendulum"
+      ],
+      "name": {
+        "en": "Serial double pendulum — normal modes",
+        "de": "Serielles Doppelpendel — Eigenschwingungen"
+      },
+      "aliases": [
+        "double pendulum",
+        "coupled oscillators",
+        "normal modes",
+        "Doppelpendel",
+        "Eigenschwingung",
+        "gekoppelte Pendel"
+      ]
     }
   ]
 }

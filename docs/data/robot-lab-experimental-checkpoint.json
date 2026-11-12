@@ -1255,10 +1255,10 @@
       "archiveSha256": "1bb7219d2e2c27a6f0ea9b98c6b8186c18d5c34278e2d7652fec2b5877f42678",
       "originalLdrawEntry": "15-solstice/solstice-pumpjack.ldr",
       "originalLdrawSha256": "db4b2b9c62d70d24a1ae488c48c3975a2ec2accc34e28016ae725f70a5755b7f",
-      "canonicalLdrawSha256": "fb7edde35e329b35af4bcab107be8e5c560db48cbfcaaea451cc60cc9a168d72",
+      "canonicalLdrawSha256": "096fee118bbbb3cd89030fa1f6f58330cba3be8b6ad8fb4f992d9abf9b360a71",
       "originalProgramEntry": "15-solstice/solstice-pumpjack.bw",
       "programSha256": "77ebf25fd16693953e719959294c28d9bfe23690a06f3d31f2c4e0686c513a41",
-      "adaptation": "Author/license comments normalized to user-authorized CrispStrobe BSD-3-Clause; geometry unchanged; MPD wrapper generated from canonical LDR; program bytes unchanged.",
+      "adaptation": "Author/license comments normalized to user-authorized CrispStrobe BSD-3-Clause; geometry unchanged; MPD wrapper generated from canonical LDR; program bytes unchanged. Promotion (R4, 2026-11-12): start-guard pose repair: the crank (ROTOR) is re-posed to its gravity rest at -75 deg and the pitman, walking beam, pump rod and piston are placed by solving the linkage at that crank angle (link lengths, pins, parts, colours, IDs and the program unchanged). The saved pose was not an equilibrium: the unpowered cold settle sagged the crank 5.9 deg at 500 ms and 12.6 deg at 1 s; after the re-pose it moves 0.13 deg in 3 s (gravity equilibrium about -74.8 deg; poses at -70 and -80 deg sag 2.8 and 3.0 deg in 3 s).",
       "basicChecks": {
         "id": "solstice-pumpjack",
         "checked": [
@@ -1338,6 +1338,11 @@
           "note": "positive encoder = rack reaches top near 115°, so the lesson now names the 90° pause as near the top"
         },
         "scope": "one headless run on the app branch engine; not a physical build"
+      },
+      "promotionReview": {
+        "date": "2026-11-12",
+        "decision": "PROMOTED",
+        "reason": "Registered judge walking-beam-v1 (judgeWalkingBeam, scripts/lib/sim-lab-r4-judges.mjs): crank 16 mm, pitman 64 mm, beam arms 48/56 mm on opposite sides and pump rod 64 mm from the compiled pin joints; the closed loop predicts a 42.40 deg swing and a 40.58 mm stroke. Native run (COLD 500, strict ports, 2193 frames): beam vs the compiled loop 0.0187 deg (gate 0.1), piston 0.022 mm (gate 0.1), crank vs motor A 0.00002 deg, swing 42.417 deg vs 42.403 predicted, stroke 40.596 mm vs 40.578. Disconnection pin_P (crank pin): crank span 360.3 deg, beam-law error 42.39 deg (lost, bar 5), judge refuses. Wrong-model mutant (walking beam turned 180 deg about the crank axis) refused. Browser gate robotaddon23 pending (CI)."
       }
     },
     {
@@ -2072,9 +2077,9 @@
       "originalLdrawEntry": "tempest-pendulum.ldr",
       "originalLdrawSha256": "b7c6ac8f6d0b91227945f46424fe4b0668299fb65618e27bfed4a1b07c08e9c3",
       "originalProgramEntry": "tempest-pendulum.bw",
-      "adaptation": "Author header normalized from the serializer default Brickwright to CrispStrobe (both select the same own-file import policy) and a BSD-3-Clause !LICENSE line added; geometry and program bytes unchanged; MPD wrapper generated from canonical LDR.",
+      "adaptation": "Author header normalized from the serializer default Brickwright to CrispStrobe (both select the same own-file import policy) and a BSD-3-Clause !LICENSE line added; geometry and program bytes unchanged; MPD wrapper generated from canonical LDR. Promotion (R4, 2026-11-12): start-guard pose repair: the carrier (ROTOR) is re-posed to its gravity rest at 102.5 deg and both arms translated so they hang straight down from the moved shoulder (parts, colours, IDs and the program unchanged). The saved pose was not an equilibrium: the unpowered cold settle swung the carrier 39.8 deg by 400 ms (settling near 102.7 deg); after the re-pose it moves 0.08 deg at 500 ms and 0.25 deg at 2 s.",
       "placements": 69,
-      "canonicalLdrawSha256": "83b3e27b932f8356b5d2fff557f524f1ef589d871cf8f3aa64bd5647d86a3902",
+      "canonicalLdrawSha256": "c8c430c9224fe0348e6bc74425f59aa1d6ffe67c6c9f2d48b9f3ed7ae4173951",
       "programSha256": "6b4bd9bf40610de86dbd773622592b65127d72fd52d0b795a8b9ba3cc4786fd8",
       "basicChecks": {
         "id": "tempest-pendulum",
@@ -2123,6 +2128,11 @@
           "summary": "Slow normal mode: period 0.664 s (point-mass ideal 0.66 s), lower/upper amplitude about 1.4 (ideal sqrt 2), in phase; COLD=1000 start sags 86 deg and trips the datum guard."
         },
         "scope": "one headless run on the app branch engine; not a physical build"
+      },
+      "promotionReview": {
+        "date": "2026-11-12",
+        "decision": "PROMOTED",
+        "reason": "Registered judge double-pendulum-mode-v1 (judgeDoublePendulum, scripts/lib/sim-lab-r4-judges.mjs): two compound pendulums in series; normal modes from the engine's compiled mass properties (slow 0.6650 s, lower/upper +1.485; fast 0.2989 s, -1.436), recomputed by the qualification test. Native run (COLD 500, strict ports, 1832 frames): slow period 0.6664 / 0.6656 s in the two held windows (0.2 / 0.09 %, gate 1 %), fast 0.2988 s vs 0.2989, two-mode residuals 6.5 % / 3.4 % (gate 15 %). Disconnection motor_pin_h3 + motor_pin_h5 (motor no longer drives the carrier): motor span 120.8 deg, carrier drive error 107.1 deg (lost, bar 5), judge refuses. Cuts that change the hanging load (elbow_axle, either bob wheel) make the carrier re-settle (elbow cut 36.5 deg in 3.2 s) and the program's own start guard refuses at stage 0, so they cannot serve as the control. Wrong-model mutant (lower bob replaced by another wheel part) refused. Browser gate robotaddon24 pending (CI)."
       }
     },
     {
@@ -2776,6 +2786,11 @@
         "date": "2026-10-27",
         "decision": "STAYS_EXPERIMENTAL",
         "reason": "The qualification contract requires a cold settle of at least 500 ms; the recorded unpowered pusher droops about 4 deg/s and the unchanged program refuses to start beyond 2 deg (cold 1000 refused). The law is also only qualitative (dissipative contact chain). Not run on this branch."
+      },
+      "r4StartGuardReview": {
+        "date": "2026-11-12",
+        "decision": "STAYS_EXPERIMENTAL",
+        "reason": "Measured (COLD, unpowered): the pusher saved at +30 deg droops about 4 deg/s (-1.98 deg at 500 ms, -4.06 deg at 1 s, against the program's 2 deg guard) and comes to rest leaning on the first bob at -13.9 deg (bob -1.34 deg). Free contact begins near -12.5 deg, so the saved pose has about 12.5 deg of clearance and no gravity-rest pose exists short of the bob. A rest stop would block the program's -24.5 deg preload (same direction), so the fix is a design change (a counterweight of roughly 5.7 g on the pusher's free -40 hole; pusher 13.24 g with its centre of mass about 6.9 mm off the axis) plus a quantitative law. The supplied impact is strongly dissipative and no restitution is compiled, so no bound is derivable from compiled geometry yet."
       }
     },
     {

@@ -308,6 +308,10 @@ export const MODELS = Object.freeze([
         manualJog: {A: {minDeg: 0, maxDeg: 360, stepDeg: 30, speedDps: 30}, B: {minDeg: -360, maxDeg: 0, stepDeg: 30, speedDps: 42}}},
     {file: 'orion-cardan.ldr', title: {en: 'Orion — double Cardan drive', de: 'Orion — Doppel-Kardanantrieb'}, example: 'orion-cardan.bw', mat: 'plain',
         manualJog: {A: {minDeg: 0, maxDeg: 360, stepDeg: 15, speedDps: 60}}},
+    {file: 'solstice-pumpjack.ldr', title: {en: 'Solstice — walking-beam pumpjack', de: 'Solstice — Schwingbalken-Pumpenantrieb'}, example: 'solstice-pumpjack.bw', mat: 'plain',
+        manualJog: {A: {minDeg: -90, maxDeg: 0, stepDeg: 10, speedDps: 30}}},
+    {file: 'tempest-pendulum.ldr', title: {en: 'Tempest — serial double pendulum', de: 'Tempest — serielles Doppelpendel'}, example: 'tempest-pendulum.bw', mat: 'plain',
+        manualJog: {A: {minDeg: -30, maxDeg: 0, stepDeg: 5, speedDps: 30}}},
     {file: 'product-plotter.ldr', title: {en: 'Product Plotter — a mechanical multiplier', de: 'Product Plotter — ein mechanischer Multiplizierer'},
         example: 'product-plotter.bw', mat: 'plain', manualJog: {A: {minDeg: -15, maxDeg: 15, stepDeg: 2, speedDps: 10}, B: {minDeg: -75, maxDeg: 75, stepDeg: 10, speedDps: 30}}, intro: {
             en: 'Motor A tilts a straight guide; motor B slides the green rail. Their intersection moves the passive orange carriage, so similar triangles make its displacement equal the product of both inputs divided by a fixed reference length.',

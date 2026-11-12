@@ -127,6 +127,34 @@ differential's carrier is locked (K = (L + R)/2), so motor A cannot reach its jo
 multi-motor mechanisms (the gate owner's decision). Its contract, registry move, fixture and shard were withdrawn;
 `differential-sum-v1` stays registered and its STEP split stays.
 
+**R4 (2026-11-12, `lanes/2026-11-12-robot-r4-start-guards.md`, in review): Solstice and Tempest promoted after
+start-guard pose repairs; Impulse Line stays experimental (below).** Both saved poses were not gravity rests, so
+the unpowered cold settle moved the input before the program's start guard read it. Solstice's crank is re-posed to
+its rest at −75° with the linkage solved by kinematics; Tempest's carrier to 102.5° with both arms translated to
+hang straight. Programs are unchanged; link lengths, parts, colours and IDs are unchanged. One judge module,
+`scripts/lib/sim-lab-r4-judges.mjs`; constants come from the compiled joints and (Tempest) the engine's compiled
+mass properties, which the qualification test recomputes. Native runs (COLD 500, frameMs 25, strict ports),
+measured / gate:
+
+| Model | Judge | Cold sag before → after | Law error | Other measured | Disconnection (lost) |
+|---|---|---|---|---|---|
+| solstice-pumpjack | `walking-beam-v1` | crank 5.9° @ 500 ms, 12.6° @ 1 s → 0.13° in 3 s | beam vs loop 0.0187° / 0.1°; piston 0.022 mm / 0.1 mm | drive 0.00002°; swing 42.417° vs 42.403° predicted; stroke 40.596 vs 40.578 mm; 2193 frames | `pin_P`: crank span 360.3°, beam-law error 42.39° |
+| tempest-pendulum | `double-pendulum-mode-v1` | carrier 39.8° @ 400 ms → 0.08° @ 500 ms, 0.25° @ 2 s | slow period 0.6664 / 0.6656 s vs 0.6650 (0.2 % / 0.09 %, gate 1 %) | fast 0.2988 s vs 0.2989; two-mode residuals 6.5 % / 3.4 % (gate 15 %); 1832 frames | `motor_pin_h3` + `motor_pin_h5`: motor span 120.8°, carrier drive error 107.1° |
+
+Solstice's gravity equilibrium is about −74.8°; poses at −70° and −80° sag 2.8° and 3.0° in 3 s. Tempest's
+disconnection must leave the hanging load intact: cutting the elbow axle or either bob makes the carrier re-settle
+(elbow cut 36.5° in 3.2 s) and the program's own start guard refuses at stage 0, so those cuts cannot serve as the
+control; removing motor A's two pins to the carrier can. Wrong-model mutants (Solstice's walking beam turned 180°
+about the crank axis; Tempest's lower bob replaced by another wheel) are refused. Browser gates on shards
+robotaddon23 (Solstice) and robotaddon24 (Tempest), one step each (each program runs about a minute).
+**Impulse Line is not promoted:** its unpowered pusher (saved at +30°) droops about 4°/s (−1.98° at 500 ms,
+−4.06° at 1 s, against the program's 2° guard) and comes to rest leaning on the first bob at −13.9° (bob −1.34°).
+Free contact begins near −12.5°, so the saved pose has about 12.5° of clearance and no gravity-rest pose exists
+short of the bob. A rest stop would block the program's −24.5° preload (same direction), so the fix is a design
+change (a counterweight of roughly 5.7 g on the pusher's free −40 hole; the pusher is 13.24 g with its centre of
+mass about 6.9 mm off the axis) plus a quantitative law. The supplied impact is strongly dissipative and no
+restitution is compiled, so no bound is derivable from compiled geometry yet.
+
 Read-only triage from code and data on main `d318ed6e`; nothing was compiled
 or run. The experimental set is every id in
 `docs/data/robot-lab-experimental-checkpoint.json` without a contract in

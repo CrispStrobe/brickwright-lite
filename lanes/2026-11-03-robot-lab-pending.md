@@ -29,7 +29,10 @@ The full task list with exact steps is section 00 of
   equinox-differential: browser manual-control check vs a locked differential, see handoff 00000;
   `lanes/2026-11-11-robot-r2-judge-family.md`);
   R3 apex, aster-governor, vesper-quickreturn, bloom (geometry repairs);
-  R4 solstice-pumpjack, tempest-pendulum, impulse-line (start-guard poses);
+  R4 solstice-pumpjack, tempest-pendulum, impulse-line (start-guard poses; solstice-pumpjack and
+  tempest-pendulum re-posed and in review on `lane/robot-r4-start-guards-20261112`; impulse-line stays
+  experimental: no gravity-rest pose short of the bob, needs a design change, see handoff 00000;
+  `lanes/2026-11-12-robot-r4-start-guards.md`);
   R5 spiral-scribe, quiet-partner; R6 pan-shift, inertia-loop; R7
   vector-delta (blocked by a missing part).
 - E1 (2026-11-10, open): Jolt enhanced internal-edge removal for tile-joint

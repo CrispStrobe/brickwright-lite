@@ -2469,6 +2469,68 @@ export const MODEL_LESSONS = Object.freeze({
             "Gleichlauf"
         ]
     },
+    "solstice-pumpjack.ldr": {
+        "pieces": 93,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "linkages",
+        "description": {
+            "en": "A crank-rocker four-bar nods a walking beam, and a 64 mm pump rod drives a guided rack as a pump plunger (no fluid is modelled). From the compiled lengths alone the loop predicts a 42.40° beam swing and a 40.58 mm stroke; the simulated beam follows it within 0.02°.",
+            "de": "Eine Kurbelschwinge lässt einen Schwengel nicken, und eine 64 mm lange Pumpenstange bewegt eine geführte Zahnstange als Pumpenkolben (Flüssigkeit wird nicht modelliert). Allein aus den gebauten Längen sagt die Gelenkkette 42,40° Schwenkwinkel und 40,58 mm Hub voraus; der simulierte Schwengel folgt ihr auf 0,02° genau."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Walking-beam pumpjack",
+            "de": "Schwingbalken-Pumpenantrieb"
+        },
+        "keywords": [
+            "Walking-beam pumpjack",
+            "Schwingbalken-Pumpenantrieb",
+            "pumpjack",
+            "beam pump",
+            "nodding donkey",
+            "walking beam",
+            "crank-rocker",
+            "crank rocker",
+            "Grashof",
+            "Pferdekopfpumpe",
+            "Tiefpumpe",
+            "Schwengel",
+            "Kurbelschwinge",
+            "Balancier"
+        ]
+    },
+    "tempest-pendulum.ldr": {
+        "pieces": 69,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "forces",
+        "description": {
+            "en": "Motor A pulses a short carrier and then holds it still; two free 64 mm arms swing under gravity alone. Every small swing is the sum of two normal modes computed from the arms' masses and inertias: a slow 0.665 s mode with both arms in step and a fast 0.299 s mode with the arms opposed.",
+            "de": "Motor A gibt einem kurzen Träger einen Impuls und hält ihn dann still; zwei freie, 64 mm lange Arme schwingen allein unter der Schwerkraft. Jeder kleine Ausschlag ist die Summe zweier Eigenschwingungen, berechnet aus Massen und Trägheitsmomenten der Arme: einer langsamen mit 0,665 s, bei der beide Arme gleichsinnig schwingen, und einer schnellen mit 0,299 s, bei der sie gegeneinander schwingen."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Serial double pendulum — normal modes",
+            "de": "Serielles Doppelpendel — Eigenschwingungen"
+        },
+        "keywords": [
+            "Serial double pendulum — normal modes",
+            "Serielles Doppelpendel — Eigenschwingungen",
+            "double pendulum",
+            "coupled oscillators",
+            "normal modes",
+            "Doppelpendel",
+            "Eigenschwingung",
+            "gekoppelte Pendel"
+        ]
+    },
     "product-plotter.ldr": {
         "pieces": 301,
         "motors": 2,
