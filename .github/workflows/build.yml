@@ -160,8 +160,8 @@ permissions:
 # kind — a label event (keyed by the label's name) never cancels a code push's
 # run, and an unrelated label never cancels the ci:full run.
 concurrency:
-  group: ${{ github.ref == 'refs/heads/main' && format('pages-{0}', github.sha) || (github.event.pull_request.number && format('{0}-pr-{1}-{2}', github.workflow, github.event.pull_request.number, (github.event.action == 'labeled' || github.event.action == 'unlabeled') && format('label-{0}', github.event.label.name) || 'code') || format('{0}-branch-{1}', github.workflow, github.ref_name)) }}
-  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ (github.event.action == 'labeled' || github.event.action == 'unlabeled') && format('label-{0}', github.event.label.name) || 'code' }}
+  cancel-in-progress: ${{ github.ref_type != 'tag' && (github.event_name == 'push' || github.event_name == 'pull_request') }}
 jobs:
   # CHANGE SCOPE. Decides the tiers once, for every job below.
   #   fast     — unit shards, build, corpus: every non-label event, unless the

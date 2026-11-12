@@ -18,9 +18,8 @@ permissions:
   actions: read
 
 concurrency:
-  group: reference-qualified-instruments-${{ github.event_name }}-${{ github.sha }}
-  cancel-in-progress: false
-
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref_type != 'tag' && (github.event_name == 'push' || github.event_name == 'pull_request') }}
 env:
   REVIEWED_STUDY_HEAD: ${{ vars.REFERENCE_QUALIFIED_STUDY_HEAD }}
   ADMITTED_INTENT: 2b3a5be44e6dcfcd3fbef73c5888921118c792a6825795066258154fe793b430

@@ -1409,3 +1409,19 @@ export/reload and forward-debug GUI acceptance.
 
 Current source status: [separately reviewed V9 arming](../lanes/2026-10-27-x86-finite-v9-resolver-role.md#separate-v9-source-arming-checkpoint--2026-10-27)
 is armed but unselected; final source CI, Build admission and actual events remain pending.
+
+## GUI HDD and forward-debug follow-through (2026-11-12)
+
+The selected eighth GUI acceptance event failed at the editor-tab round trip:
+the application exposes the accessible label `Circuit`, while the scenario
+looked for `Circuits`. Its HDD export and fresh readback passed, and the
+forward-debug trace reached pause after resume; the tab round trip did not
+execute. Preserve the failed event and its original evidence; it is spent.
+
+PR #1627 corrects the exact accessible-label lookup and adds a focused control
+against the actual GUI label. Refresh its head and all enabled checks before
+acting. Source controls do not prove the GUI journey: separately admit and
+run the next appropriately authorized acceptance event, then independently
+join its original evidence. Require the Circuit-to-Code round trip to preserve
+the same target, paused state and complete register readback. Do not repeat the
+spent event or claim whole-system qualification from the earlier HDD success.
