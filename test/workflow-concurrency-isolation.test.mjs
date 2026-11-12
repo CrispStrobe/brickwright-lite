@@ -3,20 +3,10 @@ import {readFileSync} from 'node:fs';
 import test from 'node:test';
 import vm from 'node:vm';
 
-const names = ["ack-z80-cpm", "arcade-controls", "basic-oracle", "build", "debugger", "i80386-hdd-gui-actual", "i8086-execution", "makecode-arcade-bases", "mobile", "native-installed-qualification", "pascal-ack-image", "robot-lab-own-firmware", "rust-notices", "spike-linux-package", "target-performance", "tauri"];
-const labeled = new Set(['build','i80386-hdd-gui-actual']);
-const reviewedPolicy = "concurrency:\n  group: ${{ github.workflow }}${{ !(github.ref_type != 'tag' && (github.event_name == 'push' || github.event_name == 'pull_request')) && format('-isolated-{0}', github.run_id) || '' }}-${{ github.ref }}\n  cancel-in-progress: ${{ github.ref_type != 'tag' && (github.event_name == 'push' || github.event_name == 'pull_request') }}\n";
+import {assertReviewedConcurrency} from './helpers/reviewed-concurrency-projections.mjs';
+const names = ['ack-z80-cpm','arcade-controls','basic-oracle','build','debugger','i80386-freedos-circuits-direct-actual','i80386-hdd-gui-actual','i80386-native-font-selection','i8086-execution','makecode-arcade-bases','mobile','native-installed-qualification','pascal-ack-image','reference-qualified-instruments','robot-lab-own-firmware','robot-model-webkit-comparison','rust-notices','spike-linux-package','target-performance','tauri','vendor-freshness'];
+const labeled = new Set(['build','i80386-freedos-circuits-direct-actual','i80386-hdd-gui-actual','i80386-native-font-selection']);
 const labelSuffix = "-${{ (github.event.action == 'labeled' || github.event.action == 'unlabeled') && format('label-{0}', github.event.label.name) || 'code' }}";
-const assertReviewedConcurrency = (text, {labels = false} = {}) => {
-    const policy = labels ? reviewedPolicy.replace('${{ github.ref }}', '${{ github.ref }}' + labelSuffix) : reviewedPolicy;
-    assert.equal((text.match(/^concurrency:/gm) || []).length, 1, 'one workflow concurrency block');
-    const heading = /^concurrency:\n/m.exec(text);
-    assert.ok(heading, 'workflow concurrency mapping exists');
-    const rest = text.slice(heading.index + heading[0].length);
-    const end = /^[A-Za-z_][A-Za-z0-9_-]*:/m.exec(rest)?.index ?? rest.length;
-    const block = heading[0] + rest.slice(0, end).replace(/\n+$/, '\n');
-    assert.equal(block, policy, 'exact reviewed event/ref isolation policy');
-};
 const expand = (text, github) => text.replace(/\$\{\{(.*?)\}\}/g, (_, expression) => String(vm.runInNewContext(expression, {github, format: (pattern, ...args) => pattern.replace(/\{(\d+)\}/g, (_, index) => String(args[index]))})));
 const sample = (overrides = {}) => ({workflow:'Workflow',ref:'refs/heads/topic',ref_type:'branch',event_name:'push',event:{action:'synchronize',label:{name:'ci:full'}},run_id:101,...overrides});
 const policy = (source, github) => {

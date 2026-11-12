@@ -76,7 +76,7 @@ import {readFileSync, existsSync, lstatSync, mkdtempSync, writeFileSync, rmSync}
 import {tmpdir} from 'node:os';
 import path from 'node:path';
 import vm from 'node:vm';
-import {hddBeforeConcurrencyControl, hddHistoricalHashBody, studyBeforeConcurrencyPolicy} from './helpers/reviewed-concurrency-projections.mjs';
+import {reviewedPolicy, hddBeforeConcurrencyControl, hddHistoricalHashBody, studyBeforeConcurrencyPolicy} from './helpers/reviewed-concurrency-projections.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const PINS = path.join(ROOT, 'vendor-pins.json');
@@ -1065,6 +1065,46 @@ test('the previous F7/F8 CUI pin is admitted only in the exact literal F7/F8 map
     }
 });
 
+test('reviewed scheduler-test delta reconstructs the original historical test bytes', () => {
+    const file = 'test/i80386-hdd-gui-actual.test.mjs';
+    const source = readFileSync(path.join(ROOT, file), 'utf8');
+    const delta = JSON.parse(readFileSync(path.join(ROOT, 'test/fixtures/i80386-concurrency-test-review.json'), 'utf8'));
+    assert.equal(delta.length, 4, 'one helper and three caller changes, no producer or reader change');
+    let restored = source;
+    for (const {before, after} of delta) {
+        assert.equal(restored.split(after).length, 2, 'each exact reviewed source replacement occurs once');
+        restored = restored.replace(after, before);
+    }
+    assert.equal(Buffer.byteLength(restored), 637722);
+    assert.equal(createHash('sha256').update(restored).digest('hex'), '33181b4e00861a13c9a155296d14539771b07cc3dbb510d046bd0c55669bc1d2',
+        'the original complete source profile remains binding after reversing the reviewed delta');
+});
+
+test('completed study scheduler projection rejects policy drift and retains unrelated bytes', () => {
+    const file = '.github/workflows/reference-qualified-instruments.yml';
+    const text = readFileSync(path.join(ROOT, file), 'utf8');
+    const original = studyBeforeConcurrencyPolicy(file, text);
+    assert.equal(createHash('sha256').update(original).digest('hex'), SEALED_STUDY_FILES[file]);
+    for (const mutation of [
+        text.replace(reviewedPolicy, ''),
+        text + reviewedPolicy,
+        text.replace(reviewedPolicy, "concurrency:\n  group: reference-qualified-instruments-${{ github.event_name }}-${{ github.sha }}\n  cancel-in-progress: false\n\n"),
+        text.replace('${{ github.workflow }}', 'other-workflow'),
+        text.replace('${{ github.ref }}', '${{ github.sha }}'),
+        text.replace("github.ref_type != 'tag'", "github.ref_type == 'tag'"),
+        text.replace("github.event_name == 'push'", "github.event_name == 'workflow_dispatch'"),
+        text.replace("github.event_name == 'pull_request'", "github.event_name == 'pull_request_target'"),
+        text.replace('  contents: read', '  contents: write'),
+        text.replace('timeout-minutes: 75', 'timeout-minutes: 76'),
+        text.replace('if: github.repository', 'if: true || github.repository'),
+        text + '# unrelated drift\n',
+    ]) {
+        assert.notEqual(mutation, text);
+        assert.throws(() => judgeFile(file, mutation, known));
+    }
+    assert.equal(studyBeforeConcurrencyPolicy(file, text + '# unrelated drift\n'), original + '# unrelated drift\n');
+});
+
 test('reviewed current bodies preserve the four original historical source positions', () => {
     const files = [
         'scripts/run-i80386-hdd-gui-actual.py',
@@ -1097,6 +1137,13 @@ test('reviewed current bodies preserve the four original historical source posit
         admitted += cui.length + board.length;
         assert.deepEqual(judgeFile(file, body, knownRoles), [],
             'only exact reviewed historical positions are admitted');
+        if (file.endsWith('.test.mjs')) {
+            const changedHelper = body.replace('policy drift refuses', 'policy drift accepted');
+            assert.notEqual(changedHelper, body);
+            assert.deepEqual(historicalCuiSpans(file, changedHelper, knownRoles), [],
+                'even a change confined to the reviewed scheduler helper revokes historical occurrence roles');
+            assert.ok(judgeFile(file, changedHelper, knownRoles).length > 0);
+        }
         const alias = file.endsWith('.py') ? body + "\nglobals()['CURRENT_BOARD'] = BOARD\n" :
             body + '\nconst CURRENT_CUI = HISTORICAL_X86_CUI_V5_V7;\n';
         assert.ok(judgeFile(file, alias, knownRoles).length > 0, 'dynamic alias cannot gain a role');
