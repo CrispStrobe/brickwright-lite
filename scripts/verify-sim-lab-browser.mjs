@@ -862,7 +862,7 @@ try {
                 finally { await lesson.close(); }
             }
         }
-        // Q5 promotions (#1683) Evenhand and RimRun, R1 Obliquity Orrery, the R2 family and R4 (Solstice, Tempest): the registry law and its causal control, then the
+        // Q5 promotions (#1683) Evenhand and RimRun, R1 Obliquity Orrery, the R2 family and R4 (Tempest): the registry law and its causal control, then the
         // nine-intake gate's checks (scripts/lib/sim-lab-q5-browser-gate.mjs).
         // A promotion whose disconnected control runs as its own step (SEPARATE_CONTROL, sim-lab-q5-browser-gate.mjs).
         for (const id of SEPARATE_CONTROL.filter(id => id === 'cadence-geneva' && runExample('cadence-geneva-disconnected.ldr'))) {

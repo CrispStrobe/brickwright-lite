@@ -127,8 +127,8 @@ differential's carrier is locked (K = (L + R)/2), so motor A cannot reach its jo
 multi-motor mechanisms (the gate owner's decision). Its contract, registry move, fixture and shard were withdrawn;
 `differential-sum-v1` stays registered and its STEP split stays.
 
-**R4 (2026-11-12, `lanes/2026-11-12-robot-r4-start-guards.md`, in review): Solstice and Tempest promoted after
-start-guard pose repairs; Impulse Line stays experimental (below).** Both saved poses were not gravity rests, so
+**R4 (2026-11-12, `lanes/2026-11-12-robot-r4-start-guards.md`, in review): Tempest promoted after a start-guard
+pose repair; Solstice (re-posed) and Impulse Line stay experimental (below).** Both saved poses were not gravity rests, so
 the unpowered cold settle moved the input before the program's start guard read it. Solstice's crank is re-posed to
 its rest at −75° with the linkage solved by kinematics; Tempest's carrier to 102.5° with both arms translated to
 hang straight. Programs are unchanged; link lengths, parts, colours and IDs are unchanged. One judge module,
@@ -144,9 +144,15 @@ measured / gate:
 Solstice's gravity equilibrium is about −74.8°; poses at −70° and −80° sag 2.8° and 3.0° in 3 s. Tempest's
 disconnection must leave the hanging load intact: cutting the elbow axle or either bob makes the carrier re-settle
 (elbow cut 36.5° in 3.2 s) and the program's own start guard refuses at stage 0, so those cuts cannot serve as the
-control; removing motor A's two pins to the carrier can. Wrong-model mutants (Solstice's walking beam turned 180°
-about the crank axis; Tempest's lower bob replaced by another wheel) are refused. Browser gates on shards
-robotaddon23 (Solstice) and robotaddon24 (Tempest), one step each (each program runs about a minute).
+control; removing motor A's two pins to the carrier can. Tempest's wrong-model mutant (lower bob replaced by another
+wheel) is refused. Browser gate on shard robotaddon24, one step (the program runs about a minute).
+**Solstice is not promoted:** native runs pass walking-beam-v1 (beam 0.019°, piston 0.022 mm at both 25 ms and
+33 ms frames), but the local chromium browser gate (Node 22, production build) measured beam error 0.132° and
+piston 0.17 mm against the frozen 0.1° / 0.1 mm bounds, a steady offset during the fast reverse cycle at crank
+235–247°. The likely cause is a solver-setting difference between the browser and the native helper, to be
+investigated separately; no bound changes. Its contract, registry move, fixture and shard were withdrawn; the
+re-pose and the registered judge `walking-beam-v1` stay. Next: browser/native solver parity, then re-promotion
+at 0.1°.
 **Impulse Line is not promoted:** its unpowered pusher (saved at +30°) droops about 4°/s (−1.98° at 500 ms,
 −4.06° at 1 s, against the program's 2° guard) and comes to rest leaning on the first bob at −13.9° (bob −1.34°).
 Free contact begins near −12.5°, so the saved pose has about 12.5° of clearance and no gravity-rest pose exists

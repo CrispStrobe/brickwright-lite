@@ -122,6 +122,29 @@ export const EXPERIMENTAL_MODELS = Object.freeze([
         }
     },
     {
+        "file": "solstice-pumpjack.ldr",
+        "title": {
+            "en": "Solstice — walking-beam pumpjack",
+            "de": "Solstice — Schwingbalken-Pumpenantrieb"
+        },
+        "example": "solstice-pumpjack.bw",
+        "mat": "plain",
+        "experimental": true,
+        "blocked": false,
+        "intro": {
+            "en": "A Grashof crank-rocker nods a walking beam, and a hanging rod drives a guided rack up and down as a pump plunger; no fluid is modelled.",
+            "de": "Eine Kurbelschwinge nach Grashof lässt einen Schwengel nicken, und eine Hängestange bewegt eine geführte Zahnstange als Pumpenkolben auf und ab; Flüssigkeit wird nicht modelliert."
+        },
+        "manualJog": {
+            "A": {
+                "minDeg": 0,
+                "maxDeg": 360,
+                "stepDeg": 30,
+                "speedDps": 30
+            }
+        }
+    },
+    {
         "file": "inertia-loop.ldr",
         "title": {
             "en": "Inertia Loop — closed shape cycle",
@@ -955,6 +978,43 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
             "Muffe",
             "Fliehgewichte",
             "Drehzahlregler",
+            "experimental",
+            "prototype",
+            "unverified",
+            "experimentell"
+        ],
+        "experimental": true
+    },
+    "solstice-pumpjack.ldr": {
+        "pieces": 93,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "linkages",
+        "description": {
+            "en": "A Grashof crank-rocker nods a walking beam, and a hanging rod drives a guided rack up and down as a pump plunger; no fluid is modelled.",
+            "de": "Eine Kurbelschwinge nach Grashof lässt einen Schwengel nicken, und eine Hängestange bewegt eine geführte Zahnstange als Pumpenkolben auf und ab; Flüssigkeit wird nicht modelliert."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "walking-beam pumpjack",
+            "de": "Schwingbalken-Pumpenantrieb"
+        },
+        "keywords": [
+            "pumpjack",
+            "beam pump",
+            "nodding donkey",
+            "walking beam",
+            "crank-rocker",
+            "Grashof",
+            "Pferdekopfpumpe",
+            "Tiefpumpe",
+            "Schwengel",
+            "Kurbelschwinge",
+            "Balancier",
+            "crank rocker",
             "experimental",
             "prototype",
             "unverified",

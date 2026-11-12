@@ -2469,40 +2469,6 @@ export const MODEL_LESSONS = Object.freeze({
             "Gleichlauf"
         ]
     },
-    "solstice-pumpjack.ldr": {
-        "pieces": 93,
-        "motors": 1,
-        "hubs": [
-            "spike-prime"
-        ],
-        "topic": "linkages",
-        "description": {
-            "en": "A crank-rocker four-bar nods a walking beam, and a 64 mm pump rod drives a guided rack as a pump plunger (no fluid is modelled). From the compiled lengths alone the loop predicts a 42.40° beam swing and a 40.58 mm stroke; the simulated beam follows it within 0.02°.",
-            "de": "Eine Kurbelschwinge lässt einen Schwengel nicken, und eine 64 mm lange Pumpenstange bewegt eine geführte Zahnstange als Pumpenkolben (Flüssigkeit wird nicht modelliert). Allein aus den gebauten Längen sagt die Gelenkkette 42,40° Schwenkwinkel und 40,58 mm Hub voraus; der simulierte Schwengel folgt ihr auf 0,02° genau."
-        },
-        "author": "CrispStrobe",
-        "license": "BSD-3-Clause",
-        "mechanism": {
-            "en": "Walking-beam pumpjack",
-            "de": "Schwingbalken-Pumpenantrieb"
-        },
-        "keywords": [
-            "Walking-beam pumpjack",
-            "Schwingbalken-Pumpenantrieb",
-            "pumpjack",
-            "beam pump",
-            "nodding donkey",
-            "walking beam",
-            "crank-rocker",
-            "crank rocker",
-            "Grashof",
-            "Pferdekopfpumpe",
-            "Tiefpumpe",
-            "Schwengel",
-            "Kurbelschwinge",
-            "Balancier"
-        ]
-    },
     "tempest-pendulum.ldr": {
         "pieces": 69,
         "motors": 1,

@@ -1288,27 +1288,6 @@
       ]
     },
     {
-      "id": "solstice-pumpjack",
-      "judge": "walking-beam-v1",
-      "parts": 93,
-      "ports": [
-        "A"
-      ],
-      "coldMs": 500,
-      "timeLimitMs": 90000,
-      "afterMs": 500,
-      "frameMs": 25,
-      "frozenOutput": "walking_beam",
-      "disconnect": [
-        "pin_P"
-      ],
-      "disconnectInputDeg": 350,
-      "disconnectLoss": "r4",
-      "notRun": [
-        "webkit browser run (the browser gate, shard robotaddon23, runs chromium)"
-      ]
-    },
-    {
       "id": "tempest-pendulum",
       "judge": "double-pendulum-mode-v1",
       "parts": 69,

@@ -3,7 +3,7 @@
 // Browser gates for the two Q5 promotions (#1683) that had none, Evenhand and RimRun, for the R1 promotion
 // Obliquity Orrery (obliquity-tilt-v1, its crank-A disconnection as the control) and for the R2 judge family
 // (Cadence, Equinox, Helios, Orion; sim-lab-r2-judges.mjs, each with its registry disconnection) and the R4 promotions
-// (Solstice walking-beam-v1, Tempest double-pendulum-mode-v1; sim-lab-r4-judges.mjs). Each runs the model's own
+// (Tempest double-pendulum-mode-v1; sim-lab-r4-judges.mjs). Each runs the model's own
 // law through the real GUI with the qualification registry's judge and thresholds
 // (scripts/lib/robot-lab-qualification.mjs, docs/data/robot-lab-qualification.json), its causal control, then the
 // checks the nine-intake gate runs: bounded manual control, connected instructions and placement BOM, LDR/MPD
@@ -30,9 +30,9 @@ export const R2_BROWSER_MODELS = Object.freeze(['cadence-geneva', 'helios-transm
 // Cadence's program sweeps 4320° at 30°/s (about 2.7 min per run); the law run, the disconnected run and the
 // fresh-context replay together exceed the 8-minute step cap, so its disconnected control is its own gate step
 // (`--examples=cadence-geneva-disconnected`, same shard), with the same assertions.
-// R4: Solstice (crank pin P removed) and Tempest (motor-to-carrier pins removed); each program runs about a minute,
-// so the law run, the disconnected control and the replay fit one 8-minute step.
-export const R4_BROWSER_MODELS = Object.freeze(['solstice-pumpjack', 'tempest-pendulum']);
+// R4: Tempest (motor-to-carrier pins removed); its program runs about a minute, so the law run, the disconnected
+// control and the replay fit one 8-minute step. Solstice stays experimental (browser/native solver parity).
+export const R4_BROWSER_MODELS = Object.freeze(['tempest-pendulum']);
 export const SEPARATE_CONTROL = Object.freeze(['cadence-geneva']);
 export const Q5_BROWSER_MODELS = Object.freeze(['evenhand', 'rimrun', 'obliquity-orrery', ...R2_BROWSER_MODELS, ...R4_BROWSER_MODELS]);
 export const Q5_HELD = Object.freeze({});
@@ -186,7 +186,7 @@ async function orreryDisconnected(browser, opts, c) {
 }
 
 // The R2 family's and R4's disconnected controls: the registry's own part removal (Cadence's drive pin axle, Helios's control gear,
-// Orion's far middle fork, Solstice's crank pin, Tempest's motor pins), loaded as an LDraw file under the same example
+// Orion's far middle fork, Tempest's motor pins), loaded as an LDraw file under the same example
 // program. The input still completes its route, the model's law is lost (r2DisconnectionLoss), and the registry
 // judge refuses the run.
 async function r2Disconnected(browser, opts, c, id) {

@@ -1341,8 +1341,8 @@
       },
       "promotionReview": {
         "date": "2026-11-12",
-        "decision": "PROMOTED",
-        "reason": "Registered judge walking-beam-v1 (judgeWalkingBeam, scripts/lib/sim-lab-r4-judges.mjs): crank 16 mm, pitman 64 mm, beam arms 48/56 mm on opposite sides and pump rod 64 mm from the compiled pin joints; the closed loop predicts a 42.40 deg swing and a 40.58 mm stroke. Native run (COLD 500, strict ports, 2193 frames): beam vs the compiled loop 0.0187 deg (gate 0.1), piston 0.022 mm (gate 0.1), crank vs motor A 0.00002 deg, swing 42.417 deg vs 42.403 predicted, stroke 40.596 mm vs 40.578. Disconnection pin_P (crank pin): crank span 360.3 deg, beam-law error 42.39 deg (lost, bar 5), judge refuses. Wrong-model mutant (walking beam turned 180 deg about the crank axis) refused. Browser gate robotaddon23 pending (CI)."
+        "decision": "STAYS_EXPERIMENTAL",
+        "reason": "Not promoted (browser/native solver parity). Native runs pass walking-beam-v1 (COLD 500, strict ports): beam vs the compiled loop 0.019 deg, piston 0.022 mm, at both 25 ms and 33 ms frames; disconnection pin_P refused (beam-law error 42.39 deg, crank span 360.3 deg). The local chromium browser gate (Node 22, production build) measured beam error 0.132 deg and piston 0.17 mm against the frozen 0.1 deg / 0.1 mm bounds, a steady offset during the fast reverse cycle at crank 235-247 deg. The likely cause is a solver-setting difference between the browser and the native helper, to be investigated separately; the bounds are not changed. Next: browser/native solver parity, then re-promotion at 0.1 deg. The re-pose (start-guard fix) and the registered judge walking-beam-v1 stay."
       }
     },
     {

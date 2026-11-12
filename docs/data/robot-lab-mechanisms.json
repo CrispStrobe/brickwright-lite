@@ -1347,29 +1347,6 @@
     },
     {
       "models": [
-        "solstice-pumpjack"
-      ],
-      "name": {
-        "en": "Walking-beam pumpjack",
-        "de": "Schwingbalken-Pumpenantrieb"
-      },
-      "aliases": [
-        "pumpjack",
-        "beam pump",
-        "nodding donkey",
-        "walking beam",
-        "crank-rocker",
-        "crank rocker",
-        "Grashof",
-        "Pferdekopfpumpe",
-        "Tiefpumpe",
-        "Schwengel",
-        "Kurbelschwinge",
-        "Balancier"
-      ]
-    },
-    {
-      "models": [
         "tempest-pendulum"
       ],
       "name": {
