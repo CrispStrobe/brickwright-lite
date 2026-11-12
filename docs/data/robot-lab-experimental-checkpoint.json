@@ -3221,13 +3221,13 @@
     {
       "id": "obliquity-orrery",
       "title": "Obliquity Orrery — the tilt behind the seasons",
-      "placements": 52,
+      "placements": 59,
       "archive": "model-lab agent branch agent/bw-opencode-nav-r3-20261025/earth_tilt_seasons_daylength (task dir model.ldr/program.bw)",
       "originalLdrawSha256": "e32e214f363c19ecc84ee2e7c4ce59e7b9f4c874113e173116472d668bd55b2a",
       "canonicalLdrawSha256": "3d5b09ddf62e4912c4b68eb337e4f7e2170d72eb8bc296f8e963adfb57f41e86",
       "program": "obliquity-orrery.bw",
       "programSha256": "b49a1380c5b294a39379307c2e6435a8942845b382eee1fa7a18006a0aef3ba5",
-      "adaptation": "Repaired: axle_B moved from x=40 to x=80 so crank B has its frame hinge (the agent's parallelogram was never closed); program signs fixed (lambda = 45 - motor angle); base_rail_0 raised 1 LDU so three rails carry the frame (four exactly coplanar flat rails made the frame creep ~5 mm/s unpowered).",
+      "adaptation": "Repaired: axle_B moved from x=40 to x=80 so crank B has its frame hinge (the agent's parallelogram was never closed); program signs fixed (lambda = 45 - motor angle); the frame stands on three round feet pinned under the rails (four exactly coplanar flat rails made the frame creep ~5 mm/s unpowered, issue #1435).",
       "supplierClaims": "Built by the OpenCode builder agent bw-opencode-nav-r3-20261025 (deepseek-v4.1-flash, handoff v3); the agent reported itself blocked.",
       "simulatorLaw": {
         "verdict": "AGREES",
@@ -3237,7 +3237,7 @@
       "mechanicalLaw": "SIMULATOR_AGREES",
       "causalControl": "PASS (obliquity-orrery-turned-axis)",
       "browserLoad": "PASS",
-      "savedProjectReplay": "NOT_RUN",
+      "savedProjectReplay": "PASS (browser robotaddon15, head d1338fa0, Build run 43011878952 job 130510141073: original post-run project exported and fresh-context replay passed)",
       "browserRun": {
         "build": "405b046 (checkpoint-build-229)",
         "browser": "system Chrome, Run button, timeScale 4",
@@ -3250,9 +3250,9 @@
         "simMs": 62700
       },
       "promotionReview": {
-        "date": "2026-10-27",
-        "decision": "BLOCKED",
-        "reason": "Open issue #1460: the compiler ignores motor orientation, so a real build of the repaired orrery would turn the other way, into the half of the orbit that collides. Its judge passes in the simulator (#1455), but promotion waits for #1460."
+        "date": "2026-11-11",
+        "decision": "PROMOTED",
+        "reason": "#1460 closed. Registered judge obliquity-tilt-v1 (judgeObliquityTilt, scripts/lib/sim-lab-obliquity-judge.mjs): epsilon 22.49999 deg, solstice 45.0000 deg, orbit radius 16.0000 mm, cranks 16/16 mm and spacings 32/32 mm read from the compiled parts; hosted native run (COLD 500): declination error 0.0021 deg (gate 0.01), 1:1 drive error 0.0071 deg (gate 0.25), orbit radius error 0.00095 mm, span 90.3 deg, frame drift 0.00003 mm; frozen-output and 1 cm shift refused. Disconnection crank_pin_A: input 90.1 deg, encoder-law error 12.94 deg (lost, bar 2), judge refuses. Mutants from the real run: Earth tilt turned 90 deg follows its own law within 0.0019 deg and is refused (solstice -45 deg); Earth turning with its orbit refused. Handoff's crank-B cut also loses the law (22.55 deg; the free coupler swings, Earth longitude span 130 deg for 90 deg of crank). Four locked-hinges issues are rigid frame loops, declared in the contract. obliquity-orrery-turned-axis stays experimental as the control."
       }
     },
     {

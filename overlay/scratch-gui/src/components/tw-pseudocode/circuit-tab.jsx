@@ -10,6 +10,7 @@ import {shouldLoadCircuitDesigner} from '../../lib/bw-debug/circuit-designer-loa
 import {getReactPerformanceProbe, profileReactSubtree} from '../../lib/bw-debug/react-perf-profiler.js';
 import {shouldRefreshDesignerDebugState} from '../../lib/bw-debug/debug-ui-refresh.js';
 import {s040PartIds, sameS040PartIds} from '../../lib/bw-debug/s040-part-ids.js';
+import {circuitAutosaveRecord, readCircuitOwner} from '../../lib/circuit-autosave-record.js';
 import {setProjectTitle} from '../../reducers/project-title';
 import {activateTab} from '../../reducers/editor-tab';
 import {noCircuitMessage} from '../../lib/example-device-only.js';
@@ -588,11 +589,13 @@ class CircuitTab extends React.Component {
         // Flush that autosave instead: the same key and rule as bw-circuit-ui's
         // (non-empty circuits only), from the Designer that was actually mounted.
         // Host circuitData is untouched, so a bench delivered while hidden wins.
+        // The record must be bw-circuit-ui's own (lib/circuit-autosave-record.js):
+        // a differently shaped record for the same circuit made opening a project
+        // with a refused sidecar rewrite the known circuit (task I5).
         if (prevProps.isVisible && !this.props.isVisible && !this._boxRef.current && this._designerShown) {
-            const circuit = this.state.circuit;
-            const data = circuit && typeof circuit.toJSON === 'function' ? circuit.toJSON() : null;
-            if (data && Array.isArray(data.parts) && data.parts.length > 0) {
-                try { localStorage.setItem('bw-circuit-autosave', JSON.stringify(data)); } catch (e) { /* storage blocked */ }
+            const record = circuitAutosaveRecord(this.state.circuit, readCircuitOwner(localStorage));
+            if (record !== null) {
+                try { localStorage.setItem('bw-circuit-autosave', record); } catch (e) { /* storage blocked */ }
             }
         }
         this._designerShown = Boolean(this.props.isVisible && this._boxRef.current);
@@ -672,7 +675,8 @@ class CircuitTab extends React.Component {
                 (portalNow && this._portalRendered) || rightHere ? 'block' : 'none';
             // The host shows the debugger either on the dedicated Circuit tab
             // (rightHere) or, while coding, through the solo debugger portal.
-            const debuggerDock = this.state.debugDock === 'right' || this.state.debugDock === 'solo';
+            const debuggerDock = this.state.debugDock === 'right' || this.state.debugDock === 'solo' ||
+                this._controllerSplitLive();
             const debuggerHere = rightHere || (debuggerDock && portalNow && this._portalRendered);
             this._layoutStageHost(debuggerHere && (rightHere || !!this._soloDebuggerLive));
         }
@@ -990,6 +994,16 @@ class CircuitTab extends React.Component {
         }
     }
 
+    /** The Widgets controller dock beside a debugger that has a live machine
+     *  or program. #1691 began remembering device docks here; before that a
+     *  'controller' selection left the circuit dock in place, and the split
+     *  column (Widgets above, debugger below) is that dock's documented
+     *  layout in gui.jsx. Other device panes still own the whole column. */
+    _controllerSplitLive () {
+        return this.state.debugDock === 'controller' &&
+            !!(stcDrives(this.state.stc) || this.state.machineBooted);
+    }
+
     /** While coding (any other tab), the circuit takes the stage's column —
      *  the owner's default: you watch the LED you are programming, not an
      *  empty Scratch stage. Only when there is circuit content to show. */
@@ -997,7 +1011,10 @@ class CircuitTab extends React.Component {
         if (this.props.isVisible || !this.state.showInStage) return false;
         // gui.jsx owns controller and device panes. Leave their column clear
         // while retaining the same debugger portal and runner off screen.
-        if (!CIRCUIT_DOCKS.has(this.state.debugDock)) return false;
+        // The controller (Widgets) dock is the one exception: beside a live
+        // machine or program it shares the column with the debugger, split by
+        // _layoutStageHost, so Pause stays reachable next to the machine.
+        if (!CIRCUIT_DOCKS.has(this.state.debugDock) && !this._controllerSplitLive()) return false;
         // This is a presentation choice, not a capability check. Debugger
         // mode must still show the designer for an empty project so the user
         // can build the circuit before adding MCU code.
@@ -2177,7 +2194,8 @@ class CircuitTab extends React.Component {
         // applies while portalled: on the dedicated Circuit tab, 'right'
         // keeps the designer beside the panel (below) and 'solo' falls back
         // to the instruments-column dock, so the designer stays reachable.
-        if ((this.state.debugDock === 'solo' || this.state.debugDock === 'right') && this._stagePortalOn()) {
+        if ((this.state.debugDock === 'solo' || this.state.debugDock === 'right' ||
+            this._controllerSplitLive()) && this._stagePortalOn()) {
             this._portalOn = true;
             // Read by the host layout pass: only a debugger with a live machine
             // or program shares the column with a dock pane (_layoutStageHost).

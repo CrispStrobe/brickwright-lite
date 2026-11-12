@@ -4,7 +4,7 @@ import {createHash} from 'node:crypto';
 export const SCHEMA_VERSION = 1;
 export const CONTRACT_SOURCES = Object.freeze({
     'bw-board': '33d3ee399db9224105e70f34864f1af962ccdb41',
-    'bw-circuit-ui': '9d7a9a260d00d3c26a77e749aec55ceddbe29a52'
+    'bw-circuit-ui': '6b4d70290d7ebd088ad32b525f99eb02af475533'
 });
 export const THERMAL_PROFILE = Object.freeze({volts: .02585, celsius: 26.826793442075882});
 const TEMPERATURE_TEXT = '26.826793442075882';

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2026 CrispStrobe
-// Browser gates for the two Q5 promotions (#1683) that had none: Evenhand and RimRun. Each runs the model's own
+// Browser gates for the two Q5 promotions (#1683) that had none, Evenhand and RimRun, and for the R1 promotion
+// Obliquity Orrery (obliquity-tilt-v1, its crank-A disconnection as the control). Each runs the model's own
 // law through the real GUI with the qualification registry's judge and thresholds
 // (scripts/lib/robot-lab-qualification.mjs, docs/data/robot-lab-qualification.json), its causal control, then the
 // checks the nine-intake gate runs: bounded manual control, connected instructions and placement BOM, LDR/MPD
@@ -19,8 +20,9 @@ import {installBrowserMechanicsRecorder} from './sim-lab-browser-recorder.mjs';
 import {openFile} from './sim-lab-scale-gate.mjs';
 import {qualificationContracts, QUALIFICATION_JUDGES, disconnectedSource} from './robot-lab-qualification.mjs';
 import {p6DisconnectionLoss} from './sim-lab-p6-judges.mjs';
+import {obliquityDisconnectionLoss} from './sim-lab-obliquity-judge.mjs';
 
-export const Q5_BROWSER_MODELS = Object.freeze(['evenhand', 'rimrun']);
+export const Q5_BROWSER_MODELS = Object.freeze(['evenhand', 'rimrun', 'obliquity-orrery']);
 export const Q5_HELD = Object.freeze({});
 // One browser frame is one accepted worker batch. With the program clock installed, each VM step (1/30 s)
 // advances the world, so a frame spans 30 or 35 ms (whole 5 ms steps) at any speed setting; 1× is used.
@@ -137,6 +139,40 @@ async function evenhandDisconnected(browser, opts, c) {
     } finally { await page.close(); }
 }
 
+// Obliquity Orrery's disconnected control (R1): the registry's own part removal (crank_pin_A, crank A's coupler pin),
+// loaded as an LDraw file under the same example program. Motor A still sweeps every station, the Earth no longer
+// orbits, δ no longer follows the law at the encoder's orbit position (obliquityDisconnectionLoss), and the registry
+// judge refuses the run.
+async function orreryDisconnected(browser, opts, c) {
+    const page = await browser.newPage({viewport: {width: 1600, height: 1050}, serviceWorkers: 'block'}), errors = [];
+    page.on('pageerror', e => errors.push(e.stack || e.message));
+    page.on('dialog', d => d.accept());
+    try {
+        await openExample(page, opts, 'obliquity-orrery.ldr');
+        const program = await page.evaluate(projectProgramReady);
+        assert.ok(program.some(t => t.operations.length), 'the example program is loaded');
+        const source = readFileSync('overlay/scratch-gui/static/sim-lab/models/obliquity-orrery.ldr', 'utf8');
+        const cut = disconnectedSource(source, c.disconnect);
+        await openFile(page, {name: 'obliquity-orrery-disconnected.ldr', buffer: Buffer.from(cut)});
+        assert.equal(await page.evaluate(() => window.__bwSimLab.status), 'ready');
+        assert.deepEqual(await page.evaluate(projectProgramReady), program, 'the same program drives the disconnected orrery');
+        const parts = await page.evaluate(() => window.__bwSimLab._pane.session.model.parts.map(p => p.id));
+        for (const id of c.disconnect) assert.ok(!parts.includes(id), `${id} removed`);
+        const r = await runLoaded(page, {...opts, afterMs: c.afterMs, observeDynamics: false});
+        writeFileSync(resolve(opts.shotsDir, 'obliquity-orrery-disconnected-track.json'), JSON.stringify(r));
+        const input = r.mechanism.joints.find(j => j.motor?.port === c.ports[0]);
+        const travel = Math.max(...r.track.map(f => Math.abs(f.joints[input.id].angle))) * 180 / Math.PI;
+        assert.ok(travel > c.disconnectInputDeg, `input genuinely still turns: ${travel}°`);
+        const loss = obliquityDisconnectionLoss(r);
+        assert.ok(loss.lost, 'disconnection loses the law: ' + JSON.stringify(loss));
+        assert.throws(() => judgeQ5Browser('obliquity-orrery', r, c), 'the registry judge refuses the disconnected orrery');
+        await captureRenderedModel(page, resolve(opts.shotsDir, 'obliquity-orrery-disconnected.png'));
+        assert.deepEqual(errors, []);
+        console.log(`PASS obliquity-orrery disconnected control: crank A's coupler pin removed, input ${travel.toFixed(1)}°, ${JSON.stringify(loss)}, judge refuses`);
+        return {inputTravelDeg: travel, loss};
+    } finally { await page.close(); }
+}
+
 // RimRun's causal control: the shipped rimrun-swapped scene (ballast layouts exchanged between lanes) under the
 // same program and the same judge. The judge passes and the inner-ballast roller leads in the other lane.
 async function rimrunSwapped(browser, opts, c, main) {
@@ -166,6 +202,7 @@ export async function q5BrowserInteractions(page, opts, id) {
         extendedObservations: true, observeDynamics, stepParts: STEP_PARTS[id] ?? null, completionHoldMsFor: () => c.afterMs, speed: GATE_SPEED, observeProgram: true
     }))[id];
     const control = id === 'evenhand' ? await evenhandDisconnected(page.context().browser(), opts, c)
+        : id === 'obliquity-orrery' ? await orreryDisconnected(page.context().browser(), opts, c)
         : await rimrunSwapped(page.context().browser(), opts, c, main);
     const manual = await manualMechanicsInteractions(page, {...opts, models: [id], captureModel: captureRenderedModel});
     await page.getByTestId('bw-sim-lab-instructions').click();
@@ -185,5 +222,5 @@ export async function q5BrowserInteractions(page, opts, id) {
         (_, r) => judgeQ5Browser(id, r, c));
     writeFileSync(resolve(opts.shotsDir, id + '-q5-browser.json'), JSON.stringify({id, judge: c.judge, main, control, manual,
         instructions: {steps: plan.steps.length, parts: parts.length}}, null, 2) + '\n');
-    console.log(`PASS ${id}: registry law (${c.judge}), ${id === 'evenhand' ? 'disconnected' : 'rimrun-swapped'} control, bounded manual control, connected instructions, placement BOM, LDR/MPD and fresh saved-project replay`);
+    console.log(`PASS ${id}: registry law (${c.judge}), ${id === 'rimrun' ? 'rimrun-swapped' : 'disconnected'} control, bounded manual control, connected instructions, placement BOM, LDR/MPD and fresh saved-project replay`);
 }

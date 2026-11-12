@@ -105,7 +105,7 @@ const HISTORICAL_X86_CUI_V5_V7 = '91d8434a79d373cef2837c137ab356356f1a3b44';
 const HISTORICAL_X86_V8_CUI = '1bc233c9297e03abb9b7eb603e045b4e92b0bb40';
 const CURRENT_X86_CUI = 'a5860b9cf6cb0e7f652130ce987d51dc42651b8b';
 // CURRENT_X86_CUI retains the F9 epoch meaning; only these F10 values are live.
-const LIVE_X86_CUI = '9d7a9a260d00d3c26a77e749aec55ceddbe29a52';
+const LIVE_X86_CUI = '6b4d70290d7ebd088ad32b525f99eb02af475533';
 const LIVE_X86_BOARD = '33d3ee399db9224105e70f34864f1af962ccdb41';
 const HISTORICAL_X86_BOARD = '761153ff92d521c01107ee7b32922ba7adc10ee2';
 const HISTORICAL_X86_CURRENT_BOARD = '836867513c3e7fac420ddaa32c17e1c7b6d3e513';
@@ -126,8 +126,8 @@ const CURRENT_X86_FINITE_V9_READER = "FINITE_V9_PINS = {'bw-board':CURRENT_BOARD
 // including clock and core/full-runtime parity. Any later source edit revokes
 // their occurrence roles until another explicit review; never auto-restamp.
 const HISTORICAL_X86_SOURCE_PROFILES = Object.freeze({
-    'scripts/run-i80386-hdd-gui-actual.py': Object.freeze({bytes: 351818, sha256: 'a5c80c1a33b977602c584998506e4d1fca28dc07c5ed236f729f21c33603a14c'}),
-    'scripts/read-i80386-hdd-gui-originals.py': Object.freeze({bytes: 467978, sha256: '1e474bbbaf4dcfd05d3756a30e99b1c622e587578fbc2b95057ba4d3aae4d466'}),
+    'scripts/run-i80386-hdd-gui-actual.py': Object.freeze({bytes: 351818, sha256: 'e1a14ab581a9ec863cc9fb32c02e2ef8ba07e08634850638821250e54ccb218b'}),
+    'scripts/read-i80386-hdd-gui-originals.py': Object.freeze({bytes: 467978, sha256: 'ce2112261813ca765d43dde37ca7bd75abf28116d66b9718b4db3df546322c77'}),
     'test/i80386-hdd-gui-actual.test.mjs': Object.freeze({bytes: 646674, sha256: '45ef06f71b0bec8064d4f2bee31e1a78dcaa50cd9e6a4fd10fa8ad39cdd857ae'}),
 });
 
