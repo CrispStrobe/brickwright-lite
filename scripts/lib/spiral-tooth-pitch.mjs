@@ -25,3 +25,14 @@ export function repeatedToothPitch(text, subpart) {
  }
  return rows;
 }
+
+/** Compare source-model tooth spacing with an explicitly supplied pitch-circle model. */
+export function compareRackAdvance(pitchLdu, teeth, moduleMm, lduMm) {
+ if (![pitchLdu, teeth, moduleMm, lduMm].every(Number.isFinite) ||
+     pitchLdu <= 0 || !Number.isInteger(teeth) || teeth <= 0 || moduleMm <= 0 || lduMm <= 0) {
+  throw new Error('expected positive tooth spacing, tooth count, module and LDU scale');
+ }
+ const rackAdvanceMm = pitchLdu * lduMm * teeth;
+ const pitchCircleMm = Math.PI * moduleMm * teeth;
+ return {rackAdvanceMm, pitchCircleMm, differenceMm: rackAdvanceMm - pitchCircleMm};
+}
