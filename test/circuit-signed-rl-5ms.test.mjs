@@ -73,7 +73,7 @@ test('signed RL comparators reject reversal, nonfinite values and reference muta
 });
 
 for (const source of [2.3, -2.3]) {
-    test(`installed bwc 5 ms RL capture preserves signed terminal currents at ${source} V`, () => {
+    test(`installed bwc 5 ms RL capture preserves signed terminal currents at ${source} V`, t => {
         const dir = mkdtempSync(path.join(tmpdir(), 'bwc-signed-rl-'));
         try {
             const file = path.join(dir, 'signed-rl.cir');
@@ -117,7 +117,7 @@ for (const source of [2.3, -2.3]) {
                 assert.throws(() => checkCurrent(a, meanCurrentA(mSource, mR, mTau)),
                     /signed terminal current/, name);
             }
-            console.log(`signed RL ${source} V: worst voltage error ${worst} V (limit ${VOLTAGE_TOL}); ` +
+            t.diagnostic(`signed RL ${source} V: worst voltage error ${worst} V (limit ${VOLTAGE_TOL}); ` +
                 `current errors ${Math.abs(a - expected)} / ${Math.abs(b + expected)} A (limit ${CURRENT_TOL})`);
         } finally {
             rmSync(dir, {recursive: true, force: true});
