@@ -57,6 +57,7 @@
  *     asserts a server sent what it promised.
  */
 import {test, describe} from 'node:test';
+import {currentJoltFetchPin} from '../scripts/lib/sim-engine-admission.mjs';
 import assert from 'node:assert/strict';
 import {readFileSync, writeFileSync, mkdtempSync, rmSync} from 'node:fs';
 import {execFileSync, execSync} from 'node:child_process';
@@ -535,17 +536,7 @@ const CENSUS = [
            + 'nothing else (test/makecode-emu-bases-fetch.test.mjs). The bytes are re-derived by '
            + 'scripts/build-makecode-emu-bases.mjs, whose workflow syncs with --no-emu-fetch.'
     },
-    {
-        file: 'scripts/integrate.mjs',
-        kind: 'release',
-        text: 'github.com/CrispStrobe/JoltPhysics.js/releases/download/bw.9-qualified-20261029/jolt-physics-1.1.0-bw.9.tgz',
-        class: 'content-hash',
-        why: 'The Sim Lab physics engine: the Brickwright JoltPhysics.js fork build 1.1.0-bw.9 (Jolt master '
-           + 'plus the gear fixes, the CCD bounce fix, MaterialPairs, RackMeshConstraint, PartPairSimShapeFilter and optional single-thread SIMD, retained distance-constraint velocity impulses and coupled soft-motor/reflected-rotor rows), taken as an npm tarball dependency. The tag is movable, so it is not what '
-           + 'is trusted: packages/scratch-gui/package-lock.json holds the tarball\'s sha512 integrity '
-           + '(sha256 381bbd4fa13e4f71205e9671f1a427320bea917fa5875481de3928aad227aa2d) and npm refuses '
-           + 'different bytes. The qualified release retains the exact archive from the pinned source and native commits.'
-    },
+    currentJoltFetchPin(),
     {
         file: 'scripts/vendor-forward.mjs',
         kind: 'git',
