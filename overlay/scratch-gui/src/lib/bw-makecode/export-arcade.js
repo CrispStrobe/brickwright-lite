@@ -1623,12 +1623,16 @@ class ArcadeEmitter {
     // reimport represents that addition as a native value operation, rather
     // than a Scratch join; wrapping it again grows the source every export.
     textOperand (b, name) {
-        const raw = this.value(b, name);
         const slot = b.inputs?.[name]?.[1];
         const operand = typeof slot === 'string' ? this.block(slot) : null;
         const textAddition = operand?.opcode === 'arrays_valueBinary' &&
             this.field(operand, 'OP') === '+' && this.literalInput(operand, 'LEFT') === '';
-        return /^"/.test(raw) || operand?.opcode === 'operator_join' || textAddition ? raw : `("" + ${raw})`;
+        const raw = this.value(b, name);
+        // The native addition helper keeps its Array conversion and operand
+        // evaluation. Its result is text here, but its signature returns any;
+        // give PXT the receiver type required for its string member lowering.
+        if (textAddition) return `(<string>${raw})`;
+        return /^"/.test(raw) || operand?.opcode === 'operator_join' ? raw : `("" + ${raw})`;
     }
 
     // ── expressions ──────────────────────────────────────────────────────

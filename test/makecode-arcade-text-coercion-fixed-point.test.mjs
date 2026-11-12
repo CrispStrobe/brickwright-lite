@@ -36,6 +36,8 @@ test('Arcade length and character coercions reach byte identity after first expo
     // Explicit declarations isolate coercion from the separate initializer-growth gap.
     let source = 'let x:number; let n:number; let c:string; x=123; n=(""+x).length; c=(""+x).charAt(0);';
     const first = roundtrip(source);
+    assert.match(first, /n = \(<string>__bwBinaryAdd\("", x_\)\)\.length/);
+    assert.match(first, /c = \(<string>__bwBinaryAdd\("", x_\)\)\.charAt\(0\)/);
     assert.deepEqual(evaluate(first, '[n,c]'), [3, '1']);
     source = first;
     for (let generation = 0; generation < 3; generation++) {
@@ -49,6 +51,8 @@ test('text coercion evaluates an effectful operand once per use across exports',
     let source = 'let reads:number; let n:number; let c:string; reads=0; function next():number { reads += 1; return 123; } n=(""+next()).length; c=(""+next()).charAt(1);';
     for (let generation = 0; generation < 3; generation++) {
         source = roundtrip(source);
+        assert.match(source, /n = \(<string>__bwBinaryAdd\("", (?:Game_)+next\(\)\)\)\.length/);
+        assert.match(source, /c = \(<string>__bwBinaryAdd\("", (?:Game_)+next\(\)\)\)\.charAt\(1\)/);
         assert.deepEqual(evaluate(source, '[reads,n,c]'), [2, 3, '2']);
     }
 });
@@ -67,4 +71,19 @@ test('stock joins remain text, including a numeric first operand', () => {
     const source = exportCode('DEVICE ARCADE\nGLOBAL n\nSPRITE Game:\nWHEN arcade source starts:\n  set n to (length of (join (12) (3)))');
     assert.equal(evaluate(source, 'n'), 3);
     assert.doesNotMatch(source, /\("" \+ \("" \+/);
+});
+
+// Native addition's Array conversion belongs to its helper. Typing the result
+// must preserve that helper rather than reconstructing a bare source addition.
+test('native Array text coercion retains the addition helper and actual member values', () => {
+    const imported = arcadeToPseudocode('let a:number[]; let arrayLength:number; let arrayChar:string; a=[12,3]; arrayLength=(""+a).length; arrayChar=(""+a).charAt(2);');
+    assert.deepEqual(imported.unsupported, []);
+    const native = imported.code.replaceAll('arcade source value ("") op "+" with (a)', 'calculate value ("") op "+" with (a)');
+    assert.notEqual(native, imported.code);
+    let source = exportCode(native);
+    assert.match(source, /array\.join\(","\)/);
+    assert.match(source, /arrayLength = \(<string>__bwBinaryAdd\("", a\)\)\.length/);
+    assert.deepEqual(evaluate(source, '[arrayLength,arrayChar]'), [4, ',']);
+    source = roundtrip(source);
+    assert.deepEqual(evaluate(source, '[arrayLength,arrayChar]'), [4, ',']);
 });
