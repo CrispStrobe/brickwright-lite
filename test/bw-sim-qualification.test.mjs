@@ -16,6 +16,7 @@ import {nineIntakeDisconnectionLoss} from '../scripts/lib/sim-lab-nine-intake-ju
 import {judgeObliquityTilt,obliquityDisconnectionLoss,orreryTrack,compiledOrrery} from '../scripts/lib/sim-lab-obliquity-judge.mjs';
 import {r2DisconnectionLoss} from '../scripts/lib/sim-lab-r2-judges.mjs';
 import {r3DisconnectionLoss} from '../scripts/lib/sim-lab-r3-judges.mjs';
+import {r4DisconnectionLoss,doublePendulumModes,R4_LAWS} from '../scripts/lib/sim-lab-r4-judges.mjs';
 import {catalogFrom,prepareModel,MODELS} from '../overlay/scratch-gui/src/lib/bw-sim/sim-session.js';
 import {runRobotLabProgram} from './helpers/robot-lab-direct-vm.mjs';import {observeAddon} from '../scripts/lib/sim-lab-addon-judge.mjs';
 import Creator from '../overlay/scratch-gui/src/lib/sb3-creator-register-art.js';
@@ -39,6 +40,8 @@ const R3_MUTANTS=Object.freeze({
  'aster-governor':[r=>{const b=r.mechanism.bodies.find(b=>b.parts.includes('collar'));b.massKg*=4;for(const c of b.colliders)c.massKg*=4;},/held speed/],
  // The rotor's 24T gear replaced by a 40T: rotor = carrier·(1 − 16/40) = 0.6·carrier, not carrier/3.
  apex:[r=>{r.runModel.parts.find(p=>p.id==='output_24t').part='3649.dat';},/rotor = carrier\/3/]});
+// R4 (sim-lab-r4-judges.mjs): Tempest's lower bob replaced by a different wheel part.
+const R4_MUTANTS=Object.freeze({'tempest-pendulum':['lower_bob_wheel',{part:'56145.dat'},/compiled serial pendulum/]});
 test('qualification refuses unknown principles, missing models and incomplete disconnections',()=>{
  assert.throws(()=>qualificationContracts(['invented-pass']));assert.throws(()=>qualificationContracts([]));assert.throws(()=>disconnectedSource('0 model\n',['missing']));
 });
@@ -174,6 +177,27 @@ for(const c of qualificationContracts(selected).filter(c=>!c.nativeSuite)){
   assert.throws(()=>judge(bad),pattern);
   t.diagnostic(JSON.stringify({id:c.id+'-mutant',main:Object.fromEntries(Object.entries(ok).filter(([k])=>!['foundation','compiled','plateaus'].includes(k)))}));
  });
+ if(R4_MUTANTS[c.id])test(c.id+': wrong-model mutant is refused by the unchanged judge',async t=>{
+  const r=await run(c,source,false,'mutant-base'),ok=judge(r),bad=structuredClone(r),[part,change,pattern]=R4_MUTANTS[c.id];
+  const p=bad.runModel.parts.find(p=>p.id===part);assert.ok(p,part);
+  p.part=change.part;
+  assert.throws(()=>judge(bad),pattern);
+  t.diagnostic(JSON.stringify({id:c.id+'-mutant',part,change,main:Object.fromEntries(Object.entries(ok).filter(([k])=>!['foundation','compiled','windows'].includes(k)))}));
+ });
+ // Tempest: the frozen normal modes of double-pendulum-mode-v1 are recomputed from the engine's own mass properties
+ // (configured mass, world centre of mass and inertia of the two arm bodies at the hanging rest) and the compiled
+ // shoulder and elbow hinges; they must equal R4_LAWS.doublePendulum.
+ if(c.id==='tempest-pendulum')test(c.id+': frozen normal modes equal the engine mass properties',async t=>{
+  let modes;
+  await runRobotLabProgram('DEVICE SPIKE\nWHEN flag clicked:\n  wait 0.05 seconds\n',{modelText:source,autoPorts:false,frameMs:25,timeLimitMs:100,observeSetup:({session,prepared})=>{
+   const m=prepared.mechanism,body=id=>{const b=m.bodies.find(b=>b.parts.includes(id));assert.ok(b,id);return b.id;},hinge=(a,b)=>{const j=m.joints.filter(j=>j.type==='hinge'&&[j.body1,j.body2].includes(body(a))&&[j.body1,j.body2].includes(body(b)));assert.equal(j.length,1,a+'-'+b);return j[0];};
+   const arm=id=>{const d=session.core.bodyDynamics(body(id));return{mass:d.configuredMassKg,com:d.centerOfMassWorld,inertia:d.inertiaKgM2};},shoulder=hinge('carrier','upper_arm'),elbow=hinge('upper_arm','lower_arm');
+   modes=doublePendulumModes({axis:shoulder.axis,shoulder:shoulder.point,elbow:elbow.point,upper:arm('upper_arm'),lower:arm('lower_arm')});
+  }});
+  assert.ok(modes,'mass properties observed');const L=R4_LAWS.doublePendulum;
+  for(const k of ['slowS','fastS','slowShape','fastShape'])assert.ok(Math.abs(modes[k]-L[k])/Math.abs(L[k])<=1e-3,k+' '+modes[k]+' vs '+L[k]);
+  t.diagnostic(JSON.stringify({id:c.id+'-modes',slowS:modes.slowS,fastS:modes.fastS,slowShape:modes.slowShape,fastShape:modes.fastShape}));
+ });
  test(c.id+': physical disconnection destroys the intended output while the real input still completes',async t=>{
   const r=await run(c,disconnectedSource(source,c.disconnect),false,'disconnected'),o=observeAddon(r,c.observeBase??hubPartOf(r)),input=c.motorless?null:r.mechanism.joints.find(j=>j.motor?.port===c.ports[0]),travel=input?Math.max(...r.track.map(f=>Math.abs(f.joints[input.id].angle)))*180/Math.PI:0;
   assert.ok(r.finishedAt>0);if(!c.motorless)assert.ok(travel>(c.disconnectInputDeg??(c.id==='sine-shuttle'?1070:1430)),'input genuinely still turns');
@@ -208,6 +232,8 @@ for(const c of qualificationContracts(selected).filter(c=>!c.nativeSuite)){
   else if(c.disconnectLoss==='r2'){const loss=r2DisconnectionLoss(c.id,r);motion=loss.value;assert.ok(loss.lost,'disconnection loses the law: '+JSON.stringify(loss));}
   // R3 (sim-lab-r3-judges.mjs): Vesper's crank pin, Aster's two collar links or Apex's rotor-drive 8T removed.
   else if(c.disconnectLoss==='r3'){const loss=r3DisconnectionLoss(c.id,r);motion=loss.value;assert.ok(loss.lost,'disconnection loses the law: '+JSON.stringify(loss));}
+  // R4 (sim-lab-r4-judges.mjs): Tempest's motor-to-carrier pins removed (r4DisconnectionLoss also measures Solstice's pin_P cut).
+  else if(c.disconnectLoss==='r4'){const loss=r4DisconnectionLoss(c.id,r);motion=loss.value;assert.ok(loss.lost,'disconnection loses the law: '+JSON.stringify(loss));}
   else if(c.disconnectLoss==='p6'){const loss=p6DisconnectionLoss(c.id,r);motion=loss.value;assert.ok(loss.lost,'disconnection loses the law: '+JSON.stringify(loss));}
   // Nine Technic intakes: the reviewed part removal must break the passive law while the input route completes.
   else if(c.disconnectLoss==='nine-intake'){const loss=nineIntakeDisconnectionLoss(c.id,r);motion=loss.value;assert.ok(loss.lost,'disconnection loses the law: '+JSON.stringify(loss));}

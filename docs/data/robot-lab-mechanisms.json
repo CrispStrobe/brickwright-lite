@@ -1407,6 +1407,23 @@
         "Epitrochoide",
         "Rotor"
       ]
+    },
+    {
+      "models": [
+        "tempest-pendulum"
+      ],
+      "name": {
+        "en": "Serial double pendulum — normal modes",
+        "de": "Serielles Doppelpendel — Eigenschwingungen"
+      },
+      "aliases": [
+        "double pendulum",
+        "coupled oscillators",
+        "normal modes",
+        "Doppelpendel",
+        "Eigenschwingung",
+        "gekoppelte Pendel"
+      ]
     }
   ]
 }

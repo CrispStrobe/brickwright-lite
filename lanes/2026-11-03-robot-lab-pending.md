@@ -31,7 +31,11 @@ The full task list with exact steps is section 00 of
   R3 apex (repaired and promoted, #1731, `lanes/2026-11-12-robot-r3-geometry-repairs.md`),
   vesper-quickreturn (repaired, not promoted: browser law 0.504 mm vs 0.5 mm bound and a stage-boundary turning point),
   aster-governor (repaired, not promoted: browser hinge gap 0.55 mm vs 0.5 mm bound), bloom (not promoted: its scissor pivots need a redesign, see handoff 00000);
-  R4 solstice-pumpjack, tempest-pendulum, impulse-line (start-guard poses);
+  R4 solstice-pumpjack, tempest-pendulum, impulse-line (start-guard poses; both re-posed; tempest-pendulum
+  promoted in review on `lane/robot-r4-start-guards-20261112`; solstice-pumpjack stays experimental: browser beam
+  0.132° / piston 0.17 mm vs 0.1 bounds, native 0.019° / 0.022 mm, needs browser/native solver parity; impulse-line stays
+  experimental: no gravity-rest pose short of the bob, needs a design change, see handoff 00000;
+  `lanes/2026-11-12-robot-r4-start-guards.md`);
   R5 spiral-scribe, quiet-partner; R6 pan-shift, inertia-loop; R7
   vector-delta (blocked by a missing part).
 - E1 (2026-11-10, open): Jolt enhanced internal-edge removal for tile-joint

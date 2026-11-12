@@ -6845,6 +6845,54 @@
         "cusp-lab.ldr",
         "orbit-mixer.ldr"
       ]
+    },
+    "tempest-pendulum": {
+      "en": {
+        "what": "Serial double pendulum. Motor A turns a short carrier; from it hangs a 64 mm upper arm, and from the upper arm's end a second free arm. Each arm carries a SPIKE wheel as a bob. Both hinges are free: the motor only moves and then holds the carrier.",
+        "try": [
+          "Open Tempest with its program, press Reset, then Run. The run takes about 46 s.",
+          "The carrier swings quickly to −60°, then is held for 12 s. Watch the two arms: sometimes they swing together, sometimes against each other.",
+          "The carrier returns home and is held for 8 s, then pulses to +60° and holds again. Compare how the motion passes back and forth between the upper and lower arm.",
+          "Count swings: the slow, in-step motion takes about two thirds of a second per swing; the fast, opposed wobble is a bit over twice as quick."
+        ],
+        "why": "For small swings about the hanging rest, the two arm angles obey M·q̈ + K·q = 0. The mass matrix M comes from each arm's mass, centre of mass and moment of inertia; the stiffness K from gravity acting on the arms' centres of mass. Such a system has exactly two normal modes: a slow one (0.665 s) in which the lower arm swings 1.49 times as far as the upper arm in the same direction, and a fast one (0.299 s) in which it swings 1.44 times as far in the opposite direction. Every small swing is a sum of these two.",
+        "matters": "Normal modes describe any set of coupled oscillators: buildings in earthquakes, molecules, bridges and suspension systems. Engineers compute them from masses and stiffnesses before anything is built. For large swings the double pendulum becomes chaotic, which is why this law is only checked while the swings stay small.",
+        "question": "Why are the periods not those of two ideal point masses on massless 64 mm strings?",
+        "answer": "The real arms are beams with their own mass and inertia, and the bobs are wheels, not points. Using the engine's mass properties, the slow and fast periods are 0.6650 s and 0.2989 s with shape ratios +1.485 and −1.436, not the point-mass ratio of √2. The simulated arms show slow periods of 0.666 s in both held windows and a fast period of 0.299 s.",
+        "further": [
+          "Doubling both masses changes nothing: the modes depend on ratios of mass and inertia, and on lengths.",
+          "A larger pulse gives larger swings; beyond a few tens of degrees the linear model no longer holds and the motion stops being a clean sum of two modes.",
+          "If the motor's pins to the carrier are removed, the motor still turns but the carrier no longer follows it: that is the causal control used to qualify this model.",
+          "Compare Cascade, a two-link pendulum on a moving crank, and Pendulum Array, which shows period against length."
+        ]
+      },
+      "de": {
+        "what": "Serielles Doppelpendel. Motor A dreht einen kurzen Träger; daran hängt ein 64 mm langer Oberarm und an dessen Ende ein zweiter freier Arm. Jeder Arm trägt ein SPIKE-Rad als Pendelgewicht. Beide Gelenke sind frei: Der Motor bewegt den Träger nur und hält ihn dann fest.",
+        "try": [
+          "Öffne Tempest mit Programm, drücke Zurücksetzen und dann Start. Der Lauf dauert etwa 46 s.",
+          "Der Träger schwenkt schnell auf −60° und wird dann 12 s gehalten. Beobachte die beiden Arme: Mal schwingen sie gleichsinnig, mal gegeneinander.",
+          "Der Träger kehrt zurück und wird 8 s gehalten, dann schwenkt er auf +60° und hält wieder. Vergleiche, wie die Bewegung zwischen Ober- und Unterarm hin- und herwandert.",
+          "Zähle Schwingungen: Die langsame, gleichsinnige Bewegung braucht etwa zwei Drittel Sekunden je Schwingung; das schnelle Gegeneinander ist gut doppelt so schnell."
+        ],
+        "why": "Für kleine Ausschläge um die hängende Ruhelage gehorchen die beiden Armwinkel M·q̈ + K·q = 0. Die Massenmatrix M folgt aus Masse, Schwerpunkt und Trägheitsmoment jedes Arms, die Steifigkeit K aus der Schwerkraft an den Schwerpunkten. Ein solches System hat genau zwei Eigenschwingungen: eine langsame (0,665 s), bei der der Unterarm 1,49-mal so weit gleichsinnig schwingt wie der Oberarm, und eine schnelle (0,299 s), bei der er 1,44-mal so weit gegensinnig schwingt. Jeder kleine Ausschlag ist eine Summe dieser beiden.",
+        "matters": "Eigenschwingungen beschreiben jedes System gekoppelter Schwinger: Gebäude bei Erdbeben, Moleküle, Brücken und Fahrwerke. Ingenieure berechnen sie aus Massen und Steifigkeiten, bevor etwas gebaut wird. Bei großen Ausschlägen wird das Doppelpendel chaotisch; deshalb wird das Gesetz nur bei kleinen Ausschlägen geprüft.",
+        "question": "Warum sind die Perioden nicht die zweier idealer Punktmassen an masselosen 64-mm-Fäden?",
+        "answer": "Die echten Arme sind Balken mit eigener Masse und Trägheit, und die Gewichte sind Räder, keine Punkte. Mit den Masseneigenschaften der Simulation ergeben sich 0,6650 s und 0,2989 s mit Formverhältnissen +1,485 und −1,436 statt √2 für Punktmassen. Die simulierten Arme zeigen in beiden Haltefenstern langsame Perioden von 0,666 s und eine schnelle von 0,299 s.",
+        "further": [
+          "Verdoppelt man beide Massen, ändert sich nichts: Die Eigenschwingungen hängen von Verhältnissen der Massen und Trägheiten und von Längen ab.",
+          "Ein größerer Impuls gibt größere Ausschläge; jenseits einiger zehn Grad gilt das lineare Modell nicht mehr, und die Bewegung ist keine saubere Summe zweier Eigenschwingungen mehr.",
+          "Entfernt man die Stifte zwischen Motor und Träger, dreht der Motor weiter, aber der Träger folgt ihm nicht mehr: Das ist die Kausalkontrolle, mit der dieses Modell geprüft wird.",
+          "Vergleiche Cascade, ein Doppelpendel an einer bewegten Kurbel, und Pendulum Array, das die Periode über der Länge zeigt."
+        ]
+      },
+      "formula": {
+        "en": "M·q̈ + K·q = 0, M = [[I₁ + m₁|c₁−S|² + m₂|E−S|², m₂(E−S)·(c₂−E)], [·, I₂ + m₂|c₂−E|²]], K = g·diag(m₁h₁ + m₂h_E, m₂h₂). Compiled arms: slow mode 0.6650 s (lower/upper +1.485), fast mode 0.2989 s (−1.436).",
+        "de": "M·q̈ + K·q = 0, M = [[I₁ + m₁|c₁−S|² + m₂|E−S|², m₂(E−S)·(c₂−E)], [·, I₂ + m₂|c₂−E|²]], K = g·diag(m₁h₁ + m₂h_E, m₂h₂). Gebaute Arme: langsame Eigenschwingung 0,6650 s (unten/oben +1,485), schnelle 0,2989 s (−1,436)."
+      },
+      "related": [
+        "cascade.ldr",
+        "pendulum-array.ldr"
+      ]
     }
   }
 }

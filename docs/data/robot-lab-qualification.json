@@ -1307,6 +1307,28 @@
       "notRun": [
         "webkit browser run (the browser gate, shard robotaddon22, runs chromium)"
       ]
+    },
+    {
+      "id": "tempest-pendulum",
+      "judge": "double-pendulum-mode-v1",
+      "parts": 69,
+      "ports": [
+        "A"
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 75000,
+      "afterMs": 500,
+      "frameMs": 25,
+      "frozenOutput": "lower_arm",
+      "disconnect": [
+        "motor_pin_h3",
+        "motor_pin_h5"
+      ],
+      "disconnectInputDeg": 55,
+      "disconnectLoss": "r4",
+      "notRun": [
+        "webkit browser run (the browser gate, shard robotaddon24, runs chromium)"
+      ]
     }
   ]
 }

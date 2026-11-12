@@ -2501,6 +2501,34 @@ export const MODEL_LESSONS = Object.freeze({
             "Rotor"
         ]
     },
+    "tempest-pendulum.ldr": {
+        "pieces": 69,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "forces",
+        "description": {
+            "en": "Motor A pulses a short carrier and then holds it still; two free 64 mm arms swing under gravity alone. Every small swing is the sum of two normal modes computed from the arms' masses and inertias: a slow 0.665 s mode with both arms in step and a fast 0.299 s mode with the arms opposed.",
+            "de": "Motor A gibt einem kurzen Träger einen Impuls und hält ihn dann still; zwei freie, 64 mm lange Arme schwingen allein unter der Schwerkraft. Jeder kleine Ausschlag ist die Summe zweier Eigenschwingungen, berechnet aus Massen und Trägheitsmomenten der Arme: einer langsamen mit 0,665 s, bei der beide Arme gleichsinnig schwingen, und einer schnellen mit 0,299 s, bei der sie gegeneinander schwingen."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Serial double pendulum — normal modes",
+            "de": "Serielles Doppelpendel — Eigenschwingungen"
+        },
+        "keywords": [
+            "Serial double pendulum — normal modes",
+            "Serielles Doppelpendel — Eigenschwingungen",
+            "double pendulum",
+            "coupled oscillators",
+            "normal modes",
+            "Doppelpendel",
+            "Eigenschwingung",
+            "gekoppelte Pendel"
+        ]
+    },
     "product-plotter.ldr": {
         "pieces": 301,
         "motors": 2,
