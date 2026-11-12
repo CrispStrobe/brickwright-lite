@@ -6336,3 +6336,18 @@ behavior still need their own qualification. This result changes no corpus row.
    broader initialized Sprite/reference graphs remain outside these dormant
    declaration repairs. Require save/reopen and MakeCode roundtrip evidence for
    each authoring capability rather than inferring it from converter support.
+
+## Current bounded proof and corpus follow-through (2026-11-12)
+
+PR #1734 combines bounded local literal-Array and numeric-overwrite proofs with
+existing refusal controls. Refresh its head and exact enabled checks before
+acting. Focused source tests do not qualify the original program: require
+source-bound PXT and native execution, export/reimport, SB3 and browser results,
+including actual effect order and output for multiple call-valued Array items.
+Keep mixed, unknown and escaped values refused unless independently proved.
+
+A prior nightly differential failed its rotating sample without retaining a
+case verdict in the public job output. The candidate reports only bounded case
+IDs and verdicts on a child failure and leaves the failure in force; it does
+not establish that failure's cause. Preserve the original result, diagnose the
+case from a subsequent authorized result, and do not change corpus thresholds.
