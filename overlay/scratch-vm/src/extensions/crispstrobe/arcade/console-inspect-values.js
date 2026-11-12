@@ -938,7 +938,7 @@ function create(runtime, cells, scoreOwner=null, sceneClock=null, frameDelta=nul
                 const procedure=cell.scope.procedure;if(typeof procedure!=='string')return false;
                 let calls=Object.values(all).filter(value=>value.opcode==='arcade_callFunction'&&literal(value,'NAME')===procedure||value.opcode==='procedures_call'&&value.mutation?.proccode===procedure);
                 if(Object.values(all).some(value=>value.opcode==='arcade_callFunction'&&typeof literal(value,'NAME')!=='string'))return false;
-                const model=!player&&classRows(),role=model?.roles.get(procedure);
+                const model=player?null:classRows(),role=model?.roles.get(procedure);
                 if(role&&proof.index>0){
                     calls=calls.filter(call=>model.reachable.has(captureProof.scopeOf(call)));
                     const index=proof.index-1,dispatch=[];
