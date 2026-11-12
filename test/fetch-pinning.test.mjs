@@ -226,6 +226,9 @@ const describeSkips = ({unreadable, nul}) => {
 //                 arrive: a moved tag, a replaced asset and a compromised CDN
 //                 all fail closed here. Not `waived` — nothing is being
 //                 excused — and not `sha-const`, because the URL carries a tag.
+//   admission-policy  not a fetch: an exact versioned admission record or URL
+//                 validation template. Pending records authorize no download;
+//                 only the separately declared current producer is content-bound.
 //   waived        genuinely cannot be sha-addressed; reason required
 const CENSUS = [
     {
@@ -538,6 +541,24 @@ const CENSUS = [
     },
     currentJoltFetchPin(),
     {
+        file: 'scripts/lib/sim-engine-admission.mjs', kind: 'release',
+        text: 'github.com/CrispStrobe/JoltPhysics.js/releases/download/${current.releaseTag}/jolt-physics-${current.version}.tgz',
+        class: 'admission-policy',
+        why: 'URL equality assertion, not a network operation. resolveEngineAdmission requires the exact bw.10 version and tag, admitted status, actual archive SHA256/SHA512 and canonical source/qualification identities before accepting a changed producer pin.'
+    },
+    {
+        file: 'test/fixtures/bw-sim/engine-admissions/bw10.json', kind: 'release',
+        text: 'github.com/CrispStrobe/JoltPhysics.js/releases/download/bw.10-qualified-20261112/jolt-physics-1.1.0-bw.10.tgz',
+        class: 'admission-policy',
+        why: 'Expected versioned archive identity, not a fetch or an artifact admission. While pending, the null archive hashes authorize no producer change. The current producer remains the separate dynamic content-hash row until explicit package/source qualification admission.'
+    },
+    {
+        file: 'test/fixtures/bw-sim/engine-admissions/bw10.json', kind: 'release',
+        text: 'github.com/CrispStrobe/JoltPhysics.js/releases/download/bw.9-qualified-20261029/jolt-physics-1.1.0-bw.9.tgz',
+        class: 'admission-policy',
+        why: 'Retained bw.9 provenance identity, not a fetch. readEngineAdmission checks the fixed digest over this complete original package identity and retained-file census, then hashes every retained file. This row persists unchanged after bw.10 admission.'
+    },
+    {
         file: 'scripts/vendor-forward.mjs',
         kind: 'git',
         text: 'git ls-remote ${url} HEAD`);',
@@ -809,6 +830,23 @@ describe('fetch pinning: every fetch that decides what ships names an immutable 
             + 'claim about a fetch site that is not there — the census is then smaller than '
             + 'it reads, and a detector may have stopped matching a site that IS there. '
             + 'Delete the row, or fix what moved:\n  ' + vanished.map(show).join('\n  '));
+    });
+
+    test('engine admission policy rows name only the versioned record and equality assertion', () => {
+        const policy = CENSUS.filter(row => row.class === 'admission-policy');
+        assert.equal(policy.length, 3);
+        assert(policy.every(row => row.kind === 'release' && row.why.length > 80));
+        const record = JSON.parse(readFileSync(path.join(ROOT, 'test/fixtures/bw-sim/engine-admissions/bw10.json')));
+        assert.equal(record.expectedPackage.version, '1.1.0-bw.10');
+        assert.equal(record.expectedPackage.releaseTag, 'bw.10-qualified-20261112');
+        assert.deepEqual(policy.filter(row => row.file.endsWith('/bw10.json')).map(row => row.text),
+            [record.expectedPackage.url, record.retainedPackage.url].map(url => url.replace('https://', '')));
+        const producer = CENSUS.filter(row => row.file === 'scripts/integrate.mjs' && row.kind === 'release');
+        assert.equal(producer.length, 1);
+        assert.equal(producer[0].class, 'content-hash');
+        // The current dynamic row is still independently checked against the
+        // producer, lockfile and retained/admitted provenance by its loader.
+        assert.deepEqual(producer[0], currentJoltFetchPin());
     });
 
     test('every waived row states a reason, and the waived set is the three known ones', () => {
