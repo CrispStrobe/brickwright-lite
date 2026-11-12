@@ -595,7 +595,21 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
         const primitiveSyntax=n=>['Number','String','Boolean','Member'].includes(n?.type)||n?.type==='Parenthesized'&&primitiveSyntax(n.expression)||
             n?.type==='Unary'&&['-','+','!'].includes(n.op)&&primitiveSyntax(n.argument)||
             n?.type==='Binary'&&['+','-','*','/','%'].includes(n.op)&&primitiveSyntax(n.left)&&primitiveSyntax(n.right);
-        return primitiveSyntax(site.items[k])?site.items[k]:null;
+        const selected=site.items[k];
+        if(primitiveSyntax(selected))return selected;
+        const unwrapped=node=>node?.type==='Parenthesized'?unwrapped(node.expression):node;
+        const plainNumber=n=>n?.type==='Number'||n?.type==='Parenthesized'&&plainNumber(n.expression)||
+            n?.type==='Unary'&&['-','+'].includes(n.op)&&plainNumber(n.argument)||
+            n?.type==='Binary'&&['+','-','*','/','%'].includes(n.op)&&plainNumber(n.left)&&plainNumber(n.right);
+        const ordinaryCall=n=>{const call=unwrapped(n);return call?.type==='Call'&&!call.isNew&&!call.optional&&!call.typeArguments?.length&&
+            call.callee?.type==='Identifier'&&!!unchangedFunction(call)&&call.args.every(plainNumber);};
+        // The Array is fresh and used directly by this index expression, so no
+        // callee can receive or mutate that unpublished allocation. This does
+        // not make calls pure: all item effects/results remain in the graph.
+        // Restrict the new channel to a final homogeneous Number family, which
+        // is also what the existing native local-Array family proof admits.
+        if(unwrapped(op.node.object)!==site||!ordinaryCall(selected)||!site.items.every(item=>plainNumber(item)||ordinaryCall(item)))return null;
+        op.numberCallArray=site;return selected;
     };
     const propagateArrays=()=>{let changed=false;
         for(const op of arrayOperations){const strictTokens=arrayTypes(op.receiver),tokens=strictTokens||arrayMutationTypes(op.receiver);if(!strictTokens){
@@ -624,7 +638,7 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
             if(op.kind==='write'||['push','unshift'].includes(op.kind))for(const token of tokens)for(const value of op.kind==='write'?[op.value]:op.node.args.map(cell))for(const type of types.get(value)||[])changed=add(token.element,type)||changed;
             if(!strictTokens)continue;
             if(op.kind==='length'||['push','unshift'].includes(op.kind))changed=add(op.result,'Number')||changed;
-            if(op.kind==='read'&&!op.widened){const slot=positionalSlot(op,tokens);if(slot){op.slot=slot;positionalReads.add(op);for(const type of types.get(cell(slot))||[])changed=add(op.result,type)||changed;continue;}}
+            if(op.kind==='read'&&!op.widened){const slot=positionalSlot(op,tokens);if(slot){op.slot=slot;positionalReads.add(op);for(const type of types.get(cell(slot))||[])if(!op.numberCallArray||type==='Number')changed=add(op.result,type)||changed;continue;}}
             if(['read','pop','shift'].includes(op.kind)){changed=add(op.result,'Undefined')||changed;for(const token of tokens)for(const type of types.get(token.element)||[])changed=add(op.result,type)||changed;}
             if(['map','forEach','filter'].includes(op.kind)){const fn=op.node.args[0],owner=functionScopes.get(fn);if(!owner)continue;
                 if(fn.params[0]&&(op.kind==='map'||callbackEntry?.entries.has(fn))){const target=owner.bindings.get(fn.params[0]);changed=add(target,'Undefined')||changed;for(const token of tokens)for(const type of types.get(token.element)||[])changed=add(target,type)||changed;}
@@ -652,7 +666,8 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
     }while(changed);};propagate();
     for(let again=true;again;){again=false;
         for(const op of positionalReads){if(op.widened)continue;const tokens=arrayTypes(op.receiver)||[];
-            if(tokens.length===1&&pristine(tokens[0]))continue;
+            const numberCallCurrent=!op.numberCallArray||op.numberCallArray.items.every(item=>{const domain=types.get(cell(item));return domain?.size===1&&domain.has('Number');});
+            if(tokens.length===1&&pristine(tokens[0])&&numberCallCurrent)continue;
             op.widened=true;again=true;add(op.result,'Undefined');for(const token of tokens)for(const type of types.get(token.element)||[])add(op.result,type);}
         if(again)propagate();}
     if(arrayValues)for(const operation of arrayOperations)if(['write','update'].includes(operation.kind)&&!types.get(operation.index)?.size){for(const token of arrayTypes(operation.receiver)||[])unsafeArrayMethods.add(token);for(const token of nullableArrayTypes(operation.receiver)||[])nullablePoison(token);for(const token of arrayMutationTypes(operation.receiver)||[])unsafeArrayMethods.add(token);}
