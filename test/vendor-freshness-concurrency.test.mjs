@@ -13,6 +13,7 @@ test('workflow concurrency rejects policy drift instead of accepting a loose can
     for (const mutation of [
         workflow.replace('concurrency:', 'unreviewed-concurrency:'),
         workflow + '\nconcurrency:\n',
+        workflow.replace('concurrency:\n', 'concurrency:\n  extra-policy: true\n'),
         workflow.replace('${{ github.workflow }}', '${{ github.run_id }}'),
         workflow.replace('${{ github.ref }}', '${{ github.sha }}'),
         workflow.replace("github.ref_type != 'tag'", "github.ref_type == 'tag'"),
