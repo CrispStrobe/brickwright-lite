@@ -81,3 +81,8 @@ frontend archives of the 6th and 7th events (different chunk ids) the rule
 selects exactly the measured UI-path set (46 files each). Tests add a
 renumbered-build case and zero/two/zero-and-two/both-roles/unquoted cuts; four
 executed mutants are killed.
+
+Amendment 2026-11-12: the Circuit panels integrated on main are loaded on the
+Actual-V9 UI path. The frontend roster gains two named chunks and seven numeric
+chunk roles (by reviewed string literal), re-measured on the official build;
+selection equals the measured set (55 files, under the unchanged 16 MiB cap).

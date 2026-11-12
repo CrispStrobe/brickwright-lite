@@ -126,8 +126,8 @@ const CURRENT_X86_FINITE_V9_READER = "FINITE_V9_PINS = {'bw-board':CURRENT_BOARD
 // including clock and core/full-runtime parity. Any later source edit revokes
 // their occurrence roles until another explicit review; never auto-restamp.
 const HISTORICAL_X86_SOURCE_PROFILES = Object.freeze({
-    'scripts/run-i80386-hdd-gui-actual.py': Object.freeze({bytes: 351818, sha256: 'e1a14ab581a9ec863cc9fb32c02e2ef8ba07e08634850638821250e54ccb218b'}),
-    'scripts/read-i80386-hdd-gui-originals.py': Object.freeze({bytes: 467978, sha256: 'ce2112261813ca765d43dde37ca7bd75abf28116d66b9718b4db3df546322c77'}),
+    'scripts/run-i80386-hdd-gui-actual.py': Object.freeze({bytes: 352606, sha256: '32c21d6a55dc1e4e4d6208a951fdff520af8e507e2fc4d6d0acf745232b09624'}),
+    'scripts/read-i80386-hdd-gui-originals.py': Object.freeze({bytes: 468766, sha256: '5468daa20e68fc3fecd129bcd7fbdbabd58eb08b34fcaedfdd3752eb2ebbf91a'}),
     'test/i80386-hdd-gui-actual.test.mjs': Object.freeze({bytes: 646674, sha256: '45ef06f71b0bec8064d4f2bee31e1a78dcaa50cd9e6a4fd10fa8ad39cdd857ae'}),
 });
 

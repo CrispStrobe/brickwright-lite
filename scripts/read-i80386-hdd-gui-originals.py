@@ -1913,6 +1913,8 @@ def role_policy(names):
 ACTUAL_V9_FRONTEND_ROSTER = (
  r'brickwright\-build\.json',
  r'chunks/bw\-board\-i80386\.[0-9a-f]{20}\.js',
+ r'chunks/bw\-circuit\-panels\.js',
+ r'chunks/bw\-circuit\-ui\.[0-9a-f]{20}\.js',
  r'chunks/bw\-codemirror\.js',
  r'chunks/bw\-controller\-panel\.js',
  r'chunks/bw\-debug\-faces\.[0-9a-f]{20}\.js',
@@ -1959,6 +1961,13 @@ ACTUAL_V9_FRONTEND_CHUNK_ROLES = (
  ('sprite-reorder', 'That sprite is no longer in this project'),
  ('spice-pwl-sources', 'spice-pwl: points must contain at least two authored pairs'),
  ('i80386-debug-target', 'Pause the target before copying its master disk'),
+ ('rp2040-watchdog', 'Watchdog count is decremented twice per tick.'),
+ ('firmware-image-profile', 'image exceeds the 16 MiB profile'),
+ ('z80-core-unimplemented', ' not yet implemented'),
+ ('rp2040-gpio-unimplemented', ' is not implemented yet!'),
+ ('basic-machine-runner', 'BasicMachineRunner: rom bytes required'),
+ ('rp2040-usb-device', 'USB device connected (full-speed)'),
+ ('chip-checkpoint-shapes', 'cycle counter or pin levels are not a restorable shape'),
 )
 # NUMERIC CHUNKS ARE SELECTED BY ROLE, NEVER BY ID. Webpack numbers chunks by
 # module graph position, so ordinary main merges renumber them (the 7th event
@@ -1969,6 +1978,9 @@ ACTUAL_V9_FRONTEND_CHUNK_ROLES = (
 # roster miss refuses. Measured 2026-11-10 on the official Pages build of the
 # PR1627 head; every marker also selects the same role's chunk in the build of
 # the 6th event (different ids), so the rule is stable under renumbering.
+# 2026-11-12: the Circuit panels integrated by #1726 are loaded on the same UI
+# path (two named chunks and seven role chunks above); re-measured on the official
+# Pages build of PR1627 52535a3a, selection equals the measured GET set (55).
 ACTUAL_V9_NUMERIC_CHUNK = r'chunks/[0-9]+(?:\.[0-9a-f]{20})?\.js'
 ACTUAL_V9_FRONTEND_COUNT = len(ACTUAL_V9_FRONTEND_ROSTER) + len(ACTUAL_V9_FRONTEND_CHUNK_ROLES)
 # Reviewed subset was 8,674,638 bytes; the aggregate bound is the next power of
