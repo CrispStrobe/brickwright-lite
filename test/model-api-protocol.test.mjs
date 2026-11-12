@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2026 CrispStrobe
+import {assertReviewedConcurrency, modelWorkflowBeforeConcurrencyPolicy} from './helpers/reviewed-concurrency-projections.mjs';
 import {test} from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';
 import {validateSubmission,LIMITS} from '../tools/model-api/lib/protocol.mjs';import {authenticate,sha256,ownerTag,seal,open,signJob,readJob} from '../tools/model-api/lib/crypto.mjs';import {createGateway} from '../tools/model-api/lib/gateway.mjs';import {applyCors} from '../tools/model-api/lib/http.mjs';import {githubBackend} from '../tools/model-api/lib/github.mjs';
 const master=Buffer.alloc(32,7),token='x'.repeat(43),other='y'.repeat(43),tokens=[{id:'a',sha256:sha256(token)},{id:'b',sha256:sha256(other)}],model={name:'model.ldr',text:'0 model\n1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat\n'},input={model},authorization='Bearer '+token;
@@ -51,7 +52,7 @@ test('an initializing GitHub run stays queued until its exact request name is vi
 });
 test('hosted worker has no credential/network channel and preserves failures as encrypted artifacts',()=>{
  const s=readFileSync(new URL('../.github/workflows/model-measurements.yml',import.meta.url),'utf8'),run=s.slice(s.indexOf('      - name: Run bounded'),s.indexOf('      - name: Encrypt'));
- assert.match(run,/--network=none/);assert.match(run,/--read-only/);assert.match(run,/--pids-limit=128/);assert.match(run,/--memory=2g/);assert.match(run,/timeout --signal=TERM/);assert.match(run,/node@sha256:[a-f0-9]{64}/);assert.ok(!/secrets\.|GITHUB_TOKEN|MODEL_API_MASTER_KEY/.test(run));assert.match(s,/persist-credentials: false/);assert.match(s,/retention-days: 1/);assert.ok(!s.includes('concurrency:'));assert.ok(!s.includes('${{ inputs.envelope }}'),'payload is read from event data, never expanded into shell code');
+ assert.match(run,/--network=none/);assert.match(run,/--read-only/);assert.match(run,/--pids-limit=128/);assert.match(run,/--memory=2g/);assert.match(run,/timeout --signal=TERM/);assert.match(run,/node@sha256:[a-f0-9]{64}/);assert.ok(!/secrets\.|GITHUB_TOKEN|MODEL_API_MASTER_KEY/.test(run));assert.match(s,/persist-credentials: false/);assert.match(s,/retention-days: 1/);assertReviewedConcurrency(s);assert.ok(!s.includes('${{ inputs.envelope }}'),'payload is read from event data, never expanded into shell code');
 });
 
 test('a Pages client receives only explicitly allowed CORS origins',()=>{
@@ -74,11 +75,22 @@ test('production handler authenticates before body access or any private backend
 
 test('automatic fixed-model qualification is isolated from production dispatch and preserves exact source evidence',()=>{
  const s=readFileSync(new URL('../.github/workflows/model-measurements.yml',import.meta.url),'utf8'),q=s.slice(s.indexOf('  qualify:'));
- assert.equal(s,readFileSync(new URL('../tools/model-api/worker-workflow.yml',import.meta.url),'utf8'));
+ assert.equal(modelWorkflowBeforeConcurrencyPolicy(s),readFileSync(new URL('../tools/model-api/worker-workflow.yml',import.meta.url),'utf8'));
  assert.match(s,/if: \$\{\{ github.event_name == 'workflow_dispatch' \}\}/);
  assert.match(q,/github.event.pull_request.head.repo.full_name == github.repository/);assert.match(q,/ref: \$\{\{ github.event.pull_request.head.sha \}\}/);
  assert.ok(!/secrets\.|pull_request_target|MODEL_API_MASTER_KEY/.test(q));
  assert.match(q,/name: model-api-encrypted-/);assert.match(q,/model-api-qualification\/result.enc/);
  assert.match(q,/qualification-prepare/);assert.match(q,/qualification-seal/);assert.match(q,/model-api-native.test.mjs/);assert.match(q,/qualification.mjs verify/);
  assert.match(q,/if: \$\{\{ always\(\) \}\}/);assert.match(q,/retention-days: 2/);
+});
+
+
+test('model policy projection rejects cancellation drift and preserves every worker-template byte', () => {
+ const source = readFileSync(new URL('../.github/workflows/model-measurements.yml', import.meta.url), 'utf8');
+ const template = readFileSync(new URL('../tools/model-api/worker-workflow.yml', import.meta.url), 'utf8');
+ for (const changed of [source.replace("github.event_name == 'push'", "github.event_name == 'workflow_dispatch'"),
+     source.replace("github.ref_type != 'tag'", "github.ref_type == 'tag'"), source + '\nconcurrency:\n']) {
+  assert.throws(() => modelWorkflowBeforeConcurrencyPolicy(changed));
+ }
+ assert.notEqual(modelWorkflowBeforeConcurrencyPolicy(source.replace('contents: read', 'contents: write')), template);
 });
