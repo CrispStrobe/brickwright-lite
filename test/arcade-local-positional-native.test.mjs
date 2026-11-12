@@ -12,7 +12,7 @@ function fixture(){
  add('hat','arcade_whenSourceStarts').topLevel=true;blocks.hat.next='alloc';
  add('alloc','arcade_setLocal','hat',{NAME:{block:'allocName'},VALUE:{block:'empty'}}).next='push0';
  text('allocName','alloc','temporary');add('empty','arrays_createReference','alloc',{VALUES:{block:'emptyValues'}});text('emptyValues','empty','[]');
- for(let i=0;i<2;i++){const id='push'+i;add(id,'arrays_mutateReference',i?'push0':'alloc',{ARRAY:{block:'ref'+i},OP:{block:'op'+i},VALUE:{block:'num'+i}}).next=i?'out':'push1';add('ref'+i,'arcade_getLocal',id,{NAME:{block:'name'+i}});text('name'+i,'ref'+i,'temporary');text('op'+i,id,'push');number('num'+i,id,i+5);}
+ for(let i=0;i<2;i++){const id='push'+i;add(id,'arrays_mutateReference',i?'push0':'alloc',{ARRAY:{block:'ref'+i},OP:{block:'op'+i},INDEX:{block:'pushIndex'+i},VALUE:{block:'num'+i}}).next=i?'out':'push1';add('ref'+i,'arcade_getLocal',id,{NAME:{block:'name'+i}});text('name'+i,'ref'+i,'temporary');text('op'+i,id,'push');number('pushIndex'+i,id,0);number('num'+i,id,i+5);}
  blocks.num1.opcode='text';blocks.num1.fields={TEXT:{value:'text'}};
  add('out','data_setvariableto','push1',{VALUE:{block:'inspect'}});
  add('inspect','arcade_inspectValue','out',{VALUE:{block:'item'},LIMIT:{block:'limit'}});
@@ -32,6 +32,11 @@ test('actual native domain query proves an in-bounds local literal-array slot',(
  for(const [index,type]of [[0,'number'],[1,'string']]){const f=fixture();f.blocks.index.fields.NUM.value=String(index);assert.deepEqual(f.invoke(),[[type]]);}
  const f=fixture();f.blocks.num0.opcode='text';f.blocks.num0.fields={TEXT:{value:'text'}};assert.deepEqual(f.invoke(),[['string']]);
 });
+test('importer numeric literal wrapper remains a closed positional value',()=>{
+ const f=fixture();f.blocks.num0.opcode='operator_add';f.blocks.num0.fields={};f.blocks.num0.shadow=false;
+ f.blocks.num0.inputs={NUM1:{block:'zero'},NUM2:{block:'seven'}};f.number('zero','num0',0);f.number('seven','num0',7);
+ assert.deepEqual(f.invoke(),[['number']]);
+});
 test('local positional near misses cannot gain precise Number evidence',()=>{
  const cases={
   outOfBounds:f=>{f.blocks.index.fields.NUM.value='2';},
@@ -44,6 +49,9 @@ test('local positional near misses cannot gain precise Number evidence',()=>{
   loop:f=>{f.blocks.push0.next='push0';},
   earlyRead:f=>{f.blocks.alloc.parent='push0';f.blocks.hat.next='out';},
   capture:f=>{f.add('capture','arcade_getCaptured',null,{NAME:{block:'captureName'}});f.text('captureName','capture','temporary');},
+  pushIndexEffect:f=>{f.blocks.pushIndex0.inputs.EXTRA={block:'call'};f.add('call','arcade_callFunction','pushIndex0');},
+  pushIndexNonLiteral:f=>{f.blocks.pushIndex0.opcode='arcade_callFunction';},
+  pushIndexMissing:f=>{delete f.blocks.push0.inputs.INDEX;},
   indexEffect:f=>{f.blocks.index.inputs.EXTRA={block:'call'};f.add('call','arcade_callFunction','index');},
   selectorEffect:f=>{f.blocks.op0.inputs.EXTRA={block:'call'};f.add('call','arcade_callFunction','op0');},
   endpointSiblingCall:f=>{f.blocks.inspect.inputs.LIMIT={block:'call'};f.add('call','arcade_callFunction','inspect');},
@@ -52,6 +60,10 @@ test('local positional near misses cannot gain precise Number evidence',()=>{
   extraEffect:f=>{f.blocks.alloc.next='effect';f.add('effect','arcade_callFunction','alloc').next='push0';f.blocks.push0.parent='effect';},
   extraPushInput:f=>{f.blocks.push0.inputs.EXTRA={block:'effect'};f.add('effect','arcade_callFunction','push0');},
   dynamicLocalName:f=>{f.blocks.receiverName.opcode='operator_join';},
+  wrapperEffect:f=>{f.blocks.num0.opcode='operator_add';f.blocks.num0.fields={};f.blocks.num0.inputs={NUM1:{block:'zero'},NUM2:{block:'seven'},EXTRA:{block:'call'}};f.number('zero','num0',0);f.number('seven','num0',7);f.add('call','arcade_callFunction','num0');},
+  wrapperNonzeroPrefix:f=>{f.blocks.num0.opcode='operator_add';f.blocks.num0.fields={};f.blocks.num0.inputs={NUM1:{block:'one'},NUM2:{block:'seven'}};f.number('one','num0',1);f.number('seven','num0',7);},
+  malformedOtherLiteral:f=>{f.blocks.num1.fields.TEXT.value=null;},
+  malformedEndpointLiteral:f=>{f.blocks.limit.fields.NUM.value=null;},
   computedElement:f=>{f.blocks.num0.opcode='operator_add';},
   disconnectedIndex:f=>{f.blocks.index.parent='other';}
  };

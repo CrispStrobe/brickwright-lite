@@ -21,3 +21,11 @@ not complete the PXT staging fixture or authorize broader local Array effects.
 
 Endpoint expression inputs are closed too: sibling calls, aliases and extra
 inputs cannot run before the read under the new positional proof.
+
+The actual Creator push block includes an `INDEX` input even for `push`.
+The positional proof admits that input only as a closed finite Number shadow;
+missing, computed or effectful index inputs do not gain positional evidence.
+Every pushed literal and sibling endpoint literal must also have a closed
+primitive value. The importer's exact `0 + N` Number-literal wrapper is
+admitted only with two closed numeric shadows and a zero left operand. A real Creator/native and original-PXT guest comparison is
+included for qualification and remains pending until hosted checks pass.

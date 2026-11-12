@@ -94,3 +94,23 @@ test('selected staging preserves callable and generic metadata with independentl
     assert.ok(transformed.body.some(node=>node.type==='If'));
     assert.equal(fn.body.length,1,'the original input tree remains untouched');
 });
+
+// The unchanged MakeCode source imports into a local Array literal prefix.
+// Compare its actual original-PXT result with the imported native constrained call.
+test('a local mixed literal Array supplies its fixed Number slot to a constrained native call',async()=>{
+    const source='let observed=-1;function hold(value:number){observed=value}hold([7,<any>"x"][0]);observed+=0;';
+    const original=await runPxtArcade(source,{fakeClock:true,waitForGlobals:{observed:7}});
+    assert.equal(original.observed,7);
+    const imported=arcadeToPseudocode(source);assert.deepEqual(imported.unsupported,[]);
+    let run;
+    try {
+        run=await runProgram(imported.code,{frames:8,storage:true});
+        assert.deepEqual(run.creator.errors,[]);assert.deepEqual(run.creator.warnings,[]);assert.deepEqual(run.errors,[]);
+        const blocks=run.creator.project.targets.flatMap(t=>Object.values(t.blocks||{}));
+        const pushes=blocks.filter(b=>b.opcode==='arrays_mutateReference');assert.equal(pushes.length,2);
+        for(const push of pushes)assert.deepEqual(Object.keys(push.inputs).sort(),['ARRAY','INDEX','OP','VALUE']);
+        assert.ok(blocks.some(b=>b.opcode==='arcade_declareParameterConstraint'));
+        const observed=run.vm.runtime.targets.flatMap(t=>Object.values(t.variables)).find(v=>v.name==='observed'||v.name==='Game_observed');
+        assert.ok(observed);assert.equal(observed.value,original.observed);
+    } finally {if(run){run.vm.stopAll();run.vm.quit();}clearStrayTimers();}
+});
