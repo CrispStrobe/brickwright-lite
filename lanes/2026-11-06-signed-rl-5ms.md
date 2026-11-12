@@ -1,6 +1,6 @@
 # Signed RL scope and meter consumer check
 
-Status: CLAIMED, 2026-11-06. Owner: circuit measurement integration.
+Status: IMPLEMENTED, 2026-11-12 (claimed 2026-11-06). Owner: circuit measurement integration.
 
 Add a bounded, newly authored transient consumer regression for a series
 1470-ohm resistor and 0.073-henry inductor driven by +2.3 V and -2.3 V.
@@ -25,3 +25,9 @@ and test do not move main while that candidate is being qualified. Run the
 focused test against the exact clean installed packages on hosted CI, retain
 all actual failures, and report the numeric errors and limits. No physical
 instrument or arbitrary-circuit accuracy claim follows from these fixtures.
+
+Implementation: `test/circuit-signed-rl-5ms.test.mjs` scopes the inductor
+terminal against `source * exp(-t * R / L)` and checks both resistor terminal
+meter signs against the closed-form complete-window mean current. A comparator
+test plus the actual captures reject a sign flip, a doubled time constant,
+swapped R and L, a reversed current and a nonfinite sample.
