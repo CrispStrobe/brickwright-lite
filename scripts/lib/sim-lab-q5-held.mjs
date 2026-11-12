@@ -20,6 +20,28 @@ export const Q5_HELD = Object.freeze({
 export const selectedHeldQ5Models = requested => Object.keys(Q5_HELD).filter(id => requested.includes(id));
 export const heldUsesR4Control = id => Object.hasOwn(Q5_HELD, id) && Q5_HELD[id].disconnectLoss === 'r4';
 export const heldBrowserOptions = id => Object.hasOwn(Q5_HELD, id) ? {includeExperimental: true} : {};
+/** Serialized into the already selected held base page; reads only its actual cold worker IDs. */
+export function heldStartupDiagnostic(id) {
+    if (id !== 'solstice-pumpjack') throw new Error('startup telemetry requires explicit held Solstice');
+    const pane = window.__bwSimLab?._pane, session = pane?.session, mechanism = session?.mechanism;
+    if (window.__bwSimLab?.status !== 'ready' || pane?.state.modelFile !== id + '.ldr' ||
+        !session?.worker || session._disposed || session.time !== 0 || session.core?.time !== 0) {
+        throw new Error('held startup telemetry requires the selected cold ready worker');
+    }
+    if (!Array.isArray(mechanism?.bodies) || !Array.isArray(mechanism?.joints) ||
+        mechanism.bodies.length > 16 || mechanism.joints.length > 32 ||
+        Array.from(mechanism.bodies).some(b => !b || typeof b.id !== 'string') ||
+        Array.from(mechanism.joints).some(j => !j || typeof j.id !== 'string')) {
+        throw new Error('held startup mechanism exceeds diagnostic bounds');
+    }
+    const bodies = mechanism.bodies.filter(b => b.motion === 'dynamic').map(b => b.id);
+    const joints = mechanism.joints.filter(j => ['hinge', 'slider'].includes(j.type)).map(j => j.id);
+    if (!bodies.length || bodies.length > 6 || new Set(bodies).size !== bodies.length ||
+        !joints.length || joints.length > 7 || new Set(joints).size !== joints.length) {
+        throw new Error('held startup selection exceeds diagnostic bounds');
+    }
+    return {bodies, joints, stopSeconds: 0.55};
+}
 export const heldQ5Contract = id => {
     assert.ok(Object.hasOwn(Q5_HELD, id), `No reviewed held Q5 contract: ${id}`);
     return Q5_HELD[id];
@@ -160,6 +182,28 @@ export function heldRuntimeSnapshot() {
         program: {targets: targets.length, blocks: targets.reduce((n, t) => n + Object.keys(t.blocks?._blocks ?? {}).length, 0)},
         observations: {frames: Array.isArray(track?.track) ? track.track.length : 0}, resources
     };
+}
+
+/** Serialized read-only copy for the private failure path; never append raw telemetry to public summaries. */
+export function heldStartupFailureSnapshot() {
+    const pane = window.__bwSimLab?._pane, record = window.__bwMechanics, diagnostic = record?.startupDiagnostic;
+    const summary = {schema: 'robot-lab.held-startup-partial.v1', qualification: false,
+        sessionMatchesRecord: Boolean(record && record.mechanism === pane?.session?.mechanism),
+        capturedAtSessionMs: Number.isFinite(pane?.session?.time) ? pane.session.time : null,
+        capturedAtCoreSeconds: Number.isFinite(pane?.session?.core?.time) ? pane.session.core.time : null};
+    if (!diagnostic) return {...summary, status: 'not-observed', diagnostic: null};
+    const selection = diagnostic.selection, packets = diagnostic.packets;
+    const boundedRow = row => row && Array.isArray(row.bodies) && row.bodies.length <= 6 &&
+        Array.isArray(row.joints) && row.joints.length <= 7;
+    if (diagnostic.qualification !== false || !Array.isArray(selection?.bodies) || selection.bodies.length > 6 ||
+        !Array.isArray(selection.joints) || selection.joints.length > 7 ||
+        !(selection.stopSeconds > 0 && selection.stopSeconds <= 0.55) || !Array.isArray(packets) || packets.length > 111 ||
+        Array.from(packets).some(p => !p || p.packet != null && (!Array.isArray(p.packet.samples) || p.packet.samples.length > 110 ||
+            p.packet.initial != null && !boundedRow(p.packet.initial) || !Array.from(p.packet.samples).every(boundedRow))) ||
+        packets.reduce((n, p) => n + (p.packet?.samples.length || 0), 0) > 110) {
+        throw new Error('held startup failure snapshot exceeds diagnostic bounds');
+    }
+    return {...summary, status: 'captured', diagnostic: structuredClone(diagnostic)};
 }
 
 /** Explicit private evidence boundary: outside checkout, no symlink routing, owned and mode 0700. */

@@ -25,7 +25,7 @@ import {obliquityDisconnectionLoss} from './sim-lab-obliquity-judge.mjs';
 import {r2DisconnectionLoss} from './sim-lab-r2-judges.mjs';
 import {r3DisconnectionLoss} from './sim-lab-r3-judges.mjs';
 import {r4DisconnectionLoss} from './sim-lab-r4-judges.mjs';
-import {Q5_HELD, heldQ5Contract, heldUsesR4Control, runHeldQ5Checks, assertHeldManualCoverage, withHeldPageErrors, finishHeldCleanup, heldErrorDetails, heldRuntimeSnapshot, assertHeldPrivateDirectory, heldModelSource} from './sim-lab-q5-held.mjs';
+import {Q5_HELD, heldQ5Contract, heldUsesR4Control, runHeldQ5Checks, assertHeldManualCoverage, withHeldPageErrors, finishHeldCleanup, heldErrorDetails, heldRuntimeSnapshot, heldStartupFailureSnapshot, assertHeldPrivateDirectory, heldModelSource, heldStartupDiagnostic} from './sim-lab-q5-held.mjs';
 export {Q5_HELD} from './sim-lab-q5-held.mjs';
 
 export const R2_BROWSER_MODELS = Object.freeze(['cadence-geneva', 'helios-transmission', 'orion-cardan']);
@@ -275,6 +275,7 @@ export async function q5BrowserInteractions(page, opts, id) {
     if (held && opts.heldIdentity) writeFileSync(resolve(opts.shotsDir, id + '-identity.json'), JSON.stringify(opts.heldIdentity, null, 2) + '\n');
     const measureMain = async () => (await mechanicsInteractions(page, {
         ...opts, ...(held ? {includeExperimental: true} : {}), models: [id],
+        startupDiagnosticFor: held ? (loadedPage, loadedId) => loadedPage.evaluate(heldStartupDiagnostic, loadedId) : null,
         judge: (_, r) => judgeQ5Browser(id, r, c), captureModel: captureRenderedModel,
         extendedObservations: true, observeDynamics, stepParts: STEP_PARTS[id] ?? null, completionHoldMsFor: () => c.afterMs, speed: GATE_SPEED, observeProgram: true
     }))[id];
@@ -284,6 +285,7 @@ export async function q5BrowserInteractions(page, opts, id) {
         try { return await measureMain(); }
         catch (error) { primary = error; hasPrimary = true; throw error; }
         finally { await finishHeldCleanup(primary, [
+            ...(hasPrimary ? [async () => writeFileSync(resolve(opts.shotsDir, id + '-base-startup-partial.json'), JSON.stringify(await page.evaluate(heldStartupFailureSnapshot), null, 2) + '\n')] : []),
             async () => writeFileSync(resolve(opts.shotsDir, id + '-base-runtime.json'), JSON.stringify(await page.evaluate(heldRuntimeSnapshot), null, 2) + '\n'),
             async () => {
                 if (await page.evaluate(() => window.__bwSimLab?.status) === 'running') {
