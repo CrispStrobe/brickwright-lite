@@ -824,6 +824,7 @@ function create(runtime, cells, scoreOwner=null, sceneClock=null, frameDelta=nul
                     ...(f.getter?[{procedure:f.getter,kind:'getter',parameters:[],field:f}]:[]),
                     ...(f.setter?[{...f.setter,kind:'setter',field:f}]:[])])]){
                 if(!role.procedure)continue;
+                if(role.procedure.startsWith('__bwOwned')||/^__bwClass_(?:__bwSDK_|(?:BaseSprite|Sprite|ExtendableSprite|BaseDialog|SplashDialog|Font)_)/.test(role.procedure))return null;
                 const scopes=captureProof.scopes.filter(s=>s.target===target&&s.procedure===role.procedure&&!s.invalid);
                 if(roles.has(role.procedure)||scopes.length!==1||!Array.isArray(role.parameters)||scopes[0].params.length!==role.parameters.length+1||
                     role.parameters.some((p,i)=>!p||p.name!==scopes[0].params[i+1]))return null;

@@ -63,6 +63,7 @@ test('class Number annotations never replace actual Text or Boolean constructor/
 
 test('unproven writers, read-before-construction and uncertain dispatch remain refused',()=>{
  const cases={
+  nativeProcedureCollision:f=>{const code='__bwClass_Sprite_constructor %s %s';f.blocks.declCONSTRUCTOR.fields.TEXT.value=code;f.blocks.ctorproto.mutation.proccode=code;},
   invalidFieldType:f=>{f.fields[0].type='bad type';f.blocks.declFIELDS.fields.TEXT.value=JSON.stringify(f.fields);},
   missingReadonly:f=>{delete f.fields[0].readonly;f.blocks.declFIELDS.fields.TEXT.value=JSON.stringify(f.fields);},
   invalidClassName:f=>{f.blocks.declNAME.fields.TEXT.value='bad name';f.blocks.newCLASS.fields.TEXT.value='bad name';},
