@@ -2,13 +2,14 @@
 
 Status: IN REVIEW 2026-11-12 — claim and change in one PR. Promotes Tempest only. Impulse Line stays
 experimental: its pusher has no gravity-rest pose short of the first bob (handoff 00000).
-Solstice is not promoted: native runs pass walking-beam-v1 (beam 0.019°, piston 0.022 mm at both 25 ms and
-33 ms frames), but the local chromium browser gate (Node 22, production build) measured beam error 0.132° and
-piston 0.17 mm against the frozen 0.1° / 0.1 mm bounds, a steady offset during the fast reverse cycle at crank
-235–247°. The likely cause is a solver-setting difference between the browser and the native helper, to be
-investigated separately; no bound changes. Its contract, registry move, fixture and shard were withdrawn; the
-re-pose and the registered judge `walking-beam-v1` stay. Next: browser/native solver parity, then re-promotion
-at 0.1°.
+Solstice is not promoted. The original browser verdict was 0.132° / 0.17 mm
+against unchanged 0.1° / 0.1 mm limits. The original judge mixed first-frame
+angles with authored geometry; the corrected judge still refuses the retained
+browser track at 0.115890° / 0.171740 mm, while retained native tracks pass.
+The largest browser deviation begins before motor movement; an initial-condition
+difference is observed, not proof of a solver defect. Preserve all startup frames
+and original failures. Investigate the early constraint relaxation and require
+fresh affected browser qualification before any promotion.
 Owner: Claude, Robot Lab promotion lane.
 Branch: `lane/robot-r4-start-guards-20261112`.
 
