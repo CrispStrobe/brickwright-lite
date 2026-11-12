@@ -84,6 +84,21 @@ export const EXPERIMENTAL_MODELS = Object.freeze([
         }
     },
     {
+        "file": "aster-governor.ldr",
+        "title": {
+            "en": "Aster — centrifugal governor",
+            "de": "Aster — Fliehkraftregler"
+        },
+        "example": "aster-governor.bw",
+        "mat": "plain",
+        "experimental": true,
+        "blocked": false,
+        "intro": {
+            "en": "Passive flyweights on a hinged rhombus lift a sliding collar as motor A spins the spindle faster; it senses speed (ω²) but, with no throttle, does not regulate it.",
+            "de": "Passive Fliehgewichte an einer Gelenkraute heben eine Gleitmuffe, wenn Motor A die Spindel schneller dreht; der Regler misst die Drehzahl (ω²), regelt sie aber mangels Drossel nicht."
+        }
+    },
+    {
         "file": "solstice-pumpjack.ldr",
         "title": {
             "en": "Solstice — walking-beam pumpjack",
@@ -161,6 +176,29 @@ export const EXPERIMENTAL_MODELS = Object.freeze([
                 "maxDeg": 61,
                 "stepDeg": 5,
                 "speedDps": 5
+            }
+        }
+    },
+    {
+        "file": "vesper-quickreturn.ldr",
+        "title": {
+            "en": "Vesper — quick-return shaper",
+            "de": "Vesper — Schnellrücklauf mit Kurbelschleife"
+        },
+        "example": "vesper-quickreturn.bw",
+        "mat": "plain",
+        "experimental": true,
+        "blocked": false,
+        "intro": {
+            "en": "A crank and slotted lever turn steady motor rotation into a slow working stroke and a quick return, about 1.46 : 1, as in a metal shaping machine. Experimental: not yet independently measured.",
+            "de": "Kurbel und schwingende Kurbelschleife machen aus gleichmäßiger Motordrehung einen langsamen Arbeitshub und einen schnellen Rücklauf, etwa 1,46 : 1, wie in einer Stoßmaschine. Experimentell: noch nicht unabhängig gemessen."
+        },
+        "manualJog": {
+            "A": {
+                "minDeg": -2,
+                "maxDeg": 1082,
+                "stepDeg": 15,
+                "speedDps": 30
             }
         }
     },
@@ -875,6 +913,42 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
         ],
         "experimental": true
     },
+    "aster-governor.ldr": {
+        "pieces": 144,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "forces",
+        "description": {
+            "en": "Passive flyweights on a hinged rhombus lift a sliding collar as motor A spins the spindle faster; it senses speed (ω²) but, with no throttle, does not regulate it.",
+            "de": "Passive Fliehgewichte an einer Gelenkraute heben eine Gleitmuffe, wenn Motor A die Spindel schneller dreht; der Regler misst die Drehzahl (ω²), regelt sie aber mangels Drossel nicht."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "centrifugal governor",
+            "de": "Fliehkraftregler"
+        },
+        "keywords": [
+            "centrifugal governor",
+            "flyball governor",
+            "Porter governor",
+            "Watt governor",
+            "collar",
+            "flyweights",
+            "angular speed squared",
+            "Fliehkraftregler",
+            "Muffe",
+            "Fliehgewichte",
+            "Drehzahlregler",
+            "experimental",
+            "prototype",
+            "unverified",
+            "experimentell"
+        ],
+        "experimental": true
+    },
     "solstice-pumpjack.ldr": {
         "pieces": 93,
         "motors": 1,
@@ -985,6 +1059,45 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
             "balance",
             "load position",
             "parallelogram",
+            "experimental",
+            "prototype",
+            "unverified",
+            "experimentell"
+        ],
+        "experimental": true
+    },
+    "vesper-quickreturn.ldr": {
+        "pieces": 91,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "linkages",
+        "description": {
+            "en": "A crank and slotted lever turn steady motor rotation into a slow working stroke and a quick return, about 1.46 : 1, as in a metal shaping machine. Experimental: not yet independently measured.",
+            "de": "Kurbel und schwingende Kurbelschleife machen aus gleichmäßiger Motordrehung einen langsamen Arbeitshub und einen schnellen Rücklauf, etwa 1,46 : 1, wie in einer Stoßmaschine. Experimentell: noch nicht unabhängig gemessen."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "quick-return shaper",
+            "de": "Schnellrücklauf-Hobel"
+        },
+        "keywords": [
+            "quick return",
+            "quick-return mechanism",
+            "crank and slotted lever",
+            "shaper",
+            "shaping machine",
+            "Whitworth",
+            "time ratio",
+            "Schnellrücklauf",
+            "schwingende Kurbelschleife",
+            "Kurbelschleife",
+            "Stoßmaschine",
+            "Shapingmaschine",
+            "Zeitverhältnis",
+            "stroke timing",
             "experimental",
             "prototype",
             "unverified",

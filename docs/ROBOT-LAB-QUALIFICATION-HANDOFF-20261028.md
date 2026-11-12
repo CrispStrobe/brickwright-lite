@@ -127,14 +127,14 @@ differential's carrier is locked (K = (L + R)/2), so motor A cannot reach its jo
 multi-motor mechanisms (the gate owner's decision). Its contract, registry move, fixture and shard were withdrawn;
 `differential-sum-v1` stays registered and its STEP split stays.
 
-**R3 (#1731, `lanes/2026-11-12-robot-r3-geometry-repairs.md`): Vesper, Aster and Apex repaired and qualified; Bloom
-stays experimental (below).** One judge module, `scripts/lib/sim-lab-r3-judges.mjs`; every constant is read from the
+**R3 (#1731, `lanes/2026-11-12-robot-r3-geometry-repairs.md`): Apex repaired and qualified; Vesper and Aster repaired but
+stay experimental (browser gates, below); Bloom stays experimental (below).** One judge module, `scripts/lib/sim-lab-r3-judges.mjs`; every constant is read from the
 compiled joints, colliders and catalogue tooth counts. Repairs (real parts only; source records in
 `test/fixtures/model-files/<id>-source/SOURCES.md`): Vesper's fixed pivot bearing 3L beam → thin 1 × 5 liftarm 5 LDU
 further out (it reached 5.5 LDU into the motor's output-side plate); Aster's four flyweight wheels 7.5 LDU further out
 on axle 10s (they reached 7.5 LDU into the key beams); Apex's housing ring links redistributed over three layers (24
 same-layer pairs overlapped by up to 0.6 LDU beyond the collider tolerance where the ring curves), 8 pins moved and 8
-made 3L. Construction suite clean on all three. Native runs (COLD 500), measured / gate:
+made 3L. Construction suite clean on all three (the repairs ship for all three). Native runs (COLD 500), measured / gate:
 
 | Model | Judge | Law error | Other measured | Disconnection (lost) |
 |---|---|---|---|---|
@@ -149,9 +149,16 @@ uses the distributed form ω²(h) = 2g·(dY/dh)/(dJ/dh) from the compiled collid
 engine's step size: with 4 collision steps the same plateaus sit 0.4–1.1 % on the other side of the prediction. Apex's
 law is exact as proposed (eccentricity 4.000 mm). Wrong-model mutants are refused (Vesper pivot moved 8 mm, Aster collar
 ×4 mass, Apex rotor gear 24T→40T). Instructions: Vesper and Aster author STEP groups removed (46 and 62 derived steps);
-Apex's author steps split in order (86 steps of ≤ 6; its derived plan has an 8-part step). Browser gates on shards
-robotaddon20 (Vesper), robotaddon21 (Aster) and robotaddon22 (Apex); Vesper's and Aster's ~124 s programs put their
-disconnected controls in a second step on the same shard. **Bloom is not promoted:** every one of its 24 scissor pivots
+Apex's author steps split in order (86 steps of ≤ 6; its derived plan has an 8-part step). Browser gate on shard robotaddon22 (Apex): passed (hosted chromium).
+**Vesper is not promoted:** its hosted chromium gate (robotaddon20) measured the ram 0.504 mm from the kinematics
+(bound 0.5 mm; natively 0.300 mm) and found 17 arc ratios with a minimum of 1.281, a turning point picked up at a stage
+boundary on browser frames; the judge's turning-point extraction needs work before a retry. Its disconnected control
+passed. Same withdrawal as Aster below.
+**Aster is not promoted:** in the hosted chromium gate (robotaddon21) its law checks held, then the judge's hinge-closure
+bound refused the run: a hinge opened 0.550 mm (bound 0.5 mm; natively 0.365 mm) with axes 0.73° apart at 800 °/s.
+The bound is not loosened; its contract, registry move, fixture and shard are withdrawn, `governor-lift-v1` stays
+registered and the construction repair stays. A fix would stiffen the arm hinges or lower the top speed (a program
+change), the owner's choice. **Bloom is not promoted:** every one of its 24 scissor pivots
 is a pin (43093) in the centre hole of angle connector #4 (32192), which reaches 2.0 LDU into that part's mesh for any
 rotation of the pin (2.2 LDU flipped); its six cage hubs (44809) overlap ring ends and spacers by 9–19 LDU (12 pairs);
 the compiler reports locked hinges. That is a redesign of the pivots and hubs, not a minimal repair; no judge was

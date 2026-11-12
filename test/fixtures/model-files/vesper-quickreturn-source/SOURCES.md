@@ -1,7 +1,0 @@
-# vesper-quickreturn — source record
-
-- **Origin:** the Vesper quick-return shaper intake already in the Robot Lab experimental registry (CrispStrobe, BSD-3-Clause), from `vesper-quickreturn.zip` (checkpoint `docs/data/robot-lab-experimental-checkpoint.json`). Program bytes are unchanged.
-- **Repair at promotion (R3):** one real-part edit. The fixed bearing that carries the lever pivot pin `pin_O` was a thick 3L beam (32523) at z −40 LDU whose collider reached 5.5 LDU into the SPIKE motor's flat output-side plate (z −35.5 to −30). It is now a thin 1 × 5 liftarm (32017) at z −45 (−50 to −40), still on `pin_O` and on the spacer pin at x 40; the pivot, the lever and every other placement are unchanged. The author STEP groups (up to 78 parts) are removed, so the instructions derive 46 connected steps of at most four parts. The MPD wrapper is regenerated from the LDR.
-- **Law (`quick-return-v1`):** `judgeQuickReturn` in `scripts/lib/sim-lab-r3-judges.mjs`. Crank 16 mm on the motor axis, lever pivot 56 mm away, the lever's guide 8 mm off the pivot, lever 112 mm to the rod pin, rod 64 mm to the ram pin: the ram position follows from the crank angle (stroke 66.17 mm, slow-to-quick crank-arc ratio 213.59° / 146.41° = 1.4588); reversing the crank swaps the slow side.
-- **Disconnection** (`pin_P` removed: the crank pin in the lever's sliding block. Motor A still turns the crank three times per stage, but the ram no longer follows.)
-- **Piece count:** 91, honest; qualification has no piece minimum (operator decision 2026-11-07).

@@ -1,6 +1,9 @@
 # Robot Lab — R3 geometry repairs: Vesper, Aster, Apex (repairs, judges, controls, browser gates, promotion); Bloom triaged
 
-Status: CLAIMED 2026-11-12 — claim and change in one PR.
+Status: CLAIMED 2026-11-12 — claim and change in one PR. Only Apex is promoted. Vesper stays experimental: its hosted
+browser run measured the ram 0.504 mm from the kinematics against its judge's 0.5 mm bound. Aster stays experimental: its hosted browser run opened a
+hinge 0.55 mm at 800 °/s against its judge's 0.5 mm closure bound; for both, the contract, registry move, fixture and shard
+are withdrawn; their judges and construction repairs stay.
 Owner: Claude, Robot Lab promotion lane.
 Branch: `lane/robot-r3-geometry-20261112`.
 

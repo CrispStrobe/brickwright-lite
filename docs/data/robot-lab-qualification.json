@@ -1288,49 +1288,6 @@
       ]
     },
     {
-      "id": "vesper-quickreturn",
-      "judge": "quick-return-v1",
-      "parts": 91,
-      "ports": [
-        "A"
-      ],
-      "coldMs": 500,
-      "timeLimitMs": 150000,
-      "afterMs": 500,
-      "frameMs": 25,
-      "frozenOutput": "ram_rack",
-      "disconnect": [
-        "pin_P"
-      ],
-      "disconnectInputDeg": 1070,
-      "disconnectLoss": "r3",
-      "notRun": [
-        "webkit browser run (the browser gate, shard robotaddon20, runs chromium)"
-      ]
-    },
-    {
-      "id": "aster-governor",
-      "judge": "governor-lift-v1",
-      "parts": 144,
-      "ports": [
-        "A"
-      ],
-      "coldMs": 500,
-      "timeLimitMs": 150000,
-      "afterMs": 500,
-      "frameMs": 25,
-      "frozenOutput": "collar",
-      "disconnect": [
-        "lower_arm_pos",
-        "lower_arm_neg"
-      ],
-      "disconnectInputDeg": 50000,
-      "disconnectLoss": "r3",
-      "notRun": [
-        "webkit browser run (the browser gate, shard robotaddon21, runs chromium)"
-      ]
-    },
-    {
       "id": "apex",
       "judge": "wankel-ratio-v1",
       "parts": 477,

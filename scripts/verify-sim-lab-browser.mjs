@@ -865,9 +865,7 @@ try {
         // Q5 promotions (#1683) Evenhand and RimRun, R1 Obliquity Orrery and the R2 and R3 families: the registry law and its causal control, then the
         // nine-intake gate's checks (scripts/lib/sim-lab-q5-browser-gate.mjs).
         // A promotion whose disconnected control runs as its own step (SEPARATE_CONTROL, sim-lab-q5-browser-gate.mjs).
-        for (const id of SEPARATE_CONTROL.filter(id => (id === 'cadence-geneva' && runExample('cadence-geneva-disconnected.ldr'))
-            || (id === 'vesper-quickreturn' && runExample('vesper-quickreturn-disconnected.ldr'))
-            || (id === 'aster-governor' && runExample('aster-governor-disconnected.ldr')))) {
+        for (const id of SEPARATE_CONTROL.filter(id => id === 'cadence-geneva' && runExample('cadence-geneva-disconnected.ldr'))) {
             const page = await browser.newPage({viewport: {width: 1600, height: 1050}, serviceWorkers: 'block'});
             page.on('pageerror', error => errors.push(error.stack || error.message));
             page.on('dialog', dialog => dialog.accept());
