@@ -43,3 +43,27 @@ export function screenRack(reference, candidate, attachmentIds) {
  }
  return matches;
 }
+
+/** Screen unchanged tooth engagement while measuring how far each mount must move. */
+export function screenMountRedesign(reference, candidate, attachmentIds) {
+ const teeth = reference.connectors.filter(c => c.type === 'rack-teeth');
+ if (teeth.length !== 1 || !teeth[0].data?.normal) throw new Error('reference needs one oriented tooth connector');
+ const mounts = attachmentIds.map(id => {
+  const hits = reference.connectors.filter(c => c.id === id);
+  if (hits.length !== 1) throw new Error('missing or duplicate reference connector: ' + id);
+  return hits[0];
+ });
+ const target = teeth[0], results = [];
+ for (const rotation of axisRotations()) for (const rack of candidate.connectors.filter(c => c.type === 'rack-teeth')) {
+  if (!axisSame(apply(rotation, rack.axis), target.axis) || !rack.data?.normal ||
+      !same(apply(rotation, rack.data.normal), target.data.normal) || rack.length < target.length) continue;
+  const translation = sub(target.position, apply(rotation, rack.position));
+  const distances = mounts.map(want => {
+   const choices = candidate.connectors.filter(c => c.type === want.type && axisSame(apply(rotation, c.axis), want.axis))
+    .map(c => Math.hypot(...sub(add(apply(rotation, c.position), translation), want.position)));
+   return {id: want.id, nearestLdu: choices.length ? Math.min(...choices) : null};
+  });
+  results.push({rotation, translation, distances});
+ }
+ return results;
+}

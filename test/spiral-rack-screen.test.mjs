@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BSD-3-Clause
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {axisRotations, screenRack} from '../scripts/lib/spiral-rack-screen.mjs';
+import {axisRotations, screenRack, screenMountRedesign} from '../scripts/lib/spiral-rack-screen.mjs';
 const reference = {connectors: [
  {id:'left',type:'pinhole',position:[-10,0,0],axis:[0,1,0]},
  {id:'right',type:'pinhole',position:[10,0,0],axis:[0,1,0]},
@@ -27,4 +27,16 @@ test('screen allows a rigidly shifted catalog origin but rejects displaced tooth
  const invalid = structuredClone(reference);
  invalid.connectors[2].position[1] = -6;
  assert.equal(screenRack(reference, invalid, ['left','right']).length, 0, 'tooth contact must also coincide');
+});
+
+
+test('redesign distances retain tooth alignment and report missing connector types', () => {
+ const moved = structuredClone(reference); moved.connectors[1].position[0] += 3;
+ const options = screenMountRedesign(reference, moved, ['left','right']);
+ assert.ok(options.length > 0);
+ assert.ok(options.some(x => x.distances[0].nearestLdu === 0 && x.distances[1].nearestLdu === 3));
+ const missing = structuredClone(reference); missing.connectors = missing.connectors.filter(c => c.type !== 'pinhole');
+ assert.ok(screenMountRedesign(reference, missing, ['left']).every(x => x.distances[0].nearestLdu === null));
+ const short = structuredClone(reference); short.connectors[2].length = 19;
+ assert.equal(screenMountRedesign(reference, short, ['left']).length, 0);
 });

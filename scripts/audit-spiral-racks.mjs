@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2026 CrispStrobe
 import {readFileSync} from 'node:fs';
-import {screenRack} from './lib/spiral-rack-screen.mjs';
+import {screenRack, screenMountRedesign} from './lib/spiral-rack-screen.mjs';
 
 const root = new URL('../', import.meta.url);
 const parts = JSON.parse(readFileSync(new URL('overlay/scratch-gui/src/lib/bw-sim/part-meta/parts.json', root))).parts;
@@ -13,8 +13,9 @@ const reference = parts.find(p => p.part === '64781.dat');
 if (!reference) throw new Error('missing 64781 metadata');
 const candidates = parts.filter(p => p.connectors?.some(c => c.type === 'rack-teeth'));
 const result = candidates.map(p => ({part: p.part, name: p.name,
- transforms: screenRack(reference, p, ['h0', 'h1', 'a0', 'a1'])}));
+ transforms: screenRack(reference, p, ['h0', 'h1', 'a0', 'a1']),
+ redesign: screenMountRedesign(reference, p, ['h0', 'h1', 'a0', 'a1'])}));
 console.log(JSON.stringify({model: 'spiral-scribe', reference: reference.part,
  constraints: 'unchanged four attachment connectors and rack tooth contact, axis-aligned proper rotations',
- limitations: 'Metadata screen only: pitch, actual part geometry, collision clearance, travel and physical build not established.',
+ limitations: 'Metadata screen only: nearest connector distances do not prove a shared mounting layout; pitch, part geometry, clearance, travel and physical build not established.',
  candidates: result}, null, 2));
