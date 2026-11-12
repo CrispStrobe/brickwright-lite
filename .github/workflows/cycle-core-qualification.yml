@@ -44,9 +44,8 @@ permissions:
   contents: read
 
 concurrency:
-  group: cycle-qualification-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
-
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref_type != 'tag' && (github.event_name == 'push' || github.event_name == 'pull_request') }}
 jobs:
   contracts:
     # Cheap, dependency-free policy verdict before GitHub spends minutes on

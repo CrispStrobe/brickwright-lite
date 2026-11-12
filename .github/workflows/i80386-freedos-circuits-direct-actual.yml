@@ -8,9 +8,8 @@ permissions:
   contents: read
 
 concurrency:
-  group: freedos-circuits-${{ github.event.pull_request.head.sha }}
-  cancel-in-progress: false
-
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ (github.event.action == 'labeled' || github.event.action == 'unlabeled') && format('label-{0}', github.event.label.name) || 'code' }}
+  cancel-in-progress: ${{ github.ref_type != 'tag' && (github.event_name == 'push' || github.event_name == 'pull_request') }}
 jobs:
   browser:
     if: >-
