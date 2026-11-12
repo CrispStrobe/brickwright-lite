@@ -4380,6 +4380,7 @@ jobs:
       BW_GUI_REVIEWED_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: {fetch-depth: 2}
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with: {node-version: 22}
       - name: Install gate inputs without building or syncing another SDK
@@ -4434,6 +4435,9 @@ jobs:
         run: cd packages/scratch-gui && npm install --ignore-scripts --legacy-peer-deps --no-audit --no-fund
       - name: Apply the scratch-vm overlay
         run: node scripts/apply-vm-overlay.mjs
+      - name: Scope additional browser guests to the actual checkout changes
+        id: scoped_guests
+        run: node scripts/menu-painter-browser-scope.mjs test-results/scoped-browser-guests.json
       - name: Actual production IDE numeric/settings/source-loop authoring
         env:
           PROOF_URL: http://localhost:8617/
@@ -4469,6 +4473,47 @@ jobs:
           BW_GUI_BUILD_ARCHIVE: ${{ steps.admitted_gui.outputs.archivePath }}
           BW_REPEAT_GUI_REPORT_DIR: test-results/arcade-controller-repeat-authoring-gui
         run: node --import ./scripts/lib/register-gui-scope.mjs scripts/verify-arcade-controller-repeat-authoring-gui.mjs
+      - name: Actual admitted tilemap painter after menu changes
+        if: ${{ !cancelled() && steps.admitted_gui.outcome == 'success' && steps.scoped_guests.outputs.selected == 'true' }}
+        timeout-minutes: 3
+        env:
+          PROOF_URL: http://localhost:8617/
+          BW_TILEMAP_REPORT_DIR: test-results/arcade-tilemap-painter
+        run: node scripts/verify-arcade-tilemap-painter.mjs
+      - name: Actual admitted Robot Lab apex promotion
+        id: scoped_robot_apex
+        if: ${{ !cancelled() && steps.admitted_gui.outcome == 'success' && steps.scoped_guests.outputs.apex == 'true' }}
+        timeout-minutes: 8
+        env:
+          BW_BUILD: ${{ steps.admitted_gui.outputs.site }}
+          BW_SIMLAB_BROWSER: chromium
+        run: npm run verify:sim-lab -- --part=examples --examples=apex
+      - name: Retain apex step outcome and original observations
+        id: snapshot_robot_apex
+        if: ${{ always() && steps.scoped_robot_apex.outcome != 'skipped' && steps.scoped_robot_apex.outcome != '' }}
+        env:
+          BW_SCOPED_MODEL: apex
+          BW_SCOPED_STEP_ID: scoped_robot_apex
+          BW_SCOPED_STEP_OUTCOME: ${{ steps.scoped_robot_apex.outcome }}
+          BW_SCOPED_STEP_CONCLUSION: ${{ steps.scoped_robot_apex.conclusion }}
+        run: node scripts/snapshot-scoped-browser-guest.mjs artifacts/sim-lab test-results/scoped-robot-apex
+      - name: Actual admitted Robot Lab tempest-pendulum promotion
+        id: scoped_robot_tempest
+        if: ${{ !cancelled() && steps.admitted_gui.outcome == 'success' && steps.scoped_guests.outputs.tempest == 'true' && (steps.scoped_robot_apex.outcome == 'skipped' || steps.snapshot_robot_apex.outcome == 'success') }}
+        timeout-minutes: 8
+        env:
+          BW_BUILD: ${{ steps.admitted_gui.outputs.site }}
+          BW_SIMLAB_BROWSER: chromium
+        run: npm run verify:sim-lab -- --part=examples --examples=tempest-pendulum
+      - name: Retain tempest-pendulum step outcome and original observations
+        id: snapshot_robot_tempest
+        if: ${{ always() && steps.scoped_robot_tempest.outcome != 'skipped' && steps.scoped_robot_tempest.outcome != '' }}
+        env:
+          BW_SCOPED_MODEL: tempest-pendulum
+          BW_SCOPED_STEP_ID: scoped_robot_tempest
+          BW_SCOPED_STEP_OUTCOME: ${{ steps.scoped_robot_tempest.outcome }}
+          BW_SCOPED_STEP_CONCLUSION: ${{ steps.scoped_robot_tempest.conclusion }}
+        run: node scripts/snapshot-scoped-browser-guest.mjs artifacts/sim-lab test-results/scoped-robot-tempest-pendulum
       - name: Retain admission and journey failures
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
@@ -4485,6 +4530,11 @@ jobs:
             test-results/arcade-live-font-authoring-gui
             test-results/arcade-controller-repeat-authoring-gui
             test-results/arcade-owned-image-authoring
+            test-results/scoped-browser-guests.json
+            test-results/arcade-tilemap-painter
+            test-results/scoped-robot-apex
+            test-results/scoped-robot-tempest-pendulum
+            artifacts/sim-lab
           if-no-files-found: error
 
   deploy:
