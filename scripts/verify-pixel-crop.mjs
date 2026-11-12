@@ -20,10 +20,23 @@ const editMenuAction = async (page, group, command) => {
     const trigger = page.getByTestId('bw-edit-menu-trigger');
     await trigger.focus();
     await trigger.press('ArrowDown');
+    // Opening a menu from the keyboard focuses its first item one animation
+    // frame later (menu-keyboard.js openMenuFromKeyboard). Moving focus before
+    // that frame lets it steal focus back, which blurs and closes a submenu
+    // opened in between (I7). Wait for the menu to own focus first.
+    await page.waitForFunction(() => {
+        const menu = document.querySelector('[data-testid="bw-edit-menu-trigger"]')
+            ?.closest('[data-bw-menu-root]')?.querySelector('[role="menu"]');
+        return !!menu && menu.contains(document.activeElement);
+    });
     if (group) {
         const submenu = page.getByRole('menuitem', {name: group, exact: true});
         await submenu.focus();
         await submenu.press('ArrowRight');
+        // Likewise the submenu focuses its first item a frame after it opens.
+        await page.waitForFunction(item => item.getAttribute('aria-expanded') === 'true' &&
+            !!item.querySelector('[role="menu"]')?.contains(document.activeElement),
+        await submenu.elementHandle());
     }
     await page.getByRole('menuitem', {name: command, exact: true}).press('Enter');
 };
