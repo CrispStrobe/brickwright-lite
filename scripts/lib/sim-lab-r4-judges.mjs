@@ -100,14 +100,16 @@ export function walkingBeamExtent(g){
  const rows=[];let b=0;for(let i=0;i<=3600;i++){const p=walkingBeamPose(g,i*Math.PI/1800,b);b=p.beta;rows.push(p);}
  return{swingDeg:deg(span(rows.map(x=>x.beta))),strokeMm:span(rows.map(x=>x.s))*1000,closureMm:max(rows.map(x=>x.residual))*1000};
 }
-/** Per frame: observed crank, beam and piston (relative to the hub) and the motor encoder. */
+/** Per frame: observed crank, beam and piston relative to the authored pose and hub; encoder travel from the first frame. */
 export function walkingBeamTrack(r,o=observeAddon(r,baseOf(r)),g=compiledWalkingBeam(r,o)){
  const motor=motorJoint(r),crankBody=bodyOf(r,'crank').id,sign=motor.body2===crankBody?1:-1,frames=r.track.filter(f=>f.phase!=='cold');
  assert.ok(frames.length>0,'program frames recorded');
+ // The compiled loop and piston origin use the authored pose. Rebasing angles to the
+ // first observed frame mixes coordinate origins and can hide or spread startup error.
  const crank=unwrap(frames.map(f=>relAngle(o,f,'crank',g.B))),beam=unwrap(frames.map(f=>relAngle(o,f,'walking_beam',g.B)));
  const p0=o.initial('piston_rack'),axis3=add(scale(g.B.u,g.slide[0]),scale(g.B.v,g.slide[1]));
  const motor0=frames[0].joints[motor.id].angle;
- return frames.map((f,i)=>({t:f.t,phi:crank[i]-crank[0],beta:beam[i]-beam[0],s:dot(sub(o.point(f,'piston_rack'),p0),axis3),motor:sign*(f.joints[motor.id].angle-motor0)}));
+ return frames.map((f,i)=>({t:f.t,phi:crank[i],beta:beam[i],s:dot(sub(o.point(f,'piston_rack'),p0),axis3),motor:sign*(f.joints[motor.id].angle-motor0)}));
 }
 function walkingBeamErrors(rows,g){let b=0;return rows.map(x=>{const p=walkingBeamPose(g,x.phi,b);b=p.beta;return{beamDeg:Math.abs(deg(x.beta-p.beta)),pistonMm:Math.abs(x.s-p.s)*1000};});}
 
@@ -122,7 +124,7 @@ export function judgeWalkingBeam(r,{native=false,contract}={}){
  check(Math.abs(ext.swingDeg-L.swingDeg)<=L.predictedTol&&Math.abs(ext.strokeMm-L.strokeMm)<=L.predictedTol&&ext.closureMm<1e-6,'compiled loop predicts 42.40° swing and 40.58 mm stroke',compiled);
  const v=vars(r);assert.equal(Number(v.completed),1,'program reports completion');assert.equal(Number(v.failed),0,'program reports no failure');assert.equal(Number(v.stage),7,'program reaches its final stage');
  const rows=walkingBeamTrack(r,o,g),err=walkingBeamErrors(rows,g);
- const values={beamErrorDeg:max(err.map(e=>e.beamDeg)),pistonErrorMm:max(err.map(e=>e.pistonMm)),driveErrorDeg:max(rows.map(x=>Math.abs(deg(x.phi-x.motor)))),
+ const values={beamErrorDeg:max(err.map(e=>e.beamDeg)),pistonErrorMm:max(err.map(e=>e.pistonMm)),driveErrorDeg:max(rows.map(x=>Math.abs(deg(x.phi-rows[0].phi-x.motor)))),
   crankSpanDeg:deg(span(rows.map(x=>x.phi))),swingDeg:deg(span(rows.map(x=>x.beta))),strokeMm:span(rows.map(x=>x.s))*1000,returnDeg:Math.abs(deg(rows.at(-1).phi))};
  check(values.crankSpanDeg>=L.crankSpanDeg,'the crank turns a full revolution',values);
  check(values.beamErrorDeg<=L.beamDeg,'walking beam follows the compiled crank-rocker loop',values);
